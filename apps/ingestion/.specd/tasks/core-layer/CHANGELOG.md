@@ -16,3 +16,12 @@
   fuzzystrmatch / unaccent (needed before the trgm index).
 - Applied to local DB: 16 core tables present, 3 extensions, trgm index live,
   raw.raw_documents untouched (744).
+
+## Phase 2 — CPV catalog seed (2026-07-12)
+
+- Fetched official EU CPV 2008 XML (ted.europa.eu, open data) → parsed to
+  `packages/db/seed/cpv_2008.json` (9454 codes, {code, name_ro, name_en,
+  revision:"Rev.2", division}). Provenance tool: `scripts/parse-cpv-xml.mjs`.
+- Seed loader `scripts/seed-cpv.mjs` (idempotent bulk upsert) + `db:seed:cpv`.
+- Loaded: 9454 rows, all with EN, 45 divisions. Verified `15800000-6` and
+  `45453000-7` (both seen in our real data) resolve; re-run stays 9454.

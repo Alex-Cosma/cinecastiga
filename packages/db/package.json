@@ -19,7 +19,8 @@
     "lint": "tsc -p tsconfig.json --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "db:seed:cpv": "node scripts/seed-cpv.mjs"
   },
   "dependencies": {
     "drizzle-orm": "^0.44.0",
