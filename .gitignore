@@ -17,5 +17,9 @@ coverage/
 *.local
 .DS_Store
 
+# IDE
+.idea/
+.vscode/
+
 # docker volumes (if ever bind-mounted)
 infra/data/
