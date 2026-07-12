@@ -2,7 +2,7 @@
 
 ## Current Position
 
-**Stage:** planning (research complete)
+**Stage:** complete (5/5 phases approved)
 **Last Updated:** 2026-07-12
 
 ---
@@ -30,8 +30,8 @@
 ## Execution Progress
 
 ### Current Phase
-- Phase: 5 (executed, awaiting review)
-- Started: 2026-07-12
+- Phase: — (all complete)
+- Started: —
 
 ### Completed Phases
 | Phase | Completed | Tasks | Deviations |
@@ -40,7 +40,7 @@
 | 2 — Archive plumbing | 2026-07-12 (approved) | 3/3 | 1 (logged) |
 | 3 — Notice scrape jobs | 2026-07-12 (approved) | 5/5 | none |
 | 4 — Direct-acquisition jobs | 2026-07-12 (approved) | 4/4 | none |
-| 5 — Sample mode + live smoke | 2026-07-12 (executed) | 4/4 | 4 live findings (logged) |
+| 5 — Sample mode + live smoke | 2026-07-12 (approved) | 4/4 | 4 live findings (logged) |
 
 ---
 
@@ -74,7 +74,7 @@
 
 ## Next Steps
 
-Planning stage: derive phases from RESEARCH.md + FEATURE.md.
+Task complete. Follow-ups: overnight 30-day sample (README runbook); v2/eForms detail task; normalization (project Phase 3); web setup.
 
 **Resume:** `/specd.continue bronze-layer` (from `apps/ingestion/`)
 
