@@ -29,12 +29,13 @@
 ## Execution Progress
 
 ### Current Phase
-- Phase: none
-- Started: —
+- Phase: 1 (executed, awaiting review)
+- Started: 2026-07-12
 
 ### Completed Phases
 | Phase | Completed | Tasks | Deviations |
 |-------|-----------|-------|------------|
+| 1 — Workspace + infra | 2026-07-12 (executed) | 3/3 | none |
 
 ---
 
