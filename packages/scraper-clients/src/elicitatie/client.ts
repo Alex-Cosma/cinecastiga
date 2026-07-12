@@ -14,7 +14,7 @@ export interface ElicitatieClientOptions {
   userAgent: string;
   baseUrl?: string;
   referer?: string;
-  /** Post-2025 the API rate-limits; stay conservative (DEC-005). */
+  /** High-throughput default; 429/Retry-After backoff is the safety net. */
   maxConcurrency?: number;
   minDelayMs?: number;
   maxRetries?: number;
@@ -36,8 +36,8 @@ export function createElicitatieClient(
     createHttpClient({
       baseUrl,
       userAgent: opts.userAgent,
-      maxConcurrency: opts.maxConcurrency ?? 3,
-      minDelayMs: opts.minDelayMs ?? 400,
+      maxConcurrency: opts.maxConcurrency ?? 20,
+      minDelayMs: opts.minDelayMs ?? 0,
       maxRetries: opts.maxRetries ?? 3,
       defaultHeaders: {
         referer: opts.referer ?? DEFAULT_REFERER,

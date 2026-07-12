@@ -52,10 +52,21 @@
 ### DEC-005: Politeness — concurrency 3, ~400ms delay, Retry-After honored, instant-drop config
 
 **Date:** 2026-07-12
-**Status:** Active
+**Status:** Superseded by DEC-010
 **Context:** Conflicting rate-limit intel (2026 repos: 429s since Mar 2025, 1 conc/2s; live probe: 80 req at 2.5 rps unthrottled; 2021 prior art: conc 5 for years).
 **Decision:** Default concurrency 3 / minDelay 400ms per shared source client; honor Retry-After; automatic cool-down on 429/403 streaks; env-tunable to 1/2s without deploy.
 **Implications:** 30d DA sample ≈ ~24h of chunked resumable runs; daily incremental ≈ ~1h. Don't discover the threshold.
+
+### DEC-010: Throughput default — concurrency 20, no delay (supersedes DEC-005 rate)
+
+**Date:** 2026-07-12
+**Status:** Active
+**Context:** User has firsthand experience (2020 build) that the SICAP platform is highly resilient to load; live smoke drew zero throttling across ~800 requests. The conservative DEC-005 rate made the 30-day DA backfill ~24h.
+**Decision:** Default concurrency 20 / minDelay 0 (~55 req/s). Env-tunable per run (`SCRAPE_CONCURRENCY`, `SCRAPE_MIN_DELAY_MS`). The 429/Retry-After honoring + exponential backoff from DEC-005 is RETAINED unchanged — it is the safety net that makes high throughput non-reckless (auto-throttle instead of ban if the server ever pushes back).
+**Rationale:**
+- Platform tolerates it (firsthand + smoke evidence)
+- Adaptive backoff means aggression self-corrects; only blind aggression risks a ban
+**Implications:** 30-day DA backfill ~1h instead of ~24h; daily incremental minutes. If sustained 429s appear, drop the env vars — no code change needed.
 
 ### DEC-006: PII redaction BEFORE bronze write
 
@@ -108,7 +119,8 @@ _None._
 | DEC-002 | 2026-07-12 | Sample mode = 30-day date window | Active |
 | DEC-003 | 2026-07-12 | DA cursor on finalizationDate; notice state re-scan | Active |
 | DEC-004 | 2026-07-12 | Adaptive slicing; searchTooLong = data loss | Active |
-| DEC-005 | 2026-07-12 | Politeness: conc 3 / 400ms, Retry-After, instant-drop | Active |
+| DEC-005 | 2026-07-12 | Politeness: conc 3 / 400ms, Retry-After, instant-drop | Superseded |
+| DEC-010 | 2026-07-12 | Throughput default: conc 20 / no delay (backoff retained) | Active |
 | DEC-006 | 2026-07-12 | PII redaction before bronze write | Active |
 | DEC-007 | 2026-07-12 | Europe/Bucharest cursors; closed windows only | Active |
 | DEC-008 | 2026-07-12 | Invariant checks gate cursor advancement | Active |
