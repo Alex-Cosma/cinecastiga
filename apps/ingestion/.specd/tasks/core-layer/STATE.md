@@ -21,13 +21,18 @@ units canonicalized, idempotent replay. See CHANGELOG.md.
 
 ## Follow-ups (not blockers)
 
-- **Tier-3 fuzzy name suggestions**: `entity_name_suggestions` table + resolver
-  exist but the pg_trgm batch pass that populates suggestions for no-/invalid-CUI
-  entities is not yet implemented (RESEARCH.md §2 has the approach + thresholds).
 - **unit_map curation**: 19-row starter map covers 94%; domain expert to extend
   the compound/ambiguous tail.
 - **v2/eForms notice detail**: still deferred (tender core = list-level only).
-- Re-run `normalize` after the (blocked) SICAP backfill lands more raw docs.
+- **Entity-name-suggestion review UI**: 1 open suggestion now; at backfill scale
+  a review workflow (merge/reject) will be needed. Locality-blocking negative
+  rule (beyond ordinal) is a future refinement (RESEARCH.md §2).
+- Re-run `normalize --suggest` after the (blocked) SICAP backfill lands more raw.
+
+## Done in this task
+
+Tier-3 fuzzy suggestions implemented (Phase 3b) and it surfaced + drove a
+parser fix that lifted valid-CUI coverage to 99.6% (793 entities, 0 dup CUIs).
 
 ## Notes
 
