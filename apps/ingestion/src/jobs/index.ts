@@ -4,6 +4,7 @@ import {
   makeScrapeNoticesTask,
   type ScrapeDeps,
 } from "../scrape/elicitatie/notices.js";
+import { makeRescanTask } from "../scrape/elicitatie/state-rescan.js";
 import { getElicitatieClient } from "../scrape/elicitatie/client.js";
 import { getSharedDb } from "../db.js";
 
@@ -24,6 +25,7 @@ export const taskList: TaskList = {
   heartbeat,
   scrape_tenders: makeScrapeNoticesTask(lazyDeps, "tenders"),
   scrape_awards: makeScrapeNoticesTask(lazyDeps, "awards"),
+  rescan_notice_states: makeRescanTask(lazyDeps),
 };
 
 /**
@@ -35,4 +37,5 @@ export const crontab = `
 */10 * * * * heartbeat
 30 4 * * * scrape_tenders ?max=1
 40 4 * * * scrape_awards ?max=1
+0 6 * * 1 rescan_notice_states ?max=1
 `.trim();
