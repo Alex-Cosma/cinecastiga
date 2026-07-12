@@ -5,6 +5,7 @@ import {
   getNoticeContracts,
   getNoticeDetail,
   listNotices,
+  noticeIdOf,
   NOTICE_TYPE_IDS,
   type NoticeListItem,
 } from "@seap/scraper-clients";
@@ -79,28 +80,28 @@ export async function rescanNoticeStates(
             for (const item of changedItems) {
               docs.push({
                 source: "elicitatie",
-                externalId: `${prefix}:${item.caNoticeId}`,
+                externalId: `${prefix}:${noticeIdOf(item)}`,
                 endpointVersion: `${prefix}-list:v1`,
                 payload: item,
               });
-              const detail = await getNoticeDetail(client, item.caNoticeId);
+              const detail = await getNoticeDetail(client, noticeIdOf(item));
               docs.push({
                 source: "elicitatie",
-                externalId: `${prefix}:${item.caNoticeId}`,
+                externalId: `${prefix}:${noticeIdOf(item)}`,
                 endpointVersion: `${prefix}-detail:v1`,
                 payload: detail.data,
               });
               if (familyKey === "awards") {
                 const contracts = await getNoticeContracts(client, {
-                  caNoticeId: item.caNoticeId,
+                  caNoticeId: noticeIdOf(item),
                   skip: 0,
                   take: 200,
                 });
                 docs.push({
                   source: "elicitatie",
-                  externalId: `${prefix}:${item.caNoticeId}`,
+                  externalId: `${prefix}:${noticeIdOf(item)}`,
                   endpointVersion: `${prefix}-contracts:v1`,
-                  payload: { caNoticeId: item.caNoticeId, ...contracts.data },
+                  payload: { caNoticeId: noticeIdOf(item), ...contracts.data },
                 });
               }
             }
@@ -144,7 +145,7 @@ async function findChangedItems(
   prefix: string,
   items: NoticeListItem[],
 ): Promise<NoticeListItem[]> {
-  const ids = items.map((i) => `${prefix}:${i.caNoticeId}`);
+  const ids = items.map((i) => `${prefix}:${noticeIdOf(i)}`);
   const rows = await deps.db
     .select({
       externalId: rawDocuments.externalId,
@@ -170,7 +171,7 @@ async function findChangedItems(
   }
 
   return items.filter((item) => {
-    const key = `${prefix}:${item.caNoticeId}`;
+    const key = `${prefix}:${noticeIdOf(item)}`;
     if (!latestStateDate.has(key)) return true; // never archived — take it
     return latestStateDate.get(key) !== item.noticeStateDate;
   });
