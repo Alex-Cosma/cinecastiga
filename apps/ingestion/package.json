@@ -13,7 +13,8 @@
     "test": "vitest run --exclude '**/*.integration.test.ts' --passWithNoTests",
     "test:integration": "vitest run integration.test",
     "lint": "tsc -p tsconfig.json --noEmit",
-    "normalize": "tsx src/scripts/normalize.ts"
+    "normalize": "tsx src/scripts/normalize.ts",
+    "marts": "tsx src/scripts/marts.ts"
   },
   "dependencies": {
     "@seap/db": "workspace:*",
