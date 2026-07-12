@@ -17,8 +17,8 @@ export interface ScrapeCursor {
   page: number;
 }
 
-/** Anything drizzle-shaped that can run the two queries (db or tx handle). */
-type DbLike = Pick<Db, "select" | "insert">;
+/** Anything drizzle-shaped that can run the upsert (db or tx handle). */
+type DbLike = Pick<Db, "insert">;
 
 export async function readWatermark(
   db: Db,
