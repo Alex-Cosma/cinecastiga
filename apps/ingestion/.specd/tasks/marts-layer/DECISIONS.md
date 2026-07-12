@@ -62,6 +62,22 @@ part of marts. Marts = aggregate read models only.
 **Rationale:** Different concern (document index vs precomputed aggregates),
 different infra (Meilisearch).
 
+### DEC-006: Consortia attribution — store BOTH full-credit and equal-split
+
+**Date:** 2026-07-12
+**Status:** Active
+**Context:** Verified against raw payloads: SICAP gives NO per-member value for
+consortia. The winner object is identity-only (`name`, `fiscalNumber`,
+`entityId`, `address`); contract values are contract-level. Any per-member
+number is our assumption.
+**Decision:** In supplier-side marts (`entity_profile`, `top_entities`,
+concentration inputs) store both `total_ron_full` (each member credited the full
+contract) and `total_ron_split` (contract_value / N winners). Split is labeled an
+assumption in the schema/comments; web + red-flags choose per view.
+**Rationale:** No data loss, no premature commitment. Full shows "who touches big
+money"; split reconciles to actual national spend. Both are truthful; neither is
+imposed as the single answer.
+
 ---
 
 ## Decision Log
@@ -73,3 +89,4 @@ different infra (Meilisearch).
 | DEC-003 | 2026-07-12 | Currency RON only; FX out of scope v1 | Active |
 | DEC-004 | 2026-07-12 | Time grain: year + overall, primary date per fact | Active |
 | DEC-005 | 2026-07-12 | Meilisearch search index is a separate task | Active |
+| DEC-006 | 2026-07-12 | Consortia: store both full-credit and equal-split totals | Active |
