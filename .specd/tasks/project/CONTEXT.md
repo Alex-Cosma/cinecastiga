@@ -65,8 +65,19 @@ User wants a platform that "regularly grabs everything e-licitatie has to offer 
 
 ---
 
+## Domain Knowledge (user firsthand, from prior 2020 build)
+
+User built a SEAP scraper/analyzer before (2020, Spring, manual — "lots and lots of work"). Hard-won data-quality facts to design around:
+
+- **CPV codes are a mess in practice** — not just taxonomy versioning (already in PITFALLS.md); real-world assignment quality in SICAP records is poor/inconsistent. CPV-based peer grouping (price baselines, sector dashboards) must tolerate misclassification noise.
+- **Quantity + unit-of-measure fields are not standardized** — free-ish text: "Bucată", "Litru", "100 Bucăți", etc. Same unit expressed multiple ways, including multiplier-embedded forms ("100 Bucăți" = 100× piece). Directly undermines per-unit price computation.
+- **Consequence for REQ-011:** the price-per-unit outlier indicator requires a unit-normalization layer (canonical unit table + multiplier parsing + unmappable-unit bucket) before it can be trusted. Options when Phase 8 arrives: (a) build normalization for the top-N most common units and compute the indicator only where mapping confidence is high; (b) defer that single indicator to v1.x; other indicators (single-bid, HHI, threshold splitting) don't depend on units and are unaffected.
+
+---
+
 ## Gray Areas Remaining
 
+- [ ] Unit-of-measure normalization strategy (canonical unit table, multiplier parsing, confidence threshold) — gates the price-per-unit red-flag indicator; decide in Phase 8 pre-work
 - [ ] Ingestion source strategy (SICAP unofficial API vs. data.gov.ro dumps vs. hybrid) — determines architecture + reliability
 - [ ] DB + search engine choice — performance is an explicit product requirement
 - [ ] Red-flag indicator set — which are computable from SICAP data alone
