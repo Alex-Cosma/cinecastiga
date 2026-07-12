@@ -14,6 +14,7 @@ import type { DbSql } from "@seap/db";
  */
 export interface MartsReport {
   nationalStats: number;
+  spendByType: number;
   spendByCpv: number;
   entityProfiles: number;
   topEntities: number;
@@ -33,8 +34,9 @@ export async function runMarts(
   const report = await sql.begin(async (q) => {
     await q`
       truncate
-        marts.national_stats, marts.spend_by_cpv, marts.entity_profile,
-        marts.entity_top_partners, marts.top_entities, marts.authority_concentration
+        marts.national_stats, marts.spend_by_type, marts.spend_by_cpv,
+        marts.entity_profile, marts.entity_top_partners, marts.top_entities,
+        marts.authority_concentration
     `;
 
     // ── shared spine ────────────────────────────────────────────────────────
@@ -80,6 +82,16 @@ export async function runMarts(
           from core.direct_acquisitions
       ) s
       group by grouping sets ((kind, y), (kind))
+    `;
+
+    // ── spend_by_type (acquisition type — the 2020 build's cut) ─────────────
+    await q`
+      insert into marts.spend_by_type (kind, acquisition_type, n, total_ron)
+      select 'award', acquisition_type, count(*)::int, sum(ron_contract_value)
+        from core.awards group by acquisition_type
+      union all
+      select 'da', acquisition_type, count(*)::int, sum(closing_value)
+        from core.direct_acquisitions group by acquisition_type
     `;
 
     // ── spend_by_cpv (award + da streams, division names from CPV roots) ─────
@@ -189,6 +201,7 @@ export async function runMarts(
     `;
 
     const [ns] = await q`select count(*)::int c from marts.national_stats`;
+    const [st] = await q`select count(*)::int c from marts.spend_by_type`;
     const [sc] = await q`select count(*)::int c from marts.spend_by_cpv`;
     const [ep] = await q`select count(*)::int c from marts.entity_profile`;
     const [te] = await q`select count(*)::int c from marts.top_entities`;
@@ -196,6 +209,7 @@ export async function runMarts(
     const [ac] = await q`select count(*)::int c from marts.authority_concentration`;
     return {
       nationalStats: ns!.c as number,
+      spendByType: st!.c as number,
       spendByCpv: sc!.c as number,
       entityProfiles: ep!.c as number,
       topEntities: te!.c as number,
@@ -205,7 +219,8 @@ export async function runMarts(
   });
 
   log(
-    `marts rebuilt: national_stats=${report.nationalStats}, spend_by_cpv=${report.spendByCpv}, ` +
+    `marts rebuilt: national_stats=${report.nationalStats}, spend_by_type=${report.spendByType}, ` +
+      `spend_by_cpv=${report.spendByCpv}, ` +
       `entity_profile=${report.entityProfiles}, top_entities=${report.topEntities}, ` +
       `top_partners=${report.topPartners}, concentration=${report.concentration}`,
   );

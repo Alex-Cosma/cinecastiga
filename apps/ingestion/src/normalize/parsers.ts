@@ -54,6 +54,7 @@ const tenderListSchema = z
     sysNoticeState: labeled,
     sysNoticeTypeId: z.number().nullish(),
     sysNoticeVersionId: z.number().nullish(),
+    sysAcquisitionContractType: labeled,
     isOnline: z.boolean().nullish(),
     sysProcedureType: labeled,
     hasLots: z.boolean().nullish(),
@@ -90,6 +91,7 @@ async function loadNoticeLike(
     cpvValid: cpv.cpvValid,
     cpvRaw: cpv.cpvRaw,
     estimatedValueRon: dec(p.estimatedValueRon),
+    acquisitionType: labelText(p.sysAcquisitionContractType),
     state: labelText(p.sysNoticeState),
     stateDate: seenAt,
   };
@@ -149,6 +151,7 @@ const awardListSchema = z
     sysNoticeState: labeled,
     sysNoticeTypeId: z.number().nullish(),
     sysNoticeVersionId: z.number().nullish(),
+    sysAcquisitionContractType: labeled,
     estimatedValueExport: z.unknown().nullish(),
   })
   .passthrough();
@@ -322,6 +325,7 @@ const daDetailSchema = z
     uniqueIdentificationCode: z.string().nullish(),
     contractingAuthorityID: z.number().nullish(),
     supplierId: z.number().nullish(),
+    sysAcquisitionContractType: labeled,
     // Detail carries CPV as an object ({id,text,localeKey}), unlike the list.
     cpvCode: z
       .object({ text: z.string().nullish(), localeKey: z.string().nullish() })
@@ -368,6 +372,7 @@ async function loadDaDetail(
     cpvRaw: cpv.cpvRaw,
     estimatedValueRon: dec(p.estimatedValue),
     closingValue: dec(p.closingValue),
+    acquisitionType: labelText(p.sysAcquisitionContractType),
     publicationDate: toDate(p.publicationDate),
     finalizationDate: toDate(p.finalizationDate),
     state: labelText(p.sysDirectAcquisitionState),

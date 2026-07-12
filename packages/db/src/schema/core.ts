@@ -208,6 +208,8 @@ export const notices = coreSchema.table(
     cpvValid: boolean("cpv_valid"),
     cpvRaw: text("cpv_raw"),
     estimatedValueRon: numeric("estimated_value_ron"),
+    /** Furnizare | Servicii | Lucrari (sysAcquisitionContractType). */
+    acquisitionType: text("acquisition_type"),
     state: text("state"),
     stateDate: timestamp("state_date", { withTimezone: true }),
     isOnline: boolean("is_online"),
@@ -244,6 +246,8 @@ export const awards = coreSchema.table(
     ronContractValue: numeric("ron_contract_value"),
     lowestOfferValue: numeric("lowest_offer_value"),
     highestOfferValue: numeric("highest_offer_value"),
+    /** Furnizare | Servicii | Lucrari (sysAcquisitionContractType). */
+    acquisitionType: text("acquisition_type"),
     state: text("state"),
     stateDate: timestamp("state_date", { withTimezone: true }),
   },
@@ -320,6 +324,8 @@ export const directAcquisitions = coreSchema.table(
     cpvRaw: text("cpv_raw"),
     estimatedValueRon: numeric("estimated_value_ron"),
     closingValue: numeric("closing_value"),
+    /** Furnizare | Servicii | Lucrari (sysAcquisitionContractType, from detail). */
+    acquisitionType: text("acquisition_type"),
     publicationDate: timestamp("publication_date", { withTimezone: true }),
     finalizationDate: timestamp("finalization_date", { withTimezone: true }),
     state: text("state"),
