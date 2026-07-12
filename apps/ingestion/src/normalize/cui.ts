@@ -41,7 +41,8 @@ export interface CanonicalCui {
 export function canonicalCui(raw: string | null | undefined): CanonicalCui {
   if (!raw) return { cui: "", valid: false };
   let s = raw.toUpperCase().replace(/[^0-9A-Z]/g, "");
-  if (s.startsWith("RO")) s = s.slice(2);
+  // Strip the VAT prefix: modern "RO" or the pre-2007 single "R".
+  s = s.replace(/^RO?/, "");
   s = s.replace(/^0+/, "");
   if (s === "") return { cui: "", valid: false };
   return { cui: s, valid: cuiIsValid(s) };

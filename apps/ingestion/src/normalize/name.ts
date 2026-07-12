@@ -86,7 +86,15 @@ export interface ParsedEntityString {
  */
 export function parseEntityString(raw: string): ParsedEntityString {
   const trimmed = raw.trim();
-  const m = /^(RO)?(\d{2,10})\s+(.+)$/i.exec(trimmed);
+  // Leading fiscal id in several real formats:
+  //   "RO21255449 S.C. INGRID S.R.L."   (RO glued, space separator)
+  //   "RO 14056826 - Societatea …"      (RO + space, dash separator)
+  //   "4291638 - COMUNA CRISTOLȚ"        (bare number, dash separator)
+  //   "29074847 Gradinita PP nr. 4 …"    (bare number, space separator)
+  // Optional RO (with optional space), the digits, then any run of spaces/dashes
+  // before the name.
+  // (RO?)? also matches the pre-2007 single-"R" VAT prefix.
+  const m = /^(RO?)?\s*(\d{2,10})\b[\s-]*(.+)$/i.exec(trimmed);
   if (m) {
     return { cuiRaw: `${m[1] ?? ""}${m[2]}`, name: m[3]!.trim() };
   }
