@@ -8,11 +8,14 @@ import {
  * the client instance, so multiple instances would multiply the request
  * budget against e-licitatie.ro. Every scrape job shares this one.
  *
- * Defaults tuned for throughput (the platform tolerates high load — verified
- * firsthand + live smoke): concurrency 20, no inter-request delay ≈ ~55 req/s.
- * The client still honors 429/Retry-After with exponential backoff, so if the
- * server ever pushes back we auto-throttle rather than getting banned.
- * Override per-run via SCRAPE_CONCURRENCY / SCRAPE_MIN_DELAY_MS.
+ * Defaults tuned moderate (concurrency 8, 120ms min inter-request delay ≈ ~8 req/s)
+ * — the platform tolerates far more (verified firsthand + live smoke), but a
+ * steady mid-rate keeps us well clear of any WAF heuristic and avoids coinciding
+ * with the platform's own instability, while still finishing a 30-day backfill in
+ * a few hours. The throttle gates request STARTS, so req/s ≈ 1000/minDelayMs;
+ * concurrency is just headroom over latency. The client still honors
+ * 429/Retry-After with exponential backoff on top. For a faster one-off
+ * backfill, override per-run via SCRAPE_CONCURRENCY / SCRAPE_MIN_DELAY_MS.
  */
 
 let singleton: ElicitatieClient | null = null;
@@ -32,8 +35,8 @@ export function getElicitatieClient(): ElicitatieClient {
     process.env["SCRAPE_UA"] ??
     "seap-analytics/0.1 (contact: cineseuita@gmail.com)";
 
-  const concurrency = Number(process.env["SCRAPE_CONCURRENCY"] ?? "20");
-  const minDelayMs = Number(process.env["SCRAPE_MIN_DELAY_MS"] ?? "0");
+  const concurrency = Number(process.env["SCRAPE_CONCURRENCY"] ?? "8");
+  const minDelayMs = Number(process.env["SCRAPE_MIN_DELAY_MS"] ?? "120");
 
   singleton = createElicitatieClient({
     userAgent,
