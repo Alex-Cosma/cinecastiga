@@ -24,8 +24,11 @@ export interface ArchiveResult {
   skipped: number;
 }
 
+/** Accepts a db or transaction handle — archiving joins the caller's tx. */
+type InsertCapable = Pick<Db, "insert">;
+
 export async function archiveDocuments(
-  db: Db,
+  db: InsertCapable,
   docs: ArchivableDocument[],
 ): Promise<ArchiveResult> {
   if (docs.length === 0) return { inserted: 0, skipped: 0 };
