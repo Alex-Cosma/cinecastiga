@@ -30,8 +30,8 @@
 ## Execution Progress
 
 ### Current Phase
-- Phase: 4 (pending planning)
-- Started: —
+- Phase: 4 (executed, awaiting review)
+- Started: 2026-07-12
 
 ### Completed Phases
 | Phase | Completed | Tasks | Deviations |
@@ -39,6 +39,7 @@
 | 1 — Elicitatie endpoint clients | 2026-07-12 (approved) | 4/4 | none |
 | 2 — Archive plumbing | 2026-07-12 (approved) | 3/3 | 1 (logged) |
 | 3 — Notice scrape jobs | 2026-07-12 (approved) | 5/5 | none |
+| 4 — Direct-acquisition jobs | 2026-07-12 (executed) | 4/4 | none |
 
 ---
 
