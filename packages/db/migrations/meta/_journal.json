@@ -8,6 +8,13 @@
       "when": 1783850090576,
       "tag": "0000_early_retro_girl",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1783853313771,
+      "tag": "0001_flawless_spectrum",
+      "breakpoints": true
     }
   ]
 }
