@@ -41,7 +41,8 @@ export function createElicitatieClient(
       maxRetries: opts.maxRetries ?? 3,
       defaultHeaders: {
         referer: opts.referer ?? DEFAULT_REFERER,
-        origin: "https://www.e-licitatie.ro",
+        // Must match the apex host — the WAF 403s a www Origin (live-verified)
+        origin: "https://e-licitatie.ro",
       },
     });
   return { http, baseUrl };
