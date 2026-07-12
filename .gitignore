@@ -1,0 +1,21 @@
+# dependencies
+node_modules/
+
+# build outputs
+dist/
+.turbo/
+
+# env
+.env
+.env.*
+!.env.example
+
+# test
+coverage/
+
+# local data
+*.local
+.DS_Store
+
+# docker volumes (if ever bind-mounted)
+infra/data/
