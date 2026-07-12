@@ -145,6 +145,13 @@ export async function runMarts(
       group by authority_id
     `;
 
+    // Denormalize display fields so the web reads marts only (build-time join).
+    await q`
+      update marts.entity_profile ep
+      set name_display = e.name_display, county = e.county
+      from core.entities e where e.id = ep.entity_id
+    `;
+
     // ── top_entities (leaderboards per role) ────────────────────────────────
     await q`
       insert into marts.top_entities (role, rank, entity_id, total_ron_full, n_contracts)

@@ -14,7 +14,8 @@
     "test:integration": "vitest run integration.test",
     "lint": "tsc -p tsconfig.json --noEmit",
     "normalize": "tsx src/scripts/normalize.ts",
-    "marts": "tsx src/scripts/marts.ts"
+    "marts": "tsx src/scripts/marts.ts",
+    "import-old": "tsx src/scripts/import-old.ts"
   },
   "dependencies": {
     "@seap/db": "workspace:*",
