@@ -13,8 +13,10 @@ export interface ScrapeCursor {
   windowStart: IsoDate;
   /** Last day fully or partially processed. */
   day: IsoDate;
-  /** Next page index to fetch within `day`. */
+  /** Next page index to fetch within `day` (and `slice`, when sliced). */
   page: number;
+  /** DA slicing position (sliceKey), absent for unsliced sources. */
+  slice?: string;
 }
 
 /** Anything drizzle-shaped that can run the upsert (db or tx handle). */
@@ -41,11 +43,17 @@ export async function readWatermark(
   if (
     typeof cursor.windowStart !== "string" ||
     typeof cursor.day !== "string" ||
-    typeof cursor.page !== "number"
+    typeof cursor.page !== "number" ||
+    (cursor.slice !== undefined && typeof cursor.slice !== "string")
   ) {
     throw new Error(`Malformed watermark cursor for ${source}`);
   }
-  return { windowStart: cursor.windowStart, day: cursor.day, page: cursor.page };
+  return {
+    windowStart: cursor.windowStart,
+    day: cursor.day,
+    page: cursor.page,
+    ...(cursor.slice !== undefined ? { slice: cursor.slice } : {}),
+  };
 }
 
 export async function writeWatermark(
