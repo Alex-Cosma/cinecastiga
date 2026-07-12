@@ -7,12 +7,12 @@ against the 744 real PII-clean docs already in the local DB.
 
 ## Phases
 
-- [ ] **Phase 1 — Schema + migration**
-- [ ] **Phase 2 — CPV catalog seed**
-- [ ] **Phase 3 — Entity resolution module**
-- [ ] **Phase 4 — Era-aware parsers + quarantine**
-- [ ] **Phase 5 — Normalization pipeline (replayable runner)**
-- [ ] **Phase 6 — Reconciliation + verification**
+- [x] **Phase 1 — Schema + migration**
+- [x] **Phase 2 — CPV catalog seed**
+- [x] **Phase 3 — Entity resolution module**
+- [x] **Phase 4 — Era-aware parsers + quarantine**
+- [x] **Phase 5 — Normalization pipeline (replayable runner)**
+- [x] **Phase 6 — Reconciliation + verification**
 
 ---
 
