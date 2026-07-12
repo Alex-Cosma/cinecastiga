@@ -1,7 +1,7 @@
 # State: core-layer
 
 **Task:** core-layer
-**Stage:** discussion
+**Stage:** research complete
 **Last Updated:** 2026-07-12
 
 ## Progress
@@ -9,17 +9,19 @@
 - [x] Task initialized
 - [x] Initial discussion complete
 - [x] Four foundational decisions recorded (DEC-001..004)
-- [ ] Gray areas resolved (5 open — see CONTEXT.md)
-- [ ] Research (schema design, CPV catalog source, entity-resolution approach)
-- [ ] Plan
+- [x] Gray areas resolved (RESEARCH.md §6)
+- [x] Research complete — RESEARCH.md (CPV catalog, entity resolution, schema,
+      parser architecture) from 2 agents + live data inspection
+- [ ] Ratify research → Plan
 - [ ] Execution
 
 ## Current position
 
-Initial discussion done. Four core decisions locked. Next: either resolve the
-open gray areas via /specd.discuss, or proceed to research/plan (schema +
-parser design). Blocked on nothing — dev data (744 real, PII-clean docs) is
-in the local DB for offline development.
+Research done and written to RESEARCH.md: CPV seed source (official EU CPV 2008
+XML), full CUI checksum + 3-tier entity resolution, proposed core schema (13
+tables), parser architecture (era-aware zod dispatch, per-transform replayable
+cursor). Awaiting user ratification, then plan. Blocked on nothing — 744 real,
+PII-clean docs in local DB for offline development.
 
 ## Notes
 

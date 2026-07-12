@@ -64,8 +64,10 @@ See DECISIONS.md DEC-001..004. Summary:
 
 - **Reads:** `raw.raw_documents` (bronze, complete). `endpoint_version`
   selects the era-aware parser.
-- **Reuses:** `@seap/scraper-clients` payload types; existing `SicapCpvCatalog`
-  (`cpv-catalog.ts`) as a possible CPV source.
+- **Reuses:** `@seap/scraper-clients` payload types. NOTE: CPV catalog is seeded
+  from the official EU CPV 2008 file, NOT SICAP — the repo's `cpv.ts`
+  (`searchCpvs`/`fetchAllCpvs`) only yields SICAP-internal ids, used for a
+  `sicap_cpv_id → code` map, not names. See RESEARCH.md §1.
 - **Writes:** new `core` schema tables (`packages/db/src/schema/core.ts`).
 - **Downstream (future):** marts, Meilisearch, red-flag engine, web read all
   from `core`.
