@@ -15,6 +15,13 @@
       "when": 1783853313771,
       "tag": "0001_flawless_spectrum",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783879834387,
+      "tag": "0002_fuzzy_vertigo",
+      "breakpoints": true
     }
   ]
 }
