@@ -2,7 +2,7 @@
 
 ## Current Position
 
-**Stage:** discussion (complete — gray areas are research-shaped)
+**Stage:** planning (research complete)
 **Last Updated:** 2026-07-12
 
 ---
@@ -15,8 +15,8 @@
 - [x] User-facing questions resolved
 
 ### Research
-- [ ] Research conducted (endpoint discovery — REQUIRED before planning)
-- [ ] Findings documented in RESEARCH.md
+- [x] Research conducted (3 agents: endpoints, codebase, pitfalls — incl. ~80 live API probes)
+- [x] Findings documented in RESEARCH.md
 
 ### Planning
 - [ ] Phases derived
@@ -60,8 +60,8 @@
 |----------|--------|--------------|
 | FEATURE.md | Created | 2026-07-12 |
 | CONTEXT.md | Created | 2026-07-12 |
-| DECISIONS.md | 2 decisions | 2026-07-12 |
-| RESEARCH.md | Not started | — |
+| DECISIONS.md | 9 decisions | 2026-07-12 |
+| RESEARCH.md | Created (endpoints verified live) | 2026-07-12 |
 | ROADMAP.md | Not started | — |
 | phases/ | Not started | — |
 
@@ -69,7 +69,7 @@
 
 ## Next Steps
 
-Research stage: endpoint discovery (live API shapes, pagination, rate limits) — do NOT plan before this lands.
+Planning stage: derive phases from RESEARCH.md + FEATURE.md.
 
 **Resume:** `/specd.continue bronze-layer` (from `apps/ingestion/`)
 
