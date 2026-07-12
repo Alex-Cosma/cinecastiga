@@ -42,6 +42,10 @@ export interface NoticeListRequest {
 export interface NoticeListItem {
   caNoticeId?: number;
   cNoticeId?: number;
+  /** SEAP procedure-internal notice id — v2 section endpoints key on this. */
+  noticeId?: number;
+  /** 2 = eForms-era notice; classic detail endpoint 400s these (live-verified). */
+  sysNoticeVersionId?: number;
   noticeNo: string;
   sysNoticeTypeId: number;
   sysNoticeState?: { id: number; text: string };

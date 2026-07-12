@@ -55,6 +55,10 @@ export interface NoticeScrapeOutcome {
   inserted: number;
   skipped: number;
   pages: number;
+  /** eForms (v2) notices archived list-only — detail endpoint differs, deferred. */
+  v2Deferred: number;
+  /** Individual detail fetches dead-lettered (non-retryable errors). */
+  detailFailures: number;
   error?: string;
 }
 
@@ -132,6 +136,8 @@ export async function scrapeNoticesWindow(
   let skipped = 0;
   let pages = 0;
   let reportedTotal = 0;
+  let v2Deferred = 0;
+  let detailFailures = 0;
 
   // Resume mid-window if the watermark belongs to this window
   const watermark = await readWatermark(db, source);
@@ -152,7 +158,16 @@ export async function scrapeNoticesWindow(
       pagesFetched: pages,
       error,
     });
-    return { status: "failed", fetched, inserted, skipped, pages, error };
+    return {
+      status: "failed",
+      fetched,
+      inserted,
+      skipped,
+      pages,
+      v2Deferred,
+      detailFailures,
+      error,
+    };
   };
 
   try {
@@ -188,21 +203,39 @@ export async function scrapeNoticesWindow(
 
         const details = await Promise.all(
           envelope.items.map(async (item) => {
-            const detail = await getNoticeDetail(client, noticeIdOf(item));
-            const contracts =
-              opts.family === "awards"
-                ? await fetchAllContracts(client, noticeIdOf(item))
-                : null;
-            return { item, detail: detail.data, contracts };
+            // eForms (v2) notices 400 on the classic detail endpoint —
+            // archived list-only; v2 detail mapping is a follow-up task.
+            if (item.sysNoticeVersionId === 2) {
+              return { item, detail: null, contracts: null, deferred: true };
+            }
+            try {
+              const detail = await getNoticeDetail(client, noticeIdOf(item));
+              const contracts =
+                opts.family === "awards"
+                  ? await fetchAllContracts(client, noticeIdOf(item))
+                  : null;
+              return { item, detail: detail.data, contracts, deferred: false };
+            } catch (err) {
+              // Dead-letter the record, don't fail the day (transient retries
+              // already happened inside the client).
+              log(
+                `${source}: detail fetch failed for ${noticeIdOf(item)}: ${err instanceof Error ? err.message : err}`,
+              );
+              return { item, detail: null, contracts: null, deferred: false };
+            }
           }),
         );
-        for (const { item, detail, contracts } of details) {
-          docs.push({
-            source: "elicitatie",
-            externalId: `${prefix}:${noticeIdOf(item)}`,
-            endpointVersion: `${prefix}-detail:v1`,
-            payload: detail,
-          });
+        for (const { item, detail, contracts, deferred } of details) {
+          if (deferred) v2Deferred += 1;
+          else if (detail === null) detailFailures += 1;
+          if (detail !== null) {
+            docs.push({
+              source: "elicitatie",
+              externalId: `${prefix}:${noticeIdOf(item)}`,
+              endpointVersion: `${prefix}-detail:v1`,
+              payload: detail,
+            });
+          }
           if (contracts) {
             docs.push({
               source: "elicitatie",
@@ -240,6 +273,10 @@ export async function scrapeNoticesWindow(
     return await fail(err instanceof Error ? err.message : String(err));
   }
 
+  const warnings: string[] = [];
+  if (v2Deferred > 0) warnings.push(`${v2Deferred} v2 details deferred`);
+  if (detailFailures > 0) warnings.push(`${detailFailures} detail fetches failed`);
+
   await finishScrapeRun(db, runId, {
     status: "completed",
     reportedTotal,
@@ -247,8 +284,17 @@ export async function scrapeNoticesWindow(
     insertedCount: inserted,
     skippedCount: skipped,
     pagesFetched: pages,
+    ...(warnings.length > 0 ? { error: `warning: ${warnings.join("; ")}` } : {}),
   });
-  return { status: "completed", fetched, inserted, skipped, pages };
+  return {
+    status: "completed",
+    fetched,
+    inserted,
+    skipped,
+    pages,
+    v2Deferred,
+    detailFailures,
+  };
 }
 
 /**
