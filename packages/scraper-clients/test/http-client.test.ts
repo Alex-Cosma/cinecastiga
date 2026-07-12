@@ -98,6 +98,70 @@ describe("createHttpClient", () => {
     expect((err as ScrapeError).attempts).toBe(1);
   });
 
+  it("posts JSON bodies and sends default headers", async () => {
+    let seenBody = "";
+    let seenReferer: string | undefined;
+    let seenContentType: string | undefined;
+    const baseUrl = await startServer((req, res) => {
+      seenReferer = req.headers.referer;
+      seenContentType = req.headers["content-type"];
+      let chunks = "";
+      req.on("data", (c) => (chunks += c));
+      req.on("end", () => {
+        seenBody = chunks;
+        res.setHeader("content-type", "application/json");
+        res.end(JSON.stringify({ ok: true }));
+      });
+    });
+
+    const client = createHttpClient({
+      baseUrl,
+      userAgent: "test-agent",
+      minDelayMs: 0,
+      defaultHeaders: { referer: "https://e-licitatie.ro/pub/list" },
+    });
+
+    const result = await client.postJson<{ ok: boolean }>("/api/list", {
+      pageIndex: 0,
+      pageSize: 100,
+    });
+    expect(result.data.ok).toBe(true);
+    expect(JSON.parse(seenBody)).toEqual({ pageIndex: 0, pageSize: 100 });
+    expect(seenReferer).toBe("https://e-licitatie.ro/pub/list");
+    expect(seenContentType).toContain("application/json");
+  });
+
+  it("honors Retry-After on 429", async () => {
+    let calls = 0;
+    let firstCallAt = 0;
+    let secondCallAt = 0;
+    const baseUrl = await startServer((_req, res) => {
+      calls += 1;
+      if (calls === 1) {
+        firstCallAt = Date.now();
+        res.statusCode = 429;
+        res.setHeader("retry-after", "2");
+        res.end();
+        return;
+      }
+      secondCallAt = Date.now();
+      res.setHeader("content-type", "application/json");
+      res.end("{}");
+    });
+
+    const client = createHttpClient({
+      baseUrl,
+      userAgent: "test-agent",
+      minDelayMs: 0,
+      maxRetries: 1,
+    });
+
+    await client.getJson("/limited");
+    expect(calls).toBe(2);
+    // Retry-After: 2s should dominate the ~1s first backoff
+    expect(secondCallAt - firstCallAt).toBeGreaterThanOrEqual(1900);
+  }, 10_000);
+
   it("caps concurrency", async () => {
     let inFlight = 0;
     let maxInFlight = 0;

@@ -10,11 +10,13 @@ export interface HttpClientOptions {
   baseUrl: string;
   /** Required, no default — identify honestly, include contact info. */
   userAgent: string;
-  /** Max in-flight requests. Keep low; prior art uses ~5. */
+  /** Max in-flight requests. Keep low; prior art uses ~5, post-2025 intel says lower. */
   maxConcurrency?: number;
   /** Minimum delay between request starts, per client. */
   minDelayMs?: number;
   maxRetries?: number;
+  /** Baseline headers sent on every request (e.g. Referer — WAF requires same-site). */
+  defaultHeaders?: Record<string, string>;
 }
 
 export interface FetchResult<T = unknown> {
@@ -40,6 +42,15 @@ const RETRYABLE_STATUS = new Set([403, 408, 429, 500, 502, 503, 504]);
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function parseRetryAfterMs(header: string | null): number | null {
+  if (!header) return null;
+  const seconds = Number(header);
+  if (Number.isFinite(seconds) && seconds >= 0) return seconds * 1000;
+  const date = Date.parse(header);
+  if (!Number.isNaN(date)) return Math.max(0, date - Date.now());
+  return null;
 }
 
 /** Simple counting semaphore. */
@@ -68,6 +79,12 @@ class Semaphore {
 export interface HttpClient {
   /** GET a JSON resource relative to baseUrl. */
   getJson<T = unknown>(path: string, init?: RequestInit): Promise<FetchResult<T>>;
+  /** POST a JSON body and parse a JSON response, same politeness path as getJson. */
+  postJson<T = unknown>(
+    path: string,
+    body: unknown,
+    init?: RequestInit,
+  ): Promise<FetchResult<T>>;
 }
 
 export function createHttpClient(opts: HttpClientOptions): HttpClient {
@@ -77,6 +94,7 @@ export function createHttpClient(opts: HttpClientOptions): HttpClient {
     maxConcurrency = 5,
     minDelayMs = 500,
     maxRetries = 3,
+    defaultHeaders = {},
   } = opts;
 
   if (!userAgent.trim()) {
@@ -93,12 +111,15 @@ export function createHttpClient(opts: HttpClientOptions): HttpClient {
     if (wait > 0) await sleep(wait);
   }
 
-  async function getJson<T>(
+  async function request<T>(
+    method: "GET" | "POST",
     path: string,
+    body: unknown | undefined,
     init?: RequestInit,
   ): Promise<FetchResult<T>> {
     const url = new URL(path, baseUrl).toString();
     let lastStatus: number | null = null;
+    let retryAfterMs: number | null = null;
 
     for (let attempt = 1; attempt <= maxRetries + 1; attempt += 1) {
       await semaphore.acquire();
@@ -108,8 +129,14 @@ export function createHttpClient(opts: HttpClientOptions): HttpClient {
         try {
           response = await fetch(url, {
             ...init,
+            method,
+            ...(body === undefined ? {} : { body: JSON.stringify(body) }),
             headers: {
               accept: "application/json",
+              ...(body === undefined
+                ? {}
+                : { "content-type": "application/json;charset=UTF-8" }),
+              ...defaultHeaders,
               "user-agent": userAgent,
               ...init?.headers,
             },
@@ -120,6 +147,7 @@ export function createHttpClient(opts: HttpClientOptions): HttpClient {
         }
 
         lastStatus = response.status;
+        retryAfterMs = parseRetryAfterMs(response.headers.get("retry-after"));
         if (response.ok) {
           const data = (await response.json()) as T;
           return { data, status: response.status, url, fetchedAt: new Date() };
@@ -137,10 +165,12 @@ export function createHttpClient(opts: HttpClientOptions): HttpClient {
       }
 
       if (attempt <= maxRetries) {
-        // Exponential backoff with jitter: 1s, 2s, 4s... ±25%
+        // Exponential backoff with jitter: 1s, 2s, 4s... ±25%.
+        // A server-sent Retry-After overrides when longer.
         const base = 1000 * 2 ** (attempt - 1);
         const jitter = base * (Math.random() * 0.5 - 0.25);
-        await sleep(base + jitter);
+        const backoff = base + jitter;
+        await sleep(Math.max(backoff, retryAfterMs ?? 0));
       }
     }
 
@@ -152,5 +182,8 @@ export function createHttpClient(opts: HttpClientOptions): HttpClient {
     );
   }
 
-  return { getJson };
+  return {
+    getJson: (path, init) => request("GET", path, undefined, init),
+    postJson: (path, body, init) => request("POST", path, body, init),
+  };
 }
