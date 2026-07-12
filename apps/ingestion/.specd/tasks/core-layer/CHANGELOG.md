@@ -25,3 +25,17 @@
 - Seed loader `scripts/seed-cpv.mjs` (idempotent bulk upsert) + `db:seed:cpv`.
 - Loaded: 9454 rows, all with EN, 45 divisions. Verified `15800000-6` and
   `45453000-7` (both seen in our real data) resolve; re-run stays 9454.
+
+## Phase 3 — Entity resolution module (2026-07-12)
+
+- `normalize/cui.ts`: `cuiIsValid` (mod-11, key 753217532) + `canonicalCui`
+  (strip RO/zeros/punct, checksum gate). Validated on both real records.
+- `normalize/name.ts`: `foldDiacritics` (cedilla + comma-below), `normalizeName`
+  (legal-form split, SC prefix marker dropped, ordinal+locality kept),
+  `parseEntityString` (mashed "CUI name" splitter).
+- `normalize/resolve-entity.ts`: tier-1 (SICAP id, namespaced) → tier-2
+  (checksum-valid CUI) resolution with first/last-seen + backfill; SICAP-id
+  cross-links left for reconciliation (no silent mismerge). Tier-3 fuzzy is a
+  separate batch pass (later phase).
+- Tests: 16 unit (normalize-entity) + 4 integration (rolled-back tx) proving
+  RO/bare-CUI dedup, tier-1 re-resolution, no foreign merge, distinct CUIs kept.
