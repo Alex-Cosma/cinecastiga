@@ -53,7 +53,7 @@ interface MockConfig {
   /** items per day, keyed by IsoDate (cNoticeId mirrors live participation lists) */
   itemsByDay: Record<
     string,
-    Array<{ caNoticeId?: number; cNoticeId?: number; publicationDate: string }>
+    Array<{ caNoticeId?: number; cNoticeId?: number; noticeStateDate: string }>
   >;
   /** 500 every list request for this (day, pageIndex) */
   failAt?: { day: string; page: number } | null;
@@ -139,12 +139,12 @@ function makeClient(baseUrl: string, maxRetries = 0) {
 
 // Participation lists key items as cNoticeId (live-verified 2026-07-12)
 const day1Items = [
-  { cNoticeId: 9900001, publicationDate: "2026-07-01T09:00:00+03:00" },
-  { cNoticeId: 9900002, publicationDate: "2026-07-01T10:00:00+03:00" },
-  { cNoticeId: 9900003, publicationDate: "2026-07-01T11:00:00+03:00" },
+  { cNoticeId: 9900001, noticeStateDate: "2026-07-01T09:00:00+03:00" },
+  { cNoticeId: 9900002, noticeStateDate: "2026-07-01T10:00:00+03:00" },
+  { cNoticeId: 9900003, noticeStateDate: "2026-07-01T11:00:00+03:00" },
 ];
 const day2Items = [
-  { cNoticeId: 9900004, publicationDate: "2026-07-02T09:00:00+03:00" },
+  { cNoticeId: 9900004, noticeStateDate: "2026-07-02T09:00:00+03:00" },
 ];
 
 describe("scrapeNoticesWindow", () => {
@@ -272,7 +272,7 @@ describe("scrapeNoticesWindow", () => {
       itemsByDay: {
         "2026-07-01": [
           // out-of-window item: filter-echo violation
-          { caNoticeId: 9900009, publicationDate: "2019-05-05T09:00:00+03:00" },
+          { caNoticeId: 9900009, noticeStateDate: "2019-05-05T09:00:00+03:00" },
         ],
       },
     });
@@ -298,7 +298,7 @@ describe("scrapeNoticesWindow", () => {
     const baseUrl = await startMockSicap({
       itemsByDay: {
         "2026-07-01": [
-          { caNoticeId: 9900021, publicationDate: "2026-07-01T09:00:00+03:00" },
+          { caNoticeId: 9900021, noticeStateDate: "2026-07-01T09:00:00+03:00" },
         ],
       },
       contractsTotal: 250,
