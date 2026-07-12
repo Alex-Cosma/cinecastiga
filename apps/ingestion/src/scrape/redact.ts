@@ -11,13 +11,34 @@
  * set produced any given row (endpoint_version encodes the era).
  */
 
-export const REDACTION_VERSION = "r1";
+// r2: the r1 contact-token pattern was anchored (`^(email|phone|fax|mobile)$`),
+// so it only caught keys named EXACTLY "email" etc. and missed compound keys
+// like `assignedUserEmail` nested in DA `directAcquisitionItems[]` — a real
+// leak found in the archive. r2 matches the token as a substring of the key,
+// failing safe toward removal (losing a non-PII field is cheaper than
+// retaining a personal email).
+export const REDACTION_VERSION = "r2";
 
 /** Keys removed wherever they appear (deep), case-sensitive exact matches. */
 const EXACT_DENYLIST = new Set(["assignedCAUser", "assignedSupplierUser"]);
 
-/** Key patterns removed wherever they appear (deep). */
-const PATTERN_DENYLIST = [/^contact(Person|Email|Phone|Fax)?$/i, /^(email|phone|fax|mobile)$/i];
+/**
+ * Key patterns removed wherever they appear (deep). Contact tokens match as a
+ * SUBSTRING of the key name, so `assignedUserEmail`, `contactPhone`,
+ * `supplierMobile`, etc. are all caught.
+ */
+const PATTERN_DENYLIST = [/^contact(person)?$/i, /email/i, /phone/i, /fax/i, /mobile/i];
+
+/**
+ * Email addresses also appear inside free-text values (e.g. a DA
+ * `directAcquisitionDescription` telling bidders where to send offers). Those
+ * fields are legitimate content we must keep, so we scrub the address out of
+ * the string rather than dropping the field. Strict form (`local@host.tld`)
+ * avoids mangling non-email `@` tokens such as the company name
+ * "S.C. ALL@GIS MEHEDINȚI S.R.L." (no dot-TLD after the `@`).
+ */
+const EMAIL_IN_TEXT = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
+const EMAIL_PLACEHOLDER = "[email redactat]";
 
 function isDenylisted(key: string): boolean {
   if (EXACT_DENYLIST.has(key)) return true;
@@ -25,6 +46,7 @@ function isDenylisted(key: string): boolean {
 }
 
 function walk(value: unknown): unknown {
+  if (typeof value === "string") return value.replace(EMAIL_IN_TEXT, EMAIL_PLACEHOLDER);
   if (Array.isArray(value)) return value.map(walk);
   if (value !== null && typeof value === "object") {
     const out: Record<string, unknown> = {};

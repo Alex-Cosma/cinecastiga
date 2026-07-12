@@ -8,6 +8,15 @@
 
 ## Active Decisions
 
+### DEC-012: Redaction r2 — substring key match + free-text email scrubbing (fixes r1 leak)
+
+**Date:** 2026-07-12
+**Status:** Active
+**Context:** Inspecting the archived sample data for the core-layer discussion surfaced a real PII leak: 70 of 90 DA detail docs retained `assignedUserEmail` (a personal email, nested in `directAcquisitionItems[]`), plus one email embedded in a `directAcquisitionDescription` free-text value. r1's contact pattern was ANCHORED (`^(email|phone|fax|mobile)$`), so it only matched keys named exactly "email" and missed every compound key.
+**Decision:** r2 makes two changes: (1) contact tokens match as a SUBSTRING of the key name (`assignedUserEmail`, `supplierMobile`, … all removed), failing safe toward removal; (2) email addresses inside string VALUES are scrubbed to `[email redactat]` with a strict `local@host.tld` regex (keeps the field's real content; the strict TLD requirement avoids mangling non-email `@` tokens like the company name "S.C. ALL@GIS MEHEDINȚI S.R.L.").
+**Remediation:** `pnpm --filter ingestion scrub-pii` re-applies current rules to existing rows and recomputes content_hash in place — the "raw is replayable" property, no re-scrape. Ran it: 91 rows rewritten, archive verified 0 residual emails. This is why DEC-006 puts redaction at the write boundary AND keeps raw replayable — a rule miss is fixable without losing data.
+**Follow-up:** value-level scrubbing currently covers emails only; phones-in-free-text not yet handled (none observed in the sample). Revisit if the backfill surfaces them.
+
 ### DEC-001: Direct acquisitions included in bronze-layer task
 
 **Date:** 2026-07-12
@@ -130,6 +139,7 @@ _None._
 | DEC-005 | 2026-07-12 | Politeness: conc 3 / 400ms, Retry-After, instant-drop | Superseded |
 | DEC-010 | 2026-07-12 | Throughput default: conc 20 / no delay (backoff retained) | Superseded |
 | DEC-011 | 2026-07-12 | Moderate default: conc 8 / 120ms ≈ 8 req/s (SICAP outage, remove doubt) | Active |
+| DEC-012 | 2026-07-12 | Redaction r2: substring key match + free-text email scrub (fixes r1 leak) | Active |
 | DEC-006 | 2026-07-12 | PII redaction before bronze write | Active |
 | DEC-007 | 2026-07-12 | Europe/Bucharest cursors; closed windows only | Active |
 | DEC-008 | 2026-07-12 | Invariant checks gate cursor advancement | Active |
