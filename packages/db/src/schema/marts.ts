@@ -79,6 +79,10 @@ export const entityProfile = martsSchema.table(
     entityId: bigint("entity_id", { mode: "bigint" }).notNull(),
     /** 'supplier' | 'authority' */
     role: text("role").notNull(),
+    // Denormalized from core.entities so the web reads marts only (CQRS-lite —
+    // no request-time join into core). Filled by the marts build.
+    nameDisplay: text("name_display"),
+    county: text("county"),
     nContracts: integer("n_contracts").notNull().default(0),
     nDas: integer("n_das").notNull().default(0),
     totalRonFull: numeric("total_ron_full"),
