@@ -30,13 +30,14 @@
 ## Execution Progress
 
 ### Current Phase
-- Phase: 2 (pending planning)
-- Started: —
+- Phase: 2 (executed, awaiting review)
+- Started: 2026-07-12
 
 ### Completed Phases
 | Phase | Completed | Tasks | Deviations |
 |-------|-----------|-------|------------|
 | 1 — Elicitatie endpoint clients | 2026-07-12 (approved) | 4/4 | none |
+| 2 — Archive plumbing | 2026-07-12 (executed) | 3/3 | 1 (logged) |
 
 ---
 
