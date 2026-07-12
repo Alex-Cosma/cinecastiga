@@ -128,14 +128,22 @@ Detail payloads contain contact-person PII: `assignedCAUser`, `assignedSupplierU
 
 ---
 
-## 8. Confidence + open items
+## 8. Confidence + open items (updated post-live-smoke, 2026-07-12)
 
 | Area | Level |
 |---|---|
-| Endpoint surface + bodies | HIGH (live bundle + live probes + 2 independent 2026 repos) |
+| Endpoint surface + bodies | HIGH (live bundle + live probes + smoke runs) |
 | DA filter semantics, cap, searchTooLong | HIGH (live-verified) |
-| Rate-limit threshold | LOW — conflicting; posture conservative |
-| eForms v2 notice details | MEDIUM — may need `ENotice`/section endpoints for newest notices; probe 1 at impl |
-| DA award-notification detail endpoint | LOW — probe at impl |
+| Rate-limit threshold | LOW — no throttling observed at conc 3/400ms across ~800 smoke requests; posture stays conservative |
+| eForms v2 notice details | RESOLVED-DEFERRED — classic detail 400s v2 (`sysNoticeVersionId=2`); **100% of recent participation notices are v2**; per-section endpoints (`GET NoticeCommon/GetSection{N}View/?initNoticeId={noticeId}&sysNoticeTypeId={t}`) verified 200 but 6-7 req/notice; v2 archived list-only for now — dedicated follow-up task |
+| DA award-notification detail endpoint | UNRESOLVED — 2 candidates 404'd; list endpoint HIGH and rich; family optional |
+| DA detail `getView` | HIGH — verified at scale (90 live calls, 0 failures) |
+
+### Live-smoke corrections to §1 (authoritative)
+
+- **Notice list items carry NO `publicationDate`** — only `noticeStateDate` (mutates on state change; can postdate, never precede publication). Filter-echo invariant uses "state date must not precede requested day".
+- **Participation lists key items as `cNoticeId`**; award lists as `caNoticeId`. Detail endpoint `C_PUBLIC_CANotice/get/{id}` accepts either — but 400s v2 notices.
+- **`Origin` header must be apex** (`https://e-licitatie.ro`) — the www variant hard-403s.
+- Smoke volumes: tenders 2026-07-09/10 = 94 + 108 notices (all v2); DAs Sunday 2026-07-05 = 90 (matches probe exactly).
 
 **Local artifacts** (scratchpad, this session): sicap-parser client + postman collection, seap-monitor-demo client, SICAP.ai ES types, live app-pub bundle. Prior-art fork `upbeside/sicap-parser` is load-bearing (original deleted) — consider vendoring.
