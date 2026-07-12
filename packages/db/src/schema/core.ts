@@ -194,7 +194,10 @@ export const notices = coreSchema.table(
   "notices",
   {
     id: bigserial("id", { mode: "bigint" }).primaryKey(),
+    /** Provenance: raw doc that last populated this row (not unique). */
     rawId: bigint("raw_id", { mode: "bigint" }).notNull(),
+    /** SICAP cNoticeId — natural key, idempotent under replay. */
+    cNoticeId: bigint("c_notice_id", { mode: "bigint" }).notNull(),
     noticeNo: text("notice_no"),
     sysNoticeTypeId: integer("sys_notice_type_id"),
     sysNoticeVersionId: integer("sys_notice_version_id"),
@@ -212,7 +215,7 @@ export const notices = coreSchema.table(
     hasLots: boolean("has_lots"),
   },
   (t) => [
-    uniqueIndex("notices_raw_id_uq").on(t.rawId),
+    uniqueIndex("notices_c_notice_id_uq").on(t.cNoticeId),
     index("notices_authority_idx").on(t.authorityEntityId),
     index("notices_cpv_idx").on(t.cpvCode),
     index("notices_state_date_idx").on(t.stateDate),
@@ -224,9 +227,10 @@ export const awards = coreSchema.table(
   "awards",
   {
     id: bigserial("id", { mode: "bigint" }).primaryKey(),
+    /** Provenance: raw doc that last populated this row (not unique). */
     rawId: bigint("raw_id", { mode: "bigint" }).notNull(),
-    /** SICAP caNoticeId — natural key linking contracts back to their award. */
-    caNoticeId: bigint("ca_notice_id", { mode: "bigint" }),
+    /** SICAP caNoticeId — natural key; contracts link back via this. */
+    caNoticeId: bigint("ca_notice_id", { mode: "bigint" }).notNull(),
     noticeNo: text("notice_no"),
     sysNoticeTypeId: integer("sys_notice_type_id"),
     sysNoticeVersionId: integer("sys_notice_version_id"),
@@ -244,8 +248,7 @@ export const awards = coreSchema.table(
     stateDate: timestamp("state_date", { withTimezone: true }),
   },
   (t) => [
-    uniqueIndex("awards_raw_id_uq").on(t.rawId),
-    index("awards_ca_notice_idx").on(t.caNoticeId),
+    uniqueIndex("awards_ca_notice_id_uq").on(t.caNoticeId),
     index("awards_authority_idx").on(t.authorityEntityId),
     index("awards_cpv_idx").on(t.cpvCode),
   ],
@@ -256,9 +259,12 @@ export const contracts = coreSchema.table(
   "contracts",
   {
     id: bigserial("id", { mode: "bigint" }).primaryKey(),
+    /** Provenance: raw doc that last populated this row (not unique). */
     rawId: bigint("raw_id", { mode: "bigint" }).notNull(),
-    /** SICAP caNoticeContractId — natural key. */
-    caNoticeContractId: bigint("ca_notice_contract_id", { mode: "bigint" }),
+    /** SICAP caNoticeContractId — natural key, idempotent under replay. */
+    caNoticeContractId: bigint("ca_notice_contract_id", {
+      mode: "bigint",
+    }).notNull(),
     caNoticeId: bigint("ca_notice_id", { mode: "bigint" }),
     contractNo: text("contract_no"),
     contractDate: timestamp("contract_date", { withTimezone: true }),
@@ -269,8 +275,8 @@ export const contracts = coreSchema.table(
     lotsCaption: text("lots_caption"),
   },
   (t) => [
+    uniqueIndex("contracts_ca_notice_contract_id_uq").on(t.caNoticeContractId),
     index("contracts_ca_notice_idx").on(t.caNoticeId),
-    index("contracts_ca_notice_contract_idx").on(t.caNoticeContractId),
   ],
 );
 
@@ -296,11 +302,13 @@ export const directAcquisitions = coreSchema.table(
   "direct_acquisitions",
   {
     id: bigserial("id", { mode: "bigint" }).primaryKey(),
+    /** Provenance: raw doc that last populated this row (not unique — list AND
+     * detail describe the same DA and both upsert here by sicap_da_id). */
     rawId: bigint("raw_id", { mode: "bigint" }).notNull(),
     /** uniqueIdentificationCode, e.g. 'DA40761319'. */
     daCode: text("da_code"),
-    /** SICAP directAcquisitionId. */
-    sicapDaId: bigint("sicap_da_id", { mode: "bigint" }),
+    /** SICAP directAcquisitionId — natural key merging list + detail. */
+    sicapDaId: bigint("sicap_da_id", { mode: "bigint" }).notNull(),
     authorityEntityId: bigint("authority_entity_id", {
       mode: "bigint",
     }).references(() => entities.id),
@@ -317,7 +325,7 @@ export const directAcquisitions = coreSchema.table(
     state: text("state"),
   },
   (t) => [
-    uniqueIndex("direct_acquisitions_raw_id_uq").on(t.rawId),
+    uniqueIndex("direct_acquisitions_sicap_da_id_uq").on(t.sicapDaId),
     index("direct_acquisitions_authority_idx").on(t.authorityEntityId),
     index("direct_acquisitions_supplier_idx").on(t.supplierEntityId),
     index("direct_acquisitions_cpv_idx").on(t.cpvCode),
@@ -333,6 +341,8 @@ export const daItems = coreSchema.table(
     daId: bigint("da_id", { mode: "bigint" })
       .notNull()
       .references(() => directAcquisitions.id, { onDelete: "cascade" }),
+    /** SICAP directAcquisitionItemID — natural key, idempotent under replay. */
+    sicapItemId: bigint("sicap_item_id", { mode: "bigint" }).notNull(),
     cpvCode: text("cpv_code").references(() => cpvCodes.code),
     catalogItemName: text("catalog_item_name"),
     quantity: numeric("quantity"),
@@ -342,7 +352,10 @@ export const daItems = coreSchema.table(
     unitPrice: numeric("unit_price"),
     closingPrice: numeric("closing_price"),
   },
-  (t) => [index("da_items_da_idx").on(t.daId)],
+  (t) => [
+    uniqueIndex("da_items_sicap_item_id_uq").on(t.sicapItemId),
+    index("da_items_da_idx").on(t.daId),
+  ],
 );
 
 /**

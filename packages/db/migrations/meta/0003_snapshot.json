@@ -1,0 +1,1759 @@
+{
+  "id": "0383e269-428b-40d3-9858-64ff737cb2fe",
+  "prevId": "8a5f0812-1c1b-4346-a9d7-6de7208406b9",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "core.awards": {
+      "name": "awards",
+      "schema": "core",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "raw_id": {
+          "name": "raw_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ca_notice_id": {
+          "name": "ca_notice_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "notice_no": {
+          "name": "notice_no",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sys_notice_type_id": {
+          "name": "sys_notice_type_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sys_notice_version_id": {
+          "name": "sys_notice_version_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "authority_entity_id": {
+          "name": "authority_entity_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpv_code": {
+          "name": "cpv_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpv_valid": {
+          "name": "cpv_valid",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpv_raw": {
+          "name": "cpv_raw",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "estimated_value_ron": {
+          "name": "estimated_value_ron",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ron_contract_value": {
+          "name": "ron_contract_value",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lowest_offer_value": {
+          "name": "lowest_offer_value",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "highest_offer_value": {
+          "name": "highest_offer_value",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "state_date": {
+          "name": "state_date",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "awards_ca_notice_id_uq": {
+          "name": "awards_ca_notice_id_uq",
+          "columns": [
+            {
+              "expression": "ca_notice_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "awards_authority_idx": {
+          "name": "awards_authority_idx",
+          "columns": [
+            {
+              "expression": "authority_entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "awards_cpv_idx": {
+          "name": "awards_cpv_idx",
+          "columns": [
+            {
+              "expression": "cpv_code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "awards_authority_entity_id_entities_id_fk": {
+          "name": "awards_authority_entity_id_entities_id_fk",
+          "tableFrom": "awards",
+          "tableTo": "entities",
+          "schemaTo": "core",
+          "columnsFrom": [
+            "authority_entity_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "awards_cpv_code_cpv_codes_code_fk": {
+          "name": "awards_cpv_code_cpv_codes_code_fk",
+          "tableFrom": "awards",
+          "tableTo": "cpv_codes",
+          "schemaTo": "core",
+          "columnsFrom": [
+            "cpv_code"
+          ],
+          "columnsTo": [
+            "code"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "core.contract_winners": {
+      "name": "contract_winners",
+      "schema": "core",
+      "columns": {
+        "contract_id": {
+          "name": "contract_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entity_id": {
+          "name": "entity_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "contract_winners_entity_idx": {
+          "name": "contract_winners_entity_idx",
+          "columns": [
+            {
+              "expression": "entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "contract_winners_contract_id_contracts_id_fk": {
+          "name": "contract_winners_contract_id_contracts_id_fk",
+          "tableFrom": "contract_winners",
+          "tableTo": "contracts",
+          "schemaTo": "core",
+          "columnsFrom": [
+            "contract_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "contract_winners_entity_id_entities_id_fk": {
+          "name": "contract_winners_entity_id_entities_id_fk",
+          "tableFrom": "contract_winners",
+          "tableTo": "entities",
+          "schemaTo": "core",
+          "columnsFrom": [
+            "entity_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "contract_winners_contract_id_entity_id_pk": {
+          "name": "contract_winners_contract_id_entity_id_pk",
+          "columns": [
+            "contract_id",
+            "entity_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "core.contracts": {
+      "name": "contracts",
+      "schema": "core",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "raw_id": {
+          "name": "raw_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ca_notice_contract_id": {
+          "name": "ca_notice_contract_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ca_notice_id": {
+          "name": "ca_notice_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "contract_no": {
+          "name": "contract_no",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "contract_date": {
+          "name": "contract_date",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "contract_value": {
+          "name": "contract_value",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpv_code": {
+          "name": "cpv_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lots_caption": {
+          "name": "lots_caption",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "contracts_ca_notice_contract_id_uq": {
+          "name": "contracts_ca_notice_contract_id_uq",
+          "columns": [
+            {
+              "expression": "ca_notice_contract_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "contracts_ca_notice_idx": {
+          "name": "contracts_ca_notice_idx",
+          "columns": [
+            {
+              "expression": "ca_notice_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "contracts_cpv_code_cpv_codes_code_fk": {
+          "name": "contracts_cpv_code_cpv_codes_code_fk",
+          "tableFrom": "contracts",
+          "tableTo": "cpv_codes",
+          "schemaTo": "core",
+          "columnsFrom": [
+            "cpv_code"
+          ],
+          "columnsTo": [
+            "code"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "core.cpv_codes": {
+      "name": "cpv_codes",
+      "schema": "core",
+      "columns": {
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name_ro": {
+          "name": "name_ro",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name_en": {
+          "name": "name_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "revision": {
+          "name": "revision",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "division": {
+          "name": "division",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "cpv_codes_division_idx": {
+          "name": "cpv_codes_division_idx",
+          "columns": [
+            {
+              "expression": "division",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "core.da_items": {
+      "name": "da_items",
+      "schema": "core",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "da_id": {
+          "name": "da_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sicap_item_id": {
+          "name": "sicap_item_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cpv_code": {
+          "name": "cpv_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "catalog_item_name": {
+          "name": "catalog_item_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "quantity": {
+          "name": "quantity",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "unit_raw": {
+          "name": "unit_raw",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "unit_canonical": {
+          "name": "unit_canonical",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "unit_factor": {
+          "name": "unit_factor",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "unit_price": {
+          "name": "unit_price",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "closing_price": {
+          "name": "closing_price",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "da_items_sicap_item_id_uq": {
+          "name": "da_items_sicap_item_id_uq",
+          "columns": [
+            {
+              "expression": "sicap_item_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "da_items_da_idx": {
+          "name": "da_items_da_idx",
+          "columns": [
+            {
+              "expression": "da_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "da_items_da_id_direct_acquisitions_id_fk": {
+          "name": "da_items_da_id_direct_acquisitions_id_fk",
+          "tableFrom": "da_items",
+          "tableTo": "direct_acquisitions",
+          "schemaTo": "core",
+          "columnsFrom": [
+            "da_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "da_items_cpv_code_cpv_codes_code_fk": {
+          "name": "da_items_cpv_code_cpv_codes_code_fk",
+          "tableFrom": "da_items",
+          "tableTo": "cpv_codes",
+          "schemaTo": "core",
+          "columnsFrom": [
+            "cpv_code"
+          ],
+          "columnsTo": [
+            "code"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "core.direct_acquisitions": {
+      "name": "direct_acquisitions",
+      "schema": "core",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "raw_id": {
+          "name": "raw_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "da_code": {
+          "name": "da_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sicap_da_id": {
+          "name": "sicap_da_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "authority_entity_id": {
+          "name": "authority_entity_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "supplier_entity_id": {
+          "name": "supplier_entity_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpv_code": {
+          "name": "cpv_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpv_valid": {
+          "name": "cpv_valid",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpv_raw": {
+          "name": "cpv_raw",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "estimated_value_ron": {
+          "name": "estimated_value_ron",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "closing_value": {
+          "name": "closing_value",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "publication_date": {
+          "name": "publication_date",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "finalization_date": {
+          "name": "finalization_date",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "direct_acquisitions_sicap_da_id_uq": {
+          "name": "direct_acquisitions_sicap_da_id_uq",
+          "columns": [
+            {
+              "expression": "sicap_da_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "direct_acquisitions_authority_idx": {
+          "name": "direct_acquisitions_authority_idx",
+          "columns": [
+            {
+              "expression": "authority_entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "direct_acquisitions_supplier_idx": {
+          "name": "direct_acquisitions_supplier_idx",
+          "columns": [
+            {
+              "expression": "supplier_entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "direct_acquisitions_cpv_idx": {
+          "name": "direct_acquisitions_cpv_idx",
+          "columns": [
+            {
+              "expression": "cpv_code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "direct_acquisitions_finalization_idx": {
+          "name": "direct_acquisitions_finalization_idx",
+          "columns": [
+            {
+              "expression": "finalization_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "direct_acquisitions_authority_entity_id_entities_id_fk": {
+          "name": "direct_acquisitions_authority_entity_id_entities_id_fk",
+          "tableFrom": "direct_acquisitions",
+          "tableTo": "entities",
+          "schemaTo": "core",
+          "columnsFrom": [
+            "authority_entity_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "direct_acquisitions_supplier_entity_id_entities_id_fk": {
+          "name": "direct_acquisitions_supplier_entity_id_entities_id_fk",
+          "tableFrom": "direct_acquisitions",
+          "tableTo": "entities",
+          "schemaTo": "core",
+          "columnsFrom": [
+            "supplier_entity_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "direct_acquisitions_cpv_code_cpv_codes_code_fk": {
+          "name": "direct_acquisitions_cpv_code_cpv_codes_code_fk",
+          "tableFrom": "direct_acquisitions",
+          "tableTo": "cpv_codes",
+          "schemaTo": "core",
+          "columnsFrom": [
+            "cpv_code"
+          ],
+          "columnsTo": [
+            "code"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "core.entities": {
+      "name": "entities",
+      "schema": "core",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "cui_canonical": {
+          "name": "cui_canonical",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cui_valid": {
+          "name": "cui_valid",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "name_display": {
+          "name": "name_display",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name_normalized": {
+          "name": "name_normalized",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "legal_form": {
+          "name": "legal_form",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "county": {
+          "name": "county",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nuts_code": {
+          "name": "nuts_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cui_raw_variants": {
+          "name": "cui_raw_variants",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "first_seen": {
+          "name": "first_seen",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_seen": {
+          "name": "last_seen",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "entities_cui_canonical_uq": {
+          "name": "entities_cui_canonical_uq",
+          "columns": [
+            {
+              "expression": "cui_canonical",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"core\".\"entities\".\"cui_valid\" = true",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "entities_name_norm_trgm_idx": {
+          "name": "entities_name_norm_trgm_idx",
+          "columns": [
+            {
+              "expression": "\"name_normalized\" gin_trgm_ops",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "gin",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "core.entity_name_suggestions": {
+      "name": "entity_name_suggestions",
+      "schema": "core",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "entity_a": {
+          "name": "entity_a",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entity_b": {
+          "name": "entity_b",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "score": {
+          "name": "score",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "evidence": {
+          "name": "evidence",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'open'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "entity_name_suggestions_pair_uq": {
+          "name": "entity_name_suggestions_pair_uq",
+          "columns": [
+            {
+              "expression": "entity_a",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "entity_b",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "entity_name_suggestions_status_idx": {
+          "name": "entity_name_suggestions_status_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "entity_name_suggestions_entity_a_entities_id_fk": {
+          "name": "entity_name_suggestions_entity_a_entities_id_fk",
+          "tableFrom": "entity_name_suggestions",
+          "tableTo": "entities",
+          "schemaTo": "core",
+          "columnsFrom": [
+            "entity_a"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "entity_name_suggestions_entity_b_entities_id_fk": {
+          "name": "entity_name_suggestions_entity_b_entities_id_fk",
+          "tableFrom": "entity_name_suggestions",
+          "tableTo": "entities",
+          "schemaTo": "core",
+          "columnsFrom": [
+            "entity_b"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "core.entity_sicap_ids": {
+      "name": "entity_sicap_ids",
+      "schema": "core",
+      "columns": {
+        "entity_id": {
+          "name": "entity_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "namespace": {
+          "name": "namespace",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sicap_id": {
+          "name": "sicap_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "entity_sicap_ids_entity_idx": {
+          "name": "entity_sicap_ids_entity_idx",
+          "columns": [
+            {
+              "expression": "entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "entity_sicap_ids_entity_id_entities_id_fk": {
+          "name": "entity_sicap_ids_entity_id_entities_id_fk",
+          "tableFrom": "entity_sicap_ids",
+          "tableTo": "entities",
+          "schemaTo": "core",
+          "columnsFrom": [
+            "entity_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "entity_sicap_ids_namespace_sicap_id_pk": {
+          "name": "entity_sicap_ids_namespace_sicap_id_pk",
+          "columns": [
+            "namespace",
+            "sicap_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "core.ingestion_watermarks": {
+      "name": "ingestion_watermarks",
+      "schema": "core",
+      "columns": {
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "cursor": {
+          "name": "cursor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "core.normalize_watermarks": {
+      "name": "normalize_watermarks",
+      "schema": "core",
+      "columns": {
+        "transform": {
+          "name": "transform",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "last_raw_id": {
+          "name": "last_raw_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "core.notices": {
+      "name": "notices",
+      "schema": "core",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "raw_id": {
+          "name": "raw_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "c_notice_id": {
+          "name": "c_notice_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "notice_no": {
+          "name": "notice_no",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sys_notice_type_id": {
+          "name": "sys_notice_type_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sys_notice_version_id": {
+          "name": "sys_notice_version_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "authority_entity_id": {
+          "name": "authority_entity_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpv_code": {
+          "name": "cpv_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpv_valid": {
+          "name": "cpv_valid",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cpv_raw": {
+          "name": "cpv_raw",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "estimated_value_ron": {
+          "name": "estimated_value_ron",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "state_date": {
+          "name": "state_date",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_online": {
+          "name": "is_online",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "procedure_type": {
+          "name": "procedure_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "has_lots": {
+          "name": "has_lots",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "notices_c_notice_id_uq": {
+          "name": "notices_c_notice_id_uq",
+          "columns": [
+            {
+              "expression": "c_notice_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "notices_authority_idx": {
+          "name": "notices_authority_idx",
+          "columns": [
+            {
+              "expression": "authority_entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "notices_cpv_idx": {
+          "name": "notices_cpv_idx",
+          "columns": [
+            {
+              "expression": "cpv_code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "notices_state_date_idx": {
+          "name": "notices_state_date_idx",
+          "columns": [
+            {
+              "expression": "state_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "notices_authority_entity_id_entities_id_fk": {
+          "name": "notices_authority_entity_id_entities_id_fk",
+          "tableFrom": "notices",
+          "tableTo": "entities",
+          "schemaTo": "core",
+          "columnsFrom": [
+            "authority_entity_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "notices_cpv_code_cpv_codes_code_fk": {
+          "name": "notices_cpv_code_cpv_codes_code_fk",
+          "tableFrom": "notices",
+          "tableTo": "cpv_codes",
+          "schemaTo": "core",
+          "columnsFrom": [
+            "cpv_code"
+          ],
+          "columnsTo": [
+            "code"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "core.quarantine": {
+      "name": "quarantine",
+      "schema": "core",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "raw_id": {
+          "name": "raw_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "endpoint_version": {
+          "name": "endpoint_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "zod_error": {
+          "name": "zod_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload_excerpt": {
+          "name": "payload_excerpt",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "quarantine_endpoint_idx": {
+          "name": "quarantine_endpoint_idx",
+          "columns": [
+            {
+              "expression": "endpoint_version",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "core.scrape_runs": {
+      "name": "scrape_runs",
+      "schema": "core",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "finished_at": {
+          "name": "finished_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "window_start": {
+          "name": "window_start",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "window_end": {
+          "name": "window_end",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reported_total": {
+          "name": "reported_total",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fetched_count": {
+          "name": "fetched_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "inserted_count": {
+          "name": "inserted_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "skipped_count": {
+          "name": "skipped_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "pages_fetched": {
+          "name": "pages_fetched",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "deviation": {
+          "name": "deviation",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "error": {
+          "name": "error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "scrape_runs_source_started_idx": {
+          "name": "scrape_runs_source_started_idx",
+          "columns": [
+            {
+              "expression": "source",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "started_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "core.sicap_cpv_ids": {
+      "name": "sicap_cpv_ids",
+      "schema": "core",
+      "columns": {
+        "sicap_id": {
+          "name": "sicap_id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "sicap_cpv_ids_code_cpv_codes_code_fk": {
+          "name": "sicap_cpv_ids_code_cpv_codes_code_fk",
+          "tableFrom": "sicap_cpv_ids",
+          "tableTo": "cpv_codes",
+          "schemaTo": "core",
+          "columnsFrom": [
+            "code"
+          ],
+          "columnsTo": [
+            "code"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "core.unit_map": {
+      "name": "unit_map",
+      "schema": "core",
+      "columns": {
+        "raw_pattern": {
+          "name": "raw_pattern",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "canonical_unit": {
+          "name": "canonical_unit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "factor": {
+          "name": "factor",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "raw.raw_documents": {
+      "name": "raw_documents",
+      "schema": "raw",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "external_id": {
+          "name": "external_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "endpoint_version": {
+          "name": "endpoint_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content_hash": {
+          "name": "content_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload": {
+          "name": "payload",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fetched_at": {
+          "name": "fetched_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "raw_documents_source_ext_hash_uq": {
+          "name": "raw_documents_source_ext_hash_uq",
+          "columns": [
+            {
+              "expression": "source",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "external_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "content_hash",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "raw_documents_source_fetched_idx": {
+          "name": "raw_documents_source_fetched_idx",
+          "columns": [
+            {
+              "expression": "source",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "fetched_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {
+    "core": "core",
+    "raw": "raw",
+    "marts": "marts"
+  },
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

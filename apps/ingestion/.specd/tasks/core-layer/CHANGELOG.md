@@ -39,3 +39,32 @@
   separate batch pass (later phase).
 - Tests: 16 unit (normalize-entity) + 4 integration (rolled-back tx) proving
   RO/bare-CUI dedup, tier-1 re-resolution, no foreign merge, distinct CUIs kept.
+
+## Phase 4 — Era-aware parsers + quarantine (2026-07-12)
+
+- Schema refined to NATURAL keys (not raw_id): notices→cNoticeId, awards→
+  caNoticeId, contracts→caNoticeContractId, DAs→sicapDaId (merges list+detail),
+  da_items→sicapItemId. Migration 0003.
+- `normalize/cpv.ts`, `normalize/unit.ts`: CPV parse/validate (keep raw),
+  unit resolve (keep raw, null if unmapped).
+- `normalize/parsers.ts`: zod schema + transform per endpoint_version
+  (tender-list, award-list, award-contracts, da-list, da-detail); registry.
+  Consortia via winners[] → contract_winners M:N. DA detail links SICAP ids to
+  list-resolved entities. Added zod dep.
+
+## Phase 5 — Normalization pipeline (2026-07-12)
+
+- `normalize/pipeline.ts`: replayable per-endpoint id-cursor runner; per-doc tx;
+  parse failure → quarantine + advance (never loops). `--rebuild` truncates
+  derived tables (keeps reference data) + replays. `normalize` CLI.
+
+## Phase 6 — Reconciliation (2026-07-12)
+
+- Ran over all 744 docs: **744 processed, 0 quarantined**.
+- Counts: 822 entities (731 valid CUI, **0 duplicate CUIs**, 8 RO/bare merges),
+  202 notices, 181 awards, 1495 contracts, 1966 contract_winners (consortia),
+  90 DAs, 123 da_items.
+- CPV 100% valid (notices/DAs/items). Units: seeded 19-row starter unit_map →
+  94% da_items canonicalized; compound/ambiguous tail left null (for curation).
+- End-to-end spot-check verified (INGRID DA joins supplier/authority/CPV;
+  multi-winner contracts resolve). Idempotent: incremental re-run processes 0.

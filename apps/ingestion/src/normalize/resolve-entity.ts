@@ -118,7 +118,9 @@ async function backfillEntity(
   input: ResolveEntityInput,
   validCui: string | null,
 ): Promise<void> {
-  const seenAt = input.seenAt ?? null;
+  // ISO string, not a JS Date: inside a raw sql fragment drizzle can't infer the
+  // timestamp type and postgres.js mis-serializes a bare Date.
+  const seenAt = input.seenAt ? input.seenAt.toISOString() : null;
   // Explicit casts: bare NULL bind params have no inferable type in Postgres.
   await db
     .update(entities)
@@ -139,6 +141,23 @@ async function backfillEntity(
         : entities.cuiRawVariants,
     })
     .where(eq(entities.id, entityId));
+}
+
+/**
+ * Attach a SICAP id to an already-resolved entity (used by the DA-detail
+ * parser, whose payload has the numeric ids but not the CUI/name strings).
+ * No-op if the (namespace, id) pair is already claimed.
+ */
+export async function linkSicapId(
+  db: ResolveDb,
+  entityId: bigint,
+  namespace: EntityNamespace,
+  sicapId: number,
+): Promise<void> {
+  await db
+    .insert(entitySicapIds)
+    .values({ entityId, namespace, sicapId })
+    .onConflictDoNothing();
 }
 
 /** Attach the SICAP id mapping if present and not already claimed. */
