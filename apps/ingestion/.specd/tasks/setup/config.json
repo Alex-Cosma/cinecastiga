@@ -2,14 +2,14 @@
   "task_name": "setup",
   "project_name": "ingestion",
   "created": "2026-07-12",
-  "stage": "execution",
+  "stage": "complete",
   "discussion_sessions": 0,
   "decisions_count": 0,
   "phases": {
     "total": 3,
     "current": 3,
-    "current_status": "executed",
-    "completed": 2,
-    "phase_start_commit": "319069a178d575ed85f6c1464f4f78ad76115706"
+    "current_status": "completed",
+    "completed": 3,
+    "phase_start_commit": null
   }
 }

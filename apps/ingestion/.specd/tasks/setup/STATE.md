@@ -2,7 +2,7 @@
 
 ## Current Position
 
-**Stage:** execution (phase 1 pending)
+**Stage:** complete
 **Last Updated:** 2026-07-12
 
 ---
@@ -29,15 +29,15 @@
 ## Execution Progress
 
 ### Current Phase
-- Phase: 3 (executed, awaiting review)
-- Started: 2026-07-12
+- Phase: — (all complete)
+- Started: —
 
 ### Completed Phases
 | Phase | Completed | Tasks | Deviations |
 |-------|-----------|-------|------------|
 | 1 — Workspace + infra | 2026-07-12 (approved) | 3/3 | none |
 | 2 — Shared packages | 2026-07-12 (approved) | 3/3 | 3 (logged) |
-| 3 — Ingestion app skeleton | 2026-07-12 (executed) | 3/3 | 1 (logged) |
+| 3 — Ingestion app skeleton | 2026-07-12 (approved) | 3/3 | 1 (logged) |
 
 ---
 
@@ -71,7 +71,7 @@
 
 ## Next Steps
 
-Phase 1 (workspace + infra) pending — phase-plan then execute.
+Setup task complete. Next: web setup task (`apps/web`), or project Phase 2 (bronze-layer scraping) via a new task in this sub-project.
 
 **Resume:** `/specd.continue setup` (from `apps/ingestion/`)
 
