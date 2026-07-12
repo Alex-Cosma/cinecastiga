@@ -69,14 +69,21 @@ function validateEnvelope(
   if (envelope.searchTooLong) {
     return `searchTooLong on day ${day} — result window exceeded, data loss`;
   }
-  const dated = envelope.items.filter((i) => typeof i.publicationDate === "string");
+  // Live reality (2026-07-12): list items carry NO publicationDate — only
+  // noticeStateDate, which mutates on state changes and therefore can
+  // postdate publication but never precede it. An item whose state date
+  // precedes the requested day proves the server ignored our date filter
+  // (the "silently-ignored filter field" trap — unfiltered firehose).
+  const dated = envelope.items.filter(
+    (i) => typeof i.noticeStateDate === "string",
+  );
   if (envelope.items.length > 0 && dated.length === 0) {
-    return "shape drift: no item carries publicationDate";
+    return "shape drift: no item carries noticeStateDate";
   }
   for (const item of dated) {
-    const itemDay = bucharestDayOf(item.publicationDate as string);
-    if (!inWindow(itemDay, { start: day, end: day })) {
-      return `filter-echo violation: item ${noticeIdOf(item)} published ${itemDay}, requested ${day}`;
+    const itemDay = bucharestDayOf(item.noticeStateDate as string);
+    if (itemDay < day) {
+      return `filter-echo violation: item ${noticeIdOf(item)} state date ${itemDay} predates requested ${day}`;
     }
   }
   return null;
