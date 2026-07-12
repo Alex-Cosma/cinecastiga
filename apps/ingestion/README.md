@@ -15,11 +15,15 @@ pnpm --filter @seap/db db:migrate
 
 | Var | Required | Default | Purpose |
 |-----|----------|---------|---------|
-| `SCRAPE_UA` | yes (for scraping) | — | Honest User-Agent with contact, e.g. `seap-analytics/0.1 (contact: you@example.com)` |
+| `SCRAPE_UA` | no | `seap-analytics/0.1 (contact: cineseuita@gmail.com)` | Honest User-Agent with contact |
 | `DATABASE_URL` | no | local docker DSN | Postgres |
-| `SCRAPE_CONCURRENCY` | no | 3 | Max in-flight requests (shared per process) |
-| `SCRAPE_MIN_DELAY_MS` | no | 400 | Min delay between request starts |
+| `SCRAPE_CONCURRENCY` | no | 20 | Max in-flight requests (shared per process) |
+| `SCRAPE_MIN_DELAY_MS` | no | 0 | Min delay between request starts |
 | `SCRAPE_SAMPLE_DAYS` | no | 30 | Initial window when a family has no watermark |
+
+Defaults favor throughput (~55 req/s; 30-day DA backfill ~1h). The client
+always honors `429`/`Retry-After` with exponential backoff, so it auto-throttles
+if the server pushes back. To slow down for a run: `SCRAPE_CONCURRENCY=3 SCRAPE_MIN_DELAY_MS=400 ...`.
 
 ## Run
 
@@ -39,8 +43,8 @@ SCRAPE_UA="..." pnpm --filter ingestion scrape --family awards  --start 2026-06-
 SCRAPE_UA="..." pnpm --filter ingestion scrape --family das     --start 2026-06-12 --end 2026-07-11
 ```
 
-The 30-day DA sample is ~200k records ≈ ~24h at polite rates — run overnight;
-kill/resume is safe (watermarks; re-runs are idempotent via content hashes).
+The 30-day DA sample is ~200k records ≈ ~1h at default throughput; kill/resume
+is safe (watermarks; re-runs are idempotent via content hashes).
 
 ## Tests
 
