@@ -4,6 +4,7 @@ import {
   getNoticeContracts,
   getNoticeDetail,
   listNotices,
+  noticeIdOf,
   NOTICE_TYPE_IDS,
   type ElicitatieClient,
   type ListEnvelope,
@@ -75,7 +76,7 @@ function validateEnvelope(
   for (const item of dated) {
     const itemDay = bucharestDayOf(item.publicationDate as string);
     if (!inWindow(itemDay, { start: day, end: day })) {
-      return `filter-echo violation: item ${item.caNoticeId} published ${itemDay}, requested ${day}`;
+      return `filter-echo violation: item ${noticeIdOf(item)} published ${itemDay}, requested ${day}`;
     }
   }
   return null;
@@ -172,7 +173,7 @@ export async function scrapeNoticesWindow(
         for (const item of envelope.items) {
           docs.push({
             source: "elicitatie",
-            externalId: `${prefix}:${item.caNoticeId}`,
+            externalId: `${prefix}:${noticeIdOf(item)}`,
             endpointVersion: `${prefix}-list:v1`,
             payload: item,
           });
@@ -180,10 +181,10 @@ export async function scrapeNoticesWindow(
 
         const details = await Promise.all(
           envelope.items.map(async (item) => {
-            const detail = await getNoticeDetail(client, item.caNoticeId);
+            const detail = await getNoticeDetail(client, noticeIdOf(item));
             const contracts =
               opts.family === "awards"
-                ? await fetchAllContracts(client, item.caNoticeId)
+                ? await fetchAllContracts(client, noticeIdOf(item))
                 : null;
             return { item, detail: detail.data, contracts };
           }),
@@ -191,16 +192,16 @@ export async function scrapeNoticesWindow(
         for (const { item, detail, contracts } of details) {
           docs.push({
             source: "elicitatie",
-            externalId: `${prefix}:${item.caNoticeId}`,
+            externalId: `${prefix}:${noticeIdOf(item)}`,
             endpointVersion: `${prefix}-detail:v1`,
             payload: detail,
           });
           if (contracts) {
             docs.push({
               source: "elicitatie",
-              externalId: `${prefix}:${item.caNoticeId}`,
+              externalId: `${prefix}:${noticeIdOf(item)}`,
               endpointVersion: `${prefix}-contracts:v1`,
-              payload: { caNoticeId: item.caNoticeId, ...contracts },
+              payload: { caNoticeId: noticeIdOf(item), ...contracts },
             });
           }
         }

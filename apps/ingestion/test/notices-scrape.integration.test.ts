@@ -50,8 +50,11 @@ afterEach(async () => {
 });
 
 interface MockConfig {
-  /** items per day, keyed by IsoDate */
-  itemsByDay: Record<string, Array<{ caNoticeId: number; publicationDate: string }>>;
+  /** items per day, keyed by IsoDate (cNoticeId mirrors live participation lists) */
+  itemsByDay: Record<
+    string,
+    Array<{ caNoticeId?: number; cNoticeId?: number; publicationDate: string }>
+  >;
   /** 500 every list request for this (day, pageIndex) */
   failAt?: { day: string; page: number } | null;
   contractsTotal?: number;
@@ -134,13 +137,14 @@ function makeClient(baseUrl: string, maxRetries = 0) {
   });
 }
 
+// Participation lists key items as cNoticeId (live-verified 2026-07-12)
 const day1Items = [
-  { caNoticeId: 9900001, publicationDate: "2026-07-01T09:00:00+03:00" },
-  { caNoticeId: 9900002, publicationDate: "2026-07-01T10:00:00+03:00" },
-  { caNoticeId: 9900003, publicationDate: "2026-07-01T11:00:00+03:00" },
+  { cNoticeId: 9900001, publicationDate: "2026-07-01T09:00:00+03:00" },
+  { cNoticeId: 9900002, publicationDate: "2026-07-01T10:00:00+03:00" },
+  { cNoticeId: 9900003, publicationDate: "2026-07-01T11:00:00+03:00" },
 ];
 const day2Items = [
-  { caNoticeId: 9900004, publicationDate: "2026-07-02T09:00:00+03:00" },
+  { cNoticeId: 9900004, publicationDate: "2026-07-02T09:00:00+03:00" },
 ];
 
 describe("scrapeNoticesWindow", () => {

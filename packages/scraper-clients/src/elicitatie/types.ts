@@ -33,9 +33,15 @@ export interface NoticeListRequest {
   pageSize: number;
 }
 
-/** Notice list item — fields we page/reconcile on; rest passes through. */
+/**
+ * Notice list item — fields we page/reconcile on; rest passes through.
+ * Live-verified 2026-07-12: participation lists (GetCNoticeList) key items
+ * as `cNoticeId`; award lists (GetCANoticeList) as `caNoticeId`. The detail
+ * endpoint C_PUBLIC_CANotice/get/{id} accepts either id.
+ */
 export interface NoticeListItem {
-  caNoticeId: number;
+  caNoticeId?: number;
+  cNoticeId?: number;
   noticeNo: string;
   sysNoticeTypeId: number;
   sysNoticeState?: { id: number; text: string };
@@ -102,6 +108,17 @@ export interface DirectAcquisitionListItem {
   isOpenForCorrection?: boolean;
   isOpenForContractCorrection?: boolean;
   [key: string]: unknown;
+}
+
+/** Family-agnostic notice id (cNoticeId for participation, caNoticeId for awards). */
+export function noticeIdOf(item: NoticeListItem): number {
+  const id = item.caNoticeId ?? item.cNoticeId;
+  if (typeof id !== "number") {
+    throw new Error(
+      "notice list item carries neither caNoticeId nor cNoticeId — shape drift",
+    );
+  }
+  return id;
 }
 
 export interface CpvSearchItem {
