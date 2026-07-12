@@ -17,7 +17,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Link href="/" className="brand">
               SEAP <span>Transparent</span>
             </Link>
-            <span className="tagline">Achiziții publice, văzute critic</span>
+            <nav className="nav">
+              <Link href="/">Acasă</Link>
+              <Link href="/domenii">Domenii</Link>
+              <Link href="/harta">Hartă</Link>
+            </nav>
           </div>
         </header>
         <div className="snapshot-banner">

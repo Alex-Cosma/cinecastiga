@@ -24,6 +24,7 @@ async function main(): Promise<void> {
   await sql`
     truncate
       marts.national_stats, marts.spend_by_type, marts.spend_by_cpv,
+      marts.cpv_tree, marts.spend_by_county,
       marts.entity_profile, marts.entity_top_partners, marts.top_entities,
       marts.authority_concentration
   `;

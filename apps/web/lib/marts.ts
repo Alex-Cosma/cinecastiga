@@ -102,6 +102,97 @@ export async function getTopEntities(role: Role, limit = 15): Promise<TopEntity[
   }));
 }
 
+export interface CpvNode {
+  code: string;
+  nameRo: string | null;
+  totalRon: number;
+  nChildren: number;
+}
+
+/** Direct children of a CPV node (parentCode null = the 45 divisions). */
+export async function getCpvChildren(parentCode: string | null): Promise<CpvNode[]> {
+  const sql = db();
+  const rows = (await sql`
+    select code, name_ro, total_ron, n_children from marts.cpv_tree
+    where parent_code is not distinct from ${parentCode}
+      and total_ron > 0
+    order by total_ron desc
+  `) as unknown as {
+    code: string;
+    name_ro: string | null;
+    total_ron: string | null;
+    n_children: number;
+  }[];
+  return rows.map((r) => ({
+    code: r.code,
+    nameRo: r.name_ro,
+    totalRon: Number(r.total_ron ?? 0),
+    nChildren: Number(r.n_children),
+  }));
+}
+
+/** A single CPV node (for breadcrumb / header), or null. */
+export async function getCpvNode(code: string): Promise<CpvNode & { parentCode: string | null } | null> {
+  const sql = db();
+  const rows = (await sql`
+    select code, parent_code, name_ro, total_ron, n_children
+    from marts.cpv_tree where code = ${code}
+  `) as unknown as {
+    code: string;
+    parent_code: string | null;
+    name_ro: string | null;
+    total_ron: string | null;
+    n_children: number;
+  }[];
+  const r = rows[0];
+  if (!r) return null;
+  return {
+    code: r.code,
+    parentCode: r.parent_code,
+    nameRo: r.name_ro,
+    totalRon: Number(r.total_ron ?? 0),
+    nChildren: Number(r.n_children),
+  };
+}
+
+/** Walk ancestors from a node up to the division root (for breadcrumbs). */
+export async function getCpvAncestry(code: string): Promise<CpvNode[]> {
+  const chain: CpvNode[] = [];
+  let cursor: string | null = code;
+  for (let i = 0; i < 6 && cursor; i++) {
+    const node = await getCpvNode(cursor);
+    if (!node) break;
+    chain.unshift({
+      code: node.code,
+      nameRo: node.nameRo,
+      totalRon: node.totalRon,
+      nChildren: node.nChildren,
+    });
+    cursor = node.parentCode;
+  }
+  return chain;
+}
+
+export interface CountySpend {
+  county: string;
+  totalRon: number;
+  n: number;
+}
+
+export async function getSpendByCounty(role: Role): Promise<CountySpend[]> {
+  const sql = db();
+  const rows = (await sql`
+    select county, n, total_ron from marts.spend_by_county
+    where role = ${role} and total_ron > 0
+    order by total_ron desc
+  `) as unknown as { county: string; n: number; total_ron: string | null }[];
+  return rows.map((r) => ({
+    county: r.county,
+    totalRon: Number(r.total_ron ?? 0),
+    n: Number(r.n),
+  }));
+}
+
 export interface EntityRole {
   role: Role;
   totalRonFull: number;
