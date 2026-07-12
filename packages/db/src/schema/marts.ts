@@ -33,6 +33,22 @@ export const nationalStats = martsSchema.table(
   (t) => [index("national_stats_kind_year_idx").on(t.kind, t.year)],
 );
 
+/**
+ * Spend by acquisition type (Furnizare/Servicii/Lucrari) per stream — the cut
+ * the user's 2020 build used (contractsTotalSpendingByType). NULL type = unknown.
+ */
+export const spendByType = martsSchema.table(
+  "spend_by_type",
+  {
+    /** 'award' | 'da' */
+    kind: text("kind").notNull(),
+    acquisitionType: text("acquisition_type"),
+    n: integer("n").notNull(),
+    totalRon: numeric("total_ron"),
+  },
+  (t) => [index("spend_by_type_idx").on(t.kind, t.acquisitionType)],
+);
+
 /** Spend by CPV division (2-digit), per stream. Treemap source. */
 export const spendByCpv = martsSchema.table(
   "spend_by_cpv",

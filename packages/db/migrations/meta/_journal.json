@@ -43,6 +43,13 @@
       "when": 1783884567616,
       "tag": "0005_yielding_jocasta",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1783886163697,
+      "tag": "0006_classy_marauders",
+      "breakpoints": true
     }
   ]
 }
