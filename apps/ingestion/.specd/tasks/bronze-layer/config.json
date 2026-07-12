@@ -2,7 +2,14 @@
   "task_name": "bronze-layer",
   "project_name": "ingestion",
   "created": "2026-07-12",
-  "stage": "planning",
+  "stage": "execution",
   "discussion_sessions": 1,
-  "decisions_count": 9
+  "decisions_count": 9,
+  "phases": {
+    "total": 5,
+    "current": 1,
+    "current_status": "pending",
+    "completed": 0,
+    "phase_start_commit": null
+  }
 }
