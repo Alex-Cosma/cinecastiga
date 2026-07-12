@@ -36,8 +36,8 @@ export function createElicitatieClient(
     createHttpClient({
       baseUrl,
       userAgent: opts.userAgent,
-      maxConcurrency: opts.maxConcurrency ?? 20,
-      minDelayMs: opts.minDelayMs ?? 0,
+      maxConcurrency: opts.maxConcurrency ?? 8,
+      minDelayMs: opts.minDelayMs ?? 120,
       maxRetries: opts.maxRetries ?? 3,
       defaultHeaders: {
         referer: opts.referer ?? DEFAULT_REFERER,

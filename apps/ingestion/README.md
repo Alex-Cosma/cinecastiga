@@ -17,13 +17,16 @@ pnpm --filter @seap/db db:migrate
 |-----|----------|---------|---------|
 | `SCRAPE_UA` | no | `seap-analytics/0.1 (contact: cineseuita@gmail.com)` | Honest User-Agent with contact |
 | `DATABASE_URL` | no | local docker DSN | Postgres |
-| `SCRAPE_CONCURRENCY` | no | 20 | Max in-flight requests (shared per process) |
-| `SCRAPE_MIN_DELAY_MS` | no | 0 | Min delay between request starts |
+| `SCRAPE_CONCURRENCY` | no | 8 | Max in-flight requests (shared per process) |
+| `SCRAPE_MIN_DELAY_MS` | no | 120 | Min delay between request starts |
 | `SCRAPE_SAMPLE_DAYS` | no | 30 | Initial window when a family has no watermark |
 
-Defaults favor throughput (~55 req/s; 30-day DA backfill ~1h). The client
-always honors `429`/`Retry-After` with exponential backoff, so it auto-throttles
-if the server pushes back. To slow down for a run: `SCRAPE_CONCURRENCY=3 SCRAPE_MIN_DELAY_MS=400 ...`.
+Defaults are moderate (~8 req/s; 30-day DA backfill a few hours). The throttle
+gates request starts, so req/s ≈ `1000 / SCRAPE_MIN_DELAY_MS`; concurrency is
+headroom over latency. The platform tolerates far more, but a steady mid-rate
+stays clear of WAF heuristics and the platform's own instability. The client
+always honors `429`/`Retry-After` with exponential backoff on top.
+For a faster one-off backfill: `SCRAPE_CONCURRENCY=16 SCRAPE_MIN_DELAY_MS=0 ...`.
 
 ## Run
 

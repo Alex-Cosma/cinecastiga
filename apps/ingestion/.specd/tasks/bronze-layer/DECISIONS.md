@@ -57,10 +57,18 @@
 **Decision:** Default concurrency 3 / minDelay 400ms per shared source client; honor Retry-After; automatic cool-down on 429/403 streaks; env-tunable to 1/2s without deploy.
 **Implications:** 30d DA sample ≈ ~24h of chunked resumable runs; daily incremental ≈ ~1h. Don't discover the threshold.
 
-### DEC-010: Throughput default — concurrency 20, no delay (supersedes DEC-005 rate)
+### DEC-011: Moderate default — concurrency 8, 120ms delay ≈ ~8 req/s (supersedes DEC-010)
 
 **Date:** 2026-07-12
 **Status:** Active
+**Context:** During the first worker run, SICAP went down platform-wide (every path — homepage, static assets, all api-pub endpoints — 302→`/assets/errors/internal-error.htm`, following it → 500; `Server: SICAP` still answering). Verified NOT caused by us: down for bare curl / browser UA / all IPs, and it died before the high-volume DA/tender jobs ever ran (DAs 500'd on attempt 1, tenders never got a watermark). Purely a coincidental SICAP outage.
+**Decision:** Defaults to concurrency 8 / minDelay 120ms (~8 req/s; throttle gates request starts so req/s ≈ 1000/minDelayMs, concurrency is latency headroom). 30-day backfill a few hours. Env-tunable per run for one-off fast backfills (`SCRAPE_CONCURRENCY=16 SCRAPE_MIN_DELAY_MS=0`). Retry/backoff safety net unchanged.
+**Rationale:** The throughput case (DEC-010) still holds technically, but a steady mid-rate costs little (a few hours vs ~1h), removes any doubt about our footprint coinciding with platform instability, and keeps us clear of WAF heuristics. Speed is a per-run override, not the default. (55 req/s → 8 req/s, not all the way to a crawl.)
+
+### DEC-010: Throughput default — concurrency 20, no delay (supersedes DEC-005 rate)
+
+**Date:** 2026-07-12
+**Status:** Superseded by DEC-011
 **Context:** User has firsthand experience (2020 build) that the SICAP platform is highly resilient to load; live smoke drew zero throttling across ~800 requests. The conservative DEC-005 rate made the 30-day DA backfill ~24h.
 **Decision:** Default concurrency 20 / minDelay 0 (~55 req/s). Env-tunable per run (`SCRAPE_CONCURRENCY`, `SCRAPE_MIN_DELAY_MS`). The 429/Retry-After honoring + exponential backoff from DEC-005 is RETAINED unchanged — it is the safety net that makes high throughput non-reckless (auto-throttle instead of ban if the server ever pushes back).
 **Rationale:**
@@ -120,7 +128,8 @@ _None._
 | DEC-003 | 2026-07-12 | DA cursor on finalizationDate; notice state re-scan | Active |
 | DEC-004 | 2026-07-12 | Adaptive slicing; searchTooLong = data loss | Active |
 | DEC-005 | 2026-07-12 | Politeness: conc 3 / 400ms, Retry-After, instant-drop | Superseded |
-| DEC-010 | 2026-07-12 | Throughput default: conc 20 / no delay (backoff retained) | Active |
+| DEC-010 | 2026-07-12 | Throughput default: conc 20 / no delay (backoff retained) | Superseded |
+| DEC-011 | 2026-07-12 | Moderate default: conc 8 / 120ms ≈ 8 req/s (SICAP outage, remove doubt) | Active |
 | DEC-006 | 2026-07-12 | PII redaction before bronze write | Active |
 | DEC-007 | 2026-07-12 | Europe/Bucharest cursors; closed windows only | Active |
 | DEC-008 | 2026-07-12 | Invariant checks gate cursor advancement | Active |
