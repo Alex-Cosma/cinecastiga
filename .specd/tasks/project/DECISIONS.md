@@ -68,6 +68,20 @@
 **Implications:**
 - Romanian-only strings; internal API unstable/undocumented; red flags limited to SICAP-native signals
 
+### DEC-006: TypeScript end-to-end (Kotlin/Spring considered and declined)
+
+**Date:** 2026-07-12
+**Status:** Active
+**Context:** User is more comfortable on JVM (Java/Kotlin, Spring) and raised it for the backend/ingestion worker. Discussed tradeoffs explicitly.
+**Decision:** Stay TypeScript everywhere: ingestion worker + web in one pnpm/Turborepo monorepo, graphile-worker, zod, Drizzle.
+**Rationale:**
+- One toolchain, shared types, single CI lane for a solo dev
+- Red-flag math is SQL-shaped — worker language is mostly orchestration + parsing, so JVM's batch strengths matter less here
+- Kotlin was judged a fine alternative (coroutines for polite scraping, jOOQ, Flyway, db-scheduler); user opted for TS after discussion
+**Implications:**
+- No Spring/API layer between web and Postgres — web keeps reading marts directly
+- If ingestion is ever rewritten, Kotlin worker + kysely-codegen for web types is the documented fallback shape
+
 ---
 
 ## Superseded Decisions
@@ -91,3 +105,4 @@ _None._
 | DEC-003 | 2026-07-12 | Free + open access, no accounts | Active |
 | DEC-004 | 2026-07-12 | v1 feature set | Active |
 | DEC-005 | 2026-07-12 | v1 non-goals | Active |
+| DEC-006 | 2026-07-12 | TypeScript end-to-end (Kotlin/Spring declined) | Active |
