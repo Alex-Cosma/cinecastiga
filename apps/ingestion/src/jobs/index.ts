@@ -23,12 +23,15 @@ const lazyDeps: ScrapeDeps = {
   },
 };
 
+/** Initial window (days) when a family has no watermark yet. */
+const sampleDays = Number(process.env["SCRAPE_SAMPLE_DAYS"] ?? "30");
+
 export const taskList: TaskList = {
   heartbeat,
-  scrape_tenders: makeScrapeNoticesTask(lazyDeps, "tenders"),
-  scrape_awards: makeScrapeNoticesTask(lazyDeps, "awards"),
+  scrape_tenders: makeScrapeNoticesTask(lazyDeps, "tenders", { sampleDays }),
+  scrape_awards: makeScrapeNoticesTask(lazyDeps, "awards", { sampleDays }),
   rescan_notice_states: makeRescanTask(lazyDeps),
-  scrape_das: makeScrapeDasTask(lazyDeps),
+  scrape_das: makeScrapeDasTask(lazyDeps, { sampleDays }),
   refetch_da_corrections: makeDaCorrectionsTask(lazyDeps),
 };
 
