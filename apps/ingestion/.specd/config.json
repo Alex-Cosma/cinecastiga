@@ -1,0 +1,6 @@
+{
+  "type": "project",
+  "project_name": "ingestion",
+  "orchestrator": "../../",
+  "created": "2026-07-12"
+}

@@ -1,0 +1,17 @@
+{
+  "type": "orchestrator",
+  "project_name": "seap-analytics",
+  "created": "2026-07-12",
+  "projects": [
+    {
+      "name": "ingestion",
+      "path": "apps/ingestion/",
+      "type": "worker"
+    },
+    {
+      "name": "web",
+      "path": "apps/web/",
+      "type": "frontend"
+    }
+  ]
+}
