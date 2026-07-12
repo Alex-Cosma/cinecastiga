@@ -1,5 +1,12 @@
 # Changelog: setup
 
+### 2026-07-12 - Phase 3 PLAN.md
+
+**Heartbeat uses postgres.js client directly, not drizzle-orm**
+- **What:** Heartbeat job queries via the `sql` client from `createDb()` instead of importing `drizzle-orm`.
+- **Why:** pnpm strict deps — drizzle-orm isn't a direct dependency of the ingestion app, and adding it just for one count query was unnecessary.
+- **Files:** `apps/ingestion/src/jobs/heartbeat.ts`
+
 ### 2026-07-12 - Phase 2 PLAN.md
 
 **Migrations own schema creation; docker init script removed**

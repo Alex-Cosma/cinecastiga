@@ -29,14 +29,15 @@
 ## Execution Progress
 
 ### Current Phase
-- Phase: 3 (pending planning)
-- Started: —
+- Phase: 3 (executed, awaiting review)
+- Started: 2026-07-12
 
 ### Completed Phases
 | Phase | Completed | Tasks | Deviations |
 |-------|-----------|-------|------------|
 | 1 — Workspace + infra | 2026-07-12 (approved) | 3/3 | none |
 | 2 — Shared packages | 2026-07-12 (approved) | 3/3 | 3 (logged) |
+| 3 — Ingestion app skeleton | 2026-07-12 (executed) | 3/3 | 1 (logged) |
 
 ---
 
