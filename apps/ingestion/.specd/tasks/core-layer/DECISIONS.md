@@ -69,6 +69,28 @@ Mirrors the bronze dead-letter pattern.
 **Rationale:** Resilience + observability without corrupting core. One weird
 2019 record must not halt a national dataset, nor vanish unlogged.
 
+### DEC-005: CPV seed — vendored EU CPV 2008 JSON asset + offline seed script
+
+**Date:** 2026-07-12
+**Status:** Active
+**Context:** `core.cpv_codes` needs the official 9,454-code CPV 2008 catalog with
+RO + EN names (RESEARCH.md §1). Source is the SIMAP `cpv_2008.xml`.
+**Decision:** Parse the EU XML **once** offline → commit a `cpv_2008.json` asset
+in `packages/db` → load it via a deterministic seed script (no build-time
+network). `revision="Rev.2"` constant; PK keeps the check digit (`NNNNNNNN-D`).
+**Rationale:** Offline, deterministic, reproducible; ~9.5k rows is trivial to
+vendor. No runtime dependency on ted.europa.eu availability.
+
+### DEC-006: Confirmed value + geo field semantics
+
+**Date:** 2026-07-12
+**Status:** Active
+**Decision:** (1) `estimated_value_ron` is the trustworthy RON figure on notices
+(use it, not `estimatedValueExport`). (2) Parsers read `nutsCodeItem.text` /
+`nutsCodeID` for county/NUTS and **ignore** the broken `nutsCode` scalar
+(`"System.Data.Entity.DynamicProxies…"` serialization leak).
+**Rationale:** User (domain expert) confirmed; matches live-data inspection.
+
 ---
 
 ## Decision Log
@@ -79,3 +101,5 @@ Mirrors the bronze dead-letter pattern.
 | DEC-002 | 2026-07-12 | Units: preserve raw + best-effort canonical map (null if unmapped) | Active |
 | DEC-003 | 2026-07-12 | Entities: 3-tier resolution (SICAP-id → CUI → name-suggestion) | Active |
 | DEC-004 | 2026-07-12 | Bad data: per-record quarantine, pipeline continues | Active |
+| DEC-005 | 2026-07-12 | CPV seed: vendored EU CPV 2008 JSON asset + offline seed script | Active |
+| DEC-006 | 2026-07-12 | estimated_value_ron trusted; read nutsCodeItem, ignore broken nutsCode | Active |
