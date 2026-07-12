@@ -16,6 +16,7 @@ export interface MartsReport {
   nationalStats: number;
   spendByType: number;
   spendByCpv: number;
+  spendByCounty: number;
   entityProfiles: number;
   topEntities: number;
   topPartners: number;
@@ -35,6 +36,7 @@ export async function runMarts(
     await q`
       truncate
         marts.national_stats, marts.spend_by_type, marts.spend_by_cpv,
+        marts.spend_by_county,
         marts.entity_profile, marts.entity_top_partners, marts.top_entities,
         marts.authority_concentration
     `;
@@ -152,6 +154,15 @@ export async function runMarts(
       from core.entities e where e.id = ep.entity_id
     `;
 
+    // ── spend_by_county (choropleth source, both roles) ─────────────────────
+    await q`
+      insert into marts.spend_by_county (county, role, n, total_ron)
+      select county, role, count(*)::int, sum(total_ron_full)
+      from marts.entity_profile
+      where county is not null and county <> ''
+      group by county, role
+    `;
+
     // ── top_entities (leaderboards per role) ────────────────────────────────
     await q`
       insert into marts.top_entities (role, rank, entity_id, total_ron_full, n_contracts)
@@ -210,6 +221,7 @@ export async function runMarts(
     const [ns] = await q`select count(*)::int c from marts.national_stats`;
     const [st] = await q`select count(*)::int c from marts.spend_by_type`;
     const [sc] = await q`select count(*)::int c from marts.spend_by_cpv`;
+    const [sct] = await q`select count(*)::int c from marts.spend_by_county`;
     const [ep] = await q`select count(*)::int c from marts.entity_profile`;
     const [te] = await q`select count(*)::int c from marts.top_entities`;
     const [tp] = await q`select count(*)::int c from marts.entity_top_partners`;
@@ -218,6 +230,7 @@ export async function runMarts(
       nationalStats: ns!.c as number,
       spendByType: st!.c as number,
       spendByCpv: sc!.c as number,
+      spendByCounty: sct!.c as number,
       entityProfiles: ep!.c as number,
       topEntities: te!.c as number,
       topPartners: tp!.c as number,
@@ -227,7 +240,7 @@ export async function runMarts(
 
   log(
     `marts rebuilt: national_stats=${report.nationalStats}, spend_by_type=${report.spendByType}, ` +
-      `spend_by_cpv=${report.spendByCpv}, ` +
+      `spend_by_cpv=${report.spendByCpv}, spend_by_county=${report.spendByCounty}, ` +
       `entity_profile=${report.entityProfiles}, top_entities=${report.topEntities}, ` +
       `top_partners=${report.topPartners}, concentration=${report.concentration}`,
   );

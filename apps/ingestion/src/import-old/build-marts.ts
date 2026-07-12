@@ -1,4 +1,5 @@
 import {
+  cpvTree,
   entityProfile,
   nationalStats,
   spendByCpv,
@@ -28,7 +29,28 @@ export interface BuildMartsResult {
   topEntities: number;
   spendByType: number;
   spendByCpv: number;
+  cpvTreeNodes: number;
+  spendByCounty: number;
   totalSpendRon: number;
+}
+
+/** Recursively flatten a nationalCpvDataSimplified node into cpv_tree rows. */
+function* flattenCpv(
+  node: Record<string, unknown>,
+  parentCode: string | null,
+  level: number,
+): Generator<typeof cpvTree.$inferInsert> {
+  const code = String(node["_id"]);
+  const children = (node["children"] as Record<string, unknown>[] | undefined) ?? [];
+  yield {
+    code,
+    parentCode,
+    level,
+    nameRo: (node["description"] as string | undefined) ?? null,
+    totalRon: (Number(node["total"]) || 0).toFixed(2),
+    nChildren: children.length,
+  };
+  for (const c of children) yield* flattenCpv(c, code, level + 1);
 }
 
 /** Sum a *TotalSpendingByType collection to sicapId → total RON. */
@@ -154,6 +176,28 @@ export async function buildMarts(
   }
   if (cpvRows.length > 0) await db.insert(spendByCpv).values(cpvRows);
 
+  // ── cpv_tree (full hierarchy, drill-down treemap source) ──────────────────
+  const treeRows: (typeof cpvTree.$inferInsert)[] = [];
+  for (const d of readBson(`${dir}/nationalCpvDataSimplified.bson`)) {
+    if (!/^\d{2}/.test(String(d["_id"]))) continue; // skip a possible "SEAP" super-root
+    for (const row of flattenCpv(d, null, 1)) treeRows.push(row);
+  }
+  for (let i = 0; i < treeRows.length; i += BATCH) {
+    await db.insert(cpvTree).values(treeRows.slice(i, i + BATCH)).onConflictDoNothing();
+  }
+
+  // ── spend_by_county (choropleth source, both roles) ───────────────────────
+  await sql`
+    insert into marts.spend_by_county (county, role, n, total_ron)
+    select county, role, count(*)::int, sum(total_ron_full)
+    from marts.entity_profile
+    where county is not null and county <> ''
+    group by county, role
+  `;
+  const [sbc] = (await sql`select count(*)::int c from marts.spend_by_county`) as unknown as {
+    c: number;
+  }[];
+
   // ── national_stats (headline surface) ─────────────────────────────────────
   const [supCount] = (await sql`
     select count(*)::int c from marts.entity_profile where role = 'supplier'
@@ -172,6 +216,8 @@ export async function buildMarts(
     topEntities: te!.c,
     spendByType: typeRows.length,
     spendByCpv: cpvRows.length,
+    cpvTreeNodes: treeRows.length,
+    spendByCounty: sbc!.c,
     totalSpendRon: totalSpend,
   };
 }

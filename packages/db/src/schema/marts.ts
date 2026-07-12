@@ -67,6 +67,46 @@ export const spendByCpv = martsSchema.table(
 );
 
 /**
+ * Full CPV hierarchy with rolled-up spend per node — the drill-down treemap
+ * source. `level` 1 = division (2-digit root, parent NULL) → 5 = category.
+ * Query `where parent_code is null` for the top ring, then by `parent_code` to
+ * drill. Populated from the 2020 dump's nested nationalCpvDataSimplified; the
+ * live build derives it from core CPV rollups (TODO).
+ */
+export const cpvTree = martsSchema.table(
+  "cpv_tree",
+  {
+    code: text("code").primaryKey(),
+    parentCode: text("parent_code"),
+    level: integer("level").notNull(),
+    nameRo: text("name_ro"),
+    totalRon: numeric("total_ron"),
+    nChildren: integer("n_children").notNull().default(0),
+  },
+  (t) => [
+    index("cpv_tree_parent_idx").on(t.parentCode),
+    index("cpv_tree_level_total_idx").on(t.level, t.totalRon),
+  ],
+);
+
+/**
+ * Spend by Romanian county, per role — the choropleth source. Authority-side
+ * shows where public money is contracted from; supplier-side where it is won.
+ * County is the denormalized `entity_profile.county` (diacritic-free SICAP form).
+ */
+export const spendByCounty = martsSchema.table(
+  "spend_by_county",
+  {
+    county: text("county").notNull(),
+    /** 'supplier' | 'authority' */
+    role: text("role").notNull(),
+    n: integer("n").notNull(),
+    totalRon: numeric("total_ron"),
+  },
+  (t) => [primaryKey({ columns: [t.county, t.role] })],
+);
+
+/**
  * Per-entity aggregate, one row per (entity, role). An entity can be both a
  * supplier and an authority → two rows. Consortia (DEC-006): supplier totals
  * carry both `total_ron_full` (each member credited the whole contract) and
