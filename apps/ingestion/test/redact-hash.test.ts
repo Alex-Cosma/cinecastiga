@@ -37,6 +37,54 @@ describe("redactPayload", () => {
     expect(redacted["directAcquisitionID"]).toBe(7);
   });
 
+  it("removes compound contact keys nested in list items (r2 regression)", () => {
+    // Real leak: `assignedUserEmail` inside DA `directAcquisitionItems[]`
+    // survived r1's anchored `^email$` pattern.
+    const payload = {
+      directAcquisitionItems: [
+        {
+          catalogItemName: "Reparatii instalatie",
+          itemMeasureUnit: "bucata",
+          assignedUserEmail: "operator@example.test",
+          catalogItemPrice: 2892.56,
+        },
+      ],
+      supplierMobile: "0722000000",
+      contact: "front desk",
+    };
+
+    const redacted = redactPayload(payload, "da-detail:v1") as Record<
+      string,
+      unknown
+    >;
+    expect(redacted).not.toHaveProperty("supplierMobile");
+    expect(redacted).not.toHaveProperty("contact");
+    const item = (redacted["directAcquisitionItems"] as Record<string, unknown>[])[0]!;
+    expect(item).not.toHaveProperty("assignedUserEmail");
+    expect(item["catalogItemName"]).toBe("Reparatii instalatie");
+    expect(item["itemMeasureUnit"]).toBe("bucata");
+    expect(item["catalogItemPrice"]).toBe(2892.56);
+    // Belt-and-suspenders: no email string survives anywhere.
+    expect(JSON.stringify(redacted)).not.toContain("@");
+  });
+
+  it("scrubs emails embedded in free-text values but keeps the field", () => {
+    const payload = {
+      directAcquisitionDescription:
+        "Ofertele se transmit la adresa de email: seap.cj@calarasi.ro pana la data limita.",
+      companyName: "S.C. ALL@GIS MEHEDINȚI S.R.L.", // @ but no dot-TLD — keep
+    };
+    const redacted = redactPayload(payload, "da-detail:v1") as Record<
+      string,
+      unknown
+    >;
+    expect(redacted["directAcquisitionDescription"]).toContain("[email redactat]");
+    expect(redacted["directAcquisitionDescription"]).not.toContain("@calarasi.ro");
+    expect(redacted["directAcquisitionDescription"]).toContain("pana la data limita");
+    // Company name with a bare @ is not an email — must survive untouched.
+    expect(redacted["companyName"]).toBe("S.C. ALL@GIS MEHEDINȚI S.R.L.");
+  });
+
   it("is idempotent", () => {
     const payload = { a: 1, email: "x", nested: { phone: "y", b: 2 } };
     const once = redactPayload(payload, "v1");
