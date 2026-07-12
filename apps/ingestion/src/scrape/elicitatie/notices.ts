@@ -203,25 +203,27 @@ export async function scrapeNoticesWindow(
 
         const details = await Promise.all(
           envelope.items.map(async (item) => {
-            // eForms (v2) notices 400 on the classic detail endpoint —
-            // archived list-only; v2 detail mapping is a follow-up task.
-            if (item.sysNoticeVersionId === 2) {
-              return { item, detail: null, contracts: null, deferred: true };
-            }
+            // eForms (v2) notices 400 on the classic detail endpoint — v2
+            // detail mapping is a follow-up task. The contracts endpoint is a
+            // separate service and works for v2 too (live-verified), so award
+            // winners/values are fetched regardless of notice version.
+            const isV2 = item.sysNoticeVersionId === 2;
             try {
-              const detail = await getNoticeDetail(client, noticeIdOf(item));
+              const detail = isV2
+                ? null
+                : (await getNoticeDetail(client, noticeIdOf(item))).data;
               const contracts =
                 opts.family === "awards"
                   ? await fetchAllContracts(client, noticeIdOf(item))
                   : null;
-              return { item, detail: detail.data, contracts, deferred: false };
+              return { item, detail, contracts, deferred: isV2 };
             } catch (err) {
               // Dead-letter the record, don't fail the day (transient retries
               // already happened inside the client).
               log(
-                `${source}: detail fetch failed for ${noticeIdOf(item)}: ${err instanceof Error ? err.message : err}`,
+                `${source}: detail/contracts fetch failed for ${noticeIdOf(item)}: ${err instanceof Error ? err.message : err}`,
               );
-              return { item, detail: null, contracts: null, deferred: false };
+              return { item, detail: null, contracts: null, deferred: isV2 };
             }
           }),
         );
