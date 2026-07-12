@@ -34,6 +34,10 @@ describe("canonicalCui", () => {
     expect(bare).toEqual({ cui: "21255449", valid: true });
     expect(withRo.cui).toBe(bare.cui); // dedup to one key
   });
+  it("strips the pre-2007 single-R VAT prefix", () => {
+    expect(canonicalCui("R361684")).toEqual({ cui: "361684", valid: true });
+    expect(canonicalCui("R 16868757").cui).toBe("16868757");
+  });
   it("strips whitespace/punctuation and leading zeros", () => {
     expect(canonicalCui(" ro 21255449 ").cui).toBe("21255449");
     expect(canonicalCui("0021255449").cui).toBe("21255449");
@@ -93,6 +97,20 @@ describe("parseEntityString", () => {
     expect(parseEntityString("29074847 Gradinita PP nr. 4 Lugoj")).toEqual({
       cuiRaw: "29074847",
       name: "Gradinita PP nr. 4 Lugoj",
+    });
+  });
+  it("parses 'RO <space> CUI - Name' (glued-vs-spaced variant)", () => {
+    expect(
+      parseEntityString("RO 14056826 - Societatea Nationala de Gaze Naturale Romgaz S.A."),
+    ).toEqual({
+      cuiRaw: "RO14056826",
+      name: "Societatea Nationala de Gaze Naturale Romgaz S.A.",
+    });
+  });
+  it("parses 'CUI - Name' (dash separator, no leading dash in name)", () => {
+    expect(parseEntityString("4291638 - COMUNA CRISTOLȚ")).toEqual({
+      cuiRaw: "4291638",
+      name: "COMUNA CRISTOLȚ",
     });
   });
   it("treats a non-CUI-led string as all name", () => {

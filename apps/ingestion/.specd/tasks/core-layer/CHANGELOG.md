@@ -68,3 +68,16 @@
   94% da_items canonicalized; compound/ambiguous tail left null (for curation).
 - End-to-end spot-check verified (INGRID DA joins supplier/authority/CPV;
   multi-winner contracts resolve). Idempotent: incremental re-run processes 0.
+
+## Phase 3b — Tier-3 fuzzy suggestions + parser hardening (2026-07-12)
+
+- `normalize/suggestions.ts`: pg_trgm self-join over entities, bands
+  (≥0.85 strong / 0.55–0.85 weak), negative rules (differing `nr N` ordinal
+  suppresses; two different valid CUIs never suggested), writes
+  entity_name_suggestions (open, never auto-merged). `normalize --suggest[-only]`.
+- Tier-3 immediately surfaced a real parser bug: `parseEntityString` missed
+  "RO <space> CUI - Name" and the pre-2007 single-"R" VAT prefix, so those CUIs
+  never extracted → entities didn't dedup (27 Romgaz/Banca/etc. duplicates).
+- Fixed parseEntityString regex + canonicalCui (strip "RO" or single "R").
+- Result: entities 822→793, valid-CUI 731→790 (99.6%), invalid 91→3, dup CUIs
+  still 0, suggestions 90→1 (the one genuine same-name/bad-CUI pair to review).
