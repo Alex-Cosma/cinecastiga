@@ -1,0 +1,15 @@
+{
+  "task_name": "setup",
+  "project_name": "ingestion",
+  "created": "2026-07-12",
+  "stage": "execution",
+  "discussion_sessions": 0,
+  "decisions_count": 0,
+  "phases": {
+    "total": 3,
+    "current": 1,
+    "current_status": "pending",
+    "completed": 0,
+    "phase_start_commit": null
+  }
+}
