@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import SearchBox from "./SearchBox";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -22,9 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/domenii">Domenii</Link>
               <Link href="/harta">Hartă</Link>
             </nav>
-            <form className="header-search" action="/cauta" method="get">
-              <input type="search" name="q" placeholder="Caută entitate sau CUI…" aria-label="Caută" />
-            </form>
+            <SearchBox />
           </div>
         </header>
         <div className="snapshot-banner">

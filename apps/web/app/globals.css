@@ -42,11 +42,29 @@ a:hover { text-decoration: underline; }
 .nav { display: flex; gap: 18px; margin-left: auto; }
 .nav a { color: var(--muted); font-weight: 600; font-size: 14px; }
 .nav a:hover { color: var(--accent); text-decoration: none; }
+.header-search { position: relative; }
 .header-search input {
   border: 1px solid var(--line); border-radius: 999px; padding: 7px 14px;
-  font-size: 14px; width: 220px; background: var(--bg); color: var(--ink);
+  font-size: 14px; width: 240px; background: var(--bg); color: var(--ink);
 }
 .header-search input:focus { outline: none; border-color: var(--accent); }
+.search-dropdown {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 40;
+  width: 360px; max-width: 80vw; margin: 0; padding: 4px; list-style: none;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+}
+.search-dropdown li {
+  display: flex; flex-direction: column; gap: 1px; padding: 8px 12px;
+  border-radius: 6px; cursor: pointer;
+}
+.search-dropdown li.active { background: var(--accent-soft); }
+.sd-name { font-weight: 600; font-size: 14px; color: var(--ink); }
+.sd-meta { font-size: 12px; color: var(--muted); }
+.search-dropdown li.search-all {
+  color: var(--accent); font-weight: 600; font-size: 13px;
+  border-top: 1px solid var(--line); border-radius: 0 0 6px 6px; margin-top: 2px;
+}
 
 /* Search page */
 .search-form { display: flex; gap: 10px; margin-bottom: 20px; max-width: 620px; }
