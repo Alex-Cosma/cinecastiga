@@ -193,6 +193,150 @@ export async function getSpendByCounty(role: Role): Promise<CountySpend[]> {
   }));
 }
 
+export interface EntityFlagRow {
+  role: Role;
+  name: string | null;
+  county: string | null;
+  cri: number;
+  nFlags: number;
+  nDas: number;
+  totalRon: number;
+  flags: string[];
+}
+
+/** Per-role red-flag summary for an entity (may be empty). */
+export async function getEntityFlags(entityId: string): Promise<EntityFlagRow[]> {
+  const sql = db();
+  const id = /^\d+$/.test(entityId) ? entityId : "0";
+  const rows = (await sql`
+    select role, name_display, county, cri, n_flags, n_das, total_ron, flags
+    from marts.entity_flags where entity_id = ${id} and n_flags > 0
+    order by cri desc
+  `) as unknown as {
+    role: Role;
+    name_display: string | null;
+    county: string | null;
+    cri: string | null;
+    n_flags: number;
+    n_das: number;
+    total_ron: string | null;
+    flags: string[] | null;
+  }[];
+  return rows.map((r) => ({
+    role: r.role,
+    name: r.name_display,
+    county: r.county,
+    cri: Number(r.cri ?? 0),
+    nFlags: Number(r.n_flags),
+    nDas: Number(r.n_das),
+    totalRon: Number(r.total_ron ?? 0),
+    flags: r.flags ?? [],
+  }));
+}
+
+export interface RiskEntity {
+  entityId: string;
+  name: string | null;
+  county: string | null;
+  cri: number;
+  nFlags: number;
+  nDas: number;
+  totalRon: number;
+  flags: string[];
+}
+
+/** Highest-CRI entities for a role (risk leaderboard). */
+export async function getRiskLeaderboard(role: Role, limit = 25): Promise<RiskEntity[]> {
+  const sql = db();
+  const minDas = role === "authority" ? 30 : 10;
+  const rows = (await sql`
+    select entity_id, name_display, county, cri, n_flags, n_das, total_ron, flags
+    from marts.entity_flags
+    where role = ${role} and n_das >= ${minDas} and cri > 0
+    order by cri desc, total_ron desc nulls last
+    limit ${limit}
+  `) as unknown as {
+    entity_id: string;
+    name_display: string | null;
+    county: string | null;
+    cri: string | null;
+    n_flags: number;
+    n_das: number;
+    total_ron: string | null;
+    flags: string[] | null;
+  }[];
+  return rows.map((r) => ({
+    entityId: String(r.entity_id),
+    name: r.name_display,
+    county: r.county,
+    cri: Number(r.cri ?? 0),
+    nFlags: Number(r.n_flags),
+    nDas: Number(r.n_das),
+    totalRon: Number(r.total_ron ?? 0),
+    flags: r.flags ?? [],
+  }));
+}
+
+export interface FlagInstance {
+  flagCode: string;
+  entityId: string | null;
+  entityName: string | null;
+  entityCounty: string | null;
+  partnerId: string | null;
+  partnerName: string | null;
+  severity: number;
+  totalRon: number;
+  period: string | null;
+  evidence: Record<string, unknown> | null;
+}
+
+/** Browsable flag instances of one type, most significant first. */
+export async function getFlagInstances(flagCode: string, limit = 50): Promise<FlagInstance[]> {
+  const sql = db();
+  const rows = (await sql`
+    select flag_code, entity_id, entity_name, entity_county, partner_id, partner_name,
+           severity, total_ron, period, evidence
+    from marts.flag_instances
+    where flag_code = ${flagCode}
+    order by total_ron desc nulls last, severity desc nulls last
+    limit ${limit}
+  `) as unknown as {
+    flag_code: string;
+    entity_id: string | null;
+    entity_name: string | null;
+    entity_county: string | null;
+    partner_id: string | null;
+    partner_name: string | null;
+    severity: string | null;
+    total_ron: string | null;
+    period: string | null;
+    evidence: Record<string, unknown> | null;
+  }[];
+  return rows.map((r) => ({
+    flagCode: r.flag_code,
+    entityId: r.entity_id ? String(r.entity_id) : null,
+    entityName: r.entity_name,
+    entityCounty: r.entity_county,
+    partnerId: r.partner_id ? String(r.partner_id) : null,
+    partnerName: r.partner_name,
+    severity: Number(r.severity ?? 0),
+    totalRon: Number(r.total_ron ?? 0),
+    period: r.period,
+    evidence: r.evidence,
+  }));
+}
+
+/** Count of instances per flag type (for the /semnale index). */
+export async function getFlagCounts(): Promise<Record<string, number>> {
+  const sql = db();
+  const rows = (await sql`
+    select flag_code, count(*)::int c from marts.flag_instances group by flag_code
+  `) as unknown as { flag_code: string; c: number }[];
+  const out: Record<string, number> = {};
+  for (const r of rows) out[r.flag_code] = Number(r.c);
+  return out;
+}
+
 export interface EntityRole {
   role: Role;
   totalRonFull: number;

@@ -14,9 +14,16 @@
 - [x] Phase 3 — 6 DA flag rules computing on real data (was 7; da_estimate_match
       DROPPED — 96% trigger = process norm). Counts: split 9463, concentration
       535, dependence 26552, rapid 407934, round 13255, year_end 1560.
-- [ ] Phase 4 — CRI + marts (entity_flags, flag_instances, fill authority_concentration)
-- [ ] Phase 5 — web surfaces (/semnale, risk leaderboard, profile badges, /metodologie)
+- [x] Phase 4 — CRI + marts: entity_flags (1.30M, binary CRI), flag_instances
+      (39,110 browsable), filled authority_concentration (14,637) +
+      entity_top_partners (1.35M). CRI gradient sane (most 0–0.2, tail to 0.8).
+- [x] Phase 5 — web: /semnale (risk leaderboard + flag browser), /metodologie,
+      profile flag badges + CRI, resilient profile (renders DA-only entities).
 - [ ] Phase 6 — award engine (dormant)
+
+## Perf note
+entity_flags CRI build must use pre-aggregated JOINs, NOT per-row correlated
+subqueries (the first version ran 35+ min on 200k entities; join version is fast).
 
 ## Findings (validated on real data)
 - da_estimate_match dropped (closing==estimate is the DA norm, 96%).

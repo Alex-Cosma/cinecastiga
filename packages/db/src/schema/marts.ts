@@ -1,5 +1,6 @@
 import {
   bigint,
+  jsonb,
   index,
   integer,
   numeric,
@@ -186,4 +187,60 @@ export const authorityConcentration = martsSchema.table(
     totalRon: numeric("total_ron"),
   },
   (t) => [index("authority_concentration_hhi_idx").on(t.hhi)],
+);
+
+/**
+ * Per-entity red-flag summary (red-flags Phase 4). One row per (entity, role).
+ * `cri` is the binary Corruption Risk Index — share of *applicable* flags
+ * triggered for that role (DEC-003). `flags` carries the triggered codes +
+ * evidence for display. Denormalized name/county so the web reads marts only.
+ */
+export const entityFlags = martsSchema.table(
+  "entity_flags",
+  {
+    entityId: bigint("entity_id", { mode: "bigint" }).notNull(),
+    /** 'supplier' | 'authority' */
+    role: text("role").notNull(),
+    nameDisplay: text("name_display"),
+    county: text("county"),
+    nDas: integer("n_das").notNull().default(0),
+    totalRon: numeric("total_ron"),
+    /** 0–1 binary CRI. */
+    cri: numeric("cri"),
+    /** Distinct flag types triggered. */
+    nFlags: integer("n_flags").notNull().default(0),
+    /** [{ code, severity, evidence }] for the triggered flags. */
+    flags: jsonb("flags"),
+  },
+  (t) => [
+    primaryKey({ columns: [t.entityId, t.role] }),
+    index("entity_flags_role_cri_idx").on(t.role, t.cri),
+  ],
+);
+
+/**
+ * Browsable red-flag instances for the /semnale explorer (red-flags Phase 4).
+ * Entity- and pair-level flags plus the most severe per-DA examples, denormalized
+ * with names/county and sortable by severity/value.
+ */
+export const flagInstances = martsSchema.table(
+  "flag_instances",
+  {
+    id: bigint("id", { mode: "bigint" }).primaryKey(),
+    flagCode: text("flag_code").notNull(),
+    subjectType: text("subject_type").notNull(),
+    entityId: bigint("entity_id", { mode: "bigint" }),
+    entityName: text("entity_name"),
+    entityCounty: text("entity_county"),
+    partnerId: bigint("partner_id", { mode: "bigint" }),
+    partnerName: text("partner_name"),
+    severity: numeric("severity"),
+    totalRon: numeric("total_ron"),
+    period: text("period"),
+    evidence: jsonb("evidence"),
+  },
+  (t) => [
+    index("flag_instances_code_sev_idx").on(t.flagCode, t.severity),
+    index("flag_instances_entity_idx").on(t.entityId),
+  ],
 );
