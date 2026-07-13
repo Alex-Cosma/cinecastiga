@@ -1,0 +1,1 @@
+ALTER TABLE "marts"."entity_flags" ADD COLUMN "cui_canonical" text;

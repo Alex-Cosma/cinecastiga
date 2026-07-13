@@ -14,6 +14,7 @@ export interface FlagMartsReport {
   entityTopPartners: number;
   entityFlags: number;
   flagInstances: number;
+  daTransactions: number;
 }
 
 async function bound(sql: DbSql): Promise<number> {
@@ -81,7 +82,7 @@ export async function runFlagMarts(
     await q`truncate marts.entity_flags`;
     await q`
       insert into marts.entity_flags
-        (entity_id, role, name_display, county, n_das, total_ron, cri, n_flags, flags)
+        (entity_id, role, name_display, cui_canonical, county, n_das, total_ron, cri, n_flags, flags)
       with base as (
         select authority_entity_id eid, 'authority' role, count(*) n, sum(closing_value) total
         from core.direct_acquisitions
@@ -135,7 +136,7 @@ export async function runFlagMarts(
           case when role = 'authority' then ${APPLICABLE.authority}::int else ${APPLICABLE.supplier}::int end applicable
         from scored
       )
-      select f.eid, f.role, e.name_display, e.county, f.n, f.total,
+      select f.eid, f.role, e.name_display, e.cui_canonical, e.county, f.n, f.total,
         round(coalesce(array_length(f.codes,1),0)::numeric / f.applicable, 4),
         coalesce(array_length(f.codes,1),0),
         to_jsonb(f.codes)
@@ -173,19 +174,48 @@ export async function runFlagMarts(
       where f.rn <= 500
     `;
 
+    // ── da_transactions (per-DA investigative read model) ───────────────────
+    await q`truncate marts.da_transactions`;
+    await q`
+      insert into marts.da_transactions
+        (sicap_da_id, da_code, authority_id, authority_name, supplier_id, supplier_name,
+         county, cpv_code, cpv_name, acquisition_type, estimated_value_ron, closing_value,
+         publication_date, finalization_date, gap_minutes, da_flags)
+      select da.sicap_da_id, da.da_code,
+        da.authority_entity_id, a.name_display, da.supplier_entity_id, s.name_display,
+        a.county, da.cpv_code, cpv.name_ro, da.acquisition_type,
+        da.estimated_value_ron, da.closing_value,
+        to_char(da.publication_date, 'YYYY-MM-DD HH24:MI'),
+        to_char(da.finalization_date, 'YYYY-MM-DD HH24:MI'),
+        case when da.publication_date is not null and da.finalization_date is not null
+              and da.finalization_date >= da.publication_date
+          then round(extract(epoch from (da.finalization_date - da.publication_date))/60)::int end,
+        fl.codes
+      from core.direct_acquisitions da
+      left join core.entities a on a.id = da.authority_entity_id
+      left join core.entities s on s.id = da.supplier_entity_id
+      left join core.cpv_codes cpv on cpv.code = da.cpv_code
+      left join (
+        select subject_id, array_agg(flag_code) codes
+        from core.flags where subject_type = 'da' group by subject_id
+      ) fl on fl.subject_id = da.id
+    `;
+
     const [ac] = await q`select count(*)::int c from marts.authority_concentration`;
     const [tp] = await q`select count(*)::int c from marts.entity_top_partners`;
     const [ef] = await q`select count(*)::int c from marts.entity_flags`;
     const [fi] = await q`select count(*)::int c from marts.flag_instances`;
+    const [dt] = await q`select count(*)::int c from marts.da_transactions`;
     log(
       `flag marts: authority_concentration=${ac!.c} entity_top_partners=${tp!.c} ` +
-        `entity_flags=${ef!.c} flag_instances=${fi!.c}`,
+        `entity_flags=${ef!.c} flag_instances=${fi!.c} da_transactions=${dt!.c}`,
     );
     return {
       authorityConcentration: ac!.c as number,
       entityTopPartners: tp!.c as number,
       entityFlags: ef!.c as number,
       flagInstances: fi!.c as number,
+      daTransactions: dt!.c as number,
     };
   });
 }
