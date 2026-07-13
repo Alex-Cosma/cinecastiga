@@ -16,7 +16,10 @@
     "normalize": "tsx src/scripts/normalize.ts",
     "marts": "tsx src/scripts/marts.ts",
     "import-old": "tsx src/scripts/import-old.ts",
-    "index-search": "tsx src/scripts/index-search.ts"
+    "index-search": "tsx src/scripts/index-search.ts",
+    "import-das": "tsx src/scripts/import-das.ts",
+    "seed-thresholds": "tsx src/scripts/seed-thresholds.ts",
+    "flags": "tsx src/scripts/flags.ts"
   },
   "dependencies": {
     "@seap/db": "workspace:*",
