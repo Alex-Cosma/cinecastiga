@@ -19,7 +19,8 @@
     "index-search": "tsx src/scripts/index-search.ts",
     "import-das": "tsx src/scripts/import-das.ts",
     "seed-thresholds": "tsx src/scripts/seed-thresholds.ts",
-    "flags": "tsx src/scripts/flags.ts"
+    "flags": "tsx src/scripts/flags.ts",
+    "reset-derived": "tsx src/scripts/reset-derived.ts"
   },
   "dependencies": {
     "@seap/db": "workspace:*",
