@@ -15,6 +15,16 @@ export interface HttpClientOptions {
   /** Minimum delay between request starts, per client. */
   minDelayMs?: number;
   maxRetries?: number;
+  /** Base for exponential backoff (base·2^n ± jitter). Raise for a fragile server. */
+  backoffBaseMs?: number;
+  /**
+   * Circuit breaker: after this many CONSECUTIVE server failures (5xx or network
+   * error), stop hitting the server — subsequent requests fail fast with a
+   * CircuitOpenError until the cooldown elapses. Protects a struggling upstream
+   * (and us) from a retry storm. 0 disables. */
+  circuitThreshold?: number;
+  /** How long the circuit stays open before the next request is allowed through. */
+  circuitCooldownMs?: number;
   /** Baseline headers sent on every request (e.g. Referer — WAF requires same-site). */
   defaultHeaders?: Record<string, string>;
 }
@@ -38,7 +48,28 @@ export class ScrapeError extends Error {
   }
 }
 
+/**
+ * Thrown when the circuit breaker is open — the upstream has returned repeated
+ * server errors, so we deliberately stop sending requests. Callers should treat
+ * this as "halt the run", not "retry".
+ */
+export class CircuitOpenError extends ScrapeError {
+  constructor(url: string, public readonly openUntil: number) {
+    super(
+      `Circuit open — upstream unhealthy; stopped hitting ${new URL(url).origin}`,
+      url,
+      null,
+      0,
+    );
+    this.name = "CircuitOpenError";
+  }
+}
+
 const RETRYABLE_STATUS = new Set([403, 408, 429, 500, 502, 503, 504]);
+/** Failures that indicate the SERVER is unhealthy (feed the circuit breaker). */
+function isServerFailure(status: number | null): boolean {
+  return status === null || status >= 500;
+}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -94,6 +125,9 @@ export function createHttpClient(opts: HttpClientOptions): HttpClient {
     maxConcurrency = 5,
     minDelayMs = 500,
     maxRetries = 3,
+    backoffBaseMs = 1000,
+    circuitThreshold = 5,
+    circuitCooldownMs = 60_000,
     defaultHeaders = {},
   } = opts;
 
@@ -103,6 +137,26 @@ export function createHttpClient(opts: HttpClientOptions): HttpClient {
 
   const semaphore = new Semaphore(maxConcurrency);
   let lastRequestAt = 0;
+
+  // Circuit-breaker state, shared across all requests from this client.
+  let consecutiveServerFailures = 0;
+  let circuitOpenUntil = 0;
+  const circuitOn = circuitThreshold > 0;
+
+  function noteServerFailure(): void {
+    if (!circuitOn) return;
+    consecutiveServerFailures += 1;
+    if (consecutiveServerFailures >= circuitThreshold) {
+      circuitOpenUntil = Date.now() + circuitCooldownMs;
+    }
+  }
+  function noteSuccess(): void {
+    consecutiveServerFailures = 0;
+    circuitOpenUntil = 0;
+  }
+  function circuitIsOpen(): boolean {
+    return circuitOn && Date.now() < circuitOpenUntil;
+  }
 
   async function throttle(): Promise<void> {
     const now = Date.now();
@@ -118,10 +172,14 @@ export function createHttpClient(opts: HttpClientOptions): HttpClient {
     init?: RequestInit,
   ): Promise<FetchResult<T>> {
     const url = new URL(path, baseUrl).toString();
+    // Fail fast while the upstream is deemed unhealthy — do not add load.
+    if (circuitIsOpen()) throw new CircuitOpenError(url, circuitOpenUntil);
+
     let lastStatus: number | null = null;
     let retryAfterMs: number | null = null;
 
     for (let attempt = 1; attempt <= maxRetries + 1; attempt += 1) {
+      let serverFailed = false;
       await semaphore.acquire();
       try {
         await throttle();
@@ -142,14 +200,17 @@ export function createHttpClient(opts: HttpClientOptions): HttpClient {
             },
           });
         } catch {
-          lastStatus = null; // network error — retryable
-          continue;
+          lastStatus = null; // network error — a server failure
+          serverFailed = true;
+          noteServerFailure();
+          throw undefined; // routed below to backoff/circuit handling
         }
 
         lastStatus = response.status;
         retryAfterMs = parseRetryAfterMs(response.headers.get("retry-after"));
         if (response.ok) {
           const data = (await response.json()) as T;
+          noteSuccess();
           return { data, status: response.status, url, fetchedAt: new Date() };
         }
         if (!RETRYABLE_STATUS.has(response.status)) {
@@ -160,17 +221,26 @@ export function createHttpClient(opts: HttpClientOptions): HttpClient {
             attempt,
           );
         }
+        if (isServerFailure(response.status)) {
+          serverFailed = true;
+          noteServerFailure();
+        }
+      } catch (err) {
+        // Re-throw real errors; `undefined` is the network-error sentinel above.
+        if (err !== undefined) throw err;
       } finally {
         semaphore.release();
       }
 
+      // A run of server errors tripped the breaker → stop hammering immediately.
+      if (serverFailed && circuitIsOpen()) {
+        throw new CircuitOpenError(url, circuitOpenUntil);
+      }
       if (attempt <= maxRetries) {
-        // Exponential backoff with jitter: 1s, 2s, 4s... ±25%.
-        // A server-sent Retry-After overrides when longer.
-        const base = 1000 * 2 ** (attempt - 1);
+        // Exponential backoff with jitter (base·2^n ±25%); Retry-After wins if longer.
+        const base = backoffBaseMs * 2 ** (attempt - 1);
         const jitter = base * (Math.random() * 0.5 - 0.25);
-        const backoff = base + jitter;
-        await sleep(Math.max(backoff, retryAfterMs ?? 0));
+        await sleep(Math.max(base + jitter, retryAfterMs ?? 0));
       }
     }
 

@@ -12,6 +12,13 @@ import { scrapeDaWindow } from "../scrape/elicitatie/direct-acquisitions.js";
  *
  *   SCRAPE_UA="seap-analytics/0.1 (contact: you@x)" \
  *   pnpm --filter ingestion scrape --family tenders --start 2026-07-09 --end 2026-07-10
+ *
+ * Server-protection knobs (env) — use gentle values for a fragile/backfill run:
+ *   SCRAPE_CONCURRENCY=1 SCRAPE_MIN_DELAY_MS=1000   # ~1 req/s, single-flight
+ *   SCRAPE_BACKOFF_BASE_MS=5000                     # slow, long backoff on errors
+ *   SCRAPE_CIRCUIT_THRESHOLD=3                      # halt after 3 consecutive 5xx
+ * The circuit breaker (on by default) stops the run when the upstream returns
+ * repeated server errors, so we never pile onto a struggling SEAP.
  */
 
 function usage(): never {

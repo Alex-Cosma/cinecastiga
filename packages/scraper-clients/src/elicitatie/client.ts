@@ -18,6 +18,9 @@ export interface ElicitatieClientOptions {
   maxConcurrency?: number;
   minDelayMs?: number;
   maxRetries?: number;
+  backoffBaseMs?: number;
+  circuitThreshold?: number;
+  circuitCooldownMs?: number;
   /** Test seam: inject a prebuilt HttpClient (mock server). */
   httpClient?: HttpClient;
 }
@@ -39,6 +42,10 @@ export function createElicitatieClient(
       maxConcurrency: opts.maxConcurrency ?? 8,
       minDelayMs: opts.minDelayMs ?? 120,
       maxRetries: opts.maxRetries ?? 3,
+      backoffBaseMs: opts.backoffBaseMs ?? 1000,
+      // Circuit breaker on by default: stop after 5 consecutive server failures.
+      circuitThreshold: opts.circuitThreshold ?? 5,
+      circuitCooldownMs: opts.circuitCooldownMs ?? 60_000,
       defaultHeaders: {
         referer: opts.referer ?? DEFAULT_REFERER,
         // Must match the apex host — the WAF 403s a www Origin (live-verified)
