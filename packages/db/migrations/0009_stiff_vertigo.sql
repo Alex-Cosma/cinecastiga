@@ -1,0 +1,1 @@
+ALTER TABLE "core"."direct_acquisitions" ALTER COLUMN "raw_id" DROP NOT NULL;

@@ -307,8 +307,9 @@ export const directAcquisitions = coreSchema.table(
   {
     id: bigserial("id", { mode: "bigint" }).primaryKey(),
     /** Provenance: raw doc that last populated this row (not unique — list AND
-     * detail describe the same DA and both upsert here by sicap_da_id). */
-    rawId: bigint("raw_id", { mode: "bigint" }).notNull(),
+     * detail describe the same DA and both upsert here by sicap_da_id). NULL for
+     * rows imported outside the scrape pipeline (e.g. the 2020 dump backfill). */
+    rawId: bigint("raw_id", { mode: "bigint" }),
     /** uniqueIdentificationCode, e.g. 'DA40761319'. */
     daCode: text("da_code"),
     /** SICAP directAcquisitionId — natural key merging list + detail. */
@@ -397,3 +398,55 @@ export const normalizeWatermarks = coreSchema.table("normalize_watermarks", {
     .notNull()
     .defaultNow(),
 });
+
+/**
+ * Red-flag store (red-flags DEC-005). One row per (subject, flag_code) — subject
+ * is polymorphic: 'da' → direct_acquisitions.id; 'authority'/'supplier' →
+ * entities.id; 'pair' → subject_id = authority entity, partner_id = supplier
+ * entity. `triggered` is the binary CRI signal; `severity` (0–1) is for sorting
+ * and detail only. `evidence` carries the numbers behind the flag. Recomputed by
+ * truncate + rebuild from core, stamped with `methodology_version`.
+ */
+export const flags = coreSchema.table(
+  "flags",
+  {
+    id: bigserial("id", { mode: "bigint" }).primaryKey(),
+    /** 'da' | 'authority' | 'supplier' | 'pair' */
+    subjectType: text("subject_type").notNull(),
+    subjectId: bigint("subject_id", { mode: "bigint" }).notNull(),
+    /** Supplier entity for 'pair' flags; NULL otherwise. */
+    partnerId: bigint("partner_id", { mode: "bigint" }),
+    /** 'da_split' | 'da_concentration' | 'da_dependence' | 'da_rapid' | … */
+    flagCode: text("flag_code").notNull(),
+    /** Calendar year or 'all'; NULL when not period-scoped. */
+    period: text("period"),
+    triggered: boolean("triggered").notNull(),
+    severity: real("severity"),
+    evidence: jsonb("evidence"),
+    methodologyVersion: text("methodology_version").notNull(),
+  },
+  (t) => [
+    index("flags_subject_idx").on(t.subjectType, t.subjectId),
+    index("flags_code_idx").on(t.flagCode, t.triggered),
+    index("flags_severity_idx").on(t.flagCode, t.severity),
+  ],
+);
+
+/**
+ * Date-aware thresholds (red-flags DEC-006). Legal + statistical cutoffs keyed by
+ * a name and a validity window, so a rule reads the value applicable to each
+ * transaction's date. DA ceilings changed over the years — never hardcode.
+ */
+export const riskThresholds = coreSchema.table(
+  "risk_thresholds",
+  {
+    /** e.g. 'da_ceiling_goods_services' | 'da_ceiling_works' | 'da_rapid_hours'. */
+    key: text("key").notNull(),
+    validFrom: timestamp("valid_from", { withTimezone: true }).notNull(),
+    /** NULL = open-ended (still in force). */
+    validTo: timestamp("valid_to", { withTimezone: true }),
+    valueNum: numeric("value_num").notNull(),
+    note: text("note"),
+  },
+  (t) => [primaryKey({ columns: [t.key, t.validFrom] })],
+);
