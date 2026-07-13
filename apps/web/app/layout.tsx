@@ -22,6 +22,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/domenii">Domenii</Link>
               <Link href="/harta">Hartă</Link>
             </nav>
+            <form className="header-search" action="/cauta" method="get">
+              <input type="search" name="q" placeholder="Caută entitate sau CUI…" aria-label="Caută" />
+            </form>
           </div>
         </header>
         <div className="snapshot-banner">

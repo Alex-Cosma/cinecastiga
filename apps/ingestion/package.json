@@ -15,7 +15,8 @@
     "lint": "tsc -p tsconfig.json --noEmit",
     "normalize": "tsx src/scripts/normalize.ts",
     "marts": "tsx src/scripts/marts.ts",
-    "import-old": "tsx src/scripts/import-old.ts"
+    "import-old": "tsx src/scripts/import-old.ts",
+    "index-search": "tsx src/scripts/index-search.ts"
   },
   "dependencies": {
     "@seap/db": "workspace:*",
@@ -23,7 +24,8 @@
     "@seap/scraper-clients": "workspace:*",
     "drizzle-orm": "^0.44.0",
     "graphile-worker": "^0.16.6",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "meilisearch": "^0.59.0"
   },
   "devDependencies": {
     "@types/node": "^22",
