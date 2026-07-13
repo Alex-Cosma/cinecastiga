@@ -196,6 +196,7 @@ export async function getSpendByCounty(role: Role): Promise<CountySpend[]> {
 export interface EntityFlagRow {
   role: Role;
   name: string | null;
+  cui: string | null;
   county: string | null;
   cri: number;
   nFlags: number;
@@ -204,17 +205,18 @@ export interface EntityFlagRow {
   flags: string[];
 }
 
-/** Per-role red-flag summary for an entity (may be empty). */
+/** Per-role red-flag summary + DA activity for an entity (all roles it has). */
 export async function getEntityFlags(entityId: string): Promise<EntityFlagRow[]> {
   const sql = db();
   const id = /^\d+$/.test(entityId) ? entityId : "0";
   const rows = (await sql`
-    select role, name_display, county, cri, n_flags, n_das, total_ron, flags
-    from marts.entity_flags where entity_id = ${id} and n_flags > 0
-    order by cri desc
+    select role, name_display, cui_canonical, county, cri, n_flags, n_das, total_ron, flags
+    from marts.entity_flags where entity_id = ${id}
+    order by n_flags desc, n_das desc
   `) as unknown as {
     role: Role;
     name_display: string | null;
+    cui_canonical: string | null;
     county: string | null;
     cri: string | null;
     n_flags: number;
@@ -225,12 +227,204 @@ export async function getEntityFlags(entityId: string): Promise<EntityFlagRow[]>
   return rows.map((r) => ({
     role: r.role,
     name: r.name_display,
+    cui: r.cui_canonical,
     county: r.county,
     cri: Number(r.cri ?? 0),
     nFlags: Number(r.n_flags),
     nDas: Number(r.n_das),
     totalRon: Number(r.total_ron ?? 0),
     flags: r.flags ?? [],
+  }));
+}
+
+export interface DaTx {
+  sicapDaId: string;
+  daCode: string | null;
+  partnerId: string | null;
+  partnerName: string | null;
+  county: string | null;
+  cpvCode: string | null;
+  cpvName: string | null;
+  estimatedValueRon: number | null;
+  closingValue: number | null;
+  finalizationDate: string | null;
+  gapMinutes: number | null;
+  daFlags: string[];
+}
+
+export interface TxQuery {
+  sort?: "value" | "date" | "gap";
+  year?: string;
+  flagCode?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+/** A single entity's direct acquisitions (indexed marts read), paginated. */
+export async function getEntityTransactions(
+  entityId: string,
+  role: Role,
+  q: TxQuery = {},
+): Promise<{ rows: DaTx[]; total: number }> {
+  const sql = db();
+  const id = /^\d+$/.test(entityId) ? entityId : "0";
+  const isAuth = role === "authority";
+  const partyCol = isAuth ? sql`authority_id` : sql`supplier_id`;
+  const cpName = isAuth ? sql`supplier_name` : sql`authority_name`;
+  const cpId = isAuth ? sql`supplier_id` : sql`authority_id`;
+  const pageSize = q.pageSize ?? 50;
+  const offset = ((q.page ?? 1) - 1) * pageSize;
+  const order =
+    q.sort === "date"
+      ? sql`finalization_date desc nulls last`
+      : q.sort === "gap"
+        ? sql`gap_minutes asc nulls last`
+        : sql`closing_value desc nulls last`;
+  const yearCond = q.year ? sql`and finalization_date like ${q.year + "%"}` : sql``;
+  const flagCond = q.flagCode
+    ? sql`and ${q.flagCode} = any(da_flags)`
+    : sql``;
+
+  const rows = (await sql`
+    select sicap_da_id, da_code, ${cpName} cp_name, ${cpId} cp_id, county,
+           cpv_code, cpv_name, estimated_value_ron, closing_value,
+           finalization_date, gap_minutes, da_flags
+    from marts.da_transactions
+    where ${partyCol} = ${id} ${yearCond} ${flagCond}
+    order by ${order}
+    limit ${pageSize} offset ${offset}
+  `) as unknown as Record<string, unknown>[];
+
+  const totalRows = (await sql`
+    select count(*)::int c from marts.da_transactions
+    where ${partyCol} = ${id} ${yearCond} ${flagCond}
+  `) as unknown as { c: number }[];
+
+  return {
+    total: Number(totalRows[0]?.c ?? 0),
+    rows: rows.map((r) => ({
+      sicapDaId: String(r["sicap_da_id"]),
+      daCode: (r["da_code"] as string | null) ?? null,
+      partnerId: r["cp_id"] != null ? String(r["cp_id"]) : null,
+      partnerName: (r["cp_name"] as string | null) ?? null,
+      county: (r["county"] as string | null) ?? null,
+      cpvCode: (r["cpv_code"] as string | null) ?? null,
+      cpvName: (r["cpv_name"] as string | null) ?? null,
+      estimatedValueRon: r["estimated_value_ron"] != null ? Number(r["estimated_value_ron"]) : null,
+      closingValue: r["closing_value"] != null ? Number(r["closing_value"]) : null,
+      finalizationDate: (r["finalization_date"] as string | null) ?? null,
+      gapMinutes: r["gap_minutes"] != null ? Number(r["gap_minutes"]) : null,
+      daFlags: (r["da_flags"] as string[] | null) ?? [],
+    })),
+  };
+}
+
+export interface Partner {
+  partnerId: string;
+  partnerName: string | null;
+  n: number;
+  totalRon: number;
+  pct: number;
+}
+
+/** Top counterparties for an entity, by DA value, with share of total. */
+export async function getEntityPartners(
+  entityId: string,
+  role: Role,
+  limit = 12,
+): Promise<Partner[]> {
+  const sql = db();
+  const id = /^\d+$/.test(entityId) ? entityId : "0";
+  const isAuth = role === "authority";
+  const partyCol = isAuth ? sql`authority_id` : sql`supplier_id`;
+  const cpName = isAuth ? sql`supplier_name` : sql`authority_name`;
+  const cpId = isAuth ? sql`supplier_id` : sql`authority_id`;
+  const rows = (await sql`
+    with agg as (
+      select ${cpId} pid, max(${cpName}) pname, count(*) n, sum(closing_value) t
+      from marts.da_transactions
+      where ${partyCol} = ${id} and closing_value is not null and closing_value <= 2000000
+      group by ${cpId}
+    ),
+    tot as (select sum(t) grand from agg)
+    select pid, pname, n, t, round(t/nullif((select grand from tot),0),4) pct
+    from agg order by t desc nulls last limit ${limit}
+  `) as unknown as {
+    pid: string | null;
+    pname: string | null;
+    n: number;
+    t: string | null;
+    pct: string | null;
+  }[];
+  return rows.map((r) => ({
+    partnerId: r.pid != null ? String(r.pid) : "0",
+    partnerName: r.pname,
+    n: Number(r.n),
+    totalRon: Number(r.t ?? 0),
+    pct: Number(r.pct ?? 0),
+  }));
+}
+
+export interface MonthPoint {
+  ym: string;
+  totalRon: number;
+}
+
+/** Monthly DA spend for an entity (timeline; December spikes stand out). */
+export async function getEntityMonthly(entityId: string, role: Role): Promise<MonthPoint[]> {
+  const sql = db();
+  const id = /^\d+$/.test(entityId) ? entityId : "0";
+  const partyCol = role === "authority" ? sql`authority_id` : sql`supplier_id`;
+  const rows = (await sql`
+    select left(finalization_date, 7) ym, sum(closing_value) t
+    from marts.da_transactions
+    where ${partyCol} = ${id} and finalization_date is not null
+      and closing_value is not null and closing_value <= 2000000
+    group by 1 order by 1
+  `) as unknown as { ym: string; t: string | null }[];
+  return rows.map((r) => ({ ym: r.ym, totalRon: Number(r.t ?? 0) }));
+}
+
+export interface SplitPair {
+  partnerId: string | null;
+  partnerName: string | null;
+  year: string | null;
+  count: number;
+  totalRon: number;
+  ceiling: number;
+}
+
+/** da_split pairs for an entity (the structuring relationships). */
+export async function getSplitPairs(entityId: string, role: Role): Promise<SplitPair[]> {
+  const sql = db();
+  const id = /^\d+$/.test(entityId) ? entityId : "0";
+  // In flag_instances, split subject = authority, partner = supplier.
+  const cond =
+    role === "authority" ? sql`entity_id = ${id}` : sql`partner_id = ${id}`;
+  const nameCol = role === "authority" ? sql`partner_name` : sql`entity_name`;
+  const idCol = role === "authority" ? sql`partner_id` : sql`entity_id`;
+  const rows = (await sql`
+    select ${idCol} pid, ${nameCol} pname, period,
+      (evidence->>'count')::int cnt, (evidence->>'total')::numeric total,
+      (evidence->>'ceiling')::numeric ceiling
+    from marts.flag_instances
+    where flag_code = 'da_split' and ${cond}
+    order by (evidence->>'total')::numeric desc nulls last limit 30
+  `) as unknown as {
+    pid: string | null;
+    pname: string | null;
+    period: string | null;
+    cnt: number;
+    total: string | null;
+    ceiling: string | null;
+  }[];
+  return rows.map((r) => ({
+    partnerId: r.pid != null ? String(r.pid) : null,
+    partnerName: r.pname,
+    year: r.period,
+    count: Number(r.cnt),
+    totalRon: Number(r.total ?? 0),
+    ceiling: Number(r.ceiling ?? 0),
   }));
 }
 

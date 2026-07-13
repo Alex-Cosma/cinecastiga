@@ -6,7 +6,7 @@ import {
   type FlagInstance,
 } from "@/lib/marts";
 import { FLAG_META, FLAG_ORDER, criBand } from "@/lib/flags";
-import { formatRon, formatInt } from "@/lib/format";
+import { formatRon, formatInt, cleanName } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -73,7 +73,7 @@ export default async function SemnalePage({
               return (
                 <tr key={e.entityId}>
                   <td>
-                    <Link href={`/entitati/${e.entityId}`}>{e.name ?? "(fără nume)"}</Link>
+                    <Link href={`/entitati/${e.entityId}`}>{cleanName(e.name)}</Link>
                     {e.county ? <div className="county">{e.county}</div> : null}
                   </td>
                   <td>
@@ -118,15 +118,15 @@ export default async function SemnalePage({
               <tr key={`${fi.entityId}-${fi.partnerId}-${i}`}>
                 <td>
                   {fi.entityId ? (
-                    <Link href={`/entitati/${fi.entityId}`}>{fi.entityName ?? "—"}</Link>
+                    <Link href={`/entitati/${fi.entityId}`}>{cleanName(fi.entityName)}</Link>
                   ) : (
-                    (fi.entityName ?? "—")
+                    cleanName(fi.entityName)
                   )}
                   {fi.partnerName ? (
                     <>
                       {" → "}
                       {fi.partnerId ? (
-                        <Link href={`/entitati/${fi.partnerId}`}>{fi.partnerName}</Link>
+                        <Link href={`/entitati/${fi.partnerId}`}>{cleanName(fi.partnerName)}</Link>
                       ) : (
                         fi.partnerName
                       )}

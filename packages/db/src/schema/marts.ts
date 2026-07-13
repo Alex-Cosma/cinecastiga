@@ -202,6 +202,7 @@ export const entityFlags = martsSchema.table(
     /** 'supplier' | 'authority' */
     role: text("role").notNull(),
     nameDisplay: text("name_display"),
+    cuiCanonical: text("cui_canonical"),
     county: text("county"),
     nDas: integer("n_das").notNull().default(0),
     totalRon: numeric("total_ron"),
@@ -242,5 +243,41 @@ export const flagInstances = martsSchema.table(
   (t) => [
     index("flag_instances_code_sev_idx").on(t.flagCode, t.severity),
     index("flag_instances_entity_idx").on(t.entityId),
+  ],
+);
+
+/**
+ * Per-DA read model for the investigative profile (red-flags Phase 5+). One row
+ * per direct acquisition, denormalized with both party names + CPV + the timing
+ * gap + which per-DA flags fired, plus `sicap_da_id` for the e-licitatie deep
+ * link. Indexed by authority and by supplier so a single entity's transactions
+ * are a fast, bounded marts read (no request-time core scan). ~4.78M rows.
+ */
+export const daTransactions = martsSchema.table(
+  "da_transactions",
+  {
+    sicapDaId: bigint("sicap_da_id", { mode: "bigint" }).primaryKey(),
+    daCode: text("da_code"),
+    authorityId: bigint("authority_id", { mode: "bigint" }),
+    authorityName: text("authority_name"),
+    supplierId: bigint("supplier_id", { mode: "bigint" }),
+    supplierName: text("supplier_name"),
+    county: text("county"),
+    cpvCode: text("cpv_code"),
+    cpvName: text("cpv_name"),
+    acquisitionType: text("acquisition_type"),
+    estimatedValueRon: numeric("estimated_value_ron"),
+    closingValue: numeric("closing_value"),
+    publicationDate: text("publication_date"),
+    finalizationDate: text("finalization_date"),
+    /** finalization − publication, minutes (null if a date is missing). */
+    gapMinutes: integer("gap_minutes"),
+    /** Per-DA flag codes that fired (da_rapid / da_round). */
+    daFlags: text("da_flags").array(),
+  },
+  (t) => [
+    index("da_tx_authority_idx").on(t.authorityId, t.finalizationDate),
+    index("da_tx_supplier_idx").on(t.supplierId, t.finalizationDate),
+    index("da_tx_authority_value_idx").on(t.authorityId, t.closingValue),
   ],
 );

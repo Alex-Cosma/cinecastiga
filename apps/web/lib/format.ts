@@ -23,3 +23,13 @@ export function formatInt(v: number | string | null | undefined): string {
   const n = typeof v === "string" ? Number(v) : v;
   return Number.isFinite(n) ? int.format(n) : "—";
 }
+
+/**
+ * Strip a leading CUI token some imported entity names carry (e.g.
+ * "9813902 COSTALEX CONSTRUCT" → "COSTALEX CONSTRUCT"). Display-only cleanup
+ * until the DA-import entity data is rebuilt.
+ */
+export function cleanName(name: string | null | undefined): string {
+  if (!name) return "(fără nume)";
+  return name.replace(/^(RO)?\d{2,10}\s+/i, "").trim() || name;
+}

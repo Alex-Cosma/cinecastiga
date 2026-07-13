@@ -208,6 +208,27 @@ table.rank .county { color: var(--muted); font-size: 12px; }
 .flag-head { margin: 20px 0 10px; }
 .flag-head h3 { margin: 0 0 2px; font-size: 17px; }
 
+/* Investigative profile */
+.id-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+.role-tab {
+  font-size: 13px; padding: 5px 14px; border: 1px solid var(--line); border-radius: 999px;
+  color: var(--muted); font-weight: 600;
+}
+.role-tab:hover { text-decoration: none; }
+.role-tab.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.ext-links { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; font-weight: 600; }
+.ext-links a { color: var(--accent); }
+.tx-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-bottom: 6px; }
+.clear-filter { font-size: 13px; color: var(--accent); font-weight: 600; }
+.tx-scroll { overflow-x: auto; }
+.tx-table { min-width: 760px; font-size: 13px; }
+.tx-table td { vertical-align: top; }
+.flag-badge.sm {
+  font-size: 11px; padding: 1px 7px; margin: 0 3px 3px 0; display: inline-block;
+}
+.pager { display: flex; align-items: center; gap: 18px; margin-top: 16px; justify-content: center; }
+.pager .disabled { color: var(--line); }
+
 /* Methodology */
 .prose { line-height: 1.6; padding-left: 18px; }
 .prose li { margin-bottom: 10px; }
