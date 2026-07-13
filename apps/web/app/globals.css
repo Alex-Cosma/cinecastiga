@@ -185,6 +185,40 @@ table.rank .county { color: var(--muted); font-size: 12px; }
   .map-layout { grid-template-columns: 1fr; }
 }
 
+/* Red flags */
+.cri-pill {
+  display: inline-block; font-weight: 800; font-variant-numeric: tabular-nums;
+  padding: 3px 10px; border-radius: 999px; font-size: 13px; white-space: nowrap;
+}
+.risk-high { background: #f3d3cd; color: #8a231a; }
+.risk-mid { background: #f4e3c4; color: #825b12; }
+.risk-low { background: #e5ecda; color: #4f6327; }
+.risk-none { background: var(--line); color: var(--muted); }
+.flags-panel {
+  border: 1px solid var(--line); border-left: 4px solid var(--accent);
+  border-radius: var(--radius); background: var(--surface); padding: 18px 20px; margin-bottom: 24px;
+}
+.flags-role { margin-bottom: 14px; }
+.flags-role-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.flag-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.flag-badge {
+  font-size: 12px; padding: 3px 10px; border-radius: 999px;
+  background: var(--accent-soft); color: #6a2018; font-weight: 600;
+}
+.flag-head { margin: 20px 0 10px; }
+.flag-head h3 { margin: 0 0 2px; font-size: 17px; }
+
+/* Methodology */
+.prose { line-height: 1.6; padding-left: 18px; }
+.prose li { margin-bottom: 10px; }
+.method-card {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface); padding: 18px 20px; margin-bottom: 14px;
+}
+.method-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.method-head h3 { margin: 0; font-size: 17px; }
+.method-card p { margin: 6px 0; }
+
 .site-footer { border-top: 1px solid var(--line); background: var(--surface); color: var(--muted); font-size: 13px; }
 .site-footer .wrap { padding: 24px 20px 40px; }
 .back { font-size: 14px; display: inline-block; margin-bottom: 20px; }

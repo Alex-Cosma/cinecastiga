@@ -78,6 +78,13 @@
       "when": 1783930449734,
       "tag": "0010_little_deadpool",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1783937067071,
+      "tag": "0011_robust_mantis",
+      "breakpoints": true
     }
   ]
 }

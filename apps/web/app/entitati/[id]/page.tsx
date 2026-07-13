@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getEntityProfile, type EntityRole } from "@/lib/marts";
+import { getEntityProfile, getEntityFlags, type EntityRole } from "@/lib/marts";
 import { formatRonFull } from "@/lib/format";
+import { FLAG_META, criBand } from "@/lib/flags";
 
 export const dynamic = "force-dynamic";
 
@@ -12,8 +13,16 @@ const ROLE_LABEL: Record<EntityRole["role"], string> = {
 
 export default async function EntityPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const profile = await getEntityProfile(id);
-  if (!profile) notFound();
+  const [profile, entityFlags] = await Promise.all([getEntityProfile(id), getEntityFlags(id)]);
+  // entity_profile (2020 aggregates) may miss DA-only participants that entity_flags
+  // has — render from whichever exists.
+  if (!profile && entityFlags.length === 0) notFound();
+
+  const name = profile?.name ?? entityFlags[0]?.name ?? "(fără nume)";
+  const county = profile?.county ?? entityFlags[0]?.county ?? null;
+  const roles = profile?.roles ?? [];
+  // Roles present only in the DA-flag data (not in entity_profile).
+  const extraRoles = entityFlags.filter((ef) => !roles.some((r) => r.role === ef.role));
 
   return (
     <>
@@ -21,18 +30,50 @@ export default async function EntityPage({ params }: { params: Promise<{ id: str
         ← Înapoi
       </Link>
       <div className="profile-head">
-        <h1>{profile.name ?? "(fără nume)"}</h1>
+        <h1>{name}</h1>
         <div>
-          {profile.roles.map((r) => (
-            <span className="badge" key={r.role}>
-              {ROLE_LABEL[r.role]}
-            </span>
-          ))}
-          {profile.county ? <span className="note">{profile.county}</span> : null}
+          {(roles.length > 0 ? roles.map((r) => r.role) : entityFlags.map((e) => e.role)).map(
+            (role) => (
+              <span className="badge" key={role}>
+                {ROLE_LABEL[role]}
+              </span>
+            ),
+          )}
+          {county ? <span className="note">{county}</span> : null}
         </div>
       </div>
 
-      {profile.roles.map((r) => (
+      {entityFlags.length > 0 ? (
+        <div className="flags-panel">
+          {entityFlags.map((ef) => {
+            const band = criBand(ef.cri);
+            return (
+              <div className="flags-role" key={ef.role}>
+                <div className="flags-role-head">
+                  <span className={`cri-pill ${band.className}`}>CRI {ef.cri.toFixed(2)}</span>
+                  <span className="note">
+                    ca {ROLE_LABEL[ef.role].toLowerCase()} · risc {band.label.toLowerCase()} ·{" "}
+                    {ef.nDas} achiziții directe
+                  </span>
+                </div>
+                <div className="flag-badges">
+                  {ef.flags.map((f) => (
+                    <span className="flag-badge" key={f} title={FLAG_META[f]?.short}>
+                      {FLAG_META[f]?.title ?? f}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+          <p className="note">
+            Semnale de risc — indicii, nu dovezi. Vezi{" "}
+            <Link href="/metodologie">metodologia</Link>.
+          </p>
+        </div>
+      ) : null}
+
+      {roles.map((r) => (
         <div className="role-card" key={r.role}>
           <h3>{ROLE_LABEL[r.role]}</h3>
           <div className="kv">
@@ -61,9 +102,24 @@ export default async function EntityPage({ params }: { params: Promise<{ id: str
         </div>
       ))}
 
+      {extraRoles.map((ef) => (
+        <div className="role-card" key={ef.role}>
+          <h3>{ROLE_LABEL[ef.role]}</h3>
+          <div className="kv">
+            <div>
+              <div className="k">Achiziții directe</div>
+              <div className="v">{ef.nDas.toLocaleString("ro-RO")}</div>
+            </div>
+            <div>
+              <div className="k">Valoare achiziții directe</div>
+              <div className="v">{formatRonFull(ef.totalRon)}</div>
+            </div>
+          </div>
+        </div>
+      ))}
+
       <p className="note">
-        Instantaneu 2020. Contorizarea contractelor și partenerii de tranzacție vor fi
-        disponibili după procesarea completă a datelor de detaliu.
+        Instantaneu 2020. Valorile reflectă achiziții directe și contracte atribuite.
       </p>
     </>
   );
