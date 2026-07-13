@@ -37,11 +37,19 @@ export function getElicitatieClient(): ElicitatieClient {
 
   const concurrency = Number(process.env["SCRAPE_CONCURRENCY"] ?? "8");
   const minDelayMs = Number(process.env["SCRAPE_MIN_DELAY_MS"] ?? "120");
+  // Server-protection knobs. Backoff base and the circuit breaker default ON;
+  // for a fragile upstream, raise the base and/or lower the threshold via env.
+  const backoffBaseMs = Number(process.env["SCRAPE_BACKOFF_BASE_MS"] ?? "1000");
+  const circuitThreshold = Number(process.env["SCRAPE_CIRCUIT_THRESHOLD"] ?? "5");
+  const circuitCooldownMs = Number(process.env["SCRAPE_CIRCUIT_COOLDOWN_MS"] ?? "60000");
 
   singleton = createElicitatieClient({
     userAgent,
     maxConcurrency: concurrency,
     minDelayMs,
+    backoffBaseMs,
+    circuitThreshold,
+    circuitCooldownMs,
   });
   return singleton;
 }
