@@ -1,6 +1,6 @@
 import { directAcquisitions, entities, entitySicapIds, type Db, type DbSql } from "@seap/db";
 import { canonicalCui } from "../normalize/cui.js";
-import { normalizeName } from "../normalize/name.js";
+import { normalizeName, parseEntityString } from "../normalize/name.js";
 import { streamBson } from "./bson-stream.js";
 
 /**
@@ -20,8 +20,7 @@ export interface LoadDasResult {
   cpvInvalid: number;
 }
 
-const AUTH_RE = /^(\d+)\s+(.*)$/; // "5002142 Spitalul ..."
-const SUP_RE = /^(\S+)\s+(.*)$/; // "33264530 TRANSILVANIA ..."
+const AUTH_RE = /^(\d+)\s+(.*)$/; // "5002142 Spitalul ..." (leading token = SICAP id)
 const CPV_RE = /^(\d{8}-\d)\b/; // leading "66514110-0"
 
 export async function loadDas(
@@ -113,10 +112,15 @@ export async function loadDas(
   };
 
   const resolveSupplier = async (raw: string): Promise<bigint | null> => {
-    const m = SUP_RE.exec(raw.trim());
-    if (!m) return null;
-    const canonical = canonicalCui(m[1]!);
-    const name = m[2]!.trim() || "(fără nume)";
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+    // Supplier is "[RO ]CUI NAME" in several real forms — "RO 335278 X" (58% of
+    // rows), "RO335278 X", "335278 X". Reuse the live pipeline's parser so the
+    // RO-with-space form is not mis-split (the leading "RO" is not the CUI, and
+    // the digits must not leak into the name → the historic no-CUI pollution).
+    const { cuiRaw, name: parsed } = parseEntityString(trimmed);
+    const name = parsed.trim() || "(fără nume)";
+    const canonical = canonicalCui(cuiRaw);
     if (canonical.valid) {
       const hit = cuiMap.get(canonical.cui);
       if (hit != null) return hit;
@@ -124,7 +128,7 @@ export async function loadDas(
       cuiMap.set(canonical.cui, id);
       return id;
     }
-    return createByRaw(raw, name); // no merge key — dedupe by raw string
+    return createByRaw(trimmed, name); // no merge key — dedupe by raw string
   };
 
   let seen = 0;
