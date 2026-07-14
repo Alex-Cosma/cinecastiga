@@ -33,50 +33,10 @@ export async function runFlagMarts(
   const b = await bound(sql);
 
   return sql.begin(async (q) => {
-    // ── authority_concentration (all authorities with DA spend) ─────────────
-    await q`truncate marts.authority_concentration`;
-    await q`
-      insert into marts.authority_concentration
-        (authority_entity_id, distinct_suppliers, top_supplier_pct, hhi, total_ron)
-      with per as (
-        select authority_entity_id a, supplier_entity_id s, sum(closing_value) st
-        from core.direct_acquisitions
-        where authority_entity_id is not null and supplier_entity_id is not null
-          and closing_value is not null and closing_value <= ${b}
-        group by a, s
-      ),
-      agg as (
-        select a, sum(st) total, count(*) sup, max(st) top, sum(power(st,2)) sq
-        from per group by a
-      )
-      select a, sup, round(top/nullif(total,0),4), round(sq/nullif(power(total,2),0),4), total
-      from agg where total > 0
-    `;
-
-    // ── entity_top_partners (top 5 counterparties per entity, both sides) ───
-    await q`truncate marts.entity_top_partners`;
-    await q`
-      insert into marts.entity_top_partners
-        (entity_id, role, partner_entity_id, rank, n, total_ron)
-      with pair as (
-        select authority_entity_id a, supplier_entity_id s, count(*) n, sum(closing_value) t
-        from core.direct_acquisitions
-        where authority_entity_id is not null and supplier_entity_id is not null
-          and closing_value is not null and closing_value <= ${b}
-        group by a, s
-      ),
-      sides as (
-        select a entity_id, 'authority' role, s partner, n, t from pair
-        union all
-        select s, 'supplier', a, n, t from pair
-      ),
-      ranked as (
-        select entity_id, role, partner, n, t,
-          row_number() over (partition by entity_id, role order by t desc nulls last) rnk
-        from sides
-      )
-      select entity_id, role, partner, rnk, n, t from ranked where rnk <= 5
-    `;
+    // NOTE: authority_concentration + entity_top_partners are now owned by
+    // `runMarts` (built from the DA + award pair spine, bounded). They are NOT
+    // rebuilt here — doing so would clobber the award-inclusive versions with a
+    // DA-only one. This job owns only the flag-specific marts below.
 
     // ── entity_flags (CRI per entity+role) ──────────────────────────────────
     await q`truncate marts.entity_flags`;

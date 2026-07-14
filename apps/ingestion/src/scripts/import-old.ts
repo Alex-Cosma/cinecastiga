@@ -20,14 +20,9 @@ async function main(): Promise<void> {
 
   log(`import-old: reading ${dir}`);
 
-  // Marts are derived — clear before rebuild (readers see old snapshot until commit).
-  await sql`
-    truncate
-      marts.national_stats, marts.spend_by_type, marts.spend_by_cpv,
-      marts.cpv_tree, marts.spend_by_county,
-      marts.entity_profile, marts.entity_top_partners, marts.top_entities,
-      marts.authority_concentration
-  `;
+  // import-old owns only cpv_tree now (the one mart with no core equivalent);
+  // every other mart is rebuilt from core by `runMarts` (pnpm marts).
+  await sql`truncate marts.cpv_tree`;
 
   log("loading entities (supplier + authority)...");
   const suppliers = await loadEntities(db, sql, `${dir}/supplier.bson`, "supplier", log);
@@ -45,31 +40,15 @@ async function main(): Promise<void> {
     `  authorities: seen=${authorities.seen} new=${authorities.inserted} merged=${authorities.merged} skipped=${authorities.skipped}`,
   );
 
-  log("building marts...");
-  const marts = await buildMarts(db, sql, dir, suppliers.map, authorities.map, log);
-
-  // Integrity spot-check: the marts leaderboard must resolve to real names via the
-  // entity join (catches any RETURNING-order corruption in the bulk load).
-  const top = (await sql`
-    select e.name_display, ep.total_ron_full
-    from marts.top_entities te
-    join marts.entity_profile ep on ep.entity_id = te.entity_id and ep.role = te.role
-    join core.entities e on e.id = te.entity_id
-    where te.role = 'supplier'
-    order by te.rank
-    limit 5
-  `) as unknown as { name_display: string; total_ron_full: string }[];
+  log("building cpv_tree (dump hierarchy)...");
+  const marts = await buildMarts(db, sql, dir, log);
 
   console.log(
     JSON.stringify(
       {
         entities: { suppliers: suppliers.inserted, authorities: authorities.inserted },
-        marts,
-        totalSpendRon: Math.round(marts.totalSpendRon),
-        topSuppliers: top.map((t) => ({
-          name: t.name_display,
-          ron: Math.round(Number(t.total_ron_full)),
-        })),
+        cpvTree: marts.cpvTreeNodes,
+        note: "display marts (national_stats, spend_*, entity_profile, leaderboards) are built from core by `pnpm marts`",
       },
       null,
       2,
