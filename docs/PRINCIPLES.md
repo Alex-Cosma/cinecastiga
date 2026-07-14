@@ -25,6 +25,11 @@ defensible if these three never crack.
 1. **Evidence is always one click away.** Every flag, every number links to its
    primary source on e-licitatie. No unsourced claim ever appears. Naming is earned
    by sourcing.
+   - **Go to data (corollary):** no derived number is ever a dead end. Every
+     aggregate, stat, chart bar, ranking, and AI answer drills to the underlying
+     rows that composed it — a "vezi detalii → tabel complet" path, addressable by
+     URL. The operational form of this principle: you can always reach the raw
+     records behind any claim.
 2. **Signal, not verdict.** A flag is a question worth asking, never a finding of
    guilt — and it carries its caveat _inline_, in the same breath as the claim.
    Humble language is legal armor and credibility at once.
