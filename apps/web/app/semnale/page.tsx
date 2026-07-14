@@ -25,6 +25,14 @@ function evidenceLine(fi: FlagInstance): string {
       return `finalizat în ${e["minutes"]} minute`;
     case "da_round":
       return `${formatInt(Number(e["closing"]))} din prag ${formatInt(Number(e["ceiling"]))} lei`;
+    case "award_no_competition":
+      return `${e["procedure"]} · ${formatInt(Number(e["value"]))} lei`;
+    case "award_single_bid":
+      return `${e["procedure"]} · ofertant unic · ${formatInt(Number(e["value"]))} lei`;
+    case "award_concentration":
+      return `top câștigător ${Math.round(Number(e["top_winner_pct"]) * 100)}% · HHI ${e["hhi"]} · ${e["winners"]} câștigători`;
+    case "award_dependence":
+      return `${Math.round(Number(e["top_authority_pct"]) * 100)}% dintr-o singură autoritate · ${e["authorities"]} autorități`;
     default:
       return "";
   }

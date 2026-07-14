@@ -173,6 +173,30 @@ export async function runFlagMarts(
       left join core.entities s on s.id = da.supplier_entity_id
       where f.rn <= 500
     `;
+    // ── per-award flags (award_no_competition / award_single_bid): top examples ─
+    await q`
+      insert into marts.flag_instances
+        (id, flag_code, subject_type, entity_id, entity_name, entity_county, partner_id, partner_name, severity, total_ron, period, evidence)
+      select f.id, f.flag_code, 'award',
+        aw.authority_entity_id, a.name_display, a.county,
+        w.entity_id, s.name_display,
+        f.severity, aw.ron_contract_value, f.period, f.evidence
+      from (
+        select *, row_number() over (partition by flag_code order by severity desc nulls last) rn
+        from core.flags where subject_type = 'award'
+      ) f
+      join core.awards aw on aw.id = f.subject_id
+      left join core.entities a on a.id = aw.authority_entity_id
+      left join lateral (
+        select cw.entity_id
+        from core.contracts c
+        join core.contract_winners cw on cw.contract_id = c.id
+        where c.ca_notice_id = aw.ca_notice_id
+        limit 1
+      ) w on true
+      left join core.entities s on s.id = w.entity_id
+      where f.rn <= 500
+    `;
 
     // ── da_transactions (per-DA investigative read model) ───────────────────
     await q`truncate marts.da_transactions`;

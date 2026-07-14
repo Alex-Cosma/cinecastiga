@@ -29,6 +29,19 @@ const DEFAULTS: Record<string, number> = {
   da_round_floor_pct: 0.9,
   da_year_end_share: 0.35,
   da_year_end_min_total: 100_000,
+  // ── award (contract-award) thresholds ──────────────────────────────────────
+  // Framework agreements carry legitimately large ceiling values, so the cap is
+  // generous (1e9) — it only excludes clearly-corrupt outliers (a single 13.8B row).
+  award_max_plausible: 1_000_000_000,
+  award_sev_ref: 10_000_000, // value that maps to severity 1.0
+  award_min_value: 100_000, // no-competition floor
+  award_single_bid_min: 1_000_000, // single-bid only matters at real value
+  award_conc_top_pct: 0.6,
+  award_conc_min_suppliers: 3,
+  award_conc_min_total: 100_000,
+  award_dep_top_pct: 0.85,
+  award_dep_min_auth: 2, // captive-but-active guard (short data window)
+  award_dep_min_total: 500_000,
 };
 
 export interface FlagsReport {
@@ -203,6 +216,100 @@ export async function runFlags(
         'december_pct', round(dec/nullif(tot,0),4)), ${V}
     from m
     where tot >= ${yeMinTot} and dec/nullif(tot,0) >= ${yeShare}
+  `;
+
+  // ══ Award (contract-award notice) flags ═══════════════════════════════════
+  // Live 2026 award stream (short window vs the 2018–2020 DA snapshot). Award
+  // value lives at notice level (ron_contract_value); contract-level value is
+  // absent, so concentration/dependence attribute the award value to its
+  // winner(s), split equally across a consortium.
+  const awMaxPlausible = await t("award_max_plausible");
+  const awSevRef = await t("award_sev_ref");
+  const awMinValue = await t("award_min_value");
+  const awSingleBidMin = await t("award_single_bid_min");
+  const awConcTopPct = await t("award_conc_top_pct");
+  const awConcMinSup = await t("award_conc_min_suppliers");
+  const awConcMinTot = await t("award_conc_min_total");
+  const awDepTopPct = await t("award_dep_top_pct");
+  const awDepMinAuth = await t("award_dep_min_auth");
+  const awDepMinTot = await t("award_dep_min_total");
+
+  // ── award_no_competition: negotiation without prior publication (per award) ─
+  await sql`
+    insert into core.flags (subject_type, subject_id, flag_code, period, triggered, severity, evidence, methodology_version)
+    select 'award', id, 'award_no_competition', to_char(state_date,'YYYY'), true,
+      least(1, ron_contract_value / ${awSevRef}::numeric),
+      jsonb_build_object('procedure', procedure_type, 'value', ron_contract_value,
+        'estimate', estimated_value_ron, 'cpv', cpv_code), ${V}
+    from core.awards
+    where procedure_type ilike '%fara publicare prealabila%'
+      and ron_contract_value is not null
+      and ron_contract_value >= ${awMinValue}::numeric
+      and ron_contract_value <= ${awMaxPlausible}::numeric
+  `;
+
+  // ── award_single_bid: open procedure, single offer, high value (per award) ──
+  await sql`
+    insert into core.flags (subject_type, subject_id, flag_code, period, triggered, severity, evidence, methodology_version)
+    select 'award', id, 'award_single_bid', to_char(state_date,'YYYY'), true,
+      least(1, ron_contract_value / ${awSevRef}::numeric),
+      jsonb_build_object('procedure', procedure_type, 'value', ron_contract_value,
+        'offer', lowest_offer_value, 'cpv', cpv_code), ${V}
+    from core.awards
+    where lowest_offer_value is not null and lowest_offer_value = highest_offer_value
+      and procedure_type in ('Licitatie deschisa','Licitatie deschisa accelerata','Licitatie restransa')
+      and ron_contract_value is not null
+      and ron_contract_value >= ${awSingleBidMin}::numeric
+      and ron_contract_value <= ${awMaxPlausible}::numeric
+  `;
+
+  // ── award_concentration: one winner captures an authority (per authority) ───
+  await sql`
+    insert into core.flags (subject_type, subject_id, flag_code, period, triggered, severity, evidence, methodology_version)
+    with aw as (
+      select a.id award_id, a.authority_entity_id auth, a.ron_contract_value val, cw.entity_id winner
+      from core.awards a
+      join core.contracts c on c.ca_notice_id = a.ca_notice_id
+      join core.contract_winners cw on cw.contract_id = c.id
+      where a.authority_entity_id is not null and a.ron_contract_value is not null
+        and a.ron_contract_value >= 0 and a.ron_contract_value <= ${awMaxPlausible}::numeric
+      group by a.id, a.authority_entity_id, a.ron_contract_value, cw.entity_id
+    ),
+    sh as (select auth, winner, val / count(*) over (partition by award_id) share from aw),
+    per as (select auth, winner, sum(share) st from sh group by auth, winner),
+    agg as (select auth, sum(st) total, count(*) nsup, max(st) top, sum(power(st,2)) sq from per group by auth)
+    select 'authority', auth, 'award_concentration', 'all', true,
+      least(1, top / nullif(total,0)),
+      jsonb_build_object('total', round(total), 'winners', nsup,
+        'top_winner_pct', round(top/nullif(total,0),4),
+        'hhi', round(sq/nullif(power(total,2),0),4)), ${V}
+    from agg
+    where total >= ${awConcMinTot}::numeric and nsup >= ${awConcMinSup}::int
+      and top/nullif(total,0) >= ${awConcTopPct}::float8
+  `;
+
+  // ── award_dependence: winner lives off one authority, but active (per supplier)
+  await sql`
+    insert into core.flags (subject_type, subject_id, flag_code, period, triggered, severity, evidence, methodology_version)
+    with aw as (
+      select a.id award_id, a.authority_entity_id auth, a.ron_contract_value val, cw.entity_id winner
+      from core.awards a
+      join core.contracts c on c.ca_notice_id = a.ca_notice_id
+      join core.contract_winners cw on cw.contract_id = c.id
+      where a.authority_entity_id is not null and a.ron_contract_value is not null
+        and a.ron_contract_value >= 0 and a.ron_contract_value <= ${awMaxPlausible}::numeric
+      group by a.id, a.authority_entity_id, a.ron_contract_value, cw.entity_id
+    ),
+    sh as (select winner, auth, val / count(*) over (partition by award_id) share from aw),
+    per as (select winner, auth, sum(share) st from sh group by winner, auth),
+    agg as (select winner, sum(st) total, count(*) nauth, max(st) top from per group by winner)
+    select 'supplier', winner, 'award_dependence', 'all', true,
+      least(1, top / nullif(total,0)),
+      jsonb_build_object('total', round(total), 'authorities', nauth,
+        'top_authority_pct', round(top/nullif(total,0),4)), ${V}
+    from agg
+    where total >= ${awDepMinTot}::numeric and nauth >= ${awDepMinAuth}::int
+      and top/nullif(total,0) >= ${awDepTopPct}::float8
   `;
 
   const rows = (await sql`
