@@ -248,6 +248,12 @@ export const awards = coreSchema.table(
     highestOfferValue: numeric("highest_offer_value"),
     /** Furnizare | Servicii | Lucrari (sysAcquisitionContractType). */
     acquisitionType: text("acquisition_type"),
+    /**
+     * Procedure that produced the award (sysProcedureType label), e.g.
+     * "Licitatie deschisa", "Negociere fara publicare prealabila". Drives the
+     * award procedure-avoidance / single-bid red flags.
+     */
+    procedureType: text("procedure_type"),
     state: text("state"),
     stateDate: timestamp("state_date", { withTimezone: true }),
   },

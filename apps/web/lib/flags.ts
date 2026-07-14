@@ -6,7 +6,7 @@
 export interface FlagMeta {
   code: string;
   title: string;
-  subject: "da" | "authority" | "supplier" | "pair";
+  subject: "da" | "award" | "authority" | "supplier" | "pair";
   short: string;
   description: string;
   rationale: string;
@@ -80,6 +80,54 @@ export const FLAG_META: Record<string, FlagMeta> = {
       "„Golirea bugetului” la final de an favorizează achiziții grăbite, slab justificate.",
     caveat: "Sezonalitate reală (ex. deszăpezire) poate explica vârfuri de iarnă.",
   },
+  award_no_competition: {
+    code: "award_no_competition",
+    title: "Atribuire fără competiție",
+    subject: "award",
+    short: "Contract mare atribuit prin negociere fără publicare, fără concurență.",
+    description:
+      "Contract de valoare atribuit prin „negociere fără publicare prealabilă” — o procedură excepțională, fără anunț public și fără concurență.",
+    rationale:
+      "Procedura fără publicare este permisă doar în cazuri strict definite (urgență, exclusivitate). Folosirea ei pentru contracte mari ocolește concurența (Legea 98/2016 art. 104).",
+    caveat:
+      "Unele cazuri sunt legitime (urgențe reale, furnizor unic tehnic). Semnalul contează prin valoare și frecvență.",
+  },
+  award_single_bid: {
+    code: "award_single_bid",
+    title: "Ofertant unic la procedură deschisă",
+    subject: "award",
+    short: "Licitație deschisă de valoare mare, finalizată cu o singură ofertă.",
+    description:
+      "Procedură care ar trebui să fie competitivă (licitație deschisă/restrânsă) finalizată cu o singură ofertă, la contract de valoare mare.",
+    rationale:
+      "O licitație deschisă de valoare mare cu un singur ofertant sugerează cerințe croite pe măsura unui furnizor sau descurajarea concurenței.",
+    caveat:
+      "Piețe de nișă pot avea firesc un singur ofertant. Ofertant unic ≠ ilegal; e semnal de concurență slabă.",
+  },
+  award_concentration: {
+    code: "award_concentration",
+    title: "Concentrare pe un câștigător",
+    subject: "authority",
+    short: "Un furnizor câștigă o pondere disproporționată din contracte.",
+    description:
+      "Un singur furnizor câștigă o pondere disproporționată din valoarea contractelor atribuite de o autoritate (peste procese, nu doar achiziții directe).",
+    rationale:
+      "Concentrarea contractelor pe un câștigător unic reduce concurența și crește riscul de favorizare sistematică.",
+    caveat:
+      "Piețe cu un singur furnizor real pot fi concentrate legitim. Fereastra de date (2026) este scurtă.",
+  },
+  award_dependence: {
+    code: "award_dependence",
+    title: "Furnizor captiv unei autorități",
+    subject: "supplier",
+    short: "Furnizor activ, dar cu cvasi-totalitatea contractelor de la o autoritate.",
+    description:
+      "Un furnizor activ la mai multe autorități obține totuși cvasi-totalitatea valorii contractelor de la una singură.",
+    rationale:
+      "Un furnizor „captiv” unei autorități, deși prezent pe piață, poate indica o relație preferențială.",
+    caveat:
+      "Specializare reală pe un client mare poate explica dependența. Fereastra de date (2026) este scurtă.",
+  },
 };
 
 export const FLAG_ORDER = [
@@ -89,6 +137,10 @@ export const FLAG_ORDER = [
   "da_year_end",
   "da_rapid",
   "da_round",
+  "award_no_competition",
+  "award_single_bid",
+  "award_concentration",
+  "award_dependence",
 ];
 
 /** Risk band for a CRI score, for coloring. */

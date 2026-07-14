@@ -4,9 +4,9 @@
  * `/metodologie` page. Bump `METHODOLOGY_VERSION` when a rule or threshold
  * changes; every flag instance is stamped with it.
  */
-export const METHODOLOGY_VERSION = "rf-2020.1";
+export const METHODOLOGY_VERSION = "rf-2026.1";
 
-export type FlagSubject = "da" | "authority" | "supplier" | "pair";
+export type FlagSubject = "da" | "award" | "authority" | "supplier" | "pair";
 
 export interface FlagDef {
   code: string;
@@ -83,5 +83,50 @@ export const FLAG_DEFS: FlagDef[] = [
     rationale:
       "„Golirea bugetului” la final de an favorizează achiziții grăbite, slab justificate.",
     caveat: "Sezonalitate reală (ex. deszăpezire) poate explica vârfuri de iarnă.",
+  },
+  // ── Award (contract-award notice) flags ─────────────────────────────────────
+  {
+    code: "award_no_competition",
+    title: "Atribuire fără competiție",
+    subject: "award",
+    description:
+      "Contract de valoare atribuit prin „negociere fără publicare prealabilă” — o procedură excepțională, fără anunț public și fără concurență.",
+    rationale:
+      "Procedura fără publicare este permisă doar în cazuri strict definite (urgență, exclusivitate). Folosirea ei pentru contracte mari, repetat, ocolește concurența (Legea 98/2016 art. 104).",
+    caveat:
+      "Unele cazuri sunt legitime (urgențe reale, furnizor unic tehnic). Semnalul contează prin valoare și frecvență.",
+  },
+  {
+    code: "award_single_bid",
+    title: "Ofertant unic la procedură deschisă",
+    subject: "award",
+    description:
+      "Procedură care ar trebui să fie competitivă (licitație deschisă/restrânsă) finalizată cu o singură ofertă, la contract de valoare mare.",
+    rationale:
+      "O licitație deschisă de valoare mare cu un singur ofertant sugerează cerințe croite pe măsura unui furnizor sau descurajarea concurenței.",
+    caveat:
+      "Piețe de nișă pot avea firesc un singur ofertant. Ofertant unic ≠ ilegal; e semnal de concurență slabă.",
+  },
+  {
+    code: "award_concentration",
+    title: "Concentrare pe un câștigător (contracte)",
+    subject: "authority",
+    description:
+      "Un singur furnizor câștigă o pondere disproporționată din valoarea contractelor atribuite de o autoritate (peste procese, nu doar achiziții directe).",
+    rationale:
+      "Concentrarea contractelor pe un câștigător unic reduce concurența și crește riscul de favorizare sistematică.",
+    caveat:
+      "Piețe cu un singur furnizor real pot fi concentrate legitim. Fereastra de date (2026) este scurtă — a se interpreta cu prudență.",
+  },
+  {
+    code: "award_dependence",
+    title: "Furnizor captiv unei autorități (contracte)",
+    subject: "supplier",
+    description:
+      "Un furnizor activ la mai multe autorități obține totuși cvasi-totalitatea valorii contractelor de la una singură.",
+    rationale:
+      "Un furnizor „captiv” unei autorități, deși prezent pe piață, poate indica o relație preferențială.",
+    caveat:
+      "Specializare reală pe un client mare poate explica dependența. Fereastra de date (2026) este scurtă.",
   },
 ];

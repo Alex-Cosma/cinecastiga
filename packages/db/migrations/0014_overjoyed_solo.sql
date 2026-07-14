@@ -1,0 +1,1 @@
+ALTER TABLE "core"."awards" ADD COLUMN "procedure_type" text;

@@ -31,6 +31,22 @@ const toDate = (s: string | null | undefined): Date | null => {
 const dec = (n: number | string | null | undefined): string | null =>
   n == null ? null : String(n);
 
+/**
+ * Award list carries the estimate as a display string, e.g. "272352 RON" or
+ * "1.234.567,89 RON". Strip the currency suffix + RO thousands/decimal marks and
+ * return a numeric string (or null). Only RON has been observed (all 21k rows).
+ */
+const parseRonExport = (v: unknown): string | null => {
+  if (typeof v === "number") return Number.isFinite(v) ? String(v) : null;
+  if (typeof v !== "string") return null;
+  const m = v.replace(/\s*RON\s*$/i, "").trim();
+  if (!m) return null;
+  // RO format: '.' thousands, ',' decimal. Drop dots, swap comma to dot.
+  const normalized = m.replace(/\./g, "").replace(",", ".");
+  const n = Number(normalized);
+  return Number.isFinite(n) ? String(n) : null;
+};
+
 const labeled = z.object({ text: z.string().nullish() }).nullish();
 const labelText = (
   v: { text?: string | null | undefined } | null | undefined,
@@ -65,7 +81,13 @@ async function loadNoticeLike(
   ctx: NormalizeCtx,
   rawId: bigint,
   p: z.infer<typeof tenderListSchema>,
-  extra: { ronContractValue?: number | null; lowest?: number | null; highest?: number | null } = {},
+  extra: {
+    ronContractValue?: number | null;
+    lowest?: number | null;
+    highest?: number | null;
+    procedureType?: string | null;
+    estimatedValueRon?: string | null;
+  } = {},
   target: typeof notices | typeof awards = notices,
 ): Promise<void> {
   const seenAt = toDate(p.noticeStateDate);
@@ -97,24 +119,19 @@ async function loadNoticeLike(
   };
 
   if (target === awards) {
+    const awardCols = {
+      ...common,
+      // Award estimate comes from the parsed export string, not estimatedValueRon.
+      estimatedValueRon: extra.estimatedValueRon ?? null,
+      ronContractValue: dec(extra.ronContractValue),
+      lowestOfferValue: dec(extra.lowest),
+      highestOfferValue: dec(extra.highest),
+      procedureType: extra.procedureType ?? null,
+    };
     await ctx.tx
       .insert(awards)
-      .values({
-        ...common,
-        caNoticeId: BigInt(p.cNoticeId),
-        ronContractValue: dec(extra.ronContractValue),
-        lowestOfferValue: dec(extra.lowest),
-        highestOfferValue: dec(extra.highest),
-      })
-      .onConflictDoUpdate({
-        target: awards.caNoticeId,
-        set: {
-          ...common,
-          ronContractValue: dec(extra.ronContractValue),
-          lowestOfferValue: dec(extra.lowest),
-          highestOfferValue: dec(extra.highest),
-        },
-      });
+      .values({ ...awardCols, caNoticeId: BigInt(p.cNoticeId) })
+      .onConflictDoUpdate({ target: awards.caNoticeId, set: awardCols });
   } else {
     await ctx.tx
       .insert(notices)
@@ -152,6 +169,7 @@ const awardListSchema = z
     sysNoticeTypeId: z.number().nullish(),
     sysNoticeVersionId: z.number().nullish(),
     sysAcquisitionContractType: labeled,
+    sysProcedureType: labeled,
     estimatedValueExport: z.unknown().nullish(),
   })
   .passthrough();
@@ -437,6 +455,8 @@ export const PARSERS: Record<string, Parser> = {
           ronContractValue: p.ronContractValue ?? null,
           lowest: p.lowestOfferValue ?? null,
           highest: p.highestOfferValue ?? null,
+          procedureType: labelText(p.sysProcedureType),
+          estimatedValueRon: parseRonExport(p.estimatedValueExport),
         },
         awards,
       );
