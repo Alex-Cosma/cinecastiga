@@ -4,7 +4,7 @@ import {
   scrapeNoticesWindow,
   type NoticeFamily,
 } from "../scrape/elicitatie/notices.js";
-import { scrapeDaWindow } from "../scrape/elicitatie/direct-acquisitions.js";
+import { scrapeDasByAuthority } from "../scrape/elicitatie/direct-acquisitions.js";
 
 /**
  * Explicit-window scrape CLI — the manual/sample path (worker cron is the
@@ -23,7 +23,9 @@ import { scrapeDaWindow } from "../scrape/elicitatie/direct-acquisitions.js";
 
 function usage(): never {
   console.error(
-    "usage: scrape --family tenders|awards|das --start YYYY-MM-DD --end YYYY-MM-DD",
+    "usage: scrape --family tenders|awards --start YYYY-MM-DD --end YYYY-MM-DD\n" +
+      "       scrape --family das [--start YYYY-MM-DD --end YYYY-MM-DD] [--max N]\n" +
+      "         (das scans authorities; --max = authorities per run, resumes via watermark)",
   );
   process.exit(2);
 }
@@ -36,33 +38,47 @@ function arg(name: string): string | undefined {
 const family = arg("family");
 const start = arg("start");
 const end = arg("end");
+const max = arg("max");
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
-if (
-  !family ||
-  !["tenders", "awards", "das"].includes(family) ||
-  !start ||
-  !end ||
-  !ISO.test(start) ||
-  !ISO.test(end) ||
-  start > end
-) {
+const isDas = family === "das";
+if (!family || !["tenders", "awards", "das"].includes(family)) usage();
+if (!isDas) {
+  if (!start || !end || !ISO.test(start) || !ISO.test(end) || start > end) {
+    usage();
+  }
+} else if ((start && !ISO.test(start)) || (end && !ISO.test(end))) {
   usage();
 }
 
 async function main(): Promise<void> {
+  // DA scraping moved to a separate authority-partition crawler (backfill-das.sh,
+  // which sets SCRAPE_DAS_MODE=authority). Without the flag, `--family das`
+  // no-ops — so a still-running day-walk backfill that also calls das neither
+  // hammers SICAP nor writes an authority watermark. Tenders/awards unaffected.
+  if (isDas && process.env["SCRAPE_DAS_MODE"] !== "authority") {
+    console.log(
+      "das is now authority-partitioned — run backfill-das.sh (SCRAPE_DAS_MODE=authority). Skipping.",
+    );
+    return;
+  }
+
   const db = getSharedDb();
   const client = getElicitatieClient();
   const log = (m: string) => console.log(m);
-  const window = { start: start!, end: end! };
 
-  const outcome =
-    family === "das"
-      ? await scrapeDaWindow({ db, client, log }, { window, lookbackDays: 0 })
-      : await scrapeNoticesWindow(
-          { db, client, log },
-          { family: family as NoticeFamily, window },
-        );
+  const outcome = isDas
+    ? await scrapeDasByAuthority(
+        { db, client, log },
+        {
+          ...(start && end ? { window: { start, end } } : {}),
+          ...(max ? { maxAuthoritiesPerRun: Number(max) } : {}),
+        },
+      )
+    : await scrapeNoticesWindow(
+        { db, client, log },
+        { family: family as NoticeFamily, window: { start: start!, end: end! } },
+      );
 
   console.log(JSON.stringify(outcome, null, 2));
   await closeSharedDb();
