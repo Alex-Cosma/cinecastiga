@@ -23,15 +23,19 @@ const lazyDeps: ScrapeDeps = {
   },
 };
 
-/** Initial window (days) when a family has no watermark yet. */
+/** Initial window (days) when a notice family has no watermark yet. */
 const sampleDays = Number(process.env["SCRAPE_SAMPLE_DAYS"] ?? "30");
+/** Authorities processed per chunked DA run (re-enqueues until the list ends). */
+const dasAuthorityBatch = Number(process.env["SCRAPE_DAS_AUTH_BATCH"] ?? "200");
 
 export const taskList: TaskList = {
   heartbeat,
   scrape_tenders: makeScrapeNoticesTask(lazyDeps, "tenders", { sampleDays }),
   scrape_awards: makeScrapeNoticesTask(lazyDeps, "awards", { sampleDays }),
   rescan_notice_states: makeRescanTask(lazyDeps),
-  scrape_das: makeScrapeDasTask(lazyDeps, { sampleDays }),
+  scrape_das: makeScrapeDasTask(lazyDeps, {
+    maxAuthoritiesPerRun: dasAuthorityBatch,
+  }),
   refetch_da_corrections: makeDaCorrectionsTask(lazyDeps),
 };
 

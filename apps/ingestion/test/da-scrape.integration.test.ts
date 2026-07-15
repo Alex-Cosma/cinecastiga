@@ -9,10 +9,8 @@ import {
   scrapeRuns,
 } from "@seap/db";
 import { createElicitatieClient } from "@seap/scraper-clients";
-import type { CpvCatalog } from "../src/scrape/elicitatie/cpv-catalog.js";
-import { scrapeDaWindow } from "../src/scrape/elicitatie/direct-acquisitions.js";
+import { scrapeDasByAuthority } from "../src/scrape/elicitatie/direct-acquisitions.js";
 import { refetchOpenCorrections } from "../src/scrape/elicitatie/da-corrections.js";
-import { readWatermark } from "../src/scrape/watermark.js";
 
 // Integration test — docker Postgres + mock SICAP DA server.
 // Test DA ids live in the 88xxxxx range.
@@ -52,16 +50,13 @@ afterEach(async () => {
 interface DaRecord {
   directAcquisitionId: number;
   finalizationDate: string;
-  cpvCategoryId: number;
-  cpvCodeId: number;
+  contractingAuthorityId: number;
 }
 
 interface DaMockConfig {
-  /** all records, keyed by day */
-  recordsByDay: Record<string, DaRecord[]>;
+  records: DaRecord[];
   /** cap simulating the 2000-record window (small for tests) */
   cap: number;
-  /** detail payload override per id */
   detailFor?: (id: number) => unknown;
 }
 
@@ -73,31 +68,39 @@ function startDaMock(config: DaMockConfig): Promise<string> {
       const url = req.url ?? "";
       res.setHeader("content-type", "application/json");
 
-      if (url.startsWith("/api-pub/DirectAcquisitionCommon/GetDirectAcquisitionList/")) {
+      if (
+        url.startsWith("/api-pub/DirectAcquisitionCommon/GetDirectAcquisitionList/")
+      ) {
         const body = JSON.parse(chunks) as {
           finalizationDateStart: string;
+          finalizationDateEnd: string;
           pageIndex: number;
           pageSize: number;
-          cpvCategoryId: number | null;
-          cpvCodeId: number | null;
+          contractingAuthorityId: number | null;
         };
-        let matching = config.recordsByDay[body.finalizationDateStart] ?? [];
-        if (body.cpvCategoryId !== null)
-          matching = matching.filter((r) => r.cpvCategoryId === body.cpvCategoryId);
-        if (body.cpvCodeId !== null)
-          matching = matching.filter((r) => r.cpvCodeId === body.cpvCodeId);
-
+        const start = body.finalizationDateStart.slice(0, 10);
+        const endDay = body.finalizationDateEnd.slice(0, 10);
+        const matching = config.records.filter((r) => {
+          const day = r.finalizationDate.slice(0, 10);
+          if (day < start || day > endDay) return false;
+          if (
+            body.contractingAuthorityId !== null &&
+            r.contractingAuthorityId !== body.contractingAuthorityId
+          )
+            return false;
+          return true;
+        });
         if (matching.length > config.cap) {
           res.end(
             JSON.stringify({ total: config.cap, items: [], searchTooLong: true }),
           );
           return;
         }
-        const start = body.pageIndex * body.pageSize;
+        const from = body.pageIndex * body.pageSize;
         res.end(
           JSON.stringify({
             total: matching.length,
-            items: matching.slice(start, start + body.pageSize),
+            items: matching.slice(from, from + body.pageSize),
             searchTooLong: false,
           }),
         );
@@ -127,11 +130,6 @@ function startDaMock(config: DaMockConfig): Promise<string> {
   });
 }
 
-const catalog: CpvCatalog = {
-  categories: async () => [1, 2],
-  codesFor: async (categoryId) => [categoryId * 10 + 1, categoryId * 10 + 2],
-};
-
 function makeClient(baseUrl: string) {
   return createElicitatieClient({
     baseUrl,
@@ -141,151 +139,139 @@ function makeClient(baseUrl: string) {
   });
 }
 
-function record(
-  id: number,
-  day: string,
-  cpvCategoryId = 1,
-  cpvCodeId = 11,
-): DaRecord {
+function record(id: number, day: string, authorityId: number): DaRecord {
   return {
     directAcquisitionId: id,
     finalizationDate: `${day}T01:30:00+03:00`,
-    cpvCategoryId,
-    cpvCodeId,
+    contractingAuthorityId: authorityId,
   };
 }
 
-async function resetWatermark() {
+const auth = (id: number): number => id; // inject authority ids directly
+const FULL_YEAR = { start: "2025-01-01", end: "2025-12-31" };
+
+async function resetState() {
   await db
     .delete(ingestionWatermarks)
     .where(eq(ingestionWatermarks.source, "elicitatie:das"));
 }
 
-describe("scrapeDaWindow", () => {
-  it("quiet day: single slice, lists + details archived, deviation 0", async () => {
+async function daCursor(): Promise<{ lastId: number } | null> {
+  const [row] = await db
+    .select()
+    .from(ingestionWatermarks)
+    .where(eq(ingestionWatermarks.source, "elicitatie:das"));
+  return row ? JSON.parse(row.cursor) : null;
+}
+
+describe("scrapeDasByAuthority", () => {
+  it("scans authorities; lists archived; cursor advances", async () => {
+    await resetState();
     const baseUrl = await startDaMock({
-      recordsByDay: { "2026-07-05": [record(8800001, "2026-07-05"), record(8800002, "2026-07-05")] },
+      records: [
+        record(8800001, "2025-03-02", 501),
+        record(8800002, "2025-06-10", 501),
+        record(8800003, "2025-09-20", 502),
+      ],
       cap: 100,
     });
-    const outcome = await scrapeDaWindow(
-      { db, client: makeClient(baseUrl), catalog },
-      { window: { start: "2026-07-05", end: "2026-07-05" }, lookbackDays: 0 },
+    const outcome = await scrapeDasByAuthority(
+      { db, client: makeClient(baseUrl) },
+      { window: FULL_YEAR, authorities: [auth(501), auth(502)] },
+    );
+    expect(outcome.status).toBe("completed");
+    expect(outcome.fetched).toBe(3);
+    expect(outcome.inserted).toBe(3); // list-only (fetchDetail defaults off)
+    expect(outcome.authoritiesRemaining).toBe(0);
+    expect(await daCursor()).toEqual({ lastId: 502 });
+  });
+
+  it("authority overflow bisects the window by date until every leaf fits", async () => {
+    await resetState();
+    const baseUrl = await startDaMock({
+      records: [
+        record(8800011, "2025-02-15", 601),
+        record(8800012, "2025-11-20", 601), // whole-year (2) overflows cap 1; halves fit
+      ],
+      cap: 1,
+    });
+    const outcome = await scrapeDasByAuthority(
+      { db, client: makeClient(baseUrl) },
+      { window: FULL_YEAR, authorities: [auth(601)] },
     );
     expect(outcome.status).toBe("completed");
     expect(outcome.fetched).toBe(2);
-    expect(outcome.inserted).toBe(4); // 2 list + 2 detail
-    expect(outcome.lostSlices).toEqual([]);
-
-    const runs = await db
-      .select()
-      .from(scrapeRuns)
-      .where(eq(scrapeRuns.source, "elicitatie:das"));
-    expect(runs.at(-1)!.deviation).toBe(0);
+    expect(outcome.lost).toEqual([]);
   });
 
-  it("overflow day fans out by category; totals reconcile", async () => {
-    await resetWatermark();
-    const day = "2026-07-01";
-    const records = [
-      record(8800011, day, 1, 11),
-      record(8800012, day, 1, 12),
-      record(8800013, day, 2, 21),
-    ];
+  it("a single day still over the cap for one authority is recorded as loss", async () => {
+    await resetState();
+    const day = "2025-05-05";
     const baseUrl = await startDaMock({
-      recordsByDay: { [day]: records },
-      cap: 2, // whole day (3) overflows; each category (2, 1) fits
-    });
-    const outcome = await scrapeDaWindow(
-      { db, client: makeClient(baseUrl), catalog },
-      { window: { start: day, end: day }, lookbackDays: 0 },
-    );
-    expect(outcome.status).toBe("completed");
-    expect(outcome.fetched).toBe(3);
-    expect(outcome.lostSlices).toEqual([]);
-  });
-
-  it("category overflow fans out by code", async () => {
-    await resetWatermark();
-    const day = "2026-07-02";
-    const records = [
-      record(8800021, day, 1, 11),
-      record(8800022, day, 1, 11),
-      record(8800023, day, 1, 12),
-      record(8800024, day, 2, 21),
-    ];
-    const baseUrl = await startDaMock({
-      recordsByDay: { [day]: records },
-      cap: 2, // day (4) overflows; cat1 (3) overflows; codes (2,1) fit; cat2 (1) fits
-    });
-    const outcome = await scrapeDaWindow(
-      { db, client: makeClient(baseUrl), catalog },
-      { window: { start: day, end: day }, lookbackDays: 0 },
-    );
-    expect(outcome.status).toBe("completed");
-    expect(outcome.fetched).toBe(4);
-  });
-
-  it("leaf overflow records data loss but other slices complete", async () => {
-    await resetWatermark();
-    const day = "2026-07-03";
-    const records = [
-      record(8800031, day, 1, 11),
-      record(8800032, day, 1, 11),
-      record(8800033, day, 1, 11), // code 11 overflows the cap of 2
-      record(8800034, day, 2, 21),
-    ];
-    const baseUrl = await startDaMock({
-      recordsByDay: { [day]: records },
+      records: [
+        record(8800021, day, 701),
+        record(8800022, day, 701),
+        record(8800023, day, 701), // 3 on one day > cap 2, unrecoverable
+      ],
       cap: 2,
     });
-    const outcome = await scrapeDaWindow(
-      { db, client: makeClient(baseUrl), catalog },
-      { window: { start: day, end: day }, lookbackDays: 0 },
+    const outcome = await scrapeDasByAuthority(
+      { db, client: makeClient(baseUrl) },
+      { window: FULL_YEAR, authorities: [auth(701)] },
     );
     expect(outcome.status).toBe("failed");
-    expect(outcome.lostSlices).toEqual(["c1:k11"]);
+    expect(outcome.lost).toEqual(["701@2025-05-05"]);
     expect(outcome.error).toContain("data loss");
-    // the healthy slice still archived
-    expect(outcome.fetched).toBeGreaterThanOrEqual(1);
-
-    const runs = await db
-      .select()
-      .from(scrapeRuns)
-      .where(eq(scrapeRuns.source, "elicitatie:das"));
-    expect(runs.at(-1)!.error).toContain("c1:k11");
   });
 
-  it("lookback re-covers trailing days idempotently", async () => {
-    await resetWatermark();
+  it("resumes from the watermark across chunked runs", async () => {
+    await resetState();
     const baseUrl = await startDaMock({
-      recordsByDay: {
-        "2026-07-04": [record(8800041, "2026-07-04")],
-        "2026-07-05": [record(8800001, "2026-07-05"), record(8800002, "2026-07-05")],
-      },
+      records: [
+        record(8800031, "2025-04-01", 801),
+        record(8800032, "2025-04-02", 802),
+      ],
       cap: 100,
     });
-    // window start 2026-07-05 with lookback 1 → covers 07-04 too;
-    // 07-05 records already archived by the first test → skipped
-    const outcome = await scrapeDaWindow(
-      { db, client: makeClient(baseUrl), catalog },
-      { window: { start: "2026-07-05", end: "2026-07-05" }, lookbackDays: 1 },
+    const client = makeClient(baseUrl);
+    const authorities = [auth(801), auth(802)];
+
+    const first = await scrapeDasByAuthority(
+      { db, client },
+      { window: FULL_YEAR, authorities, maxAuthoritiesPerRun: 1 },
+    );
+    expect(first.authoritiesProcessed).toBe(1);
+    expect(first.authoritiesRemaining).toBe(1);
+    expect(await daCursor()).toEqual({ lastId: 801 });
+
+    const second = await scrapeDasByAuthority(
+      { db, client },
+      { window: FULL_YEAR, authorities, maxAuthoritiesPerRun: 1 },
+    );
+    expect(second.authoritiesProcessed).toBe(1);
+    expect(second.authoritiesRemaining).toBe(0);
+    expect(await daCursor()).toEqual({ lastId: 802 });
+  });
+
+  it("fetchDetail archives per-DA detail too", async () => {
+    await resetState();
+    const baseUrl = await startDaMock({
+      records: [record(8800041, "2025-07-07", 901)],
+      cap: 100,
+    });
+    const outcome = await scrapeDasByAuthority(
+      { db, client: makeClient(baseUrl) },
+      { window: FULL_YEAR, authorities: [auth(901)], fetchDetail: true },
     );
     expect(outcome.status).toBe("completed");
-    expect(outcome.fetched).toBe(3);
-    expect(outcome.inserted).toBe(2); // only 8800041 list+detail are new
-    expect(outcome.skipped).toBe(4);
-
-    const cursor = await readWatermark(db, "elicitatie:das");
-    expect(cursor!.day).toBe("2026-07-06");
+    expect(outcome.inserted).toBe(2); // 1 list + 1 detail
   });
 
   it("corrections: open-flagged detail re-fetched, changed payload archived as new version", async () => {
-    // seed: archive a detail with isOpenForCorrection=true via a scrape
-    await resetWatermark();
-    const day = "2026-07-06";
+    await resetState();
     let servedValue = 111;
     const baseUrl = await startDaMock({
-      recordsByDay: { [day]: [record(8800061, day)] },
+      records: [record(8800061, "2025-08-08", 1001)],
       cap: 100,
       detailFor: (id) => ({
         directAcquisitionID: id,
@@ -294,13 +280,12 @@ describe("scrapeDaWindow", () => {
       }),
     });
     const client = makeClient(baseUrl);
-    await scrapeDaWindow(
-      { db, client, catalog },
-      { window: { start: day, end: day }, lookbackDays: 0 },
+    await scrapeDasByAuthority(
+      { db, client },
+      { window: FULL_YEAR, authorities: [auth(1001)], fetchDetail: true },
     );
 
-    // correction closes with a different value
-    servedValue = 222;
+    servedValue = 222; // correction closes with a different value
     const result = await refetchOpenCorrections({ db, client }, { days: 7 });
     expect(result.candidates).toBe(1);
     expect(result.inserted).toBe(1);

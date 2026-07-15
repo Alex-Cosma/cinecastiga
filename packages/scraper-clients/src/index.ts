@@ -4,3 +4,4 @@ export * from "./elicitatie/client.js";
 export * from "./elicitatie/notices.js";
 export * from "./elicitatie/direct-acquisitions.js";
 export * from "./elicitatie/cpv.js";
+export * from "./elicitatie/participants.js";

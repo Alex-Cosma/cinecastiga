@@ -44,21 +44,29 @@ export async function archiveDocuments(
     };
   });
 
-  const insertedRows = await db
-    .insert(rawDocuments)
-    .values(rows)
-    .onConflictDoNothing({
-      target: [
-        rawDocuments.source,
-        rawDocuments.externalId,
-        rawDocuments.contentHash,
-      ],
-    })
-    .returning({ id: rawDocuments.id });
+  // Chunk the multi-row insert: one DA authority can carry thousands of docs,
+  // and Postgres caps a statement at 65535 bind parameters (~5 cols/row). Insert
+  // in safe batches so a big authority can't blow the parameter limit.
+  const CHUNK = 1000;
+  let inserted = 0;
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const insertedRows = await db
+      .insert(rawDocuments)
+      .values(rows.slice(i, i + CHUNK))
+      .onConflictDoNothing({
+        target: [
+          rawDocuments.source,
+          rawDocuments.externalId,
+          rawDocuments.contentHash,
+        ],
+      })
+      .returning({ id: rawDocuments.id });
+    inserted += insertedRows.length;
+  }
 
   return {
-    inserted: insertedRows.length,
-    skipped: rows.length - insertedRows.length,
+    inserted,
+    skipped: rows.length - inserted,
   };
 }
 

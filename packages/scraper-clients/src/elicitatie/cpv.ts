@@ -1,6 +1,27 @@
 import type { ElicitatieClient } from "./client.js";
 import type { CpvSearchItem, ListEnvelope } from "./types.js";
 
+/** A SICAP DA CPV category (the coarse 12-bucket grouping, ids 1..12). */
+export interface CpvCategory {
+  id: number;
+  text?: string;
+}
+
+/**
+ * The DA-list `cpvCategoryId` filter keys on SICAP's 12 coarse categories
+ * (id 1..12), NOT the CPV code ids from searchCpvs. Used to reconstruct a
+ * day's TRUE DA total (the 12 categories partition it) for completeness checks.
+ * Live-verified 2026-07-15.
+ */
+export async function getCpvCategories(
+  client: ElicitatieClient,
+): Promise<CpvCategory[]> {
+  const result = await client.http.getJson<{ results?: CpvCategory[] }>(
+    "/api-pub/ComboPub/getCpvCategories",
+  );
+  return result.data.results ?? [];
+}
+
 /**
  * SEAP-internal CPV ids (cpvCodeId ≠ the CPV code string). Needed for the
  * adaptive slicing fan-out on the direct-acquisition list.
