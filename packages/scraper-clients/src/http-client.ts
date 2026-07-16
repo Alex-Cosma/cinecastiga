@@ -27,6 +27,13 @@ export interface HttpClientOptions {
   circuitCooldownMs?: number;
   /** Baseline headers sent on every request (e.g. Referer — WAF requires same-site). */
   defaultHeaders?: Record<string, string>;
+  /**
+   * Page-accurate Referer per request path (mimics real SPA navigation — the
+   * 2020 scraper did this). Rate-limit tests (2026-07-16) showed it does NOT
+   * change the block ceiling, but it's cheap camouflage and keeps traffic
+   * shaped like a browser session. Falls back to defaultHeaders.referer.
+   */
+  refererFor?: (path: string) => string | undefined;
 }
 
 export interface FetchResult<T = unknown> {
@@ -129,6 +136,7 @@ export function createHttpClient(opts: HttpClientOptions): HttpClient {
     circuitThreshold = 5,
     circuitCooldownMs = 60_000,
     defaultHeaders = {},
+    refererFor,
   } = opts;
 
   if (!userAgent.trim()) {
@@ -175,6 +183,9 @@ export function createHttpClient(opts: HttpClientOptions): HttpClient {
     // Fail fast while the upstream is deemed unhealthy — do not add load.
     if (circuitIsOpen()) throw new CircuitOpenError(url, circuitOpenUntil);
 
+    // Page-accurate Referer for this endpoint (overrides the static default).
+    const pathReferer = refererFor?.(path);
+
     let lastStatus: number | null = null;
     let retryAfterMs: number | null = null;
 
@@ -195,6 +206,7 @@ export function createHttpClient(opts: HttpClientOptions): HttpClient {
                 ? {}
                 : { "content-type": "application/json;charset=UTF-8" }),
               ...defaultHeaders,
+              ...(pathReferer ? { referer: pathReferer } : {}),
               "user-agent": userAgent,
               ...init?.headers,
             },
