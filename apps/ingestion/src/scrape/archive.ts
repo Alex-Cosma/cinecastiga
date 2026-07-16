@@ -27,6 +27,22 @@ export interface ArchiveResult {
 /** Accepts a db or transaction handle — archiving joins the caller's tx. */
 type InsertCapable = Pick<Db, "insert">;
 
+/**
+ * Postgres text/jsonb cannot store a NUL (U+0000) — it aborts the whole
+ * statement ("unsupported Unicode escape sequence"). SICAP occasionally emits
+ * one inside a free-text field (supplier/description), which used to poison an
+ * entire insert chunk and, on a resumed authority scrape, deterministically
+ * halt the crawler. JSON.stringify encodes NUL as the six-char escape
+ * "backslash-u-0000", so we strip it on the serialized form and reparse. Only
+ * NUL is illegal to Postgres; every other control escape jsonb accepts, so we
+ * leave them intact.
+ */
+function stripNul<T>(value: T): T {
+  const json = JSON.stringify(value);
+  if (json === undefined || !json.includes("\\u0000")) return value;
+  return JSON.parse(json.replace(/\\u0000/g, "")) as T;
+}
+
 export async function archiveDocuments(
   db: InsertCapable,
   docs: ArchivableDocument[],
@@ -34,7 +50,7 @@ export async function archiveDocuments(
   if (docs.length === 0) return { inserted: 0, skipped: 0 };
 
   const rows = docs.map((doc) => {
-    const redacted = redactPayload(doc.payload, doc.endpointVersion);
+    const redacted = stripNul(redactPayload(doc.payload, doc.endpointVersion));
     return {
       source: doc.source,
       externalId: doc.externalId,

@@ -64,6 +64,32 @@ describe("archiveDocuments", () => {
     expect(result).toEqual({ inserted: 1, skipped: 0 });
   });
 
+  it("strips NUL (U+0000) so Postgres accepts the insert", async () => {
+    // SICAP occasionally emits a NUL in a free-text field; jsonb rejects it and
+    // used to abort the whole chunk, deterministically halting the DA crawler.
+    const NUL = String.fromCharCode(0);
+    const poisoned = {
+      source: TEST_SOURCE,
+      externalId: "da:9001",
+      endpointVersion: "da-list:v1",
+      payload: {
+        directAcquisitionID: 9001,
+        supplier: `RO 249720 SC NERA${NUL} SRL`,
+        description: `alarme${NUL}`,
+      },
+    };
+    const result = await archiveDocuments(db, [poisoned]);
+    expect(result).toEqual({ inserted: 1, skipped: 0 });
+
+    const [row] = await db
+      .select()
+      .from(rawDocuments)
+      .where(eq(rawDocuments.externalId, "da:9001"));
+    const payload = row!.payload as Record<string, unknown>;
+    expect(payload["supplier"]).toBe("RO 249720 SC NERA SRL");
+    expect(payload["description"]).toBe("alarme");
+  });
+
   it("stored payloads verifiably lack PII fields", async () => {
     const [row] = await db
       .select()
