@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { closeSharedDb, getSharedDb } from "../db.js";
@@ -44,6 +44,21 @@ if (!year || !month || month < 1 || month > 12) {
 const sh = (cmd: string, args: string[]): string =>
   execFileSync(cmd, args, { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
 
+/** Remove any leftover ted-bulk-* temp dirs from prior killed runs. Runs are
+ *  sequential so there's never a sibling in use — safe to sweep them all. */
+function sweepStaleTemps(): void {
+  const base = tmpdir();
+  for (const name of readdirSync(base)) {
+    if (name.startsWith("ted-bulk-")) {
+      try {
+        rmSync(join(base, name), { recursive: true, force: true });
+      } catch {
+        /* best-effort */
+      }
+    }
+  }
+}
+
 /** "00000064_2026.xml" -> "64-2026" (TED publication-number). */
 function pubNumFromFile(file: string): string {
   const m = basename(file).match(/^0*(\d+)_(\d{4})\.xml$/);
@@ -51,6 +66,7 @@ function pubNumFromFile(file: string): string {
 }
 
 async function main(): Promise<void> {
+  sweepStaleTemps(); // clear any temp dirs leaked by prior killed runs
   const db = getSharedDb();
   const work = mkdtempSync(join(tmpdir(), "ted-bulk-"));
   const source = `ted:${noticeType}`;
@@ -62,6 +78,7 @@ async function main(): Promise<void> {
   let fetched = 0;
   let inserted = 0;
   let skipped = 0;
+  let failed = false;
 
   try {
     // 1. Download the monthly package (ONE request) — unless a file was provided.
@@ -119,6 +136,7 @@ async function main(): Promise<void> {
     });
     console.log(JSON.stringify({ status: "completed", reportedTotal: files.length, fetched, inserted, skipped }, null, 2));
   } catch (err) {
+    failed = true;
     const error = err instanceof Error ? err.message : String(err);
     await finishScrapeRun(db, runId, {
       status: "failed",
@@ -130,13 +148,12 @@ async function main(): Promise<void> {
       error,
     });
     console.error("scrape-ted-bulk failed:", error);
+  } finally {
+    // ALWAYS remove the (up to ~1GB) temp dir, whatever happened.
     rmSync(work, { recursive: true, force: true });
     await closeSharedDb();
-    process.exit(1);
   }
-
-  rmSync(work, { recursive: true, force: true });
-  await closeSharedDb();
+  if (failed) process.exit(1);
 }
 
 main().catch(async (err) => {
