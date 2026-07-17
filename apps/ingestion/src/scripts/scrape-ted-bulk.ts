@@ -1,0 +1,146 @@
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { basename, join } from "node:path";
+import { closeSharedDb, getSharedDb } from "../db.js";
+import {
+  archiveDocuments,
+  finishScrapeRun,
+  startScrapeRun,
+  type ArchivableDocument,
+} from "../scrape/archive.js";
+
+/**
+ * TED BULK ingester — the rate-limit-proof path. Downloads a whole month's TED
+ * package in ONE request (ted.europa.eu/packages/monthly/YYYY-M, ~350MB tar.gz),
+ * extracts it (monthly -> daily .tar.gz -> per-notice eForms XML), filters to RO
+ * notices of the wanted type, and archives them to raw (source='ted').
+ *
+ * Why bulk: the per-notice XML host (ted.europa.eu/en/notice/.../xml) 429s at
+ * ~1 req/s. A package is a single download for the entire month — no rate limit.
+ *
+ *   pnpm --filter ingestion scrape-ted-bulk --year 2026 --month 1
+ *   pnpm --filter ingestion scrape-ted-bulk --year 2025 --month 6 --type can-standard
+ *
+ * Needs curl + tar + grep on PATH (mechanical heavy-lifting; DB archive in Node).
+ */
+
+function arg(name: string): string | undefined {
+  const i = process.argv.indexOf(`--${name}`);
+  return i >= 0 ? process.argv[i + 1] : undefined;
+}
+
+const year = Number(arg("year"));
+const month = Number(arg("month"));
+const noticeType = arg("type") ?? "can-standard";
+const country = (arg("country") ?? "ROU").toUpperCase();
+const packageFileArg = arg("package-file"); // test seam: use a pre-downloaded package
+
+if (!year || !month || month < 1 || month > 12) {
+  console.error("usage: scrape-ted-bulk --year YYYY --month M [--type can-standard] [--country ROU]");
+  process.exit(2);
+}
+
+const sh = (cmd: string, args: string[]): string =>
+  execFileSync(cmd, args, { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
+
+/** "00000064_2026.xml" -> "64-2026" (TED publication-number). */
+function pubNumFromFile(file: string): string {
+  const m = basename(file).match(/^0*(\d+)_(\d{4})\.xml$/);
+  return m ? `${m[1]}-${m[2]}` : basename(file).replace(/\.xml$/, "");
+}
+
+async function main(): Promise<void> {
+  const db = getSharedDb();
+  const work = mkdtempSync(join(tmpdir(), "ted-bulk-"));
+  const source = `ted:${noticeType}`;
+  const runId = await startScrapeRun(db, {
+    source,
+    windowStart: new Date(Date.UTC(year, month - 1, 1)),
+    windowEnd: new Date(Date.UTC(year, month, 0, 23, 59, 59)),
+  });
+  let fetched = 0;
+  let inserted = 0;
+  let skipped = 0;
+
+  try {
+    // 1. Download the monthly package (ONE request) — unless a file was provided.
+    const pkg = packageFileArg ?? join(work, "month.tar.gz");
+    if (!packageFileArg) {
+      const url = `https://ted.europa.eu/packages/monthly/${year}-${month}`;
+      console.log(`downloading ${url} ...`);
+      sh("curl", ["-sfL", "-A", "seap-analytics/0.1 (contact: contact@example.test)", "--max-time", "600", "-o", pkg, url]);
+    }
+
+    // 2. Extract monthly -> daily .tar.gz, then every daily -> per-notice XML.
+    sh("tar", ["-xzf", pkg, "-C", work]);
+    // extract each nested daily package in place
+    sh("bash", ["-c", `find ${JSON.stringify(work)} -name '*_*.tar.gz' -exec tar -xzf {} -C ${JSON.stringify(work)} \\;`]);
+
+    // 3. Filter: RO notices of the wanted type. Two-stage grep (country, then type).
+    const listFile = join(work, "matches.txt");
+    const filter =
+      `grep -lrF 'eforms-country">${country}' ${JSON.stringify(work)} --include='*.xml' 2>/dev/null` +
+      ` | xargs -r grep -lF '>${noticeType}<' 2>/dev/null > ${JSON.stringify(listFile)} || true`;
+    sh("bash", ["-c", filter]);
+    const files = readFileSync(listFile, "utf8").split("\n").filter(Boolean);
+    console.log(`${source} ${year}-${String(month).padStart(2, "0")}: ${files.length} matching notices`);
+
+    // 4. Archive in chunks (read XML per file, store faithfully).
+    const CHUNK = 500;
+    for (let i = 0; i < files.length; i += CHUNK) {
+      const docs: ArchivableDocument[] = files.slice(i, i + CHUNK).map((f) => {
+        const pubnum = pubNumFromFile(f);
+        fetched += 1;
+        return {
+          source: "ted",
+          externalId: `${noticeType}:${pubnum}`,
+          endpointVersion: "ted-eforms:v1",
+          payload: {
+            "publication-number": pubnum,
+            "notice-type": noticeType,
+            xml: readFileSync(f, "utf8"),
+          },
+        };
+      });
+      const r = await archiveDocuments(db, docs);
+      inserted += r.inserted;
+      skipped += r.skipped;
+      console.log(`  archived ${Math.min(i + CHUNK, files.length)}/${files.length}: +${r.inserted}/${r.skipped} skipped`);
+    }
+
+    await finishScrapeRun(db, runId, {
+      status: "completed",
+      reportedTotal: files.length,
+      fetchedCount: fetched,
+      insertedCount: inserted,
+      skippedCount: skipped,
+      pagesFetched: 1,
+    });
+    console.log(JSON.stringify({ status: "completed", reportedTotal: files.length, fetched, inserted, skipped }, null, 2));
+  } catch (err) {
+    const error = err instanceof Error ? err.message : String(err);
+    await finishScrapeRun(db, runId, {
+      status: "failed",
+      reportedTotal: null,
+      fetchedCount: fetched,
+      insertedCount: inserted,
+      skippedCount: skipped,
+      pagesFetched: 0,
+      error,
+    });
+    console.error("scrape-ted-bulk failed:", error);
+    rmSync(work, { recursive: true, force: true });
+    await closeSharedDb();
+    process.exit(1);
+  }
+
+  rmSync(work, { recursive: true, force: true });
+  await closeSharedDb();
+}
+
+main().catch(async (err) => {
+  console.error("scrape-ted-bulk crashed:", err);
+  await closeSharedDb();
+  process.exit(1);
+});
