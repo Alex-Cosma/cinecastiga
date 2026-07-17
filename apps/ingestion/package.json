@@ -8,6 +8,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "dev": "tsx watch src/index.ts",
     "scrape": "tsx src/scripts/scrape.ts",
+    "scrape-ted": "tsx src/scripts/scrape-ted.ts",
     "verify-da": "tsx src/scripts/verify-da-completeness.ts",
     "scrub-pii": "tsx src/scripts/scrub-pii.ts",
     "start": "node dist/index.js",

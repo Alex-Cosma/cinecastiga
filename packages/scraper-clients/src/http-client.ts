@@ -112,6 +112,8 @@ class Semaphore {
 export interface HttpClient {
   /** GET a JSON resource relative to baseUrl. */
   getJson<T = unknown>(path: string, init?: RequestInit): Promise<FetchResult<T>>;
+  /** GET a text/XML resource (e.g. TED eForms XML) — same politeness/retry path. */
+  getText(path: string, init?: RequestInit): Promise<FetchResult<string>>;
   /** POST a JSON body and parse a JSON response, same politeness path as getJson. */
   postJson<T = unknown>(
     path: string,
@@ -173,6 +175,7 @@ export function createHttpClient(opts: HttpClientOptions): HttpClient {
     path: string,
     body: unknown | undefined,
     init?: RequestInit,
+    parse: "json" | "text" = "json",
   ): Promise<FetchResult<T>> {
     const url = new URL(path, baseUrl).toString();
     // Fail fast while the upstream is deemed unhealthy — do not add load.
@@ -216,7 +219,9 @@ export function createHttpClient(opts: HttpClientOptions): HttpClient {
         lastStatus = response.status;
         retryAfterMs = parseRetryAfterMs(response.headers.get("retry-after"));
         if (response.ok) {
-          const data = (await response.json()) as T;
+          const data = (
+            parse === "text" ? await response.text() : await response.json()
+          ) as T;
           noteSuccess();
           return { data, status: response.status, url, fetchedAt: new Date() };
         }
@@ -261,6 +266,7 @@ export function createHttpClient(opts: HttpClientOptions): HttpClient {
 
   return {
     getJson: (path, init) => request("GET", path, undefined, init),
+    getText: (path, init) => request<string>("GET", path, undefined, init, "text"),
     postJson: (path, body, init) => request("POST", path, body, init),
   };
 }
