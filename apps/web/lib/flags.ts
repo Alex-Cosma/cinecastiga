@@ -22,7 +22,7 @@ export const FLAG_META: Record<string, FlagMeta> = {
     description:
       "Aceeași autoritate și același furnizor, mai multe achiziții directe într-un an, fiecare sub pragul legal, dar însumând peste prag.",
     rationale:
-      "Împărțirea unei achiziții mari în mai multe achiziții directe evită procedura competitivă cerută peste prag (Legea 98/2016 art. 7).",
+      "Pragul legal e per achiziție (art. 7 alin. 5, Legea 98/2016), nu anual — dar legea interzice divizarea unei achiziții pentru a evita procedura (art. 11) și cere agregarea necesarului anual pe produse similare. Suma anuală către același partener, de câteva ori peste prag, e semnul tipic al divizării.",
     caveat:
       "Nevoi recurente legitime (ex. consumabile lunare) pot arăta similar. Semnal, nu dovadă.",
   },
@@ -128,6 +128,42 @@ export const FLAG_META: Record<string, FlagMeta> = {
     caveat:
       "Specializare reală pe un client mare poate explica dependența. Fereastra de date (2026) este scurtă.",
   },
+  fin_tiny_staff: {
+    code: "fin_tiny_staff",
+    title: "Firmă minusculă, bani publici mari",
+    subject: "supplier",
+    short: "Cel mult 5 salariați, peste 2 mil. lei bani publici într-un an.",
+    description:
+      "Furnizor cu cel mult 5 salariați (numărul mediu din bilanțul MF al aceluiași an) care încasează peste 2 mil. lei bani publici într-un singur an.",
+    rationale:
+      "O firmă fără personal care rulează contracte publice mari poate fi paravan sau intermediar — munca reală o face altcineva.",
+    caveat:
+      "Dealeri, importatori, SPV-uri și consultanța cu subcontractare pot fi legitime cu personal minim. Zilierii și subcontractorii nu apar în bilanț. Valorile atribuite pot include plafoane de acord-cadru, nu plăți efective.",
+  },
+  fin_public_reliance: {
+    code: "fin_public_reliance",
+    title: "Dependență de bani publici",
+    subject: "supplier",
+    short: "Cel puțin 75% din cifra de afaceri vine din contracte publice.",
+    description:
+      "Pe anii cu bilanț depus, valoarea contractată public reprezintă cel puțin 75% din întreaga cifră de afaceri a firmei (minim 1 mil. lei public).",
+    rationale:
+      "O firmă care trăiește aproape exclusiv din achiziții publice depinde de relația cu statul, nu de piață.",
+    caveat:
+      "Compară valori contractate (nu încasări) cu cifra de afaceri; contractele multianuale pot împinge raportul peste 1. Unele sectoare sunt firesc aproape exclusiv publice.",
+  },
+  net_shared_admin: {
+    code: "net_shared_admin",
+    title: "Firme surori la aceeași autoritate",
+    subject: "supplier",
+    short: "Aceeași persoană conduce mai multe firme plătite de aceeași autoritate.",
+    description:
+      "Două sau mai multe firme administrate de aceeași persoană (reprezentant legal ONRC, identificat prin nume + data și locul nașterii) încasează împreună bani publici de la aceeași autoritate.",
+    rationale:
+      "Împărțirea afacerii pe firme-surori ascunde concentrarea reală: fiecare firmă pare mică, dar aceeași persoană controlează întregul flux.",
+    caveat:
+      "Administratorii nu sunt neapărat asociații/proprietarii; instantaneu ONRC curent, nu de la momentul achizițiilor. Grupuri legitime de firme pot arăta similar.",
+  },
 };
 
 export const FLAG_ORDER = [
@@ -141,6 +177,9 @@ export const FLAG_ORDER = [
   "award_single_bid",
   "award_concentration",
   "award_dependence",
+  "fin_tiny_staff",
+  "fin_public_reliance",
+  "net_shared_admin",
 ];
 
 /** Risk band for a CRI score, for coloring. */
