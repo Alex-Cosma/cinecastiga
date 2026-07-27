@@ -184,6 +184,19 @@ export async function runFlagMarts(
         from core.flags where subject_type = 'da' group by subject_id
       ) fl on fl.subject_id = da.id
     `;
+    // Pair-level flags stamped onto their constituent rows: the entity page's
+    // "Fracționare sub prag" table filter must surface the acquisitions that
+    // make up the flagged pattern (all pair-year rows, incl. the odd above-prag
+    // one — it belongs to the same pattern even if the sum didn't count it).
+    await q`
+      update marts.da_transactions dt
+      set da_flags = array_append(coalesce(dt.da_flags, '{}'), 'da_split')
+      from core.flags f
+      where f.flag_code = 'da_split' and f.subject_type = 'pair'
+        and f.subject_id = dt.authority_id and f.partner_id = dt.supplier_id
+        and left(dt.finalization_date, 4) = f.period
+        and not ('da_split' = any(coalesce(dt.da_flags, '{}')))
+    `;
 
     const [ac] = await q`select count(*)::int c from marts.authority_concentration`;
     const [tp] = await q`select count(*)::int c from marts.entity_top_partners`;

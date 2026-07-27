@@ -4,7 +4,7 @@
  * `/metodologie` page. Bump `METHODOLOGY_VERSION` when a rule or threshold
  * changes; every flag instance is stamped with it.
  */
-export const METHODOLOGY_VERSION = "rf-2026.1";
+export const METHODOLOGY_VERSION = "rf-2026.3";
 
 export type FlagSubject = "da" | "award" | "authority" | "supplier" | "pair";
 
@@ -28,7 +28,7 @@ export const FLAG_DEFS: FlagDef[] = [
     description:
       "Aceeași autoritate și același furnizor, mai multe achiziții directe într-un an, fiecare sub pragul legal, dar însumând peste prag.",
     rationale:
-      "Împărțirea unei achiziții mari în mai multe achiziții directe evită procedura competitivă cerută peste prag (Legea 98/2016 art. 7).",
+      "Pragul legal e per achiziție (art. 7 alin. 5, Legea 98/2016), nu anual — dar legea interzice divizarea unei achiziții pentru a evita procedura (art. 11) și cere agregarea necesarului anual pe produse similare. Suma anuală către același partener, de câteva ori peste prag, e semnul tipic al divizării.",
     caveat:
       "Nevoi recurente legitime (ex. consumabile lunare) pot arăta similar. Semnal, nu dovadă.",
   },
@@ -128,5 +128,38 @@ export const FLAG_DEFS: FlagDef[] = [
       "Un furnizor „captiv” unei autorități, deși prezent pe piață, poate indica o relație preferențială.",
     caveat:
       "Specializare reală pe un client mare poate explica dependența. Fereastra de date (2026) este scurtă.",
+  },
+  {
+    code: "fin_tiny_staff",
+    title: "Firmă minusculă, bani publici mari",
+    subject: "supplier",
+    description:
+      "Furnizor cu cel mult 5 salariați (numărul mediu din bilanțul MF al aceluiași an) care încasează peste 2 mil. lei bani publici într-un singur an.",
+    rationale:
+      "O firmă fără personal care rulează contracte publice mari poate fi paravan sau intermediar — munca reală o face altcineva, iar marja rămâne la intermediar.",
+    caveat:
+      "Holdinguri, SPV-uri imobiliare, dealeri/importatori și firmele de consultanță cu subcontractare pot fi legitime cu personal minim. Salariații vin din bilanțul anual — zilierii și subcontractorii nu apar. Valorile atribuite pot include plafoane de acord-cadru, nu plăți efective.",
+  },
+  {
+    code: "fin_public_reliance",
+    title: "Dependență de bani publici",
+    subject: "supplier",
+    description:
+      "Pe anii cu bilanț depus, valoarea contractată public a firmei reprezintă cel puțin 75% din întreaga sa cifră de afaceri (minim 1 mil. lei public).",
+    rationale:
+      "O firmă care trăiește aproape exclusiv din achiziții publice depinde de relația cu statul, nu de piață — teren fertil pentru relații preferențiale.",
+    caveat:
+      "Raportul compară valori contractate (nu încasări efective) cu cifra de afaceri; contractele multianuale și acordurile-cadru pot împinge raportul peste 1. Sectoare aproape exclusiv publice (ex. lucrări de drumuri) au firesc valori mari.",
+  },
+  {
+    code: "net_shared_admin",
+    title: "Firme surori la aceeași autoritate",
+    subject: "supplier",
+    description:
+      "Două sau mai multe firme administrate de aceeași persoană (reprezentant legal la Registrul Comerțului, identificat prin nume + data și locul nașterii) încasează împreună bani publici de la aceeași autoritate.",
+    rationale:
+      "Împărțirea afacerii pe firme-surori ascunde concentrarea reală pe un singur beneficiar: fiecare firmă pare mică, dar aceeași persoană controlează întregul flux — inclusiv ca metodă de a ocoli pragurile și semnalele de fracționare pe o singură firmă.",
+    caveat:
+      "Administratorii nu sunt neapărat asociații/proprietarii, iar datele sunt instantaneul ONRC curent — nu administratorii de la momentul achizițiilor. Grupuri legitime de firme cu specializări diferite pot arăta similar.",
   },
 ];

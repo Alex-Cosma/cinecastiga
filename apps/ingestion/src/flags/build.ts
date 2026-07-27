@@ -42,6 +42,25 @@ const DEFAULTS: Record<string, number> = {
   award_dep_top_pct: 0.85,
   award_dep_min_auth: 2, // captive-but-active guard (short data window)
   award_dep_min_total: 500_000,
+  // ── financials-based thresholds (reference.company_financials, MF bilanț) ──
+  // Tiny staff, big public money: ≤5 employees winning ≥2M in a single year is
+  // a shell/intermediary signal; severity saturates at 20M/year.
+  fin_tiny_max_employees: 5,
+  fin_tiny_min_value: 2_000_000,
+  fin_tiny_sev_ref: 20_000_000,
+  // Public-money reliance: over the matched years, public contracted value vs
+  // the firm's entire net turnover. Ratio can legitimately exceed 1 (framework
+  // ceilings, multi-year contracts) — that's why we sum across years first.
+  fin_reliance_min_ratio: 0.75,
+  fin_reliance_min_public: 1_000_000,
+  fin_reliance_min_turnover: 250_000,
+  // ── shared-administrator network (ONRC reps) ───────────────────────────────
+  // Same person (name+birth identity) administering ≥2 supplier firms that all
+  // take money from the SAME authority: concentration hidden behind sibling
+  // companies (the "MARISAR constellation" pattern). Severity saturates at 5M.
+  net_admin_min_firms: 2,
+  net_admin_min_total: 250_000,
+  net_admin_sev_ref: 5_000_000,
 };
 
 export interface FlagsReport {
@@ -310,6 +329,141 @@ export async function runFlags(
     from agg
     where total >= ${awDepMinTot}::numeric and nauth >= ${awDepMinAuth}::int
       and top/nullif(total,0) >= ${awDepTopPct}::float8
+  `;
+
+  // ── financials-based flags (MF bilanț via reference.company_financials) ────
+  const finTinyMaxEmpl = await t("fin_tiny_max_employees");
+  const finTinyMinVal = await t("fin_tiny_min_value");
+  const finTinySevRef = await t("fin_tiny_sev_ref");
+  const finRelMinRatio = await t("fin_reliance_min_ratio");
+  const finRelMinPublic = await t("fin_reliance_min_public");
+  const finRelMinTurnover = await t("fin_reliance_min_turnover");
+
+  // Public value per supplier-YEAR: DA actuals + award value split equally
+  // across the distinct winners of each award (same convention as
+  // award_dependence). Only years where a bilanț filing exists can match.
+  const pubYearCte = sql`
+    pub as (
+      select supplier_entity_id eid, extract(year from finalization_date)::int y,
+             sum(closing_value) val
+      from core.direct_acquisitions
+      where supplier_entity_id is not null and finalization_date is not null
+        and closing_value is not null and closing_value > 0
+        and closing_value <= ${maxPlausible}::numeric
+      group by 1, 2
+      union all
+      select winner, y, sum(share) from (
+        select aw.winner, aw.y, aw.val / count(*) over (partition by aw.award_id) share
+        from (
+          select a.id award_id, extract(year from a.state_date)::int y,
+                 a.ron_contract_value val, cw.entity_id winner
+          from core.awards a
+          join core.contracts c on c.ca_notice_id = a.ca_notice_id
+          join core.contract_winners cw on cw.contract_id = c.id
+          where a.state_date is not null and a.ron_contract_value is not null
+            and a.ron_contract_value > 0
+            and a.ron_contract_value <= ${awMaxPlausible}::numeric
+          group by a.id, y, a.ron_contract_value, cw.entity_id
+        ) aw
+      ) sh group by 1, 2
+    ),
+    tot as (select eid, y, sum(val) val from pub group by 1, 2),
+    fin as (
+      select e.id eid, cf.year y, cf.employees, cf.net_turnover
+      from core.entities e
+      join reference.company_financials cf on cf.cui = e.cui_canonical
+    )
+  `;
+
+  // ── fin_tiny_staff: ≤N employees, ≥X lei public money in that year ─────────
+  await sql`
+    insert into core.flags (subject_type, subject_id, flag_code, period, triggered, severity, evidence, methodology_version)
+    with ${pubYearCte}
+    select 'supplier', t.eid, 'fin_tiny_staff', t.y::text, true,
+      least(1, t.val / ${finTinySevRef}::numeric),
+      jsonb_build_object('year', t.y, 'employees', f.employees, 'total', round(t.val),
+        'per_employee', round(t.val / greatest(f.employees, 1))), ${V}
+    from tot t
+    join fin f on f.eid = t.eid and f.y = t.y
+    where f.employees is not null and f.employees <= ${finTinyMaxEmpl}::int
+      and t.val >= ${finTinyMinVal}::numeric
+  `;
+
+  // ── fin_public_reliance: firm's turnover is (almost) all public money ──────
+  // Summed over the matched years so multi-year contracts don't distort a
+  // single year's ratio.
+  await sql`
+    insert into core.flags (subject_type, subject_id, flag_code, period, triggered, severity, evidence, methodology_version)
+    with ${pubYearCte},
+    rel as (
+      select t.eid, sum(t.val) pub_total, sum(f.net_turnover) rev_total, count(*) yrs
+      from tot t
+      join fin f on f.eid = t.eid and f.y = t.y
+      where f.net_turnover is not null and f.net_turnover > 0
+      group by t.eid
+    )
+    select 'supplier', eid, 'fin_public_reliance', 'all', true,
+      least(1, pub_total / nullif(rev_total, 0)),
+      jsonb_build_object('public_total', round(pub_total), 'revenue_total', round(rev_total),
+        'ratio', round(pub_total / nullif(rev_total, 0), 4), 'years', yrs), ${V}
+    from rel
+    where rev_total >= ${finRelMinTurnover}::numeric
+      and pub_total >= ${finRelMinPublic}::numeric
+      and pub_total / rev_total >= ${finRelMinRatio}::float8
+  `;
+
+  // ── net_shared_admin: sibling firms of one person milking one authority ────
+  const netMinFirms = await t("net_admin_min_firms");
+  const netMinTotal = await t("net_admin_min_total");
+  const netSevRef = await t("net_admin_sev_ref");
+  await sql`
+    insert into core.flags (subject_type, subject_id, partner_id, flag_code, period, triggered, severity, evidence, methodology_version)
+    with reps as (
+      -- person (solid identity only) → their firms that exist as entities
+      select r.person_key, max(r.person_name) pname,
+             max(extract(year from r.birth_date))::int pby, e.id sid
+      from reference.company_reps r
+      join core.entities e on e.cui_canonical = r.cui
+      where r.birth_date is not null
+      group by r.person_key, e.id
+    ),
+    pair as (
+      -- money per (supplier, authority): DAs + award values split per winner
+      select supplier_entity_id sid, authority_entity_id aid, sum(closing_value) v
+      from core.direct_acquisitions
+      where supplier_entity_id is not null and authority_entity_id is not null
+        and closing_value > 0 and closing_value <= ${maxPlausible}::numeric
+      group by 1, 2
+      union all
+      select sh.winner, sh.aid, sum(sh.share) from (
+        select cw.entity_id winner, aw.authority_entity_id aid,
+               aw.ron_contract_value / count(*) over (partition by aw.id) share
+        from core.awards aw
+        join core.contracts c on c.ca_notice_id = aw.ca_notice_id
+        join core.contract_winners cw on cw.contract_id = c.id
+        where aw.authority_entity_id is not null and aw.ron_contract_value is not null
+          and aw.ron_contract_value > 0 and aw.ron_contract_value <= ${awMaxPlausible}::numeric
+      ) sh group by 1, 2
+    ),
+    pp as (select sid, aid, sum(v) v from pair group by 1, 2),
+    g as (
+      select rp.person_key, max(rp.pname) pname, max(rp.pby) pby, pp.aid,
+             count(distinct pp.sid) nf, sum(pp.v) total,
+             array_agg(distinct pp.sid) sids
+      from reps rp
+      join pp on pp.sid = rp.sid
+      group by rp.person_key, pp.aid
+      having count(distinct pp.sid) >= ${netMinFirms}::int
+         and sum(pp.v) >= ${netMinTotal}::numeric
+    )
+    select 'supplier', s.sid, g.aid, 'net_shared_admin', 'all', true,
+      least(1, g.total / ${netSevRef}::numeric),
+      jsonb_build_object('person', g.pname, 'birth_year', g.pby,
+        'authority_id', g.aid, 'authority', a.name_display,
+        'n_firms', g.nf, 'combined', round(g.total)), ${V}
+    from g
+    cross join lateral unnest(g.sids) s(sid)
+    left join core.entities a on a.id = g.aid
   `;
 
   const rows = (await sql`
