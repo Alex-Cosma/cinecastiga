@@ -17,10 +17,15 @@
     "test:integration": "vitest run integration.test",
     "lint": "tsc -p tsconfig.json --noEmit",
     "normalize": "tsx src/scripts/normalize.ts",
+    "reconcile": "tsx src/scripts/reconcile.ts",
+    "merge-exact-name": "tsx src/scripts/merge-exact-name.ts",
     "marts": "tsx src/scripts/marts.ts",
+    "ted-mart": "tsx src/scripts/ted-mart.ts",
     "import-old": "tsx src/scripts/import-old.ts",
     "index-search": "tsx src/scripts/index-search.ts",
     "import-das": "tsx src/scripts/import-das.ts",
+    "import-financials": "tsx src/scripts/import-financials.ts",
+    "import-onrc": "tsx src/scripts/import-onrc.ts",
     "seed-thresholds": "tsx src/scripts/seed-thresholds.ts",
     "flags": "tsx src/scripts/flags.ts",
     "reset-derived": "tsx src/scripts/reset-derived.ts"
@@ -30,6 +35,7 @@
     "@seap/domain": "workspace:*",
     "@seap/scraper-clients": "workspace:*",
     "drizzle-orm": "^0.44.0",
+    "fast-xml-parser": "^4.5.0",
     "graphile-worker": "^0.16.6",
     "zod": "^4.4.3",
     "meilisearch": "^0.59.0"
