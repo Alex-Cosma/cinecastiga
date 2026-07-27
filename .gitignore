@@ -27,3 +27,6 @@ infra/data/
 # old 2020 mongo dump (28GB, validation only — never commit)
 db-old/
 _*.mjs
+
+# claude local session state
+.claude/
