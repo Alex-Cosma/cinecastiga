@@ -90,6 +90,18 @@ export const entities = coreSchema.table(
     /** County / NUTS from the richest source (award contract winner address). */
     county: text("county"),
     nutsCode: text("nuts_code"),
+    /** ISO country of the entity ('RO','DE','IT',…). Null when unknown. */
+    countryCode: text("country_code"),
+    /**
+     * A non-Romanian supplier (typically an above-threshold/TED winner). These
+     * have no RO CUI to merge on, so they're deduped via `foreign_id_norm` +
+     * country (tier 2b) and flagged here so the app can surface/filter them.
+     */
+    isForeign: boolean("is_foreign").notNull().default(false),
+    /** Foreign registration / VAT id as seen (audit trail). */
+    foreignIdRaw: text("foreign_id_raw"),
+    /** Normalized foreign id (upper, alnum-only) — the tier-2b merge key with country. */
+    foreignIdNorm: text("foreign_id_norm"),
     /** Raw CUI strings seen (audit trail for the canonicalization). */
     cuiRawVariants: text("cui_raw_variants").array(),
     firstSeen: timestamp("first_seen", { withTimezone: true }),
@@ -101,6 +113,14 @@ export const entities = coreSchema.table(
     uniqueIndex("entities_cui_canonical_uq")
       .on(t.cuiCanonical)
       .where(sql`${t.cuiValid} = true`),
+    // Tier-2b merge key: one row per (country, foreign id) for foreign suppliers
+    // that lack a valid RO CUI. Substantive-id validation happens in resolution.
+    uniqueIndex("entities_foreign_id_uq")
+      .on(t.countryCode, t.foreignIdNorm)
+      .where(
+        sql`${t.cuiValid} = false and ${t.foreignIdNorm} is not null and ${t.countryCode} is not null`,
+      ),
+    index("entities_is_foreign_idx").on(t.isForeign),
     index("entities_name_norm_trgm_idx").using(
       "gin",
       sql`${t.nameNormalized} gin_trgm_ops`,
@@ -368,6 +388,179 @@ export const daItems = coreSchema.table(
   (t) => [
     uniqueIndex("da_items_sicap_item_id_uq").on(t.sicapItemId),
     index("da_items_da_idx").on(t.daId),
+  ],
+);
+
+// ─────────────────────────────────────────────────────────────────────────
+// TED (Tenders Electronic Daily) — above-EU-threshold contract-award notices,
+// eForms UBL (RO coverage 2023+). A PARALLEL source to the e-licitatie award
+// pipeline: buyer + winner entities resolve by CUI into the SAME core.entities,
+// so a TED award and its e-licitatie twin share entity rows and reconcile on
+// buyer-CUI + winner-CUI + value + date + CPV. Natural key: TED
+// publication-number (e.g. '63449-2026'). Fully rebuildable by replaying the
+// `ted-eforms:v1` transform over raw.raw_documents.
+// ─────────────────────────────────────────────────────────────────────────
+
+/** One row per TED contract-award notice (eForms CAN). */
+export const tedNotices = coreSchema.table(
+  "ted_notices",
+  {
+    id: bigserial("id", { mode: "bigint" }).primaryKey(),
+    /** Provenance: raw doc that last populated this row (not unique). */
+    rawId: bigint("raw_id", { mode: "bigint" }).notNull(),
+    /** TED publication-number, zero-trimmed 'NNNN-YYYY' — natural key. */
+    publicationNumber: text("publication_number").notNull(),
+    /** OJS notice id as published, e.g. '00063449-2026'. */
+    ojsNoticeId: text("ojs_notice_id"),
+    /** NoticeTypeCode (listName=result), e.g. 'can-standard'. */
+    noticeType: text("notice_type"),
+    /** EU directive the notice runs under, e.g. '32014L0024'. */
+    regulatoryDomain: text("regulatory_domain"),
+    /** SICAP ContractFolderID (UUID) — the future exact TED↔SICAP join key. */
+    contractFolderId: text("contract_folder_id"),
+    /** eForms notice UUID (cbc:ID schemeName=notice-id). */
+    noticeUuid: text("notice_uuid"),
+    /** ProcedureCode, e.g. 'open' | 'neg-w-call' | 'restricted'. */
+    procedureType: text("procedure_type"),
+    buyerEntityId: bigint("buyer_entity_id", {
+      mode: "bigint",
+    }).references(() => entities.id),
+    /** PartyTypeCode (buyer-legal-type), e.g. 'body-pl-ra'. */
+    buyerLegalType: text("buyer_legal_type"),
+    /** ActivityTypeCode (authority-activity), e.g. 'health'. */
+    buyerActivity: text("buyer_activity"),
+    cpvCode: text("cpv_code").references(() => cpvCodes.code),
+    cpvValid: boolean("cpv_valid"),
+    cpvRaw: text("cpv_raw"),
+    /** ProcurementTypeCode (contract-nature): 'supplies'|'services'|'works'. */
+    contractNature: text("contract_nature"),
+    title: text("title"),
+    estimatedValueRon: numeric("estimated_value_ron"),
+    currency: text("currency"),
+    /** Notice-level awarded/framework total (OverallMaximum/Approximate). */
+    awardedValueTotal: numeric("awarded_value_total"),
+    /** Any lot funded by an EU programme (FundingProgramCode != no-eu-funds). */
+    euFunded: boolean("eu_funded"),
+    lotCount: integer("lot_count"),
+    publicationDate: timestamp("publication_date", { withTimezone: true }),
+    issueDate: timestamp("issue_date", { withTimezone: true }),
+    /** Best-effort award date; the '2000-01-01' eForms sentinel is dropped. */
+    awardDate: timestamp("award_date", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("ted_notices_publication_number_uq").on(t.publicationNumber),
+    index("ted_notices_buyer_idx").on(t.buyerEntityId),
+    index("ted_notices_cpv_idx").on(t.cpvCode),
+    index("ted_notices_publication_date_idx").on(t.publicationDate),
+    index("ted_notices_contract_folder_idx").on(t.contractFolderId),
+  ],
+);
+
+/**
+ * Per-lot award result within a TED notice. This is the grain the single-bidder
+ * red flag and the reconciliation join operate on (one buyer, one winner set,
+ * one value, one CPV per lot).
+ */
+export const tedLotResults = coreSchema.table(
+  "ted_lot_results",
+  {
+    id: bigserial("id", { mode: "bigint" }).primaryKey(),
+    tedNoticeId: bigint("ted_notice_id", { mode: "bigint" })
+      .notNull()
+      .references(() => tedNotices.id, { onDelete: "cascade" }),
+    /** eForms lot id within the notice, e.g. 'LOT-0003'. */
+    lotId: text("lot_id").notNull(),
+    /** eForms result id, e.g. 'RES-0003'. */
+    resultId: text("result_id"),
+    cpvCode: text("cpv_code").references(() => cpvCodes.code),
+    cpvValid: boolean("cpv_valid"),
+    cpvRaw: text("cpv_raw"),
+    contractNature: text("contract_nature"),
+    title: text("title"),
+    estimatedValueRon: numeric("estimated_value_ron"),
+    awardedValue: numeric("awarded_value"),
+    currency: text("currency"),
+    /** Number of tenders received for the lot (received-submission-type=tenders). */
+    tendersReceived: integer("tenders_received"),
+    /** tendersReceived == 1 — the single-bid competition red flag. */
+    isSingleBidder: boolean("is_single_bidder"),
+    /** TenderResultCode (winner-selection-status), e.g. 'selec-w'. */
+    winnerSelectionStatus: text("winner_selection_status"),
+    /** SettledContract IssueDate — the effective award/contract date. */
+    contractDate: timestamp("contract_date", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("ted_lot_results_notice_lot_uq").on(t.tedNoticeId, t.lotId),
+    index("ted_lot_results_notice_idx").on(t.tedNoticeId),
+    index("ted_lot_results_cpv_idx").on(t.cpvCode),
+    index("ted_lot_results_single_bidder_idx").on(t.isSingleBidder),
+  ],
+);
+
+/** Lot ↔ winning entity (M:N — consortia / joint bids are real). */
+export const tedLotWinners = coreSchema.table(
+  "ted_lot_winners",
+  {
+    lotResultId: bigint("lot_result_id", { mode: "bigint" })
+      .notNull()
+      .references(() => tedLotResults.id, { onDelete: "cascade" }),
+    entityId: bigint("entity_id", { mode: "bigint" })
+      .notNull()
+      .references(() => entities.id),
+  },
+  (t) => [
+    primaryKey({ columns: [t.lotResultId, t.entityId] }),
+    index("ted_lot_winners_entity_idx").on(t.entityId),
+  ],
+);
+
+/**
+ * Reconciliation crosswalk (#3): TED lot-award ↔ e-licitatie contract-award that
+ * describe the SAME real-world procurement. SICAP is the eSender to TED, so most
+ * above-threshold awards appear in both. Entities already unify by CUI (shared
+ * core.entities), so the match anchors on buyer + winner entity ids, then value,
+ * date and CPV disambiguate. Fully derived (truncate + rebuild); a TED lot may
+ * have several candidate contracts — kept as ranked rows, best pickable per lot.
+ */
+export const awardLinks = coreSchema.table(
+  "award_links",
+  {
+    id: bigserial("id", { mode: "bigint" }).primaryKey(),
+    tedLotResultId: bigint("ted_lot_result_id", { mode: "bigint" })
+      .notNull()
+      .references(() => tedLotResults.id, { onDelete: "cascade" }),
+    contractId: bigint("contract_id", { mode: "bigint" })
+      .notNull()
+      .references(() => contracts.id, { onDelete: "cascade" }),
+    /** Denormalized parents for cheap querying. */
+    tedNoticeId: bigint("ted_notice_id", { mode: "bigint" }),
+    caNoticeId: bigint("ca_notice_id", { mode: "bigint" }),
+    /** 0–1 confidence; higher = tighter value/date/CPV agreement. */
+    matchScore: real("match_score").notNull(),
+    /**
+     * The single best contract for this TED lot (highest score, tie-broken by
+     * closest date). Frameworks produce many candidate contracts per TED award;
+     * the primary row is the clean 1:1 twin for dedup / unified spend.
+     */
+    isPrimary: boolean("is_primary").notNull().default(false),
+    /** How it matched, e.g. 'buyer+winner+value+date+cpv'. */
+    matchMethod: text("match_method").notNull(),
+    valueDiffPct: numeric("value_diff_pct"),
+    dateDiffDays: integer("date_diff_days"),
+    evidence: jsonb("evidence"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("award_links_pair_uq").on(t.tedLotResultId, t.contractId),
+    index("award_links_ted_lot_idx").on(t.tedLotResultId),
+    index("award_links_contract_idx").on(t.contractId),
+    index("award_links_score_idx").on(t.matchScore),
+    // The clean 1:1 crosswalk = primary rows only.
+    index("award_links_primary_idx")
+      .on(t.tedLotResultId)
+      .where(sql`${t.isPrimary} = true`),
   ],
 );
 

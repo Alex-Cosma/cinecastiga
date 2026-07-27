@@ -1,0 +1,2 @@
+ALTER TABLE "core"."award_links" ADD COLUMN "is_primary" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+CREATE INDEX "award_links_primary_idx" ON "core"."award_links" USING btree ("ted_lot_result_id") WHERE "core"."award_links"."is_primary" = true;

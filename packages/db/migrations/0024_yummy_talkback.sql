@@ -1,0 +1,1 @@
+ALTER TABLE "marts"."contract_transactions" ADD COLUMN "ted_pubnum" text;

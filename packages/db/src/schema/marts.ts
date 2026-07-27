@@ -1,5 +1,6 @@
 import {
   bigint,
+  boolean,
   jsonb,
   index,
   integer,
@@ -124,6 +125,13 @@ export const entityProfile = martsSchema.table(
     // no request-time join into core). Filled by the marts build.
     nameDisplay: text("name_display"),
     county: text("county"),
+    /** Denormalized from core.entities so profiles can badge foreign suppliers. */
+    countryCode: text("country_code"),
+    isForeign: boolean("is_foreign").notNull().default(false),
+    /** Matched UAT (SIRUTA code) + its 2021 population — for per-capita normalization.
+     *  Only set for authorities that resolve to a commune/city/municipality. */
+    uatSiruta: integer("uat_siruta"),
+    population: integer("population"),
     nContracts: integer("n_contracts").notNull().default(0),
     nDas: integer("n_das").notNull().default(0),
     totalRonFull: numeric("total_ron_full"),
@@ -131,6 +139,12 @@ export const entityProfile = martsSchema.table(
     totalRonSplit: numeric("total_ron_split"),
     firstActivity: text("first_activity"),
     lastActivity: text("last_activity"),
+    /** MF bilanț (reference.company_financials): latest filing with an employee
+     *  count, joined by cui_canonical at build time. Suppliers only; null =
+     *  no filing (PFA, foreign, dissolved) — an informative absence. */
+    employees: integer("employees"),
+    employeesYear: integer("employees_year"),
+    netTurnover: numeric("net_turnover"),
   },
   (t) => [
     primaryKey({ columns: [t.entityId, t.role] }),
@@ -279,5 +293,148 @@ export const daTransactions = martsSchema.table(
     index("da_tx_authority_idx").on(t.authorityId, t.finalizationDate),
     index("da_tx_supplier_idx").on(t.supplierId, t.finalizationDate),
     index("da_tx_authority_value_idx").on(t.authorityId, t.closingValue),
+  ],
+);
+
+/**
+ * TED (above-EU-threshold) award read model — the LABELED, NO-BLEND surfacing of
+ * TED into the app. One row per TED lot-award, denormalized. `label` tags each
+ * award as `also-in-seap` (a crosswalk primary link into an e-licitatie contract
+ * exists — the same procurement published to both) or `ted-only` (no SICAP twin
+ * found; the above-threshold awards, often foreign-won, that e-licitatie's
+ * contract layer lacks). CRITICAL: this is a SEPARATE surface — TED value is
+ * NEVER summed into the e-licitatie spend marts (national_stats etc.), so the
+ * same award can never be double-counted. The app presents TED as its own view
+ * and can borrow TED-only signals (single-bidder, eu-funded) onto matched awards.
+ */
+export const tedAwards = martsSchema.table(
+  "ted_awards",
+  {
+    tedLotResultId: bigint("ted_lot_result_id", { mode: "bigint" }).primaryKey(),
+    tedNoticeId: bigint("ted_notice_id", { mode: "bigint" }),
+    publicationNumber: text("publication_number"),
+    buyerEntityId: bigint("buyer_entity_id", { mode: "bigint" }),
+    buyerName: text("buyer_name"),
+    buyerCounty: text("buyer_county"),
+    /** Winner display names (consortium → many). */
+    winnerNames: text("winner_names").array(),
+    winnerEntityIds: bigint("winner_entity_ids", { mode: "bigint" }).array(),
+    /** ISO-2 countries of the winners. */
+    winnerCountries: text("winner_countries").array(),
+    /** Any winner non-Romanian — the foreign-won filter. */
+    isForeign: boolean("is_foreign").notNull().default(false),
+    cpvCode: text("cpv_code"),
+    cpvName: text("cpv_name"),
+    contractNature: text("contract_nature"),
+    title: text("title"),
+    awardedValue: numeric("awarded_value"),
+    currency: text("currency"),
+    awardDate: text("award_date"),
+    publicationDate: text("publication_date"),
+    procedureType: text("procedure_type"),
+    tendersReceived: integer("tenders_received"),
+    isSingleBidder: boolean("is_single_bidder"),
+    euFunded: boolean("eu_funded"),
+    /** 'also-in-seap' | 'ted-only'. */
+    label: text("label").notNull(),
+    /** The primary crosswalk contract (also-in-seap only). */
+    matchedContractId: bigint("matched_contract_id", { mode: "bigint" }),
+    matchScore: numeric("match_score"),
+  },
+  (t) => [
+    index("ted_awards_label_idx").on(t.label),
+    index("ted_awards_foreign_idx").on(t.isForeign),
+    index("ted_awards_buyer_idx").on(t.buyerEntityId),
+    index("ted_awards_cpv_idx").on(t.cpvCode),
+    index("ted_awards_value_idx").on(t.awardedValue),
+    index("ted_awards_single_bidder_idx").on(t.isSingleBidder),
+  ],
+);
+
+/**
+ * TED-scoped headline counts. Deliberately a SEPARATE table (not folded into
+ * national_stats) so TED figures are never accidentally summed with e-licitatie
+ * spend. One row per (metric, dimension) — e.g. metric='label' dim='ted-only',
+ * metric='country' dim='DE'. `total_ron` is TED awarded value, TED-only.
+ */
+export const tedStats = martsSchema.table(
+  "ted_stats",
+  {
+    /** 'total' | 'label' | 'country' | 'single_bidder' | 'year'. */
+    metric: text("metric").notNull(),
+    /** The bucket within the metric ('all', 'also-in-seap', 'DE', '2024', …). */
+    dimension: text("dimension").notNull(),
+    n: integer("n").notNull(),
+    totalRon: numeric("total_ron"),
+  },
+  (t) => [primaryKey({ columns: [t.metric, t.dimension] })],
+);
+
+/**
+ * Competition data inherited by e-licitatie contracts from their TED twin via
+ * the award_links crosswalk — CONFIRMED tier only (is_primary, score ≥ 0.9,
+ * human-validated 2026-07-24). e-licitatie itself publishes no bidder counts
+ * (its lowest=highest offer fields are degenerate); this is the only honest
+ * source of `tenders_received` for above-threshold contracts. DAs never get
+ * one — below threshold, never on TED.
+ */
+export const contractCompetition = martsSchema.table(
+  "contract_competition",
+  {
+    contractId: bigint("contract_id", { mode: "bigint" }).primaryKey(),
+    caNoticeId: bigint("ca_notice_id", { mode: "bigint" }),
+    /** The TED lot the data came from (best-scoring primary link). */
+    tedLotResultId: bigint("ted_lot_result_id", { mode: "bigint" }),
+    matchScore: numeric("match_score"),
+    tendersReceived: integer("tenders_received"),
+    isSingleBidder: boolean("is_single_bidder"),
+  },
+  (t) => [index("contract_competition_single_idx").on(t.isSingleBidder)],
+);
+
+/**
+ * Above-threshold transaction mart: one row per (contract, winner) from the
+ * e-licitatie award stream — the contracts twin of `da_transactions`, sharing
+ * its column names so the ask engine can switch tables (`spec.dataset`).
+ * Consortium contracts appear once per winner with `closing_value` = the
+ * contract value split equally (anti-double-count); `contract_value_full` keeps
+ * the whole amount. Competition columns inherited from the CONFIRMED TED
+ * crosswalk tier (marts.contract_competition) — null = unknown, NOT competitive.
+ */
+export const contractTransactions = martsSchema.table(
+  "contract_transactions",
+  {
+    contractId: bigint("contract_id", { mode: "bigint" }).notNull(),
+    supplierId: bigint("supplier_id", { mode: "bigint" }).notNull(),
+    contractNo: text("contract_no"),
+    caNoticeId: bigint("ca_notice_id", { mode: "bigint" }),
+    noticeNo: text("notice_no"),
+    authorityId: bigint("authority_id", { mode: "bigint" }),
+    authorityName: text("authority_name"),
+    supplierName: text("supplier_name"),
+    /** Authority (buyer) county — same semantics as da_transactions.county. */
+    county: text("county"),
+    cpvCode: text("cpv_code"),
+    cpvName: text("cpv_name"),
+    procedureType: text("procedure_type"),
+    acquisitionType: text("acquisition_type"),
+    /** Winner's share: contract value / n_winners (equal consortium split). */
+    closingValue: numeric("closing_value"),
+    contractValueFull: numeric("contract_value_full"),
+    nWinners: integer("n_winners").notNull().default(1),
+    /** 'YYYY-MM-DD' (text, matches da_transactions.finalization_date shape). */
+    finalizationDate: text("finalization_date"),
+    tendersReceived: integer("tenders_received"),
+    isSingleBidder: boolean("is_single_bidder"),
+    /** Confirmed TED twin exists (award_links primary, score ≥ 0.9). */
+    alsoInTed: boolean("also_in_ted").notNull().default(false),
+    /** TED publication number of the confirmed twin — outbound link building. */
+    tedPubnum: text("ted_pubnum"),
+  },
+  (t) => [
+    primaryKey({ columns: [t.contractId, t.supplierId] }),
+    index("ctx_authority_idx").on(t.authorityId, t.finalizationDate),
+    index("ctx_supplier_idx").on(t.supplierId, t.finalizationDate),
+    index("ctx_single_idx").on(t.isSingleBidder),
   ],
 );

@@ -106,6 +106,83 @@
       "when": 1784014987682,
       "tag": "0014_overjoyed_solo",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1784536785319,
+      "tag": "0015_bitter_wallflower",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1784645323524,
+      "tag": "0016_curious_adam_destine",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1784712273488,
+      "tag": "0017_busy_alex_wilder",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1784721190072,
+      "tag": "0018_great_riptide",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1784805439946,
+      "tag": "0019_broad_pestilence",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1784806422077,
+      "tag": "0020_zippy_post",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1784808208338,
+      "tag": "0021_special_raider",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1784881679846,
+      "tag": "0022_massive_marauders",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1784885658473,
+      "tag": "0023_clear_anthem",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1784895422975,
+      "tag": "0024_yummy_talkback",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1784926019969,
+      "tag": "0025_noisy_shocker",
+      "breakpoints": true
     }
   ]
 }
