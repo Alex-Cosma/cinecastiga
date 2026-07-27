@@ -53,3 +53,19 @@ export function resolveCpv(parsed: ParsedCpv, catalog: Set<string>): ResolvedCpv
     cpvRaw: parsed.raw,
   };
 }
+
+/**
+ * Resolve a TED/eForms CPV, which is the 8-digit code WITHOUT the check digit
+ * (e.g. '33100000'). The check digit is deterministic from the 8 digits, so a
+ * prefix map (8-digit → canonical 'NNNNNNNN-D') recovers the catalog code.
+ * Raw is always kept; unknown prefixes stay invalid.
+ */
+export function resolveCpvPrefix(
+  raw: string | null | undefined,
+  prefixMap: Map<string, string>,
+): ResolvedCpv {
+  if (!raw) return { cpvCode: null, cpvValid: false, cpvRaw: raw ?? null };
+  const m = /(\d{8})/.exec(raw);
+  const code = m ? (prefixMap.get(m[1]!) ?? null) : null;
+  return { cpvCode: code, cpvValid: code != null, cpvRaw: raw };
+}

@@ -30,6 +30,7 @@ export interface MartsReport {
   topEntities: number;
   topPartners: number;
   concentration: number;
+  contractTransactions: number;
 }
 
 const TOP_ENTITIES_LIMIT = 200;
@@ -60,7 +61,7 @@ export async function runMarts(
         marts.national_stats, marts.spend_by_type, marts.spend_by_cpv,
         marts.spend_by_county,
         marts.entity_profile, marts.entity_top_partners, marts.top_entities,
-        marts.authority_concentration
+        marts.authority_concentration, marts.contract_transactions
     `;
 
     // ── award value attributed to winners (award notice value / #winners) ─────
@@ -202,8 +203,34 @@ export async function runMarts(
     // Denormalize display fields so the web reads marts only (build-time join).
     await q`
       update marts.entity_profile ep
-      set name_display = e.name_display, county = e.county
+      set name_display = e.name_display, county = e.county,
+          country_code = e.country_code, is_foreign = e.is_foreign
       from core.entities e where e.id = ep.entity_id
+    `;
+    // Per-capita: attach the matched UAT population (durable reference, keyed by
+    // entity_id). Survives this truncate+rebuild. NOTE: if entities are ever
+    // remapped (a re-normalize that changes ids), reference.authority_uat must be
+    // re-matched — the SIRUTA population in reference.uat is stable regardless.
+    await q`
+      update marts.entity_profile ep
+      set population = au.population, uat_siruta = au.uat_siruta
+      from reference.authority_uat au
+      where au.entity_id = ep.entity_id and ep.role = 'authority'
+    `;
+    // MF bilanț financials (latest filing with an employee count) — suppliers
+    // only; null = PFA/foreign/dissolved, an informative absence.
+    await q`
+      update marts.entity_profile ep
+      set employees = cf.employees, employees_year = cf.year, net_turnover = cf.net_turnover
+      from core.entities e
+      cross join lateral (
+        select year, employees, net_turnover
+        from reference.company_financials cf
+        where cf.cui = e.cui_canonical and cf.employees is not null
+        order by year desc
+        limit 1
+      ) cf
+      where e.id = ep.entity_id and ep.role = 'supplier'
     `;
 
     // ── spend_by_county (choropleth source, both roles) ─────────────────────
@@ -270,6 +297,59 @@ export async function runMarts(
       from per_authority pa
     `;
 
+    // ── contract_transactions: the ask engine's above-threshold twin ─────────
+    // One row per (contract, winner); consortium value split equally into
+    // closing_value (anti-double-count — sums stay honest). Competition columns
+    // from the CONFIRMED TED crosswalk tier only; null = unknown.
+    await q`
+      insert into marts.contract_transactions (
+        contract_id, supplier_id, contract_no, ca_notice_id, notice_no,
+        authority_id, authority_name, supplier_name, county,
+        cpv_code, cpv_name, procedure_type, acquisition_type,
+        closing_value, contract_value_full, n_winners, finalization_date,
+        tenders_received, is_single_bidder, also_in_ted, ted_pubnum
+      )
+      with base as (
+        select c.id contract_id, c.contract_no, c.ca_notice_id, aw.notice_no,
+               aw.authority_entity_id authority_id, c.contract_value, c.contract_date,
+               aw.cpv_code, aw.procedure_type, aw.acquisition_type
+        from core.contracts c
+        join core.awards aw on aw.ca_notice_id = c.ca_notice_id
+        where c.contract_value is not null and c.contract_value > 0
+          and c.contract_value <= ${awBound}
+          and c.contract_date is not null
+          and (c.currency is null or c.currency ilike '%ron%')
+          and aw.authority_entity_id is not null
+      ),
+      w as (
+        select contract_id, entity_id
+        from core.contract_winners
+        group by contract_id, entity_id
+      ),
+      wn as (
+        select contract_id, entity_id,
+               count(*) over (partition by contract_id) n
+        from w
+      )
+      select
+        b.contract_id, wn.entity_id, b.contract_no, b.ca_notice_id, b.notice_no,
+        b.authority_id, ae.name_display, se.name_display, ae.county,
+        b.cpv_code, cpv.name_ro, b.procedure_type, b.acquisition_type,
+        b.contract_value / wn.n, b.contract_value, wn.n,
+        to_char(b.contract_date, 'YYYY-MM-DD'),
+        cc.tenders_received, cc.is_single_bidder,
+        cc.contract_id is not null,
+        tn.publication_number
+      from base b
+      join wn on wn.contract_id = b.contract_id
+      left join core.entities ae on ae.id = b.authority_id
+      left join core.entities se on se.id = wn.entity_id
+      left join core.cpv_codes cpv on cpv.code = b.cpv_code
+      left join marts.contract_competition cc on cc.contract_id = b.contract_id
+      left join core.ted_lot_results tlr on tlr.id = cc.ted_lot_result_id
+      left join core.ted_notices tn on tn.id = tlr.ted_notice_id
+    `;
+
     // Headline entity counts (year null) — after entity_profile exists.
     await q`
       insert into marts.national_stats (kind, year, n, total_ron)
@@ -285,6 +365,7 @@ export async function runMarts(
     const [te] = await q`select count(*)::int c from marts.top_entities`;
     const [tp] = await q`select count(*)::int c from marts.entity_top_partners`;
     const [ac] = await q`select count(*)::int c from marts.authority_concentration`;
+    const [ctx] = await q`select count(*)::int c from marts.contract_transactions`;
     return {
       nationalStats: ns!.c as number,
       spendByType: st!.c as number,
@@ -294,6 +375,7 @@ export async function runMarts(
       topEntities: te!.c as number,
       topPartners: tp!.c as number,
       concentration: ac!.c as number,
+      contractTransactions: ctx!.c as number,
     };
   });
 
@@ -301,7 +383,8 @@ export async function runMarts(
     `marts rebuilt: national_stats=${report.nationalStats}, spend_by_type=${report.spendByType}, ` +
       `spend_by_cpv=${report.spendByCpv}, spend_by_county=${report.spendByCounty}, ` +
       `entity_profile=${report.entityProfiles}, top_entities=${report.topEntities}, ` +
-      `top_partners=${report.topPartners}, concentration=${report.concentration}`,
+      `top_partners=${report.topPartners}, concentration=${report.concentration}, ` +
+      `contract_transactions=${report.contractTransactions}`,
   );
   return report;
 }

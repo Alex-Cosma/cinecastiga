@@ -12,6 +12,8 @@ import type { NormalizeCtx } from "./context.js";
 import { parseCpvObject, parseCpvString, resolveCpv } from "./cpv.js";
 import { parseEntityString } from "./name.js";
 import { linkSicapId, resolveEntity } from "./resolve-entity.js";
+import { loadTedNotice } from "./ted.js";
+import { loadF03Notice } from "./ted-fforms.js";
 import { resolveUnit } from "./unit.js";
 
 /**
@@ -185,6 +187,9 @@ const winnerSchema = z
         officialName: z.string().nullish(),
         county: labeled,
         nutsCodeItem: labeled,
+        countryItem: z
+          .object({ localeKey: z.string().nullish(), text: z.string().nullish() })
+          .nullish(),
       })
       .nullish(),
   })
@@ -263,6 +268,8 @@ async function loadAwardContracts(
         nameDisplay: w.address?.officialName ?? w.name ?? "(necunoscut)",
         county: labelText(w.address?.county),
         nutsCode: labelText(w.address?.nutsCodeItem),
+        country:
+          w.address?.countryItem?.localeKey ?? w.address?.countryItem?.text ?? null,
         seenAt: contractDate,
       });
       await ctx.tx
@@ -476,5 +483,16 @@ export const PARSERS: Record<string, Parser> = {
     schema: daDetailSchema,
     load: (ctx, rawId, payload) =>
       loadDaDetail(ctx, rawId, daDetailSchema.parse(payload)),
+  },
+  // TED eForms: payload is `{ xml }`; the loader parses + validates the tree
+  // itself (no zod shape to assert), so the schema is a permissive placeholder.
+  "ted-eforms:v1": {
+    schema: z.object({ xml: z.string() }).passthrough(),
+    load: (ctx, rawId, payload) => loadTedNotice(ctx, rawId, payload),
+  },
+  // Legacy TED (pre-2023, TED_EXPORT R2.0.9 F03 award form). Same core tables.
+  "ted-fforms:v1": {
+    schema: z.object({ xml: z.string() }).passthrough(),
+    load: (ctx, rawId, payload) => loadF03Notice(ctx, rawId, payload),
   },
 };

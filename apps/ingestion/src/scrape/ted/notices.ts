@@ -116,26 +116,48 @@ export async function scrapeTedNotices(
       if (res.notices.length === 0) break;
       pages += 1;
 
-      // Fetch each notice's full eForms XML (the canonical raw record).
-      const docs: ArchivableDocument[] = [];
-      for (const n of res.notices) {
-        const pubnum = tedPublicationNumber(n);
-        if (!pubnum) continue;
-        const xml = await fetchTedNoticeXml(client, pubnum);
-        fetched += 1;
-        docs.push({
-          source: "ted",
-          externalId: `${noticeType}:${pubnum}`,
-          endpointVersion: "ted-eforms:v1",
-          payload: {
-            "publication-number": pubnum,
-            "notice-type": noticeType,
-            "publication-date": n["publication-date"] ?? null,
-            "buyer-name": n["buyer-name"] ?? null,
-            xml,
-          },
-        });
+      // Fetch each notice's full eForms XML (the canonical raw record). Issue the
+      // whole page concurrently — the client's semaphore + throttle govern the
+      // real rate; a sequential await here would waste TED's (unlimited) headroom.
+      const targets = res.notices
+        .map((n) => ({ n, pubnum: tedPublicationNumber(n) }))
+        .filter((x): x is { n: (typeof res.notices)[number]; pubnum: string } =>
+          Boolean(x.pubnum),
+        );
+      const settled = await Promise.allSettled(
+        targets.map(async ({ n, pubnum }): Promise<ArchivableDocument> => {
+          const xml = await fetchTedNoticeXml(client, pubnum);
+          return {
+            source: "ted",
+            externalId: `${noticeType}:${pubnum}`,
+            endpointVersion: "ted-eforms:v1",
+            payload: {
+              "publication-number": pubnum,
+              "notice-type": noticeType,
+              "publication-date": n["publication-date"] ?? null,
+              "buyer-name": n["buyer-name"] ?? null,
+              xml,
+            },
+          };
+        }),
+      );
+      const docs = settled
+        .filter((s): s is PromiseFulfilledResult<ArchivableDocument> => s.status === "fulfilled")
+        .map((s) => s.value);
+      const failures = settled.filter((s) => s.status === "rejected");
+      // A few failures = genuinely-bad individual notices (skip + log). Many =
+      // systemic (rate-limit/429/outage) → fail the run so the driver retries.
+      if (failures.length > 0 && failures.length >= Math.ceil(targets.length / 2)) {
+        const reason = (failures[0] as PromiseRejectedResult).reason;
+        return await finish(
+          "failed",
+          `page ${page}: ${failures.length}/${targets.length} XML fetches failed — likely rate-limited. First: ${reason instanceof Error ? reason.message : String(reason)}`,
+        );
       }
+      if (failures.length > 0) {
+        log(`${source} page ${page}: skipped ${failures.length} bad notice(s) (individual fetch errors)`);
+      }
+      fetched += docs.length + failures.length;
 
       const archived = await archiveDocuments(db, docs);
       inserted += archived.inserted;
