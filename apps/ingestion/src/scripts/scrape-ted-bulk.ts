@@ -21,6 +21,13 @@ import {
  *
  *   pnpm --filter ingestion scrape-ted-bulk --year 2026 --month 1
  *   pnpm --filter ingestion scrape-ted-bulk --year 2025 --month 6 --type can-standard
+ *   pnpm --filter ingestion scrape-ted-bulk --year 2019 --month 6 --schema fforms
+ *
+ * Two eras (SAME package host, DIFFERENT XML schema + filter):
+ *   --schema eforms (default, 2023+): eForms UBL. Filter eforms-country + notice-type,
+ *     archive endpoint_version 'ted-eforms:v1'.
+ *   --schema fforms (pre-2023): legacy TED_EXPORT R2.0.9. Filter ISO_COUNTRY + award
+ *     TD_DOCUMENT_TYPE, archive 'ted-fforms:v1'. RO is 2-letter here (not ROU).
  *
  * Needs curl + tar + grep on PATH (mechanical heavy-lifting; DB archive in Node).
  */
@@ -32,14 +39,22 @@ function arg(name: string): string | undefined {
 
 const year = Number(arg("year"));
 const month = Number(arg("month"));
+const schema = arg("schema") ?? "eforms";
 const noticeType = arg("type") ?? "can-standard";
-const country = (arg("country") ?? "ROU").toUpperCase();
 const packageFileArg = arg("package-file"); // test seam: use a pre-downloaded package
 
 if (!year || !month || month < 1 || month > 12) {
-  console.error("usage: scrape-ted-bulk --year YYYY --month M [--type can-standard] [--country ROU]");
+  console.error("usage: scrape-ted-bulk --year YYYY --month M [--schema eforms|fforms] [--type can-standard]");
   process.exit(2);
 }
+if (schema !== "eforms" && schema !== "fforms") {
+  console.error("--schema must be 'eforms' or 'fforms'");
+  process.exit(2);
+}
+const legacy = schema === "fforms";
+// Legacy TED_EXPORT uses 2-letter ISO ('RO'); eForms uses 3-letter ('ROU').
+const country = (arg("country") ?? (legacy ? "RO" : "ROU")).toUpperCase();
+const endpointVersion = legacy ? "ted-fforms:v1" : "ted-eforms:v1";
 
 const sh = (cmd: string, args: string[]): string =>
   execFileSync(cmd, args, { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
@@ -69,7 +84,7 @@ async function main(): Promise<void> {
   sweepStaleTemps(); // clear any temp dirs leaked by prior killed runs
   const db = getSharedDb();
   const work = mkdtempSync(join(tmpdir(), "ted-bulk-"));
-  const source = `ted:${noticeType}`;
+  const source = legacy ? "ted:fforms" : `ted:${noticeType}`;
   const runId = await startScrapeRun(db, {
     source,
     windowStart: new Date(Date.UTC(year, month - 1, 1)),
@@ -95,10 +110,18 @@ async function main(): Promise<void> {
     sh("bash", ["-c", `find ${JSON.stringify(work)} -name '*_*.tar.gz' -exec tar -xzf {} -C ${JSON.stringify(work)} \\;`]);
 
     // 3. Filter: RO notices of the wanted type. Two-stage grep (country, then type).
+    // eForms: eforms-country="ROU" + notice-type element. Legacy TED_EXPORT:
+    // ISO_COUNTRY VALUE="RO" + award TD_DOCUMENT_TYPE CODE="7".
     const listFile = join(work, "matches.txt");
+    const countryGrep = legacy
+      ? `grep -lrF 'ISO_COUNTRY VALUE="${country}"'`
+      : `grep -lrF 'eforms-country">${country}'`;
+    const typeGrep = legacy
+      ? `grep -lF 'TD_DOCUMENT_TYPE CODE="7"'`
+      : `grep -lF '>${noticeType}<'`;
     const filter =
-      `grep -lrF 'eforms-country">${country}' ${JSON.stringify(work)} --include='*.xml' 2>/dev/null` +
-      ` | xargs -r grep -lF '>${noticeType}<' 2>/dev/null > ${JSON.stringify(listFile)} || true`;
+      `${countryGrep} ${JSON.stringify(work)} --include='*.xml' 2>/dev/null` +
+      ` | xargs -r ${typeGrep} 2>/dev/null > ${JSON.stringify(listFile)} || true`;
     sh("bash", ["-c", filter]);
     const files = readFileSync(listFile, "utf8").split("\n").filter(Boolean);
     console.log(`${source} ${year}-${String(month).padStart(2, "0")}: ${files.length} matching notices`);
@@ -111,11 +134,11 @@ async function main(): Promise<void> {
         fetched += 1;
         return {
           source: "ted",
-          externalId: `${noticeType}:${pubnum}`,
-          endpointVersion: "ted-eforms:v1",
+          externalId: `${legacy ? "f03" : noticeType}:${pubnum}`,
+          endpointVersion,
           payload: {
             "publication-number": pubnum,
-            "notice-type": noticeType,
+            "notice-type": legacy ? "f03-award" : noticeType,
             xml: readFileSync(f, "utf8"),
           },
         };

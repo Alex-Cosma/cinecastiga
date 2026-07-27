@@ -8,6 +8,7 @@ import {
 } from "@seap/db";
 import {
   loadCpvCatalog,
+  loadCpvPrefixMap,
   loadUnitMap,
   type NormalizeCtx,
 } from "./context.js";
@@ -28,6 +29,8 @@ const TRANSFORM_ORDER = [
   "award-contracts:v1",
   "da-list:v1",
   "da-detail:v1",
+  "ted-eforms:v1",
+  "ted-fforms:v1",
 ] as const;
 
 const BATCH = 200;
@@ -69,6 +72,7 @@ async function rebuildReset(sql: DbSql): Promise<void> {
     truncate
       core.contract_winners, core.contracts, core.da_items,
       core.direct_acquisitions, core.notices, core.awards,
+      core.ted_lot_winners, core.ted_lot_results, core.ted_notices,
       core.entity_sicap_ids, core.entity_name_suggestions, core.entities,
       core.quarantine
     restart identity cascade
@@ -88,6 +92,7 @@ export async function runNormalize(
   }
 
   const cpvCatalog = await loadCpvCatalog(db);
+  const cpvByPrefix = await loadCpvPrefixMap(db);
   const units = await loadUnitMap(db);
   log(`loaded ${cpvCatalog.size} CPV codes, ${units.size} unit mappings`);
 
@@ -117,7 +122,7 @@ export async function runNormalize(
       if (rows.length === 0) break;
 
       for (const row of rows) {
-        const ctx: NormalizeCtx = { tx: db, cpvCatalog, units };
+        const ctx: NormalizeCtx = { tx: db, cpvCatalog, cpvByPrefix, units };
         try {
           await db.transaction(async (tx) => {
             await parser.load({ ...ctx, tx }, row.id, row.payload);

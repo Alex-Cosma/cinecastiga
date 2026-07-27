@@ -2,7 +2,7 @@ import { cpvCodes, unitMap, type Db } from "@seap/db";
 import type { UnitMapping } from "./unit.js";
 
 /** Db or transaction handle sufficient for the parsers + entity resolution. */
-export type CoreDb = Pick<Db, "insert" | "select" | "update">;
+export type CoreDb = Pick<Db, "insert" | "select" | "update" | "delete">;
 
 /**
  * Shared per-run state: the CPV catalog (for O(1) validity checks) and the
@@ -11,12 +11,20 @@ export type CoreDb = Pick<Db, "insert" | "select" | "update">;
 export interface NormalizeCtx {
   tx: CoreDb;
   cpvCatalog: Set<string>;
+  /** 8-digit CPV prefix → canonical 'NNNNNNNN-D' (for check-digit-less TED codes). */
+  cpvByPrefix: Map<string, string>;
   units: Map<string, UnitMapping>;
 }
 
 export async function loadCpvCatalog(db: Db): Promise<Set<string>> {
   const rows = await db.select({ code: cpvCodes.code }).from(cpvCodes);
   return new Set(rows.map((r) => r.code));
+}
+
+/** 8-digit prefix → full 'NNNNNNNN-D' code. One catalog entry per prefix. */
+export async function loadCpvPrefixMap(db: Db): Promise<Map<string, string>> {
+  const rows = await db.select({ code: cpvCodes.code }).from(cpvCodes);
+  return new Map(rows.map((r) => [r.code.slice(0, 8), r.code]));
 }
 
 export async function loadUnitMap(db: Db): Promise<Map<string, UnitMapping>> {

@@ -1,6 +1,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import { entities, entitySicapIds, type Db } from "@seap/db";
 import { canonicalCui } from "./cui.js";
+import { entityIdentity } from "./foreign.js";
 import { normalizeName } from "./name.js";
 
 /**
@@ -32,6 +33,8 @@ export interface ResolveEntityInput {
   nameDisplay: string;
   county?: string | null;
   nutsCode?: string | null;
+  /** Country token (ISO-2/ISO-3/eForms) — drives foreign detection + tier 2b. */
+  country?: string | null;
   /** Source-record date, for first/last-seen. */
   seenAt?: Date | null;
 }
@@ -63,6 +66,26 @@ async function findByCui(db: ResolveDb, cui: string): Promise<bigint | null> {
   return rows[0]?.id ?? null;
 }
 
+/** Tier 2b: foreign supplier merge key (country + normalized foreign id). */
+async function findByForeignId(
+  db: ResolveDb,
+  country: string,
+  foreignIdNorm: string,
+): Promise<bigint | null> {
+  const rows = await db
+    .select({ id: entities.id })
+    .from(entities)
+    .where(
+      and(
+        eq(entities.cuiValid, false),
+        eq(entities.countryCode, country),
+        eq(entities.foreignIdNorm, foreignIdNorm),
+      ),
+    )
+    .limit(1);
+  return rows[0]?.id ?? null;
+}
+
 /**
  * Resolve (or create) the canonical entity for a source record; returns its id.
  */
@@ -71,6 +94,7 @@ export async function resolveEntity(
   input: ResolveEntityInput,
 ): Promise<bigint> {
   const canonical = canonicalCui(input.cuiRaw);
+  const ident = entityIdentity(input.country, input.cuiRaw);
   const seenAt = input.seenAt ?? null;
 
   // Tier 1: SICAP id.
@@ -78,9 +102,19 @@ export async function resolveEntity(
   if (input.sicapId != null && input.namespace) {
     entityId = await findBySicapId(db, input.namespace, input.sicapId);
   }
-  // Tier 2: canonical CUI.
+  // Tier 2: canonical RO CUI.
   if (entityId == null && canonical.valid) {
     entityId = await findByCui(db, canonical.cui);
+  }
+  // Tier 2b: (country + id) merge for entities without a valid RO CUI — covers
+  // foreign winners AND garbled-id RO winners that miss tiers 1 & 2.
+  if (
+    entityId == null &&
+    !canonical.valid &&
+    ident.mergeIdNorm &&
+    ident.countryCode
+  ) {
+    entityId = await findByForeignId(db, ident.countryCode, ident.mergeIdNorm);
   }
 
   if (entityId != null) {
@@ -101,6 +135,10 @@ export async function resolveEntity(
       legalForm,
       county: input.county ?? null,
       nutsCode: input.nutsCode ?? null,
+      countryCode: ident.countryCode,
+      isForeign: ident.isForeign,
+      foreignIdRaw: ident.mergeIdNorm ? (input.cuiRaw ?? null) : null,
+      foreignIdNorm: ident.mergeIdNorm,
       cuiRawVariants: input.cuiRaw ? [input.cuiRaw] : null,
       firstSeen: seenAt,
       lastSeen: seenAt,
@@ -121,6 +159,7 @@ async function backfillEntity(
   // ISO string, not a JS Date: inside a raw sql fragment drizzle can't infer the
   // timestamp type and postgres.js mis-serializes a bare Date.
   const seenAt = input.seenAt ? input.seenAt.toISOString() : null;
+  const ident = entityIdentity(input.country, input.cuiRaw);
   // Explicit casts: bare NULL bind params have no inferable type in Postgres.
   await db
     .update(entities)
@@ -132,6 +171,12 @@ async function backfillEntity(
       cuiValid: sql`${entities.cuiValid} or (${validCui}::text is not null)`,
       county: sql`coalesce(${entities.county}, ${input.county ?? null}::text)`,
       nutsCode: sql`coalesce(${entities.nutsCode}, ${input.nutsCode ?? null}::text)`,
+      countryCode: sql`coalesce(${entities.countryCode}, ${ident.countryCode ?? null}::text)`,
+      // Only a non-valid-CUI entity may become foreign (guards RO entities against
+      // a stray foreign-country record flipping them).
+      isForeign: sql`${entities.isForeign} or (${ident.isForeign} and not ${entities.cuiValid})`,
+      foreignIdRaw: sql`coalesce(${entities.foreignIdRaw}, ${ident.mergeIdNorm ? (input.cuiRaw ?? null) : null}::text)`,
+      foreignIdNorm: sql`coalesce(${entities.foreignIdNorm}, ${ident.mergeIdNorm ?? null}::text)`,
       cuiRawVariants: input.cuiRaw
         ? sql`(
             select array(select distinct unnest(
