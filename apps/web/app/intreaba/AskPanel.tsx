@@ -24,6 +24,24 @@ import Builder, { type BuilderSpec } from "./Builder";
 import { encodeSpec, decodeSpec } from "@/lib/ask/permalink";
 
 /**
+ * Duplicate-fire guard: React dev StrictMode remounts reset in-component refs,
+ * so the URL-run effect used to dispatch the same request twice within ~1ms
+ * (observed in the request log). Module scope survives the remount; identical
+ * requests within the window are dropped — a deliberate re-run seconds later
+ * still goes through.
+ */
+const recentFires = new Map<string, number>();
+function dupFire(key: string, windowMs = 1500): boolean {
+  const now = Date.now();
+  const last = recentFires.get(key);
+  recentFires.set(key, now);
+  if (recentFires.size > 40) {
+    for (const [k, t] of recentFires) if (now - t > 60_000) recentFires.delete(k);
+  }
+  return last !== undefined && now - last < windowMs;
+}
+
+/**
  * The "Întreabă" client panel: natural-language question → /api/ask →
  * answer envelope (pills → caveats → result block → SQL toggle → actions).
  * Bounded output vocabulary: the server only ever returns one of the four
@@ -158,6 +176,7 @@ export default function AskPanel({
 
   const loadDetail = useCallback(
     async (spec: unknown, page: number, opts: DrillOpts = {}) => {
+      if (dupFire(`d:${JSON.stringify({ spec, page, opts })}`)) return;
       setDetail((d) => ({ open: true, loading: true, data: d.data, opts }));
       try {
         const r = await fetch("/api/ask/rows", {
@@ -181,6 +200,7 @@ export default function AskPanel({
   const run = useCallback(async (question: string) => {
     const trimmed = question.trim();
     if (!trimmed) return;
+    if (dupFire(`q:${trimmed}`)) return;
     setLoading(true);
     setResp(null);
     setShowSql(false);
@@ -230,6 +250,7 @@ export default function AskPanel({
   );
 
   const runSpec = useCallback(async (spec: unknown) => {
+    if (dupFire(`s:${JSON.stringify(spec)}`)) return;
     setLoading(true);
     setResp(null);
     setShowSql(false);
