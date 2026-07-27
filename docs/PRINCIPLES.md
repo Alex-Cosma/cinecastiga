@@ -98,3 +98,21 @@ defensible if these three never crack.
   flags as sourced, caveated annotations.
 - _"Add a slick risk-percentile without explaining it?"_ → #3: no — every derived
   number links its method.
+
+## UI patterns (house rules)
+
+- **Hover answers everywhere.** Every visual element that encodes data (map
+  counties, network nodes, sankey flows and nodes, scatter points, timeseries
+  bars, breakdown segments, distribution buckets) shows an instant
+  cursor-following tooltip on hover: bold title, value line, small context line
+  (count / % share / status). Never the native `<title>` tooltip — too slow,
+  inconsistent. Implementation: `useTip()` in `app/intreaba/blocks.tsx` +
+  `.ask-maptip` styles; spread `t.bind(title, value, context)` on the element,
+  render `t.el` once per block. Hovered elements also get a visual highlight
+  (brightness / stroke / weight).
+- **No horizontal scrollbars, ever.** Wide tables use fixed layout with
+  per-column shares and in-cell ellipsis (full text on hover), not overflow.
+- **Search speaks colloquial.** Users type institution TYPES ("primăria
+  Buzău", "CJ Cluj"), not registered legal names ("MUNICIPIUL BUZAU").
+  `lib/ask/entity-alias.ts` expands aliases + an all-tokens fallback; both the
+  typeahead and grounding use it.
