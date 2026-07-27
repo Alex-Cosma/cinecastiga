@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import SearchBox from "./SearchBox";
 import "./globals.css";
+
+// Header nav + search box are parked in app/_legacy/HeaderNav.tsx while the
+// home page is search-only.
 
 export const metadata: Metadata = {
   title: "SEAP Transparent — achiziții publice deschise",
@@ -18,19 +20,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Link href="/" className="brand">
               SEAP <span>Transparent</span>
             </Link>
-            <nav className="nav">
-              <Link href="/">Acasă</Link>
-              <Link href="/semnale">Semnale</Link>
-              <Link href="/domenii">Domenii</Link>
-              <Link href="/harta">Hartă</Link>
-            </nav>
-            <SearchBox />
           </div>
         </header>
-        <div className="snapshot-banner">
+        <div className="coverage-line">
           <div className="wrap">
-            Date istorice — instantaneu SICAP 2020 (set de validare). Datele live vor
-            înlocui acest instantaneu după reluarea colectării.
+            <span className="dot" /> Date: achiziții directe 2018–2026 · contracte &amp; atribuiri
+            2018–2026 · TED (supra-prag) 2018–2026 · colectarea live e în reluare
           </div>
         </div>
         <main>

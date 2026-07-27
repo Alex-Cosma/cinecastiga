@@ -1,0 +1,179 @@
+import { NextResponse } from "next/server";
+import { createDb, type DbSql } from "@seap/db";
+import { cleanName } from "@/lib/format";
+import { devlog } from "@/lib/devlog";
+import { aliasQueries, queryTokens } from "@/lib/ask/entity-alias";
+
+/**
+ * GET /api/suggest?q=…&county=…  — typeahead feed for the "Construiește"
+ * builder. One call searches every ground-able vocabulary at once: CPV
+ * synonyms, localities (reference.uat), authorities and suppliers. The static
+ * vocabularies (blocks, measures, counties, years) live client-side.
+ */
+
+const g = globalThis as unknown as { __seapSuggestSql?: DbSql };
+function db(): DbSql {
+  if (!g.__seapSuggestSql) g.__seapSuggestSql = createDb().sql;
+  return g.__seapSuggestSql;
+}
+
+function fold(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+/** "MUNICIPIUL  CLUJ-NAPOCA" → "Cluj-Napoca" (registry names are shouty). */
+function prettyUat(name: string): string {
+  const stripped = name
+    .replace(/^\s*(municipiul|oras|oraş|oraș)\s+/i, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+  return stripped.replace(/(^|[\s\-".(])(\p{L})/gu, (m, pre, ch: string) => pre + ch.toUpperCase());
+}
+
+const TIP_LABEL: Record<string, string> = {
+  "1": "municipiu",
+  "2": "oraș",
+  "3": "comună",
+  "4": "municipiu",
+  "9": "municipiu",
+};
+
+export interface SuggestResponse {
+  cpv: { term: string; cpvName: string | null }[];
+  uat: { siruta: number; name: string; tip: string; county: string; population: number | null }[];
+  authority: { name: string; county: string | null }[];
+  supplier: { name: string; county: string | null }[];
+  /** ONRC administrators — "firme conduse de X". */
+  person: {
+    key: string;
+    name: string;
+    birthYear: number | null;
+    birthLocality: string | null;
+    nFirms: number;
+  }[];
+}
+
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const q = fold(url.searchParams.get("q") ?? "");
+  const county = fold(url.searchParams.get("county") ?? "");
+  if (q.length < 2) {
+    return NextResponse.json({ cpv: [], uat: [], authority: [], supplier: [], person: [] });
+  }
+  devlog("suggest", county ? { q, county } : { q });
+  const sql = db();
+  const like = `%${q}%`;
+  // institutional aliases ("primaria X" → "municipiul X") + all-tokens fallback
+  const authPats = aliasQueries(q).map((a) => `%${a}%`);
+  const toks = queryTokens(q).map((t) => `%${t}%`);
+  const authTokFrag =
+    toks.length > 1
+      ? sql`or lower(unaccent(ep.name_display)) like all(${sql.array(toks)}::text[])`
+      : sql``;
+  const supTokFrag = authTokFrag;
+  // A CPV code typed directly ("45", "45233", "45233120-6") → catalog by prefix.
+  const codeM = /^(\d{2,8})(?:-\d)?$/.exec(q.replace(/\s+/g, ""));
+
+  const [cpv, uat, authority, supplier, person] = await Promise.all([
+    codeM
+      ? (sql`
+          select c.code as term, c.name_ro as cpv_name
+          from core.cpv_codes c
+          where c.code like ${codeM[1] + "%"}
+          order by length(c.code), c.code
+          limit 5
+        ` as unknown as Promise<{ term: string; cpv_name: string | null }[]>)
+      : (sql`
+          select distinct on (s.term) s.term,
+                 (select c.name_ro from core.cpv_codes c
+                  where c.code like s.cpv_prefix || '%'
+                  order by length(c.code), c.code limit 1) cpv_name
+          from reference.cpv_synonym s
+          where s.term like ${like}
+          order by s.term, position(${q} in s.term)
+          limit 5
+        ` as unknown as Promise<{ term: string; cpv_name: string | null }[]>),
+    sql`
+      select u.siruta, u.name, u.tip, u.county, u.population
+      from reference.uat u
+      where lower(unaccent(u.name)) like ${like}
+        and (${county} = '' or u.county = ${county})
+      order by position(${q} in lower(unaccent(u.name))), u.population desc nulls last
+      limit 6
+    ` as unknown as Promise<
+      { siruta: number; name: string; tip: string | null; county: string | null; population: number | null }[]
+    >,
+    sql`
+      select name_display, county from (
+        select distinct on (lower(unaccent(ep.name_display)))
+               ep.name_display, ep.county, ep.total_ron_full
+        from marts.entity_profile ep
+        where ep.role = 'authority'
+          and (lower(unaccent(ep.name_display)) like any(${sql.array(authPats)}::text[]) ${authTokFrag})
+        order by lower(unaccent(ep.name_display)), ep.total_ron_full desc nulls last
+      ) d
+      order by d.total_ron_full desc nulls last
+      limit 5
+    ` as unknown as Promise<{ name_display: string | null; county: string | null }[]>,
+    sql`
+      select name_display, county from (
+        select distinct on (lower(unaccent(ep.name_display)))
+               ep.name_display, ep.county, ep.total_ron_full
+        from marts.entity_profile ep
+        where ep.role = 'supplier'
+          and (lower(unaccent(ep.name_display)) like ${like} ${supTokFrag})
+        order by lower(unaccent(ep.name_display)), ep.total_ron_full desc nulls last
+      ) d
+      order by d.total_ron_full desc nulls last
+      limit 5
+    ` as unknown as Promise<{ name_display: string | null; county: string | null }[]>,
+    // ONRC administrators (solid identities only: name + birth data). ilike
+    // rides the trigram GIN index; needs 4+ chars to stay cheap on 3.7M rows.
+    q.length >= 4
+      ? (sql`
+          select r.person_key, max(r.person_name) nm,
+                 max(extract(year from r.birth_date))::int by,
+                 max(r.birth_locality) bl, count(distinct r.cui) nf
+          from reference.company_reps r
+          where r.birth_date is not null and r.person_name ilike ${like}
+          group by r.person_key
+          order by nf desc
+          limit 4
+        ` as unknown as Promise<
+          { person_key: string; nm: string; by: number | null; bl: string | null; nf: string }[]
+        >)
+      : Promise.resolve([]),
+  ]);
+
+  const body: SuggestResponse = {
+    cpv: cpv.map((r) => ({ term: r.term, cpvName: r.cpv_name })),
+    uat: uat.map((r) => ({
+      siruta: Number(r.siruta),
+      name: prettyUat(r.name),
+      tip: TIP_LABEL[String(r.tip ?? "")] ?? "localitate",
+      county: r.county ?? "",
+      population: r.population === null ? null : Number(r.population),
+    })),
+    authority: authority
+      .filter((r) => r.name_display)
+      .map((r) => ({ name: cleanName(r.name_display), county: r.county })),
+    supplier: supplier
+      .filter((r) => r.name_display)
+      .map((r) => ({ name: cleanName(r.name_display), county: r.county })),
+    person: person.map((r) => ({
+      key: r.person_key,
+      name: cleanName(r.nm),
+      birthYear: r.by === null ? null : Number(r.by),
+      birthLocality: r.bl,
+      nFirms: Number(r.nf ?? 0),
+    })),
+  };
+  return NextResponse.json(body, {
+    headers: { "cache-control": "public, max-age=300, stale-while-revalidate=3600" },
+  });
+}
