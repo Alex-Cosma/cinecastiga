@@ -237,6 +237,36 @@ export async function getEntityFlags(entityId: string): Promise<EntityFlagRow[]>
   }));
 }
 
+export interface FlagEvidenceRow {
+  flagCode: string;
+  period: string | null;
+  severity: number | null;
+  evidence: Record<string, unknown> | null;
+}
+
+/** Per-instance evidence (year, shares, amounts) behind each flag on an entity. */
+export async function getEntityFlagEvidence(entityId: string): Promise<FlagEvidenceRow[]> {
+  const sql = db();
+  const id = /^\d+$/.test(entityId) ? entityId : "0";
+  const rows = (await sql`
+    select flag_code, period, severity, evidence
+    from marts.flag_instances
+    where entity_id = ${id}
+    order by flag_code, period desc nulls last
+  `) as unknown as {
+    flag_code: string;
+    period: string | null;
+    severity: string | null;
+    evidence: Record<string, unknown> | null;
+  }[];
+  return rows.map((r) => ({
+    flagCode: r.flag_code,
+    period: r.period,
+    severity: r.severity === null ? null : Number(r.severity),
+    evidence: r.evidence,
+  }));
+}
+
 export interface DaTx {
   sicapDaId: string;
   daCode: string | null;
@@ -254,10 +284,74 @@ export interface DaTx {
 
 export interface TxQuery {
   sort?: "value" | "date" | "gap";
+  dir?: "asc" | "desc";
   year?: string;
+  /** Multi-select year filter (wins over `year` when set). */
+  years?: string[];
   flagCode?: string;
   page?: number;
   pageSize?: number;
+}
+
+export interface CompanyRep {
+  personName: string;
+  calitate: string | null;
+  birthYear: number | null;
+  birthLocality: string | null;
+  personKey: string | null;
+  /** Other firms (distinct CUIs) this same person represents — 0 if none/unknown. */
+  nOtherFirms: number;
+}
+
+/**
+ * Legal representatives of a company (ONRC monthly snapshot). Only the birth
+ * year is exposed (full birth dates stay in the DB — disambiguation needs no
+ * more). nOtherFirms counts only via the solid person key (name+birth data);
+ * juridical-person representatives get 0.
+ */
+export async function getCompanyReps(cui: string): Promise<CompanyRep[]> {
+  const sql = db();
+  const rows = (await sql`
+    select distinct on (r.person_name, r.calitate)
+      r.person_name, r.calitate,
+      extract(year from r.birth_date)::int by, r.birth_locality, r.person_key,
+      case when r.birth_date is not null then
+        (select count(distinct r2.cui) - 1 from reference.company_reps r2
+         where r2.person_key = r.person_key and r2.cui is not null)
+      else 0 end n_other
+    from reference.company_reps r
+    where r.cui = ${cui}
+    order by r.person_name, r.calitate
+  `) as unknown as {
+    person_name: string;
+    calitate: string | null;
+    by: number | null;
+    birth_locality: string | null;
+    person_key: string | null;
+    n_other: string | null;
+  }[];
+  return rows.map((r) => ({
+    personName: r.person_name,
+    calitate: r.calitate,
+    birthYear: r.by === null ? null : Number(r.by),
+    birthLocality: r.birth_locality,
+    personKey: r.person_key,
+    nOtherFirms: Math.max(0, Number(r.n_other ?? 0)),
+  }));
+}
+
+/** Distinct activity years of an entity's DAs — the year filter chips. */
+export async function getEntityTxYears(entityId: string, role: Role): Promise<string[]> {
+  const sql = db();
+  const id = /^\d+$/.test(entityId) ? entityId : "0";
+  const partyCol = role === "authority" ? sql`authority_id` : sql`supplier_id`;
+  const rows = (await sql`
+    select distinct left(finalization_date, 4) y
+    from marts.da_transactions
+    where ${partyCol} = ${id} and finalization_date is not null
+    order by 1 desc
+  `) as unknown as { y: string }[];
+  return rows.map((r) => r.y);
 }
 
 /** A single entity's direct acquisitions (indexed marts read), paginated. */
@@ -274,13 +368,17 @@ export async function getEntityTransactions(
   const cpId = isAuth ? sql`supplier_id` : sql`authority_id`;
   const pageSize = q.pageSize ?? 50;
   const offset = ((q.page ?? 1) - 1) * pageSize;
-  const order =
-    q.sort === "date"
-      ? sql`finalization_date desc nulls last`
-      : q.sort === "gap"
-        ? sql`gap_minutes asc nulls last`
-        : sql`closing_value desc nulls last`;
-  const yearCond = q.year ? sql`and finalization_date like ${q.year + "%"}` : sql``;
+  const col =
+    q.sort === "date" ? sql`finalization_date` : q.sort === "gap" ? sql`gap_minutes` : sql`closing_value`;
+  // defaults per column: gap = fastest first, others = biggest/newest first
+  const asc = q.dir ? q.dir === "asc" : q.sort === "gap";
+  const order = asc ? sql`${col} asc nulls last` : sql`${col} desc nulls last`;
+  const yearCond =
+    q.years && q.years.length > 0
+      ? sql`and left(finalization_date, 4) = any(${sql.array(q.years)}::text[])`
+      : q.year
+        ? sql`and finalization_date like ${q.year + "%"}`
+        : sql``;
   const flagCond = q.flagCode
     ? sql`and ${q.flagCode} = any(da_flags)`
     : sql``;
@@ -544,15 +642,150 @@ export interface EntityProfile {
   entityId: string;
   name: string | null;
   county: string | null;
+  countryCode: string | null;
+  isForeign: boolean;
   roles: EntityRole[];
+  /** MF bilanț, latest filing with an employee count (suppliers). Null = no
+   *  Romanian filing exists (PFA, foreign firm, dissolved) — say so, don't hide. */
+  employees: number | null;
+  employeesYear: number | null;
+  netTurnover: number | null;
+}
+
+// ── TED (above-EU-threshold) awards — the labeled, no-blend surfacing ────────
+
+export interface TedStats {
+  total: number;
+  alsoInSeap: number;
+  tedOnly: number;
+  foreign: number;
+  singleBidder: number;
+  /** Foreign winner countries by TED-side value, richest first. */
+  byCountry: { country: string; n: number; totalRon: number }[];
+}
+
+export async function getTedStats(): Promise<TedStats> {
+  const sql = db();
+  const rows = (await sql`
+    select metric, dimension, n, total_ron from marts.ted_stats
+  `) as unknown as { metric: string; dimension: string; n: number; total_ron: string | null }[];
+  const pick = (m: string, d: string) => rows.find((r) => r.metric === m && r.dimension === d);
+  return {
+    total: Number(pick("total", "all")?.n ?? 0),
+    alsoInSeap: Number(pick("label", "also-in-seap")?.n ?? 0),
+    tedOnly: Number(pick("label", "ted-only")?.n ?? 0),
+    foreign: rows
+      .filter((r) => r.metric === "country")
+      .reduce((s, r) => s + Number(r.n), 0),
+    singleBidder: Number(pick("single_bidder", "yes")?.n ?? 0),
+    byCountry: rows
+      .filter((r) => r.metric === "country")
+      .map((r) => ({ country: r.dimension, n: Number(r.n), totalRon: Number(r.total_ron ?? 0) }))
+      .sort((a, b) => b.totalRon - a.totalRon),
+  };
+}
+
+export interface TedAward {
+  tedLotResultId: string;
+  publicationNumber: string | null;
+  buyerEntityId: string | null;
+  buyerName: string | null;
+  buyerCounty: string | null;
+  winnerNames: string[];
+  winnerEntityIds: string[];
+  winnerCountries: string[];
+  isForeign: boolean;
+  cpvCode: string | null;
+  cpvName: string | null;
+  title: string | null;
+  awardedValue: number | null;
+  currency: string | null;
+  awardDate: string | null;
+  procedureType: string | null;
+  isSingleBidder: boolean | null;
+  euFunded: boolean | null;
+  label: string;
+  matchedContractId: string | null;
+}
+
+export interface TedQuery {
+  label?: "also-in-seap" | "ted-only";
+  foreign?: boolean;
+  singleBidder?: boolean;
+  country?: string;
+  sort?: "value" | "date";
+  page?: number;
+  pageSize?: number;
+}
+
+/** Browsable TED awards (the above-threshold read model), filtered + paginated. */
+export async function getTedAwards(
+  q: TedQuery = {},
+): Promise<{ rows: TedAward[]; total: number }> {
+  const sql = db();
+  const pageSize = q.pageSize ?? 50;
+  const offset = ((q.page ?? 1) - 1) * pageSize;
+  const labelCond = q.label ? sql`and label = ${q.label}` : sql``;
+  const foreignCond = q.foreign ? sql`and is_foreign` : sql``;
+  const sbCond = q.singleBidder ? sql`and is_single_bidder` : sql``;
+  const countryCond = q.country
+    ? sql`and ${q.country} = any(winner_countries)`
+    : sql``;
+  const order =
+    q.sort === "date"
+      ? sql`award_date desc nulls last`
+      : sql`awarded_value desc nulls last`;
+
+  const where = sql`where true ${labelCond} ${foreignCond} ${sbCond} ${countryCond}`;
+  const rows = (await sql`
+    select ted_lot_result_id, publication_number, buyer_entity_id, buyer_name,
+           buyer_county, winner_names, winner_entity_ids, winner_countries,
+           is_foreign, cpv_code, cpv_name, title, awarded_value, currency,
+           award_date, procedure_type, is_single_bidder, eu_funded, label,
+           matched_contract_id
+    from marts.ted_awards
+    ${where}
+    order by ${order}
+    limit ${pageSize} offset ${offset}
+  `) as unknown as Record<string, unknown>[];
+  const totalRows = (await sql`
+    select count(*)::int c from marts.ted_awards ${where}
+  `) as unknown as { c: number }[];
+
+  return {
+    total: Number(totalRows[0]?.c ?? 0),
+    rows: rows.map((r) => ({
+      tedLotResultId: String(r["ted_lot_result_id"]),
+      publicationNumber: (r["publication_number"] as string | null) ?? null,
+      buyerEntityId: r["buyer_entity_id"] != null ? String(r["buyer_entity_id"]) : null,
+      buyerName: (r["buyer_name"] as string | null) ?? null,
+      buyerCounty: (r["buyer_county"] as string | null) ?? null,
+      winnerNames: (r["winner_names"] as string[] | null) ?? [],
+      winnerEntityIds: ((r["winner_entity_ids"] as (string | number)[] | null) ?? []).map(String),
+      winnerCountries: (r["winner_countries"] as string[] | null) ?? [],
+      isForeign: Boolean(r["is_foreign"]),
+      cpvCode: (r["cpv_code"] as string | null) ?? null,
+      cpvName: (r["cpv_name"] as string | null) ?? null,
+      title: (r["title"] as string | null) ?? null,
+      awardedValue: r["awarded_value"] != null ? Number(r["awarded_value"]) : null,
+      currency: (r["currency"] as string | null) ?? null,
+      awardDate: (r["award_date"] as string | null) ?? null,
+      procedureType: (r["procedure_type"] as string | null) ?? null,
+      isSingleBidder: r["is_single_bidder"] == null ? null : Boolean(r["is_single_bidder"]),
+      euFunded: r["eu_funded"] == null ? null : Boolean(r["eu_funded"]),
+      label: String(r["label"]),
+      matchedContractId: r["matched_contract_id"] != null ? String(r["matched_contract_id"]) : null,
+    })),
+  };
 }
 
 export async function getEntityProfile(entityId: string): Promise<EntityProfile | null> {
   const sql = db();
   const id = /^\d+$/.test(entityId) ? entityId : "0";
   const rows = (await sql`
-    select ep.role, ep.name_display, ep.county, ep.n_contracts, ep.n_das,
-           ep.total_ron_full, ep.total_ron_split, te.rank
+    select ep.role, ep.name_display, ep.county, ep.country_code, ep.is_foreign,
+           ep.n_contracts, ep.n_das, ep.total_ron_full, ep.total_ron_split, te.rank,
+           ep.employees, ep.employees_year, ep.net_turnover
     from marts.entity_profile ep
     left join marts.top_entities te
       on te.entity_id = ep.entity_id and te.role = ep.role
@@ -562,17 +795,28 @@ export async function getEntityProfile(entityId: string): Promise<EntityProfile 
     role: Role;
     name_display: string | null;
     county: string | null;
+    country_code: string | null;
+    is_foreign: boolean;
     n_contracts: number;
     n_das: number;
     total_ron_full: string | null;
     total_ron_split: string | null;
     rank: number | null;
+    employees: number | null;
+    employees_year: number | null;
+    net_turnover: string | null;
   }[];
   if (rows.length === 0) return null;
+  const fin = rows.find((r) => r.employees !== null);
   return {
     entityId,
     name: rows[0]!.name_display,
     county: rows[0]!.county,
+    countryCode: rows[0]!.country_code,
+    isForeign: Boolean(rows[0]!.is_foreign),
+    employees: fin?.employees ?? null,
+    employeesYear: fin?.employees_year ?? null,
+    netTurnover: fin?.net_turnover != null ? Number(fin.net_turnover) : null,
     roles: rows.map((r) => ({
       role: r.role,
       totalRonFull: Number(r.total_ron_full ?? 0),
@@ -582,4 +826,58 @@ export async function getEntityProfile(entityId: string): Promise<EntityProfile 
       rank: r.rank == null ? null : Number(r.rank),
     })),
   };
+}
+
+export interface NotableFinding {
+  flagCode: string;
+  subjectType: string;
+  entityId: string | null;
+  entityName: string | null;
+  county: string | null;
+  severity: number | null;
+  totalRon: number;
+}
+
+/**
+ * Home "Descoperiri recente": the largest flag instances, one per flag code —
+ * biggest-money signals first, deduplicated so the teaser shows variety.
+ */
+export async function getNotableFindings(limit = 2): Promise<NotableFinding[]> {
+  const sql = db();
+  const rows = (await sql`
+    select distinct on (flag_code)
+      flag_code, subject_type, entity_id, entity_name, entity_county, severity, total_ron
+    from marts.flag_instances
+    where total_ron is not null and entity_name is not null
+    order by flag_code, total_ron desc
+  `) as unknown as {
+    flag_code: string;
+    subject_type: string;
+    entity_id: string | null;
+    entity_name: string | null;
+    entity_county: string | null;
+    severity: string | null;
+    total_ron: string;
+  }[];
+  return rows
+    .sort((a, b) => Number(b.total_ron) - Number(a.total_ron))
+    .slice(0, limit)
+    .map((r) => ({
+      flagCode: r.flag_code,
+      subjectType: r.subject_type,
+      entityId: r.entity_id === null ? null : String(r.entity_id),
+      entityName: r.entity_name,
+      county: r.entity_county,
+      severity: r.severity === null ? null : Number(r.severity),
+      totalRon: Number(r.total_ron),
+    }));
+}
+
+/** Total browsable risk-signal instances (home stat). */
+export async function getFlagInstanceCount(): Promise<number> {
+  const sql = db();
+  const rows = (await sql`select count(*) n from marts.flag_instances`) as unknown as {
+    n: string;
+  }[];
+  return Number(rows[0]?.n ?? 0);
 }
