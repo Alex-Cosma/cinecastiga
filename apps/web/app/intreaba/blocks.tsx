@@ -130,31 +130,68 @@ export function CompareBlock({ entities }: { entities: CompareEntity[] }) {
 
 /* ── distribution ─────────────────────────────────────────────────────── */
 
-export function DistributionBlock({ distribution }: { distribution: DistributionData }) {
+export function DistributionBlock({
+  distribution,
+  spec,
+}: {
+  distribution: DistributionData;
+  spec?: unknown;
+}) {
   const d = distribution;
   const t = useTip();
   const max = Math.max(...d.buckets.map((b) => b.n), 1);
   const focalBucket =
     d.focal.cri === null ? -1 : Math.min(9, Math.floor(d.focal.cri * 10 - 1e-9));
+  // bar click → /semnale listing of the entities in that CRI band (the
+  // comparison group's county filter travels along; kind/UAT riders don't)
+  const county = ((spec ?? {}) as { filters?: { county?: string } }).filters?.county;
+  const bucketUrl = (from: number, to: number): string => {
+    const q = new URLSearchParams({
+      rol: d.role,
+      criMin: String(from),
+      criMax: String(to),
+    });
+    if (county) q.set("jud", county);
+    return `/semnale?${q.toString()}`;
+  };
   return (
     <div>
       {t.el}
       <div className="ask-dist">
-        {d.buckets.map((b, i) => (
-          <div
-            key={b.from}
-            className={i === focalBucket ? "b here" : "b"}
-            {...t.bind(
-              `CRI ${b.from.toFixed(1)}–${b.to.toFixed(1)}`,
-              `${formatInt(b.n)} entități`,
-              i === focalBucket ? `aici e ${cleanName(d.focal.name)}` : undefined,
-            )}
-          >
-            {i === focalBucket && <div className="marker">AICI</div>}
-            <div className="bar" style={{ height: `${Math.max(3, (b.n / max) * 100)}%` }} />
-            <div className="cl">{b.from.toFixed(1)}</div>
-          </div>
-        ))}
+        {d.buckets.map((b, i) => {
+          const bind = t.bind(
+            `CRI ${b.from.toFixed(1)}–${b.to.toFixed(1)}`,
+            `${formatInt(b.n)} entități`,
+            (i === focalBucket ? `aici e ${cleanName(d.focal.name)} · ` : "") +
+              (b.n > 0 ? "click → lista entităților" : ""),
+          );
+          const inner = (
+            <>
+              {i === focalBucket && <div className="marker">AICI</div>}
+              <div
+                className="bar"
+                style={{ height: `${Math.max(3, (b.n / max) * 100)}%` }}
+              />
+              <div className="cl">{b.from.toFixed(1)}</div>
+            </>
+          );
+          return b.n > 0 ? (
+            <a
+              key={b.from}
+              className={i === focalBucket ? "b here" : "b"}
+              href={bucketUrl(b.from, b.to)}
+              target="_blank"
+              rel="noopener"
+              {...bind}
+            >
+              {inner}
+            </a>
+          ) : (
+            <div key={b.from} className={i === focalBucket ? "b here" : "b"} {...bind}>
+              {inner}
+            </div>
+          );
+        })}
       </div>
       <p className="ask-distcap">
         <Link href={`/entitati/${d.focal.entityId}`}>{cleanName(d.focal.name)}</Link>
