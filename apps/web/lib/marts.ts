@@ -744,13 +744,17 @@ export interface RiskGroupPage {
  * "cât de neobișnuit e" distribution. Same population rule as the ask
  * engine's distribution block: role + at least 10 direct acquisitions.
  */
+export type RiskGroupSort = "cri" | "flags" | "das" | "total" | "name";
+
 export async function getRiskGroup(
   role: Role,
   criMin: number,
   criMax: number,
   county: string | null,
   page = 0,
-  pageSize = 50,
+  pageSize = 10,
+  sort: RiskGroupSort = "cri",
+  dir: "asc" | "desc" = "desc",
 ): Promise<RiskGroupPage> {
   const sql = db();
   const jud = county
@@ -759,13 +763,21 @@ export async function getRiskGroup(
   // upper bound inclusive only for the last bucket (criMax >= 1)
   const ub =
     criMax >= 1 ? sql`coalesce(cri, 0) <= ${criMax}` : sql`coalesce(cri, 0) < ${criMax}`;
+  const col = {
+    cri: sql`coalesce(cri, 0)`,
+    flags: sql`n_flags`,
+    das: sql`n_das`,
+    total: sql`coalesce(total_ron, 0)`,
+    name: sql`lower(unaccent(coalesce(name_display, '')))`,
+  }[sort];
+  const ord = dir === "asc" ? sql`${col} asc` : sql`${col} desc`;
   const rows = (await sql`
     select entity_id, name_display, county, cri, n_flags, n_das, total_ron, flags,
            count(*) over () as total
     from marts.entity_flags
     where role = ${role} and n_das >= 10
       and coalesce(cri, 0) >= ${criMin} and ${ub} ${jud}
-    order by cri desc, total_ron desc nulls last
+    order by ${ord}, total_ron desc nulls last, entity_id
     limit ${pageSize} offset ${page * pageSize}
   `) as unknown as {
     entity_id: string;
