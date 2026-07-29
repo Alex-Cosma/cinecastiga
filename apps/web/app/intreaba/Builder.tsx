@@ -1127,6 +1127,15 @@ export default function Builder({
   const [editing, setEditing] = useState<keyof State | null>(null);
   const [remote, setRemote] = useState<RemoteSuggest>(EMPTY_REMOTE);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  // blur schedules the dropdown close; anything that refocuses (chip edit,
+  // remove, reset) must cancel it or the stale timer kills the reopened menu
+  const blurTimer = useRef<number | null>(null);
+  const cancelBlurClose = () => {
+    if (blurTimer.current !== null) {
+      window.clearTimeout(blurTimer.current);
+      blurTimer.current = null;
+    }
+  };
 
   // Focal steps (network/sankey/… need an entity) must never show an empty
   // dropdown: with nothing typed we fetch the biggest entities as starters.
@@ -1278,6 +1287,7 @@ export default function Builder({
                 "cb-chip" + (c.auto ? " auto" : "") + (editing === c.key ? " editing" : "")
               }
               title={PRESET_SLOTS.has(c.key) ? "schimbă opțiunea" : "caută altă valoare"}
+              onMouseDown={(ev) => ev.preventDefault()}
               onClick={(ev) => {
                 ev.stopPropagation();
                 startEdit(c.key);
@@ -1311,13 +1321,17 @@ export default function Builder({
               setQ(e.target.value);
               setAct(-1);
             }}
-            onFocus={() => setOpen(true)}
-            onBlur={() =>
-              setTimeout(() => {
+            onFocus={() => {
+              cancelBlurClose();
+              setOpen(true);
+            }}
+            onBlur={() => {
+              cancelBlurClose();
+              blurTimer.current = window.setTimeout(() => {
                 setOpen(false);
                 setEditing(null);
-              }, 130)
-            }
+              }, 130);
+            }}
             onKeyDown={onKey}
             aria-label="Construiește interogarea"
           />
