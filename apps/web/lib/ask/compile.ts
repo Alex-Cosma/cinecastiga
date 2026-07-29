@@ -902,9 +902,12 @@ export async function runSpec(
         }
 
         case "breakdown": {
-          // With a CPV subject: break down inside that subtree (4-digit groups);
-          // otherwise: top-level divisions (2-digit).
-          const stemLen = w.cpvPrefixes.length > 0 ? 4 : 2;
+          // With a CPV subject: break down inside that subtree, two digits
+          // deeper than the subject's own prefix (so a breakdown of a group
+          // yields its classes, of a class its categories, …, capped at the
+          // full 8-digit code). Otherwise: top-level divisions (2-digit).
+          const plen = w.cpvPrefixes.reduce((a, p) => Math.max(a, p.length), 0);
+          const stemLen = plen === 0 ? 2 : Math.min(plen + 2, 8);
           const r = (await s`
             select substr(d.cpv_code, 1, ${stemLen}) stem,
                    coalesce(sum(d.closing_value), 0) v, count(*) n
