@@ -8,6 +8,8 @@ import {
   getSplitPairs,
   getEntityFlagEvidence,
   getCompanyReps,
+  getEntityTxCounts,
+  getEntityFlagRowCounts,
   type FlagEvidenceRow,
   type Role,
   type EntityFlagRow,
@@ -15,10 +17,11 @@ import {
 import { countryName } from "@/lib/ted";
 import { formatRon, formatRonFull, formatInt, cleanName } from "@/lib/format";
 import { FLAG_META, criBand } from "@/lib/flags";
-import { daUrl, participantsUrl, registryLinks } from "@/lib/elicitatie";
+import { daUrl, registryLinks } from "@/lib/elicitatie";
 import { encodeSpec } from "@/lib/ask/permalink";
 import YearMiniChart from "./YearMiniChart";
 import TxTable from "./TxTable";
+import PartnersTable from "./PartnersTable";
 
 /** Per-instance evidence line, formatted per flag code (null = no line). */
 function evidenceLine(code: string, ev: Record<string, unknown> | null): string | null {
@@ -76,6 +79,36 @@ function splitDrillUrl(
   return `/?spec=${encodeURIComponent(encodeSpec(spec))}&drill=1`;
 }
 
+/** Stat card → search drill with exactly this entity's rows from one channel. */
+function entityTxSearchUrl(
+  entityId: string,
+  name: string,
+  role: Role,
+  dataset: "da" | "contracts",
+): string {
+  const spec = {
+    block: "stat",
+    measure: "value",
+    dataset,
+    filters:
+      role === "authority"
+        ? { authorityName: name, authorityId: Number(entityId) }
+        : { supplierName: name, supplierId: Number(entityId) },
+  };
+  return `/?spec=${encodeURIComponent(encodeSpec(spec))}&drill=1`;
+}
+
+/** "Conducere" → clasament of every firm this person represents. */
+function personFirmsUrl(personKey: string, personName: string): string {
+  const spec = {
+    block: "table",
+    dim: "supplier",
+    measure: "value",
+    filters: { adminPersonKey: personKey, adminName: personName },
+  };
+  return `/?spec=${encodeURIComponent(encodeSpec(spec))}`;
+}
+
 export const dynamic = "force-dynamic";
 
 const ROLE_LABEL: Record<Role, string> = {
@@ -127,13 +160,16 @@ export default async function EntityPage({
   const base = { rol: rolParam, sort: sp["sort"], an: sp["an"], sem: sp["sem"] };
 
   const cui = flagRows.find((r) => r.cui)?.cui ?? null;
-  const [partners, monthly, splits, flagEvidence, reps] = await Promise.all([
-    getEntityPartners(id, role, 12),
-    getEntityMonthly(id, role),
-    row.flags.includes("da_split") ? getSplitPairs(id, role) : Promise.resolve([]),
-    getEntityFlagEvidence(id),
-    cui ? getCompanyReps(cui) : Promise.resolve([]),
-  ]);
+  const [partners, monthly, splits, flagEvidence, reps, txCounts, flagRowCounts] =
+    await Promise.all([
+      getEntityPartners(id, role, 12),
+      getEntityMonthly(id, role),
+      row.flags.includes("da_split") ? getSplitPairs(id, role) : Promise.resolve([]),
+      getEntityFlagEvidence(id),
+      cui ? getCompanyReps(cui) : Promise.resolve([]),
+      getEntityTxCounts(id, role),
+      getEntityFlagRowCounts(id, role),
+    ]);
 
   const band = criBand(row.cri);
   const county = flagRows.find((r) => r.county)?.county ?? null;
@@ -169,11 +205,10 @@ export default async function EntityPage({
           {cui ? <span className="note">CUI {cui}</span> : null}
         </div>
         <div className="ext-links">
-          <a href={participantsUrl()} target="_blank" rel="noopener noreferrer">
-            e-licitatie.ro ↗
-          </a>
+          {/* No e-licitatie entity link: SICAP has no per-entity page, and every
+              transaction row already deep-links to its exact record */}
           {cui
-            ? registryLinks(cui).map((l) => (
+            ? registryLinks(cui, cleanName(row.name)).map((l) => (
                 <a key={l.label} href={l.url} target="_blank" rel="noopener noreferrer">
                   {l.label} ↗
                 </a>
@@ -191,9 +226,35 @@ export default async function EntityPage({
           <div className="l">Indice de risc — {band.label.toLowerCase()}</div>
         </div>
         <div className="stat">
-          <div className="n">{formatInt(row.nDas)}</div>
+          <div className="n">
+            {txCounts.nDa > 0 ? (
+              <a
+                href={entityTxSearchUrl(id, cleanName(row.name), role, "da")}
+                target="_blank"
+                rel="noopener"
+              >
+                {formatInt(txCounts.nDa)} ↗
+              </a>
+            ) : (
+              formatInt(txCounts.nDa)
+            )}
+          </div>
           <div className="l">Achiziții directe</div>
         </div>
+        {txCounts.nCt > 0 && (
+          <div className="stat">
+            <div className="n">
+              <a
+                href={entityTxSearchUrl(id, cleanName(row.name), role, "contracts")}
+                target="_blank"
+                rel="noopener"
+              >
+                {formatInt(txCounts.nCt)} ↗
+              </a>
+            </div>
+            <div className="l">Contracte (peste prag)</div>
+          </div>
+        )}
         <div className="stat">
           <div className="n">{formatRon(row.totalRon)}</div>
           <div className="l">Valoare totală</div>
@@ -242,7 +303,26 @@ export default async function EntityPage({
                     )}
                   </td>
                   <td className="county">{r.calitate ?? "—"}</td>
-                  <td>{r.nOtherFirms > 0 ? `încă ${formatInt(r.nOtherFirms)} firme` : "—"}</td>
+                  <td>
+                    {r.nOtherFirms > 0 && r.personKey ? (
+                      <a
+                        href={personFirmsUrl(r.personKey, cleanName(r.personName))}
+                        target="_blank"
+                        rel="noopener"
+                      >
+                        {r.nOtherFirms === 1 ? "încă o firmă" : `încă ${formatInt(r.nOtherFirms)} firme`} ↗
+                      </a>
+                    ) : null}
+                    {r.nOtherOnrcOnly > 0 && (
+                      <span className="county">
+                        {r.nOtherFirms > 0 ? " + " : ""}
+                        {r.nOtherOnrcOnly === 1
+                          ? "o firmă fără achiziții publice"
+                          : `${formatInt(r.nOtherOnrcOnly)} firme fără achiziții publice`}
+                      </span>
+                    )}
+                    {r.nOtherFirms === 0 && r.nOtherOnrcOnly === 0 && "—"}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -309,13 +389,11 @@ export default async function EntityPage({
                                 {s.count} ↗
                               </a>
                             </td>
-                            <td
-                              className="num"
-                              title={`pragul unei achiziții directe: ${formatInt(s.ceiling)} lei`}
-                            >
+                            <td className="num">
                               {formatRon(s.totalRon)}{" "}
                               <span className="county">
-                                · {(s.totalRon / s.ceiling).toFixed(1)}× pragul
+                                · {(s.totalRon / s.ceiling).toFixed(1).replace(".", ",")}× pragul
+                                de {formatInt(s.ceiling)} lei
                               </span>
                             </td>
                           </tr>
@@ -326,7 +404,9 @@ export default async function EntityPage({
                       Pragul legal e per achiziție, nu anual — dar legea interzice divizarea unei
                       achiziții (art. 11, L98/2016) și cere agregarea necesarului anual pe produse
                       similare. Semnalul: suma anuală către același partener, din achiziții fiecare
-                      sub prag, depășește pragul de mai multe ori.
+                      sub prag, depășește pragul de mai multe ori. Fiecare an e judecat după pragul
+                      în vigoare atunci (135.060 lei până în 2022, 270.120 lei din 2023, pentru
+                      produse/servicii) — de aceea rândurile pot avea praguri diferite.
                     </p>
                   </>
                 ) : null}
@@ -389,12 +469,25 @@ export default async function EntityPage({
                     ))}
 
                 {code === "da_rapid" || code === "da_round" ? (
-                  <p>
-                    {m.description}{" "}
-                    <a href={`${q(base, { sem: code, p: undefined })}#achizitii`}>
-                      Vezi achizițiile afectate în tabel →
-                    </a>
-                  </p>
+                  <>
+                    <p>
+                      <b>{formatInt(flagRowCounts[code] ?? 0)} achiziții</b> poartă acest semnal
+                      aici. {m.description}{" "}
+                      <a href={`${q(base, { sem: code, p: undefined })}#achizitii`}>
+                        Vezi {flagRowCounts[code] === 1 ? "achiziția" : "toate cele"}{" "}
+                        {flagRowCounts[code] === 1 ? "" : formatInt(flagRowCounts[code] ?? 0)} în
+                        tabel →
+                      </a>
+                    </p>
+                    {code === "da_round" && row.flags.includes("da_split") && (
+                      <p className="note">
+                        Diferența față de „Fracționare sub prag”: aici e semnalată valoarea
+                        FIECĂREI achiziții în parte (una singură, oprită chiar sub limită), pe
+                        când fracționarea privește SUMA multor achiziții mici. O achiziție „aproape
+                        de prag” poate fi, în același timp, una dintre piesele fracționării.
+                      </p>
+                    )}
+                  </>
                 ) : (
                   <p className="note">{m.caveat}</p>
                 )}
@@ -405,30 +498,19 @@ export default async function EntityPage({
       ) : null}
 
       {/* Counterparties */}
-      {partners.length > 0 ? (
-        <section className="section">
-          <h2>{isAuth ? "Principalii furnizori" : "Principalele autorități"}</h2>
-          <div className="bars">
-            {partners.map((p) => (
-              <div className="bar-row" key={p.partnerId}>
-                <div className="bar-label">
-                  <Link href={`/entitati/${p.partnerId}`}>{cleanName(p.partnerName)}</Link>
-                </div>
-                <div className="bar-track">
-                  <div className="bar-fill" style={{ width: `${p.pct * 100}%` }} />
-                </div>
-                <div className="bar-val">
-                  {formatRon(p.totalRon)} · {Math.round(p.pct * 100)}%
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
+      <section className="section">
+        <h2>{isAuth ? "Principalii furnizori" : "Principalele autorități"}</h2>
+        <PartnersTable
+          entityId={id}
+          entityName={cleanName(row.name)}
+          role={rolParam as "furnizor" | "autoritate"}
+          isAuth={isAuth}
+        />
+      </section>
 
       {/* Transactions — client table: 10/pagină, sortabil, filtre fără reload */}
       <section className="section" id="achizitii">
-        <h2>Toate achizițiile directe</h2>
+        <h2>Toate achizițiile și contractele</h2>
         <TxTable
           entityId={id}
           role={rolParam as "furnizor" | "autoritate"}
@@ -439,8 +521,9 @@ export default async function EntityPage({
       </section>
 
       <p className="note">
-        Instantaneu SICAP 2020. Valorile reflectă achiziții directe. Fiecare achiziție are
-        link direct către înregistrarea oficială de pe e-licitatie.ro.
+        Tabelul cuprinde ambele canale: achiziții directe (sub prag) și contracte atribuite prin
+        proceduri (peste prag). Fiecare rând are link direct către înregistrarea oficială de pe
+        e-licitatie.ro.
       </p>
     </>
   );

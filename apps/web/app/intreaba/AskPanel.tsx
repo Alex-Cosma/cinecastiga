@@ -79,6 +79,8 @@ interface DrillRow {
   refId: string | null;
   caNoticeId: string | null;
   tedPubnum: string | null;
+  estimatedValueRon?: number | null;
+  valueSuspect?: boolean;
 }
 interface DrillResp {
   ok: boolean;
@@ -525,6 +527,7 @@ export default function AskPanel({
             {resp.data.block === "table" && (
               <TableBlock
                 rows={resp.data.rows}
+                spec={resp.spec}
                 perCapita={perCapita}
                 meta={
                   resp.data.total !== undefined
@@ -540,18 +543,22 @@ export default function AskPanel({
                 onFetch={(page, sort, dir) => void loadTable(resp.spec, page, sort, dir)}
               />
             )}
-            {resp.data.block === "timeseries" && <SeriesBlock series={resp.data.series} />}
-            {resp.data.block === "map" && <MapBlock counties={resp.data.counties} />}
+            {resp.data.block === "timeseries" && (
+              <SeriesBlock series={resp.data.series} spec={resp.spec} />
+            )}
+            {resp.data.block === "map" && (
+              <MapBlock counties={resp.data.counties} spec={resp.spec} />
+            )}
             {resp.data.block === "compare" && <CompareBlock entities={resp.data.entities} />}
             {resp.data.block === "distribution" && (
               <DistributionBlock distribution={resp.data.distribution} />
             )}
             {resp.data.block === "breakdown" && (
-              <BreakdownBlock slices={resp.data.slices} other={resp.data.other} />
+              <BreakdownBlock slices={resp.data.slices} other={resp.data.other} spec={resp.spec} />
             )}
             {resp.data.block === "scatter" && <ScatterBlock points={resp.data.points} />}
             {resp.data.block === "sankey" && (
-              <SankeyBlock flows={resp.data.flows} focal={resp.data.focal} />
+              <SankeyBlock flows={resp.data.flows} focal={resp.data.focal} spec={resp.spec} />
             )}
             {resp.data.block === "network" && (
               <NetworkBlock nodes={resp.data.nodes} focal={resp.data.focal} />
@@ -709,6 +716,7 @@ function DrillView({
   hideCounty: boolean;
   onFetch: (page: number, opts: DrillOpts) => void;
 }) {
+  const tip = useTip();
   const rows = data.rows ?? [];
   const total = data.total ?? 0;
   const page = data.page ?? 0;
@@ -727,6 +735,7 @@ function DrillView({
   );
   return (
     <div>
+      {tip.el}
       {showStream && (
         <div className="ask-streamtoggle">
           {(
@@ -789,24 +798,56 @@ function DrillView({
                       </span>
                     </td>
                   )}
-                  <td className="clip" title={cleanName(r.authority)}>
+                  <td className="clip" {...tip.bindClip(cleanName(r.authority))}>
                     {r.authorityId ? (
                       <Link href={`/entitati/${r.authorityId}`}>{cleanName(r.authority)}</Link>
                     ) : (
                       cleanName(r.authority)
                     )}
                   </td>
-                  <td className="clip" title={cleanName(r.supplier)}>
+                  <td className="clip" {...tip.bindClip(cleanName(r.supplier))}>
                     {r.supplierId ? (
                       <Link href={`/entitati/${r.supplierId}`}>{cleanName(r.supplier)}</Link>
                     ) : (
                       cleanName(r.supplier)
                     )}
                   </td>
-                  <td className="clip cpv" title={r.cpvName ?? undefined}>{r.cpvName ?? "—"}</td>
+                  <td className="clip cpv" {...tip.bindClip(r.cpvName)}>
+                    {r.cpvName ?? "—"}
+                  </td>
                   {!hideCounty && <td>{r.county ?? "—"}</td>}
-                  <td className="num">{formatRonFull(r.value)}</td>
+                  <td className={`num${r.valueSuspect ? " val-suspect" : ""}`}>
+                    {formatRonFull(r.value)}
+                    {r.valueSuspect && (
+                      <span
+                        className="val-warn"
+                        {...tip.bind(
+                          "valoare implauzibilă",
+                          r.estimatedValueRon
+                            ? `estimat: ${formatRonFull(r.estimatedValueRon)}`
+                            : undefined,
+                          (r.estimatedValueRon && r.value < r.estimatedValueRon
+                            ? "valoare simbolică — probabil sub-înregistrată (rest de preț unitar sau substituent)"
+                            : "probabil eroare de introducere (preț unitar cu separator de mii)") +
+                            " — valoarea NU e de încredere în totaluri sau statistici",
+                        )}
+                      >
+                        {" "}
+                        ⚠{r.estimatedValueRon ? ` est. ${formatRon(r.estimatedValueRon)}` : ""}
+                      </span>
+                    )}
+                  </td>
                   <td className="ask-srclinks">
+                    {r.src === "contracts" && r.refId && (
+                      <a
+                        href={`/contracte/i/${r.refId}`}
+                        target="_blank"
+                        rel="noopener"
+                        title="pagina noastră de detalii a contractului"
+                      >
+                        detalii→
+                      </a>
+                    )}
                     {seap && (
                       <a href={seap} target="_blank" rel="noopener noreferrer" title="deschide pe e-licitatie.ro">
                         SEAP↗
@@ -866,6 +907,7 @@ function StatBlock({
 
 function TableBlock({
   rows,
+  spec,
   perCapita,
   meta,
   sort,
@@ -873,6 +915,7 @@ function TableBlock({
   onFetch,
 }: {
   rows: TableRow[];
+  spec?: unknown;
   perCapita: boolean;
   /** Present only in paged mode (clasament without explicit topN). */
   meta?: { total: number; page: number; pageSize: number } | null;
@@ -880,6 +923,31 @@ function TableBlock({
   dir?: "asc" | "desc" | undefined;
   onFetch?: (page: number, sort?: string, dir?: "asc" | "desc") => void;
 }) {
+  // acquisitions-count click → same filters narrowed to this row, drill opened
+  const rowUrl = (r: TableRow): string | null => {
+    const s = (spec ?? {}) as {
+      dim?: string;
+      dataset?: string;
+      filters?: Record<string, unknown>;
+    };
+    const dim = s.dim ?? "authority";
+    let extra: Record<string, unknown>;
+    if (dim === "county") extra = { county: r.name };
+    else if (dim === "supplier") {
+      if (!r.entityId) return null;
+      extra = { supplierName: r.name, supplierId: Number(r.entityId) };
+    } else {
+      if (!r.entityId) return null;
+      extra = { authorityName: r.name, authorityId: Number(r.entityId) };
+    }
+    const next: Record<string, unknown> = {
+      block: "stat",
+      measure: "value",
+      filters: { ...(s.filters ?? {}), ...extra },
+    };
+    if (s.dataset) next["dataset"] = s.dataset;
+    return `/?spec=${encodeURIComponent(encodeSpec(next))}&drill=1`;
+  };
   const paged = Boolean(meta && onFetch);
   const page = meta?.page ?? 0;
   const pageSize = meta?.pageSize ?? rows.length;
@@ -948,7 +1016,18 @@ function TableBlock({
                 </td>
               )}
               <td className="num">{formatRonFull(r.value)}</td>
-              <td className="num">{formatInt(r.count)}</td>
+              <td className="num">
+                {(() => {
+                  const u = rowUrl(r);
+                  return u ? (
+                    <a href={u} target="_blank" rel="noopener">
+                      {formatInt(r.count)} ↗
+                    </a>
+                  ) : (
+                    formatInt(r.count)
+                  );
+                })()}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -971,13 +1050,27 @@ function TableBlock({
           </button>
         </div>
       )}
-      <p className="ask-fine">fiecare rând → profilul entității (dovadă)</p>
+      <p className="ask-fine">
+        nume → profilul entității · numărul de achiziții → lista lor în căutare
+      </p>
     </div>
   );
 }
 
-function SeriesBlock({ series }: { series: SeriesPoint[] }) {
+function SeriesBlock({ series, spec }: { series: SeriesPoint[]; spec: unknown }) {
   const t = useTip();
+  // year-bar click → same filters, scoped to that year, drill rows opened
+  const yearUrl = (year: number | string): string => {
+    const s = (spec ?? {}) as { dataset?: string; filters?: Record<string, unknown> };
+    const y = Number(year);
+    const next: Record<string, unknown> = {
+      block: "stat",
+      measure: "value",
+      filters: { ...(s.filters ?? {}), yearFrom: y, yearTo: y },
+    };
+    if (s.dataset) next["dataset"] = s.dataset;
+    return `/?spec=${encodeURIComponent(encodeSpec(next))}&drill=1`;
+  };
   if (series.length === 0) return <p className="ask-empty">Niciun rezultat.</p>;
   const max = Math.max(...series.map((p) => p.value), 1);
   const peak = series.reduce((a, b) => (b.value > a.value ? b : a));
@@ -986,13 +1079,16 @@ function SeriesBlock({ series }: { series: SeriesPoint[] }) {
       {t.el}
       <div className="ask-ts">
         {series.map((p) => (
-          <div
+          <a
             key={p.year}
             className="col"
+            href={yearUrl(p.year)}
+            target="_blank"
+            rel="noopener"
             {...t.bind(
               String(p.year),
               formatRonFull(p.value),
-              `${formatInt(p.count)} achiziții${p.year === peak.year ? " · vârful seriei" : ""}`,
+              `${formatInt(p.count)} achiziții${p.year === peak.year ? " · vârful seriei" : ""} · click → achizițiile anului`,
             )}
           >
             <div className="cv">{formatRon(p.value)}</div>
@@ -1001,10 +1097,13 @@ function SeriesBlock({ series }: { series: SeriesPoint[] }) {
               style={{ height: `${Math.max(2, (p.value / max) * 100)}%` }}
             />
             <div className="cl">{p.year}</div>
-          </div>
+          </a>
         ))}
       </div>
-      <p className="ask-fine">vârful ({peak.year}) este marcat · valori contractate, nu plăți</p>
+      <p className="ask-fine">
+        vârful ({peak.year}) este marcat · valori contractate, nu plăți · click pe un an → lista
+        achizițiilor lui
+      </p>
     </div>
   );
 }
@@ -1012,7 +1111,18 @@ function SeriesBlock({ series }: { series: SeriesPoint[] }) {
 const MAP_COLORS = ["#f3ead0", "#e7c98d", "#d99f57", "#c06a3a", "#9a2b1f"];
 const MAP_NO_DATA = "#e9e6dd";
 
-function MapBlock({ counties }: { counties: CountyValue[] }) {
+function MapBlock({ counties, spec }: { counties: CountyValue[]; spec: unknown }) {
+  // county click → same filters, scoped to that county, drill rows opened
+  const countyUrl = (label: string): string => {
+    const s = (spec ?? {}) as { measure?: string; dataset?: string; filters?: Record<string, unknown> };
+    const next: Record<string, unknown> = {
+      block: "stat",
+      measure: s.measure === "count" ? "count" : "value",
+      filters: { ...(s.filters ?? {}), county: label },
+    };
+    if (s.dataset) next["dataset"] = s.dataset;
+    return `/?spec=${encodeURIComponent(encodeSpec(next))}&drill=1`;
+  };
   const byKey = new Map<string, number>();
   const cntByKey = new Map<string, number>();
   for (const c of counties) {
@@ -1066,17 +1176,18 @@ function MapBlock({ counties }: { counties: CountyValue[] }) {
                 y: e.clientY,
               });
             return (
-              <path
-                key={s.key}
-                d={s.d}
-                fill={v > 0 ? MAP_COLORS[bucket(v)] : MAP_NO_DATA}
-                stroke="#fff"
-                strokeWidth={0.8}
-                className={tip?.label === s.label ? "hovered" : undefined}
-                onMouseEnter={move}
-                onMouseMove={move}
-                onMouseLeave={() => setTip(null)}
-              />
+              <a key={s.key} href={countyUrl(s.label)} target="_blank" rel="noopener">
+                <path
+                  d={s.d}
+                  fill={v > 0 ? MAP_COLORS[bucket(v)] : MAP_NO_DATA}
+                  stroke="#fff"
+                  strokeWidth={0.8}
+                  className={tip?.label === s.label ? "hovered" : undefined}
+                  onMouseEnter={move}
+                  onMouseMove={move}
+                  onMouseLeave={() => setTip(null)}
+                />
+              </a>
             );
           })}
         </svg>
@@ -1100,6 +1211,7 @@ function MapBlock({ counties }: { counties: CountyValue[] }) {
                   {formatInt(tip.count)} achiziții
                   {national > 0 && ` · ${((tip.value / national) * 100).toFixed(1)}% din total`}
                 </div>
+                <div className="s">click → deschide achizițiile județului</div>
               </>
             ) : (
               <div className="s">fără date pentru aceste filtre</div>
@@ -1112,7 +1224,11 @@ function MapBlock({ counties }: { counties: CountyValue[] }) {
           {ranked.map((r, i) => (
             <tr key={r.key}>
               <td className="pos">{i + 1}</td>
-              <td>{r.label}</td>
+              <td>
+                <a href={countyUrl(r.label)} target="_blank" rel="noopener">
+                  {r.label} ↗
+                </a>
+              </td>
               <td className="num">{formatRon(r.value)}</td>
             </tr>
           ))}

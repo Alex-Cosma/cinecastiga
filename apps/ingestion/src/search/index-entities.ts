@@ -43,6 +43,11 @@ export async function indexEntities(
   const index = client.index(ENTITIES_INDEX);
 
   await client.createIndex(ENTITIES_INDEX, { primaryKey: "id" }).catch(() => {});
+  // Wipe before push: entity ids change on re-normalize, and upsert-only
+  // indexing accumulates stale documents whose links 404 (seen 2026-07-28:
+  // 815k docs for 194k entities).
+  const wipeTask = await index.deleteAllDocuments();
+  await client.tasks.waitForTask(wipeTask.taskUid, { timeout: 300_000 });
   const settingsTask = await index.updateSettings({
     searchableAttributes: ["name", "cui"],
     filterableAttributes: ["roles", "county"],

@@ -201,6 +201,8 @@ interface RemoteSuggest {
   authority: { name: string; county: string | null }[];
   supplier: { name: string; county: string | null }[];
   person: { key: string; name: string; birthYear: number | null; birthLocality: string | null; nFirms: number }[];
+  /** Top CPV divisions (breakdown-form starters, from ?top=1). */
+  division?: { code: string; name: string }[];
 }
 const EMPTY_REMOTE: RemoteSuggest = { cpv: [], uat: [], authority: [], supplier: [], person: [] };
 const TIP_SHORT: Record<string, string> = { comună: "com.", oraș: "or.", municipiu: "mun." };
@@ -795,6 +797,15 @@ function buildCands(s: State, q: string, remote: RemoteSuggest, run: () => void)
         apply: (st, ch) => { st.topN = n; ch.push({ key: "topN", cat: "primele", label: String(n) }); },
       });
   }
+  // breakdown starters: top CPV divisions (high-level — leaf terms make a
+  // one-slice "composition"); shown before typing, replaced by typed matches
+  if (s.block === "breakdown" && !s.cpvTerm && !qq) {
+    for (const d of remote.division ?? [])
+      nar.push({
+        id: `div:${d.code}`, ic: "🧩", label: d.name, sub: "domeniu mare — vezi compoziția lui", sc: 0.95, hot: true,
+        apply: (st, ch) => { st.cpvTerm = d.code; ch.push({ key: "cpvTerm", cat: "domeniu", label: d.name }); },
+      });
+  }
   // cpv (remote) + free text
   if (!s.cpvTerm) {
     for (const c of remote.cpv.slice(0, 5))
@@ -1117,15 +1128,24 @@ export default function Builder({
   const [remote, setRemote] = useState<RemoteSuggest>(EMPTY_REMOTE);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
+  // Focal steps (network/sankey/… need an entity) must never show an empty
+  // dropdown: with nothing typed we fetch the biggest entities as starters.
+  // Breakdown gets the same treatment with top CPV DIVISIONS (high-level —
+  // a leaf term would make a one-slice "composition").
+  const focalWaiting =
+    ["focal", "focalAuthority", "focalSupplier", "compareWith"].includes(
+      needs(state)[0] ?? "",
+    ) ||
+    (state.block === "breakdown" && !state.cpvTerm);
   useEffect(() => {
     const term = q.trim();
-    if (term.length < 2) {
+    if (term.length < 2 && !focalWaiting) {
       setRemote(EMPTY_REMOTE);
       return;
     }
     const ctrl = new AbortController();
     const t = setTimeout(() => {
-      const params = new URLSearchParams({ q: term });
+      const params = new URLSearchParams(term.length >= 2 ? { q: term } : { top: "1" });
       if (state.county && !state.uat) params.set("county", fold(state.county));
       fetch(`/api/suggest?${params}`, { signal: ctrl.signal })
         .then((r) => (r.ok ? r.json() : EMPTY_REMOTE))
@@ -1136,7 +1156,7 @@ export default function Builder({
       clearTimeout(t);
       ctrl.abort();
     };
-  }, [q, state.county, state.uat]);
+  }, [q, state.county, state.uat, focalWaiting]);
 
   const missing = needs(state);
   const runnable = missing.length === 0;

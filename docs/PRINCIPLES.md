@@ -112,6 +112,11 @@ defensible if these three never crack.
   (brightness / stroke / weight).
 - **No horizontal scrollbars, ever.** Wide tables use fixed layout with
   per-column shares and in-cell ellipsis (full text on hover), not overflow.
+- **Ellipsis => instant full text.** Every truncated cell/label gets
+  `tip.bindClip(fullText)` (same `useTip()` hook): an instant cursor tooltip
+  with the complete text, firing ONLY when the element is actually truncated
+  (scrollWidth check). Never the native `title` attribute for this — its ~1s
+  delay reads as "no tooltip".
 - **Search speaks colloquial.** Users type institution TYPES ("primăria
   Buzău", "CJ Cluj"), not registered legal names ("MUNICIPIUL BUZAU").
   `lib/ask/entity-alias.ts` expands aliases + an all-tokens fallback; both the

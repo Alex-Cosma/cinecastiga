@@ -27,13 +27,25 @@ export const participantsUrl = (): string => `${SICAP}/pub/participants`;
 
 /**
  * External company registries by CUI — for verifying an entity beyond the
- * procurement record (ownership, admins, financials). Best-effort search URLs.
+ * procurement record (ownership, admins, financials). Each link lands on the
+ * firm identified by its CUI: ANAF's info-cod-fiscal page prefills via ?cod=,
+ * termene.ro serves /firma/<cui>, listafirme firm pages are /<name-slug>-<cui>/
+ * (the trailing CUI is the identity; the slug is built from our display name).
  */
-export const registryLinks = (cui: string): { label: string; url: string }[] => {
+export const registryLinks = (
+  cui: string,
+  name?: string | null,
+): { label: string; url: string }[] => {
   const c = cui.replace(/^RO/i, "").trim();
+  const slug = (name ?? "firma")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
   return [
-    { label: "ANAF", url: `https://mfinante.gov.ro/apps/agent/persoana_juridica_cauta.jsp` },
-    { label: "termene.ro", url: `https://termene.ro/cauta?q=${encodeURIComponent(c)}` },
-    { label: "listafirme.ro", url: `https://www.listafirme.ro/cauta.asp?q=${encodeURIComponent(c)}` },
+    { label: "ANAF", url: `https://mfinante.gov.ro/apps/infocodfiscal.html?cod=${encodeURIComponent(c)}` },
+    { label: "termene.ro", url: `https://termene.ro/firma/${encodeURIComponent(c)}` },
+    { label: "listafirme.ro", url: `https://www.listafirme.ro/${slug}-${encodeURIComponent(c)}/` },
   ];
 };

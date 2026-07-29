@@ -270,17 +270,23 @@ async function groundAdmin(
   const rows = (await sql`
     select max(r.person_name) nm, max(extract(year from r.birth_date))::int by,
            max(r.birth_locality) bl, count(distinct r.cui) nf,
-           array_agg(distinct e.id) filter (where e.id is not null) ids
+           -- only entities that actually appear as suppliers: bare core.entities
+           -- rows can be ghosts with zero transactions, which would inflate the
+           -- "N firme cu bani publici" caveat
+           array_agg(distinct e.id) filter (where ep.entity_id is not null) ids
     from reference.company_reps r
     left join core.entities e on e.cui_canonical = r.cui
+    left join marts.entity_profile ep on ep.entity_id = e.id and ep.role = 'supplier'
     where r.person_key = ${personKey}
   `) as unknown as { nm: string | null; by: number | null; bl: string | null; nf: string; ids: string[] | null }[];
   const r = rows[0];
   if (!r?.nm) return { query: q.name ?? personKey, personKey: null, display: null, supplierIds: [], nFirms: 0, alternatives };
+  // ONRC birth localities can be punctuation-only junk (".") — drop those
+  const loc = r.bl && /\p{L}/u.test(r.bl) ? r.bl : null;
   return {
     query: q.name ?? r.nm,
     personKey,
-    display: `${r.nm}${r.by ? ` (n. ${r.by}${r.bl ? `, ${r.bl}` : ""})` : ""}`,
+    display: `${r.nm}${r.by ? ` (n. ${r.by}${loc ? `, ${loc}` : ""})` : ""}`,
     supplierIds: (r.ids ?? []).map(String).slice(0, 1000),
     nFirms: Number(r.nf ?? 0),
     alternatives,

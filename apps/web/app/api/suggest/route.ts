@@ -56,6 +56,46 @@ export interface SuggestResponse {
     birthLocality: string | null;
     nFirms: number;
   }[];
+  /** Top-level CPV divisions by spend — starters for the breakdown form. */
+  division?: { code: string; name: string }[];
+}
+
+/** Biggest authorities + suppliers + CPV divisions, for empty-query starters. */
+async function topEntities() {
+  const sql = db();
+  const pick = (role: string) =>
+    sql`
+      select ep.name_display, ep.county
+      from marts.entity_profile ep
+      where ep.role = ${role} and ep.name_display is not null
+      order by ep.total_ron_full desc nulls last
+      limit 5
+    ` as unknown as Promise<{ name_display: string | null; county: string | null }[]>;
+  const [authority, supplier, divisions] = await Promise.all([
+    pick("authority"),
+    pick("supplier"),
+    sql`
+      select division, name_ro from marts.spend_by_cpv
+      where kind = 'all' and name_ro is not null
+      order by total_ron desc nulls last
+      limit 8
+    ` as unknown as Promise<{ division: string; name_ro: string }[]>,
+  ]);
+  const body: SuggestResponse = {
+    cpv: [],
+    uat: [],
+    authority: authority
+      .filter((r) => r.name_display)
+      .map((r) => ({ name: cleanName(r.name_display), county: r.county })),
+    supplier: supplier
+      .filter((r) => r.name_display)
+      .map((r) => ({ name: cleanName(r.name_display), county: r.county })),
+    person: [],
+    division: divisions.map((d) => ({ code: d.division, name: d.name_ro })),
+  };
+  return NextResponse.json(body, {
+    headers: { "cache-control": "public, max-age=3600, stale-while-revalidate=86400" },
+  });
 }
 
 export async function GET(req: Request) {
@@ -63,6 +103,9 @@ export async function GET(req: Request) {
   const q = fold(url.searchParams.get("q") ?? "");
   const county = fold(url.searchParams.get("county") ?? "");
   if (q.length < 2) {
+    // top=1 → starter suggestions for focal steps (network/sankey/…): the
+    // biggest entities by contracted value, so the dropdown is never empty.
+    if (url.searchParams.get("top") === "1") return topEntities();
     return NextResponse.json({ cpv: [], uat: [], authority: [], supplier: [], person: [] });
   }
   devlog("suggest", county ? { q, county } : { q });
@@ -169,7 +212,7 @@ export async function GET(req: Request) {
       key: r.person_key,
       name: cleanName(r.nm),
       birthYear: r.by === null ? null : Number(r.by),
-      birthLocality: r.bl,
+      birthLocality: r.bl && /\p{L}/u.test(r.bl) ? r.bl : null,
       nFirms: Number(r.nf ?? 0),
     })),
   };
