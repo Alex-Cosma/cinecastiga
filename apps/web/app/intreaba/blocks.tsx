@@ -346,15 +346,6 @@ export function ScatterBlock({ points }: { points: ScatterPoint[] }) {
   const x = (v: number) =>
     PAD.l + ((Math.log10(Math.max(v, 1)) - minLog) / Math.max(maxLog - minLog, 0.01)) * (W - PAD.l - PAD.r);
   const y = (c: number) => H - PAD.b - c * (H - PAD.t - PAD.b);
-  // outliers: high risk, low volume — label the highest-CRI few from the lower half of spend
-  const medianLog = (minLog + maxLog) / 2;
-  const outliers = new Set(
-    points
-      .filter((p) => p.cri >= 0.5 && Math.log10(Math.max(p.value, 1)) <= medianLog)
-      .sort((a, b) => b.cri - a.cri)
-      .slice(0, 5)
-      .map((p) => p.entityId),
-  );
   return (
     <div>
       {t.el}
@@ -372,34 +363,31 @@ export function ScatterBlock({ points }: { points: ScatterPoint[] }) {
             {c}
           </text>
         ))}
-        {points.map((p) => {
-          const out = outliers.has(p.entityId);
-          return (
-            <g key={p.entityId}>
-              <circle
-                cx={x(p.value)}
-                cy={y(p.cri)}
-                r={out ? 6 : 3.5}
-                fill={p.cri >= 0.5 ? "#9a2b1f" : p.cri >= 0.3 ? "#c9a24a" : "#c2beb2"}
-                fillOpacity={out ? 0.95 : 0.55}
-                {...t.bind(
-                  `${cleanName(p.name)}${p.county ? ` (${p.county})` : ""}`,
-                  `CRI ${p.cri.toFixed(2)} · ${formatRon(p.value)}`,
-                  `${p.nFlags} semnale de risc`,
-                )}
-              />
-              {out && (
-                <text x={x(p.value) + 8} y={y(p.cri) - 5} fontSize={9.5} fill="#9a2b1f">
-                  {cleanName(p.name).slice(0, 28)}
-                </text>
+        {points.map((p) => (
+          <a
+            key={p.entityId}
+            href={`/entitati/${p.entityId}`}
+            target="_blank"
+            rel="noopener"
+          >
+            <circle
+              cx={x(p.value)}
+              cy={y(p.cri)}
+              r={3.5}
+              fill={p.cri >= 0.5 ? "#9a2b1f" : p.cri >= 0.3 ? "#c9a24a" : "#c2beb2"}
+              fillOpacity={0.55}
+              className="dot"
+              {...t.bind(
+                `${cleanName(p.name)}${p.county ? ` (${p.county})` : ""}`,
+                `CRI ${p.cri.toFixed(2)} · ${formatRon(p.value)}`,
+                `${p.nFlags} semnale de risc · click → pagina entității`,
               )}
-            </g>
-          );
-        })}
+            />
+          </a>
+        ))}
       </svg>
       <p className="ask-fine">
-        Fiecare punct = o entitate (min. 10 achiziții). Marcate: risc ridicat cu volum mic —
-        tiparele de risc nu sunt explicate de mărime.
+        Fiecare punct = o entitate (min. 10 achiziții) — click deschide pagina ei.
       </p>
     </div>
   );
