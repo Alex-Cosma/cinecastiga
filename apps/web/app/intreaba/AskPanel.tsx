@@ -556,7 +556,9 @@ export default function AskPanel({
             {resp.data.block === "breakdown" && (
               <BreakdownBlock slices={resp.data.slices} other={resp.data.other} spec={resp.spec} />
             )}
-            {resp.data.block === "scatter" && <ScatterBlock points={resp.data.points} />}
+            {resp.data.block === "scatter" && (
+              <ScatterBlock points={resp.data.points} density={resp.data.density} />
+            )}
             {resp.data.block === "sankey" && (
               <SankeyBlock flows={resp.data.flows} focal={resp.data.focal} spec={resp.spec} />
             )}
