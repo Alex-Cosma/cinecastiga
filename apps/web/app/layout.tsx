@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
+import FooterAuthLink from "./FooterAuthLink";
 
 // Header nav + search box are parked in app/_legacy/HeaderNav.tsx while the
 // home page is search-only.
@@ -36,7 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             Sursă: e-licitatie.ro (SICAP), date publice. Cifrele reprezintă valori
             contractate, nu neapărat plăți efectuate. Atribuirea către consorții este
             estimată (împărțire egală în lipsa datelor pe membru). Proiect deschis,
-            necomercial.
+            necomercial. · <FooterAuthLink />
           </div>
         </footer>
       </body>
