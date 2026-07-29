@@ -4,8 +4,8 @@ import { devlog } from "@/lib/devlog";
 
 /**
  * GET /api/entity-tx — the entity page's transaction table, client-driven:
- * 10 rows/page, sortable, filterable by year + flag WITHOUT a full page
- * reload. ?id&rol=furnizor|autoritate&page&sort&dir&an&sem
+ * 10 rows/page, sortable, filterable by year + flag + channel WITHOUT a full
+ * page reload. ?id&rol=furnizor|autoritate&page&sort&dir&an&sem&tip=da|contracts
  */
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -28,6 +28,8 @@ export async function GET(req: Request) {
   }
   const sem = url.searchParams.get("sem");
   if (sem && /^[a-z_]{1,40}$/.test(sem)) q.flagCode = sem;
+  const tip = url.searchParams.get("tip");
+  if (tip === "da" || tip === "contracts") q.src = tip;
   devlog("entity-tx", { id, role, ...q });
 
   try {

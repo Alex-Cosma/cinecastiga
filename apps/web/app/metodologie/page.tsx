@@ -29,13 +29,25 @@ export default function MetodologiePage() {
             ponderea semnalelor declanșate din cele aplicabile — fără scoruri ascunse.
           </li>
           <li>
-            <strong>Praguri legale, în funcție de dată.</strong> Pragurile achiziției directe
-            (132.519 lei produse/servicii, 441.730 lei lucrări, net TVA, Legea 98/2016) se
-            aplicară conform perioadei fiecărei achiziții.
+            <strong>Praguri legale, în funcție de dată.</strong> Pragul achiziției directe
+            (art. 7 alin. 5, Legea 98/2016, net TVA) s-a schimbat în timp: 132.519 lei
+            (2016 – iun. 2018), 135.060 lei (iun. 2018 – 2022, OUG 45/2018), 270.120 lei
+            (din ian. 2023, Legea 208/2022) pentru produse/servicii — respectiv 441.730 /
+            450.200 / 900.400 lei pentru lucrări. Fiecare achiziție e judecată după pragul în
+            vigoare la data ei.
           </li>
           <li>
-            <strong>Date curățate.</strong> Achizițiile cu valori corupte în sursă (peste 2
-            mil. lei, imposibil pentru o achiziție directă) sunt excluse din calcul.
+            <strong>Doar bani care s-au mișcat.</strong> Comenzile refuzate de furnizor sau
+            neacceptate la termen (~6% din înregistrările SEAP) nu sunt cheltuială și sunt
+            excluse din totaluri și semnale. Când un anunț publică și acordul-cadru și
+            contractele subsecvente, plafonul acordului nu se adună — banii reali sunt
+            comenzile.
+          </li>
+          <li>
+            <strong>Date curățate, nu ascunse.</strong> Valorile corupte în sursă (peste 2 mil.
+            lei pe o achiziție directă, sau de 100+ ori peste estimat — erori tipice de
+            introducere) sunt excluse din totaluri, dar rămân vizibile în liste, marcate ⚠ cu
+            explicație.
           </li>
         </ul>
       </section>
@@ -43,9 +55,10 @@ export default function MetodologiePage() {
       <section className="section">
         <h2>Acoperire</h2>
         <p className="hint">
-          Momentan sunt analizate <strong>achizițiile directe</strong> (instantaneu 2020, 4,78
-          milioane de tranzacții). Semnalele pentru proceduri de atribuire (licitații) sunt în
-          pregătire și vor fi activate când datele live devin disponibile.
+          Sunt analizate <strong>achizițiile directe</strong> (2018–prezent, ~19,6 milioane de
+          tranzacții finalizate) și <strong>contractele atribuite prin proceduri</strong>{" "}
+          (licitații, ~1,1 milioane), plus surse de context: bilanțurile firmelor (MF),
+          reprezentanții legali (ONRC) și anunțurile TED. Semnalele acoperă ambele canale.
         </p>
       </section>
 

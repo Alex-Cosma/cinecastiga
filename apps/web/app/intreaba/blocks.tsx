@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { formatRon, formatRonFull, formatInt, cleanName } from "@/lib/format";
+import { encodeSpec } from "@/lib/ask/permalink";
 
 /**
  * House rule (docs/PRINCIPLES.md): every graph element answers on hover with an
@@ -27,6 +28,19 @@ export function useTip() {
     const move = (e: React.MouseEvent) => setTip({ title, v, s, x: e.clientX, y: e.clientY });
     return { onMouseEnter: move, onMouseMove: move, onMouseLeave: () => setTip(null) };
   };
+  /** Instant full-text tooltip for ellipsized cells — fires ONLY when the
+   *  element is actually truncated, so untrimmed text stays quiet. */
+  const bindClip = (text: string | null | undefined): TipBind => {
+    const move = (e: React.MouseEvent) => {
+      const el = e.currentTarget as HTMLElement;
+      if (!text || el.scrollWidth <= el.clientWidth + 1) {
+        setTip(null);
+        return;
+      }
+      setTip({ title: text, x: e.clientX, y: e.clientY });
+    };
+    return { onMouseEnter: move, onMouseMove: move, onMouseLeave: () => setTip(null) };
+  };
   const el = tip ? (
     <div className="ask-maptip" style={{ left: tip.x + 14, top: tip.y + 14 }}>
       <div className="t">{tip.title}</div>
@@ -34,7 +48,7 @@ export function useTip() {
       {tip.s && <div className="s">{tip.s}</div>}
     </div>
   ) : null;
-  return { bind, el, active: tip?.title ?? null };
+  return { bind, bindClip, el, active: tip?.title ?? null };
 }
 import { FLAG_META, criBand } from "@/lib/flags";
 import type {
@@ -185,46 +199,89 @@ const SEG_OTHER = "#b3aca0";
 export function BreakdownBlock({
   slices,
   other,
+  spec,
 }: {
   slices: BreakdownSlice[];
   other: { value: number; count: number };
+  spec?: unknown;
 }) {
   const t = useTip();
+  // slice click → same filters narrowed to that CPV stem, drill rows opened
+  const sliceUrl = (code: string): string => {
+    const sp = (spec ?? {}) as { dataset?: string; filters?: Record<string, unknown> };
+    const next: Record<string, unknown> = {
+      block: "stat",
+      measure: "value",
+      filters: { ...(sp.filters ?? {}), cpvTerm: code },
+    };
+    if (sp.dataset) next["dataset"] = sp.dataset;
+    return `/?spec=${encodeURIComponent(encodeSpec(next))}&drill=1`;
+  };
   const total = slices.reduce((a, s) => a + s.value, 0) + other.value;
   if (total <= 0) return <p className="ask-empty">Niciun rezultat.</p>;
   const items = [
     ...slices.map((s, i) => ({
       name: s.name ?? `CPV ${s.code}`,
+      code: s.code as string | null,
       value: s.value,
       count: s.count,
       color: SEG_COLORS[i % SEG_COLORS.length]!,
     })),
     ...(other.value > 0
-      ? [{ name: "alte categorii", value: other.value, count: other.count, color: SEG_OTHER }]
+      ? [
+          {
+            name: "alte categorii",
+            code: null as string | null,
+            value: other.value,
+            count: other.count,
+            color: SEG_OTHER,
+          },
+        ]
       : []),
   ];
   return (
     <div>
       {t.el}
       <div className="ask-comp">
-        {items.map((s) => (
-          <div
-            key={s.name}
-            className="seg"
-            style={{ width: `${(s.value / total) * 100}%`, background: s.color }}
-            {...t.bind(
-              s.name,
-              formatRon(s.value),
-              `${formatInt(s.count)} achiziții · ${((s.value / total) * 100).toFixed(1)}% din total`,
-            )}
-          />
-        ))}
+        {items.map((s) => {
+          const bind = t.bind(
+            s.name,
+            formatRon(s.value),
+            `${formatInt(s.count)} achiziții · ${((s.value / total) * 100).toFixed(1)}% din total${s.code ? " · click → achizițiile categoriei" : ""}`,
+          );
+          return s.code ? (
+            <a
+              key={s.name}
+              className="seg"
+              href={sliceUrl(s.code)}
+              target="_blank"
+              rel="noopener"
+              style={{ width: `${(s.value / total) * 100}%`, background: s.color }}
+              {...bind}
+            />
+          ) : (
+            <div
+              key={s.name}
+              className="seg"
+              style={{ width: `${(s.value / total) * 100}%`, background: s.color }}
+              {...bind}
+            />
+          );
+        })}
       </div>
       <div className="ask-complegend">
         {items.map((s) => (
           <div key={s.name} className="li">
             <span className="sw" style={{ background: s.color }} />
-            <span className="nm">{s.name}</span>
+            <span className="nm">
+              {s.code ? (
+                <a href={sliceUrl(s.code)} target="_blank" rel="noopener">
+                  {s.name} ↗
+                </a>
+              ) : (
+                s.name
+              )}
+            </span>
             <span className="vv num">
               {formatRon(s.value)} · {((s.value / total) * 100).toFixed(1)}%
             </span>
@@ -313,11 +370,29 @@ export function ScatterBlock({ points }: { points: ScatterPoint[] }) {
 export function SankeyBlock({
   flows,
   focal,
+  spec,
 }: {
   flows: SankeyFlow[];
   focal: { entityId: string; name: string; role: string };
+  spec?: unknown;
 }) {
   const t = useTip();
+  // click-throughs: node/ribbon -> search drill with exactly those rows.
+  // Partner gets the opposite role of the focal entity; ribbons add the CPV.
+  const drillUrl = (extra: Record<string, unknown>): string => {
+    const sp = (spec ?? {}) as { dataset?: string; filters?: Record<string, unknown> };
+    const next: Record<string, unknown> = {
+      block: "stat",
+      measure: "value",
+      filters: { ...(sp.filters ?? {}), ...extra },
+    };
+    if (sp.dataset) next["dataset"] = sp.dataset;
+    return `/?spec=${encodeURIComponent(encodeSpec(next))}&drill=1`;
+  };
+  const partnerExtra = (id: string, name: string): Record<string, unknown> =>
+    focal.role === "authority"
+      ? { supplierName: cleanName(name), supplierId: Number(id) }
+      : { authorityName: cleanName(name), authorityId: Number(id) };
   if (flows.length === 0) return <p className="ask-empty">Niciun flux.</p>;
   const W = 640;
   const NODE_W = 8;
@@ -372,38 +447,80 @@ export function SankeyBlock({
           p.used += h;
           c.used += h;
           const mx = (LX + NODE_W + RX) / 2;
-          return (
-            <path
+          const linkable = f.partnerId !== "_alt" && f.categoryCode !== "_alt";
+          const ribbon = (
+              <path
+                d={`M ${LX + NODE_W} ${y0} C ${mx} ${y0}, ${mx} ${y1}, ${RX} ${y1}`}
+                stroke={f.value / total > 0.12 ? "#c9a24a" : "#e0d4b0"}
+                strokeWidth={h}
+                fill="none"
+                strokeOpacity={0.75}
+                {...t.bind(
+                  `${cleanName(f.partner)} → ${f.category ?? "?"}`,
+                  formatRon(f.value),
+                  `${((f.value / total) * 100).toFixed(1)}% din fluxul afișat${linkable ? " · click → achizițiile acestui flux" : ""}`,
+                )}
+              />
+          );
+          return linkable ? (
+            <a
               key={i}
-              d={`M ${LX + NODE_W} ${y0} C ${mx} ${y0}, ${mx} ${y1}, ${RX} ${y1}`}
-              stroke={f.value / total > 0.12 ? "#c9a24a" : "#e0d4b0"}
-              strokeWidth={h}
-              fill="none"
-              strokeOpacity={0.75}
-              {...t.bind(
-                `${cleanName(f.partner)} → ${f.category ?? "?"}`,
-                formatRon(f.value),
-                `${((f.value / total) * 100).toFixed(1)}% din fluxul afișat`,
-              )}
-            />
+              href={drillUrl({ ...partnerExtra(f.partnerId, f.partner), cpvTerm: f.categoryCode })}
+              target="_blank"
+              rel="noopener"
+            >
+              {ribbon}
+            </a>
+          ) : (
+            <g key={i}>{ribbon}</g>
           );
         })}
-        {[...pPos.entries()].map(([id, p]) => (
-          <g key={id} {...t.bind(cleanName(p.name), formatRon(partners.get(id)?.value ?? 0))}>
-            <rect x={LX} y={p.y0} width={NODE_W} height={p.h} fill="#9a2b1f" rx={2} />
-            <text x={LX - 6} y={p.y0 + p.h / 2 + 3} fontSize={10} fill="#16130d" textAnchor="end">
-              {cleanName(p.name).slice(0, 26)}
-            </text>
-          </g>
-        ))}
-        {[...cPos.entries()].map(([id, c]) => (
-          <g key={id} {...t.bind(c.name ?? "?", formatRon(cats.get(id)?.value ?? 0))}>
-            <rect x={RX} y={c.y0} width={NODE_W} height={c.h} fill="#c06a3a" rx={2} />
-            <text x={RX + NODE_W + 6} y={c.y0 + c.h / 2 + 3} fontSize={10} fill="#16130d">
-              {(c.name ?? "?").slice(0, 26)}
-            </text>
-          </g>
-        ))}
+        {[...pPos.entries()].map(([id, p]) => {
+          const node = (
+            <g
+              {...t.bind(
+                cleanName(p.name),
+                formatRon(partners.get(id)?.value ?? 0),
+                id !== "_alt" ? "click → toate achizițiile cu acest partener" : undefined,
+              )}
+            >
+              <rect x={LX} y={p.y0} width={NODE_W} height={p.h} fill="#9a2b1f" rx={2} />
+              <text x={LX - 6} y={p.y0 + p.h / 2 + 3} fontSize={10} fill="#16130d" textAnchor="end">
+                {cleanName(p.name).slice(0, 26)}
+              </text>
+            </g>
+          );
+          return id !== "_alt" ? (
+            <a key={id} href={drillUrl(partnerExtra(id, p.name))} target="_blank" rel="noopener">
+              {node}
+            </a>
+          ) : (
+            <g key={id}>{node}</g>
+          );
+        })}
+        {[...cPos.entries()].map(([id, c]) => {
+          const node = (
+            <g
+              {...t.bind(
+                c.name ?? "?",
+                formatRon(cats.get(id)?.value ?? 0),
+                id !== "_alt" ? "click → achizițiile focalului în această categorie" : undefined,
+              )}
+            >
+              <rect x={RX} y={c.y0} width={NODE_W} height={c.h} fill="#c06a3a" rx={2} />
+              <text x={RX + NODE_W + 6} y={c.y0 + c.h / 2 + 3} fontSize={10} fill="#16130d">
+                {(c.name ?? "?").slice(0, 26)}
+              </text>
+            </g>
+          );
+          return id !== "_alt" ? (
+            <a key={id} href={drillUrl({ cpvTerm: id })} target="_blank" rel="noopener">
+              {node}
+            </a>
+          ) : (
+            <g key={id}>{node}</g>
+          );
+        })}
       </svg>
       {t.el}
     </div>

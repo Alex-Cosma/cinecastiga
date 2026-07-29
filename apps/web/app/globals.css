@@ -130,7 +130,8 @@ table.rank td.pos { color: var(--muted); width: 28px; font-variant-numeric: tabu
 table.rank .county { color: var(--muted); font-size: 12px; }
 
 .bars { display: flex; flex-direction: column; gap: 10px; }
-.bar-row { display: grid; grid-template-columns: 220px 1fr auto; gap: 12px; align-items: center; font-size: 14px; }
+.bar-row { display: grid; grid-template-columns: 220px 1fr auto auto; gap: 12px; align-items: center; font-size: 14px; }
+.bar-go { white-space: nowrap; font-size: 13px; min-width: 108px; text-align: right; }
 .bar-label { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bar-track { background: var(--bar-track); border-radius: 6px; height: 14px; overflow: hidden; }
 .bar-fill { background: var(--bar); height: 100%; border-radius: 6px; }
@@ -142,6 +143,8 @@ table.rank .county { color: var(--muted); font-size: 12px; }
   display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 999px;
   background: var(--accent-soft); color: #6a2018; margin-right: 6px; text-transform: uppercase; letter-spacing: 0.03em;
 }
+/* neutral descriptor pill — facts, not warnings (channel, procedure type) */
+.badge.plain { background: var(--bar-track); color: var(--muted); border: 1px solid var(--line); }
 .role-card {
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
   padding: 20px; margin-bottom: 16px;
@@ -249,6 +252,7 @@ table.rank .county { color: var(--muted); font-size: 12px; }
   .cols { grid-template-columns: 1fr; }
   .bar-row { grid-template-columns: 140px 1fr; }
   .bar-val { grid-column: 2; text-align: right; }
+  .bar-go { grid-column: 2; text-align: right; }
 }
 
 /* TED / above-threshold surface (supra-prag) */
@@ -382,7 +386,7 @@ table.rank td .src a:hover { color: var(--accent); }
 .ask-maptip .t { font-weight: 700; }
 .ask-maptip .v { font-weight: 700; font-variant-numeric: tabular-nums; }
 .ask-maptip .s { opacity: 0.75; font-size: 11.5px; }
-.ask-choropleth path { transition: filter 0.1s ease; }
+.ask-choropleth path { transition: filter 0.1s ease; cursor: pointer; }
 .ask-choropleth path.hovered { filter: brightness(0.85); stroke-width: 1.4; }
 .ask-toast {
   position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
@@ -495,12 +499,14 @@ table.rank td .src a:hover { color: var(--accent); }
 .ask-drill td {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.ask-drill th.col-date { width: 112px; }
+.ask-drill th.col-date { width: 96px; }
 .ask-drill th.col-src { width: 84px; }
 .ask-drill th.col-cpv { width: 19%; }
 .ask-drill th.col-county { width: 96px; }
 .ask-drill th.col-value { width: 128px; }
-.ask-drill th.col-links { width: 92px; }
+.ask-drill th.col-links { width: 118px; }
+.ask-drill th.col-gap { width: 64px; }
+.ask-drill th.col-flags { width: 132px; }
 /* col-authority / col-supplier: unset — they split the remaining width evenly */
 .ask-table tr:last-child td { border-bottom: 0; }
 .ask-table td.pos, .ask-table th.pos { color: var(--muted); width: 26px; }
@@ -512,6 +518,9 @@ table.rank td .src a:hover { color: var(--accent); }
   flex: 1; display: flex; flex-direction: column; align-items: center;
   justify-content: flex-end; height: 100%; gap: 4px; min-width: 0;
 }
+a.col { text-decoration: none; color: inherit; }
+a.col:hover { text-decoration: none; }
+.ask-ts .col:hover .bar { filter: brightness(0.85); }
 .ask-ts .bar { width: 100%; background: var(--bar); border-radius: 3px 3px 0 0; min-height: 2px; }
 .ask-ts .bar.peak { background: var(--accent); }
 .ask-ts .cl { font-size: 10.5px; color: var(--muted); }
@@ -777,6 +786,9 @@ table.rank td .src a:hover { color: var(--accent); }
   border-radius: 4px; padding: 1px 7px; letter-spacing: .02em; white-space: nowrap;
 }
 .ask-srctag.da { background: var(--bar-track); color: var(--muted); border: 1px solid var(--line); }
+/* implausible recorded values (data-entry typos): discredited, not hidden */
+td.val-suspect { color: var(--muted); text-decoration: line-through dotted; }
+td.val-suspect .val-warn { color: var(--accent); text-decoration: none; display: inline-block; font-size: 11.5px; }
 .ask-srctag.contracts { background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent-soft); }
 .ask-srclinks { white-space: nowrap; }
 .ask-srclinks a { font-size: 11.5px; margin-right: 6px; text-decoration: underline; }

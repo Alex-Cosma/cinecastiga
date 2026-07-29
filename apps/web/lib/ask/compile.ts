@@ -241,14 +241,14 @@ function txFragment(sql: DbSql, dataset: "all" | "da" | "contracts") {
            cpv_code, cpv_name, closing_value, finalization_date,
            da_code, sicap_da_id as ref_id, null::bigint as ca_notice_id,
            null::text as ted_pubnum, null::boolean as is_single_bidder,
-           'da'::text as src
+           'da'::text as src, estimated_value_ron, value_suspect
     from marts.da_transactions
     union all
     select authority_id, authority_name, supplier_id, supplier_name, county,
            cpv_code, cpv_name, closing_value, finalization_date,
            contract_no, contract_id, ca_notice_id,
            ted_pubnum, is_single_bidder,
-           'contracts'::text
+           'contracts'::text, null::numeric, false
     from marts.contract_transactions
   )`;
 }
@@ -301,7 +301,8 @@ export async function runSpec(
   const codeCol = dataset === "contracts" ? sql`d.contract_no` : sql`d.da_code`;
   if (dataset === "contracts") {
     caveats.push(
-      "Sursă: DOAR contracte atribuite prin proceduri competitive (peste prag). Valoarea consorțiilor e împărțită egal între câștigători.",
+      "Sursă: DOAR contracte atribuite prin proceduri competitive (peste prag). Valoarea consorțiilor e împărțită egal între câștigători. " +
+        "Când un anunț publică și acordul-cadru și contractele subsecvente, plafonul acordului nu se adună (banii reali sunt comenzile).",
     );
   } else if (dataset === "da") {
     caveats.push("Sursă: DOAR achiziții directe (sub prag).");
@@ -446,6 +447,9 @@ export async function runSpec(
     caveats.push(
       `Valorile peste ${(DA_PLAFOND_RON / 1_000_000).toLocaleString("ro-RO")} mil. lei pe o achiziție directă sunt excluse ca erori de introducere (plafon de plauzibilitate).`,
     );
+    caveats.push(
+      "Sunt numărate doar achizițiile directe finalizate («Ofertă acceptată») — comenzile refuzate de furnizor sau neacceptate la termen (~6% din înregistrări) nu sunt bani cheltuiți și sunt excluse.",
+    );
   }
 
   const w: WhereParts = {
@@ -488,6 +492,15 @@ export async function runSpec(
       "Filtrul «conduse de» folosește reprezentanții legali din Registrul Comerțului (instantaneu lunar): " +
         "administratorul de AZI, nu neapărat cel de la momentul achiziției; administratorii nu sunt neapărat asociații/proprietarii.",
     );
+    if (grounding.admin.nFirms > grounding.admin.supplierIds.length) {
+      const n = grounding.admin.supplierIds.length;
+      caveats.push(
+        `${grounding.admin.display ?? "Persoana"} reprezintă ${grounding.admin.nFirms} firme la Registrul Comerțului; ` +
+          (n === 1
+            ? "doar una apare cu bani publici în datele noastre — restul nu au achiziții publice."
+            : `doar ${n} apar cu bani publici în datele noastre — restul nu au achiziții publice.`),
+      );
+    }
     if (grounding.admin.alternatives.length > 0) {
       caveats.push(
         `Am ales „${grounding.admin.display}”. Alte persoane cu nume asemănător: ${grounding.admin.alternatives.join("; ")}.`,
@@ -1233,6 +1246,10 @@ export interface DrillRow {
   caNoticeId: string | null;
   /** TED publication number of the confirmed twin (contracts only). */
   tedPubnum: string | null;
+  /** DA rows only: the estimate, for exposing typo'd closing values. */
+  estimatedValueRon: number | null;
+  /** Recorded value implausible (>2M or ≥100× estimate) — show a warning. */
+  valueSuspect: boolean;
 }
 export interface DrillResult {
   rows: DrillRow[];
@@ -1330,10 +1347,10 @@ export async function runRows(
   // extra provenance columns per dataset (link building in the UI)
   const provCols =
     dataset === "all"
-      ? sql`d.src, d.ref_id, d.ca_notice_id, d.ted_pubnum`
+      ? sql`d.src, d.ref_id, d.ca_notice_id, d.ted_pubnum, d.estimated_value_ron, d.value_suspect`
       : dataset === "contracts"
-        ? sql`'contracts' as src, d.contract_id as ref_id, d.ca_notice_id, d.ted_pubnum`
-        : sql`'da' as src, d.sicap_da_id as ref_id, null::bigint as ca_notice_id, null::text as ted_pubnum`;
+        ? sql`'contracts' as src, d.contract_id as ref_id, d.ca_notice_id, d.ted_pubnum, null::numeric as estimated_value_ron, false as value_suspect`
+        : sql`'da' as src, d.sicap_da_id as ref_id, null::bigint as ca_notice_id, null::text as ted_pubnum, d.estimated_value_ron, d.value_suspect`;
   const sortKey: DrillSort = opts.sort && opts.sort in DRILL_SORTS ? opts.sort : "value";
   const dirFrag = opts.dir === "asc" ? sql`asc nulls first` : sql`desc nulls last`;
   const sortFrag = {
@@ -1445,6 +1462,8 @@ export async function runRows(
       ref_id: string | null;
       ca_notice_id: string | null;
       ted_pubnum: string | null;
+      estimated_value_ron: string | null;
+      value_suspect: boolean | null;
     }[];
     return {
       rows: rows.map((r) => ({
@@ -1461,6 +1480,8 @@ export async function runRows(
         refId: r.ref_id === null ? null : String(r.ref_id),
         caNoticeId: r.ca_notice_id === null ? null : String(r.ca_notice_id),
         tedPubnum: r.ted_pubnum,
+        estimatedValueRon: r.estimated_value_ron === null ? null : Number(r.estimated_value_ron),
+        valueSuspect: Boolean(r.value_suspect),
       })),
       total: Number(cnt[0]?.n ?? 0),
       page: p,

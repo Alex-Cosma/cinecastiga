@@ -268,7 +268,11 @@ export async function getEntityFlagEvidence(entityId: string): Promise<FlagEvide
 }
 
 export interface DaTx {
+  /** "da" = direct acquisition, "contract" = above-threshold award. */
+  src: "da" | "contract";
+  /** sicap_da_id for DAs, contract_id for contracts — row identity. */
   sicapDaId: string;
+  /** DA code, or the contract number for contract rows. */
   daCode: string | null;
   partnerId: string | null;
   partnerName: string | null;
@@ -280,6 +284,14 @@ export interface DaTx {
   finalizationDate: string | null;
   gapMinutes: number | null;
   daFlags: string[];
+  /** Contract rows only. */
+  procedureType: string | null;
+  caNoticeId: string | null;
+  singleBidder: boolean | null;
+  /** SICAP's stable contract id — key of our /contracte/[nid] page. */
+  natId: string | null;
+  /** Recorded value implausible (>2M or ≥100× estimate) — UI warns. */
+  valueSuspect: boolean;
 }
 
 export interface TxQuery {
@@ -289,6 +301,8 @@ export interface TxQuery {
   /** Multi-select year filter (wins over `year` when set). */
   years?: string[];
   flagCode?: string;
+  /** Which channel(s): both by default. Flag filters force DA-only (flags live on DA rows). */
+  src?: "all" | "da" | "contracts";
   page?: number;
   pageSize?: number;
 }
@@ -299,8 +313,10 @@ export interface CompanyRep {
   birthYear: number | null;
   birthLocality: string | null;
   personKey: string | null;
-  /** Other firms (distinct CUIs) this same person represents — 0 if none/unknown. */
+  /** Other firms of this person that appear in OUR procurement data — linkable. */
   nOtherFirms: number;
+  /** Other firms known only to ONRC (no public procurement) — informational. */
+  nOtherOnrcOnly: number;
 }
 
 /**
@@ -316,9 +332,19 @@ export async function getCompanyReps(cui: string): Promise<CompanyRep[]> {
       r.person_name, r.calitate,
       extract(year from r.birth_date)::int by, r.birth_locality, r.person_key,
       case when r.birth_date is not null then
-        (select count(distinct r2.cui) - 1 from reference.company_reps r2
-         where r2.person_key = r.person_key and r2.cui is not null)
-      else 0 end n_other
+        (select count(distinct r2.cui) from reference.company_reps r2
+         join core.entities e2 on e2.cui_canonical = r2.cui
+         join marts.entity_profile ep on ep.entity_id = e2.id and ep.role = 'supplier'
+         where r2.person_key = r.person_key and r2.cui <> ${cui})
+      else 0 end n_other,
+      case when r.birth_date is not null then
+        (select count(distinct r2.cui) from reference.company_reps r2
+         where r2.person_key = r.person_key and r2.cui is not null
+           and r2.cui <> ${cui}
+           and not exists (select 1 from core.entities e2
+                           join marts.entity_profile ep on ep.entity_id = e2.id and ep.role = 'supplier'
+                           where e2.cui_canonical = r2.cui))
+      else 0 end n_other_onrc
     from reference.company_reps r
     where r.cui = ${cui}
     order by r.person_name, r.calitate
@@ -329,32 +355,43 @@ export async function getCompanyReps(cui: string): Promise<CompanyRep[]> {
     birth_locality: string | null;
     person_key: string | null;
     n_other: string | null;
+    n_other_onrc: string | null;
   }[];
   return rows.map((r) => ({
     personName: r.person_name,
     calitate: r.calitate,
     birthYear: r.by === null ? null : Number(r.by),
-    birthLocality: r.birth_locality,
+    // ONRC birth localities can be punctuation-only junk (".")
+    birthLocality: r.birth_locality && /\p{L}/u.test(r.birth_locality) ? r.birth_locality : null,
     personKey: r.person_key,
     nOtherFirms: Math.max(0, Number(r.n_other ?? 0)),
+    nOtherOnrcOnly: Math.max(0, Number(r.n_other_onrc ?? 0)),
   }));
 }
 
-/** Distinct activity years of an entity's DAs — the year filter chips. */
+/** Distinct activity years across both channels — the year filter chips. */
 export async function getEntityTxYears(entityId: string, role: Role): Promise<string[]> {
   const sql = db();
   const id = /^\d+$/.test(entityId) ? entityId : "0";
   const partyCol = role === "authority" ? sql`authority_id` : sql`supplier_id`;
   const rows = (await sql`
-    select distinct left(finalization_date, 4) y
-    from marts.da_transactions
-    where ${partyCol} = ${id} and finalization_date is not null
+    select distinct y from (
+      select left(finalization_date, 4) y from marts.da_transactions
+      where ${partyCol} = ${id} and finalization_date is not null
+      union
+      select left(finalization_date, 4) y from marts.contract_transactions
+      where ${partyCol} = ${id} and finalization_date is not null
+    ) u
     order by 1 desc
   `) as unknown as { y: string }[];
   return rows.map((r) => r.y);
 }
 
-/** A single entity's direct acquisitions (indexed marts read), paginated. */
+/**
+ * A single entity's transactions across both channels (direct acquisitions +
+ * above-threshold contract awards), unified and paginated. The two marts share
+ * column names for everything common; channel-specific columns are null-padded.
+ */
 export async function getEntityTransactions(
   entityId: string,
   role: Role,
@@ -382,27 +419,45 @@ export async function getEntityTransactions(
   const flagCond = q.flagCode
     ? sql`and ${q.flagCode} = any(da_flags)`
     : sql``;
+  // flag filters live on DA rows only → a flag filter implies the DA channel
+  const wantDa = q.src !== "contracts" || Boolean(q.flagCode);
+  const wantCt = q.src !== "da" && !q.flagCode;
+
+  const daSel = sql`
+    select 'da' src, sicap_da_id::text rid, da_code code, ${cpName} cp_name, ${cpId} cp_id,
+           county, cpv_code, cpv_name, estimated_value_ron, closing_value,
+           finalization_date, gap_minutes, da_flags,
+           null::text procedure_type, null::bigint ca_notice_id, null::boolean single_bidder,
+           null::bigint nat_id, value_suspect
+    from marts.da_transactions
+    where ${partyCol} = ${id} ${yearCond} ${flagCond}`;
+  const ctSel = sql`
+    select 'contract' src, t.contract_id::text rid, t.contract_no code, t.${cpName} cp_name, t.${cpId} cp_id,
+           t.county, t.cpv_code, t.cpv_name, null::numeric estimated_value_ron, t.closing_value,
+           t.finalization_date, null::int gap_minutes, array[]::text[] da_flags,
+           t.procedure_type, t.ca_notice_id, t.is_single_bidder single_bidder,
+           cc.ca_notice_contract_id nat_id, false value_suspect
+    from marts.contract_transactions t
+    left join core.contracts cc on cc.id = t.contract_id
+    where t.${partyCol} = ${id} ${yearCond}`;
+  const body = wantDa && wantCt ? sql`${daSel} union all ${ctSel}` : wantDa ? daSel : ctSel;
 
   const rows = (await sql`
-    select sicap_da_id, da_code, ${cpName} cp_name, ${cpId} cp_id, county,
-           cpv_code, cpv_name, estimated_value_ron, closing_value,
-           finalization_date, gap_minutes, da_flags
-    from marts.da_transactions
-    where ${partyCol} = ${id} ${yearCond} ${flagCond}
+    select * from (${body}) u
     order by ${order}
     limit ${pageSize} offset ${offset}
   `) as unknown as Record<string, unknown>[];
 
   const totalRows = (await sql`
-    select count(*)::int c from marts.da_transactions
-    where ${partyCol} = ${id} ${yearCond} ${flagCond}
+    select count(*)::int c from (${body}) u
   `) as unknown as { c: number }[];
 
   return {
     total: Number(totalRows[0]?.c ?? 0),
     rows: rows.map((r) => ({
-      sicapDaId: String(r["sicap_da_id"]),
-      daCode: (r["da_code"] as string | null) ?? null,
+      src: r["src"] === "contract" ? ("contract" as const) : ("da" as const),
+      sicapDaId: String(r["rid"]),
+      daCode: (r["code"] as string | null) ?? null,
       partnerId: r["cp_id"] != null ? String(r["cp_id"]) : null,
       partnerName: (r["cp_name"] as string | null) ?? null,
       county: (r["county"] as string | null) ?? null,
@@ -413,6 +468,11 @@ export async function getEntityTransactions(
       finalizationDate: (r["finalization_date"] as string | null) ?? null,
       gapMinutes: r["gap_minutes"] != null ? Number(r["gap_minutes"]) : null,
       daFlags: (r["da_flags"] as string[] | null) ?? [],
+      procedureType: (r["procedure_type"] as string | null) ?? null,
+      caNoticeId: r["ca_notice_id"] != null ? String(r["ca_notice_id"]) : null,
+      singleBidder: (r["single_bidder"] as boolean | null) ?? null,
+      natId: r["nat_id"] != null ? String(r["nat_id"]) : null,
+      valueSuspect: Boolean(r["value_suspect"]),
     })),
   };
 }
@@ -461,6 +521,111 @@ export async function getEntityPartners(
     totalRon: Number(r.t ?? 0),
     pct: Number(r.pct ?? 0),
   }));
+}
+
+/** How many of the entity's DA rows carry each row-level flag (da_round, da_rapid…). */
+export async function getEntityFlagRowCounts(
+  entityId: string,
+  role: Role,
+): Promise<Record<string, number>> {
+  const sql = db();
+  const id = /^\d+$/.test(entityId) ? entityId : "0";
+  const partyCol = role === "authority" ? sql`authority_id` : sql`supplier_id`;
+  const rows = (await sql`
+    select f code, count(*)::int n
+    from marts.da_transactions, unnest(da_flags) f
+    where ${partyCol} = ${id}
+    group by f
+  `) as unknown as { code: string; n: number }[];
+  return Object.fromEntries(rows.map((r) => [r.code, Number(r.n)]));
+}
+
+/** Row counts per channel, consistent with the unified transactions table. */
+export async function getEntityTxCounts(
+  entityId: string,
+  role: Role,
+): Promise<{ nDa: number; nCt: number }> {
+  const sql = db();
+  const id = /^\d+$/.test(entityId) ? entityId : "0";
+  const partyCol = role === "authority" ? sql`authority_id` : sql`supplier_id`;
+  const rows = (await sql`
+    select
+      (select count(*)::int from marts.da_transactions where ${partyCol} = ${id}) n_da,
+      (select count(*)::int from marts.contract_transactions where ${partyCol} = ${id}) n_ct
+  `) as unknown as { n_da: number; n_ct: number }[];
+  return { nDa: Number(rows[0]?.n_da ?? 0), nCt: Number(rows[0]?.n_ct ?? 0) };
+}
+
+/**
+ * Paginated counterparties across BOTH channels (DA closing values + contract
+ * winner-split shares — same anti-double-count basis as entity totals), with
+ * share of the entity's grand total.
+ */
+export async function getEntityPartnersPaged(
+  entityId: string,
+  role: Role,
+  page = 1,
+  pageSize = 10,
+): Promise<{ rows: Partner[]; total: number }> {
+  const sql = db();
+  const id = /^\d+$/.test(entityId) ? entityId : "0";
+  const isAuth = role === "authority";
+  const partyCol = isAuth ? sql`authority_id` : sql`supplier_id`;
+  const cpName = isAuth ? sql`supplier_name` : sql`authority_name`;
+  const cpId = isAuth ? sql`supplier_id` : sql`authority_id`;
+  const offset = (Math.max(1, page) - 1) * pageSize;
+  const rows = (await sql`
+    with u as (
+      select ${cpId} pid, ${cpName} pname, closing_value cv
+      from marts.da_transactions
+      where ${partyCol} = ${id} and closing_value is not null and closing_value <= 2000000
+      union all
+      select ${cpId}, ${cpName}, closing_value
+      from marts.contract_transactions
+      where ${partyCol} = ${id} and closing_value is not null
+    ),
+    agg as (
+      select pid, max(pname) pname, count(*) n, sum(cv) t
+      from u group by pid
+    ),
+    tot as (select sum(t) grand, count(*) parties from agg)
+    select pid, pname, n, t,
+           round(t/nullif((select grand from tot),0),4) pct,
+           (select parties from tot)::int parties
+    from agg order by t desc nulls last
+    limit ${pageSize} offset ${offset}
+  `) as unknown as {
+    pid: string | null;
+    pname: string | null;
+    n: number;
+    t: string | null;
+    pct: string | null;
+    parties: number;
+  }[];
+  // page past the end returns no rows — fall back to a bare count for the pager
+  let total = Number(rows[0]?.parties ?? 0);
+  if (rows.length === 0) {
+    const c = (await sql`
+      select count(distinct pid)::int c from (
+        select ${cpId} pid from marts.da_transactions
+        where ${partyCol} = ${id} and closing_value is not null and closing_value <= 2000000
+        union all
+        select ${cpId} from marts.contract_transactions
+        where ${partyCol} = ${id} and closing_value is not null
+      ) u
+    `) as unknown as { c: number }[];
+    total = Number(c[0]?.c ?? 0);
+  }
+  return {
+    total,
+    rows: rows.map((r) => ({
+      partnerId: r.pid != null ? String(r.pid) : "0",
+      partnerName: r.pname,
+      n: Number(r.n),
+      totalRon: Number(r.t ?? 0),
+      pct: Number(r.pct ?? 0),
+    })),
+  };
 }
 
 export interface MonthPoint {
@@ -825,6 +990,321 @@ export async function getEntityProfile(entityId: string): Promise<EntityProfile 
       nDas: Number(r.n_das),
       rank: r.rank == null ? null : Number(r.rank),
     })),
+  };
+}
+
+// ── Contract detail page (/contracte/[nid]) ─────────────────────────────────
+
+export interface ContractWinner {
+  entityId: string;
+  name: string | null;
+  county: string | null;
+  /** This winner's split share of the award value (anti-double-count). */
+  shareRon: number | null;
+  /** Past business between the authority and this winner, both channels. */
+  pairNDa: number;
+  pairNCt: number;
+  pairTotalRon: number;
+}
+
+export interface ContractDetail {
+  /** SICAP's own contract id — the stable URL key. */
+  natId: string;
+  contractId: string;
+  contractNo: string | null;
+  title: string | null;
+  lotsCaption: string | null;
+  contractDate: string | null;
+  contractValue: number | null;
+  currency: string | null;
+  cpvCode: string | null;
+  cpvName: string | null;
+  // award (the money + procedure live on the award notice)
+  caNoticeId: string | null;
+  noticeNo: string | null;
+  estimatedValueRon: number | null;
+  awardValueRon: number | null;
+  lowestOfferRon: number | null;
+  highestOfferRon: number | null;
+  procedureType: string | null;
+  acquisitionType: string | null;
+  stateDate: string | null;
+  authority: { entityId: string; name: string | null; county: string | null } | null;
+  winners: ContractWinner[];
+  nWinners: number;
+  tendersReceived: number | null;
+  isSingleBidder: boolean | null;
+  tedNoticeNo: string | null;
+  /** award-level red flags hit by THIS award notice */
+  flags: { code: string; severity: number | null; evidence: Record<string, unknown> | null }[];
+  /** how many contracts (lots) the same award notice produced */
+  noticeLotCount: number;
+}
+
+export async function getContractDetail(natId: string): Promise<ContractDetail | null> {
+  const sql = db();
+  const nid = /^\d+$/.test(natId) ? natId : "0";
+  const rows = (await sql`
+    select c.id, c.ca_notice_contract_id nat_id, c.contract_no, c.title, c.lots_caption,
+           c.contract_date::text, c.contract_value, c.currency, c.cpv_code,
+           (select name_ro from core.cpv_codes k where k.code = c.cpv_code) cpv_name,
+           a.id award_id, a.ca_notice_id, a.notice_no, a.estimated_value_ron,
+           a.ron_contract_value, a.lowest_offer_value, a.highest_offer_value,
+           a.procedure_type, a.acquisition_type, a.state_date::text,
+           a.authority_entity_id, e.name_display auth_name, e.county auth_county,
+           (select t.ted_notice_no from raw.ca_notice_ted t
+            where t.ca_notice_id = a.ca_notice_id and t.ted_notice_no is not null limit 1) ted_no
+    from core.contracts c
+    left join core.awards a on a.ca_notice_id = c.ca_notice_id
+    left join core.entities e on e.id = a.authority_entity_id
+    where c.ca_notice_contract_id = ${nid}
+    limit 1
+  `) as unknown as Record<string, unknown>[];
+  const r = rows[0];
+  if (!r) return null;
+  const contractId = String(r["id"]);
+  const awardId = r["award_id"] != null ? String(r["award_id"]) : null;
+  const authId = r["authority_entity_id"] != null ? String(r["authority_entity_id"]) : null;
+
+  const caId = r["ca_notice_id"] != null ? String(r["ca_notice_id"]) : null;
+  const [mart, winners, flags, lotCount] = await Promise.all([
+    sql`
+      select supplier_id, closing_value, n_winners, tenders_received, is_single_bidder
+      from marts.contract_transactions where contract_id = ${contractId}
+    ` as unknown as Promise<Record<string, unknown>[]>,
+    sql`
+      select cw.entity_id, e.name_display, e.county
+      from core.contract_winners cw
+      left join core.entities e on e.id = cw.entity_id
+      where cw.contract_id = ${contractId}
+    ` as unknown as Promise<Record<string, unknown>[]>,
+    awardId
+      ? (sql`
+          select flag_code, severity, evidence from core.flags
+          where subject_type = 'award' and subject_id = ${awardId}
+        ` as unknown as Promise<Record<string, unknown>[]>)
+      : Promise.resolve([] as Record<string, unknown>[]),
+    caId
+      ? (sql`
+          select count(*)::int c from core.contracts where ca_notice_id = ${caId}
+        ` as unknown as Promise<{ c: number }[]>)
+      : Promise.resolve([{ c: 1 }]),
+  ]);
+
+  const shareBySupplier = new Map<string, number | null>();
+  for (const m of mart) {
+    shareBySupplier.set(
+      String(m["supplier_id"]),
+      m["closing_value"] != null ? Number(m["closing_value"]) : null,
+    );
+  }
+  const m0 = mart[0];
+
+  // pair history: authority × each winner, both channels (skip if no authority)
+  const winnerIds = winners.map((w) => String(w["entity_id"]));
+  const history = new Map<string, { nDa: number; nCt: number; total: number }>();
+  if (authId && winnerIds.length > 0) {
+    const hist = (await sql`
+      select supplier_id sid,
+        count(*) filter (where src = 'da')::int n_da,
+        count(*) filter (where src = 'ct')::int n_ct,
+        coalesce(sum(cv), 0) total
+      from (
+        select supplier_id, 'da' src, closing_value cv from marts.da_transactions
+        where authority_id = ${authId} and supplier_id = any(${sql.array(winnerIds)}::bigint[])
+          and closing_value is not null and closing_value <= 2000000
+        union all
+        select supplier_id, 'ct', closing_value from marts.contract_transactions
+        where authority_id = ${authId} and supplier_id = any(${sql.array(winnerIds)}::bigint[])
+          and closing_value is not null
+      ) u group by supplier_id
+    `) as unknown as Record<string, unknown>[];
+    for (const h of hist) {
+      history.set(String(h["sid"]), {
+        nDa: Number(h["n_da"] ?? 0),
+        nCt: Number(h["n_ct"] ?? 0),
+        total: Number(h["total"] ?? 0),
+      });
+    }
+  }
+
+  return {
+    natId: String(r["nat_id"]),
+    contractId,
+    contractNo: (r["contract_no"] as string | null) ?? null,
+    title: (r["title"] as string | null) ?? null,
+    lotsCaption: (r["lots_caption"] as string | null) ?? null,
+    contractDate: (r["contract_date"] as string | null) ?? null,
+    contractValue: r["contract_value"] != null ? Number(r["contract_value"]) : null,
+    currency: (r["currency"] as string | null) ?? null,
+    cpvCode: (r["cpv_code"] as string | null) ?? null,
+    cpvName: (r["cpv_name"] as string | null) ?? null,
+    caNoticeId: r["ca_notice_id"] != null ? String(r["ca_notice_id"]) : null,
+    noticeNo: (r["notice_no"] as string | null) ?? null,
+    estimatedValueRon: r["estimated_value_ron"] != null ? Number(r["estimated_value_ron"]) : null,
+    awardValueRon: r["ron_contract_value"] != null ? Number(r["ron_contract_value"]) : null,
+    lowestOfferRon: r["lowest_offer_value"] != null ? Number(r["lowest_offer_value"]) : null,
+    highestOfferRon: r["highest_offer_value"] != null ? Number(r["highest_offer_value"]) : null,
+    procedureType: (r["procedure_type"] as string | null) ?? null,
+    acquisitionType: (r["acquisition_type"] as string | null) ?? null,
+    stateDate: (r["state_date"] as string | null) ?? null,
+    authority: authId
+      ? {
+          entityId: authId,
+          name: (r["auth_name"] as string | null) ?? null,
+          county: (r["auth_county"] as string | null) ?? null,
+        }
+      : null,
+    winners: winners.map((w) => {
+      const idStr = String(w["entity_id"]);
+      const h = history.get(idStr);
+      return {
+        entityId: idStr,
+        name: (w["name_display"] as string | null) ?? null,
+        county: (w["county"] as string | null) ?? null,
+        shareRon: shareBySupplier.get(idStr) ?? null,
+        pairNDa: h?.nDa ?? 0,
+        pairNCt: h?.nCt ?? 0,
+        pairTotalRon: h?.total ?? 0,
+      };
+    }),
+    nWinners: m0 ? Number(m0["n_winners"] ?? winners.length) : winners.length,
+    tendersReceived: m0?.["tenders_received"] != null ? Number(m0["tenders_received"]) : null,
+    isSingleBidder: m0?.["is_single_bidder"] == null ? null : Boolean(m0["is_single_bidder"]),
+    tedNoticeNo: (r["ted_no"] as string | null) ?? null,
+    flags: flags.map((f) => ({
+      code: String(f["flag_code"]),
+      severity: f["severity"] != null ? Number(f["severity"]) : null,
+      evidence: (f["evidence"] as Record<string, unknown> | null) ?? null,
+    })),
+    noticeLotCount: Number(lotCount[0]?.c ?? 1),
+  };
+}
+
+// ── Award-notice ("mother contract") page (/anunturi/[caid]) ────────────────
+
+export interface NoticeLot {
+  natId: string;
+  contractNo: string | null;
+  title: string | null;
+  contractDate: string | null;
+  contractValue: number | null;
+  winners: { entityId: string; name: string | null }[];
+}
+
+export interface AwardNoticeDetail {
+  caNoticeId: string;
+  noticeNo: string | null;
+  procedureType: string | null;
+  acquisitionType: string | null;
+  stateDate: string | null;
+  estimatedValueRon: number | null;
+  awardValueRon: number | null;
+  lowestOfferRon: number | null;
+  highestOfferRon: number | null;
+  cpvCode: string | null;
+  cpvName: string | null;
+  authority: { entityId: string; name: string | null; county: string | null } | null;
+  tedNoticeNo: string | null;
+  nLots: number;
+  totalContractValue: number | null;
+  lots: NoticeLot[];
+  page: number;
+  pageSize: number;
+}
+
+export async function getAwardNoticeDetail(
+  caNoticeId: string,
+  page = 1,
+  pageSize = 50,
+): Promise<AwardNoticeDetail | null> {
+  const sql = db();
+  const cid = /^\d+$/.test(caNoticeId) ? caNoticeId : "0";
+  const head = (await sql`
+    select a.ca_notice_id, a.notice_no, a.procedure_type, a.acquisition_type,
+           a.state_date::text, a.estimated_value_ron, a.ron_contract_value,
+           a.lowest_offer_value, a.highest_offer_value, a.cpv_code,
+           (select name_ro from core.cpv_codes k where k.code = a.cpv_code) cpv_name,
+           a.authority_entity_id, e.name_display auth_name, e.county auth_county,
+           (select t.ted_notice_no from raw.ca_notice_ted t
+            where t.ca_notice_id = a.ca_notice_id and t.ted_notice_no is not null limit 1) ted_no
+    from core.awards a
+    left join core.entities e on e.id = a.authority_entity_id
+    where a.ca_notice_id = ${cid}
+    limit 1
+  `) as unknown as Record<string, unknown>[];
+  const h = head[0];
+  if (!h) return null;
+
+  const agg = (await sql`
+    select count(*)::int n, sum(contract_value) total
+    from core.contracts where ca_notice_id = ${cid}
+  `) as unknown as { n: number; total: string | null }[];
+  const nLots = Number(agg[0]?.n ?? 0);
+  const offset = (Math.max(1, page) - 1) * pageSize;
+
+  const lots = (await sql`
+    select c.id, c.ca_notice_contract_id nat_id, c.contract_no, c.title,
+           c.contract_date::text, c.contract_value
+    from core.contracts c
+    where c.ca_notice_id = ${cid}
+    order by c.contract_value desc nulls last, c.id
+    limit ${pageSize} offset ${offset}
+  `) as unknown as Record<string, unknown>[];
+
+  const lotIds = lots.map((l) => String(l["id"]));
+  const winnersByLot = new Map<string, { entityId: string; name: string | null }[]>();
+  if (lotIds.length > 0) {
+    const w = (await sql`
+      select cw.contract_id, cw.entity_id, e.name_display
+      from core.contract_winners cw
+      left join core.entities e on e.id = cw.entity_id
+      where cw.contract_id = any(${sql.array(lotIds)}::bigint[])
+    `) as unknown as Record<string, unknown>[];
+    for (const r of w) {
+      const k = String(r["contract_id"]);
+      const arr = winnersByLot.get(k) ?? [];
+      arr.push({
+        entityId: String(r["entity_id"]),
+        name: (r["name_display"] as string | null) ?? null,
+      });
+      winnersByLot.set(k, arr);
+    }
+  }
+
+  return {
+    caNoticeId: cid,
+    noticeNo: (h["notice_no"] as string | null) ?? null,
+    procedureType: (h["procedure_type"] as string | null) ?? null,
+    acquisitionType: (h["acquisition_type"] as string | null) ?? null,
+    stateDate: (h["state_date"] as string | null) ?? null,
+    estimatedValueRon: h["estimated_value_ron"] != null ? Number(h["estimated_value_ron"]) : null,
+    awardValueRon: h["ron_contract_value"] != null ? Number(h["ron_contract_value"]) : null,
+    lowestOfferRon: h["lowest_offer_value"] != null ? Number(h["lowest_offer_value"]) : null,
+    highestOfferRon: h["highest_offer_value"] != null ? Number(h["highest_offer_value"]) : null,
+    cpvCode: (h["cpv_code"] as string | null) ?? null,
+    cpvName: (h["cpv_name"] as string | null) ?? null,
+    authority:
+      h["authority_entity_id"] != null
+        ? {
+            entityId: String(h["authority_entity_id"]),
+            name: (h["auth_name"] as string | null) ?? null,
+            county: (h["auth_county"] as string | null) ?? null,
+          }
+        : null,
+    tedNoticeNo: (h["ted_no"] as string | null) ?? null,
+    nLots,
+    totalContractValue: agg[0]?.total != null ? Number(agg[0].total) : null,
+    lots: lots.map((l) => ({
+      natId: String(l["nat_id"]),
+      contractNo: (l["contract_no"] as string | null) ?? null,
+      title: (l["title"] as string | null) ?? null,
+      contractDate: (l["contract_date"] as string | null) ?? null,
+      contractValue: l["contract_value"] != null ? Number(l["contract_value"]) : null,
+      winners: winnersByLot.get(String(l["id"])) ?? [],
+    })),
+    page: Math.max(1, page),
+    pageSize,
   };
 }
 

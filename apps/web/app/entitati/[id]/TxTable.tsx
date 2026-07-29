@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { formatRonFull, formatInt, cleanName } from "@/lib/format";
 import { FLAG_META } from "@/lib/flags";
-import { daUrl } from "@/lib/elicitatie";
+import { daUrl, awardUrl } from "@/lib/elicitatie";
+import { useTip } from "../../intreaba/blocks";
 import type { DaTx } from "@/lib/marts";
 
 /**
@@ -21,12 +22,6 @@ interface Resp {
   years?: string[];
   error?: string;
 }
-
-const SORTS: { key: "date" | "value" | "gap"; label: string; num?: boolean }[] = [
-  { key: "date", label: "Data" },
-  { key: "value", label: "Închidere", num: true },
-  { key: "gap", label: "Interval" },
-];
 
 function gapLabel(min: number | null): string {
   if (min == null) return "—";
@@ -54,14 +49,17 @@ export default function TxTable({
   const [years, setYears] = useState<string[]>([]);
   const [yearsOpen, setYearsOpen] = useState(false);
   const [flag, setFlag] = useState<string | null>(initialFlag ?? null);
+  const [src, setSrc] = useState<"all" | "da" | "contracts">("all");
   const [data, setData] = useState<Resp | null>(null);
   const [loading, setLoading] = useState(true);
+  const tip = useTip();
 
   const load = useCallback(async () => {
     setLoading(true);
     const p = new URLSearchParams({ id: entityId, rol: role, page: String(page), sort, dir });
     if (years.length > 0) p.set("an", years.join(","));
     if (flag) p.set("sem", flag);
+    if (src !== "all") p.set("tip", src);
     try {
       const r = await fetch(`/api/entity-tx?${p.toString()}`);
       setData((await r.json()) as Resp);
@@ -70,7 +68,7 @@ export default function TxTable({
     } finally {
       setLoading(false);
     }
-  }, [entityId, role, page, sort, dir, years, flag]);
+  }, [entityId, role, page, sort, dir, years, flag, src]);
   useEffect(() => {
     void load();
   }, [load]);
@@ -91,8 +89,30 @@ export default function TxTable({
     setPage(1);
   };
 
+  const showTip = src === "all";
+  const nCols = showTip ? 8 : 7;
   return (
     <div>
+      {tip.el}
+      {/* channel toggle — same control as the search drill's stream toggle */}
+      <div className="ask-streamtoggle">
+        {(
+          [
+            ["all", "toate sursele"],
+            ["da", "achiziții directe"],
+            ["contracts", "contracte"],
+          ] as const
+        ).map(([k, l]) => (
+          <button
+            key={k}
+            type="button"
+            className={src === k ? "on" : ""}
+            onClick={() => { setSrc(k); if (k === "contracts") setFlag(null); setPage(1); }}
+          >
+            {l}
+          </button>
+        ))}
+      </div>
       <div className="txf">
         {/* years scale unbounded (a new one every January) → multi-select dropdown */}
         <div className="txf-dd">
@@ -125,7 +145,13 @@ export default function TxTable({
             type="button"
             className={flag === f ? "on" : ""}
             title={FLAG_META[f]?.short}
-            onClick={() => { setFlag(flag === f ? null : f); setPage(1); }}
+            onClick={() => {
+              const next = flag === f ? null : f;
+              setFlag(next);
+              // flags mark DA rows only — selecting one narrows to that channel
+              if (next) setSrc("da");
+              setPage(1);
+            }}
           >
             {FLAG_META[f]?.title ?? f}
           </button>
@@ -142,30 +168,39 @@ export default function TxTable({
           </button>
         </div>
       )}
-      <p className="hint">
-        {formatInt(total)} achiziții · pagina {page} din {formatInt(pages)} · fiecare rând trimite
-        la pagina oficială e-licitatie.ro.
-        {loading && data && <span className="tx-upd"> se actualizează…</span>}
-      </p>
-      <div className="tx-scroll">
+      <div className="ask-detmeta">
+        {formatInt(total)} înregistrări{src === "all" ? " (ambele canale)" : ""} · pagina {page}{" "}
+        din {formatInt(pages)}
+        {loading && data && <span className="tx-upd"> · se actualizează…</span>}
+      </div>
+      <div className="ask-tablewrap">
         {/* stale-while-revalidate: old rows stay (dimmed) during fetch — the
             table never collapses, so content below never jumps */}
-        <table className={`rank tx-table${loading && data ? " tx-loading" : ""}`}>
+        <table className={`ask-table ask-drill${loading && data ? " tx-loading" : ""}`}>
           <thead>
             <tr>
-              <th className="sortable" onClick={() => sortBy("date")} title="sortează">
+              <th className="col-date sortable" onClick={() => sortBy("date")} title="sortează">
                 Data{sort === "date" ? (dir === "desc" ? " ▾" : " ▴") : ""}
               </th>
+              {showTip && <th className="col-src">Tip</th>}
               <th>{isAuth ? "Furnizor" : "Autoritate"}</th>
-              <th>Obiect (CPV)</th>
-              <th className="sortable" style={{ textAlign: "right" }} onClick={() => sortBy("value")} title="sortează">
+              <th className="col-cpv">Obiect (CPV)</th>
+              <th
+                className="col-value num sortable"
+                onClick={() => sortBy("value")}
+                title="sortează"
+              >
                 Închidere{sort === "value" ? (dir === "desc" ? " ▾" : " ▴") : ""}
               </th>
-              <th className="sortable" onClick={() => sortBy("gap")} title="publicare → finalizare">
+              <th
+                className="col-gap sortable"
+                onClick={() => sortBy("gap")}
+                title="publicare → finalizare"
+              >
                 Interval{sort === "gap" ? (dir === "desc" ? " ▾" : " ▴") : ""}
               </th>
-              <th>Semnale</th>
-              <th>Sursă</th>
+              <th className="col-flags">Semnale</th>
+              <th className="col-links">Sursă</th>
             </tr>
           </thead>
           <tbody>
@@ -173,7 +208,7 @@ export default function TxTable({
               loading &&
               Array.from({ length: 10 }, (_, i) => (
                 <tr key={`ghost-${i}`} className="tx-ghost">
-                  {Array.from({ length: 7 }, (_, j) => (
+                  {Array.from({ length: nCols }, (_, j) => (
                     <td key={j}>
                       <span className="gh" />
                     </td>
@@ -182,51 +217,97 @@ export default function TxTable({
               ))}
             {!loading && data?.ok === false && (
               <tr>
-                <td colSpan={7} className="county">
+                <td colSpan={nCols} className="county">
                   {data.error}
                 </td>
               </tr>
             )}
             {data?.rows?.map((t) => (
-                <tr key={t.sicapDaId}>
-                  <td className="county">{t.finalizationDate ?? "—"}</td>
+              <tr key={`${t.src}-${t.sicapDaId}`}>
+                <td>{t.finalizationDate ? t.finalizationDate.slice(0, 10) : "—"}</td>
+                {showTip && (
                   <td>
-                    {t.partnerId ? (
-                      <Link href={`/entitati/${t.partnerId}`}>{cleanName(t.partnerName)}</Link>
+                    <span
+                      className={`ask-srctag ${t.src === "contract" ? "contracts" : "da"}`}
+                      title={
+                        t.src === "contract"
+                          ? "contract din procedură (peste prag)"
+                          : "achiziție directă (sub prag)"
+                      }
+                    >
+                      {t.src === "contract" ? "contract" : "directă"}
+                    </span>
+                    {t.singleBidder === true ? " 1 ofertant" : ""}
+                  </td>
+                )}
+                <td className="clip" {...tip.bindClip(cleanName(t.partnerName))}>
+                  {t.partnerId ? (
+                    <Link href={`/entitati/${t.partnerId}`}>{cleanName(t.partnerName)}</Link>
+                  ) : (
+                    (t.partnerName ?? "—")
+                  )}
+                </td>
+                <td className="clip" {...tip.bindClip(t.cpvName ?? t.cpvCode)}>
+                  {t.cpvName ?? t.cpvCode ?? "—"}
+                </td>
+                <td className={`num${t.valueSuspect ? " val-suspect" : ""}`}>
+                  {formatRonFull(t.closingValue)}
+                  {t.valueSuspect && (
+                    <span
+                      className="val-warn"
+                      {...tip.bind(
+                        "valoare implauzibilă",
+                        t.estimatedValueRon
+                          ? `estimat: ${formatRonFull(t.estimatedValueRon)}`
+                          : undefined,
+                        (t.estimatedValueRon && t.closingValue != null && t.closingValue < t.estimatedValueRon
+                          ? "valoare simbolică — probabil sub-înregistrată (rest de preț unitar sau substituent)"
+                          : "probabil eroare de introducere (preț unitar cu separator de mii)") +
+                          " — valoarea NU e de încredere în totaluri sau statistici",
+                      )}
+                    >
+                      {" "}
+                      ⚠
+                    </span>
+                  )}
+                </td>
+                <td>{gapLabel(t.gapMinutes)}</td>
+                <td className="clip">
+                  {t.daFlags.map((f) => (
+                    <span className="flag-badge sm" key={f} title={FLAG_META[f]?.short}>
+                      {FLAG_META[f]?.title ?? f}
+                    </span>
+                  ))}
+                </td>
+                <td>
+                  {t.src === "contract" ? (
+                    t.natId ? (
+                      <Link href={`/contracte/${t.natId}`}>detalii →</Link>
+                    ) : t.caNoticeId ? (
+                      <a href={awardUrl(t.caNoticeId)} target="_blank" rel="noopener noreferrer">
+                        anunț ↗
+                      </a>
                     ) : (
-                      (t.partnerName ?? "—")
-                    )}
-                  </td>
-                  <td className="county">{t.cpvName ?? t.cpvCode ?? "—"}</td>
-                  <td className="num">{formatRonFull(t.closingValue)}</td>
-                  <td className="county">{gapLabel(t.gapMinutes)}</td>
-                  <td>
-                    {t.daFlags.map((f) => (
-                      <span className="flag-badge sm" key={f} title={FLAG_META[f]?.short}>
-                        {FLAG_META[f]?.title ?? f}
-                      </span>
-                    ))}
-                  </td>
-                  <td>
+                      "—"
+                    )
+                  ) : (
                     <a href={daUrl(t.sicapDaId)} target="_blank" rel="noopener noreferrer">
-                      {t.daCode ?? "vezi"} ↗
+                      sursa ↗
                     </a>
-                  </td>
-                </tr>
-              ))}
+                  )}
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
       {pages > 1 && (
-        <div className="pager">
+        <div className="ask-pager">
           <button type="button" disabled={page <= 1} onClick={() => setPage(page - 1)}>
-            ← Anterior
+            ‹ anterioare
           </button>
-          <span className="note">
-            Pagina {page} din {formatInt(pages)}
-          </span>
           <button type="button" disabled={page >= pages} onClick={() => setPage(page + 1)}>
-            Următor →
+            următoare ›
           </button>
         </div>
       )}
