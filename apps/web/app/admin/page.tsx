@@ -88,7 +88,9 @@ export default async function AdminPage({
                   <td>{u.banned ? "dezactivat" : "activ"}</td>
                   <td>{new Date(u.createdAt).toLocaleDateString("ro-RO")}</td>
                   <td className="admin-actions">
-                    {u.id !== session.user.id && (
+                    {u.id === session.user.id ? (
+                      <a href="/cont">contul tău — parola se schimbă aici →</a>
+                    ) : (
                       <>
                         <form action={toggleBan}>
                           <input type="hidden" name="userId" value={u.id} />
