@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatRon, formatRonFull, formatInt, cleanName } from "@/lib/format";
 import { encodeSpec } from "@/lib/ask/permalink";
 
@@ -48,7 +48,11 @@ export function useTip() {
       {tip.s && <div className="s">{tip.s}</div>}
     </div>
   ) : null;
-  return { bind, bindClip, el, active: tip?.title ?? null };
+  /** Manual control for canvas-rendered blocks (no DOM element to bind). */
+  const show = (title: string, v: string | undefined, s: string | undefined, x: number, y: number) =>
+    setTip({ title, v, s, x, y });
+  const hide = () => setTip(null);
+  return { bind, bindClip, show, hide, el, active: tip?.title ?? null };
 }
 import { FLAG_META, criBand } from "@/lib/flags";
 import type {
@@ -56,6 +60,7 @@ import type {
   DistributionData,
   BreakdownSlice,
   ScatterPoint,
+  ScatterDensity,
   SankeyFlow,
   NetworkNode,
   EntityCardData,
@@ -334,60 +339,305 @@ export function BreakdownBlock({
 
 /* ── scatter ──────────────────────────────────────────────────────────── */
 
-export function ScatterBlock({ points }: { points: ScatterPoint[] }) {
+/**
+ * Density scatter: canvas 2D histogram of the WHOLE population (grey mass)
+ * with only the notable entities drawn as clickable dots on top. Wheel =
+ * zoom at cursor, drag = pan, double-click = reset.
+ */
+export function ScatterBlock({
+  points,
+  density,
+}: {
+  points: ScatterPoint[];
+  density?: ScatterDensity | undefined;
+}) {
   const t = useTip();
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const tipRef = useRef(t);
+  tipRef.current = t;
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || points.length === 0) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const vals = points.map((p) => Math.max(p.value, 1));
+    const D0 = density ? density.minLog : Math.log10(Math.min(...vals));
+    const D1 = Math.max(density ? density.maxLog : Math.log10(Math.max(...vals)), D0 + 0.01);
+    const xPad = (D1 - D0) * 0.03;
+    const home = { x0: D0 - xPad, x1: D1 + xPad, y0: -0.03, y1: 1.04 };
+    const view = { ...home };
+    const W = canvas.width;
+    const H = canvas.height;
+    const PAD = { l: 86, r: 22, t: 22, b: 62 };
+    const cssVar = (v: string) =>
+      getComputedStyle(document.documentElement).getPropertyValue(v).trim() || "#888";
+
+    // notable dots: risky (CRI ≥ 0.3) plus the 40 biggest spenders
+    const topSpend = new Set(
+      [...points].sort((a, b) => b.value - a.value).slice(0, 40).map((p) => p.entityId),
+    );
+    let hit: { x: number; y: number; p: ScatterPoint }[] = [];
+
+    const draw = () => {
+      const X = (lg: number) => PAD.l + ((lg - view.x0) / (view.x1 - view.x0)) * (W - PAD.l - PAD.r);
+      const Y = (c: number) => H - PAD.b - ((c - view.y0) / (view.y1 - view.y0)) * (H - PAD.t - PAD.b);
+      ctx.clearRect(0, 0, W, H);
+      const muted = cssVar("--muted");
+      const line = cssVar("--line");
+      const track = cssVar("--bar-track");
+      // frame
+      ctx.strokeStyle = line;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(PAD.l, PAD.t);
+      ctx.lineTo(PAD.l, H - PAD.b);
+      ctx.lineTo(W - PAD.r, H - PAD.b);
+      ctx.stroke();
+      ctx.font = "17px ui-monospace, monospace";
+      // y ticks
+      const ySpan = view.y1 - view.y0;
+      const yStep = ySpan > 0.6 ? 0.25 : ySpan > 0.25 ? 0.1 : 0.05;
+      for (let v = Math.ceil(view.y0 / yStep) * yStep; v <= view.y1 + 1e-9; v += yStep) {
+        const vv = Math.round(v * 100) / 100;
+        if (vv < -0.001 || vv > 1.001) continue;
+        ctx.fillStyle = muted;
+        ctx.textAlign = "right";
+        ctx.fillText(String(vv).replace(".", ","), PAD.l - 10, Y(vv) + 6);
+        ctx.strokeStyle = track;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(PAD.l, Y(vv));
+        ctx.lineTo(W - PAD.r, Y(vv));
+        ctx.stroke();
+      }
+      // x decade ticks
+      const decades: [number, string][] = [
+        [3, "1 mie"], [4, "10 mii"], [5, "100 mii"], [6, "1 mil."], [7, "10 mil."], [8, "100 mil."], [9, "1 mld."],
+      ];
+      for (const [lg, lb] of decades) {
+        if (lg < view.x0 || lg > view.x1) continue;
+        ctx.fillStyle = muted;
+        ctx.textAlign = "center";
+        ctx.fillText(`${lb} lei`, X(lg), H - PAD.b + 28);
+        ctx.strokeStyle = track;
+        ctx.beginPath();
+        ctx.moveTo(X(lg), PAD.t);
+        ctx.lineTo(X(lg), H - PAD.b);
+        ctx.stroke();
+      }
+      ctx.fillStyle = muted;
+      ctx.save();
+      ctx.translate(22, (H - PAD.b + PAD.t) / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.textAlign = "center";
+      ctx.fillText("indice de risc (CRI)", 0, 0);
+      ctx.restore();
+      ctx.textAlign = "center";
+      ctx.fillText("cheltuială totală (scară log)", (PAD.l + W - PAD.r) / 2, H - 10);
+      // plot clip
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(PAD.l, PAD.t, W - PAD.l - PAD.r, H - PAD.t - PAD.b);
+      ctx.clip();
+      // density mass
+      if (density) {
+        const maxN = Math.max(...density.cells.map((c) => c[2]));
+        const cw = (density.maxLog - density.minLog) / density.nx;
+        const ch = 1 / density.ny;
+        const slate = "#4a5d6b";
+        for (const [bx, by, n] of density.cells) {
+          const lg0 = density.minLog + (bx - 1) * cw;
+          const cr0 = (by - 1) * ch;
+          if (lg0 + cw < view.x0 || lg0 > view.x1 || cr0 + ch < view.y0 || cr0 > view.y1) continue;
+          ctx.fillStyle = slate;
+          ctx.globalAlpha = 0.06 + 0.82 * Math.sqrt(n / maxN);
+          const px = X(lg0);
+          const py = Y(cr0 + ch);
+          ctx.beginPath();
+          ctx.roundRect(px - 0.5, py - 0.5, X(lg0 + cw) - px + 1, Y(cr0) - py + 1, 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+      // notable dots
+      hit = [];
+      for (const p of points) {
+        const hi = p.cri >= 0.5;
+        const mid = p.cri >= 0.3 && p.cri < 0.5;
+        const top = topSpend.has(p.entityId);
+        if (!hi && !mid && !top) continue;
+        const lg = Math.log10(Math.max(p.value, 1));
+        if (lg < view.x0 || lg > view.x1 || p.cri < view.y0 || p.cri > view.y1) continue;
+        const px = X(lg);
+        const py = Y(p.cri);
+        if (hi || mid) {
+          ctx.fillStyle = hi ? "#9a2b1f" : "#c9a24a";
+          ctx.globalAlpha = hi ? 0.95 : 0.8;
+          ctx.beginPath();
+          ctx.arc(px, py, hi ? 7 : 5.5, 0, 7);
+          ctx.fill();
+        }
+        if (top) {
+          ctx.globalAlpha = 1;
+          ctx.strokeStyle = "#4a5d6b";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(px, py, 8, 0, 7);
+          ctx.stroke();
+        }
+        hit.push({ x: px, y: py, p });
+      }
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    };
+
+    const clamp = () => {
+      const xs = Math.max(view.x1 - view.x0, 0.15);
+      const ys = Math.max(view.y1 - view.y0, 0.04);
+      view.x0 = Math.max(home.x0, Math.min(view.x0, home.x1 - xs));
+      view.x1 = view.x0 + Math.min(xs, home.x1 - home.x0);
+      view.y0 = Math.max(home.y0, Math.min(view.y0, home.y1 - ys));
+      view.y1 = view.y0 + Math.min(ys, home.y1 - home.y0);
+    };
+    const domPt = (ev: MouseEvent) => {
+      const r = canvas.getBoundingClientRect();
+      const mx = ((ev.clientX - r.left) * W) / r.width;
+      const my = ((ev.clientY - r.top) * H) / r.height;
+      return {
+        mx,
+        my,
+        lg: view.x0 + ((mx - PAD.l) / (W - PAD.l - PAD.r)) * (view.x1 - view.x0),
+        cr: view.y0 + ((H - PAD.b - my) / (H - PAD.t - PAD.b)) * (view.y1 - view.y0),
+      };
+    };
+    const locate = (ev: MouseEvent) => {
+      const { mx, my } = domPt(ev);
+      let best: { x: number; y: number; p: ScatterPoint } | null = null;
+      let bd = Infinity;
+      for (const h of hit) {
+        const dd = (h.x - mx) ** 2 + (h.y - my) ** 2;
+        if (dd < bd) {
+          bd = dd;
+          best = h;
+        }
+      }
+      return best && bd < 22 ** 2 ? best : null;
+    };
+
+    let dragFrom: { cx: number; cy: number; x0: number; x1: number; y0: number; y1: number } | null =
+      null;
+    let dragged = false;
+
+    const onWheel = (ev: WheelEvent) => {
+      ev.preventDefault();
+      const p = domPt(ev);
+      const f = Math.pow(1.0015, ev.deltaY);
+      view.x0 = p.lg - (p.lg - view.x0) * f;
+      view.x1 = p.lg + (view.x1 - p.lg) * f;
+      view.y0 = p.cr - (p.cr - view.y0) * f;
+      view.y1 = p.cr + (view.y1 - p.cr) * f;
+      clamp();
+      draw();
+    };
+    const onDown = (ev: MouseEvent) => {
+      dragFrom = { cx: ev.clientX, cy: ev.clientY, x0: view.x0, x1: view.x1, y0: view.y0, y1: view.y1 };
+      dragged = false;
+    };
+    const onUp = () => {
+      dragFrom = null;
+    };
+    const onMove = (ev: MouseEvent) => {
+      if (dragFrom) {
+        const r = canvas.getBoundingClientRect();
+        const pxW = (W - PAD.l - PAD.r) * (r.width / W);
+        const pxH = (H - PAD.t - PAD.b) * (r.height / H);
+        const dLg = (-(ev.clientX - dragFrom.cx) / pxW) * (dragFrom.x1 - dragFrom.x0);
+        const dCr = ((ev.clientY - dragFrom.cy) / pxH) * (dragFrom.y1 - dragFrom.y0);
+        if (Math.abs(ev.clientX - dragFrom.cx) + Math.abs(ev.clientY - dragFrom.cy) > 4) dragged = true;
+        view.x0 = dragFrom.x0 + dLg;
+        view.x1 = dragFrom.x1 + dLg;
+        view.y0 = dragFrom.y0 + dCr;
+        view.y1 = dragFrom.y1 + dCr;
+        clamp();
+        draw();
+        return;
+      }
+      const h = locate(ev);
+      if (h) {
+        tipRef.current.show(
+          `${cleanName(h.p.name)}${h.p.county ? ` (${h.p.county})` : ""}`,
+          `CRI ${h.p.cri.toFixed(2)} · ${formatRon(h.p.value)}`,
+          `${h.p.nFlags} semnale de risc · click → pagina entității`,
+          ev.clientX,
+          ev.clientY,
+        );
+        canvas.style.cursor = "pointer";
+      } else {
+        tipRef.current.hide();
+        canvas.style.cursor = "crosshair";
+      }
+    };
+    const onLeave = () => {
+      tipRef.current.hide();
+      dragFrom = null;
+    };
+    const onClick = (ev: MouseEvent) => {
+      if (dragged) {
+        dragged = false;
+        return;
+      }
+      const h = locate(ev);
+      if (h) window.open(`/entitati/${h.p.entityId}`, "_blank", "noopener");
+    };
+    const onDbl = () => {
+      Object.assign(view, home);
+      draw();
+    };
+
+    draw();
+    canvas.addEventListener("wheel", onWheel, { passive: false });
+    canvas.addEventListener("mousedown", onDown);
+    window.addEventListener("mouseup", onUp);
+    canvas.addEventListener("mousemove", onMove);
+    canvas.addEventListener("mouseleave", onLeave);
+    canvas.addEventListener("click", onClick);
+    canvas.addEventListener("dblclick", onDbl);
+    return () => {
+      canvas.removeEventListener("wheel", onWheel);
+      canvas.removeEventListener("mousedown", onDown);
+      window.removeEventListener("mouseup", onUp);
+      canvas.removeEventListener("mousemove", onMove);
+      canvas.removeEventListener("mouseleave", onLeave);
+      canvas.removeEventListener("click", onClick);
+      canvas.removeEventListener("dblclick", onDbl);
+    };
+  }, [points, density]);
+
   if (points.length === 0) return <p className="ask-empty">Niciun rezultat.</p>;
-  const W = 640;
-  const H = 260;
-  const PAD = { l: 42, r: 10, t: 12, b: 30 };
-  const vals = points.map((p) => Math.max(p.value, 1));
-  const minLog = Math.log10(Math.min(...vals));
-  const maxLog = Math.log10(Math.max(...vals));
-  const x = (v: number) =>
-    PAD.l + ((Math.log10(Math.max(v, 1)) - minLog) / Math.max(maxLog - minLog, 0.01)) * (W - PAD.l - PAD.r);
-  const y = (c: number) => H - PAD.b - c * (H - PAD.t - PAD.b);
   return (
     <div>
       {t.el}
-      <svg viewBox={`0 0 ${W} ${H}`} className="ask-scatter" role="img" aria-label="Risc vs volum">
-        <line x1={PAD.l} y1={H - PAD.b} x2={W - PAD.r} y2={H - PAD.b} stroke="#c2beb2" />
-        <line x1={PAD.l} y1={PAD.t} x2={PAD.l} y2={H - PAD.b} stroke="#c2beb2" />
-        <text x={6} y={PAD.t + 8} fontSize={10} fill="#6b6355">
-          risc
-        </text>
-        <text x={W - PAD.r} y={H - 8} fontSize={10} fill="#6b6355" textAnchor="end">
-          cheltuială (log) →
-        </text>
-        {[0.25, 0.5, 0.75, 1].map((c) => (
-          <text key={c} x={PAD.l - 6} y={y(c) + 3} fontSize={9} fill="#9a938a" textAnchor="end">
-            {c}
-          </text>
-        ))}
-        {points.map((p) => (
-          <a
-            key={p.entityId}
-            href={`/entitati/${p.entityId}`}
-            target="_blank"
-            rel="noopener"
-          >
-            <circle
-              cx={x(p.value)}
-              cy={y(p.cri)}
-              r={3.5}
-              fill={p.cri >= 0.5 ? "#9a2b1f" : p.cri >= 0.3 ? "#c9a24a" : "#c2beb2"}
-              fillOpacity={0.55}
-              className="dot"
-              {...t.bind(
-                `${cleanName(p.name)}${p.county ? ` (${p.county})` : ""}`,
-                `CRI ${p.cri.toFixed(2)} · ${formatRon(p.value)}`,
-                `${p.nFlags} semnale de risc · click → pagina entității`,
-              )}
-            />
-          </a>
-        ))}
-      </svg>
+      <canvas
+        ref={canvasRef}
+        width={1360}
+        height={780}
+        className="ask-scatterc"
+        role="img"
+        aria-label="Risc vs cheltuială — densitate"
+      />
+      <div className="ask-scatterleg">
+        <span className="it"><span className="ramp" /> puține → multe entități</span>
+        <span className="it"><span className="dsw hi" /> CRI ≥ 0,5</span>
+        <span className="it"><span className="dsw mid" /> CRI 0,3–0,5</span>
+        <span className="it"><span className="dsw top" /> top cheltuială</span>
+      </div>
       <p className="ask-fine">
-        Fiecare punct = o entitate (min. 10 achiziții) — click deschide pagina ei.
+        {density
+          ? `Norul gri = toate cele ${formatInt(density.total)} de entități cu min. 10 achiziții; punctele = cele notabile, click deschide pagina entității.`
+          : "Fiecare punct = o entitate (min. 10 achiziții) — click deschide pagina ei."}{" "}
+        Scroll = zoom · trage = pan · dublu-click = reset.
       </p>
     </div>
   );

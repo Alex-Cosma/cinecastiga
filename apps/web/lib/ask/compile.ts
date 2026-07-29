@@ -77,6 +77,16 @@ export interface ScatterPoint {
   cri: number;
   nFlags: number;
 }
+/** Full-population 2D histogram behind the scatter: log10(spend) × CRI. */
+export interface ScatterDensity {
+  minLog: number;
+  maxLog: number;
+  nx: number;
+  ny: number;
+  total: number;
+  /** sparse cells as [xBucket (1-based), yBucket (1-based), count] */
+  cells: [number, number, number][];
+}
 export interface SankeyFlow {
   partnerId: string;
   partner: string;
@@ -129,7 +139,7 @@ export type BlockData =
   | { block: "compare"; entities: CompareEntity[] }
   | { block: "distribution"; distribution: DistributionData }
   | { block: "breakdown"; slices: BreakdownSlice[]; other: { value: number; count: number } }
-  | { block: "scatter"; points: ScatterPoint[] }
+  | { block: "scatter"; points: ScatterPoint[]; density?: ScatterDensity | undefined }
   | { block: "sankey"; flows: SankeyFlow[]; focal: { entityId: string; name: string; role: string } }
   | { block: "network"; nodes: NetworkNode[]; focal: { entityId: string; name: string; role: string } }
   | { block: "entity_card"; card: EntityCardData }
@@ -954,6 +964,38 @@ export async function runSpec(
             cri: string;
             n_flags: number;
           }[];
+          // full-population density layer (same filters as the sample)
+          const NX = 80;
+          const NY = 46;
+          const ext = (await s`
+            select min(log(greatest(coalesce(ef.total_ron, 0), 1))) mn,
+                   max(log(greatest(coalesce(ef.total_ron, 0), 1))) mx,
+                   count(*) n
+            from marts.entity_flags ef
+            where ${efWhere(role as "authority" | "supplier", RISK_MIN_DAS)} and ef.cri is not null
+          `) as unknown as { mn: string | null; mx: string | null; n: string }[];
+          let density: ScatterDensity | undefined;
+          const popN = Number(ext[0]?.n ?? 0);
+          if (popN > 0 && ext[0]!.mn !== null) {
+            const mn = Number(ext[0]!.mn);
+            const mx = Math.max(Number(ext[0]!.mx), mn + 0.01);
+            const cells = (await s`
+              select width_bucket(log(greatest(coalesce(ef.total_ron, 0), 1)), ${mn}, ${mx + 1e-9}, ${NX}) bx,
+                     width_bucket(coalesce(ef.cri, 0), 0, 1.0000001, ${NY}) by,
+                     count(*) n
+              from marts.entity_flags ef
+              where ${efWhere(role as "authority" | "supplier", RISK_MIN_DAS)} and ef.cri is not null
+              group by 1, 2
+            `) as unknown as { bx: number; by: number; n: string }[];
+            density = {
+              minLog: mn,
+              maxLog: mx,
+              nx: NX,
+              ny: NY,
+              total: popN,
+              cells: cells.map((c) => [Number(c.bx), Number(c.by), Number(c.n)]),
+            };
+          }
           return {
             block: "scatter",
             points: r.map((p) => ({
@@ -964,6 +1006,7 @@ export async function runSpec(
               cri: Number(p.cri),
               nFlags: Number(p.n_flags),
             })),
+            density,
           };
         }
 
