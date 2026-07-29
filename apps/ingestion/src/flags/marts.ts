@@ -164,7 +164,7 @@ export async function runFlagMarts(
       insert into marts.da_transactions
         (sicap_da_id, da_code, authority_id, authority_name, supplier_id, supplier_name,
          county, cpv_code, cpv_name, acquisition_type, estimated_value_ron, closing_value,
-         publication_date, finalization_date, gap_minutes, da_flags)
+         publication_date, finalization_date, gap_minutes, da_flags, value_suspect)
       select da.sicap_da_id, da.da_code,
         da.authority_entity_id, a.name_display, da.supplier_entity_id, s.name_display,
         a.county, da.cpv_code, cpv.name_ro, da.acquisition_type,
@@ -174,7 +174,17 @@ export async function runFlagMarts(
         case when da.publication_date is not null and da.finalization_date is not null
               and da.finalization_date >= da.publication_date
           then round(extract(epoch from (da.finalization_date - da.publication_date))/60)::int end,
-        fl.codes
+        fl.codes,
+        -- implausible recorded value, both directions: over the 2M cap /
+        -- ≥100× the estimate (thousand-separator typos: 400.000 instead of
+        -- 400), or ≤1% of the estimate (symbolic 1-leu entries: a unit price
+        -- or placeholder typed as the total)
+        (da.closing_value is not null and (
+          da.closing_value > 2000000
+          or (da.estimated_value_ron is not null and da.estimated_value_ron > 0
+              and (da.closing_value >= 100 * da.estimated_value_ron
+                   or da.closing_value <= da.estimated_value_ron / 100))
+        ))
       from core.direct_acquisitions da
       left join core.entities a on a.id = da.authority_entity_id
       left join core.entities s on s.id = da.supplier_entity_id
@@ -183,6 +193,7 @@ export async function runFlagMarts(
         select subject_id, array_agg(flag_code) codes
         from core.flags where subject_type = 'da' group by subject_id
       ) fl on fl.subject_id = da.id
+      where da.state = 'Oferta acceptata'
     `;
     // Pair-level flags stamped onto their constituent rows: the entity page's
     // "Fracționare sub prag" table filter must surface the acquisitions that

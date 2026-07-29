@@ -5,12 +5,12 @@ import { METHODOLOGY_VERSION } from "./methodology.js";
  * DA red-flag build (red-flags DEC-005). Truncate + recompute `core.flags` from
  * `core.direct_acquisitions`. Each rule is one SQL statement writing binary
  * flag instances with evidence. Legal ceilings come from `core.risk_thresholds`
- * (date-aware, DEC-006); statistical cutoffs are read from the same table with
- * documented fallbacks. DA acquisition type is inferred from CPV (division 45 =
- * works) since the imported DA rows carry no explicit type.
- *
- * NOTE: snapshot data is 2018–2020, so a single pre-2023 ceiling applies; live
- * data spanning the 2023 raise will need a per-row date join (TODO).
+ * (date-aware, DEC-006) joined PER ROW on the finalization date — art. 7(5)
+ * changed twice (2016: 132.519 → iun. 2018: 135.060 → ian. 2023: 270.120 for
+ * goods/services), so each DA is judged against the prag in force when it
+ * closed. Statistical cutoffs are read from the same table with documented
+ * fallbacks. DA acquisition type is inferred from CPV (division 45 = works)
+ * since the imported DA rows carry no explicit type.
  */
 const V = METHODOLOGY_VERSION;
 
@@ -75,15 +75,19 @@ async function num(sql: DbSql, key: string, fallback: number): Promise<number> {
   return rows[0] ? Number(rows[0].value_num) : fallback;
 }
 
-/** Ceiling applicable to the snapshot period (a 2019 reference date). */
-async function ceiling(sql: DbSql, key: string, fallback: number): Promise<number> {
+/** The ceiling eras must be seeded (join-based rules silently drop rows otherwise). */
+async function assertCeilingEras(sql: DbSql): Promise<number> {
   const rows = (await sql`
-    select value_num from core.risk_thresholds
-    where key = ${key} and valid_from <= '2019-01-01'::timestamptz
-      and (valid_to is null or valid_to > '2019-01-01'::timestamptz)
-    order by valid_from desc limit 1
-  `) as unknown as { value_num: string }[];
-  return rows[0] ? Number(rows[0].value_num) : fallback;
+    select count(*)::int c from core.risk_thresholds
+    where key in ('da_ceiling_goods_services', 'da_ceiling_works')
+  `) as unknown as { c: number }[];
+  const c = Number(rows[0]?.c ?? 0);
+  if (c < 2) {
+    throw new Error(
+      "core.risk_thresholds has no DA ceiling eras — run `pnpm --filter ingestion seed-thresholds` first",
+    );
+  }
+  return c;
 }
 
 export async function runFlags(
@@ -93,8 +97,7 @@ export async function runFlags(
   const log = opts.log ?? (() => {});
   const t = async (k: string) => num(sql, k, DEFAULTS[k]!);
 
-  const goods = await ceiling(sql, "da_ceiling_goods_services", 132_519);
-  const works = await ceiling(sql, "da_ceiling_works", 441_730);
+  const ceilingEras = await assertCeilingEras(sql);
   const maxPlausible = await t("da_max_plausible");
   const rapidHours = await t("da_rapid_hours");
   const concTopPct = await t("da_conc_top_pct");
@@ -107,7 +110,7 @@ export async function runFlags(
   const yeShare = await t("da_year_end_share");
   const yeMinTot = await t("da_year_end_min_total");
   log(
-    `thresholds: goods=${goods} works=${works} rapidH=${rapidHours} concTop=${concTopPct} ` +
+    `thresholds: ceilings=date-aware (${ceilingEras} era rows) rapidH=${rapidHours} concTop=${concTopPct} ` +
       `depTop=${depTopPct} splitN=${splitMinN} roundFloor=${roundFloor} yeShare=${yeShare}`,
   );
 
@@ -123,7 +126,8 @@ export async function runFlags(
         'closing', closing_value),
       ${V}
     from core.direct_acquisitions
-    where publication_date is not null and finalization_date is not null
+    where state = 'Oferta acceptata'
+      and publication_date is not null and finalization_date is not null
       and finalization_date >= publication_date
       and (closing_value is null or closing_value <= ${maxPlausible})
       and extract(epoch from (finalization_date - publication_date)) < ${rapidHours}::float8 * 3600
@@ -139,11 +143,19 @@ export async function runFlags(
       least(1, closing_value / ceil),
       jsonb_build_object('closing', closing_value, 'ceiling', ceil, 'type', typ), ${V}
     from (
-      select id, finalization_date, closing_value,
-        case when left(cpv_code,2) = '45' then ${works}::numeric else ${goods}::numeric end as ceil,
-        case when left(cpv_code,2) = '45' then 'lucrari' else 'produse/servicii' end as typ
-      from core.direct_acquisitions
-      where closing_value is not null and closing_value > 0 and closing_value <= ${maxPlausible}
+      select da.id, da.finalization_date, da.closing_value,
+        th.value_num::numeric as ceil,
+        case when left(da.cpv_code,2) = '45' then 'lucrari' else 'produse/servicii' end as typ
+      from core.direct_acquisitions da
+      join core.risk_thresholds th
+        on th.key = case when left(da.cpv_code,2) = '45'
+                         then 'da_ceiling_works' else 'da_ceiling_goods_services' end
+       and th.valid_from <= da.finalization_date
+       and (th.valid_to is null or th.valid_to > da.finalization_date)
+      where da.state = 'Oferta acceptata'
+        and da.closing_value is not null and da.closing_value > 0
+        and da.closing_value <= ${maxPlausible}
+        and da.finalization_date is not null
     ) d
     where closing_value >= ${roundFloor}::float8 * ceil and closing_value < ceil
   `;
@@ -152,13 +164,19 @@ export async function runFlags(
   await sql`
     insert into core.flags (subject_type, subject_id, partner_id, flag_code, period, triggered, severity, evidence, methodology_version)
     with da as (
-      select authority_entity_id a, supplier_entity_id s,
-        extract(year from finalization_date)::int y, closing_value cv,
-        case when left(cpv_code,2) = '45' then ${works}::numeric else ${goods}::numeric end ceil
-      from core.direct_acquisitions
-      where authority_entity_id is not null and supplier_entity_id is not null
-        and closing_value is not null and closing_value > 0 and closing_value <= ${maxPlausible}
-        and finalization_date is not null
+      select d.authority_entity_id a, d.supplier_entity_id s,
+        extract(year from d.finalization_date)::int y, d.closing_value cv,
+        th.value_num::numeric ceil
+      from core.direct_acquisitions d
+      join core.risk_thresholds th
+        on th.key = case when left(d.cpv_code,2) = '45'
+                         then 'da_ceiling_works' else 'da_ceiling_goods_services' end
+       and th.valid_from <= d.finalization_date
+       and (th.valid_to is null or th.valid_to > d.finalization_date)
+      where d.state = 'Oferta acceptata'
+        and d.authority_entity_id is not null and d.supplier_entity_id is not null
+        and d.closing_value is not null and d.closing_value > 0 and d.closing_value <= ${maxPlausible}
+        and d.finalization_date is not null
     ),
     g as (
       select a, s, y, count(*) n, sum(cv) total, max(ceil) ceil
@@ -178,7 +196,8 @@ export async function runFlags(
     with per as (
       select authority_entity_id a, supplier_entity_id s, sum(closing_value) st
       from core.direct_acquisitions
-      where authority_entity_id is not null and supplier_entity_id is not null
+      where state = 'Oferta acceptata'
+        and authority_entity_id is not null and supplier_entity_id is not null
         and closing_value is not null and closing_value <= ${maxPlausible}
       group by a, s
     ),
@@ -202,7 +221,8 @@ export async function runFlags(
     with per as (
       select supplier_entity_id s, authority_entity_id a, sum(closing_value) st
       from core.direct_acquisitions
-      where authority_entity_id is not null and supplier_entity_id is not null
+      where state = 'Oferta acceptata'
+        and authority_entity_id is not null and supplier_entity_id is not null
         and closing_value is not null and closing_value <= ${maxPlausible}
       group by s, a
     ),
@@ -225,7 +245,8 @@ export async function runFlags(
         sum(closing_value) tot,
         sum(case when extract(month from finalization_date) = 12 then closing_value else 0 end) dec
       from core.direct_acquisitions
-      where authority_entity_id is not null and closing_value is not null
+      where state = 'Oferta acceptata'
+        and authority_entity_id is not null and closing_value is not null
         and closing_value <= ${maxPlausible} and finalization_date is not null
       group by a, y
     )
@@ -347,7 +368,8 @@ export async function runFlags(
       select supplier_entity_id eid, extract(year from finalization_date)::int y,
              sum(closing_value) val
       from core.direct_acquisitions
-      where supplier_entity_id is not null and finalization_date is not null
+      where state = 'Oferta acceptata'
+        and supplier_entity_id is not null and finalization_date is not null
         and closing_value is not null and closing_value > 0
         and closing_value <= ${maxPlausible}::numeric
       group by 1, 2
@@ -431,7 +453,8 @@ export async function runFlags(
       -- money per (supplier, authority): DAs + award values split per winner
       select supplier_entity_id sid, authority_entity_id aid, sum(closing_value) v
       from core.direct_acquisitions
-      where supplier_entity_id is not null and authority_entity_id is not null
+      where state = 'Oferta acceptata'
+        and supplier_entity_id is not null and authority_entity_id is not null
         and closing_value > 0 and closing_value <= ${maxPlausible}::numeric
       group by 1, 2
       union all

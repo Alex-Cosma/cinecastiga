@@ -1,23 +1,29 @@
 import { createDb, riskThresholds } from "@seap/db";
 
 /**
- * Seed the date-aware DA legal ceilings (red-flags DEC-006). Values from Legea
- * 98/2016 art. 7(5), net of VAT: 132.519 / 441.730 for 2016→2023, raised to
- * 270.120 / 900.400 afterwards. Statistical thresholds (rapid-hours, HHI cutoffs)
- * are seeded in the flag-rules phase, calibrated against the data distribution.
+ * Seed the date-aware DA legal ceilings (red-flags DEC-006). Art. 7(5) Legea
+ * 98/2016 changed twice, so three eras (net of VAT, produse/servicii · lucrări):
+ * 2016: 132.519 · 441.730 → OUG 45/2018 (4 iun. 2018): 135.060 · 450.200 →
+ * Legea 208/2022 (ian. 2023): 270.120 · 900.400. Statistical thresholds
+ * (rapid-hours, HHI cutoffs) are calibrated against the data distribution.
  *
  *   pnpm --filter ingestion seed-thresholds
  */
-const RAISE = new Date("2023-01-01T00:00:00Z"); // boundary for the post-2023 raise
 const L98 = new Date("2016-05-19T00:00:00Z"); // Legea 98/2016 in force
+const OUG45 = new Date("2018-06-04T00:00:00Z"); // OUG 45/2018 raise
+const RAISE = new Date("2023-01-01T00:00:00Z"); // Legea 208/2022 raise
 const BASE = new Date("2000-01-01T00:00:00Z"); // open window for statistical cutoffs
 
+// Ceiling keys are wiped + reinserted below: era boundaries moved across
+// versions, and a (key, valid_from) upsert would leave stale overlapping windows.
 const ROWS = [
   // Legal DA ceilings (net VAT), date-aware.
-  { key: "da_ceiling_goods_services", validFrom: L98, validTo: RAISE, valueNum: "132519", note: "L98/2016 art.7(5) produse/servicii" },
-  { key: "da_ceiling_goods_services", validFrom: RAISE, validTo: null, valueNum: "270120", note: "post-2023 raise" },
-  { key: "da_ceiling_works", validFrom: L98, validTo: RAISE, valueNum: "441730", note: "L98/2016 art.7(5) lucrări" },
-  { key: "da_ceiling_works", validFrom: RAISE, validTo: null, valueNum: "900400", note: "post-2023 raise" },
+  { key: "da_ceiling_goods_services", validFrom: L98, validTo: OUG45, valueNum: "132519", note: "L98/2016 art.7(5) produse/servicii" },
+  { key: "da_ceiling_goods_services", validFrom: OUG45, validTo: RAISE, valueNum: "135060", note: "OUG 45/2018" },
+  { key: "da_ceiling_goods_services", validFrom: RAISE, validTo: null, valueNum: "270120", note: "Legea 208/2022" },
+  { key: "da_ceiling_works", validFrom: L98, validTo: OUG45, valueNum: "441730", note: "L98/2016 art.7(5) lucrări" },
+  { key: "da_ceiling_works", validFrom: OUG45, validTo: RAISE, valueNum: "450200", note: "OUG 45/2018" },
+  { key: "da_ceiling_works", validFrom: RAISE, validTo: null, valueNum: "900400", note: "Legea 208/2022" },
   // Statistical cutoffs, calibrated against the 2020 DA distribution (2026-07-13).
   { key: "da_max_plausible", validFrom: BASE, validTo: null, valueNum: "2000000", note: "exclude corrupt closing values >2M (>4x works ceiling)" },
   { key: "da_rapid_hours", validFrom: BASE, validTo: null, valueNum: "0.1667", note: "10 min — DAs are inherently fast, so tight cutoff (~8.5%)" },
@@ -34,6 +40,7 @@ const ROWS = [
 
 async function main(): Promise<void> {
   const { db, sql } = createDb();
+  await sql`delete from core.risk_thresholds where key in ('da_ceiling_goods_services', 'da_ceiling_works')`;
   for (const r of ROWS) {
     await db
       .insert(riskThresholds)

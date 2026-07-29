@@ -288,6 +288,10 @@ export const daTransactions = martsSchema.table(
     gapMinutes: integer("gap_minutes"),
     /** Per-DA flag codes that fired (da_rapid / da_round). */
     daFlags: text("da_flags").array(),
+    /** Recorded value is implausible (>2M cap, or ≥100× the estimate) — almost
+     *  always a data-entry typo (unit price with a thousands separator). Row
+     *  counts; its VALUE is excluded from sums and warned about in the UI. */
+    valueSuspect: boolean("value_suspect").notNull().default(false),
   },
   (t) => [
     index("da_tx_authority_idx").on(t.authorityId, t.finalizationDate),
