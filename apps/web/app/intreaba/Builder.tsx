@@ -732,8 +732,10 @@ function buildCands(s: State, q: string, remote: RemoteSuggest, run: () => void)
       }
   }
   req.sort((a, b) => b.sc - a.sc);
+  // empty input at the very first step → show EVERY form, not a top slice
+  const reqCap = qq ? 7 : !s.block ? req.length : 9;
   if (req.length)
-    out.push({ h: first ? `Pasul următor · ${NEED_LABEL[first]}` : "Completează", items: req.slice(0, qq ? 7 : 9) });
+    out.push({ h: first ? `Pasul următor · ${NEED_LABEL[first]}` : "Completează", items: req.slice(0, reqCap) });
 
   // ---------- narrow (optional, dynamic) ----------
   const nar: Cand[] = [];

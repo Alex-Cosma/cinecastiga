@@ -551,7 +551,7 @@ export default function AskPanel({
             )}
             {resp.data.block === "compare" && <CompareBlock entities={resp.data.entities} />}
             {resp.data.block === "distribution" && (
-              <DistributionBlock distribution={resp.data.distribution} />
+              <DistributionBlock distribution={resp.data.distribution} spec={resp.spec} />
             )}
             {resp.data.block === "breakdown" && (
               <BreakdownBlock slices={resp.data.slices} other={resp.data.other} spec={resp.spec} />

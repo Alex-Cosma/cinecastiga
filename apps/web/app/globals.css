@@ -855,3 +855,6 @@ td.val-suspect .val-warn { color: var(--accent); text-decoration: none; display:
   font: inherit; font-size: 12.5px; padding: 4px 8px;
   border: 1px solid var(--line); border-radius: 6px;
 }
+.ask-dist a.b { text-decoration: none; color: inherit; cursor: pointer; }
+.ask-dist a.b:hover .bar { border-color: var(--accent); background: var(--accent-soft); }
+.ask-dist a.b.here:hover .bar { background: var(--accent); opacity: .85; }

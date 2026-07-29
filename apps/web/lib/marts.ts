@@ -734,6 +734,65 @@ export async function getRiskLeaderboard(role: Role, limit = 25): Promise<RiskEn
   }));
 }
 
+export interface RiskGroupPage {
+  rows: RiskEntity[];
+  total: number;
+}
+
+/**
+ * Entities inside a CRI band — the landing list for a clicked bar of the
+ * "cât de neobișnuit e" distribution. Same population rule as the ask
+ * engine's distribution block: role + at least 10 direct acquisitions.
+ */
+export async function getRiskGroup(
+  role: Role,
+  criMin: number,
+  criMax: number,
+  county: string | null,
+  page = 0,
+  pageSize = 50,
+): Promise<RiskGroupPage> {
+  const sql = db();
+  const jud = county
+    ? sql`and lower(unaccent(county)) = lower(unaccent(${county}))`
+    : sql``;
+  // upper bound inclusive only for the last bucket (criMax >= 1)
+  const ub =
+    criMax >= 1 ? sql`coalesce(cri, 0) <= ${criMax}` : sql`coalesce(cri, 0) < ${criMax}`;
+  const rows = (await sql`
+    select entity_id, name_display, county, cri, n_flags, n_das, total_ron, flags,
+           count(*) over () as total
+    from marts.entity_flags
+    where role = ${role} and n_das >= 10
+      and coalesce(cri, 0) >= ${criMin} and ${ub} ${jud}
+    order by cri desc, total_ron desc nulls last
+    limit ${pageSize} offset ${page * pageSize}
+  `) as unknown as {
+    entity_id: string;
+    name_display: string | null;
+    county: string | null;
+    cri: string | null;
+    n_flags: number;
+    n_das: number;
+    total_ron: string | null;
+    flags: string[] | null;
+    total: string;
+  }[];
+  return {
+    total: rows.length > 0 ? Number(rows[0]!.total) : 0,
+    rows: rows.map((r) => ({
+      entityId: String(r.entity_id),
+      name: r.name_display,
+      county: r.county,
+      cri: Number(r.cri ?? 0),
+      nFlags: Number(r.n_flags),
+      nDas: Number(r.n_das),
+      totalRon: Number(r.total_ron ?? 0),
+      flags: r.flags ?? [],
+    })),
+  };
+}
+
 export interface FlagInstance {
   flagCode: string;
   entityId: string | null;
