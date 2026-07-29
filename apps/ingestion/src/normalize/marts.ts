@@ -99,7 +99,8 @@ export async function runMarts(
         da.closing_value       as ron_split,
         da.finalization_date   as activity_date
       from core.direct_acquisitions da
-      where da.authority_entity_id is not null
+      where da.state = 'Oferta acceptata'
+        and da.authority_entity_id is not null
         and da.supplier_entity_id is not null
         and da.closing_value is not null and da.closing_value <= ${daBound}
       union all
@@ -123,6 +124,7 @@ export async function runMarts(
         select 'da', extract(year from finalization_date)::int,
                case when closing_value <= ${daBound} then closing_value end
           from core.direct_acquisitions
+          where state = 'Oferta acceptata'
       ) s
       group by grouping sets ((kind, y), (kind))
     `;
@@ -141,6 +143,7 @@ export async function runMarts(
         select 'da', acquisition_type,
                case when closing_value <= ${daBound} then closing_value end
           from core.direct_acquisitions
+          where state = 'Oferta acceptata'
       )
       select 'all', atype, count(*)::int, sum(val) from s group by atype
       union all
@@ -160,7 +163,8 @@ export async function runMarts(
         union all
         select left(cpv_code, 2), 'da',
                case when closing_value <= ${daBound} then closing_value end
-          from core.direct_acquisitions where cpv_code is not null
+          from core.direct_acquisitions
+          where state = 'Oferta acceptata' and cpv_code is not null
       ),
       agg as (
         select division, 'all'::text kind, count(*)::int n, sum(val) t from s group by division
@@ -301,6 +305,11 @@ export async function runMarts(
     // One row per (contract, winner); consortium value split equally into
     // closing_value (anti-double-count — sums stay honest). Competition columns
     // from the CONFIRMED TED crosswalk tier only; null = unknown.
+    // Framework/call-off dedup: an "acord-cadru" row is a CEILING, not money —
+    // when the same notice also published explicit "contract subsecvent" rows
+    // (the actual orders), the framework row would double-count them and is
+    // excluded. Frameworks whose call-offs were never published stay (they are
+    // the only record of that money; the ceiling caveat covers them).
     await q`
       insert into marts.contract_transactions (
         contract_id, supplier_id, contract_no, ca_notice_id, notice_no,
@@ -309,7 +318,11 @@ export async function runMarts(
         closing_value, contract_value_full, n_winners, finalization_date,
         tenders_received, is_single_bidder, also_in_ted, ted_pubnum
       )
-      with base as (
+      with has_sub as (
+        select distinct ca_notice_id from core.contracts
+        where title ~* 'subsecvent'
+      ),
+      base as (
         select c.id contract_id, c.contract_no, c.ca_notice_id, aw.notice_no,
                aw.authority_entity_id authority_id, c.contract_value, c.contract_date,
                aw.cpv_code, aw.procedure_type, aw.acquisition_type
@@ -320,6 +333,10 @@ export async function runMarts(
           and c.contract_date is not null
           and (c.currency is null or c.currency ilike '%ron%')
           and aw.authority_entity_id is not null
+          and not (
+            c.title ~* 'acord[- ]cadru' and c.title !~* 'subsecvent'
+            and c.ca_notice_id in (select ca_notice_id from has_sub)
+          )
       ),
       w as (
         select contract_id, entity_id

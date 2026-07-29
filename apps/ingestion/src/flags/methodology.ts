@@ -4,7 +4,7 @@
  * `/metodologie` page. Bump `METHODOLOGY_VERSION` when a rule or threshold
  * changes; every flag instance is stamped with it.
  */
-export const METHODOLOGY_VERSION = "rf-2026.3";
+export const METHODOLOGY_VERSION = "rf-2026.4";
 
 export type FlagSubject = "da" | "award" | "authority" | "supplier" | "pair";
 
@@ -28,9 +28,9 @@ export const FLAG_DEFS: FlagDef[] = [
     description:
       "Aceeași autoritate și același furnizor, mai multe achiziții directe într-un an, fiecare sub pragul legal, dar însumând peste prag.",
     rationale:
-      "Pragul legal e per achiziție (art. 7 alin. 5, Legea 98/2016), nu anual — dar legea interzice divizarea unei achiziții pentru a evita procedura (art. 11) și cere agregarea necesarului anual pe produse similare. Suma anuală către același partener, de câteva ori peste prag, e semnul tipic al divizării.",
+      "Pragul legal e per achiziție (art. 7 alin. 5, Legea 98/2016), nu anual — dar legea interzice divizarea unei achiziții pentru a evita procedura (art. 11) și cere agregarea necesarului anual pe produse similare. Suma anuală către același partener, de câteva ori peste prag, e semnul tipic al divizării. Pragul s-a modificat în timp — 132.519 lei (2016 – iun. 2018), 135.060 lei (iun. 2018 – 2022, OUG 45/2018), 270.120 lei (din ian. 2023, Legea 208/2022) pentru produse/servicii; 441.730 / 450.200 / 900.400 lei pentru lucrări — și aplicăm pragul în vigoare la data fiecărei achiziții.",
     caveat:
-      "Nevoi recurente legitime (ex. consumabile lunare) pot arăta similar. Semnal, nu dovadă.",
+      "Nevoi recurente legitime (ex. consumabile lunare) pot arăta similar. Într-un an care traversează o schimbare de prag, suma se compară cu pragul cel mai mare din acel an (interpretarea prudentă). Semnal, nu dovadă.",
   },
   {
     code: "da_concentration",
@@ -69,7 +69,7 @@ export const FLAG_DEFS: FlagDef[] = [
     title: "Valoare aproape de prag",
     subject: "da",
     description:
-      "Valoarea de închidere este chiar sub pragul legal aplicabil (ex. 90–100% din prag).",
+      "Valoarea de închidere este chiar sub pragul legal aplicabil (ex. 90–100% din prag), pragul fiind cel în vigoare la data achiziției (132.519 / 135.060 / 270.120 lei pentru produse/servicii, după perioadă).",
     rationale:
       "Valori bunched imediat sub prag indică ajustare pentru a rămâne în achiziție directă.",
     caveat: "O singură achiziție sub prag este normală; semnalul contează în agregat.",
