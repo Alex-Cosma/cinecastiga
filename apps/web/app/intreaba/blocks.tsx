@@ -206,16 +206,19 @@ export function BreakdownBlock({
   spec?: unknown;
 }) {
   const t = useTip();
-  // slice click → same filters narrowed to that CPV stem, drill rows opened
+  // slice click: while the stem can go deeper, open the same breakdown one
+  // CPV level down; at a full 8-digit code, open the transactions instead.
+  const canDeepen = (code: string): boolean => code.length < 8;
   const sliceUrl = (code: string): string => {
     const sp = (spec ?? {}) as { dataset?: string; filters?: Record<string, unknown> };
+    const deeper = canDeepen(code);
     const next: Record<string, unknown> = {
-      block: "stat",
+      block: deeper ? "breakdown" : "stat",
       measure: "value",
       filters: { ...(sp.filters ?? {}), cpvTerm: code },
     };
     if (sp.dataset) next["dataset"] = sp.dataset;
-    return `/?spec=${encodeURIComponent(encodeSpec(next))}&drill=1`;
+    return `/?spec=${encodeURIComponent(encodeSpec(next))}${deeper ? "" : "&drill=1"}`;
   };
   const total = slices.reduce((a, s) => a + s.value, 0) + other.value;
   if (total <= 0) return <p className="ask-empty">Niciun rezultat.</p>;
@@ -247,7 +250,7 @@ export function BreakdownBlock({
           const bind = t.bind(
             s.name,
             formatRon(s.value),
-            `${formatInt(s.count)} achiziții · ${((s.value / total) * 100).toFixed(1)}% din total${s.code ? " · click → achizițiile categoriei" : ""}`,
+            `${formatInt(s.count)} achiziții · ${((s.value / total) * 100).toFixed(1)}% din total${s.code ? (canDeepen(s.code) ? " · click → structura subcategoriilor" : " · click → achizițiile categoriei") : ""}`,
           );
           return s.code ? (
             <a
