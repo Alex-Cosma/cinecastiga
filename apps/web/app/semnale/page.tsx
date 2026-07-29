@@ -5,10 +5,27 @@ import {
   getRiskGroup,
   getRiskLeaderboard,
   type FlagInstance,
-  type RiskGroupPage,
+  type RiskGroupSort,
 } from "@/lib/marts";
 import { FLAG_META, FLAG_ORDER, criBand } from "@/lib/flags";
 import { formatRon, formatInt, cleanName } from "@/lib/format";
+
+const GROUP_SORTS: RiskGroupSort[] = ["cri", "flags", "das", "total", "name"];
+
+/** Page-number window: first, last, current ±2, gaps as null. */
+function pageList(cur: number, n: number): (number | null)[] {
+  const keep = new Set<number>([0, n - 1]);
+  for (let i = cur - 2; i <= cur + 2; i++) if (i >= 0 && i < n) keep.add(i);
+  const arr = [...keep].sort((a, b) => a - b);
+  const out: (number | null)[] = [];
+  let prev = -2;
+  for (const x of arr) {
+    if (prev >= 0 && x - prev > 1) out.push(null);
+    out.push(x);
+    prev = x;
+  }
+  return out;
+}
 
 export const dynamic = "force-dynamic";
 
@@ -50,30 +67,134 @@ export default async function SemnalePage({
     criMax?: string;
     jud?: string;
     p?: string;
+    sort?: string;
+    dir?: string;
   }>;
 }) {
-  const { tip, rol, criMin, criMax, jud, p } = await searchParams;
+  const { tip, rol, criMin, criMax, jud, p, sort, dir } = await searchParams;
   const code = tip && FLAG_META[tip] ? tip : "da_split";
 
-  // CRI-band group view (landing page for a clicked distribution bar)
+  // CRI-band group view (landing page for a clicked distribution bar):
+  // a standalone, sortable, paged list — nothing else on the page.
   const groupRole = rol === "authority" || rol === "supplier" ? rol : null;
   const gMin = criMin !== undefined ? Number(criMin) : NaN;
   const gMax = criMax !== undefined ? Number(criMax) : NaN;
-  const hasGroup = groupRole !== null && Number.isFinite(gMin) && Number.isFinite(gMax);
-  const page = Math.max(0, Number(p ?? 0) || 0);
-  const group: RiskGroupPage | null = hasGroup
-    ? await getRiskGroup(groupRole, gMin, gMax, jud ?? null, page)
-    : null;
-  const groupUrl = (pg: number): string => {
-    const q = new URLSearchParams({
-      rol: groupRole!,
-      criMin: String(gMin),
-      criMax: String(gMax),
-    });
-    if (jud) q.set("jud", jud);
-    if (pg > 0) q.set("p", String(pg));
-    return `/semnale?${q.toString()}`;
-  };
+  if (groupRole !== null && Number.isFinite(gMin) && Number.isFinite(gMax)) {
+    const gSort = GROUP_SORTS.includes(sort as RiskGroupSort)
+      ? (sort as RiskGroupSort)
+      : "cri";
+    const gDir = dir === "asc" ? "asc" : dir === "desc" ? "desc" : gSort === "name" ? "asc" : "desc";
+    const PS = 10;
+    const page = Math.max(0, Number(p ?? 0) || 0);
+    const group = await getRiskGroup(groupRole, gMin, gMax, jud ?? null, page, PS, gSort, gDir);
+    const nPages = Math.max(1, Math.ceil(group.total / PS));
+    const url = (over: { p?: number; sort?: RiskGroupSort }): string => {
+      const q = new URLSearchParams({
+        rol: groupRole,
+        criMin: String(gMin),
+        criMax: String(gMax),
+      });
+      if (jud) q.set("jud", jud);
+      const s = over.sort ?? gSort;
+      // clicking the active column flips direction; a new column gets its default
+      const d =
+        over.sort !== undefined
+          ? over.sort === gSort
+            ? gDir === "desc"
+              ? "asc"
+              : "desc"
+            : over.sort === "name"
+              ? "asc"
+              : "desc"
+          : gDir;
+      if (s !== "cri" || d !== "desc") {
+        q.set("sort", s);
+        q.set("dir", d);
+      }
+      const pg = over.p ?? (over.sort !== undefined ? 0 : page);
+      if (pg > 0) q.set("p", String(pg));
+      return `/semnale?${q.toString()}`;
+    };
+    const th = (key: RiskGroupSort, label: string, right = false) => (
+      <th style={right ? { textAlign: "right" } : undefined}>
+        <Link href={url({ sort: key })} className={`grp-sort${gSort === key ? " on" : ""}`}>
+          {label}
+          {gSort === key ? (gDir === "desc" ? " ▼" : " ▲") : ""}
+        </Link>
+      </th>
+    );
+    return (
+      <>
+        <h1 className="page-title">
+          {groupRole === "authority" ? "Autorități" : "Firme"} cu CRI între {gMin.toFixed(1)}{" "}
+          și {gMax.toFixed(1)}
+          {jud ? ` · ${jud}` : ""}
+        </h1>
+        <p className="page-sub">
+          {formatInt(group.total)} entități cu cel puțin 10 achiziții directe în acest
+          interval de risc. CRI e un semnal statistic, nu o dovadă —{" "}
+          <Link href="/metodologie">metodologia</Link>.
+        </p>
+        <section className="section">
+          <table className="rank grp-list">
+            <thead>
+              <tr>
+                <th className="num">#</th>
+                {th("name", groupRole === "authority" ? "Autoritate" : "Firmă")}
+                {th("cri", "CRI")}
+                {th("flags", "Semnale")}
+                {th("das", "Achiziții directe", true)}
+                {th("total", "Total", true)}
+              </tr>
+            </thead>
+            <tbody>
+              {group.rows.map((e, i) => {
+                const band = criBand(e.cri);
+                return (
+                  <tr key={e.entityId}>
+                    <td className="num county">{page * PS + i + 1}</td>
+                    <td>
+                      <Link href={`/entitati/${e.entityId}`}>{cleanName(e.name)}</Link>
+                      {e.county ? <div className="county">{e.county}</div> : null}
+                    </td>
+                    <td>
+                      <span className={`cri-pill ${band.className}`}>{e.cri.toFixed(2)}</span>
+                    </td>
+                    <td className="county">
+                      {e.flags.map((f) => FLAG_META[f]?.title ?? f).join(", ") || "—"}
+                    </td>
+                    <td className="num">{formatInt(e.nDas)}</td>
+                    <td className="num">{formatRon(e.totalRon)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {nPages > 1 && (
+            <div className="grp-pager">
+              {page > 0 && <Link href={url({ p: page - 1 })}>←</Link>}
+              {pageList(page, nPages).map((pg, i) =>
+                pg === null ? (
+                  <span key={`gap-${i}`} className="gap">
+                    …
+                  </span>
+                ) : pg === page ? (
+                  <span key={pg} className="on">
+                    {pg + 1}
+                  </span>
+                ) : (
+                  <Link key={pg} href={url({ p: pg })}>
+                    {pg + 1}
+                  </Link>
+                ),
+              )}
+              {page + 1 < nPages && <Link href={url({ p: page + 1 })}>→</Link>}
+            </div>
+          )}
+        </section>
+      </>
+    );
+  }
 
   const [counts, instances, topAuth] = await Promise.all([
     getFlagCounts(),
@@ -90,66 +211,6 @@ export default async function SemnalePage({
         dovadă — vezi{" "}
         <Link href="/metodologie">metodologia</Link>.
       </p>
-
-      {group && (
-        <section className="section">
-          <h2>
-            {groupRole === "authority" ? "Autorități" : "Firme"} cu CRI între{" "}
-            {gMin.toFixed(1)} și {gMax.toFixed(1)}
-            {jud ? ` · ${jud}` : ""}
-          </h2>
-          <p className="hint">
-            {formatInt(group.total)} entități cu cel puțin 10 achiziții directe în acest
-            interval de risc. CRI e un semnal statistic, nu o dovadă.
-          </p>
-          <table className="rank">
-            <thead>
-              <tr>
-                <th>{groupRole === "authority" ? "Autoritate" : "Firmă"}</th>
-                <th>CRI</th>
-                <th>Semnale</th>
-                <th style={{ textAlign: "right" }}>Achiziții directe</th>
-                <th style={{ textAlign: "right" }}>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {group.rows.map((e) => {
-                const band = criBand(e.cri);
-                return (
-                  <tr key={e.entityId}>
-                    <td>
-                      <Link href={`/entitati/${e.entityId}`}>{cleanName(e.name)}</Link>
-                      {e.county ? <div className="county">{e.county}</div> : null}
-                    </td>
-                    <td>
-                      <span className={`cri-pill ${band.className}`}>
-                        {e.cri.toFixed(2)}
-                      </span>
-                    </td>
-                    <td className="county">
-                      {e.flags.map((f) => FLAG_META[f]?.title ?? f).join(", ") || "—"}
-                    </td>
-                    <td className="num">{formatInt(e.nDas)}</td>
-                    <td className="num">{formatRon(e.totalRon)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {group.total > 50 && (
-            <div className="pager" style={{ marginTop: 10 }}>
-              {page > 0 && <Link href={groupUrl(page - 1)}>← anterioare</Link>}
-              <span className="hint">
-                {" "}
-                pagina {page + 1} din {Math.ceil(group.total / 50)}{" "}
-              </span>
-              {(page + 1) * 50 < group.total && (
-                <Link href={groupUrl(page + 1)}>următoare →</Link>
-              )}
-            </div>
-          )}
-        </section>
-      )}
 
       <section className="section">
         <h2>Autorități cu risc ridicat</h2>
