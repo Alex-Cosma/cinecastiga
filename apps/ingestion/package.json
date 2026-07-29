@@ -34,11 +34,11 @@
     "@seap/db": "workspace:*",
     "@seap/domain": "workspace:*",
     "@seap/scraper-clients": "workspace:*",
-    "drizzle-orm": "^0.44.0",
+    "drizzle-orm": "^0.45.2",
     "fast-xml-parser": "^4.5.0",
     "graphile-worker": "^0.16.6",
-    "zod": "^4.4.3",
-    "meilisearch": "^0.59.0"
+    "meilisearch": "^0.59.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^22",

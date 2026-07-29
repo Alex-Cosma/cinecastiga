@@ -804,3 +804,54 @@ td.val-suspect .val-warn { color: var(--accent); text-decoration: none; display:
   font-size: 11.5px; color: #9a6a12; background: #f6edd8; border: 1px dashed #e3cf9c;
   border-radius: 6px; padding: 7px 10px; margin: 10px 0 6px;
 }
+
+/* auth: login / admin / cont */
+.auth-card { max-width: 380px; margin: 48px auto 0; }
+.auth-form { display: flex; flex-direction: column; gap: 14px; margin-top: 16px; }
+.auth-form label { display: flex; flex-direction: column; gap: 5px; font-size: 13px; color: var(--muted); font-weight: 600; }
+.auth-form input {
+  font: inherit; padding: 9px 11px; border: 1px solid var(--line);
+  border-radius: 8px; background: var(--surface); color: var(--ink);
+}
+.auth-form input:focus { outline: none; border-color: var(--accent); }
+.auth-form button[type="submit"] {
+  font: inherit; font-weight: 600; padding: 10px 14px; border: 1px solid var(--accent);
+  border-radius: 8px; background: var(--accent); color: #fff; cursor: pointer;
+}
+.auth-form button[type="submit"]:disabled { opacity: .6; cursor: default; }
+.auth-form .auth-link {
+  font: inherit; background: none; border: none; color: var(--accent);
+  cursor: pointer; padding: 0; align-self: flex-start;
+}
+.auth-form .auth-link:hover { text-decoration: underline; }
+.auth-form-row { flex-direction: row; align-items: flex-end; flex-wrap: wrap; }
+.auth-form-row label { min-width: 180px; }
+.auth-err { color: var(--accent); font-size: 13px; margin: 8px 0 0; }
+.auth-info { color: var(--muted); font-size: 13px; margin: 8px 0 0; }
+.auth-hint { margin-top: 22px; }
+.auth-signout {
+  font: inherit; padding: 8px 14px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--surface); color: var(--ink); cursor: pointer;
+}
+.auth-signout:hover { border-color: var(--accent); color: var(--accent); }
+.admin-tablewrap { overflow-x: auto; }
+.admin-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.admin-table th, .admin-table td {
+  text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line);
+  vertical-align: top; white-space: nowrap;
+}
+.admin-table tr.is-banned td { color: var(--muted); }
+.admin-actions { display: flex; gap: 10px; align-items: baseline; }
+.admin-actions form { display: inline; }
+.admin-actions button {
+  font: inherit; font-size: 12.5px; background: none; border: none;
+  color: var(--accent); cursor: pointer; padding: 0;
+}
+.admin-actions button:hover { text-decoration: underline; }
+.admin-actions details { display: inline; }
+.admin-actions summary { font-size: 12.5px; color: var(--accent); cursor: pointer; }
+.admin-actions details form { display: flex; gap: 6px; margin-top: 6px; }
+.admin-actions details input {
+  font: inherit; font-size: 12.5px; padding: 4px 8px;
+  border: 1px solid var(--line); border-radius: 6px;
+}

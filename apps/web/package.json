@@ -9,19 +9,25 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "seed:admin": "tsx scripts/seed-admin.ts"
   },
   "dependencies": {
     "@seap/db": "workspace:*",
+    "better-auth": "^1.6.25",
+    "drizzle-orm": "^0.45.2",
+    "meilisearch": "^0.59.0",
     "next": "^16.2.10",
+    "nodemailer": "^9.0.3",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "meilisearch": "^0.59.0"
+    "react-dom": "^19.2.0"
   },
   "devDependencies": {
     "@types/node": "^22",
+    "@types/nodemailer": "^8.0.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "tsx": "^4.19.0",
     "typescript": "^5.8.0",
     "vitest": "^3.0.0"
   }
