@@ -887,19 +887,54 @@ export async function runSpec(
               ...pagedMeta(Number(cnt?.[0]?.t ?? 0)),
             };
           }
+          const sortKey = tableOpts.sort ?? (spec.measure === "count" ? "count" : "value");
+          const cnt = paged
+            ? ((await s`
+                select count(distinct ${idCol}) t from ${txtAgg} d
+                where ${whereFrag()} and ${idCol} is not null
+              `) as unknown as { t: string }[])
+            : null;
+          if (sortKey === "value" || sortKey === "count" || sortKey === "percap") {
+            // Aggregate WITHOUT names (index-only over the slim union — names
+            // would force a heap fetch per row, a full seq scan on big
+            // counties), then attach display names for just the winners.
+            const aggSort = sortKey === "count" ? s`n` : s`v`;
+            const r = (await s`
+              with topg as (
+                select ${idCol} id, coalesce(sum(d.closing_value), 0) v, count(*) n
+                from ${txtAgg} d
+                where ${whereFrag()} and ${idCol} is not null
+                group by ${idCol}
+                order by ${aggSort} ${tableOpts.sort ? dir : s`desc`}, ${idCol}
+                ${limitFrag}
+              )
+              select t.id, coalesce(max(ep.name_display), '(fără nume)') nm,
+                     max(ep.county) co, t.v, t.n
+              from topg t
+              left join marts.entity_profile ep on ep.entity_id = t.id and ep.role = ${dim}
+              group by t.id, t.v, t.n
+              order by ${sortKey === "count" ? s`t.n` : s`t.v`} ${tableOpts.sort ? dir : s`desc`}, t.id
+            `) as unknown as { id: string; nm: string; co: string | null; v: string; n: string }[];
+            return {
+              block: "table",
+              rows: r.map((p) => ({
+                entityId: String(p.id),
+                name: p.nm,
+                county: p.co,
+                value: Number(p.v),
+                count: Number(p.n),
+                population: null,
+              })),
+              ...pagedMeta(Number(cnt?.[0]?.t ?? 0)),
+            };
+          }
           const sortFrag = {
             name: s`max(${nameCol})`,
             county: s`max(d.county)`,
             value: s`coalesce(sum(d.closing_value), 0)`,
             count: s`count(*)`,
             percap: s`coalesce(sum(d.closing_value), 0)`,
-          }[tableOpts.sort ?? (spec.measure === "count" ? "count" : "value")];
-          const cnt = paged
-            ? ((await s`
-                select count(distinct ${idCol}) t from ${txtAggNames} d
-                where ${whereFrag()} and ${idCol} is not null
-              `) as unknown as { t: string }[])
-            : null;
+          }[sortKey];
           const r = (await s`
             select ${idCol} id, max(${nameCol}) nm, max(d.county) co,
                    coalesce(sum(d.closing_value), 0) v, count(*) n
