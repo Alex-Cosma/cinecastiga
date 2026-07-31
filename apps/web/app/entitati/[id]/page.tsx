@@ -18,6 +18,7 @@ import { countryName } from "@/lib/ted";
 import { formatRon, formatRonFull, formatInt, cleanName } from "@/lib/format";
 import { FLAG_META, criBand } from "@/lib/flags";
 import { daUrl, registryLinks } from "@/lib/elicitatie";
+import ClipButton from "@/components/ClipButton";
 import { encodeSpec } from "@/lib/ask/permalink";
 import YearMiniChart from "./YearMiniChart";
 import TxTable from "./TxTable";
@@ -205,6 +206,7 @@ export default async function EntityPage({
           {cui ? <span className="note">CUI {cui}</span> : null}
         </div>
         <div className="ext-links">
+          <ClipButton kind="entity" refId={id} label={cleanName(row.name)} />
           {/* No e-licitatie entity link: SICAP has no per-entity page, and every
               transaction row already deep-links to its exact record */}
           {cui

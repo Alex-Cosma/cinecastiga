@@ -15,7 +15,7 @@ export default async function ContPage() {
     <>
       <h1 className="page-title">Contul meu</h1>
       <p className="page-sub">
-        {user.name} · {user.email}
+        {user.name} · {user.email} · <Link href="/anchete">anchetele mele →</Link>
         {user.role === "admin" && (
           <>
             {" "}

@@ -880,3 +880,64 @@ td.val-suspect .val-warn { color: var(--accent); text-decoration: none; display:
 .ask-scatterleg .dsw.hi { background: #9a2b1f; }
 .ask-scatterleg .dsw.mid { background: #c9a24a; }
 .ask-scatterleg .dsw.top { border: 1.5px solid #4a5d6b; }
+
+/* anchete: clip button + dosar */
+.clipbtn { position: relative; display: inline-block; }
+.clipbtn-t {
+  font: inherit; font-size: 12.5px; padding: 4px 10px; border: 1px solid var(--line);
+  border-radius: 7px; background: var(--surface); color: var(--ink); cursor: pointer;
+}
+.clipbtn-t:hover { border-color: var(--accent); color: var(--accent); }
+.clipbtn-pop {
+  position: absolute; z-index: 40; top: calc(100% + 6px); left: 0; width: 300px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 12px 34px rgba(0,0,0,.14); padding: 12px; display: flex;
+  flex-direction: column; gap: 9px; font-size: 13px;
+}
+.clipbtn-l { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); font-weight: 600; }
+.clipbtn-l input, .clipbtn-l select, .clipbtn-l textarea {
+  font: inherit; font-size: 13px; padding: 6px 8px; border: 1px solid var(--line);
+  border-radius: 7px; background: var(--surface); color: var(--ink);
+}
+.clipbtn-save {
+  font: inherit; font-weight: 600; font-size: 13px; padding: 7px 10px; cursor: pointer;
+  border: 1px solid var(--accent); border-radius: 7px; background: var(--accent); color: #fff;
+}
+.clipbtn-save:disabled { opacity: .6; }
+.clipbtn-done { font-size: 13px; }
+.dosar-meta { margin: 6px 0 4px; font-size: 13px; }
+.dosar-meta summary { color: var(--accent); cursor: pointer; }
+.dosar-meta select { font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.dosar-del { font: inherit; font-size: 12.5px; background: none; border: none; color: var(--accent); cursor: pointer; padding: 0; }
+.dosar-del:hover { text-decoration: underline; }
+.dosar-addnote { margin: 10px 0 16px; max-width: 560px; }
+.dosar-addnote textarea { font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; resize: vertical; }
+.dosar-addnote button { align-self: flex-start; }
+.cast-members { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.cast-chip {
+  font-size: 12.5px; border: 1px solid var(--line); background: var(--surface);
+  border-radius: 999px; padding: 3px 10px;
+}
+.cast-rels { font-size: 13.5px; }
+.clip-list { display: flex; flex-direction: column; gap: 10px; }
+.clip-card {
+  border: 1px solid var(--line); border-radius: 10px; background: var(--surface);
+  padding: 10px 14px;
+}
+.clip-card.pinned { border-color: var(--bar); }
+.clip-head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; margin-bottom: 4px; }
+.clip-kind { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
+.clip-pin-mark { font-size: 11px; color: var(--bar); font-weight: 700; }
+.clip-drift { font-size: 12px; color: var(--accent); }
+.clip-date { margin-left: auto; font-size: 12px; color: var(--muted); }
+.clip-title { font-size: 14.5px; font-weight: 600; }
+.clip-detail { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.clip-why { font-size: 13px; margin-top: 5px; font-style: italic; }
+.clip-note-body { font-size: 13.5px; white-space: pre-wrap; }
+.clip-actions { display: flex; gap: 14px; align-items: baseline; margin-top: 8px; font-size: 12.5px; }
+.clip-actions button { font: inherit; font-size: 12.5px; background: none; border: none; color: var(--accent); cursor: pointer; padding: 0; }
+.clip-actions button:hover { text-decoration: underline; }
+.clip-actions summary { color: var(--accent); cursor: pointer; }
+.clip-actions details form { display: flex; gap: 6px; margin-top: 6px; align-items: flex-start; }
+.clip-actions details textarea { font: inherit; font-size: 12.5px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; width: 320px; max-width: 70vw; }
+.clip-remove:hover { color: #7a1d14; }
