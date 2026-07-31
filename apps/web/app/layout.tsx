@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
 import FooterAuthLink from "./FooterAuthLink";
+import HeaderUserNav from "./HeaderUserNav";
 
 // Header nav + search box are parked in app/_legacy/HeaderNav.tsx while the
 // home page is search-only.
@@ -21,6 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Link href="/" className="brand">
               SEAP <span>Transparent</span>
             </Link>
+            <HeaderUserNav />
           </div>
         </header>
         <div className="coverage-line">
