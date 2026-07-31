@@ -263,6 +263,41 @@ function txFragment(sql: DbSql, dataset: "all" | "da" | "contracts") {
   )`;
 }
 
+
+/**
+ * Slim union for AGGREGATE blocks. Postgres does not prune unreferenced
+ * union-branch columns through the appendrel, so the wide fragment drags
+ * ref/notice/ted columns into every aggregate and blocks index-only scans
+ * (measured: 3.3s wide vs 0.22s slim on county aggregates). Aggregates never
+ * display row-level fields, so they only get what filters and grouping can
+ * touch; `withNames` adds the display-name columns needed when the block
+ * groups by entity or a kind filter matches on authority_name.
+ */
+function txAggFragment(sql: DbSql, dataset: "all" | "da" | "contracts", withNames: boolean) {
+  if (dataset === "contracts") return sql`marts.contract_transactions`;
+  if (dataset === "da") return sql`marts.da_transactions`;
+  if (withNames)
+    return sql`(
+    select authority_id, authority_name, supplier_id, supplier_name, county,
+           cpv_code, closing_value, finalization_date,
+           null::boolean as is_single_bidder, 'da'::text as src
+    from marts.da_transactions
+    union all
+    select authority_id, authority_name, supplier_id, supplier_name, county,
+           cpv_code, closing_value, finalization_date, is_single_bidder, 'contracts'::text
+    from marts.contract_transactions
+  )`;
+  return sql`(
+    select authority_id, supplier_id, county, cpv_code, closing_value,
+           finalization_date, null::boolean as is_single_bidder, 'da'::text as src
+    from marts.da_transactions
+    union all
+    select authority_id, supplier_id, county, cpv_code, closing_value,
+           finalization_date, is_single_bidder, 'contracts'::text
+    from marts.contract_transactions
+  )`;
+}
+
 /** Look up CPV names for a set of tree-node codes (2- or 4-digit stems). */
 async function cpvNamesFor(
   sql: DbSql,
@@ -539,7 +574,7 @@ export async function runSpec(
         .reduce((a, b) => sql`${a} or ${b}`);
       parts.push(sql`(${ors})`);
     }
-    if (w.county) parts.push(sql`lower(unaccent(d.county)) = ${fold(w.county)}`);
+    if (w.county) parts.push(sql`d.county = ${w.county}`);
     if (w.kind) {
       const ors = KIND_PATTERNS[w.kind]
         .map((p) => sql`lower(unaccent(d.authority_name)) like ${fold(p)}`)
@@ -573,6 +608,24 @@ export async function runSpec(
     }
     return parts.reduce((a, b) => sql`${a} and ${b}`);
   };
+
+  // aggregate fragments (see txAggFragment): slim unless a kind filter needs
+  // authority_name; the named variant serves entity-grouped blocks
+  const txtAggNames = txAggFragment(sql, dataset, true);
+  const txtAgg = w.kind ? txtAggNames : txAggFragment(sql, dataset, false);
+  // completely bare national query (no filter of any kind, default stream):
+  // serve the precomputed agg_* marts — same union, same plafond semantics,
+  // rebuilt with the other marts. Live scans over 20M rows cost 12-17s here.
+  const bare =
+    dataset === "all" &&
+    !w.county && w.cpvPrefixes.length === 0 && !w.kind &&
+    !w.authorityId && !w.supplierId && w.uatSiruta === null &&
+    !w.singleBidder && w.adminSupplierIds === null &&
+    w.minEmployees === null && w.maxEmployees === null &&
+    w.yearFrom === null && w.yearTo === null &&
+    w.monthFrom === null && w.monthTo === null;
+  const aggV = w.plafond === "none" ? sql`v_all` : sql`v_plaf`;
+  const aggN = w.plafond === "none" ? sql`n_all` : sql`n_plaf`;
 
   // --- WHERE fragment over marts.entity_flags (risk-centric blocks)
   const efWhere = (role: "authority" | "supplier", minDas: number) => {
@@ -625,10 +678,24 @@ export async function runSpec(
 
       switch (spec.block) {
         case "stat": {
+          if (bare) {
+            const r = (await s`
+              select src, ${aggV} v, ${aggN} n from marts.agg_national
+            `) as unknown as { src: "da" | "contracts"; v: string; n: string }[];
+            const byStream = r.map((x) => ({ src: x.src, value: Number(x.v), count: Number(x.n) }));
+            return {
+              block: "stat",
+              stat: {
+                value: byStream.reduce((a, b) => a + b.value, 0),
+                count: byStream.reduce((a, b) => a + b.count, 0),
+                byStream,
+              },
+            };
+          }
           if (dataset === "all") {
             const r = (await s`
               select d.src, coalesce(sum(d.closing_value), 0) v, count(*) n
-              from ${txt} d
+              from ${txtAgg} d
               where ${whereFrag()}
               group by d.src
             `) as unknown as { src: "da" | "contracts"; v: string; n: string }[];
@@ -648,7 +715,7 @@ export async function runSpec(
           }
           const r = (await s`
             select coalesce(sum(d.closing_value), 0) v, count(*) n
-            from ${txt} d
+            from ${txtAgg} d
             where ${whereFrag()}
           `) as unknown as { v: string; n: string }[];
           return {
@@ -658,10 +725,21 @@ export async function runSpec(
         }
 
         case "timeseries": {
+          if (bare) {
+            const r = (await s`
+              select y, ${aggV} v, ${aggN} n from marts.agg_years order by y limit 60
+            `) as unknown as { y: string; v: string; n: string }[];
+            return {
+              block: "timeseries",
+              series: r
+                .filter((p) => /^\d{4}$/.test(p.y))
+                .map((p) => ({ year: Number(p.y), value: Number(p.v), count: Number(p.n) })),
+            };
+          }
           const r = (await s`
             select substr(d.finalization_date, 1, 4) y,
                    coalesce(sum(d.closing_value), 0) v, count(*) n
-            from ${txt} d
+            from ${txtAgg} d
             where ${whereFrag()}
             group by 1 order by 1
             limit 60
@@ -675,9 +753,18 @@ export async function runSpec(
         }
 
         case "map": {
+          if (bare) {
+            const r = (await s`
+              select county c, ${aggV} v, ${aggN} n from marts.agg_map_county order by 2 desc limit 200
+            `) as unknown as { c: string; v: string; n: string }[];
+            return {
+              block: "map",
+              counties: r.map((p) => ({ county: p.c, value: Number(p.v), count: Number(p.n) })),
+            };
+          }
           const r = (await s`
             select d.county c, coalesce(sum(d.closing_value), 0) v, count(*) n
-            from ${txt} d
+            from ${txtAgg} d
             where ${whereFrag()} and d.county is not null
             group by 1 order by v desc
             limit 200
@@ -700,6 +787,28 @@ export async function runSpec(
           const dim = spec.dim ?? "authority";
           const pagedMeta = (total: number) =>
             paged ? { total, page, pageSize: TABLE_PAGE_SIZE } : {};
+          if (bare && !paged && spec.measure !== "value_per_capita") {
+            const ord =
+              spec.measure === "count" ? s`n_all desc, eid` : s`v_plaf desc, eid`;
+            const r = (await s`
+              select eid id, nm, county co, ${aggV} v, ${aggN} n
+              from marts.agg_top_entities
+              where role = ${dim}
+              order by ${ord}
+              limit ${topN}
+            `) as unknown as { id: string; nm: string; co: string | null; v: string; n: string }[];
+            return {
+              block: "table",
+              rows: r.map((p) => ({
+                entityId: String(p.id),
+                name: p.nm,
+                county: p.co,
+                value: Number(p.v),
+                count: Number(p.n),
+                population: null,
+              })),
+            };
+          }
           if (dim === "county") {
             const sortFrag = {
               name: s`c`,
@@ -710,13 +819,13 @@ export async function runSpec(
             }[tableOpts.sort ?? (spec.measure === "count" ? "count" : "value")];
             const cnt = paged
               ? ((await s`
-                  select count(distinct d.county) t from ${txt} d
+                  select count(distinct d.county) t from ${txtAgg} d
                   where ${whereFrag()} and d.county is not null
                 `) as unknown as { t: string }[])
               : null;
             const r = (await s`
               select d.county c, coalesce(sum(d.closing_value), 0) v, count(*) n
-              from ${txt} d
+              from ${txtAgg} d
               where ${whereFrag()} and d.county is not null
               group by 1
               order by ${sortFrag} ${tableOpts.sort ? dir : s`desc`}, c
@@ -748,7 +857,7 @@ export async function runSpec(
             const cnt = paged
               ? ((await s`
                   select count(distinct d.authority_id) t
-                  from ${txt} d
+                  from ${txtAggNames} d
                   join marts.entity_profile ep
                     on ep.entity_id = d.authority_id and ep.role = 'authority'
                   where ${whereFrag()} and ep.population > 0
@@ -757,7 +866,7 @@ export async function runSpec(
             const r = (await s`
               select d.authority_id id, max(d.authority_name) nm, max(d.county) co,
                      coalesce(sum(d.closing_value), 0) v, count(*) n, max(ep.population) pop
-              from ${txt} d
+              from ${txtAggNames} d
               join marts.entity_profile ep
                 on ep.entity_id = d.authority_id and ep.role = 'authority'
               where ${whereFrag()} and ep.population > 0
@@ -787,14 +896,14 @@ export async function runSpec(
           }[tableOpts.sort ?? (spec.measure === "count" ? "count" : "value")];
           const cnt = paged
             ? ((await s`
-                select count(distinct ${idCol}) t from ${txt} d
+                select count(distinct ${idCol}) t from ${txtAggNames} d
                 where ${whereFrag()} and ${idCol} is not null
               `) as unknown as { t: string }[])
             : null;
           const r = (await s`
             select ${idCol} id, max(${nameCol}) nm, max(d.county) co,
                    coalesce(sum(d.closing_value), 0) v, count(*) n
-            from ${txt} d
+            from ${txtAggNames} d
             where ${whereFrag()} and ${idCol} is not null
             group by ${idCol}
             order by ${sortFrag} ${tableOpts.sort ? dir : s`desc`}, ${idCol}
@@ -921,7 +1030,7 @@ export async function runSpec(
           const r = (await s`
             select substr(d.cpv_code, 1, ${stemLen}) stem,
                    coalesce(sum(d.closing_value), 0) v, count(*) n
-            from ${txt} d
+            from ${txtAgg} d
             where ${whereFrag()} and d.cpv_code is not null
             group by 1 order by v desc
             limit 40
@@ -1019,7 +1128,7 @@ export async function runSpec(
             select ${partnerId} pid, max(${partnerName}) pnm,
                    substr(d.cpv_code, 1, 2) stem,
                    coalesce(sum(d.closing_value), 0) v
-            from ${txt} d
+            from ${txtAggNames} d
             where ${whereFrag({ entityIds: false })} and ${focalCol} = ${focalId}
               and ${partnerId} is not null and d.cpv_code is not null
             group by 1, 3
@@ -1079,7 +1188,7 @@ export async function runSpec(
           const r = (await s`
             select ${partnerId} pid, max(${partnerName}) pnm,
                    coalesce(sum(d.closing_value), 0) v, count(*) n
-            from ${txt} d
+            from ${txtAggNames} d
             where ${whereFrag({ entityIds: false })} and ${focalCol} = ${focalId}
               and ${partnerId} is not null
             group by 1
@@ -1213,7 +1322,7 @@ export async function runSpec(
               select d.county c,
                      coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yA)}), 0) va,
                      coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yB)}), 0) vb
-              from ${txt} d
+              from ${txtAggNames} d
               where ${whereFrag({ years: false })} and d.county is not null
                 and substr(d.finalization_date,1,4) in (${String(yA)}, ${String(yB)})
               group by 1
@@ -1242,7 +1351,7 @@ export async function runSpec(
             select ${idCol} id, max(${nameCol}) nm, max(d.county) co,
                    coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yA)}), 0) va,
                    coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yB)}), 0) vb
-            from ${txt} d
+            from ${txtAggNames} d
             where ${whereFrag({ years: false })} and ${idCol} is not null
               and substr(d.finalization_date,1,4) in (${String(yA)}, ${String(yB)})
             group by ${idCol}
@@ -1449,7 +1558,7 @@ export async function runRows(
           .reduce((a, b) => sql`${a} or ${b}`);
         parts.push(sql`(${ors})`);
       }
-      if (w.county) parts.push(sql`lower(unaccent(d.county)) = ${fold(w.county)}`);
+      if (w.county) parts.push(sql`d.county = ${w.county}`);
       if (w.kind) {
         const ors = KIND_PATTERNS[w.kind]
           .map((pat) => sql`lower(unaccent(d.authority_name)) like ${fold(pat)}`)

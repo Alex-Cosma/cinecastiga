@@ -209,6 +209,86 @@ export async function runFlagMarts(
         and not ('da_split' = any(coalesce(dt.da_flags, '{}')))
     `;
 
+    // ── agg_* (bare-query shortcuts for the ask engine) ─────────────────────
+    // Precomputed answers for completely unfiltered national questions (map,
+    // top entities, total, per-year) over BOTH channels. Must mirror the ask
+    // engine's live semantics exactly: closing_value > 0, and the 2M DA
+    // plausibility plafond as the _plaf variants (contracts always count).
+    // Runs here (not in normalize/marts) because da_transactions is final
+    // only after this stage.
+    await q`
+      drop table if exists marts.agg_map_county, marts.agg_top_entities,
+                          marts.agg_national, marts.agg_years
+    `;
+    await q`
+      create table marts.agg_map_county as
+      select county,
+             coalesce(sum(cv) filter (where plaf), 0) v_plaf, count(*) filter (where plaf) n_plaf,
+             coalesce(sum(cv), 0) v_all, count(*) n_all
+      from (
+        select county, closing_value cv, (closing_value <= 2000000) plaf
+        from marts.da_transactions where closing_value > 0
+        union all
+        select county, closing_value, true from marts.contract_transactions where closing_value > 0
+      ) x where county is not null group by county
+    `;
+    await q`alter table marts.agg_map_county add primary key (county)`;
+    await q`
+      create table marts.agg_national as
+      select src,
+             coalesce(sum(cv) filter (where plaf), 0) v_plaf, count(*) filter (where plaf) n_plaf,
+             coalesce(sum(cv), 0) v_all, count(*) n_all
+      from (
+        select 'da'::text src, closing_value cv, (closing_value <= 2000000) plaf
+        from marts.da_transactions where closing_value > 0
+        union all
+        select 'contracts', closing_value, true from marts.contract_transactions where closing_value > 0
+      ) x group by src
+    `;
+    await q`alter table marts.agg_national add primary key (src)`;
+    await q`
+      create table marts.agg_years as
+      select y,
+             coalesce(sum(cv) filter (where plaf), 0) v_plaf, count(*) filter (where plaf) n_plaf,
+             coalesce(sum(cv), 0) v_all, count(*) n_all
+      from (
+        select substr(finalization_date, 1, 4) y, closing_value cv, (closing_value <= 2000000) plaf
+        from marts.da_transactions where closing_value > 0
+        union all
+        select substr(finalization_date, 1, 4), closing_value, true
+        from marts.contract_transactions where closing_value > 0
+      ) x where y is not null group by y
+    `;
+    await q`alter table marts.agg_years add primary key (y)`;
+    await q`
+      create table marts.agg_top_entities as
+      with base as (
+        select authority_id eid, 'authority'::text role, authority_name nm, county,
+               closing_value cv, (closing_value <= 2000000) plaf
+        from marts.da_transactions where closing_value > 0
+        union all
+        select authority_id, 'authority', authority_name, county, closing_value, true
+        from marts.contract_transactions where closing_value > 0
+        union all
+        select supplier_id, 'supplier', supplier_name, county, closing_value, (closing_value <= 2000000)
+        from marts.da_transactions where closing_value > 0
+        union all
+        select supplier_id, 'supplier', supplier_name, county, closing_value, true
+        from marts.contract_transactions where closing_value > 0
+      ), g as (
+        select role, eid, max(nm) nm, max(county) county,
+               coalesce(sum(cv) filter (where plaf), 0) v_plaf, count(*) filter (where plaf) n_plaf,
+               coalesce(sum(cv), 0) v_all, count(*) n_all
+        from base where eid is not null group by role, eid
+      )
+      select role, eid, nm, county, v_plaf, n_plaf, v_all, n_all from (
+        select g.*, row_number() over (partition by role order by v_plaf desc, eid) rv,
+                    row_number() over (partition by role order by n_all desc, eid) rn
+        from g
+      ) r where rv <= 2000 or rn <= 2000
+    `;
+    await q`alter table marts.agg_top_entities add primary key (role, eid)`;
+
     const [ac] = await q`select count(*)::int c from marts.authority_concentration`;
     const [tp] = await q`select count(*)::int c from marts.entity_top_partners`;
     const [ef] = await q`select count(*)::int c from marts.entity_flags`;
