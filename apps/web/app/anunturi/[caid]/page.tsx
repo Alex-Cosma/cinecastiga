@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getAwardNoticeDetail } from "@/lib/marts";
 import { formatRon, formatRonFull, formatInt, cleanName } from "@/lib/format";
 import { awardUrl } from "@/lib/elicitatie";
+import ClipButton from "@/components/ClipButton";
 
 /**
  * Award-notice page — the "mother" of its contracts: one procedure, N lots.
@@ -37,6 +38,7 @@ export default async function NoticePage({
     <>
       <div className="profile-head">
         <h1>{n.cpvName ? cleanName(n.cpvName) : `Anunț de atribuire ${n.noticeNo ?? caid}`}</h1>
+        <ClipButton kind="notice" refId={String(caid)} label={n.noticeNo ?? String(caid)} />
         <div>
           <span className="badge plain">anunț de atribuire</span>
           {n.procedureType && <span className="badge plain">{n.procedureType}</span>}

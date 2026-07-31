@@ -4,6 +4,7 @@ import { getContractDetail } from "@/lib/marts";
 import { formatRon, formatRonFull, formatInt, cleanName } from "@/lib/format";
 import { FLAG_META } from "@/lib/flags";
 import { awardUrl } from "@/lib/elicitatie";
+import ClipButton from "@/components/ClipButton";
 import { encodeSpec } from "@/lib/ask/permalink";
 
 /**
@@ -63,6 +64,7 @@ export default async function ContractPage({
     <>
       <div className="profile-head">
         <h1>{cleanName(headline)}</h1>
+        <ClipButton kind="contract" refId={String(nid)} label={cleanName(headline)} />
         <div>
           <span className="badge plain">contract (peste prag)</span>
           {c.procedureType && <span className="badge plain">{c.procedureType}</span>}

@@ -1,5 +1,7 @@
 "use client";
 
+import ClipButton from "@/components/ClipButton";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { formatRon, formatRonFull, formatInt, cleanName } from "@/lib/format";
@@ -477,6 +479,12 @@ export default function AskPanel({
               <button type="button" className="ask-sqltoggle" onClick={() => setShowSql((s) => !s)}>
                 vezi interogarea (avansat) {showSql ? "▴" : "▾"}
               </button>
+              <ClipButton
+                kind="query"
+                spec={resp.spec}
+                snapshot={{ pills: resp.pills ?? [] }}
+                label={(resp.pills ?? []).join(" · ")}
+              />
             </div>
             {showSql && resp.displaySql && (
               <div>
