@@ -22,7 +22,14 @@ body {
   color: var(--ink);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  /* sticky footer: main stretches, footer sits at the viewport bottom even
+     on short pages */
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
 }
+main { flex: 1; display: flex; }
+main > .wrap { width: 100%; flex: 1; }
 
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
@@ -738,6 +745,8 @@ a.col:hover { text-decoration: none; }
 .ask-refine:hover { border-color: var(--accent); color: var(--accent); }
 
 .home-stats { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin: 38px 0 8px; }
+.home-page { display: flex; flex-direction: column; min-height: 100%; }
+.home-page .home-stats { margin-top: auto; padding: 30px 0 26px; }
 .hstat { text-align: center; padding: 8px 18px; }
 .hstat .v { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .hstat .l { font-size: 12px; color: var(--muted); }
