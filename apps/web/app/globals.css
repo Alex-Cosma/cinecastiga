@@ -745,7 +745,10 @@ a.col:hover { text-decoration: none; }
 .ask-refine:hover { border-color: var(--accent); color: var(--accent); }
 
 .home-stats { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin: 38px 0 8px; }
-.home-page { display: flex; flex-direction: column; min-height: 100%; margin-bottom: -56px; }
+/* the height chain .wrap never stretched its children, so margin-top:auto
+   had nothing to push against — make the wrap a flex column on the home page */
+main > .wrap:has(> .home-page) { display: flex; flex-direction: column; }
+.home-page { flex: 1; display: flex; flex-direction: column; margin-bottom: -56px; }
 .home-page .home-stats { margin-top: auto; padding: 34px 0 18px; }
 .hstat { text-align: center; padding: 8px 18px; }
 .hstat .v { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
