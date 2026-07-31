@@ -13,7 +13,7 @@ export default async function HomePage() {
   const [headline, flagCount] = await Promise.all([getHeadline(), getFlagInstanceCount()]);
 
   return (
-    <>
+    <div className="home-page">
       <div className="home-hero">
         <h1>Vezi cine cheltuie banii publici — și cum</h1>
         <p>
@@ -43,6 +43,6 @@ export default async function HomePage() {
           <div className="l">semnale de risc</div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
