@@ -745,8 +745,8 @@ a.col:hover { text-decoration: none; }
 .ask-refine:hover { border-color: var(--accent); color: var(--accent); }
 
 .home-stats { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin: 38px 0 8px; }
-.home-page { display: flex; flex-direction: column; min-height: 100%; }
-.home-page .home-stats { margin-top: auto; padding: 30px 0 26px; }
+.home-page { display: flex; flex-direction: column; min-height: 100%; margin-bottom: -56px; }
+.home-page .home-stats { margin-top: auto; padding: 34px 0 18px; }
 .hstat { text-align: center; padding: 8px 18px; }
 .hstat .v { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .hstat .l { font-size: 12px; color: var(--muted); }
