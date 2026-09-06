@@ -161,7 +161,7 @@ export default function ClipButton({
                   </label>
                   {err && <div className="auth-err">{err}</div>}
                   <button type="button" className="clipbtn-save" disabled={busy} onClick={() => void save()}>
-                    {busy ? "…" : "salvează proba"}
+                    {busy ? "…" : sel ? "salvează proba" : "creează ancheta și salvează proba"}
                   </button>
                 </>
               )}
