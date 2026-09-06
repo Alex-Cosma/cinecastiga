@@ -178,10 +178,6 @@ export default async function EntityPage({
 
   return (
     <>
-      <Link href="/semnale" className="back">
-        ← Semnale
-      </Link>
-
       {/* Identity */}
       <div className="profile-head">
         <h1>{cleanName(row.name)}</h1>
