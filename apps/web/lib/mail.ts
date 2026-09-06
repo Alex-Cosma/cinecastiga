@@ -8,12 +8,11 @@ import nodemailer, { type Transporter } from "nodemailer";
 const g = globalThis as unknown as { __seapMailer?: Transporter | null };
 
 function transporter(): Transporter | null {
-  if (g.__seapMailer !== undefined) return g.__seapMailer;
+  if (g.__seapMailer) return g.__seapMailer;
+  // Not cached when unset: next dev hot-reloads .env.local, so SMTP can be
+  // configured without restarting the server.
   const host = process.env.SMTP_HOST;
-  if (!host) {
-    g.__seapMailer = null;
-    return null;
-  }
+  if (!host) return null;
   g.__seapMailer = nodemailer.createTransport({
     host,
     port: Number(process.env.SMTP_PORT ?? 587),
