@@ -22,6 +22,7 @@ import type {
   BlockData as EngineBlockData,
 } from "@/lib/ask/compile";
 import Builder, { type BuilderSpec } from "./Builder";
+import EntityTypeahead from "./EntityTypeahead";
 
 import { encodeSpec, decodeSpec } from "@/lib/ask/permalink";
 
@@ -346,24 +347,11 @@ export default function AskPanel({
 
       {mode === "search" && (
         <>
-          <form
-            className="ask-box"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (q.trim()) window.location.href = `/cauta?q=${encodeURIComponent(q.trim())}`;
-            }}
-          >
-            <span className="ask-ic" aria-hidden>
-              🔍
-            </span>
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="caută o primărie, un consiliu județean, o firmă…"
-              aria-label="Caută o entitate"
-            />
-            <button type="submit">Caută</button>
-          </form>
+          <EntityTypeahead
+            q={q}
+            setQ={setQ}
+            placeholder="caută o primărie, un consiliu județean, o firmă…"
+          />
           <p className="ask-hint">
             Caută orice autoritate sau firmă din achizițiile publice — profil complet, cu
             tranzacții, parteneri și semnale de risc.

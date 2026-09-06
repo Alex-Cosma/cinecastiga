@@ -52,8 +52,20 @@ export async function indexEntities(
     searchableAttributes: ["name", "cui"],
     filterableAttributes: ["roles", "county"],
     sortableAttributes: ["total"],
-    // Rank exact/prefix name matches first, then by spend on ties.
-    rankingRules: ["words", "typo", "proximity", "attribute", "sort", "exactness"],
+    // All query words + typo tolerance first, then spend (callers pass
+    // sort=total:desc) BEFORE proximity/attribute/exactness — so "cluj" ranks
+    // Municipiul Cluj-Napoca above "Cluj Info Hub" instead of on a tiny
+    // proximity edge. Word-count/typo tiers still keep loose matches below.
+    rankingRules: ["words", "typo", "sort", "proximity", "attribute", "exactness"],
+    // Colloquial institution names → legal registry forms (one-way; mirrors
+    // lib/ask/entity-alias.ts on the web side). City halls are registered as
+    // the UAT itself, county councils as "JUDETUL X (CONSILIUL JUDETEAN)".
+    synonyms: {
+      primaria: ["municipiul", "orasul", "oras", "comuna", "sectorul", "sector"],
+      primarie: ["municipiul", "orasul", "oras", "comuna"],
+      cj: ["judetul", "consiliul judetean"],
+      prefectura: ["institutia prefectului", "prefectul"],
+    },
   });
   await client.tasks.waitForTask(settingsTask.taskUid, { timeout: 120_000 });
 

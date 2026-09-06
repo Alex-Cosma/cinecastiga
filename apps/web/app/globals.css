@@ -334,6 +334,11 @@ table.rank td .src a:hover { color: var(--accent); }
   border-radius: 20px; padding: 6px 13px; font-size: 12.5px; cursor: pointer; font-family: inherit;
 }
 .ask-chip:hover { background: var(--accent-soft); border-color: var(--accent); }
+/* Home typeahead: dropdown hangs under the full-width ask box */
+.ask-search { position: relative; max-width: 720px; }
+.ask-centered .ask-search { margin: 0 auto; }
+.ask-dropdown { left: 0; right: 0; width: auto; max-width: none; top: calc(100% + 4px); text-align: left; }
+.search-dropdown li.search-empty { color: var(--muted); font-size: 13px; cursor: default; }
 .ask-hint { font-size: 12.5px; color: var(--muted); margin-top: 10px; max-width: 720px; }
 .ask-loading { margin-top: 22px; color: var(--muted); font-size: 14px; }
 .ask-loader {
