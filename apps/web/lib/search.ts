@@ -42,6 +42,9 @@ export async function searchEntities(
     .index("entities")
     .search(query, {
       limit: opts.limit ?? 30,
+      // Index ranking has "sort" ahead of proximity/attribute; without this
+      // param that rule is skipped and tiny entities leapfrog big ones.
+      sort: ["total:desc"],
       ...(filter ? { filter } : {}),
       attributesToRetrieve: ["id", "name", "cui", "county", "roles", "total"],
     });
