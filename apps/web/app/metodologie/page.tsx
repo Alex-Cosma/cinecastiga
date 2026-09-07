@@ -85,6 +85,55 @@ export default function MetodologiePage() {
           );
         })}
       </section>
+
+      <section className="section" id="radiografie">
+        <h2>Radiografie</h2>
+        <p>
+          Pagina <em>Radiografie</em> a unei autorități contractante arată tiparele structurale pe care scorul de risc nu le
+          vede: cine depinde de cine, cine împarte loturile, cine feliază achizițiile directe. Toate se recalculează la fiecare
+          reconstrucție a marturilor, pentru fiecare autoritate.
+        </p>
+        <div className="method-card">
+          <div className="method-head">
+            <h3>Dependență reciprocă</h3>
+          </div>
+          <p>
+            Pentru fiecare furnizor cu cel puțin 0,1% din contractele autorității (sau 500 k lei): ponderea lui în cheltuiala
+            autorității, ponderea autorității în tot ce a câștigat el pe SEAP și raportul dintre <strong>valoarea contractată</strong> în
+            ultimii patru ani cu bilanț și <strong>cifra de afaceri</strong> din anii acoperiți de acele contracte. Un contract
+            simplu acoperă anul semnării; un acord-cadru (tipul vine din anunțul de atribuire) acoperă până la 4 ani, valoarea lui
+            fiind un plafon, nu bani încasați. Un raport peste 1 poate însemna plafon nefolosit, încasări viitoare sau lucrări
+            făcute de altcineva; e un semnal, nu o dovadă.
+          </p>
+        </div>
+        <div className="method-card">
+          <div className="method-head">
+            <h3>Carusel de loturi</h3>
+          </div>
+          <p>
+            Doar licitațiile cu cel puțin 3 contracte (loturi), grupate pe clasa CPV (4 cifre). Un consorțiu e un singur
+            câștigător. Tiparele reținute trebuie să se <strong>repete</strong>: <strong>rotația</strong> (3+ câștigători care
+            revin împreună în 2+ licitații), <strong>împărțirea în doi</strong> (2 câștigători care iau împreună toate loturile în
+            2+ licitații), <strong>măturarea</strong> (un câștigător ia toate loturile în 2+ licitații), <strong>consorțiul
+            stabil</strong> (aceiași parteneri în 3+ licitații, indiferent de loturi; verificăm în ONRC dacă membrii au același
+            administrator, identitate = nume + data nașterii). Tăria: <em>puternic</em> = 3+ repetiții, sau ofertant unic dovedit
+            pe 2+ loturi, sau același administrator; <em>mediu</em> = 2 repetiții între 3+ firme sau o măturare; <em>slab</em> în
+            rest. „Aceiași actori în altă parte” caută același set câștigând împreună (2+ membri în aceeași licitație) la alte
+            autorități. Numărul de oferte e publicat de SICAP doar la licitațiile deschise; listele de ofertanți respinși nu există
+            în date, deci orice rotație rămâne pistă.
+          </p>
+        </div>
+        <div className="method-card">
+          <div className="method-head">
+            <h3>Feliere de achiziții directe</h3>
+          </div>
+          <p>
+            Un furnizor apare când are cel puțin 3 achiziții directe din aceeași clasă CPV, într-o fereastră de 60 de zile, a
+            căror sumă depășește plafonul legal pentru servicii și produse (135.060 lei până în 2022, 270.120 lei din 2023).
+            Se reține fereastra cu cel mai mare raport față de plafon. Plafonul pentru lucrări e mai mare și nu e aplicat.
+          </p>
+        </div>
+      </section>
     </>
   );
 }
