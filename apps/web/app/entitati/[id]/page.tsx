@@ -203,6 +203,11 @@ export default async function EntityPage({
         </div>
         <div className="ext-links">
           <ClipButton kind="entity" refId={id} label={cleanName(row.name)} />
+          {isAuth && (
+            <Link href={`/entitati/${id}/radiografie`} className="rx-link">
+              🩻 Radiografie
+            </Link>
+          )}
           {/* No e-licitatie entity link: SICAP has no per-entity page, and every
               transaction row already deep-links to its exact record */}
           {cui

@@ -1,6 +1,7 @@
 import { createDb } from "@seap/db";
 import { runFlags } from "../flags/build.js";
 import { runFlagMarts } from "../flags/marts.js";
+import { runRadiografieMarts } from "../flags/radiografie.js";
 
 /**
  * Recompute DA red-flags into core.flags, then rebuild the flag marts (CRI +
@@ -12,7 +13,8 @@ async function main(): Promise<void> {
   const log = (m: string) => console.log(m);
   const flags = await runFlags(sql, { log });
   const marts = await runFlagMarts(sql, { log });
-  console.log(JSON.stringify({ flags, marts }, null, 2));
+  const radiografie = await runRadiografieMarts(sql, { log });
+  console.log(JSON.stringify({ flags, marts, radiografie }, null, 2));
   await sql.end();
 }
 

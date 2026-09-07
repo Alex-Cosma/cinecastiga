@@ -28,6 +28,7 @@
     "import-onrc": "tsx src/scripts/import-onrc.ts",
     "seed-thresholds": "tsx src/scripts/seed-thresholds.ts",
     "flags": "tsx src/scripts/flags.ts",
+    "radiografie": "tsx src/scripts/radiografie.ts",
     "reset-derived": "tsx src/scripts/reset-derived.ts"
   },
   "dependencies": {
