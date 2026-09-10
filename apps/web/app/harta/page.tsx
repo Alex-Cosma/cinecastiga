@@ -7,8 +7,8 @@ export const dynamic = "force-dynamic";
 
 const BUCKETS = 5;
 // Light → deep, 5 sequential classes (gold to accent-red).
-const COLORS = ["#f3ead0", "#e7c98d", "#d99f57", "#c06a3a", "#9a2b1f"];
-const NO_DATA = "#e9e6dd";
+const COLORS = ["#e6eafb", "#b9c4f0", "#8194de", "#4d66c4", "#233c9c"];
+const NO_DATA = "#e4e7ee";
 
 function quantileThresholds(values: number[]): number[] {
   const sorted = [...values].sort((a, b) => a - b);

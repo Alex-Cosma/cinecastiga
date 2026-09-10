@@ -13,7 +13,17 @@ const XMIN = Math.log10(0.0007),
 const X = (v: number) => M.l + ((Math.log10(Math.max(v, 0.0007)) - XMIN) / (XMAX - XMIN)) * (W - M.l - M.r);
 const Y = (v: number) => M.t + ((1.04 - v) / 1.08) * (H - M.t - M.b);
 const R = (v: number) => 6 + Math.sqrt(v / 1e6) * 3.2;
-const C = { red: "#9a2b1f", gold: "#b08a2e", slate: "#5b6672", ink: "#16130d", muted: "#6b6355", grid: "#ece8df", surface: "#ffffff", accent: "#16130d" };
+// Theme colours read from the CSS tokens at draw time so the canvas follows
+// light/dark like the rest of the page.
+const C = { red: "#c0311c", gold: "#a86f12", slate: "#6d7a90", ink: "#11161f", muted: "#5d6879", grid: "#dfe3ea", surface: "#ffffff", accent: "#11161f" };
+function syncTheme() {
+  if (typeof window === "undefined") return;
+  const cs = getComputedStyle(document.documentElement);
+  const v = (n: string, d: string) => cs.getPropertyValue(n).trim() || d;
+  C.red = v("--risk", C.red); C.gold = v("--amber", C.gold); C.slate = v("--slate", C.slate);
+  C.ink = v("--ink", C.ink); C.muted = v("--muted", C.muted); C.grid = v("--line", C.grid);
+  C.surface = v("--surface", C.surface); C.accent = v("--ink", C.accent);
+}
 
 function colorOf(p: DepRow): string | null {
   if (p.ratio == null) return null;
@@ -29,7 +39,13 @@ function colorOf(p: DepRow): string | null {
 export default function DependencyScatter({ rows, win, authorityName }: { rows: DepRow[]; win: { from: number; to: number }; authorityName: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const [hl, setHl] = useState<string | null>(null);
+  const [themeTick, setThemeTick] = useState(0);
   const tip = useRxTip();
+  useEffect(() => {
+    const on = () => setThemeTick((t) => t + 1);
+    window.addEventListener("themechange", on);
+    return () => window.removeEventListener("themechange", on);
+  }, []);
 
   useEffect(() => {
     const onFocus = (e: Event) => {
@@ -45,8 +61,9 @@ export default function DependencyScatter({ rows, win, authorityName }: { rows: 
     if (!cv) return;
     const ctx = cv.getContext("2d");
     if (!ctx) return;
+    syncTheme();
     ctx.clearRect(0, 0, W, H);
-    const font = "-apple-system, Segoe UI, Inter, Roboto, sans-serif";
+    const font = "IBM Plex Sans, -apple-system, Segoe UI, Roboto, sans-serif";
     ctx.strokeStyle = C.grid;
     ctx.lineWidth = 2;
     ctx.fillStyle = C.muted;
@@ -139,7 +156,7 @@ export default function DependencyScatter({ rows, win, authorityName }: { rows: 
       ctx.strokeText(n, x, y);
       ctx.fillText(n, x, y);
     }
-  }, [rows, hl]);
+  }, [rows, hl, themeTick]);
 
   const locate = (e: React.MouseEvent): DepRow | null => {
     const cv = ref.current;

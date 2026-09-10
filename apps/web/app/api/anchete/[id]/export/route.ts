@@ -102,7 +102,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   lines.push(`# ${inv.title}`);
   lines.push("");
   if (inv.description) lines.push(inv.description, "");
-  lines.push(`*Anexă de probe generată de SEAP Transparent. Status anchetă: ${inv.status}.*`);
+  lines.push(`*Anexă de probe generată de cinecâștigă?. Status anchetă: ${inv.status}.*`);
   lines.push("");
   lines.push(
     "> **Avertisment metodologic:** semnalele de risc și indicele compus (CRI) sunt indicatori statistici, nu dovezi de nereguli. Fiecare cifră derivată poartă versiunea metodologiei; verificați valorile live prin link-urile atașate înainte de publicare.",

@@ -38,7 +38,10 @@ export default function SiteNav() {
     const place = () => {
       const on = nav.querySelector<HTMLElement>("a[data-on='1']");
       if (!on) return setInd(null);
-      setInd({ left: on.offsetLeft, width: on.offsetWidth });
+      // measure against the nav, not the offsetParent (the Explorează link sits in a positioned span)
+      const nr = nav.getBoundingClientRect();
+      const r = on.getBoundingClientRect();
+      setInd({ left: r.left - nr.left, width: r.width });
     };
     place();
     const ro = new ResizeObserver(place);

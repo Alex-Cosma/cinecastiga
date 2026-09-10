@@ -78,8 +78,9 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="auth-card">
-      <h1 className="page-title">Autentificare</h1>
+    <div className="auth-card card">
+      <p className="eyebrow">{step === "creds" ? "pasul 1 din 2" : "pasul 2 din 2"}</p>
+      <h1 className="page-title">{step === "creds" ? "Autentificare" : "Codul din e-mail"}</h1>
       {step === "creds" ? (
         <form className="auth-form" onSubmit={submitCreds}>
           <label>

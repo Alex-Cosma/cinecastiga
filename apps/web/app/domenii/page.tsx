@@ -13,7 +13,7 @@ function fill(value: number, max: number): string {
   const t = max > 0 ? Math.sqrt(value / max) : 0; // sqrt so small tiles stay visible
   const l = 78 - t * 42; // 78% → 36%
   const s = 42 + t * 22;
-  return `hsl(30 ${s}% ${l}%)`;
+  return `hsl(228 ${s}% ${l}%)`;
 }
 
 export default async function DomeniiPage({

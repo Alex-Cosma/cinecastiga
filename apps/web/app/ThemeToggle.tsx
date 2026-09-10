@@ -28,6 +28,7 @@ export default function ThemeToggle() {
       else localStorage.setItem("theme", m);
     } catch {}
     window.setTimeout(() => root.classList.remove("theming"), 500);
+    window.dispatchEvent(new Event("themechange"));
     setMode(m);
   };
 
