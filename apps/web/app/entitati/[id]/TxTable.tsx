@@ -222,8 +222,9 @@ export default function TxTable({
                 </td>
               </tr>
             )}
-            {data?.rows?.map((t) => (
-              <tr key={`${t.src}-${t.sicapDaId}`}>
+            {data?.rows?.map((t, i) => (
+              // consortium contracts come as one row per member with the same contract id
+              <tr key={`${t.src}-${t.sicapDaId}-${t.partnerId ?? i}`}>
                 <td>{t.finalizationDate ? t.finalizationDate.slice(0, 10) : "—"}</td>
                 {showTip && (
                   <td>
