@@ -304,7 +304,7 @@ export default function AskPanel({
   const perCapita = resp?.spec?.measure === "value_per_capita";
 
   return (
-    <div className={centered ? "ask ask-centered" : "ask"}>
+    <div className={centered ? "ask ask-centered" : "ask"} data-mode={mode}>
       {toast && (
         <div className="ask-toast" role="status">
           {toast}

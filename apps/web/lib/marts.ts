@@ -1432,3 +1432,24 @@ export async function getFlagInstanceCount(): Promise<number> {
   }[];
   return Number(rows[0]?.n ?? 0);
 }
+
+/**
+ * CRI histogram for the /semnale side panel: 10 buckets over [0,1], same
+ * population rule as the group list (role + ≥10 direct acquisitions),
+ * optionally within one county.
+ */
+export async function getCriDistribution(
+  role: Role,
+  county: string | null,
+): Promise<{ from: number; to: number; n: number }[]> {
+  const sql = db();
+  const jud = county ? sql`and lower(unaccent(county)) = lower(unaccent(${county}))` : sql``;
+  const rows = (await sql`
+    select width_bucket(coalesce(cri, 0), 0, 1.0000001, 10) b, count(*) n
+    from marts.entity_flags
+    where role = ${role} and n_das >= 10 ${jud}
+    group by 1 order by 1
+  `) as unknown as { b: number; n: string }[];
+  const by = new Map(rows.map((r) => [Number(r.b), Number(r.n)]));
+  return Array.from({ length: 10 }, (_, i) => ({ from: i / 10, to: (i + 1) / 10, n: by.get(i + 1) ?? 0 }));
+}
