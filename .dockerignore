@@ -1,0 +1,18 @@
+# Build context for infra/prod/Dockerfile.web is the repo root; keep it small.
+**/node_modules
+**/.next
+**/dist
+**/.turbo
+**/coverage
+.git
+db-old
+infra/data
+infra/prod/dumps
+infra/prod/.env
+**/.env
+**/.env.*
+!**/.env.example
+.claude
+.specd
+docs
+_*.mjs

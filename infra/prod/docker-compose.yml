@@ -1,0 +1,124 @@
+# Production stack for cinecastiga.ro. Run from this directory as user `seap`:
+#   docker compose up -d
+# Secrets come from ./.env (see .env.example; never committed).
+# Only Caddy publishes ports; Postgres and Meilisearch stay on the internal network.
+
+name: cinecastiga
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    shm_size: 2g
+    environment:
+      POSTGRES_DB: seap
+      POSTGRES_USER: seap
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+    # Tuned for a 32 GB box shared with Meilisearch + the web app.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=8GB
+      - -c
+      - effective_cache_size=20GB
+      - -c
+      - work_mem=64MB
+      - -c
+      - maintenance_work_mem=2GB
+      - -c
+      - wal_buffers=64MB
+      - -c
+      - max_wal_size=8GB
+      - -c
+      - checkpoint_completion_target=0.9
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - effective_io_concurrency=200
+      - -c
+      - max_worker_processes=12
+      - -c
+      - max_parallel_workers=8
+      - -c
+      - max_parallel_workers_per_gather=4
+      - -c
+      - max_connections=100
+      - -c
+      - log_min_duration_statement=2000
+      - -c
+      - timezone=UTC
+    # Loopback only: for the SSH-tunnel admin tasks in README.md (seed-admin, psql).
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./dumps:/dumps:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U seap -d seap"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.16
+    restart: unless-stopped
+    environment:
+      MEILI_ENV: production
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?set in .env}
+      MEILI_NO_ANALYTICS: "true"
+    volumes:
+      - meili:/meili_data
+      - ./dumps:/dumps:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:7700/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  web:
+    build:
+      context: ../..
+      dockerfile: infra/prod/Dockerfile.web
+    image: cinecastiga-web
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://seap_web:${SEAP_WEB_PASSWORD:?set in .env}@postgres:5432/seap
+      MEILISEARCH_URL: http://meilisearch:7700
+      MEILISEARCH_KEY: ${MEILI_MASTER_KEY}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set in .env}
+      BETTER_AUTH_URL: https://${DOMAIN:-cinecastiga.ro}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      DATA_AS_OF: ${DATA_AS_OF:-2026-07-31}
+      DATA_MODE: ${DATA_MODE:-snapshot}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:-cinecastiga.ro}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+
+volumes:
+  pgdata:
+  meili:
+  caddy_data:
+  caddy_config:
