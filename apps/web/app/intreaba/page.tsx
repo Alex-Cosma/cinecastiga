@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import AskPanel from "./AskPanel";
 
 export const metadata: Metadata = {
-  title: "Întreabă — SEAP Transparent",
+  title: "Întreabă",
   description:
     "Pune întrebări în limbaj natural despre achizițiile publice din România. AI-ul traduce întrebarea într-o interogare verificabilă pe date.",
 };

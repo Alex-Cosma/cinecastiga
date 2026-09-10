@@ -435,6 +435,7 @@ export default function AskPanel({
 
       {resp?.ok && resp.data && (
         <div className="ask-result">
+          <aside className="ask-rail">
           {resp.question && (
             <div className="ask-r-q">
               <div className="ask-lab">Întrebarea ta</div>
@@ -505,6 +506,76 @@ export default function AskPanel({
             </details>
           )}
 
+          <div className="ask-r-actions">
+            {!detail.open && DRILLABLE.has(resp.data.block) && (
+              <button
+                type="button"
+                className="primary"
+                onClick={() => void loadDetail(resp.spec, 0)}
+              >
+                → vezi toate rândurile
+              </button>
+            )}
+            <button
+              type="button"
+              disabled={csvBusy}
+              onClick={() => {
+                if (detail.open) {
+                  setCsvBusy(true);
+                  void exportRowsCsv(resp.spec, detail.opts).finally(() => setCsvBusy(false));
+                } else {
+                  exportCsv(resp.data!);
+                }
+              }}
+            >
+              {csvBusy ? "⬇ export… (toate rândurile)" : "⬇ export CSV"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                void navigator.clipboard
+                  .writeText(window.location.href)
+                  .then(() => showToast("Permalink copiat ✓"));
+              }}
+            >
+              🔗 copiază permalink
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const what =
+                  resp.question ??
+                  (resp.pills ? resp.pills.join(" · ") : BLOCK_LABEL_RO[resp.data!.block]);
+                void navigator.clipboard
+                  .writeText(
+                    `„${what}” — cinecâștigă?, pe baza datelor publice e-licitatie.ro ` +
+                      `(achiziții directe 2018–2026). Accesat ${new Date().toLocaleDateString("ro-RO")}. ` +
+                      window.location.href,
+                  )
+                  .then(() => showToast("Citare copiată ✓"));
+              }}
+            >
+              📋 citează
+            </button>
+            {mode === "ask" && resp.spec && (
+              <button
+                type="button"
+                onClick={() => {
+                  setBuilderInit(resp.spec as unknown as BuilderSpec);
+                  setBuilderFromAi(true);
+                  setMode("build");
+                }}
+              >
+                🧱 ajustează în Construiește
+              </button>
+            )}
+            <span className="ask-took">
+              fiecare rezultat → profilul entității (dovadă)
+              {resp.tookMs != null ? ` · ${resp.tookMs} ms` : ""}
+            </span>
+          </div>
+          </aside>
+          <div className="ask-main">
           {/* the answer stays visible; the drill rows open BELOW it */}
           <div className="ask-r-block">
             <div className="ask-lab">
@@ -601,73 +672,6 @@ export default function AskPanel({
             </div>
           )}
 
-          <div className="ask-r-actions">
-            {!detail.open && DRILLABLE.has(resp.data.block) && (
-              <button
-                type="button"
-                className="primary"
-                onClick={() => void loadDetail(resp.spec, 0)}
-              >
-                → vezi toate rândurile
-              </button>
-            )}
-            <button
-              type="button"
-              disabled={csvBusy}
-              onClick={() => {
-                if (detail.open) {
-                  setCsvBusy(true);
-                  void exportRowsCsv(resp.spec, detail.opts).finally(() => setCsvBusy(false));
-                } else {
-                  exportCsv(resp.data!);
-                }
-              }}
-            >
-              {csvBusy ? "⬇ export… (toate rândurile)" : "⬇ export CSV"}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                void navigator.clipboard
-                  .writeText(window.location.href)
-                  .then(() => showToast("Permalink copiat ✓"));
-              }}
-            >
-              🔗 copiază permalink
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const what =
-                  resp.question ??
-                  (resp.pills ? resp.pills.join(" · ") : BLOCK_LABEL_RO[resp.data!.block]);
-                void navigator.clipboard
-                  .writeText(
-                    `„${what}” — SEAP Transparent, pe baza datelor publice e-licitatie.ro ` +
-                      `(achiziții directe 2018–2026). Accesat ${new Date().toLocaleDateString("ro-RO")}. ` +
-                      window.location.href,
-                  )
-                  .then(() => showToast("Citare copiată ✓"));
-              }}
-            >
-              📋 citează
-            </button>
-            {mode === "ask" && resp.spec && (
-              <button
-                type="button"
-                onClick={() => {
-                  setBuilderInit(resp.spec as unknown as BuilderSpec);
-                  setBuilderFromAi(true);
-                  setMode("build");
-                }}
-              >
-                🧱 ajustează în Construiește
-              </button>
-            )}
-            <span className="ask-took">
-              fiecare rezultat → profilul entității (dovadă)
-              {resp.tookMs != null ? ` · ${resp.tookMs} ms` : ""}
-            </span>
           </div>
         </div>
       )}
@@ -1106,8 +1110,8 @@ function SeriesBlock({ series, spec }: { series: SeriesPoint[]; spec: unknown })
   );
 }
 
-const MAP_COLORS = ["#f3ead0", "#e7c98d", "#d99f57", "#c06a3a", "#9a2b1f"];
-const MAP_NO_DATA = "#e9e6dd";
+const MAP_COLORS = ["#e6eafb", "#b9c4f0", "#8194de", "#4d66c4", "#233c9c"];
+const MAP_NO_DATA = "#e4e7ee";
 
 function MapBlock({ counties, spec }: { counties: CountyValue[]; spec: unknown }) {
   // county click → same filters, scoped to that county, drill rows opened

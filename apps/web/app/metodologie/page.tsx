@@ -134,6 +134,15 @@ export default function MetodologiePage() {
           </p>
         </div>
       </section>
+      <section className="section" id="citare">
+        <h2>Cum citez</h2>
+        <p className="hint">
+          Fiecare pagină și fiecare rezultat din „Întreabă” are un permalink; butonul „citează” copiază o citare gata
+          formatată. Formatul: „<i>titlul paginii sau întrebarea</i>” — cinecâștigă?, pe baza datelor publice e-licitatie.ro
+          (achiziții directe și contracte 2018–2026), accesat la data consultării, urmat de adresă. Datele sunt publice;
+          analiza noastră e semnal, nu dovadă, și trebuie citată ca atare.
+        </p>
+      </section>
     </>
   );
 }

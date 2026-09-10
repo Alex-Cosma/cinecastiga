@@ -26,7 +26,7 @@ export function authDb(): Db {
 }
 
 export const auth = betterAuth({
-  appName: "SEAP Transparent",
+  appName: "cinecâștigă?",
   baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
   database: drizzleAdapter(authDb(), {
     provider: "pg",

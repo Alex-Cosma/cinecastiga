@@ -226,17 +226,10 @@ export function DistributionBlock({
 
 /* ── breakdown ────────────────────────────────────────────────────────── */
 
-const SEG_COLORS = [
-  "#9a2b1f",
-  "#c06a3a",
-  "#c9a24a",
-  "#7a6a3a",
-  "#4a5d6b",
-  "#8a4a5d",
-  "#5d7a4a",
-  "#6b4a2b",
-];
-const SEG_OTHER = "#b3aca0";
+// Categorical: fixed order, never cycled; hues spaced for CVD, mid lightness
+// so they read on both grounds. Slot 9+ folds into "alte categorii".
+const SEG_COLORS = ["#2f4fb8", "#c0311c", "#b9861f", "#2f8a7a", "#7b4fb8", "#c2588f", "#5a8a2f", "#8a6a4a"];
+const SEG_OTHER = "#a3acba";
 
 export function BreakdownBlock({
   slices,
@@ -446,7 +439,7 @@ export function ScatterBlock({
         const maxN = Math.max(...density.cells.map((c) => c[2]));
         const cw = (density.maxLog - density.minLog) / density.nx;
         const ch = 1 / density.ny;
-        const slate = "#4a5d6b";
+        const slate = "#6d7a90";
         for (const [bx, by, n] of density.cells) {
           const lg0 = density.minLog + (bx - 1) * cw;
           const cr0 = (by - 1) * ch;
@@ -473,7 +466,7 @@ export function ScatterBlock({
         const px = X(lg);
         const py = Y(p.cri);
         if (hi || mid) {
-          ctx.fillStyle = hi ? "#9a2b1f" : "#c9a24a";
+          ctx.fillStyle = hi ? "#c0311c" : "#6d7a90";
           ctx.globalAlpha = hi ? 0.95 : 0.8;
           ctx.beginPath();
           ctx.arc(px, py, hi ? 7 : 5.5, 0, 7);
@@ -481,7 +474,7 @@ export function ScatterBlock({
         }
         if (top) {
           ctx.globalAlpha = 1;
-          ctx.strokeStyle = "#4a5d6b";
+          ctx.strokeStyle = "#6d7a90";
           ctx.lineWidth = 2;
           ctx.beginPath();
           ctx.arc(px, py, 8, 0, 7);
@@ -729,7 +722,7 @@ export function SankeyBlock({
           const ribbon = (
               <path
                 d={`M ${LX + NODE_W} ${y0} C ${mx} ${y0}, ${mx} ${y1}, ${RX} ${y1}`}
-                stroke={f.value / total > 0.12 ? "#c9a24a" : "#e0d4b0"}
+                stroke={f.value / total > 0.12 ? "#6d7a90" : "#ccd2dc"}
                 strokeWidth={h}
                 fill="none"
                 strokeOpacity={0.75}
@@ -762,8 +755,8 @@ export function SankeyBlock({
                 id !== "_alt" ? "click → toate achizițiile cu acest partener" : undefined,
               )}
             >
-              <rect x={LX} y={p.y0} width={NODE_W} height={p.h} fill="#9a2b1f" rx={2} />
-              <text x={LX - 6} y={p.y0 + p.h / 2 + 3} fontSize={10} fill="#16130d" textAnchor="end">
+              <rect x={LX} y={p.y0} width={NODE_W} height={p.h} fill="#c0311c" rx={2} />
+              <text x={LX - 6} y={p.y0 + p.h / 2 + 3} fontSize={10} fill="currentColor" textAnchor="end">
                 {cleanName(p.name).slice(0, 26)}
               </text>
             </g>
@@ -785,8 +778,8 @@ export function SankeyBlock({
                 id !== "_alt" ? "click → achizițiile focalului în această categorie" : undefined,
               )}
             >
-              <rect x={RX} y={c.y0} width={NODE_W} height={c.h} fill="#c06a3a" rx={2} />
-              <text x={RX + NODE_W + 6} y={c.y0 + c.h / 2 + 3} fontSize={10} fill="#16130d">
+              <rect x={RX} y={c.y0} width={NODE_W} height={c.h} fill="#2f4fb8" rx={2} />
+              <text x={RX + NODE_W + 6} y={c.y0 + c.h / 2 + 3} fontSize={10} fill="currentColor">
                 {(c.name ?? "?").slice(0, 26)}
               </text>
             </g>
@@ -859,7 +852,7 @@ export function NetworkBlock({
                 y1={cyc}
                 x2={nx}
                 y2={ny}
-                stroke="#c9a24a"
+                stroke="#6d7a90"
                 strokeWidth={Math.max(1, (n.value / maxV) * 8)}
                 strokeOpacity={hovered ? 0.9 : 0.55}
               />
@@ -868,16 +861,16 @@ export function NetworkBlock({
                   cx={nx}
                   cy={ny}
                   r={hovered ? r + 2 : r}
-                  fill="#c06a3a"
+                  fill="#2f4fb8"
                   fillOpacity={hovered ? 1 : 0.85}
-                  stroke={hovered ? "#16130d" : "none"}
+                  stroke={hovered ? "currentColor" : "none"}
                   strokeWidth={hovered ? 1.4 : 0}
                 />
                 <text
                   x={nx + (anchor === "start" ? r + 4 : anchor === "end" ? -r - 4 : 0)}
                   y={ny + (anchor === "middle" ? (Math.sin(a) > 0 ? r + 12 : -r - 6) : 4)}
                   fontSize={10}
-                  fill="#16130d"
+                  fill="currentColor"
                   fontWeight={hovered ? 700 : 400}
                   textAnchor={anchor}
                 >
@@ -887,7 +880,7 @@ export function NetworkBlock({
             </g>
           );
         })}
-        <circle cx={cx} cy={cyc} r={26} fill="#9a2b1f" />
+        <circle cx={cx} cy={cyc} r={26} fill="#c0311c" />
         <text x={cx} y={cyc + 3} fontSize={9.5} fill="#fff" textAnchor="middle">
           {cleanName(focal.name).slice(0, 14)}
         </text>

@@ -33,7 +33,7 @@ export async function sendAuthCode(to: string, code: string): Promise<void> {
   await t.sendMail({
     from: process.env.SMTP_FROM ?? process.env.SMTP_USER,
     to,
-    subject: `${code} — codul tău de autentificare SEAP Transparent`,
+    subject: `${code} — codul tău de autentificare cinecâștigă?`,
     text: `Codul tău de autentificare este: ${code}\n\nCodul expiră în câteva minute. Dacă nu ai încercat să te autentifici, ignoră acest mesaj.`,
   });
 }

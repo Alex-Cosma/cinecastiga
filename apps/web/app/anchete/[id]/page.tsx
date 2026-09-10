@@ -163,104 +163,47 @@ export default async function DosarPage({
 
   return (
     <>
-      <p className="hint" style={{ marginTop: 18 }}>
-        <Link href="/anchete">← anchetele mele</Link>
+      <p className="eyebrow" style={{ marginTop: 4 }}>
+        <Link href="/anchete">← anchetele mele</Link> · dosar
       </p>
-      <h1 className="page-title">{inv.title}</h1>
-      <p className="page-sub">
-        {inv.description ?? "dosar de investigație"} ·{" "}
-        {STATUSES.find(([k]) => k === inv.status)?.[1] ?? inv.status} ·{" "}
-        <a href={`/api/anchete/${inv.id}/export`}>exportă anexa de probe ↓</a>
-      </p>
-
-      <details className="dosar-meta">
-        <summary>editează ancheta</summary>
-        <form className="auth-form auth-form-row" action={saveAnchetaMeta}>
-          <input type="hidden" name="id" value={inv.id} />
-          <label>
-            Titlu
-            <input type="text" name="title" defaultValue={inv.title} maxLength={200} />
-          </label>
-          <label>
-            Descriere
-            <input type="text" name="description" defaultValue={inv.description ?? ""} />
-          </label>
-          <label>
-            Status
-            <select name="status" defaultValue={inv.status}>
-              {STATUSES.map(([k, l]) => (
-                <option key={k} value={k}>
-                  {l}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button type="submit">salvează</button>
-        </form>
-        <form action={deleteAncheta} style={{ marginTop: 8 }}>
-          <input type="hidden" name="id" value={inv.id} />
-          <button type="submit" className="dosar-del">
-            șterge ancheta definitiv
-          </button>
-        </form>
-      </details>
-
-      {dosar.cast.members.length > 0 && (
-        <section className="section">
-          <h2>Distribuția de personaje</h2>
-          <p className="hint">
-            Relațiile pe care platforma le cunoaște deja între membrii dosarului.
-          </p>
-          <div className="cast-members">
-            {dosar.cast.members.map((m) => (
-              <span key={m.refId} className="cast-chip">
-                {m.kind === "person" ? "👤" : "🏛"} {cleanName(m.name)}
-              </span>
-            ))}
+      <div className="ehead">
+        <div className="ehead-main">
+          <h1 className="page-title">{inv.title}</h1>
+          <div className="id-meta">
+            <span className={`st st-${inv.status}`}>
+              <i aria-hidden /> {STATUSES.find(([k]) => k === inv.status)?.[1] ?? inv.status}
+            </span>
+            <span>{formatInt(dosar.clips.length)} probe</span>
+            {inv.description ? <span>{inv.description}</span> : null}
           </div>
-          {dosar.cast.relations.length > 0 ? (
-            <ul className="prose cast-rels">
-              {dosar.cast.relations.map((r, i) => (
-                <li key={i}>
-                  <b>{cleanName(nameOf(r.a))}</b> ↔ <b>{cleanName(nameOf(r.b))}</b> —{" "}
-                  {relLabel(r)}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="hint">Nicio legătură directă găsită între membri (încă).</p>
-          )}
-        </section>
-      )}
+        </div>
+        <div className="ehead-acts">
+          <a href={`/api/anchete/${inv.id}/export`} className="btn pri">
+            ⬇ exportă anexa de probe
+          </a>
+        </div>
+      </div>
 
-      <section className="section">
-        <h2>Probe ({dosar.clips.length})</h2>
+      <div className="dosar-layout">
+        <div className="dosar-main">
+          <div className="dosar-tools">
         {kinds.length > 1 && (
-          <div className="filters" style={{ flexWrap: "wrap" }}>
-            <Link href={`/anchete/${inv.id}`} className={!tip ? "on" : ""}>
+          <div className="chips">
+            <Link href={`/anchete/${inv.id}`} className={"chip" + (!tip ? " on" : "")}>
               toate
             </Link>
             {kinds.map((k) => (
               <Link
                 key={k}
                 href={`/anchete/${inv.id}?tip=${k}`}
-                className={tip === k ? "on" : ""}
+                className={"chip" + (tip === k ? " on" : "")}
               >
-                {KIND_LABEL[k]} ({dosar.clips.filter((c) => c.kind === k).length})
+                {KIND_ICON[k]} {KIND_LABEL[k]} <span className="c">{dosar.clips.filter((c) => c.kind === k).length}</span>
               </Link>
             ))}
           </div>
         )}
-
-        <form className="auth-form dosar-addnote" action={addNoteClip}>
-          <input type="hidden" name="id" value={inv.id} />
-          <label>
-            Notă nouă
-            <textarea name="note" rows={2} placeholder="observație, pistă, de verificat…" />
-          </label>
-          <button type="submit">adaugă nota</button>
-        </form>
-
+          </div>
         {shown.length === 0 ? (
           <p className="hint">
             Niciun clip încă — folosește „Adaugă la anchetă" de pe paginile de entități,
@@ -316,7 +259,81 @@ export default async function DosarPage({
             ))}
           </div>
         )}
-      </section>
+          <div className="card pad dosar-note">
+        <form className="auth-form dosar-addnote" action={addNoteClip}>
+          <input type="hidden" name="id" value={inv.id} />
+          <label>
+            Notă nouă
+            <textarea name="note" rows={2} placeholder="observație, pistă, de verificat…" />
+          </label>
+          <button type="submit">adaugă nota</button>
+        </form>
+
+          </div>
+        </div>
+
+        <aside className="dosar-side">
+          {dosar.cast.members.length > 0 && (
+            <div className="card pad">
+              <h3>Actori</h3>
+              <p className="hint">Relațiile pe care platforma le cunoaște deja între membrii dosarului.</p>
+
+          <div className="cast-members">
+            {dosar.cast.members.map((m) => (
+              <span key={m.refId} className="cast-chip">
+                {m.kind === "person" ? "👤" : "🏛"} {cleanName(m.name)}
+              </span>
+            ))}
+          </div>
+          {dosar.cast.relations.length > 0 ? (
+            <ul className="prose cast-rels">
+              {dosar.cast.relations.map((r, i) => (
+                <li key={i}>
+                  <b>{cleanName(nameOf(r.a))}</b> ↔ <b>{cleanName(nameOf(r.b))}</b> —{" "}
+                  {relLabel(r)}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="hint">Nicio legătură directă găsită între membri (încă).</p>
+          )}
+
+            </div>
+          )}
+          <div className="card pad">
+            <h3>Editează ancheta</h3>
+        <form className="auth-form" action={saveAnchetaMeta}>
+          <input type="hidden" name="id" value={inv.id} />
+          <label>
+            Titlu
+            <input type="text" name="title" defaultValue={inv.title} maxLength={200} />
+          </label>
+          <label>
+            Descriere
+            <input type="text" name="description" defaultValue={inv.description ?? ""} />
+          </label>
+          <label>
+            Status
+            <select name="status" defaultValue={inv.status}>
+              {STATUSES.map(([k, l]) => (
+                <option key={k} value={k}>
+                  {l}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button type="submit">salvează</button>
+        </form>
+        <form action={deleteAncheta} style={{ marginTop: 8 }}>
+          <input type="hidden" name="id" value={inv.id} />
+          <button type="submit" className="dosar-del">
+            șterge ancheta definitiv
+          </button>
+        </form>
+
+          </div>
+        </aside>
+      </div>
     </>
   );
 }
