@@ -33,7 +33,7 @@ export default async function HomePage() {
           Caută orice primărie, consiliu județean, spital sau firmă. Vezi contractele, partenerii și semnalele de risc,
           cu dovada la un click distanță.
         </p>
-        <AskPanel withSearch initialMode="search" />
+        <AskPanel withSearch initialMode="build" />
       </div>
 
       <div className="stat-strip" data-reveal="1">
