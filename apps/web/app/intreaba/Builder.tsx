@@ -1,5 +1,7 @@
 "use client";
 
+import { COUNTIES } from "@/lib/counties";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fold, score, parseIntents } from "@/lib/ask/intent";
 import { aliasQueries } from "@/lib/ask/entity-alias";
@@ -145,14 +147,6 @@ const RANKS = [
   { id: "value", l: "cea mai mare pe bani", kw: "mare bani valoare cheltuiala" },
 ];
 const YEARS = [2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026];
-const COUNTIES = [
-  "Alba", "Arad", "Argeș", "Bacău", "Bihor", "Bistrița-Năsăud", "Botoșani", "Brașov",
-  "Brăila", "București", "Buzău", "Caraș-Severin", "Călărași", "Cluj", "Constanța",
-  "Covasna", "Dâmbovița", "Dolj", "Galați", "Giurgiu", "Gorj", "Harghita", "Hunedoara",
-  "Ialomița", "Iași", "Ilfov", "Maramureș", "Mehedinți", "Mureș", "Neamț", "Olt",
-  "Prahova", "Satu Mare", "Sălaj", "Sibiu", "Suceava", "Teleorman", "Timiș", "Tulcea",
-  "Vaslui", "Vâlcea", "Vrancea",
-];
 const COUNTY_BY_FOLD = new Map(COUNTIES.map((c) => [fold(c), c]));
 
 const NEED_LABEL: Record<string, string> = {

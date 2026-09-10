@@ -23,6 +23,7 @@ import { encodeSpec } from "@/lib/ask/permalink";
 import YearMiniChart from "./YearMiniChart";
 import TxTable from "./TxTable";
 import PartnersTable from "./PartnersTable";
+import SectionNav from "./SectionNav";
 
 /** Per-instance evidence line, formatted per flag code (null = no line). */
 function evidenceLine(code: string, ev: Record<string, unknown> | null): string | null {
@@ -179,40 +180,43 @@ export default async function EntityPage({
   return (
     <>
       {/* Identity */}
-      <div className="profile-head">
-        <h1>{cleanName(row.name)}</h1>
-        <div className="id-meta">
-          {flagRows.length > 1
-            ? flagRows.map((r) => (
-                <Link
-                  key={r.role}
-                  href={q(base, { rol: r.role === "supplier" ? "furnizor" : "autoritate", p: undefined })}
-                  className={`role-tab ${r.role === role ? "on" : ""}`}
-                >
-                  {ROLE_LABEL[r.role]}
-                </Link>
-              ))
-            : <span className="badge">{ROLE_LABEL[role]}</span>}
-          {profile?.isForeign ? (
-            <span className="flag-tag">
-              Firmă străină{profile.countryCode ? ` · ${countryName(profile.countryCode)}` : ""}
-            </span>
-          ) : null}
-          {county ? <span className="note">{county}</span> : null}
-          {cui ? <span className="note">CUI {cui}</span> : null}
+      <div className="ehead" id="top">
+        <div className="ehead-main">
+          <p className="eyebrow">
+            {ROLE_LABEL[role]}
+            {profile?.isForeign ? ` · firmă străină${profile.countryCode ? ` · ${countryName(profile.countryCode)}` : ""}` : ""}
+          </p>
+          <h1 className="page-title">{cleanName(row.name)}</h1>
+          <div className="id-meta">
+            {flagRows.length > 1 ? (
+              <span className="roles">
+                {flagRows.map((r) => (
+                  <Link
+                    key={r.role}
+                    href={q(base, { rol: r.role === "supplier" ? "furnizor" : "autoritate", p: undefined })}
+                    className={r.role === role ? "on" : undefined}
+                  >
+                    {ROLE_LABEL[r.role]}
+                  </Link>
+                ))}
+              </span>
+            ) : null}
+            {county ? <span>{county}</span> : null}
+            {cui ? <span className="mono">CUI {cui}</span> : null}
+          </div>
         </div>
-        <div className="ext-links">
-          <ClipButton kind="entity" refId={id} label={cleanName(row.name)} />
+        <div className="ehead-acts">
           {isAuth && (
-            <Link href={`/entitati/${id}/radiografie`} className="rx-link">
+            <Link href={`/entitati/${id}/radiografie`} className="btn pri rx-link">
               🩻 Radiografie
             </Link>
           )}
+          <ClipButton kind="entity" refId={id} label={cleanName(row.name)} />
           {/* No e-licitatie entity link: SICAP has no per-entity page, and every
               transaction row already deep-links to its exact record */}
           {cui
             ? registryLinks(cui, cleanName(row.name)).map((l) => (
-                <a key={l.label} href={l.url} target="_blank" rel="noopener noreferrer">
+                <a key={l.label} href={l.url} target="_blank" rel="noopener noreferrer" className="btn">
                   {l.label} ↗
                 </a>
               ))
@@ -226,7 +230,7 @@ export default async function EntityPage({
           <div className="n">
             <span className={`cri-pill ${band.className}`}>{row.cri.toFixed(2)}</span>
           </div>
-          <div className="l">Indice de risc — {band.label.toLowerCase()}</div>
+          <div className="l">indice de risc · {band.label.toLowerCase()}</div>
         </div>
         <div className="stat">
           <div className="n">
@@ -276,9 +280,20 @@ export default async function EntityPage({
         )}
       </div>
 
+      <SectionNav
+        items={[
+          { id: "top", label: "Rezumat" },
+          ...(row.flags.length > 0 ? [{ id: "semnale", label: "Semnale", count: String(row.nFlags) }] : []),
+          { id: "parteneri", label: isAuth ? "Furnizori" : "Autorități" },
+          { id: "achizitii", label: "Achiziții", count: formatInt(txCounts.nDa + txCounts.nCt) },
+          ...(reps.length > 0 ? [{ id: "conducere", label: "Conducere" }] : []),
+          ...(isAuth ? [{ href: `/entitati/${id}/radiografie`, label: "Radiografie" }] : []),
+        ]}
+      />
+
       {/* Legal representatives (ONRC snapshot) */}
       {reps.length > 0 && (
-        <section className="section">
+        <section className="section" id="conducere">
           <h2>Conducere</h2>
           <p className="hint">
             Reprezentanți legali din Registrul Comerțului (instantaneu lunar). Administratorii nu
@@ -335,7 +350,7 @@ export default async function EntityPage({
 
       {/* CRI breakdown */}
       {row.flags.length > 0 ? (
-        <section className="section">
+        <section className="section" id="semnale">
           <h2>De ce este semnalată</h2>
           <p className="hint">
             {row.nFlags} semnale din cele aplicabile. Fiecare este un indiciu, nu o dovadă —{" "}
@@ -349,7 +364,10 @@ export default async function EntityPage({
               <div className="method-card" key={code}>
                 <div className="method-head">
                   <h3>{m.title}</h3>
-                  <span className="badge">{m.short}</span>
+                  <p className="mh-desc">{m.description}</p>
+                  <Link href={`/metodologie#${code}`} className="mh-link">
+                    cum se calculează →
+                  </Link>
                 </div>
 
                 {code === "da_split" && splits.length > 0 ? (
@@ -501,7 +519,7 @@ export default async function EntityPage({
       ) : null}
 
       {/* Counterparties */}
-      <section className="section">
+      <section className="section" id="parteneri">
         <h2>{isAuth ? "Principalii furnizori" : "Principalele autorități"}</h2>
         <PartnersTable
           entityId={id}

@@ -67,7 +67,7 @@ export default function MetodologiePage() {
         {FLAG_ORDER.map((c) => {
           const m = FLAG_META[c]!;
           return (
-            <div className="method-card" key={c}>
+            <div className="method-card" key={c} id={c}>
               <div className="method-head">
                 <h3>{m.title}</h3>
                 <span className="badge">{SUBJECT_LABEL[m.subject]}</span>
