@@ -30,3 +30,6 @@ _*.mjs
 
 # claude local session state
 .claude/
+
+# production dumps staged for upload (infra/prod/README.md)
+infra/prod/dumps/

@@ -25,3 +25,25 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm turbo typecheck lint test build
+
+  # Pushes to main that pass CI are deployed to the production server: SSH in with
+  # a key whose authorized_keys entry forces infra/prod/deploy.sh (git pull +
+  # rebuild the web container). Secrets: DEPLOY_HOST, DEPLOY_SSH_KEY.
+  deploy:
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    environment: production
+    steps:
+      - name: Deploy over SSH
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh -i ~/.ssh/deploy -o BatchMode=yes "seap@$DEPLOY_HOST"
