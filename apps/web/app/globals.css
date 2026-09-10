@@ -1564,3 +1564,7 @@ th.on a { color: var(--ink); }
 .rx-head .w { font-family: var(--body); font-variant-numeric: tabular-nums; }
 .rx-panel { border-radius: var(--r2); }
 .rx h2 { font-size: 24px; letter-spacing: -.02em; }
+
+/* opaque sticky bars: frosted glass read as content leaking under the header */
+.site-header { background: var(--surface); backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: 0 1px 0 var(--line); }
+.subnav { background: var(--paper); backdrop-filter: none; -webkit-backdrop-filter: none; }
