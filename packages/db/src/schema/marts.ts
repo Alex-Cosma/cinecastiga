@@ -351,6 +351,9 @@ export const tedAwards = martsSchema.table(
     index("ted_awards_buyer_idx").on(t.buyerEntityId),
     index("ted_awards_cpv_idx").on(t.cpvCode),
     index("ted_awards_value_idx").on(t.awardedValue),
+    // /supra-prag default + date sort: "desc nulls last" cannot walk the asc index backwards
+    index("ted_awards_value_desc_idx").on(t.awardedValue.desc().nullsLast()),
+    index("ted_awards_date_desc_idx").on(t.awardDate.desc().nullsLast()),
     index("ted_awards_single_bidder_idx").on(t.isSingleBidder),
   ],
 );
