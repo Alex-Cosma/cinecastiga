@@ -1,5 +1,16 @@
 # TLS via Let's Encrypt (automatic). DOMAIN comes from compose env.
+# /etc/caddy/extra/*.caddy are generated on the server by /srv/seap/cf-ips.sh
+# (Cloudflare IP ranges, refreshed weekly): the origin only answers Cloudflare.
+{
+	servers {
+		import /etc/caddy/extra/cloudflare-trusted.caddy
+	}
+}
+
+import /etc/caddy/extra/cloudflare-only.caddy
+
 {$DOMAIN} {
+	import cloudflare_only
 	encode zstd gzip
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
@@ -12,5 +23,6 @@
 }
 
 www.{$DOMAIN} {
+	import cloudflare_only
 	redir https://{$DOMAIN}{uri} permanent
 }
