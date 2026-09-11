@@ -75,10 +75,8 @@ export default async function SupraPragPage({
     <>
       <h1 className="page-title">Achiziții peste pragul european (TED)</h1>
       <p className="page-sub">
-        Atribuiri de mare valoare publicate în Jurnalul UE (TED), acolo unde participă
-        și firme străine. Sursă paralelă cu e-licitatie.ro — valorile TED{" "}
-        <strong>nu se adună</strong> peste cele SEAP; fiecare atribuire e etichetată{" "}
-        <em>și în SEAP</em> sau <em>doar în TED</em>. Vezi{" "}
+        Atribuiri mari din Jurnalul UE (TED), inclusiv firme străine. Valorile <strong>nu se adună</strong> peste
+        cele SEAP; fiecare atribuire e etichetată <em>și în SEAP</em> sau <em>doar în TED</em> —{" "}
         <Link href="/metodologie">metodologia</Link>.
       </p>
 
