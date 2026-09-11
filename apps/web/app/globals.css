@@ -1578,3 +1578,40 @@ html, body { overflow-x: clip; }
   .sstat .v { font-size: 24px; }
   .home-q { font-size: 32px; }
 }
+
+/* ============================================================
+   v3 layout pass (user: "crammed, right side unused, airy before")
+   ============================================================ */
+/* home: centred hero, wider search, more breathing room */
+.home-hero { max-width: none; text-align: center; margin: 48px auto 44px; }
+.home-hero::before { inset: -140px 0 auto 0; background: radial-gradient(760px 320px at 50% 30%, var(--accent-soft), transparent 70%); }
+.home-hero > p { margin: 16px auto 28px; max-width: 62ch; font-size: 17px; }
+.home-hero .ask, .home-hero .cb-card { max-width: 940px; margin-left: auto; margin-right: auto; }
+.home-hero .ask-modes { justify-content: center; }
+.home-hero .ask-hint, .home-hero .cb-hint { text-align: center; }
+.stat-strip { margin: 0 0 32px; }
+.sstat { padding: 24px 26px; }
+.home-lead { gap: 20px; margin-bottom: 48px; }
+.tiles { gap: 16px; }
+.tile { padding: 22px 22px 24px; }
+
+/* întreabă: the side rail is gone — question band on top, full-width result */
+.ask-result { grid-template-columns: 1fr; gap: 18px; }
+.ask-rail { position: static; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px 28px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r2); padding: 20px 24px; }
+.ask-rail > * { background: transparent; border: 0 !important; border-radius: 0; padding: 0; grid-column: 1; }
+.ask-rail .ask-q { font-size: 22px; line-height: 1.2; }
+.ask-rail .ask-r-actions { grid-column: 2; grid-row: 1 / span 3; align-self: start; display: flex; flex-direction: column; gap: 4px; min-width: 190px; padding: 0; }
+.ask-rail .ask-r-actions::before { padding: 0 6px 6px; }
+.ask-main { min-width: 0; }
+@media (max-width: 760px) {
+  .ask-rail { grid-template-columns: 1fr; }
+  .ask-rail .ask-r-actions { grid-column: 1; grid-row: auto; flex-direction: row; flex-wrap: wrap; min-width: 0; }
+  .ask-rail .ask-r-actions::before { width: 100%; }
+}
+.home-hero .cb-under { justify-content: center; }
+/* question band: actions as one row under the pills, not a tall side column */
+.ask-rail { grid-template-columns: 1fr; gap: 12px; }
+.ask-rail .ask-r-actions { grid-column: 1; grid-row: auto; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; padding-top: 6px; border-top: 1px solid var(--line) !important; }
+.ask-rail .ask-r-actions::before { padding: 0 8px 0 0; }
+.ask-rail .ask-took { margin-left: auto; padding: 0; }
+.cb-card { max-width: none; }
