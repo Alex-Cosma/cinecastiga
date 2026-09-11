@@ -30,8 +30,7 @@ export default async function HomePage() {
           Cine <em>câștigă</em> banii publici — și cum?
         </h1>
         <p>
-          Caută orice primărie, consiliu județean, spital sau firmă. Vezi contractele, partenerii și semnalele de risc,
-          cu dovada la un click distanță.
+          Caută o primărie, un spital sau o firmă: contracte, parteneri și semnale de risc, cu dovada la un click.
         </p>
         <AskPanel withSearch initialMode="build" />
       </div>

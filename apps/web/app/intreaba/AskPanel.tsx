@@ -400,8 +400,7 @@ export default function AskPanel({
           </div>
 
           <p className="ask-hint">
-            Pune o întrebare în limbaj natural. AI-ul o traduce într-o interogare pe datele noastre,
-            îți arată ce a înțeles și limitele — tu verifici. Acoperire: achiziții directe 2018–2026.
+            Întrebi în limbaj natural; AI-ul traduce în interogare, îți arată ce a înțeles și limitele. Achiziții directe 2018–2026.
           </p>
         </>
       )}
@@ -416,8 +415,7 @@ export default function AskPanel({
             running={loading}
           />
           <p className="ask-hint">
-            Construiește o interogare din opțiuni — fără AI, complet determinist. Același tip de
-            rezultat, cu „vezi toate rândurile” la fiecare răspuns.
+            Interogare din opțiuni, fără AI: determinist, cu „vezi toate rândurile” la fiecare răspuns.
           </p>
         </>
       )}

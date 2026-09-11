@@ -12,8 +12,7 @@ export default function IntreabaPage() {
     <>
       <h1 className="page-title">Întreabă datele</h1>
       <p className="page-sub">
-        Întrebi în română, primești un răspuns verificabil: vezi exact ce am înțeles, ce limite au
-        datele și interogarea din spate. Semnal, nu verdict — dovada e mereu la un click.
+        Întrebi în română, primești un răspuns verificabil: ce am înțeles, limitele datelor și interogarea din spate.
       </p>
       <AskPanel />
     </>
