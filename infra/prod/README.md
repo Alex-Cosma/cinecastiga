@@ -99,3 +99,11 @@ docker compose -f /srv/seap/src/infra/prod/docker-compose.yml exec -T postgres \
 ```
 
 Keep 14 days; copy off-box (object storage) once launched.
+
+## Cloudflare in front
+
+DNS is proxied (orange cloud), SSL mode Full (strict). The origin answers only
+Cloudflare's IP ranges: `cf-ips.sh` (cron, weekly, as `seap`) writes the
+ranges into `/srv/seap/caddy/*.caddy`, which the Caddyfile imports (request
+filter + trusted proxies for real client IPs), and reloads Caddy on change.
+Run it once by hand before the first `docker compose up -d caddy`.
