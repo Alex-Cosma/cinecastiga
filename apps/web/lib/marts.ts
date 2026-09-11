@@ -886,6 +886,16 @@ export interface EntityProfile {
   employees: number | null;
   employeesYear: number | null;
   netTurnover: number | null;
+  /** ONRC legal form (srl, sa, ra, …); null for institutions. */
+  legalForm: string | null;
+  /** A company (SRL/SA/RA) that buys through SEAP: state- or council-owned, a
+   *  contracting authority under L98/2016 art. 4 — labelled "companie publică". */
+  isPublicCompany: boolean;
+}
+
+/** Commercial legal forms; a contracting authority with one of these is a public company. */
+export function isCompanyForm(legalForm: string | null | undefined): boolean {
+  return legalForm === "srl" || legalForm === "sa" || legalForm === "ra";
 }
 
 // ── TED (above-EU-threshold) awards — the labeled, no-blend surfacing ────────
@@ -1021,8 +1031,9 @@ export async function getEntityProfile(entityId: string): Promise<EntityProfile 
   const rows = (await sql`
     select ep.role, ep.name_display, ep.county, ep.country_code, ep.is_foreign,
            ep.n_contracts, ep.n_das, ep.total_ron_full, ep.total_ron_split, te.rank,
-           ep.employees, ep.employees_year, ep.net_turnover
+           ep.employees, ep.employees_year, ep.net_turnover, ce.legal_form
     from marts.entity_profile ep
+    left join core.entities ce on ce.id = ep.entity_id
     left join marts.top_entities te
       on te.entity_id = ep.entity_id and te.role = ep.role
     where ep.entity_id = ${id}
@@ -1041,11 +1052,15 @@ export async function getEntityProfile(entityId: string): Promise<EntityProfile 
     employees: number | null;
     employees_year: number | null;
     net_turnover: string | null;
+    legal_form: string | null;
   }[];
   if (rows.length === 0) return null;
   const fin = rows.find((r) => r.employees !== null);
+  const legalForm = rows[0]!.legal_form;
   return {
     entityId,
+    legalForm,
+    isPublicCompany: isCompanyForm(legalForm) && rows.some((r) => r.role === "authority"),
     name: rows[0]!.name_display,
     county: rows[0]!.county,
     countryCode: rows[0]!.country_code,

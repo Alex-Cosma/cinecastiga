@@ -183,7 +183,7 @@ export default async function EntityPage({
       <div className="ehead" id="top">
         <div className="ehead-main">
           <p className="eyebrow">
-            {ROLE_LABEL[role]}
+            {role === "authority" && profile?.isPublicCompany ? "Companie publică · autoritate contractantă" : ROLE_LABEL[role]}
             {profile?.isForeign ? ` · firmă străină${profile.countryCode ? ` · ${countryName(profile.countryCode)}` : ""}` : ""}
           </p>
           <h1 className="page-title">{cleanName(row.name)}</h1>
