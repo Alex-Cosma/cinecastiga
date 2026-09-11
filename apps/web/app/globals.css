@@ -1660,3 +1660,6 @@ table.rank td { padding: 13px 14px; }
   .section { margin-bottom: 40px; }
   .site-footer .wrap { padding: 32px 18px 44px; }
 }
+
+/* radiografie tooltip: its "card" class collides with the generic .card surface → keep it dark */
+.rx-tip, .rx-tip.card { background: var(--ink); color: var(--bg); border: 0; box-shadow: 0 10px 28px rgba(0,0,0,.28); }
