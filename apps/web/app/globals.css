@@ -1568,3 +1568,13 @@ th.on a { color: var(--ink); }
 /* opaque sticky bars: frosted glass read as content leaking under the header */
 .site-header { background: var(--surface); backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: 0 1px 0 var(--line); }
 .subnav { background: var(--paper); backdrop-filter: none; -webkit-backdrop-filter: none; }
+
+/* mobile pass: never a horizontal scrollbar. The hero glow (::before) and
+   wide ranking tables were pushing the document past the viewport. */
+html, body { overflow-x: clip; }
+@media (max-width: 640px) {
+  table.rank { display: block; overflow-x: auto; max-width: 100%; }
+  .ehead .id-meta > * { white-space: normal; }
+  .sstat .v { font-size: 24px; }
+  .home-q { font-size: 32px; }
+}
