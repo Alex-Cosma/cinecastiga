@@ -33,3 +33,13 @@ export function cleanName(name: string | null | undefined): string {
   if (!name) return "(fără nume)";
   return name.replace(/^(RO)?\d{2,10}\s+/i, "").trim() || name;
 }
+
+/**
+ * Name-only guess that an entity is a commercial company (SRL/SA/RA). Used where
+ * the legal form is not in the row (search hits): a company acting as a
+ * contracting authority is a state- or council-owned "companie publică".
+ */
+export function looksLikeCompany(name: string | null | undefined): boolean {
+  if (!name) return false;
+  return /(^|[\s.,(])(s\.?\s?r\.?\s?l|s\.?\s?a|r\.?\s?a)\.?(?=$|[\s.,)])/i.test(name);
+}

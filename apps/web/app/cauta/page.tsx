@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { searchEntities } from "@/lib/search";
-import { formatRon } from "@/lib/format";
+import { formatRon, looksLikeCompany } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -83,7 +83,7 @@ export default async function SearchPage({
                     {h.county ? <div className="county">{h.county}</div> : null}
                   </td>
                   <td>{h.cui ?? "—"}</td>
-                  <td className="county">{h.roles.map((r) => ROLE_LABEL[r] ?? r).join(", ")}</td>
+                  <td className="county">{h.roles.map((r) => (r === "authority" && looksLikeCompany(h.name) ? "companie publică" : ROLE_LABEL[r] ?? r)).join(", ")}</td>
                   <td className="num">{formatRon(h.total)}</td>
                 </tr>
               ))}
