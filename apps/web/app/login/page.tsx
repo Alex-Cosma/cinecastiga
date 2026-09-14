@@ -17,7 +17,14 @@ export default function LoginPage() {
   async function afterLogin() {
     const s = await authClient.getSession();
     const role = (s.data?.user as { role?: string } | undefined)?.role;
-    router.push(role === "admin" ? "/admin" : "/cont");
+    const next = new URLSearchParams(window.location.search).get("next");
+    const returnPath =
+      next?.startsWith("/") &&
+      !next.startsWith("//") &&
+      !/[\\\u0000-\u0020\u007f]/.test(next)
+        ? next
+        : null;
+    router.push(returnPath ?? (role === "admin" ? "/admin" : "/cont"));
     router.refresh();
   }
 
@@ -36,7 +43,10 @@ export default function LoginPage() {
     setErr(null);
     setBusy(true);
     try {
-      const { data, error } = await authClient.signIn.email({ email, password });
+      const { data, error } = await authClient.signIn.email({
+        email,
+        password,
+      });
       if (error) {
         setErr(
           error.status === 429
@@ -62,7 +72,9 @@ export default function LoginPage() {
     setErr(null);
     setBusy(true);
     try {
-      const { error } = await authClient.twoFactor.verifyOtp({ code: code.trim() });
+      const { error } = await authClient.twoFactor.verifyOtp({
+        code: code.trim(),
+      });
       if (error) {
         setErr(
           error.status === 429
@@ -79,8 +91,12 @@ export default function LoginPage() {
 
   return (
     <div className="auth-card card">
-      <p className="eyebrow">{step === "creds" ? "pasul 1 din 2" : "pasul 2 din 2"}</p>
-      <h1 className="page-title">{step === "creds" ? "Autentificare" : "Codul din e-mail"}</h1>
+      <p className="eyebrow">
+        {step === "creds" ? "pasul 1 din 2" : "pasul 2 din 2"}
+      </p>
+      <h1 className="page-title">
+        {step === "creds" ? "Autentificare" : "Codul din e-mail"}
+      </h1>
       {step === "creds" ? (
         <form className="auth-form" onSubmit={submitCreds}>
           <label>
@@ -140,8 +156,8 @@ export default function LoginPage() {
         </form>
       )}
       <p className="hint auth-hint">
-        Conturile sunt create de administrator. Autentificarea cere întotdeauna un cod
-        primit pe email.
+        Conturile sunt create de administrator. Autentificarea cere întotdeauna
+        un cod primit pe email.
       </p>
     </div>
   );

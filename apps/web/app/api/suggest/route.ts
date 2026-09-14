@@ -7,7 +7,7 @@ import { aliasQueries, queryTokens } from "@/lib/ask/entity-alias";
 /**
  * GET /api/suggest?q=…&county=…  — typeahead feed for the "Construiește"
  * builder. One call searches every ground-able vocabulary at once: CPV
- * synonyms, localities (reference.uat), authorities and suppliers. The static
+ * catalogue and synonyms, localities (reference.uat), authorities and suppliers. The static
  * vocabularies (blocks, measures, counties, years) live client-side.
  */
 
@@ -111,16 +111,25 @@ export async function GET(req: Request) {
   devlog("suggest", county ? { q, county } : { q });
   const sql = db();
   const like = `%${q}%`;
+  // Bind text[] explicitly, including on the first request before the driver
+  // has discovered array types. Otherwise a string array can bind as text.
+  const textArray = (values: string[]) => sql.typed(values, 1009);
   // institutional aliases ("primaria X" → "municipiul X") + all-tokens fallback
   const authPats = aliasQueries(q).map((a) => `%${a}%`);
   const toks = queryTokens(q).map((t) => `%${t}%`);
   const authTokFrag =
     toks.length > 1
-      ? sql`or lower(unaccent(ep.name_display)) like all(${sql.array(toks)}::text[])`
+      ? sql`or lower(unaccent(ep.name_display)) like all(${textArray(toks)}::text[])`
       : sql``;
   const supTokFrag = authTokFrag;
   // A CPV code typed directly ("45", "45233", "45233120-6") → catalog by prefix.
   const codeM = /^(\d{2,8})(?:-\d)?$/.exec(q.replace(/\s+/g, ""));
+  // Search the official Romanian labels as well as colloquial synonyms.
+  // Separate words tolerate intervening words, word order and inflections
+  // such as "spatii" inside "spatiilor". Punctuation is not a SQL wildcard.
+  const cpvWords = q.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+  const cpvPhrase = cpvWords.join(" ");
+  const cpvPatterns = cpvWords.map((word) => `%${word}%`);
 
   const [cpv, uat, authority, supplier, person] = await Promise.all([
     codeM
@@ -132,14 +141,37 @@ export async function GET(req: Request) {
           limit 5
         ` as unknown as Promise<{ term: string; cpv_name: string | null }[]>)
       : (sql`
-          select distinct on (s.term) s.term,
-                 (select c.name_ro from core.cpv_codes c
-                  where c.code like s.cpv_prefix || '%'
-                  order by length(c.code), c.code limit 1) cpv_name
-          from reference.cpv_synonym s
-          where s.term like ${like}
-          order by s.term, position(${q} in s.term)
-          limit 5
+          with catalog_matches as (
+            select c.code as term, c.name_ro as cpv_name,
+                   case
+                     when lower(unaccent(c.name_ro)) = ${cpvPhrase} then 0
+                     when lower(unaccent(c.name_ro)) like ${cpvPhrase + "%"} then 1
+                     when lower(unaccent(c.name_ro)) like ${"%" + cpvPhrase + "%"} then 2
+                     else 3
+                   end as priority,
+                   length(c.name_ro) as label_length
+            from core.cpv_codes c
+            where ${cpvWords.length > 0}
+              and lower(unaccent(c.name_ro)) like all(${textArray(cpvPatterns)}::text[])
+          ), synonym_matches as (
+            select distinct on (s.term) s.term,
+                   (select c.name_ro from core.cpv_codes c
+                    where c.code like s.cpv_prefix || '%'
+                    order by length(c.code), c.code limit 1) cpv_name,
+                   case when lower(unaccent(s.term)) = ${cpvPhrase} then 0 else 4 end as priority,
+                   length(s.term) as label_length
+            from reference.cpv_synonym s
+            where ${cpvWords.length > 0}
+              and lower(unaccent(s.term)) like all(${textArray(cpvPatterns)}::text[])
+            order by s.term, length(s.cpv_prefix) desc, s.cpv_prefix
+          )
+          select term, cpv_name from (
+            select * from catalog_matches
+            union all
+            select * from synonym_matches
+          ) matches
+          order by priority, label_length, term
+          limit 8
         ` as unknown as Promise<{ term: string; cpv_name: string | null }[]>),
     sql`
       select u.siruta, u.name, u.tip, u.county, u.population
@@ -157,7 +189,7 @@ export async function GET(req: Request) {
                ep.name_display, ep.county, ep.total_ron_full
         from marts.entity_profile ep
         where ep.role = 'authority'
-          and (lower(unaccent(ep.name_display)) like any(${sql.array(authPats)}::text[]) ${authTokFrag})
+          and (lower(unaccent(ep.name_display)) like any(${textArray(authPats)}::text[]) ${authTokFrag})
         order by lower(unaccent(ep.name_display)), ep.total_ron_full desc nulls last
       ) d
       order by d.total_ron_full desc nulls last

@@ -2,10 +2,17 @@ import { NextResponse } from "next/server";
 import { createDb, type DbSql } from "@seap/db";
 import { validateSpec, type AskSpec } from "@/lib/ask/spec";
 import { ground } from "@/lib/ask/ground";
-import { runSpec, TABLE_SORTS, type TableOpts, type TableSort } from "@/lib/ask/compile";
+import {
+  runSpec,
+  TABLE_SORTS,
+  type TableOpts,
+  type TableSort,
+} from "@/lib/ask/compile";
 import { buildPills } from "@/lib/ask/pills";
 import { interpret } from "@/lib/ask/llm";
+import { resolvedSpec } from "@/lib/ask/resolved-spec";
 import { devlog } from "@/lib/devlog";
+import { NATURAL_LANGUAGE_ENABLED, NATURAL_LANGUAGE_UNAVAILABLE } from "@/lib/ask/features";
 
 /**
  * POST /api/ask
@@ -33,7 +40,10 @@ export async function POST(req: Request) {
   try {
     body = (await req.json()) as typeof body;
   } catch {
-    return NextResponse.json({ ok: false, error: "Body invalid (JSON)." }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "Body invalid (JSON)." },
+      { status: 400 },
+    );
   }
 
   let spec: AskSpec;
@@ -41,10 +51,19 @@ export async function POST(req: Request) {
   let model: string | null = null;
 
   if (typeof body.question === "string" && body.question.trim().length > 0) {
+    if (!NATURAL_LANGUAGE_ENABLED) {
+      return NextResponse.json(
+        { ok: false, error: NATURAL_LANGUAGE_UNAVAILABLE },
+        { status: 501 },
+      );
+    }
     question = body.question.trim().slice(0, 500);
     const it = await interpret(question);
     if ("error" in it) {
-      return NextResponse.json({ ok: false, error: it.error }, { status: it.status ?? 500 });
+      return NextResponse.json(
+        { ok: false, error: it.error },
+        { status: it.status ?? 500 },
+      );
     }
     spec = it.spec;
     model = it.model;
@@ -64,9 +83,13 @@ export async function POST(req: Request) {
   const tableOpts: TableOpts = {};
   if (Number.isFinite(Number(body.tablePage)))
     tableOpts.page = Math.max(0, Math.floor(Number(body.tablePage)));
-  if (typeof body.tableSort === "string" && (TABLE_SORTS as readonly string[]).includes(body.tableSort))
+  if (
+    typeof body.tableSort === "string" &&
+    (TABLE_SORTS as readonly string[]).includes(body.tableSort)
+  )
     tableOpts.sort = body.tableSort as TableSort;
-  if (body.tableDir === "asc" || body.tableDir === "desc") tableOpts.dir = body.tableDir;
+  if (body.tableDir === "asc" || body.tableDir === "desc")
+    tableOpts.dir = body.tableDir;
 
   const sql = db();
   try {
@@ -75,7 +98,13 @@ export async function POST(req: Request) {
     if ("error" in result) {
       devlog("ask", { question, spec, ok: false, error: result.error });
       return NextResponse.json(
-        { ok: false, error: result.error, caveats: result.caveats, spec, question },
+        {
+          ok: false,
+          error: result.error,
+          caveats: result.caveats,
+          spec,
+          question,
+        },
         { status: 200 },
       );
     }
@@ -84,7 +113,8 @@ export async function POST(req: Request) {
       ok: true,
       question,
       model,
-      spec,
+      spec: resolvedSpec(spec, grounding),
+      executedAt: new Date().toISOString(),
       pills: buildPills(spec, grounding),
       caveats: result.caveats,
       data: result.data,

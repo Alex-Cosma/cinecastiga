@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { createDb, type DbSql } from "@seap/db";
 import { validateSpec } from "@/lib/ask/spec";
 import { ground } from "@/lib/ask/ground";
-import { runRows, DRILL_SORTS, type DrillOpts, type DrillSort } from "@/lib/ask/compile";
+import { runRows } from "@/lib/ask/compile";
+import { evidenceOptions } from "@/lib/ask/evidence-request";
 import { devlog } from "@/lib/devlog";
 
 /**
@@ -19,20 +20,20 @@ function db(): DbSql {
 }
 
 export async function POST(req: Request) {
-  let body: { spec?: unknown; page?: unknown; sort?: unknown; dir?: unknown; stream?: unknown };
+  let body: Record<string, unknown>;
   try {
     body = (await req.json()) as typeof body;
+    if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error("Invalid body");
   } catch {
     return NextResponse.json({ ok: false, error: "Body invalid (JSON)." }, { status: 400 });
   }
   const v = validateSpec(body.spec);
   if ("error" in v) return NextResponse.json({ ok: false, error: v.error }, { status: 400 });
   const page = Number.isFinite(Number(body.page)) ? Math.max(0, Math.floor(Number(body.page))) : 0;
-  const opts: DrillOpts = {};
-  if (typeof body.sort === "string" && body.sort in DRILL_SORTS) opts.sort = body.sort as DrillSort;
-  if (body.dir === "asc" || body.dir === "desc") opts.dir = body.dir;
-  if (body.stream === "da" || body.stream === "contracts") opts.stream = body.stream;
+  const opts = evidenceOptions(body);
+  if ("error" in opts) return NextResponse.json({ ok: false, error: opts.error }, { status: 400 });
   devlog("drill", { spec: v, page, ...opts });
+  opts.signal = req.signal;
 
   const sql = db();
   try {
@@ -41,9 +42,11 @@ export async function POST(req: Request) {
     if ("error" in result) {
       return NextResponse.json({ ok: false, error: result.error }, { status: 200 });
     }
-    return NextResponse.json({ ok: true, ...result });
+    return NextResponse.json({ ok: true, ...result }, { headers: { "cache-control": "no-store" } });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ ok: false, error: `Eroare la execuție: ${msg}` }, { status: 500 });
+    return NextResponse.json({ ok: false, error: msg.includes("statement timeout")
+      ? "Lista completă a depășit 20 de secunde. Restrânge întrebarea la o instituție, un județ sau o perioadă și încearcă din nou."
+      : "Sursele nu au putut fi încărcate. Încearcă din nou." }, { status: 500 });
   }
 }

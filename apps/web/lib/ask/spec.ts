@@ -87,6 +87,8 @@ export interface AskFilters {
   adminName?: string;
   /** Second entity for block=compare (same role as the focal entity). */
   compareWith?: string;
+  /** Exact identity selected for the second comparison profile. */
+  compareWithId?: number;
   /**
    * Scope to a locality (UAT): all buying authorities mapped to this SIRUTA
    * code (primărie, școli, spital…). Set by the builder's locality typeahead —
@@ -176,7 +178,8 @@ export const SPEC_JSON_SCHEMA = {
         },
         county: {
           type: "string",
-          description: "Județul AUTORITĂȚII cumpărătoare, dacă întrebarea e limitată la unul.",
+          description:
+            "Județul AUTORITĂȚII cumpărătoare, dacă întrebarea e limitată la unul.",
         },
         authorityKind: { type: "string", enum: [...AUTHORITY_KINDS] },
         authorityName: {
@@ -231,11 +234,13 @@ export const FOCAL_BLOCKS: Block[] = ["distribution", "sankey", "network"];
 
 /** Validate + normalize an untrusted spec (from LLM or a direct API caller). */
 export function validateSpec(raw: unknown): AskSpec | SpecError {
-  if (typeof raw !== "object" || raw === null) return { error: "spec must be an object" };
+  if (typeof raw !== "object" || raw === null)
+    return { error: "spec must be an object" };
   const o = raw as Record<string, unknown>;
 
   const block = o["block"];
-  if (!BLOCKS.includes(block as Block)) return { error: `block must be one of ${BLOCKS.join(", ")}` };
+  if (!BLOCKS.includes(block as Block))
+    return { error: `block must be one of ${BLOCKS.join(", ")}` };
 
   let dataset: Dataset = "all";
   if (o["dataset"] !== undefined && o["dataset"] !== null) {
@@ -250,28 +255,38 @@ export function validateSpec(raw: unknown): AskSpec | SpecError {
 
   let dim: Dim | undefined;
   if (o["dim"] !== undefined && o["dim"] !== null) {
-    if (!DIMS.includes(o["dim"] as Dim)) return { error: `dim must be one of ${DIMS.join(", ")}` };
+    if (!DIMS.includes(o["dim"] as Dim))
+      return { error: `dim must be one of ${DIMS.join(", ")}` };
     dim = o["dim"] as Dim;
   }
   if ((block === "table" || block === "trend") && !dim) dim = "authority";
-  if ((block === "entity_card" || block === "scatter") && (!dim || dim === "county")) {
+  if (
+    (block === "entity_card" || block === "scatter") &&
+    (!dim || dim === "county")
+  ) {
     dim = "authority";
   }
 
   let topN: number | undefined;
   if (o["topN"] !== undefined && o["topN"] !== null) {
     const n = Number(o["topN"]);
-    if (!Number.isFinite(n) || n < 1) return { error: "topN must be a positive integer" };
+    if (!Number.isFinite(n) || n < 1)
+      return { error: "topN must be a positive integer" };
     topN = Math.min(Math.floor(n), MAX_TOP_N);
   }
 
   let rankBy: RankBy | undefined;
-  if (o["rankBy"] !== undefined && o["rankBy"] !== null && RANK_BYS.includes(o["rankBy"] as RankBy)) {
+  if (
+    o["rankBy"] !== undefined &&
+    o["rankBy"] !== null &&
+    RANK_BYS.includes(o["rankBy"] as RankBy)
+  ) {
     rankBy = o["rankBy"] as RankBy;
   }
 
   const fRaw = (o["filters"] ?? {}) as Record<string, unknown>;
-  if (typeof fRaw !== "object" || fRaw === null) return { error: "filters must be an object" };
+  if (typeof fRaw !== "object" || fRaw === null)
+    return { error: "filters must be an object" };
   const filters: AskFilters = {};
   const str = (k: keyof AskFilters & string): string | undefined => {
     const v = fRaw[k];
@@ -296,7 +311,7 @@ export function validateSpec(raw: unknown): AskSpec | SpecError {
   }
   const uatName = str("uatName");
   if (filters.uatSiruta && uatName) filters.uatName = uatName;
-  for (const k of ["authorityId", "supplierId"] as const) {
+  for (const k of ["authorityId", "supplierId", "compareWithId"] as const) {
     if (fRaw[k] !== undefined && fRaw[k] !== null) {
       const n = Number(fRaw[k]);
       if (Number.isFinite(n) && n > 0) filters[k] = Math.floor(n);
@@ -331,13 +346,15 @@ export function validateSpec(raw: unknown): AskSpec | SpecError {
     const v = fRaw[k];
     if (v === undefined || v === null) continue;
     const n = Number(v);
-    if (Number.isFinite(n) && n >= 2000 && n <= 2100) filters[k] = Math.floor(n);
+    if (Number.isFinite(n) && n >= 2000 && n <= 2100)
+      filters[k] = Math.floor(n);
   }
   for (const k of ["minEmployees", "maxEmployees"] as const) {
     const v = fRaw[k];
     if (v === undefined || v === null) continue;
     const n = Number(v);
-    if (Number.isFinite(n) && n >= 0 && n <= 1_000_000) filters[k] = Math.floor(n);
+    if (Number.isFinite(n) && n >= 0 && n <= 1_000_000)
+      filters[k] = Math.floor(n);
   }
   if (
     filters.minEmployees !== undefined &&
@@ -355,24 +372,42 @@ export function validateSpec(raw: unknown): AskSpec | SpecError {
   }
 
   // per-capita only makes sense ranked/scoped over authorities
-  if (measure === "value_per_capita" && block === "table" && dim !== "authority") {
+  if (
+    measure === "value_per_capita" &&
+    block === "table" &&
+    dim !== "authority"
+  ) {
     return { error: "value_per_capita requires dim=authority" };
   }
 
   // block-specific requirements
-  const focal = filters.authorityName ?? filters.supplierName;
+  const focal =
+    filters.authorityId ??
+    filters.authorityName ??
+    filters.supplierId ??
+    filters.supplierName;
   if (FOCAL_BLOCKS.includes(block as Block) && !focal) {
     return {
       error: `block=${String(block)} requires filters.authorityName or filters.supplierName`,
     };
   }
-  if (block === "compare" && (!focal || !filters.compareWith)) {
+  if (
+    block === "compare" &&
+    (!focal || !(filters.compareWithId || filters.compareWith))
+  ) {
     return {
-      error: "block=compare requires a focal entity (authorityName/supplierName) and compareWith",
+      error:
+        "block=compare requires a focal entity (authorityName/supplierName) and compareWith",
     };
   }
-  if (block === "fact_check" && (!filters.authorityName || !filters.supplierName)) {
-    return { error: "block=fact_check requires both authorityName and supplierName" };
+  if (
+    block === "fact_check" &&
+    (!(filters.authorityName || filters.authorityId) ||
+      !(filters.supplierName || filters.supplierId))
+  ) {
+    return {
+      error: "block=fact_check requires both authorityName and supplierName",
+    };
   }
   // The map IS a by-county breakdown — a county/locality filter is contradictory.
   if (block === "map" && (filters.county || filters.uatSiruta)) {
@@ -391,7 +426,10 @@ export function validateSpec(raw: unknown): AskSpec | SpecError {
           "Clasamentul e deja pe județe — scoate județul/localitatea sau alege altă dimensiune.",
       };
     }
-    if (effDim === "authority" && (filters.authorityName || filters.authorityId)) {
+    if (
+      effDim === "authority" &&
+      (filters.authorityName || filters.authorityId)
+    ) {
       return {
         error:
           "Ai filtrat pe o singură autoritate — pentru un clasament alege dimensiunea furnizori/județe, sau folosește «un total» / «fișă entitate».",
@@ -405,7 +443,11 @@ export function validateSpec(raw: unknown): AskSpec | SpecError {
     }
   }
 
-  const spec: AskSpec = { block: block as Block, measure: measure as Measure, filters };
+  const spec: AskSpec = {
+    block: block as Block,
+    measure: measure as Measure,
+    filters,
+  };
   if (dataset !== "all") spec.dataset = dataset;
   if (dim) spec.dim = dim;
   if (topN) spec.topN = topN;
