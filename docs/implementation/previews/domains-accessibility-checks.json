@@ -1,0 +1,68 @@
+{
+  "generatedAt": "2026-09-14T09:17:29.520Z",
+  "base": "http://localhost:3100",
+  "scope": "Actual production route, keyboard and pointer actions in isolated Chrome 9238; no authentication or database writes.",
+  "checks": [
+    {
+      "name": "Atlas controls are sibling buttons with no delayed native titles",
+      "ok": true
+    },
+    {
+      "name": "Every visible details arrow retains a 44×44 target",
+      "ok": true
+    },
+    {
+      "name": "Keyboard focus instantly exposes full tooltip and description association",
+      "ok": true
+    },
+    {
+      "name": "Escape dismisses the focused tooltip without losing focus",
+      "ok": true
+    },
+    {
+      "name": "Enter on a parent explores its children and focuses the atlas heading",
+      "ok": true
+    },
+    {
+      "name": "Enter on the independent arrow opens that category’s details and focuses its title",
+      "ok": true
+    },
+    {
+      "name": "Resizing preserves the focused tile and keyboard tooltip",
+      "ok": true
+    },
+    {
+      "name": "Pointer hover shows tooltip immediately without a delay",
+      "ok": true
+    },
+    {
+      "name": "Scrolling dismisses the previous hover tooltip",
+      "ok": true
+    },
+    {
+      "name": "Movement within the same tile restores tooltip after scrolling",
+      "ok": true
+    },
+    {
+      "name": "Tooltip remains clamped inside the viewport",
+      "ok": true
+    },
+    {
+      "name": "Escape remains dismissed during subsequent movement within that tile",
+      "ok": true
+    },
+    {
+      "name": "Leaving and re-entering makes the tooltip available again",
+      "ok": true
+    },
+    {
+      "name": "Navigating away cleans up the atlas tooltip",
+      "ok": true
+    },
+    {
+      "name": "No runtime exceptions during the production integration checks",
+      "ok": true
+    }
+  ],
+  "errors": []
+}

@@ -1,0 +1,125 @@
+{
+  "checks": [
+    {
+      "name": "Default atlas has nine disjoint regions",
+      "pass": true
+    },
+    {
+      "name": "Readable medium tile titles retained",
+      "pass": true
+    },
+    {
+      "name": "Native delayed tooltip removed",
+      "pass": true
+    },
+    {
+      "name": "Unlabeled tile tooltip is immediate",
+      "pass": true
+    },
+    {
+      "name": "Tooltip includes CPV exact value and parent action",
+      "pass": true
+    },
+    {
+      "name": "Tooltip stays in viewport",
+      "pass": true
+    },
+    {
+      "name": "Escape dismisses tooltip",
+      "pass": true
+    },
+    {
+      "name": "Parent body drills without opening detail page",
+      "pass": true
+    },
+    {
+      "name": "Original page heading remains",
+      "pass": true
+    },
+    {
+      "name": "Canvas position remains stable",
+      "pass": true
+    },
+    {
+      "name": "Parent arrow opens details directly",
+      "pass": true
+    },
+    {
+      "name": "Arrow does not trigger parent body",
+      "pass": true
+    },
+    {
+      "name": "Return restores atlas parent",
+      "pass": true
+    },
+    {
+      "name": "Second parent body drills to more real groups",
+      "pass": true
+    },
+    {
+      "name": "Actual full-code leaf opens details on body click",
+      "pass": true
+    },
+    {
+      "name": "Leaf source link preserves exact eight-digit code",
+      "pass": true
+    },
+    {
+      "name": "Medical also drills instead of false leaf",
+      "pass": true
+    },
+    {
+      "name": "Browser Back restores previous atlas scope",
+      "pass": true
+    },
+    {
+      "name": "Keyboard focus shows details hint instantly",
+      "pass": true
+    },
+    {
+      "name": "Keyboard arrow opens details only",
+      "pass": true
+    },
+    {
+      "name": "Three authentic source records retained",
+      "pass": true
+    },
+    {
+      "name": "National total link retains national sources after drilling",
+      "pass": true
+    },
+    {
+      "name": "No mobile overflow 390",
+      "pass": true
+    },
+    {
+      "name": "Every small category has separate accessible details action 390",
+      "pass": true
+    },
+    {
+      "name": "Mobile list arrow opens parent detail 390",
+      "pass": true
+    },
+    {
+      "name": "No mobile overflow 320",
+      "pass": true
+    },
+    {
+      "name": "Every small category has separate accessible details action 320",
+      "pass": true
+    },
+    {
+      "name": "Mobile list arrow opens parent detail 320",
+      "pass": true
+    },
+    {
+      "name": "Reduced-motion drill still works",
+      "pass": true
+    },
+    {
+      "name": "Only one current tooltip is mounted",
+      "pass": true
+    }
+  ],
+  "errors": []
+}

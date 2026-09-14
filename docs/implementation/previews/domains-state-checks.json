@@ -1,0 +1,80 @@
+{
+  "checks": [
+    {
+      "name": "Year selector loads real 2024 data and URL",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "Back from selected year restores canonical default 2025",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "Back from question restores atlas year and category",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "Homepage navigation returns to default atlas",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "Delayed year holds frame and disables source actions",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "Failed year retains displayed data and blocked state",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "Recovery matches displayed year and URL",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "Returning to current year aborts stale failure",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "Failed Back retains requested URL while blocking old scope",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "Retry after failed Back restores requested year AND category",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "Search opens a real source drawer with exact CPV scope",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "Source drawer offers CSV and investigation actions",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "Drawer Escape restores source-button focus",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "Reduced motion has no active atlas animation",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "No browser runtime exceptions",
+      "passed": true,
+      "detail": true
+    }
+  ],
+  "errors": []
+}

@@ -1,0 +1,114 @@
+{
+  "checks": [
+    {
+      "name": "Default year is canonical and root has 9 tiles",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "Real 2025 totals appear",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "Parent body enters children without details",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "Unlabelled tiny tiles exist in drilled view",
+      "passed": true,
+      "detail": {
+        "code": "4520",
+        "x": 810.7181396484375,
+        "y": 549.8174896240234
+      }
+    },
+    {
+      "name": "Tiny tile has an immediate tooltip",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "Tooltip stays inside viewport",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "Escape dismisses tooltip",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "Back restores root",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "Parent arrow directly opens details",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "Return from details restores root scope",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "Full CPV search finds exact leaf",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "Leaf body directly opens details",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "Diacritic-free search includes green spaces CPV",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "Other opens all remaining 37 divisions",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "All 45 divisions are independently available",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "Legacy CPV link opens construction division",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "No horizontal overflow at 768px",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "No horizontal overflow at 390px",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "No horizontal overflow at 320px",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "Dark theme remains readable",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "name": "No browser runtime exceptions",
+      "passed": true,
+      "detail": true
+    }
+  ],
+  "errors": []
+}

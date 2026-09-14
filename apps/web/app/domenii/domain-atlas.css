@@ -1,0 +1,52 @@
+.domain-atlas {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  height: var(--domain-atlas-height, 475px);
+  overflow: hidden;
+  border-radius: 15px;
+  background: #e6ecdf;
+  isolation: isolate;
+}
+
+.domain-atlas-svg { display: block; }
+
+.domain-atlas-tooltip {
+  position: fixed;
+  z-index: 10000;
+  box-sizing: border-box;
+  width: 310px;
+  max-width: calc(100vw - 24px);
+  padding: 17px 19px;
+  border: 1px solid #ced8c6;
+  border-radius: 12px;
+  background: #fffef8;
+  color: #203c2f;
+  box-shadow: 0 12px 38px #18302526;
+  pointer-events: none;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: left;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.domain-atlas-tooltip[hidden] { display: none; }
+
+@media (min-width: 1500px) {
+  .domain-atlas { height: var(--domain-atlas-height, 530px); }
+}
+
+@media (max-width: 760px) {
+  .domain-atlas { height: var(--domain-atlas-height, 420px); }
+}
+
+@media (max-width: 360px) {
+  .domain-atlas { height: var(--domain-atlas-height, 385px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .domain-atlas-svg g,
+  .domain-atlas-svg rect { transition: none !important; }
+}

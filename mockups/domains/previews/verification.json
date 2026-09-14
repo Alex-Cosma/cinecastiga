@@ -1,0 +1,101 @@
+{
+  "checks": [
+    {
+      "name": "A has 8 categories and remainder",
+      "pass": true
+    },
+    {
+      "name": "Share bars retain three-pixel height",
+      "pass": true
+    },
+    {
+      "name": "B has same 9 real groups",
+      "pass": true
+    },
+    {
+      "name": "Construction opens with all 26 subgroups",
+      "pass": true
+    },
+    {
+      "name": "Changing direction retains category",
+      "pass": true
+    },
+    {
+      "name": "Evidence has 3 real preview rows",
+      "pass": true
+    },
+    {
+      "name": "SEAP links retain external source",
+      "pass": true
+    },
+    {
+      "name": "Escape closes evidence",
+      "pass": true
+    },
+    {
+      "name": "Folded search finds category77",
+      "pass": true
+    },
+    {
+      "name": "Specific child CPV is searchable",
+      "pass": true
+    },
+    {
+      "name": "Roads keyword reaches existing child",
+      "pass": true
+    },
+    {
+      "name": "Full CPV reaches available parent",
+      "pass": true
+    },
+    {
+      "name": "Browser Back restores search",
+      "pass": true
+    },
+    {
+      "name": "Skip link preserves state",
+      "pass": true
+    },
+    {
+      "name": "All45divisions available",
+      "pass": true
+    },
+    {
+      "name": "A no overflow 390",
+      "pass": true
+    },
+    {
+      "name": "B no overflow 390",
+      "pass": true
+    },
+    {
+      "name": "A no overflow 320",
+      "pass": true
+    },
+    {
+      "name": "B no overflow 320",
+      "pass": true
+    },
+    {
+      "name": "A no overflow 768",
+      "pass": true
+    },
+    {
+      "name": "B no overflow 768",
+      "pass": true
+    },
+    {
+      "name": "A no overflow 1440",
+      "pass": true
+    },
+    {
+      "name": "B no overflow 1440",
+      "pass": true
+    },
+    {
+      "name": "Reduced motion applied",
+      "pass": true
+    }
+  ],
+  "errors": []
+}

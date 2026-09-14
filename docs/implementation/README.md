@@ -80,3 +80,7 @@ The production build and TypeScript pass. [72 delayed-response browser checks](p
 The unfinished natural-language AI flow is disabled through a shared UI/API flag. The tab is visibly unavailable, legacy `q` links open the manual builder with an explanation, and direct natural-language API calls return HTTP 501 before interpretation. All 13 deterministic query types remain available. [Nine release browser/API checks](previews/release-ai-checks.json) pass, including desktop/mobile layout and the absence of AI requests from disabled entry points.
 
 `pnpm turbo typecheck lint test build` passes all 20 tasks across the workspace, including 143 unit tests (83 web, 43 ingestion, 16 scraper clients and 1 domain). The release audit found no new schema, environment or runtime-asset requirement. No database migration, source-data write or aggregate rebuild is part of this deployment.
+
+## Domains atlas — 14 September 2026
+
+The approved B design replaces the former static `/domenii` chart with an interactive atlas of the actual annual CPV data. Parent rectangles drill in locally, leaves open details, and each independent ↗ opens details directly. Immediate tooltips, a readable companion list, disjoint search results, year selection and exact source drawers carry the exploration through to original SEAP records. See [implementation and data definitions](domains-atlas.md), [desktop](previews/domains-desktop.png), [mobile](previews/domains-mobile.png), and [sources](previews/domains-sources.png).

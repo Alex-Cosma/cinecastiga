@@ -1,5 +1,7 @@
 # cinecâștigă? — Sunt banii tăi.
 
+**New: [Domenii — compare category cards and an animated atlas](cinecastiga-domains.html).** Two clickable directions using the same real data. [Walkthrough and previews](domains/README.md).
+
 **Complete prototype: [all 13 questions, with direct source records](cinecastiga-complete.html).** Includes 39,343 fully traceable historical profile records, exact calculations, source exports and working Anchete. [Walkthrough and data scope](complete/README.md).
 
 **New: [Proposal A — the editable question](cinecastiga-question.html).** Try the advanced query sketch, with [a one-minute walkthrough and desktop/mobile previews](question/README.md).

@@ -1,0 +1,194 @@
+{
+  "generatedAt": "2026-09-14T09:17:44.510Z",
+  "api": {
+    "coldStartObservedMs": 5855,
+    "firstObservedMs": 106,
+    "warmMs": 66,
+    "cacheControl": "public, max-age=300, stale-while-revalidate=3600",
+    "cachedGeneratedAt": "2026-09-14T09:09:15.615Z",
+    "repeatGeneratedAt": "2026-09-14T09:09:15.615Z",
+    "generatedAtUnchanged": true,
+    "year": 2025,
+    "years": [
+      2026,
+      2025,
+      2024,
+      2023,
+      2022,
+      2021,
+      2020,
+      2019,
+      2018
+    ],
+    "count": 2386867,
+    "totalExact": "178357316781.88000000995700070000",
+    "categoryCount": 45,
+    "nodeCount": 10097,
+    "leafCount": 7252
+  },
+  "checks": [
+    {
+      "code": "national",
+      "ms": 11084,
+      "httpStatus": 200,
+      "ok": true,
+      "expectedCount": 2386867,
+      "actualCount": 2386867,
+      "expectedExact": "178357316781.88000000995700070000",
+      "actualExact": "178357316781.88000000995700070000",
+      "countMatches": true,
+      "valueMatches": true,
+      "sampleCount": 10,
+      "sampleLinksAvailable": 10,
+      "samplesRespectScope": true,
+      "links": [
+        "/intreaba?spec=eyJibG9jayI6ImJyZWFrZG93biIsImRhdGFzZXQiOiJhbGwiLCJtZWFzdXJlIjoidmFsdWUiLCJmaWx0ZXJzIjp7InllYXJGcm9tIjoyMDI1LCJ5ZWFyVG8iOjIwMjV9fQ%3D%3D&drill=1&evidence=%7B%7D",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/121325240",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/121325239",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/121325238"
+      ]
+    },
+    {
+      "code": "45",
+      "ms": 16908,
+      "httpStatus": 200,
+      "ok": true,
+      "expectedCount": 63735,
+      "actualCount": 63735,
+      "expectedExact": "75333136584.18000000998500020000",
+      "actualExact": "75333136584.18000000998500020000",
+      "countMatches": true,
+      "valueMatches": true,
+      "sampleCount": 10,
+      "sampleLinksAvailable": 10,
+      "samplesRespectScope": true,
+      "links": [
+        "/intreaba?spec=eyJibG9jayI6ImJyZWFrZG93biIsImRhdGFzZXQiOiJhbGwiLCJtZWFzdXJlIjoidmFsdWUiLCJmaWx0ZXJzIjp7InllYXJGcm9tIjoyMDI1LCJ5ZWFyVG8iOjIwMjUsImNwdlRlcm0iOiI0NSJ9fQ%3D%3D&drill=1&evidence=%7B%22cpvPrefixes%22%3A%5B%2245%22%5D%7D",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/121325239",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/121325236",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/121325214"
+      ]
+    },
+    {
+      "code": "other",
+      "ms": 22270,
+      "httpStatus": 200,
+      "ok": true,
+      "expectedCount": 1449092,
+      "actualCount": 1449092,
+      "expectedExact": "34256181780.89999999998799920000",
+      "actualExact": "34256181780.89999999998799920000",
+      "countMatches": true,
+      "valueMatches": true,
+      "sampleCount": 10,
+      "sampleLinksAvailable": 10,
+      "samplesRespectScope": true,
+      "links": [
+        "/intreaba?spec=eyJibG9jayI6ImJyZWFrZG93biIsImRhdGFzZXQiOiJhbGwiLCJtZWFzdXJlIjoidmFsdWUiLCJmaWx0ZXJzIjp7InllYXJGcm9tIjoyMDI1LCJ5ZWFyVG8iOjIwMjV9fQ%3D%3D&drill=1&evidence=%7B%22excludeCpvPrefixes%22%3A%5B%2245%22%2C%2233%22%2C%2234%22%2C%2290%22%2C%2209%22%2C%2271%22%2C%2279%22%2C%2250%22%5D%7D",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/121325237",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/121325235",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/121325226"
+      ]
+    },
+    {
+      "code": "45000000",
+      "ms": 3247,
+      "httpStatus": 200,
+      "ok": true,
+      "expectedCount": 1830,
+      "actualCount": 1830,
+      "expectedExact": "3104312617.58000000000000000000",
+      "actualExact": "3104312617.58000000000000000000",
+      "countMatches": true,
+      "valueMatches": true,
+      "sampleCount": 10,
+      "sampleLinksAvailable": 10,
+      "samplesRespectScope": true,
+      "links": [
+        "/intreaba?spec=eyJibG9jayI6ImJyZWFrZG93biIsImRhdGFzZXQiOiJhbGwiLCJtZWFzdXJlIjoidmFsdWUiLCJmaWx0ZXJzIjp7InllYXJGcm9tIjoyMDI1LCJ5ZWFyVG8iOjIwMjUsImNwdlRlcm0iOiI0NTAwMDAwMCJ9fQ%3D%3D&drill=1&evidence=%7B%22cpvPrefixes%22%3A%5B%2245000000%22%5D%7D",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/121322283",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/121320731",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/121320723"
+      ]
+    },
+    {
+      "code": "77310000",
+      "ms": 150,
+      "httpStatus": 200,
+      "ok": true,
+      "expectedCount": 1481,
+      "actualCount": 1481,
+      "expectedExact": "1552322876.7699999999970000",
+      "actualExact": "1552322876.7699999999970000",
+      "countMatches": true,
+      "valueMatches": true,
+      "sampleCount": 10,
+      "sampleLinksAvailable": 10,
+      "samplesRespectScope": true,
+      "links": [
+        "/intreaba?spec=eyJibG9jayI6ImJyZWFrZG93biIsImRhdGFzZXQiOiJhbGwiLCJtZWFzdXJlIjoidmFsdWUiLCJmaWx0ZXJzIjp7InllYXJGcm9tIjoyMDI1LCJ5ZWFyVG8iOjIwMjUsImNwdlRlcm0iOiI3NzMxMDAwMCJ9fQ%3D%3D&drill=1&evidence=%7B%22cpvPrefixes%22%3A%5B%2277310000%22%5D%7D",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/121318057",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/121313140",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/121313058"
+      ]
+    },
+    {
+      "code": "7731+7732",
+      "ms": 270,
+      "httpStatus": 200,
+      "ok": true,
+      "expectedCount": 1995,
+      "actualCount": 1995,
+      "expectedExact": "1658539945.3999999999970000",
+      "actualExact": "1658539945.3999999999970000",
+      "countMatches": true,
+      "valueMatches": true,
+      "sampleCount": 10,
+      "sampleLinksAvailable": 10,
+      "samplesRespectScope": true,
+      "links": [
+        "/intreaba?spec=eyJibG9jayI6ImJyZWFrZG93biIsImRhdGFzZXQiOiJhbGwiLCJtZWFzdXJlIjoidmFsdWUiLCJmaWx0ZXJzIjp7InllYXJGcm9tIjoyMDI1LCJ5ZWFyVG8iOjIwMjUsImNwdlRlcm0iOiI3NyJ9fQ%3D%3D&drill=1&evidence=%7B%22cpvPrefixes%22%3A%5B%227731%22%2C%227732%22%5D%7D",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/121318057",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/121314840",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/121314836"
+      ]
+    },
+    {
+      "code": "root-search:7731+7732",
+      "ms": 10835,
+      "httpStatus": 200,
+      "ok": true,
+      "expectedCount": 1995,
+      "actualCount": 1995,
+      "expectedExact": "1658539945.3999999999970000",
+      "actualExact": "1658539945.3999999999970000",
+      "countMatches": true,
+      "valueMatches": true,
+      "sampleCount": 10,
+      "links": [
+        "/intreaba?spec=eyJibG9jayI6ImJyZWFrZG93biIsImRhdGFzZXQiOiJhbGwiLCJtZWFzdXJlIjoidmFsdWUiLCJmaWx0ZXJzIjp7InllYXJGcm9tIjoyMDI1LCJ5ZWFyVG8iOjIwMjV9fQ%3D%3D&drill=1&evidence=%7B%22cpvPrefixes%22%3A%5B%227731%22%2C%227732%22%5D%7D"
+      ]
+    }
+  ],
+  "csv": {
+    "code": "03111800",
+    "ms": 11,
+    "httpStatus": 200,
+    "contentType": "text/csv; charset=utf-8",
+    "expectedCount": 1,
+    "expectedExact": "759.5000000000000000",
+    "totalRows": 1,
+    "exportedRows": 1,
+    "containsCpv": true,
+    "containsSeapLink": true,
+    "link": "/intreaba?spec=eyJibG9jayI6ImJyZWFrZG93biIsImRhdGFzZXQiOiJhbGwiLCJtZWFzdXJlIjoidmFsdWUiLCJmaWx0ZXJzIjp7InllYXJGcm9tIjoyMDI1LCJ5ZWFyVG8iOjIwMjUsImNwdlRlcm0iOiIwMzExMTgwMCJ9fQ%3D%3D&drill=1&evidence=%7B%22cpvPrefixes%22%3A%5B%2203111800%22%5D%7D",
+    "parsedRows": 1,
+    "actualExact": "759.5000000000000000",
+    "valueMatches": true,
+    "exactLeafMatches": true,
+    "sourceLinks": [
+      "https://e-licitatie.ro/pub/notices/ca-notices/view-c/100585951"
+    ]
+  },
+  "passed": true
+}
