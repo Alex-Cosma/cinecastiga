@@ -254,7 +254,7 @@ function initFrom(initial: BuilderSpec | null | undefined): [State, Chip[]] {
   chips = addChip(chips, "block", "formă", blockDef.l);
   if (initial.dataset === "contracts" || f["singleBidder"] === true) {
     s.dataset = "contracts";
-    chips = addChip(chips, "dataset", "sursa", "doar contracte (peste prag)");
+    chips = addChip(chips, "dataset", "sursa", "doar contracte prin proceduri");
   } else if (initial.dataset === "da") {
     s.dataset = "da";
     chips = addChip(chips, "dataset", "sursa", "doar achiziții directe");
@@ -530,9 +530,9 @@ function buildEditCands(s: State, key: keyof State, q: string): CandGroup[] {
   }
   if (key === "dataset") {
     const opts = [
-      { id: null, ic: "🔀", l: "toate sursele", d: "directe + contracte (implicit)" },
-      { id: "da", ic: "🧾", l: "doar achiziții directe", d: "sub prag" },
-      { id: "contracts", ic: "📑", l: "doar contracte", d: "licitații, peste prag" },
+      { id: null, ic: "🔀", l: "toate sursele", d: "achiziții directe + contracte prin proceduri (implicit)" },
+      { id: "da", ic: "🧾", l: "doar achiziții directe", d: "cumpărări directe înregistrate în SEAP" },
+      { id: "contracts", ic: "📑", l: "doar contracte prin proceduri", d: "proceduri de atribuire înregistrate în SEAP" },
     ];
     for (const o of opts) {
       if (!ok(o.l)) continue;
@@ -543,7 +543,7 @@ function buildEditCands(s: State, key: keyof State, q: string): CandGroup[] {
           if (o.id === null) clearKeys(st, ch, ["dataset"]);
           else {
             st.dataset = o.id;
-            setChip(ch, "dataset", "sursa", o.id === "da" ? "doar achiziții directe" : "doar contracte (peste prag)");
+            setChip(ch, "dataset", "sursa", o.id === "da" ? "doar achiziții directe" : "doar contracte prin proceduri");
           }
         },
       });
@@ -941,17 +941,17 @@ function buildCands(s: State, q: string, remote: RemoteSuggest, run: () => void)
   // data stream + competition (default = BOTH channels; chips narrow to one)
   if (s.dataset !== "contracts" && (it.datasetContracts || it.singleBidder)) {
     nar.push({
-      id: "ds:contracts", ic: "📑", label: "sursa: doar contracte (licitații, peste prag)",
+      id: "ds:contracts", ic: "📑", label: "sursa: doar contracte prin proceduri",
       sub: "implicit cauți în ambele canale", sc: 1.2,
       apply: (st, ch) => {
         st.dataset = "contracts";
-        ch.push({ key: "dataset", cat: "sursa", label: "doar contracte (peste prag)" });
+        ch.push({ key: "dataset", cat: "sursa", label: "doar contracte prin proceduri" });
       },
     });
   }
   if (s.dataset !== "da" && it.datasetDa) {
     nar.push({
-      id: "ds:da", ic: "🧾", label: "sursa: doar achiziții directe (sub prag)",
+      id: "ds:da", ic: "🧾", label: "sursa: doar achiziții directe",
       sub: "implicit cauți în ambele canale", sc: 1.2,
       apply: (st, ch) => {
         if (st.singleBidder) {
@@ -968,12 +968,12 @@ function buildCands(s: State, q: string, remote: RemoteSuggest, run: () => void)
   }
   if (!s.singleBidder && (it.singleBidder || (s.dataset === "contracts" && !qq))) {
     nar.push({
-      id: "sb", ic: "1️⃣", label: "doar cu un singur ofertant", sub: "competiția, din datele TED",
+      id: "sb", ic: "1️⃣", label: "doar cu un singur ofertant", sub: "numărul de ofertanți cunoscut din TED",
       sc: it.singleBidder ? 1.25 : 0.39, hot: !!it.singleBidder,
       apply: (st, ch) => {
         if (st.dataset !== "contracts") {
           st.dataset = "contracts";
-          ch.push({ key: "dataset", cat: "sursa", label: "doar contracte (peste prag)", auto: true });
+          ch.push({ key: "dataset", cat: "sursa", label: "doar contracte prin proceduri", auto: true });
         }
         st.singleBidder = true;
         ch.push({ key: "singleBidder", cat: "doar", label: "un singur ofertant" });
@@ -1066,11 +1066,11 @@ function buildCands(s: State, q: string, remote: RemoteSuggest, run: () => void)
       });
     if (!s.dataset) {
       nar.push({
-        id: "ex-ds-c", ic: "📑", label: "sursa: doar contracte (licitații)",
+        id: "ex-ds-c", ic: "📑", label: "sursa: doar contracte prin proceduri",
         sub: "implicit: ambele canale", sc: 0.34,
         apply: (st, ch) => {
           st.dataset = "contracts";
-          ch.push({ key: "dataset", cat: "sursa", label: "doar contracte (peste prag)" });
+          ch.push({ key: "dataset", cat: "sursa", label: "doar contracte prin proceduri" });
         },
       });
       nar.push({

@@ -1,0 +1,53 @@
+{
+  "checks": [
+    {
+      "name": "TED title and metadata describe publication source",
+      "passed": true
+    },
+    {
+      "name": "Matching limitation is explained beside filters",
+      "passed": true
+    },
+    {
+      "name": "Old threshold and absence labels are absent",
+      "passed": true
+    },
+    {
+      "name": "Original TED links remain available",
+      "passed": true
+    },
+    {
+      "name": "Unmatched filter preserves existing query key and result labels",
+      "passed": true
+    },
+    {
+      "name": "Mobile introduction and filter labels fit the page",
+      "passed": true
+    },
+    {
+      "name": "Homepage and footer use publication wording",
+      "passed": true
+    },
+    {
+      "name": "Entity profile labels contracts by procedure",
+      "passed": true
+    },
+    {
+      "name": "Question result names the source without threshold claims",
+      "passed": true
+    },
+    {
+      "name": "AI entry stays disabled",
+      "passed": true
+    },
+    {
+      "name": "Contract detail badge identifies a procurement procedure",
+      "passed": true
+    },
+    {
+      "name": "No browser runtime exceptions",
+      "passed": true
+    }
+  ],
+  "errors": []
+}

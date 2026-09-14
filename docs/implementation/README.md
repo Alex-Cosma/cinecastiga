@@ -84,3 +84,9 @@ The unfinished natural-language AI flow is disabled through a shared UI/API flag
 ## Domains atlas — 14 September 2026
 
 The approved B design replaces the former static `/domenii` chart with an interactive atlas of the actual annual CPV data. Parent rectangles drill in locally, leaves open details, and each independent ↗ opens details directly. Immediate tooltips, a readable companion list, disjoint search results, year selection and exact source drawers carry the exploration through to original SEAP records. See [implementation and data definitions](domains-atlas.md), [desktop](previews/domains-desktop.png), [mobile](previews/domains-mobile.png), and [sources](previews/domains-sources.png).
+
+## TED terminology — 14 September 2026
+
+`/supra-prag` is titled **Atribuiri publicate în TED**, describing the publication source. **Fără potrivire SEAP** labels records for which the automatic match has not identified a counterpart. An explanation beside the filters states that the award may still exist in SEAP. The homepage, footer, contract profiles and query builder use consistent publication/procedure wording, distinguishing ordinary procedure contracts from European publication thresholds.
+
+All 20 workspace checks and 154 tests pass. [12 browser checks](previews/ted-wording-checks.json) cover desktop/mobile wording, the existing unmatched filter, original TED links, homepage/footer labels, entity and contract profiles, query results and the disabled AI entry. No runtime exceptions. [Desktop](previews/ted-wording-desktop.png) · [Mobile](previews/ted-wording-mobile.png).

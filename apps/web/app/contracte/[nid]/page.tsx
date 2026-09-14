@@ -66,7 +66,7 @@ export default async function ContractPage({
         <h1>{cleanName(headline)}</h1>
         <ClipButton kind="contract" refId={String(nid)} label={cleanName(headline)} />
         <div>
-          <span className="badge plain">contract (peste prag)</span>
+          <span className="badge plain">contract atribuit prin procedură</span>
           {c.procedureType && <span className="badge plain">{c.procedureType}</span>}
           {c.isSingleBidder === true && <span className="flag-tag">un singur ofertant</span>}
           {c.contractNo && <span className="note">nr. {c.contractNo}</span>}{" "}

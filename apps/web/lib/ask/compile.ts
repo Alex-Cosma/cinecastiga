@@ -347,14 +347,14 @@ export async function runSpec(
   const codeCol = dataset === "contracts" ? sql`d.contract_no` : sql`d.da_code`;
   if (dataset === "contracts") {
     caveats.push(
-      "Sursă: DOAR contracte atribuite prin proceduri competitive (peste prag). Valoarea consorțiilor e împărțită egal între câștigători. " +
+      "Sursă: DOAR contracte atribuite prin proceduri. Valoarea consorțiilor e împărțită egal între câștigători. " +
         "Când un anunț publică și acordul-cadru și contractele subsecvente, plafonul acordului nu se adună (banii reali sunt comenzile).",
     );
   } else if (dataset === "da") {
-    caveats.push("Sursă: DOAR achiziții directe (sub prag).");
+    caveats.push("Sursă: DOAR achiziții directe.");
   } else {
     caveats.push(
-      "Sursă: ambele canale — achiziții directe (sub prag) + contracte din proceduri (peste prag). Canalele sunt disjuncte, deci suma e corectă; TED nu e niciodată însumat.",
+      "Sursă: ambele canale — achiziții directe + contracte atribuite prin proceduri. Canalele sunt disjuncte, deci suma e corectă; TED nu e niciodată însumat.",
     );
   }
   if (spec.filters.singleBidder) {

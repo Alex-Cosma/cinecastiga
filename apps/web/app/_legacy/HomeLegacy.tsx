@@ -130,8 +130,8 @@ export async function LegacyHomeSections() {
         </Link>
         <Link className="tile" href="/supra-prag">
           <div className="i">🇪🇺</div>
-          <div className="n">Supra-prag</div>
-          <div className="d">contracte mari · TED</div>
+          <div className="n">Publicate în TED</div>
+          <div className="d">anunțuri europene de atribuire</div>
         </Link>
       </div>
 
@@ -167,10 +167,10 @@ export async function LegacyHomeSections() {
       <section className="section">
         <div className="callout">
           <div>
-            <h2>Contracte peste pragul european</h2>
+            <h2>Atribuiri publicate în TED</h2>
             <p className="hint">
-              {formatInt(ted.tedOnly)} atribuiri de mare valoare regăsite doar în TED, dintre care{" "}
-              {formatInt(ted.foreign)} câștigate de firme străine
+              {formatInt(ted.tedOnly)} atribuiri fără potrivire SEAP identificată. În setul TED, avem{" "}
+              {formatInt(ted.foreign)} atribuiri câștigate de firme străine
               {ted.byCountry[0]
                 ? ` (${ted.byCountry.slice(0, 3).map((c) => countryName(c.country)).join(", ")}…)`
                 : ""}

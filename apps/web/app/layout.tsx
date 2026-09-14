@@ -63,7 +63,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <ul>
                 <li>achiziții directe 2018–2026</li>
                 <li>contracte &amp; atribuiri 2018–2026</li>
-                <li>TED (supra-prag) 2018–2026</li>
+                <li>atribuiri publicate în TED 2018–2026</li>
                 <li>bilanțuri MF 2018–2025 · ONRC</li>
                 <li>{DATA_MODE === "live" ? "colectare zilnică" : "colectarea live e în reluare"} · date până la {formatAsOf(DATA_AS_OF)}</li>
               </ul>

@@ -1,5 +1,5 @@
 /**
- * Display metadata for the TED (above-EU-threshold) surface. Plain-Romanian
+ * Display metadata for the TED publication source. Plain-Romanian
  * labels for the eForms/TED code vocabulary — principle #8 (translate the
  * bureaucratese) — plus the caveats that keep the labels honest (#2, #7).
  */
@@ -47,10 +47,10 @@ export interface TedLabelMeta {
 export const TED_LABEL: Record<string, TedLabelMeta> = {
   "also-in-seap": {
     title: "și în SEAP",
-    hint: "Aceeași atribuire apare și pe e-licitatie.ro — TED confirmă, nu adaugă valoare.",
+    hint: "Am identificat automat o înregistrare corespunzătoare în datele SEAP analizate. Verifică anunțurile originale.",
   },
   "ted-only": {
-    title: "doar în TED",
-    hint: "Atribuire peste pragul european regăsită doar în TED; adesea câștigată de firme străine.",
+    title: "Fără potrivire SEAP",
+    hint: "Nu am identificat o înregistrare corespunzătoare în datele SEAP analizate. Atribuirea poate exista în SEAP chiar dacă potrivirea lipsește.",
   },
 };
