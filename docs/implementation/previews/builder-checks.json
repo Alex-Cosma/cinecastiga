@@ -1,0 +1,158 @@
+{
+  "checks": [
+    {
+      "name": "Real builder renders without starting a query",
+      "passed": true
+    },
+    {
+      "name": "Catalogue contains exactly 13 types in four groups",
+      "passed": true
+    },
+    {
+      "name": "Catalogue receives keyboard focus in its search",
+      "passed": true
+    },
+    {
+      "name": "Catalogue searches Romanian synonyms",
+      "passed": true
+    },
+    {
+      "name": "Escape closes the catalogue and restores its trigger focus",
+      "passed": true
+    },
+    {
+      "name": "Template table has an editable question",
+      "passed": true
+    },
+    {
+      "name": "Template stat has an editable question",
+      "passed": true
+    },
+    {
+      "name": "Template timeseries has an editable question",
+      "passed": true
+    },
+    {
+      "name": "Template map has an editable question",
+      "passed": true
+    },
+    {
+      "name": "Template breakdown has an editable question",
+      "passed": true
+    },
+    {
+      "name": "Template compare has an editable question",
+      "passed": true
+    },
+    {
+      "name": "Template trend has an editable question",
+      "passed": true
+    },
+    {
+      "name": "Template network has an editable question",
+      "passed": true
+    },
+    {
+      "name": "Template sankey has an editable question",
+      "passed": true
+    },
+    {
+      "name": "Template fact_check has an editable question",
+      "passed": true
+    },
+    {
+      "name": "Template distribution has an editable question",
+      "passed": true
+    },
+    {
+      "name": "Template scatter has an editable question",
+      "passed": true
+    },
+    {
+      "name": "Template entity_card has an editable question",
+      "passed": true
+    },
+    {
+      "name": "Cancelling a period edit leaves the original draft intact",
+      "passed": true
+    },
+    {
+      "name": "Custom ranking size is supported",
+      "passed": true
+    },
+    {
+      "name": "Profile transition discloses full-history direct acquisition scope",
+      "passed": true
+    },
+    {
+      "name": "Incomplete comparisons cannot execute",
+      "passed": true
+    },
+    {
+      "name": "Running starts one request and keeps question editable",
+      "passed": true
+    },
+    {
+      "name": "Successful application marks the actual question applied",
+      "passed": true
+    },
+    {
+      "name": "Draft changes keep the previous applied answer and evidence",
+      "passed": true
+    },
+    {
+      "name": "Changes made during a request survive its success",
+      "passed": true
+    },
+    {
+      "name": "Failed application keeps both draft and the previous answer",
+      "passed": true
+    },
+    {
+      "name": "Discard after a failed application returns to the last successful question",
+      "passed": true
+    },
+    {
+      "name": "Editor fits 768px",
+      "passed": true
+    },
+    {
+      "name": "Catalogue fits 768px and retains all 13 types",
+      "passed": true
+    },
+    {
+      "name": "Period picker fits 768px",
+      "passed": true
+    },
+    {
+      "name": "Editor fits 390px",
+      "passed": true
+    },
+    {
+      "name": "Catalogue fits 390px and retains all 13 types",
+      "passed": true
+    },
+    {
+      "name": "Period picker fits 390px",
+      "passed": true
+    },
+    {
+      "name": "Editor fits 320px",
+      "passed": true
+    },
+    {
+      "name": "Catalogue fits 320px and retains all 13 types",
+      "passed": true
+    },
+    {
+      "name": "Period picker fits 320px",
+      "passed": true
+    },
+    {
+      "name": "No browser runtime errors",
+      "passed": true,
+      "detail": []
+    }
+  ],
+  "errors": []
+}

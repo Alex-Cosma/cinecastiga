@@ -1,0 +1,25 @@
+{
+  "checks": [
+    {
+      "name": "320x360 CPV retains visible results space and controls",
+      "ok": true
+    },
+    {
+      "name": "Focal role controls stay mounted outside busy results",
+      "ok": true
+    },
+    {
+      "name": "320x360 global search retains visible results space and controls",
+      "ok": true
+    },
+    {
+      "name": "Escape closes global search and restores trigger focus",
+      "ok": true
+    },
+    {
+      "name": "No browser exceptions",
+      "ok": true
+    }
+  ],
+  "errors": []
+}

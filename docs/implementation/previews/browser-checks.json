@@ -1,0 +1,105 @@
+{
+  "checks": [
+    {
+      "name": "Thirteen query templates remain available in four groups",
+      "ok": true
+    },
+    {
+      "name": "table: real API result has its own renderer and source action",
+      "ok": true
+    },
+    {
+      "name": "Ranking selection opens exact source records with direct SEAP links",
+      "ok": true
+    },
+    {
+      "name": "Saving is discoverable to visitors and explains private investigations",
+      "ok": true
+    },
+    {
+      "name": "stat: real API result has its own renderer and source action",
+      "ok": true
+    },
+    {
+      "name": "timeseries: real API result has its own renderer and source action",
+      "ok": true
+    },
+    {
+      "name": "map: real API result has its own renderer and source action",
+      "ok": true
+    },
+    {
+      "name": "breakdown: real API result has its own renderer and source action",
+      "ok": true
+    },
+    {
+      "name": "network: real API result has its own renderer and source action",
+      "ok": true
+    },
+    {
+      "name": "sankey: real API result has its own renderer and source action",
+      "ok": true
+    },
+    {
+      "name": "compare: real API result has its own renderer and source action",
+      "ok": true
+    },
+    {
+      "name": "distribution: real API result has its own renderer and source action",
+      "ok": true
+    },
+    {
+      "name": "scatter: real API result has its own renderer and source action",
+      "ok": true
+    },
+    {
+      "name": "entity_card: real API result has its own renderer and source action",
+      "ok": true
+    },
+    {
+      "name": "trend: real API result has its own renderer and source action",
+      "ok": true
+    },
+    {
+      "name": "fact_check: real identified parties return a result and accessible sources",
+      "ok": true
+    },
+    {
+      "name": "Question and answer fit 768px",
+      "ok": true
+    },
+    {
+      "name": "All13 templates and catalogue fit 768px",
+      "ok": true
+    },
+    {
+      "name": "Source drawer fits 768px and exposes direct links",
+      "ok": true
+    },
+    {
+      "name": "Question and answer fit 390px",
+      "ok": true
+    },
+    {
+      "name": "All13 templates and catalogue fit 390px",
+      "ok": true
+    },
+    {
+      "name": "Source drawer fits 390px and exposes direct links",
+      "ok": true
+    },
+    {
+      "name": "Question and answer fit 320px",
+      "ok": true
+    },
+    {
+      "name": "All13 templates and catalogue fit 320px",
+      "ok": true
+    },
+    {
+      "name": "Source drawer fits 320px and exposes direct links",
+      "ok": true
+    }
+  ],
+  "errors": []
+}

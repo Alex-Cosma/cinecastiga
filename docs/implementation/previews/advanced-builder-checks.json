@@ -1,0 +1,94 @@
+{
+  "checks": [
+    {
+      "name": "Deep link displays all advanced scope conditions",
+      "passed": true
+    },
+    {
+      "name": "Unchanged re-run keeps every advanced value and exact identity",
+      "passed": true,
+      "detail": {
+        "cpvTerm": "medicamente",
+        "county": "Cluj",
+        "authorityName": "Instituție de verificare",
+        "supplierName": "Firmă de verificare",
+        "uatSiruta": 12345,
+        "uatName": "Cluj-Napoca (Cluj)",
+        "authorityId": 811,
+        "supplierId": 733,
+        "adminName": "Persoană de verificare",
+        "adminPersonKey": "test-person|1970-01-01|test",
+        "monthFrom": 3,
+        "monthTo": 8,
+        "singleBidder": true,
+        "authorityKind": "spital",
+        "yearFrom": 2025,
+        "yearTo": 2025,
+        "minEmployees": 0,
+        "maxEmployees": 4
+      }
+    },
+    {
+      "name": "Changing the period preserves all unrelated exact filters",
+      "passed": true,
+      "detail": {
+        "cpvTerm": "medicamente",
+        "county": "Cluj",
+        "authorityName": "Instituție de verificare",
+        "supplierName": "Firmă de verificare",
+        "uatSiruta": 12345,
+        "uatName": "Cluj-Napoca (Cluj)",
+        "authorityId": 811,
+        "supplierId": 733,
+        "adminName": "Persoană de verificare",
+        "adminPersonKey": "test-person|1970-01-01|test",
+        "monthFrom": 3,
+        "monthTo": 8,
+        "singleBidder": true,
+        "authorityKind": "spital",
+        "yearFrom": 2024,
+        "yearTo": 2025,
+        "minEmployees": 0,
+        "maxEmployees": 4
+      }
+    },
+    {
+      "name": "Choosing an exact entity replaces the old ID without losing the other party",
+      "passed": true,
+      "detail": {
+        "cpvTerm": "medicamente",
+        "county": "Cluj",
+        "authorityName": "Altă instituție verificată",
+        "supplierName": "Firmă de verificare",
+        "uatSiruta": 12345,
+        "uatName": "Cluj-Napoca (Cluj)",
+        "supplierId": 733,
+        "adminName": "Persoană de verificare",
+        "adminPersonKey": "test-person|1970-01-01|test",
+        "monthFrom": 3,
+        "monthTo": 8,
+        "singleBidder": true,
+        "authorityKind": "spital",
+        "yearFrom": 2024,
+        "yearTo": 2025,
+        "minEmployees": 0,
+        "maxEmployees": 4,
+        "authorityId": 812
+      }
+    },
+    {
+      "name": "Changing county removes the previous UAT restriction",
+      "passed": true
+    },
+    {
+      "name": "Changing source discloses removal of its competition-only condition",
+      "passed": true
+    },
+    {
+      "name": "Advanced filter journey has no runtime errors",
+      "passed": true,
+      "detail": []
+    }
+  ],
+  "errors": []
+}

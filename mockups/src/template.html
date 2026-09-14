@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f7f8f2">
+  <meta name="description" content="Sunt banii tăi. Vezi unde ajung. Un prototip interactiv pentru explorarea achizițiilor publice din România.">
+  <title>cinecâștigă? — Sunt banii tăi.</title>
+  <style>/* STYLES */</style>
+</head>
+<body>
+  <a class="skip-link" href="#view">Sari la conținut</a>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="wordmark" href="#home" aria-label="cinecâștigă? — Acasă">cine<span>câștigă</span><b>?</b></a>
+      <nav class="main-nav" aria-label="Navigare principală">
+        <a href="#home" data-nav="home">Descoperă</a>
+        <a href="#explore" data-nav="explore">Explorează</a>
+        <a href="#investigations" data-nav="investigations">Anchete<span class="nav-dot"></span></a>
+      </nav>
+      <div class="header-actions">
+        <button class="about-link" data-action="about">Cum funcționează</button>
+        <button class="header-search" data-action="search" aria-label="Caută, scurtătură bară oblică"><span data-icon="search"></span><span>Caută</span><kbd>/</kbd></button>
+      </div>
+    </div>
+  </header>
+  <main id="view" tabindex="-1"></main>
+  <footer class="site-footer">
+    <div class="footer-top"><a class="wordmark" href="#home">cine<span>câștigă</span><b>?</b></a><p>Mai multă claritate. Întrebări mai bune.</p><button class="text-button" data-action="about">Despre date și metodologie <span data-icon="arrow-up-right"></span></button></div>
+    <div class="footer-bottom"><span>Surse publice SICAP · Valori contractate, nu plăți efectuate.</span><span>Prototip v1 · Descoperire, dovezi, anchete</span></div>
+  </footer>
+  <dialog id="modal" aria-labelledby="modal-title"><div class="modal-top"><p class="eyebrow">CINECÂȘTIGĂ? / MAI DE APROAPE</p><button class="icon-button" data-action="close-modal" aria-label="Închide"><span data-icon="x"></span></button></div><div id="modal-content"></div></dialog>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <div id="map-tip" class="map-tooltip" role="tooltip" hidden></div>
+  <div id="announcer" class="sr-only" role="status" aria-live="polite"></div>
+  <script>/* SCRIPTS */</script>
+</body>
+</html>

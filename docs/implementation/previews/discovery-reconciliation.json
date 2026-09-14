@@ -1,0 +1,70 @@
+{
+  "checks": [
+    {
+      "name": "all source count",
+      "pass": true,
+      "expected": 20680081,
+      "actual": 20680081
+    },
+    {
+      "name": "national amount",
+      "pass": true,
+      "expected": 1051349391700.5,
+      "actual": 1051349391700.5
+    },
+    {
+      "name": "da source count",
+      "pass": true,
+      "expected": 19581710,
+      "actual": 19581710
+    },
+    {
+      "name": "contracts source count",
+      "pass": true,
+      "expected": 1098371,
+      "actual": 1098371
+    },
+    {
+      "name": "all county sums and counts",
+      "pass": true,
+      "counties": 42
+    },
+    {
+      "name": "Cluj exact source scope",
+      "pass": true,
+      "expected": {
+        "county": "Cluj",
+        "totalRon": 48670819065.36,
+        "records": 916745
+      },
+      "actual": {
+        "value": 48670819065.36,
+        "count": 916745,
+        "byStream": [
+          {
+            "src": "contracts",
+            "value": 44103654109.52,
+            "count": 84492
+          },
+          {
+            "src": "da",
+            "value": 4567164955.84,
+            "count": 832253
+          }
+        ]
+      }
+    },
+    {
+      "name": "coverage matches question",
+      "pass": true,
+      "from": "2000",
+      "to": "2026"
+    }
+  ],
+  "knownCountyRecords": 16541916,
+  "unknownCountyRecords": 4138165,
+  "knownCountyAmount": "1022885525974.05000001989999600000",
+  "knownCountyAmountNote": "Exact PostgreSQL sum of agg_map_county.v_plaf; displayed amounts round to cents. The map explicitly excludes rows without a known county.",
+  "totalRecords": 20680081,
+  "totalRon": 1051349391700.5
+}

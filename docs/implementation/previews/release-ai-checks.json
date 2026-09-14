@@ -1,0 +1,41 @@
+{
+  "checks": [
+    {
+      "name": "AI entry is visibly disabled with availability label",
+      "ok": true
+    },
+    {
+      "name": "Disabled entry keeps the manual builder active",
+      "ok": true
+    },
+    {
+      "name": "Legacy question URL explains availability and opens builder",
+      "ok": true
+    },
+    {
+      "name": "Disabled UI and legacy question links never request AI",
+      "ok": true
+    },
+    {
+      "name": "Direct AI API request is blocked",
+      "ok": true
+    },
+    {
+      "name": "Deterministic query API remains available",
+      "ok": true
+    },
+    {
+      "name": "Disabled AI tab fits 390px",
+      "ok": true
+    },
+    {
+      "name": "Disabled AI tab fits 320px",
+      "ok": true
+    },
+    {
+      "name": "No browser runtime errors",
+      "ok": true
+    }
+  ],
+  "errors": []
+}

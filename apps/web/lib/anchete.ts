@@ -16,8 +16,23 @@ function db(): DbSql {
   return g.__seapAncheteSql;
 }
 
-export type ClipKind = "entity" | "contract" | "notice" | "person" | "query" | "flag" | "note";
-export const CLIP_KINDS: ClipKind[] = ["entity", "contract", "notice", "person", "query", "flag", "note"];
+export type ClipKind =
+  | "entity"
+  | "contract"
+  | "notice"
+  | "person"
+  | "query"
+  | "flag"
+  | "note";
+export const CLIP_KINDS: ClipKind[] = [
+  "entity",
+  "contract",
+  "notice",
+  "person",
+  "query",
+  "flag",
+  "note",
+];
 export type InvStatus = "activa" | "publicata" | "inchisa";
 export const INV_STATUSES: InvStatus[] = ["activa", "publicata", "inchisa"];
 
@@ -47,7 +62,9 @@ export interface ClipRow {
 
 /* ── investigations CRUD ─────────────────────────────────────────────── */
 
-export async function listInvestigations(userId: string): Promise<InvestigationRow[]> {
+export async function listInvestigations(
+  userId: string,
+): Promise<InvestigationRow[]> {
   const sql = db();
   const rows = (await sql`
     select i.id, i.title, i.description, i.status,
@@ -57,8 +74,13 @@ export async function listInvestigations(userId: string): Promise<InvestigationR
     where i.owner_user_id = ${userId}
     order by i.updated_at desc
   `) as unknown as {
-    id: string; title: string; description: string | null; status: string;
-    created_at: string; updated_at: string; n_clips: string;
+    id: string;
+    title: string;
+    description: string | null;
+    status: string;
+    created_at: string;
+    updated_at: string;
+    n_clips: string;
   }[];
   return rows.map((r) => ({
     id: r.id,
@@ -97,14 +119,24 @@ export async function getOwnedInvestigation(
     from app.investigations i
     where i.id = ${id} and i.owner_user_id = ${userId}
   `) as unknown as {
-    id: string; title: string; description: string | null; status: string;
-    created_at: string; updated_at: string; n_clips: string;
+    id: string;
+    title: string;
+    description: string | null;
+    status: string;
+    created_at: string;
+    updated_at: string;
+    n_clips: string;
   }[];
   const r = rows[0];
   if (!r) return null;
   return {
-    id: r.id, title: r.title, description: r.description, status: r.status as InvStatus,
-    nClips: Number(r.n_clips), createdAt: String(r.created_at), updatedAt: String(r.updated_at),
+    id: r.id,
+    title: r.title,
+    description: r.description,
+    status: r.status as InvStatus,
+    nClips: Number(r.n_clips),
+    createdAt: String(r.created_at),
+    updatedAt: String(r.updated_at),
   };
 }
 
@@ -127,7 +159,10 @@ export async function updateInvestigation(
   return true;
 }
 
-export async function deleteInvestigation(userId: string, id: string): Promise<boolean> {
+export async function deleteInvestigation(
+  userId: string,
+  id: string,
+): Promise<boolean> {
   const sql = db();
   const rows = (await sql`
     delete from app.investigations where id = ${id} and owner_user_id = ${userId} returning id
@@ -137,18 +172,29 @@ export async function deleteInvestigation(userId: string, id: string): Promise<b
 
 /* ── snapshots (server-built, per kind) ──────────────────────────────── */
 
-async function snapEntity(refId: string): Promise<Record<string, unknown> | null> {
+async function snapEntity(
+  refId: string,
+): Promise<Record<string, unknown> | null> {
   const sql = db();
   const prof = (await sql`
     select role, name_display, county, n_das, n_contracts, total_ron_full
     from marts.entity_profile where entity_id = ${Number(refId)}
   `) as unknown as {
-    role: string; name_display: string | null; county: string | null;
-    n_das: number; n_contracts: number; total_ron_full: string | null;
+    role: string;
+    name_display: string | null;
+    county: string | null;
+    n_das: number;
+    n_contracts: number;
+    total_ron_full: string | null;
   }[];
   const flags = (await sql`
     select role, cri, n_flags, flags from marts.entity_flags where entity_id = ${Number(refId)}
-  `) as unknown as { role: string; cri: string | null; n_flags: number; flags: string[] | null }[];
+  `) as unknown as {
+    role: string;
+    cri: string | null;
+    n_flags: number;
+    flags: string[] | null;
+  }[];
   if (prof.length === 0 && flags.length === 0) {
     const ent = (await sql`
       select name_display, county from core.entities where id = ${Number(refId)}
@@ -175,7 +221,9 @@ async function snapEntity(refId: string): Promise<Record<string, unknown> | null
   };
 }
 
-async function snapContract(refId: string): Promise<Record<string, unknown> | null> {
+async function snapContract(
+  refId: string,
+): Promise<Record<string, unknown> | null> {
   const sql = db();
   const rows = (await sql`
     select c.ca_notice_contract_id nat_id, c.title, c.contract_value, c.contract_date,
@@ -185,9 +233,15 @@ async function snapContract(refId: string): Promise<Record<string, unknown> | nu
     where c.ca_notice_contract_id = ${Number(refId)}
     limit 1
   `) as unknown as {
-    nat_id: string; title: string | null; contract_value: string | null; contract_date: string | null;
-    cpv_code: string | null; authority_name: string | null; supplier_name: string | null;
-    closing_value: string | null; finalization_date: string | null;
+    nat_id: string;
+    title: string | null;
+    contract_value: string | null;
+    contract_date: string | null;
+    cpv_code: string | null;
+    authority_name: string | null;
+    supplier_name: string | null;
+    closing_value: string | null;
+    finalization_date: string | null;
   }[];
   const r = rows[0];
   if (!r) return null;
@@ -196,19 +250,28 @@ async function snapContract(refId: string): Promise<Record<string, unknown> | nu
     authority: r.authority_name,
     supplier: r.supplier_name,
     valueRon: Number(r.closing_value ?? r.contract_value ?? 0),
-    date: r.finalization_date ?? (r.contract_date ? String(r.contract_date).slice(0, 10) : null),
+    date:
+      r.finalization_date ??
+      (r.contract_date ? String(r.contract_date).slice(0, 10) : null),
     cpvCode: r.cpv_code,
   };
 }
 
-async function snapNotice(refId: string): Promise<Record<string, unknown> | null> {
+async function snapNotice(
+  refId: string,
+): Promise<Record<string, unknown> | null> {
   const sql = db();
   const rows = (await sql`
     select count(*) n, coalesce(sum(t.closing_value), 0) v,
            max(t.authority_name) authority, max(t.notice_no) notice_no
     from marts.contract_transactions t
     where t.ca_notice_id = ${Number(refId)}
-  `) as unknown as { n: string; v: string; authority: string | null; notice_no: string | null }[];
+  `) as unknown as {
+    n: string;
+    v: string;
+    authority: string | null;
+    notice_no: string | null;
+  }[];
   const r = rows[0];
   if (!r || Number(r.n) === 0) return null;
   return {
@@ -219,7 +282,9 @@ async function snapNotice(refId: string): Promise<Record<string, unknown> | null
   };
 }
 
-async function snapPerson(refId: string): Promise<Record<string, unknown> | null> {
+async function snapPerson(
+  refId: string,
+): Promise<Record<string, unknown> | null> {
   const sql = db();
   const rows = (await sql`
     select max(r.person_name) nm,
@@ -232,10 +297,17 @@ async function snapPerson(refId: string): Promise<Record<string, unknown> | null
   `) as unknown as { nm: string; firms: string[] | null; n_firms: string }[];
   const r = rows[0];
   if (!r) return null;
-  return { name: r.nm, nFirms: Number(r.n_firms), firms: (r.firms ?? []).slice(0, 12) };
+  return {
+    name: r.nm,
+    nFirms: Number(r.n_firms),
+    firms: (r.firms ?? []).slice(0, 12),
+  };
 }
 
-async function snapFlag(refId: string, flagCode: string): Promise<Record<string, unknown> | null> {
+async function snapFlag(
+  refId: string,
+  flagCode: string,
+): Promise<Record<string, unknown> | null> {
   const sql = db();
   const rows = (await sql`
     select entity_name, severity, total_ron, period, evidence
@@ -243,8 +315,11 @@ async function snapFlag(refId: string, flagCode: string): Promise<Record<string,
     where entity_id = ${Number(refId)} and flag_code = ${flagCode}
     order by severity desc nulls last limit 1
   `) as unknown as {
-    entity_name: string | null; severity: string | null; total_ron: string | null;
-    period: string | null; evidence: unknown;
+    entity_name: string | null;
+    severity: string | null;
+    total_ron: string | null;
+    period: string | null;
+    evidence: unknown;
   }[];
   const r = rows[0];
   if (!r) return null;
@@ -305,17 +380,28 @@ export async function addClip(
       select id from app.clips
       where investigation_id = ${investigationId} and kind = ${input.kind}
         and ref_id is not distinct from ${input.refId}
-        and (${input.kind !== "query"} or spec::text = ${JSON.stringify(input.spec ?? null)})
+        and (${input.kind !== "query"} or (
+          spec is not distinct from ${JSON.stringify(input.spec ?? null)}::jsonb
+          and coalesce(snapshot->'evidenceScope', 'null'::jsonb) = ${JSON.stringify(input.clientSnapshot?.["evidenceScope"] ?? null)}::jsonb
+        ))
       limit 1
     `) as unknown as { id: string }[];
     if (dup.length > 0) return { error: "Există deja în această anchetă." };
   }
-  const snapshot = await buildSnapshot(input.kind, input.refId, input.spec, input.clientSnapshot);
+  const snapshot = await buildSnapshot(
+    input.kind,
+    input.refId,
+    input.spec,
+    input.clientSnapshot,
+  );
   if (input.kind !== "note" && input.kind !== "query" && !snapshot) {
     return { error: "Nu am găsit obiectul de atașat." };
   }
   const sql = db();
-  const specJson = input.spec === null || input.spec === undefined ? null : JSON.stringify(input.spec);
+  const specJson =
+    input.spec === null || input.spec === undefined
+      ? null
+      : JSON.stringify(input.spec);
   const snapJson = snapshot === null ? null : JSON.stringify(snapshot);
   const rows = (await sql`
     insert into app.clips (investigation_id, kind, ref_id, spec, snapshot, note, created_by)
@@ -390,7 +476,8 @@ function entityTotalsDrift(
   for (const role of new Set([...Object.keys(sr), ...Object.keys(lr)])) {
     const a = Number(sr[role]?.totalRon ?? 0);
     const b = Number(lr[role]?.totalRon ?? 0);
-    if (Math.abs(a - b) > Math.max(1000, a * 0.005)) out.push(`total (${role})`);
+    if (Math.abs(a - b) > Math.max(1000, a * 0.005))
+      out.push(`total (${role})`);
   }
   return out;
 }
@@ -416,19 +503,41 @@ async function castRelations(clipRows: ClipRow[]): Promise<{
   const sql = db();
   const entityIds = [
     ...new Set(
-      clipRows.filter((c) => c.kind === "entity" && c.refId).map((c) => Number(c.refId)),
+      clipRows
+        .filter((c) => c.kind === "entity" && c.refId)
+        .map((c) => Number(c.refId)),
     ),
   ];
   const personKeys = [
-    ...new Set(clipRows.filter((c) => c.kind === "person" && c.refId).map((c) => c.refId!)),
+    ...new Set(
+      clipRows
+        .filter((c) => c.kind === "person" && c.refId)
+        .map((c) => c.refId!),
+    ),
   ];
   const members: CastMember[] = [];
   for (const c of clipRows) {
-    if (c.kind === "entity" && c.refId && !members.some((m) => m.refId === c.refId)) {
-      members.push({ kind: "entity", refId: c.refId, name: String(c.snapshot?.["name"] ?? "?") });
+    if (
+      c.kind === "entity" &&
+      c.refId &&
+      !members.some((m) => m.refId === c.refId)
+    ) {
+      members.push({
+        kind: "entity",
+        refId: c.refId,
+        name: String(c.snapshot?.["name"] ?? "?"),
+      });
     }
-    if (c.kind === "person" && c.refId && !members.some((m) => m.refId === c.refId)) {
-      members.push({ kind: "person", refId: c.refId, name: String(c.snapshot?.["name"] ?? "?") });
+    if (
+      c.kind === "person" &&
+      c.refId &&
+      !members.some((m) => m.refId === c.refId)
+    ) {
+      members.push({
+        kind: "person",
+        refId: c.refId,
+        name: String(c.snapshot?.["name"] ?? "?"),
+      });
     }
   }
   const relations: CastRelation[] = [];
@@ -443,8 +552,12 @@ async function castRelations(clipRows: ClipRow[]): Promise<{
     `) as unknown as { a: string; b: string; n: string; v: string }[];
     for (const p of daPairs) {
       relations.push({
-        a: String(p.a), b: String(p.b), type: "pair_da",
-        label: "achiziții directe", valueRon: Number(p.v), count: Number(p.n),
+        a: String(p.a),
+        b: String(p.b),
+        type: "pair_da",
+        label: "achiziții directe",
+        valueRon: Number(p.v),
+        count: Number(p.n),
       });
     }
     const ctPairs = (await sql`
@@ -456,8 +569,12 @@ async function castRelations(clipRows: ClipRow[]): Promise<{
     `) as unknown as { a: string; b: string; n: string; v: string }[];
     for (const p of ctPairs) {
       relations.push({
-        a: String(p.a), b: String(p.b), type: "pair_contract",
-        label: "contracte", valueRon: Number(p.v), count: Number(p.n),
+        a: String(p.a),
+        b: String(p.b),
+        type: "pair_contract",
+        label: "contracte",
+        valueRon: Number(p.v),
+        count: Number(p.n),
       });
     }
     // shared administrators between entity members (matched via CUI)
@@ -477,7 +594,9 @@ async function castRelations(clipRows: ClipRow[]): Promise<{
     `) as unknown as { a: string; b: string; person_key: string; nm: string }[];
     for (const srow of shared) {
       relations.push({
-        a: String(srow.a), b: String(srow.b), type: "shared_admin",
+        a: String(srow.a),
+        b: String(srow.b),
+        type: "shared_admin",
         label: `administrator comun: ${srow.nm}`,
       });
     }
@@ -494,7 +613,9 @@ async function castRelations(clipRows: ClipRow[]): Promise<{
     `) as unknown as { pk: string; eid: string; nm: string }[];
     for (const arow of adminOf) {
       relations.push({
-        a: arow.pk, b: String(arow.eid), type: "shared_admin",
+        a: arow.pk,
+        b: String(arow.eid),
+        type: "shared_admin",
         label: "administrator al firmei",
       });
     }
@@ -508,7 +629,10 @@ export interface Dosar {
   cast: { members: CastMember[]; relations: CastRelation[] };
 }
 
-export async function getDosar(userId: string, id: string): Promise<Dosar | null> {
+export async function getDosar(
+  userId: string,
+  id: string,
+): Promise<Dosar | null> {
   const inv = await getOwnedInvestigation(userId, id);
   if (!inv) return null;
   const sql = db();
@@ -517,9 +641,14 @@ export async function getDosar(userId: string, id: string): Promise<Dosar | null
     from app.clips where investigation_id = ${id}
     order by pinned desc, created_at desc
   `) as unknown as {
-    id: string; kind: string; ref_id: string | null; spec: unknown;
-    snapshot: Record<string, unknown> | null; note: string | null;
-    pinned: boolean; created_at: string;
+    id: string;
+    kind: string;
+    ref_id: string | null;
+    spec: unknown;
+    snapshot: Record<string, unknown> | null;
+    note: string | null;
+    pinned: boolean;
+    created_at: string;
   }[];
   const clips: ClipRow[] = rows.map((r) => ({
     id: r.id,
@@ -545,7 +674,8 @@ export async function getDosar(userId: string, id: string): Promise<Dosar | null
     for (const k of driftKeys(c.kind)) {
       const a = c.snapshot[k];
       const b = live[k];
-      if (JSON.stringify(a ?? null) !== JSON.stringify(b ?? null)) drift.push(k);
+      if (JSON.stringify(a ?? null) !== JSON.stringify(b ?? null))
+        drift.push(k);
     }
     if (c.kind === "entity") drift.push(...entityTotalsDrift(c.snapshot, live));
     if (drift.length) c.drift = drift;

@@ -1,0 +1,554 @@
+{
+  "checks": [
+    {
+      "name": "desktop CPV: stable while loading",
+      "ok": true,
+      "detail": {
+        "before": {
+          "x": 470,
+          "y": 205,
+          "w": 500,
+          "h": 640,
+          "inputX": 539,
+          "inputY": 329.28125,
+          "inputW": 389,
+          "inputH": 20.796875,
+          "overflow": false,
+          "fits": true
+        },
+        "during": {
+          "x": 470,
+          "y": 205,
+          "w": 500,
+          "h": 640,
+          "inputX": 539,
+          "inputY": 329.28125,
+          "inputW": 389,
+          "inputH": 20.796875,
+          "overflow": false,
+          "fits": true
+        }
+      }
+    },
+    {
+      "name": "desktop CPV: loading placeholder hides outdated options",
+      "ok": true
+    },
+    {
+      "name": "desktop CPV: stable with results",
+      "ok": true
+    },
+    {
+      "name": "desktop CPV: stable with no results",
+      "ok": true
+    },
+    {
+      "name": "desktop CPV: stable after an error",
+      "ok": true
+    },
+    {
+      "name": "desktop authority: stable while loading",
+      "ok": true,
+      "detail": {
+        "before": {
+          "x": 470,
+          "y": 205,
+          "w": 500,
+          "h": 640,
+          "inputX": 539,
+          "inputY": 329.28125,
+          "inputW": 389,
+          "inputH": 20.796875,
+          "overflow": false,
+          "fits": true
+        },
+        "during": {
+          "x": 470,
+          "y": 205,
+          "w": 500,
+          "h": 640,
+          "inputX": 539,
+          "inputY": 329.28125,
+          "inputW": 389,
+          "inputH": 20.796875,
+          "overflow": false,
+          "fits": true
+        }
+      }
+    },
+    {
+      "name": "desktop authority: loading placeholder hides outdated options",
+      "ok": true
+    },
+    {
+      "name": "desktop authority: stable with results",
+      "ok": true
+    },
+    {
+      "name": "desktop authority: stable with no results",
+      "ok": true
+    },
+    {
+      "name": "desktop authority: stable after an error",
+      "ok": true
+    },
+    {
+      "name": "desktop supplier: stable while loading",
+      "ok": true,
+      "detail": {
+        "before": {
+          "x": 470,
+          "y": 205,
+          "w": 500,
+          "h": 640,
+          "inputX": 539,
+          "inputY": 329.28125,
+          "inputW": 389,
+          "inputH": 20.796875,
+          "overflow": false,
+          "fits": true
+        },
+        "during": {
+          "x": 470,
+          "y": 205,
+          "w": 500,
+          "h": 640,
+          "inputX": 539,
+          "inputY": 329.28125,
+          "inputW": 389,
+          "inputH": 20.796875,
+          "overflow": false,
+          "fits": true
+        }
+      }
+    },
+    {
+      "name": "desktop supplier: loading placeholder hides outdated options",
+      "ok": true
+    },
+    {
+      "name": "desktop supplier: stable with results",
+      "ok": true
+    },
+    {
+      "name": "desktop supplier: stable with no results",
+      "ok": true
+    },
+    {
+      "name": "desktop supplier: stable after an error",
+      "ok": true
+    },
+    {
+      "name": "desktop locality: stable while loading",
+      "ok": true,
+      "detail": {
+        "before": {
+          "x": 470,
+          "y": 205,
+          "w": 500,
+          "h": 640,
+          "inputX": 539,
+          "inputY": 329.28125,
+          "inputW": 389,
+          "inputH": 20.796875,
+          "overflow": false,
+          "fits": true
+        },
+        "during": {
+          "x": 470,
+          "y": 205,
+          "w": 500,
+          "h": 640,
+          "inputX": 539,
+          "inputY": 329.28125,
+          "inputW": 389,
+          "inputH": 20.796875,
+          "overflow": false,
+          "fits": true
+        }
+      }
+    },
+    {
+      "name": "desktop locality: loading placeholder hides outdated options",
+      "ok": true
+    },
+    {
+      "name": "desktop locality: stable with results",
+      "ok": true
+    },
+    {
+      "name": "desktop locality: stable with no results",
+      "ok": true
+    },
+    {
+      "name": "desktop locality: stable after an error",
+      "ok": true
+    },
+    {
+      "name": "desktop administrator: stable while loading",
+      "ok": true,
+      "detail": {
+        "before": {
+          "x": 470,
+          "y": 205,
+          "w": 500,
+          "h": 640,
+          "inputX": 539,
+          "inputY": 351.46875,
+          "inputW": 389,
+          "inputH": 20.796875,
+          "overflow": false,
+          "fits": true
+        },
+        "during": {
+          "x": 470,
+          "y": 205,
+          "w": 500,
+          "h": 640,
+          "inputX": 539,
+          "inputY": 351.46875,
+          "inputW": 389,
+          "inputH": 20.796875,
+          "overflow": false,
+          "fits": true
+        }
+      }
+    },
+    {
+      "name": "desktop administrator: loading placeholder hides outdated options",
+      "ok": true
+    },
+    {
+      "name": "desktop administrator: stable with results",
+      "ok": true
+    },
+    {
+      "name": "desktop administrator: stable with no results",
+      "ok": true
+    },
+    {
+      "name": "desktop administrator: stable after an error",
+      "ok": true
+    },
+    {
+      "name": "desktop focal: stable while loading",
+      "ok": true,
+      "detail": {
+        "before": {
+          "x": 470,
+          "y": 205,
+          "w": 500,
+          "h": 640,
+          "inputX": 539,
+          "inputY": 329.28125,
+          "inputW": 389,
+          "inputH": 20.796875,
+          "overflow": false,
+          "fits": true
+        },
+        "during": {
+          "x": 470,
+          "y": 205,
+          "w": 500,
+          "h": 640,
+          "inputX": 539,
+          "inputY": 329.28125,
+          "inputW": 389,
+          "inputH": 20.796875,
+          "overflow": false,
+          "fits": true
+        }
+      }
+    },
+    {
+      "name": "desktop focal: loading placeholder hides outdated options",
+      "ok": true
+    },
+    {
+      "name": "desktop focal: stable with results",
+      "ok": true
+    },
+    {
+      "name": "desktop focal: stable with no results",
+      "ok": true
+    },
+    {
+      "name": "desktop focal: stable after an error",
+      "ok": true
+    },
+    {
+      "name": "desktop comparison: stable while loading",
+      "ok": true,
+      "detail": {
+        "before": {
+          "x": 470,
+          "y": 205,
+          "w": 500,
+          "h": 640,
+          "inputX": 539,
+          "inputY": 329.28125,
+          "inputW": 389,
+          "inputH": 20.796875,
+          "overflow": false,
+          "fits": true
+        },
+        "during": {
+          "x": 470,
+          "y": 205,
+          "w": 500,
+          "h": 640,
+          "inputX": 539,
+          "inputY": 329.28125,
+          "inputW": 389,
+          "inputH": 20.796875,
+          "overflow": false,
+          "fits": true
+        }
+      }
+    },
+    {
+      "name": "desktop comparison: loading placeholder hides outdated options",
+      "ok": true
+    },
+    {
+      "name": "desktop comparison: stable with results",
+      "ok": true
+    },
+    {
+      "name": "desktop comparison: stable with no results",
+      "ok": true
+    },
+    {
+      "name": "desktop comparison: stable after an error",
+      "ok": true
+    },
+    {
+      "name": "desktop counties: stable when filtering and empty",
+      "ok": true
+    },
+    {
+      "name": "desktop catalogue: stable when filtering and empty",
+      "ok": true
+    },
+    {
+      "name": "desktop global search: stable while loading",
+      "ok": true
+    },
+    {
+      "name": "desktop global search: stable with results",
+      "ok": true
+    },
+    {
+      "name": "desktop global search: stable with no results",
+      "ok": true
+    },
+    {
+      "name": "desktop global search: stable with an error",
+      "ok": true
+    },
+    {
+      "name": "390px CPV: stable while loading",
+      "ok": true,
+      "detail": {
+        "before": {
+          "x": 0,
+          "y": 204,
+          "w": 390,
+          "h": 640,
+          "inputX": 62,
+          "inputY": 344.78125,
+          "inputW": 293,
+          "inputH": 25.59375,
+          "overflow": false,
+          "fits": true
+        },
+        "during": {
+          "x": 0,
+          "y": 204,
+          "w": 390,
+          "h": 640,
+          "inputX": 62,
+          "inputY": 344.78125,
+          "inputW": 293,
+          "inputH": 25.59375,
+          "overflow": false,
+          "fits": true
+        }
+      }
+    },
+    {
+      "name": "390px CPV: loading placeholder hides outdated options",
+      "ok": true
+    },
+    {
+      "name": "390px CPV: stable with results",
+      "ok": true
+    },
+    {
+      "name": "390px CPV: stable with no results",
+      "ok": true
+    },
+    {
+      "name": "390px CPV: stable after an error",
+      "ok": true
+    },
+    {
+      "name": "390px catalogue: stable when filtering and empty",
+      "ok": true
+    },
+    {
+      "name": "390px global search: stable while loading",
+      "ok": true
+    },
+    {
+      "name": "390px global search: stable with results",
+      "ok": true
+    },
+    {
+      "name": "390px global search: stable with no results",
+      "ok": true
+    },
+    {
+      "name": "390px global search: stable with an error",
+      "ok": true
+    },
+    {
+      "name": "320px CPV: stable while loading",
+      "ok": true,
+      "detail": {
+        "before": {
+          "x": 0,
+          "y": 64,
+          "w": 320,
+          "h": 576,
+          "inputX": 58,
+          "inputY": 202.78125,
+          "inputW": 231,
+          "inputH": 25.59375,
+          "overflow": false,
+          "fits": true
+        },
+        "during": {
+          "x": 0,
+          "y": 64,
+          "w": 320,
+          "h": 576,
+          "inputX": 58,
+          "inputY": 202.78125,
+          "inputW": 231,
+          "inputH": 25.59375,
+          "overflow": false,
+          "fits": true
+        }
+      }
+    },
+    {
+      "name": "320px CPV: loading placeholder hides outdated options",
+      "ok": true
+    },
+    {
+      "name": "320px CPV: stable with results",
+      "ok": true
+    },
+    {
+      "name": "320px CPV: stable with no results",
+      "ok": true
+    },
+    {
+      "name": "320px CPV: stable after an error",
+      "ok": true
+    },
+    {
+      "name": "320px catalogue: stable when filtering and empty",
+      "ok": true
+    },
+    {
+      "name": "320px global search: stable while loading",
+      "ok": true
+    },
+    {
+      "name": "320px global search: stable with results",
+      "ok": true
+    },
+    {
+      "name": "320px global search: stable with no results",
+      "ok": true
+    },
+    {
+      "name": "320px global search: stable with an error",
+      "ok": true
+    },
+    {
+      "name": "850px CPV: stable while loading",
+      "ok": true,
+      "detail": {
+        "before": {
+          "x": 175,
+          "y": 24,
+          "w": 500,
+          "h": 392,
+          "inputX": 244,
+          "inputY": 89,
+          "inputW": 389,
+          "inputH": 20.796875,
+          "overflow": false,
+          "fits": true
+        },
+        "during": {
+          "x": 175,
+          "y": 24,
+          "w": 500,
+          "h": 392,
+          "inputX": 244,
+          "inputY": 89,
+          "inputW": 389,
+          "inputH": 20.796875,
+          "overflow": false,
+          "fits": true
+        }
+      }
+    },
+    {
+      "name": "850px CPV: loading placeholder hides outdated options",
+      "ok": true
+    },
+    {
+      "name": "850px CPV: stable with results",
+      "ok": true
+    },
+    {
+      "name": "850px CPV: stable with no results",
+      "ok": true
+    },
+    {
+      "name": "850px CPV: stable after an error",
+      "ok": true
+    },
+    {
+      "name": "850px catalogue: stable when filtering and empty",
+      "ok": true
+    },
+    {
+      "name": "850px global search: stable while loading",
+      "ok": true
+    },
+    {
+      "name": "850px global search: stable with results",
+      "ok": true
+    },
+    {
+      "name": "850px global search: stable with no results",
+      "ok": true
+    },
+    {
+      "name": "850px global search: stable with an error",
+      "ok": true
+    },
+    {
+      "name": "No runtime exceptions",
+      "ok": true,
+      "detail": []
+    }
+  ],
+  "errors": []
+}

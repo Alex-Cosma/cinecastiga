@@ -5,11 +5,9 @@ import { ground } from "@/lib/ask/ground";
 import {
   runRows,
   CSV_MAX_ROWS,
-  DRILL_SORTS,
-  type DrillOpts,
-  type DrillRow,
-  type DrillSort,
 } from "@/lib/ask/compile";
+import { evidenceOptions } from "@/lib/ask/evidence-request";
+import { evidenceCsv } from "@/lib/ask/evidence";
 import { devlog } from "@/lib/devlog";
 
 /**
@@ -25,34 +23,21 @@ function db(): DbSql {
   return g.__seapAskSql;
 }
 
-function csvQ(s: string | null): string {
-  if (s === null || s === "") return "";
-  return /[",\n]/.test(s) ? `"${s.replaceAll('"', '""')}"` : s;
-}
-
-function seapLink(r: DrillRow): string {
-  if (r.src === "da") {
-    return r.refId ? `https://e-licitatie.ro/pub/direct-acquisition/view/${r.refId}` : "";
-  }
-  return r.caNoticeId
-    ? `https://e-licitatie.ro/pub/notices/ca-notices/view-c/${r.caNoticeId}`
-    : "";
-}
-
 export async function POST(req: Request) {
-  let body: { spec?: unknown; sort?: unknown; dir?: unknown; stream?: unknown };
+  let body: Record<string, unknown>;
   try {
     body = (await req.json()) as typeof body;
+    if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error("Invalid body");
   } catch {
     return NextResponse.json({ ok: false, error: "Body invalid (JSON)." }, { status: 400 });
   }
   const v = validateSpec(body.spec);
   if ("error" in v) return NextResponse.json({ ok: false, error: v.error }, { status: 400 });
-  const opts: DrillOpts = { limit: CSV_MAX_ROWS };
-  if (typeof body.sort === "string" && body.sort in DRILL_SORTS) opts.sort = body.sort as DrillSort;
-  if (body.dir === "asc" || body.dir === "desc") opts.dir = body.dir;
-  if (body.stream === "da" || body.stream === "contracts") opts.stream = body.stream;
+  const opts = evidenceOptions(body);
+  if ("error" in opts) return NextResponse.json({ ok: false, error: opts.error }, { status: 400 });
+  opts.limit = CSV_MAX_ROWS;
   devlog("csv", { spec: v, ...opts });
+  opts.signal = req.signal;
 
   const sql = db();
   try {
@@ -61,34 +46,22 @@ export async function POST(req: Request) {
     if ("error" in result) {
       return NextResponse.json({ ok: false, error: result.error }, { status: 200 });
     }
-    const header =
-      "cod,data,autoritate,judet,furnizor,domeniu_cpv,valoare_ron,sursa,link_seap,link_ted";
-    const lines = result.rows.map((r) =>
-      [
-        csvQ(r.daCode),
-        r.date ?? "",
-        csvQ(r.authority),
-        csvQ(r.county),
-        csvQ(r.supplier),
-        csvQ(r.cpvName),
-        String(r.value),
-        r.src === "da" ? "achizitie_directa" : "contract",
-        seapLink(r),
-        r.tedPubnum ? `https://ted.europa.eu/en/notice/-/detail/${r.tedPubnum}` : "",
-      ].join(","),
-    );
     const truncated = result.total > result.rows.length;
     const name = truncated
       ? `randuri-primele-${result.rows.length}-din-${result.total}.csv`
       : `randuri-${result.rows.length}.csv`;
     // ﻿ BOM: Excel otherwise misreads UTF-8 diacritics.
-    const csv = "﻿" + [header, ...lines].join("\n") + "\n";
+    const csv = evidenceCsv(result.rows);
     return new NextResponse(csv, {
       headers: {
         "content-type": "text/csv; charset=utf-8",
         "content-disposition": `attachment; filename="${name}"`,
         "x-total-rows": String(result.total),
         "x-exported-rows": String(result.rows.length),
+        "x-source-rows": String(result.sourceTotal),
+        "x-source-value": result.sourceValue,
+        "x-filtered-value": result.value,
+        "cache-control": "no-store",
       },
     });
   } catch (e) {
@@ -99,7 +72,7 @@ export async function POST(req: Request) {
         ok: false,
         error: timeout
           ? "Exportul a depășit limita de timp (20s). Restrânge întrebarea (un județ, o perioadă) și încearcă din nou."
-          : `Eroare la export: ${msg}`,
+          : "Exportul nu a putut fi generat. Încearcă din nou.",
       },
       { status: timeout ? 200 : 500 },
     );

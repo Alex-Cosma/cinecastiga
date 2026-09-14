@@ -1,0 +1,366 @@
+{
+  "checks": [
+    {
+      "name": "All13 catalogue definitions equal production block vocabulary",
+      "ok": true
+    },
+    {
+      "name": "All13 entries are discoverable in four groups",
+      "ok": true
+    },
+    {
+      "name": "Catalogue searches human language",
+      "ok": true
+    },
+    {
+      "name": "table: template has valid complete inputs",
+      "ok": true
+    },
+    {
+      "name": "table: applied question, distinct answer and exact sum",
+      "ok": true
+    },
+    {
+      "name": "table: main evidence exposes exact count, sum and direct SEAP links",
+      "ok": true
+    },
+    {
+      "name": "table: selected group preserves its precise source subset",
+      "ok": true
+    },
+    {
+      "name": "stat: template has valid complete inputs",
+      "ok": true
+    },
+    {
+      "name": "stat: applied question, distinct answer and exact sum",
+      "ok": true
+    },
+    {
+      "name": "stat: main evidence exposes exact count, sum and direct SEAP links",
+      "ok": true
+    },
+    {
+      "name": "stat: selected group preserves its precise source subset",
+      "ok": true
+    },
+    {
+      "name": "timeseries: template has valid complete inputs",
+      "ok": true
+    },
+    {
+      "name": "timeseries: applied question, distinct answer and exact sum",
+      "ok": true
+    },
+    {
+      "name": "timeseries: main evidence exposes exact count, sum and direct SEAP links",
+      "ok": true
+    },
+    {
+      "name": "timeseries: selected group preserves its precise source subset",
+      "ok": true
+    },
+    {
+      "name": "map: template has valid complete inputs",
+      "ok": true
+    },
+    {
+      "name": "map: applied question, distinct answer and exact sum",
+      "ok": true
+    },
+    {
+      "name": "map: main evidence exposes exact count, sum and direct SEAP links",
+      "ok": true
+    },
+    {
+      "name": "map: selected group preserves its precise source subset",
+      "ok": true
+    },
+    {
+      "name": "breakdown: template has valid complete inputs",
+      "ok": true
+    },
+    {
+      "name": "breakdown: applied question, distinct answer and exact sum",
+      "ok": true
+    },
+    {
+      "name": "breakdown: main evidence exposes exact count, sum and direct SEAP links",
+      "ok": true
+    },
+    {
+      "name": "breakdown: selected group preserves its precise source subset",
+      "ok": true
+    },
+    {
+      "name": "compare: template has valid complete inputs",
+      "ok": true
+    },
+    {
+      "name": "compare: applied question, distinct answer and exact sum",
+      "ok": true
+    },
+    {
+      "name": "compare: main evidence exposes exact count, sum and direct SEAP links",
+      "ok": true
+    },
+    {
+      "name": "compare: selected group preserves its precise source subset",
+      "ok": true
+    },
+    {
+      "name": "trend: template has valid complete inputs",
+      "ok": true
+    },
+    {
+      "name": "trend: applied question, distinct answer and exact sum",
+      "ok": true
+    },
+    {
+      "name": "trend: main evidence exposes exact count, sum and direct SEAP links",
+      "ok": true
+    },
+    {
+      "name": "trend: selected group preserves its precise source subset",
+      "ok": true
+    },
+    {
+      "name": "network: template has valid complete inputs",
+      "ok": true
+    },
+    {
+      "name": "network: applied question, distinct answer and exact sum",
+      "ok": true
+    },
+    {
+      "name": "network: main evidence exposes exact count, sum and direct SEAP links",
+      "ok": true
+    },
+    {
+      "name": "network: selected group preserves its precise source subset",
+      "ok": true
+    },
+    {
+      "name": "sankey: template has valid complete inputs",
+      "ok": true
+    },
+    {
+      "name": "sankey: applied question, distinct answer and exact sum",
+      "ok": true
+    },
+    {
+      "name": "sankey: main evidence exposes exact count, sum and direct SEAP links",
+      "ok": true
+    },
+    {
+      "name": "sankey: selected group preserves its precise source subset",
+      "ok": true
+    },
+    {
+      "name": "fact_check: template has valid complete inputs",
+      "ok": true
+    },
+    {
+      "name": "fact_check: applied question, distinct answer and exact sum",
+      "ok": true
+    },
+    {
+      "name": "fact_check: main evidence exposes exact count, sum and direct SEAP links",
+      "ok": true
+    },
+    {
+      "name": "fact_check: selected group preserves its precise source subset",
+      "ok": true
+    },
+    {
+      "name": "distribution: template has valid complete inputs",
+      "ok": true
+    },
+    {
+      "name": "distribution: applied question, distinct answer and exact sum",
+      "ok": true
+    },
+    {
+      "name": "distribution: main evidence exposes exact count, sum and direct SEAP links",
+      "ok": true
+    },
+    {
+      "name": "distribution: selected group preserves its precise source subset",
+      "ok": true
+    },
+    {
+      "name": "scatter: template has valid complete inputs",
+      "ok": true
+    },
+    {
+      "name": "scatter: applied question, distinct answer and exact sum",
+      "ok": true
+    },
+    {
+      "name": "scatter: main evidence exposes exact count, sum and direct SEAP links",
+      "ok": true
+    },
+    {
+      "name": "scatter: selected group preserves its precise source subset",
+      "ok": true
+    },
+    {
+      "name": "entity_card: template has valid complete inputs",
+      "ok": true
+    },
+    {
+      "name": "entity_card: applied question, distinct answer and exact sum",
+      "ok": true
+    },
+    {
+      "name": "entity_card: main evidence exposes exact count, sum and direct SEAP links",
+      "ok": true
+    },
+    {
+      "name": "entity_card: selected group preserves its precise source subset",
+      "ok": true
+    },
+    {
+      "name": "Draft edit does not change answer or evidence",
+      "ok": true
+    },
+    {
+      "name": "Unsampled institution kind stays empty and is not silently dropped",
+      "ok": true
+    },
+    {
+      "name": "Remaining institution-kind condition is visible",
+      "ok": true
+    },
+    {
+      "name": "Explicitly removing kind restores matching focal sources",
+      "ok": true
+    },
+    {
+      "name": "Top50 is preserved in executed and saved query",
+      "ok": true
+    },
+    {
+      "name": "Drawer search keeps original total and separate filtered sum",
+      "ok": true
+    },
+    {
+      "name": "Filtered CSV has only matching sources and exact scope",
+      "ok": true
+    },
+    {
+      "name": "Complete CSV retains full source set despite search",
+      "ok": true
+    },
+    {
+      "name": "Source drawer cannot be covered by global search dialog",
+      "ok": true
+    },
+    {
+      "name": "Saved profile query has immutable source references",
+      "ok": true
+    },
+    {
+      "name": "Reopened profile sources keep exact acceptance metadata",
+      "ok": true
+    },
+    {
+      "name": "Saving an old drawer captures that drawer query, not later edits",
+      "ok": true
+    },
+    {
+      "name": "Portable dossier export includes every profile record and its status",
+      "ok": true
+    },
+    {
+      "name": "Saved question reopens exact applied profile scope",
+      "ok": true
+    },
+    {
+      "name": "Reload retains query and investigation reference",
+      "ok": true
+    },
+    {
+      "name": "Main question has no overflow at 768",
+      "ok": true
+    },
+    {
+      "name": "Catalogue fits and all13 remain reachable at 768",
+      "ok": true
+    },
+    {
+      "name": "Evidence and direct source links fit at 768",
+      "ok": true
+    },
+    {
+      "name": "Main question has no overflow at 390",
+      "ok": true
+    },
+    {
+      "name": "Catalogue fits and all13 remain reachable at 390",
+      "ok": true
+    },
+    {
+      "name": "Evidence and direct source links fit at 390",
+      "ok": true
+    },
+    {
+      "name": "Main question has no overflow at 320",
+      "ok": true
+    },
+    {
+      "name": "Catalogue fits and all13 remain reachable at 320",
+      "ok": true
+    },
+    {
+      "name": "Evidence and direct source links fit at 320",
+      "ok": true
+    },
+    {
+      "name": "SVG county click opens sources and preserves the applied query URL",
+      "ok": true
+    },
+    {
+      "name": "Keyboard Enter opens source records for the focused network node",
+      "ok": true
+    },
+    {
+      "name": "timeseries: equivalent table preserves applied scope and sources",
+      "ok": true
+    },
+    {
+      "name": "compare: equivalent table preserves applied scope and sources",
+      "ok": true
+    },
+    {
+      "name": "scatter: equivalent table preserves applied scope and sources",
+      "ok": true
+    },
+    {
+      "name": "stat: no redundant display-mode control",
+      "ok": true
+    },
+    {
+      "name": "trend: no redundant display-mode control",
+      "ok": true
+    },
+    {
+      "name": "fact_check: no redundant display-mode control",
+      "ok": true
+    },
+    {
+      "name": "Accepted-only filter reconciles its subtotal without replacing complete profile scope",
+      "ok": true
+    },
+    {
+      "name": "Escape closes the source drawer and restores focus to its opener",
+      "ok": true
+    }
+  ],
+  "runtimeErrors": [],
+  "artifact": "mockups/cinecastiga-complete.html",
+  "artifactSha256": "9205eed095415bde063c48edcb65889d7991d466d4c6a20161768a374d1a4641",
+  "sourceSnapshot": "65e79d5b5bf9903934dd9790eae3c4d3f3e615b866addb1a553b36c84d4e9500",
+  "finalCopyAndSourceSmokePassed": true,
+  "checkedAt": "2026-09-13T11:52:13.329Z"
+}

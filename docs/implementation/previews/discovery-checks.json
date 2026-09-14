@@ -1,0 +1,77 @@
+{
+  "checks": [
+    {
+      "name": "three clear navigation destinations",
+      "pass": true
+    },
+    {
+      "name": "live headline values present",
+      "pass": true
+    },
+    {
+      "name": "all county geometry and nonempty query links",
+      "pass": true
+    },
+    {
+      "name": "auth navigation still offered",
+      "pass": true
+    },
+    {
+      "name": "question cards specify original query vocabulary",
+      "pass": true
+    },
+    {
+      "name": "county selector changes exact query scope",
+      "pass": true
+    },
+    {
+      "name": "slash focuses discovery search",
+      "pass": true
+    },
+    {
+      "name": "real search suggestions contain entity links",
+      "pass": true
+    },
+    {
+      "name": "combobox exposes keyboard active option",
+      "pass": true
+    },
+    {
+      "name": "Escape closes suggestions",
+      "pass": true
+    },
+    {
+      "name": "home and primary controls fit 768",
+      "pass": true
+    },
+    {
+      "name": "home and primary controls fit 390",
+      "pass": true
+    },
+    {
+      "name": "home and primary controls fit 320",
+      "pass": true
+    },
+    {
+      "name": "dark theme keeps readable forest palette",
+      "pass": true
+    },
+    {
+      "name": "global search is focused native dialog",
+      "pass": true
+    },
+    {
+      "name": "global Escape restores focus and body scrolling",
+      "pass": true
+    },
+    {
+      "name": "search dialog fits 320px",
+      "pass": true
+    },
+    {
+      "name": "legacy question URL preserves complete parameters",
+      "pass": true
+    }
+  ],
+  "errors": []
+}

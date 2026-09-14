@@ -61,11 +61,7 @@ export interface Grounding {
 
 /** Diacritic-fold + lowercase, same convention as lib/map.ts foldCounty. */
 function fold(s: string): string {
-  return s
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .trim();
+  return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 }
 
 /**
@@ -97,7 +93,9 @@ async function groundCpv(sql: DbSql, term: string): Promise<CpvGrounding> {
       return {
         term,
         prefixes: [pref],
-        matchedNames: names.slice(0, 1).map((n) => `${n.name_ro ?? "?"} (${n.code})`),
+        matchedNames: names
+          .slice(0, 1)
+          .map((n) => `${n.name_ro ?? "?"} (${n.code})`),
         method: "code",
       };
     }
@@ -112,7 +110,9 @@ async function groundCpv(sql: DbSql, term: string): Promise<CpvGrounding> {
     limit 4
   `) as unknown as { cpv_prefix: string; note: string | null }[];
   if (syn.length > 0) {
-    const prefixes = [...new Set(syn.map((r) => cpvSubtreePrefix(r.cpv_prefix)))];
+    const prefixes = [
+      ...new Set(syn.map((r) => cpvSubtreePrefix(r.cpv_prefix))),
+    ];
     // Catalog codes carry the check-digit suffix ("03413000-8"); synonyms store
     // bare prefixes — match by prefix, shortest catalog entry per prefix.
     const names = (await sql`
@@ -215,7 +215,11 @@ async function groundEntityById(
     select entity_id, name_display, county from marts.entity_profile
     where role = ${role} and entity_id = ${id}
     limit 1
-  `) as unknown as { entity_id: string; name_display: string | null; county: string | null }[];
+  `) as unknown as {
+    entity_id: string;
+    name_display: string | null;
+    county: string | null;
+  }[];
   const first = rows[0];
   return {
     query: String(id),
@@ -257,7 +261,13 @@ async function groundAdmin(
       group by r.person_key
       order by has_sub desc, sim desc, nf desc
       limit 4
-    `) as unknown as { person_key: string; nm: string; by: number | null; bl: string | null; nf: string }[];
+    `) as unknown as {
+      person_key: string;
+      nm: string;
+      by: number | null;
+      bl: string | null;
+      nf: string;
+    }[];
     const first = cands[0];
     if (first) {
       personKey = first.person_key;
@@ -266,7 +276,15 @@ async function groundAdmin(
         .map((c) => `${c.nm}${c.by ? ` (n. ${c.by})` : ""}`);
     }
   }
-  if (!personKey) return { query: q.name ?? "?", personKey: null, display: null, supplierIds: [], nFirms: 0, alternatives };
+  if (!personKey)
+    return {
+      query: q.name ?? "?",
+      personKey: null,
+      display: null,
+      supplierIds: [],
+      nFirms: 0,
+      alternatives,
+    };
   const rows = (await sql`
     select max(r.person_name) nm, max(extract(year from r.birth_date))::int by,
            max(r.birth_locality) bl, count(distinct r.cui) nf,
@@ -278,9 +296,23 @@ async function groundAdmin(
     left join core.entities e on e.cui_canonical = r.cui
     left join marts.entity_profile ep on ep.entity_id = e.id and ep.role = 'supplier'
     where r.person_key = ${personKey}
-  `) as unknown as { nm: string | null; by: number | null; bl: string | null; nf: string; ids: string[] | null }[];
+  `) as unknown as {
+    nm: string | null;
+    by: number | null;
+    bl: string | null;
+    nf: string;
+    ids: string[] | null;
+  }[];
   const r = rows[0];
-  if (!r?.nm) return { query: q.name ?? personKey, personKey: null, display: null, supplierIds: [], nFirms: 0, alternatives };
+  if (!r?.nm)
+    return {
+      query: q.name ?? personKey,
+      personKey: null,
+      display: null,
+      supplierIds: [],
+      nFirms: 0,
+      alternatives,
+    };
   // ONRC birth localities can be punctuation-only junk (".") — drop those
   const loc = r.bl && /\p{L}/u.test(r.bl) ? r.bl : null;
   return {
@@ -322,33 +354,51 @@ async function groundUat(sql: DbSql, siruta: number): Promise<UatGrounding> {
   };
 }
 
-export async function ground(sql: DbSql, filters: AskFilters): Promise<Grounding> {
+export async function ground(
+  sql: DbSql,
+  filters: AskFilters,
+): Promise<Grounding> {
   const g: Grounding = {};
   // compareWith takes the same role as the focal entity (authority unless the
   // focal is a supplier).
   const compareRole: "authority" | "supplier" =
-    !filters.authorityName && filters.supplierName ? "supplier" : "authority";
-  const [cpv, authority, supplier, compare, county, uat, admin] = await Promise.all([
-    filters.cpvTerm ? groundCpv(sql, filters.cpvTerm) : Promise.resolve(undefined),
-    filters.authorityId
-      ? groundEntityById(sql, filters.authorityId, "authority")
-      : filters.authorityName
-        ? groundEntity(sql, filters.authorityName, "authority")
+    !(filters.authorityName || filters.authorityId) &&
+    (filters.supplierName || filters.supplierId)
+      ? "supplier"
+      : "authority";
+  const [cpv, authority, supplier, compare, county, uat, admin] =
+    await Promise.all([
+      filters.cpvTerm
+        ? groundCpv(sql, filters.cpvTerm)
         : Promise.resolve(undefined),
-    filters.supplierId
-      ? groundEntityById(sql, filters.supplierId, "supplier")
-      : filters.supplierName
-        ? groundEntity(sql, filters.supplierName, "supplier")
+      filters.authorityId
+        ? groundEntityById(sql, filters.authorityId, "authority")
+        : filters.authorityName
+          ? groundEntity(sql, filters.authorityName, "authority")
+          : Promise.resolve(undefined),
+      filters.supplierId
+        ? groundEntityById(sql, filters.supplierId, "supplier")
+        : filters.supplierName
+          ? groundEntity(sql, filters.supplierName, "supplier")
+          : Promise.resolve(undefined),
+      filters.compareWithId
+        ? groundEntityById(sql, filters.compareWithId, compareRole)
+        : filters.compareWith
+          ? groundEntity(sql, filters.compareWith, compareRole)
+          : Promise.resolve(undefined),
+      filters.county
+        ? groundCounty(sql, filters.county)
         : Promise.resolve(undefined),
-    filters.compareWith
-      ? groundEntity(sql, filters.compareWith, compareRole)
-      : Promise.resolve(undefined),
-    filters.county ? groundCounty(sql, filters.county) : Promise.resolve(undefined),
-    filters.uatSiruta ? groundUat(sql, filters.uatSiruta) : Promise.resolve(undefined),
-    filters.adminPersonKey || filters.adminName
-      ? groundAdmin(sql, { key: filters.adminPersonKey, name: filters.adminName })
-      : Promise.resolve(undefined),
-  ]);
+      filters.uatSiruta
+        ? groundUat(sql, filters.uatSiruta)
+        : Promise.resolve(undefined),
+      filters.adminPersonKey || filters.adminName
+        ? groundAdmin(sql, {
+            key: filters.adminPersonKey,
+            name: filters.adminName,
+          })
+        : Promise.resolve(undefined),
+    ]);
   if (cpv) g.cpv = cpv;
   if (authority) g.authority = authority;
   if (supplier) g.supplier = supplier;

@@ -1,0 +1,49 @@
+{
+  "checks": [
+    {
+      "name": "Production discovery loads all 42 county links",
+      "ok": true
+    },
+    {
+      "name": "New headline exposes matching direct and contract row counts",
+      "ok": true
+    },
+    {
+      "name": "Every headline links to its same capped-value population",
+      "ok": true
+    },
+    {
+      "name": "Homepage explains county geography and incomplete localization",
+      "ok": true
+    },
+    {
+      "name": "Final homepage fits 390px",
+      "ok": true
+    },
+    {
+      "name": "Final homepage fits 320px",
+      "ok": true
+    },
+    {
+      "name": "Restored complete ranking stays applied and preserves all results",
+      "ok": true
+    },
+    {
+      "name": "Re-running a complete ranking keeps topN omitted",
+      "ok": true
+    },
+    {
+      "name": "Production evidence retains actual source links",
+      "ok": true
+    },
+    {
+      "name": "Production evidence fits mobile",
+      "ok": true
+    },
+    {
+      "name": "Production browser has no runtime exceptions",
+      "ok": true
+    }
+  ],
+  "errors": []
+}

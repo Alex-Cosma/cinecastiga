@@ -1,0 +1,21 @@
+{
+  "checks": [
+    {
+      "name": "CPV dialog finds green-space maintenance by plain Romanian words",
+      "ok": true
+    },
+    {
+      "name": "Selecting the catalogue result stores the actual CPV code",
+      "ok": true
+    },
+    {
+      "name": "Accented search and code option fit the mobile dialog",
+      "ok": true
+    },
+    {
+      "name": "No browser exceptions",
+      "ok": true
+    }
+  ],
+  "errors": []
+}

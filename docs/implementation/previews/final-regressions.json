@@ -1,0 +1,108 @@
+{
+  "checkedAt": "2026-09-13T14:40:08.113Z",
+  "environment": "http://localhost:3100",
+  "readOnly": true,
+  "checks": [
+    {
+      "name": "Builder draft is visibly pending before changing mode",
+      "ok": true
+    },
+    {
+      "name": "AI mode keeps the composer mounted but hidden",
+      "ok": true
+    },
+    {
+      "name": "Build → AI → build preserves the unapplied question and pending answer",
+      "ok": true
+    },
+    {
+      "name": "Paging uses the applied full-table spec while retaining the dirty draft",
+      "ok": true,
+      "detail": {
+        "ok": true,
+        "request": {
+          "spec": {
+            "block": "table",
+            "measure": "value",
+            "filters": {
+              "authorityName": "Spitalul Clinic Judetean de Urgenta Cluj-Napoca",
+              "authorityId": 2084803,
+              "yearFrom": 2024,
+              "yearTo": 2026
+            },
+            "dataset": "contracts",
+            "dim": "supplier"
+          },
+          "tablePage": 1
+        },
+        "pending": true
+      }
+    },
+    {
+      "name": "Year source preserves original period/months and intersects with scope.years",
+      "ok": true,
+      "detail": {
+        "ok": true,
+        "request": {
+          "spec": {
+            "block": "timeseries",
+            "measure": "value",
+            "filters": {
+              "authorityName": "Spitalul Clinic Judetean de Urgenta Cluj-Napoca",
+              "authorityId": 2084803,
+              "monthFrom": 3,
+              "monthTo": 8,
+              "yearFrom": 2024,
+              "yearTo": 2026
+            },
+            "dataset": "contracts"
+          },
+          "scope": {
+            "years": [
+              2024
+            ]
+          },
+          "page": 0,
+          "sort": "value",
+          "dir": "desc",
+          "search": "",
+          "state": "",
+          "stream": ""
+        }
+      }
+    },
+    {
+      "name": "Guest save/login return URL preserves the selected source scope",
+      "ok": true,
+      "detail": {
+        "ok": true,
+        "next": "/intreaba?spec=eyJibG9jayI6InRpbWVzZXJpZXMiLCJtZWFzdXJlIjoidmFsdWUiLCJmaWx0ZXJzIjp7ImF1dGhvcml0eU5hbWUiOiJTcGl0YWx1bCBDbGluaWMgSnVkZXRlYW4gZGUgVXJnZW50YSBDbHVqLU5hcG9jYSIsImF1dGhvcml0eUlkIjoyMDg0ODAzLCJtb250aEZyb20iOjMsIm1vbnRoVG8iOjgsInllYXJGcm9tIjoyMDI0LCJ5ZWFyVG8iOjIwMjZ9LCJkYXRhc2V0IjoiY29udHJhY3RzIn0%3D&drill=1&evidence=%7B%22years%22%3A%5B2024%5D%7D"
+      }
+    },
+    {
+      "name": "Closing the guest popup leaves its parent source drawer open",
+      "ok": true
+    },
+    {
+      "name": "Escape after closing guest popup closes source drawer and restores year-trigger focus",
+      "ok": true,
+      "detail": {
+        "ok": true,
+        "focused": "<a class=\"col\" href=\"/intreaba?spec=eyJibG9jayI6InRpbWVzZXJpZXMiLCJtZWFzdXJlIjoidmFsdWUiLCJmaWx0ZXJzIjp7ImF1dGhvcml0eU5hbWUiOiJTcGl0YWx1bCBDbGluaWMgSnVkZXRlYW4gZGUgVXJnZW50YSBDbHVqLU5hcG9jYSIsImF1dGhvcml0eUlkIjoyMDg0ODAzLCJtb250aEZyb20iOjMsIm1vbnRoVG"
+      }
+    },
+    {
+      "name": "First Escape dismisses an open guest popup and retains source drawer",
+      "ok": true
+    },
+    {
+      "name": "Second Escape closes the source drawer and restores the chart trigger",
+      "ok": true
+    },
+    {
+      "name": "No browser runtime errors in final targeted journeys",
+      "ok": true
+    }
+  ],
+  "errors": []
+}

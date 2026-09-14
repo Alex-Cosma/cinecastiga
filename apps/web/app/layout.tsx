@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Bricolage_Grotesque, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
+import "./approved.css";
 import FooterAuthLink from "./FooterAuthLink";
 import HeaderUserNav from "./HeaderUserNav";
 import SiteNav from "./SiteNav";
 import ThemeToggle from "./ThemeToggle";
+import GlobalSearch from "./GlobalSearch";
 import Reveal from "./Reveal";
 import { DATA_AS_OF, DATA_MODE, SITE_DESCRIPTION, SITE_NAME, formatAsOf, pageTitle } from "@/lib/site";
 
@@ -28,30 +30,30 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ro" className={`${display.variable} ${body.variable} ${mono.variable}`} suppressHydrationWarning>
       <body>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <a className="d-skip-link" href="#main-content">Mergi la conținut</a>
         <header className="site-header">
           <div className="wrap">
             <Link href="/" className="brand" aria-label={SITE_NAME}>
-              cine<em>câștigă</em>?
+              cine<em>câștigă</em><b>?</b>
             </Link>
             <SiteNav />
             <div className="hdr-right">
-              <span className={"datachip " + DATA_MODE} title={DATA_MODE === "live" ? "colectare zilnică" : "instantaneu; colectarea live e în reluare"}>
-                <i aria-hidden /> date până la <b>{formatAsOf(DATA_AS_OF)}</b>
-              </span>
+              <Link href="/metodologie" className="d-method-link">Cum funcționează</Link>
+              <GlobalSearch />
               <ThemeToggle />
               <HeaderUserNav />
             </div>
           </div>
         </header>
-        <main>
+        <main id="main-content" tabIndex={-1}>
           <div className="wrap">{children}</div>
         </main>
         <footer className="site-footer">
           <div className="wrap">
             <div>
-              <h4>{SITE_NAME}</h4>
+              <h4 className="d-footer-brand">{SITE_NAME}</h4>
               <p>
-                Sursă: e-licitatie.ro (SICAP), date publice. Cifrele reprezintă valori contractate, nu neapărat plăți
+                Sursă: e-licitatie.ro (SEAP / SICAP), date publice. Cifrele reprezintă valori înregistrate, nu neapărat plăți
                 efectuate. Atribuirea către consorții este estimată (împărțire egală în lipsa datelor pe membru). Proiect
                 deschis, necomercial.
               </p>
@@ -72,6 +74,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <li>
                   <Link href="/metodologie">Metodologie</Link>
                 </li>
+                <li><Link href="/semnale">Semnale de risc</Link></li>
+                <li><Link href="/harta">Harta achizițiilor</Link></li>
                 <li>
                   <Link href="/metodologie#citare">Cum citez</Link>
                 </li>

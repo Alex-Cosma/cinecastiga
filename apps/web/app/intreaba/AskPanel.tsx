@@ -1,11 +1,17 @@
 "use client";
 
-import ClipButton from "@/components/ClipButton";
-
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import ClipButton from "@/components/ClipButton";
 import { formatRon, formatRonFull, formatInt, cleanName } from "@/lib/format";
 import { countyMap, foldCounty } from "@/lib/map";
+import { encodeSpec, decodeSpec } from "@/lib/ask/permalink";
+import { validateSpec, type AskSpec } from "@/lib/ask/spec";
+import { entitySourceSpec, yearSourceLink } from "@/lib/ask/source-spec";
+import { describeQuestion } from "@/lib/ask/question-ui";
+import { NATURAL_LANGUAGE_ENABLED, NATURAL_LANGUAGE_UNAVAILABLE } from "@/lib/ask/features";
+import { validateEvidenceScope, type EvidenceScope } from "@/lib/ask/evidence";
+import type { BlockData } from "@/lib/ask/compile";
 import {
   CompareBlock,
   DistributionBlock,
@@ -18,136 +24,62 @@ import {
   TrendBlock,
   useTip,
 } from "./blocks";
-import type {
-  BlockData as EngineBlockData,
-} from "@/lib/ask/compile";
-import Builder, { type BuilderSpec } from "./Builder";
+import QuestionBuilder from "./QuestionBuilder";
+import type { BuilderSpec } from "./Builder";
 import EntityTypeahead from "./EntityTypeahead";
+import EvidenceDrawer from "./EvidenceDrawer";
+import { AnswerEvidence, useAnswerEvidence } from "./AnswerEvidence";
+import "./question-results.css";
 
-import { encodeSpec, decodeSpec } from "@/lib/ask/permalink";
-
-/**
- * Duplicate-fire guard: React dev StrictMode remounts reset in-component refs,
- * so the URL-run effect used to dispatch the same request twice within ~1ms
- * (observed in the request log). Module scope survives the remount; identical
- * requests within the window are dropped — a deliberate re-run seconds later
- * still goes through.
- */
-const recentFires = new Map<string, number>();
-function dupFire(key: string, windowMs = 1500): boolean {
-  const now = Date.now();
-  const last = recentFires.get(key);
-  recentFires.set(key, now);
-  if (recentFires.size > 40) {
-    for (const [k, t] of recentFires) if (now - t > 60_000) recentFires.delete(k);
-  }
-  return last !== undefined && now - last < windowMs;
-}
-
-/**
- * The "Întreabă" client panel: natural-language question → /api/ask →
- * answer envelope (pills → caveats → result block → SQL toggle → actions).
- * Bounded output vocabulary: the server only ever returns one of the four
- * block types rendered here.
- */
-
-type BlockData = EngineBlockData;
 type TableRow = Extract<BlockData, { block: "table" }>["rows"][number];
-type SeriesPoint = Extract<BlockData, { block: "timeseries" }>["series"][number];
+type SeriesPoint = Extract<
+  BlockData,
+  { block: "timeseries" }
+>["series"][number];
 type CountyValue = Extract<BlockData, { block: "map" }>["counties"][number];
-
 interface AskResponse {
   ok: boolean;
   error?: string;
   question?: string | null;
-  spec?: { measure?: string } & Record<string, unknown>;
+  spec?: AskSpec;
   pills?: string[];
   caveats?: string[];
   data?: BlockData;
   displaySql?: string;
   tookMs?: number;
+  executedAt?: string;
 }
-
-interface DrillRow {
-  daCode: string | null;
-  date: string | null;
-  authorityId: string | null;
-  authority: string | null;
-  supplierId: string | null;
-  supplier: string | null;
-  county: string | null;
-  cpvName: string | null;
-  value: number;
-  src: "da" | "contracts";
-  refId: string | null;
-  caNoticeId: string | null;
-  tedPubnum: string | null;
-  estimatedValueRon?: number | null;
-  valueSuspect?: boolean;
-}
-interface DrillResp {
-  ok: boolean;
-  error?: string;
-  rows?: DrillRow[];
-  total?: number;
-  page?: number;
-  pageSize?: number;
-}
-interface DrillOpts {
-  sort?: string;
-  dir?: "asc" | "desc";
-  stream?: "da" | "contracts" | undefined;
-}
-
-const BLOCK_LABEL_RO: Record<string, string> = {
-  table: "clasament",
-  stat: "valoare unică",
-  timeseries: "evoluție în timp",
-  map: "hartă (județe)",
-  compare: "comparație",
-  distribution: "distribuție + poziție",
-  breakdown: "compoziție",
-  scatter: "risc vs volum",
-  sankey: "fluxul banilor",
-  network: "rețea de parteneri",
-  entity_card: "profil-superlativ",
-  fact_check: "verificare cu dovezi",
-  trend: "schimbare între ani",
-};
-
-/** Blocks that aggregate da_transactions — mirror of DRILLABLE_BLOCKS server-side. */
-const DRILLABLE = new Set([
-  "table",
-  "stat",
-  "timeseries",
-  "map",
-  "breakdown",
-  "sankey",
-  "network",
-  "fact_check",
-  "trend",
-]);
-
-const EXAMPLES: { icon: string; q: string }[] = [
-  { icon: "📊", q: "Top 10 comune cu cei mai mulți bani pe lemne, pe cap de locuitor" },
-  { icon: "🔢", q: "Cât s-a cheltuit total pe medicamente?" },
-  { icon: "📈", q: "Evoluția cheltuielilor pe asfaltare, pe ani" },
-  { icon: "🗺️", q: "Cheltuiala pe mobilier, pe județe" },
-  { icon: "⚖️", q: "Compară Comuna Brăești din Botoșani cu Comuna Dumbrăveni" },
-  { icon: "🎯", q: "Cât de riscantă e Comuna Brăești față de restul autorităților?" },
-  { icon: "🧩", q: "Din ce se compune cheltuiala publică, pe categorii?" },
-  { icon: "🔬", q: "Autorități cu risc mare dar volum mic (outlieri)" },
-  { icon: "💸", q: "Urmărește banii Spitalului Județean Vaslui" },
-  { icon: "🕸️", q: "Rețeaua de furnizori a Primăriei Cluj-Napoca" },
-  { icon: "🏛️", q: "Care e cea mai riscantă comună?" },
-  { icon: "✅", q: "A cumpărat Comuna Brăești de la Ligna Prod Com?" },
-  { icon: "📉", q: "Cum s-a schimbat cheltuiala pe lemne între 2018 și 2019?" },
-];
-
 export type PanelMode = "search" | "ask" | "build";
+const PROFILE_BLOCKS = new Set([
+  "compare",
+  "distribution",
+  "scatter",
+  "entity_card",
+]);
+const EXAMPLES = [
+  "Cât s-a cheltuit pe medicamente în Cluj, în 2026?",
+  "Cine furnizează cel mai mult pentru spitale?",
+  "Cum s-au schimbat achizițiile de lucrări, pe ani?",
+];
+function sourceCount(data: BlockData): number | null {
+  switch (data.block) {
+    case "stat":
+      return data.stat.count;
+    case "fact_check":
+      return data.fact.count;
+    case "timeseries":
+      return data.series.reduce((n, r) => n + r.count, 0);
+    case "map":
+      return data.counties.reduce((n, r) => n + r.count, 0);
+    case "breakdown":
+      return data.slices.reduce((n, r) => n + r.count, 0) + data.other.count;
+    default:
+      return null; // A displayed top N is never the full source population.
+  }
+}
 
 export default function AskPanel({
-  initialMode = "ask",
+  initialMode = "build",
   withSearch = false,
   centered = false,
 }: {
@@ -155,732 +87,844 @@ export default function AskPanel({
   withSearch?: boolean;
   centered?: boolean;
 }) {
-  const [mode, setMode] = useState<PanelMode>(initialMode);
+  const [mode, setMode] = useState<PanelMode>(
+    initialMode === "ask" && !NATURAL_LANGUAGE_ENABLED ? "build" : initialMode,
+  );
+  const [aiLinkNotice, setAiLinkNotice] = useState(false);
   const [builderInit, setBuilderInit] = useState<BuilderSpec | null>(null);
   const [builderFromAi, setBuilderFromAi] = useState(false);
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [resp, setResp] = useState<AskResponse | null>(null);
-  const [showSql, setShowSql] = useState(false);
-  const [csvBusy, setCsvBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const showToast = (msg: string) => {
-    setToast(msg);
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), 2200);
-  };
-  const [detail, setDetail] = useState<{
-    open: boolean;
-    loading: boolean;
-    data: DrillResp | null;
-    opts: DrillOpts;
-  }>({ open: false, loading: false, data: null, opts: {} });
-  const ranFromUrl = useRef(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const loadDetail = useCallback(
-    async (spec: unknown, page: number, opts: DrillOpts = {}) => {
-      if (dupFire(`d:${JSON.stringify({ spec, page, opts })}`)) return;
-      setDetail((d) => ({ open: true, loading: true, data: d.data, opts }));
-      try {
-        const r = await fetch("/api/ask/rows", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ spec, page, ...opts }),
-        });
-        setDetail({ open: true, loading: false, data: (await r.json()) as DrillResp, opts });
-      } catch (e) {
-        setDetail({
-          open: true,
-          loading: false,
-          data: { ok: false, error: `Eroare de rețea: ${String(e)}` },
-          opts,
-        });
-      }
-    },
-    [],
-  );
-
-  const run = useCallback(async (question: string) => {
-    const trimmed = question.trim();
-    if (!trimmed) return;
-    if (dupFire(`q:${trimmed}`)) return;
-    setLoading(true);
-    setResp(null);
-    setShowSql(false);
-    setDetail({ open: false, loading: false, data: null, opts: {} });
-    const url = new URL(window.location.href);
-    url.searchParams.set("q", trimmed);
-    window.history.replaceState(null, "", url.toString());
-    setTableOpts({ page: 0 });
-    try {
-      const r = await fetch("/api/ask", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ question: trimmed }),
-      });
-      setResp((await r.json()) as AskResponse);
-    } catch (e) {
-      setResp({ ok: false, error: `Eroare de rețea: ${String(e)}` });
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // paged clasament (table without topN): current page/sort, reset per query
+  const [layout, setLayout] = useState<"visual" | "table">("visual");
+  const [evidence, setEvidence] = useState<{
+    spec: AskSpec;
+    scope?: EvidenceScope;
+    title: string;
+  } | null>(null);
   const [tableOpts, setTableOpts] = useState<{
     page: number;
     sort?: string;
     dir?: "asc" | "desc";
   }>({ page: 0 });
-  const loadTable = useCallback(
-    async (spec: unknown, page: number, sort?: string, dir?: "asc" | "desc") => {
-      setTableOpts({ page, ...(sort ? { sort } : {}), ...(dir ? { dir } : {}) });
+  const request = useRef<{ seq: number; controller: AbortController | null }>({
+    seq: 0,
+    controller: null,
+  });
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const showToast = useCallback((text: string) => {
+    setToast(text);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 2600);
+  }, []);
+  const execute = useCallback(
+    async (
+      body: Record<string, unknown>,
+      drill = false,
+      savedScope?: EvidenceScope,
+    ) => {
+      if (!NATURAL_LANGUAGE_ENABLED && typeof body.question === "string") {
+        setError(NATURAL_LANGUAGE_UNAVAILABLE);
+        return false;
+      }
+      request.current.controller?.abort();
+      const controller = new AbortController(),
+        seq = ++request.current.seq;
+      request.current.controller = controller;
       setLoading(true);
+      setError(null);
+      setEvidence(null);
       try {
         const r = await fetch("/api/ask", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ spec, tablePage: page, tableSort: sort, tableDir: dir }),
+          body: JSON.stringify(body),
+          signal: controller.signal,
         });
-        setResp((await r.json()) as AskResponse);
+        const answer = (await r.json()) as AskResponse;
+        if (seq !== request.current.seq) return false;
+        if (!answer.ok || !answer.data || !answer.spec) {
+          setError(
+            answer.error ?? "Nu am putut calcula răspunsul. Încearcă din nou.",
+          );
+          return false;
+        }
+        setResp(answer);
+        // The composer owns draft/applied comparison, including edits made
+        // during this request and normalized drafts restored from old links.
+        if (typeof body.question === "string") {
+          setBuilderInit(answer.spec as unknown as BuilderSpec);
+          setBuilderFromAi(true);
+        }
+        if (!("tablePage" in body)) setTableOpts({ page: 0 });
+        const url = new URL(window.location.href);
+        url.searchParams.delete("q");
+        url.searchParams.set("spec", encodeSpec(answer.spec));
+        url.searchParams.delete("drill");
+        url.searchParams.delete("evidence");
+        window.history.replaceState(null, "", url);
+        if (drill)
+          setEvidence({
+            spec: answer.spec,
+            ...(savedScope ? { scope: savedScope } : {}),
+            title:
+              answer.question ||
+              describeQuestion(answer.spec as unknown as BuilderSpec),
+          });
+        if (!drill)
+          requestAnimationFrame(() =>
+            document
+              .getElementById("raspuns")
+              ?.scrollIntoView({
+                behavior: window.matchMedia("(prefers-reduced-motion: reduce)")
+                  .matches
+                  ? "instant"
+                  : "smooth",
+                block: "start",
+              }),
+          );
+        return answer.spec;
       } catch (e) {
-        setResp({ ok: false, error: `Eroare de rețea: ${String(e)}` });
+        if (!controller.signal.aborted && seq === request.current.seq)
+          setError(
+            "La date nu am putut ajunge acum. Reîncearcă; întrebarea ta este păstrată.",
+          );
+        return false;
       } finally {
-        setLoading(false);
+        if (seq === request.current.seq) setLoading(false);
       }
     },
     [],
   );
-
-  const runSpec = useCallback(async (spec: unknown) => {
-    if (dupFire(`s:${JSON.stringify(spec)}`)) return;
-    setLoading(true);
-    setResp(null);
-    setShowSql(false);
-    setTableOpts({ page: 0 });
-    setDetail({ open: false, loading: false, data: null, opts: {} });
-    const url = new URL(window.location.href);
-    url.searchParams.delete("q");
-    url.searchParams.set("spec", encodeSpec(spec));
-    window.history.replaceState(null, "", url.toString());
-    try {
-      const r = await fetch("/api/ask", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ spec }),
-      });
-      setResp((await r.json()) as AskResponse);
-    } catch (e) {
-      setResp({ ok: false, error: `Eroare de rețea: ${String(e)}` });
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    if (ranFromUrl.current) return;
-    ranFromUrl.current = true;
-    const params = new URLSearchParams(window.location.search);
-    const fromUrl = params.get("q");
-    const specUrl = params.get("spec");
-    if (fromUrl) {
-      setQ(fromUrl);
-      setMode("ask");
-      void run(fromUrl);
-    } else if (specUrl) {
-      const spec = decodeSpec(specUrl);
-      if (spec) {
+    const restore = () => {
+      const params = new URLSearchParams(window.location.search),
+        question = params.get("q"),
+        encoded = params.get("spec");
+      setAiLinkNotice(false);
+      if (question && !NATURAL_LANGUAGE_ENABLED) {
+        setQ(question);
         setMode("build");
-        setBuilderInit(spec as BuilderSpec);
-        void runSpec(spec);
-        // deep links from evidence tables (&drill=1): open the rows directly
-        if (params.get("drill") === "1") void loadDetail(spec, 0);
+        setAiLinkNotice(true);
       }
+      if (question && NATURAL_LANGUAGE_ENABLED) {
+        setQ(question);
+        setMode("ask");
+        void execute({ question });
+      } else if (encoded) {
+        const parsed = validateSpec(decodeSpec(encoded));
+        if ("error" in parsed) {
+          setError(
+            "Legătura conține o întrebare invalidă. Poți construi una nouă mai jos.",
+          );
+          return;
+        }
+        setBuilderInit(parsed as unknown as BuilderSpec);
+        setMode("build");
+        let scope: EvidenceScope | undefined;
+        try {
+          const raw = params.get("evidence");
+          if (raw) {
+            const validated = validateEvidenceScope(JSON.parse(raw));
+            if ("error" in validated) throw new Error(validated.error);
+            scope = validated;
+          }
+        } catch {
+          setError("Selecția de surse din această legătură este invalidă.");
+          return;
+        }
+        void execute({ spec: parsed }, params.get("drill") === "1", scope);
+      }
+    };
+    restore();
+    window.addEventListener("popstate", restore);
+    return () => {
+      window.removeEventListener("popstate", restore);
+      request.current.controller?.abort();
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+    };
+  }, [execute]);
+  const applied = resp?.spec;
+  const title =
+    resp?.question ||
+    (applied
+      ? describeQuestion(applied as unknown as BuilderSpec)
+      : "Răspunsul tău");
+  const openEvidence = useCallback(
+    (spec?: AskSpec, scope?: EvidenceScope, label?: string) => {
+      const selected = spec ?? applied;
+      if (selected) {
+        const effectiveScope =
+          scope && (scope.entityIds || scope.excludeEntityIds) && !scope.role
+            ? {
+                ...scope,
+                role:
+                  selected.dim === "supplier"
+                    ? ("supplier" as const)
+                    : ("authority" as const),
+              }
+            : scope;
+        setEvidence({
+          spec: selected,
+          ...(effectiveScope ? { scope: effectiveScope } : {}),
+          title: label ?? title,
+        });
+      }
+    },
+    [applied, title],
+  );
+  const copy = async (text: string, message: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast(message);
+    } catch {
+      showToast(
+        "Copierea nu este disponibilă. Poți copia adresa din bara browserului.",
+      );
     }
-  }, [run, runSpec, loadDetail]);
-
-  const perCapita = resp?.spec?.measure === "value_per_capita";
-
+  };
+  const interceptSource = (event: React.MouseEvent) => {
+    if (
+      event.defaultPrevented ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.shiftKey ||
+      event.altKey ||
+      !(event.target instanceof Element)
+    )
+      return;
+    const anchor = event.target.closest("a");
+    if (!anchor) return;
+    const href = anchor.getAttribute("href");
+    if (!href) return;
+    const url = new URL(href, window.location.origin);
+    if (
+      url.origin !== window.location.origin ||
+      url.searchParams.get("drill") !== "1"
+    )
+      return;
+    const spec = validateSpec(decodeSpec(url.searchParams.get("spec") ?? ""));
+    if ("error" in spec) return;
+    event.preventDefault();
+    openEvidence(spec, undefined, `${title} · selecția aleasă`);
+  };
+  const data = resp?.data,
+    count = data ? sourceCount(data) : null;
+  const isProfile = !!data && PROFILE_BLOCKS.has(data.block);
   return (
-    <div className={centered ? "ask ask-centered" : "ask"} data-mode={mode}>
+    <div
+      className={`ask cq-app${centered ? " ask-centered" : ""}`}
+      data-mode={mode}
+    >
       {toast && (
         <div className="ask-toast" role="status">
           {toast}
         </div>
       )}
-      <div className="ask-modes" role="tablist" aria-label="Mod de interogare">
+      <div className="cq-modes" aria-label="Cum vrei să explorezi?">
         {withSearch && (
           <button
             type="button"
-            role="tab"
-            aria-selected={mode === "search"}
-            className={mode === "search" ? "on" : ""}
+            aria-pressed={mode === "search"}
             onClick={() => setMode("search")}
           >
-            🔍 Caută
+            Caută o instituție sau firmă
           </button>
         )}
         <button
           type="button"
-          role="tab"
-          aria-selected={mode === "build"}
-          className={mode === "build" ? "on" : ""}
-          onClick={() => {
-            setMode("build");
-            setBuilderFromAi(false);
-          }}
+          aria-pressed={mode === "build"}
+          onClick={() => setMode("build")}
         >
-          🧱 Construiește
+          Construiește o întrebare
         </button>
         <button
           type="button"
-          role="tab"
-          aria-selected={mode === "ask"}
-          className={mode === "ask" ? "on" : ""}
+          aria-pressed={mode === "ask"}
+          disabled={!NATURAL_LANGUAGE_ENABLED}
           onClick={() => setMode("ask")}
         >
-          ✨ Întreabă <span className="ask-aibadge">AI</span>
+          Întreabă în cuvintele tale <small>AI</small>
+          {!NATURAL_LANGUAGE_ENABLED && <small>În curând</small>}
         </button>
       </div>
-
-      {mode === "search" && (
-        <>
-          <EntityTypeahead
-            q={q}
-            setQ={setQ}
-            placeholder="caută o primărie, un consiliu județean, o firmă…"
-          />
-          <p className="ask-hint">
-            Caută orice autoritate sau firmă din achizițiile publice — profil complet, cu
-            tranzacții, parteneri și semnale de risc.
-          </p>
-        </>
+      {aiLinkNotice && (
+        <div className="cq-unavailable" role="status">
+          <p>{NATURAL_LANGUAGE_UNAVAILABLE}</p>
+          <p>Întrebarea din legătură: „{q}”</p>
+        </div>
       )}
-
-      {mode === "ask" && (
-        <>
+      {mode === "search" && (
+        <EntityTypeahead
+          q={q}
+          setQ={setQ}
+          placeholder="O instituție, o firmă, un loc…"
+        />
+      )}
+      {mode === "ask" && NATURAL_LANGUAGE_ENABLED && (
+        <section className="cq-natural">
+          <p className="cq-eyebrow">CURIOZITATEA ÎNCEPE CU O ÎNTREBARE</p>
+          <h2>Ce ai vrea să afli?</h2>
           <form
             className="ask-box"
             onSubmit={(e) => {
               e.preventDefault();
-              void run(q);
+              void execute({ question: q });
             }}
           >
-            <span className="ask-ic" aria-hidden>
-              ✨
-            </span>
             <input
               ref={inputRef}
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="ex: top comune după cheltuiala pe lemne, pe cap de locuitor"
-              aria-label="Întrebare"
+              placeholder="Cine furnizează medicamente spitalelor din județul meu?"
+              aria-label="Întrebarea ta"
+              maxLength={500}
+              required
             />
             <button type="submit" disabled={loading}>
-              {loading ? "…" : "Întreabă"}
+              Vezi răspunsul →
             </button>
           </form>
-
-          <div className="ask-chips">
-            {EXAMPLES.map((ex) => (
+          <p>
+            Îți arătăm cum am înțeles întrebarea, apoi poți verifica fiecare
+            înregistrare.
+          </p>
+          <div className="cq-examples">
+            {EXAMPLES.map((text) => (
               <button
-                key={ex.q}
+                key={text}
                 type="button"
-                className="ask-chip"
                 onClick={() => {
-                  setQ(ex.q);
-                  void run(ex.q);
+                  setQ(text);
+                  inputRef.current?.focus();
                 }}
               >
-                {ex.icon} {ex.q}
+                {text} ↗
               </button>
             ))}
           </div>
-
-          <p className="ask-hint">
-            Întrebi în limbaj natural; AI-ul traduce în interogare, îți arată ce a înțeles și limitele. Achiziții directe 2018–2026.
-          </p>
-        </>
+        </section>
       )}
-
-      {mode === "build" && (
-        <>
-          <Builder
-            key={builderInit ? encodeSpec(builderInit) : "blank"}
+      {
+        <div hidden={mode !== "build"}>
+          <QuestionBuilder
+            key={builderInit ? encodeSpec(builderInit) : "start"}
             initial={builderInit}
             fromAi={builderFromAi}
-            onRun={(spec) => void runSpec(spec)}
             running={loading}
+            onDraftChange={setDirty}
+            onRun={(spec) => execute({ spec })}
           />
-          <p className="ask-hint">
-            Interogare din opțiuni, fără AI: determinist, cu „vezi toate rândurile” la fiecare răspuns.
-          </p>
-        </>
-      )}
-
-      {loading && <Loader label="Interpretez întrebarea și interoghez datele" />}
-
-      {resp && !resp.ok && (
-        <div className="ask-result">
-          <div className="ask-error">
-            {resp.error}
-            {resp.caveats?.map((c) => <div key={c} className="ask-error-sub">{c}</div>)}
-          </div>
+        </div>
+      }
+      {loading && <Loader label="Căutăm răspunsul în date" />}
+      {error && (
+        <div className="cq-error" role="alert">
+          <strong>Întrebarea ta este păstrată.</strong>
+          <p>{error}</p>
         </div>
       )}
-
-      {resp?.ok && resp.data && (
-        <div className="ask-result">
-          <aside className="ask-rail">
-          {resp.question && (
-            <div className="ask-r-q">
-              <div className="ask-lab">Întrebarea ta</div>
-              <div className="ask-q">
-                <span>{resp.question}</span>
-                <button
-                  type="button"
-                  className="ask-refine"
-                  onClick={() => {
-                    setMode("ask");
-                    setQ(resp.question ?? "");
-                    window.scrollTo({ top: 0, behavior: "smooth" });
-                    inputRef.current?.focus();
-                  }}
-                >
-                  ✎ rafinează
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="ask-r-block">
-            <div className="ask-lab">Am înțeles</div>
-            <div className="ask-pills">
-              {(resp.pills ?? []).map((p) => (
-                <span key={p} className="ask-pill">
-                  {p}
-                </span>
-              ))}
-              <button type="button" className="ask-sqltoggle" onClick={() => setShowSql((s) => !s)}>
-                vezi interogarea (avansat) {showSql ? "▴" : "▾"}
-              </button>
-              <ClipButton
-                kind="query"
-                spec={resp.spec}
-                snapshot={{ pills: resp.pills ?? [] }}
-                label={(resp.pills ?? []).join(" · ")}
-              />
-            </div>
-            {showSql && resp.displaySql && (
+      {resp?.ok && data && applied && (
+        <AnswerEvidence.Provider value={{ open: openEvidence }}>
+          <section
+            className="cq-answer"
+            id="raspuns"
+            aria-busy={loading}
+            onClick={interceptSource}
+          >
+            <div className="cq-answer-head">
               <div>
-                <div className="ask-sqlfence">
-                  ⚠ Interogare afișată pentru transparență — execuția reală e parametrizată, cu
-                  plafoane, limite de timp și limite de rânduri aplicate automat.
+                <p className="cq-eyebrow">
+                  {dirty || loading || error
+                    ? "RĂSPUNSUL APLICAT"
+                    : "RĂSPUNSUL TĂU"}{" "}
+                  <span>✓ Verificabil, până la sursă</span>
+                </p>
+                <h2>{title}</h2>
+                <div className="cq-scope">
+                  {(resp.pills ?? []).map((p) => (
+                    <span key={p}>{p}</span>
+                  ))}
                 </div>
-                <pre className="ask-sql">
-                  <code>{resp.displaySql}</code>
-                </pre>
+                {dirty && (
+                  <p className="cq-pending" role="status">
+                    Ai modificări neaplicate. Răspunsul și sursele de mai jos
+                    păstrează întrebarea anterioară.
+                  </p>
+                )}
               </div>
-            )}
-          </div>
-
-          {(resp.caveats?.length ?? 0) > 0 && (
-            // Collapsed by default; auto-open when grounding made a judgement
-            // call the user should see (picked one entity among several).
-            <details
-              className="ask-caveats-d"
-              open={resp.caveats!.some((c) => c.includes("am ales"))}
-            >
-              <summary>ⓘ acoperire &amp; limite ({resp.caveats!.length})</summary>
-              <div className="ask-caveats-body">
-                {resp.caveats!.map((c) => (
-                  <div key={c} className="ask-caveat">
-                    {c}
-                  </div>
-                ))}
-              </div>
-            </details>
-          )}
-
-          <div className="ask-r-actions">
-            {!detail.open && DRILLABLE.has(resp.data.block) && (
-              <button
-                type="button"
-                className="primary"
-                onClick={() => void loadDetail(resp.spec, 0)}
-              >
-                → vezi toate rândurile
-              </button>
-            )}
-            <button
-              type="button"
-              disabled={csvBusy}
-              onClick={() => {
-                if (detail.open) {
-                  setCsvBusy(true);
-                  void exportRowsCsv(resp.spec, detail.opts).finally(() => setCsvBusy(false));
-                } else {
-                  exportCsv(resp.data!);
-                }
-              }}
-            >
-              {csvBusy ? "⬇ export… (toate rândurile)" : "⬇ export CSV"}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                void navigator.clipboard
-                  .writeText(window.location.href)
-                  .then(() => showToast("Permalink copiat ✓"));
-              }}
-            >
-              🔗 copiază permalink
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const what =
-                  resp.question ??
-                  (resp.pills ? resp.pills.join(" · ") : BLOCK_LABEL_RO[resp.data!.block]);
-                void navigator.clipboard
-                  .writeText(
-                    `„${what}” — cinecâștigă?, pe baza datelor publice e-licitatie.ro ` +
-                      `(achiziții directe 2018–2026). Accesat ${new Date().toLocaleDateString("ro-RO")}. ` +
-                      window.location.href,
-                  )
-                  .then(() => showToast("Citare copiată ✓"));
-              }}
-            >
-              📋 citează
-            </button>
-            {mode === "ask" && resp.spec && (
-              <button
-                type="button"
-                onClick={() => {
-                  setBuilderInit(resp.spec as unknown as BuilderSpec);
-                  setBuilderFromAi(true);
-                  setMode("build");
-                }}
-              >
-                🧱 ajustează în Construiește
-              </button>
-            )}
-            <span className="ask-took">
-              fiecare rezultat → profilul entității (dovadă)
-              {resp.tookMs != null ? ` · ${resp.tookMs} ms` : ""}
-            </span>
-          </div>
-          </aside>
-          <div className="ask-main">
-          {/* the answer stays visible; the drill rows open BELOW it */}
-          <div className="ask-r-block">
-            <div className="ask-lab">
-              Rezultat · {BLOCK_LABEL_RO[resp.data.block] ?? resp.data.block}
-              {(["compare", "distribution", "scatter", "entity_card"].includes(resp.data.block) ||
-                resp.spec?.measure === "value_per_capita") && (
-                <>
-                  {" "}
-                  <Link className="ask-meth" href="/metodologie">
-                    · cum se calculează
-                  </Link>
-                </>
-              )}
-            </div>
-            {resp.data.block === "stat" && <StatBlock stat={resp.data.stat} />}
-            {resp.data.block === "table" && (
-              <TableBlock
-                rows={resp.data.rows}
-                spec={resp.spec}
-                perCapita={perCapita}
-                meta={
-                  resp.data.total !== undefined
-                    ? {
-                        total: resp.data.total,
-                        page: resp.data.page ?? 0,
-                        pageSize: resp.data.pageSize ?? 25,
-                      }
-                    : null
-                }
-                sort={tableOpts.sort}
-                dir={tableOpts.dir}
-                onFetch={(page, sort, dir) => void loadTable(resp.spec, page, sort, dir)}
-              />
-            )}
-            {resp.data.block === "timeseries" && (
-              <SeriesBlock series={resp.data.series} spec={resp.spec} />
-            )}
-            {resp.data.block === "map" && (
-              <MapBlock counties={resp.data.counties} spec={resp.spec} />
-            )}
-            {resp.data.block === "compare" && <CompareBlock entities={resp.data.entities} />}
-            {resp.data.block === "distribution" && (
-              <DistributionBlock distribution={resp.data.distribution} spec={resp.spec} />
-            )}
-            {resp.data.block === "breakdown" && (
-              <BreakdownBlock slices={resp.data.slices} other={resp.data.other} spec={resp.spec} />
-            )}
-            {resp.data.block === "scatter" && (
-              <ScatterBlock points={resp.data.points} density={resp.data.density} />
-            )}
-            {resp.data.block === "sankey" && (
-              <SankeyBlock flows={resp.data.flows} focal={resp.data.focal} spec={resp.spec} />
-            )}
-            {resp.data.block === "network" && (
-              <NetworkBlock nodes={resp.data.nodes} focal={resp.data.focal} />
-            )}
-            {resp.data.block === "entity_card" && <EntityCardBlock card={resp.data.card} />}
-            {resp.data.block === "fact_check" && <FactCheckBlock fact={resp.data.fact} />}
-            {resp.data.block === "trend" && (
-              <TrendBlock rows={resp.data.rowsTrend} yearA={resp.data.yearA} yearB={resp.data.yearB} />
-            )}
-          </div>
-
-          {detail.open && (
-            <div className="ask-r-block">
-              <div className="ask-lab">
-                Rândurile din spatele răspunsului{" "}
+              <div className="cq-answer-actions">
                 <button
                   type="button"
-                  className="ask-detback"
-                  onClick={() => setDetail({ open: false, loading: false, data: null, opts: {} })}
+                  className="cq-source-main"
+                  onClick={() => openEvidence()}
                 >
-                  ✕ închide
+                  ☷ Vezi înregistrările
+                  {count !== null && <b>{formatInt(count)}</b>}
                 </button>
+                <ClipButton
+                  kind="query"
+                  spec={applied}
+                  snapshot={{
+                    title,
+                    pills: resp.pills ?? [],
+                    headline:
+                      count === null
+                        ? title
+                        : `${formatInt(count)} înregistrări`,
+                    result: data,
+                    executedAt: resp.executedAt,
+                    caveats: resp.caveats ?? [],
+                    displaySql: resp.displaySql,
+                  }}
+                  label={title}
+                />
               </div>
-              {detail.loading && <Loader label="Încarc rândurile" />}
-              {detail.data && !detail.data.ok && (
-                <p className="ask-error" style={{ padding: 0 }}>{detail.data.error}</p>
+            </div>
+            <div className="cq-proof">
+              <span className="cq-proof-icon" aria-hidden>
+                ✓
+              </span>
+              <div>
+                <strong>
+                  {count === null
+                    ? "Selecția completă"
+                    : `${formatInt(count)} înregistrări`}
+                </strong>
+                <small>
+                  {isProfile
+                    ? "Înregistrările din baza profilurilor"
+                    : "Condițiile întrebării aplicate"}
+                </small>
+              </div>
+              <span aria-hidden>→</span>
+              <div>
+                <strong>Fiecare valoare, la vedere</strong>
+                <small>Calcul, stare și sursă SEAP</small>
+              </div>
+              <button type="button" onClick={() => openEvidence()}>
+                Verifică tu →
+              </button>
+            </div>
+            {isProfile && (
+              <p className="cq-profile-notice">
+                <strong>
+                  Valoare înregistrată în profil, inclusiv oferte neacceptate.
+                </strong>{" "}
+                Profilurile folosesc istoricul achizițiilor directe; nu
+                reprezintă plăți efectuate. Stările și baza de calcul sunt în
+                lista surselor.
+              </p>
+            )}
+            {(resp.caveats?.length ?? 0) > 0 && (
+              <details
+                className="cq-caveats"
+                open={resp.caveats!.some((c) =>
+                  /am ales|Am restrâns|nu există|ignor|în afara/i.test(c),
+                )}
+              >
+                <summary>
+                  Despre această selecție · {resp.caveats!.length} precizări
+                </summary>
+                {resp.caveats!.map((c) => (
+                  <p key={c}>{c}</p>
+                ))}
+              </details>
+            )}
+            {["table", "timeseries", "map"].includes(data.block) && (
+              <div className="cq-display">
+                <span>
+                  {data.block === "table"
+                    ? "Un clasament pe care îl poți verifica."
+                    : "Aceleași date, în forma potrivită pentru tine."}
+                </span>
+                <div>
+                  <button
+                    type="button"
+                    aria-pressed={layout === "visual"}
+                    onClick={() => setLayout("visual")}
+                  >
+                    Vizual
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={layout === "table"}
+                    onClick={() => setLayout("table")}
+                  >
+                    Tabel
+                  </button>
+                </div>
+              </div>
+            )}
+            <div className={`cq-result cq-result-${data.block}`}>
+              {data.block === "stat" && (
+                <StatBlock stat={data.stat} measure={applied.measure} />
               )}
-              {detail.data?.ok && detail.data.rows && (
-                <DrillView
-                  data={detail.data}
-                  opts={detail.opts}
-                  showStream={!(resp.spec as { dataset?: string } | null)?.dataset}
-                  hideCounty={Boolean(
-                    (resp.spec as { filters?: { county?: string; uatSiruta?: number } } | null)
-                      ?.filters?.county ??
-                      (resp.spec as { filters?: { uatSiruta?: number } } | null)?.filters
-                        ?.uatSiruta,
-                  )}
-                  onFetch={(page, opts) => void loadDetail(resp.spec, page, opts)}
+              {data.block === "table" &&
+                (layout === "visual" ? (
+                  <RankingBars
+                    rows={data.rows}
+                    spec={applied}
+                    onSources={openEvidence}
+                  />
+                ) : (
+                  <TableBlock
+                    rows={data.rows}
+                    spec={applied}
+                    perCapita={applied.measure === "value_per_capita"}
+                    meta={
+                      data.total !== undefined
+                        ? {
+                            total: data.total,
+                            page: data.page ?? 0,
+                            pageSize: data.pageSize ?? 25,
+                          }
+                        : null
+                    }
+                    sort={tableOpts.sort}
+                    dir={tableOpts.dir}
+                    onFetch={(page, sort, dir) => {
+                      setTableOpts({
+                        page,
+                        ...(sort ? { sort } : {}),
+                        ...(dir ? { dir } : {}),
+                      });
+                      void execute({
+                        spec: applied,
+                        tablePage: page,
+                        tableSort: sort,
+                        tableDir: dir,
+                      });
+                    }}
+                  />
+                ))}
+              {data.block === "timeseries" &&
+                (layout === "visual" ? (
+                  <SeriesBlock series={data.series} spec={applied} />
+                ) : (
+                  <ExactSeries
+                    series={data.series}
+                    spec={applied}
+                    onSources={openEvidence}
+                  />
+                ))}
+              {data.block === "map" &&
+                (layout === "visual" ? (
+                  <MapBlock counties={data.counties} spec={applied} />
+                ) : (
+                  <CountyValues
+                    counties={data.counties}
+                    spec={applied}
+                    onSources={openEvidence}
+                  />
+                ))}
+              {data.block === "compare" && (
+                <CompareBlock entities={data.entities} />
+              )}
+              {data.block === "distribution" && (
+                <DistributionBlock
+                  distribution={data.distribution}
+                  spec={applied}
+                />
+              )}
+              {data.block === "breakdown" && (
+                <BreakdownBlock
+                  slices={data.slices}
+                  other={data.other}
+                  spec={applied}
+                />
+              )}
+              {data.block === "scatter" && (
+                <ScatterBlock points={data.points} density={data.density} />
+              )}
+              {data.block === "sankey" && (
+                <SankeyBlock
+                  flows={data.flows}
+                  focal={data.focal}
+                  spec={applied}
+                />
+              )}
+              {data.block === "network" && (
+                <NetworkBlock nodes={data.nodes} focal={data.focal} />
+              )}
+              {data.block === "entity_card" && (
+                <EntityCardBlock card={data.card} />
+              )}
+              {data.block === "fact_check" && (
+                <FactCheckBlock fact={data.fact} />
+              )}
+              {data.block === "trend" && (
+                <TrendBlock
+                  rows={data.rowsTrend}
+                  yearA={data.yearA}
+                  yearB={data.yearB}
+                  spec={applied}
                 />
               )}
             </div>
-          )}
-
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** Outbound source links — see memory `seap-deep-links` for the URL patterns. */
-function rowLinks(r: DrillRow): { seap: string | null; ted: string | null } {
-  const seap =
-    r.src === "da"
-      ? r.refId
-        ? `https://e-licitatie.ro/pub/direct-acquisition/view/${r.refId}`
-        : null
-      : r.caNoticeId
-        ? `https://e-licitatie.ro/pub/notices/ca-notices/view-c/${r.caNoticeId}`
-        : null;
-  const ted = r.tedPubnum ? `https://ted.europa.eu/en/notice/-/detail/${r.tedPubnum}` : null;
-  return { seap, ted };
-}
-
-const DRILL_COLS: { key: string; label: string; sortable: boolean; num?: boolean }[] = [
-  { key: "date", label: "Dată", sortable: true },
-  { key: "src", label: "Tip", sortable: false },
-  { key: "authority", label: "Autoritate", sortable: true },
-  { key: "supplier", label: "Furnizor", sortable: true },
-  { key: "cpv", label: "Ce s-a cumpărat", sortable: true },
-  { key: "county", label: "Județ", sortable: true },
-  { key: "value", label: "Valoare", sortable: true, num: true },
-  { key: "links", label: "Sursa", sortable: false },
-];
-
-function DrillView({
-  data,
-  opts,
-  showStream,
-  hideCounty,
-  onFetch,
-}: {
-  data: DrillResp;
-  opts: DrillOpts;
-  showStream: boolean;
-  /** County/locality already fixed by the query — the column is redundant. */
-  hideCounty: boolean;
-  onFetch: (page: number, opts: DrillOpts) => void;
-}) {
-  const tip = useTip();
-  const rows = data.rows ?? [];
-  const total = data.total ?? 0;
-  const page = data.page ?? 0;
-  const pageSize = data.pageSize ?? 10;
-  const pages = Math.max(1, Math.ceil(total / pageSize));
-  const sortKey = opts.sort ?? "value";
-  const sortDir = opts.dir ?? "desc";
-  const sortBy = (key: string) => {
-    const dir = sortKey === key ? (sortDir === "desc" ? "asc" : "desc") : key === "value" || key === "date" ? "desc" : "asc";
-    onFetch(0, { ...opts, sort: key, dir });
-  };
-  const setStream = (stream: DrillOpts["stream"]) => onFetch(0, { ...opts, stream });
-  const cols = DRILL_COLS.filter(
-    (c) =>
-      (c.key !== "src" || (showStream && !opts.stream)) && (c.key !== "county" || !hideCounty),
-  );
-  return (
-    <div>
-      {tip.el}
-      {showStream && (
-        <div className="ask-streamtoggle">
-          {(
-            [
-              [undefined, "toate sursele"],
-              ["da", "achiziții directe"],
-              ["contracts", "contracte"],
-            ] as const
-          ).map(([v, l]) => (
-            <button
-              key={l}
-              type="button"
-              className={opts.stream === v ? "on" : ""}
-              onClick={() => setStream(v)}
-            >
-              {l}
-            </button>
-          ))}
-        </div>
-      )}
-      <div className="ask-detmeta">
-        {formatInt(total)} înregistrări
-        {showStream && !opts.stream ? " (ambele canale)" : ""} · pagina {page + 1} din{" "}
-        {formatInt(pages)}
-      </div>
-      <div className="ask-tablewrap">
-        <table className="ask-table ask-drill">
-          <thead>
-            <tr>
-              {cols.map((c) => (
-                <th
-                  key={c.key}
-                  className={`col-${c.key}` + (c.num ? " num" : "") + (c.sortable ? " sortable" : "")}
-                  onClick={c.sortable ? () => sortBy(c.key) : undefined}
-                  title={c.sortable ? "sortează" : undefined}
+            <div className="cq-answer-tools">
+              <button
+                type="button"
+                onClick={() =>
+                  void copy(
+                    `${window.location.origin}/intreaba?spec=${encodeURIComponent(encodeSpec(applied))}`,
+                    "Întrebarea aplicată a fost copiată.",
+                  )
+                }
+              >
+                Copiază întrebarea ↗
+              </button>
+              <button type="button" onClick={() => openEvidence()}>
+                Datele și exportul CSV ↓
+              </button>
+              <button type="button" onClick={() => exportCsv(data)}>
+                Exportă rezultatul afișat ↓
+              </button>
+              {mode === "ask" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBuilderInit(applied as unknown as BuilderSpec);
+                    setBuilderFromAi(true);
+                    setMode("build");
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
                 >
-                  {c.label}
-                  {c.sortable && sortKey === c.key ? (sortDir === "desc" ? " ▾" : " ▴") : ""}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, i) => {
-              const { seap, ted } = rowLinks(r);
-              return (
-                <tr key={`${r.src}-${r.refId ?? i}-${i}`}>
-                  <td>{r.date ?? "—"}</td>
-                  {showStream && !opts.stream && (
-                    <td>
-                      <span
-                        className={`ask-srctag ${r.src}`}
-                        title={
-                          r.src === "da"
-                            ? "achiziție directă (sub prag)"
-                            : "contract din procedură (peste prag)"
-                        }
-                      >
-                        {r.src === "da" ? "directă" : "contract"}
-                      </span>
-                    </td>
-                  )}
-                  <td className="clip" {...tip.bindClip(cleanName(r.authority))}>
-                    {r.authorityId ? (
-                      <Link href={`/entitati/${r.authorityId}`}>{cleanName(r.authority)}</Link>
-                    ) : (
-                      cleanName(r.authority)
-                    )}
-                  </td>
-                  <td className="clip" {...tip.bindClip(cleanName(r.supplier))}>
-                    {r.supplierId ? (
-                      <Link href={`/entitati/${r.supplierId}`}>{cleanName(r.supplier)}</Link>
-                    ) : (
-                      cleanName(r.supplier)
-                    )}
-                  </td>
-                  <td className="clip cpv" {...tip.bindClip(r.cpvName)}>
-                    {r.cpvName ?? "—"}
-                  </td>
-                  {!hideCounty && <td>{r.county ?? "—"}</td>}
-                  <td className={`num${r.valueSuspect ? " val-suspect" : ""}`}>
-                    {formatRonFull(r.value)}
-                    {r.valueSuspect && (
-                      <span
-                        className="val-warn"
-                        {...tip.bind(
-                          "valoare implauzibilă",
-                          r.estimatedValueRon
-                            ? `estimat: ${formatRonFull(r.estimatedValueRon)}`
-                            : undefined,
-                          (r.estimatedValueRon && r.value < r.estimatedValueRon
-                            ? "valoare simbolică — probabil sub-înregistrată (rest de preț unitar sau substituent)"
-                            : "probabil eroare de introducere (preț unitar cu separator de mii)") +
-                            " — valoarea NU e de încredere în totaluri sau statistici",
-                        )}
-                      >
-                        {" "}
-                        ⚠{r.estimatedValueRon ? ` est. ${formatRon(r.estimatedValueRon)}` : ""}
-                      </span>
-                    )}
-                  </td>
-                  <td className="ask-srclinks">
-                    {r.src === "contracts" && r.refId && (
-                      <a
-                        href={`/contracte/i/${r.refId}`}
-                        target="_blank"
-                        rel="noopener"
-                        title="pagina noastră de detalii a contractului"
-                      >
-                        detalii→
-                      </a>
-                    )}
-                    {seap && (
-                      <a href={seap} target="_blank" rel="noopener noreferrer" title="deschide pe e-licitatie.ro">
-                        SEAP↗
-                      </a>
-                    )}
-                    {ted && (
-                      <a href={ted} target="_blank" rel="noopener noreferrer" title="deschide pe ted.europa.eu">
-                        TED↗
-                      </a>
-                    )}
-                    {!seap && !ted && "—"}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      <div className="ask-pager">
-        <button type="button" disabled={page === 0} onClick={() => onFetch(page - 1, opts)}>
-          ‹ anterioare
-        </button>
-        <button type="button" disabled={page + 1 >= pages} onClick={() => onFetch(page + 1, opts)}>
-          următoare ›
-        </button>
-      </div>
+                  Ajustează întrebarea ↑
+                </button>
+              )}
+            </div>
+            <details className="cq-calculation">
+              <summary>Cum s-a calculat răspunsul</summary>
+              <p>
+                Calculele folosesc condițiile de mai sus. Lista surselor explică
+                selecția și valorile înregistrate; pagina de metodologie descrie
+                indicatorii.
+              </p>
+              <Link href="/metodologie">Deschide metodologia ↗</Link>
+              {resp.displaySql && (
+                <details>
+                  <summary>Interogarea SQL · avansat</summary>
+                  <pre>
+                    <code>{resp.displaySql}</code>
+                  </pre>
+                </details>
+              )}
+            </details>
+            <div className="cq-promise">
+              <div className="cq-paper" aria-hidden>
+                SEAP
+                <span />
+                <span />
+                <span />
+              </div>
+              <div>
+                <p className="cq-eyebrow">CIFRELE NU CER ÎNCREDERE OARBĂ.</p>
+                <h3>
+                  Ai întrebări despre un rezultat?
+                  <br />
+                  Începe cu înregistrările lui.
+                </h3>
+                <p>
+                  Vezi cine, ce, când și la ce valoare. Deschide sursa SEAP sau
+                  exportă datele ca să faci propriile calcule.
+                </p>
+              </div>
+              <button type="button" onClick={() => openEvidence()}>
+                Deschide sursele →
+              </button>
+            </div>
+          </section>
+        </AnswerEvidence.Provider>
+      )}
+      {evidence && (
+        <EvidenceDrawer
+          key={JSON.stringify(evidence)}
+          spec={evidence.spec}
+          title={evidence.title}
+          {...(evidence.scope ? { scope: evidence.scope } : {})}
+          onClose={() => setEvidence(null)}
+        />
+      )}
     </div>
   );
 }
 
+function RankingBars({
+  rows,
+  spec,
+  onSources,
+}: {
+  rows: TableRow[];
+  spec: AskSpec;
+  onSources: (spec: AskSpec, scope?: EvidenceScope, title?: string) => void;
+}) {
+  const metric = (r: TableRow) =>
+    spec.measure === "count"
+      ? r.count
+      : spec.measure === "value_per_capita"
+        ? r.population
+          ? r.value / r.population
+          : 0
+        : r.value;
+  const max = Math.max(...rows.map(metric), 1);
+  if (!rows.length)
+    return (
+      <p className="ask-empty">
+        Nu am găsit înregistrări pentru aceste condiții. Încearcă o perioadă mai
+        largă.
+      </p>
+    );
+  return (
+    <>
+      <div className="cq-ranking">
+        {rows.map((r, i) => (
+          <button
+            type="button"
+            key={r.entityId ?? r.name}
+            onClick={() =>
+              onSources(
+                entitySourceSpec(spec, r),
+                undefined,
+                `${cleanName(r.name)} · înregistrările din clasament`,
+              )
+            }
+          >
+            <span className="cq-rank-number">
+              {String(i + 1).padStart(2, "0")}
+            </span>
+            <span className="cq-rank-name">
+              <strong>{cleanName(r.name)}</strong>
+              <span className="cq-bar-track">
+                <i
+                  style={{
+                    width: `${Math.max(0.5, (metric(r) / max) * 100)}%`,
+                    opacity: Math.max(0.35, 1 - i * 0.08),
+                  }}
+                />
+              </span>
+            </span>
+            <span className="cq-rank-value">
+              <strong>
+                {spec.measure === "count"
+                  ? formatInt(r.count)
+                  : formatRonFull(metric(r))}
+                {spec.measure === "value_per_capita" ? " / locuitor" : ""}
+              </strong>
+              <small>{formatInt(r.count)} înregistrări →</small>
+            </span>
+          </button>
+        ))}
+      </div>
+      <p className="ask-fine">
+        {rows.length} rezultate afișate. „Vezi înregistrările” păstrează
+        întreaga selecție, inclusiv rezultatele din afara acestui clasament.
+      </p>
+    </>
+  );
+}
+function ExactSeries({
+  series,
+  spec,
+  onSources,
+}: {
+  series: SeriesPoint[];
+  spec: AskSpec;
+  onSources: (spec: AskSpec, scope?: EvidenceScope, title?: string) => void;
+}) {
+  return (
+    <table className="ask-table cq-exact-table">
+      <thead>
+        <tr>
+          <th>An</th>
+          <th>Valoare înregistrată</th>
+          <th>Înregistrări</th>
+          <th>Surse</th>
+        </tr>
+      </thead>
+      <tbody>
+        {series.map((r) => (
+          <tr key={r.year}>
+            <th>{r.year}</th>
+            <td>{formatRonFull(r.value)}</td>
+            <td>{formatInt(r.count)}</td>
+            <td>
+              <button
+                type="button"
+                onClick={() =>
+                  onSources(
+                    spec,
+                    { years: [r.year] },
+                    `${r.year} · înregistrările anului`,
+                  )
+                }
+              >
+                Vezi înregistrările →
+              </button>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+function CountyValues({
+  counties,
+  spec,
+  onSources,
+}: {
+  counties: CountyValue[];
+  spec: AskSpec;
+  onSources: (spec: AskSpec) => void;
+}) {
+  return (
+    <table className="ask-table cq-exact-table">
+      <thead>
+        <tr>
+          <th>Județ</th>
+          <th>Valoare înregistrată</th>
+          <th>Înregistrări</th>
+          <th>Surse</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[...counties]
+          .sort((a, b) => b.value - a.value)
+          .map((r) => (
+            <tr key={r.county}>
+              <th>{r.county}</th>
+              <td>{formatRonFull(r.value)}</td>
+              <td>{formatInt(r.count)}</td>
+              <td>
+                <button
+                  type="button"
+                  onClick={() =>
+                    onSources({
+                      block: "stat",
+                      measure: spec.measure === "count" ? "count" : "value",
+                      ...(spec.dataset ? { dataset: spec.dataset } : {}),
+                      filters: { ...spec.filters, county: r.county },
+                    })
+                  }
+                >
+                  Vezi înregistrările →
+                </button>
+              </td>
+            </tr>
+          ))}
+      </tbody>
+    </table>
+  );
+}
 function StatBlock({
   stat,
+  measure,
 }: {
+  measure: string;
   stat: {
     value: number;
     count: number;
@@ -891,14 +935,17 @@ function StatBlock({
   const ctr = stat.byStream?.find((s) => s.src === "contracts");
   return (
     <div className="ask-bigstat">
-      <div className="v">{formatRon(stat.value)}</div>
+      <div className="v">
+        {measure === "count" ? formatInt(stat.count) : formatRon(stat.value)}
+      </div>
       <div className="d">
         {formatRonFull(stat.value)} · {formatInt(stat.count)} înregistrări
       </div>
       {stat.byStream && (
         <div className="ask-streamsplit">
-          {formatRon(da?.value ?? 0)} achiziții directe ({formatInt(da?.count ?? 0)}) +{" "}
-          {formatRon(ctr?.value ?? 0)} contracte ({formatInt(ctr?.count ?? 0)})
+          {formatRon(da?.value ?? 0)} achiziții directe (
+          {formatInt(da?.count ?? 0)}) + {formatRon(ctr?.value ?? 0)} contracte
+          ({formatInt(ctr?.count ?? 0)})
         </div>
       )}
     </div>
@@ -924,30 +971,8 @@ function TableBlock({
   onFetch?: (page: number, sort?: string, dir?: "asc" | "desc") => void;
 }) {
   // acquisitions-count click → same filters narrowed to this row, drill opened
-  const rowUrl = (r: TableRow): string | null => {
-    const s = (spec ?? {}) as {
-      dim?: string;
-      dataset?: string;
-      filters?: Record<string, unknown>;
-    };
-    const dim = s.dim ?? "authority";
-    let extra: Record<string, unknown>;
-    if (dim === "county") extra = { county: r.name };
-    else if (dim === "supplier") {
-      if (!r.entityId) return null;
-      extra = { supplierName: r.name, supplierId: Number(r.entityId) };
-    } else {
-      if (!r.entityId) return null;
-      extra = { authorityName: r.name, authorityId: Number(r.entityId) };
-    }
-    const next: Record<string, unknown> = {
-      block: "stat",
-      measure: "value",
-      filters: { ...(s.filters ?? {}), ...extra },
-    };
-    if (s.dataset) next["dataset"] = s.dataset;
-    return `/?spec=${encodeURIComponent(encodeSpec(next))}&drill=1`;
-  };
+  const rowUrl = (r: TableRow) =>
+    `/intreaba?spec=${encodeURIComponent(encodeSpec(entitySourceSpec(spec as AskSpec, r)))}&drill=1`;
   const paged = Boolean(meta && onFetch);
   const page = meta?.page ?? 0;
   const pageSize = meta?.pageSize ?? rows.length;
@@ -964,7 +989,15 @@ function TableBlock({
           : "desc";
     onFetch!(0, key, d);
   };
-  const Th = ({ k, label, num }: { k: string; label: string; num?: boolean }) =>
+  const Th = ({
+    k,
+    label,
+    num,
+  }: {
+    k: string;
+    label: string;
+    num?: boolean;
+  }) =>
     paged ? (
       <th
         className={(num ? "num" : "") + " sortable"}
@@ -977,12 +1010,14 @@ function TableBlock({
     ) : (
       <th className={num ? "num" : undefined}>{label}</th>
     );
-  if (rows.length === 0) return <p className="ask-empty">Niciun rezultat pentru aceste filtre.</p>;
+  if (rows.length === 0)
+    return <p className="ask-empty">Niciun rezultat pentru aceste filtre.</p>;
   return (
     <div className="ask-tablewrap">
       {paged && (
         <div className="ask-detmeta">
-          {formatInt(meta!.total)} entități · pagina {page + 1} din {formatInt(pages)}
+          {formatInt(meta!.total)} entități · pagina {page + 1} din{" "}
+          {formatInt(pages)}
         </div>
       )}
       <table className="ask-table">
@@ -1003,16 +1038,24 @@ function TableBlock({
               <td className="pos">{page * pageSize + i + 1}</td>
               <td>
                 {r.entityId ? (
-                  <Link href={`/entitati/${r.entityId}`}>{cleanName(r.name)}</Link>
+                  <Link href={`/entitati/${r.entityId}`}>
+                    {cleanName(r.name)}
+                  </Link>
                 ) : (
                   cleanName(r.name)
                 )}
               </td>
               <td>{r.county ?? "—"}</td>
-              {perCapita && <td className="num">{r.population ? formatInt(r.population) : "—"}</td>}
+              {perCapita && (
+                <td className="num">
+                  {r.population ? formatInt(r.population) : "—"}
+                </td>
+              )}
               {perCapita && (
                 <td className="num strong">
-                  {r.population ? formatInt(Math.round(r.value / r.population)) : "—"}
+                  {r.population
+                    ? formatInt(Math.round(r.value / r.population))
+                    : "—"}
                 </td>
               )}
               <td className="num">{formatRonFull(r.value)}</td>
@@ -1057,23 +1100,25 @@ function TableBlock({
   );
 }
 
-function SeriesBlock({ series, spec }: { series: SeriesPoint[]; spec: unknown }) {
+function SeriesBlock({
+  series,
+  spec,
+}: {
+  series: SeriesPoint[];
+  spec: unknown;
+}) {
   const t = useTip();
+  const evidence = useAnswerEvidence();
+  const asCount = (spec as AskSpec).measure === "count";
+  const metric = (p: SeriesPoint) => (asCount ? p.count : p.value);
+  const display = (p: SeriesPoint) =>
+    asCount ? formatInt(p.count) : formatRon(p.value);
   // year-bar click → same filters, scoped to that year, drill rows opened
-  const yearUrl = (year: number | string): string => {
-    const s = (spec ?? {}) as { dataset?: string; filters?: Record<string, unknown> };
-    const y = Number(year);
-    const next: Record<string, unknown> = {
-      block: "stat",
-      measure: "value",
-      filters: { ...(s.filters ?? {}), yearFrom: y, yearTo: y },
-    };
-    if (s.dataset) next["dataset"] = s.dataset;
-    return `/?spec=${encodeURIComponent(encodeSpec(next))}&drill=1`;
-  };
+  const yearUrl = (year: number | string) =>
+    yearSourceLink(spec as AskSpec, Number(year));
   if (series.length === 0) return <p className="ask-empty">Niciun rezultat.</p>;
-  const max = Math.max(...series.map((p) => p.value), 1);
-  const peak = series.reduce((a, b) => (b.value > a.value ? b : a));
+  const max = Math.max(...series.map(metric), 1);
+  const peak = series.reduce((a, b) => (metric(b) > metric(a) ? b : a));
   return (
     <div>
       {t.el}
@@ -1083,38 +1128,63 @@ function SeriesBlock({ series, spec }: { series: SeriesPoint[]; spec: unknown })
             key={p.year}
             className="col"
             href={yearUrl(p.year)}
+            onClick={(event) => {
+              if (evidence && !event.ctrlKey && !event.metaKey) {
+                event.preventDefault();
+                evidence.open(
+                  spec as AskSpec,
+                  { years: [p.year] },
+                  `${p.year} · înregistrările anului`,
+                );
+              }
+            }}
             target="_blank"
             rel="noopener"
             {...t.bind(
               String(p.year),
-              formatRonFull(p.value),
+              asCount
+                ? formatInt(p.count) + " înregistrări"
+                : formatRonFull(p.value),
               `${formatInt(p.count)} achiziții${p.year === peak.year ? " · vârful seriei" : ""} · click → achizițiile anului`,
             )}
           >
-            <div className="cv">{formatRon(p.value)}</div>
+            <div className="cv">{display(p)}</div>
             <div
               className={p.year === peak.year ? "bar peak" : "bar"}
-              style={{ height: `${Math.max(2, (p.value / max) * 100)}%` }}
+              style={{ height: `${Math.max(2, (metric(p) / max) * 100)}%` }}
             />
             <div className="cl">{p.year}</div>
           </a>
         ))}
       </div>
       <p className="ask-fine">
-        vârful ({peak.year}) este marcat · valori contractate, nu plăți · click pe un an → lista
-        achizițiilor lui
+        vârful ({peak.year}) este marcat · valori contractate, nu plăți · click
+        pe un an → lista achizițiilor lui
       </p>
     </div>
   );
 }
 
-const MAP_COLORS = ["#e6eafb", "#b9c4f0", "#8194de", "#4d66c4", "#233c9c"];
-const MAP_NO_DATA = "#e4e7ee";
+const MAP_COLORS = ["#e4ead8", "#c7d5b2", "#9cb786", "#6e9365", "#285b45"];
+const MAP_NO_DATA = "#e8eade";
 
-function MapBlock({ counties, spec }: { counties: CountyValue[]; spec: unknown }) {
+function MapBlock({
+  counties,
+  spec,
+}: {
+  counties: CountyValue[];
+  spec: unknown;
+}) {
+  const asCount = (spec as AskSpec).measure === "count";
+  const display = (v: number) =>
+    asCount ? formatInt(v) + " înreg." : formatRon(v);
   // county click → same filters, scoped to that county, drill rows opened
   const countyUrl = (label: string): string => {
-    const s = (spec ?? {}) as { measure?: string; dataset?: string; filters?: Record<string, unknown> };
+    const s = (spec ?? {}) as {
+      measure?: string;
+      dataset?: string;
+      filters?: Record<string, unknown>;
+    };
     const next: Record<string, unknown> = {
       block: "stat",
       measure: s.measure === "count" ? "count" : "value",
@@ -1127,10 +1197,13 @@ function MapBlock({ counties, spec }: { counties: CountyValue[]; spec: unknown }
   const cntByKey = new Map<string, number>();
   for (const c of counties) {
     const k = foldCounty(c.county);
-    byKey.set(k, (byKey.get(k) ?? 0) + c.value);
+    byKey.set(k, (byKey.get(k) ?? 0) + (asCount ? c.count : c.value));
     cntByKey.set(k, (cntByKey.get(k) ?? 0) + c.count);
   }
-  const national = counties.reduce((s, c) => s + c.value, 0);
+  const national = counties.reduce(
+    (s, c) => s + (asCount ? c.count : c.value),
+    0,
+  );
   const [tip, setTip] = useState<{
     label: string;
     value: number;
@@ -1144,7 +1217,14 @@ function MapBlock({ counties, spec }: { counties: CountyValue[]; spec: unknown }
     .sort((a, b) => a - b);
   const th: number[] = [];
   for (let i = 1; i < MAP_COLORS.length; i++) {
-    th.push(values[Math.min(Math.floor((i / MAP_COLORS.length) * values.length), values.length - 1)] ?? 0);
+    th.push(
+      values[
+        Math.min(
+          Math.floor((i / MAP_COLORS.length) * values.length),
+          values.length - 1,
+        )
+      ] ?? 0,
+    );
   }
   const bucket = (v: number) => {
     let b = 0;
@@ -1176,7 +1256,12 @@ function MapBlock({ counties, spec }: { counties: CountyValue[]; spec: unknown }
                 y: e.clientY,
               });
             return (
-              <a key={s.key} href={countyUrl(s.label)} target="_blank" rel="noopener">
+              <a
+                key={s.key}
+                href={countyUrl(s.label)}
+                target="_blank"
+                rel="noopener"
+              >
                 <path
                   d={s.d}
                   fill={v > 0 ? MAP_COLORS[bucket(v)] : MAP_NO_DATA}
@@ -1206,10 +1291,11 @@ function MapBlock({ counties, spec }: { counties: CountyValue[]; spec: unknown }
             <div className="t">{tip.label}</div>
             {tip.value > 0 ? (
               <>
-                <div className="v">{formatRon(tip.value)}</div>
+                <div className="v">{display(tip.value)}</div>
                 <div className="s">
                   {formatInt(tip.count)} achiziții
-                  {national > 0 && ` · ${((tip.value / national) * 100).toFixed(1)}% din total`}
+                  {national > 0 &&
+                    ` · ${((tip.value / national) * 100).toFixed(1)}% din total`}
                 </div>
                 <div className="s">click → deschide achizițiile județului</div>
               </>
@@ -1229,7 +1315,7 @@ function MapBlock({ counties, spec }: { counties: CountyValue[]; spec: unknown }
                   {r.label} ↗
                 </a>
               </td>
-              <td className="num">{formatRon(r.value)}</td>
+              <td className="num">{display(r.value)}</td>
             </tr>
           ))}
         </tbody>
@@ -1257,8 +1343,7 @@ function Loader({ label }: { label: string }) {
         <i />
       </span>
       <span>
-        {label}…
-        {secs >= 3 && ` ${secs}s`}
+        {label}…{secs >= 3 && ` ${secs}s`}
         {secs >= 8 && " — interogare mare, poate dura până la 20s"}
       </span>
     </div>
@@ -1266,33 +1351,9 @@ function Loader({ label }: { label: string }) {
 }
 
 function csvQ(s: string | null | undefined): string {
-  return `"${(s ?? "").replaceAll('"', '""')}"`;
-}
-
-/**
- * Full-result export: when the drill table is open, the CSV comes from the
- * server with ALL matching rows (same sort/stream as on screen, capped
- * server-side), not just the visible page.
- */
-async function exportRowsCsv(spec: unknown, opts: DrillOpts): Promise<void> {
-  const r = await fetch("/api/ask/rows/csv", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ spec, ...opts }),
-  });
-  if ((r.headers.get("content-type") ?? "").includes("application/json")) {
-    const j = (await r.json()) as { error?: string };
-    alert(j.error ?? "Exportul a eșuat.");
-    return;
-  }
-  const blob = await r.blob();
-  const cd = r.headers.get("content-disposition") ?? "";
-  const name = /filename="([^"]+)"/.exec(cd)?.[1] ?? "randuri.csv";
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = name;
-  a.click();
-  URL.revokeObjectURL(a.href);
+  const text = s ?? "";
+  const safe = /^[\s\uFEFF]*[=+@-]/.test(text) ? "'" + text : text;
+  return `"${safe.replaceAll('"', '""')}"`;
 }
 
 function exportCsv(data: BlockData) {
@@ -1302,12 +1363,16 @@ function exportCsv(data: BlockData) {
       lines = [
         "nume,judet,valoare_lei,achizitii,populatie",
         ...data.rows.map(
-          (r) => `${csvQ(r.name)},${csvQ(r.county)},${r.value},${r.count},${r.population ?? ""}`,
+          (r) =>
+            `${csvQ(r.name)},${csvQ(r.county)},${r.value},${r.count},${r.population ?? ""}`,
         ),
       ];
       break;
     case "timeseries":
-      lines = ["an,valoare_lei,achizitii", ...data.series.map((p) => `${p.year},${p.value},${p.count}`)];
+      lines = [
+        "an,valoare_lei,achizitii",
+        ...data.series.map((p) => `${p.year},${p.value},${p.count}`),
+      ];
       break;
     case "map":
       lines = [
@@ -1316,7 +1381,10 @@ function exportCsv(data: BlockData) {
       ];
       break;
     case "stat":
-      lines = ["valoare_lei,achizitii", `${data.stat.value},${data.stat.count}`];
+      lines = [
+        "valoare_lei,achizitii",
+        `${data.stat.value},${data.stat.count}`,
+      ];
       break;
     case "compare":
       lines = [
@@ -1336,20 +1404,27 @@ function exportCsv(data: BlockData) {
     case "breakdown":
       lines = [
         "categorie,cod,valoare_lei,achizitii",
-        ...data.slices.map((s2) => `${csvQ(s2.name)},${s2.code},${s2.value},${s2.count}`),
+        ...data.slices.map(
+          (s2) => `${csvQ(s2.name)},${s2.code},${s2.value},${s2.count}`,
+        ),
         `"alte categorii",,${data.other.value},${data.other.count}`,
       ];
       break;
     case "scatter":
       lines = [
         "nume,judet,valoare_lei,cri,semnale",
-        ...data.points.map((p) => `${csvQ(p.name)},${csvQ(p.county)},${p.value},${p.cri},${p.nFlags}`),
+        ...data.points.map(
+          (p) =>
+            `${csvQ(p.name)},${csvQ(p.county)},${p.value},${p.cri},${p.nFlags}`,
+        ),
       ];
       break;
     case "sankey":
       lines = [
         "partener,categorie,valoare_lei",
-        ...data.flows.map((f) => `${csvQ(f.partner)},${csvQ(f.category)},${f.value}`),
+        ...data.flows.map(
+          (f) => `${csvQ(f.partner)},${csvQ(f.category)},${f.value}`,
+        ),
       ];
       break;
     case "network":
@@ -1369,13 +1444,18 @@ function exportCsv(data: BlockData) {
     case "fact_check":
       lines = [
         "cod,data,ce,valoare_lei",
-        ...data.fact.samples.map((s2) => `${csvQ(s2.daCode)},${csvQ(s2.date)},${csvQ(s2.cpvName)},${s2.value}`),
+        ...data.fact.samples.map(
+          (s2) =>
+            `${csvQ(s2.daCode)},${csvQ(s2.date)},${csvQ(s2.cpvName)},${s2.value}`,
+        ),
       ];
       break;
     case "trend":
       lines = [
         `nume,judet,${data.yearA},${data.yearB}`,
-        ...data.rowsTrend.map((r) => `${csvQ(r.name)},${csvQ(r.county)},${r.valueA},${r.valueB}`),
+        ...data.rowsTrend.map(
+          (r) => `${csvQ(r.name)},${csvQ(r.county)},${r.valueA},${r.valueB}`,
+        ),
       ];
       break;
   }

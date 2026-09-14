@@ -1,6 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useAnswerEvidence } from "./AnswerEvidence";
+import type { AskSpec } from "@/lib/ask/spec";
+import type { EvidenceScope } from "@/lib/ask/evidence";
 import { useEffect, useRef, useState } from "react";
 import { formatRon, formatRonFull, formatInt, cleanName } from "@/lib/format";
 import { encodeSpec } from "@/lib/ask/permalink";
@@ -25,8 +28,13 @@ export function useTip() {
     y: number;
   } | null>(null);
   const bind = (title: string, v?: string, s?: string): TipBind => {
-    const move = (e: React.MouseEvent) => setTip({ title, v, s, x: e.clientX, y: e.clientY });
-    return { onMouseEnter: move, onMouseMove: move, onMouseLeave: () => setTip(null) };
+    const move = (e: React.MouseEvent) =>
+      setTip({ title, v, s, x: e.clientX, y: e.clientY });
+    return {
+      onMouseEnter: move,
+      onMouseMove: move,
+      onMouseLeave: () => setTip(null),
+    };
   };
   /** Instant full-text tooltip for ellipsized cells — fires ONLY when the
    *  element is actually truncated, so untrimmed text stays quiet. */
@@ -39,7 +47,11 @@ export function useTip() {
       }
       setTip({ title: text, x: e.clientX, y: e.clientY });
     };
-    return { onMouseEnter: move, onMouseMove: move, onMouseLeave: () => setTip(null) };
+    return {
+      onMouseEnter: move,
+      onMouseMove: move,
+      onMouseLeave: () => setTip(null),
+    };
   };
   const el = tip ? (
     <div className="ask-maptip" style={{ left: tip.x + 14, top: tip.y + 14 }}>
@@ -49,8 +61,13 @@ export function useTip() {
     </div>
   ) : null;
   /** Manual control for canvas-rendered blocks (no DOM element to bind). */
-  const show = (title: string, v: string | undefined, s: string | undefined, x: number, y: number) =>
-    setTip({ title, v, s, x, y });
+  const show = (
+    title: string,
+    v: string | undefined,
+    s: string | undefined,
+    x: number,
+    y: number,
+  ) => setTip({ title, v, s, x, y });
   const hide = () => setTip(null);
   return { bind, bindClip, show, hide, el, active: tip?.title ?? null };
 }
@@ -77,6 +94,7 @@ function flagTitle(code: string): string {
 /* ── compare ──────────────────────────────────────────────────────────── */
 
 export function CompareBlock({ entities }: { entities: CompareEntity[] }) {
+  const evidence = useAnswerEvidence();
   return (
     <div className="ask-cmp">
       {entities.map((e) => {
@@ -87,10 +105,11 @@ export function CompareBlock({ entities }: { entities: CompareEntity[] }) {
               <Link href={`/entitati/${e.entityId}`}>{cleanName(e.name)}</Link>
             </h4>
             <div className="cty">
-              {e.county ?? "județ necunoscut"} · {e.role === "authority" ? "autoritate" : "furnizor"}
+              {e.county ?? "județ necunoscut"} ·{" "}
+              {e.role === "authority" ? "autoritate" : "furnizor"}
             </div>
             <div className="row">
-              <span className="k">Cheltuială DA</span>
+              <span className="k">Valoare în profil</span>
               <span className="num">{formatRon(e.value)}</span>
             </div>
             <div className="row">
@@ -100,12 +119,16 @@ export function CompareBlock({ entities }: { entities: CompareEntity[] }) {
             {e.population !== null && e.population > 0 && (
               <div className="row">
                 <span className="k">Lei / locuitor</span>
-                <span className="num">{formatInt(Math.round(e.value / e.population))}</span>
+                <span className="num">
+                  {formatInt(Math.round(e.value / e.population))}
+                </span>
               </div>
             )}
             <div className="row">
               <span className="k">Indice risc</span>
-              <span className={e.cri !== null && e.cri >= 0.3 ? "num hi" : "num"}>
+              <span
+                className={e.cri !== null && e.cri >= 0.3 ? "num hi" : "num"}
+              >
                 {e.cri !== null ? `${e.cri.toFixed(2)} · ${band!.label}` : "—"}
               </span>
             </div>
@@ -113,10 +136,32 @@ export function CompareBlock({ entities }: { entities: CompareEntity[] }) {
               <span className="k">Semnale</span>
               <span className={e.nFlags > 0 ? "hi" : ""}>{e.nFlags}</span>
             </div>
+            {evidence && (
+              <button
+                type="button"
+                className="cq-record-link"
+                onClick={() =>
+                  evidence.open(
+                    undefined,
+                    {
+                      entityIds: [e.entityId],
+                      role: e.role === "supplier" ? "supplier" : "authority",
+                    },
+                    `${cleanName(e.name)} · înregistrările profilului`,
+                  )
+                }
+              >
+                Vezi cele {formatInt(e.count)} înregistrări →
+              </button>
+            )}
             {e.flags.length > 0 && (
               <div className="ask-fchips">
                 {e.flags.map((f) => (
-                  <span key={f} className="ask-fchip" title={FLAG_META[f]?.short}>
+                  <span
+                    key={f}
+                    className="ask-fchip"
+                    title={FLAG_META[f]?.short}
+                  >
                     {flagTitle(f)}
                   </span>
                 ))}
@@ -142,14 +187,18 @@ export function DistributionBlock({
   distribution: DistributionData;
   spec?: unknown;
 }) {
+  const evidence = useAnswerEvidence();
   const d = distribution;
   const t = useTip();
   const max = Math.max(...d.buckets.map((b) => b.n), 1);
   const focalBucket =
-    d.focal.cri === null ? -1 : Math.min(9, Math.floor(d.focal.cri * 10 - 1e-9));
+    d.focal.cri === null
+      ? -1
+      : Math.min(9, Math.floor(d.focal.cri * 10 - 1e-9));
   // bar click → /semnale listing of the entities in that CRI band (the
   // comparison group's county filter travels along; kind/UAT riders don't)
-  const county = ((spec ?? {}) as { filters?: { county?: string } }).filters?.county;
+  const county = ((spec ?? {}) as { filters?: { county?: string } }).filters
+    ?.county;
   const bucketUrl = (from: number, to: number): string => {
     const q = new URLSearchParams({
       rol: d.role,
@@ -168,7 +217,7 @@ export function DistributionBlock({
             `CRI ${b.from.toFixed(1)}–${b.to.toFixed(1)}`,
             `${formatInt(b.n)} entități`,
             (i === focalBucket ? `aici e ${cleanName(d.focal.name)} · ` : "") +
-              (b.n > 0 ? "click → lista entităților" : ""),
+              (b.n > 0 ? "click → înregistrările profilurilor" : ""),
           );
           const inner = (
             <>
@@ -185,6 +234,16 @@ export function DistributionBlock({
               key={b.from}
               className={i === focalBucket ? "b here" : "b"}
               href={bucketUrl(b.from, b.to)}
+              onClick={(event) => {
+                if (evidence) {
+                  event.preventDefault();
+                  evidence.open(
+                    undefined,
+                    { riskBucket: { from: b.from, to: b.to } },
+                    `Indice ${b.from.toFixed(1)}–${b.to.toFixed(1)} · înregistrările profilurilor`,
+                  );
+                }
+              }}
               target="_blank"
               rel="noopener"
               {...bind}
@@ -192,14 +251,38 @@ export function DistributionBlock({
               {inner}
             </a>
           ) : (
-            <div key={b.from} className={i === focalBucket ? "b here" : "b"} {...bind}>
+            <div
+              key={b.from}
+              className={i === focalBucket ? "b here" : "b"}
+              {...bind}
+            >
               {inner}
             </div>
           );
         })}
       </div>
+      {evidence && (
+        <button
+          type="button"
+          className="cq-record-link"
+          onClick={() =>
+            evidence.open(
+              undefined,
+              {
+                entityIds: [d.focal.entityId],
+                role: d.role === "supplier" ? "supplier" : "authority",
+              },
+              `${cleanName(d.focal.name)} · sursele profilului`,
+            )
+          }
+        >
+          Verifică profilul ales →
+        </button>
+      )}
       <p className="ask-distcap">
-        <Link href={`/entitati/${d.focal.entityId}`}>{cleanName(d.focal.name)}</Link>
+        <Link href={`/entitati/${d.focal.entityId}`}>
+          {cleanName(d.focal.name)}
+        </Link>
         {d.focal.cri !== null ? (
           <>
             {" "}
@@ -207,10 +290,10 @@ export function DistributionBlock({
             {d.focal.percentile !== null && (
               <>
                 {" "}
-                — peste <b>{d.focal.percentile}%</b> din grupul de comparație: cele{" "}
-                <b>{formatInt(d.totalEntities)}</b>{" "}
-                {d.role === "authority" ? "autorități" : "firme"} cu cel puțin 10 achiziții
-                directe (filtrele de județ/tip se aplică grupului)
+                — peste <b>{d.focal.percentile}%</b> din grupul de comparație:
+                cele <b>{formatInt(d.totalEntities)}</b>{" "}
+                {d.role === "authority" ? "autorități" : "firme"} cu cel puțin
+                10 achiziții directe (filtrele de județ/tip se aplică grupului)
               </>
             )}
             .
@@ -218,7 +301,8 @@ export function DistributionBlock({
         ) : (
           <> nu are încă un indice de risc calculat.</>
         )}{" "}
-        <Link href="/metodologie">Cum se calculează CRI</Link> — semnal, nu dovadă.
+        <Link href="/metodologie">Cum se calculează CRI</Link> — semnal, nu
+        dovadă.
       </p>
     </div>
   );
@@ -228,7 +312,16 @@ export function DistributionBlock({
 
 // Categorical: fixed order, never cycled; hues spaced for CVD, mid lightness
 // so they read on both grounds. Slot 9+ folds into "alte categorii".
-const SEG_COLORS = ["#2f4fb8", "#c0311c", "#b9861f", "#2f8a7a", "#7b4fb8", "#c2588f", "#5a8a2f", "#8a6a4a"];
+const SEG_COLORS = [
+  "#285b45",
+  "#708e59",
+  "#aab984",
+  "#547c76",
+  "#b67957",
+  "#9cae98",
+  "#8a6a4a",
+  "#c7cca7",
+];
 const SEG_OTHER = "#a3acba";
 
 export function BreakdownBlock({
@@ -241,11 +334,15 @@ export function BreakdownBlock({
   spec?: unknown;
 }) {
   const t = useTip();
+  const evidence = useAnswerEvidence();
   // slice click: while the stem can go deeper, open the same breakdown one
   // CPV level down; at a full 8-digit code, open the transactions instead.
   const canDeepen = (code: string): boolean => code.length < 8;
   const sliceUrl = (code: string): string => {
-    const sp = (spec ?? {}) as { dataset?: string; filters?: Record<string, unknown> };
+    const sp = (spec ?? {}) as {
+      dataset?: string;
+      filters?: Record<string, unknown>;
+    };
     const deeper = canDeepen(code);
     const next: Record<string, unknown> = {
       block: deeper ? "breakdown" : "stat",
@@ -294,14 +391,20 @@ export function BreakdownBlock({
               href={sliceUrl(s.code)}
               target="_blank"
               rel="noopener"
-              style={{ width: `${(s.value / total) * 100}%`, background: s.color }}
+              style={{
+                width: `${(s.value / total) * 100}%`,
+                background: s.color,
+              }}
               {...bind}
             />
           ) : (
             <div
               key={s.name}
               className="seg"
-              style={{ width: `${(s.value / total) * 100}%`, background: s.color }}
+              style={{
+                width: `${(s.value / total) * 100}%`,
+                background: s.color,
+              }}
               {...bind}
             />
           );
@@ -321,7 +424,26 @@ export function BreakdownBlock({
               )}
             </span>
             <span className="vv num">
-              {formatRon(s.value)} · {((s.value / total) * 100).toFixed(1)}%
+              {formatRonFull(s.value)} · {((s.value / total) * 100).toFixed(1)}%
+              {evidence && (
+                <button
+                  type="button"
+                  className="cq-record-link"
+                  onClick={() =>
+                    evidence.open(
+                      undefined,
+                      s.code
+                        ? { cpvPrefixes: [s.code] }
+                        : {
+                            excludeCpvPrefixes: slices.map((item) => item.code),
+                          },
+                      `${s.name} · înregistrările categoriei`,
+                    )
+                  }
+                >
+                  Surse →
+                </button>
+              )}
             </span>
           </div>
         ))}
@@ -345,6 +467,9 @@ export function ScatterBlock({
   density?: ScatterDensity | undefined;
 }) {
   const t = useTip();
+  const evidence = useAnswerEvidence();
+  const evidenceRef = useRef(evidence);
+  evidenceRef.current = evidence;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const tipRef = useRef(t);
   tipRef.current = t;
@@ -357,7 +482,10 @@ export function ScatterBlock({
 
     const vals = points.map((p) => Math.max(p.value, 1));
     const D0 = density ? density.minLog : Math.log10(Math.min(...vals));
-    const D1 = Math.max(density ? density.maxLog : Math.log10(Math.max(...vals)), D0 + 0.01);
+    const D1 = Math.max(
+      density ? density.maxLog : Math.log10(Math.max(...vals)),
+      D0 + 0.01,
+    );
     const xPad = (D1 - D0) * 0.03;
     const home = { x0: D0 - xPad, x1: D1 + xPad, y0: -0.03, y1: 1.04 };
     const view = { ...home };
@@ -365,17 +493,23 @@ export function ScatterBlock({
     const H = canvas.height;
     const PAD = { l: 86, r: 22, t: 22, b: 62 };
     const cssVar = (v: string) =>
-      getComputedStyle(document.documentElement).getPropertyValue(v).trim() || "#888";
+      getComputedStyle(document.documentElement).getPropertyValue(v).trim() ||
+      "#888";
 
     // notable dots: risky (CRI ≥ 0.3) plus the 40 biggest spenders
     const topSpend = new Set(
-      [...points].sort((a, b) => b.value - a.value).slice(0, 40).map((p) => p.entityId),
+      [...points]
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 40)
+        .map((p) => p.entityId),
     );
     let hit: { x: number; y: number; p: ScatterPoint }[] = [];
 
     const draw = () => {
-      const X = (lg: number) => PAD.l + ((lg - view.x0) / (view.x1 - view.x0)) * (W - PAD.l - PAD.r);
-      const Y = (c: number) => H - PAD.b - ((c - view.y0) / (view.y1 - view.y0)) * (H - PAD.t - PAD.b);
+      const X = (lg: number) =>
+        PAD.l + ((lg - view.x0) / (view.x1 - view.x0)) * (W - PAD.l - PAD.r);
+      const Y = (c: number) =>
+        H - PAD.b - ((c - view.y0) / (view.y1 - view.y0)) * (H - PAD.t - PAD.b);
       ctx.clearRect(0, 0, W, H);
       const muted = cssVar("--muted");
       const line = cssVar("--line");
@@ -392,7 +526,11 @@ export function ScatterBlock({
       // y ticks
       const ySpan = view.y1 - view.y0;
       const yStep = ySpan > 0.6 ? 0.25 : ySpan > 0.25 ? 0.1 : 0.05;
-      for (let v = Math.ceil(view.y0 / yStep) * yStep; v <= view.y1 + 1e-9; v += yStep) {
+      for (
+        let v = Math.ceil(view.y0 / yStep) * yStep;
+        v <= view.y1 + 1e-9;
+        v += yStep
+      ) {
         const vv = Math.round(v * 100) / 100;
         if (vv < -0.001 || vv > 1.001) continue;
         ctx.fillStyle = muted;
@@ -407,7 +545,13 @@ export function ScatterBlock({
       }
       // x decade ticks
       const decades: [number, string][] = [
-        [3, "1 mie"], [4, "10 mii"], [5, "100 mii"], [6, "1 mil."], [7, "10 mil."], [8, "100 mil."], [9, "1 mld."],
+        [3, "1 mie"],
+        [4, "10 mii"],
+        [5, "100 mii"],
+        [6, "1 mil."],
+        [7, "10 mil."],
+        [8, "100 mil."],
+        [9, "1 mld."],
       ];
       for (const [lg, lb] of decades) {
         if (lg < view.x0 || lg > view.x1) continue;
@@ -428,7 +572,11 @@ export function ScatterBlock({
       ctx.fillText("indice de risc (CRI)", 0, 0);
       ctx.restore();
       ctx.textAlign = "center";
-      ctx.fillText("cheltuială totală (scară log)", (PAD.l + W - PAD.r) / 2, H - 10);
+      ctx.fillText(
+        "cheltuială totală (scară log)",
+        (PAD.l + W - PAD.r) / 2,
+        H - 10,
+      );
       // plot clip
       ctx.save();
       ctx.beginPath();
@@ -443,13 +591,25 @@ export function ScatterBlock({
         for (const [bx, by, n] of density.cells) {
           const lg0 = density.minLog + (bx - 1) * cw;
           const cr0 = (by - 1) * ch;
-          if (lg0 + cw < view.x0 || lg0 > view.x1 || cr0 + ch < view.y0 || cr0 > view.y1) continue;
+          if (
+            lg0 + cw < view.x0 ||
+            lg0 > view.x1 ||
+            cr0 + ch < view.y0 ||
+            cr0 > view.y1
+          )
+            continue;
           ctx.fillStyle = slate;
           ctx.globalAlpha = 0.06 + 0.82 * Math.sqrt(n / maxN);
           const px = X(lg0);
           const py = Y(cr0 + ch);
           ctx.beginPath();
-          ctx.roundRect(px - 0.5, py - 0.5, X(lg0 + cw) - px + 1, Y(cr0) - py + 1, 2);
+          ctx.roundRect(
+            px - 0.5,
+            py - 0.5,
+            X(lg0 + cw) - px + 1,
+            Y(cr0) - py + 1,
+            2,
+          );
           ctx.fill();
         }
         ctx.globalAlpha = 1;
@@ -462,7 +622,8 @@ export function ScatterBlock({
         const top = topSpend.has(p.entityId);
         if (!hi && !mid && !top) continue;
         const lg = Math.log10(Math.max(p.value, 1));
-        if (lg < view.x0 || lg > view.x1 || p.cri < view.y0 || p.cri > view.y1) continue;
+        if (lg < view.x0 || lg > view.x1 || p.cri < view.y0 || p.cri > view.y1)
+          continue;
         const px = X(lg);
         const py = Y(p.cri);
         if (hi || mid) {
@@ -501,8 +662,11 @@ export function ScatterBlock({
       return {
         mx,
         my,
-        lg: view.x0 + ((mx - PAD.l) / (W - PAD.l - PAD.r)) * (view.x1 - view.x0),
-        cr: view.y0 + ((H - PAD.b - my) / (H - PAD.t - PAD.b)) * (view.y1 - view.y0),
+        lg:
+          view.x0 + ((mx - PAD.l) / (W - PAD.l - PAD.r)) * (view.x1 - view.x0),
+        cr:
+          view.y0 +
+          ((H - PAD.b - my) / (H - PAD.t - PAD.b)) * (view.y1 - view.y0),
       };
     };
     const locate = (ev: MouseEvent) => {
@@ -519,8 +683,14 @@ export function ScatterBlock({
       return best && bd < 22 ** 2 ? best : null;
     };
 
-    let dragFrom: { cx: number; cy: number; x0: number; x1: number; y0: number; y1: number } | null =
-      null;
+    let dragFrom: {
+      cx: number;
+      cy: number;
+      x0: number;
+      x1: number;
+      y0: number;
+      y1: number;
+    } | null = null;
     let dragged = false;
 
     const onWheel = (ev: WheelEvent) => {
@@ -535,7 +705,14 @@ export function ScatterBlock({
       draw();
     };
     const onDown = (ev: MouseEvent) => {
-      dragFrom = { cx: ev.clientX, cy: ev.clientY, x0: view.x0, x1: view.x1, y0: view.y0, y1: view.y1 };
+      dragFrom = {
+        cx: ev.clientX,
+        cy: ev.clientY,
+        x0: view.x0,
+        x1: view.x1,
+        y0: view.y0,
+        y1: view.y1,
+      };
       dragged = false;
     };
     const onUp = () => {
@@ -546,9 +723,16 @@ export function ScatterBlock({
         const r = canvas.getBoundingClientRect();
         const pxW = (W - PAD.l - PAD.r) * (r.width / W);
         const pxH = (H - PAD.t - PAD.b) * (r.height / H);
-        const dLg = (-(ev.clientX - dragFrom.cx) / pxW) * (dragFrom.x1 - dragFrom.x0);
-        const dCr = ((ev.clientY - dragFrom.cy) / pxH) * (dragFrom.y1 - dragFrom.y0);
-        if (Math.abs(ev.clientX - dragFrom.cx) + Math.abs(ev.clientY - dragFrom.cy) > 4) dragged = true;
+        const dLg =
+          (-(ev.clientX - dragFrom.cx) / pxW) * (dragFrom.x1 - dragFrom.x0);
+        const dCr =
+          ((ev.clientY - dragFrom.cy) / pxH) * (dragFrom.y1 - dragFrom.y0);
+        if (
+          Math.abs(ev.clientX - dragFrom.cx) +
+            Math.abs(ev.clientY - dragFrom.cy) >
+          4
+        )
+          dragged = true;
         view.x0 = dragFrom.x0 + dLg;
         view.x1 = dragFrom.x1 + dLg;
         view.y0 = dragFrom.y0 + dCr;
@@ -582,7 +766,15 @@ export function ScatterBlock({
         return;
       }
       const h = locate(ev);
-      if (h) window.open(`/entitati/${h.p.entityId}`, "_blank", "noopener");
+      if (h) {
+        if (evidenceRef.current)
+          evidenceRef.current.open(
+            undefined,
+            { entityIds: [h.p.entityId] },
+            `${cleanName(h.p.name)} · înregistrările profilului`,
+          );
+        else window.open(`/entitati/${h.p.entityId}`, "_blank", "noopener");
+      }
     };
     const onDbl = () => {
       Object.assign(view, home);
@@ -621,15 +813,69 @@ export function ScatterBlock({
         aria-label="Risc vs cheltuială — densitate"
       />
       <div className="ask-scatterleg">
-        <span className="it"><span className="ramp" /> puține → multe entități</span>
-        <span className="it"><span className="dsw hi" /> CRI ≥ 0,5</span>
-        <span className="it"><span className="dsw mid" /> CRI 0,3–0,5</span>
-        <span className="it"><span className="dsw top" /> top cheltuială</span>
+        <span className="it">
+          <span className="ramp" /> puține → multe entități
+        </span>
+        <span className="it">
+          <span className="dsw hi" /> CRI ≥ 0,5
+        </span>
+        <span className="it">
+          <span className="dsw mid" /> CRI 0,3–0,5
+        </span>
+        <span className="it">
+          <span className="dsw top" /> top cheltuială
+        </span>
       </div>
+      <details className="cq-calculation">
+        <summary>
+          Valorile exacte și sursele · {points.length} profiluri reprezentate
+          prin puncte
+        </summary>
+        <table className="cq-group-table">
+          <thead>
+            <tr>
+              <th>Entitate</th>
+              <th>Valoare în profil</th>
+              <th>Indice</th>
+              <th>Surse</th>
+            </tr>
+          </thead>
+          <tbody>
+            {points.map((p) => (
+              <tr key={p.entityId}>
+                <td>
+                  <Link href={`/entitati/${p.entityId}`}>
+                    {cleanName(p.name)}
+                  </Link>
+                </td>
+                <td>{formatRonFull(p.value)}</td>
+                <td>{p.cri.toFixed(2)}</td>
+                <td>
+                  {evidence && (
+                    <button
+                      className="cq-record-link"
+                      type="button"
+                      onClick={() =>
+                        evidence.open(
+                          undefined,
+                          { entityIds: [p.entityId] },
+                          `${cleanName(p.name)} · înregistrările profilului`,
+                        )
+                      }
+                    >
+                      Înregistrări →
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </details>
       <p className="ask-fine">
         {density
-          ? `Norul gri = toate cele ${formatInt(density.total)} de entități cu min. 10 achiziții; punctele = cele notabile, click deschide pagina entității.`
-          : "Fiecare punct = o entitate (min. 10 achiziții) — click deschide pagina ei."}{" "}
+          ? `Norul gri = toate cele ${formatInt(density.total)} de entități cu min. 10 achiziții; punctele = cele notabile, click deschide înregistrările profilului.`
+          : "Fiecare punct = o entitate (min. 10 achiziții) — click deschide înregistrările profilului."}{" "}
         Scroll = zoom · trage = pan · dublu-click = reset.
       </p>
     </div>
@@ -648,10 +894,67 @@ export function SankeyBlock({
   spec?: unknown;
 }) {
   const t = useTip();
+  const evidence = useAnswerEvidence();
+  const selectedScope = (
+    partner?: string,
+    category?: string,
+  ): EvidenceScope => ({
+    ...(partner
+      ? {
+          role:
+            focal.role === "authority"
+              ? ("supplier" as const)
+              : ("authority" as const),
+          ...(partner === "_alt"
+            ? {
+                excludeEntityIds: [
+                  ...new Set(
+                    flows.map((f) => f.partnerId).filter((id) => id !== "_alt"),
+                  ),
+                ],
+              }
+            : { entityIds: [partner] }),
+        }
+      : {}),
+    ...(category
+      ? category === "_alt"
+        ? {
+            excludeCpvPrefixes: [
+              ...new Set(
+                flows.map((f) => f.categoryCode).filter((id) => id !== "_alt"),
+              ),
+            ],
+          }
+        : { cpvPrefixes: [category] }
+      : {}),
+  });
+  const activate = (scope: EvidenceScope, label: string) =>
+    evidence?.open(undefined, scope, label);
+  const marks = (scope: EvidenceScope, label: string) => ({
+    role: "button",
+    tabIndex: 0,
+    "aria-label": label + " · vezi înregistrările",
+    onClick: (event: React.MouseEvent) => {
+      if (evidence) {
+        event.preventDefault();
+        event.stopPropagation();
+        activate(scope, label);
+      }
+    },
+    onKeyDown: (event: React.KeyboardEvent) => {
+      if (evidence && ["Enter", " "].includes(event.key)) {
+        event.preventDefault();
+        activate(scope, label);
+      }
+    },
+  });
   // click-throughs: node/ribbon -> search drill with exactly those rows.
   // Partner gets the opposite role of the focal entity; ribbons add the CPV.
   const drillUrl = (extra: Record<string, unknown>): string => {
-    const sp = (spec ?? {}) as { dataset?: string; filters?: Record<string, unknown> };
+    const sp = (spec ?? {}) as {
+      dataset?: string;
+      filters?: Record<string, unknown>;
+    };
     const next: Record<string, unknown> = {
       block: "stat",
       measure: "value",
@@ -676,7 +979,10 @@ export function SankeyBlock({
     const p = partners.get(f.partnerId) ?? { name: f.partner, value: 0 };
     p.value += f.value;
     partners.set(f.partnerId, p);
-    const c = cats.get(f.categoryCode) ?? { name: f.category ?? f.categoryCode, value: 0 };
+    const c = cats.get(f.categoryCode) ?? {
+      name: f.category ?? f.categoryCode,
+      value: 0,
+    };
     c.value += f.value;
     cats.set(f.categoryCode, c);
   }
@@ -685,15 +991,25 @@ export function SankeyBlock({
   const scale = usable / total;
 
   let py = 10;
-  const pPos = new Map<string, { y0: number; h: number; name: string; used: number }>();
-  for (const [id, p] of [...partners.entries()].sort((a, b) => b[1].value - a[1].value)) {
+  const pPos = new Map<
+    string,
+    { y0: number; h: number; name: string; used: number }
+  >();
+  for (const [id, p] of [...partners.entries()].sort(
+    (a, b) => b[1].value - a[1].value,
+  )) {
     const h = Math.max(4, p.value * scale);
     pPos.set(id, { y0: py, h, name: p.name, used: 0 });
     py += h + GAP;
   }
   let cy = 10;
-  const cPos = new Map<string, { y0: number; h: number; name: string; used: number }>();
-  for (const [id, c] of [...cats.entries()].sort((a, b) => b[1].value - a[1].value)) {
+  const cPos = new Map<
+    string,
+    { y0: number; h: number; name: string; used: number }
+  >();
+  for (const [id, c] of [...cats.entries()].sort(
+    (a, b) => b[1].value - a[1].value,
+  )) {
     const h = Math.max(4, c.value * scale);
     cPos.set(id, { y0: cy, h, name: c.name, used: 0 });
     cy += h + GAP;
@@ -704,11 +1020,18 @@ export function SankeyBlock({
   return (
     <div>
       <p className="ask-fine" style={{ marginBottom: 8 }}>
-        Banii lui <Link href={`/entitati/${focal.entityId}`}>{cleanName(focal.name)}</Link>:{" "}
-        {focal.role === "authority" ? "furnizori" : "autorități"} (stânga) → categorii de achiziții
-        (dreapta) · lățimea benzii = valoarea
+        Banii lui{" "}
+        <Link href={`/entitati/${focal.entityId}`}>
+          {cleanName(focal.name)}
+        </Link>
+        : {focal.role === "authority" ? "furnizori" : "autorități"} (stânga) →
+        categorii de achiziții (dreapta) · lățimea benzii = valoarea
       </p>
-      <svg viewBox={`0 0 ${W} ${Math.max(py, cy) + 6}`} className="ask-sankey" role="img">
+      <svg
+        viewBox={`0 0 ${W} ${Math.max(py, cy) + 6}`}
+        className="ask-sankey"
+        role="img"
+      >
         {flows.map((f, i) => {
           const p = pPos.get(f.partnerId)!;
           const c = cPos.get(f.categoryCode)!;
@@ -720,30 +1043,45 @@ export function SankeyBlock({
           const mx = (LX + NODE_W + RX) / 2;
           const linkable = f.partnerId !== "_alt" && f.categoryCode !== "_alt";
           const ribbon = (
-              <path
-                d={`M ${LX + NODE_W} ${y0} C ${mx} ${y0}, ${mx} ${y1}, ${RX} ${y1}`}
-                stroke={f.value / total > 0.12 ? "#6d7a90" : "#ccd2dc"}
-                strokeWidth={h}
-                fill="none"
-                strokeOpacity={0.75}
-                {...t.bind(
-                  `${cleanName(f.partner)} → ${f.category ?? "?"}`,
-                  formatRon(f.value),
-                  `${((f.value / total) * 100).toFixed(1)}% din fluxul afișat${linkable ? " · click → achizițiile acestui flux" : ""}`,
-                )}
-              />
+            <path
+              d={`M ${LX + NODE_W} ${y0} C ${mx} ${y0}, ${mx} ${y1}, ${RX} ${y1}`}
+              stroke={f.value / total > 0.12 ? "#6d7a90" : "#ccd2dc"}
+              strokeWidth={h}
+              fill="none"
+              strokeOpacity={0.75}
+              {...t.bind(
+                `${cleanName(f.partner)} → ${f.category ?? "?"}`,
+                formatRon(f.value),
+                `${((f.value / total) * 100).toFixed(1)}% din fluxul afișat${linkable ? " · click → achizițiile acestui flux" : ""}`,
+              )}
+            />
           );
           return linkable ? (
             <a
               key={i}
-              href={drillUrl({ ...partnerExtra(f.partnerId, f.partner), cpvTerm: f.categoryCode })}
+              {...marks(
+                selectedScope(f.partnerId, f.categoryCode),
+                `${cleanName(f.partner)} · ${f.category ?? f.categoryCode}`,
+              )}
+              href={drillUrl({
+                ...partnerExtra(f.partnerId, f.partner),
+                cpvTerm: f.categoryCode,
+              })}
               target="_blank"
               rel="noopener"
             >
               {ribbon}
             </a>
           ) : (
-            <g key={i}>{ribbon}</g>
+            <g
+              key={i}
+              {...marks(
+                selectedScope(f.partnerId, f.categoryCode),
+                `${cleanName(f.partner)} · ${f.category ?? f.categoryCode}`,
+              )}
+            >
+              {ribbon}
+            </g>
           );
         })}
         {[...pPos.entries()].map(([id, p]) => {
@@ -752,21 +1090,44 @@ export function SankeyBlock({
               {...t.bind(
                 cleanName(p.name),
                 formatRon(partners.get(id)?.value ?? 0),
-                id !== "_alt" ? "click → toate achizițiile cu acest partener" : undefined,
+                id !== "_alt"
+                  ? "click → toate achizițiile cu acest partener"
+                  : undefined,
               )}
             >
-              <rect x={LX} y={p.y0} width={NODE_W} height={p.h} fill="#c0311c" rx={2} />
-              <text x={LX - 6} y={p.y0 + p.h / 2 + 3} fontSize={10} fill="currentColor" textAnchor="end">
+              <rect
+                x={LX}
+                y={p.y0}
+                width={NODE_W}
+                height={p.h}
+                fill="#c0311c"
+                rx={2}
+              />
+              <text
+                x={LX - 6}
+                y={p.y0 + p.h / 2 + 3}
+                fontSize={10}
+                fill="currentColor"
+                textAnchor="end"
+              >
                 {cleanName(p.name).slice(0, 26)}
               </text>
             </g>
           );
           return id !== "_alt" ? (
-            <a key={id} href={drillUrl(partnerExtra(id, p.name))} target="_blank" rel="noopener">
+            <a
+              key={id}
+              {...marks(selectedScope(id), cleanName(p.name))}
+              href={drillUrl(partnerExtra(id, p.name))}
+              target="_blank"
+              rel="noopener"
+            >
               {node}
             </a>
           ) : (
-            <g key={id}>{node}</g>
+            <g key={id} {...marks(selectedScope(id), cleanName(p.name))}>
+              {node}
+            </g>
           );
         })}
         {[...cPos.entries()].map(([id, c]) => {
@@ -775,25 +1136,85 @@ export function SankeyBlock({
               {...t.bind(
                 c.name ?? "?",
                 formatRon(cats.get(id)?.value ?? 0),
-                id !== "_alt" ? "click → achizițiile focalului în această categorie" : undefined,
+                id !== "_alt"
+                  ? "click → achizițiile focalului în această categorie"
+                  : undefined,
               )}
             >
-              <rect x={RX} y={c.y0} width={NODE_W} height={c.h} fill="#2f4fb8" rx={2} />
-              <text x={RX + NODE_W + 6} y={c.y0 + c.h / 2 + 3} fontSize={10} fill="currentColor">
+              <rect
+                x={RX}
+                y={c.y0}
+                width={NODE_W}
+                height={c.h}
+                fill="#2f4fb8"
+                rx={2}
+              />
+              <text
+                x={RX + NODE_W + 6}
+                y={c.y0 + c.h / 2 + 3}
+                fontSize={10}
+                fill="currentColor"
+              >
                 {(c.name ?? "?").slice(0, 26)}
               </text>
             </g>
           );
           return id !== "_alt" ? (
-            <a key={id} href={drillUrl({ cpvTerm: id })} target="_blank" rel="noopener">
+            <a
+              key={id}
+              {...marks(selectedScope(undefined, id), c.name ?? id)}
+              href={drillUrl({ cpvTerm: id })}
+              target="_blank"
+              rel="noopener"
+            >
               {node}
             </a>
           ) : (
-            <g key={id}>{node}</g>
+            <g key={id} {...marks(selectedScope(undefined, id), c.name ?? id)}>
+              {node}
+            </g>
           );
         })}
       </svg>
       {t.el}
+      <details className="cq-calculation">
+        <summary>Toate fluxurile afișate, cu valorile exacte</summary>
+        <table className="cq-group-table">
+          <thead>
+            <tr>
+              <th>Partener · domeniu</th>
+              <th>Valoare</th>
+              <th>Surse</th>
+            </tr>
+          </thead>
+          <tbody>
+            {flows.map((f, i) => (
+              <tr key={i}>
+                <td>
+                  {cleanName(f.partner)}
+                  <br />
+                  {f.category ?? f.categoryCode}
+                </td>
+                <td>{formatRonFull(f.value)}</td>
+                <td>
+                  <button
+                    type="button"
+                    className="cq-record-link"
+                    onClick={() =>
+                      activate(
+                        selectedScope(f.partnerId, f.categoryCode),
+                        `${cleanName(f.partner)} · ${f.category ?? f.categoryCode}`,
+                      )
+                    }
+                  >
+                    Înregistrări →
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </details>
     </div>
   );
 }
@@ -807,6 +1228,16 @@ export function NetworkBlock({
   nodes: NetworkNode[];
   focal: { entityId: string; name: string; role: string };
 }) {
+  const evidence = useAnswerEvidence();
+  const sources = (n: NetworkNode) =>
+    evidence?.open(
+      undefined,
+      {
+        entityIds: [n.entityId],
+        role: focal.role === "authority" ? "supplier" : "authority",
+      },
+      `${cleanName(n.name)} · relația cu ${cleanName(focal.name)}`,
+    );
   const [tip, setTip] = useState<{
     name: string;
     value: number;
@@ -830,7 +1261,8 @@ export function NetworkBlock({
           const nx = cx + Math.cos(a) * R;
           const ny = cyc + Math.sin(a) * R;
           const r = 6 + Math.sqrt(n.value / maxV) * 16;
-          const anchor = Math.cos(a) > 0.3 ? "start" : Math.cos(a) < -0.3 ? "end" : "middle";
+          const anchor =
+            Math.cos(a) > 0.3 ? "start" : Math.cos(a) < -0.3 ? "end" : "middle";
           const hovered = tip?.name === cleanName(n.name);
           const move = (e: React.MouseEvent) =>
             setTip({
@@ -852,23 +1284,42 @@ export function NetworkBlock({
                 y1={cyc}
                 x2={nx}
                 y2={ny}
-                stroke="#6d7a90"
+                stroke="var(--accent-line)"
                 strokeWidth={Math.max(1, (n.value / maxV) * 8)}
                 strokeOpacity={hovered ? 0.9 : 0.55}
               />
-              <a href={`/entitati/${n.entityId}`}>
+              <a
+                href={`/entitati/${n.entityId}`}
+                onClick={(event) => {
+                  if (evidence) {
+                    event.preventDefault();
+                    sources(n);
+                  }
+                }}
+                aria-label={`${cleanName(n.name)} · ${n.count} înregistrări`}
+              >
                 <circle
                   cx={nx}
                   cy={ny}
                   r={hovered ? r + 2 : r}
-                  fill="#2f4fb8"
+                  fill="var(--accent)"
                   fillOpacity={hovered ? 1 : 0.85}
                   stroke={hovered ? "currentColor" : "none"}
                   strokeWidth={hovered ? 1.4 : 0}
                 />
                 <text
-                  x={nx + (anchor === "start" ? r + 4 : anchor === "end" ? -r - 4 : 0)}
-                  y={ny + (anchor === "middle" ? (Math.sin(a) > 0 ? r + 12 : -r - 6) : 4)}
+                  x={
+                    nx +
+                    (anchor === "start" ? r + 4 : anchor === "end" ? -r - 4 : 0)
+                  }
+                  y={
+                    ny +
+                    (anchor === "middle"
+                      ? Math.sin(a) > 0
+                        ? r + 12
+                        : -r - 6
+                      : 4)
+                  }
                   fontSize={10}
                   fill="currentColor"
                   fontWeight={hovered ? 700 : 400}
@@ -880,25 +1331,67 @@ export function NetworkBlock({
             </g>
           );
         })}
-        <circle cx={cx} cy={cyc} r={26} fill="#c0311c" />
+        <circle cx={cx} cy={cyc} r={26} fill="var(--accent)" />
         <text x={cx} y={cyc + 3} fontSize={9.5} fill="#fff" textAnchor="middle">
           {cleanName(focal.name).slice(0, 14)}
         </text>
       </svg>
       {tip && (
-        <div className="ask-maptip" style={{ left: tip.x + 14, top: tip.y + 14 }}>
+        <div
+          className="ask-maptip"
+          style={{ left: tip.x + 14, top: tip.y + 14 }}
+        >
           <div className="t">{tip.name}</div>
           <div className="v">{formatRon(tip.value)}</div>
           <div className="s">
             {formatInt(tip.count)} achiziții
-            {totalV > 0 && ` · ${((tip.value / totalV) * 100).toFixed(1)}% din top-parteneri`}
+            {totalV > 0 &&
+              ` · ${((tip.value / totalV) * 100).toFixed(1)}% din top-parteneri`}
           </div>
         </div>
       )}
       <p className="ask-fine">
         Top {nodes.length} parteneri ai{" "}
-        <Link href={`/entitati/${focal.entityId}`}>{cleanName(focal.name)}</Link> · mărimea nodului
-        și grosimea liniei = valoarea · click pe nod → profil
+        <Link href={`/entitati/${focal.entityId}`}>
+          {cleanName(focal.name)}
+        </Link>{" "}
+        · mărimea nodului și grosimea liniei = valoarea · click pe nod →
+        înregistrările relației
+      </p>
+      <table className="cq-group-table">
+        <thead>
+          <tr>
+            <th>Partener</th>
+            <th>Valoare înregistrată</th>
+            <th>Surse</th>
+          </tr>
+        </thead>
+        <tbody>
+          {nodes.map((n) => (
+            <tr key={n.entityId}>
+              <td>
+                <Link href={`/entitati/${n.entityId}`}>
+                  {cleanName(n.name)}
+                </Link>
+              </td>
+              <td>{formatRonFull(n.value)}</td>
+              <td>
+                <button
+                  type="button"
+                  className="cq-record-link"
+                  onClick={() => sources(n)}
+                >
+                  {formatInt(n.count)} înregistrări →
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="ask-fine">
+        Diagrama și lista arată primii {nodes.length} parteneri. Butonul
+        principal de surse include întreaga selecție. O relație de achiziții nu
+        dovedește o afiliere sau o legătură personală.
       </p>
     </div>
   );
@@ -907,6 +1400,7 @@ export function NetworkBlock({
 /* ── entity card ──────────────────────────────────────────────────────── */
 
 export function EntityCardBlock({ card }: { card: EntityCardData }) {
+  const evidence = useAnswerEvidence();
   const band = card.cri !== null ? criBand(card.cri) : null;
   return (
     <div className="ask-ecard">
@@ -914,7 +1408,9 @@ export function EntityCardBlock({ card }: { card: EntityCardData }) {
         <Link href={`/entitati/${card.entityId}`}>{cleanName(card.name)}</Link>
       </h3>
       <div className="badges">
-        <span className="badge">{card.role === "authority" ? "Autoritate" : "Furnizor"}</span>
+        <span className="badge">
+          {card.role === "authority" ? "Autoritate" : "Furnizor"}
+        </span>
         {card.county && <span className="badge">{card.county}</span>}
         {card.population !== null && card.population > 0 && (
           <span className="badge">{formatInt(card.population)} locuitori</span>
@@ -923,14 +1419,16 @@ export function EntityCardBlock({ card }: { card: EntityCardData }) {
       <div className="kpis">
         <div className="kpi">
           <div className="v num">{formatRon(card.value)}</div>
-          <div className="l">cheltuială DA</div>
+          <div className="l">valoare înregistrată în profil</div>
         </div>
         <div className="kpi">
           <div className="v num">{formatInt(card.count)}</div>
           <div className="l">achiziții</div>
         </div>
         <div className="kpi">
-          <div className="v num risk">{card.cri !== null ? card.cri.toFixed(2) : "—"}</div>
+          <div className="v num risk">
+            {card.cri !== null ? card.cri.toFixed(2) : "—"}
+          </div>
           <div className="l">indice risc{band ? ` · ${band.label}` : ""}</div>
         </div>
         <div className="kpi">
@@ -938,6 +1436,24 @@ export function EntityCardBlock({ card }: { card: EntityCardData }) {
           <div className="l">semnale</div>
         </div>
       </div>
+      {evidence && (
+        <button
+          type="button"
+          className="cq-record-link"
+          onClick={() =>
+            evidence.open(
+              undefined,
+              {
+                entityIds: [card.entityId],
+                role: card.role === "supplier" ? "supplier" : "authority",
+              },
+              `${cleanName(card.name)} · înregistrările profilului`,
+            )
+          }
+        >
+          Verifică cele {formatInt(card.count)} înregistrări →
+        </button>
+      )}
       {card.flags.length > 0 && (
         <div className="ask-fchips">
           {card.flags.map((f) => (
@@ -958,10 +1474,15 @@ export function EntityCardBlock({ card }: { card: EntityCardData }) {
 /* ── fact check ───────────────────────────────────────────────────────── */
 
 export function FactCheckBlock({ fact }: { fact: FactCheckData }) {
+  const evidence = useAnswerEvidence();
   return (
     <div>
       <div className="ask-fact">
-        <div className="verdict">{fact.verdict ? "DA" : "NU"}</div>
+        <div className="verdict">
+          {fact.verdict
+            ? "Am găsit înregistrări."
+            : "Nu am găsit în datele selectate."}
+        </div>
         <div className="sub">
           {fact.verdict ? (
             <>
@@ -972,7 +1493,7 @@ export function FactCheckBlock({ fact }: { fact: FactCheckData }) {
               <Link href={`/entitati/${fact.supplier.entityId}`}>
                 {cleanName(fact.supplier.name)}
               </Link>
-              : <b>{formatInt(fact.count)}</b> achiziții directe, în total{" "}
+              : <b>{formatInt(fact.count)}</b> înregistrări, în total{" "}
               <b>{formatRonFull(fact.value)}</b>
               {fact.yearFirst && (
                 <>
@@ -983,7 +1504,7 @@ export function FactCheckBlock({ fact }: { fact: FactCheckData }) {
             </>
           ) : (
             <>
-              Nu am găsit nicio achiziție directă între{" "}
+              Nu am găsit nicio înregistrare între{" "}
               <Link href={`/entitati/${fact.authority.entityId}`}>
                 {cleanName(fact.authority.name)}
               </Link>{" "}
@@ -991,11 +1512,21 @@ export function FactCheckBlock({ fact }: { fact: FactCheckData }) {
               <Link href={`/entitati/${fact.supplier.entityId}`}>
                 {cleanName(fact.supplier.name)}
               </Link>{" "}
-              în datele filtrate. (Pot exista contracte pe proceduri competitive, necuprinse aici.)
+              în datele filtrate. Lipsa unui rezultat nu stabilește absența unei
+              relații în afara selecției.
             </>
           )}
         </div>
       </div>
+      {evidence && (
+        <button
+          type="button"
+          className="cq-record-link"
+          onClick={() => evidence.open()}
+        >
+          Vezi toate înregistrările relației →
+        </button>
+      )}
       {fact.samples.length > 0 && (
         <table className="ask-table">
           <thead>
@@ -1028,11 +1559,14 @@ export function TrendBlock({
   rows,
   yearA,
   yearB,
+  spec,
 }: {
   rows: TrendRow[];
   yearA: number;
   yearB: number;
+  spec?: AskSpec;
 }) {
+  const evidence = useAnswerEvidence();
   if (rows.length === 0) return <p className="ask-empty">Niciun rezultat.</p>;
   return (
     <div>
@@ -1052,24 +1586,56 @@ export function TrendBlock({
             <div key={r.entityId ?? r.name} className="tr">
               <span className="nm">
                 {r.entityId ? (
-                  <Link href={`/entitati/${r.entityId}`}>{cleanName(r.name)}</Link>
+                  <Link href={`/entitati/${r.entityId}`}>
+                    {cleanName(r.name)}
+                  </Link>
                 ) : (
                   r.name
                 )}
                 {r.county ? ` (${r.county})` : ""}
+                {evidence && (
+                  <button
+                    type="button"
+                    className="cq-record-link"
+                    onClick={() =>
+                      evidence.open(
+                        undefined,
+                        {
+                          ...(spec?.dim === "county" ? { county: r.name } : {}),
+                          ...(r.entityId
+                            ? {
+                                entityIds: [r.entityId],
+                                role:
+                                  spec?.dim === "supplier"
+                                    ? "supplier"
+                                    : "authority",
+                              }
+                            : {}),
+                          years: [yearA, yearB],
+                        },
+                        `${cleanName(r.name)} · ${yearA} și ${yearB}`,
+                      )
+                    }
+                  >
+                    Sursele celor doi ani →
+                  </button>
+                )}
               </span>
               <span className="yv num">{formatRon(r.valueA)}</span>
               <span className="arrow">→</span>
               <span className="yv num">{formatRon(r.valueB)}</span>
               <span className={up ? "delta num up" : "delta num down"}>
-                {pct === null ? "nou" : `${pct >= 0 ? "+" : ""}${pct.toFixed(0)}%`}
+                {pct === null
+                  ? "nou"
+                  : `${pct >= 0 ? "+" : ""}${pct.toFixed(0)}%`}
               </span>
             </div>
           );
         })}
       </div>
       <p className="ask-fine">
-        Ordonate după schimbarea absolută (creșteri și scăderi). „nou” = fără activitate în {yearA}.
+        Ordonate după schimbarea absolută (creșteri și scăderi). „nou” = fără
+        înregistrări în selecție pentru {yearA}.
       </p>
     </div>
   );

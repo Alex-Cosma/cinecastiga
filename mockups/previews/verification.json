@@ -1,0 +1,157 @@
+{
+  "checks": [
+    {
+      "name": "Home renders with offline fonts",
+      "ok": true
+    },
+    {
+      "name": "Romania includes 42 interactive counties",
+      "ok": true
+    },
+    {
+      "name": "Search suggestions include real authority",
+      "ok": true
+    },
+    {
+      "name": "Keyboard search navigates",
+      "ok": true
+    },
+    {
+      "name": "Explore shows 48 actual records with pagination",
+      "ok": true
+    },
+    {
+      "name": "Category filter persists in URL",
+      "ok": true
+    },
+    {
+      "name": "Category count reconciles to source records",
+      "ok": true
+    },
+    {
+      "name": "No-result state offers recovery",
+      "ok": true
+    },
+    {
+      "name": "Signal metrics match the four evidence cards",
+      "ok": true
+    },
+    {
+      "name": "Authority profile uses real matching records",
+      "ok": true
+    },
+    {
+      "name": "Chart drills to scoped contracts",
+      "ok": true
+    },
+    {
+      "name": "Skip link preserves current route and focuses main",
+      "ok": true
+    },
+    {
+      "name": "Same-route modal link closes dialog",
+      "ok": true
+    },
+    {
+      "name": "Evidence deep link restores exact original source",
+      "ok": true
+    },
+    {
+      "name": "Evidence saves into new investigation",
+      "ok": true
+    },
+    {
+      "name": "Notes persist immediately",
+      "ok": true
+    },
+    {
+      "name": "Investigation survives reload",
+      "ok": true
+    },
+    {
+      "name": "Dossier export contains evidence, timestamps and notes",
+      "ok": true
+    },
+    {
+      "name": "Saved aggregate expands to all 12 original sources",
+      "ok": true
+    },
+    {
+      "name": "CSV export carries original URLs and selected scope",
+      "ok": true
+    },
+    {
+      "name": "Pagination updates route and rows",
+      "ok": true
+    },
+    {
+      "name": "Amount sort puts largest record first",
+      "ok": true
+    },
+    {
+      "name": "Unsampled county keeps real context and offers recovery",
+      "ok": true
+    },
+    {
+      "name": "No horizontal overflow: mobile-home",
+      "ok": true
+    },
+    {
+      "name": "No horizontal overflow: mobile-explore",
+      "ok": true
+    },
+    {
+      "name": "No horizontal overflow: mobile-profile",
+      "ok": true
+    },
+    {
+      "name": "No horizontal overflow: mobile-investigation",
+      "ok": true
+    },
+    {
+      "name": "No horizontal overflow: mobile-signals",
+      "ok": true
+    },
+    {
+      "name": "Mobile evidence fits screen",
+      "ok": true
+    },
+    {
+      "name": "Escape closes dialog and clears record state",
+      "ok": true
+    },
+    {
+      "name": "Tablet has no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "Search shortcut recovers from an open dialog",
+      "ok": true
+    },
+    {
+      "name": "Bar tooltip exposes exact amount and context",
+      "ok": true
+    },
+    {
+      "name": "Overview limits partner list but retains full drill",
+      "ok": true
+    },
+    {
+      "name": "All 11 suppliers remain reachable",
+      "ok": true
+    },
+    {
+      "name": "No horizontal overflow: mobile-evidence",
+      "ok": true
+    },
+    {
+      "name": "Narrow 320px home has no horizontal overflow",
+      "ok": true
+    },
+    {
+      "name": "Narrow 320px results have no horizontal overflow",
+      "ok": true
+    }
+  ],
+  "runtimeErrors": []
+}

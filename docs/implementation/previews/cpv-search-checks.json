@@ -1,0 +1,164 @@
+[
+  {
+    "q": "spatii verzi",
+    "passed": true,
+    "ms": 108,
+    "status": 200,
+    "matches": [
+      {
+        "term": "77310000-6",
+        "cpvName": "Amenajare şi întreţinere de spaţii verzi"
+      },
+      {
+        "term": "45112710-5",
+        "cpvName": "Lucrări de arhitectură peisagistică a spaţiilor verzi"
+      }
+    ]
+  },
+  {
+    "q": "spații verzi",
+    "passed": true,
+    "ms": 66,
+    "status": 200,
+    "matches": [
+      {
+        "term": "77310000-6",
+        "cpvName": "Amenajare şi întreţinere de spaţii verzi"
+      },
+      {
+        "term": "45112710-5",
+        "cpvName": "Lucrări de arhitectură peisagistică a spaţiilor verzi"
+      }
+    ]
+  },
+  {
+    "q": "spaţii verzi",
+    "passed": true,
+    "ms": 68,
+    "status": 200,
+    "matches": [
+      {
+        "term": "77310000-6",
+        "cpvName": "Amenajare şi întreţinere de spaţii verzi"
+      },
+      {
+        "term": "45112710-5",
+        "cpvName": "Lucrări de arhitectură peisagistică a spaţiilor verzi"
+      }
+    ]
+  },
+  {
+    "q": "verzi spatii",
+    "passed": true,
+    "ms": 72,
+    "status": 200,
+    "matches": [
+      {
+        "term": "77310000-6",
+        "cpvName": "Amenajare şi întreţinere de spaţii verzi"
+      },
+      {
+        "term": "45112710-5",
+        "cpvName": "Lucrări de arhitectură peisagistică a spaţiilor verzi"
+      }
+    ]
+  },
+  {
+    "q": "întreținere spații verzi",
+    "passed": true,
+    "ms": 63,
+    "status": 200,
+    "matches": [
+      {
+        "term": "77310000-6",
+        "cpvName": "Amenajare şi întreţinere de spaţii verzi"
+      }
+    ]
+  },
+  {
+    "q": "spatii    verzi",
+    "passed": true,
+    "ms": 62,
+    "status": 200,
+    "matches": [
+      {
+        "term": "77310000-6",
+        "cpvName": "Amenajare şi întreţinere de spaţii verzi"
+      },
+      {
+        "term": "45112710-5",
+        "cpvName": "Lucrări de arhitectură peisagistică a spaţiilor verzi"
+      }
+    ]
+  },
+  {
+    "q": "77310000-6",
+    "passed": true,
+    "ms": 54,
+    "status": 200,
+    "matches": [
+      {
+        "term": "77310000-6",
+        "cpvName": "Amenajare şi întreţinere de spaţii verzi"
+      }
+    ]
+  },
+  {
+    "q": "7731",
+    "passed": true,
+    "ms": 57,
+    "status": 200,
+    "matches": [
+      {
+        "term": "77310000-6",
+        "cpvName": "Amenajare şi întreţinere de spaţii verzi"
+      },
+      {
+        "term": "77311000-3",
+        "cpvName": "Întreţinere de grădini decorative sau de recreere"
+      },
+      {
+        "term": "77312000-0",
+        "cpvName": "Servicii de înlăturare a buruienilor"
+      },
+      {
+        "term": "77312100-1",
+        "cpvName": "Servicii de erbicidare"
+      },
+      {
+        "term": "77313000-7",
+        "cpvName": "Servicii de întreţinere a parcurilor"
+      }
+    ]
+  },
+  {
+    "q": "asfaltare",
+    "passed": true,
+    "ms": 77,
+    "status": 200,
+    "matches": [
+      {
+        "term": "asfaltare",
+        "cpvName": "Lucrări de construcţii, de fundaţie şi de îmbrăcare a autostrăzilor şi a drumurilor"
+      },
+      {
+        "term": "45233222-1",
+        "cpvName": "Lucrări de pavare şi de asfaltare"
+      }
+    ]
+  },
+  {
+    "q": "%%",
+    "passed": true,
+    "ms": 394,
+    "status": 200,
+    "matches": []
+  },
+  {
+    "q": "qqqzzzinexistent",
+    "passed": true,
+    "ms": 42,
+    "status": 200,
+    "matches": []
+  }
+]

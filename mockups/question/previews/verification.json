@@ -1,0 +1,145 @@
+{
+  "checks": [
+    {
+      "name": "Initial real hospital ranking: 8 sources, 398857099.93 RON",
+      "ok": true
+    },
+    {
+      "name": "Escape cancels picker without changing draft and restores focus",
+      "ok": true
+    },
+    {
+      "name": "Two changed conditions preserve previous answer",
+      "ok": true
+    },
+    {
+      "name": "Discard restores all applied conditions",
+      "ok": true
+    },
+    {
+      "name": "Invalid reversed period stays in editor with error",
+      "ok": true
+    },
+    {
+      "name": "Top N changes visible ranking but preserves source scope",
+      "ok": true
+    },
+    {
+      "name": "Main source drawer contains all matching records",
+      "ok": true
+    },
+    {
+      "name": "Supplier drill-down contains only matching supplier sources",
+      "ok": true
+    },
+    {
+      "name": "Original record drawer and SICAP reference remain functional",
+      "ok": true
+    },
+    {
+      "name": "Table matches the same 8 ranked suppliers",
+      "ok": true
+    },
+    {
+      "name": "Follow-up keeps pending conditions",
+      "ok": true
+    },
+    {
+      "name": "Time question applies same transaction filters",
+      "ok": true
+    },
+    {
+      "name": "Category question retains source type and source count",
+      "ok": true
+    },
+    {
+      "name": "Empty combination is explicit and recoverable",
+      "ok": true
+    },
+    {
+      "name": "Condition search shows explicit empty state",
+      "ok": true
+    },
+    {
+      "name": "Condition menu filters Romanian text",
+      "ok": true
+    },
+    {
+      "name": "CSV includes applied conditions, sources and all matching records",
+      "ok": true
+    },
+    {
+      "name": "Saved query shows correct type, count and reopening action",
+      "ok": true
+    },
+    {
+      "name": "Dossier preserves applied query and exact source snapshot",
+      "ok": true
+    },
+    {
+      "name": "Saved query reopening clears unrelated pending draft",
+      "ok": true
+    },
+    {
+      "name": "Reload restores exact applied question from URL",
+      "ok": true
+    },
+    {
+      "name": "Walkthrough advances without altering the question",
+      "ok": true
+    },
+    {
+      "name": "No horizontal page overflow at 768 px",
+      "ok": true
+    },
+    {
+      "name": "Picker fits viewport at 768 px",
+      "ok": true
+    },
+    {
+      "name": "No horizontal page overflow at 390 px",
+      "ok": true
+    },
+    {
+      "name": "Picker fits viewport at 390 px",
+      "ok": true
+    },
+    {
+      "name": "No horizontal page overflow at 320 px",
+      "ok": true
+    },
+    {
+      "name": "Picker fits viewport at 320 px",
+      "ok": true
+    },
+    {
+      "name": "Original home remains connected",
+      "ok": true
+    },
+    {
+      "name": "Original Explore remains connected",
+      "ok": true
+    },
+    {
+      "name": "Radio group has one tab stop",
+      "ok": true
+    },
+    {
+      "name": "Search shortcut cannot stack dialogs over picker",
+      "ok": true
+    },
+    {
+      "name": "Complex draft remains readable on mobile",
+      "ok": true
+    },
+    {
+      "name": "Mobile applies compound query with authentic 2026 health total",
+      "ok": true
+    },
+    {
+      "name": "Browser Back restores previous applied question",
+      "ok": true
+    }
+  ],
+  "runtimeErrors": []
+}
