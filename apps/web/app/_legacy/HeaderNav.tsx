@@ -14,7 +14,7 @@ export function HeaderNav() {
         <Link href="/cauta">Caută</Link>
         <Link href="/intreaba">Întreabă</Link>
         <Link href="/semnale">Semnale</Link>
-        <Link href="/supra-prag">Supra-prag</Link>
+        <Link href="/supra-prag">Publicate în TED</Link>
         <Link href="/domenii">Domenii</Link>
         <Link href="/harta">Hartă</Link>
       </nav>

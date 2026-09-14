@@ -32,9 +32,10 @@ export type Measure = (typeof MEASURES)[number];
  *  - "all" (default): DAs + contracts together. These two channels are
  *    DISJOINT (a direct acquisition is never also a contract), so summing them
  *    is honest — it matches the entity-profile totals.
- *  - "da": direct acquisitions only, below threshold (20,8M rows)
- *  - "contracts": awarded contracts from competitive procedures, above
- *    threshold (per-winner rows, consortium value split equally)
+ *  - "da": direct acquisitions only
+ *  - "contracts": contracts awarded through procurement procedures
+ *    (per-winner rows, consortium value split equally). This is not a
+ *    guarantee of multiple bidders or publication above an EU threshold.
  * TED is NEVER a dataset here — it overlaps contracts (same award published
  * twice) and would double-count; it stays in its own labeled mart.
  */
@@ -99,8 +100,9 @@ export interface AskFilters {
   uatName?: string;
   /**
    * Only contracts where the tender had a single bidder (dataset "contracts"
-   * only — DAs have no competition by definition). Competition data exists for
-   * the TED-confirmed subset; unknown ≠ competitive.
+   * only — the DA stream does not expose this bidder-count field). Bidder
+   * counts exist for the TED-confirmed subset; unknown is not evidence of
+   * multiple bidders.
    */
   singleBidder?: boolean;
   /**
@@ -116,7 +118,7 @@ export interface AskFilters {
 
 export interface AskSpec {
   block: Block;
-  /** Data stream (default "da"). */
+  /** Data stream (default "all"). */
   dataset?: Dataset;
   /** table/trend/entity_card/scatter: what each row/point is. */
   dim?: Dim;
@@ -146,7 +148,7 @@ export const SPEC_JSON_SCHEMA = {
       type: "string",
       enum: [...DATASETS],
       description:
-        "Sursa de date: 'all' = ambele canale, achiziții directe + contracte (IMPLICIT — canale disjuncte, sumă onestă); 'da' = DOAR achiziții directe (sub prag) — când omul spune explicit 'achiziții directe'/'sub prag'; 'contracts' = DOAR contracte din licitații/proceduri (peste prag) — când întrebarea e despre licitații, proceduri, competiție, ofertanți.",
+        "Sursa de date: 'all' = ambele canale, achiziții directe + contracte atribuite prin proceduri (IMPLICIT — canale disjuncte, sumă onestă); 'da' = DOAR achiziții directe — când omul spune explicit 'achiziții directe'/'sub prag'; 'contracts' = DOAR contracte atribuite prin proceduri — când întrebarea e despre licitații, proceduri, competiție, ofertanți. Pragul european de publicare în TED diferă de plafonul achiziției directe; canalul contracts nu garantează depășirea pragului european sau existența mai multor ofertanți.",
     },
     dim: {
       type: "string",
@@ -194,7 +196,7 @@ export const SPEC_JSON_SCHEMA = {
         singleBidder: {
           type: "boolean",
           description:
-            "true = doar contracte cu UN SINGUR ofertant la licitație ('fără competiție'). Forțează dataset='contracts' — achizițiile directe nu au ofertanți.",
+            "true = doar contracte atribuite prin proceduri cu UN SINGUR ofertant, unde numărul este cunoscut din TED. Forțează dataset='contracts'; acest număr nu este disponibil pentru achizițiile directe.",
         },
         compareWith: {
           type: "string",

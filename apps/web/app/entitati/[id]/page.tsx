@@ -259,7 +259,7 @@ export default async function EntityPage({
                 {formatInt(txCounts.nCt)} ↗
               </a>
             </div>
-            <div className="l">Contracte (peste prag)</div>
+            <div className="l">Contracte atribuite prin proceduri</div>
           </div>
         )}
         <div className="stat">
@@ -542,8 +542,8 @@ export default async function EntityPage({
       </section>
 
       <p className="note">
-        Tabelul cuprinde ambele canale: achiziții directe (sub prag) și contracte atribuite prin
-        proceduri (peste prag). Fiecare rând are link direct către înregistrarea oficială de pe
+        Tabelul cuprinde ambele canale: achiziții directe și contracte atribuite prin
+        proceduri. Fiecare rând are link direct către înregistrarea oficială de pe
         e-licitatie.ro.
       </p>
     </>

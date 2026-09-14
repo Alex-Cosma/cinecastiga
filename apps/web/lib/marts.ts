@@ -268,7 +268,7 @@ export async function getEntityFlagEvidence(entityId: string): Promise<FlagEvide
 }
 
 export interface DaTx {
-  /** "da" = direct acquisition, "contract" = above-threshold award. */
+  /** "da" = direct acquisition, "contract" = award from a procurement procedure. */
   src: "da" | "contract";
   /** sicap_da_id for DAs, contract_id for contracts — row identity. */
   sicapDaId: string;
@@ -389,7 +389,7 @@ export async function getEntityTxYears(entityId: string, role: Role): Promise<st
 
 /**
  * A single entity's transactions across both channels (direct acquisitions +
- * above-threshold contract awards), unified and paginated. The two marts share
+ * contracts awarded through procurement procedures), unified and paginated. The two marts share
  * column names for everything common; channel-specific columns are null-padded.
  */
 export async function getEntityTransactions(
@@ -898,7 +898,7 @@ export function isCompanyForm(legalForm: string | null | undefined): boolean {
   return legalForm === "srl" || legalForm === "sa" || legalForm === "ra";
 }
 
-// ── TED (above-EU-threshold) awards — the labeled, no-blend surfacing ────────
+// ── TED award publications — the labeled, no-blend surfacing ───────────────
 
 export interface TedStats {
   total: number;
@@ -964,7 +964,7 @@ export interface TedQuery {
   pageSize?: number;
 }
 
-/** Browsable TED awards (the above-threshold read model), filtered + paginated. */
+/** Browsable TED award publications, filtered + paginated; no legal-threshold classification. */
 export async function getTedAwards(
   q: TedQuery = {},
 ): Promise<{ rows: TedAward[]; total: number }> {

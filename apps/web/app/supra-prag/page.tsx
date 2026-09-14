@@ -1,9 +1,14 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { getTedStats, getTedAwards, type TedAward } from "@/lib/marts";
 import { countryName, procedureName, TED_LABEL } from "@/lib/ted";
 import { formatRon, formatInt, cleanName } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = {
+  title: "Atribuiri publicate în TED",
+  description: "Anunțuri de atribuire din Jurnalul Oficial al UE, cu sursele europene și potrivirile identificate în SEAP.",
+};
 
 const TED_NOTICE_URL = (pub: string | null) =>
   pub ? `https://ted.europa.eu/en/notice/${pub}/html` : null;
@@ -73,11 +78,10 @@ export default async function SupraPragPage({
 
   return (
     <>
-      <h1 className="page-title">Achiziții peste pragul european (TED)</h1>
+      <h1 className="page-title">Atribuiri publicate în TED</h1>
       <p className="page-sub">
-        Atribuiri mari din Jurnalul UE (TED), inclusiv firme străine. Valorile <strong>nu se adună</strong> peste
-        cele SEAP; fiecare atribuire e etichetată <em>și în SEAP</em> sau <em>doar în TED</em> —{" "}
-        <Link href="/metodologie">metodologia</Link>.
+        Anunțuri de atribuire din Jurnalul Oficial al UE. Consultă sursa europeană și potrivirile identificate
+        în SEAP. Valorile TED <strong>nu se adaugă totalurilor SEAP</strong>.
       </p>
 
       <section className="section">
@@ -88,7 +92,7 @@ export default async function SupraPragPage({
           </div>
           <div className="stat">
             <div className="n">{formatInt(stats.tedOnly)}</div>
-            <div className="l">doar în TED</div>
+            <div className="l">{TED_LABEL["ted-only"]!.title}</div>
           </div>
           <div className="stat">
             <div className="n">{formatInt(stats.foreign)}</div>
@@ -104,7 +108,7 @@ export default async function SupraPragPage({
       {stats.byCountry.length > 0 ? (
         <section className="section">
           <h2>Firme străine câștigătoare, după țară</h2>
-          <p className="hint">Valoare atribuită prin TED (loturi câștigate de firme non-române).</p>
+          <p className="hint">Valoare publicată în TED pentru loturi câștigate de firme din afara României.</p>
           <div className="filters" style={{ flexWrap: "wrap" }}>
             {stats.byCountry.slice(0, 12).map((c) => (
               <Link key={c.country} href={qstr({ tara: country === c.country ? undefined : c.country, extern: "1" })}
@@ -118,7 +122,11 @@ export default async function SupraPragPage({
 
       <section className="section">
         <h2>Explorează atribuirile</h2>
-        <div className="filters" style={{ flexWrap: "wrap" }}>
+        <p className="hint" id="ted-matching-note">
+          <strong>{TED_LABEL["ted-only"]!.title}</strong> înseamnă că nu am identificat încă o înregistrare
+          corespunzătoare în datele SEAP analizate. Atribuirea poate exista în SEAP chiar dacă potrivirea lipsește.
+        </p>
+        <div className="filters" style={{ flexWrap: "wrap" }} aria-describedby="ted-matching-note">
           <Link href={qstr({ "etichetă": undefined })} className={!label ? "on" : ""}>Toate</Link>
           <Link href={qstr({ "etichetă": "ted-only" })} className={label === "ted-only" ? "on" : ""}>
             {TED_LABEL["ted-only"]!.title}
@@ -163,7 +171,7 @@ export default async function SupraPragPage({
                   {a.title ? <div className="obj-title">{a.title}</div> : null}
                   {a.cpvName ?? a.cpvCode ?? "—"}
                   <div className="badges">
-                    <span className={`ted-label ${a.label === "ted-only" ? "only" : "seap"}`}>
+                    <span className={`ted-label ${a.label === "ted-only" ? "only" : "seap"}`} title={TED_LABEL[a.label]?.hint}>
                       {TED_LABEL[a.label]?.title ?? a.label}
                     </span>
                     {a.isSingleBidder ? <span className="badge warn">ofertant unic</span> : null}
@@ -197,9 +205,8 @@ export default async function SupraPragPage({
         ) : null}
 
         <p className="note">
-          Etichetele <em>și în SEAP</em> / <em>doar în TED</em> provin din potrivirea automată
-          (cumpărător + valoare + dată + CPV); o potrivire lipsă nu înseamnă absență din SEAP, ci
-          doar că nu am confirmat perechea. Semnal, nu dovadă — vezi{" "}
+          Potrivirile cu SEAP sunt identificate automat folosind cumpărătorul, valoarea, data și codul CPV.
+          Verifică anunțurile originale și{" "}
           <Link href="/metodologie">metodologia</Link>.
         </p>
       </section>

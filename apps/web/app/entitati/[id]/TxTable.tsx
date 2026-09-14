@@ -232,8 +232,8 @@ export default function TxTable({
                       className={`ask-srctag ${t.src === "contract" ? "contracts" : "da"}`}
                       title={
                         t.src === "contract"
-                          ? "contract din procedură (peste prag)"
-                          : "achiziție directă (sub prag)"
+                          ? "contract atribuit prin procedură"
+                          : "achiziție directă"
                       }
                     >
                       {t.src === "contract" ? "contract" : "directă"}

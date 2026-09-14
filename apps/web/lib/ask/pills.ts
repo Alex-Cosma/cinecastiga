@@ -101,10 +101,10 @@ export function buildPills(spec: AskSpec, grounding: Grounding): string[] {
   const ds = spec.dataset ?? "all";
   pills.push(
     ds === "contracts"
-      ? "doar contracte (licitații, peste prag)"
+      ? "doar contracte prin proceduri"
       : ds === "da"
         ? "doar achiziții directe"
-        : "toate sursele: directe + contracte",
+        : "toate sursele: achiziții directe + contracte prin proceduri",
   );
   return pills;
 }

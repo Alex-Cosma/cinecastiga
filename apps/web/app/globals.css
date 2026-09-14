@@ -304,7 +304,7 @@ table.rank .county { color: var(--muted); font-size: 12px; }
   .bar-go { grid-column: 2; text-align: right; }
 }
 
-/* TED / above-threshold surface (supra-prag) */
+/* TED award publications (legacy route: supra-prag) */
 .stat-row {
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 8px;
 }
