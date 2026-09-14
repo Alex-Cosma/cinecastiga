@@ -1767,6 +1767,9 @@ export async function runRows(
 
   return await sql.begin("isolation level repeatable read read only", async (tx) => {
     await tx.unsafe(`set local statement_timeout = '${STATEMENT_TIMEOUT}'`);
+    // The production database uses SSD costs. Keep the same covering-index
+    // choices in local source verification without changing database settings.
+    await tx.unsafe("set local random_page_cost = 1.1");
     const s = tx as unknown as DbSql;
     const totals = (await readEvidenceQuery(s`
       select d.state, count(*) n, coalesce(sum(d.closing_value), 0)::text v,
@@ -1786,7 +1789,35 @@ export async function runRows(
     // its indexed IDs. Taking offset+limit from BOTH branches preserves every
     // possible row in the requested global page, including tied contract IDs.
     const branchLimit = (p + 1) * pageSize;
-    const pageTxt = !profile && dataset === "all" && sortKey === "source" ? sql`(
+    // IDs and calendar years are correlated. A backward primary-key walk can
+    // read millions of newer records before reaching an earlier annual scope.
+    // For a broad period selection, scan/filter narrow candidate IDs first and
+    // sort the bounded result. Adding zero preserves bigint reference order
+    // while avoiding that misleading early-stop index plan. Fetch wide rows
+    // only for the selected IDs, inside this same repeatable-read snapshot.
+    const latestSelectedYear = scope.years?.length ? Math.max(...scope.years) : yearTo;
+    const annualScan = !profile && dataset === "all" && sortKey === "source"
+      && latestSelectedYear !== null && latestSelectedYear < maxY
+      && Object.keys(spec.filters).every((key) => ["yearFrom", "yearTo", "monthFrom", "monthTo"].includes(key))
+      && Object.keys(scope).every((key) => ["years", "excludeCpvPrefixes"].includes(key));
+    const annualKeys = annualScan ? sql`(
+      (select d.ref_id, d.src, d.supplier_id from ${daTx} d where ${sourceWhere} and ${localWhere}
+       order by (d.ref_id + 0) ${dirFrag}, d.supplier_id nulls first limit ${branchLimit})
+      union all
+      (select d.ref_id, d.src, d.supplier_id from ${contractTx} d where ${sourceWhere} and ${localWhere}
+       order by (d.ref_id + 0) ${dirFrag}, d.supplier_id nulls first limit ${branchLimit})
+    )` : null;
+    const pageTxt = annualKeys ? sql`(
+      select selected_row.* from ${annualKeys} selected_key
+      cross join lateral (
+        select d.* from ${daTx} d
+        where selected_key.src = 'da' and d.ref_id = selected_key.ref_id
+        union all
+        select d.* from ${contractTx} d
+        where selected_key.src = 'contracts' and d.ref_id = selected_key.ref_id
+          and d.supplier_id is not distinct from selected_key.supplier_id
+      ) selected_row
+    )` : !profile && dataset === "all" && sortKey === "source" ? sql`(
       (select * from ${daTx} d where ${sourceWhere} and ${localWhere}
        order by d.ref_id ${dirFrag}, d.supplier_id nulls first limit ${branchLimit})
       union all

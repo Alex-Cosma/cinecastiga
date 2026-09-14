@@ -188,4 +188,24 @@ describe("source query regression", () => {
     expect(page.match(/order by d.ref_id/g)?.length).toBe(3);
     expect(page.match(/limit /g)?.length).toBe(3);
   });
+  it("earlier annual pages fetch bounded reference keys and preserve each consortium supplier", async () => {
+    const db = database();
+    await runRows(db.sql, { block: "breakdown", dataset: "all", measure: "value", filters: { yearFrom: 2025, yearTo: 2025 } }, {}, 0);
+    const page = db.statements.find((s) => s.includes("select d.da_code"))!;
+    expect(page.match(/select d.ref_id, d.src, d.supplier_id from/g)?.length).toBe(2);
+    expect(page.match(/order by \(d.ref_id \+ 0\)/g)?.length).toBe(2);
+    expect(page).toContain("selected_key.src = 'da' and d.ref_id = selected_key.ref_id");
+    expect(page).toContain("selected_key.src = 'contracts' and d.ref_id = selected_key.ref_id");
+    expect(page).toContain("d.supplier_id is not distinct from selected_key.supplier_id");
+    expect(page).toContain("d.src, d.ref_id, d.supplier_id nulls first");
+    expect(page.match(/limit /g)?.length).toBe(3);
+    expect(db.statements.find((s) => s.includes("group by d.state"))).not.toContain("limit");
+  });
+  it("latest-year source pages retain the quick reference-index path", async () => {
+    const db = database();
+    await runRows(db.sql, { block: "breakdown", dataset: "all", measure: "value", filters: { yearFrom: 2026, yearTo: 2026 } }, {}, 0);
+    const page = db.statements.find((s) => s.includes("select d.da_code"))!;
+    expect(page).not.toContain("selected_key");
+    expect(page.match(/order by d.ref_id/g)?.length).toBe(3);
+  });
 });
