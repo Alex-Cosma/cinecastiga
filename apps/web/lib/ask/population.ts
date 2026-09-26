@@ -58,10 +58,10 @@ export function validatePopulation(raw: unknown): QueryPopulation | { error: str
 }
 
 /** Historical CRI renderers cannot apply transaction-level populations. */
-export function isHistoricalProfile(spec: { block:string; comparisonMode?:string }): boolean {
-  return ["distribution", "scatter", "entity_card"].includes(spec.block) || spec.block === "compare" && spec.comparisonMode !== "transactions";
+export function isHistoricalProfile(spec: { block:string; comparisonMode?:string; rankBy?:string }): boolean {
+  return ["distribution", "scatter"].includes(spec.block) || spec.block === "entity_card" && spec.rankBy !== "value" || spec.block === "compare" && spec.comparisonMode !== "transactions";
 }
-export function unsupportedPopulationView(spec: { block: string; dataset?: string; dim?: string; comparisonMode?:string; population?: QueryPopulation; minimumRecords?:MinimumRecords; filters: object }): string | null {
+export function unsupportedPopulationView(spec: { block: string; dataset?: string; dim?: string; comparisonMode?:string; rankBy?:string; population?: QueryPopulation; minimumRecords?:MinimumRecords; filters: object }): string | null {
   if (spec.block === "trend" && spec.minimumRecords) return "Filtrul «cel puțin N înregistrări» se aplică întregii selecții și nu este disponibil în diferența dintre doi ani. Alege evoluția în timp sau elimină explicit acest filtru.";
   if (!isHistoricalProfile(spec)) return null;
   const f = spec.filters as Record<string, unknown>;
