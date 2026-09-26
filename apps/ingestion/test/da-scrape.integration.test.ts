@@ -1,42 +1,41 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { and, eq, inArray, like } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import {
   createDb,
   ingestionWatermarks,
   rawDocuments,
   scrapeRuns,
+  type Db,
+  type DbSql,
 } from "@seap/db";
 import { createElicitatieClient } from "@seap/scraper-clients";
 import { scrapeDasByAuthority } from "../src/scrape/elicitatie/direct-acquisitions.js";
 import { refetchOpenCorrections } from "../src/scrape/elicitatie/da-corrections.js";
+import { requireDedicatedTestDatabase } from "./support/test-database.js";
 
 // Integration test — docker Postgres + mock SICAP DA server.
 // Test DA ids live in the 88xxxxx range.
 
-const { db, sql } = createDb();
-const SOURCES = ["elicitatie:das", "elicitatie:da-corrections"];
-
-async function cleanup() {
-  await db
-    .delete(rawDocuments)
-    .where(
-      and(
-        eq(rawDocuments.source, "elicitatie"),
-        like(rawDocuments.externalId, "da:88%"),
-      ),
-    );
-  await db
-    .delete(ingestionWatermarks)
-    .where(inArray(ingestionWatermarks.source, SOURCES));
-  await db.delete(scrapeRuns).where(inArray(scrapeRuns.source, SOURCES));
-}
-
-beforeAll(cleanup);
+// No default DATABASE_URL fallback and no archive-prefix/global-run cleanup.
+// Create/migrate a disposable database, run this suite there, then drop that DB.
+const testDatabaseUrl = requireDedicatedTestDatabase(process.env["TEST_DATABASE_URL"]);
+let db: Db;
+let sql: DbSql | undefined;
+beforeAll(async () => {
+  const connection = createDb(testDatabaseUrl);
+  db = connection.db; sql = connection.sql;
+  const [state] = await sql`select current_database() name,
+    exists(select 1 from raw.raw_documents) archive,
+    exists(select 1 from core.ingestion_watermarks) watermarks,
+    exists(select 1 from core.scrape_runs) runs`;
+  if (!state || !String(state.name).startsWith("seap_test_") || state.archive || state.watermarks || state.runs) {
+    throw new Error("Refusing DA integration suite: the dedicated database must have an empty archive, watermarks and scrape-run history");
+  }
+});
 afterAll(async () => {
-  await cleanup();
-  await sql.end();
+  await sql?.end();
 });
 
 let server: Server | undefined;
@@ -109,6 +108,11 @@ function startDaMock(config: DaMockConfig): Promise<string> {
 
       if (url.startsWith("/api-pub/PublicDirectAcquisition/getView/")) {
         const id = Number(url.split("/").pop());
+        if (!config.records.some(record => record.directAcquisitionId === id)) {
+          res.statusCode = 404;
+          res.end(JSON.stringify({ error: "DA ID outside this test fixture" }));
+          return;
+        }
         const payload = config.detailFor?.(id) ?? {
           directAcquisitionID: id,
           closingValue: id * 10,

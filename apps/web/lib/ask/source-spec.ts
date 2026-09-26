@@ -6,11 +6,20 @@ import type { TableRow } from "./compile";
  * Count questions can include rows excluded from monetary aggregates. */
 function rowsSpec(spec: AskSpec): AskSpec {
   return {
+    ...spec,
     block: "stat",
     measure: spec.measure === "count" ? "count" : "value",
     ...(spec.dataset ? { dataset: spec.dataset } : {}),
     filters: { ...spec.filters },
   };
+}
+/** Keep aggregate eligibility in the original population when opening a group. */
+export function entitySourceLink(spec: AskSpec, row:Pick<TableRow, "entityId" | "name">): string {
+  const scope = entitySourceScope(spec, row);
+  return `/intreaba?spec=${encodeURIComponent(encodeSpec(spec))}&drill=1&evidence=${encodeURIComponent(JSON.stringify(scope))}`;
+}
+export function entitySourceScope(spec: AskSpec, row:Pick<TableRow, "entityId" | "name">): import("./evidence").EvidenceScope {
+  return spec.dim === "county" ? { county:row.name } : { role:spec.dim === "supplier" ? "supplier" : "authority", entityIds:row.entityId ? [row.entityId] : [] };
 }
 export function entitySourceSpec(
   spec: AskSpec,

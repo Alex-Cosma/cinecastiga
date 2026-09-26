@@ -106,10 +106,31 @@ services:
       SMTP_FROM: ${SMTP_FROM:-}
       DATA_AS_OF: ${DATA_AS_OF:-2026-07-31}
       DATA_MODE: ${DATA_MODE:-snapshot}
+      DOCUMENTS_ENABLED: ${DOCUMENTS_ENABLED:-false}
     depends_on:
       postgres:
         condition: service_healthy
       meilisearch:
+        condition: service_healthy
+
+  documents:
+    <<: *logging
+    profiles: [documents]
+    build:
+      context: ../..
+      dockerfile: infra/prod/Dockerfile.documents
+    image: cinecastiga-documents
+    restart: unless-stopped
+    init: true
+    mem_limit: 2g
+    cpus: 2
+    pids_limit: 256
+    stop_grace_period: 100s
+    environment:
+      DATABASE_URL: postgres://seap_web:${SEAP_WEB_PASSWORD:?set in .env}@postgres:5432/seap
+      DOCUMENTS_ENABLED: ${DOCUMENTS_ENABLED:-false}
+    depends_on:
+      postgres:
         condition: service_healthy
 
   caddy:

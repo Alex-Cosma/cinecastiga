@@ -1,0 +1,43 @@
+{
+  "status": "passed",
+  "checks": [
+    "No horizontal overflow at1440",
+    "Three clear initial states",
+    "One active file and one queued",
+    "Queued position is explained",
+    "No horizontal overflow at390",
+    "No horizontal overflow at320",
+    "No horizontal overflow at800",
+    "Reload preserves one active job and queued file",
+    "No horizontal overflow at1440",
+    "Drawer search ignores Romanian diacritics",
+    "Contract title actually opens a new tab",
+    "Original drawer and filter remain unchanged",
+    "Saving has clear local demo feedback",
+    "Queued retry completes after first file",
+    "Prepared files cannot be acquired again",
+    "Reader shows real PDF and real OCR text",
+    "Page navigation respects original empty page",
+    "Signed original stays separate from extracted PDF",
+    "No horizontal overflow at390",
+    "Reduced motion is respected",
+    "No browser runtime exceptions",
+    "No external network requests during mock interactions",
+    "Source bytes preserved:HC-127-2025.pdf",
+    "Source bytes preserved:CS ILUMINAT.pdf",
+    "Source bytes preserved:CS ILUMINAT_semnat.pdf.p7s",
+    "No horizontal overflow at1440"
+  ],
+  "errors": [],
+  "externalRequests": [],
+  "screens": [
+    "contract-desktop",
+    "processing-desktop",
+    "processing-mobile",
+    "drawer-desktop",
+    "reader-desktop",
+    "contract-dark",
+    "contract-mobile"
+  ],
+  "liveSeapRequests": 0
+}

@@ -16,3 +16,8 @@ infra/prod/.env
 .specd
 docs
 _*.mjs
+
+# Isolated local validation output
+**/.next-documents
+
+apps/web/public/pdfjs/

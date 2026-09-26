@@ -1,0 +1,329 @@
+{
+  "status": "backend-complete",
+  "unitTests": {
+    "passed": 4
+  },
+  "postgresTests": {
+    "passed": 10,
+    "isolatedDatabase": "seap_test_batch4_peers_data",
+    "cleanup": "dropped"
+  },
+  "checks": [
+    "full cohort exact median excludes focal",
+    "period/dataset/CPV/activity band membership",
+    "24-member deterministic pagination",
+    "registered county distinct from source geography",
+    "suppliers and unknown authority type",
+    "closed year and explicit CPV suggestion",
+    "contract allocation precision",
+    "21 source compiler reconciliations",
+    "524-member full-save refusal with individual lookup",
+    "identity and checkpoint drift"
+  ],
+  "performance": {
+    "authority": {
+      "ms": 6950,
+      "entity": "MUNICIPIUL BUZAU",
+      "filters": {
+        "dataset": "all",
+        "year": 2025,
+        "cpv": "45",
+        "page": 1
+      },
+      "focal": {
+        "count": 18,
+        "totalExact": "481366697.99"
+      },
+      "cohort": {
+        "count": 202,
+        "minimumRecords": 9,
+        "maximumRecords": 36,
+        "authorityKind": "oras_municipiu",
+        "medianTotalExact": "15519171.185",
+        "medianMeanRounded": "938267.61",
+        "enoughPeers": true,
+        "status": "ready",
+        "excludedUnknownType": 437,
+        "excludedUnknownCounty": 0
+      },
+      "options": {
+        "years": [
+          2026,
+          2025,
+          2024,
+          2023,
+          2022,
+          2021,
+          2020,
+          2019,
+          2018
+        ],
+        "divisions": [
+          {
+            "code": "45",
+            "label": "Lucrări de construcţii",
+            "rowCount": 18,
+            "totalExact": "481366697.99"
+          },
+          {
+            "code": "30",
+            "label": "Echipament informatic şi accesorii de birou, cu excepţia mobilierului şi a pachetelor software",
+            "rowCount": 4,
+            "totalExact": "19696156.85"
+          },
+          {
+            "code": "79",
+            "label": "Servicii pentru întreprinderi: drept, marketing, consultanţă, recrutare, tipărire şi securitate",
+            "rowCount": 9,
+            "totalExact": "3023653.01"
+          },
+          {
+            "code": "71",
+            "label": "Servicii de arhitectură, de construcţii, de inginerie şi de inspecţie",
+            "rowCount": 16,
+            "totalExact": "2923630.72"
+          },
+          {
+            "code": "39",
+            "label": "Mobilă (inclusiv mobilă de birou), accesorii de mobilier, aparate de uz casnic (exclusiv dispozitive de iluminat) şi produse de curăţat",
+            "rowCount": 3,
+            "totalExact": "1264522"
+          },
+          {
+            "code": "42",
+            "label": "Echipamente industriale",
+            "rowCount": 1,
+            "totalExact": "725390.4"
+          },
+          {
+            "code": "50",
+            "label": "Servicii de reparare şi întreţinere",
+            "rowCount": 2,
+            "totalExact": "420708"
+          },
+          {
+            "code": "98",
+            "label": "Alte servicii comunitare, sociale şi personale",
+            "rowCount": 1,
+            "totalExact": "380021"
+          },
+          {
+            "code": "72",
+            "label": "Servicii IT: consultanţă, dezvoltare de software, internet şi asistenţă",
+            "rowCount": 3,
+            "totalExact": "319310"
+          },
+          {
+            "code": "18",
+            "label": "Îmbrăcăminte, încălţăminte, articole de voiaj şi accesorii",
+            "rowCount": 4,
+            "totalExact": "170120.2"
+          },
+          {
+            "code": "48",
+            "label": "Pachete software şi sisteme informatice",
+            "rowCount": 1,
+            "totalExact": "80667.89"
+          }
+        ],
+        "counties": [
+          "Alba",
+          "Arad",
+          "Arges",
+          "Bacau",
+          "Bihor",
+          "Bistrita-Nasaud",
+          "Botosani",
+          "Braila",
+          "Brasov",
+          "Buzau",
+          "Calarasi",
+          "Caras-Severin",
+          "Cluj",
+          "Constanta",
+          "Covasna",
+          "Dambovita",
+          "Giurgiu",
+          "Gorj",
+          "Harghita",
+          "Hunedoara",
+          "Ialomita",
+          "Iasi",
+          "Ilfov",
+          "Maramures",
+          "Mehedinti",
+          "Mures",
+          "Neamt",
+          "Olt",
+          "Prahova",
+          "Salaj",
+          "Satu Mare",
+          "Sibiu",
+          "Suceava",
+          "Teleorman",
+          "Timis",
+          "Tulcea",
+          "Valcea",
+          "Vaslui",
+          "Vrancea"
+        ]
+      },
+      "coverage": {
+        "focalUndatedRows": 0,
+        "focalYearMissingCpvRows": 0,
+        "unresolvedEntityRows": 0
+      },
+      "pagination": {
+        "page": 1,
+        "pageSize": 20,
+        "totalPages": 11,
+        "hasNext": true
+      },
+      "checkpoint": "a888f7f9-f39f-4b23-9c1e-0ffefe46270d"
+    },
+    "supplier": {
+      "ms": 19170,
+      "entity": "RER SUD",
+      "filters": {
+        "dataset": "all",
+        "year": 2025,
+        "cpv": "90",
+        "page": 1
+      },
+      "focal": {
+        "count": 56,
+        "totalExact": "4151838.15"
+      },
+      "cohort": {
+        "count": 229,
+        "minimumRecords": 28,
+        "maximumRecords": 112,
+        "authorityKind": null,
+        "medianTotalExact": "282153.36",
+        "medianMeanRounded": "6264.35",
+        "enoughPeers": true,
+        "status": "ready",
+        "excludedUnknownType": 0,
+        "excludedUnknownCounty": 0
+      },
+      "options": {
+        "years": [
+          2026,
+          2025,
+          2024,
+          2023,
+          2022,
+          2021,
+          2020,
+          2019,
+          2018
+        ],
+        "divisions": [
+          {
+            "code": "90",
+            "label": "Servicii de evacuare a apelor reziduale, de eliminare a deşeurilor, de igienizare şi servicii privind mediul",
+            "rowCount": 56,
+            "totalExact": "4151838.15"
+          },
+          {
+            "code": "45",
+            "label": "Lucrări de construcţii",
+            "rowCount": 1,
+            "totalExact": "514160"
+          }
+        ],
+        "counties": [
+          "Alba",
+          "Arad",
+          "Arges",
+          "Bacau",
+          "Bihor",
+          "Botosani",
+          "Braila",
+          "Brasov",
+          "Bucuresti",
+          "Buzau",
+          "Calarasi",
+          "Caras-Severin",
+          "Cluj",
+          "Constanta",
+          "Covasna",
+          "Dambovita",
+          "Dolj",
+          "Galati",
+          "Giurgiu",
+          "Gorj",
+          "Harghita",
+          "Hunedoara",
+          "Ialomita",
+          "Iasi",
+          "Ilfov",
+          "Maramures",
+          "Mehedinti",
+          "Mures",
+          "Neamt",
+          "Olt",
+          "Prahova",
+          "Salaj",
+          "Satu Mare",
+          "Sibiu",
+          "Suceava",
+          "Teleorman",
+          "Timis",
+          "Tulcea",
+          "Valcea",
+          "Vaslui",
+          "Vrancea"
+        ]
+      },
+      "coverage": {
+        "focalUndatedRows": 0,
+        "focalYearMissingCpvRows": 0,
+        "unresolvedEntityRows": 0
+      },
+      "pagination": {
+        "page": 1,
+        "pageSize": 20,
+        "totalPages": 12,
+        "hasNext": true
+      },
+      "checkpoint": "a888f7f9-f39f-4b23-9c1e-0ffefe46270d"
+    },
+    "fullGroupSources": {
+      "boundMs": 13144,
+      "sourceMs": 6975,
+      "totalMs": 20119,
+      "memberCount": 203,
+      "rowCount": 3561,
+      "totalExact": "5745681623.00",
+      "returnedRows": 10,
+      "firstUrl": null,
+      "cohort": {
+        "count": 202,
+        "minimumRecords": 9,
+        "maximumRecords": 36,
+        "authorityKind": "oras_municipiu",
+        "medianTotalExact": "15519171.185",
+        "medianMeanRounded": "938267.61",
+        "enoughPeers": true,
+        "status": "ready",
+        "excludedUnknownType": 437,
+        "excludedUnknownCounty": 0
+      }
+    }
+  },
+  "mainDataMutations": false,
+  "schemaChanges": false,
+  "caps": {
+    "pageSize": 20,
+    "minimumOtherPeers": 5,
+    "fullCaptureOtherMembers": 499,
+    "queryTimeoutSeconds": 20
+  },
+  "notes": [
+    "One cohort scan serves both summary and displayed page; median never uses page subset.",
+    "Measured local main database timings depend on I/O cache; national first loads can take several seconds.",
+    "Forcing index scans was measured slower and discarded.",
+    "Whole source read:203entities,3561rows,5745681623.00RON."
+  ]
+}

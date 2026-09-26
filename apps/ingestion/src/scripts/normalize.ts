@@ -1,3 +1,4 @@
+import { runMonitoredCli } from "../monitoring/cli.js";
 import { createDb } from "@seap/db";
 import { runNormalize } from "../normalize/pipeline.js";
 import { generateNameSuggestions } from "../normalize/suggestions.js";
@@ -17,27 +18,27 @@ function arg(name: string): string | undefined {
 
 async function main(): Promise<void> {
   const { db, sql } = createDb();
-  const log = (m: string) => console.log(m);
-  const only = arg("only");
+  await runMonitoredCli(sql, "normalize", async () => {
+    const log = (m: string) => console.log(m);
+    const only = arg("only");
 
-  if (!process.argv.includes("--suggest-only")) {
-    const report = await runNormalize(db, sql, {
-      rebuild: process.argv.includes("--rebuild"),
-      ...(only ? { only } : {}),
-      log,
-    });
-    console.log(JSON.stringify(report, null, 2));
-  }
+    if (!process.argv.includes("--suggest-only")) {
+      const report = await runNormalize(db, sql, {
+        rebuild: process.argv.includes("--rebuild"),
+        ...(only ? { only } : {}),
+        log,
+      });
+      console.log(JSON.stringify(report, null, 2));
+    }
 
-  if (
-    process.argv.includes("--suggest") ||
-    process.argv.includes("--suggest-only")
-  ) {
-    const s = await generateNameSuggestions(db, sql, { log });
-    console.log(JSON.stringify(s, null, 2));
-  }
-
-  await sql.end();
+    if (
+      process.argv.includes("--suggest") ||
+      process.argv.includes("--suggest-only")
+    ) {
+      const s = await generateNameSuggestions(db, sql, { log });
+      console.log(JSON.stringify(s, null, 2));
+    }
+  });
 }
 
 main().catch(async (err) => {

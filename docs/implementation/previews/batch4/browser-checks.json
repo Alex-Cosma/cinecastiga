@@ -1,0 +1,76 @@
+{
+  "initialFlow": {
+    "realPartnerCount": 215,
+    "directSourceRows": 12,
+    "originalLinksPresent": true,
+    "copiedPathRestored": true,
+    "mobileReturnToList": true,
+    "sharedPathSourceRows": 13,
+    "staleIdentityErrorVisible": true,
+    "emptyYearVisible": true,
+    "saveTwoLegPathCompleted": true,
+    "note": "Initial automation reached successful capture, then required selecting the existing Dovezi tab before case evidence appeared."
+  },
+  "checks": [
+    {
+      "capture": "frozen-sources-mobile",
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "check": "frozen-source-links",
+      "links": [
+        "https://e-licitatie.ro/pub/direct-acquisition/view/887790011",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/887790012",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/887790014",
+        "https://e-licitatie.ro/pub/notices/ca-notices/view-c/887790088",
+        "https://ted.europa.eu/en/notice/-/detail/000001-2025"
+      ]
+    },
+    {
+      "check": "supplier-authority-supplier-path",
+      "passed": true
+    },
+    {
+      "check": "two-firms-shared-consortium",
+      "rows": 5,
+      "displayValue": "270.000,01 lei"
+    },
+    {
+      "check": "search-empty",
+      "passed": true
+    },
+    {
+      "check": "accent-search",
+      "passed": true
+    },
+    {
+      "check": "dataset-period-applied",
+      "text": "Contracte prin proceduri · din 2025",
+      "selectedPathCleared": true
+    },
+    {
+      "check": "reduced-motion",
+      "transition": "0s"
+    },
+    {
+      "check": "runtime-errors-continuation",
+      "errors": []
+    }
+  ],
+  "screenshots": [
+    "connection-desktop.png",
+    "empty-mobile.png",
+    "frozen-sources-mobile.png",
+    "initial-desktop.png",
+    "path-desktop.png",
+    "path-mobile-dark.png",
+    "path-mobile.png",
+    "save-desktop.png",
+    "saved-case-desktop.png",
+    "saved-case-mobile.png",
+    "sources-desktop.png",
+    "sources-mobile.png",
+    "stale-mobile.png"
+  ]
+}

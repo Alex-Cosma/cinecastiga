@@ -1,0 +1,66 @@
+{
+  "checkedAt": "2026-09-19T19:54:46.979Z",
+  "checks": [
+    {
+      "screen": "review-inbox-desktop",
+      "width": 1440,
+      "scroll": 1440,
+      "height": 1314
+    },
+    {
+      "screen": "review-setup-desktop",
+      "width": 1440,
+      "scroll": 1440,
+      "height": 1441
+    },
+    {
+      "screen": "review-setup-mobile",
+      "width": 390,
+      "scroll": 390,
+      "height": 2651
+    },
+    {
+      "screen": "review-setup-mobile-dark",
+      "width": 390,
+      "scroll": 390,
+      "height": 2651
+    },
+    {
+      "screen": "review-selection-desktop",
+      "width": 1440,
+      "scroll": 1440,
+      "height": 1642
+    },
+    {
+      "screen": "review-selection-mobile",
+      "width": 390,
+      "scroll": 390,
+      "height": 2379
+    },
+    {
+      "screen": "review-change-mobile",
+      "width": 390,
+      "scroll": 390,
+      "height": 4999
+    },
+    {
+      "screen": "review-change-desktop",
+      "width": 1440,
+      "scroll": 1440,
+      "height": 3944
+    },
+    {
+      "screen": "review-empty-mobile",
+      "width": 390,
+      "scroll": 390,
+      "height": 1761
+    }
+  ],
+  "basePeriodSeparated": true,
+  "orDateGroupsPreserved": true,
+  "contractsOnlyStream": true,
+  "selectedYears": true,
+  "onePixelDelimiters": true,
+  "noHeadingKickersOrEmptyGlyph": true,
+  "errors": []
+}

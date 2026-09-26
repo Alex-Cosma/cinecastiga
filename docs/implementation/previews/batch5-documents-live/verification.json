@@ -1,0 +1,24 @@
+{
+  "status": "passed",
+  "checks": [
+    "Session endpoint responds",
+    "Temporary local authenticated session",
+    "Actual court PDF has OCR text",
+    "Searchable word from actual source",
+    "Cross-document search returns filename and page",
+    "Document-specific search links directly to pages",
+    "UI saved a server-validated passage in a private investigation",
+    "Investigation retains original page link",
+    "Export preserves quote source and original hash",
+    "No horizontal overflow at 320",
+    "No horizontal overflow at 390",
+    "No horizontal overflow at 800",
+    "No horizontal overflow at 1440",
+    "Existing original processed with zero new SEAP requests",
+    "No external browser requests",
+    "No browser runtime errors"
+  ],
+  "errors": [],
+  "external": [],
+  "liveSeapRequests": 0
+}

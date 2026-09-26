@@ -1,0 +1,28 @@
+{
+  "source": "cached response03 app-pub",
+  "sourceSha256": "aba183165fe874ba3f6362c8eb9ce3290bf8c244638e7384a515d575b7f2a821",
+  "userObservedUrl": "https://www.e-licitatie.ro/api-pub/files/noticedoc/4333a84fdfb741059d25b48970751216",
+  "evidence": [
+    {
+      "term": ".directive(\"onDownload\"",
+      "offset": 161304,
+      "snippet": ".directive(\"onDownload\",[\"OnDownload\",\"svc\",function(n,t){return{restrict:\"A\",scope:{downLink:\"@\"},link:function(i,r){r.click(function(){var i=this.attributes.getNamedItem(\"down-link\").value;n.verifyFile(i).then(function(){n.downloadFile(i)},function(n){t.modalService.showInfoMessage(n[1])})})}}}]).directive(\"dateValue\",[\"$compile\",function(n){var t=function(n){return n===undefined?\"<span>{{target | date}}<\\/span>\":\"<strong>{{target | date}}<\\/strong>\"},i=function(i,r,u){r.html(t(u.bold)).show();n(r.contents())(i)};return{restrict:\"E\",replace:!0,link:i,scope:{target:\"=\"}}}]).directive(\"datetimeValue\",[\"$compile\",function(n){var t=function(n){"
+    },
+    {
+      "term": "t.prototype.downloadFile=function(n){this.DOWNLOAD_GET(n,null)},t.prototype.verifyFile=function(n){return this.POST(n)}",
+      "offset": 224531,
+      "snippet": "t.prototype.downloadFile=function(n){this.DOWNLOAD_GET(n,null)},t.prototype.verifyFile=function(n){return this.POST(n)},t.$inject=[\"$http\",\"$q\"],t}(sys.HttpApi);n.OnDownload=t;angular.module(\"app.controls\").service(\"OnDownload\",t);u=function(){function n(n,t,i,r,u,f){this.$scope=n;this.api=t;this.svc=i;this.$window=r;this.locale=u;this.$timeout=f;this.isLoading=!1;this.isListLoaded=!1;this.procedureId=n.procedureId;this.procedureLotId=n.procedureLotId;this.spin=this.svc.spinFactory.create(\"spinner-ac-list\")}return n.prototype.loadEvaluationCriteriaList=function(n){var t=this;(!t.isListLoaded||n)&&(t.spin.isLoading=t.isLoading=!0,t.api.COMMON."
+    },
+    {
+      "term": "n.prototype.POST=function(n,t)",
+      "offset": 1421,
+      "snippet": "n.prototype.POST=function(n,t){var i={url:n,method:\"POST\",data:t},r=this.$http(i);return r.then(this.handleSuccess,this.handleError)},n.prototype.PUT=function(n,t){var i={url:n,method:\"PUT\",data:t},r=this.$http(i);return r.then(this.handleSuccess,this.handleError)},n.prototype.DELETE=function(n,t){var i={url:n,method:\"DELETE\",data:t},r=this.$http(i);return r.then(this.handleSuccess,this.handleError)},n.prototype.GET_WITH_HEADERS=function(n,t,i,r){var u={url:n,method:\"GET\",params:t,data:i,headers:r},f=this.$http(u);return f.then(this.handleSuccess,this.handleError)},n.prototype.DOWNLOAD=function(n,t,i){var r={url:n,method:\"POST\",data:t,params:"
+    },
+    {
+      "term": "n.prototype.DOWNLOAD_GET=function(n,t,i)",
+      "offset": 2412,
+      "snippet": "n.prototype.DOWNLOAD_GET=function(n,t,i){var r={url:n,method:\"GET\",data:t,params:i,responseType:\"arraybuffer\"},u=this.$http(r);return u.then(this.handleDownload,this.handleError)},n.prototype.handleDownload=function(n){if(n.status!=204){var t=n.headers(\"Content-Disposition\").replace(\"attachment; filename=\",\"\").replace(/\"/g,\"\"),i=new Blob([n.data],{type:\"application/octet-stream\"});saveAs(i,t)}},n}();n.HttpApi=o;s=function(){function n(n){this.data=n.data;this.messages=n.statusText.split(\",\")}return n}();n.GenericResponse=s;h=function(){function n(){}return n.createCookie=function(n,t,i){var r,u;i?(r=new Date,r.setTime(r.getTime()+i*864e5),u=\""
+    }
+  ],
+  "interpretation": "onDownload directive performs verifyFile POST with no explicit data argument, then DOWNLOAD_GET with arraybuffer response on POST resolution. Sequence matches user observation; server-side effects/session requirement and causal role in previous500unknown. No additional live requests."
+}

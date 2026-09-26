@@ -120,9 +120,10 @@ export default async function HartaPage({
       </div>
 
       <p className="note">
-        Instantaneu 2020. {coverage.toFixed(0)}% din valoare este localizată într-un județ
-        cartografiabil; restul are județ nestandardizat sau străin. Geometrie: GADM
-        (necomercial) — de înlocuit cu Natural Earth.
+        {coverage.toFixed(0)}% din valoarea entităților cu rolul selectat este localizată într-un județ
+        cartografiabil; restul are județ necunoscut, nestandardizat sau străin. Județul este cel al sediului
+        {role === "authority" ? " autorității" : " furnizorului"}, nu neapărat locul executării contractului.{" "}
+        <Link href="/metodologie#acoperire">Vezi perioada și acoperirea datelor ↗</Link>
       </p>
     </>
   );

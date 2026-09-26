@@ -1,0 +1,18 @@
+[
+  {
+    "check": "mobile-list-focus-restored",
+    "passed": true
+  },
+  {
+    "check": "slow-restore-cancelled-by-new-choice",
+    "passed": true
+  },
+  {
+    "check": "real-profile-entry",
+    "passed": true
+  },
+  {
+    "check": "runtime-errors",
+    "errors": []
+  }
+]

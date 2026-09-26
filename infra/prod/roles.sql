@@ -23,3 +23,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE seap IN SCHEMA auth, app GRANT SELECT, INSERT,
 ALTER ROLE seap_web SET statement_timeout = '30s';
 ALTER ROLE seap_web SET idle_in_transaction_session_timeout = '30s';
 ALTER ROLE seap_web SET search_path = public;
+
+-- Durable document request counters created by later migrations.
+ALTER DEFAULT PRIVILEGES FOR ROLE seap IN SCHEMA app GRANT USAGE, SELECT ON SEQUENCES TO seap_web;

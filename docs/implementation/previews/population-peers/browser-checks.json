@@ -1,0 +1,154 @@
+{
+  "fixture": true,
+  "procurement": "fictional",
+  "population": "official INS RPL2021",
+  "checkedAt": "2026-09-26T14:22:01.340Z",
+  "status": "passed",
+  "checks": [
+    {
+      "check": "automatic_population_roster",
+      "members": 10,
+      "observed": 9,
+      "population": 103481,
+      "passed": true
+    },
+    {
+      "screen": "population-desktop",
+      "width": 1440,
+      "scroll": 1440,
+      "height": 3034,
+      "viewportOnly": false,
+      "screenshotWidth": 1440,
+      "screenshotHeight": 3034,
+      "overflow": false
+    },
+    {
+      "check": "individual_sources_and_empty_member",
+      "focalRows": 7,
+      "emptyMember": "887850010",
+      "originalLinks": true,
+      "passed": true
+    },
+    {
+      "screen": "population-editor-desktop",
+      "width": 1440,
+      "scroll": 1440,
+      "height": 3635,
+      "viewportOnly": false,
+      "screenshotWidth": 1440,
+      "screenshotHeight": 3635,
+      "overflow": false
+    },
+    {
+      "check": "manual_add_remove_and_dirty_year",
+      "members": 11,
+      "appliedYear": 2024,
+      "missingPopulation": "887850012",
+      "commune": "887850011",
+      "removed": "887850001",
+      "passed": true
+    },
+    {
+      "screen": "population-manual-desktop",
+      "width": 1440,
+      "scroll": 1440,
+      "height": 3152,
+      "viewportOnly": false,
+      "screenshotWidth": 1440,
+      "screenshotHeight": 3152,
+      "overflow": false
+    },
+    {
+      "check": "copied_manual_url_restore",
+      "members": 11,
+      "checkpoint": true,
+      "catalog": true,
+      "passed": true
+    },
+    {
+      "check": "reset_suggestions",
+      "members": 10,
+      "passed": true
+    },
+    {
+      "screen": "population-sources-desktop",
+      "width": 1440,
+      "scroll": 1440,
+      "height": 3152,
+      "viewportOnly": true,
+      "screenshotWidth": 1440,
+      "screenshotHeight": 960,
+      "overflow": false
+    },
+    {
+      "check": "full_manual_sources_and_csv",
+      "rows": 47,
+      "totalExact": "1153000.0144",
+      "originalLinks": true,
+      "passed": true
+    },
+    {
+      "check": "private_v2_capture_full_roster",
+      "members": 11,
+      "rows": 47,
+      "totalExact": "1153000.0144",
+      "zeroAndUnknownPreserved": true,
+      "passed": true
+    },
+    {
+      "screen": "population-case-desktop",
+      "width": 1440,
+      "scroll": 1440,
+      "height": 1903,
+      "viewportOnly": false,
+      "screenshotWidth": 1440,
+      "screenshotHeight": 1903,
+      "overflow": false
+    },
+    {
+      "screen": "population-mobile",
+      "width": 390,
+      "scroll": 390,
+      "height": 4913,
+      "viewportOnly": false,
+      "screenshotWidth": 390,
+      "screenshotHeight": 4913,
+      "overflow": false
+    },
+    {
+      "screen": "population-editor-mobile",
+      "width": 390,
+      "scroll": 390,
+      "height": 5849,
+      "viewportOnly": true,
+      "screenshotWidth": 390,
+      "screenshotHeight": 844,
+      "overflow": false
+    },
+    {
+      "screen": "population-mobile-dark",
+      "width": 390,
+      "scroll": 390,
+      "height": 4913,
+      "viewportOnly": false,
+      "screenshotWidth": 390,
+      "screenshotHeight": 4913,
+      "overflow": false
+    },
+    {
+      "screen": "population-sources-mobile",
+      "width": 390,
+      "scroll": 390,
+      "height": 4913,
+      "viewportOnly": true,
+      "screenshotWidth": 390,
+      "screenshotHeight": 844,
+      "overflow": false
+    },
+    {
+      "check": "reduced_motion",
+      "enabled": true
+    }
+  ],
+  "errors": []
+}

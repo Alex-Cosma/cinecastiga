@@ -1,0 +1,955 @@
+{
+  "checkedAt": "2026-09-19T17:29:34.571Z",
+  "database": "local seap",
+  "readOnly": true,
+  "statementTimeoutSeconds": 30,
+  "productionStatementsTimeoutSeconds": 20,
+  "sourceRowsPerCase": 20,
+  "limits": [
+    "Bounded runtime smoke, not exhaustive numerical or UI acceptance.",
+    "Each renderer uses an explicit authority/supplier or a county-limited historical cohort.",
+    "Historical scatter/distribution sources are restricted to one actual displayed/focal entity; no full population source scans.",
+    "No capture jobs, database writes, authentication actions or frozen bundles are exercised."
+  ],
+  "checks": [
+    {
+      "case": "table",
+      "status": "pass",
+      "elapsedMs": 39,
+      "spec": {
+        "block": "table",
+        "measure": "value",
+        "filters": {
+          "authorityId": 1965746,
+          "yearFrom": 2019,
+          "yearTo": 2020
+        },
+        "dataset": "da",
+        "dim": "supplier",
+        "topN": 10
+      },
+      "evidenceScope": null,
+      "renderer": "table",
+      "renderDataKeys": [
+        "block",
+        "rows"
+      ],
+      "answerMs": 28,
+      "sourceTotal": 9,
+      "sourceValue": "346322.00",
+      "returnedRows": 9,
+      "returnedExactSum": "346322.00",
+      "fullSourcePopulationReturned": true,
+      "profile": false,
+      "profileReconciled": null,
+      "sourceIds": [
+        {
+          "stream": "da",
+          "id": "107018981",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107018981"
+        },
+        {
+          "stream": "da",
+          "id": "107074184",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107074184"
+        },
+        {
+          "stream": "da",
+          "id": "107027819",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107027819"
+        }
+      ],
+      "scopeNotes": [
+        "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+        "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
+        "Lista surselor acoperă întregul rezultat filtrat; limita de poziții din clasament sau diagramă nu limitează sursele."
+      ]
+    },
+    {
+      "case": "stat",
+      "status": "pass",
+      "elapsedMs": 6,
+      "spec": {
+        "block": "stat",
+        "measure": "value",
+        "filters": {
+          "authorityId": 1965746,
+          "yearFrom": 2019,
+          "yearTo": 2020
+        },
+        "dataset": "da"
+      },
+      "evidenceScope": null,
+      "renderer": "stat",
+      "renderDataKeys": [
+        "block",
+        "stat"
+      ],
+      "answerMs": 2,
+      "sourceTotal": 9,
+      "sourceValue": "346322.00",
+      "returnedRows": 9,
+      "returnedExactSum": "346322.00",
+      "fullSourcePopulationReturned": true,
+      "profile": false,
+      "profileReconciled": null,
+      "sourceIds": [
+        {
+          "stream": "da",
+          "id": "107018981",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107018981"
+        },
+        {
+          "stream": "da",
+          "id": "107074184",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107074184"
+        },
+        {
+          "stream": "da",
+          "id": "107027819",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107027819"
+        }
+      ],
+      "scopeNotes": [
+        "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+        "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns."
+      ]
+    },
+    {
+      "case": "timeseries",
+      "status": "pass",
+      "elapsedMs": 4,
+      "spec": {
+        "block": "timeseries",
+        "measure": "value",
+        "filters": {
+          "authorityId": 1965746,
+          "yearFrom": 2019,
+          "yearTo": 2020
+        },
+        "dataset": "da"
+      },
+      "evidenceScope": null,
+      "renderer": "timeseries",
+      "renderDataKeys": [
+        "block",
+        "series"
+      ],
+      "answerMs": 1,
+      "sourceTotal": 9,
+      "sourceValue": "346322.00",
+      "returnedRows": 9,
+      "returnedExactSum": "346322.00",
+      "fullSourcePopulationReturned": true,
+      "profile": false,
+      "profileReconciled": null,
+      "sourceIds": [
+        {
+          "stream": "da",
+          "id": "107018981",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107018981"
+        },
+        {
+          "stream": "da",
+          "id": "107074184",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107074184"
+        },
+        {
+          "stream": "da",
+          "id": "107027819",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107027819"
+        }
+      ],
+      "scopeNotes": [
+        "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+        "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns."
+      ]
+    },
+    {
+      "case": "map",
+      "status": "pass",
+      "elapsedMs": 4,
+      "spec": {
+        "block": "map",
+        "measure": "value",
+        "filters": {
+          "authorityId": 1965746,
+          "yearFrom": 2019,
+          "yearTo": 2020
+        },
+        "dataset": "da"
+      },
+      "evidenceScope": null,
+      "renderer": "map",
+      "renderDataKeys": [
+        "block",
+        "counties"
+      ],
+      "answerMs": 1,
+      "sourceTotal": 9,
+      "sourceValue": "346322.00",
+      "returnedRows": 9,
+      "returnedExactSum": "346322.00",
+      "fullSourcePopulationReturned": true,
+      "profile": false,
+      "profileReconciled": null,
+      "sourceIds": [
+        {
+          "stream": "da",
+          "id": "107018981",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107018981"
+        },
+        {
+          "stream": "da",
+          "id": "107074184",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107074184"
+        },
+        {
+          "stream": "da",
+          "id": "107027819",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107027819"
+        }
+      ],
+      "scopeNotes": [
+        "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+        "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns."
+      ]
+    },
+    {
+      "case": "compare",
+      "status": "pass",
+      "elapsedMs": 5,
+      "spec": {
+        "block": "compare",
+        "measure": "value",
+        "filters": {
+          "authorityId": 1965746,
+          "compareWithId": 2144364,
+          "yearFrom": 2019,
+          "yearTo": 2020
+        },
+        "dataset": "da",
+        "comparisonMode": "transactions"
+      },
+      "evidenceScope": null,
+      "renderer": "compare",
+      "renderDataKeys": [
+        "block",
+        "entities"
+      ],
+      "answerMs": 1,
+      "sourceTotal": 123,
+      "sourceValue": "8352886.88",
+      "returnedRows": 20,
+      "returnedExactSum": "4125498.51",
+      "fullSourcePopulationReturned": false,
+      "profile": false,
+      "profileReconciled": null,
+      "sourceIds": [
+        {
+          "stream": "da",
+          "id": "106101605",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/106101605"
+        },
+        {
+          "stream": "da",
+          "id": "105831510",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/105831510"
+        },
+        {
+          "stream": "da",
+          "id": "105825327",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/105825327"
+        }
+      ],
+      "scopeNotes": [
+        "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+        "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns."
+      ]
+    },
+    {
+      "case": "distribution",
+      "status": "pass",
+      "elapsedMs": 31,
+      "spec": {
+        "block": "distribution",
+        "measure": "value",
+        "filters": {
+          "county": "Bihor",
+          "authorityId": 1965746
+        }
+      },
+      "evidenceScope": {
+        "role": "authority",
+        "entityIds": [
+          "1965746"
+        ]
+      },
+      "renderer": "distribution",
+      "renderDataKeys": [
+        "block",
+        "distribution"
+      ],
+      "answerMs": 20,
+      "sourceTotal": 9,
+      "sourceValue": "346322.00",
+      "returnedRows": 9,
+      "returnedExactSum": "346322.00",
+      "fullSourcePopulationReturned": true,
+      "profile": true,
+      "profileReconciled": true,
+      "sourceIds": [
+        {
+          "stream": "da",
+          "id": "107018981",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107018981"
+        },
+        {
+          "stream": "da",
+          "id": "107074184",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107074184"
+        },
+        {
+          "stream": "da",
+          "id": "107027819",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107027819"
+        }
+      ],
+      "scopeNotes": [
+        "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
+        "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă."
+      ]
+    },
+    {
+      "case": "breakdown",
+      "status": "pass",
+      "elapsedMs": 7,
+      "spec": {
+        "block": "breakdown",
+        "measure": "value",
+        "filters": {
+          "authorityId": 1965746,
+          "yearFrom": 2019,
+          "yearTo": 2020
+        },
+        "dataset": "da"
+      },
+      "evidenceScope": null,
+      "renderer": "breakdown",
+      "renderDataKeys": [
+        "block",
+        "slices",
+        "other"
+      ],
+      "answerMs": 4,
+      "sourceTotal": 9,
+      "sourceValue": "346322.00",
+      "returnedRows": 9,
+      "returnedExactSum": "346322.00",
+      "fullSourcePopulationReturned": true,
+      "profile": false,
+      "profileReconciled": null,
+      "sourceIds": [
+        {
+          "stream": "da",
+          "id": "107018981",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107018981"
+        },
+        {
+          "stream": "da",
+          "id": "107074184",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107074184"
+        },
+        {
+          "stream": "da",
+          "id": "107027819",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107027819"
+        }
+      ],
+      "scopeNotes": [
+        "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+        "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns."
+      ]
+    },
+    {
+      "case": "scatter",
+      "status": "pass",
+      "elapsedMs": 87,
+      "spec": {
+        "block": "scatter",
+        "measure": "value",
+        "filters": {
+          "county": "Covasna",
+          "authorityKind": "comuna"
+        },
+        "dim": "authority"
+      },
+      "evidenceScope": {
+        "role": "authority",
+        "entityIds": [
+          "2141941"
+        ]
+      },
+      "renderer": "scatter",
+      "renderDataKeys": [
+        "block",
+        "points",
+        "density"
+      ],
+      "answerMs": 78,
+      "sourceTotal": 199,
+      "sourceValue": "6420834.53",
+      "returnedRows": 20,
+      "returnedExactSum": "4850381.05",
+      "fullSourcePopulationReturned": false,
+      "profile": true,
+      "profileReconciled": true,
+      "sourceIds": [
+        {
+          "stream": "da",
+          "id": "122261046",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/122261046"
+        },
+        {
+          "stream": "da",
+          "id": "117219568",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/117219568"
+        },
+        {
+          "stream": "da",
+          "id": "119073098",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/119073098"
+        }
+      ],
+      "scopeNotes": [
+        "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
+        "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă."
+      ]
+    },
+    {
+      "case": "sankey",
+      "status": "pass",
+      "elapsedMs": 6,
+      "spec": {
+        "block": "sankey",
+        "measure": "value",
+        "filters": {
+          "authorityId": 1965746,
+          "yearFrom": 2019,
+          "yearTo": 2020
+        },
+        "dataset": "da"
+      },
+      "evidenceScope": null,
+      "renderer": "sankey",
+      "renderDataKeys": [
+        "block",
+        "flows",
+        "focal"
+      ],
+      "answerMs": 2,
+      "sourceTotal": 9,
+      "sourceValue": "346322.00",
+      "returnedRows": 9,
+      "returnedExactSum": "346322.00",
+      "fullSourcePopulationReturned": true,
+      "profile": false,
+      "profileReconciled": null,
+      "sourceIds": [
+        {
+          "stream": "da",
+          "id": "107018981",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107018981"
+        },
+        {
+          "stream": "da",
+          "id": "107074184",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107074184"
+        },
+        {
+          "stream": "da",
+          "id": "107027819",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107027819"
+        }
+      ],
+      "scopeNotes": [
+        "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+        "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns."
+      ]
+    },
+    {
+      "case": "network",
+      "status": "pass",
+      "elapsedMs": 4,
+      "spec": {
+        "block": "network",
+        "measure": "value",
+        "filters": {
+          "authorityId": 1965746,
+          "yearFrom": 2019,
+          "yearTo": 2020
+        },
+        "dataset": "da"
+      },
+      "evidenceScope": null,
+      "renderer": "network",
+      "renderDataKeys": [
+        "block",
+        "nodes",
+        "focal"
+      ],
+      "answerMs": 1,
+      "sourceTotal": 9,
+      "sourceValue": "346322.00",
+      "returnedRows": 9,
+      "returnedExactSum": "346322.00",
+      "fullSourcePopulationReturned": true,
+      "profile": false,
+      "profileReconciled": null,
+      "sourceIds": [
+        {
+          "stream": "da",
+          "id": "107018981",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107018981"
+        },
+        {
+          "stream": "da",
+          "id": "107074184",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107074184"
+        },
+        {
+          "stream": "da",
+          "id": "107027819",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107027819"
+        }
+      ],
+      "scopeNotes": [
+        "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+        "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
+        "Lista surselor acoperă întregul rezultat filtrat; limita de poziții din clasament sau diagramă nu limitează sursele."
+      ]
+    },
+    {
+      "case": "entity_card",
+      "status": "pass",
+      "elapsedMs": 86,
+      "spec": {
+        "block": "entity_card",
+        "measure": "value",
+        "filters": {
+          "county": "Covasna",
+          "authorityKind": "comuna"
+        },
+        "dim": "authority",
+        "rankBy": "risk"
+      },
+      "evidenceScope": null,
+      "renderer": "entity_card",
+      "renderDataKeys": [
+        "block",
+        "card"
+      ],
+      "answerMs": 15,
+      "sourceTotal": 199,
+      "sourceValue": "6420834.53",
+      "returnedRows": 20,
+      "returnedExactSum": "4850381.05",
+      "fullSourcePopulationReturned": false,
+      "profile": true,
+      "profileReconciled": true,
+      "sourceIds": [
+        {
+          "stream": "da",
+          "id": "122261046",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/122261046"
+        },
+        {
+          "stream": "da",
+          "id": "117219568",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/117219568"
+        },
+        {
+          "stream": "da",
+          "id": "119073098",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/119073098"
+        }
+      ],
+      "scopeNotes": [
+        "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
+        "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă."
+      ]
+    },
+    {
+      "case": "fact_check",
+      "status": "pass",
+      "elapsedMs": 6,
+      "spec": {
+        "block": "fact_check",
+        "measure": "value",
+        "filters": {
+          "authorityId": 1965746,
+          "supplierId": 1966268,
+          "yearFrom": 2019,
+          "yearTo": 2020
+        },
+        "dataset": "da"
+      },
+      "evidenceScope": null,
+      "renderer": "fact_check",
+      "renderDataKeys": [
+        "block",
+        "fact"
+      ],
+      "answerMs": 2,
+      "sourceTotal": 3,
+      "sourceValue": "140821.00",
+      "returnedRows": 3,
+      "returnedExactSum": "140821.00",
+      "fullSourcePopulationReturned": true,
+      "profile": false,
+      "profileReconciled": null,
+      "sourceIds": [
+        {
+          "stream": "da",
+          "id": "107027819",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107027819"
+        },
+        {
+          "stream": "da",
+          "id": "107075182",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107075182"
+        },
+        {
+          "stream": "da",
+          "id": "107503369",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107503369"
+        }
+      ],
+      "scopeNotes": [
+        "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+        "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns."
+      ]
+    },
+    {
+      "case": "trend",
+      "status": "pass",
+      "elapsedMs": 4,
+      "spec": {
+        "block": "trend",
+        "measure": "value",
+        "filters": {
+          "authorityId": 1965746,
+          "yearFrom": 2019,
+          "yearTo": 2020
+        },
+        "dataset": "da",
+        "dim": "supplier",
+        "topN": 10
+      },
+      "evidenceScope": null,
+      "renderer": "trend",
+      "renderDataKeys": [
+        "block",
+        "yearA",
+        "yearB",
+        "rowsTrend"
+      ],
+      "answerMs": 2,
+      "sourceTotal": 9,
+      "sourceValue": "346322.00",
+      "returnedRows": 9,
+      "returnedExactSum": "346322.00",
+      "fullSourcePopulationReturned": true,
+      "profile": false,
+      "profileReconciled": null,
+      "sourceIds": [
+        {
+          "stream": "da",
+          "id": "107018981",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107018981"
+        },
+        {
+          "stream": "da",
+          "id": "107074184",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107074184"
+        },
+        {
+          "stream": "da",
+          "id": "107027819",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107027819"
+        }
+      ],
+      "scopeNotes": [
+        "Schimbare între 2019 și 2020: sursele includ numai cei doi ani; diferența este totalul final minus totalul inițial.",
+        "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+        "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
+        "Lista surselor acoperă întregul rezultat filtrat; limita de poziții din clasament sau diagramă nu limitează sursele."
+      ]
+    },
+    {
+      "case": "stat-all-streams",
+      "status": "pass",
+      "elapsedMs": 8,
+      "spec": {
+        "block": "stat",
+        "measure": "value",
+        "filters": {
+          "authorityId": 1965746,
+          "yearFrom": 2019,
+          "yearTo": 2020
+        }
+      },
+      "evidenceScope": null,
+      "renderer": "stat",
+      "renderDataKeys": [
+        "block",
+        "stat"
+      ],
+      "answerMs": 3,
+      "sourceTotal": 9,
+      "sourceValue": "346322.00",
+      "returnedRows": 9,
+      "returnedExactSum": "346322.00",
+      "fullSourcePopulationReturned": true,
+      "profile": false,
+      "profileReconciled": null,
+      "sourceIds": [
+        {
+          "stream": "da",
+          "id": "107018981",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107018981"
+        },
+        {
+          "stream": "da",
+          "id": "107074184",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107074184"
+        },
+        {
+          "stream": "da",
+          "id": "107027819",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107027819"
+        }
+      ],
+      "scopeNotes": [
+        "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+        "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
+        "Un contract cu mai mulți câștigători apare pe câte un rând pentru fiecare furnizor, cu valoarea împărțită egal. Suma folosește aceste cote; numărul de rânduri nu este numărul de contracte distincte. Detaliile și exportul păstrează valoarea integrală și numărul câștigătorilor."
+      ]
+    },
+    {
+      "case": "stat-contracts",
+      "status": "pass",
+      "elapsedMs": 6,
+      "spec": {
+        "block": "stat",
+        "measure": "value",
+        "filters": {
+          "authorityId": 2144364
+        },
+        "dataset": "contracts"
+      },
+      "evidenceScope": null,
+      "renderer": "stat",
+      "renderDataKeys": [
+        "block",
+        "stat"
+      ],
+      "answerMs": 2,
+      "sourceTotal": 201,
+      "sourceValue": "1488754172.83",
+      "returnedRows": 20,
+      "returnedExactSum": "1098101303.09",
+      "fullSourcePopulationReturned": false,
+      "profile": false,
+      "profileReconciled": null,
+      "sourceIds": [
+        {
+          "stream": "contracts",
+          "id": "973945",
+          "seap": "https://e-licitatie.ro/pub/notices/ca-notices/view-c/100354377"
+        },
+        {
+          "stream": "contracts",
+          "id": "607956",
+          "seap": "https://e-licitatie.ro/pub/notices/ca-notices/view-c/100567230"
+        },
+        {
+          "stream": "contracts",
+          "id": "607956",
+          "seap": "https://e-licitatie.ro/pub/notices/ca-notices/view-c/100567230"
+        }
+      ],
+      "scopeNotes": [
+        "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+        "Un contract cu mai mulți câștigători apare pe câte un rând pentru fiecare furnizor, cu valoarea împărțită egal. Suma folosește aceste cote; numărul de rânduri nu este numărul de contracte distincte. Detaliile și exportul păstrează valoarea integrală și numărul câștigătorilor."
+      ]
+    },
+    {
+      "case": "stat-precise-population",
+      "status": "pass",
+      "elapsedMs": 9,
+      "spec": {
+        "block": "stat",
+        "measure": "value",
+        "filters": {
+          "authorityId": 1965746,
+          "yearFrom": 2019,
+          "yearTo": 2020
+        },
+        "dataset": "da",
+        "population": {
+          "operator": "or",
+          "groups": [
+            {
+              "operator": "and",
+              "conditions": [
+                {
+                  "field": "value",
+                  "op": "gte",
+                  "value": "10000"
+                }
+              ]
+            },
+            {
+              "operator": "and",
+              "conditions": [
+                {
+                  "field": "supplier",
+                  "op": "in",
+                  "values": [
+                    "1966268"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "minimumRecords": {
+          "role": "supplier",
+          "count": 2
+        }
+      },
+      "evidenceScope": null,
+      "renderer": "stat",
+      "renderDataKeys": [
+        "block",
+        "stat"
+      ],
+      "answerMs": 4,
+      "sourceTotal": 7,
+      "sourceValue": "309835.00",
+      "returnedRows": 7,
+      "returnedExactSum": "309835.00",
+      "fullSourcePopulationReturned": true,
+      "profile": false,
+      "profileReconciled": null,
+      "sourceIds": [
+        {
+          "stream": "da",
+          "id": "107018981",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107018981"
+        },
+        {
+          "stream": "da",
+          "id": "107074184",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107074184"
+        },
+        {
+          "stream": "da",
+          "id": "107027819",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/107027819"
+        }
+      ],
+      "scopeNotes": [
+        "Selecție precisă aplicată: (lei pe înregistrare ≥ 10000) SAU (firme includ 1966268).",
+        "Pragul de 2 înregistrări pentru firme se calculează înainte de selecția unui grup și filtrele locale ale surselor.",
+        "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+        "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns."
+      ]
+    },
+    {
+      "case": "compare-profiles",
+      "status": "pass",
+      "elapsedMs": 9,
+      "spec": {
+        "block": "compare",
+        "measure": "value",
+        "filters": {
+          "authorityId": 1965746,
+          "compareWithId": 2144364
+        },
+        "comparisonMode": "profiles"
+      },
+      "evidenceScope": null,
+      "renderer": "compare",
+      "renderDataKeys": [
+        "block",
+        "entities"
+      ],
+      "answerMs": 1,
+      "sourceTotal": 502,
+      "sourceValue": "64999527.84",
+      "returnedRows": 20,
+      "returnedExactSum": "13919087.71",
+      "fullSourcePopulationReturned": false,
+      "profile": true,
+      "profileReconciled": true,
+      "sourceIds": [
+        {
+          "stream": "da",
+          "id": "122170686",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/122170686"
+        },
+        {
+          "stream": "da",
+          "id": "120674181",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/120674181"
+        },
+        {
+          "stream": "da",
+          "id": "122039038",
+          "seap": "https://e-licitatie.ro/pub/direct-acquisition/view/122039038"
+        }
+      ],
+      "scopeNotes": [
+        "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
+        "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă."
+      ]
+    }
+  ],
+  "anchors": {
+    "entities": [
+      {
+        "id": "1965746",
+        "role": "authority",
+        "county": "Bihor",
+        "n_das": 9,
+        "total": "346322"
+      },
+      {
+        "id": "1966268",
+        "role": "supplier",
+        "county": "Bihor",
+        "n_das": 3,
+        "total": "140821"
+      },
+      {
+        "id": "2144364",
+        "role": "authority",
+        "county": "Buzau",
+        "n_das": 493,
+        "total": "64653205.84"
+      }
+    ],
+    "years": [
+      2020
+    ]
+  },
+  "summary": {
+    "renderers": 13,
+    "passedRendererTypes": 13,
+    "totalCases": 17,
+    "passedCases": 17,
+    "failedCases": 0
+  }
+}

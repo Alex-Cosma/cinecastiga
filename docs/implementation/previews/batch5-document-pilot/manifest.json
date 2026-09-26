@@ -1,0 +1,100 @@
+{
+  "scope": {
+    "institution": "MUNICIPIUL BUZAU",
+    "cui": "4233874",
+    "entityId": "2144364",
+    "authorizedByUser": "Only Municipiul Buzău; maximum10HTTP requests,15sinterval,no retries,1–2notices,max2PDFs",
+    "notices": [
+      {
+        "noticeNo": "SCN1168231",
+        "cNoticeId": "100231768",
+        "initNoticeId": "101254381",
+        "sysNoticeTypeId": 17,
+        "title": "Furnizarea prin închiriere si montare si demontare produse pentru iluminatul ornamental festiv din perioada sărbătorilor de iarnă  2025-2026 în municipiul Buzău.",
+        "rawId": 121928,
+        "rawHash": "611f76af73090bead92957cafb3ca90038e52fbf7e4a436cbdea75212d074a50",
+        "rawFetchedAt": "2026-07-14T18:24:11.443964+00:00"
+      },
+      {
+        "noticeNo": "SCN1167450",
+        "cNoticeId": "100230829",
+        "initNoticeId": "101245727",
+        "sysNoticeTypeId": 17,
+        "title": "Delegarea gestiunii serviciului de ecarisaj pentru colectarea, transportul și neutralizarea cadavrelor de animale de pe domeniul public” din Municipiul Buzău.",
+        "rawId": 129311,
+        "rawHash": "cb8e6315f7fdf53a9bc66d1a5e72d9a7473553915fab797e52ca741adea63cd4",
+        "rawFetchedAt": "2026-07-14T20:03:45.563338+00:00"
+      }
+    ]
+  },
+  "requests": [
+    {
+      "id": "notice-section1",
+      "institutionCui": "4233874",
+      "noticeId": "100231768",
+      "url": "https://e-licitatie.ro/api-pub/NoticeCommon/GetSection1View/?initNoticeId=101254381&sysNoticeTypeId=17",
+      "kind": "json",
+      "referer": "https://e-licitatie.ro/pub/notices/c-notice/v2/view/100231768",
+      "provenance": "Endpoint family locally documented in apps/ingestion/.specd/tasks/bronze-layer/RESEARCH.md:138; identifiers and authority matched to archived raw121928. Section1is a bounded initial metadata discovery request, not a presumed PDF endpoint."
+    },
+    {
+      "id": "notice-page",
+      "institutionCui": "4233874",
+      "noticeId": "100231768",
+      "url": "https://e-licitatie.ro/pub/notices/c-notice/v2/view/100231768",
+      "kind": "html",
+      "provenance": "Official public notice route from apps/web/lib/elicitatie.ts noticeUrl(), keyed to archived cNoticeId100231768/CUI4233874. Previous section request returned API hasError=true/not-found, not an access block. Inspect page for document discovery metadata; no browser subresources loaded automatically."
+    },
+    {
+      "id": "public-app-code",
+      "institutionCui": "4233874",
+      "noticeId": "100231768",
+      "url": "https://e-licitatie.ro/app-pub?v=2ZdOATpOxegT7tvC-y6OKidVeGfX952wmoxhwBpi9xM1",
+      "kind": "javascript",
+      "provenance": "Exact script src of public app code from cached response02 SHA25657a5b149822d2c6327ff49d97fe92ee49d4b8abac8c5939443687aa57d42c4ad. Read once to identify documented document-list/download routes for selected notice; no script execution, analytics, browser or automatic asset requests."
+    },
+    {
+      "id": "notice-general-info",
+      "institutionCui": "4233874",
+      "noticeId": "100231768",
+      "url": "https://e-licitatie.ro/api-pub/comboPub/getNoticeGeneralInfo/?sysNoticeTypeId=17&noticeId=100231768",
+      "kind": "json",
+      "provenance": "Exact public ComboApi.getNoticeGeneralInfo route and parameter names in response03 app-pub SHA256aba183165fe874ba3f6362c8eb9ce3290bf8c244638e7384a515d575b7f2a821. Resolve selected public route notice identity before requesting document list."
+    },
+    {
+      "id": "notice-documents",
+      "institutionCui": "4233874",
+      "noticeId": "100231768",
+      "url": "https://e-licitatie.ro/api-pub/NoticeDocument/GetAll/",
+      "kind": "json",
+      "method": "POST",
+      "body": {
+        "sortProperty": "transmissionDate",
+        "pageSize": 5,
+        "pageIndex": 0,
+        "initNoticeId": 100231768,
+        "sysNoticeTypeId": 17,
+        "procedureId": null,
+        "sysNoticeDocumentState": null,
+        "sysNoticeDocumentType": null,
+        "sysValidationDocType": null,
+        "noticeDocumentPostDateFrom": null,
+        "noticeDocumentPostDateTo": null,
+        "sortProperties": null,
+        "sadId": null
+      },
+      "provenance": "Public NoticeDocumentApi.Common.getAll POST route and exact controller filter shape in cached response03. Read-only list operation, no add/edit endpoints. Type17 route cNoticeId100231768 is confirmed by response04 mapping to archived noticeId101254381 and matching procurement title/DF1255997."
+    },
+    {
+      "id": "first-pdf",
+      "institutionCui": "4233874",
+      "noticeId": "100231768",
+      "url": "https://e-licitatie.ro/api-pub/files/noticedoc/a26b2dc863ee4b2ab784a77dc760d9d4",
+      "kind": "pdf",
+      "sourceFilename": "HC-127-2025.pdf",
+      "documentCode": "SCN1168231/00054",
+      "documentId": 110778324,
+      "provenance": "Exact items[0].noticeDocumentUrl from response05 SHA2563df1571d5ad654db038f13bc0c7aef3f79fa89b40e586b91bbe46a942c5a57fd; published document SCN1168231/00054, documentId110778324, HC-127-2025.pdf. Notice code matches selected Buzău procurement."
+    }
+  ]
+}

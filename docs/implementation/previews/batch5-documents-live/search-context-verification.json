@@ -1,0 +1,10 @@
+{
+  "status": "passed",
+  "checks": [
+    "Cross-file ROMÂNIA results unchanged by document PLOIEȘTI search",
+    "Reader highlights document term",
+    "Opening a cross-file hit restores its term",
+    "Opening a document result restores the document term"
+  ],
+  "liveSeapRequests": 0
+}

@@ -1,0 +1,32 @@
+{
+  "status": "offline candidates only; no external requests",
+  "institution": {
+    "entityId": "2144364",
+    "cui": "4233874",
+    "name": "MUNICIPIUL BUZAU"
+  },
+  "records": [
+    {
+      "rawId": 16101858,
+      "endpoint": "ted-eforms:v1",
+      "seapReferences": [
+        {
+          "xmlPath": "/ContractAwardNotice/ContractingParty/BuyerProfileURI",
+          "url": "https://www.e-licitatie.ro",
+          "classification": "source-link, not verified attachment"
+        }
+      ]
+    },
+    {
+      "rawId": 16107496,
+      "endpoint": "ted-eforms:v1",
+      "seapReferences": [
+        {
+          "xmlPath": "/ContractAwardNotice/ContractingParty/BuyerProfileURI",
+          "url": "https://www.e-licitatie.ro",
+          "classification": "source-link, not verified attachment"
+        }
+      ]
+    }
+  ]
+}

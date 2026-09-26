@@ -1,0 +1,93 @@
+{
+  "checkedAt": "2026-09-19T19:34:12.650Z",
+  "fixture": true,
+  "checks": [
+    {
+      "screen": "inbox-desktop",
+      "width": 1440,
+      "scroll": 1440,
+      "height": 1318
+    },
+    {
+      "screen": "watch-desktop",
+      "width": 1440,
+      "scroll": 1440,
+      "height": 2577
+    },
+    {
+      "screen": "change-desktop",
+      "width": 1440,
+      "scroll": 1440,
+      "height": 3937
+    },
+    {
+      "screen": "change-saved-desktop",
+      "width": 1440,
+      "scroll": 1440,
+      "height": 4509
+    },
+    {
+      "screen": "case-evidence-desktop",
+      "width": 1440,
+      "scroll": 1440,
+      "height": 1383
+    },
+    {
+      "screen": "frozen-before-desktop",
+      "width": 1440,
+      "scroll": 1440,
+      "height": 1223
+    },
+    {
+      "screen": "setup-desktop",
+      "width": 1440,
+      "scroll": 1440,
+      "height": 1400
+    },
+    {
+      "screen": "reviewed-empty-mobile",
+      "width": 390,
+      "scroll": 390,
+      "height": 1847
+    },
+    {
+      "screen": "setup-mobile",
+      "width": 390,
+      "scroll": 390,
+      "height": 2038
+    },
+    {
+      "screen": "change-mobile",
+      "width": 390,
+      "scroll": 390,
+      "height": 5060
+    },
+    {
+      "screen": "failed-watch-mobile",
+      "width": 390,
+      "scroll": 390,
+      "height": 1636
+    },
+    {
+      "screen": "case-viewer-mobile",
+      "width": 390,
+      "scroll": 390,
+      "height": 1715
+    },
+    {
+      "screen": "confirm-email-mobile",
+      "width": 390,
+      "scroll": 390,
+      "height": 1084
+    }
+  ],
+  "pauseResume": true,
+  "unsavedPreferencesRetained": true,
+  "exactDecimals": true,
+  "caseBeforeAfter": true,
+  "taskCreated": true,
+  "reviewInbox": true,
+  "quietBaseline": true,
+  "privateWatchDeniedToCaseViewer": true,
+  "errors": []
+}

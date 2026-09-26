@@ -1,0 +1,8 @@
+{
+  "verification": "read-only main-database runRows inside withConnectionEvidence checkpoint and identity snapshot",
+  "timingNote": "Local observed timings after indexed base-filter pushdown; not a performance guarantee.",
+  "direct": { "authorityId": "2144364", "supplierId": "2125746", "sourceCount": 12, "valueExact": "332110526.86", "milliseconds": 12 },
+  "sharedSupplier": { "authorityIds": ["2144364", "2136753"], "supplierId": "2125746", "sourceCount": 13, "valueExact": "466335665.81", "milliseconds": 10 },
+  "regression": { "connectionUnitTests": 4, "connectionPostgresTests": 6, "webTypecheck": "passed", "diffCheck": "passed" },
+  "mainProcurementWrites": false
+}

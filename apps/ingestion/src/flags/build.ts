@@ -1,23 +1,23 @@
 import type { DbSql } from "@seap/db";
+import { DA_CPV_TYPE_PATTERN } from "@seap/domain";
 import { METHODOLOGY_VERSION } from "./methodology.js";
+import { assertCeilingEras, daThresholdDateSql, daThresholdKeySql } from "./thresholds.js";
+import { confirmedSingleBidAwardsSql } from "./competition.js";
 
 /**
  * DA red-flag build (red-flags DEC-005). Truncate + recompute `core.flags` from
  * `core.direct_acquisitions`. Each rule is one SQL statement writing binary
  * flag instances with evidence. Legal ceilings come from `core.risk_thresholds`
- * (date-aware, DEC-006) joined PER ROW on the finalization date — art. 7(5)
- * changed twice (2016: 132.519 → iun. 2018: 135.060 → ian. 2023: 270.120 for
- * goods/services), so each DA is judged against the prag in force when it
- * closed. Statistical cutoffs are read from the same table with documented
- * fallbacks. DA acquisition type is inferred from CPV (division 45 = works)
- * since the imported DA rows carry no explicit type.
+ * (date-aware, DEC-006) joined per row on publication date, with finalization
+ * fallback disclosed in evidence. The shared canonical eras start 26 May 2016,
+ * 4 June 2018 and 10 September 2022. Acquisition type comes from the explicit
+ * source field, falling back to recognized CPV divisions only when absent.
+ * Closing values are a screening proxy; the legal test concerns estimated need.
  */
 const V = METHODOLOGY_VERSION;
 
 const DEFAULTS: Record<string, number> = {
-  // A DA is legally capped near the works ceiling (441.730); closing values far
-  // above are corrupt source data (~275 rows carry billions). Exclude them from
-  // every rule so one garbage row can't dominate a concentration total.
+  // Analytical plausibility cutoff, distinct from the date-aware legal limits.
   da_max_plausible: 2_000_000,
   da_rapid_hours: 1,
   da_conc_top_pct: 0.6,
@@ -75,30 +75,30 @@ async function num(sql: DbSql, key: string, fallback: number): Promise<number> {
   return rows[0] ? Number(rows[0].value_num) : fallback;
 }
 
-/** The ceiling eras must be seeded (join-based rules silently drop rows otherwise). */
-async function assertCeilingEras(sql: DbSql): Promise<number> {
-  const rows = (await sql`
-    select count(*)::int c from core.risk_thresholds
-    where key in ('da_ceiling_goods_services', 'da_ceiling_works')
-  `) as unknown as { c: number }[];
-  const c = Number(rows[0]?.c ?? 0);
-  if (c < 2) {
-    throw new Error(
-      "core.risk_thresholds has no DA ceiling eras — run `pnpm --filter ingestion seed-thresholds` first",
-    );
-  }
-  return c;
-}
-
 export async function runFlags(
   sql: DbSql,
   opts: { log?: (m: string) => void } = {},
+): Promise<FlagsReport> {
+  // Validate and build on one connection. A failed rule must not publish a
+  // truncated or partly rebuilt flag population.
+  return sql.begin((tx) => buildFlags(tx as unknown as DbSql, opts));
+}
+
+async function buildFlags(
+  sql: DbSql,
+  opts: { log?: (m: string) => void },
 ): Promise<FlagsReport> {
   const log = opts.log ?? (() => {});
   const t = async (k: string) => num(sql, k, DEFAULTS[k]!);
 
   const ceilingEras = await assertCeilingEras(sql);
+  const daKey = daThresholdKeySql(sql, sql`da.cpv_code`, sql`da.acquisition_type`);
+  const daDate = daThresholdDateSql(sql, sql`da.publication_date`, sql`da.finalization_date`);
   const maxPlausible = await t("da_max_plausible");
+  const awMaxPlausible = await t("award_max_plausible");
+  if (maxPlausible !== 2_000_000 || awMaxPlausible !== 1_000_000_000) {
+    throw new Error("Plausibility bounds differ from the canonical transaction population; update all consumers together before rebuilding flags");
+  }
   const rapidHours = await t("da_rapid_hours");
   const concTopPct = await t("da_conc_top_pct");
   const concMinSup = await t("da_conc_min_suppliers");
@@ -129,7 +129,7 @@ export async function runFlags(
     where state = 'Oferta acceptata'
       and publication_date is not null and finalization_date is not null
       and finalization_date >= publication_date
-      and (closing_value is null or closing_value <= ${maxPlausible})
+      and closing_value > 0 and closing_value <= ${maxPlausible}
       and extract(epoch from (finalization_date - publication_date)) < ${rapidHours}::float8 * 3600
   `;
 
@@ -141,17 +141,20 @@ export async function runFlags(
     insert into core.flags (subject_type, subject_id, flag_code, period, triggered, severity, evidence, methodology_version)
     select 'da', id, 'da_round', to_char(finalization_date,'YYYY'), true,
       least(1, closing_value / ceil),
-      jsonb_build_object('closing', closing_value, 'ceiling', ceil, 'type', typ), ${V}
+      jsonb_build_object('closing', closing_value, 'ceiling', ceil, 'type', typ,
+        'threshold_date', threshold_date, 'date_basis', date_basis, 'type_basis', type_basis,
+        'threshold_law', threshold_law), ${V}
     from (
       select da.id, da.finalization_date, da.closing_value,
         th.value_num::numeric as ceil,
-        case when left(da.cpv_code,2) = '45' then 'lucrari' else 'produse/servicii' end as typ
+        th.key as typ, ${daDate} threshold_date, th.note threshold_law,
+        case when da.publication_date is null then 'finalization_fallback' else 'publication' end date_basis,
+        case when nullif(btrim(da.acquisition_type), '') is null then 'cpv_inference' else 'source_type' end type_basis
       from core.direct_acquisitions da
       join core.risk_thresholds th
-        on th.key = case when left(da.cpv_code,2) = '45'
-                         then 'da_ceiling_works' else 'da_ceiling_goods_services' end
-       and th.valid_from <= da.finalization_date
-       and (th.valid_to is null or th.valid_to > da.finalization_date)
+        on th.key = ${daKey}
+       and (th.valid_from at time zone 'UTC')::date <= ${daDate}
+       and (th.valid_to is null or (th.valid_to at time zone 'UTC')::date > ${daDate})
       where da.state = 'Oferta acceptata'
         and da.closing_value is not null and da.closing_value > 0
         and da.closing_value <= ${maxPlausible}
@@ -164,29 +167,36 @@ export async function runFlags(
   await sql`
     insert into core.flags (subject_type, subject_id, partner_id, flag_code, period, triggered, severity, evidence, methodology_version)
     with da as (
-      select d.authority_entity_id a, d.supplier_entity_id s,
-        extract(year from d.finalization_date)::int y, d.closing_value cv,
-        th.value_num::numeric ceil
-      from core.direct_acquisitions d
+      select da.authority_entity_id a, da.supplier_entity_id s, da.sicap_da_id,
+        extract(year from da.finalization_date)::int y, da.closing_value cv,
+        left(btrim(da.cpv_code), 4) cpv_class, th.key typ, th.value_num::numeric ceil,
+        da.publication_date is null date_fallback,
+        nullif(btrim(da.acquisition_type), '') is null type_inferred
+      from core.direct_acquisitions da
       join core.risk_thresholds th
-        on th.key = case when left(d.cpv_code,2) = '45'
-                         then 'da_ceiling_works' else 'da_ceiling_goods_services' end
-       and th.valid_from <= d.finalization_date
-       and (th.valid_to is null or th.valid_to > d.finalization_date)
-      where d.state = 'Oferta acceptata'
-        and d.authority_entity_id is not null and d.supplier_entity_id is not null
-        and d.closing_value is not null and d.closing_value > 0 and d.closing_value <= ${maxPlausible}
-        and d.finalization_date is not null
+        on th.key = ${daKey}
+       and (th.valid_from at time zone 'UTC')::date <= ${daDate}
+       and (th.valid_to is null or (th.valid_to at time zone 'UTC')::date > ${daDate})
+      where da.state = 'Oferta acceptata'
+        and da.authority_entity_id is not null and da.supplier_entity_id is not null
+        and da.closing_value > 0 and da.closing_value <= ${maxPlausible}
+        and da.finalization_date is not null
+        and btrim(da.cpv_code) ~ ${DA_CPV_TYPE_PATTERN}
     ),
     g as (
-      select a, s, y, count(*) n, sum(cv) total, max(ceil) ceil
+      select a, s, y, cpv_class, typ, count(*) n, sum(cv) total, max(ceil) ceil,
+        jsonb_agg(sicap_da_id::text order by sicap_da_id) source_ids,
+        count(*) filter (where date_fallback) date_fallback_count,
+        count(*) filter (where type_inferred) type_inferred_count
       from da where cv < ceil
-      group by a, s, y
+      group by a, s, y, cpv_class, typ
       having count(*) >= ${splitMinN} and sum(cv) > max(ceil)
     )
     select 'pair', a, s, 'da_split', y::text, true,
       least(1, (total / ceil) / 3),
-      jsonb_build_object('year', y, 'count', n, 'total', total, 'ceiling', ceil), ${V}
+      jsonb_build_object('year', y, 'count', n, 'total', total, 'ceiling', ceil,
+        'cpv_class', cpv_class, 'type', typ, 'source_ids', source_ids,
+        'date_fallback_count', date_fallback_count, 'type_inferred_count', type_inferred_count), ${V}
     from g
   `;
 
@@ -198,7 +208,7 @@ export async function runFlags(
       from core.direct_acquisitions
       where state = 'Oferta acceptata'
         and authority_entity_id is not null and supplier_entity_id is not null
-        and closing_value is not null and closing_value <= ${maxPlausible}
+        and closing_value > 0 and closing_value <= ${maxPlausible}
       group by a, s
     ),
     agg as (
@@ -223,7 +233,7 @@ export async function runFlags(
       from core.direct_acquisitions
       where state = 'Oferta acceptata'
         and authority_entity_id is not null and supplier_entity_id is not null
-        and closing_value is not null and closing_value <= ${maxPlausible}
+        and closing_value > 0 and closing_value <= ${maxPlausible}
       group by s, a
     ),
     agg as (
@@ -246,7 +256,7 @@ export async function runFlags(
         sum(case when extract(month from finalization_date) = 12 then closing_value else 0 end) dec
       from core.direct_acquisitions
       where state = 'Oferta acceptata'
-        and authority_entity_id is not null and closing_value is not null
+        and authority_entity_id is not null and closing_value > 0
         and closing_value <= ${maxPlausible} and finalization_date is not null
       group by a, y
     )
@@ -258,12 +268,10 @@ export async function runFlags(
     where tot >= ${yeMinTot} and dec/nullif(tot,0) >= ${yeShare}
   `;
 
-  // ══ Award (contract-award notice) flags ═══════════════════════════════════
-  // Live 2026 award stream (short window vs the 2018–2020 DA snapshot). Award
-  // value lives at notice level (ron_contract_value); contract-level value is
-  // absent, so concentration/dependence attribute the award value to its
-  // winner(s), split equally across a consortium.
-  const awMaxPlausible = await t("award_max_plausible");
+  // ══ Procedure flags ═══════════════════════════════════════════════════════
+  // The two notice-level rules retain their explicitly scoped notice evidence.
+  // Entity comparisons use canonical contract allocations, with framework
+  // deduplication and consortium rounding already applied by runMarts.
   const awSevRef = await t("award_sev_ref");
   const awMinValue = await t("award_min_value");
   const awSingleBidMin = await t("award_single_bid_min");
@@ -288,39 +296,27 @@ export async function runFlags(
       and ron_contract_value <= ${awMaxPlausible}::numeric
   `;
 
-  // ── award_single_bid: open procedure, single offer, high value (per award) ──
+  // One confirmed lot/contract is enough to flag the notice for review; it does
+  // not establish that every lot in the notice received one tender. Inherit the
+  // same vetted TED mapping as the query builder and preserve its source IDs.
   await sql`
     insert into core.flags (subject_type, subject_id, flag_code, period, triggered, severity, evidence, methodology_version)
-    select 'award', id, 'award_single_bid', to_char(state_date,'YYYY'), true,
-      least(1, ron_contract_value / ${awSevRef}::numeric),
-      jsonb_build_object('procedure', procedure_type, 'value', ron_contract_value,
-        'offer', lowest_offer_value, 'cpv', cpv_code), ${V}
-    from core.awards
-    where lowest_offer_value is not null and lowest_offer_value = highest_offer_value
-      and procedure_type in ('Licitatie deschisa','Licitatie deschisa accelerata','Licitatie restransa')
-      and ron_contract_value is not null
-      and ron_contract_value >= ${awSingleBidMin}::numeric
-      and ron_contract_value <= ${awMaxPlausible}::numeric
+    ${confirmedSingleBidAwardsSql(sql, { minValue: awSingleBidMin, maxValue: awMaxPlausible, severityReference: awSevRef })}
   `;
 
   // ── award_concentration: one winner captures an authority (per authority) ───
   await sql`
     insert into core.flags (subject_type, subject_id, flag_code, period, triggered, severity, evidence, methodology_version)
-    with aw as (
-      select a.id award_id, a.authority_entity_id auth, a.ron_contract_value val, cw.entity_id winner
-      from core.awards a
-      join core.contracts c on c.ca_notice_id = a.ca_notice_id
-      join core.contract_winners cw on cw.contract_id = c.id
-      where a.authority_entity_id is not null and a.ron_contract_value is not null
-        and a.ron_contract_value >= 0 and a.ron_contract_value <= ${awMaxPlausible}::numeric
-      group by a.id, a.authority_entity_id, a.ron_contract_value, cw.entity_id
+    with per as (
+      select authority_id auth, supplier_id winner, sum(closing_value) st
+      from marts.contract_transactions
+      where closing_value > 0 and authority_id is not null and supplier_id is not null
+      group by authority_id, supplier_id
     ),
-    sh as (select auth, winner, val / count(*) over (partition by award_id) share from aw),
-    per as (select auth, winner, sum(share) st from sh group by auth, winner),
     agg as (select auth, sum(st) total, count(*) nsup, max(st) top, sum(power(st,2)) sq from per group by auth)
     select 'authority', auth, 'award_concentration', 'all', true,
       least(1, top / nullif(total,0)),
-      jsonb_build_object('total', round(total), 'winners', nsup,
+      jsonb_build_object('total', total, 'winners', nsup,
         'top_winner_pct', round(top/nullif(total,0),4),
         'hhi', round(sq/nullif(power(total,2),0),4)), ${V}
     from agg
@@ -331,21 +327,16 @@ export async function runFlags(
   // ── award_dependence: winner lives off one authority, but active (per supplier)
   await sql`
     insert into core.flags (subject_type, subject_id, flag_code, period, triggered, severity, evidence, methodology_version)
-    with aw as (
-      select a.id award_id, a.authority_entity_id auth, a.ron_contract_value val, cw.entity_id winner
-      from core.awards a
-      join core.contracts c on c.ca_notice_id = a.ca_notice_id
-      join core.contract_winners cw on cw.contract_id = c.id
-      where a.authority_entity_id is not null and a.ron_contract_value is not null
-        and a.ron_contract_value >= 0 and a.ron_contract_value <= ${awMaxPlausible}::numeric
-      group by a.id, a.authority_entity_id, a.ron_contract_value, cw.entity_id
+    with per as (
+      select supplier_id winner, authority_id auth, sum(closing_value) st
+      from marts.contract_transactions
+      where closing_value > 0 and authority_id is not null and supplier_id is not null
+      group by supplier_id, authority_id
     ),
-    sh as (select winner, auth, val / count(*) over (partition by award_id) share from aw),
-    per as (select winner, auth, sum(share) st from sh group by winner, auth),
     agg as (select winner, sum(st) total, count(*) nauth, max(st) top from per group by winner)
     select 'supplier', winner, 'award_dependence', 'all', true,
       least(1, top / nullif(total,0)),
-      jsonb_build_object('total', round(total), 'authorities', nauth,
+      jsonb_build_object('total', total, 'authorities', nauth,
         'top_authority_pct', round(top/nullif(total,0),4)), ${V}
     from agg
     where total >= ${awDepMinTot}::numeric and nauth >= ${awDepMinAuth}::int
@@ -360,9 +351,9 @@ export async function runFlags(
   const finRelMinPublic = await t("fin_reliance_min_public");
   const finRelMinTurnover = await t("fin_reliance_min_turnover");
 
-  // Public value per supplier-YEAR: DA actuals + award value split equally
-  // across the distinct winners of each award (same convention as
-  // award_dependence). Only years where a bilanț filing exists can match.
+  // Recorded commitments per supplier and contract/DA year. Contract shares
+  // come from the same source population as entity totals. Only years with a
+  // matching balance-sheet filing enter a financial comparison.
   const pubYearCte = sql`
     pub as (
       select supplier_entity_id eid, extract(year from finalization_date)::int y,
@@ -374,20 +365,10 @@ export async function runFlags(
         and closing_value <= ${maxPlausible}::numeric
       group by 1, 2
       union all
-      select winner, y, sum(share) from (
-        select aw.winner, aw.y, aw.val / count(*) over (partition by aw.award_id) share
-        from (
-          select a.id award_id, extract(year from a.state_date)::int y,
-                 a.ron_contract_value val, cw.entity_id winner
-          from core.awards a
-          join core.contracts c on c.ca_notice_id = a.ca_notice_id
-          join core.contract_winners cw on cw.contract_id = c.id
-          where a.state_date is not null and a.ron_contract_value is not null
-            and a.ron_contract_value > 0
-            and a.ron_contract_value <= ${awMaxPlausible}::numeric
-          group by a.id, y, a.ron_contract_value, cw.entity_id
-        ) aw
-      ) sh group by 1, 2
+      select supplier_id, left(finalization_date, 4)::int, sum(closing_value)
+      from marts.contract_transactions
+      where closing_value > 0 and supplier_id is not null and finalization_date is not null
+      group by 1, 2
     ),
     tot as (select eid, y, sum(val) val from pub group by 1, 2),
     fin as (
@@ -403,7 +384,7 @@ export async function runFlags(
     with ${pubYearCte}
     select 'supplier', t.eid, 'fin_tiny_staff', t.y::text, true,
       least(1, t.val / ${finTinySevRef}::numeric),
-      jsonb_build_object('year', t.y, 'employees', f.employees, 'total', round(t.val),
+      jsonb_build_object('year', t.y, 'employees', f.employees, 'total', t.val,
         'per_employee', round(t.val / greatest(f.employees, 1))), ${V}
     from tot t
     join fin f on f.eid = t.eid and f.y = t.y
@@ -426,7 +407,7 @@ export async function runFlags(
     )
     select 'supplier', eid, 'fin_public_reliance', 'all', true,
       least(1, pub_total / nullif(rev_total, 0)),
-      jsonb_build_object('public_total', round(pub_total), 'revenue_total', round(rev_total),
+      jsonb_build_object('public_total', pub_total, 'revenue_total', rev_total,
         'ratio', round(pub_total / nullif(rev_total, 0), 4), 'years', yrs), ${V}
     from rel
     where rev_total >= ${finRelMinTurnover}::numeric
@@ -450,7 +431,7 @@ export async function runFlags(
       group by r.person_key, e.id
     ),
     pair as (
-      -- money per (supplier, authority): DAs + award values split per winner
+      -- recorded value per (supplier, authority): DAs + canonical contract shares
       select supplier_entity_id sid, authority_entity_id aid, sum(closing_value) v
       from core.direct_acquisitions
       where state = 'Oferta acceptata'
@@ -458,15 +439,10 @@ export async function runFlags(
         and closing_value > 0 and closing_value <= ${maxPlausible}::numeric
       group by 1, 2
       union all
-      select sh.winner, sh.aid, sum(sh.share) from (
-        select cw.entity_id winner, aw.authority_entity_id aid,
-               aw.ron_contract_value / count(*) over (partition by aw.id) share
-        from core.awards aw
-        join core.contracts c on c.ca_notice_id = aw.ca_notice_id
-        join core.contract_winners cw on cw.contract_id = c.id
-        where aw.authority_entity_id is not null and aw.ron_contract_value is not null
-          and aw.ron_contract_value > 0 and aw.ron_contract_value <= ${awMaxPlausible}::numeric
-      ) sh group by 1, 2
+      select supplier_id, authority_id, sum(closing_value)
+      from marts.contract_transactions
+      where closing_value > 0 and supplier_id is not null and authority_id is not null
+      group by 1, 2
     ),
     pp as (select sid, aid, sum(v) v from pair group by 1, 2),
     g as (
@@ -483,7 +459,7 @@ export async function runFlags(
       least(1, g.total / ${netSevRef}::numeric),
       jsonb_build_object('person', g.pname, 'birth_year', g.pby,
         'authority_id', g.aid, 'authority', a.name_display,
-        'n_firms', g.nf, 'combined', round(g.total)), ${V}
+        'n_firms', g.nf, 'combined', g.total), ${V}
     from g
     cross join lateral unnest(g.sids) s(sid)
     left join core.entities a on a.id = g.aid

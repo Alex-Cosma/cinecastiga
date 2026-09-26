@@ -1,0 +1,16 @@
+{
+  "status": "passed",
+  "base": "http://localhost:3114",
+  "checks": [
+    "PDF canvas and exact OCR page content agree",
+    "Selector changes both panes",
+    "Next and Previous change both panes",
+    "Rapid navigation settles on requested page",
+    "Zoom preserves page selection",
+    "Reload restores page6",
+    "Mobile page7 stays synchronized without overflow",
+    "Light and dark renders",
+    "No runtime errors or SEAP requests"
+  ],
+  "liveSeapRequests": 0
+}

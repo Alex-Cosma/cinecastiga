@@ -19,6 +19,7 @@ import { formatRon, formatRonFull, formatInt, cleanName } from "@/lib/format";
 import { FLAG_META, criBand } from "@/lib/flags";
 import { daUrl, registryLinks } from "@/lib/elicitatie";
 import ClipButton from "@/components/ClipButton";
+import FollowButton from "@/components/FollowButton";
 import { encodeSpec } from "@/lib/ask/permalink";
 import YearMiniChart from "./YearMiniChart";
 import TxTable from "./TxTable";
@@ -46,7 +47,7 @@ function evidenceLine(code: string, ev: Record<string, unknown> | null): string 
     case "fin_tiny_staff":
       return `${s("year")}: ${formatInt(n("employees"))} angajați · ${formatRon(n("total"))} bani publici · ${formatRon(n("per_employee"))}/angajat.`;
     case "net_shared_admin":
-      return `${s("person")}${ev["birth_year"] ? ` (n. ${s("birth_year")})` : ""} conduce ${formatInt(n("n_firms"))} firme care au încasat împreună ${formatRon(n("combined"))} de la ${s("authority")}.`;
+      return `${s("person")}${ev["birth_year"] ? ` (n. ${s("birth_year")})` : ""} conduce ${formatInt(n("n_firms"))} firme cu valori înregistrate de ${formatRon(n("combined"))} în total de la ${s("authority")}.`;
     case "fin_public_reliance":
       return `${(n("ratio") * 100).toFixed(0)}% din cifra de afaceri vine din bani publici (${formatRon(n("public_total"))} contractat vs ${formatRon(n("revenue_total"))} cifră de afaceri, ${formatInt(n("years"))} ani cu bilanț).`;
     default:
@@ -54,39 +55,12 @@ function evidenceLine(code: string, ev: Record<string, unknown> | null): string 
   }
 }
 
-/**
- * Dig-down deep link: the N acquisitions behind a da_split evidence row.
- * Carries exact entity IDS — names are ambiguous (eight "Comuna Dumbrăvița"
- * exist) and would re-resolve to the richest homonym.
- */
-function splitDrillUrl(
-  authority: { id: string | number | null; name: string },
-  supplier: { id: string | number | null; name: string },
-  year: number | string | null,
-): string {
-  const y = Number(year);
-  const spec = {
-    block: "stat",
-    measure: "value",
-    dataset: "da",
-    filters: {
-      // id = exact identity for the engine; name = readable chips in the builder
-      authorityName: authority.name,
-      supplierName: supplier.name,
-      ...(authority.id ? { authorityId: Number(authority.id) } : {}),
-      ...(supplier.id ? { supplierId: Number(supplier.id) } : {}),
-      ...(Number.isFinite(y) ? { yearFrom: y, yearTo: y } : {}),
-    },
-  };
-  return `/?spec=${encodeURIComponent(encodeSpec(spec))}&drill=1`;
-}
-
 /** Stat card → search drill with exactly this entity's rows from one channel. */
 function entityTxSearchUrl(
   entityId: string,
   name: string,
   role: Role,
-  dataset: "da" | "contracts",
+  dataset: "da" | "contracts" | "all",
 ): string {
   const spec = {
     block: "stat",
@@ -206,11 +180,14 @@ export default async function EntityPage({
           </div>
         </div>
         <div className="ehead-acts">
+          <Link href={`/entitati/${id}/legaturi?rol=${rolParam}`} className="btn">Cum sunt legate?</Link>
+          <Link href={`/entitati/${id}/comparatii?rol=${rolParam}`} className="btn">Compară în context</Link>
           {isAuth && (
             <Link href={`/entitati/${id}/radiografie`} className="btn pri rx-link">
               🩻 Radiografie
             </Link>
           )}
+          <FollowButton spec={{ block: "stat", measure: "value", filters: isAuth ? { authorityId: Number(id), authorityName: cleanName(row.name) } : { supplierId: Number(id), supplierName: cleanName(row.name) } }} title={cleanName(row.name)} />
           <ClipButton kind="entity" refId={id} label={cleanName(row.name)} />
           {/* No e-licitatie entity link: SICAP has no per-entity page, and every
               transaction row already deep-links to its exact record */}
@@ -256,15 +233,15 @@ export default async function EntityPage({
                 target="_blank"
                 rel="noopener"
               >
-                {formatInt(txCounts.nCt)} ↗
+                {formatInt(txCounts.nContracts)} ↗
               </a>
             </div>
-            <div className="l">Contracte atribuite prin proceduri</div>
+            <div className="l">Contracte distincte prin proceduri</div>
           </div>
         )}
         <div className="stat">
-          <div className="n">{formatRon(row.totalRon)}</div>
-          <div className="l">Valoare totală</div>
+          <div className="n"><a href={entityTxSearchUrl(id, cleanName(row.name), role, "all")}>{formatRon(Number(txCounts.valueExact))} ↗</a></div>
+          <div className="l">Valoare înregistrată · ambele canale</div>
         </div>
         {role === "supplier" && profile?.employees != null && (
           <div className="stat">
@@ -279,6 +256,19 @@ export default async function EntityPage({
           </div>
         )}
       </div>
+
+      <details className="data-context entity-data-context">
+        <summary>Ce includ aceste cifre?</summary>
+        <p>Achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei, și contracte prin proceduri.
+          Valorile sunt înregistrate în achiziții; nu confirmă plăți. Totalul și lista partenerilor folosesc aceeași selecție.</p>
+        <p>{formatInt(txCounts.nContracts)} contracte distincte apar în {formatInt(txCounts.nCt)} înregistrări contract–furnizor.
+          Pentru consorții, valoarea este împărțită egal între membrii publicați; aceasta este o estimare a alocării.
+          Pot exista plafoane de acord-cadru pentru care nu avem contracte subsecvente identificate.</p>
+        <p>Înregistrări datate: {txCounts.dateFrom ?? "dată necunoscută"} — {txCounts.dateTo ?? "dată necunoscută"}.
+          {txCounts.excludedDa > 0 ? ` ${formatInt(txCounts.excludedDa)} achiziții directe cu valori nule, nepozitive sau peste plafon sunt separate de total.` : ""}
+          {" "}<Link href="/metodologie#acoperire">Acoperirea surselor și limitele datelor</Link>.</p>
+        <p>Indicele de risc descrie tipare în achizițiile directe din întreaga perioadă. Nu este o probabilitate de corupție și nu clasifică toate contractele acestei entități.</p>
+      </details>
 
       <SectionNav
         items={[
@@ -391,18 +381,10 @@ export default async function EntityPage({
                                 (s.partnerName ?? "—")
                               )}
                             </td>
-                            <td>{s.year}</td>
+                            <td>{s.year}<div className="county">CPV {s.cpvClass ?? "—"} · {s.purchaseType ?? "tip necunoscut"}</div></td>
                             <td>
                               <a
-                                href={splitDrillUrl(
-                                  isAuth
-                                    ? { id, name: cleanName(row.name) }
-                                    : { id: s.partnerId, name: cleanName(s.partnerName) },
-                                  isAuth
-                                    ? { id: s.partnerId, name: cleanName(s.partnerName) }
-                                    : { id, name: cleanName(row.name) },
-                                  s.year,
-                                )}
+                                href={`/semnale/${s.flagId}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 title="deschide lista achizițiilor (tab nou)"
@@ -422,12 +404,10 @@ export default async function EntityPage({
                       </tbody>
                     </table>
                     <p className="hint" style={{ marginTop: 6 }}>
-                      Pragul legal e per achiziție, nu anual — dar legea interzice divizarea unei
-                      achiziții (art. 11, L98/2016) și cere agregarea necesarului anual pe produse
-                      similare. Semnalul: suma anuală către același partener, din achiziții fiecare
-                      sub prag, depășește pragul de mai multe ori. Fiecare an e judecat după pragul
-                      în vigoare atunci (135.060 lei până în 2022, 270.120 lei din 2023, pentru
-                      produse/servicii) — de aceea rândurile pot avea praguri diferite.
+                      Semnalul grupează achiziții din aceeași clasă CPV și același tip, către același partener,
+                      pe an. Fiecare trebuie să fie strict sub pragul aplicabil datei sale. Suma se compară cu
+                      cel mai mare prag aplicabil în grup. Valorile de închidere sunt un reper pentru verificare;
+                      legea privește necesarul estimat. Lista de surse include exact achizițiile folosite în calcul.
                     </p>
                   </>
                 ) : null}
@@ -522,6 +502,7 @@ export default async function EntityPage({
       <section className="section" id="parteneri">
         <h2>{isAuth ? "Principalii furnizori" : "Principalele autorități"}</h2>
         <PartnersTable
+          key={`${id}:${rolParam}`}
           entityId={id}
           entityName={cleanName(row.name)}
           role={rolParam as "furnizor" | "autoritate"}
@@ -533,6 +514,7 @@ export default async function EntityPage({
       <section className="section" id="achizitii">
         <h2>Toate achizițiile și contractele</h2>
         <TxTable
+          key={`${id}:${rolParam}:${sp["sem"] ?? ""}`}
           entityId={id}
           role={rolParam as "furnizor" | "autoritate"}
           isAuth={isAuth}

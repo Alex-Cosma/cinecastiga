@@ -1,3 +1,4 @@
+import { runMonitoredCli } from "../monitoring/cli.js";
 import { createWriteStream, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { rename } from "node:fs/promises";
 import { Readable } from "node:stream";
@@ -186,119 +187,120 @@ async function main(): Promise<void> {
     process.argv[2] ?? new URL("../../../../../seap-heartbeat/financials", import.meta.url).pathname;
   mkdirSync(cacheDir, { recursive: true });
   const { sql } = createDb();
-  const t0 = Date.now();
+  await runMonitoredCli(sql, "import-financials", async () => {
+    const t0 = Date.now();
 
-  await sql`create schema if not exists reference`;
-  await sql`
-    create table if not exists reference.company_financials (
-      cui text not null,
-      year int not null,
-      caen text,
-      category text not null,
-      source_vintage int not null,
-      employees int,
-      net_turnover numeric,
-      total_revenue numeric,
-      total_expenses numeric,
-      profit_net numeric,
-      loss_net numeric,
-      primary key (cui, year)
-    )
-  `;
+    await sql`create schema if not exists reference`;
+    await sql`
+      create table if not exists reference.company_financials (
+        cui text not null,
+        year int not null,
+        caen text,
+        category text not null,
+        source_vintage int not null,
+        employees int,
+        net_turnover numeric,
+        total_revenue numeric,
+        total_expenses numeric,
+        profit_net numeric,
+        loss_net numeric,
+        primary key (cui, year)
+      )
+    `;
 
-  const datasets = await findDatasets();
-  const vintages = [...datasets.keys()].filter((y) => y >= MIN_FY).sort((a, b) => a - b);
-  console.log(`datasets: ${vintages.map((y) => `${y}=${datasets.get(y)}`).join(" ")}`);
+    const datasets = await findDatasets();
+    const vintages = [...datasets.keys()].filter((y) => y >= MIN_FY).sort((a, b) => a - b);
+    console.log(`datasets: ${vintages.map((y) => `${y}=${datasets.get(y)}`).join(" ")}`);
 
-  let files = 0;
-  let upserts = 0;
-  for (const vintage of vintages) {
-    const pkg = await ckan<{ resources: Resource[] }>(`package_show?id=${datasets.get(vintage)}`);
-    const txts = pkg.resources.filter((r) => parseName(r.name) !== null);
-    // paired .csv specs by same basename
-    const specByBase = new Map<string, string>();
-    for (const r of pkg.resources) {
-      if (/\.csv$/i.test(r.name)) specByBase.set(r.name.replace(/\.csv$/i, "").toUpperCase(), r.url);
-    }
-    for (const r of txts) {
-      const meta = parseName(r.name)!;
-      if (meta.fy < MIN_FY || meta.fy > vintage) continue;
-      const dest = `${cacheDir}/${vintage}-${r.name.replace(/\s+/g, "_")}`;
-      await download(r.url, dest);
-      let codes: Record<string, string> = {};
-      let hasSpec = false;
-      const specUrl = specByBase.get(r.name.replace(/\.txt$/i, "").toUpperCase());
-      if (specUrl) {
-        const specDest = `${dest}.spec.csv`;
-        try {
-          await download(specUrl, specDest);
-          codes = specCodes(readFileSync(specDest, "utf8"));
-          hasSpec = true;
-        } catch {
-          /* spec unavailable — parseTxt decides via header shape */
+    let files = 0;
+    let upserts = 0;
+    for (const vintage of vintages) {
+      const pkg = await ckan<{ resources: Resource[] }>(`package_show?id=${datasets.get(vintage)}`);
+      const txts = pkg.resources.filter((r) => parseName(r.name) !== null);
+      // paired .csv specs by same basename
+      const specByBase = new Map<string, string>();
+      for (const r of pkg.resources) {
+        if (/\.csv$/i.test(r.name)) specByBase.set(r.name.replace(/\.csv$/i, "").toUpperCase(), r.url);
+      }
+      for (const r of txts) {
+        const meta = parseName(r.name)!;
+        if (meta.fy < MIN_FY || meta.fy > vintage) continue;
+        const dest = `${cacheDir}/${vintage}-${r.name.replace(/\s+/g, "_")}`;
+        await download(r.url, dest);
+        let codes: Record<string, string> = {};
+        let hasSpec = false;
+        const specUrl = specByBase.get(r.name.replace(/\.txt$/i, "").toUpperCase());
+        if (specUrl) {
+          const specDest = `${dest}.spec.csv`;
+          try {
+            await download(specUrl, specDest);
+            codes = specCodes(readFileSync(specDest, "utf8"));
+            hasSpec = true;
+          } catch {
+            /* spec unavailable — parseTxt decides via header shape */
+          }
         }
+        const rows = parseTxt(dest, meta.category, meta.fy, vintage, codes, hasSpec);
+        files++;
+        if (rows.length === 0) {
+          console.log(`  ${vintage} ${r.name}: no parseable rows, skipped`);
+          continue;
+        }
+        for (let i = 0; i < rows.length; i += 5000) {
+          const batch = rows.slice(i, i + 5000);
+          await sql`
+            insert into reference.company_financials ${sql(
+              batch,
+              "cui",
+              "year",
+              "caen",
+              "category",
+              "source_vintage",
+              "employees",
+              "net_turnover",
+              "total_revenue",
+              "total_expenses",
+              "profit_net",
+              "loss_net",
+            )}
+            on conflict (cui, year) do update set
+              caen = excluded.caen,
+              category = excluded.category,
+              source_vintage = excluded.source_vintage,
+              employees = excluded.employees,
+              net_turnover = excluded.net_turnover,
+              total_revenue = excluded.total_revenue,
+              total_expenses = excluded.total_expenses,
+              profit_net = excluded.profit_net,
+              loss_net = excluded.loss_net
+            where excluded.source_vintage >= reference.company_financials.source_vintage
+          `;
+          upserts += batch.length;
+        }
+        console.log(`  ${vintage} ${r.name}: ${rows.length} rows (fy ${meta.fy})`);
       }
-      const rows = parseTxt(dest, meta.category, meta.fy, vintage, codes, hasSpec);
-      files++;
-      if (rows.length === 0) {
-        console.log(`  ${vintage} ${r.name}: no parseable rows, skipped`);
-        continue;
-      }
-      for (let i = 0; i < rows.length; i += 5000) {
-        const batch = rows.slice(i, i + 5000);
-        await sql`
-          insert into reference.company_financials ${sql(
-            batch,
-            "cui",
-            "year",
-            "caen",
-            "category",
-            "source_vintage",
-            "employees",
-            "net_turnover",
-            "total_revenue",
-            "total_expenses",
-            "profit_net",
-            "loss_net",
-          )}
-          on conflict (cui, year) do update set
-            caen = excluded.caen,
-            category = excluded.category,
-            source_vintage = excluded.source_vintage,
-            employees = excluded.employees,
-            net_turnover = excluded.net_turnover,
-            total_revenue = excluded.total_revenue,
-            total_expenses = excluded.total_expenses,
-            profit_net = excluded.profit_net,
-            loss_net = excluded.loss_net
-          where excluded.source_vintage >= reference.company_financials.source_vintage
-        `;
-        upserts += batch.length;
-      }
-      console.log(`  ${vintage} ${r.name}: ${rows.length} rows (fy ${meta.fy})`);
     }
-  }
 
-  const [tot] = (await sql`
-    select count(*)::int c, count(distinct cui)::int cuis,
-           min(year) y0, max(year) y1
-    from reference.company_financials
-  `) as unknown as { c: number; cuis: number; y0: number; y1: number }[];
-  console.log(
-    JSON.stringify(
-      {
-        files,
-        upserts,
-        tableRows: tot!.c,
-        distinctCuis: tot!.cuis,
-        years: `${tot!.y0}-${tot!.y1}`,
-        seconds: Math.round((Date.now() - t0) / 1000),
-      },
-      null,
-      2,
-    ),
-  );
-  await sql.end();
+    const [tot] = (await sql`
+      select count(*)::int c, count(distinct cui)::int cuis,
+             min(year) y0, max(year) y1
+      from reference.company_financials
+    `) as unknown as { c: number; cuis: number; y0: number; y1: number }[];
+    console.log(
+      JSON.stringify(
+        {
+          files,
+          upserts,
+          tableRows: tot!.c,
+          distinctCuis: tot!.cuis,
+          years: `${tot!.y0}-${tot!.y1}`,
+          seconds: Math.round((Date.now() - t0) / 1000),
+        },
+        null,
+        2,
+      ),
+    );
+  });
 }
 
 main().catch((err) => {

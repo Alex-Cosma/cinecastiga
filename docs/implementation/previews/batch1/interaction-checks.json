@@ -1,0 +1,94 @@
+{
+  "checkedAt": "2026-09-19T16:21:57.591Z",
+  "results": [
+    {
+      "check": "changing source during pending excluded-record request",
+      "pending": {
+        "ghosts": 10,
+        "staleLinks": 0
+      },
+      "final": {
+        "source": "contracte",
+        "excluded": false,
+        "rows": 10,
+        "sourceLinks": [
+          "/contracte/103344427",
+          "/contracte/106652551",
+          "/contracte/106652551",
+          "/contracte/106652551",
+          "/contracte/103030765",
+          "/contracte/106187822",
+          "/contracte/105665444",
+          "/contracte/103019130",
+          "/contracte/105772622",
+          "/contracte/100018769"
+        ],
+        "meta": "201 înregistrări · pagina 1 din 21"
+      },
+      "passed": true
+    },
+    {
+      "check": "da_split exact source page",
+      "path": "/semnale/26400811",
+      "title": "Sursele semnalului",
+      "sourceLinks": [
+        "https://e-licitatie.ro/pub/direct-acquisition/view/111375748",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/111609917",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/112356808",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/112356858",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/112366785",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/112367074",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/112408081",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/112408155",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/112409344",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/112551908",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/112551995",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/112576223",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/112576269",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/112576292",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/112608443",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/112608463",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/112674013",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/112674092",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/112674121",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/112724823",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/112724983",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/113084694",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/113181347",
+        "https://e-licitatie.ro/pub/direct-acquisition/view/113181448"
+      ],
+      "notes": [
+        "Plafon de referință: 900.400 lei, fără TVA. Publicarea aproximează data inițierii; în lipsa ei, calculul folosește finalizarea. Pragul fiecărei achiziții și tipul sunt cele aplicabile la acea dată. Data finalizării a fost folosită pentru 0 achiziții; clasificarea CPV a înlocuit tipul lipsă pentru 24.",
+        "Pagina 1 din 1 · maximum 50 de înregistrări pe pagină.",
+        "Semnalele sunt recalculate când se actualizează datele. Lista arată sursele calculului curent și poate deveni indisponibilă după o reconstrucție."
+      ],
+      "overflow": false,
+      "passed": true
+    },
+    {
+      "check": "award_single_bid exact source page",
+      "path": "/semnale/26471021",
+      "title": "Sursele semnalului",
+      "sourceLinks": [
+        "/contracte/107561313",
+        "https://ted.europa.eu/ro/notice/-/detail/340743-2024"
+      ],
+      "notes": [
+        "Semnalele sunt recalculate când se actualizează datele. Lista arată sursele calculului curent și poate deveni indisponibilă după o reconstrucție."
+      ],
+      "overflow": false,
+      "passed": true
+    },
+    {
+      "check": "signal to contract detail to SEAP source",
+      "path": "/contracte/107561313",
+      "title": "Contract LOT 4  “Reabilitare sistem rutier pe arterele Sfântul Constantin, Strada Ionel Perlea, Strada Grigore Cobălcescu și traseul de pe B-dul Ion Mihalache, Calea Griviței, B-dul Bucureștii Noi, B-dul Gloriei inclusiv cap terminal Strada Piatra Morii”",
+      "seapLinks": [
+        "https://e-licitatie.ro/pub/notices/ca-notices/view-c/100624484"
+      ],
+      "overflow": false,
+      "passed": true
+    }
+  ],
+  "errors": []
+}

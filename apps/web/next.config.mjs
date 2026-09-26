@@ -6,6 +6,8 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Keep local validation builds separate from a running preview.
+  distDir: process.env.NEXT_DIST_DIR ?? ".next",
   // postgres.js + the workspace db package are server-only; keep them out of the
   // client/edge bundle so `postgres` runs as a plain Node dependency.
   serverExternalPackages: ["postgres", "@seap/db"],

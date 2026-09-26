@@ -131,21 +131,21 @@ describe("source query regression", () => {
     expect(query).not.toContain("OR 1=1");
     expect(db.values).toContain("50%_' or 1=1--");
   });
-  it("profile evidence reads the all-status historical core, preserving zero values and checking reconciliation", async () => {
+  it("profile evidence matches accepted positive historical CRI records and checks reconciliation", async () => {
     const db = database();
-    const spec: AskSpec = { block: "distribution", dataset: "contracts", measure: "value", filters: { authorityId: 123, yearFrom: 2025, yearTo: 2026 } };
+    const spec: AskSpec = { block: "distribution", dataset: "da", measure: "value", filters: { authorityId: 123 } };
     const result = await runRows(db.sql, spec, grounding, 0, { scope: { role: "authority", entityIds: ["123"] } });
     expect(result).toMatchObject({ profile: true, profileCount: 1, profileReconciled: true });
     const query = db.statements.find((s) => s.includes("group by d.state"))!;
     expect(query).toContain("core.direct_acquisitions da");
-    expect(query).toContain("da.closing_value is not null and da.closing_value <=");
+    expect(query).toContain("da.state = 'Oferta acceptata' and da.closing_value > 0 and da.closing_value <=");
     expect(query).not.toContain("d.closing_value > 0");
     expect(query).not.toContain("marts.da_transactions");
     expect(query).not.toContain("substr(d.finalization_date");
   });
   it("does not claim reconciliation when imported rows differ from the aggregate snapshot", async () => {
     const db = database("30.02");
-    const result = await runRows(db.sql, { ...stat, block: "entity_card", dim: "authority" }, grounding, 0);
+    const result = await runRows(db.sql, { ...stat, block: "entity_card", dim: "authority", filters:{} }, {}, 0);
     expect(result).toMatchObject({ profileReconciled: false });
   });
   it("uses the same histogram bucket expression and population minimum as the displayed risk distribution", async () => {

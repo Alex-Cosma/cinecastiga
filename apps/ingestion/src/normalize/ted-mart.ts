@@ -19,6 +19,32 @@ export interface TedMartReport {
   contractsSingleBidder: number;
 }
 
+/** A contract inherits a count only when its eligible confirmed links agree. */
+type TedSql = DbSql | Parameters<Parameters<DbSql["begin"]>[1]>[0];
+export function tedCompetitionRows(sql: TedSql, tables: { links?: ReturnType<DbSql>; results?: ReturnType<DbSql> } = {}) {
+  return sql`
+      with eligible as (
+        select al.contract_id, al.ca_notice_id, al.ted_lot_result_id, al.match_score,
+               tlr.tenders_received
+        from ${tables.links ?? sql`core.award_links`} al
+        join ${tables.results ?? sql`core.ted_lot_results`} tlr on tlr.id = al.ted_lot_result_id
+        where al.is_primary and al.match_score >= 0.9::real
+          and tlr.amount_details->>'matchEligible' = 'true'
+          and tlr.currency = 'RON'
+          and tlr.amount_kind in ('payable', 'contract_value')
+      ), consistent as (
+        select contract_id from eligible group by contract_id
+        having count(tenders_received) = count(*) and min(tenders_received) >= 0
+          and min(tenders_received) = max(tenders_received)
+      )
+      select distinct on (e.contract_id)
+        e.contract_id, e.ca_notice_id, e.ted_lot_result_id, e.match_score,
+        e.tenders_received, e.tenders_received = 1 as is_single_bidder
+      from eligible e join consistent c on c.contract_id = e.contract_id
+      order by e.contract_id, e.match_score desc, e.ted_lot_result_id
+  `;
+}
+
 export async function runTedMart(
   sql: DbSql,
   opts: { log?: (m: string) => void } = {},
@@ -32,25 +58,27 @@ export async function runTedMart(
     // arrays); is_foreign = any winner non-RO. label from the primary crosswalk.
     await q`
       insert into marts.ted_awards (
-        ted_lot_result_id, ted_notice_id, publication_number,
+        ted_lot_result_id, ted_notice_id, publication_number, lot_id, winner_selection_status,
         buyer_entity_id, buyer_name, buyer_county,
         winner_names, winner_entity_ids, winner_countries, is_foreign,
         cpv_code, cpv_name, contract_nature, title,
-        awarded_value, currency, award_date, publication_date, procedure_type,
+        awarded_value, amount_kind, amount_details, currency, award_date, publication_date, procedure_type,
         tenders_received, is_single_bidder, eu_funded,
         label, matched_contract_id, match_score
       )
       select
-        tlr.id, tn.id, tn.publication_number,
+        tlr.id, tn.id, tn.publication_number, tlr.lot_id, tlr.winner_selection_status,
         tn.buyer_entity_id, be.name_display, be.county,
         w.names, w.ids, w.countries, coalesce(w.is_foreign, false),
         tlr.cpv_code, cpv.name_ro, tlr.contract_nature, tlr.title,
-        tlr.awarded_value, tlr.currency,
+        tlr.awarded_value, tlr.amount_kind, tlr.amount_details, tlr.currency,
         to_char(tlr.contract_date, 'YYYY-MM-DD'),
         to_char(tn.publication_date, 'YYYY-MM-DD'),
         tn.procedure_type,
         tlr.tenders_received, tlr.is_single_bidder, tn.eu_funded,
-        case when pl.contract_id is not null then 'also-in-seap' else 'ted-only' end,
+        case when pl.contract_id is null then 'ted-only'
+          when pl.match_score >= 0.9::real and tlr.amount_details->>'matchEligible' = 'true' then 'also-in-seap'
+          else 'possible-match' end,
         pl.contract_id, pl.match_score
       from core.ted_lot_results tlr
       join core.ted_notices tn on tn.id = tlr.ted_notice_id
@@ -58,9 +86,9 @@ export async function runTedMart(
       left join core.cpv_codes cpv on cpv.code = tlr.cpv_code
       left join lateral (
         select
-          array_agg(e.name_display order by e.name_display) names,
-          array_agg(e.id order by e.name_display) ids,
-          array_agg(distinct e.country_code) filter (where e.country_code is not null) countries,
+          array_agg(e.name_display order by e.name_display, e.id) names,
+          array_agg(e.id order by e.name_display, e.id) ids,
+          array_agg(e.country_code order by e.name_display, e.id) countries,
           bool_or(e.is_foreign) is_foreign
         from core.ted_lot_winners tlw
         join core.entities e on e.id = tlw.entity_id
@@ -70,6 +98,7 @@ export async function runTedMart(
         select al.contract_id, al.match_score
         from core.award_links al
         where al.ted_lot_result_id = tlr.id and al.is_primary
+        order by al.match_score desc, al.contract_id
         limit 1
       ) pl on true
     `;
@@ -83,35 +112,36 @@ export async function runTedMart(
       insert into marts.contract_competition
         (contract_id, ca_notice_id, ted_lot_result_id, match_score,
          tenders_received, is_single_bidder)
-      select distinct on (al.contract_id)
-        al.contract_id, al.ca_notice_id, al.ted_lot_result_id, al.match_score,
-        tlr.tenders_received, tlr.is_single_bidder
-      from core.award_links al
-      join core.ted_lot_results tlr on tlr.id = al.ted_lot_result_id
-      where al.is_primary and al.match_score >= 0.9
-        and (tlr.tenders_received is not null or tlr.is_single_bidder is not null)
-      order by al.contract_id, al.match_score desc, al.ted_lot_result_id
+      ${tedCompetitionRows(q)}
     `;
 
-    // Headline stats — TED-scoped, never blended.
+    // These are publication-result counts, never payment or spend totals.
+    // Offer values/ranges/ceilings and currencies are deliberately not summed.
     await q`
       insert into marts.ted_stats (metric, dimension, n, total_ron)
-      select 'total', 'all', count(*), sum(awarded_value) from marts.ted_awards`;
+      select 'total', 'all', count(*), null::numeric from marts.ted_awards
+      union all select 'total', 'notices', count(distinct ted_notice_id), null::numeric from marts.ted_awards
+      union all select 'total', 'foreign', count(*), null::numeric from marts.ted_awards where is_foreign
+      union all select 'total', 'legacy', count(*), null::numeric from marts.ted_awards where amount_kind is null
+      union all select 'total', 'missing_winners', count(*), null::numeric from marts.ted_awards where coalesce(cardinality(winner_entity_ids), 0) = 0`;
     await q`
       insert into marts.ted_stats (metric, dimension, n, total_ron)
-      select 'label', label, count(*), sum(awarded_value)
-      from marts.ted_awards group by label`;
+      select 'label', label, count(*), null::numeric from marts.ted_awards group by label`;
     await q`
       insert into marts.ted_stats (metric, dimension, n, total_ron)
-      select 'single_bidder', case when is_single_bidder then 'yes' else 'no' end,
-             count(*), sum(awarded_value)
-      from marts.ted_awards where is_single_bidder is not null
-      group by is_single_bidder`;
-    // Foreign spend by winner country (only the foreign-won awards).
+      select 'single_bidder', case when is_single_bidder is null then 'unknown' when is_single_bidder then 'yes' else 'no' end,
+             count(*), null::numeric from marts.ted_awards group by is_single_bidder`;
     await q`
       insert into marts.ted_stats (metric, dimension, n, total_ron)
-      select 'country', c, count(*), sum(awarded_value)
-      from marts.ted_awards ta, unnest(coalesce(ta.winner_countries, '{}')) c
+      select 'amount_kind', coalesce(amount_kind, 'legacy_unknown'), count(*), null::numeric
+      from marts.ted_awards group by amount_kind`;
+    // A multinational consortium can occur in several country buckets, but only
+    // once within each country. The foreign headline counts distinct result rows.
+    await q`
+      insert into marts.ted_stats (metric, dimension, n, total_ron)
+      select 'country', c, count(*), null::numeric
+      from marts.ted_awards ta
+      cross join lateral (select distinct unnest(ta.winner_countries) c) countries
       where ta.is_foreign and c <> 'RO'
       group by c`;
 

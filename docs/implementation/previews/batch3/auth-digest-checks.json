@@ -1,0 +1,38 @@
+{
+  "date": "2026-09-19",
+  "database": "seap_test_batch3_20260919",
+  "authIntegration": {
+    "file": "apps/web/lib/auth-email-verification.integration.test.ts",
+    "passed": 5,
+    "realAuthHandler": true,
+    "adminCreatedUnverifiedAccount": true,
+    "verifiedRecipientRequired": true,
+    "wrongExpiredReplayedOtpRejected": true,
+    "changedEmailNotVerifiedByOldCode": true,
+    "editorReaderRevocationChecked": true
+  },
+  "digestUnit": {
+    "file": "apps/web/lib/monitoring-digests.test.ts",
+    "passed": 4
+  },
+  "digestIntegration": {
+    "file": "apps/web/lib/monitoring-digests.integration.test.ts",
+    "passed": 6,
+    "dryRunReadOnly": true,
+    "concurrentDeliveryDeduplicated": true,
+    "currentConsentAndRecipientRechecked": true,
+    "partialWatchOptOutAndCrossOwnerExclusion": true,
+    "uncertainDeliveryNotRetried": true,
+    "definiteRejectionRetryChecked": true
+  },
+  "localMainPreview": {
+    "period": "2026-09-18",
+    "mode": "preview",
+    "eligibleRecipients": 0,
+    "queued": 0,
+    "sent": 0
+  },
+  "realEmailsSent": 0,
+  "fixtureCleanup": "Only fixture user and checkpoint IDs; disposable database retained for root browser checks.",
+  "notEnabled": ["email scheduler", "production email delivery", "deployment"]
+}

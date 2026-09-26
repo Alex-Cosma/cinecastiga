@@ -1,5 +1,6 @@
 import type { AskSpec } from "./spec";
 import type { Grounding } from "./ground";
+import { isHistoricalProfile } from "./population";
 
 /** The "am înțeles" pills — the spec, restated in plain Romanian. */
 
@@ -48,7 +49,7 @@ export function buildPills(spec: AskSpec, grounding: Grounding): string[] {
     );
     pills.push(DIM_LABEL[spec.dim ?? "authority"]);
   }
-  if (!RISK_BLOCKS.includes(spec.block) && spec.block !== "entity_card" && spec.block !== "fact_check") {
+  if (!isHistoricalProfile(spec) && spec.block !== "fact_check") {
     pills.push(
       spec.measure === "count"
         ? "număr de achiziții"
@@ -87,8 +88,8 @@ export function buildPills(spec: AskSpec, grounding: Grounding): string[] {
           ? `${from}–${to}`
           : (from ?? to)!,
     );
-  } else if (!RISK_BLOCKS.includes(spec.block) && spec.block !== "entity_card") {
-    pills.push("2018–2026");
+  } else if (!isHistoricalProfile(spec)) {
+    pills.push("toți anii disponibili");
   }
   if (spec.filters.singleBidder) pills.push("un singur ofertant");
   {
@@ -106,5 +107,7 @@ export function buildPills(spec: AskSpec, grounding: Grounding): string[] {
         ? "doar achiziții directe"
         : "toate sursele: achiziții directe + contracte prin proceduri",
   );
+  if (spec.population) pills.push(`Selecție precisă · ${spec.population.groups.reduce((n, group) => n + group.conditions.length, 0)} condiții în ${spec.population.groups.length} grupuri`);
+  if (spec.minimumRecords) pills.push(`${spec.minimumRecords.role === "authority" ? "instituții" : "firme"} cu ≥ ${spec.minimumRecords.count} înregistrări în selecție`);
   return pills;
 }

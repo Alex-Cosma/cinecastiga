@@ -1,0 +1,49 @@
+{
+  "status": "complete-locally",
+  "mockBeforeApplicationIntegration": true,
+  "build": "passed after final copy corrections",
+  "typecheck": "passed; final build also includes TypeScript check",
+  "lint": "passed",
+  "defaultTests": 339,
+  "isolatedPostgresScenarios": 29,
+  "realHttpCheck": "http-check.json",
+  "backendChecks": "data-checks.json",
+  "browserChecks": 23,
+  "detector": "design-detect.json",
+  "detectorFix": "width animation replaced with transform scaleX; no second detector run",
+  "initialBrowserFix": "nested main inherited global flex; replaced by div inside existing main landmark",
+  "remaining": [],
+  "commit": false,
+  "push": false,
+  "deployment": false,
+  "screenshots": 12,
+  "fullReview": {
+    "disposition": "ship",
+    "artifact": "finish-review.md"
+  },
+  "boundedVerdict": {
+    "disposition": "ship",
+    "resolved": [
+      "median explanation with ties",
+      "singular source and contract agreement"
+    ],
+    "artifact": "finish-verdict.md"
+  },
+  "documentation": {
+    "artifact": "design-documentation.md",
+    "globalDesignPreserved": true
+  },
+  "cleanup": {
+    "preview3111": "stopped",
+    "testDatabases": "all three peer databases dropped",
+    "fixtureCookie": "removed",
+    "privateConfigurationAndLauncher": "deleted",
+    "mainDataMutations": false
+  },
+  "runtime": {
+    "main": "http://localhost:3110",
+    "pid": 87436,
+    "log": "/private/tmp/seap-peers-web.log",
+    "monitoringWorker": "previous worker remains running; no new background task"
+  }
+}

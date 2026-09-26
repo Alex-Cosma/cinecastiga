@@ -1,0 +1,10 @@
+{
+  "zipCrc": true,
+  "sha256Files": 15,
+  "exactTotals": true,
+  "immutableBeforeAfter": true,
+  "changeMetadata": true,
+  "sourceLinks": true,
+  "taskCount": 1,
+  "recaptureRejected": true
+}

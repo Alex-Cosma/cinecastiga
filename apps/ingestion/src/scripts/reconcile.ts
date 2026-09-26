@@ -1,3 +1,4 @@
+import { runMonitoredCli } from "../monitoring/cli.js";
 import { createDb } from "@seap/db";
 import { runReconcile } from "../normalize/reconcile.js";
 
@@ -14,15 +15,16 @@ function arg(name: string): string | undefined {
 
 async function main(): Promise<void> {
   const { sql } = createDb();
-  const valueTol = arg("value-tol") ? Number(arg("value-tol")) : undefined;
-  const dateTol = arg("date-tol") ? Number(arg("date-tol")) : undefined;
-  const report = await runReconcile(sql, {
-    ...(valueTol != null ? { valueTol } : {}),
-    ...(dateTol != null ? { dateTolDays: dateTol } : {}),
-    log: (m) => console.log(m),
+  await runMonitoredCli(sql, "reconcile", async () => {
+    const valueTol = arg("value-tol") ? Number(arg("value-tol")) : undefined;
+    const dateTol = arg("date-tol") ? Number(arg("date-tol")) : undefined;
+    const report = await runReconcile(sql, {
+      ...(valueTol != null ? { valueTol } : {}),
+      ...(dateTol != null ? { dateTolDays: dateTol } : {}),
+      log: (m) => console.log(m),
+    });
+    console.log(JSON.stringify(report, null, 2));
   });
-  console.log(JSON.stringify(report, null, 2));
-  await sql.end();
 }
 
 main().catch(async (err) => {

@@ -1,3 +1,4 @@
+import { runMonitoredCli } from "../monitoring/cli.js";
 import { createDb } from "@seap/db";
 import { loadDas } from "../import-old/load-das.js";
 
@@ -11,28 +12,29 @@ import { loadDas } from "../import-old/load-das.js";
 async function main(): Promise<void> {
   const dir = process.argv[2] ?? "../../db-old";
   const { db, sql } = createDb();
-  const log = (m: string) => console.log(m);
+  await runMonitoredCli(sql, "import-das", async () => {
+    const log = (m: string) => console.log(m);
 
-  const t0 = Date.now();
-  const report = await loadDas(db, sql, `${dir}/directAcquisitionContract.bson`, log);
+    const t0 = Date.now();
+    const report = await loadDas(db, sql, `${dir}/directAcquisitionContract.bson`, log);
 
-  const [tot] = (await sql`
-    select count(*)::int c, sum(closing_value)::numeric s from core.direct_acquisitions
-  `) as unknown as { c: number; s: string | null }[];
+    const [tot] = (await sql`
+      select count(*)::int c, sum(closing_value)::numeric s from core.direct_acquisitions
+    `) as unknown as { c: number; s: string | null }[];
 
-  console.log(
-    JSON.stringify(
-      {
-        ...report,
-        coreRows: tot!.c,
-        coreClosingTotalRon: Math.round(Number(tot!.s ?? 0)),
-        seconds: Math.round((Date.now() - t0) / 1000),
-      },
-      null,
-      2,
-    ),
-  );
-  await sql.end();
+    console.log(
+      JSON.stringify(
+        {
+          ...report,
+          coreRows: tot!.c,
+          coreClosingTotalRon: Math.round(Number(tot!.s ?? 0)),
+          seconds: Math.round((Date.now() - t0) / 1000),
+        },
+        null,
+        2,
+      ),
+    );
+  });
 }
 
 main().catch((err) => {

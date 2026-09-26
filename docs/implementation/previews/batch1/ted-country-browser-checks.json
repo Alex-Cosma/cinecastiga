@@ -1,0 +1,22 @@
+{
+  "checkedAt": "2026-09-19T16:16:48.158Z",
+  "checks": {
+    "pager": "pagina 1 / 2 · 66 rezultate",
+    "rows": 60,
+    "reviewRows": 60,
+    "sourceLinks": 60,
+    "selected": [
+      "Toate",
+      "Marcate „străin”",
+      "Țară de verificat",
+      "După dată"
+    ],
+    "overflow": false,
+    "mobile": {
+      "width": 390,
+      "document": 390,
+      "overflow": false
+    }
+  },
+  "errors": []
+}

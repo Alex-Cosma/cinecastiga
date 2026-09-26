@@ -1,3 +1,4 @@
+import DataCoverage from "@/components/DataCoverage";
 import { FLAG_META, FLAG_ORDER } from "@/lib/flags";
 
 export const dynamic = "force-dynamic";
@@ -7,6 +8,7 @@ const SUBJECT_LABEL: Record<string, string> = {
   authority: "Per autoritate",
   supplier: "Per furnizor",
   pair: "Per relație",
+  award: "Per anunț de atribuire",
 };
 
 export default function MetodologiePage() {
@@ -29,37 +31,50 @@ export default function MetodologiePage() {
             ponderea semnalelor declanșate din cele aplicabile — fără scoruri ascunse.
           </li>
           <li>
-            <strong>Praguri legale, în funcție de dată.</strong> Pragul achiziției directe
-            (art. 7 alin. 5, Legea 98/2016, net TVA) s-a schimbat în timp: 132.519 lei
-            (2016 – iun. 2018), 135.060 lei (iun. 2018 – 2022, OUG 45/2018), 270.120 lei
-            (din ian. 2023, Legea 208/2022) pentru produse/servicii — respectiv 441.730 /
-            450.200 / 900.400 lei pentru lucrări. Fiecare achiziție e judecată după pragul în
-            vigoare la data ei.
+            <strong>Praguri legale, în funcție de dată și tip.</strong> Pentru produse și servicii: 132.519 lei din 26.05.2016,
+            135.060 lei din 04.06.2018 și 270.120 lei din 10.09.2022. Pentru lucrări: 441.730, 450.200, respectiv 900.400 lei,
+            la aceleași date. Valorile sunt fără TVA (<a href="https://legislatie.just.ro/Public/DetaliiDocument/178667" target="_blank" rel="noreferrer">Legea 98/2016, art. 7 alin. 5</a>).
+            Tipul declarat are prioritate; dacă lipsește, folosim clasificarea CPV. Publicarea aproximează inițierea;
+            în lipsa ei folosim finalizarea. Aceste aproximări sunt declarate în dovezi. Clasificările necunoscute și datele
+            anterioare datei de 26.05.2016 sunt excluse din comparația cu pragul. Legea privește necesarul estimat;
+            valorile de închidere sunt un reper analitic.
           </li>
           <li>
-            <strong>Doar bani care s-au mișcat.</strong> Comenzile refuzate de furnizor sau
-            neacceptate la termen (~6% din înregistrările SEAP) nu sunt cheltuială și sunt
-            excluse din totaluri și semnale. Când un anunț publică și acordul-cadru și
-            contractele subsecvente, plafonul acordului nu se adună — banii reali sunt
-            comenzile.
+            <strong>Valori înregistrate, nu plăți confirmate.</strong> Totalurile obișnuite folosesc achiziții directe acceptate,
+            cu valoare pozitivă de cel mult 2 milioane lei, plus contracte prin proceduri din selecția descrisă mai jos.
+            O ofertă acceptată sau un contract semnat nu dovedește că banii au fost plătiți. Ofertele refuzate sau expirate
+            nu intră în aceste totaluri.
           </li>
           <li>
-            <strong>Date curățate, nu ascunse.</strong> Valorile corupte în sursă (peste 2 mil.
-            lei pe o achiziție directă, sau de 100+ ori peste estimat — erori tipice de
-            introducere) sunt excluse din totaluri, dar rămân vizibile în liste, marcate ⚠ cu
-            explicație.
+            <strong>Excluderi explicite.</strong> Limita de 2 milioane lei pentru o achiziție directă este un filtru analitic de plauzibilitate,
+            nu pragul legal și nici dovada unei erori. Valorile nule, nepozitive sau peste această limită rămân accesibile
+            în lista achizițiilor unei entități, prin opțiunea „Arată achizițiile directe excluse din total”.
           </li>
         </ul>
       </section>
 
-      <section className="section">
-        <h2>Acoperire</h2>
-        <p className="hint">
-          Sunt analizate <strong>achizițiile directe</strong> (2018–prezent, ~19,6 milioane de
-          tranzacții finalizate) și <strong>contractele atribuite prin proceduri</strong>{" "}
-          (licitații, ~1,1 milioane), plus surse de context: bilanțurile firmelor (MF),
-          reprezentanții legali (ONRC) și anunțurile TED. Semnalele acoperă ambele canale.
-        </p>
+      <section className="section" id="acoperire">
+        <h2>Ce date avem — și unde sunt limitele</h2>
+        <DataCoverage />
+      </section>
+
+      <section className="section" id="totaluri">
+        <h2>Cum se formează totalurile</h2>
+        <p>Profilurile entităților, partenerii, harta și căutările obișnuite după valoare folosesc aceeași populație.
+          Pentru proceduri sunt incluse contractele cu valoare pozitivă de cel mult 1 miliard lei, dată și autoritate cunoscute,
+          cel puțin un câștigător și monedă RON. Înregistrările istorice fără monedă sunt tratate ca RON. Inventarul de mai sus declară lipsa monedei în toate înregistrările sursă, înainte de aplicarea celorlalte filtre. Această presupunere trebuie verificată în documentul sursă pentru o investigație.</p>
+        <p>Pe profilul entității, fiecare contract apare o singură dată în numărul de contracte distincte. Căutările și lista surselor numără rânduri contract–furnizor:
+          câte unul pentru fiecare câștigător. În lipsa cotelor reale, valoarea unui consorțiu este împărțită egal între membri.
+          Cotele însumate refac valoarea contractului; nu dovedesc venitul încasat de fiecare firmă.</p>
+        <p>Dacă același anunț conține un acord-cadru și contracte explicit subsecvente, excludem plafonul acordului din total.
+          Acordurile fără subsecvente publicate rămân valori înregistrate și pot fi plafoane neutilizate. Anunțurile de atribuire
+          și publicațiile TED descriu aceste achiziții și nu se adaugă ca o cheltuială suplimentară.</p>
+        <p>Întrebările care numără înregistrări pot include valori pozitive peste filtrul de plauzibilitate; rezultatul și lista
+          surselor declară această selecție. Analizele CRI folosesc istoricul achizițiilor directe acceptate și explică filtrele
+          pe care le pot aplica. CRI este proporția unor criterii declanșate, nu probabilitatea unei ilegalități.</p>
+        <p>Pentru TED păstrăm moneda și sensul sumei: valoare de ofertă/rezultat, interval, plafon de acord-cadru sau necunoscut.
+          Ofertele multiple nu sunt adunate automat într-o valoare a lotului. Sumele în monede diferite nu sunt însumate.
+          Un număr lipsă sau ambiguu de oferte nu este tratat ca o singură ofertă.</p>
       </section>
 
       <section className="section">
@@ -119,8 +134,8 @@ export default function MetodologiePage() {
             administrator, identitate = nume + data nașterii). Tăria: <em>puternic</em> = 3+ repetiții, sau ofertant unic dovedit
             pe 2+ loturi, sau același administrator; <em>mediu</em> = 2 repetiții între 3+ firme sau o măturare; <em>slab</em> în
             rest. „Aceiași actori în altă parte” caută același set câștigând împreună (2+ membri în aceeași licitație) la alte
-            autorități. Numărul de oferte e publicat de SICAP doar la licitațiile deschise; listele de ofertanți respinși nu există
-            în date, deci orice rotație rămâne pistă.
+            autorități. Numărul ofertelor provine din loturi TED asociate cu încredere ridicată; lipsa sau ambiguitatea datelor
+            rămâne necunoscută. Orice rotație rămâne o pistă de verificat.
           </p>
         </div>
         <div className="method-card">
@@ -128,9 +143,9 @@ export default function MetodologiePage() {
             <h3>Feliere de achiziții directe</h3>
           </div>
           <p>
-            Un furnizor apare când are cel puțin 3 achiziții directe din aceeași clasă CPV, într-o fereastră de 60 de zile, a
-            căror sumă depășește plafonul legal pentru servicii și produse (135.060 lei până în 2022, 270.120 lei din 2023).
-            Se reține fereastra cu cel mai mare raport față de plafon. Plafonul pentru lucrări e mai mare și nu e aplicat.
+            Cel puțin 3 achiziții directe din aceeași clasă CPV și același tip, într-o fereastră de cel mult 60 de zile;
+            fiecare strict sub plafonul propriu. Suma se compară cu cel mai mare plafon aplicabil achizițiilor din fereastră.
+            Sunt luate în calcul și pragurile pentru lucrări. Se reține fereastra cu cel mai mare raport față de plafon.
           </p>
         </div>
       </section>
@@ -139,7 +154,7 @@ export default function MetodologiePage() {
         <p className="hint">
           Fiecare pagină și fiecare rezultat din „Întreabă” are un permalink; butonul „citează” copiază o citare gata
           formatată. Formatul: „<i>titlul paginii sau întrebarea</i>” — cinecâștigă?, pe baza datelor publice e-licitatie.ro
-          (achiziții directe și contracte 2018–2026), accesat la data consultării, urmat de adresă. Datele sunt publice;
+          (precizați perioada efectivă a rezultatului), accesat la data consultării, urmat de adresă. Datele sunt publice;
           analiza noastră e semnal, nu dovadă, și trebuie citată ca atare.
         </p>
       </section>

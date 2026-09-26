@@ -1,0 +1,14 @@
+{
+  "status": "passed",
+  "checks": [
+    "Download and read icons",
+    "Distinct neutral/green action colors in light and dark themes",
+    "Explicit downloaded check indicator",
+    "Keyboard activation opens reader",
+    "390px mobile has no horizontal overflow",
+    "Downloaded indicator and original remain available during processing",
+    "Retained original uses resume action after failure"
+  ],
+  "simulatedProcessingAndFailure": "browser responses only",
+  "liveSeapRequests": 0
+}

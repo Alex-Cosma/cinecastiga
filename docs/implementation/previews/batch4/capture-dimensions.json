@@ -1,0 +1,80 @@
+[
+  {
+    "file": "saved-case-mobile.png",
+    "width": 390,
+    "height": 1901,
+    "expectedWidth": 390
+  },
+  {
+    "file": "saved-case-desktop.png",
+    "width": 1440,
+    "height": 1472,
+    "expectedWidth": 1440
+  },
+  {
+    "file": "frozen-sources-mobile.png",
+    "width": 390,
+    "height": 2593,
+    "expectedWidth": 390
+  },
+  {
+    "file": "initial-desktop.png",
+    "width": 1440,
+    "height": 1875,
+    "expectedWidth": 1440
+  },
+  {
+    "file": "connection-desktop.png",
+    "width": 1440,
+    "height": 2084,
+    "expectedWidth": 1440
+  },
+  {
+    "file": "sources-desktop.png",
+    "width": 1440,
+    "height": 960,
+    "expectedWidth": 1440
+  },
+  {
+    "file": "save-desktop.png",
+    "width": 1440,
+    "height": 1653,
+    "expectedWidth": 1440
+  },
+  {
+    "file": "empty-mobile.png",
+    "width": 390,
+    "height": 1872,
+    "expectedWidth": 390
+  },
+  {
+    "file": "path-desktop.png",
+    "width": 1440,
+    "height": 1875,
+    "expectedWidth": 1440
+  },
+  {
+    "file": "stale-mobile.png",
+    "width": 390,
+    "height": 1513,
+    "expectedWidth": 390
+  },
+  {
+    "file": "sources-mobile.png",
+    "width": 390,
+    "height": 844,
+    "expectedWidth": 390
+  },
+  {
+    "file": "path-mobile.png",
+    "width": 390,
+    "height": 2626,
+    "expectedWidth": 390
+  },
+  {
+    "file": "path-mobile-dark.png",
+    "width": 390,
+    "height": 2626,
+    "expectedWidth": 390
+  }
+]

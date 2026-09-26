@@ -1,0 +1,167 @@
+{
+  "checkedAt": "2026-09-19T17:00:11.956Z",
+  "readOnly": true,
+  "checks": [
+    {
+      "type": "signal",
+      "code": "da_rapid",
+      "id": "24086173",
+      "records": 1,
+      "total": "3919.40",
+      "reconciled": true,
+      "warnings": []
+    },
+    {
+      "type": "signal",
+      "code": "da_round",
+      "id": "26334699",
+      "records": 1,
+      "total": "132000.00",
+      "reconciled": true,
+      "warnings": []
+    },
+    {
+      "type": "signal",
+      "code": "da_split",
+      "id": "26394301",
+      "records": 3,
+      "total": "140821.00",
+      "reconciled": true,
+      "warnings": []
+    },
+    {
+      "type": "signal",
+      "code": "da_concentration",
+      "id": "26412108",
+      "records": 436,
+      "total": "1619905.10",
+      "reconciled": true,
+      "warnings": [
+        "Selecția este reconstituită din datele actuale după criteriile semnalului. O captură o păstrează la momentul salvării."
+      ]
+    },
+    {
+      "type": "signal",
+      "code": "da_dependence",
+      "id": "26413399",
+      "records": 1,
+      "total": "135000.00",
+      "reconciled": true,
+      "warnings": [
+        "Selecția este reconstituită din datele actuale după criteriile semnalului. O captură o păstrează la momentul salvării."
+      ]
+    },
+    {
+      "type": "signal",
+      "code": "da_year_end",
+      "id": "26438536",
+      "records": 45,
+      "total": "1378420.85",
+      "reconciled": true,
+      "warnings": [
+        "Selecția este reconstituită din datele actuale după criteriile semnalului. O captură o păstrează la momentul salvării."
+      ]
+    },
+    {
+      "type": "signal",
+      "code": "award_no_competition",
+      "id": "26444653",
+      "records": 1,
+      "total": "8625800.00",
+      "warnings": [
+        "Valoarea anunțului și suma contractelor disponibile au definiții diferite. Verifică și anunțul SEAP original; nu presupune că sumele trebuie să coincidă.",
+        "Selecția este reconstituită din datele actuale după criteriile semnalului. O captură o păstrează la momentul salvării."
+      ]
+    },
+    {
+      "type": "signal",
+      "code": "award_single_bid",
+      "id": "26470838",
+      "records": 14,
+      "total": "11375456.64",
+      "warnings": [
+        "Lista arată cotele furnizorilor din contractele identificate în semnal. Numărul de oferte se referă la loturile TED asociate, nu la toate loturile anunțului.",
+        "Valoarea anunțului și suma contractelor disponibile au definiții diferite. Verifică și anunțul SEAP original; nu presupune că sumele trebuie să coincidă."
+      ]
+    },
+    {
+      "type": "signal",
+      "code": "award_concentration",
+      "id": "26476856",
+      "records": 5,
+      "total": "16543506.60",
+      "reconciled": true,
+      "warnings": [
+        "Selecția este reconstituită din datele actuale după criteriile semnalului. O captură o păstrează la momentul salvării."
+      ]
+    },
+    {
+      "type": "signal",
+      "code": "award_dependence",
+      "id": "26477720",
+      "records": 7,
+      "total": "17560706.88",
+      "reconciled": true,
+      "warnings": [
+        "Selecția este reconstituită din datele actuale după criteriile semnalului. O captură o păstrează la momentul salvării."
+      ]
+    },
+    {
+      "type": "signal",
+      "code": "fin_tiny_staff",
+      "id": "26479698",
+      "records": 5,
+      "total": "20153612.51",
+      "reconciled": true,
+      "warnings": [
+        "Valorile contractate nu sunt plăți sau venituri încasate. Datele bilanțului sunt păstrate separat de înregistrările de achiziție.",
+        "Selecția este reconstituită din datele actuale după criteriile semnalului. O captură o păstrează la momentul salvării."
+      ]
+    },
+    {
+      "type": "signal",
+      "code": "fin_public_reliance",
+      "id": "26486039",
+      "records": 16,
+      "total": "5885305.70",
+      "reconciled": true,
+      "warnings": [
+        "Valorile contractate nu sunt plăți sau venituri încasate. Datele bilanțului sunt păstrate separat de înregistrările de achiziție.",
+        "Selecția este reconstituită din datele actuale după criteriile semnalului. O captură o păstrează la momentul salvării."
+      ]
+    },
+    {
+      "type": "signal",
+      "code": "net_shared_admin",
+      "id": "26495239",
+      "records": 16,
+      "total": "947124.68",
+      "reconciled": true,
+      "warnings": [
+        "Relațiile sunt cele din registrul disponibil acum. Un reprezentant legal nu este automat beneficiar real, iar relația curentă nu dovedește o legătură la data atribuirii.",
+        "Selecția este reconstituită din datele actuale după criteriile semnalului. O captură o păstrează la momentul salvării."
+      ]
+    },
+    {
+      "type": "slicing",
+      "authority": "1965746",
+      "selectionId": "1966268",
+      "records": 3,
+      "total": "140821.00",
+      "warnings": [
+        "Selecția reconstituie fereastra de calcul din datele curente. CPV-ul comun și depășirea cumulată nu dovedesc singure fracționarea ilegală."
+      ]
+    },
+    {
+      "type": "pattern",
+      "authority": "1967486",
+      "selectionId": "1",
+      "records": 9,
+      "total": "12198874.00",
+      "warnings": [
+        "Sunt prezentate cotele furnizorilor selectați din contractele disponibile pentru anunțurile tiparului. Valorile din matrice pot reprezenta contracte integrale; nu se adună repetat pentru fiecare membru al unui consorțiu.",
+        "Un tipar de câștigători este o pistă de verificare. Datele nu includ toate ofertele respinse."
+      ]
+    }
+  ]
+}

@@ -1,4 +1,7 @@
 import type { DbSql } from "@seap/db";
+import { DA_CPV_TYPE_PATTERN } from "@seap/domain";
+import { assertCeilingEras, daThresholdDateSql, daThresholdKeySql } from "./thresholds.js";
+import { METHODOLOGY_VERSION } from "./methodology.js";
 
 /**
  * Radiografie marts — the structural lenses behind /entitati/{id}/radiografie
@@ -11,7 +14,8 @@ import type { DbSql } from "@seap/db";
  *   marts.lot_patterns          authority × CPV class: rotație / împărțire / măturare / consorțiu
  *   marts.pattern_elsewhere     member set → other authorities where they co-win
  *
- * Thresholds live in RULES and are documented on /metodologie.
+ * Statistical thresholds live in RULES; legal ceilings share the canonical
+ * domain registry and seeded database eras used by the annual flags.
  */
 export const RULES = {
   /** a tender counts as "cu loturi" from this many contracts */
@@ -24,8 +28,6 @@ export const RULES = {
   sliceWindowDays: 60,
   /** and at least this many awards whose sum exceeds the legal ceiling */
   sliceMinAwards: 3,
-  /** legal direct-award ceiling for services/products (lei), by year */
-  daCeiling: (year: number): number => (year <= 2022 ? 135_060 : 270_120),
   /** an acord-cadru's value is a ceiling over up to this many years */
   frameworkYears: 4,
   /** dependency window: the last N full years with balance sheets */
@@ -89,10 +91,12 @@ async function buildSupplierDependency(sql: DbSql): Promise<number> {
     with c as (
       select ct.authority_id a, ct.supplier_id s, ct.closing_value v,
              left(ct.finalization_date, 4)::int y,
-             coalesce(m.assignment_type, '') like 'Acord%' fr,
+             (coalesce(m.assignment_type, '') like 'Acord%'
+               and coalesce(source_contract.title, '') !~* 'subsecvent') fr,
              ct.is_single_bidder sb, ct.tenders_received tr
       from marts.contract_transactions ct
       left join core.notice_meta m on m.notice_no = ct.notice_no
+      left join core.contracts source_contract on source_contract.id = ct.contract_id
       where ct.authority_id is not null and ct.supplier_id is not null and ct.closing_value > 0
     ),
     pair as (
@@ -143,45 +147,67 @@ async function buildSupplierDependency(sql: DbSql): Promise<number> {
 
 // ── marts.da_slicing ────────────────────────────────────────────────────────
 
-async function buildDaSlicing(sql: DbSql): Promise<number> {
-  await sql`drop table if exists marts.da_slicing`;
-  await sql`
-    create table marts.da_slicing as
+/** Exposed as a SELECT so regression fixtures can run under a read-only transaction. */
+export function daSlicingSelectSql(sql: DbSql, tables: {
+  transactions?: ReturnType<DbSql>; acquisitions?: ReturnType<DbSql>; thresholds?: ReturnType<DbSql>;
+} = {}): ReturnType<DbSql> {
+  const key = daThresholdKeySql(sql, sql`da.cpv_code`, sql`da.acquisition_type`);
+  const date = daThresholdDateSql(sql, sql`da.publication_date`, sql`da.finalization_date`);
+  return sql`
     with d as (
-      select authority_id a, supplier_id s, left(cpv_code, 4) cls, cpv_name,
-             left(finalization_date, 10)::date d, closing_value v
-      from marts.da_transactions
-      where not value_suspect and closing_value > 0
-        and authority_id is not null and supplier_id is not null and cpv_code is not null
+      select dt.authority_id a, dt.supplier_id s, left(btrim(da.cpv_code), 4) cls, dt.cpv_name,
+             left(dt.finalization_date, 10)::date d, dt.closing_value v,
+             th.key typ, th.value_num::numeric ceiling,
+             da.publication_date is null date_fallback,
+             nullif(btrim(da.acquisition_type), '') is null type_inferred
+      from ${tables.transactions ?? sql`marts.da_transactions`} dt
+      join ${tables.acquisitions ?? sql`core.direct_acquisitions`} da on da.sicap_da_id = dt.sicap_da_id
+      join ${tables.thresholds ?? sql`core.risk_thresholds`} th on th.key = ${key}
+        and (th.valid_from at time zone 'UTC')::date <= ${date}
+        and (th.valid_to is null or (th.valid_to at time zone 'UTC')::date > ${date})
+      where not dt.value_suspect and dt.closing_value > 0 and dt.closing_value < th.value_num
+        and dt.authority_id is not null and dt.supplier_id is not null
+        and btrim(da.cpv_code) ~ ${DA_CPV_TYPE_PATTERN}
+        and dt.finalization_date is not null
     ),
     w as (
-      select a, s, cls, cpv_name, d, v,
+      select a, s, cls, typ, cpv_name, d, v,
              count(*) over win n,
              sum(v) over win sm,
-             max(d) over win d1
+             max(d) over win d1,
+             max(ceiling) over win ceiling,
+             count(*) filter (where date_fallback) over win date_fallback_count,
+             count(*) filter (where type_inferred) over win type_inferred_count
       from d
-      window win as (partition by a, s, cls order by d
+      window win as (partition by a, s, cls, typ order by d
                      range between current row and ${RULES.sliceWindowDays + " days"}::interval following)
     ),
     scored as (
-      select a, s, cls, cpv_name, d d0, d1, n, sm,
-             (case when extract(year from d) <= 2022 then 135060 else 270120 end) ceiling
+      select a, s, cls, typ, cpv_name, d d0, d1, n, sm, ceiling, date_fallback_count, type_inferred_count
       from w where n >= ${RULES.sliceMinAwards}
     ),
     best as (
-      select distinct on (a, s) a, s, cls, cpv_name, d0, d1, n, sm, ceiling, sm / ceiling ratio
+      select distinct on (a, s) a, s, cls, typ, cpv_name, d0, d1, n, sm, ceiling, sm / ceiling ratio,
+        date_fallback_count, type_inferred_count
       from scored where sm > ceiling
-      order by a, s, sm / ceiling desc, d0
+      order by a, s, sm / ceiling desc, d0, cls, typ, cpv_name
     ),
     tot as (
       select authority_id a, supplier_id s, count(*) n_total, sum(closing_value) v_total, max(supplier_name) supplier_name
-      from marts.da_transactions where not value_suspect and closing_value > 0 group by 1, 2
+      from ${tables.transactions ?? sql`marts.da_transactions`} where not value_suspect and closing_value > 0 group by 1, 2
     )
     select b.a authority_id, b.s supplier_id, t.supplier_name,
            b.cls cpv_class, b.cpv_name, b.d0, b.d1, b.n, b.sm sum_window, b.ceiling, b.ratio,
+           b.typ acquisition_type, b.date_fallback_count, b.type_inferred_count,
+           ${METHODOLOGY_VERSION}::text methodology_version,
            t.n_total, t.v_total
     from best b join tot t on t.a = b.a and t.s = b.s
   `;
+}
+
+async function buildDaSlicing(sql: DbSql): Promise<number> {
+  await sql`drop table if exists marts.da_slicing`;
+  await sql`create table marts.da_slicing as ${daSlicingSelectSql(sql)}`;
   await sql`alter table marts.da_slicing add primary key (authority_id, supplier_id)`;
   await sql`create index da_slicing_auth_ratio_idx on marts.da_slicing (authority_id, ratio desc)`;
   const [r] = (await sql`select count(*)::int c from marts.da_slicing`) as unknown as { c: number }[];
@@ -646,7 +672,17 @@ export async function runRadiografieMarts(
   sql: DbSql,
   opts: { log?: (m: string) => void } = {},
 ): Promise<RadiografieReport> {
+  // Publish every structural lens together; a failed rebuild preserves the
+  // previous tables instead of leaving a dropped or partly populated lens.
+  return sql.begin((tx) => buildRadiografieMarts(tx as unknown as DbSql, opts));
+}
+
+async function buildRadiografieMarts(
+  sql: DbSql,
+  opts: { log?: (m: string) => void },
+): Promise<RadiografieReport> {
   const log = opts.log ?? (() => {});
+  await assertCeilingEras(sql);
   const t0 = Date.now();
   const noticeMeta = await buildNoticeMeta(sql);
   log(`notice_meta: ${noticeMeta} (${Math.round((Date.now() - t0) / 1000)}s)`);

@@ -1,3 +1,4 @@
+import { runMonitoredCli } from "../monitoring/cli.js";
 import { createDb } from "@seap/db";
 import { runRadiografieMarts } from "../flags/radiografie.js";
 
@@ -8,9 +9,10 @@ import { runRadiografieMarts } from "../flags/radiografie.js";
  */
 async function main(): Promise<void> {
   const { sql } = createDb();
-  const report = await runRadiografieMarts(sql, { log: (m) => console.log(m) });
-  console.log(JSON.stringify(report, null, 2));
-  await sql.end();
+  await runMonitoredCli(sql, "radiografie", async () => {
+    const report = await runRadiografieMarts(sql, { log: (m) => console.log(m) });
+    console.log(JSON.stringify(report, null, 2));
+  });
 }
 
 main().catch((err) => {

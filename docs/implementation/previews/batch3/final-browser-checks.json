@@ -1,0 +1,60 @@
+{
+  "checkedAt": "2026-09-19T19:40:51.950Z",
+  "checks": [
+    {
+      "screen": "final-inbox-desktop",
+      "width": 1440,
+      "scroll": 1440,
+      "height": 1318
+    },
+    {
+      "screen": "final-change-desktop",
+      "width": 1440,
+      "scroll": 1440,
+      "height": 3937
+    },
+    {
+      "screen": "final-case-desktop",
+      "width": 1440,
+      "scroll": 1440,
+      "height": 1425
+    },
+    {
+      "screen": "final-change-mobile",
+      "width": 390,
+      "scroll": 390,
+      "height": 4996
+    },
+    {
+      "screen": "final-case-mobile",
+      "width": 390,
+      "scroll": 390,
+      "height": 1907
+    },
+    {
+      "screen": "final-setup-mobile",
+      "width": 390,
+      "scroll": 390,
+      "height": 2573
+    },
+    {
+      "screen": "final-setup-mobile-dark",
+      "width": 390,
+      "scroll": 390,
+      "height": 2573
+    },
+    {
+      "screen": "follow-drawer-mobile",
+      "width": 390,
+      "scroll": 390,
+      "height": 3259
+    }
+  ],
+  "mobileBeforeAfterWithoutHorizontalScroll": true,
+  "exactCaseDifference": true,
+  "caseChronologicalSources": true,
+  "humanDigestAvailability": true,
+  "entityFollow": true,
+  "sourceDrawerFollow": true,
+  "errors": []
+}

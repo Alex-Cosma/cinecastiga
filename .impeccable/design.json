@@ -1,0 +1,192 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-19T19:49:53.482Z",
+  "title": "Design System: cinecâștigă?",
+  "extensions": {
+    "colorMeta": {
+      "accent": {
+        "role": "primary",
+        "displayName": "Forest action",
+        "canonical": "#204c3c",
+        "tonalRamp": [
+          "#355d40",
+          "#617f51",
+          "#8fa877",
+          "#b4c8a3",
+          "#d2dec5"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Ivory paper",
+        "canonical": "#f7f8f2"
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Form surface",
+        "canonical": "#fffefa"
+      },
+      "sunk": {
+        "role": "neutral",
+        "displayName": "Inset evidence surface",
+        "canonical": "#edf0e5"
+      },
+      "dark-accent": {
+        "role": "primary",
+        "displayName": "Dark-theme action",
+        "canonical": "#c0d8ad"
+      },
+      "dark-paper": {
+        "role": "neutral",
+        "displayName": "Dark green paper",
+        "canonical": "#111d18"
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Discovery headline",
+        "purpose": "Existing discovery hero; not a required size for investigative tools."
+      },
+      "headline": {
+        "displayName": "Investigation headline",
+        "purpose": "Main investigation heading."
+      },
+      "title": {
+        "displayName": "Tool section heading",
+        "purpose": "Section headings within investigation and monitoring tools."
+      },
+      "body": {
+        "displayName": "Reading text",
+        "purpose": "Romanian explanations and source context."
+      },
+      "technical": {
+        "displayName": "Optional technical record",
+        "purpose": "Complete structured data behind an explicit disclosure."
+      }
+    },
+    "shadows": [
+      {
+        "name": "approved-soft",
+        "value": "0 2px 7px #204c3c06,0 10px 28px #204c3c08",
+        "purpose": "Existing discovery card hover."
+      },
+      {
+        "name": "approved-overlay",
+        "value": "0 10px 35px #204c3c14",
+        "purpose": "Existing search overlays."
+      },
+      {
+        "name": "approved-soft-dark",
+        "value": "0 2px 7px #0002,0 10px 28px #0002",
+        "purpose": "Dark override of the shared soft shadow."
+      },
+      {
+        "name": "approved-overlay-dark",
+        "value": "0 10px 35px #0004",
+        "purpose": "Dark override of the shared overlay shadow."
+      }
+    ],
+    "motion": [
+      {
+        "name": "control-transition",
+        "value": "background .16s ease, border-color .16s ease",
+        "purpose": "Existing workspace and monitoring controls."
+      },
+      {
+        "name": "source-entry",
+        "value": ".22s ease; opacity 0→1; translateY(4px)→none",
+        "purpose": "Monitoring record entry; disabled for reduced motion."
+      },
+      {
+        "name": "global-ease",
+        "value": "cubic-bezier(.2,.7,.2,1)",
+        "purpose": "Existing shared motion curve."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "shared-header-mobile",
+        "value": "700px"
+      },
+      {
+        "name": "workspace-monitoring-stack",
+        "value": "760px"
+      },
+      {
+        "name": "monitoring-amount-stack",
+        "value": "400px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Monitoring Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The immediate committing action in a monitoring form.",
+      "html": "<button class=\"ds-primary\" type=\"button\">Începe urmărirea</button>",
+      "css": ".ds-primary{font:600 13px var(--body,\"IBM Plex Sans\",sans-serif);background:var(--accent);color:var(--on-accent);border:1px solid var(--accent);border-radius:7px;padding:11px 18px;min-height:44px;cursor:pointer;transition:background .16s ease,border-color .16s ease}.ds-primary:hover{background:var(--ink)}.ds-primary:focus-visible{outline:2px solid var(--accent);outline-offset:4px}.ds-primary:disabled{opacity:.6;cursor:wait}@media(prefers-reduced-motion:reduce){.ds-primary{transition:none}}"
+    },
+    {
+      "name": "Monitoring Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "A secondary action such as reloading an available list.",
+      "html": "<button class=\"ds-secondary\" type=\"button\">Reîncarcă lista</button>",
+      "css": ".ds-secondary{font:400 13px var(--body,\"IBM Plex Sans\",sans-serif);background:var(--surface);color:var(--accent);border:1px solid var(--line2);border-radius:7px;padding:9px 15px;min-height:42px;cursor:pointer;transition:background .16s ease,border-color .16s ease}.ds-secondary:hover{background:var(--sunk);border-color:var(--accent-line)}.ds-secondary:focus-visible{outline:2px solid var(--accent);outline-offset:4px}.ds-secondary:disabled{opacity:.6;cursor:wait}@media(prefers-reduced-motion:reduce){.ds-secondary{transition:none}}"
+    },
+    {
+      "name": "Labeled Monitoring Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "A visible Romanian label and a surface field.",
+      "html": "<label class=\"ds-field\">Numele urmăririi<input type=\"text\" value=\"Lucrări locale\" /></label>",
+      "css": ".ds-field{display:grid;gap:7px;font:600 13px var(--body,\"IBM Plex Sans\",sans-serif);color:var(--ink)}.ds-field input{box-sizing:border-box;font:400 14px var(--body,\"IBM Plex Sans\",sans-serif);width:100%;min-width:0;padding:11px 12px;background:var(--surface);border:1px solid var(--line2);border-radius:6px;color:var(--ink)}.ds-field input:focus-visible{outline:2px solid var(--accent);outline-offset:4px}"
+    },
+    {
+      "name": "Private Workspace Navigation",
+      "kind": "nav",
+      "description": "Existing local destinations beneath the shared header; current state stays explicit.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Spațiu privat\"><a href=\"#investigations\">Anchetele mele</a><a href=\"#monitoring\" aria-current=\"page\">Urmăriri</a></nav>",
+      "css": ".ds-nav{display:flex;gap:24px;font:400 14px var(--body,\"IBM Plex Sans\",sans-serif)}.ds-nav a{color:var(--accent);text-decoration:none;text-underline-offset:5px}.ds-nav a:hover{text-decoration:underline}.ds-nav a[aria-current=page]{border-bottom:2px solid var(--accent);padding-bottom:7px}.ds-nav a:focus-visible{outline:2px solid var(--accent);outline-offset:4px}"
+    },
+    {
+      "name": "Source Change Status",
+      "kind": "chip",
+      "refersTo": "status-chip",
+      "description": "Text communicates the record state independently of its accent tint.",
+      "html": "<span class=\"ds-status\">Date modificate</span>",
+      "css": ".ds-status{display:inline-block;padding:3px 9px;background:var(--accent-soft);color:var(--accent-ink);border-radius:4px;font:400 11px var(--body,\"IBM Plex Sans\",sans-serif)}"
+    },
+    {
+      "name": "Preserved Before and After Evidence",
+      "kind": "card",
+      "refersTo": "evidence-panel",
+      "description": "The existing investigation evidence panel with two frozen source actions.",
+      "html": "<section class=\"ds-evidence\"><strong>Ambele versiuni sunt păstrate</strong><p>Înregistrările afectate rămân exact cum au fost observate.</p><div><a href=\"#before\">Sursele înainte</a><a href=\"#after\">Sursele după</a></div></section>",
+      "css": ".ds-evidence{padding:16px 18px;background:var(--sunk);color:var(--ink);border-radius:8px;font:400 13px/1.6 var(--body,\"IBM Plex Sans\",sans-serif)}.ds-evidence strong{font-weight:600}.ds-evidence p{margin:8px 0;color:var(--muted)}.ds-evidence>div{display:flex;gap:16px;flex-wrap:wrap;margin-top:14px}.ds-evidence a{font-size:14px;font-weight:600;color:var(--accent);text-decoration:none;text-underline-offset:4px}.ds-evidence a:hover{text-decoration:underline}.ds-evidence a:focus-visible{outline:2px solid var(--accent);outline-offset:4px}"
+    }
+  ],
+  "narrative": {
+    "overview": "The incumbent interface uses forest-green text and actions on ivory paper, with Bricolage headings and IBM Plex reading text. Open sections, thin separators, direct source links, and preserved-evidence panels give procurement records a clear reading order.\n\nThis records the built system rather than a new brand proposal. Color and font values come from the cascade of `globals.css` followed by `approved.css`; the latter supplies the approved forest/ivory overrides. Component examples come from the investigation workspace and monitoring extension. No creative metaphor or new palette was introduced.",
+    "keyCharacteristics": [
+      "Forest-green actions and ivory paper.",
+      "Shared Bricolage headings and IBM Plex reading text.",
+      "Open record sections with thin separators.",
+      "Immediate sources and preserved-evidence panels."
+    ],
+    "rules": [],
+    "dos": [
+      "Do reuse the approved theme variables and shared font families.",
+      "Do keep record/source text and numeric comparisons readable at desktop and mobile widths.",
+      "Do use filled primary actions for the immediate committing step and surface buttons for secondary actions.",
+      "Do preserve visible focus, semantic state labels, and reduced-motion support."
+    ],
+    "donts": [
+      "Don't turn a task-specific width, decorative page label, or glyph mark into a global design requirement.",
+      "Don't replace actual source content with decorative statistics, invented evidence, or ornamental dashboards.",
+      "Don't use color alone to distinguish before/after, errors, or selected state.",
+      "Don't modify the shared identity as a side effect of adding a workflow."
+    ]
+  }
+}

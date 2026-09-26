@@ -14,7 +14,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "id invalid" }, { status: 400 });
   }
   const role: Role = url.searchParams.get("rol") === "autoritate" ? "authority" : "supplier";
-  const q: TxQuery = { pageSize: 10 };
+  const q: TxQuery = { pageSize: 10, excluded: url.searchParams.get("excluse") === "1" };
   const page = Number(url.searchParams.get("page"));
   q.page = Number.isFinite(page) && page >= 1 ? Math.floor(page) : 1;
   const sort = url.searchParams.get("sort");

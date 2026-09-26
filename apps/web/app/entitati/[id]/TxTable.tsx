@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { formatRonFull, formatInt, cleanName } from "@/lib/format";
 import { FLAG_META } from "@/lib/flags";
 import { daUrl, awardUrl } from "@/lib/elicitatie";
 import { useTip } from "../../intreaba/blocks";
 import type { DaTx } from "@/lib/marts";
+import { useEntityTable } from "./useEntityTable";
 
 /**
  * The entity page's transaction table, redesigned to the drill-table standard:
@@ -50,28 +51,14 @@ export default function TxTable({
   const [yearsOpen, setYearsOpen] = useState(false);
   const [flag, setFlag] = useState<string | null>(initialFlag ?? null);
   const [src, setSrc] = useState<"all" | "da" | "contracts">("all");
-  const [data, setData] = useState<Resp | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [excluded, setExcluded] = useState(false);
   const tip = useTip();
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    const p = new URLSearchParams({ id: entityId, rol: role, page: String(page), sort, dir });
-    if (years.length > 0) p.set("an", years.join(","));
-    if (flag) p.set("sem", flag);
-    if (src !== "all") p.set("tip", src);
-    try {
-      const r = await fetch(`/api/entity-tx?${p.toString()}`);
-      setData((await r.json()) as Resp);
-    } catch (e) {
-      setData({ ok: false, error: String(e) });
-    } finally {
-      setLoading(false);
-    }
-  }, [entityId, role, page, sort, dir, years, flag, src]);
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const p = new URLSearchParams({ id: entityId, rol: role, page: String(page), sort, dir });
+  if (excluded) p.set("excluse", "1");
+  if (years.length > 0) p.set("an", years.join(","));
+  if (flag) p.set("sem", flag);
+  if (src !== "all") p.set("tip", src);
+  const { data, loading, error, retry } = useEntityTable<Resp>(`/api/entity-tx?${p.toString()}`);
 
   const sortBy = (key: "value" | "date" | "gap") => {
     if (sort === key) setDir(dir === "desc" ? "asc" : "desc");
@@ -107,12 +94,14 @@ export default function TxTable({
             key={k}
             type="button"
             className={src === k ? "on" : ""}
-            onClick={() => { setSrc(k); if (k === "contracts") setFlag(null); setPage(1); }}
+            onClick={() => { setSrc(k); setExcluded(false); if (k === "contracts") setFlag(null); setPage(1); }}
           >
             {l}
           </button>
         ))}
       </div>
+      <label className="data-exclusion-toggle"><input type="checkbox" checked={excluded} onChange={e => { setExcluded(e.target.checked); setFlag(null); setSrc("da"); setPage(1); }} /> Arată achizițiile directe excluse din total</label>
+      {excluded && <p className="note">Valori nule, nepozitive sau peste 2 milioane lei. Înregistrările rămân verificabile, dar nu sunt adăugate totalului afișat.</p>}
       <div className="txf">
         {/* years scale unbounded (a new one every January) → multi-select dropdown */}
         <div className="txf-dd">
@@ -149,7 +138,7 @@ export default function TxTable({
               const next = flag === f ? null : f;
               setFlag(next);
               // flags mark DA rows only — selecting one narrows to that channel
-              if (next) setSrc("da");
+              if (next) { setSrc("da"); setExcluded(false); }
               setPage(1);
             }}
           >
@@ -168,15 +157,11 @@ export default function TxTable({
           </button>
         </div>
       )}
-      <div className="ask-detmeta">
-        {formatInt(total)} înregistrări{src === "all" ? " (ambele canale)" : ""} · pagina {page}{" "}
-        din {formatInt(pages)}
-        {loading && data && <span className="tx-upd"> · se actualizează…</span>}
+      <div className="ask-detmeta" role="status">
+        {loading ? "Se încarcă înregistrările…" : error ? "Înregistrările nu au putut fi încărcate." : <>{formatInt(total)} înregistrări{src === "all" ? " (ambele canale)" : ""} · pagina {page} din {formatInt(pages)}</>}
       </div>
-      <div className="ask-tablewrap">
-        {/* stale-while-revalidate: old rows stay (dimmed) during fetch — the
-            table never collapses, so content below never jumps */}
-        <table className={`ask-table ask-drill${loading && data ? " tx-loading" : ""}`}>
+      <div className="ask-tablewrap" aria-busy={loading}>
+        <table className="ask-table ask-drill">
           <thead>
             <tr>
               <th className="col-date sortable" onClick={() => sortBy("date")} title="sortează">
@@ -204,8 +189,7 @@ export default function TxTable({
             </tr>
           </thead>
           <tbody>
-            {!data &&
-              loading &&
+            {loading &&
               Array.from({ length: 10 }, (_, i) => (
                 <tr key={`ghost-${i}`} className="tx-ghost">
                   {Array.from({ length: nCols }, (_, j) => (
@@ -215,14 +199,15 @@ export default function TxTable({
                   ))}
                 </tr>
               ))}
-            {!loading && data?.ok === false && (
+            {error && (
               <tr>
                 <td colSpan={nCols} className="county">
-                  {data.error}
+                  {error} <button type="button" onClick={retry}>Reîncearcă</button>
                 </td>
               </tr>
             )}
-            {data?.rows?.map((t, i) => (
+            {!loading && !error && !data?.rows?.length && <tr><td colSpan={nCols} className="county">Nicio înregistrare pentru filtrele alese.</td></tr>}
+            {!loading && data?.rows?.map((t, i) => (
               // consortium contracts come as one row per member with the same contract id
               <tr key={`${t.src}-${t.sicapDaId}-${t.partnerId ?? i}`}>
                 <td>{t.finalizationDate ? t.finalizationDate.slice(0, 10) : "—"}</td>
@@ -257,14 +242,13 @@ export default function TxTable({
                     <span
                       className="val-warn"
                       {...tip.bind(
-                        "valoare implauzibilă",
+                        "valoare de verificat",
                         t.estimatedValueRon
                           ? `estimat: ${formatRonFull(t.estimatedValueRon)}`
                           : undefined,
-                        (t.estimatedValueRon && t.closingValue != null && t.closingValue < t.estimatedValueRon
-                          ? "valoare simbolică — probabil sub-înregistrată (rest de preț unitar sau substituent)"
-                          : "probabil eroare de introducere (preț unitar cu separator de mii)") +
-                          " — valoarea NU e de încredere în totaluri sau statistici",
+                        t.closingValue != null && t.closingValue > 2000000
+                          ? "Depășește plafonul analitic de 2 milioane lei și este exclusă din total. Verifică valoarea și unitatea de măsură în sursă."
+                          : "Valoarea diferă de estimare de cel puțin 100 de ori. Dacă este pozitivă și de cel mult 2 milioane lei, rămâne inclusă în total. Verifică valoarea și unitatea de măsură în sursă.",
                       )}
                     >
                       {" "}
@@ -304,10 +288,10 @@ export default function TxTable({
       </div>
       {pages > 1 && (
         <div className="ask-pager">
-          <button type="button" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+          <button type="button" disabled={loading || page <= 1} onClick={() => setPage(page - 1)}>
             ‹ anterioare
           </button>
-          <button type="button" disabled={page >= pages} onClick={() => setPage(page + 1)}>
+          <button type="button" disabled={loading || page >= pages} onClick={() => setPage(page + 1)}>
             următoare ›
           </button>
         </div>

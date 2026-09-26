@@ -1,0 +1,9 @@
+{
+  "status": "passed",
+  "checks": [
+    "Real title opens native new tab",
+    "Internal contract ID redirects to stable contract detail",
+    "Original URL and drawer remain open"
+  ],
+  "liveSeapRequests": 0
+}

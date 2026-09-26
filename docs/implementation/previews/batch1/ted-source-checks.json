@@ -1,0 +1,130 @@
+{
+  "checkedAt": "2026-09-19",
+  "method": "Read-only PostgreSQL transaction; 15-second statement timeout; refreshed TED stats plus indexed core/mart comparison for publication 298320-2026. Display strings use production TED rendering helpers. No shared writes.",
+  "scope": "Full refreshed aggregate partitions; targeted 37-lot source/core/mart comparison. Not a row-by-row audit of the entire archive.",
+  "partitions": {
+    "total": 4032082,
+    "labels": 4032082,
+    "competition": 4032082,
+    "amountKinds": 4032082,
+    "foreignHeadline": 4221,
+    "countryBucketSum": 4200,
+    "numericTotalRows": 0
+  },
+  "counts": {
+    "amount_kind/contract_value": 2096753,
+    "amount_kind/framework_ceiling": 289376,
+    "amount_kind/framework_offer": 216541,
+    "amount_kind/missing": 349259,
+    "amount_kind/multiple_tenders": 609246,
+    "amount_kind/payable": 44812,
+    "amount_kind/tender_range": 426095,
+    "label/also-in-seap": 946586,
+    "label/possible-match": 1037075,
+    "label/ted-only": 2048421,
+    "single_bidder/no": 2458315,
+    "single_bidder/unknown": 726330,
+    "single_bidder/yes": 847437,
+    "total/all": 4032082,
+    "total/foreign": 4221,
+    "total/legacy": 0,
+    "total/missing_winners": 638608,
+    "total/notices": 157685
+  },
+  "target": {
+    "publication": "298320-2026",
+    "normalizationVersion": 2,
+    "coreLots": 37,
+    "martLots": 37,
+    "coreMartMismatch": [],
+    "winnerAlignmentMismatch": [],
+    "winnerEdges": 111,
+    "scalarAmounts": 0,
+    "labels": [
+      "ted-only"
+    ],
+    "headlines": [
+      "3 oferte · fără total"
+    ],
+    "sample": {
+      "lot": "LOT-0023",
+      "amountKind": "multiple_tenders",
+      "tendersReceived": 3,
+      "winnerNames": [
+        "ALLIANCE HEALTHCARE ROMANIA",
+        "FARMEXIM S.A.",
+        "MEDIPLUS EXIM"
+      ],
+      "sourceAmounts": [
+        {
+          "kind": "payable",
+          "text": "4.785.076.670 RON",
+          "source": "NoticeResult/LotTender/LegalMonetaryTotal/PayableAmount"
+        },
+        {
+          "kind": "payable",
+          "text": "4.789.619.555 RON",
+          "source": "NoticeResult/LotTender/LegalMonetaryTotal/PayableAmount"
+        },
+        {
+          "kind": "payable",
+          "text": "4.808.930.250 RON",
+          "source": "NoticeResult/LotTender/LegalMonetaryTotal/PayableAmount"
+        },
+        {
+          "kind": "tender_lower",
+          "text": "4.785.076.670 RON",
+          "source": "NoticeResult/LotResult/LowerTenderAmount"
+        },
+        {
+          "kind": "tender_upper",
+          "text": "4.808.930.250 RON",
+          "source": "NoticeResult/LotResult/HigherTenderAmount"
+        },
+        {
+          "kind": "framework_ceiling",
+          "text": "4.808.930.250 RON",
+          "source": "NoticeResult/LotResult/FrameworkAgreementValues/MaximumValueAmount"
+        }
+      ],
+      "url": "https://ted.europa.eu/en/notice/298320-2026/html"
+    }
+  },
+  "concerns": [
+    {
+      "code": "foreign_flag_country_disagreement",
+      "foreignResults": 4221,
+      "countryBucketMemberships": 4200,
+      "onlyRomanianCountriesButForeignFlag": 66,
+      "multinationalResults": 43,
+      "extraCountryMemberships": 45,
+      "finding": "66 result rows are flagged foreign although every winner country is RO. The fresh mart inherits core.entities.is_foreign; it currently disagrees with the aligned country codes. Country buckets also overlap for multinational consortia. No data correction was made during this audit.",
+      "presentationStatus": "Disclosed on the TED page with the exact live count, a linked tara=neclar scope and row labels. Stored country codes and foreign flags remain unchanged."
+    }
+  ],
+  "notes": [
+    "726330 results have unknown competition; this is separate from zero or multiple reported offers.",
+    "157685 notices have result rows in the mart; this count is not the full 161633-notice normalized archive.",
+    "638608 result rows have no identified winner in the loaded data.",
+    "The source itself contains the large amounts on 298320-2026. They remain original source values, not independently verified payments or an inferred combined total."
+  ],
+  "rawXmlCheck": {
+    "publication": "298320-2026",
+    "freshlyParsedLots": 37,
+    "storedLots": 37,
+    "mismatches": []
+  },
+  "countryDisclosureCheck": {
+    "scopeUrl": "/supra-prag?extern=1&tara=neclar",
+    "headlineCount": 66,
+    "filteredCount": 66,
+    "displayedRows": 66,
+    "page": 1,
+    "allRowsFlaggedForReview": true,
+    "allRowsHaveOriginalTedLink": true,
+    "distinctSourceLots": 66,
+    "elapsedMs": 435,
+    "method": "Actual getTedStats and getTedAwards functions inside a PostgreSQL read-only transaction; same shared SQL predicate for count and filter.",
+    "tests": "Read-only SQL VALUES fixture covers RO, missing/null/empty countries, normal country membership, and row-label parity; existing five TED display tests and web typecheck pass."
+  }
+}

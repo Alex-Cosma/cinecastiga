@@ -1,0 +1,25 @@
+{
+  "checkedAt": "2026-09-19T17:37:23.402520+00:00",
+  "productionBuild": "passed",
+  "workspaceTypecheck": "passed",
+  "workspaceLint": "passed",
+  "defaultTests": {
+    "web": 168,
+    "ingestion": 82,
+    "domain": 26,
+    "scraperClients": 16,
+    "total": 292
+  },
+  "isolatedDatabaseTests": {
+    "captures": 7,
+    "workspace": 5,
+    "population": 1,
+    "recipes": 1,
+    "total": 14,
+    "passed": true
+  },
+  "queryViewsVerified": 13,
+  "querySourceCases": 17,
+  "independentVisualReview": "passed after fixes",
+  "noCommitPushDeployment": true
+}

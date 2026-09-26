@@ -1,0 +1,189 @@
+{
+  "fixture": true,
+  "checkedAt": "2026-09-20T09:39:21.732Z",
+  "status": "passed",
+  "checks": [
+    {
+      "check": "ordinary_verified_user",
+      "passed": true
+    },
+    {
+      "screen": "peer-desktop",
+      "width": 1440,
+      "scroll": 1425,
+      "height": 3578,
+      "viewportOnly": false,
+      "screenshotWidth": 1425,
+      "screenshotHeight": 3578,
+      "overflow": false
+    },
+    {
+      "check": "complete_cohort_pagination",
+      "members": 24,
+      "medianExact": "126000.0004",
+      "passed": true
+    },
+    {
+      "check": "copied_url_restores_applied_scope_page_and_checkpoint",
+      "passed": true
+    },
+    {
+      "screen": "peer-sources-desktop",
+      "width": 1440,
+      "scroll": 1425,
+      "height": 2101,
+      "viewportOnly": true,
+      "screenshotWidth": 1440,
+      "screenshotHeight": 960,
+      "overflow": false
+    },
+    {
+      "check": "focal_exact_sources_and_original_links",
+      "rows": 7,
+      "totalExact": "125000.0104",
+      "originalLinks": 10,
+      "passed": true
+    },
+    {
+      "screen": "peer-group-sources-desktop",
+      "width": 1440,
+      "scroll": 1425,
+      "height": 2101,
+      "viewportOnly": true,
+      "screenshotWidth": 1440,
+      "screenshotHeight": 960,
+      "overflow": false
+    },
+    {
+      "check": "full_cohort_sources_independent_of_visible_page",
+      "rows": 103,
+      "totalExact": "3149000.0200",
+      "passed": true
+    },
+    {
+      "check": "complete_csv_export",
+      "rows": 103,
+      "exactSum": "3149000.02",
+      "originalLinks": true,
+      "passed": true
+    },
+    {
+      "check": "complete_cohort_frozen_in_private_case",
+      "rows": 103,
+      "totalExact": "3149000.0200",
+      "passed": true
+    },
+    {
+      "screen": "peer-case-desktop",
+      "width": 1440,
+      "scroll": 1425,
+      "height": 1762,
+      "viewportOnly": false,
+      "screenshotWidth": 1425,
+      "screenshotHeight": 1762,
+      "overflow": false
+    },
+    {
+      "screen": "peer-frozen-desktop",
+      "width": 1440,
+      "scroll": 1425,
+      "height": 8781,
+      "viewportOnly": false,
+      "screenshotWidth": 1425,
+      "screenshotHeight": 8781,
+      "overflow": false
+    },
+    {
+      "screen": "peer-frozen-desktop-viewport",
+      "width": 1440,
+      "scroll": 1440,
+      "height": 8781,
+      "viewportOnly": true,
+      "screenshotWidth": 1440,
+      "screenshotHeight": 960,
+      "overflow": false
+    },
+    {
+      "screen": "peer-mobile",
+      "width": 390,
+      "scroll": 390,
+      "height": 5573,
+      "viewportOnly": false,
+      "screenshotWidth": 390,
+      "screenshotHeight": 5573,
+      "overflow": false
+    },
+    {
+      "screen": "peer-mobile-dark",
+      "width": 390,
+      "scroll": 390,
+      "height": 5573,
+      "viewportOnly": false,
+      "screenshotWidth": 390,
+      "screenshotHeight": 5573,
+      "overflow": false
+    },
+    {
+      "screen": "peer-small-cohort-mobile",
+      "width": 390,
+      "scroll": 390,
+      "height": 3232,
+      "viewportOnly": false,
+      "screenshotWidth": 390,
+      "screenshotHeight": 3232,
+      "overflow": false
+    },
+    {
+      "check": "explicit_county_apply_and_small_group_suppression",
+      "peerCount": 4,
+      "passed": true
+    },
+    {
+      "check": "year_filter_and_url",
+      "year": 2024,
+      "passed": true
+    },
+    {
+      "screen": "peer-sources-mobile",
+      "width": 390,
+      "scroll": 390,
+      "height": 5573,
+      "viewportOnly": true,
+      "screenshotWidth": 390,
+      "screenshotHeight": 844,
+      "overflow": false
+    },
+    {
+      "check": "dataset_filter_exact_sources",
+      "dataset": "da",
+      "year": 2024,
+      "rows": 4,
+      "passed": true
+    },
+    {
+      "screen": "peer-supplier-mobile",
+      "width": 390,
+      "scroll": 390,
+      "height": 3542,
+      "viewportOnly": false,
+      "screenshotWidth": 390,
+      "screenshotHeight": 3542,
+      "overflow": false
+    },
+    {
+      "screen": "peer-supplier-desktop",
+      "width": 1440,
+      "scroll": 1425,
+      "height": 2286,
+      "viewportOnly": false,
+      "screenshotWidth": 1425,
+      "screenshotHeight": 2286,
+      "overflow": false
+    },
+    {
+      "check": "reduced_motion",
+      "enabled": true
+    }
+  ],
+  "errors": []
+}

@@ -1,3 +1,4 @@
+import { runMonitoredCli } from "../monitoring/cli.js";
 import { createDb } from "@seap/db";
 import { runTedMart } from "../normalize/ted-mart.js";
 
@@ -9,11 +10,12 @@ import { runTedMart } from "../normalize/ted-mart.js";
  */
 async function main(): Promise<void> {
   const { sql } = createDb();
-  await sql`set work_mem = '256MB'`;
-  await sql`set temp_file_limit = '30GB'`;
-  const report = await runTedMart(sql, { log: (m) => console.log(m) });
-  console.log(JSON.stringify(report, null, 2));
-  await sql.end();
+  await runMonitoredCli(sql, "ted-mart", async () => {
+    await sql`set work_mem = '256MB'`;
+    await sql`set temp_file_limit = '30GB'`;
+    const report = await runTedMart(sql, { log: (m) => console.log(m) });
+    console.log(JSON.stringify(report, null, 2));
+  });
 }
 
 main().catch(async (err) => {

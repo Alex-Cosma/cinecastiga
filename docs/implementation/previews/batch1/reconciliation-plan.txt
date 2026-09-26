@@ -1,0 +1,52 @@
+Reconciliation plan verification — local PostgreSQL, 2026-09-19
+
+Method
+  Execute the real reconciler's two source-to-temporary projections, indexes and
+  ANALYZE in an isolated transaction. Intercept before the shared-table TRUNCATE.
+  EXPLAIN only its matching SELECT over temporary tables, without executing it.
+  Roll back all temporary objects. No shared records or sequences were changed.
+
+Original eligibility estimate
+  PostgreSQL estimated 1,093 eligible TED rows.
+  Read-only count measured 2,099,926 eligible rows out of 4,032,082 lot results.
+  The original inline plan delayed winner equality until after buyer/award joins.
+
+First temporary-projection plan (still insufficient)
+  Nested Loop
+    Join Filter: e.vbucket = lateral_values.column1
+    Nested Loop
+      Seq Scan _reconcile_eli (estimated rows 1,180,630)
+      Index Scan _reconcile_ted_buyer_entity_id_winner_entity_id_vbucket_idx
+        Index Cond: buyer_entity_id = e.authority_entity_id
+                    AND winner_entity_id = e.winner_entity_id
+        Filter: precise value/date/CPV/title conditions
+    Values Scan (3 candidate buckets)
+  The bucket arrived after the buyer/winner-only lookup. Diagnostic: 20.818s.
+
+Final physical-probe plan
+  Merge Join (estimated result rows 79; total planner cost 968346.70)
+    Merge Cond:
+      t.buyer_entity_id = e.authority_entity_id
+      AND t.winner_entity_id = e.winner_entity_id
+      AND t.vbucket = e.vbucket
+    Join Filter:
+      CPV division compatibility;
+      exact value OR exact CPV OR title similarity >= 0.3;
+      abs(TED value - SEAP value) <= 0.01 * greatest(TED value, SEAP value);
+      absolute contract-date difference <= 45 days.
+    Index Scan _reconcile_ted_buyer_entity_id_winner_entity_id_vbucket_idx
+      Estimated rows: 7,130,917 (three physical probe rows per TED winner row)
+    Index Scan _reconcile_eli_authority_entity_id_winner_entity_id_vbucket_idx
+      Estimated rows: 1,180,812
+
+  The merge condition contains all three keys before precise candidate checks.
+  Temporary preparation/indexing/ANALYZE + EXPLAIN: 20.144s, then rollback.
+  These are planner estimates, not audited output totals or match runtimes.
+  The full reconciliation/mart refresh must complete before publishing results.
+
+Regression validation
+  Five PostgreSQL rollback fixtures invoke the real reconciler, covering source
+  eligibility, exact/tolerance/date boundaries, consortium deduplication, stable
+  primary selection, missing-title credit, inclusive REAL 0.90 reporting,
+  repeated invocation, and rollback/identity restoration after a late failure.
+  All five pass; ingestion TypeScript check passes.

@@ -1,0 +1,41 @@
+{
+  "status": "passed",
+  "checkedAt": "2026-09-26T15:09:41.605Z",
+  "applicationWrites": false,
+  "checks": [
+    "No overflow at 1440px",
+    "Search finds four passages across two documents",
+    "Romanian diacritic-insensitive phrase search",
+    "Empty search retains visibility of unindexed documents",
+    "Search opens exact PDF page 2",
+    "Save retains exact page, note and question",
+    "Saved passage binds PDF hash and exact quote",
+    "Saved evidence survives reload",
+    "No overflow at 390px",
+    "No overflow at 800px",
+    "No overflow at 320px",
+    "No overflow at 1440px",
+    "Native selection chooses exact subparagraph quote",
+    "Selection spanning helper label cannot become a source quote",
+    "Page navigation clears stale selection",
+    "OCR state explicitly disclosed with verification control",
+    "Unverified OCR status preserved in evidence",
+    "Link-only record never presents unavailable original",
+    "Missing-document note can be prepared without false server save",
+    "Local PDF addition is disclosed as metadata-only, not server upload",
+    "Demo passage removal works",
+    "No overflow at 390px",
+    "No overflow at 1440px",
+    "No browser runtime exceptions"
+  ],
+  "errors": [],
+  "screens": [
+    "library-desktop",
+    "search-desktop",
+    "reader-desktop",
+    "saved-mobile",
+    "reader-mobile",
+    "reader-dark",
+    "search-mobile"
+  ]
+}

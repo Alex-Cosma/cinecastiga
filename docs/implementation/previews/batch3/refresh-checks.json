@@ -1,0 +1,535 @@
+{
+  "checkpoint": {
+    "id": "a888f7f9-f39f-4b23-9c1e-0ffefe46270d",
+    "version": "1",
+    "kind": "baseline",
+    "status": "ready",
+    "startedAt": "2026-09-19 19:12:13.83462+00",
+    "completedAt": "2026-09-19 19:14:21.994344+00",
+    "sourceCoverage": {
+      "note": "Datele de achiziție, ultima colectare reușită și calcularea inventarului sunt momente diferite. Publicarea acestei versiuni nu înseamnă o colectare nouă.",
+      "normalized": [
+        {
+          "lastRawId": "17308073",
+          "transform": "award-contracts:v1",
+          "updatedAt": "2026-07-22 14:27:50.225+00"
+        },
+        {
+          "lastRawId": "17308067",
+          "transform": "award-list:v1",
+          "updatedAt": "2026-07-21 15:12:34.234+00"
+        },
+        {
+          "lastRawId": "223337",
+          "transform": "da-detail:v1",
+          "updatedAt": "2026-07-22 05:41:13.569+00"
+        },
+        {
+          "lastRawId": "16668816",
+          "transform": "da-list:v1",
+          "updatedAt": "2026-07-22 05:39:48.692+00"
+        },
+        {
+          "lastRawId": "16289783",
+          "transform": "ted-eforms:v1",
+          "updatedAt": "2026-07-22 14:49:09.716+00"
+        },
+        {
+          "lastRawId": "17129558",
+          "transform": "ted-fforms:v1",
+          "updatedAt": "2026-07-22 16:28:29.157+00"
+        },
+        {
+          "lastRawId": "17308064",
+          "transform": "tender-list:v1",
+          "updatedAt": "2026-07-21 14:59:41.465+00"
+        }
+      ],
+      "collections": [
+        {
+          "source": "elicitatie:awards",
+          "windowTo": "2018-01-01 20:59:59+00",
+          "deviation": 0,
+          "windowFrom": "2017-12-31 21:00:00+00",
+          "fetchedCount": "0",
+          "latestStatus": "completed",
+          "reportedCount": "0",
+          "lastSucceededAt": "2026-07-21 14:22:25.114138+00",
+          "latestStartedAt": "2026-07-21 14:22:24.272374+00"
+        },
+        {
+          "source": "elicitatie:das",
+          "windowTo": "2020-12-31 20:59:59+00",
+          "deviation": null,
+          "windowFrom": "2019-12-31 21:00:00+00",
+          "fetchedCount": "494650",
+          "latestStatus": "completed",
+          "reportedCount": null,
+          "lastSucceededAt": "2026-07-17 20:58:03.142223+00",
+          "latestStartedAt": "2026-07-17 10:20:20.758874+00"
+        },
+        {
+          "source": "elicitatie:tenders",
+          "windowTo": "2018-01-01 20:59:59+00",
+          "deviation": 0,
+          "windowFrom": "2017-12-31 21:00:00+00",
+          "fetchedCount": "0",
+          "latestStatus": "completed",
+          "reportedCount": "0",
+          "lastSucceededAt": "2026-07-21 14:22:13.543289+00",
+          "latestStartedAt": "2026-07-21 14:22:12.771743+00"
+        },
+        {
+          "source": "ted:can-standard",
+          "windowTo": "2018-01-31 23:59:59+00",
+          "deviation": 0,
+          "windowFrom": "2018-01-01 00:00:00+00",
+          "fetchedCount": "0",
+          "latestStatus": "completed",
+          "reportedCount": "0",
+          "lastSucceededAt": "2026-07-17 12:13:05.013049+00",
+          "latestStartedAt": "2026-07-17 12:12:39.152236+00"
+        },
+        {
+          "source": "ted:fforms",
+          "windowTo": "2023-01-31 23:59:59+00",
+          "deviation": 0,
+          "windowFrom": "2023-01-01 00:00:00+00",
+          "fetchedCount": "2484",
+          "latestStatus": "completed",
+          "reportedCount": "2484",
+          "lastSucceededAt": "2026-07-20 13:57:09.487793+00",
+          "latestStartedAt": "2026-07-20 13:56:18.485202+00"
+        }
+      ],
+      "observations": [
+        {
+          "dataset": "contracts",
+          "observation": {
+            "date_to": "2026-07-09",
+            "included": "970823",
+            "available": "1133208",
+            "date_from": "2000-01-05",
+            "allocations": "1098371",
+            "missing_cpv": "1133208",
+            "missing_date": "3",
+            "missing_currency": "404"
+          },
+          "calculatedAt": "2026-09-19 16:11:35.193697+00"
+        },
+        {
+          "dataset": "da",
+          "observation": {
+            "date_to": "2026-07-16",
+            "included": "19581710",
+            "available": "20795132",
+            "date_from": "2018-04-02",
+            "missing_cpv": "8",
+            "missing_raw": "4781104",
+            "missing_date": "0"
+          },
+          "calculatedAt": "2026-09-19 16:11:35.193697+00"
+        },
+        {
+          "dataset": "ted",
+          "observation": {
+            "date_to": "2026-06-30",
+            "results": "4032082",
+            "available": "161633",
+            "date_from": "2018-01-03",
+            "unverified": "0",
+            "missing_cpv": "0",
+            "missing_date": "0",
+            "unknown_competition": "726330"
+          },
+          "calculatedAt": "2026-09-19 16:11:35.193697+00"
+        },
+        {
+          "dataset": "years",
+          "observation": [
+            {
+              "n": "33",
+              "src": "contracts",
+              "year": 2000
+            },
+            {
+              "n": "1",
+              "src": "contracts",
+              "year": 2002
+            },
+            {
+              "n": "1",
+              "src": "contracts",
+              "year": 2007
+            },
+            {
+              "n": "1",
+              "src": "contracts",
+              "year": 2008
+            },
+            {
+              "n": "1",
+              "src": "contracts",
+              "year": 2011
+            },
+            {
+              "n": "1",
+              "src": "contracts",
+              "year": 2012
+            },
+            {
+              "n": "2",
+              "src": "contracts",
+              "year": 2013
+            },
+            {
+              "n": "8",
+              "src": "contracts",
+              "year": 2014
+            },
+            {
+              "n": "33",
+              "src": "contracts",
+              "year": 2015
+            },
+            {
+              "n": "199",
+              "src": "contracts",
+              "year": 2016
+            },
+            {
+              "n": "3640",
+              "src": "contracts",
+              "year": 2017
+            },
+            {
+              "n": "60078",
+              "src": "contracts",
+              "year": 2018
+            },
+            {
+              "n": "129894",
+              "src": "contracts",
+              "year": 2019
+            },
+            {
+              "n": "139397",
+              "src": "contracts",
+              "year": 2020
+            },
+            {
+              "n": "158777",
+              "src": "contracts",
+              "year": 2021
+            },
+            {
+              "n": "158644",
+              "src": "contracts",
+              "year": 2022
+            },
+            {
+              "n": "140720",
+              "src": "contracts",
+              "year": 2023
+            },
+            {
+              "n": "143084",
+              "src": "contracts",
+              "year": 2024
+            },
+            {
+              "n": "138659",
+              "src": "contracts",
+              "year": 2025
+            },
+            {
+              "n": "60032",
+              "src": "contracts",
+              "year": 2026
+            },
+            {
+              "n": "2160990",
+              "src": "da",
+              "year": 2018
+            },
+            {
+              "n": "2620114",
+              "src": "da",
+              "year": 2019
+            },
+            {
+              "n": "2384803",
+              "src": "da",
+              "year": 2020
+            },
+            {
+              "n": "2515063",
+              "src": "da",
+              "year": 2021
+            },
+            {
+              "n": "2606625",
+              "src": "da",
+              "year": 2022
+            },
+            {
+              "n": "2457129",
+              "src": "da",
+              "year": 2023
+            },
+            {
+              "n": "2479494",
+              "src": "da",
+              "year": 2024
+            },
+            {
+              "n": "2357086",
+              "src": "da",
+              "year": 2025
+            },
+            {
+              "n": "1213828",
+              "src": "da",
+              "year": 2026
+            },
+            {
+              "n": "5985",
+              "src": "ted",
+              "year": 2018
+            },
+            {
+              "n": "10756",
+              "src": "ted",
+              "year": 2019
+            },
+            {
+              "n": "16094",
+              "src": "ted",
+              "year": 2020
+            },
+            {
+              "n": "19482",
+              "src": "ted",
+              "year": 2021
+            },
+            {
+              "n": "23019",
+              "src": "ted",
+              "year": 2022
+            },
+            {
+              "n": "24858",
+              "src": "ted",
+              "year": 2023
+            },
+            {
+              "n": "25014",
+              "src": "ted",
+              "year": 2024
+            },
+            {
+              "n": "24262",
+              "src": "ted",
+              "year": 2025
+            },
+            {
+              "n": "12163",
+              "src": "ted",
+              "year": 2026
+            }
+          ],
+          "calculatedAt": "2026-09-19 16:11:35.193697+00"
+        }
+      ],
+      "sourceCompletenessVerified": false
+    },
+    "methodology": {
+      "flags": "rf-2026.5",
+      "monitoring": "monitoring-refresh-1",
+      "tedNormalization": 2,
+      "transactionPopulation": "batch1-canonical-1"
+    },
+    "validation": {
+      "mode": "baseline",
+      "scope": "full",
+      "checks": [
+        {
+          "check": "ted_normalization",
+          "scope": "all TED notices",
+          "passed": true,
+          "details": {
+            "total": "161633",
+            "pending": "0",
+            "unexpected_newer": "0"
+          }
+        },
+        {
+          "check": "legal_threshold_registry",
+          "scope": "all canonical ceiling eras",
+          "passed": true,
+          "details": {
+            "eraCount": 6
+          }
+        },
+        {
+          "check": "contract_population_and_allocations",
+          "scope": "all source contracts and contract allocations; every identified winner retains a positive share",
+          "passed": true,
+          "details": {
+            "examples": [],
+            "eligible_missing": "0",
+            "excluded_included": "0",
+            "contracts_considered": "1133208",
+            "allocation_mismatches": "0"
+          }
+        },
+        {
+          "check": "canonical_national_and_role_totals",
+          "scope": "full accepted positive DA population<=2M and canonical contract allocations",
+          "passed": true,
+          "details": [
+            {
+              "matches": true,
+              "check_name": "ask_contracts",
+              "actual_exact": "924876243345.1000",
+              "expected_exact": "924876243345.1000"
+            },
+            {
+              "matches": true,
+              "check_name": "ask_da",
+              "actual_exact": "126473148355.40",
+              "expected_exact": "126473148355.40"
+            },
+            {
+              "matches": true,
+              "check_name": "authority_profiles",
+              "actual_exact": "1051349391700.5000",
+              "expected_exact": "1051349391700.5000"
+            },
+            {
+              "matches": true,
+              "check_name": "national_spend",
+              "actual_exact": "1051349391700.5000",
+              "expected_exact": "1051349391700.5000"
+            },
+            {
+              "matches": true,
+              "check_name": "supplier_profiles",
+              "actual_exact": "1051349391700.5000",
+              "expected_exact": "1051349391700.5000"
+            }
+          ]
+        },
+        {
+          "check": "entity_profile_reconciliation",
+          "scope": "all entity/roles, including expected but absent profiles",
+          "passed": true,
+          "details": {
+            "checked": "196135",
+            "examples": [],
+            "mismatches": "0",
+            "available_profiles": "196135"
+          }
+        },
+        {
+          "check": "flag_methodology",
+          "scope": "all current flags; this populated dataset is expected to have flags",
+          "passed": true,
+          "details": {
+            "total": "2417827",
+            "wrong_version": "0"
+          }
+        },
+        {
+          "check": "flag_sample_references",
+          "scope": "all stored flag_instances; this checks their references, not whether capped samples cover all core flags",
+          "passed": true,
+          "details": {
+            "stored_samples": "79496",
+            "absent_flag_ids": "0",
+            "mismatched_samples": "0"
+          }
+        },
+        {
+          "check": "annual_signal_source_membership",
+          "scope": "all annual split signals; exact recorded IDs/counts/current numeric sums",
+          "passed": true,
+          "details": {
+            "checked": "17807",
+            "examples": [],
+            "mismatches": "0",
+            "available_flags": "17807"
+          }
+        },
+        {
+          "check": "coverage_observations",
+          "scope": "DA/contracts/TED object shape and required keys; years array exists. Does not establish external source completeness.",
+          "passed": true,
+          "details": [
+            {
+              "dataset": "contracts",
+              "matches": true,
+              "actual_kind": "object",
+              "calculated_at": "2026-09-19 16:11:35.193697+00"
+            },
+            {
+              "dataset": "da",
+              "matches": true,
+              "actual_kind": "object",
+              "calculated_at": "2026-09-19 16:11:35.193697+00"
+            },
+            {
+              "dataset": "ted",
+              "matches": true,
+              "actual_kind": "object",
+              "calculated_at": "2026-09-19 16:11:35.193697+00"
+            },
+            {
+              "dataset": "years",
+              "matches": true,
+              "actual_kind": "array",
+              "calculated_at": "2026-09-19 16:11:35.193697+00"
+            }
+          ]
+        },
+        {
+          "check": "coverage_record_counts",
+          "scope": "all source record counts compared with the preserved inventory",
+          "passed": true,
+          "details": [
+            {
+              "dataset": "contracts",
+              "matches": true,
+              "recorded": "1133208",
+              "available": "1133208"
+            },
+            {
+              "dataset": "da",
+              "matches": true,
+              "recorded": "20795132",
+              "available": "20795132"
+            },
+            {
+              "dataset": "ted",
+              "matches": true,
+              "recorded": "161633",
+              "available": "161633"
+            }
+          ]
+        }
+      ],
+      "stages": {},
+      "checkedAt": "2026-09-19T19:14:21.981Z",
+      "existingSnapshot": true,
+      "collectionPerformed": false
+    },
+    "error": null
+  },
+  "performedProcurementRebuild": false,
+  "performedCollection": false,
+  "verification": "Full read-only validation of the completed Batch 1 snapshot; only app.monitoring_refreshes was written.",
+  "pipelineUnitTests": 3,
+  "gateIntegrationTests": 8,
+  "ingestionTests": 85,
+  "integrationDatabase": "seap_test_batch3_20260919"
+}

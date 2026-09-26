@@ -6,3 +6,5 @@
 .ev-footer>.clipbtn{position:relative;flex-shrink:0}.ev-footer>.clipbtn .clipbtn-pop{position:absolute;inset:auto 0 calc(100% + 12px) auto;z-index:2;width:min(340px,calc(100vw - 40px));max-height:65dvh;overflow:auto}.ev-footer>.clipbtn .clipbtn-pop button,.ev-footer>.clipbtn .clipbtn-pop input,.ev-footer>.clipbtn .clipbtn-pop select{max-width:100%}@media(max-width:760px){.ev-footer>.clipbtn{width:100%}.ev-footer>.clipbtn>.clipbtn-t{width:100%}.ev-footer>.clipbtn .clipbtn-pop{width:100%}}
 @media(max-width:760px){.ev-footer>div:first-child{flex:1 0 100%}.ev-footer>.clipbtn{flex:0 0 100%}.ev-footer>.clipbtn>.clipbtn-t{min-height:36px}}
 .ev-exact-total{overflow-wrap:anywhere}
+
+.ev-contract-title{display:block;font-weight:600;margin-bottom:8px;line-height:1.45;overflow-wrap:anywhere;text-underline-offset:3px}

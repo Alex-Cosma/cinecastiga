@@ -20,7 +20,7 @@ export default function ClipButton({
   snapshot,
   label,
 }: {
-  kind: "entity" | "contract" | "notice" | "person" | "query" | "flag";
+  kind: "entity" | "contract" | "notice" | "person" | "query" | "flag" | "signal" | "da" | "radiografie";
   refId?: string | null;
   spec?: unknown;
   snapshot?: Record<string, unknown> | null;
@@ -34,8 +34,26 @@ export default function ClipButton({
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<string | null>(null);
+  const [capture, setCapture] = useState<{ id: string; status: string } | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const boxRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!done || !capture || !["queued", "running"].includes(capture.status)) return;
+    const controller = new AbortController();
+    const timer = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/anchete/${done}/captures/${capture.id}`, { signal: controller.signal });
+        if (!response.ok) throw new Error("Starea capturii nu poate fi verificată acum. Deschide ancheta pentru a reîncerca.");
+        const data = await response.json();
+        const current = data.capture ?? data;
+        if (typeof current.status === "string") setCapture({ id: capture.id, status: current.status });
+      } catch (error) {
+        if (!controller.signal.aborted) setErr(error instanceof Error ? error.message : "Starea capturii nu este disponibilă.");
+      }
+    }, 1800);
+    return () => { controller.abort(); clearInterval(timer); };
+  }, [done, capture?.id, capture?.status]);
 
   useEffect(() => {
     let alive = true;
@@ -107,12 +125,13 @@ export default function ClipButton({
   const openPanel = async () => {
     setOpen(true);
     setDone(null);
+    setCapture(null);
     setErr(null);
     if (list === null) {
       const r = await fetch("/api/anchete")
         .then((x) => x.json())
         .catch(() => null);
-      const invs: Inv[] = r?.investigations ?? [];
+      const invs: Inv[] = (r?.investigations ?? []).filter((i: Inv & { access?: { canEdit?: boolean } }) => i.access?.canEdit !== false);
       setList(invs);
       if (invs.length > 0) setSel(invs[0]!.id);
     }
@@ -155,6 +174,7 @@ export default function ClipButton({
         return;
       }
       setDone(invId);
+      if (out.capture?.id) setCapture(out.capture);
       setNote("");
     } catch {
       setErr(
@@ -178,10 +198,13 @@ export default function ClipButton({
       {open && (
         <div className="clipbtn-pop">
           {done ? (
-            <div className="clipbtn-done">
-              Salvat.{" "}
+            <div className="clipbtn-done" role="status">
+              <strong>{capture?.status === "failed" ? "Captura nu s-a încheiat." : capture && ["queued", "running"].includes(capture.status) ? "Păstrăm înregistrările și sursele…" : "Versiune păstrată în anchetă."}</strong>
+              {capture && ["queued", "running"].includes(capture.status) && <p className="hint">Poți continua explorarea. Captura va apărea în dosar când este completă.</p>}
+              {capture?.status === "failed" && <p className="hint">Nu am marcat o selecție incompletă drept probă. Deschide dosarul pentru detalii și reîncercare.</p>}
+              {err && <p className="auth-err">{err}</p>}
               <a href={`/anchete/${done}`} target="_blank" rel="noopener">
-                deschide ancheta ↗
+                Deschide ancheta ↗
               </a>
             </div>
           ) : (
@@ -204,6 +227,7 @@ export default function ClipButton({
                       <option value="">+ anchetă nouă</option>
                     </select>
                   </label>
+                  <p className="hint">Păstrăm selecția și valorile verificate pe server. Actualizările ulterioare ale datelor nu modifică această versiune.</p>
                   {!sel && (
                     <label className="clipbtn-l">
                       Titlul anchetei noi
@@ -236,10 +260,10 @@ export default function ClipButton({
                     onClick={() => void save()}
                   >
                     {busy
-                      ? "…"
+                      ? "Pregătim captura…"
                       : sel
-                        ? "salvează proba"
-                        : "creează ancheta și salvează proba"}
+                        ? "Păstrează această versiune"
+                        : "Creează ancheta și păstrează versiunea"}
                   </button>
                 </>
               )}

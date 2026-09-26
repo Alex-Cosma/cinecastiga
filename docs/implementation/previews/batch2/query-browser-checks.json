@@ -1,0 +1,49 @@
+{
+  "checkedAt": "2026-09-19T17:27:28.929Z",
+  "checks": [
+    {
+      "screen": "precise-query-desktop",
+      "width": 1440,
+      "document": 1440
+    },
+    {
+      "screen": "recipes-desktop",
+      "width": 1440,
+      "document": 1440
+    },
+    {
+      "screen": "precise-query-mobile",
+      "width": 390,
+      "document": 390
+    },
+    {
+      "screen": "recipes-mobile",
+      "width": 390,
+      "document": 390
+    },
+    {
+      "screen": "filtered-sources-desktop",
+      "width": 1440,
+      "document": 1440
+    },
+    {
+      "filteredSourcesRestored": true,
+      "conditionsRestored": true,
+      "privateRecipesVisible": true
+    },
+    {
+      "screen": "sharing-desktop",
+      "width": 1440,
+      "document": 1440
+    },
+    {
+      "screen": "sharing-mobile",
+      "width": 390,
+      "document": 390
+    },
+    {
+      "editorUi": true
+    }
+  ],
+  "errors": []
+}

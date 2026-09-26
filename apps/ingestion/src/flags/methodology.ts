@@ -4,7 +4,7 @@
  * `/metodologie` page. Bump `METHODOLOGY_VERSION` when a rule or threshold
  * changes; every flag instance is stamped with it.
  */
-export const METHODOLOGY_VERSION = "rf-2026.4";
+export const METHODOLOGY_VERSION = "rf-2026.5";
 
 export type FlagSubject = "da" | "award" | "authority" | "supplier" | "pair";
 
@@ -26,11 +26,11 @@ export const FLAG_DEFS: FlagDef[] = [
     title: "Fracționare sub prag",
     subject: "pair",
     description:
-      "Aceeași autoritate și același furnizor, mai multe achiziții directe într-un an, fiecare sub pragul legal, dar însumând peste prag.",
+      "Cel puțin 3 achiziții directe între aceeași autoritate și același furnizor, în același an, aceeași clasă CPV și același tip de achiziție. Fiecare este sub plafonul de referință propriu, iar suma depășește cel mai mare plafon aplicabil grupului.",
     rationale:
-      "Pragul legal e per achiziție (art. 7 alin. 5, Legea 98/2016), nu anual — dar legea interzice divizarea unei achiziții pentru a evita procedura (art. 11) și cere agregarea necesarului anual pe produse similare. Suma anuală către același partener, de câteva ori peste prag, e semnul tipic al divizării. Pragul s-a modificat în timp — 132.519 lei (2016 – iun. 2018), 135.060 lei (iun. 2018 – 2022, OUG 45/2018), 270.120 lei (din ian. 2023, Legea 208/2022) pentru produse/servicii; 441.730 / 450.200 / 900.400 lei pentru lucrări — și aplicăm pragul în vigoare la data fiecărei achiziții.",
+      "Legea 98/2016 art. 7(5) privește valoarea estimată fără TVA, iar art. 11 interzice divizarea pentru evitarea procedurii. Plafoanele pentru produse/servicii sunt 132.519 lei din 26.05.2016, 135.060 lei din 04.06.2018 și 270.120 lei din 10.09.2022; pentru lucrări: 441.730, 450.200 și 900.400 lei. Se folosește tipul declarat, iar în lipsa lui o clasificare CPV; un tip necunoscut nu primește automat plafonul mai mic.",
     caveat:
-      "Nevoi recurente legitime (ex. consumabile lunare) pot arăta similar. Într-un an care traversează o schimbare de prag, suma se compară cu pragul cel mai mare din acel an (interpretarea prudentă). Semnal, nu dovadă.",
+      "Valoarea de închidere și data publicării sunt repere analitice, nu o verificare juridică a necesarului estimat. În lipsa publicării se folosește finalizarea, fapt declarat în dovezi. La schimbarea plafonului folosim maximul din grup. O clasă CPV comună nu dovedește o nevoie unică; achizițiile recurente pot fi legitime. Datele anterioare datei de 26.05.2016 și clasificările necunoscute sunt excluse din acest calcul.",
   },
   {
     code: "da_concentration",
@@ -69,10 +69,10 @@ export const FLAG_DEFS: FlagDef[] = [
     title: "Valoare aproape de prag",
     subject: "da",
     description:
-      "Valoarea de închidere este chiar sub pragul legal aplicabil (ex. 90–100% din prag), pragul fiind cel în vigoare la data achiziției (132.519 / 135.060 / 270.120 lei pentru produse/servicii, după perioadă).",
+      "Valoarea de închidere este de cel puțin 90%, dar strict sub plafonul fără TVA pentru tipul și data de referință ale achiziției. Plafoanele se modifică la 26.05.2016, 04.06.2018 și 10.09.2022; lucrările au plafoane distincte.",
     rationale:
       "Valori bunched imediat sub prag indică ajustare pentru a rămâne în achiziție directă.",
-    caveat: "O singură achiziție sub prag este normală; semnalul contează în agregat.",
+    caveat: "O achiziție sub plafon este normală. Legea privește valoarea estimată, iar semnalul compară valoarea de închidere. Publicarea aproximează inițierea; finalizarea o înlocuiește numai dacă lipsește. Tipul poate fi dedus din CPV când nu este declarat; necunoscut înseamnă neclasificat, nu suspect.",
   },
   {
     code: "da_year_end",
@@ -87,25 +87,25 @@ export const FLAG_DEFS: FlagDef[] = [
   // ── Award (contract-award notice) flags ─────────────────────────────────────
   {
     code: "award_no_competition",
-    title: "Atribuire fără competiție",
+    title: "Negociere fără publicare prealabilă",
     subject: "award",
     description:
-      "Contract de valoare atribuit prin „negociere fără publicare prealabilă” — o procedură excepțională, fără anunț public și fără concurență.",
+      "Anunț de atribuire de valoare mare care declară procedura „negociere fără publicare prealabilă”. Denumirea procedurii nu stabilește câte oferte au fost primite.",
     rationale:
-      "Procedura fără publicare este permisă doar în cazuri strict definite (urgență, exclusivitate). Folosirea ei pentru contracte mari, repetat, ocolește concurența (Legea 98/2016 art. 104).",
+      "Lipsa unui anunț prealabil justifică verificarea motivului legal invocat și a condițiilor de atribuire (Legea 98/2016 art. 104).",
     caveat:
       "Unele cazuri sunt legitime (urgențe reale, furnizor unic tehnic). Semnalul contează prin valoare și frecvență.",
   },
   {
     code: "award_single_bid",
-    title: "Ofertant unic la procedură deschisă",
+    title: "O singură ofertă raportată în TED",
     subject: "award",
     description:
-      "Procedură care ar trebui să fie competitivă (licitație deschisă/restrânsă) finalizată cu o singură ofertă, la contract de valoare mare.",
+      "Anunț de atribuire de cel puțin 1 milion lei, prin licitație deschisă sau restrânsă, cu cel puțin un contract asociat unui lot TED care raportează exact o ofertă primită. Asocierea și numărul trebuie confirmate; egalitatea prețului minim cu cel maxim nu este o dovadă.",
     rationale:
-      "O licitație deschisă de valoare mare cu un singur ofertant sugerează cerințe croite pe măsura unui furnizor sau descurajarea concurenței.",
+      "O singură ofertă primită justifică verificarea accesului la procedură, a cerințelor și a pieței furnizorilor; nu identifică singură cauza concurenței reduse.",
     caveat:
-      "Piețe de nișă pot avea firesc un singur ofertant. Ofertant unic ≠ ilegal; e semnal de concurență slabă.",
+      "Numărul de oferte nu este numărul membrilor unui consorțiu. Un lot cu o ofertă nu descrie toate loturile anunțului; valoarea afișată este a anunțului. Numerele lipsă, contradictorii și asocierile ambigue rămân necunoscute. Piețele de nișă pot avea legitim o singură ofertă.",
   },
   {
     code: "award_concentration",
@@ -134,7 +134,7 @@ export const FLAG_DEFS: FlagDef[] = [
     title: "Firmă minusculă, bani publici mari",
     subject: "supplier",
     description:
-      "Furnizor cu cel mult 5 salariați (numărul mediu din bilanțul MF al aceluiași an) care încasează peste 2 mil. lei bani publici într-un singur an.",
+      "Furnizor cu cel mult 5 salariați (numărul mediu din bilanțul MF al aceluiași an) cu achiziții directe și cote din contracte înregistrate de cel puțin 2 mil. lei într-un singur an.",
     rationale:
       "O firmă fără personal care rulează contracte publice mari poate fi paravan sau intermediar — munca reală o face altcineva, iar marja rămâne la intermediar.",
     caveat:
@@ -156,7 +156,7 @@ export const FLAG_DEFS: FlagDef[] = [
     title: "Firme surori la aceeași autoritate",
     subject: "supplier",
     description:
-      "Două sau mai multe firme administrate de aceeași persoană (reprezentant legal la Registrul Comerțului, identificat prin nume + data și locul nașterii) încasează împreună bani publici de la aceeași autoritate.",
+      "Două sau mai multe firme administrate de aceeași persoană (reprezentant legal la Registrul Comerțului, identificat prin nume + data și locul nașterii) au achiziții directe și cote din contracte înregistrate la aceeași autoritate.",
     rationale:
       "Împărțirea afacerii pe firme-surori ascunde concentrarea reală pe un singur beneficiar: fiecare firmă pare mică, dar aceeași persoană controlează întregul flux — inclusiv ca metodă de a ocoli pragurile și semnalele de fracționare pe o singură firmă.",
     caveat:

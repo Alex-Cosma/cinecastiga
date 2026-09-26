@@ -1,0 +1,71 @@
+const KEY='cinecastiga:contract-files-mock:v1';
+const SOURCE='https://www.e-licitatie.ro/pub/notices/simplified-notice/v2/view/100231768';
+const icons={download:'<path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/>',check:'<path d="m5 12 4 4 10-10"/>',file:'<path d="M5 3h9l5 5v13H5Z M14 3v6h5M8 13h8M8 17h6"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',error:'<circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16v1"/>',open:'<path d="M14 4h6v6M20 4l-9 9M10 4H5v15h15v-5"/>',retry:'<path d="M4 10a8 8 0 1 1 1 7M4 4v6h6"/>'};
+const icon=name=>`<svg viewBox="0 0 24 24" aria-hidden="true">${icons[name]}</svg>`;
+const files=[
+ {id:'cs',title:'Caiet de sarcini',filename:'CS ILUMINAT_semnat.pdf.p7s',type:'P7S',pages:16,size:'976 KB',initial:'new',original:'fixtures/CS ILUMINAT_semnat.pdf.p7s',pdf:'fixtures/CS ILUMINAT.pdf',hash:'82549efe9ccbb7fd08edaf8504b5f1038435d4e094b3c5e06ea3a6150311ab43',scope:'Procedură · document semnat',origin:'Fișier real furnizat local pentru pilot. Legătura directă de descărcare nu a fost validată pentru această copie.',ocr:true},
+ {id:'court',title:'Decizie a instanței',filename:'HC-127-2025.pdf',type:'PDF',pages:10,size:'618 KB',initial:'ready',original:'fixtures/HC-127-2025.pdf',pdf:'fixtures/HC-127-2025.pdf',hash:'9b305927ede6acf7a831ecde2a111df668bac20e046d61fefdf33f879b3cb4da',scope:'Procedură · 10 decembrie 2025',origin:'Preluat automat din SEAP în pilot, la 26 septembrie 2026. Document SCN1168231/00054; identificator 110778324.',ocr:false},
+ {id:'clarification',title:'Clarificare — exemplu demonstrativ',filename:'clarificare-exemplu.pdf',type:'PDF',pages:1,size:'Document demonstrativ',initial:'error',original:'fixtures/clarificare-exemplu.pdf',pdf:'fixtures/clarificare-exemplu.pdf',hash:null,scope:'Exemplu fictiv · testează reluarea',origin:'Document fictiv din mockupul anterior. Nu este o clarificare reală a acestei proceduri.',ocr:false}
+];
+const $=selector=>document.querySelector(selector);
+let state,readerId=null,ocrPages=null,lastSignature='',lastAnnouncement='';
+function load(){try{const value=JSON.parse(localStorage.getItem(KEY));state=value&&Array.isArray(value.jobs)?value:{jobs:[],saved:false}}catch{state={jobs:[],saved:false}}}
+load();
+function persist(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch{$('#status').textContent='Stocarea locală nu este disponibilă; progresul machetei se păstrează doar în acest tab.'}}
+function phases(file,retry=false){return retry?[{id:'ocr',label:'Se reia citirea textului',duration:6500}]:[{id:'source',label:'Se pregătește descărcarea',duration:2000},{id:'download',label:'Se descarcă originalul',duration:4000},...(file.type==='P7S'?[{id:'extract',label:'Se extrage PDF-ul',duration:1800}]:[]),{id:'ocr',label:'Se citește textul',duration:11000}]}
+function statusOf(file,now=Date.now()){
+ const job=state.jobs.find(j=>j.id===file.id);if(!job)return{status:file.initial};
+ if(now<job.start)return{status:'queued',position:state.jobs.filter(j=>j.start<job.start&&j.end>now).length,job};
+ if(now>=job.end)return{status:'ready',job};
+ let start=job.start;for(const phase of phases(file,job.retry)){if(now<start+phase.duration)return{status:'active',job,phase,progress:Math.min(1,(now-start)/phase.duration)};start+=phase.duration}
+ return{status:'ready',job};
+}
+function safe(value){return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function announce(message){if(message!==lastAnnouncement){$('#status').textContent=message;lastAnnouncement=message}}
+async function enqueue(id){
+ const change=()=>{load();const file=files.find(f=>f.id===id),current=statusOf(file);if(!['new','error'].includes(current.status))return;
+ const start=Math.max(Date.now(),...state.jobs.map(j=>j.end));const retry=current.status==='error';const duration=phases(file,retry).reduce((n,p)=>n+p.duration,0);
+ state.jobs.push({id,start,end:start+duration,retry});persist();lastSignature='';render();announce(current.status==='error'?'Procesarea va fi reluată din originalul păstrat.':`${file.title} a fost adăugat pentru descărcare și procesare.`)};
+ if(navigator.locks)await navigator.locks.request(KEY,change);else change();
+}
+function row(file,current){
+ const busy=files.some(f=>statusOf(f).status==='active');
+ let stateText='',stateClass='',stateIcon='',subtext='',actions='',extra='';
+ if(current.status==='new'){stateText='Nedescărcat';subtext='Doar informațiile din listă';actions=`<button class="button primary" data-enqueue="${file.id}" aria-label="Descarcă și procesează ${safe(file.title)}">${icon('download')}${busy?'Adaugă la coadă':'Descarcă și procesează'}</button>`}
+ if(current.status==='ready'){stateText=current.job?'Pregătit':'Disponibil';stateClass='ready-state';stateIcon=icon('check');subtext=`${file.pages} pagini · ${file.type==='P7S'?'PDF extras':file.type}`;actions=`<button class="button secondary" data-open="${file.id}">Deschide documentul</button><a class="button secondary download-original" href="${encodeURI(file.original)}" download title="Descarcă originalul păstrat" aria-label="Descarcă originalul ${safe(file.filename)}">${icon('download')}</a>`}
+ if(current.status==='queued'){stateText='În așteptare';stateIcon=icon('clock');subtext=`Poziția ${current.position} în coadă`;actions=`<button class="button wait-button" disabled>${icon('clock')}În coadă · ${current.position}</button>`}
+ if(current.status==='active'){stateText=current.phase.id==='ocr'?'Se procesează':'În lucru';subtext='Progres demonstrativ';actions='<button class="button wait-button" disabled>Se pregătește…</button>';const page=Math.min(file.pages,Math.floor(current.progress*file.pages)+1);const detail=current.phase.id==='ocr'?`Pagina ${page} din ${file.pages}`:current.phase.id==='download'?`${Math.round(current.progress*100)}% · simulare`:'Poți continua explorarea';const determinate=['download','ocr'].includes(current.phase.id);const phaseIndex=['source','download','extract','ocr'].indexOf(current.phase.id);extra=`<div class="job-progress"><div class="progress-heading"><strong>${current.phase.label}</strong><span>${detail}</span></div><div class="progress-track" role="progressbar" aria-label="${safe(current.phase.label)} — progres simulat" ${determinate?`aria-valuenow="${Math.round(current.progress*100)}" aria-valuemin="0" aria-valuemax="100"`:''}><div class="progress-fill ${determinate?'':'indeterminate'}" ${determinate?`style="width:${Math.round(current.progress*100)}%"`:''}></div></div><div class="phase-steps">${[['source','Sursă'],['download','Descărcare'],['extract','PDF'],['ocr','Text']].filter(([id])=>!current.job.retry||id==='ocr').map(([id,label],i)=>`<span class="${['source','download','extract','ocr'].indexOf(id)<phaseIndex?'past':id===current.phase.id?'present':''}"><i></i>${label}</span>`).join('')}</div><p class="progress-context">${current.job.retry?'Originalul este păstrat. Reluăm doar procesarea.':'Nu trebuie să rămâi pe această pagină. Starea se păstrează la revenire.'}</p></div>`}
+ if(current.status==='error'){stateText='Procesare întreruptă';stateClass='error-state';stateIcon=icon('error');subtext='Originalul este păstrat';actions=`<button class="button secondary" data-enqueue="${file.id}">${icon('retry')}Reia procesarea</button>`;extra='<p class="file-error">Eroare simulată: citirea textului s-a întrerupt. Fișierul nu trebuie descărcat din nou.</p>'}
+ return `<article class="file-row ${current.status==='active'?'active':''}" data-file="${file.id}" data-state="${current.status}"><div class="file-main"><div class="file-symbol">${icon('file')}</div><div><h3 class="file-title">${file.title}</h3><p class="file-metadata"><span class="tag">${file.type}</span><span>${file.scope}</span></p></div><div class="file-state"><strong class="${stateClass}">${stateIcon}${stateText}</strong><span>${subtext}</span></div><div class="file-actions">${actions}</div></div>${extra}<details class="file-source" data-source="${file.id}"><summary>Fișier și proveniență</summary><dl><dt>Nume original</dt><dd>${file.filename}</dd><dt>Sursa exemplului</dt><dd>${file.origin}</dd>${file.id!=='clarification'?`<dt>Anunț asociat</dt><dd><a href="${SOURCE}" target="_blank" rel="noopener noreferrer">SCN1168231 în SEAP ↗</a></dd>`:''}${file.hash?`<dt>Amprenta originalului</dt><dd><code>${file.hash}</code></dd>`:''}${file.type==='P7S'?'<dt>Semnătura</dt><dd>Integritatea criptografică a fost verificată în pilot. Încrederea și revocarea certificatului nu au fost validate.</dd>':''}</dl></details></article>`;
+}
+function render(){
+ const snapshots=files.map(file=>({file,current:statusOf(file)}));
+ const signature=JSON.stringify(snapshots.map(({current})=>[current.status,current.phase?.id,Math.floor((current.progress||0)*20),current.position]));
+ if(signature!==lastSignature){
+  const open=[...document.querySelectorAll('.file-source[open]')].map(d=>d.dataset.source);const focused=document.activeElement;const focusKey=focused?.dataset.enqueue?`[data-enqueue="${focused.dataset.enqueue}"]`:focused?.dataset.open?`[data-open="${focused.dataset.open}"]`:focused?.tagName==='SUMMARY'?`[data-source="${focused.parentElement.dataset.source}"] summary`:null;
+  $('#file-list').innerHTML=snapshots.map(({file,current})=>row(file,current)).join('');open.forEach(id=>{const el=$(`[data-source="${id}"]`);if(el)el.open=true});if(focusKey)$(focusKey)?.focus({preventScroll:true});lastSignature=signature;
+ }
+ const active=snapshots.find(s=>s.current.status==='active'),queued=snapshots.filter(s=>s.current.status==='queued').length,ready=snapshots.filter(s=>s.current.status==='ready').length;
+ $('#ready-count').textContent=`${ready} din ${files.length} disponibile`;$('#queue-summary').classList.toggle('busy',!!active);
+ $('#queue-text').textContent=active?`1 fișier în lucru${queued?` · ${queued} în așteptare`:''}`:state.jobs.length?'Toate fișierele cerute sunt pregătite':'Niciun fișier în lucru';
+ if(active)announce(`${active.file.title}: ${active.current.phase.label}.${queued?` ${queued} fișier în așteptare.`:''}`);
+ else if(state.jobs.length)announce('Documentele cerute sunt pregătite pentru consultare.');
+ $('#save-feedback').hidden=!state.saved;$('#save-contract span').textContent=state.saved?'Păstrat în ancheta demo':'Salvează în anchetă';
+}
+$('#file-list').addEventListener('click',e=>{const enqueueButton=e.target.closest('[data-enqueue]'),openButton=e.target.closest('[data-open]');if(enqueueButton)void enqueue(enqueueButton.dataset.enqueue);if(openButton)void openReader(openButton.dataset.open)});
+async function openReader(id){
+ const file=files.find(f=>f.id===id);if(statusOf(file).status!=='ready')return;readerId=id;$('#reader-title').textContent=file.title;$('#reader-note').textContent=file.id==='clarification'?'Document fictiv, creat pentru această demonstrație.':file.type==='P7S'?'PDF extras din originalul semnat · 16 pagini':'PDF original preluat din SEAP · 10 pagini scanate';
+ $('#reader-page').innerHTML=Array.from({length:file.pages},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('');$('#reader-total').textContent=`din ${file.pages}`;$('#reader-original').href=file.original;$('#reader-original').download=file.filename;$('#reader-pdf-link').href=file.pdf;$('#ocr-panel').hidden=!file.ocr;$('#reader').hidden=false;
+ if(file.ocr&&!ocrPages){try{ocrPages=(await(await fetch('fixtures/ocr.json')).json()).pages}catch{$('#ocr-text').textContent='Textul nu a putut fi încărcat. PDF-ul rămâne disponibil.'}}
+ updatePage();$('#reader').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});$('#reader-title').tabIndex=-1;$('#reader-title').focus({preventScroll:true});
+}
+function updatePage(){if(!readerId)return;const file=files.find(f=>f.id===readerId),page=Number($('#reader-page').value);$('#pdf-frame').src=encodeURI(file.pdf)+`#page=${page}&view=FitH&toolbar=0`;if(file.ocr&&ocrPages)$('#ocr-text').textContent=ocrPages.find(p=>p.page===page)?.text||'Această pagină nu conține text recunoscut.'}
+$('#reader-page').addEventListener('change',updatePage);$('#close-reader').addEventListener('click',()=>{const id=readerId;$('#reader').hidden=true;$('#pdf-frame').removeAttribute('src');readerId=null;$(`[data-open="${id}"]`)?.focus()});
+$('#show-drawer').addEventListener('click',()=>{$('#evidence-drawer').showModal();document.body.style.overflow='hidden'});$('#close-drawer').addEventListener('click',()=>$('#evidence-drawer').close());$('#evidence-drawer').addEventListener('close',()=>{document.body.style.overflow='';$('#show-drawer').focus()});$('#evidence-drawer').addEventListener('click',e=>{if(e.target===$('#evidence-drawer')&&e.clientX<$('#evidence-drawer').getBoundingClientRect().left)$('#evidence-drawer').close()});
+const normalize=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();$('#drawer-search').addEventListener('input',()=>{const matches=normalize($('#drawer-result').textContent).includes(normalize($('#drawer-search').value.trim()));$('#drawer-result').hidden=!matches;$('#drawer-empty').hidden=matches});
+$('#save-contract').addEventListener('click',()=>{state.saved=true;persist();render()});$('#undo-save').addEventListener('click',()=>{state.saved=false;persist();render()});
+$('#reset').addEventListener('click',()=>{state={jobs:[],saved:false};persist();lastSignature='';$('#reader').hidden=true;$('#pdf-frame').removeAttribute('src');readerId=null;render();announce('Demonstrația a fost resetată. Nicio cerere SEAP nu a fost făcută.')});
+const themeKey='cinecastiga:contract-files-theme';try{document.documentElement.dataset.theme=localStorage.getItem(themeKey)||'light'}catch{}
+function updateThemeLabel(){$('#theme').setAttribute('aria-label',document.documentElement.dataset.theme==='dark'?'Activează tema luminoasă':'Activează tema întunecată')}
+$('#theme').addEventListener('click',()=>{document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark';try{localStorage.setItem(themeKey,document.documentElement.dataset.theme)}catch{}updateThemeLabel()});updateThemeLabel();
+window.addEventListener('storage',event=>{if(event.key===KEY){load();lastSignature='';render()}});setInterval(render,400);render();

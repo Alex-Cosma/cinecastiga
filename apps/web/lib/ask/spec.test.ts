@@ -27,15 +27,10 @@ describe("validateSpec", () => {
     expect(s).toHaveProperty("error");
   });
 
-  it("swaps inverted year range and drops junk filters", () => {
-    const s = validateSpec({
-      block: "timeseries",
-      measure: "value",
-      filters: { yearFrom: 2024, yearTo: 2019, cpvTerm: "", county: 42, bogus: "x" },
-    });
-    expect(s).toMatchObject({ filters: { yearFrom: 2019, yearTo: 2024 } });
-    expect((s as { filters: object }).filters).not.toHaveProperty("cpvTerm");
-    expect((s as { filters: object }).filters).not.toHaveProperty("county");
+  it("rejects inverted periods, malformed values and unknown filters instead of dropping them", () => {
+    expect(validateSpec({ block:"timeseries",measure:"value",filters:{ yearFrom:2024,yearTo:2019 } })).toHaveProperty("error");
+    expect(validateSpec({ block:"stat",measure:"value",filters:{ county:42 } })).toHaveProperty("error");
+    expect(validateSpec({ block:"stat",measure:"value",filters:{ bogus:"x" } })).toHaveProperty("error");
   });
 
   it("requires a focal entity for entity-centric blocks", () => {
@@ -101,7 +96,7 @@ describe("validateSpec", () => {
       measure: "value",
       filters: { uatSiruta: -3 },
     });
-    expect((bad as { filters: object }).filters).not.toHaveProperty("uatSiruta");
+    expect(bad).toHaveProperty("error");
   });
 
   it("accepts dataset and auto-switches to contracts on singleBidder", () => {
@@ -132,6 +127,6 @@ describe("validateSpec", () => {
       measure: "value",
       filters: { authorityKind: "minister" },
     });
-    expect((bad as { filters: object }).filters).not.toHaveProperty("authorityKind");
+    expect(bad).toHaveProperty("error");
   });
 });

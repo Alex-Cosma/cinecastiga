@@ -1,4 +1,5 @@
 import { validateSpec, type AskSpec, type Block } from "./spec";
+import { isHistoricalProfile, type MinimumRecords, type QueryPopulation } from "./population";
 
 /** The builder uses exactly the public /api/ask spec; it owns no query engine. */
 export interface QuestionSpec {
@@ -9,6 +10,9 @@ export interface QuestionSpec {
   topN?: number;
   rankBy?: string;
   filters: Record<string, string | number | boolean>;
+  population?: QueryPopulation;
+  comparisonMode?: "transactions" | "profiles";
+  minimumRecords?: MinimumRecords;
 }
 
 export const QUESTION_GROUPS = [
@@ -80,7 +84,7 @@ export const QUESTION_TYPES: {
     id: "compare",
     group: "change",
     label: "Cum se compară două instituții sau firme?",
-    description: "Două profiluri istorice, privite împreună.",
+    description: "Aceeași selecție de achiziții pentru două entități.",
     keywords: "comparatie versus vs fata in fata",
   },
   {
@@ -150,7 +154,7 @@ export const PROFILE_QUESTIONS = new Set([
   "entity_card",
 ]);
 export const isProfileQuestion = (spec: QuestionSpec) =>
-  PROFILE_QUESTIONS.has(spec.block);
+  isHistoricalProfile(spec);
 export const foldQuestion = (value: string) =>
   value
     .normalize("NFD")
@@ -159,6 +163,8 @@ export const foldQuestion = (value: string) =>
 export const cloneQuestion = (spec: QuestionSpec): QuestionSpec => ({
   ...spec,
   filters: { ...spec.filters },
+  ...(spec.population ? { population: structuredClone(spec.population) } : {}),
+  ...(spec.minimumRecords ? { minimumRecords:{ ...spec.minimumRecords } } : {}),
 });
 
 export function defaultQuestion(
@@ -173,13 +179,19 @@ export function defaultQuestion(
   };
 }
 
-/** Order-independent equality also treats omitted/all dataset as equivalent. */
+/** Labels describe exact identities; they do not change the selected records. */
 export function questionKey(spec: QuestionSpec): string {
+  const filters = { ...spec.filters };
+  for (const [id, label] of [
+    ["authorityId", "authorityName"], ["supplierId", "supplierName"],
+    ["compareWithId", "compareWith"], ["uatSiruta", "uatName"],
+    ["adminPersonKey", "adminName"],
+  ]) if (filters[id!]) delete filters[label!];
   const s = {
     ...spec,
     dataset: spec.dataset ?? "all",
     filters: Object.fromEntries(
-      Object.entries(spec.filters).sort(([a], [b]) => a.localeCompare(b)),
+      Object.entries(filters).sort(([a], [b]) => a.localeCompare(b)),
     ),
   };
   return JSON.stringify(
@@ -187,6 +199,11 @@ export function questionKey(spec: QuestionSpec): string {
       Object.entries(s).sort(([a], [b]) => a.localeCompare(b)),
     ),
   );
+}
+
+/** Grounding may enrich an untouched draft, but cannot replace later edits. */
+export function reconcileQuestionDraft(current: QuestionSpec, submitted: QuestionSpec, resolved: QuestionSpec): QuestionSpec {
+  return questionKey(current) === questionKey(submitted) ? cloneQuestion(resolved) : current;
 }
 
 export function periodLabel(spec: QuestionSpec): string {
@@ -263,7 +280,7 @@ export function describeQuestion(input: QuestionSpec | AskSpec): string {
     case "breakdown":
       return `Ce cumpără ${f.authorityName || f.authorityId ? scope : kind[1]}${where} · ${period}?`;
     case "compare":
-      return `Profiluri comparate: ${focal} și „${f.compareWith || (f.compareWithId ? `Entitatea #${f.compareWithId}` : "alege a doua entitate")}”`;
+      return `${spec.comparisonMode !== "transactions" ? "Profiluri istorice" : "Achiziții comparate"}: ${focal} și „${f.compareWith || (f.compareWithId ? `Entitatea #${f.compareWithId}` : "alege a doua entitate")}”${spec.comparisonMode !== "transactions" ? "" : ` · ${period}`}`;
     case "trend":
       return `Ce ${dims} au cea mai mare schimbare între ${f.yearFrom ?? "…"} și ${f.yearTo ?? "…"}?`;
     case "network":
@@ -283,29 +300,6 @@ export function describeQuestion(input: QuestionSpec | AskSpec): string {
   }
 }
 
-const FILTER_LABELS: Record<string, string> = {
-  cpvTerm: "domeniul achiziției",
-  yearFrom: "perioada",
-  yearTo: "perioada",
-  monthFrom: "lunile",
-  monthTo: "lunile",
-  singleBidder: "un singur ofertant",
-  minEmployees: "numărul de angajați",
-  maxEmployees: "numărul de angajați",
-  adminName: "administratorul ONRC",
-  adminPersonKey: "administratorul ONRC",
-  county: "județul",
-  authorityKind: "tipul instituției",
-  uatName: "localitatea",
-  uatSiruta: "localitatea",
-  authorityName: "instituția selectată",
-  authorityId: "instituția selectată",
-  supplierName: "firma selectată",
-  supplierId: "firma selectată",
-  compareWith: "a doua entitate",
-  compareWithId: "a doua entitate",
-};
-
 /**
  * Match compile.ts's actual scope, before the user applies a template. Filters
  * that the profile SQL ignores must never appear to constrain its answer.
@@ -317,71 +311,21 @@ export function transitionQuestion(
 ): { spec: QuestionSpec; changes: string[] } {
   const spec = cloneQuestion(input);
   const changes: string[] = [];
-  const removed = new Set<string>();
-  const drop = (...keys: string[]) => {
-    for (const key of keys) {
-      if (spec.filters[key] !== undefined)
-        removed.add(FILTER_LABELS[key] ?? key);
-      delete spec.filters[key];
-    }
-  };
   spec.block = block;
-  // Keep ID-only deep links executable without asking the resolver to guess a name.
+  if (block === "compare" && input.block !== "compare") spec.comparisonMode = "transactions";
   for (const role of ["authority", "supplier"] as const) {
     if (spec.filters[`${role}Id`] && !spec.filters[`${role}Name`])
       spec.filters[`${role}Name`] = `Entitatea #${spec.filters[`${role}Id`]}`;
   }
-  if (
-    block === "compare" &&
-    spec.filters.compareWithId &&
-    !spec.filters.compareWith
-  )
+  if (block === "compare" && spec.filters.compareWithId && !spec.filters.compareWith)
     spec.filters.compareWith = `Entitatea #${spec.filters.compareWithId}`;
-  if (block !== "compare") drop("compareWith", "compareWithId");
-  if (
-    ["network", "sankey", "distribution", "compare"].includes(block) &&
-    block !== input.block &&
-    !spec.filters.authorityName &&
-    !spec.filters.supplierName
-  )
-    spec.dim = "authority";
-  if (["network", "sankey"].includes(block)) {
-    drop("uatSiruta", "uatName");
-    if (spec.filters.authorityName || spec.filters.authorityId)
-      drop("supplierName", "supplierId");
-  }
+  // A view changes presentation, never the selected population. Unsupported
+  // combinations remain editable and questionErrors explains how to resolve them.
   if (isProfileQuestion(spec)) {
-    drop(
-      "cpvTerm",
-      "yearFrom",
-      "yearTo",
-      "monthFrom",
-      "monthTo",
-      "singleBidder",
-      "minEmployees",
-      "maxEmployees",
-      "adminPersonKey",
-      "adminName",
-    );
-    if (spec.dataset !== "da")
-      changes.push(
-        "Profilurile folosesc achizițiile directe din întreaga perioadă disponibilă.",
-      );
-    spec.dataset = "da";
-    if (block === "compare")
-      drop("county", "authorityKind", "uatName", "uatSiruta");
-    if (block === "scatter" || block === "entity_card") {
-      spec.dim = spec.dim === "supplier" ? "supplier" : "authority";
-      drop("authorityName", "authorityId", "supplierName", "supplierId");
-    } else {
-      spec.dim = focalRole(spec);
-      if (spec.filters.authorityName || spec.filters.authorityId)
-        drop("supplierName", "supplierId");
-    }
-    if (spec.dim === "supplier") drop("authorityKind", "uatName", "uatSiruta");
+    if (["distribution", "compare"].includes(block)) spec.dim = focalRole(spec);
+    else spec.dim = spec.dim === "supplier" ? "supplier" : "authority";
     if (block === "entity_card") spec.rankBy = spec.rankBy ?? "value";
   }
-  if (block === "map") drop("county", "uatName", "uatSiruta");
   if (["table", "trend"].includes(block)) {
     spec.dim = spec.dim ?? "supplier";
     if (
@@ -411,19 +355,10 @@ export function transitionQuestion(
     } else if (block !== "table" || input.block !== "table") {
       spec.topN = 10;
     }
-    if (block === "trend") {
-      const lastYear = new Date().getFullYear() - 1;
-      if (!spec.filters.yearFrom) spec.filters.yearFrom = lastYear - 1;
-      if (!spec.filters.yearTo) spec.filters.yearTo = lastYear;
-      if (spec.filters.yearFrom === spec.filters.yearTo) {
-        spec.filters.yearFrom = Math.max(2000, Number(spec.filters.yearTo) - 1);
-        changes.push(
-          "Pentru schimbare, comparăm doi ani: anul anterior și anul selectat.",
-        );
-      }
-      drop("monthFrom", "monthTo");
-    }
+    // Annual comparisons require explicit endpoints; keep incomplete or equal
+    // years as a draft instead of expanding its population automatically.
   }
+
   if (
     !["table", "stat", "timeseries", "map"].includes(block) &&
     spec.measure !== "value"
@@ -446,10 +381,6 @@ export function transitionQuestion(
       "Filtrul cu un singur ofertant folosește contractele din proceduri.",
     );
   }
-  if (removed.size)
-    changes.push(
-      `${isProfileQuestion(spec) ? "Acest profil nu folosește" : "Pentru această întrebare am eliminat"}: ${[...removed].join(", ")}.`,
-    );
   return { spec, changes };
 }
 

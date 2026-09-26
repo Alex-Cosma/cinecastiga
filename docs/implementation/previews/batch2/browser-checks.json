@@ -1,0 +1,80 @@
+{
+  "checkedAt": "2026-09-19T17:22:58.901Z",
+  "checks": [
+    {
+      "screen": "workspace-desktop",
+      "width": 1440,
+      "document": 1440,
+      "height": 1000
+    },
+    {
+      "screen": "evidence-desktop",
+      "width": 1440,
+      "document": 1440,
+      "height": 1000
+    },
+    {
+      "screen": "timeline-desktop",
+      "width": 1440,
+      "document": 1440,
+      "height": 1000
+    },
+    {
+      "screen": "tasks-desktop",
+      "width": 1440,
+      "document": 1440,
+      "height": 1000
+    },
+    {
+      "screen": "frozen-sources-desktop",
+      "width": 1440,
+      "document": 1440,
+      "height": 1000
+    },
+    {
+      "screen": "radiografie-sources-desktop",
+      "width": 1440,
+      "document": 1440,
+      "height": 1000
+    },
+    {
+      "screen": "signal-sources-desktop",
+      "width": 1440,
+      "document": 1440,
+      "height": 1000
+    },
+    {
+      "screen": "precise-query-desktop",
+      "width": 1440,
+      "document": 1440,
+      "height": 1000
+    },
+    {
+      "screen": "workspace-mobile",
+      "width": 390,
+      "document": 390,
+      "height": 844
+    },
+    {
+      "screen": "evidence-mobile",
+      "width": 390,
+      "document": 390,
+      "height": 844
+    },
+    {
+      "screen": "frozen-sources-mobile",
+      "width": 390,
+      "document": 390,
+      "height": 844
+    },
+    {
+      "screen": "precise-query-mobile",
+      "width": 390,
+      "document": 390,
+      "height": 844
+    }
+  ],
+  "keyboardTabs": true,
+  "taskToggle": true,
+  "errors": []
+}

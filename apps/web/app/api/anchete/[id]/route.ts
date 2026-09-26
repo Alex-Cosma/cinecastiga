@@ -16,7 +16,7 @@ export async function GET(_req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const dosar = await getDosar(uid, id);
   if (!dosar) return NextResponse.json({ error: "inexistent" }, { status: 404 });
-  return NextResponse.json(dosar);
+  return NextResponse.json(dosar, { headers:{ "Cache-Control":"no-store" } });
 }
 
 export async function PATCH(req: Request, ctx: Ctx) {
@@ -28,7 +28,10 @@ export async function PATCH(req: Request, ctx: Ctx) {
     description?: string | null;
     status?: string;
   } | null;
-  if (!body) return NextResponse.json({ error: "corp invalid" }, { status: 400 });
+  if (!body || typeof body!=="object" || Array.isArray(body) ||
+    (body.title!==undefined && (typeof body.title!=="string" || body.title.length>200)) ||
+    (body.description!==undefined && body.description!==null && (typeof body.description!=="string" || body.description.length>10000)))
+    return NextResponse.json({ error: "Titlul poate avea maximum 200 de caractere; descrierea maximum 10.000." }, { status: 400 });
   const patch: { title?: string; description?: string | null; status?: InvStatus } = {};
   if (body.title !== undefined) {
     const tt = body.title.trim();

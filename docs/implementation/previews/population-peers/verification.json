@@ -1,0 +1,65 @@
+{
+  "checkedAt": "2026-09-26",
+  "status": "complete",
+  "productionBuild": "passed",
+  "typecheckLint": "passed",
+  "defaultWebTests": 223,
+  "isolatedPostgresqlTests": {
+    "backend": 17,
+    "evidenceAndSharedRegressions": 23,
+    "total": 40
+  },
+  "browserChecks": 17,
+  "screenshots": 9,
+  "consoleErrors": 0,
+  "horizontalOverflow": false,
+  "populationAudit": {
+    "checks": 9,
+    "localAuthorities": 2874,
+    "countyCouncils": 39,
+    "officialSourceReconciled": true
+  },
+  "mainDataWrites": false,
+  "deployment": false,
+  "commitPush": false,
+  "previewCleanup": "complete",
+  "detector": {
+    "runs": 1,
+    "primaryFindings": 0,
+    "advisories": 10
+  },
+  "evidence": {
+    "fixtureProcurement": true,
+    "population": "official INS RPL2021",
+    "manualOtherMembers": 11,
+    "sourceRows": 47,
+    "totalExact": "1153000.0144"
+  },
+  "finishReview": {
+    "disposition": "ship",
+    "materialFixes": 0,
+    "substitution": "fresh independent agent using degraded finish-reviewer guide; disclosed"
+  },
+  "mainServer": {
+    "url": "http://localhost:3110",
+    "pid": 92960,
+    "log": "/private/tmp/seap-population-web.log"
+  },
+  "designDocumentation": {
+    "status": "complete",
+    "canonicalSystemFiles": "unchanged",
+    "shippingRasterAssets": 0
+  },
+  "methodologyWidthRefinement": {
+    "build": "passed",
+    "desktop": {
+      "container": 1120,
+      "paragraph": 1120
+    },
+    "mobile": {
+      "container": 354,
+      "paragraph": 354
+    },
+    "overflow": false
+  }
+}

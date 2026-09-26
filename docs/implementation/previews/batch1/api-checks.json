@@ -1,0 +1,405 @@
+{
+  "version": 1,
+  "startedAt": "2026-09-19T16:15:43.710Z",
+  "baseUrl": "http://127.0.0.1:3110",
+  "spec": {
+    "block": "stat",
+    "dataset": "all",
+    "measure": "value",
+    "filters": {
+      "authorityId": 2144364
+    }
+  },
+  "status": "passed",
+  "limitations": [
+    "Read-only API checks against a stable refreshed local snapshot; no database writes or authenticated routes.",
+    "Stat values are JSON numbers: comparison checks rounded cents; source totals and CSV arithmetic are compared as exact decimals.",
+    "CSV covers the complete source set only if the 100,000-row cap is not reached; an incomplete export fails this smoke check.",
+    "First, second and last pages are checked against the full export; intermediate pagination is not exhaustively requested.",
+    "Source URL structure and identifiers are checked locally; remote SEAP/TED availability is not fetched."
+  ],
+  "requests": [
+    {
+      "path": "/api/ask",
+      "page": null,
+      "status": 200,
+      "elapsedMs": 51,
+      "bytes": 1364,
+      "contentType": "application/json"
+    },
+    {
+      "path": "/api/ask/rows",
+      "page": 0,
+      "status": 200,
+      "elapsedMs": 15,
+      "bytes": 5711,
+      "contentType": "application/json"
+    },
+    {
+      "path": "/api/ask/rows/csv",
+      "page": null,
+      "status": 200,
+      "elapsedMs": 24,
+      "bytes": 187360,
+      "contentType": "text/csv; charset=utf-8"
+    },
+    {
+      "path": "/api/ask/rows",
+      "page": 1,
+      "status": 200,
+      "elapsedMs": 8,
+      "bytes": 5765,
+      "contentType": "application/json"
+    },
+    {
+      "path": "/api/ask/rows",
+      "page": 69,
+      "status": 200,
+      "elapsedMs": 7,
+      "bytes": 2952,
+      "contentType": "application/json"
+    }
+  ],
+  "checks": [
+    {
+      "name": "Resolved query retains authority/value/all scope",
+      "passed": true,
+      "detail": {
+        "block": "stat",
+        "measure": "value",
+        "filters": {
+          "authorityId": 2144364,
+          "authorityName": "MUNICIPIUL BUZAU"
+        }
+      }
+    },
+    {
+      "name": "Source selection has rows",
+      "passed": true,
+      "detail": 694
+    },
+    {
+      "name": "Stat count equals complete source count",
+      "passed": true,
+      "detail": {
+        "stat": 694,
+        "source": 694,
+        "filtered": 694
+      }
+    },
+    {
+      "name": "Stat displayed cents equal source total",
+      "passed": true,
+      "detail": {
+        "stat": 1553407378.6699998,
+        "sourceExact": "1553407378.67",
+        "statCents": "155340737867",
+        "sourceCents": "155340737867"
+      }
+    },
+    {
+      "name": "Unfiltered source totals agree exactly",
+      "passed": true,
+      "detail": {
+        "value": "1553407378.67",
+        "sourceValue": "1553407378.67"
+      }
+    },
+    {
+      "name": "CSV is complete and export counts reconcile",
+      "passed": true,
+      "detail": {
+        "rows": 694,
+        "sumExact": "1553407378.67",
+        "headers": {
+          "x-total-rows": "694",
+          "x-exported-rows": "694",
+          "x-source-rows": "694",
+          "x-source-value": "1553407378.67",
+          "x-filtered-value": "1553407378.67"
+        },
+        "filename": "attachment; filename=\"randuri-694.csv\"",
+        "columns": [
+          "cod",
+          "data",
+          "autoritate",
+          "id_autoritate",
+          "judet",
+          "furnizor",
+          "id_furnizor",
+          "cod_cpv",
+          "domeniu_cpv",
+          "valoare_ron",
+          "stare",
+          "sursa",
+          "id_sursa",
+          "numar_castigatori",
+          "valoare_contract_integral",
+          "link_seap",
+          "link_ted"
+        ]
+      }
+    },
+    {
+      "name": "CSV exact sum equals rows total and export totals",
+      "passed": true,
+      "detail": {
+        "csvExact": "1553407378.67",
+        "sourceExact": "1553407378.67",
+        "filteredExact": "1553407378.67"
+      }
+    },
+    {
+      "name": "Every exported allocation has a unique source/supplier identity",
+      "passed": true,
+      "detail": {
+        "duplicates": 0
+      }
+    },
+    {
+      "name": "Every exported row belongs to the selected authority and eligible value population",
+      "passed": true,
+      "detail": {
+        "wrongAuthority": 0,
+        "invalidValues": 0,
+        "invalidDaState": 0
+      }
+    },
+    {
+      "name": "Every exported row has a direct primary-source URL",
+      "passed": true,
+      "detail": {
+        "invalidLinks": 0,
+        "missingLinks": 0
+      }
+    },
+    {
+      "name": "Stat stream counts and displayed cents reconcile to exact CSV subtotals",
+      "passed": true,
+      "detail": {
+        "stat": [
+          {
+            "src": "contracts",
+            "value": 1488754172.83,
+            "count": 201
+          },
+          {
+            "src": "da",
+            "value": 64653205.84,
+            "count": 493
+          }
+        ],
+        "csv": [
+          {
+            "src": "da",
+            "count": 493,
+            "valueExact": "64653205.84"
+          },
+          {
+            "src": "contracts",
+            "count": 201,
+            "valueExact": "1488754172.83"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Page 0 matches full CSV membership, values and source links",
+      "passed": true,
+      "detail": {
+        "page": 0,
+        "returnedPage": 0,
+        "count": 10,
+        "expectedCount": 10,
+        "sumExact": "1170271.05",
+        "mismatches": []
+      }
+    },
+    {
+      "name": "Page 0 retains stable whole-query totals",
+      "passed": true,
+      "detail": {
+        "total": 694,
+        "sourceValue": "1553407378.67"
+      }
+    },
+    {
+      "name": "Page 1 matches full CSV membership, values and source links",
+      "passed": true,
+      "detail": {
+        "page": 1,
+        "returnedPage": 1,
+        "count": 10,
+        "expectedCount": 10,
+        "sumExact": "3462660.80",
+        "mismatches": []
+      }
+    },
+    {
+      "name": "Page 1 retains stable whole-query totals",
+      "passed": true,
+      "detail": {
+        "total": 694,
+        "sourceValue": "1553407378.67"
+      }
+    },
+    {
+      "name": "Page 69 matches full CSV membership, values and source links",
+      "passed": true,
+      "detail": {
+        "page": 69,
+        "returnedPage": 69,
+        "count": 4,
+        "expectedCount": 4,
+        "sumExact": "7965110.40",
+        "mismatches": []
+      }
+    },
+    {
+      "name": "Page 69 retains stable whole-query totals",
+      "passed": true,
+      "detail": {
+        "total": 694,
+        "sourceValue": "1553407378.67"
+      }
+    }
+  ],
+  "answer": {
+    "executedAt": "2026-09-19T16:15:43.757Z",
+    "resolvedSpec": {
+      "block": "stat",
+      "measure": "value",
+      "filters": {
+        "authorityId": 2144364,
+        "authorityName": "MUNICIPIUL BUZAU"
+      }
+    },
+    "stat": {
+      "value": 1553407378.6699998,
+      "count": 694,
+      "byStream": [
+        {
+          "src": "contracts",
+          "value": 1488754172.83,
+          "count": 201
+        },
+        {
+          "src": "da",
+          "value": 64653205.84,
+          "count": 493
+        }
+      ]
+    },
+    "caveats": [
+      "Sursă: ambele canale — achiziții directe + contracte atribuite prin proceduri. Canalele sunt disjuncte, deci suma e corectă; TED nu e niciodată însumat.",
+      "Valorile peste 2 mil. lei pe o achiziție directă sunt excluse ca erori de introducere (plafon de plauzibilitate).",
+      "Sunt numărate doar achizițiile directe finalizate («Ofertă acceptată») — comenzile refuzate de furnizor sau neacceptate la termen (~6% din înregistrări) sunt excluse din valorile contractate; acceptarea unei oferte nu dovedește efectuarea unei plăți."
+    ],
+    "tookMs": 14
+  },
+  "sources": {
+    "total": 694,
+    "value": "1553407378.67",
+    "sourceTotal": 694,
+    "sourceValue": "1553407378.67",
+    "pageSize": 10,
+    "dateFrom": "2018-07-23",
+    "dateTo": "2026-07-10",
+    "scopeNotes": [
+      "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+      "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
+      "Un contract cu mai mulți câștigători apare pe câte un rând pentru fiecare furnizor, cu valoarea împărțită egal. Suma folosește aceste cote; numărul de rânduri nu este numărul de contracte distincte. Detaliile și exportul păstrează valoarea integrală și numărul câștigătorilor."
+    ],
+    "statuses": [
+      {
+        "state": null,
+        "count": 201,
+        "value": "1488754172.83"
+      },
+      {
+        "state": "Oferta acceptata",
+        "count": 493,
+        "value": "64653205.84"
+      }
+    ]
+  },
+  "csv": {
+    "rows": 694,
+    "sumExact": "1553407378.67",
+    "headers": {
+      "x-total-rows": "694",
+      "x-exported-rows": "694",
+      "x-source-rows": "694",
+      "x-source-value": "1553407378.67",
+      "x-filtered-value": "1553407378.67"
+    },
+    "filename": "attachment; filename=\"randuri-694.csv\"",
+    "columns": [
+      "cod",
+      "data",
+      "autoritate",
+      "id_autoritate",
+      "judet",
+      "furnizor",
+      "id_furnizor",
+      "cod_cpv",
+      "domeniu_cpv",
+      "valoare_ron",
+      "stare",
+      "sursa",
+      "id_sursa",
+      "numar_castigatori",
+      "valoare_contract_integral",
+      "link_seap",
+      "link_ted"
+    ]
+  },
+  "sourceValidation": {
+    "duplicateAllocationKeys": 0,
+    "wrongAuthority": 0,
+    "invalidValues": 0,
+    "invalidDaState": 0,
+    "invalidLinks": 0,
+    "missingSeapLinks": 0,
+    "distinctAllocationRows": 694
+  },
+  "byStream": [
+    {
+      "src": "da",
+      "count": 493,
+      "valueExact": "64653205.84"
+    },
+    {
+      "src": "contracts",
+      "count": 201,
+      "valueExact": "1488754172.83"
+    }
+  ],
+  "pages": [
+    {
+      "page": 0,
+      "returnedPage": 0,
+      "count": 10,
+      "expectedCount": 10,
+      "sumExact": "1170271.05",
+      "mismatches": []
+    },
+    {
+      "page": 1,
+      "returnedPage": 1,
+      "count": 10,
+      "expectedCount": 10,
+      "sumExact": "3462660.80",
+      "mismatches": []
+    },
+    {
+      "page": 69,
+      "returnedPage": 69,
+      "count": 4,
+      "expectedCount": 4,
+      "sumExact": "7965110.40",
+      "mismatches": []
+    }
+  ],
+  "finishedAt": "2026-09-19T16:15:43.826Z"
+}

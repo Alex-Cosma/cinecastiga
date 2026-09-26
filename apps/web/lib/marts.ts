@@ -1,3 +1,4 @@
+import { tedPagination, tedCountryFilter, TED_COUNTRY_UNRESOLVED } from "./ted";
 import { createDb, type DbSql } from "@seap/db";
 
 /**
@@ -305,6 +306,8 @@ export interface TxQuery {
   src?: "all" | "da" | "contracts";
   page?: number;
   pageSize?: number;
+  /** Show imported DAs outside the value population, explicitly separated. */
+  excluded?: boolean;
 }
 
 export interface CompanyRep {
@@ -420,8 +423,8 @@ export async function getEntityTransactions(
     ? sql`and ${q.flagCode} = any(da_flags)`
     : sql``;
   // flag filters live on DA rows only → a flag filter implies the DA channel
-  const wantDa = q.src !== "contracts" || Boolean(q.flagCode);
-  const wantCt = q.src !== "da" && !q.flagCode;
+  const wantDa = q.excluded || q.src !== "contracts" || Boolean(q.flagCode);
+  const wantCt = !q.excluded && q.src !== "da" && !q.flagCode;
 
   const daSel = sql`
     select 'da' src, sicap_da_id::text rid, da_code code, ${cpName} cp_name, ${cpId} cp_id,
@@ -430,7 +433,9 @@ export async function getEntityTransactions(
            null::text procedure_type, null::bigint ca_notice_id, null::boolean single_bidder,
            null::bigint nat_id, value_suspect
     from marts.da_transactions
-    where ${partyCol} = ${id} ${yearCond} ${flagCond}`;
+    where ${partyCol} = ${id}
+      and ${q.excluded ? sql`(closing_value is null or closing_value <= 0 or closing_value > 2000000)` : sql`closing_value > 0 and closing_value <= 2000000`}
+      ${yearCond} ${flagCond}`;
   const ctSel = sql`
     select 'contract' src, t.contract_id::text rid, t.contract_no code, t.${cpName} cp_name, t.${cpId} cp_id,
            t.county, t.cpv_code, t.cpv_name, null::numeric estimated_value_ron, t.closing_value,
@@ -439,12 +444,12 @@ export async function getEntityTransactions(
            cc.ca_notice_contract_id nat_id, false value_suspect
     from marts.contract_transactions t
     left join core.contracts cc on cc.id = t.contract_id
-    where t.${partyCol} = ${id} ${yearCond}`;
+    where t.${partyCol} = ${id} and t.closing_value > 0 ${yearCond}`;
   const body = wantDa && wantCt ? sql`${daSel} union all ${ctSel}` : wantDa ? daSel : ctSel;
 
   const rows = (await sql`
     select * from (${body}) u
-    order by ${order}
+    order by ${order}, src asc, rid::bigint asc, cp_id asc nulls last
     limit ${pageSize} offset ${offset}
   `) as unknown as Record<string, unknown>[];
 
@@ -501,7 +506,7 @@ export async function getEntityPartners(
     with agg as (
       select ${cpId} pid, max(${cpName}) pname, count(*) n, sum(closing_value) t
       from marts.da_transactions
-      where ${partyCol} = ${id} and closing_value is not null and closing_value <= 2000000
+      where ${partyCol} = ${id} and closing_value > 0 and closing_value <= 2000000
       group by ${cpId}
     ),
     tot as (select sum(t) grand from agg)
@@ -540,20 +545,42 @@ export async function getEntityFlagRowCounts(
   return Object.fromEntries(rows.map((r) => [r.code, Number(r.n)]));
 }
 
-/** Row counts per channel, consistent with the unified transactions table. */
-export async function getEntityTxCounts(
-  entityId: string,
-  role: Role,
-): Promise<{ nDa: number; nCt: number }> {
+export interface EntityActivity {
+  nDa: number;
+  /** One row per contract and supplier, matching the source table. */
+  nCt: number;
+  nContracts: number;
+  valueExact: string;
+  dateFrom: string | null;
+  dateTo: string | null;
+  excludedDa: number;
+}
+
+/** Counts and money are computed together from the ordinary value-query scope. */
+export async function getEntityTxCounts(entityId: string, role: Role): Promise<EntityActivity> {
   const sql = db();
   const id = /^\d+$/.test(entityId) ? entityId : "0";
   const partyCol = role === "authority" ? sql`authority_id` : sql`supplier_id`;
-  const rows = (await sql`
-    select
-      (select count(*)::int from marts.da_transactions where ${partyCol} = ${id}) n_da,
-      (select count(*)::int from marts.contract_transactions where ${partyCol} = ${id}) n_ct
-  `) as unknown as { n_da: number; n_ct: number }[];
-  return { nDa: Number(rows[0]?.n_da ?? 0), nCt: Number(rows[0]?.n_ct ?? 0) };
+  const [r] = await sql`
+    with da as (
+      select count(*) filter (where closing_value > 0 and closing_value <= 2000000) n,
+        coalesce(sum(closing_value) filter (where closing_value > 0 and closing_value <= 2000000),0) v,
+        min(finalization_date) filter (where closing_value > 0 and closing_value <= 2000000) d0,
+        max(finalization_date) filter (where closing_value > 0 and closing_value <= 2000000) d1,
+        count(*) filter (where closing_value is null or closing_value <= 0 or closing_value > 2000000) excluded
+      from marts.da_transactions where ${partyCol} = ${id}
+    ), ct as (
+      select count(*) n, count(distinct contract_id) contracts, coalesce(sum(closing_value),0) v,
+        min(finalization_date) d0, max(finalization_date) d1
+      from marts.contract_transactions where ${partyCol} = ${id} and closing_value > 0
+    )
+    select da.n n_da, ct.n n_ct, ct.contracts, (da.v + ct.v)::text value,
+      least(da.d0, ct.d0) date_from, greatest(da.d1, ct.d1) date_to, da.excluded
+    from da cross join ct
+  `;
+  return { nDa: Number(r?.n_da ?? 0), nCt: Number(r?.n_ct ?? 0), nContracts: Number(r?.contracts ?? 0),
+    valueExact: String(r?.value ?? "0"), dateFrom: r?.date_from == null ? null : String(r.date_from).slice(0,10),
+    dateTo: r?.date_to == null ? null : String(r.date_to).slice(0,10), excludedDa: Number(r?.excluded ?? 0) };
 }
 
 /**
@@ -578,11 +605,11 @@ export async function getEntityPartnersPaged(
     with u as (
       select ${cpId} pid, ${cpName} pname, closing_value cv
       from marts.da_transactions
-      where ${partyCol} = ${id} and closing_value is not null and closing_value <= 2000000
+      where ${partyCol} = ${id} and closing_value > 0 and closing_value <= 2000000
       union all
       select ${cpId}, ${cpName}, closing_value
       from marts.contract_transactions
-      where ${partyCol} = ${id} and closing_value is not null
+      where ${partyCol} = ${id} and closing_value > 0
     ),
     agg as (
       select pid, max(pname) pname, count(*) n, sum(cv) t
@@ -592,7 +619,7 @@ export async function getEntityPartnersPaged(
     select pid, pname, n, t,
            round(t/nullif((select grand from tot),0),4) pct,
            (select parties from tot)::int parties
-    from agg order by t desc nulls last
+    from agg order by t desc nulls last, pid asc nulls last
     limit ${pageSize} offset ${offset}
   `) as unknown as {
     pid: string | null;
@@ -606,13 +633,13 @@ export async function getEntityPartnersPaged(
   let total = Number(rows[0]?.parties ?? 0);
   if (rows.length === 0) {
     const c = (await sql`
-      select count(distinct pid)::int c from (
+      select count(*)::int c from (select pid from (
         select ${cpId} pid from marts.da_transactions
-        where ${partyCol} = ${id} and closing_value is not null and closing_value <= 2000000
+        where ${partyCol} = ${id} and closing_value > 0 and closing_value <= 2000000
         union all
         select ${cpId} from marts.contract_transactions
-        where ${partyCol} = ${id} and closing_value is not null
-      ) u
+        where ${partyCol} = ${id} and closing_value > 0
+      ) u group by pid) partners
     `) as unknown as { c: number }[];
     total = Number(c[0]?.c ?? 0);
   }
@@ -642,13 +669,16 @@ export async function getEntityMonthly(entityId: string, role: Role): Promise<Mo
     select left(finalization_date, 7) ym, sum(closing_value) t
     from marts.da_transactions
     where ${partyCol} = ${id} and finalization_date is not null
-      and closing_value is not null and closing_value <= 2000000
+      and closing_value > 0 and closing_value <= 2000000
     group by 1 order by 1
   `) as unknown as { ym: string; t: string | null }[];
   return rows.map((r) => ({ ym: r.ym, totalRon: Number(r.t ?? 0) }));
 }
 
 export interface SplitPair {
+  flagId: string;
+  cpvClass: string | null;
+  purchaseType: string | null;
   partnerId: string | null;
   partnerName: string | null;
   year: string | null;
@@ -667,13 +697,16 @@ export async function getSplitPairs(entityId: string, role: Role): Promise<Split
   const nameCol = role === "authority" ? sql`partner_name` : sql`entity_name`;
   const idCol = role === "authority" ? sql`partner_id` : sql`entity_id`;
   const rows = (await sql`
-    select ${idCol} pid, ${nameCol} pname, period,
+    select id::text flag_id, evidence->>'cpv_class' cpv_class, evidence->>'type' purchase_type, ${idCol} pid, ${nameCol} pname, period,
       (evidence->>'count')::int cnt, (evidence->>'total')::numeric total,
       (evidence->>'ceiling')::numeric ceiling
     from marts.flag_instances
     where flag_code = 'da_split' and ${cond}
     order by (evidence->>'total')::numeric desc nulls last limit 30
   `) as unknown as {
+    flag_id: string;
+    cpv_class: string | null;
+    purchase_type: string | null;
     pid: string | null;
     pname: string | null;
     period: string | null;
@@ -682,6 +715,8 @@ export async function getSplitPairs(entityId: string, role: Role): Promise<Split
     ceiling: string | null;
   }[];
   return rows.map((r) => ({
+    flagId: r.flag_id, cpvClass: r.cpv_class,
+    purchaseType: r.purchase_type === "da_ceiling_works" ? "lucrări" : r.purchase_type === "da_ceiling_goods_services" ? "produse / servicii" : null,
     partnerId: r.pid != null ? String(r.pid) : null,
     partnerName: r.pname,
     year: r.period,
@@ -854,11 +889,11 @@ export async function getFlagInstances(flagCode: string, limit = 50): Promise<Fl
   }));
 }
 
-/** Count of instances per flag type (for the /semnale index). */
+/** Full national occurrence counts; display samples are not the population. */
 export async function getFlagCounts(): Promise<Record<string, number>> {
   const sql = db();
   const rows = (await sql`
-    select flag_code, count(*)::int c from marts.flag_instances group by flag_code
+    select flag_code, count(*)::int c from core.flags where triggered group by flag_code
   `) as unknown as { flag_code: string; c: number }[];
   const out: Record<string, number> = {};
   for (const r of rows) out[r.flag_code] = Number(r.c);
@@ -904,30 +939,39 @@ export interface TedStats {
   total: number;
   alsoInSeap: number;
   tedOnly: number;
-  foreign: number;
+  foreign: number | null;
+  foreignCountryUnresolved: number;
+  notices: number | null;
+  unknownCompetition: number | null;
+  legacyAmounts: number | null;
+  possibleMatches: number;
   singleBidder: number;
-  /** Foreign winner countries by TED-side value, richest first. */
-  byCountry: { country: string; n: number; totalRon: number }[];
+  /** Result counts; country buckets overlap for multinational consortia. */
+  byCountry: { country: string; n: number }[];
 }
 
 export async function getTedStats(): Promise<TedStats> {
   const sql = db();
-  const rows = (await sql`
-    select metric, dimension, n, total_ron from marts.ted_stats
-  `) as unknown as { metric: string; dimension: string; n: number; total_ron: string | null }[];
+  const [rows, unresolved] = await Promise.all([
+    sql`select metric, dimension, n, total_ron from marts.ted_stats`,
+    sql`select count(*)::int n from marts.ted_awards where ${tedCountryFilter(sql, TED_COUNTRY_UNRESOLVED)}`,
+  ]);
   const pick = (m: string, d: string) => rows.find((r) => r.metric === m && r.dimension === d);
   return {
     total: Number(pick("total", "all")?.n ?? 0),
     alsoInSeap: Number(pick("label", "also-in-seap")?.n ?? 0),
     tedOnly: Number(pick("label", "ted-only")?.n ?? 0),
-    foreign: rows
-      .filter((r) => r.metric === "country")
-      .reduce((s, r) => s + Number(r.n), 0),
+    foreign: pick("total", "foreign")?.n ?? null,
+    foreignCountryUnresolved: Number(unresolved[0]?.n ?? 0),
+    notices: pick("total", "notices")?.n ?? null,
+    unknownCompetition: pick("single_bidder", "unknown")?.n ?? null,
+    legacyAmounts: pick("total", "legacy")?.n ?? null,
+    possibleMatches: Number(pick("label", "possible-match")?.n ?? 0),
     singleBidder: Number(pick("single_bidder", "yes")?.n ?? 0),
     byCountry: rows
       .filter((r) => r.metric === "country")
-      .map((r) => ({ country: r.dimension, n: Number(r.n), totalRon: Number(r.total_ron ?? 0) }))
-      .sort((a, b) => b.totalRon - a.totalRon),
+      .map((r) => ({ country: r.dimension, n: Number(r.n) }))
+      .sort((a, b) => b.n - a.n || a.country.localeCompare(b.country)),
   };
 }
 
@@ -939,12 +983,17 @@ export interface TedAward {
   buyerCounty: string | null;
   winnerNames: string[];
   winnerEntityIds: string[];
-  winnerCountries: string[];
+  winnerCountries: (string | null)[];
   isForeign: boolean;
   cpvCode: string | null;
   cpvName: string | null;
   title: string | null;
-  awardedValue: number | null;
+  awardedValue: string | null;
+  amountKind: string | null;
+  amountDetails: import("@seap/db").TedAmountDetails | null;
+  lotId: string | null;
+  winnerSelectionStatus: string | null;
+  tendersReceived: number | null;
   currency: string | null;
   awardDate: string | null;
   procedureType: string | null;
@@ -955,7 +1004,7 @@ export interface TedAward {
 }
 
 export interface TedQuery {
-  label?: "also-in-seap" | "ted-only";
+  label?: "also-in-seap" | "ted-only" | "possible-match";
   foreign?: boolean;
   singleBidder?: boolean;
   country?: string;
@@ -967,39 +1016,37 @@ export interface TedQuery {
 /** Browsable TED award publications, filtered + paginated; no legal-threshold classification. */
 export async function getTedAwards(
   q: TedQuery = {},
-): Promise<{ rows: TedAward[]; total: number }> {
+): Promise<{ rows: TedAward[]; total: number; page: number }> {
   const sql = db();
-  const pageSize = q.pageSize ?? 50;
-  const offset = ((q.page ?? 1) - 1) * pageSize;
   const labelCond = q.label ? sql`and label = ${q.label}` : sql``;
   const foreignCond = q.foreign ? sql`and is_foreign` : sql``;
   const sbCond = q.singleBidder ? sql`and is_single_bidder` : sql``;
-  const countryCond = q.country
-    ? sql`and ${q.country} = any(winner_countries)`
-    : sql``;
-  const order =
-    q.sort === "date"
-      ? sql`award_date desc nulls last`
-      : sql`awarded_value desc nulls last`;
+  const countryCond = q.country ? sql`and ${tedCountryFilter(sql, q.country)}` : sql``;
+  // Comparing currencies or framework ceilings to offers would be misleading.
+  const valueCond = q.sort === "value" ? sql`and currency = 'RON' and amount_kind in ('payable', 'contract_value')` : sql``;
+  const order = q.sort === "value" ? sql`awarded_value desc nulls last, ted_lot_result_id`
+    : sql`award_date desc nulls last, ted_lot_result_id`;
 
-  const where = sql`where true ${labelCond} ${foreignCond} ${sbCond} ${countryCond}`;
+  const where = sql`where true ${labelCond} ${foreignCond} ${sbCond} ${countryCond} ${valueCond}`;
+  const totalRows = (await sql`
+    select count(*)::int c from marts.ted_awards ${where}
+  `) as unknown as { c: number }[];
+  const total = Number(totalRows[0]?.c ?? 0);
+  const { page, pageSize, offset } = tedPagination(q.page, q.pageSize, total);
   const rows = (await sql`
     select ted_lot_result_id, publication_number, buyer_entity_id, buyer_name,
-           buyer_county, winner_names, winner_entity_ids, winner_countries,
+           buyer_county, winner_names, winner_entity_ids, to_jsonb(winner_countries) as winner_countries,
            is_foreign, cpv_code, cpv_name, title, awarded_value, currency,
            award_date, procedure_type, is_single_bidder, eu_funded, label,
-           matched_contract_id
+           matched_contract_id, amount_kind, amount_details, lot_id, winner_selection_status, tenders_received
     from marts.ted_awards
     ${where}
     order by ${order}
     limit ${pageSize} offset ${offset}
   `) as unknown as Record<string, unknown>[];
-  const totalRows = (await sql`
-    select count(*)::int c from marts.ted_awards ${where}
-  `) as unknown as { c: number }[];
 
   return {
-    total: Number(totalRows[0]?.c ?? 0),
+    total, page,
     rows: rows.map((r) => ({
       tedLotResultId: String(r["ted_lot_result_id"]),
       publicationNumber: (r["publication_number"] as string | null) ?? null,
@@ -1008,12 +1055,17 @@ export async function getTedAwards(
       buyerCounty: (r["buyer_county"] as string | null) ?? null,
       winnerNames: (r["winner_names"] as string[] | null) ?? [],
       winnerEntityIds: ((r["winner_entity_ids"] as (string | number)[] | null) ?? []).map(String),
-      winnerCountries: (r["winner_countries"] as string[] | null) ?? [],
+      winnerCountries: (r["winner_countries"] as (string | null)[] | null) ?? [],
       isForeign: Boolean(r["is_foreign"]),
       cpvCode: (r["cpv_code"] as string | null) ?? null,
       cpvName: (r["cpv_name"] as string | null) ?? null,
       title: (r["title"] as string | null) ?? null,
-      awardedValue: r["awarded_value"] != null ? Number(r["awarded_value"]) : null,
+      awardedValue: r["awarded_value"] != null ? String(r["awarded_value"]) : null,
+      amountKind: (r["amount_kind"] as string | null) ?? null,
+      amountDetails: (r["amount_details"] as import("@seap/db").TedAmountDetails | null) ?? null,
+      lotId: (r["lot_id"] as string | null) ?? null,
+      winnerSelectionStatus: (r["winner_selection_status"] as string | null) ?? null,
+      tendersReceived: r["tenders_received"] == null ? null : Number(r["tenders_received"]),
       currency: (r["currency"] as string | null) ?? null,
       awardDate: (r["award_date"] as string | null) ?? null,
       procedureType: (r["procedure_type"] as string | null) ?? null,
@@ -1198,11 +1250,11 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
       from (
         select supplier_id, 'da' src, closing_value cv from marts.da_transactions
         where authority_id = ${authId} and supplier_id = any(${sql.array(winnerIds)}::bigint[])
-          and closing_value is not null and closing_value <= 2000000
+          and closing_value > 0 and closing_value <= 2000000
         union all
         select supplier_id, 'ct', closing_value from marts.contract_transactions
         where authority_id = ${authId} and supplier_id = any(${sql.array(winnerIds)}::bigint[])
-          and closing_value is not null
+          and closing_value > 0
       ) u group by supplier_id
     `) as unknown as Record<string, unknown>[];
     for (const h of hist) {
@@ -1442,7 +1494,7 @@ export async function getNotableFindings(limit = 2): Promise<NotableFinding[]> {
 /** Total browsable risk-signal instances (home stat). */
 export async function getFlagInstanceCount(): Promise<number> {
   const sql = db();
-  const rows = (await sql`select count(*) n from marts.flag_instances`) as unknown as {
+  const rows = (await sql`select count(*) n from core.flags where triggered`) as unknown as {
     n: string;
   }[];
   return Number(rows[0]?.n ?? 0);

@@ -1,0 +1,34 @@
+{
+  "date": "2026-09-19",
+  "unit": {
+    "file": "apps/web/lib/monitoring.test.ts",
+    "passed": 15
+  },
+  "database": {
+    "file": "apps/web/lib/monitoring.integration.test.ts",
+    "passed": 10,
+    "isolatedDatabase": "seap_test_batch3_20260919",
+    "execution": "Nine-scenario suite, followed by focused final current-checkpoint backlog/health scenario.",
+    "queryViews": 13,
+    "specVariants": 14,
+    "scenarios": [
+      "current ready checkpoint backlog, including previously successful watches",
+      "private exact frozen scope and quiet idempotent baseline",
+      "all query views and historical profiles",
+      "no parent-result alerts outside a narrowed source selection",
+      "exact before/after deltas and observation-date classifications",
+      "original before/after case copies and deduplicated optional task",
+      "last successful evidence retained on refresh failure; pause and preferences",
+      "fail closed on reused entity IDs",
+      "separate profile recalculation and methodology changes",
+      "oversized selection fails without a partial snapshot"
+    ]
+  },
+  "testDatabaseCleanup": "Disposable database dropped after browser and reviewer acceptance.",
+  "realSourceDataModified": false,
+  "relatedArtifacts": [
+    "real-baseline.json",
+    "export-checks.json",
+    "verification.json"
+  ]
+}

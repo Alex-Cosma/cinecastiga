@@ -1,0 +1,63 @@
+{
+  "checkedAt": "2026-09-19T17:34:47.646Z",
+  "checks": [
+    {
+      "questionCreatedThroughUi": true,
+      "focusManaged": true
+    },
+    {
+      "screen": "workspace-desktop",
+      "width": 1440,
+      "document": 1440
+    },
+    {
+      "screen": "tasks-desktop",
+      "width": 1440,
+      "document": 1440
+    },
+    {
+      "screen": "frozen-sources-desktop",
+      "width": 1440,
+      "document": 1440
+    },
+    {
+      "screen": "frozen-sources-mobile",
+      "width": 390,
+      "document": 390
+    },
+    {
+      "screen": "workspace-mobile",
+      "width": 390,
+      "document": 390
+    },
+    {
+      "screen": "evidence-mobile",
+      "width": 390,
+      "document": 390
+    },
+    {
+      "screen": "tasks-mobile",
+      "width": 390,
+      "document": 390
+    },
+    {
+      "cleanPermalinkNotDirty": true
+    },
+    {
+      "screen": "precise-query-mobile",
+      "width": 390,
+      "document": 390
+    },
+    {
+      "screen": "precise-query-desktop",
+      "width": 1440,
+      "document": 1440
+    },
+    {
+      "screen": "recipes-desktop",
+      "width": 1440,
+      "document": 1440
+    }
+  ],
+  "errors": []
+}

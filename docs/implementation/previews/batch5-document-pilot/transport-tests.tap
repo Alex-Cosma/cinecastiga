@@ -1,0 +1,202 @@
+TAP version 13
+# Subtest: empty POST then GET, same-origin session retained without secrets in ledger,15seconds apart
+ok 1 - empty POST then GET, same-origin session retained without secrets in ledger,15seconds apart
+  ---
+  duration_ms: 32.248542
+  type: 'test'
+  ...
+# Subtest: verification403 denied stops before GET
+ok 2 - verification403 denied stops before GET
+  ---
+  duration_ms: 8.397333
+  type: 'test'
+  ...
+# Subtest: verification200 {"error":true} stops before GET
+ok 3 - verification200 {"error":true} stops before GET
+  ---
+  duration_ms: 8.034666
+  type: 'test'
+  ...
+# Subtest: verification302  stops before GET
+ok 4 - verification302  stops before GET
+  ---
+  duration_ms: 6.29425
+  type: 'test'
+  ...
+# Subtest: GET failure preserves both attempts and never retries
+ok 5 - GET failure preserves both attempts and never retries
+  ---
+  duration_ms: 7.593666
+  type: 'test'
+  ...
+# Subtest: missing budget approval causes zero network requests
+ok 6 - missing budget approval causes zero network requests
+  ---
+  duration_ms: 2.07225
+  type: 'test'
+  ...
+# Subtest: fresh session page emits cookie used in both verification and download, three counted requests
+ok 7 - fresh session page emits cookie used in both verification and download, three counted requests
+  ---
+  duration_ms: 8.761916
+  type: 'test'
+  ...
+# Subtest: reserves before transmission, caches exact bytes, spaces request starts by at least15s
+ok 8 - reserves before transmission, caches exact bytes, spaces request starts by at least15s
+  ---
+  duration_ms: 44.318375
+  type: 'test'
+  ...
+# Subtest: manual redirect consumes two attempts and two throttled slots
+ok 9 - manual redirect consumes two attempts and two throttled slots
+  ---
+  duration_ms: 9.504584
+  type: 'test'
+  ...
+# Subtest: redirect to unapproved origin stops without contacting target
+ok 10 - redirect to unapproved origin stops without contacting target
+  ---
+  duration_ms: 7.356958
+  type: 'test'
+  ...
+# Subtest: HTTP403 stops persistently after exactly one attempt
+ok 11 - HTTP403 stops persistently after exactly one attempt
+  ---
+  duration_ms: 10.407208
+  type: 'test'
+  ...
+# Subtest: HTTP429 stops persistently after exactly one attempt
+ok 12 - HTTP429 stops persistently after exactly one attempt
+  ---
+  duration_ms: 7.249916
+  type: 'test'
+  ...
+# Subtest: HTTP500 stops persistently after exactly one attempt
+ok 13 - HTTP500 stops persistently after exactly one attempt
+  ---
+  duration_ms: 8.008417
+  type: 'test'
+  ...
+# Subtest: challenge response stops on200 without retry
+ok 14 - challenge response stops on200 without retry
+  ---
+  duration_ms: 8.362417
+  type: 'test'
+  ...
+# Subtest: network failure persists and is never retried
+ok 15 - network failure persists and is never retried
+  ---
+  duration_ms: 4.773833
+  type: 'test'
+  ...
+# Subtest: total cap persists across separate invocations, request11never issued
+ok 16 - total cap persists across separate invocations, request11never issued
+  ---
+  duration_ms: 59.018875
+  type: 'test'
+  ...
+# Subtest: two PDF maximum, original bytes hashed and stored
+ok 17 - two PDF maximum, original bytes hashed and stored
+  ---
+  duration_ms: 6.500083
+  type: 'test'
+  ...
+# Subtest: wrong format does not become a PDF
+ok 18 - wrong format does not become a PDF
+  ---
+  duration_ms: 3.458
+  type: 'test'
+  ...
+# Subtest: stream size limit stops and counts bytes already received
+ok 19 - stream size limit stops and counts bytes already received
+  ---
+  duration_ms: 2.950625
+  type: 'test'
+  ...
+# Subtest: exclusive lock blocks concurrent run without any network
+ok 20 - exclusive lock blocks concurrent run without any network
+  ---
+  duration_ms: 1.561792
+  type: 'test'
+  ...
+# Subtest: uncertain reserved attempt on restart stops without a repeat
+ok 21 - uncertain reserved attempt on restart stops without a repeat
+  ---
+  duration_ms: 4.782917
+  type: 'test'
+  ...
+# Subtest: changing policy cannot reset or increase durable budget
+ok 22 - changing policy cannot reset or increase durable budget
+  ---
+  duration_ms: 4.448084
+  type: 'test'
+  ...
+# Subtest: other authority or unapproved notice rejected before any request
+ok 23 - other authority or unapproved notice rejected before any request
+  ---
+  duration_ms: 1.89375
+  type: 'test'
+  ...
+# Subtest: verified read-only document list POST is counted and cached by body
+ok 24 - verified read-only document list POST is counted and cached by body
+  ---
+  duration_ms: 7.234834
+  type: 'test'
+  ...
+# Subtest: write-like POST route rejected before transmission
+ok 25 - write-like POST route rejected before transmission
+  ---
+  duration_ms: 1.839167
+  type: 'test'
+  ...
+# Subtest: authorized retry preserves cumulative budget, saves PDF once, and cannot be reused
+ok 26 - authorized retry preserves cumulative budget, saves PDF once, and cannot be reused
+  ---
+  duration_ms: 5.5255
+  type: 'test'
+  ...
+# Subtest: authorized retry never follows redirects or expands to another URL
+ok 27 - authorized retry never follows redirects or expands to another URL
+  ---
+  duration_ms: 4.967416
+  type: 'test'
+  ...
+# Subtest: expired retry approval sends nothing and error diagnostics are retained separately
+ok 28 - expired retry approval sends nothing and error diagnostics are retained separately
+  ---
+  duration_ms: 3.072834
+  type: 'test'
+  ...
+# Subtest: failed retry persists its error and cannot send a third request
+ok 29 - failed retry persists its error and cannot send a third request
+  ---
+  duration_ms: 4.9535
+  type: 'test'
+  ...
+# Subtest: explicit origin correction sends matching headers once and preserves original failure
+ok 30 - explicit origin correction sends matching headers once and preserves original failure
+  ---
+  duration_ms: 4.73575
+  type: 'test'
+  ...
+# Subtest: origin correction cannot bypass a different403or change document or preserve mismatched Origin
+ok 31 - origin correction cannot bypass a different403or change document or preserve mismatched Origin
+  ---
+  duration_ms: 5.224041
+  type: 'test'
+  ...
+# Subtest: generic403does not qualify for origin correction
+ok 32 - generic403does not qualify for origin correction
+  ---
+  duration_ms: 3.419833
+  type: 'test'
+  ...
+1..32
+# tests 32
+# suites 0
+# pass 32
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 303.029

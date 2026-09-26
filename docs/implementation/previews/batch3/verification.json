@@ -1,0 +1,85 @@
+{
+  "checkedAt": "2026-09-19T19:57:35.813158+00:00",
+  "status": "complete-local",
+  "checks": {
+    "build": "passed",
+    "typecheck": "passed",
+    "lint": "passed",
+    "gitDiffCheck": "passed",
+    "defaultTests": {
+      "web": 196,
+      "ingestion": 85,
+      "domain": 26,
+      "scraper": 16,
+      "total": 323
+    },
+    "isolatedDatabaseScenarios": {
+      "refreshGate": 8,
+      "authVerification": 5,
+      "digestsWithMockSender": 6,
+      "monitoring": 10,
+      "batch2Regression": 14,
+      "total": 43,
+      "execution": "Separate isolated runs; monitoring health backlog scenario was a focused final run."
+    }
+  },
+  "queryCoverage": {
+    "queryTypes": 13,
+    "specVariants": 14,
+    "sourcePopulation": "Complete, with an explicit 200000-row per-watch limit; never sampled."
+  },
+  "browser": {
+    "initialScreens": 13,
+    "confirmationScreens": 8,
+    "reviewCorrectionScreens": 9,
+    "finalReviewerDisposition": "ship",
+    "runtimeExceptions": 0,
+    "wholePageOverflow": false,
+    "artifacts": [
+      "browser-checks.json",
+      "final-browser-checks.json",
+      "review-confirmation.json",
+      "finish-review.md"
+    ]
+  },
+  "sourceEvidence": [
+    "real-baseline.json",
+    "export-checks.json",
+    "refresh-checks.json",
+    "auth-digest-checks.json",
+    "monitoring-checks.json"
+  ],
+  "localRuntime": {
+    "application": "http://localhost:3110",
+    "homepageHttp": 200,
+    "signedOutWatchPageHttp": 307,
+    "signedOutWatchApiHttp": 401,
+    "monitoringWorker": "running, polls every 60 seconds",
+    "migrationsApplied": [
+      "0031_monitoring.sql",
+      "0032_monitoring_digests.sql"
+    ],
+    "readyCheckpoint": "a888f7f9-f39f-4b23-9c1e-0ffefe46270d",
+    "sourceCollectionStarted": false,
+    "emailDeliveryEnabled": false
+  },
+  "cleanup": {
+    "previewServer3111": "stopped",
+    "disposableDatabase": "seap_test_batch3_20260919 dropped",
+    "previewCookie": "removed",
+    "temporaryInvitationAndSessionFiles": "removed",
+    "mainBaselineTestUserAndWatch": "removed",
+    "realProcurementRecords": "unchanged by monitoring tests"
+  },
+  "release": {
+    "committed": false,
+    "pushed": false,
+    "deployed": false,
+    "productionRequires": [
+      "Additive database migrations",
+      "Validate or coherently refresh the analytic snapshot",
+      "Supervise the monitoring worker",
+      "Configure and schedule optional email digests separately if enabled"
+    ]
+  }
+}

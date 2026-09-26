@@ -1,0 +1,58 @@
+{
+  "checkedAt": "2026-09-19T17:31:41.319Z",
+  "syntheticAccounts": true,
+  "caseId": "e0eaf769-13e9-4391-8e2a-bac7dbded852",
+  "checks": [
+    {
+      "name": "Private case denies anonymous and unrelated accounts",
+      "passed": true
+    },
+    {
+      "name": "Questions, alternative explanations, tasks and dated events persist; stale revisions rejected",
+      "passed": true
+    },
+    {
+      "name": "Signal capture preserves all24 exact sources and ignores client supplied amounts",
+      "passed": true,
+      "captureId": "2b6f9ef7-200d-44bc-bdf6-e63868bd0e4a",
+      "total": "10523096.15"
+    },
+    {
+      "name": "Filtered query capture uses complete201-row contract subset with exact total; frozen pagination has source links",
+      "passed": true,
+      "captureId": "1b6d0740-6313-4f9d-bf8e-3fa36a580b5c",
+      "total": "1488754172.83",
+      "rows": 201
+    },
+    {
+      "name": "New capture creates version2; version1 remains addressable",
+      "passed": true,
+      "firstVersionHash": "c198a725b6fb7aedaeec7f71c02d878d9bbe121f66b4f35f90993eaade81def2"
+    },
+    {
+      "name": "Email-bound invitations reject wrong accounts and replay",
+      "passed": true
+    },
+    {
+      "name": "Editor can contribute; viewer can read frozen sources but cannot edit or invite",
+      "passed": true
+    },
+    {
+      "name": "Revocation removes private workspace and capture access",
+      "passed": true
+    },
+    {
+      "name": "Private recipe revisions retain conditions and reject conflicting writes",
+      "passed": true
+    },
+    {
+      "name": "Public sourceCSV remains available without an investigation account",
+      "passed": true
+    },
+    {
+      "name": "PortableZIP streams successfully; unrelated and revoked users cannot export",
+      "passed": true,
+      "bytes": 470496
+    }
+  ]
+}

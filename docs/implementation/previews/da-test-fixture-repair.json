@@ -1,0 +1,368 @@
+{
+  "version": 1,
+  "status": "applied",
+  "checkedAt": "2026-09-19T14:43:13.971Z",
+  "ordinaryValuePopulationChange": "None: all four verified source states are unaccepted offers.",
+  "changes": [
+    {
+      "sicapDaId": "120379639",
+      "originalMockArchive": {
+        "id": "185890",
+        "source": "elicitatie",
+        "externalId": "da:120379639",
+        "endpointVersion": "da-detail:v1",
+        "contentHash": "4e30fda81c352cc3a97918512c13e584eb04522eaee075da43fa1be7a68ad431",
+        "payload": {
+          "closingValue": 222,
+          "directAcquisitionID": 120379639,
+          "isOpenForCorrection": true
+        },
+        "fetchedAt": "2026-07-15T07:47:53.952Z"
+      },
+      "proposedMockMetadata": {
+        "source": "test-fixture",
+        "endpointVersion": "test-fixture:da-detail:v1"
+      },
+      "genuineDetail": {
+        "id": "130805",
+        "contentHash": "1c3ff44558944773425f60690f43eb50c0c74d8670413a05a0122bc6dac20246",
+        "fetchedAt": "2026-07-14T20:21:54.293Z"
+      },
+      "corroboratingList": {
+        "id": "130705",
+        "contentHash": "0f7c51cb477c2e3a1679e9d7d3fa5d67575c1b56f282b13468966a64f93d3d48",
+        "fetchedAt": "2026-07-14T20:21:54.293Z"
+      },
+      "before": {
+        "id": "21324997",
+        "rawId": "185890",
+        "daCode": null,
+        "sicapDaId": "120379639",
+        "authorityEntityId": "2037064",
+        "supplierEntityId": "2007222",
+        "cpvCode": null,
+        "cpvValid": false,
+        "cpvRaw": null,
+        "estimatedValueRon": null,
+        "closingValue": "222",
+        "acquisitionType": null,
+        "publicationDate": null,
+        "finalizationDate": null,
+        "state": null
+      },
+      "expectedRestoredHeader": {
+        "rawId": "130805",
+        "daCode": "DA38733126",
+        "state": "Oferta neacceptata in termen",
+        "closingValue": "40000",
+        "estimatedValueRon": "40000",
+        "cpvCode": "45310000-3",
+        "acquisitionType": "Servicii",
+        "publicationDate": "2025-08-22T09:39:09.000Z",
+        "finalizationDate": "2025-08-30T14:00:00.000Z"
+      }
+    },
+    {
+      "sicapDaId": "120617973",
+      "originalMockArchive": {
+        "id": "185891",
+        "source": "elicitatie",
+        "externalId": "da:120617973",
+        "endpointVersion": "da-detail:v1",
+        "contentHash": "243e163b3f7b9ebb05ee5bb42e0e9b646ed234cabbbfa96f975f862664824716",
+        "payload": {
+          "closingValue": 222,
+          "directAcquisitionID": 120617973,
+          "isOpenForCorrection": true
+        },
+        "fetchedAt": "2026-07-15T07:47:53.956Z"
+      },
+      "proposedMockMetadata": {
+        "source": "test-fixture",
+        "endpointVersion": "test-fixture:da-detail:v1"
+      },
+      "genuineDetail": {
+        "id": "83895",
+        "contentHash": "a6d47f279766aada7cad835072df3aaae3409bc3889cc478c6aa78a11baaa690",
+        "fetchedAt": "2026-07-14T10:33:11.271Z"
+      },
+      "corroboratingList": {
+        "id": "83875",
+        "contentHash": "cf9e77ca3ccd59124c97c79a0e0c1968488dc4d480c2e95bdada296393cde1d4",
+        "fetchedAt": "2026-07-14T10:33:11.271Z"
+      },
+      "before": {
+        "id": "21318427",
+        "rawId": "185891",
+        "daCode": null,
+        "sicapDaId": "120617973",
+        "authorityEntityId": "2136193",
+        "supplierEntityId": "2096487",
+        "cpvCode": null,
+        "cpvValid": false,
+        "cpvRaw": null,
+        "estimatedValueRon": null,
+        "closingValue": "222",
+        "acquisitionType": null,
+        "publicationDate": null,
+        "finalizationDate": null,
+        "state": null
+      },
+      "expectedRestoredHeader": {
+        "rawId": "83895",
+        "daCode": "DA38955650",
+        "state": "Oferta neacceptata in termen",
+        "closingValue": "2224",
+        "estimatedValueRon": "2224",
+        "cpvCode": "71631000-0",
+        "acquisitionType": "Servicii",
+        "publicationDate": "2025-09-26T08:01:03.000Z",
+        "finalizationDate": "2025-12-28T15:00:00.000Z"
+      }
+    },
+    {
+      "sicapDaId": "120618371",
+      "originalMockArchive": {
+        "id": "185892",
+        "source": "elicitatie",
+        "externalId": "da:120618371",
+        "endpointVersion": "da-detail:v1",
+        "contentHash": "92b6a78511a2e8d6ab6cffdd980a1320b9f3bae49c10bba7c8915119e111d186",
+        "payload": {
+          "closingValue": 222,
+          "directAcquisitionID": 120618371,
+          "isOpenForCorrection": true
+        },
+        "fetchedAt": "2026-07-15T07:47:53.958Z"
+      },
+      "proposedMockMetadata": {
+        "source": "test-fixture",
+        "endpointVersion": "test-fixture:da-detail:v1"
+      },
+      "genuineDetail": {
+        "id": "83894",
+        "contentHash": "2f124e87051d5836838bd16eef319fe9bcd898763787a0bd0ac1f9eb505130c4",
+        "fetchedAt": "2026-07-14T10:33:11.271Z"
+      },
+      "corroboratingList": {
+        "id": "83874",
+        "contentHash": "f754509893d2e88995ae9cc6305676efaaeba1db7b019e8cce92508541f31be3",
+        "fetchedAt": "2026-07-14T10:33:11.271Z"
+      },
+      "before": {
+        "id": "21318426",
+        "rawId": "185892",
+        "daCode": null,
+        "sicapDaId": "120618371",
+        "authorityEntityId": "2136193",
+        "supplierEntityId": "2096487",
+        "cpvCode": null,
+        "cpvValid": false,
+        "cpvRaw": null,
+        "estimatedValueRon": null,
+        "closingValue": "222",
+        "acquisitionType": null,
+        "publicationDate": null,
+        "finalizationDate": null,
+        "state": null
+      },
+      "expectedRestoredHeader": {
+        "rawId": "83894",
+        "daCode": "DA38955890",
+        "state": "Oferta neacceptata in termen",
+        "closingValue": "1112",
+        "estimatedValueRon": "1112",
+        "cpvCode": "71631000-0",
+        "acquisitionType": "Servicii",
+        "publicationDate": "2025-09-26T08:11:41.000Z",
+        "finalizationDate": "2025-12-28T15:00:00.000Z"
+      }
+    },
+    {
+      "sicapDaId": "122557878",
+      "originalMockArchive": {
+        "id": "185893",
+        "source": "elicitatie",
+        "externalId": "da:122557878",
+        "endpointVersion": "da-detail:v1",
+        "contentHash": "539b8abedb12c342e7121ec077716639753207b13e8b16e0e3a7d6deb2eb22a3",
+        "payload": {
+          "closingValue": 222,
+          "directAcquisitionID": 122557878,
+          "isOpenForCorrection": true
+        },
+        "fetchedAt": "2026-07-15T07:47:53.960Z"
+      },
+      "proposedMockMetadata": {
+        "source": "test-fixture",
+        "endpointVersion": "test-fixture:da-detail:v1"
+      },
+      "genuineDetail": {
+        "id": "5564",
+        "contentHash": "272ecfe6d9bb61b34d3232758ef9c5b5f5f59e03adf2e2e3dd430ab7450168cc",
+        "fetchedAt": "2026-07-13T15:05:30.811Z"
+      },
+      "corroboratingList": {
+        "id": "5464",
+        "contentHash": "8d4ae2fd0fc14412e41e6b4b71078ab9b660b12754c8898bdf79bac564088f52",
+        "fetchedAt": "2026-07-13T15:05:30.811Z"
+      },
+      "before": {
+        "id": "21303789",
+        "rawId": "185893",
+        "daCode": null,
+        "sicapDaId": "122557878",
+        "authorityEntityId": "2110532",
+        "supplierEntityId": "2121912",
+        "cpvCode": null,
+        "cpvValid": false,
+        "cpvRaw": null,
+        "estimatedValueRon": null,
+        "closingValue": "222",
+        "acquisitionType": null,
+        "publicationDate": null,
+        "finalizationDate": null,
+        "state": null
+      },
+      "expectedRestoredHeader": {
+        "rawId": "5564",
+        "daCode": "DA40765697",
+        "state": "Oferta neacceptata in termen",
+        "closingValue": "12840",
+        "estimatedValueRon": "12840",
+        "cpvCode": "50433000-9",
+        "acquisitionType": "Servicii",
+        "publicationDate": "2026-07-06T09:04:51.000Z",
+        "finalizationDate": "2026-07-12T14:00:00.000Z"
+      }
+    }
+  ],
+  "rollback": "Restore the four core headers and original raw source/endpoint metadata from this artifact in one transaction; do not delete any raw rows.",
+  "appliedAt": "2026-09-19T14:43:14.099Z",
+  "after": {
+    "headers": [
+      {
+        "id": "21324997",
+        "rawId": "130805",
+        "daCode": "DA38733126",
+        "sicapDaId": "120379639",
+        "authorityEntityId": "2037064",
+        "supplierEntityId": "2007222",
+        "cpvCode": "45310000-3",
+        "cpvValid": true,
+        "cpvRaw": "Lucrari de instalatii electrice (Rev.2)",
+        "estimatedValueRon": "40000",
+        "closingValue": "40000",
+        "acquisitionType": "Servicii",
+        "publicationDate": "2025-08-22T09:39:09.000Z",
+        "finalizationDate": "2025-08-30T14:00:00.000Z",
+        "state": "Oferta neacceptata in termen"
+      },
+      {
+        "id": "21318427",
+        "rawId": "83895",
+        "daCode": "DA38955650",
+        "sicapDaId": "120617973",
+        "authorityEntityId": "2136193",
+        "supplierEntityId": "2096487",
+        "cpvCode": "71631000-0",
+        "cpvValid": true,
+        "cpvRaw": "Servicii de inspectie tehnica (Rev.2)",
+        "estimatedValueRon": "2224",
+        "closingValue": "2224",
+        "acquisitionType": "Servicii",
+        "publicationDate": "2025-09-26T08:01:03.000Z",
+        "finalizationDate": "2025-12-28T15:00:00.000Z",
+        "state": "Oferta neacceptata in termen"
+      },
+      {
+        "id": "21318426",
+        "rawId": "83894",
+        "daCode": "DA38955890",
+        "sicapDaId": "120618371",
+        "authorityEntityId": "2136193",
+        "supplierEntityId": "2096487",
+        "cpvCode": "71631000-0",
+        "cpvValid": true,
+        "cpvRaw": "Servicii de inspectie tehnica (Rev.2)",
+        "estimatedValueRon": "1112",
+        "closingValue": "1112",
+        "acquisitionType": "Servicii",
+        "publicationDate": "2025-09-26T08:11:41.000Z",
+        "finalizationDate": "2025-12-28T15:00:00.000Z",
+        "state": "Oferta neacceptata in termen"
+      },
+      {
+        "id": "21303789",
+        "rawId": "5564",
+        "daCode": "DA40765697",
+        "sicapDaId": "122557878",
+        "authorityEntityId": "2110532",
+        "supplierEntityId": "2121912",
+        "cpvCode": "50433000-9",
+        "cpvValid": true,
+        "cpvRaw": "Servicii de calibrare (Rev.2)",
+        "estimatedValueRon": "12840",
+        "closingValue": "12840",
+        "acquisitionType": "Servicii",
+        "publicationDate": "2026-07-06T09:04:51.000Z",
+        "finalizationDate": "2026-07-12T14:00:00.000Z",
+        "state": "Oferta neacceptata in termen"
+      }
+    ],
+    "mocks": [
+      {
+        "id": "185890",
+        "source": "test-fixture",
+        "externalId": "da:120379639",
+        "endpointVersion": "test-fixture:da-detail:v1",
+        "contentHash": "4e30fda81c352cc3a97918512c13e584eb04522eaee075da43fa1be7a68ad431",
+        "payload": {
+          "closingValue": 222,
+          "directAcquisitionID": 120379639,
+          "isOpenForCorrection": true
+        },
+        "fetchedAt": "2026-07-15T07:47:53.952Z"
+      },
+      {
+        "id": "185891",
+        "source": "test-fixture",
+        "externalId": "da:120617973",
+        "endpointVersion": "test-fixture:da-detail:v1",
+        "contentHash": "243e163b3f7b9ebb05ee5bb42e0e9b646ed234cabbbfa96f975f862664824716",
+        "payload": {
+          "closingValue": 222,
+          "directAcquisitionID": 120617973,
+          "isOpenForCorrection": true
+        },
+        "fetchedAt": "2026-07-15T07:47:53.956Z"
+      },
+      {
+        "id": "185892",
+        "source": "test-fixture",
+        "externalId": "da:120618371",
+        "endpointVersion": "test-fixture:da-detail:v1",
+        "contentHash": "92b6a78511a2e8d6ab6cffdd980a1320b9f3bae49c10bba7c8915119e111d186",
+        "payload": {
+          "closingValue": 222,
+          "directAcquisitionID": 120618371,
+          "isOpenForCorrection": true
+        },
+        "fetchedAt": "2026-07-15T07:47:53.958Z"
+      },
+      {
+        "id": "185893",
+        "source": "test-fixture",
+        "externalId": "da:122557878",
+        "endpointVersion": "test-fixture:da-detail:v1",
+        "contentHash": "539b8abedb12c342e7121ec077716639753207b13e8b16e0e3a7d6deb2eb22a3",
+        "payload": {
+          "closingValue": 222,
+          "directAcquisitionID": 122557878,
+          "isOpenForCorrection": true
+        },
+        "fetchedAt": "2026-07-15T07:47:53.960Z"
+      }
+    ]
+  }
+}

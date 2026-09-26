@@ -1,0 +1,11 @@
+import {createRequire} from 'node:module';
+import {cp,mkdir} from 'node:fs/promises';
+import {dirname,join} from 'node:path';
+import {fileURLToPath} from 'node:url';
+const require=createRequire(import.meta.url),root=dirname(require.resolve('pdfjs-dist/package.json'));
+const {version}=require('pdfjs-dist/package.json');
+const target=fileURLToPath(new URL(`../../public/pdfjs/${version}/`,import.meta.url));
+await mkdir(target,{recursive:true});
+await cp(join(root,'build/pdf.worker.min.mjs'),join(target,'pdf.worker.min.mjs'));
+for(const name of ['cmaps','standard_fonts','wasm','iccs'])await cp(join(root,name),join(target,name),{recursive:true});
+await cp(join(root,'LICENSE'),join(target,'LICENSE'));

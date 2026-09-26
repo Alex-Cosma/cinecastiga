@@ -1,8 +1,9 @@
 import { eq } from "drizzle-orm";
-import { tedLotResults, tedLotWinners, tedNotices } from "@seap/db";
+import { tedLotWinners, tedNotices, type TedAmountDetails, type TedSourceAmount } from "@seap/db";
 import type { NormalizeCtx } from "./context.js";
 import { resolveCpvPrefix } from "./cpv.js";
 import { resolveEntity } from "./resolve-entity.js";
+import { insertTedWinners, replaceTedLots, tryReplaceTedAmounts } from "./ted-load.js";
 import {
   asArray,
   attr,
@@ -10,6 +11,8 @@ import {
   dig,
   makeTedXmlParser,
   txt,
+  tenderCount,
+  TED_NORMALIZATION_VERSION,
   type Node,
 } from "./ted.js";
 
@@ -90,6 +93,8 @@ interface F03Lot {
   estimated: string | null;
   awarded: string | null;
   currency: string | null;
+  amountKind: string;
+  amountDetails: TedAmountDetails;
   tendersReceived: number | null;
   contractDate: Date | null;
   awarded_ok: boolean;
@@ -196,13 +201,20 @@ export function extractF03Notice(xml: string): F03Notice & { lots: F03Lot[] } {
       if (p) winners.push(p);
     }
 
-    const lotTotal = f03Amount(
-      dig(awarded, "VALUES", "VAL_TOTAL") ??
-        dig(awarded, "VALUES", "VAL_RANGE_TOTAL"),
-    );
+    const amounts: TedSourceAmount[] = [];
+    const totalNode = dig(awarded, "VALUES", "VAL_TOTAL");
+    const rangeNode = dig(awarded, "VALUES", "VAL_RANGE_TOTAL");
+    const addAmount = (node: unknown, kind: TedSourceAmount["kind"], source: string, currency: string | null) => {
+      const value = dec(node);
+      if (value != null) amounts.push({ kind, source, value, currency, resultId: `ITEM-${item}` });
+    };
+    addAmount(totalNode, "contract_value", "AWARD_CONTRACT/AWARDED_CONTRACT/VALUES/VAL_TOTAL", attr(totalNode, "CURRENCY"));
+    addAmount(dig(rangeNode, "LOW"), "tender_lower", "AWARD_CONTRACT/AWARDED_CONTRACT/VALUES/VAL_RANGE_TOTAL/LOW", attr(rangeNode, "CURRENCY"));
+    addAmount(dig(rangeNode, "HIGH"), "tender_upper", "AWARD_CONTRACT/AWARDED_CONTRACT/VALUES/VAL_RANGE_TOTAL/HIGH", attr(rangeNode, "CURRENCY"));
+    const actual = amounts.find((a) => a.kind === "contract_value");
+    const amountKind = actual ? "contract_value" : amounts.length ? "tender_range" : "missing";
     const lotEst = f03Amount(dig(awarded, "VALUES", "VAL_ESTIMATED_TOTAL"));
-    const nb = txt(dig(awarded, "TENDERS", "NB_TENDERS_RECEIVED"));
-    const nbNum = nb != null ? Number(nb) : NaN;
+    const nb = dig(awarded, "TENDERS", "NB_TENDERS_RECEIVED");
 
     lots.push({
       lotId: `ITEM-${item}`,
@@ -210,9 +222,12 @@ export function extractF03Notice(xml: string): F03Notice & { lots: F03Lot[] } {
       cpvRaw: meta?.cpv ?? cpvRaw ?? null,
       title: meta?.title ?? firstP(dig(ac, "TITLE")),
       estimated: lotEst.value,
-      awarded: lotTotal.value,
-      currency: lotTotal.currency ?? est.currency,
-      tendersReceived: Number.isFinite(nbNum) ? nbNum : null,
+      awarded: actual?.value ?? null,
+      currency: actual?.currency ?? null,
+      amountKind,
+      amountDetails: { version: 2, amounts, tenders: [], resultIds: [`ITEM-${item}`], missingTenderIds: [],
+        framework: false, matchEligible: amountKind === "contract_value" && awarded != null },
+      tendersReceived: tenderCount([nb]),
       contractDate: isoDate(txt(dig(awarded, "DATE_CONCLUSION_CONTRACT"))),
       awarded_ok: awarded != null,
       winners,
@@ -237,6 +252,46 @@ export function extractF03Notice(xml: string): F03Notice & { lots: F03Lot[] } {
     issueDate: ymdDate(txt(dig(codif, "DS_DATE_DISPATCH"))),
     lots,
   };
+}
+
+function f03LotValues(n: ReturnType<typeof extractF03Notice>, ctx: NormalizeCtx, tedNoticeId: bigint) {
+  return n.lots.map((lot) => {
+    const lotCpv = resolveCpvPrefix(lot.cpvRaw, ctx.cpvByPrefix);
+    return {
+        tedNoticeId,
+        lotId: lot.lotId,
+        resultId: lot.resultId,
+        cpvCode: lotCpv.cpvCode,
+        cpvValid: lotCpv.cpvValid,
+        cpvRaw: lotCpv.cpvRaw,
+        contractNature: n.contractNature,
+        title: lot.title,
+        estimatedValueRon: lot.estimated,
+        awardedValue: lot.awarded,
+        amountKind: lot.amountKind,
+        amountDetails: lot.amountDetails,
+        currency: lot.currency,
+        tendersReceived: lot.tendersReceived,
+        isSingleBidder:
+          lot.tendersReceived == null ? null : lot.tendersReceived === 1,
+        winnerSelectionStatus: lot.awarded_ok ? "awarded" : "not-awarded",
+        contractDate: lot.contractDate,
+      };
+  });
+}
+
+/** Replay only: the F03 winner parser is unchanged; verify lot identities first. */
+export async function tryReplayF03Amounts(ctx: NormalizeCtx, noticeId: bigint, publication: string,
+  rawId: bigint, payload: unknown): Promise<boolean> {
+  const xml = (payload as { xml?: unknown })?.xml;
+  if (typeof xml !== "string" || !xml) throw new Error("TED F03 replay missing XML");
+  const n = extractF03Notice(xml);
+  if (n.publicationNumber !== publication) throw new Error("TED replay publication does not match current source");
+  if (!await tryReplaceTedAmounts(ctx.tx, noticeId, f03LotValues(n, ctx, noticeId))) return false;
+  await ctx.tx.update(tedNotices).set({ rawId, normalizationVersion: TED_NORMALIZATION_VERSION,
+    estimatedValueRon: n.estimated, awardedValueTotal: n.awardedTotal, currency: n.currency })
+    .where(eq(tedNotices.id, noticeId));
+  return true;
 }
 
 // ── loader (Parser.load) ─────────────────────────────────────────────────
@@ -270,6 +325,7 @@ export async function loadF03Notice(
 
   const header = {
     rawId,
+    normalizationVersion: TED_NORMALIZATION_VERSION,
     ojsNoticeId: n.ojsNoticeId,
     noticeType: "can-standard", // legacy F03 award == eForms can-standard (semantic)
     regulatoryDomain: n.regulatoryDomain,
@@ -303,46 +359,27 @@ export async function loadF03Notice(
     .returning({ id: tedNotices.id });
   const tedNoticeId = upserted[0]!.id;
 
-  await ctx.tx.delete(tedLotResults).where(eq(tedLotResults.tedNoticeId, tedNoticeId));
-
+  const values = f03LotValues(n, ctx, tedNoticeId);
+  const lotIds = await replaceTedLots(ctx.tx, tedNoticeId, values);
+  const winnerEntities = new Map<string, bigint>();
+  const winnerRows: (typeof tedLotWinners.$inferInsert)[] = [];
   for (const lot of n.lots) {
-    const lotCpv = resolveCpvPrefix(lot.cpvRaw, ctx.cpvByPrefix);
-    const inserted = await ctx.tx
-      .insert(tedLotResults)
-      .values({
-        tedNoticeId,
-        lotId: lot.lotId,
-        resultId: lot.resultId,
-        cpvCode: lotCpv.cpvCode,
-        cpvValid: lotCpv.cpvValid,
-        cpvRaw: lotCpv.cpvRaw,
-        contractNature: n.contractNature,
-        title: lot.title,
-        estimatedValueRon: lot.estimated,
-        awardedValue: lot.awarded,
-        currency: lot.currency,
-        tendersReceived: lot.tendersReceived,
-        isSingleBidder:
-          lot.tendersReceived == null ? null : lot.tendersReceived === 1,
-        winnerSelectionStatus: lot.awarded_ok ? "awarded" : "not-awarded",
-        contractDate: lot.contractDate,
-      })
-      .returning({ id: tedLotResults.id });
-    const lotResultId = inserted[0]!.id;
-
+    const lotResultId = lotIds.get(lot.lotId)!;
     for (const w of lot.winners) {
-      const entityId = await resolveEntity(ctx.tx, {
+      const winnerSeenAt = lot.contractDate ?? seenAt;
+      const cacheKey = JSON.stringify([w.cui, w.name, w.nuts, w.country, winnerSeenAt]);
+      let entityId = winnerEntities.get(cacheKey);
+      if (entityId == null) entityId = await resolveEntity(ctx.tx, {
         cuiRaw: w.cui,
         nameDisplay: w.name,
         namespace: "winner",
         nutsCode: w.nuts,
         country: w.country,
-        seenAt: lot.contractDate ?? seenAt,
+        seenAt: winnerSeenAt,
       });
-      await ctx.tx
-        .insert(tedLotWinners)
-        .values({ lotResultId, entityId })
-        .onConflictDoNothing();
+      winnerEntities.set(cacheKey, entityId);
+      winnerRows.push({ lotResultId, entityId });
     }
   }
+  await insertTedWinners(ctx.tx, winnerRows);
 }

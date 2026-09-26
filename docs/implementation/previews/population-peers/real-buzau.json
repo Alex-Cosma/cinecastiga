@@ -1,0 +1,82 @@
+{
+  "status": 200,
+  "elapsedMs": 2066,
+  "method": "population",
+  "population": 103481,
+  "total": "481366697.99",
+  "peers": 10,
+  "observed": 10,
+  "median": "90538866.635",
+  "members": [
+    {
+      "id": "2146162",
+      "name": "MUNICIPIUL BAIA MARE",
+      "population": 108759,
+      "difference": 5.1,
+      "rows": 90
+    },
+    {
+      "id": "2146327",
+      "name": "MUNICIPIUL RAMNICU VALCEA",
+      "population": 93151,
+      "difference": -9.98,
+      "rows": 45
+    },
+    {
+      "id": "2146473",
+      "name": "Municipiul Satu Mare",
+      "population": 91520,
+      "difference": -11.56,
+      "rows": 88
+    },
+    {
+      "id": "2146721",
+      "name": "Primaria Municipiului Tirgu-Mures",
+      "population": 116033,
+      "difference": 12.13,
+      "rows": 39
+    },
+    {
+      "id": "2145484",
+      "name": "MUNICIPIUL BOTOSANI",
+      "population": 90010,
+      "difference": -13.02,
+      "rows": 41
+    },
+    {
+      "id": "2146658",
+      "name": "MUNICIPIUL SUCEAVA",
+      "population": 84322,
+      "difference": -18.51,
+      "rows": 43
+    },
+    {
+      "id": "2146592",
+      "name": "MUNICIPIUL DROBETA TURNU SEVERIN",
+      "population": 79865,
+      "difference": -22.82,
+      "rows": 52
+    },
+    {
+      "id": "2145662",
+      "name": "Municipiul Piatra Neamt",
+      "population": 79679,
+      "difference": -23,
+      "rows": 28
+    },
+    {
+      "id": "2145825",
+      "name": "Municipiul Bistrita",
+      "population": 78877,
+      "difference": -23.78,
+      "rows": 20
+    },
+    {
+      "id": "2146501",
+      "name": "Primaria Municipiului Targu Jiu",
+      "population": 73545,
+      "difference": -28.93,
+      "rows": 49
+    }
+  ]
+}

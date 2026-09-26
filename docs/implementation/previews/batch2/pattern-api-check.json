@@ -1,0 +1,11 @@
+{
+  "checkedAt": "2026-09-19T17:35:34.490Z",
+  "publicLinkBound": true,
+  "missingIdentityRejected": true,
+  "changedIdentityRejected": true,
+  "queuedServerBindingVerified": true,
+  "stalePageRejected": true,
+  "csvStatus": 200,
+  "rows": 64,
+  "totalExact": "8699990.12"
+}

@@ -1,0 +1,27 @@
+{
+  "checkedAt": "2026-09-19T17:32:50.961639+00:00",
+  "entries": 21,
+  "manifestHashesVerified": 20,
+  "zipCrcPassed": true,
+  "captures": [
+    {
+      "version": 1,
+      "rows": 201,
+      "totalExact": "1488754172.83",
+      "checksumVerified": true
+    },
+    {
+      "version": 2,
+      "rows": 201,
+      "totalExact": "1488754172.83",
+      "checksumVerified": true
+    },
+    {
+      "version": 1,
+      "rows": 24,
+      "totalExact": "10523096.15",
+      "checksumVerified": true
+    }
+  ],
+  "workspaceRevisions": 5
+}

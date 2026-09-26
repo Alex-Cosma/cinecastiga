@@ -2,6 +2,8 @@ import type { DbSql } from "@seap/db";
 import type { AskSpec, AuthorityKind, Dim } from "./spec";
 import type { Grounding } from "./ground";
 import { EVIDENCE_CSV_LIMIT, PROFILE_BLOCKS, sumDecimalStrings, validateEvidenceScope, type EvidenceScope, type EvidenceStatus, type EvidenceProfile } from "./evidence";
+import { minimumRecordsSql, populationSql } from "./population-sql";
+import { describePopulation, isHistoricalProfile, unsupportedPopulationView } from "./population";
 
 /**
  * Compile a validated AskSpec + grounding into parameterized SQL and execute it
@@ -154,7 +156,7 @@ export interface EngineResult {
   tookMs: number;
 }
 
-const KIND_PATTERNS: Record<AuthorityKind, string[]> = {
+export const KIND_PATTERNS: Record<AuthorityKind, string[]> = {
   comuna: ["comuna %"],
   oras_municipiu: ["oras%", "orș%", "oraș%", "munici%", "primaria %", "primăria %"],
   consiliu_judetean: ["judetul %", "județul %", "consiliul judetean%", "consiliul județean%"],
@@ -226,14 +228,21 @@ function employeesCond(
 
 /** Coverage of a stream ('da' | 'award'), cached per process (10 min). */
 const coverageCache = new Map<string, { years: number[]; at: number }>();
+const snapshotCoverageConnections = new WeakSet<DbSql>();
+/** Coordinated snapshots must not inherit bounds from an earlier refresh. */
+export function useSnapshotCoverage(sql: DbSql): DbSql {
+  snapshotCoverageConnections.add(sql);
+  return sql;
+}
 export async function daCoverageYears(sql: DbSql, kind: "da" | "award" = "da"): Promise<number[]> {
-  const hit = coverageCache.get(kind);
+  const fresh = snapshotCoverageConnections.has(sql);
+  const hit = fresh ? undefined : coverageCache.get(kind);
   if (hit && Date.now() - hit.at < 600_000) return hit.years;
   const rows = (await sql`
     select year from marts.national_stats where kind = ${kind} and year is not null order by year
   `) as unknown as { year: number }[];
   const years = rows.map((r) => Number(r.year));
-  coverageCache.set(kind, { years, at: Date.now() });
+  if (!fresh) coverageCache.set(kind, { years, at: Date.now() });
   return years;
 }
 
@@ -342,6 +351,8 @@ export async function runSpec(
   // --- data stream. "all" = DA ∪ contracts (DISJOINT channels — a direct
   // acquisition is never also a contract, so the union is an honest sum). TED
   // is never unioned: it overlaps contracts and would double-count.
+  const unsupported = unsupportedPopulationView(spec);
+  if (unsupported) return { error: unsupported, caveats: [] };
   const dataset = spec.dataset ?? "all";
   const txt = txFragment(sql, dataset);
   const codeCol = dataset === "contracts" ? sql`d.contract_no` : sql`d.da_code`;
@@ -464,11 +475,7 @@ export async function runSpec(
     const reqFrom = yearFrom ?? minY;
     const reqTo = yearTo ?? maxY;
     if (reqTo < minY || reqFrom > maxY) {
-      caveats.push(
-        `Perioada cerută (${reqFrom}–${reqTo}) nu există în date. Acoperire achiziții directe: ${minY}–${maxY}. Îți arăt întreaga acoperire.`,
-      );
-      yearFrom = null;
-      yearTo = null;
+      return { error:`Perioada cerută (${reqFrom}–${reqTo}) este în afara datelor disponibile (${minY}–${maxY}). Alege altă perioadă; selecția nu a fost extinsă.`, caveats };
     } else {
       const cf = Math.max(reqFrom, minY);
       const ct = Math.min(reqTo, maxY);
@@ -494,7 +501,7 @@ export async function runSpec(
       `Valorile peste ${(DA_PLAFOND_RON / 1_000_000).toLocaleString("ro-RO")} mil. lei pe o achiziție directă sunt excluse ca erori de introducere (plafon de plauzibilitate).`,
     );
     caveats.push(
-      "Sunt numărate doar achizițiile directe finalizate («Ofertă acceptată») — comenzile refuzate de furnizor sau neacceptate la termen (~6% din înregistrări) nu sunt bani cheltuiți și sunt excluse.",
+      "Sunt numărate doar achizițiile directe finalizate («Ofertă acceptată») — comenzile refuzate de furnizor sau neacceptate la termen (~6% din înregistrări) sunt excluse din valorile contractate; acceptarea unei oferte nu dovedește efectuarea unei plăți.",
     );
   }
 
@@ -561,11 +568,12 @@ export async function runSpec(
     (authorityId ? grounding.authority?.nameDisplay : grounding.supplier?.nameDisplay) ?? "?";
 
   // --- WHERE fragment over the transaction mart (da_/contract_, all parameterized)
-  const whereFrag = (opts?: { years?: boolean; entityIds?: boolean }) => {
+  const whereFrag = (opts?: { years?: boolean; entityIds?: boolean; comparison?:boolean; minimum?:boolean }): ReturnType<DbSql> => {
     const useYears = opts?.years ?? true;
     const useIds = opts?.entityIds ?? true;
     const parts: ReturnType<DbSql>[] = [];
     parts.push(sql`d.closing_value > 0`);
+    if (spec.population) parts.push(populationSql(sql, spec.population));
     if (w.plafond === "strict") parts.push(sql`d.closing_value <= ${DA_PLAFOND_RON}`);
     if (w.plafond === "da-branch")
       parts.push(sql`(d.src = 'contracts' or d.closing_value <= ${DA_PLAFOND_RON})`);
@@ -582,8 +590,9 @@ export async function runSpec(
         .reduce((a, b) => sql`${a} or ${b}`);
       parts.push(sql`(${ors})`);
     }
-    if (useIds && w.authorityId) parts.push(sql`d.authority_id = ${w.authorityId}`);
-    if (useIds && w.supplierId) parts.push(sql`d.supplier_id = ${w.supplierId}`);
+    if (useIds && w.authorityId && !(opts?.comparison && focalRole === "authority")) parts.push(sql`d.authority_id = ${w.authorityId}`);
+    if (useIds && w.supplierId && !(opts?.comparison && focalRole === "supplier")) parts.push(sql`d.supplier_id = ${w.supplierId}`);
+    if (opts?.comparison) parts.push(focalRole === "authority" ? sql`d.authority_id in (${focalId}, ${compareId})` : sql`d.supplier_id in (${focalId}, ${compareId})`);
     if (useIds && w.uatSiruta !== null)
       parts.push(
         sql`d.authority_id in (select au.entity_id from reference.authority_uat au where au.uat_siruta = ${w.uatSiruta})`,
@@ -607,7 +616,9 @@ export async function runSpec(
         );
       else parts.push(sql`substr(d.finalization_date, 1, 4) <= ${String(w.yearTo)}`);
     }
-    return parts.reduce((a, b) => sql`${a} and ${b}`);
+    const base = parts.reduce((a, b) => sql`${a} and ${b}`);
+    return spec.minimumRecords && opts?.minimum !== false
+      ? sql`${base} and ${minimumRecordsSql(sql, txAggFragment(sql, dataset, Boolean(w.kind)) as unknown as ReturnType<DbSql>, base, spec.minimumRecords)}` : base;
   };
 
   // aggregate fragments (see txAggFragment): slim unless a kind filter needs
@@ -623,7 +634,7 @@ export async function runSpec(
     !w.singleBidder && w.adminSupplierIds === null &&
     w.minEmployees === null && w.maxEmployees === null &&
     w.yearFrom === null && w.yearTo === null &&
-    w.monthFrom === null && w.monthTo === null;
+    w.monthFrom === null && w.monthTo === null && !spec.population && !spec.minimumRecords;
   // The other rollups combine both streams; agg_national retains src and can
   // also serve filter-free DA-only and contract-only totals without a scan.
   const bare = dataset === "all" && unfiltered;
@@ -649,7 +660,9 @@ export async function runSpec(
     return parts.reduce((a, b) => sql`${a} and ${b}`);
   };
 
-  const displaySql = buildDisplaySql(spec, w);
+  const displaySql = buildDisplaySql(spec, w, compareId);
+  if (spec.population) caveats.push(`Selecție precisă aplicată: ${describePopulation(spec.population)}. Datele și limitele sunt inclusive; valorile se referă la cota alocată fiecărui furnizor.`);
+  if (spec.minimumRecords) caveats.push(`Păstrăm ${spec.minimumRecords.role === "authority" ? "instituțiile" : "firmele"} cu cel puțin ${spec.minimumRecords.count} înregistrări în selecția filtrată. O atribuire pe câștigător este o înregistrare; pragul nu numără contracte distincte.`);
 
   if (spec.dim === "supplier" && (w.county || spec.block === "table")) {
     caveats.push(
@@ -661,25 +674,20 @@ export async function runSpec(
       "Per cap de locuitor: doar autoritățile-UAT cu populație cunoscută (5.575 de autorități, recensământ 2021, populație estimată). Restul sunt excluse din clasament.",
     );
   }
-  const RISK_BLOCKS = ["compare", "distribution", "scatter", "entity_card"];
-  if ((spec.block === "network" || spec.block === "sankey") &&
-    (w.uatSiruta !== null || (w.authorityId !== null && w.supplierId !== null))) {
-    caveats.push("Această întrebare de relații folosește entitatea centrală; filtrul de localitate și o a doua entitate nu se aplică. Pentru perechea exactă, folosește verificarea relației.");
-  }
-  if (RISK_BLOCKS.includes(spec.block)) {
+  if (isHistoricalProfile(spec)) {
     // These blocks use entity_flags, whose historical source population is
     // intentionally different from the accepted-only transaction mart.
     for (let i = caveats.length - 1; i >= 0; i--) {
       if (/^(Sursă:|Sunt numărate doar|Valorile peste)/.test(caveats[i]!)) caveats.splice(i, 1);
     }
     caveats.push(
-      "Sursă: profiluri istorice de achiziții directe, cu toate stările ofertelor și valori înregistrate de cel mult 2 milioane lei. Totalurile includ oferte neacceptate și nu reprezintă plăți. Lista surselor arată separat ofertele acceptate.",
+      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
     );
     caveats.push(
       "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile.",
     );
   }
-  if (RISK_BLOCKS.includes(spec.block) && (w.cpvPrefixes.length > 0 || w.yearFrom !== null)) {
+  if (isHistoricalProfile(spec) && (w.cpvPrefixes.length > 0 || w.yearFrom !== null)) {
     caveats.push(
       "Indicele de risc și semnalele sunt calculate pe TOATĂ activitatea entității — filtrele de subiect/perioadă nu li se aplică.",
     );
@@ -975,6 +983,20 @@ export async function runSpec(
         }
 
         case "compare": {
+          if (spec.comparisonMode === "transactions") {
+            const party = focalRole === "authority" ? s`d.authority_id` : s`d.supplier_id`;
+            const rows = (await s`select ${party} id, sum(d.closing_value)::text value, count(*)::text count
+              from ${txtAgg} d where ${whereFrag({ comparison:true })} and ${party} in (${focalId}, ${compareId})
+              group by ${party}`) as unknown as { id:string; value:string; count:string }[];
+            caveats.push("Comparație pe selecția curentă: aceleași date, valori și condiții pentru ambele entități. CRI și semnalele istorice nu se recalculează pentru această selecție și nu sunt afișate.");
+            const identities = [{ id:focalId!, name:focalName, county:grounding.authority?.county ?? grounding.supplier?.county ?? null },
+              { id:compareId!, name:grounding.compare?.nameDisplay ?? "?", county:grounding.compare?.county ?? null }];
+            return { block:"compare", entities:identities.map(identity => {
+              const row = rows.find(r => String(r.id) === identity.id);
+              return { entityId:identity.id, name:identity.name, county:identity.county, role:focalRole,
+                value:Number(row?.value ?? 0), count:Number(row?.count ?? 0), cri:null, nFlags:0, flags:[], population:null };
+            }) };
+          }
           const r = (await s`
             select ef.entity_id, ef.name_display, ef.county, ef.role, ef.n_das, ef.total_ron,
                    ef.cri, ef.n_flags, ef.flags, ep.population
@@ -1179,7 +1201,7 @@ export async function runSpec(
                    substr(d.cpv_code, 1, 2) stem,
                    coalesce(sum(d.closing_value), 0) v
             from ${txtAggNames} d
-            where ${whereFrag({ entityIds: false })} and ${focalCol} = ${focalId}
+            where ${whereFrag()} and ${focalCol} = ${focalId}
               and ${partnerId} is not null and d.cpv_code is not null
             group by 1, 3
             order by v desc
@@ -1238,7 +1260,7 @@ export async function runSpec(
             select ${partnerId} pid, max(${partnerName}) pnm,
                    coalesce(sum(d.closing_value), 0) v, count(*) n
             from ${txtAggNames} d
-            where ${whereFrag({ entityIds: false })} and ${focalCol} = ${focalId}
+            where ${whereFrag()} and ${focalCol} = ${focalId}
               and ${partnerId} is not null
             group by 1
             order by v desc
@@ -1433,6 +1455,7 @@ export async function runSpec(
 }
 
 export interface DrillRow {
+  title?: string | null;
   daCode: string | null;
   date: string | null;
   authorityId: string | null;
@@ -1495,6 +1518,9 @@ export const DRILL_SORTS = {
 export type DrillSort = keyof typeof DRILL_SORTS;
 
 export interface DrillOpts {
+  /** Server-only frozen capture: persist the complete filtered SELECT in the
+   * caller's repeatable-read transaction. Never accepted by evidenceOptions. */
+  capture?: { maxRows?: number; persist: (database: DbSql, rowsQuery: ReturnType<DbSql>) => Promise<void> };
   /** Server-only: cancel the running read when the HTTP request is abandoned. */
   signal?: AbortSignal;
   scope?: EvidenceScope;
@@ -1553,6 +1579,8 @@ export async function runRows(
   opts: DrillOpts = {},
 ): Promise<DrillResult | { error: string }> {
   opts.signal?.throwIfAborted();
+  const unsupported = unsupportedPopulationView(spec);
+  if (unsupported) return { error: unsupported };
   if (!DRILLABLE_BLOCKS.includes(spec.block)) {
     return { error: "Acest tip de răspuns nu are rânduri-sursă directe." };
   }
@@ -1586,7 +1614,7 @@ export async function runRows(
   }
   const scope = validateEvidenceScope(opts.scope);
   if ("error" in scope) return scope;
-  const profile = PROFILE_BLOCKS.includes(spec.block);
+  const profile = isHistoricalProfile(spec);
   if (scope.riskBucket && spec.block !== "distribution") return { error: "Intervalul de risc se aplică distribuției." };
   if (profile && (scope.cpvPrefixes || scope.excludeCpvPrefixes || scope.years))
     return { error: "Profilul istoric nu se restrânge la CPV sau perioadă. Deschide o întrebare despre achiziții pentru aceste filtre." };
@@ -1611,8 +1639,7 @@ export async function runRows(
     const from = yearFrom ?? minY;
     const to = yearTo ?? maxY;
     if (to < minY || from > maxY) {
-      yearFrom = null; yearTo = null;
-      notes.push(`Perioada cerută nu există în date; răspunsul și sursele folosesc acoperirea ${minY}–${maxY}.`);
+      return { error:`Perioada cerută este în afara datelor disponibile (${minY}–${maxY}); lista surselor nu a fost extinsă.` };
     } else {
       yearFrom = Math.max(from, minY); yearTo = Math.min(to, maxY);
       if (yearFrom !== from || yearTo !== to) notes.push(`Perioada efectivă: ${yearFrom}–${yearTo}, conform acoperirii datelor.`);
@@ -1681,16 +1708,17 @@ export async function runRows(
     left join core.entities a on a.id = da.authority_entity_id
     left join core.entities su on su.id = da.supplier_entity_id
     left join core.cpv_codes cpv on cpv.code = da.cpv_code
-    where da.closing_value is not null and da.closing_value <= ${DA_PLAFOND_RON}
+    where da.state = 'Oferta acceptata' and da.closing_value > 0 and da.closing_value <= ${DA_PLAFOND_RON}
       and ${partyCore} in (select entity_id from ${cohort} selected_profiles)
   )` : dataset === "da" ? daTx : dataset === "contracts" ? contractTx : sql`(select * from ${daTx} direct_rows union all select * from ${contractTx} contract_rows)`;
 
   const parts: ReturnType<DbSql>[] = [profile ? sql`true` : sql`d.closing_value > 0`];
   if (profile) {
-    notes.push("Profil istoric: toate achizițiile directe cu valoare înregistrată de cel mult 2 milioane lei, inclusiv valori zero și oferte refuzate ori expirate. Totalul nu reprezintă plăți sau numai oferte acceptate.");
+    notes.push("Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.");
     notes.push("Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.");
   } else {
-    if (scope.county) parts.push(sql`lower(unaccent(d.county)) = ${fold(scope.county)}`);
+    if (spec.population) parts.push(populationSql(sql, spec.population));
+    if (spec.population) notes.push(`Selecție precisă aplicată: ${describePopulation(spec.population)}.`);
     if (spec.measure !== "count" && dataset !== "contracts") parts.push(sql`(d.src = 'contracts' or d.closing_value <= ${DA_PLAFOND_RON})`);
     if (cpvPrefixes.length) parts.push(sql`(${cpvPrefixes.map((prefix) => sql`d.cpv_code like ${prefix + "%"}`).reduce((a, b) => sql`${a} or ${b}`)})`);
     if (grounding.county?.canonical) parts.push(sql`d.county = ${grounding.county.canonical}`);
@@ -1699,12 +1727,12 @@ export async function runRows(
     if (isRelationship) {
       if (!focalId) return { error: "Lipsește entitatea centrală." };
       parts.push(focalRole === "authority" ? sql`d.authority_id = ${focalId}` : sql`d.supplier_id = ${focalId}`);
-      parts.push(focalRole === "authority" ? sql`d.supplier_id is not null` : sql`d.authority_id is not null`);
-      if (grounding.uat || (grounding.authority?.entityId && grounding.supplier?.entityId))
-        notes.push("Conform răspunsului de relații, doar entitatea centrală este fixată; localitatea și cealaltă identitate nu restrâng această listă. Verificarea relației permite alegerea perechii exacte.");
-    } else {
-      if (grounding.authority?.entityId) parts.push(sql`d.authority_id = ${grounding.authority.entityId}`);
-      if (grounding.supplier?.entityId) parts.push(sql`d.supplier_id = ${grounding.supplier.entityId}`);
+    }
+    {
+      const comparison = spec.block === "compare";
+      if (comparison) parts.push(focalRole === "authority" ? sql`d.authority_id in (${focalId!}, ${grounding.compare!.entityId!})` : sql`d.supplier_id in (${focalId!}, ${grounding.compare!.entityId!})`);
+      if (grounding.authority?.entityId && !(comparison && focalRole === "authority")) parts.push(sql`d.authority_id = ${grounding.authority.entityId}`);
+      if (grounding.supplier?.entityId && !(comparison && focalRole === "supplier")) parts.push(sql`d.supplier_id = ${grounding.supplier.entityId}`);
       if (grounding.uat) parts.push(sql`d.authority_id in (select au.entity_id from reference.authority_uat au where au.uat_siruta = ${grounding.uat.siruta})`);
     }
     if (spec.filters.singleBidder && dataset === "contracts") parts.push(sql`d.is_single_bidder = true`);
@@ -1722,6 +1750,13 @@ export async function runRows(
         ? sql`substr(d.finalization_date, 1, 7) <= ${`${yearTo}-${String(spec.filters.monthTo).padStart(2, "0")}`}`
         : sql`substr(d.finalization_date, 1, 4) <= ${String(yearTo)}`);
     }
+    if (spec.minimumRecords) {
+      const basePopulation = parts.reduce((a, b) => sql`${a} and ${b}`);
+      parts.push(minimumRecordsSql(sql, txt as unknown as ReturnType<DbSql>, basePopulation, spec.minimumRecords));
+      notes.push(`Pragul de ${spec.minimumRecords.count} înregistrări pentru ${spec.minimumRecords.role === "authority" ? "instituții" : "firme"} se calculează înainte de selecția unui grup și filtrele locale ale surselor.`);
+    }
+    if (scope.county) parts.push(sql`lower(unaccent(d.county)) = ${fold(scope.county)}`);
+    if (isRelationship) parts.push(focalRole === "authority" ? sql`d.supplier_id is not null` : sql`d.authority_id is not null`);
     if (spec.block === "table" || spec.block === "trend") {
       if (spec.dim === "county") parts.push(sql`d.county is not null`);
       else parts.push(spec.dim === "supplier" ? sql`d.supplier_id is not null` : sql`d.authority_id is not null`);
@@ -1766,7 +1801,7 @@ export async function runRows(
   const pageSize = opts.limit && opts.limit > 0 ? Math.min(Math.floor(opts.limit), CSV_MAX_ROWS) : DRILL_PAGE_SIZE;
 
   return await sql.begin("isolation level repeatable read read only", async (tx) => {
-    await tx.unsafe(`set local statement_timeout = '${STATEMENT_TIMEOUT}'`);
+    await tx.unsafe(`set local statement_timeout = '${opts.capture ? '15min' : STATEMENT_TIMEOUT}'`);
     // The production database uses SSD costs. Keep the same covering-index
     // choices in local source verification without changing database settings.
     await tx.unsafe("set local random_page_cost = 1.1");
@@ -1782,6 +1817,9 @@ export async function runRows(
     const sourceValue = sumDecimalStrings(totals.map((r) => r.v));
     const total = totals.reduce((n, r) => n + Number(r.fn), 0);
     const value = sumDecimalStrings(totals.map((r) => r.fv));
+    if (opts.capture?.maxRows !== undefined && total > opts.capture.maxRows) {
+      return { error:`Selecția are ${total.toLocaleString("ro-RO")} de înregistrări; limita acestei verificări este ${opts.capture.maxRows.toLocaleString("ro-RO")}. Restrânge perioada, instituția sau domeniul. Nu am salvat un eșantion.` };
+    }
     const p = Math.min(requestedPage, Math.max(0, Math.ceil(total / pageSize) - 1));
     const acceptedRows = totals.filter((r) => r.state === "Oferta acceptata");
     // Bound each stream before combining it. A global sort on the wide union
@@ -1824,16 +1862,24 @@ export async function runRows(
       (select * from ${contractTx} d where ${sourceWhere} and ${localWhere}
        order by d.ref_id ${dirFrag}, d.supplier_id nulls first limit ${branchLimit})
     )` : txt;
-    const rows = (await readEvidenceQuery(s`
+    if (opts.capture) await opts.capture.persist(s, s`
       select d.da_code, d.finalization_date, d.authority_id, d.authority_name,
              d.supplier_id, d.supplier_name, d.county, d.cpv_code, d.cpv_name, d.closing_value::text,
              d.src, d.ref_id, d.ca_notice_id, d.ted_pubnum, d.estimated_value_ron,
              d.value_suspect, d.state, d.n_winners, d.contract_value_full::text
+      from ${txt} d where ${sourceWhere} and ${localWhere}
+    `);
+    const rows = (opts.capture ? [] : await readEvidenceQuery(s`
+      select d.da_code, d.finalization_date, d.authority_id, d.authority_name,
+             d.supplier_id, d.supplier_name, d.county, d.cpv_code, d.cpv_name, d.closing_value::text,
+             d.src, d.ref_id, d.ca_notice_id, d.ted_pubnum, d.estimated_value_ron,
+             d.value_suspect, d.state, d.n_winners, d.contract_value_full::text,
+             case when d.src='contracts' then (select c.title from core.contracts c where c.id=d.ref_id) else (select r.payload->>'directAcquisitionName' from core.direct_acquisitions a join raw.raw_documents r on r.id=a.raw_id where a.sicap_da_id=d.ref_id) end title
       from ${pageTxt} d where ${sourceWhere} and ${localWhere}
       order by ${sortFrag} ${dirFrag}, d.src, d.ref_id, d.supplier_id nulls first
       limit ${pageSize} offset ${p * pageSize}
     `, opts.signal)) as unknown as {
-      da_code: string | null; finalization_date: string | null; authority_id: string | null; authority_name: string | null;
+      title: string | null; da_code: string | null; finalization_date: string | null; authority_id: string | null; authority_name: string | null;
       supplier_id: string | null; supplier_name: string | null; county: string | null; cpv_code: string | null; cpv_name: string | null;
       closing_value: string; src: "da" | "contracts"; ref_id: string | null; ca_notice_id: string | null; ted_pubnum: string | null;
       estimated_value_ron: string | null; value_suspect: boolean | null; state: string | null; n_winners: number | null; contract_value_full: string | null;
@@ -1852,7 +1898,7 @@ export async function runRows(
     }
     return {
       rows: rows.map((r) => ({
-        daCode: r.da_code, date: r.finalization_date?.slice(0, 10) ?? null,
+        title: r.title, daCode: r.da_code, date: r.finalization_date?.slice(0, 10) ?? null,
         authorityId: r.authority_id === null ? null : String(r.authority_id), authority: r.authority_name,
         supplierId: r.supplier_id === null ? null : String(r.supplier_id), supplier: r.supplier_name,
         county: r.county, cpvCode: r.cpv_code, cpvName: r.cpv_name, value: Number(r.closing_value), valueExact: r.closing_value,
@@ -1874,7 +1920,7 @@ export async function runRows(
  * Human-readable SQL for the "vezi interogarea (avansat)" toggle. Display-only —
  * execution always goes through the parameterized builder above.
  */
-function buildDisplaySql(spec: AskSpec, w: WhereParts): string {
+function buildDisplaySql(spec: AskSpec, w: WhereParts, compareId: string | null = null): string {
   const ds = spec.dataset ?? "all";
   const dtable =
     ds === "contracts"
@@ -1883,6 +1929,15 @@ function buildDisplaySql(spec: AskSpec, w: WhereParts): string {
         ? "marts.da_transactions"
         : "(marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte";
   const conds: string[] = ["closing_value > 0"];
+  if (spec.population) {
+    const quote = (value: string) => `'${value.replaceAll("'", "''")}'`;
+    conds.push(spec.population.groups.map(group => "(" + group.conditions.map(c => {
+      if ("value" in c) return `${c.field === "date" ? "substr(finalization_date, 1, 10)" : "closing_value"} ${c.op === "gte" ? ">=" : "<="} ${quote(c.value)}${c.field === "value" ? "::numeric" : ""}`;
+      const column = c.field === "authority" ? "authority_id" : c.field === "supplier" ? "supplier_id" : c.field === "cpv" ? "cpv_code" : "lower(unaccent(county))";
+      const match = c.field === "cpv" ? `(${c.values.map(v => `${column} like ${quote(v + "%")}`).join(" or ")})` : `${column} in (${c.values.map(v => quote(c.field === "county" ? fold(v) : v)).join(", ")})`;
+      return `${c.op === "not_in" ? "not " : ""}coalesce(${match}, false)`;
+    }).join(group.operator === "and" ? " and " : " or ") + ")").join(spec.population.operator === "and" ? " and " : " or ").replace(/^(.+)$/s, "($1)"));
+  }
   if (w.plafond === "strict")
     conds.push(`closing_value <= ${DA_PLAFOND_RON}  -- plafon plauzibilitate`);
   if (w.plafond === "da-branch")
@@ -1893,8 +1948,9 @@ function buildDisplaySql(spec: AskSpec, w: WhereParts): string {
     conds.push("(" + w.cpvPrefixes.map((p) => `cpv_code like '${p}%'`).join(" or ") + ")");
   if (w.county) conds.push(`unaccent(county) ilike '${fold(w.county)}'`);
   if (w.kind) conds.push(`-- doar ${KIND_LABEL[w.kind]} (filtru pe nume)`);
-  if (w.authorityId) conds.push(`authority_id = ${w.authorityId}`);
-  if (w.supplierId) conds.push(`supplier_id = ${w.supplierId}`);
+  const transactionalCompare = spec.block === "compare" && spec.comparisonMode === "transactions";
+  if (w.authorityId) conds.push(transactionalCompare ? `authority_id in (${w.authorityId}, ${compareId})` : `authority_id = ${w.authorityId}`);
+  if (w.supplierId) conds.push(transactionalCompare && !w.authorityId ? `supplier_id in (${w.supplierId}, ${compareId})` : `supplier_id = ${w.supplierId}`);
   if (w.uatSiruta !== null)
     conds.push(
       `authority_id in (select entity_id from reference.authority_uat\n                   where uat_siruta = ${w.uatSiruta})  -- toate autoritățile din localitate`,
@@ -1924,6 +1980,10 @@ function buildDisplaySql(spec: AskSpec, w: WhereParts): string {
       conds.push(`luna <= '${w.yearTo}-${String(w.monthTo).padStart(2, "0")}'`);
     else conds.push(`an <= ${w.yearTo}`);
   }
+  if (spec.minimumRecords) {
+    const id = spec.minimumRecords.role === "authority" ? "authority_id" : "supplier_id";
+    conds.push(`${id} in (select ${id} from ${dtable}\n  where ${conds.join("\n  and ")}\n  group by ${id} having count(*) >= ${spec.minimumRecords.count})`);
+  }
   const where = conds.join("\n  and ");
   const measure = spec.measure === "count" ? "count(*)" : "sum(closing_value)";
   const dim = spec.dim ?? "authority";
@@ -1947,6 +2007,7 @@ function buildDisplaySql(spec: AskSpec, w: WhereParts): string {
       );
     }
     case "compare":
+      if (transactionalCompare) return `select ${w.authorityId ? "authority_id" : "supplier_id"}, sum(closing_value), count(*)\nfrom ${dtable}\nwhere ${where}\ngroup by ${w.authorityId ? "authority_id" : "supplier_id"};`;
       return `select name_display, total_ron, n_das, cri, n_flags, flags\nfrom marts.entity_flags\nwhere entity_id in (cele două entități);`;
     case "distribution":
       return `select width_bucket(cri, 0, 1, 10) interval_risc, count(*)\nfrom marts.entity_flags\nwhere n_das >= ${RISK_MIN_DAS}\ngroup by 1;\n-- + poziția entității tale în distribuție`;

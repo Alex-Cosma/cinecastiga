@@ -1,6 +1,10 @@
 import type { SVGProps } from "react";
 
 const paths = {
+  download: <path d="M12 3v12m-5-5 5 5 5-5M4 16v4h16v-4" />,
+  checkCircle: <><circle cx="12" cy="12" r="9" /><path d="m8 12 3 3 5-6" /></>,
+  bookOpen: <path d="M12 5v16M12 5C9 3 6 3 3 4v15c3-1 6-1 9 2 3-3 6-3 9-2V4c-3-1-6-1-9 1Z" />,
+  retry: <path d="M3 10a9 9 0 1 1 2 8M3 4v6h6" />,
   search: <><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 4 4" /></>,
   arrow: <path d="M4 12h16m-6-6 6 6-6 6" />,
   external: <path d="M14 4h6v6M20 4 10 14M20 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5" />,

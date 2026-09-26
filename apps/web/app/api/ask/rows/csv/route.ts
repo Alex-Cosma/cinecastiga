@@ -1,14 +1,16 @@
 import { NextResponse } from "next/server";
 import { createDb, type DbSql } from "@seap/db";
-import { validateSpec } from "@/lib/ask/spec";
-import { ground } from "@/lib/ask/ground";
+import { validateSpec } from "../../../../../lib/ask/spec";
+import { ground } from "../../../../../lib/ask/ground";
 import {
   runRows,
   CSV_MAX_ROWS,
-} from "@/lib/ask/compile";
-import { evidenceOptions } from "@/lib/ask/evidence-request";
-import { evidenceCsv } from "@/lib/ask/evidence";
-import { devlog } from "@/lib/devlog";
+} from "../../../../../lib/ask/compile";
+import { evidenceOptions } from "../../../../../lib/ask/evidence-request";
+import { evidenceCsv } from "../../../../../lib/ask/evidence";
+import { devlog } from "../../../../../lib/devlog";
+import { connectionEvidenceError, withConnectionEvidence } from "../../../../../lib/connection-evidence";
+import { peerEvidenceError, peerEvidenceOptions, withPeerEvidence } from "../../../../../lib/peers-evidence";
 
 /**
  * POST /api/ask/rows/csv — full-result CSV export of the drill rows behind an
@@ -31,6 +33,7 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ ok: false, error: "Body invalid (JSON)." }, { status: 400 });
   }
+  if (body.peer !== undefined && body.connection !== undefined) return NextResponse.json({ok:false,error:"Alege o singură selecție documentată."},{status:400});
   const v = validateSpec(body.spec);
   if ("error" in v) return NextResponse.json({ ok: false, error: v.error }, { status: 400 });
   const opts = evidenceOptions(body);
@@ -41,8 +44,11 @@ export async function POST(req: Request) {
 
   const sql = db();
   try {
-    const grounding = await ground(sql, v.filters);
-    const result = await runRows(sql, v, grounding, 0, opts);
+    const result = body.peer !== undefined
+      ? await withPeerEvidence(sql, body.peer, async (q,bound)=>runRows(q,bound.spec,bound.grounding,0,peerEvidenceOptions(bound,opts)))
+      : body.connection !== undefined
+      ? await withConnectionEvidence(sql, body.connection, async (q, bound) => runRows(q, bound.spec, bound.grounding, 0, opts))
+      : await runRows(sql, v, await ground(sql, v.filters), 0, opts);
     if ("error" in result) {
       return NextResponse.json({ ok: false, error: result.error }, { status: 200 });
     }
@@ -65,6 +71,8 @@ export async function POST(req: Request) {
       },
     });
   } catch (e) {
+    const connectionError = (body.peer !== undefined ? peerEvidenceError(e) : null) ?? connectionEvidenceError(e);
+    if (connectionError) return NextResponse.json({ ok: false, error: connectionError.error }, { status: connectionError.status });
     const msg = e instanceof Error ? e.message : String(e);
     const timeout = msg.includes("statement timeout");
     return NextResponse.json(

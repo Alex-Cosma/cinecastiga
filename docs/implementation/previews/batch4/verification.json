@@ -1,0 +1,44 @@
+{
+  "status": "complete-locally",
+  "scope": "Focused Batch 4: documented procurement relationships, original sources, private frozen investigation capture",
+  "application": "http://localhost:3110/entitati/2144364/legaturi?rol=autoritate",
+  "build": "passed",
+  "typecheckLint": "passed",
+  "defaultTests": 331,
+  "postgresScenariosAcrossSeparateRuns": {
+    "connections": 8,
+    "connectionEvidence": 6,
+    "existingCaptureRegressions": 7
+  },
+  "browserEvidence": [
+    "browser-checks.json",
+    "behavior-checks.json",
+    "capture-dimensions.json"
+  ],
+  "screenshotsInspected": 13,
+  "exportEvidence": "export-checks.json",
+  "sourcePerformance": "source-performance.json",
+  "review": {
+    "disposition": "ship",
+    "report": "finish-review.md",
+    "documentation": "design-documentation.md"
+  },
+  "cleanup": {
+    "isolatedPreviewStopped": true,
+    "isolatedDatabasesDropped": true,
+    "previewCookieRemoved": true,
+    "privateFixtureFilesRemoved": true,
+    "mainProcurementDataModified": false,
+    "mainApplicationRunning": true,
+    "existingMonitoringWorkerLeftRunning": true
+  },
+  "migrationsAdded": false,
+  "backgroundProcessesAdded": false,
+  "committed": false,
+  "pushed": false,
+  "deployed": false,
+  "deferred": [
+    "fair peer comparisons",
+    "external or historical ownership enrichment"
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "date": "2026-09-14",
+  "revision": "7b9ae310fb05663c833f33aa67f33d81a426a06d",
+  "environment": "http://localhost:3100",
+  "method": "Public browser walkthrough, bounded read-only API/CSV checks; authenticated dossier paths reviewed in code only",
+  "observations": [
+    {
+      "id": "county-filter",
+      "url": "/semnale?tip=da_split&jud=Cluj&rol=authority",
+      "main_results_equal_national": true,
+      "sidebar": "Cluj: 457 authorities; national: 27,993"
+    },
+    {
+      "id": "profile-total",
+      "url": "/entitati/2144364",
+      "headline_total_display": "80,8 mil. lei",
+      "largest_partner_display": "332,1 mil. lei",
+      "radiography_total_display": "1,5 mld. lei",
+      "interpretation": "Inconsistent populations/amount semantics; not evidence of wrongdoing by the named entities"
+    },
+    {
+      "id": "flag-drill",
+      "authorityId": 2144364,
+      "year": 2024,
+      "displayed_records": 10,
+      "displayed_value_ron": "2213000.00",
+      "seap_links_in_drawer": 10
+    },
+    {
+      "id": "csv-exactness",
+      "scope": {
+        "dataset": "contracts",
+        "year": 2025,
+        "cpvPrefix": "03111800"
+      },
+      "row_count": 1,
+      "source_value_ron": "759.5000000000000000",
+      "csv_row_count": 1,
+      "csv_seap_link_present": true
+    }
+  ],
+  "runtime_exceptions": 0,
+  "limits": [
+    "No authenticated investigation created or exported",
+    "No source SEAP page fetched from this device",
+    "Screenshots and values describe this local snapshot; imports can change them",
+    "Not an investigation into any company or authority; entities are navigation examples"
+  ]
+}

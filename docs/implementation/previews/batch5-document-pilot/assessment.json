@@ -1,0 +1,8 @@
+{
+  "attempt1": {
+    "httpStatus": 200,
+    "apiHasError": true,
+    "message": "Anuntul cautat nu a fost gasit in sistem",
+    "meaning": "Transport works; the archived section endpoint/identifier combination did not yield the notice. No attachment or institution identity has been verified from this response."
+  }
+}

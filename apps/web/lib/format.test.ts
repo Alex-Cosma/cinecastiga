@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatRon, formatInt, formatRonFull } from "./format.js";
+import { formatRon, formatInt, formatRonFull, formatExactDecimal } from "./format.js";
 
 describe("formatRon", () => {
   it("compacts billions and millions in Romanian", () => {
@@ -20,5 +20,22 @@ describe("formatInt / formatRonFull", () => {
     expect(formatInt(161557)).toContain("161");
     expect(formatInt(null)).toBe("—");
     expect(formatRonFull(null)).toBe("—");
+  });
+});
+
+describe("exact source decimals", () => {
+  it("groups source amounts while retaining precision beyond a JavaScript number", () => {
+    expect(formatExactDecimal("10523096.15")).toBe("10.523.096,15");
+    expect(formatExactDecimal("9007199254740993.012340")).toBe("9.007.199.254.740.993,012340");
+    expect(formatExactDecimal("-1234567.89")).toBe("-1.234.567,89");
+  });
+  it("retains sub-cent shares and source decimal places", () => {
+    expect(formatExactDecimal("0.00330")).toBe("0,00330");
+    expect(formatExactDecimal("900400")).toBe("900.400");
+    expect(formatExactDecimal("0.00")).toBe("0,00");
+  });
+  it("leaves missing and invalid values unrepresented", () => {
+    expect(formatExactDecimal(null)).toBe("—");
+    expect(formatExactDecimal("NaN")).toBe("—");
   });
 });

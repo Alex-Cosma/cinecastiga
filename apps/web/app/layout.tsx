@@ -9,7 +9,8 @@ import SiteNav from "./SiteNav";
 import ThemeToggle from "./ThemeToggle";
 import GlobalSearch from "./GlobalSearch";
 import Reveal from "./Reveal";
-import { DATA_AS_OF, DATA_MODE, SITE_DESCRIPTION, SITE_NAME, formatAsOf, pageTitle } from "@/lib/site";
+import { CoverageSummary } from "@/components/DataCoverage";
+import { SITE_DESCRIPTION, SITE_NAME, pageTitle } from "@/lib/site";
 
 const display = Bricolage_Grotesque({ subsets: ["latin", "latin-ext"], weight: ["500", "700", "800"], variable: "--font-display", display: "swap" });
 const body = IBM_Plex_Sans({ subsets: ["latin", "latin-ext"], weight: ["400", "500", "600"], style: ["normal", "italic"], variable: "--font-body", display: "swap" });
@@ -60,13 +61,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
             <div>
               <h4>Date</h4>
-              <ul>
-                <li>achiziții directe 2018–2026</li>
-                <li>contracte &amp; atribuiri 2018–2026</li>
-                <li>atribuiri publicate în TED 2018–2026</li>
-                <li>bilanțuri MF 2018–2025 · ONRC</li>
-                <li>{DATA_MODE === "live" ? "colectare zilnică" : "colectarea live e în reluare"} · date până la {formatAsOf(DATA_AS_OF)}</li>
-              </ul>
+              <p>SEAP / SICAP · TED · bilanțuri MF · registrul ONRC</p>
+              <CoverageSummary />
             </div>
             <div>
               <h4>Proiect</h4>

@@ -1,0 +1,47 @@
+{
+  "status": "passed",
+  "checkedAt": "2026-09-26T14:45:26.077Z",
+  "readOnly": true,
+  "checks": [
+    {
+      "check": "all_years_and_domains_keep_population_roster",
+      "rows": 694,
+      "totalExact": "1553407378.67"
+    },
+    {
+      "check": "all_filter_sources_reconcile",
+      "rows": 694,
+      "totalExact": "1553407378.67"
+    },
+    {
+      "check": "manual_roster_and_all_filters_survive_apply_and_url_restore",
+      "members": 9
+    },
+    {
+      "screen": "all-filters-desktop",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "screen": "all-filters-mobile",
+      "width": 390,
+      "overflow": false
+    }
+  ],
+  "errors": [],
+  "build": "passed",
+  "typecheck": "passed",
+  "defaultWebTests": 227,
+  "focusedTests": {
+    "unit": 15,
+    "postgresql": 32,
+    "total": 47
+  },
+  "visualConfirmation": "passed",
+  "testDatabaseCleanup": "complete",
+  "mainServer": {
+    "url": "http://localhost:3110",
+    "pid": 94427
+  },
+  "commitPushDeploy": false
+}

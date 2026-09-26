@@ -408,6 +408,8 @@ export const tedNotices = coreSchema.table(
     id: bigserial("id", { mode: "bigint" }).primaryKey(),
     /** Provenance: raw doc that last populated this row (not unique). */
     rawId: bigint("raw_id", { mode: "bigint" }).notNull(),
+    /** Parser version; NULL means the amount provenance has not been replayed. */
+    normalizationVersion: integer("normalization_version"),
     /** TED publication-number, zero-trimmed 'NNNN-YYYY' — natural key. */
     publicationNumber: text("publication_number").notNull(),
     /** OJS notice id as published, e.g. '00063449-2026'. */
@@ -479,6 +481,9 @@ export const tedLotResults = coreSchema.table(
     title: text("title"),
     estimatedValueRon: numeric("estimated_value_ron"),
     awardedValue: numeric("awarded_value"),
+    /** Only payable/contract_value are monetary matching candidates. Never a payment. */
+    amountKind: text("amount_kind"),
+    amountDetails: jsonb("amount_details").$type<TedAmountDetails>(),
     currency: text("currency"),
     /** Number of tenders received for the lot (received-submission-type=tenders). */
     tendersReceived: integer("tenders_received"),
@@ -496,6 +501,32 @@ export const tedLotResults = coreSchema.table(
     index("ted_lot_results_single_bidder_idx").on(t.isSingleBidder),
   ],
 );
+
+export interface TedSourceAmount {
+  kind: "payable" | "contract_value" | "tender_lower" | "tender_upper" | "framework_ceiling";
+  value: string;
+  currency: string | null;
+  source: string;
+  tenderId?: string;
+  resultId?: string;
+}
+
+/** Exact source decimals and references; no inferred sum of distinct offers. */
+export interface TedAmountDetails {
+  version: 2;
+  amounts: TedSourceAmount[];
+  tenders: {
+    id: string;
+    winnerOrgIds: string[];
+    winnerNames?: string[];
+    contractDates: string[];
+    sharedAcrossLots: boolean;
+  }[];
+  resultIds: string[];
+  missingTenderIds: string[];
+  framework: boolean;
+  matchEligible: boolean;
+}
 
 /** Lot ↔ winning entity (M:N — consortia / joint bids are real). */
 export const tedLotWinners = coreSchema.table(

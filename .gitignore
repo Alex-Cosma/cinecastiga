@@ -33,3 +33,7 @@ _*.mjs
 
 # production dumps staged for upload (infra/prod/README.md)
 infra/prod/dumps/
+
+# Local source upload and duplicate design-review captures
+/CS ILUMINAT_semnat.pdf.p7s
+/.impeccable/review/

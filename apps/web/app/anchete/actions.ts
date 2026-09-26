@@ -26,7 +26,7 @@ export async function createAncheta(formData: FormData) {
   const id = await createInvestigation(
     uid,
     title.slice(0, 200),
-    String(formData.get("description") ?? "").trim() || null,
+    String(formData.get("description") ?? "").trim().slice(0, 4000) || null,
   );
   redirect(`/anchete/${id}`);
 }
@@ -46,7 +46,7 @@ export async function saveAnchetaMeta(formData: FormData) {
   const title = formData.get("title");
   if (title !== null && String(title).trim()) patch.title = String(title).trim().slice(0, 200);
   const desc = formData.get("description");
-  if (desc !== null) patch.description = String(desc).trim() || null;
+  if (desc !== null) patch.description = String(desc).trim().slice(0, 4000) || null;
   if (INV_STATUSES.includes(status as InvStatus)) patch.status = status as InvStatus;
   await updateInvestigation(uid, id, patch);
   revalidatePath(`/anchete/${id}`);
@@ -56,7 +56,7 @@ export async function saveClipNote(formData: FormData) {
   const uid = await requireUid();
   const id = String(formData.get("id") ?? "");
   await updateClip(uid, id, String(formData.get("clipId") ?? ""), {
-    note: String(formData.get("note") ?? "").trim() || null,
+    note: String(formData.get("note") ?? "").trim().slice(0, 4000) || null,
   });
   revalidatePath(`/anchete/${id}`);
 }

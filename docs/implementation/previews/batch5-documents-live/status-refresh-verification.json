@@ -1,0 +1,14 @@
+{
+  "status": "passed",
+  "checks": [
+    "Real signed source downloaded and processed:18 pages",
+    "Idle tab discovers running job on focus",
+    "Saved original is explicitly marked downloaded during OCR",
+    "Active polling discovers completion",
+    "Open-document action available",
+    "No mobile overflow"
+  ],
+  "browserOnlySimulatedTransitions": true,
+  "liveSeapRequests": 0,
+  "localStatusReads": 5
+}

@@ -13,6 +13,25 @@ export interface EvidenceScope {
   years?: readonly number[];
 }
 
+export interface EvidenceFilters { search?: string; state?: string; stream?: "da" | "contracts" }
+/** Portable drawer filters; a bad saved filter must never broaden the capture. */
+export function validateEvidenceFilters(raw: unknown): EvidenceFilters | { error: string } {
+  if (raw === undefined || raw === null) return {};
+  if (typeof raw !== "object" || Array.isArray(raw)) return { error: "Filtre de surse invalide." };
+  const value = raw as Record<string, unknown>, filters: EvidenceFilters = {};
+  if (Object.keys(value).some(key => !["search", "state", "stream"].includes(key))) return { error: "Filtru de surse necunoscut." };
+  for (const key of ["search", "state"] as const) {
+    if (value[key] === undefined) continue;
+    if (typeof value[key] !== "string" || value[key].length > (key === "search" ? 200 : 100)) return { error: "Filtru de surse invalid." };
+    if (value[key].trim()) filters[key] = value[key].trim();
+  }
+  if (value.stream !== undefined && value.stream !== "") {
+    if (value.stream !== "da" && value.stream !== "contracts") return { error: "Canal de surse invalid." };
+    filters.stream = value.stream;
+  }
+  return filters;
+}
+
 export const PROFILE_BLOCKS: readonly AskSpec["block"][] = [
   "compare", "distribution", "scatter", "entity_card",
 ];

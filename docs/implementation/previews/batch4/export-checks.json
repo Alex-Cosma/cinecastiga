@@ -1,0 +1,16 @@
+{
+  "fixture": true,
+  "zipCRC": "passed",
+  "sha256FilesVerified": 10,
+  "rowCount": 4,
+  "totalExact": "358000.0053",
+  "pairCount": 2,
+  "rowsPerPair": [
+    3,
+    1
+  ],
+  "originalSourceUrls": true,
+  "tedUrlPresent": true,
+  "readablePathContext": true,
+  "originalDocumentsArchived": false
+}
