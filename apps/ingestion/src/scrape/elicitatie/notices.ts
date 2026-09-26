@@ -1,3 +1,4 @@
+import {withCollectionStream,CollectionSuspendedError} from "@seap/db";
 import type { Task } from "graphile-worker";
 import type { Db } from "@seap/db";
 import {
@@ -116,7 +117,7 @@ async function fetchAllContracts(
  * Scrape one closed window for a notice family, day by day, page by page.
  * Cursor advances in the same transaction as each page's archive writes.
  */
-export async function scrapeNoticesWindow(
+async function scrapeNoticesWindowInner(
   deps: ScrapeDeps,
   opts: { family: NoticeFamily; window: DateWindow; pageSize?: number },
 ): Promise<NoticeScrapeOutcome> {
@@ -218,6 +219,7 @@ export async function scrapeNoticesWindow(
                   : null;
               return { item, detail, contracts, deferred: isV2 };
             } catch (err) {
+              if(err instanceof CollectionSuspendedError)throw err;
               // Dead-letter the record, don't fail the day (transient retries
               // already happened inside the client).
               log(
@@ -298,6 +300,8 @@ export async function scrapeNoticesWindow(
     detailFailures,
   };
 }
+
+export function scrapeNoticesWindow(...args:Parameters<typeof scrapeNoticesWindowInner>){return withCollectionStream(args[1].family,()=>scrapeNoticesWindowInner(...args));}
 
 /**
  * Worker task factory. Computes the window from the watermark (incremental)

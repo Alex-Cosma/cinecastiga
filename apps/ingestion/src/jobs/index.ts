@@ -44,11 +44,6 @@ export const taskList: TaskList = {
  * adjust) so scrapes fire after the nightly SICAP finalization batch
  * (00:00–02:30 local; DEC-007). ?max=1 prevents overlapping runs.
  */
-export const crontab = `
-*/10 * * * * heartbeat
-30 4 * * * scrape_tenders ?max=1
-40 4 * * * scrape_awards ?max=1
-0 5 * * * scrape_das ?max=1
-0 6 * * 1 rescan_notice_states ?max=1
-0 7 * * 2 refetch_da_corrections ?max=1
-`.trim();
+// Recovery windows must be planned explicitly. The legacy cursors are not safe
+// boundaries for a new nationwide run; starting the worker must not crawl.
+export const crontab = '*/10 * * * * heartbeat';

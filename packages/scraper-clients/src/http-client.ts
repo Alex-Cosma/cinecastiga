@@ -8,6 +8,8 @@
 
 export interface HttpClientOptions {
   baseUrl: string;
+  /** Optional fully metered transport; its promise must include body consumption. */
+  transport?: typeof fetch;
   /** Required, no default — identify honestly, include contact info. */
   userAgent: string;
   /** Max in-flight requests. Keep low; prior art uses ~5, post-2025 intel says lower. */
@@ -199,7 +201,7 @@ export function createHttpClient(opts: HttpClientOptions): HttpClient {
         await throttle();
         let response: Response;
         try {
-          response = await fetch(url, {
+          response = await (opts.transport ?? fetch)(url, {
             ...init,
             method,
             ...(body === undefined ? {} : { body: JSON.stringify(body) }),
@@ -214,7 +216,8 @@ export function createHttpClient(opts: HttpClientOptions): HttpClient {
               ...init?.headers,
             },
           });
-        } catch {
+        } catch (error) {
+          if (error instanceof Error && error.name === "CollectionSuspendedError") throw error;
           lastStatus = null; // network error — a server failure
           serverFailed = true;
           noteServerFailure();

@@ -1,9 +1,8 @@
 import {chromium,type Browser,type Page} from 'playwright-core';
-import type {DbSql} from '@seap/db';
-import {setTimeout as pause} from 'node:timers/promises';
+import {runCollectionRequest,collectionWorkerId,type DbSql} from '@seap/db';
 import {safeFileUrl} from './shared';
-import {sourceRequestDelay} from './rate-limit';
 const origin='https://www.e-licitatie.ro';
+const workerId=collectionWorkerId('documents-http');
 export interface ListedDocument {noticeDocumentId:number;noticeDocumentCode:string;documentName:string;noticeDocumentUrl:string;transmissionDate?:string}
 export function parseList(data:unknown,noticeNo:string):{items:ListedDocument[];total:number}{
  const r=data as {items?:ListedDocument[];total?:number};
@@ -30,37 +29,37 @@ export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortS
    signal.throwIfAborted();
    if(url!==referer&&url!==origin+'/api-pub/NoticeDocument/GetAll/'&&url!==safeFileUrl(url))throw Error('Adresă neacceptată.');
    const isFileDownload=method==='GET'&&url.includes('/noticedoc/');
-   // The singleton worker owns the queue lock. Recheck against database time
-   // after every wait, so restarts and multiple accounts cannot reset the limit.
-   for(;;){
-    signal.throwIfAborted();
-    const [last]=await q`select extract(epoch from clock_timestamp())*1000 as now_ms,extract(epoch from max(started_at))*1000 as last_ms,extract(epoch from max(started_at) filter(where endpoint='noticedoc' and method='GET'))*1000 as file_ms from app.document_requests`;
-    const delay=sourceRequestDelay(Number(last!.now_ms),last!.last_ms===null?null:Number(last!.last_ms),last!.file_ms===null?null:Number(last!.file_ms),isFileDownload);
-    if(delay<=0)break;
-    if(isFileDownload)await q`update app.document_jobs set stage='rate_limit' where id=${jobId} and status='running'`;
-    await pause(Math.ceil(delay),undefined,{signal});
-   }
+   await q`update app.document_jobs set stage='rate_limit' where id=${jobId} and status='running'`;
+   const result=await runCollectionRequest(q,{stream:'documents',worker:workerId,method,url,parameters:body,fileDownload:isFileDownload},async gateSignal=>{
+   const gateStop=()=>{void browser?.close();};gateSignal.addEventListener('abort',gateStop,{once:true});
+   try{
    if(isFileDownload)await q`update app.document_jobs set stage='download' where id=${jobId} and status='running'`;
    signal.throwIfAborted();
    const [row]=await q`insert into app.document_requests(job_id,method,endpoint) values(${jobId},${method},${url.includes('/noticedoc/')?'noticedoc':navigate?'notice-page':'document-list'}) returning id`;
    console.log(JSON.stringify({event:'seap-request',request:row!.id,job:jobId,method,endpoint:navigate?'notice-page':url.includes('/noticedoc/')?'noticedoc':'document-list'}));
    allowed={url,method};
    try{
-    let status:number,bytes:Buffer;
-    if(navigate){const res=await page.goto(url,{waitUntil:'domcontentloaded'});status=res?.status()??0;bytes=res?await res.body():Buffer.alloc(0);if(bytes.length>2*1024*1024)throw Error('Răspuns SEAP prea mare.');}
+    let status:number,bytes:Buffer,retryAfter:string|null=null;
+    if(navigate){const res=await page.goto(url,{waitUntil:'domcontentloaded'});status=res?.status()??0;retryAfter=res?.headers()['retry-after']??null;bytes=res?await res.body():Buffer.alloc(0);if(bytes.length>2*1024*1024)throw Error('Răspuns SEAP prea mare.');}
     else{
      const result=await page.evaluate(async({url,method,body})=>{
       const response=await fetch(url,{method,credentials:'include',redirect:'manual',signal:AbortSignal.timeout(40000),headers:{Accept:'application/json, text/plain, */*',Authorization:'Bearer null',HttpSessionID:'null',RefreshToken:'null',Culture:'ro-RO',...(body===null?{}:{'Content-Type':'application/json;charset=UTF-8'})},...(body===null?{}:{body:JSON.stringify(body)})});
       const chunks:Uint8Array[]=[];let size=0;const reader=response.body?.getReader();
       if(reader)for(;;){const x=await reader.read();if(x.done)break;size+=x.value.length;if(size>(method==='GET'?50*1024*1024:2*1024*1024)){await reader.cancel();throw Error('Fișier prea mare.');}chunks.push(x.value);}
       let binary='';for(const c of chunks)for(let i=0;i<c.length;i+=4096)binary+=String.fromCharCode(...c.subarray(i,i+4096));
-      return {status:response.status,base64:btoa(binary)};
-     },{url,method,body});status=result.status;bytes=Buffer.from(result.base64,'base64');
+      return {status:response.status,base64:btoa(binary),retryAfter:response.headers.get('retry-after')};
+     },{url,method,body});status=result.status;retryAfter=result.retryAfter;bytes=Buffer.from(result.base64,'base64');
     }
     await q`update app.document_requests set status=${status},bytes=${bytes.length},finished_at=now() where id=${row!.id}`;
-    if(status!==200)throw Error(`SEAP a răspuns cu HTTP ${status}. Poți reîncerca mai târziu.`);
-    return bytes;
+    let challenge=false;
+    if(status===200&&method==='POST'){try{JSON.parse(bytes.toString('utf8'));}catch{challenge=true;}}
+    if(status===200&&navigate)challenge=/cf-chl-|<title>[^<]*(?:access denied|just a moment|attention required)/i.test(bytes.toString('utf8'));
+    return {value:{bytes,status},status,bytes:bytes.length,retryAfter,challenge};
    }finally{allowed=null;await q`update app.document_requests set finished_at=coalesce(finished_at,now()) where id=${row!.id}`;}
+   }finally{gateSignal.removeEventListener('abort',gateStop);}
+   },signal);
+   if(result.status!==200)throw Error(`SEAP a răspuns cu HTTP ${result.status}. Poți reîncerca mai târziu.`);
+   return result.bytes;
   }
   await request(referer,'GET',null,true);
   // Remove the untrusted page, preserving the source URL and own session.

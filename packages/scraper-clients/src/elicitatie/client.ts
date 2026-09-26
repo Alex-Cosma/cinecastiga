@@ -32,6 +32,7 @@ function refererForPath(path: string): string {
 }
 
 export interface ElicitatieClientOptions {
+  transport?: typeof fetch;
   /** Honest UA with contact info — required, no default. */
   userAgent: string;
   baseUrl?: string;
@@ -60,6 +61,7 @@ export function createElicitatieClient(
     opts.httpClient ??
     createHttpClient({
       baseUrl,
+      ...(opts.transport ? {transport: opts.transport} : {}),
       userAgent: opts.userAgent,
       maxConcurrency: opts.maxConcurrency ?? 8,
       minDelayMs: opts.minDelayMs ?? 120,

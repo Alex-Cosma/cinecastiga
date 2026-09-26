@@ -1,0 +1,31 @@
+{
+  "checks": [
+    "No page overflow at 1440",
+    "No page overflow at 390",
+    "No page overflow at 320",
+    "No page overflow at 768",
+    "No page overflow at 1440",
+    "Active initial state",
+    "Pause collector",
+    "Draft rate changes without modifying active policy",
+    "Apply policy records an audit event",
+    "Invalid interval blocked with explanation",
+    "Daily cap stops simulated requests",
+    "Pausing a stream selects another",
+    "Error filter includes all three failed attempts",
+    "Request details expand inline",
+    "429 state explains global stop",
+    "Explicit resume works in simulation",
+    "Maintenance pauses collection",
+    "Failed publication keeps maintenance",
+    "Stale status does not claim collector stopped",
+    "No page overflow at 390",
+    "No page overflow at 1440",
+    "Reduced motion supported",
+    "No runtime exceptions",
+    "No external HTTP requests"
+  ],
+  "errors": [],
+  "externalRequests": [],
+  "scope": "Standalone simulated mock-up; no backend or SEAP integration"
+}

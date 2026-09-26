@@ -48,6 +48,15 @@ to disable acquisition; the worker then remains idle without database/source
 requests. Already archived originals, PDFs, OCR and search remain publicly accessible;
 only new acquisition/processing queue operations require a signed-in account.
 
+Migration0034 introduces a shared SEAP request gate, initially **paused**, for both
+ingestion and document acquisition. Administrators control it at `/admin`: default
+random50–70second spacing, one request in flight, optional daily attempt cap. The
+file GET minimum60second gap remains active. A queued document therefore waits
+until the shared queue is enabled. This release does not start nationwide recovery
+or the daily publisher; the saved05:00 time is configuration only. Read
+`docs/implementation/admin-collection.md` before activation. Health checks use
+`/api/health`, which remains available during public maintenance.
+
 GitHub serializes deploys and the script also takes a local `flock`; the migrator
 has its own database advisory lock. The migrator uses a10second lock wait and
 15minute statement timeout. Retry a failed deploy only after addressing the

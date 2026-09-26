@@ -1,5 +1,7 @@
 # cinecâștigă? — Sunt banii tăi.
 
+**New: [Administrare — collection status and pacing controls](admin/index.html).** Interactive simulated collection, staged delay settings, publication status and request journal. [Walkthrough](admin/README.md).
+
 **New: [Domenii — compare category cards and an animated atlas](cinecastiga-domains.html).** Two clickable directions using the same real data. [Walkthrough and previews](domains/README.md).
 
 **Complete prototype: [all 13 questions, with direct source records](cinecastiga-complete.html).** Includes 39,343 fully traceable historical profile records, exact calculations, source exports and working Anchete. [Walkthrough and data scope](complete/README.md).
