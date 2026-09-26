@@ -16,7 +16,9 @@ export async function collectionStatus(q:DbSql=collectionDb()){
   const [documents]=await tx`select count(*) filter(where status='queued')::int queued,count(*) filter(where status='running')::int running from app.document_jobs`;
   const [raw]=await tx`select count(*)::int archived from raw.raw_documents where source='elicitatie' and fetched_at>=greatest(${control.created_at}::timestamptz,((now() at time zone 'Europe/Bucharest')::date::timestamp at time zone 'Europe/Bucharest'))`;
   const publication=await tx`select id,version::text,status,kind,started_at,completed_at,validation->'stages' stages from app.monitoring_refreshes order by version desc limit 1`;
-  return {control,today:today[0]!,streams,requests,workers,audit,runs,documents:documents!,raw:raw!,publication:publication[0]??null};
+  const [batch]=await tx`select id,end_day,status from app.collection_batches order by created_at desc limit 1`;
+  const progress=batch?await tx`select stream,count(*) filter(where status='pending')::int pending,count(*) filter(where status='running')::int running,count(*) filter(where status='complete')::int complete,count(*) filter(where status='split')::int split,count(*) filter(where status='deferred')::int deferred,count(*) filter(where status='failed')::int failed from app.collection_tasks where batch_id=${batch.id} group by stream`:[];
+  return {recovery:batch?{batch,progress}:null,control,today:today[0]!,streams,requests,workers,audit,runs,documents:documents!,raw:raw!,publication:publication[0]??null};
  });
 }
 export type CollectionStatus=Awaited<ReturnType<typeof collectionStatus>>;

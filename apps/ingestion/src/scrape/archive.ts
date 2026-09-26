@@ -1,5 +1,5 @@
 import { eq, sql } from "drizzle-orm";
-import { rawDocuments, scrapeRuns, type Db } from "@seap/db";
+import { rawDocuments, scrapeRuns, type Db, type DbSql } from "@seap/db";
 import { contentHash } from "./hash.js";
 import { redactPayload } from "./redact.js";
 
@@ -49,16 +49,7 @@ export async function archiveDocuments(
 ): Promise<ArchiveResult> {
   if (docs.length === 0) return { inserted: 0, skipped: 0 };
 
-  const rows = docs.map((doc) => {
-    const redacted = stripNul(redactPayload(doc.payload, doc.endpointVersion));
-    return {
-      source: doc.source,
-      externalId: doc.externalId,
-      endpointVersion: doc.endpointVersion,
-      contentHash: contentHash(redacted),
-      payload: redacted,
-    };
-  });
+  const rows = archiveRows(docs);
 
   // Chunk the multi-row insert: one DA authority can carry thousands of docs,
   // and Postgres caps a statement at 65535 bind parameters (~5 cols/row). Insert
@@ -141,4 +132,29 @@ export async function finishScrapeRun(
       finishedAt: sql`now()`,
     })
     .where(eq(scrapeRuns.id, id));
+}
+
+function archiveRows(docs: ArchivableDocument[]) {
+  return docs.map((doc) => {
+    const redacted = stripNul(redactPayload(doc.payload, doc.endpointVersion));
+    return {
+      source: doc.source,
+      externalId: doc.externalId,
+      endpointVersion: doc.endpointVersion,
+      contentHash: contentHash(redacted),
+      payload: redacted,
+    };
+  });
+}
+
+/** Same archive boundary for callers owning a postgres.js transaction. */
+export async function archiveDocumentsSql(q: DbSql, docs: ArchivableDocument[]): Promise<ArchiveResult> {
+  const rows = archiveRows(docs);
+  let inserted = 0;
+  for (let i = 0; i < rows.length; i += 1000) {
+    const chunk = JSON.stringify(rows.slice(i, i + 1000).map(r => ({source:r.source, external_id:r.externalId, endpoint_version:r.endpointVersion, content_hash:r.contentHash, payload:r.payload})));
+    const saved = await q`insert into raw.raw_documents(source,external_id,endpoint_version,content_hash,payload) select source,external_id,endpoint_version,content_hash,payload from jsonb_to_recordset(${chunk}::jsonb) as r(source text,external_id text,endpoint_version text,content_hash text,payload jsonb) on conflict(source,external_id,content_hash) do nothing returning id`;
+    inserted += saved.length;
+  }
+  return {inserted, skipped:rows.length-inserted};
 }

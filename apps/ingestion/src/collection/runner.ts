@@ -1,0 +1,90 @@
+import {CollectionSuspendedError,collectionHeartbeat,collectionWorkerId,withCollectionStream,type DbSql} from '@seap/db';
+import {getNoticeContracts,getNoticeDetail,listContractingAuthorities,listDirectAcquisitions,listNotices,NOTICE_TYPE_IDS,type ElicitatieClient} from '@seap/scraper-clients';
+import {archiveDocumentsSql} from '../scrape/archive.js';
+import {isoDaysAgo} from '../scrape/window.js';
+import {planResponse,task,type Task,type PageResult} from './plan.js';
+export const RECOVERY_LOCK=[729114,5] as const;
+export const recoveryWorker=collectionWorkerId('recovery');
+const streams=['da','tenders','awards','catalogue'] as const;
+export async function insertTasks(q:DbSql,tasks:Task[]){
+ for(const t of tasks)await q`insert into app.collection_tasks(batch_id,key,partition,stream,kind,params,priority,status,error) values(${t.batch_id},${t.key},${t.partition},${t.stream},${t.kind},${JSON.stringify(t.params)}::jsonb,${t.priority},${t.status??'pending'},${t.error??null}) on conflict(batch_id,key) do nothing`;
+}
+/** No source traffic. Freeze the last closed day and seed known authorities. */
+export async function seedRecovery(q:DbSql,end=isoDaysAgo(1)){
+ if(!/^2026-\d{2}-\d{2}$/.test(end)||end<'2026-07-01'||end>isoDaysAgo(1))throw Error('Recovery end must be a closed 2026 day after July 1.');
+ const batch=`recovery-${end}`;
+ await q.begin(async tx=>{
+  const [existing]=await tx`select id from app.collection_batches limit 1`;
+  if(existing){if(existing.id!==batch)throw Error('An existing recovery batch must be inspected before starting another.');return;}
+  await tx`insert into app.collection_batches(id,end_day) values(${batch},${end})`;
+  await tx`insert into app.collection_tasks(batch_id,key,partition,stream,kind,params,priority)
+   select ${batch},'da:da:'||s.sicap_id||':2026-07-01:'||${end}||':0','da:da:'||s.sicap_id||':2026-07-01:'||${end},'da','da',jsonb_build_object('authorityId',s.sicap_id,'from','2026-07-01','to',${end}::text,'page',0),case when e.name_normalized='municipiul buzau' then 0 else 10 end
+   from core.entity_sicap_ids s join core.entities e on e.id=s.entity_id where s.namespace='authority'`;
+  await tx`insert into app.collection_tasks(batch_id,key,partition,stream,kind,params,priority)
+   select ${batch},f||':list::'||d::date||':'||d::date||':0',f||':list::'||d::date||':'||d::date,f,'list',jsonb_build_object('from',d::date::text,'to',d::date::text,'page',0),case when d::date=${end}::date then 0 else 10 end
+   from generate_series('2026-01-01'::date,${end}::date,interval '1 day') d cross join unnest(array['tenders','awards']) f`;
+  await insertTasks(tx as unknown as DbSql,[task(batch,'catalogue','catalogue',{page:0},0)]);
+ });
+ return batch;
+}
+export async function fetchTask(client:ElicitatieClient,t:Task):Promise<unknown>{
+ return withCollectionStream(t.stream,async()=>{
+  const p=t.params;
+  if(t.kind==='catalogue')return listContractingAuthorities(client,{pageIndex:p.page,pageSize:2000});
+  if(t.kind==='da')return (await listDirectAcquisitions(client,{finalizationDateStart:p.from!,finalizationDateEnd:p.to!,contractingAuthorityId:p.authorityId!,pageIndex:p.page,pageSize:2000})).data;
+  if(t.kind==='list')return (await listNotices(client,{sysNoticeTypeIds:t.stream==='tenders'?NOTICE_TYPE_IDS.participation:NOTICE_TYPE_IDS.award,startPublicationDate:p.from!,endPublicationDate:p.to!,pageIndex:p.page,pageSize:100})).data;
+  if(t.kind==='detail')return (await getNoticeDetail(client,p.noticeId!)).data;
+  return (await getNoticeContracts(client,{caNoticeId:p.noticeId!,skip:p.page*200,take:200})).data;
+ });
+}
+/** Caller holds RECOVERY_LOCK for the entire worker lifetime, including archive commits. */
+export async function recoverInterrupted(q:DbSql){
+ const rows=await q`update app.collection_tasks set status='failed',error='Worker întrerupt. Verifică răspunsul și arhiva înainte de reprogramare.',finished_at=now() where status='running' returning id`;
+ if(rows.length)await q`update app.collection_control set blocked_reason='Colector întrerupt înainte de confirmarea arhivei. Verifică sarcinile eșuate.',blocked_until=clock_timestamp()+interval '120 seconds' where id=1`;
+ return rows.length;
+}
+export async function recoveryStep(q:DbSql,fetcher:(t:Task)=>Promise<unknown>){
+ await collectionHeartbeat(q,recoveryWorker,'ingestion','idle');
+ const claimed=await q.begin(async tx=>{
+  const [c]=await tx`select * from app.collection_control where id=1`;
+  if(!c||c.paused||c.maintenance||c.blocked_reason)return null;
+  if(c.daily_limit!==null){const [n]=await tx`select count(*)::int n from app.collection_requests where started_at>=((now() at time zone 'Europe/Bucharest')::date::timestamp at time zone 'Europe/Bucharest')`;if(Number(n?.n)>=c.daily_limit)return null;}
+  const [b]=await tx`select * from app.collection_batches where status='collecting' order by created_at limit 1 for update`;
+  if(!b)return null;
+  for(let i=0;i<streams.length;i++){
+   const index=(Number(b.next_stream)+i)%streams.length,stream=streams[index]!;
+   if(c.paused_streams.includes(stream))continue;
+   const [t]=await tx`select * from app.collection_tasks where batch_id=${b.id} and stream=${stream} and status='pending' order by priority,id limit 1 for update`;
+   if(t){await tx`update app.collection_tasks set status='running',started_at=clock_timestamp() where id=${t.id}`;await tx`update app.collection_batches set next_stream=${(index+1)%streams.length} where id=${b.id}`;return {t:t as unknown as Task,end:String(b.end_day)};}
+  }
+  const [left]=await tx`select count(*) filter(where status in ('pending','running'))::int pending,count(*) filter(where status in ('failed','deferred'))::int gaps from app.collection_tasks where batch_id=${b.id}`;
+  if(!left?.pending)await tx`update app.collection_batches set status=${left?.gaps?'incomplete':'collected'} where id=${b.id}`;
+  return null;
+ });
+ if(!claimed)return false;
+ const {t,end}=claimed;
+ console.log(JSON.stringify({event:'recovery-task',task:t.id,stream:t.stream,kind:t.kind,parameters:t.params}));
+ try{
+  const response=await fetcher(t);
+  const prior=await q`select result from app.collection_tasks where batch_id=${t.batch_id} and partition=${t.partition} and status='complete' order by (params->>'page')::int`;
+  const plan=planResponse(t,response,prior.map(r=>r.result as PageResult),end);
+  await q.begin(async tx=>{
+   const [current]=await tx`select status from app.collection_tasks where id=${t.id!} for update`;
+   if(current?.status!=='running')throw Error('Task ownership changed before archive commit');
+   const archive=await archiveDocumentsSql(tx as unknown as DbSql,plan.docs);
+   await insertTasks(tx as unknown as DbSql,plan.children);
+   const result=JSON.stringify({...plan.result,archived:archive.inserted,duplicates:archive.skipped}).replace(/\\u0000/g,'');
+   await tx`update app.collection_tasks set status=${plan.status},result=${result}::jsonb,finished_at=clock_timestamp() where id=${t.id!}`;
+  });
+  console.log(JSON.stringify({event:'recovery-archived',task:t.id,status:plan.status,documents:plan.docs.length,children:plan.children.length}));
+ }catch(error){
+  if(error instanceof CollectionSuspendedError){await q`update app.collection_tasks set status='pending',started_at=null where id=${t.id!}`;return false;}
+  // No automatic retry: requests or archival may have partly succeeded. Keep
+  // the exact task identity and stop admission until an operator inspects it.
+  const message=error instanceof Error?error.message:'Eroare de colectare';
+  const safe=/^(Structur|Detaliu|Identitatea|O singură|Fereastra|Dimensiunea|Totalul|Lipsește|Lista|SEAP|Numărul|Data|Filtrul|Tip de|Anunț)/.test(message)?message:'Cererea sau arhivarea nu a fost confirmată. Verifică jurnalul înainte de reluare.';
+  await q.begin(async tx=>{await tx`update app.collection_tasks set status='failed',error=${safe.slice(0,500)},finished_at=clock_timestamp() where id=${t.id!}`;await tx`update app.collection_control set blocked_reason=coalesce(blocked_reason,${`Sarcina ${t.id}: ${safe}`}) where id=1`;});
+  console.error(JSON.stringify({event:'recovery-stopped',task:t.id,error:safe}));
+ }
+ return true;
+}

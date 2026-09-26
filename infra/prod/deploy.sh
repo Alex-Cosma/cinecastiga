@@ -13,8 +13,18 @@ git reset --hard --quiet origin/main
 cd infra/prod
 # Build first. Keep the current web container serving during the migration.
 docker compose --profile maintenance --profile documents build --pull web migrate documents
+# An already activated collector follows future releases; an inactive profile
+# stays inactive until its recovery inventory and pilot have been inspected.
+collection_active=false
+if [[ -n "$(docker compose --profile collection ps --status running -q collection)" ]]; then
+  collection_active=true
+  docker compose --profile collection build --pull collection
+fi
 docker compose --profile maintenance run --rm --no-deps migrate
 # set -e prevents this restart when migration/history/grant checks fail.
 docker compose --profile documents up -d --no-deps web documents
+if [[ "$collection_active" == true ]]; then
+  docker compose --profile collection up -d --no-deps collection
+fi
 docker image prune -f >/dev/null
 echo "deployed $(git rev-parse --short HEAD) at $(date -u +%FT%TZ)"

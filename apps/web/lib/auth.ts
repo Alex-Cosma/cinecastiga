@@ -48,7 +48,7 @@ async function emailProofKey(userId: string, code: string, ctx: {
     .update(JSON.stringify([challenge, code])).digest("hex")}`;
 }
 
-export const auth = betterAuth({
+const createAuth = () => betterAuth({
   appName: "cinecâștigă?",
   baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
   database: drizzleAdapter(authDb(), {
@@ -118,6 +118,21 @@ export const auth = betterAuth({
   ],
   rateLimit: { enabled: true },
 });
+
+// Route discovery during a clean build must not initialize authentication with
+// absent runtime secrets. The first actual auth operation constructs it once.
+let authInstance: ReturnType<typeof createAuth> | undefined;
+export const auth = new Proxy({} as ReturnType<typeof createAuth>, {
+  has(_target, property) {
+    authInstance ??= createAuth();
+    return Reflect.has(authInstance, property);
+  },
+  get(_target, property) {
+    authInstance ??= createAuth();
+    return Reflect.get(authInstance, property);
+  },
+});
+
 
 export type Session = typeof auth.$Infer.Session;
 
