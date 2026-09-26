@@ -1,3 +1,4 @@
+import {validCollectionOrigin} from '@/lib/admin/collection-origin';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { changeCollection,collectionDb,collectionStatus,CollectionConflict } from '@/lib/admin/collection';
@@ -17,8 +18,7 @@ export async function GET(req:Request){
 }
 export async function POST(req:Request){
  const user=await admin(req);if(!user)return NextResponse.json({error:'Acces rezervat administratorilor.'},{status:403,headers});
- const origin=req.headers.get('origin');
- if(!origin||origin!==new URL(req.url).origin||req.headers.get('sec-fetch-site')==='cross-site')return NextResponse.json({error:'Origine neacceptată.'},{status:403,headers});
+ if(!validCollectionOrigin(req,process.env.NODE_ENV==='production'?process.env.BETTER_AUTH_URL:undefined))return NextResponse.json({error:'Origine neacceptată.'},{status:403,headers});
  if(!req.headers.get('content-type')?.startsWith('application/json'))return NextResponse.json({error:'Format neacceptat.'},{status:415,headers});
  const text=await req.text();if(text.length>4096)return NextResponse.json({error:'Cerere prea mare.'},{status:413,headers});
  let body:Record<string,unknown>;try{body=JSON.parse(text);if(!body||typeof body!=='object'||Array.isArray(body))throw Error();}catch{return NextResponse.json({error:'Cerere invalidă.'},{status:400,headers});}
