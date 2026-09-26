@@ -1,3 +1,4 @@
+import { toNextJsHandler } from "better-auth/next-js";
 import { createHmac, randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createDb } from "@seap/db";
@@ -23,7 +24,7 @@ let serial = 0;
 class Browser {
   cookies = new Map<string, string>();
   async request(path: string, body?: object) {
-    const response = await authModule.auth.handler(new Request(`${origin}/api/auth${path}`, {
+    const response = await toNextJsHandler(authModule.auth)[body ? "POST" : "GET"](new Request(`${origin}/api/auth${path}`, {
       method: body ? "POST" : "GET",
       headers: { Origin: origin, "Content-Type": "application/json", Cookie: [...this.cookies].map(([k,v]) => `${k}=${v}`).join("; ") },
       ...(body ? { body: JSON.stringify(body) } : {}),

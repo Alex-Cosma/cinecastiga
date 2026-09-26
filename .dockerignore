@@ -21,3 +21,6 @@ _*.mjs
 **/.next-documents
 
 apps/web/public/pdfjs/
+
+**/.next-admin-test
+**/.next-admin-build

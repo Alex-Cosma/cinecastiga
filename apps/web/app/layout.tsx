@@ -16,6 +16,9 @@ const display = Bricolage_Grotesque({ subsets: ["latin", "latin-ext"], weight: [
 const body = IBM_Plex_Sans({ subsets: ["latin", "latin-ext"], weight: ["400", "500", "600"], style: ["normal", "italic"], variable: "--font-body", display: "swap" });
 const mono = IBM_Plex_Mono({ subsets: ["latin", "latin-ext"], weight: ["400", "500"], variable: "--font-mono", display: "swap" });
 
+// Coverage and account state are runtime data; builds have no database.
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: { default: pageTitle(), template: `%s — ${SITE_NAME}` },
   description: SITE_DESCRIPTION,

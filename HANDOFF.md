@@ -1,5 +1,11 @@
 # Continuation handoff — cinecâștigă, investigation batches and contract documents
 
+## Latest — production deployment and crawl activation in progress
+
+User explicitly authorized commit, push, deploy and crawl startup. Admin commit e2fb0f5 pushed to feature branch and main; Initial CI run36266496996 failed at clean web build, before any deploy. Clean Docker reproduction found missing domain package in web image and footer DB access during prerender. Fixed image copy/build, runtime layout and lazy auth; OTP/Next-adapter integration5passed. Follow-up release includes these fixes and recovery worker. Server clean checkout fast-forwarded before CI so the migration-safe deploy script is used on first invocation. Full production25GB database backup completed as2.7GB private `/srv/seap/backups/pre-collection-20260926.dump`; pg_restore listing valid. No raw/core changes from backup.
+
+Preparing durable recovery worker before source pilot: `apps/ingestion/src/collection`, migration0035, opt-in Composecollection profile and Dockerfile. Runbook `docs/implementation/collection-recovery-runbook.md`. Archives only; **05:00 publisher still pending**, not implicitly enabled. No old watermarks touched. Source pilot maximum6attempts after deployment/build/seed; then continuous rotation across allthreeflows + catalogue if responses validate. No PDFcrawl. Current newSEAPcount0. Final state and actualpilot counts must be updated below before ending task.
+
 ## Latest — real admin collection implementation (approved, local only)
 
 User approved mock and requested implementation. Real `/admin` now polls protected DB status, edits persistent pacing/cap/time with revision protection, pauses global/per-stream requests, records audit and sanitized request history, and preserves account management at `/admin/conturi`. Details: `docs/implementation/admin-collection.md`. Migration0034 applied locally only; default **paused=true**, 50–70seconds, maintenance=false. 0newSEAPrequests; historical23 unchanged. No production deploy/collection activation.

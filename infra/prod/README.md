@@ -53,7 +53,10 @@ ingestion and document acquisition. Administrators control it at `/admin`: defau
 random50–70second spacing, one request in flight, optional daily attempt cap. The
 file GET minimum60second gap remains active. A queued document therefore waits
 until the shared queue is enabled. This release does not start nationwide recovery
-or the daily publisher; the saved05:00 time is configuration only. Read
+or the daily publisher; the saved05:00 time is configuration only. The opt-in
+`collection` profile runs the durable recovery worker; see
+`docs/implementation/collection-recovery-runbook.md`. Once activated explicitly,
+future deployments also rebuild/restart that existing worker. Read
 `docs/implementation/admin-collection.md` before activation. Health checks use
 `/api/health`, which remains available during public maintenance.
 
