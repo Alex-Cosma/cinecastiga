@@ -1,6 +1,21 @@
 # Continuation handoff — cinecâștigă, investigation batches and contract documents
 
-## Latest — production deployment and crawl activation in progress
+## Latest — production deployed and collection active, 2026-09-26
+
+User explicitly requested commit/push/deploy/start crawl. Local checkout is now **main**. Admin e2fb0f5, recovery e372d89, migration compatibility c6da0fd and proxy-origin fix b688cbd are on origin/main and the feature branch. Production b688cbd deployed successfully via GitHub run36267747259; application/health/publicpages200, authenticated adminGET/POST/page200, anonymousadmin403.36migrations applied. Full private productionbackup `/srv/seap/backups/pre-collection-20260926.dump`2.7GB; archive listing validated. No history rewrite. Historical0005 checksum exactly reconstructed and accepted only with the verified nullable-year/index/no-PK schema; isolated production-schema clone26→36passed.
+
+**Crawl is running on production** via `cinecastiga-collection-1`, restartunless-stopped, Composecollectionprofile. Frozen batch `recovery-2026-09-25`: DAJuly1..Sep25, tenders/awardsJan1..Sep25. Initial36,347known tasks (35,810DA +268+268notice days +catalogue). Queue grows as live inventory/pagination/details are discovered. Old watermarks untouched; rawsequence starts after17,308,073. No PDFcrawl/noDA-per-recorddetail. eFormsdetails are explicit deferred gaps; awardcontracttasks remain independent.
+
+Pilot completed6HTTP200attempts:2catalogue pages(4,000items),2DApartitions(0and15),1tenderpage100,1awardpage100.215raw procurementrecords archived. Measured spacing50.01,56.01,59.00,54.01,54.01seconds; no retries/failures. Continuous worker subsequently reached8successfulattempts and342archivedrecords at verification; later counts naturally increase. This session's source count is in `app.collection_requests` (historical localdocumentpilot23 is separate). Sharedgate50–70seconds, one in flight, extra60secondsfileGETminimum, globalunpaused/streams[]/maintenancefalse/no sourceblock. On-demanddocuments restored afterpilot.
+
+During concurrent finaldeploy, Composeps included the pilot's one-off container, causing the old active-service detection to start the permanent worker early. Its RECOVERY_LOCK prevented duplicate work/requests; it waited until the six-task pilot exited and then continued with task7. Corrective deployscript now checks oneoff=False before treating a service as activated;7deploy tests pass. Keep this distinction in future operational scripts. Do not rerun the initial-pilot enable SQL against an already active queue.
+
+**Daily05:00processor remains unimplemented/unstarted.** This release archives raw data; it does not update public analytics. Maintenancegate and saved time exist, but safe publication/backup/fixedbatch/validation/indexing is still follow-up work. Never normalize--rebuild against production's deliberately omitted historical raw archive.
+
+Validation: project20tasks/371default tests;7recoveryplanner cases;5isolated transactional recovery cases;5actualNext-auth-adapterOTP/invite cases;4proxy-origin cases;41browserchecks against finalproductionbuild;7deployordering/legacyhash/oneoffcases. IsolatedDBsseap_test_recovery andseap_test_deploy_legacy removed. Localpreviewhttp://localhost:3113 is now dev mode on main, health200. User requested password recovery: the specified productionadmin credential was reset with the app's password hasher, oldsessionsrevoked, 2FAunchanged. Credential is only in mode0600 gitignored `prod-admin-access.local`; NEVER print, commit or copy its contents into handoff. No resetemail was sent.
+
+## Earlier — deployment preparation
+
 
 User explicitly authorized commit, push, deploy and crawl startup. Admin commit e2fb0f5 pushed to feature branch and main; Initial CI run36266496996 failed at clean web build, before any deploy. Clean Docker reproduction found missing domain package in web image and footer DB access during prerender. Fixed image copy/build, runtime layout and lazy auth; OTP/Next-adapter integration5passed. Follow-up release includes these fixes and recovery worker. Server clean checkout fast-forwarded before CI so the migration-safe deploy script is used on first invocation. Full production25GB database backup completed as2.7GB private `/srv/seap/backups/pre-collection-20260926.dump`; pg_restore listing valid. No raw/core changes from backup.
 

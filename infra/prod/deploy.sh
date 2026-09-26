@@ -16,8 +16,14 @@ docker compose --profile maintenance --profile documents build --pull web migrat
 # An already activated collector follows future releases; an inactive profile
 # stays inactive until its recovery inventory and pilot have been inspected.
 collection_active=false
-if [[ -n "$(docker compose --profile collection ps --status running -q collection)" ]]; then
-  collection_active=true
+for collection_container in $(docker compose --profile collection ps --status running -q collection); do
+  # Compose ps may include a bounded `run` container. That is not activation
+  # of the permanent service, even while its pilot holds the collector lock.
+  if [[ "$(docker inspect --format '{{ index .Config.Labels "com.docker.compose.oneoff" }}' "$collection_container")" == "False" ]]; then
+    collection_active=true
+  fi
+done
+if [[ "$collection_active" == true ]]; then
   docker compose --profile collection build --pull collection
 fi
 docker compose --profile maintenance run --rm --no-deps migrate
