@@ -1,3 +1,4 @@
+import {migrationHistoryMatch} from './migration-history.mjs';
 import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import postgres from 'postgres';
@@ -20,7 +21,15 @@ try{
  const [history]=await sql`select to_regclass('drizzle.__drizzle_migrations') present`;
  const applied=history.present?await sql`select hash,created_at from drizzle.__drizzle_migrations order by created_at,id`:[];
  // Refuse silent skips after edited history, an older checkout, or a partial restore.
- for(let i=0;i<applied.length;i++)if(!migrations[i]||Number(applied[i].created_at)!==migrations[i].folderMillis||applied[i].hash!==migrations[i].hash)throw Error('Migration history differs from this release. Restore/inspect the matching history before deploying.');
+ for(let i=0;i<applied.length;i++){
+  const match=migrationHistoryMatch(applied[i],migrations[i],i);
+  if(!match)throw Error('Migration history differs from this release. Restore/inspect the matching history before deploying.');
+  if(match==='legacy-national-stats-nullability'){
+   const [state]=await sql`select exists(select 1 from pg_attribute where attrelid=to_regclass('marts.national_stats') and attname='year' and not attnotnull and not attisdropped) nullable,exists(select 1 from pg_indexes where schemaname='marts' and tablename='national_stats' and indexname='national_stats_kind_year_idx' and indexdef like '%USING btree (kind, year)%') indexed,exists(select 1 from pg_constraint where conrelid=to_regclass('marts.national_stats') and contype='p') has_pk`;
+   if(!state.nullable||!state.indexed||state.has_pk)throw Error('Known legacy migration checksum found, but its corrected national_stats schema is missing. Inspect before deployment.');
+   console.log('Verified historical migration0005 checksum and already-corrected nullable-year schema; history preserved.');
+  }
+ }
  if(!applied.length){
   const [existing]=await sql`select exists(select 1 from pg_tables where schemaname in ('core','raw','marts','reference','auth','app')) present`;
   if(existing.present)throw Error('Application tables exist without migration history. Restore the original drizzle history; automatic baselining is not allowed.');
