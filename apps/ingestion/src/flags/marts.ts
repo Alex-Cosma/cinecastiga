@@ -31,6 +31,7 @@ export async function runFlagMarts(
 ): Promise<FlagMartsReport> {
   const log = opts.log ?? (() => {});
   const b = await bound(sql);
+  if (b !== 2_000_000) throw new Error("DA plausibility bound differs from the query population (2000000)");
 
   return sql.begin(async (q) => {
     // NOTE: authority_concentration + entity_top_partners are now owned by
@@ -46,12 +47,12 @@ export async function runFlagMarts(
       with base as (
         select authority_entity_id eid, 'authority' role, count(*) n, sum(closing_value) total
         from core.direct_acquisitions
-        where authority_entity_id is not null and closing_value is not null and closing_value <= ${b}
+        where authority_entity_id is not null and state = 'Oferta acceptata' and closing_value > 0 and closing_value <= ${b}
         group by authority_entity_id
         union all
         select supplier_entity_id, 'supplier', count(*), sum(closing_value)
         from core.direct_acquisitions
-        where supplier_entity_id is not null and closing_value is not null and closing_value <= ${b}
+        where supplier_entity_id is not null and state = 'Oferta acceptata' and closing_value > 0 and closing_value <= ${b}
         group by supplier_entity_id
       ),
       daf_pivot as (
@@ -61,11 +62,13 @@ export async function runFlagMarts(
         from (
           select da.authority_entity_id eid, 'authority' role, f.flag_code
           from core.flags f join core.direct_acquisitions da on da.id = f.subject_id
-          where f.subject_type = 'da'
+          where f.subject_type = 'da' and f.triggered and da.state = 'Oferta acceptata'
+            and da.closing_value > 0 and da.closing_value <= ${b}
           union all
           select da.supplier_entity_id, 'supplier', f.flag_code
           from core.flags f join core.direct_acquisitions da on da.id = f.subject_id
-          where f.subject_type = 'da'
+          where f.subject_type = 'da' and f.triggered and da.state = 'Oferta acceptata'
+            and da.closing_value > 0 and da.closing_value <= ${b}
         ) z where eid is not null group by eid, role
       ),
       ent_flag as (
@@ -197,8 +200,8 @@ export async function runFlagMarts(
     `;
     // Pair-level flags stamped onto their constituent rows: the entity page's
     // "Fracționare sub prag" table filter must surface the acquisitions that
-    // make up the flagged pattern (all pair-year rows, incl. the odd above-prag
-    // one — it belongs to the same pattern even if the sum didn't count it).
+    // make up the flagged pattern, excluding unknown types, other CPV classes
+    // and purchases at/above their own applicable ceiling.
     await q`
       update marts.da_transactions dt
       set da_flags = array_append(coalesce(dt.da_flags, '{}'), 'da_split')
@@ -206,6 +209,7 @@ export async function runFlagMarts(
       where f.flag_code = 'da_split' and f.subject_type = 'pair'
         and f.subject_id = dt.authority_id and f.partner_id = dt.supplier_id
         and left(dt.finalization_date, 4) = f.period
+        and f.evidence->'source_ids' ? dt.sicap_da_id::text
         and not ('da_split' = any(coalesce(dt.da_flags, '{}')))
     `;
 

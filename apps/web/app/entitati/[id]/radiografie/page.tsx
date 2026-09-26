@@ -6,6 +6,7 @@ import Headlines from "./Headlines";
 import DependencyScatter from "./DependencyScatter";
 import LotMatrix from "./LotMatrix";
 import DaStrips from "./DaStrips";
+import { encodeSpec } from "@/lib/ask/permalink";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +47,7 @@ export default async function RadiografiePage({ params }: { params: Promise<{ id
             e locul unde firme trăiesc dintr-un singur client. Culoarea compară <b>valoarea contractată</b> aici în{" "}
             {data.win.from}–{data.win.to} cu <b>cifra de afaceri</b> a firmei din anii acoperiți de contracte: un contract simplu
             acoperă anul semnării, un acord-cadru acoperă până la 4 ani (valoarea lui e un plafon, nu bani încasați). Un raport
-            peste 1 înseamnă fie plafon nefolosit, fie încasări viitoare, fie lucrări făcute de altcineva.
+            peste 1 poate reflecta un plafon nefolosit, venituri recunoscute în alți ani sau lucrări făcute de altcineva.
           </p>
         </details>
         {data.dep.length ? (
@@ -56,6 +57,7 @@ export default async function RadiografiePage({ params }: { params: Promise<{ id
             <p className="rx-silence">Niciun furnizor peste pragul de afișare.</p>
           </div>
         )}
+        {data.dep.length > 0 && <details className="rx-how"><summary>Verifică sursele unui furnizor</summary><div className="ask-tablewrap"><table className="rank"><thead><tr><th scope="col">Furnizor</th><th scope="col">Contracte și cote</th></tr></thead><tbody>{data.dep.map(supplier => <tr key={supplier.id}><td><Link href={`/entitati/${supplier.id}`}>{supplier.name}</Link></td><td><Link href={`/intreaba?spec=${encodeURIComponent(encodeSpec({ block: "fact_check", dataset: "contracts", measure: "value", filters: { authorityId: Number(p.id), supplierId: Number(supplier.id) } }))}&drill=1`}>Vezi contractele relației →</Link></td></tr>)}</tbody></table></div></details>}
       </section>
 
       <section>
@@ -68,27 +70,31 @@ export default async function RadiografiePage({ params }: { params: Promise<{ id
             <b>rotația</b> (același grup de firme revine, fiecare cu câte un lot), <b>măturarea</b> (o firmă ia toate loturile,
             licitație după licitație), <b>consorțiul stabil</b> (aceiași parteneri, licitație după licitație; verificăm și dacă
             au același administrator în ONRC). Un consorțiu e un singur câștigător. Celula spune câte loturi din total a luat.{" "}
-            <b>Roșu</b> = lot cu un singur ofertant; <b>auriu</b> = cel mult 2 oferte; gri = fără date sau ≥3 oferte. SICAP
-            publică numărul de oferte doar la licitațiile deschise. Listele de ofertanți respinși nu există în date: o rotație
+            <b>Roșu</b> = lot cu o singură ofertă raportată; <b>auriu</b> = cel mult 2 oferte; gri = fără date sau ≥3 oferte.
+            Numărul ofertelor provine din loturi TED asociate cu încredere ridicată; lipsa sau ambiguitatea datelor rămâne necunoscută. Listele de ofertanți respinși nu sunt disponibile aici: o rotație
             rămâne pistă, nu concluzie.
           </p>
         </details>
         <LotMatrix families={data.families} patterns={data.patterns} familiesWithLots={data.familiesWithLots} familiesTotal={data.familiesTotal} />
+        {data.patterns.length > 0 && <details className="rx-how"><summary>Verifică sursele unui tipar de loturi</summary><ul>{data.patterns.map(pattern => <li key={pattern.id}><Link href={`/entitati/${p.id}/radiografie/surse?tip=pattern&tipar=${pattern.id}&fingerprint=${pattern.fingerprint}`}>CPV {pattern.cpvClass} · {pattern.memberNames.join(" + ")} · {pattern.reps} repetări →</Link></li>)}</ul></details>}
       </section>
 
       <section>
         <p className="rx-eyebrow">achiziții directe</p>
-        <h2>Cine feliază achizițiile directe?</h2>
+        <h2>Unde se adună achiziții mici?</h2>
         <details className="rx-how">
           <summary>cum citesc</summary>
           <p>
-            Apar doar furnizorii cu forma de <b>feliere</b>: cel puțin 3 achiziții directe din aceeași clasă CPV, în 60 de zile, a
-            căror sumă depășește plafonul legal pentru servicii și produse (135.060 lei până în 2022, 270.120 din 2023, linia
-            punctată). Banda aurie e fereastra respectivă, punctele roșii sunt achizițiile din ea. Plafonul pentru lucrări e mai
-            mare și nu e desenat.
+            Cel puțin 3 achiziții directe din aceeași clasă CPV și același tip, într-o fereastră de cel mult 60 de zile;
+            fiecare este strict sub plafonul propriu, iar suma depășește cel mai mare plafon aplicabil grupului.
+            Linia punctată arată plafoanele fără TVA pentru tipul grupului: lucrări sau produse/servicii, cu schimbările din
+            26.05.2016, 04.06.2018 și 10.09.2022. Banda aurie marchează fereastra, iar punctele roșii intră în suma afișată.
+            Tipul declarat are prioritate; dacă lipsește, folosim CPV. Publicarea aproximează inițierea; în lipsa ei folosim finalizarea.
+            Datele sau tipurile necunoscute nu primesc un plafon. Legea privește necesarul estimat, iar noi comparăm valorile de închidere:
+            o clasă CPV comună și o sumă mare nu dovedesc fracționarea ilegală.
           </p>
         </details>
-        <DaStrips rows={data.slices} nSuppliers={data.nDaSuppliers} />
+        <DaStrips rows={data.slices} nSuppliers={data.nDaSuppliers} authorityId={p.id} />
       </section>
 
       <footer className="rx-foot">
@@ -97,7 +103,7 @@ export default async function RadiografiePage({ params }: { params: Promise<{ id
           <p>
             Valorile contractelor pot fi acorduri-cadru multianuale, deci raportul la cifra de afaceri e orientativ; tipul
             contractului vine din anunțul de atribuire. Listele de ofertanți respinși nu există în date. Administratorii vin din
-            ONRC (identitate = nume + data nașterii); numărul de oferte doar din licitațiile deschise. Pragurile: ≥3 loturi, ≥2
+            ONRC (identitate = nume + data nașterii); numărul de oferte provine din loturi TED asociate cu încredere ridicată. Pragurile: ≥3 loturi, ≥2
             repetiții, 60 de zile pentru feliere, 4 ani pentru acorduri-cadru. Vezi <Link href="/metodologie">metodologia</Link>.
           </p>
         </details>

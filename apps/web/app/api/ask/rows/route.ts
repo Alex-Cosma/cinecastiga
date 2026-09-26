@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { createDb, type DbSql } from "@seap/db";
-import { validateSpec } from "@/lib/ask/spec";
-import { ground } from "@/lib/ask/ground";
-import { runRows } from "@/lib/ask/compile";
-import { evidenceOptions } from "@/lib/ask/evidence-request";
-import { devlog } from "@/lib/devlog";
+import { validateSpec } from "../../../../lib/ask/spec";
+import { ground } from "../../../../lib/ask/ground";
+import { runRows } from "../../../../lib/ask/compile";
+import { evidenceOptions } from "../../../../lib/ask/evidence-request";
+import { devlog } from "../../../../lib/devlog";
+import { connectionEvidenceError, withConnectionEvidence } from "../../../../lib/connection-evidence";
+import { peerEvidenceError, peerEvidenceOptions, withPeerEvidence } from "../../../../lib/peers-evidence";
 
 /**
  * POST /api/ask/rows — "go to data": the paginated transaction rows behind an
@@ -27,6 +29,7 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ ok: false, error: "Body invalid (JSON)." }, { status: 400 });
   }
+  if (body.peer !== undefined && body.connection !== undefined) return NextResponse.json({ok:false,error:"Alege o singură selecție documentată."},{status:400});
   const v = validateSpec(body.spec);
   if ("error" in v) return NextResponse.json({ ok: false, error: v.error }, { status: 400 });
   const page = Number.isFinite(Number(body.page)) ? Math.max(0, Math.floor(Number(body.page))) : 0;
@@ -37,13 +40,18 @@ export async function POST(req: Request) {
 
   const sql = db();
   try {
-    const grounding = await ground(sql, v.filters);
-    const result = await runRows(sql, v, grounding, page, opts);
+    const result = body.peer !== undefined
+      ? await withPeerEvidence(sql, body.peer, async (q,bound)=>runRows(q,bound.spec,bound.grounding,page,peerEvidenceOptions(bound,opts)))
+      : body.connection !== undefined
+      ? await withConnectionEvidence(sql, body.connection, async (q, bound) => runRows(q, bound.spec, bound.grounding, page, opts))
+      : await runRows(sql, v, await ground(sql, v.filters), page, opts);
     if ("error" in result) {
       return NextResponse.json({ ok: false, error: result.error }, { status: 200 });
     }
     return NextResponse.json({ ok: true, ...result }, { headers: { "cache-control": "no-store" } });
   } catch (e) {
+    const connectionError = (body.peer !== undefined ? peerEvidenceError(e) : null) ?? connectionEvidenceError(e);
+    if (connectionError) return NextResponse.json({ ok: false, error: connectionError.error }, { status: connectionError.status });
     const msg = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: msg.includes("statement timeout")
       ? "Lista completă a depășit 20 de secunde. Restrânge întrebarea la o instituție, un județ sau o perioadă și încearcă din nou."

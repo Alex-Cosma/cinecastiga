@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { formatRon, formatInt, cleanName } from "@/lib/format";
 import { encodeSpec } from "@/lib/ask/permalink";
 import { useTip } from "../../intreaba/blocks";
 import type { Partner } from "@/lib/marts";
+import { useEntityTable } from "./useEntityTable";
 
 /**
  * "Principalele autorități / Principalii furnizori" — paginated counterparty
@@ -52,24 +53,9 @@ export default function PartnersTable({
   isAuth: boolean;
 }) {
   const [page, setPage] = useState(1);
-  const [data, setData] = useState<Resp | null>(null);
-  const [loading, setLoading] = useState(true);
   const tip = useTip();
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const r = await fetch(`/api/entity-partners?id=${entityId}&rol=${role}&page=${page}`);
-      setData((await r.json()) as Resp);
-    } catch (e) {
-      setData({ ok: false, error: String(e) });
-    } finally {
-      setLoading(false);
-    }
-  }, [entityId, role, page]);
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const p = new URLSearchParams({ id: entityId, rol: role, page: String(page) });
+  const { data, loading, error, retry } = useEntityTable<Resp>(`/api/entity-partners?${p.toString()}`);
 
   const total = data?.total ?? 0;
   const pages = Math.max(1, Math.ceil(total / 10));
@@ -77,14 +63,12 @@ export default function PartnersTable({
   return (
     <div>
       {tip.el}
-      <p className="hint">
-        {formatInt(total)} parteneri · ambele canale (directe + contracte) · fiecare rând se
-        deschide în căutare cu filtrele puse.
-        {loading && data && <span className="tx-upd"> se actualizează…</span>}
+      <p><Link href={`/entitati/${entityId}/legaturi?rol=${role}`}>Explorează legăturile și partenerii comuni →</Link></p>
+      <p className="hint" role="status">
+        {loading ? "Se încarcă partenerii…" : error ? "Partenerii nu au putut fi încărcați." : <>{formatInt(total)} parteneri · ambele canale (directe + contracte) · partenerii identificați se deschid în căutare cu filtrele puse.</>}
       </p>
-      <div className={`bars${loading && data ? " tx-loading" : ""}`}>
-        {!data &&
-          loading &&
+      <div className="bars" aria-busy={loading}>
+        {loading &&
           Array.from({ length: 10 }, (_, i) => (
             <div className="bar-row tx-ghost" key={`g-${i}`}>
               <div className="bar-label">
@@ -96,11 +80,12 @@ export default function PartnersTable({
               </div>
             </div>
           ))}
-        {!loading && data?.ok === false && <p className="county">{data.error}</p>}
-        {data?.rows?.map((p) => (
+        {error && <p className="county">{error} <button type="button" onClick={retry}>Reîncearcă</button></p>}
+        {!loading && !error && !data?.rows?.length && <p className="county">Niciun partener înregistrat.</p>}
+        {!loading && data?.rows?.map((p) => (
           <div className="bar-row" key={p.partnerId}>
             <div className="bar-label" {...tip.bindClip(cleanName(p.partnerName))}>
-              <Link href={`/entitati/${p.partnerId}`}>{cleanName(p.partnerName)}</Link>
+              {p.partnerId !== "0" ? <Link href={`/entitati/${p.partnerId}`}>{p.partnerName ? cleanName(p.partnerName) : `Entitate #${p.partnerId}`}</Link> : <span>Partener neidentificat</span>}
             </div>
             <div className="bar-track">
               <div className="bar-fill" style={{ width: `${Math.min(100, p.pct * 100)}%` }} />
@@ -130,13 +115,13 @@ export default function PartnersTable({
       </div>
       {pages > 1 && (
         <div className="pager">
-          <button type="button" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+          <button type="button" disabled={loading || page <= 1} onClick={() => setPage(page - 1)}>
             ← Anterior
           </button>
           <span className="note">
             Pagina {page} din {formatInt(pages)}
           </span>
-          <button type="button" disabled={page >= pages} onClick={() => setPage(page + 1)}>
+          <button type="button" disabled={loading || page >= pages} onClick={() => setPage(page + 1)}>
             Următor →
           </button>
         </div>

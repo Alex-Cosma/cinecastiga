@@ -24,6 +24,14 @@ export function formatInt(v: number | string | null | undefined): string {
   return Number.isFinite(n) ? int.format(n) : "—";
 }
 
+/** Group an exact database decimal without converting to Number or rounding. */
+export function formatExactDecimal(value: string | null | undefined): string {
+  if (value == null || !/^-?\d+(?:\.\d+)?$/.test(value)) return "—";
+  const [whole, fraction] = value.split(".");
+  const grouped = whole!.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return fraction === undefined ? grouped : `${grouped},${fraction}`;
+}
+
 /**
  * Strip a leading CUI token some imported entity names carry (e.g.
  * "9813902 COSTALEX CONSTRUCT" → "COSTALEX CONSTRUCT"). Display-only cleanup

@@ -20,8 +20,8 @@ const globalDb = globalThis as unknown as { __seapSql?: DbSql };
 
 /** The discovery links use Ask's positive-value transaction population.
  * These marts apply the same accepted-DA/2-million ceiling and allocate
- * consortium contracts across their suppliers. Legacy award-notice and
- * entity-profile aggregates intentionally retain their existing definitions.
+ * consortium contracts across their suppliers. Entity profiles and
+ * partner totals use that same population. Counts here are allocation rows.
  */
 export async function getDiscoverySummary(database?: DbSql): Promise<DiscoverySummary> {
   const sql = database ?? (globalDb.__seapSql ??= createDb().sql);

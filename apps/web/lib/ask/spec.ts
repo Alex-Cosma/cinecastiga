@@ -1,3 +1,5 @@
+import { validatePopulation, unsupportedPopulationView, type MinimumRecords, type QueryPopulation } from "./population";
+
 /**
  * The closed query-spec vocabulary for the "Întreabă" engine. The LLM never
  * writes SQL — it emits this spec, which is validated here and compiled by
@@ -128,6 +130,10 @@ export interface AskSpec {
   /** entity_card: superlative axis (risk = CRI, value = spend). */
   rankBy?: RankBy;
   filters: AskFilters;
+  /** Explicit transaction conditions, shared by every compatible view and source export. */
+  population?: QueryPopulation;
+  comparisonMode?: "transactions" | "profiles";
+  minimumRecords?: MinimumRecords;
 }
 
 export const MAX_TOP_N = 50;
@@ -239,6 +245,19 @@ export function validateSpec(raw: unknown): AskSpec | SpecError {
   if (typeof raw !== "object" || raw === null)
     return { error: "spec must be an object" };
   const o = raw as Record<string, unknown>;
+  if (Object.keys(o).some(key => !["block", "dataset", "dim", "measure", "topN", "rankBy", "filters", "population", "comparisonMode", "minimumRecords"].includes(key)))
+    return { error: "Câmp necunoscut în întrebare; condiția nu a fost ignorată." };
+  const population = o["population"] === undefined ? undefined : validatePopulation(o["population"]);
+  if (population && "error" in population) return population;
+  if (o["comparisonMode"] !== undefined && o["comparisonMode"] !== "transactions" && o["comparisonMode"] !== "profiles") return { error:"Alege comparația de achiziții sau de profiluri istorice." };
+  let minimumRecords: MinimumRecords | undefined;
+  if (o["minimumRecords"] !== undefined) {
+    const m = o["minimumRecords"] as Record<string, unknown> | null;
+    if (!m || typeof m !== "object" || Array.isArray(m) || Object.keys(m).some(k => !["role", "count"].includes(k))
+      || (m.role !== "authority" && m.role !== "supplier") || !Number.isSafeInteger(m.count) || Number(m.count) < 1 || Number(m.count) > 1000000)
+      return { error:"Alege instituții sau firme și un minimum întreg între 1 și 1.000.000 de înregistrări." };
+    minimumRecords = { role:m.role, count:Number(m.count) };
+  }
 
   const block = o["block"];
   if (!BLOCKS.includes(block as Block))
@@ -287,8 +306,19 @@ export function validateSpec(raw: unknown): AskSpec | SpecError {
   }
 
   const fRaw = (o["filters"] ?? {}) as Record<string, unknown>;
-  if (typeof fRaw !== "object" || fRaw === null)
+  if (typeof fRaw !== "object" || fRaw === null || Array.isArray(fRaw))
     return { error: "filters must be an object" };
+  const stringFields = ["cpvTerm", "county", "authorityName", "supplierName", "compareWith", "uatName", "adminName", "adminPersonKey"];
+  const numberBounds:Record<string, [number, number]> = { authorityId:[1,Number.MAX_SAFE_INTEGER], supplierId:[1,Number.MAX_SAFE_INTEGER], compareWithId:[1,Number.MAX_SAFE_INTEGER], uatSiruta:[1,Number.MAX_SAFE_INTEGER], monthFrom:[1,12], monthTo:[1,12], yearFrom:[2000,2100], yearTo:[2000,2100], minEmployees:[0,1000000], maxEmployees:[0,1000000] };
+  for (const [key, value] of Object.entries(fRaw)) {
+    if (![...stringFields, ...Object.keys(numberBounds), "singleBidder", "authorityKind"].includes(key)) return { error:`Filtru necunoscut: ${key}. Condiția nu a fost ignorată.` };
+    if (value === undefined || value === null || value === "") continue;
+    if (stringFields.includes(key) && (typeof value !== "string" || value.length > (key === "adminPersonKey" ? 300 : 200))) return { error:`Valoare invalidă pentru ${key}.` };
+    const bounds = numberBounds[key];
+    if (bounds && (!Number.isSafeInteger(Number(value)) || Number(value) < bounds[0] || Number(value) > bounds[1])) return { error:`Limită sau identificator invalid: ${key}.` };
+    if (key === "authorityKind" && !AUTHORITY_KINDS.includes(value as AuthorityKind)) return { error:"Tip de instituție necunoscut." };
+    if (key === "singleBidder" && typeof value !== "boolean") return { error:"Filtrul de competiție trebuie să fie adevărat sau fals." };
+  }
   const filters: AskFilters = {};
   const str = (k: keyof AskFilters & string): string | undefined => {
     const v = fRaw[k];
@@ -363,14 +393,10 @@ export function validateSpec(raw: unknown): AskSpec | SpecError {
     filters.maxEmployees !== undefined &&
     filters.minEmployees > filters.maxEmployees
   ) {
-    const t = filters.minEmployees;
-    filters.minEmployees = filters.maxEmployees;
-    filters.maxEmployees = t;
+    return { error:"Numărul minim de angajați depășește maximul; corectează limitele." };
   }
   if (filters.yearFrom && filters.yearTo && filters.yearFrom > filters.yearTo) {
-    const t = filters.yearFrom;
-    filters.yearFrom = filters.yearTo;
-    filters.yearTo = t;
+    return { error:"Anul de început depășește anul de sfârșit; corectează perioada." };
   }
 
   // per-capita only makes sense ranked/scoped over authorities
@@ -411,13 +437,8 @@ export function validateSpec(raw: unknown): AskSpec | SpecError {
       error: "block=fact_check requires both authorityName and supplierName",
     };
   }
-  // The map IS a by-county breakdown — a county/locality filter is contradictory.
-  if (block === "map" && (filters.county || filters.uatSiruta)) {
-    return {
-      error:
-        "Harta e deja o împărțire pe județe — scoate județul/localitatea sau alege alt tip de răspuns.",
-    };
-  }
+  if (block === "trend" && (filters.monthFrom !== undefined || filters.monthTo !== undefined))
+    return { error: "Schimbarea compară doi ani întregi. Elimină explicit lunile sau alege evoluția în timp; filtrele nu au fost eliminate." };
   // Degenerate rankings: the row dimension pinned to a single value by a filter
   // would produce a one-row "clasament". (dim defaults to authority downstream.)
   if (block === "table" || block === "trend" || block === "scatter") {
@@ -454,5 +475,10 @@ export function validateSpec(raw: unknown): AskSpec | SpecError {
   if (dim) spec.dim = dim;
   if (topN) spec.topN = topN;
   if (rankBy) spec.rankBy = rankBy;
+  if (population) spec.population = population;
+  if (minimumRecords) spec.minimumRecords = minimumRecords;
+  if (o["comparisonMode"] !== undefined) spec.comparisonMode = o["comparisonMode"] as "transactions" | "profiles";
+  const unsupported = unsupportedPopulationView(spec);
+  if (unsupported) return { error: unsupported };
   return spec;
 }

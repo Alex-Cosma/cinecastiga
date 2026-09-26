@@ -20,6 +20,7 @@
     "reconcile": "tsx src/scripts/reconcile.ts",
     "merge-exact-name": "tsx src/scripts/merge-exact-name.ts",
     "marts": "tsx src/scripts/marts.ts",
+    "coverage": "tsx src/scripts/coverage.ts",
     "ted-mart": "tsx src/scripts/ted-mart.ts",
     "import-old": "tsx src/scripts/import-old.ts",
     "index-search": "tsx src/scripts/index-search.ts",
@@ -29,7 +30,9 @@
     "seed-thresholds": "tsx src/scripts/seed-thresholds.ts",
     "flags": "tsx src/scripts/flags.ts",
     "radiografie": "tsx src/scripts/radiografie.ts",
-    "reset-derived": "tsx src/scripts/reset-derived.ts"
+    "reset-derived": "tsx src/scripts/reset-derived.ts",
+    "replay-ted": "tsx src/scripts/replay-ted.ts",
+    "monitoring-refresh": "tsx src/scripts/monitoring-refresh.ts"
   },
   "dependencies": {
     "@seap/db": "workspace:*",

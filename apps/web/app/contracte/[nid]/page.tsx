@@ -1,4 +1,7 @@
 import Link from "next/link";
+import ContractFiles from "@/components/documents/ContractFiles";
+import { getContractFiles } from "@/lib/documents/store";
+import { sessionUserId } from "@/lib/session";
 import { notFound } from "next/navigation";
 import { getContractDetail } from "@/lib/marts";
 import { formatRon, formatRonFull, formatInt, cleanName } from "@/lib/format";
@@ -56,7 +59,8 @@ export default async function ContractPage({
   const c = await getContractDetail(nid);
   if (!c) notFound();
 
-  const headline = isGenericTitle(c.title) ? (c.cpvName ?? c.title ?? "Contract") : c.title!;
+  const [files, userId] = await Promise.all([getContractFiles(nid), sessionUserId()]);
+  const headline = isGenericTitle(c.title) ? (files.notice?.title ?? c.cpvName ?? c.title ?? "Contract") : c.title!;
   const ted = c.tedNoticeNo ? tedPubnum(c.tedNoticeNo) : null;
   const multiWinner = c.winners.length > 1 || c.nWinners > 1;
 
@@ -70,7 +74,7 @@ export default async function ContractPage({
           {c.procedureType && <span className="badge plain">{c.procedureType}</span>}
           {c.isSingleBidder === true && <span className="flag-tag">un singur ofertant</span>}
           {c.contractNo && <span className="note">nr. {c.contractNo}</span>}{" "}
-          {c.contractDate && <span className="note">semnat {c.contractDate.slice(0, 10)}</span>}
+          {c.contractDate && <span className="note">semnat {new Date(c.contractDate).toLocaleDateString("ro-RO", {timeZone:"Europe/Bucharest"})}</span>}
         </div>
         {!isGenericTitle(c.title) && c.cpvName && (
           <p className="note">
@@ -101,6 +105,7 @@ export default async function ContractPage({
         </div>
       </div>
 
+      <nav className="ext-links" aria-label="Secțiunile contractului"><a href="#fisiere">Fișiere și căutare în documente ↓</a></nav>
       <div className="stat-grid">
         <div className="stat">
           <div className="n">{c.contractValue != null ? formatRon(c.contractValue) : "—"}</div>
@@ -194,6 +199,8 @@ export default async function ContractPage({
         )}
       </section>
 
+      <ContractFiles nid={nid} initial={files} authenticated={!!userId} />
+
       {c.flags.length > 0 && (
         <section className="section">
           <h2>Semnale pe această atribuire</h2>
@@ -226,9 +233,7 @@ export default async function ContractPage({
         </p>
       )}
       <p className="note">
-        Date din anunțul de atribuire SICAP{c.noticeNo ? ` ${c.noticeNo}` : ""}. Loturile,
-        criteriile de atribuire și documentele nu sunt încă preluate — pentru ele, folosește
-        deocamdată linkul oficial de mai sus.
+        Date din anunțul de atribuire SICAP{c.noticeNo ? ` ${c.noticeNo}` : ""}. Documentele disponibile și starea preluării lor sunt afișate în secțiunea Fișiere. Pentru detalii nepreluate, consultă anunțul oficial.
       </p>
     </>
   );

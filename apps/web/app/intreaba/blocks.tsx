@@ -93,7 +93,7 @@ function flagTitle(code: string): string {
 
 /* ── compare ──────────────────────────────────────────────────────────── */
 
-export function CompareBlock({ entities }: { entities: CompareEntity[] }) {
+export function CompareBlock({ entities, historical = true }: { entities: CompareEntity[]; historical?: boolean }) {
   const evidence = useAnswerEvidence();
   return (
     <div className="ask-cmp">
@@ -109,11 +109,11 @@ export function CompareBlock({ entities }: { entities: CompareEntity[] }) {
               {e.role === "authority" ? "autoritate" : "furnizor"}
             </div>
             <div className="row">
-              <span className="k">Valoare în profil</span>
+              <span className="k">{historical ? "Valoare în profil" : "Valoare în selecție"}</span>
               <span className="num">{formatRon(e.value)}</span>
             </div>
             <div className="row">
-              <span className="k">Achiziții</span>
+              <span className="k">{historical ? "Achiziții" : "Înregistrări în selecție"}</span>
               <span className="num">{formatInt(e.count)}</span>
             </div>
             {e.population !== null && e.population > 0 && (
@@ -124,18 +124,18 @@ export function CompareBlock({ entities }: { entities: CompareEntity[] }) {
                 </span>
               </div>
             )}
-            <div className="row">
+            {historical && <div className="row">
               <span className="k">Indice risc</span>
               <span
                 className={e.cri !== null && e.cri >= 0.3 ? "num hi" : "num"}
               >
                 {e.cri !== null ? `${e.cri.toFixed(2)} · ${band!.label}` : "—"}
               </span>
-            </div>
-            <div className="row">
+            </div>}
+            {historical && <div className="row">
               <span className="k">Semnale</span>
               <span className={e.nFlags > 0 ? "hi" : ""}>{e.nFlags}</span>
-            </div>
+            </div>}
             {evidence && (
               <button
                 type="button"
@@ -147,14 +147,14 @@ export function CompareBlock({ entities }: { entities: CompareEntity[] }) {
                       entityIds: [e.entityId],
                       role: e.role === "supplier" ? "supplier" : "authority",
                     },
-                    `${cleanName(e.name)} · înregistrările profilului`,
+                    `${cleanName(e.name)} · ${historical ? "înregistrările profilului" : "sursele selecției"}`,
                   )
                 }
               >
                 Vezi cele {formatInt(e.count)} înregistrări →
               </button>
             )}
-            {e.flags.length > 0 && (
+            {historical && e.flags.length > 0 && (
               <div className="ask-fchips">
                 {e.flags.map((f) => (
                   <span
@@ -171,8 +171,7 @@ export function CompareBlock({ entities }: { entities: CompareEntity[] }) {
         );
       })}
       <p className="ask-methnote">
-        Indicele de risc (CRI) e un semnal statistic, nu o dovadă de neregulă —{" "}
-        <Link href="/metodologie">cum se calculează</Link>.
+        {historical ? <>Indicele de risc (CRI) e un semnal statistic, nu o dovadă de neregulă — <Link href="/metodologie">cum se calculează</Link>.</> : <>Ambele entități sunt comparate folosind aceeași perioadă și aceleași condiții. Deschide înregistrările fiecăreia pentru valorile exacte și sursele SEAP.</>}
       </p>
     </div>
   );
@@ -339,19 +338,12 @@ export function BreakdownBlock({
   // CPV level down; at a full 8-digit code, open the transactions instead.
   const canDeepen = (code: string): boolean => code.length < 8;
   const sliceUrl = (code: string): string => {
-    const sp = (spec ?? {}) as {
-      dataset?: string;
-      filters?: Record<string, unknown>;
-    };
-    const deeper = canDeepen(code);
-    const next: Record<string, unknown> = {
-      block: deeper ? "breakdown" : "stat",
-      measure: "value",
-      filters: { ...(sp.filters ?? {}), cpvTerm: code },
-    };
-    if (sp.dataset) next["dataset"] = sp.dataset;
-    return `/?spec=${encodeURIComponent(encodeSpec(next))}${deeper ? "" : "&drill=1"}`;
+    const sp = (spec ?? {}) as { filters?:Record<string, unknown> };
+    if (!canDeepen(code)) return `/intreaba?spec=${encodeURIComponent(encodeSpec(spec))}&drill=1&evidence=${encodeURIComponent(JSON.stringify({ cpvPrefixes:[code] }))}`;
+    const next = { ...sp, block:"breakdown", measure:"value", filters:{ ...(sp.filters ?? {}), cpvTerm:code } };
+    return `/intreaba?spec=${encodeURIComponent(encodeSpec(next))}`;
   };
+
   const total = slices.reduce((a, s) => a + s.value, 0) + other.value;
   if (total <= 0) return <p className="ask-empty">Niciun rezultat.</p>;
   const items = [
@@ -951,18 +943,12 @@ export function SankeyBlock({
   // click-throughs: node/ribbon -> search drill with exactly those rows.
   // Partner gets the opposite role of the focal entity; ribbons add the CPV.
   const drillUrl = (extra: Record<string, unknown>): string => {
-    const sp = (spec ?? {}) as {
-      dataset?: string;
-      filters?: Record<string, unknown>;
-    };
-    const next: Record<string, unknown> = {
-      block: "stat",
-      measure: "value",
-      filters: { ...(sp.filters ?? {}), ...extra },
-    };
-    if (sp.dataset) next["dataset"] = sp.dataset;
-    return `/?spec=${encodeURIComponent(encodeSpec(next))}&drill=1`;
+    const selected:EvidenceScope = {};
+    if (extra.supplierId || extra.authorityId) { selected.role = extra.supplierId ? "supplier" : "authority"; selected.entityIds = [String(extra.supplierId ?? extra.authorityId)]; }
+    if (extra.cpvTerm) selected.cpvPrefixes = [String(extra.cpvTerm)];
+    return `/intreaba?spec=${encodeURIComponent(encodeSpec(spec))}&drill=1&evidence=${encodeURIComponent(JSON.stringify(selected))}`;
   };
+
   const partnerExtra = (id: string, name: string): Record<string, unknown> =>
     focal.role === "authority"
       ? { supplierName: cleanName(name), supplierId: Number(id) }

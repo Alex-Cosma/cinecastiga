@@ -1,3 +1,4 @@
+import { runMonitoredCli } from "../monitoring/cli.js";
 import { createDb } from "@seap/db";
 
 /**
@@ -14,27 +15,27 @@ const KEEP_CORE = new Set(["cpv_codes", "unit_map", "sicap_cpv_ids", "risk_thres
 
 async function main(): Promise<void> {
   const { sql } = createDb();
+  await runMonitoredCli(sql, "reset-derived", async () => {
 
-  const core = (await sql`
-    select table_name from information_schema.tables
-    where table_schema = 'core' and table_type = 'BASE TABLE'
-  `) as unknown as { table_name: string }[];
-  const marts = (await sql`
-    select table_name from information_schema.tables
-    where table_schema = 'marts' and table_type = 'BASE TABLE'
-  `) as unknown as { table_name: string }[];
+    const core = (await sql`
+      select table_name from information_schema.tables
+      where table_schema = 'core' and table_type = 'BASE TABLE'
+    `) as unknown as { table_name: string }[];
+    const marts = (await sql`
+      select table_name from information_schema.tables
+      where table_schema = 'marts' and table_type = 'BASE TABLE'
+    `) as unknown as { table_name: string }[];
 
-  const targets = [
-    ...core.filter((t) => !KEEP_CORE.has(t.table_name)).map((t) => `core.${t.table_name}`),
-    ...marts.map((t) => `marts.${t.table_name}`),
-  ];
+    const targets = [
+      ...core.filter((t) => !KEEP_CORE.has(t.table_name)).map((t) => `core.${t.table_name}`),
+      ...marts.map((t) => `marts.${t.table_name}`),
+    ];
 
-  console.log(`kept (core reference): ${[...KEEP_CORE].join(", ")}`);
-  console.log(`truncating ${targets.length} tables:\n  ${targets.join("\n  ")}`);
-  await sql.unsafe(`truncate ${targets.join(", ")} cascade`);
-  console.log("done — core + marts cleared, raw + reference kept.");
-
-  await sql.end();
+    console.log(`kept (core reference): ${[...KEEP_CORE].join(", ")}`);
+    console.log(`truncating ${targets.length} tables:\n  ${targets.join("\n  ")}`);
+    await sql.unsafe(`truncate ${targets.join(", ")} cascade`);
+    console.log("done — core + marts cleared, raw + reference kept.");
+  });
 }
 
 main().catch((err) => {

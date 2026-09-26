@@ -3,10 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { AskSpec } from "@/lib/ask/spec";
+import type { PeerEvidenceSelection } from "@/lib/peers-evidence-shared";
+import type { ConnectionEvidenceSelection } from "@/lib/connection-evidence-shared";
 import type { DrillResult, DrillSort } from "@/lib/ask/compile";
-import { EVIDENCE_CSV_LIMIT, evidenceLinks, formatEvidenceAmount, PROFILE_BLOCKS, type EvidenceScope } from "@/lib/ask/evidence";
+import { EVIDENCE_CSV_LIMIT, evidenceLinks, formatEvidenceAmount, type EvidenceScope, type EvidenceFilters } from "@/lib/ask/evidence";
+import { isHistoricalProfile } from "@/lib/ask/population";
 import { FLAG_META } from "@/lib/flags";
 import ClipButton from "@/components/ClipButton";
+import FollowButton from "@/components/FollowButton";
 import { encodeSpec } from "@/lib/ask/permalink";
 import "./evidence-drawer.css";
 
@@ -16,13 +20,16 @@ export interface EvidenceDrawerProps {
   scope?: EvidenceScope | undefined;
   onClose: () => void;
   onSave?: (() => void) | undefined;
+  initialFilters?: EvidenceFilters | undefined;
+  connection?: ConnectionEvidenceSelection | undefined;
+  peer?: PeerEvidenceSelection | undefined;
 }
 
 type Response = ({ ok: true } & DrillResult) | { ok: false; error: string };
 const count = (n: number) => n.toLocaleString("ro-RO");
 const date = (value: string | null) => value ? value.split("-").reverse().join(".") : "Dată neprecizată";
 
-export default function EvidenceDrawer({ spec, title, scope, onClose, onSave }: EvidenceDrawerProps) {
+export default function EvidenceDrawer({ spec, title, scope, onClose, onSave, initialFilters, connection, peer }: EvidenceDrawerProps) {
   const dialog = useRef<HTMLDialogElement>(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
@@ -30,17 +37,17 @@ export default function EvidenceDrawer({ spec, title, scope, onClose, onSave }: 
   const [loadedKey, setLoadedKey] = useState("");
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
-  const [search, setSearch] = useState("");
-  const [state, setState] = useState("");
-  const [stream, setStream] = useState("");
-  const [sort, setSort] = useState<DrillSort>(() => !PROFILE_BLOCKS.includes(spec.block) && !spec.filters.authorityId && !spec.filters.authorityName && !spec.filters.supplierId && !spec.filters.supplierName ? "source" : "value");
+  const [search, setSearch] = useState(initialFilters?.search ?? "");
+  const [state, setState] = useState(initialFilters?.state ?? "");
+  const [stream, setStream] = useState<string>(initialFilters?.stream ?? "");
+  const [sort, setSort] = useState<DrillSort>(() => !isHistoricalProfile(spec) && !spec.filters.authorityId && !spec.filters.authorityName && !spec.filters.supplierId && !spec.filters.supplierName ? "source" : "value");
   const [dir, setDir] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(0);
   const [retry, setRetry] = useState(0);
   const [exporting, setExporting] = useState<"all" | "filtered" | null>(null);
   const [exportMessage, setExportMessage] = useState("");
   const exportController = useRef<AbortController | null>(null);
-  const queryKey = JSON.stringify({ spec, scope });
+  const queryKey = JSON.stringify({ spec, scope, connection, peer });
   const result = loadedKey === queryKey ? responseData : null;
   const activeQuery = useRef(queryKey);
   activeQuery.current = queryKey;
@@ -63,7 +70,7 @@ export default function EvidenceDrawer({ spec, title, scope, onClose, onSave }: 
   }, []);
 
   useEffect(() => {
-    setResult(null); setSearch(""); setState(""); setStream(""); setPage(0); setExportMessage("");
+    setResult(null); setSearch(initialFilters?.search ?? ""); setState(initialFilters?.state ?? ""); setStream(initialFilters?.stream ?? ""); setPage(0); setExportMessage("");
     exportController.current?.abort(); setExporting(null);
   }, [queryKey]);
 
@@ -139,6 +146,7 @@ export default function EvidenceDrawer({ spec, title, scope, onClose, onSave }: 
     </header>
     <div className="ev-content">
       <p className="ev-question">{title}</p>
+      {peer?.selection.kind === "comparison" && <p className="ev-exact-total">La salvare se păstrează grupul complet; filtrele listei nu schimbă comparația salvată.</p>}
       <div className="ev-source-summary" aria-live="polite">
         <div><span>Înregistrări în această selecție</span><strong>{result ? count(result.sourceTotal) : "—"}</strong></div>
         <div><span>{result?.profile ? "Valoare înregistrată în profil" : "Valoare înregistrată"}</span><strong className="ev-money">{result ? formatEvidenceAmount(result.sourceValue) : "—"}</strong></div>
@@ -188,7 +196,7 @@ export default function EvidenceDrawer({ spec, title, scope, onClose, onSave }: 
           <tbody>{result.rows.map((r) => {
             const links = evidenceLinks(r);
             return <tr key={`${r.src}:${r.refId}:${r.supplierId}`}>
-              <td data-label="Înregistrare"><strong>{r.daCode ?? `#${r.refId ?? "?"}`}</strong><span className="ev-muted">{date(r.date)} · {r.src === "da" ? "Achiziție directă" : "Contract"}</span><span>{r.cpvName ?? "Categorie CPV neprecizată"}</span><small className="ev-muted">{r.cpvCode ? `CPV ${r.cpvCode}` : ""}</small></td>
+              <td data-label="Înregistrare">{r.refId ? <Link className="ev-contract-title" href={r.src === "contracts" ? `/contracte/i/${r.refId}` : `/achizitii/${r.refId}`} target="_blank" rel="noopener noreferrer">{r.title || r.cpvName || r.daCode || `Înregistrarea ${r.refId}`} ↗</Link> : null}<strong>{r.daCode ?? `#${r.refId ?? "?"}`}</strong><span className="ev-muted">{date(r.date)} · {r.src === "da" ? "Achiziție directă" : "Contract"}</span><span>{r.cpvName ?? "Categorie CPV neprecizată"}</span><small className="ev-muted">{r.cpvCode ? `CPV ${r.cpvCode}` : ""}</small></td>
               <td data-label="Instituție și furnizor"><div className="ev-party">{r.authorityId ? <Link href={`/entitati/${r.authorityId}`} target="_blank" rel="noopener noreferrer">{r.authority ?? `Instituție #${r.authorityId}`}</Link> : r.authority ?? "Instituție neprecizată"}</div><span className="ev-party-arrow" aria-hidden="true">↓</span><div className="ev-party">{r.supplierId ? <Link href={`/entitati/${r.supplierId}`} target="_blank" rel="noopener noreferrer">{r.supplier ?? `Furnizor #${r.supplierId}`}</Link> : r.supplier ?? "Furnizor neprecizat"}</div><small className="ev-muted">{r.county ?? "Județ neprecizat"}</small></td>
               <td data-label="Valoare"><strong className="ev-row-value">{formatEvidenceAmount(r.valueExact)}</strong>{r.valueSuspect && <span className="ev-warning">Valoare posibil introdusă eronat</span>}{r.nWinners && r.nWinners > 1 ? <span className="ev-muted">Cotă 1/{r.nWinners} din contract</span> : null}
                 <details className="ev-record-details"><summary>Detalii importate</summary><dl><dt>ID SEAP</dt><dd>{r.src === "da" ? r.refId : r.caNoticeId ?? "Lipsește"}</dd><dt>ID rând</dt><dd>{r.refId}</dd><dt>Valoare exactă</dt><dd>{r.valueExact} RON</dd>{r.contractValueFull !== null && <><dt>Contract integral</dt><dd>{formatEvidenceAmount(r.contractValueFull)}</dd><dt>Câștigători</dt><dd>{r.nWinners}</dd></>}{r.estimatedValueRon !== null && <><dt>Valoare estimată</dt><dd>{r.estimatedValueRon.toLocaleString("ro-RO")} lei</dd></>}</dl></details>
@@ -202,12 +210,14 @@ export default function EvidenceDrawer({ spec, title, scope, onClose, onSave }: 
       {result && result.sourceTotal > EVIDENCE_CSV_LIMIT && <p className="ev-export-limit">Un export este limitat la 100.000 de rânduri. Dacă selecția depășește limita, fișierul și confirmarea indică explicit că exportul este parțial.</p>}
       {exportMessage && <p className="ev-export-message" role="status">{exportMessage}</p>}
     </div>
-    <footer className="ev-footer"><div><button type="button" className="ev-export-main" disabled={!result || busy || !!exporting} onClick={() => void exportCsv("all")}>{exporting === "all" ? "Se exportă…" : result && result.sourceTotal > EVIDENCE_CSV_LIMIT ? "Exportă primele 100.000 · CSV" : "Exportă toate · CSV"}</button><button type="button" disabled={!result || busy || !!exporting || !filtered} onClick={() => void exportCsv("filtered")}>{exporting === "filtered" ? "Se exportă…" : result && result.total > EVIDENCE_CSV_LIMIT ? "Lista filtrată · primele 100.000" : "Exportă lista filtrată"}</button></div>{onSave ? <button type="button" className="ev-save" onClick={onSave}>+ Salvează în Anchete</button> : result && <ClipButton key={queryKey} kind="query" spec={spec} label={title} snapshot={{
+    <footer className="ev-footer"><div>{result && !busy && !connection && !peer && <FollowButton spec={spec} options={{ ...(scope ? { scope } : {}), search, state, ...(stream === "da" || stream === "contracts" ? { stream } : {}) }} title={title} label="Urmărește această selecție" />}<button type="button" className="ev-export-main" disabled={!result || busy || !!exporting} onClick={() => void exportCsv("all")}>{exporting === "all" ? "Se exportă…" : result && result.sourceTotal > EVIDENCE_CSV_LIMIT ? "Exportă primele 100.000 · CSV" : "Exportă toate · CSV"}</button><button type="button" disabled={!result || busy || !!exporting || !filtered} onClick={() => void exportCsv("filtered")}>{exporting === "filtered" ? "Se exportă…" : result && result.total > EVIDENCE_CSV_LIMIT ? "Lista filtrată · primele 100.000" : "Exportă lista filtrată"}</button></div>{onSave ? <button type="button" className="ev-save" onClick={onSave}>+ Salvează în Anchete</button> : result && !busy && <ClipButton key={JSON.stringify({ queryKey, search, state, stream })} kind="query" spec={spec} label={title} snapshot={{
       title, headline: `${count(result.sourceTotal)} înregistrări · ${formatEvidenceAmount(result.sourceValue)}`,
-      pills: [], evidenceScope: scope ?? null, sourceTotal: result.sourceTotal, sourceValue: result.sourceValue,
+      pills: [], evidenceScope: scope ?? null, evidenceOptions: peer?.selection.kind === "comparison" ? {} : { search, state, stream }, sourceTotal: result.sourceTotal, sourceValue: result.sourceValue,
       dateFrom: result.dateFrom, dateTo: result.dateTo, profile: result.profile, scopeNotes: result.scopeNotes,
       capturedAt: new Date().toISOString(), snapshotKind: "query-scope-and-totals",
-      sourceUrl: `/intreaba?spec=${encodeURIComponent(encodeSpec(spec))}&drill=1${scope ? `&evidence=${encodeURIComponent(JSON.stringify(scope))}` : ""}`,
+      ...(connection ? { connection } : {}),
+      ...(peer ? { peer } : {}),
+      sourceUrl: (connection || peer) && typeof window !== "undefined" ? window.location.pathname + window.location.search : `/intreaba?spec=${encodeURIComponent(encodeSpec(spec))}&drill=1${scope ? `&evidence=${encodeURIComponent(JSON.stringify(scope))}` : ""}&sourceFilters=${encodeURIComponent(JSON.stringify({ search, state, stream }))}`,
     }} />}</footer>
   </dialog>;
 }

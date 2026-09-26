@@ -1,0 +1,38 @@
+import {chromium} from 'playwright-core';
+import {readFile,writeFile} from 'node:fs/promises';
+import {resolve} from 'node:path';
+const base='http://localhost:3113',out=resolve('../../docs/implementation/previews/batch5-documents-live');
+const fixture=JSON.parse(await readFile('/tmp/seap-documents-browser.json','utf8'));
+const browser=await chromium.connectOverCDP('http://127.0.0.1:9237'),context=await browser.newContext({viewport:{width:1440,height:1000},colorScheme:'light'});
+try{
+ await context.addCookies([{...fixture.cookie,domain:'localhost',path:'/'}]);
+ await context.route('**/*',route=>route.request().url().startsWith(base)?route.continue():route.abort());
+ const page=await context.newPage();await page.bringToFront();await page.goto(`${base}/contracte/107063311#fisiere`,{waitUntil:'networkidle'});
+ const ready=page.locator('.df-file').filter({has:page.getByRole('heading',{name:'decizie CNSN_semnat.pdf.p7s',exact:true})});
+ const download=page.getByRole('button',{name:'Descarcă și procesează',exact:true}).first();
+ const open=ready.getByRole('button',{name:'Deschide documentul',exact:true});
+ if(await download.locator('svg').count()!==1||await open.locator('svg').count()!==1)throw Error('Missing action icons');
+ await ready.locator('.df-downloaded').getByText('Descărcat',{exact:true}).waitFor();
+ const color=async(el:typeof open)=>el.evaluate(e=>getComputedStyle(e).backgroundColor);
+ if(await color(download)===await color(open))throw Error('Action states share background');
+ await open.focus();if(!await open.evaluate(e=>e.matches(':focus-visible')))throw Error('Missing keyboard focus');
+ await page.locator('.df-list').screenshot({path:resolve(out,'actions-desktop.png')});
+ await open.press('Enter');await page.locator('.df-reader').waitFor();await page.getByRole('button',{name:'Închide documentul',exact:true}).click();
+ await page.setViewportSize({width:390,height:844});await ready.screenshot({path:resolve(out,'actions-mobile.png')});
+ if(await page.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth))throw Error('Mobile overflow');
+ await page.evaluate(()=>document.documentElement.dataset.theme='dark');await ready.screenshot({path:resolve(out,'actions-dark.png')});
+ if(await color(download)===await color(open))throw Error('Dark action states share background');
+ await page.evaluate(()=>document.documentElement.dataset.theme='light');
+ const response=await context.request.get(`${base}/api/contracte/107063311/files`),data=await response.json();
+ const file=data.files.find((f:any)=>f.filename==='decizie CNSN_semnat.pdf.p7s');
+ file.pdfHash=null;file.processedAt=null;file.job={id:'browser-action-fixture',status:'running',stage:'ocr',pagesDone:6,pagesTotal:18,error:null,position:0};
+ await page.route('**/api/contracte/107063311/files',route=>route.fulfill({json:data}));
+ await page.evaluate(()=>window.dispatchEvent(new Event('focus')));await ready.getByText('6 din 18 pagini citite',{exact:true}).waitFor();
+ await ready.locator('.df-downloaded').waitFor();await ready.getByRole('link',{name:'Descarcă originalul',exact:true}).last().waitFor();
+ await ready.screenshot({path:resolve(out,'actions-processing-mobile.png')});
+ file.job={...file.job,status:'failed',stage:'failed',error:'Procesarea a fost întreruptă.'};
+ await page.evaluate(()=>window.dispatchEvent(new Event('focus')));await ready.getByRole('button',{name:'Reia procesarea',exact:true}).waitFor();
+ await ready.locator('.df-downloaded').waitFor();
+ await writeFile(resolve(out,'action-states-verification.json'),JSON.stringify({status:'passed',checks:['Download and read icons','Distinct neutral/green action colors in light and dark themes','Explicit downloaded check indicator','Keyboard activation opens reader','390px mobile has no horizontal overflow','Downloaded indicator and original remain available during processing','Retained original uses resume action after failure'],simulatedProcessingAndFailure:'browser responses only',liveSeapRequests:0},null,2));
+ console.log('Document action state checks passed; zero SEAP requests.');
+}finally{await context.close();await browser.close();}

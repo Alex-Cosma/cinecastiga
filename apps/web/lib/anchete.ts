@@ -1,11 +1,15 @@
 import { createDb, type DbSql } from "@seap/db";
+import { isWorkspaceId, withInvestigationAccess, type InvestigationAccess } from "./investigation-access";
+import { EVIDENCE_KINDS, type EvidenceKind, type CaptureSummary } from "./evidence-captures-shared";
+import { validateCaptureRequest } from "./evidence-capture-input";
+import { captureSummary, queueCapture } from "./evidence-captures";
 
 /**
  * Data access for watchdog investigations ("anchete"). Server-only.
  *
  * Clip model: reference (stable key) + snapshot (numbers as seen at clip
- * time, built HERE from marts — never trusted from the browser, except for
- * `query` clips whose snapshot is the ask response the user was looking at)
+ * time, verified by a server capture job — browser monetary values are never
+ * trusted)
  * + note (the "why") + provenance (ask spec, when applicable). The dosar
  * view recomputes live values for entity/contract/person clips and flags
  * drift against the snapshot.
@@ -16,23 +20,8 @@ function db(): DbSql {
   return g.__seapAncheteSql;
 }
 
-export type ClipKind =
-  | "entity"
-  | "contract"
-  | "notice"
-  | "person"
-  | "query"
-  | "flag"
-  | "note";
-export const CLIP_KINDS: ClipKind[] = [
-  "entity",
-  "contract",
-  "notice",
-  "person",
-  "query",
-  "flag",
-  "note",
-];
+export type ClipKind = EvidenceKind | "document_quote";
+export const CLIP_KINDS: ClipKind[] = [...EVIDENCE_KINDS];
 export type InvStatus = "activa" | "publicata" | "inchisa";
 export const INV_STATUSES: InvStatus[] = ["activa", "publicata", "inchisa"];
 
@@ -44,6 +33,7 @@ export interface InvestigationRow {
   nClips: number;
   createdAt: string;
   updatedAt: string;
+  access?: InvestigationAccess;
 }
 
 export interface ClipRow {
@@ -58,6 +48,8 @@ export interface ClipRow {
   /** present on dosar reads for kinds we recompute */
   live?: Record<string, unknown> | null;
   drift?: string[];
+  capture?: CaptureSummary | null;
+  captures?: CaptureSummary[];
 }
 
 /* ── investigations CRUD ─────────────────────────────────────────────── */
@@ -68,10 +60,11 @@ export async function listInvestigations(
   const sql = db();
   const rows = (await sql`
     select i.id, i.title, i.description, i.status,
-           i.created_at, i.updated_at,
+           i.created_at, i.updated_at, case when i.owner_user_id = ${userId} then 'owner' else m.role end role,
            (select count(*) from app.clips c where c.investigation_id = i.id) n_clips
     from app.investigations i
-    where i.owner_user_id = ${userId}
+    left join app.investigation_members m on m.investigation_id=i.id and m.user_id=${userId}
+    where i.owner_user_id = ${userId} or m.user_id is not null
     order by i.updated_at desc
   `) as unknown as {
     id: string;
@@ -81,6 +74,7 @@ export async function listInvestigations(
     created_at: string;
     updated_at: string;
     n_clips: string;
+    role: InvestigationAccess["role"];
   }[];
   return rows.map((r) => ({
     id: r.id,
@@ -90,6 +84,7 @@ export async function listInvestigations(
     nClips: Number(r.n_clips),
     createdAt: String(r.created_at),
     updatedAt: String(r.updated_at),
+    access: { role:r.role,canEdit:r.role!=="viewer",canManage:r.role==="owner" },
   }));
 }
 
@@ -107,67 +102,31 @@ export async function createInvestigation(
   return rows[0]!.id;
 }
 
-/** Returns the row only when owned by userId (authorization = ownership). */
-export async function getOwnedInvestigation(
-  userId: string,
-  id: string,
-): Promise<InvestigationRow | null> {
-  const sql = db();
-  const rows = (await sql`
-    select i.id, i.title, i.description, i.status, i.created_at, i.updated_at,
-           (select count(*) from app.clips c where c.investigation_id = i.id) n_clips
-    from app.investigations i
-    where i.id = ${id} and i.owner_user_id = ${userId}
-  `) as unknown as {
-    id: string;
-    title: string;
-    description: string | null;
-    status: string;
-    created_at: string;
-    updated_at: string;
-    n_clips: string;
-  }[];
-  const r = rows[0];
-  if (!r) return null;
-  return {
-    id: r.id,
-    title: r.title,
-    description: r.description,
-    status: r.status as InvStatus,
-    nClips: Number(r.n_clips),
-    createdAt: String(r.created_at),
-    updatedAt: String(r.updated_at),
-  };
+/** Historical name retained: readers include the owner and authorized members. */
+export async function getOwnedInvestigation(userId:string,id:string):Promise<InvestigationRow|null>{
+  return withInvestigationAccess(userId,id,"read",async(q,access)=>{
+    const [r]=await q`select i.*,(select count(*)::int from app.clips c where c.investigation_id=i.id) n_clips
+      from app.investigations i where i.id=${id}`;
+    return r?{id:String(r.id),title:r.title,description:r.description,status:r.status,nClips:r.n_clips,
+      createdAt:String(r.created_at),updatedAt:String(r.updated_at),access}:null;
+  },db());
 }
 
-export async function updateInvestigation(
-  userId: string,
-  id: string,
-  patch: { title?: string; description?: string | null; status?: InvStatus },
-): Promise<boolean> {
-  const sql = db();
-  const own = await getOwnedInvestigation(userId, id);
-  if (!own) return false;
-  await sql`
-    update app.investigations set
-      title = ${patch.title ?? own.title},
-      description = ${patch.description === undefined ? own.description : patch.description},
-      status = ${patch.status ?? own.status},
-      updated_at = now()
-    where id = ${id}
-  `;
-  return true;
+export async function updateInvestigation(userId: string, id: string,
+  patch: { title?: string; description?: string | null; status?: InvStatus }): Promise<boolean> {
+  return !!await withInvestigationAccess(userId,id,"edit",async q=>{
+    const [own]=await q`select title,description,status from app.investigations where id=${id}`;
+    if(!own)return false;
+    await q`update app.investigations set title=${patch.title??own.title},
+      description=${patch.description===undefined?own.description:patch.description},
+      status=${patch.status??own.status},updated_at=now() where id=${id}`;
+    return true;
+  },db());
 }
-
-export async function deleteInvestigation(
-  userId: string,
-  id: string,
-): Promise<boolean> {
-  const sql = db();
-  const rows = (await sql`
-    delete from app.investigations where id = ${id} and owner_user_id = ${userId} returning id
-  `) as unknown as { id: string }[];
-  return rows.length > 0;
+export async function deleteInvestigation(userId:string,id:string):Promise<boolean>{
+  return !!await withInvestigationAccess(userId,id,"manage",async q=>{
+    await q`delete from app.investigations where id=${id}`;return true;
+  },db());
 }
 
 /* ── snapshots (server-built, per kind) ──────────────────────────────── */
@@ -207,7 +166,7 @@ async function snapEntity(
     roles[p.role] = {
       nDas: Number(p.n_das),
       nContracts: Number(p.n_contracts),
-      totalRon: Number(p.total_ron_full ?? 0),
+      totalRon: p.total_ron_full ?? "0",
     };
   }
   const f = flags.sort((a, b) => Number(b.cri ?? 0) - Number(a.cri ?? 0))[0];
@@ -249,7 +208,10 @@ async function snapContract(
     title: r.title,
     authority: r.authority_name,
     supplier: r.supplier_name,
-    valueRon: Number(r.closing_value ?? r.contract_value ?? 0),
+    valueRon: r.contract_value,
+    valueExact: r.contract_value,
+    supplierShareExact: r.closing_value,
+    valueBasis: "full_contract",
     date:
       r.finalization_date ??
       (r.contract_date ? String(r.contract_date).slice(0, 10) : null),
@@ -262,7 +224,7 @@ async function snapNotice(
 ): Promise<Record<string, unknown> | null> {
   const sql = db();
   const rows = (await sql`
-    select count(*) n, coalesce(sum(t.closing_value), 0) v,
+    select count(distinct t.contract_id) n, coalesce(sum(t.closing_value), 0) v,
            max(t.authority_name) authority, max(t.notice_no) notice_no
     from marts.contract_transactions t
     where t.ca_notice_id = ${Number(refId)}
@@ -278,7 +240,7 @@ async function snapNotice(
     authority: r.authority,
     noticeNo: r.notice_no,
     nContracts: Number(r.n),
-    valueRon: Number(r.v),
+    valueRon: r.v,
   };
 }
 
@@ -300,7 +262,7 @@ async function snapPerson(
   return {
     name: r.nm,
     nFirms: Number(r.n_firms),
-    firms: (r.firms ?? []).slice(0, 12),
+    firms: r.firms ?? [],
   };
 }
 
@@ -353,97 +315,57 @@ export async function buildSnapshot(
       return refId && code ? snapFlag(refId, code) : null;
     }
     case "query":
-      // the one client-trusted snapshot: it IS what the user was looking at
-      return clientSnapshot;
+    case "da":
+    case "signal":
+    case "monitoring":
+    case "radiografie":
+      // Server-verified frozen captures are built by the durable capture job.
+      // Legacy browser monetary snapshots are never accepted as verified data.
+      return null;
     case "note":
+    case "document_quote":
       return null;
   }
 }
 
 /* ── clips CRUD ──────────────────────────────────────────────────────── */
 
-export async function addClip(
-  userId: string,
-  investigationId: string,
-  input: {
-    kind: ClipKind;
-    refId: string | null;
-    spec: unknown;
-    note: string | null;
-    clientSnapshot: Record<string, unknown> | null;
-  },
-): Promise<{ id: string } | { error: string }> {
-  const own = await getOwnedInvestigation(userId, investigationId);
-  if (!own) return { error: "Anchetă inexistentă." };
-  if (input.kind !== "note") {
-    const dup = (await db()`
-      select id from app.clips
-      where investigation_id = ${investigationId} and kind = ${input.kind}
-        and ref_id is not distinct from ${input.refId}
-        and (${input.kind !== "query"} or (
-          spec is not distinct from ${JSON.stringify(input.spec ?? null)}::jsonb
-          and coalesce(snapshot->'evidenceScope', 'null'::jsonb) = ${JSON.stringify(input.clientSnapshot?.["evidenceScope"] ?? null)}::jsonb
-        ))
-      limit 1
-    `) as unknown as { id: string }[];
-    if (dup.length > 0) return { error: "Există deja în această anchetă." };
-  }
-  const snapshot = await buildSnapshot(
-    input.kind,
-    input.refId,
-    input.spec,
-    input.clientSnapshot,
-  );
-  if (input.kind !== "note" && input.kind !== "query" && !snapshot) {
-    return { error: "Nu am găsit obiectul de atașat." };
-  }
-  const sql = db();
-  const specJson =
-    input.spec === null || input.spec === undefined
-      ? null
-      : JSON.stringify(input.spec);
-  const snapJson = snapshot === null ? null : JSON.stringify(snapshot);
-  const rows = (await sql`
-    insert into app.clips (investigation_id, kind, ref_id, spec, snapshot, note, created_by)
-    values (${investigationId}, ${input.kind}, ${input.refId},
-            ${specJson}::jsonb, ${snapJson}::jsonb,
-            ${input.note}, ${userId})
-    returning id
-  `) as unknown as { id: string }[];
-  await sql`update app.investigations set updated_at = now() where id = ${investigationId}`;
-  return { id: rows[0]!.id };
+export async function addClip(userId:string,investigationId:string,input:{
+  kind:ClipKind;refId:string|null;spec:unknown;note:string|null;clientSnapshot:Record<string,unknown>|null;
+}):Promise<{id:string;capture:CaptureSummary|null;captureId:string|null}|{error:string}>{
+  const request=validateCaptureRequest(input.kind,input.refId,input.spec,input.clientSnapshot);
+  if("error" in request)return request;
+  const added=await withInvestigationAccess(userId,investigationId,"edit",async q=>{
+    const snapshot={verification:request.kind==="note"?"editorial":"queued",
+      evidenceScope:request.options.scope??{},evidenceOptions:request.options,...(request.connection?{connection:request.connection}:{}),...(request.peer?{peer:request.peer}:{})};
+    const [clip]=await q`insert into app.clips(investigation_id,kind,ref_id,spec,snapshot,note,created_by)
+      values(${investigationId},${request.kind},${request.refId},${JSON.stringify(request.spec)}::jsonb,
+      ${JSON.stringify(snapshot)}::jsonb,${input.note},${userId}) returning id`;
+    const capture=request.kind==="note"?null:await queueCapture(q,userId,investigationId,String(clip!.id),request);
+    await q`update app.investigations set updated_at=now() where id=${investigationId}`;
+    return{id:String(clip!.id),capture,captureId:capture?.id??null};
+  },db());
+  return added??{error:"Nu ai permisiunea de a adăuga probe în această anchetă."};
 }
 
-export async function updateClip(
-  userId: string,
-  investigationId: string,
-  clipId: string,
-  patch: { note?: string | null; pinned?: boolean },
-): Promise<boolean> {
-  const own = await getOwnedInvestigation(userId, investigationId);
-  if (!own) return false;
-  const sql = db();
-  const rows = (await sql`
-    update app.clips set
-      note = case when ${patch.note !== undefined} then ${patch.note ?? null} else note end,
-      pinned = coalesce(${patch.pinned ?? null}, pinned)
-    where id = ${clipId} and investigation_id = ${investigationId}
-    returning id
-  `) as unknown as { id: string }[];
-  return rows.length > 0;
+export async function updateClip(userId:string,investigationId:string,clipId:string,
+  patch:{note?:string|null;pinned?:boolean}):Promise<boolean>{
+  if(!isWorkspaceId(clipId))return false;
+  return !!await withInvestigationAccess(userId,investigationId,"edit",async q=>{
+    const rows=await q`update app.clips set
+      note=case when ${patch.note!==undefined} then ${patch.note??null} else note end,
+      pinned=coalesce(${patch.pinned??null},pinned)
+      where id=${clipId} and investigation_id=${investigationId} returning id`;
+    if(rows.length)await q`update app.investigations set updated_at=now() where id=${investigationId}`;
+    return rows.length>0;
+  },db());
 }
-
-export async function deleteClip(
-  userId: string,
-  investigationId: string,
-  clipId: string,
-): Promise<boolean> {
-  const own = await getOwnedInvestigation(userId, investigationId);
-  if (!own) return false;
-  const rows = (await db()`
-    delete from app.clips where id = ${clipId} and investigation_id = ${investigationId} returning id
-  `) as unknown as { id: string }[];
-  return rows.length > 0;
+export async function deleteClip(userId:string,investigationId:string,clipId:string):Promise<boolean>{
+  if(!isWorkspaceId(clipId))return false;
+  return !!await withInvestigationAccess(userId,investigationId,"edit",async q=>{
+    const rows=await q`delete from app.clips where id=${clipId} and investigation_id=${investigationId} returning id`;
+    return rows.length>0;
+  },db());
 }
 
 /* ── dosar read: clips + live drift + cast relations ─────────────────── */
@@ -626,6 +548,7 @@ async function castRelations(clipRows: ClipRow[]): Promise<{
 export interface Dosar {
   investigation: InvestigationRow;
   clips: ClipRow[];
+  access: InvestigationAccess;
   cast: { members: CastMember[]; relations: CastRelation[] };
 }
 
@@ -633,9 +556,13 @@ export async function getDosar(
   userId: string,
   id: string,
 ): Promise<Dosar | null> {
-  const inv = await getOwnedInvestigation(userId, id);
-  if (!inv) return null;
-  const sql = db();
+  return withInvestigationAccess(userId,id,"read",async(sql,access)=>{
+  const [investigation]=await sql`select i.*,(select count(*)::int from app.clips c where c.investigation_id=i.id) n_clips
+    from app.investigations i where i.id=${id}`;
+  if(!investigation)return null;
+  const inv:InvestigationRow={id:String(investigation.id),title:investigation.title,description:investigation.description,
+    status:investigation.status,nClips:investigation.n_clips,createdAt:String(investigation.created_at),
+    updatedAt:String(investigation.updated_at),access};
   const rows = (await sql`
     select id, kind, ref_id, spec, snapshot, note, pinned, created_at
     from app.clips where investigation_id = ${id}
@@ -660,6 +587,14 @@ export async function getDosar(
     pinned: r.pinned,
     createdAt: String(r.created_at),
   }));
+  const captured=await sql`select * from app.evidence_captures where investigation_id=${id} order by version desc`;
+  for(const clip of clips){
+    clip.captures=captured.filter(row=>String(row.clip_id)===clip.id).map(captureSummary);
+    clip.capture=clip.captures[0]??null;
+    const complete=clip.captures.find(capture=>capture.status==="complete");
+    if(complete?.summary)clip.snapshot=complete.summary;
+    else if(!clip.capture&&clip.kind!=="note"&&clip.kind!=="document_quote")clip.snapshot={...clip.snapshot,verification:"legacy-unverified"};
+  }
   // live recompute + drift for the cheap kinds
   for (const c of clips) {
     if (!c.refId || !c.snapshot) continue;
@@ -681,5 +616,6 @@ export async function getDosar(
     if (drift.length) c.drift = drift;
   }
   const cast = await castRelations(clips);
-  return { investigation: inv, clips, cast };
+  return { investigation: inv, clips, cast, access };
+  },db());
 }

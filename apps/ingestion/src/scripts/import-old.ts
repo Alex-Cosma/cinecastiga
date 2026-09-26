@@ -1,3 +1,4 @@
+import { runMonitoredCli } from "../monitoring/cli.js";
 import { createDb } from "@seap/db";
 import { loadEntities } from "../import-old/load-entities.js";
 import { buildMarts } from "../import-old/build-marts.js";
@@ -16,46 +17,46 @@ import { buildMarts } from "../import-old/build-marts.js";
 async function main(): Promise<void> {
   const dir = process.argv[2] ?? "../../db-old";
   const { db, sql } = createDb();
-  const log = (m: string) => console.log(m);
+  await runMonitoredCli(sql, "import-old", async () => {
+    const log = (m: string) => console.log(m);
 
-  log(`import-old: reading ${dir}`);
+    log(`import-old: reading ${dir}`);
 
-  // import-old owns only cpv_tree now (the one mart with no core equivalent);
-  // every other mart is rebuilt from core by `runMarts` (pnpm marts).
-  await sql`truncate marts.cpv_tree`;
+    // import-old owns only cpv_tree now (the one mart with no core equivalent);
+    // every other mart is rebuilt from core by `runMarts` (pnpm marts).
+    await sql`truncate marts.cpv_tree`;
 
-  log("loading entities (supplier + authority)...");
-  const suppliers = await loadEntities(db, sql, `${dir}/supplier.bson`, "supplier", log);
-  log(
-    `  suppliers: seen=${suppliers.seen} new=${suppliers.inserted} merged=${suppliers.merged} skipped=${suppliers.skipped}`,
-  );
-  const authorities = await loadEntities(
-    db,
-    sql,
-    `${dir}/contractingAuthority.bson`,
-    "authority",
-    log,
-  );
-  log(
-    `  authorities: seen=${authorities.seen} new=${authorities.inserted} merged=${authorities.merged} skipped=${authorities.skipped}`,
-  );
+    log("loading entities (supplier + authority)...");
+    const suppliers = await loadEntities(db, sql, `${dir}/supplier.bson`, "supplier", log);
+    log(
+      `  suppliers: seen=${suppliers.seen} new=${suppliers.inserted} merged=${suppliers.merged} skipped=${suppliers.skipped}`,
+    );
+    const authorities = await loadEntities(
+      db,
+      sql,
+      `${dir}/contractingAuthority.bson`,
+      "authority",
+      log,
+    );
+    log(
+      `  authorities: seen=${authorities.seen} new=${authorities.inserted} merged=${authorities.merged} skipped=${authorities.skipped}`,
+    );
 
-  log("building cpv_tree (dump hierarchy)...");
-  const marts = await buildMarts(db, sql, dir, log);
+    log("building cpv_tree (dump hierarchy)...");
+    const marts = await buildMarts(db, sql, dir, log);
 
-  console.log(
-    JSON.stringify(
-      {
-        entities: { suppliers: suppliers.inserted, authorities: authorities.inserted },
-        cpvTree: marts.cpvTreeNodes,
-        note: "display marts (national_stats, spend_*, entity_profile, leaderboards) are built from core by `pnpm marts`",
-      },
-      null,
-      2,
-    ),
-  );
-
-  await sql.end();
+    console.log(
+      JSON.stringify(
+        {
+          entities: { suppliers: suppliers.inserted, authorities: authorities.inserted },
+          cpvTree: marts.cpvTreeNodes,
+          note: "display marts (national_stats, spend_*, entity_profile, leaderboards) are built from core by `pnpm marts`",
+        },
+        null,
+        2,
+      ),
+    );
+  });
 }
 
 main().catch(async (err) => {

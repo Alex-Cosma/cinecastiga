@@ -8,6 +8,8 @@
  * what SICAP actually provides per era.
  */
 
+export * from "./procurement-thresholds.js";
+
 /** Where a record was fetched from. */
 export type SourceSystem = "elicitatie" | "datagov";
 

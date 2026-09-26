@@ -3,14 +3,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import ClipButton from "@/components/ClipButton";
+import FollowButton from "@/components/FollowButton";
 import { formatRon, formatRonFull, formatInt, cleanName } from "@/lib/format";
 import { countyMap, foldCounty } from "@/lib/map";
 import { encodeSpec, decodeSpec } from "@/lib/ask/permalink";
+import { isHistoricalProfile } from "@/lib/ask/population";
 import { validateSpec, type AskSpec } from "@/lib/ask/spec";
-import { entitySourceSpec, yearSourceLink } from "@/lib/ask/source-spec";
-import { describeQuestion } from "@/lib/ask/question-ui";
+import { entitySourceLink, entitySourceScope, yearSourceLink } from "@/lib/ask/source-spec";
+import { describeQuestion, questionKey } from "@/lib/ask/question-ui";
 import { NATURAL_LANGUAGE_ENABLED, NATURAL_LANGUAGE_UNAVAILABLE } from "@/lib/ask/features";
-import { validateEvidenceScope, type EvidenceScope } from "@/lib/ask/evidence";
+import { validateEvidenceScope, validateEvidenceFilters, type EvidenceScope, type EvidenceFilters } from "@/lib/ask/evidence";
 import type { BlockData } from "@/lib/ask/compile";
 import {
   CompareBlock,
@@ -50,12 +52,6 @@ interface AskResponse {
   executedAt?: string;
 }
 export type PanelMode = "search" | "ask" | "build";
-const PROFILE_BLOCKS = new Set([
-  "compare",
-  "distribution",
-  "scatter",
-  "entity_card",
-]);
 const EXAMPLES = [
   "Cât s-a cheltuit pe medicamente în Cluj, în 2026?",
   "Cine furnizează cel mai mult pentru spitale?",
@@ -92,6 +88,7 @@ export default function AskPanel({
   );
   const [aiLinkNotice, setAiLinkNotice] = useState(false);
   const [builderInit, setBuilderInit] = useState<BuilderSpec | null>(null);
+  const [builderResolution, setBuilderResolution] = useState<{ submitted: BuilderSpec; resolved: BuilderSpec } | null>(null);
   const [builderFromAi, setBuilderFromAi] = useState(false);
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
@@ -103,6 +100,7 @@ export default function AskPanel({
   const [evidence, setEvidence] = useState<{
     spec: AskSpec;
     scope?: EvidenceScope;
+    filters?: EvidenceFilters;
     title: string;
   } | null>(null);
   const [tableOpts, setTableOpts] = useState<{
@@ -126,6 +124,7 @@ export default function AskPanel({
       body: Record<string, unknown>,
       drill = false,
       savedScope?: EvidenceScope,
+      savedFilters?: EvidenceFilters,
     ) => {
       if (!NATURAL_LANGUAGE_ENABLED && typeof body.question === "string") {
         setError(NATURAL_LANGUAGE_UNAVAILABLE);
@@ -154,6 +153,9 @@ export default function AskPanel({
           return false;
         }
         setResp(answer);
+        if (body.spec && !("tablePage" in body)) {
+          setBuilderResolution({ submitted: body.spec as BuilderSpec, resolved: answer.spec as unknown as BuilderSpec });
+        }
         // The composer owns draft/applied comparison, including edits made
         // during this request and normalized drafts restored from old links.
         if (typeof body.question === "string") {
@@ -166,11 +168,13 @@ export default function AskPanel({
         url.searchParams.set("spec", encodeSpec(answer.spec));
         url.searchParams.delete("drill");
         url.searchParams.delete("evidence");
+        url.searchParams.delete("sourceFilters");
         window.history.replaceState(null, "", url);
         if (drill)
           setEvidence({
             spec: answer.spec,
             ...(savedScope ? { scope: savedScope } : {}),
+            ...(savedFilters ? { filters: savedFilters } : {}),
             title:
               answer.question ||
               describeQuestion(answer.spec as unknown as BuilderSpec),
@@ -226,6 +230,7 @@ export default function AskPanel({
         setBuilderInit(parsed as unknown as BuilderSpec);
         setMode("build");
         let scope: EvidenceScope | undefined;
+        let sourceFilters: EvidenceFilters | undefined;
         try {
           const raw = params.get("evidence");
           if (raw) {
@@ -233,11 +238,17 @@ export default function AskPanel({
             if ("error" in validated) throw new Error(validated.error);
             scope = validated;
           }
+          const rawFilters = params.get("sourceFilters");
+          if (rawFilters) {
+            const validated = validateEvidenceFilters(JSON.parse(rawFilters));
+            if ("error" in validated) throw new Error(validated.error);
+            sourceFilters = validated;
+          }
         } catch {
           setError("Selecția de surse din această legătură este invalidă.");
           return;
         }
-        void execute({ spec: parsed }, params.get("drill") === "1", scope);
+        void execute({ spec: parsed }, params.get("drill") === "1", scope, sourceFilters);
       }
     };
     restore();
@@ -309,12 +320,21 @@ export default function AskPanel({
       return;
     const spec = validateSpec(decodeSpec(url.searchParams.get("spec") ?? ""));
     if ("error" in spec) return;
+    let scope: EvidenceScope | undefined;
+    const encodedScope = url.searchParams.get("evidence");
+    if (encodedScope) {
+      try {
+        const parsedScope = validateEvidenceScope(JSON.parse(encodedScope));
+        if ("error" in parsedScope) return;
+        scope = parsedScope;
+      } catch { return; }
+    }
     event.preventDefault();
-    openEvidence(spec, undefined, `${title} · selecția aleasă`);
+    openEvidence(spec, scope, `${title} · selecția aleasă`);
   };
   const data = resp?.data,
     count = data ? sourceCount(data) : null;
-  const isProfile = !!data && PROFILE_BLOCKS.has(data.block);
+  const isProfile = !!applied && isHistoricalProfile(applied);
   return (
     <div
       className={`ask cq-app${centered ? " ask-centered" : ""}`}
@@ -414,6 +434,7 @@ export default function AskPanel({
           <QuestionBuilder
             key={builderInit ? encodeSpec(builderInit) : "start"}
             initial={builderInit}
+            resolution={builderInit && builderResolution && questionKey(builderInit) === questionKey(builderResolution.submitted) ? builderResolution : null}
             fromAi={builderFromAi}
             running={loading}
             onDraftChange={setDirty}
@@ -466,6 +487,7 @@ export default function AskPanel({
                   ☷ Vezi înregistrările
                   {count !== null && <b>{formatInt(count)}</b>}
                 </button>
+                <FollowButton key={JSON.stringify(applied)} spec={applied} title={title} />
                 <ClipButton
                   kind="query"
                   spec={applied}
@@ -623,7 +645,7 @@ export default function AskPanel({
                   />
                 ))}
               {data.block === "compare" && (
-                <CompareBlock entities={data.entities} />
+                <CompareBlock entities={data.entities} historical={isProfile} />
               )}
               {data.block === "distribution" && (
                 <DistributionBlock
@@ -681,7 +703,7 @@ export default function AskPanel({
               <button type="button" onClick={() => openEvidence()}>
                 Datele și exportul CSV ↓
               </button>
-              <button type="button" onClick={() => exportCsv(data)}>
+              <button type="button" onClick={() => exportCsv(data, applied)}>
                 Exportă rezultatul afișat ↓
               </button>
               {mode === "ask" && (
@@ -747,6 +769,7 @@ export default function AskPanel({
           spec={evidence.spec}
           title={evidence.title}
           {...(evidence.scope ? { scope: evidence.scope } : {})}
+          {...(evidence.filters ? { initialFilters: evidence.filters } : {})}
           onClose={() => setEvidence(null)}
         />
       )}
@@ -788,8 +811,8 @@ function RankingBars({
             key={r.entityId ?? r.name}
             onClick={() =>
               onSources(
-                entitySourceSpec(spec, r),
-                undefined,
+                spec,
+                entitySourceScope(spec, r),
                 `${cleanName(r.name)} · înregistrările din clasament`,
               )
             }
@@ -879,7 +902,7 @@ function CountyValues({
 }: {
   counties: CountyValue[];
   spec: AskSpec;
-  onSources: (spec: AskSpec) => void;
+  onSources: (spec: AskSpec, scope?: EvidenceScope, title?: string) => void;
 }) {
   return (
     <table className="ask-table cq-exact-table">
@@ -903,12 +926,7 @@ function CountyValues({
                 <button
                   type="button"
                   onClick={() =>
-                    onSources({
-                      block: "stat",
-                      measure: spec.measure === "count" ? "count" : "value",
-                      ...(spec.dataset ? { dataset: spec.dataset } : {}),
-                      filters: { ...spec.filters, county: r.county },
-                    })
+                    onSources(spec, { county:r.county }, `${r.county} · înregistrările județului`)
                   }
                 >
                   Vezi înregistrările →
@@ -972,7 +990,7 @@ function TableBlock({
 }) {
   // acquisitions-count click → same filters narrowed to this row, drill opened
   const rowUrl = (r: TableRow) =>
-    `/intreaba?spec=${encodeURIComponent(encodeSpec(entitySourceSpec(spec as AskSpec, r)))}&drill=1`;
+    entitySourceLink(spec as AskSpec, r);
   const paged = Boolean(meta && onFetch);
   const page = meta?.page ?? 0;
   const pageSize = meta?.pageSize ?? rows.length;
@@ -1179,20 +1197,9 @@ function MapBlock({
   const display = (v: number) =>
     asCount ? formatInt(v) + " înreg." : formatRon(v);
   // county click → same filters, scoped to that county, drill rows opened
-  const countyUrl = (label: string): string => {
-    const s = (spec ?? {}) as {
-      measure?: string;
-      dataset?: string;
-      filters?: Record<string, unknown>;
-    };
-    const next: Record<string, unknown> = {
-      block: "stat",
-      measure: s.measure === "count" ? "count" : "value",
-      filters: { ...(s.filters ?? {}), county: label },
-    };
-    if (s.dataset) next["dataset"] = s.dataset;
-    return `/?spec=${encodeURIComponent(encodeSpec(next))}&drill=1`;
-  };
+  const countyUrl = (label: string): string =>
+    `/intreaba?spec=${encodeURIComponent(encodeSpec(spec))}&drill=1&evidence=${encodeURIComponent(JSON.stringify({ county:label }))}`;
+
   const byKey = new Map<string, number>();
   const cntByKey = new Map<string, number>();
   for (const c of counties) {
@@ -1356,7 +1363,7 @@ function csvQ(s: string | null | undefined): string {
   return `"${safe.replaceAll('"', '""')}"`;
 }
 
-function exportCsv(data: BlockData) {
+function exportCsv(data: BlockData, spec: AskSpec) {
   let lines: string[];
   switch (data.block) {
     case "table":
@@ -1388,10 +1395,10 @@ function exportCsv(data: BlockData) {
       break;
     case "compare":
       lines = [
-        "nume,judet,valoare_lei,achizitii,cri,semnale,flags",
+        isHistoricalProfile(spec) ? "nume,judet,valoare_lei,achizitii,cri,semnale,flags" : "nume,judet,valoare_lei,inregistrari",
         ...data.entities.map(
           (e) =>
-            `${csvQ(e.name)},${csvQ(e.county)},${e.value},${e.count},${e.cri ?? ""},${e.nFlags},${csvQ(e.flags.join("|"))}`,
+            `${csvQ(e.name)},${csvQ(e.county)},${e.value},${e.count}${isHistoricalProfile(spec) ? `,${e.cri ?? ""},${e.nFlags},${csvQ(e.flags.join("|"))}` : ""}`,
         ),
       ];
       break;

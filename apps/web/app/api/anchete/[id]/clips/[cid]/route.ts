@@ -12,7 +12,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
     note?: string | null;
     pinned?: boolean;
   } | null;
-  if (!body) return NextResponse.json({ error: "corp invalid" }, { status: 400 });
+  if (!body || (body.note !== undefined && body.note !== null && typeof body.note !== "string") || (body.pinned !== undefined && typeof body.pinned !== "boolean")) return NextResponse.json({ error: "corp invalid" }, { status: 400 });
   const patch: { note?: string | null; pinned?: boolean } = {};
   if (body.note !== undefined)
     patch.note = body.note === null ? null : body.note.trim().slice(0, 2000) || null;

@@ -3,78 +3,17 @@ import { redirect } from "next/navigation";
 import { sessionUserId } from "@/lib/session";
 import { listInvestigations } from "@/lib/anchete";
 import { createAncheta } from "./actions";
-
+import "./workspace.css";
 export const dynamic = "force-dynamic";
-
-const STATUS_LABEL: Record<string, string> = {
-  activa: "activă",
-  publicata: "publicată",
-  inchisa: "închisă",
-};
-
+export const metadata = { title: "Anchete", robots: { index: false, follow: false } };
 export default async function AnchetePage() {
-  const uid = await sessionUserId();
-  if (!uid) redirect("/login");
-  const list = await listInvestigations(uid);
-
-  return (
-    <>
-      <h1 className="page-title">Anchetele mele</h1>
-      <p className="page-sub">
-        Dosare private de investigație: strânge entități, contracte, interogări și note —
-        fiecare probă cu instantaneul și sursa ei.
-      </p>
-
-      <section className="section">
-        <h2>Anchetă nouă</h2>
-        <form className="auth-form auth-form-row" action={createAncheta}>
-          <label>
-            Titlu
-            <input type="text" name="title" required maxLength={200} placeholder="ex.: Lemne de foc Topalu" />
-          </label>
-          <label>
-            Descriere
-            <input type="text" name="description" placeholder="(opțional)" />
-          </label>
-          <button type="submit">Creează</button>
-        </form>
-      </section>
-
-      <section className="section">
-        <h2>Dosare ({list.length})</h2>
-        {list.length === 0 ? (
-          <p className="hint">
-            Nimic încă. Creează o anchetă, apoi folosește butonul „Adaugă la anchetă" de pe
-            paginile de entități, contracte și rezultate de căutare.
-          </p>
-        ) : (
-          <table className="rank">
-            <thead>
-              <tr>
-                <th>Anchetă</th>
-                <th>Status</th>
-                <th className="num" style={{ textAlign: "right" }}>Probe</th>
-                <th>Actualizată</th>
-              </tr>
-            </thead>
-            <tbody>
-              {list.map((inv) => (
-                <tr key={inv.id}>
-                  <td>
-                    <Link href={`/anchete/${inv.id}`}>{inv.title}</Link>
-                    {inv.description && <div className="county">{inv.description}</div>}
-                  </td>
-                  <td>{STATUS_LABEL[inv.status] ?? inv.status}</td>
-                  <td className="num">{inv.nClips}</td>
-                  <td className="county">
-                    {new Date(inv.updatedAt).toLocaleDateString("ro-RO")}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
-    </>
-  );
+  const user = await sessionUserId(); if (!user) redirect("/login?next=%2Fanchete");
+  const list = await listInvestigations(user);
+  return <div className="iw-shell iw-index"><nav className="monitoring-trail" aria-label="Spațiu privat"><span aria-current="page">Anchetele mele</span><Link href="/urmariri">Urmăriri</Link></nav><header className="iw-header"><div><h1>O întrebare bună merită urmărită.</h1><p className="iw-description">Adună sursele, verifică explicațiile și lucrează cu redacția într-un dosar privat.</p></div><a className="iw-primary" href="#ancheta-noua">Începe o anchetă</a></header>
+    <section className="iw-dossiers"><div className="iw-section-head"><h2>Dosarele tale</h2><span>{list.length} dosare</span></div>
+      {list.length === 0 ? <div className="iw-empty"><h3>Începe cu ceea ce te intrigă</h3><p>O achiziție, un tipar sau o întrebare despre banii publici. Nu ai nevoie de o concluzie ca să începi; păstrează separat faptele și ipotezele.</p></div>
+        : <ul>{list.map(inv => <li key={inv.id}><div><Link className="iw-dossier-title" href={`/anchete/${inv.id}`}>{inv.title}</Link>{inv.description && <p>{inv.description}</p>}</div><div className="iw-dossier-meta"><span>{inv.status === "activa" ? "În lucru" : inv.status === "publicata" ? "Publicată editorial" : "Închisă"}</span><span>{inv.nClips} dovezi</span><time>{new Date(inv.updatedAt).toLocaleDateString("ro-RO")}</time></div></li>)}</ul>}
+    </section>
+    <section id="ancheta-noua" className="iw-new"><div><h2>Deschide un dosar</h2><p>Doar tu ai acces la început. Poți invita ulterior editori sau cititori.</p></div><form action={createAncheta}><label>Ce urmărești?<input name="title" required maxLength={200} placeholder="Un titlu scurt pentru investigația ta" /></label><label>De unde pornești? <span className="iw-muted">Opțional</span><textarea name="description" rows={3} maxLength={4000} placeholder="Întrebarea de pornire, autoritatea sau achiziția care ți-a atras atenția." /></label><button className="iw-primary" type="submit">Creează dosarul privat</button></form></section>
+  </div>;
 }

@@ -1,19 +1,12 @@
 import Link from "next/link";
-import {
-  getCriDistribution,
-  getFlagCounts,
-  getFlagInstances,
-  getRiskGroup,
-  getRiskLeaderboard,
-  type FlagInstance,
-  type Role,
-  type RiskGroupSort,
-} from "@/lib/marts";
+import type { FlagInstance, RiskGroupSort } from "@/lib/marts";
+import { getSignalOverview, getSignalPage, getSignalRiskGroup, parseSignalState, signalUrl, RISK_SORTS, RISK_PAGE_SIZE, type SignalState } from "@/lib/signals";
 import { FLAG_META, FLAG_ORDER, criBand } from "@/lib/flags";
 import { formatRon, formatInt, cleanName } from "@/lib/format";
 import { COUNTIES } from "@/lib/counties";
+import "./signals.css";
 
-const GROUP_SORTS: RiskGroupSort[] = ["cri", "flags", "das", "total", "name"];
+const GROUP_SORTS = RISK_SORTS;
 const SORT_LABEL: Record<RiskGroupSort, string> = { cri: "CRI", flags: "semnale", das: "achiziții directe", total: "total", name: "nume" };
 
 /** Page-number window: first, last, current ±2, gaps as null. */
@@ -38,7 +31,7 @@ function evidenceLine(fi: FlagInstance): string {
   const e = fi.evidence ?? {};
   switch (fi.flagCode) {
     case "da_split":
-      return `${e["count"]} achiziții în ${e["year"]}, prag ${formatInt(Number(e["ceiling"]))} lei`;
+      return `${e["count"]} achiziții în ${e["year"]}${e["cpv_class"] ? ` · CPV ${e["cpv_class"]}` : ""}, plafon de referință ${formatInt(Number(e["ceiling"]))} lei`;
     case "da_concentration":
       return `top furnizor ${Math.round(Number(e["top_supplier_pct"]) * 100)}% · HHI ${e["hhi"]} · ${e["suppliers"]} furnizori`;
     case "da_dependence":
@@ -52,17 +45,35 @@ function evidenceLine(fi: FlagInstance): string {
     case "award_no_competition":
       return `${e["procedure"]} · ${formatInt(Number(e["value"]))} lei`;
     case "award_single_bid":
-      return `${e["procedure"]} · ofertant unic · ${formatInt(Number(e["value"]))} lei`;
+      return e["confirmed_contract_count"] ? `${e["confirmed_contract_count"]} contracte cu o singură ofertă raportată în TED` : "Detaliile contractelor sunt în curs de recalculare";
     case "award_concentration":
       return `top câștigător ${Math.round(Number(e["top_winner_pct"]) * 100)}% · HHI ${e["hhi"]} · ${e["winners"]} câștigători`;
     case "award_dependence":
       return `${Math.round(Number(e["top_authority_pct"]) * 100)}% dintr-o singură autoritate · ${e["authorities"]} autorități`;
+    case "fin_tiny_staff":
+      return `${e["employees"]} salariați în ${e["year"]} · ${formatRon(Number(e["per_employee"]))} per salariat`;
+    case "fin_public_reliance":
+      return `${Math.round(Number(e["ratio"]) * 100)}% din cifra de afaceri · ${e["years"]} ani cu bilanț`;
+    case "net_shared_admin":
+      return `${e["n_firms"]} firme · administrator ${e["person"]} · ${e["authority"]}`;
     default:
       return "";
   }
 }
 
 const fmtCri = (n: number) => n.toFixed(2).replace(".", ",");
+
+function Pager({ state, page, total, pageSize }: { state: SignalState; page: number; total: number; pageSize: number }) {
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  if (pages < 2) return null;
+  return <nav className="grp-pager" aria-label="Pagini de rezultate">
+    {page > 0 && <Link href={signalUrl(state, { page: page - 1 })} aria-label="Pagina anterioară">←</Link>}
+    {pageList(page, pages).map((item, i) => item === null ? <span key={`gap-${i}`} className="gap">…</span>
+      : item === page ? <span key={item} className="on" aria-current="page">{item + 1}</span>
+      : <Link key={item} href={signalUrl(state, { page: item })} aria-label={`Pagina ${item + 1}`}>{item + 1}</Link>)}
+    {page + 1 < pages && <Link href={signalUrl(state, { page: page + 1 })} aria-label="Pagina următoare">→</Link>}
+  </nav>;
+}
 
 export default async function SemnalePage({
   searchParams,
@@ -78,28 +89,19 @@ export default async function SemnalePage({
     dir?: string;
   }>;
 }) {
-  const { tip, rol, criMin, criMax, jud, p, sort, dir } = await searchParams;
-  const code = tip && FLAG_META[tip] ? tip : "da_split";
-
-  // Side-panel state. The CRI band view (role + criMin/criMax) and the
-  // flag-type view (tip) are the two things the panel can select; both keep
-  // their URL contract (bars from the ask engine's distribution land here).
-  const groupRole: Role | null = rol === "authority" || rol === "supplier" ? rol : null;
-  const sideRole: Role = groupRole ?? "authority";
-  const county = jud && COUNTIES.some((c) => c.toLowerCase() === jud.toLowerCase()) ? jud : jud || null;
-  const gMin = criMin !== undefined ? Number(criMin) : NaN;
-  const gMax = criMax !== undefined ? Number(criMax) : NaN;
-  const bandMode = groupRole !== null && Number.isFinite(gMin) && Number.isFinite(gMax);
-
-  const bandUrl = (role: Role, from: number, to: number, c: string | null, extra?: Record<string, string>) => {
-    const q = new URLSearchParams({ rol: role, criMin: String(from), criMax: String(to) });
-    if (c) q.set("jud", c);
-    for (const [k, v] of Object.entries(extra ?? {})) q.set(k, v);
-    return `/semnale?${q}`;
-  };
-  const roleUrl = (role: Role) => (bandMode ? bandUrl(role, gMin, gMax, county) : `/semnale?tip=${code}&rol=${role}${county ? `&jud=${encodeURIComponent(county)}` : ""}`);
-
-  const [dist, counts] = await Promise.all([getCriDistribution(sideRole, county), getFlagCounts()]);
+  const state = parseSignalState(await searchParams);
+  const { code, role: sideRole, county } = state;
+  const groupRole = sideRole;
+  const bandMode = state.band !== null;
+  const gMin = state.band?.from ?? 0, gMax = state.band?.to ?? 1;
+  const roleUrl = (role: SignalState["role"]) => signalUrl(state, { role });
+  const [overview, signalResult, riskResult] = await Promise.all([
+    getSignalOverview(state),
+    bandMode ? Promise.resolve(null) : getSignalPage(state),
+    bandMode ? getSignalRiskGroup(state) : Promise.resolve(null),
+  ]);
+  const { distribution: dist, counts } = overview;
+  if (signalResult) counts[code] = signalResult.total;
   const distMax = Math.max(1, ...dist.map((b) => b.n));
   const distTotal = dist.reduce((s, b) => s + b.n, 0);
 
@@ -123,10 +125,11 @@ export default async function SemnalePage({
             return (
               <Link
                 key={i}
-                href={bandUrl(sideRole, b.from, b.to, county)}
+                href={signalUrl(state, { band: { from: b.from, to: b.to } })}
                 className={on ? "on" : undefined}
                 style={{ height: `${Math.max(3, (b.n / distMax) * 100)}%`, ["--i" as string]: i }}
                 title={`CRI ${b.from.toFixed(1)}–${b.to.toFixed(1)} · ${formatInt(b.n)} ${sideRole === "authority" ? "autorități" : "firme"}`}
+                aria-label={`CRI ${b.from.toFixed(1)}–${b.to.toFixed(1)}: ${formatInt(b.n)} ${sideRole === "authority" ? "autorități" : "firme"}`}
                 role="listitem"
               />
             );
@@ -144,21 +147,25 @@ export default async function SemnalePage({
         </p>
 
         <p className="eyebrow">județ</p>
+        <p className="note sem-scope-note">{sideRole === "authority" ? "Județul autorității." : "Județul sediului firmei."} Filtrul se aplică semnalelor și listelor de entități.</p>
         <form method="get" action="/semnale" className="sem-county">
+          <input type="hidden" name="tip" value={code} />
           {bandMode ? (
             <>
               <input type="hidden" name="rol" value={sideRole} />
               <input type="hidden" name="criMin" value={String(gMin)} />
               <input type="hidden" name="criMax" value={String(gMax)} />
+              <input type="hidden" name="sort" value={state.sort} />
+              <input type="hidden" name="dir" value={state.dir} />
             </>
           ) : (
             <>
-              <input type="hidden" name="tip" value={code} />
               <input type="hidden" name="rol" value={sideRole} />
             </>
           )}
           <select name="jud" defaultValue={county ?? ""} aria-label="județ">
             <option value="">toate județele</option>
+            {county && !COUNTIES.includes(county) && <option value={county}>{county}</option>}
             {COUNTIES.map((c) => (
               <option key={c} value={c}>
                 {c}
@@ -173,21 +180,22 @@ export default async function SemnalePage({
         <p className="eyebrow">tip de semnal</p>
         <div className="chips sem-types">
           {FLAG_ORDER.map((c) => (
-            <Link key={c} href={`/semnale?tip=${c}`} className={"chip" + (!bandMode && c === code ? " on" : "")}>
+            <Link key={c} href={signalUrl(state, { code: c, band: null })} className={"chip" + (!bandMode && c === code ? " on" : "")}>
               {FLAG_META[c]!.title} <span className="c">{formatInt(counts[c] ?? 0)}</span>
             </Link>
           ))}
         </div>
+        <p className="note">Numerele de lângă tipuri arată toate aparițiile calculate pentru rolul și județul ales, nu doar exemplele afișate. O entitate poate apărea în mai multe perioade.</p>
       </div>
     </aside>
   );
 
   if (bandMode) {
-    const gSort = GROUP_SORTS.includes(sort as RiskGroupSort) ? (sort as RiskGroupSort) : "cri";
-    const gDir = dir === "asc" ? "asc" : dir === "desc" ? "desc" : gSort === "name" ? "asc" : "desc";
-    const PS = 10;
-    const page = Math.max(0, Number(p ?? 0) || 0);
-    const group = await getRiskGroup(groupRole!, gMin, gMax, county, page, PS, gSort, gDir);
+    const gSort = state.sort;
+    const gDir = state.dir;
+    const PS = RISK_PAGE_SIZE;
+    const group = riskResult!;
+    const page = group.page;
     const nPages = Math.max(1, Math.ceil(group.total / PS));
     const url = (over: { p?: number; sort?: RiskGroupSort }): string => {
       const s = over.sort ?? gSort;
@@ -202,14 +210,8 @@ export default async function SemnalePage({
               ? "asc"
               : "desc"
           : gDir;
-      const extra: Record<string, string> = {};
-      if (s !== "cri" || d !== "desc") {
-        extra.sort = s;
-        extra.dir = d;
-      }
       const pg = over.p ?? (over.sort !== undefined ? 0 : page);
-      if (pg > 0) extra.p = String(pg);
-      return bandUrl(groupRole!, gMin, gMax, county, extra);
+      return signalUrl(state, { page: pg, sort: s, dir: d });
     };
     const th = (key: RiskGroupSort, label: string, right = false) => (
       <th style={right ? { textAlign: "right" } : undefined} className={gSort === key ? "on" : undefined}>
@@ -246,7 +248,7 @@ export default async function SemnalePage({
                 pagina {page + 1} din {nPages}
               </span>
             </div>
-            <table className="rank grp-list">
+            <div className="sem-table-scroll" role="region" aria-label="Entitățile din intervalul CRI" tabIndex={0}><table className="rank grp-list">
               <thead>
                 <tr>
                   <th className="num">#</th>
@@ -277,35 +279,17 @@ export default async function SemnalePage({
                   );
                 })}
               </tbody>
-            </table>
-            {nPages > 1 && (
-              <div className="grp-pager">
-                {page > 0 && <Link href={url({ p: page - 1 })}>←</Link>}
-                {pageList(page, nPages).map((pg, i) =>
-                  pg === null ? (
-                    <span key={`gap-${i}`} className="gap">
-                      …
-                    </span>
-                  ) : pg === page ? (
-                    <span key={pg} className="on">
-                      {pg + 1}
-                    </span>
-                  ) : (
-                    <Link key={pg} href={url({ p: pg })}>
-                      {pg + 1}
-                    </Link>
-                  ),
-                )}
-                {page + 1 < nPages && <Link href={url({ p: page + 1 })}>→</Link>}
-              </div>
-            )}
+            </table></div>
+            {group.rows.length === 0 && <p className="sem-empty">Nicio entitate în acest interval și județ. <Link href={signalUrl(state, { band: null })}>Revino la semnale</Link> sau alege alt interval.</p>}
+            <Pager state={state} page={page} total={group.total} pageSize={PS} />
           </section>
         </div>
       </>
     );
   }
 
-  const [instances, topAuth] = await Promise.all([getFlagInstances(code, 50), getRiskLeaderboard("authority", 12)]);
+  const result = signalResult!;
+  const instances = result.rows, topAuth = overview.leaderboard;
   const meta = FLAG_META[code]!;
 
   return (
@@ -316,59 +300,69 @@ export default async function SemnalePage({
         13 indicatori obiectivi pe achiziții directe, contracte, bilanțuri și ONRC. Fiecare e un semnal, nu o dovadă —{" "}
         <Link href="/metodologie">metodologia</Link>.
       </p>
+      <p className="sem-applied">{sideRole === "authority" ? "Autorități" : "Firme"} · {county ?? "Toate județele"}. Sunt afișate semnalele calculate în arhiva disponibilă.</p>
 
       <div className="sem-layout">
         {side}
         <div className="sem-main-col">
           <section className="method-card sem-flag" id={code}>
             <div className="method-head">
-              <h3>{meta.title}</h3>
+              <h2>{meta.title}</h2>
               <p className="mh-desc">{meta.description}</p>
               <Link href={`/metodologie#${code}`} className="mh-link">
                 cum se calculează →
               </Link>
             </div>
-            <table className="rank">
+            <div className="sem-results-summary" role="status">
+              <strong>{formatInt(result.total)} apariții</strong>
+              <span>{result.total > 0 ? `${formatInt(result.page * result.pageSize + 1)}–${formatInt(Math.min(result.total, (result.page + 1) * result.pageSize))} afișate · pagina ${formatInt(result.page + 1)} din ${formatInt(Math.max(1, Math.ceil(result.total / result.pageSize)))}` : "Niciun rezultat pentru această selecție"}</span>
+            </div>
+            <div className="sem-table-scroll" role="region" aria-label={`Rezultate: ${meta.title}`} tabIndex={0}><table className="rank">
               <thead>
                 <tr>
-                  <th>{meta.subject === "pair" ? "Autoritate → Furnizor" : "Entitate"}</th>
+                  <th>{meta.subject === "award" ? "Autoritate și firme câștigătoare" : sideRole === "authority" ? "Autoritate și partener" : "Firmă și partener"}</th>
                   <th>Detaliu</th>
-                  <th style={{ textAlign: "right" }}>Valoare</th>
+                  <th style={{ textAlign: "right" }}>{meta.subject === "award" ? "Valoarea anunțului" : "Valoare"}</th>
                 </tr>
               </thead>
               <tbody>
-                {instances.map((fi, i) => (
-                  <tr key={`${fi.entityId}-${fi.partnerId}-${i}`}>
+                {instances.map((fi) => (
+                  <tr key={fi.id}>
                     <td>
                       {fi.entityId ? <Link href={`/entitati/${fi.entityId}`}>{cleanName(fi.entityName)}</Link> : cleanName(fi.entityName)}
                       {fi.partnerName ? (
                         <>
-                          {" → "}
+                          {sideRole === "supplier" ? " ← " : " → "}
                           {fi.partnerId ? <Link href={`/entitati/${fi.partnerId}`}>{cleanName(fi.partnerName)}</Link> : fi.partnerName}
                         </>
                       ) : null}
-                      {fi.entityCounty ? <div className="county">{fi.entityCounty}</div> : null}
+                      {fi.entityCounty ? <div className="county">{fi.subjectType === "award" ? "Autoritate: " : ""}{fi.entityCounty}</div> : null}
+                      {fi.subjectType === "award" && <div className="sem-winners">{fi.winners.length ? fi.winners.map((winner) => <div key={winner.entityId}><Link href={`/entitati/${winner.entityId}`}>{cleanName(winner.name)}</Link>{winner.county && <span className="county"> · {winner.county}</span>}</div>) : <span className="county">Câștigător neidentificat în date.</span>}</div>}
                     </td>
-                    <td className="county">{evidenceLine(fi)}</td>
+                    <td className="county">{evidenceLine(fi)}{fi.period && fi.period !== "all" && !["da_split", "da_year_end", "fin_tiny_staff"].includes(fi.flagCode) && <div>{fi.period}</div>}{<div><Link href={`/semnale/${fi.id}`}>Vezi înregistrările sursă →</Link></div>}</td>
                     <td className="num">{fi.totalRon > 0 ? formatRon(fi.totalRon) : "—"}</td>
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
+            {result.total === 0 && <p className="sem-empty">Nu există apariții calculate pentru {sideRole === "authority" ? "autorități" : "firme"}{county ? ` din ${county}` : ""} în acest tip de semnal. {meta.subject === "supplier" && sideRole === "authority" ? <Link href={signalUrl(state, { role: "supplier" })}>Vezi semnalul pentru firme →</Link> : meta.subject === "authority" && sideRole === "supplier" ? <Link href={signalUrl(state, { role: "authority" })}>Vezi semnalul pentru autorități →</Link> : county ? <Link href={signalUrl(state, { county: null })}>Caută în toate județele →</Link> : "Alege alt tip din listă."}</p>}
+            <Pager state={state} page={result.page} total={result.total} pageSize={result.pageSize} />
             <p className="note">
-              {meta.caveat} Primele {formatInt(instances.length)} din {formatInt(counts[code] ?? 0)}, după valoare.
+              {meta.caveat} Poți parcurge întreaga listă de apariții calculate pentru selecție, ordonate după valoare și severitate. Aceeași entitate poate avea mai multe semnale sau perioade.
             </p>
+            {meta.subject === "award" && <p className="note">Un semnal se numără o singură dată pe anunț, chiar dacă există mai mulți câștigători. La filtrarea firmelor după județ, cel puțin un câștigător trebuie să fie din județul ales; sunt afișați toți câștigătorii anunțului. Valoarea este a anunțului de atribuire.</p>}
+            <p className="note">Semnalele pot acoperi aceleași achiziții. Valorile rândurilor nu se adună pentru a calcula cheltuiala totală.</p>
           </section>
 
           <section className="card sem-lead">
             <div className="lead-head">
-              <h3>Autorități cu risc ridicat</h3>
-              <span className="note">după indicele compus de risc (CRI)</span>
+              <h3>{sideRole === "authority" ? "Autorități" : "Firme"} după indicele CRI{county ? ` · ${county}` : ""}</h3>
+              <span className="note">Primele {topAuth.length} cu CRI peste zero și cel puțin {sideRole === "authority" ? 30 : 10} achiziții directe. Clasamentul păstrează rolul și județul; CRI combină semnalele aplicabile.</span>
             </div>
-            <table className="rank">
+            <div className="sem-table-scroll" role="region" aria-label="Clasament CRI" tabIndex={0}><table className="rank">
               <thead>
                 <tr>
-                  <th>Autoritate</th>
+                  <th>{sideRole === "authority" ? "Autoritate" : "Firmă"}</th>
                   <th>CRI</th>
                   <th>Semnale</th>
                   <th style={{ textAlign: "right" }}>Achiziții directe</th>
@@ -392,7 +386,8 @@ export default async function SemnalePage({
                   );
                 })}
               </tbody>
-            </table>
+            </table></div>
+            {topAuth.length === 0 && <p className="sem-empty">Nicio entitate cu CRI peste zero îndeplinește condițiile acestui clasament.</p>}
           </section>
         </div>
       </div>

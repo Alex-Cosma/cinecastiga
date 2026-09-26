@@ -5,16 +5,14 @@ import Link from "next/link";
 import type { SliceRow } from "@/lib/radiografie";
 import { shortName, daysBetween } from "@/lib/radiografie-fmt";
 import { useRxTip, fmtM } from "./RxTip";
-
-const CEIL = (y: number) => (y <= 2022 ? 135_060 : 270_120);
-const T0 = Date.parse("2020-01-01");
+import { DA_CEILING_ERAS } from "@seap/domain";
 
 /**
  * "Cine feliază achizițiile directe?" — one strip per supplier with the
  * slicing shape (≥3 awards, same CPV class, 60 days, sum over the ceiling),
  * ranked by how far over the ceiling the window goes.
  */
-export default function DaStrips({ rows, nSuppliers }: { rows: SliceRow[]; nSuppliers: number }) {
+export default function DaStrips({ rows, nSuppliers, authorityId }: { rows: SliceRow[]; nSuppliers: number; authorityId: string }) {
   const [all, setAll] = useState(false);
   const [hl, setHl] = useState<string | null>(null);
   const tip = useRxTip();
@@ -37,7 +35,7 @@ export default function DaStrips({ rows, nSuppliers }: { rows: SliceRow[]; nSupp
     return (
       <div className="rx-panel" id="rx-da">
         <p className="rx-silence">
-          Niciun furnizor cu forma de feliere ({nSuppliers} furnizori cu cel puțin 3 achiziții directe).
+          Niciun grup detectat după aceste criterii ({nSuppliers} furnizori cu cel puțin 3 achiziții directe). Datele necunoscute nu permit o concluzie.
         </p>
       </div>
     );
@@ -48,7 +46,10 @@ export default function DaStrips({ rows, nSuppliers }: { rows: SliceRow[]; nSupp
       <div className="rx-strips">
         {shown.map((s) => {
           const pts = s.points.map((p) => ({ ...p, t: Date.parse(p.d) }));
-          const vmax = Math.max(300_000, ...pts.map((p) => p.v)) * 1.08;
+          const firstYear = Math.min(2020, ...pts.filter((p) => Number.isFinite(p.t)).map((p) => new Date(p.t).getUTCFullYear()));
+          const T0 = Date.parse(`${firstYear}-01-01`);
+          const vmax = Math.max(300_000, s.ceiling, ...pts.map((p) => p.v),
+            ...DA_CEILING_ERAS.map((era) => s.purchaseType === "works" ? era.works : era.goodsServices)) * 1.08;
           const w = 680,
             h = 190,
             ml = 58,
@@ -59,29 +60,39 @@ export default function DaStrips({ rows, nSuppliers }: { rows: SliceRow[]; nSupp
           const Y = (v: number) => mt + (1 - v / vmax) * (h - mt - mb);
           const t0 = Date.parse(s.d0),
             t1 = Date.parse(s.d1);
-          const inWin = (p: { t: number; cls: string }) => p.t >= t0 && p.t <= t1 && p.cls === s.cpvClass;
+          const inWin = (p: typeof pts[number]) => p.t >= t0 && p.t <= t1 && p.cls === s.cpvClass
+            && p.purchaseType != null && p.purchaseType === s.purchaseType && p.ceiling != null && p.v > 0 && p.v < p.ceiling;
           const years: number[] = [];
-          for (let y = 2020; y <= new Date().getFullYear(); y++) years.push(y);
-          const xb = X(Date.parse("2023-01-01"));
+          for (let y = firstYear; y <= new Date().getFullYear(); y++) years.push(y);
+          const ceilingSegments = s.purchaseType ? DA_CEILING_ERAS.flatMap((era) => {
+            const start = Math.max(T0, Date.parse(era.validFrom));
+            const end = Math.min(T1, era.validTo ? Date.parse(era.validTo) : T1);
+            if (end <= start) return [];
+            return [{ start, end, value: s.purchaseType === "works" ? era.works : era.goodsServices }];
+          }) : [];
           return (
             <div key={s.supplierId} className={`rx-strip${hl === s.supplierId ? " rx-hl" : ""}`} id={`rx-strip-${s.supplierId}`}>
               <h3>
                 <Link href={`/entitati/${s.supplierId}`} target="_blank">
                   {shortName(s.supplierName)}
                 </Link>
-                <span className="num">{s.ratio.toFixed(1).replace(".", ",")}× plafonul</span>
+                <span className="num">{s.ratio.toFixed(1).replace(".", ",")}× plafonul de referință</span>
               </h3>
               <p className="win num">
                 <b>
                   {s.n} achiziții · {fmtM(s.sum)}
                 </b>{" "}
                 în {daysBetween(s.d0, s.d1)} {daysBetween(s.d0, s.d1) === 1 ? "zi" : "zile"}, {s.d0.slice(0, 7)} · plafon {fmtM(s.ceiling)} ·{" "}
-                {s.cpvName.toLowerCase()}
+                {s.cpvName.toLowerCase()} · {s.purchaseType === "works" ? "lucrări" : s.purchaseType === "goods_services" ? "produse/servicii" : "tip necunoscut"}, fără TVA
                 <span className="faint">
                   {" "}
                   · {s.nTotal} achiziții în total, {fmtM(s.vTotal)}
                 </span>
               </p>
+              {!!(s.dateFallbackCount || s.typeInferredCount) && <p className="win faint">
+                {s.dateFallbackCount ? `${s.dateFallbackCount} achiziții folosesc data finalizării, în lipsa publicării. ` : ""}
+                {s.typeInferredCount ? `Tipul a fost dedus din CPV pentru ${s.typeInferredCount} achiziții.` : ""}
+              </p>}
               <svg viewBox={`0 0 ${w} ${h}`} role="img" aria-label={`achiziții directe ${s.supplierName}`}>
                 {years.map((y) => {
                   const x = X(Date.parse(`${y}-01-01`));
@@ -105,7 +116,7 @@ export default function DaStrips({ rows, nSuppliers }: { rows: SliceRow[]; nSupp
                     </g>
                   ))}
                 <path
-                  d={`M${ml} ${Y(CEIL(2020))} H${xb} V${Y(CEIL(2023))} H${w - mr}`}
+                  d={ceilingSegments.map((segment, i) => `${i ? "L" : "M"}${X(segment.start)} ${Y(segment.value)} H${X(segment.end)}`).join(" ")}
                   fill="none"
                   stroke="var(--accent)"
                   strokeWidth={1.5}
@@ -114,7 +125,7 @@ export default function DaStrips({ rows, nSuppliers }: { rows: SliceRow[]; nSupp
                 />
                 <rect x={X(t0) - 5} y={mt} width={Math.max(10, X(t1) - X(t0) + 10)} height={h - mt - mb} fill="var(--rx-gold-soft)" opacity={0.9} />
                 {pts.map((p, i) => {
-                  const near = p.v >= CEIL(new Date(p.t).getFullYear()) * 0.7;
+                  const near = p.ceiling != null && p.v >= p.ceiling * 0.7;
                   const w_ = inWin(p);
                   return (
                     <circle
@@ -132,6 +143,8 @@ export default function DaStrips({ rows, nSuppliers }: { rows: SliceRow[]; nSupp
                             <div>
                               {p.d} · {p.cpvName}
                             </div>
+                            <div>{p.ceiling != null ? `Plafon de referință: ${fmtM(p.ceiling)} lei (${p.referenceDate})` : "Plafon necunoscut: data sau tipul nu permit clasificarea."}</div>
+                            <div>{w_ ? "Inclusă în suma grupului evidențiat." : "Context: nu este inclusă în suma grupului evidențiat."}</div>
                             {p.gap != null && (
                               <div className="row">
                                 <span>publicare→atribuire</span>
@@ -149,6 +162,7 @@ export default function DaStrips({ rows, nSuppliers }: { rows: SliceRow[]; nSupp
                   );
                 })}
               </svg>
+              <Link href={`/entitati/${authorityId}/radiografie/surse?tip=slicing&furnizor=${s.supplierId}`} className="rx-more">Vezi cele {s.n} achiziții din fereastră →</Link>
             </div>
           );
         })}
@@ -159,7 +173,7 @@ export default function DaStrips({ rows, nSuppliers }: { rows: SliceRow[]; nSupp
         </button>
       )}
       <p className="rx-silence">
-        Ceilalți {nSuppliers - rows.length} furnizori cu cel puțin 3 achiziții directe: fără feliere.
+        Ceilalți {Math.max(0, nSuppliers - rows.length)} furnizori cu cel puțin 3 achiziții directe: fără grup detectat după aceste criterii. Aceasta nu confirmă absența unei probleme.
       </p>
       {tip.el}
     </div>

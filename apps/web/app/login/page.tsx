@@ -128,6 +128,7 @@ export default function LoginPage() {
       ) : (
         <form className="auth-form" onSubmit={submitOtp}>
           {info && <p className="auth-info">{info}</p>}
+          <p className="hint">Codul confirmă autentificarea și adresa ta de e-mail, pentru accesul la dosarele private.</p>
           <label>
             Cod de verificare
             <input

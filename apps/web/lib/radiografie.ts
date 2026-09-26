@@ -1,6 +1,8 @@
+import { patternBinding } from "./radiografie-evidence";
 import { createDb, type DbSql } from "@seap/db";
 import { cleanName, formatRon } from "@/lib/format";
 import { shortName, daysBetween } from "@/lib/radiografie-fmt";
+import { daCeiling, daPurchaseType, type DaPurchaseType } from "@seap/domain";
 export { shortName, daysBetween };
 
 /**
@@ -67,6 +69,7 @@ export interface ElseRow {
 
 export interface PatternRow {
   id: number;
+  fingerprint:string;
   cpvClass: string;
   kind: "rotatie" | "impartire" | "maturare" | "consortiu";
   setKey: string;
@@ -113,7 +116,12 @@ export interface SliceRow {
   ratio: number;
   nTotal: number;
   vTotal: number;
-  points: { d: string; v: number; cls: string; cpvName: string; gap: number | null }[];
+  purchaseType?: DaPurchaseType | null;
+  dateFallbackCount?: number;
+  typeInferredCount?: number;
+  methodologyVersion?: string;
+  points: { d: string; v: number; cls: string; cpvName: string; gap: number | null;
+    id?: string; ceiling?: number | null; purchaseType?: DaPurchaseType | null; referenceDate?: string }[];
 }
 
 export interface Headline {
@@ -216,8 +224,8 @@ export async function getRadiografie(entityId: string): Promise<RxData | null> {
 
   // ── lot patterns + elsewhere
   const pr = (await sql`
-    select id, cpv_class, kind, set_key, member_ids::text[] member_ids, member_names, reps, n_lot_tenders,
-           value, single, known, strength, shared_admin, y0, y1, notices
+    select id, cpv_class, kind, set_key, to_jsonb(member_ids::text[]) member_ids, to_jsonb(member_names) member_names, reps, n_lot_tenders,
+           value, single, known, strength, shared_admin, y0, y1, to_jsonb(notices) notices
     from marts.lot_patterns where authority_id = ${id}
     order by (strength = 'puternic') desc, (strength = 'mediu') desc, value desc
   `) as unknown as Record<string, unknown>[];
@@ -244,7 +252,7 @@ export async function getRadiografie(entityId: string): Promise<RxData | null> {
     });
   }
   const patterns: PatternRow[] = pr.map((r) => ({
-    id: num(r["id"]),
+    id: num(r["id"]), fingerprint:patternBinding(id,r).fingerprint,
     cpvClass: String(r["cpv_class"]),
     kind: r["kind"] as PatternRow["kind"],
     setKey: String(r["set_key"]),
@@ -314,16 +322,21 @@ export async function getRadiografie(entityId: string): Promise<RxData | null> {
 
   // ── direct-award slicing + the awards to draw
   const sr = (await sql`
-    select supplier_id::text supplier_id, supplier_name, cpv_class, cpv_name, d0::text d0, d1::text d1, n, sum_window, ceiling, ratio, n_total, v_total
+    select supplier_id::text supplier_id, supplier_name, cpv_class, cpv_name, d0::text d0, d1::text d1, n, sum_window, ceiling, ratio, n_total, v_total,
+      acquisition_type, date_fallback_count, type_inferred_count, methodology_version
     from marts.da_slicing where authority_id = ${id} order by ratio desc
   `) as unknown as Record<string, unknown>[];
   const sids = sr.map((r) => String(r["supplier_id"]));
   const dpts = sids.length
     ? ((await sql`
-        select supplier_id::text sid, left(finalization_date, 10) d, closing_value v, left(cpv_code, 4) cls, cpv_name, gap_minutes gap
-        from marts.da_transactions
-        where authority_id = ${id} and supplier_id = any(${sql.array(sids)}::bigint[]) and not value_suspect and closing_value > 0
-        order by finalization_date
+        select dt.sicap_da_id::text id, dt.supplier_id::text sid, left(dt.finalization_date, 10) d,
+          dt.closing_value v, left(btrim(da.cpv_code), 4) cls, dt.cpv_name, dt.gap_minutes gap,
+          da.cpv_code, da.acquisition_type,
+          to_char(coalesce(da.publication_date, da.finalization_date) at time zone 'Europe/Bucharest', 'YYYY-MM-DD') reference_date
+        from marts.da_transactions dt
+        join core.direct_acquisitions da on da.sicap_da_id = dt.sicap_da_id
+        where dt.authority_id = ${id} and dt.supplier_id = any(${sql.array(sids)}::bigint[]) and not dt.value_suspect and dt.closing_value > 0
+        order by dt.finalization_date, dt.sicap_da_id
       `) as unknown as Record<string, unknown>[])
     : [];
   const ptsBy = new Map<string, SliceRow["points"]>();
@@ -331,7 +344,11 @@ export async function getRadiografie(entityId: string): Promise<RxData | null> {
     const k = String(r["sid"]);
     let l = ptsBy.get(k);
     if (!l) ptsBy.set(k, (l = []));
-    l.push({ d: String(r["d"]), v: num(r["v"]), cls: String(r["cls"] ?? ""), cpvName: String(r["cpv_name"] ?? ""), gap: numOrNull(r["gap"]) });
+    const cpv = r["cpv_code"] as string | null;
+    const acquisitionType = r["acquisition_type"] as string | null;
+    const referenceDate = String(r["reference_date"] ?? "");
+    l.push({ d: String(r["d"]), v: num(r["v"]), cls: String(r["cls"] ?? ""), cpvName: String(r["cpv_name"] ?? ""), gap: numOrNull(r["gap"]),
+      id: String(r["id"]), referenceDate, ceiling: daCeiling(referenceDate, cpv, acquisitionType), purchaseType: daPurchaseType(cpv, acquisitionType) });
   }
   const slices: SliceRow[] = sr.map((r) => ({
     supplierId: String(r["supplier_id"]),
@@ -346,6 +363,10 @@ export async function getRadiografie(entityId: string): Promise<RxData | null> {
     ratio: num(r["ratio"]),
     nTotal: num(r["n_total"]),
     vTotal: num(r["v_total"]),
+    purchaseType: r["acquisition_type"] === "da_ceiling_works" ? "works" : r["acquisition_type"] === "da_ceiling_goods_services" ? "goods_services" : null,
+    dateFallbackCount: num(r["date_fallback_count"]),
+    typeInferredCount: num(r["type_inferred_count"]),
+    methodologyVersion: String(r["methodology_version"] ?? ""),
     points: ptsBy.get(String(r["supplier_id"])) ?? [],
   }));
   const [dsup] = (await sql`
@@ -464,7 +485,7 @@ export function buildHeadlines(
       score: 20 + Math.min(9, Math.round(s.ratio)),
       k: "achiziții directe",
       t: `${shortName(s.supplierName)}: ${s.n} achiziții directe, ${fmtM(s.sum)}, în ${daysBetween(s.d0, s.d1)} zile`,
-      w: `${s.d0.slice(0, 7)} · ${s.ratio.toFixed(1).replace(".", ",")}× plafonul · ${s.cpvName.toLowerCase()}${slices.length > 1 ? ` · ${slices.length} furnizori feliază` : ""}`,
+      w: `${s.d0.slice(0, 7)} · ${s.ratio.toFixed(1).replace(".", ",")}× plafonul de referință · ${s.cpvName.toLowerCase()}${slices.length > 1 ? ` · ${slices.length} furnizori cu grupuri similare` : ""}`,
       go: "da",
       supplierId: s.supplierId,
     });

@@ -231,7 +231,7 @@ export default function DependencyScatter({ rows, win, authorityName }: { rows: 
             <b className="num">{c ? fmtM(c) : "—"}</b>
           </div>
           <div className="l">
-            <span>încasat {y0 != null ? `${y0}–${y1}` : ""}</span>
+            <span>cifră de afaceri {y0 != null ? `${y0}–${y1}` : ""}</span>
             <div className="bar">
               <i style={{ width: `${Math.round(((p.turnWin ?? 0) / mx) * 100)}%`, opacity: 0.45 }} />
             </div>
@@ -240,7 +240,7 @@ export default function DependencyScatter({ rows, win, authorityName }: { rows: 
           <div style={{ fontSize: 11, marginTop: 4 }}>
             {p.ratio != null ? (
               <>
-                contractează <b>{p.ratio.toFixed(1).replace(".", ",")}×</b> cât încasează
+                contractează <b>{p.ratio.toFixed(1).replace(".", ",")}×</b> cifra de afaceri
                 <span className={`chip ${cls}`}>{p.ratio > 2 ? "peste 2×" : p.ratio >= 0.7 ? "0,7–2×" : "sub 0,7×"}</span>
               </>
             ) : c > 0 ? (
@@ -254,8 +254,8 @@ export default function DependencyScatter({ rows, win, authorityName }: { rows: 
               {p.cFrame
                 ? p.cPlain
                   ? `din care acorduri-cadru ${fmtM(p.cFrame)}, plafon pe până la 4 ani`
-                  : "toate acorduri-cadru: valoarea e un plafon pe până la 4 ani, comparat cu încasările din acei ani"
-                : "contracte simple, comparate cu încasările din anul semnării"}
+                  : "toate acorduri-cadru: valoarea e un plafon pe până la 4 ani, comparat cu cifra de afaceri din acei ani"
+                : "contracte simple, comparate cu cifra de afaceri din anul semnării"}
               {p.nyWin < p.yrs.length ? ` · bilanț pe ${p.nyWin} din ${p.yrs.length} ani` : ""}
             </div>
           )}
@@ -292,7 +292,7 @@ export default function DependencyScatter({ rows, win, authorityName }: { rows: 
       />
       <div className="rx-legend">
         <span>
-          <i className="sw" style={{ background: C.red }} /> contractează peste 2× cât încasează
+          <i className="sw" style={{ background: C.red }} /> contractează peste 2× cifra de afaceri
         </span>
         <span>
           <i className="sw" style={{ background: C.gold }} /> 0,7–2×

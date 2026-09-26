@@ -1,0 +1,20 @@
+.sem-applied { margin: -8px 0 24px; color: var(--muted); font-size: 14px; }
+.sem-scope-note { margin-top: -4px; }
+.sem-results-summary { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 16px 20px; border-bottom: 1px solid var(--line); font-size: 14px; font-variant-numeric: tabular-nums; }
+.sem-results-summary span { color: var(--muted); }
+.sem-table-scroll { overflow-x: auto; max-width: 100%; }
+.sem-table-scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.sem-table-scroll table { min-width: 560px; }
+.sem-flag .method-head h2 { margin: 0; font-size: 22px; }
+.sem-empty { padding: 20px; margin: 0; line-height: 1.7; }
+.sem-winners { margin-top: 8px; display: grid; gap: 5px; font-size: 13px; }
+.sem-lead .lead-head { align-items: start; flex-wrap: wrap; gap: 8px; }
+.sem-lead .lead-head .note { max-width: 68ch; }
+.sem-flag > .note { padding: 0 20px; }
+.sem-layout .grp-pager a, .sem-layout .grp-pager > span.on { min-height: 40px; min-width: 40px; display: inline-flex; align-items: center; justify-content: center; }
+.sem-layout .grp-pager { flex-wrap: wrap; }
+@media (max-width: 600px) {
+  .sem-results-summary { padding: 14px 16px; flex-direction: column; gap: 4px; }
+  .sem-flag .method-head h2 { font-size: 20px; }
+  .sem-flag > .note { padding: 0 16px; }
+}

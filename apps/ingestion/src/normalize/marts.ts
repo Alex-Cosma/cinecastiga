@@ -1,25 +1,12 @@
 import type { DbSql } from "@seap/db";
 
 /**
- * Gold marts build (marts-layer DEC-001): truncate + recompute every mart from
- * core, atomically in one transaction (readers see the previous snapshot until
- * commit). This is the SINGLE source for the display marts — it covers both the
- * 2018–2020 dump import AND the live 2021+ scrape, because it reads core, not the
- * dump's precomputed aggregates. (`import-old`'s builder now only fills
- * `cpv_tree`, the one mart with no core-derivable equivalent.)
- *
- * Two plausibility bounds keep corrupt source values out of every total (the
- * same bounds the flag rules use): `da_max_plausible` (~2M — a DA is legally
- * capped near the works ceiling; ~275 dump rows carry billions) and
- * `award_max_plausible` (~1e9 — framework agreements are legitimately large, but
- * one award row carries 13.8B).
- *
- * A session-local `pair_spend` temp table is the shared spine: one row per
- * (authority, supplier) money movement, from DAs (single supplier) and from
- * AWARDS (the award notice value attributed to its winner(s), split equally
- * across a consortium — contract-level value is NULL in the source, so the money
- * lives on the award notice). `ron_full`/`ron_split` are equal here since the
- * consortium split is already applied.
+ * Rebuild display marts atomically from the same procurement population used by
+ * ordinary value queries: accepted, positive DAs up to the plausibility ceiling
+ * and positive RON procedure contracts allocated equally to recorded winners.
+ * Award notices and TED publications describe those procurements; their values
+ * are never added to the transaction spine. Amounts are recorded commitments,
+ * not evidence of payment. Contract counts are distinct source contracts.
  */
 export interface MartsReport {
   nationalStats: number;
@@ -53,6 +40,9 @@ export async function runMarts(
   const log = opts.log ?? (() => {});
   const daBound = await threshold(sql, "da_max_plausible", DA_BOUND_FALLBACK);
   const awBound = await threshold(sql, "award_max_plausible", AWARD_BOUND_FALLBACK);
+  if (daBound !== DA_BOUND_FALLBACK || awBound !== AWARD_BOUND_FALLBACK) {
+    throw new Error("Plausibility bounds differ from the query population; update all consumers together before rebuilding marts");
+  }
   log(`marts bounds: da_max_plausible=${daBound} award_max_plausible=${awBound}`);
 
   const report = await sql.begin(async (q) => {
@@ -64,48 +54,101 @@ export async function runMarts(
         marts.authority_concentration, marts.contract_transactions
     `;
 
-    // ── award value attributed to winners (award notice value / #winners) ─────
-    // Contract-level value is NULL in the source; the money is on the award
-    // notice (ron_contract_value). Split equally across a consortium.
+    // ── contract_transactions: the canonical procedure-contract population ─────────
+    // One row per (contract, winner); consortium value split equally into
+    // closing_value; the last member receives the rounding remainder so the
+    // allocations sum exactly to the source amount. Sub-cent shares keep enough
+    // decimal places to retain every positive winner allocation. Competition columns
+    // from the CONFIRMED TED crosswalk tier only; null = unknown.
+    // Framework/call-off dedup: an "acord-cadru" row is a CEILING, not money —
+    // when the same notice also published explicit "contract subsecvent" rows
+    // (the actual orders), the framework row would double-count them and is
+    // excluded. Frameworks whose call-offs were never published stay (they are
+    // the available commitment record, not confirmed payments).
     await q`
-      create temp table award_spend on commit drop as
-      with aw as (
-        select a.id award_id, a.authority_entity_id auth, cw.entity_id winner,
-               a.ron_contract_value val, a.state_date dt,
-               a.acquisition_type atype, a.cpv_code cpv
-        from core.awards a
-        join core.contracts c on c.ca_notice_id = a.ca_notice_id
-        join core.contract_winners cw on cw.contract_id = c.id
-        where a.authority_entity_id is not null
-          and a.ron_contract_value is not null
-          and a.ron_contract_value >= 0 and a.ron_contract_value <= ${awBound}
-        group by a.id, a.authority_entity_id, cw.entity_id, a.ron_contract_value,
-                 a.state_date, a.acquisition_type, a.cpv_code
+      insert into marts.contract_transactions (
+        contract_id, supplier_id, contract_no, ca_notice_id, notice_no,
+        authority_id, authority_name, supplier_name, county,
+        cpv_code, cpv_name, procedure_type, acquisition_type,
+        closing_value, contract_value_full, n_winners, finalization_date,
+        tenders_received, is_single_bidder, also_in_ted, ted_pubnum
       )
-      select auth, winner,
-             val / count(*) over (partition by award_id) as share,
-             dt, atype, cpv
-      from aw
+      with has_sub as (
+        select distinct ca_notice_id from core.contracts
+        where title ~* 'subsecvent'
+      ),
+      base as (
+        select c.id contract_id, c.contract_no, c.ca_notice_id, aw.notice_no,
+               aw.authority_entity_id authority_id, c.contract_value, c.contract_date,
+               aw.cpv_code, aw.procedure_type, aw.acquisition_type
+        from core.contracts c
+        join core.awards aw on aw.ca_notice_id = c.ca_notice_id
+        where c.contract_value is not null and c.contract_value > 0
+          and c.contract_value <= ${awBound}
+          and c.contract_date is not null
+          and (c.currency is null or c.currency ilike '%ron%')
+          and aw.authority_entity_id is not null
+          and not (
+            coalesce(c.title, '') ~* 'acord[- ]cadru' and coalesce(c.title, '') !~* 'subsecvent'
+            and c.ca_notice_id in (select ca_notice_id from has_sub)
+          )
+      ),
+      w as (
+        select contract_id, entity_id
+        from core.contract_winners
+        group by contract_id, entity_id
+      ),
+      wn as (
+        select contract_id, entity_id,
+               count(*) over (partition by contract_id) n,
+               row_number() over (partition by contract_id order by entity_id) winner_position
+        from w
+      )
+      select
+        b.contract_id, wn.entity_id, b.contract_no, b.ca_notice_id, b.notice_no,
+        b.authority_id, ae.name_display, se.name_display, ae.county,
+        b.cpv_code, cpv.name_ro, b.procedure_type, b.acquisition_type,
+        case when wn.winner_position = wn.n
+          then b.contract_value - trunc(b.contract_value / wn.n,
+            case when b.contract_value / wn.n < 0.01
+              then scale(b.contract_value) + length(wn.n::text) + 1 else 2 end) * (wn.n - 1)
+          else trunc(b.contract_value / wn.n,
+            case when b.contract_value / wn.n < 0.01
+              then scale(b.contract_value) + length(wn.n::text) + 1 else 2 end) end,
+        b.contract_value, wn.n,
+        to_char(b.contract_date, 'YYYY-MM-DD'),
+        cc.tenders_received, cc.is_single_bidder,
+        cc.contract_id is not null,
+        tn.publication_number
+      from base b
+      join wn on wn.contract_id = b.contract_id
+      left join core.entities ae on ae.id = b.authority_id
+      left join core.entities se on se.id = wn.entity_id
+      left join core.cpv_codes cpv on cpv.code = b.cpv_code
+      left join marts.contract_competition cc on cc.contract_id = b.contract_id
+      left join core.ted_lot_results tlr on tlr.id = cc.ted_lot_result_id
+      left join core.ted_notices tn on tn.id = tlr.ted_notice_id
     `;
 
-    // ── shared spine: DA + award money movements ──────────────────────────────
+    // Shared transaction population. Use contract values already allocated per
+    // recorded winner, never an award-notice total repeated over its contracts.
+    await q`
+      create temp table award_spend on commit drop as
+      select contract_id, authority_id auth, supplier_id winner,
+             closing_value share, finalization_date::date dt,
+             acquisition_type atype, cpv_code cpv
+      from marts.contract_transactions where closing_value > 0
+    `;
     await q`
       create temp table pair_spend on commit drop as
-      select
-        da.authority_entity_id as authority_id,
-        da.supplier_entity_id  as supplier_id,
-        'da'::text             as src,
-        da.closing_value       as ron_full,
-        da.closing_value       as ron_split,
-        da.finalization_date   as activity_date
+      select da.authority_entity_id authority_id, da.supplier_entity_id supplier_id,
+             'da'::text src, da.id record_id, da.closing_value ron_full,
+             da.closing_value ron_split, da.finalization_date activity_date
       from core.direct_acquisitions da
       where da.state = 'Oferta acceptata'
-        and da.authority_entity_id is not null
-        and da.supplier_entity_id is not null
-        and da.closing_value is not null and da.closing_value <= ${daBound}
+        and da.closing_value > 0 and da.closing_value <= ${daBound}
       union all
-      select auth, winner, 'award', share, share, dt
-      from award_spend
+      select auth, winner, 'award', contract_id, share, share, dt from award_spend
     `;
 
     // ── national_stats: per (kind, year) + headline year-null rows ────────────
@@ -124,7 +167,7 @@ export async function runMarts(
         select 'da', extract(year from finalization_date)::int,
                case when closing_value <= ${daBound} then closing_value end
           from core.direct_acquisitions
-          where state = 'Oferta acceptata'
+          where state = 'Oferta acceptata' and closing_value > 0 and closing_value <= ${daBound}
       ) s
       group by grouping sets ((kind, y), (kind))
     `;
@@ -143,7 +186,7 @@ export async function runMarts(
         select 'da', acquisition_type,
                case when closing_value <= ${daBound} then closing_value end
           from core.direct_acquisitions
-          where state = 'Oferta acceptata'
+          where state = 'Oferta acceptata' and closing_value > 0 and closing_value <= ${daBound}
       )
       select 'all', atype, count(*)::int, sum(val) from s group by atype
       union all
@@ -165,6 +208,7 @@ export async function runMarts(
                case when closing_value <= ${daBound} then closing_value end
           from core.direct_acquisitions
           where state = 'Oferta acceptata' and cpv_code is not null
+            and closing_value > 0 and closing_value <= ${daBound}
       ),
       agg as (
         select division, 'all'::text kind, count(*)::int n, sum(val) t from s group by division
@@ -182,11 +226,11 @@ export async function runMarts(
          first_activity, last_activity)
       select
         supplier_id, 'supplier',
-        count(*) filter (where src = 'award')::int,
+        count(distinct record_id) filter (where src = 'award')::int,
         count(*) filter (where src = 'da')::int,
         sum(ron_full), sum(ron_split),
         min(activity_date)::text, max(activity_date)::text
-      from pair_spend
+      from pair_spend where supplier_id is not null
       group by supplier_id
     `;
     // ── entity_profile: authority side ──────────────────────────────────────
@@ -196,11 +240,11 @@ export async function runMarts(
          first_activity, last_activity)
       select
         authority_id, 'authority',
-        count(*) filter (where src = 'award')::int,
+        count(distinct record_id) filter (where src = 'award')::int,
         count(*) filter (where src = 'da')::int,
         sum(ron_split), sum(ron_split),
         min(activity_date)::text, max(activity_date)::text
-      from pair_spend
+      from pair_spend where authority_id is not null
       group by authority_id
     `;
 
@@ -240,10 +284,9 @@ export async function runMarts(
     // ── spend_by_county (choropleth source, both roles) ─────────────────────
     await q`
       insert into marts.spend_by_county (county, role, n, total_ron)
-      select county, role, count(*)::int, sum(total_ron_full)
+      select coalesce(nullif(county, ''), 'Necunoscut'), role, count(*)::int, sum(total_ron_split)
       from marts.entity_profile
-      where county is not null and county <> ''
-      group by county, role
+      group by coalesce(nullif(county, ''), 'Necunoscut'), role
     `;
 
     // ── top_entities (leaderboards per role) ────────────────────────────────
@@ -264,11 +307,11 @@ export async function runMarts(
       with agg as (
         select supplier_id as entity_id, 'supplier'::text role, authority_id as partner_entity_id,
                count(*)::int n, sum(ron_split) total_ron
-        from pair_spend group by supplier_id, authority_id
+        from pair_spend where supplier_id is not null and authority_id is not null group by supplier_id, authority_id
         union all
         select authority_id, 'authority', supplier_id,
                count(*)::int, sum(ron_split)
-        from pair_spend group by authority_id, supplier_id
+        from pair_spend where authority_id is not null and supplier_id is not null group by authority_id, supplier_id
       )
       select entity_id, role, partner_entity_id, rank, n, total_ron
       from (
@@ -279,92 +322,26 @@ export async function runMarts(
     `;
 
     // ── authority_concentration (HHI + top-supplier share, split spend) ─────
+    // Compute each authority's denominator once. A correlated scan of the
+    // materialized supplier groups for every authority is quadratic at full size.
     await q`
       insert into marts.authority_concentration
         (authority_entity_id, distinct_suppliers, top_supplier_pct, hhi, total_ron)
       with per_supplier as (
         select authority_id, supplier_id, sum(ron_split) s_total
-        from pair_spend group by authority_id, supplier_id
+        from pair_spend where authority_id is not null and supplier_id is not null group by authority_id, supplier_id
       ),
-      per_authority as (
-        select authority_id, sum(s_total) a_total, count(*)::int distinct_suppliers,
-               max(s_total) top_s
-        from per_supplier group by authority_id
+      shares as (
+        select authority_id, s_total,
+               sum(s_total) over (partition by authority_id) a_total
+        from per_supplier
       )
       select
-        pa.authority_id, pa.distinct_suppliers,
-        case when pa.a_total > 0 then round(pa.top_s / pa.a_total, 4) end,
-        case when pa.a_total > 0 then round(
-          (select sum(power(ps.s_total / pa.a_total, 2)) from per_supplier ps
-            where ps.authority_id = pa.authority_id), 4) end,
-        pa.a_total
-      from per_authority pa
-    `;
-
-    // ── contract_transactions: the ask engine's above-threshold twin ─────────
-    // One row per (contract, winner); consortium value split equally into
-    // closing_value (anti-double-count — sums stay honest). Competition columns
-    // from the CONFIRMED TED crosswalk tier only; null = unknown.
-    // Framework/call-off dedup: an "acord-cadru" row is a CEILING, not money —
-    // when the same notice also published explicit "contract subsecvent" rows
-    // (the actual orders), the framework row would double-count them and is
-    // excluded. Frameworks whose call-offs were never published stay (they are
-    // the only record of that money; the ceiling caveat covers them).
-    await q`
-      insert into marts.contract_transactions (
-        contract_id, supplier_id, contract_no, ca_notice_id, notice_no,
-        authority_id, authority_name, supplier_name, county,
-        cpv_code, cpv_name, procedure_type, acquisition_type,
-        closing_value, contract_value_full, n_winners, finalization_date,
-        tenders_received, is_single_bidder, also_in_ted, ted_pubnum
-      )
-      with has_sub as (
-        select distinct ca_notice_id from core.contracts
-        where title ~* 'subsecvent'
-      ),
-      base as (
-        select c.id contract_id, c.contract_no, c.ca_notice_id, aw.notice_no,
-               aw.authority_entity_id authority_id, c.contract_value, c.contract_date,
-               aw.cpv_code, aw.procedure_type, aw.acquisition_type
-        from core.contracts c
-        join core.awards aw on aw.ca_notice_id = c.ca_notice_id
-        where c.contract_value is not null and c.contract_value > 0
-          and c.contract_value <= ${awBound}
-          and c.contract_date is not null
-          and (c.currency is null or c.currency ilike '%ron%')
-          and aw.authority_entity_id is not null
-          and not (
-            c.title ~* 'acord[- ]cadru' and c.title !~* 'subsecvent'
-            and c.ca_notice_id in (select ca_notice_id from has_sub)
-          )
-      ),
-      w as (
-        select contract_id, entity_id
-        from core.contract_winners
-        group by contract_id, entity_id
-      ),
-      wn as (
-        select contract_id, entity_id,
-               count(*) over (partition by contract_id) n
-        from w
-      )
-      select
-        b.contract_id, wn.entity_id, b.contract_no, b.ca_notice_id, b.notice_no,
-        b.authority_id, ae.name_display, se.name_display, ae.county,
-        b.cpv_code, cpv.name_ro, b.procedure_type, b.acquisition_type,
-        b.contract_value / wn.n, b.contract_value, wn.n,
-        to_char(b.contract_date, 'YYYY-MM-DD'),
-        cc.tenders_received, cc.is_single_bidder,
-        cc.contract_id is not null,
-        tn.publication_number
-      from base b
-      join wn on wn.contract_id = b.contract_id
-      left join core.entities ae on ae.id = b.authority_id
-      left join core.entities se on se.id = wn.entity_id
-      left join core.cpv_codes cpv on cpv.code = b.cpv_code
-      left join marts.contract_competition cc on cc.contract_id = b.contract_id
-      left join core.ted_lot_results tlr on tlr.id = cc.ted_lot_result_id
-      left join core.ted_notices tn on tn.id = tlr.ted_notice_id
+        authority_id, count(*)::int,
+        case when a_total > 0 then round(max(s_total) / a_total, 4) end,
+        case when a_total > 0 then round(sum(power(s_total / nullif(a_total, 0), 2)), 4) end,
+        a_total
+      from shares group by authority_id, a_total
     `;
 
     // Headline entity counts (year null) — after entity_profile exists.
