@@ -7,12 +7,12 @@ import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {spawnSync} from 'node:child_process';
 const script=fileURLToPath(new URL('./deploy.sh',import.meta.url));
-async function run(fail=''){
+async function run(fail='',collection=''){
  const dir=await mkdtemp(join(tmpdir(),'seap-deploy-script-'));
  try{
   await mkdir(join(dir,'bin'));await mkdir(join(dir,'.git'));await mkdir(join(dir,'infra/prod'),{recursive:true});
-  for(const [name,body] of Object.entries({git:'echo "git $*" >> "$DEPLOY_TEST_LOG"\nif [ "$1" = rev-parse ]; then echo test-commit; fi',flock:'[ "$DEPLOY_TEST_FAIL" != lock ]',docker:'echo "docker $*" >> "$DEPLOY_TEST_LOG"\ncase "$*" in *"build --pull"*) [ "$DEPLOY_TEST_FAIL" != build ];; *"run --rm --no-deps migrate"*) [ "$DEPLOY_TEST_FAIL" != migrate ];; *) exit 0;; esac'}))await writeFile(join(dir,'bin',name),'#!/bin/sh\n'+body+'\n',{mode:0o755});
-  const result=spawnSync('bash',[script],{env:{...process.env,PATH:join(dir,'bin')+':'+process.env.PATH,SEAP_DEPLOY_CHECKOUT:dir,DEPLOY_TEST_LOG:join(dir,'calls'),DEPLOY_TEST_FAIL:fail},encoding:'utf8'});
+  for(const [name,body] of Object.entries({git:'echo "git $*" >> "$DEPLOY_TEST_LOG"\nif [ "$1" = rev-parse ]; then echo test-commit; fi',flock:'[ "$DEPLOY_TEST_FAIL" != lock ]',docker:'echo "docker $*" >> "$DEPLOY_TEST_LOG"\ncase "$*" in *"ps --status running -q collection"*) if [ -n "$DEPLOY_TEST_COLLECTION" ]; then echo collection-test; fi; exit 0;; "inspect --format "*) if [ "$DEPLOY_TEST_COLLECTION" = service ]; then echo False; else echo True; fi; exit 0;; *"build --pull"*) [ "$DEPLOY_TEST_FAIL" != build ];; *"run --rm --no-deps migrate"*) [ "$DEPLOY_TEST_FAIL" != migrate ];; *) exit 0;; esac'}))await writeFile(join(dir,'bin',name),'#!/bin/sh\n'+body+'\n',{mode:0o755});
+  const result=spawnSync('bash',[script],{env:{...process.env,PATH:join(dir,'bin')+':'+process.env.PATH,SEAP_DEPLOY_CHECKOUT:dir,DEPLOY_TEST_LOG:join(dir,'calls'),DEPLOY_TEST_FAIL:fail,DEPLOY_TEST_COLLECTION:collection},encoding:'utf8'});
   const calls=await readFile(join(dir,'calls'),'utf8').catch(()=> '');return {status:result.status,calls};
  }finally{await rm(dir,{recursive:true,force:true});}
 }
@@ -30,3 +30,6 @@ test('migration history accepts only the reconstructed legacy correction',()=>{
  assert.equal(migrationHistoryMatch(legacy,{...migration,hash:'modified-again'},5),false);
  assert.equal(migrationHistoryMatch({...legacy,created_at:0},migration,5),false);
 });
+
+test('a bounded one-off pilot does not activate the permanent collector',async()=>{const r=await run('','pilot');assert.equal(r.status,0);assert.doesNotMatch(r.calls,/build --pull collection|up -d --no-deps collection/);});
+test('an already activated collector follows the release',async()=>{const r=await run('','service');assert.equal(r.status,0);assert.match(r.calls,/build --pull collection/);assert.match(r.calls,/up -d --no-deps collection/);});
