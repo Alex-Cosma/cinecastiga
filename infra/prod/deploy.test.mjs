@@ -1,3 +1,4 @@
+import {migrationHistoryMatch} from '../../packages/db/scripts/migration-history.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtemp,mkdir,writeFile,readFile,rm} from 'node:fs/promises';
@@ -18,3 +19,14 @@ async function run(fail=''){
 test('successful deploy builds, migrates, then replaces web',async()=>{const r=await run();assert.equal(r.status,0);assert.ok(r.calls.indexOf('build --pull web migrate documents')<r.calls.indexOf('run --rm --no-deps migrate'));assert.ok(r.calls.indexOf('run --rm --no-deps migrate')<r.calls.indexOf('up -d --no-deps web documents'));assert.doesNotMatch(r.calls,/compose (?:down|stop)/);});
 for(const stage of ['build','migrate'])test(`${stage} failure preserves running web`,async()=>{const r=await run(stage);assert.notEqual(r.status,0);assert.doesNotMatch(r.calls,/up -d|image prune|compose (?:stop|down)/);});
 test('concurrent deploy exits before changing checkout or containers',async()=>{const r=await run('lock');assert.notEqual(r.status,0);assert.equal(r.calls,'');});
+
+test('migration history accepts only the reconstructed legacy correction',()=>{
+ const migration={folderMillis:1783884567616,hash:'8fd4aefc5bedea21b3b6fe88c904ce3b0f31a5176458916aa7d3fbb0fead0565'};
+ const legacy={created_at:'1783884567616',hash:'715dde5bb016ceeb3264fe79e14334cb9a9487dcd6b8abd65c0ed1ea445d60b5'};
+ assert.equal(migrationHistoryMatch(legacy,migration,5),'legacy-national-stats-nullability');
+ assert.equal(migrationHistoryMatch({...legacy,hash:migration.hash},migration,5),'exact');
+ assert.equal(migrationHistoryMatch(legacy,migration,4),false);
+ assert.equal(migrationHistoryMatch({...legacy,hash:'unknown'},migration,5),false);
+ assert.equal(migrationHistoryMatch(legacy,{...migration,hash:'modified-again'},5),false);
+ assert.equal(migrationHistoryMatch({...legacy,created_at:0},migration,5),false);
+});
