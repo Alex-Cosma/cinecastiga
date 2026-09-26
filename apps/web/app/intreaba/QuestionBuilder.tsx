@@ -313,7 +313,7 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
       case "fact_check": return <>A cumpărat {phrase("authority", entityLabel(draft, "authority"))}<br className="qb-desktop-break" /> de la {phrase("supplier", entityLabel(draft, "supplier"))}?</>;
       case "distribution": return <>Unde se situează {focal}<br className="qb-desktop-break" /> după indicele de risc?</>;
       case "scatter": return <>Ce {what} ies din tipar<br className="qb-desktop-break" /> după risc și valoarea achizițiilor?</>;
-      case "entity_card": return <>Care {phrase("dim", draft.dim === "supplier" ? "firmă" : "instituție")} are<br className="qb-desktop-break" /> {phrase("rankBy", draft.rankBy === "risk" ? "cel mai ridicat indice de risc" : "cea mai mare valoare în profil")}?</>;
+      case "entity_card": return <>Care {phrase("dim", draft.dim === "supplier" ? "firmă" : "instituție")} are<br className="qb-desktop-break" /> {phrase("rankBy", draft.rankBy === "risk" ? "cel mai ridicat indice de risc" : "cea mai mare valoare a achizițiilor")}?</>;
       default: return null;
     }
   }
@@ -341,7 +341,7 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
     switch (field) {
       case "dim": return [{ value: "supplier", label: "Firme", detail: "Cine furnizează bunurile și serviciile." }, { value: "authority", label: "Instituții", detail: "Cine face achizițiile." }, ...(!["scatter", "entity_card"].includes(draft.block) ? [{ value: "county", label: "Județe", detail: "Unde se află instituțiile cumpărătoare." }] : [])];
       case "measure": return [{ value: "value", label: "Valoarea în lei", detail: "Suma valorilor înregistrate." }, { value: "count", label: "Numărul de achiziții", detail: "Câte înregistrări există în date." }, ...(draft.block === "table" && draft.dim === "authority" ? [{ value: "value_per_capita", label: "Valoarea pe locuitor", detail: "Pentru autorități-UAT cu populație cunoscută." }] : [])];
-      case "rankBy": return [{ value: "value", label: "Cea mai mare valoare în profil", detail: "Achiziții directe, pe întreaga perioadă." }, { value: "risk", label: "Cel mai ridicat indice de risc", detail: "Un semnal statistic, de verificat în surse." }];
+      case "rankBy": return [{ value: "value", label: "Cea mai mare valoare a achizițiilor", detail: "Achiziții directe și contracte prin proceduri, în selecția aleasă." }, { value: "risk", label: "Cel mai ridicat indice de risc", detail: "Un semnal statistic, de verificat în surse." }];
       case "topN": return [...[5, 10, 25, 50].map((n) => ({ value: String(n), label: `Primele ${n}` })), ...(draft.block === "table" ? [{ value: "all", label: "Toate rezultatele", detail: "Clasamentul complet, împărțit în pagini." }] : [])];
       case "dataset": return [{ value: "all", label: SOURCES.all!, detail: "Achiziții directe și contracte din proceduri, împreună." }, { value: "contracts", label: SOURCES.contracts!, detail: "Contracte atribuite prin licitații și alte proceduri." }, { value: "da", label: SOURCES.da!, detail: "Achizițiile directe, înregistrate separat." }];
       case "authorityKind": return KIND_OPTIONS.map(([value, label]) => ({ value, label: label.charAt(0).toUpperCase() + label.slice(1) }));

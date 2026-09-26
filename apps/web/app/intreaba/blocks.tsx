@@ -1385,7 +1385,7 @@ export function NetworkBlock({
 
 /* ── entity card ──────────────────────────────────────────────────────── */
 
-export function EntityCardBlock({ card }: { card: EntityCardData }) {
+export function EntityCardBlock({ card, historical = true }: { card: EntityCardData; historical?: boolean }) {
   const evidence = useAnswerEvidence();
   const band = card.cri !== null ? criBand(card.cri) : null;
   return (
@@ -1405,22 +1405,22 @@ export function EntityCardBlock({ card }: { card: EntityCardData }) {
       <div className="kpis">
         <div className="kpi">
           <div className="v num">{formatRon(card.value)}</div>
-          <div className="l">valoare înregistrată în profil</div>
+          <div className="l">{historical ? "valoare înregistrată în profil" : "valoarea achizițiilor selectate"}</div>
         </div>
         <div className="kpi">
           <div className="v num">{formatInt(card.count)}</div>
-          <div className="l">achiziții</div>
+          <div className="l">înregistrări</div>
         </div>
-        <div className="kpi">
+        {historical && <div className="kpi">
           <div className="v num risk">
             {card.cri !== null ? card.cri.toFixed(2) : "—"}
           </div>
           <div className="l">indice risc{band ? ` · ${band.label}` : ""}</div>
-        </div>
-        <div className="kpi">
+        </div>}
+        {historical && <div className="kpi">
           <div className="v num risk">{card.nFlags}</div>
           <div className="l">semnale</div>
-        </div>
+        </div>}
       </div>
       {evidence && (
         <button
@@ -1433,7 +1433,7 @@ export function EntityCardBlock({ card }: { card: EntityCardData }) {
                 entityIds: [card.entityId],
                 role: card.role === "supplier" ? "supplier" : "authority",
               },
-              `${cleanName(card.name)} · înregistrările profilului`,
+              `${cleanName(card.name)} · ${historical ? "înregistrările profilului" : "achizițiile selectate"}`,
             )
           }
         >
@@ -1449,10 +1449,10 @@ export function EntityCardBlock({ card }: { card: EntityCardData }) {
           ))}
         </div>
       )}
-      <p className="ask-methnote">
+      {historical && <p className="ask-methnote">
         Indicele de risc (CRI) e un semnal statistic, nu o dovadă de neregulă —{" "}
         <Link href="/metodologie">cum se calculează</Link>.
-      </p>
+      </p>}
     </div>
   );
 }

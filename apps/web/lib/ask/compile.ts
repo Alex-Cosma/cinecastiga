@@ -345,6 +345,18 @@ export async function runSpec(
   grounding: Grounding,
   tableOpts: TableOpts = {},
 ): Promise<EngineResult | { error: string; caveats: string[] }> {
+  // Value superlatives share the transaction ranking, including both streams,
+  // its filters, allocation rules and deterministic tie break. CRI stays historical.
+  if (spec.block === "entity_card" && spec.rankBy === "value") {
+    const ranked = await runSpec(sql, { ...spec, block: "table", measure: "value", topN: 1 }, grounding);
+    if ("error" in ranked) return ranked;
+    const winner = ranked.data.block === "table" ? ranked.data.rows[0] : undefined;
+    if (!winner?.entityId) return { error: "Niciun rezultat pentru aceste filtre.", caveats: ranked.caveats };
+    return { ...ranked, data: { block: "entity_card", card: {
+      ...winner, entityId: winner.entityId, role: spec.dim === "supplier" ? "supplier" : "authority",
+      cri: null, nFlags: 0, flags: [],
+    } } };
+  }
   const caveats: string[] = [];
   const started = Date.now();
 
@@ -1579,6 +1591,7 @@ export async function runRows(
   opts: DrillOpts = {},
 ): Promise<DrillResult | { error: string }> {
   opts.signal?.throwIfAborted();
+  if (spec.block === "entity_card" && spec.rankBy === "value") spec = { ...spec, measure: "value" };
   const unsupported = unsupportedPopulationView(spec);
   if (unsupported) return { error: unsupported };
   if (!DRILLABLE_BLOCKS.includes(spec.block)) {
@@ -1615,6 +1628,19 @@ export async function runRows(
   const scope = validateEvidenceScope(opts.scope);
   if ("error" in scope) return scope;
   const profile = isHistoricalProfile(spec);
+  // Resolve the winner from the original population before any drawer filters.
+  // Intersect it below, so a caller cannot substitute a different entity.
+  let valueWinner: string | null = null;
+  if (spec.block === "entity_card" && spec.rankBy === "value") {
+    const result = await runSpec(sql, spec, grounding);
+    opts.signal?.throwIfAborted();
+    if ("error" in result) return { error: result.error };
+    if (result.data.block !== "entity_card") return { error: "Nu am putut identifica entitatea cu valoarea maximă." };
+    valueWinner = result.data.card.entityId;
+    if (scope.role && scope.role !== (spec.dim === "supplier" ? "supplier" : "authority"))
+      return { error: "Rolul selectat nu aparține entității din răspuns." };
+  }
+
   if (scope.riskBucket && spec.block !== "distribution") return { error: "Intervalul de risc se aplică distribuției." };
   if (profile && (scope.cpvPrefixes || scope.excludeCpvPrefixes || scope.years))
     return { error: "Profilul istoric nu se restrânge la CPV sau perioadă. Deschide o întrebare despre achiziții pentru aceste filtre." };
@@ -1754,6 +1780,10 @@ export async function runRows(
       const basePopulation = parts.reduce((a, b) => sql`${a} and ${b}`);
       parts.push(minimumRecordsSql(sql, txt as unknown as ReturnType<DbSql>, basePopulation, spec.minimumRecords));
       notes.push(`Pragul de ${spec.minimumRecords.count} înregistrări pentru ${spec.minimumRecords.role === "authority" ? "instituții" : "firme"} se calculează înainte de selecția unui grup și filtrele locale ale surselor.`);
+    }
+    if (valueWinner) {
+      parts.push(spec.dim === "supplier" ? sql`d.supplier_id = ${valueWinner}` : sql`d.authority_id = ${valueWinner}`);
+      notes.push("Sursele sunt limitate la entitatea cu cea mai mare valoare în selecția întrebării; filtrele din listă nu schimbă câștigătorul.");
     }
     if (scope.county) parts.push(sql`lower(unaccent(d.county)) = ${fold(scope.county)}`);
     if (isRelationship) parts.push(focalRole === "authority" ? sql`d.supplier_id is not null` : sql`d.authority_id is not null`);

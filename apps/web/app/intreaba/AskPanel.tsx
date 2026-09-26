@@ -674,7 +674,7 @@ export default function AskPanel({
                 <NetworkBlock nodes={data.nodes} focal={data.focal} />
               )}
               {data.block === "entity_card" && (
-                <EntityCardBlock card={data.card} />
+                <EntityCardBlock card={data.card} historical={isProfile} />
               )}
               {data.block === "fact_check" && (
                 <FactCheckBlock fact={data.fact} />
@@ -1443,8 +1443,8 @@ function exportCsv(data: BlockData, spec: AskSpec) {
     case "entity_card": {
       const c = data.card;
       lines = [
-        "nume,judet,valoare_lei,achizitii,cri,semnale,flags",
-        `${csvQ(c.name)},${csvQ(c.county)},${c.value},${c.count},${c.cri ?? ""},${c.nFlags},${csvQ(c.flags.join("|"))}`,
+        isHistoricalProfile(spec) ? "nume,judet,valoare_lei,achizitii,cri,semnale,flags" : "nume,judet,valoare_lei,inregistrari",
+        `${csvQ(c.name)},${csvQ(c.county)},${c.value},${c.count}${isHistoricalProfile(spec) ? `,${c.cri ?? ""},${c.nFlags},${csvQ(c.flags.join("|"))}` : ""}`,
       ];
       break;
     }

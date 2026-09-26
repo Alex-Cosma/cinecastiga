@@ -25,6 +25,16 @@ describe("the editable question contract", () => {
     expect(spec.block).toBe(block);
   });
 
+  it("value leaders use both streams and retain period/CPV filters, while risk stays historical", () => {
+    const { spec } = transitionQuestion({ block:"stat", measure:"value", filters:{ yearFrom:2025, yearTo:2025, cpvTerm:"45" } }, "entity_card");
+    expect(spec.rankBy).toBe("value");
+    expect(spec.dataset ?? "all").toBe("all");
+    expect(questionErrors(spec)).toEqual([]);
+    expect(validateSpec(spec)).not.toHaveProperty("error");
+    expect(describeQuestion(spec)).toContain("valoare a achizițiilor");
+    expect(questionErrors({ ...spec, rankBy:"risk" }).join(" ")).toContain("profiluri istorice");
+  });
+
   it("preserves exact identities and every compatible advanced condition", () => {
     const input: QuestionSpec = { ...authority, filters: { ...authority.filters, supplierId: 733, supplierName: "Firma verificată", uatSiruta: 12345, uatName: "Dumbrăvița (Timiș)", singleBidder: true, minEmployees: 0, maxEmployees: 4, adminPersonKey: "test person|1970-01-01|locality", adminName: "Persoana verificată" } };
     const { spec, changes } = transitionQuestion(input, "stat");

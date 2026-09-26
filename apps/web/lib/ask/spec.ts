@@ -468,7 +468,7 @@ export function validateSpec(raw: unknown): AskSpec | SpecError {
 
   const spec: AskSpec = {
     block: block as Block,
-    measure: measure as Measure,
+    measure: block === "entity_card" && rankBy === "value" ? "value" : measure as Measure,
     filters,
   };
   if (dataset !== "all") spec.dataset = dataset;

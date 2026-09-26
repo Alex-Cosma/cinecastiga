@@ -133,7 +133,7 @@ export const QUESTION_TYPES: {
     id: "entity_card",
     group: "signals",
     label: "Cine conduce într-o categorie?",
-    description: "Profilul cu cea mai mare valoare sau cel mai ridicat indice.",
+    description: "Cea mai mare valoare a achizițiilor sau cel mai ridicat indice de risc.",
     keywords: "fisa campion superlativ cea mai mare risc",
   },
 ];
@@ -294,7 +294,7 @@ export function describeQuestion(input: QuestionSpec | AskSpec): string {
     case "scatter":
       return `Ce ${dims} ies din tipar după risc și valoarea achizițiilor?`;
     case "entity_card":
-      return `Care ${spec.dim === "supplier" ? "firmă" : "instituție"} are ${spec.rankBy === "risk" ? "cel mai ridicat indice de risc" : "cea mai mare valoare în profil"}?`;
+      return `Care ${spec.dim === "supplier" ? "firmă" : "instituție"} are ${spec.rankBy === "risk" ? "cel mai ridicat indice de risc" : "cea mai mare valoare a achizițiilor"}?`;
     default:
       return "Întrebarea ta";
   }
@@ -321,10 +321,13 @@ export function transitionQuestion(
     spec.filters.compareWith = `Entitatea #${spec.filters.compareWithId}`;
   // A view changes presentation, never the selected population. Unsupported
   // combinations remain editable and questionErrors explains how to resolve them.
+  if (block === "entity_card") {
+    spec.rankBy = spec.rankBy ?? "value";
+    spec.dim = spec.dim === "supplier" ? "supplier" : "authority";
+  }
   if (isProfileQuestion(spec)) {
     if (["distribution", "compare"].includes(block)) spec.dim = focalRole(spec);
     else spec.dim = spec.dim === "supplier" ? "supplier" : "authority";
-    if (block === "entity_card") spec.rankBy = spec.rankBy ?? "value";
   }
   if (["table", "trend"].includes(block)) {
     spec.dim = spec.dim ?? "supplier";
