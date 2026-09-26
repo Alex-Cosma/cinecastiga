@@ -24,11 +24,13 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - run: node --test infra/prod/deploy.test.mjs
+
       - run: pnpm turbo typecheck lint test build
 
   # Pushes to main that pass CI are deployed to the production server: SSH in with
   # a key whose authorized_keys entry forces infra/prod/deploy.sh (git pull +
-  # rebuild the web container). Secrets: DEPLOY_HOST, DEPLOY_SSH_KEY.
+  # build images, migrate database, restart web/document worker). Secrets: DEPLOY_HOST, DEPLOY_SSH_KEY.
   deploy:
     needs: ci
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
