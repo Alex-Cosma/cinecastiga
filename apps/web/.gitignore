@@ -5,5 +5,7 @@ next-env.d.ts
 *.tsbuildinfo
 
 /.next-documents/
+/.next-admin-test/
+/.next-admin-build/
 
 /public/pdfjs/

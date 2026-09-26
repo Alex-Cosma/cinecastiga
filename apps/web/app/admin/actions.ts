@@ -15,7 +15,7 @@ async function requireAdmin() {
 }
 
 function fail(msg: string): never {
-  redirect(`/admin?err=${encodeURIComponent(msg)}`);
+  redirect(`/admin/conturi?err=${encodeURIComponent(msg)}`);
 }
 
 export async function createWatchdog(formData: FormData) {
@@ -39,7 +39,7 @@ export async function createWatchdog(formData: FormData) {
     fail(e instanceof Error ? e.message : "Nu am putut crea contul.");
   }
   await forceTwoFactor(userId);
-  revalidatePath("/admin");
+  revalidatePath("/admin/conturi");
 }
 
 export async function setUserPassword(formData: FormData) {
@@ -53,7 +53,7 @@ export async function setUserPassword(formData: FormData) {
   } catch (e) {
     fail(e instanceof Error ? e.message : "Nu am putut schimba parola.");
   }
-  revalidatePath("/admin");
+  revalidatePath("/admin/conturi");
 }
 
 export async function toggleBan(formData: FormData) {
@@ -73,7 +73,7 @@ export async function toggleBan(formData: FormData) {
   } catch (e) {
     fail(e instanceof Error ? e.message : "Operațiune eșuată.");
   }
-  revalidatePath("/admin");
+  revalidatePath("/admin/conturi");
 }
 
 export async function revokeSessions(formData: FormData) {
@@ -84,5 +84,5 @@ export async function revokeSessions(formData: FormData) {
   } catch (e) {
     fail(e instanceof Error ? e.message : "Operațiune eșuată.");
   }
-  revalidatePath("/admin");
+  revalidatePath("/admin/conturi");
 }

@@ -18,6 +18,7 @@ describe.skipIf(!connection)('document queue, provenance and private evidence',(
   await q`insert into auth.users(id,name,email) values(${uid},'Document test',${uid+'@example.test'}),(${viewer},'Viewer',${viewer+'@example.test'}),(${outsider},'Outsider',${outsider+'@example.test'})`;
   const [inv]=await q`insert into app.investigations(owner_user_id,title) values(${uid},'Synthetic test') returning id`;
   await q`insert into app.investigation_members(investigation_id,user_id,role) values(${inv!.id},${viewer},'viewer')`;
+  await q`update app.collection_control set paused=false,blocked_reason=null,maintenance=false,paused_streams='[]' where id=1`;
   const old=process.env.DOCUMENTS_ENABLED;process.env.DOCUMENTS_ENABLED='true';
   let key:string|undefined;
   try{

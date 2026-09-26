@@ -1,7 +1,8 @@
-import {createDb,type DbSql} from '@seap/db';
+import {createDb,CollectionSuspendedError,collectionHeartbeat,collectionWorkerId,type DbSql} from '@seap/db';
 import {setTimeout as pause} from 'node:timers/promises';
 import {openSeap} from './seap';
 import {processPdf,sha256,validateOriginal} from './process';
+const collectionId=collectionWorkerId('documents');
 export const DOCUMENT_LOCK=[729114,1] as const;
 // The worker owns a reserved postgres.js connection, which has no begin() helper.
 async function atomic(q:DbSql,work:(q:DbSql)=>Promise<void>){await q`begin`;try{await work(q);await q`commit`;}catch(e){await q`rollback`;throw e;}}
@@ -46,6 +47,9 @@ export async function runDocumentJob(q:DbSql,job:Record<string,any>,signal:Abort
 /** Session lock has no expiring lease that could admit a second live worker. */
 export async function runWorkerOnce(sql:DbSql,shutdown:AbortSignal,work=runDocumentJob){
  if(shutdown.aborted)return false;
+ await collectionHeartbeat(sql,collectionId,'documents','idle');
+ const [control]=await sql`select paused,maintenance,blocked_reason,paused_streams from app.collection_control where id=1`;
+ if(!control||control.paused||control.maintenance||control.blocked_reason||control.paused_streams.includes('documents'))return false;
  const connection=await sql.reserve();const q=connection as unknown as DbSql;
  let acquired=false;const controller=new AbortController();const abort=()=>controller.abort();shutdown.addEventListener('abort',abort,{once:true});
  let heartbeat:ReturnType<typeof setInterval>|undefined;
@@ -53,7 +57,7 @@ export async function runWorkerOnce(sql:DbSql,shutdown:AbortSignal,work=runDocum
   const [lock]=await q`select pg_try_advisory_lock(${DOCUMENT_LOCK[0]},${DOCUMENT_LOCK[1]}) acquired,pg_backend_pid() pid`;
   if(!lock?.acquired)return false;acquired=true;
   const pid=lock.pid;
-  heartbeat=setInterval(()=>{void q`select pg_backend_pid() pid`.then(r=>{if(r[0]?.pid!==pid)controller.abort();}).catch(()=>controller.abort());},2000);
+  heartbeat=setInterval(()=>{void q`select pg_backend_pid() pid`.then(async r=>{if(r[0]?.pid!==pid)controller.abort();else await collectionHeartbeat(q,collectionId,'documents','processing');}).catch(()=>controller.abort());},2000);
   const orphan=await q`update app.document_jobs set status='failed',stage='failed',error='Procesarea a fost întreruptă. Reia operațiunea; originalul păstrat va fi reutilizat.',finished_at=now() where status='running' returning id`;
   // A killed worker's bounded child tools/network must finish before replacement starts.
   if(orphan.length)await pause(120000,undefined,{signal:controller.signal});
@@ -62,7 +66,7 @@ export async function runWorkerOnce(sql:DbSql,shutdown:AbortSignal,work=runDocum
   if(!job)return false;
   const deadline=setTimeout(()=>controller.abort(),20*60*1000);
   try{await work(q,job,controller.signal);controller.signal.throwIfAborted();await q`update app.document_jobs set status='complete',stage='complete',finished_at=now() where id=${job.id}`;}
-  catch(error){const message=controller.signal.aborted?'Procesarea a fost întreruptă. Poți relua folosind originalul păstrat.':error instanceof Error&&/^(SEAP|Lista|Identitatea|Documentul|Anunțul|Originalul|Procesarea|Formatul|Pagina|Răspuns|Modul|Adresă)/.test(error.message)?error.message:'Nu am putut finaliza procesarea. Originalul păstrat poate fi reutilizat.';await q`update app.document_jobs set status='failed',stage='failed',error=${message.slice(0,500)},finished_at=now() where id=${job.id}`;}
+  catch(error){if(error instanceof CollectionSuspendedError){await q`update app.document_jobs set status='queued',stage='queued',started_at=null where id=${job.id}`;return false;}const message=controller.signal.aborted?'Procesarea a fost întreruptă. Poți relua folosind originalul păstrat.':error instanceof Error&&/^(SEAP|Lista|Identitatea|Documentul|Anunțul|Originalul|Procesarea|Formatul|Pagina|Răspuns|Modul|Adresă)/.test(error.message)?error.message:'Nu am putut finaliza procesarea. Originalul păstrat poate fi reutilizat.';await q`update app.document_jobs set status='failed',stage='failed',error=${message.slice(0,500)},finished_at=now() where id=${job.id}`;}
   finally{clearTimeout(deadline);}
   return true;
  }finally{if(heartbeat)clearInterval(heartbeat);controller.abort();shutdown.removeEventListener('abort',abort);if(acquired)await q`select pg_advisory_unlock(${DOCUMENT_LOCK[0]},${DOCUMENT_LOCK[1]})`.catch(()=>{});connection.release();}

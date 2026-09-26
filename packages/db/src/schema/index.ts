@@ -12,3 +12,5 @@ export * from "./monitoring.js";
 export * from "./monitoring-digests.js";
 
 export * from "./documents.js";
+
+export * from "./collection.js";

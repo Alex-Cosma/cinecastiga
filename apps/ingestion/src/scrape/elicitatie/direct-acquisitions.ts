@@ -1,3 +1,4 @@
+import {withCollectionStream} from "@seap/db";
 import type { Task } from "graphile-worker";
 import { eq } from "drizzle-orm";
 import { entitySicapIds, ingestionWatermarks, type Db } from "@seap/db";
@@ -239,7 +240,7 @@ export interface ScrapeDasByAuthorityOpts {
  * authority's window is bisected by date until every leaf is under the 2000
  * cap — so the union is provably all DAs.
  */
-export async function scrapeDasByAuthority(
+async function scrapeDasByAuthorityInner(
   deps: ScrapeDeps,
   opts: ScrapeDasByAuthorityOpts = {},
 ): Promise<DaScrapeOutcome> {
@@ -348,6 +349,8 @@ export async function scrapeDasByAuthority(
 }
 
 /** Worker task: chunked authority scan, re-enqueues until the list is done. */
+export function scrapeDasByAuthority(...args:Parameters<typeof scrapeDasByAuthorityInner>){return withCollectionStream("da",()=>scrapeDasByAuthorityInner(...args));}
+
 export function makeScrapeDasTask(
   deps: ScrapeDeps,
   opts: { maxAuthoritiesPerRun?: number } = {},

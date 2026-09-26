@@ -11,6 +11,8 @@ export function getSharedDb(): Db {
   return shared.db;
 }
 
+export function getSharedSql() { shared ??= createDb(); return shared.sql; }
+
 export async function closeSharedDb(): Promise<void> {
   if (shared) {
     await shared.sql.end();
