@@ -1,0 +1,12 @@
+{
+  "status": "passed",
+  "checks": [
+    "Archived original and derived PDF publicly return200",
+    "Anonymous source file/list queue POSTs return401",
+    "Anonymous source-download buttons disabled with sign-in link",
+    "Anonymous PDF viewer and original link remain available",
+    "Authenticated source-download controls enabled",
+    "Verification creates no source requests"
+  ],
+  "liveSeapRequests": 0
+}

@@ -3,7 +3,7 @@ export type FileJob = {id:string; status:string; stage:string; pagesDone:number;
 export type ContractFile = {id:string; code:string; filename:string; publishedAt:string|null; originalHash:string|null; pdfHash:string|null; downloadedAt:string|null; processedAt:string|null; pageCount:number|null; signature:string|null; job:FileJob|null};
 export type ContractFiles = {notice:DocumentNotice|null; checkedAt:string|null; total:number|null; files:ContractFile[]; job:FileJob|null; requestCount:number; enabled:boolean};
 export type DocumentPage = {page:number; text:string; method:string};
-export const stageLabel:Record<string,string>={queued:'În așteptare',source:'Se verifică sursa',list:'Se citește lista de fișiere',download:'Se descarcă originalul',extract:'Se pregătește PDF-ul',text:'Se extrage textul',ocr:'Se citesc paginile scanate',complete:'Pregătit pentru citire și căutare',failed:'Operațiunea nu s-a încheiat'};
+export const stageLabel:Record<string,string>={rate_limit:'Așteaptă descărcarea · cel mult un fișier pe minut',queued:'În așteptare',source:'Se verifică sursa',list:'Se citește lista de fișiere',download:'Se descarcă originalul',extract:'Se pregătește PDF-ul',text:'Se extrage textul',ocr:'Se citesc paginile scanate',complete:'Pregătit pentru citire și căutare',failed:'Operațiunea nu s-a încheiat'};
 export const foldText=(s:string)=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('ro');
 export function textMatches(text:string,query:string):boolean { return foldText(text).includes(foldText(query.trim())); }
 export function validQuote(text:string,quote:unknown):quote is string { return typeof quote==='string' && quote.trim().length>=3 && quote.length<=8000 && text.includes(quote); }

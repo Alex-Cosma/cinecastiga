@@ -1,0 +1,13 @@
+{
+  "status": "passed",
+  "environment": "isolated disposable PostgreSQL16 container; manual auth/app/reference baseline restored without user data",
+  "checks": [
+    "26-to-34 migration upgrade",
+    "Atomic rollback of8real migrations plus1intentional failing migration",
+    "Existing investigation and evidence survive upgrade",
+    "Web gets app writes, sequence usage and data reads without core writes",
+    "Second run has0pending migrations",
+    "Changed migration history refused"
+  ],
+  "sourceRequests": 0
+}

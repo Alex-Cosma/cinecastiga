@@ -61,3 +61,13 @@ The native embedded PDF viewer maintained a separate page position, leaving OCR 
 PDF.js6.3.289 is bundled locally. The dev/build command prepares versioned worker, fonts, CMAP, WASM, ICC and license assets in ignored public/pdfjs; Docker runtime copies public assets. No CDN or remote document retrieval. API bytes and original hashes are unchanged. Implementation follows the [official PDF.js examples](https://mozilla.github.io/pdf.js/examples/).
 
 TypeScript and the isolated production build passed. Nine browser checks passed on dev and production builds, including exact OCR content/blank-page handling, changed canvas pixels, rapid navigation, reload, zoom and mobile/dark rendering. `reader-navigation-verification.json` and `synchronized-reader-*.png` record the results. Fixed global shell was hidden only in mobile element screenshots to avoid screenshot clipping artifacts. Temporary production smoke server stopped; development preview remains3113. No additional SEAP requests, no processing jobs.
+
+## Release follow-up: source access and pacing
+
+Per the user's final clarification, archived originals, derived PDFs, OCR and search remain public. Anonymous visitors see a disabled source-download button and login link. The file/list queue POST checks the session on the backend before accepting requests; authenticated users can initiate source acquisition. There is no login wall on cached file GETs.
+
+The source worker enforces at least60seconds between noticedoc GET attempt starts globally, including failed attempts, based on persisted request timestamps and database time. The existing15second spacing between all HTTP requests remains. It rechecks after waiting, survives restarts and does not grant separate budgets per account. One worker still owns the global queue lock. The interface names the waiting stage. No new source calls were needed to verify this policy.
+
+The deployment now builds a dedicated migration image and the document worker, applies pending migrations and grants before restarting the new application, and starts the on-demand worker. DOCUMENTS_ENABLED defaults totrue; explicitfalse disables acquisition and parks the worker. Compose also guards web/worker startup behind successful migration for the first transition from the old deploy script. See infra/prod/README.md for the first-transition caveat and operational commands.
+
+Validation: account/source endpoint and public archive browser checks,7document unit tests,4deployment failure-order tests,20successful whole-project tasks, and an isolated PostgreSQL26→34migration/rollback/data-preservation test. Source total remains23. Verification fixtures cleaned.

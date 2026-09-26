@@ -2,6 +2,7 @@ import {chromium,type Browser,type Page} from 'playwright-core';
 import type {DbSql} from '@seap/db';
 import {setTimeout as pause} from 'node:timers/promises';
 import {safeFileUrl} from './shared';
+import {sourceRequestDelay} from './rate-limit';
 const origin='https://www.e-licitatie.ro';
 export interface ListedDocument {noticeDocumentId:number;noticeDocumentCode:string;documentName:string;noticeDocumentUrl:string;transmissionDate?:string}
 export function parseList(data:unknown,noticeNo:string):{items:ListedDocument[];total:number}{
@@ -28,8 +29,18 @@ export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortS
   async function request(url:string,method:string,body:unknown=null,navigate=false){
    signal.throwIfAborted();
    if(url!==referer&&url!==origin+'/api-pub/NoticeDocument/GetAll/'&&url!==safeFileUrl(url))throw Error('Adresă neacceptată.');
-   const [last]=await q`select greatest(0,15000-extract(epoch from(now()-max(started_at)))*1000)::int delay from app.document_requests`;
-   if(last?.delay)await pause(Number(last.delay),undefined,{signal});
+   const isFileDownload=method==='GET'&&url.includes('/noticedoc/');
+   // The singleton worker owns the queue lock. Recheck against database time
+   // after every wait, so restarts and multiple accounts cannot reset the limit.
+   for(;;){
+    signal.throwIfAborted();
+    const [last]=await q`select extract(epoch from clock_timestamp())*1000 as now_ms,extract(epoch from max(started_at))*1000 as last_ms,extract(epoch from max(started_at) filter(where endpoint='noticedoc' and method='GET'))*1000 as file_ms from app.document_requests`;
+    const delay=sourceRequestDelay(Number(last!.now_ms),last!.last_ms===null?null:Number(last!.last_ms),last!.file_ms===null?null:Number(last!.file_ms),isFileDownload);
+    if(delay<=0)break;
+    if(isFileDownload)await q`update app.document_jobs set stage='rate_limit' where id=${jobId} and status='running'`;
+    await pause(Math.ceil(delay),undefined,{signal});
+   }
+   if(isFileDownload)await q`update app.document_jobs set stage='download' where id=${jobId} and status='running'`;
    signal.throwIfAborted();
    const [row]=await q`insert into app.document_requests(job_id,method,endpoint) values(${jobId},${method},${url.includes('/noticedoc/')?'noticedoc':navigate?'notice-page':'document-list'}) returning id`;
    console.log(JSON.stringify({event:'seap-request',request:row!.id,job:jobId,method,endpoint:navigate?'notice-page':url.includes('/noticedoc/')?'noticedoc':'document-list'}));

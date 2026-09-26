@@ -21,8 +21,47 @@ reachable only on the compose network. The web container connects as
 Every push to `main` runs CI (`.github/workflows/ci.yml`); when it passes, the
 `deploy` job SSHes into the server as `seap`. That key's `authorized_keys`
 entry forces `infra/prod/deploy.sh`, so CI can only run that script: fast-forward
-to `origin/main`, rebuild the `web` image, restart `web`. Postgres, Meilisearch
-and Caddy are never touched by a deploy.
+to `origin/main`, build the `web`, `migrate` and `documents` images, apply pending
+Drizzle migrations, refresh application grants, then restart `web` and the
+on-demand document worker. The Postgres service, Meilisearch and Caddy are not
+restarted. In the new deploy script, a failed build, migration, history check or grant
+refresh stops before replacing the running application. Compose also requires
+a successful migration before starting web or the document worker, protecting
+the first update still invoked by the old web-only deploy script. That first
+legacy invocation can stop the previous web container before discovering a
+migration failure; normal later deploys perform the explicit migration first. Pending migrations run in one
+transaction; there is no destructive automatic rollback of already committed
+schema changes if a later container start fails.
+
+The one-off `migrate` container uses the database owner credentials. Web and the
+document worker retain the restricted `seap_web` role. Migration history must
+match the checked-out release exactly; a restored database must include its
+`drizzle.__drizzle_migrations` history and the existing manually bootstrapped
+`auth`, `app` and `reference` schemas. The deployment does not guess a baseline,
+reset data, alter role passwords or run ingestion. Schema changes must remain
+compatible with the previous web/worker version while migration runs.
+
+`DOCUMENTS_ENABLED` defaults to `true`: signed-in users can queue files, with one
+global worker and at least60seconds between SEAP file download attempts. The
+worker never crawls unrequested files. Set `DOCUMENTS_ENABLED=false` and redeploy
+to disable acquisition; the worker then remains idle without database/source
+requests. Already archived originals, PDFs, OCR and search remain publicly accessible;
+only new acquisition/processing queue operations require a signed-in account.
+
+GitHub serializes deploys and the script also takes a local `flock`; the migrator
+has its own database advisory lock. The migrator uses a10second lock wait and
+15minute statement timeout. Retry a failed deploy only after addressing the
+reported migration/history/permissions error. The new deploy script does not restart web on that
+failure. Run the migration step manually, if needed, with:
+
+```bash
+docker compose --profile maintenance build migrate
+docker compose --profile maintenance run --rm --no-deps migrate
+```
+
+Validation: `node --test infra/prod/deploy.test.mjs` checks deployment ordering and
+failure stops. `docs/implementation/previews/deployment-migrations.json` records
+an isolated PostgreSQL upgrade, rollback, permission and data-preservation test.
 
 Setup once:
 

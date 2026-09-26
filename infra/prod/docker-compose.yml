@@ -106,16 +106,37 @@ services:
       SMTP_FROM: ${SMTP_FROM:-}
       DATA_AS_OF: ${DATA_AS_OF:-2026-07-31}
       DATA_MODE: ${DATA_MODE:-snapshot}
-      DOCUMENTS_ENABLED: ${DOCUMENTS_ENABLED:-false}
+      DOCUMENTS_ENABLED: ${DOCUMENTS_ENABLED:-true}
     depends_on:
       postgres:
         condition: service_healthy
       meilisearch:
         condition: service_healthy
+      # Also protects the first deploy initiated by the old web-only script.
+      migrate:
+        condition: service_completed_successfully
+      documents:
+        condition: service_started
+
+  migrate:
+    <<: *logging
+    build:
+      context: ../..
+      dockerfile: infra/prod/Dockerfile.migrate
+    image: cinecastiga-migrate
+    restart: "no"
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: seap
+      PGUSER: seap
+      PGPASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   documents:
     <<: *logging
-    profiles: [documents]
     build:
       context: ../..
       dockerfile: infra/prod/Dockerfile.documents
@@ -128,10 +149,12 @@ services:
     stop_grace_period: 100s
     environment:
       DATABASE_URL: postgres://seap_web:${SEAP_WEB_PASSWORD:?set in .env}@postgres:5432/seap
-      DOCUMENTS_ENABLED: ${DOCUMENTS_ENABLED:-false}
+      DOCUMENTS_ENABLED: ${DOCUMENTS_ENABLED:-true}
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
   caddy:
     <<: *logging
