@@ -13,12 +13,17 @@ function db(): DbSql {
   return g.__seapCidSql;
 }
 
-export async function GET(req: Request, ctx: { params: Promise<{ cid: string }> }) {
+export async function GET(_req: Request, ctx: { params: Promise<{ cid: string }> }) {
   const { cid } = await ctx.params;
   if (!/^\d+$/.test(cid)) return new NextResponse("id invalid", { status: 400 });
   const rows = (await db()`
     select ca_notice_contract_id nid from core.contracts where id = ${cid}
   `) as unknown as { nid: string }[];
   if (!rows[0]) return new NextResponse("necunoscut", { status: 404 });
-  return NextResponse.redirect(new URL(`/contracte/${rows[0].nid}`, req.url), 302);
+  // Behind the production proxy, req.url can contain the container's origin.
+  // A relative Location keeps the browser on its current public/local origin.
+  return new NextResponse(null, {
+    status: 302,
+    headers: { Location: `/contracte/${rows[0].nid}` },
+  });
 }
