@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { coverageDate, getCoverage, type Dataset } from "@/lib/coverage";
 import { formatInt } from "@/lib/format";
+import {getProcessingFreshness} from '@/lib/processing-freshness';
 
 const LABELS: Record<Dataset, string> = { da: "Achiziții directe", contracts: "Contracte prin proceduri", ted: "Publicații TED" };
 const COLLECTION_LABELS: Record<string, string> = {
@@ -12,9 +13,11 @@ const n = (value: string | undefined) => value === undefined ? "necunoscut" : fo
 
 export async function CoverageSummary() {
   const coverage = await getCoverage();
+  const freshness=await getProcessingFreshness();
   return <div className="coverage-summary">
     <Link href="/metodologie#acoperire">Surse, acoperire și actualizare ↗</Link>
     {coverage?.observations.length ? <span>Inventar recalculat la {coverageDate(coverage.observations[0]?.calculated_at)} · completitudinea surselor nu este confirmată</span> : <span>Inventarul datelor nu a fost încă recalculat.</span>}
+    {freshness?.riskAt&&<span>Semnale de risc recalculate la {coverageDate(freshness.riskAt)}.</span>}
   </div>;
 }
 

@@ -9,7 +9,7 @@
 
 /* Processing policy and the live document queue share the collection surface. */
 .collection-admin .processing-schedule{display:grid;gap:18px;margin:22px 0}
-.collection-admin .processing-schedule>div{border-left:2px solid var(--line2);padding-left:15px}
+.collection-admin .processing-schedule>div{padding:0}
 .collection-admin .processing-schedule strong{font-size:15px;font-weight:600}
 .collection-admin .processing-schedule strong span{color:var(--muted);font-weight:400}
 .collection-admin .processing-schedule p{font-size:13px;color:var(--secondary);margin-top:4px;max-width:65ch}
@@ -80,3 +80,9 @@
  .collection-admin .queue-pagination{flex-wrap:wrap}
  .collection-admin .queue-pagination>span{flex-basis:100%}
 }
+.collection-admin .processing-stage-times{margin:.6rem 0;display:grid;gap:.35rem;font-size:.875rem}
+.collection-admin .processing-stage-times>div{display:flex;justify-content:space-between;gap:1rem}
+.collection-admin .processing-stage-times dd{margin:0;white-space:nowrap;font-variant-numeric:tabular-nums}
+.collection-admin .settings select{width:100%;padding:.65rem;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);font:inherit}
+
+.collection-admin .processing-plan.is-enabled{background:var(--soft);color:var(--ink)}

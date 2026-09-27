@@ -7,3 +7,4 @@ export * from "./collection-policy.js";
 export * from "./collection.js";
 
 export * from "./collection-diagnostics.js";
+export * from "./processing.js";
