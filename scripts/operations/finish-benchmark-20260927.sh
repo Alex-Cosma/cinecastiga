@@ -26,6 +26,8 @@ c={'finishedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'benchm
 with open(sys.argv[2],'w') as f: json.dump(c,f,indent=2)
 print(json.dumps(c))
 PY
+exec 8>/srv/seap/src/.git/deploy.lock
+flock 8
 cd /srv/seap/src/infra/prod
 # Read-only preflight, repeated under a row lock in the atomic resume below.
 check_sql="select count(*) from app.collection_control where id=1 and revision=6 and paused and not maintenance and blocked_reason is null and min_seconds=50 and max_seconds=70 and paused_streams='[]'::jsonb and (select max(id) from app.collection_requests)=379 and not exists(select 1 from app.collection_requests where outcome='running') and not exists(select 1 from app.collection_tasks where status='running') and (select max(id) from app.collection_audit)=6"
@@ -51,6 +53,7 @@ with previous as materialized (
 SQL
  )
 else resumed=0; fi
+flock -u 8
 python3 - "$completion" "$resumed" <<'PY'
 import json,sys,datetime
 p=sys.argv[1];c=json.load(open(p))
