@@ -49,3 +49,9 @@ Do not clear maintenance merely to make the site visible. Preserve the run log, 
 - Real SQL transaction-builder fixture: new purchases reach lists/totals while saved flags/samples are unchanged.
 - Four host orchestration cases: no-op, deploy-lock collision, backup/refresh failure, success ordering. Failure test exposed missing Bash ERR inheritance; runner uses `set -Eeuo pipefail`.
 - Unit suites and browser/admin checks recorded in the completion report below once final validation finishes. Browser fixture is synthetic, localhost only, with no source HTTP.
+
+### Local release verification — 27 September
+
+The complete `pnpm turbo typecheck lint test build` run passed all 20 tasks; host deployment/nightly tests passed 11 cases. Dedicated browser fixtures passed and were removed after verification. The activation SQL was exercised on a rolled-back test fixture and retained its manual pause and independent source block. Visual finish review is **ship** for the interface scope.
+
+The guarded full-data rehearsal runner is `scripts/operations/run-daily-rehearsal-20260927.sh`; it targets only the repaired production clone, records per-stage timing, compares retained risk fingerprints and requires all ten publication checks. It does not index live search or contact SEAP. Production deployment, rehearsal and schedule activation remain pending completion of the live repair at this checkpoint.

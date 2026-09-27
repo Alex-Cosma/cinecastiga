@@ -2,6 +2,12 @@
 
 ## ACTIVE — TED repair and admin file queue, September 27
 
+### Saved release checkpoint — 18:37 Bucharest
+
+All implementation committed locally on main: 260efc3 (pool shutdown), 026cdd0 (daily/weekly/admin/migration), a7bf907 (CI host tests), f79b571 (guarded clone runner), 732cf92 (audited activation SQL), 02d970e (daily timing). Nothing pushed while live repair owns deploy.lock. Complete `pnpm turbo typecheck lint test build` passed 20/20 tasks; host tests11/11. Activation SQL exercised in a rolled-back fixture transaction and preserved an existing manual pause/source block. Skill reviewer SHIP and documenter DONE, canonical design files unchanged. Preview3115 stopped and both isolated local fixture databases dropped; dev3113 untouched. Local main migration0037 applied.
+
+Live still at flags as of18:36, no failure marker; original coordinator remains running independently. After live-ready/released deploy lock: push main, verify CI/deploy; launch `/bin/bash scripts/operations/run-daily-rehearsal-20260927.sh` under nohup on server. It strictly targets repaired clone, refuses existing report, uses processor image/new adapter, never indexes live search or calls source HTTP. Report `/srv/seap/backups/daily-rehearsal-20260927/daily-validation.json`; success marker `ready`; retains stage durations and calculation time separately from risk fingerprints. On success install one minute cron (preserve two existing jobs), invoke once while disabled to prove scheduler heartbeat, then execute `scripts/operations/enable-processing-20260927.sql` only after checking rehearsal report. This SQL is activation guarded/audited and does not clear source blocks or manual pauses. Expected first Monday28Sep05RO and weeklySunday4Oct05RO if activated today. Final production/report/docs verification still pending. No extra SEAP test requests.
+
 ### New authorized follow-up: implement nightly publication + Sunday risk
 
 User approved finishing live repair, verifying/reopening/resuming, committing/pushing/deploying, then implementing the recurring split; confirmed **Sunday 05:00 Europe/Bucharest**. Implementation is now local/uncommitted, not activated. Live pinned TED repair remains independent, still at flags as of 18:19 Bucharest, no error. DO NOT push until `/srv/seap/backups/ted-repair-20260927/live-ready` and deploy lock released. Original one-off coordinator remains authoritative; do not duplicate it.
