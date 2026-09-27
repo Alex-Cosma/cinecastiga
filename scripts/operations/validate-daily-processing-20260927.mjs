@@ -17,15 +17,25 @@ async function risk(){
  const out={};for(const table of ['core.flags','marts.entity_flags','marts.flag_instances'])out[table]=await fingerprint(table);
  return out;
 }
-let report={status:'running',startedAt:new Date().toISOString(),sourceRequests:0,searchChanged:false};
+let report={status:'running',startedAt:new Date().toISOString(),sourceRequests:0,searchChanged:false,stages:{}};
+function completeStage(at){
+ if(report.stage&&report.stageStartedAt)report.stages[report.stage]={
+  startedAt:report.stageStartedAt,completedAt:at,
+  durationMs:new Date(at).getTime()-new Date(report.stageStartedAt).getTime(),
+ };
+}
 try {
  const [prior]=await sql`select id,status,completed_at,validation from app.monitoring_refreshes order by version desc limit 1`;
  if(prior?.status!=='ready'||!prior.validation?.stages?.flags)throw Error('A repaired full baseline must already be ready');
  const [raw]=await sql`select max(id)::text id from raw.raw_documents`;
  const before=await risk();report={...report,priorId:prior.id,before};
  await writeFile(reportPath,JSON.stringify(report,null,2));
+ report.calculationStartedAt=new Date().toISOString();
  const checkpoint=await runMonitoringRefresh(db,sql,{mode:'coordinated',scope:'daily',maxRawId:BigInt(raw.id),log:console.log,
-   onStage:async stage=>{report={...report,stage,stageStartedAt:new Date().toISOString()};await writeFile(reportPath,JSON.stringify(report,null,2));}});
+   onStage:async stage=>{const at=new Date().toISOString();completeStage(at);report={...report,stage,stageStartedAt:at};await writeFile(reportPath,JSON.stringify(report,null,2));}});
+ report.calculationCompletedAt=new Date().toISOString();
+ report.recalculationMs=new Date(report.calculationCompletedAt).getTime()-new Date(report.calculationStartedAt).getTime();
+ completeStage(report.calculationCompletedAt);
  const after=await risk();
  if(JSON.stringify(before)!==JSON.stringify(after))throw Error('Daily refresh changed retained risk tables');
  if(checkpoint.validation.risk.checkpointId!==String(prior.id)||checkpoint.validation.risk.calculatedAt!==new Date(prior.completed_at).toISOString())throw Error('Risk provenance changed');
