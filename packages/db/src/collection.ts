@@ -3,6 +3,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
 import { setTimeout as sleep } from 'node:timers/promises';
 import type { DbSql } from './client.js';
+import { collectionTaskId, scheduleCollectionTimeout } from './collection-retry.js';
 import { collectionQuietWindow } from './collection-quiet-window.js';
 import { safeCollectionEndpoint, safeCollectionParameters, retryAfterSeconds, type CollectionStream } from './collection-policy.js';
 export const COLLECTION_LOCK=[729114,4] as const;
@@ -22,7 +23,7 @@ export interface CollectionResult<T>{value:T;status:number;bytes?:number;records
  * No lease expiry can admit a second live request. A broken session aborts transport;
  * an unfinished ledger entry stops future traffic until manually acknowledged. */
 export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo,work:(signal:AbortSignal)=>Promise<CollectionResult<T>>,parentSignal?:AbortSignal):Promise<T>{
- const endpoint=safeCollectionEndpoint(info.url),parameters=safeCollectionParameters(info.parameters);
+ const endpoint=safeCollectionEndpoint(info.url),parameters=safeCollectionParameters(info.parameters),taskId=collectionTaskId(info.context);
  let locked=false,id:number|undefined,finished=false;
  let abortReason:string|null=null,transportDiagnostics:CollectionDiagnostics|undefined;
  const diagnostics=(error?:unknown)=>JSON.stringify(sanitizeDiagnostics({version:1,timeoutMs:45000,abortReason,context:info.context,...transportDiagnostics,...(error instanceof CollectionTransportError?error.diagnostics:{}),...(error!==undefined?{exception:diagnosticError(error)}:{})}));
@@ -43,6 +44,12 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
     if(!c)throw new CollectionSuspendedError('Configurația colectării lipsește. Aplică migrațiile.');
     if(c.paused||c.maintenance||(c.paused_streams as string[]).includes(info.stream))throw new CollectionSuspendedError();
     if(c.blocked_reason)throw new CollectionSuspendedError(String(c.blocked_reason));
+    const [retry]=await q`select x.task_id,x.retry_at>clock_timestamp() waiting,r.endpoint,r.method,r.parameters from app.collection_retries x join app.collection_requests r on r.id=x.last_request_id where x.status='pending'`;
+    if(retry){
+     if(Number(retry.task_id)!==taskId||retry.waiting)throw new CollectionSuspendedError('SEAP așteaptă reîncercarea programată după timeout.');
+     const [same]=await q`select ${JSON.stringify(parameters)}::jsonb=${JSON.stringify(retry.parameters)}::jsonb matched`;
+     if(retry.endpoint!==endpoint||retry.method!==info.method||!same?.matched)throw Error('Retry request identity differs from the timed-out query');
+    }
     const [orphan]=await q`select id from app.collection_requests where outcome='running' limit 1`;
     if(orphan){await q`update app.collection_control set blocked_reason='O cerere a rămas fără rezultat după întreruperea unui worker. Verifică înainte de reluare.',blocked_until=clock_timestamp()+interval '120 seconds' where id=1`;await q`commit`;transaction=false;throw new CollectionSuspendedError('O cerere anterioară a fost întreruptă. Verifică jurnalul.');}
     if(c.daily_limit!==null){const [n]=await q`select count(*)::int n from app.collection_requests where started_at >= ((clock_timestamp() at time zone 'Europe/Bucharest')::date::timestamp at time zone 'Europe/Bucharest')`;if(Number(n?.n)>=Number(c.daily_limit))throw new CollectionSuspendedError('Limita zilnică SEAP a fost atinsă.');}
@@ -75,10 +82,18 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
   const reason=result.challenge?'SEAP solicită o verificare suplimentară.':result.status===429?'SEAP a răspuns cu 429. Verifică limita înainte de reluare.':result.status===403?'SEAP a refuzat accesul (403).':null;
   await q`update app.collection_requests set status=${result.status},outcome=${failure?'failed':'success'},bytes=${result.bytes??null},records=${result.records??null},error=${reason??(failure?`HTTP ${result.status}`:null)},diagnostics=${failure?diagnostics():JSON.stringify(sanitizeDiagnostics({...transportDiagnostics,response:transportDiagnostics?.response?{...(transportDiagnostics.response as object),body:undefined}:undefined,context:info.context}))}::jsonb,finished_at=clock_timestamp() where id=${id!}`;
   finished=true;
+  if(failure&&taskId!==null)await q`update app.collection_retries set status='stopped',retry_at=null,updated_at=clock_timestamp() where task_id=${taskId} and status='pending'`;
   if(reason){const after=retryAfterSeconds(result.retryAfter??null);await q`update app.collection_control set blocked_reason=${reason},blocked_until=case when ${after}::int is null then null else clock_timestamp()+${after}::int*interval '1 second' end where id=1`;throw new CollectionSuspendedError(reason);}
   return result.value;
  }catch(error){
-  if(id!==undefined&&!finished){const response=(error instanceof CollectionTransportError?error.diagnostics.response:transportDiagnostics?.response) as {status?:number;receivedBytes?:number}|undefined;await q`update app.collection_requests set outcome='failed',status=coalesce(status,${response?.status??null}),bytes=coalesce(bytes,${response?.receivedBytes??null}),error=${abortReason==='request_timeout'?'Timeout după 45 de secunde. Fără reîncercare automată.':'Cerere întreruptă, răspuns nevalid sau eroare de transport. Fără reîncercare automată.'},diagnostics=${diagnostics(error)}::jsonb,finished_at=clock_timestamp() where id=${id}`.catch(()=>{});await q`update app.collection_control set blocked_reason='Eroare de transport. Verifică jurnalul înainte de reluare.',blocked_until=clock_timestamp()+interval '120 seconds' where id=1`.catch(()=>{});}
+  if(id!==undefined&&!finished){
+   const response=(error instanceof CollectionTransportError?error.diagnostics.response:transportDiagnostics?.response) as {status?:number;receivedBytes?:number}|undefined;
+   // Keep every attempt and its diagnostics before considering replay.
+   await q`update app.collection_requests set outcome='failed',status=coalesce(status,${response?.status??null}),bytes=coalesce(bytes,${response?.receivedBytes??null}),error=${abortReason==='request_timeout'?'Timeout după 45 de secunde.':'Cerere întreruptă, răspuns nevalid sau eroare de transport. Fără reîncercare automată.'},diagnostics=${diagnostics(error)}::jsonb,finished_at=clock_timestamp() where id=${id}`;
+   if(abortReason==='request_timeout'&&await scheduleCollectionTimeout(q,id,taskId))throw new CollectionSuspendedError('Timeout SEAP. Reîncercarea a fost programată.');
+   if(taskId!==null)await q`update app.collection_retries set status='stopped',retry_at=null,updated_at=clock_timestamp() where task_id=${taskId} and status='pending'`;
+   await q`update app.collection_control set blocked_reason=coalesce(blocked_reason,'Eroare de transport. Verifică jurnalul înainte de reluare.'),blocked_until=case when blocked_reason is null then clock_timestamp()+interval '120 seconds' else blocked_until end where id=1`;
+  }
   throw error;
  }finally{
   if(deadline)clearTimeout(deadline);if(heartbeat)clearInterval(heartbeat);controller.abort();parentSignal?.removeEventListener('abort',abort);

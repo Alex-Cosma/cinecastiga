@@ -52,6 +52,13 @@ export async function recoveryStep(q:DbSql,fetcher:(t:Task)=>Promise<unknown>){
   if(c.daily_limit!==null){const [n]=await tx`select count(*)::int n from app.collection_requests where started_at>=((now() at time zone 'Europe/Bucharest')::date::timestamp at time zone 'Europe/Bucharest')`;if(Number(n?.n)>=c.daily_limit)return null;}
   const [b]=await tx`select * from app.collection_batches where status='collecting' order by created_at limit 1 for update`;
   if(!b)return null;
+  const [retry]=await tx`select task_id,retry_at>clock_timestamp() waiting from app.collection_retries where status='pending'`;
+  if(retry){
+   const [t]=await tx`select * from app.collection_tasks where id=${retry.task_id} for update`;
+   if(!t||t.status!=='pending'||t.batch_id!==b.id||retry.waiting||c.paused_streams.includes(t.stream))return null;
+   await tx`update app.collection_tasks set status='running',started_at=clock_timestamp() where id=${t.id}`;
+   return {t:t as unknown as Task,end:String(b.end_day)};
+  }
   for(let i=0;i<streams.length;i++){
    const index=(Number(b.next_stream)+i)%streams.length,stream=streams[index]!;
    if(c.paused_streams.includes(stream))continue;
@@ -77,16 +84,17 @@ export async function recoveryStep(q:DbSql,fetcher:(t:Task)=>Promise<unknown>){
    await insertTasks(tx as unknown as DbSql,plan.children);
    const result=JSON.stringify({...plan.result,archived:archive.inserted,duplicates:archive.skipped}).replace(/\\u0000/g,'');
    await tx`update app.collection_tasks set status=${plan.status},result=${result}::jsonb,finished_at=clock_timestamp() where id=${t.id!}`;
+   await tx`update app.collection_retries set status='resolved',retry_at=null,updated_at=clock_timestamp() where task_id=${t.id!} and status='pending'`;
   });
   console.log(JSON.stringify({event:'recovery-archived',task:t.id,status:plan.status,documents:plan.docs.length,children:plan.children.length}));
  }catch(error){
   if(error instanceof CollectionSuspendedError){await q`update app.collection_tasks set status='pending',started_at=null where id=${t.id!}`;return false;}
-  // No automatic retry: requests or archival may have partly succeeded. Keep
+  // Only gate-confirmed timeouts are requeued above. Other failures may have partly succeeded. Keep
   // the exact task identity and stop admission until an operator inspects it.
   const message=error instanceof Error?error.message:'Eroare de colectare';
   const safe=/^(Structur|Detaliu|Identitatea|O singură|Fereastra|Dimensiunea|Totalul|Lipsește|Lista|SEAP|Numărul|Data|Filtrul|Tip de|Anunț)/.test(message)?message:'Cererea sau arhivarea nu a fost confirmată. Verifică jurnalul înainte de reluare.';
   await q`update app.collection_requests set diagnostics=coalesce(diagnostics,'{}'::jsonb)||${JSON.stringify(sanitizeDiagnostics({taskFailure:{taskId:t.id,exception:diagnosticError(error),...(response===undefined?{}:{response})}}))}::jsonb where id=(select id from app.collection_requests where diagnostics->'context'->>'taskId'=${String(t.id)} order by id desc limit 1)`;
-  await q.begin(async tx=>{await tx`update app.collection_tasks set status='failed',error=${safe.slice(0,500)},finished_at=clock_timestamp() where id=${t.id!}`;await tx`update app.collection_control set blocked_reason=coalesce(blocked_reason,${`Sarcina ${t.id}: ${safe}`}) where id=1`;});
+  await q.begin(async tx=>{await tx`update app.collection_retries set status='stopped',retry_at=null,updated_at=clock_timestamp() where task_id=${t.id!} and status='pending'`;await tx`update app.collection_tasks set status='failed',error=${safe.slice(0,500)},finished_at=clock_timestamp() where id=${t.id!}`;await tx`update app.collection_control set blocked_reason=coalesce(blocked_reason,${`Sarcina ${t.id}: ${safe}`}) where id=1`;});
   console.error(JSON.stringify({event:'recovery-stopped',task:t.id,error:safe}));
  }
  return true;

@@ -1,0 +1,16 @@
+{
+  "date": "2026-09-27",
+  "environment": "Local production Next build; isolated seap_test_admin_queue database; synthetic retry metadata and one seeded failed request",
+  "script": "apps/web/scripts/admin/check-timeout-retry.mjs",
+  "checks": ["retry paused presentation", "retry countdown", "attempt 2/3", "document queue wait explanation", "390px no page overflow", "attempt 3/3", "error precedence", "manual pause preserved", "normal state restored", "only seeded request ledger entry", "zero browser runtime errors"],
+  "screenshots": ["desktop.png", "mobile.png"],
+  "sourceHttpRequests": 0,
+  "timeoutIntegrationTests": 8,
+  "quietWindowIntegrationTests": 19,
+  "existingControlIntegrationTests": 14,
+  "recoveryIntegrationTests": 5,
+  "wireIntegrationTests": 3,
+  "webUnitTests": 239,
+  "ingestionUnitTests": 93,
+  "limitations": "Synthetic waiting-state evidence, not a real source timeout or overnight observation. Production deployment pending."
+}
