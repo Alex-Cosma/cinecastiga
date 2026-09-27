@@ -1,6 +1,6 @@
 # Daily publication and weekly risk
 
-**Repair/rehearsal completed and schedule activated. See the latest verified status below; older pending notes are historical. Collection has a separate unresolved task block.**
+**Repair/rehearsal completed and schedule activated. See the latest verified status below; older pending notes are historical. The subsequent collector schema fault is resolved; see the completed follow-up at the end.**
 
 Approved 27 September 2026: publish new data every day at 05:00 Europe/Bucharest; also recalculate risk on Sundays at the same time. Implementation is pending production activation until the one-off TED repair and isolated daily rehearsal pass. Deployment alone does not activate the schedule.
 
@@ -79,3 +79,11 @@ PostgreSQL logs identified task36017's pre-request failure: at16:21:52.461UTC th
 Admin journal now displays10 requests/page with range/count, filter reset and stable historical pages during polling; document queue also returns10 items/page. Production-build browser verification passed, as did239web and93ingestion unit cases. Scoped pagination finish verdict: ship. The existing latest100-request feed/export scope and mobile horizontal table scroll remain explicit.
 
 A guarded one-off task recovery script preserves the original task/error plus PostgreSQL diagnosis in audit, verifies the unchanged source boundary and enforces at least70seconds before ordinary collection resumes. Its rolled-back fixture passed. Application awaits the combined release deployment; do not infer a resumed collector from this paragraph.
+
+## Completed follow-up — 2026-09-27T20:59:54.286855+03:00
+
+Pagination and the stable-query collector fix are deployed on main at **e458690**, with CI/deploy run36338505537 successful. `/admin` journal and file queue show at most10 entries/page; filters and stable historical journal navigation passed production-build browser verification. Scoped finish review: ship. Public pages/health200, anonymous admin queue403.
+
+The reviewed recovery SQL was applied after verifying the fixed admission query inside the running collector. Task36017 **completed successfully**: request779 returnedHTTP200 with1record, archived1, duplicates0. Requests777(awards,5records) and778(direct purchases,0records) also returned200. The original failure and confirmed PostgreSQL schema/plan diagnosis are preserved in the retry-task audit. Controlrevision11: processing enabled, maintenancefalse, pausedfalse, no source block. No diagnostic/test source requests were added; these were ordinary resumed collection tasks.
+
+Schedule remains daily05:00 Europe/Bucharest, with full risk Sundays05:00; first daily28September and next risk4October. TED repair and daily clone rehearsal remain verified as recorded below. All local changes are committed; a final evidence-only commit follows this release. Local test preview/fixture databases were removed; ordinary dev3113 was untouched. The old failed continuation must not be restarted.

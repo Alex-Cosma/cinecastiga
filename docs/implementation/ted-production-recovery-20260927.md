@@ -1,6 +1,6 @@
 # TED production source recovery — 27 September 2026
 
-**Repair/rehearsal completed and schedule activated. See the latest verified status below; older pending notes are historical. Collection has a separate unresolved task block.**
+**Repair/rehearsal completed and schedule activated. See the latest verified status below; older pending notes are historical. The subsequent collector schema fault is resolved; see the completed follow-up at the end.**
 
 Work in progress. User authorized resolving the missing historical normalization baseline. Start on the isolated production clone; never replace the public dataset with a partly repaired snapshot.
 
@@ -65,3 +65,11 @@ Activation SQL was applied separately and committed at **20:38:18 Bucharest**, a
 **Separate unresolved collection stop:** after reopening, requests772–776 succeeded. Task36017 (participation notices,26July2026,page0) failed at19:21:52 before any request ledger entry for that task. Its generic task error does not preserve the original pre-request exception. The source block is retained; no retry/unblock was performed during this status check. Schedule activation preserves this block and the site remains available. Do not describe crawling as currently resumed or blame SEAP without evidence. The exception coincided with release deployment, but causation is unconfirmed.
 
 Evidence: `/srv/seap/backups/ted-repair-20260927/live-validation.json`, `/srv/seap/backups/daily-rehearsal-20260927/daily-validation.json`, and local `/tmp/seap-processing-release-20260927/`. These checks establish internal consistency, not full external source coverage.
+
+## Completed follow-up — 2026-09-27T20:59:54.286855+03:00
+
+Pagination and the stable-query collector fix are deployed on main at **e458690**, with CI/deploy run36338505537 successful. `/admin` journal and file queue show at most10 entries/page; filters and stable historical journal navigation passed production-build browser verification. Scoped finish review: ship. Public pages/health200, anonymous admin queue403.
+
+The reviewed recovery SQL was applied after verifying the fixed admission query inside the running collector. Task36017 **completed successfully**: request779 returnedHTTP200 with1record, archived1, duplicates0. Requests777(awards,5records) and778(direct purchases,0records) also returned200. The original failure and confirmed PostgreSQL schema/plan diagnosis are preserved in the retry-task audit. Controlrevision11: processing enabled, maintenancefalse, pausedfalse, no source block. No diagnostic/test source requests were added; these were ordinary resumed collection tasks.
+
+Schedule remains daily05:00 Europe/Bucharest, with full risk Sundays05:00; first daily28September and next risk4October. TED repair and daily clone rehearsal remain verified as recorded below. All local changes are committed; a final evidence-only commit follows this release. Local test preview/fixture databases were removed; ordinary dev3113 was untouched. The old failed continuation must not be restarted.

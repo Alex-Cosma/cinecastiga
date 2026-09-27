@@ -1,5 +1,16 @@
 # Continuation handoff — cinecâștigă, investigation batches and contract documents
 
+## Completed follow-up — 2026-09-27T20:59:54.286855+03:00
+
+Pagination and the stable-query collector fix are deployed on main at **e458690**, with CI/deploy run36338505537 successful. `/admin` journal and file queue show at most10 entries/page; filters and stable historical journal navigation passed production-build browser verification. Scoped finish review: ship. Public pages/health200, anonymous admin queue403.
+
+The reviewed recovery SQL was applied after verifying the fixed admission query inside the running collector. Task36017 **completed successfully**: request779 returnedHTTP200 with1record, archived1, duplicates0. Requests777(awards,5records) and778(direct purchases,0records) also returned200. The original failure and confirmed PostgreSQL schema/plan diagnosis are preserved in the retry-task audit. Controlrevision11: processing enabled, maintenancefalse, pausedfalse, no source block. No diagnostic/test source requests were added; these were ordinary resumed collection tasks.
+
+Schedule remains daily05:00 Europe/Bucharest, with full risk Sundays05:00; first daily28September and next risk4October. TED repair and daily clone rehearsal remain verified as recorded below. All local changes are committed; a final evidence-only commit follows this release. Local test preview/fixture databases were removed; ordinary dev3113 was untouched. The old failed continuation must not be restarted.
+
+**Earlier active/pending sections below are historical and superseded by this completion.**
+
+
 ## ACTIVE follow-up — pagination and confirmed collection schema failure, 20:49 Bucharest
 
 Latest user asks max10 rows per page under /admin Toate tabs. Implemented journal pagination, filter reset, live snapshot stability on pages>1 and return-to-latest; backend document queue pageSize10. Production-build browser fixture passed navigation/bounds/empty/filter/polling/auth/no source calls/no runtime errors/mobile. Screenshots .impeccable/review/admin-pagination/ validated, detector empty. Required skill reviewer /root/pagination_finish_review returned SHIP; documenter completed surface brief and design documentation. Canon design files preserved. Local preview3115 and both isolated fixture databases removed after verification; .next-processing build stays ignored. Do not touch dev3113.
