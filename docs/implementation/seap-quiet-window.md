@@ -19,3 +19,9 @@ The database clock is authoritative, independent of host/browser timezones. SQL 
 Inspect `app.collection_requests.started_at` and outcomes around 02:59–03:30 Romanian time: no admitted attempts in the interval, previous request allowed to complete, and the first later attempt successful or any independent stop explained by control state. Check document jobs remain queued rather than failed. The first real overnight observation is pending; automated fixture results are not proof that SEAP will be available after 03:30.
 
 No database migration, extra cron entry or production test request is needed. Deploying the updated collection and document workers activates the gate.
+
+## Production release and explicitly authorized retry
+
+Released as bb225ea on 27 September 2026; GitHub Actions run36340619666 passed CI and deployment. Both running source workers contain the new gate; production read-only policy checks passed and public/health endpoints returned200 (anonymous admin403). No policy test generated source HTTP.
+
+During implementation, ordinary collection request801 timed out after45seconds at21:19:42Romanian time on GetCANoticeContracts, task42952. The user authorized one retry after deployment. The guarded one-off retry script was tested on an isolated DB, then applied once: request802 succeeded HTTP200 in3.943seconds,68contracts in response,1archived response,0duplicates. The failed original request remains and the task/request snapshot is in the audit. Controlrevision12 cleared only the verified source block; manual pause/maintenance and other settings were not changed. Ordinary collection resumes; further failures still stop it. Do not reapply the script. The first actual overnight window remains unobserved.
