@@ -19,7 +19,7 @@ The host cron invokes `infra/prod/process-nightly.sh` once per minute. It first 
 Migration 0037 adds opt-in settings and `app.processing_runs`. The runner:
 
 1. Atomically records the run, pauses collection and enables maintenance. Preserves the preceding operator pause.
-2. Drains collection and document workers. Requires zero running requests, collection tasks and document jobs; then freezes the maximum raw ID.
+2. Blocks new work, waits up to 25 minutes for active requests/tasks/documents to finish, then stops workers. Waiting occurs before SIGTERM because the document worker aborts OCR on that signal. Requires zero active work again before freezing the maximum raw ID; an orphan or exhausted drain deadline stops publication.
 3. Checks at least 20 GiB free and takes a private full PostgreSQL dump, archive listing and SHA-256. A `.partial` file is never accepted as a restore point.
 4. Executes the selected pipeline, persists stage durations/heartbeats and validates the full snapshot.
 5. Rebuilds search; requires expected document count, no indexing in progress and no failed/canceled write/settings tasks.
