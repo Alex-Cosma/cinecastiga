@@ -5,3 +5,5 @@ export * from "./monitoring.js";
 export * from "./collection-policy.js";
 
 export * from "./collection.js";
+
+export * from "./collection-diagnostics.js";

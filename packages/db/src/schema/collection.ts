@@ -17,6 +17,7 @@ export const collectionControl = appSchema.table('collection_control', {
 export const collectionRequests = appSchema.table('collection_requests', {
  id: bigserial('id',{mode:'number'}).primaryKey(), stream: text('stream').notNull(), worker: text('worker').notNull(),
  method: text('method').notNull(), endpoint: text('endpoint').notNull(), parameters: jsonb('parameters').notNull().default({}),
+ diagnostics: jsonb('diagnostics'),
  status: integer('status'), outcome: text('outcome').notNull().default('running'), error: text('error'),
  records: integer('records'), bytes: bigint('bytes',{mode:'number'}),
  startedAt: timestamp('started_at',{withTimezone:true}).notNull().defaultNow(), finishedAt: timestamp('finished_at',{withTimezone:true}),

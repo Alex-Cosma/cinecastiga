@@ -1,0 +1,1 @@
+ALTER TABLE "app"."collection_requests" ADD COLUMN "diagnostics" jsonb;

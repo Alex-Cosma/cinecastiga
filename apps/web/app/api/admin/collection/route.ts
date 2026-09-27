@@ -9,8 +9,15 @@ async function admin(req:Request){const s=await auth.api.getSession({headers:req
 export async function GET(req:Request){
  if(!await admin(req))return NextResponse.json({error:'Acces rezervat administratorilor.'},{status:403,headers});
  try{
+  const requestId=new URL(req.url).searchParams.get('request');
+  if(requestId!==null){
+   if(!/^[1-9]\d{0,17}$/.test(requestId))return NextResponse.json({error:'Identificator nevalid.'},{status:400,headers});
+   const [request]=await collectionDb()`select id::text,stream,worker,method,endpoint,parameters,status,outcome,error,records,bytes::text,started_at,finished_at,diagnostics from app.collection_requests where id=${requestId}::bigint`;
+   if(!request)return NextResponse.json({error:'Cererea nu a fost găsită.'},{status:404,headers});
+   return NextResponse.json({request,diagnosticsAvailable:request.diagnostics!==null},{headers:{...headers,'Content-Disposition':`attachment; filename="cerere-seap-${requestId}.json"`}});
+  }
   if(new URL(req.url).searchParams.get('export')==='1'){
-   const rows=await collectionDb()`select id::text,stream,method,endpoint,parameters,status,outcome,error,records,bytes::text,started_at,finished_at from app.collection_requests order by id desc limit 5000`;
+   const rows=await collectionDb()`select id::text,stream,method,endpoint,parameters,status,outcome,error,records,bytes::text,started_at,finished_at from app.collection_requests order by app.collection_requests.id desc limit 5000`;
    return NextResponse.json({scope:'Ultimele maximum 5.000 de încercări SEAP',exportedAt:new Date().toISOString(),requests:rows},{headers:{...headers,'Content-Disposition':'attachment; filename="jurnal-colectare.json"'}});
   }
   return NextResponse.json(await collectionStatus(),{headers});

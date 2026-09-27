@@ -1,5 +1,5 @@
 import {afterAll,beforeEach,describe,it,expect} from 'vitest';
-import {createDb,runCollectionRequest,CollectionSuspendedError,type DbSql} from '@seap/db';
+import {CollectionTransportError,createDb,runCollectionRequest,CollectionSuspendedError,type DbSql} from '@seap/db';
 import {changeCollection,collectionStatus} from './collection';
 const url=process.env.TEST_DATABASE_URL;
 if(url&&!/^seap_test_[a-z0-9_]+$/.test(new URL(url).pathname.slice(1)))throw Error('Dedicated test database required');
@@ -21,5 +21,25 @@ describe.skipIf(!connection)('admin collection control and global transport (iso
  it('settings are atomic, versioned and audited; a faster change does not shorten the pause',async()=>{await q`update app.collection_control set min_seconds=50,max_seconds=70,next_allowed_at=now()+interval '60 seconds'`;const [old]=await q`select next_allowed_at from app.collection_control`;await changeCollection(actor,{action:'settings',revision:1,minSeconds:10,maxSeconds:20,dailyLimit:1000,processingTime:'06:00'},q);const [c]=await q`select * from app.collection_control`;expect(c!.revision).toBe(2);expect(c!.next_allowed_at).toEqual(old!.next_allowed_at);await expect(changeCollection(actor,{action:'pause',revision:1,paused:true},q)).rejects.toThrow('între timp');expect((await q`select * from app.collection_audit`)).toHaveLength(1);});
  it('file retrieval retains the minimum sixty-second gap',async()=>{await q`update app.collection_control set last_file_at=clock_timestamp()-interval '59 seconds'`;const [before]=await q`select last_file_at from app.collection_control`;await request(undefined,{fileDownload:true});const [after]=await q`select last_file_at from app.collection_control`;expect(new Date(after!.last_file_at).getTime()-new Date(before!.last_file_at).getTime()).toBeGreaterThanOrEqual(60000);},10000);
  it('HTTP200 challenge blocks before later requests',async()=>{await expect(request(async()=>({value:'html',status:200,challenge:true}))).rejects.toThrow('verificare suplimentară');expect((await q`select outcome from app.collection_requests`)[0]!.outcome).toBe('failed');});
+ it('stores failed HTTP response diagnostics and retrieves older failures outside the latest100',async()=>{
+  await request(async()=>({value:'busy',status:503,diagnostics:{request:{headers:{Authorization:'secret'},body:{pageIndex:1}},response:{status:503,headers:{'Retry-After':'120','Set-Cookie':'private'},body:'Maintenance',complete:true}}}));
+  await q`insert into app.collection_requests(stream,worker,method,endpoint,outcome) select 'da','fixture','POST','/api-pub/test','success' from generate_series(1,101)`;
+  const [row]=await q`select diagnostics from app.collection_requests where outcome='failed'`;
+  expect(row!.diagnostics.response).toMatchObject({status:503,body:'Maintenance',complete:true});
+  expect(JSON.stringify(row!.diagnostics)).not.toContain('secret');expect(JSON.stringify(row!.diagnostics)).not.toContain('private');
+  const state=await collectionStatus(q);expect(state.requests.every(r=>r.outcome==='success')).toBe(true);expect(state.failures).toHaveLength(1);
+ });
+ it('retains partial response headers, body and cause when transport breaks',async()=>{
+  await expect(request(async()=>{throw new CollectionTransportError(new Error('fetch failed',{cause:Object.assign(new Error('socket closed'),{code:'ECONNRESET'})}),{phase:'body',response:{status:200,receivedBytes:7,body:'partial',complete:false,headers:{'Content-Type':'application/json'}}});})).rejects.toThrow();
+  const [row]=await q`select * from app.collection_requests`;
+  expect(row).toMatchObject({outcome:'failed',status:200,bytes:'7',diagnostics:{phase:'body',response:{body:'partial',complete:false},exception:{cause:{cause:{code:'ECONNRESET'}}}}});
+  await expect(request()).rejects.toBeInstanceOf(CollectionSuspendedError);
+ });
+ it('identifies the actual45second deadline separately from generic transport errors',async()=>{
+  await expect(request(signal=>new Promise((_,reject)=>signal.addEventListener('abort',()=>reject(new Error('aborted')),{once:true})))).rejects.toThrow();
+  const [row]=await q`select error,diagnostics,status from app.collection_requests`;
+  expect(row).toMatchObject({status:null,diagnostics:{abortReason:'request_timeout',timeoutMs:45000}});
+  expect(row!.error).toContain('Timeout după 45');
+ },55000);
  it('transport exception is recorded and globally stops further attempts',async()=>{await expect(request(async()=>{throw Error('fixture private detail');})).rejects.toThrow();const [row]=await q`select * from app.collection_requests`;expect(row!.error).not.toContain('private');await expect(request()).rejects.toBeInstanceOf(CollectionSuspendedError);});
 });

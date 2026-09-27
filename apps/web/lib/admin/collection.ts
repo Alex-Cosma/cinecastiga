@@ -9,16 +9,17 @@ export async function collectionStatus(q:DbSql=collectionDb()){
   if(!control)throw Error('Configurația colectării lipsește.');
   const today=await tx`select count(*)::int attempts,count(*) filter(where outcome='success')::int succeeded,count(*) filter(where outcome in ('failed','interrupted'))::int failed,coalesce(sum(records),0)::text received from app.collection_requests where started_at>=((now() at time zone 'Europe/Bucharest')::date::timestamp at time zone 'Europe/Bucharest')`;
   const streams=await tx`select stream,count(*)::int attempts,coalesce(sum(records),0)::text received,count(*) filter(where outcome in ('failed','interrupted'))::int failed from app.collection_requests group by stream`;
-  const requests=await tx`select id::text,stream,method,endpoint,parameters,status,outcome,error,records,bytes::text,started_at,finished_at,extract(epoch from(finished_at-started_at))*1000 duration_ms from app.collection_requests order by id desc limit 100`;
+  const requests=await tx`select id::text,stream,method,endpoint,parameters,status,outcome,error,records,bytes::text,diagnostics is not null as has_diagnostics,started_at,finished_at,extract(epoch from(finished_at-started_at))*1000 duration_ms from app.collection_requests order by app.collection_requests.id desc limit 100`;
+  const failures=await tx`select id::text,stream,method,endpoint,parameters,status,outcome,error,records,bytes::text,diagnostics is not null as has_diagnostics,started_at,finished_at,extract(epoch from(finished_at-started_at))*1000 duration_ms from app.collection_requests where outcome in ('failed','interrupted') order by app.collection_requests.id desc limit 100`;
   const workers=await tx`select id,kind,state,heartbeat_at,heartbeat_at>now()-interval '30 seconds' alive from app.collection_workers order by heartbeat_at desc limit 20`;
-  const audit=await tx`select id::text,actor_name,action,before,after,created_at from app.collection_audit order by id desc limit 20`;
+  const audit=await tx`select id::text,actor_name,action,before,after,created_at from app.collection_audit order by app.collection_audit.id desc limit 20`;
   const runs=await tx`select distinct on(source) id::text,source,window_start,window_end,status,fetched_count,pages_fetched,started_at,finished_at from core.scrape_runs where started_at>=${control.created_at} order by source,started_at desc`;
   const [documents]=await tx`select count(*) filter(where status='queued')::int queued,count(*) filter(where status='running')::int running from app.document_jobs`;
   const [raw]=await tx`select count(*)::int archived from raw.raw_documents where source='elicitatie' and fetched_at>=greatest(${control.created_at}::timestamptz,((now() at time zone 'Europe/Bucharest')::date::timestamp at time zone 'Europe/Bucharest'))`;
   const publication=await tx`select id,version::text,status,kind,started_at,completed_at,validation->'stages' stages from app.monitoring_refreshes order by version desc limit 1`;
   const [batch]=await tx`select id,end_day,status from app.collection_batches order by created_at desc limit 1`;
   const progress=batch?await tx`select stream,count(*) filter(where status='pending')::int pending,count(*) filter(where status='running')::int running,count(*) filter(where status='complete')::int complete,count(*) filter(where status='split')::int split,count(*) filter(where status='deferred')::int deferred,count(*) filter(where status='failed')::int failed from app.collection_tasks where batch_id=${batch.id} group by stream`:[];
-  return {recovery:batch?{batch,progress}:null,control,today:today[0]!,streams,requests,workers,audit,runs,documents:documents!,raw:raw!,publication:publication[0]??null};
+  return {recovery:batch?{batch,progress}:null,control,today:today[0]!,streams,requests,failures,workers,audit,runs,documents:documents!,raw:raw!,publication:publication[0]??null};
  });
 }
 export type CollectionStatus=Awaited<ReturnType<typeof collectionStatus>>;
