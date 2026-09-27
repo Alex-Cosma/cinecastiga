@@ -24,7 +24,7 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - run: node --test infra/prod/deploy.test.mjs
+      - run: node --test infra/prod/deploy.test.mjs infra/prod/process-nightly.test.mjs
 
       - run: pnpm turbo typecheck lint test build
 
