@@ -9,3 +9,5 @@ next-env.d.ts
 /.next-admin-build/
 
 /public/pdfjs/
+
+/.next-diagnostics/

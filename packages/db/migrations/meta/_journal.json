@@ -253,6 +253,13 @@
       "when": 1790450866522,
       "tag": "0035_sleepy_millenium_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1790485285529,
+      "tag": "0036_third_shard",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,4 @@
-import {CollectionSuspendedError,collectionHeartbeat,collectionWorkerId,withCollectionStream,type DbSql} from '@seap/db';
+import {diagnosticError,sanitizeDiagnostics,CollectionSuspendedError,collectionHeartbeat,collectionWorkerId,withCollectionStream,type DbSql} from '@seap/db';
 import {getNoticeContracts,getNoticeDetail,listContractingAuthorities,listDirectAcquisitions,listNotices,NOTICE_TYPE_IDS,type ElicitatieClient} from '@seap/scraper-clients';
 import {archiveDocumentsSql} from '../scrape/archive.js';
 import {isoDaysAgo} from '../scrape/window.js';
@@ -35,7 +35,7 @@ export async function fetchTask(client:ElicitatieClient,t:Task):Promise<unknown>
   if(t.kind==='list')return (await listNotices(client,{sysNoticeTypeIds:t.stream==='tenders'?NOTICE_TYPE_IDS.participation:NOTICE_TYPE_IDS.award,startPublicationDate:p.from!,endPublicationDate:p.to!,pageIndex:p.page,pageSize:100})).data;
   if(t.kind==='detail')return (await getNoticeDetail(client,p.noticeId!)).data;
   return (await getNoticeContracts(client,{caNoticeId:p.noticeId!,skip:p.page*200,take:200})).data;
- });
+ },{taskId:t.id,batchId:t.batch_id,partition:t.partition,kind:t.kind,parameters:t.params});
 }
 /** Caller holds RECOVERY_LOCK for the entire worker lifetime, including archive commits. */
 export async function recoverInterrupted(q:DbSql){
@@ -64,8 +64,9 @@ export async function recoveryStep(q:DbSql,fetcher:(t:Task)=>Promise<unknown>){
  if(!claimed)return false;
  const {t,end}=claimed;
  console.log(JSON.stringify({event:'recovery-task',task:t.id,stream:t.stream,kind:t.kind,parameters:t.params}));
+ let response:unknown;
  try{
-  const response=await fetcher(t);
+  response=await fetcher(t);
   const prior=await q`select result from app.collection_tasks where batch_id=${t.batch_id} and partition=${t.partition} and status='complete' order by (params->>'page')::int`;
   const plan=planResponse(t,response,prior.map(r=>r.result as PageResult),end);
   await q.begin(async tx=>{
@@ -83,6 +84,7 @@ export async function recoveryStep(q:DbSql,fetcher:(t:Task)=>Promise<unknown>){
   // the exact task identity and stop admission until an operator inspects it.
   const message=error instanceof Error?error.message:'Eroare de colectare';
   const safe=/^(Structur|Detaliu|Identitatea|O singură|Fereastra|Dimensiunea|Totalul|Lipsește|Lista|SEAP|Numărul|Data|Filtrul|Tip de|Anunț)/.test(message)?message:'Cererea sau arhivarea nu a fost confirmată. Verifică jurnalul înainte de reluare.';
+  await q`update app.collection_requests set diagnostics=coalesce(diagnostics,'{}'::jsonb)||${JSON.stringify(sanitizeDiagnostics({taskFailure:{taskId:t.id,exception:diagnosticError(error),...(response===undefined?{}:{response})}}))}::jsonb where id=(select id from app.collection_requests where diagnostics->'context'->>'taskId'=${String(t.id)} order by id desc limit 1)`;
   await q.begin(async tx=>{await tx`update app.collection_tasks set status='failed',error=${safe.slice(0,500)},finished_at=clock_timestamp() where id=${t.id!}`;await tx`update app.collection_control set blocked_reason=coalesce(blocked_reason,${`Sarcina ${t.id}: ${safe}`}) where id=1`;});
   console.error(JSON.stringify({event:'recovery-stopped',task:t.id,error:safe}));
  }
