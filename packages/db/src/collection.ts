@@ -36,7 +36,9 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
    await q`begin`;
    let delay=0,transaction=true;
    try{
-    const [c]=await q`select *,extract(epoch from clock_timestamp())*1000 now_ms,extract(epoch from next_allowed_at)*1000 next_ms,extract(epoch from last_file_at)*1000 file_ms from app.collection_control where id=1 for update`;
+    // Stable result shape across additive migrations while an old worker drains.
+    const [c]=await q`select paused,maintenance,paused_streams,blocked_reason,daily_limit,min_seconds,max_seconds,
+      extract(epoch from clock_timestamp())*1000 now_ms,extract(epoch from next_allowed_at)*1000 next_ms,extract(epoch from last_file_at)*1000 file_ms from app.collection_control where id=1 for update`;
     if(!c)throw new CollectionSuspendedError('Configurația colectării lipsește. Aplică migrațiile.');
     if(c.paused||c.maintenance||(c.paused_streams as string[]).includes(info.stream))throw new CollectionSuspendedError();
     if(c.blocked_reason)throw new CollectionSuspendedError(String(c.blocked_reason));

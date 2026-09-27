@@ -71,3 +71,11 @@ Activation SQL was applied separately and committed at **20:38:18 Bucharest**, a
 **Separate unresolved collection stop:** after reopening, requests772–776 succeeded. Task36017 (participation notices,26July2026,page0) failed at19:21:52 before any request ledger entry for that task. Its generic task error does not preserve the original pre-request exception. The source block is retained; no retry/unblock was performed during this status check. Schedule activation preserves this block and the site remains available. Do not describe crawling as currently resumed or blame SEAP without evidence. The exception coincided with release deployment, but causation is unconfirmed.
 
 Evidence: `/srv/seap/backups/ted-repair-20260927/live-validation.json`, `/srv/seap/backups/daily-rehearsal-20260927/daily-validation.json`, and local `/tmp/seap-processing-release-20260927/`. These checks establish internal consistency, not full external source coverage.
+
+### Follow-up: prepared-query migration fault and admin pagination
+
+PostgreSQL logs identified task36017's pre-request failure: at16:21:52.461UTC the old worker's cached `SELECT *` on collection_control failed with SQLSTATE0A000 after migration0037 added columns. There was no HTTP ledger entry for this task. Admission and task-claim queries now select explicit stable fields. Two real PostgreSQL cases exercise additive ALTER TABLE on the same prepared worker sessions; the admission regression reproduced with the old compiled DB package and passed after rebuilding the fix. No source traffic was used.
+
+Admin journal now displays10 requests/page with range/count, filter reset and stable historical pages during polling; document queue also returns10 items/page. Production-build browser verification passed, as did239web and93ingestion unit cases. Scoped pagination finish verdict: ship. The existing latest100-request feed/export scope and mobile horizontal table scroll remain explicit.
+
+A guarded one-off task recovery script preserves the original task/error plus PostgreSQL diagnosis in audit, verifies the unchanged source boundary and enforces at least70seconds before ordinary collection resumes. Its rolled-back fixture passed. Application awaits the combined release deployment; do not infer a resumed collector from this paragraph.

@@ -14,6 +14,8 @@ const check=(ok,message)=>{if(!ok)throw Error(message);console.log(message);};
 try{
  await q`truncate app.document_requests,app.document_pages,app.document_jobs,app.procurement_documents,app.document_notices,app.document_blobs,app.monitoring_refreshes,app.collection_requests,app.collection_audit,app.collection_workers cascade`;
  await q`insert into app.collection_control(id,paused) values(1,true) on conflict(id) do update set paused=true,maintenance=false,blocked_reason=null`;
+ await q`insert into app.collection_requests(stream,worker,method,endpoint,outcome,status,started_at,finished_at)
+ select case when i%3=0 then 'da' when i%3=1 then 'tenders' else 'awards' end,'pagination-fixture','POST','/api-pub/NoticeCommon/GetCNoticeList/',case when i%2=0 then 'failed' else 'success' end,case when i%2=0 then 503 else 200 end,now()-i*interval '1 minute',now()-i*interval '1 minute'+interval '1 second' from generate_series(1,35) i`;
  await q`insert into app.document_notices(key,notice_id,notice_type,notice_no,title,url) values('test:notice','100231768',17,'SCN · exemplu','Date sintetice pentru verificarea interfeței','https://www.e-licitatie.ro/pub/notices/simplified-notice/v2/view/100231768')`;
  await q`insert into app.document_blobs(hash,bytes,mime) values('fixture-hash',decode('25504446','hex'),'application/pdf')`;
  for(let i=0;i<27;i++){
@@ -31,11 +33,11 @@ try{
  check(result.status()===200&&result.headers()['cache-control'].includes('no-store'),'Admin queue response is private and uncached');
  check(queue.counts.download===23&&queue.counts.processing===1&&queue.counts.list===1&&queue.counts.all===25,'Counts distinguish original availability, processing and list requests');
  check(/^\d{4}-\d{2}-\d{2}T/.test(queue.jobs[0].createdAt),'Queue timestamps use browser-safe ISO serialization');
- check(queue.jobs.length===20&&queue.jobs[0].position===1&&queue.jobs[1].position===4,'Pagination preserves FIFO positions across filters');
+ check(queue.jobs.length===10&&queue.jobs[0].position===1&&queue.jobs[1].position===4,'Pagination preserves FIFO positions across filters');
  check(queue.active.pagesDone===3&&queue.active.pagesTotal===12&&queue.active.downloaded,'Active job reports saved original and real page progress');
  check(!JSON.stringify(queue).includes('fixture-hash')&&!JSON.stringify(queue).includes('fixture-user'),'Queue omits blob hashes and requester identity');
  const last=await (await admin.request.get(base+path+'&page=99999')).json();
- check(last.page===2&&last.jobs.length===3,'Out-of-range pages clamp to the current final page');
+ check(last.page===3&&last.jobs.length===3,'Out-of-range pages clamp to the current final page');
  for(const suffix of ['&filter=invalid','&page=0','&page=-1','&page=100001'])check((await admin.request.get(base+path+suffix)).status()===400,'Invalid queue parameters rejected: '+suffix);
  const status=await (await admin.request.get(base+'/api/admin/collection')).json();
  check(status.documents.awaiting_download===23&&status.lastVerified.kind==='coordinated'&&status.publication.kind==='manual','Header counts and last verified checkpoint retain correct meanings');
@@ -44,7 +46,34 @@ try{
  await page.goto(base+'/admin');await page.getByRole('heading',{name:'Fișiere în așteptare'}).waitFor();
  await page.locator('.document-queue-list li').first().waitFor();
  check(await page.getByText('Program automat oprit',{exact:true}).isVisible(),'Disabled automation is explicitly labeled');
- await page.getByRole('button',{name:'Următoarele',exact:true}).click();
+ const journal=page.locator('#journal'),pagination=journal.getByRole('navigation',{name:'Paginile jurnalului de cereri'});
+ const requestRows=journal.locator('tbody tr:not(.log-detail)');
+ check(await requestRows.count()===10,'Journal shows at most ten requests');
+ check(await pagination.getByRole('button',{name:'Înapoi',exact:true}).isDisabled(),'First page disables previous');
+ for(let i=0;i<3;i++)await pagination.getByRole('button',{name:'Următoarele',exact:true}).click();
+ check(await requestRows.count()===5&&await pagination.getByRole('button',{name:'Următoarele',exact:true}).isDisabled(),'Last page is partial and disables next');
+ await journal.getByRole('button',{name:'Erori',exact:true}).click();
+ check(await requestRows.count()===10&&(await pagination.innerText()).includes('Pagina 1 din 2'),'Filter resets to first page and errors are paginated');
+ await journal.getByRole('button',{name:'Documente',exact:true}).click();
+ check(await journal.getByText('Nicio cerere disponibilă pentru acest filtru.').isVisible()&&await requestRows.count()===0,'Empty filter has no misleading page rows');
+ await journal.getByRole('button',{name:'Toate',exact:true}).click();
+ await pagination.getByRole('button',{name:'Următoarele',exact:true}).click();
+ const frozen=await requestRows.locator('button.log-toggle').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('aria-label')));
+ const [fresh]=await q`insert into app.collection_requests(stream,worker,method,endpoint,outcome,status) values('da','pagination-fixture','POST','/fixture/newest','success',200) returning id::text`;
+ await Promise.all([page.waitForResponse(r=>r.url()===base+'/api/admin/collection'),page.evaluate(()=>window.dispatchEvent(new Event('focus')))]);
+ check(JSON.stringify(frozen)===JSON.stringify(await requestRows.locator('button.log-toggle').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('aria-label')))),'Polling does not move rows during journal navigation');
+ await journal.getByRole('button',{name:'Vezi cele mai noi cereri',exact:true}).click();
+ await journal.getByRole('button',{name:'Detalii cerere '+fresh.id,exact:true}).waitFor();
+ check((await pagination.innerText()).includes('1–10 din 36'),'Return to latest resumes the live first page');
+ await journal.screenshot({style:'header, .d-skip-link {visibility:hidden !important}',path:out+'/journal-desktop.png'});
+ await page.setViewportSize({width:390,height:844});
+ check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Paginated journal has no mobile page overflow');
+ await journal.screenshot({style:'header, .d-skip-link {visibility:hidden !important}',path:out+'/journal-mobile.png'});
+ await page.setViewportSize({width:1440,height:1000});
+
+ await page.locator('#files').getByRole('button',{name:'Următoarele',exact:true}).click();
+ await page.getByText('11–20 din 23',{exact:true}).waitFor();
+ await page.locator('#files').getByRole('button',{name:'Următoarele',exact:true}).click();
  await page.getByText('21–23 din 23',{exact:true}).waitFor();
  await page.getByRole('button',{name:'De procesat 1',exact:true}).click();await page.getByText('Descărcat · așteaptă procesarea',{exact:true}).waitFor();
  check((await page.locator('.queued-file-copy .file-archive-link').getAttribute('href')).startsWith('/api/documents/'),'Already saved files link to the archive');

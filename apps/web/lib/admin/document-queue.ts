@@ -21,7 +21,7 @@ export async function documentQueueStatus(filter:DocumentQueueFilter='download',
    count(*) filter(where j.status='running')::int running
    from app.document_jobs j left join app.procurement_documents d on d.id=j.document_id where j.status in ('queued','running')`;
   const summary=counts as unknown as {download:number;processing:number;list:number;all:number;running:number};
-  const pageSize=20,total=summary[filter],page=Math.min(requestedPage,Math.max(1,Math.ceil(total/pageSize)));
+  const pageSize=10,total=summary[filter],page=Math.min(requestedPage,Math.max(1,Math.ceil(total/pageSize)));
   const active=await tx`select j.id,j.document_id "documentId",j.kind,j.status,j.stage,d.filename,
    n.notice_no "noticeNo",n.title "noticeTitle",n.url "noticeUrl",d.original_hash is not null downloaded,d.pdf_hash is not null "hasPdf",
    j.pages_done "pagesDone",j.pages_total "pagesTotal",j.created_at "createdAt",j.started_at "startedAt",0::int position

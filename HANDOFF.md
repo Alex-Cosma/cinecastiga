@@ -1,5 +1,16 @@
 # Continuation handoff — cinecâștigă, investigation batches and contract documents
 
+## ACTIVE follow-up — pagination and confirmed collection schema failure, 20:49 Bucharest
+
+Latest user asks max10 rows per page under /admin Toate tabs. Implemented journal pagination, filter reset, live snapshot stability on pages>1 and return-to-latest; backend document queue pageSize10. Production-build browser fixture passed navigation/bounds/empty/filter/polling/auth/no source calls/no runtime errors/mobile. Screenshots .impeccable/review/admin-pagination/ validated, detector empty. Required skill reviewer /root/pagination_finish_review returned SHIP; documenter completed surface brief and design documentation. Canon design files preserved. Local preview3115 and both isolated fixture databases removed after verification; .next-processing build stays ignored. Do not touch dev3113.
+
+The collection blocker is now CONFIRMED in PostgreSQL log at16:21:52.461UTC: SQLSTATE0A000 `cached plan must not change result type` for prepared SELECT* on app.collection_control during migration0037. This was before HTTP admission; task36017 has no request ledger row. Earlier notes saying cause unknown are superseded. Fixed admission query and task-claim query to select stable explicit columns. Two real PG regression cases passed across ALTER TABLE on an existing prepared connection; old compiled DB code reproduced the error first. Ingestion93units/typecheck passed; webbuild/browser passed. No new SEAP requests for these tests.
+
+Guarded one-off recovery SQL `scripts/operations/resume-schema-block-20260927.sql` waits for the corrected release, requires controlrevision10/requestmax776/task36017failed/no active requests or tasks/no ledger for task, preserves original task/error and PostgreSQL diagnosis in audit, requeues task and clears only matching block, waits at least70sec before ordinary crawl. It passed a rolled-back fixture test including original-error retention. NOT APPLIED TO PRODUCTION YET. Apply after new release deployverified; observe task36017complete/ordinaryrequest success, then update status/docs. Preserve old failed-continuation-status.json; do not rerun the old automatic continuation.
+
+Source repairs/dailyrehearsal/activation already complete. 2089a32 (stdin fix + activation docs) pushed/deployed CI36337790397SUCCESS. Current new pagination/collector fix uncommitted, needs review/docs/commit/push/deploy followed by guarded resume. Schedule remains enabled at05daily andSundayrisk; next28Sep05 and4Oct05RO. Publicsiteopen; global sourceblockstillactive.
+
+
 ## Verified production status — 27 September, 20:39 Bucharest
 
 TED repair completed and the site reopened at **19:18:19 Bucharest**. All 161,633 notices normalized, zero pending, all ten snapshot checks passed. Full recalculation took **1h47m49s**, excluding archive repair/backup/search; the maintenance interval was **2h50m31s**. Search verified 194,519 entities. The initial release through8997ded passed CI/deployment (run36332770987).
