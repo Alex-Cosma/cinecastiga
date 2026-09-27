@@ -1,0 +1,13 @@
+{
+  "date": "2026-09-27",
+  "environment": "Local production Next build; isolated seap_test_admin_queue database; synthetic quiet-window API metadata",
+  "script": "apps/web/scripts/admin/check-quiet-window.mjs",
+  "checks": ["scheduled paused presentation", "new requests stopped without countdown", "queue wait explanation", "390px no page overflow", "source errors take precedence", "manual pause survives quiet expiry", "normal state resumes", "zero request ledger entries", "zero browser runtime errors"],
+  "screenshots": ["desktop.png", "mobile.png"],
+  "sourceHttpRequests": 0,
+  "policyIntegrationTests": 18,
+  "existingControlIntegrationTests": 14,
+  "webUnitTests": 239,
+  "ingestionUnitTests": 93,
+  "limitations": "Synthetic status, not evidence of an overnight pause or SEAP availability. Real overnight observation pending."
+}

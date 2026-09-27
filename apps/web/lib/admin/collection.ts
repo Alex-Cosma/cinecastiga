@@ -1,4 +1,4 @@
-import { createDb, COLLECTION_STREAMS, validateCollectionSettings, processingSchedule, type DbSql } from '@seap/db';
+import { createDb, COLLECTION_STREAMS, validateCollectionSettings, processingSchedule, collectionQuietWindow, type DbSql } from '@seap/db';
 const g=globalThis as unknown as {collectionSql?:DbSql};
 const iso=(value:unknown)=>value?new Date(String(value)).toISOString():null;
 export const collectionDb=()=>g.collectionSql??=createDb().sql;
@@ -21,11 +21,12 @@ export async function collectionStatus(q:DbSql=collectionDb()){
   const [lastVerified]=await tx`select id,version::text,kind,started_at,completed_at,methodology,validation->'checks' checks,validation->'risk' risk,validation->>'refreshScope' refresh_scope from app.monitoring_refreshes where status='ready' and kind='coordinated' order by version desc limit 1`;
   const processingRows=await tx`select id,scheduled_day::text,scope,status,stage,started_at,stage_started_at,heartbeat_at,completed_at,stages,raw_boundary,checkpoint_id,error from app.processing_runs order by started_at desc limit 7`;
   const processingRuns=processingRows.map(r=>({...r,started_at:iso(r.started_at),stage_started_at:iso(r.stage_started_at),heartbeat_at:iso(r.heartbeat_at),completed_at:iso(r.completed_at)}) as typeof r);
+  const quietWindow=await collectionQuietWindow(tx as unknown as DbSql);
   const schedule=await processingSchedule(tx as unknown as DbSql);
   const [scheduler]=await tx`select heartbeat_at>now()-interval '2 minutes' alive from app.collection_workers where id='nightly-scheduler'`;
   const [batch]=await tx`select id,end_day,status from app.collection_batches order by created_at desc limit 1`;
   const progress=batch?await tx`select stream,count(*) filter(where status='pending')::int pending,count(*) filter(where status='running')::int running,count(*) filter(where status='complete')::int complete,count(*) filter(where status='split')::int split,count(*) filter(where status='deferred')::int deferred,count(*) filter(where status='failed')::int failed from app.collection_tasks where batch_id=${batch.id} group by stream`:[];
-  return {recovery:batch?{batch,progress}:null,control,today:today[0]!,streams,requests,failures,workers,audit,runs,documents:documents!,raw:raw!,publication:publication[0]??null,lastVerified:lastVerified??null,processing:{runs:processingRuns,schedule:{next_at:iso(schedule.next_at),next_risk_at:iso(schedule.next_risk_at)},schedulerAlive:scheduler?.alive===true}};
+  return {quietWindow,recovery:batch?{batch,progress}:null,control,today:today[0]!,streams,requests,failures,workers,audit,runs,documents:documents!,raw:raw!,publication:publication[0]??null,lastVerified:lastVerified??null,processing:{runs:processingRuns,schedule:{next_at:iso(schedule.next_at),next_risk_at:iso(schedule.next_risk_at)},schedulerAlive:scheduler?.alive===true}};
  });
 }
 export type CollectionStatus=Awaited<ReturnType<typeof collectionStatus>>;

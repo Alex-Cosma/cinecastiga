@@ -1,4 +1,4 @@
-import {diagnosticError,sanitizeDiagnostics,CollectionSuspendedError,collectionHeartbeat,collectionWorkerId,withCollectionStream,type DbSql} from '@seap/db';
+import {collectionQuietWindow,diagnosticError,sanitizeDiagnostics,CollectionSuspendedError,collectionHeartbeat,collectionWorkerId,withCollectionStream,type DbSql} from '@seap/db';
 import {getNoticeContracts,getNoticeDetail,listContractingAuthorities,listDirectAcquisitions,listNotices,NOTICE_TYPE_IDS,type ElicitatieClient} from '@seap/scraper-clients';
 import {archiveDocumentsSql} from '../scrape/archive.js';
 import {isoDaysAgo} from '../scrape/window.js';
@@ -45,6 +45,7 @@ export async function recoverInterrupted(q:DbSql){
 }
 export async function recoveryStep(q:DbSql,fetcher:(t:Task)=>Promise<unknown>){
  await collectionHeartbeat(q,recoveryWorker,'ingestion','idle');
+ if((await collectionQuietWindow(q)).active)return false;
  const claimed=await q.begin(async tx=>{
   const [c]=await tx`select paused,maintenance,blocked_reason,daily_limit,paused_streams from app.collection_control where id=1`;
   if(!c||c.paused||c.maintenance||c.blocked_reason)return null;

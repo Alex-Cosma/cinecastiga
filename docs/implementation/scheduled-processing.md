@@ -87,3 +87,7 @@ Pagination and the stable-query collector fix are deployed on main at **e458690*
 The reviewed recovery SQL was applied after verifying the fixed admission query inside the running collector. Task36017 **completed successfully**: request779 returnedHTTP200 with1record, archived1, duplicates0. Requests777(awards,5records) and778(direct purchases,0records) also returned200. The original failure and confirmed PostgreSQL schema/plan diagnosis are preserved in the retry-task audit. Controlrevision11: processing enabled, maintenancefalse, pausedfalse, no source block. No diagnostic/test source requests were added; these were ordinary resumed collection tasks.
 
 Schedule remains daily05:00 Europe/Bucharest, with full risk Sundays05:00; first daily28September and next risk4October. TED repair and daily clone rehearsal remain verified as recorded below. All local changes are committed; a final evidence-only commit follows this release. Local test preview/fixture databases were removed; ordinary dev3113 was untouched. The old failed continuation must not be restarted.
+
+## Preventive SEAP source pause — 27 September 2026
+
+The user subsequently authorized a daily 02:59–03:30 Europe/Bucharest quiet window for all SEAP requests. The [shared gate policy](seap-quiet-window.md) is independent of publication maintenance, and automatic expiry never clears manual pauses or source blocks. Older notes saying the 03:00 pause was observation-only are superseded by this explicit authorization. The 05:00 daily / Sunday risk schedule is unchanged.

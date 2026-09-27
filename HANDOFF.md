@@ -1,5 +1,12 @@
 # Continuation handoff — cinecâștigă, investigation batches and contract documents
 
+## Daily SEAP quiet window — implementation validated, deploy pending (2026-09-27)
+
+Latest user explicitly approved preventive **02:59–03:30 Europe/Bucharest**, daily, for every SEAP request, and requested commit/push/deploy. Shared DB-clock gate now refuses admission before a request ledger/HTTP attempt; recovery and document workers also skip claiming during window. Expiry does not alter manual/stream pauses, errors, maintenance, daily budget or pacing. Existing requests/OCR can finish. DST policy conservative: autumn waits through repeated hour; spring missing03:30 resolves04:30. Details: docs/implementation/seap-quiet-window.md.
+
+Admin status exposes boundaries and distinguishes scheduled waiting; file queue explains wait.18new realPG policy/gate tests,14existingcontrol integration tests,239webunits,93ingestionunits,11hosttests passed. DB/ingestion/web types and webproductionbuild passed. Browserfixture9checks passed; screenshots docs/implementation/previews/quiet-window. No extra SEAPrequests. Localpreview3115 and dedicatedquiet/adminfixtureDBs removed; ordinarydev3113 untouched. Finishreview/documentation and commit/push/deploy verification are being finalized. Main previouslye6fd8bc. No schema changes/activationSQL/cron needed. Separate live issue discovered: request801 (awards GetCANoticeContracts, task42952) timed out at21:19:42RO after45sec; controlrevision11 now source-blocked, taskfailed, no runningrequests. Request800/799 succeeded. User informed and async question pending whether to retry exactly once after deploy; do not clear block without answer. **First real overnight pause remains unobserved.** Daily05publication andSundayrisk unchanged.
+
+
 ## Completed follow-up — 2026-09-27T20:59:54.286855+03:00
 
 Pagination and the stable-query collector fix are deployed on main at **e458690**, with CI/deploy run36338505537 successful. `/admin` journal and file queue show at most10 entries/page; filters and stable historical journal navigation passed production-build browser verification. Scoped finish review: ship. Public pages/health200, anonymous admin queue403.

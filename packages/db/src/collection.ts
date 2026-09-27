@@ -3,6 +3,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
 import { setTimeout as sleep } from 'node:timers/promises';
 import type { DbSql } from './client.js';
+import { collectionQuietWindow } from './collection-quiet-window.js';
 import { safeCollectionEndpoint, safeCollectionParameters, retryAfterSeconds, type CollectionStream } from './collection-policy.js';
 export const COLLECTION_LOCK=[729114,4] as const;
 const context=new AsyncLocalStorage<{stream:CollectionStream;context?:unknown}>();
@@ -47,6 +48,9 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
     if(c.daily_limit!==null){const [n]=await q`select count(*)::int n from app.collection_requests where started_at >= ((clock_timestamp() at time zone 'Europe/Bucharest')::date::timestamp at time zone 'Europe/Bucharest')`;if(Number(n?.n)>=Number(c.daily_limit))throw new CollectionSuspendedError('Limita zilnică SEAP a fost atinsă.');}
     delay=Math.max(0,Number(c.next_ms??0)-Number(c.now_ms),info.fileDownload?Number(c.file_ms??0)+60000-Number(c.now_ms):0);
     if(delay<=0){
+     // Recheck after taking the control-row lock and on every rate-limit retry.
+     // Suspension precedes the ledger: no HTTP attempt, error or manual-pause mutation.
+     if((await collectionQuietWindow(q)).active)throw new CollectionSuspendedError('Pauză SEAP programată: 02:59–03:30, ora României. Reluare automată după încheierea pauzei.');
      const jitter=Math.floor(Number(c.min_seconds)+Math.random()*(Number(c.max_seconds)-Number(c.min_seconds)+1));
      const [request]=await q`insert into app.collection_requests(stream,worker,method,endpoint,parameters) values(${info.stream},${info.worker},${info.method},${endpoint},${JSON.stringify(parameters)}::jsonb) returning id`;
      id=Number(request!.id);
