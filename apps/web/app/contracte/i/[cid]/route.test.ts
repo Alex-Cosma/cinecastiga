@@ -20,7 +20,7 @@ describe("contract internal-id redirect", () => {
     expect(response.headers.get("location")).toBe("/contracte/108121282");
     expect(new URL(response.headers.get("location")!, browserOrigin).href)
       .toBe(`${browserOrigin}/contracte/108121282`);
-    expect(sql.mock.calls[0][1]).toBe("3900187");
+    expect(sql.mock.calls[0]?.[1]).toBe("3900187");
   });
 
   it("rejects invalid ids before querying", async () => {
