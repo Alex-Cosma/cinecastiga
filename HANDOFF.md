@@ -2,7 +2,7 @@
 
 ## ACTIVE — September 27 request diagnostics and timed recalculation
 
-Checkpoint 05:53 UTC / 08:53 Bucharest. User asked full failed-request diagnostics, exactly one retry of the failed production request, and today-only crawl stop at 08:00 followed by a timed recalculation. Do not enable a 03:00 blackout based on the unconfirmed maintenance hypothesis. Prior commit/push/deploy/start authorization persists. No proactive subagents.
+Checkpoint 05:56 UTC / 08:56 Bucharest. Benchmark remains running independently; final duration not yet known. User asked full failed-request diagnostics, exactly one retry of the failed production request, and today-only crawl stop at 08:00 followed by a timed recalculation. Do not enable a 03:00 blackout based on the unconfirmed maintenance hypothesis. Prior commit/push/deploy/start authorization persists. No proactive subagents.
 
 ### Completed and deployed on main
 
@@ -32,15 +32,19 @@ Preflight found161,633TEDnotices normalization_versionNULL, historicalrawTEDarch
 
 ### One-off completion handler now running
 
-Host `/srv/seap/backups/benchmark-20260927-finish.sh`, PID2509756, log sameprefix.log; source `scripts/operations/finish-benchmark-20260927.sh`. Waits finalJSON andcontainerexit, writescompletion.json, resumes ordinarycrawl ONLY if livecontrolrevision6/auditmax6/requestmax379/pausedtrue/maintenancefalse/no blocks/no runningtasksorrequests/50–70unchanged. Ifuserchangesadminsettingsorpauses, guardrefuses. Startsserviceswhilepaused then atomicupdate+audit. Recordsfirstordinarycompletedpost379request(noSEAPprobe). Missingreport/handlererrorfailsclosed. Clonefailedvalidationdoesnotpublishanything; liveanalyticsuntouched so ordinaryrawcollectioncanresume. **Do not start a second handler.** Shellsyntax andEXPLAIN-onlySQLvalidated; actualresumeawaitsbenchmarkend.
+Host `/srv/seap/backups/benchmark-20260927-finish.sh`, PID2510695, log sameprefix.log; source `scripts/operations/finish-benchmark-20260927.sh`. Waits finalJSON andcontainerexit, writescompletion.json, resumes ordinarycrawl ONLY if livecontrolrevision6/auditmax6/requestmax379/pausedtrue/maintenancefalse/no blocks/no runningtasksorrequests/50–70unchanged. Ifuserchangesadminsettingsorpauses, guardrefuses. Startsserviceswhilepaused then atomicupdate+audit. Recordsfirstordinarycompletedpost379request(noSEAPprobe). Missingreport/handlererrorfailsclosed. Clonefailedvalidationdoesnotpublishanything; liveanalyticsuntouched so ordinaryrawcollectioncanresume. **Do not start a second handler.** Shellsyntax andEXPLAIN-onlySQLvalidated; actualresumeawaitsbenchmarkend.
 
 At08:53 flagsstillrunning on da_round. Separate10k-row SELECTdiagnostic took695ms; log `/tmp/seap-benchmark-sample.txt`; no sourcecalls. Host hadampledisk/memory. Reportingartifactdraftupdated withoneoffhandlerdetails. Couldfinishsessionwithtruthfulbackgroundstatusifnecessary; neverclaimrecalculationfinishedbeforereport. Handlerpreservesfinaldurationandresumestatewithoutthissession.
+
+### Background status at end of interactive work
+
+At08:56 actualcalculation~37m39s and flagsstillactive. Publichealth200, sourceledger379, collectorpaused; handler2510695will independentlysavecompletionandresumeaftercontainerexit ifoperatorguardpasses. This is **in progress**, not completed/published. Nextturn inspectbenchmarkJSON/completionJSON/first-resumed-requestJSON andupdatefinalreport withactualtimes. Do not rerun measurement orrequeueanyrequest. Main applicationrelease0b111c6andallchecks/deploysuccess. No03blackout ornightlyschedulerintroduced.
 
 ### Remaining work
 
 Continue monitoring log/report, userupdates≤60s during ongoingwork, waits≤60s. Finish measurement, capture report locally, update `docs/implementation/recalculation-benchmark-20260927.md` (currently untracked draft) with actual durations/result/blockers. Resume crawl safely afterwards, observe one ordinarysuccessfulrequest with newdiagnostics. Save finalHANDOFF/report andcommitpushmain (triggersCIdeploy);verifyproduction. No extraSEAPtestcalls. Final Romanian response: retry34success;adminexport;timingtable;clone/publicationlimitations;crawlstate;nightlyschedulerstatus. Avoid claiming everything recalculated/published live.
 
-SSH `cinecastiga`, checkout `/srv/seap/src`, compose `infra/prod`, DBcontainer `cinecastiga-postgres-1`, role/dbseap. Full permission, never outputenv/secrets. Local main only HANDOFF and newbenchmarkreport uncommitted.
+SSH `cinecastiga`, checkout `/srv/seap/src`, compose `infra/prod`, DBcontainer `cinecastiga-postgres-1`, role/dbseap. Full permission, never outputenv/secrets. All application and operation changes committed/pushed/deployed on main through0b111c6 (CI36298511890success). Final documentation checkpoint follows. HandlerPID2510695verifiedalive; earlierrestart2509756exitedbecauseoldchildsleepbrieflyheldflock, resolvedbywaitingforlockandstartingonce. No duplicatehandler.
 
 ## Latest — value superlative includes awarded contracts, release on main
 
