@@ -1,0 +1,74 @@
+// Run against a schema-only local fixture database and a preview on port 3115.
+import {readFile,mkdir} from 'node:fs/promises';
+import {parseEnv} from 'node:util';
+import {createHmac,randomUUID,randomBytes} from 'node:crypto';
+import {chromium} from 'playwright-core';
+import {createDb} from '@seap/db';
+const base='http://localhost:3115',url=process.env.TEST_DATABASE_URL;
+if(!url||!['localhost','127.0.0.1'].includes(new URL(url).hostname)||new URL(url).pathname!='/seap_test_admin_queue')throw Error('Dedicated local fixture DB only');
+const env=parseEnv(await readFile('.env.local','utf8')),secret=env.BETTER_AUTH_SECRET;
+const {sql:q}=createDb(url),browser=await chromium.launch({channel:'chrome',headless:true});
+const users=[],errors=[],out=process.env.ADMIN_QUEUE_REVIEW_DIR??'../../.impeccable/review';await mkdir(out,{recursive:true});
+async function context(role){const ctx=await browser.newContext({viewport:{width:1440,height:1000}}),id=randomUUID(),token=randomBytes(32).toString('hex');users.push(id);await q`insert into auth.users(id,name,email,email_verified,role) values(${id},'Queue test',${id+'@example.test'},true,${role})`;await q`insert into auth.sessions(id,token,user_id,expires_at) values(${randomUUID()},${token},${id},now()+interval '1 hour')`;await ctx.addCookies([{name:'better-auth.session_token',value:encodeURIComponent(token+'.'+createHmac('sha256',secret).update(token).digest('base64')),url:base}]);return ctx;}
+const check=(ok,message)=>{if(!ok)throw Error(message);console.log(message);};
+try{
+ await q`truncate app.document_requests,app.document_pages,app.document_jobs,app.procurement_documents,app.document_notices,app.document_blobs,app.monitoring_refreshes,app.collection_requests,app.collection_audit,app.collection_workers cascade`;
+ await q`insert into app.collection_control(id,paused) values(1,true) on conflict(id) do update set paused=true,maintenance=false,blocked_reason=null`;
+ await q`insert into app.document_notices(key,notice_id,notice_type,notice_no,title,url) values('test:notice','100231768',17,'SCN · exemplu','Date sintetice pentru verificarea interfeței','https://www.e-licitatie.ro/pub/notices/simplified-notice/v2/view/100231768')`;
+ await q`insert into app.document_blobs(hash,bytes,mime) values('fixture-hash',decode('25504446','hex'),'application/pdf')`;
+ for(let i=0;i<27;i++){
+  const id=randomUUID(),kind=i===1?'list':'file',saved=i===2||i===26;
+  if(kind==='file')await q`insert into app.procurement_documents(id,notice_key,source_id,code,filename,original_hash,pdf_hash) values(${id},'test:notice',${String(i)},${String(i)},${i===0?'Caiet de sarcini — iluminat public.pdf.p7s':i===26?'Document în procesare.pdf':`Anexa ${i} — specificații tehnice.pdf`},${saved?'fixture-hash':null},${saved?'fixture-hash':null})`;
+  await q`insert into app.document_jobs(notice_key,document_id,kind,dedup_key,status,stage,pages_done,pages_total,requested_by,created_at) values('test:notice',${kind==='file'?id:null},${kind},${'fixture:'+i},${i===26?'running':i===25?'complete':'queued'},${i===26?'ocr':'queued'},${i===26?3:0},${i===26?12:null},'fixture-user',${new Date(Date.UTC(2026,8,27,8,i)).toISOString()})`;
+ }
+ await q`insert into app.monitoring_refreshes(kind,status,completed_at,validation) values('coordinated','ready',now()-interval '2 hours','{"checks":[{"check":"ted_normalization","passed":true,"details":{"total":"161633","pending":"0"}}]}')`;
+ await q`insert into app.monitoring_refreshes(kind,status,completed_at) values('manual','failed',now())`;
+ const admin=await context('admin'),member=await context('watchdog'),anon=await browser.newContext();
+ const path='/api/admin/collection?documentQueue=1';
+ check((await anon.request.get(base+path)).status()===403,'Anonymous queue access denied');
+ check((await member.request.get(base+path)).status()===403,'Non-admin queue access denied');
+ const result=await admin.request.get(base+path),queue=await result.json();
+ check(result.status()===200&&result.headers()['cache-control'].includes('no-store'),'Admin queue response is private and uncached');
+ check(queue.counts.download===23&&queue.counts.processing===1&&queue.counts.list===1&&queue.counts.all===25,'Counts distinguish original availability, processing and list requests');
+ check(/^\d{4}-\d{2}-\d{2}T/.test(queue.jobs[0].createdAt),'Queue timestamps use browser-safe ISO serialization');
+ check(queue.jobs.length===20&&queue.jobs[0].position===1&&queue.jobs[1].position===4,'Pagination preserves FIFO positions across filters');
+ check(queue.active.pagesDone===3&&queue.active.pagesTotal===12&&queue.active.downloaded,'Active job reports saved original and real page progress');
+ check(!JSON.stringify(queue).includes('fixture-hash')&&!JSON.stringify(queue).includes('fixture-user'),'Queue omits blob hashes and requester identity');
+ const last=await (await admin.request.get(base+path+'&page=99999')).json();
+ check(last.page===2&&last.jobs.length===3,'Out-of-range pages clamp to the current final page');
+ for(const suffix of ['&filter=invalid','&page=0','&page=-1','&page=100001'])check((await admin.request.get(base+path+suffix)).status()===400,'Invalid queue parameters rejected: '+suffix);
+ const status=await (await admin.request.get(base+'/api/admin/collection')).json();
+ check(status.documents.awaiting_download===23&&status.lastVerified.kind==='coordinated'&&status.publication.kind==='manual','Header counts and last verified checkpoint retain correct meanings');
+ const page=await admin.newPage();page.on('pageerror',e=>errors.push(e.message));
+ await page.route('**/*',r=>new URL(r.request().url()).hostname==='localhost'?r.continue():r.abort());
+ await page.goto(base+'/admin');await page.getByRole('heading',{name:'Fișiere în așteptare'}).waitFor();
+ await page.locator('.document-queue-list li').first().waitFor();
+ check(await page.getByText('Program convenit · automatizare neactivată',{exact:true}).isVisible(),'Unimplemented automation is explicitly labeled');
+ await page.getByRole('button',{name:'Următoarele',exact:true}).click();
+ await page.getByText('21–23 din 23',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'De procesat 1',exact:true}).click();await page.getByText('Descărcat · așteaptă procesarea',{exact:true}).waitFor();
+ check((await page.locator('.queued-file-copy .file-archive-link').getAttribute('href')).startsWith('/api/documents/'),'Already saved files link to the archive');
+ await page.getByRole('button',{name:'Liste de fișiere 1',exact:true}).click();await page.getByText('Doar lista, fără descărcare',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'De descărcat 23',exact:true}).click();await page.locator('.document-queue-list li').first().waitFor();
+ check(await page.evaluate(()=>{const notice=getComputedStyle(document.querySelector('.queue-notice')),active=getComputedStyle(document.querySelector('.active-document'));return notice.borderLeftWidth==='0px'&&active.borderLeftWidth==='1px'&&active.borderLeftColor===active.borderRightColor;}),'Served CSS has no colored side stripes');
+ check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Desktop has no horizontal overflow');
+ await page.evaluate(()=>{document.activeElement?.blur();window.scrollTo(0,0);});await page.waitForTimeout(250);
+ await page.screenshot({path:out+'/desktop.png',fullPage:true});
+ await page.locator('#files').screenshot({style:'header, .d-skip-link, nextjs-portal { visibility: hidden !important; }',path:out+'/queue-desktop.png'});
+ await page.setViewportSize({width:390,height:844});
+ check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Mobile has no horizontal overflow');
+ await page.evaluate(()=>{document.activeElement?.blur();window.scrollTo(0,0);});await page.waitForTimeout(250);
+ await page.screenshot({path:out+'/mobile.png',fullPage:true});
+ await page.locator('#files').screenshot({style:'header, .d-skip-link, nextjs-portal { visibility: hidden !important; }',path:out+'/queue-mobile.png'});
+ await page.evaluate(()=>document.documentElement.dataset.theme='dark');
+ await page.locator('#files').screenshot({style:'header, .d-skip-link, nextjs-portal { visibility: hidden !important; }',path:out+'/queue-dark.png'});
+ await page.route('**/api/admin/collection?documentQueue=*',r=>r.fulfill({status:503,body:'{}'}));await page.getByRole('button',{name:'Toată coada 25',exact:true}).click();
+ await page.getByText('Lista nu este disponibilă momentan.',{exact:true}).waitFor();
+ check(await page.getByRole('button',{name:'Reîncearcă',exact:true}).isVisible(),'Queue network failure has recovery control');
+ await page.unroute('**/api/admin/collection?documentQueue=*');
+ await q`update app.document_jobs set status='complete',stage='complete'`;
+ await page.getByRole('button',{name:'Reîncearcă',exact:true}).click();await page.getByText('Coada de așteptare este goală.',{exact:true}).waitFor();
+ await page.locator('#files').screenshot({style:'header, .d-skip-link, nextjs-portal { visibility: hidden !important; }',path:out+'/queue-empty.png'});
+ check((await q`select count(*)::int n from app.document_requests`)[0].n===0,'Viewing and filtering the queue never requests documents');
+ check(errors.length===0,'No browser runtime errors');
+}finally{for(const id of users)await q`delete from auth.users where id=${id}`;await browser.close();await q.end();}
