@@ -29,6 +29,6 @@ begin
     processing_enabled_at=clock_timestamp(),processing_time='05:00',risk_weekday=0,
     revision=revision+1,updated_at=clock_timestamp() where id=1 returning * into after_row;
   insert into app.collection_audit(actor_id,actor_name,action,before,after)
-    values('operator:codex','Program zilnic și duminical autorizat după validare','settings',to_jsonb(before_row),to_jsonb(after_row));
+    values('operator:codex','Program zilnic și duminical autorizat după validare','settings',jsonb_build_object('minSeconds',before_row.min_seconds,'maxSeconds',before_row.max_seconds,'dailyLimit',before_row.daily_limit,'processingTime',before_row.processing_time,'processingEnabled',before_row.processing_enabled,'riskWeekday',before_row.risk_weekday,'paused',before_row.paused,'pausedStreams',before_row.paused_streams,'blockedReason',before_row.blocked_reason,'revision',before_row.revision),jsonb_build_object('minSeconds',after_row.min_seconds,'maxSeconds',after_row.max_seconds,'dailyLimit',after_row.daily_limit,'processingTime',after_row.processing_time,'processingEnabled',after_row.processing_enabled,'riskWeekday',after_row.risk_weekday,'paused',after_row.paused,'pausedStreams',after_row.paused_streams,'blockedReason',after_row.blocked_reason,'revision',after_row.revision));
 end $$;
 commit;
