@@ -12,7 +12,7 @@ git fetch --quiet origin main
 git reset --hard --quiet origin/main
 cd infra/prod
 # Build first. Keep the current web container serving during the migration.
-docker compose --profile maintenance --profile documents build --pull web migrate documents
+docker compose --profile maintenance --profile documents --profile processing build --pull web migrate documents processor
 # An already activated collector follows future releases; an inactive profile
 # stays inactive until its recovery inventory and pilot have been inspected.
 collection_active=false

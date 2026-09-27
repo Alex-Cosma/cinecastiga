@@ -1,4 +1,4 @@
-import { and, asc, eq, gt } from "drizzle-orm";
+import { and, asc, eq, gt, lte } from "drizzle-orm";
 import {
   normalizeWatermarks,
   quarantine,
@@ -83,7 +83,7 @@ async function rebuildReset(sql: DbSql): Promise<void> {
 export async function runNormalize(
   db: Db,
   sql: DbSql,
-  opts: { rebuild?: boolean; only?: string; log?: (m: string) => void } = {},
+  opts: { rebuild?: boolean; only?: string; log?: (m: string) => void; maxRawId?: bigint } = {},
 ): Promise<NormalizeReport> {
   const log = opts.log ?? (() => {});
   if (opts.rebuild) {
@@ -115,6 +115,7 @@ export async function runNormalize(
           and(
             eq(rawDocuments.endpointVersion, transform),
             gt(rawDocuments.id, cursor),
+            opts.maxRawId !== undefined ? lte(rawDocuments.id, opts.maxRawId) : undefined,
           ),
         )
         .orderBy(asc(rawDocuments.id))

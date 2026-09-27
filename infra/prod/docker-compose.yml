@@ -178,6 +178,23 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  # Host scheduler owns backup, deployment lock and worker drain/restart.
+  processor:
+    <<: *logging
+    profiles: [processing]
+    build:
+      context: ../..
+      dockerfile: infra/prod/Dockerfile.collection
+    image: cinecastiga-collection
+    restart: "no"
+    init: true
+    mem_limit: 2g
+    cpus: 2
+    environment:
+      DATABASE_URL: postgres://seap:${POSTGRES_PASSWORD:?set in .env}@postgres:5432/seap
+      MEILISEARCH_URL: http://meilisearch:7700
+      MEILISEARCH_KEY: ${MEILI_MASTER_KEY}
+
   caddy:
     <<: *logging
     image: caddy:2-alpine

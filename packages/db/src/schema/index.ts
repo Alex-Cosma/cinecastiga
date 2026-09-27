@@ -14,3 +14,4 @@ export * from "./monitoring-digests.js";
 export * from "./documents.js";
 
 export * from "./collection.js";
+export * from "./processing.js";

@@ -28,9 +28,11 @@ The staging table `repair_20260927.ted_raw` was fully loaded and restored into `
 
 ## Publication
 
-User explicitly chose application immediately after clone validation. Pending. Production core/marts are unchanged by this recovery so far; collection continues under the existing shared50–70second budget. Restoring XML alone does not complete the repair. Normalization, reconciliation, dependent reporting tables, consistency validation and search readiness must all succeed before a repaired live snapshot is exposed. The full earlier benchmark took94m29.510s and failed only the missing TED normalization check; it is a prior measurement, not a validation of this repair.
+User explicitly chose application immediately after clone validation. Live maintenance began at 16:27:48 Bucharest. Collection is paused; production has received the complete original archive and replayed all 161,633 notices. All-notice lot signatures match the local normalized reference. The live coordinated refresh is in progress, so the repaired dataset is not yet public. Normalization, reconciliation, dependent reporting tables, consistency validation and search readiness must all succeed before reopening. The full earlier benchmark took 94m29.510s and failed only the missing TED normalization check; it is a prior measurement, not a validation of this repair.
 
 Future processing direction requested by the user: daily new-data normalization/reconciliation/statistics/Radiografie/search, with full historical risk recalculation weekly. This requires distinct risk freshness and snapshot validation; it is not yet implemented and does not weaken the current repair checks.
+
+This one-off repair runs the existing full coordinated pipeline, including all risk calculations. Corrected TED competition data affects dependent analytics, but the unrelated direct-acquisition risk stages also rerun because the current pipeline is monolithic. This is not activation of nightly risk processing. At 17:42 Bucharest, live reconciliation had finished and the TED reporting-table stage had begun; risk calculation had not yet started.
 
 ## Running coordinators and failure behavior
 

@@ -43,7 +43,7 @@ try{
  await page.route('**/*',r=>new URL(r.request().url()).hostname==='localhost'?r.continue():r.abort());
  await page.goto(base+'/admin');await page.getByRole('heading',{name:'Fișiere în așteptare'}).waitFor();
  await page.locator('.document-queue-list li').first().waitFor();
- check(await page.getByText('Program convenit · automatizare neactivată',{exact:true}).isVisible(),'Unimplemented automation is explicitly labeled');
+ check(await page.getByText('Program automat oprit',{exact:true}).isVisible(),'Disabled automation is explicitly labeled');
  await page.getByRole('button',{name:'Următoarele',exact:true}).click();
  await page.getByText('21–23 din 23',{exact:true}).waitFor();
  await page.getByRole('button',{name:'De procesat 1',exact:true}).click();await page.getByText('Descărcat · așteaptă procesarea',{exact:true}).waitFor();

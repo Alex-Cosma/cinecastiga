@@ -1,4 +1,5 @@
 import Link from "next/link";
+import RiskFreshness from '@/components/RiskFreshness';
 import type { FlagInstance, RiskGroupSort } from "@/lib/marts";
 import { getSignalOverview, getSignalPage, getSignalRiskGroup, parseSignalState, signalUrl, RISK_SORTS, RISK_PAGE_SIZE, type SignalState } from "@/lib/signals";
 import { FLAG_META, FLAG_ORDER, criBand } from "@/lib/flags";
@@ -229,6 +230,7 @@ export default async function SemnalePage({
           {gMax.toFixed(1).replace(".", ",")}
           {county ? ` · ${county}` : ""}
         </h1>
+        <RiskFreshness/>
         <p className="page-sub">
           {formatInt(group.total)} entități cu cel puțin 10 achiziții directe în acest interval de risc. CRI e un semnal
           statistic, nu o dovadă — <Link href="/metodologie">metodologia</Link>.
@@ -296,6 +298,7 @@ export default async function SemnalePage({
     <>
       <p className="eyebrow">semnale de risc</p>
       <h1 className="page-title">Unde merită să te uiți</h1>
+      <RiskFreshness/>
       <p className="page-sub">
         13 indicatori obiectivi pe achiziții directe, contracte, bilanțuri și ONRC. Fiecare e un semnal, nu o dovadă —{" "}
         <Link href="/metodologie">metodologia</Link>.

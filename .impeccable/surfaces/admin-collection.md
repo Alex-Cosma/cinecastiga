@@ -19,11 +19,13 @@ STORY: Read global state and next request; compare the three recovery streams; i
 
 FIRST VIEWPORT: Existing app shell, admin navigation, wide status band with pause control, statistics row, stream rows at left and pacing form at right. Publication and request log below. Mobile stacks without page overflow. Signature interaction: editing delays updates a rate estimate immediately, while active settings change only on Apply. Stale status disables commands; server revisions prevent overwriting another administrator.
 
-FORM: Code-led approved admin extension; reference mockups/admin. One shared SEAP request slot, random 50–70 seconds by default, file retrieval at least 60 seconds apart. Default paused. No automatic PDF crawling. Daily processor explicitly not started; time setting persists without starting a job. The agreed daily statistics/Radiografie and weekly risk schedule is a policy awaiting implementation, visibly labeled as inactive automation.
+FORM: Code-led approved admin extension; reference mockups/admin. One shared SEAP request slot, random 50–70 seconds by default, file retrieval at least 60 seconds apart. Default paused. No automatic PDF crawling. Scheduled processing is implemented locally: daily statistics/Radiografie and search at 05:00 Europe/Bucharest, with full risk recalculation on Sunday at the same hour. Administrators stage activation, time, and weekday changes before Apply; saving does not start a job immediately. Status distinguishes configured automation, a recent scheduler signal, active processing, and maintenance. Production activation remains pending the live TED repair and full-data daily clone rehearsal as of the 2026-09-27 documentation handoff.
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
 
 ## Completion evidence
+
+Historical evidence from the original admin implementation, retained at the 2026-09-27 handoff; its inactive-processor wording describes that earlier implementation. The processing-schedule extension and its separate review are recorded below.
 
 Final [finish review](../../docs/implementation/previews/admin-collection-live/finish-review.md): **ship**, after bounded fixes for truthful offline status, preservation of staged settings, and offline text fit. [Design documentation](../../docs/implementation/previews/admin-collection-live/design-documentation.md) compares this ordinary extension to the incumbent; `DESIGN.md` and `.impeccable/design.json` are preserved, with local detector advisories recorded rather than promoted into global tokens.
 
@@ -38,3 +40,13 @@ The queue is an administrator-only read view, with visible-tab polling every fiv
 The implementation keeps the existing typography, theme variables, thin row separators, small file icons, and text state labels. Mobile wraps controls and source text; dark theme and reduced-motion behavior inherit the collection surface. No new visual world, shared token, or shipping raster was added.
 
 [Extension documentation](../../docs/implementation/admin-document-queue-20260927.md) records source mapping, synthetic browser evidence, verification scope, and operational limitations. The historical finish verdict above applies to the original admin implementation; the extension's current review and build status are recorded separately in that document. `DESIGN.md` and `.impeccable/design.json` remain unchanged.
+
+## Processing schedule extension — 2026-09-27
+
+The existing processing section now shows the current stage and elapsed duration, next daily and weekly risk runs in Romanian time, separately labeled verified statistics and risk dates, and a disclosure of recent runs with stage durations. A missed heartbeat and failed run have explicit alerts. Failure retains maintenance and last verified dates, with an instruction to inspect the server journal before recovery; new runs do not begin during maintenance.
+
+The existing settings panel adds an automatic-processing switch, a labeled daily time field, and a weekly risk weekday selector. It keeps the staged change summary, explicit Apply, reload action, and revision conflict protection. Schedule controls and Apply are disabled during maintenance. Activation applies to the next future scheduled time; disabling the schedule does not interrupt an existing run.
+
+The [finish review](../../docs/implementation/previews/processing-schedule/finish-review.md) records **ship** for the supplied visual/source scope. [Design documentation](../../docs/implementation/previews/processing-schedule/design-documentation.md) compares the incumbent interface, documents states and screenshot provenance, and records the supplied localhost browser results. Six synthetic captures establish desktop/mobile composition, running progress, and dark failure presentation; they do not establish real source freshness or successful production processing. Production activation remains pending the live TED repair and full-data daily clone rehearsal at this handoff. Operational status belongs to the separate implementation handoff.
+
+This remains an Operate extension using existing forest/ivory theme roles, typography, flat groups, native form controls, and disclosure rows. No new visual system or shipping raster was added. `DESIGN.md` and `.impeccable/design.json` are preserved byte for byte; inherited detector and metadata advisories are recorded without unrelated repairs.
