@@ -1,0 +1,9 @@
+# Used only by one-off repair jobs; production service definitions stay unchanged.
+services:
+  collection:
+    image: cinecastiga-ted-repair:20260927
+    mem_limit: 2g
+    cpus: 2
+    environment:
+      MEILISEARCH_URL: http://meilisearch:7700
+      MEILISEARCH_KEY: ${MEILI_MASTER_KEY:?set in .env}
