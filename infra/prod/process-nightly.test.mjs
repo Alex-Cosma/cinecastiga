@@ -14,6 +14,7 @@ case "$*" in
  *"processing.js claim") if [ "$TEST_DUE" = yes ]; then echo 00000000-0000-4000-8000-000000000001; fi;;
  *"ps --status running -q collection") echo collection-fixture;;
  "inspect --format "*) echo False;;
+ *"psql -X -v ON_ERROR_STOP=1 -U seap -d seap -Atc "*) if [ "$TEST_FAILURE" = drain ]; then exit 1; fi; echo 0;;
  *"pg_dump "*) if [ "$TEST_FAILURE" = backup ]; then exit 1; fi; echo backup;;
  *"pg_restore --list"*) cat >/dev/null; echo archive;;
  *"processing.js refresh "*) if [ "$TEST_FAILURE" = refresh ]; then exit 1; fi;;
@@ -26,12 +27,12 @@ esac`;
 }
 test('no due run makes no changes and requests no source data',async()=>{const r=await run('',false);assert.equal(r.status,0);assert.doesNotMatch(r.calls,/stop |pg_dump|refresh |finish /);});
 test('deployment lock conflict exits before touching containers or database',async()=>{const r=await run('lock');assert.equal(r.status,0);assert.equal(r.calls,'');});
-test('backup and processing failure retain maintenance and never finish or restart workers',async()=>{
- for(const failure of ['backup','refresh']){const r=await run(failure);assert.equal(r.status,1);assert.match(r.calls,/processing.js fail /);assert.doesNotMatch(r.calls,/processing.js finish |restart web|up -d/);}
+test('drain, backup and processing failure retain maintenance and never finish or restart workers',async()=>{
+ for(const failure of ['drain','backup','refresh']){const r=await run(failure);assert.equal(r.status,1);assert.match(r.calls,/processing.js fail /);assert.doesNotMatch(r.calls,/processing.js finish |restart web|up -d/);if(failure==='drain')assert.doesNotMatch(r.calls,/stop collection documents|pg_dump/);}
 });
 test('drains, backs up, verifies and restarts before the guarded reopen',async()=>{
  const r=await run();assert.equal(r.status,0);
- const steps=['stop collection documents','processing.js freeze ','pg_dump ','pg_restore --list','processing.js refresh ','restart web','up -d --no-deps collection','processing.js finish '];
+ const steps=['psql -X -v ON_ERROR_STOP=1 -U seap -d seap -Atc','stop collection documents','processing.js freeze ','pg_dump ','pg_restore --list','processing.js refresh ','restart web','up -d --no-deps collection','processing.js finish '];
  let previous=-1;for(const step of steps){const position=r.calls.indexOf(step);assert.ok(position>previous,step);previous=position;}
  assert.doesNotMatch(r.calls,/processing.js fail /);
 });

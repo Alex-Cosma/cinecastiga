@@ -33,7 +33,16 @@ collection_active=false
 for container in $(docker compose --profile collection ps --status running -q collection); do
  if [[ "$(docker inspect --format '{{ index .Config.Labels "com.docker.compose.oneoff" }}' "$container")" == False ]]; then collection_active=true; fi
 done
-# Draining finishes current file processing and raw writes before freezing input.
+# Maintenance blocks new work. Let already-running work finish BEFORE SIGTERM:
+# the document worker deliberately aborts its current OCR/download on SIGTERM.
+# Its own deadline is 20 minutes; this bound leaves room for final persistence.
+for attempt in $(seq 1 150); do
+ pending=$(docker exec cinecastiga-postgres-1 psql -X -v ON_ERROR_STOP=1 -U seap -d seap -Atc "select (select count(*) from app.collection_requests where outcome='running')+(select count(*) from app.collection_tasks where status='running')+(select count(*) from app.document_jobs where status='running')")
+ [[ "$pending" =~ ^[0-9]+$ ]]
+ [[ "$pending" == 0 ]] && break
+ sleep 10
+done
+test "$pending" = 0
 docker compose --profile collection stop collection documents
 run freeze "$run_id"
 run stage "$run_id" backup
