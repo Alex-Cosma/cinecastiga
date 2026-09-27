@@ -16,6 +16,7 @@ describe.skipIf(!connection)('daily SEAP quiet window, real PostgreSQL and fake 
  let q:DbSql;
  beforeEach(async()=>{
   q=connection!.sql;clock.at=new Date('2026-09-28T00:10:00Z');
+  await q`truncate app.collection_retries`;
   await q`truncate app.collection_requests,app.collection_workers`;
   await q`insert into app.collection_control(id) values(1) on conflict do nothing`;
   await q`update app.collection_control set paused=false,maintenance=false,paused_streams='[]',blocked_reason=null,blocked_until=null,daily_limit=null,min_seconds=1,max_seconds=1,next_allowed_at=null,last_file_at=null where id=1`;
@@ -68,4 +69,18 @@ describe.skipIf(!connection)('daily SEAP quiet window, real PostgreSQL and fake 
   await expect(attempt()).rejects.toBeInstanceOf(CollectionSuspendedError);
   expect((await q`select blocked_reason from app.collection_control`)[0]!.blocked_reason).toBeNull();
  });
+ it('keeps a due timeout retry waiting through the quiet window without spending its budget',async()=>{
+  await q`insert into app.collection_batches(id,end_day) values('quiet-retry','2026-09-26') on conflict do nothing`;
+  const [t]=await q`insert into app.collection_tasks(batch_id,key,partition,stream,kind,params,status) values('quiet-retry','quiet-retry','quiet-retry','da','da','{}','pending') on conflict(batch_id,key) do update set status='pending' returning id`;
+  const [r]=await q`insert into app.collection_requests(stream,worker,method,endpoint,parameters,outcome) values('da','fixture','GET','/api-pub/fixture','{}','failed') returning id`;
+  await q`insert into app.collection_retries(task_id,first_request_id,last_request_id,timeouts,status,retry_at) values(${t!.id},${r!.id},${r!.id},1,'pending',clock_timestamp()-interval '1 minute')`;
+  const c=await q.reserve(),work=vi.fn(async()=>({status:200,value:'ok'}));
+  try{
+   await expect(runCollectionRequest(c,{stream:'da',worker:'fixture',method:'GET',url:'https://www.e-licitatie.ro/api-pub/fixture',context:{taskId:t!.id}},work)).rejects.toThrow('Pauză SEAP programată');
+   expect(work).not.toHaveBeenCalled();expect((await q`select timeouts from app.collection_retries`)[0]!.timeouts).toBe(1);
+   clock.at=new Date('2026-09-28T00:30:00Z');
+   await expect(runCollectionRequest(c,{stream:'da',worker:'fixture',method:'GET',url:'https://www.e-licitatie.ro/api-pub/fixture',context:{taskId:t!.id}},work)).resolves.toBe('ok');
+  }finally{c.release();await q`truncate app.collection_retries`;}
+ });
+
 });

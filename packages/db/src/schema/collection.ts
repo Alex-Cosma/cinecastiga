@@ -56,3 +56,18 @@ export const collectionTasks = appSchema.table('collection_tasks', {
  index('collection_task_queue').on(t.batchId,t.status,t.stream,t.priority,t.id),
  index('collection_task_partition').on(t.batchId,t.partition),
  check('collection_task_status',sql`${t.status} in ('pending','running','complete','split','deferred','failed')`)]);
+
+// Durable timeout budget for an exact recovery task. Separate table keeps old
+// workers' prepared task/control projections stable during additive deployment.
+export const collectionRetries = appSchema.table('collection_retries', {
+ taskId:bigint('task_id',{mode:'number'}).primaryKey().references(()=>collectionTasks.id),
+ firstRequestId:bigint('first_request_id',{mode:'number'}).notNull(),
+ lastRequestId:bigint('last_request_id',{mode:'number'}).notNull(),
+ timeouts:integer('timeouts').notNull(),
+ status:text('status').notNull(),
+ retryAt:timestamp('retry_at',{withTimezone:true}),
+ updatedAt:timestamp('updated_at',{withTimezone:true}).notNull().defaultNow(),
+},t=>[check('collection_retry_timeouts',sql`${t.timeouts} between 1 and 3`),
+ check('collection_retry_status',sql`${t.status} in ('pending','resolved','stopped')`),
+ check('collection_retry_due',sql`${t.status}<>'pending' or ${t.retryAt} is not null`),
+ uniqueIndex('collection_one_pending_retry').on(t.status).where(sql`${t.status}='pending'`)]);

@@ -267,6 +267,13 @@
       "when": 1790520873962,
       "tag": "0037_early_legion",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1790534244884,
+      "tag": "0038_massive_ben_grimm",
+      "breakpoints": true
     }
   ]
 }

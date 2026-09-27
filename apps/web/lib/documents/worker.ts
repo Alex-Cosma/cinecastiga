@@ -49,6 +49,8 @@ export async function runWorkerOnce(sql:DbSql,shutdown:AbortSignal,work=runDocum
  if(shutdown.aborted)return false;
  await collectionHeartbeat(sql,collectionId,'documents','idle');
  if((await collectionQuietWindow(sql)).active)return false;
+ const [retry]=await sql`select task_id from app.collection_retries where status='pending'`;
+ if(retry)return false;
  const [control]=await sql`select paused,maintenance,blocked_reason,paused_streams from app.collection_control where id=1`;
  if(!control||control.paused||control.maintenance||control.blocked_reason||control.paused_streams.includes('documents'))return false;
  const connection=await sql.reserve();const q=connection as unknown as DbSql;

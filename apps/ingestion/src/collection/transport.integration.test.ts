@@ -25,4 +25,18 @@ describe.skipIf(!url)('collector wire diagnostics (mock transport, real isolated
   expect(row).toMatchObject({status:200,outcome:'failed',diagnostics:{response:{body:'{broken',complete:true}}});
   const [control]=await q`select blocked_reason from app.collection_control`;expect(control!.blocked_reason).toBeTruthy();
  });
+ it('propagates scheduled timeout suspension through the actual HTTP client without a hidden retry',async()=>{
+  await q`insert into app.collection_batches(id,end_day) values('wire-retry','2026-09-25') on conflict do nothing`;
+  const [t]=await q`insert into app.collection_tasks(batch_id,key,partition,stream,kind,params,status) values('wire-retry','wire-retry','wire-retry','tenders','list','{}','running') on conflict(batch_id,key) do update set status='running' returning id`;
+  const fetch=vi.fn(async(_input:unknown,init?:RequestInit)=>new Promise<Response>((_resolve,reject)=>init!.signal!.addEventListener('abort',()=>reject(Error('wire timeout')),{once:true})));
+  vi.stubGlobal('fetch',fetch);
+  const original=setTimeout,timer=vi.spyOn(globalThis,'setTimeout').mockImplementation(((fn:any,ms:any,...args:any[])=>original(fn,ms===45000?20:ms,...args)) as typeof setTimeout);
+  try{
+   await expect(withCollectionStream('tenders',()=>listNotices(getElicitatieClient(),{sysNoticeTypeIds:[2],startPublicationDate:'2026-03-11',endPublicationDate:'2026-03-11',pageIndex:1,pageSize:100}),{taskId:t!.id})).rejects.toMatchObject({name:'CollectionSuspendedError'});
+   expect(fetch).toHaveBeenCalledTimes(1);
+   expect((await q`select status,timeouts from app.collection_retries where task_id=${t!.id}`)[0]).toMatchObject({status:'pending',timeouts:1});
+   expect((await q`select blocked_reason from app.collection_control`)[0]!.blocked_reason).toBeNull();
+  }finally{timer.mockRestore();await q`truncate app.collection_retries`;}
+ });
+
 });
