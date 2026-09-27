@@ -15,7 +15,8 @@ export function getSharedSql() { shared ??= createDb(); return shared.sql; }
 
 export async function closeSharedDb(): Promise<void> {
   if (shared) {
-    await shared.sql.end();
+    // A released, lifetime-expired reserved connection can otherwise stall shutdown.
+    await shared.sql.end({ timeout: 10 });
     shared = null;
   }
 }

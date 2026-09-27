@@ -24,7 +24,7 @@ The compressed file is approximately1.3GiB. XML expands substantially during Pos
 
 The staging table `repair_20260927.ted_raw` was fully loaded and restored into `seap_benchmark_20260927`. The SQL in `scripts/operations/restore-ted-archive-20260927.sql` requires the exact notice population, valid TED source/endpoint/XML/hash fields, complete notice-to-source coverage, no conflicting existing raw IDs and an already-safe raw sequence. It restores source rows transactionally, retains the sequence and ingestion cursors, and supports an identical rerun.
 
-`ted-repair-command.mjs` is an adapter for existing replay/reconciliation CLIs. It requires an explicit isolated benchmark database name and does not permit the live database. Mount it under the collection image's ingestion `dist/scripts` directory. The pilot uses `63449-2026` (eForms) and `274263-2019` (F03), then compares lot-field hashes and canonical winner identities with the already-normalized local records. Both pilots passed: all lot fields and canonical winner identities matched the already-normalized local dataset. Full replay is running; downstream checks and publication remain pending.
+`ted-repair-command.mjs` is an adapter for existing replay/reconciliation CLIs. It requires an explicit isolated benchmark database name and does not permit the live database. Mount it under the collection image's ingestion `dist/scripts` directory. The pilot uses `63449-2026` (eForms) and `274263-2019` (F03), then compares lot-field hashes and canonical winner identities with the already-normalized local records. Both pilots passed: all lot fields and canonical winner identities matched the already-normalized local dataset. Full replay and all-notice lot signatures passed. The complete coordinated refresh finished at16:21Bucharest with all10checks passing:2,541,752crosswalk links,362,014matchedSEAPcontracts and155,997contractcompetitionrecords. Livepublication is inprogress.
 
 ## Publication
 
@@ -41,3 +41,9 @@ Future processing direction requested by the user: daily new-data normalization/
 - SQL and shell/Node syntax checked. The live wrapper was tested to refuse execution while production was outside maintenance; guarded start/reopen SQL was EXPLAIN-checked without applying the mutations. No extra source requests were made.
 
 The UI extension documents policy and shows the live file queue independently; see [admin implementation](admin-document-queue-20260927.md). Do not interpret a successful UI deployment as evidence of repaired historical data.
+
+## Connection cleanup correction
+
+The validated clone CLI remained open during pool cleanup. Its only remaining database connection was idle, outside a transaction, with no advisory locks. The postgres.js default connection lifetime had elapsed while the publication connection was reserved. Terminating only that verified idle connection allowed a normal exit and report finalization; no data checks were bypassed and no calculation was repeated.
+
+Monitored CLI, coordinated refresh, and shared ingestion pool shutdown now use a10second cleanup bound after work and gate release. A real PostgreSQL regression forces lifetime expiry during a reserved session and verifies the finished work result and disappearance of the connection. The pinned one-off live repair image uses `max_lifetime=0` in its isolated wrapper/children to prevent expiry during these long stages, without changing processing logic. Live maintenance started at16:27:48; the fresh backup began at16:30:19 after worker drain.

@@ -5,6 +5,11 @@ import {spawn} from 'node:child_process';
 import {Meilisearch} from 'meilisearch';
 const [command,...args]=process.argv.slice(2);
 if(process.env.TED_REPAIR_APPLY!=='20260927'||!['replay-ted','monitoring-refresh','index-search','seed-legal-eras'].includes(command))throw Error('Explicit live repair command required');
+// Long one-off stages hold a reserved publication connection beyond the driver's default lifetime.
+// Disable lifetime expiry for this process and its CLI children; the frozen image predates bounded cleanup.
+const repairUrl=new URL(process.env.DATABASE_URL);
+repairUrl.searchParams.set('max_lifetime','0');
+process.env.DATABASE_URL=repairUrl.toString();
 const {sql}=createDb();
 let heartbeat;
 try {
@@ -35,4 +40,4 @@ try {
  await collectionHeartbeat(sql,worker,'processor','complete');
 } catch(error) {
  console.error(error instanceof Error?error.message:'Live repair stage failed');process.exitCode=1;
-} finally {clearInterval(heartbeat);await sql.end();}
+} finally {clearInterval(heartbeat);await sql.end({timeout:10});}
