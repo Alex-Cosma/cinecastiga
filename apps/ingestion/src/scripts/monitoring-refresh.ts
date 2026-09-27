@@ -14,6 +14,6 @@ async function main() {
     console.log(JSON.stringify({ id: checkpoint.id, version: checkpoint.version, status: checkpoint.status,
       kind: checkpoint.kind, startedAt: checkpoint.startedAt, completedAt: checkpoint.completedAt,
       collectionPerformed: false, sourceCoverage: checkpoint.sourceCoverage }));
-  } finally { await sql.end(); }
+  } finally { await sql.end({ timeout: 10 }); }
 }
 main().catch(() => { console.error("Monitoring refresh was not published. Inspect the failed checkpoint and the stage checks; source data was not declared current."); process.exitCode = 1; });
