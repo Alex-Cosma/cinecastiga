@@ -1,11 +1,12 @@
 import {createHash} from 'node:crypto';
 /** Failure-only diagnostics. Secrets and transient download URLs are never retained. */
-const secretKey = /authorization|cookie|token|password|passwd|secret|session|noticeDocumentUrl/i;
+const secretKey = /authorization|cookie|token|csrf|xsrf|password|passwd|secret|session|noticeDocumentUrl/i;
 export function diagnosticText(text: string): string {
- return text.replace(/(https?:\/\/)[^\s/@:]+:[^\s/@]+@/gi,'$1[redacted]@')
+ return text.replace(/<(?:input|meta)\b[^>]*>/gi, tag => /\bname\s*=\s*["'][^"']*(?:token|csrf|xsrf|password|session)[^"']*["']/i.test(tag)
+  ? tag.replace(/\b(?:value|content)\s*=\s*(["'])[\s\S]*?\1/gi, 'value="[redacted]"') : tag).replace(/(https?:\/\/)[^\s/@:]+:[^\s/@]+@/gi,'$1[redacted]@')
   .replace(/Bearer\s+[^\s"'<>]+/gi,'Bearer [redacted]')
   .replace(/(\/noticedoc\/)[a-z0-9]+/gi,'$1[redacted]')
-  .replace(/((?:["']?(?:[\w-]*(?:token|password|passwd|secret|cookie|session)[\w-]*|authorization)["']?)\s*[:=]\s*)(?:"[^"]*"|'[^']*'|[^\s,;<>]+)/gi,'$1[redacted]');
+  .replace(/((?:["']?(?:[\w-]*(?:token|csrf|xsrf|password|passwd|secret|cookie|session)[\w-]*|authorization)["']?)\s*[:=]\s*)(?:"[^"]*"|'[^']*'|[^\s,;<>]+)/gi,'$1[redacted]');
 }
 export function sanitizeDiagnostics(value: unknown, depth=0): unknown {
  if(value===undefined)return undefined;
