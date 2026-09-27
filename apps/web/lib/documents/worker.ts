@@ -1,4 +1,4 @@
-import {createDb,CollectionSuspendedError,collectionHeartbeat,collectionWorkerId,type DbSql} from '@seap/db';
+import {collectionQuietWindow,createDb,CollectionSuspendedError,collectionHeartbeat,collectionWorkerId,type DbSql} from '@seap/db';
 import {setTimeout as pause} from 'node:timers/promises';
 import {openSeap} from './seap';
 import {processPdf,sha256,validateOriginal} from './process';
@@ -48,6 +48,7 @@ export async function runDocumentJob(q:DbSql,job:Record<string,any>,signal:Abort
 export async function runWorkerOnce(sql:DbSql,shutdown:AbortSignal,work=runDocumentJob){
  if(shutdown.aborted)return false;
  await collectionHeartbeat(sql,collectionId,'documents','idle');
+ if((await collectionQuietWindow(sql)).active)return false;
  const [control]=await sql`select paused,maintenance,blocked_reason,paused_streams from app.collection_control where id=1`;
  if(!control||control.paused||control.maintenance||control.blocked_reason||control.paused_streams.includes('documents'))return false;
  const connection=await sql.reserve();const q=connection as unknown as DbSql;
