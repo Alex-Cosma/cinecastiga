@@ -17,7 +17,7 @@ export function getElicitatieClient():ElicitatieClient{
    try{return await runCollectionRequest(q,{stream,worker,context:currentCollectionContext(),method:init?.method??'GET',url,parameters:typeof init?.body==='string'?JSON.parse(init.body):{}},async signal=>{
     // Redirects and retries are never hidden extra requests. Consume the body
     // before releasing the global lock, including slow/chunked responses.
-    const diagnostic:Record<string,unknown>={phase:'headers',request:{origin:new URL(url).origin,path,headers:Object.fromEntries(new Headers(init?.headers)),body:typeof init?.body==='string'?init.body:null}};
+    const diagnostic:Record<string,unknown>={phase:'headers',request:{origin:new URL(url).origin,path,headers:Object.fromEntries(new Headers(init?.headers)),headerScope:'application-provided; transport may add automatic headers',body:typeof init?.body==='string'?init.body:null}};
     const chunks:Uint8Array[]=[];let size=0;
     try {
     const response=await fetch(input,{...init,redirect:'manual',signal});
@@ -29,7 +29,7 @@ export function getElicitatieClient():ElicitatieClient{
     const text=bytes.toString('utf8');try{const data=JSON.parse(text);if(Array.isArray(data?.items))records=data.items.length;}catch{if(response.status>=200&&response.status<300&&response.headers.get('content-type')?.includes('json'))throw Error('Invalid JSON response');}
     const challenge=response.status===200&&!response.headers.get('content-type')?.includes('json');
     return {value:new Response(bytes,{status:response.status,headers:response.headers}),status:response.status,bytes:size,...(records===undefined?{}:{records}),challenge,retryAfter:response.headers.get('retry-after'),diagnostics:diagnostic};
-    } catch(error) {diagnostic.response={...(diagnostic.response as object??{}),...responseDiagnosticBody(Buffer.concat(chunks),diagnostic.phase==='complete'),observedBytes:size,captureLimitBytes:32*1024*1024};throw new CollectionTransportError(error,diagnostic);}
+    } catch(error) {diagnostic.response={...(diagnostic.response as object??{}),...responseDiagnosticBody(Buffer.concat(chunks),diagnostic.phase==='complete'),observedBytes:size,captureLimitBytes:32*1024*1024,truncated:size>32*1024*1024};throw new CollectionTransportError(error,diagnostic);}
    });}finally{q.release();}
   }
  });return singleton;

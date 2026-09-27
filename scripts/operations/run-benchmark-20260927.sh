@@ -6,6 +6,7 @@ flock -n 9 || exit 1
 while [ ! -f /srv/seap/backups/recalculation-20260927-backup-ready ]; do sleep 10; done
 date -u '+clone_start=%Y-%m-%dT%H:%M:%SZ'
 docker exec cinecastiga-postgres-1 createdb -U seap seap_benchmark_20260927
+docker exec cinecastiga-postgres-1 psql -v ON_ERROR_STOP=1 -X -U seap -d seap -c "revoke connect on database seap_benchmark_20260927 from public;"
 docker exec -i cinecastiga-postgres-1 pg_restore --exit-on-error --no-owner --no-privileges -U seap -d seap_benchmark_20260927 < /srv/seap/backups/pre-recalculation-20260927.dump
 date -u '+clone_complete=%Y-%m-%dT%H:%M:%SZ'
 mkdir -p /srv/seap/backups/benchmark-20260927

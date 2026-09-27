@@ -31,6 +31,7 @@ try {
  const [actual] = await sql`select current_database() name`;
  if(actual.name!==target) throw Error('Database guard mismatch');
  await sql`update app.collection_control set paused=true,maintenance=true where id=1`;
+ await stage('prepare-statistics',()=>sql.unsafe('analyze'));
  // One-time legacy baseline repair, measured separately from nightly work.
  await stage('prepare-thresholds',()=>sql.begin(async tx=>{
   await tx`delete from core.risk_thresholds where key in ('da_ceiling_goods_services','da_ceiling_works')`;
@@ -51,5 +52,6 @@ try {
    checks.push(await validateCoverageCounts(sql));return checks;
  });
  report.status=report.stages.at(-1).result.every(c=>c.passed)?'validated':'validation_failed';
+ if(report.status!=='validated')process.exitCode=1;
 } catch(error) { report.status='failed';report.error={name:error?.name,message:error?.message,code:error?.code};process.exitCode=1; }
-finally {report.finishedAt=new Date().toISOString();report.elapsedMs=Math.round(performance.now()-started);await save();console.log(JSON.stringify({status:report.status,elapsedMs:report.elapsedMs}));await sql.end();}
+finally {report.finishedAt=new Date().toISOString();report.elapsedMs=Math.round(performance.now()-started);report.recalculationMs=report.stages.filter(s=>!s.name.startsWith('prepare-')).reduce((total,s)=>total+(s.elapsedMs??0),0);await save();console.log(JSON.stringify({status:report.status,elapsedMs:report.elapsedMs}));await sql.end();}

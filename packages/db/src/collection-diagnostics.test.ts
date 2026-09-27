@@ -11,6 +11,11 @@ describe('failure diagnostic preservation',()=>{
   expect(value).toMatchObject({headers:{'Content-Type':'application/json','Set-Cookie':'[redacted]'},body:{pageIndex:1,items:[{id:42}]}});
   for(const secret of ['sensitive','Bearer secret','hidden','privateURL'])expect(JSON.stringify(value)).not.toContain(secret);
  });
+ it('redacts anti-CSRF fields in HTML error/challenge pages, independent of attribute order',()=>{
+  const body=responseDiagnosticBody(Buffer.from('<input value="privateA" name="csrfToken"><meta name="csrf" content="privateB">'),true);
+  expect(JSON.stringify(body)).not.toMatch(/privateA|privateB/);
+  expect(sanitizeDiagnostics({headers:{'X-CSRF':'privateC'}})).toEqual({headers:{'X-CSRF':'[redacted]'}});
+ });
  it('marks interrupted bodies as incomplete and preserves received bytes',()=>{
   const d=responseDiagnosticBody(Buffer.from('partial response'),false);
   expect(d).toMatchObject({body:'partial response',complete:false,receivedBytes:16});
