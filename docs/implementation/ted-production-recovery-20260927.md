@@ -1,5 +1,7 @@
 # TED production source recovery — 27 September 2026
 
+**Repair/rehearsal completed and schedule activated. See the latest verified status below; older pending notes are historical. Collection has a separate unresolved task block.**
+
 Work in progress. User authorized resolving the missing historical normalization baseline. Start on the isolated production clone; never replace the public dataset with a partly repaired snapshot.
 
 ## Verified source inventory
@@ -49,3 +51,17 @@ The UI extension documents policy and shows the live file queue independently; s
 The validated clone CLI remained open during pool cleanup. Its only remaining database connection was idle, outside a transaction, with no advisory locks. The postgres.js default connection lifetime had elapsed while the publication connection was reserved. Terminating only that verified idle connection allowed a normal exit and report finalization; no data checks were bypassed and no calculation was repeated.
 
 Monitored CLI, coordinated refresh, and shared ingestion pool shutdown now use a10second cleanup bound after work and gate release. A real PostgreSQL regression forces lifetime expiry during a reserved session and verifies the finished work result and disappearance of the connection. The pinned one-off live repair image uses `max_lifetime=0` in its isolated wrapper/children to prevent expiry during these long stages, without changing processing logic. Live maintenance started at16:27:48; the fresh backup began at16:30:19 after worker drain.
+
+## Verified production status — 27 September, 20:39 Bucharest
+
+TED repair completed and the site reopened at **19:18:19 Bucharest**. All 161,633 notices normalized, zero pending, all ten snapshot checks passed. Full recalculation took **1h47m49s**, excluding archive repair/backup/search; the maintenance interval was **2h50m31s**. Search verified 194,519 entities. The initial release through8997ded passed CI/deployment (run36332770987).
+
+The isolated daily rehearsal passed all ten checks in **41m15.247s**, excluding risk fingerprints, backup and search. Core flags, entity risk profiles and saved risk samples retained identical counts and dual fingerprints, and retained the original risk provenance. No source HTTP or live search writes were performed by this rehearsal.
+
+The continuation installed cron and proved the disabled heartbeat, but its activation SQL did not run: a Compose command inherited the SSH script input. The postcondition correctly detected that the schedule was still disabled. The runner and caller now detach command stdin; the host regression passes caller input and ensures it never reaches the container. The preserved failed continuation report is historical evidence, not proof the repair or rehearsal failed.
+
+Activation SQL was applied separately and committed at **20:38:18 Bucharest**, audited as a settings change. Enabled: daily05:00 Europe/Bucharest and Sunday risk. Next daily: **28 September05:00**; next full risk: **4 October05:00**. Existing cron jobs and the50–70second budget are preserved.
+
+**Separate unresolved collection stop:** after reopening, requests772–776 succeeded. Task36017 (participation notices,26July2026,page0) failed at19:21:52 before any request ledger entry for that task. Its generic task error does not preserve the original pre-request exception. The source block is retained; no retry/unblock was performed during this status check. Schedule activation preserves this block and the site remains available. Do not describe crawling as currently resumed or blame SEAP without evidence. The exception coincided with release deployment, but causation is unconfirmed.
+
+Evidence: `/srv/seap/backups/ted-repair-20260927/live-validation.json`, `/srv/seap/backups/daily-rehearsal-20260927/daily-validation.json`, and local `/tmp/seap-processing-release-20260927/`. These checks establish internal consistency, not full external source coverage.

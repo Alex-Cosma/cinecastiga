@@ -145,7 +145,7 @@ if not matches:
     backup.chmod(0o600)
     subprocess.run(['crontab', '-'], input=existing.rstrip()+'\\n'+line+'\\n', text=True, check=True)
 PY
-/bin/bash /srv/seap/src/infra/prod/process-nightly.sh
+/bin/bash /srv/seap/src/infra/prod/process-nightly.sh </dev/null
 docker exec -i cinecastiga-postgres-1 psql -X -U seap -d seap < /srv/seap/src/scripts/operations/enable-processing-20260927.sql
 ''')
     verify = remote('''
@@ -192,5 +192,5 @@ if __name__ == '__main__':
     try:
         main(sys.argv[2])
     except Exception as error:
-        progress('failed', error=str(error))
+        progress('failed', error=f'{type(error).__name__}: {error}')
         raise

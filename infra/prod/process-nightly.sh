@@ -7,7 +7,9 @@ cd "${SEAP_DEPLOY_CHECKOUT:-/srv/seap/src}"
 exec 9>.git/deploy.lock
 flock -n 9 || exit 0
 cd infra/prod
-run() { docker compose --profile processing run --rm --no-deps -T processor node apps/ingestion/dist/scripts/processing.js "$@"; }
+# These commands never consume input; do not let Compose eat a caller's SSH
+# script and silently skip the commands following this runner.
+run() { docker compose --profile processing run --rm --no-deps -T processor node apps/ingestion/dist/scripts/processing.js "$@" </dev/null; }
 run_id=$(run claim)
 [[ -n "$run_id" ]] || exit 0
 [[ "$run_id" =~ ^[a-f0-9-]{36}$ ]] || exit 1

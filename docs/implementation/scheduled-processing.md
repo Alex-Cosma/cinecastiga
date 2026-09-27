@@ -1,5 +1,7 @@
 # Daily publication and weekly risk
 
+**Repair/rehearsal completed and schedule activated. See the latest verified status below; older pending notes are historical. Collection has a separate unresolved task block.**
+
 Approved 27 September 2026: publish new data every day at 05:00 Europe/Bucharest; also recalculate risk on Sundays at the same time. Implementation is pending production activation until the one-off TED repair and isolated daily rehearsal pass. Deployment alone does not activate the schedule.
 
 ## Data and risk have separate dates
@@ -55,3 +57,17 @@ Do not clear maintenance merely to make the site visible. Preserve the run log, 
 The complete `pnpm turbo typecheck lint test build` run passed all 20 tasks; host deployment/nightly tests passed 11 cases. Dedicated browser fixtures passed and were removed after verification. The activation SQL was exercised on a rolled-back test fixture and retained its manual pause and independent source block. Visual finish review is **ship** for the interface scope.
 
 The guarded full-data rehearsal runner is `scripts/operations/run-daily-rehearsal-20260927.sh`; it targets only the repaired production clone, records per-stage timing, compares retained risk fingerprints and requires all ten publication checks. It does not index live search or contact SEAP. Production deployment, rehearsal and schedule activation remain pending completion of the live repair at this checkpoint.
+
+## Verified production status — 27 September, 20:39 Bucharest
+
+TED repair completed and the site reopened at **19:18:19 Bucharest**. All 161,633 notices normalized, zero pending, all ten snapshot checks passed. Full recalculation took **1h47m49s**, excluding archive repair/backup/search; the maintenance interval was **2h50m31s**. Search verified 194,519 entities. The initial release through8997ded passed CI/deployment (run36332770987).
+
+The isolated daily rehearsal passed all ten checks in **41m15.247s**, excluding risk fingerprints, backup and search. Core flags, entity risk profiles and saved risk samples retained identical counts and dual fingerprints, and retained the original risk provenance. No source HTTP or live search writes were performed by this rehearsal.
+
+The continuation installed cron and proved the disabled heartbeat, but its activation SQL did not run: a Compose command inherited the SSH script input. The postcondition correctly detected that the schedule was still disabled. The runner and caller now detach command stdin; the host regression passes caller input and ensures it never reaches the container. The preserved failed continuation report is historical evidence, not proof the repair or rehearsal failed.
+
+Activation SQL was applied separately and committed at **20:38:18 Bucharest**, audited as a settings change. Enabled: daily05:00 Europe/Bucharest and Sunday risk. Next daily: **28 September05:00**; next full risk: **4 October05:00**. Existing cron jobs and the50–70second budget are preserved.
+
+**Separate unresolved collection stop:** after reopening, requests772–776 succeeded. Task36017 (participation notices,26July2026,page0) failed at19:21:52 before any request ledger entry for that task. Its generic task error does not preserve the original pre-request exception. The source block is retained; no retry/unblock was performed during this status check. Schedule activation preserves this block and the site remains available. Do not describe crawling as currently resumed or blame SEAP without evidence. The exception coincided with release deployment, but causation is unconfirmed.
+
+Evidence: `/srv/seap/backups/ted-repair-20260927/live-validation.json`, `/srv/seap/backups/daily-rehearsal-20260927/daily-validation.json`, and local `/tmp/seap-processing-release-20260927/`. These checks establish internal consistency, not full external source coverage.

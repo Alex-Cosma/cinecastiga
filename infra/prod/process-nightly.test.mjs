@@ -11,7 +11,7 @@ async function run(failure='',due=true){
   await mkdir(join(dir,'bin'));await mkdir(join(dir,'.git'));await mkdir(join(dir,'infra/prod'),{recursive:true});
   const docker=`echo "docker $*" >> "$TEST_LOG"
 case "$*" in
- *"processing.js claim") if [ "$TEST_DUE" = yes ]; then echo 00000000-0000-4000-8000-000000000001; fi;;
+ *"processing.js claim") if read -r caller_input; then echo "CONSUMED_CALLER_INPUT" >> "$TEST_LOG"; fi; if [ "$TEST_DUE" = yes ]; then echo 00000000-0000-4000-8000-000000000001; fi;;
  *"ps --status running -q collection") echo collection-fixture;;
  "inspect --format "*) echo False;;
  *"psql -X -v ON_ERROR_STOP=1 -U seap -d seap -Atc "*) if [ "$TEST_FAILURE" = drain ]; then exit 1; fi; echo 0;;
@@ -21,11 +21,11 @@ case "$*" in
 esac`;
   const bins={docker,flock:'[ "$TEST_FAILURE" != lock ]',curl:'case "$*" in *api/health*) echo 200;; *) echo 503;; esac',sha256sum:'echo sha256'};
   for(const [name,body] of Object.entries(bins))await writeFile(join(dir,'bin',name),'#!/bin/sh\n'+body+'\n',{mode:0o755});
-  const r=spawnSync('bash',[script],{env:{...process.env,PATH:join(dir,'bin')+':'+process.env.PATH,SEAP_DEPLOY_CHECKOUT:dir,SEAP_PROCESSING_BACKUPS:join(dir,'backups'),TEST_LOG:join(dir,'calls'),TEST_FAILURE:failure,TEST_DUE:due?'yes':'no'},encoding:'utf8'});
+  const r=spawnSync('bash',[script],{input:'caller-script-must-not-reach-container\n',env:{...process.env,PATH:join(dir,'bin')+':'+process.env.PATH,SEAP_DEPLOY_CHECKOUT:dir,SEAP_PROCESSING_BACKUPS:join(dir,'backups'),TEST_LOG:join(dir,'calls'),TEST_FAILURE:failure,TEST_DUE:due?'yes':'no'},encoding:'utf8'});
   return {status:r.status,calls:await readFile(join(dir,'calls'),'utf8').catch(()=> '')};
  }finally{await rm(dir,{recursive:true,force:true});}
 }
-test('no due run makes no changes and requests no source data',async()=>{const r=await run('',false);assert.equal(r.status,0);assert.doesNotMatch(r.calls,/stop |pg_dump|refresh |finish /);});
+test('no due run makes no changes and never consumes its caller input',async()=>{const r=await run('',false);assert.equal(r.status,0);assert.doesNotMatch(r.calls,/stop |pg_dump|refresh |finish |CONSUMED_CALLER_INPUT/);});
 test('deployment lock conflict exits before touching containers or database',async()=>{const r=await run('lock');assert.equal(r.status,0);assert.equal(r.calls,'');});
 test('drain, backup and processing failure retain maintenance and never finish or restart workers',async()=>{
  for(const failure of ['drain','backup','refresh']){const r=await run(failure);assert.equal(r.status,1);assert.match(r.calls,/processing.js fail /);assert.doesNotMatch(r.calls,/processing.js finish |restart web|up -d/);if(failure==='drain')assert.doesNotMatch(r.calls,/stop collection documents|pg_dump/);}
