@@ -1,3 +1,7 @@
+## 2026-09-28 — Explorează și întrebări salvate lansate în producție
+
+**Commit aplicație `137b4e5` live**, main și work/explore-compact publicate. [CI + deploy 36459640568](https://github.com/Alex-Cosma/seap-new/actions/runs/36459640568) success; checkout server curat și hash identic. Migrarea0041 aplicată:42migrări, indexul numelor unique/valid/ready. Browser public desktop/mobile:13modele, Salvate, save401anon, fără overflow sau eroriJS. Health200/admin403; web/DB healthy, colectare rev14 neschimbată și ultimele3cereri200. [Raport release](docs/implementation/release-20260928-explore-saved-questions.md). Notele „local/fără deploy” de mai jos sunt istorice. Documentarea confirmării este commit ulterior [skip ci], fără redeploy.
+
 ## 2026-09-28 — Publicare autorizată: Explorează și întrebări salvate
 
 Utilizatorul a cerut commit + push + deploy pentru toate modificările acestei etape. Include compactarea `/intreaba`, păstrarea butonului „Toate întrebările”, salvarea simplă, încărcarea din tabul „Salvate”, update/copy și numele unice per cont (migrarea 0041). Verificarea completă workspace a trecut: 20/20 taskuri; 13/13 teste host deploy/procesare. Cele 56 teste țintite includ PostgreSQL izolat și migrarea peste duplicate, deja validate. Producția preflight: checkout curat la `88b345c`, 41 migrări, zero întrebări salvate/duplicate, web/DB healthy, control rev14 nepausat/fără mentenanță, procesarea zilei ready/complete. Starea finală se consemnează în documentul release-ului după deploy.
