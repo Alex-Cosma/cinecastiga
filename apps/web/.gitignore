@@ -11,3 +11,7 @@ next-env.d.ts
 /public/pdfjs/
 
 /.next-diagnostics/
+
+# Isolated subject-search preview and validation build
+/.next-topic-dev/
+/.next-topic-build/

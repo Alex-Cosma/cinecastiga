@@ -5,7 +5,6 @@ import {
   getEntityProfile,
   getEntityPartners,
   getEntityMonthly,
-  getSplitPairs,
   getEntityFlagEvidence,
   getCompanyReps,
   getEntityTxCounts,
@@ -24,6 +23,7 @@ import { encodeSpec } from "@/lib/ask/permalink";
 import YearMiniChart from "./YearMiniChart";
 import TxTable from "./TxTable";
 import PartnersTable from "./PartnersTable";
+import SplitPairsTable from "./SplitPairsTable";
 import SectionNav from "./SectionNav";
 
 /** Per-instance evidence line, formatted per flag code (null = no line). */
@@ -136,11 +136,10 @@ export default async function EntityPage({
   const base = { rol: rolParam, sort: sp["sort"], an: sp["an"], sem: sp["sem"] };
 
   const cui = flagRows.find((r) => r.cui)?.cui ?? null;
-  const [partners, monthly, splits, flagEvidence, reps, txCounts, flagRowCounts] =
+  const [partners, monthly, flagEvidence, reps, txCounts, flagRowCounts] =
     await Promise.all([
       getEntityPartners(id, role, 12),
       getEntityMonthly(id, role),
-      row.flags.includes("da_split") ? getSplitPairs(id, role) : Promise.resolve([]),
       getEntityFlagEvidence(id),
       cui ? getCompanyReps(cui) : Promise.resolve([]),
       getEntityTxCounts(id, role),
@@ -360,50 +359,10 @@ export default async function EntityPage({
                   </Link>
                 </div>
 
-                {code === "da_split" && splits.length > 0 ? (
+                {code === "da_split" ? (
                   <>
-                    <table className="rank">
-                      <thead>
-                        <tr>
-                          <th>{isAuth ? "Furnizor" : "Autoritate"}</th>
-                          <th>An</th>
-                          <th>Achiziții</th>
-                          <th style={{ textAlign: "right" }}>Total vs prag</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {splits.map((s, i) => (
-                          <tr key={`${s.partnerId}-${s.year}-${i}`}>
-                            <td>
-                              {s.partnerId ? (
-                                <Link href={`/entitati/${s.partnerId}`}>{cleanName(s.partnerName)}</Link>
-                              ) : (
-                                (s.partnerName ?? "—")
-                              )}
-                            </td>
-                            <td>{s.year}<div className="county">CPV {s.cpvClass ?? "—"} · {s.purchaseType ?? "tip necunoscut"}</div></td>
-                            <td>
-                              <a
-                                href={`/semnale/${s.flagId}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title="deschide lista achizițiilor (tab nou)"
-                              >
-                                {s.count} ↗
-                              </a>
-                            </td>
-                            <td className="num">
-                              {formatRon(s.totalRon)}{" "}
-                              <span className="county">
-                                · {(s.totalRon / s.ceiling).toFixed(1).replace(".", ",")}× pragul
-                                de {formatInt(s.ceiling)} lei
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    <p className="hint" style={{ marginTop: 6 }}>
+                    <SplitPairsTable key={`${id}-${role}`} entityId={id} isAuth={isAuth} />
+                    <p className="hint split-pairs-explanation" style={{ marginTop: 6 }}>
                       Semnalul grupează achiziții din aceeași clasă CPV și același tip, către același partener,
                       pe an. Fiecare trebuie să fie strict sub pragul aplicabil datei sale. Suma se compară cu
                       cel mai mare prag aplicabil în grup. Valorile de închidere sunt un reper pentru verificare;

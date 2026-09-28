@@ -32,7 +32,8 @@
     "radiografie": "tsx src/scripts/radiografie.ts",
     "reset-derived": "tsx src/scripts/reset-derived.ts",
     "replay-ted": "tsx src/scripts/replay-ted.ts",
-    "monitoring-refresh": "tsx src/scripts/monitoring-refresh.ts"
+    "monitoring-refresh": "tsx src/scripts/monitoring-refresh.ts",
+    "index-topics": "tsx src/scripts/index-topics.ts"
   },
   "dependencies": {
     "@seap/db": "workspace:*",

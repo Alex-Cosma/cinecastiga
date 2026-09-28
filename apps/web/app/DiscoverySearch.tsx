@@ -6,7 +6,7 @@ import type { EntityHit } from "@/lib/search";
 import { cleanName } from "@/lib/format";
 import DiscoveryIcon from "./DiscoveryIcon";
 
-/** A shared entity search. The GET form remains usable if suggestions fail. */
+/** A shared subject search with quick entity suggestions. The GET form remains usable if suggestions fail. */
 export default function DiscoverySearch({ hero = false, modal = false, onNavigate }: { hero?: boolean; modal?: boolean; onNavigate?: () => void }) {
   const router = useRouter(), id = useId(), box = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
@@ -52,7 +52,7 @@ export default function DiscoverySearch({ hero = false, modal = false, onNavigat
     }}>
       <DiscoveryIcon name="search" />
       <input type="search" name="q" value={query} {...(hero ? { "data-discovery-search": true } : {})}
-        placeholder="O primărie, un spital, o firmă…" aria-label="Caută o instituție, o firmă sau un CUI"
+        placeholder="Un subiect, o instituție, o firmă…" aria-label="Caută un subiect, o instituție, o firmă sau un CUI"
         role="combobox" aria-autocomplete="list" aria-expanded={expanded} aria-controls={`${id}-results`} aria-activedescendant={expanded && active >= 0 ? `${id}-option-${active}` : undefined}
         onChange={(event) => {
           const next = event.target.value, nextTerm = next.trim();
@@ -69,10 +69,10 @@ export default function DiscoverySearch({ hero = false, modal = false, onNavigat
     </form>
     <span className="d-sr-only" role="status">{loading ? "Căutăm…" : expanded ? failed ? "Sugestiile nu sunt disponibile momentan." : `${hits.length} sugestii disponibile. Folosește săgețile pentru a le parcurge.` : ""}</span>
     <div className="d-search-results" hidden={!modal && !open}>
-      {term.length < 2 ? <div className="d-search-state"><DiscoveryIcon name="search" /><b>De la un nume, la achizițiile lui.</b><p>Scrie cel puțin două caractere din numele instituției, firmei sau CUI.</p></div>
-        : loading ? <div className="d-search-state d-search-loading"><span className="d-search-progress" aria-hidden="true" /><b>Căutăm „{term}”…</b><p>Instituții și firme din datele publice.</p></div>
-        : failed ? <div className="d-search-state"><DiscoveryIcon name="search" /><b>Sugestiile nu sunt disponibile momentan.</b><p>Poți deschide pagina de rezultate sau încerca un alt nume.</p></div>
-        : hits.length === 0 ? <div className="d-search-state"><DiscoveryIcon name="search" /><b>Nicio sugestie pentru „{term}”.</b><p>Încearcă numele instituției sau CUI-ul.</p></div> : null}
+      {term.length < 2 ? <div className="d-search-state"><DiscoveryIcon name="search" /><b>Ce vrei să urmărești?</b><p>Scrie un subiect, numele unei instituții, o firmă sau un CUI.</p></div>
+        : loading ? <div className="d-search-state d-search-loading"><span className="d-search-progress" aria-hidden="true" /><b>Sugestii pentru „{term}”…</b><p>Apasă Enter pentru a căuta în achiziții și documente.</p></div>
+        : failed ? <div className="d-search-state"><DiscoveryIcon name="search" /><b>Sugestiile nu sunt disponibile momentan.</b><p>Poți căuta în achiziții și documente folosind legătura de mai jos.</p></div>
+        : hits.length === 0 ? <div className="d-search-state"><DiscoveryIcon name="search" /><b>Nicio sugestie pentru „{term}”.</b><p>Subiectul poate apărea în achiziții sau documente. Deschide căutarea de mai jos.</p></div> : null}
       <ul id={`${id}-results`} role="listbox" aria-label="Sugestii de instituții și firme" aria-busy={loading}>
         {hits.map((hit, index) => <li key={hit.id} id={`${id}-option-${index}`} role="option" aria-selected={active === index}>
           <a href={`/entitati/${hit.id}`} tabIndex={-1} className={active === index ? "active" : ""} onMouseEnter={() => setActive(index)} onClick={(event) => { event.preventDefault(); activate(index); }}>
@@ -80,7 +80,7 @@ export default function DiscoverySearch({ hero = false, modal = false, onNavigat
             <span><b>{cleanName(hit.name)}</b><small>{hit.roles.includes("authority") ? "Instituție publică" : "Furnizor"}{hit.county ? ` · ${hit.county}` : ""}{hit.cui ? ` · CUI ${hit.cui}` : ""}</small></span><DiscoveryIcon name="arrow" />
           </a>
         </li>)}
-        {term.length >= 2 && <li id={`${id}-option-${hits.length}`} role="option" aria-selected={active === hits.length}><a className={`d-search-all${active === hits.length ? " active" : ""}`} href={allHref} tabIndex={-1} onMouseEnter={() => setActive(hits.length)} onClick={(event) => { event.preventDefault(); navigate(allHref); }}>Vezi toate rezultatele <DiscoveryIcon name="arrow" /></a></li>}
+        {term.length >= 2 && <li id={`${id}-option-${hits.length}`} role="option" aria-selected={active === hits.length}><a className={`d-search-all${active === hits.length ? " active" : ""}`} href={allHref} tabIndex={-1} onMouseEnter={() => setActive(hits.length)} onClick={(event) => { event.preventDefault(); navigate(allHref); }}>Caută în achiziții și documente <DiscoveryIcon name="arrow" /></a></li>}
       </ul>
     </div>
   </div>;

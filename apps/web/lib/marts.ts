@@ -688,7 +688,7 @@ export interface SplitPair {
 }
 
 /** da_split pairs for an entity (the structuring relationships). */
-export async function getSplitPairs(entityId: string, role: Role): Promise<SplitPair[]> {
+export async function getSplitPairsPaged(entityId: string, role: Role, requestedPage = 1): Promise<{ rows: SplitPair[]; total: number; page: number }> {
   const sql = db();
   const id = /^\d+$/.test(entityId) ? entityId : "0";
   // In flag_instances, split subject = authority, partner = supplier.
@@ -696,13 +696,18 @@ export async function getSplitPairs(entityId: string, role: Role): Promise<Split
     role === "authority" ? sql`entity_id = ${id}` : sql`partner_id = ${id}`;
   const nameCol = role === "authority" ? sql`partner_name` : sql`entity_name`;
   const idCol = role === "authority" ? sql`partner_id` : sql`entity_id`;
+  const [count] = await sql`select count(*)::int total from marts.flag_instances
+    where flag_code = 'da_split' and ${cond}`;
+  const total = Number(count?.total ?? 0);
+  const page = Math.min(Math.max(1, Math.floor(requestedPage)), Math.max(1, Math.ceil(total / 10)));
   const rows = (await sql`
     select id::text flag_id, evidence->>'cpv_class' cpv_class, evidence->>'type' purchase_type, ${idCol} pid, ${nameCol} pname, period,
       (evidence->>'count')::int cnt, (evidence->>'total')::numeric total,
       (evidence->>'ceiling')::numeric ceiling
     from marts.flag_instances
     where flag_code = 'da_split' and ${cond}
-    order by (evidence->>'total')::numeric desc nulls last limit 30
+    order by (evidence->>'total')::numeric desc nulls last, id
+    limit 10 offset ${(page - 1) * 10}
   `) as unknown as {
     flag_id: string;
     cpv_class: string | null;
@@ -714,7 +719,7 @@ export async function getSplitPairs(entityId: string, role: Role): Promise<Split
     total: string | null;
     ceiling: string | null;
   }[];
-  return rows.map((r) => ({
+  return { total, page, rows: rows.map((r) => ({
     flagId: r.flag_id, cpvClass: r.cpv_class,
     purchaseType: r.purchase_type === "da_ceiling_works" ? "lucrări" : r.purchase_type === "da_ceiling_goods_services" ? "produse / servicii" : null,
     partnerId: r.pid != null ? String(r.pid) : null,
@@ -723,7 +728,7 @@ export async function getSplitPairs(entityId: string, role: Role): Promise<Split
     count: Number(r.cnt),
     totalRon: Number(r.total ?? 0),
     ceiling: Number(r.ceiling ?? 0),
-  }));
+  })) };
 }
 
 export interface RiskEntity {

@@ -31,7 +31,7 @@ export default function ContractFiles({nid,initial,authenticated}:{nid:string;in
   const resume=()=>void refresh();window.addEventListener('focus',resume);document.addEventListener('visibilitychange',resume);
   return()=>{alive=false;controller.abort();clearInterval(timer);window.removeEventListener('focus',resume);document.removeEventListener('visibilitychange',resume);};
  },[running,nid]);
- useEffect(()=>{const params=new URLSearchParams(window.location.search),id=params.get('document'),p=Number(params.get('page')??1);const f=initial.files.find(f=>f.id===id&&f.pdfHash);if(f){setSelected(f);setPage(Number.isInteger(p)&&p>0&&p<=(f.pageCount??1)?p:1);setTimeout(()=>reader.current?.scrollIntoView({block:'start'}),100);}},[initial.files]);
+ useEffect(()=>{const params=new URLSearchParams(window.location.search),id=params.get('document'),p=Number(params.get('page')??1);const f=initial.files.find(f=>f.id===id&&f.pdfHash);if(f){setReaderHighlight((params.get('highlight')??'').slice(0,150));setSelected(f);setPage(Number.isInteger(p)&&p>0&&p<=(f.pageCount??1)?p:1);setTimeout(()=>reader.current?.scrollIntoView({block:'start'}),100);}},[initial.files]);
  useEffect(()=>{if(!selected)return;let alive=true;const controller=new AbortController();setReading(true);setText(null);setQuote('');setReaderError('');
   void json(`${api(selected.id)}?page=${page}`,{signal:controller.signal}).then(d=>{if(alive)setText(d.page);}).catch(e=>{if(alive)setReaderError(e.message);}).finally(()=>{if(alive)setReading(false);});
   const url=new URL(window.location.href);url.searchParams.set('document',selected.id);url.searchParams.set('page',String(page));window.history.replaceState(null,'',url);

@@ -29,13 +29,13 @@ export default function GlobalSearch() {
   }, [show]);
   useEffect(() => { close(); }, [pathname, close]);
   return <>
-    <button type="button" className="d-global-search" onClick={show} aria-label="Caută o instituție sau o firmă" aria-haspopup="dialog"><DiscoveryIcon name="search" /><span>Caută</span><kbd>/</kbd></button>
+    <button type="button" className="d-global-search" onClick={show} aria-label="Caută achiziții, documente, instituții sau firme" aria-haspopup="dialog"><DiscoveryIcon name="search" /><span>Caută</span><kbd>/</kbd></button>
     <dialog ref={dialog} className="d-search-dialog" aria-labelledby="d-search-title" onCancel={(event) => { event.preventDefault(); close(); }} onClick={(event) => {
       if (event.target !== dialog.current) return;
       const rect = dialog.current.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) close();
     }}>
-      <div className="d-dialog-head"><div><p className="eyebrow">UN NUME. UN PUNCT DE PORNIRE.</p><h2 id="d-search-title">Ce ai vrea să afli?</h2></div><button type="button" onClick={close} aria-label="Închide căutarea"><DiscoveryIcon name="close" /></button></div>
-      <p>Caută instituția sau firma care te interesează. Urmărește apoi achizițiile, partenerii și sursele.</p>
+      <div className="d-dialog-head"><div><h2 id="d-search-title">Ce ai vrea să afli?</h2></div><button type="button" onClick={close} aria-label="Închide căutarea"><DiscoveryIcon name="close" /></button></div>
+      <p>Caută un subiect, o instituție sau o firmă. Descoperă achiziții și pasaje din documentele pregătite.</p>
       <DiscoverySearch modal onNavigate={close} />
       <p className="d-dialog-hint">Mai multe condiții? <a href="/intreaba" onClick={close}>Construiește o întrebare <span aria-hidden>→</span></a></p>
     </dialog>
