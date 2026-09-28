@@ -17,4 +17,17 @@ Pentru prima lansare, launcherul deploy trebuie actualizat pe server înainte de
 
 ## Stare
 
-Commit/push și rularea CI/deploy sunt în curs; această secțiune va fi completată cu hash-ul, rularea Actions și verificările de producție. Nu folosi acest status intermediar drept confirmare de lansare.
+**Lansat și verificat în producție.** Commit aplicație `88b345c90d546ebdfa253cd0a3bb6bbc522aebe0`, împins pe `main` și `work/topic-search`. [Actions 36448008465](https://github.com/Alex-Cosma/seap-new/actions/runs/36448008465): CI și deploy încheiate cu succes. Checkout-ul serverului corespunde commitului și nu are modificări nesalvate.
+
+Verificare de producție din 28 septembrie, circa 19:20 ora României:
+
+- Indexarea inițială este terminată: `built_at=2026-09-28T16:11:27.939948Z` (19:11:27 RO), **20.566.353 achiziții** în proiecție și **985.079 cu titlu disponibil**. Toți cei 7 indecși sunt `indisvalid=true/indisready=true`; nu mai există proces de indexare sau construire de index activ.
+- Cele 41 de migrații, inclusiv 0039/0040, sunt aplicate. Web și PostgreSQL sunt healthy; workerii documente/colectare sunt porniți.
+- Health200 (`ok:true`), sesiune anonimă200, API admin403 pentru vizitator anonim. Nu s-au folosit conturi private pentru verificare.
+- Browser Chrome pe domeniul public: radiografie200, zoom1,6×/reset, matrice cu3contracte și link relativ `/contracte/1045996` în tab nou, VALURO7surse/532.200,00lei, mobile390 fără overflow, căutare200, **zero erori JavaScript**.
+- Căutarea `iluminat`, categoria achiziții, returnează **2.015 rezultate**, 10 în prima pagină. Confirmare în browser și API.
+- Controlul operațional rămâne rev14, paused=false, maintenance=false, fără blocked_reason,50–70sec, zilnic05:00/risc duminică. Ultimele3cereri de colectare inspectate (2028–2030) au HTTP200/success. Nu s-a solicitat trafic SEAP suplimentar pentru testarea interfeței.
+
+**Acoperirea producției diferă de cea locală.** Proiecția păstrează toate achizițiile eligibile, dar numai985.079au titlu căutabil, față de16.068.616în copia locală mai bogată în arhiva brută. Nu este o indexare încă în curs; este limita titlurilor disponibile în datele sursă prezente pe server. În exemplul VALURO, drawerul poate afișa denumirea CPV când titlul original nu există în arhiva producției; sursele și valorile exacte rămân accesibile. Completarea arhivei istorice este o operațiune separată, neexecutată în acest release.
+
+Documentarea rezultatului este un commit ulterior exclusiv Markdown, cu `[skip ci]`; nu declanșează încă un deploy al aceleiași aplicații.

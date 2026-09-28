@@ -1,3 +1,7 @@
+## 2026-09-28 — Release confirmat în producție: `88b345c`
+
+Commit/push/deploy finalizate pe main; [CI + deploy36448008465](https://github.com/Alex-Cosma/seap-new/actions/runs/36448008465) success, server HEAD identic și checkout curat. Radiografie B, căutarea5B și paginarea profilului sunt live. Indexarea inițială s-a terminat la19:11:27RO:20.566.353achiziții/985.079titluri disponibile,7indecși valizi,41migrații. Nu mai rulează indexarea. Browser public: zoom, matrice, surse VALURO7/532.200,00lei, mobil și căutare2015rezultate pentru iluminat; zero eroriJS. Health200/adminanon403, workerii porniți, colectare fără blocaje/rev14 și ultimele cereri200. [Detalii, dovezi și limita titlurilor istorice](docs/implementation/release-20260928-radiografie-search.md). Notele anterioare despre „local”, „în curs” sau „fără deploy” sunt istorice.
+
 ## 2026-09-28 — Publicare autorizată: Radiografie B + căutare 5B
 
 Utilizatorul a cerut explicit commit + push + deploy pentru starea curentă. Release-ul include commitul anterior `76938d1` (căutare de subiecte și paginarea profilului), noua radiografie, mockupurile și documentarea aferente. Deploy-ul pregătește acum proiecția titlurilor dacă lipsește (`index-topics --if-missing`) după migrare și înainte de schimbarea webului; o eroare păstrează aplicația veche. Rulările ulterioare păstrează indexul publicat; refreshul rămâne în procesarea nocturnă. Acest pas nu preia date SEAP și nu recalculează riscul. Starea efectivă a lansării: [release Radiografie + căutare](docs/implementation/release-20260928-radiografie-search.md).
