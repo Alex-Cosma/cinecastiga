@@ -1,3 +1,29 @@
+## 2026-09-28 — Publicare autorizată: Explorează și întrebări salvate
+
+Utilizatorul a cerut commit + push + deploy pentru toate modificările acestei etape. Include compactarea `/intreaba`, păstrarea butonului „Toate întrebările”, salvarea simplă, încărcarea din tabul „Salvate”, update/copy și numele unice per cont (migrarea 0041). Verificarea completă workspace a trecut: 20/20 taskuri; 13/13 teste host deploy/procesare. Cele 56 teste țintite includ PostgreSQL izolat și migrarea peste duplicate, deja validate. Producția preflight: checkout curat la `88b345c`, 41 migrări, zero întrebări salvate/duplicate, web/DB healthy, control rev14 nepausat/fără mentenanță, procesarea zilei ready/complete. Starea finală se consemnează în documentul release-ului după deploy.
+
+## 2026-09-28 — Nume unice pentru întrebările salvate, local
+
+Numele sunt unice per cont, fără diferențiere între majuscule și spații consecutive/de margine. Indexul unic din migrarea `0041_unique_saved_question_names` protejează și cererile concurente. Duplicatele existente primesc un sufix printr-o versiune nouă; istoricul original rămâne intact. La „Salvează o copie”, serverul propune un nume liber („— copie”, „— copie 2”), editabil înaintea confirmării; GET-ul nu creează copia. Coliziunile de nume și conflictele de versiune au mesaje distincte.
+
+Migrarea a fost verificată pe fixture izolat cu duplicate/sufixe deja ocupate, apoi aplicată LOCAL prin runnerul Drizzle: 42 migrări, index valid. 56 teste trecute (inclusiv concurență/rollback/privat), build și TypeScript. Producția nu este modificată; fără commit/push/deploy. [Detalii](docs/implementation/explore-compact.md).
+
+## 2026-09-28 — Întrebări salvate: încărcare integrată local
+
+Propunerea a fost aprobată și implementată. „Toate întrebările” păstrează butonul existent; dialogul are „Modele de întrebări” și „Salvate”. Căutare privată după nume, rezumat al condițiilor, cele mai recente primele. Încărcarea nu rulează analiza, iar înlocuirea modificărilor nesalvate cere confirmare. Salvarea unei întrebări încărcate oferă actualizare (versiune optimistă) sau copie. Datele/versiunile existente sunt păstrate. API-ul de listare include spec-ul ultimei versiuni și caută pe server, nu doar în primele 200.
+
+52 teste trecute, inclusiv PostgreSQL în baza izolată `seap_test_saved_questions_20260928` (eliminată după verificare), build și TypeScript. Browser real pentru 401 anonim; fixtures API în browser pentru încărcare/update/copy/conflict, fără scrieri în baza utilizatorului. Dev 3000 repornit cu HMR; surse/workeri/producție neatinse. Fără commit/push/deploy. [Detalii](docs/implementation/explore-compact.md). Această notă înlocuiește starea „propunere/neimplementat” de mai jos.
+
+## 2026-09-28 — Salvarea întrebării simplificată, local
+
+Utilizatorul a respins UI-ul „Rețetele mele”: eliminat butonul din antet și vechiul panou complet. `SaveQuestionButton` este în stânga „Vezi răspunsul”; dialog scurt cu nume, salvare privată prin API-ul existent, feedback de progres/succes/autentificare. Datele și API-urile rețetelor existente rămân intacte. **Deschiderea întrebărilor salvate nu are încă un UI în această iterație**: utilizatorul a cerut întâi această schimbare, apoi o propunere pentru încărcare. Propunerea este un tab „Salvate” în dialogul existent „Toate întrebările”, fără buton nou în antet. Nu este implementată/aprobată. Detalii în [implementare](docs/implementation/explore-compact.md). Fără commit/push/deploy.
+
+## 2026-09-28 — Explorează compact, implementat local
+
+Pe branch `work/explore-compact`, pagina `/intreaba` aplică schița aprobată. **„Toate întrebările” păstrează markupul și stilul existent, inclusiv pe mobil**, conform cererii explicite. Antet scurt, rețete sus, întrebare imediată, filtre avansate grupate cu rezumat vizibil când sunt active. [Implementare și verificări](docs/implementation/explore-compact.md). Build, TypeScript, 51 teste și verificări browser trecute. Fără commit/push/deploy în această etapă; producția rămâne release-ul precedent.
+
+**Local 3000 servește acum dev cu HMR**, `NEXT_DIST_DIR=.next-explore-dev`, `DOCUMENTS_ENABLED=false`; înlocuiește previewul optimizat menționat mai jos. Nu porni colectori/workeri. Review/documentare în firul principal; limitele de delegare din sesiune au împiedicat handofful independent. PRODUCT/DESIGN sunt neschimbate.
+
 ## 2026-09-28 — Release confirmat în producție: `88b345c`
 
 Commit/push/deploy finalizate pe main; [CI + deploy36448008465](https://github.com/Alex-Cosma/seap-new/actions/runs/36448008465) success, server HEAD identic și checkout curat. Radiografie B, căutarea5B și paginarea profilului sunt live. Indexarea inițială s-a terminat la19:11:27RO:20.566.353achiziții/985.079titluri disponibile,7indecși valizi,41migrații. Nu mai rulează indexarea. Browser public: zoom, matrice, surse VALURO7/532.200,00lei, mobil și căutare2015rezultate pentru iluminat; zero eroriJS. Health200/adminanon403, workerii porniți, colectare fără blocaje/rev14 și ultimele cereri200. [Detalii, dovezi și limita titlurilor istorice](docs/implementation/release-20260928-radiografie-search.md). Notele anterioare despre „local”, „în curs” sau „fără deploy” sunt istorice.

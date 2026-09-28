@@ -1,0 +1,27 @@
+{
+  "beforeDesktop": {
+    "firstField": 598,
+    "apply": 989,
+    "pageWidth": 1440,
+    "viewport": 1440
+  },
+  "afterDesktop": {
+    "firstField": 282,
+    "apply": 528,
+    "pageWidth": 1440,
+    "viewport": 1440
+  },
+  "beforeMobile": {
+    "firstField": 712,
+    "apply": 1151,
+    "pageWidth": 390,
+    "viewport": 390
+  },
+  "afterMobile": {
+    "firstField": 339,
+    "apply": 744,
+    "pageWidth": 390,
+    "viewport": 390
+  },
+  "note": "Visual DOM sketch only; application code and behavior unchanged."
+}

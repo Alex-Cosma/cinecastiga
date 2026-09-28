@@ -345,7 +345,7 @@ export default function AskPanel({
           {toast}
         </div>
       )}
-      <div className="cq-modes" aria-label="Cum vrei să explorezi?">
+      {(withSearch || NATURAL_LANGUAGE_ENABLED) && <div className="cq-modes" aria-label="Cum vrei să explorezi?">
         {withSearch && (
           <button
             type="button"
@@ -371,7 +371,7 @@ export default function AskPanel({
           Întreabă în cuvintele tale <small>AI</small>
           {!NATURAL_LANGUAGE_ENABLED && <small>În curând</small>}
         </button>
-      </div>
+      </div>}
       {aiLinkNotice && (
         <div className="cq-unavailable" role="status">
           <p>{NATURAL_LANGUAGE_UNAVAILABLE}</p>

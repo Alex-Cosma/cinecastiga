@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { sessionUserId } from "@/lib/session";
-import { recipeStore } from "@/lib/recipes";
+import { recipeStore, RecipeTitleTakenError } from "@/lib/recipes";
 import { recipeIdValid, recipeInput } from "@/lib/ask/recipe-input";
 const headers = { "cache-control":"private, no-store" };
 type Context = { params:Promise<{ id:string }> };
@@ -21,7 +21,12 @@ export async function POST(req: Request, context: Context) {
   if (!recipeIdValid(id)) return NextResponse.json({ error:"Rețetă negăsită." }, { status:404, headers });
   const input = recipeInput(await req.json().catch(() => null), true);
   if ("error" in input) return NextResponse.json(input, { status:400, headers });
-  const result = await recipeStore().revise(uid, id, input);
-  if ("error" in result) return NextResponse.json({ error:result.error === "missing" ? "Rețetă negăsită." : "Rețeta are o versiune mai nouă. Redeschide-o sau salvează separat; modificările tale sunt păstrate." }, { status:result.error === "missing" ? 404 : 409, headers });
-  return NextResponse.json(result, { status:201, headers });
+  try {
+    const result = await recipeStore().revise(uid, id, input);
+    if ("error" in result) return NextResponse.json({ error:result.error === "missing" ? "Rețetă negăsită." : "Rețeta are o versiune mai nouă. Redeschide-o sau salvează separat; modificările tale sunt păstrate." }, { status:result.error === "missing" ? 404 : 409, headers });
+    return NextResponse.json(result, { status:201, headers });
+  } catch (e) {
+    if (e instanceof RecipeTitleTakenError) return NextResponse.json({ error:e.message, code:"title_taken" }, { status:409, headers });
+    throw e;
+  }
 }
