@@ -15,3 +15,7 @@ next-env.d.ts
 # Isolated subject-search preview and validation build
 /.next-topic-dev/
 /.next-topic-build/
+
+# Isolated radiography preview and validation build
+/.next-radiografie-dev/
+/.next-radiografie-build/

@@ -90,6 +90,10 @@ export interface PatternRow {
 
 /** One contract row for the lot matrix (winner = consortium as one). */
 export interface MatrixRow {
+  externalId?: string;
+  title?: string;
+  noticeId?: string | null;
+  valueExact?: string;
   cls: string;
   notice: string;
   d: string;
@@ -275,11 +279,12 @@ export async function getRadiografie(entityId: string): Promise<RxData | null> {
   const classes = [...new Set(patterns.map((p) => p.cpvClass))];
   const mrows = classes.length
     ? ((await sql`
-        select left(ct.cpv_code, 4) cls, ct.notice_no, left(ct.finalization_date, 10) d, ct.contract_id::text contract_id,
+        select contract.ca_notice_contract_id::text external_id, contract.title contract_title, ct.ca_notice_id::text notice_id, coalesce(ct.contract_value_full,ct.closing_value,0)::text value_exact, left(ct.cpv_code, 4) cls, ct.notice_no, left(ct.finalization_date, 10) d, ct.contract_id::text contract_id,
                ct.supplier_id::text supplier_id, ct.supplier_name, ct.n_winners, ct.is_single_bidder single,
                ct.tenders_received tr, coalesce(ct.contract_value_full, ct.closing_value, 0) v_full,
                coalesce(m.assignment_type, '') like 'Acord%' framework
         from marts.contract_transactions ct
+        join core.contracts contract on contract.id = ct.contract_id
         left join core.notice_meta m on m.notice_no = ct.notice_no
         where ct.authority_id = ${id} and left(ct.cpv_code, 4) = any(${sql.array(classes)}::text[])
           and ct.supplier_id is not null and ct.notice_no is not null
@@ -299,6 +304,7 @@ export async function getRadiografie(entityId: string): Promise<RxData | null> {
       .filter((r) => r["cls"] === c)
       .map<MatrixRow>((r) => ({
         cls: c,
+        externalId: String(r["external_id"]), title: String(r["contract_title"] ?? "Contract fără titlu"), noticeId: r["notice_id"] == null ? null : String(r["notice_id"]), valueExact: String(r["value_exact"]),
         notice: String(r["notice_no"]),
         d: String(r["d"]),
         contractId: String(r["contract_id"]),

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 
@@ -12,7 +13,11 @@ import { authClient } from "@/lib/auth-client";
 export default function HeaderUserNav() {
   const { data, isPending } = authClient.useSession();
   const path = usePathname() ?? "";
-  if (isPending) return <span className="user-nav" aria-hidden />;
+  // Another auth subscriber can resolve the session before this streamed
+  // boundary hydrates. Keep its first client render identical to the server.
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
+  if (!hydrated || isPending) return <span className="user-nav" aria-hidden />;
   if (!data) {
     return (
       <nav className="user-nav">

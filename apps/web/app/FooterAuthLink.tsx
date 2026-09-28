@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 
 /**
@@ -9,7 +10,9 @@ import { authClient } from "@/lib/auth-client";
  */
 export default function FooterAuthLink() {
   const { data } = authClient.useSession();
-  return data ? (
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
+  return hydrated && data ? (
     <Link href="/cont">Contul meu</Link>
   ) : (
     <Link href="/login">Autentificare</Link>

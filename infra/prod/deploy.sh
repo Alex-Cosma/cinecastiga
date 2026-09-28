@@ -27,6 +27,10 @@ if [[ "$collection_active" == true ]]; then
   docker compose --profile collection build --pull collection
 fi
 docker compose --profile maintenance run --rm --no-deps migrate
+# The first release with topic search must prepare its public-data projection
+# before exposing the new UI. Later deploys keep the index; nightly processing
+# remains responsible for refreshing it. Failure preserves the running web.
+docker compose --profile processing run --rm --no-deps processor node apps/ingestion/dist/scripts/index-topics.js --if-missing
 # set -e prevents this restart when migration/history/grant checks fail.
 docker compose --profile documents up -d --no-deps web documents
 if [[ "$collection_active" == true ]]; then
