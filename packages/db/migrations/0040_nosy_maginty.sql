@@ -1,0 +1,1 @@
+ALTER TABLE "marts"."topic_search_state" ADD COLUMN "titled_records" bigint DEFAULT 0 NOT NULL;

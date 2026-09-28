@@ -274,6 +274,20 @@
       "when": 1790534244884,
       "tag": "0038_massive_ben_grimm",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1790596748033,
+      "tag": "0039_ancient_gressill",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1790598719750,
+      "tag": "0040_nosy_maginty",
+      "breakpoints": true
     }
   ]
 }

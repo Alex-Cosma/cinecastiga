@@ -15,3 +15,4 @@ export * from "./documents.js";
 
 export * from "./collection.js";
 export * from "./processing.js";
+export * from './topic-search.js';

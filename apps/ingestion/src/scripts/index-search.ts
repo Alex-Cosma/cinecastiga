@@ -1,4 +1,5 @@
 import { createDb } from "@seap/db";
+import {indexTopics} from "../search/index-topics.js";
 import { indexEntities } from "../search/index-entities.js";
 
 /**
@@ -10,6 +11,7 @@ import { indexEntities } from "../search/index-entities.js";
  */
 async function main(): Promise<void> {
   const { sql } = createDb();
+  await indexTopics(sql, console.log);
   const report = await indexEntities(sql, { log: (m) => console.log(m) });
   console.log(JSON.stringify(report, null, 2));
   await sql.end();

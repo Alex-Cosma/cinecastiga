@@ -1,5 +1,7 @@
 # cinecâștigă? — Sunt banii tăi.
 
+**New: [5B — Caută un subiect](topic-search/index.html).** Search procurement titles, document passages and entities; open the exact page and preserve a quote in a local demo investigation. [Walkthrough](topic-search/README.md). All examples are fictional.
+
 **New: [Administrare — collection status and pacing controls](admin/index.html).** Interactive simulated collection, staged delay settings, publication status and request journal. [Walkthrough](admin/README.md).
 
 **New: [Domenii — compare category cards and an animated atlas](cinecastiga-domains.html).** Two clickable directions using the same real data. [Walkthrough and previews](domains/README.md).

@@ -39,7 +39,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         <h1 id="d-hero-title">Sunt banii tăi.<br /><span>Vezi unde ajung.</span></h1>
         <p className="d-hero-description">De la strada ta la marile contracte. Urmărește cine cumpără, cine câștigă și ce întrebări merită puse.</p>
         <DiscoverySearch hero />
-        <div className="d-quick-links"><span>Încearcă:</span><Link href="/cauta?q=Cluj"><DiscoveryIcon name="pin" />Cluj</Link><Link href={questionHref(QUESTIONS[0]!.spec)}>Drumuri</Link><Link href={questionHref(QUESTIONS[1]!.spec)}>Spitale</Link></div>
+        <div className="d-quick-links"><span>Încearcă:</span><Link href="/cauta?q=Cluj"><DiscoveryIcon name="pin" />Cluj</Link><Link href="/cauta?q=drumuri">Drumuri</Link><Link href="/cauta?q=iluminat">Iluminat</Link></div>
         <p className="d-reassurance"><DiscoveryIcon name="shield" /> Date publice. Surse la vedere. Curiozitatea e suficientă.</p>
       </div>
       <DiscoveryMap counties={headline.counties} />

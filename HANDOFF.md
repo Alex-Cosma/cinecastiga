@@ -1,4 +1,30 @@
+## 2026-09-28 — 5B implementat local pentru testare
+
+- Autorizare actualizată: utilizatorul a cerut commit pentru toate modificările de până acum; fără push/deploy. Commit local pe branch `work/topic-search`; mockupul anterior rămâne păstrat. Notele istorice despre un mockup neimplementat sunt depășite de această secțiune.
+- Homepage/căutarea globală duc acum în `/cauta`: titluri reale de achiziții, documente publice procesate și instituții/firme, cu județ/localitate, interval inclusiv de ani și filtre de tip/potrivire. Detalii: `docs/implementation/batch5b-topic-search-implementation.md`.
+- Migrațiile 0039 + 0040 aplicate numai bazei locale `seap`. Indexarea completă este TERMINATĂ: 20.553.037 achiziții, 16.068.616 cu titlu căutabil, 6.424 MB cu indexuri; 988 secunde (16m28), `built_at=2026-09-28T12:49:20.937997Z`. Nu relansa indexarea pentru a testa interfața. Încercările inițiale anulate au fost rollback, nu există un proces de indexare de urmărit.
+- Preview funcțional: http://localhost:3000, pornit cu `DOCUMENTS_ENABLED=false NEXT_DIST_DIR=.next-topic-dev pnpm --filter web dev --webpack --port 3000`. Sesiune tool 67721 (repornit după adăugarea rutei entity-splits); vechiul dev3113 a fost oprit fiind blocat. Buildul verificat a fost mutat în temp în afara watcherului; directoarele preview/build sunt ignorate.
+- Teste: build producție, typechecks web/ingestion/db și 25 teste relevante (12 PostgreSQL izolat + 6 unitare căutare + 7 documente) trec. Baza `seap_test_topic_search` a fost eliminată după verificare. Browser final: 52 verificări, zero erori JS/trafic extern. Review independent: `ship` pentru corecția verificată a etichetelor/paginării rezultatelor păstrate după eroare; detalii în documentul implementării.
+- Date reale de probă: „locuri de joacă” → 1.400 achiziții; „iluminat” → un document, paginile 4/5/7. Catalog local de fișiere: 9 cunoscute, 2 procesate, 28 pagini. Nu există încă un catalog distinct de sate; importurile istorice fără titlu rămân accesibile prin activitatea entităților.
+- Zero cereri SEAP, zero acțiuni în producție; workerii nu au fost porniți. Integrarea noului index în etapa `search` este doar cod local și adaugă un cost de reconstruire de evaluat înainte de deploy. Nu porni procesarea de noapte ca test UI.
+
+### Ajustări UI locale după testarea utilizatorului
+
+Conturul „Unde cauți?” se desenează o singură dată pe întregul câmp; butonul de ștergere păstrează focusul distinct. Capturile desktop/mobil, light/dark au primit review independent `ship` la acest scop; utilizatorul a confirmat vizual. Pe profilurile entităților, `.entity-data-context p` nu mai limitează textul „Ce includ aceste cifre?” la 85ch: folosește lățimea regiunii, la cererea utilizatorului. Ambele sunt doar ajustări CSS locale, fără deploy. Capturi în `.impeccable/review/topic-focus/` și `.impeccable/review/entity-context-width/`.
+
+### Fracționare sub prag — paginare locală
+
+Tabelul profilului de entitate are acum 10 grupuri/pagină, prin `/api/entity-splits` + `getSplitPairsPaged`, cu număr total și ordine stabilă valoare/id. Vechea limită ascunsă de 30 rânduri a fost eliminată. Cluj-Napoca 2146445: 25 grupuri, pagini 10/10/5. Entitatea 2146107: 324 grupuri, ultima pagină 33 cu 4 rânduri, verificată. Linkurile exacte `/semnale/:id` rămân în tab nou. Explicația de sub tabel are lățimea completă disponibilă. Typecheck + 18 verificări browser trec, zero erori JS; review independent generic `ship` la acest scop, canonul de design păstrat. Dovezi `.impeccable/review/entity-splits/`. Nicio schimbare de risc/date/sursă/producție; cod salvat în commitul local, fără push/deploy.
+
 # Continuation handoff — cinecâștigă, investigation batches and contract documents
+
+## 5B subject-search mockup — ready for user review, no deploy (28 September 2026)
+
+**Follow-up:** user requested geographic typeahead (counties/cities/communes/villages), inclusive year intervals with all-years default, and removal of the authority-location caveat. Implemented in the same mockup, verified with 59 browser checks. Results layout remains undecided; user asked to assess the filter changes first. Twelve fictional acquisitions now include 2022/2023 examples; PDFs unchanged. No production changes.
+
+Functional prototype: **[mockups/topic-search/README.md](mockups/topic-search/README.md)**, served at `http://127.0.0.1:3112/topic-search/`. It uses fictional contracts/documents, common query/county/year/type filters, exact-page HTML reading with matching local PDFs, browser-local quote saving/export and a local watch simulation. **No production implementation or deployment was performed; user review of the mockup is pending.**
+
+[Implementation documentation](docs/implementation/batch5b-topic-search-mockup.md) records scope, commands, design variations and proposed next slices. [Verification snapshot](mockups/topic-search/verification.json): 38 passed browser checks, no reported runtime errors or external HTTP requests. Independent finish verdict is ship for the two scored mobile fixes, not a new whole-surface review. Canonical design files remain unchanged. Existing production release and operational notes below retain their separate scope.
 
 ## Collaboration handover and local public database transfer — 28 September 2026
 

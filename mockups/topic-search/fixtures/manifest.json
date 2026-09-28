@@ -1,0 +1,44 @@
+[
+  {
+    "id": "cs-amenajare",
+    "file": "caiet-de-sarcini-demo.pdf",
+    "pages": 3,
+    "sha256": "98394b242aaa5f923801b8225d1faf5c900929696c6777482ff6e0dbad9f5a18",
+    "fictional": true
+  },
+  {
+    "id": "clarificare",
+    "file": "clarificare-demo.pdf",
+    "pages": 1,
+    "sha256": "6cefa9dad427b0958d864755223cdaff65b140849c56317def05e5c0aaaa2b5f",
+    "fictional": true
+  },
+  {
+    "id": "cs-intretinere",
+    "file": "intretinere-demo.pdf",
+    "pages": 1,
+    "sha256": "e5559c1532a684740aa6ea0c665c8b76666f50da34acca0657486bfc3851c468",
+    "fictional": true
+  },
+  {
+    "id": "cs-agrement",
+    "file": "memoriu-tehnic-demo.pdf",
+    "pages": 1,
+    "sha256": "b47f89d84a83be105589e70009fc654bcb567389ce159031aeb7b02d7a22dc66",
+    "fictional": true
+  },
+  {
+    "id": "cs-verde",
+    "file": "spatii-verzi-demo.pdf",
+    "pages": 1,
+    "sha256": "fa50868bafd3ebc6c83ff995423fcfe496bc37e79e9d55fac03b7e7e6ec1b4be",
+    "fictional": true
+  },
+  {
+    "id": "cs-parc",
+    "file": "parc-central-demo.pdf",
+    "pages": 1,
+    "sha256": "ca791d0bdf9be8e050a97ec25c39972287c8fd6a03f51b37025f2acbf45c7ad6",
+    "fictional": true
+  }
+]

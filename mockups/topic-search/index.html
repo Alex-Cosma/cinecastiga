@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Caută un subiect · cinecâștigă?</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="../src/fonts.css">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Sari la căutare</a>
+  <header class="site-header">
+    <a class="brand" href="./" aria-label="cinecâștigă? — începutul mockupului">cinecâștigă<span>?</span></a>
+    <nav aria-label="Navigare mockup">
+      <button class="nav-active" id="explore-nav" aria-current="page">Explorează</button>
+      <button id="cases-nav">Anchete <span id="saved-count" class="count">0</span></button>
+    </nav>
+    <button id="theme" class="icon-button" aria-label="Activează tema întunecată"></button>
+  </header>
+  <div class="demo-note"><span class="demo-tag">Mockup 5B</span> Date și instituții fictive. Explorează liber; nimic nu se trimite în producție.</div>
+  <main id="main">
+    <section class="search-intro" aria-labelledby="page-title">
+      <h1 id="page-title">Ce vrei să afli?</h1>
+      <p>Pornește de la un subiect. Urmează contractele, până la sursă.</p>
+      <form id="search-form" role="search">
+        <label class="sr-only" for="query">Subiect, denumirea achiziției, instituție sau firmă</label>
+        <div class="search-box"><span id="search-icon" aria-hidden="true"></span><input id="query" name="q" type="search" value="locuri de joacă" placeholder="De exemplu: locuri de joacă" autocomplete="off"><button class="primary" type="submit">Caută <span id="search-arrow" aria-hidden="true"></span></button></div>
+        <div class="suggestions"><span>Încearcă și</span><button type="button" data-query="iluminat public">iluminat public</button><button type="button" data-query="spații verzi">spații verzi</button><button type="button" data-query="locuri de joacă">locuri de joacă</button></div>
+        <div class="filters">
+          <div class="filter-field location-field" id="location-field">
+            <label for="location-input">Unde cauți?</label>
+            <div class="location-control"><span id="location-icon" aria-hidden="true"></span><input id="location-input" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="location-options" autocomplete="off" placeholder="Județ, oraș, comună sau sat"><button type="button" class="icon-button" id="clear-location" aria-label="Șterge zona selectată"></button></div>
+            <div class="location-menu" id="location-menu" hidden><div id="location-options" role="listbox" aria-label="Județe și localități"></div><div id="location-message" role="status" class="location-message"></div></div>
+          </div>
+          <div class="filter-field period-field" id="period-field">
+            <label id="period-label">Perioada</label>
+            <button type="button" id="period-button" aria-labelledby="period-label period-value" aria-expanded="false" aria-controls="period-menu"><span id="period-icon" aria-hidden="true"></span><span id="period-value">Toți anii</span><span class="down-chevron" aria-hidden="true"></span></button>
+            <section class="period-menu" id="period-menu" aria-label="Alege intervalul de ani" hidden>
+              <div class="period-heading"><h2>Alege perioada</h2><button type="button" class="icon-button" id="close-period" aria-label="Închide selectorul perioadei"></button></div>
+              <button type="button" id="all-years">Toți anii <span aria-hidden="true">✓</span></button>
+              <div class="year-range"><label>Din anul<input id="year-from" type="number" inputmode="numeric" min="2018" max="2026" placeholder="2022" aria-describedby="year-error"></label><span aria-hidden="true">—</span><label>Până în anul<input id="year-to" type="number" inputmode="numeric" min="2018" max="2026" placeholder="2024" aria-describedby="year-error"></label></div>
+              <p id="year-error" role="alert" hidden></p>
+              <div class="period-shortcuts"><button type="button" data-range="2026,2026">2026</button><button type="button" data-range="2024,2026">2024–2026</button><button type="button" data-range="2022,2024">2022–2024</button></div>
+              <button type="button" id="apply-period" class="primary">Aplică intervalul</button>
+            </section>
+          </div>
+          <label>Tipul achiziției<select id="type"><option value="all">Toate achizițiile</option><option value="direct">Achiziții directe</option><option value="procedure">Contracte prin procedură</option></select></label>
+          <button type="button" id="advanced-button" class="text-button" aria-expanded="false" aria-controls="advanced">Opțiuni de căutare</button>
+          <div id="advanced" class="advanced" hidden><label>Potrivirea cuvintelor<select id="match"><option value="phrase">Expresia, în această ordine</option><option value="words">Toate cuvintele, în orice ordine</option></select></label><p>Căutarea ignoră diacriticele. Filtrele se aplică tuturor tipurilor de rezultate.</p></div>
+        </div>
+      </form>
+    </section>
+    <section aria-label="Rezultatele căutării" id="results-shell">
+      <div class="results-nav"><nav id="result-tabs" aria-label="Tip de rezultat"></nav><button id="copy-search" class="text-button"></button></div>
+      <div id="search-status" class="search-status" role="status" aria-live="polite"></div>
+      <div class="results-layout">
+        <div id="results" aria-busy="false"></div>
+        <aside id="context" aria-label="Acoperire și pași următori"></aside>
+      </div>
+    </section>
+    <footer><strong>Poți verifica fiecare leu.</strong><span>Valorile contractelor nu sunt dovezi ale plăților. Exemplele din acest mockup sunt fictive.</span><button id="demo-controls" class="text-button">Stări de test</button><div id="scenarios" hidden><button data-scenario="error">Simulează o eroare</button><button data-scenario="empty">Arată o căutare fără rezultate</button><button data-scenario="reset">Revino la exemplu</button></div></footer>
+  </main>
+  <dialog id="detail-dialog" aria-labelledby="detail-title"><div id="detail-content"></div></dialog>
+  <dialog id="cases-dialog" aria-labelledby="cases-title"><div class="dialog-heading"><div><h2 id="cases-title">Anchetele tale de probă</h2><p>Salvate doar în acest browser. Date fictive.</p></div><button class="icon-button" data-close="cases-dialog" aria-label="Închide anchetele"></button></div><div id="case-list"></div></dialog>
+  <div id="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

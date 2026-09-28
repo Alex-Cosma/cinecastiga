@@ -75,16 +75,19 @@ Cheile `MEILISEARCH_*` sunt cele folosite de aplicație; compose folosește `MEI
 
 Nu copia `.env` de producție, SMTP-ul real sau `BETTER_AUTH_SECRET` al altui mediu. `SMTP_HOST` gol face OTP-ul vizibil doar în consola serverului local; nu dezactivează verificarea 2FA. `DOCUMENTS_ENABLED=false` păstrează citirea documentelor existente, dar dezactivează achiziția nouă.
 
-## 4. Reindexare Meilisearch din copia locală
+## 4. Migrații noi și pregătirea căutării din copia locală
 
 ```sh
+DATABASE_URL=postgres://seap:seap_dev@127.0.0.1:5432/seap_collab \
+  pnpm --filter @seap/db db:migrate
+
 DATABASE_URL=postgres://seap:seap_dev@127.0.0.1:5432/seap_collab \
 MEILISEARCH_URL=http://127.0.0.1:7700 \
 MEILISEARCH_KEY=seap_dev_master_key \
   pnpm --filter ingestion index-search
 ```
 
-Această comandă citește baza locală și scrie indexul local, fără SEAP. Păstrează URL-urile explicite: utilitarele nu încarcă toate automat `apps/web/.env.local`. Căutarea poate fi goală până se încheie indexarea. Nu sunt necesare recalcularea marts sau risc pentru a folosi snapshot-ul restaurat.
+Această comandă pregătește și indexul PostgreSQL de titluri (`marts.topic_acquisitions`, migrațiile 0039–0040), apoi indexul de entități Meilisearch, fără SEAP. Prima pregătire a titlurilor parcurge arhiva publică și poate dura; pentru a o rula separat există `pnpm --filter ingestion index-topics`. Păstrează URL-urile explicite: utilitarele nu încarcă toate automat `apps/web/.env.local`. Căutarea poate fi goală până se încheie indexarea. Nu sunt necesare recalcularea marts sau risc pentru a folosi snapshot-ul restaurat.
 
 ## 5. Cont admin local
 

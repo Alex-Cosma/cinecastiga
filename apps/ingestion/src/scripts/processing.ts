@@ -1,5 +1,6 @@
 import { createDb, claimProcessing, failProcessing, finishProcessing, processingStage, collectionHeartbeat } from '@seap/db';
 import { runMonitoringRefresh } from '../monitoring/refresh.js';
+import {indexTopics} from '../search/index-topics.js';
 import { indexEntities, meiliClient } from '../search/index-entities.js';
 
 async function main() {
@@ -42,12 +43,13 @@ async function main() {
   await sql`update app.processing_runs set checkpoint_id=${checkpoint.id}::uuid where id=${id!}::uuid`;
   await processingStage(sql,id!,'search');
   const since=new Date().toISOString();
+  const topics=await indexTopics(sql,console.log);
   const report=await indexEntities(sql,{log:console.log});
   const client=meiliClient(),stats=await client.index('entities').getStats();
   const [expected]=await sql`select count(distinct entity_id)::int n from marts.entity_profile`;
   const failures=await client.tasks.getTasks({indexUids:['entities'],statuses:['failed','canceled'],types:['documentAdditionOrUpdate','documentDeletion','settingsUpdate'],afterEnqueuedAt:since,limit:1});
   if(stats.isIndexing||stats.numberOfDocuments!==expected!.n||failures.results.length)throw Error('Search validation failed');
-  await sql`update app.processing_runs set search_verified=${JSON.stringify(report)}::jsonb where id=${id!}::uuid`;
+  await sql`update app.processing_runs set search_verified=${JSON.stringify({...report,topics})}::jsonb where id=${id!}::uuid`;
   await collectionHeartbeat(sql,`processor:${id}`,'processor','complete');
  } finally {clearInterval(heartbeat);await sql.end({timeout:10});}
 }

@@ -100,6 +100,15 @@
 .data-context summary{cursor:pointer;color:var(--ink);font-weight:500;min-height:24px}
 .data-context summary:focus-visible{outline:2px solid var(--accent);outline-offset:5px}
 .data-context p{max-width:85ch;margin:12px 0}
+.entity-data-context p{max-width:none}
+.section .split-pairs-explanation{max-width:none}
+.method-card>.split-pairs{margin:0}
+.split-pairs .split-pairs-status{margin:12px 18px;color:var(--ink2);font-size:13px}
+.split-pairs-scroll{overflow-x:auto;scrollbar-color:var(--line2) var(--surface)}
+.split-pairs table{width:100%;min-width:640px}
+.split-pairs .pager{padding:4px 18px 16px;flex-wrap:wrap;gap:12px}
+.split-pairs-placeholder td{height:68px}
+.split-pairs-placeholder span{display:block;height:12px;width:65%;border-radius:4px;background:var(--sunk)}
 .data-exclusion-toggle{display:flex;align-items:center;gap:9px;margin:16px 0;color:var(--ink2);font-size:13px;cursor:pointer;min-height:32px}
 .data-exclusion-toggle input{accent-color:var(--accent);width:16px;height:16px}
 .coverage-summary{display:grid;gap:8px;font-size:12px;line-height:1.6}
