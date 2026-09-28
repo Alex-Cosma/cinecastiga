@@ -1,0 +1,16 @@
+import {describe,it,expect} from 'vitest';
+import {recoveryForecast,type RecoveryForecastInput} from './recovery-forecast';
+const sample=():RecoveryForecastInput=>({catalogueReady:true,elapsedDays:2,recentCompleted:2400,minSeconds:50,maxSeconds:70,dailyLimit:null,
+ samples:[{stream:'da',units:1000,sampled:120,mean_work:1.2,sd_work:.3,months:0,total_months:0},...['tenders','awards'].map(stream=>({stream,units:270,sampled:30,mean_work:30,sd_work:10,months:3,total_months:9}))],
+ progress:['da','tenders','awards','catalogue'].map(stream=>({stream,complete:600,split:0,pending:1000,running:0,failed:0,deferred:0}))});
+describe('recovery planning estimates',()=>{
+ it('requires enough observations in every stream, not an average of percentages',()=>{const x=sample();x.samples[0]!.sampled=2;const r=recoveryForecast(x);expect(r.state).toBe('learning');expect(r.percent).toBeNull();expect(r.daysHigh).toBeNull();expect(r.knownPercent).toBe(37);});
+ it('requires a finished catalogue and date diversity',()=>{const x=sample();x.catalogueReady=false;expect(recoveryForecast(x).percent).toBeNull();x.catalogueReady=true;x.samples[1]!.months=1;expect(recoveryForecast(x).percent).toBeNull();});
+ it('weights estimated task volume and respects the known lower bound',()=>{const r=recoveryForecast(sample());expect(r.state).toBe('estimated');expect(r.percent).toBeLessThan(r.knownPercent!);expect(r.remainingLow).toBeGreaterThanOrEqual(r.pending);expect(r.daysHigh).toBeGreaterThanOrEqual(r.daysLow!);});
+ it('does not assign days before a full day of observed calendar pace',()=>{const x=sample();x.elapsedDays=.5;expect(recoveryForecast(x).state).toBe('measuring');expect(recoveryForecast(x).daysHigh).toBeNull();});
+ it('uses calendar time and caps the rate after a lower daily limit',()=>{const x=sample();x.dailyLimit=100;expect(recoveryForecast(x).rate).toBe(100);expect(recoveryForecast(x).daysLow).toBeGreaterThan(recoveryForecast(sample()).daysLow!);});
+ it('never predicts complete coverage while deferred details or failures remain',()=>{for(const key of ['failed','deferred'] as const){const x=sample();x.progress[0]![key]=1;const r=recoveryForecast(x);expect(r.state).toBe('gaps');expect(r.daysHigh).toBeNull();expect(r.percent).toBeLessThan(100);}});
+ it('split tasks are useful work, while pending/failed retries are not progress',()=>{const x=sample(),before=recoveryForecast(x);x.progress[0]!.failed++;expect(recoveryForecast(x).completed).toBe(before.completed);x.progress[0]!.split++;expect(recoveryForecast(x).completed).toBe(before.completed+1);});
+ it('only declares a finished configured batch after all streams and catalogue have no gaps',()=>{const x=sample();x.progress.forEach(s=>s.pending=0);const r=recoveryForecast(x);expect(r.state).toBe('complete');expect(r.percent).toBe(100);expect(r.daysHigh).toBeNull();x.catalogueReady=false;expect(recoveryForecast(x).state).not.toBe('complete');});
+ it('does not claim completion of an empty or catalogue-only batch',()=>{const x=sample();x.progress=[];expect(recoveryForecast(x).state).not.toBe('complete');x.progress=[{stream:'catalogue',complete:1,split:0,pending:0,running:0,failed:0,deferred:0}];expect(recoveryForecast(x).state).not.toBe('complete');});
+});

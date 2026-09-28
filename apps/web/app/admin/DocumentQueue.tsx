@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import type {AdminDocumentJob,AdminDocumentQueue,DocumentQueueFilter} from '@/lib/admin/document-queue';
 import {stageLabel} from '@/lib/documents/shared';
@@ -8,7 +9,7 @@ const stamp=(s:string)=>new Date(s).toLocaleString('ro-RO',{day:'numeric',month:
 function FileIcon({saved=false}:{saved?:boolean}){return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H5v18h14V8Z M14 3v5h5"/><path d={saved?'m8 14 3 3 5-6':'M12 10v7m-3-3 3 3 3-3'}/></svg>;}
 function Source({job}:{job:AdminDocumentJob}){const valid=/^https:\/\/www\.e-licitatie\.ro\/pub\/notices\//.test(job.noticeUrl);return <span className="file-source">{valid?<a href={job.noticeUrl} target="_blank" rel="noopener noreferrer">{job.noticeNo}<span className="sr-only"> — anunțul SEAP, în filă nouă</span></a>:job.noticeNo}<span title={job.noticeTitle}>{job.noticeTitle}</span></span>;}
 function ArchivedLink({job}:{job:AdminDocumentJob}){if(!job.documentId||!job.downloaded)return null;return <a className="file-archive-link" href={`/api/documents/${job.documentId}/file${job.hasPdf?'?kind=pdf':''}`} target="_blank" rel="noopener noreferrer">{job.hasPdf?'Deschide PDF':'Originalul salvat'}<span className="sr-only"> pentru {job.filename}, în filă nouă</span></a>;}
-export default function DocumentQueue({paused,maintenance,blocked,quiet=false,retryAt=null}:{paused:boolean;maintenance:boolean;blocked:boolean;quiet?:boolean;retryAt?:string|null}){
+export default function DocumentQueue({paused,maintenance,blocked,quiet=false,retryAt=null,enabled=true}:{enabled?:boolean;paused:boolean;maintenance:boolean;blocked:boolean;quiet?:boolean;retryAt?:string|null}){
  const [data,setData]=useState<AdminDocumentQueue|null>(null),[filter,setFilter]=useState<DocumentQueueFilter>('download'),[page,setPage]=useState(1),[stale,setStale]=useState(false),[loading,setLoading]=useState(true);
  const request=useRef<AbortController|null>(null),busy=useRef(false);
  const load=useCallback(async()=>{
@@ -17,13 +18,13 @@ export default function DocumentQueue({paused,maintenance,blocked,quiet=false,re
   catch{if(request.current===ac){setStale(true);setLoading(false);}}
   finally{clearTimeout(timer);if(request.current===ac)busy.current=false;}
  },[filter,page]);
- useEffect(()=>{busy.current=false;setLoading(true);void load();const timer=setInterval(()=>{if(!document.hidden)void load();},5000);const focus=()=>void load();window.addEventListener('focus',focus);return()=>{request.current?.abort();request.current=null;busy.current=false;clearInterval(timer);window.removeEventListener('focus',focus);};},[load]);
+ useEffect(()=>{if(!enabled)return;busy.current=false;setLoading(true);void load();const timer=setInterval(()=>{if(!document.hidden)void load();},5000);const focus=()=>void load();window.addEventListener('focus',focus);return()=>{request.current?.abort();request.current=null;busy.current=false;clearInterval(timer);window.removeEventListener('focus',focus);};},[load,enabled]);
  const select=(next:DocumentQueueFilter)=>{setFilter(next);setPage(1);};
  const current=data?.filter===filter?data:null,active=data?.active;
  const progress=active?.pagesTotal?Math.min(100,Math.max(0,active.pagesDone/active.pagesTotal*100)):null;
  const reason=maintenance?'Site-ul este în mentenanță. Cererile noi către SEAP așteaptă încheierea procesării.':blocked?'Preluările din SEAP așteaptă verificarea erorii din jurnal.':paused?'Coada SEAP este pe pauză. Fișierele solicitate își păstrează locul.':quiet?'Pauză SEAP programată: 02:59–03:30, ora României. Fișierele își păstrează locul; preluările se reiau automat după pauză.':retryAt?`SEAP așteaptă reîncercarea unei cereri de date după timeout, cel mai devreme la ${stamp(retryAt)}. Fișierele își păstrează locul.`:null;
  return <section className="document-queue" id="files" aria-labelledby="document-queue-title">
-  <div className="section-heading"><div><h2 id="document-queue-title">Fișiere în așteptare</h2><p className="section-description">Doar solicitările trimise de utilizatori. Un singur fișier se descarcă și se procesează la un moment dat.</p></div><a className="text-button" href="#collection">Vezi ritmul SEAP</a></div>
+  <div className="section-heading"><div><h2 id="document-queue-title">Fișiere în așteptare</h2><p className="section-description">Doar solicitările trimise de utilizatori. Un singur fișier se descarcă și se procesează la un moment dat.</p></div><Link className="text-button" href="/admin">Vezi ritmul SEAP</Link></div>
   {reason&&<p className="queue-notice">{reason}</p>}
   {stale&&<p className="queue-notice" role="status">Coada nu se poate actualiza. {data?'Afișăm ultima stare cunoscută. ':''}<button className="text-button" onClick={()=>void load()}>Reîncearcă</button></p>}
   {active&&<div className="active-document"><div className={`file-mark ${active.downloaded?'saved':''}`}><FileIcon saved={active.downloaded}/></div><div className="active-document-copy"><div className="active-document-heading"><strong>{active.filename??'Lista de fișiere a anunțului'}</strong><span className="task-state">În lucru</span></div><Source job={active}/><p>{stageLabel[active.stage]??'Operațiune în curs'}{active.downloaded&&active.kind==='file'&&<span> · Originalul este deja salvat</span>}</p>{progress!==null&&<div className="document-progress"><progress max="100" value={progress} aria-label="Progresul procesării paginilor"/><span>{number(active.pagesDone)} / {number(active.pagesTotal!)} pagini</span></div>}<ArchivedLink job={active}/></div></div>}
