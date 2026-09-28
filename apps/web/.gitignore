@@ -19,3 +19,7 @@ next-env.d.ts
 # Isolated radiography preview and validation build
 /.next-radiografie-dev/
 /.next-radiografie-build/
+
+# Isolated compact query workspace preview/build
+/.next-explore-dev/
+/.next-explore-build/

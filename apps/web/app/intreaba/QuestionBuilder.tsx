@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import Link from "next/link";
+import { describePopulation } from "@/lib/ask/population";
 import { COUNTIES } from "@/lib/counties";
 import type { EntityHit } from "@/lib/search";
 import type { AskSpec } from "@/lib/ask/spec";
@@ -11,7 +13,8 @@ import {
 } from "@/lib/ask/question-ui";
 import "./question-builder.css";
 import PopulationEditor from "./PopulationEditor";
-import RecipeShelf from "./RecipeShelf";
+import SaveQuestionButton from "./SaveQuestionButton";
+import SavedQuestions, { type SavedQuestion } from "./SavedQuestions";
 
 export type QuestionBuilderSpec = QuestionSpec;
 type RunOutcome = boolean | QuestionSpec | AskSpec | void;
@@ -87,6 +90,7 @@ function Glyph({ name, className = "" }: { name: string; className?: string }) {
 
 export default function QuestionBuilder({ initial, resolution, fromAi = false, onRun, running, onDraftChange }: QuestionBuilderProps) {
   const [seed] = useState(() => transitionQuestion(initial ?? defaultQuestion()));
+  const [filtersOpen, setFiltersOpen] = useState(Boolean(seed.spec.population || seed.spec.minimumRecords));
   const [draft, setDraft] = useState<QuestionSpec>(seed.spec);
   const [applied, setApplied] = useState<QuestionSpec | null>(initial ? cloneQuestion(initial) : null);
   const draftRef = useRef(draft);
@@ -96,6 +100,10 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
   const previousInitial = useRef(initialKey);
   const [field, setField] = useState<Field | null>(null);
   const [search, setSearch] = useState("");
+  const [catalogueTab, setCatalogueTab] = useState<"models" | "saved">("models");
+  const [savedQuestion, setSavedQuestion] = useState<SavedQuestion | null>(null);
+  const [savedNotice, setSavedNotice] = useState("");
+  const catalogueId = useId();
   const [remote, setRemote] = useState<SuggestionData>({});
   const [hits, setHits] = useState<EntityHit[]>([]);
   const [loading, setLoading] = useState(false);
@@ -109,6 +117,11 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
   const searchId = useId();
   const dirty = questionKey(draft) !== questionKey(applied ?? seed.spec);
   const errors = questionErrors(draft);
+  const advancedKey = JSON.stringify([draft.population, draft.minimumRecords]);
+  const advancedError = Boolean(draft.population || draft.minimumRecords) && errors.length > 0;
+  useEffect(() => {
+    if (draft.population || draft.minimumRecords || advancedError) setFiltersOpen(true);
+  }, [advancedKey, advancedError]);
   const profile = isProfileQuestion(draft);
   const type = QUESTION_TYPES.find((item) => item.id === draft.block) ?? QUESTION_TYPES[0]!;
   const kind = KIND_OPTIONS.find(([id]) => id === (draft.filters.authorityKind ?? "")) ?? KIND_OPTIONS[0];
@@ -120,6 +133,7 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
     setDraft(next.spec);
     setApplied(initial ? cloneQuestion(initial) : null);
     setChanges(next.changes);
+    setSavedQuestion(null); setSavedNotice("");
   }, [initial, initialKey]);
 
   useEffect(() => {
@@ -171,6 +185,14 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
     return () => { clearTimeout(timer); ctrl.abort(); };
   }, [search, field, draft.filters.county]);
 
+  function loadSavedQuestion(question: SavedQuestion) {
+    const next = transitionQuestion(question.spec);
+    setDraft(next.spec);
+    setChanges(next.changes);
+    setSavedQuestion(question);
+    setSavedNotice(`Întrebare încărcată: „${question.title}”. Apasă „Vezi răspunsul” pentru a o rula.`);
+    closePicker();
+  }
   function closePicker() {
     dialogRef.current?.close();
     setField(null);
@@ -385,6 +407,7 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
     closePicker();
   }
   function pickerBody() {
+    if (field === "catalogue" && catalogueTab === "saved") return <SavedQuestions search={search} current={draft} hasUnsavedChanges={questionKey(draft) !== questionKey(savedQuestion?.spec ?? seed.spec)} onLoad={loadSavedQuestion} />;
     if (field === "catalogue") return <div className="qb-catalogue-grid">{QUESTION_GROUPS.map((group) => {
       const items = catalogResults.filter((item) => item.group === group.id);
       return items.length ? <section className="qb-catalogue-group" key={group.id}><h3>{group.label}</h3>{items.map((item) => <button key={item.id} type="button" className={`qb-catalogue-item${draft.block === item.id ? " is-selected" : ""}`} onClick={() => chooseType(item.id)}><span className="qb-catalogue-glyph"><Glyph name={item.id} /></span><span><strong>{item.label}</strong><small>{item.description}</small></span><Glyph name={draft.block === item.id ? "check" : "arrow"} /></button>)}</section> : null;
@@ -414,24 +437,29 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
 
   const showsSearch = field && !["add", "period", "employees", "dim", "measure", "rankBy", "topN", "dataset", "authorityKind", "singleBidder"].includes(field);
   return <div className="question-builder">
+    <header className="cq-workspace-header"><h1>Explorează</h1><div className="cq-workspace-actions"><Link href="/cauta">Caută un subiect</Link></div></header>
     <div className="qb-navigation"><div className="qb-shortcuts" aria-label="Aceleași date, altă perspectivă">{[{ id: "table", label: "Cine câștigă?" }, { id: "timeseries", label: "Cum se schimbă?" }, { id: "compare", label: "Compară" }].map((item) => <button type="button" aria-pressed={draft.block === item.id} key={item.id} onClick={() => chooseType(item.id)}><Glyph name={item.id} />{item.label}</button>)}</div><button type="button" className="qb-catalogue-trigger" aria-haspopup="dialog" onClick={(event) => openPicker("catalogue", event.currentTarget)}><Glyph name="plus" />Toate întrebările<span>13</span></button></div>
     <section className={`qb-editor${dirty ? " qb-editor-pending" : ""}`} aria-label="Construiește întrebarea">
-      <div className="qb-editor-top"><p className="qb-eyebrow"><span />Întrebarea ta <span className="qb-type-count">{String(QUESTION_TYPES.findIndex((item) => item.id === draft.block) + 1).padStart(2, "0")} / 13</span></p><span className="qb-editor-tip">Cuvintele evidențiate se pot schimba</span></div>
+
+      {savedNotice && <p className="cq-loaded-question" role="status">{savedNotice}</p>}
       {fromAi && <p className="qb-ai-note">Am transformat întrebarea în condiții pe care le poți verifica și modifica.</p>}
       <h2 className={`qb-sentence qb-sentence-${draft.block}`}>{sentence()}</h2>
+      <p className="cq-edit-hint">Apasă pe cuvintele evidențiate pentru a schimba întrebarea.</p>
       <div className="qb-conditions">{activeConditions()}{draft.block !== "compare" && <button type="button" className="qb-add" aria-haspopup="dialog" onClick={(event) => openPicker("add", event.currentTarget)}><Glyph name="plus" />Adaugă o condiție</button>}</div>
       {draft.block === "compare" && <label className="qp-comparison-mode">Ce comparăm?<select value={draft.comparisonMode ?? "profiles"} onChange={event => replaceDraft({ ...cloneQuestion(draft), comparisonMode:event.target.value as "transactions" | "profiles" })}><option value="transactions">Achizițiile din selecția curentă</option><option value="profiles">Profilurile istorice de risc (achiziții directe)</option></select></label>}
-      <details className="qp-minimum" open={draft.minimumRecords ? true : undefined}><summary>Au cel puțin un număr de înregistrări</summary><p>Numărăm în selecția de mai sus, înainte de gruparea răspunsului. Contractele cu mai mulți câștigători au câte un rând pentru fiecare furnizor.</p>{draft.minimumRecords ? <div className="qp-minimum-fields"><label>Cine?<select value={draft.minimumRecords.role} onChange={event => replaceDraft({ ...cloneQuestion(draft), minimumRecords:{ ...draft.minimumRecords!, role:event.target.value as "authority" | "supplier" } })}><option value="supplier">Firmele</option><option value="authority">Instituțiile</option></select></label><label>Cel puțin<input type="number" min={1} max={1000000} step={1} value={draft.minimumRecords.count} onChange={event => replaceDraft({ ...cloneQuestion(draft), minimumRecords:{ ...draft.minimumRecords!, count:Number(event.target.value) } })} /></label><button type="button" onClick={() => { const next = cloneQuestion(draft); delete next.minimumRecords; replaceDraft(next); }}>Elimină pragul</button></div> : <button type="button" onClick={() => replaceDraft({ ...cloneQuestion(draft), minimumRecords:{ role:"supplier", count:5 } })}>Adaugă un prag de înregistrări</button>}</details>
-      <PopulationEditor value={draft.population} disabled={running} onChange={population => { const next = cloneQuestion(draft); if (population) next.population = population; else delete next.population; replaceDraft(next); }} />
+      <details className="cq-more-filters" open={filtersOpen} onToggle={event => setFiltersOpen(event.currentTarget.open)}><summary>Mai multe filtre <span>Date, valori, grupuri și număr minim de înregistrări</span></summary>
+      <fieldset className="qp-minimum" disabled={running}><legend>Număr minim de înregistrări</legend><p>Numărăm în selecția de mai sus, înainte de gruparea răspunsului. Contractele cu mai mulți câștigători au câte un rând pentru fiecare furnizor.</p>{draft.minimumRecords ? <div className="qp-minimum-fields"><label>Cine?<select value={draft.minimumRecords.role} onChange={event => replaceDraft({ ...cloneQuestion(draft), minimumRecords:{ ...draft.minimumRecords!, role:event.target.value as "authority" | "supplier" } })}><option value="supplier">Firmele</option><option value="authority">Instituțiile</option></select></label><label>Cel puțin<input type="number" min={1} max={1000000} step={1} value={draft.minimumRecords.count} onChange={event => replaceDraft({ ...cloneQuestion(draft), minimumRecords:{ ...draft.minimumRecords!, count:Number(event.target.value) } })} /></label><button type="button" onClick={() => { const next = cloneQuestion(draft); delete next.minimumRecords; replaceDraft(next); }}>Elimină pragul</button></div> : <button type="button" onClick={() => replaceDraft({ ...cloneQuestion(draft), minimumRecords:{ role:"supplier", count:5 } })}>Adaugă un prag de înregistrări</button>}</fieldset>
+      <PopulationEditor embedded value={draft.population} disabled={running} onChange={population => { const next = cloneQuestion(draft); if (population) next.population = population; else delete next.population; replaceDraft(next); }} />
+      </details>
+      {!filtersOpen && (draft.population || draft.minimumRecords) && <div className="cq-active-filters" aria-label="Filtre suplimentare active">{draft.population && <p>{describePopulation(draft.population)}</p>}{draft.minimumRecords && <p>{draft.minimumRecords.role === "supplier" ? "Firme" : "Instituții"}: cel puțin {draft.minimumRecords.count} înregistrări în selecție.</p>}</div>}
       {changes.length > 0 && <div className="qb-scope-change" role="status"><Glyph name="info" /><div><strong>Ce se schimbă odată cu întrebarea</strong>{changes.map((note) => <p key={note}>{note}</p>)}</div></div>}
       {profile && <p className="qb-profile-note">Profilurile folosesc achizițiile directe din întreaga perioadă. Indicele de risc este un semnal statistic; definiția, calculele și sursele sunt explicate lângă rezultat.{draft.dim === "supplier" && draft.filters.county ? " Județul grupului este cel înregistrat în profilul firmei." : ""}</p>}
-      <div className="qb-editor-bottom"><div className="qb-presentation">{draft.block === "table" ? <>Arată {phrase("topN", draft.topN === undefined ? "toate" : `primele ${draft.topN}`)} {phrase("dim", draft.topN === undefined ? draft.dim === "supplier" ? "firmele" : draft.dim === "county" ? "județele" : "instituțiile" : draft.dim === "supplier" ? "firme" : draft.dim === "county" ? "județe" : "instituții")}, după {phrase("measure", draft.measure === "count" ? "numărul de achiziții" : draft.measure === "value_per_capita" ? "valoarea pe locuitor" : "valoarea înregistrată")}.</> : draft.block === "trend" ? <>Arată {phrase("topN", `primele ${draft.topN ?? 10}`)}, după diferența în lei dintre cei doi ani.</> : ["stat", "timeseries", "map"].includes(draft.block) ? <>Măsoară {phrase("measure", draft.measure === "count" ? "numărul de achiziții" : "valoarea înregistrată")}.</> : <><Glyph name={type.id} />{type.description}</>}</div><div className="qb-apply-area">{dirty ? <button type="button" className="qb-discard" onClick={discard}>Renunță la modificări</button> : applied && <span className="qb-ready"><Glyph name="check" />Întrebare aplicată</span>}<button type="button" className="qb-primary qb-apply" disabled={running || errors.length > 0} onClick={apply}>{running ? "Caut în date…" : dirty && applied ? "Actualizează răspunsul" : "Vezi răspunsul"}<Glyph name="arrow" /></button></div></div>
+      <div className="qb-editor-bottom"><div className="qb-presentation">{draft.block === "table" ? <>Arată {phrase("topN", draft.topN === undefined ? "toate" : `primele ${draft.topN}`)} {phrase("dim", draft.topN === undefined ? draft.dim === "supplier" ? "firmele" : draft.dim === "county" ? "județele" : "instituțiile" : draft.dim === "supplier" ? "firme" : draft.dim === "county" ? "județe" : "instituții")}, după {phrase("measure", draft.measure === "count" ? "numărul de achiziții" : draft.measure === "value_per_capita" ? "valoarea pe locuitor" : "valoarea înregistrată")}.</> : draft.block === "trend" ? <>Arată {phrase("topN", `primele ${draft.topN ?? 10}`)}, după diferența în lei dintre cei doi ani.</> : ["stat", "timeseries", "map"].includes(draft.block) ? <>Măsoară {phrase("measure", draft.measure === "count" ? "numărul de achiziții" : "valoarea înregistrată")}.</> : <><Glyph name={type.id} />{type.description}</>}</div><div className="qb-apply-area">{dirty ? <button type="button" className="qb-discard" onClick={discard}>Renunță la modificări</button> : applied && <span className="qb-ready"><Glyph name="check" />Întrebare aplicată</span>}<SaveQuestionButton spec={draft} active={savedQuestion} onSaved={question => { setSavedQuestion(question); setSavedNotice(`Întrebare salvată: „${question.title}”. O găsești în „Toate întrebările” → „Salvate”.`); }} disabled={running || errors.length > 0} /><button type="button" className="qb-primary qb-apply" disabled={running || errors.length > 0} onClick={apply}>{running ? "Caut în date…" : dirty && applied ? "Actualizează răspunsul" : "Vezi răspunsul"}<Glyph name="arrow" /></button></div></div>
       {errors.length > 0 && <div className="qb-validation" aria-live="polite">{errors.map((error) => <p key={error}>{error}</p>)}</div>}
       {dirty && <p className="qb-pending-line" role="status"><span />Modificări neaplicate{applied && <span>Răspunsul și sursele de mai jos păstrează întrebarea anterioară.</span>}</p>}
     </section>
-    <RecipeShelf spec={draft} disabled={running} onOpen={next => { replaceDraft(next, ["Rețeta este în constructor. Aplică întrebarea pentru a recalcula răspunsul."]); }} />
     <dialog ref={dialogRef} className={`qb-dialog${showsSearch ? " qb-dialog-search" : ""}${field === "catalogue" ? " qb-dialog-catalogue" : ""}`} aria-labelledby={dialogTitleId} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); closePicker(); } }} onCancel={(event) => { event.preventDefault(); closePicker(); }} onClick={(event) => { if (event.target === event.currentTarget) { const bounds = event.currentTarget.getBoundingClientRect(); if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) closePicker(); } }}>
-      {field && <><div className="qb-picker-head"><h2 id={dialogTitleId}>{FIELDS[field].title}</h2><button className="qb-dialog-close" type="button" onClick={closePicker} aria-label="Închide"><Glyph name="close" /></button></div><p className="qb-picker-note">{FIELDS[field].note}</p>{showsSearch && <label className="qb-picker-search" htmlFor={searchId}><Glyph name="search" /><input id={searchId} type="search" autoComplete="off" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={field === "catalogue" ? "Caută o întrebare, de exemplu: relații, risc, evoluție…" : field === "county" ? "Caută județul" : "Scrie pentru a căuta…"} aria-label={field === "catalogue" ? "Caută în cele 13 întrebări" : FIELDS[field].title} /></label>}{field === "focal" && <div className="qb-role-switch" aria-label="Tipul entității"><button type="button" aria-pressed={pickRole === "authority"} onClick={() => setPickRole("authority")}>Instituție</button><button type="button" aria-pressed={pickRole === "supplier"} onClick={() => setPickRole("supplier")}>Firmă</button></div>}<span className="qb-search-status" role="status">{showsSearch && loading ? "Caut în date…" : ""}</span><div className="qb-picker-content" aria-busy={!!showsSearch && loading}>{showsSearch && loading ? <><p className="qb-loading" aria-hidden="true">Caut în date…</p><div className="qb-search-skeleton" aria-hidden="true">{[0, 1, 2, 3].map((row) => <div key={row}><span /><span /></div>)}</div></> : <>{loadError && <p className="qb-load-error" role="status">Sugestiile nu sunt disponibile acum. Poți încerca din nou sau folosi un nume complet.</p>}{pickerBody()}</>}</div><div className="qb-picker-footer"><Glyph name="fact_check" />{field === "catalogue" ? "Fiecare întrebare păstrează legătura cu înregistrările-sursă." : "Alegerea modifică întrebarea. Răspunsul se schimbă când o aplici."}</div></>}
+      {field && <><div className="qb-picker-head"><h2 id={dialogTitleId}>{FIELDS[field].title}</h2><button className="qb-dialog-close" type="button" onClick={closePicker} aria-label="Închide"><Glyph name="close" /></button></div><p className="qb-picker-note">{field === "catalogue" && catalogueTab === "saved" ? "Întrebările tale, cu filtrele păstrate. Cele mai recent salvate apar primele." : FIELDS[field].note}</p>{field === "catalogue" && <div className="cq-catalogue-tabs" role="tablist" aria-label="Alege o întrebare">{(["models", "saved"] as const).map(tab => <button key={tab} type="button" role="tab" id={`${catalogueId}-${tab}`} aria-selected={catalogueTab === tab} aria-controls={`${catalogueId}-panel`} tabIndex={catalogueTab === tab ? 0 : -1} onClick={() => { setCatalogueTab(tab); setSearch(""); }} onKeyDown={event => { if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) { event.preventDefault(); const next = event.key === "Home" ? "models" : event.key === "End" ? "saved" : tab === "models" ? "saved" : "models"; setCatalogueTab(next); setSearch(""); document.getElementById(`${catalogueId}-${next}`)?.focus(); } }}>{tab === "models" ? "Modele de întrebări" : "Salvate"}</button>)}</div>}{showsSearch && <label className="qb-picker-search" htmlFor={searchId}><Glyph name="search" /><input id={searchId} type="search" autoComplete="off" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={field === "catalogue" ? catalogueTab === "saved" ? "Caută în întrebările salvate…" : "Caută o întrebare, de exemplu: relații, risc, evoluție…" : field === "county" ? "Caută județul" : "Scrie pentru a căuta…"} aria-label={field === "catalogue" ? catalogueTab === "saved" ? "Caută în întrebările salvate" : "Caută în cele 13 întrebări" : FIELDS[field].title} /></label>}{field === "focal" && <div className="qb-role-switch" aria-label="Tipul entității"><button type="button" aria-pressed={pickRole === "authority"} onClick={() => setPickRole("authority")}>Instituție</button><button type="button" aria-pressed={pickRole === "supplier"} onClick={() => setPickRole("supplier")}>Firmă</button></div>}<span className="qb-search-status" role="status">{showsSearch && loading ? "Caut în date…" : ""}</span><div className="qb-picker-content" role={field === "catalogue" ? "tabpanel" : undefined} id={field === "catalogue" ? `${catalogueId}-panel` : undefined} aria-labelledby={field === "catalogue" ? `${catalogueId}-${catalogueTab}` : undefined} aria-busy={!!showsSearch && loading}>{showsSearch && loading ? <><p className="qb-loading" aria-hidden="true">Caut în date…</p><div className="qb-search-skeleton" aria-hidden="true">{[0, 1, 2, 3].map((row) => <div key={row}><span /><span /></div>)}</div></> : <>{loadError && <p className="qb-load-error" role="status">Sugestiile nu sunt disponibile acum. Poți încerca din nou sau folosi un nume complet.</p>}{pickerBody()}</>}</div><div className="qb-picker-footer"><Glyph name="fact_check" />{field === "catalogue" ? "Fiecare întrebare păstrează legătura cu înregistrările-sursă." : "Alegerea modifică întrebarea. Răspunsul se schimbă când o aplici."}</div></>}
     </dialog>
   </div>;
 }

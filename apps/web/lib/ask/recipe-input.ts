@@ -1,3 +1,4 @@
+import { normalizeRecipeTitle } from "./recipe-title";
 import { validateSpec, type AskSpec } from "./spec";
 
 export interface RecipeInput { title: string; note: string | null; spec: AskSpec; expectedVersion?: number }
@@ -11,7 +12,7 @@ export function recipeInput(raw: unknown, revision = false): RecipeInput | { err
   const spec = validateSpec(body.spec);
   if ("error" in spec) return spec;
   if (revision && (!Number.isSafeInteger(body.expectedVersion) || Number(body.expectedVersion) < 1)) return { error:"Lipsește versiunea de la care pornești. Redeschide rețeta." };
-  return { title:body.title.trim(), note:typeof body.note === "string" ? body.note.trim() || null : null, spec,
+  return { title:normalizeRecipeTitle(body.title), note:typeof body.note === "string" ? body.note.trim() || null : null, spec,
     ...(revision ? { expectedVersion:Number(body.expectedVersion) } : {}) };
 }
 export const recipeIdValid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);

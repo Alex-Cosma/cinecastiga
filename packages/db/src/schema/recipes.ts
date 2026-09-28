@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, index, integer, jsonb, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { check, index, uniqueIndex, integer, jsonb, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { appSchema } from "./app.js";
 import { authUsers } from "./auth.js";
 
@@ -12,6 +12,7 @@ export const queryRecipes = appSchema.table("query_recipes", {
   createdAt: timestamp("created_at", { withTimezone:true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone:true }).notNull().defaultNow(),
 }, t => [index("query_recipes_owner_updated_idx").on(t.ownerUserId, t.updatedAt),
+  uniqueIndex("query_recipes_owner_title_unique").on(t.ownerUserId, sql`lower(btrim(regexp_replace(${t.title}, '[[:space:]]+', ' ', 'g')))`),
   check("query_recipes_title_check", sql`length(${t.title}) between 1 and 160`),
   check("query_recipes_current_version_check", sql`${t.currentVersion} > 0`)]);
 
