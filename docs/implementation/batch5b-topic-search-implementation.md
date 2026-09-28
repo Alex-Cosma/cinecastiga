@@ -74,3 +74,7 @@ Detectorul a raportat **15 constatări**: sublinierea activă este **un fals poz
 ## Ajustare locală — conturul de focus al localității
 
 Utilizatorul a semnalat conturul portocaliu desenat în interiorul câmpului „Unde cauți?”. Stilul global de focus se aplica inputului, iar containerul avea un al doilea contur verde. Containerul preia acum conturul global (3px portocaliu, offset 4px) numai când inputul este focalizat; inputul nu mai desenează contur separat. Butonul de ștergere păstrează propriul indicator de tastatură. Verificarea locală acoperă desktop/mobil, ambele teme și Tab către ștergere; capturi în `.impeccable/review/topic-focus/`. Modificare exclusiv CSS, fără mutații de date sau deploy.
+
+## Publicare autorizată ulterior, 28 septembrie 2026
+
+Utilizatorul a cerut commit + push + deploy pentru branchul care include 5B și Radiografie B. `deploy.sh` aplică migrațiile 0039/0040 și rulează `index-topics --if-missing` înainte de înlocuirea webului. Prima pregătire folosește exclusiv datele publice deja existente în producție; la eșec, tranzacția revine și vechea aplicație rămâne pornită. Pe deploy-urile ulterioare se păstrează indexul publicat. Stările locale istorice de mai sus nu descriu rezultatul acestui release; vezi documentul lansării pentru confirmarea efectivă.

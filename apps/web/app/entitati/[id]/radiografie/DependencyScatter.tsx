@@ -1,311 +1,79 @@
 "use client";
-
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import type { DepRow } from "@/lib/radiografie";
 import { shortName } from "@/lib/radiografie-fmt";
-import { useRxTip, fmtM, pct } from "./RxTip";
-
-const W = 2320,
-  H = 1200,
-  M = { l: 110, r: 60, t: 60, b: 110 };
-const XMIN = Math.log10(0.0007),
-  XMAX = Math.log10(0.1);
-const X = (v: number) => M.l + ((Math.log10(Math.max(v, 0.0007)) - XMIN) / (XMAX - XMIN)) * (W - M.l - M.r);
-const Y = (v: number) => M.t + ((1.04 - v) / 1.08) * (H - M.t - M.b);
-const R = (v: number) => 6 + Math.sqrt(v / 1e6) * 3.2;
-// Theme colours read from the CSS tokens at draw time so the canvas follows
-// light/dark like the rest of the page.
-const C = { red: "#c0311c", gold: "#a86f12", slate: "#6d7a90", ink: "#11161f", muted: "#5d6879", grid: "#dfe3ea", surface: "#ffffff", accent: "#11161f" };
-function syncTheme() {
-  if (typeof window === "undefined") return;
-  const cs = getComputedStyle(document.documentElement);
-  const v = (n: string, d: string) => cs.getPropertyValue(n).trim() || d;
-  C.red = v("--risk", C.red); C.gold = v("--amber", C.gold); C.slate = v("--slate", C.slate);
-  C.ink = v("--ink", C.ink); C.muted = v("--muted", C.muted); C.grid = v("--line", C.grid);
-  C.surface = v("--surface", C.surface); C.accent = v("--ink", C.accent);
-}
-
-function colorOf(p: DepRow): string | null {
-  if (p.ratio == null) return null;
-  return p.ratio > 2 ? C.red : p.ratio >= 0.7 ? C.gold : C.slate;
-}
-
-/**
- * "Cine trăiește din primărie?" — every supplier over the floor as a bubble:
- * x = share of the authority's contract spend (log), y = share of the firm's
- * whole SEAP life, size = lei here, colour = contracted ÷ invoiced over the
- * years the contracts cover.
- */
-export default function DependencyScatter({ rows, win, authorityName }: { rows: DepRow[]; win: { from: number; to: number }; authorityName: string }) {
-  const ref = useRef<HTMLCanvasElement>(null);
-  const [hl, setHl] = useState<string | null>(null);
-  const [themeTick, setThemeTick] = useState(0);
-  const tip = useRxTip();
-  useEffect(() => {
-    const on = () => setThemeTick((t) => t + 1);
-    window.addEventListener("themechange", on);
-    return () => window.removeEventListener("themechange", on);
-  }, []);
-
-  useEffect(() => {
-    const onFocus = (e: Event) => {
-      const d = (e as CustomEvent<{ go: string; supplierId?: string }>).detail;
-      if (d.go === "dep" && d.supplierId) setHl(d.supplierId);
+import { formatRon, formatInt } from "@/lib/format";
+import { INITIAL_ZOOM, boundZoom, zoomAt, fold, percent } from "@/lib/radiografie-view";
+import EvidenceDrawer from "@/app/intreaba/EvidenceDrawer";
+export default function DependencyScatter({ rows, win, authorityName, authorityId, floor }: {
+    rows: DepRow[];
+    win: {
+        from: number;
+        to: number;
     };
-    window.addEventListener("rx-focus", onFocus);
-    return () => window.removeEventListener("rx-focus", onFocus);
-  }, []);
-
-  useEffect(() => {
-    const cv = ref.current;
-    if (!cv) return;
-    const ctx = cv.getContext("2d");
-    if (!ctx) return;
-    syncTheme();
-    ctx.clearRect(0, 0, W, H);
-    const font = "IBM Plex Sans, -apple-system, Segoe UI, Roboto, sans-serif";
-    ctx.strokeStyle = C.grid;
-    ctx.lineWidth = 2;
-    ctx.fillStyle = C.muted;
-    ctx.font = `22px ${font}`;
-    ctx.textAlign = "center";
-    for (const v of [0.001, 0.003, 0.01, 0.03, 0.1]) {
-      const x = X(v);
-      ctx.beginPath();
-      ctx.moveTo(x, M.t);
-      ctx.lineTo(x, H - M.b);
-      ctx.stroke();
-      ctx.fillText(pct(v), x, H - M.b + 34);
-    }
-    ctx.textAlign = "right";
-    for (const v of [0, 0.25, 0.5, 0.75, 1]) {
-      const y = Y(v);
-      ctx.beginPath();
-      ctx.moveTo(M.l, y);
-      ctx.lineTo(W - M.r, y);
-      ctx.stroke();
-      ctx.fillText(pct(v), M.l - 14, y + 8);
-    }
-    ctx.textAlign = "center";
-    ctx.fillStyle = C.ink;
-    ctx.font = `600 22px ${font}`;
-    ctx.fillText("din tot ce a cheltuit autoritatea →", (M.l + W - M.r) / 2, H - M.b + 78);
-    ctx.save();
-    ctx.translate(34, (M.t + H - M.b) / 2);
-    ctx.rotate(-Math.PI / 2);
-    ctx.fillText("din tot ce a câștigat firma pe SEAP →", 0, 0);
-    ctx.restore();
-    ctx.font = `italic 20px ${font}`;
-    ctx.fillStyle = C.muted;
-    ctx.globalAlpha = 0.6;
-    ctx.textAlign = "left";
-    ctx.fillText("trăiesc din această autoritate", M.l + 16, M.t + 30);
-    ctx.textAlign = "right";
-    ctx.fillText("capturați reciproc", W - M.r - 16, M.t + 30);
-    ctx.fillText("furnizori mari, clienți mulți", W - M.r - 16, H - M.b - 16);
-    ctx.textAlign = "left";
-    ctx.fillText("ocazionali", M.l + 16, H - M.b - 16);
-    ctx.globalAlpha = 1;
-
-    const order = [...rows].sort((a, b) => b.here - a.here);
-    for (const p of order) {
-      const x = X(p.shareHere),
-        y = Y(p.shareLife),
-        r = R(p.here),
-        c = colorOf(p);
-      ctx.beginPath();
-      ctx.arc(x, y, r, 0, Math.PI * 2);
-      if (c) {
-        ctx.fillStyle = c;
-        ctx.globalAlpha = 0.82;
-        ctx.fill();
-        ctx.globalAlpha = 1;
-        ctx.strokeStyle = C.surface;
-        ctx.lineWidth = 2.5;
-        ctx.stroke();
-      } else {
-        ctx.strokeStyle = C.slate;
-        ctx.lineWidth = 3;
-        ctx.stroke();
-      }
-      if (hl === p.id) {
-        ctx.strokeStyle = C.accent;
-        ctx.lineWidth = 6;
-        ctx.stroke();
-      }
-    }
-    // labels: top five by value, the highly dependent, the highlighted; no collisions
-    ctx.font = `600 19px ${font}`;
-    ctx.fillStyle = C.ink;
-    ctx.textAlign = "left";
-    const top5 = order.slice(0, 5);
-    const cand = rows
-      .filter((p) => top5.includes(p) || (p.shareLife > 0.75 && p.here > 30e6) || hl === p.id)
-      .sort((a, b) => Number(hl === b.id) - Number(hl === a.id) || b.here - a.here);
-    const placed: { x: number; y: number; w: number }[] = [];
-    for (const p of cand) {
-      const n = shortName(p.name).slice(0, 24);
-      const w = ctx.measureText(n).width;
-      let x = X(p.shareHere) + R(p.here) + 6;
-      const y = Y(p.shareLife) + 6;
-      if (x + w > W - 12) x = X(p.shareHere) - R(p.here) - 6 - w;
-      if (hl !== p.id && placed.some((q) => Math.abs(q.y - y) < 26 && x < q.x + q.w + 10 && x + w > q.x - 10)) continue;
-      placed.push({ x, y, w });
-      ctx.strokeStyle = C.surface;
-      ctx.lineWidth = 6;
-      ctx.strokeText(n, x, y);
-      ctx.fillText(n, x, y);
-    }
-  }, [rows, hl, themeTick]);
-
-  const locate = (e: React.MouseEvent): DepRow | null => {
-    const cv = ref.current;
-    if (!cv) return null;
-    const b = cv.getBoundingClientRect();
-    const mx = ((e.clientX - b.left) * W) / b.width,
-      my = ((e.clientY - b.top) * H) / b.height;
-    let best: DepRow | null = null,
-      bd = 1e9;
-    for (const p of rows) {
-      const d = Math.hypot(X(p.shareHere) - mx, Y(p.shareLife) - my) - R(p.here);
-      if (d < bd && d < 12) {
-        bd = d;
-        best = p;
-      }
-    }
-    return best;
-  };
-
-  const card = (p: DepRow) => {
-    const cls = p.ratio == null ? "s" : p.ratio > 2 ? "r" : p.ratio >= 0.7 ? "g" : "s";
-    const c = p.cFrame + p.cPlain;
-    const mx = Math.max(c, p.turnWin ?? 0) || 1;
-    const y0 = p.yrs[0],
-      y1 = p.yrs[p.yrs.length - 1];
-    return (
-      <>
-        <div className="hd">
-          <b>{shortName(p.name)}</b>
-          <small>
-            {p.county ?? ""}
-            {p.foreign ? " · străin" : ""}
-          </small>
-        </div>
-        <div className="two">
-          <div className="g">
-            <div className="l">
-              <span>din cheltuiala autorității</span>
-              <b>{pct(p.shareHere)}</b>
-            </div>
-            <div className="bar">
-              <i style={{ width: `${Math.min(100, (p.shareHere * 100) / 0.1)}%` }} />
-            </div>
-          </div>
-          <div className="g">
-            <div className="l">
-              <span>din tot ce a câștigat pe SEAP</span>
-              <b>{pct(p.shareLife)}</b>
-            </div>
-            <div className="bar">
-              <i style={{ width: `${Math.round(p.shareLife * 100)}%` }} />
-            </div>
-          </div>
-        </div>
-        <div className="foot num">
-          {fmtM(p.here)} lei de aici · {p.n} contracte · {p.nAuth} {p.nAuth === 1 ? "client" : "clienți"} în total
-        </div>
-        <div className="sep" />
-        <div className="cap">
-          <div className="l" style={{ opacity: 0.75 }}>
-            <span>
-              contracte semnate {win.from}–{win.to}
-            </span>
-            <span />
-            <span className="num">{c ? fmtM(c) : "—"}</span>
-          </div>
-          <div className="l">
-            <span>valoare contractată</span>
-            <div className="bar">
-              <i style={{ width: `${Math.round((c / mx) * 100)}%` }} />
-            </div>
-            <b className="num">{c ? fmtM(c) : "—"}</b>
-          </div>
-          <div className="l">
-            <span>cifră de afaceri {y0 != null ? `${y0}–${y1}` : ""}</span>
-            <div className="bar">
-              <i style={{ width: `${Math.round(((p.turnWin ?? 0) / mx) * 100)}%`, opacity: 0.45 }} />
-            </div>
-            <b className="num">{p.turnWin ? fmtM(p.turnWin) : "—"}</b>
-          </div>
-          <div style={{ fontSize: 11, marginTop: 4 }}>
-            {p.ratio != null ? (
-              <>
-                contractează <b>{p.ratio.toFixed(1).replace(".", ",")}×</b> cifra de afaceri
-                <span className={`chip ${cls}`}>{p.ratio > 2 ? "peste 2×" : p.ratio >= 0.7 ? "0,7–2×" : "sub 0,7×"}</span>
-              </>
-            ) : c > 0 ? (
-              "fără bilanț pe anii acoperiți"
-            ) : (
-              `fără contracte semnate în ${win.from}–${win.to}`
-            )}
-          </div>
-          {c > 0 && (
-            <div style={{ fontSize: 10.5, opacity: 0.65, marginTop: 3 }}>
-              {p.cFrame
-                ? p.cPlain
-                  ? `din care acorduri-cadru ${fmtM(p.cFrame)}, plafon pe până la 4 ani`
-                  : "toate acorduri-cadru: valoarea e un plafon pe până la 4 ani, comparat cu cifra de afaceri din acei ani"
-                : "contracte simple, comparate cu cifra de afaceri din anul semnării"}
-              {p.nyWin < p.yrs.length ? ` · bilanț pe ${p.nyWin} din ${p.yrs.length} ani` : ""}
-            </div>
-          )}
-        </div>
-        <div className="sep" />
-        <div className="foot num">
-          ofertant unic: {p.nk ? `${p.ns} din ${p.nk} cunoscute` : "—"}
-          {p.n - p.nk ? ` · ${p.n - p.nk} nepublicate` : ""}
-        </div>
-        <div className="act">click → profil</div>
-      </>
-    );
-  };
-
-  return (
-    <div className="rx-panel" id="rx-dep">
-      <canvas
-        ref={ref}
-        width={W}
-        height={H}
-        className="rx-canvas"
-        aria-label={`Furnizorii ${authorityName}: dependență reciprocă`}
-        onMouseMove={(e) => {
-          const p = locate(e);
-          (e.currentTarget as HTMLCanvasElement).style.cursor = p ? "pointer" : "default";
-          if (p) tip.show(card(p), e, true);
-          else tip.hide();
-        }}
-        onMouseLeave={tip.hide}
-        onClick={(e) => {
-          const p = locate(e);
-          if (p) window.open(`/entitati/${p.id}`, "_blank");
-        }}
-      />
-      <div className="rx-legend">
-        <span>
-          <i className="sw" style={{ background: C.red }} /> contractează peste 2× cifra de afaceri
-        </span>
-        <span>
-          <i className="sw" style={{ background: C.gold }} /> 0,7–2×
-        </span>
-        <span>
-          <i className="sw" style={{ background: C.slate }} /> sub 0,7×
-        </span>
-        <span>
-          <i className="sw" style={{ borderColor: C.slate }} /> fără bilanț sau fără contracte {win.from}–{win.to}
-        </span>
-        <span>mărime = lei de aici · click → profil</span>
-      </div>
-      {tip.el}
-    </div>
-  );
+    authorityName: string;
+    authorityId: string;
+    floor: number;
+}) {
+    const [query, setQuery] = useState(""), [limit, setLimit] = useState(12), [selected, setSelected] = useState(rows[0]?.id ?? ""), [zoom, setZoom] = useState(INITIAL_ZOOM), [sources, setSources] = useState(false), [tablePage, setTablePage] = useState(0);
+    const viewport = useRef<HTMLDivElement>(null), detail = useRef<HTMLElement>(null), zoomRef = useRef(zoom);
+    zoomRef.current = zoom;
+    const drag = useRef<{
+        id: number;
+        cx: number;
+        cy: number;
+        x: number;
+        y: number;
+        w: number;
+        h: number;
+        moved: boolean;
+    } | null>(null), suppressClick = useRef(0);
+    const shown = useMemo(() => rows.filter(s => fold(s.name).includes(fold(query))).slice(0, limit), [rows, query, limit]);
+    const p = shown.find(s => s.id === selected) ?? shown[0], maxX = Math.max(.02, ...shown.map(s => s.shareHere)) * 1.14;
+    const X = (v: number) => 62 + (v / maxX - zoom.x) * zoom.k * 613, Y = (v: number) => 68 + (1 - v - zoom.y) * zoom.k * 250, R = (v: number) => Math.min(24, 5 + Math.sqrt(Math.max(0, v) / 1e6) * .25);
+    const points = shown.filter(s => X(s.shareHere) >= 61.99 && X(s.shareHere) <= 675.01 && Y(s.shareLife) >= 67.99 && Y(s.shareLife) <= 318.01);
+    function magnify(factor: number) { const x = Math.max(0, Math.min(1, ((p?.shareHere ?? maxX / 2) / maxX - zoom.x) * zoom.k)), y = Math.max(0, Math.min(1, (1 - (p?.shareLife ?? .5) - zoom.y) * zoom.k)); setZoom(zoomAt(zoom, factor, x, y)); }
+    useEffect(() => { const el = viewport.current; if (!el)
+        return; const wheel = (event: WheelEvent) => { if (!event.ctrlKey && !event.metaKey)
+        return; event.preventDefault(); const b = el.getBoundingClientRect(); setZoom(z => zoomAt(z, Math.exp(-event.deltaY * .003), Math.max(0, Math.min(1, ((event.clientX - b.left) / b.width * 700 - 62) / 613)), Math.max(0, Math.min(1, ((event.clientY - b.top) / b.height * 370 - 68) / 250)))); }; el.addEventListener("wheel", wheel, { passive: false }); return () => el.removeEventListener("wheel", wheel); }, [shown.length]);
+    function select(id: string) { if (Date.now() < suppressClick.current)
+        return; setSelected(id); if (matchMedia("(max-width:760px)").matches) {
+        detail.current?.scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion:reduce)").matches ? "instant" : "smooth" });
+        detail.current?.focus({ preventScroll: true });
+    } }
+    function endDrag(e: React.PointerEvent<HTMLDivElement>) { if (drag.current?.moved)
+        suppressClick.current = Date.now() + 250; if (e.currentTarget.hasPointerCapture(e.pointerId))
+        e.currentTarget.releasePointerCapture(e.pointerId); drag.current = null; }
+    const page = Math.min(tablePage, Math.max(0, Math.ceil(shown.length / 10) - 1));
+    return <><div className="rv-toolbar"><label>Caută un furnizor<input type="search" value={query} placeholder="Nume de firmă…" onChange={e => { setQuery(e.target.value); setZoom(INITIAL_ZOOM); setTablePage(0); }}/></label><label>Furnizori afișați<select value={limit} onChange={e => { setLimit(Number(e.target.value)); setZoom(INITIAL_ZOOM); setTablePage(0); }}><option value={12}>Primii 12 după valoare</option><option value={25}>Primii 25 după valoare</option><option value={150}>Toți cei {rows.length} din selecție</option></select></label></div>
+ {!p ? <div className="rv-empty"><h2>{rows.length ? "Niciun furnizor găsit" : "Niciun furnizor peste pragul de afișare"}</h2><p>Prag: {formatRon(floor)}. Lipsa din selecție nu confirmă absența unei probleme.</p>{query && <button onClick={() => setQuery("")}>Șterge căutarea</button>}</div> : <>
+ <section className="rv-workspace"><div className="rv-workspace-heading"><h2>Cât de strânsă este relația?</h2><p>Selectează un furnizor. Valorile și sursele rămân alături de grafic.</p></div><div className="rv-split"><div><div className="rv-dependency-chart">
+ <div className="rv-zoom"><span>Explorează graficul</span><div><button aria-label="Micșorează graficul" disabled={zoom.k <= 1} onClick={() => magnify(1 / 1.6)}>−</button><output aria-live="polite">{zoom.k.toLocaleString("ro-RO", { maximumFractionDigits: 1 })}×</output><button aria-label="Mărește graficul" disabled={zoom.k >= 12} onClick={() => magnify(1.6)}>+</button><button onClick={() => setZoom(INITIAL_ZOOM)}>Resetează</button></div></div>
+ <div ref={viewport} className="rv-viewport" tabIndex={0} role="group" aria-label="Grafic furnizori. Plus și minus pentru zoom, săgeți pentru deplasare, zero pentru resetare." onKeyDown={e => { if (e.target !== e.currentTarget)
+            return; if (["+", "=", "-", "0", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
+            e.preventDefault();
+            if (e.key === "0")
+                setZoom(INITIAL_ZOOM);
+            else if (["+", "=", "-"].includes(e.key))
+                magnify(e.key === "-" ? 1 / 1.6 : 1.6);
+            else
+                setZoom(z => boundZoom({ ...z, x: z.x + (e.key === "ArrowRight" ? .12 : e.key === "ArrowLeft" ? -.12 : 0) / z.k, y: z.y + (e.key === "ArrowDown" ? .12 : e.key === "ArrowUp" ? -.12 : 0) / z.k }));
+        } }} onPointerDown={e => { if (e.button !== 0)
+            return; const b = e.currentTarget.getBoundingClientRect(); drag.current = { id: e.pointerId, cx: e.clientX, cy: e.clientY, x: zoom.x, y: zoom.y, w: b.width * 613 / 700, h: b.width * 250 / 700, moved: false }; }} onPointerMove={e => { const d = drag.current; if (!d || d.id !== e.pointerId)
+            return; const dx = e.clientX - d.cx, dy = e.clientY - d.cy; if (!d.moved && Math.hypot(dx, dy) < 5)
+            return; d.moved = true; e.currentTarget.setPointerCapture(e.pointerId); setZoom(boundZoom({ ...zoomRef.current, x: d.x - dx / d.w / zoomRef.current.k, y: d.y - dy / d.h / zoomRef.current.k })); }} onPointerUp={endDrag} onPointerCancel={endDrag}>
+ <svg viewBox="0 0 700 370" role="group" aria-label={`Furnizorii ${authorityName}`}><defs><clipPath id="rv-supplier-clip"><rect x="37" y="43" width="663" height="300"/></clipPath></defs>
+ {[0, .25, .5, .75, 1].map(t => <g key={t}><line className="rv-grid" x1={62} x2={675} y1={68 + t * 250} y2={68 + t * 250}/><text className="rv-axis" x={50} y={72 + t * 250} textAnchor="end">{percent(Math.max(0, 1 - zoom.y - t / zoom.k))}</text><text className="rv-axis" x={62 + t * 613} y={342} textAnchor="middle">{percent((zoom.x + t / zoom.k) * maxX)}</text></g>)}
+ <text className="rv-chart-label" x={62} y={17}>Autoritatea în contractele publice ale firmei</text><text className="rv-axis" x={350} y={367} textAnchor="middle">Furnizorul în valoarea contractelor autorității</text><g clipPath="url(#rv-supplier-clip)">{points.map(s => <g key={s.id} className={`rv-point ${p.id === s.id ? "selected" : ""}`} role="button" tabIndex={0} aria-pressed={p.id === s.id} aria-label={`${s.name}, ${percent(s.shareLife)} din portofoliul public`} onClick={() => select(s.id)} onKeyDown={e => { if (["Enter", " "].includes(e.key)) {
+            e.preventDefault();
+            select(s.id);
+        } }}><circle cx={X(s.shareHere)} cy={Y(s.shareLife)} r={R(s.here)}/><title>{`${s.name} · ${percent(s.shareHere)} din autoritate · ${percent(s.shareLife)} din portofoliul public`}</title>{p.id === s.id && <text className="rv-point-label" x={Math.min(470, Math.max(62, X(s.shareHere) - 60))} y={Y(s.shareLife) > 258 ? Y(s.shareLife) - R(s.here) - 10 : Y(s.shareLife) + R(s.here) + 20}>{shortName(s.name).slice(0, 30)}</text>}</g>)}</g></svg></div>
+ <p className="rv-small">Ctrl / ⌘ + scroll pentru zoom · trage pentru deplasare · click pentru detalii</p><p className="rv-small">{points.length} din {shown.length} furnizori în zona vizibilă. Mărimea cercului indică valoarea alocată.</p><p className="rv-note">Axa verticală privește contractele publice observate. Un procent mare nu înseamnă că firma nu are clienți privați.</p></div>
+ <div className="rv-supplier-mobile"><p className="rv-small">Procentul arată ponderea acestei autorități în contractele publice ale firmei.</p>{shown.map(s => <button key={s.id} aria-pressed={p.id === s.id} onClick={() => select(s.id)}><span>{shortName(s.name)}<small>{formatRon(s.here)} alocați</small></span><strong>{percent(s.shareLife)}</strong></button>)}</div></div>
+ <aside ref={detail} tabIndex={-1} className="rv-selection" aria-live="polite"><p className="rv-small">Contracte în relație · {p.y0}–{p.y1}</p><h3><Link href={`/entitati/${p.id}`} target="_blank" rel="noopener">{shortName(p.name)}</Link></h3><dl><div><dt>Valoare alocată din contracte</dt><dd>{formatRon(p.here)}</dd></div><div><dt>Din valoarea contractelor autorității</dt><dd>{percent(p.shareHere)}</dd></div><div><dt>Autoritatea în portofoliul public al firmei</dt><dd>{percent(p.shareLife)}</dd></div><div><dt>Contracte în relație</dt><dd>{formatInt(p.n)}</dd></div></dl><p className="rv-small">Cotele asocierilor sunt estimate prin împărțire egală când participația reală nu este cunoscută. Valorile nu sunt plăți.</p><button className="rv-primary" onClick={() => setSources(true)}>Verifică relația în contracte</button>
+ <details className="rv-details"><summary>Context financiar și concurență</summary><p>În {win.from}–{win.to}: {formatRon(p.cFrame + p.cPlain)} valoare alocată. Cifra de afaceri cumulată pentru anii acoperiți: {p.turnWin == null ? "necunoscută" : formatRon(p.turnWin)}; bilanț disponibil în {p.nyWin} din {p.yrs.length} ani.</p><p>Contractele simple sunt comparate cu anul semnării; acordurile-cadru ({formatRon(p.cFrame)}) cu până la patru ani. Execuția și recunoașterea veniturilor pot avea alte perioade.</p><p>Ofertant unic: {p.ns} din {p.nk} contracte cu date cunoscute; {Math.max(0, p.n - p.nk)} fără date. {p.nAuth} autorități în portofoliul public observat.</p></details></aside></div></section>
+ <div className="rv-ranking"><h2>Aceeași relație, în cifre</h2><div className="rv-table-scroll" tabIndex={0} role="region" aria-label="Indicatorii furnizorilor"><table><thead><tr><th>Furnizor</th><th>Valoare alocată</th><th>Din autoritate</th><th>Autoritatea în portofoliul public</th></tr></thead><tbody>{shown.slice(page * 10, page * 10 + 10).map(s => <tr key={s.id} className={p.id === s.id ? "selected" : ""}><td><button onClick={() => select(s.id)}>{shortName(s.name)}</button></td><td>{formatRon(s.here)}</td><td>{percent(s.shareHere)}</td><td>{percent(s.shareLife)}</td></tr>)}</tbody></table></div><nav className="rv-pager" aria-label="Paginarea furnizorilor"><button disabled={page === 0} onClick={() => setTablePage(page - 1)}>Anterior</button><span>Pagina {page + 1} din {Math.max(1, Math.ceil(shown.length / 10))}</span><button disabled={(page + 1) * 10 >= shown.length} onClick={() => setTablePage(page + 1)}>Următor</button></nav></div></>}
+ <p className="rv-note">Selecția include cel mult 150 de furnizori cu valoare alocată de cel puțin {formatRon(floor)}. Întregul istoric disponibil; datele pot avea lacune.</p>
+ {sources && p && <EvidenceDrawer title={`Contractele relației · ${p.name}`} spec={{ block: "fact_check", dataset: "contracts", measure: "value", filters: { authorityId: Number(authorityId), supplierId: Number(p.id) } }} onClose={() => setSources(false)}/>}</>;
 }

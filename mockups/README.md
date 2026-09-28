@@ -1,4 +1,8 @@
+Implementare locală nouă: varianta B a [radiografiei](radiografie/README.md) a fost integrată în aplicație; [detalii și verificări](../docs/implementation/radiografie-b-implementation.md). Mockupurile de mai jos rămân referințe separate.
+
 # cinecâștigă? — Sunt banii tăi.
+
+**New: Radiografie CNAIR — [A: pornești de la o pistă](radiografie/a/) / [B: explorezi vizual](radiografie/b/).** Two separate functional mockups using the same real local public data. [Walkthrough, local server and data scope](radiografie/README.md). User comparison pending; no application replacement or deploy.
 
 **New: [5B — Caută un subiect](topic-search/index.html).** Search procurement titles, document passages and entities; open the exact page and preserve a quote in a local demo investigation. [Walkthrough](topic-search/README.md). All examples are fictional.
 

@@ -34,8 +34,9 @@ Cloudflare poate trata diferit User-Agent-urile: o cerere Python fără antete a
 2. Actualizează checkout-ul la origin/main; workspace-ul serverului nu este loc de modificări nesalvate.
 3. Construiește imaginile web/migrate/documents/processor și collection dacă profilul este deja activ.
 4. Aplică migrațiile cu istoric verificat și granturi. Eroarea oprește înaintea înlocuirii aplicației.
-5. Repornește serviciile necesare; păstrează PostgreSQL, Meilisearch și Caddy.
-6. Raportează commit-ul deploy-at. Imaginea neschimbată a collectorului poate rămâne pornită dacă Docker nu are motiv să o recreeze.
+5. Pregătește indexul titlurilor dacă nu există încă (`index-topics --if-missing`), fără preluări SEAP. Aplicația veche servește în continuare; eroarea oprește deploy-ul înainte de restart. Indexul existent nu este reconstruit la fiecare deploy; procesarea nocturnă îl actualizează.
+6. Repornește serviciile necesare; păstrează PostgreSQL, Meilisearch și Caddy.
+7. Raportează commit-ul deploy-at. Imaginea neschimbată a collectorului poate rămâne pornită dacă Docker nu are motiv să o recreeze.
 
 Un push reușit nu dovedește deploy. Verifică ambele joburi Actions, hash-ul serverului, health, o pagină publică, autentificarea/admin și worker-ii. O schimbare exclusiv documentară poate folosi `[skip ci]`; nu folosi asta pentru cod sau migrații.
 

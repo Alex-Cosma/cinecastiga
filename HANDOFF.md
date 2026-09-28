@@ -1,3 +1,24 @@
+## 2026-09-28 — Publicare autorizată: Radiografie B + căutare 5B
+
+Utilizatorul a cerut explicit commit + push + deploy pentru starea curentă. Release-ul include commitul anterior `76938d1` (căutare de subiecte și paginarea profilului), noua radiografie, mockupurile și documentarea aferente. Deploy-ul pregătește acum proiecția titlurilor dacă lipsește (`index-topics --if-missing`) după migrare și înainte de schimbarea webului; o eroare păstrează aplicația veche. Rulările ulterioare păstrează indexul publicat; refreshul rămâne în procesarea nocturnă. Acest pas nu preia date SEAP și nu recalculează riscul. Starea efectivă a lansării: [release Radiografie + căutare](docs/implementation/release-20260928-radiografie-search.md).
+
+## 2026-09-28 — Radiografie B implementată în aplicație, local
+
+Varianta B aleasă de utilizator este integrată la `/entitati/[id]/radiografie`, inclusiv zoom/pan/reset Furnizori, matrice CPV/perioadă cu 8 proceduri/pagină, achiziții directe compacte și surse exacte în drawer. Se folosesc datele reale ale aplicației, nu snapshotul mockupului. Detalii, limite și verificări: [implementarea radiografiei B](docs/implementation/radiografie-b-implementation.md). Branch `work/topic-search`; fără commit/push/deploy pentru această etapă. Notele mai vechi despre „neintegrat” sunt depășite.
+
+Testele relevante (44), TypeScript și buildul sunt verificate local. S-a corectat și hidratarea meniului comun de autentificare, diagnosticată în testarea buildului optimizat. Nu au fost modificate riscul, schema DB, colectarea sau producția; zero cereri SEAP. PRODUCT/DESIGN rămân intacte. Review și documentare în firul principal, limita agenților a împiedicat delegarea. Mockupurile A/B de pe 3112 rămân pentru referință. Portul 3000 servește acum buildul optimizat verificat din `/tmp/seap-radiografie-verified-20260928`, fără HMR; dev3115 este oprit. Vezi documentul implementării pentru revenirea la dev.
+
+## Radiografie CNAIR — B aleasă, mockup ajustat (28.09.2026)
+
+Utilizatorul preferă B. Mockupul http://127.0.0.1:3112/radiografie/b/ are acum zoom 1–12× (+/−, Ctrl/⌘-scroll, drag, reset, tastatură) la Furnizori; Achiziții directe are selector compact, statistici într-un rând și grafic mai scund/adaptat mobilului. Sursele sunt intacte; verificări browser trecute, zero erori JS. Detalii în `mockups/radiografie/README.md`. Review/documentare în același fir deoarece limita agenților a blocat delegarea; verdict la scopul mockupului în `.impeccable/review/radiografie-b-refine/review.md`. Nicio integrare în aplicație, commit/push/deploy sau cerere SEAP în acest pas.
+
+## 2026-09-28 — Radiografie CNAIR: două mockupuri pentru comparație
+
+- [A — piste de verificat](http://127.0.0.1:3112/radiografie/a/) și [B — explorare vizuală](http://127.0.0.1:3112/radiografie/b/) sunt separate, funcționale și folosesc același snapshot public real din baza locală. [Instrucțiuni și limite](mockups/radiografie/README.md). Utilizatorul nu a ales încă varianta; radiografia aplicației nu a fost înlocuită.
+- A: șapte surse VALURO / 532.200 lei, 30 contracte OYL din șase proceduri și explicația cotei estimate ESTA. B: 150 furnizori, 37 familii CPV, matrice paginată și șapte grupuri de achiziții directe, cu surse exacte.
+- Browser local 1440/390 px, light/dark: fără erori JS sau overflow; surse, sume, tastatură, filtre și paginare verificate. [Review independent](.impeccable/review/radiografie-mock/review.md): `ship` la scopul comparației locale; două observații neblocante pentru B pe mobil. Canonul PRODUCT/DESIGN/design.json este păstrat.
+- Server mockup 3112; linkurile aplicației folosesc 3000. Doar tema persistă local. Fără date private, cereri SEAP, ingestie, scrieri DB, modificări ale aplicației, commit/push/deploy pentru acest mockup. Aplicația locală și commitul anterior `76938d1` de pe `work/topic-search` au scop separat.
+
 ## 2026-09-28 — 5B implementat local pentru testare
 
 - Autorizare actualizată: utilizatorul a cerut commit pentru toate modificările de până acum; fără push/deploy. Commit local pe branch `work/topic-search`; mockupul anterior rămâne păstrat. Notele istorice despre un mockup neimplementat sunt depășite de această secțiune.
