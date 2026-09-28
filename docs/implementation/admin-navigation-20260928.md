@@ -23,3 +23,9 @@ Seven synthetic production-build captures are in `.impeccable/review/admin-navig
 The implementation handoff reports 252 unit tests, two real PostgreSQL integration tests, passing types and production build, and a read-only production EXPLAIN taking 424.711 ms. These results are supplied verification evidence; the independent visual reviewer did not rerun them.
 
 The [finish review](previews/admin-navigation/finish-review.md) records final **ship** after the sole mobile email measure correction. Refreshed light and dark phone captures show long addresses using the row width, with actions and pagination retained. The production preview was rebuilt and the 24 browser checks passed again, according to the implementation handoff. Deployment is pending at this documentation handoff.
+
+## Release verification
+
+Application commit `332e577` is committed and pushed on main. [Actions36397323757](https://github.com/Alex-Cosma/seap-new/actions/runs/36397323757) completed CI and deployment successfully; the server checkout matched the release. Public home and health return200; all five anonymous admin routes redirect to login, and the collection statusAPI returns403. At11:28:40 Europe/Bucharest on28September, controlrevision14 remained unpaused, outside maintenance, unblocked and paced50–70seconds. Collection advanced to1553completed tasks;38163pending and17916deferred remain. This confirms continued operation, not complete source coverage. No source test requests were sent.
+
+Production probes are preserved in `previews/admin-navigation/production-verification.json`. The synthetic captures and browser verification are copied alongside it. Local preview3115 and isolated fixture database were removed; regular development3113 and mockup3112 remain untouched. This evidence-only documentation follow-up skips CI because the runtime release is already verified; it does not change the deployed application.

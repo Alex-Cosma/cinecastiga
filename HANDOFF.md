@@ -1,14 +1,14 @@
 # Continuation handoff — cinecâștigă, investigation batches and contract documents
 
-## Latest implementation — admin navigation and recovery forecast (28 September 2026)
+## Latest release — admin navigation and recovery forecast (28 September 2026)
 
 User approved the `/admin` mockup plus overall progress/approximate days and explicitly requested implementation, commit, push and deploy. Five real routes now share a persistent authenticated layout: collection, processing, files, journal, accounts. Collection/processing drafts survive route changes; Apply explicitly saves all retained changes. Account/journal pages have ten rows. Mobile navigation measures site-header height; account rows stack with full-width email cells.
 
 Recovery adds read-only metadata aggregation and per-stream known-queue bars. Overall workload/ETA requires representative samples and observed calendar throughput; deferred/failed details suppress ETA. The source collector currently has a fixed batch end date, so UI reports completion of that batch, not automatic catch-up through today. No crawler policy, source pacing, processing schedule or schema changes. Existing eForms gaps are exposed, not silently counted as collected.
 
-Validation: 252 web unit tests, two isolated PostgreSQL integration tests, types, production build and 24 authenticated browser checks passed. Seven light/dark desktop/mobile captures and verification JSON are preserved under `docs/implementation/previews/admin-navigation`. Browser fixtures use only synthetic data in local `seap_test_admin_navigation`; zero source/external requests. Read-only production forecast EXPLAIN took424.711ms. Independent finish review and release status: see `docs/implementation/admin-navigation-20260928.md` and its linked review. Deployment verification will follow the implementation commit.
+Validation: 252 web unit tests, two isolated PostgreSQL integration tests, types, production build and 24 authenticated browser checks passed. Seven light/dark desktop/mobile captures and verification JSON are preserved under `docs/implementation/previews/admin-navigation`. Browser fixtures use only synthetic data in local `seap_test_admin_navigation`; zero source/external requests. Read-only production forecast EXPLAIN took424.711ms. Independent finish review and release status: see `docs/implementation/admin-navigation-20260928.md` and its linked review. Application commit **332e577** is pushed on main and deployed; GitHub Actions **36397323757** passed CI and deploy, server HEAD matched. Public/health200, all five admin routes redirect anonymous users to login and statusAPI403. At11:28:40RO, revision14 remained unpaused, maintenancefalse, unblocked,50–70sec; complete tasks1553, pending38163, deferred17916, running1. Collection remained active; document/ingestion/scheduler heartbeats were live. This is a timestamped observation, not a future freshness claim.
 
-Ordinary local dev3113 and mockup3112 are untouched. Preview3115 and isolated fixture DB must be cleaned after final verification; no production recovery scripts should be rerun. Previous saved documentation is included with this release; older CURRENT/pending statements below are historical.
+Ordinary local dev3113 and mockup3112 are untouched. Preview3115 and isolated fixture DB were removed after verification; no production recovery scripts should be rerun. Previous saved documentation is included with this release; older CURRENT/pending statements below are historical.
 
 ## Latest hotfix — contract drawer redirect (27 September 2026)
 

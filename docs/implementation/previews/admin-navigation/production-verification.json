@@ -1,0 +1,48 @@
+{
+  "checked_at": "2026-09-28T08:29:04.774459+00:00",
+  "release": "332e577",
+  "actions_run": 36397323757,
+  "checks": [
+    {
+      "path": "/",
+      "status": 200,
+      "location": null
+    },
+    {
+      "path": "/api/health",
+      "status": 200,
+      "location": null,
+      "health": "{\"ok\":true}"
+    },
+    {
+      "path": "/admin",
+      "status": 307,
+      "location": "https://cinecastiga.ro/login"
+    },
+    {
+      "path": "/admin/procesare",
+      "status": 307,
+      "location": "https://cinecastiga.ro/login"
+    },
+    {
+      "path": "/admin/fisiere",
+      "status": 307,
+      "location": "https://cinecastiga.ro/login"
+    },
+    {
+      "path": "/admin/jurnal",
+      "status": 307,
+      "location": "https://cinecastiga.ro/login"
+    },
+    {
+      "path": "/admin/conturi",
+      "status": 307,
+      "location": "https://cinecastiga.ro/login"
+    },
+    {
+      "path": "/api/admin/collection",
+      "status": 403,
+      "location": null
+    }
+  ]
+}
