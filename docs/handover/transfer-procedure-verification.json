@@ -1,0 +1,14 @@
+{
+  "date": "2026-09-28",
+  "scope": "Isolated local schema and synthetic data; not full large archive restore",
+  "checks": [
+    "Schema-only archive restored into new isolated database",
+    "Private-user/request fixture omitted; public PDF metadata/blob/page retained",
+    "Restored control paused, scheduler disabled",
+    "All private/operational tables checked empty after restore",
+    "Existing target database rejected without overwrite",
+    "Ordinary database name seap rejected",
+    "Corrupt archive rejected before creating a database"
+  ],
+  "source_http_requests": 0
+}

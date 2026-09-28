@@ -1,5 +1,7 @@
 # ingestion
 
+> Current onboarding and operating decisions: see [the collaboration handover](../../docs/handover/README.md). This document includes historical setup/release notes; old collection rates, snapshot-only production claims and pending statuses may be superseded. Do not run historical collection/restore commands as onboarding.
+
 Scheduled worker: scrapes e-licitatie.ro (SEAP/SICAP) into the append-only
 bronze archive (`raw.raw_documents`), politely and idempotently.
 

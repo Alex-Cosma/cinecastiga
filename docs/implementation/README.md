@@ -1,5 +1,7 @@
 # Approved design in the real application
 
+> Current onboarding and operating decisions: see [the collaboration handover](../handover/README.md). This document includes historical setup/release notes; old collection rates, snapshot-only production claims and pending statuses may be superseded. Do not run historical collection/restore commands as onboarding.
+
 Implemented from the approved [complete mockup](../../mockups/cinecastiga-complete.html), using the existing Next.js application, query engine, authentication and PostgreSQL data. The mockups remain available for comparison. No database migration or deployment is required to review the local changes.
 
 ## Experience

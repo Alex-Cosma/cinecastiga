@@ -1,5 +1,7 @@
 # Production deploy (cinecastiga.ro)
 
+> Current onboarding and operating decisions: see [the collaboration handover](../../docs/handover/README.md). This document includes historical setup/release notes; old collection rates, snapshot-only production claims and pending statuses may be superseded. Do not run historical collection/restore commands as onboarding.
+
 Single netcup VPS (Debian 13, Docker), user `seap`, everything under `/srv/seap`:
 
 ```
