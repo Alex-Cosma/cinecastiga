@@ -1,3 +1,5 @@
+import {recoveryStatus} from './recovery-status';
+import type {RecoveryCounts} from './recovery-forecast';
 import { createDb, COLLECTION_STREAMS, validateCollectionSettings, processingSchedule, collectionQuietWindow, type DbSql } from '@seap/db';
 const g=globalThis as unknown as {collectionSql?:DbSql};
 const iso=(value:unknown)=>value?new Date(String(value)).toISOString():null;
@@ -27,7 +29,8 @@ export async function collectionStatus(q:DbSql=collectionDb()){
   const [scheduler]=await tx`select heartbeat_at>now()-interval '2 minutes' alive from app.collection_workers where id='nightly-scheduler'`;
   const [batch]=await tx`select id,end_day,status from app.collection_batches order by created_at desc limit 1`;
   const progress=batch?await tx`select stream,count(*) filter(where status='pending')::int pending,count(*) filter(where status='running')::int running,count(*) filter(where status='complete')::int complete,count(*) filter(where status='split')::int split,count(*) filter(where status='deferred')::int deferred,count(*) filter(where status='failed')::int failed from app.collection_tasks where batch_id=${batch.id} group by stream`:[];
-  return {timeoutRetry:timeoutRetry??null,quietWindow,recovery:batch?{batch,progress}:null,control,today:today[0]!,streams,requests,failures,workers,audit,runs,documents:documents!,raw:raw!,publication:publication[0]??null,lastVerified:lastVerified??null,processing:{runs:processingRuns,schedule:{next_at:iso(schedule.next_at),next_risk_at:iso(schedule.next_risk_at)},schedulerAlive:scheduler?.alive===true}};
+  const forecast=batch?await recoveryStatus(tx as unknown as DbSql,batch.id,progress as unknown as RecoveryCounts[],control):null;
+  return {forecast,timeoutRetry:timeoutRetry??null,quietWindow,recovery:batch?{batch,progress}:null,control,today:today[0]!,streams,requests,failures,workers,audit,runs,documents:documents!,raw:raw!,publication:publication[0]??null,lastVerified:lastVerified??null,processing:{runs:processingRuns,schedule:{next_at:iso(schedule.next_at),next_risk_at:iso(schedule.next_risk_at)},schedulerAlive:scheduler?.alive===true}};
  });
 }
 export type CollectionStatus=Awaited<ReturnType<typeof collectionStatus>>;

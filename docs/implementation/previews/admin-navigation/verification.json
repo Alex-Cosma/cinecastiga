@@ -1,0 +1,31 @@
+{
+  "checks": [
+    "Real metadata yields estimate with adequate sample",
+    "Three stream progress bars",
+    "Accounts navigation does not reload the document",
+    "Unsaved settings reminder on accounts",
+    "Accounts capped at ten rows",
+    "Back preserves draft",
+    "Settings placed in their corresponding sections",
+    "Explicit apply saves retained collection and processing drafts together",
+    "File queue is its own view",
+    "Journal capped at ten rows",
+    "Journal page preserved across routes",
+    "Deferred details suppress completion ETA",
+    "Sticky admin navigation clears site header",
+    "No collection overflow on mobile",
+    "No accounts page overflow on mobile",
+    "Anonymous rejected /admin",
+    "Anonymous rejected /admin/procesare",
+    "Anonymous rejected /admin/fisiere",
+    "Anonymous rejected /admin/jurnal",
+    "Anonymous rejected /admin/conturi",
+    "Anonymous status API denied",
+    "No source requests from admin use",
+    "No browser runtime errors",
+    "No external network requests"
+  ],
+  "errors": [],
+  "external": [],
+  "scope": "Authenticated production build, schema-only synthetic local database"
+}

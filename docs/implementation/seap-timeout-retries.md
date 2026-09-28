@@ -23,3 +23,9 @@ Real isolatedPostgreSQL tests use fake transport and shortened test-only deadlin
 8timeout integration,19quiet-window integration,14existingcontrol integration (including the real45second deadline),5recovery integration and3wire integration tests passed, along with239web and93ingestion unit tests. Production web build and typechecks passed. Eleven isolatedbrowser checks passed; see `previews/timeout-retry/verification.json`. No test sent SEAPHTTP.
 
 Deploy runs the additive migration before restarting updated services. Existing source blocks and old failed tasks are not retrospectively cleared or requeued. The first genuine production timeout after deployment is still an operational observation to make; tests do not establish SEAP availability.
+
+## Deployment verified — 27 September 2026
+
+Release **e5f7ec7** is on `main` and production; Actions **36342127739** passed CI and deployment. Migration0038 is applied (39 history entries). Both running source-worker images were checked for the retry policy, the web role can read the new table, public/health returned200 and anonymous admin returned403. At21:56:29Romanian time, controlrevision12 had no manual pause, maintenance or sourceblock; requests824–826 were successful, and the retry table was empty. Thus installation and normal collection are verified; a genuine production timeout under the new policy has not yet been observed.
+
+The complete compact handoff and read-only morning checklist are in [continuation-20260927.md](continuation-20260927.md). Older “deployment pending” statements in review artifacts describe their pre-release evidence capture.

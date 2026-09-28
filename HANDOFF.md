@@ -1,11 +1,36 @@
 # Continuation handoff — cinecâștigă, investigation batches and contract documents
 
-## Bounded timeout retries — validated implementation, release pending (2026-09-27)
+## Latest implementation — admin navigation and recovery forecast (28 September 2026)
 
-Latest user asks automatic same-query retry after5min, then10min, then hardstop. Implemented for recovery data queries only (allstreams/catalogue); browser document sessiontimeouts remain manual, documentrequests waitduringglobalbackoff. Migration0038 separate app.collection_retries stores durable taskidentity, first/lastrequestids, count, deadline,status; no oldpreparedtask/control shapechange. Deadline failures only; knownHTTPerrors/challenges/malformedresponses/cancellations are not eligible. Globalgate validates samequery and obeys manual/stream/budget/quiet/maintenance controls. Atomic requeue persists acrossrestart duringwait; archivecommit resolves state. Thirdtimeout or othererror stops. Existing productionblocks notautomatically cleared. See docs/implementation/seap-timeout-retries.md.
+User approved the `/admin` mockup plus overall progress/approximate days and explicitly requested implementation, commit, push and deploy. Five real routes now share a persistent authenticated layout: collection, processing, files, journal, accounts. Collection/processing drafts survive route changes; Apply explicitly saves all retained changes. Account/journal pages have ten rows. Mobile navigation measures site-header height; account rows stack with full-width email cells.
 
-Tests passed:8retryintegration,19quietintegration,14controlintegration,5recoveryintegration,3wireintegration;239webunits,93ingestionunits;types andwebproductionbuild.11browserchecks passed,syntheticcapture/docs under previews/timeout-retry, noSEAPtestrequests. ScopedUIreview SHIP and design documentation complete; commit/push/deploy verification follows. Prod still healthy lastread revision12, request815HTTP200. Localfixture DBs seap_test_timeout_retry andseap_test_admin_queue pluspreview3115 removed; dev3113untouched. LocalmainDB migration0038 applied with standard db:migrate; productionmigrationrunner intentionally requiresseap_web role absentlocally, so it refusedwithoutwrites. Productionhasrole and deploywillapply0038 normally.
+Recovery adds read-only metadata aggregation and per-stream known-queue bars. Overall workload/ETA requires representative samples and observed calendar throughput; deferred/failed details suppress ETA. The source collector currently has a fixed batch end date, so UI reports completion of that batch, not automatic catch-up through today. No crawler policy, source pacing, processing schedule or schema changes. Existing eForms gaps are exposed, not silently counted as collected.
 
+Validation: 252 web unit tests, two isolated PostgreSQL integration tests, types, production build and 24 authenticated browser checks passed. Seven light/dark desktop/mobile captures and verification JSON are preserved under `docs/implementation/previews/admin-navigation`. Browser fixtures use only synthetic data in local `seap_test_admin_navigation`; zero source/external requests. Read-only production forecast EXPLAIN took424.711ms. Independent finish review and release status: see `docs/implementation/admin-navigation-20260928.md` and its linked review. Deployment verification will follow the implementation commit.
+
+Ordinary local dev3113 and mockup3112 are untouched. Preview3115 and isolated fixture DB must be cleaned after final verification; no production recovery scripts should be rerun. Previous saved documentation is included with this release; older CURRENT/pending statements below are historical.
+
+## Latest hotfix — contract drawer redirect (27 September 2026)
+
+Deployed **c5f869d** on main, Actions **36345034271** CI/deploy successful; server HEAD verified. The internal-id bridge used `req.url`, which exposed the container origin: `/contracte/i/3900187` redirected to `https://0.0.0.0:3000/contracte/108121282`. It now returns HTTP302 with a relative Location, preserving the browser origin and existing new-tab drawer behavior. Four regression tests added; 243 web tests and TypeScript passed. Live redirect verified to `https://cinecastiga.ro/contracte/108121282`, final HTTP200; health OK. No schema/source collection changes. Earlier release/status snapshots below are historical; previously saved Markdown edits remain local.
+
+## CURRENT — deployed and verified, compact handoff (27 September 2026, 21:56 Romanian time)
+
+**Read [the complete continuation handoff](docs/implementation/continuation-20260927.md) first. It supersedes all older active/pending notes below. No implementation or deployment is outstanding.**
+
+Application release **e5f7ec7** is committed/pushed on `main` and deployed; Actions **36342127739** passed CI and deploy. Migration0038 is applied (39 migrations total); running collection/document images contain the retry gate, and the web role can read its table. Health/public200, anonymous admin403. At21:56:29RO, controlrevision12: pausedfalse, maintenancefalse, no sourceblock; lastrequests824/825/826 allHTTP200; retrytableempty. This is a timestamped observation; re-read before operations.
+
+Implemented decisions: global50–70second source pacing; file GETs at least60seconds apart; daily02:59–03:30Europe/Bucharest quiet window; confirmed recovery-data timeout retries after5minutes then10minutes, maximum3attempts; thirdtimeout or othererror stops. The exact task/query is retried and the durable budget survives restart during waiting. Browser document timeouts remain manual; document traffic observes the global wait. Manual/stream/error/maintenance/budget/quiet-window protections remain authoritative. Admin exposes attempt2/3 or3/3, countdown, earliesttime and queue explanation. Existing failures are not automatically cleared by the release.
+
+Daily publication is active at05:00 Romanian time; risk also recalculates Sundays05:00. First scheduled daily after this handoff is28September; next risk4October. **The first actual overnight quiet window and a real new-policy timeout have not yet been observed.** Read the morning checklist/queries in the continuation document, rather than triggering source traffic or restarting completed repairs.
+
+All validations passed:8retryintegration,19quietintegration,14controlintegration,5recoveryintegration,3wireintegration,239webunits,93ingestionunits,11hostchecks,11timeoutUI browserchecks, types/build. UI finishreview SHIP and documentation complete; noSEAP testrequests. Localmain migration0038 applied; all temporary fixtureDBs andpreview3115 removed; ordinarydev3113 untouched. Existing one-off recovery scripts and TED coordinators MUST NOT be rerun.
+
+This compact update only saves Markdown context; check `git status` for the documentation edits. The application release remains e5f7ec7. There are no pending user approvals for the completed work.
+
+## Historical operational notes
+
+The sections below retain prior checkpoints and evidence. Statements such as “pending”, “not applied”, old source blocks, and old permission questions describe their original moment and do not override CURRENT above.
 
 ## Completed daily pause and single timeout retry — 2026-09-27
 

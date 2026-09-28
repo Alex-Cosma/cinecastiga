@@ -91,3 +91,7 @@ Schedule remains daily05:00 Europe/Bucharest, with full risk Sundays05:00; first
 ## Preventive SEAP source pause — 27 September 2026
 
 The user subsequently authorized a daily 02:59–03:30 Europe/Bucharest quiet window for all SEAP requests. The [shared gate policy](seap-quiet-window.md) is independent of publication maintenance, and automatic expiry never clears manual pauses or source blocks. Older notes saying the 03:00 pause was observation-only are superseded by this explicit authorization. The 05:00 daily / Sunday risk schedule is unchanged.
+
+## Compact checkpoint — 27 September 2026, 21:56 Romanian time
+
+Production release e5f7ec7 is verified. Processing remains enabled at05:00 daily, with full risk onSunday; controlrevision12 is not paused, not inmaintenance and has no sourceblock. The source quiet window and durable5/10minute timeout retries are now deployed and do not change this publication schedule. The next daily run is28September05:00 and next full risk4October05:00. For current state, completed repairs that must not be rerun, and the morning inspection checklist, read [the continuation handoff](continuation-20260927.md).
