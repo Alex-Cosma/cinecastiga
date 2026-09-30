@@ -3,7 +3,7 @@ import {createDb,type DbSql} from '@seap/db';
 const g=globalThis as unknown as {maintenanceSql?:DbSql};
 // Admin pages/API retain their own authentication and role checks. Keeping the
 // login path open does not grant permission to control or bypass maintenance.
-export function maintenanceExempt(path:string){return path==='/admin'||path.startsWith('/admin/')||path==='/api/admin/collection'||path==='/login'||path==='/api/health'||path.startsWith('/api/auth/');}
+export function maintenanceExempt(path:string){return path==='/admin'||path.startsWith('/admin/')||path==='/api/admin/collection'||path==='/api/admin/feedback'||path==='/login'||path==='/api/health'||path.startsWith('/api/auth/');}
 export async function proxy(request:NextRequest){
  const path=request.nextUrl.pathname;
  if(maintenanceExempt(path))return NextResponse.next();

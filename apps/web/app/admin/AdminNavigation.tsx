@@ -3,7 +3,7 @@ import Link from 'next/link';
 import {usePathname} from 'next/navigation';
 import {useEffect,useRef} from 'react';
 import type {CollectionStatus} from '@/lib/admin/collection';
-export const adminSections=[['/admin','Colectare'],['/admin/procesare','Procesare'],['/admin/fisiere','Fișiere'],['/admin/jurnal','Jurnal'],['/admin/conturi','Conturi']] as const;
+export const adminSections=[['/admin','Colectare'],['/admin/procesare','Procesare'],['/admin/fisiere','Fișiere'],['/admin/jurnal','Jurnal'],['/admin/feedback','Feedback'],['/admin/conturi','Conturi']] as const;
 export default function AdminNavigation({data,stale,dirty}:{data:CollectionStatus|null;stale:boolean;dirty:boolean}){
  const path=usePathname(),nav=useRef<HTMLElement>(null),previous=useRef(path),c=data?.control;
  useEffect(()=>{nav.current?.querySelector('[aria-current]')?.scrollIntoView({block:'nearest',inline:'nearest'});if(previous.current!==path){previous.current=path;document.getElementById('admin-content')?.focus({preventScroll:true});window.scrollTo({top:0,behavior:'instant'});}},[path]);

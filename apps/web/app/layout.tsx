@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Bricolage_Grotesque, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import "./approved.css";
+import ReportProblem from "@/components/feedback/ReportProblem";
 import FooterAuthLink from "./FooterAuthLink";
 import HeaderUserNav from "./HeaderUserNav";
 import SiteNav from "./SiteNav";
@@ -75,6 +76,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </li>
                 <li><Link href="/semnale">Semnale de risc</Link></li>
                 <li><Link href="/harta">Harta achizițiilor</Link></li>
+                <li><ReportProblem /></li>
                 <li>
                   <Link href="/metodologie#citare">Cum citez</Link>
                 </li>
