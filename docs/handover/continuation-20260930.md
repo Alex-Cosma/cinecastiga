@@ -85,7 +85,7 @@ Ultimele două cereri ale proprietarului, **terminate**:
 ## Ce urmează numai la cerere
 
 - „Despre proiect și corecturi”: următoarea propunere din audit, dar încă neîncepută. Operatorul și contactul trebuie furnizate/confirmate de proprietar, nu inventate.
-- Redesign `/semnale`: amânat explicit. Propunere existentă:10rânduri/pagină, totaluri complete și navigare clară sus/jos; layoutul final încă de decis.
+- Redesign `/semnale`: ulterior aprobat și implementat local, varianta A. [Starea actuală și verificări](../implementation/signals-redesign.md). Nu mai este sarcină în așteptarea alegerii layoutului.
 - Clasamente precalculate **pe ani**: doar propunere ulterioară pentru întrebările anuale, nu implementată prin schimbarea defaultului.
 - Citare durabilă și explicații compacte ale acoperirii: ulterior.
 - Dacă proprietarul cere commit/push/deploy, revizuiește **toate** modificările necomise și pregătește concret tranziția operațională de mai sus. Nu presupune că branch-ul conține numai ultimele trei ajustări UI.
@@ -95,3 +95,11 @@ Nu este nevoie să repeți toate verificările deja trecute după compactare. Re
 ## Continuare ulterioară checkpoint-ului: întrebări fără cont
 
 Cerere nouă implementată local: [întrebări locale și acțiuni autentificate](../implementation/local-saved-questions.md). Folosește acest document pentru comportamentul actual; nota de release din28septembrie despre refuzul salvării anonime descrie vechea versiune. 53 teste, types/build și24verificări browser trecute. Fără commit/push/deploy. Niciun alt element din backlog pornit.
+
+## Continuare: feedback anonim
+
+După commit-ul de consolidare `07eaee8`, proprietarul a cerut raportare anonimă fără afișarea vreunui nume public, cu inbox separat în admin și ștergere individuală de către administratori. Implementat local, încă necomis: [feedback anonim](../implementation/anonymous-feedback.md). Migrația0045 aplicată local (46intrări), Caddy/deploy actualizate pentru header client de încredere și reload verificat. Nu relua solicitarea de nume/contact. Fără schimbări în producție sau SEAP.
+
+## Continuare: Semnale A
+
+Proprietarul a aprobat mockupul și implementarea reală; reluată după pauză și terminată local. [Documentul implementării](../implementation/signals-redesign.md) conține comportamentul, limitele și verificările. 51 teste, 42 verificări browser, types/build trecute; fără commit/push/deploy. Review final local din cauza limitei de agenți. Baza izolată și buildul temporar eliminate; dev3000 rămâne activ.

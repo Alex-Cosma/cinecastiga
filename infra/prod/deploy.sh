@@ -31,7 +31,11 @@ docker compose --profile maintenance run --rm --no-deps migrate
 # before exposing the new UI. Later deploys keep the index; nightly processing
 # remains responsible for refreshing it. Failure preserves the running web.
 docker compose --profile processing run --rm --no-deps processor node apps/ingestion/dist/scripts/index-topics.js --if-missing
-# set -e prevents this restart when migration/history/grant checks fail.
+# Refresh the trusted feedback client header before exposing the new web.
+# Validation or reload failure leaves the existing application containers running.
+docker compose exec -T caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
+# set -e prevents this restart when migration/history/grant/proxy checks fail.
 docker compose --profile documents up -d --no-deps web documents
 if [[ "$collection_active" == true ]]; then
   docker compose --profile collection up -d --no-deps collection

@@ -1,51 +1,12 @@
 import { createDb, type DbSql } from "@seap/db";
-import { FLAG_META } from "./flags";
-import { COUNTIES } from "./counties";
-import type { FlagInstance, RiskEntity, RiskGroupSort, Role } from "./marts";
+import type { FlagInstance, RiskEntity } from "./marts";
 
-export const SIGNAL_PAGE_SIZE = 50;
-export const RISK_PAGE_SIZE = 10;
-export const RISK_SORTS: RiskGroupSort[] = ["cri", "flags", "das", "total", "name"];
-export interface SignalState {
-  code: string;
-  role: Role;
-  county: string | null;
-  page: number;
-  band: { from: number; to: number } | null;
-  sort: RiskGroupSort;
-  dir: "asc" | "desc";
-}
-const fold = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-export function parseSignalState(params: Record<string, string | undefined>): SignalState {
-  const code = params.tip && Object.hasOwn(FLAG_META, params.tip) ? params.tip : "da_split";
-  const role = params.rol === "supplier" ? "supplier" : "authority";
-  const county = params.jud?.trim() ? COUNTIES.find((name) => fold(name) === fold(params.jud!.trim())) ?? params.jud.trim().slice(0, 100) : null;
-  const from = Number(params.criMin), to = Number(params.criMax);
-  const validBand = params.criMin !== undefined && params.criMax !== undefined && Number.isFinite(from) && Number.isFinite(to) && from >= 0 && to <= 1 && from < to;
-  const sort = RISK_SORTS.includes(params.sort as RiskGroupSort) ? params.sort as RiskGroupSort : "cri";
-  const p = Number(params.p ?? 0);
-  return { code, role, county, page: Number.isSafeInteger(p) && p >= 0 ? p : 0,
-    band: validBand ? { from, to } : null, sort,
-    dir: params.dir === "asc" || params.dir === "desc" ? params.dir : sort === "name" ? "asc" : "desc" };
-}
-
-/** Every navigation keeps the applied role/county; changing a condition resets paging. */
-export function signalUrl(state: SignalState, patch: Partial<SignalState> = {}): string {
-  const next = { ...state, ...patch };
-  const changedFilter = ["code", "role", "county", "band", "sort", "dir"].some((key) => Object.hasOwn(patch, key));
-  const page = patch.page ?? (changedFilter ? 0 : state.page);
-  const q = new URLSearchParams({ tip: next.code, rol: next.role });
-  if (next.county) q.set("jud", next.county);
-  if (next.band) {
-    q.set("criMin", String(next.band.from)); q.set("criMax", String(next.band.to));
-    if (next.sort !== "cri" || next.dir !== "desc") { q.set("sort", next.sort); q.set("dir", next.dir); }
-  }
-  if (page > 0) q.set("p", String(page));
-  return `/semnale?${q.toString()}`;
-}
+import { SIGNAL_PAGE_SIZE, RISK_PAGE_SIZE, type SignalState } from "./signals-shared";
+export * from "./signals-shared";
 
 export interface SignalInstance extends FlagInstance {
   id: string;
+  totalExact: string | null;
   subjectType: string;
   sourceId: string | null;
   methodology: string;
@@ -124,7 +85,7 @@ export async function readSignalPage(sql: DbSql, state: SignalState): Promise<Si
     const total = Number(totals[0]?.n ?? 0);
     const page = Math.min(state.page, Math.max(0, Math.ceil(total / SIGNAL_PAGE_SIZE) - 1));
     const rows = await q`
-      select selected.*, f.period, f.evidence, f.methodology_version,
+      select selected.*, selected.total_ron::text total_exact, f.period, f.evidence, f.methodology_version,
         case when selected.flag_code = 'da_round' then f.evidence || jsonb_build_object(
           'closing', f.evidence->>'closing', 'ceiling', f.evidence->>'ceiling') else f.evidence end display_evidence,
         e.name_display entity_name, e.county entity_county, p.name_display partner_name,
@@ -142,7 +103,7 @@ export async function readSignalPage(sql: DbSql, state: SignalState): Promise<Si
       left join core.entities p on p.id = selected.partner_id
       order by selected.total_ron desc nulls last, selected.severity desc nulls last, selected.id`;
     return { total, page, pageSize: SIGNAL_PAGE_SIZE, rows: rows.map((r) => ({
-      id: String(r.id), flagCode: String(r.flag_code), subjectType: String(r.subject_type),
+      id: String(r.id), totalExact: r.total_exact ?? null, flagCode: String(r.flag_code), subjectType: String(r.subject_type),
       entityId: r.entity_id == null ? null : String(r.entity_id), entityName: r.entity_name ?? null, entityCounty: r.entity_county ?? null,
       partnerId: r.partner_id == null ? null : String(r.partner_id), partnerName: r.partner_name ?? null,
       severity: Number(r.severity ?? 0), totalRon: Number(r.total_ron ?? 0), period: r.period ?? null, evidence: r.display_evidence ?? r.evidence ?? null,
@@ -155,13 +116,12 @@ export async function readSignalPage(sql: DbSql, state: SignalState): Promise<Si
 /** Complete CRI cohort, retaining the existing ≥10-DA rule and histogram's
  * actual width_bucket boundaries (not rounded labels such as 0.2). */
 export async function readSignalRiskGroup(sql: DbSql, state: SignalState) {
-  if (!state.band) throw new Error("Interval CRI lipsă.");
-  const { from, to } = state.band;
+  const { from, to } = state.band ?? { from: 0, to: 1 };
   return sql.begin("isolation level repeatable read read only", async (tx) => {
     const q = tx as unknown as DbSql;
     await q`set local statement_timeout = '20s'`;
     const tenthBand = Math.abs(from * 10 - Math.round(from * 10)) < 1e-8 && Math.abs(to * 10 - Math.round(to * 10)) < 1e-8;
-    const band = tenthBand ? q`width_bucket(coalesce(cri, 0), 0, 1.0000001, 10) between ${Math.round(from * 10) + 1} and ${Math.round(to * 10)}`
+    const band = state.criteria !== null ? q`n_flags = ${state.criteria}` : !state.band ? q`true` : tenthBand ? q`width_bucket(coalesce(cri, 0), 0, 1.0000001, 10) between ${Math.round(from * 10) + 1} and ${Math.round(to * 10)}`
       : to === 1 ? q`coalesce(cri, 0) >= ${from} and coalesce(cri, 0) <= ${to}` : q`coalesce(cri, 0) >= ${from} and coalesce(cri, 0) < ${to}`;
     const where = q`role = ${state.role} and n_das >= 10 and ${band} ${profileCounty(q, state.county)}`;
     const totals = await q`select count(*)::text n from marts.entity_flags where ${where}`;
@@ -179,3 +139,25 @@ export async function readSignalRiskGroup(sql: DbSql, state: SignalState) {
 export const getSignalOverview = (state: SignalState) => readSignalOverview(database(), state);
 export const getSignalPage = (state: SignalState) => readSignalPage(database(), state);
 export const getSignalRiskGroup = (state: SignalState) => readSignalRiskGroup(database(), state);
+
+/** Counts only: the signal view does not compute unused CRI leaders/distribution. */
+export async function readSignalTypeCounts(sql: DbSql, state: SignalState): Promise<Record<string, number>> {
+  return sql.begin("isolation level repeatable read read only", async tx => {
+    const q = tx as unknown as DbSql;
+    await q`set local statement_timeout = '20s'`;
+    const population = signalPopulation(q, state);
+    const rows = await q`select flag_code, count(*)::text n from ${population} population group by flag_code`;
+    return Object.fromEntries(rows.map(r => [String(r.flag_code), Number(r.n)]));
+  });
+}
+export async function readRiskCriteriaDistribution(sql: DbSql, state: SignalState) {
+  return sql.begin("isolation level repeatable read read only", async tx => {
+    const q = tx as unknown as DbSql;
+    await q`set local statement_timeout = '20s'`;
+    const rows = await q`select n_flags, count(*)::text n from marts.entity_flags
+      where role = ${state.role} and n_das >= 10 ${profileCounty(q, state.county)} group by n_flags order by n_flags`;
+    return rows.map(r => ({ criteria: Number(r.n_flags), n: Number(r.n) }));
+  });
+}
+export const getSignalTypeCounts = (state: SignalState) => readSignalTypeCounts(database(), state);
+export const getRiskCriteriaDistribution = (state: SignalState) => readRiskCriteriaDistribution(database(), state);

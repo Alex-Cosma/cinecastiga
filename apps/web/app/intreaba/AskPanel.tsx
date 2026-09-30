@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import ClipButton from "@/components/ClipButton";
+import ReportProblem from "@/components/feedback/ReportProblem";
 import FollowButton from "@/components/FollowButton";
 import { formatRon, formatRonFull, formatInt, cleanName } from "@/lib/format";
 import { countyMap, foldCounty } from "@/lib/map";
@@ -485,6 +486,7 @@ export default function AskPanel({
                     ?count===1?'Vezi achiziția':`Vezi cele ${formatInt(count)} achiziții`
                     :count===1?'Vezi înregistrarea sursă':`Vezi cele ${formatInt(count)} înregistrări`}
                 </button>
+                <ReportProblem />
                 <FollowButton key={JSON.stringify(applied)} spec={applied} title={title} />
                 <ClipButton
                   kind="query"

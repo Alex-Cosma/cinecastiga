@@ -1,4 +1,28 @@
+## 2026-09-30 — Publicare în curs, autorizată
+
+Utilizatorul cere commit + push + deploy pentru toate loturile. [Procedură și verificări](docs/implementation/release-20260930.md). Tranziția calendarului include backup/mentenanță/full/search înainte de redeschidere, fără modificarea programului ulterior. Scripturile one-off datate sunt pentru această intervenție, nu se rerulează automat. Starea finală va fi consemnată după validare.
+
+## 2026-09-30 — Semnale A implementat local
+
+Mockupul A a fost aprobat, implementarea reală autorizată și terminată după reluarea solicitată. [Implementare și verificări](docs/implementation/signals-redesign.md): toate cele 13 tipuri într-un selector căutabil, 10 rezultate/pagină, explicație inline, surse reale în dialog stabil cu paginare și linkuri în tab nou, CRI separat, filtre/mobile/loading/eroare și URL-uri vechi păstrate. 51 teste (10 integrări PostgreSQL izolate), TypeScript/build și 42 verificări browser trecute. Fixture-ul și buildul temporar eliminate. Review final local deoarece limita de fire a blocat reviewerul independent; PRODUCT/DESIGN neschimbate. Dev3000 rămâne pornit. Fără commit/push/deploy, migrare sau trafic SEAP pentru acest lot. Modificările anterioare de feedback și 2FA local sunt păstrate. Condiția de publicare a întregului branch `rf-2026.6` rămâne obligatorie. Notele de mai jos despre așteptarea aprobării sau redesignul amânat sunt istorice.
+
+## 2026-09-30 — Mockup Semnale A
+
+Utilizatorul a ales A și a confirmat explicit că „Build this” înseamnă mockup, nu implementare directă. Prototip separat în `mockups/signals/`, server static local4185, [README](mockups/signals/README.md). Toate cele13 tipuri, explicații inline,10rânduri/pagină, județe demonstrative, CRI separat, filtre mobile, teme, loading/eroare/gol/surse indisponibile. Date fictive etichetate, fără DB/SEAP sau modificarea rutei reale. 39 verificări browser +5 pentru corecțiile reviewului trecute; reviewer independent: SHIP ca mockup, cele două observații rezolvate. Așteaptă feedbackul proprietarului înainte de implementarea reală; fără commit/push/deploy.
+
+## 2026-09-30 — Propunere redesign Semnale
+
+Reluat backlogul la cererea proprietarului. [Prompt propriu, constatări locale și propunere](docs/design/signals-redesign-20260930.md). Recomandare: listă pe lățime completă, explicație sub rând,10 rezultate/pagină, selector cu cele13 tipuri grupate și CRI într-o vizualizare separată. Alternative: listă+panou sau explorare ghidată. Alegerea utilizatorului este încă în așteptare; nicio schimbare în UI/backend și nicio recalculare. Schițele de comparație sunt artefacte locale în `.impeccable/review/signals-redesign-20260930/`.
+
 ## 2026-09-30 — Checkpoint înainte de compactare
+
+## 2026-09-30 — Login local fără 2FA
+
+La cererea proprietarului: `LOCAL_DISABLE_2FA=true` activat în `.env.local` ignorat de Git. `lib/local-auth.ts` acceptă opțiunea numai în development, cu app/DB pe loopback; în production/test rămâne 2FA chiar dacă flagul este true. Exceptează numai challenge-ul login email/parolă, păstrând endpointurile OTP, confirmarea emailului și setările/secretele conturilor. Pagina de login afișează corect un singur pas local. 17 teste (inclusiv login real pe fixture în modurile development/production și regresiile verificării emailului). Build de producție și TypeScript trecute; login verificat în browser desktop și mobil (390px), fără overflow sau erori JS. Fixture-ul separat și build-ul temporar au fost eliminate. Nicio schimbare de cont/parolă în baza principală sau producție.
+
+## 2026-09-30 — Feedback anonim și admin, implementare locală
+
+Decizie nouă: proprietarul **nu dorește afișarea unui nume public**. Raportarea se face fără cont/nume/e-mail, direct în `/admin/feedback`; administratorii pot șterge orice mesaj individual, cu confirmare. [Implementare și verificări](docs/implementation/anonymous-feedback.md). Formular în footer și lângă rezultate/surse; paginare 10, protecții anti-spam, fără legătură la cont. Migrația0045 aplicată local,46 intrări în istorie; datele fixture doar în DB separată. 30 teste unitare/API,4 integrări PG,12 teste deploy,build/types și30 verificări browser trecute. Caddy primește header client de încredere; scriptul deploy validează/reîncarcă proxy-ul înainte de noul web. Fără commit/push/deploy pentru acest lot. Condiția `rf-2026.6` a întregului branch rămâne aplicabilă.
 
 ## 2026-09-30 — Consolidare în Git
 

@@ -75,12 +75,12 @@ describe("complete signal population", () => {
   it("preserves totals and clamps a page beyond the final complete page", async () => {
     const db = database(625);
     const result = await readSignalPage(db.sql, parseSignalState({ p: "99999", tip: "da_rapid" }));
-    expect(result).toMatchObject({ total: 625, page: 12, pageSize: 50 });
+    expect(result).toMatchObject({ total: 625, page: 62, pageSize: 10 });
     const page = db.statements.find((q) => q.includes("select selected.*"))!;
     expect(page).toContain("order by total_ron desc nulls last, severity desc nulls last, id");
     expect(page).toContain("jsonb_agg(winner order by winner.entity_id)");
-    expect(db.values).toContain(600);
-    expect(db.values).not.toContain(99999 * 50);
+    expect(db.values).toContain(620);
+    expect(db.values).not.toContain(99999 * 10);
   });
   it("returns page zero for an empty population", async () => {
     const db = database(0);
@@ -105,5 +105,33 @@ describe("complete signal population", () => {
     const queries = db.statements.filter((q) => q.includes("marts.entity_flags"));
     for (const query of queries) expect(query).toContain("width_bucket(coalesce(cri, 0), 0, 1.0000001, 10) between");
     expect(db.values).toContain(2);
+  });
+});
+
+describe("redesigned signal navigation", () => {
+  it("normalizes exclusive signal roles without presenting a false zero population", () => {
+    expect(parseSignalState({tip:"fin_tiny_staff"})).toMatchObject({view:"signals",role:"supplier"});
+    expect(parseSignalState({tip:"da_concentration",rol:"supplier"})).toMatchObject({role:"authority"});
+    expect(parseSignalState({tip:"da_concentration",rol:"supplier",view:"cri"})).toMatchObject({view:"cri",role:"supplier"});
+  });
+  it("switches to a compatible signal when explicitly changing role", () => {
+    const href=signalUrl(parseSignalState({tip:"fin_tiny_staff",jud:"Buzau",p:"3"}),{role:"authority"});
+    expect(parseSignalState(Object.fromEntries(new URL(href,"http://local").searchParams))).toMatchObject({code:"da_concentration",role:"authority",county:"Buzău",page:0});
+  });
+  it("retains explicit all-CRI mode without requiring a band", () => {
+    const state=parseSignalState({view:"cri",rol:"supplier",sort:"name",dir:"asc"});
+    expect(parseSignalState(Object.fromEntries(new URL(signalUrl(state,{page:4}),"http://local").searchParams))).toEqual({...state,page:4});
+  });
+  it("preserves criteria selection across pagination and discards it on role change", () => {
+    const state=parseSignalState({view:"cri",criteria:"3",jud:"Cluj"});
+    expect(parseSignalState(Object.fromEntries(new URL(signalUrl(state,{page:2}),"http://local").searchParams))).toMatchObject({criteria:3,page:2,county:"Cluj"});
+    expect(parseSignalState(Object.fromEntries(new URL(signalUrl(state,{role:"supplier"}),"http://local").searchParams))).toMatchObject({criteria:null,page:0});
+  });
+  it.each(["-1","1.5","Infinity","6"])("rejects invalid criteria %s", criteria=>{
+    expect(parseSignalState({view:"cri",criteria}).criteria).toBeNull();
+  });
+  it("uses the correct denominator for supplier selections",()=>{
+    expect(parseSignalState({view:"cri",rol:"supplier",criteria:"5"}).criteria).toBeNull();
+    expect(parseSignalState({view:"cri",criteria:"0"}).criteria).toBe(0);
   });
 });

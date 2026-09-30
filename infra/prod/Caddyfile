@@ -4,6 +4,7 @@
 {
 	servers {
 		import /etc/caddy/extra/cloudflare-trusted.caddy
+		client_ip_headers CF-Connecting-IP
 	}
 }
 
@@ -19,7 +20,10 @@ import /etc/caddy/extra/cloudflare-only.caddy
 		Referrer-Policy strict-origin-when-cross-origin
 		-Server
 	}
-	reverse_proxy web:3000
+	reverse_proxy web:3000 {
+		# Override caller headers with the client address established by the trusted proxy chain.
+		header_up X-Feedback-Client-IP {client_ip}
+	}
 }
 
 www.{$DOMAIN} {

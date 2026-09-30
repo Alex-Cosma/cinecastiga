@@ -15,11 +15,13 @@ import {
   type Db,
 } from "@seap/db";
 import { sendAuthCode } from "./mail";
+import { localLoginTwoFactor } from "./local-auth";
 
 /**
  * better-auth server instance. Accounts are admin-created only (signup
  * disabled); every login is password + emailed one-time code (twoFactorEnabled
- * is set on all users at creation). Tables live in the `auth` Postgres schema
+ * is set on all users at creation), except the explicit loopback-only next dev
+ * login option documented in local-auth.ts. Tables live in the `auth` Postgres schema
  * (packages/db/src/schema/auth.ts).
  */
 const g = globalThis as unknown as { __seapAuthDb?: Db };
@@ -94,7 +96,7 @@ const createAuth = () => betterAuth({
     }),
   },
   plugins: [
-    twoFactor({
+    localLoginTwoFactor(twoFactor({
       skipVerificationOnEnable: true,
       otpOptions: {
         digits: 6,
@@ -112,7 +114,7 @@ const createAuth = () => betterAuth({
           });
         },
       },
-    }),
+    })),
     admin({ defaultRole: "watchdog", adminRoles: ["admin"] }),
     nextCookies(),
   ],

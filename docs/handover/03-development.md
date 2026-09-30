@@ -73,7 +73,7 @@ PY
 
 Cheile `MEILISEARCH_*` sunt cele folosite de aplicație; compose folosește `MEILI_MASTER_KEY`. Valorile de aici sunt exclusiv locale. Dacă schimbi master key-ul Docker, schimbă și `MEILISEARCH_KEY` în web și indexer.
 
-Nu copia `.env` de producție, SMTP-ul real sau `BETTER_AUTH_SECRET` al altui mediu. `SMTP_HOST` gol face OTP-ul vizibil doar în consola serverului local; nu dezactivează verificarea 2FA. `DOCUMENTS_ENABLED=false` păstrează citirea documentelor existente, dar dezactivează achiziția nouă.
+Nu copia `.env` de producție, SMTP-ul real sau `BETTER_AUTH_SECRET` al altui mediu. `SMTP_HOST` gol face OTP-ul vizibil doar în consola serverului local; nu dezactivează singur verificarea 2FA. Pentru login local doar cu email și parolă, setează `LOCAL_DISABLE_2FA=true` în `apps/web/.env.local`. Opțiunea funcționează exclusiv cu `NODE_ENV=development` și URL-uri loopback pentru aplicație și DB; este ignorată în producție, inclusiv la `next start`. Nu modifică flagurile/secretele 2FA ale conturilor și nu marchează emailul ca verificat. `DOCUMENTS_ENABLED=false` păstrează citirea documentelor existente, dar dezactivează achiziția nouă.
 
 ## 4. Migrații noi și pregătirea căutării din copia locală
 
@@ -106,7 +106,7 @@ subprocess.run(["pnpm","--filter","web","seed:admin"],env=env,check=True)
 '
 ```
 
-Seed-ul este idempotent pentru email și asigură2FA; **nu resetează parola unui cont existent**. Folosește pagina de cont sau mecanismul admin corespunzător pentru schimbare. Nu face manual insert de parole în clar. Cu SMTP local neconfigurat, citește codul din consola `next dev` după încercarea de login.
+Seed-ul este idempotent pentru email și asigură2FA; **nu resetează parola unui cont existent**. Folosește pagina de cont sau mecanismul admin corespunzător pentru schimbare. Nu face manual insert de parole în clar. Cu `LOCAL_DISABLE_2FA=true` valid local, login-ul nu cere cod. În rest, cu SMTP local neconfigurat, citește codul din consola `next dev` după încercarea de login.
 
 ## 6. Pornire web
 

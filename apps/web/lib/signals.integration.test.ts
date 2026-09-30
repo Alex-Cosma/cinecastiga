@@ -1,7 +1,7 @@
 import {afterAll,beforeAll,describe,expect,it} from 'vitest';
 import {createDb,validateSignalLookup,type DbSql} from '@seap/db';
 import {readFile} from 'node:fs/promises';
-import {parseSignalState,readSignalOverview,readSignalPage,readSignalRiskGroup} from './signals';
+import {parseSignalState,readSignalOverview,readSignalPage,readSignalRiskGroup,readSignalTypeCounts,readRiskCriteriaDistribution} from './signals';
 const url=process.env.TEST_SIGNAL_DATABASE_URL;
 if(url && new URL(url).pathname!=='/seap_test_signals') throw Error('Dedicated seap_test_signals database required');
 const sql=url?createDb(url).sql:null;
@@ -59,10 +59,10 @@ describe.skipIf(!sql)('complete signal queries on PostgreSQL',()=>{
  });
  it('keeps stable complete pagination and enriches the selected rows with evidence',async()=>{
   const first=await readSignalPage(sql!,parseSignalState({tip:'da_rapid'}));
-  expect(first.total).toBe(624);expect(first.rows).toHaveLength(50);expect(first.rows[0]?.id).toBe('624');
+  expect(first.total).toBe(624);expect(first.rows).toHaveLength(10);expect(first.rows[0]?.id).toBe('624');
   expect(first.rows[0]).toMatchObject({period:'2025',methodology:'test',evidence:{minutes:5},sourceId:'100624'});
   const last=await readSignalPage(sql!,parseSignalState({tip:'da_rapid',p:'9999'}));
-  expect(last.page).toBe(12);expect(last.rows).toHaveLength(24);expect(last.rows.at(-1)?.id).toBe('1');
+  expect(last.page).toBe(62);expect(last.rows).toHaveLength(4);expect(last.rows.at(-1)?.id).toBe('1');
   const exact=await readSignalPage(sql!,parseSignalState({tip:'da_round'}));
   expect(exact.rows[0]?.evidence?.closing).toBe('270119.999999');
  });
@@ -92,4 +92,27 @@ describe.skipIf(!sql)('complete signal queries on PostgreSQL',()=>{
   const group=await readSignalRiskGroup(sql!,parseSignalState({criMin:'0.5',criMax:'0.6',jud:'Cluj'}));
   expect(group.total).toBe(1);expect(group.rows[0]?.entityId).toBe('1');
  });
+ it('keeps the new counts-only path identical to the complete overview',async()=>{
+  const state=parseSignalState({rol:'supplier',jud:'Buzau'});
+  expect(await readSignalTypeCounts(sql!,state)).toEqual((await readSignalOverview(sql!,state)).counts);
+ });
+ it('matches criterion distribution to the exact CRI cohort and preserves the all view',async()=>{
+  const state=parseSignalState({view:'cri'});
+  expect(await readRiskCriteriaDistribution(sql!,state)).toEqual([{criteria:1,n:1},{criteria:3,n:1}]);
+  const all=await readSignalRiskGroup(sql!,state);expect(all.total).toBe(2);
+  const selected=await readSignalRiskGroup(sql!,{...state,criteria:3});expect(selected.total).toBe(1);expect(selected.rows[0]?.entityId).toBe('1');
+  const empty=await readSignalRiskGroup(sql!,{...state,criteria:0});expect(empty.total).toBe(0);
+ });
+ it('preserves every decimal of the displayed value outside JS number precision',async()=>{
+  const rollback=Error('rollback precise fixture');
+  await expect(sql!.begin(async tx=>{
+   await tx`update core.direct_acquisitions set closing_value=9007199254740993.123456 where id=1`;
+   await tx`refresh materialized view marts.signal_lookup`;
+   const q=Object.assign((...args: unknown[]) => (tx as any)(...args), {begin: async (_options: string, run: (db: DbSql) => unknown) => run(tx as unknown as DbSql)}) as unknown as DbSql;
+   const page=await readSignalPage(q,parseSignalState({tip:'da_round'}));
+   expect(page.rows[0]?.totalExact).toBe('9007199254740993.123456');
+   throw rollback;
+  })).rejects.toBe(rollback);
+ });
+
 });
