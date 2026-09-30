@@ -38,7 +38,7 @@ describe("human-readable monitoring result comparisons", () => {
   it("compares histogram cells by coordinates and explains flag codes", () => {
     const changes = resultDifferences({ density: { cells: [[1, 2, 5], [2, 3, 8]] } }, { density: { cells: [[2, 3, 8], [1, 2, 6]] } });
     expect(changes).toHaveLength(1); expect(changes[0]?.context).toContain("Grupa valorii 1 · grupa de risc 2");
-    expect(formatResultValue(["da_split"], "flags")).toBe("Fracționare sub prag");
+    expect(formatResultValue(["da_split"], "flags")).toBe("Posibilă fracționare sub prag");
   });
   it("makes methodology changes readable without requiring raw JSON", () => {
     const changes = resultDifferences({ refresh: { tedNormalization: 2 }, values: "Veche" }, { refresh: { tedNormalization: 3 }, values: "Nouă" });

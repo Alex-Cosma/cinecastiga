@@ -1,6 +1,7 @@
 import {createDb,type DbSql} from '@seap/db';
 import {daUrl,awardUrl} from '../elicitatie';
 import {aliasQueries} from '../ask/entity-alias';
+import {entityIntent} from './entity-intent';
 import {COUNTIES} from '../counties';
 import {fold,PAGE_SIZE,excerpt,type TopicScope,type Place,type TopicResult,type AcquisitionHit,type DocumentHit,type EntityHit} from './shared';
 export class TopicInputError extends Error {}
@@ -78,7 +79,8 @@ async function documents(s:TopicScope):Promise<{result:TopicResult['documents'];
 async function entities(s:TopicScope):Promise<TopicResult['entities']>{return bounded(async q=>{
  // Existing trigram index on canonical normalized names; all query terms required.
  const terms=fold(s.q).split(/[^\p{L}\p{N}]+/u).filter(Boolean).slice(0,30);
- if(!terms.length)return {total:0,hits:[]};
+ if(!terms.length)return {total:0,hits:[],suggestions:[]};
+ const intent=entityIntent(s.q);
  let name=q`false`;
  for(const phrase of aliasQueries(fold(s.q))){
   const words=phrase.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
@@ -87,15 +89,24 @@ async function entities(s:TopicScope):Promise<TopicResult['entities']>{return bo
   else for(const term of words)variant=q`${variant} and (e.name_normalized like ${'%'+term+'%'} or e.cui_canonical like ${'%'+term+'%'})`;
   name=q`${name} or (${variant})`;
  }name=q`(${name})`;
+ if(intent.cui)name=q`(${name} or e.cui_canonical=${intent.cui})`;
+ // Rank identity relevance before spending. A large unrelated institution must
+ // not outrank an exact name/CUI just because it has more procurement.
+ let authorityName=q`false`;
+ for(const candidate of intent.authorityNames)authorityName=q`${authorityName} or e.name_normalized=${candidate} or e.name_normalized like ${candidate+' %'}`;
+ const rank=q`case when e.cui_canonical=${intent.cui} then 100
+   when e.name_normalized=${intent.name} then 90
+   when ep.role='authority' and (${authorityName}) then 80 else 0 end`;
  let activity=q`true`;
  if(s.place||s.from||s.type!=='all')activity=q`exists(select 1 from marts.topic_acquisitions a where ${scopeSql(q,s)} and
  ((ep.role='authority' and a.authority_id=e.id) or (ep.role='supplier' and a.supplier_ids @> array[e.id])))`;
  const where=q`${name} and ${activity} and (${s.role}='' or ep.role=${s.role})`;
  const [count]=await q`select count(distinct e.id)::int total from core.entities e join marts.entity_profile ep on ep.entity_id=e.id where ${where}`;
  const limit=s.tab==='all'?3:PAGE_SIZE,offset=s.tab==='all'?0:(s.page-1)*PAGE_SIZE;
- const rows=await q`select e.id::text id,e.name_display name,e.cui_canonical cui,e.county,array_agg(distinct ep.role) roles from core.entities e join marts.entity_profile ep on ep.entity_id=e.id
- where ${where} group by e.id order by max(ep.total_ron_full) desc nulls last,e.id limit ${limit} offset ${offset}`;
- return {total:Number(count!.total),hits:rows as unknown as EntityHit[]};
+ const rows=await q`select e.id::text id,e.name_display name,e.cui_canonical cui,e.county,array_agg(distinct ep.role) roles,max(${rank}) match_rank from core.entities e join marts.entity_profile ep on ep.entity_id=e.id
+ where ${where} group by e.id order by max(${rank}) desc,max(ep.total_ron_full) desc nulls last,e.id limit ${limit} offset ${offset}`;
+ const hits=rows.map(({match_rank,...entity})=>entity) as unknown as EntityHit[];
+ return {total:Number(count!.total),hits,suggestions:s.tab==='all'?hits.filter((_,i)=>Number(rows[i]!.match_rank)>0):[]};
  });}
 export async function searchTopics(s:TopicScope):Promise<TopicResult>{
  const place=await resolvePlace(s.place);if(s.place&&!place)throw new TopicInputError('Localitatea sau județul ales nu există în catalog. Alege din sugestii.');

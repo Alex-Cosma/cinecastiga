@@ -39,7 +39,7 @@ export async function getSignalSources(id: string, page: number, database?: DbSq
     from core.direct_acquisitions where sicap_da_id = any(${sourceIds}::bigint[])` : [{ n: 0, total: "0", totals_match: false }];
   const safePage = Math.max(0, Math.min(Number.isSafeInteger(page) ? page : 0, Math.ceil(sourceIds.length / 50) - 1));
   const records = sourceIds.length ? await sql`select expected.id::text id, da.id is not null available, da.da_code code,
-    da.finalization_date::date::text date, da.closing_value::text value, da.cpv_code cpv
+    (da.finalization_date at time zone 'Europe/Bucharest')::date::text date, da.closing_value::text value, da.cpv_code cpv
     from unnest(${sourceIds}::bigint[]) expected(id)
     left join core.direct_acquisitions da on da.sicap_da_id = expected.id
     order by expected.id limit 50 offset ${safePage * 50}` : [];

@@ -4,9 +4,19 @@ import { useEffect, useId, useRef, useState } from "react";
 import { cloneQuestion, describeQuestion, questionKey, type QuestionSpec } from "@/lib/ask/question-ui";
 import { encodeSpec } from "@/lib/ask/permalink";
 import { validateSpec } from "@/lib/ask/spec";
+import { useViewer } from "@/lib/use-viewer";
+import { localQuestionStorage, LocalQuestionError, saveLocalQuestion, suggestLocalCopyTitle } from "@/lib/ask/local-questions";
 import type { SavedQuestion } from "./SavedQuestions";
 
-export default function SaveQuestionButton({ spec, disabled, active, onSaved }: { spec: QuestionSpec; disabled: boolean; active: SavedQuestion | null; onSaved: (question: SavedQuestion) => void }) {
+type Props = { spec: QuestionSpec; disabled: boolean; active: SavedQuestion | null; onSaved: (question: SavedQuestion) => void };
+export default function SaveQuestionButton(props:Props) {
+  const viewer = useViewer();
+  const local = !viewer.userId;
+  const active = props.active && (local ? props.active.storage === "local" : props.active.ownerId === viewer.userId) ? props.active : null;
+  return <SaveQuestionForm key={viewer.userId ?? "device"} {...props} active={active} userId={viewer.userId} disabled={props.disabled || !viewer.ready || !!viewer.error} />;
+}
+function SaveQuestionForm({ spec, disabled, active, onSaved, userId }: Props & { userId:string | undefined }) {
+  const local = !userId;
   const dialog = useRef<HTMLDialogElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const pending = useRef(false);
@@ -46,6 +56,11 @@ export default function SaveQuestionButton({ spec, disabled, active, onSaved }: 
     pending.current = true; setBusy(true); setPreparing(true); setError(""); setTitleTaken(false);
     const current = new AbortController(); controller.current = current;
     try {
+      if (local) {
+        setTitle(suggestLocalCopyTitle(localQuestionStorage(), title.trim())); setCopyMode(true);
+        requestAnimationFrame(() => dialog.current?.querySelector<HTMLInputElement>("input")?.focus());
+        return;
+      }
       const response = await fetch(`/api/recipes?copyTitle=${encodeURIComponent(title.trim())}`, { cache:"no-store", signal:current.signal });
       if (response.status === 401) { setLogin(true); return; }
       const data = await response.json();
@@ -69,6 +84,11 @@ export default function SaveQuestionButton({ spec, disabled, active, onSaved }: 
     const current = new AbortController();
     controller.current = current;
     try {
+      if (local) {
+        const question = await saveLocalQuestion({ title:title.trim(), spec:validated, ...(revising ? { expectedVersion:revising.version } : {}) }, revising ? revising.id : undefined);
+        if (current.signal.aborted) return;
+        onSaved(question); dialog.current?.close(); trigger.current?.focus(); return;
+      }
       const response = await fetch(revising ? `/api/recipes/${revising.id}` : "/api/recipes", {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ title: title.trim(), spec: validated, ...(revising ? { expectedVersion: revising.version } : {}) }), signal: current.signal,
@@ -82,10 +102,11 @@ export default function SaveQuestionButton({ spec, disabled, active, onSaved }: 
       if (response.status === 409) throw new Error("Întrebarea a fost modificată între timp. Salvează o copie pentru a păstra modificările tale sau redeschide întrebarea din „Salvate”.");
       if (!response.ok) throw new Error(data.error || "Nu am putut salva întrebarea. Încearcă din nou.");
       if (current.signal.aborted) return;
-      onSaved({ id: data.id, title: data.title ?? title.trim(), version: data.version, spec: cloneQuestion(snapshot) });
+      onSaved({ id: data.id, title: data.title ?? title.trim(), version: data.version, spec: cloneQuestion(snapshot), ownerId:userId });
       dialog.current?.close();
       trigger.current?.focus();
     } catch (e) {
+      if (e instanceof LocalQuestionError && e.code === "title_taken") setTitleTaken(true);
       if (!current.signal.aborted) setError(e instanceof Error ? e.message : "Nu am putut salva întrebarea. Încearcă din nou.");
     } finally {
       pending.current = false;
@@ -108,7 +129,7 @@ export default function SaveQuestionButton({ spec, disabled, active, onSaved }: 
     }}>
       <form onSubmit={event => void save(event)} aria-busy={busy}>
         <h2 id={headingId}>{copyMode ? "Salvează o copie" : snapshotActive ? "Salvează modificările" : "Salvează întrebarea"}</h2>
-        <p id={descriptionId}>Păstrezi întrebarea și filtrele, privat în contul tău. Rezultatele nu sunt salvate.</p>
+        <p id={descriptionId}>{local ? "Păstrezi întrebarea și filtrele pe acest dispozitiv, în acest browser. Se pierd dacă ștergi datele site-ului și pot fi văzute de oricine folosește același profil de browser." : "Păstrezi întrebarea și filtrele, privat în contul tău."} Rezultatele nu sunt salvate.</p>
         {login ? <div role="status" className="cq-save-login"><p>Autentifică-te pentru a salva. Întrebarea și filtrele te așteaptă la întoarcere.</p><a href={`/login?next=${encodeURIComponent(next)}`}>Autentifică-te și revino</a></div> : <label>Numele întrebării<input autoFocus required maxLength={160} value={title} disabled={busy} aria-invalid={titleTaken || undefined} onChange={event => { setTitle(event.target.value); setTitleTaken(false); setError(""); }} onFocus={event => event.currentTarget.select()} /></label>}
         {copyMode && !login && <p className="cq-copy-note">Nume propus pentru copie. Îl poți modifica înainte de salvare.</p>}
         {error && <p role="alert" className="cq-save-error">{error}</p>}

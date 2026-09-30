@@ -31,7 +31,7 @@ export function sourceEvidence(input: Omit<SourceEvidence, "sourceCount" | "tota
 
 /** Aliases are da (raw acquisition), a (authority), s (supplier). */
 export async function readDaEvidence(sql: DbSql, where: ReturnType<DbSql>): Promise<SourceRecord[]> {
-  const rows = await sql`select da.da_code "daCode", da.finalization_date::date::text date,
+  const rows = await sql`select da.da_code "daCode", (da.finalization_date at time zone 'Europe/Bucharest')::date::text date,
       da.authority_entity_id::text "authorityId", a.name_display authority, a.county,
       da.supplier_entity_id::text "supplierId", s.name_display supplier,
       da.cpv_code "cpvCode", cpv.name_ro "cpvName", coalesce(da.closing_value, 0)::text "valueExact",

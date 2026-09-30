@@ -16,6 +16,7 @@ import {
 import { countryName } from "@/lib/ted";
 import { formatRon, formatRonFull, formatInt, cleanName } from "@/lib/format";
 import { FLAG_META, criBand } from "@/lib/flags";
+import { CRI_CRITERIA, riskEvidenceLine, signalPeriodLabel } from "@/lib/risk-presentation";
 import { daUrl, registryLinks } from "@/lib/elicitatie";
 import ClipButton from "@/components/ClipButton";
 import FollowButton from "@/components/FollowButton";
@@ -25,35 +26,6 @@ import TxTable from "./TxTable";
 import PartnersTable from "./PartnersTable";
 import SplitPairsTable from "./SplitPairsTable";
 import SectionNav from "./SectionNav";
-
-/** Per-instance evidence line, formatted per flag code (null = no line). */
-function evidenceLine(code: string, ev: Record<string, unknown> | null): string | null {
-  if (!ev) return null;
-  const n = (k: string) => Number(ev[k]);
-  const s = (k: string) => String(ev[k] ?? "?");
-  switch (code) {
-    case "da_year_end":
-      return `${s("year")}: ${(n("december_pct") * 100).toFixed(0)}% din cheltuiala anului pe achiziții directe s-a finalizat în decembrie (${formatRon(n("december"))} din ${formatRon(n("total"))}).`;
-    case "da_rapid":
-      return `finalizată la ${formatInt(n("minutes"))} min. după publicare — ${formatRon(n("closing"))}.`;
-    case "da_round":
-      return `${formatRon(n("closing"))} = ${((n("closing") / n("ceiling")) * 100).toFixed(1)}% din pragul de ${formatInt(n("ceiling"))} lei (${s("type")}).`;
-    case "da_concentration":
-      return `furnizorul principal ia ${(n("top_supplier_pct") * 100).toFixed(0)}% din ${formatRon(n("total"))} (HHI ${n("hhi").toFixed(2)}, ${formatInt(n("suppliers"))} furnizori).`;
-    case "award_no_competition":
-      return `${s("procedure")}: ${formatRon(n("value"))} (CPV ${s("cpv")}).`;
-    case "award_single_bid":
-      return `${s("procedure")}, o singură ofertă: ${formatRon(n("value"))} (CPV ${s("cpv")}).`;
-    case "fin_tiny_staff":
-      return `${s("year")}: ${formatInt(n("employees"))} angajați · ${formatRon(n("total"))} bani publici · ${formatRon(n("per_employee"))}/angajat.`;
-    case "net_shared_admin":
-      return `${s("person")}${ev["birth_year"] ? ` (n. ${s("birth_year")})` : ""} conduce ${formatInt(n("n_firms"))} firme cu valori înregistrate de ${formatRon(n("combined"))} în total de la ${s("authority")}.`;
-    case "fin_public_reliance":
-      return `${(n("ratio") * 100).toFixed(0)}% din cifra de afaceri vine din bani publici (${formatRon(n("public_total"))} contractat vs ${formatRon(n("revenue_total"))} cifră de afaceri, ${formatInt(n("years"))} ani cu bilanț).`;
-    default:
-      return null;
-  }
-}
 
 /** Stat card → search drill with exactly this entity's rows from one channel. */
 function entityTxSearchUrl(
@@ -146,6 +118,8 @@ export default async function EntityPage({
       getEntityFlagRowCounts(id, role),
     ]);
 
+  const hasRiskScore = flagRowsRaw.some((r) => r.role === role);
+  const criteria = CRI_CRITERIA[role];
   const band = criBand(row.cri);
   const county = flagRows.find((r) => r.county)?.county ?? null;
   const isAuth = role === "authority";
@@ -204,9 +178,11 @@ export default async function EntityPage({
       <div className="stat-grid">
         <div className="stat">
           <div className="n">
-            <span className={`cri-pill ${band.className}`}>{row.cri.toFixed(2)}</span>
+            <span className={`cri-pill ${hasRiskScore ? band.className : "risk-none"}`}>{hasRiskScore ? row.cri.toFixed(2).replace(".", ",") : "—"}</span>
           </div>
-          <div className="l">indice de risc · {band.label.toLowerCase()}</div>
+          <div className="l">{hasRiskScore ? `indice de risc · ${band.label.toLowerCase()}` : "Indice de risc necalculat"}</div>
+          <p className="note">{hasRiskScore ? `${row.nFlags} din ${criteria.length} criterii · achiziții directe` : "Nu există un scor calculat pentru acest rol."}</p>
+          {hasRiskScore && <a href="#criterii-scor" className="hint">Cum se explică scorul?</a>}
         </div>
         <div className="stat">
           <div className="n">
@@ -266,8 +242,22 @@ export default async function EntityPage({
         <p>Înregistrări datate: {txCounts.dateFrom ?? "dată necunoscută"} — {txCounts.dateTo ?? "dată necunoscută"}.
           {txCounts.excludedDa > 0 ? ` ${formatInt(txCounts.excludedDa)} achiziții directe cu valori nule, nepozitive sau peste plafon sunt separate de total.` : ""}
           {" "}<Link href="/metodologie#acoperire">Acoperirea surselor și limitele datelor</Link>.</p>
-        <p>Indicele de risc descrie tipare în achizițiile directe din întreaga perioadă. Nu este o probabilitate de corupție și nu clasifică toate contractele acestei entități.</p>
+
       </details>
+
+      {hasRiskScore && <details className="data-context entity-data-context" id="calcul-scor">
+        <summary>{row.nFlags} din {criteria.length} criterii îndeplinite · cum se calculează scorul?</summary>
+        <p id="criterii-scor">Scorul împarte numărul criteriilor îndeplinite la {criteria.length}. Fiecare criteriu contează o singură dată,
+          indiferent de numărul achizițiilor semnalate. Folosește achizițiile directe din întreaga perioadă disponibilă
+          la ultima recalculare; filtrul de an din tabel nu schimbă scorul.</p>
+        <ul>{criteria.map(code => <li key={code}>
+          <strong>{row.flags.includes(code) ? "Îndeplinit" : "Neîndeplinit în datele evaluate"}</strong>{" · "}
+          <Link href={`/metodologie#${code}`}>{FLAG_META[code]!.title}</Link>
+        </li>)}</ul>
+        <p>Scorul nu este o probabilitate de corupție.
+          Semnalele din contracte prin proceduri, bilanțuri și ONRC se consultă separat și nu intră în acest scor.
+          Lipsa unui semnal nu certifică absența neregulilor. <Link href="/metodologie#indice">Formula și limitele scorului →</Link></p>
+      </details>}
 
       <SectionNav
         items={[
@@ -342,7 +332,8 @@ export default async function EntityPage({
         <section className="section" id="semnale">
           <h2>De ce este semnalată</h2>
           <p className="hint">
-            {row.nFlags} semnale din cele aplicabile. Fiecare este un indiciu, nu o dovadă —{" "}
+            {row.nFlags} din {criteria.length} criterii pentru achiziții directe sunt îndeplinite în datele evaluate.
+            Perioadele anuale apar în explicațiile semnalelor. Fiecare este o pistă de verificat —{" "}
             <Link href="/metodologie">metodologie</Link>.
           </p>
 
@@ -401,7 +392,10 @@ export default async function EntityPage({
                   (() => {
                     const evs = flagEvidence.filter((e: FlagEvidenceRow) => e.flagCode === code);
                     const lines = evs
-                      .map((e) => evidenceLine(code, e.evidence))
+                      .map((e) => {
+                        const line = riskEvidenceLine(code, e.evidence);
+                        return line ? `${signalPeriodLabel(e.period)} · ${line}` : null;
+                      })
                       .filter((l): l is string => l !== null);
                     if (lines.length === 0) return null;
                     return (
@@ -441,16 +435,14 @@ export default async function EntityPage({
                     </p>
                     {code === "da_round" && row.flags.includes("da_split") && (
                       <p className="note">
-                        Diferența față de „Fracționare sub prag”: aici e semnalată valoarea
-                        FIECĂREI achiziții în parte (una singură, oprită chiar sub limită), pe
-                        când fracționarea privește SUMA multor achiziții mici. O achiziție „aproape
-                        de prag” poate fi, în același timp, una dintre piesele fracționării.
+                        „Valoare aproape de prag” compară o singură achiziție cu plafonul său.
+                        „Posibilă fracționare sub prag” compară suma unui grup de achiziții cu plafonul de referință.
+                        Aceeași achiziție poate apărea în ambele semnale; niciunul nu stabilește intenția de a evita o procedură.
                       </p>
                     )}
                   </>
-                ) : (
-                  <p className="note">{m.caveat}</p>
-                )}
+                ) : null}
+                <p className="note">{m.caveat}</p>
               </div>
             );
           })}

@@ -1723,7 +1723,7 @@ export async function runRows(
     from marts.contract_transactions
   )`;
   const txt = profile ? sql`(
-    select da.sicap_da_id as ref_id, da.da_code, to_char(da.finalization_date, 'YYYY-MM-DD HH24:MI') as finalization_date,
+    select da.sicap_da_id as ref_id, da.da_code, to_char(da.finalization_date at time zone 'Europe/Bucharest', 'YYYY-MM-DD HH24:MI') as finalization_date,
            da.authority_entity_id as authority_id, a.name_display as authority_name,
            da.supplier_entity_id as supplier_id, su.name_display as supplier_name,
            a.county, da.cpv_code, cpv.name_ro as cpv_name, da.closing_value,

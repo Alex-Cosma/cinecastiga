@@ -1,8 +1,9 @@
 import Link from "next/link";
 import RiskFreshness from '@/components/RiskFreshness';
-import type { FlagInstance, RiskGroupSort } from "@/lib/marts";
+import type { RiskGroupSort } from "@/lib/marts";
 import { getSignalOverview, getSignalPage, getSignalRiskGroup, parseSignalState, signalUrl, RISK_SORTS, RISK_PAGE_SIZE, type SignalState } from "@/lib/signals";
 import { FLAG_META, FLAG_ORDER, criBand } from "@/lib/flags";
+import { CRI_CRITERIA, riskEvidenceLine, signalPeriodLabel } from "@/lib/risk-presentation";
 import { formatRon, formatInt, cleanName } from "@/lib/format";
 import { COUNTIES } from "@/lib/counties";
 import "./signals.css";
@@ -27,40 +28,6 @@ function pageList(cur: number, n: number): (number | null)[] {
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Semnale de risc" };
-
-function evidenceLine(fi: FlagInstance): string {
-  const e = fi.evidence ?? {};
-  switch (fi.flagCode) {
-    case "da_split":
-      return `${e["count"]} achiziții în ${e["year"]}${e["cpv_class"] ? ` · CPV ${e["cpv_class"]}` : ""}, plafon de referință ${formatInt(Number(e["ceiling"]))} lei`;
-    case "da_concentration":
-      return `top furnizor ${Math.round(Number(e["top_supplier_pct"]) * 100)}% · HHI ${e["hhi"]} · ${e["suppliers"]} furnizori`;
-    case "da_dependence":
-      return `${Math.round(Number(e["top_authority_pct"]) * 100)}% dintr-o singură autoritate · ${e["authorities"]} autorități`;
-    case "da_year_end":
-      return `${Math.round(Number(e["december_pct"]) * 100)}% în decembrie ${e["year"]}`;
-    case "da_rapid":
-      return `finalizat în ${e["minutes"]} minute`;
-    case "da_round":
-      return `${formatInt(Number(e["closing"]))} din prag ${formatInt(Number(e["ceiling"]))} lei`;
-    case "award_no_competition":
-      return `${e["procedure"]} · ${formatInt(Number(e["value"]))} lei`;
-    case "award_single_bid":
-      return e["confirmed_contract_count"] ? `${e["confirmed_contract_count"]} contracte cu o singură ofertă raportată în TED` : "Detaliile contractelor sunt în curs de recalculare";
-    case "award_concentration":
-      return `top câștigător ${Math.round(Number(e["top_winner_pct"]) * 100)}% · HHI ${e["hhi"]} · ${e["winners"]} câștigători`;
-    case "award_dependence":
-      return `${Math.round(Number(e["top_authority_pct"]) * 100)}% dintr-o singură autoritate · ${e["authorities"]} autorități`;
-    case "fin_tiny_staff":
-      return `${e["employees"]} salariați în ${e["year"]} · ${formatRon(Number(e["per_employee"]))} per salariat`;
-    case "fin_public_reliance":
-      return `${Math.round(Number(e["ratio"]) * 100)}% din cifra de afaceri · ${e["years"]} ani cu bilanț`;
-    case "net_shared_admin":
-      return `${e["n_firms"]} firme · administrator ${e["person"]} · ${e["authority"]}`;
-    default:
-      return "";
-  }
-}
 
 const fmtCri = (n: number) => n.toFixed(2).replace(".", ",");
 
@@ -119,7 +86,9 @@ export default async function SemnalePage({
           </Link>
         </span>
 
-        <p className="eyebrow">indice de risc</p>
+        <p className="eyebrow">indice de risc · achiziții directe</p>
+        <p className="note">Criterii îndeplinite din {CRI_CRITERIA[sideRole].length}, pe întreaga perioadă disponibilă la calcul.
+          Scorul nu este o probabilitate de corupție. <Link href="/metodologie#indice">Cum se calculează →</Link></p>
         <div className="distr" role="list">
           {dist.map((b, i) => {
             const on = bandMode && gMin <= b.from + 1e-9 && gMax >= b.to - 1e-9;
@@ -300,7 +269,7 @@ export default async function SemnalePage({
       <h1 className="page-title">Unde merită să te uiți</h1>
       <RiskFreshness/>
       <p className="page-sub">
-        13 indicatori obiectivi pe achiziții directe, contracte, bilanțuri și ONRC. Fiecare e un semnal, nu o dovadă —{" "}
+        {FLAG_ORDER.length} tipuri de semnale calculate din achiziții directe, contracte, bilanțuri și ONRC. Fiecare e un semnal, nu o dovadă —{" "}
         <Link href="/metodologie">metodologia</Link>.
       </p>
       <p className="sem-applied">{sideRole === "authority" ? "Autorități" : "Firme"} · {county ?? "Toate județele"}. Sunt afișate semnalele calculate în arhiva disponibilă.</p>
@@ -342,7 +311,7 @@ export default async function SemnalePage({
                       {fi.entityCounty ? <div className="county">{fi.subjectType === "award" ? "Autoritate: " : ""}{fi.entityCounty}</div> : null}
                       {fi.subjectType === "award" && <div className="sem-winners">{fi.winners.length ? fi.winners.map((winner) => <div key={winner.entityId}><Link href={`/entitati/${winner.entityId}`}>{cleanName(winner.name)}</Link>{winner.county && <span className="county"> · {winner.county}</span>}</div>) : <span className="county">Câștigător neidentificat în date.</span>}</div>}
                     </td>
-                    <td className="county">{evidenceLine(fi)}{fi.period && fi.period !== "all" && !["da_split", "da_year_end", "fin_tiny_staff"].includes(fi.flagCode) && <div>{fi.period}</div>}{<div><Link href={`/semnale/${fi.id}`}>Vezi înregistrările sursă →</Link></div>}</td>
+                    <td className="county">{riskEvidenceLine(fi.flagCode, fi.evidence)}<div>{signalPeriodLabel(fi.period)}</div>{<div><Link href={`/semnale/${fi.id}`}>Vezi înregistrările sursă →</Link></div>}</td>
                     <td className="num">{fi.totalRon > 0 ? formatRon(fi.totalRon) : "—"}</td>
                   </tr>
                 ))}

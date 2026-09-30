@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSignalSources } from "@/lib/signal-sources";
 import { FLAG_META } from "@/lib/flags";
+import { riskEvidenceLine, signalPeriodLabel, thresholdTypeLabel } from "@/lib/risk-presentation";
 import { daUrl } from "@/lib/elicitatie";
 import { coverageDate } from "@/lib/coverage";
 import { formatInt, formatExactDecimal } from "@/lib/format";
@@ -22,7 +23,7 @@ export default async function SignalSourcesPage({ params, searchParams }: {
   if (!finding) notFound();
   const meta = FLAG_META[finding.code];
   const evidence = finding.evidence;
-  const purchaseType = evidence.type === "da_ceiling_works" ? "lucrări" : evidence.type === "da_ceiling_goods_services" ? "produse / servicii" : "necunoscut";
+  const purchaseType = thresholdTypeLabel(evidence.type);
   const recordedCount = Number(evidence.count ?? 0);
   const recordedTotal = finding.recordedTotalExact;
   if (!["da_split", "award_single_bid"].includes(finding.code)) {
@@ -32,8 +33,13 @@ export default async function SignalSourcesPage({ params, searchParams }: {
       return readSignalEvidence(tx as unknown as typeof sql, id);
     }).finally(() => sql.end());
     if (!source) notFound();
+    const explanation = riskEvidenceLine(finding.code, finding.code === "da_round"
+      ? { ...evidence, closing: source.context.recordedTotalExact, ceiling: finding.ceilingExact }
+      : evidence);
     return <><Link href={`/semnale?tip=${encodeURIComponent(finding.code)}`} className="back">← Înapoi la semnale</Link>
       <h1 className="page-title">Sursele semnalului</h1>
+      <p>{signalPeriodLabel(finding.period)}{explanation ? ` · ${explanation}` : ""}</p>
+      {meta && <p className="note">{meta.caveat}</p>}
       <SourceEvidenceView evidence={source} href={`/semnale/${id}`} page={Number(p ?? 0)} kind="signal" refId={id} />
       <Link href={`/metodologie#${finding.code}`}>Criterii și limitele semnalului →</Link></>;
   }

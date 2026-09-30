@@ -53,6 +53,28 @@ export default function MetodologiePage() {
         </ul>
       </section>
 
+      <section className="section" id="indice">
+        <h2>Ce intră în indicele de risc?</h2>
+        <p>Indicele compus de risc (CRI) folosește doar achizițiile directe acceptate, cu valoare pozitivă
+          de cel mult 2 milioane lei, din întreaga perioadă disponibilă la calcul. Fiecare criteriu îndeplinit
+          contează o singură dată. Criteriile neîndeplinite rămân în numitor, inclusiv când lipsesc date necesare verificării lor.</p>
+        <ul className="prose">
+          <li><strong>Autorități: 5 criterii.</strong> Posibilă fracționare sub prag, concentrare pe un furnizor,
+            achiziții concentrate în decembrie, finalizare rapidă și valori aproape de prag.</li>
+          <li><strong>Furnizori: 4 criterii.</strong> Posibilă fracționare sub prag, dependență de o autoritate,
+            finalizare rapidă și valori aproape de prag.</li>
+        </ul>
+        <p>La finalizarea rapidă, criteriul din profil cere cel puțin 5 achiziții eligibile și mai mult de 25% dintre ele
+          cu acest semnal. La valorile aproape de prag, cere cel puțin 5 achiziții și mai mult de 10% cu semnal.
+          Pentru celelalte criterii este suficient cel puțin un semnal calculat, inclusiv într-un an istoric.</p>
+        <p><strong>Exemplu: 3 / 5 = 0,60.</strong> Acesta nu este un procent de corupție. Etichetele sunt scăzut
+          (peste 0 și sub 0,30), mediu (de la 0,30 până sub 0,60) și ridicat (de la 0,60).
+          Scorul 0 înseamnă că aceste criterii nu au fost îndeplinite în datele evaluate, nu că am certificat lipsa neregulilor.</p>
+        <p>Semnalele despre contracte prin proceduri, bilanțuri și reprezentanți ONRC nu intră în CRI.
+          În profil, filtrele tabelului de achiziții nu recalculează acest scor. Datele incomplete pot schimba rezultatul;
+          verifică perioada fiecărui semnal și sursele sale înainte de a trage o concluzie.</p>
+      </section>
+
       <section className="section" id="acoperire">
         <h2>Ce date avem — și unde sunt limitele</h2>
         <DataCoverage />
@@ -91,7 +113,7 @@ export default function MetodologiePage() {
                 <strong>Ce măsoară:</strong> {m.description}
               </p>
               <p>
-                <strong>De ce e un risc:</strong> {m.rationale}
+                <strong>Ce merită verificat:</strong> {m.rationale}
               </p>
               <p className="note">
                 <strong>Limită:</strong> {m.caveat}
@@ -105,7 +127,7 @@ export default function MetodologiePage() {
         <h2>Radiografie</h2>
         <p>
           Pagina <em>Radiografie</em> a unei autorități contractante arată tiparele structurale pe care scorul de risc nu le
-          vede: cine depinde de cine, cine împarte loturile, cine feliază achizițiile directe. Toate se recalculează la fiecare
+          vede: concentrarea atribuirilor, câștigători care reapar la aceleași proceduri și grupuri de achiziții directe sub prag. Toate se recalculează la fiecare
           reconstrucție a marturilor, pentru fiecare autoritate.
         </p>
         <div className="method-card">

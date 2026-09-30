@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { formatRon, formatInt, formatRonFull, formatExactDecimal } from "./format.js";
+import { formatRon, formatInt, formatRonFull, formatExactDecimal, formatCalendarDate } from "./format.js";
+
+it("formats normalized civil dates without reinterpreting a timezone or dropping an unknown", () => {
+  expect(formatCalendarDate("2026-01-01 00:15", true)).toBe("01.01.2026, 00:15");
+  expect(formatCalendarDate("2025-07-16")).toBe("16.07.2025");
+  expect(formatCalendarDate(null)).toBe("Dată neprecizată");
+  expect(formatCalendarDate("2025-07-15T21:00:00Z")).toBe("Dată neprecizată");
+});
 
 describe("formatRon", () => {
   it("compacts billions and millions in Romanian", () => {

@@ -1,0 +1,22 @@
+.acquisition-detail { max-width: 1040px; margin-inline: auto; padding-block: 24px 48px; }
+.ad-context { color: var(--muted); font-size: 14px; margin-bottom: 24px; overflow-wrap: anywhere; }
+.acquisition-detail .ad-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+.ad-head > div { min-width: 0; }
+.ad-actions { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.ad-head h1 { font-size: clamp(28px, 3.4vw, 42px); line-height: 1.16; overflow-wrap: anywhere; }
+.ad-identity { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 16px; font-size: 15px; }
+.ad-identity span { color: var(--ink2); }
+.ad-section { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--line); }
+.ad-section h2 { font-size: 22px; margin: 0 0 16px; }
+.ad-section > p { max-width: 72ch; font-size: 16px; }
+.ad-facts { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px 40px; margin: 0; }
+.ad-facts dt { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
+.ad-facts dd { margin: 0; font-size: 17px; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.ad-code { display: block; font-size: 14px; color: var(--ink2); margin-top: 4px; }
+.acquisition-detail .ad-note { font-size: 14px; color: var(--muted); max-width: 72ch; margin-top: 16px; }
+.ad-source { display: inline-flex; padding-block: 10px; font-size: 16px; font-weight: 600; text-underline-offset: 4px; }
+.ad-source:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+@media (max-width: 650px) {
+  .acquisition-detail .ad-head { flex-direction: column; gap: 12px; }
+  .ad-facts { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+}

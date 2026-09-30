@@ -72,8 +72,8 @@ export async function runTedMart(
         w.names, w.ids, w.countries, coalesce(w.is_foreign, false),
         tlr.cpv_code, cpv.name_ro, tlr.contract_nature, tlr.title,
         tlr.awarded_value, tlr.amount_kind, tlr.amount_details, tlr.currency,
-        to_char(tlr.contract_date, 'YYYY-MM-DD'),
-        to_char(tn.publication_date, 'YYYY-MM-DD'),
+        to_char(tlr.contract_date at time zone 'Europe/Bucharest', 'YYYY-MM-DD'),
+        to_char(tn.publication_date at time zone 'Europe/Bucharest', 'YYYY-MM-DD'),
         tn.procedure_type,
         tlr.tenders_received, tlr.is_single_bidder, tn.eu_funded,
         case when pl.contract_id is null then 'ted-only'

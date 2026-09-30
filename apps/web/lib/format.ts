@@ -1,6 +1,15 @@
 const int = new Intl.NumberFormat("ro-RO", { maximumFractionDigits: 0 });
 const dec = new Intl.NumberFormat("ro-RO", { maximumFractionDigits: 1 });
 
+/** Calendar fields already normalized by the data layer; never shift them through Date. */
+export function formatCalendarDate(value: string | null | undefined, withTime = false): string {
+  if (!value) return "Dată neprecizată";
+  const match = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?$/.exec(value);
+  if (!match) return "Dată neprecizată";
+  const [, year, month, day, hour, minute] = match;
+  return `${day}.${month}.${year}${withTime && hour ? `, ${hour}:${minute}` : ""}`;
+}
+
 /** Romanian money formatting, compacted for headline figures (mld./mil. lei). */
 export function formatRon(v: number | string | null | undefined): string {
   if (v == null) return "—";

@@ -4,6 +4,7 @@ import {runMonitoringRefresh,MONITORING_METHODOLOGY} from './refresh.js';
 import {runFlags} from '../flags/build.js';
 import {runFlagMarts} from '../flags/marts.js';
 import {runNormalize} from '../normalize/pipeline.js';
+import {runTransactionMarts} from '../normalize/transaction-marts.js';
 import {validateBatch1Snapshot} from './validate.js';
 vi.mock('../normalize/pipeline.js',()=>({runNormalize:vi.fn(async()=>({processed:2,quarantined:0}))}));
 vi.mock('../normalize/reconcile.js',()=>({runReconcile:vi.fn(async()=>({links:3}))}));
@@ -37,6 +38,7 @@ describe.skipIf(!url)('daily risk provenance with real publication gate and stub
    expect(checkpoint.validation['rawBoundary']).toBe('123');
   }
   expect(runFlags).not.toHaveBeenCalled();expect(runFlagMarts).not.toHaveBeenCalled();
+  expect(runTransactionMarts).toHaveBeenCalledTimes(2);
   expect(runNormalize).toHaveBeenCalledWith(db,sql,expect.objectContaining({maxRawId:123n}));
   expect(validateBatch1Snapshot).toHaveBeenCalledWith(expect.anything(),{fullProfiles:true,allAnnual:true},expect.any(Function));
  });
@@ -50,11 +52,26 @@ describe.skipIf(!url)('daily risk provenance with real publication gate and stub
   await expect(runMonitoringRefresh(db,sql,{mode:'coordinated',scope:'daily'})).rejects.toThrow('baseline');
   expect(runNormalize).not.toHaveBeenCalled();
  });
+ it('rejects the old UTC-period risk baseline before any daily data mutation',async()=>{
+  await baseline();
+  await sql`update app.monitoring_refreshes set methodology=jsonb_set(methodology,'{flags}','"rf-2026.5"')`;
+  await expect(runMonitoringRefresh(db,sql,{mode:'coordinated',scope:'daily'})).rejects.toThrow('baseline');
+  expect(runNormalize).not.toHaveBeenCalled();expect(runFlags).not.toHaveBeenCalled();
+ });
  it('full refresh recalculates risk and stores a fresh calculation date',async()=>{
   await baseline();const start=Date.now();
   const cp=await runMonitoringRefresh(db,sql,{mode:'coordinated',scope:'full'});
   expect(runFlags).toHaveBeenCalledOnce();expect(runFlagMarts).toHaveBeenCalledOnce();
+  expect(runTransactionMarts).toHaveBeenCalledOnce();
+  expect(vi.mocked(runFlagMarts).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(runTransactionMarts).mock.invocationCallOrder[0]!);
+  expect(vi.mocked(runTransactionMarts).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(validateBatch1Snapshot).mock.invocationCallOrder[0]!);
   const risk=cp.validation['risk'] as {calculatedAt:string;recalculated:boolean};
   expect(risk.recalculated).toBe(true);expect(new Date(risk.calculatedAt).getTime()).toBeGreaterThanOrEqual(start);
+ });
+ it('refuses publication when the complete signal lookup differs from its sources',async()=>{
+  await baseline();
+  vi.mocked(validateBatch1Snapshot).mockResolvedValueOnce([{check:'complete_signal_lookup',passed:false,scope:'all signals',details:{mismatches:'1'}}]);
+  await expect(runMonitoringRefresh(db,sql,{mode:'coordinated',scope:'daily'})).rejects.toThrow('complete_signal_lookup');
+  expect((await sql`select status from app.monitoring_refreshes order by version desc limit 1`)[0]!.status).toBe('failed');
  });
 });

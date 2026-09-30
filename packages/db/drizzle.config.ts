@@ -2,7 +2,9 @@ import { defineConfig } from "drizzle-kit";
 
 export default defineConfig({
   dialect: "postgresql",
-  schema: "./src/schema",
+  // Load each export once; scanning the directory also loads the barrel and
+  // registers materialized views twice.
+  schema: "./src/schema/index.ts",
   out: "./migrations",
   dbCredentials: {
     url:

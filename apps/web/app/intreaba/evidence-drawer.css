@@ -8,3 +8,20 @@
 .ev-exact-total{overflow-wrap:anywhere}
 
 .ev-contract-title{display:block;font-weight:600;margin-bottom:8px;line-height:1.45;overflow-wrap:anywhere;text-underline-offset:3px}
+
+/* Kept outside the scroll area so loading stays visible during pagination. */
+.ev-load-status{display:none;flex-shrink:0}
+.ev-load-status.is-active{display:flex;align-items:center;gap:14px;padding:18px 30px;background:#edf3e4;border-bottom:1px solid #dae5cc}
+.ev-load-status strong{display:block;font-size:14px;line-height:1.5}
+.ev-load-status p{margin:3px 0 0;font-size:12px;line-height:1.5;color:var(--ev-muted)}
+.ev-load-spinner{width:24px;height:24px;flex-shrink:0;border:2px solid #bacbb0;border-top-color:var(--ev-ink);border-radius:50%;animation:ev-spin .85s linear infinite}
+.ev-skeleton{min-height:400px}
+.ev-skeleton span{display:block;height:11px;border-radius:4px;background:#e2e9df}
+.ev-skeleton-summary{display:grid;grid-template-columns:1fr 1fr;gap:32px;padding:28px 24px;margin-bottom:24px;border:1px solid var(--ev-line);border-radius:13px}
+.ev-skeleton-summary span{height:42px;max-width:230px}
+.ev-skeleton-row{display:grid;grid-template-columns:1.4fr 1.6fr 1fr;gap:30px;padding:25px 10px;border-bottom:1px solid var(--ev-line)}
+.ev-skeleton-row span+span{margin-top:12px;width:65%}
+.ev-skeleton-row span:first-child{width:85%;height:14px}
+@keyframes ev-spin{to{transform:rotate(360deg)}}
+@media(max-width:760px){.ev-load-status.is-active{padding:15px 20px;gap:12px}.ev-load-status strong{font-size:13px}.ev-load-status p{font-size:11px}.ev-skeleton-summary{padding:22px 18px;gap:20px}.ev-skeleton-row{grid-template-columns:1fr 1fr;gap:23px;padding:22px 16px;border:1px solid var(--ev-line);border-radius:12px;margin-bottom:12px}.ev-skeleton-row>div:first-child{grid-column:1/-1}}
+@media(prefers-reduced-motion:reduce){.ev-load-spinner{animation:none}}

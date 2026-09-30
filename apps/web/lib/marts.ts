@@ -250,7 +250,9 @@ export async function getEntityFlagEvidence(entityId: string): Promise<FlagEvide
   const sql = db();
   const id = /^\d+$/.test(entityId) ? entityId : "0";
   const rows = (await sql`
-    select flag_code, period, severity, evidence
+    select flag_code, period, severity,
+      case when flag_code = 'da_round' then evidence || jsonb_build_object(
+        'closing', evidence->>'closing', 'ceiling', evidence->>'ceiling') else evidence end evidence
     from marts.flag_instances
     where entity_id = ${id}
     order by flag_code, period desc nulls last
@@ -1144,6 +1146,7 @@ export interface ContractWinner {
   county: string | null;
   /** This winner's split share of the award value (anti-double-count). */
   shareRon: number | null;
+  shareRonExact: string | null;
   /** Past business between the authority and this winner, both channels. */
   pairNDa: number;
   pairNCt: number;
@@ -1159,6 +1162,8 @@ export interface ContractDetail {
   lotsCaption: string | null;
   contractDate: string | null;
   contractValue: number | null;
+  contractValueExact: string | null;
+  cpvFromNotice: boolean;
   currency: string | null;
   cpvCode: string | null;
   cpvName: string | null;
@@ -1189,8 +1194,9 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
   const nid = /^\d+$/.test(natId) ? natId : "0";
   const rows = (await sql`
     select c.id, c.ca_notice_contract_id nat_id, c.contract_no, c.title, c.lots_caption,
-           c.contract_date::text, c.contract_value, c.currency, c.cpv_code,
-           (select name_ro from core.cpv_codes k where k.code = c.cpv_code) cpv_name,
+           to_char(c.contract_date at time zone 'Europe/Bucharest', 'YYYY-MM-DD') contract_date, c.contract_value::text, c.currency, coalesce(c.cpv_code, a.cpv_code) cpv_code,
+           c.cpv_code is null and a.cpv_code is not null cpv_from_notice,
+           (select name_ro from core.cpv_codes k where k.code = coalesce(c.cpv_code, a.cpv_code)) cpv_name,
            a.id award_id, a.ca_notice_id, a.notice_no, a.estimated_value_ron,
            a.ron_contract_value, a.lowest_offer_value, a.highest_offer_value,
            a.procedure_type, a.acquisition_type, a.state_date::text,
@@ -1234,11 +1240,11 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
       : Promise.resolve([{ c: 1 }]),
   ]);
 
-  const shareBySupplier = new Map<string, number | null>();
+  const shareBySupplier = new Map<string, string | null>();
   for (const m of mart) {
     shareBySupplier.set(
       String(m["supplier_id"]),
-      m["closing_value"] != null ? Number(m["closing_value"]) : null,
+      m["closing_value"] != null ? String(m["closing_value"]) : null,
     );
   }
   const m0 = mart[0];
@@ -1279,6 +1285,8 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
     lotsCaption: (r["lots_caption"] as string | null) ?? null,
     contractDate: (r["contract_date"] as string | null) ?? null,
     contractValue: r["contract_value"] != null ? Number(r["contract_value"]) : null,
+    contractValueExact: r["contract_value"] == null ? null : String(r["contract_value"]),
+    cpvFromNotice: r["cpv_from_notice"] === true,
     currency: (r["currency"] as string | null) ?? null,
     cpvCode: (r["cpv_code"] as string | null) ?? null,
     cpvName: (r["cpv_name"] as string | null) ?? null,
@@ -1305,7 +1313,8 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
         entityId: idStr,
         name: (w["name_display"] as string | null) ?? null,
         county: (w["county"] as string | null) ?? null,
-        shareRon: shareBySupplier.get(idStr) ?? null,
+        shareRon: shareBySupplier.get(idStr) == null ? null : Number(shareBySupplier.get(idStr)),
+        shareRonExact: shareBySupplier.get(idStr) ?? null,
         pairNDa: h?.nDa ?? 0,
         pairNCt: h?.nCt ?? 0,
         pairTotalRon: h?.total ?? 0,

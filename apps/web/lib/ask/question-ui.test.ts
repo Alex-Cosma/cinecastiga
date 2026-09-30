@@ -166,10 +166,10 @@ describe("the editable question contract", () => {
   });
 
   it("starts with a real national query, without mockup identities or data", () => {
-    expect(defaultQuestion(2025)).toEqual({ block: "table", dim: "supplier", measure: "value", topN: 10, filters: { yearFrom: 2025, yearTo: 2025 } });
-    const validated = validateSpec(defaultQuestion(2025));
+    expect(defaultQuestion()).toEqual({ block: "table", dim: "supplier", measure: "value", topN: 10, filters: {} });
+    const validated = validateSpec(defaultQuestion());
     expect(validated).not.toHaveProperty("error");
-    if (!("error" in validated)) expect(describeQuestion(validated)).toContain("2025");
+    if (!("error" in validated)) expect(describeQuestion(validated)).toContain("toți anii disponibili");
   });
 
   it("restores a full paginated ranking without turning it into a dirty top-ten draft", () => {
@@ -187,6 +187,6 @@ describe("the editable question contract", () => {
   it("still starts newly selected ranking templates with ten rows", () => {
     const newRanking = transitionQuestion({ block: "stat", measure: "value", filters: {} }, "table");
     expect(newRanking.spec.topN).toBe(10);
-    expect(defaultQuestion(2025).topN).toBe(10);
+    expect(defaultQuestion().topN).toBe(10);
   });
 });

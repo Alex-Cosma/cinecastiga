@@ -81,7 +81,10 @@ export async function runFlags(
 ): Promise<FlagsReport> {
   // Validate and build on one connection. A failed rule must not publish a
   // truncated or partly rebuilt flag population.
-  return sql.begin((tx) => buildFlags(tx as unknown as DbSql, opts));
+  return sql.begin(async (tx) => {
+    await tx`set local time zone 'Europe/Bucharest'`;
+    return buildFlags(tx as unknown as DbSql, opts);
+  });
 }
 
 async function buildFlags(

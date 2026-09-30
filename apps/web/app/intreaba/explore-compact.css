@@ -6,7 +6,7 @@
 .cq-workspace-actions a { color:var(--accent); text-decoration:none; text-underline-offset:4px; }
 .cq-workspace-actions a:hover { text-decoration:underline; }
 .explore-compact .qb-editor { padding:24px; border-radius:13px; box-shadow:none; }
-.explore-compact .qb-sentence { margin:0 0 10px; font-size:32px; line-height:1.55; letter-spacing:-.025em; }
+.explore-compact .qb-sentence { margin:0 0 10px; font-size:30px; line-height:1.55; letter-spacing:-.025em; }
 .explore-compact .qb-desktop-break { display:none; }
 .explore-compact .cq-edit-hint { margin:0 0 22px; font-size:12px; line-height:1.6; color:var(--ink-secondary); }
 .explore-compact .qb-conditions { margin-bottom:18px; }
