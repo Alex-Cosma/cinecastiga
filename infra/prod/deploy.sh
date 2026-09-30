@@ -2,7 +2,8 @@
 # Runs ON THE SERVER as user `seap`. Invoked by GitHub Actions over SSH through a
 # forced command in ~/.ssh/authorized_keys (see README.md), so the CI key can do
 # nothing but this. Fast-forwards the checkout to origin/main and builds release images, applies pending migrations, then restarts the web
-# containers; the database service, Meilisearch and Caddy are not restarted.
+# containers; PostgreSQL and Meilisearch stay running. Caddy is recreated only
+# when its single-file bind mount differs from the validated checkout config.
 set -euo pipefail
 cd "${SEAP_DEPLOY_CHECKOUT:-/srv/seap/src}"
 # Also serialize manual invocations, not only the GitHub Actions deploy job.
@@ -31,9 +32,14 @@ docker compose --profile maintenance run --rm --no-deps migrate
 # before exposing the new UI. Later deploys keep the index; nightly processing
 # remains responsible for refreshing it. Failure preserves the running web.
 docker compose --profile processing run --rm --no-deps processor node apps/ingestion/dist/scripts/index-topics.js --if-missing
-# Refresh the trusted feedback client header before exposing the new web.
-# Validation or reload failure leaves the existing application containers running.
-docker compose exec -T caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+# Git can replace a single-file bind mount's inode. Validate the CHECKOUT config,
+# not the stale file still mounted in the old container. Recreate only if needed;
+# persisted certificates and data volumes remain intact.
+docker compose cp Caddyfile caddy:/tmp/cinecastiga-deploy.Caddyfile
+docker compose exec -T caddy caddy validate --config /tmp/cinecastiga-deploy.Caddyfile --adapter caddyfile
+if ! docker compose exec -T caddy cat /etc/caddy/Caddyfile | cmp -s Caddyfile -; then
+  docker compose up -d --no-deps --force-recreate caddy
+fi
 docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
 # set -e prevents this restart when migration/history/grant/proxy checks fail.
 docker compose --profile documents up -d --no-deps web documents
