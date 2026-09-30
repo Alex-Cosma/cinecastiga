@@ -1,5 +1,9 @@
 # Transfer complet al datelor publice
 
+## Exportul curent
+
+La cererea din 30 septembrie, s-a exportat și verificat un snapshot LOCAL nou în `infra/prod/dumps/handover-local-20260930`, fără a suprascrie pachetul anterior. Starea efectivă, hashurile și verificările sunt în [TRANSFER-STATUS.md](TRANSFER-STATUS.md). Folosește acest pachet nou după verificarea checksumurilor; observațiile datate 28 septembrie de mai jos sunt istorice. Codul recent și schema cu 46 migrări intră în noul handover, însă exportul nu reprocesează calendarul/marts locale.
+
 ## Alegerea făcută
 
 Proprietarul a confirmat: **bază completă, date publice și cont local nou**. **Decizia finală: sursa este baza LOCALĂ a autorului, iar mediul de transfer este un stick USB.** Aceasta are arhiva brută mai mare și documentele pilotului. Snapshot-ul nu este prezentat drept ultima publicare din producție. Nu copiem volumul Docker și nu distribuim un backup privat integral.
@@ -42,8 +46,8 @@ Comanda aleasă, pe calculatorul autorului, din rădăcina repository-ului:
 python3 scripts/handover/export-public.py \
   --container seap-postgres-1 \
   --checkout "$PWD" \
-  --source-label cinecastiga-local-20260928 \
-  --output infra/prod/dumps/handover-local-20260928
+  --source-label cinecastiga-local-20260930 \
+  --output infra/prod/dumps/handover-local-20260930
 ```
 
 Colectarea locală era deja oprită și procesarea automată dezactivată. Exportul nu modifică acele setări. Varianta de producție fusese exportată înaintea schimbării cerinței. La cererea proprietarului, arhiva de 4,75 GB și fișierele auxiliare ale acelui export au fost șterse de pe server după confirmarea terminării procesului. Nu este păstrată și nu este pachetul pentru stick. Backup-urile operaționale obișnuite nu au fost afectate.
@@ -69,12 +73,12 @@ Documentație tehnică primară: [pg_dump 16](https://www.postgresql.org/docs/16
 
 ## Transfer efectiv
 
-După ce există manifestul final, copiază **întregul director** `infra/prod/dumps/handover-local-20260928` pe stick, împreună cu documentația și scripturile de restaurare. Finder este suficient. Din terminal, numai după ce ai identificat volumul corect:
+După ce există manifestul final, copiază **întregul director** `infra/prod/dumps/handover-local-20260930` pe stick, împreună cu documentația și scripturile de restaurare. Finder este suficient. Din terminal, numai după ce ai identificat volumul corect:
 
 ```sh
 rsync -av --partial --progress \
-  infra/prod/dumps/handover-local-20260928/ \
-  "/Volumes/NUMELE_STICKULUI/handover-local-20260928/"
+  infra/prod/dumps/handover-local-20260930/ \
+  "/Volumes/NUMELE_STICKULUI/handover-local-20260930/"
 ```
 
 Înlocuiește numele volumului; nu executa exemplul literal. Nu formata un stick care conține date pentru această operațiune. **exFAT** este alegerea practică pentru un singur dump mai mare de 4 GB și compatibilitate Mac/Windows/Linux. Dacă stick-ul este FAT32 și nu poate fi schimbat, împarte dump-ul în bucăți sub 4 GB, copiază-le și reconstituie fișierul pe discul colegului înainte de verificarea SHA-256/restore. Nu încerca restore direct din bucăți.

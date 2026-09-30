@@ -1,0 +1,16 @@
+{
+  "bundle": "~/Desktop/Personal/code/seap/infra/prod/dumps/handover-local-20260930",
+  "full_data_restore": false,
+  "started_at": 1790790629.354163,
+  "full_archive_readback": true,
+  "schema_restored": true,
+  "selected_restore_counts": {
+    "migrations": 46,
+    "cpv": 9454,
+    "users": 0,
+    "feedback": 0,
+    "requests": 0
+  },
+  "fixture_removed": true,
+  "completed_at": 1790790841.804939
+}

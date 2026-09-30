@@ -1,5 +1,7 @@
 # Stare curentă, limite și următoarele direcții
 
+**Actualizare 30 septembrie:** aplicația este live la `f474c3e`, 46 migrări, checkpoint 8 ready, calendar `rf-2026.6`, colectare activă. [Raportul verificat](../implementation/release-20260930.md) înlocuiește fotografia operațională istorică de mai jos.
+
 ## Fotografia verificată la predare
 
 28 septembrie 2026, verificări read-only între 11:28–11:50 ora României; starea se poate schimba ulterior.
@@ -65,13 +67,13 @@ Ordinea se decide cu proprietarul; acestea nu sunt sarcini începute automat pen
 
 ### Urmărirea auditului de încredere — 30 septembrie 2026
 
-[Auditul Reddit](../reviews/reddit-skeptic-20260929/report.md) rămâne referința pentru constatări. Detaliile/calendarul, limbajul riscului și timeoutul `/semnale` au implementări locale; nu sunt încă publicate. Lansarea comună cere tranziția calendarului documentată în HANDOFF.
+[Auditul Reddit](../reviews/reddit-skeptic-20260929/report.md) rămâne referința pentru constatări. Detaliile/calendarul, limbajul riscului, timeoutul `/semnale` și loturile de mai jos au fost publicate în30septembrie. Tranziția calendarului a trecut, site-ul este redeschis și colectarea reluată; [raportul lansării](../implementation/release-20260930.md) are verificările exacte. Copia locală păstrează propriul baseline nereprocesat.
 
-- **Implementat local: redesign `/semnale`, varianta A aprobată.** Toate cele 13 tipuri, selector căutabil, 10 rezultate/pagină, totaluri complete, explicații inline, surse reale în dialog stabil și CRI separat. 51 teste și 42 verificări browser, TypeScript/build trecute. [Implementare și limite](../implementation/signals-redesign.md); fără publicare.
-- **Implementat local: intenția căutării.** Pentru „Primăria Cluj”, o potrivire puternică de instituție trebuie să fie vizibilă înaintea contractelor cu potriviri textuale. Acces separat la profil și achizițiile instituției, fără schimbarea tacită a căutării; categorii ușor de descoperit pe mobil. [Implementare și verificări](../implementation/search-intent.md); fără publicare.
-- **Implementat local: traseul de verificare.** Un acces principal la surse, exporturi grupate și explicația calculului lângă rezultat; stările documentelor invită numai la acțiuni disponibile. [Implementare](../implementation/answer-actions.md), fără publicare.
-- **Implementat local: prima experiență Explorează.** Drawer cu loading vizibil/schelet, întrebarea implicită pe toți anii disponibili prin agregatele existente, text desktop ajustat la30px ca semnul întrebării să rămână pe rând. Clasamentele precalculate pe ani rămân doar o propunere. [Checkpoint de reluare](continuation-20260930.md).
-- **Implementat local: feedback anonim.** Proprietarul a ales să nu afișeze niciun nume public. Formular fără cont/nume/e-mail, cu pagină publică atașată; mesaje private pentru administratori în `/admin/feedback`, paginare10 și ștergere individuală confirmată. [Implementare](../implementation/anonymous-feedback.md). Nu mai solicita identitatea operatorului pentru acest flux.
+- **Publicat: redesign `/semnale`, varianta A aprobată.** Toate cele 13 tipuri, selector căutabil, 10 rezultate/pagină, totaluri complete, explicații inline, surse reale în dialog stabil și CRI separat. 51 teste și 42 verificări browser, TypeScript/build trecute. [Implementare și limite](../implementation/signals-redesign.md).
+- **Publicat: intenția căutării.** Pentru „Primăria Cluj”, o potrivire puternică de instituție trebuie să fie vizibilă înaintea contractelor cu potriviri textuale. Acces separat la profil și achizițiile instituției, fără schimbarea tacită a căutării; categorii ușor de descoperit pe mobil. [Implementare și verificări](../implementation/search-intent.md).
+- **Publicat: traseul de verificare.** Un acces principal la surse, exporturi grupate și explicația calculului lângă rezultat; stările documentelor invită numai la acțiuni disponibile. [Implementare](../implementation/answer-actions.md).
+- **Publicat: prima experiență Explorează.** Drawer cu loading vizibil/schelet, întrebarea implicită pe toți anii disponibili prin agregatele existente, text desktop ajustat la30px ca semnul întrebării să rămână pe rând. Clasamentele precalculate pe ani rămân doar o propunere. [Checkpoint de reluare](continuation-20260930.md).
+- **Publicat: feedback anonim.** Proprietarul a ales să nu afișeze niciun nume public. Formular fără cont/nume/e-mail, cu pagină publică atașată; mesaje private pentru administratori în `/admin/feedback`, paginare10 și ștergere individuală confirmată. [Implementare](../implementation/anonymous-feedback.md). Nu mai solicita identitatea operatorului pentru acest flux.
 - **Ulterior: citare durabilă și acoperire.** Referințe care rezistă recalculării și explicarea succintă a perioadelor disponibile pe flux.
 
 ### Direcții generale

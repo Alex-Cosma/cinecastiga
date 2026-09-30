@@ -1,5 +1,7 @@
 # Reluare după compactare — 30 septembrie 2026
 
+**Notă ulterioară:** loturile descrise aici au fost publicate și tranziția calendarului a fost încheiată în producție la 30 septembrie. Vezi [raportul final](../implementation/release-20260930.md). Condițiile pending de mai jos sunt istorice; nu relansa procesarea one-off. Copia locală rămâne nereprocesată.
+
 **Actualizare Git ulterioară:** proprietarul a cerut commit pentru toate modificările. Acest checkpoint este inclus în commit-ul de consolidare de pe `fix/acquisition-details-dates`; referințele de mai jos la HEAD8935af5 și fișiere necomise sunt fotografia anterioară. Consultă `git log -1` pentru commit-ul actual. Fără push/deploy.
 
 Acesta este checkpoint-ul sesiunii, nu o instrucțiune de deploy. Cererea finală a proprietarului este să salvăm contextul. Ultimele ajustări cerute sunt terminate local; nu există o implementare nouă de pornit automat după compactare.

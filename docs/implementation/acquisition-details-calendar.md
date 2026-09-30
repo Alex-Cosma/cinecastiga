@@ -1,5 +1,7 @@
 # Detalii de achiziții și calendar — 29 septembrie 2026
 
+**Actualizare 30 septembrie:** tranziția completă a fost validată în producție, indexurile reconstruite și site-ul redeschis. [Raportul publicării](release-20260930.md). Instrucțiunile de tranziție de mai jos sunt istorice pentru producție; nu repeta full-ul la un deploy obișnuit. Baza LOCALĂ și pachetul colegului rămân nereprocesate.
+
 Stare: **implementat și verificat local**, branch `fix/acquisition-details-dates`. Fără commit/push/deploy și fără reprocesarea arhivei locale sau de producție. Utilizatorul a aprobat prima intervenție din [audit](../reviews/reddit-skeptic-20260929/report.md): detalii și date, cu identitatea vizuală păstrată.
 
 ## Pagini de detaliu

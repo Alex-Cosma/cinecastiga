@@ -1,3 +1,40 @@
+# Pachetul local pentru stick — 30 septembrie 2026
+
+**Pachet complet și verificat.** Pachetul include codul și documentația din momentul împachetării; `PACKAGE-SHA256SUMS` verifică întregul dosar după transfer.
+
+- Director: `infra/prod/dumps/handover-local-20260930`, lângă pachetul precedent, păstrat separat.
+- Arhivă: `database.dump`, **9,411,824,015 bytes** (9,41 GB / 8,77 GiB).
+- SHA-256: `ace1825d9428197d0678b46bc4dd1ba3705ae07b3152b36d85feb2ce3ea26bef`.
+- Export: 30 septembrie2026, 20:35:16–20:48:58, Europe/Bucharest.
+- Sursă: baza **LOCALĂ** `seap`, PostgreSQL16.13, 68.780.874.775 bytes fizici înaintea exportului (aproximativ64GiB), **46 migrări**.
+- Cod la pornirea exportului: `43c0d4a`. Snapshotul de cod include și corecția de deploy `f474c3e`; hashul exact și documentele de lucru sunt consemnate în `source-manifest.json`.
+- Checkpoint local: baseline/version1, ready, 19 septembrie2026. Copia locală nu a fost recalculată pentru calendarul `rf-2026.6`; exportul nu schimbă datele sau proveniența publicării.
+- Sunt incluse toate datele publice din această copie, inclusiv documente/PDF/OCR. Fără conturi, sesiuni, 2FA, feedback privat, anchete, urmăriri sau cozi active. Colegul creează un cont local nou.
+
+Snapshotul de cod conține 1.414 fișiere; toate cele 26 de checksumuri din PACKAGE-SHA256SUMS au fost verificate după împachetare. Arhiva de cod a fost inspectată: fără medii private, dumpuri, chei PEM, `.git` sau `node_modules`. Pachetul pe disc păstrează documentația datată la împachetare; notele ulterioare din repository nu îi modifică checksumurile.
+
+## Verificări ale arhivei noi
+
+- `pg_dump` complet, fără erori; catalogul verificat pentru lipsa datelor `auth.*` și a tuturor tabelelor private din `app`, inclusiv feedbackul nou.
+- SHA-256 calculat pe întregul fișier.
+- Citire și decomprimare **integrală** cu pg_restore16, fără erori.
+- Structura arhivei restaurată într-o bază temporară nouă; restore selectiv verificat: **46 migrări și9.454coduriCPV**, zero utilizatori/feedback/requesturi. Baza temporară și fișierul auxiliar au fost eliminate.
+- [Raportul verificării](transfer-artifact-verification-20260930.json). **Nu s-a făcut un al doilea restore integral al celor64GiB**; aceste verificări nu sunt prezentate ca restore complet sau benchmark al lui.
+- Fără cereri SEAP, recalculări sau modificări asupra bazei locale originale.
+
+## Cod, handover și producție
+
+Pachetul conține `source.tar.gz`, `source-manifest.json`, `CITESTE-MA.md`, `docs/handover/`, `scripts/handover/` și `PACKAGE-SHA256SUMS`. Niciun `.env`, secret, dump în arhiva codului sau dependență instalată.
+
+**Starea producției la împachetare:** commitul43c0d4a și migrațiile au fost deploy-ate, iar recalcularea completă pentru noul calendar este încă în curs sub mentenanță. Corecția Caddy este aplicată live și comisă local înf474c3e, urmând push/deploy după eliberarea lockului. Acesta este un snapshot datat al informațiilor, nu un status live: pentru încheierea operațiunii consultă ultima versiune de pe main a `docs/implementation/release-20260930.md`. Nu relansa procedurile one-off din arhiva de cod.
+
+După verificarea noului pachet, proprietarul poate șterge `handover-local-20260928` dacă nu mai dorește copia istorică. Agentul nu a șters-o. Nu s-a copiat pe USB și nu s-a formatat niciun dispozitiv.
+
+---
+
+## Arhiva precedentă, păstrată ca istoric
+
+
 # Pachetul local pentru stick — 28 septembrie 2026
 
 **Export complet, verificat și gata pentru dosarul de transfer.**

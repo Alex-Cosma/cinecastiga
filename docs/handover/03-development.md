@@ -4,7 +4,7 @@
 
 - Git, Node 22 LTS, pnpm 9.4.0, Docker cu Compose, Python 3.
 - macOS/Linux sau Windows cu WSL 2. Scriptul de restore acceptă doar un context Docker local pe socket Unix; pentru Windows se rulează din WSL.
-- Spațiu confortabil: **100 GB liberi** este o rezervă de planificare pentru baza locală de aproximativ 57 GB, dump comprimat, WAL/indexuri temporare și imagini. Nu este o dimensiune măsurată a arhivei.
+- Spațiu confortabil: **120 GB liberi** este o rezervă de planificare pentru baza locală de aproximativ 64 GiB, dump comprimat, WAL/indexuri temporare și imagini. Nu este o dimensiune măsurată a arhivei.
 - Docker trebuie să aibă suficient spațiu în propriul disc virtual, nu doar pe discul gazdă. 8–12 GB RAM alocate și 2 joburi la restore sunt un punct de plecare; durata depinde de SSD/CPU/RAM.
 - Nu este necesar acces SSH la producție pentru dezvoltarea obișnuită.
 
@@ -31,11 +31,11 @@ Acest compose pornește doar PostgreSQL și Meilisearch. Nu porni `ingestion dev
 
 ## 2. Restore în bază nouă
 
-Descarcă întregul bundle într-un director separat, de exemplu `~/Transfers/handover-local-20260928/`, apoi:
+Descarcă întregul bundle într-un director separat, de exemplu `~/Transfers/handover-local-20260930/`, apoi:
 
 ```sh
 python3 scripts/handover/restore-local.py \
-  --bundle ~/Transfers/handover-local-20260928 \
+  --bundle ~/Transfers/handover-local-20260930 \
   --database seap_collab --jobs 2
 ```
 

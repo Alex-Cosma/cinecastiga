@@ -1,3 +1,17 @@
+## 2026-09-30 — Publicare și predare încheiate
+
+**Aplicația și corecția deploy sunt live pe main: `f474c3e`**, după release-ul `43c0d4a`. Ambele CI/deploy au trecut. [Raport final](docs/implementation/release-20260930.md): 46 migrări, checkpoint 8 ready, toate cele 11 verificări trecute, calendar `rf-2026.6` / `Europe/Bucharest-v1`, căutare refăcută. Full-ul a durat 1h50m03s; cu indexare 1h56m03s. Site redeschis la 21:38:18 RO, control rev22 fără mentenanță/blocare; colectarea reluată cu cereri reușite. Programul zilnic și riscul duminică rămân neschimbate, la fel bugetul operatorului observat 40–60s. 16 verificări browser public au trecut. Configurația activă Caddy verificată după corecție.
+
+**Nu repeta tranziția calendarului în producție** la următorul deploy. Instrucțiunile pending/local de mai jos și checkpoint-urile datate sunt istorice. Copia LOCALĂ nu a fost recalculată; pachetul public `handover-local-20260930` este complet și verificat, cu 9,41 GB dump, cod și handover. Pachetul este sigilat; documentarea finală a producției se citește din repo. Cel vechi poate fi șters de proprietar, dar nu a fost șters de agent. Nu s-a copiat încă nimic pe USB.
+
+## 2026-09-30 — Pachetul local nou este gata
+
+`infra/prod/dumps/handover-local-20260930` este complet: dump public9.411.824.015bytes, citire integrală și restore de structură/date selective trecute, fixture eliminat, snapshot de cod1.414fișiere și toate cele26checksumuri ale pachetului verificate. Fără secrete sau date private ale aplicației. [Starea transferului](docs/handover/TRANSFER-STATUS.md). Proprietarului i s-a confirmat că poate șterge pachetul vechi; agentul nu l-a șters. Pachetul este un snapshot datat, creat în timpul procesării live încă în curs; starea finală a producției va fi în raportul release-ului din repository. Nu modifica fișierele pachetului după transfer fără regenerarea checksumurilor.
+
+## 2026-09-30 — Export local nou cerut în timpul publicării
+
+Utilizatorul cere dumpul local în același loc și actualizarea handoverului. Exportul public complet rulează în `infra/prod/dumps/handover-local-20260930`, lângă pachetul anterior păstrat. Nu copia `.partial`; [starea pachetului](docs/handover/TRANSFER-STATUS.md) va confirma finalizarea și verificările. Recalcularea din producție continuă separat; nu abandona publicarea. Corecția Caddy live și fixul deploy local sunt în [raportul lansării](docs/implementation/release-20260930.md).
+
 ## 2026-09-30 — Publicare în curs, autorizată
 
 Utilizatorul cere commit + push + deploy pentru toate loturile. [Procedură și verificări](docs/implementation/release-20260930.md). Tranziția calendarului include backup/mentenanță/full/search înainte de redeschidere, fără modificarea programului ulterior. Scripturile one-off datate sunt pentru această intervenție, nu se rerulează automat. Starea finală va fi consemnată după validare.
