@@ -16,7 +16,7 @@ import { monitoringSourceCoverage, validateCoverageCounts } from "./coverage.js"
 
 export const MONITORING_METHODOLOGY = {
   monitoring: "monitoring-refresh-1", flags: METHODOLOGY_VERSION,
-  tedNormalization: TED_NORMALIZATION_VERSION, transactionPopulation: "batch1-canonical-1",
+  tedNormalization: TED_NORMALIZATION_VERSION, transactionPopulation: "batch1-canonical-1", procurementCalendar: "Europe/Bucharest-v1",
 };
 
 /** Does not scrape. A baseline validates existing data without rewriting its timestamps. */

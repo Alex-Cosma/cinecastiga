@@ -3,6 +3,8 @@ type TransactionSql=Parameters<Parameters<DbSql['begin']>[1]>[0];
 
 /** Daily procurement read models; uses the retained flags without recomputing CRI. */
 export async function buildTransactionMarts(q:TransactionSql){
+    // Calendar days/years must match SEAP detail pages in Romanian time.
+    await q`set local time zone 'Europe/Bucharest'`;
     // ── da_transactions (per-DA investigative read model) ───────────────────
     await q`truncate marts.da_transactions`;
     await q`
@@ -135,6 +137,9 @@ export async function buildTransactionMarts(q:TransactionSql){
     `;
     await q`alter table marts.agg_top_entities add primary key (role, eid)`;
 
+    // Same publication transaction as the daily sources; retained risk is not recalculated.
+    await q`refresh materialized view marts.signal_lookup`;
+    await q`analyze marts.signal_lookup`;
     const [row]=await q`select count(*)::int n from marts.da_transactions`;
     return {daTransactions:Number(row!.n)};
 }

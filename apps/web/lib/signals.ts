@@ -61,40 +61,34 @@ export interface SignalOverview {
 const globalDb = globalThis as unknown as { __seapSignalSql?: DbSql };
 const database = () => globalDb.__seapSignalSql ??= createDb().sql;
 
-/** Core flags already contain the calibrated materiality/threshold rules.
- * This reads the complete triggered population, never the 500-example mart.
- * Each branch emits a flag once. Supplier award membership uses EXISTS so a
- * consortium cannot multiply the number of signals or its notice value. */
+/** Complete population refreshed with transaction marts, never the 500-example
+ * flag_instances mart. A notice is counted once even with several winners. */
 export function signalPopulation(sql: DbSql, state: Pick<SignalState, "role" | "county">, code?: string) {
-  const type = code ? sql`and f.flag_code = ${code}` : sql``;
-  const entityId = state.role === "authority" ? sql`f.subject_id` : sql`case when f.subject_type = 'pair' then f.partner_id else f.subject_id end`;
-  const partnerId = state.role === "authority" ? sql`f.partner_id` : sql`case when f.subject_type = 'pair' then f.subject_id else f.partner_id end`;
-  const daEntity = state.role === "authority" ? sql`da.authority_entity_id` : sql`da.supplier_entity_id`;
-  const daPartner = state.role === "authority" ? sql`da.supplier_entity_id` : sql`da.authority_entity_id`;
+  const entityId = state.role === "authority" ? sql`f.entity_id`
+    : sql`case when f.subject_type in ('pair', 'da') then f.partner_id else f.entity_id end`;
+  const partnerId = state.role === "authority" ? sql`f.partner_id`
+    : sql`case when f.subject_type in ('pair', 'da') then f.entity_id else f.partner_id end`;
   const countyFor = (id: typeof entityId) => state.county
-    ? sql`and exists (select 1 from core.entities county_entity where county_entity.id = ${id} and lower(unaccent(county_entity.county)) = lower(unaccent(${state.county})))`
-    : sql``;
+    ? sql`and exists (select 1 from core.entities county_entity where county_entity.id = ${id}
+        and lower(unaccent(county_entity.county)) = lower(unaccent(${state.county})))` : sql``;
   const awardMembership = state.role === "authority"
-    ? sql`aw.authority_entity_id is not null ${countyFor(sql`aw.authority_entity_id`)}`
+    ? sql`f.entity_id is not null ${countyFor(sql`f.entity_id`)}`
     : sql`exists (select 1 from core.contracts c join core.contract_winners cw on cw.contract_id = c.id
-        where c.ca_notice_id = aw.ca_notice_id ${countyFor(sql`cw.entity_id`)})`;
+        where c.ca_notice_id = f.source_id ${countyFor(sql`cw.entity_id`)})`;
+  const type = code ? sql`and f.flag_code = ${code}` : sql``;
   return sql`(
     select f.id, f.flag_code, f.subject_type, ${entityId} entity_id, ${partnerId} partner_id,
-      f.severity, coalesce(nullif(f.evidence->>'total',''), nullif(f.evidence->>'public_total',''), nullif(f.evidence->>'combined',''))::numeric total_ron,
-      f.period, f.evidence, f.methodology_version, null::bigint source_id
-    from core.flags f
-    where f.triggered and f.subject_type in (${state.role}, 'pair') ${type}
+      f.severity, f.total_ron, f.source_id
+    from marts.signal_lookup f
+    where f.subject_type in (${state.role}, 'pair') ${type}
       and ${entityId} is not null ${countyFor(entityId)}
     union all
-    select f.id, f.flag_code, f.subject_type, ${daEntity}, ${daPartner}, f.severity,
-      da.closing_value, f.period, f.evidence, f.methodology_version, da.sicap_da_id
-    from core.flags f join core.direct_acquisitions da on da.id = f.subject_id
-    where f.triggered and f.subject_type = 'da' ${type} and ${daEntity} is not null ${countyFor(daEntity)}
+    select f.id, f.flag_code, f.subject_type, ${entityId}, ${partnerId}, f.severity, f.total_ron, f.source_id
+    from marts.signal_lookup f
+    where f.subject_type = 'da' ${type} and ${entityId} is not null ${countyFor(entityId)}
     union all
-    select f.id, f.flag_code, f.subject_type, aw.authority_entity_id, null::bigint, f.severity,
-      aw.ron_contract_value, f.period, f.evidence, f.methodology_version, aw.ca_notice_id
-    from core.flags f join core.awards aw on aw.id = f.subject_id
-    where f.triggered and f.subject_type = 'award' ${type} and ${awardMembership}
+    select f.id, f.flag_code, f.subject_type, f.entity_id, f.partner_id, f.severity, f.total_ron, f.source_id
+    from marts.signal_lookup f where f.subject_type = 'award' ${type} and ${awardMembership}
   )`;
 }
 
@@ -130,7 +124,10 @@ export async function readSignalPage(sql: DbSql, state: SignalState): Promise<Si
     const total = Number(totals[0]?.n ?? 0);
     const page = Math.min(state.page, Math.max(0, Math.ceil(total / SIGNAL_PAGE_SIZE) - 1));
     const rows = await q`
-      select selected.*, e.name_display entity_name, e.county entity_county, p.name_display partner_name,
+      select selected.*, f.period, f.evidence, f.methodology_version,
+        case when selected.flag_code = 'da_round' then f.evidence || jsonb_build_object(
+          'closing', f.evidence->>'closing', 'ceiling', f.evidence->>'ceiling') else f.evidence end display_evidence,
+        e.name_display entity_name, e.county entity_county, p.name_display partner_name,
         case when selected.subject_type = 'award' then (
           select coalesce(jsonb_agg(winner order by winner.entity_id), '[]'::jsonb) from (
             select distinct cw.entity_id::text entity_id, we.name_display name, we.county
@@ -140,6 +137,7 @@ export async function readSignalPage(sql: DbSql, state: SignalState): Promise<Si
         ) else '[]'::jsonb end winners
       from (select * from ${population} population
         order by total_ron desc nulls last, severity desc nulls last, id limit ${SIGNAL_PAGE_SIZE} offset ${page * SIGNAL_PAGE_SIZE}) selected
+      join core.flags f on f.id = selected.id
       left join core.entities e on e.id = selected.entity_id
       left join core.entities p on p.id = selected.partner_id
       order by selected.total_ron desc nulls last, selected.severity desc nulls last, selected.id`;
@@ -147,7 +145,7 @@ export async function readSignalPage(sql: DbSql, state: SignalState): Promise<Si
       id: String(r.id), flagCode: String(r.flag_code), subjectType: String(r.subject_type),
       entityId: r.entity_id == null ? null : String(r.entity_id), entityName: r.entity_name ?? null, entityCounty: r.entity_county ?? null,
       partnerId: r.partner_id == null ? null : String(r.partner_id), partnerName: r.partner_name ?? null,
-      severity: Number(r.severity ?? 0), totalRon: Number(r.total_ron ?? 0), period: r.period ?? null, evidence: r.evidence ?? null,
+      severity: Number(r.severity ?? 0), totalRon: Number(r.total_ron ?? 0), period: r.period ?? null, evidence: r.display_evidence ?? r.evidence ?? null,
       sourceId: r.source_id == null ? null : String(r.source_id), methodology: String(r.methodology_version),
       winners: (r.winners as { entity_id: string; name: string | null; county: string | null }[]).map((winner) => ({ entityId: winner.entity_id, name: winner.name, county: winner.county })),
     })) };

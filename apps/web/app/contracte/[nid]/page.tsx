@@ -4,7 +4,7 @@ import { getContractFiles } from "@/lib/documents/store";
 import { sessionUserId } from "@/lib/session";
 import { notFound } from "next/navigation";
 import { getContractDetail } from "@/lib/marts";
-import { formatRon, formatRonFull, formatInt, cleanName } from "@/lib/format";
+import { formatRon, formatRonFull, formatInt, formatExactDecimal, formatCalendarDate, cleanName } from "@/lib/format";
 import { FLAG_META } from "@/lib/flags";
 import { awardUrl } from "@/lib/elicitatie";
 import ClipButton from "@/components/ClipButton";
@@ -74,11 +74,11 @@ export default async function ContractPage({
           {c.procedureType && <span className="badge plain">{c.procedureType}</span>}
           {c.isSingleBidder === true && <span className="flag-tag">un singur ofertant</span>}
           {c.contractNo && <span className="note">nr. {c.contractNo}</span>}{" "}
-          {c.contractDate && <span className="note">semnat {new Date(c.contractDate).toLocaleDateString("ro-RO", {timeZone:"Europe/Bucharest"})}</span>}
+          {c.contractDate && <span className="note">semnat {formatCalendarDate(c.contractDate)}</span>}
         </div>
-        {!isGenericTitle(c.title) && c.cpvName && (
+        {(c.cpvName || c.cpvCode) && (
           <p className="note">
-            {c.cpvName}
+            Domeniu CPV{c.cpvFromNotice ? " din anunț" : ""}: {c.cpvName ?? "Denumire neprecizată"}
             {c.cpvCode ? ` (${c.cpvCode})` : ""}
           </p>
         )}
@@ -108,7 +108,7 @@ export default async function ContractPage({
       <nav className="ext-links" aria-label="Secțiunile contractului"><a href="#fisiere">Fișiere și căutare în documente ↓</a></nav>
       <div className="stat-grid">
         <div className="stat">
-          <div className="n">{c.contractValue != null ? formatRon(c.contractValue) : "—"}</div>
+          <div className="n">{c.contractValueExact != null ? `${formatExactDecimal(c.contractValueExact)} ${c.currency?.toUpperCase() === "RON" ? "lei" : c.currency ?? "(monedă neprecizată)"}` : "—"}</div>
           <div className="l">
             Valoare contract{c.currency && c.currency !== "RON" ? ` (${c.currency})` : ""}
           </div>
@@ -165,7 +165,7 @@ export default async function ContractPage({
                   <Link href={`/entitati/${w.entityId}?rol=furnizor`}>{cleanName(w.name)}</Link>
                   {w.county && <span className="county"> · {w.county}</span>}
                   {multiWinner && w.shareRon != null && (
-                    <span className="county"> · partea sa: {formatRonFull(w.shareRon)}</span>
+                    <span className="county"> · {multiWinner ? "cotă estimată" : "valoare alocată"}: {formatExactDecimal(w.shareRonExact)} lei</span>
                   )}
                   {c.authority && (w.pairNDa > 0 || w.pairNCt > 0) && (
                     <>
@@ -199,7 +199,7 @@ export default async function ContractPage({
         )}
       </section>
 
-      <ContractFiles nid={nid} initial={files} authenticated={!!userId} />
+      <ContractFiles nid={nid} initial={files} authenticated={!!userId} {...(c.caNoticeId?{sourceUrl:awardUrl(c.caNoticeId)}:{})} />
 
       {c.flags.length > 0 && (
         <section className="section">

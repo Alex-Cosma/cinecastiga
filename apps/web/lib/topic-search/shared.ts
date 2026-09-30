@@ -4,7 +4,7 @@ export type Place={id:string;name:string;detail:string;kind:'county'|'locality'}
 export type AcquisitionHit={id:string;kind:'da'|'contracts';title:string;date:string|null;value:string|null;authorityId:string|null;authorityName:string|null;suppliers:string[];county:string|null;code:string|null;href:string;sourceUrl:string};
 export type DocumentHit={id:string;filename:string;page:number;pages:number[];text:string;method:string;noticeNo:string;noticeTitle:string;sourceUrl:string;contractId:string|null};
 export type EntityHit={id:string;name:string;cui:string|null;roles:string[];county:string|null};
-export type TopicResult={scope:TopicScope;place:Place|null;acquisitions:{total:number;hits:AcquisitionHit[]};documents:{total:number;hits:DocumentHit[]};entities:{total:number;hits:EntityHit[]};coverage:{known:number;ready:number;pages:number};builtAt:string|null;titleCoverage:{total:number;searchable:number}};
+export type TopicResult={scope:TopicScope;place:Place|null;acquisitions:{total:number;hits:AcquisitionHit[]};documents:{total:number;hits:DocumentHit[]};entities:{total:number;hits:EntityHit[];suggestions?:EntityHit[]};coverage:{known:number;ready:number;pages:number};builtAt:string|null;titleCoverage:{total:number;searchable:number}};
 export const PAGE_SIZE=10;
 export function parseTopicScope(p:URLSearchParams):TopicScope {
  const q=(p.get('q')??'').trim().replace(/\s+/g,' ');

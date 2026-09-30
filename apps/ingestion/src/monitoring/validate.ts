@@ -1,4 +1,4 @@
-import type { DbSql } from "@seap/db";
+import { validateSignalLookup, type DbSql } from "@seap/db";
 import { METHODOLOGY_VERSION } from "../flags/methodology.js";
 import { assertCeilingEras } from "../flags/thresholds.js";
 import { TED_NORMALIZATION_VERSION } from "../normalize/ted.js";
@@ -133,6 +133,8 @@ export async function validateBatch1Snapshot(q: DbSql, options: {
   const [flags] = await q`select count(*)::text total,
     count(*) filter (where methodology_version is distinct from ${METHODOLOGY_VERSION})::text wrong_version from core.flags`;
   report("flag_methodology", flags?.["total"] !== "0" && flags?.["wrong_version"] === "0", "all current flags; this populated dataset is expected to have flags", flags);
+  const signalLookup = await validateSignalLookup(q);
+  report("complete_signal_lookup", signalLookup.mismatches === "0", "all eligible signal rows, parties, values and sort severity", signalLookup);
   const [references] = await q`select count(*)::text stored_samples,
     count(*) filter (where f.id is null)::text absent_flag_ids,
     count(*) filter (where f.id is not null and (i.flag_code is distinct from f.flag_code

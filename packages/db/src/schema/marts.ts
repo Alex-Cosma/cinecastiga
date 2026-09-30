@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
@@ -7,6 +8,7 @@ import {
   numeric,
   pgSchema,
   primaryKey,
+  real,
   text,
 } from "drizzle-orm/pg-core";
 
@@ -17,6 +19,37 @@ import {
  * (DEC-003); time grain is calendar year + overall (DEC-004).
  */
 export const martsSchema = pgSchema("marts");
+
+export const SIGNAL_LOOKUP_QUERY = `
+  select f.id, f.flag_code, f.subject_type, f.subject_id entity_id, f.partner_id,
+    f.severity severity,
+    coalesce(nullif(f.evidence->>'total',''), nullif(f.evidence->>'public_total',''), nullif(f.evidence->>'combined',''))::numeric total_ron,
+    null::bigint source_id
+  from core.flags f where f.triggered and f.subject_type in ('authority','supplier','pair')
+  union all
+  select f.id, f.flag_code, f.subject_type, da.authority_entity_id, da.supplier_entity_id,
+    f.severity, da.closing_value, da.sicap_da_id
+  from core.flags f join core.direct_acquisitions da on da.id=f.subject_id
+  where f.triggered and f.subject_type='da'
+  union all
+  select f.id, f.flag_code, f.subject_type, aw.authority_entity_id, null::bigint,
+    f.severity, aw.ron_contract_value, aw.ca_notice_id
+  from core.flags f join core.awards aw on aw.id=f.subject_id
+  where f.triggered and f.subject_type='award'
+`;
+
+/** Complete lightweight signal population. Refreshed with daily transaction marts;
+ * evidence stays in core.flags and is joined only after selecting a page. */
+export const signalLookup = martsSchema.materializedView("signal_lookup", {
+  id: bigint("id", { mode: "bigint" }),
+  flagCode: text("flag_code"),
+  subjectType: text("subject_type"),
+  entityId: bigint("entity_id", { mode: "bigint" }),
+  partnerId: bigint("partner_id", { mode: "bigint" }),
+  severity: real("severity"),
+  totalRon: numeric("total_ron"),
+  sourceId: bigint("source_id", { mode: "bigint" }),
+}).as(sql.raw(SIGNAL_LOOKUP_QUERY));
 
 /** Headline counts + spend, per stream, per year (year NULL = overall). */
 export const nationalStats = martsSchema.table(

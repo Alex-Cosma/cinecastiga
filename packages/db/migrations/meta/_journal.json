@@ -295,6 +295,27 @@
       "when": 1790616494976,
       "tag": "0041_unique_saved_question_names",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1790757961177,
+      "tag": "0042_signal_lookup_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1790758497570,
+      "tag": "0043_complete_signal_lookup",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1790758636826,
+      "tag": "0044_signal_sort_precision",
+      "breakpoints": true
     }
   ]
 }

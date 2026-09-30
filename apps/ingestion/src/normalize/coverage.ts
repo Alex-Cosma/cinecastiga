@@ -4,6 +4,8 @@ import { TED_NORMALIZATION_VERSION } from "./ted.js";
 /** Persist expensive counts once per refresh. Publish all observations atomically. */
 export async function runCoverage(sql: DbSql): Promise<void> {
   await sql.begin("isolation level repeatable read", async (q) => {
+    // Calendar days/years must match SEAP detail pages in Romanian time.
+    await q`set local time zone 'Europe/Bucharest'`;
     await q`
       insert into marts.data_coverage (dataset, observation, calculated_at)
       with da as (

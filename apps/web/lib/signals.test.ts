@@ -51,16 +51,15 @@ describe("signal navigation", () => {
 });
 
 describe("complete signal population", () => {
-  it("reads triggered core occurrences beyond the sample mart and applies supplier county to the supplier endpoint", async () => {
+  it("reads the complete published population beyond the sample mart and applies supplier county to the supplier endpoint", async () => {
     const db = database();
     await signalPopulation(db.sql, { role: "supplier", county: "Cluj" }, "da_rapid");
     const query = db.statements[0]!;
-    expect(query).toContain("core.flags");
+    expect(query).toContain("marts.signal_lookup");
     expect(query).not.toContain("flag_instances");
     expect(query).not.toMatch(/limit\s+500/i);
-    expect(query.match(/f\.triggered/g)).toHaveLength(3);
-    expect(query).toContain("then f.partner_id else f.subject_id end");
-    expect(query).toContain("county_entity.id = da.supplier_entity_id");
+    expect(query).toContain("then f.partner_id else f.entity_id end");
+    expect(query).toContain("county_entity.id = case when f.subject_type");
     expect(db.values).toContain("Cluj");
     expect(query).not.toContain("Cluj");
   });
@@ -70,7 +69,7 @@ describe("complete signal population", () => {
     const query = db.statements[0]!;
     expect(query).toContain("exists (select 1 from core.contracts c join core.contract_winners cw");
     expect(query).toContain("county_entity.id = cw.entity_id");
-    expect(query).toContain("aw.ron_contract_value");
+    expect(query).toContain("f.total_ron");
     expect(query).not.toMatch(/limit\s+1\b/i);
   });
   it("preserves totals and clamps a page beyond the final complete page", async () => {

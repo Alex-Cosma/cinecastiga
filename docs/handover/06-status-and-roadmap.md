@@ -63,6 +63,19 @@ Verificări ultimei implementări:252 teste unitareweb,2 integrări PG,24 verifi
 
 Ordinea se decide cu proprietarul; acestea nu sunt sarcini începute automat pentru coleg.
 
+### Urmărirea auditului de încredere — 30 septembrie 2026
+
+[Auditul Reddit](../reviews/reddit-skeptic-20260929/report.md) rămâne referința pentru constatări. Detaliile/calendarul, limbajul riscului și timeoutul `/semnale` au implementări locale; nu sunt încă publicate. Lansarea comună cere tranziția calendarului documentată în HANDOFF.
+
+- **De făcut, amânat explicit de proprietar: redesign `/semnale`.** Cele 50 de rânduri pe pagină produc o listă inacceptabil de lungă. Regândim densitatea, ierarhia filtrelor și navigarea rezultatelor, păstrând identitatea vizuală și accesul imediat la surse. Punct de pornire propus: 10 rezultate pe pagină, totalul complet vizibil și paginare accesibilă sus/jos. Numărul final și layoutul sunt de stabilit la reluare; acum nu modificăm interfața și nu înlocuim populația completă cu un eșantion.
+- **Implementat local: intenția căutării.** Pentru „Primăria Cluj”, o potrivire puternică de instituție trebuie să fie vizibilă înaintea contractelor cu potriviri textuale. Acces separat la profil și achizițiile instituției, fără schimbarea tacită a căutării; categorii ușor de descoperit pe mobil. [Implementare și verificări](../implementation/search-intent.md); fără publicare.
+- **Implementat local: traseul de verificare.** Un acces principal la surse, exporturi grupate și explicația calculului lângă rezultat; stările documentelor invită numai la acțiuni disponibile. [Implementare](../implementation/answer-actions.md), fără publicare.
+- **Implementat local: prima experiență Explorează.** Drawer cu loading vizibil/schelet, întrebarea implicită pe toți anii disponibili prin agregatele existente, text desktop ajustat la30px ca semnul întrebării să rămână pe rând. Clasamentele precalculate pe ani rămân doar o propunere. [Checkpoint de reluare](continuation-20260930.md).
+- **Rămâne: „Despre proiect și corecturi”.** Operator/contact furnizate de proprietar și raportarea unei probleme cu URL/identificator; nu inventăm date de contact.
+- **Ulterior: citare durabilă și acoperire.** Referințe care rezistă recalculării și explicarea succintă a perioadelor disponibile pe flux.
+
+### Direcții generale
+
 - Închiderea golurilor de colectare, suport eForms și mecanism explicit de ajungere continuă la zi, fără a compromite bugetul comun.
 - Istoric extern al acționariatului/beneficiarilor reali, numai cu surse, date și acoperire demonstrabile.
 - Extinderea căutării în documente, adnotări/comparații de caiete de sarcini și eventual un mic pachet public de dovezi ales explicit.

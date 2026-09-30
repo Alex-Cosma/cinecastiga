@@ -46,6 +46,8 @@ export async function runMarts(
   log(`marts bounds: da_max_plausible=${daBound} award_max_plausible=${awBound}`);
 
   const report = await sql.begin(async (q) => {
+    // Calendar days/years must match SEAP detail pages in Romanian time.
+    await q`set local time zone 'Europe/Bucharest'`;
     await q`
       truncate
         marts.national_stats, marts.spend_by_type, marts.spend_by_cpv,

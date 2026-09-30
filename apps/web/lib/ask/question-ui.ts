@@ -167,15 +167,14 @@ export const cloneQuestion = (spec: QuestionSpec): QuestionSpec => ({
   ...(spec.minimumRecords ? { minimumRecords:{ ...spec.minimumRecords } } : {}),
 });
 
-export function defaultQuestion(
-  year = new Date().getFullYear() - 1,
-): QuestionSpec {
+export function defaultQuestion(): QuestionSpec {
   return {
     block: "table",
     dim: "supplier",
     measure: "value",
     topN: 10,
-    filters: { yearFrom: year, yearTo: year },
+    // The all-period national ranking uses the existing precalculated totals.
+    filters: {},
   };
 }
 

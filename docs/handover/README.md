@@ -1,5 +1,7 @@
 # Handover pentru un nou dezvoltator și asistentul lui
 
+**Continuarea sesiunii din 30 septembrie:** citește [checkpoint-ul înainte de compactare](continuation-20260930.md) pentru modificările locale nepublicate și condițiile de lansare. Fotografia de producție de mai jos este istorică.
+
 Actualizat la **28 septembrie 2026**. Acesta este punctul de intrare pentru colaborare, nu un plan de rescriere a proiectului. Documentația descrie codul existent și deciziile utilizatorului; stările operaționale au dată și trebuie recitite înaintea unei intervenții.
 
 ## Citește în această ordine

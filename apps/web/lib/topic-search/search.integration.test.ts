@@ -42,6 +42,12 @@ suite('public subject search against PostgreSQL',()=>{
    insert into app.document_notices values('17:80','80',17,'SCN80','Procedură iluminat','https://www.e-licitatie.ro/pub/notices/simplified-notice/v2/view/80');
    insert into app.procurement_documents values('00000000-0000-4000-8000-000000000001','Caiet.pdf','17:80',now(),'hash'),('00000000-0000-4000-8000-000000000002','Nepregătit.pdf','17:80',null,null);
    insert into app.document_pages values('00000000-0000-4000-8000-000000000001',1,'Locuri de joacă, accesibile.','pdf'),('00000000-0000-4000-8000-000000000001',2,'Locuri de joacă și spații verzi.','ocr');`);
+  await q.unsafe(`insert into core.entities values
+   (10,'Municipiul Cluj-Napoca','municipiul cluj napoca','4305857','Cluj'),
+   (11,'COMUNA EXEMPLU JUDETUL CLUJ','comuna exemplu judetul cluj','1100','Cluj'),
+   (12,'Municipiul Cluj-Napoca','municipiul cluj napoca','1200','Cluj'),
+   (13,'Firma A Construct','firma a construct','1300','Cluj');
+   insert into marts.entity_profile values(10,'authority',100),(11,'authority',999999999),(12,'authority',50),(13,'supplier',999999999);`);
   const {indexTopics}=await import('../../../ingestion/src/search/index-topics');await indexTopics(q);
   search=(await import('./server')).searchTopics;
  },30000);
@@ -66,6 +72,27 @@ suite('public subject search against PostgreSQL',()=>{
   expect((await q`select built_at from marts.topic_search_state where id=1`)[0]?.built_at).toEqual(before?.built_at);
   expect((await q`select count(*)::int n from pg_indexes where schemaname='marts' and tablename='topic_acquisitions'`)[0]?.n).toBe(7);
   await q`alter table marts.topic_acquisitions drop constraint test_rebuild_failure`;
+ });
+ it('promotes administrative name matches ahead of larger unrelated buyers without changing title search',async()=>{
+  const r=await run('q=Primăria+Cluj');
+  expect(r.entities.total).toBe(3);
+  expect(r.entities.hits.map(e=>e.id)).toEqual(['10','12','11']);
+  expect(r.entities.suggestions?.map(e=>e.id)).toEqual(['10','12']);
+  expect(r.acquisitions.total).toBe(0);
+ });
+ it('keeps same-name identities separate and honors explicit category and filters',async()=>{
+  expect((await run('q=Primăria+Cluj&tab=acquisitions')).entities.suggestions).toEqual([]);
+  expect((await run('q=Primăria+Cluj&place=uat:44818')).entities.suggestions).toEqual([]);
+  expect((await run('q=Primăria+Cluj&rol=furnizor')).entities.total).toBe(0);
+ });
+ it('prioritizes an exact company name and CUI, including the RO prefix',async()=>{
+  const name=await run('q=Firma+A');expect(name.entities.hits[0]?.id).toBe('2');
+  expect(name.entities.suggestions?.map(e=>e.id)).toEqual(['2']);
+  expect((await run('q=RO4305857')).entities.suggestions?.map(e=>e.id)).toEqual(['10']);
+  expect((await run('q=4305857')).entities.suggestions?.map(e=>e.id)).toEqual(['10']);
+ });
+ it('does not infer an institution from a topic, a bare place or a partial CUI',async()=>{
+  for(const term of ['iluminat','Cluj','4305'])expect((await run(`q=${term}`)).entities.suggestions).toEqual([]);
  });
  it('rejects a geographic identifier not found in the catalog',async()=>{await expect(run('q=locuri&place=uat:1234567')).rejects.toThrow('catalog');});
 });

@@ -1,5 +1,5 @@
 import {afterAll,expect,it} from 'vitest';
-import {createDb} from '@seap/db';
+import {createDb,validateSignalLookup,type DbSql} from '@seap/db';
 import {buildTransactionMarts} from './transaction-marts.js';
 const url=process.env['TEST_DATABASE_URL'];
 if(url&&new URL(url).pathname!='/seap_test_processing')throw Error('Dedicated processing test database required');
@@ -22,6 +22,14 @@ it.skipIf(!connection)('includes new daily purchases in lists and national total
   const rows=await q`select sicap_da_id::text,da_flags from marts.da_transactions order by sicap_da_id`;
   expect(rows.map(r=>r.sicap_da_id)).toEqual(['991','992']);expect(rows[0]!.da_flags).toEqual(['da_round']);expect(rows[1]!.da_flags).toBeNull();
   expect((await q`select v_plaf::text from marts.agg_national where src='da'`)[0]!.v_plaf).toBe('350');
+  expect(await validateSignalLookup(q as unknown as DbSql)).toEqual({compared:'1',mismatches:'0'});
+  // Daily corrections must update the explorer without pretending to recompute risk.
+  await q`update core.direct_acquisitions set closing_value=125 where id=${old!.id}`;
+  expect((await validateSignalLookup(q as unknown as DbSql)).mismatches).toBe('1');
+  await buildTransactionMarts(q);
+  expect((await q`select total_ron::text value,source_id::text source from marts.signal_lookup`)[0])
+    .toMatchObject({value:'125',source:'991'});
+  expect(await validateSignalLookup(q as unknown as DbSql)).toEqual({compared:'1',mismatches:'0'});
   expect(await q`select * from core.flags`).toEqual(beforeFlags);expect(await q`select * from marts.flag_instances`).toEqual(beforeInstances);
   throw rollback;
  })).rejects.toBe(rollback);

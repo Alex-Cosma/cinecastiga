@@ -32,6 +32,8 @@ import EntityTypeahead from "./EntityTypeahead";
 import EvidenceDrawer from "./EvidenceDrawer";
 import { AnswerEvidence, useAnswerEvidence } from "./AnswerEvidence";
 import "./question-results.css";
+import DiscoveryIcon from "../DiscoveryIcon";
+import AnswerExports from "./AnswerExports";
 
 type TableRow = Extract<BlockData, { block: "table" }>["rows"][number];
 type SeriesPoint = Extract<
@@ -459,12 +461,6 @@ export default function AskPanel({
           >
             <div className="cq-answer-head">
               <div>
-                <p className="cq-eyebrow">
-                  {dirty || loading || error
-                    ? "RĂSPUNSUL APLICAT"
-                    : "RĂSPUNSUL TĂU"}{" "}
-                  <span>✓ Verificabil, până la sursă</span>
-                </p>
                 <h2>{title}</h2>
                 <div className="cq-scope">
                   {(resp.pills ?? []).map((p) => (
@@ -484,8 +480,10 @@ export default function AskPanel({
                   className="cq-source-main"
                   onClick={() => openEvidence()}
                 >
-                  ☷ Vezi înregistrările
-                  {count !== null && <b>{formatInt(count)}</b>}
+                  <DiscoveryIcon name="database"/>
+                  {count===null||count===0?'Vezi înregistrările sursă':isProfile||applied.dataset==='da'
+                    ?count===1?'Vezi achiziția':`Vezi cele ${formatInt(count)} achiziții`
+                    :count===1?'Vezi înregistrarea sursă':`Vezi cele ${formatInt(count)} înregistrări`}
                 </button>
                 <FollowButton key={JSON.stringify(applied)} spec={applied} title={title} />
                 <ClipButton
@@ -506,31 +504,6 @@ export default function AskPanel({
                   label={title}
                 />
               </div>
-            </div>
-            <div className="cq-proof">
-              <span className="cq-proof-icon" aria-hidden>
-                ✓
-              </span>
-              <div>
-                <strong>
-                  {count === null
-                    ? "Selecția completă"
-                    : `${formatInt(count)} înregistrări`}
-                </strong>
-                <small>
-                  {isProfile
-                    ? "Înregistrările din baza profilurilor"
-                    : "Condițiile întrebării aplicate"}
-                </small>
-              </div>
-              <span aria-hidden>→</span>
-              <div>
-                <strong>Fiecare valoare, la vedere</strong>
-                <small>Calcul, stare și sursă SEAP</small>
-              </div>
-              <button type="button" onClick={() => openEvidence()}>
-                Verifică tu →
-              </button>
             </div>
             {isProfile && (
               <p className="cq-profile-notice">
@@ -557,6 +530,23 @@ export default function AskPanel({
                 ))}
               </details>
             )}
+            <details className="cq-calculation">
+              <summary>Cum s-a calculat</summary>
+              <p>
+                Calculele folosesc condițiile de mai sus. Lista surselor explică
+                selecția și valorile înregistrate; pagina de metodologie descrie
+                indicatorii.
+              </p>
+              <Link href="/metodologie">Deschide metodologia ↗</Link>
+              {resp.displaySql && (
+                <details>
+                  <summary>Interogarea SQL · avansat</summary>
+                  <pre>
+                    <code>{resp.displaySql}</code>
+                  </pre>
+                </details>
+              )}
+            </details>
             {["table", "timeseries", "map"].includes(data.block) && (
               <div className="cq-display">
                 <span>
@@ -689,6 +679,7 @@ export default function AskPanel({
               )}
             </div>
             <div className="cq-answer-tools">
+              <AnswerExports key={encodeSpec(applied)} spec={applied} data={data} disabled={loading} onResult={()=>exportCsv(data,applied)}/>
               <button
                 type="button"
                 onClick={() =>
@@ -699,12 +690,6 @@ export default function AskPanel({
                 }
               >
                 Copiază întrebarea ↗
-              </button>
-              <button type="button" onClick={() => openEvidence()}>
-                Datele și exportul CSV ↓
-              </button>
-              <button type="button" onClick={() => exportCsv(data, applied)}>
-                Exportă rezultatul afișat ↓
               </button>
               {mode === "ask" && (
                 <button
@@ -720,46 +705,7 @@ export default function AskPanel({
                 </button>
               )}
             </div>
-            <details className="cq-calculation">
-              <summary>Cum s-a calculat răspunsul</summary>
-              <p>
-                Calculele folosesc condițiile de mai sus. Lista surselor explică
-                selecția și valorile înregistrate; pagina de metodologie descrie
-                indicatorii.
-              </p>
-              <Link href="/metodologie">Deschide metodologia ↗</Link>
-              {resp.displaySql && (
-                <details>
-                  <summary>Interogarea SQL · avansat</summary>
-                  <pre>
-                    <code>{resp.displaySql}</code>
-                  </pre>
-                </details>
-              )}
-            </details>
-            <div className="cq-promise">
-              <div className="cq-paper" aria-hidden>
-                SEAP
-                <span />
-                <span />
-                <span />
-              </div>
-              <div>
-                <p className="cq-eyebrow">CIFRELE NU CER ÎNCREDERE OARBĂ.</p>
-                <h3>
-                  Ai întrebări despre un rezultat?
-                  <br />
-                  Începe cu înregistrările lui.
-                </h3>
-                <p>
-                  Vezi cine, ce, când și la ce valoare. Deschide sursa SEAP sau
-                  exportă datele ca să faci propriile calcule.
-                </p>
-              </div>
-              <button type="button" onClick={() => openEvidence()}>
-                Deschide sursele →
-              </button>
-            </div>
+
           </section>
         </AnswerEvidence.Provider>
       )}

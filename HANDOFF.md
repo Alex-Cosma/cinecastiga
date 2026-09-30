@@ -1,3 +1,45 @@
+## 2026-09-30 — Checkpoint înainte de compactare
+
+## 2026-09-30 — Consolidare în Git
+
+La cererea proprietarului, toate loturile locale descrise mai jos sunt incluse în commit-ul curent pe `fix/acquisition-details-dates`: calendar/detalii, semnale și lookup, căutare, simplificarea Explorează/surse/exporturi, loading și întrebări locale. Notele anterioare „necomis” descriu starea la momentul verificării. Nu s-a cerut push/deploy; producția nu este modificată. Validările fiecărui lot sunt consemnate în documentele lui; ultimul build web a trecut după toate schimbările UI. Condiția de publicare pentru tranziția `rf-2026.6` rămâne aplicabilă.
+
+## 2026-09-30 — Întrebări salvate fără cont și acțiuni private ascunse, local
+
+[Implementare și verificări](docs/implementation/local-saved-questions.md): vizitatorii pot salva/încărca întrebări în localStorage; nume unice, copii, protecție pentru conflicte și erori de stocare. Lista păstrează întrebările locale după login și permite salvarea explicită în cont. Urmărirea/salvarea în anchetă ascunse anonim pe toate suprafețele comune, cu autorizarea backend intactă. 53 teste, TypeScript, build și 24 verificări browser trecute. Fără DB/SEAP/commit/push/deploy. Rămâne condiția de tranziție calendar pentru publicarea întregului branch.
+
+**Începe reluarea cu [checkpoint-ul complet](docs/handover/continuation-20260930.md).** Conține toate loturile locale necomise, verificările, dev environment, probele, deciziile și backlogul. Ultimele ajustări (loading drawer, întrebarea implicită pe toți anii, titlu desktop30px încadrat pe un rând) sunt terminate. Fără commit/push/deploy; întregul branch necesită în continuare tranziția calendarului `rf-2026.6` înaintea publicării. Nu porni automat o sarcină nouă după compactare.
+
+## 2026-09-30 — Întrebarea implicită pe toată perioada, local
+
+`defaultQuestion()` propune top 10 furnizori fără an implicit, etichetat „toți anii disponibili”; folosește agregatele naționale existente. Se păstrează filtrele întrebărilor salvate/linkurilor. 38 teste și TypeScript trecute; browser: rezultat real implicit, 139 ms calcul, și link anual păstrat (răspuns interceptat). Fără schimbări de stil, migrare, procesare, SEAP sau deploy. Agregatele anuale sunt doar propunere ulterioară.
+
+## 2026-09-30 — Drawer surse: încărcare vizibilă, local
+
+`EvidenceDrawer` afișează imediat un indicator sub antet și un schelet al listei. La actualizare păstrează rândurile anterioare, estompate și inactive; după 8 secunde explică așteptarea. Status accesibil, reduced motion, închidere/anulare și reîncercare păstrate. TypeScript și 16 verificări browser desktop/mobil trecute, cu latență/eroare simulate pe răspuns local. [Detalii](docs/implementation/answer-actions.md). Fără DB writes/SEAP/commit/push/deploy.
+
+## 2026-09-30 — Explorează: surse și exporturi simplificate, local
+
+[Implementare](docs/implementation/answer-actions.md): un buton principal pentru surse; fără panourile repetitive „Verifică tu”/„Deschide sursele”. „Cum s-a calculat” lângă rezultat, „Exportă” cu două CSV-uri reale: rezultatul afișat și înregistrările sursă. Exportul exact folosește același helper cu drawerul, păstrează selecțiile/permisiunile și indică limita/parțialitatea. Numărul de rânduri contract–furnizor nu este etichetat ca număr de contracte distincte. Contractele fără text pregătit nu invită la citare și nu afișează căutarea inactivă; sursa oficială este la îndemână. 41 teste, TypeScript/build și browser desktop/mobil/dark; CSV-uri reale comparate, cazuri parțial/eroare simulate doar în rețea. Fără SEAP/migrare/procesare/commit/push/deploy. Serverul dev3000 a fost repornit pentru a servi componentele actuale, cu `DOCUMENTS_ENABLED=false`, `NEXT_DIST_DIR=.next-explore-dev` și `WATCHPACK_POLLING=true` (watcherul nativ rămânea pe cod/CSS vechi). Următoarea propunere: despre proiect/corecturi; redesignul `/semnale` rămâne amânat. Publicarea comună cere în continuare tranziția calendarului din notele anterioare.
+
+## 2026-09-30 — Căutare orientată spre instituție, implementare locală
+
+[Detalii](docs/implementation/search-intent.md): `/cauta` evidențiază potrivirile puternice de nume/CUI înaintea titlurilor, cu profil și „Toate achizițiile”. Numele administrative folosesc aliasurile existente; relevanța precede valoarea achizițiilor. Înregistrările cu nume identice/CUI diferit nu sunt unite; alternativele se desfac într-un disclosure. Nu schimbă automat categoria sau sensul căutării. Pe mobil: patru categorii vizibile, filtre secundare pliabile cu selecția activă în rezumat. 22 de teste, inclusiv 16 integrări PostgreSQL izolate, TypeScript și build trecute; browser desktop/mobil 390/320 px, linkul real către achiziții, Back și filtre verificate. Fără migrare/reindexare/SEAP/commit/push/deploy. Redesignul `/semnale` este explicit amânat în [roadmap](docs/handover/06-status-and-roadmap.md); lista de 50 de rânduri trebuie regândită. Următoarele propuneri: simplificarea traseului de verificare, apoi despre proiect/corecturi. Rămân condițiile de publicare ale întregului branch din notele de mai jos.
+
+## 2026-09-30 — Timeout `/semnale` rezolvat local, actualizare automată inclusă
+
+[Implementare și verificări](docs/implementation/signal-timeout.md): `marts.signal_lookup` păstrează populația completă într-o vedere compactă; probele sunt citite după paginare. Migrațiile0042–0044 aplicate local,45înregistrări în istoric; indexurile temporare pe surse au fost eliminate de0044. Builder-ul tranzacțiilor actualizează vederea zilnic și după recalcularea de duminică. Controlul publicării verifică integral corespondența cu sursele:2.417.827rânduri,zero diferențe,44,7s local.36teste web+11integrări ingestion,TypeScript și build; browser desktop/mobil și paginare, fără timeout/eroriJS. Citiri DB1,35–6,14s; navigări dev2,3–15,5s,nu SLA. Fără commit/push/deploy,trafic SEAP ori recalcularea riscului real. **Prima publicare a întregului branch cere în continuare tranziția completă `rf-2026.6` sub mentenanță**, nu deploy UI simplu. Nota anterioară despre timeoutul nerezolvat este depășită de această intervenție.
+
+## 2026-09-30 — Limbajul semnalelor de risc, local
+
+[Implementare și limite](docs/implementation/risk-language.md): definiții neutre sincronizate web/ingestion, diferență exactă față de prag, reprezentare ONRC distinctă de control, valori contractate distincte de încasări. Profilul explică cele 5/4 criterii CRI și perioada; metodologia detaliază formula. 54 teste, typecheck web/ingestion și build trecute; browser profil/surse/metodologie pe desktop și mobil, inclusiv dark. **Lista generală `/semnale` dă timeout local la numărări (20s), nerezolvat în acest lot**; nu confunda acest rezultat cu un control browser reușit. Fără commit/push/deploy/recalculare. Rămâne obligatorie tranziția calendarului din nota de mai jos înaintea publicării întregului branch.
+
+## 2026-09-29 — Detalii și calendar, implementare locală fără publicare
+
+Branch `fix/acquisition-details-dates`, după aprobarea primei intervenții din auditul Reddit. Achizițiile directe păstrează câmpurile normalizate și folosesc explicit CPV-ul ca titlu de rezervă dacă lipsește brutul; sume exacte, date/ore în România, legătura SEAP lângă titlu. Contractele au sumă/cote exacte și CPV din anunț etichetat. Diferența de o zi a fost confirmată: proiecții UTC vs detaliu Europe/Bucharest. Builder-ele sunt corectate și testate, dar **arhiva locală și producția nu au fost reprocesate**; listele/indexurile existente păstrează zilele vechi până la reconstruire.
+
+**Nu publica ca simplu deploy UI.** `rf-2026.6` cere o actualizare completă de tranziție, cu mentenanță/backup și refacerea indexului după marts. Altfel următoarea procesare zilnică refuză baseline-ul `rf-2026.5` și păstrează mentenanța. Programul ulterior rămâne zilnic + risc duminică. Fără migrare de schemă, core/frozen evidence neatinse, zero trafic SEAP. 67 teste web + 93 unitare ingestion + 13 integrări trecute, TypeScript și build web; browser desktop/mobil light/dark fără overflow/erori. Testele de scriere au folosit două baze noi izolate, apoi eliminate. [Implementare, probe și pași de publicare](docs/implementation/acquisition-details-calendar.md). Fără commit/push/deploy cerute în această etapă. [Audit complet](docs/reviews/reddit-skeptic-20260929/report.md).
+
 ## 2026-09-28 — Explorează și întrebări salvate lansate în producție
 
 **Commit aplicație `137b4e5` live**, main și work/explore-compact publicate. [CI + deploy 36459640568](https://github.com/Alex-Cosma/seap-new/actions/runs/36459640568) success; checkout server curat și hash identic. Migrarea0041 aplicată:42migrări, indexul numelor unique/valid/ready. Browser public desktop/mobile:13modele, Salvate, save401anon, fără overflow sau eroriJS. Health200/admin403; web/DB healthy, colectare rev14 neschimbată și ultimele3cereri200. [Raport release](docs/implementation/release-20260928-explore-saved-questions.md). Notele „local/fără deploy” de mai jos sunt istorice. Documentarea confirmării este commit ulterior [skip ci], fără redeploy.

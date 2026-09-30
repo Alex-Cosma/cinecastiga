@@ -674,7 +674,10 @@ export async function runRadiografieMarts(
 ): Promise<RadiografieReport> {
   // Publish every structural lens together; a failed rebuild preserves the
   // previous tables instead of leaving a dropped or partly populated lens.
-  return sql.begin((tx) => buildRadiografieMarts(tx as unknown as DbSql, opts));
+  return sql.begin(async (tx) => {
+    await tx`set local time zone 'Europe/Bucharest'`;
+    return buildRadiografieMarts(tx as unknown as DbSql, opts);
+  });
 }
 
 async function buildRadiografieMarts(

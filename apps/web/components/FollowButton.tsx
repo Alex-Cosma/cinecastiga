@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useViewer } from "@/lib/use-viewer";
 import type { AskSpec } from "@/lib/ask/spec";
 import type { CaptureOptions } from "@/lib/evidence-captures-shared";
 import { encodeSpec } from "@/lib/ask/permalink";
@@ -7,6 +10,8 @@ import { encodeSpec } from "@/lib/ask/permalink";
 export default function FollowButton({ spec, options = {}, title, recipeId, recipeVersion, label = "Urmărește modificările" }: {
   spec: AskSpec; options?: CaptureOptions; title?: string; recipeId?: string; recipeVersion?: number; label?: string;
 }) {
+  const viewer = useViewer();
+  if (!viewer.userId) return null;
   const query = new URLSearchParams({ spec: encodeSpec(spec), options: JSON.stringify(options) });
   if (title) query.set("title", title.slice(0, 200));
   if (recipeId && recipeVersion) { query.set("recipeId", recipeId); query.set("recipeVersion", String(recipeVersion)); }

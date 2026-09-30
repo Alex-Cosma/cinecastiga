@@ -4,6 +4,7 @@ import { DA_CEILING_SEED_ROWS } from "@seap/domain";
 import { runMarts } from "./marts.js";
 import { runFlags } from "../flags/build.js";
 import { runRadiografieMarts } from "../flags/radiografie.js";
+import { buildTransactionMarts } from "./transaction-marts.js";
 
 const { sql } = createDb();
 afterAll(() => sql.end());
@@ -35,6 +36,38 @@ const tables = {
 };
 
 describe("runMarts canonical totals (isolated rollback fixture)", () => {
+  it.each(["UTC", "America/Los_Angeles"])("keeps dates and annual totals in Romanian time when the connection uses %s", async (timezone) => {
+    const prefix = `calendar_fixture_${process.pid}_${Date.now()}`;
+    const rollback = Error("rollback calendar fixture");
+    await expect(sql.begin(async tx => {
+      await tx`select set_config('TimeZone', ${timezone}, true)`;
+      for (const [schema, names] of Object.entries(tables)) {
+        await tx.unsafe(`create schema ${prefix}_${schema}`);
+        for (const table of names) await tx.unsafe(`create table ${prefix}_${schema}.${table} as table ${schema}.${table} with no data`);
+      }
+      const [view] = await tx`select pg_get_viewdef('marts.signal_lookup'::regclass, true) definition`;
+      await tx.unsafe(`create materialized view ${prefix}_marts.signal_lookup as ${String(view!.definition).replace(/;\s*$/, "").replace(/\b(core|marts|reference|raw)\./g, `${prefix}_$1.`)} with no data`);
+      const q = isolatedSql(tx as unknown as DbSql, prefix);
+      await q`insert into core.entities(id,name_display) values(1,'Autoritate'),(2,'Furnizor')`;
+      await q`insert into core.awards(id,ca_notice_id,authority_entity_id) values(1,100,1)`;
+      await q`insert into core.contracts(id,ca_notice_id,contract_date,contract_value,currency,title) values
+        (1,100,'2025-07-15T21:00:00Z',100,'RON','Contract de vară'),
+        (2,100,'2025-01-15T22:00:00Z',100,'RON','Contract de iarnă'),
+        (3,100,'2025-12-31T22:00:00Z',100,'RON','Contract din noul an')`;
+      await q`insert into core.contract_winners(contract_id,entity_id) values(1,2),(2,2),(3,2)`;
+      await q`insert into core.direct_acquisitions(id,sicap_da_id,authority_entity_id,supplier_entity_id,state,closing_value,publication_date,finalization_date)
+        values(1,99001,1,2,'Oferta acceptata',12.34,'2025-12-31T21:55:00Z','2025-12-31T22:15:00Z')`;
+      await runMarts(q);
+      expect((await q`select finalization_date from marts.contract_transactions order by contract_id`).map(r => r.finalization_date))
+        .toEqual(["2025-07-16", "2025-01-16", "2026-01-01"]);
+      await buildTransactionMarts(q as unknown as Parameters<typeof buildTransactionMarts>[0]);
+      expect((await q`select publication_date,finalization_date,gap_minutes from marts.da_transactions`)[0])
+        .toMatchObject({ publication_date: "2025-12-31 23:55", finalization_date: "2026-01-01 00:15", gap_minutes: 20 });
+      expect((await q`select y,v_plaf::text value from marts.agg_years order by y`).map(r => [r.y,r.value]))
+        .toEqual([["2025","200.00"],["2026","112.34"]]);
+      throw rollback;
+    })).rejects.toBe(rollback);
+  });
   it("keeps every winner in a sub-cent consortium allocation and preserves the exact source total", async () => {
     const prefix = `marts_tiny_fixture_${process.pid}_${Date.now()}`;
     const rollback = new Error("ROLL BACK TINY CONSORTIUM FIXTURE");
@@ -46,6 +79,8 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
             await tx.unsafe(`create table ${prefix}_${schema}.${table} as table ${schema}.${table} with no data`);
           }
         }
+        const [view] = await tx`select pg_get_viewdef('marts.signal_lookup'::regclass, true) definition`;
+        await tx.unsafe(`create materialized view ${prefix}_marts.signal_lookup as ${String(view!.definition).replace(/;\s*$/, "").replace(/\b(core|marts|reference|raw)\./g, `${prefix}_$1.`)} with no data`);
         const q = isolatedSql(tx as unknown as DbSql, prefix);
         await q`insert into core.entities (id,name_display) values (1,'Authority'),(10,'A'),(11,'B'),(12,'C')`;
         await q`insert into core.awards (id,ca_notice_id,authority_entity_id) values (1,1000,1)`;
@@ -84,6 +119,8 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
             await tx.unsafe(`create table ${prefix}_${schema}.${table} as table ${schema}.${table} with no data`);
           }
         }
+        const [view] = await tx`select pg_get_viewdef('marts.signal_lookup'::regclass, true) definition`;
+        await tx.unsafe(`create materialized view ${prefix}_marts.signal_lookup as ${String(view!.definition).replace(/;\s*$/, "").replace(/\b(core|marts|reference|raw)\./g, `${prefix}_$1.`)} with no data`);
         const q = isolatedSql(tx as unknown as DbSql, prefix);
         await q`insert into core.entities (id, name_display, county) values
           (1,'Authority one','Cluj'), (2,'Authority two',null),
@@ -167,7 +204,7 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
         expect(previous?.["n"]).toBe(1);
         for (const threshold of DA_CEILING_SEED_ROWS) {
           await q`insert into core.risk_thresholds (key,valid_from,valid_to,value_num,note)
-            values (${threshold.key},${threshold.validFrom},${threshold.validTo},${threshold.valueNum},'fixture')`;
+            values (${threshold.key},${threshold.validFrom + "T00:00:00Z"},${threshold.validTo ? threshold.validTo + "T00:00:00Z" : null},${threshold.valueNum},'fixture')`;
         }
         const lowThresholds = {
           da_conc_min_total: 1, da_conc_min_suppliers: 1, da_conc_top_pct: 0.1,

@@ -16,7 +16,7 @@ export interface FlagMeta {
 export const FLAG_META: Record<string, FlagMeta> = {
   da_split: {
     code: "da_split",
-    title: "Fracționare sub prag",
+    title: "Posibilă fracționare sub prag",
     subject: "pair",
     short: "Achiziții din aceeași clasă CPV și același tip, însumând peste plafonul de referință.",
     description:
@@ -30,33 +30,33 @@ export const FLAG_META: Record<string, FlagMeta> = {
     code: "da_concentration",
     title: "Concentrare pe un furnizor",
     subject: "authority",
-    short: "Un furnizor primește o pondere disproporționată din cheltuială.",
+    short: "O mare parte din valoarea achizițiilor directe revine unui singur furnizor.",
     description:
-      "Un singur furnizor primește o pondere disproporționată din cheltuiala pe achiziții directe a autorității (top-furnizor % și HHI).",
+      "Un furnizor are o pondere mare în valoarea achizițiilor directe ale autorității din datele disponibile. Ponderea furnizorului principal și indicele de concentrare HHI descriu distribuția valorii.",
     rationale:
-      "Dependența de un furnizor unic reduce concurența și crește riscul de favorizare.",
-    caveat: "Piețe cu un singur furnizor real (monopol local) pot fi concentrate legitim.",
+      "Merită verificate alternativele disponibile pe piață și modul în care a fost ales furnizorul.",
+    caveat: "Specializarea, un monopol local sau un contract mare pot explica această concentrare. Datele nu stabilesc singure dacă a existat favorizare.",
   },
   da_dependence: {
     code: "da_dependence",
     title: "Dependență de o autoritate",
     subject: "supplier",
-    short: "Un furnizor trăiește aproape exclusiv dintr-o singură autoritate.",
+    short: "Majoritatea valorii achizițiilor directe ale furnizorului provine de la o autoritate.",
     description:
-      "Un furnizor obține cvasi-totalitatea veniturilor din achiziții directe de la o singură autoritate.",
-    rationale: "Un furnizor „captiv” unei autorități poate indica o relație preferențială.",
-    caveat: "Furnizori mici, locali, pot depinde firesc de un client principal.",
+      "O singură autoritate reprezintă cea mai mare parte din valoarea achizițiilor directe înregistrate pentru furnizor în datele disponibile.",
+    rationale: "Merită verificat istoricul relației cu autoritatea și modul de selectare a furnizorului.",
+    caveat: "Această pondere nu descrie toate veniturile firmei: nu include vânzările private sau contractele prin proceduri. Un client public principal poate fi explicat de specializare sau de piața locală.",
   },
   da_rapid: {
     code: "da_rapid",
-    title: "Finalizare fulger",
+    title: "Finalizare rapidă",
     subject: "da",
     short: "Achiziție finalizată în câteva minute de la publicare.",
     description:
-      "Achiziție finalizată la un interval foarte scurt după publicare (sub 10 minute).",
+      "Interval scurt între publicarea și finalizarea achiziției directe, sub limita de durată folosită la calcul. Durata observată este afișată pentru fiecare achiziție.",
     rationale:
-      "Acceptarea aproape instantanee sugerează o înțelegere prealabilă, fără testarea reală a pieței.",
-    caveat: "Unele achiziții directe simple sunt legitim rapide. Se corelează cu alte semnale.",
+      "Merită verificat ce etape au precedat publicarea în SEAP și dacă documentele justifică alegerea furnizorului.",
+    caveat: "Durata din SEAP nu descrie întreaga pregătire a achiziției. Achizițiile simple pot fi finalizate rapid; intervalul scurt nu dovedește o înțelegere între părți.",
   },
   da_round: {
     code: "da_round",
@@ -66,19 +66,19 @@ export const FLAG_META: Record<string, FlagMeta> = {
     description:
       "Valoarea de închidere este de cel puțin 90%, dar strict sub plafonul fără TVA pentru tipul și data de referință ale achiziției. Plafoanele se modifică la 26.05.2016, 04.06.2018 și 10.09.2022; lucrările au plafoane distincte.",
     rationale:
-      "Valori bunched imediat sub prag indică ajustare pentru a rămâne în achiziție directă.",
+      "Merită verificată estimarea necesarului și existența altor achiziții pentru aceeași nevoie. Apropierea de prag nu stabilește intenția de a evita o procedură.",
     caveat: "O achiziție sub plafon este normală. Legea privește valoarea estimată, iar semnalul compară valoarea de închidere. Publicarea aproximează inițierea; finalizarea o înlocuiește numai dacă lipsește. Tipul poate fi dedus din CPV când nu este declarat; necunoscut înseamnă neclasificat, nu suspect.",
   },
   da_year_end: {
     code: "da_year_end",
-    title: "Vârf de final de an",
+    title: "Achiziții concentrate în decembrie",
     subject: "authority",
-    short: "Cheltuială concentrată neobișnuit în decembrie.",
+    short: "O pondere mare din valoarea anuală a achizițiilor directe este finalizată în decembrie.",
     description:
-      "Pondere neobișnuit de mare a cheltuielii pe achiziții directe concentrată în decembrie (peste 35%).",
+      "Cel puțin 35% din valoarea achizițiilor directe finalizate într-un an este concentrată în decembrie, pentru un total anual de cel puțin 100.000 lei.",
     rationale:
-      "„Golirea bugetului” la final de an favorizează achiziții grăbite, slab justificate.",
-    caveat: "Sezonalitate reală (ex. deszăpezire) poate explica vârfuri de iarnă.",
+      "Merită verificate calendarul necesarului, justificările achizițiilor și momentul finalizării lor.",
+    caveat: "Sezonalitatea și calendarul proiectelor pot explica vârful. Data finalizării în SEAP nu este data plății; semnalul nu dovedește epuizarea intenționată a bugetului.",
   },
   award_no_competition: {
     code: "award_no_competition",
@@ -108,61 +108,61 @@ export const FLAG_META: Record<string, FlagMeta> = {
     code: "award_concentration",
     title: "Concentrare pe un câștigător",
     subject: "authority",
-    short: "Un furnizor câștigă o pondere disproporționată din contracte.",
+    short: "O mare parte din valoarea contractelor prin proceduri revine unui singur furnizor.",
     description:
-      "Un singur furnizor câștigă o pondere disproporționată din valoarea contractelor atribuite de o autoritate (peste procese, nu doar achiziții directe).",
+      "Un furnizor are o pondere mare în valoarea contractelor prin proceduri ale autorității, în arhiva disponibilă.",
     rationale:
-      "Concentrarea contractelor pe un câștigător unic reduce concurența și crește riscul de favorizare sistematică.",
+      "Merită verificate numărul ofertelor, accesul altor furnizori la proceduri și explicațiile pentru atribuiri repetate.",
     caveat:
-      "Piețe cu un singur furnizor real pot fi concentrate legitim. Fereastra de date (2026) este scurtă.",
+      "Specializarea, un monopol sau un proiect mare pot explica această concentrare. Pentru consorții, cotele sunt estimate prin împărțire egală. Perioada și golurile arhivei pot influența ponderea.",
   },
   award_dependence: {
     code: "award_dependence",
-    title: "Furnizor captiv unei autorități",
+    title: "Contracte concentrate la o autoritate",
     subject: "supplier",
-    short: "Furnizor activ, dar cu cvasi-totalitatea contractelor de la o autoritate.",
+    short: "Majoritatea valorii contractelor unui furnizor provine de la o autoritate.",
     description:
-      "Un furnizor activ la mai multe autorități obține totuși cvasi-totalitatea valorii contractelor de la una singură.",
+      "Un furnizor cu contracte la mai multe autorități are cea mai mare parte din valoarea contractelor prin proceduri înregistrată la una singură.",
     rationale:
-      "Un furnizor „captiv” unei autorități, deși prezent pe piață, poate indica o relație preferențială.",
+      "Merită verificate istoricul atribuirilor, concurența la proceduri și specializarea furnizorului.",
     caveat:
-      "Specializare reală pe un client mare poate explica dependența. Fereastra de date (2026) este scurtă.",
+      "Ponderea privește contractele din arhiva disponibilă, nu veniturile totale sau încasările firmei. Un proiect mare poate explica rezultatul. Pentru consorții, cotele sunt estimate prin împărțire egală.",
   },
   fin_tiny_staff: {
     code: "fin_tiny_staff",
-    title: "Firmă minusculă, bani publici mari",
+    title: "Puțini salariați, valori contractate mari",
     subject: "supplier",
     short: "Cel mult 5 salariați, cel puțin 2 mil. lei în achiziții înregistrate într-un an.",
     description:
       "Furnizor cu cel mult 5 salariați (numărul mediu din bilanțul MF al aceluiași an) cu achiziții directe și cote din contracte înregistrate de cel puțin 2 mil. lei într-un singur an.",
     rationale:
-      "O firmă fără personal care rulează contracte publice mari poate fi paravan sau intermediar — munca reală o face altcineva.",
+      "Merită verificat cum au fost îndeplinite contractele: personal propriu, subcontractori, echipamente sau revânzare de produse.",
     caveat:
-      "Dealeri, importatori, SPV-uri și consultanța cu subcontractare pot fi legitime cu personal minim. Zilierii și subcontractorii nu apar în bilanț. Valorile atribuite pot include plafoane de acord-cadru, nu plăți efective.",
+      "Numărul mediu de salariați nu măsoară singur capacitatea de execuție. Dealeri, importatori și firme cu subcontractare pot avea legitim puțini salariați. Valorile înregistrate pot include plafoane de acord-cadru, nu plăți efective.",
   },
   fin_public_reliance: {
     code: "fin_public_reliance",
-    title: "Dependență de bani publici",
+    title: "Valori contractate raportate la cifra de afaceri",
     subject: "supplier",
-    short: "Valoarea achizițiilor înregistrate reprezintă cel puțin 75% din cifra de afaceri.",
+    short: "Raport de cel puțin 75% între valoarea achizițiilor înregistrate și cifra de afaceri.",
     description:
-      "Pe anii cu bilanț depus, valoarea contractată public reprezintă cel puțin 75% din întreaga cifră de afaceri a firmei (minim 1 mil. lei public).",
+      "În anii în care avem atât achiziții înregistrate, cât și bilanț cu cifră de afaceri pozitivă, suma achizițiilor directe și a cotelor din contracte înregistrate este de cel puțin 75% din cifra de afaceri cumulată, cu minimum 1 milion lei în achiziții și 250.000 lei cifră de afaceri.",
     rationale:
-      "O firmă care trăiește aproape exclusiv din achiziții publice depinde de relația cu statul, nu de piață.",
+      "Merită comparate durata contractelor, execuția și veniturile raportate. Raportul ajută la alegerea documentelor de verificat, dar nu măsoară ponderea încasărilor de la stat.",
     caveat:
-      "Compară valori contractate (nu încasări) cu cifra de afaceri; contractele multianuale pot împinge raportul peste 1. Unele sectoare sunt firesc aproape exclusiv publice.",
+      "Compară valori contractate cu cifra de afaceri, nu încasări cu venituri. Contractele multianuale și plafoanele acordurilor-cadru pot duce raportul peste 100%. Cotele consorțiilor sunt estimate; unele sectoare au predominant clienți publici.",
   },
   net_shared_admin: {
     code: "net_shared_admin",
-    title: "Firme surori la aceeași autoritate",
+    title: "Reprezentant comun, aceeași autoritate",
     subject: "supplier",
-    short: "Aceeași persoană conduce mai multe firme cu achiziții la aceeași autoritate.",
+    short: "Firme cu un reprezentant legal comun au achiziții la aceeași autoritate.",
     description:
-      "Două sau mai multe firme administrate de aceeași persoană (reprezentant legal ONRC, identificat prin nume + data și locul nașterii) au achiziții directe și cote din contracte înregistrate la aceeași autoritate.",
+      "Două sau mai multe firme cu un reprezentant legal comun în datele ONRC disponibile au achiziții directe și cote din contracte înregistrate la aceeași autoritate. Identitatea reprezentantului folosește numele, data și locul nașterii.",
     rationale:
-      "Împărțirea afacerii pe firme-surori ascunde concentrarea reală: fiecare firmă pare mică, dar aceeași persoană controlează întregul flux.",
+      "Legătura permite analizarea împreună a atribuirilor acestor firme. Merită verificate rolul persoanei, relația dintre firme și situația lor la data achizițiilor.",
     caveat:
-      "Administratorii nu sunt neapărat asociații/proprietarii; instantaneu ONRC curent, nu de la momentul achizițiilor. Grupuri legitime de firme pot arăta similar.",
+      "Reprezentantul legal nu este automat proprietar sau beneficiar real. Registrul disponibil descrie o situație ulterioară unora dintre achiziții și nu dovedește control comun la data atribuirii. Legătura poate exista între firme care lucrează legitim pentru aceeași autoritate.",
   },
 };
 
@@ -187,5 +187,5 @@ export function criBand(cri: number): { label: string; className: string } {
   if (cri >= 0.6) return { label: "Ridicat", className: "risk-high" };
   if (cri >= 0.3) return { label: "Mediu", className: "risk-mid" };
   if (cri > 0) return { label: "Scăzut", className: "risk-low" };
-  return { label: "Fără semnale", className: "risk-none" };
+  return { label: "Niciun criteriu îndeplinit", className: "risk-none" };
 }

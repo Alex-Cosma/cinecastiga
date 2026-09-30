@@ -13,6 +13,7 @@ import ClipButton from "@/components/ClipButton";
 import FollowButton from "@/components/FollowButton";
 import { encodeSpec } from "@/lib/ask/permalink";
 import "./evidence-drawer.css";
+import {requestSourceCsv,downloadSourceCsv} from "@/lib/ask/source-csv";
 
 export interface EvidenceDrawerProps {
   spec: AskSpec;
@@ -36,6 +37,7 @@ export default function EvidenceDrawer({ spec, title, scope, onClose, onSave, in
   const [responseData, setResult] = useState<DrillResult | null>(null);
   const [loadedKey, setLoadedKey] = useState("");
   const [busy, setBusy] = useState(true);
+  const [slow, setSlow] = useState(false);
   const [error, setError] = useState("");
   const [search, setSearch] = useState(initialFilters?.search ?? "");
   const [state, setState] = useState(initialFilters?.state ?? "");
@@ -76,7 +78,8 @@ export default function EvidenceDrawer({ spec, title, scope, onClose, onSave, in
 
   useEffect(() => {
     const controller = new AbortController();
-    setBusy(true); setError("");
+    setBusy(true); setError(""); setSlow(false);
+    const slowTimer = setTimeout(() => setSlow(true), 8000);
     const timer = setTimeout(async () => {
       try {
         const response = await fetch("/api/ask/rows", {
@@ -90,10 +93,11 @@ export default function EvidenceDrawer({ spec, title, scope, onClose, onSave, in
       } catch (e) {
         if (!controller.signal.aborted) setError(e instanceof Error ? e.message : "Sursele nu au putut fi încărcate.");
       } finally {
+        clearTimeout(slowTimer);
         if (!controller.signal.aborted) setBusy(false);
       }
     }, search ? 300 : 0);
-    return () => { clearTimeout(timer); controller.abort(); };
+    return () => { clearTimeout(timer); clearTimeout(slowTimer); controller.abort(); };
   }, [queryKey, search, state, stream, sort, dir, page, retry]);
 
   function reset() { setSearch(""); setState(""); setStream(""); setPage(0); }
@@ -105,27 +109,10 @@ export default function EvidenceDrawer({ spec, title, scope, onClose, onSave, in
     const requestedQuery = queryKey;
     setExporting(which); setExportMessage("");
     try {
-      const response = await fetch("/api/ask/rows/csv", {
-        method: "POST", headers: { "content-type": "application/json" }, signal: controller.signal,
-        body: JSON.stringify({ ...JSON.parse(queryKey), sort, dir, ...(which === "filtered" ? { search, state, stream } : {}) }),
-      });
-      if (!response.ok || !response.headers.get("content-type")?.includes("text/csv")) {
-        const data = await response.json() as { error?: string };
-        throw new Error(data.error ?? "Exportul nu a putut fi generat.");
-      }
-      const blob = await response.blob();
+      const file = await requestSourceCsv({ ...JSON.parse(queryKey), sort, dir, ...(which === "filtered" ? { search, state, stream } : {}) }, controller.signal);
       if (controller.signal.aborted || activeQuery.current !== requestedQuery) return;
-      const total = Number(response.headers.get("x-total-rows"));
-      const exported = Number(response.headers.get("x-exported-rows"));
-      const href = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = href;
-      anchor.download = response.headers.get("content-disposition")?.match(/filename="([^"]+)"/)?.[1] ?? "surse-seap.csv";
-      anchor.click();
-      setTimeout(() => URL.revokeObjectURL(href), 1_000);
-      setExportMessage(exported < total
-        ? `Export parțial: primele ${count(exported)} din ${count(total)} înregistrări. Limita unui fișier este de 100.000 de rânduri; restrânge întrebarea pentru un export integral.`
-        : `${count(exported)} înregistrări exportate, cu valorile exacte și linkurile către surse.`);
+      downloadSourceCsv(file);
+      setExportMessage(file.message);
     } catch (e) {
       if (!controller.signal.aborted) setExportMessage(e instanceof Error ? e.message : "Export nereușit.");
     } finally {
@@ -144,9 +131,22 @@ export default function EvidenceDrawer({ spec, title, scope, onClose, onSave, in
       <div><p className="ev-eyebrow">Datele din spatele răspunsului</p><h2 id="evidence-title">Poți verifica fiecare leu.</h2></div>
       <button type="button" className="ev-close" onClick={onClose} aria-label="Închide lista surselor" autoFocus>×</button>
     </header>
+    <div className={`ev-load-status${busy ? " is-active" : ""}`} role="status" aria-live="polite" aria-atomic="true">
+      {busy && <><span className="ev-load-spinner" aria-hidden="true" /><div>
+        <strong>{result ? "Se actualizează lista…" : "Se încarcă înregistrările sursă…"}</strong>
+        <p>{slow ? "Încă se lucrează. Pentru selecții mari, încărcarea poate dura mai mult." : result ? "Păstrăm lista anterioară până sosesc rezultatele noi." : "Pregătim lista și totalurile pentru această selecție."}</p>
+      </div></>}
+    </div>
     <div className="ev-content">
       <p className="ev-question">{title}</p>
       {peer?.selection.kind === "comparison" && <p className="ev-exact-total">La salvare se păstrează grupul complet; filtrele listei nu schimbă comparația salvată.</p>}
+      {busy && !result && <div className="ev-skeleton" aria-hidden="true">
+        <div className="ev-skeleton-summary"><span /><span /></div>
+        {[0, 1, 2].map((row) => <div className="ev-skeleton-row" key={row}>
+          <div><span /><span /><span /></div><div><span /><span /></div><div><span /><span /></div>
+        </div>)}
+      </div>}
+      {result && <>
       <div className="ev-source-summary" aria-live="polite">
         <div><span>Înregistrări în această selecție</span><strong>{result ? count(result.sourceTotal) : "—"}</strong></div>
         <div><span>{result?.profile ? "Valoare înregistrată în profil" : "Valoare înregistrată"}</span><strong className="ev-money">{result ? formatEvidenceAmount(result.sourceValue) : "—"}</strong></div>
@@ -183,20 +183,21 @@ export default function EvidenceDrawer({ spec, title, scope, onClose, onSave, in
         {!result?.profile && (spec.dataset ?? "all") === "all" && <label><span>Canal</span><select value={stream} onChange={(e) => { setStream(e.target.value); setPage(0); }}><option value="">Toate sursele</option><option value="da">Achiziții directe</option><option value="contracts">Contracte</option></select></label>}
       </div>
       <div className="ev-list-toolbar">
-        <div className="ev-filtered-summary" aria-live="polite">{busy ? "Se încarcă sursele…" : result ? <><strong>{count(result.total)} {filtered ? "potriviri" : "înregistrări"}</strong> · {formatEvidenceAmount(result.value)}</> : ""}{filtered && <button type="button" onClick={reset}>Șterge filtrele listei</button>}</div>
+        <div className="ev-filtered-summary" aria-live="polite">{busy ? "Se actualizează rezultatele…" : result ? <><strong>{count(result.total)} {filtered ? "potriviri" : "înregistrări"}</strong> · {formatEvidenceAmount(result.value)}</> : ""}{filtered && <button type="button" onClick={reset}>Șterge filtrele listei</button>}</div>
         <label className="ev-sort"><span className="ev-sr-only">Ordonează sursele</span><select value={`${sort}:${dir}`} onChange={(e) => { const [key, direction] = e.target.value.split(":"); setSort(key as DrillSort); setDir(direction as "asc" | "desc"); setPage(0); }}>
           <option value="source:desc">Ordinea sursei</option><option value="value:desc">Valoare ↓</option><option value="value:asc">Valoare ↑</option><option value="date:desc">Cele mai recente</option><option value="date:asc">Cele mai vechi</option><option value="supplier:asc">Furnizor A–Z</option><option value="authority:asc">Instituție A–Z</option>
         </select></label>
       </div>
+      </>}
       {error && <div className="ev-error" role="alert"><p>{error}</p><button type="button" onClick={() => setRetry((v) => v + 1)}>Încearcă din nou</button></div>}
-      <div className={`ev-records${busy ? " ev-loading" : ""}`} aria-busy={busy}>
-        {!error && result && result.rows.length === 0 && <div className="ev-empty"><strong>Nicio înregistrare{filtered ? " pentru aceste filtre" : " în selecție"}.</strong><p>{filtered ? "Totalul selecției rămâne vizibil mai sus. Șterge filtrele pentru a reveni la toate sursele." : "Absența unui rezultat se referă la datele și condițiile acestei întrebări."}</p></div>}
+      <div className={`ev-records${busy ? " ev-loading" : ""}`} aria-busy={busy} inert={busy}>
+        {!busy && !error && result && result.rows.length === 0 && <div className="ev-empty"><strong>Nicio înregistrare{filtered ? " pentru aceste filtre" : " în selecție"}.</strong><p>{filtered ? "Totalul selecției rămâne vizibil mai sus. Șterge filtrele pentru a reveni la toate sursele." : "Absența unui rezultat se referă la datele și condițiile acestei întrebări."}</p></div>}
         {result && result.rows.length > 0 && <table className="ev-table"><caption className="ev-sr-only">Înregistrările sursă pentru {title}</caption>
           <thead><tr><th>Înregistrare</th><th>Instituție → furnizor</th><th>Valoare (lei)</th><th>Stare și sursă</th></tr></thead>
           <tbody>{result.rows.map((r) => {
             const links = evidenceLinks(r);
             return <tr key={`${r.src}:${r.refId}:${r.supplierId}`}>
-              <td data-label="Înregistrare">{r.refId ? <Link className="ev-contract-title" href={r.src === "contracts" ? `/contracte/i/${r.refId}` : `/achizitii/${r.refId}`} target="_blank" rel="noopener noreferrer">{r.title || r.cpvName || r.daCode || `Înregistrarea ${r.refId}`} ↗</Link> : null}<strong>{r.daCode ?? `#${r.refId ?? "?"}`}</strong><span className="ev-muted">{date(r.date)} · {r.src === "da" ? "Achiziție directă" : "Contract"}</span><span>{r.cpvName ?? "Categorie CPV neprecizată"}</span><small className="ev-muted">{r.cpvCode ? `CPV ${r.cpvCode}` : ""}</small></td>
+              <td data-label="Înregistrare">{r.refId ? <Link className="ev-contract-title" href={r.src === "contracts" ? `/contracte/i/${r.refId}` : `/achizitii/${r.refId}`} target="_blank" rel="noopener noreferrer">{r.title || r.cpvName || r.daCode || `Înregistrarea ${r.refId}`} ↗</Link> : null}<strong>{r.daCode ?? `#${r.refId ?? "?"}`}</strong><span className="ev-muted">{r.src === "da" ? "Finalizată" : "Semnat"} {date(r.date)} · {r.src === "da" ? "Achiziție directă" : "Contract"}</span><span>{r.cpvName ?? "Categorie CPV neprecizată"}</span><small className="ev-muted">{r.cpvCode ? `CPV ${r.cpvCode}` : ""}</small></td>
               <td data-label="Instituție și furnizor"><div className="ev-party">{r.authorityId ? <Link href={`/entitati/${r.authorityId}`} target="_blank" rel="noopener noreferrer">{r.authority ?? `Instituție #${r.authorityId}`}</Link> : r.authority ?? "Instituție neprecizată"}</div><span className="ev-party-arrow" aria-hidden="true">↓</span><div className="ev-party">{r.supplierId ? <Link href={`/entitati/${r.supplierId}`} target="_blank" rel="noopener noreferrer">{r.supplier ?? `Furnizor #${r.supplierId}`}</Link> : r.supplier ?? "Furnizor neprecizat"}</div><small className="ev-muted">{r.county ?? "Județ neprecizat"}</small></td>
               <td data-label="Valoare"><strong className="ev-row-value">{formatEvidenceAmount(r.valueExact)}</strong>{r.valueSuspect && <span className="ev-warning">Valoare posibil introdusă eronat</span>}{r.nWinners && r.nWinners > 1 ? <span className="ev-muted">Cotă 1/{r.nWinners} din contract</span> : null}
                 <details className="ev-record-details"><summary>Detalii importate</summary><dl><dt>ID SEAP</dt><dd>{r.src === "da" ? r.refId : r.caNoticeId ?? "Lipsește"}</dd><dt>ID rând</dt><dd>{r.refId}</dd><dt>Valoare exactă</dt><dd>{r.valueExact} RON</dd>{r.contractValueFull !== null && <><dt>Contract integral</dt><dd>{formatEvidenceAmount(r.contractValueFull)}</dd><dt>Câștigători</dt><dd>{r.nWinners}</dd></>}{r.estimatedValueRon !== null && <><dt>Valoare estimată</dt><dd>{r.estimatedValueRon.toLocaleString("ro-RO")} lei</dd></>}</dl></details>

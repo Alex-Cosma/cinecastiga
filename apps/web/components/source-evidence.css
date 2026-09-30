@@ -8,6 +8,7 @@
 .source-evidence-notes ul { margin-block: 1rem 0; padding-left: 1.25rem; max-width: 75ch; }
 .source-evidence-notes li + li { margin-top: .75rem; }
 .source-evidence-table { min-width: 680px; }
+.source-evidence-table th.num { text-align: right; }
 .source-evidence-table td { vertical-align: top; }
 .source-evidence-table small { display: block; margin-top: .35rem; color: var(--muted); white-space: normal; }
 .source-evidence-links { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: .5rem; }

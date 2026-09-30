@@ -240,7 +240,7 @@ async function namedCapture(q: DbSql, captureId: string, request: CaptureRequest
   }
   if (request.kind === "contract") {
     const [contract] = await q`select id::text,contract_value::text value,currency,title,ca_notice_id::text notice_id,
-      contract_date::text date from core.contracts where ca_notice_contract_id=${id}`;
+      to_char(contract_date at time zone 'Europe/Bucharest', 'YYYY-MM-DD') date from core.contracts where ca_notice_contract_id=${id}`;
     if (!contract) throw new CaptureError("Contractul nu mai este disponibil.");
     const rows = await readContractEvidence(q, q`ct.contract_id=${contract.id}`);
     records = rows.map(row => freezeRow(row));

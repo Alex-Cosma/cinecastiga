@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useViewer } from "@/lib/use-viewer";
 
 /**
  * "Adaugă la anchetă" — mounted on entity/contract/notice pages and on ask
- * results. Guests get a sign-in link that preserves the selected source scope.
+ * results. Available only to authenticated viewers.
  * Popover: pick a recent anchetă or create one inline, plus
  * an optional one-line "why" — the context that keeps the clip meaningful.
  */
@@ -13,7 +14,12 @@ interface Inv {
   title: string;
 }
 
-export default function ClipButton({
+export default function ClipButton(props:React.ComponentProps<typeof AuthenticatedClipButton>) {
+  const viewer = useViewer();
+  return viewer.userId ? <AuthenticatedClipButton key={viewer.userId} {...props} /> : null;
+}
+
+function AuthenticatedClipButton({
   kind,
   refId,
   spec,
@@ -26,7 +32,6 @@ export default function ClipButton({
   snapshot?: Record<string, unknown> | null;
   label?: string;
 }) {
-  const [authed, setAuthed] = useState(false);
   const [open, setOpen] = useState(false);
   const [list, setList] = useState<Inv[] | null>(null);
   const [sel, setSel] = useState<string>("");
@@ -56,19 +61,6 @@ export default function ClipButton({
   }, [done, capture?.id, capture?.status]);
 
   useEffect(() => {
-    let alive = true;
-    fetch("/api/auth/get-session")
-      .then((r) => r.json())
-      .then((s) => {
-        if (alive && s?.user) setAuthed(true);
-      })
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, []);
-
-  useEffect(() => {
     if (!open) return;
     const onDoc = (ev: MouseEvent) => {
       if (boxRef.current && !boxRef.current.contains(ev.target as Node))
@@ -89,38 +81,6 @@ export default function ClipButton({
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
-
-  const sourceReturn =
-    typeof snapshot?.["sourceUrl"] === "string" &&
-    snapshot["sourceUrl"].startsWith("/intreaba?")
-      ? snapshot["sourceUrl"]
-      : null;
-  if (!authed)
-    return (
-      <div className="clipbtn" ref={boxRef}>
-        <button
-          type="button"
-          className="clipbtn-t"
-          aria-expanded={open}
-          onClick={() => setOpen(!open)}
-        >
-          Salvează în anchetă →
-        </button>
-        {open && (
-          <div className="clipbtn-pop">
-            <strong>Păstrează ce ai descoperit.</strong>
-            <p className="hint">
-              Anchetele sunt dosare private, cu întrebări, surse și notele tale.
-            </p>
-            <a
-              href={`/login?next=${encodeURIComponent(sourceReturn ?? (typeof window === "undefined" ? "/intreaba" : window.location.pathname + window.location.search))}`}
-            >
-              Autentifică-te pentru a salva →
-            </a>
-          </div>
-        )}
-      </div>
-    );
 
   const openPanel = async () => {
     setOpen(true);

@@ -35,6 +35,8 @@ export async function runFlagMarts(
   if (b !== 2_000_000) throw new Error("DA plausibility bound differs from the query population (2000000)");
 
   return sql.begin(async (q) => {
+    // Calendar days/years must match SEAP detail pages in Romanian time.
+    await q`set local time zone 'Europe/Bucharest'`;
     // NOTE: authority_concentration + entity_top_partners are now owned by
     // `runMarts` (built from the DA + award pair spine, bounded). They are NOT
     // rebuilt here — doing so would clobber the award-inclusive versions with a
