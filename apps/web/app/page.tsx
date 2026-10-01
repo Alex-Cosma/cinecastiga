@@ -48,8 +48,8 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
 
     <section className="d-national-strip" aria-label="Datele din arhiva publică">
       <div className="d-national-label"><span><DiscoveryIcon name="database" /></span><div><b>O arhivă de urmărit.</b><small>Înregistrări din {coverage}</small></div></div>
-      <Link href={questionHref({ block: "stat", dataset: "da", measure: "value", filters: {} })}><strong>{formatInt(headline.directRecords)}</strong><small>achiziții directe acceptate</small></Link>
-      <Link href={questionHref({ block: "stat", dataset: "contracts", measure: "value", filters: {} })}><strong>{formatInt(headline.contractRecords)}</strong><small>înregistrări contract–furnizor</small></Link>
+      <Link href={questionHref({ block: "stat", dataset: "da", measure: "count", filters: {}, population: { operator: "and", groups: [{ operator: "and", conditions: [{ field: "value", op: "lte", value: "2000000" }] }] } })}><strong>{formatInt(headline.directRecords)}</strong><small>achiziții directe acceptate</small></Link>
+      <Link href={questionHref({ block: "stat", dataset: "contracts", measure: "count", filters: {} })}><strong>{formatInt(headline.contractRecords)}</strong><small>înregistrări contract–furnizor</small></Link>
       <Link href={questionHref({ block: "stat", dataset: "all", measure: "value", filters: {} })}><strong>{formatRon(headline.totalRon)}</strong><small>valoare înregistrată · nu plăți</small></Link>
     </section>
 
