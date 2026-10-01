@@ -2,7 +2,7 @@
 
 Proprietarul a aprobat planul și a cerut implementarea. Diagnosticul inițial este
 în `docs/reviews/entity-identities-20261001/report.md`. Branch de lucru:
-`fix/historical-authority-identities`, bazat pe `b293eea`. Codul este comis și împins pe branch (`22c186d` + `96388a2`); nu pe main, fără deploy.
+`fix/historical-authority-identities`, bazat pe `b293eea`. Codul este comis și împins pe branch (`22c186d`, `96388a2`, `aaf7b83`); nu pe main, fără deploy.
 
 ## Audit reproductibil finalizat
 
@@ -80,8 +80,9 @@ rezultat: `/tmp/seap-identity-audit-20261001/references.sql`, `external-referenc
 
 1. LOCAL: `seap_test_identity_repair_20261001` are schema completă, dar date doar
    entities/SICAP/CPV/authority_uat și **20.795.132 DA**. Restaurarea și auditul au
-   terminat. Corecția integrală rulează în sesiunea20818; log
-   `/tmp/seap-identity-audit-20261001/full-apply.log`. Urmează verify, rerulare,
+   terminat. Corecția integrală a comis **4.231.642 rânduri**; log
+   `/tmp/seap-identity-audit-20261001/full-apply.log`. Verificarea globală rulează în
+   sesiunea88359 (`full-verify.log`). Urmează rerulare,
    aliases, verify. Aceasta NU validează toate marts-urile sau datele private.
 2. SERVER: copia COMPLETĂ `seap_test_identity_full_20261001` este gata și auditul
    confirmă planul. Director privat `/srv/seap/backups/identity-repair-20261001/`.
@@ -90,7 +91,9 @@ rezultat: `/tmp/seap-identity-audit-20261001/references.sql`, `external-referenc
    `apply-copy.sh` rulează din15:11ora serverului (16:11RO), prin nohup:
    apply → verify → apply → verify → aliases → verify au trecut. **14.264 aliasuri**,
    2.414 UAT vechi arhivate/eliminate, 3 UAT adăugate canonic. Pipeline complet pornit
-   16:27:31 RO, boundary raw17363865. Normalize terminat; reconcile în curs.
+   16:27:31 RO, boundary raw17363865. Normalize/reconcile/ted-mart/marts terminate;
+   flags în curs la17:17RO, activ fără așteptare de lock. Profil Cluj canonic:
+   5.953 DA și569 contracte; CUI14920794 rămâne separat,102 DA și4 contracte.
    Log `apply-copy.log`; markere `rows.ready`, `refresh.ready` sau `apply.failed`.
    Wrapperul `clone-refresh.mjs` refuză orice DB fără prefixul izolat și nu folosește
    Meili live. NU s-au modificat achiziții, control, workers sau schedule live.
@@ -98,11 +101,12 @@ rezultat: `/tmp/seap-identity-audit-20261001/references.sql`, `external-referenc
    NU opri devul utilizatorului3000 (PID16949) sau mockups4185. După timeout-uri,
    verificarea IPv4 `127.0.0.1:3000` a trecut:health200 în1,3s, profil200 în15,5s
    (primul render, în timpul operațiunii locale intensive). Nu a fost repornit.
-4. Preview COMPLET pe server, loopback3014, imagine `cinecastiga-identity-preview:22c186d`,
+4. Preview COMPLET pe server, loopback3014, imagine `cinecastiga-identity-preview:aaf7b83`,
    checkout separat `/srv/seap/identity-preview-src`. Containere `identity-preview-web`
    și `identity-preview-meili`, credențiale auth/Meili noi, SMTP gol, documente disabled.
-   Baza copiei a primit granturi web. Tunel local3014 sesiune3354. Răspunde503 normal
-   cât timp rulează recalcularea (health200). Nicio expunere publică a copiei.
+   Baza copiei a primit granturi web și CONNECT explicit pentru seap_web. Tunel
+   local3014 sesiune3354. Mentenanța copiei este explicit=true până după validarea
+   indexării. Nicio expunere publică a copiei.
 5. `search-copy.sh` așteaptă refresh.ready și pornește indexarea titlurilor și Meili
    separat; markere search.ready/search.failed, logsearch-copy.log, raportsearch-report.json.
    Nu relansa. `plan-proof.json` este pregătit:4231642 rânduri,14264 aliasuri,
@@ -159,4 +163,15 @@ capturile queued/running, cu trei observații consecutive fără lucrări înain
 backup. În producție, tabela capturilor era goală la această verificare; niciun
 conținut privat nu a fost citit.
 
-Preview-ul22c186d trebuie reconstruit cu acest ultim fix înaintea validării finale.
+Preview-ul a fost reconstruit și repornit pe imaginea `cinecastiga-identity-preview:aaf7b83`.
+Buildul de producție a trecut. La pregătire s-a constatat lipsa grantului CONNECT
+pentru rolul web în copia cu CONNECT PUBLIC revocat; grantul explicit este acum
+aplicat numai pe copie. Mentenanța copiei a fost setată explicit=true până la
+validare. După search.ready trebuie setatăfalse DOAR în copie înainte de proba UI;
+paused=true și processing_enabled=false rămân. Nu deduce conexiunea DB din health200.
+
+Coordinatorul live folosește backup custom `-Z1` (același nivel ca backupul restaurat
+pe copia completă) și păstrează eroarea sanitizată în raport/log privat la eșec.
+La17:17RO: live încă peb293eea, revision24, paused=false, maintenance=false,
+delay40–60s, zilnic05:00, risc duminică. Spațiu liber server760GB. Nu schimba aceste
+setări ca efect secundar al reparației.

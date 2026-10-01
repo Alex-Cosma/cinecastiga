@@ -53,7 +53,7 @@ if [[ "$phase" == prepare ]]; then
  docker compose --profile collection stop collection documents
  run freeze
  test "$(df -Pk "$root" | awk 'NR==2 {print $4}')" -ge 31457280
- docker exec cinecastiga-postgres-1 pg_dump -U seap -d seap -Fc > "$root/database.dump.partial"
+ docker exec cinecastiga-postgres-1 pg_dump -U seap -d seap -Fc -Z1 > "$root/database.dump.partial"
  mv "$root/database.dump.partial" "$root/database.dump"
  docker exec -i cinecastiga-postgres-1 pg_restore --list < "$root/database.dump" > "$root/database.list"
  sha256sum "$root/database.dump" > "$root/database.sha256"

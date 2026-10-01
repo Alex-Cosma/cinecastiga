@@ -1,6 +1,6 @@
 /** Dated, one-off publication. Never scheduled and never called by ordinary deploys. */
 import {readFile,writeFile,rename} from 'node:fs/promises';
-import {createDb,collectionHeartbeat,withMonitoringWrite} from '@seap/db';
+import {createDb,collectionHeartbeat,withMonitoringWrite,diagnosticError} from '@seap/db';
 import {runMonitoringRefresh} from '../monitoring/refresh.js';
 import {indexTopics} from '../search/index-topics.js';
 import {indexEntities,meiliClient} from '../search/index-entities.js';
@@ -76,7 +76,9 @@ try {
   }
  }
 }catch(error){
- if(command==='publish'){report.status='failed';report.failedStage=stage;report.completedAt=new Date().toISOString();await save('report',report);}
+ const diagnostic=JSON.parse((JSON.stringify(diagnosticError(error))??'"Unknown error"').replace(/(postgres(?:ql)?:\/\/)[^\s/@]+@/gi,'$1[redacted]@'));
+ if(command==='publish'){report.status='failed';report.failedStage=stage;report.error=diagnostic;report.completedAt=new Date().toISOString();await save('report',report);}
  console.error('Identity publication stopped; maintenance must remain active. Inspect the stage and database logs.');
+ console.error(JSON.stringify(diagnostic));
  process.exitCode=1;
 }finally{clearInterval(timer);await sql.end({timeout:10});}
