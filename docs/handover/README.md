@@ -1,16 +1,10 @@
 # Handover pentru un nou dezvoltator și asistentul lui
 
-**Publicare LIVE în curs:** [starea operațiunii din 1 octombrie](../implementation/entity-identity-release-20261001.md).
-Codul663cc27 este deployat; reparația rândurilor și aliasurile au trecut verificarea
-în producție. Recalcularea rulează, site-ul este în mentenanță. Nu reporni joburile
-și nu redeschide înaintea validării finale. Această stare înlocuiește checkpoint-ul
-de pregătire de mai jos.
-
-**Operațiune activă, 1 octombrie,18:43RO:** [continuarea reparației identităților](continuation-identity-20261001.md) are prioritate față de checkpoint-urile de mai jos. Corecția, recalcularea completă, căutarea și24 verificări în browser au trecut pe copia producției; joburile s-au încheiat. Urmează merge/deploy și publicarea controlată. Producția și baza locală obișnuită încă nereparate. Nu relansa joburile terminate.
+**Ultima publicare a datelor verificată,1 octombrie:** [reparația identităților istorice](../implementation/entity-identity-release-20261001.md) este încheiată, site-ul redeschis și colectarea reluată.4.231.642 de asocieri corectate,14.264 de redirecturi, checkpoint11 ready și ambele indexuri refăcute. Nu relansa operațiunea. Codul principal663cc27 este live; corecția permanentă a inițializării căutării urmează în commitul final. Baza locală obișnuită și dumpul local anterior nu sunt reparate. [Checkpoint-ul de pregătire](continuation-identity-20261001.md) este istoric.
 
 **Documentație consolidată la 1 octombrie:** [checkpoint final](continuation-20261001.md). Publicarea aplicației și pregătirea pachetului local sunt încheiate; copierea pe stick nu a fost efectuată de agent. Nu există operațiuni din sesiunea precedentă de relansat. Ultima verificare de producție consemnată este din 30 septembrie, seara, nu din noaptea următoare.
 
-**Ultima publicare verificată, 30 septembrie 2026:** codul aplicației `43c0d4a` și corecția deploy `f474c3e` sunt pe main și în producție, ambele CI/deploy trecute. Tranziția calendarului în producție este validată, site-ul redeschis și colectarea reluată; verifică [raportul lansării](../implementation/release-20260930.md) înaintea oricărei operațiuni. Un nou dump LOCAL complet pentru coleg este exportat și verificat în `infra/prod/dumps/handover-local-20260930`; [starea transferului](TRANSFER-STATUS.md) este autoritatea pentru finalizarea/verificarea lui.
+**Publicare anterioară, 30 septembrie 2026:** codul aplicației `43c0d4a` și corecția deploy `f474c3e` sunt pe main și în producție, ambele CI/deploy trecute. Tranziția calendarului în producție este validată, site-ul redeschis și colectarea reluată; verifică [raportul lansării](../implementation/release-20260930.md) înaintea oricărei operațiuni. Un nou dump LOCAL complet pentru coleg este exportat și verificat în `infra/prod/dumps/handover-local-20260930`; [starea transferului](TRANSFER-STATUS.md) este autoritatea pentru finalizarea/verificarea lui.
 
 Funcționalitățile recente: [Semnale A](../implementation/signals-redesign.md), [feedback anonim și admin](../implementation/anonymous-feedback.md), [întrebări salvate fără cont](../implementation/local-saved-questions.md), [traseul surselor și exporturilor](../implementation/answer-actions.md), [căutare orientată spre instituție](../implementation/search-intent.md), [calendar și detalii](../implementation/acquisition-details-calendar.md), [limbajul riscului](../implementation/risk-language.md), [lookup complet pentru semnale](../implementation/signal-timeout.md). Opțiunea de login fără 2FA este exclusiv locală/development și necesită configurare proprie; nu este activă în producție.
 
@@ -33,10 +27,10 @@ Acesta este punctul de intrare pentru colaborare, nu un plan de rescriere a proi
 ## Starea de plecare
 
 - Repository: `git@github.com:Alex-Cosma/seap-new.git`; aplicație: <https://cinecastiga.ro>.
-- Ultimul cod verificat în producție: `f474c3e`, după lotul `43c0d4a`. Commiturile ulterioare exclusiv documentare pot exista pe `main` fără deploy; verifică `git log`.
-- CI + deploy: Actions `36745471938` și `36760065306`, confirmate reușite. Pagina publică și health 200; API-urile admin refuză accesul anonim. Probe în raportul lansării.
+- Codul reparației verificat în producție: `663cc27`. Pentru commitul final și verificări citește raportul din1 octombrie; commiturile exclusiv documentare pot exista pe `main` fără deploy.
+- CI + deploy al reparației: Actions `36886537522`, confirmate reușite. Publicarea datelor are propriile verificări și raport; un deploy reușit singur nu certifică reparația.
 - Lotul recent include Semnale A, feedback anonim cu secțiune admin separată, căutare/Explorează și corectarea calendarului. Funcționalitățile și backlogul sunt în [06-status-and-roadmap.md](06-status-and-roadmap.md).
-- Producție: 46 migrări, checkpoint 8 ready, calendar `rf-2026.6` / `Europe/Bucharest-v1`. Dump local: tot 46 migrări, dar baseline v1 din 19 septembrie, fără reprocesarea calendarului. Manifestul exportului este autoritatea pentru copia transferată.
+- Producție:47 migrări, checkpoint11 ready, calendar `rf-2026.6` / `Europe/Bucharest-v1`. Dump local: tot 46 migrări, dar baseline v1 din 19 septembrie, fără reprocesarea calendarului. Manifestul exportului este autoritatea pentru copia transferată.
 - Colegul primește **toate datele publice disponibile în copia aleasă**, inclusiv arhiva brută existentă, datele normalizate, statisticile și documentele publice. Nu primește conturi, sesiuni, anchete, urmăriri private sau cozi active.
 - **Decizia finală a proprietarului: export din baza LOCALĂ a autorului, transfer pe stick.** Include arhiva brută locală mai mare și cele două documente publice ale pilotului. Nu este identică cu producția. Manifestul local marchează sursa și checkpoint-ul; nu prezenta copia drept ultima publicare live.
 

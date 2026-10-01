@@ -1,3 +1,7 @@
+## 2026-10-01 — Identități istorice reparate în producție
+
+[Raport final](docs/implementation/entity-identity-release-20261001.md):4.231.642 de asocieri corectate și14.264 de redirecturi verificate, fără modificarea sumelor/surselor sau a capturilor private existente. Recalculare completă1h52m22s,11 verificări trecute, checkpoint11 ready, ambele indexuri refăcute și24 probe publice în browser trecute. Site redeschis21:18:46RO, colectare reluată cu cereri reușite; programul05:00RO/risc duminică și bugetul operatorului40–60s păstrate. A fost corectată și inițializarea Meili pentru indexul existent; incidentul și recuperarea limitată sunt documentate. Baza locală obișnuită și dumpul anterior rămân nereparate. CUI14920794 și instituțiile fiscale distincte nu au fost unite;313 grupuri ambigue rămân neforțate. Nu relansa reparația datată.
+
 ## 2026-10-01 — Commit și push autorizate
 
 Proprietarul a cerut commit și push după terminarea mockupului. Lotul include corecțiile numărătorilor homepage/metodologie, prototipul de citare și documentația; pushul include și commitul precedent `d51fb29` pentru acoperire compactă. Main declanșează CI și apoi deploy automat. Fără migrare nouă sau schimbarea programării colectării. Mockupul rămâne separat, cu date fictive; citarea durabilă reală nu este implementată. Verificări deja trecute:67 teste builder/surse și TypeScript,15 verificări browser pentru corecții;20 verificări browser și sintaxă JS pentru mockup. Starea CI/deploy trebuie citită din runul nou, nu dedusă din push.

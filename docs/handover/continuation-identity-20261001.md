@@ -1,5 +1,7 @@
 # Identity repair handoff — 1 October 2026, 18:37 Romania
 
+> Historical implementation/checkpoint notes. The [live publication report](../implementation/entity-identity-release-20261001.md) supersedes the operational states below. Do not restart jobs based on this document.
+
 **Resumed after owner reset the usage budget. Update18:43RO:** preview rebuilt on
 b7b9061; clone maintenance cleared (still paused, processing disabled). All
 **24 public browser/navigation/data checks passed**, including query retention on

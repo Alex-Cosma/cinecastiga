@@ -42,12 +42,26 @@ export async function indexEntities(
   const client = meiliClient();
   const index = client.index(ENTITIES_INDEX);
 
-  await client.createIndex(ENTITIES_INDEX, { primaryKey: "id" }).catch(() => {});
+  // createIndex enqueues a task: an existing index fails asynchronously, so a
+  // catch on the HTTP request does not prevent a failed indexing task.
+  const waitForSuccess = async (taskUid: number, timeout: number) => {
+    const task = await client.tasks.waitForTask(taskUid, { timeout });
+    if (task.status !== "succeeded") {
+      throw new Error(`Entity search task ${taskUid} ${task.status}: ${task.error?.code ?? "unknown"}`);
+    }
+  };
+  try {
+    await client.getIndex(ENTITIES_INDEX);
+  } catch (error) {
+    if ((error as { code?: string })?.code !== "index_not_found") throw error;
+    const task = await client.createIndex(ENTITIES_INDEX, { primaryKey: "id" });
+    await waitForSuccess(task.taskUid, 120_000);
+  }
   // Wipe before push: entity ids change on re-normalize, and upsert-only
   // indexing accumulates stale documents whose links 404 (seen 2026-07-28:
   // 815k docs for 194k entities).
   const wipeTask = await index.deleteAllDocuments();
-  await client.tasks.waitForTask(wipeTask.taskUid, { timeout: 300_000 });
+  await waitForSuccess(wipeTask.taskUid, 300_000);
   const settingsTask = await index.updateSettings({
     searchableAttributes: ["name", "cui"],
     filterableAttributes: ["roles", "county"],
@@ -67,7 +81,7 @@ export async function indexEntities(
       prefectura: ["institutia prefectului", "prefectul"],
     },
   });
-  await client.tasks.waitForTask(settingsTask.taskUid, { timeout: 120_000 });
+  await waitForSuccess(settingsTask.taskUid, 120_000);
 
   // One row per entity, roles + per-role totals folded together.
   const rows = (await sql`
@@ -111,7 +125,7 @@ export async function indexEntities(
       };
     });
     const task = await index.addDocuments(docs);
-    await client.tasks.waitForTask(task.taskUid, { timeout: 120_000 });
+    await waitForSuccess(task.taskUid, 120_000);
     sent += docs.length;
     log(`  ${sent}/${rows.length}`);
   }

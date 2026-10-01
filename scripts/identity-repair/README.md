@@ -69,7 +69,10 @@ cannot prove absence of references in missing tables.
 - Live requires a fresh backup, maintenance/write exclusion and publication
   validation. Restore remains the rollback route.
 
-## Dated production publication (not yet executed)
+## Dated production publication (1 October 2026)
+
+Execution and current status: [live publication report](../../docs/implementation/entity-identity-release-20261001.md).
+The commands below document the incident procedure, not work to repeat at the next deploy.
 
 `publish.sh prepare|publish|reopen <deployed-sha> [inspected-revision]` is an explicit
 one-off coordinator for this incident. It is not part of cron or deploy. Do not

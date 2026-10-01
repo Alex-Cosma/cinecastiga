@@ -90,6 +90,10 @@ Ordinea se decide cu proprietarul; acestea nu sunt sarcini începute automat pen
 - Bugetul ca filtru suplimentar pentru comparații între administrații.
 - Bootstrap curat, pachete de date de dezvoltare repetabile și testare mai simplă pentru mai mulți colaboratori.
 
+## Identități istorice reparate,1 octombrie
+
+[Publicarea live](../implementation/entity-identity-release-20261001.md) este încheiată:4.231.642 de asocieri corectate,14.264 de redirecturi, conservarea datelor verificată. Recalcularea completă, ambele căutări și24 de probe în browser au trecut; site-ul este redeschis, colectarea reluată. Capturile existente nu se rescriu. Cazurile ambigue și CUI14920794 rămân separate. Baza locală obișnuită și dumpul anterior sunt încă nereparate: migrația singură nu corectează datele. Nu relansa operațiunea. [Diagnosticul](../reviews/entity-identities-20261001/report.md) și [implementarea](../implementation/entity-identity-repair.md) păstrează explicația CUI/ID SICAP și validările.
+
 ## Index de documente detaliate
 
 | Temă | Documente |

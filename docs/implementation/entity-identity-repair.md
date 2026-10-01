@@ -1,5 +1,7 @@
 # Reparația identităților istorice — lucru în curs, 1 octombrie 2026
 
+> Historical implementation/checkpoint notes. The [live publication report](entity-identity-release-20261001.md) supersedes the operational states below. Do not restart jobs based on this document.
+
 Proprietarul a aprobat planul și a cerut implementarea. Diagnosticul inițial este
 în `docs/reviews/entity-identities-20261001/report.md`. Branch de lucru:
 `fix/historical-authority-identities`, bazat pe `b293eea`. Codul este comis și împins pe branch (`22c186d`, `96388a2`, `aaf7b83`); nu pe main, fără deploy.
