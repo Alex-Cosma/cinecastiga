@@ -56,6 +56,15 @@ Extensii necesare: `pg_trgm`, `unaccent`, `fuzzystrmatch`, plus `plpgsql`. Dump-
 
 ## Identități și precizie — capcane reale
 
+- CUI-ul fiscal și ID-ul de participant SICAP sunt identificatori diferiți, chiar
+  când ambele sunt numere valide. Prefixul autorității în arhiva DA 2020 este CUI;
+  vechea interpretare ca SICAP a produs fragmentări și atribuiri către instituții
+  greșite. [Audit și reparație documentată](../implementation/entity-identity-repair.md).
+- `core.entity_redirects` păstrează legături verificate vechi→canonice, fără lanțuri
+  sau cicluri. Rândurile entităților vechi rămân pentru referințe; întrebările vii
+  rezolvă ID-urile canonice, capturile înghețate nu sunt rescrise. Numele identic nu
+  justifică unirea unor CUI-uri diferite. Migrarea 0046 creează mecanismul, nu execută
+  automat reparația datelor istorice.
 - `core.contracts.id` este ID intern; `ca_notice_contract_id` este identitatea externă folosită de pagina contractului. `marts.contract_transactions.contract_id` este **intern**.
 - Bridge: `apps/web/app/contracte/i/[cid]/route.ts`; răspunsul are Location relativ. În drawer se păstrează tabul original.
 - ID-urile `core.flags` și `marts.lot_patterns` se pot regenera. O captură durabilă leagă un descriptor și hash/versiune, nu doar un număr reutilizabil.

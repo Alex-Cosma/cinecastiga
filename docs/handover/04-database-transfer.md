@@ -2,6 +2,13 @@
 
 ## Exportul curent
 
+**Identități istorice, 1 octombrie:** pachetul din 30 septembrie și baza locală obișnuită
+nu sunt rescrise de [reparația separată](../implementation/entity-identity-repair.md).
+Păstrează manifestul original: datele lor încă au asocierile anterioare corecției.
+Aplicarea migrării 0046 după restore adaugă suportul pentru redirecturi, dar nu
+corectează singură înregistrările. Nu prezenta un dump vechi drept copie a datelor
+reparate și nu executa procedura datată de producție ca pas de onboarding.
+
 La cererea din 30 septembrie, s-a exportat și verificat un snapshot LOCAL nou în `infra/prod/dumps/handover-local-20260930`, fără a suprascrie pachetul anterior. Starea efectivă, hashurile și verificările sunt în [TRANSFER-STATUS.md](TRANSFER-STATUS.md). Folosește acest pachet nou după verificarea checksumurilor; observațiile datate 28 septembrie de mai jos sunt istorice. Codul recent și schema cu 46 migrări intră în noul handover, însă exportul nu reprocesează calendarul/marts locale.
 
 ## Alegerea făcută

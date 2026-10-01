@@ -1,5 +1,11 @@
 # Handover pentru un nou dezvoltator și asistentul lui
 
+**Publicare LIVE în curs:** [starea operațiunii din 1 octombrie](../implementation/entity-identity-release-20261001.md).
+Codul663cc27 este deployat; reparația rândurilor și aliasurile au trecut verificarea
+în producție. Recalcularea rulează, site-ul este în mentenanță. Nu reporni joburile
+și nu redeschide înaintea validării finale. Această stare înlocuiește checkpoint-ul
+de pregătire de mai jos.
+
 **Operațiune activă, 1 octombrie,18:43RO:** [continuarea reparației identităților](continuation-identity-20261001.md) are prioritate față de checkpoint-urile de mai jos. Corecția, recalcularea completă, căutarea și24 verificări în browser au trecut pe copia producției; joburile s-au încheiat. Urmează merge/deploy și publicarea controlată. Producția și baza locală obișnuită încă nereparate. Nu relansa joburile terminate.
 
 **Documentație consolidată la 1 octombrie:** [checkpoint final](continuation-20261001.md). Publicarea aplicației și pregătirea pachetului local sunt încheiate; copierea pe stick nu a fost efectuată de agent. Nu există operațiuni din sesiunea precedentă de relansat. Ultima verificare de producție consemnată este din 30 septembrie, seara, nu din noaptea următoare.
