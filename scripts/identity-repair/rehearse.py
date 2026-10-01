@@ -41,6 +41,7 @@ IF NOT EXISTS(SELECT 1 FROM app.collection_control WHERE id=1 AND paused AND mai
  OR EXISTS(SELECT 1 FROM app.collection_requests WHERE outcome='running')
  OR EXISTS(SELECT 1 FROM app.collection_tasks WHERE status='running')
  OR EXISTS(SELECT 1 FROM app.document_jobs WHERE status='running')
+ OR EXISTS(SELECT 1 FROM app.evidence_captures WHERE status IN ('queued','running'))
  OR EXISTS(SELECT 1 FROM app.processing_runs WHERE status='running')
  OR (SELECT coalesce(max(id),0) FROM raw.raw_documents)<>{int(boundary['rawBoundary'])}
  OR (SELECT coalesce(max(id),0) FROM app.collection_requests)<>{int(boundary['lastRequest'])}

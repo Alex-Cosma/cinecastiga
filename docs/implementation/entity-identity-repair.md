@@ -2,7 +2,7 @@
 
 Proprietarul a aprobat planul și a cerut implementarea. Diagnosticul inițial este
 în `docs/reviews/entity-identities-20261001/report.md`. Branch de lucru:
-`fix/historical-authority-identities`, bazat pe `b293eea`. Codul este comis și împins pe branch (`22c186d`); nu pe main, fără deploy.
+`fix/historical-authority-identities`, bazat pe `b293eea`. Codul este comis și împins pe branch (`22c186d` + `96388a2`); nu pe main, fără deploy.
 
 ## Audit reproductibil finalizat
 
@@ -95,8 +95,9 @@ rezultat: `/tmp/seap-identity-audit-20261001/references.sql`, `external-referenc
    Wrapperul `clone-refresh.mjs` refuză orice DB fără prefixul izolat și nu folosește
    Meili live. NU s-au modificat achiziții, control, workers sau schedule live.
 3. Preview local3013 al pilotului a fost oprit (PID35205), verificările sunt salvate.
-   NU opri devul utilizatorului3000 (PID16949) sau mockups4185. Devul3000 are timeout
-   inclusiv health la16:30, fără query DB activ; necesită diagnostic separat.
+   NU opri devul utilizatorului3000 (PID16949) sau mockups4185. După timeout-uri,
+   verificarea IPv4 `127.0.0.1:3000` a trecut:health200 în1,3s, profil200 în15,5s
+   (primul render, în timpul operațiunii locale intensive). Nu a fost repornit.
 4. Preview COMPLET pe server, loopback3014, imagine `cinecastiga-identity-preview:22c186d`,
    checkout separat `/srv/seap/identity-preview-src`. Containere `identity-preview-web`
    și `identity-preview-meili`, credențiale auth/Meili noi, SMTP gol, documente disabled.
@@ -115,10 +116,47 @@ rezultat: `/tmp/seap-identity-audit-20261001/references.sql`, `external-referenc
 3. Finalizează/testează coordinatorul LIVE cu backup proaspăt, mentenanță,
    oprirea writerilor, corecție+recalculare, validare, restart/index și reluare.
    Coordinatorul datat este acum scris (`publish.sh`, `publication*.mjs`, opțiune
-   guarded în rehearse.py), dar NEEXECUTAT și încă necomis în al doilea lot. Un test
-   PostgreSQL cu rollback pentru control/revision/boundary a trecut. Mai trebuie
+   guarded în rehearse.py), dar NEEXECUTAT, comis și împins în `96388a2`. Un test
+   PostgreSQL cu rollback pentru control/revision/boundary a trecut. Importurile
+   modulelor au trecut în imaginea reală de producție; un target greșit este refuzat
+   înainte de conectare (URL de canary inofensiv, fără parolă live). Mai trebuie
    verificarea finală și raportul autentic release-validation.json al copiei; nu
    fabrica markerul. Nu aplica ad-hoc aliases.sql pe live.
 4. Commit/deploy compatibil, apoi reparație live numai după validarea copiei.
    Nicio corecție a achizițiilor în baza locală de lucru sau live încă.
    Migrarea0046 este aplicată pe local normal, cu redirects GOL.
+
+## Probe UI pregătite, încă nerulate pe copia completă
+
+Scriptul local `/tmp/seap-identity-audit-20261001/verify-preview.mjs` folosește
+Playwright Core instalat în repo și Chrome local, pe tunelul3014. Se execută DOAR
+după `search.ready` (pipeline-ul în curs întoarce503 pentru pagini). Verifică nouă
+redirecturi, echivalența query/surse vechi vs canonice, căutare și șase profiluri,
+două pagini DA (inclusiv coliziunea muzeu/institut) și linkurile SEAP fără a le
+accesa. Scrie `preview-checks.json` și două capturi PNG. Date numai publice.
+
+După probe reale reușite, raportul `release-validation.json` se construiește din
+`search-report.json`, `plan-proof.json`, `manifest.json` și `preview-checks.json`,
+cu status/routesPassed/checkpointId/proofFiles/plannedRows/planFingerprint/aliases.
+Acest marker NU există încă și nu trebuie inventat ca să pornească live.
+
+## Ultima verificare a capturilor (17:02 RO)
+
+Un traseu suplimentar a fost corectat: recapturarea unei entități cu ID vechi
+folosește acum contextul, CUI-ul și numărătorile canonice, nu doar rândurile canonice.
+Cererea originală și capturile complete precedente rămân neschimbate; noua versiune
+consemnează ID-ul cerut și ID-ul efectiv. Scopul/spec-ul efectiv sunt canonice.
+Capturile obișnuite folosesc acum aceeași poartă de publicare ca relațiile și
+comparațiile: în timpul unei publicări nevalidate eșuează fără rânduri parțiale,
+cu posibilitatea reîncercării după procesare. Metadata noilor capturi ia versiunea
+riscului din checkpoint-ul real, în locul constantei vechi rf-2026.5.
+
+Teste noi/rerulate:9 integrări capturi reale PostgreSQL (inclusiv100.001rânduri și
+imuabilitate),6 integrări legături,12 integrări comparații;364 unități web trecute,
+148 integrări sărite în rularea implicită;TypeScript trecut. Testele de control și
+repetiția sintetică a scriptului au trecut iar. Coordinatorul live verifică și
+capturile queued/running, cu trei observații consecutive fără lucrări înainte de
+backup. În producție, tabela capturilor era goală la această verificare; niciun
+conținut privat nu a fost citit.
+
+Preview-ul22c186d trebuie reconstruit cu acest ultim fix înaintea validării finale.

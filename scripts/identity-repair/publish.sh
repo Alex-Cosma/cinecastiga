@@ -40,12 +40,15 @@ if [[ "$phase" == prepare ]]; then
  run start "$revision"
  trap 'echo "Preparation stopped; retain maintenance and inspect the logs."' ERR
  test "$(curl -sS -o /dev/null -w '%{http_code}' https://cinecastiga.ro/domenii)" = 503
+ quiet=0
  for attempt in $(seq 1 150); do
-  pending=$(sql -c "select (select count(*) from app.collection_requests where outcome='running')+(select count(*) from app.collection_tasks where status='running')+(select count(*) from app.document_jobs where status='running')")
-  [[ "$pending" == 0 ]] && break
+  pending=$(sql -c "select (select count(*) from app.collection_requests where outcome='running')+(select count(*) from app.collection_tasks where status='running')+(select count(*) from app.document_jobs where status='running')+(select count(*) from app.evidence_captures where status in ('queued','running'))")
+  if [[ "$pending" == 0 ]]; then quiet=$((quiet+1)); else quiet=0; fi
+  # Also leave already-admitted web requests time to enqueue their capture.
+  [[ "$quiet" -ge 3 ]] && break
   sleep 10
  done
- test "$pending" = 0
+ test "$quiet" -ge 3
  if docker inspect --format '{{.State.Running}}' cinecastiga-collection-1 2>/dev/null | grep -qx true; then touch "$root/collection-was-running"; fi
  docker compose --profile collection stop collection documents
  run freeze

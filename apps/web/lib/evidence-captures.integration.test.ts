@@ -17,10 +17,11 @@ if(url&&!/^seap_test_[a-z0-9_]+$/i.test(new URL(url).pathname.slice(1)))throw ne
 describe.skipIf(!url)("server evidence captures (dedicated PostgreSQL database)",()=>{
   let sql:DbSql;
   const uid=`capture-test-${randomUUID()}`,editor=uid+"-editor",viewer=uid+"-viewer",outsider=uid+"-outsider";
-  const inv=randomUUID(),other=randomUUID();
+  const inv=randomUUID(),other=randomUUID(),checkpoint=randomUUID();
   const authority="887770001",supplier="887770002",supplier2="887770003",da="887770011",daNull="887770012",contract="887770021",natural="887770099";
   beforeAll(async()=>{
     sql=createDb(url).sql;
+    await sql`insert into app.monitoring_refreshes(id,kind,status,completed_at,methodology) values(${checkpoint},'baseline','ready',now(),' {"flags":"fixture-risk-version"}'::jsonb)`;
     for(const id of [uid,editor,viewer,outsider])await sql`insert into auth.users(id,name,email) values(${id},'Evidence fixture',${id+"@example.invalid"})`;
     await sql`insert into app.investigations(id,owner_user_id,title) values(${inv},${uid},'Frozen evidence fixture'),(${other},${uid},'Other fixture')`;
     await sql`insert into app.investigation_members(investigation_id,user_id,role) values(${inv},${editor},'editor'),(${inv},${viewer},'viewer')`;
@@ -44,6 +45,7 @@ describe.skipIf(!url)("server evidence captures (dedicated PostgreSQL database)"
     await sql`delete from marts.lot_patterns where authority_id=${authority}`;
     await sql`delete from core.contracts where id=${contract}`;
     await sql`delete from core.entities where id in (${authority},${supplier},${supplier2})`;
+    await sql`delete from app.monitoring_refreshes where id=${checkpoint}`;
     await sql.end();
   });
   async function queued(kind:string,refId:string|null,spec:unknown=null,snapshot:unknown=null,user=uid){
@@ -58,6 +60,7 @@ describe.skipIf(!url)("server evidence captures (dedicated PostgreSQL database)"
     await processCapture(uid,inv,capture.id,sql);
     const first=await getCapturedRows(uid,inv,capture.id,0,sql);
     expect(first?.capture.status).toBe("complete");expect(first?.capture.totalExact).toBe("12.340000000000000001");
+    expect(first?.capture.methodology).toMatchObject({checkpointId:checkpoint,riskVersion:'fixture-risk-version'});
     expect(first?.rows[0]?.sourceUrl).toContain(`/view/${da}`);
     await sql`update core.direct_acquisitions set closing_value=98.76 where sicap_da_id=${da}`;
     const second=await recaptureClip(uid,inv,clip,sql);expect(second?.version).toBe(2);
@@ -132,6 +135,45 @@ describe.skipIf(!url)("server evidence captures (dedicated PostgreSQL database)"
     await processCapture(uid,inv,next!.id,sql);
     expect((await getCapture(uid,inv,next!.id,sql))?.status).toBe("failed");
     expect(await getCapturedRows(uid,inv,saved.capture.id,0,sql)).toEqual(original);
+  });
+  it("recaptures a historical entity ID with canonical context while preserving the previous capture",async()=>{
+    const alias="887770004";
+    await sql`insert into core.entities(id,name_display,name_normalized) values(${alias},'Historical fixture profile','historical fixture profile')`;
+    await sql`update core.entities set cui_canonical='4305857',cui_valid=true where id=${authority}`;
+    await sql`insert into marts.entity_profile(entity_id,role,name_display,n_das,n_contracts,total_ron_full)
+      values(${authority},'authority','Fixture authority',1,1,112.35)`;
+    try{
+      const first=await queued('entity',alias);
+      await processCapture(uid,inv,first.capture.id,sql);
+      const frozen=await getCapturedRows(uid,inv,first.capture.id,0,sql);
+      expect(frozen?.capture.status,frozen?.capture.error??undefined).toBe('complete');
+      expect(frozen?.capture.summary?.title).toBe('Historical fixture profile');
+      await sql`insert into core.entity_redirects(old_id,canonical_id,reason,evidence) values(${alias},${authority},'fixture','{}')`;
+      const next=await recaptureClip(uid,inv,first.clip,sql);
+      await processCapture(uid,inv,next!.id,sql);
+      const current=await getCapturedRows(uid,inv,next!.id,0,sql);
+      expect(current?.capture.status,current?.capture.error??undefined).toBe('complete');
+      expect(current?.capture.summary).toMatchObject({entityId:authority,requestedEntityId:alias,title:'Fixture authority',cui:'4305857',roles:{authority:{nDas:1,nContracts:1}}});
+      expect(current?.capture.scope.refId).toBe(alias);
+      expect(current?.rows).toHaveLength(3);
+      expect(current?.rows.every(row=>row.authorityId===authority)).toBe(true);
+      expect(await getCapturedRows(uid,inv,first.capture.id,0,sql)).toEqual(frozen);
+    }finally{
+      await sql`delete from core.entity_redirects where old_id=${alias}`;
+      await sql`delete from marts.entity_profile where entity_id=${authority}`;
+      await sql`delete from core.entities where id=${alias}`;
+    }
+  });
+  it("does not freeze ordinary source rows while publication is unvalidated",async()=>{
+    const {capture}=await queued('da',da);
+    try{
+      await sql`update app.monitoring_refreshes set status='failed',error='fixture publication incomplete' where id=${checkpoint}`;
+      await processCapture(uid,inv,capture.id,sql);
+      expect((await getCapture(uid,inv,capture.id,sql))?.status).toBe('failed');
+      expect((await sql`select count(*)::int n from app.evidence_capture_rows where capture_id=${capture.id}`)[0]?.n).toBe(0);
+    }finally{await sql`update app.monitoring_refreshes set status='ready',error=null where id=${checkpoint}`;}
+    await processCapture(uid,inv,capture.id,sql);
+    expect((await getCapture(uid,inv,capture.id,sql))?.status).toBe('complete');
   });
   it("captures beyond the ordinary 100,000-row CSV cap without truncation",async()=>{
     const base=887780000;

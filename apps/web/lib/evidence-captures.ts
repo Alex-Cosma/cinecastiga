@@ -1,10 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { createDb, type DbSql } from "@seap/db";
+import { canonicalEntityId, createDb, MonitoringRefreshUnavailableError, withMonitoringSnapshot, type DbSql } from "@seap/db";
 import { getInvestigationAccess, isWorkspaceId, withInvestigationAccess } from "./investigation-access";
 import type { CaptureRequest, CaptureSummary, CaptureStatus, FrozenRecord } from "./evidence-captures-shared";
 import { contractSnapshot, freezeRow, validateCaptureRequest } from "./evidence-capture-input";
 import { ground } from "./ask/ground";
 import { runRows, runSpec } from "./ask/compile";
+import { canonicalAskIdentities } from "./ask/canonical-identities";
 import { buildPills } from "./ask/pills";
 import type { AskSpec } from "./ask/spec";
 import { readCoverage } from "./coverage";
@@ -17,7 +18,7 @@ import { bindPeerEvidence, peerCaptureFingerprint, peerEvidenceError, peerEviden
 const globalDb = globalThis as unknown as { __evidenceCaptureSql?: DbSql };
 export const captureDatabase = () => globalDb.__evidenceCaptureSql ??= createDb().sql;
 export const CAPTURE_METHODOLOGY = {
-  version: "frozen-evidence-1", riskVersion: "rf-2026.5",
+  version: "frozen-evidence-1", riskVersion: null, // Stored captures name the actual published risk methodology below.
   values: "Valori înregistrate în surse, nu plăți verificate. Sumele exacte sunt șiruri zecimale.",
   contracts: "Rândurile contractelor reprezintă cotele canonice ale furnizorilor; valoarea integrală a contractului rămâne separată și nu se adună pentru fiecare membru al consorțiului.",
   completeness: "O captură completă conține toate rândurile selecției efective. O eroare anulează toate rândurile versiunii; nu se publică un eșantion ca rezultat complet.",
@@ -26,7 +27,7 @@ export const CAPTURE_METHODOLOGY = {
 } as const;
 class CaptureError extends Error {}
 export function captureRequestError(error:unknown):string|null{
-  return error instanceof CaptureError||error instanceof RadiografieIdentityError?error.message:peerEvidenceError(error)?.error??connectionEvidenceError(error)?.error??null;
+  return error instanceof CaptureError||error instanceof RadiografieIdentityError||error instanceof MonitoringRefreshUnavailableError?error.message:peerEvidenceError(error)?.error??connectionEvidenceError(error)?.error??null;
 }
 const json = (value: unknown) => JSON.stringify(value ?? null);
 
@@ -157,10 +158,13 @@ async function queryCapture(q: DbSql, captureId: string, spec: AskSpec, request:
   const connection = request.connection ? await bindConnectionEvidence(q, request.connection) : null;
   if (connection) spec = connection.spec;
   const database = captureTransaction(q);
-  const grounding = connection?.grounding ?? await ground(database, spec.filters);
+  let grounding = connection?.grounding ?? await ground(database, spec.filters);
+  const canonical=await canonicalAskIdentities(database,spec,grounding,request.options.scope);
+  spec=canonical.spec;grounding=canonical.grounding;
+  const options={...request.options,...(canonical.scope?{scope:canonical.scope}:{})};
   const answer = await runSpec(database, spec, grounding);
   if ("error" in answer) throw new CaptureError(answer.error);
-  const sources = await runRows(database, spec, grounding, 0, { ...request.options,
+  const sources = await runRows(database, spec, grounding, 0, { ...options,
     capture: { persist: (database, query) => persistQueryRows(database, captureId, query) } });
   if ("error" in sources) throw new CaptureError(sources.error);
   const connectionSourceCounts = connection ? await q`select record->>'authorityId' "authorityId",record->>'supplierId' "supplierId",
@@ -174,7 +178,7 @@ async function queryCapture(q: DbSql, captureId: string, spec: AskSpec, request:
   if (connectionSources?.some(pair => pair.rowCount === 0)) throw new CaptureError("Filtrele nu păstrează surse pentru fiecare legătură a traseului. Elimină filtrele listei sau salvează separat legătura care are surse. Nu am păstrat un traseu incomplet ca legătură documentată.");
   const { rows: _rows, ...sourceMetadata } = sources;
   const pills = buildPills(spec, grounding);
-  return { summary: { title: connection?.context.title ?? pills.join(" · "), pills, ...(connection ? { connection: connection.selection, connectionContext: {...connection.context,sourcePairs:connectionSources} } : {}), evidenceScope: request.options.scope ?? {},
+  return { summary: { title: connection?.context.title ?? pills.join(" · "), pills, ...(connection ? { connection: connection.selection, connectionContext: {...connection.context,sourcePairs:connectionSources} } : {}), evidenceScope: options.scope ?? {},
     evidenceOptions: { search: request.options.search, state: request.options.state, stream: request.options.stream },
     grounding, effectiveSpec: spec, sources: sourceMetadata, warnings: [...answer.caveats, ...sources.scopeNotes] },
     result: answer, expectedRows: sources.total, expectedTotal: sources.value, methodology: CAPTURE_METHODOLOGY };
@@ -272,7 +276,7 @@ async function namedCapture(q: DbSql, captureId: string, request: CaptureRequest
 }
 
 async function entityOrPerson(q: DbSql, captureId: string, request: CaptureRequest) {
-  const id = request.refId!;
+  const id = request.kind==='entity' ? await canonicalEntityId(q,request.refId!) : request.refId!;
   if (request.kind === "person") {
     const [person] = await q`select max(person_name) name,count(distinct cui)::int n_firms,
       to_jsonb(array_agg(distinct cui)) cuis from reference.company_reps where person_key=${id} group by person_key`;
@@ -290,7 +294,7 @@ async function entityOrPerson(q: DbSql, captureId: string, request: CaptureReque
     { operator: "or", conditions: [{ field: "authority", op: "in", values: [id] }, { field: "supplier", op: "in", values: [id] }] },
   ] } } as unknown as AskSpec;
   const result = await queryCapture(q,captureId,spec,request);
-  result.summary = { ...result.summary, ...{ title: entity.name, name: entity.name, county: entity.county, cui: entity.cui,
+  result.summary = { ...result.summary, ...{ entityId:id,requestedEntityId:request.refId,title: entity.name, name: entity.name, county: entity.county, cui: entity.cui,
     roles: Object.fromEntries(profiles.map(r => [r.role,{ nDas:r.n_das,nContracts:r.n_contracts,totalRon:r.value }])),
     riskProfiles: flags, cri: flags[0]?.cri ?? null, nFlags: flags[0]?.n_flags ?? 0 } };
   return result;
@@ -336,10 +340,13 @@ export async function processCapture(userId: string, investigationId: string, ca
       if (Number(totals!.n)!==result.expectedRows || !totals!.reconciled) throw new CaptureError("Captura nu corespunde selecției complete. Nu am salvat o listă parțială.");
       const totalExact = totals!.unknown ? null : String(totals!.known_value);
       const coverage = await readCoverage(q);
+      const [published]=await q`select id,version::text,methodology from app.monitoring_refreshes order by version desc limit 1`;
+      const methodology={...result.methodology,checkpointId:String(published!.id),checkpointVersion:String(published!.version),
+        riskVersion:typeof published!.methodology?.flags==='string'?published!.methodology.flags:null};
       const summary = { ...result.summary, verification:"server-verified", capturedAt:time!.captured_at,
         captureId, rowCount:Number(totals!.n), totalExact, knownValueExact:String(totals!.known_value), unknownValues:Number(totals!.unknown),
         valueRon: "valueRon" in result.summary ? result.summary.valueRon : totalExact,
-        evidenceScope:request.options.scope??{}, evidenceOptions:{search:request.options.search,state:request.options.state,stream:request.options.stream},
+        evidenceScope:result.summary.evidenceScope??request.options.scope??{}, evidenceOptions:{search:request.options.search,state:request.options.state,stream:request.options.stream},
         sourceTotals:{count:Number(totals!.n),value:totalExact}, complete:true };
       await hooks.beforePublish?.();
       // Long reads do not lock the workspace. At publication, a member/owner
@@ -348,13 +355,15 @@ export async function processCapture(userId: string, investigationId: string, ca
       await q`select id from app.investigations where id=${investigationId} for update`;
       if(!(await getInvestigationAccess(userId,investigationId,q))?.canEdit)throw new CaptureError("Accesul la anchetă s-a schimbat. Captura nu a fost publicată.");
       await q`update app.evidence_captures set status='complete',summary=${json(summary)}::jsonb,
-        result=${json(result.result)}::jsonb,coverage=${json(coverage)}::jsonb,methodology=${json(result.methodology)}::jsonb,
+        result=${json(result.result)}::jsonb,coverage=${json(coverage)}::jsonb,methodology=${json(methodology)}::jsonb,
         row_count=${Number(totals!.n)},total_exact=${totalExact},completed_at=now(),error=null where id=${captureId}`;
       await q`update app.investigations set updated_at=now() where id=${investigationId}`;
     };
     if(peer) await withPeerEvidence(sql,peer,async (q,bound)=>execute(q,bound));
     else if(connection) await withConnectionEvidence(sql,connection,async q=>execute(q));
-    else await sql.begin("isolation level repeatable read",async q=>execute(q as unknown as DbSql));
+    // Ordinary entity/query/source captures share the publication gate too.
+    // A queued job must not freeze repaired core rows over preceding marts.
+    else await withMonitoringSnapshot(sql,q=>execute(q));
   } catch (error) {
     const code=(error as {code?:string}).code;
     const message = captureRequestError(error) ?? (code==="40001"

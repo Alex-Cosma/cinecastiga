@@ -3,6 +3,7 @@ export async function pending(q){
  const [r]=await q`select (select count(*) from app.collection_requests where outcome='running')+
   (select count(*) from app.collection_tasks where status='running')+
   (select count(*) from app.document_jobs where status='running')+
+  (select count(*) from app.evidence_captures where status in ('queued','running'))+
   (select count(*) from app.processing_runs where status='running') n,
   (select coalesce(max(id),0)::text from raw.raw_documents) raw,
   (select coalesce(max(id),0)::text from app.collection_requests) request`;
