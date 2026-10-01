@@ -637,7 +637,17 @@ export async function runSpec(
   // authority_name; the named variant serves entity-grouped blocks
   const txtAggNames = txAggFragment(sql, dataset, true);
   const txtAgg = w.kind ? txtAggNames : txAggFragment(sql, dataset, false);
-  // completely bare national query (no filter of any kind, default stream):
+  // A count normally includes DAs above the plausibility bound. The homepage
+  // explicitly retains that bound in its population: reuse the matching mart
+  // only for this exact predicate, never discard a more specific selection.
+  const populationGroup = spec.population?.groups[0];
+  const populationCondition = populationGroup?.conditions[0];
+  const nationalDaBound = spec.block === "stat" && dataset === "da"
+    && spec.population?.operator === "and" && spec.population.groups.length === 1
+    && populationGroup?.operator === "and" && populationGroup.conditions.length === 1
+    && populationCondition?.field === "value" && populationCondition.op === "lte"
+    && populationCondition.value === String(DA_PLAFOND_RON);
+  // Bare national query, or the exact DA bound represented in the mart:
   // serve the precomputed agg_* marts — same union, same plafond semantics,
   // rebuilt with the other marts. Live scans over 20M rows cost 12-17s here.
   const unfiltered =
@@ -646,12 +656,12 @@ export async function runSpec(
     !w.singleBidder && w.adminSupplierIds === null &&
     w.minEmployees === null && w.maxEmployees === null &&
     w.yearFrom === null && w.yearTo === null &&
-    w.monthFrom === null && w.monthTo === null && !spec.population && !spec.minimumRecords;
+    w.monthFrom === null && w.monthTo === null && (!spec.population || nationalDaBound) && !spec.minimumRecords;
   // The other rollups combine both streams; agg_national retains src and can
   // also serve filter-free DA-only and contract-only totals without a scan.
   const bare = dataset === "all" && unfiltered;
-  const aggV = w.plafond === "none" ? sql`v_all` : sql`v_plaf`;
-  const aggN = w.plafond === "none" ? sql`n_all` : sql`n_plaf`;
+  const aggV = w.plafond === "none" && !nationalDaBound ? sql`v_all` : sql`v_plaf`;
+  const aggN = w.plafond === "none" && !nationalDaBound ? sql`n_all` : sql`n_plaf`;
 
   // --- WHERE fragment over marts.entity_flags (risk-centric blocks)
   const efWhere = (role: "authority" | "supplier", minDas: number) => {

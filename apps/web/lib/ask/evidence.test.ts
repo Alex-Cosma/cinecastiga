@@ -110,6 +110,28 @@ describe("source query regression", () => {
     const query = db.statements.find((q) => q.includes("marts.agg_national"));
     expect(query).toContain("v_all v, n_all n");
   });
+  const homepageCount: AskSpec = { block: "stat", dataset: "da", measure: "count", filters: {}, population: { operator: "and", groups: [{ operator: "and", conditions: [{ field: "value", op: "lte", value: "2000000" }] }] } };
+  it("keeps the homepage's explicit DA bound in the aggregate and source rows", async () => {
+    const db = database();
+    await runSpec(db.sql, homepageCount, {});
+    expect(db.statements.find(q => q.includes("marts.agg_national"))).toContain("v_plaf v, n_plaf n");
+    expect(db.statements.some(q => q.includes("marts.da_transactions"))).toBe(false);
+    const sources = database();
+    await runRows(sources.sql, homepageCount, {}, 0);
+    expect(sources.statements.some(q => /closing_value <= \?\d+::numeric/.test(q))).toBe(true);
+    expect(sources.values).toContain("2000000");
+  });
+  it.each([
+    { ...homepageCount, filters: { authorityId: 123 } },
+    { ...homepageCount, dataset: "contracts" as const },
+    { ...homepageCount, minimumRecords: { role: "supplier" as const, count: 2 } },
+    ...["1999999", "2000000.01"].map(value => ({ ...homepageCount, population: { operator: "and" as const, groups: [{ operator: "and" as const, conditions: [{ field: "value" as const, op: "lte" as const, value }] }] } })),
+    { ...homepageCount, population: { operator: "and" as const, groups: [{ operator: "and" as const, conditions: [{ field: "value" as const, op: "lte" as const, value: "2000000" }, { field: "value" as const, op: "gte" as const, value: "100" }] }] } },
+  ])("does not replace another population with the homepage aggregate: %j", async spec => {
+    const db = database();
+    await runSpec(db.sql, spec, {});
+    expect(db.statements.some(q => q.includes("marts.agg_national"))).toBe(false);
+  });
   it("a filtered stat never substitutes an unrestricted national aggregate", async () => {
     const db = database();
     await runSpec(db.sql, stat, grounding);

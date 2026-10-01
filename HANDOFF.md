@@ -1,3 +1,15 @@
+## 2026-10-01 — Commit și push autorizate
+
+Proprietarul a cerut commit și push după terminarea mockupului. Lotul include corecțiile numărătorilor homepage/metodologie, prototipul de citare și documentația; pushul include și commitul precedent `d51fb29` pentru acoperire compactă. Main declanșează CI și apoi deploy automat. Fără migrare nouă sau schimbarea programării colectării. Mockupul rămâne separat, cu date fictive; citarea durabilă reală nu este implementată. Verificări deja trecute:67 teste builder/surse și TypeScript,15 verificări browser pentru corecții;20 verificări browser și sintaxă JS pentru mockup. Starea CI/deploy trebuie citită din runul nou, nu dedusă din push.
+
+## 2026-10-01 — Mockup citare publică durabilă
+
+Direcția este acceptată; prototip separat în `mockups/signal-citation/`, [instrucțiuni](mockups/signal-citation/README.md), deschis la `http://127.0.0.1:4185/signal-citation/`. Acțiune secundară „Păstrează pentru citare”, confirmare publică, referință datată, copiere, CSV cu12 surse și situație actualizată separată. Date exclusiv fictive; creare simulată, fără backend/DB/SEAP.20 verificări browser trecute. Review local substituit deoarece limita firelor a blocat reviewerul independent; verdict `ship` strict ca mockup. Așteaptă feedback înainte de implementarea reală. Fără commit/push/deploy; corecțiile anterioare sunt păstrate.
+
+## 2026-10-01 — Commit acoperire și continuarea auditului Reddit
+
+Acoperirea compactă este comisă local în `d51fb29`, la cererea proprietarului; fără push/deploy. Continuarea rezolvă numărătorile homepage (linkuri cu `measure: count`) și textul `/metodologie#citare` (acțiunea reală „Copiază întrebarea”, fără promisiunea de a îngheța datele). [Detalii și verificări](docs/implementation/reddit-small-fixes-20261001.md). Aceste ultime corecții sunt locale și necomise. Următoarea temă din audit: citare publică durabilă, fără publicarea implicită a anchetelor private.
+
 ## 2026-10-01 — Acoperire compactă, local
 
 La cererea proprietarului, acoperirea din auditul Reddit este explicată la cerere, fără blocuri suplimentare de text: homepage „Ce date includ aceste cifre?”, Explorează „Datele și calculul” în locul explicației existente. [Implementare](docs/implementation/compact-coverage.md). Endpoint public `/api/data-coverage`, încărcat numai la deschidere, perioade reale și publicare/risc distincte. Fără colectare, migrare sau reprocesare. Lot local, fără commit/push/deploy; cele două corecții mici și citarea durabilă rămân de făcut.
