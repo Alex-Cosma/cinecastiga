@@ -17,3 +17,4 @@ export * from "./collection.js";
 export * from "./processing.js";
 export * from './topic-search.js';
 export * from "./feedback.js";
+export * from "./entity-redirects.js";

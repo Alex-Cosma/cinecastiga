@@ -12,3 +12,5 @@ export * from "./collection-diagnostics.js";
 export * from "./processing.js";
 
 export * from "./collection-retry.js";
+
+export * from "./entity-identity.js";

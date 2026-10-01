@@ -34,5 +34,16 @@ export async function assertMonitoringBindings(q:DbSql,spec:AskSpec,grounding:Gr
   const ids=monitoredEntityIds(spec,grounding,options);
   if(!expected||expected.length!==ids.length||ids.some(id=>!expected.some(e=>e.id===id)))throw new MonitoringError("Identitățile acestei urmăriri nu sunt fixate în siguranță. Creează o urmărire nouă după verificarea entităților.",422);
   const current=await readMonitoringBindings(q,ids);
-  if(expected.some(before=>!current.some(after=>sameMonitoringEntity(before,after))))throw new MonitoringError("Identitatea unei entități s-a schimbat după reconstruirea datelor. Ultima verificare este păstrată; verifică instituția sau firma și creează o urmărire nouă.",422);
+  const aliases=await q`select old_id::text,canonical_id::text,evidence from core.entity_redirects where old_id=any(${ids}::bigint[])`;
+  const targets=[...new Set(aliases.map(row=>String(row.canonical_id)))];
+  const canonical=targets.length?await readMonitoringBindings(q,targets):[];
+  const valid=(before:MonitoringEntityBinding)=>{
+    const alias=aliases.find(row=>String(row.old_id)===before.id);
+    if(!alias)return current.some(after=>sameMonitoringEntity(before,after));
+    const proof=alias.evidence as {previousIdentity?:MonitoringEntityBinding;canonicalIdentity?:MonitoringEntityBinding}|null;
+    return !!proof?.previousIdentity&&!!proof.canonicalIdentity
+      && sameMonitoringEntity(before,proof.previousIdentity)
+      && canonical.some(after=>after.id===String(alias.canonical_id)&&sameMonitoringEntity(proof.canonicalIdentity!,after));
+  };
+  if(expected.some(before=>!valid(before)))throw new MonitoringError("Identitatea unei entități s-a schimbat după reconstruirea datelor. Ultima verificare este păstrată; verifică instituția sau firma și creează o urmărire nouă.",422);
 }

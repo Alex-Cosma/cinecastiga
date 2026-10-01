@@ -1,3 +1,4 @@
+import { canonicalConnectionSelection } from "./canonical-connections";
 import { createDb, withMonitoringSnapshot, MonitoringRefreshUnavailableError, type DbSql } from "@seap/db";
 import { DA_PLAFOND_RON } from "./ask/compile";
 import { readConnectionEntity, readConnectionEntities, assertConnectionIdentity } from "./connections";
@@ -68,7 +69,8 @@ const populationDescriptions=[
 ];
 /** Analytic shared gate and repeatable-read snapshot are required. Legacy receipts call the separate unchanged getter. */
 export async function getPeersInSnapshot(q:DbSql,raw:PeerInput,checkpoint:ConnectionsResult["checkpoint"],options:{allMembers?:boolean;memberId?:string}={}):Promise<PeersResult> {
-  const input=normalize(raw);await q`set local statement_timeout='20s'`;
+  let input=normalize(raw);await q`set local statement_timeout='20s'`;
+  input=await canonicalConnectionSelection(q,input);
   const entity=await readConnectionEntity(q,input.entityId,input.role);assertConnectionIdentity(entity,input.identity);
   if(input.checkpointId&&input.checkpointId!==checkpoint.id)throw new PeerError("Datele s-au schimbat. Reia comparația înainte de a continua.",409);
   // Existing copied URLs were pinned before a method parameter existed. Keep their meaning.
@@ -150,11 +152,12 @@ export function parsePeerCandidatesInput(params:URLSearchParams):PeerCandidatesI
 export async function getPeerCandidates(input:PeerCandidatesInput,sql=peerDatabase()):Promise<PeerCandidatesResult> {
   try{return await withMonitoringSnapshot(sql,async(q,checkpoint)=>{
     await q`set local statement_timeout='10s'`;
+    input=await canonicalConnectionSelection(q,input);
     const focal=await readConnectionEntity(q,input.entityId,input.role);assertConnectionIdentity(focal,input.identity);
     if(input.populationVersion&&input.populationVersion!==POPULATION_VERSION)throw new PeerError("Sursa populației s-a schimbat. Reia comparația.",409);
     const index=input.role==="authority"?await readPopulationMappings(q):new Map<string,PeerPopulation>();
     const search=populationFold(input.search),cui=search.replace(/^ro\s*/,""),patterns=populationSearchVariants(input.search).map(value=>`%${value.replace(/[\\%_]/g,"\\$&")}%`);
-    const rows=await q`select e.id::text id from core.entities e where e.id<>${input.entityId} and e.id<=9007199254740991
+    const rows=await q`select e.id::text id from core.entities e where not exists(select 1 from core.entity_redirects r where r.old_id=e.id) and e.id<>${input.entityId} and e.id<=9007199254740991
       and (e.name_normalized like any(${patterns}::text[]) or e.cui_canonical=${cui}) and ${peerRolePredicate(q,input.role)}
       order by case when e.cui_canonical=${cui} then 0 else 1 end,
         case when e.id=any(${[...index.keys()]}::bigint[]) then 0 else 1 end,

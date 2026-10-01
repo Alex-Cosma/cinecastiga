@@ -23,3 +23,6 @@ next-env.d.ts
 # Isolated compact query workspace preview/build
 /.next-explore-dev/
 /.next-explore-build/
+
+# Isolated identity-repair route validation
+/.next-identity-check/
