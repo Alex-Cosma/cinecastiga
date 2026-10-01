@@ -1,0 +1,35 @@
+.coverage-disclosure {
+  color: var(--ink-secondary);
+  font: 400 13px/1.65 var(--font-body);
+}
+.coverage-disclosure > summary {
+  width: fit-content;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 11px 0;
+  cursor: pointer;
+  color: var(--accent);
+  font-weight: 500;
+}
+.coverage-disclosure > summary:hover { text-decoration: underline; text-underline-offset: 3px; }
+.coverage-disclosure :is(summary, a, button):focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.coverage-disclosure .coverage-disclosure-body { padding: 4px 0 20px; max-width: 75ch; }
+.coverage-disclosure .coverage-disclosure-body p { font: inherit; color: inherit; max-width: none; margin: 0 0 12px; }
+.coverage-disclosure .coverage-periods-title { font-weight: 600; color: var(--ink); }
+.coverage-periods { min-height: 44px; }
+.coverage-periods dl { margin: 0 0 12px; }
+.coverage-periods dl > div { display: flex; flex-wrap: wrap; justify-content: space-between; column-gap: 24px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+.coverage-periods dt { font-weight: 500; }
+.coverage-periods dd { margin: 0; font-variant-numeric: tabular-nums; }
+.coverage-disclosure a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+.coverage-disclosure button { border: 0; background: none; padding: 10px 6px; font: inherit; color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.coverage-disclosure-answer { border-bottom: 1px solid var(--line); margin-bottom: 16px; }
+.coverage-disclosure .coverage-disclosure-body > details { margin-top: 12px; }
+.coverage-disclosure .coverage-disclosure-body > details > summary { min-height: 44px; padding: 10px 0; cursor: pointer; }
+.coverage-disclosure pre { padding: 16px; background: var(--sunk); border-radius: 8px; white-space: pre-wrap; overflow-wrap: anywhere; max-width: 100%; font-size: 12px; }
+.discovery-page .d-national-strip { margin-bottom: 0; }
+.coverage-disclosure-home { margin-bottom: 6px; }
+@media (max-width: 700px) {
+  .coverage-periods dl > div { flex-direction: column; gap: 2px; }
+  .coverage-disclosure-home { margin-bottom: 0; }
+}

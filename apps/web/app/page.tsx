@@ -7,6 +7,7 @@ import type { AskSpec } from "@/lib/ask/spec";
 import DiscoverySearch from "./DiscoverySearch";
 import DiscoveryMap from "./DiscoveryMap";
 import DiscoveryIcon from "./DiscoveryIcon";
+import CoverageDisclosure from "@/components/CoverageDisclosure";
 
 export const dynamic = "force-dynamic";
 const questionHref = (spec: AskSpec) => `/intreaba?spec=${encodeURIComponent(encodeSpec(spec))}`;
@@ -52,6 +53,11 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       <Link href={questionHref({ block: "stat", dataset: "all", measure: "value", filters: {} })}><strong>{formatRon(headline.totalRon)}</strong><small>valoare înregistrată · nu plăți</small></Link>
     </section>
 
+    <CoverageDisclosure>
+      <p>Totalurile includ achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei, și contracte din proceduri. Un contract cu mai mulți furnizori apare pe câte un rând pentru fiecare, cu valoarea împărțită între ei.</p>
+      <p>Publicațiile TED se consultă separat și nu se adaugă încă o dată la total. Valorile înregistrate nu confirmă plăți efectuate.</p>
+    </CoverageDisclosure>
+
     <section className="d-starts" aria-labelledby="d-starts-title">
       <div className="d-section-heading"><div><h2 id="d-starts-title">O întrebare bună e un început.</h2><p>Nu trebuie să știi de unde să începi. Doar ce te interesează.</p></div><Link className="d-text-link" href="/intreaba">Construiește întrebarea ta <DiscoveryIcon name="arrow" /></Link></div>
       <div className="d-question-grid">{QUESTIONS.map((question, index) => <Link className="d-question-card" href={questionHref(question.spec)} key={question.kind}>
@@ -67,6 +73,6 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       { href: "/supra-prag", icon: "chart" as const, title: "Atribuiri publicate în TED", description: "Consultă anunțurile europene și potrivirile identificate în SEAP." },
     ].map((item) => <Link href={item.href} key={item.href}><span className="d-deeper-symbol"><DiscoveryIcon name={item.icon} /></span><span><b>{item.title}</b><small>{item.description}</small></span><DiscoveryIcon name="arrow" /></Link>)}</div></section>
 
-    <div className="d-data-note"><DiscoveryIcon name="database" /><p>Totalul național cuprinde {formatInt(headline.totalRecords)} de înregistrări pentru {coverage}, din arhiva importată. Fiecare legătură păstrează condițiile cifrei afișate. Sunt incluse achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei, și contracte din proceduri. Un contract cu mai mulți furnizori apare pe câte un rând pentru fiecare furnizor, cu valoarea împărțită între ei. Atribuirile TED sunt o perspectivă separată și nu se adaugă încă o dată la total. Valorile nu confirmă plăți efectuate. <Link href="/metodologie">Cum sunt calculate și ce acoperă datele <span aria-hidden>↗</span></Link><span className="d-map-credit">Geometria hărții: GADM, utilizare necomercială.</span></p></div>
+    <p className="d-map-credit">Geometria hărții: GADM, utilizare necomercială.</p>
   </div>;
 }

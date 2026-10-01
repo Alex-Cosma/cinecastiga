@@ -35,6 +35,7 @@ import { AnswerEvidence, useAnswerEvidence } from "./AnswerEvidence";
 import "./question-results.css";
 import DiscoveryIcon from "../DiscoveryIcon";
 import AnswerExports from "./AnswerExports";
+import CoverageDisclosure from "@/components/CoverageDisclosure";
 
 type TableRow = Extract<BlockData, { block: "table" }>["rows"][number];
 type SeriesPoint = Extract<
@@ -532,14 +533,12 @@ export default function AskPanel({
                 ))}
               </details>
             )}
-            <details className="cq-calculation">
-              <summary>Cum s-a calculat</summary>
+            <CoverageDisclosure key={JSON.stringify(applied)} spec={applied}>
               <p>
                 Calculele folosesc condițiile de mai sus. Lista surselor explică
                 selecția și valorile înregistrate; pagina de metodologie descrie
                 indicatorii.
               </p>
-              <Link href="/metodologie">Deschide metodologia ↗</Link>
               {resp.displaySql && (
                 <details>
                   <summary>Interogarea SQL · avansat</summary>
@@ -548,7 +547,7 @@ export default function AskPanel({
                   </pre>
                 </details>
               )}
-            </details>
+            </CoverageDisclosure>
             {["table", "timeseries", "map"].includes(data.block) && (
               <div className="cq-display">
                 <span>

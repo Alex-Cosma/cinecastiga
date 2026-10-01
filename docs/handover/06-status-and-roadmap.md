@@ -74,7 +74,8 @@ Ordinea se decide cu proprietarul; acestea nu sunt sarcini începute automat pen
 - **Publicat: traseul de verificare.** Un acces principal la surse, exporturi grupate și explicația calculului lângă rezultat; stările documentelor invită numai la acțiuni disponibile. [Implementare](../implementation/answer-actions.md).
 - **Publicat: prima experiență Explorează.** Drawer cu loading vizibil/schelet, întrebarea implicită pe toți anii disponibili prin agregatele existente, text desktop ajustat la30px ca semnul întrebării să rămână pe rând. Clasamentele precalculate pe ani rămân doar o propunere. [Checkpoint de reluare](continuation-20260930.md).
 - **Publicat: feedback anonim.** Proprietarul a ales să nu afișeze niciun nume public. Formular fără cont/nume/e-mail, cu pagină publică atașată; mesaje private pentru administratori în `/admin/feedback`, paginare10 și ștergere individuală confirmată. [Implementare](../implementation/anonymous-feedback.md). Nu mai solicita identitatea operatorului pentru acest flux.
-- **Ulterior: citare durabilă și acoperire.** Referințe care rezistă recalculării și explicarea succintă a perioadelor disponibile pe flux.
+- **Local, 1 octombrie: acoperire compactă.** Homepage are „Ce date includ aceste cifre?” lângă totaluri, cu textul lung mutat în interior. Explorează integrează perioadele în „Datele și calculul”, în locul explicației pliabile existente. Citire doar la deschidere, surse adaptate întrebării aplicate, fără procente de completitudine. [Implementare și verificări](../implementation/compact-coverage.md). Încă nepublicat.
+- **Ulterior: citare durabilă și două corecții mici.** Referințe care rezistă recalculării; linkurile numărătorilor homepage să deschidă măsura „număr”; metodologia să nu promită un buton „citează” absent. Nu sunt incluse în lotul de acoperire.
 
 ### Direcții generale
 

@@ -1,3 +1,7 @@
+## 2026-10-01 — Acoperire compactă, local
+
+La cererea proprietarului, acoperirea din auditul Reddit este explicată la cerere, fără blocuri suplimentare de text: homepage „Ce date includ aceste cifre?”, Explorează „Datele și calculul” în locul explicației existente. [Implementare](docs/implementation/compact-coverage.md). Endpoint public `/api/data-coverage`, încărcat numai la deschidere, perioade reale și publicare/risc distincte. Fără colectare, migrare sau reprocesare. Lot local, fără commit/push/deploy; cele două corecții mici și citarea durabilă rămân de făcut.
+
 ## 2026-10-01 — Handover consolidat pentru un clone nou
 
 La cererea proprietarului, documentația de onboarding și checkpointul local sunt incluse într-un commit documentar pentru push cu `[skip ci]`, fără deploy. Punctul de intrare este acum [README.md](README.md), urmat de [AGENTS.md](AGENTS.md) și [handover](docs/handover/README.md). Sunt explicate pachetul DB separat, contul local nou, diferențele local/producție și actualitatea observațiilor. Au fost corectate numărul migrațiilor din pachet, secțiunea admin Feedback și distincția între intervalul istoric 50–70s și ultima setare observată 40–60s. Nicio setare de producție și niciun fișier din pachetul sigilat nu au fost modificate.
