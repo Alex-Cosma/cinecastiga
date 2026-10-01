@@ -55,7 +55,7 @@ Căutarea CPV folosește catalogul oficial plus sinonime, ignoră diacriticele �
 - Redirectul de la ID intern trebuie să fie relativ: nu construi linkuri publice din originea internă `0.0.0.0:3000`.
 - `/domenii`: atlas CPV interactiv. Click pe părinte = drill-down în atlas; click pe frunză = detaliu; săgeata↗ = detaliu indiferent de nivel. Tooltip imediat pentru dreptunghiurile mici și listă lizibilă alături.
 - `/supra-prag`: „Atribuiri publicate în TED”, nu „toate achizițiile peste pragul european”.
-- `/admin`: Colectare, Procesare, Fișiere, Jurnal, Conturi sunt cinci rute consistente, nu un amestec de ancore și pagini. Rezumat persistent, modificări păstrate, maximum 10 rânduri/pagină.
+- `/admin`: Colectare, Procesare, Fișiere, Jurnal, Feedback și Conturi au rute consistente, cu navigare comună. Rezumat persistent, modificări păstrate, maximum 10 rânduri/pagină. Problemele pot fi semnalate anonim, fără nume sau e-mail; feedbackul este vizibil numai administratorilor, care pot șterge individual intrările după confirmare.
 - Feedback explicit pentru procesare: coadă, așteptare, descărcare, procesare pagini, gata, eroare; utilizatorul nu trebuie să ghicească dacă se întâmplă ceva.
 
 ## Anchete, dovezi și urmăriri

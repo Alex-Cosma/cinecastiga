@@ -25,13 +25,13 @@ pnpm --filter @seap/db --filter @seap/domain --filter @seap/scraper-clients buil
 
 Porturile din această comandă sunt publicate doar pe loopback. Dacă sunt ocupate, schimbă porturile gazdă și toate URL-urile locale corespunzătoare; PostgreSQL rămâne 5432 în container. Nu opri alte proiecte pentru a elibera portul.
 
-Dacă ai primit codul prin `source.tar.gz`, poți lucra din directorul extras pentru prima pornire (sari peste clone/switch). Pentru colaborare cu PR-uri folosește un clone Git separat. Dacă noile documente/scripturi nu sunt încă pe remote, copiază `docs/handover`, `scripts/handover` și `AGENTS.md` din snapshot-ul primit în branch-ul tău, fără a suprascrie modificări personale.
+Dacă ai primit codul prin `source.tar.gz`, poți lucra din directorul extras pentru prima pornire (sari peste clone/switch). Pentru colaborare cu PR-uri folosește un clone Git separat. Documentația, `AGENTS.md` și scripturile de handover sunt pe remote; folosește versiunea din checkout pentru codul curent. Arhiva de pe stick păstrează documentația de la împachetare și nu trebuie suprapusă peste un clone mai nou.
 
 Acest compose pornește doar PostgreSQL și Meilisearch. Nu porni `ingestion dev`, profilul de colectare din producție sau cronul de noapte pentru onboarding.
 
 ## 2. Restore în bază nouă
 
-Descarcă întregul bundle într-un director separat, de exemplu `~/Transfers/handover-local-20260930/`, apoi:
+Copiază întregul bundle primit separat (de exemplu de pe stick) într-un director precum `~/Transfers/handover-local-20260930/`. Clone-ul nu conține baza de date. Instalarea verificată folosește dump-ul cu istoricul migrațiilor; bootstrapul dintr-o bază goală nu este încă standardizat. Apoi:
 
 ```sh
 python3 scripts/handover/restore-local.py \
@@ -126,9 +126,9 @@ Pentru pornirea web nu e necesar un worker de documente. Citirea PDF/OCR existen
 4. Click pe titlul unui contract din drawer: tab nou, URL local corect, fără `0.0.0.0`.
 5. `/domenii`: drill-down pe părinte și detaliu prin↗.
 6. Profil → comparații: populație, grup editabil, toți anii/toate domeniile, surse.
-7. Login cu contul nou și OTP din consolă. Creează o anchetă locală și salvează o dovadă mică.
+7. Login cu contul nou; OTP din consolă dacă nu ai activat excepția locală 2FA. Creează o anchetă locală și salvează o dovadă mică.
 8. Deschide un PDF deja arhivat și schimbă pagina; imaginea și OCR trebuie să corespundă.
-9. `/admin`: cinci secțiuni, contul nou, colectare oprită. Cozile și jurnalul de producție sunt intenționat absente.
+9. `/admin`: Colectare, Procesare, Fișiere, Jurnal, Feedback și Conturi; contul nou, colectare oprită. Feedbackul privat, cozile și jurnalul de producție sunt intenționat absente.
 10. DevTools și consola serverului: fără erori de schemă/migrații. Nicio cerere SEAP nu trebuie declanșată de simpla explorare.
 
 Capturile sunt pornite de rutele web prin `after(() => processCapture(...))`; nu cer un worker SEAP separat. Urmăririle au worker dedicat: `apps/web/scripts/monitoring-worker.ts`, cu opțiunea `--once` pentru o verificare limitată. Acesta nu colectează SEAP și nu trimite email. Verifică `DATABASE_URL` înainte de pornire; digest-urile sunt o comandă separată.

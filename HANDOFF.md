@@ -1,3 +1,11 @@
+## 2026-10-01 — Handover consolidat pentru un clone nou
+
+La cererea proprietarului, documentația de onboarding și checkpointul local sunt incluse într-un commit documentar pentru push cu `[skip ci]`, fără deploy. Punctul de intrare este acum [README.md](README.md), urmat de [AGENTS.md](AGENTS.md) și [handover](docs/handover/README.md). Sunt explicate pachetul DB separat, contul local nou, diferențele local/producție și actualitatea observațiilor. Au fost corectate numărul migrațiilor din pachet, secțiunea admin Feedback și distincția între intervalul istoric 50–70s și ultima setare observată 40–60s. Nicio setare de producție și niciun fișier din pachetul sigilat nu au fost modificate.
+
+## 2026-10-01 — Context salvat înainte de compactare
+
+[Checkpoint final de reluare](docs/handover/continuation-20261001.md): commituri și deployuri confirmate, procesare terminată și site redeschis, pachet local sigilat, diferența față de producție, verificări și mediu local. Nu există lucru început rămas de finalizat din lansare. Starea serverului consemnată este ultima verificare din 30 septembrie, nu o verificare nouă a nopții. Salvarea a fost inițial locală; cererea ulterioară de publicare a documentației este consemnată mai sus.
+
 ## 2026-09-30 — Publicare și predare încheiate
 
 **Aplicația și corecția deploy sunt live pe main: `f474c3e`**, după release-ul `43c0d4a`. Ambele CI/deploy au trecut. [Raport final](docs/implementation/release-20260930.md): 46 migrări, checkpoint 8 ready, toate cele 11 verificări trecute, calendar `rf-2026.6` / `Europe/Bucharest-v1`, căutare refăcută. Full-ul a durat 1h50m03s; cu indexare 1h56m03s. Site redeschis la 21:38:18 RO, control rev22 fără mentenanță/blocare; colectarea reluată cu cereri reușite. Programul zilnic și riscul duminică rămân neschimbate, la fel bugetul operatorului observat 40–60s. 16 verificări browser public au trecut. Configurația activă Caddy verificată după corecție.

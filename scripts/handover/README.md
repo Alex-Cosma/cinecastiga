@@ -6,20 +6,20 @@ Read `docs/handover/04-database-transfer.md` first. These tools use Docker/Postg
 - `package-stick.py`: after the completed public export, adds the tracked source snapshot plus explicit handover files, readable instructions and per-file checksums. No `.git`, ignored environment, dumps in source, dependencies or bytecode.
 - `restore-local.py`: trusted archive only, checks checksum/size, local Unix Docker context and Compose project, new database names only, fail-on-error pg_restore with2jobs, fresh paused local control, private-table emptiness, migration count and ANALYZE. No production mutation or automatic DROP. A failure keeps the NEW database for diagnosis.
 
-Full snapshot export example, repository root:
+Full snapshot export example, repository root. Replace `YYYYMMDD` with the new export date and choose a destination that does not exist. The completed `handover-local-20260930` bundle is sealed; do not regenerate it:
 
 ```sh
 python3 scripts/handover/export-public.py \
   --container seap-postgres-1 --checkout "$PWD" \
-  --source-label cinecastiga-local-20260928 \
-  --output infra/prod/dumps/handover-local-20260928
+  --source-label cinecastiga-local-YYYYMMDD \
+  --output infra/prod/dumps/handover-local-YYYYMMDD
 ```
 
 Restore on recipient's computer after local Compose starts:
 
 ```sh
 python3 scripts/handover/restore-local.py \
-  --bundle /path/to/handover-local-20260928 \
+  --bundle /path/to/handover-local-20260930 \
   --database seap_collab --jobs 2
 ```
 

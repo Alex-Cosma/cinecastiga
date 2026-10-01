@@ -2,6 +2,8 @@
 
 Acest document transmite mecanisme și decizii, nu autorizație permanentă de administrare. Dezvoltarea locală nu cere acces live. Verificările citire-only sunt distincte de reluarea colectării, migrare, rebuild sau restore.
 
+Consolidat la 1 octombrie 2026. Ultima verificare de producție consemnată este din 30 septembrie, seara: [raport final](../implementation/release-20260930.md). Tranziția calendarului este încheiată; nu se repetă la următorul deploy obișnuit. Pentru starea din momentul intervenției citește controlul și rulările din baza mediului vizat.
+
 ## Mediu și acces
 
 - Domeniu: `https://cinecastiga.ro`.
@@ -47,7 +49,7 @@ Schema veche trebuie să poată servi versiunea veche în timpul migrării. Nu e
 - Fluxuri: achiziții directe, anunțuri de participare, atribuiri; catalog auxiliar.
 - Recuperare: DAde la 1 iulie 2026, anunțuri/atribuiri de la 1 ianuarie 2026, deduplicare. Vechile loguri nu demonstrau acoperirea completă până la 31 iulie, de aceea s-au ales ferestre suprapuse.
 - Lotul curent `recovery-2026-09-25` are capăt fix 25 septembrie 2026. Nu se extinde automat doar fiindcă azi e o zi nouă.
-- Buget comun pentru colector și documente: interval aleator **50–70 secunde între începuturile cererilor**, un request în zbor.
+- Buget comun pentru colector și documente: interval aleator între începuturile cererilor, configurat prin `app.collection_control.min_seconds/max_seconds`; un request în zbor. **50–70 secunde** este decizia inițială. Ultima setare observată în producție, la 30 septembrie seara, era **40–60 secunde** și a fost păstrată la deploy. Verifică setarea efectivă înainte de operare; nu o reseta automat la valoarea istorică.
 - În plus, GET-urile de fișiere au minimum 60 secunde între începuturi, inclusiv eșecuri.
 - Nicio descărcare automată de PDF-uri; utilizatorul autentificat cere documentul.
 - Pauză zilnică de admitere a cererilor **02:59 inclusiv–03:30 exclusiv**, Europe/Bucharest. Nu schimbă manual paused și nu șterge erori.

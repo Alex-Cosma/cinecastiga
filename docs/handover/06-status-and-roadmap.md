@@ -1,8 +1,8 @@
 # Stare curentă, limite și următoarele direcții
 
-**Actualizare 30 septembrie:** aplicația este live la `f474c3e`, 46 migrări, checkpoint 8 ready, calendar `rf-2026.6`, colectare activă. [Raportul verificat](../implementation/release-20260930.md) înlocuiește fotografia operațională istorică de mai jos.
+**Consolidare 1 octombrie; ultima verificare de producție: 30 septembrie, seara.** Aplicația era live la `f474c3e`, 46 migrări, checkpoint 8 ready, calendar `rf-2026.6`, colectare activă, interval observat 40–60 secunde. [Raportul verificat](../implementation/release-20260930.md) înlocuiește fotografia operațională istorică de mai jos. Nu s-a verificat din nou producția pentru această consolidare documentară.
 
-## Fotografia verificată la predare
+## Fotografie istorică — 28 septembrie
 
 28 septembrie 2026, verificări read-only între 11:28–11:50 ora României; starea se poate schimba ulterior.
 
@@ -23,7 +23,7 @@ Sarcinile sunt unități tehnice, nu număr de contracte. `deferred` nu înseamn
 
 ## Admin și estimările recente
 
-Implementate: `/admin`, `/admin/procesare`, `/admin/fisiere`, `/admin/jurnal`, `/admin/conturi`; layout persistat, rezumat comun, focus/navigare coerente, stări de încărcare/eroare, drafturi de setări păstrate și paginare 10 rânduri.
+Implementate: `/admin`, `/admin/procesare`, `/admin/fisiere`, `/admin/jurnal`, `/admin/feedback`, `/admin/conturi`; layout persistat, rezumat comun, focus/navigare coerente, stări de încărcare/eroare, drafturi de setări păstrate și paginare 10 rânduri. Feedbackul anonim a fost adăugat în lotul din 30 septembrie.
 
 Progresul pe flux este fracția din coada **cunoscută**, care se poate mări după paginare/partiționare. Progresul general estimează separat instituții și zile de anunțuri, liste, detalii și pagini de contracte, ponderat după lucru; nu face media celor trei procente.
 
@@ -31,7 +31,7 @@ Praguri: catalog complet; cel puțin 100 instituțiiDA sau 20 zile de anunțuri 
 
 Eșecurile și reîncercările nu avansează progresul. Partiționarea finalizată este lucru util, dar nu un contract colectat. Eșantion insuficient, lipsă heartbeat, date vechi, pauze, erori sau detalii deferred sunt prezentate explicit. ETA este pentru **lotul cu dată fixă**, nu „la zi” după acea dată. Extinderea continuă a lotului este muncă viitoare, nu activată de acest UI.
 
-Verificări ultimei implementări:252 teste unitareweb,2 integrări PG,24 verificări browser autentificat, types/build; review vizual ship. Capturile folosesc date sintetice și nu sunt dovadă de acoperire SEAP. Vezi [admin-navigation](../implementation/admin-navigation-20260928.md).
+Verificările navigării admin din 28 septembrie: 252 teste unitare web, 2 integrări PG, 24 verificări browser autentificat, types/build. Capturile folosesc date sintetice și nu sunt dovadă de acoperire SEAP. Vezi [admin-navigation](../implementation/admin-navigation-20260928.md); verificările lotului ulterior sunt în raportul lansării și documentele funcționalităților.
 
 ## Ce este livrat
 

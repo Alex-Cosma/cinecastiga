@@ -8,7 +8,7 @@ La cererea din 30 septembrie, s-a exportat și verificat un snapshot LOCAL nou �
 
 Proprietarul a confirmat: **bază completă, date publice și cont local nou**. **Decizia finală: sursa este baza LOCALĂ a autorului, iar mediul de transfer este un stick USB.** Aceasta are arhiva brută mai mare și documentele pilotului. Snapshot-ul nu este prezentat drept ultima publicare din producție. Nu copiem volumul Docker și nu distribuim un backup privat integral.
 
-La 28 septembrie 2026,11:32 RO:
+Dimensiuni istorice la 28 septembrie 2026, 11:32 RO (nu descriu noul pachet din 30 septembrie):
 
 | Sursă | Dimensiune PostgreSQL observată |
 |---|---:|
@@ -17,7 +17,7 @@ La 28 septembrie 2026,11:32 RO:
 
 Producția: marts 17 GB, core 13 GB, reference aproximativ 2,4 GB, raw aproximativ 2,3 GB; include și o copie temporară TED de 2,2 GB care nu intră în bundle. Localul vechi are raw 23 GB. Dimensiunile includ indexuri/stocare fizică și sunt rotunjite; **nu sunt dimensiuni ale fișierului comprimat** și nici dovada echivalenței bazelor.
 
-„Complet” se referă la toate rândurile publice din snapshot-ul LOCAL, nu la reunirea a două arhive divergente. Local există 39 migrații, un checkpoint baseline/ready înregistrat la 19 septembrie 2026 și două documente publice procesate. În producție există checkpoint-ul coordinated/version 5 din 28 septembrie. Acestea nu certifică aceeași populație sau actualitate. Nu se suprascrie producția cu baza locală și nu se schimbă data publicării doar pentru că exportul este nou.
+„Complet” se referă la toate rândurile publice din snapshot-ul LOCAL, nu la reunirea a două arhive divergente. Pachetul din **30 septembrie** are 46 migrări, baza sursă de aproximativ 64 GiB și dump de 9.411.824.015 bytes. Păstrează checkpoint-ul local baseline/ready v1 din 19 septembrie și documentele publice ale pilotului; nu a reprocesat calendarul. Ultima publicare de producție verificată în 30 septembrie are checkpoint 8 și calendar `rf-2026.6`. Acestea nu certifică aceeași populație sau actualitate. Nu se suprascrie producția cu baza locală și nu se schimbă data publicării doar pentru că exportul este nou.
 
 ## Ce intră și ce nu
 
