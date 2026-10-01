@@ -1,5 +1,15 @@
 # Identity repair handoff — 1 October 2026, 18:37 Romania
 
+**Resumed after owner reset the usage budget. Update18:43RO:** preview rebuilt on
+b7b9061; clone maintenance cleared (still paused, processing disabled). All
+**24 public browser/navigation/data checks passed**, including query retention on
+Radiografie, old/canonical Ask and source rows, six profiles, derived pages,
+search and unchanged official links. Browser/API errors:zero. Actual
+`preview-checks.json` copied to server; `release-validation.json` generated from
+the real proof/search/browser artifacts. Next:merge/deploy and guarded live
+publication. Older “browser checks pending/no marker” statements below are the
+historical handoff checkpoint, superseded by this update. No copy job rerun.
+
 **Read this before older “active operation” notes.** The owner asked for a quick
 handoff because the model's remaining credit budget is low. The task is not
 finished. All expensive copy jobs have now finished successfully; do not rerun

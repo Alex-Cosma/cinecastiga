@@ -1,6 +1,6 @@
 # Handover pentru un nou dezvoltator și asistentul lui
 
-**Handoff activ, 1 octombrie,18:37RO:** [continuarea reparației identităților](continuation-identity-20261001.md) are prioritate față de checkpoint-urile de mai jos. Corecția, recalcularea completă și căutarea au trecut pe copia producției; joburile s-au încheiat. Mai trebuie preview-ul pe ultimul build, verificarea în browser și publicarea controlată. Cod pe branch separat; producția și baza locală obișnuită încă nereparate. Nu relansa joburile terminate.
+**Operațiune activă, 1 octombrie,18:43RO:** [continuarea reparației identităților](continuation-identity-20261001.md) are prioritate față de checkpoint-urile de mai jos. Corecția, recalcularea completă, căutarea și24 verificări în browser au trecut pe copia producției; joburile s-au încheiat. Urmează merge/deploy și publicarea controlată. Producția și baza locală obișnuită încă nereparate. Nu relansa joburile terminate.
 
 **Documentație consolidată la 1 octombrie:** [checkpoint final](continuation-20261001.md). Publicarea aplicației și pregătirea pachetului local sunt încheiate; copierea pe stick nu a fost efectuată de agent. Nu există operațiuni din sesiunea precedentă de relansat. Ultima verificare de producție consemnată este din 30 septembrie, seara, nu din noaptea următoare.
 
