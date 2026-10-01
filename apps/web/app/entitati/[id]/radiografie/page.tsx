@@ -6,13 +6,14 @@ import { formatRon, formatInt } from "@/lib/format";
 import RadiografieExplorer from "./RadiografieExplorer";
 import "./radiografie.css";
 export const dynamic = "force-dynamic";
-export default async function RadiografiePage({ params }: {
+export default async function RadiografiePage({ params, searchParams }: {
     params: Promise<{
         id: string;
     }>;
+    searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
     const { id } = await params;
-    await redirectCanonicalEntity(id,"/radiografie");
+    await redirectCanonicalEntity(id,"/radiografie",await searchParams);
     const data = await getRadiografie(id);
     if (!data)
         notFound();

@@ -81,9 +81,12 @@ rezultat: `/tmp/seap-identity-audit-20261001/references.sql`, `external-referenc
 1. LOCAL: `seap_test_identity_repair_20261001` are schema completă, dar date doar
    entities/SICAP/CPV/authority_uat și **20.795.132 DA**. Restaurarea și auditul au
    terminat. Corecția integrală a comis **4.231.642 rânduri**; log
-   `/tmp/seap-identity-audit-20261001/full-apply.log`. Verificarea globală rulează în
-   sesiunea88359 (`full-verify.log`). Urmează rerulare,
-   aliases, verify. Aceasta NU validează toate marts-urile sau datele private.
+   `/tmp/seap-identity-audit-20261001/full-apply.log`. Verificarea globală a trecut
+   (`full-verify.log`), inclusiv toate amprentele și sumele. A doua aplicare a
+   schimbat **0 rânduri** (`full-idempotence.log`), terminată17:24RO. Nu mai sunt
+   operațiuni locale active. Nu derivăm aliasuri din această copie parțială:
+   absența rolurilor din tabelele omise nu dovedește absența lor reală. Aliasurile
+   și publicarea sunt validate pe copia COMPLETĂ de pe server.
 2. SERVER: copia COMPLETĂ `seap_test_identity_full_20261001` este gata și auditul
    confirmă planul. Director privat `/srv/seap/backups/identity-repair-20261001/`.
    Backup `snapshot.dump`6,6GB +checksum, păstrat numai pe server. Include date
