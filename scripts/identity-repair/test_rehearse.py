@@ -44,6 +44,10 @@ INSERT INTO reference.authority_uat VALUES(2147251,54975,324576),(2146445,54975,
         self.assertEqual(result.returncode==0,ok,result.stdout+result.stderr)
         return result
     def test_repair_guards_and_replay(self):
+        for extra in ([],['--publication-boundary',str(self.bundle/'manifest.json')]):
+            refused=subprocess.run(['python3',str(ROOT/'scripts/identity-repair/rehearse.py'),'--database','seap','--bundle',str(self.bundle),'--phase','apply',*extra],text=True,capture_output=True)
+            self.assertNotEqual(refused.returncode,0)
+            self.assertIn('error:',refused.stderr)
         original=(self.bundle/'rows.tsv').read_text()
         (self.bundle/'rows.tsv').write_text(original+'0\t1\n')
         self.phase('prepare',False)
@@ -68,7 +72,7 @@ INSERT INTO reference.authority_uat VALUES(2147251,54975,324576),(2146445,54975,
         self.sql('UPDATE reference.authority_uat SET population=1 WHERE entity_id=2146445;')
         with self.assertRaises(subprocess.CalledProcessError): self.sql(alias_sql)
         self.sql('UPDATE reference.authority_uat SET population=324576 WHERE entity_id=2146445;')
-        self.sql(alias_sql)
+        self.phase('aliases')
         self.assertEqual(self.sql('SELECT canonical_id FROM core.entity_redirects WHERE old_id=2147251;').strip(),'2146445')
         self.assertEqual(self.sql("SELECT count(*) FROM core.entity_sicap_ids WHERE namespace='authority' AND sicap_id=4305857;").strip(),'0')
         self.assertEqual(self.sql('SELECT authority_entity_id FROM core.direct_acquisitions WHERE id=4;').strip(),'2165580')

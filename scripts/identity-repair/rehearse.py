@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Rehearse archive-backed authority corrections on an isolated local copy only.
-No production mode. No collectors. No implicit default database or source archive.
+"""Archive-backed authority corrections. Isolated copies by default.
+The dated live coordinator requires a separately verified publication boundary.
+No collectors. No implicit default database or source archive.
 """
 import argparse
 import csv
@@ -16,16 +17,46 @@ p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('--database', required=True)
 p.add_argument('--container', default='seap-postgres-1')
 p.add_argument('--bundle', type=Path, required=True)
-p.add_argument('--phase', choices=['prepare', 'audit', 'pilot', 'apply', 'verify'], required=True)
+p.add_argument('--phase', choices=['prepare', 'audit', 'pilot', 'apply', 'aliases', 'verify'], required=True)
+p.add_argument('--publication-boundary', type=Path)
 a = p.parse_args()
-if not re.fullmatch(r'seap_test_identity_[a-z0-9_]+', a.database):
+boundary = None
+if a.publication_boundary:
+    if (a.database != 'seap' or a.container != 'cinecastiga-postgres-1'
+        or os.environ.get('IDENTITY_REPAIR_APPLY') != '20261001-approved-copy'
+        or a.publication_boundary.resolve() != Path('/srv/seap/backups/identity-live-20261001/boundary.json')):
+        p.error('Live repairs require the dated publication coordinator and its verified boundary')
+    boundary = json.loads(a.publication_boundary.read_text())
+    for key in ('revision', 'rawBoundary', 'lastRequest', 'plannedRows', 'planFingerprint', 'aliases'):
+        if not re.fullmatch(r'-?[0-9]+', str(boundary.get(key, ''))): p.error('Invalid publication boundary')
+elif not re.fullmatch(r'seap_test_identity_[a-z0-9_]+', a.database):
     p.error('Only an isolated seap_test_identity_* database is accepted')
 # Do not inherit remote Docker contexts into a mutation command.
 endpoint = subprocess.check_output(['docker', 'context', 'inspect', '--format', '{{.Endpoints.docker.Host}}'], text=True).strip()
 if not endpoint.startswith('unix://') or not os.environ.get('DOCKER_HOST','unix://').startswith('unix://'):
     p.error('Only a local Unix-socket Docker context is accepted')
 cmd = ['docker', 'exec', '-i', a.container, 'psql', '-X', '-U', 'seap', '-d', a.database, '-v', 'ON_ERROR_STOP=1', '-P', 'pager=off']
+guard = '' if not boundary else f'''DO $$ BEGIN
+IF NOT EXISTS(SELECT 1 FROM app.collection_control WHERE id=1 AND paused AND maintenance AND revision={int(boundary['revision'])})
+ OR EXISTS(SELECT 1 FROM app.collection_requests WHERE outcome='running')
+ OR EXISTS(SELECT 1 FROM app.collection_tasks WHERE status='running')
+ OR EXISTS(SELECT 1 FROM app.document_jobs WHERE status='running')
+ OR EXISTS(SELECT 1 FROM app.processing_runs WHERE status='running')
+ OR (SELECT coalesce(max(id),0) FROM raw.raw_documents)<>{int(boundary['rawBoundary'])}
+ OR (SELECT coalesce(max(id),0) FROM app.collection_requests)<>{int(boundary['lastRequest'])}
+THEN RAISE EXCEPTION 'Live publication boundary changed; maintenance must remain active'; END IF;
+END $$;'''
 def sql(statement):
+    if guard:
+        # Validate both ends of mutation transactions. A later operator change
+        # aborts the correction; it never silently resumes collection.
+        if 'BEGIN READ ONLY;' in statement:
+            statement=statement.replace('BEGIN READ ONLY;', 'BEGIN READ ONLY;\n'+guard, 1)
+        elif 'BEGIN;' in statement:
+            statement=statement.replace('BEGIN;', 'BEGIN;\n'+guard, 1)
+        else:
+            statement='BEGIN;\n'+guard+'\n'+statement+'\nCOMMIT;'
+        statement=statement.replace('COMMIT;', guard+'\nCOMMIT;', 1)
     subprocess.run(cmd, input="SET TIME ZONE 'UTC';\n" + statement, text=True, check=True)
 def copy_file(table, fields, path, csv_format=False):
     suffix = " WITH (FORMAT csv, DELIMITER E'\\t')" if csv_format else ''
@@ -42,6 +73,9 @@ if set(manifest['files']) != {'rows.tsv','groups.json','dimension.json'}: raise 
 for name, expected in manifest['files'].items():
     if name not in ('rows.tsv','groups.json','dimension.json') or hash_file(a.bundle/name) != expected:
         raise RuntimeError('Bundle verification failed')
+if boundary:
+    if boundary.get('proofFiles') != manifest['files']: raise RuntimeError('Live proof differs from the validated copy')
+    sql('SELECT current_database();')
 if a.phase != 'prepare':
     stored=json.loads(subprocess.check_output(cmd+['-Atc','SELECT document::text FROM identity_repair.manifest'],text=True))
     if any(stored.get(key)!=manifest.get(key) for key in ('version','files','sources','rows','dimensionRows')):
@@ -79,6 +113,11 @@ ANALYZE identity_repair.source_rows;
 ANALYZE identity_repair.groups;
 ''')
 elif a.phase == 'audit':
+    plan_guard = '' if not boundary else f'''DO $$ BEGIN
+IF (SELECT count(*) FROM identity_repair.plan)<>{int(boundary['plannedRows'])}
+ OR (SELECT sum(hashtextextended(jsonb_build_array(da_id,old_id,new_id,original_record)::text,0)::numeric) FROM identity_repair.plan)<>{int(boundary['planFingerprint'])}::numeric
+THEN RAISE EXCEPTION 'Live correction plan differs from the validated copy'; END IF;
+END $$;'''
     sql('''BEGIN;
 SET LOCAL lock_timeout='5s';
 DO $$ BEGIN
@@ -101,6 +140,7 @@ SELECT count(*) n,sum(closing_value) amount,
        sum(hashtextextended(to_jsonb(d)::text,0)::numeric) identity_fingerprint
 FROM core.direct_acquisitions d;
 CREATE TABLE identity_repair.applied (da_id bigint PRIMARY KEY REFERENCES identity_repair.plan, applied_at timestamptz NOT NULL DEFAULT now());
+''' + plan_guard + '''
 COMMIT;
 SELECT count(*) planned_rows,count(DISTINCT old_id) old_profiles,count(*) FILTER(WHERE raw_id IS NOT NULL) live_source_conflicts FROM identity_repair.plan;
 SELECT p.old_id,e.name_display,p.new_id,count(*) rows FROM identity_repair.plan p LEFT JOIN core.entities e ON e.id=p.old_id GROUP BY 1,2,3 ORDER BY count(*) DESC LIMIT 15;
@@ -124,6 +164,15 @@ END $$;
 COMMIT;
 SELECT count(*) applied_rows FROM identity_repair.applied;
 ''')
+elif a.phase == 'aliases':
+    statement=Path(__file__).with_name('aliases.sql').read_text()
+    if boundary:
+        statement=statement.replace('COMMIT;', f'''DO $$ BEGIN
+IF (SELECT count(*) FROM identity_repair.alias_plan)<>{int(boundary['aliases'])}
+THEN RAISE EXCEPTION 'Live aliases differ from the validated copy'; END IF;
+END $$;
+COMMIT;''')
+    sql(statement)
 else:
     sql('''BEGIN READ ONLY;
 DO $$ BEGIN

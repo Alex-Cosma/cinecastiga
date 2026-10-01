@@ -2,7 +2,7 @@
 
 Proprietarul a aprobat planul și a cerut implementarea. Diagnosticul inițial este
 în `docs/reviews/entity-identities-20261001/report.md`. Branch de lucru:
-`fix/historical-authority-identities`, bazat pe `b293eea`. Nu s-a făcut push/deploy.
+`fix/historical-authority-identities`, bazat pe `b293eea`. Codul este comis și împins pe branch (`22c186d`); nu pe main, fără deploy.
 
 ## Audit reproductibil finalizat
 
@@ -88,14 +88,24 @@ rezultat: `/tmp/seap-identity-audit-20261001/references.sql`, `external-referenc
    Backup `snapshot.dump`6,6GB +checksum, păstrat numai pe server. Include date
    private; NU îl descărca sau pune în Git. Copia este paused și processing disabled.
    `apply-copy.sh` rulează din15:11ora serverului (16:11RO), prin nohup:
-   apply → verify → apply → verify → aliases → verify → pipeline complet.
+   apply → verify → apply → verify → aliases → verify au trecut. **14.264 aliasuri**,
+   2.414 UAT vechi arhivate/eliminate, 3 UAT adăugate canonic. Pipeline complet pornit
+   16:27:31 RO, boundary raw17363865. Normalize terminat; reconcile în curs.
    Log `apply-copy.log`; markere `rows.ready`, `refresh.ready` sau `apply.failed`.
    Wrapperul `clone-refresh.mjs` refuză orice DB fără prefixul izolat și nu folosește
    Meili live. NU s-au modificat achiziții, control, workers sau schedule live.
-3. Preview creat pentru probarea rutelor: localhost3013, `.next-identity-check`,
-   DBpilot, sesiune49643. Poate fi oprit după teste; NU opri devul utilizatorului
-   pe3000 (PID16949) sau serverul mockups4185. Devul3000 a avut un timeout30s la
-   profil în timpul încărcării DB; health200, necesită reverificare.
+3. Preview local3013 al pilotului a fost oprit (PID35205), verificările sunt salvate.
+   NU opri devul utilizatorului3000 (PID16949) sau mockups4185. Devul3000 are timeout
+   inclusiv health la16:30, fără query DB activ; necesită diagnostic separat.
+4. Preview COMPLET pe server, loopback3014, imagine `cinecastiga-identity-preview:22c186d`,
+   checkout separat `/srv/seap/identity-preview-src`. Containere `identity-preview-web`
+   și `identity-preview-meili`, credențiale auth/Meili noi, SMTP gol, documente disabled.
+   Baza copiei a primit granturi web. Tunel local3014 sesiune3354. Răspunde503 normal
+   cât timp rulează recalcularea (health200). Nicio expunere publică a copiei.
+5. `search-copy.sh` așteaptă refresh.ready și pornește indexarea titlurilor și Meili
+   separat; markere search.ready/search.failed, logsearch-copy.log, raportsearch-report.json.
+   Nu relansa. `plan-proof.json` este pregătit:4231642 rânduri,14264 aliasuri,
+   fingerprint `-27804067446331219630579`.
 
 ## Următorii pași necesari
 
@@ -104,7 +114,11 @@ rezultat: `/tmp/seap-identity-audit-20261001/references.sql`, `external-referenc
    comparație Cluj/alte cazuri/core vs marts și probe HTTP/UI.
 3. Finalizează/testează coordinatorul LIVE cu backup proaspăt, mentenanță,
    oprirea writerilor, corecție+recalculare, validare, restart/index și reluare.
-   **Nu există încă un coordinator live. Nu aplica ad-hoc aliases.sql pe live.**
+   Coordinatorul datat este acum scris (`publish.sh`, `publication*.mjs`, opțiune
+   guarded în rehearse.py), dar NEEXECUTAT și încă necomis în al doilea lot. Un test
+   PostgreSQL cu rollback pentru control/revision/boundary a trecut. Mai trebuie
+   verificarea finală și raportul autentic release-validation.json al copiei; nu
+   fabrica markerul. Nu aplica ad-hoc aliases.sql pe live.
 4. Commit/deploy compatibil, apoi reparație live numai după validarea copiei.
    Nicio corecție a achizițiilor în baza locală de lucru sau live încă.
    Migrarea0046 este aplicată pe local normal, cu redirects GOL.

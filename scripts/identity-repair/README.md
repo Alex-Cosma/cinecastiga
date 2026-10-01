@@ -22,7 +22,8 @@ unresolved. These candidates are not automatic corporate/legal succession.
 ## Local rehearsal
 
 Prepare a **new** `seap_test_identity_*` PostgreSQL database. The script enforces
-that prefix and a local Unix-socket Docker context. It has no production mode.
+that prefix and a local Unix-socket Docker context by default. The separately
+guarded dated publication mode below must never be used for local development.
 Supply schema and real public data from a consistent copy. At minimum: entities,
 SICAP IDs, CPV, acquisitions and authority/UAT mappings. Empty other source tables
 mean only a procurement-row rehearsal, **not** a full publication validation.
@@ -66,8 +67,36 @@ cannot prove absence of references in missing tables.
   marts, risk and Radiografie, validate the snapshot and reindex search.
 - Never publish just the SQL row correction over stale marts/risk.
 - Live requires a fresh backup, maintenance/write exclusion and publication
-  validation. This prototype does **not** provide a live coordinator or authorize
-  a fallback to ad-hoc UPDATE statements. Restore remains the rollback route.
+  validation. Restore remains the rollback route.
+
+## Dated production publication (not yet executed)
+
+`publish.sh prepare|publish|reopen <deployed-sha> [inspected-revision]` is an explicit
+one-off coordinator for this incident. It is not part of cron or deploy. Do not
+run it without the current owner's authorization and complete copy validation.
+The pinned checkout must be clean and already deployed with migration0046.
+
+It requires the full-copy refresh, independent search and HTTP checks, recorded
+in `/srv/seap/backups/identity-repair-20261001/release-validation.json`. That file
+must include `status: validated`, `routesPassed: true`, checkpointId, proofFiles
+from the source manifest, plannedRows, planFingerprint and aliases from the
+verified plan. Do not fabricate this marker to bypass an unfinished check.
+
+Prepare takes the deployment lock, checks the inspected control revision, gates
+the site, drains and stops source workers, freezes the boundary, and creates a
+new full private backup with checksum in `identity-live-20261001`. Publish first
+invalidates analytic readiness, verifies the same source proof and **exact row
+plan fingerprint** as the clone, repairs rows/aliases, verifies conservation,
+rebuilds the complete pipeline and both search indexes, and validates examples.
+Reopen requires that exact ready checkpoint and an unchanged control revision;
+it preserves operator pauses, source blocks, delays and the existing schedule.
+Any failure retains maintenance. Existing artifacts prohibit blind reruns.
+
+The Python live option additionally requires `--publication-boundary` at the
+fixed incident path, database `seap`, the production container name and explicit
+`IDENTITY_REPAIR_APPLY=20261001-approved-copy`. Every SQL mutation transaction
+checks the boundary before and after; alias count drift aborts its transaction.
+This is a guard for the coordinator, not a general-purpose production CLI.
 
 ## Tests
 
@@ -76,3 +105,8 @@ filter mapping. Real integration tests require a separately prepared disposable
 `IDENTITY_TEST_DATABASE_URL` with the `seap_test_identity_*` prefix. Do not point
 fixture tests at the real-data rehearsal copy: the importer fixture test clears
 its isolated source tables. Use `seap_test_identity_import` for fixtures.
+
+`test_rehearse.py` exercises the repair against synthetic records in a separate
+copy of that empty fixture database. `publication-control.test.mjs` uses rollback
+fixtures and the same explicit URL guard to exercise real PostgreSQL control
+revision/boundary checks and preservation of request/schedule settings.
