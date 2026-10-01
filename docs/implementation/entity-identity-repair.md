@@ -178,3 +178,12 @@ pe copia completă) și păstrează eroarea sanitizată în raport/log privat la
 La17:17RO: live încă peb293eea, revision24, paused=false, maintenance=false,
 delay40–60s, zilnic05:00, risc duminică. Spațiu liber server760GB. Nu schimba aceste
 setări ca efect secundar al reparației.
+# Checkpoint final al sesiunii:18:37RO
+
+**[Handoff actualizat](../handover/continuation-identity-20261001.md) are prioritate
+față de stările intermediare de mai jos.** Toate joburile copiei sunt terminate:
+pipeline complet1h47m41,772s, checkpoint5988d154-8e40-4616-b71c-d6a1d881a784 ready;
+indexare20.588.021 titluri și180.979 entități, toate verificările trecute.
+Branch împins până lab7b9061; preview încă peaaf7b83. Urmează reconstruirea
+preview-ului pentru păstrarea parametrilor Radiografiei, probele reale HTTP/UI și
+apoi publicarea protejată. Nicio modificare a achizițiilor live/local normal.
