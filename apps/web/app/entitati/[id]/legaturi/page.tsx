@@ -1,3 +1,4 @@
+import { redirectCanonicalEntity } from "@/lib/entity-navigation";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getEntityProfile } from "@/lib/marts";
@@ -13,6 +14,7 @@ export default async function ConnectionsPage({ params, searchParams }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
+  await redirectCanonicalEntity(id,"/legaturi",await searchParams);
   if (!/^[1-9]\d{0,15}$/.test(id) || !Number.isSafeInteger(Number(id))) notFound();
   const profile = await getEntityProfile(id);
   if (!profile) notFound();

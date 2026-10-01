@@ -1,3 +1,4 @@
+import { canonicalConnectionSelection } from "./canonical-connections";
 import { createHash } from "node:crypto";
 import { createDb, withMonitoringSnapshot, MonitoringRefreshUnavailableError, type DbSql } from "@seap/db";
 import { DA_PLAFOND_RON } from "./ask/compile";
@@ -88,6 +89,7 @@ export async function getConnections(input: ConnectionInput, sql = connectionDat
   try {
     return await withMonitoringSnapshot(sql, async (q, checkpoint) => {
       await q`set local statement_timeout = '20s'`;
+      input=await canonicalConnectionSelection(q,input);
       const entity = await readConnectionEntity(q, input.entityId, input.role);
       assertConnectionIdentity(entity, input.identity);
       const partnerRole = input.role === "authority" ? "supplier" : "authority";

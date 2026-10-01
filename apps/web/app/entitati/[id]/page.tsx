@@ -1,3 +1,4 @@
+import { redirectCanonicalEntity } from "@/lib/entity-navigation";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -77,6 +78,7 @@ export default async function EntityPage({
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const { id } = await params;
+  await redirectCanonicalEntity(id,"",await searchParams);
   const sp = await searchParams;
   const [flagRowsRaw, profile] = await Promise.all([getEntityFlags(id), getEntityProfile(id)]);
   // The DA-centric flag summary exists only for entities with DA activity. An

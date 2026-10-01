@@ -11,6 +11,7 @@ function database() {
   class Fragment {
     constructor(public query: string, public values: unknown[] = []) {}
     then(resolve: (rows: unknown[]) => unknown) {
+      if (this.query.includes("core.canonical_entity_id")) return Promise.resolve(resolve([{ id: this.values[0] }]));
       statements.push(this);
       return Promise.resolve(resolve(this.query.includes("count(*)::int c") ? [{ c: 2 }] : []));
     }

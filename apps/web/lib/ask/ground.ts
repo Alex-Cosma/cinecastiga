@@ -213,7 +213,7 @@ async function groundEntityById(
 ): Promise<EntityGrounding> {
   const rows = (await sql`
     select entity_id, name_display, county from marts.entity_profile
-    where role = ${role} and entity_id = ${id}
+    where role = ${role} and entity_id = core.canonical_entity_id(${id}::bigint)
     limit 1
   `) as unknown as {
     entity_id: string;

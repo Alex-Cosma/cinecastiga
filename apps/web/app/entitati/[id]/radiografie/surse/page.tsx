@@ -1,3 +1,4 @@
+import { redirectCanonicalEntity } from "@/lib/entity-navigation";
 import Link from "next/link";
 import { createDb } from "@seap/db";
 import { readRadiografieEvidence } from "@/lib/radiografie-evidence";
@@ -9,6 +10,7 @@ export default async function RadiografieSources({ params, searchParams }: {
   searchParams: Promise<{ tip?: string; furnizor?: string; tipar?: string; fingerprint?:string; p?: string }>;
 }) {
   const [{ id }, search] = await Promise.all([params, searchParams]);
+  await redirectCanonicalEntity(id,"/radiografie/surse",search);
   const selection = search.tip === "slicing" ? { type: "slicing", supplierId: search.furnizor } : { type: "pattern", patternId: search.tipar, ...(search.fingerprint?{expectedFingerprint:search.fingerprint}:{}) };
   const { sql } = createDb();
   const evidence = await sql.begin("isolation level repeatable read read only", async tx => {

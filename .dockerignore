@@ -1,6 +1,7 @@
 # Build context for infra/prod/Dockerfile.web is the repo root; keep it small.
 **/node_modules
 **/.next
+**/.next-*
 **/dist
 **/.turbo
 **/coverage

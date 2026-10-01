@@ -1,3 +1,4 @@
+import { canonicalAskIdentities } from "./canonical-identities";
 import type { DbSql } from "@seap/db";
 import type { AskSpec, AuthorityKind, Dim } from "./spec";
 import type { Grounding } from "./ground";
@@ -345,6 +346,7 @@ export async function runSpec(
   grounding: Grounding,
   tableOpts: TableOpts = {},
 ): Promise<EngineResult | { error: string; caveats: string[] }> {
+  ({spec,grounding}=await canonicalAskIdentities(sql,spec,grounding));
   // Value superlatives share the transaction ranking, including both streams,
   // its filters, allocation rules and deterministic tie break. CRI stays historical.
   if (spec.block === "entity_card" && spec.rankBy === "value") {
@@ -1601,6 +1603,9 @@ export async function runRows(
   opts: DrillOpts = {},
 ): Promise<DrillResult | { error: string }> {
   opts.signal?.throwIfAborted();
+  const canonical=await canonicalAskIdentities(sql,spec,grounding,opts.scope);
+  spec=canonical.spec; grounding=canonical.grounding;
+  if(canonical.scope)opts={...opts,scope:canonical.scope};
   if (spec.block === "entity_card" && spec.rankBy === "value") spec = { ...spec, measure: "value" };
   const unsupported = unsupportedPopulationView(spec);
   if (unsupported) return { error: unsupported };

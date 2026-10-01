@@ -1,3 +1,4 @@
+import { canonicalEntityId } from "@seap/db";
 import { patternBinding } from "./radiografie-evidence";
 import { createDb, type DbSql } from "@seap/db";
 import { cleanName, formatRon } from "@/lib/format";
@@ -152,7 +153,7 @@ export interface RxData {
 
 export async function getRadiografie(entityId: string): Promise<RxData | null> {
   const sql = db();
-  const id = /^\d+$/.test(entityId) ? entityId : "0";
+  const id = await canonicalEntityId(sql, /^\d+$/.test(entityId) ? entityId : "0");
   const prof = (await sql`
     select ep.entity_id::text id, ep.name_display, ep.county, ep.n_contracts, ep.n_das,
            ep.total_ron_full, substr(ep.first_activity, 1, 4) y0, substr(ep.last_activity, 1, 4) y1,

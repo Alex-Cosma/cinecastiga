@@ -1,3 +1,4 @@
+import { canonicalEntityId } from "@seap/db";
 import { createHash } from "node:crypto";
 import type { RadiografiePatternBinding } from "./evidence-captures-shared";
 import type { DbSql } from "@seap/db";
@@ -62,6 +63,7 @@ export function belowExactCeiling(value: string, ceiling: number): boolean {
 export async function readRadiografieEvidence(sql: DbSql, authorityId: string, raw: unknown, expectedPattern?:RadiografiePatternBinding): Promise<SourceEvidence | null> {
   const selection = validateRadiografieSelection(raw);
   if (!isId(authorityId) || !selection) return null;
+  authorityId=await canonicalEntityId(sql,authorityId);
   if (selection.type === "slicing") {
     const [slice] = await sql`select *, d0::text "fromDate", d1::text "toDate", sum_window::text "recordedTotal", ceiling::text "ceilingExact"
       from marts.da_slicing where authority_id = ${authorityId} and supplier_id = ${selection.supplierId}`;

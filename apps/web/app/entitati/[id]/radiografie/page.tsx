@@ -1,3 +1,4 @@
+import { redirectCanonicalEntity } from "@/lib/entity-navigation";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getRadiografie } from "@/lib/radiografie";
@@ -10,7 +11,9 @@ export default async function RadiografiePage({ params }: {
         id: string;
     }>;
 }) {
-    const { id } = await params, data = await getRadiografie(id);
+    const { id } = await params;
+    await redirectCanonicalEntity(id,"/radiografie");
+    const data = await getRadiografie(id);
     if (!data)
         notFound();
     const p = data.profile;

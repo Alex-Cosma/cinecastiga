@@ -1,3 +1,4 @@
+import { canonicalEntityId } from "@seap/db";
 import { tedPagination, tedCountryFilter, TED_COUNTRY_UNRESOLVED } from "./ted";
 import { createDb, type DbSql } from "@seap/db";
 
@@ -209,7 +210,7 @@ export interface EntityFlagRow {
 /** Per-role red-flag summary + DA activity for an entity (all roles it has). */
 export async function getEntityFlags(entityId: string): Promise<EntityFlagRow[]> {
   const sql = db();
-  const id = /^\d+$/.test(entityId) ? entityId : "0";
+  const id = await canonicalEntityId(sql, /^\d+$/.test(entityId) ? entityId : "0");
   const rows = (await sql`
     select role, name_display, cui_canonical, county, cri, n_flags, n_das, total_ron, flags
     from marts.entity_flags where entity_id = ${id}
@@ -248,7 +249,7 @@ export interface FlagEvidenceRow {
 /** Per-instance evidence (year, shares, amounts) behind each flag on an entity. */
 export async function getEntityFlagEvidence(entityId: string): Promise<FlagEvidenceRow[]> {
   const sql = db();
-  const id = /^\d+$/.test(entityId) ? entityId : "0";
+  const id = await canonicalEntityId(sql, /^\d+$/.test(entityId) ? entityId : "0");
   const rows = (await sql`
     select flag_code, period, severity,
       case when flag_code = 'da_round' then evidence || jsonb_build_object(
@@ -377,7 +378,7 @@ export async function getCompanyReps(cui: string): Promise<CompanyRep[]> {
 /** Distinct activity years across both channels — the year filter chips. */
 export async function getEntityTxYears(entityId: string, role: Role): Promise<string[]> {
   const sql = db();
-  const id = /^\d+$/.test(entityId) ? entityId : "0";
+  const id = await canonicalEntityId(sql, /^\d+$/.test(entityId) ? entityId : "0");
   const partyCol = role === "authority" ? sql`authority_id` : sql`supplier_id`;
   const rows = (await sql`
     select distinct y from (
@@ -403,7 +404,7 @@ export async function getEntityTransactions(
   q: TxQuery = {},
 ): Promise<{ rows: DaTx[]; total: number }> {
   const sql = db();
-  const id = /^\d+$/.test(entityId) ? entityId : "0";
+  const id = await canonicalEntityId(sql, /^\d+$/.test(entityId) ? entityId : "0");
   const isAuth = role === "authority";
   const partyCol = isAuth ? sql`authority_id` : sql`supplier_id`;
   const cpName = isAuth ? sql`supplier_name` : sql`authority_name`;
@@ -499,7 +500,7 @@ export async function getEntityPartners(
   limit = 12,
 ): Promise<Partner[]> {
   const sql = db();
-  const id = /^\d+$/.test(entityId) ? entityId : "0";
+  const id = await canonicalEntityId(sql, /^\d+$/.test(entityId) ? entityId : "0");
   const isAuth = role === "authority";
   const partyCol = isAuth ? sql`authority_id` : sql`supplier_id`;
   const cpName = isAuth ? sql`supplier_name` : sql`authority_name`;
@@ -536,7 +537,7 @@ export async function getEntityFlagRowCounts(
   role: Role,
 ): Promise<Record<string, number>> {
   const sql = db();
-  const id = /^\d+$/.test(entityId) ? entityId : "0";
+  const id = await canonicalEntityId(sql, /^\d+$/.test(entityId) ? entityId : "0");
   const partyCol = role === "authority" ? sql`authority_id` : sql`supplier_id`;
   const rows = (await sql`
     select f code, count(*)::int n
@@ -561,7 +562,7 @@ export interface EntityActivity {
 /** Counts and money are computed together from the ordinary value-query scope. */
 export async function getEntityTxCounts(entityId: string, role: Role): Promise<EntityActivity> {
   const sql = db();
-  const id = /^\d+$/.test(entityId) ? entityId : "0";
+  const id = await canonicalEntityId(sql, /^\d+$/.test(entityId) ? entityId : "0");
   const partyCol = role === "authority" ? sql`authority_id` : sql`supplier_id`;
   const [r] = await sql`
     with da as (
@@ -597,7 +598,7 @@ export async function getEntityPartnersPaged(
   pageSize = 10,
 ): Promise<{ rows: Partner[]; total: number }> {
   const sql = db();
-  const id = /^\d+$/.test(entityId) ? entityId : "0";
+  const id = await canonicalEntityId(sql, /^\d+$/.test(entityId) ? entityId : "0");
   const isAuth = role === "authority";
   const partyCol = isAuth ? sql`authority_id` : sql`supplier_id`;
   const cpName = isAuth ? sql`supplier_name` : sql`authority_name`;
@@ -665,7 +666,7 @@ export interface MonthPoint {
 /** Monthly DA spend for an entity (timeline; December spikes stand out). */
 export async function getEntityMonthly(entityId: string, role: Role): Promise<MonthPoint[]> {
   const sql = db();
-  const id = /^\d+$/.test(entityId) ? entityId : "0";
+  const id = await canonicalEntityId(sql, /^\d+$/.test(entityId) ? entityId : "0");
   const partyCol = role === "authority" ? sql`authority_id` : sql`supplier_id`;
   const rows = (await sql`
     select left(finalization_date, 7) ym, sum(closing_value) t
@@ -692,7 +693,7 @@ export interface SplitPair {
 /** da_split pairs for an entity (the structuring relationships). */
 export async function getSplitPairsPaged(entityId: string, role: Role, requestedPage = 1): Promise<{ rows: SplitPair[]; total: number; page: number }> {
   const sql = db();
-  const id = /^\d+$/.test(entityId) ? entityId : "0";
+  const id = await canonicalEntityId(sql, /^\d+$/.test(entityId) ? entityId : "0");
   // In flag_instances, split subject = authority, partner = supplier.
   const cond =
     role === "authority" ? sql`entity_id = ${id}` : sql`partner_id = ${id}`;
@@ -1086,7 +1087,7 @@ export async function getTedAwards(
 
 export async function getEntityProfile(entityId: string): Promise<EntityProfile | null> {
   const sql = db();
-  const id = /^\d+$/.test(entityId) ? entityId : "0";
+  const id = await canonicalEntityId(sql, /^\d+$/.test(entityId) ? entityId : "0");
   const rows = (await sql`
     select ep.role, ep.name_display, ep.county, ep.country_code, ep.is_foreign,
            ep.n_contracts, ep.n_das, ep.total_ron_full, ep.total_ron_split, te.rank,
@@ -1117,7 +1118,7 @@ export async function getEntityProfile(entityId: string): Promise<EntityProfile 
   const fin = rows.find((r) => r.employees !== null);
   const legalForm = rows[0]!.legal_form;
   return {
-    entityId,
+    entityId: id,
     legalForm,
     isPublicCompany: isCompanyForm(legalForm) && rows.some((r) => r.role === "authority"),
     name: rows[0]!.name_display,
