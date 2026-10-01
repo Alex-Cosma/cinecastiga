@@ -3,7 +3,8 @@
 **PRODUCTION DATA REPAIR COMPLETE. Site reopened at21:18:46RO.**
 Do not rerun this dated repair. The logs below preserve the actual sequence,
 including the recoverable search initialization failure. All24 public browser checks passed at21:19:24RO, with no browser/API errors.
-Deployment of the permanent index initialization fix follows in the final commit.
+Permanent index initialization fix **c6763f3** is deployed; CI and deploy
+**36906296990** both succeeded. Verified checkout and built collection module.
 
 -4,231,642 authority associations corrected;14,264 verified aliases; conservation
   and final projection checks all passed, zero discrepancies.
@@ -145,3 +146,16 @@ Ingestion107 unit tests and TypeScript build passed, including six new Meili
 initialization/task failure regressions. Earlier integration/copy/publication
 checks are recorded in the implementation/handoff documents; do not report
 skipped default database tests as passing.
+
+The temporary6.6GB dump inside the PostgreSQL container was removed only after
+its SHA256 matched the retained full-copy archive. Both private host backup
+archives remain. Normal collection requests6350–6355 succeeded after reopening.
+Permanent search fix pushed as **c6763f3712e3005beda2cce4065f5050a7efbc2c**;
+GitHub Actions36906296990 is the corresponding final CI/deploy run.
+
+Final deployment verification: checkout **c6763f3712e3005beda2cce4065f5050a7efbc2c**,
+CI/deploy **36906296990** both successful; corrected `getIndex`/task-success code
+present in the deployed collection image. Web healthy, checkpoint11 still ready,
+control revision26 unchanged, requests6357–6359 success200. No pipeline or repair
+rerun during this ordinary deploy. Any later documentation-only commit uses
+`[skip ci]`; deployed runtime remains c6763f3.

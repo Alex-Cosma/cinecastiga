@@ -1,6 +1,6 @@
 # Stare curentă, limite și următoarele direcții
 
-**Consolidare 1 octombrie; ultima verificare de producție: 30 septembrie, seara.** Aplicația era live la `f474c3e`, 46 migrări, checkpoint 8 ready, calendar `rf-2026.6`, colectare activă, interval observat 40–60 secunde. [Raportul verificat](../implementation/release-20260930.md) înlocuiește fotografia operațională istorică de mai jos. Nu s-a verificat din nou producția pentru această consolidare documentară.
+**Ultima verificare de producție:1 octombrie,seara.** Codul final `c6763f3` este live, CI/deploy trecute,47 migrări, checkpoint11 ready, identitățile istorice reparate, ambele căutări reconstruite și24 probe în browser trecute. Site redeschis și colectare activă, buget40–60s, program05:00RO/risc duminică păstrat. [Raportul verificat](../implementation/entity-identity-release-20261001.md) are prioritate față de fotografiile istorice. Copia locală obișnuită și dumpul anterior rămân nereparate.
 
 ## Fotografie istorică — 28 septembrie
 
