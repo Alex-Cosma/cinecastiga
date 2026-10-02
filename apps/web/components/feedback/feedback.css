@@ -28,6 +28,7 @@
 .feedback-dialog textarea::placeholder{color:var(--muted);opacity:1}
 .feedback-field-note{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px 12px;margin-top:8px;color:var(--ink2);font-size:12px;font-variant-numeric:tabular-nums}
 .feedback-dialog .feedback-source{margin:18px 0 0;font-size:13px;overflow-wrap:anywhere}.feedback-source code{font:inherit}
+.feedback-dialog .feedback-source-changed{margin-top:6px}
 .feedback-dialog .feedback-trap{display:none}
 .feedback-dialog .feedback-error{margin:18px 0 0;color:var(--risk);font-size:14px}
 .feedback-form-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:10px;margin-top:24px}
