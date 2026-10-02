@@ -44,6 +44,8 @@
 .qb-chip { display: inline-flex; align-items: stretch; border: 1px solid #dde4cf; border-radius: 7px; overflow: hidden; background: #f4f7ec; color: #70815f; max-width: 100%; }
 .qb-chip>button { border: 0; background: transparent; color: inherit; display: flex; align-items: center; gap: 7px; padding: 9px 10px; font-size: 11px; line-height: 1.55; text-align: left; min-width: 0; }
 .qb-chip>button>span { overflow-wrap: anywhere; }
+.qb-chip-domain>button { color: var(--ink); }
+.qb-chip-detail { color: var(--ink2); font-weight: 400; white-space: nowrap; }
 .qb-chip>button>.qb-icon { width: 14px; height: 14px; }
 .qb-chip>button>.qb-icon:last-child { width: 12px; height: 12px; }
 .qb-chip>button:hover { background: #eaf0dc; }
