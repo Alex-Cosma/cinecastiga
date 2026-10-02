@@ -4,6 +4,10 @@
 
 ![/semnale/24086173 desktop](https://raw.githubusercontent.com/Alex-Cosma/seap-new/feat/floating-feedback/docs/implementation/previews/floating-feedback/compare-semnale-24086173-desktop.png)
 
+**/semnale/24086173 · pagina cu înregistrările sursă, completă** — Laptop 1280 · luminos
+
+![/semnale/24086173 laptop](https://raw.githubusercontent.com/Alex-Cosma/seap-new/feat/floating-feedback/docs/implementation/previews/floating-feedback/compare-semnale-24086173-laptop.png)
+
 **/semnale/24086173 · pagina cu înregistrările sursă, completă** — Mobil 390 · luminos
 
 ![/semnale/24086173 mobile](https://raw.githubusercontent.com/Alex-Cosma/seap-new/feat/floating-feedback/docs/implementation/previews/floating-feedback/compare-semnale-24086173-mobile.png)

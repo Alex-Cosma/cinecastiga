@@ -34,7 +34,7 @@ Deschide <http://127.0.0.1:4185/floating-feedback/>. Nu este o rută Next.js și
 
 ## După alegere
 
-Varianta aleasă: **A, discret** (2 octombrie 2026). După critica de design, pe telefon butonul compact al variantei A folosește colțul din dreapta jos (ca B), ca să nu acopere marginea conținutului. Mockupul păstrează variantele inițiale, pentru comparație.
+Varianta aleasă: **A, discret** (2 octombrie 2026). După critica de design, aplicația folosește tabul A doar de la 1360px în sus; sub prag, butonul rotund din colțul din dreapta jos (ca B), ca să nu acopere marginea conținutului. Pictograma a devenit un steag. Mockupul păstrează variantele inițiale, pentru comparație.
 
 ## Date și limite
 
