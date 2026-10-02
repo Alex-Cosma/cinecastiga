@@ -5,86 +5,6 @@
   "after": "http://localhost:3000",
   "results": [
     {
-      "path": "/semnale/24086173",
-      "variant": "desktop",
-      "file": "compare-semnale-24086173-desktop.png",
-      "bytes": 243799,
-      "caption": "pagina cu înregistrările sursă, completă",
-      "full": true,
-      "before": {
-        "url": "http://localhost:3001/semnale/24086173",
-        "status": 200,
-        "overflowPx": 0,
-        "errors": []
-      },
-      "after": {
-        "url": "http://localhost:3000/semnale/24086173",
-        "status": 200,
-        "overflowPx": 0,
-        "errors": []
-      }
-    },
-    {
-      "path": "/semnale/24086173",
-      "variant": "laptop",
-      "file": "compare-semnale-24086173-laptop.png",
-      "bytes": 239378,
-      "caption": "pagina cu înregistrările sursă, completă",
-      "full": true,
-      "before": {
-        "url": "http://localhost:3001/semnale/24086173",
-        "status": 200,
-        "overflowPx": 0,
-        "errors": []
-      },
-      "after": {
-        "url": "http://localhost:3000/semnale/24086173",
-        "status": 200,
-        "overflowPx": 0,
-        "errors": []
-      }
-    },
-    {
-      "path": "/semnale/24086173",
-      "variant": "mobile",
-      "file": "compare-semnale-24086173-mobile.png",
-      "bytes": 216812,
-      "caption": "pagina cu înregistrările sursă, completă",
-      "full": true,
-      "before": {
-        "url": "http://localhost:3001/semnale/24086173",
-        "status": 200,
-        "overflowPx": 0,
-        "errors": []
-      },
-      "after": {
-        "url": "http://localhost:3000/semnale/24086173",
-        "status": 200,
-        "overflowPx": 0,
-        "errors": []
-      }
-    },
-    {
-      "path": "/semnale/24086173",
-      "variant": "dark",
-      "file": "compare-semnale-24086173-dark.png",
-      "bytes": 245032,
-      "caption": "pagina cu înregistrările sursă, completă",
-      "full": true,
-      "before": {
-        "url": "http://localhost:3001/semnale/24086173",
-        "status": 200,
-        "overflowPx": 0,
-        "errors": []
-      },
-      "after": {
-        "url": "http://localhost:3000/semnale/24086173",
-        "status": 200,
-        "overflowPx": 0,
-        "errors": []
-      }
-    },
-    {
       "path": "/intreaba?spec=eyJibG9jayI6InN0YXQiLCJtZWFzdXJlIjoidmFsdWUiLCJkYXRhc2V0IjoiZGEiLCJmaWx0ZXJzIjp7ImF1dGhvcml0eUlkIjoyMTQ0MzY0LCJ5ZWFyRnJvbSI6MjAyNiwieWVhclRvIjoyMDI2LCJtb250aEZyb20iOjcsIm1vbnRoVG8iOjd9fQ%3D%3D",
       "variant": "desktop",
       "file": "compare-intreaba-q56c6a5-desktop.png",
@@ -182,6 +102,86 @@
       },
       "after": {
         "url": "http://localhost:3000/metodologie",
+        "status": 200,
+        "overflowPx": 0,
+        "errors": []
+      }
+    },
+    {
+      "path": "/semnale/24086173",
+      "variant": "desktop",
+      "file": "compare-semnale-24086173-desktop.png",
+      "bytes": 243799,
+      "caption": "pagina cu înregistrările sursă, completă",
+      "full": true,
+      "before": {
+        "url": "http://localhost:3001/semnale/24086173",
+        "status": 200,
+        "overflowPx": 0,
+        "errors": []
+      },
+      "after": {
+        "url": "http://localhost:3000/semnale/24086173",
+        "status": 200,
+        "overflowPx": 0,
+        "errors": []
+      }
+    },
+    {
+      "path": "/semnale/24086173",
+      "variant": "laptop",
+      "file": "compare-semnale-24086173-laptop.png",
+      "bytes": 239378,
+      "caption": "pagina cu înregistrările sursă, completă",
+      "full": true,
+      "before": {
+        "url": "http://localhost:3001/semnale/24086173",
+        "status": 200,
+        "overflowPx": 0,
+        "errors": []
+      },
+      "after": {
+        "url": "http://localhost:3000/semnale/24086173",
+        "status": 200,
+        "overflowPx": 0,
+        "errors": []
+      }
+    },
+    {
+      "path": "/semnale/24086173",
+      "variant": "mobile",
+      "file": "compare-semnale-24086173-mobile.png",
+      "bytes": 216812,
+      "caption": "pagina cu înregistrările sursă, completă",
+      "full": true,
+      "before": {
+        "url": "http://localhost:3001/semnale/24086173",
+        "status": 200,
+        "overflowPx": 0,
+        "errors": []
+      },
+      "after": {
+        "url": "http://localhost:3000/semnale/24086173",
+        "status": 200,
+        "overflowPx": 0,
+        "errors": []
+      }
+    },
+    {
+      "path": "/semnale/24086173",
+      "variant": "dark",
+      "file": "compare-semnale-24086173-dark.png",
+      "bytes": 245032,
+      "caption": "pagina cu înregistrările sursă, completă",
+      "full": true,
+      "before": {
+        "url": "http://localhost:3001/semnale/24086173",
+        "status": 200,
+        "overflowPx": 0,
+        "errors": []
+      },
+      "after": {
+        "url": "http://localhost:3000/semnale/24086173",
         "status": 200,
         "overflowPx": 0,
         "errors": []
