@@ -1,6 +1,6 @@
 {
   "topic": "floating-feedback",
-  "capturedAt": "2026-10-02T17:15:12.798Z",
+  "capturedAt": "2026-10-02T17:40:33.886Z",
   "before": "http://localhost:3001",
   "after": "http://localhost:3000",
   "results": [
@@ -8,7 +8,7 @@
       "path": "/semnale/24086173",
       "variant": "desktop",
       "file": "compare-semnale-24086173-desktop.png",
-      "bytes": 243693,
+      "bytes": 243799,
       "caption": "pagina cu înregistrările sursă, completă",
       "full": true,
       "before": {
@@ -28,7 +28,7 @@
       "path": "/semnale/24086173",
       "variant": "laptop",
       "file": "compare-semnale-24086173-laptop.png",
-      "bytes": 239323,
+      "bytes": 239378,
       "caption": "pagina cu înregistrările sursă, completă",
       "full": true,
       "before": {
@@ -48,7 +48,7 @@
       "path": "/semnale/24086173",
       "variant": "mobile",
       "file": "compare-semnale-24086173-mobile.png",
-      "bytes": 216745,
+      "bytes": 216812,
       "caption": "pagina cu înregistrările sursă, completă",
       "full": true,
       "before": {
@@ -68,7 +68,7 @@
       "path": "/semnale/24086173",
       "variant": "dark",
       "file": "compare-semnale-24086173-dark.png",
-      "bytes": 245001,
+      "bytes": 245032,
       "caption": "pagina cu înregistrările sursă, completă",
       "full": true,
       "before": {
@@ -88,7 +88,7 @@
       "path": "/intreaba?spec=eyJibG9jayI6InN0YXQiLCJtZWFzdXJlIjoidmFsdWUiLCJkYXRhc2V0IjoiZGEiLCJmaWx0ZXJzIjp7ImF1dGhvcml0eUlkIjoyMTQ0MzY0LCJ5ZWFyRnJvbSI6MjAyNiwieWVhclRvIjoyMDI2LCJtb250aEZyb20iOjcsIm1vbnRoVG8iOjd9fQ%3D%3D",
       "variant": "desktop",
       "file": "compare-intreaba-q56c6a5-desktop.png",
-      "bytes": 181176,
+      "bytes": 181233,
       "caption": "acțiunile răspunsului din Explorează",
       "full": false,
       "before": {
@@ -108,7 +108,7 @@
       "path": "/intreaba?spec=eyJibG9jayI6InN0YXQiLCJtZWFzdXJlIjoidmFsdWUiLCJkYXRhc2V0IjoiZGEiLCJmaWx0ZXJzIjp7ImF1dGhvcml0eUlkIjoyMTQ0MzY0LCJ5ZWFyRnJvbSI6MjAyNiwieWVhclRvIjoyMDI2LCJtb250aEZyb20iOjcsIm1vbnRoVG8iOjd9fQ%3D%3D",
       "variant": "mobile",
       "file": "compare-intreaba-q56c6a5-mobile.png",
-      "bytes": 105293,
+      "bytes": 105352,
       "caption": "acțiunile răspunsului din Explorează",
       "full": false,
       "before": {
@@ -128,7 +128,7 @@
       "path": "/metodologie",
       "variant": "desktop",
       "file": "compare-metodologie-dialog-desktop.png",
-      "bytes": 260328,
+      "bytes": 261526,
       "click": ".feedback-trigger, .feedback-fab",
       "caption": "dialogul deschis (contur corectat)",
       "full": false,
@@ -149,7 +149,7 @@
       "path": "/metodologie",
       "variant": "mobile",
       "file": "compare-metodologie-dialog-mobile.png",
-      "bytes": 122715,
+      "bytes": 123537,
       "click": ".feedback-trigger, .feedback-fab",
       "caption": "dialogul deschis (contur corectat)",
       "full": false,
@@ -170,7 +170,7 @@
       "path": "/metodologie",
       "variant": "dark",
       "file": "compare-metodologie-dialog-dark.png",
-      "bytes": 260548,
+      "bytes": 261788,
       "click": ".feedback-trigger, .feedback-fab",
       "caption": "dialogul deschis (contur corectat)",
       "full": false,
