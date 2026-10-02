@@ -33,8 +33,13 @@ export default function ReportProblem() {
     } catch (e) { setError(controller.signal.aborted ? "Trimiterea durează prea mult. Încearcă din nou; mesajul este păstrat și nu va fi duplicat." : e instanceof Error ? e.message : "Mesajul nu a fost trimis. Încearcă din nou."); }
     finally { clearTimeout(timeout); pending.current=false; setBusy(false); }
   }
+  // Admin is internal; the public entry point is not shown there.
+  if (pathname === "/admin" || pathname?.startsWith("/admin/")) return null;
   return <>
-    <button ref={trigger} type="button" className="feedback-trigger" aria-haspopup="dialog" onClick={open}>Semnalează o problemă</button>
+    <button ref={trigger} type="button" className="feedback-fab" aria-haspopup="dialog" aria-label="Feedback: semnalează o problemă sau trimite o sugestie" onClick={open}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v8.5A1.5 1.5 0 0 1 19 17h-7.2L7.5 20.2V17H5a1.5 1.5 0 0 1-1.5-1.5V7A1.5 1.5 0 0 1 5 5.5Z"/><path d="M8 10h8M8 13h5"/></svg>
+      <span>Feedback</span>
+    </button>
     <dialog ref={dialog} className="feedback-dialog" aria-labelledby={heading} aria-describedby={description} onCancel={event => { event.preventDefault(); close(); }}>
       <div className="feedback-dialog-head"><h2 id={heading}>{sent ? "Mesaj primit" : "Ce ai observat?"}</h2><button type="button" className="feedback-close" aria-label="Închide formularul" disabled={busy} onClick={close}><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
       {sent ? <><p id={description} role="status">Mulțumim. Mesajul tău a ajuns la administratorii aplicației.</p><p>Fiind anonim, nu îți putem trimite un răspuns.</p><div className="feedback-form-actions"><button data-close type="button" className="feedback-primary" onClick={close}>Înapoi la explorare</button></div></> : <form onSubmit={event => void submit(event)} aria-busy={busy}>
