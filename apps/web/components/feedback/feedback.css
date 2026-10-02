@@ -1,15 +1,19 @@
-/* Single entry point: a tab docked to the right edge (phones: bottom-right corner), above sticky subnavs (≤20) and below
-   popovers (40), tooltips and toasts. Modal dialogs sit in the top layer and cover it. */
+/* Single entry point. ≥1360px: a tab docked to the right edge, which only exists there because the 1256px
+   shell leaves a real gutter. Below that: a round icon button in the bottom-right corner, so exact values
+   and table edges are never covered. Above sticky subnavs (≤20), below popovers (40), tooltips and toasts;
+   modal dialogs sit in the top layer and cover it. */
 .feedback-fab{position:fixed;z-index:30;right:0;top:50%;transform:translateY(-50%);display:inline-flex;align-items:center;gap:8px;writing-mode:vertical-rl;padding:16px 10px 16px 9px;border:1px solid var(--accent-line);border-right:0;border-radius:8px 0 0 8px;background:var(--surface);color:var(--accent);font:500 14px/1 var(--font-body);cursor:pointer;box-shadow:var(--shadow2);transition:background-color .16s ease}
 .feedback-fab svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
 .feedback-fab:hover{background:var(--accent-soft)}
 .feedback-fab:focus-visible{outline-offset:-6px}
-@media(max-width:700px){
-  /* Phones: a round icon button in the bottom-right corner, so it never covers the content edge */
-  .feedback-fab{top:auto;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));transform:none;writing-mode:horizontal-tb;width:48px;height:48px;padding:0;justify-content:center;border-right:1px solid var(--accent-line);border-radius:50%}
+@media(max-width:1359px){
+  .feedback-fab{top:auto;right:24px;bottom:calc(24px + env(safe-area-inset-bottom));transform:none;writing-mode:horizontal-tb;width:48px;height:48px;padding:0;justify-content:center;border-right:1px solid var(--accent-line);border-radius:50%}
   .feedback-fab span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
   .feedback-fab svg{width:20px;height:20px}
+  /* Keep the end of every page clear of the button */
+  .site-footer{padding-bottom:72px}
 }
+@media(max-width:700px){.feedback-fab{right:16px;bottom:calc(16px + env(safe-area-inset-bottom))}}
 @media print{.feedback-fab{display:none}}
 @media(prefers-reduced-motion:reduce){.feedback-fab{transition:none}}
 .feedback-dialog{width:540px;max-width:calc(100vw - 32px);max-height:calc(100dvh - 32px);overflow:auto;margin:auto;padding:28px;border:1px solid var(--line);border-radius:13px;background:var(--surface);color:var(--ink)}
@@ -20,7 +24,7 @@
 .feedback-dialog label{display:flex;flex-direction:column;gap:8px;font:500 14px/1.5 var(--font-body);margin:18px 0 0}
 .feedback-dialog :is(select,textarea,input){width:100%;min-width:0;min-height:44px;padding:10px 12px;border:1px solid var(--line2);border-radius:7px;background:var(--paper);color:var(--ink);font:400 16px/1.5 var(--font-body);caret-color:var(--accent)}
 .feedback-dialog textarea{margin-top:8px;resize:vertical;min-height:130px;max-height:40vh}
-.feedback-dialog textarea::placeholder{color:var(--ink2);opacity:1}
+.feedback-dialog textarea::placeholder{color:var(--muted);opacity:1}
 .feedback-field-note{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px 12px;margin-top:8px;color:var(--ink2);font-size:12px;font-variant-numeric:tabular-nums}
 .feedback-dialog .feedback-source{margin:18px 0 0;font-size:13px;overflow-wrap:anywhere}.feedback-source code{font:inherit}
 .feedback-dialog .feedback-trap{display:none}
