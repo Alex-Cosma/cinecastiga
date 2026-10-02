@@ -76,7 +76,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </li>
                 <li><Link href="/semnale">Semnale de risc</Link></li>
                 <li><Link href="/harta">Harta achizițiilor</Link></li>
-                <li><ReportProblem /></li>
                 <li>
                   <Link href="/metodologie#citare">Cum citez</Link>
                 </li>
@@ -87,6 +86,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
           </div>
         </footer>
+        <ReportProblem />
         <Reveal />
       </body>
     </html>
