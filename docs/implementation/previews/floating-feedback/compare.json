@@ -1,0 +1,171 @@
+{
+  "topic": "floating-feedback",
+  "capturedAt": "2026-10-02T16:29:52.962Z",
+  "before": "http://localhost:3001",
+  "after": "http://localhost:3000",
+  "results": [
+    {
+      "path": "/semnale/24086173",
+      "variant": "desktop",
+      "file": "compare-semnale-24086173-desktop.png",
+      "bytes": 243809,
+      "caption": "pagina cu înregistrările sursă, completă",
+      "full": true,
+      "before": {
+        "url": "http://localhost:3001/semnale/24086173",
+        "status": 200,
+        "overflowPx": 0,
+        "errors": []
+      },
+      "after": {
+        "url": "http://localhost:3000/semnale/24086173",
+        "status": 200,
+        "overflowPx": 0,
+        "errors": []
+      }
+    },
+    {
+      "path": "/semnale/24086173",
+      "variant": "mobile",
+      "file": "compare-semnale-24086173-mobile.png",
+      "bytes": 216641,
+      "caption": "pagina cu înregistrările sursă, completă",
+      "full": true,
+      "before": {
+        "url": "http://localhost:3001/semnale/24086173",
+        "status": 200,
+        "overflowPx": 0,
+        "errors": []
+      },
+      "after": {
+        "url": "http://localhost:3000/semnale/24086173",
+        "status": 200,
+        "overflowPx": 0,
+        "errors": []
+      }
+    },
+    {
+      "path": "/semnale/24086173",
+      "variant": "dark",
+      "file": "compare-semnale-24086173-dark.png",
+      "bytes": 245041,
+      "caption": "pagina cu înregistrările sursă, completă",
+      "full": true,
+      "before": {
+        "url": "http://localhost:3001/semnale/24086173",
+        "status": 200,
+        "overflowPx": 0,
+        "errors": []
+      },
+      "after": {
+        "url": "http://localhost:3000/semnale/24086173",
+        "status": 200,
+        "overflowPx": 0,
+        "errors": []
+      }
+    },
+    {
+      "path": "/intreaba?spec=eyJibG9jayI6InN0YXQiLCJtZWFzdXJlIjoidmFsdWUiLCJkYXRhc2V0IjoiZGEiLCJmaWx0ZXJzIjp7ImF1dGhvcml0eUlkIjoyMTQ0MzY0LCJ5ZWFyRnJvbSI6MjAyNiwieWVhclRvIjoyMDI2LCJtb250aEZyb20iOjcsIm1vbnRoVG8iOjd9fQ%3D%3D",
+      "variant": "desktop",
+      "file": "compare-intreaba-q56c6a5-desktop.png",
+      "bytes": 181249,
+      "caption": "acțiunile răspunsului din Explorează",
+      "full": false,
+      "before": {
+        "url": "http://localhost:3001/intreaba?spec=eyJibG9jayI6InN0YXQiLCJtZWFzdXJlIjoidmFsdWUiLCJkYXRhc2V0IjoiZGEiLCJmaWx0ZXJzIjp7ImF1dGhvcml0eUlkIjoyMTQ0MzY0LCJ5ZWFyRnJvbSI6MjAyNiwieWVhclRvIjoyMDI2LCJtb250aEZyb20iOjcsIm1vbnRoVG8iOjd9fQ%3D%3D",
+        "status": 200,
+        "overflowPx": 0,
+        "errors": []
+      },
+      "after": {
+        "url": "http://localhost:3000/intreaba?spec=eyJibG9jayI6InN0YXQiLCJtZWFzdXJlIjoidmFsdWUiLCJkYXRhc2V0IjoiZGEiLCJmaWx0ZXJzIjp7ImF1dGhvcml0eUlkIjoyMTQ0MzY0LCJ5ZWFyRnJvbSI6MjAyNiwieWVhclRvIjoyMDI2LCJtb250aEZyb20iOjcsIm1vbnRoVG8iOjd9fQ%3D%3D",
+        "status": 200,
+        "overflowPx": 0,
+        "errors": []
+      }
+    },
+    {
+      "path": "/intreaba?spec=eyJibG9jayI6InN0YXQiLCJtZWFzdXJlIjoidmFsdWUiLCJkYXRhc2V0IjoiZGEiLCJmaWx0ZXJzIjp7ImF1dGhvcml0eUlkIjoyMTQ0MzY0LCJ5ZWFyRnJvbSI6MjAyNiwieWVhclRvIjoyMDI2LCJtb250aEZyb20iOjcsIm1vbnRoVG8iOjd9fQ%3D%3D",
+      "variant": "mobile",
+      "file": "compare-intreaba-q56c6a5-mobile.png",
+      "bytes": 105370,
+      "caption": "acțiunile răspunsului din Explorează",
+      "full": false,
+      "before": {
+        "url": "http://localhost:3001/intreaba?spec=eyJibG9jayI6InN0YXQiLCJtZWFzdXJlIjoidmFsdWUiLCJkYXRhc2V0IjoiZGEiLCJmaWx0ZXJzIjp7ImF1dGhvcml0eUlkIjoyMTQ0MzY0LCJ5ZWFyRnJvbSI6MjAyNiwieWVhclRvIjoyMDI2LCJtb250aEZyb20iOjcsIm1vbnRoVG8iOjd9fQ%3D%3D",
+        "status": 200,
+        "overflowPx": 0,
+        "errors": []
+      },
+      "after": {
+        "url": "http://localhost:3000/intreaba?spec=eyJibG9jayI6InN0YXQiLCJtZWFzdXJlIjoidmFsdWUiLCJkYXRhc2V0IjoiZGEiLCJmaWx0ZXJzIjp7ImF1dGhvcml0eUlkIjoyMTQ0MzY0LCJ5ZWFyRnJvbSI6MjAyNiwieWVhclRvIjoyMDI2LCJtb250aEZyb20iOjcsIm1vbnRoVG8iOjd9fQ%3D%3D",
+        "status": 200,
+        "overflowPx": 0,
+        "errors": []
+      }
+    },
+    {
+      "path": "/metodologie",
+      "variant": "desktop",
+      "file": "compare-metodologie-dialog-desktop.png",
+      "bytes": 259214,
+      "click": ".feedback-trigger, .feedback-fab",
+      "caption": "dialogul deschis (contur corectat)",
+      "full": false,
+      "before": {
+        "url": "http://localhost:3001/metodologie",
+        "status": 200,
+        "overflowPx": 0,
+        "errors": []
+      },
+      "after": {
+        "url": "http://localhost:3000/metodologie",
+        "status": 200,
+        "overflowPx": 0,
+        "errors": []
+      }
+    },
+    {
+      "path": "/metodologie",
+      "variant": "mobile",
+      "file": "compare-metodologie-dialog-mobile.png",
+      "bytes": 121826,
+      "click": ".feedback-trigger, .feedback-fab",
+      "caption": "dialogul deschis (contur corectat)",
+      "full": false,
+      "before": {
+        "url": "http://localhost:3001/metodologie",
+        "status": 200,
+        "overflowPx": 0,
+        "errors": []
+      },
+      "after": {
+        "url": "http://localhost:3000/metodologie",
+        "status": 200,
+        "overflowPx": 0,
+        "errors": []
+      }
+    },
+    {
+      "path": "/metodologie",
+      "variant": "dark",
+      "file": "compare-metodologie-dialog-dark.png",
+      "bytes": 259264,
+      "click": ".feedback-trigger, .feedback-fab",
+      "caption": "dialogul deschis (contur corectat)",
+      "full": false,
+      "before": {
+        "url": "http://localhost:3001/metodologie",
+        "status": 200,
+        "overflowPx": 0,
+        "errors": []
+      },
+      "after": {
+        "url": "http://localhost:3000/metodologie",
+        "status": 200,
+        "overflowPx": 0,
+        "errors": []
+      }
+    }
+  ]
+}
