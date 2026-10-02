@@ -1,6 +1,7 @@
 /* Single entry point. ≥1360px: a tab docked to the right edge, which only exists there because the 1256px
-   shell leaves a real gutter. Below that: a round icon button in the bottom-right corner, so exact values
-   and table edges are never covered. Above sticky subnavs (≤20), below popovers (40), tooltips and toasts;
+   shell leaves a real gutter. Below that: a round icon button in the bottom-right corner, off the content
+   edge; the footer reserve keeps the end of every page clear (mid-scroll it can still pass over content,
+   like any floating button). Above sticky subnavs (≤20), below popovers (40), tooltips and toasts;
    modal dialogs sit in the top layer and cover it. */
 .feedback-fab{position:fixed;z-index:30;right:0;top:50%;transform:translateY(-50%);display:inline-flex;align-items:center;gap:8px;writing-mode:vertical-rl;padding:16px 10px 16px 9px;border:1px solid var(--accent-line);border-right:0;border-radius:8px 0 0 8px;background:var(--surface);color:var(--accent);font:500 14px/1 var(--font-body);cursor:pointer;box-shadow:var(--shadow2);transition:background-color .16s ease}
 .feedback-fab svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
