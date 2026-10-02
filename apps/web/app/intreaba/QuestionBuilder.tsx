@@ -105,6 +105,10 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
   const [savedNotice, setSavedNotice] = useState("");
   const catalogueId = useId();
   const [remote, setRemote] = useState<SuggestionData>({});
+  const [cpvNames, setCpvNames] = useState<Record<string, string>>({});
+  const cpvTerm = String(draft.filters.cpvTerm ?? "");
+  const cpvIsCode = /^(?:\d{2,8}|\d{8}-\d)$/.test(cpvTerm.replace(/\s+/g, ""));
+  const cpvName = cpvNames[cpvTerm];
   const [hits, setHits] = useState<EntityHit[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
@@ -144,6 +148,23 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
   }, [resolution]);
 
   useEffect(() => { onDraftChange?.(dirty); }, [dirty, applied, onDraftChange]);
+
+  // Links and saved questions contain the code, not presentation labels.
+  // Resolve independently of the answer, so even a slow query has clear filters.
+  useEffect(() => {
+    if (!cpvIsCode || cpvName) return;
+    const ctrl = new AbortController();
+    fetch(`/api/cpv/label?code=${encodeURIComponent(cpvTerm)}`, { signal: ctrl.signal })
+      .then(async (response) => {
+        if (!response.ok) return;
+        const data: { name?: string | null } = await response.json();
+        if (!ctrl.signal.aborted && data.name) {
+          setCpvNames(current => ({ ...current, [cpvTerm]: data.name! }));
+        }
+      })
+      .catch(() => { /* Keep the explicit CPV code usable if lookup fails. */ });
+    return () => ctrl.abort();
+  }, [cpvTerm, cpvIsCode, cpvName]);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -312,8 +333,8 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
   function phrase(key: Field, label: ReactNode) {
     return <button type="button" className="qb-phrase" aria-haspopup="dialog" onClick={(event) => openPicker(key, event.currentTarget)}><span>{label}</span><Glyph name="chevron" /></button>;
   }
-  function chip(key: Field, label: string, removable = false, icon = "table") {
-    return <span className="qb-chip" key={key}><button type="button" aria-haspopup="dialog" onClick={(event) => openPicker(key, event.currentTarget)}><Glyph name={icon} /><span>{label}</span><Glyph name="chevron" /></button>{removable && <button type="button" className="qb-chip-remove" onClick={() => removeFilter(key)} aria-label={`Elimină condiția ${label}`}><Glyph name="close" /></button>}</span>;
+  function chip(key: Field, label: string, removable = false, icon = "table", detail?: string) {
+    return <span className={`qb-chip${key === "cpvTerm" ? " qb-chip-domain" : ""}`} key={key}><button type="button" aria-haspopup="dialog" onClick={(event) => openPicker(key, event.currentTarget)}><Glyph name={icon} /><span>{label}{detail && <span className="qb-chip-detail"> · {detail}</span>}</span><Glyph name="chevron" /></button>{removable && <button type="button" className="qb-chip-remove" onClick={() => removeFilter(key)} aria-label={`Elimină condiția ${label}`}><Glyph name="close" /></button>}</span>;
   }
   const namedAuthority = Boolean(draft.filters.authorityName || draft.filters.authorityId);
   const who = namedAuthority ? phrase("authority", entityLabel(draft, "authority")) : phrase("authorityKind", kind[2]);
@@ -350,7 +371,7 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
     if (f.county && (!scopeInSentence || f.uatSiruta)) conditions.push(chip("county", String(f.county), true, "map"));
     if (f.uatSiruta && !scopeInSentence) conditions.push(chip("uat", String(f.uatName || `Localitatea #${f.uatSiruta}`), true, "map"));
     if ((profile && (f.yearFrom || f.yearTo)) || !profile && !scopeInSentence && !["trend", "map"].includes(draft.block)) conditions.push(chip("period", periodLabel(draft), Boolean(f.yearFrom || f.yearTo), "calendar"));
-    if (f.cpvTerm) conditions.push(chip("cpvTerm", String(f.cpvTerm), true, "breakdown"));
+    if (f.cpvTerm) conditions.push(chip("cpvTerm", `Domeniu: ${cpvIsCode ? cpvName ?? `CPV ${cpvTerm}` : cpvTerm}`, true, "breakdown", cpvIsCode && cpvName ? `CPV ${cpvTerm}` : undefined));
     if (namedAuthority && !scopeInSentence && !["map", "fact_check"].includes(draft.block) && !(focalBlock && focalRole(draft) === "authority")) conditions.push(chip("authority", entityLabel(draft, "authority"), true));
     if ((f.supplierName || f.supplierId) && draft.block !== "fact_check" && !(focalBlock && focalRole(draft) === "supplier")) conditions.push(chip("supplier", entityLabel(draft, "supplier"), true));
     if (f.minEmployees !== undefined || f.maxEmployees !== undefined) conditions.push(chip("employees", f.minEmployees !== undefined && f.maxEmployees !== undefined ? `${f.minEmployees}–${f.maxEmployees} angajați` : f.maxEmployees !== undefined ? `Cel mult ${f.maxEmployees} angajați` : `Cel puțin ${f.minEmployees} angajați`, true));
@@ -431,7 +452,16 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
     if (isEntityPicker) return <><div className="qb-options">{entityChoices.map((item, index) => <button type="button" className="qb-option" key={`${item.id ?? item.name}-${index}`} onClick={() => pickEntity(item.name, item.id)}><span><strong>{item.name}</strong><small>{item.detail}{item.id ? ` · ID ${item.id}` : ""}</small></span><Glyph name="arrow" /></button>)}{!loading && !entityChoices.length && <p className="qb-empty">{search.trim().length < 2 ? "Scrie cel puțin două litere pentru a căuta." : "Nicio potrivire. Încearcă un nume mai scurt sau codul fiscal."}</p>}{search.trim().length >= 2 && <button type="button" className="qb-text-choice" onClick={() => pickEntity(search.trim())}>Caută numele exact „{search.trim()}”<small>Vei vedea identitatea găsită și eventualele ambiguități lângă răspuns.</small></button>}</div></>;
     if (field === "uat") return <div className="qb-options">{(remote.uat ?? []).map((item) => <button key={item.siruta} type="button" className="qb-option" onClick={() => { const next = cloneQuestion(draft); next.filters.uatSiruta = item.siruta; next.filters.uatName = `${item.name} (${item.county})`; if (item.county) next.filters.county = item.county; replaceDraft(next); closePicker(); }}><span><strong>{item.name}</strong><small>{item.tip} · {item.county}{item.population ? ` · ${item.population.toLocaleString("ro-RO")} locuitori` : ""}</small></span><Glyph name="arrow" /></button>)}{!loading && !(remote.uat ?? []).length && <p className="qb-empty">{search.length < 2 ? "Scrie numele localității." : "Nicio localitate găsită. Încearcă și județul."}</p>}</div>;
     if (field === "admin") return <div className="qb-options">{(remote.person ?? []).map((person) => <button type="button" className="qb-option" key={person.key} onClick={() => { const next = cloneQuestion(draft); next.filters.adminPersonKey = person.key; next.filters.adminName = `${person.name}${person.birthYear ? ` (n. ${person.birthYear}${person.birthLocality ? `, ${person.birthLocality}` : ""})` : ""}`; replaceDraft(next); closePicker(); }}><span><strong>{person.name}</strong><small>{[person.birthYear ? `n. ${person.birthYear}` : null, person.birthLocality, `${person.nFirms} firme`].filter(Boolean).join(" · ")}</small></span><Glyph name="arrow" /></button>)}{!loading && !(remote.person ?? []).length && <p className="qb-empty">{search.length < 2 ? "Scrie numele reprezentantului legal." : "Nicio persoană găsită. Încearcă numele complet."}</p>}</div>;
-    if (field === "cpvTerm") return <div className="qb-options">{(remote.cpv ?? []).map((item) => <button type="button" className="qb-option" key={item.term} onClick={() => updateFilter("cpvTerm", item.term)}><span><strong>{item.term}</strong>{item.cpvName && <small>{item.cpvName}</small>}</span><Glyph name="arrow" /></button>)}{(remote.division ?? []).map((item) => <button type="button" className="qb-option" key={item.code} onClick={() => updateFilter("cpvTerm", item.code)}><span><strong>{item.name}</strong><small>CPV {item.code}</small></span><Glyph name="arrow" /></button>)}{search.trim() && <button className="qb-text-choice" type="button" onClick={() => updateFilter("cpvTerm", search.trim())}>Folosește domeniul „{search.trim()}”<small>Corespondența cu clasificarea CPV va fi afișată lângă răspuns.</small></button>}</div>;
+    if (field === "cpvTerm") return <div className="qb-options">{(remote.cpv ?? []).map((item) => {
+      const isCode = /^(?:\d{2,8}|\d{8}-\d)$/.test(item.term);
+      return <button type="button" className="qb-option" key={item.term} onClick={() => {
+        if (isCode && item.cpvName) setCpvNames(current => ({ ...current, [item.term]: item.cpvName! }));
+        updateFilter("cpvTerm", item.term);
+      }}><span><strong>{isCode ? item.cpvName ?? `CPV ${item.term}` : item.term}</strong>{isCode ? <small>CPV {item.term}</small> : item.cpvName && <small>{item.cpvName}</small>}</span><Glyph name="arrow" /></button>;
+    })}{(remote.division ?? []).map((item) => <button type="button" className="qb-option" key={item.code} onClick={() => {
+      setCpvNames(current => ({ ...current, [item.code]: item.name }));
+      updateFilter("cpvTerm", item.code);
+    }}><span><strong>{item.name}</strong><small>CPV {item.code}</small></span><Glyph name="arrow" /></button>)}{search.trim() && <button className="qb-text-choice" type="button" onClick={() => updateFilter("cpvTerm", search.trim())}>Folosește domeniul „{search.trim()}”<small>Corespondența cu clasificarea CPV va fi afișată lângă răspuns.</small></button>}</div>;
     return <>{optionList(options)}{field === "topN" && <form className="qb-custom-top" onSubmit={(event) => { event.preventDefault(); chooseValue(formValues.topN ?? "10"); }}><label className="qb-form-field"><span>Sau alege un număr între 1 și 50</span><input type="number" inputMode="numeric" required min={1} max={50} step={1} value={formValues.topN ?? "10"} onChange={(event) => setFormValues((previous) => ({ ...previous, topN: event.target.value }))} /></label><button type="submit" className="qb-primary">Folosește<Glyph name="check" /></button></form>}</>;
   }
 
