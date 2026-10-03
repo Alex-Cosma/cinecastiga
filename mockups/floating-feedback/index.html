@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feedback plutitor · mockup</title><link rel="icon" href="data:,">
+<link rel="stylesheet" href="../src/fonts.css"><link rel="stylesheet" href="style.css">
+<script>try{var t=localStorage.getItem("ff-theme");if(t==="dark"||t==="light")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<a class="skip" href="#continut">Mergi la conținut</a>
+<header class="site-header">
+  <a href="#" class="brand" aria-label="cinecâștigă?">cine<em>câștigă</em><b>?</b></a>
+  <nav aria-label="Navigare principală"><a href="#">Descoperă</a><a href="#" aria-current="page">Explorează</a><a href="#">Anchete</a></nav>
+  <div class="hdr-right">
+    <span class="admin-flag" id="admin-flag" hidden>/admin · butonul este ascuns</span>
+    <button id="theme" class="icon" type="button" aria-label="Schimbă tema"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16Z" fill="currentColor"/></svg></button>
+  </div>
+</header>
+
+<main id="continut" tabindex="-1">
+  <div class="prototype"><span>Mockup interactiv · date fictive</span><span>Butonul „Feedback” înlocuiește cele trei linkuri „Semnalează o problemă”.</span></div>
+
+  <section class="answer" aria-labelledby="q">
+    <h1 id="q">Cât valorează achizițiile „Primăria Exemplu” din județul Model, în 2026?</h1>
+    <p class="scope">total · Σ valoare (lei) · Primăria Exemplu · 2026 · doar achiziții directe</p>
+    <div class="facts"><div><strong>412.360,00 lei</strong><small>valoare înregistrată · nu plăți</small></div><div><strong>6</strong><small>înregistrări</small></div></div>
+    <div class="actions"><button class="primary" type="button">Vezi cele 6 achiziții</button><button type="button">Exportă</button></div>
+    <p class="removed-note" id="removed-note">Aici era linkul „Semnalează o problemă”. În propunere, raportarea se face din butonul plutitor.</p>
+  </section>
+
+  <section class="sources" aria-labelledby="src">
+    <h2 id="src">Înregistrările sursă</h2>
+    <div class="table-wrap" tabindex="0" role="region" aria-label="Înregistrări sursă (exemplu fictiv)">
+      <table>
+        <thead><tr><th>Înregistrare</th><th>Instituție → furnizor</th><th class="num">Valoare (lei)</th></tr></thead>
+        <tbody>
+          <tr><td><a href="#">Servicii de proiectare (exemplu)</a><span class="code">DA00000001 · Finalizată 09.07.2026</span></td><td>Primăria Exemplu → Firma Alfa S.R.L.</td><td class="num">146.000,00</td></tr>
+          <tr><td><a href="#">Servicii de publicitate (exemplu)</a><span class="code">DA00000002 · Finalizată 02.07.2026</span></td><td>Primăria Exemplu → Firma Beta S.R.L.</td><td class="num">99.000,00</td></tr>
+          <tr><td><a href="#">Mentenanță echipamente video (exemplu)</a><span class="code">DA00000003 · Finalizată 08.07.2026</span></td><td>Primăria Exemplu → Firma Gama S.R.L.</td><td class="num">71.500,00</td></tr>
+          <tr><td><a href="#">Consultanță implementare (exemplu)</a><span class="code">DA00000004 · Finalizată 10.07.2026</span></td><td>Primăria Exemplu → Firma Delta S.R.L.</td><td class="num">52.000,00</td></tr>
+          <tr><td><a href="#">Materiale de birou (exemplu)</a><span class="code">DA00000005 · Finalizată 14.07.2026</span></td><td>Primăria Exemplu → Firma Epsilon S.R.L.</td><td class="num">23.860,00</td></tr>
+          <tr><td><a href="#">Servicii de curățenie (exemplu)</a><span class="code">DA00000006 · Finalizată 21.07.2026</span></td><td>Primăria Exemplu → Firma Zeta S.R.L.</td><td class="num">20.000,00</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="hint">Butoanele și linkurile din pagină sunt decorative; testează butonul „Feedback” și opțiunile de mai jos.</p>
+  </section>
+
+  <details class="demo-controls" open>
+    <summary>Opțiuni pentru testarea mockupului</summary>
+    <div>
+      <fieldset><legend>Poziție</legend>
+        <label><input type="radio" name="pos" value="margine" checked> A · Lipit de marginea dreaptă</label>
+        <label><input type="radio" name="pos" value="colt"> B · Colțul din dreapta jos</label>
+      </fieldset>
+      <fieldset><legend>Stil</legend>
+        <label><input type="radio" name="stil" value="discret" checked> Discret (fundal deschis)</label>
+        <label><input type="radio" name="stil" value="accent"> Accent (verde)</label>
+      </fieldset>
+      <fieldset><legend>Simulări</legend>
+        <label>Trimiterea <select id="outcome"><option value="ok">Reușește</option><option value="error">Eșuează (rețea)</option></select></label>
+        <label class="check"><input type="checkbox" id="admin"> Pagină din /admin</label>
+        <button type="button" id="toast-btn">Arată un mesaj temporar</button>
+      </fieldset>
+    </div>
+    <p>Pe telefon, ambele poziții devin compacte (pictogramă). Dialogul este cel existent; în mockup câmpurile au din nou contur (vezi README). Nimic nu se trimite.</p>
+  </details>
+</main>
+
+<footer class="site-footer">
+  <div><h4>cinecâștigă?</h4><p>Sursă: e-licitatie.ro (SEAP / SICAP), date publice. Cifrele reprezintă valori înregistrate, nu neapărat plăți efectuate. Proiect deschis, necomercial.</p></div>
+  <div><h4>Proiect</h4><ul><li><a href="#">Metodologie</a></li><li><a href="#">Semnale de risc</a></li><li><a href="#">Harta achizițiilor</a></li><li><a href="#">Cum citez</a></li><li><a href="#">Autentificare</a></li></ul></div>
+</footer>
+
+<button type="button" class="feedback-fab" id="fab" data-pos="margine" data-stil="discret" aria-haspopup="dialog" aria-label="Feedback: semnalează o problemă sau trimite o sugestie">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v8.5A1.5 1.5 0 0 1 19 17h-7.2L7.5 20.2V17H5a1.5 1.5 0 0 1-1.5-1.5V7A1.5 1.5 0 0 1 5 5.5Z"/><path d="M8 10h8M8 13h5"/></svg>
+  <span>Feedback</span>
+</button>
+
+<dialog class="feedback-dialog" id="dialog" aria-labelledby="fd-title" aria-describedby="fd-desc">
+  <div class="feedback-dialog-head"><h2 id="fd-title">Ce ai observat?</h2><button type="button" class="feedback-close" aria-label="Închide formularul" data-dismiss><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
+  <form id="form" novalidate>
+    <p id="fd-desc">Fără cont, nume sau e-mail. Mesajul este vizibil doar administratorilor aplicației.</p>
+    <label>Despre ce este vorba?<select id="category"><option>Problemă cu datele</option><option>Ceva nu funcționează</option><option>Sugestie</option><option>Altceva</option></select></label>
+    <label for="message">Descrie problema</label>
+    <textarea id="message" rows="5" maxlength="3000" placeholder="Ce ai observat și ce ar trebui să apară? Pentru o problemă cu datele, indică instituția, contractul sau cifra." aria-describedby="fd-hint"></textarea>
+    <div class="feedback-field-note" id="fd-hint"><span>Nu include date personale în mesaj.</span><span id="count">0 / 3.000</span></div>
+    <p class="feedback-source">Pagina atașată: <code>/intreaba</code></p>
+    <p class="feedback-error" id="error" role="alert" hidden></p>
+    <div class="feedback-form-actions"><button type="button" data-dismiss>Renunță</button><button type="submit" class="feedback-primary" id="submit">Trimite anonim</button></div>
+  </form>
+  <div id="sent" hidden>
+    <p role="status">Mulțumim. Mesajul tău a ajuns la administratorii aplicației.</p>
+    <p>Fiind anonim, nu îți putem trimite un răspuns.</p>
+    <div class="feedback-form-actions"><button type="button" class="feedback-primary" data-dismiss>Înapoi la explorare</button></div>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="app.js" defer></script>
+</body>
+</html>

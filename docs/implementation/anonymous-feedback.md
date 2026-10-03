@@ -4,7 +4,7 @@ Cererea proprietarului: vizitatorii pot semnala probleme fără cont, fără afi
 
 ## Interfață
 
-- „Semnalează o problemă” în footer-ul comun, lângă rezultatele Explorează și pe paginile comune de înregistrări-sursă. Dialogul păstrează pagina curentă și nu solicită cont, nume sau e-mail.
+- Din 2 octombrie 2026 (branch `feat/floating-feedback`): un singur punct de intrare, butonul plutitor „Feedback”: tab lipit de marginea dreaptă de la 1360px în sus, buton rotund în colțul din dreapta jos sub 1360px; ascuns în `/admin` și la tipărire. Înlocuiește cele trei linkuri „Semnalează o problemă” (footer, lângă rezultatele Explorează, paginile de înregistrări-sursă). Dialogul păstrează pagina curentă și nu solicită cont, nume sau e-mail. Detalii în secțiunea de la final.
 - Tip: problemă cu datele, funcționare, sugestie, altceva. Descriere de20–3.000 caractere. Pagina publică atașată este vizibilă în formular; nu atașăm titlul paginii, parametrii URL, fragmente sau identificatori de anchete/invitații/private. Pentru detaliile întrebării ori filtrului, vizitatorul le poate descrie în mesaj.
 - Trimiterea are loading, eroare și confirmare; textul rămâne disponibil după eroare, iar reîncercarea unei trimiteri identice nu creează duplicate. ID-ul client UUID este o cheie de idempotență, nu o identitate. Nu există răspuns prin e-mail pentru raportul anonim.
 - `/admin/feedback` este a șasea secțiune a navigării admin, nu un anchor într-o pagină lungă. Mesaje recente primele, maximum 10 pe pagină, total și paginare sus/jos, text expandabil și link către pagina raportată în tab nou. Ștergere cu confirmare explicită, feedback de succes/eroare și revenire pe pagina precedentă dacă ultima se golește.
@@ -35,3 +35,36 @@ DELETE elimină rândul din baza activă. Nu introduce un jurnal separat care s�
 - Build și TypeScript web, build DB trecute. Browser Chrome pe build de producție separat, numai DB sintetică: raport anonim real, răspuns pierdut/reîncercare fără duplicat,429 cu text păstrat, anon/watchdog refuzați, admin autorizat, 10 rânduri/pagină, confirmare/cancel/delete, text HTML inert, mentenanță și colectare indisponibilă, desktop/mobil 390/dark fără overflow sau erori JS. 30 verificări browser trecute. Probe în `.impeccable/review/feedback-20260930/`, ignorate de Git. Preview-ul3118, baza fixture și build-ul temporar au fost eliminate; serverul dev3000 rămâne pornit.
 - Migrația 0045 a fost aplicată și bazei locale principale după verificarea istoriei: 46 intrări. Nu s-au inserat mesaje de test sau conturi în baza principală. Nu s-au făcut cereri SEAP, nu s-au pornit workeri și nu s-a schimbat producția.
 - Fără commit/push/deploy în acest lot. Publicarea întregului branch cere în continuare tranziția calendarului `rf-2026.6` documentată în HANDOFF; feedback-ul în sine nu cere recalculări de date publice.
+
+## Buton „Feedback” plutitor — 2 octombrie 2026
+
+Cererea colaboratorului (cu acordul proprietarului privind alegerea funcționalităților): linkul din footer devine un buton plutitor pe partea dreaptă. [Mockup](../../mockups/floating-feedback/README.md) cu date fictive; aleasă varianta **A, lipit de marginea dreaptă, stil discret**. Decizii explicite: butonul este **singurul** punct de intrare (dispar și linkurile de lângă rezultate/surse), ascuns în `/admin`, compact pe telefon.
+
+- `components/feedback/ReportProblem.tsx` randează butonul (pictogramă balon cu semn de exclamare + „Feedback”; nume accesibil „Feedback: semnalează o problemă sau trimite o sugestie”), într-un `<aside aria-label="Feedback">` pentru navigarea cu cititor de ecran, și același dialog. Montat o singură dată în `app/layout.tsx`, după footer.
+- ≥1360px: tab vertical, centrat pe marginea dreaptă, unde shell-ul de 1256px lasă o margine reală (42–82px între tab și conținut). Sub 1360px: buton rotund de 48px, doar pictograma, în colțul din dreapta jos (24px; 16px sub 700px, plus zona sigură); footerul primește 72px jos ca finalul paginii să nu fie acoperit. Motiv: la 710–1340px tabul acoperea marginea conținutului și tăia o valoare exactă („3.919,40” → „3.919,4”) la 710px. Tokenuri existente (`--surface`, `--accent`, `--accent-line`, `--shadow2`), focus portocaliu comun desenat în interior ca să nu fie tăiat de marginea ecranului. `z-index:30`: peste subnavigațiile sticky (≤20), sub popover-e (40), tooltipuri și mesaje temporare; dialogurile modale îl acoperă.
+- Corecție separată: `feedback.css` folosea variabilele inexistente `--ink-secondary` și `--line-strong`; câmpurile dialogului nu aveau contur, iar textele secundare aveau culoarea textului principal. Înlocuite cu `--ink2` și `--line2`.
+- Comparații înainte/după (desktop 1440, mobil 390, întunecat) în [previews/floating-feedback](previews/floating-feedback/compare.md), capturate pe baza locală restaurată; `compare.json` consemnează HTTP 200, zero overflow și zero erori JS pe ambele variante.
+
+Verificări (Windows, Node 22, baza locală `seap_collab_20261001`): TypeScript web; testele unitare web; build de producție; detectorul Impeccable (un avertisment de tranziție pe padding, eliminat; rămân doar observații consultative preexistente ale dialogului); critică Impeccable 31/40 (rulare într-un singur context, marcată „degraded”), cu acoperirea marginii pe telefon rezolvată ca mai sus; categoria „Problemă cu datele” era deja preselectată în dialog; verificări browser pe mockup (13 capturi, tastatură Tab/Enter/Escape cu revenirea focusului, contrast 9,6–10,1:1) și pe aplicație (un singur buton, niciun link vechi, z-index 30, fără overflow). Integrările PostgreSQL ale feedbackului nu au fost rerulate: logica de trimitere și API-ul nu s-au schimbat. Fără migrare, fără SEAP, fără deploy.
+
+### Corecții după critica cu doi evaluatori (2 octombrie 2026)
+
+Critica Impeccable a fost rerulată cu doi evaluatori independenți (recenzie de design, respectiv detector + browser): 26/40. Corectate în același branch:
+
+- **Pagina atașată rămânea veche** după navigarea în aplicație (o singură instanță în layout actualiza calea doar la o ciornă nouă). Acum calea se recitește la fiecare deschidere; ciorna se păstrează. Verificat: `/intreaba` → Escape → navigare client la `/` → „Pagina atașată: /”, ciorna păstrată.
+- **Validare în română:** formularul are `noValidate`, deci apare mesajul existent „Descrie problema în cel puțin 20 de caractere…” în locul bulei de validare a browserului (în engleză). Nota de sub câmp anunță din start „Cel puțin 20 de caractere.”
+- **Placeholder** cu `--muted`, ca restul aplicației (cu `--ink2` părea text deja completat; efect secundar al corecției variabilelor). Contrast aproximativ 4,5:1 pe fundalul câmpului.
+- **Poziționare** pe praguri, ca mai sus; pictogramă de raportare (vezi mai jos), eticheta „Feedback” păstrată la cererea utilizatorului; reperul `<aside>`.
+
+Verificare browser (Chrome, 8 lățimi 1440–320): tab doar ≥1360px, fără suprapunere cu conținutul; sub prag buton rotund, niciun element din footer sub buton la finalul paginii; zero overflow și zero erori JS. Rămân neschimbate: focusul inițial pe butonul de închidere, comportamentul „Renunță” (păstrează ciorna), atașarea doar a căii `/intreaba`, fără parametrii întrebării (alegere de confidențialitate).
+
+### A treia critică și ultimele ajustări (2 octombrie 2026)
+
+A treia rulare cu doi evaluatori: 27/40, fără P0/P1. Decizii ale utilizatorului:
+
+- **Pictograma:** un balon cu semn de exclamare (raportare) în locul steagului. Steagul putea fi citit ca „marchează acest contract” pe paginile „Semnale de risc”.
+- **Notă când pagina se schimbă:** dacă o ciornă păstrată este redeschisă pe altă pagină, dialogul spune „Ai început mesajul pe … ; se atașează pagina de acum.”, ca raportul să nu indice tăcut altă pagină.
+- **Focus și erori accesibile:** dialogul se deschide cu focusul în câmpul de text. Eroarea de lungime marchează câmpul `aria-invalid` și este legată prin `aria-describedby`.
+- **Butonul rotund pe telefon rămâne neschimbat.** În timpul derulării poate trece peste conținut, ca orice buton plutitor; finalul paginii rămâne liber. Comentariul din CSS a fost corectat în acest sens.
+
+Verificări: focus în câmp la deschidere; nicio notă pe aceeași pagină; nota corectă după navigarea client (`/semnale/24086173` → `/intreaba`), cu ciorna păstrată; `aria-invalid` activ doar cât eroarea e valabilă; zero erori JS. TypeScript, 370 teste unitare web (148 integrări sărite), build, detector (markup curat) și comparațiile reluate. Rămân pentru proprietar: atașarea întrebării publice din Explorează (regula de confidențialitate existentă) și eventual un link de salt pentru tastatură.
