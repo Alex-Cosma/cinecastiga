@@ -1,0 +1,18 @@
+{
+  "source": "local snapshot, original unrepaired DB",
+  "elapsedSeconds": 13.927,
+  "exitCode": 0,
+  "result": {
+    "groups": 8069,
+    "one_to_one": 8069,
+    "cpv_conflicts": 0,
+    "missing_winners": 0,
+    "strict_ron_pairs": 8069,
+    "conflict_examples": [],
+    "included_multiple": 7312,
+    "foreign_or_unknown": 0,
+    "both_archives_present": 0,
+    "within_publication_multiplicity": 0
+  },
+  "error": null
+}

@@ -87,3 +87,13 @@ The production replay uses an indexed temporary target projection, bounded batch
 Additional verification: scheduling integration covers wrong day/scope, missing backup, duplicate source rollback, applied-state refusal and completed-state skip; host tests verify backup-before-refresh ordering and retained maintenance on failure. Full local `pnpm turbo typecheck lint test build`: 20 tasks passed (database suites remain separately gated). Additive migrations bring the isolated copy to 50 entries. The ordinary local DB remains at 47.
 
 Morning inspection (read-only): inspect `app.data_repairs` for `contract-money-v1`, its `processing_run_id`, `report`, timestamps and error; then the referenced `app.processing_runs`, latest monitoring checkpoint, and `/api/health`. **Scheduled is not executed; applied is not completed.** Never delete/reset the ledger to hide an error. Preserve the matching `/srv/seap/backups/processing/<runId>/` backup and log.
+
+### Production scheduling confirmed — 3 October, evening
+
+Release `074bc8c` is on main and deployed. [CI and deploy 37132496528](https://github.com/Alex-Cosma/seap-new/actions/runs/37132496528) both succeeded. Production has 50 migrations; web is healthy; processor image imports the repair entry point. At verification, **zero contract rows had been historically normalized**: deploy did not execute the repair.
+
+The operator script has now been executed successfully. The persisted ledger is `contract-money-v1`, `scheduled`, `2026-10-04`; actual scheduled instant **2026-10-04 02:00 UTC / 05:00 Europe/Bucharest**. Automatic processing is enabled, Sunday full scope remains configured. Maintenance and manual pause remain false; current collection interval 30–45 seconds is unchanged. Existing cron remains the only trigger; no second cron or repeating repair job was added.
+
+[Machine-readable verification](production-schedule.json) records the state observed after scheduling. The task is **scheduled, not completed**. Completion and its actual production totals must be checked after the night's publication. No source requests were initiated by this repair deployment/scheduling; the existing collector continued its ordinary authorized work.
+
+The next audit priority, [DQ-02 contract publication identity](../contract-publication-identity/README.md), has additional local read-only triage. It is not included in tonight's repair.
