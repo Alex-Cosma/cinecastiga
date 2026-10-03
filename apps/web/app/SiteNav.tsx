@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const ITEMS = [
   { href: "/", label: "Descoperă", match: (path: string) => path === "/" },
   { href: "/intreaba", label: "Explorează", match: (path: string) => ["/intreaba", "/cauta", "/entitati", "/achizitii", "/contracte", "/anunturi", "/semnale", "/harta", "/domenii", "/supra-prag"].some((prefix) => path.startsWith(prefix)) },
+  { href: "/ce-bate-la-ochi", label: "Ce bate la ochi", match: (path: string) => path === "/ce-bate-la-ochi" || path.startsWith("/ce-bate-la-ochi/") },
   { href: "/anchete", label: "Anchete", match: (path: string) => (path.startsWith("/anchete") || path.startsWith("/urmariri")) },
 ];
 

@@ -1,0 +1,42 @@
+{
+  "observedAt": "2026-10-02",
+  "snapshotDate": "2026-07-08",
+  "dataset": "https://data.gov.ro/dataset/firme-08-07-2026",
+  "files": [
+    {
+      "name": "2026-07-08-od_firme.csv",
+      "sha256": "bb4168ab2facee519d567fb0381a890ece5901bdc4cf22452d1dd17c41c27c0b"
+    },
+    {
+      "name": "2026-07-08-od_reprezentanti_legali.csv",
+      "sha256": "9e22d07e4d81add109d0279fc6b13075bf5a84a436e7b56623aaa3b30813508b"
+    }
+  ],
+  "representatives": [
+    {
+      "cui": "24031012",
+      "name": "AQUA AZUR SRL",
+      "registration": "J2008002103134",
+      "personName": "MARIȘCU DANIELA-ADRIANA",
+      "role": "administrator",
+      "sourceLine": 689629
+    },
+    {
+      "cui": "36486492",
+      "name": "WMC BEST DIVERS CONSTRUCT SRL",
+      "registration": "J2016000883103",
+      "personName": "IOIȚESCU ALBERTA",
+      "role": "administrator",
+      "sourceLine": 1140747
+    },
+    {
+      "cui": "24031012",
+      "name": "AQUA AZUR SRL",
+      "registration": "J2008002103134",
+      "personName": "SZEKELY-KIRALY-POP AURELIA-ALINA",
+      "role": "administrator",
+      "sourceLine": 2621252
+    }
+  ],
+  "limits": "Legal representatives at snapshot date; not shareholders, mandate history or procurement signatories."
+}

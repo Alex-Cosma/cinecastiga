@@ -1,0 +1,64 @@
+[
+    {
+        "code": "196764",
+        "kind": "contract",
+        "rawId": "433061",
+        "title": ",,Proiect tehnic, execuție lucrări și asistență tehnică din partea proiectantului pentru obiectivul de investiții – Centru de recreere Aqua Park – Etapa 1 - Outdoor”.",
+        "amount": "47907266",
+        "sicapId": "106187822",
+        "currency": "RON",
+        "authority": "MUNICIPIUL BUZAU",
+        "suppliers": [
+            {
+                "cui": "24031012",
+                "name": "AQUA AZUR SRL"
+            }
+        ],
+        "noticeCode": "CAN1136768",
+        "noticeDate": "2025-04-02T10:04:34+00:00",
+        "authorityCui": "4233874",
+        "contractDate": "2024-11-04T22:00:00+00:00",
+        "awardNoticeId": "100539297",
+        "archivedPayloadAvailable": false,
+        "awardArchivedPayloadAvailable": false
+    },
+    {
+        "cpv": "45232150-8",
+        "code": "DA41151373",
+        "kind": "direct",
+        "rawId": "17308275",
+        "state": "Oferta acceptata",
+        "amount": "882174.93",
+        "payload": {
+            "cpvCode": "45232150-8 - Lucrari pentru conducte de alimentare cu apa (Rev.2)",
+            "supplier": "36486492 WMC BEST DIVERS CONSTRUCT SRL",
+            "closingValue": 882174.93,
+            "publicationDate": "2026-09-10T09:53:33+03:00",
+            "finalizationDate": "2026-09-11T08:04:34+03:00",
+            "estimatedValueRon": 900000,
+            "caDecisionDeadline": "2026-09-15T17:00:00+03:00",
+            "directAcquisitionId": 122972715,
+            "isOpenForCorrection": null,
+            "contractingAuthority": "4233874 MUNICIPIUL BUZAU",
+            "directAcquisitionName": "Utilitati exterioare de alimentare cu apa si canalizare pentru CENTRU DE RECREERE AQUA PARK OUTDOOR",
+            "supplierDecisionDeadline": "2026-09-14T17:00:00+03:00",
+            "uniqueIdentificationCode": "DA41151373",
+            "sysDirectAcquisitionState": {
+                "id": 7,
+                "text": "Oferta acceptata",
+                "localeKey": null,
+                "apiActionResult": null
+            },
+            "estimatedValueOtherCurrency": 177637.42,
+            "isOpenForContractCorrection": false
+        },
+        "sicapId": "122972715",
+        "supplier": "WMC BEST DIVERS CONSTRUCT SRL",
+        "authority": "MUNICIPIUL BUZAU",
+        "fetchedAt": "2026-09-26T20:01:14.36369+00:00",
+        "finalizedAt": "2026-09-11T05:04:34+00:00",
+        "publishedAt": "2026-09-10T06:53:33+00:00",
+        "supplierCui": "36486492",
+        "authorityCui": "4233874"
+    }
+]

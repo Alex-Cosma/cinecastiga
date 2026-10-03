@@ -1,5 +1,11 @@
 # Handover pentru un nou dezvoltator și asistentul lui
 
+**3 octombrie — funcționalitate pusă separat:** codul, macheta și documentarea „Ce bate la ochi” sunt pe `feat/ce-bate-la-ochi`. Nu se integrează în main și nu se publică poveștile; notele de mai jos păstrează cronologia lucrului local.
+
+**2 octombrie, a doua documentare reală:** [Aquapark Buzău](../research/20261002-aquapark-buzau/README.md) este adăugată exclusiv local, alături de Școala 311. Leagă achiziția din septembrie de calendar, auditul de conformitate și proprietatea constructorului. Nu s-au trimis solicitări și nu s-a publicat. Catalogul de producție rămâne gol.
+
+**2 octombrie, implementare locală:** [Ce bate la ochi](../implementation/editorial-stories.md) adaugă harta poveștilor, indexul județului, articolul și fișele surselor. Macheta a fost aprobată; implementarea și verificările locale sunt încheiate. Exemplele au fost șterse; [prima documentare reală, Școala 311](../research/20261002-scoala311/README.md), este preview numai în development. Catalogul publicat rămâne gol, solicitările către părți sunt netrimise. [Completarea despre oameni și legături](../research/20261002-scoala311/oameni-si-legaturi.md) documentează administratorii, relația cu M&M, conducerea școlii și două erori de import ONRC/MF descoperite, încă nereparate. Editorul admin este un pas separat. Fără commit/push/deploy în această etapă.
+
 **2 octombrie, copie locală actualizată:** [transferul integral din producție](../implementation/local-production-copy-20261002.md) este încheiat: baza locală are checkpoint 12, identitățile reparate și copia exactă Meilisearch. Artefactele sunt private, distincte de dumpul public pentru coleg. Etichetele CPV sunt publicate în `1d72085`.
 
 **Ultima publicare a datelor verificată,1 octombrie:** [reparația identităților istorice](../implementation/entity-identity-release-20261001.md) este încheiată, site-ul redeschis și colectarea reluată.4.231.642 de asocieri corectate,14.264 de redirecturi, checkpoint11 ready și ambele indexuri refăcute. Nu relansa operațiunea. Codul final `c6763f3` este live, inclusiv corecția inițializării căutării; CI/deploy `36906296990` trecute și24 verificări publice în browser trecute. Baza locală obișnuită și dumpul local anterior nu sunt reparate. [Checkpoint-ul de pregătire](continuation-identity-20261001.md) este istoric.

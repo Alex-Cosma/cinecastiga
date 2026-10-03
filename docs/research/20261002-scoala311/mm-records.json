@@ -1,0 +1,32 @@
+[
+    {
+        "cpv": "45453000-7",
+        "code": "DA38610396",
+        "state": "Oferta acceptata",
+        "title": null,
+        "amount": "148296.39",
+        "sicapId": "120247609",
+        "supplier": "M&M COMPANY CONSTRUCT S.R.L.",
+        "authority": "SCOALA GIMNAZIALA NR 311",
+        "finalizedAt": "2025-07-29T08:02:24+00:00",
+        "publishedAt": "2025-07-29T07:56:56+00:00",
+        "supplierCui": "16617020",
+        "authorityCui": "32167245",
+        "archivedPayloadAvailable": false
+    },
+    {
+        "cpv": "44520000-1",
+        "code": "DA39350427",
+        "state": "Oferta acceptata",
+        "title": null,
+        "amount": "13140",
+        "sicapId": "121041537",
+        "supplier": "M&M COMPANY CONSTRUCT S.R.L.",
+        "authority": "SCOALA GIMNAZIALA NR 311",
+        "finalizedAt": "2025-11-21T12:39:02+00:00",
+        "publishedAt": "2025-11-21T11:37:04+00:00",
+        "supplierCui": "16617020",
+        "authorityCui": "32167245",
+        "archivedPayloadAvailable": false
+    }
+]

@@ -1,0 +1,20 @@
+[
+  {
+    "file": "audit-buzau.pdf",
+    "url": "https://opiniabuzau.ro/wp-content/uploads/2026/03/Audit-Primarie.pdf",
+    "observedAt": "2026-10-02",
+    "pages": 49,
+    "bytes": 19050999,
+    "sha256": "0cbf0915920791ac17f10a9bcf50e704635a4f747a10a0f55cf804c928ce785a",
+    "verification": "Compilație; raportul 16122/25.02.2026, pagini 7–10. Paginile 9–10 verificate vizual."
+  },
+  {
+    "file": "trp2025.pdf",
+    "url": "https://bvb.ro/infocont/infocont26/TRP_20260327164913_RO-Raport-Anual-2025-TRP.pdf",
+    "observedAt": "2026-10-02",
+    "pages": 312,
+    "bytes": 42870885,
+    "sha256": "ef34cc65c82970ec821c4aa57a665df6f462b854038276bb8754c9499fc5b026",
+    "verification": "Pagina PDF 3, pagina tipărită 2: organigrama verificată vizual."
+  }
+]

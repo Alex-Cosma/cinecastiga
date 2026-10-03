@@ -1,0 +1,80 @@
+{
+  "observedAt": "2026-10-02",
+  "onrcSnapshotDate": "2026-07-08",
+  "onrcDatasetUrl": "https://data.gov.ro/dataset/firme-08-07-2026",
+  "files": [
+    {
+      "name": "2026-07-08-od_firme.csv",
+      "sha256": "bb4168ab2facee519d567fb0381a890ece5901bdc4cf22452d1dd17c41c27c0b"
+    },
+    {
+      "name": "2026-07-08-od_reprezentanti_legali.csv",
+      "sha256": "9e22d07e4d81add109d0279fc6b13075bf5a84a436e7b56623aaa3b30813508b"
+    },
+    {
+      "name": "2025-WEB_UU_AN2025.txt",
+      "sha256": "2c7e67d51f6700a28fb31644e8e2abf4334ee788f1c5fb07cb6df1a9321683e2"
+    },
+    {
+      "name": "2025-WEB_UU_AN2025.txt.spec.csv",
+      "sha256": "c24bcdbd423ebc5c6d619ac0a9ce5bb2ff21121c151336609d1fb6c4cfa0d8ef"
+    }
+  ],
+  "representatives": [
+    {
+      "cui": "30976819",
+      "name": "BNC TEAM CONSTRUCT SRL",
+      "registration": "J2012014234407",
+      "personName": "MICU DRAGOŞ ŞTEFAN",
+      "role": "administrator",
+      "sourceLine": 1035375
+    },
+    {
+      "cui": "16617020",
+      "name": "M&M COMPANY CONSTRUCT SRL",
+      "registration": "J2004011693404",
+      "personName": "MICU DRAGOŞ-ŞTEFAN",
+      "role": "administrator",
+      "sourceLine": 1299218
+    },
+    {
+      "cui": "30976819",
+      "name": "BNC TEAM CONSTRUCT SRL",
+      "registration": "J2012014234407",
+      "personName": "BOSOLAC NICOLAE CRISTIAN",
+      "role": "administrator",
+      "sourceLine": 1543985
+    },
+    {
+      "cui": "16617020",
+      "name": "M&M COMPANY CONSTRUCT SRL",
+      "registration": "J2004011693404",
+      "personName": "BOSOLAC NICOLAE CRISTIAN",
+      "role": "administrator",
+      "sourceLine": 2419438
+    }
+  ],
+  "identityComparisons": [
+    {
+      "name": "MICU DRAGOŞ ŞTEFAN",
+      "sameNormalizedName": true,
+      "sameBirthDateAfterRemovingTime": true,
+      "sameBirthLocalityLiteral": false
+    },
+    {
+      "name": "BOSOLAC NICOLAE CRISTIAN",
+      "sameNormalizedName": true,
+      "sameBirthDateAfterRemovingTime": true,
+      "sameBirthLocalityLiteral": true
+    }
+  ],
+  "financials2025": {
+    "cui": "30976819",
+    "caen": "4100",
+    "netTurnover": "6196738",
+    "profitNet": "999104",
+    "averageEmployees": "9"
+  },
+  "limits": "Snapshot contains legal representatives, not shareholdings or appointment/revocation dates. Identity checks are documentary matches, not personal interviews. Birth identifiers remain in the external primary cache only.",
+  "financialsDatasetUrl": "https://data.gov.ro/dataset/situatii_financiare_2025"
+}
