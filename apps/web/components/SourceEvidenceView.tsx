@@ -2,7 +2,6 @@ import Link from "next/link";
 import type { SourceEvidence } from "@/lib/source-evidence";
 import { evidenceLinks, formatEvidenceAmount } from "@/lib/ask/evidence";
 import { formatInt } from "@/lib/format";
-import ReportProblem from "./feedback/ReportProblem";
 import ClipButton from "./ClipButton";
 import "./source-evidence.css";
 
@@ -23,7 +22,6 @@ export default function SourceEvidenceView({ evidence, href, page: requestedPage
     </div>
     <p className="source-evidence-purpose">Verifică sursele, apoi păstrează această versiune în anchetă. Captura include toate înregistrările selecției, nu doar pagina afișată.</p>
     <a href={`/api/evidence/sources?${csvQuery}`} download>Descarcă înregistrările disponibile · CSV ↓</a>
-    <div><ReportProblem /></div>
     {evidence.warnings.length > 0 && <details className="source-evidence-notes" open><summary>Ce trebuie verificat înainte de a cita</summary><ul>{evidence.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul></details>}
     <p className="hint">Metodologie: {evidence.methodology}. Sumele sunt valori înregistrate, nu plăți. Pentru consorții, rândul reprezintă cota alocată unui furnizor.</p>
     {evidence.records.length > 0 ? <div className="ask-tablewrap"><table className="rank source-evidence-table"><thead><tr><th scope="col">Înregistrare și sursă</th><th scope="col">Autoritate / furnizor</th><th scope="col">Data</th><th scope="col" className="num">Valoare exactă · lei</th></tr></thead><tbody>
