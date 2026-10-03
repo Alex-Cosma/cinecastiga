@@ -1,3 +1,4 @@
+import { contractOriginalValue, contractOriginalCurrency } from "@seap/db";
 import { createDb, type DbSql } from "@seap/db";
 
 export interface SourceFinding {
@@ -50,7 +51,7 @@ export async function getSignalSources(id: string, page: number, database?: DbSq
   const contracts = pairs.length ? await sql`select expected.contract_id id,
       c.id is not null and tl.id is not null available,
       coalesce(cc.ted_lot_result_id = tl.id and cc.match_score >= 0.9::real, false) linked,
-      c.contract_value::text value, c.currency,
+      ${contractOriginalValue(sql)}::text value, ${contractOriginalCurrency(sql)} currency,
       tn.publication_number "tedPublication", tl.lot_id lot, tl.tenders_received tenders
     from jsonb_to_recordset(${JSON.stringify(pairs)}::jsonb) expected(contract_id text, lot_id text)
     left join core.contracts c on c.ca_notice_contract_id = expected.contract_id::bigint

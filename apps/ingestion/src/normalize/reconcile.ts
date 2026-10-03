@@ -1,3 +1,4 @@
+import { contractRonValue } from "@seap/db";
 import type { DbSql } from "@seap/db";
 
 /**
@@ -87,18 +88,16 @@ export async function runReconcile(
     log("preparing SEAP winner projection …");
     await q`
       create temporary table _reconcile_eli on commit drop as
-      select c.id contract_id, c.ca_notice_id, c.contract_value, c.contract_date,
+      select c.id contract_id, c.ca_notice_id, ${contractRonValue(q)} as contract_value, c.contract_date,
              aw.authority_entity_id, cw.entity_id winner_entity_id, aw.cpv_code,
              lower(unaccent(c.title || ' ' || coalesce(c.lots_caption, ''))) title_folded,
-             floor(ln(c.contract_value) / (-ln(1 - ${vtol}::float8)))::bigint vbucket
+             floor(ln(${contractRonValue(q)}) / (-ln(1 - ${vtol}::float8)))::bigint vbucket
       from core.contracts c
       join core.awards aw on aw.ca_notice_id = c.ca_notice_id
       join core.contract_winners cw on cw.contract_id = c.id
-      where c.contract_value is not null and c.contract_value > 0
-        and (c.currency = 'RON' or c.currency ilike '%ron%')
+      where ${contractRonValue(q)} is not null and ${contractRonValue(q)} > 0
         and c.contract_date is not null
         and aw.authority_entity_id is not null
-        and (c.currency is null or c.currency ilike '%ron%')
     `;
     await q`create index on _reconcile_eli (authority_entity_id, winner_entity_id, vbucket)`;
     await q`analyze _reconcile_eli`;

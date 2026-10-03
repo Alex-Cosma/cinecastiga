@@ -1,0 +1,100 @@
+{
+  "query": "duplicate-same-notice",
+  "elapsed_seconds": 9.422,
+  "exit_code": 0,
+  "rows": [
+    {
+      "test": "same_notice_summary",
+      "data": {
+        "groups": 9169,
+        "candidate_excess_ron": "7393595858.27",
+        "cross_version_groups": 8069,
+        "extra_included_records": 8410,
+        "included_multiple_groups": 8393
+      }
+    },
+    {
+      "test": "cross_version_only",
+      "data": {
+        "groups": 8069,
+        "candidate_excess_ron": "7310553827.47",
+        "extra_included_records": 7312
+      }
+    },
+    {
+      "test": "by_authority",
+      "data": [
+        {
+          "groups": 355,
+          "name_display": "DELGAZ GRID S.A.",
+          "extra_records": 355,
+          "candidate_excess": "1140203373.06",
+          "authority_entity_id": 2145705
+        },
+        {
+          "groups": 57,
+          "name_display": "SECTOR 4 (PRIMARIA SECTORULUI 4 BUCURESTI)",
+          "extra_records": 57,
+          "candidate_excess": "1069919633.03",
+          "authority_entity_id": 2144029
+        },
+        {
+          "groups": 16,
+          "name_display": "MUNICIPIUL BUCURESTI",
+          "extra_records": 16,
+          "candidate_excess": "1059465147.60",
+          "authority_entity_id": 2144903
+        },
+        {
+          "groups": 1866,
+          "name_display": "SPITALUL JUDETEAN SATU MARE",
+          "extra_records": 1866,
+          "candidate_excess": "905773831.70",
+          "authority_entity_id": 2146486
+        },
+        {
+          "groups": 1000,
+          "name_display": "AGENTIA NATIONALA DE CADASTRU SI PUBLICITATE IMOBILIARA",
+          "extra_records": 1000,
+          "candidate_excess": "694416594.86",
+          "authority_entity_id": 2146312
+        },
+        {
+          "groups": 12,
+          "name_display": "MUNICIPIUL ORADEA",
+          "extra_records": 12,
+          "candidate_excess": "371643888.83",
+          "authority_entity_id": 2146127
+        },
+        {
+          "groups": 47,
+          "name_display": "COMPANIA NATIONALA DE ADMINISTRARE A INFRASTRUCTURII RUTIERE S.A.",
+          "extra_records": 47,
+          "candidate_excess": "281465676.52",
+          "authority_entity_id": 2146146
+        },
+        {
+          "groups": 32,
+          "name_display": "SECTOR 3 (PRIMARIA SECTOR 3 BUCURESTI)",
+          "extra_records": 32,
+          "candidate_excess": "249581142.41",
+          "authority_entity_id": 2145827
+        },
+        {
+          "groups": 4,
+          "name_display": "CONSILIUL JUDETEAN CONSTANTA",
+          "extra_records": 4,
+          "candidate_excess": "247563290.77",
+          "authority_entity_id": 2145660
+        },
+        {
+          "groups": 29,
+          "name_display": "METROREX S.A.",
+          "extra_records": 29,
+          "candidate_excess": "192697191.31",
+          "authority_entity_id": 2145402
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "query": "raw-provenance",
+  "elapsed_seconds": 23.578,
+  "exit_code": 0,
+  "rows": [
+    {
+      "dataset": "da",
+      "records": 20822960,
+      "null_pointer": 4781104,
+      "dangling_pointer": 16007488
+    },
+    {
+      "dataset": "contracts",
+      "records": 1143947,
+      "null_pointer": 0,
+      "dangling_pointer": 1118738
+    },
+    {
+      "dataset": "awards",
+      "records": 312836,
+      "null_pointer": 0,
+      "dangling_pointer": 309639
+    }
+  ]
+}

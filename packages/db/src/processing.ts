@@ -57,6 +57,8 @@ export async function finishProcessing(q:DbSql,id:string) {
      ||!c?.maintenance||!c.paused||c.revision!==r.control_revision)throw Error('Publication or operator state changed; maintenance retained');
   await processingStage(tx as unknown as DbSql,id,'complete');
   await tx`update app.processing_runs set status='ready',completed_at=clock_timestamp() where id=${id}::uuid`;
+  await tx`update app.data_repairs set status='completed',completed_at=clock_timestamp()
+    where processing_run_id=${id}::uuid and status='applied'`;
   // A source failure is independent of data publication. Keep its block and pause.
   await tx`update app.collection_control set maintenance=false,paused=${Boolean(r.before_control.paused)||!!c.blocked_reason},revision=revision+1,updated_at=clock_timestamp() where id=1`;
   await tx`insert into app.collection_audit(actor_id,actor_name,action,before,after)

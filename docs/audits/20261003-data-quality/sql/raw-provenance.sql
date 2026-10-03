@@ -1,0 +1,3 @@
+SELECT 'da' dataset,count(*) records,count(*) FILTER(WHERE d.raw_id IS NULL) null_pointer,count(*) FILTER(WHERE d.raw_id IS NOT NULL AND r.id IS NULL) dangling_pointer FROM core.direct_acquisitions d LEFT JOIN raw.raw_documents r ON r.id=d.raw_id
+UNION ALL SELECT 'contracts',count(*),count(*) FILTER(WHERE c.raw_id IS NULL),count(*) FILTER(WHERE c.raw_id IS NOT NULL AND r.id IS NULL) FROM core.contracts c LEFT JOIN raw.raw_documents r ON r.id=c.raw_id
+UNION ALL SELECT 'awards',count(*),count(*) FILTER(WHERE a.raw_id IS NULL),count(*) FILTER(WHERE a.raw_id IS NOT NULL AND r.id IS NULL) FROM core.awards a LEFT JOIN raw.raw_documents r ON r.id=a.raw_id

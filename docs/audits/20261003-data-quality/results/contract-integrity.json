@@ -1,0 +1,67 @@
+{
+  "query": "contract-integrity",
+  "elapsed_seconds": 36.256,
+  "exit_code": 0,
+  "rows": [
+    {
+      "test": "allocations",
+      "data": {
+        "bad_sum": 0,
+        "allocated": 935335692864.74,
+        "contracts": 980558,
+        "extra_rows": 130163,
+        "full_value": 935335692864.74,
+        "allocations": 1110721,
+        "bad_winners": 0
+      }
+    },
+    {
+      "test": "currencies",
+      "data": [
+        {
+          "n": 1126426,
+          "total": 1476454279278.41,
+          "maximum": 177930419250,
+          "minimum": -960752.54,
+          "currency": "RON"
+        },
+        {
+          "n": 16585,
+          "total": 104599047589.64,
+          "maximum": 15763226900.52,
+          "minimum": 0,
+          "currency": "EUR"
+        },
+        {
+          "n": 532,
+          "total": 5948571940.77,
+          "maximum": 1439492400,
+          "minimum": 0.05,
+          "currency": "USD"
+        },
+        {
+          "n": 404,
+          "total": null,
+          "maximum": null,
+          "minimum": null,
+          "currency": "NULL"
+        }
+      ]
+    },
+    {
+      "test": "cpv_disagreement",
+      "data": {
+        "n": 0,
+        "in_marts": 0,
+        "different_division": 0
+      }
+    },
+    {
+      "test": "missing_winners",
+      "data": {
+        "n": 245,
+        "amount": 165156902.69
+      }
+    }
+  ]
+}

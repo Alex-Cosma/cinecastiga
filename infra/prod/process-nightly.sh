@@ -54,6 +54,7 @@ docker exec cinecastiga-postgres-1 pg_dump -U seap -d seap -Fc > "$root/$run_id/
 mv "$root/$run_id/database.dump.partial" "$root/$run_id/database.dump"
 docker exec -i cinecastiga-postgres-1 pg_restore --list < "$root/$run_id/database.dump" > "$root/$run_id/database.list"
 sha256sum "$root/$run_id/database.dump" > "$root/$run_id/database.sha256"
+run stage "$run_id" backup-verified
 run refresh "$run_id"
 run stage "$run_id" restart
 # Clear Next server caches before reopening; source workers restart while paused.

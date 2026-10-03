@@ -1,0 +1,125 @@
+{
+  "query": "reference-impact",
+  "elapsed_seconds": 14.526,
+  "exit_code": 0,
+  "rows": [
+    {
+      "test": "profit_uu_by_year",
+      "data": [
+        {
+          "year": 2018,
+          "with_profit": 667958,
+          "company_years": 671709
+        },
+        {
+          "year": 2019,
+          "with_profit": 0,
+          "company_years": 710432
+        },
+        {
+          "year": 2020,
+          "with_profit": 0,
+          "company_years": 737109
+        },
+        {
+          "year": 2021,
+          "with_profit": 0,
+          "company_years": 709662
+        },
+        {
+          "year": 2022,
+          "with_profit": 0,
+          "company_years": 785925
+        },
+        {
+          "year": 2023,
+          "with_profit": 0,
+          "company_years": 810887
+        },
+        {
+          "year": 2024,
+          "with_profit": 0,
+          "company_years": 822292
+        },
+        {
+          "year": 2025,
+          "with_profit": 0,
+          "company_years": 844207
+        }
+      ]
+    },
+    {
+      "test": "profit_uu_active_suppliers",
+      "data": [
+        {
+          "year": 2018,
+          "suppliers": 78342,
+          "missing_profit": 190
+        },
+        {
+          "year": 2019,
+          "suppliers": 84181,
+          "missing_profit": 84181
+        },
+        {
+          "year": 2020,
+          "suppliers": 87220,
+          "missing_profit": 87220
+        },
+        {
+          "year": 2021,
+          "suppliers": 83196,
+          "missing_profit": 83196
+        },
+        {
+          "year": 2022,
+          "suppliers": 89976,
+          "missing_profit": 89976
+        },
+        {
+          "year": 2023,
+          "suppliers": 90258,
+          "missing_profit": 90258
+        },
+        {
+          "year": 2024,
+          "suppliers": 88886,
+          "missing_profit": 88886
+        },
+        {
+          "year": 2025,
+          "suppliers": 88421,
+          "missing_profit": 88421
+        }
+      ]
+    },
+    {
+      "test": "profit_examples",
+      "data": [
+        {
+          "cui": "16617020",
+          "year": 2025,
+          "category": "BL_BS_SL",
+          "profit_net": "68529",
+          "net_turnover": "1532840"
+        },
+        {
+          "cui": "30976819",
+          "year": 2025,
+          "category": "UU",
+          "profit_net": null,
+          "net_turnover": "6196738"
+        }
+      ]
+    },
+    {
+      "test": "reps_active_suppliers",
+      "data": {
+        "rows": 166010,
+        "firms": 130697,
+        "missing_birth_date": 71371,
+        "firms_with_missing_birth_date": 60580
+      }
+    }
+  ]
+}

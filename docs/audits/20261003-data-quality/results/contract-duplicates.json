@@ -1,0 +1,245 @@
+{
+  "query": "contract-duplicates",
+  "elapsed_seconds": 2.813,
+  "exit_code": 0,
+  "rows": [
+    {
+      "test": "candidate_summary",
+      "data": {
+        "rows": 18973,
+        "groups": 9475,
+        "groups_across_notices": 8358
+      }
+    },
+    {
+      "test": "examples",
+      "data": [
+        {
+          "n": 2,
+          "title": "Contract REACTIVI",
+          "notices": 2,
+          "currency": "RON",
+          "contract_no": "A1641",
+          "external_ids": [
+            107828300,
+            108117421
+          ],
+          "lots_caption": "4. REACTIVI  de HEMATOLOGIE   CU DETERMINARE FORMULEI  LEUCOCITARE   5 DIFF  PRIN CITOMETRIE ÎN FLUX CU TEHNOLOGIE LASER",
+          "contract_date": "2026-07-07T00:00:00+03:00",
+          "contract_value": 26376.9,
+          "authority_entity_id": 2019012
+        },
+        {
+          "n": 2,
+          "title": "Contract REACTIVI",
+          "notices": 2,
+          "currency": "RON",
+          "contract_no": "A1642",
+          "external_ids": [
+            107828298,
+            108117419
+          ],
+          "lots_caption": "3. REACTIVI PENTRU TESTELE   DE COAGULARE",
+          "contract_date": "2026-07-07T00:00:00+03:00",
+          "contract_value": 19850.16,
+          "authority_entity_id": 2019012
+        },
+        {
+          "n": 2,
+          "title": "Contract REACTIVI",
+          "notices": 2,
+          "currency": "RON",
+          "contract_no": "A1643",
+          "external_ids": [
+            107828301,
+            108117420
+          ],
+          "lots_caption": "2. REACTIVI  de  HEMATOLOGIE CU DETERMINAREA  FORMULEI LEUCOCITARE  6 DIFF PRIN CITOMETRIE ÎN FLUX CU FLUORESCENȚĂ",
+          "contract_date": "2026-07-07T00:00:00+03:00",
+          "contract_value": 16732,
+          "authority_entity_id": 2019012
+        },
+        {
+          "n": 2,
+          "title": "Contract REACTIVI",
+          "notices": 2,
+          "currency": "RON",
+          "contract_no": "A1640",
+          "external_ids": [
+            107828299,
+            108117418
+          ],
+          "lots_caption": "8. CONTROL EXTERN DE CALITATE BIOCHIMIE",
+          "contract_date": "2026-07-07T00:00:00+03:00",
+          "contract_value": 1950,
+          "authority_entity_id": 2019012
+        },
+        {
+          "n": 2,
+          "title": "CONTRACT SUBSECVENT NR : 3 - Lucrări și servicii privind întreținerea periodică a drumurilor publice – Covoare bituminoase BA 16 cu frezare 4 cm – An I – An IV pe autostrăzile și drumurile naționale din administrarea D.R.D.P. Cluj, Acord - cadru 4 ani pe SDN Baia Mare\" pe DN 18 km 90+816 – km 96+053",
+          "notices": 2,
+          "currency": "RON",
+          "contract_no": "24/2007/4",
+          "external_ids": [
+            107819123,
+            108119107
+          ],
+          "lots_caption": "1. Default lot",
+          "contract_date": "2026-07-06T00:00:00+03:00",
+          "contract_value": 1973400,
+          "authority_entity_id": 2146146
+        },
+        {
+          "n": 2,
+          "title": "LOT 8 BORCA - AGREGATE NATURALE DE BALASTIERA/CARIERA",
+          "notices": 2,
+          "currency": "RON",
+          "contract_no": "166",
+          "external_ids": [
+            107811449,
+            108115854
+          ],
+          "lots_caption": "8. BORCA",
+          "contract_date": "2026-07-02T00:00:00+03:00",
+          "contract_value": 21500,
+          "authority_entity_id": 2109412
+        },
+        {
+          "n": 2,
+          "title": "Contract",
+          "notices": 2,
+          "currency": "RON",
+          "contract_no": "11841",
+          "external_ids": [
+            107806047,
+            108052859
+          ],
+          "lots_caption": "131. Fire de sutura cu acoperire antibacteriana",
+          "contract_date": "2026-07-02T00:00:00+03:00",
+          "contract_value": 909.6,
+          "authority_entity_id": 2146486
+        },
+        {
+          "n": 2,
+          "title": "Contract subsecvent",
+          "notices": 2,
+          "currency": "RON",
+          "contract_no": "1/102",
+          "external_ids": [
+            107798656,
+            108117914
+          ],
+          "lots_caption": "8. Branule",
+          "contract_date": "2026-07-01T00:00:00+03:00",
+          "contract_value": 15700,
+          "authority_entity_id": 2146573
+        },
+        {
+          "n": 2,
+          "title": "Contract subsecvent",
+          "notices": 2,
+          "currency": "RON",
+          "contract_no": "2/88",
+          "external_ids": [
+            107798653,
+            108117883
+          ],
+          "lots_caption": "31. Perfuzoare ac plastic",
+          "contract_date": "2026-07-01T00:00:00+03:00",
+          "contract_value": 1566,
+          "authority_entity_id": 2146573
+        },
+        {
+          "n": 2,
+          "title": "Contract subsecvent",
+          "notices": 2,
+          "currency": "RON",
+          "contract_no": "3/81",
+          "external_ids": [
+            107798657,
+            108117880
+          ],
+          "lots_caption": "29. Sonda urologica, 16. Fesi, 43. Seringi",
+          "contract_date": "2026-07-01T00:00:00+03:00",
+          "contract_value": 1451.5,
+          "authority_entity_id": 2146573
+        },
+        {
+          "n": 2,
+          "title": "Contract subsecvent",
+          "notices": 2,
+          "currency": "RON",
+          "contract_no": "2/90",
+          "external_ids": [
+            107798654,
+            108117881
+          ],
+          "lots_caption": "11. Comprese sterile",
+          "contract_date": "2026-07-01T00:00:00+03:00",
+          "contract_value": 580,
+          "authority_entity_id": 2146573
+        },
+        {
+          "n": 2,
+          "title": "Contract subsecvent",
+          "notices": 2,
+          "currency": "RON",
+          "contract_no": "2/82",
+          "external_ids": [
+            107798652,
+            108117885
+          ],
+          "lots_caption": "1. Ace seringa / buc",
+          "contract_date": "2026-07-01T00:00:00+03:00",
+          "contract_value": 120,
+          "authority_entity_id": 2146573
+        },
+        {
+          "n": 2,
+          "title": "Contract subsecvent",
+          "notices": 2,
+          "currency": "RON",
+          "contract_no": "1/95",
+          "external_ids": [
+            107798655,
+            108117884
+          ],
+          "lots_caption": "50. Specul vaginal cu opritor central",
+          "contract_date": "2026-07-01T00:00:00+03:00",
+          "contract_value": 109,
+          "authority_entity_id": 2146573
+        },
+        {
+          "n": 2,
+          "title": "Contract subsecvent",
+          "notices": 2,
+          "currency": "RON",
+          "contract_no": "3/98",
+          "external_ids": [
+            107798659,
+            108117882
+          ],
+          "lots_caption": "28. Sonda aspiraie",
+          "contract_date": "2026-07-01T00:00:00+03:00",
+          "contract_value": 37,
+          "authority_entity_id": 2146573
+        },
+        {
+          "n": 2,
+          "title": "CS 8- PS4",
+          "notices": 2,
+          "currency": "RON",
+          "contract_no": "181",
+          "external_ids": [
+            107811572,
+            108113374
+          ],
+          "lots_caption": "1. Default lot",
+          "contract_date": "2026-06-29T00:00:00+03:00",
+          "contract_value": 29700,
+          "authority_entity_id": 2144029
+        }
+      ]
+    }
+  ]
+}

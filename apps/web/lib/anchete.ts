@@ -1,3 +1,4 @@
+import { contractRonValue } from "@seap/db";
 import { createDb, type DbSql } from "@seap/db";
 import { isWorkspaceId, withInvestigationAccess, type InvestigationAccess } from "./investigation-access";
 import { EVIDENCE_KINDS, type EvidenceKind, type CaptureSummary } from "./evidence-captures-shared";
@@ -185,7 +186,7 @@ async function snapContract(
 ): Promise<Record<string, unknown> | null> {
   const sql = db();
   const rows = (await sql`
-    select c.ca_notice_contract_id nat_id, c.title, c.contract_value, c.contract_date,
+    select c.ca_notice_contract_id nat_id, c.title, ${contractRonValue(sql)} contract_value, c.contract_date,
            c.cpv_code, t.authority_name, t.supplier_name, t.closing_value, t.finalization_date
     from core.contracts c
     left join marts.contract_transactions t on t.contract_id = c.id

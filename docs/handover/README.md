@@ -1,5 +1,8 @@
 # Handover pentru un nou dezvoltator și asistentul lui
 
+**3 octombrie — publicare corecție monetară și operațiune unică:** [implementare, simulare și procedură](../implementation/contract-currency/README.md#one-time-scheduling--4-october-2026). Autorizată pentru 4 octombrie 05:00 RO, după backup, numai în acea rulare completă. Marcaj persistent `contract-money-v1`; deploy-ul singur nu aplică reparația. Rezultatul execuției trebuie verificat dimineața.
+
+
 **2 octombrie, copie locală actualizată:** [transferul integral din producție](../implementation/local-production-copy-20261002.md) este încheiat: baza locală are checkpoint 12, identitățile reparate și copia exactă Meilisearch. Artefactele sunt private, distincte de dumpul public pentru coleg. Etichetele CPV sunt publicate în `1d72085`.
 
 **Ultima publicare a datelor verificată,1 octombrie:** [reparația identităților istorice](../implementation/entity-identity-release-20261001.md) este încheiată, site-ul redeschis și colectarea reluată.4.231.642 de asocieri corectate,14.264 de redirecturi, checkpoint11 ready și ambele indexuri refăcute. Nu relansa operațiunea. Codul final `c6763f3` este live, inclusiv corecția inițializării căutării; CI/deploy `36906296990` trecute și24 verificări publice în browser trecute. Baza locală obișnuită și dumpul local anterior nu sunt reparate. [Checkpoint-ul de pregătire](continuation-identity-20261001.md) este istoric.

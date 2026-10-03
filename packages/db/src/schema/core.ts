@@ -1,8 +1,10 @@
 import { sql } from "drizzle-orm";
+import { CONTRACT_MONEY_VALID_SQL } from '../contract-money.js';
 import {
   bigint,
   bigserial,
   boolean,
+  check,
   index,
   integer,
   jsonb,
@@ -300,6 +302,14 @@ export const contracts = coreSchema.table(
     contractDate: timestamp("contract_date", { withTimezone: true }),
     contractValue: numeric("contract_value"),
     currency: text("currency"),
+    /** Legacy fields above are retained for forensic comparison, never relabeled. */
+    originalValue: numeric("original_value"),
+    originalCurrency: text("original_currency"),
+    valueRon: numeric("value_ron"),
+    currencyRate: numeric("currency_rate"),
+    amountStatus: text("amount_status"),
+    amountRawId: bigint("amount_raw_id", { mode: "bigint" }),
+    amountEvidence: jsonb("amount_evidence"),
     cpvCode: text("cpv_code").references(() => cpvCodes.code),
     title: text("title"),
     lotsCaption: text("lots_caption"),
@@ -307,6 +317,7 @@ export const contracts = coreSchema.table(
   (t) => [
     uniqueIndex("contracts_ca_notice_contract_id_uq").on(t.caNoticeContractId),
     index("contracts_ca_notice_idx").on(t.caNoticeId),
+    check("contracts_money_consistent", sql.raw(CONTRACT_MONEY_VALID_SQL)),
   ],
 );
 

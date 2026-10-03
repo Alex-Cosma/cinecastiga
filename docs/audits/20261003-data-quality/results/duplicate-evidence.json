@@ -1,0 +1,153 @@
+{
+  "query": "duplicate-evidence",
+  "elapsed_seconds": 0.443,
+  "exit_code": 0,
+  "rows": [
+    {
+      "id": 376688,
+      "ca_notice_contract_id": 107819123,
+      "ca_notice_id": 100640649,
+      "contract_no": "24/2007/4",
+      "contract_date": "2026-07-06T00:00:00+03:00",
+      "contract_value": "1973400",
+      "title": "CONTRACT SUBSECVENT NR : 3 - Lucrări și servicii privind întreținerea periodică a drumurilor publice – Covoare bituminoase BA 16 cu frezare 4 cm – An I – An IV pe autostrăzile și drumurile naționale din administrarea D.R.D.P. Cluj, Acord - cadru 4 ani pe SDN Baia Mare\" pe DN 18 km 90+816 – km 96+053",
+      "lots_caption": "1. Default lot",
+      "raw_id": 7379,
+      "notice_no": "CAN1133082",
+      "state": "Publicat",
+      "state_date": "2026-07-08T11:01:25+03:00",
+      "award_raw_id": 7279,
+      "authority": "COMPANIA NATIONALA DE ADMINISTRARE A INFRASTRUCTURII RUTIERE S.A.",
+      "winners": [
+        {
+          "id": 2075122,
+          "name": "OPENTRANS"
+        }
+      ],
+      "award_raw": null,
+      "contract_raw": null
+    },
+    {
+      "id": 370265,
+      "ca_notice_contract_id": 107828300,
+      "ca_notice_id": 100641160,
+      "contract_no": "A1641",
+      "contract_date": "2026-07-07T00:00:00+03:00",
+      "contract_value": "26376.9",
+      "title": "Contract REACTIVI",
+      "lots_caption": "4. REACTIVI  de HEMATOLOGIE   CU DETERMINARE FORMULEI  LEUCOCITARE   5 DIFF  PRIN CITOMETRIE ÎN FLUX CU TEHNOLOGIE LASER",
+      "raw_id": 6513,
+      "notice_no": "CAN1161722",
+      "state": "Publicat",
+      "state_date": "2026-07-09T13:04:18+03:00",
+      "award_raw_id": 6413,
+      "authority": "INSTITUTUL NATIONAL DE ENDOCRINOLOGIE C.I.PARHON",
+      "winners": [
+        {
+          "id": 2127703,
+          "name": "Medist"
+        }
+      ],
+      "award_raw": null,
+      "contract_raw": null
+    },
+    {
+      "id": 3895139,
+      "ca_notice_contract_id": 108117421,
+      "ca_notice_id": 100657001,
+      "contract_no": "A1641",
+      "contract_date": "2026-07-07T00:00:00+03:00",
+      "contract_value": "26376.9",
+      "title": "Contract REACTIVI",
+      "lots_caption": "4. REACTIVI  de HEMATOLOGIE   CU DETERMINARE FORMULEI  LEUCOCITARE   5 DIFF  PRIN CITOMETRIE ÎN FLUX CU TEHNOLOGIE LASER",
+      "raw_id": 17315329,
+      "notice_no": "CAN1161722",
+      "state": "Publicat",
+      "state_date": "2026-09-25T13:06:19+03:00",
+      "award_raw_id": 17308318,
+      "authority": "INSTITUTUL NATIONAL DE ENDOCRINOLOGIE C.I.PARHON",
+      "winners": [
+        {
+          "id": 2127703,
+          "name": "Medist"
+        }
+      ],
+      "award_raw": {
+        "endpoint": "award-list:v1",
+        "errata_no": "0",
+        "notice_no": "CAN1161722",
+        "fetched_at": "2026-09-26T23:03:08.518862+03:00",
+        "version_no": null,
+        "external_id": "award:100657001",
+        "source_hash": "bad14908a40ad64ee47eaf697217744e044bc762b0bdd604b3d1545aa48def64",
+        "procedure_id": "100301859"
+      },
+      "contract_raw": {
+        "item": {
+          "contractId": null,
+          "contractNo": "A1641",
+          "lotsCaption": "4. REACTIVI  de HEMATOLOGIE   CU DETERMINARE FORMULEI  LEUCOCITARE   5 DIFF  PRIN CITOMETRIE ÎN FLUX CU TEHNOLOGIE LASER",
+          "contractDate": "2026-07-07T00:00:00+03:00",
+          "contractTitle": "Contract REACTIVI",
+          "contractValue": "26376.9",
+          "modifiedCount": "0",
+          "caNoticeContractId": "108117421",
+          "hasModifiedVersions": "false"
+        },
+        "endpoint": "award-contracts:v1",
+        "fetched_at": "2026-09-27T07:52:29.827458+03:00",
+        "external_id": "award:100657001",
+        "source_hash": "2a3770cecc6f8df19b30ceb7e5358cd5fb3135c451bcda131ae7bd0b8dca4e87"
+      }
+    },
+    {
+      "id": 3894580,
+      "ca_notice_contract_id": 108119107,
+      "ca_notice_id": 100657121,
+      "contract_no": "24/2007/4",
+      "contract_date": "2026-07-06T00:00:00+03:00",
+      "contract_value": "1973400",
+      "title": "CONTRACT SUBSECVENT NR : 3 - Lucrări și servicii privind întreținerea periodică a drumurilor publice – Covoare bituminoase BA 16 cu frezare 4 cm – An I – An IV pe autostrăzile și drumurile naționale din administrarea D.R.D.P. Cluj, Acord - cadru 4 ani pe SDN Baia Mare\" pe DN 18 km 90+816 – km 96+053",
+      "lots_caption": "1. Default lot",
+      "raw_id": 17314394,
+      "notice_no": "CAN1133082",
+      "state": "Publicat",
+      "state_date": "2026-09-25T13:06:48+03:00",
+      "award_raw_id": 17308258,
+      "authority": "COMPANIA NATIONALA DE ADMINISTRARE A INFRASTRUCTURII RUTIERE S.A.",
+      "winners": [
+        {
+          "id": 2075122,
+          "name": "OPENTRANS"
+        }
+      ],
+      "award_raw": {
+        "endpoint": "award-list:v1",
+        "errata_no": "0",
+        "notice_no": "CAN1133082",
+        "fetched_at": "2026-09-26T22:59:26.479209+03:00",
+        "version_no": null,
+        "external_id": "award:100657121",
+        "source_hash": "5a9dff4dcd9e7410d6fe0f4ebcac8f511313d7eea901bfc7f000d2428dba2585",
+        "procedure_id": "100260608"
+      },
+      "contract_raw": {
+        "item": {
+          "contractId": null,
+          "contractNo": "24/2007/4",
+          "lotsCaption": "1. Default lot",
+          "contractDate": "2026-07-06T00:00:00+03:00",
+          "contractTitle": "CONTRACT SUBSECVENT NR : 3 - Lucrări și servicii privind întreținerea periodică a drumurilor publice – Covoare bituminoase BA 16 cu frezare 4 cm – An I – An IV pe autostrăzile și drumurile naționale din administrarea D.R.D.P. Cluj, Acord - cadru 4 ani pe SDN Baia Mare\" pe DN 18 km 90+816 – km 96+053",
+          "contractValue": "1973400",
+          "modifiedCount": "1",
+          "caNoticeContractId": "108119107",
+          "hasModifiedVersions": "true"
+        },
+        "endpoint": "award-contracts:v1",
+        "fetched_at": "2026-09-27T06:59:25.203193+03:00",
+        "external_id": "award:100657121",
+        "source_hash": "3f5269ed22a8ff922dacac0a13a38c7d68d8adc4e9182a265894ffc4af621db9"
+      }
+    }
+  ]
+}

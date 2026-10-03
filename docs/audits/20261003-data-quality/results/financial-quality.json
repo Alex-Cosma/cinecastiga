@@ -1,0 +1,1005 @@
+{
+  "query": "financial-quality",
+  "elapsed_seconds": 23.943,
+  "exit_code": 0,
+  "rows": [
+    {
+      "test": "financial_years",
+      "data": [
+        {
+          "n": 46,
+          "year": 2018,
+          "category": "ASIG",
+          "loss_present": 46,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 45
+        },
+        {
+          "n": 86220,
+          "year": 2018,
+          "category": "BL_BS_SL",
+          "loss_present": 85478,
+          "profit_present": 85862,
+          "negative_values": 55,
+          "employees_present": 60543
+        },
+        {
+          "n": 337,
+          "year": 2018,
+          "category": "BROK",
+          "loss_present": 337,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 290
+        },
+        {
+          "n": 1,
+          "year": 2018,
+          "category": "FOND_GARANTARE",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 189,
+          "year": 2018,
+          "category": "IFN",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 77,
+          "year": 2018,
+          "category": "INST_DE_CREDIT",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 108,
+          "year": 2018,
+          "category": "IR",
+          "loss_present": 108,
+          "profit_present": 108,
+          "negative_values": 0,
+          "employees_present": 103
+        },
+        {
+          "n": 57194,
+          "year": 2018,
+          "category": "ONG",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 13,
+          "year": 2018,
+          "category": "PENSII",
+          "loss_present": 13,
+          "profit_present": 13,
+          "negative_values": 0,
+          "employees_present": 12
+        },
+        {
+          "n": 6,
+          "year": 2018,
+          "category": "SIF",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 671709,
+          "year": 2018,
+          "category": "UU",
+          "loss_present": 665955,
+          "profit_present": 667958,
+          "negative_values": 284,
+          "employees_present": 406619
+        },
+        {
+          "n": 7,
+          "year": 2018,
+          "category": "VM",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 41,
+          "year": 2018,
+          "category": "VS",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 43,
+          "year": 2019,
+          "category": "ASIG",
+          "loss_present": 43,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 43
+        },
+        {
+          "n": 81944,
+          "year": 2019,
+          "category": "BL_BS_SL",
+          "loss_present": 81284,
+          "profit_present": 81690,
+          "negative_values": 50,
+          "employees_present": 60070
+        },
+        {
+          "n": 326,
+          "year": 2019,
+          "category": "BROK",
+          "loss_present": 326,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 288
+        },
+        {
+          "n": 1,
+          "year": 2019,
+          "category": "FOND_GARANTARE",
+          "loss_present": 1,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 192,
+          "year": 2019,
+          "category": "IFN",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 74,
+          "year": 2019,
+          "category": "INST_DE_CREDIT",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 112,
+          "year": 2019,
+          "category": "IR",
+          "loss_present": 112,
+          "profit_present": 112,
+          "negative_values": 0,
+          "employees_present": 102
+        },
+        {
+          "n": 56897,
+          "year": 2019,
+          "category": "ONG",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 13,
+          "year": 2019,
+          "category": "PENSII",
+          "loss_present": 13,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 13
+        },
+        {
+          "n": 6,
+          "year": 2019,
+          "category": "SIF",
+          "loss_present": 6,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 5
+        },
+        {
+          "n": 710432,
+          "year": 2019,
+          "category": "UU",
+          "loss_present": 704245,
+          "profit_present": 0,
+          "negative_values": 253,
+          "employees_present": 428246
+        },
+        {
+          "n": 4,
+          "year": 2019,
+          "category": "VM",
+          "loss_present": 4,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 3
+        },
+        {
+          "n": 39,
+          "year": 2019,
+          "category": "VS",
+          "loss_present": 39,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 39
+        },
+        {
+          "n": 44,
+          "year": 2020,
+          "category": "ASIG",
+          "loss_present": 44,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 44
+        },
+        {
+          "n": 78670,
+          "year": 2020,
+          "category": "BL_BS_SL",
+          "loss_present": 78057,
+          "profit_present": 78442,
+          "negative_values": 45,
+          "employees_present": 59001
+        },
+        {
+          "n": 309,
+          "year": 2020,
+          "category": "BROK",
+          "loss_present": 309,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 274
+        },
+        {
+          "n": 1,
+          "year": 2020,
+          "category": "FOND_GARANTARE",
+          "loss_present": 1,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 188,
+          "year": 2020,
+          "category": "IFN",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 72,
+          "year": 2020,
+          "category": "INST_DE_CREDIT",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 100,
+          "year": 2020,
+          "category": "IR",
+          "loss_present": 100,
+          "profit_present": 100,
+          "negative_values": 0,
+          "employees_present": 100
+        },
+        {
+          "n": 56955,
+          "year": 2020,
+          "category": "ONG",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 12,
+          "year": 2020,
+          "category": "PENSII",
+          "loss_present": 12,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 12
+        },
+        {
+          "n": 6,
+          "year": 2020,
+          "category": "SIF",
+          "loss_present": 6,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 5
+        },
+        {
+          "n": 737109,
+          "year": 2020,
+          "category": "UU",
+          "loss_present": 731193,
+          "profit_present": 0,
+          "negative_values": 285,
+          "employees_present": 445850
+        },
+        {
+          "n": 4,
+          "year": 2020,
+          "category": "VM",
+          "loss_present": 4,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 4
+        },
+        {
+          "n": 37,
+          "year": 2020,
+          "category": "VS",
+          "loss_present": 37,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 37
+        },
+        {
+          "n": 39,
+          "year": 2021,
+          "category": "ASIG",
+          "loss_present": 39,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 37
+        },
+        {
+          "n": 71808,
+          "year": 2021,
+          "category": "BL_BS_SL",
+          "loss_present": 71234,
+          "profit_present": 71599,
+          "negative_values": 30,
+          "employees_present": 56189
+        },
+        {
+          "n": 288,
+          "year": 2021,
+          "category": "BROK",
+          "loss_present": 288,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 257
+        },
+        {
+          "n": 1,
+          "year": 2021,
+          "category": "FOND_GARANTARE",
+          "loss_present": 1,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 187,
+          "year": 2021,
+          "category": "IFN",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 68,
+          "year": 2021,
+          "category": "INST_DE_CREDIT",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 108,
+          "year": 2021,
+          "category": "IR",
+          "loss_present": 108,
+          "profit_present": 108,
+          "negative_values": 0,
+          "employees_present": 99
+        },
+        {
+          "n": 52774,
+          "year": 2021,
+          "category": "ONG",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 11,
+          "year": 2021,
+          "category": "PENSII",
+          "loss_present": 11,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 10
+        },
+        {
+          "n": 6,
+          "year": 2021,
+          "category": "SIF",
+          "loss_present": 6,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 5
+        },
+        {
+          "n": 709662,
+          "year": 2021,
+          "category": "UU",
+          "loss_present": 704166,
+          "profit_present": 0,
+          "negative_values": 261,
+          "employees_present": 429536
+        },
+        {
+          "n": 4,
+          "year": 2021,
+          "category": "VM",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 33,
+          "year": 2021,
+          "category": "VS",
+          "loss_present": 33,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 32
+        },
+        {
+          "n": 45,
+          "year": 2022,
+          "category": "ASIG",
+          "loss_present": 45,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 43
+        },
+        {
+          "n": 76639,
+          "year": 2022,
+          "category": "BL_BS_SL",
+          "loss_present": 76054,
+          "profit_present": 76470,
+          "negative_values": 29,
+          "employees_present": 61114
+        },
+        {
+          "n": 281,
+          "year": 2022,
+          "category": "BROK",
+          "loss_present": 281,
+          "profit_present": 0,
+          "negative_values": 1,
+          "employees_present": 254
+        },
+        {
+          "n": 1,
+          "year": 2022,
+          "category": "FOND_GARANTARE",
+          "loss_present": 1,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 193,
+          "year": 2022,
+          "category": "IFN",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 66,
+          "year": 2022,
+          "category": "INST_DE_CREDIT",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 99,
+          "year": 2022,
+          "category": "IR",
+          "loss_present": 99,
+          "profit_present": 99,
+          "negative_values": 0,
+          "employees_present": 98
+        },
+        {
+          "n": 57902,
+          "year": 2022,
+          "category": "ONG",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 12,
+          "year": 2022,
+          "category": "PENSII",
+          "loss_present": 12,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 11
+        },
+        {
+          "n": 6,
+          "year": 2022,
+          "category": "SIF",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 5
+        },
+        {
+          "n": 785925,
+          "year": 2022,
+          "category": "UU",
+          "loss_present": 779660,
+          "profit_present": 0,
+          "negative_values": 232,
+          "employees_present": 507846
+        },
+        {
+          "n": 3,
+          "year": 2022,
+          "category": "VM",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 40,
+          "year": 2022,
+          "category": "VS",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 38
+        },
+        {
+          "n": 43,
+          "year": 2023,
+          "category": "ASIG",
+          "loss_present": 43,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 42
+        },
+        {
+          "n": 79949,
+          "year": 2023,
+          "category": "BL_BS_SL",
+          "loss_present": 79318,
+          "profit_present": 79664,
+          "negative_values": 31,
+          "employees_present": 63297
+        },
+        {
+          "n": 270,
+          "year": 2023,
+          "category": "BROK",
+          "loss_present": 270,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 249
+        },
+        {
+          "n": 1,
+          "year": 2023,
+          "category": "FOND_GARANTARE",
+          "loss_present": 1,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 152,
+          "year": 2023,
+          "category": "IFN",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 65,
+          "year": 2023,
+          "category": "INST_DE_CREDIT",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 24,
+          "year": 2023,
+          "category": "IP_IEME",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 100,
+          "year": 2023,
+          "category": "IR",
+          "loss_present": 100,
+          "profit_present": 100,
+          "negative_values": 0,
+          "employees_present": 95
+        },
+        {
+          "n": 58871,
+          "year": 2023,
+          "category": "ONG",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 11,
+          "year": 2023,
+          "category": "PENSII",
+          "loss_present": 11,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 10
+        },
+        {
+          "n": 6,
+          "year": 2023,
+          "category": "SIF",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 5
+        },
+        {
+          "n": 810887,
+          "year": 2023,
+          "category": "UU",
+          "loss_present": 804983,
+          "profit_present": 0,
+          "negative_values": 303,
+          "employees_present": 529447
+        },
+        {
+          "n": 6,
+          "year": 2023,
+          "category": "VM",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 41,
+          "year": 2023,
+          "category": "VS",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 41
+        },
+        {
+          "n": 44,
+          "year": 2024,
+          "category": "ASIG",
+          "loss_present": 44,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 41
+        },
+        {
+          "n": 77669,
+          "year": 2024,
+          "category": "BL_BS_SL",
+          "loss_present": 77047,
+          "profit_present": 77312,
+          "negative_values": 35,
+          "employees_present": 61566
+        },
+        {
+          "n": 263,
+          "year": 2024,
+          "category": "BROK",
+          "loss_present": 263,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 240
+        },
+        {
+          "n": 1,
+          "year": 2024,
+          "category": "FOND_GARANTARE",
+          "loss_present": 1,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 169,
+          "year": 2024,
+          "category": "IFN",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 2,
+          "employees_present": 0
+        },
+        {
+          "n": 66,
+          "year": 2024,
+          "category": "INST_DE_CREDIT",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 1,
+          "employees_present": 0
+        },
+        {
+          "n": 21,
+          "year": 2024,
+          "category": "IP_IEME",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 93,
+          "year": 2024,
+          "category": "IR",
+          "loss_present": 93,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 81
+        },
+        {
+          "n": 59738,
+          "year": 2024,
+          "category": "ONG",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 11,
+          "year": 2024,
+          "category": "PENSII",
+          "loss_present": 11,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 10
+        },
+        {
+          "n": 6,
+          "year": 2024,
+          "category": "SIF",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 5
+        },
+        {
+          "n": 822292,
+          "year": 2024,
+          "category": "UU",
+          "loss_present": 816865,
+          "profit_present": 0,
+          "negative_values": 313,
+          "employees_present": 526181
+        },
+        {
+          "n": 5,
+          "year": 2024,
+          "category": "VM",
+          "loss_present": 5,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 3
+        },
+        {
+          "n": 41,
+          "year": 2024,
+          "category": "VS",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 40
+        },
+        {
+          "n": 43,
+          "year": 2025,
+          "category": "ASIG",
+          "loss_present": 43,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 42
+        },
+        {
+          "n": 74025,
+          "year": 2025,
+          "category": "BL_BS_SL",
+          "loss_present": 73438,
+          "profit_present": 73750,
+          "negative_values": 30,
+          "employees_present": 59112
+        },
+        {
+          "n": 273,
+          "year": 2025,
+          "category": "BROK",
+          "loss_present": 273,
+          "profit_present": 0,
+          "negative_values": 1,
+          "employees_present": 242
+        },
+        {
+          "n": 1,
+          "year": 2025,
+          "category": "FOND_GARANTARE",
+          "loss_present": 1,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 167,
+          "year": 2025,
+          "category": "IFN",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 1,
+          "employees_present": 0
+        },
+        {
+          "n": 61,
+          "year": 2025,
+          "category": "INSTIT_DE_CREDIT",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 18,
+          "year": 2025,
+          "category": "IP_IEME",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 102,
+          "year": 2025,
+          "category": "IR",
+          "loss_present": 102,
+          "profit_present": 102,
+          "negative_values": 0,
+          "employees_present": 100
+        },
+        {
+          "n": 61367,
+          "year": 2025,
+          "category": "ONG",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 11,
+          "year": 2025,
+          "category": "PENSII",
+          "loss_present": 11,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 11
+        },
+        {
+          "n": 6,
+          "year": 2025,
+          "category": "SIF",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 5
+        },
+        {
+          "n": 844207,
+          "year": 2025,
+          "category": "UU",
+          "loss_present": 839049,
+          "profit_present": 0,
+          "negative_values": 373,
+          "employees_present": 520565
+        },
+        {
+          "n": 6,
+          "year": 2025,
+          "category": "VM",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 0
+        },
+        {
+          "n": 41,
+          "year": 2025,
+          "category": "VS",
+          "loss_present": 0,
+          "profit_present": 0,
+          "negative_values": 0,
+          "employees_present": 39
+        }
+      ]
+    },
+    {
+      "test": "reps",
+      "data": [
+        {
+          "n": 3679178,
+          "snapshot_date": "2026-07-08",
+          "administrators": 3119574,
+          "birthdate_present": 2087408,
+          "implausible_birthdates": 418,
+          "administrators_missing_birthdate": 1099166
+        }
+      ]
+    },
+    {
+      "test": "network_flags",
+      "data": [
+        {
+          "n": 9223,
+          "flag_code": "fin_public_reliance"
+        },
+        {
+          "n": 9285,
+          "flag_code": "net_shared_admin"
+        },
+        {
+          "n": 6354,
+          "flag_code": "fin_tiny_staff"
+        }
+      ]
+    }
+  ]
+}

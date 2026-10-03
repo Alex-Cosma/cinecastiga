@@ -1,4 +1,4 @@
-export const MONITORING_STAGES = ["normalize", "reconcile", "ted-mart", "marts", "flags", "flag-marts", "transactions", "radiografie", "coverage"] as const;
+export const MONITORING_STAGES = ["normalize", "money-quality", "reconcile", "ted-mart", "marts", "flags", "flag-marts", "transactions", "radiografie", "coverage"] as const;
 export type MonitoringStage = typeof MONITORING_STAGES[number];
 export type RefreshScope = "daily" | "full";
 

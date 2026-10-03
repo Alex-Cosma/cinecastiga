@@ -1,0 +1,39 @@
+{
+  "query": "ted-consistency",
+  "elapsed_seconds": 14.307,
+  "exit_code": 0,
+  "rows": [
+    {
+      "test": "versions",
+      "data": [
+        {
+          "n": 161633,
+          "normalization_version": 2
+        }
+      ]
+    },
+    {
+      "test": "competition_mismatch",
+      "data": {
+        "n": 155999,
+        "wrong_count": 0,
+        "invalid_boolean": 0,
+        "ineligible_source": 0
+      }
+    },
+    {
+      "test": "ted_value_stats",
+      "data": {
+        "summed_monetary_rows": 0
+      }
+    },
+    {
+      "test": "sample_references",
+      "data": {
+        "n": 84258,
+        "changed_flag": 0,
+        "missing_flag": 0
+      }
+    }
+  ]
+}

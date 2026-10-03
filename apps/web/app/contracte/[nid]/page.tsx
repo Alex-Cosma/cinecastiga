@@ -106,11 +106,13 @@ export default async function ContractPage({
       </div>
 
       <nav className="ext-links" aria-label="Secțiunile contractului"><a href="#fisiere">Fișiere și căutare în documente ↓</a></nav>
+      {c.amountStatus === 'converted' && c.valueRonExact !== null && <p className="note">Echivalent verificat în sursa SEAP: <strong>{formatExactDecimal(c.valueRonExact)} lei</strong> · curs raportat {c.currencyRate}. Această valoare este folosită pentru calculele în lei, dacă înregistrarea îndeplinește și celelalte criterii de includere.</p>}
+      {!['ron','converted','legacy_ron'].includes(c.amountStatus) && <p className="note">Valoarea în lei nu este verificată ({c.amountStatus === 'legacy_unknown' ? 'înregistrare istorică fără unitate confirmată' : c.amountStatus === 'inconsistent' ? 'sume sau monede neconcordante în sursă' : 'date monetare incomplete sau de reverificat'}). Înregistrarea este exclusă din totalurile în lei după recalculare. Verifică documentele SEAP.</p>}
       <div className="stat-grid">
         <div className="stat">
           <div className="n">{c.contractValueExact != null ? `${formatExactDecimal(c.contractValueExact)} ${c.currency?.toUpperCase() === "RON" ? "lei" : c.currency ?? "(monedă neprecizată)"}` : "—"}</div>
           <div className="l">
-            Valoare contract{c.currency && c.currency !== "RON" ? ` (${c.currency})` : ""}
+            {c.amountStatus === 'legacy_ron' ? 'Valoare înregistrată' : 'Valoare originală'}{c.currency && c.currency !== "RON" ? ` (${c.currency})` : ""}
           </div>
         </div>
         <div className="stat">

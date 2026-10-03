@@ -1,3 +1,4 @@
+import { runScheduledMoneyRepair } from '../normalize/scheduled-money-repair.js';
 import { createDb, claimProcessing, failProcessing, finishProcessing, processingStage, collectionHeartbeat } from '@seap/db';
 import { runMonitoringRefresh } from '../monitoring/refresh.js';
 import {indexTopics} from '../search/index-topics.js';
@@ -18,7 +19,7 @@ async function main() {
   const [r]=await sql`select r.*,c.maintenance,c.paused from app.processing_runs r cross join app.collection_control c where r.id=${id!}::uuid and c.id=1`;
   if(!r||r.status!=='running'||!r.maintenance||!r.paused)throw Error('Processing requires an active run and maintenance');
   if(command==='stage'){
-   if(!['backup','restart','reopen'].includes(arg??''))throw Error('Unknown host stage');
+   if(!['backup','backup-verified','restart','reopen'].includes(arg??''))throw Error('Unknown host stage');
    await processingStage(sql,id!,arg!);return;
   }
   if(command==='freeze') {
@@ -36,6 +37,7 @@ async function main() {
    await collectionHeartbeat(sql,`processor:${id}`,'processor','refresh');
   };
   await beat();heartbeat=setInterval(()=>{void beat().catch(()=>{});},10000);
+  await runScheduledMoneyRepair(sql,id!,console.log);
   const checkpoint=await runMonitoringRefresh(db,sql,{
    mode:'coordinated',scope:r.scope==='full'?'full':'daily',maxRawId:BigInt(r.raw_boundary),
    log:console.log,onStage:stage=>processingStage(sql,id!,stage),

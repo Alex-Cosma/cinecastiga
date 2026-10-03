@@ -1,3 +1,4 @@
+import { runContractMoneyQuality } from "../normalize/contract-money-quality.js";
 import { publishMonitoringRefresh, type Db, type DbSql } from "@seap/db";
 import { runNormalize } from "../normalize/pipeline.js";
 import { runReconcile } from "../normalize/reconcile.js";
@@ -15,7 +16,7 @@ import { validateBatch1Snapshot } from "./validate.js";
 import { monitoringSourceCoverage, validateCoverageCounts } from "./coverage.js";
 
 export const MONITORING_METHODOLOGY = {
-  monitoring: "monitoring-refresh-1", flags: METHODOLOGY_VERSION,
+  contractMoney: "source-currency-1", monitoring: "monitoring-refresh-1", flags: METHODOLOGY_VERSION,
   tedNormalization: TED_NORMALIZATION_VERSION, transactionPopulation: "batch1-canonical-1", procurementCalendar: "Europe/Bucharest-v1",
 };
 
@@ -39,6 +40,7 @@ export async function runMonitoringRefresh(db: Db, sql: DbSql, options: {
     if (scope === "daily" && (!retainedRisk || previous?.status!=='ready' || previous?.kind!=='coordinated' || previous?.methodology?.flags!==METHODOLOGY_VERSION)) throw new Error("Daily refresh requires a verified full risk baseline with the same methodology");
     const stages = options.mode === "baseline" ? {} : await executeMonitoringStages({
       normalize: () => runNormalize(db, sql, { log, ...(options.maxRawId === undefined ? {} : {maxRawId:options.maxRawId}) }),
+      "money-quality": () => runContractMoneyQuality(sql),
       reconcile: () => runReconcile(sql, { log }),
       "ted-mart": () => runTedMart(sql, { log }),
       marts: () => runMarts(sql, { log }),

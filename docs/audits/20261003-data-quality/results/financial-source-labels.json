@@ -1,0 +1,67 @@
+{
+  "labels": [
+    {
+      "file": "2018-WEB_UU_AN2018.txt.spec.csv",
+      "label": "Profit net;i18",
+      "matched_by_current_parser": false
+    },
+    {
+      "file": "2019-WEB_UU_AN2019.txt.spec.csv",
+      "label": "Profit net;i18",
+      "matched_by_current_parser": false
+    },
+    {
+      "file": "2020-WEB_UU_AN2020.txt.spec.csv",
+      "label": "Profit net;i18",
+      "matched_by_current_parser": false
+    },
+    {
+      "file": "2021-WEB_UU_AN2019.txt.spec.csv",
+      "label": "Profit net;i18",
+      "matched_by_current_parser": false
+    },
+    {
+      "file": "2021-WEB_UU_AN2020.txt.spec.csv",
+      "label": "Profit net;i18",
+      "matched_by_current_parser": false
+    },
+    {
+      "file": "2021-WEB_UU_AN2021.txt.spec.csv",
+      "label": "Profit net;i18",
+      "matched_by_current_parser": false
+    },
+    {
+      "file": "2022-WEB_UU_AN2022.txt.spec.csv",
+      "label": "Profit net;i18",
+      "matched_by_current_parser": false
+    },
+    {
+      "file": "2023-WEB_UU_AN2023.txt.spec.csv",
+      "label": "Profit net;i18",
+      "matched_by_current_parser": false
+    },
+    {
+      "file": "2024-WEB_UU_AN2024.txt.spec.csv",
+      "label": "Profit net;i18",
+      "matched_by_current_parser": false
+    },
+    {
+      "file": "2025-WEB_UU_AN2025.txt.spec.csv",
+      "label": "Profit net;i18",
+      "matched_by_current_parser": false
+    }
+  ],
+  "2025_UU": {
+    "rows": 844207,
+    "profit_present": 840798,
+    "positive_profit": 459700
+  },
+  "source_file": "2025-WEB_UU_AN2025.txt",
+  "sha256": "2c7e67d51f6700a28fb31644e8e2abf4334ee788f1c5fb07cb6df1a9321683e2",
+  "examples": [
+    {
+      "cui": "30976819",
+      "profit_net_source": "999104"
+    }
+  ]
+}

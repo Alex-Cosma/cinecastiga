@@ -1,0 +1,35 @@
+{
+  "query": "da-mart-quality",
+  "elapsed_seconds": 37.576,
+  "exit_code": 0,
+  "rows": [
+    {
+      "test": "accepted_core",
+      "data": {
+        "n": 19608121,
+        "total": "126884935657.35"
+      }
+    },
+    {
+      "test": "negative_duration_flags",
+      "data": {
+        "records": 116,
+        "rapid_flags": 0
+      }
+    },
+    {
+      "test": "suspect_within_cap",
+      "data": {
+        "n": 2804,
+        "total": "67617273.46"
+      }
+    },
+    {
+      "test": "missing_cpv_value",
+      "data": {
+        "n": 8,
+        "total": "56722.58"
+      }
+    }
+  ]
+}

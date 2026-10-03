@@ -1,0 +1,4 @@
+SELECT 'accepted_core' test,jsonb_build_object('n',count(*),'total',sum(closing_value)::text) data FROM core.direct_acquisitions WHERE state='Oferta acceptata' AND closing_value>0 AND closing_value<=2000000
+UNION ALL SELECT 'negative_duration_flags',jsonb_build_object('records',count(*),'rapid_flags',count(*) FILTER(WHERE 'da_rapid'=ANY(coalesce(t.da_flags,'{}')))) FROM core.direct_acquisitions d JOIN marts.da_transactions t USING(sicap_da_id) WHERE d.state='Oferta acceptata' AND d.finalization_date<d.publication_date
+UNION ALL SELECT 'suspect_within_cap',jsonb_build_object('n',count(*),'total',sum(closing_value)::text) FROM marts.da_transactions WHERE value_suspect AND closing_value>0 AND closing_value<=2000000
+UNION ALL SELECT 'missing_cpv_value',jsonb_build_object('n',count(*),'total',sum(closing_value)::text) FROM marts.da_transactions WHERE closing_value>0 AND closing_value<=2000000 AND cpv_code IS NULL

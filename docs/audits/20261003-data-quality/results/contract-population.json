@@ -1,0 +1,182 @@
+{
+  "query": "contract-population",
+  "elapsed_seconds": 8.645,
+  "exit_code": 0,
+  "rows": [
+    {
+      "test": "contracts_by_award_state",
+      "data": [
+        {
+          "state": "Publicat",
+          "total": "935335692864.7400",
+          "contracts": 980558
+        }
+      ]
+    },
+    {
+      "test": "invalid_dates",
+      "data": [
+        {
+          "title": "CS - CRENVURSTI PORC",
+          "raw_id": 17305561,
+          "state_date": "2018-04-26T01:30:00+03:00",
+          "contract_no": "27",
+          "contract_date": "2000-01-06T00:00:00+02:00",
+          "contract_value": "5828",
+          "ca_notice_contract_id": 1161898
+        },
+        {
+          "title": "MEDII DE CULTURA, REACTIVI DE LABORATOR, TRUSE DIAGNOSTIC",
+          "raw_id": 17307069,
+          "state_date": "2018-03-26T09:11:42+03:00",
+          "contract_no": "MEDII DE CULTURA, REACTIVI DE LABORATOR, TRUSE DIA",
+          "contract_date": "2000-01-13T00:00:00+02:00",
+          "contract_value": "171.5",
+          "ca_notice_contract_id": 2213878
+        },
+        {
+          "title": "Contract subsecvent produse de curatenie nr. 20",
+          "raw_id": 17307763,
+          "state_date": "2018-02-02T01:30:00+02:00",
+          "contract_no": "526",
+          "contract_date": "2000-01-13T00:00:00+02:00",
+          "contract_value": "25147.73",
+          "ca_notice_contract_id": 1160411
+        },
+        {
+          "title": "Contract subsecvent produse de curatenie nr. 21",
+          "raw_id": 17307763,
+          "state_date": "2018-02-02T01:30:00+02:00",
+          "contract_no": "527",
+          "contract_date": "2000-01-13T00:00:00+02:00",
+          "contract_value": "65202.78",
+          "ca_notice_contract_id": 1160412
+        },
+        {
+          "title": "contract subsecvent",
+          "raw_id": 17307558,
+          "state_date": "2018-02-20T01:30:01+02:00",
+          "contract_no": "nr.1700 / Data 20.01.2020",
+          "contract_date": "2000-01-20T00:00:00+02:00",
+          "contract_value": "792",
+          "ca_notice_contract_id": 1160333
+        },
+        {
+          "title": "Furnizare set reactivi si consumabile pentru bacteriologie",
+          "raw_id": 16892888,
+          "state_date": "2021-04-16T01:37:21+03:00",
+          "contract_no": "1271",
+          "contract_date": "2000-01-21T00:00:00+02:00",
+          "contract_value": "16092",
+          "ca_notice_contract_id": 101404335
+        },
+        {
+          "title": "Furnizare set reactivi si consumabile pentru bacteriologie",
+          "raw_id": 16892888,
+          "state_date": "2021-04-16T01:37:21+03:00",
+          "contract_no": "1273",
+          "contract_date": "2000-01-21T00:00:00+02:00",
+          "contract_value": "37332",
+          "ca_notice_contract_id": 101404336
+        },
+        {
+          "title": "Furnizare set reactivi si consumabile pentru bacteriologie",
+          "raw_id": 16892888,
+          "state_date": "2021-04-16T01:37:21+03:00",
+          "contract_no": "1264",
+          "contract_date": "2000-01-21T00:00:00+02:00",
+          "contract_value": "3195",
+          "ca_notice_contract_id": 101404337
+        },
+        {
+          "title": "Furnizare set reactivi si consumabile pentru bacteriologie",
+          "raw_id": 16892888,
+          "state_date": "2021-04-16T01:37:21+03:00",
+          "contract_no": "1266",
+          "contract_date": "2000-01-21T00:00:00+02:00",
+          "contract_value": "4064.89",
+          "ca_notice_contract_id": 101404334
+        },
+        {
+          "title": "Servicii de mentenanta la grupuri electrogene",
+          "raw_id": 16974071,
+          "state_date": "2020-06-29T10:17:22+03:00",
+          "contract_no": "4/119",
+          "contract_date": "2000-01-22T00:00:00+02:00",
+          "contract_value": "61392",
+          "ca_notice_contract_id": 100758611
+        },
+        {
+          "title": "Servicii de mentenanta la grupuri electrogene",
+          "raw_id": 16974071,
+          "state_date": "2020-06-29T10:17:22+03:00",
+          "contract_no": "4/120",
+          "contract_date": "2000-01-22T00:00:00+02:00",
+          "contract_value": "24700",
+          "ca_notice_contract_id": 100758610
+        },
+        {
+          "title": "contract subsecvent",
+          "raw_id": 17307558,
+          "state_date": "2018-02-20T01:30:01+02:00",
+          "contract_no": "nr. 1701 / Data 29.01.2020",
+          "contract_date": "2000-01-29T00:00:00+02:00",
+          "contract_value": "627",
+          "ca_notice_contract_id": 1160334
+        }
+      ]
+    },
+    {
+      "test": "allocation_value_filter",
+      "data": {
+        "full_value": "12429640365.05",
+        "contracts_all_shares_under_million": 7156
+      }
+    },
+    {
+      "test": "network_roles",
+      "data": [
+        {
+          "n": 2003054,
+          "calitate": "administrator"
+        },
+        {
+          "n": 45765,
+          "calitate": "reprezentant al persoanei juridice"
+        },
+        {
+          "n": 11826,
+          "calitate": "lichidator"
+        },
+        {
+          "n": 10808,
+          "calitate": "administrator si reprezentant"
+        },
+        {
+          "n": 8212,
+          "calitate": "lichidator judiciar"
+        },
+        {
+          "n": 2684,
+          "calitate": "administrator special"
+        },
+        {
+          "n": 1905,
+          "calitate": "reprezentant administrator persoana juridica"
+        },
+        {
+          "n": 1576,
+          "calitate": "administrator judiciar"
+        },
+        {
+          "n": 361,
+          "calitate": "director general unic"
+        },
+        {
+          "n": 352,
+          "calitate": "membru în consiliul de supraveghere"
+        }
+      ]
+    }
+  ]
+}

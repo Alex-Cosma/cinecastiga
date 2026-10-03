@@ -1,0 +1,23 @@
+{
+  "query": "currency-impact",
+  "elapsed_seconds": 1.968,
+  "exit_code": 0,
+  "rows": [
+    {
+      "currency": "EUR",
+      "source_verified": 380,
+      "converted_with_original_label": 377,
+      "converted_sum_not_deduplicated": "1096042810.74",
+      "rate_disagrees": 1,
+      "eligible_except_currency": 359
+    },
+    {
+      "currency": "USD",
+      "source_verified": 15,
+      "converted_with_original_label": 15,
+      "converted_sum_not_deduplicated": "124159859.97",
+      "rate_disagrees": 0,
+      "eligible_except_currency": 14
+    }
+  ]
+}

@@ -32,7 +32,7 @@ test('drain, backup and processing failure retain maintenance and never finish o
 });
 test('drains, backs up, verifies and restarts before the guarded reopen',async()=>{
  const r=await run();assert.equal(r.status,0);
- const steps=['psql -X -v ON_ERROR_STOP=1 -U seap -d seap -Atc','stop collection documents','processing.js freeze ','pg_dump ','pg_restore --list','processing.js refresh ','restart web','up -d --no-deps collection','processing.js finish '];
+ const steps=['psql -X -v ON_ERROR_STOP=1 -U seap -d seap -Atc','stop collection documents','processing.js freeze ','pg_dump ','pg_restore --list','processing.js stage 00000000-0000-4000-8000-000000000001 backup-verified','processing.js refresh ','restart web','up -d --no-deps collection','processing.js finish '];
  let previous=-1;for(const step of steps){const position=r.calls.indexOf(step);assert.ok(position>previous,step);previous=position;}
  assert.doesNotMatch(r.calls,/processing.js fail /);
 });
