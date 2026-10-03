@@ -7,7 +7,7 @@ const suite=url?describe:describe.skip;
 suite('scheduled publication state machine (no network)',()=>{
  const {sql:q}=createDb(url);
  beforeEach(async()=>{
-  await q`truncate app.processing_runs,app.collection_audit,app.monitoring_refreshes cascade`;
+  await q`truncate app.data_repairs,app.processing_runs,app.collection_audit,app.monitoring_refreshes cascade`;
   await q`insert into app.collection_control(id) values(1) on conflict do nothing`;
   await q`update app.collection_control set revision=1,paused=false,maintenance=false,blocked_reason=null,
     processing_enabled=true,processing_enabled_at='2026-09-26T00:00:00Z',processing_time='05:00',risk_weekday=0 where id=1`;
@@ -55,6 +55,15 @@ suite('scheduled publication state machine (no network)',()=>{
   expect((await q`select maintenance,paused from app.collection_control`)[0]).toMatchObject({maintenance:false,paused:false});
   expect((await q`select status,stages from app.processing_runs`)[0]).toMatchObject({status:'ready',stages:{reopen:expect.any(Object)}});
   expect(await claimProcessing(q,monday)).toBeNull();
+ });
+ it('marks a one-time repair completed only when its verified publication reopens',async()=>{
+  const run=(await claimProcessing(q,sunday))!;
+  await q`insert into app.data_repairs(id,scheduled_day,status,processing_run_id,applied_at)
+    values('contract-money-v1','2026-09-27','applied',${run.id}::uuid,now())`;
+  await expect(finishProcessing(q,run.id)).rejects.toThrow('maintenance retained');
+  expect((await q`select status from app.data_repairs`)[0]?.status).toBe('applied');
+  await verified(run.id);await finishProcessing(q,run.id);
+  expect((await q`select status,completed_at is not null completed from app.data_repairs`)[0]).toMatchObject({status:'completed',completed:true});
  });
  it('does not override a subsequent administrator change',async()=>{
   const run=(await claimProcessing(q,monday))!;await verified(run.id);

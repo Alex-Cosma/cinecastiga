@@ -1,3 +1,4 @@
+import { contractOriginalValue, contractOriginalCurrency, contractAmountStatus, contractRonValue } from "@seap/db";
 import { randomUUID } from "node:crypto";
 import { canonicalEntityId, createDb, MonitoringRefreshUnavailableError, withMonitoringSnapshot, type DbSql } from "@seap/db";
 import { getInvestigationAccess, isWorkspaceId, withInvestigationAccess } from "./investigation-access";
@@ -243,12 +244,13 @@ async function namedCapture(q: DbSql, captureId: string, request: CaptureRequest
       date: rows[0]!.date, warnings: original.value == null ? ["Sursa nu publică o valoare de închidere; lipsa nu este zero."] : [] };
   }
   if (request.kind === "contract") {
-    const [contract] = await q`select id::text,contract_value::text value,currency,title,ca_notice_id::text notice_id,
-      to_char(contract_date at time zone 'Europe/Bucharest', 'YYYY-MM-DD') date from core.contracts where ca_notice_contract_id=${id}`;
+    const [contract] = await q`select c.id::text,${contractOriginalValue(q)}::text value,${contractOriginalCurrency(q)} currency,
+      ${contractAmountStatus(q)} amount_status,${contractRonValue(q)}::text value_ron,title,ca_notice_id::text notice_id,
+      to_char(contract_date at time zone 'Europe/Bucharest', 'YYYY-MM-DD') date from core.contracts c where ca_notice_contract_id=${id}`;
     if (!contract) throw new CaptureError("Contractul nu mai este disponibil.");
     const rows = await readContractEvidence(q, q`ct.contract_id=${contract.id}`);
     records = rows.map(row => freezeRow(row));
-    summary = { ...contractSnapshot(contract.value,contract.currency,rows,contract.title), date: contract.date,
+    summary = { ...contractSnapshot(contract.value,contract.currency,rows,contract.title), date: contract.date, amountStatus:contract.amount_status,valueRon:contract.value_ron,
       sourceUrls: contract.notice_id ? [`https://e-licitatie.ro/pub/notices/ca-notices/view-c/${contract.notice_id}`] : [],
       warnings: ["Valoarea integrală a contractului este separată de cotele furnizorilor. Nu este dovada plății.",
         ...(!rows.length ? ["Contractul există în sursa importată, dar nu este inclus în populația analitică actuală. Valoarea și moneda originale rămân în context."] : [])] };

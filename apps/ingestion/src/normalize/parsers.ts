@@ -1,3 +1,4 @@
+import { normalizeContractMoney } from "./contract-money.js";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import {
@@ -206,10 +207,11 @@ const awardContractsSchema = z
           contractNo: z.string().nullish(),
           contractTitle: z.string().nullish(),
           contractDate: z.string().nullish(),
-          contractValue: z.number().nullish(),
-          defaultCurrencyContractValue: z.number().nullish(),
+          contractValue: z.union([z.number(), z.string()]).nullish(),
+          defaultCurrencyContractValue: z.union([z.number(), z.string()]).nullish(),
+          currencyRate: z.union([z.number(), z.string()]).nullish(),
           lotsCaption: z.string().nullish(),
-          currency: labeled,
+          currency: z.object({ text: z.string().nullish(), localeKey: z.string().nullish() }).nullish(),
           winner: winnerSchema.nullish(),
           winners: z.array(winnerSchema).nullish(),
         })
@@ -225,6 +227,7 @@ async function loadAwardContracts(
 ): Promise<void> {
   for (const item of p.items) {
     const contractDate = toDate(item.contractDate);
+    const money = { ...normalizeContractMoney(item), amountRawId: rawId };
     const inserted = await ctx.tx
       .insert(contracts)
       .values({
@@ -233,6 +236,7 @@ async function loadAwardContracts(
         caNoticeId: item.caNoticeId != null ? BigInt(item.caNoticeId) : null,
         contractNo: item.contractNo ?? null,
         contractDate,
+        ...money,
         contractValue: dec(item.defaultCurrencyContractValue ?? item.contractValue),
         currency: labelText(item.currency),
         cpvCode: null,
@@ -245,7 +249,8 @@ async function loadAwardContracts(
           rawId,
           contractNo: item.contractNo ?? null,
           contractDate,
-          contractValue: dec(item.defaultCurrencyContractValue ?? item.contractValue),
+          ...money,
+        contractValue: dec(item.defaultCurrencyContractValue ?? item.contractValue),
           currency: labelText(item.currency),
           title: item.contractTitle ?? null,
           lotsCaption: item.lotsCaption ?? null,

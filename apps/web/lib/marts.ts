@@ -1,3 +1,4 @@
+import { contractRonValue, contractOriginalValue, contractOriginalCurrency, contractAmountStatus } from "@seap/db";
 import { canonicalEntityId } from "@seap/db";
 import { tedPagination, tedCountryFilter, TED_COUNTRY_UNRESOLVED } from "./ted";
 import { createDb, type DbSql } from "@seap/db";
@@ -1164,6 +1165,9 @@ export interface ContractDetail {
   contractDate: string | null;
   contractValue: number | null;
   contractValueExact: string | null;
+  valueRonExact: string | null;
+  amountStatus: string;
+  currencyRate: string | null;
   cpvFromNotice: boolean;
   currency: string | null;
   cpvCode: string | null;
@@ -1195,7 +1199,8 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
   const nid = /^\d+$/.test(natId) ? natId : "0";
   const rows = (await sql`
     select c.id, c.ca_notice_contract_id nat_id, c.contract_no, c.title, c.lots_caption,
-           to_char(c.contract_date at time zone 'Europe/Bucharest', 'YYYY-MM-DD') contract_date, c.contract_value::text, c.currency, coalesce(c.cpv_code, a.cpv_code) cpv_code,
+           to_char(c.contract_date at time zone 'Europe/Bucharest', 'YYYY-MM-DD') contract_date, ${contractOriginalValue(sql)}::text contract_value, ${contractOriginalCurrency(sql)} currency,
+           ${contractRonValue(sql)}::text value_ron, ${contractAmountStatus(sql)} amount_status, c.currency_rate::text, coalesce(c.cpv_code, a.cpv_code) cpv_code,
            c.cpv_code is null and a.cpv_code is not null cpv_from_notice,
            (select name_ro from core.cpv_codes k where k.code = coalesce(c.cpv_code, a.cpv_code)) cpv_name,
            a.id award_id, a.ca_notice_id, a.notice_no, a.estimated_value_ron,
@@ -1287,6 +1292,9 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
     contractDate: (r["contract_date"] as string | null) ?? null,
     contractValue: r["contract_value"] != null ? Number(r["contract_value"]) : null,
     contractValueExact: r["contract_value"] == null ? null : String(r["contract_value"]),
+    valueRonExact: r["value_ron"] == null ? null : String(r["value_ron"]),
+    amountStatus: String(r["amount_status"] ?? "legacy_unknown"),
+    currencyRate: r["currency_rate"] == null ? null : String(r["currency_rate"]),
     cpvFromNotice: r["cpv_from_notice"] === true,
     currency: (r["currency"] as string | null) ?? null,
     cpvCode: (r["cpv_code"] as string | null) ?? null,
@@ -1390,18 +1398,18 @@ export async function getAwardNoticeDetail(
   if (!h) return null;
 
   const agg = (await sql`
-    select count(*)::int n, sum(contract_value) total
-    from core.contracts where ca_notice_id = ${cid}
+    select count(*)::int n, sum(${contractRonValue(sql)}) total
+    from core.contracts c where ca_notice_id = ${cid}
   `) as unknown as { n: number; total: string | null }[];
   const nLots = Number(agg[0]?.n ?? 0);
   const offset = (Math.max(1, page) - 1) * pageSize;
 
   const lots = (await sql`
     select c.id, c.ca_notice_contract_id nat_id, c.contract_no, c.title,
-           c.contract_date::text, c.contract_value
+           c.contract_date::text, ${contractRonValue(sql)} contract_value
     from core.contracts c
     where c.ca_notice_id = ${cid}
-    order by c.contract_value desc nulls last, c.id
+    order by ${contractRonValue(sql)} desc nulls last, c.id
     limit ${pageSize} offset ${offset}
   `) as unknown as Record<string, unknown>[];
 

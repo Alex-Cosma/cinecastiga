@@ -1,3 +1,4 @@
+import { contractRonValue } from "@seap/db";
 import type { DbSql } from "@seap/db";
 
 /**
@@ -81,14 +82,13 @@ export async function runMarts(
       ),
       base as (
         select c.id contract_id, c.contract_no, c.ca_notice_id, aw.notice_no,
-               aw.authority_entity_id authority_id, c.contract_value, c.contract_date,
+               aw.authority_entity_id authority_id, ${contractRonValue(q)} as contract_value, c.contract_date,
                aw.cpv_code, aw.procedure_type, aw.acquisition_type
         from core.contracts c
         join core.awards aw on aw.ca_notice_id = c.ca_notice_id
-        where c.contract_value is not null and c.contract_value > 0
-          and c.contract_value <= ${awBound}
+        where ${contractRonValue(q)} is not null and ${contractRonValue(q)} > 0
+          and ${contractRonValue(q)} <= ${awBound}
           and c.contract_date is not null
-          and (c.currency is null or c.currency ilike '%ron%')
           and aw.authority_entity_id is not null
           and not (
             coalesce(c.title, '') ~* 'acord[- ]cadru' and coalesce(c.title, '') !~* 'subsecvent'

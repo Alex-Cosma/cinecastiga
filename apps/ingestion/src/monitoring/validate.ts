@@ -1,3 +1,5 @@
+import { readContractMoneyQuality } from "@seap/db";
+import { contractRonValue } from "@seap/db";
 import { validateSignalLookup, type DbSql } from "@seap/db";
 import { METHODOLOGY_VERSION } from "../flags/methodology.js";
 import { assertCeilingEras } from "../flags/thresholds.js";
@@ -13,6 +15,8 @@ export async function validateBatch1Snapshot(q: DbSql, options: {
   const report = (check: string, passed: boolean, scope: string, details: unknown) => {
     const item = { check, passed, scope, details }; checks.push(item); emit?.(item);
   };
+  const moneyQuality = await readContractMoneyQuality(q);
+  report("contract_currency_integrity", moneyQuality.structuralErrors === 0 && moneyQuality.sourceErrors === 0, "all contract monetary records and verified archive amounts; exclusions retained explicitly", moneyQuality);
   const [ted] = await q`select count(*)::text total,
     count(*) filter (where normalization_version is null or normalization_version < ${TED_NORMALIZATION_VERSION})::text pending,
     count(*) filter (where normalization_version > ${TED_NORMALIZATION_VERSION})::text unexpected_newer
@@ -26,9 +30,9 @@ export async function validateBatch1Snapshot(q: DbSql, options: {
     with has_sub as (select distinct ca_notice_id from core.contracts where title ~* 'subsecvent'),
     winners as (select contract_id, count(distinct entity_id) n from core.contract_winners group by contract_id),
     source as (
-      select c.id, c.ca_notice_contract_id, c.contract_value, w.n winners,
-        coalesce(c.contract_value > 0 and c.contract_value <= 1000000000 and c.contract_date is not null
-          and (c.currency is null or c.currency ilike '%ron%') and a.authority_entity_id is not null and w.n > 0
+      select c.id, c.ca_notice_contract_id, ${contractRonValue(q)} as contract_value, w.n winners,
+        coalesce(${contractRonValue(q)} > 0 and ${contractRonValue(q)} <= 1000000000 and c.contract_date is not null
+           and a.authority_entity_id is not null and w.n > 0
           and not (coalesce(c.title, '') ~* 'acord[- ]cadru' and coalesce(c.title, '') !~* 'subsecvent'
             and c.ca_notice_id in (select ca_notice_id from has_sub)), false) eligible
       from core.contracts c left join core.awards a on a.ca_notice_id = c.ca_notice_id

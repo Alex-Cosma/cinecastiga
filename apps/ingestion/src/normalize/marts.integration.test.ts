@@ -144,6 +144,12 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
             (403,4000,'Above bound',1000000001,'2025-04-01','RON','Contract'),
             (404,4000,'Foreign currency',100,'2025-04-01','EUR','Contract'),
             (405,4000,'Unknown date',100,null,'RON','Contract')`;
+        // A verified 10 EUR at 5 RON/EUR must contribute 50 RON, once.
+        await q`update core.contracts set currency='EUR',original_value=10,original_currency='EUR',
+          value_ron=50,currency_rate=5,amount_status='converted',raw_id=7,amount_raw_id=7 where id=101`;
+        // Even a legacy field saying RON cannot override an unresolved source.
+        await q`insert into core.contracts(id,ca_notice_id,contract_value,contract_date,currency,title,amount_status,raw_id,amount_raw_id)
+          values(406,4000,777,'2025-04-01','RON','Inconsistent source','inconsistent',7,7)`;
         // Duplicate source winner does not create an additional allocation.
         await q`insert into core.contract_winners (contract_id, entity_id)
           select id, 10 from core.contracts
@@ -165,6 +171,7 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
           from marts.contract_transactions order by contract_id, supplier_id`;
         expect(contracts.filter((r) => r["id"] === "100").map((r) => r["value"])).toEqual(["33.33", "33.33", "33.34"]);
         expect([...new Set(contracts.map((r) => r["id"]))]).toEqual(["100", "101", "201", "202", "300"]);
+        expect(contracts.filter(r => r["id"] === "101").map(r => Number(r["value"]))).toEqual([50]);
         const [contractTotal] = await q`select sum(closing_value)::text value from marts.contract_transactions`;
         expect(Number(contractTotal?.["value"])).toBe(305);
         const [national] = await q`select total_ron::text value from marts.national_stats where kind='spend' and year is null`;
