@@ -1,4 +1,4 @@
-import { contractRonValue } from "@seap/db";
+import { contractRonValue, canonicalContract, assertContractIdentityQuality } from "@seap/db";
 import type { DbSql } from "@seap/db";
 
 /**
@@ -47,6 +47,7 @@ export async function runMarts(
   log(`marts bounds: da_max_plausible=${daBound} award_max_plausible=${awBound}`);
 
   const report = await sql.begin(async (q) => {
+    await assertContractIdentityQuality(q);
     // Calendar days/years must match SEAP detail pages in Romanian time.
     await q`set local time zone 'Europe/Bucharest'`;
     await q`
@@ -86,7 +87,7 @@ export async function runMarts(
                aw.cpv_code, aw.procedure_type, aw.acquisition_type
         from core.contracts c
         join core.awards aw on aw.ca_notice_id = c.ca_notice_id
-        where ${contractRonValue(q)} is not null and ${contractRonValue(q)} > 0
+        where ${canonicalContract(q)} and ${contractRonValue(q)} is not null and ${contractRonValue(q)} > 0
           and ${contractRonValue(q)} <= ${awBound}
           and c.contract_date is not null
           and aw.authority_entity_id is not null

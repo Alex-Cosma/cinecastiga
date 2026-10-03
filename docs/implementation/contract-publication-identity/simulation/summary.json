@@ -1,0 +1,36 @@
+{
+  "methodology": "contract-identity-1",
+  "database": "seap_test_currency_20261003",
+  "archivedResponses": 619,
+  "groups": 8056,
+  "added": 0,
+  "changed": 8056,
+  "inactive": 0,
+  "reasons": {
+    "incomplete_identity": 11
+  },
+  "exposure": [
+    {
+      "status": "needs_evidence",
+      "groups": 11,
+      "multiple_included": 9,
+      "hypothetical_reduction_ron": "174447199.29"
+    },
+    {
+      "status": "source_verified",
+      "groups": 8045,
+      "multiple_included": 7300,
+      "hypothetical_reduction_ron": "7100577914.82"
+    }
+  ],
+  "simulation": {
+    "contracts_before": 980925,
+    "total_before_ron": "936141296594.43",
+    "contracts_after": 973625,
+    "total_after_ron": "929040718679.61",
+    "hypothetical_reduction_ron": "7100577914.82"
+  },
+  "approvedGroups": 0,
+  "appliedReductionRon": "0",
+  "note": "Source verification is not a decision to merge. Amounts are hypothetical, after monetary correction."
+}

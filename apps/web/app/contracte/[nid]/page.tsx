@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ContractPublications from "@/components/ContractPublications";
 import ContractFiles from "@/components/documents/ContractFiles";
 import { getContractFiles } from "@/lib/documents/store";
 import { sessionUserId } from "@/lib/session";
@@ -105,6 +106,7 @@ export default async function ContractPage({
         </div>
       </div>
 
+      <ContractPublications publications={c.publications} currentId={nid} countedOnce={c.countedOnce} />
       <nav className="ext-links" aria-label="Secțiunile contractului"><a href="#fisiere">Fișiere și căutare în documente ↓</a></nav>
       {c.amountStatus === 'converted' && c.valueRonExact !== null && <p className="note">Echivalent verificat în sursa SEAP: <strong>{formatExactDecimal(c.valueRonExact)} lei</strong> · curs raportat {c.currencyRate}. Această valoare este folosită pentru calculele în lei, dacă înregistrarea îndeplinește și celelalte criterii de includere.</p>}
       {!['ron','converted','legacy_ron'].includes(c.amountStatus) && <p className="note">Valoarea în lei nu este verificată ({c.amountStatus === 'legacy_unknown' ? 'înregistrare istorică fără unitate confirmată' : c.amountStatus === 'inconsistent' ? 'sume sau monede neconcordante în sursă' : 'date monetare incomplete sau de reverificat'}). Înregistrarea este exclusă din totalurile în lei după recalculare. Verifică documentele SEAP.</p>}

@@ -1,3 +1,4 @@
+import {runScheduledIdentityRepair} from '../normalize/scheduled-contract-identity.js';
 import { runScheduledMoneyRepair } from '../normalize/scheduled-money-repair.js';
 import { createDb, claimProcessing, failProcessing, finishProcessing, processingStage, collectionHeartbeat } from '@seap/db';
 import { runMonitoringRefresh } from '../monitoring/refresh.js';
@@ -39,6 +40,7 @@ async function main() {
   await beat();heartbeat=setInterval(()=>{void beat().catch(()=>{});},10000);
   await runScheduledMoneyRepair(sql,id!,console.log);
   const checkpoint=await runMonitoringRefresh(db,sql,{
+   repairContractIdentities:()=>runScheduledIdentityRepair(sql,id!,console.log),
    mode:'coordinated',scope:r.scope==='full'?'full':'daily',maxRawId:BigInt(r.raw_boundary),
    log:console.log,onStage:stage=>processingStage(sql,id!,stage),
   });

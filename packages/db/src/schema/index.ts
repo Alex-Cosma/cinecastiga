@@ -21,3 +21,4 @@ export * from "./entity-redirects.js";
 
 export * from "./contract-money-quality.js";
 export * from './data-repairs.js';
+export * from './contract-identity.js';

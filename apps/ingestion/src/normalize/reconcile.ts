@@ -1,4 +1,4 @@
-import { contractRonValue } from "@seap/db";
+import { contractRonValue, canonicalContract, assertContractIdentityQuality } from "@seap/db";
 import type { DbSql } from "@seap/db";
 
 /**
@@ -47,6 +47,7 @@ export async function runReconcile(
   // exclusive lock, so readers may wait; failures restore the old rows and
   // identity sequence. Temporary projections roll back with replacement writes.
   return sql.begin(async (q) => {
+    await assertContractIdentityQuality(q);
     await q`set local work_mem = '512MB'`;
     await q`set local temp_file_limit = '32GB'`;
 
@@ -95,7 +96,7 @@ export async function runReconcile(
       from core.contracts c
       join core.awards aw on aw.ca_notice_id = c.ca_notice_id
       join core.contract_winners cw on cw.contract_id = c.id
-      where ${contractRonValue(q)} is not null and ${contractRonValue(q)} > 0
+      where ${canonicalContract(q)} and ${contractRonValue(q)} is not null and ${contractRonValue(q)} > 0
         and c.contract_date is not null
         and aw.authority_entity_id is not null
     `;

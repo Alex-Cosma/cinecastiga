@@ -1,0 +1,215 @@
+{
+  "groups": 13,
+  "examples": [
+    {
+      "notice": "CAN1086297",
+      "number": "312",
+      "members": [
+        {
+          "id": "107777010",
+          "status": "legacy",
+          "valueRon": null
+        },
+        {
+          "id": "108111608",
+          "status": "inconsistent",
+          "valueRon": null
+        }
+      ]
+    },
+    {
+      "notice": "CAN1086297",
+      "number": "320",
+      "members": [
+        {
+          "id": "107776182",
+          "status": "legacy",
+          "valueRon": null
+        },
+        {
+          "id": "108112404",
+          "status": "inconsistent",
+          "valueRon": null
+        }
+      ]
+    },
+    {
+      "notice": "CAN1086297",
+      "number": "357",
+      "members": [
+        {
+          "id": "107776608",
+          "status": "legacy",
+          "valueRon": null
+        },
+        {
+          "id": "108111634",
+          "status": "inconsistent",
+          "valueRon": null
+        }
+      ]
+    },
+    {
+      "notice": "CAN1086297",
+      "number": "375",
+      "members": [
+        {
+          "id": "107775489",
+          "status": "legacy",
+          "valueRon": null
+        },
+        {
+          "id": "108111046",
+          "status": "inconsistent",
+          "valueRon": null
+        }
+      ]
+    },
+    {
+      "notice": "CAN1086297",
+      "number": "390",
+      "members": [
+        {
+          "id": "107776106",
+          "status": "legacy",
+          "valueRon": null
+        },
+        {
+          "id": "108113078",
+          "status": "inconsistent",
+          "valueRon": null
+        }
+      ]
+    },
+    {
+      "notice": "CAN1086297",
+      "number": "396",
+      "members": [
+        {
+          "id": "107776374",
+          "status": "legacy",
+          "valueRon": null
+        },
+        {
+          "id": "108111600",
+          "status": "inconsistent",
+          "valueRon": null
+        }
+      ]
+    },
+    {
+      "notice": "CAN1086297",
+      "number": "415",
+      "members": [
+        {
+          "id": "107775330",
+          "status": "legacy",
+          "valueRon": null
+        },
+        {
+          "id": "108111993",
+          "status": "inconsistent",
+          "valueRon": null
+        }
+      ]
+    },
+    {
+      "notice": "CAN1086297",
+      "number": "517",
+      "members": [
+        {
+          "id": "107775417",
+          "status": "legacy",
+          "valueRon": null
+        },
+        {
+          "id": "108111826",
+          "status": "inconsistent",
+          "valueRon": null
+        }
+      ]
+    },
+    {
+      "notice": "CAN1086297",
+      "number": "522",
+      "members": [
+        {
+          "id": "107777018",
+          "status": "legacy",
+          "valueRon": null
+        },
+        {
+          "id": "108111312",
+          "status": "inconsistent",
+          "valueRon": null
+        }
+      ]
+    },
+    {
+      "notice": "CAN1086297",
+      "number": "561",
+      "members": [
+        {
+          "id": "107776345",
+          "status": "legacy",
+          "valueRon": null
+        },
+        {
+          "id": "108112081",
+          "status": "inconsistent",
+          "valueRon": null
+        }
+      ]
+    },
+    {
+      "notice": "CAN1110931",
+      "number": "16377",
+      "members": [
+        {
+          "id": "107796283",
+          "status": "legacy",
+          "valueRon": null
+        },
+        {
+          "id": "108110755",
+          "status": "inconsistent",
+          "valueRon": null
+        }
+      ]
+    },
+    {
+      "notice": "CAN1110931",
+      "number": "16412",
+      "members": [
+        {
+          "id": "107796338",
+          "status": "legacy",
+          "valueRon": null
+        },
+        {
+          "id": "108110482",
+          "status": "inconsistent",
+          "valueRon": null
+        }
+      ]
+    },
+    {
+      "notice": "CAN1114599",
+      "number": "659",
+      "members": [
+        {
+          "id": "107022822",
+          "status": "legacy",
+          "valueRon": null
+        },
+        {
+          "id": "108118387",
+          "status": "inconsistent",
+          "valueRon": null
+        }
+      ]
+    }
+  ],
+  "previously_double_included": 3,
+  "previous_candidate_excess_ron": "35528713.36"
+}

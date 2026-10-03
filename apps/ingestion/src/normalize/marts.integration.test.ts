@@ -1,5 +1,7 @@
+import {seedVerifiedIdentity} from '../test/contract-identity-fixture.js';
+import {approveContractIdentities} from './approve-contract-identities.js';
 import { afterAll, describe, expect, it } from "vitest";
-import { createDb, type DbSql } from "@seap/db";
+import { createDb, readContractIdentityQuality, type DbSql } from "@seap/db";
 import { DA_CEILING_SEED_ROWS } from "@seap/domain";
 import { runMarts } from "./marts.js";
 import { runFlags } from "../flags/build.js";
@@ -30,7 +32,7 @@ function isolatedSql(connection: DbSql, prefix: string): DbSql {
 
 const tables = {
   core: ["risk_thresholds", "contracts", "awards", "contract_winners", "entities", "cpv_codes", "direct_acquisitions", "notices", "ted_lot_results", "ted_notices", "flags"],
-  marts: ["national_stats", "spend_by_type", "spend_by_cpv", "spend_by_county", "entity_profile", "entity_top_partners", "top_entities", "authority_concentration", "contract_transactions", "contract_competition", "da_transactions"],
+  marts: ["contract_identity_members", "contract_identity_decisions", "contract_identity_candidates", "contract_identity_observations", "national_stats", "spend_by_type", "spend_by_cpv", "spend_by_county", "entity_profile", "entity_top_partners", "top_entities", "authority_concentration", "contract_transactions", "contract_competition", "da_transactions"],
   reference: ["authority_uat", "company_financials", "company_reps"],
   raw: ["raw_documents"],
 };
@@ -283,4 +285,48 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
     const schemas = await sql`select nspname from pg_namespace where nspname like ${`${prefix}_%`}`;
     expect(schemas).toHaveLength(0);
   }, 30_000);
+});
+
+describe('approved publication identity in actual statistical builders',()=>{
+ it.each([false,true])('counts once, preserves publications, and protects source changes (framework=%s)',async framework=>{
+  const prefix=`identity_marts_${process.pid}_${Date.now()}`;
+  const rollback=Error('rollback identity fixture');
+  await expect(sql.begin(async tx=>{
+   for(const [schema,names] of Object.entries(tables)){
+    await tx.unsafe(`create schema ${prefix}_${schema}`);
+    for(const table of names)await tx.unsafe(`create table ${prefix}_${schema}.${table} as table ${schema}.${table} with no data`);
+   }
+   const q=isolatedSql(tx as unknown as DbSql,prefix);
+   const {assessed,archives}=await seedVerifiedIdentity(q,{framework,calloff:framework});
+   const representative=framework?'2':'1';
+   await approveContractIdentities(q,[assessed],archives,'Idempotent repeat');
+   expect((await q`select count(*)::int n from marts.contract_identity_decisions`)[0]!.n).toBe(1);
+   await q`set local time zone 'America/Los_Angeles'`;
+   expect((await readContractIdentityQuality(q)).valid).toBe(true);
+   await runMarts(q);
+   const amounts=await q`select contract_id::text,closing_value::text from marts.contract_transactions`;
+   expect(amounts).toEqual([{contract_id:representative,closing_value:'100.00'}]);
+   expect((await q`select count(*)::int n from core.contracts where id in (1,2)`)[0]!.n).toBe(2);
+   expect((await q`select total_ron_split::text from marts.entity_profile where role='authority'`)[0]!.total_ron_split).toBe('100.00');
+   // A changed original amount blocks dependent builders; last mart remains.
+   await q`update core.contracts set contract_value=101 where id=2`;
+   expect((await readContractIdentityQuality(q)).staleMembers).toBe(1);
+   await expect(runMarts(q)).rejects.toThrow('require review');
+   expect(await q`select contract_id::text,closing_value::text from marts.contract_transactions`).toEqual(amounts);
+   await q`update core.contracts set contract_value=100 where id=2`;
+   await q`update core.contracts set raw_id=99 where id=2`;
+   expect((await readContractIdentityQuality(q)).staleMembers).toBe(1);
+   await q`update core.contracts set raw_id=4 where id=2`;
+   await q`update core.entities set cui_canonical='9999' where id=10`;
+   expect((await readContractIdentityQuality(q)).staleMembers).toBe(2);
+   await q`update core.entities set cui_canonical='15219174' where id=10`;
+   // Newly seen publication of the same notice must be reviewed, not counted twice.
+   await q`insert into core.awards(id,ca_notice_id,notice_no) values(9,900,'CAN-test')`;
+   expect((await readContractIdentityQuality(q)).staleMembers).toBe(2);
+   await q`delete from core.awards where id=9`;
+   await q`update marts.contract_identity_candidates set active=false`;
+   expect((await readContractIdentityQuality(q)).invalidDecisions).toBe(1);
+   throw rollback;
+  })).rejects.toBe(rollback);
+ });
 });

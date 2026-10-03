@@ -1,0 +1,64 @@
+{
+  "database": "seap_test_currency_20261003",
+  "decisions": {
+    "approvedGroups": 8045,
+    "sourcePublications": 16090
+  },
+  "marts": {
+    "nationalStats": 13,
+    "spendByType": 6,
+    "spendByCpv": 90,
+    "spendByCounty": 89,
+    "entityProfiles": 41641,
+    "topEntities": 400,
+    "topPartners": 102506,
+    "concentration": 7878,
+    "contractTransactions": 1102287
+  },
+  "actual": {
+    "contracts": 973625,
+    "total_ron": "929040718679.6100"
+  },
+  "sources": {
+    "publications": 16090
+  },
+  "quality": {
+    "members": 16090,
+    "staleMembers": 0,
+    "invalidDecisions": 0,
+    "examples": [],
+    "valid": true
+  },
+  "durationSeconds": 142.7,
+  "scope": "Isolated currency fixture. Real contract/statistics marts rebuilt; no full DA/TED/risk dataset, search refresh or production deployment.",
+  "validation": {
+    "quality": {
+      "members": 16090,
+      "staleMembers": 0,
+      "invalidDecisions": 0,
+      "examples": [],
+      "valid": true
+    },
+    "allocations": {
+      "contracts_considered": "1143947",
+      "eligible_missing": "0",
+      "excluded_included": "0",
+      "allocation_mismatches": "0",
+      "examples": []
+    },
+    "roles": [
+      {
+        "role": "supplier",
+        "total_ron": "929040718679.6100"
+      },
+      {
+        "role": "authority",
+        "total_ron": "929040718679.6100"
+      }
+    ],
+    "unresolved": {
+      "unresolved": 11,
+      "incorrectly_approved": 0
+    }
+  }
+}

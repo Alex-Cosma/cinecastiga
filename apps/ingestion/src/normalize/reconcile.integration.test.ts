@@ -1,3 +1,4 @@
+import {seedVerifiedIdentity} from '../test/contract-identity-fixture.js';
 import { afterAll, describe, expect, it } from "vitest";
 import { createDb, type DbSql } from "@seap/db";
 import { runReconcile } from "./reconcile.js";
@@ -9,7 +10,7 @@ let sequence = 0;
 /** Every qualified object and sequence belongs to a unique uncommitted schema.
  * The real reconciler's nested transaction is a savepoint, never a shared write. */
 function isolatedSql(connection: DbSql, prefix: string): DbSql {
-  const rewrite = (text: string) => text.replace(/\bcore\./g, `${prefix}.`);
+  const rewrite = (text: string) => text.replace(/\b(?:core|marts)\./g, `${prefix}.`);
   const scoped = ((chunks: TemplateStringsArray, ...values: unknown[]) => {
     const mapped = chunks.map(rewrite);
     Object.defineProperty(mapped, "raw", { value: chunks.raw.map(rewrite) });
@@ -29,8 +30,11 @@ async function fixture(run: (q: DbSql) => Promise<void>) {
   try {
     await sql.begin(async (tx) => {
       await tx.unsafe(`create schema ${prefix}`);
-      for (const table of ["ted_notices", "ted_lot_results", "ted_lot_winners", "awards", "contracts", "contract_winners"]) {
+      for (const table of ["ted_notices", "ted_lot_results", "ted_lot_winners", "awards", "contracts", "contract_winners", "entities"]) {
         await tx.unsafe(`create table ${prefix}.${table} as table core.${table} with no data`);
+      }
+      for (const table of ["contract_identity_members","contract_identity_decisions","contract_identity_candidates","contract_identity_observations"]) {
+        await tx.unsafe(`create table ${prefix}.${table} as table marts.${table} with no data`);
       }
       const q = isolatedSql(tx as unknown as DbSql, prefix);
       await q`create table core.award_links (
@@ -171,4 +175,17 @@ describe("runReconcile (isolated rollback fixtures)", () => {
     for(const valueTol of [0,-1,1,2,NaN,Infinity]) await expect(runReconcile(unavailable,{valueTol})).rejects.toThrow("valueTol");
     for(const dateTolDays of [0,-1,NaN,Infinity]) await expect(runReconcile(unavailable,{dateTolDays})).rejects.toThrow("dateTolDays");
   });
+});
+
+it('matches a TED result to one approved representative, retaining both SEAP records',async()=>{
+ await fixture(async q=>{
+  await seedVerifiedIdentity(q);
+  await q`insert into core.ted_notices(id,publication_number,buyer_entity_id) values(1,'test-2026',1)`;
+  await q`insert into core.ted_lot_results(id,ted_notice_id,awarded_value,contract_date,cpv_code,title,currency,amount_kind,amount_details)
+    values(1,1,100,'2026-07-06T00:00:00+03:00','45000000-7','Contract lucrari Lot 1','RON','contract_value','{"matchEligible":true}')`;
+  await q`insert into core.ted_lot_winners(lot_result_id,entity_id) values(1,10)`;
+  await runReconcile(q);
+  expect((await q`select contract_id::text from core.award_links`).map(r=>r.contract_id)).toEqual(['1']);
+  expect((await q`select count(*)::int n from core.contracts`)[0]!.n).toBe(2);
+ });
 });

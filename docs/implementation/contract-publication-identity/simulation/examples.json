@@ -1,0 +1,608 @@
+[
+  {
+    "id": "d1fa35f6354efbd5644d640b8e1fd6893a87cbcc1929ab86ca9112e4918bb20b",
+    "fingerprint": "71953311f508a3dd74f24697cec8419cb563de7e48e7f9341c3b00a2b23bd4e5",
+    "status": "source_verified",
+    "reasons": [],
+    "members": [
+      {
+        "id": "1504829",
+        "publicId": "100036104",
+        "noticeId": "100022718",
+        "noticeNo": "SCNA1006226",
+        "authority": "2146247",
+        "authorityCui": "4652732",
+        "number": "21568",
+        "date": "2018-10-08",
+        "value": "7260833.45",
+        "currency": "RON",
+        "title": "Proiectare și execuție lucrări pentru obiectivul ,, Modernizare si dotare Scoala Gimnaziala NR.2,oras Zimnicea”",
+        "lots": "1. Default lot",
+        "cpv": "45214200-2",
+        "procedure": "Procedura simplificata",
+        "acquisition": "Lucrari",
+        "winners": [
+          "2124578"
+        ],
+        "winnerCuis": [
+          "2695680"
+        ]
+      },
+      {
+        "id": "3890779",
+        "publicId": "108126376",
+        "noticeId": "100657507",
+        "noticeNo": "SCNA1006226",
+        "authority": "2146247",
+        "authorityCui": "4652732",
+        "number": "21568",
+        "date": "2018-10-08",
+        "value": "7260833.45",
+        "currency": "RON",
+        "title": "Proiectare și execuție lucrări pentru obiectivul ,, Modernizare si dotare Scoala Gimnaziala NR.2,oras Zimnicea”",
+        "lots": "1. Default lot",
+        "cpv": "45214200-2",
+        "procedure": "Procedura simplificata",
+        "acquisition": "Lucrari",
+        "winners": [
+          "2124578"
+        ],
+        "winnerCuis": [
+          "2695680"
+        ]
+      }
+    ],
+    "proofs": [
+      {
+        "contract": "100036104",
+        "notice": "100022718",
+        "procedure": "100010762",
+        "source": "dq02-evidence-20261003/award-raw.jsonl",
+        "rawId": "17263946",
+        "hash": "d8b10906260ea79dec7bd3ecc330b98a10d1ec3647701a92276c13cc355fddcb",
+        "noticeSource": "dq02-evidence-20261003/award-raw.jsonl",
+        "noticeHash": "03d6a4d158d1c75572f976b2f92520c19385c6df957fd854809124af3c4dc061",
+        "contractType": 1,
+        "conditions": {
+          "hasCompetitionResumeSection": false
+        },
+        "url": "https://www.e-licitatie.ro/pub/notices/ca-notices/view-c/100022718"
+      },
+      {
+        "contract": "108126376",
+        "notice": "100657507",
+        "procedure": "100010762",
+        "source": "local-production-copy-20261002",
+        "rawId": "17309343",
+        "hash": "04adbfc0e974ac548afd3c5c1d12bcb5e8cec433f0dc67025af89494ee8ed24b",
+        "noticeSource": "local-production-copy-20261002",
+        "noticeHash": "30e328df56ff462476c3eaed1e9ae9be5bf970791fe3f3710b0fdf44ff62faa7",
+        "contractType": 1,
+        "conditions": {
+          "hasCompetitionResumeSection": false
+        },
+        "url": "https://www.e-licitatie.ro/pub/notices/ca-notices/view-c/100657507"
+      }
+    ],
+    "methodology": "contract-identity-1",
+    "decision": "unreviewed"
+  },
+  {
+    "id": "8c2645615b2eb224110313817d766e4356494dacc91fbbad23ea7d9bc0ac2e03",
+    "fingerprint": "58a2d098d099287096196a00bf9d51769ebcdfc43f60cb78a238beb9e5ce5dbb",
+    "status": "source_verified",
+    "reasons": [],
+    "members": [
+      {
+        "id": "464811",
+        "publicId": "107595166",
+        "noticeId": "100626286",
+        "noticeNo": "CAN1164425",
+        "authority": "2145910",
+        "authorityCui": "14206842",
+        "number": "52/28620/(RI23)789",
+        "date": "2026-03-20",
+        "value": "154395",
+        "currency": "RON",
+        "title": "Acord - cadru alimente lotul 7 (legume - fructe)",
+        "lots": "7. legume-fructe",
+        "cpv": "15110000-2",
+        "procedure": "Licitatie deschisa",
+        "acquisition": "Furnizare",
+        "winners": [
+          "2066095",
+          "2073806",
+          "2120040"
+        ],
+        "winnerCuis": [
+          "32533710",
+          "23455761",
+          "15779023"
+        ]
+      },
+      {
+        "id": "3890789",
+        "publicId": "108125404",
+        "noticeId": "100657456",
+        "noticeNo": "CAN1164425",
+        "authority": "2145910",
+        "authorityCui": "14206842",
+        "number": "52/28620/(RI23)789",
+        "date": "2026-03-20",
+        "value": "154395",
+        "currency": "RON",
+        "title": "Acord - cadru alimente lotul 7 (legume - fructe)",
+        "lots": "7. legume-fructe",
+        "cpv": "15110000-2",
+        "procedure": "Licitatie deschisa",
+        "acquisition": "Furnizare",
+        "winners": [
+          "2066095",
+          "2073806",
+          "2120040"
+        ],
+        "winnerCuis": [
+          "32533710",
+          "23455761",
+          "15779023"
+        ]
+      }
+    ],
+    "proofs": [
+      {
+        "contract": "107595166",
+        "notice": "100626286",
+        "procedure": "100312077",
+        "source": "dq02-evidence-20261003/award-raw.jsonl",
+        "rawId": "35576",
+        "hash": "6ef026784c3d9093b6483ee285d5d0cc2b6166abd61b5ca89c8bd81361e45e1f",
+        "noticeSource": "dq02-evidence-20261003/award-raw.jsonl",
+        "noticeHash": "59bcce2960d21b174b86473fca124ed537f00a052c73656db16d17cb4b503084",
+        "contractType": 2,
+        "conditions": {
+          "hasCompetitionResumeSection": false
+        },
+        "url": "https://www.e-licitatie.ro/pub/notices/ca-notices/view-c/100626286"
+      },
+      {
+        "contract": "108125404",
+        "notice": "100657456",
+        "procedure": "100312077",
+        "source": "local-production-copy-20261002",
+        "rawId": "17309823",
+        "hash": "86663f8431390a2290f04b4f95b0ef641220658e79e60866498980a89024b545",
+        "noticeSource": "local-production-copy-20261002",
+        "noticeHash": "d383d9305558bbd9a807930c8dd94a696515f3425e6b6b954e48b34f478d9540",
+        "contractType": 2,
+        "conditions": {
+          "hasCompetitionResumeSection": false
+        },
+        "url": "https://www.e-licitatie.ro/pub/notices/ca-notices/view-c/100657456"
+      }
+    ],
+    "methodology": "contract-identity-1",
+    "decision": "unreviewed"
+  },
+  {
+    "id": "b25e7e91f98a061ba6b246b4220dd0827d161bf63f74b6083a0723c9d275c24f",
+    "fingerprint": "ec4183b019869cf28a2bedfcdff5a9656edae5c9d64543f494687a32fbe6e7d0",
+    "status": "source_verified",
+    "reasons": [],
+    "members": [
+      {
+        "id": "464812",
+        "publicId": "107595170",
+        "noticeId": "100626286",
+        "noticeNo": "CAN1164425",
+        "authority": "2145910",
+        "authorityCui": "14206842",
+        "number": "52/28621/(RI23)790 din 20.03.2026",
+        "date": "2026-03-20",
+        "value": "329161.7",
+        "currency": "RON",
+        "title": "Acord - cadru alimente loturi 8 (conserve) si 9 (alimente diverse)",
+        "lots": "9. alimente diverse, 8. conserve",
+        "cpv": "15110000-2",
+        "procedure": "Licitatie deschisa",
+        "acquisition": "Furnizare",
+        "winners": [
+          "2066095",
+          "2120040"
+        ],
+        "winnerCuis": [
+          "32533710",
+          "15779023"
+        ]
+      },
+      {
+        "id": "3890790",
+        "publicId": "108125408",
+        "noticeId": "100657456",
+        "noticeNo": "CAN1164425",
+        "authority": "2145910",
+        "authorityCui": "14206842",
+        "number": "52/28621/(RI23)790 din 20.03.2026",
+        "date": "2026-03-20",
+        "value": "329161.7",
+        "currency": "RON",
+        "title": "Acord - cadru alimente loturi 8 (conserve) si 9 (alimente diverse)",
+        "lots": "9. alimente diverse, 8. conserve",
+        "cpv": "15110000-2",
+        "procedure": "Licitatie deschisa",
+        "acquisition": "Furnizare",
+        "winners": [
+          "2066095",
+          "2120040"
+        ],
+        "winnerCuis": [
+          "32533710",
+          "15779023"
+        ]
+      }
+    ],
+    "proofs": [
+      {
+        "contract": "107595170",
+        "notice": "100626286",
+        "procedure": "100312077",
+        "source": "dq02-evidence-20261003/award-raw.jsonl",
+        "rawId": "35576",
+        "hash": "6ef026784c3d9093b6483ee285d5d0cc2b6166abd61b5ca89c8bd81361e45e1f",
+        "noticeSource": "dq02-evidence-20261003/award-raw.jsonl",
+        "noticeHash": "59bcce2960d21b174b86473fca124ed537f00a052c73656db16d17cb4b503084",
+        "contractType": 2,
+        "conditions": {
+          "hasCompetitionResumeSection": false
+        },
+        "url": "https://www.e-licitatie.ro/pub/notices/ca-notices/view-c/100626286"
+      },
+      {
+        "contract": "108125408",
+        "notice": "100657456",
+        "procedure": "100312077",
+        "source": "local-production-copy-20261002",
+        "rawId": "17309823",
+        "hash": "86663f8431390a2290f04b4f95b0ef641220658e79e60866498980a89024b545",
+        "noticeSource": "local-production-copy-20261002",
+        "noticeHash": "d383d9305558bbd9a807930c8dd94a696515f3425e6b6b954e48b34f478d9540",
+        "contractType": 2,
+        "conditions": {
+          "hasCompetitionResumeSection": false
+        },
+        "url": "https://www.e-licitatie.ro/pub/notices/ca-notices/view-c/100657456"
+      }
+    ],
+    "methodology": "contract-identity-1",
+    "decision": "unreviewed"
+  },
+  {
+    "id": "8dcd9a338849a66002429bd452845b37bd7aca5671d849c5beeafe94306751c7",
+    "fingerprint": "c425101ed9d87dcece866a897d8db42a4c0917228bff07223c51ec53c19eb5b2",
+    "status": "needs_evidence",
+    "reasons": [
+      "incomplete_identity"
+    ],
+    "members": [
+      {
+        "id": "409812",
+        "publicId": "107773449",
+        "noticeId": "100638065",
+        "noticeNo": "CAN1123827",
+        "authority": "2136245",
+        "authorityCui": "27429315",
+        "number": "1156",
+        "date": "2024-03-05",
+        "value": "33991352.05",
+        "currency": "RON",
+        "title": "BC CL 09 – Extinderea retelelor de distributie a apei si a retelelor de canalizare in Orbeni, Valea Seaca, Racaciuni, Sarata, Luizi Calugara-Lot 1 - Extinderea retelelor de distributie a apei si a retelelor de canalizare in Orbeni",
+        "lots": "1. Lot 1 - Extinderea retelelor de distributie a apei si a retelelor de canalizare in Orbeni",
+        "cpv": "45231100-6",
+        "procedure": "Licitatie deschisa",
+        "acquisition": "Lucrari",
+        "winners": [
+          "2018457",
+          "2055319",
+          "2110145",
+          "2111256",
+          "2162257",
+          "2270116"
+        ],
+        "winnerCuis": [
+          "15993042",
+          "26045200",
+          "8642901",
+          "8375340",
+          "44321304",
+          "NULL"
+        ]
+      },
+      {
+        "id": "3891139",
+        "publicId": "108120629",
+        "noticeId": "100657162",
+        "noticeNo": "CAN1123827",
+        "authority": "2136245",
+        "authorityCui": "27429315",
+        "number": "1156",
+        "date": "2024-03-05",
+        "value": "33991352.05",
+        "currency": "RON",
+        "title": "BC CL 09 – Extinderea retelelor de distributie a apei si a retelelor de canalizare in Orbeni, Valea Seaca, Racaciuni, Sarata, Luizi Calugara-Lot 1 - Extinderea retelelor de distributie a apei si a retelelor de canalizare in Orbeni",
+        "lots": "1. Lot 1 - Extinderea retelelor de distributie a apei si a retelelor de canalizare in Orbeni",
+        "cpv": "45231100-6",
+        "procedure": "Licitatie deschisa",
+        "acquisition": "Lucrari",
+        "winners": [
+          "2018457",
+          "2055319",
+          "2110145",
+          "2111256",
+          "2162257",
+          "2270116"
+        ],
+        "winnerCuis": [
+          "15993042",
+          "26045200",
+          "8642901",
+          "8375340",
+          "44321304",
+          "NULL"
+        ]
+      }
+    ],
+    "proofs": [
+      {
+        "contract": "107773449",
+        "notice": "100638065",
+        "procedure": "100229850",
+        "source": "dq02-evidence-20261003/award-raw.jsonl",
+        "rawId": "12367",
+        "hash": "56f2ffd345f87265cd0ff0f9a47e9f723495f1254834c99a158282054d59fb18",
+        "noticeSource": "dq02-evidence-20261003/award-raw.jsonl",
+        "noticeHash": "beda291398db3934101165fcc1c4bab8e00f90fbc0fc61ddc4f2a42a61144ad2",
+        "contractType": 1,
+        "conditions": {
+          "hasCompetitionResumeSection": false
+        },
+        "url": "https://www.e-licitatie.ro/pub/notices/ca-notices/view-c/100638065"
+      },
+      {
+        "contract": "108120629",
+        "notice": "100657162",
+        "procedure": "100229850",
+        "source": "local-production-copy-20261002",
+        "rawId": "17311514",
+        "hash": "5abf122a597c05b3306324dec7b3bd637dee2cf7fe5268e9a0ce090b86fb72b6",
+        "noticeSource": "local-production-copy-20261002",
+        "noticeHash": "0b6847ef6fb85323be3251cd2372180486001bda137c8debb279898c7d5c2230",
+        "contractType": 1,
+        "conditions": {
+          "hasCompetitionResumeSection": false
+        },
+        "url": "https://www.e-licitatie.ro/pub/notices/ca-notices/view-c/100657162"
+      }
+    ],
+    "methodology": "contract-identity-1",
+    "decision": "unreviewed"
+  },
+  {
+    "id": "650940db54a97c57484f0034405b9bf41801d2514e11046b9c42370f7dc33b8e",
+    "fingerprint": "9e167b202a8d7a1c9b9b5f12ede9589fd0ea4d370b2c712473c88b5742385fa2",
+    "status": "needs_evidence",
+    "reasons": [
+      "incomplete_identity"
+    ],
+    "members": [
+      {
+        "id": "409813",
+        "publicId": "107773447",
+        "noticeId": "100638065",
+        "noticeNo": "CAN1123827",
+        "authority": "2136245",
+        "authorityCui": "27429315",
+        "number": "1641",
+        "date": "2024-03-26",
+        "value": "21401828.94",
+        "currency": "RON",
+        "title": "BC CL 09 – Extinderea retelelor de distributie a apei si a retelelor de canalizare in Orbeni, Valea Seaca, Racaciuni, Sarata, Luizi Calugara-Lot 3 - Extinderea retelelor de canalizare in Luizi Calugara",
+        "lots": "3. Lot 3 - Extinderea retelelor de canalizare in Luizi Calugara",
+        "cpv": "45231100-6",
+        "procedure": "Licitatie deschisa",
+        "acquisition": "Lucrari",
+        "winners": [
+          "2018457",
+          "2055319",
+          "2110145",
+          "2111256",
+          "2162257",
+          "2270116"
+        ],
+        "winnerCuis": [
+          "15993042",
+          "26045200",
+          "8642901",
+          "8375340",
+          "44321304",
+          "NULL"
+        ]
+      },
+      {
+        "id": "3891140",
+        "publicId": "108120627",
+        "noticeId": "100657162",
+        "noticeNo": "CAN1123827",
+        "authority": "2136245",
+        "authorityCui": "27429315",
+        "number": "1641",
+        "date": "2024-03-26",
+        "value": "21401828.94",
+        "currency": "RON",
+        "title": "BC CL 09 – Extinderea retelelor de distributie a apei si a retelelor de canalizare in Orbeni, Valea Seaca, Racaciuni, Sarata, Luizi Calugara-Lot 3 - Extinderea retelelor de canalizare in Luizi Calugara",
+        "lots": "3. Lot 3 - Extinderea retelelor de canalizare in Luizi Calugara",
+        "cpv": "45231100-6",
+        "procedure": "Licitatie deschisa",
+        "acquisition": "Lucrari",
+        "winners": [
+          "2018457",
+          "2055319",
+          "2110145",
+          "2111256",
+          "2162257",
+          "2270116"
+        ],
+        "winnerCuis": [
+          "15993042",
+          "26045200",
+          "8642901",
+          "8375340",
+          "44321304",
+          "NULL"
+        ]
+      }
+    ],
+    "proofs": [
+      {
+        "contract": "107773447",
+        "notice": "100638065",
+        "procedure": "100229850",
+        "source": "dq02-evidence-20261003/award-raw.jsonl",
+        "rawId": "12367",
+        "hash": "56f2ffd345f87265cd0ff0f9a47e9f723495f1254834c99a158282054d59fb18",
+        "noticeSource": "dq02-evidence-20261003/award-raw.jsonl",
+        "noticeHash": "beda291398db3934101165fcc1c4bab8e00f90fbc0fc61ddc4f2a42a61144ad2",
+        "contractType": 1,
+        "conditions": {
+          "hasCompetitionResumeSection": false
+        },
+        "url": "https://www.e-licitatie.ro/pub/notices/ca-notices/view-c/100638065"
+      },
+      {
+        "contract": "108120627",
+        "notice": "100657162",
+        "procedure": "100229850",
+        "source": "local-production-copy-20261002",
+        "rawId": "17311514",
+        "hash": "5abf122a597c05b3306324dec7b3bd637dee2cf7fe5268e9a0ce090b86fb72b6",
+        "noticeSource": "local-production-copy-20261002",
+        "noticeHash": "0b6847ef6fb85323be3251cd2372180486001bda137c8debb279898c7d5c2230",
+        "contractType": 1,
+        "conditions": {
+          "hasCompetitionResumeSection": false
+        },
+        "url": "https://www.e-licitatie.ro/pub/notices/ca-notices/view-c/100657162"
+      }
+    ],
+    "methodology": "contract-identity-1",
+    "decision": "unreviewed"
+  },
+  {
+    "id": "0512fe8211a0ddddc2f65f6482b5fa6f477f6b0a0fbf420ef41be578bd50a1c9",
+    "fingerprint": "416cb305aa24389cfcbdf19a041dd0ac8da691a20f26bf52700d6710f21196ee",
+    "status": "needs_evidence",
+    "reasons": [
+      "incomplete_identity"
+    ],
+    "members": [
+      {
+        "id": "409814",
+        "publicId": "107773448",
+        "noticeId": "100638065",
+        "noticeNo": "CAN1123827",
+        "authority": "2136245",
+        "authorityCui": "27429315",
+        "number": "1642",
+        "date": "2024-03-26",
+        "value": "59018046.7",
+        "currency": "RON",
+        "title": "BC CL 09 – Extinderea retelelor de distributie a apei si a retelelor de canalizare in Orbeni, Valea Seaca, Racaciuni, Sarata, Luizi Calugara-Lot 4 - Extinderea retelelor de distributie a apei si a retelelor de canalizare in Valea Seaca si Racaciuni",
+        "lots": "4. Lot 4 - Extinderea retelelor de distributie a apei si a retelelor de canalizare in Valea Seaca si Racaciuni",
+        "cpv": "45231100-6",
+        "procedure": "Licitatie deschisa",
+        "acquisition": "Lucrari",
+        "winners": [
+          "2018457",
+          "2055319",
+          "2110145",
+          "2111256",
+          "2162257",
+          "2270116"
+        ],
+        "winnerCuis": [
+          "15993042",
+          "26045200",
+          "8642901",
+          "8375340",
+          "44321304",
+          "NULL"
+        ]
+      },
+      {
+        "id": "3891141",
+        "publicId": "108120628",
+        "noticeId": "100657162",
+        "noticeNo": "CAN1123827",
+        "authority": "2136245",
+        "authorityCui": "27429315",
+        "number": "1642",
+        "date": "2024-03-26",
+        "value": "59018046.7",
+        "currency": "RON",
+        "title": "BC CL 09 – Extinderea retelelor de distributie a apei si a retelelor de canalizare in Orbeni, Valea Seaca, Racaciuni, Sarata, Luizi Calugara-Lot 4 - Extinderea retelelor de distributie a apei si a retelelor de canalizare in Valea Seaca si Racaciuni",
+        "lots": "4. Lot 4 - Extinderea retelelor de distributie a apei si a retelelor de canalizare in Valea Seaca si Racaciuni",
+        "cpv": "45231100-6",
+        "procedure": "Licitatie deschisa",
+        "acquisition": "Lucrari",
+        "winners": [
+          "2018457",
+          "2055319",
+          "2110145",
+          "2111256",
+          "2162257",
+          "2270116"
+        ],
+        "winnerCuis": [
+          "15993042",
+          "26045200",
+          "8642901",
+          "8375340",
+          "44321304",
+          "NULL"
+        ]
+      }
+    ],
+    "proofs": [
+      {
+        "contract": "107773448",
+        "notice": "100638065",
+        "procedure": "100229850",
+        "source": "dq02-evidence-20261003/award-raw.jsonl",
+        "rawId": "12367",
+        "hash": "56f2ffd345f87265cd0ff0f9a47e9f723495f1254834c99a158282054d59fb18",
+        "noticeSource": "dq02-evidence-20261003/award-raw.jsonl",
+        "noticeHash": "beda291398db3934101165fcc1c4bab8e00f90fbc0fc61ddc4f2a42a61144ad2",
+        "contractType": 1,
+        "conditions": {
+          "hasCompetitionResumeSection": false
+        },
+        "url": "https://www.e-licitatie.ro/pub/notices/ca-notices/view-c/100638065"
+      },
+      {
+        "contract": "108120628",
+        "notice": "100657162",
+        "procedure": "100229850",
+        "source": "local-production-copy-20261002",
+        "rawId": "17311514",
+        "hash": "5abf122a597c05b3306324dec7b3bd637dee2cf7fe5268e9a0ce090b86fb72b6",
+        "noticeSource": "local-production-copy-20261002",
+        "noticeHash": "0b6847ef6fb85323be3251cd2372180486001bda137c8debb279898c7d5c2230",
+        "contractType": 1,
+        "conditions": {
+          "hasCompetitionResumeSection": false
+        },
+        "url": "https://www.e-licitatie.ro/pub/notices/ca-notices/view-c/100657162"
+      }
+    ],
+    "methodology": "contract-identity-1",
+    "decision": "unreviewed"
+  }
+]

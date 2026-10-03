@@ -1,5 +1,5 @@
 import { runContractMoneyQuality } from "../normalize/contract-money-quality.js";
-import { publishMonitoringRefresh, type Db, type DbSql } from "@seap/db";
+import { assertContractIdentityQuality, publishMonitoringRefresh, type Db, type DbSql } from "@seap/db";
 import { runNormalize } from "../normalize/pipeline.js";
 import { runReconcile } from "../normalize/reconcile.js";
 import { runTedMart } from "../normalize/ted-mart.js";
@@ -16,7 +16,7 @@ import { validateBatch1Snapshot } from "./validate.js";
 import { monitoringSourceCoverage, validateCoverageCounts } from "./coverage.js";
 
 export const MONITORING_METHODOLOGY = {
-  contractMoney: "source-currency-1", monitoring: "monitoring-refresh-1", flags: METHODOLOGY_VERSION,
+  contractIdentity: "verified-publications-1", contractMoney: "source-currency-1", monitoring: "monitoring-refresh-1", flags: METHODOLOGY_VERSION,
   tedNormalization: TED_NORMALIZATION_VERSION, transactionPopulation: "batch1-canonical-1", procurementCalendar: "Europe/Bucharest-v1",
 };
 
@@ -24,7 +24,7 @@ export const MONITORING_METHODOLOGY = {
 export async function runMonitoringRefresh(db: Db, sql: DbSql, options: {
   mode: "coordinated" | "baseline"; log?: (message: string) => void; timeoutMs?: number;
   scope?: RefreshScope; onStage?: (name: MonitoringStage | "validation") => Promise<void>;
-  maxRawId?: bigint;
+  maxRawId?: bigint; repairContractIdentities?: () => Promise<unknown>;
 }) {
   const log = options.log ?? (() => {});
   const scope = options.scope ?? "full";
@@ -41,6 +41,8 @@ export async function runMonitoringRefresh(db: Db, sql: DbSql, options: {
     const stages = options.mode === "baseline" ? {} : await executeMonitoringStages({
       normalize: () => runNormalize(db, sql, { log, ...(options.maxRawId === undefined ? {} : {maxRawId:options.maxRawId}) }),
       "money-quality": () => runContractMoneyQuality(sql),
+      "identity-repair": () => options.repairContractIdentities?.() ?? Promise.resolve(null),
+      "identity-quality": () => assertContractIdentityQuality(sql),
       reconcile: () => runReconcile(sql, { log }),
       "ted-mart": () => runTedMart(sql, { log }),
       marts: () => runMarts(sql, { log }),
