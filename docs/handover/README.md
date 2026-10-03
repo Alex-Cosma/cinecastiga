@@ -1,5 +1,7 @@
 # Handover pentru un nou dezvoltator și asistentul lui
 
+**3 octombrie — deduplicarea este programată în producție pentru aceeași mentenanță din4 octombrie05:00 RO:** [confirmare deploy și programare](../implementation/contract-publication-identity/README.md#confirmarea-programării-și-deploy-ului). Runtime63981c6,CI/deploy37145428452trecute,53migrări. Ambele operațiuni sunt scheduled: corecție monetară → normalizare → deduplicare → o singură recalculare completă. Preflight live8.045perechi/7.300contribuții repetate/7.100.577.914,82RON; zero decizii activate înainte de noapte. [Snapshot](../implementation/contract-publication-identity/production-schedule.json). Mâine verifică execuția, nu o presupune din programare.
+
 **3 octombrie — publicare corecție monetară și operațiune unică:** [implementare, simulare și procedură](../implementation/contract-currency/README.md#one-time-scheduling--4-october-2026). Autorizată pentru 4 octombrie 05:00 RO, după backup, numai în acea rulare completă. Marcaj persistent `contract-money-v1`; deploy-ul singur nu aplică reparația. Rezultatul execuției trebuie verificat dimineața.
 
 
