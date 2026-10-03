@@ -129,3 +129,6 @@
 
 /* Monitoring entry points share the established quiet action treatment. */
 .follow-action{display:inline-flex;align-items:center;justify-content:center;gap:10px;font-size:13px;font-weight:500;padding:10px 14px;min-height:42px;color:var(--accent);border:1px solid var(--line2);border-radius:8px;background:var(--surface);text-decoration:none;transition:background .16s ease,border-color .16s ease}.follow-action:hover{background:var(--accent-soft);border-color:var(--accent-line)}.follow-action:focus-visible{outline:2px solid var(--accent);outline-offset:4px}.monitoring-trail{display:flex;gap:24px;margin-bottom:30px;font-size:14px}.monitoring-trail a{text-underline-offset:5px}.monitoring-trail [aria-current=page]{border-bottom:2px solid var(--accent);padding-bottom:7px}
+
+/* Four primary destinations, including editorial stories, fit narrow screens. */
+@media(max-width:700px){.d-main-nav{gap:clamp(4px,2vw,16px);max-width:460px;min-width:0}.d-main-nav>a{flex:0 1 auto}}
