@@ -17,3 +17,5 @@ export * from "./entity-identity.js";
 
 export * from "./contract-money.js";
 export * from "./contract-money-quality.js";
+
+export * from "./contract-identity.js";

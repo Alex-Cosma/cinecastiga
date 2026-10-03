@@ -1192,6 +1192,8 @@ export interface ContractDetail {
   flags: { code: string; severity: number | null; evidence: Record<string, unknown> | null }[];
   /** how many contracts (lots) the same award notice produced */
   noticeLotCount: number;
+  publications: {natId:string;noticeId:string;noticeNo:string|null;canonical:boolean}[];
+  countedOnce: boolean;
 }
 
 export async function getContractDetail(natId: string): Promise<ContractDetail | null> {
@@ -1221,11 +1223,20 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
   const awardId = r["award_id"] != null ? String(r["award_id"]) : null;
   const authId = r["authority_entity_id"] != null ? String(r["authority_entity_id"]) : null;
 
+  const publications = await sql`
+    select c.ca_notice_contract_id::text nat_id,c.ca_notice_id::text notice_id,a.notice_no,
+      c.id=d.canonical_contract_id canonical,d.canonical_contract_id::text canonical_id
+    from marts.contract_identity_members selected
+    join marts.contract_identity_decisions d on d.candidate_id=selected.candidate_id
+    join marts.contract_identity_members m on m.candidate_id=d.candidate_id
+    join core.contracts c on c.id=m.contract_id left join core.awards a on a.ca_notice_id=c.ca_notice_id
+    where selected.contract_id=${contractId} order by c.id`;
+  const statisticsId=publications[0]?.canonical_id ?? contractId;
   const caId = r["ca_notice_id"] != null ? String(r["ca_notice_id"]) : null;
   const [mart, winners, flags, lotCount] = await Promise.all([
     sql`
       select supplier_id, closing_value, n_winners, tenders_received, is_single_bidder
-      from marts.contract_transactions where contract_id = ${contractId}
+      from marts.contract_transactions where contract_id = ${statisticsId}
     ` as unknown as Promise<Record<string, unknown>[]>,
     sql`
       select cw.entity_id, e.name_display, e.county
@@ -1284,6 +1295,8 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
   }
 
   return {
+    publications:publications.map(p=>({natId:String(p.nat_id),noticeId:String(p.notice_id),noticeNo:p.notice_no as string|null,canonical:p.canonical===true})),
+    countedOnce:publications.length>1&&mart.length>0,
     natId: String(r["nat_id"]),
     contractId,
     contractNo: (r["contract_no"] as string | null) ?? null,

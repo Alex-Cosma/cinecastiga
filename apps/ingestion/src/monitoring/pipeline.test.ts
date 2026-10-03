@@ -14,12 +14,19 @@ describe("coordinated monitoring refresh", () => {
     }), () => {}, {scope:'daily'})).rejects.toThrow('Currency integrity failed');
     expect(visited).toEqual(['normalize','money-quality']);
   });
+  it.each(['daily','full'] as const)('blocks TED and publication when approved identities change (%s)',async scope=>{
+    const visited:string[]=[];
+    await expect(executeMonitoringStages(fixture(async name=>{
+      visited.push(name);if(name==='identity-quality')throw Error('Identity requires review');return {quarantined:0};
+    }),()=>{},{scope})).rejects.toThrow('Identity requires review');
+    expect(visited).toEqual(['normalize','money-quality','identity-repair','identity-quality']);
+  });
   it("daily runs retain risk tables and still rebuild Radiografie, coverage and statistics", async () => {
     const visited:string[]=[];
     const stages:string[]=[];
     const report=await executeMonitoringStages(fixture(async name=>{visited.push(name);return {quarantined:0};}),()=>{},
       {scope:'daily',onStage:async name=>{stages.push(name);}});
-    expect(visited).toEqual(['normalize','money-quality','reconcile','ted-mart','marts','transactions','radiografie','coverage']);
+    expect(visited).toEqual(['normalize','money-quality','identity-repair','identity-quality','reconcile','ted-mart','marts','transactions','radiografie','coverage']);
     expect(stages).toEqual(visited);expect(report).not.toHaveProperty('flags');expect(report).not.toHaveProperty('flag-marts');
   });
   it("waits for each dependency and records every completed stage", async () => {
@@ -38,7 +45,7 @@ describe("coordinated monitoring refresh", () => {
     await expect(executeMonitoringStages(fixture(async name => {
       visited.push(name); if (name === "ted-mart") throw new Error("fixture failure");
     }))).rejects.toThrow("fixture failure");
-    expect(visited).toEqual(["normalize", "money-quality", "reconcile", "ted-mart"]);
+    expect(visited).toEqual(["normalize", "money-quality", "identity-repair", "identity-quality", "reconcile", "ted-mart"]);
   });
   it("does not publish a normalization run which quarantined new records", async () => {
     const visited: string[] = [];

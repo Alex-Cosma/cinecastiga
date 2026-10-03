@@ -190,6 +190,8 @@ services:
     init: true
     mem_limit: 2g
     cpus: 2
+    volumes:
+      - /srv/seap/repairs:/repairs:ro
     environment:
       DATABASE_URL: postgres://seap:${POSTGRES_PASSWORD:?set in .env}@postgres:5432/seap
       MEILISEARCH_URL: http://meilisearch:7700

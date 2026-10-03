@@ -1,5 +1,5 @@
 import { readContractMoneyQuality } from "@seap/db";
-import { contractRonValue } from "@seap/db";
+import { contractRonValue, canonicalContract, readContractIdentityQuality } from "@seap/db";
 import { validateSignalLookup, type DbSql } from "@seap/db";
 import { METHODOLOGY_VERSION } from "../flags/methodology.js";
 import { assertCeilingEras } from "../flags/thresholds.js";
@@ -15,6 +15,8 @@ export async function validateBatch1Snapshot(q: DbSql, options: {
   const report = (check: string, passed: boolean, scope: string, details: unknown) => {
     const item = { check, passed, scope, details }; checks.push(item); emit?.(item);
   };
+  const identityQuality = await readContractIdentityQuality(q);
+  report("contract_publication_identity",identityQuality.valid,"all approved publications and current source fingerprints",identityQuality);
   const moneyQuality = await readContractMoneyQuality(q);
   report("contract_currency_integrity", moneyQuality.structuralErrors === 0 && moneyQuality.sourceErrors === 0, "all contract monetary records and verified archive amounts; exclusions retained explicitly", moneyQuality);
   const [ted] = await q`select count(*)::text total,
@@ -26,45 +28,7 @@ export async function validateBatch1Snapshot(q: DbSql, options: {
   report("legal_threshold_registry", true, "all canonical ceiling eras", { eraCount });
 
   // Full contract population: eligible source records and all allocated rows.
-  const [allocations] = await q`
-    with has_sub as (select distinct ca_notice_id from core.contracts where title ~* 'subsecvent'),
-    winners as (select contract_id, count(distinct entity_id) n from core.contract_winners group by contract_id),
-    source as (
-      select c.id, c.ca_notice_contract_id, ${contractRonValue(q)} as contract_value, w.n winners,
-        coalesce(${contractRonValue(q)} > 0 and ${contractRonValue(q)} <= 1000000000 and c.contract_date is not null
-           and a.authority_entity_id is not null and w.n > 0
-          and not (coalesce(c.title, '') ~* 'acord[- ]cadru' and coalesce(c.title, '') !~* 'subsecvent'
-            and c.ca_notice_id in (select ca_notice_id from has_sub)), false) eligible
-      from core.contracts c left join core.awards a on a.ca_notice_id = c.ca_notice_id
-      left join winners w on w.contract_id = c.id
-    ), allocated as (
-      select contract_id, count(*) n, count(distinct supplier_id) suppliers,
-        sum(closing_value) total, min(contract_value_full) full_min, max(contract_value_full) full_max,
-        min(n_winners) winners_min, max(n_winners) winners_max,
-        count(*) filter (where closing_value is null or closing_value <= 0) invalid_values
-      from marts.contract_transactions group by contract_id
-    ), compared as (
-      select s.ca_notice_contract_id::text public_contract_id,
-        s.contract_value::text source_value, a.total::text allocated_value,
-        s.eligible and a.contract_id is null missing_allocation,
-        a.contract_id is not null and not coalesce(s.eligible, false) excluded_but_included,
-        a.contract_id is not null and (a.total is distinct from s.contract_value
-          or a.full_min is distinct from s.contract_value or a.full_max is distinct from s.contract_value
-          or a.n <> a.suppliers or a.n is distinct from s.winners
-          or a.winners_min is distinct from s.winners or a.winners_max is distinct from s.winners
-          or a.invalid_values > 0) allocation_mismatch
-      from source s full join allocated a on a.contract_id = s.id
-    ) select count(*)::text contracts_considered,
-      count(*) filter (where missing_allocation)::text eligible_missing,
-      count(*) filter (where excluded_but_included)::text excluded_included,
-      count(*) filter (where allocation_mismatch)::text allocation_mismatches,
-      (select coalesce(jsonb_agg(to_jsonb(example)), '[]'::jsonb) from (
-        select public_contract_id, source_value, allocated_value from compared
-        where missing_allocation or excluded_but_included or allocation_mismatch
-        order by public_contract_id nulls last limit 10
-      ) example) examples
-    from compared
-  `;
+  const allocations = await validateContractPopulation(q);
   report("contract_population_and_allocations", ["eligible_missing", "excluded_included", "allocation_mismatches"].every(k => allocations?.[k] === "0"),
     "all source contracts and contract allocations; every identified winner retains a positive share", allocations);
 
@@ -196,4 +160,48 @@ export async function validateBatch1Snapshot(q: DbSql, options: {
   report("coverage_observations", coverage.length === 4 && coverage.every(row => row["matches"] === true),
     "DA/contracts/TED object shape and required keys; years array exists. Does not establish external source completeness.", coverage);
   return checks;
+}
+
+/** Complete contract population/allocation reconciliation; usable on public contract fixtures. */
+export async function validateContractPopulation(q: DbSql) {
+  const [allocations] = await q`
+    with has_sub as (select distinct ca_notice_id from core.contracts where title ~* 'subsecvent'),
+    winners as (select contract_id, count(distinct entity_id) n from core.contract_winners group by contract_id),
+    source as (
+      select c.id, c.ca_notice_contract_id, ${contractRonValue(q)} as contract_value, w.n winners,
+        coalesce(${canonicalContract(q)} and ${contractRonValue(q)} > 0 and ${contractRonValue(q)} <= 1000000000 and c.contract_date is not null
+           and a.authority_entity_id is not null and w.n > 0
+          and not (coalesce(c.title, '') ~* 'acord[- ]cadru' and coalesce(c.title, '') !~* 'subsecvent'
+            and c.ca_notice_id in (select ca_notice_id from has_sub)), false) eligible
+      from core.contracts c left join core.awards a on a.ca_notice_id = c.ca_notice_id
+      left join winners w on w.contract_id = c.id
+    ), allocated as (
+      select contract_id, count(*) n, count(distinct supplier_id) suppliers,
+        sum(closing_value) total, min(contract_value_full) full_min, max(contract_value_full) full_max,
+        min(n_winners) winners_min, max(n_winners) winners_max,
+        count(*) filter (where closing_value is null or closing_value <= 0) invalid_values
+      from marts.contract_transactions group by contract_id
+    ), compared as (
+      select s.ca_notice_contract_id::text public_contract_id,
+        s.contract_value::text source_value, a.total::text allocated_value,
+        s.eligible and a.contract_id is null missing_allocation,
+        a.contract_id is not null and not coalesce(s.eligible, false) excluded_but_included,
+        a.contract_id is not null and (a.total is distinct from s.contract_value
+          or a.full_min is distinct from s.contract_value or a.full_max is distinct from s.contract_value
+          or a.n <> a.suppliers or a.n is distinct from s.winners
+          or a.winners_min is distinct from s.winners or a.winners_max is distinct from s.winners
+          or a.invalid_values > 0) allocation_mismatch
+      from source s full join allocated a on a.contract_id = s.id
+    ) select count(*)::text contracts_considered,
+      count(*) filter (where missing_allocation)::text eligible_missing,
+      count(*) filter (where excluded_but_included)::text excluded_included,
+      count(*) filter (where allocation_mismatch)::text allocation_mismatches,
+      (select coalesce(jsonb_agg(to_jsonb(example)), '[]'::jsonb) from (
+        select public_contract_id, source_value, allocated_value from compared
+        where missing_allocation or excluded_but_included or allocation_mismatch
+        order by public_contract_id nulls last limit 10
+      ) example) examples
+    from compared
+  `;
+  return allocations;
 }

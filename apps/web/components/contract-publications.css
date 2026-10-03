@@ -1,0 +1,10 @@
+.contract-publications { margin: 0 0 24px; padding: 16px 18px; background: var(--sunk); border-radius: 8px; color: var(--ink); }
+.contract-publications > p { margin: 0 0 12px; max-width: none; }
+.contract-publications ul { margin: 0; padding: 0; list-style: none; }
+.contract-publications li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 24px; padding: 8px 0; border-top: 1px solid var(--line); }
+.contract-publication-links { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; }
+.contract-publications a { text-underline-offset: 3px; }
+.contract-publications summary { cursor: pointer; width: fit-content; padding: 10px 0 2px; font-size: 13px; }
+.contract-publications details p { margin: 8px 0 0; max-width: 75ch; }
+.contract-publications :is(a, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+@media (max-width: 600px) { .contract-publications li { display: grid; gap: 6px; } }
