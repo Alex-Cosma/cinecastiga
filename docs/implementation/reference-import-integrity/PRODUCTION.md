@@ -64,5 +64,26 @@ explicită. Nu șterge rândul rulării automate de dimineață.
 
 ## Stare
 
-Sursele sunt transferate și verificate. Deploy-ul și aplicarea sunt în pregătire;
-nu considera această notă drept confirmare a redeschiderii sau a unei reparații live.
+Deploy `2e8757147ed8538657f8b83e2388ff256ab06d1f` confirmat; CI și deploy
+Actions `37181807983` reușite. Bundle-ul a fost verificat inclusiv în imaginea
+processor instalată: snapshot2026-07-08,54 fișiere MF, toate hashurile conforme.
+
+**Intervenție pornită, încă nefinalizată:** rulare manuală
+`96c15b43-6ad8-4d41-a94d-16b9c160e114`, început4 octombrie09:14:45 RO.
+Controlrevision35, paused/maintenance=true;30–45s păstrat. Cererile în curs
+au fost drenate, workerii opriți; backupul complet de aproximativ5,3GiB a fost
+încheiat și verificat înainte de reparație.
+PID inițial host2854649; logul și backupul sunt în
+`/srv/seap/backups/processing/96c15b43-6ad8-4d41-a94d-16b9c160e114/`.
+Activarea unică este păstrată în
+`scripts/operations/activate-reference-repair-20261004.sql`; a fost executată,
+nu trebuie relansată. Nu interpreta lansarea ca validare sau redeschidere.
+
+**Reparația tranzacțională este aplicată:** [raport agregat live](production-applied.json).
+1.119.170 date ONRC și5.399.344 valori de profit MF recuperate, identic simulării.
+ONRC păstrează3.679.178 rânduri, dintre care3.206.578 au dată. În cohorta de
+furnizori live:77.595→6.741 rânduri fără dată,2.646→7.903 chei comune între
+furnizori. Aceste numărări diferă ușor de copia locală prin cohorta de furnizori
+mai recentă; nu reprezintă număr de semnale.420 date neobișnuite rămân pentru audit.
+Pipeline-ul complet este în desfășurare; markerul este `applied`, nu `completed`.
+Mentenanța rămâne activă până la recalculare, validare și verificarea căutării.
