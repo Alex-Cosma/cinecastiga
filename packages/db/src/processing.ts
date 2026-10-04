@@ -18,12 +18,33 @@ export async function claimProcessing(q: DbSql, at?: Date) {
   const scope=c.weekday===c.risk_weekday?'full':'daily';
   const [run]=await tx`insert into app.processing_runs(scheduled_day,scope,control_revision,before_control)
     values(${c.scheduled_day}::date,${scope},${c.revision+1},${JSON.stringify({paused:c.paused,revision:c.revision})}::jsonb)
-    on conflict(scheduled_day) do nothing returning id,scope`;
+    on conflict(scheduled_day) where trigger='scheduled' do nothing returning id,scope`;
   if(!run)return null;
   await tx`update app.collection_control set paused=true,maintenance=true,revision=revision+1,updated_at=clock_timestamp() where id=1`;
   await tx`insert into app.collection_audit(actor_id,actor_name,action,before,after)
     values('system:processor','Procesare programată','processing-start',${JSON.stringify({paused:c.paused})}::jsonb,${JSON.stringify({runId:run.id,scope,maintenance:true})}::jsonb)`;
   return {id:String(run.id),scope:String(run.scope)};
+ });
+}
+
+/** Explicit host invocation only. Never consumes or rewrites the scheduled run for today. */
+export async function claimRepairProcessing(q: DbSql, repairId: string) {
+ if(repairId!=='reference-import-v1')throw Error('Unknown manual repair');
+ return q.begin(async tx=>{
+  const [c]=await tx`select *, (clock_timestamp() at time zone 'Europe/Bucharest')::date::text as repair_day
+    from app.collection_control where id=1 for update`;
+  if(!c||c.maintenance)throw Error('An existing maintenance must be resolved first');
+  if((await tx`select id from app.processing_runs where status='running' limit 1`).length)throw Error('An unfinished publication requires recovery');
+  const [repair]=await tx`select status,scheduled_day from app.data_repairs where id=${repairId} for update`;
+  if(repair?.status!=='scheduled'||repair.scheduled_day!==c.repair_day)throw Error('An explicit repair scheduled for today is required');
+  const [run]=await tx`insert into app.processing_runs(scheduled_day,trigger,scope,control_revision,before_control)
+    values(${c.repair_day}::date,'manual','full',${c.revision+1},${JSON.stringify({paused:c.paused,revision:c.revision,repairId})}::jsonb)
+    returning id,scope`;
+  await tx`update app.collection_control set paused=true,maintenance=true,revision=revision+1,updated_at=clock_timestamp() where id=1`;
+  await tx`insert into app.collection_audit(actor_id,actor_name,action,before,after)
+    values('system:processor','Intervenție autorizată','processing-start',${JSON.stringify({paused:c.paused})}::jsonb,
+      ${JSON.stringify({runId:run!.id,scope:'full',trigger:'manual',repairId,maintenance:true})}::jsonb)`;
+  return {id:String(run!.id),scope:'full'};
  });
 }
 
@@ -72,8 +93,8 @@ export async function processingSchedule(q:DbSql) {
    select c.*,d::date as scheduled_day,((d::date+c.processing_time::time) at time zone 'Europe/Bucharest') as scheduled_at
    from app.collection_control c cross join generate_series((now() at time zone 'Europe/Bucharest')::date,
      (now() at time zone 'Europe/Bucharest')::date+8,interval '1 day') d where c.id=1
- ) select min(scheduled_at) filter(where processing_enabled and scheduled_at>=processing_enabled_at and not exists(select 1 from app.processing_runs r where r.scheduled_day=days.scheduled_day)) next_at,
-   min(scheduled_at) filter(where processing_enabled and extract(dow from scheduled_day)=risk_weekday and scheduled_at>=processing_enabled_at and not exists(select 1 from app.processing_runs r where r.scheduled_day=days.scheduled_day)) next_risk_at
+ ) select min(scheduled_at) filter(where processing_enabled and scheduled_at>=processing_enabled_at and not exists(select 1 from app.processing_runs r where r.scheduled_day=days.scheduled_day and r.trigger='scheduled')) next_at,
+   min(scheduled_at) filter(where processing_enabled and extract(dow from scheduled_day)=risk_weekday and scheduled_at>=processing_enabled_at and not exists(select 1 from app.processing_runs r where r.scheduled_day=days.scheduled_day and r.trigger='scheduled')) next_risk_at
    from days`;
  return schedule??{next_at:null,next_risk_at:null};
 }

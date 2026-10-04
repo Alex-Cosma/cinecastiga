@@ -1,20 +1,22 @@
 import {runScheduledIdentityRepair} from '../normalize/scheduled-contract-identity.js';
 import { runScheduledMoneyRepair } from '../normalize/scheduled-money-repair.js';
-import { createDb, claimProcessing, failProcessing, finishProcessing, processingStage, collectionHeartbeat } from '@seap/db';
+import { createDb, claimProcessing, claimRepairProcessing, failProcessing, finishProcessing, processingStage, collectionHeartbeat } from '@seap/db';
+import {runScheduledReferenceRepair} from '../reference/scheduled-repair.js';
 import { runMonitoringRefresh } from '../monitoring/refresh.js';
 import {indexTopics} from '../search/index-topics.js';
 import { indexEntities, meiliClient } from '../search/index-entities.js';
 
 async function main() {
  const [command,id,arg]=process.argv.slice(2);
- if(!['claim','stage','freeze','refresh','finish','fail'].includes(command??''))throw Error('Unknown processing command');
- if(command!=='claim'&&!/^[0-9a-f-]{36}$/.test(id??''))throw Error('A processing run ID is required');
+ if(!['claim','claim-repair','stage','freeze','refresh','finish','fail'].includes(command??''))throw Error('Unknown processing command');
+ if(!['claim','claim-repair'].includes(command!)&&!/^[0-9a-f-]{36}$/.test(id??''))throw Error('A processing run ID is required');
  // The reserved publication session must survive hour-long risk stages.
  const url=new URL(process.env['DATABASE_URL']!);url.searchParams.set('max_lifetime','0');
  const {db,sql}=createDb(url.toString());
  let heartbeat:ReturnType<typeof setInterval>|undefined;
  try {
   if(command==='claim') {const run=await claimProcessing(sql);if(run)console.log(run.id);return;}
+  if(command==='claim-repair'){const run=await claimRepairProcessing(sql,id!);console.log(run.id);return;}
   if(command==='fail'){await failProcessing(sql,id!);return;}
   if(command==='finish'){await finishProcessing(sql,id!);return;}
   const [r]=await sql`select r.*,c.maintenance,c.paused from app.processing_runs r cross join app.collection_control c where r.id=${id!}::uuid and c.id=1`;
@@ -39,6 +41,7 @@ async function main() {
   };
   await beat();heartbeat=setInterval(()=>{void beat().catch(()=>{});},10000);
   await runScheduledMoneyRepair(sql,id!,console.log);
+  await runScheduledReferenceRepair(sql,id!,console.log);
   const checkpoint=await runMonitoringRefresh(db,sql,{
    repairContractIdentities:()=>runScheduledIdentityRepair(sql,id!,console.log),
    mode:'coordinated',scope:r.scope==='full'?'full':'daily',maxRawId:BigInt(r.raw_boundary),

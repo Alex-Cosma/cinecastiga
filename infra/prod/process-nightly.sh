@@ -10,7 +10,11 @@ cd infra/prod
 # These commands never consume input; do not let Compose eat a caller's SSH
 # script and silently skip the commands following this runner.
 run() { docker compose --profile processing run --rm --no-deps -T processor node apps/ingestion/dist/scripts/processing.js "$@" </dev/null; }
-run_id=$(run claim)
+case "${1:-}" in
+ "") run_id=$(run claim);;
+ --reference-repair-now) run_id=$(run claim-repair reference-import-v1);;
+ *) echo 'Unsupported processing invocation' >&2; exit 2;;
+esac
 [[ -n "$run_id" ]] || exit 0
 [[ "$run_id" =~ ^[a-f0-9-]{36}$ ]] || exit 1
 failed() { trap - ERR INT TERM; run fail "$run_id" || true; echo "Publication failed; maintenance retained: $run_id"; exit 1; }
