@@ -1,6 +1,6 @@
 import {afterAll,beforeEach,describe,expect,it} from 'vitest';
 import {createDb} from '../src/client.js';
-import {claimProcessing,processingStage,failProcessing,finishProcessing,processingSchedule} from '../src/processing.js';
+import {claimProcessing,claimRepairProcessing,processingStage,failProcessing,finishProcessing,processingSchedule} from '../src/processing.js';
 const url=process.env['TEST_DATABASE_URL'];
 if(url&&!/^seap_test_/.test(new URL(url).pathname.slice(1)))throw Error('Isolated test database required');
 const suite=url?describe:describe.skip;
@@ -82,5 +82,20 @@ suite('scheduled publication state machine (no network)',()=>{
  it('reports no next run for a disabled schedule',async()=>{
   await q`update app.collection_control set processing_enabled=false`;
   expect(await processingSchedule(q)).toEqual({next_at:null,next_risk_at:null});
+ });
+ it('allows an explicit full repair today without replacing the completed scheduled run',async()=>{
+  const [clock]=await q`select (now() at time zone 'Europe/Bucharest')::date::text as repair_day`;
+  const [old]=await q`insert into app.processing_runs(scheduled_day,scope,status,completed_at,control_revision,before_control)
+    values(${clock!.repair_day}::date,'full','ready',now(),1,'{}') returning id`;
+  await expect(claimRepairProcessing(q,'reference-import-v1')).rejects.toThrow('scheduled for today');
+  await q`insert into app.data_repairs(id,scheduled_day) values('reference-import-v1',${clock!.repair_day}::date)`;
+  const run=await claimRepairProcessing(q,'reference-import-v1');expect(run.scope).toBe('full');
+  expect((await q`select status,trigger from app.processing_runs where id=${old!.id}`)[0]).toMatchObject({status:'ready',trigger:'scheduled'});
+  expect((await q`select trigger from app.processing_runs where id=${run.id}`)[0]!.trigger).toBe('manual');
+  await expect(claimRepairProcessing(q,'reference-import-v1')).rejects.toThrow('maintenance');
+  await failProcessing(q,run.id);
+  await q`update app.collection_control set maintenance=false,paused=false`;
+  await q`update app.data_repairs set status='completed' where id='reference-import-v1'`;
+  await expect(claimRepairProcessing(q,'reference-import-v1')).rejects.toThrow('scheduled for today');
  });
 });

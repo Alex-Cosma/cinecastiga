@@ -173,3 +173,20 @@ python3 docs/audits/20261003-data-quality/check-reference-files.py ../seap-heart
 ```
 
 Rulați seriile succesiv, nu în paralel. Sunt interogări complete pe seturile menționate și pot dura zeci de secunde fiecare. `run.py` acceptă numele oricărui fișier din `sql/` fără extensie. Nu rulați comenzile de import în locul scripturilor de verificare. Sumele SQL unde identitatea zecimală este importantă sunt păstrate ca text; runnerul final serializează și numericele JSON fracționare ca șiruri zecimale.
+
+
+## 4 octombrie — DQ-03 și DQ-05: reparare validată local
+
+[Implementare și rezultate](../../implementation/reference-import-integrity/VALIDATION.md):
+1.119.170 de date ONRC și 5.399.344 profituri MF recuperate pe copie izolată;
+rerulare completă fără modificări. Importurile viitoare și protecțiile sunt
+implementate pe `fix/reference-import-integrity`. Baza locală principală și
+producția rămân nemodificate pentru acest lot. Nicio cerere către surse.
+
+Limite rămase: 420 date ONRC calendaristic valide, dar în afara intervalului de
+control, trebuie evaluate separat; categoriile MF fără definiție explicită nu
+primesc valori presupuse. Specificațiile ONG/bancare conțin și ambiguități de
+venituri (buget vs realizat, virgule în etichete, coduri fără I), documentate în
+[procedură](../../implementation/reference-import-integrity/README.md), care
+necesită un audit distinct de repararea etichetei `Profit net`. DQ-04 și DQ-06
+nu sunt rezolvate de acest lot.
