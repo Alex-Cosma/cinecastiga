@@ -2,7 +2,8 @@
 
 Proprietarul a autorizat explicit aplicarea **imediată, cu mentenanță acum**.
 Acest document descrie intervenția curentă; nu autorizează relansări viitoare.
-Starea finală trebuie verificată în baza de date și consemnată după publicare.
+**Intervenția este încheiată:** site redeschis la 11:30:31 RO, checkpoint 15 ready.
+[Raportul final verificat](production-completion.json) are prioritate față de notele intermediare.
 
 ## Preflight
 
@@ -62,28 +63,84 @@ explicită. Nu șterge rândul rulării automate de dimineață.
   Mecanica reală a reparației a fost aplicată și rerulată pe copia mare, cu zero
   modificări la rerulare. Migrarea47→54 verificată pe baza izolată cu istoricul real.
 
-## Stare
+## Rezultat final verificat
 
-Deploy `2e8757147ed8538657f8b83e2388ff256ab06d1f` confirmat; CI și deploy
-Actions `37181807983` reușite. Bundle-ul a fost verificat inclusiv în imaginea
-processor instalată: snapshot2026-07-08,54 fișiere MF, toate hashurile conforme.
+- Runtime al intervenției: `2e8757147ed8538657f8b83e2388ff256ab06d1f`;
+  CI și deploy Actions `37181807983` reușite, **54 migrări**.
+- Rulare manuală `96c15b43-6ad8-4d41-a94d-16b9c160e114`, `full`, `ready`.
+  **4 octombrie, 09:14:45–11:30:31 RO: 2 h 15 min 46 s.**
+- Checkpoint **15**, `e42f6743-0d03-431c-870e-c79870df1b8f`, `ready`;
+  toate cele **13 verificări** trecute. Risc recalculat, căutare verificată:
+  20.590.561 înregistrări pentru titluri, 181.096 documente în indexul entităților.
+- `reference-import-v1=completed`. Reparațiile monetară și de identitate au
+  păstrat rularea programată de dimineață și nu au fost reaplicate.
+- Control revision36: `maintenance=false`, `paused=false`, fără blocaj de sursă.
+  **30–45 secunde**, procesare zilnică **05:00**, risc **duminică**: neschimbate.
+  Cererile10955–10957 au încheiat cu succes după reluarea colectării.
+- Web/PostgreSQL/Meilisearch sănătoase, collection/documents pornite.
+  HTTP200 verificat pentru health, homepage, `/intreaba`, `/semnale`, furnizorul
+  `/entitati/2082932` și `/entitati/2146146/radiografie`.
 
-**Intervenție pornită, încă nefinalizată:** rulare manuală
-`96c15b43-6ad8-4d41-a94d-16b9c160e114`, început4 octombrie09:14:45 RO.
-Controlrevision35, paused/maintenance=true;30–45s păstrat. Cererile în curs
-au fost drenate, workerii opriți; backupul complet de aproximativ5,3GiB a fost
-încheiat și verificat înainte de reparație.
-PID inițial host2854649; logul și backupul sunt în
-`/srv/seap/backups/processing/96c15b43-6ad8-4d41-a94d-16b9c160e114/`.
-Activarea unică este păstrată în
-`scripts/operations/activate-reference-repair-20261004.sql`; a fost executată,
-nu trebuie relansată. Nu interpreta lansarea ca validare sau redeschidere.
+[Raportul intermediar al reparației](production-applied.json) surprinde momentul
+`applied`, înainte de recalculare; **nu este starea curentă**.
+[Raportul final](production-completion.json) include checkpointul, numărările,
+verificările, timpii și reluarea colectării. Nu conține nume sau date de naștere.
 
-**Reparația tranzacțională este aplicată:** [raport agregat live](production-applied.json).
-1.119.170 date ONRC și5.399.344 valori de profit MF recuperate, identic simulării.
-ONRC păstrează3.679.178 rânduri, dintre care3.206.578 au dată. În cohorta de
-furnizori live:77.595→6.741 rânduri fără dată,2.646→7.903 chei comune între
-furnizori. Aceste numărări diferă ușor de copia locală prin cohorta de furnizori
-mai recentă; nu reprezintă număr de semnale.420 date neobișnuite rămân pentru audit.
-Pipeline-ul complet este în desfășurare; markerul este `applied`, nu `completed`.
-Mentenanța rămâne activă până la recalculare, validare și verificarea căutării.
+### Date reparate și verificare independentă
+
+| Indicator | Înainte | După |
+|---|---:|---:|
+| Rânduri ONRC | 3.679.178 | 3.679.178 |
+| Rânduri ONRC cu dată de naștere | 2.087.408 | 3.206.578 |
+| Rânduri MF | 7.186.912 | 7.186.912 |
+| Rânduri MF cu profit net completat | 1.293.489 | 6.692.833 |
+
+Recuperate **1.119.170 de date ONRC** și **5.399.344 de profituri MF**,
+identic simulării locale. Dintre profituri, 2.370.044 sunt zero declarat.
+54 grupuri MF eligibile verificate și valorile lipsă reparate; 54 grupuri fără sursă/specificație sigură în
+bundle rămân neschimbate și sunt listate explicit în raport. Nu prezenta lotul
+ca validare a tuturor indicatorilor financiari sau a tuturor categoriilor.
+
+Scriptul read-only `scripts/operations/verify-reference-repair-20261004.sql`
+a trecut după redeschidere: numărări exacte, toate cele trei indexuri ONRC
+valide, reparație completed, rulare ready, checkpoint verificat și căutare
+verificată. Exemplul MF CUI30976819/an2025 are profit **999.104 lei**;
+identificatorul paginii este2082932, nu CUI-ul.
+
+În cohorta de furnizori live: 77.595→6.741 rânduri ONRC fără dată,
+2.646→7.903 chei comune între furnizori. Diferențele față de copia locală
+provin din cohorta mai recentă. Cele420 de date calendaristice neobișnuite
+rămân cazuri de audit, fără corecții inventate.
+
+Instanțele `net_shared_admin` au crescut de la9.291 la30.770; sunt semnale
+pentru verificare, nu persoane, firme distincte sau dovezi de nereguli.
+Celelalte categorii sunt identice cu checkpoint14, cu excepția `da_rapid`
+(+182) și `da_dependence` (−1); între rulări au fost publicate și794 de
+achiziții directe suplimentare. Variațiile nu sunt atribuite automat
+reparației ONRC/MF. Raportul păstrează vectorii de numărări înainte/după.
+
+### Backup și durate
+
+Backupul privat de **5.688.218.630 bytes** este în
+`/srv/seap/backups/processing/96c15b43-6ad8-4d41-a94d-16b9c160e114/`, alături de
+`run.log`, lista arhivei și SHA-256. Verificarea a inclus `pg_restore --list`
+și calculul checksumului; nu pretinde un restore integral nou al acestui backup.
+SHA-256: `6c9f71dfecf3ce7359ef44e0fd540ded2a1ff0f2172e0b73415fdbd33d3d0fdf`.
+
+| Etapă | Durată |
+|---|---:|
+| Backup și verificare | 15 min 56 s |
+| Reparație ONRC/MF | 7 min 40 s |
+| Semnale de risc | 62 min 34 s |
+| Tabele de tranzacții | 12 min 57 s |
+| Radiografie | 10 min 16 s |
+| Validare | 1 min 1 s |
+| Căutare | 5 min 58 s |
+
+Restul timpului aparține normalizării, asocierilor TED–SEAP, tabelelor
+statistice și repornirii. Etapele exacte sunt păstrate în raport.
+
+Activarea `scripts/operations/activate-reference-repair-20261004.sql` a fost
+executată o singură dată. **Nu relansa operațiunea și nu șterge markerul.**
+Importurile viitoare folosesc parser-ele corectate; hookul istoric face noop
+după completed. Baza locală obișnuită nu a fost actualizată de această intervenție.

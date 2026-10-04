@@ -1,5 +1,8 @@
 # Validarea lotului ONRC / MF — 4 octombrie 2026
 
+Acesta este raportul istoric al validării locale, înainte de deploy. Aplicarea
+ulterioară în producție și starea publicării sunt în [PRODUCTION.md](PRODUCTION.md).
+
 ## Medii și verificări
 
 - Branch `fix/reference-import-integrity`; fără commit/push/deploy pentru acest lot.
