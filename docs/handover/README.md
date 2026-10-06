@@ -1,5 +1,7 @@
 # Handover pentru un nou dezvoltator și asistentul lui
 
+**6 octombrie — verificare finală concurență/proxy-uri:** runtime `e702f79`, CI/deploy `37493119887` reușite. Corectat și blocajul fals la finalizarea concurentă. Live: 100 proxy-uri activate, 35–45 s/IP, plafon 50/minut, maximum 10 simultane; aproximativ 49/minut măsurate. Șase endpoint-uri sunt în cooldown automat, fără oprirea celorlalte. [Raport final, retry-uri și limite](../implementation/seap-proxy-pool.md#final-release-verification-after-the-orphan-race-fix).
+
 **6 octombrie — lot100 și concurență publicate:** runtime `04044df`, CI/deploy `37491212317` reușite,60migrări. Setări autorizate/live:100proxy-uri,35–45s/IP,50cereri/minut,10simultane; admin compact și configurabil. [Stare verificată și retry-uri în așteptare](../implementation/seap-proxy-pool.md#replacement-pool-and-concurrency-verified-in-production). La16:01UTC:120cereri reușite,6timeouturi izolate cu retry automat,48,96porniri/minut,fără blocajglobal.
 
 **6 octombrie — ritm total și per proxy în admin, publicat:** runtime `3fd6991`, CI/deploy `37475040711` reușite. `/admin` arată ritmul măsurat și numărul de proxy-uri activate; `/admin/conexiune` arată ritmul fiecărui endpoint pe ultimele10minute. Estimarea din setări și plafonul sunt distincte. Fără migrații sau modificări de ritm:9proxy-uri,40–60s/IP,15/min,revision54. [Detalii și verificări](../implementation/seap-proxy-pool.md#measured-collection-pace--2026-10-06).
