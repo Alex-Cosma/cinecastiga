@@ -86,3 +86,50 @@
 .collection-admin .settings select{width:100%;padding:.65rem;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);font:inherit}
 
 .collection-admin .processing-plan.is-enabled{background:var(--soft);color:var(--ink)}
+
+.collection-admin .proxy-control{margin:24px 0 32px;padding:24px 0;border-block:1px solid var(--line)}
+.collection-admin .proxy-control>.section-heading{align-items:flex-start}
+.collection-admin .proxy-summary{display:flex;gap:clamp(24px,6vw,90px);margin:22px 0}
+.collection-admin .proxy-summary dt{font-size:13px;color:var(--secondary)}
+.collection-admin .proxy-summary dd{font-size:28px;margin:5px 0;font-weight:500;font-variant-numeric:tabular-nums}
+.collection-admin .proxy-summary dd small{font-size:13px;font-weight:400;color:var(--secondary)}
+.collection-admin .proxy-summary span{font-size:12px;color:var(--muted)}
+.collection-admin .proxy-settings{padding:14px 18px;background:var(--sunk);border-radius:8px;margin:18px 0}
+.collection-admin .proxy-settings summary{cursor:pointer;font-size:14px;font-weight:500;min-height:24px}
+.collection-admin .proxy-settings form{margin-top:18px}
+.collection-admin .proxy-settings fieldset{border:0;padding:0;margin:0;min-width:0}
+.collection-admin .proxy-settings legend{font-size:13px;font-weight:500;margin-bottom:10px}
+.collection-admin .proxy-settings input{accent-color:var(--accent)}
+.collection-admin .proxy-settings input[type=number]{width:100%;background:var(--paper);color:var(--ink);border:1px solid var(--line2);border-radius:6px;padding:10px;font:inherit;margin-top:7px;box-sizing:border-box}
+.collection-admin .proxy-settings input:disabled{opacity:.65}
+.collection-admin .proxy-modes{display:flex;gap:24px;margin-bottom:20px}
+.collection-admin .proxy-modes label,.collection-admin .proxy-picks label{display:flex;align-items:center;gap:8px;min-height:34px;font-size:13px}
+.collection-admin .proxy-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;max-width:720px}
+.collection-admin .proxy-fields label{font-size:13px}
+.collection-admin .proxy-fields label>span{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+.collection-admin .proxy-settings .proxy-picks{display:flex;gap:8px 24px;flex-wrap:wrap;margin-top:22px}
+.collection-admin .proxy-picks small{color:var(--muted);font-variant-numeric:tabular-nums}
+.collection-admin .proxy-estimate{font-size:13px;margin:18px 0;color:var(--secondary);max-width:75ch}
+.collection-admin .proxy-form-actions{display:flex;align-items:center;gap:20px;margin:18px 0 10px;flex-wrap:wrap}
+.collection-admin .proxy-table-scroll{overflow-x:auto}
+.collection-admin .proxy-table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+.collection-admin .proxy-table caption{text-align:left;font-size:13px;color:var(--secondary);margin:4px 0 14px}
+.collection-admin .proxy-table th,.collection-admin .proxy-table td{padding:12px 10px;border-bottom:1px solid var(--line);text-align:right;vertical-align:top}
+.collection-admin .proxy-table th:first-child,.collection-admin .proxy-table th:nth-child(2),.collection-admin .proxy-table td:nth-child(2){text-align:left}
+.collection-admin .proxy-table thead th{font-size:12px;font-weight:400;color:var(--muted)}
+.collection-admin .proxy-table tbody th{font-weight:500}
+.collection-admin .proxy-table small{display:block;font-size:12px;font-weight:400;color:var(--muted);margin-top:4px}
+.collection-admin .proxy-reserved{color:var(--accent)}
+.collection-admin .proxy-rule{font-size:12px;color:var(--secondary);line-height:1.6;margin:18px 0 0;max-width:90ch}
+@media(max-width:600px){.collection-admin .proxy-control{padding-block:20px}.collection-admin .proxy-summary{display:grid;gap:18px}.collection-admin .proxy-fields{grid-template-columns:1fr;gap:16px}.collection-admin .proxy-table{min-width:580px}.collection-admin .proxy-settings{padding:14px}.collection-admin .proxy-control>.section-heading{gap:10px}.collection-admin .proxy-summary dd{font-size:24px}}
+
+.collection-admin .proxy-mobile-label{display:none}
+@media(max-width:600px){
+ .collection-admin .proxy-table{min-width:0}
+ .collection-admin .proxy-table thead{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+ .collection-admin .proxy-table tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-bottom:1px solid var(--line);padding:14px 0;gap:12px 8px}
+ .collection-admin .proxy-table tbody th{grid-column:1;overflow-wrap:anywhere;background:none}
+ .collection-admin .proxy-table td:nth-child(2){grid-column:2 / 4;align-self:center;text-align:right}
+ .collection-admin .proxy-table td,.collection-admin .proxy-table th{padding:0;border:0;text-align:left}
+ .collection-admin .proxy-mobile-label{display:block;color:var(--muted);font-size:12px;margin-bottom:4px}
+}

@@ -221,6 +221,8 @@ export const notices = coreSchema.table(
     /** SICAP cNoticeId — natural key, idempotent under replay. */
     cNoticeId: bigint("c_notice_id", { mode: "bigint" }).notNull(),
     noticeNo: text("notice_no"),
+    procedureId: text("procedure_id"),
+    title: text("title"),
     sysNoticeTypeId: integer("sys_notice_type_id"),
     sysNoticeVersionId: integer("sys_notice_version_id"),
     authorityEntityId: bigint("authority_entity_id", {
@@ -241,6 +243,7 @@ export const notices = coreSchema.table(
   (t) => [
     uniqueIndex("notices_c_notice_id_uq").on(t.cNoticeId),
     index("notices_authority_idx").on(t.authorityEntityId),
+    index("notices_procedure_authority_idx").on(t.procedureId,t.authorityEntityId),
     index("notices_cpv_idx").on(t.cpvCode),
     index("notices_state_date_idx").on(t.stateDate),
   ],
@@ -256,6 +259,8 @@ export const awards = coreSchema.table(
     /** SICAP caNoticeId — natural key; contracts link back via this. */
     caNoticeId: bigint("ca_notice_id", { mode: "bigint" }).notNull(),
     noticeNo: text("notice_no"),
+    procedureId: text("procedure_id"),
+    title: text("title"),
     sysNoticeTypeId: integer("sys_notice_type_id"),
     sysNoticeVersionId: integer("sys_notice_version_id"),
     authorityEntityId: bigint("authority_entity_id", {
@@ -691,3 +696,11 @@ export const riskThresholds = coreSchema.table(
   },
   (t) => [primaryKey({ columns: [t.key, t.validFrom] })],
 );
+
+/** Exact links recovered from official notice metadata, retained independently of raw retention. */
+export const noticeAwardSources = coreSchema.table('notice_award_sources', {
+ caNoticeId:bigint('ca_notice_id',{mode:'bigint'}).notNull(),
+ cNoticeId:bigint('c_notice_id',{mode:'bigint'}).notNull(),
+ sourceUrl:text('source_url').notNull(), sourceHash:text('source_hash').notNull(), evidence:jsonb('evidence').notNull(),
+ fetchedAt:timestamp('fetched_at',{withTimezone:true}).notNull(),
+},t=>[primaryKey({columns:[t.caNoticeId,t.cNoticeId]})]);

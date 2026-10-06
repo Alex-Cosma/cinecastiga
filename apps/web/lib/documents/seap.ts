@@ -1,6 +1,8 @@
-import {chromium,type Browser,type Page} from 'playwright-core';
-import {runCollectionRequest,collectionWorkerId,type DbSql} from '@seap/db';
+import {type Browser} from 'playwright-core';
+import {reserveDocumentProxy,releaseDocumentProxy,proxyConnection,runCollectionRequest,collectionWorkerId,type DbSql} from '@seap/db';
 import {safeFileUrl} from './shared';
+import {continueDocumentRequest,launchDocumentBrowser,loadDocumentProxy,proxyTransportError} from './proxy';
+import {assertDocumentRequestBudget,validateDocumentRequestLimit} from './request-budget';
 const origin='https://www.e-licitatie.ro';
 const workerId=collectionWorkerId('documents-http');
 export interface ListedDocument {noticeDocumentId:number;noticeDocumentCode:string;documentName:string;noticeDocumentUrl:string;transmissionDate?:string}
@@ -11,32 +13,37 @@ export function parseList(data:unknown,noticeNo:string):{items:ListedDocument[];
  return {items:r.items,total:r.total!};
 }
 /** A fresh isolated browser session; only explicit requests can reach the network. */
-export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortSignal){
+export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortSignal,maxRequests?:number){
+ validateDocumentRequestLimit(maxRequests);
  let browser:Browser|undefined, allowed:{url:string;method:string}|null=null;
  if(!/^https:\/\/www\.e-licitatie\.ro\/pub\/notices\/simplified-notice\/v2\/view\/[1-9]\d*$/.test(referer))throw Error('Anunț SEAP neacceptat.');
+ const managedProxy=await reserveDocumentProxy(q,jobId);
+ const proxy=managedProxy?proxyConnection(managedProxy):await loadDocumentProxy(); // Choose once; keep it for notice, list, POST and GET.
+ const transport=proxy?{mode:'proxy',proxyId:proxy.id}:{mode:'direct'};
  const stop=()=>{void browser?.close();};signal.addEventListener('abort',stop,{once:true});
  try{
-  browser=await chromium.launch({executablePath:process.env.DOCUMENTS_CHROMIUM??'/usr/bin/chromium',headless:true,args:['--disable-dev-shm-usage']});
+  browser=await launchDocumentBrowser(proxy);
   signal.throwIfAborted();
   const context=await browser.newContext({javaScriptEnabled:false,serviceWorkers:'block',acceptDownloads:false});
   await context.route('**/*',async route=>{
    const r=route.request();
    if(signal.aborted||!allowed||allowed.url!==r.url()||allowed.method!==r.method()){await route.abort();return;}
-   allowed=null;await route.continue();
+   allowed=null;await continueDocumentRequest(route);
   });
   const page=await context.newPage();page.setDefaultTimeout(45000);
   async function request(url:string,method:string,body:unknown=null,navigate=false){
    signal.throwIfAborted();
+   await assertDocumentRequestBudget(q,jobId,maxRequests);
    if(url!==referer&&url!==origin+'/api-pub/NoticeDocument/GetAll/'&&url!==safeFileUrl(url))throw Error('Adresă neacceptată.');
    const isFileDownload=method==='GET'&&url.includes('/noticedoc/');
    await q`update app.document_jobs set stage='rate_limit' where id=${jobId} and status='running'`;
-   const result=await runCollectionRequest(q,{stream:'documents',worker:workerId,method,url,parameters:body,fileDownload:isFileDownload},async gateSignal=>{
+   const result=await runCollectionRequest(q,{stream:'documents',worker:workerId,method,url,parameters:body,fileDownload:isFileDownload,context:{transport},...(managedProxy?{proxyId:managedProxy.id}:{}),documentJobId:jobId},async gateSignal=>{
    const gateStop=()=>{void browser?.close();};gateSignal.addEventListener('abort',gateStop,{once:true});
    try{
    if(isFileDownload)await q`update app.document_jobs set stage='download' where id=${jobId} and status='running'`;
    signal.throwIfAborted();
    const [row]=await q`insert into app.document_requests(job_id,method,endpoint) values(${jobId},${method},${url.includes('/noticedoc/')?'noticedoc':navigate?'notice-page':'document-list'}) returning id`;
-   console.log(JSON.stringify({event:'seap-request',request:row!.id,job:jobId,method,endpoint:navigate?'notice-page':url.includes('/noticedoc/')?'noticedoc':'document-list'}));
+   console.log(JSON.stringify({event:'seap-request',request:row!.id,job:jobId,method,transport,endpoint:navigate?'notice-page':url.includes('/noticedoc/')?'noticedoc':'document-list'}));
    allowed={url,method};
    try{
     let status:number,bytes:Buffer,retryAfter:string|null=null;
@@ -55,7 +62,8 @@ export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortS
     if(status===200&&method==='POST'){try{JSON.parse(bytes.toString('utf8'));}catch{challenge=true;}}
     if(status===200&&navigate)challenge=/cf-chl-|<title>[^<]*(?:access denied|just a moment|attention required)/i.test(bytes.toString('utf8'));
     return {value:{bytes,status},status,bytes:bytes.length,retryAfter,challenge};
-   }finally{allowed=null;await q`update app.document_requests set finished_at=coalesce(finished_at,now()) where id=${row!.id}`;}
+   }catch(error){if(proxy)throw proxyTransportError(error);throw error;}
+   finally{allowed=null;await q`update app.document_requests set finished_at=coalesce(finished_at,now()) where id=${row!.id}`;}
    }finally{gateSignal.removeEventListener('abort',gateStop);}
    },signal);
    if(result.status!==200)throw Error(`SEAP a răspuns cu HTTP ${result.status}. Poți reîncerca mai târziu.`);
@@ -76,7 +84,7 @@ export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortS
     }throw Error('Lista SEAP este prea mare.');
    },
    async download(url:string){const fresh=safeFileUrl(url);const verify=await request(fresh,'POST');if(JSON.parse(verify.toString('utf8'))!=='')throw Error('SEAP nu a confirmat descărcarea.');return request(fresh,'GET');},
-   async close(){signal.removeEventListener('abort',stop);await browser?.close();}
+   async close(){signal.removeEventListener('abort',stop);try{await browser?.close();}finally{await releaseDocumentProxy(q,jobId);}}
   };
- }catch(e){signal.removeEventListener('abort',stop);await browser?.close();throw e;}
+ }catch(e){signal.removeEventListener('abort',stop);try{await browser?.close();}finally{await releaseDocumentProxy(q,jobId);}throw e;}
 }

@@ -109,6 +109,8 @@ async function loadNoticeLike(
   const common = {
     rawId,
     noticeNo: p.noticeNo ?? null,
+    procedureId: (typeof p.procedureId === "string" || (typeof p.procedureId === "number" && Number.isSafeInteger(p.procedureId))) && /^[1-9][0-9]{0,17}$/.test(String(p.procedureId)) ? String(p.procedureId) : null,
+    title: typeof p.contractTitle === "string" ? p.contractTitle : null,
     sysNoticeTypeId: p.sysNoticeTypeId ?? null,
     sysNoticeVersionId: p.sysNoticeVersionId ?? null,
     authorityEntityId,

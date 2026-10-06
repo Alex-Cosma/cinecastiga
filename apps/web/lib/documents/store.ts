@@ -9,13 +9,13 @@ export const documentsEnabled=()=>process.env.DOCUMENTS_ENABLED==='true';
 export async function contractNotice(nid:string,q:DbSql=documentDb()):Promise<DocumentNotice|null>{
  if(!/^[1-9]\d{0,17}$/.test(nid))return null;
  // Match imported procurement identity AND authority, never title similarity.
- const rows=await q`select distinct n.c_notice_id::text notice_id,n.notice_no,n.sys_notice_type_id,
-   nr.payload->>'contractTitle' title from core.contracts c
-   join core.awards a on a.ca_notice_id=c.ca_notice_id join raw.raw_documents ar on ar.id=a.raw_id
+ const rows=await q`select distinct n.c_notice_id::text notice_id,n.notice_no,n.sys_notice_type_id,n.title
+   from core.contracts c join core.awards a on a.ca_notice_id=c.ca_notice_id
    join core.notices n on n.authority_entity_id=a.authority_entity_id and n.sys_notice_type_id=17
-   join raw.raw_documents nr on nr.id=n.raw_id
-   where c.ca_notice_contract_id=${nid} and ar.payload->>'procedureId'=nr.payload->>'procedureId'
-   and ar.payload->>'procedureId' ~ '^[1-9][0-9]+$' and n.c_notice_id is not null limit 2`;
+   where c.ca_notice_contract_id=${nid} and (
+     (a.procedure_id is not null and a.procedure_id=n.procedure_id)
+     or exists(select 1 from core.notice_award_sources l where l.ca_notice_id=a.ca_notice_id and l.c_notice_id=n.c_notice_id)
+   ) limit 2`;
  if(rows.length!==1)return null;
  const r=rows[0]!;return {key:`17:${r.notice_id}`,noticeId:r.notice_id,noticeType:17,noticeNo:r.notice_no,title:r.title??r.notice_no,url:`https://www.e-licitatie.ro/pub/notices/simplified-notice/v2/view/${r.notice_id}`};
 }
