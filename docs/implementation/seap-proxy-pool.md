@@ -1,6 +1,6 @@
 # Managed SEAP proxy pool — 2026-10-06
 
-**Current production containment, 2026-10-06:** proxy-7 disabled after13/13SEAPtimeouts; nine healthy proxies remain active,40–60seconds/IP, global15requests/minute; required mode and internal worker network active. Runtime `1056540`; cap migration0055 applied (56total). See the activation verification below. Earlier disabled/local notes are historical.
+**Current production containment, 2026-10-06:** proxy-7 disabled after13/13SEAPtimeouts; nine healthy proxies remain active,40–60seconds/IP, global15requests/minute; required mode and internal worker network active. Runtime `3c67bba`; migration0056 applied (57total), independent proxy retries deployed. See the activation verification below. Earlier disabled/local notes are historical.
 
 **Published and verified in production on 2026-10-06:** runtime `e041f4f`, [CI and deploy successful](https://github.com/Alex-Cosma/seap-new/actions/runs/37452332438). The code and migration are deployed; the managed proxy pool and network overlay remain **inactive**. Historical local implementation notes follow. Builds on [the bounded document pilot](document-proxy-pilot.md). This implementation made **zero additional SEAP/provider requests**. Never repeat that completed document pilot as a smoke test.
 
@@ -133,3 +133,12 @@ Implementation (publication verification follows separately):
 - Admin live status distinguishes per-task pending retries from a global hold, links to Conexiune SEAP, and shows endpoint cooldowns/automatic disablement. Proxy configuration revision changes on automatic disablement to invalidate stale drafts.
 
 Validation:15isolated PostgreSQL retry tests, including legacy direct behavior, two pending retries plus a document request, restart continuity, healthy work during cooldown, independent endpoint/task exhaustion, known transport/503 cases and global403protection. Existing admin/document DB checks pass sequentially;28total including a final isolated document-transport test and explicit re-enable/cooldown validation (initial combined parallel execution collided on their shared fixture tables; rerun with `--no-file-parallelism`). All fixture writes were confined to `seap_test_proxy_pool`; zero real source probes were added by implementation tests.
+
+
+### Independent-failure release verified in production
+
+Commit `3c67bba` is on main and running in production; [CI/deploy37464862632](https://github.com/Alex-Cosma/seap-new/actions/runs/37464862632) succeeded. Full local Turbo20tasks passed (web394unit tests,166opt-in skipped in the broad run); isolated DB15retry +28admin/document checks passed separately. Migration0056 applied with history/grants preserved:57total on production, local seap and isolated test database.
+
+Collection was briefly paused before schema migration to drain old prepared proxy-table reads; public site stayed open. Resume required the unchanged operator revision53, producing revision54, after verifying the replacement collector contains the new retry/circuit code. Proxy-7 remains manually disabled with its explanatory last_error; its new counter starts0 because past outcomes are preserved, not rewritten into the new counter. Nine endpoints active,40–60s/IP,15/min ceiling; no maintenance or source block. All13affected tasks are now resolved.
+
+[Verification snapshot](previews/proxy-failure-isolation-20261006.json):93successful requests and zero failures after exclusion, including the first five completed requests from the new worker14217–14221;14222was still in flight at snapshot time. Web/public health200, fresh containers, and new-column read access confirmed as seap_web. No intentional production failure or extra source test was triggered: independent cooldown/exhaustion behavior is verified by isolated tests, while live verification confirms normal work continues. No polling process remains.
