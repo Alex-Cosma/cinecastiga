@@ -1,15 +1,27 @@
 import type {DbSql} from '@seap/db';
 
+interface ProxyEndpoint {
+ id:string;exit_ip:string;enabled:boolean;next_allowed_at:string|null;reserved_job:string|null;
+ last_error:string|null;consecutive_failures:number;attempts:number;failed:number;bytes:string;
+ last_at:string|null;job_status:string|null;
+}
+
 export async function proxyStatus(q:DbSql){
  const [settings]=await q`select * from app.collection_proxy_control where id=1`;
- const endpoints=await q`select p.id,p.exit_ip,p.enabled,p.next_allowed_at,p.reserved_job,p.last_error,p.consecutive_failures,
+ const endpoints=await q<ProxyEndpoint[]>`select p.id,p.exit_ip,p.enabled,p.next_allowed_at,p.reserved_job,p.last_error,p.consecutive_failures,
    coalesce(r.attempts,0)::int attempts,coalesce(r.failed,0)::int failed,coalesce(r.bytes,0)::text bytes,r.last_at,
    j.status job_status from app.collection_proxies p
    left join app.document_jobs j on j.id::text=p.reserved_job
    left join (select proxy_id,count(*) attempts,count(*) filter(where outcome in ('failed','interrupted')) failed,sum(bytes) bytes,max(started_at) last_at
      from app.collection_requests where started_at>=((now() at time zone 'Europe/Bucharest')::date::timestamp at time zone 'Europe/Bucharest') group by proxy_id) r on r.proxy_id=p.id order by p.id`;
- const [pace]=await q`select count(*)::int attempts from app.collection_requests where started_at>now()-interval '10 minutes'`;
- return {directAllowed:process.env.SEAP_PROXY_REQUIRED!=='true',settings:settings!,endpoints,observedPerMinute:Number(pace?.attempts??0)/10};
+ // Same rolling window for the total and each endpoint, independent of today's totals.
+ const pace=await q`select proxy_id,count(*)::int attempts from app.collection_requests
+   where started_at>now()-interval '10 minutes' and started_at<=now() group by proxy_id`;
+ const recent=new Map(pace.map(p=>[p.proxy_id,Number(p.attempts)]));
+ return {directAllowed:process.env.SEAP_PROXY_REQUIRED!=='true',settings:settings!,
+   endpoints:endpoints.map(p=>({...p,recent_attempts:recent.get(p.id)??0,observed_per_minute:(recent.get(p.id)??0)/10})),
+   observedPerMinute:pace.reduce((sum,p)=>sum+Number(p.attempts),0)/10,
+   directPerMinute:(recent.get(null)??0)/10};
 }
 export async function changeProxySettings(q:DbSql,body:Record<string,unknown>){
  const {enabled,minSeconds,maxSeconds,requestsPerMinute,activeIds}=body;

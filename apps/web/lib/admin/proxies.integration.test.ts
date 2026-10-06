@@ -26,6 +26,22 @@ describe.skipIf(!connection)('shared proxy scheduling (PostgreSQL, NO network)',
   await q`delete from app.document_jobs where notice_key='proxy-fixture'`;
  });
  const info={stream:'da' as const,worker:'proxy-fixture',method:'POST',url:'https://www.e-licitatie.ro/api-pub/fixture'};
+ it('measures total and individual rolling rates, including failures and recently disabled endpoints',async()=>{
+  await q`insert into app.collection_requests(stream,worker,method,endpoint,proxy_id,outcome,started_at)
+   values('da','fixture','POST','/fixture','proxy-1','success',now()-interval '9 minutes'),
+   ('documents','fixture','GET','/fixture','proxy-1','failed',now()-interval '1 minute'),
+   ('da','fixture','POST','/fixture','proxy-2','running',now()-interval '20 seconds'),
+   ('da','fixture','POST','/fixture',null,'success',now()-interval '2 minutes'),
+   ('da','fixture','POST','/fixture','proxy-1','success',now()-interval '11 minutes')`;
+  await q`update app.collection_proxies set enabled=false where id='proxy-2'`;
+  const state=await proxyStatus(q);
+  expect(state.observedPerMinute).toBe(.4);expect(state.directPerMinute).toBe(.1);
+  expect(state.endpoints.map(p=>[p.id,p.recent_attempts,p.observed_per_minute])).toEqual([
+   ['proxy-1',2,.2],['proxy-2',1,.1],['proxy-3',0,0],
+  ]);
+  expect(state.endpoints[1]!.enabled).toBe(false);
+  expect(state.endpoints.reduce((sum,p)=>sum+p.recent_attempts,0)+state.directPerMinute*10).toBe(state.observedPerMinute*10);
+ });
  async function request(work=vi.fn(async(_signal:AbortSignal,p:any)=>({value:p?.id,status:200})),extra:Partial<Parameters<typeof runCollectionRequest>[1]>={},signal?:AbortSignal){const c=await q.reserve();try{return await runCollectionRequest(c,{...info,...extra},work,signal);}finally{c.release();}}
  it('persists per-IP wait, the global ceiling and endpoint identity in the ledger',async()=>{
   expect(await request()).toBe('proxy-1');
