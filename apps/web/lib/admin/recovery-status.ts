@@ -28,9 +28,14 @@ export async function recoveryStatus(q:DbSql,batchId:string,progress:RecoveryCou
   select stream,count(*)::int units,count(work)::int sampled,coalesce(avg(work),0)::float8 mean_work,
     coalesce(stddev_samp(work),0)::float8 sd_work,count(distinct left(unit_day,7)) filter(where work is not null)::int months,
     count(distinct left(unit_day,7))::int total_months from day_work group by stream`;
- const [pace]=await q`select extract(epoch from (now()-greatest(b.created_at,now()-interval '7 days')))/86400 elapsed_days,
-   (select count(*)::int from app.collection_tasks where batch_id=b.id and status in ('complete','split') and finished_at>=now()-interval '7 days') recent_completed
-  from app.collection_batches b where b.id=${batchId}`;
+ // Use the current operating regime, not the old single-IP recovery average.
+ const [pace]=await q`with boundary as (
+   select greatest(b.created_at,now()-interval '10 minutes',coalesce((select max(created_at) from app.collection_audit
+    where action in ('proxies','pause','unblock','settings')),b.created_at)) at
+   from app.collection_batches b where b.id=${batchId}
+  ) select extract(epoch from(now()-at))/86400 elapsed_days,
+   (select count(*)::int from app.collection_tasks where batch_id=${batchId} and status in ('complete','split') and finished_at>=boundary.at and finished_at<=now()) recent_completed
+  from boundary`;
  const catalogue=progress.find(s=>s.stream==='catalogue');
  const catalogueReady=!!catalogue&&Number(catalogue.complete)>0&&!['pending','running','failed','deferred'].some(k=>Number(catalogue[k as keyof RecoveryCounts])>0);
  const forecast=recoveryForecast({samples:samples as unknown as RecoverySample[],progress,catalogueReady,

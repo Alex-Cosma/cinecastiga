@@ -428,6 +428,13 @@
       "when": 1791319952559,
       "tag": "0060_milky_maestro",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1791321378346,
+      "tag": "0061_worthless_firestar",
+      "breakpoints": true
     }
   ]
 }

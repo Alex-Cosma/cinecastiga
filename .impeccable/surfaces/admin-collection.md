@@ -113,3 +113,7 @@ Collection now displays measured total requests/minute, enabled proxy count out 
 ## Concurrent collection and large inventory — 2026-10-06
 
 The owner authorized100 new fixed endpoints,10 simultaneous requests,50starts/minute and35–45seconds/IP. Admin distinguishes actual concurrent requests, saved concurrency, measured throughput and start ceiling. A searchable current/activated/error/retired inventory and searchable selection each show at most10entries/page. Bulk selection operates on the complete current list; retired identities/history remain separate. Saved settings, drafts and revision/drain protections are preserved. [Finish review and synthetic verification](../../docs/implementation/previews/proxy-concurrency-20261006/review.md) records ship; forest/ivory identity and DESIGN.md unchanged. Operational publication is recorded separately.
+
+## Rolling recovery and current-pace ETA — 2026-10-07
+
+The existing Operate progress group now pairs the percentage with a duration and Romanian-time completion range. It labels known-queue versus projected workload, shows unavailable details separately, and discloses daily closed-day extension after 03:30. Stale/paused/maintenance states suspend deadlines. [Implementation, bounded visual review and synthetic evidence](../../docs/implementation/recovery-continuous-eta-20261007.md) document the refinement; no shared design tokens or global visual identity changed.

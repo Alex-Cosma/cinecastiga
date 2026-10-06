@@ -56,7 +56,7 @@ export function planResponse(t:Task,value:unknown,previous:PageResult[],batchEnd
    if(i.sysNoticeVersionId===2){detail.status='deferred';detail.error='Detaliu eForms: endpoint separat, neimplementat. Lista nu reprezintă documentația completă.';}
    children.push(detail);
    if(t.stream==='awards')children.push(task(t.batch_id,t.stream,'contracts',{noticeId:id,page:0},1));
-  }else if(t.kind==='catalogue')children.push(task(t.batch_id,'da','da',{authorityId:Number(i.id),from:'2026-07-01',to:batchEnd,page:0}));
+  }else if(t.kind==='catalogue')children.push(task(t.batch_id,'da','da',{authorityId:Number(i.id),from:t.params.from??'2026-07-01',to:t.params.to??batchEnd,page:0}));
  }
  const more=before.length+validIds.length<e.total;
  if(more)children.push(task(t.batch_id,t.stream,t.kind,{...t.params,page:t.params.page+1},0));

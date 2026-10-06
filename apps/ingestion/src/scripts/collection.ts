@@ -1,3 +1,4 @@
+import {advanceRecovery} from '../collection/advance.js';
 import {setTimeout as sleep} from 'node:timers/promises';
 import type {DbSql} from '@seap/db';
 import {getSharedSql,closeSharedDb} from '../db.js';
@@ -8,6 +9,7 @@ let stopping=false;
 process.on('SIGTERM',()=>{stopping=true;});process.on('SIGINT',()=>{stopping=true;});
 try{
  if(args[0]==='seed'){console.log(JSON.stringify({batch:await seedRecovery(q,args[1]),networkRequests:0}));}
+ else if(args[0]==='follow-latest'){console.log(JSON.stringify({scope:await advanceRecovery(q,{enable:true}),networkRequests:0}));}
  else if(args[0]==='run'){
   const boundArg=args.find(a=>a.startsWith('--max-tasks='));const bound=boundArg?Number(boundArg.split('=')[1]):Infinity;
   if(!(bound>0)||bound!==Infinity&&!Number.isSafeInteger(bound))throw Error('Invalid task bound');
@@ -17,9 +19,11 @@ try{
    if(!l?.acquired)throw Error('Recovery worker already running');
    await recoverInterrupted(q);let attempts=0;
    const client=getElicitatieClient();
+   let nextAdvance=0;
    const lane=async(index:number)=>{
     while(!stopping&&attempts<bound){
      const [session]=await lock`select pg_backend_pid() pid`;if(session?.pid!==l.pid){stopping=true;throw Error('Recovery lock session lost');}
+     if(index===0&&bound===Infinity&&Date.now()>=nextAdvance){await advanceRecovery(q);nextAdvance=Date.now()+60000;}
      // Start work only in lanes enabled by the current operator setting.
      if(index>0){const [p]=await q`select enabled,max_in_flight from app.collection_proxy_control where id=1`;if(!p?.enabled||Number(p.max_in_flight)<=index){await sleep(1000);continue;}}
      if(await recoveryStep(q,t=>fetchTask(client,t),`${index}`))attempts++;
@@ -32,5 +36,5 @@ try{
    const failed=results.find(r=>r.status==='rejected');if(failed?.status==='rejected')throw failed.reason;
    console.log(JSON.stringify({event:'recovery-worker-exit',tasks:attempts,bounded:bound!==Infinity}));
   }finally{await lock`select pg_advisory_unlock(${RECOVERY_LOCK[0]},${RECOVERY_LOCK[1]})`.catch(()=>{});lock.release();}
- }else throw Error('Usage: collection seed [closed-end-day] | run [--max-tasks=N]');
+ }else throw Error('Usage: collection seed [closed-end-day] | follow-latest | run [--max-tasks=N]');
 }finally{await closeSharedDb();}
