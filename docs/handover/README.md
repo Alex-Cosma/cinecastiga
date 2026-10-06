@@ -1,5 +1,7 @@
 # Handover pentru un nou dezvoltator și asistentul lui
 
+**7 octombrie — ETA și colectare zilnică publicate:** runtime `6830cb3`, CI/deploy `37534184563` trecute, 62 migrări. Lotul se extinde automat la 03:30 RO până în ziua precedentă. Activarea a adăugat 38.433 sarcini pentru 26 septembrie–5 octombrie; colectarea este reluată, 158 cereri reușite verificate. ETA inițial doar pentru coada cunoscută: 343–572 minute; golurile sunt afișate separat. Setările operatorului păstrate: 200/min, 10 simultane, 35–45s/IP, 94 proxy-uri active. [Detalii și dovezi live](../implementation/recovery-continuous-eta-20261007.md).
+
 **6 octombrie — limita configurabilă este acum 200 cereri/minut:** runtime `5b6e1f6`, CI/deploy `37529872354` reușite, 61 migrări. Interfața, API-ul și baza acceptă 1–200; poți seta 100 din admin după refresh. Setarea efectivă 50/minut și pauza manuală (revision 76) au fost păstrate. [Validare și stare live](../implementation/seap-proxy-pool.md#configurable-ceiling-up-to-200-requestsminute--2026-10-06).
 
 **6 octombrie — verificare finală concurență/proxy-uri:** runtime `e702f79`, CI/deploy `37493119887` reușite. Corectat și blocajul fals la finalizarea concurentă. Live: 100 proxy-uri activate, 35–45 s/IP, plafon 50/minut, maximum 10 simultane; aproximativ 49/minut măsurate. Șase endpoint-uri sunt în cooldown automat, fără oprirea celorlalte. [Raport final, retry-uri și limite](../implementation/seap-proxy-pool.md#final-release-verification-after-the-orphan-race-fix).

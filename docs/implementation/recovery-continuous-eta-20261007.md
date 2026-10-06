@@ -30,4 +30,14 @@ The existing percentage/progress group now includes approximate duration, an est
 
 ## Production rollout
 
-Pending: pause and drain active requests; commit/push and verify deployment; apply the additive migration; enable `follow-latest` explicitly; verify the inserted scope without source probes; restore only the deployment-owned pause; observe resumed work and document the exact target and counts. Do not reset the operator's current rate or re-enable the six failed proxy endpoints.
+Runtime `6830cb3` deployed successfully through GitHub Actions `37534184563` (CI and deploy both successful). Production has 62 migrations; web is healthy and the public homepage returns HTTP 200.
+
+The deployment-owned pause at revision 86 was drained, then `follow-latest` explicitly enabled. Initial scope advanced from 25 September to **5 October 2026**, inserting **38,433** tasks: 38,412 authority windows, 20 notice-list roots and one catalogue root. All 89,208 existing tasks remained; the source request ledger stayed at 33,673 during extension. A repeated invocation inserted zero tasks and made zero source requests. Original `seed_end_day` remains 25 September.
+
+Only the owned pause was resumed, guarded by revision 86; control is now revision 87, unpaused. Operator settings remain 200 requests/minute maximum, 10 concurrent, 35–45 seconds/IP. The six failed endpoints remain disabled; the owner intends to replace them separately.
+
+At rollout time it is before 03:30 on 7 October in Romania, so the initial target is 5 October. The next automatic extension is due at 03:30 to include 6 October. That future execution is not yet observed; calendar-boundary behavior passed isolated tests. Scope dates indicate seeded work, not verified coverage or published data.
+
+[Live read-only forecast snapshot](previews/recovery-eta-20261007/production.json), 6 October 21:35:55 UTC: 60,407 executable tasks pending, initial estimate **343–572 minutes for the known queue**, 7 failed and 34,340 deferred tasks separately visible. Effective forecast ceiling is 141 useful tasks/minute (94 active IPs at mean 40 seconds), below the operator's 200/minute ceiling. This early estimate can change with discovery and does not include future maintenance duration. Metadata query took 2,269 ms under a 5-second statement timeout.
+
+Immediately afterward, 158 source requests since resume had succeeded, three were in flight and none had failed. Control remained unpaused with no source block. Pool: 94 enabled; 16 disabled comprise ten retired entries plus the six failed replacements. No direct probes or historical task replay were performed.

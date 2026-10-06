@@ -1,0 +1,50 @@
+{
+  "scope": {
+    "id": "recovery-2026-09-25",
+    "end_day": "2026-10-05",
+    "seed_end_day": "2026-09-25",
+    "follow_latest": true
+  },
+  "control": {
+    "revision": 87,
+    "paused": false,
+    "blocked": null
+  },
+  "forecast": {
+    "state": "gaps",
+    "completed": 33734,
+    "pending": 60407,
+    "failed": 7,
+    "deferred": 34340,
+    "known": 128488,
+    "knownPercent": 26,
+    "percent": null,
+    "remainingLow": null,
+    "remainingHigh": null,
+    "rate": 203040,
+    "minutesLow": 343,
+    "minutesHigh": 572,
+    "etaBasis": "known",
+    "daysLow": 1,
+    "daysHigh": 1,
+    "sampled": [
+      {
+        "stream": "da",
+        "sampled": 0,
+        "units": 38423
+      },
+      {
+        "stream": "awards",
+        "sampled": 153,
+        "units": 278
+      },
+      {
+        "stream": "tenders",
+        "sampled": 278,
+        "units": 278
+      }
+    ],
+    "calculatedAt": "2026-10-06T21:35:55.244Z"
+  },
+  "queryMs": 2269
+}
