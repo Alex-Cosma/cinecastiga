@@ -1,5 +1,7 @@
 # Handover pentru un nou dezvoltator și asistentul lui
 
+**6 octombrie — ritm total și per proxy în admin, publicat:** runtime `3fd6991`, CI/deploy `37475040711` reușite. `/admin` arată ritmul măsurat și numărul de proxy-uri activate; `/admin/conexiune` arată ritmul fiecărui endpoint pe ultimele10minute. Estimarea din setări și plafonul sunt distincte. Fără migrații sau modificări de ritm:9proxy-uri,40–60s/IP,15/min,revision54. [Detalii și verificări](../implementation/seap-proxy-pool.md#measured-collection-pace--2026-10-06).
+
 **6 octombrie — izolarea erorilor proxy publicată:** runtime3c67bba,CI/deploy37464862632trecute,57migrări. [Stare verificată](../implementation/seap-proxy-pool.md#independent-failure-release-verified-in-production). Proxy-7 oprit după13/13timeouturi; celelalte9continuă. Toate13sarcinile recuperate;93cereri reușite fără eroare după excludere. Retry-urile5/10minute nu mai opresc proxy-urile sănătoase;40–60s/IP și15/min păstrate.
 
 **6 octombrie — configurație live actualizată:** toate10proxy-urile active,40–60sec/IP,plafon15/min; runtime1056540,56migrări. [Stare și retry în așteptare](../implementation/seap-proxy-pool.md#all-ten-activation-verified--2026-10-06-1110-utc). Eroarea admin cauzată de formatul jurnalului a fost reparată în date și cod. Ultima observație:23cereri reușite/1timeout, reîncercare automată la14:14RO,6octombrie; verifică rezultatul live.
