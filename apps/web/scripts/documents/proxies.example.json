@@ -1,0 +1,8 @@
+[
+  {
+    "id": "proxy-1",
+    "server": "http://192.0.2.1:12345",
+    "username": "REPLACE_WITH_PROXY_USERNAME",
+    "password": "REPLACE_WITH_PROXY_PASSWORD"
+  }
+]

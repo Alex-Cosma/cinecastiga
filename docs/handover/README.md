@@ -66,3 +66,5 @@ Nu deduce că o funcționalitate este activă doar pentru că există cod sau un
 **După un clone:** cere separat pachetul public, apoi urmează ghidul local. Fără pachet poți inspecta codul și rula testele care nu cer baza de date; nu poți reproduce explorarea datelor reale. Bootstrapul dintr-o bază goală nu este încă traseul standardizat. Pentru modelul colegului folosește `MODEL-START.md`, chiar dacă instrumentul său nu încarcă automat `AGENTS.md`.
 
 „Complet” înseamnă copia integrală a datelor publice din sursa declarată, nu certificarea că SEAP a fost colectat complet. Golurile și estimările sunt explicate în documentele de mai jos.
+
+- [Managed SEAP proxy pool + durable contract/document association](../implementation/seap-proxy-pool.md): local implementation2026-10-06, admin controls, optional isolated worker network, migration0054 and staged production rollout (not activated).

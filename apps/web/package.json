@@ -14,7 +14,8 @@
     "monitoring:check": "tsx scripts/check-monitoring.ts",
     "monitoring:worker": "tsx scripts/monitoring-worker.ts",
     "monitoring:digests": "tsx scripts/monitoring-digests.ts",
-    "documents:worker": "tsx scripts/documents/worker.ts"
+    "documents:worker": "tsx scripts/documents/worker.ts",
+    "documents:proxy-check": "tsx scripts/documents/check-proxy.ts"
   },
   "dependencies": {
     "@seap/db": "workspace:*",

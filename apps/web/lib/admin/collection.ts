@@ -1,3 +1,4 @@
+import {proxyStatus,changeProxySettings} from './proxies';
 import type { MoneyQuality } from "@seap/db";
 import {recoveryStatus} from './recovery-status';
 import type {RecoveryCounts} from './recovery-forecast';
@@ -13,8 +14,8 @@ export async function collectionStatus(q:DbSql=collectionDb()){
   if(!control)throw Error('Configurația colectării lipsește.');
   const today=await tx`select count(*)::int attempts,count(*) filter(where outcome='success')::int succeeded,count(*) filter(where outcome in ('failed','interrupted'))::int failed,coalesce(sum(records),0)::text received from app.collection_requests where started_at>=((now() at time zone 'Europe/Bucharest')::date::timestamp at time zone 'Europe/Bucharest')`;
   const streams=await tx`select stream,count(*)::int attempts,coalesce(sum(records),0)::text received,count(*) filter(where outcome in ('failed','interrupted'))::int failed from app.collection_requests group by stream`;
-  const requests=await tx`select id::text,stream,method,endpoint,parameters,status,outcome,error,records,bytes::text,diagnostics is not null as has_diagnostics,started_at,finished_at,extract(epoch from(finished_at-started_at))*1000 duration_ms from app.collection_requests order by app.collection_requests.id desc limit 100`;
-  const failures=await tx`select id::text,stream,method,endpoint,parameters,status,outcome,error,records,bytes::text,diagnostics is not null as has_diagnostics,started_at,finished_at,extract(epoch from(finished_at-started_at))*1000 duration_ms from app.collection_requests where outcome in ('failed','interrupted') order by app.collection_requests.id desc limit 100`;
+  const requests=await tx`select id::text,proxy_id,stream,method,endpoint,parameters,status,outcome,error,records,bytes::text,diagnostics is not null as has_diagnostics,started_at,finished_at,extract(epoch from(finished_at-started_at))*1000 duration_ms from app.collection_requests order by app.collection_requests.id desc limit 100`;
+  const failures=await tx`select id::text,proxy_id,stream,method,endpoint,parameters,status,outcome,error,records,bytes::text,diagnostics is not null as has_diagnostics,started_at,finished_at,extract(epoch from(finished_at-started_at))*1000 duration_ms from app.collection_requests where outcome in ('failed','interrupted') order by app.collection_requests.id desc limit 100`;
   const workers=await tx`select id,kind,state,heartbeat_at,heartbeat_at>now()-interval '30 seconds' alive from app.collection_workers order by heartbeat_at desc limit 20`;
   const audit=await tx`select id::text,actor_name,action,before,after,created_at from app.collection_audit order by app.collection_audit.id desc limit 20`;
   const runs=await tx`select distinct on(source) id::text,source,window_start,window_end,status,fetched_count,pages_fetched,started_at,finished_at from core.scrape_runs where started_at>=${control.created_at} order by source,started_at desc`;
@@ -32,8 +33,11 @@ export async function collectionStatus(q:DbSql=collectionDb()){
   const [scheduler]=await tx`select heartbeat_at>now()-interval '2 minutes' alive from app.collection_workers where id='nightly-scheduler'`;
   const [batch]=await tx`select id,end_day,status from app.collection_batches order by created_at desc limit 1`;
   const progress=batch?await tx`select stream,count(*) filter(where status='pending')::int pending,count(*) filter(where status='running')::int running,count(*) filter(where status='complete')::int complete,count(*) filter(where status='split')::int split,count(*) filter(where status='deferred')::int deferred,count(*) filter(where status='failed')::int failed from app.collection_tasks where batch_id=${batch.id} group by stream`:[];
-  const forecast=batch?await recoveryStatus(tx as unknown as DbSql,batch.id,progress as unknown as RecoveryCounts[],control):null;
-  return {moneyQuality,forecast,timeoutRetry:timeoutRetry??null,quietWindow,recovery:batch?{batch,progress}:null,control,today:today[0]!,streams,requests,failures,workers,audit,runs,documents:documents!,raw:raw!,publication:publication[0]??null,lastVerified:lastVerified??null,processing:{runs:processingRuns,schedule:{next_at:iso(schedule.next_at),next_risk_at:iso(schedule.next_risk_at)},schedulerAlive:scheduler?.alive===true}};
+  const proxies=await proxyStatus(tx as unknown as DbSql);
+  const poolSize=proxies.endpoints.filter(p=>p.enabled).length;
+  const proxySeconds=proxies.settings.enabled?Math.max(60/Number(proxies.settings.requests_per_minute),(Number(proxies.settings.min_seconds)+Number(proxies.settings.max_seconds))/2/Math.max(1,poolSize)):null;
+  const forecast=batch?await recoveryStatus(tx as unknown as DbSql,batch.id,progress as unknown as RecoveryCounts[],proxySeconds===null?control:{...control,min_seconds:proxySeconds,max_seconds:proxySeconds}):null;
+  return {proxies,moneyQuality,forecast,timeoutRetry:timeoutRetry??null,quietWindow,recovery:batch?{batch,progress}:null,control,today:today[0]!,streams,requests,failures,workers,audit,runs,documents:documents!,raw:raw!,publication:publication[0]??null,lastVerified:lastVerified??null,processing:{runs:processingRuns,schedule:{next_at:iso(schedule.next_at),next_risk_at:iso(schedule.next_risk_at)},schedulerAlive:scheduler?.alive===true}};
  });
 }
 export type CollectionStatus=Awaited<ReturnType<typeof collectionStatus>>;
@@ -41,7 +45,14 @@ export async function changeCollection(actor:{id:string;name:string},body:Record
  return q.begin(async tx=>{
   const [before]=await tx`select * from app.collection_control where id=1 for update`;
   if(!before||body.revision!==before.revision)throw new CollectionConflict('Setările au fost modificate între timp. Reîncarcă valorile și aplică din nou.');
-  if(body.action==='settings'){
+  let proxyAudit:Awaited<ReturnType<typeof changeProxySettings>>|undefined;
+  if(body.action==='proxies'){
+   if(!before.paused||before.maintenance)throw new CollectionConflict('Pune colectarea pe pauză înainte să modifici proxy-urile. Așteaptă încheierea mentenanței, dacă este activă.');
+   const [lock]=await tx`select pg_try_advisory_xact_lock(729114,4) acquired`;
+   const [job]=await tx`select id from app.document_jobs where status='running' limit 1`;
+   if(!lock?.acquired||job)throw new CollectionConflict('Așteaptă încheierea cererii sau documentului activ.');
+   proxyAudit=await changeProxySettings(tx as unknown as DbSql,body);
+  }else if(body.action==='settings'){
    if(before.maintenance)throw new CollectionConflict('Așteaptă încheierea mentenanței înainte de modificarea programului sau ritmului.');
    const v=validateCollectionSettings(body);
    const enabled=body.processingEnabled??before.processing_enabled,weekday=body.riskWeekday??before.risk_weekday;
@@ -68,7 +79,7 @@ export async function changeCollection(actor:{id:string;name:string},body:Record
   }else throw Error('Acțiune neacceptată.');
   const [after]=await tx`update app.collection_control set revision=revision+1,updated_at=clock_timestamp() where id=1 returning *`;
   const snapshot=(r:Record<string,unknown>)=>({minSeconds:r.min_seconds,maxSeconds:r.max_seconds,dailyLimit:r.daily_limit,processingTime:r.processing_time,processingEnabled:r.processing_enabled,riskWeekday:r.risk_weekday,paused:r.paused,pausedStreams:r.paused_streams,blockedReason:r.blocked_reason,revision:r.revision});
-  await tx`insert into app.collection_audit(actor_id,actor_name,action,before,after) values(${actor.id},${actor.name.slice(0,150)},${String(body.action)},${JSON.stringify(snapshot(before))}::jsonb,${JSON.stringify(snapshot(after!))}::jsonb)`;
+  await tx`insert into app.collection_audit(actor_id,actor_name,action,before,after) values(${actor.id},${actor.name.slice(0,150)},${String(body.action)},${JSON.stringify({...snapshot(before),...(proxyAudit?{proxies:proxyAudit.before}:{})})}::jsonb,${JSON.stringify({...snapshot(after!),...(proxyAudit?{proxies:proxyAudit.after}:{})})}::jsonb)`;
   return after;
  });
 }

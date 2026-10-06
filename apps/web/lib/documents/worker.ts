@@ -2,11 +2,13 @@ import {collectionQuietWindow,createDb,CollectionSuspendedError,collectionHeartb
 import {setTimeout as pause} from 'node:timers/promises';
 import {openSeap} from './seap';
 import {processPdf,sha256,validateOriginal} from './process';
+import {validateDocumentRequestLimit} from './request-budget';
 const collectionId=collectionWorkerId('documents');
 export const DOCUMENT_LOCK=[729114,1] as const;
 // The worker owns a reserved postgres.js connection, which has no begin() helper.
 async function atomic(q:DbSql,work:(q:DbSql)=>Promise<void>){await q`begin`;try{await work(q);await q`commit`;}catch(e){await q`rollback`;throw e;}}
-export async function runDocumentJob(q:DbSql,job:Record<string,any>,signal:AbortSignal){
+export async function runDocumentJob(q:DbSql,job:Record<string,any>,signal:AbortSignal,maxRequests?:number){
+ validateDocumentRequestLimit(maxRequests);
  const [notice]=await q`select * from app.document_notices where key=${job.notice_key}`;
  if(!notice)throw Error('Anunțul sursă lipsește.');
  const progress=async(stage:string,done=0,total:number|null=null)=>{signal.throwIfAborted();await q`update app.document_jobs set stage=${stage},pages_done=${done},pages_total=${total} where id=${job.id} and status='running'`;};
@@ -16,7 +18,7 @@ export async function runDocumentJob(q:DbSql,job:Record<string,any>,signal:Abort
  if(doc?.original_hash){const [b]=await q`select bytes from app.document_blobs where hash=${doc.original_hash}`;if(!b)throw Error('Originalul arhivat nu poate fi citit.');original=b.bytes;}
  if(!original){
   if(process.env.DOCUMENTS_OFFLINE==='true')throw Error('Modul de verificare locală nu permite cereri SEAP.');
-  await progress('source');const seap=await openSeap(q,job.id,notice.url,signal);
+  await progress('source');const seap=await openSeap(q,job.id,notice.url,signal,maxRequests);
   try{
    await progress('list');const list=await seap.list(notice.notice_id,notice.notice_no);
    // Publish metadata atomically only after all pages have been validated.
@@ -45,7 +47,8 @@ export async function runDocumentJob(q:DbSql,job:Record<string,any>,signal:Abort
  });
 }
 /** Session lock has no expiring lease that could admit a second live worker. */
-export async function runWorkerOnce(sql:DbSql,shutdown:AbortSignal,work=runDocumentJob){
+export async function runWorkerOnce(sql:DbSql,shutdown:AbortSignal,work=runDocumentJob,onlyJobId?:string){
+ if(onlyJobId!==undefined&&!/^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i.test(onlyJobId))throw Error('Invalid document job ID');
  if(shutdown.aborted)return false;
  await collectionHeartbeat(sql,collectionId,'documents','idle');
  if((await collectionQuietWindow(sql)).active)return false;
@@ -59,13 +62,15 @@ export async function runWorkerOnce(sql:DbSql,shutdown:AbortSignal,work=runDocum
  try{
   const [lock]=await q`select pg_try_advisory_lock(${DOCUMENT_LOCK[0]},${DOCUMENT_LOCK[1]}) acquired,pg_backend_pid() pid`;
   if(!lock?.acquired)return false;acquired=true;
+  // A targeted pilot must never clean up or consume someone else's work.
+  if(onlyJobId){const [running]=await q`select id from app.document_jobs where status='running' limit 1`;if(running)return false;}
   const pid=lock.pid;
   heartbeat=setInterval(()=>{void q`select pg_backend_pid() pid`.then(async r=>{if(r[0]?.pid!==pid)controller.abort();else await collectionHeartbeat(q,collectionId,'documents','processing');}).catch(()=>controller.abort());},2000);
   const orphan=await q`update app.document_jobs set status='failed',stage='failed',error='Procesarea a fost întreruptă. Reia operațiunea; originalul păstrat va fi reutilizat.',finished_at=now() where status='running' returning id`;
   // A killed worker's bounded child tools/network must finish before replacement starts.
   if(orphan.length)await pause(120000,undefined,{signal:controller.signal});
   controller.signal.throwIfAborted();
-  const [job]=await q`update app.document_jobs set status='running',stage='source',started_at=now() where id=(select id from app.document_jobs where status='queued' order by created_at,id limit 1) returning *`;
+  const [job]=await q`update app.document_jobs set status='running',stage='source',started_at=now() where id=(select id from app.document_jobs where status='queued' and (${onlyJobId??null}::uuid is null or id=${onlyJobId??null}::uuid) order by created_at,id limit 1) returning *`;
   if(!job)return false;
   const deadline=setTimeout(()=>controller.abort(),20*60*1000);
   try{await work(q,job,controller.signal);controller.signal.throwIfAborted();await q`update app.document_jobs set status='complete',stage='complete',finished_at=now() where id=${job.id}`;}

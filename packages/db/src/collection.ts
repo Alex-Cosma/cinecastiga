@@ -1,3 +1,5 @@
+import {proxyAdmission} from './collection-proxies.js';
+import type {SeapProxy} from './proxy-config.js';
 import { CollectionTransportError, diagnosticError, sanitizeDiagnostics, type CollectionDiagnostics } from './collection-diagnostics.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
@@ -16,15 +18,15 @@ export async function collectionHeartbeat(q:DbSql,id:string,kind:string,state:st
  await q`insert into app.collection_workers(id,kind,state) values(${id},${kind},${state}) on conflict(id) do update set heartbeat_at=clock_timestamp(),state=excluded.state`;
 }
 export const collectionWorkerId=(kind:string)=>`${kind}:${process.pid}:${randomUUID().slice(0,8)}`;
-export interface CollectionRequestInfo {stream:CollectionStream;worker:string;method:string;url:string;parameters?:unknown;fileDownload?:boolean;context?:unknown}
+export interface CollectionRequestInfo {stream:CollectionStream;worker:string;method:string;url:string;parameters?:unknown;fileDownload?:boolean;context?:unknown;proxyId?:string;documentJobId?:string}
 export interface CollectionResult<T>{value:T;status:number;bytes?:number;records?:number;retryAfter?:string|null;challenge?:boolean;diagnostics?:CollectionDiagnostics}
 
 /** Caller supplies a RESERVED physical DB session. Lock spans the full response body.
  * No lease expiry can admit a second live request. A broken session aborts transport;
  * an unfinished ledger entry stops future traffic until manually acknowledged. */
-export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo,work:(signal:AbortSignal)=>Promise<CollectionResult<T>>,parentSignal?:AbortSignal):Promise<T>{
+export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo,work:(signal:AbortSignal,proxy:SeapProxy|null)=>Promise<CollectionResult<T>>,parentSignal?:AbortSignal):Promise<T>{
  const endpoint=safeCollectionEndpoint(info.url),parameters=safeCollectionParameters(info.parameters),taskId=collectionTaskId(info.context);
- let locked=false,id:number|undefined,finished=false;
+ let locked=false,id:number|undefined,finished=false,selectedProxy:SeapProxy|null=null;
  let abortReason:string|null=null,transportDiagnostics:CollectionDiagnostics|undefined;
  const diagnostics=(error?:unknown)=>JSON.stringify(sanitizeDiagnostics({version:1,timeoutMs:45000,abortReason,context:info.context,...transportDiagnostics,...(error instanceof CollectionTransportError?error.diagnostics:{}),...(error!==undefined?{exception:diagnosticError(error)}:{})}));
  const controller=new AbortController();const abort=()=>{abortReason="parent_cancelled";controller.abort();};parentSignal?.addEventListener('abort',abort,{once:true});
@@ -53,15 +55,20 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
     const [orphan]=await q`select id from app.collection_requests where outcome='running' limit 1`;
     if(orphan){await q`update app.collection_control set blocked_reason='O cerere a rămas fără rezultat după întreruperea unui worker. Verifică înainte de reluare.',blocked_until=clock_timestamp()+interval '120 seconds' where id=1`;await q`commit`;transaction=false;throw new CollectionSuspendedError('O cerere anterioară a fost întreruptă. Verifică jurnalul.');}
     if(c.daily_limit!==null){const [n]=await q`select count(*)::int n from app.collection_requests where started_at >= ((clock_timestamp() at time zone 'Europe/Bucharest')::date::timestamp at time zone 'Europe/Bucharest')`;if(Number(n?.n)>=Number(c.daily_limit))throw new CollectionSuspendedError('Limita zilnică SEAP a fost atinsă.');}
-    delay=Math.max(0,Number(c.next_ms??0)-Number(c.now_ms),info.fileDownload?Number(c.file_ms??0)+60000-Number(c.now_ms):0);
+    const admission=await proxyAdmission(q,info.proxyId,info.documentJobId);
+    selectedProxy=admission?.proxy??null;
+    delay=Math.max(admission?.delay??0,Number(c.next_ms??0)-Number(c.now_ms),info.fileDownload?Number(c.file_ms??0)+60000-Number(c.now_ms):0);
     if(delay<=0){
      // Recheck after taking the control-row lock and on every rate-limit retry.
      // Suspension precedes the ledger: no HTTP attempt, error or manual-pause mutation.
      if((await collectionQuietWindow(q)).active)throw new CollectionSuspendedError('Pauză SEAP programată: 02:59–03:30, ora României. Reluare automată după încheierea pauzei.');
-     const jitter=Math.floor(Number(c.min_seconds)+Math.random()*(Number(c.max_seconds)-Number(c.min_seconds)+1));
-     const [request]=await q`insert into app.collection_requests(stream,worker,method,endpoint,parameters) values(${info.stream},${info.worker},${info.method},${endpoint},${JSON.stringify(parameters)}::jsonb) returning id`;
+     const policy=admission?.settings??c;
+     const jitter=Math.floor(Number(policy.min_seconds)+Math.random()*(Number(policy.max_seconds)-Number(policy.min_seconds)+1));
+     const globalDelay=admission?60/Number(policy.requests_per_minute):jitter;
+     const [request]=await q`insert into app.collection_requests(stream,worker,method,endpoint,parameters,proxy_id) values(${info.stream},${info.worker},${info.method},${endpoint},${JSON.stringify(parameters)}::jsonb,${selectedProxy?.id??null}) returning id`;
      id=Number(request!.id);
-     await q`update app.collection_control set next_allowed_at=clock_timestamp()+${jitter}*interval '1 second',last_file_at=case when ${!!info.fileDownload} then clock_timestamp() else last_file_at end where id=1`;
+     await q`update app.collection_control set next_allowed_at=clock_timestamp()+${globalDelay}*interval '1 second',last_file_at=case when ${!!info.fileDownload} then clock_timestamp() else last_file_at end where id=1`;
+     if(selectedProxy)await q`update app.collection_proxies set next_allowed_at=clock_timestamp()+${jitter}*interval '1 second' where id=${selectedProxy.id}`;
     }
     await q`commit`;transaction=false;
    }catch(e){if(transaction)await q`rollback`.catch(()=>{});throw e;}
@@ -77,16 +84,18 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
   }
   controller.signal.throwIfAborted();deadline=setTimeout(()=>{abortReason="request_timeout";controller.abort();},45000);
   await collectionHeartbeat(q,info.worker,info.stream==='documents'?'documents':'ingestion','request');
-  const result=await work(controller.signal);transportDiagnostics=result.diagnostics;controller.signal.throwIfAborted();
+  const result=await work(controller.signal,selectedProxy);transportDiagnostics=result.diagnostics;controller.signal.throwIfAborted();
   const failure=result.status<200||result.status>=300||!!result.challenge;
   const reason=result.challenge?'SEAP solicită o verificare suplimentară.':result.status===429?'SEAP a răspuns cu 429. Verifică limita înainte de reluare.':result.status===403?'SEAP a refuzat accesul (403).':null;
   await q`update app.collection_requests set status=${result.status},outcome=${failure?'failed':'success'},bytes=${result.bytes??null},records=${result.records??null},error=${reason??(failure?`HTTP ${result.status}`:null)},diagnostics=${failure?diagnostics():JSON.stringify(sanitizeDiagnostics({...transportDiagnostics,response:transportDiagnostics?.response?{...(transportDiagnostics.response as object),body:undefined}:undefined,context:info.context}))}::jsonb,finished_at=clock_timestamp() where id=${id!}`;
+  if(selectedProxy)await q`update app.collection_proxies set last_error=${failure?(reason??`HTTP ${result.status}`):null} where id=${selectedProxy.id}`;
   finished=true;
   if(failure&&taskId!==null)await q`update app.collection_retries set status='stopped',retry_at=null,updated_at=clock_timestamp() where task_id=${taskId} and status='pending'`;
   if(reason){const after=retryAfterSeconds(result.retryAfter??null);await q`update app.collection_control set blocked_reason=${reason},blocked_until=case when ${after}::int is null then null else clock_timestamp()+${after}::int*interval '1 second' end where id=1`;throw new CollectionSuspendedError(reason);}
   return result.value;
  }catch(error){
   if(id!==undefined&&!finished){
+   if(selectedProxy)await q`update app.collection_proxies set last_error='Eroare de transport; verifică jurnalul.' where id=${selectedProxy.id}`;
    const response=(error instanceof CollectionTransportError?error.diagnostics.response:transportDiagnostics?.response) as {status?:number;receivedBytes?:number}|undefined;
    // Keep every attempt and its diagnostics before considering replay.
    await q`update app.collection_requests set outcome='failed',status=coalesce(status,${response?.status??null}),bytes=coalesce(bytes,${response?.receivedBytes??null}),error=${abortReason==='request_timeout'?'Timeout după 45 de secunde.':'Cerere întreruptă, răspuns nevalid sau eroare de transport. Fără reîncercare automată.'},diagnostics=${diagnostics(error)}::jsonb,finished_at=clock_timestamp() where id=${id}`;

@@ -379,6 +379,13 @@
       "when": 1791093197593,
       "tag": "0053_pink_wolverine",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1791281620356,
+      "tag": "0054_woozy_echo",
+      "breakpoints": true
     }
   ]
 }

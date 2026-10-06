@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "cNoticeId": 100231768,
+  "noticeNo": "SCN1168231",
+  "initNoticeId": 101254381,
+  "authorityCui": "4233874",
+  "response": {
+    "noticeId": 101254381,
+    "sysNoticeState": {
+      "id": 2,
+      "text": "Publicat",
+      "localeKey": null,
+      "apiActionResult": null
+    },
+    "sysContractAssigmentType": null,
+    "dfNoticeId": 100378674,
+    "dfNoticeNumber": "DF1255997",
+    "sysNoticeVersionDf": {
+      "id": 2,
+      "text": "Formatul nou",
+      "localeKey": null,
+      "apiActionResult": null
+    },
+    "dfNoticeDate": "2025-09-23T15:46:51+03:00",
+    "piNoticeId": null,
+    "piNoticeNumber": null,
+    "sysNoticeVersionPi": null,
+    "piNoticeDate": null,
+    "sendableToJoue": false,
+    "tedNoticeNumber": null,
+    "caNoticeId": 100594775,
+    "caNoticeNumber": "SCNA1128762",
+    "sysNoticeVersionCa": {
+      "id": 2,
+      "text": "Formatul nou",
+      "localeKey": null,
+      "apiActionResult": null
+    },
+    "caNoticeDate": "2025-12-10T13:58:53+02:00",
+    "planName": "PLANUL ANUAL AL ACHIZITIILOR PUBLICE PENTRU ANUL 2025 - 2025 - V12",
+    "planDetailName": "Furnizarea prin închiriere si montare si demontare produse pentru iluminatul ornamental festiv din perioada sărbătorilor de iarnă 2025-2026 în municipiul Buzău.",
+    "spentValue": 999590.0,
+    "currency": "RON",
+    "anapValidationDocumentDate": null,
+    "anapValidationDocumentId": null,
+    "anapValidationDocumentPath": null,
+    "anapValidationDocumentName": null,
+    "anapValidationDocumentTypeString": null,
+    "anapValidationDocumentTypeId": null,
+    "isSAD": false,
+    "sysDfNoticeStateId": 11,
+    "appealInfo": "Contestații depuse la  CNSC: \r\nnr: 3878 din data de 02.10.2025 cu decizia 3106 din data de 16.10.2025\r\n\r\n"
+  },
+  "sourceUrl": "https://e-licitatie.ro/api-pub/comboPub/getNoticeGeneralInfo/?sysNoticeTypeId=17&noticeId=100231768",
+  "sourceHash": "609f7615c01a00022af67f817b6e9162b54186f23e917d6f007d99fa268d0274",
+  "fetchedAt": "2026-09-26T15:22:53.246Z",
+  "noticeIdentityEvidence": {
+    "path": "docs/implementation/previews/batch5-document-pilot/manifest.json",
+    "rawHash": "611f76af73090bead92957cafb3ca90038e52fbf7e4a436cbdea75212d074a50"
+  }
+}

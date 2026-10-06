@@ -1,5 +1,7 @@
 # Contract documents and verifiable passages
 
+**6 October 2026:** optional [local document proxy pilot](document-proxy-pilot.md), fixed endpoint per session, no direct fallback when configured; no production activation or pacing change.
+
 Local implementation, 26 September 2026. Not committed, pushed or deployed.
 Preview: http://localhost:3113/contracte/107063311#fisiere
 

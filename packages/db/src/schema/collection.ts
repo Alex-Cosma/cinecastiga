@@ -20,6 +20,7 @@ export const collectionControl = appSchema.table('collection_control', {
 export const collectionRequests = appSchema.table('collection_requests', {
  id: bigserial('id',{mode:'number'}).primaryKey(), stream: text('stream').notNull(), worker: text('worker').notNull(),
  method: text('method').notNull(), endpoint: text('endpoint').notNull(), parameters: jsonb('parameters').notNull().default({}),
+ proxyId: text('proxy_id'),
  diagnostics: jsonb('diagnostics'),
  status: integer('status'), outcome: text('outcome').notNull().default('running'), error: text('error'),
  records: integer('records'), bytes: bigint('bytes',{mode:'number'}),
@@ -71,3 +72,16 @@ export const collectionRetries = appSchema.table('collection_retries', {
  check('collection_retry_status',sql`${t.status} in ('pending','resolved','stopped')`),
  check('collection_retry_due',sql`${t.status}<>'pending' or ${t.retryAt} is not null`),
  uniqueIndex('collection_one_pending_retry').on(t.status).where(sql`${t.status}='pending'`)]);
+
+// Operator settings only. Credentials never enter the database or admin payload.
+export const collectionProxyControl = appSchema.table('collection_proxy_control', {
+ id:integer('id').primaryKey().default(1), enabled:boolean('enabled').notNull().default(false),
+ requestsPerMinute:integer('requests_per_minute').notNull().default(3),
+ minSeconds:integer('min_seconds').notNull().default(50), maxSeconds:integer('max_seconds').notNull().default(70),
+},t=>[check('proxy_control_singleton',sql`${t.id}=1`),check('proxy_rate_bounds',sql`${t.requestsPerMinute} between 1 and 10`),check('proxy_delay_bounds',sql`${t.minSeconds} between 1 and 3600 and ${t.maxSeconds} between ${t.minSeconds} and 3600`)]);
+export const collectionProxies = appSchema.table('collection_proxies', {
+ id:text('id').primaryKey(), server:text('server').notNull(), exitIp:text('exit_ip').notNull(),
+ enabled:boolean('enabled').notNull().default(false), nextAllowedAt:timestamp('next_allowed_at',{withTimezone:true}),
+ reservedJob:text('reserved_job'), lastError:text('last_error'),
+ registeredAt:timestamp('registered_at',{withTimezone:true}).notNull().defaultNow(),
+},t=>[uniqueIndex('collection_proxy_ip_unique').on(t.exitIp)]);
