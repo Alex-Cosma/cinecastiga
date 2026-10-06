@@ -16,7 +16,7 @@ Global manual/stream pauses, daily budget, Romania 02:59–03:30 quiet window, m
 
 `/admin/conexiune` → tab **Conexiune SEAP** shows observed requests/minute over the last ten minutes (including pauses), configured global cap, per-IP interval and endpoint statistics for the Romanian calendar day. Bytes are measured response bodies, not provider billing. The table includes disabled, waiting, available, document-reserved and error states, and pages at ten rows. Mobile shows all metrics within each row, without horizontal page scrolling.
 
-Open **Configurează conexiunea și ritmul** to stage mode, interval, cap (1–10/minute) and endpoint choices. Pause collection first; an HTTP request/document already running must finish. Applying settings leaves collection paused, preserves existing waits and source blocks, increments the common revision and writes the audit. Another admin's edit creates a conflict. Offline status disables commands. Source refusal recovery still uses the existing explicit acknowledgement.
+Open **Configurează conexiunea și ritmul** to stage mode, interval, cap (1–15/minute) and endpoint choices. Pause collection first; an HTTP request/document already running must finish. Applying settings leaves collection paused, preserves existing waits and source blocks, increments the common revision and writes the audit. Another admin's edit creates a conflict. Offline status disables commands. Source refusal recovery still uses the existing explicit acknowledgement.
 
 Journal rows, request downloads and journal exports include `proxy_id`; old rows without one read “Direct / istoric”, not a retroactive proxy claim. Recovery estimates use the proxy pool's nominal capacity as their upper bound but remain limited by observed historical progress, so switching rates does not immediately produce a measured faster ETA.
 
@@ -90,3 +90,12 @@ Verified after deploy:
 - Direct interval remains30–45seconds; daily05:00RO and Sunday risk schedule preserved. Proxy control disabled, zero production endpoints registered. No private proxy credentials transferred and no overlay/network activation. Follow the separate rollout procedure above before using proxies in production.
 
 Earlier “local/not deployed” statements describe historical validation stages. Unrelated older dirty audit/identity/handover material was preserved locally and excluded from this release.
+
+
+## Production activation and extended ceiling — 2026-10-06
+
+Owner explicitly authorized installing the credentials and using two proxies. The private ten-endpoint pool was installed under `/srv/seap/secrets/seap-proxies.json` (0600); previous Compose environment backed up privately. Overlay persisted in Compose `.env`, Postgres attached to both networks, workers only to the internal network, relay started, required mode enabled for workers/web. Direct TCP Internet access from the collector was confirmed unavailable. Both initial exits matched their configured IPs; after the owner requested all ten, the other eight were verified too (ten IP-diagnostic HTTP requests total, none to SEAP).
+
+Two-proxy mode was started at 2/minute with50–70s/IP, six initial SEAP requests13990–13995 all200 (three per IP), and the website reopened. Changes are recorded in the admin audit with explicit operator identities. Collection continues on those two while the higher-ceiling release is prepared. No PDF download was triggered.
+
+Latest owner instruction supersedes the staged plan: **all ten enabled,40–60s/IP,15/minute shared ceiling**. Migration0055 extends only the cap constraint from10 to15; backend validation and both UI limits match. Existing settings are not changed by migration. Eleven isolated PostgreSQL tests passed, including API+DB upper-bound validation and the scheduler's4-second global admission wait while retaining40–60s/IP. File GET minimum60s, global serialization, source refusal stops and timeout retries remain unchanged. Apply the requested operator settings only after this release is deployed and verified; the pool is currently still two active endpoints.

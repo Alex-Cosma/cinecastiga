@@ -14,7 +14,7 @@ export async function proxyStatus(q:DbSql){
 export async function changeProxySettings(q:DbSql,body:Record<string,unknown>){
  const {enabled,minSeconds,maxSeconds,requestsPerMinute,activeIds}=body;
  if(typeof enabled!=='boolean'||!Number.isInteger(minSeconds)||!Number.isInteger(maxSeconds)||Number(minSeconds)<1||Number(maxSeconds)>3600||Number(maxSeconds)<Number(minSeconds))throw Error('Intervalul proxy trebuie să fie între 1 și 3.600 de secunde.');
- if(!Number.isInteger(requestsPerMinute)||Number(requestsPerMinute)<1||Number(requestsPerMinute)>10)throw Error('Limita totală trebuie să fie între 1 și 10 cereri pe minut.');
+ if(!Number.isInteger(requestsPerMinute)||Number(requestsPerMinute)<1||Number(requestsPerMinute)>15)throw Error('Limita totală trebuie să fie între 1 și 15 cereri pe minut.');
  if(!Array.isArray(activeIds)||activeIds.some(id=>typeof id!=='string'||!/^proxy-[1-9]\d{0,2}$/.test(id))||new Set(activeIds).size!==activeIds.length||(enabled&&!activeIds.length))throw Error('Selectează cel puțin un proxy pentru activare.');
  if(!enabled&&process.env.SEAP_PROXY_REQUIRED==='true')throw Error('Selectează conexiunea prin proxy: conexiunea directă este blocată pe acest server.');
  const endpoints=await q`select id from app.collection_proxies`;
