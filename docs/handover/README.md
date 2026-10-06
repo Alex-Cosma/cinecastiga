@@ -1,5 +1,7 @@
 # Handover pentru un nou dezvoltator și asistentul lui
 
+**6 octombrie — lot100 și concurență publicate:** runtime `04044df`, CI/deploy `37491212317` reușite,60migrări. Setări autorizate/live:100proxy-uri,35–45s/IP,50cereri/minut,10simultane; admin compact și configurabil. [Stare verificată și retry-uri în așteptare](../implementation/seap-proxy-pool.md#replacement-pool-and-concurrency-verified-in-production). La16:01UTC:120cereri reușite,6timeouturi izolate cu retry automat,48,96porniri/minut,fără blocajglobal.
+
 **6 octombrie — ritm total și per proxy în admin, publicat:** runtime `3fd6991`, CI/deploy `37475040711` reușite. `/admin` arată ritmul măsurat și numărul de proxy-uri activate; `/admin/conexiune` arată ritmul fiecărui endpoint pe ultimele10minute. Estimarea din setări și plafonul sunt distincte. Fără migrații sau modificări de ritm:9proxy-uri,40–60s/IP,15/min,revision54. [Detalii și verificări](../implementation/seap-proxy-pool.md#measured-collection-pace--2026-10-06).
 
 **6 octombrie — izolarea erorilor proxy publicată:** runtime3c67bba,CI/deploy37464862632trecute,57migrări. [Stare verificată](../implementation/seap-proxy-pool.md#independent-failure-release-verified-in-production). Proxy-7 oprit după13/13timeouturi; celelalte9continuă. Toate13sarcinile recuperate;93cereri reușite fără eroare după excludere. Retry-urile5/10minute nu mai opresc proxy-urile sănătoase;40–60s/IP și15/min păstrate.
