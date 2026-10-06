@@ -7,7 +7,7 @@ import {changeCollection} from './collection';
 import {proxyStatus} from './proxies';
 const url=process.env.TEST_DATABASE_URL;
 if(url&&!/^seap_test_[a-z0-9_]+$/.test(new URL(url).pathname.slice(1)))throw Error('Dedicated test database required');
-const connection=url?createDb(url):null;
+const connection=url?createDb(url,{max:16}):null;
 const pool=[1,2,3].map(n=>({id:`proxy-${n}`,server:`http://192.0.2.${n}:8000`,username:'fixture-only',password:'never-expose-fixture-password'}));
 let folder:string;
 afterAll(async()=>{vi.unstubAllEnvs();if(connection){await connection.sql`delete from app.document_jobs where notice_key='proxy-fixture'`;await connection.sql`delete from app.document_notices where key='proxy-fixture'`;await connection.sql`update app.collection_proxy_control set enabled=false`;await connection.sql`truncate app.collection_proxies`;await connection.sql`update app.collection_control set paused=true,blocked_reason=null`;};if(folder)await rm(folder,{recursive:true,force:true});await connection?.sql.end();});
@@ -19,7 +19,7 @@ describe.skipIf(!connection)('shared proxy scheduling (PostgreSQL, NO network)',
   const file=join(folder,'proxies.json');await writeFile(file,JSON.stringify(pool));vi.stubEnv('SEAP_PROXY_FILE',file);vi.stubEnv('SEAP_PROXY_REQUIRED','true');
   await q`truncate app.collection_retries,app.collection_requests,app.collection_audit,app.collection_proxies`;
   await q`update app.collection_control set revision=1,paused=true,maintenance=false,blocked_reason=null,blocked_until=null,paused_streams='[]',daily_limit=null,next_allowed_at=null,last_file_at=null where id=1`;
-  await q`update app.collection_proxy_control set enabled=true,requests_per_minute=3,min_seconds=50,max_seconds=70 where id=1`;
+  await q`update app.collection_proxy_control set enabled=true,max_in_flight=1,requests_per_minute=3,min_seconds=50,max_seconds=70 where id=1`;
   await registerSeapProxies(q,pool);await q`update app.collection_proxies set enabled=true`;
   await q`update app.collection_control set paused=false where id=1`;
   await q`insert into app.document_notices(key,notice_id,notice_type,notice_no,title,url) values('proxy-fixture','1',17,'SCN_FIXTURE','Fixture','https://example.test') on conflict do nothing`;
@@ -43,6 +43,109 @@ describe.skipIf(!connection)('shared proxy scheduling (PostgreSQL, NO network)',
   expect(state.endpoints.reduce((sum,p)=>sum+p.recent_attempts,0)+state.directPerMinute*10).toBe(state.observedPerMinute*10);
  });
  async function request(work=vi.fn(async(_signal:AbortSignal,p:any)=>({value:p?.id,status:200})),extra:Partial<Parameters<typeof runCollectionRequest>[1]>={},signal?:AbortSignal){const c=await q.reserve();try{return await runCollectionRequest(c,{...info,...extra},work,signal);}finally{c.release();}}
+ it('supports ten live requests on distinct IPs and rejects the eleventh without source traffic',async()=>{
+  const expanded=Array.from({length:11},(_,i)=>({...pool[0]!,id:`proxy-${i+1}`,server:`http://192.0.2.${i+1}:8000`}));
+  await writeFile(join(folder,'proxies.json'),JSON.stringify(expanded));await q`update app.collection_control set paused=true`;
+  await registerSeapProxies(q,expanded);await q`update app.collection_proxies set enabled=true`;
+  await q`update app.collection_proxy_control set max_in_flight=10,requests_per_minute=50,min_seconds=35,max_seconds=45`;
+  await q`update app.collection_control set paused=false`;
+  let release!:()=>void;const held=new Promise<void>(r=>release=r),pending:Promise<unknown>[]=[];
+  try{
+   for(let i=0;i<10;i++){
+    await q`update app.collection_control set next_allowed_at=null`;
+    let started!:()=>void;const ready=new Promise<void>(r=>started=r);
+    pending.push(request(vi.fn(async(_s,p)=>{started();await held;return {value:p.id,status:200};})));
+    await ready;
+   }
+   const running=await q`select proxy_id from app.collection_requests where outcome='running'`;
+   expect(running).toHaveLength(10);expect(new Set(running.map(r=>r.proxy_id)).size).toBe(10);
+   await q`update app.collection_control set next_allowed_at=null`;
+   const work=vi.fn(async()=>({value:'bad',status:200}));await expect(request(work,{},AbortSignal.timeout(150))).rejects.toThrow();expect(work).not.toHaveBeenCalled();
+  }finally{release();await Promise.all(pending);}
+ },15000);
+ it('retires replaced IPs without losing history and validates the new operator ceilings',async()=>{
+  await request();await q`update app.collection_control set paused=true`;
+  await registerSeapProxies(q,pool.slice(1));
+  const state=await proxyStatus(q),old=state.endpoints.find(p=>p.id==='proxy-1')!;
+  expect(old).toMatchObject({configured:false,enabled:false,attempts:1});expect(state.retiredPerMinute).toBe(.1);
+  const actor={id:'fixture-admin',name:'Admin'},body={action:'proxies',revision:1,enabled:true,minSeconds:35,maxSeconds:45,requestsPerMinute:50,maxInFlight:10,activeIds:['proxy-2','proxy-3']};
+  await expect(changeCollection(actor,{...body,activeIds:['proxy-1']},q)).rejects.toThrow('lista curentă');
+  await expect(changeCollection(actor,{...body,maxInFlight:11},q)).rejects.toThrow('1 și 10');
+  await changeCollection(actor,body,q);
+  expect((await q`select * from app.collection_proxy_control`)[0]).toMatchObject({max_in_flight:10,requests_per_minute:50});
+  await expect(q`update app.collection_proxy_control set max_in_flight=11`).rejects.toThrow();
+  await q`update app.collection_control set paused=false,next_allowed_at=null`;
+  expect(await request()).toBe('proxy-2');
+  const [timing]=await q`select extract(epoch from(c.next_allowed_at-r.started_at)) global_wait,extract(epoch from(p.next_allowed_at-r.started_at)) ip_wait from app.collection_requests r cross join app.collection_control c join app.collection_proxies p on p.id=r.proxy_id order by r.id desc limit 1`;
+  expect(Number(timing!.global_wait)).toBeGreaterThanOrEqual(1.2);expect(Number(timing!.global_wait)).toBeLessThan(2);
+  expect(Number(timing!.ip_wait)).toBeGreaterThanOrEqual(35);expect(Number(timing!.ip_wait)).toBeLessThan(46);
+ });
+ it('overlaps two different IPs, spaces starts globally, and refuses a third or the same IP',async()=>{
+  await q`update app.collection_proxy_control set max_in_flight=2,requests_per_minute=15,min_seconds=1,max_seconds=1`;
+  let release!:()=>void,firstStarted!:()=>void,secondStarted!:()=>void;
+  const held=new Promise<void>(r=>release=r),firstReady=new Promise<void>(r=>firstStarted=r),secondReady=new Promise<void>(r=>secondStarted=r);
+  const first=request(vi.fn(async(_s,p)=>{firstStarted();await held;return {value:p.id,status:200};}));
+  await firstReady;
+  const second=request(vi.fn(async(_s,p)=>{secondStarted();await held;return {value:p.id,status:200};}));
+  try{
+   await secondReady;
+   const running=await q`select proxy_id,started_at from app.collection_requests where outcome='running' order by started_at`;
+   expect(running).toHaveLength(2);expect(new Set(running.map(r=>r.proxy_id)).size).toBe(2);
+   expect(new Date(running[1]!.started_at).getTime()-new Date(running[0]!.started_at).getTime()).toBeGreaterThanOrEqual(3900);
+   await q`update app.collection_control set next_allowed_at=null`;
+   await q`update app.collection_proxies set next_allowed_at=null`;
+   const never=vi.fn(async()=>({value:'unexpected',status:200}));
+   await expect(request(never,{},AbortSignal.timeout(150))).rejects.toThrow();
+   await expect(request(never,{proxyId:running[0]!.proxy_id},AbortSignal.timeout(150))).rejects.toThrow();
+   expect(never).not.toHaveBeenCalled();
+   await q`update app.collection_control set paused=true`;
+   await expect(changeCollection({id:'fixture',name:'Fixture'},{action:'proxies',revision:1,enabled:true,minSeconds:1,maxSeconds:1,requestsPerMinute:15,maxInFlight:1,activeIds:['proxy-1']},q)).rejects.toThrow('încheierea');
+   expect((await q`select blocked_reason from app.collection_control`)[0]!.blocked_reason).toBeNull();
+  }finally{release();await Promise.all([first,second]);}
+ },15000);
+ it('pins a busy IP until its entire request settles, even with another free global slot',async()=>{
+  await q`update app.collection_proxy_control set max_in_flight=2,requests_per_minute=15,min_seconds=1,max_seconds=1`;
+  let release!:()=>void,started!:()=>void;const held=new Promise<void>(r=>release=r),ready=new Promise<void>(r=>started=r);
+  const first=request(vi.fn(async()=>{started();await held;return {value:'first',status:200};}));await ready;
+  try{
+   await q`update app.collection_control set next_allowed_at=null`;await q`update app.collection_proxies set next_allowed_at=null`;
+   const work=vi.fn(async()=>({value:'bad',status:200}));
+   await expect(request(work,{proxyId:'proxy-1'},AbortSignal.timeout(150))).rejects.toThrow();expect(work).not.toHaveBeenCalled();
+   expect(await request()).toBe('proxy-2');
+  }finally{release();await first;}
+ });
+ it.each([503,429])('handles HTTP%s while another IP is still in flight',async status=>{
+  await q`update app.collection_proxy_control set max_in_flight=2,requests_per_minute=50`;
+  let release!:()=>void,started!:()=>void;const held=new Promise<void>(r=>release=r),ready=new Promise<void>(r=>started=r);
+  const first=request(vi.fn(async()=>{started();await held;return {value:'healthy',status:200};}));await ready;
+  try{
+   await q`update app.collection_control set next_allowed_at=null`;
+   await expect(request(vi.fn(async()=>({value:'failed',status})))).rejects.toThrow();
+   await q`update app.collection_control set next_allowed_at=null`;
+   if(status===503){expect(await request()).toBe('proxy-3');expect((await q`select blocked_reason from app.collection_control`)[0]!.blocked_reason).toBeNull();}
+   else{const work=vi.fn(async()=>({value:'bad',status:200}));await expect(request(work)).rejects.toThrow('429');expect(work).not.toHaveBeenCalled();}
+  }finally{release();expect(await first).toBe('healthy');}
+  if(status===429)expect((await q`select blocked_reason from app.collection_control`)[0]!.blocked_reason).toContain('429');
+ });
+ it('recognizes a real orphan while another request legitimately owns a live slot',async()=>{
+  await q`update app.collection_proxy_control set max_in_flight=2`;
+  let release!:()=>void,started!:()=>void;const held=new Promise<void>(r=>release=r),ready=new Promise<void>(r=>started=r);
+  const first=request(vi.fn(async()=>{started();await held;return {value:'first',status:200};}));await ready;
+  try{
+   await q`insert into app.collection_requests(stream,worker,method,endpoint,proxy_id) values('da','crashed','POST','/fixture','proxy-3')`;
+   const work=vi.fn(async()=>({value:'bad',status:200}));await expect(request(work)).rejects.toThrow('întreruptă');expect(work).not.toHaveBeenCalled();
+   expect((await q`select blocked_reason from app.collection_control`)[0]!.blocked_reason).toContain('fără rezultat');
+  }finally{release();await first;}
+ });
+ it('keeps direct traffic serialized even if the saved proxy concurrency is two',async()=>{
+  vi.stubEnv('SEAP_PROXY_REQUIRED','false');await q`update app.collection_proxy_control set enabled=false,max_in_flight=2`;
+  let release!:()=>void,started!:()=>void;const held=new Promise<void>(r=>release=r),ready=new Promise<void>(r=>started=r);
+  const first=request(vi.fn(async()=>{started();await held;return {value:'first',status:200};}));await ready;
+  try{
+   await q`update app.collection_control set next_allowed_at=null`;
+   const work=vi.fn(async()=>({value:'bad',status:200}));await expect(request(work,{},AbortSignal.timeout(150))).rejects.toThrow();expect(work).not.toHaveBeenCalled();
+  }finally{release();await first;}
+ });
  it('persists per-IP wait, the global ceiling and endpoint identity in the ledger',async()=>{
   expect(await request()).toBe('proxy-1');
   const [first]=await q`select r.proxy_id,extract(epoch from(c.next_allowed_at-r.started_at)) global_wait,extract(epoch from(p.next_allowed_at-r.started_at)) ip_wait from app.collection_requests r cross join app.collection_control c join app.collection_proxies p on p.id='proxy-1'`;
@@ -56,8 +159,8 @@ describe.skipIf(!connection)('shared proxy scheduling (PostgreSQL, NO network)',
   await q`update app.collection_control set paused=true`;
   const actor={id:'fixture-admin',name:'Admin'},body={action:'proxies',revision:1,enabled:true,minSeconds:40,maxSeconds:60,requestsPerMinute:15,activeIds:['proxy-1','proxy-2']};
   await changeCollection(actor,body,q);
-  await expect(changeCollection(actor,{...body,revision:2,requestsPerMinute:16},q)).rejects.toThrow('1 și 15');
-  await expect(q`update app.collection_proxy_control set requests_per_minute=16`).rejects.toThrow();
+  await expect(changeCollection(actor,{...body,revision:2,requestsPerMinute:51},q)).rejects.toThrow('1 și 50');
+  await expect(q`update app.collection_proxy_control set requests_per_minute=51`).rejects.toThrow();
   expect((await q`select requests_per_minute from app.collection_proxy_control`)[0]!.requests_per_minute).toBe(15);
   expect(await q`select id from app.collection_audit`).toHaveLength(1);
   await q`update app.collection_control set paused=false,next_allowed_at=null`;

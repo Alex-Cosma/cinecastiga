@@ -5,19 +5,21 @@ import {loadSeapProxies, SeapProxyConfigurationError, type SeapProxy} from './pr
 export async function registerSeapProxies(q:DbSql,proxies:SeapProxy[]){
  return q.begin(async tx=>{
   const [c]=await tx`select paused from app.collection_control where id=1 for update`;
+  const [drained]=await tx`select pg_try_advisory_xact_lock(729114,4) acquired`;
   const [active]=await tx`select id from app.document_jobs where status='running' limit 1`;
-  if(!c?.paused||active)throw Error('Oprește colectarea și așteaptă documentul activ înainte de înregistrarea proxy-urilor.');
+  if(!c?.paused||active||!drained?.acquired)throw Error('Oprește colectarea și așteaptă documentul activ înainte de înregistrarea proxy-urilor.');
   for(const p of proxies){
    const [old]=await tx`select server,exit_ip from app.collection_proxies where id=${p.id}`;
    const ip=new URL(p.server).hostname;
    if(old&&(old.server!==p.server||old.exit_ip!==ip))throw Error('Un identificator proxy existent nu poate fi reutilizat pentru alt IP.');
-   await tx`insert into app.collection_proxies(id,server,exit_ip) values(${p.id},${p.server},${ip}) on conflict(id) do nothing`;
+   await tx`insert into app.collection_proxies(id,server,exit_ip) values(${p.id},${p.server},${ip}) on conflict(id) do update set configured=true`;
   }
+  await tx`update app.collection_proxies set configured=false,enabled=false where not(id=any(${proxies.map(p=>p.id)}::text[]))`;
  });
 }
 
-/** Called under collection_control FOR UPDATE and the global HTTP lock. */
-export async function proxyAdmission(q:DbSql,pinnedId?:string,jobId?:string){
+/** Called under collection_control FOR UPDATE and a shared HTTP drain lock. */
+export async function proxyAdmission(q:DbSql,pinnedId?:string,jobId?:string,allowBusy=false){
  if(process.env.SEAP_PROXY_REQUIRED!==undefined&&!['true','false'].includes(process.env.SEAP_PROXY_REQUIRED))throw new SeapProxyConfigurationError();
  const [settings]=await q`select * from app.collection_proxy_control where id=1`;
  if(!settings?.enabled){
@@ -29,12 +31,13 @@ export async function proxyAdmission(q:DbSql,pinnedId?:string,jobId?:string){
  await q`update app.collection_proxies p set reserved_job=null where reserved_job is not null
    and not exists(select 1 from app.document_jobs j where j.id::text=p.reserved_job and j.status='running')`;
  const rows=await q`select *,greatest(0,extract(epoch from(next_allowed_at-clock_timestamp()))*1000) delay_ms
-   from app.collection_proxies where enabled and (${pinnedId??null}::text is null or id=${pinnedId??null})
-   and (reserved_job is null or reserved_job=${jobId??null}) order by next_allowed_at nulls first,id`;
+   from app.collection_proxies where configured and enabled and (${pinnedId??null}::text is null or id=${pinnedId??null})
+   and (reserved_job is null or reserved_job=${jobId??null})
+   and (${allowBusy} or not exists(select 1 from pg_locks l where l.database=(select oid from pg_database where datname=current_database()) and l.locktype='advisory' and l.classid=729120::oid and l.objid=substring(id from 7)::int::oid and l.objsubid=2 and l.granted)) order by next_allowed_at nulls first,id`;
  const row=rows[0];
  if(!row){
-  const [enabled]=await q`select id from app.collection_proxies where enabled limit 1`;
-  if(enabled&&!pinnedId)return {proxy:null,delay:2000,settings};
+  const [enabled]=await q`select id from app.collection_proxies where configured and enabled and (${pinnedId??null}::text is null or id=${pinnedId??null}) limit 1`;
+  if(enabled)return {proxy:null,delay:2000,settings};
   throw Error('Niciun proxy disponibil. Verifică proxy-urile active și rezervările.');
  }
  const proxy=pool.find(p=>p.id===row.id&&p.server===row.server);
@@ -50,7 +53,7 @@ export async function reserveDocumentProxy(q:DbSql,jobId:string):Promise<SeapPro
   // Only terminal jobs can leave reservations behind; never steal from a running job.
   await q`update app.collection_proxies p set reserved_job=null where reserved_job is not null
    and not exists(select 1 from app.document_jobs j where j.id::text=p.reserved_job and j.status='running')`;
-  const admission=await proxyAdmission(q,undefined,jobId);
+  const admission=await proxyAdmission(q,undefined,jobId,true);
   if(admission&&!admission.proxy)throw Error('Toate proxy-urile sunt rezervate. Fără conexiune directă.');
   if(admission?.proxy)await q`update app.collection_proxies set reserved_job=${jobId} where id=${admission.proxy.id}`;
   await q`commit`;return admission?.proxy??null;
@@ -64,6 +67,7 @@ export async function releaseDocumentProxy(q:DbSql,jobId:string){
 export async function recordProxyFailure(q:DbSql,id:string){
  await q`begin`;
  try{
+  await q`select id from app.collection_control where id=1 for update`;
   const [p]=await q`update app.collection_proxies set consecutive_failures=consecutive_failures+1,
    enabled=case when consecutive_failures>=2 then false else enabled end,
    next_allowed_at=greatest(next_allowed_at,clock_timestamp()+(case when consecutive_failures=0 then 300 else 600 end)*interval '1 second'),

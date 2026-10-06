@@ -6,5 +6,5 @@ export function proxyAuditText(after:unknown):string {
  if(!value||typeof value!=='object')return 'Configurația conexiunii SEAP a fost modificată.';
  const p=value as Record<string,unknown>;
  if(typeof p.enabled!=='boolean'||!Array.isArray(p.activeIds)||!p.activeIds.every(id=>typeof id==='string')||![p.min_seconds,p.max_seconds,p.requests_per_minute].every(n=>typeof n==='number'&&Number.isFinite(n)))return 'Configurația conexiunii SEAP a fost modificată.';
- return `Conexiune ${p.enabled?'prin proxy':'directă'}; ${p.activeIds.length} proxy-uri selectate; ${p.min_seconds}–${p.max_seconds} sec/IP; plafon ${p.requests_per_minute}/min.`;
+ return `Conexiune ${p.enabled?'prin proxy':'directă'}; ${p.activeIds.length} proxy-uri selectate; ${p.min_seconds}–${p.max_seconds} sec/IP; plafon ${p.requests_per_minute}/min.${typeof p.max_in_flight==='number'?` Maximum ${p.max_in_flight} cereri simultane.`:''}`;
 }

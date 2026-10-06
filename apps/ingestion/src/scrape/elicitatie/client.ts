@@ -9,7 +9,7 @@ export function getElicitatieClient():ElicitatieClient{
  if(testOverride)return testOverride;if(singleton)return singleton;
  singleton=createElicitatieClient({
   userAgent:process.env['SCRAPE_UA']??'seap-analytics/0.1 (contact: cineseuita@gmail.com)',
-  maxConcurrency:1,minDelayMs:0,maxRetries:0,circuitThreshold:0,
+  maxConcurrency:10,minDelayMs:0,maxRetries:0,circuitThreshold:0,
   transport:async(input,init)=>{
    const url=String(input),path=new URL(url).pathname;
    if(!['e-licitatie.ro','www.e-licitatie.ro'].includes(new URL(url).hostname))throw Error('Unexpected collection host');
@@ -17,7 +17,7 @@ export function getElicitatieClient():ElicitatieClient{
    const q=await getSharedSql().reserve();
    try{return await runCollectionRequest(q,{stream,worker,context:currentCollectionContext(),method:init?.method??'GET',url,parameters:typeof init?.body==='string'?JSON.parse(init.body):{}},async (signal,proxy)=>{
     // Redirects and retries are never hidden extra requests. Consume the body
-    // before releasing the global lock, including slow/chunked responses.
+    // before releasing the request/IP locks, including slow/chunked responses.
     const diagnostic:Record<string,unknown>={phase:'headers',request:{origin:new URL(url).origin,path,headers:Object.fromEntries(new Headers(init?.headers)),headerScope:'application-provided; transport may add automatic headers',body:typeof init?.body==='string'?init.body:null}};
     const chunks:Uint8Array[]=[];let size=0;
     const consume=async(response:Response)=>{

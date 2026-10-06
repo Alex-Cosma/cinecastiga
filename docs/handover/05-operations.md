@@ -49,14 +49,14 @@ Schema veche trebuie să poată servi versiunea veche în timpul migrării. Nu e
 - Fluxuri: achiziții directe, anunțuri de participare, atribuiri; catalog auxiliar.
 - Recuperare: DAde la 1 iulie 2026, anunțuri/atribuiri de la 1 ianuarie 2026, deduplicare. Vechile loguri nu demonstrau acoperirea completă până la 31 iulie, de aceea s-au ales ferestre suprapuse.
 - Lotul curent `recovery-2026-09-25` are capăt fix 25 septembrie 2026. Nu se extinde automat doar fiindcă azi e o zi nouă.
-- Buget comun pentru colector și documente: interval aleator între începuturile cererilor, configurat prin `app.collection_control.min_seconds/max_seconds`; un request în zbor. **50–70 secunde** este decizia inițială. Ultima setare observată în producție, la 30 septembrie seara, era **40–60 secunde** și a fost păstrată la deploy. Verifică setarea efectivă înainte de operare; nu o reseta automat la valoarea istorică.
+- Buget comun pentru colector și documente: în modul direct rămâne o cerere în curs și intervalul din `collection_control`; prin proxy, intervalul pe IP, plafonul total și concurența sunt în `collection_proxy_control`. Limitele acceptate sunt1–50porniri/minut și1–10cereri simultane, maximum una pe IP. Decizia proprietarului din6octombrie:100proxy-uri noi,35–45s/IP,50/min,10simultane. [Rollout și stare verificată](../implementation/seap-proxy-pool.md#concurrent-requests-and-replacement100-endpoint-pool--2026-10-06). Citește setările live înainte de orice intervenție; valorile istorice nu sunt instrucțiuni de resetare.
 - În plus, GET-urile de fișiere au minimum 60 secunde între începuturi, inclusiv eșecuri.
 - Nicio descărcare automată de PDF-uri; utilizatorul autentificat cere documentul.
 - Pauză zilnică de admitere a cererilor **02:59 inclusiv–03:30 exclusiv**, Europe/Bucharest. Nu schimbă manual paused și nu șterge erori.
 - Cererile deja admise pot termina; OCR poate continua. La 03:30 reluarea este condiționată de celelalte blocaje/bugete.
 - DST: abordare conservatoare pentru ora repetată/lipsă; vezi testele `collection-quiet-window`.
 
-Poarta comună este în PostgreSQL, cu advisory lock ținut pe conexiune rezervată și verificarea PID-ului sesiunii. Nu poate fi înlocuită cu un `sleep` în fiecare worker: două sleep-uri independente dublează traficul.
+Poarta comună este în PostgreSQL: tranzacție pe control pentru admitere, lock comun de drenare și lock-uri exclusive pe cerere/IP, ținute pe sesiuni rezervate. PID-ul și proprietatea cererii sunt verificate; o înregistrare în curs fără lock este tratată ca întrerupere. Nu poate fi înlocuită cu un `sleep` în fiecare worker: două sleep-uri independente dublează traficul.
 
 ### Timeout și diagnostic
 

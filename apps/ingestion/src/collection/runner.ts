@@ -43,8 +43,8 @@ export async function recoverInterrupted(q:DbSql){
  if(rows.length)await q`update app.collection_control set blocked_reason='Colector întrerupt înainte de confirmarea arhivei. Verifică sarcinile eșuate.',blocked_until=clock_timestamp()+interval '120 seconds' where id=1`;
  return rows.length;
 }
-export async function recoveryStep(q:DbSql,fetcher:(t:Task)=>Promise<unknown>){
- await collectionHeartbeat(q,recoveryWorker,'ingestion','idle');
+export async function recoveryStep(q:DbSql,fetcher:(t:Task)=>Promise<unknown>,lane='0'){
+ await collectionHeartbeat(q,`${recoveryWorker}:${lane}`,'ingestion','idle');
  if((await collectionQuietWindow(q)).active)return false;
  const claimed=await q.begin(async tx=>{
   const [c]=await tx`select paused,maintenance,blocked_reason,daily_limit,paused_streams from app.collection_control where id=1`;
@@ -52,7 +52,7 @@ export async function recoveryStep(q:DbSql,fetcher:(t:Task)=>Promise<unknown>){
   if(c.daily_limit!==null){const [n]=await tx`select count(*)::int n from app.collection_requests where started_at>=((now() at time zone 'Europe/Bucharest')::date::timestamp at time zone 'Europe/Bucharest')`;if(Number(n?.n)>=c.daily_limit)return null;}
   const [b]=await tx`select * from app.collection_batches where status='collecting' order by created_at limit 1 for update`;
   if(!b)return null;
-  const [retry]=await tx`select x.task_id,x.retry_at>clock_timestamp() waiting from app.collection_retries x join app.collection_requests r on r.id=x.last_request_id join app.collection_tasks t on t.id=x.task_id where x.status='pending' and (r.proxy_id is null or (x.retry_at<=clock_timestamp() and t.batch_id=${b.id} and not (t.stream=any(${c.paused_streams}::text[])))) order by (r.proxy_id is null) desc,x.retry_at,x.task_id limit 1`;
+  const [retry]=await tx`select x.task_id,x.retry_at>clock_timestamp() waiting from app.collection_retries x join app.collection_requests r on r.id=x.last_request_id join app.collection_tasks t on t.id=x.task_id where x.status='pending' and (r.proxy_id is null or (x.retry_at<=clock_timestamp() and t.status='pending' and t.batch_id=${b.id} and not (t.stream=any(${c.paused_streams}::text[])))) order by (r.proxy_id is null) desc,x.retry_at,x.task_id limit 1`;
   if(retry){
    const [t]=await tx`select * from app.collection_tasks where id=${retry.task_id} for update`;
    if(!t||t.status!=='pending'||t.batch_id!==b.id||retry.waiting||c.paused_streams.includes(t.stream))return null;
