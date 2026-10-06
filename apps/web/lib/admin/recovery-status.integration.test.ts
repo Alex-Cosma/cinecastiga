@@ -19,6 +19,18 @@ describe.skipIf(!db)('real recovery metadata aggregation',()=>{
  ['detail','awards','detail','deferred',{noticeId:1,page:0},null],
  ['contracts','awards','contracts','failed',{noticeId:1,page:0},null]
  ] as const)await q`insert into app.collection_tasks(batch_id,key,partition,stream,kind,status,params,result,finished_at) values('fixture',${key},${key},${stream},${kind},${status},${JSON.stringify(params)}::jsonb,${JSON.stringify(result)}::jsonb,now())`;
- const data=await collectionStatus(q);expect(data.forecast!.sampled.find(s=>s.stream==='da')).toEqual({stream:'da',sampled:1,units:2});expect(data.forecast!.completed).toBe(6);expect(data.forecast!.failed).toBe(1);expect(data.forecast!.deferred).toBe(1);expect(data.forecast!.state).toBe('gaps');expect(data.forecast!.daysHigh).toBeNull();
+ const data=await collectionStatus(q);expect(data.forecast!.sampled.find(s=>s.stream==='da')).toEqual({stream:'da',sampled:1,units:2});expect(data.forecast!.completed).toBe(6);expect(data.forecast!.failed).toBe(1);expect(data.forecast!.deferred).toBe(1);expect(data.forecast!.state).toBe('gaps');expect(data.forecast!.minutesHigh).toBeNull();
  });
+ it('uses only completions since the latest operating change in its ten-minute window',async()=>{
+  const q=db!.sql;await q`truncate app.collection_audit`;await q`update app.collection_proxy_control set enabled=false`;
+  await q`update app.collection_control set min_seconds=1,max_seconds=1,daily_limit=null`;
+  await q`insert into app.collection_batches(id,end_day,created_at) values('pace','2026-10-05',now()-interval '2 days')`;
+  await q`insert into app.collection_audit(actor_id,actor_name,action,before,after,created_at) values('fixture','Fixture','proxies','{}','{}',now()-interval '3 minutes')`;
+  await q`insert into app.collection_tasks(batch_id,key,partition,stream,kind,status,params,finished_at)
+    select 'pace',i::text,i::text,'da','da','complete',jsonb_build_object('authorityId',i,'page',0),case when i<=90 then now()-interval '1 minute' else now()-interval '5 minutes' end from generate_series(1,190)i`;
+  await q`insert into app.collection_tasks(batch_id,key,partition,stream,kind,status,params) values('pace','pending','pending','da','da','pending','{}')`;
+  const data=await collectionStatus(q);expect(data.forecast!.rate!/1440).toBeGreaterThan(29);expect(data.forecast!.rate!/1440).toBeLessThan(31);
+  expect(data.forecast!.etaBasis).toBe('known');expect(data.forecast!.minutesHigh).toBeGreaterThan(0);
+ });
+
 });

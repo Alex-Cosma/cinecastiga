@@ -20,3 +20,5 @@
 .collection-admin .admin-navigation .section-nav .admin-tab-icon{width:16px;height:16px;flex:0 0 16px}
 .collection-admin .proxy-view .proxy-control{margin:0;padding:0;border:0}
 .collection-admin .proxy-view #proxy-title{font-size:29px}
+
+.collection-admin .recovery-overview .recovery-gaps{margin-top:12px;font-size:13px;color:var(--secondary);line-height:1.5}.collection-admin .recovery-estimate .recovery-finish{color:var(--ink);font-variant-numeric:tabular-nums}.collection-admin .recovery-finish span{color:var(--secondary)}

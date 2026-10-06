@@ -16,7 +16,7 @@ export async function seedRecovery(q:DbSql,end=isoDaysAgo(1)){
  await q.begin(async tx=>{
   const [existing]=await tx`select id from app.collection_batches limit 1`;
   if(existing){if(existing.id!==batch)throw Error('An existing recovery batch must be inspected before starting another.');return;}
-  await tx`insert into app.collection_batches(id,end_day) values(${batch},${end})`;
+  await tx`insert into app.collection_batches(id,end_day,seed_end_day) values(${batch},${end},${end})`;
   await tx`insert into app.collection_tasks(batch_id,key,partition,stream,kind,params,priority)
    select ${batch},'da:da:'||s.sicap_id||':2026-07-01:'||${end}||':0','da:da:'||s.sicap_id||':2026-07-01:'||${end},'da','da',jsonb_build_object('authorityId',s.sicap_id,'from','2026-07-01','to',${end}::text,'page',0),case when e.name_normalized='municipiul buzau' then 0 else 10 end
    from core.entity_sicap_ids s join core.entities e on e.id=s.entity_id where s.namespace='authority'`;
@@ -57,13 +57,13 @@ export async function recoveryStep(q:DbSql,fetcher:(t:Task)=>Promise<unknown>,la
    const [t]=await tx`select * from app.collection_tasks where id=${retry.task_id} for update`;
    if(!t||t.status!=='pending'||t.batch_id!==b.id||retry.waiting||c.paused_streams.includes(t.stream))return null;
    await tx`update app.collection_tasks set status='running',started_at=clock_timestamp() where id=${t.id}`;
-   return {t:t as unknown as Task,end:String(b.end_day)};
+   return {t:t as unknown as Task,end:String(b.seed_end_day??b.end_day)};
   }
   for(let i=0;i<streams.length;i++){
    const index=(Number(b.next_stream)+i)%streams.length,stream=streams[index]!;
    if(c.paused_streams.includes(stream))continue;
    const [t]=await tx`select * from app.collection_tasks where batch_id=${b.id} and stream=${stream} and status='pending' and not exists(select 1 from app.collection_retries r where r.task_id=app.collection_tasks.id and r.status in ('pending','stopped')) order by priority,id limit 1 for update`;
-   if(t){await tx`update app.collection_tasks set status='running',started_at=clock_timestamp() where id=${t.id}`;await tx`update app.collection_batches set next_stream=${(index+1)%streams.length} where id=${b.id}`;return {t:t as unknown as Task,end:String(b.end_day)};}
+   if(t){await tx`update app.collection_tasks set status='running',started_at=clock_timestamp() where id=${t.id}`;await tx`update app.collection_batches set next_stream=${(index+1)%streams.length} where id=${b.id}`;return {t:t as unknown as Task,end:String(b.seed_end_day??b.end_day)};}
   }
   const [left]=await tx`select count(*) filter(where status in ('pending','running'))::int pending,count(*) filter(where status in ('failed','deferred'))::int gaps from app.collection_tasks where batch_id=${b.id}`;
   if(!left?.pending)await tx`update app.collection_batches set status=${left?.gaps?'incomplete':'collected'} where id=${b.id}`;
@@ -78,9 +78,16 @@ export async function recoveryStep(q:DbSql,fetcher:(t:Task)=>Promise<unknown>,la
   const prior=await q`select result from app.collection_tasks where batch_id=${t.batch_id} and partition=${t.partition} and status='complete' order by (params->>'page')::int`;
   const plan=planResponse(t,response,prior.map(r=>r.result as PageResult),end);
   await q.begin(async tx=>{
+   const [scope]=t.kind==='catalogue'?await tx`select end_day from app.collection_batches where id=${t.batch_id} for share`:[];
    const [current]=await tx`select status from app.collection_tasks where id=${t.id!} for update`;
    if(current?.status!=='running')throw Error('Task ownership changed before archive commit');
    const archive=await archiveDocumentsSql(tx as unknown as DbSql,plan.docs);
+   if(t.kind==='catalogue'){
+    const ids=plan.children.filter(c=>c.kind==='da').map(c=>c.params.authorityId!);
+    const known=await tx`select distinct (params->>'authorityId')::bigint id from app.collection_tasks where batch_id=${t.batch_id} and kind='da' and (params->>'authorityId')::bigint=any(${ids}::bigint[])`;
+    const seen=new Set(known.map(r=>Number(r.id)));
+    plan.children=plan.children.map(child=>child.kind==='da'&&!seen.has(child.params.authorityId!)?task(t.batch_id,'da','da',{...child.params,from:'2026-07-01',to:String(scope!.end_day)},child.priority):child);
+   }
    await insertTasks(tx as unknown as DbSql,plan.children);
    const result=JSON.stringify({...plan.result,archived:archive.inserted,duplicates:archive.skipped}).replace(/\\u0000/g,'');
    await tx`update app.collection_tasks set status=${plan.status},result=${result}::jsonb,finished_at=clock_timestamp() where id=${t.id!}`;

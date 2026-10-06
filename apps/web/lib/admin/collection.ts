@@ -32,7 +32,7 @@ export async function collectionStatus(q:DbSql=collectionDb()){
   const quietWindow=await collectionQuietWindow(tx as unknown as DbSql);
   const schedule=await processingSchedule(tx as unknown as DbSql);
   const [scheduler]=await tx`select heartbeat_at>now()-interval '2 minutes' alive from app.collection_workers where id='nightly-scheduler'`;
-  const [batch]=await tx`select id,end_day,status from app.collection_batches order by created_at desc limit 1`;
+  const [batch]=await tx`select id,end_day,status,follow_latest from app.collection_batches order by created_at desc limit 1`;
   const progress=batch?await tx`select stream,count(*) filter(where status='pending')::int pending,count(*) filter(where status='running')::int running,count(*) filter(where status='complete')::int complete,count(*) filter(where status='split')::int split,count(*) filter(where status='deferred')::int deferred,count(*) filter(where status='failed')::int failed from app.collection_tasks where batch_id=${batch.id} group by stream`:[];
   const proxies=await proxyStatus(tx as unknown as DbSql);
   const poolSize=proxies.endpoints.filter(p=>p.enabled).length;
