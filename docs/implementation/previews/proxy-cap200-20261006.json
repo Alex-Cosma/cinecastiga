@@ -1,0 +1,19 @@
+{
+    "control": {
+        "paused": true,
+        "revision": 76,
+        "maintenance": false,
+        "blocked_reason": null
+    },
+    "checked_at": "2026-10-06T20:57:36.655194+00:00",
+    "proxy_settings": {
+        "id": 1,
+        "enabled": true,
+        "max_seconds": 45,
+        "min_seconds": 35,
+        "max_in_flight": 10,
+        "requests_per_minute": 50
+    },
+    "migration_count": 61,
+    "rate_constraint": "CHECK (((requests_per_minute >= 1) AND (requests_per_minute <= 200)))"
+}

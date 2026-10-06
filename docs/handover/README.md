@@ -1,5 +1,7 @@
 # Handover pentru un nou dezvoltator și asistentul lui
 
+**6 octombrie — limita configurabilă este acum 200 cereri/minut:** runtime `5b6e1f6`, CI/deploy `37529872354` reușite, 61 migrări. Interfața, API-ul și baza acceptă 1–200; poți seta 100 din admin după refresh. Setarea efectivă 50/minut și pauza manuală (revision 76) au fost păstrate. [Validare și stare live](../implementation/seap-proxy-pool.md#configurable-ceiling-up-to-200-requestsminute--2026-10-06).
+
 **6 octombrie — verificare finală concurență/proxy-uri:** runtime `e702f79`, CI/deploy `37493119887` reușite. Corectat și blocajul fals la finalizarea concurentă. Live: 100 proxy-uri activate, 35–45 s/IP, plafon 50/minut, maximum 10 simultane; aproximativ 49/minut măsurate. Șase endpoint-uri sunt în cooldown automat, fără oprirea celorlalte. [Raport final, retry-uri și limite](../implementation/seap-proxy-pool.md#final-release-verification-after-the-orphan-race-fix).
 
 **6 octombrie — lot100 și concurență publicate:** runtime `04044df`, CI/deploy `37491212317` reușite,60migrări. Setări autorizate/live:100proxy-uri,35–45s/IP,50cereri/minut,10simultane; admin compact și configurabil. [Stare verificată și retry-uri în așteptare](../implementation/seap-proxy-pool.md#replacement-pool-and-concurrency-verified-in-production). La16:01UTC:120cereri reușite,6timeouturi izolate cu retry automat,48,96porniri/minut,fără blocajglobal.
