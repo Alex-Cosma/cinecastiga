@@ -99,3 +99,8 @@ Owner explicitly authorized installing the credentials and using two proxies. Th
 Two-proxy mode was started at 2/minute with50–70s/IP, six initial SEAP requests13990–13995 all200 (three per IP), and the website reopened. Changes are recorded in the admin audit with explicit operator identities. Collection continues on those two while the higher-ceiling release is prepared. No PDF download was triggered.
 
 Latest owner instruction supersedes the staged plan: **all ten enabled,40–60s/IP,15/minute shared ceiling**. Migration0055 extends only the cap constraint from10 to15; backend validation and both UI limits match. Existing settings are not changed by migration. Eleven isolated PostgreSQL tests passed, including API+DB upper-bound validation and the scheduler's4-second global admission wait while retaining40–60s/IP. File GET minimum60s, global serialization, source refusal stops and timeout retries remain unchanged. Apply the requested operator settings only after this release is deployed and verified; the pool is currently still two active endpoints.
+
+
+### Admin audit rendering incident during activation
+
+The initial operator SQL wrote a flat `proxies` audit snapshot, while the client expected `after.proxies.enabled`; this threw in the browser and blocked the admin page. Not a permission change or database timeout. The affected production entry was repaired by adding the expected nested fields while preserving the originals, with a separate `proxy-audit-format-repair` audit entry. The all-ten activation script now writes the correct nested shape. The renderer accepts both historical shapes and falls back to a neutral description for incomplete entries; eight regression cases cover the crash. Credentials and source data were unaffected.
