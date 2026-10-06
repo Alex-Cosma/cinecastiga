@@ -1,6 +1,6 @@
 # Managed SEAP proxy pool — 2026-10-06
 
-Implemented locally on `feat/document-proxy-pilot`; **not pushed, deployed or activated in production** as of this implementation. Builds on [the bounded document pilot](document-proxy-pilot.md). This implementation made **zero additional SEAP/provider requests**. Never repeat that completed document pilot as a smoke test.
+**Published and verified in production on 2026-10-06:** runtime `e041f4f`, [CI and deploy successful](https://github.com/Alex-Cosma/seap-new/actions/runs/37452332438). The code and migration are deployed; the managed proxy pool and network overlay remain **inactive**. Historical local implementation notes follow. Builds on [the bounded document pilot](document-proxy-pilot.md). This implementation made **zero additional SEAP/provider requests**. Never repeat that completed document pilot as a smoke test.
 
 ## What changes
 
@@ -76,3 +76,17 @@ Transport reference: [Undici ProxyAgent](https://undici.nodejs.org/#/docs/api/Pr
 Proxy controls now live at `/admin/conexiune`, immediately after Colectare. Each of the seven admin tabs has a16px outlined decorative icon beside its persistent label. The connection panel remains mounted within the common layout, preserving its draft and pagination across navigation; a specific unsaved-draft message links back to the correct tab. Configuration starts expanded on the dedicated page. Collection pacing links to the new tab; the paused-only instruction links back to collection controls. The standalone panel removes the former embedded top divider/spacing.
 
 Validated local browser navigation, seven icon sizes, active route, panel absence on Colectare, draft preservation, and desktop1440/mobile390 with no page overflow or JS errors. Masked proxy IPs in ignored captures under `.impeccable/review/proxy-tabs/`; no collection settings submitted and zero source requests. TypeScript passed. No deployment.
+
+
+## Production publication verified — 2026-10-06
+
+Authorized commit, push and deploy completed. `e041f4f` is on `main` and `feat/document-proxy-pilot`; production checkout and new web/document/collection containers use this release. CI/deploy run37452332438 succeeded. Local full Turbo pipeline passed all20tasks (including production build/typecheck/lint); web386unit tests passed,165opt-in checks skipped in that run; ingestion188 and DB8 passed, plus21 host deployment/scheduler tests. Earlier isolated DB/browser checks are recorded above.
+
+Verified after deploy:
+- Web healthy; public `/api/health`200. `/admin/conexiune` correctly redirects anonymous visitors to login; admin API rejects anonymous access403. New-table read grant tested as `seap_web`.
+- 55migrations;0054 SHA256 `c7bbf46f073f782576a24feff673f355d88e698e73c9b3ee48c1a74609638e16`, exact repository match.
+- Contract107063311 files API200, correct SCN1168231 /100231768. Archived notice-award proof present with exact expected source hash. Production currently has **zero inventoried files for this notice**; the nine-file inventory and downloaded pilot PDF are local evidence, not production downloads. No source request was triggered for this verification.
+- Collector and documents restarted normally; fresh collector200responses13983/13984 and current document/scheduler heartbeats. No maintenance, manual pause or blocked reason.
+- Direct interval remains30–45seconds; daily05:00RO and Sunday risk schedule preserved. Proxy control disabled, zero production endpoints registered. No private proxy credentials transferred and no overlay/network activation. Follow the separate rollout procedure above before using proxies in production.
+
+Earlier “local/not deployed” statements describe historical validation stages. Unrelated older dirty audit/identity/handover material was preserved locally and excluded from this release.
