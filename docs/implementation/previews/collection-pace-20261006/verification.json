@@ -1,0 +1,33 @@
+{
+  "checks": [
+    "Inactive direct interval not rendered in proxy mode",
+    "Nine activated out of ten shown",
+    "Observed total from actual fixture ledger",
+    "Settings capacity accounts for enabled count",
+    "Ten endpoint rows",
+    "Measured individual rate 1.2/min",
+    "Endpoint cooldown visible",
+    "Disabled endpoint visible",
+    "Desktop no page overflow",
+    "Draft survives navigation",
+    "Mobile connection no page overflow",
+    "Mobile collection no page overflow",
+    "Stale measured pace and activated count unknown",
+    "Direct mode retains editable direct delay fields",
+    "Empty inventory explained",
+    "No settings writes",
+    "No browser runtime errors",
+    "No external requests"
+  ],
+  "errors": [],
+  "external": [],
+  "writes": 0,
+  "confirmation": [
+    "desktop collection no overflow",
+    "desktop connection no overflow",
+    "mobile collection no overflow",
+    "mobile connection no overflow",
+    "720px layout no page overflow",
+    "Keyboard activates rate explanation"
+  ]
+}
