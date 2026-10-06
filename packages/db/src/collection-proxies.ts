@@ -59,3 +59,20 @@ export async function reserveDocumentProxy(q:DbSql,jobId:string):Promise<SeapPro
 export async function releaseDocumentProxy(q:DbSql,jobId:string){
  await q`update app.collection_proxies set reserved_job=null where reserved_job=${jobId}`;
 }
+
+/** Failure circuit is per endpoint, across tasks; success elsewhere cannot reset it. */
+export async function recordProxyFailure(q:DbSql,id:string){
+ await q`begin`;
+ try{
+  const [p]=await q`update app.collection_proxies set consecutive_failures=consecutive_failures+1,
+   enabled=case when consecutive_failures>=2 then false else enabled end,
+   next_allowed_at=greatest(next_allowed_at,clock_timestamp()+(case when consecutive_failures=0 then 300 else 600 end)*interval '1 second'),
+   last_error=case when consecutive_failures>=2 then 'Oprit după 3 erori consecutive. Verifică jurnalul înainte de reactivare.' else 'Conexiune eșuată. Pauză pentru acest proxy; celelalte continuă.' end
+   where id=${id} returning consecutive_failures`;
+  if(p?.consecutive_failures===3){
+   await q`update app.collection_control set revision=revision+1,updated_at=clock_timestamp() where id=1`;
+   await q`insert into app.collection_audit(actor_id,actor_name,action,before,after) values('system:proxy-circuit','Sistem','proxy-auto-disabled',${JSON.stringify({proxyId:id,enabled:true})}::jsonb,${JSON.stringify({proxyId:id,enabled:false,reason:'3 consecutive connection failures'})}::jsonb)`;
+  }
+  await q`commit`;
+ }catch(error){await q`rollback`.catch(()=>{});throw error;}
+}

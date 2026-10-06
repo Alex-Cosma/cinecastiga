@@ -1,4 +1,4 @@
-import {proxyAdmission} from './collection-proxies.js';
+import {proxyAdmission,recordProxyFailure} from './collection-proxies.js';
 import type {SeapProxy} from './proxy-config.js';
 import { CollectionTransportError, diagnosticError, sanitizeDiagnostics, type CollectionDiagnostics } from './collection-diagnostics.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
@@ -13,6 +13,7 @@ const context=new AsyncLocalStorage<{stream:CollectionStream;context?:unknown}>(
 export const withCollectionStream=<T>(stream:CollectionStream,work:()=>Promise<T>,metadata?:unknown)=>context.run({stream,context:metadata},work);
 export const currentCollectionStream=()=>context.getStore()?.stream;
 export const currentCollectionContext=()=>context.getStore()?.context;
+export class CollectionProxyFailureError extends Error {}
 export class CollectionSuspendedError extends Error {constructor(message='Colectarea SEAP este oprită din administrare.'){super(message);this.name='CollectionSuspendedError';}}
 export async function collectionHeartbeat(q:DbSql,id:string,kind:string,state:string){
  await q`insert into app.collection_workers(id,kind,state) values(${id},${kind},${state}) on conflict(id) do update set heartbeat_at=clock_timestamp(),state=excluded.state`;
@@ -46,7 +47,7 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
     if(!c)throw new CollectionSuspendedError('Configurația colectării lipsește. Aplică migrațiile.');
     if(c.paused||c.maintenance||(c.paused_streams as string[]).includes(info.stream))throw new CollectionSuspendedError();
     if(c.blocked_reason)throw new CollectionSuspendedError(String(c.blocked_reason));
-    const [retry]=await q`select x.task_id,x.retry_at>clock_timestamp() waiting,r.endpoint,r.method,r.parameters from app.collection_retries x join app.collection_requests r on r.id=x.last_request_id where x.status='pending'`;
+    const [retry]=await q`select x.task_id,x.retry_at>clock_timestamp() waiting,r.endpoint,r.method,r.parameters from app.collection_retries x join app.collection_requests r on r.id=x.last_request_id where x.status='pending' and (r.proxy_id is null or x.task_id=${taskId}) order by (r.proxy_id is null) desc,x.retry_at,x.task_id limit 1`;
     if(retry){
      if(Number(retry.task_id)!==taskId||retry.waiting)throw new CollectionSuspendedError('SEAP așteaptă reîncercarea programată după timeout.');
      const [same]=await q`select ${JSON.stringify(parameters)}::jsonb=${JSON.stringify(retry.parameters)}::jsonb matched`;
@@ -88,8 +89,13 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
   const failure=result.status<200||result.status>=300||!!result.challenge;
   const reason=result.challenge?'SEAP solicită o verificare suplimentară.':result.status===429?'SEAP a răspuns cu 429. Verifică limita înainte de reluare.':result.status===403?'SEAP a refuzat accesul (403).':null;
   await q`update app.collection_requests set status=${result.status},outcome=${failure?'failed':'success'},bytes=${result.bytes??null},records=${result.records??null},error=${reason??(failure?`HTTP ${result.status}`:null)},diagnostics=${failure?diagnostics():JSON.stringify(sanitizeDiagnostics({...transportDiagnostics,response:transportDiagnostics?.response?{...(transportDiagnostics.response as object),body:undefined}:undefined,context:info.context}))}::jsonb,finished_at=clock_timestamp() where id=${id!}`;
-  if(selectedProxy)await q`update app.collection_proxies set last_error=${failure?(reason??`HTTP ${result.status}`):null} where id=${selectedProxy.id}`;
+  if(selectedProxy)await q`update app.collection_proxies set consecutive_failures=case when ${failure} then consecutive_failures else 0 end,last_error=${failure?(reason??`HTTP ${result.status}`):null} where id=${selectedProxy.id}`;
   finished=true;
+  if(selectedProxy&&!result.challenge&&[407,408,500,502,503,504].includes(result.status)){
+   await recordProxyFailure(q,selectedProxy.id);
+   if(await scheduleCollectionTimeout(q,id!,taskId,true))throw new CollectionSuspendedError('Cererea va fi reîncercată; celelalte proxy-uri continuă.');
+   throw new CollectionProxyFailureError('Cerere prin proxy eșuată; celelalte proxy-uri continuă.');
+  }
   if(failure&&taskId!==null)await q`update app.collection_retries set status='stopped',retry_at=null,updated_at=clock_timestamp() where task_id=${taskId} and status='pending'`;
   if(reason){const after=retryAfterSeconds(result.retryAfter??null);await q`update app.collection_control set blocked_reason=${reason},blocked_until=case when ${after}::int is null then null else clock_timestamp()+${after}::int*interval '1 second' end where id=1`;throw new CollectionSuspendedError(reason);}
   return result.value;
@@ -99,6 +105,12 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
    const response=(error instanceof CollectionTransportError?error.diagnostics.response:transportDiagnostics?.response) as {status?:number;receivedBytes?:number}|undefined;
    // Keep every attempt and its diagnostics before considering replay.
    await q`update app.collection_requests set outcome='failed',status=coalesce(status,${response?.status??null}),bytes=coalesce(bytes,${response?.receivedBytes??null}),error=${abortReason==='request_timeout'?'Timeout după 45 de secunde.':'Cerere întreruptă, răspuns nevalid sau eroare de transport. Fără reîncercare automată.'},diagnostics=${diagnostics(error)}::jsonb,finished_at=clock_timestamp() where id=${id}`;
+   const scoped=selectedProxy&&(abortReason==='request_timeout'||(!abortReason&&error instanceof CollectionTransportError&&error.diagnostics.retryableProxyTransport===true))&&(!response?.status||(response.status>=200&&response.status<300)||[407,408,500,502,503,504].includes(response.status));
+   if(scoped){
+    await recordProxyFailure(q,selectedProxy!.id);
+    if(await scheduleCollectionTimeout(q,id,taskId,true))throw new CollectionSuspendedError('Cererea va fi reîncercată; celelalte proxy-uri continuă.');
+    throw new CollectionProxyFailureError('Cerere prin proxy eșuată; celelalte proxy-uri continuă.');
+   }
    if(abortReason==='request_timeout'&&await scheduleCollectionTimeout(q,id,taskId))throw new CollectionSuspendedError('Timeout SEAP. Reîncercarea a fost programată.');
    if(taskId!==null)await q`update app.collection_retries set status='stopped',retry_at=null,updated_at=clock_timestamp() where task_id=${taskId} and status='pending'`;
    await q`update app.collection_control set blocked_reason=coalesce(blocked_reason,'Eroare de transport. Verifică jurnalul înainte de reluare.'),blocked_until=case when blocked_reason is null then clock_timestamp()+interval '120 seconds' else blocked_until end where id=1`;

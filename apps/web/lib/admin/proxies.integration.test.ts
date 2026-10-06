@@ -2,7 +2,7 @@ import {afterAll,beforeEach,describe,expect,it,vi} from 'vitest';
 import {mkdtemp,writeFile,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {createDb,runCollectionRequest,registerSeapProxies,reserveDocumentProxy,releaseDocumentProxy,type DbSql} from '@seap/db';
+import {CollectionTransportError,CollectionProxyFailureError,createDb,runCollectionRequest,registerSeapProxies,reserveDocumentProxy,releaseDocumentProxy,type DbSql} from '@seap/db';
 import {changeCollection} from './collection';
 import {proxyStatus} from './proxies';
 const url=process.env.TEST_DATABASE_URL;
@@ -50,6 +50,13 @@ describe.skipIf(!connection)('shared proxy scheduling (PostgreSQL, NO network)',
   expect(Number(timing!.global_wait)).toBeGreaterThanOrEqual(4);expect(Number(timing!.global_wait)).toBeLessThan(5);
   expect(Number(timing!.ip_wait)).toBeGreaterThanOrEqual(40);expect(Number(timing!.ip_wait)).toBeLessThan(61);
  });
+ it('isolates a failed document transport without replaying its session or blocking collection',async()=>{
+  await expect(request(vi.fn(async()=>{throw new CollectionTransportError(Error('socket closed'),{retryableProxyTransport:true});}),{stream:'documents'})).rejects.toBeInstanceOf(CollectionProxyFailureError);
+  expect((await q`select blocked_reason from app.collection_control`)[0]!.blocked_reason).toBeNull();
+  expect(await q`select task_id from app.collection_retries`).toHaveLength(0);
+  await q`update app.collection_control set next_allowed_at=null`;
+  expect(await request()).toBe('proxy-2');
+ });
  it('pins a document chain and lets other requests use a different IP',async()=>{
   const id='a725a132-b6c0-4282-afbf-ae854427ea64',c=await q.reserve();
   try{
@@ -88,6 +95,11 @@ describe.skipIf(!connection)('shared proxy scheduling (PostgreSQL, NO network)',
   await expect(changeCollection(actor,body,q)).rejects.toThrow('între timp');
   const [audit]=await q`select * from app.collection_audit`;expect(audit!.after.proxies.requests_per_minute).toBe(4);expect(JSON.stringify(audit)).not.toContain('never-expose');
   await expect(changeCollection(actor,{...body,revision:2,activeIds:['proxy-99']},q)).rejects.toThrow('înregistrate');
+  await q`update app.collection_proxies set enabled=false,consecutive_failures=3,last_error='fixture circuit',next_allowed_at=now()+interval '10 minutes' where id='proxy-1'`;
+  const [cooldown]=await q`select next_allowed_at from app.collection_proxies where id='proxy-1'`;
+  await changeCollection(actor,{...body,revision:2},q);
+  expect((await q`select enabled,consecutive_failures,last_error,next_allowed_at from app.collection_proxies where id='proxy-1'`)[0]).toMatchObject({enabled:true,consecutive_failures:0,last_error:null,next_allowed_at:cooldown!.next_allowed_at});
+
  });
  it('releases reservations left by terminal jobs before admitting a new request',async()=>{
   const [job]=await q`insert into app.document_jobs(notice_key,kind,dedup_key,requested_by,status) values('proxy-fixture','list','proxy-fixture','fixture','failed') returning id`;

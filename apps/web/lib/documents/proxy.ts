@@ -1,3 +1,4 @@
+import {CollectionTransportError} from '@seap/db';
 import {randomInt} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
 import {chromium, type LaunchOptions, type Route} from 'playwright-core';
@@ -31,7 +32,8 @@ export function proxyTransportError(error:unknown):Error{
  const message=error instanceof Error?error.message:'';
  const codes=['ERR_PROXY_CONNECTION_FAILED','ERR_TUNNEL_CONNECTION_FAILED','ERR_INVALID_AUTH_CREDENTIALS','ERR_PROXY_AUTH_UNSUPPORTED','ERR_TIMED_OUT','ERR_CONNECTION_CLOSED','ERR_CONNECTION_RESET','ERR_CERT_AUTHORITY_INVALID'];
  const code=codes.find(c=>message.includes(c))??(/timeout/i.test(message)?'TIMEOUT':'TRANSPORT_FAILED');
- return new Error(`SEAP: conexiunea prin proxy a eșuat (${code}). Nu s-a încercat o conexiune directă.`);
+ const safe=new CollectionTransportError(new Error(`SEAP: conexiunea prin proxy a eșuat (${code}). Nu s-a încercat o conexiune directă.`),{retryableProxyTransport:code!=='TRANSPORT_FAILED'});
+ delete safe.cause;return safe;
 }
 
 export async function launchDocumentBrowser(proxy:DocumentProxy|null){
