@@ -799,3 +799,8 @@ Optional docker-compose.proxy.yml separates workers onto an internal network wit
 ## 2026-10-06 — Proxy/admin release verified in production
 
 Runtime `e041f4f` on main and production; [CI/deploy37452332438](https://github.com/Alex-Cosma/seap-new/actions/runs/37452332438) successful. [Full verification](docs/implementation/seap-proxy-pool.md#production-publication-verified--2026-10-06). 55migrations, web healthy, workers current and collector200responses. Dedicated Conexiune SEAP tab and seven icons published. Contract107063311 now resolves SCN1168231; no production inventory/PDF for that notice yet. Proxy pool and network overlay remain inactive, zero endpoints registered, no credential transfer. Direct30–45s,05:00RO daily/Sunday risk schedule unchanged. No further source pilot or historical repair was run.
+
+
+## 2026-10-06 — All ten production proxies enabled; admin audit crash repaired
+
+Latest owner instruction:10active proxies,40–60s/IP,15/min global. Runtime1056540,CI/deploy37454139232successful; cap releasee8f6564/run37453820732successful;56migrations including0055. Pool/relay/internal worker network active; all ten exit IPs verified, no direct fallback. Admin crash was our flat operator audit entry; original fields preserved with nested shape added, correction audited, resilient renderer deployed. [Exact live state and pending retry](docs/implementation/seap-proxy-pool.md#all-ten-activation-verified--2026-10-06-1110-utc). Through request14013:24SEAP attempts,23successes and proxy-7 timeout; task6836 retry due11:14:08UTC/14:14RO, automatic5/10minute policy preserved. No manual retry or PDF source traffic. All ten left enabled; no active observer remains. Do not infer that the pending retry succeeded; inspect the live ledger.

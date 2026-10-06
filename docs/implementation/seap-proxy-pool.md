@@ -1,5 +1,7 @@
 # Managed SEAP proxy pool — 2026-10-06
 
+**Current production state, 2026-10-06:** all ten proxies active,40–60seconds/IP, global15requests/minute; required mode and internal worker network active. Runtime `1056540`; cap migration0055 applied (56total). See the activation verification below. Earlier disabled/local notes are historical.
+
 **Published and verified in production on 2026-10-06:** runtime `e041f4f`, [CI and deploy successful](https://github.com/Alex-Cosma/seap-new/actions/runs/37452332438). The code and migration are deployed; the managed proxy pool and network overlay remain **inactive**. Historical local implementation notes follow. Builds on [the bounded document pilot](document-proxy-pilot.md). This implementation made **zero additional SEAP/provider requests**. Never repeat that completed document pilot as a smoke test.
 
 ## What changes
@@ -20,7 +22,7 @@ Open **Configurează conexiunea și ritmul** to stage mode, interval, cap (1–1
 
 Journal rows, request downloads and journal exports include `proxy_id`; old rows without one read “Direct / istoric”, not a retroactive proxy claim. Recovery estimates use the proxy pool's nominal capacity as their upper bound but remain limited by observed historical progress, so switching rates does not immediately produce a measured faster ETA.
 
-## Configuration and production rollout (not yet executed)
+## Configuration and production rollout procedure
 
 Pool JSON is the same strict format used by the local document pilot (`id`, fixed IP `server`, `username`, `password`). Private local pool: `apps/web/seap-proxies-pool.local`, ignored and mode0600. Do not copy credentials into docs, DB, screenshots, Git or chat.
 
@@ -104,3 +106,16 @@ Latest owner instruction supersedes the staged plan: **all ten enabled,40–60s/
 ### Admin audit rendering incident during activation
 
 The initial operator SQL wrote a flat `proxies` audit snapshot, while the client expected `after.proxies.enabled`; this threw in the browser and blocked the admin page. Not a permission change or database timeout. The affected production entry was repaired by adding the expected nested fields while preserving the originals, with a separate `proxy-audit-format-repair` audit entry. The all-ten activation script now writes the correct nested shape. The renderer accepts both historical shapes and falls back to a neutral description for incomplete entries; eight regression cases cover the crash. Credentials and source data were unaffected.
+
+
+## All-ten activation verified — 2026-10-06, 11:10 UTC
+
+The owner explicitly increased the target to all ten endpoints,40–60seconds per IP, and15requests/minute globally. Release `e8f6564` (cap/API/UI/migration0055) passed CI+deploy [37453820732](https://github.com/Alex-Cosma/seap-new/actions/runs/37453820732); `1056540` (resilient admin audit renderer) passed CI+deploy [37454139232](https://github.com/Alex-Cosma/seap-new/actions/runs/37454139232). Runtime1056540 and the new renderer string in served static assets were verified. Web healthy; PostgreSQL56migrations. Local seap and isolated test DB also have0055.
+
+Production settings verified: enabled=true, requests_per_minute=15, min_seconds=40, max_seconds=60,10enabled registry rows. Source workers remain isolated with required proxy mode; no direct fallback. All ten exit addresses were verified using ten total non-SEAP IP-diagnostic requests. The ordinary direct interval30–45s is retained but inactive. Existing fileGET60s minimum, single document worker, daily05:00RO/Sunday risk schedule and02:59–03:30quiet window remain unchanged. Changes preserve existing waits and are audited as `ops:proxy-all-20261006`. No new site maintenance was needed for the rate change.
+
+Source observation: baseline13989 before initial two-proxy activation; baseline14007 before all-ten activation. Through request14013 there were24SEAP attempts total:23successes/200 and one45-second timeout on proxy-7 (DA task6836). No403/429 response, no overlapping requests; observed minimum global start gap4.022seconds in the all-ten phase. The source did not return headers on the timed-out call, so this does not identify whether the delay arose at the proxy or SEAP. No extra source probes or PDFs were requested.
+
+**Pending automatic retry, not manually forced:** request14013, task6836, first timeout, retry_at2026-10-06T11:14:08.671481Z (14:14:08Romania). paused=false, maintenance=false, blocked_reason=null; normal durable timeout policy holds collection until retry. The live observation stopped on this failure; it did not establish two successful rounds across all ten IPs. Do not claim every proxy has already succeeded against SEAP or manually bypass the delay. Further success/failure must be read from the ledger. Ten proxies are left enabled as requested.
+
+Private server operation scripts/logs and pre-overlay environment backup are under `/srv/seap/secrets/`; never commit credentials. The old two-proxy activation script is an executed historical operation, not a rerunnable deployment command. The admin audit entry was repaired without deleting its original fields, and the correction has its own audit entry; malformed nested proxy-entry count now zero.
