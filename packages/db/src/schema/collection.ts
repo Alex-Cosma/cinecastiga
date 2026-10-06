@@ -78,7 +78,7 @@ export const collectionProxyControl = appSchema.table('collection_proxy_control'
  requestsPerMinute:integer('requests_per_minute').notNull().default(3),
  maxInFlight:integer('max_in_flight').notNull().default(1),
  minSeconds:integer('min_seconds').notNull().default(50), maxSeconds:integer('max_seconds').notNull().default(70),
-},t=>[check('proxy_control_singleton',sql`${t.id}=1`),check('proxy_concurrency_bounds',sql`${t.maxInFlight} between 1 and 10`),check('proxy_rate_bounds',sql`${t.requestsPerMinute} between 1 and 50`),check('proxy_delay_bounds',sql`${t.minSeconds} between 1 and 3600 and ${t.maxSeconds} between ${t.minSeconds} and 3600`)]);
+},t=>[check('proxy_control_singleton',sql`${t.id}=1`),check('proxy_concurrency_bounds',sql`${t.maxInFlight} between 1 and 10`),check('proxy_rate_bounds',sql`${t.requestsPerMinute} between 1 and 200`),check('proxy_delay_bounds',sql`${t.minSeconds} between 1 and 3600 and ${t.maxSeconds} between ${t.minSeconds} and 3600`)]);
 export const collectionProxies = appSchema.table('collection_proxies', {
  id:text('id').primaryKey(), server:text('server').notNull(), exitIp:text('exit_ip').notNull(),
  configured:boolean('configured').notNull().default(true), enabled:boolean('enabled').notNull().default(false), nextAllowedAt:timestamp('next_allowed_at',{withTimezone:true}),

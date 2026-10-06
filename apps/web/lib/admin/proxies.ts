@@ -30,7 +30,7 @@ export async function changeProxySettings(q:DbSql,body:Record<string,unknown>){
  const maxInFlight=body.maxInFlight??before!.max_in_flight;
  if(!Number.isInteger(maxInFlight)||Number(maxInFlight)<1||Number(maxInFlight)>10)throw Error('Limita trebuie să fie între 1 și 10 cereri simultane.');
  if(typeof enabled!=='boolean'||!Number.isInteger(minSeconds)||!Number.isInteger(maxSeconds)||Number(minSeconds)<1||Number(maxSeconds)>3600||Number(maxSeconds)<Number(minSeconds))throw Error('Intervalul proxy trebuie să fie între 1 și 3.600 de secunde.');
- if(!Number.isInteger(requestsPerMinute)||Number(requestsPerMinute)<1||Number(requestsPerMinute)>50)throw Error('Limita totală trebuie să fie între 1 și 50 cereri pe minut.');
+ if(!Number.isInteger(requestsPerMinute)||Number(requestsPerMinute)<1||Number(requestsPerMinute)>200)throw Error('Limita totală trebuie să fie între 1 și 200 cereri pe minut.');
  if(!Array.isArray(activeIds)||activeIds.some(id=>typeof id!=='string'||!/^proxy-[1-9]\d{0,2}$/.test(id))||new Set(activeIds).size!==activeIds.length||(enabled&&!activeIds.length))throw Error('Selectează cel puțin un proxy pentru activare.');
  if(!enabled&&process.env.SEAP_PROXY_REQUIRED==='true')throw Error('Selectează conexiunea prin proxy: conexiunea directă este blocată pe acest server.');
  const endpoints=await q`select id from app.collection_proxies where configured`;

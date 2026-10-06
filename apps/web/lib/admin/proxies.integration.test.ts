@@ -175,18 +175,18 @@ describe.skipIf(!connection)('shared proxy scheduling (PostgreSQL, NO network)',
   expect(await request()).toBe('proxy-2');
   const state=await proxyStatus(q);expect(JSON.stringify(state)).not.toContain('never-expose');expect(state.endpoints.find(p=>p.id==='proxy-1')!.attempts).toBe(1);
  });
- it('accepts the fifteen-per-minute ceiling across API, database and scheduler without weakening per-IP pacing',async()=>{
+ it.each([15,100,200])('accepts a %s/minute ceiling across API, database and scheduler without weakening per-IP pacing',async rate=>{
   await q`update app.collection_control set paused=true`;
-  const actor={id:'fixture-admin',name:'Admin'},body={action:'proxies',revision:1,enabled:true,minSeconds:40,maxSeconds:60,requestsPerMinute:15,activeIds:['proxy-1','proxy-2']};
+  const actor={id:'fixture-admin',name:'Admin'},body={action:'proxies',revision:1,enabled:true,minSeconds:40,maxSeconds:60,requestsPerMinute:rate,activeIds:['proxy-1','proxy-2']};
   await changeCollection(actor,body,q);
-  await expect(changeCollection(actor,{...body,revision:2,requestsPerMinute:51},q)).rejects.toThrow('1 și 50');
-  await expect(q`update app.collection_proxy_control set requests_per_minute=51`).rejects.toThrow();
-  expect((await q`select requests_per_minute from app.collection_proxy_control`)[0]!.requests_per_minute).toBe(15);
+  await expect(changeCollection(actor,{...body,revision:2,requestsPerMinute:201},q)).rejects.toThrow('1 și 200');
+  await expect(q`update app.collection_proxy_control set requests_per_minute=201`).rejects.toThrow();
+  expect((await q`select requests_per_minute from app.collection_proxy_control`)[0]!.requests_per_minute).toBe(rate);
   expect(await q`select id from app.collection_audit`).toHaveLength(1);
   await q`update app.collection_control set paused=false,next_allowed_at=null`;
   expect(await request()).toBe('proxy-1');
   const [timing]=await q`select extract(epoch from(c.next_allowed_at-r.started_at)) global_wait,extract(epoch from(p.next_allowed_at-r.started_at)) ip_wait from app.collection_requests r cross join app.collection_control c join app.collection_proxies p on p.id=r.proxy_id`;
-  expect(Number(timing!.global_wait)).toBeGreaterThanOrEqual(4);expect(Number(timing!.global_wait)).toBeLessThan(5);
+  expect(Number(timing!.global_wait)).toBeGreaterThanOrEqual(60/rate);expect(Number(timing!.global_wait)).toBeLessThan(60/rate+1);
   expect(Number(timing!.ip_wait)).toBeGreaterThanOrEqual(40);expect(Number(timing!.ip_wait)).toBeLessThan(61);
  });
  it('isolates a failed document transport without replaying its session or blocking collection',async()=>{
