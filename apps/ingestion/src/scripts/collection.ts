@@ -17,12 +17,19 @@ try{
    if(!l?.acquired)throw Error('Recovery worker already running');
    await recoverInterrupted(q);let attempts=0;
    const client=getElicitatieClient();
-   while(!stopping&&attempts<bound){
-    const [session]=await lock`select pg_backend_pid() pid`;if(session?.pid!==l.pid)throw Error('Recovery lock session lost');
-    if(await recoveryStep(q,t=>fetchTask(client,t)))attempts++;
-    else{if(bound!==Infinity)break;await sleep(5000);}
-    if(bound!==Infinity){const [c]=await q`select blocked_reason from app.collection_control where id=1`;if(c?.blocked_reason)break;}
-   }
+   const lane=async(index:number)=>{
+    while(!stopping&&attempts<bound){
+     const [session]=await lock`select pg_backend_pid() pid`;if(session?.pid!==l.pid){stopping=true;throw Error('Recovery lock session lost');}
+     // Start work only in lanes enabled by the current operator setting.
+     if(index>0){const [p]=await q`select enabled,max_in_flight from app.collection_proxy_control where id=1`;if(!p?.enabled||Number(p.max_in_flight)<=index){await sleep(1000);continue;}}
+     if(await recoveryStep(q,t=>fetchTask(client,t),`${index}`))attempts++;
+     else{if(bound!==Infinity)break;await sleep(1000);}
+     if(bound!==Infinity){const [c]=await q`select blocked_reason from app.collection_control where id=1`;if(c?.blocked_reason)break;}
+    }
+   };
+   // Keep the lifetime lock until ALL lanes drain, including if one lane fails.
+   const results=await Promise.allSettled(Array.from({length:bound===Infinity?10:1},(_,i)=>lane(i).catch(error=>{stopping=true;throw error;})));
+   const failed=results.find(r=>r.status==='rejected');if(failed?.status==='rejected')throw failed.reason;
    console.log(JSON.stringify({event:'recovery-worker-exit',tasks:attempts,bounded:bound!==Infinity}));
   }finally{await lock`select pg_advisory_unlock(${RECOVERY_LOCK[0]},${RECOVERY_LOCK[1]})`.catch(()=>{});lock.release();}
  }else throw Error('Usage: collection seed [closed-end-day] | run [--max-tasks=N]');

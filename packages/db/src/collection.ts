@@ -13,7 +13,7 @@ const context=new AsyncLocalStorage<{stream:CollectionStream;context?:unknown}>(
 export const withCollectionStream=<T>(stream:CollectionStream,work:()=>Promise<T>,metadata?:unknown)=>context.run({stream,context:metadata},work);
 export const currentCollectionStream=()=>context.getStore()?.stream;
 export const currentCollectionContext=()=>context.getStore()?.context;
-export class CollectionProxyFailureError extends Error {}
+export class CollectionProxyFailureError extends Error {constructor(message:string){super(message);this.name='CollectionProxyFailureError';}}
 export class CollectionSuspendedError extends Error {constructor(message='Colectarea SEAP este oprită din administrare.'){super(message);this.name='CollectionSuspendedError';}}
 export async function collectionHeartbeat(q:DbSql,id:string,kind:string,state:string){
  await q`insert into app.collection_workers(id,kind,state) values(${id},${kind},${state}) on conflict(id) do update set heartbeat_at=clock_timestamp(),state=excluded.state`;
@@ -22,12 +22,12 @@ export const collectionWorkerId=(kind:string)=>`${kind}:${process.pid}:${randomU
 export interface CollectionRequestInfo {stream:CollectionStream;worker:string;method:string;url:string;parameters?:unknown;fileDownload?:boolean;context?:unknown;proxyId?:string;documentJobId?:string}
 export interface CollectionResult<T>{value:T;status:number;bytes?:number;records?:number;retryAfter?:string|null;challenge?:boolean;diagnostics?:CollectionDiagnostics}
 
-/** Caller supplies a RESERVED physical DB session. Lock spans the full response body.
+/** Caller supplies a RESERVED physical DB session. Shared drain lock and exclusive request/IP locks span the full response body.
  * No lease expiry can admit a second live request. A broken session aborts transport;
  * an unfinished ledger entry stops future traffic until manually acknowledged. */
 export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo,work:(signal:AbortSignal,proxy:SeapProxy|null)=>Promise<CollectionResult<T>>,parentSignal?:AbortSignal):Promise<T>{
  const endpoint=safeCollectionEndpoint(info.url),parameters=safeCollectionParameters(info.parameters),taskId=collectionTaskId(info.context);
- let locked=false,id:number|undefined,finished=false,selectedProxy:SeapProxy|null=null;
+ let locked=false,requestLocked=false,proxyLocked=false,id:number|undefined,finished=false,selectedProxy:SeapProxy|null=null;
  let abortReason:string|null=null,transportDiagnostics:CollectionDiagnostics|undefined;
  const diagnostics=(error?:unknown)=>JSON.stringify(sanitizeDiagnostics({version:1,timeoutMs:45000,abortReason,context:info.context,...transportDiagnostics,...(error instanceof CollectionTransportError?error.diagnostics:{}),...(error!==undefined?{exception:diagnosticError(error)}:{})}));
  const controller=new AbortController();const abort=()=>{abortReason="parent_cancelled";controller.abort();};parentSignal?.addEventListener('abort',abort,{once:true});
@@ -36,7 +36,7 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
   for(;;){
    parentSignal?.throwIfAborted();
    await collectionHeartbeat(q,info.worker,info.stream==='documents'?'documents':'ingestion','waiting');
-   const [lock]=await q`select pg_try_advisory_lock(${COLLECTION_LOCK[0]},${COLLECTION_LOCK[1]}) acquired,pg_backend_pid() pid`;
+   const [lock]=await q`select pg_try_advisory_lock_shared(${COLLECTION_LOCK[0]},${COLLECTION_LOCK[1]}) acquired,pg_backend_pid() pid`;
    if(!lock?.acquired){await sleep(2000,undefined,{signal:parentSignal});continue;}locked=true;
    await q`begin`;
    let delay=0,transaction=true;
@@ -53,12 +53,15 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
      const [same]=await q`select ${JSON.stringify(parameters)}::jsonb=${JSON.stringify(retry.parameters)}::jsonb matched`;
      if(retry.endpoint!==endpoint||retry.method!==info.method||!same?.matched)throw Error('Retry request identity differs from the timed-out query');
     }
-    const [orphan]=await q`select id from app.collection_requests where outcome='running' limit 1`;
+    const [orphan]=await q`select r.id from app.collection_requests r where outcome='running'
+      and not exists(select 1 from pg_locks l where l.database=(select oid from pg_database where datname=current_database()) and l.locktype='advisory' and l.classid=729119::oid and l.objid=r.id::oid and l.objsubid=2 and l.granted) limit 1`;
     if(orphan){await q`update app.collection_control set blocked_reason='O cerere a rămas fără rezultat după întreruperea unui worker. Verifică înainte de reluare.',blocked_until=clock_timestamp()+interval '120 seconds' where id=1`;await q`commit`;transaction=false;throw new CollectionSuspendedError('O cerere anterioară a fost întreruptă. Verifică jurnalul.');}
     if(c.daily_limit!==null){const [n]=await q`select count(*)::int n from app.collection_requests where started_at >= ((clock_timestamp() at time zone 'Europe/Bucharest')::date::timestamp at time zone 'Europe/Bucharest')`;if(Number(n?.n)>=Number(c.daily_limit))throw new CollectionSuspendedError('Limita zilnică SEAP a fost atinsă.');}
     const admission=await proxyAdmission(q,info.proxyId,info.documentJobId);
     selectedProxy=admission?.proxy??null;
-    delay=Math.max(admission?.delay??0,Number(c.next_ms??0)-Number(c.now_ms),info.fileDownload?Number(c.file_ms??0)+60000-Number(c.now_ms):0);
+    const [inFlight]=await q`select count(*)::int n from pg_locks where database=(select oid from pg_database where datname=current_database()) and locktype='advisory' and classid=729119::oid and objsubid=2 and granted`;
+    const concurrency=admission?Number(admission.settings.max_in_flight):1;
+    delay=Math.max(Number(inFlight!.n)>=concurrency?1000:0,admission?.delay??0,Number(c.next_ms??0)-Number(c.now_ms),info.fileDownload?Number(c.file_ms??0)+60000-Number(c.now_ms):0);
     if(delay<=0){
      // Recheck after taking the control-row lock and on every rate-limit retry.
      // Suspension precedes the ledger: no HTTP attempt, error or manual-pause mutation.
@@ -66,8 +69,11 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
      const policy=admission?.settings??c;
      const jitter=Math.floor(Number(policy.min_seconds)+Math.random()*(Number(policy.max_seconds)-Number(policy.min_seconds)+1));
      const globalDelay=admission?60/Number(policy.requests_per_minute):jitter;
-     const [request]=await q`insert into app.collection_requests(stream,worker,method,endpoint,parameters,proxy_id) values(${info.stream},${info.worker},${info.method},${endpoint},${JSON.stringify(parameters)}::jsonb,${selectedProxy?.id??null}) returning id`;
+     const [request]=await q`insert into app.collection_requests(stream,worker,method,endpoint,parameters,proxy_id,started_at) values(${info.stream},${info.worker},${info.method},${endpoint},${JSON.stringify(parameters)}::jsonb,${selectedProxy?.id??null},clock_timestamp()) returning id`;
      id=Number(request!.id);
+     // A unique session lock proves ownership; elapsed time alone never frees a live request.
+     await q`select pg_advisory_lock(729119,${id}::int)`;requestLocked=true;
+     if(selectedProxy){await q`select pg_advisory_lock(729120,${Number(selectedProxy.id.slice(6))})`;proxyLocked=true;}
      await q`update app.collection_control set next_allowed_at=clock_timestamp()+${globalDelay}*interval '1 second',last_file_at=case when ${!!info.fileDownload} then clock_timestamp() else last_file_at end where id=1`;
      if(selectedProxy)await q`update app.collection_proxies set next_allowed_at=clock_timestamp()+${jitter}*interval '1 second' where id=${selectedProxy.id}`;
     }
@@ -77,10 +83,10 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
     const pid=lock.pid;
     // Protect against postgres.js reconnecting onto a session without our lock.
     let checking=false,ticks=0;
-    heartbeat=setInterval(()=>{if(checking)return;checking=true;void q`select pg_backend_pid() pid`.then(async r=>{if(r[0]?.pid!==pid){abortReason="lock_session_changed";controller.abort();}else if(++ticks%5===0)await collectionHeartbeat(q,info.worker,info.stream==='documents'?'documents':'ingestion','request');}).catch(()=>{abortReason="lock_connection_lost";controller.abort();}).finally(()=>checking=false);},1000);
+    heartbeat=setInterval(()=>{if(checking)return;checking=true;void q`select pg_backend_pid() pid,exists(select 1 from pg_locks where pid=pg_backend_pid() and locktype='advisory' and classid=729119::oid and objid=${id!}::oid and objsubid=2 and granted) owns`.then(async r=>{if(r[0]?.pid!==pid||!r[0]?.owns){abortReason="lock_session_changed";controller.abort();}else if(++ticks%5===0)await collectionHeartbeat(q,info.worker,info.stream==='documents'?'documents':'ingestion','request');}).catch(()=>{abortReason="lock_connection_lost";controller.abort();}).finally(()=>checking=false);},1000);
     break;
    }
-   await q`select pg_advisory_unlock(${COLLECTION_LOCK[0]},${COLLECTION_LOCK[1]})`;locked=false;
+   await q`select pg_advisory_unlock_shared(${COLLECTION_LOCK[0]},${COLLECTION_LOCK[1]})`;locked=false;
    await sleep(Math.min(2000,Math.ceil(delay)),undefined,{signal:parentSignal});
   }
   controller.signal.throwIfAborted();deadline=setTimeout(()=>{abortReason="request_timeout";controller.abort();},45000);
@@ -88,6 +94,7 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
   const result=await work(controller.signal,selectedProxy);transportDiagnostics=result.diagnostics;controller.signal.throwIfAborted();
   const failure=result.status<200||result.status>=300||!!result.challenge;
   const reason=result.challenge?'SEAP solicită o verificare suplimentară.':result.status===429?'SEAP a răspuns cu 429. Verifică limita înainte de reluare.':result.status===403?'SEAP a refuzat accesul (403).':null;
+  if(reason){const after=retryAfterSeconds(result.retryAfter??null);await q`update app.collection_control set blocked_reason=${reason},blocked_until=case when ${after}::int is null then null else clock_timestamp()+${after}::int*interval '1 second' end where id=1`;}
   await q`update app.collection_requests set status=${result.status},outcome=${failure?'failed':'success'},bytes=${result.bytes??null},records=${result.records??null},error=${reason??(failure?`HTTP ${result.status}`:null)},diagnostics=${failure?diagnostics():JSON.stringify(sanitizeDiagnostics({...transportDiagnostics,response:transportDiagnostics?.response?{...(transportDiagnostics.response as object),body:undefined}:undefined,context:info.context}))}::jsonb,finished_at=clock_timestamp() where id=${id!}`;
   if(selectedProxy)await q`update app.collection_proxies set consecutive_failures=case when ${failure} then consecutive_failures else 0 end,last_error=${failure?(reason??`HTTP ${result.status}`):null} where id=${selectedProxy.id}`;
   finished=true;
@@ -97,15 +104,17 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
    throw new CollectionProxyFailureError('Cerere prin proxy eșuată; celelalte proxy-uri continuă.');
   }
   if(failure&&taskId!==null)await q`update app.collection_retries set status='stopped',retry_at=null,updated_at=clock_timestamp() where task_id=${taskId} and status='pending'`;
-  if(reason){const after=retryAfterSeconds(result.retryAfter??null);await q`update app.collection_control set blocked_reason=${reason},blocked_until=case when ${after}::int is null then null else clock_timestamp()+${after}::int*interval '1 second' end where id=1`;throw new CollectionSuspendedError(reason);}
+  if(reason)throw new CollectionSuspendedError(reason);
   return result.value;
  }catch(error){
   if(id!==undefined&&!finished){
    if(selectedProxy)await q`update app.collection_proxies set last_error='Eroare de transport; verifică jurnalul.' where id=${selectedProxy.id}`;
    const response=(error instanceof CollectionTransportError?error.diagnostics.response:transportDiagnostics?.response) as {status?:number;receivedBytes?:number}|undefined;
+   const scoped=selectedProxy&&(abortReason==='request_timeout'||(!abortReason&&error instanceof CollectionTransportError&&error.diagnostics.retryableProxyTransport===true))&&(!response?.status||(response.status>=200&&response.status<300)||[407,408,500,502,503,504].includes(response.status));
+   if(!scoped&&abortReason!=='request_timeout')await q`update app.collection_control set blocked_reason=coalesce(blocked_reason,'Eroare de transport. Verifică jurnalul înainte de reluare.'),blocked_until=case when blocked_reason is null then clock_timestamp()+interval '120 seconds' else blocked_until end where id=1`;
    // Keep every attempt and its diagnostics before considering replay.
    await q`update app.collection_requests set outcome='failed',status=coalesce(status,${response?.status??null}),bytes=coalesce(bytes,${response?.receivedBytes??null}),error=${abortReason==='request_timeout'?'Timeout după 45 de secunde.':'Cerere întreruptă, răspuns nevalid sau eroare de transport. Fără reîncercare automată.'},diagnostics=${diagnostics(error)}::jsonb,finished_at=clock_timestamp() where id=${id}`;
-   const scoped=selectedProxy&&(abortReason==='request_timeout'||(!abortReason&&error instanceof CollectionTransportError&&error.diagnostics.retryableProxyTransport===true))&&(!response?.status||(response.status>=200&&response.status<300)||[407,408,500,502,503,504].includes(response.status));
+
    if(scoped){
     await recordProxyFailure(q,selectedProxy!.id);
     if(await scheduleCollectionTimeout(q,id,taskId,true))throw new CollectionSuspendedError('Cererea va fi reîncercată; celelalte proxy-uri continuă.');
@@ -118,6 +127,8 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
   throw error;
  }finally{
   if(deadline)clearTimeout(deadline);if(heartbeat)clearInterval(heartbeat);controller.abort();parentSignal?.removeEventListener('abort',abort);
-  if(locked)await q`select pg_advisory_unlock(${COLLECTION_LOCK[0]},${COLLECTION_LOCK[1]})`.catch(()=>{});
+  if(proxyLocked&&selectedProxy)await q`select pg_advisory_unlock(729120,${Number(selectedProxy.id.slice(6))})`.catch(()=>{});
+  if(requestLocked)await q`select pg_advisory_unlock(729119,${id!}::int)`.catch(()=>{});
+  if(locked)await q`select pg_advisory_unlock_shared(${COLLECTION_LOCK[0]},${COLLECTION_LOCK[1]})`.catch(()=>{});
  }
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "app"."collection_proxies" ADD COLUMN "configured" boolean DEFAULT true NOT NULL;

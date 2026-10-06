@@ -6,7 +6,7 @@ export function collectionTaskId(context: unknown): number | null {
  return typeof id==='number'&&Number.isSafeInteger(id)&&id>0?id:null;
 }
 
-/** Caller holds the global source lock. Timeout scheduling and requeueing are
+/** Caller owns the request and proxy session locks. Timeout scheduling and requeueing are
  * atomic so a restart during the wait cannot reset the budget or orphan the task.
  * Only recovery queries are replayable here; browser document sessions are not.
  */

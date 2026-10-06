@@ -1,5 +1,6 @@
 import {beforeAll,afterAll,beforeEach,describe,it,expect} from 'vitest';
-import {createDb} from '@seap/db';
+import {createDb,CollectionProxyFailureError} from '@seap/db';
+import {createHttpClient} from '@seap/scraper-clients';
 import {insertTasks,recoveryStep,recoverInterrupted,seedRecovery} from './runner.js';
 import {task} from './plan.js';
 const url=process.env['TEST_DATABASE_URL'];
@@ -16,6 +17,27 @@ describe.skipIf(!url)('recovery manifest (isolated DB, no source traffic)',()=>{
   expect(await recoveryStep(q,fetcher)).toBe(true);expect(await recoveryStep(q,fetcher)).toBe(false);expect(calls).toBe(1);
   const [t]=await q`select * from app.collection_tasks`;expect(t?.status).toBe('complete');
   const [r]=await q`select count(*)::int n from raw.raw_documents where external_id='da:99123456'`;expect(r?.n).toBe(1);
+ });
+ it('lets two lanes claim distinct tasks and commit their independent archives',async()=>{
+  await insertTasks(q,[task('fixture','da','da',{authorityId:7848,from:'2026-07-01',to:'2026-09-25',page:0}),task('fixture','da','da',{authorityId:7849,from:'2026-07-01',to:'2026-09-25',page:0})]);
+  let release!:()=>void,started!:()=>void;
+  const held=new Promise<void>(r=>release=r),ready=new Promise<void>(r=>started=r);const ids:number[]=[];
+  const first=recoveryStep(q,async t=>{ids.push(t.id!);started();await held;return {total:0,items:[]};},'0');
+  await ready;
+  try{
+   expect(await recoveryStep(q,async t=>{ids.push(t.id!);return {total:0,items:[]};},'1')).toBe(true);
+   expect(new Set(ids).size).toBe(2);
+   expect((await q`select status from app.collection_batches where id='fixture'`)[0]!.status).toBe('collecting');
+  }finally{release();await first;}
+  expect((await q`select count(*)::int n from app.collection_tasks where status='complete'`)[0]!.n).toBe(2);
+ });
+ it('does not turn an exhausted proxy failure into a global stop through the HTTP-client boundary',async()=>{
+  await insertTasks(q,[task('fixture','da','da',{authorityId:7848,from:'2026-07-01',to:'2026-09-25',page:0}),task('fixture','da','da',{authorityId:7849,from:'2026-07-01',to:'2026-09-25',page:0})]);
+  const client=createHttpClient({baseUrl:'https://example.test',userAgent:'fixture',maxRetries:0,transport:async()=>{throw new CollectionProxyFailureError('Scoped failure');}});
+  expect(await recoveryStep(q,()=>client.getJson('/fixture'))).toBe(true);
+  expect((await q`select blocked_reason from app.collection_control`)[0]!.blocked_reason).toBeNull();
+  expect((await q`select count(*)::int n from app.collection_tasks where status='failed'`)[0]!.n).toBe(1);
+  expect(await recoveryStep(q,async()=>({total:0,items:[]}))).toBe(true);
  });
  it('rolls back task completion and archive if a downstream task write fails',async()=>{
   await insertTasks(q,[task('fixture','awards','list',{from:'2026-09-25',to:'2026-09-25',page:0})]);
