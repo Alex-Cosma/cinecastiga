@@ -1,0 +1,2 @@
+ALTER TABLE "app"."collection_proxy_control" DROP CONSTRAINT "proxy_rate_bounds";--> statement-breakpoint
+ALTER TABLE "app"."collection_proxy_control" ADD CONSTRAINT "proxy_rate_bounds" CHECK ("app"."collection_proxy_control"."requests_per_minute" between 1 and 200);
