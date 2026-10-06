@@ -127,6 +127,26 @@ describe.skipIf(!connection)('shared proxy scheduling (PostgreSQL, NO network)',
   }finally{release();expect(await first).toBe('healthy');}
   if(status===429)expect((await q`select blocked_reason from app.collection_control`)[0]!.blocked_reason).toContain('429');
  });
+ it.each([false,true])('rechecks concurrent completion without overlooking a real orphan (%s)',async realOrphan=>{
+  const [row]=await q`insert into app.collection_requests(stream,worker,method,endpoint,proxy_id) values('da','finishing','POST','/fixture','proxy-1') returning id`;
+  const finisher=await q.reserve(),checker=await q.reserve();let intercepted=false;
+  try{
+   await finisher`begin`;
+   await finisher`update app.collection_requests set outcome='success',status=200,finished_at=clock_timestamp() where id=${row!.id}`;
+   const wrapped=new Proxy(checker,{apply:async(target,thisArg,args)=>{
+    const result=await Reflect.apply(target,thisArg,args);
+    if(!intercepted&&String(args[0]?.[0]).includes('select r.id from app.collection_requests r where outcome=')){
+     expect(result).toHaveLength(1);intercepted=true;await finisher`commit`;
+     if(realOrphan)await q`insert into app.collection_requests(stream,worker,method,endpoint,proxy_id) values('da','crashed','POST','/fixture','proxy-2')`;
+    }
+    return result;
+   }});
+   const work=vi.fn(async()=>({value:'healthy',status:200}));
+   if(realOrphan){await expect(runCollectionRequest(wrapped,info,work)).rejects.toThrow('întreruptă');expect(work).not.toHaveBeenCalled();}
+   else{expect(await runCollectionRequest(wrapped,info,work)).toBe('healthy');expect((await q`select blocked_reason from app.collection_control`)[0]!.blocked_reason).toBeNull();}
+   expect(intercepted).toBe(true);
+  }finally{await finisher`rollback`;finisher.release();checker.release();}
+ });
  it('recognizes a real orphan while another request legitimately owns a live slot',async()=>{
   await q`update app.collection_proxy_control set max_in_flight=2`;
   let release!:()=>void,started!:()=>void;const held=new Promise<void>(r=>release=r),ready=new Promise<void>(r=>started=r);

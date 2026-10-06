@@ -53,9 +53,17 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
      const [same]=await q`select ${JSON.stringify(parameters)}::jsonb=${JSON.stringify(retry.parameters)}::jsonb matched`;
      if(retry.endpoint!==endpoint||retry.method!==info.method||!same?.matched)throw Error('Retry request identity differs from the timed-out query');
     }
-    const [orphan]=await q`select r.id from app.collection_requests r where outcome='running'
+    for(;;){
+     const [orphan]=await q`select r.id from app.collection_requests r where outcome='running'
       and not exists(select 1 from pg_locks l where l.database=(select oid from pg_database where datname=current_database()) and l.locktype='advisory' and l.classid=729119::oid and l.objid=r.id::oid and l.objsubid=2 and l.granted) limit 1`;
-    if(orphan){await q`update app.collection_control set blocked_reason='O cerere a rămas fără rezultat după întreruperea unui worker. Verifică înainte de reluare.',blocked_until=clock_timestamp()+interval '120 seconds' where id=1`;await q`commit`;transaction=false;throw new CollectionSuspendedError('O cerere anterioară a fost întreruptă. Verifică jurnalul.');}
+     if(!orphan)break;
+     // pg_locks is live, but the ledger scan uses a statement snapshot. A peer can
+     // finish and unlock during that scan. Lock/re-read the candidate before
+     // declaring it orphaned; a locked running row cannot finish and then unlock.
+     const [candidate]=await q`select outcome from app.collection_requests where id=${orphan.id} for update`;
+     const [owner]=await q`select exists(select 1 from pg_locks where database=(select oid from pg_database where datname=current_database()) and locktype='advisory' and classid=729119::oid and objid=${orphan.id}::oid and objsubid=2 and granted) present`;
+     if(candidate?.outcome==='running'&&!owner?.present){await q`update app.collection_control set blocked_reason='O cerere a rămas fără rezultat după întreruperea unui worker. Verifică înainte de reluare.',blocked_until=clock_timestamp()+interval '120 seconds' where id=1`;await q`commit`;transaction=false;throw new CollectionSuspendedError('O cerere anterioară a fost întreruptă. Verifică jurnalul.');}
+    }
     if(c.daily_limit!==null){const [n]=await q`select count(*)::int n from app.collection_requests where started_at >= ((clock_timestamp() at time zone 'Europe/Bucharest')::date::timestamp at time zone 'Europe/Bucharest')`;if(Number(n?.n)>=Number(c.daily_limit))throw new CollectionSuspendedError('Limita zilnică SEAP a fost atinsă.');}
     const admission=await proxyAdmission(q,info.proxyId,info.documentJobId);
     selectedProxy=admission?.proxy??null;
