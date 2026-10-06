@@ -27,7 +27,8 @@ export async function collectionStatus(q:DbSql=collectionDb()){
   const [lastVerified]=await tx`select id,version::text,kind,started_at,completed_at,methodology,validation->'checks' checks,validation->'risk' risk,validation->>'refreshScope' refresh_scope from app.monitoring_refreshes where status='ready' and kind='coordinated' order by version desc limit 1`;
   const processingRows=await tx`select id,scheduled_day::text,scope,status,stage,started_at,stage_started_at,heartbeat_at,completed_at,stages,raw_boundary,checkpoint_id,error from app.processing_runs order by started_at desc limit 7`;
   const processingRuns=processingRows.map(r=>({...r,started_at:iso(r.started_at),stage_started_at:iso(r.stage_started_at),heartbeat_at:iso(r.heartbeat_at),completed_at:iso(r.completed_at)}) as typeof r);
-  const [timeoutRetry]=await tx`select r.task_id::text,r.last_request_id::text,r.timeouts,r.retry_at,t.stream from app.collection_retries r join app.collection_tasks t on t.id=r.task_id where r.status='pending'`;
+  const [timeoutRetry]=await tx`select r.task_id::text,r.last_request_id::text,r.timeouts,r.retry_at,t.stream from app.collection_retries r join app.collection_tasks t on t.id=r.task_id join app.collection_requests attempt on attempt.id=r.last_request_id where r.status='pending' and attempt.proxy_id is null order by r.retry_at limit 1`;
+  const proxyRetries=await tx`select r.task_id::text,r.timeouts,r.retry_at,attempt.proxy_id from app.collection_retries r join app.collection_requests attempt on attempt.id=r.last_request_id where r.status='pending' and attempt.proxy_id is not null order by r.retry_at,r.task_id`;
   const quietWindow=await collectionQuietWindow(tx as unknown as DbSql);
   const schedule=await processingSchedule(tx as unknown as DbSql);
   const [scheduler]=await tx`select heartbeat_at>now()-interval '2 minutes' alive from app.collection_workers where id='nightly-scheduler'`;
@@ -37,7 +38,7 @@ export async function collectionStatus(q:DbSql=collectionDb()){
   const poolSize=proxies.endpoints.filter(p=>p.enabled).length;
   const proxySeconds=proxies.settings.enabled?Math.max(60/Number(proxies.settings.requests_per_minute),(Number(proxies.settings.min_seconds)+Number(proxies.settings.max_seconds))/2/Math.max(1,poolSize)):null;
   const forecast=batch?await recoveryStatus(tx as unknown as DbSql,batch.id,progress as unknown as RecoveryCounts[],proxySeconds===null?control:{...control,min_seconds:proxySeconds,max_seconds:proxySeconds}):null;
-  return {proxies,moneyQuality,forecast,timeoutRetry:timeoutRetry??null,quietWindow,recovery:batch?{batch,progress}:null,control,today:today[0]!,streams,requests,failures,workers,audit,runs,documents:documents!,raw:raw!,publication:publication[0]??null,lastVerified:lastVerified??null,processing:{runs:processingRuns,schedule:{next_at:iso(schedule.next_at),next_risk_at:iso(schedule.next_risk_at)},schedulerAlive:scheduler?.alive===true}};
+  return {proxies,proxyRetries,moneyQuality,forecast,timeoutRetry:timeoutRetry??null,quietWindow,recovery:batch?{batch,progress}:null,control,today:today[0]!,streams,requests,failures,workers,audit,runs,documents:documents!,raw:raw!,publication:publication[0]??null,lastVerified:lastVerified??null,processing:{runs:processingRuns,schedule:{next_at:iso(schedule.next_at),next_risk_at:iso(schedule.next_risk_at)},schedulerAlive:scheduler?.alive===true}};
  });
 }
 export type CollectionStatus=Awaited<ReturnType<typeof collectionStatus>>;

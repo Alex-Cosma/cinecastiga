@@ -1,4 +1,4 @@
-import {collectionQuietWindow,diagnosticError,sanitizeDiagnostics,CollectionSuspendedError,collectionHeartbeat,collectionWorkerId,withCollectionStream,type DbSql} from '@seap/db';
+import {CollectionProxyFailureError,collectionQuietWindow,diagnosticError,sanitizeDiagnostics,CollectionSuspendedError,collectionHeartbeat,collectionWorkerId,withCollectionStream,type DbSql} from '@seap/db';
 import {getNoticeContracts,getNoticeDetail,listContractingAuthorities,listDirectAcquisitions,listNotices,NOTICE_TYPE_IDS,type ElicitatieClient} from '@seap/scraper-clients';
 import {archiveDocumentsSql} from '../scrape/archive.js';
 import {isoDaysAgo} from '../scrape/window.js';
@@ -52,7 +52,7 @@ export async function recoveryStep(q:DbSql,fetcher:(t:Task)=>Promise<unknown>){
   if(c.daily_limit!==null){const [n]=await tx`select count(*)::int n from app.collection_requests where started_at>=((now() at time zone 'Europe/Bucharest')::date::timestamp at time zone 'Europe/Bucharest')`;if(Number(n?.n)>=c.daily_limit)return null;}
   const [b]=await tx`select * from app.collection_batches where status='collecting' order by created_at limit 1 for update`;
   if(!b)return null;
-  const [retry]=await tx`select task_id,retry_at>clock_timestamp() waiting from app.collection_retries where status='pending'`;
+  const [retry]=await tx`select x.task_id,x.retry_at>clock_timestamp() waiting from app.collection_retries x join app.collection_requests r on r.id=x.last_request_id join app.collection_tasks t on t.id=x.task_id where x.status='pending' and (r.proxy_id is null or (x.retry_at<=clock_timestamp() and t.batch_id=${b.id} and not (t.stream=any(${c.paused_streams}::text[])))) order by (r.proxy_id is null) desc,x.retry_at,x.task_id limit 1`;
   if(retry){
    const [t]=await tx`select * from app.collection_tasks where id=${retry.task_id} for update`;
    if(!t||t.status!=='pending'||t.batch_id!==b.id||retry.waiting||c.paused_streams.includes(t.stream))return null;
@@ -62,7 +62,7 @@ export async function recoveryStep(q:DbSql,fetcher:(t:Task)=>Promise<unknown>){
   for(let i=0;i<streams.length;i++){
    const index=(Number(b.next_stream)+i)%streams.length,stream=streams[index]!;
    if(c.paused_streams.includes(stream))continue;
-   const [t]=await tx`select * from app.collection_tasks where batch_id=${b.id} and stream=${stream} and status='pending' order by priority,id limit 1 for update`;
+   const [t]=await tx`select * from app.collection_tasks where batch_id=${b.id} and stream=${stream} and status='pending' and not exists(select 1 from app.collection_retries r where r.task_id=app.collection_tasks.id and r.status in ('pending','stopped')) order by priority,id limit 1 for update`;
    if(t){await tx`update app.collection_tasks set status='running',started_at=clock_timestamp() where id=${t.id}`;await tx`update app.collection_batches set next_stream=${(index+1)%streams.length} where id=${b.id}`;return {t:t as unknown as Task,end:String(b.end_day)};}
   }
   const [left]=await tx`select count(*) filter(where status in ('pending','running'))::int pending,count(*) filter(where status in ('failed','deferred'))::int gaps from app.collection_tasks where batch_id=${b.id}`;
@@ -88,6 +88,7 @@ export async function recoveryStep(q:DbSql,fetcher:(t:Task)=>Promise<unknown>){
   });
   console.log(JSON.stringify({event:'recovery-archived',task:t.id,status:plan.status,documents:plan.docs.length,children:plan.children.length}));
  }catch(error){
+  if(error instanceof CollectionProxyFailureError){await q`update app.collection_tasks set status='failed',error=${error.message},finished_at=clock_timestamp() where id=${t.id!}`;return true;}
   if(error instanceof CollectionSuspendedError){await q`update app.collection_tasks set status='pending',started_at=null where id=${t.id!}`;return false;}
   // Only gate-confirmed timeouts are requeued above. Other failures may have partly succeeded. Keep
   // the exact task identity and stop admission until an operator inspects it.

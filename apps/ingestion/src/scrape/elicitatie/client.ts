@@ -1,6 +1,6 @@
 import {withProxyResponse} from './proxy-fetch.js';
 import { createElicitatieClient, type ElicitatieClient } from '@seap/scraper-clients';
-import { CollectionTransportError,responseDiagnosticBody,currentCollectionContext,currentCollectionStream,runCollectionRequest,collectionWorkerId } from '@seap/db';
+import { retryableProxyTransport,CollectionTransportError,responseDiagnosticBody,currentCollectionContext,currentCollectionStream,runCollectionRequest,collectionWorkerId } from '@seap/db';
 import { getSharedSql } from '../../db.js';
 let singleton:ElicitatieClient|null=null,testOverride:ElicitatieClient|null=null;
 const worker=collectionWorkerId('ingestion-http');
@@ -31,7 +31,7 @@ export function getElicitatieClient():ElicitatieClient{
     return {value:new Response(bytes,{status:response.status,headers:response.headers}),status:response.status,bytes:size,...(records===undefined?{}:{records}),challenge,retryAfter:response.headers.get('retry-after'),diagnostics:diagnostic};
     };
     try{return proxy?await withProxyResponse(url,{method:init?.method??'GET',headers:Object.fromEntries(new Headers(init?.headers)),body:init?.body},proxy,signal,consume):await consume(await fetch(input,{...init,redirect:'manual',signal}));
-    } catch(error) {diagnostic.response={...(diagnostic.response as object??{}),...responseDiagnosticBody(Buffer.concat(chunks),diagnostic.phase==='complete'),observedBytes:size,captureLimitBytes:32*1024*1024,truncated:size>32*1024*1024};throw new CollectionTransportError(proxy?new Error('Conexiunea proxy a eșuat; fără conexiune directă.'):error,diagnostic);}
+    } catch(error) {diagnostic.retryableProxyTransport=!!proxy&&retryableProxyTransport(error);diagnostic.response={...(diagnostic.response as object??{}),...responseDiagnosticBody(Buffer.concat(chunks),diagnostic.phase==='complete'),observedBytes:size,captureLimitBytes:32*1024*1024,truncated:size>32*1024*1024};throw new CollectionTransportError(proxy?new Error('Conexiunea proxy a eșuat; fără conexiune directă.'):error,diagnostic);}
    });}finally{q.release();}
   }
  });return singleton;

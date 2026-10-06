@@ -70,8 +70,7 @@ export const collectionRetries = appSchema.table('collection_retries', {
  updatedAt:timestamp('updated_at',{withTimezone:true}).notNull().defaultNow(),
 },t=>[check('collection_retry_timeouts',sql`${t.timeouts} between 1 and 3`),
  check('collection_retry_status',sql`${t.status} in ('pending','resolved','stopped')`),
- check('collection_retry_due',sql`${t.status}<>'pending' or ${t.retryAt} is not null`),
- uniqueIndex('collection_one_pending_retry').on(t.status).where(sql`${t.status}='pending'`)]);
+ check('collection_retry_due',sql`${t.status}<>'pending' or ${t.retryAt} is not null`)]);
 
 // Operator settings only. Credentials never enter the database or admin payload.
 export const collectionProxyControl = appSchema.table('collection_proxy_control', {
@@ -82,6 +81,6 @@ export const collectionProxyControl = appSchema.table('collection_proxy_control'
 export const collectionProxies = appSchema.table('collection_proxies', {
  id:text('id').primaryKey(), server:text('server').notNull(), exitIp:text('exit_ip').notNull(),
  enabled:boolean('enabled').notNull().default(false), nextAllowedAt:timestamp('next_allowed_at',{withTimezone:true}),
- reservedJob:text('reserved_job'), lastError:text('last_error'),
+ reservedJob:text('reserved_job'), consecutiveFailures:integer('consecutive_failures').notNull().default(0), lastError:text('last_error'),
  registeredAt:timestamp('registered_at',{withTimezone:true}).notNull().defaultNow(),
 },t=>[uniqueIndex('collection_proxy_ip_unique').on(t.exitIp)]);
