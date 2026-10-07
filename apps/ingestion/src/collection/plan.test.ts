@@ -62,3 +62,36 @@ it('combines only complementary winner/lot fragments across an overlap',()=>{
  const result=(second.docs[0]!.payload as any).items.find((r:any)=>r.caNoticeContractId===201);
  expect(result).toMatchObject({lotsCaption:'1. Lot',winner:{entityId:1},winners:[{entityId:1}]});
 });
+
+describe('winner order in overlapping contract pages',()=>{
+ const winners=[{id:11,entityId:101,name:'Alpha, SRL',fiscalNumber:'RO123'},{id:12,entityId:102,name:'Beta',fiscalNumber:'RO456'},{id:13,entityId:103,name:'Gamma',fiscalNumber:'RO789'}] as const;
+ const row={caNoticeContractId:201,contractValue:100,contractDate:'2026-10-01',winner:winners[0],winners,winnerCaption:'Beta,Alpha, SRL,Gamma',lotsCaption:'',lotsNoCaption:''};
+ const reordered={...row,winners:[winners[0],winners[2],winners[1]],winnerCaption:'Gamma,Beta,Alpha, SRL',lotsCaption:'160. Lot',lotsNoCaption:'160'};
+ function overlap(later:Record<string,unknown>,earlier:Record<string,unknown>=row){
+  const t=task('fixture','awards','contracts',{noticeId:2,page:0});
+  const first=planResponse(t,{total:202,items:[...Array.from({length:200},(_,i)=>({caNoticeContractId:i+1})),earlier]},[],end);
+  return planResponse(first.children[0]!,{total:202,items:[later,{caNoticeContractId:202}]},[first.result as any],end);
+ }
+ it('accepts identical winner records in another order and captions with commas in names',()=>{
+  const plan=overlap(reordered),items=(plan.docs[0]!.payload as any).items;
+  expect(items).toHaveLength(202);
+  expect(items.find((r:any)=>r.caNoticeContractId===201)).toEqual({...row,lotsCaption:'160. Lot',lotsNoCaption:'160'});
+ });
+ it.each([
+  ['amount',{...reordered,contractValue:101}],
+  ['date',{...reordered,contractDate:'2026-10-02'}],
+  ['winner identity',{...reordered,winners:[winners[0],winners[2],{...winners[1],fiscalNumber:'RO999'}]}],
+  ['winner metadata',{...reordered,winners:[winners[0],winners[2],{...winners[1],name:'Different'}]}],
+  ['singular winner',{...reordered,winner:winners[1]}],
+  ['missing winner',{...reordered,winners:[winners[0],winners[2]]}],
+  ['duplicate winner ID',{...reordered,winners:[winners[0],winners[0],winners[1]]}],
+  ['missing winner ID',{...reordered,winners:reordered.winners.map(({id,...rest})=>rest)}],
+  ['changed caption',{...reordered,winnerCaption:'Unrelated,Gamma,Beta'}],
+  ['rearranged fragments within a company name',{...reordered,winnerCaption:'SRL,Alpha,Gamma,Beta'}],
+ ])('still rejects a real or unverifiable difference: %s',(_name,later)=>{
+  expect(()=>overlap(later)).toThrow('modificat');
+ });
+ it('rejects changed nonempty lot facts even when winners are equivalent',()=>{
+  expect(()=>overlap(reordered,{...row,lotsNoCaption:'159'})).toThrow('modificat');
+ });
+});

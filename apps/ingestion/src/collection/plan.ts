@@ -9,13 +9,45 @@ export interface PageResult {total:number;ids:number[];items?:Record<string,unkn
 export interface TaskPlan {status:'complete'|'split';result:PageResult|{detail:true};docs:ArchivableDocument[];children:Task[]}
 const integer=(x:unknown):x is number=>Number.isSafeInteger(x)&&Number(x)>0;
 const emptyPart=(v:unknown)=>v==null||v===''||(Array.isArray(v)&&v.length===0);
+/** Compare full winner records by their source IDs, never just names or CUIs. */
+function sameWinners(a:unknown,b:unknown):a is Record<string,unknown>[] {
+ if(!Array.isArray(a)||!Array.isArray(b)||!a.length||a.length!==b.length)return false;
+ const indexed=(rows:unknown[])=>{
+  const byId=new Map<number,Record<string,unknown>>();
+  for(const row of rows){
+   if(!row||typeof row!=='object'||!('id' in row)||!integer(row.id)||byId.has(row.id))return null;
+   byId.set(row.id,row as Record<string,unknown>);
+  }
+  return byId;
+ };
+ const left=indexed(a),right=indexed(b);
+ return !!left&&!!right&&[...left].every(([id,row])=>isDeepStrictEqual(row,right.get(id)));
+}
+/** Names can contain commas. Require an exact permutation of complete names,
+ * not sorted comma fragments; ambiguous/pathological captions fail closed. */
+function captionMatchesWinners(caption:unknown,winners:Record<string,unknown>[]){
+ if(typeof caption!=='string'||winners.length>100)return false;
+ const names=winners.map(w=>w.name);
+ if(names.some(n=>typeof n!=='string'||!n.length))return false;
+ let attempts=0;
+ const matches=(text:string,remaining:string[]):boolean=>{
+  if(++attempts>1000)return false;
+  if(!remaining.length)return text==='';
+  return remaining.some((name,i)=>remaining.length===1?text===name:
+   text.startsWith(name+',')&&matches(text.slice(name.length+1),remaining.filter((_,j)=>j!==i)));
+ };
+ return matches(caption,names as string[]);
+}
 /** The endpoint sometimes splits winner and lot captions over an overlap.
  * Only fill empty presentation/winner fields; conflicting facts still stop. */
 function mergeContractPageRow(a:Record<string,unknown>,b:Record<string,unknown>){
  const merged={...a};
+ const equivalentWinners=sameWinners(a.winners,b.winners);
  const fragments=new Set(['winner','winners','winnerCaption','lotsCaption','lotsNoCaption']);
  for(const key of new Set([...Object.keys(a),...Object.keys(b)])){
   if(isDeepStrictEqual(a[key],b[key]))continue;
+  if(key==='winners'&&equivalentWinners)continue;
+  if(key==='winnerCaption'&&equivalentWinners&&captionMatchesWinners(a[key],a.winners as Record<string,unknown>[])&&captionMatchesWinners(b[key],a.winners as Record<string,unknown>[]))continue;
   if(fragments.has(key)&&emptyPart(a[key])){merged[key]=b[key];continue;}
   if(fragments.has(key)&&emptyPart(b[key]))continue;
   throw Error('SEAP a modificat un contract între pagini; necesită reverificare.');
