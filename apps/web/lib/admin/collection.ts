@@ -9,7 +9,7 @@ export const collectionDb=()=>g.collectionSql??=createDb().sql;
 export class CollectionConflict extends Error {}
 export async function collectionStatus(q:DbSql=collectionDb()){
  return q.begin('isolation level repeatable read read only',async tx=>{
-  await tx`set local statement_timeout='5000ms'`;
+  await tx`set local statement_timeout='20000ms'`;
   const [control]=await tx`select *,clock_timestamp() server_now from app.collection_control where id=1`;
   if(!control)throw Error('Configurația colectării lipsește.');
   const today=await tx`select count(*)::int attempts,count(*) filter(where outcome='success')::int succeeded,count(*) filter(where outcome in ('failed','interrupted'))::int failed,coalesce(sum(records),0)::text received from app.collection_requests where started_at>=((now() at time zone 'Europe/Bucharest')::date::timestamp at time zone 'Europe/Bucharest')`;
