@@ -5,6 +5,7 @@ import {PARSERS} from '/app/apps/ingestion/dist/normalize/parsers.js';
 import {planResponse} from '/app/apps/ingestion/dist/collection/plan.js';
 import {insertTasks} from '/app/apps/ingestion/dist/collection/runner.js';
 import {archiveDocumentsSql} from '/app/apps/ingestion/dist/scrape/archive.js';
+import {revalidateDedup} from './revalidate-dedup.mjs';
 import {repairIdentities} from './repair-identities.mjs';
 const {db,sql}=createDb();
 const failure='a089c12c-592d-4700-8749-77f24dcd17ee';
@@ -19,6 +20,10 @@ try{
  if(old.status!=='failed'||old.stage!=='normalize'||old.raw_boundary!=='17561343')throw Error('Failed run changed');
  const [busy]=await sql`select (select count(*) from app.collection_requests where outcome='running')+(select count(*) from app.collection_tasks where status='running')+(select count(*) from app.document_jobs where status='running') n`;
  if(Number(busy.n))throw Error('Work must be drained');
+ const dedupProof=JSON.parse(await readFile('/reports/dedup-copy-validation.json','utf8'));
+ if(!dedupProof.after?.valid||!dedupProof.changedValueRejected||dedupProof.groups!==8045)throw Error('Validated source re-verification required');
+ const dedup=await revalidateDedup(sql);
+ console.log(JSON.stringify({dedup}));
  const repairs=await repairIdentities(sql);
  await sql`insert into app.collection_audit(actor_id,actor_name,action,before,after) values('ops:recovery-20261007','Recuperare verificată','identity-repair',${JSON.stringify({failedRun:failure,revision:89})}::jsonb,${JSON.stringify({repairs})}::jsonb)`;
  const rows=await sql`select id,payload from raw.raw_documents where id in(17438578,17545919,17556115,17556311) order by id`;

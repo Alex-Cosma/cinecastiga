@@ -1,0 +1,34 @@
+{
+  "before": {
+    "members": 16090,
+    "staleMembers": 16090,
+    "invalidDecisions": 0,
+    "examples": [
+      "408880",
+      "3892909",
+      "370646",
+      "3901038",
+      "409506",
+      "3893520",
+      "419904",
+      "3896260",
+      "448086",
+      "3899849"
+    ],
+    "valid": false
+  },
+  "after": {
+    "members": 16090,
+    "staleMembers": 0,
+    "invalidDecisions": 0,
+    "examples": [],
+    "valid": true
+  },
+  "groups": 8045,
+  "impact": {
+    "duplicates": 7300,
+    "reduction_ron": "7100577914.82"
+  },
+  "decisionsChanged": 0,
+  "changedValueRejected": true
+}
