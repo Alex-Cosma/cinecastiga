@@ -52,7 +52,17 @@ it('reconciles surplus and overlapping contract pages without dropping a source 
  expect((c.docs[0]!.payload as any).items).toHaveLength(585);expect(c.children).toHaveLength(0);
  expect(()=>planResponse(b.children[0]!,{total:585,items:[row(1),...last.slice(1)]},[a.result as any,b.result as any],end)).toThrow('unice');
  expect(()=>planResponse(a.children[0]!,{total:585,items:[{...row(199),contractValue:999},row(200),...Array.from({length:199},(_,i)=>row(i+202))]},[a.result as any],end)).toThrow('modificat');
- expect(()=>planResponse(t,{total:585,items:Array.from({length:202},(_,i)=>row(i+1))},[],end)).toThrow('Dimensiunea');
+ expect(()=>planResponse(t,{total:201,items:Array.from({length:202},(_,i)=>row(i+1))},[],end)).toThrow('Dimensiunea');
+});
+it('reconciles multiple surplus rows by final distinct population, keeping requested offsets',()=>{
+ const rows=(start:number,count:number)=>Array.from({length:count},(_,i)=>({caNoticeContractId:start+i,contractValue:10}));
+ const first=planResponse(task('fixture','awards','contracts',{noticeId:2,page:0}),{total:600,items:rows(1,203)},[],end);
+ const second=planResponse(first.children[0]!,{total:600,items:rows(204,203)},[first.result as any],end);
+ expect(first.children[0]!.params.page).toBe(1);expect(second.children[0]!.params.page).toBe(2);
+ expect(first.docs).toHaveLength(0);expect(second.docs).toHaveLength(0);
+ const last=planResponse(second.children[0]!,{total:600,items:rows(401,200)},[first.result as any,second.result as any],end);
+ expect((last.docs[0]!.payload as any).items).toHaveLength(600);expect(last.children).toHaveLength(0);
+ expect(()=>planResponse(second.children[0]!,{total:600,items:rows(407,200)},[first.result as any,second.result as any],end)).toThrow('unice');
 });
 it('combines only complementary winner/lot fragments across an overlap',()=>{
  const t=task('fixture','awards','contracts',{noticeId:2,page:0});
