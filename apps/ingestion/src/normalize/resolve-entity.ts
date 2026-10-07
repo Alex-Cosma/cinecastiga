@@ -1,5 +1,5 @@
 import { and, eq, sql } from "drizzle-orm";
-import { entities, entitySicapIds, type Db } from "@seap/db";
+import { entities, entitySicapIds, entityRedirects, type Db } from "@seap/db";
 import { canonicalCui } from "./cui.js";
 import { entityIdentity } from "./foreign.js";
 import { normalizeName } from "./name.js";
@@ -102,6 +102,18 @@ export async function resolveEntity(
   if (input.sicapId != null && input.namespace) {
     entityId = await findBySicapId(db, input.namespace, input.sicapId);
   }
+  // A legacy SICAP mapping can point at a profile made from a mistyped CUI.
+  // Resolve this record by its exact valid CUI rather than assigning an already
+  // owned CUI to that placeholder. Historical edges/mappings require a reviewed
+  // repair; do not silently merge them here or overwrite a different valid CUI.
+  if (entityId != null && canonical.valid) {
+    const [mapped] = await db.select({cui:entities.cuiCanonical,valid:entities.cuiValid})
+      .from(entities).where(eq(entities.id,entityId)).limit(1);
+    if (mapped?.valid && mapped.cui !== canonical.cui) {
+      throw new Error('Conflicting valid CUI for the same SICAP identity; review required');
+    }
+    if (!mapped?.valid) entityId = await findByCui(db,canonical.cui) ?? entityId;
+  }
   // Tier 2: canonical RO CUI.
   if (entityId == null && canonical.valid) {
     entityId = await findByCui(db, canonical.cui);
@@ -118,6 +130,9 @@ export async function resolveEntity(
   }
 
   if (entityId != null) {
+    const [alias] = await db.select({id:entityRedirects.canonicalId}).from(entityRedirects)
+      .where(eq(entityRedirects.oldId,entityId)).limit(1);
+    if(alias) entityId=alias.id;
     await backfillEntity(db, entityId, input, canonical.valid ? canonical.cui : null);
     await ensureSicapId(db, entityId, input);
     return entityId;

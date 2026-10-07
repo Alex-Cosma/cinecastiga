@@ -1,0 +1,16 @@
+{
+  "replayed": 4,
+  "passes": 2,
+  "counts": {
+    "contracts": 105,
+    "winners": 109
+  },
+  "pagination": {
+    "sourceRequests": 2,
+    "pages": 3,
+    "observedRows": 587,
+    "uniqueContracts": 585,
+    "total": 585,
+    "archivedDocuments": 1
+  }
+}

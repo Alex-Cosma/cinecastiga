@@ -40,3 +40,25 @@ describe('durable recovery plans (no network)',()=>{
   expect(r.children[0]?.key).toBe(da.key);expect(r.docs).toHaveLength(0);
  });
 });
+
+it('reconciles surplus and overlapping contract pages without dropping a source contract',()=>{
+ const row=(id:number)=>({caNoticeContractId:id,contractValue:id});
+ const t=task('fixture','awards','contracts',{noticeId:2,page:0});
+ const a=planResponse(t,{total:585,items:Array.from({length:201},(_,i)=>row(i+1))},[],end);
+ const b=planResponse(a.children[0]!,{total:585,items:[row(199),row(200),...Array.from({length:199},(_,i)=>row(i+202))]},[a.result as any],end);
+ expect(a.docs).toHaveLength(0);expect(b.docs).toHaveLength(0);
+ const last=Array.from({length:185},(_,i)=>row(i+401));
+ const c=planResponse(b.children[0]!,{total:585,items:last},[a.result as any,b.result as any],end);
+ expect((c.docs[0]!.payload as any).items).toHaveLength(585);expect(c.children).toHaveLength(0);
+ expect(()=>planResponse(b.children[0]!,{total:585,items:[row(1),...last.slice(1)]},[a.result as any,b.result as any],end)).toThrow('unice');
+ expect(()=>planResponse(a.children[0]!,{total:585,items:[{...row(199),contractValue:999},row(200),...Array.from({length:199},(_,i)=>row(i+202))]},[a.result as any],end)).toThrow('modificat');
+ expect(()=>planResponse(t,{total:585,items:Array.from({length:202},(_,i)=>row(i+1))},[],end)).toThrow('Dimensiunea');
+});
+it('combines only complementary winner/lot fragments across an overlap',()=>{
+ const t=task('fixture','awards','contracts',{noticeId:2,page:0});
+ const items=Array.from({length:201},(_,i)=>({caNoticeContractId:i+1,contractValue:10,winner:null,winners:[],lotsCaption:'1. Lot'}));
+ const first=planResponse(t,{total:202,items},[],end);
+ const second=planResponse(first.children[0]!,{total:202,items:[{caNoticeContractId:201,contractValue:10,winner:{entityId:1},winners:[{entityId:1}],lotsCaption:''},{caNoticeContractId:202,contractValue:10}]},[first.result as any],end);
+ const result=(second.docs[0]!.payload as any).items.find((r:any)=>r.caNoticeContractId===201);
+ expect(result).toMatchObject({lotsCaption:'1. Lot',winner:{entityId:1},winners:[{entityId:1}]});
+});
