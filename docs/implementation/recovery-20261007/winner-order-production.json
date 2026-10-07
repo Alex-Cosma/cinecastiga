@@ -1,0 +1,99 @@
+{
+  "pages": [
+    {
+      "page": 0,
+      "status": "complete",
+      "taskId": 256373,
+      "records": 201,
+      "archived": 0
+    },
+    {
+      "page": 1,
+      "status": "complete",
+      "taskId": 256790,
+      "records": 200,
+      "archived": 0
+    },
+    {
+      "page": 2,
+      "status": "complete",
+      "taskId": 256792,
+      "records": 200,
+      "archived": 0
+    },
+    {
+      "page": 3,
+      "status": "complete",
+      "taskId": 256794,
+      "records": 203,
+      "archived": 0
+    },
+    {
+      "page": 4,
+      "status": "complete",
+      "taskId": 256795,
+      "records": 211,
+      "archived": 0
+    },
+    {
+      "page": 5,
+      "status": "complete",
+      "taskId": 256796,
+      "records": 41,
+      "archived": 1
+    }
+  ],
+  "archive": {
+    "rawId": 17564842,
+    "total": 1041,
+    "records": 1041,
+    "distinctContracts": 1041
+  },
+  "control": {
+    "paused": false,
+    "revision": 93,
+    "maintenance": false,
+    "blockedReason": null
+  },
+  "checkedAt": "2026-10-07T07:18:36.470236+00:00",
+  "publication": {
+    "status": "ready",
+    "version": 19
+  },
+  "proxySettings": {
+    "id": 1,
+    "enabled": true,
+    "max_seconds": 45,
+    "min_seconds": 35,
+    "max_in_flight": 10,
+    "requests_per_minute": 200
+  },
+  "enabledProxies": 94,
+  "requestsAfterSecondResume": [
+    {
+      "outcome": "running",
+      "requests": 5
+    },
+    {
+      "outcome": "success",
+      "requests": 253
+    }
+  ],
+  "runtimeCommit": "3a5b23d3199dc36763914f9e7151d3af3ba0b210",
+  "ciRun": "37585911462",
+  "ci": "success",
+  "githubDeployJob": "failed; remote checkout still on previous commit afterward",
+  "deployment": "standard host deploy.sh succeeded manually 2026-10-07T07:16:18Z",
+  "deployLog": "/srv/seap/repairs/recovery-20261007/surplus-deploy.log",
+  "httpHealth": 200,
+  "offlineReplaySourceRequests": 0,
+  "checks": {
+    "plannerTests": 22,
+    "turboTasks": 20
+  },
+  "notes": [
+    "Only the inspected source blocks were cleared. Original response diagnostics and audited task failures remain.",
+    "All six pages reconcile before one combined archive; no manual analytical rebuild. New raw data follows the existing publication schedule.",
+    "No production proxy settings, disabled endpoints, processing schedule or ready checkpoint were changed."
+  ]
+}
