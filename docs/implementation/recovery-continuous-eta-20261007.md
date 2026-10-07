@@ -41,3 +41,11 @@ At rollout time it is before 03:30 on 7 October in Romania, so the initial targe
 [Live read-only forecast snapshot](previews/recovery-eta-20261007/production.json), 6 October 21:35:55 UTC: 60,407 executable tasks pending, initial estimate **343–572 minutes for the known queue**, 7 failed and 34,340 deferred tasks separately visible. Effective forecast ceiling is 141 useful tasks/minute (94 active IPs at mean 40 seconds), below the operator's 200/minute ceiling. This early estimate can change with discovery and does not include future maintenance duration. Metadata query took 2,269 ms under a 5-second statement timeout.
 
 Immediately afterward, 158 source requests since resume had succeeded, three were in flight and none had failed. Control remained unpaused with no source block. Pool: 94 enabled; 16 disabled comprise ten retired entries plus the six failed replacements. No direct probes or historical task replay were performed.
+
+## Admin reporting interval — 7 October
+
+The owner requested a 20-second query limit and one-minute polling after the ETA sample query repeatedly exceeded its original five-second limit, making `/api/admin/collection` return 503. The reporting transaction now sets `statement_timeout=20000ms`; this is per statement, not a global database or SEAP timeout. Dashboard background polling is every 60 seconds and remains suspended while hidden. Initial load, focus, manual retry and refresh after a command remain immediate. Browser cancellation is 30 seconds so it does not abort the query at the old eight-second limit. Stale-state controls and revision-conflict protection remain.
+
+The separate lightweight document-queue view retains its existing refresh behavior. No proxy settings, source request limits or processing schedule changed. This is increased reporting headroom and reduced polling, not an ETA-query optimization or shared cache.
+
+Validation: all 20 local Turbo tasks passed. A temporary bundled read-only invocation of the same full `collectionStatus` function, inside the production web container with its database role and the new timeout, succeeded in **5,926 ms**, returned the forecast and 100 journal rows, and confirmed revision 93/no pause/no maintenance/no global block. This validates the query function, not an authenticated browser session. Deployment verification pending.
