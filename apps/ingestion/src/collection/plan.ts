@@ -2,11 +2,26 @@ import {NOTICE_TYPE_IDS, noticeIdOf, type NoticeListItem} from '@seap/scraper-cl
 import {addDays,bucharestDayOf} from '../scrape/window.js';
 import {redactPayload} from '../scrape/redact.js';
 import type {ArchivableDocument} from '../scrape/archive.js';
+import {isDeepStrictEqual} from 'node:util';
 export type Stream='da'|'tenders'|'awards'|'catalogue';
 export interface Task {id?:number;batch_id:string;key:string;partition:string;stream:Stream;kind:'da'|'list'|'detail'|'contracts'|'catalogue';params:{from?:string;to?:string;page:number;authorityId?:number;noticeId?:number};status?:string;priority:number;error?:string}
 export interface PageResult {total:number;ids:number[];items?:Record<string,unknown>[]}
 export interface TaskPlan {status:'complete'|'split';result:PageResult|{detail:true};docs:ArchivableDocument[];children:Task[]}
 const integer=(x:unknown):x is number=>Number.isSafeInteger(x)&&Number(x)>0;
+const emptyPart=(v:unknown)=>v==null||v===''||(Array.isArray(v)&&v.length===0);
+/** The endpoint sometimes splits winner and lot captions over an overlap.
+ * Only fill empty presentation/winner fields; conflicting facts still stop. */
+function mergeContractPageRow(a:Record<string,unknown>,b:Record<string,unknown>){
+ const merged={...a};
+ const fragments=new Set(['winner','winners','winnerCaption','lotsCaption','lotsNoCaption']);
+ for(const key of new Set([...Object.keys(a),...Object.keys(b)])){
+  if(isDeepStrictEqual(a[key],b[key]))continue;
+  if(fragments.has(key)&&emptyPart(a[key])){merged[key]=b[key];continue;}
+  if(fragments.has(key)&&emptyPart(b[key]))continue;
+  throw Error('SEAP a modificat un contract între pagini; necesită reverificare.');
+ }
+ return merged;
+}
 export function task(batch:string,stream:Stream,kind:Task['kind'],params:Task['params'],priority=10):Task{
  const partition=[stream,kind,params.authorityId??params.noticeId??'',params.from??'',params.to??''].join(':');
  return {batch_id:batch,key:`${partition}:${params.page}`,partition,stream,kind,params,priority};
@@ -30,15 +45,20 @@ export function planResponse(t:Task,value:unknown,previous:PageResult[],batchEnd
  }
  if(e.searchTooLong)throw Error('Fereastra SEAP este trunchiată; colectarea se oprește.');
  const pageSize=t.kind==='da'||t.kind==='catalogue'?2000:t.kind==='contracts'?200:100;
- if(e.items.length>pageSize)throw Error('Dimensiunea paginii depășește limita cerută.');
+ // CANoticeContracts can return one extra row and overlap adjacent pages.
+ // Keep the requested offsets, validate repeated payloads and reconcile the
+ // final DISTINCT contract population to total before archiving anything.
+ const contracts=t.kind==='contracts';
+ if(e.items.length>pageSize+(contracts?1:0))throw Error('Dimensiunea paginii depășește limita cerută.');
  if(previous.some(p=>p.total!==e.total))throw Error('Totalul s-a modificat în timpul paginării; necesită reverificare.');
  const before=previous.flatMap(p=>p.ids);
- if(before.length!==t.params.page*pageSize)throw Error('Lipsește o pagină anterioară din jurnal.');
+ if(contracts?previous.length!==t.params.page:before.length!==t.params.page*pageSize)throw Error('Lipsește o pagină anterioară din jurnal.');
  const ids=e.items.map(i=>t.kind==='da'?i.directAcquisitionId:t.kind==='catalogue'?i.id:t.kind==='contracts'?i.caNoticeContractId??i.contractId:noticeIdOf(i as NoticeListItem));
  if(ids.some(id=>!integer(id)))throw Error('Lista conține identificatori lipsă sau nevalizi.');
  const validIds=ids as number[];
- if(new Set([...before,...validIds]).size!==before.length+validIds.length)throw Error('SEAP a repetat înregistrări între pagini.');
- if(e.items.length!==Math.min(pageSize,Math.max(0,e.total-before.length)))throw Error('Numărul de înregistrări nu corespunde totalului SEAP.');
+ if(new Set(validIds).size!==validIds.length||(!contracts&&new Set([...before,...validIds]).size!==before.length+validIds.length))throw Error('SEAP a repetat înregistrări între pagini.');
+ const expected=Math.min(pageSize,Math.max(0,e.total-t.params.page*pageSize));
+ if(contracts?(e.items.length<expected||e.items.length>expected+1):e.items.length!==expected)throw Error('Numărul de înregistrări nu corespunde totalului SEAP.');
  const docs:ArchivableDocument[]=[],children:Task[]=[];
  for(const i of e.items){
   if(t.kind==='da'){
@@ -58,12 +78,24 @@ export function planResponse(t:Task,value:unknown,previous:PageResult[],batchEnd
    if(t.stream==='awards')children.push(task(t.batch_id,t.stream,'contracts',{noticeId:id,page:0},1));
   }else if(t.kind==='catalogue')children.push(task(t.batch_id,'da','da',{authorityId:Number(i.id),from:t.params.from??'2026-07-01',to:t.params.to??batchEnd,page:0}));
  }
- const more=before.length+validIds.length<e.total;
+ let more=before.length+validIds.length<e.total;
+ let contractItems:Record<string,unknown>[]=[];
+ if(contracts){
+  const unique=new Map<number,Record<string,unknown>>();
+  for(const item of [...previous.flatMap(p=>p.items??[]),...redactPayload(e.items,'award-contracts:v1') as Record<string,unknown>[]]){
+   const id=Number(item.caNoticeContractId??item.contractId),prior=unique.get(id);
+   unique.set(id,prior?mergeContractPageRow(prior,item):item);
+  }
+  if(unique.size>e.total)throw Error('Numărul de contracte unice depășește totalul SEAP.');
+  more=(t.params.page+1)*pageSize<e.total&&unique.size<e.total;
+  if(!more&&unique.size!==e.total)throw Error('Numărul de contracte unice nu corespunde totalului SEAP.');
+  contractItems=[...unique.values()];
+ }
  if(more)children.push(task(t.batch_id,t.stream,t.kind,{...t.params,page:t.params.page+1},0));
  const result:PageResult={total:e.total,ids:validIds};
  if(t.kind==='contracts'){
   result.items=redactPayload(e.items,'award-contracts:v1') as Record<string,unknown>[];
-  if(!more)docs.push(document('awards',t.params.noticeId!,'award-contracts:v1',{caNoticeId:t.params.noticeId,total:e.total,items:[...previous.flatMap(p=>p.items??[]),...result.items]}));
+  if(!more)docs.push(document('awards',t.params.noticeId!,'award-contracts:v1',{caNoticeId:t.params.noticeId,total:e.total,items:contractItems}));
  }
  return {status:'complete',result,docs,children};
 }

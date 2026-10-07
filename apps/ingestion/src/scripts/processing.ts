@@ -1,6 +1,6 @@
 import {runScheduledIdentityRepair} from '../normalize/scheduled-contract-identity.js';
 import { runScheduledMoneyRepair } from '../normalize/scheduled-money-repair.js';
-import { createDb, claimProcessing, claimRepairProcessing, failProcessing, finishProcessing, processingStage, collectionHeartbeat } from '@seap/db';
+import { diagnosticError, createDb, claimProcessing, claimRepairProcessing, failProcessing, finishProcessing, processingStage, collectionHeartbeat } from '@seap/db';
 import {runScheduledReferenceRepair} from '../reference/scheduled-repair.js';
 import { runMonitoringRefresh } from '../monitoring/refresh.js';
 import {indexTopics} from '../search/index-topics.js';
@@ -60,4 +60,4 @@ async function main() {
   await collectionHeartbeat(sql,`processor:${id}`,'processor','complete');
  } finally {clearInterval(heartbeat);await sql.end({timeout:10});}
 }
-main().catch(()=>{console.error('Processing command failed. Maintenance must remain active; inspect the run, checkpoint and stage log.');process.exitCode=1;});
+main().catch(error=>{console.error('Processing command failed. Maintenance must remain active; inspect the run, checkpoint and stage log.');console.error(JSON.stringify(diagnosticError(error)));process.exitCode=1;});
