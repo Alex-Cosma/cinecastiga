@@ -77,11 +77,11 @@ export function planResponse(t:Task,value:unknown,previous:PageResult[],batchEnd
  }
  if(e.searchTooLong)throw Error('Fereastra SEAP este trunchiată; colectarea se oprește.');
  const pageSize=t.kind==='da'||t.kind==='catalogue'?2000:t.kind==='contracts'?200:100;
- // CANoticeContracts can return one extra row and overlap adjacent pages.
+ // CANoticeContracts can return surplus rows and overlap adjacent pages.
  // Keep the requested offsets, validate repeated payloads and reconcile the
  // final DISTINCT contract population to total before archiving anything.
  const contracts=t.kind==='contracts';
- if(e.items.length>pageSize+(contracts?1:0))throw Error('Dimensiunea paginii depășește limita cerută.');
+ if(e.items.length>(contracts?e.total:pageSize))throw Error('Dimensiunea paginii depășește limita cerută.');
  if(previous.some(p=>p.total!==e.total))throw Error('Totalul s-a modificat în timpul paginării; necesită reverificare.');
  const before=previous.flatMap(p=>p.ids);
  if(contracts?previous.length!==t.params.page:before.length!==t.params.page*pageSize)throw Error('Lipsește o pagină anterioară din jurnal.');
@@ -90,7 +90,7 @@ export function planResponse(t:Task,value:unknown,previous:PageResult[],batchEnd
  const validIds=ids as number[];
  if(new Set(validIds).size!==validIds.length||(!contracts&&new Set([...before,...validIds]).size!==before.length+validIds.length))throw Error('SEAP a repetat înregistrări între pagini.');
  const expected=Math.min(pageSize,Math.max(0,e.total-t.params.page*pageSize));
- if(contracts?(e.items.length<expected||e.items.length>expected+1):e.items.length!==expected)throw Error('Numărul de înregistrări nu corespunde totalului SEAP.');
+ if(contracts?e.items.length<expected:e.items.length!==expected)throw Error('Numărul de înregistrări nu corespunde totalului SEAP.');
  const docs:ArchivableDocument[]=[],children:Task[]=[];
  for(const i of e.items){
   if(t.kind==='da'){
