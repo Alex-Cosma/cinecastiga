@@ -1,5 +1,6 @@
+import {NoticeDetailValidationError} from './notice-details.js';
 import {CollectionProxyFailureError,collectionQuietWindow,diagnosticError,sanitizeDiagnostics,CollectionSuspendedError,collectionHeartbeat,collectionWorkerId,withCollectionStream,type DbSql} from '@seap/db';
-import {getNoticeContracts,getNoticeDetail,listContractingAuthorities,listDirectAcquisitions,listNotices,NOTICE_TYPE_IDS,type ElicitatieClient} from '@seap/scraper-clients';
+import {getNoticeContracts,getNoticeDetailPart,type NoticeDetailParams,ScrapeError,listContractingAuthorities,listDirectAcquisitions,listNotices,NOTICE_TYPE_IDS,type ElicitatieClient} from '@seap/scraper-clients';
 import {archiveDocumentsSql} from '../scrape/archive.js';
 import {isoDaysAgo} from '../scrape/window.js';
 import {planResponse,task,type Task,type PageResult} from './plan.js';
@@ -33,7 +34,7 @@ export async function fetchTask(client:ElicitatieClient,t:Task):Promise<unknown>
   if(t.kind==='catalogue')return listContractingAuthorities(client,{pageIndex:p.page,pageSize:2000});
   if(t.kind==='da')return (await listDirectAcquisitions(client,{finalizationDateStart:p.from!,finalizationDateEnd:p.to!,contractingAuthorityId:p.authorityId!,pageIndex:p.page,pageSize:2000})).data;
   if(t.kind==='list')return (await listNotices(client,{sysNoticeTypeIds:t.stream==='tenders'?NOTICE_TYPE_IDS.participation:NOTICE_TYPE_IDS.award,startPublicationDate:p.from!,endPublicationDate:p.to!,pageIndex:p.page,pageSize:100})).data;
-  if(t.kind==='detail')return (await getNoticeDetail(client,p.noticeId!)).data;
+  if(t.kind==='detail')return (await getNoticeDetailPart(client,p as NoticeDetailParams)).data;
   return (await getNoticeContracts(client,{caNoticeId:p.noticeId!,skip:p.page*200,take:200})).data;
  },{taskId:t.id,batchId:t.batch_id,partition:t.partition,kind:t.kind,parameters:t.params});
 }
@@ -100,11 +101,12 @@ export async function recoveryStep(q:DbSql,fetcher:(t:Task)=>Promise<unknown>,la
   if(error instanceof CollectionSuspendedError){await q`update app.collection_tasks set status='pending',started_at=null where id=${t.id!}`;return false;}
   // Only gate-confirmed timeouts are requeued above. Other failures may have partly succeeded. Keep
   // the exact task identity and stop admission until an operator inspects it.
-  const message=error instanceof Error?error.message:'Eroare de colectare';
+  const isolatedDetailFailure=t.kind==='detail'&&(error instanceof NoticeDetailValidationError||error instanceof ScrapeError&&[400,404,410].includes(error.status??0));
+  const message=isolatedDetailFailure&&error instanceof ScrapeError?`Detaliu SEAP indisponibil (HTTP ${error.status}); celelalte anunțuri continuă.`:error instanceof Error?error.message:'Eroare de colectare';
   const safe=/^(Structur|Detaliu|Identitatea|O singură|Fereastra|Dimensiunea|Totalul|Lipsește|Lista|SEAP|Numărul|Data|Filtrul|Tip de|Anunț)/.test(message)?message:'Cererea sau arhivarea nu a fost confirmată. Verifică jurnalul înainte de reluare.';
   await q`update app.collection_requests set diagnostics=coalesce(diagnostics,'{}'::jsonb)||${JSON.stringify(sanitizeDiagnostics({taskFailure:{taskId:t.id,exception:diagnosticError(error),...(response===undefined?{}:{response})}}))}::jsonb where id=(select id from app.collection_requests where diagnostics->'context'->>'taskId'=${String(t.id)} order by id desc limit 1)`;
-  await q.begin(async tx=>{await tx`update app.collection_retries set status='stopped',retry_at=null,updated_at=clock_timestamp() where task_id=${t.id!} and status='pending'`;await tx`update app.collection_tasks set status='failed',error=${safe.slice(0,500)},finished_at=clock_timestamp() where id=${t.id!}`;await tx`update app.collection_control set blocked_reason=coalesce(blocked_reason,${`Sarcina ${t.id}: ${safe}`}) where id=1`;});
-  console.error(JSON.stringify({event:'recovery-stopped',task:t.id,error:safe}));
+  await q.begin(async tx=>{await tx`update app.collection_retries set status='stopped',retry_at=null,updated_at=clock_timestamp() where task_id=${t.id!} and status='pending'`;await tx`update app.collection_tasks set status='failed',error=${safe.slice(0,500)},finished_at=clock_timestamp() where id=${t.id!}`;if(!isolatedDetailFailure)await tx`update app.collection_control set blocked_reason=coalesce(blocked_reason,${`Sarcina ${t.id}: ${safe}`}) where id=1`;});
+  console.error(JSON.stringify({event:isolatedDetailFailure?'recovery-detail-gap':'recovery-stopped',task:t.id,error:safe}));
  }
  return true;
 }

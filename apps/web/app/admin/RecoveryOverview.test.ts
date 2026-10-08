@@ -27,3 +27,8 @@ describe('recovery estimate while archive collection continues during maintenanc
   const html=render(data,reason==='stale');expect(html).toContain('Estimare suspendată');expect(html).not.toContain('Încheiere estimată:');
  });
 });
+
+it('shows empty executable queue as a gap, without a fictitious ETA',()=>{
+ const data=snapshot();Object.assign(data.forecast,{pending:0,failed:7,deferred:51601,percent:null,knownPercent:78,minutesLow:null,minutesHigh:null});
+ const html=render(data);expect(html).toContain('Nu mai sunt cereri executabile');expect(html).toContain('Colectarea nu este completă');expect(html).not.toContain('Încheiere estimată:');
+});

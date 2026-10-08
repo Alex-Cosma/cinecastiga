@@ -8,3 +8,4 @@ export * from "./elicitatie/participants.js";
 export * from "./ted/types.js";
 export * from "./ted/client.js";
 export * from "./ted/search.js";
+export * from "./elicitatie/notice-detail.js";

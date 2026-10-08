@@ -15,7 +15,7 @@ export function getElicitatieClient():ElicitatieClient{
    if(!['e-licitatie.ro','www.e-licitatie.ro'].includes(new URL(url).hostname))throw Error('Unexpected collection host');
    const stream=currentCollectionStream()??(path.includes('DirectAcquisition')?'da':path.includes('GetCANotice')?'awards':path.includes('GetCNoticeList')?'tenders':'catalogue');
    const q=await getSharedSql().reserve();
-   try{return await runCollectionRequest(q,{stream,worker,context:currentCollectionContext(),method:init?.method??'GET',url,parameters:typeof init?.body==='string'?JSON.parse(init.body):{}},async (signal,proxy)=>{
+   try{return await runCollectionRequest(q,{stream,worker,context:currentCollectionContext(),method:init?.method??'GET',url,parameters:typeof init?.body==='string'?JSON.parse(init.body):Object.fromEntries([...new URL(url).searchParams].map(([k,v])=>[k,/^\d+$/.test(v)?Number(v):v]))},async (signal,proxy)=>{
     // Redirects and retries are never hidden extra requests. Consume the body
     // before releasing the request/IP locks, including slow/chunked responses.
     const diagnostic:Record<string,unknown>={phase:'headers',request:{origin:new URL(url).origin,path,headers:Object.fromEntries(new Headers(init?.headers)),headerScope:'application-provided; transport may add automatic headers',body:typeof init?.body==='string'?init.body:null}};

@@ -1,6 +1,6 @@
 import {beforeAll,afterAll,beforeEach,describe,it,expect} from 'vitest';
 import {createDb,CollectionProxyFailureError} from '@seap/db';
-import {createHttpClient} from '@seap/scraper-clients';
+import {createHttpClient,ScrapeError} from '@seap/scraper-clients';
 import {insertTasks,recoveryStep,recoverInterrupted,seedRecovery} from './runner.js';
 import {task} from './plan.js';
 const url=process.env['TEST_DATABASE_URL'];
@@ -38,6 +38,23 @@ describe.skipIf(!url)('recovery manifest (isolated DB, no source traffic)',()=>{
   expect((await q`select blocked_reason from app.collection_control`)[0]!.blocked_reason).toBeNull();
   expect((await q`select count(*)::int n from app.collection_tasks where status='failed'`)[0]!.n).toBe(1);
   expect(await recoveryStep(q,async()=>({total:0,items:[]}))).toBe(true);
+ });
+ it('isolates a source detail error and continues with another notice',async()=>{
+  await insertTasks(q,[task('fixture','tenders','detail',{noticeId:99123460,noticeType:2,page:0}),task('fixture','da','da',{authorityId:7848,from:'2026-07-01',to:'2026-09-25',page:0})]);
+  await q`update app.collection_batches set next_stream=1`;
+  expect(await recoveryStep(q,async()=>{throw new ScrapeError('Unavailable','https://e-licitatie.ro/api-pub/fixture',404,1);})).toBe(true);
+  expect((await q`select blocked_reason from app.collection_control`)[0]!.blocked_reason).toBeNull();
+  expect((await q`select status from app.collection_tasks where kind='detail'`)[0]!.status).toBe('failed');
+  expect(await recoveryStep(q,async()=>({total:0,items:[]}))).toBe(true);
+ });
+ it('commits detail children with the root archive and keeps the batch open until they complete',async()=>{
+  await insertTasks(q,[task('fixture','awards','detail',{noticeId:99123461,internalNoticeId:99123462,noticeType:3,noticeVersion:2,noticeNo:'CAN-test',page:0})]);
+  await recoveryStep(q,async()=>({caNoticeID:99123461,noticeID:99123462,noticeNumber:'CAN-test',conditions:{hasEformsDocument:true}}));
+  expect((await q`select count(*)::int n from app.collection_tasks where status='pending'`)[0]!.n).toBe(1);
+  expect((await q`select status from app.collection_batches`)[0]!.status).toBe('collecting');
+  await recoveryStep(q,async()=>({headerModel:{noticeId:99123462,noticeNumber:'CAN-test',sysNoticeType:{id:3}},changeNoticeHtml:'<p>'+('source content '.repeat(20))+'</p>'}));
+  await recoveryStep(q,async()=>{throw Error('Unexpected call');});
+  expect((await q`select status from app.collection_batches`)[0]!.status).toBe('collected');
  });
  it('rolls back task completion and archive if a downstream task write fails',async()=>{
   await insertTasks(q,[task('fixture','awards','list',{from:'2026-09-25',to:'2026-09-25',page:0})]);

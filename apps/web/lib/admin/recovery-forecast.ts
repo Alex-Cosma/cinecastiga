@@ -6,7 +6,7 @@ export interface RecoverySample {
 export interface RecoveryCounts {stream:string;complete:number;split:number;pending:number;running:number;failed:number;deferred:number}
 export interface RecoveryForecastInput {
  samples: RecoverySample[]; progress: RecoveryCounts[];
- catalogueReady: boolean; elapsedDays:number; recentCompleted:number;
+ catalogueReady: boolean; detailDiscoveryPending?:boolean; elapsedDays:number; recentCompleted:number;
  minSeconds:number;maxSeconds:number;dailyLimit:number|null;
 }
 export function recoveryForecast(input:RecoveryForecastInput){
@@ -17,13 +17,13 @@ export function recoveryForecast(input:RecoveryForecastInput){
  const deferred=input.progress.reduce((a,s)=>a+n(s.deferred),0);
  const known=completed+pending+failed+deferred;
  const knownPercent=known?Math.min(deferred||failed||pending?99:100,Math.floor(completed/known*100)):null;
- const sampleReady=input.catalogueReady&&['da','tenders','awards'].every(stream=>{
+ const sampleReady=!input.detailDiscoveryPending&&input.catalogueReady&&['da','tenders','awards'].every(stream=>{
   const s=input.samples.find(r=>r.stream===stream);if(!s||!n(s.units))return false;
   const required=Math.min(n(s.units),Math.max(stream==='da'?100:20,Math.ceil(n(s.units)*.1)));
   return n(s.sampled)>=required&&Number.isFinite(Number(s.mean_work))&&n(s.mean_work)>=1&&(stream==='da'||n(s.months)>=Math.min(3,n(s.total_months)));
  });
  let remainingLow:number|null=null,remainingHigh:number|null=null,percent:number|null=null;
- if(sampleReady){
+ if(sampleReady&&pending>0){
   let low=0,high=0;
   for(const s of input.samples){
    // Allow at least 25% variation: discovery is ordered, not a random sample.
