@@ -21,7 +21,7 @@ describe.skipIf(!db)('real recovery metadata aggregation',()=>{
  ] as const)await q`insert into app.collection_tasks(batch_id,key,partition,stream,kind,status,params,result,finished_at) values('fixture',${key},${key},${stream},${kind},${status},${JSON.stringify(params)}::jsonb,${JSON.stringify(result)}::jsonb,now())`;
  const data=await collectionStatus(q);expect(data.forecast!.sampled.find(s=>s.stream==='da')).toEqual({stream:'da',sampled:1,units:2});expect(data.forecast!.completed).toBe(6);expect(data.forecast!.failed).toBe(1);expect(data.forecast!.deferred).toBe(1);expect(data.forecast!.state).toBe('gaps');expect(data.forecast!.minutesHigh).toBeNull();
  });
- it.each(['proxies','processing-complete','processing-failed','resume-archive-during-maintenance'])('uses only completions since %s in its ten-minute window',async action=>{
+ it.each(['proxies','processing-complete','processing-failed','resume-archive-during-maintenance','notice-details-activation'])('uses only completions since %s in its ten-minute window',async action=>{
   const q=db!.sql;await q`truncate app.collection_audit`;await q`update app.collection_proxy_control set enabled=false`;
   await q`update app.collection_control set min_seconds=1,max_seconds=1,daily_limit=null`;
   await q`insert into app.collection_batches(id,end_day,created_at) values('pace','2026-10-05',now()-interval '2 days')`;
