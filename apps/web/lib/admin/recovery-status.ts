@@ -18,10 +18,12 @@ export async function recoveryStatus(q:DbSql,batchId:string,progress:RecoveryCou
    select greatest(1,ceil(total/200)) work from tasks where kind='contracts' and (params->>'page')::int=0 and status='complete'
   ), detail_work as (
    select stream,params->>'noticeId' notice,count(*)::numeric work from tasks where kind='detail' group by stream,params->>'noticeId'
+  ), detail_mean as (
+   select stream,avg(work) work from detail_work group by stream
   ), day_work as (
-   select stream,unit_day,case when total is not null then greatest(1,ceil(total/100)) + total *
-    (coalesce((select avg(d.work) from detail_work d where d.stream=notice_days.stream),1) + case when stream='awards' then coalesce((select avg(work) from contract_pages),1) else 0 end) end work
-   from notice_days
+   select n.stream,n.unit_day,case when n.total is not null then greatest(1,ceil(n.total/100)) + n.total *
+    (coalesce(d.work,1) + case when n.stream='awards' then coalesce((select avg(work) from contract_pages),1) else 0 end) end work
+   from notice_days n left join detail_mean d on d.stream=n.stream
   )
   select 'da' stream,count(*)::int units,count(*) filter(where closed)::int sampled,
     coalesce(avg(work) filter(where closed),0)::float8 mean_work,coalesce(stddev_samp(work) filter(where closed),0)::float8 sd_work,

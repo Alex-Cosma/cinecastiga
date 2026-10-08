@@ -35,3 +35,5 @@ The existing identity/deduplication population changed when a third source publi
 ## Local verification before publication
 
 Full `pnpm turbo typecheck lint test build`:20/20tasks passed. Ingestion214unit tests, scraper32, web406passed(with184DB-dependenttests skipped in the ordinary suite); separate isolatedDB tests:9runner and6admin status passed on`seap_test_recovery_20261008`.22host deploy/scheduler tests passed. Follow-up SAD identity regression passed. Actual archived failure responses replayed without source traffic; all12live root fixtures passed routing/identity validation. Metadata preflight:all51601deferred roots have matching archived v2publiclists/internal IDs.
+
+Production-size read-only rehearsal caught a20sstatement timeout in the first detail-work forecast query: its correlated average repeated aggregation for every publication day. Aggregate once per stream and join instead. The isolated fixtures alone did not reveal this; verify real query duration before queue activation.
