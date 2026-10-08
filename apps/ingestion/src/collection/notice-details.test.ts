@@ -51,3 +51,10 @@ it('collects the full SAD invitation using its own identity rather than generic 
  expect(plan(a.children[0]!,data).docs[0]!.endpointVersion).toBe('tender-detail-sad:v2');
  expect(()=>plan(a.children[0]!,{...data,initNoticeId:999})).toThrow('identitatea');
 });
+it('accepts an exact full award-lot inventory when SEAP ignores pageSize, without accepting partial surplus',()=>{
+ const t={...root('awards',3),params:{...root('awards',3).params,part:'lots' as const}};
+ const items=Array.from({length:297},(_,i)=>({noticeLotID:1000+i}));
+ const result=plan(t,{total:297,items});expect(result.children).toHaveLength(0);expect((result.result as PageResult).ids).toHaveLength(297);
+ expect(()=>plan(t,{total:300,items})).toThrow('paginarea');
+ expect(()=>plan(t,{total:297,items:[...items.slice(1),items[1]]})).toThrow('repetați');
+});
