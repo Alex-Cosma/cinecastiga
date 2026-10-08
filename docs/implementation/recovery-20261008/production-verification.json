@@ -1,0 +1,51 @@
+{
+  "runtime": "a621ee4",
+  "workflow": 37730728160,
+  "ci": "success",
+  "deploy": "success",
+  "verifiedAt": "2026-10-08T05:11:25Z",
+  "migrationCount": 63,
+  "publicHttp": 503,
+  "healthHttp": 200,
+  "nextProcessing": "2026-10-09T05:00:00+03:00",
+  "nextScope": "full",
+  "normalizationExecutedTodayByThisIntervention": false,
+  "observations": [
+    {
+      "revision": 96,
+      "paused": false,
+      "maintenance": true,
+      "rawCollection": true,
+      "blockedReason": null,
+      "processingEnabled": true,
+      "processingTime": "05:00",
+      "riskWeekday": 0
+    },
+    {
+      "requests": 140,
+      "success": 136,
+      "failed": 0,
+      "running": 4,
+      "lastId": 161480,
+      "firstAt": "2026-10-08T05:10:20.706311+00:00",
+      "lastAt": "2026-10-08T05:11:24.7083+00:00"
+    },
+    {
+      "enabled": true,
+      "requestsPerMinute": 200,
+      "concurrent": 10,
+      "minSeconds": 35,
+      "maxSeconds": 45
+    },
+    {
+      "enabled": 94,
+      "configured": 100
+    },
+    {
+      "pendingQuarantine": 3
+    },
+    {
+      "processingRunning": 0
+    }
+  ]
+}

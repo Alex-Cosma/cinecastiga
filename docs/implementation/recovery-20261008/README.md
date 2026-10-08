@@ -29,7 +29,7 @@ No general preference for CUI over SICAP; unknown valid-identity conflicts still
 
 ## Additional open publication blocker
 
-Read-only production preflight found 8,854 stale approved member fingerprints (16,090 total), zero invalid decisions. Independent verification against the original checksum-pinned dedup bundle stopped at `Publication multiplicity changed: 107775175`. Therefore **do not reset hashes or promise the next publication will succeed**. Further source review is needed for the changed publication cohort. Archive resumption does not bypass this control. No dedup decisions were changed in this intervention.
+Read-only production preflight found 8,854 stale approved member fingerprints (16,090 total), zero invalid decisions. Independent verification against the original checksum-pinned dedup bundle stopped at `Publication multiplicity changed: 107775175`. Therefore **do not reset hashes or promise the next publication will succeed**. For CAN1086297, the same identifying fields appear in contracts107775175 (notice100638155),108112409 (100656791) and newly normalized108167589 (100659131): three publications, where the approved registry expected two. The cohort now contains6,856 records. Further source review is needed before extending deduplication to the third publication. Archive resumption does not bypass this control. No dedup decisions were changed in this intervention.
 
 ## Validation before deployment
 
@@ -37,10 +37,19 @@ Read-only production preflight found 8,854 stale approved member fingerprints (1
 - 36 database integration tests: publication scheduling, failures, operator changes, archive admission, document rejection and Romanian quiet window.
 - 7 collector integration tests; 5 normalization/identity integration tests; 6 reviewed-winner unit cases.
 - 9 database units; 209 ingestion units; six host publication tests.
+- Full local `pnpm turbo typecheck lint test build`: all20 tasks passed; web395 unit tests passed,181 integration/browser tests skipped (not counted as verified). Isolated activation procedure succeeded once, kept public maintenance, then correctly rejected its second execution.
 - Database/ingestion builds and web typecheck passed. No SEAP diagnostic HTTP traffic; actual sources and entity mappings read from archived production data.
 
 ## One-time activation
 
 `/scripts/operations/20261008-recovery/resume-archive.sh` is a dated incident operation, not onboarding or a cron command. Requires deployed code/migration62, original revision95, exact failed run and no active work. Verifies the 5.6GB backup checksum, explicitly builds the stopped collector from the deployed release, audits revision96, retains maintenance, stops document worker and starts collector. Does not normalize/rebuild/index data. Repeat execution must fail its revision guard.
 
-Activation/deployment results will be recorded separately after live verification. Private source fixtures/logs: `/tmp/seap-recovery-20261008`; never commit raw/private dumps.
+## Production activation verified
+
+Runtime `a621ee4`, CI/deploy [37730728160](https://github.com/Alex-Cosma/seap-new/actions/runs/37730728160) successful,63 migrations. Earlier run37730597261 failed its web build before deployment; a full local build and the subsequent CI passed. No unverified override of CI was needed.
+
+The dated activation completed at08:10RO. Backup SHA-256 verified. At08:11:25RO:140 new requests,136 successful,4 in flight,zero failed; revision96 unpaused with maintenance+archive-only gate, no source block. Collector running, document worker stopped, public page503, health200, no processor running. Proxy settings unchanged:94 enabled,200/min ceiling,10 concurrent,35–45s/IP. The three quarantine rows remain pending for night; no normalization or analytical rebuild was performed today.
+
+Cron remains installed. Runtime `processingSchedule` reports **9 October05:00RO** for both next processing and the one-off full recovery. The unresolved third-publication dedup blocker above must be addressed before promising successful reopening. A publication failure after verified backup will preserve maintenance and resume eligible raw collection rather than losing another day.
+
+[Production evidence](production-verification.json). Private source fixtures/logs: `/tmp/seap-recovery-20261008`; never commit raw/private dumps.
