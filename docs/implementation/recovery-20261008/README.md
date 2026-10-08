@@ -53,3 +53,9 @@ The dated activation completed at08:10RO. Backup SHA-256 verified. At08:11:25RO:
 Cron remains installed. Runtime `processingSchedule` reports **9 October05:00RO** for both next processing and the one-off full recovery. The unresolved third-publication dedup blocker above must be addressed before promising successful reopening. A publication failure after verified backup will preserve maintenance and resume eligible raw collection rather than losing another day.
 
 [Production evidence](production-verification.json). Private source fixtures/logs: `/tmp/seap-recovery-20261008`; never commit raw/private dumps.
+
+## Follow-up: ETA during archive-only maintenance
+
+`RecoveryOverview` still treated all public maintenance as suspended collection, even with `collection_during_maintenance=true`. Corrected that remaining predicate while retaining manual/source/stream pauses, quiet window, direct retries, daily limit and stale/missing-worker gates. Forecast pacing now starts at the latest publication completion/failure or explicit archive resumption as well as ordinary operator changes, so pre-resumption downtime does not dilute its first ten-minute sample.
+
+Verified locally:10 rendered-component cases,6 PostgreSQL forecast aggregation cases on `seap_test_recovery_20261008`,10 forecast units,web typecheck. No collector settings, source data or publication decisions changed. Production publication is pending verification below.
