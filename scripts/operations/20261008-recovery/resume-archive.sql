@@ -10,14 +10,14 @@ BEGIN
   OR c.id IS NULL OR r.id IS NULL OR c.revision<>95 OR NOT c.paused OR NOT c.maintenance OR c.collection_during_maintenance
   OR c.blocked_reason IS NOT NULL OR NOT c.processing_enabled OR c.processing_time<>'05:00'
   OR r.id<>'6a186851-6a54-4d94-af23-9607f76f8132'::uuid OR r.status<>'failed'
-  OR r.raw_boundary<>18004783 OR r.stages->'backup-verified'->>'completedAt' IS NULL
+  OR r.raw_boundary IS DISTINCT FROM '18004783' OR r.stages->'backup-verified'->>'completedAt' IS NULL
   OR EXISTS(SELECT 1 FROM app.processing_runs WHERE status='running')
   OR EXISTS(SELECT 1 FROM app.collection_requests WHERE outcome='running')
   OR EXISTS(SELECT 1 FROM app.collection_tasks WHERE status='running')
   OR EXISTS(SELECT 1 FROM app.document_jobs WHERE status='running') THEN
   RAISE EXCEPTION 'Recovery preconditions changed; inspect before any mutation';
  END IF;
- IF (SELECT status FROM app.monitoring_refreshes ORDER BY version DESC LIMIT 1)<>'failed' THEN
+ IF (SELECT status FROM app.monitoring_refreshes ORDER BY version DESC LIMIT 1) IS DISTINCT FROM 'failed' THEN
   RAISE EXCEPTION 'Unexpected publication state';
  END IF;
  UPDATE app.collection_control SET paused=false,maintenance=true,collection_during_maintenance=true,
