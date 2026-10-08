@@ -29,7 +29,7 @@ do $$declare expected int;begin
     (d.payload->>'sysNoticeVersionId')::int is distinct from 2 or
     not coalesce((d.payload->>'noticeId') ~ '^[1-9][0-9]*$',false) or
     coalesce(d.payload->>'caNoticeId',d.payload->>'cNoticeId') is distinct from t.params->>'noticeId' or
-    not coalesce((d.payload->>'noticeNo') ~ '^[A-Z]+[0-9]+$',false) or
+    not coalesce((d.payload->>'noticeNo') ~ '^[A-Z]*[0-9]+$',false) or
     not coalesce((d.payload->>'sysNoticeTypeId')::int=any(case when d.stream='awards' then array[3,8,13,16,18,20] else array[2,6,7,12,17,19] end),false)) then raise exception 'Source metadata not validated';end if;
 end$$;
 create temporary table before_retry as select t.id,t.params,t.error,t.status,r.timeouts,r.status retry_status,r.last_request_id,to_jsonb(r) retry_record

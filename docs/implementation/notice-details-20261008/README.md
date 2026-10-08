@@ -37,3 +37,16 @@ The existing identity/deduplication population changed when a third source publi
 Full `pnpm turbo typecheck lint test build`:20/20tasks passed. Ingestion214unit tests, scraper32, web406passed(with184DB-dependenttests skipped in the ordinary suite); separate isolatedDB tests:9runner and6admin status passed on`seap_test_recovery_20261008`.22host deploy/scheduler tests passed. Follow-up SAD identity regression passed. Actual archived failure responses replayed without source traffic; all12live root fixtures passed routing/identity validation. Metadata preflight:all51601deferred roots have matching archived v2publiclists/internal IDs.
 
 Production-size read-only rehearsal caught a20sstatement timeout in the first detail-work forecast query: its correlated average repeated aggregation for every publication day. Aggregate once per stream and join instead. The isolated fixtures alone did not reveal this; verify real query duration before queue activation.
+
+
+## Production pilot
+
+Runtime5e72716, CI/deploy37760125695 succeeded. Pilot activation revision96→97 queued12notice roots(6participation/6awards).52requests/52validated, archived tasks across root, eForms, SAD, standard sections and lots; zero source or validation errors. The three old pagination failures are still untouched at this stage. Optimized full admin snapshot measured6996ms on production in a read-only bundled rehearsal; follow-up05f1d71 is queued for deployment. No normalization/PDFs/public reopening.
+
+Full activation preflight safely rolled back on five genuine numeric-only historical notice numbers(190687,190508,190105,190382,182371). Verified the archived lists/public IDs/internal IDs/types; allow numeric-only source numbers as well as prefixed numbers. No identity checks removed and no task changed by the refused transaction.
+
+## Full activation and observed recovery
+
+05f1d71 CI/deploy37760708075 succeeded. Corrected guarded activation committed51589remaining detail roots and7reviewed failures, revision97→98. Old retry budgets(3rows) were removed **only after preserving complete records in collection_audit**; all original requests/diagnostics remain. Shared settings unchanged:94enabled proxies,200/min ceiling,10concurrent,35–45s/IP; public maintenance/collection-during-maintenance preserved, no processing started.
+
+First live check:167attempts since full activation,166successful,0failed(one active). All7old task IDs complete; check descendant contract pages before declaring their notice inventories complete. New detail failures0. Full admin snapshot7329ms. ETA pace boundary now includes this explicit queue activation so idle time before activation does not depress the measured rate for the first10minutes.
