@@ -14,7 +14,7 @@ export default function RecoveryOverview({data,stale}:{data:CollectionStatus;sta
  const end=day(String(data.recovery.batch.end_day)),following=data.recovery.batch.follow_latest;
  const paused=c.paused||c.blocked_reason||(c.paused_streams as string[]).some(s=>['da','tenders','awards','catalogue'].includes(s));
  const alive=data.workers.some(w=>w.alive&&w.kind==='ingestion');
- const waiting=c.maintenance||data.quietWindow.active||!!data.timeoutRetry||c.daily_limit!==null&&Number(data.today.attempts)>=c.daily_limit;
+ const waiting=(c.maintenance&&!c.collection_during_maintenance)||data.quietWindow.active||!!data.timeoutRetry||c.daily_limit!==null&&Number(data.today.attempts)>=c.daily_limit;
  const suspended=stale||paused||!alive||waiting;
  const percent=f.percent??f.knownPercent,hasEta=Number.isFinite(f.minutesLow)&&Number.isFinite(f.minutesHigh);
  const low=hasEta?duration(f.minutesLow!):'',high=hasEta?duration(f.minutesHigh!):'';

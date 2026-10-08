@@ -31,7 +31,7 @@ export async function recoveryStatus(q:DbSql,batchId:string,progress:RecoveryCou
  // Use the current operating regime, not the old single-IP recovery average.
  const [pace]=await q`with boundary as (
    select greatest(b.created_at,now()-interval '10 minutes',coalesce((select max(created_at) from app.collection_audit
-    where action in ('proxies','pause','unblock','settings')),b.created_at)) at
+    where action in ('proxies','pause','unblock','settings','processing-complete','processing-failed','resume-archive-during-maintenance')),b.created_at)) at
    from app.collection_batches b where b.id=${batchId}
   ) select extract(epoch from(now()-at))/86400 elapsed_days,
    (select count(*)::int from app.collection_tasks where batch_id=${batchId} and status in ('complete','split') and finished_at>=boundary.at and finished_at<=now()) recent_completed
