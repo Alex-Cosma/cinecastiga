@@ -622,6 +622,8 @@ export const quarantine = coreSchema.table(
     rawId: bigint("raw_id", { mode: "bigint" }).notNull(),
     endpointVersion: text("endpoint_version").notNull(),
     zodError: text("zod_error").notNull(),
+    retryRequired: boolean("retry_required").notNull().default(true),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
     payloadExcerpt: jsonb("payload_excerpt"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

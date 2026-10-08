@@ -47,8 +47,9 @@ export async function recoveryStep(q:DbSql,fetcher:(t:Task)=>Promise<unknown>,la
  await collectionHeartbeat(q,`${recoveryWorker}:${lane}`,'ingestion','idle');
  if((await collectionQuietWindow(q)).active)return false;
  const claimed=await q.begin(async tx=>{
-  const [c]=await tx`select paused,maintenance,blocked_reason,daily_limit,paused_streams from app.collection_control where id=1`;
-  if(!c||c.paused||c.maintenance||c.blocked_reason)return null;
+  const [c]=await tx`select paused,maintenance,collection_during_maintenance,blocked_reason,daily_limit,paused_streams from app.collection_control where id=1`;
+  if(!c||c.paused||(c.maintenance&&!c.collection_during_maintenance)||c.blocked_reason)return null;
+  if(c.maintenance&&(await tx`select id from app.processing_runs where status='running' limit 1`).length)return null;
   if(c.daily_limit!==null){const [n]=await tx`select count(*)::int n from app.collection_requests where started_at>=((now() at time zone 'Europe/Bucharest')::date::timestamp at time zone 'Europe/Bucharest')`;if(Number(n?.n)>=c.daily_limit)return null;}
   const [b]=await tx`select * from app.collection_batches where status='collecting' order by created_at limit 1 for update`;
   if(!b)return null;

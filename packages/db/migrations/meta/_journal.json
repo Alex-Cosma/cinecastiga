@@ -435,6 +435,13 @@
       "when": 1791321378346,
       "tag": "0061_worthless_firestar",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1791435070547,
+      "tag": "0062_adorable_gambit",
+      "breakpoints": true
     }
   ]
 }

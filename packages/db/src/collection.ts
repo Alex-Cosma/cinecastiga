@@ -42,10 +42,11 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
    let delay=0,transaction=true;
    try{
     // Stable result shape across additive migrations while an old worker drains.
-    const [c]=await q`select paused,maintenance,paused_streams,blocked_reason,daily_limit,min_seconds,max_seconds,
+    const [c]=await q`select paused,maintenance,collection_during_maintenance,paused_streams,blocked_reason,daily_limit,min_seconds,max_seconds,
       extract(epoch from clock_timestamp())*1000 now_ms,extract(epoch from next_allowed_at)*1000 next_ms,extract(epoch from last_file_at)*1000 file_ms from app.collection_control where id=1 for update`;
     if(!c)throw new CollectionSuspendedError('Configurația colectării lipsește. Aplică migrațiile.');
-    if(c.paused||c.maintenance||(c.paused_streams as string[]).includes(info.stream))throw new CollectionSuspendedError();
+    if(c.paused||(c.maintenance&&(!c.collection_during_maintenance||info.stream==='documents'))||(c.paused_streams as string[]).includes(info.stream))throw new CollectionSuspendedError();
+    if(c.maintenance&&(await q`select id from app.processing_runs where status='running' limit 1`).length)throw new CollectionSuspendedError();
     if(c.blocked_reason)throw new CollectionSuspendedError(String(c.blocked_reason));
     const [retry]=await q`select x.task_id,x.retry_at>clock_timestamp() waiting,r.endpoint,r.method,r.parameters from app.collection_retries x join app.collection_requests r on r.id=x.last_request_id where x.status='pending' and (r.proxy_id is null or x.task_id=${taskId}) order by (r.proxy_id is null) desc,x.retry_at,x.task_id limit 1`;
     if(retry){
