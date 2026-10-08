@@ -1,15 +1,14 @@
+import {planResponse,task,type PageResult} from '../../collection/plan.js';
+import {fetchTask} from '../../collection/runner.js';
 import {withCollectionStream,CollectionSuspendedError} from "@seap/db";
 import type { Task } from "graphile-worker";
 import type { Db } from "@seap/db";
 import {
-  getNoticeContracts,
-  getNoticeDetail,
   listNotices,
   noticeIdOf,
   NOTICE_TYPE_IDS,
   type ElicitatieClient,
   type ListEnvelope,
-  type NoticeContractItem,
   type NoticeListItem,
 } from "@seap/scraper-clients";
 import {
@@ -56,7 +55,7 @@ export interface NoticeScrapeOutcome {
   inserted: number;
   skipped: number;
   pages: number;
-  /** eForms (v2) notices archived list-only — detail endpoint differs, deferred. */
+  /** Compatibility metric: no blanket v2 deferral remains. */
   v2Deferred: number;
   /** Individual detail fetches dead-lettered (non-retryable errors). */
   detailFailures: number;
@@ -94,23 +93,17 @@ function validateEnvelope(
   return null;
 }
 
-async function fetchAllContracts(
-  client: ElicitatieClient,
-  caNoticeId: number,
-): Promise<ListEnvelope<NoticeContractItem>> {
-  const take = 200;
-  const first = await getNoticeContracts(client, { caNoticeId, skip: 0, take });
-  const items = [...first.data.items];
-  while (items.length < first.data.total) {
-    const page = await getNoticeContracts(client, {
-      caNoticeId,
-      skip: items.length,
-      take,
-    });
-    if (page.data.items.length === 0) break;
-    items.push(...page.data.items);
-  }
-  return { total: first.data.total, items };
+/** Legacy/manual callers share the durable collector's validation and request graph. */
+export async function collectNoticeParts(client:ElicitatieClient,item:NoticeListItem,family:NoticeFamily,kind:'detail'|'contracts'='detail'):Promise<ArchivableDocument[]>{
+ const root=task('legacy',family,kind,{noticeId:noticeIdOf(item),noticeType:item.sysNoticeTypeId,...(item.sysNoticeVersionId?{noticeVersion:item.sysNoticeVersionId}:{}),...(item.noticeId?{internalNoticeId:item.noticeId}:{}),noticeNo:item.noticeNo,page:0});
+ const queue=[root],docs:ArchivableDocument[]=[],prior=new Map<string,PageResult[]>();
+ while(queue.length){
+  const next=queue.shift()!,response=await fetchTask(client,next);
+  const plan=planResponse(next,response,prior.get(next.partition)??[],'');
+  if('ids' in plan.result)prior.set(next.partition,[...(prior.get(next.partition)??[]),plan.result]);
+  docs.push(...plan.docs);queue.push(...plan.children);
+ }
+ return docs;
 }
 
 /**
@@ -204,20 +197,10 @@ async function scrapeNoticesWindowInner(
 
         const details = await Promise.all(
           envelope.items.map(async (item) => {
-            // eForms (v2) notices 400 on the classic detail endpoint — v2
-            // detail mapping is a follow-up task. The contracts endpoint is a
-            // separate service and works for v2 too (live-verified), so award
-            // winners/values are fetched regardless of notice version.
-            const isV2 = item.sysNoticeVersionId === 2;
             try {
-              const detail = isV2
-                ? null
-                : (await getNoticeDetail(client, noticeIdOf(item))).data;
-              const contracts =
-                opts.family === "awards"
-                  ? await fetchAllContracts(client, noticeIdOf(item))
-                  : null;
-              return { item, detail, contracts, deferred: isV2 };
+              const detail=await collectNoticeParts(client,item,opts.family);
+              const contracts=opts.family==='awards'?await collectNoticeParts(client,item,opts.family,'contracts'):null;
+              return { item, detail, contracts, deferred: false };
             } catch (err) {
               if(err instanceof CollectionSuspendedError)throw err;
               // Dead-letter the record, don't fail the day (transient retries
@@ -225,29 +208,15 @@ async function scrapeNoticesWindowInner(
               log(
                 `${source}: detail/contracts fetch failed for ${noticeIdOf(item)}: ${err instanceof Error ? err.message : err}`,
               );
-              return { item, detail: null, contracts: null, deferred: isV2 };
+              return { item, detail: null, contracts: null, deferred: false };
             }
           }),
         );
         for (const { item, detail, contracts, deferred } of details) {
           if (deferred) v2Deferred += 1;
           else if (detail === null) detailFailures += 1;
-          if (detail !== null) {
-            docs.push({
-              source: "elicitatie",
-              externalId: `${prefix}:${noticeIdOf(item)}`,
-              endpointVersion: `${prefix}-detail:v1`,
-              payload: detail,
-            });
-          }
-          if (contracts) {
-            docs.push({
-              source: "elicitatie",
-              externalId: `${prefix}:${noticeIdOf(item)}`,
-              endpointVersion: `${prefix}-contracts:v1`,
-              payload: { caNoticeId: noticeIdOf(item), ...contracts },
-            });
-          }
+          if (detail !== null) docs.push(...detail);
+          if (contracts) docs.push(...contracts);
         }
 
         fetched += envelope.items.length;

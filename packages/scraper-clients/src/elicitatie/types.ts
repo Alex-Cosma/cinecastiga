@@ -19,9 +19,9 @@ export interface ListEnvelope<T> {
 
 /** SEAP sysNoticeTypeId constants (verified against live API, June 2026 era). */
 export const NOTICE_TYPE_IDS = {
-  /** Anunțuri de participare: CN, SCN(simplificat), RFQ, PC, DC, LR */
+  /** Anunțuri de participare: CN, SCN(simplificat), PC, DC, RFQ, RFD */
   participation: [2, 17, 7, 6, 12, 19],
-  /** Anunțuri de atribuire: CAN, SCAN, PCAN, RFQAN, DCAN, LRAN */
+  /** Anunțuri de atribuire: CAN, RFQA, SCNA, PCA, RDC, RFDA */
   award: [3, 13, 18, 16, 8, 20],
 } as const;
 
@@ -36,15 +36,14 @@ export interface NoticeListRequest {
 /**
  * Notice list item — fields we page/reconcile on; rest passes through.
  * Live-verified 2026-07-12: participation lists (GetCNoticeList) key items
- * as `cNoticeId`; award lists (GetCANoticeList) as `caNoticeId`. The detail
- * endpoint C_PUBLIC_CANotice/get/{id} accepts either id.
+ * as `cNoticeId`; award lists (GetCANoticeList) as `caNoticeId`. Details use different API families (see notice-detail.ts).
  */
 export interface NoticeListItem {
   caNoticeId?: number;
   cNoticeId?: number;
-  /** SEAP procedure-internal notice id — v2 section endpoints key on this. */
+  /** SEAP procedure-internal notice id — eForms HTML uses this, common sections use the public ID. */
   noticeId?: number;
-  /** 2 = eForms-era notice; classic detail endpoint 400s these (live-verified). */
+  /** 2 = new notice format; eForms presence is a separate flag in the detail. */
   sysNoticeVersionId?: number;
   noticeNo: string;
   sysNoticeTypeId: number;

@@ -2,8 +2,6 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import type { Task } from "graphile-worker";
 import { rawDocuments } from "@seap/db";
 import {
-  getNoticeContracts,
-  getNoticeDetail,
   listNotices,
   noticeIdOf,
   NOTICE_TYPE_IDS,
@@ -16,7 +14,7 @@ import {
   type ArchivableDocument,
 } from "../archive.js";
 import { closedWindow, eachDay } from "../window.js";
-import type { ScrapeDeps } from "./notices.js";
+import { collectNoticeParts, type ScrapeDeps } from "./notices.js";
 
 const SOURCE = "elicitatie:state-rescan";
 
@@ -84,26 +82,8 @@ export async function rescanNoticeStates(
                 endpointVersion: `${prefix}-list:v1`,
                 payload: item,
               });
-              const detail = await getNoticeDetail(client, noticeIdOf(item));
-              docs.push({
-                source: "elicitatie",
-                externalId: `${prefix}:${noticeIdOf(item)}`,
-                endpointVersion: `${prefix}-detail:v1`,
-                payload: detail.data,
-              });
-              if (familyKey === "awards") {
-                const contracts = await getNoticeContracts(client, {
-                  caNoticeId: noticeIdOf(item),
-                  skip: 0,
-                  take: 200,
-                });
-                docs.push({
-                  source: "elicitatie",
-                  externalId: `${prefix}:${noticeIdOf(item)}`,
-                  endpointVersion: `${prefix}-contracts:v1`,
-                  payload: { caNoticeId: noticeIdOf(item), ...contracts.data },
-                });
-              }
+              docs.push(...await collectNoticeParts(client,item,familyKey));
+              if(familyKey==='awards')docs.push(...await collectNoticeParts(client,item,familyKey,'contracts'));
             }
             const result = await archiveDocuments(db, docs);
             inserted += result.inserted;

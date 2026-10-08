@@ -13,13 +13,16 @@ export function validateCollectionSettings(value:unknown):Omit<CollectionSetting
 export function safeCollectionParameters(value:unknown):Record<string,unknown>{
  if(!value||typeof value!=='object')return {};
  const out:Record<string,unknown>={};
- const allowed=['pageIndex','pageSize','skip','take','contractingAuthorityId','caNoticeId','initNoticeId','sysNoticeTypeId','sysNoticeTypeIds','finalizationDateStart','finalizationDateEnd','startPublicationDate','endPublicationDate'];
+ const allowed=['pageIndex','pageSize','skip','take','contractingAuthorityId','caNoticeId','cNoticeId','rfqInvitationId','pcNoticeId','dcNoticeId','noticeId','noticeLotId','dfNoticeId','initNoticeId','sysNoticeTypeId','sysNoticeTypeIds','finalizationDateStart','finalizationDateEnd','startPublicationDate','endPublicationDate'];
  for(const key of allowed){const v=(value as Record<string,unknown>)[key];if(v===null||typeof v==='number'&&Number.isFinite(v)||typeof v==='string'&&/^\d{4}-\d{2}-\d{2}(?:[T\d:.+Z-]*)$/.test(v)||Array.isArray(v)&&v.length<20&&v.every(x=>Number.isSafeInteger(x)))out[key]=v;}
+ if(typeof (value as Record<string,unknown>).isNoticeChange==='boolean')out.isNoticeChange=(value as Record<string,unknown>).isNoticeChange;
  return out;
 }
 export function safeCollectionEndpoint(url:string){
  const path=new URL(url,'https://www.e-licitatie.ro').pathname;
  if(path.startsWith('/api-pub/files/noticedoc/'))return '/api-pub/files/noticedoc/{fișier}';
+ // Public notice UI modules are used for bounded API discovery through the same request budget.
+ if(/^\/views\/pub\/(?:notices|sad)\/[\w/-]+(?:\.min)?\.js$/.test(path))return path.slice(0,300);
  if(!/^\/(api-pub|pub)\/[\w/.-]+$/.test(path))throw Error('Endpoint SEAP neacceptat.');
  return path.slice(0,300);
 }

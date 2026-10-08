@@ -23,10 +23,10 @@ describe('durable recovery plans (no network)',()=>{
   expect(()=>planResponse(t,{total:201,items:[]},[],end)).toThrow('Lipsește');
   expect(()=>planResponse(t,{total:201,items:[]},[{total:202,ids:[]}],end)).toThrow('Totalul');
  });
- it('persists eForms detail gaps independently of award contract work',()=>{
+ it('schedules v2 detail routing independently of award contract work',()=>{
   const t=task('fixture','awards','list',{from:end,to:end,page:0});
   const r=planResponse(t,{total:1,items:[{caNoticeId:2,sysNoticeTypeId:18,sysNoticeVersionId:2,noticeStateDate:end+'T12:00:00+03:00'}]},[],end);
-  expect(r.children.find(t=>t.kind==='detail')?.status).toBe('deferred');expect(r.children.find(t=>t.kind==='contracts')?.params.noticeId).toBe(2);expect(r.docs[0]?.endpointVersion).toBe('award-list:v1');
+  expect(r.children.find(t=>t.kind==='detail')?.params.noticeType).toBe(18);expect(r.children.find(t=>t.kind==='contracts')?.params.noticeId).toBe(2);expect(r.docs[0]?.endpointVersion).toBe('award-list:v1');
  });
  it('only archives the combined contracts envelope after every page reconciles',()=>{
   const first=task('fixture','awards','contracts',{noticeId:2,page:0});
