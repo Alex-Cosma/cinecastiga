@@ -48,7 +48,10 @@ export function planNoticeDetail(t:Task,value:unknown,previous:PageResult[]):Tas
   const ids=v.items.map((i:any)=>i.noticeLotID??i.noticeLotId);
   if(ids.some((id:unknown)=>!positive(id))||new Set(ids).size!==ids.length)fail('identificatori de lot lipsă sau repetați.');
   const before=previous.flatMap(r=>r.ids);
-  if(previous.some(r=>r.total!==v.total)||before.length!==p.page*100||v.items.length!==Math.min(100,Math.max(0,v.total-before.length))||new Set([...before,...ids]).size!==before.length+ids.length)fail('paginarea loturilor nu se reconciliază.');
+  // The award endpoint can return its entire inventory, ignoring pageSize.
+  // Accept that only on page zero with an exact distinct population equal to total.
+  const wholeInventory=award&&p.page===0&&previous.length===0&&ids.length===v.total;
+  if(previous.some(r=>r.total!==v.total)||before.length!==p.page*100||(!wholeInventory&&v.items.length!==Math.min(100,Math.max(0,v.total-before.length)))||new Set([...before,...ids]).size!==before.length+ids.length)fail('paginarea loturilor nu se reconciliază.');
   if(!award)for(const lotId of ids)child('lot',{lotId});
   if(before.length+ids.length<v.total)child('lots',{page:p.page+1});
   result={total:v.total,ids};
