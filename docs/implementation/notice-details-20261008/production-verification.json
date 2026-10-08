@@ -1,0 +1,153 @@
+{
+  "checked_at": "2026-10-08T10:16:54.453Z",
+  "application_release": "f518341",
+  "operator_procedure_commit": "4cc3b99",
+  "control": {
+    "revision": 99,
+    "paused": false,
+    "maintenance": true,
+    "collection_during_maintenance": true,
+    "blocked_reason": null
+  },
+  "batch": {
+    "id": "recovery-2026-09-25",
+    "end_day": "2026-10-07",
+    "status": "collecting",
+    "follow_latest": true
+  },
+  "proxy_settings": {
+    "id": 1,
+    "enabled": true,
+    "requests_per_minute": 200,
+    "min_seconds": 35,
+    "max_seconds": 45,
+    "max_in_flight": 10
+  },
+  "enabled_proxies": 94,
+  "admin_snapshot_ms": 6973,
+  "progress": [
+    {
+      "stream": "awards",
+      "pending": 33252,
+      "running": 5,
+      "complete": 34857,
+      "split": 0,
+      "deferred": 0,
+      "failed": 0
+    },
+    {
+      "stream": "catalogue",
+      "pending": 0,
+      "running": 0,
+      "complete": 48,
+      "split": 0,
+      "deferred": 0,
+      "failed": 0
+    },
+    {
+      "stream": "da",
+      "pending": 0,
+      "running": 0,
+      "complete": 153685,
+      "split": 3,
+      "deferred": 0,
+      "failed": 0
+    },
+    {
+      "stream": "tenders",
+      "pending": 17970,
+      "running": 5,
+      "complete": 927,
+      "split": 0,
+      "deferred": 0,
+      "failed": 0
+    }
+  ],
+  "notice_layers": [
+    {
+      "stream": "awards",
+      "kind": "contracts",
+      "total": 33522,
+      "complete": 33522,
+      "gaps": 0,
+      "pending": 0,
+      "discovering": false
+    },
+    {
+      "stream": "awards",
+      "kind": "detail",
+      "total": 33522,
+      "complete": 265,
+      "gaps": 0,
+      "pending": 33257,
+      "discovering": true
+    },
+    {
+      "stream": "tenders",
+      "kind": "detail",
+      "total": 18079,
+      "complete": 104,
+      "gaps": 0,
+      "pending": 17975,
+      "discovering": true
+    }
+  ],
+  "forecast": {
+    "etaBasis": "known",
+    "rate": 157225,
+    "minutesLow": 376,
+    "minutesHigh": 626,
+    "knownPercent": 78
+  },
+  "pilot": {
+    "notices": 12,
+    "requests": 52,
+    "success": 52,
+    "failed": 0
+  },
+  "original_failures": {
+    "recovered_tasks": [
+      14560,
+      79183,
+      84685,
+      88076,
+      89249,
+      105970,
+      106064
+    ],
+    "award_notices_fully_reconciled": 6,
+    "contracts_in_those_notices": 1771
+  },
+  "whole_lot_repair": {
+    "recovered_tasks": [
+      332575,
+      332605,
+      332628,
+      332711,
+      332860
+    ]
+  },
+  "checks": {
+    "health_http": 200,
+    "public_maintenance_http": 503,
+    "normalization_started": false,
+    "pdfs_downloaded": 0
+  },
+  "remaining_publication_blocker": "Historical deduplication cohort now contains a third publication; independent review required before a verified nightly release.",
+  "final_release_check": {
+    "at": "2026-10-08T10:19:32.20533Z",
+    "checkout": "4cc3b99",
+    "ci_deploy_run": 37762220103,
+    "ci": "success",
+    "deploy": "success",
+    "revision": 99,
+    "blocked": null,
+    "attempts_since_full_activation": 1416,
+    "successful_attempts": 1410,
+    "failed_http_attempts": 3,
+    "active_attempts": 3,
+    "pending_retries": 2,
+    "failed_tasks": 0,
+    "deferred_tasks": 0
+  }
+}

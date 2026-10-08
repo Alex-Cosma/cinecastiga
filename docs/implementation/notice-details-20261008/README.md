@@ -1,6 +1,6 @@
 # Notice details and recovery — 8 October 2026
 
-In progress. User authorized implementing the missing collection paths and restarting production collection. **No normalization/publication today**; preserve public maintenance and `collection_during_maintenance=true`. Keep operator proxy/rate settings unchanged.
+Implemented, deployed and collecting in production. User authorized implementing the missing collection paths and restarting production collection. **No normalization/publication today**; preserve public maintenance and `collection_during_maintenance=true`. Keep operator proxy/rate settings unchanged.
 
 ## Verified diagnosis
 
@@ -52,3 +52,15 @@ Full activation preflight safely rolled back on five genuine numeric-only histor
 First live check:167attempts since full activation,166successful,0failed(one active). All7old task IDs complete; check descendant contract pages before declaring their notice inventories complete. New detail failures0. Full admin snapshot7329ms. ETA pace boundary now includes this explicit queue activation so idle time before activation does not depress the measured rate for the first10minutes.
 
 Production follow-up: all6previously incomplete award partitions now fully reconcile,1771contracts total(312+1+514+508+435+1). A new source variation appeared under the larger rollout: award lot API ignores pageSize and returns the **entire**297/246/261/115-lot inventories. These tasks correctly remained failed gaps without globally stopping. Accept a full response only on page0, with no prior pages and exact distinct IDs equal to total; partial surplus/conflicting counts remain rejected. Add regression; requeue only failures proved to match this pattern after deployment. One ordinary proxy timeout entered its existing5minute retry without stopping collection.
+
+
+## Verified outcome
+
+- f518341 CI/deploy37761942373 succeeded; full-inventory fix is present in the running collector. Guarded replay revision98→99 requeued exactly5validated whole-lot tasks; all5completed. The normal collector continues.
+- All33522award notices now have their **contract inventories** collected and reconciled. Forms/lots are still being collected: this distinction remains explicit in admin. No blanket deferred tasks remain.
+- At the final admin snapshot:265award forms and104participation forms fully collected; no failed/deferred notice groups.7original failures recovered; all6affected award inventories complete(1771contracts). First1005attempts after full activation:998success,3timeouts,4active. Timeouts use ordinary bounded retries; no globalblock. These are dated observations, not a guarantee of future absence of source errors.
+- Full admin snapshot under collection load6973ms; measured useful pace≈109steps/min. ETA376–626minutes is **known queue only**, excluding undiscovered child work and future maintenance.
+- HTTPhealth200; public503is intentional maintenance. No normalization, risk calculation, PDF download, proxy enabling or pacing change occurred. The separate dedup publication guard remains unresolved; do not promise overnight reopening.
+- [Machine-readable verification](production-verification.json). Local and server temporary probe/status bundles can be deleted after investigation; they are not daemons or scheduled work.
+
+Final release check13:19RO:repository4cc3b99,CI/deploy37762220103 succeeded; collector codef518341 remains live. Controlrevision99,collecting/unblocked/publicmaintenance.1416attempts since full activation:1410success,3failed HTTP attempts(timeouts),3active;2pending bounded retries;**zero failed/deferred tasks**. All33522award contract inventories complete. The declared full archive scope is through7October and continues daily to the previous closed day.
