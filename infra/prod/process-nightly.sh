@@ -17,7 +17,17 @@ case "${1:-}" in
 esac
 [[ -n "$run_id" ]] || exit 0
 [[ "$run_id" =~ ^[a-f0-9-]{36}$ ]] || exit 1
-failed() { trap - ERR INT TERM; run fail "$run_id" || true; echo "Publication failed; maintenance retained: $run_id"; exit 1; }
+failed() {
+ trap - ERR INT TERM
+ run fail "$run_id" || true
+ # Only resume the archive collector after the DB gate verified backup, no
+ # remaining work, and unchanged operator control. Documents/public site stay shut.
+ if [[ "${collection_active:-false}" == true ]] && [[ "$(docker exec cinecastiga-postgres-1 psql -X -U seap -d seap -Atc "select maintenance and collection_during_maintenance and not paused and blocked_reason is null from app.collection_control where id=1" || true)" == t ]]; then
+  docker compose --profile collection up -d --no-deps collection || true
+ fi
+ echo "Publication failed; maintenance retained: $run_id"
+ exit 1
+}
 trap failed ERR INT TERM
 root="${SEAP_PROCESSING_BACKUPS:-/srv/seap/backups/processing}"
 mkdir -p "$root/$run_id"

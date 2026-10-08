@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {spawnSync} from 'node:child_process';
 const script=new URL('./process-nightly.sh',import.meta.url).pathname;
-async function run(failure='',due=true,args=[]){
+async function run(failure='',due=true,args=[],rawResume=false){
  const dir=await mkdtemp(join(tmpdir(),'seap-nightly-'));
  try{
   await mkdir(join(dir,'bin'));await mkdir(join(dir,'.git'));await mkdir(join(dir,'infra/prod'),{recursive:true});
@@ -15,13 +15,14 @@ case "$*" in
  *"ps --status running -q collection") echo collection-fixture;;
  "inspect --format "*) echo False;;
  *"psql -X -v ON_ERROR_STOP=1 -U seap -d seap -Atc "*) if [ "$TEST_FAILURE" = drain ]; then exit 1; fi; echo 0;;
+ *"select maintenance and collection_during_maintenance"*) [ "$TEST_RAW_RESUME" = yes ] && echo t || echo f;;
  *"pg_dump "*) if [ "$TEST_FAILURE" = backup ]; then exit 1; fi; echo backup;;
  *"pg_restore --list"*) cat >/dev/null; echo archive;;
  *"processing.js refresh "*) if [ "$TEST_FAILURE" = refresh ]; then exit 1; fi;;
 esac`;
   const bins={docker,flock:'[ "$TEST_FAILURE" != lock ]',curl:'case "$*" in *api/health*) echo 200;; *) echo 503;; esac',sha256sum:'echo sha256'};
   for(const [name,body] of Object.entries(bins))await writeFile(join(dir,'bin',name),'#!/bin/sh\n'+body+'\n',{mode:0o755});
-  const r=spawnSync('bash',[script,...args],{input:'caller-script-must-not-reach-container\n',env:{...process.env,PATH:join(dir,'bin')+':'+process.env.PATH,SEAP_DEPLOY_CHECKOUT:dir,SEAP_PROCESSING_BACKUPS:join(dir,'backups'),TEST_LOG:join(dir,'calls'),TEST_FAILURE:failure,TEST_DUE:due?'yes':'no'},encoding:'utf8'});
+  const r=spawnSync('bash',[script,...args],{input:'caller-script-must-not-reach-container\n',env:{...process.env,PATH:join(dir,'bin')+':'+process.env.PATH,SEAP_DEPLOY_CHECKOUT:dir,SEAP_PROCESSING_BACKUPS:join(dir,'backups'),TEST_LOG:join(dir,'calls'),TEST_FAILURE:failure,TEST_RAW_RESUME:rawResume?'yes':'no',TEST_DUE:due?'yes':'no'},encoding:'utf8'});
   return {status:r.status,calls:await readFile(join(dir,'calls'),'utf8').catch(()=> '')};
  }finally{await rm(dir,{recursive:true,force:true});}
 }
@@ -42,4 +43,9 @@ test('explicit reference repair uses the same backup and publication path',async
  assert.match(r.calls,/processing.js claim-repair reference-import-v1/);
  assert.match(r.calls,/pg_dump /);assert.match(r.calls,/processing.js refresh /);assert.match(r.calls,/processing.js finish /);
  assert.doesNotMatch(r.calls,/CONSUMED_CALLER_INPUT/);
+});
+
+test('verified failure resumes only collection, retaining public maintenance and document stop',async()=>{
+ const r=await run('refresh',true,[],true);assert.equal(r.status,1);
+ assert.match(r.calls,/up -d --no-deps collection/);assert.doesNotMatch(r.calls,/processing.js finish |restart web|up -d --no-deps documents/);
 });

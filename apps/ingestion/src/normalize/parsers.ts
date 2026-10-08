@@ -1,4 +1,5 @@
 import { normalizeContractMoney } from "./contract-money.js";
+import { reviewedWinnerIdentity } from './reviewed-winner.js';
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import {
@@ -269,10 +270,11 @@ async function loadAwardContracts(
           : [];
     for (const w of winnerList) {
       const entityId = await resolveEntity(ctx.tx, {
-        sicapId: w.entityId ?? null,
         namespace: "winner",
-        cuiRaw: w.fiscalNumber ?? null,
-        nameDisplay: w.address?.officialName ?? w.name ?? "(necunoscut)",
+        ...reviewedWinnerIdentity(item.caNoticeContractId,{
+          sicapId:w.entityId??null,cuiRaw:w.fiscalNumber??null,
+          nameDisplay:w.address?.officialName??w.name??"(necunoscut)",
+        }),
         county: labelText(w.address?.county),
         nutsCode: labelText(w.address?.nutsCodeItem),
         country:

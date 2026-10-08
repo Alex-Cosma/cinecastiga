@@ -3,8 +3,9 @@ import type {DbSql} from '@seap/db';
 /** Metadata only. Append immutable closed windows; never rewrite existing tasks or retry budgets. */
 export async function advanceRecovery(q:DbSql,{enable=false,now}:{enable?:boolean;now?:Date}={}){
  return q.begin(async tx=>{
-  const [control]=await tx`select maintenance from app.collection_control where id=1 for update`;
-  if(!control||control.maintenance)return null;
+  const [control]=await tx`select maintenance,collection_during_maintenance from app.collection_control where id=1 for update`;
+  if(!control||(control.maintenance&&!control.collection_during_maintenance))return null;
+  if(control.maintenance&&(await tx`select id from app.processing_runs where status='running' limit 1`).length)return null;
   const batches=await tx`select * from app.collection_batches order by created_at for update`;
   if(!batches.length)return null;
   if(batches.length!==1)throw Error('Inspect multiple recovery batches before advancing their scope.');

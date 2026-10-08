@@ -17,9 +17,10 @@ describe.skipIf(!connection)('daily SEAP quiet window, real PostgreSQL and fake 
  beforeEach(async()=>{
   q=connection!.sql;clock.at=new Date('2026-09-28T00:10:00Z');
   await q`truncate app.collection_retries`;
+  await q`truncate app.processing_runs cascade`;
   await q`truncate app.collection_requests,app.collection_workers`;
   await q`insert into app.collection_control(id) values(1) on conflict do nothing`;
-  await q`update app.collection_control set paused=false,maintenance=false,paused_streams='[]',blocked_reason=null,blocked_until=null,daily_limit=null,min_seconds=1,max_seconds=1,next_allowed_at=null,last_file_at=null where id=1`;
+  await q`update app.collection_control set paused=false,maintenance=false,collection_during_maintenance=false,paused_streams='[]',blocked_reason=null,blocked_until=null,daily_limit=null,min_seconds=1,max_seconds=1,next_allowed_at=null,last_file_at=null where id=1`;
  });
  it.each([
   ['2026-09-27T23:58:59.999Z',false],['2026-09-27T23:59:00Z',true],
@@ -36,6 +37,14 @@ describe.skipIf(!connection)('daily SEAP quiet window, real PostgreSQL and fake 
  async function attempt(stream:(typeof COLLECTION_STREAMS)[number]='da',work=vi.fn(async(_signal:AbortSignal)=>({value:'ok',status:200})),fileDownload=false){
   const c=await q.reserve();try{return await runCollectionRequest(c,{stream,worker:'quiet-fixture',method:'GET',url:'https://www.e-licitatie.ro/api-pub/fixture',fileDownload},work);}finally{c.release();}
  }
+ it('permits only archive requests during verified maintenance recovery',async()=>{
+  clock.at=new Date('2026-09-28T00:30:00Z');
+  await q`update app.collection_control set maintenance=true,collection_during_maintenance=true`;
+  await expect(attempt('awards')).resolves.toBe('ok');
+  await expect(attempt('documents')).rejects.toBeInstanceOf(CollectionSuspendedError);
+  await q`insert into app.processing_runs(scheduled_day,scope,control_revision,before_control) values('2026-09-28','full',1,'{}')`;
+  await expect(attempt('da')).rejects.toBeInstanceOf(CollectionSuspendedError);
+ });
  it('holds all five streams and file downloads without HTTP, ledger entries, pacing changes or source blocks',async()=>{
   const work=vi.fn(async(_signal:AbortSignal)=>({value:'ok',status:200}));
   const [before]=await q`select * from app.collection_control`;

@@ -9,7 +9,7 @@ suite('scheduled publication state machine (no network)',()=>{
  beforeEach(async()=>{
   await q`truncate app.data_repairs,app.processing_runs,app.collection_audit,app.monitoring_refreshes cascade`;
   await q`insert into app.collection_control(id) values(1) on conflict do nothing`;
-  await q`update app.collection_control set revision=1,paused=false,maintenance=false,blocked_reason=null,
+  await q`update app.collection_control set revision=1,paused=false,maintenance=false,collection_during_maintenance=false,blocked_reason=null,
     processing_enabled=true,processing_enabled_at='2026-09-26T00:00:00Z',processing_time='05:00',risk_weekday=0 where id=1`;
  });
  afterAll(async()=>{await q.end({timeout:5});});
@@ -42,6 +42,26 @@ suite('scheduled publication state machine (no network)',()=>{
   expect((await q`select status,stage,error from app.processing_runs`)[0]).toMatchObject({status:'failed',stage:'backup'});
   expect((await q`select maintenance,paused from app.collection_control`)[0]).toMatchObject({maintenance:true,paused:true});
   expect(await claimProcessing(q,monday)).toBeNull();
+ });
+ async function backedUp(id:string){
+  await q`update app.processing_runs set raw_boundary=123,stages='{"backup-verified":{"completedAt":"2026-09-28T02:01:00Z"}}',stage='normalize' where id=${id}::uuid`;
+ }
+ it('resumes archive collection after a backed-up failure, keeps publication closed, and retries full next day',async()=>{
+  const run=(await claimProcessing(q,monday))!;await backedUp(run.id);await failProcessing(q,run.id);
+  expect((await q`select maintenance,paused,collection_during_maintenance from app.collection_control`)[0]).toEqual({maintenance:true,paused:false,collection_during_maintenance:true});
+  expect(await claimProcessing(q,monday)).toBeNull();
+  const next=await claimProcessing(q,new Date('2026-09-29T02:00:00Z'));expect(next?.scope).toBe('full');
+  expect((await q`select maintenance,paused,collection_during_maintenance from app.collection_control`)[0]).toEqual({maintenance:true,paused:true,collection_during_maintenance:false});
+ });
+ it.each(['manual','source','revision','busy'])('keeps collection paused for %s despite a verified backup',async why=>{
+  if(why==='manual')await q`update app.collection_control set paused=true`;
+  if(why==='source')await q`update app.collection_control set blocked_reason='source failure'`;
+  const run=(await claimProcessing(q,monday))!;await backedUp(run.id);
+  if(why==='revision')await q`update app.collection_control set revision=revision+1`;
+  if(why==='busy')await q`insert into app.collection_requests(stream,worker,method,endpoint,parameters,outcome) values('da','test','GET','/fixture','{}','running')`;
+  try{await failProcessing(q,run.id);
+   expect((await q`select maintenance,paused,collection_during_maintenance from app.collection_control`)[0]).toEqual({maintenance:true,paused:true,collection_during_maintenance:why==='manual'||why==='source'});
+  }finally{await q`delete from app.collection_requests where worker='test'`;}
  });
  async function verified(id:string){
   const [cp]=await q`insert into app.monitoring_refreshes(kind,status,completed_at) values('coordinated','ready',now()) returning id`;
