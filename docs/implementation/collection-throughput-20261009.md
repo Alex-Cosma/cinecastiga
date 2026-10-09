@@ -22,3 +22,10 @@ The exact safety query now uses Index Only Scan:5active rows,8buffer hits,0.420m
 Schema and generated migration0063 preserve the fix for other environments. The transactional migration uses IF NOT EXISTS to retain the verified concurrent production prebuild; ordinary migration history is still applied normally, without manual history inserts. Fresh environments create the index through the migration. For another busy environment, use a reviewed concurrent prebuild before running the transactional migration. Typecheck passed; existing database-package units passed10/10. Sustained throughput and deployment checks are recorded below when complete.
 
 Separate observation: today's05:00processing run failed at identity-quality at05:19RO; no processing run was active during this throughput inspection. Public maintenance remains intentional. This diagnosis does not resolve publication integrity.
+
+## Release verification, 15:52 RO
+
+- Commit06d5408 pushed to main; CI and deploy37932378118 both succeeded. Server checkout06d5408,64migrations applied through the ordinary migrator. Index remains valid and ready after deployment.
+- Complete minutes15:47–15:51RO:153,131,143,135,128requests (690total,138/min average),zero failed attempts. This includes the deployment interval. The previous five-minute baseline was78.8/min.
+- PostgreSQL CPU spot check fell from100.04% of one core to9.92%; repeated post-fix activity samples showed zero active sessions waiting on locks. These are observations, not guaranteed future capacity.
+- Collector running after deployment and new requests being admitted. Controlrevision101 unchanged,paused=false,blocked_reason=null;94enabledproxies and200/min,10concurrent,35–45seconds/IP preserved. Public maintenance/collection-during-maintenance both remain true;healthHTTP200. No historical recovery or nightly processing triggered.
