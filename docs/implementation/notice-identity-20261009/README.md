@@ -24,4 +24,20 @@ Production backup directory `/srv/seap/backups/notice-identity-20261009`: notice
 
 The221saved source records were archived and replayed successfully in the isolated database (numeric raw-ID order, no source traffic).
 
-Next: commit/push/verify deploy; replay retained raw participation lists, restore221known displaced sample notices from saved source responses; recover115missing2022awards and76detail failures; run resumable historical inventory reconciliation. Do not report the repair/deployment/recovery complete until verified. No historical sweeps have started at this checkpoint.
+## Production verification — 9 October, 22:40 RO
+
+Identity fix `e948a9c` is on main and live. CI/deploy37981465501 both passed;65migrations installed. The migration preserved all193,011existing notice rows.
+
+Restored all221known displaced source notices using the checksum-verified saved audit responses, without source traffic. Replayed18,388retained participation list records under the deployment/processing lock. Final reconciliation: zero missing identities, zero mismatched notice numbers. Public ID100004524 now correctly has both `cn/CN1002119` and `rfq/SCN1002813`.
+
+Recovery activated at controlrevision103:76failed detail tasks received a fresh manual attempt after their old state/retry budgets were preserved in `collection_audit`; all historical request attempts remain. Added the missing2022-04-21award list. Its two pages reconcile to115notices and are archived; their contract/form tasks are still running. Public maintenance and all rate/proxy settings unchanged. This does **not** resolve the separate publication/deduplication gate.
+
+## Historical inventory implementation
+
+Explicit `inventoryOnly` notice-list tasks have separate task keys, exact namespace-aware pagination, and retain every source list response. They compare against normalized identities before archival, recording matched/missing/unverified names. Contradictory identities stop before feeding normalization. Null legacy notice numbers are unverified, not matches. Missing list identities do not prove missing contracts.
+
+These tasks do not automatically expand to forms, lots, contract inventories or PDFs. Normal daily recovery retains full expansion. Continuation pages preserve inventory mode; admin forecasting counts inventory pages without inventing detail work. Existing request gate, concurrency, retries, quiet window, operator pause and processing drain apply unchanged.
+
+Tested218ingestion units,11isolated inventory/collector integration tests and8web recovery-status integration tests. Ingestion build/typecheck and web typecheck passed.
+
+Next deployment adds this mode. Run the16partitionpilot (eight days, both families), verify exact results, then seed all5,844daily partitions for2018–2025. More pages are discovered from actual totals. Operations and read-only report are in `scripts/operations/20261009-notice-identity/`. No historical sweep has started at this checkpoint. A completed notice-list inventory must never be described as complete contract/form/DA/PDF collection.

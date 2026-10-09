@@ -3,6 +3,21 @@ import {planResponse,task} from './plan.js';
 const end='2026-09-25';
 const da=task('fixture','da','da',{from:'2026-07-01',to:end,authorityId:7848,page:0});
 describe('durable recovery plans (no network)',()=>{
+ it('keeps historical inventory distinct from full recovery and paginates without spawning detail work',()=>{
+  const params={from:end,to:end,page:0,inventoryOnly:true};
+  const t=task('fixture','tenders','list',params);
+  expect(t.key).not.toBe(task('fixture','tenders','list',{...params,inventoryOnly:false}).key);
+  const items=Array.from({length:100},(_,i)=>({cNoticeId:i+1,noticeNo:`CN${i+1}`,sysNoticeTypeId:2,noticeStateDate:end+'T12:00:00+03:00'}));
+  const first=planResponse(t,{total:101,items},[],end);
+  expect(first.docs).toHaveLength(100);expect(first.children).toHaveLength(1);
+  expect(first.children[0]).toMatchObject({kind:'list',params:{page:1,inventoryOnly:true}});
+  const last=planResponse(first.children[0]!,{total:101,items:[{...items[0],sysNoticeTypeId:17}]},[first.result as any],end);
+  expect(last.docs[0]?.externalId).toBe('tender:rfq:1');expect(last.children).toHaveLength(0);
+  const award=planResponse(task('fixture','awards','list',params),{total:1,items:[{caNoticeId:1,sysNoticeTypeId:18,noticeStateDate:end+'T12:00:00+03:00'}]},[],end);
+  expect(award.docs).toHaveLength(1);expect(award.children).toHaveLength(0);
+  expect(()=>task('fixture','awards','contracts',{noticeId:1,page:0,inventoryOnly:true})).toThrow('Inventory');
+  expect(()=>planResponse(t,{total:3000,items,searchTooLong:true},[],end)).toThrow('trunchiată');
+ });
  it('keeps overlapping participation counters in one page and across pages without merging their work',()=>{
   const t=task('fixture','tenders','list',{from:end,to:end,page:0});
   const item=(id:number,type:number)=>({cNoticeId:id,sysNoticeTypeId:type,noticeStateDate:end+'T12:00:00+03:00'});

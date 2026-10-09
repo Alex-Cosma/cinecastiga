@@ -4,6 +4,8 @@ import {getNoticeContracts,getNoticeDetailPart,type NoticeDetailParams,ScrapeErr
 import {archiveDocumentsSql} from '../scrape/archive.js';
 import {isoDaysAgo} from '../scrape/window.js';
 import {planResponse,task,type Task,type PageResult} from './plan.js';
+import {compareNoticeInventory} from './inventory.js';
+import type {NoticeListItem} from '@seap/scraper-clients';
 export const RECOVERY_LOCK=[729114,5] as const;
 export const recoveryWorker=collectionWorkerId('recovery');
 const streams=['da','tenders','awards','catalogue'] as const;
@@ -83,6 +85,7 @@ export async function recoveryStep(q:DbSql,fetcher:(t:Task)=>Promise<unknown>,la
    const [scope]=t.kind==='catalogue'?await tx`select end_day from app.collection_batches where id=${t.batch_id} for share`:[];
    const [current]=await tx`select status from app.collection_tasks where id=${t.id!} for update`;
    if(current?.status!=='running')throw Error('Task ownership changed before archive commit');
+   const inventory=t.params.inventoryOnly?await compareNoticeInventory(tx as unknown as DbSql,t,(response as {items:NoticeListItem[]}).items):undefined;
    const archive=await archiveDocumentsSql(tx as unknown as DbSql,plan.docs);
    if(t.kind==='catalogue'){
     const ids=plan.children.filter(c=>c.kind==='da').map(c=>c.params.authorityId!);
@@ -91,7 +94,7 @@ export async function recoveryStep(q:DbSql,fetcher:(t:Task)=>Promise<unknown>,la
     plan.children=plan.children.map(child=>child.kind==='da'&&!seen.has(child.params.authorityId!)?task(t.batch_id,'da','da',{...child.params,from:'2026-07-01',to:String(scope!.end_day)},child.priority):child);
    }
    await insertTasks(tx as unknown as DbSql,plan.children);
-   const result=JSON.stringify({...plan.result,archived:archive.inserted,duplicates:archive.skipped}).replace(/\\u0000/g,'');
+   const result=JSON.stringify({...plan.result,...(inventory?{inventory}:{}),archived:archive.inserted,duplicates:archive.skipped}).replace(/\\u0000/g,'');
    await tx`update app.collection_tasks set status=${plan.status},result=${result}::jsonb,finished_at=clock_timestamp() where id=${t.id!}`;
    await tx`update app.collection_retries set status='resolved',retry_at=null,updated_at=clock_timestamp() where task_id=${t.id!} and status='pending'`;
   });
