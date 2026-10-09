@@ -18,7 +18,7 @@ describe.skipIf(!connection)('durable contract to notice association',()=>{
    expect(await contractNotice('99999104',q)).toBeNull();
    await q`update core.awards set procedure_id=null where ca_notice_id=99999101`;
    expect(await contractNotice('99999104',q)).toBeNull();
-   await q`insert into core.notice_award_sources(ca_notice_id,c_notice_id,source_url,source_hash,evidence,fetched_at) values(99999101,99999102,'https://www.e-licitatie.ro/api-pub/fixture','fixture','{"caNoticeId":99999101}',now())`;
+   await q`insert into core.notice_award_sources(ca_notice_id,c_notice_id,notice_namespace,source_url,source_hash,evidence,fetched_at) values(99999101,99999102,'rfq','https://www.e-licitatie.ro/api-pub/fixture','fixture','{"caNoticeId":99999101}',now())`;
    expect(await contractNotice('99999104',q)).toMatchObject({noticeId:'99999102'});
    await q`update core.notices set authority_entity_id=${b!.id} where c_notice_id=99999102`;
    expect(await contractNotice('99999104',q)).toBeNull();

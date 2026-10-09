@@ -218,8 +218,10 @@ export const notices = coreSchema.table(
     id: bigserial("id", { mode: "bigint" }).primaryKey(),
     /** Provenance: raw doc that last populated this row (not unique). */
     rawId: bigint("raw_id", { mode: "bigint" }).notNull(),
-    /** SICAP cNoticeId — natural key, idempotent under replay. */
+    /** Public ID within its source endpoint namespace, never globally unique. */
     cNoticeId: bigint("c_notice_id", { mode: "bigint" }).notNull(),
+    noticeNamespace: text('notice_namespace').generatedAlwaysAs(sql`case when sys_notice_type_id=2 then 'cn' when sys_notice_type_id=6 then 'dc' when sys_notice_type_id=7 then 'pc' when sys_notice_type_id in (12,17,19) then 'rfq' end`).notNull(),
+    internalNoticeId: bigint('internal_notice_id',{mode:'bigint'}),
     noticeNo: text("notice_no"),
     procedureId: text("procedure_id"),
     title: text("title"),
@@ -241,7 +243,8 @@ export const notices = coreSchema.table(
     hasLots: boolean("has_lots"),
   },
   (t) => [
-    uniqueIndex("notices_c_notice_id_uq").on(t.cNoticeId),
+    uniqueIndex("notices_namespace_public_id_uq").on(t.noticeNamespace,t.cNoticeId),
+    index("notices_public_id_idx").on(t.cNoticeId),
     index("notices_authority_idx").on(t.authorityEntityId),
     index("notices_procedure_authority_idx").on(t.procedureId,t.authorityEntityId),
     index("notices_cpv_idx").on(t.cpvCode),
@@ -703,6 +706,7 @@ export const riskThresholds = coreSchema.table(
 export const noticeAwardSources = coreSchema.table('notice_award_sources', {
  caNoticeId:bigint('ca_notice_id',{mode:'bigint'}).notNull(),
  cNoticeId:bigint('c_notice_id',{mode:'bigint'}).notNull(),
+ noticeNamespace:text('notice_namespace').notNull(),
  sourceUrl:text('source_url').notNull(), sourceHash:text('source_hash').notNull(), evidence:jsonb('evidence').notNull(),
  fetchedAt:timestamp('fetched_at',{withTimezone:true}).notNull(),
-},t=>[primaryKey({columns:[t.caNoticeId,t.cNoticeId]})]);
+},t=>[primaryKey({columns:[t.caNoticeId,t.noticeNamespace,t.cNoticeId]})]);

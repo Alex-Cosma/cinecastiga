@@ -449,6 +449,13 @@
       "when": 1791549995645,
       "tag": "0063_collection_running_index",
       "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1791574102336,
+      "tag": "0064_notice_namespace_identity",
+      "breakpoints": true
     }
   ]
 }

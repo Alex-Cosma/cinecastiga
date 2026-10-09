@@ -3,6 +3,18 @@ import {planResponse,task} from './plan.js';
 const end='2026-09-25';
 const da=task('fixture','da','da',{from:'2026-07-01',to:end,authorityId:7848,page:0});
 describe('durable recovery plans (no network)',()=>{
+ it('keeps overlapping participation counters in one page and across pages without merging their work',()=>{
+  const t=task('fixture','tenders','list',{from:end,to:end,page:0});
+  const item=(id:number,type:number)=>({cNoticeId:id,sysNoticeTypeId:type,noticeStateDate:end+'T12:00:00+03:00'});
+  const r=planResponse(t,{total:2,items:[item(100004524,2),item(100004524,17)]},[],end);
+  expect(r.docs.map(d=>d.externalId)).toEqual(['tender:cn:100004524','tender:rfq:100004524']);
+  expect(new Set(r.children.map(t=>t.key)).size).toBe(2);
+  const first=planResponse(t,{total:101,items:Array.from({length:100},(_,i)=>item(i+1,2))},[],end);
+  const next=first.children.find(t=>t.kind==='list')!;
+  expect(planResponse(next,{total:101,items:[item(1,17)]},[first.result as any],end).status).toBe('complete');
+  expect(()=>planResponse(next,{total:101,items:[item(1,2)]},[first.result as any],end)).toThrow('repetat');
+  expect(()=>planResponse(t,{total:2,items:[item(1,12),item(1,17)]},[],end)).toThrow('repetat');
+ });
  it('archives valid DA only within the selected finalization window',()=>{
   const r=planResponse(da,{total:1,items:[{directAcquisitionId:123,finalizationDate:'2026-07-01T12:00:00+03:00'}]},[],end);
   expect(r.docs[0]?.externalId).toBe('da:123');expect(r.status).toBe('complete');

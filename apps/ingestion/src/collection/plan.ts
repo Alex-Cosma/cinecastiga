@@ -1,12 +1,12 @@
 import {planNoticeDetail} from './notice-details.js';
-import {NOTICE_TYPE_IDS, noticeIdOf, type NoticeDetailParams, type NoticeListItem} from '@seap/scraper-clients';
+import {NOTICE_TYPE_IDS, noticeIdOf, participationKey,noticeArchiveKey, type NoticeDetailParams, type NoticeListItem} from '@seap/scraper-clients';
 import {addDays,bucharestDayOf} from '../scrape/window.js';
 import {redactPayload} from '../scrape/redact.js';
 import type {ArchivableDocument} from '../scrape/archive.js';
 import {isDeepStrictEqual} from 'node:util';
 export type Stream='da'|'tenders'|'awards'|'catalogue';
 export interface Task {id?:number;batch_id:string;key:string;partition:string;stream:Stream;kind:'da'|'list'|'detail'|'contracts'|'catalogue';params:{from?:string;to?:string;page:number;authorityId?:number;noticeId?:number}&Partial<NoticeDetailParams>;status?:string;priority:number;error?:string}
-export interface PageResult {total:number;ids:number[];items?:Record<string,unknown>[]}
+export interface PageResult {total:number;ids:number[];identities?:string[];items?:Record<string,unknown>[]}
 export interface TaskPlan {status:'complete'|'split';result:PageResult|{detail:true};docs:ArchivableDocument[];children:Task[]}
 const integer=(x:unknown):x is number=>Number.isSafeInteger(x)&&Number(x)>0;
 const emptyPart=(v:unknown)=>v==null||v===''||(Array.isArray(v)&&v.length===0);
@@ -56,7 +56,8 @@ function mergeContractPageRow(a:Record<string,unknown>,b:Record<string,unknown>)
  return merged;
 }
 export function task(batch:string,stream:Stream,kind:Task['kind'],params:Task['params'],priority=10):Task{
- const partition=[stream,kind,params.authorityId??params.noticeId??'',params.from??'',params.to??''].join(':')+(kind==='detail'&&params.part&&params.part!=='root'?`:${params.part}:${params.lotId??''}`:'');
+ const identity=stream==='tenders'&&kind==='detail'?participationKey(params.noticeId!,params.noticeType):params.authorityId??params.noticeId??'';
+ const partition=[stream,kind,identity,params.from??'',params.to??''].join(':')+(kind==='detail'&&params.part&&params.part!=='root'?`:${params.part}:${params.lotId??''}`:'');
  return {batch_id:batch,key:`${partition}:${params.page}`,partition,stream,kind,params,priority};
 }
 const document=(stream:Stream,id:number,version:string,payload:unknown):ArchivableDocument=>({source:'elicitatie',externalId:`${stream==='tenders'?'tender':stream==='awards'?'award':'da'}:${id}`,endpointVersion:version,payload});
@@ -86,7 +87,11 @@ export function planResponse(t:Task,value:unknown,previous:PageResult[],batchEnd
  const ids=e.items.map(i=>t.kind==='da'?i.directAcquisitionId:t.kind==='catalogue'?i.id:t.kind==='contracts'?i.caNoticeContractId??i.contractId:noticeIdOf(i as NoticeListItem));
  if(ids.some(id=>!integer(id)))throw Error('Lista conține identificatori lipsă sau nevalizi.');
  const validIds=ids as number[];
- if(new Set(validIds).size!==validIds.length||(!contracts&&new Set([...before,...validIds]).size!==before.length+validIds.length))throw Error('SEAP a repetat înregistrări între pagini.');
+ const scoped=t.kind==='list'&&t.stream==='tenders';
+ const identities=scoped?e.items.map((i,index)=>participationKey(validIds[index]!,i.sysNoticeTypeId)):undefined;
+ if(scoped&&previous.some(p=>!p.identities||p.identities.length!==p.ids.length))throw Error('Identitatea paginilor istorice trebuie reconciliată înainte de continuare.');
+ const uniqueCurrent=identities??validIds,uniqueBefore=scoped?previous.flatMap(p=>p.identities!):before;
+ if(new Set<string|number>(uniqueCurrent).size!==uniqueCurrent.length||(!contracts&&new Set([...uniqueBefore,...uniqueCurrent]).size!==uniqueBefore.length+uniqueCurrent.length))throw Error('SEAP a repetat înregistrări între pagini.');
  const expected=Math.min(pageSize,Math.max(0,e.total-t.params.page*pageSize));
  if(contracts?e.items.length<expected:e.items.length!==expected)throw Error('Numărul de înregistrări nu corespunde totalului SEAP.');
  const docs:ArchivableDocument[]=[],children:Task[]=[];
@@ -101,7 +106,7 @@ export function planResponse(t:Task,value:unknown,previous:PageResult[],batchEnd
    if(!(types as readonly number[]).includes(Number(i.sysNoticeTypeId)))throw Error('Tip de anunț în afara fluxului solicitat.');
    if(typeof i.noticeStateDate!=='string'||bucharestDayOf(i.noticeStateDate)<t.params.from!)throw Error('Filtrul de publicare nu este respectat.');
    if(typeof i.publicationDate==='string'&&bucharestDayOf(i.publicationDate)!==t.params.from)throw Error('Anunț din afara zilei solicitate.');
-   const id=noticeIdOf(i as NoticeListItem);docs.push(document(t.stream,id,`${prefix}-list:v1`,i));
+   const id=noticeIdOf(i as NoticeListItem);docs.push({source:'elicitatie',externalId:noticeArchiveKey(t.stream as 'tenders'|'awards',id,i.sysNoticeTypeId),endpointVersion:`${prefix}-list:v1`,payload:i});
    const detail=task(t.batch_id,t.stream,'detail',{noticeId:id,page:0,noticeType:Number(i.sysNoticeTypeId),noticeVersion:Number(i.sysNoticeVersionId),...(integer(i.noticeId)?{internalNoticeId:i.noticeId}:{}),...(typeof i.noticeNo==='string'?{noticeNo:i.noticeNo}:{})},2);
    children.push(detail);
    if(t.stream==='awards')children.push(task(t.batch_id,t.stream,'contracts',{noticeId:id,page:0},1));
@@ -121,7 +126,7 @@ export function planResponse(t:Task,value:unknown,previous:PageResult[],batchEnd
   contractItems=[...unique.values()];
  }
  if(more)children.push(task(t.batch_id,t.stream,t.kind,{...t.params,page:t.params.page+1},0));
- const result:PageResult={total:e.total,ids:validIds};
+ const result:PageResult={total:e.total,ids:validIds,...(identities?{identities}:{})};
  if(t.kind==='contracts'){
   result.items=redactPayload(e.items,'award-contracts:v1') as Record<string,unknown>[];
   if(!more)docs.push(document('awards',t.params.noticeId!,'award-contracts:v1',{caNoticeId:t.params.noticeId,total:e.total,items:contractItems}));

@@ -17,7 +17,7 @@ export async function recoveryStatus(q:DbSql,batchId:string,progress:RecoveryCou
   ), contract_pages as (
    select greatest(1,ceil(total/200)) work from tasks where kind='contracts' and (params->>'page')::int=0 and status='complete'
   ), detail_work as (
-   select stream,params->>'noticeId' notice,count(*)::numeric work from tasks where kind='detail' group by stream,params->>'noticeId'
+   select stream,(case when stream='tenders' then case (params->>'noticeType')::int when 2 then 'cn' when 6 then 'dc' when 7 then 'pc' else 'rfq' end else 'award' end)||':'||(params->>'noticeId') notice,count(*)::numeric work from tasks where kind='detail' group by stream,notice
   ), detail_mean as (
    select stream,avg(work) work from detail_work group by stream
   ), day_work as (
@@ -42,10 +42,10 @@ export async function recoveryStatus(q:DbSql,batchId:string,progress:RecoveryCou
   from boundary`;
  const catalogue=progress.find(s=>s.stream==='catalogue');
  const catalogueReady=!!catalogue&&Number(catalogue.complete)>0&&!['pending','running','failed','deferred'].some(k=>Number(catalogue[k as keyof RecoveryCounts])>0);
- const layers=await q`with notices as (select stream,kind,params->>'noticeId' notice,
+ const layers=await q`with notices as (select stream,kind,(case when stream='tenders' then case (params->>'noticeType')::int when 2 then 'cn' when 6 then 'dc' when 7 then 'pc' else 'rfq' end else 'award' end)||':'||(params->>'noticeId') notice,
     bool_and(status='complete') complete,bool_or(status in ('failed','deferred')) gap,
     bool_or(kind='detail' and coalesce(params->>'part','root') in ('root','general','lots') and status<>'complete') discovering
-   from app.collection_tasks where batch_id=${batchId} and kind in ('detail','contracts') group by stream,kind,params->>'noticeId')
+   from app.collection_tasks where batch_id=${batchId} and kind in ('detail','contracts') group by stream,kind,notice)
    select stream,kind,count(*)::int total,count(*) filter(where complete)::int complete,count(*) filter(where gap)::int gaps,
    count(*) filter(where not complete and not gap)::int pending,bool_or(discovering) discovering from notices group by stream,kind order by stream,kind`;
  const forecast=recoveryForecast({samples:samples as unknown as RecoverySample[],progress,catalogueReady,detailDiscoveryPending:layers.some(r=>r.discovering),
