@@ -456,6 +456,13 @@
       "when": 1791574102336,
       "tag": "0064_notice_namespace_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1791578083283,
+      "tag": "0065_publication_revalidation",
+      "breakpoints": true
     }
   ]
 }

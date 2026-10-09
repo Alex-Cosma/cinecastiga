@@ -1,0 +1,66 @@
+{
+  "scope": "Copied affected cohort only; NOT a complete publication validation",
+  "before": {
+    "members": 16090,
+    "staleMembers": 8854,
+    "invalidDecisions": 0,
+    "examples": [
+      "361507",
+      "361510",
+      "361512",
+      "361513",
+      "361514",
+      "361515",
+      "361516",
+      "361517",
+      "361518",
+      "361519"
+    ],
+    "valid": false
+  },
+  "rejection": "35 approved publication groups need review. Conflicting publication of an approved contract: 060dd534836a83a104a352f636d3f6835a684a12fb2469c2ba9bc8fc1f84fc1c; Conflicting publication of an approved contract: 08ce59c84dadaf36a346e8ec5d4ae738cbc8cd06b8d36b0c1a4b43cf14b7f5bb; Conflicting publication of an approved contract: 0d7fffcc0c738a2718aa50202c9f90b808a953a2c2f226a011633216d7fe34d0",
+  "afterFailure": {
+    "revisions": 0,
+    "members": 16090
+  },
+  "partialPositivePath": {
+    "changedGroups": 8010,
+    "extendedGroups": 4390,
+    "quality": {
+      "members": 20411,
+      "staleMembers": 0,
+      "invalidDecisions": 0,
+      "examples": [],
+      "valid": true
+    },
+    "impact": {
+      "duplicates": 11340,
+      "reduction_ron": "11541181681.93",
+      "additional_duplicates": 4072,
+      "additional_reduction_ron": "4735643383.23"
+    },
+    "rawBoundary": "18294756",
+    "canonicalIdsChanged": 0,
+    "rollback": true,
+    "excludedAmbiguousGroups": 35
+  },
+  "after": {
+    "members": 16090,
+    "staleMembers": 8854,
+    "invalidDecisions": 0,
+    "examples": [
+      "361507",
+      "361510",
+      "361512",
+      "361513",
+      "361514",
+      "361515",
+      "361516",
+      "361517",
+      "361518",
+      "361519"
+    ],
+    "valid": false
+  },
+  "ms": 34678
+}
