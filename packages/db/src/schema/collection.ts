@@ -26,7 +26,11 @@ export const collectionRequests = appSchema.table('collection_requests', {
  status: integer('status'), outcome: text('outcome').notNull().default('running'), error: text('error'),
  records: integer('records'), bytes: bigint('bytes',{mode:'number'}),
  startedAt: timestamp('started_at',{withTimezone:true}).notNull().defaultNow(), finishedAt: timestamp('finished_at',{withTimezone:true}),
-},t=>[index('collection_requests_started').on(t.startedAt),index('collection_requests_stream_started').on(t.stream,t.startedAt),check('collection_request_outcome',sql`${t.outcome} in ('running','success','failed','interrupted')`)]);
+},t=>[index('collection_requests_started').on(t.startedAt),index('collection_requests_stream_started').on(t.stream,t.startedAt),
+ // Admission checks ownership of active requests while holding the shared control row.
+ // Keep this lookup independent of the size of the historical request ledger.
+ index('collection_requests_running').on(t.id).where(sql`${t.outcome} = 'running'`),
+ check('collection_request_outcome',sql`${t.outcome} in ('running','success','failed','interrupted')`)]);
 export const collectionAudit = appSchema.table('collection_audit', {
  id: bigserial('id',{mode:'number'}).primaryKey(), actorId:text('actor_id').notNull(), actorName:text('actor_name').notNull(),
  action:text('action').notNull(), before:jsonb('before').notNull(), after:jsonb('after').notNull(),
