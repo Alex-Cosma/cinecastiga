@@ -40,4 +40,14 @@ These tasks do not automatically expand to forms, lots, contract inventories or 
 
 Tested218ingestion units,11isolated inventory/collector integration tests and8web recovery-status integration tests. Ingestion build/typecheck and web typecheck passed.
 
-Next deployment adds this mode. Run the16partitionpilot (eight days, both families), verify exact results, then seed all5,844daily partitions for2018–2025. More pages are discovered from actual totals. Operations and read-only report are in `scripts/operations/20261009-notice-identity/`. No historical sweep has started at this checkpoint. A completed notice-list inventory must never be described as complete contract/form/DA/PDF collection.
+## Historical scan activated — 9 October, 22:50 RO
+
+`b95cc8a` is on main and live; CI/deploy37982381860passed. The16partitionpilot (eight days, both families) completed24pages with exact counts, zero conflicts and34additional missing participation identities. All source records were archived.
+
+Seeded all5,844daily partitions for2018–2025, newest dates first. Continuation pages are created from source totals. The scan is running durably in the production collector, not a local terminal; it survives this session ending. Rate settings unchanged:94enabled proxies,200/min ceiling,10simultaneous,35–45seconds/IP. Controlrevision103,maintenance=true,paused=false,no global block.
+
+The four inspected SEAP400`EnlistTransaction` errors received one further manual retry after five minutes, with a one-time audit marker. Two recovered; two remain unavailable (tasks100727and535971). Six other detail requests are still in their bounded automatic retry cycle at this checkpoint.70of the original76tasks have completed. All115contract inventories for2022-04-21completed:1,382contract-notice memberships;113of115form graphs complete so far. These are archived source records, not newly published statistics.
+
+Early full-scan observation:1,586additional distinct participation identities missing from normalized data, **all1,586sharing their public numeric ID with another namespace already stored**. This is a provisional count, not a final historical total. The scan is preserving their correct sources for normalization. Missing participation metadata is not proof that corresponding awarded contract values were absent.
+
+Operations and read-only reports are in `scripts/operations/20261009-notice-identity/`. `known-gap-status.sql` distinguishes original retries and historical-day graphs; `inventory-status.sql` distinguishes per-year reconciled days, matched/missing/unverified identities and ongoing work. Current source responses may yield further gaps or validation stops. A completed notice-list inventory must never be described as complete contract/form/DA/PDF collection. **Full historical reconciliation is still running, not complete.**
