@@ -26,10 +26,18 @@ export function contractIdentitySignature(c:IdentityContract) {
 }
 /** Equality is a candidate, not an approval. Archive verification never changes totals. */
 export function assessContractIdentity(members:IdentityContract[],archives:ArchivedAward[]) {
+ return assessPublications(members,archives,false);
+}
+/** Additional publications require the same complete source proof for EVERY
+ * member. This does not authorize grouping a previously unapproved contract. */
+export function assessContractPublicationGroup(members:IdentityContract[],archives:ArchivedAward[]) {
+ return assessPublications(members,archives,true);
+}
+function assessPublications(members:IdentityContract[],archives:ArchivedAward[],extended:boolean) {
  archives=[...archives].sort((a,b)=>`${a.source}:${a.rawId}:${a.hash}`.localeCompare(`${b.source}:${b.rawId}:${b.hash}`));
  const ordered=[...members].sort((a,b)=>a.id.localeCompare(b.id,'en',{numeric:true}));
  const reasons:string[]=[];
- if(ordered.length!==2||new Set(ordered.map(x=>x.noticeId)).size!==2)reasons.push('ambiguous_multiplicity');
+ if((extended?ordered.length<2:ordered.length!==2)||new Set(ordered.map(x=>x.noticeId)).size!==ordered.length||new Set(ordered.map(x=>x.publicId)).size!==ordered.length||new Set(ordered.map(x=>x.id)).size!==ordered.length)reasons.push('ambiguous_multiplicity');
  if(new Set(ordered.map(contractIdentitySignature)).size!==1)reasons.push('different_contract_fields');
  for(const c of ordered) {
   if(!c.number?.trim()||!c.date||!c.title?.trim()||!c.lots?.trim()||!c.cpv||!c.procedure||!c.acquisition||!c.authority||!cui(c.authorityCui)||!c.winners.length||c.winnerCuis.some(x=>!cui(x))||c.currency!=='RON'||numeric(c.value)===null)reasons.push('incomplete_identity');
@@ -69,9 +77,9 @@ export function assessContractIdentity(members:IdentityContract[],archives:Archi
    url:`https://www.e-licitatie.ro/pub/notices/ca-notices/view-c/${c.noticeId}`});
  }
  if(procedures.length===ordered.length&&new Set(procedures).size!==1)reasons.push('different_procedures');
- if(proofs.length===2&&JSON.stringify([proofs[0]!.contractType,proofs[0]!.conditions])!==JSON.stringify([proofs[1]!.contractType,proofs[1]!.conditions]))reasons.push('different_source_conditions');
+ if(proofs.length>=2&&new Set(proofs.map(p=>JSON.stringify([p.contractType,p.conditions]))).size!==1)reasons.push('different_source_conditions');
  const unique=[...new Set(reasons)].sort();
  const status=unique.length===0?'source_verified':unique.every(r=>['missing_archive','incomplete_identity','archive_authority_unverified','missing_procedure'].includes(r))?'needs_evidence':'conflict';
  const id=hash(ordered.map(x=>x.publicId));
- return {id,fingerprint:hash([1,ordered,proofs,unique,status]),status,reasons:unique,members:ordered,proofs,methodology:'contract-identity-1',decision:'unreviewed' as const};
+ return {id,fingerprint:hash([extended?2:1,ordered,proofs,unique,status]),status,reasons:unique,members:ordered,proofs,methodology:extended?'contract-identity-2':'contract-identity-1',decision:'unreviewed' as const};
 }

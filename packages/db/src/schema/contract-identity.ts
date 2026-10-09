@@ -1,5 +1,5 @@
 import {sql} from 'drizzle-orm';
-import {bigint,boolean,check,index,jsonb,text,timestamp} from 'drizzle-orm/pg-core';
+import {bigint,bigserial,boolean,check,index,jsonb,text,timestamp,uuid} from 'drizzle-orm/pg-core';
 import {martsSchema} from './marts.js';
 /** Evidence inventory only: no candidate implicitly removes a source contract. */
 export const contractIdentityCandidates=martsSchema.table('contract_identity_candidates',{
@@ -25,3 +25,13 @@ export const contractIdentityMembers=martsSchema.table('contract_identity_member
  candidateId:text('candidate_id').notNull().references(()=>contractIdentityDecisions.candidateId),
  snapshotHash:text('snapshot_hash').notNull(),
 },t=>[index('contract_identity_members_candidate_idx').on(t.candidateId)]);
+
+/** Append-only record of source-verified extensions and fingerprint renewals.
+ * The original approval and every observation remain available. */
+export const contractIdentityRevisions=martsSchema.table('contract_identity_revisions',{
+ id:bigserial('id',{mode:'bigint'}).primaryKey(),
+ candidateId:text('candidate_id').notNull().references(()=>contractIdentityCandidates.id),
+ processingRunId:uuid('processing_run_id').notNull(),
+ previousSnapshot:jsonb('previous_snapshot').notNull(),nextSnapshot:jsonb('next_snapshot').notNull(),
+ verifiedAt:timestamp('verified_at',{withTimezone:true}).notNull().defaultNow(),
+},t=>[index('contract_identity_revisions_candidate_idx').on(t.candidateId)]);

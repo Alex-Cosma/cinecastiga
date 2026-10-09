@@ -53,7 +53,12 @@ export async function readContractIdentityQuality(q: IdentitySql) {
     left join marts.contract_identity_observations o on o.fingerprint=d.fingerprint and o.candidate_id=d.candidate_id
     where c.active is distinct from true or c.status is distinct from 'source_verified' or c.fingerprint is distinct from d.fingerprint
       or o.evidence is distinct from c.evidence
-      or (select count(*) from marts.contract_identity_members m where m.candidate_id=d.candidate_id)<>2
+      or jsonb_array_length(c.evidence->'members')<2
+      or (jsonb_array_length(c.evidence->'members')>2 and c.evidence->>'methodology' is distinct from 'contract-identity-2')
+      or (select count(distinct e->>'id') from jsonb_array_elements(c.evidence->'members') e)<>jsonb_array_length(c.evidence->'members')
+      or (select count(*) from marts.contract_identity_members m where m.candidate_id=d.candidate_id)<>jsonb_array_length(c.evidence->'members')
+      or exists(select 1 from jsonb_array_elements(c.evidence->'members') e
+        where not exists(select 1 from marts.contract_identity_members m where m.candidate_id=d.candidate_id and m.contract_id=(e->>'id')::bigint))
       or not exists(select 1 from marts.contract_identity_members m where m.candidate_id=d.candidate_id and m.contract_id=d.canonical_contract_id)`;
   return {members:members.length,staleMembers:stale.length,invalidDecisions:invalid.length,examples:stale.slice(0,10),valid:!stale.length&&!invalid.length};
 }
