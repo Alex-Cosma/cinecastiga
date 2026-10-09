@@ -14,7 +14,7 @@ export async function contractNotice(nid:string,q:DbSql=documentDb()):Promise<Do
    join core.notices n on n.authority_entity_id=a.authority_entity_id and n.sys_notice_type_id=17
    where c.ca_notice_contract_id=${nid} and (
      (a.procedure_id is not null and a.procedure_id=n.procedure_id)
-     or exists(select 1 from core.notice_award_sources l where l.ca_notice_id=a.ca_notice_id and l.c_notice_id=n.c_notice_id)
+     or exists(select 1 from core.notice_award_sources l where l.ca_notice_id=a.ca_notice_id and l.c_notice_id=n.c_notice_id and l.notice_namespace=n.notice_namespace)
    ) limit 2`;
  if(rows.length!==1)return null;
  const r=rows[0]!;return {key:`17:${r.notice_id}`,noticeId:r.notice_id,noticeType:17,noticeNo:r.notice_no,title:r.title??r.notice_no,url:`https://www.e-licitatie.ro/pub/notices/simplified-notice/v2/view/${r.notice_id}`};

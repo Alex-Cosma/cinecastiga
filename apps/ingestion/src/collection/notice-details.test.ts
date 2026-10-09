@@ -30,7 +30,7 @@ describe('complete notice detail graph',()=>{
   const next=page.children.at(-1)!;
   const last=plan(next,{total:101,items:[{noticeLotId:500}]},[page.result as PageResult]);
   expect(last.children[0]!.params.dfNoticeId).toBe(300);
-  expect(last.docs[0]?.externalId).toBe('tender:100:lots:1');
+  expect(last.docs[0]?.externalId).toBe('tender:cn:100:lots:1');
   expect(()=>plan(next,{total:101,items:[{noticeLotId:400}]},[page.result as PageResult])).toThrow('paginarea');
   expect(()=>plan(next,{total:102,items:[{noticeLotId:500}]},[page.result as PageResult])).toThrow('paginarea');
  });

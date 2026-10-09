@@ -6,6 +6,7 @@ import type { Db } from "@seap/db";
 import {
   listNotices,
   noticeIdOf,
+  noticeArchiveKey,
   NOTICE_TYPE_IDS,
   type ElicitatieClient,
   type ListEnvelope,
@@ -189,7 +190,7 @@ async function scrapeNoticesWindowInner(
         for (const item of envelope.items) {
           docs.push({
             source: "elicitatie",
-            externalId: `${prefix}:${noticeIdOf(item)}`,
+            externalId: noticeArchiveKey(opts.family,noticeIdOf(item),item.sysNoticeTypeId),
             endpointVersion: `${prefix}-list:v1`,
             payload: item,
           });

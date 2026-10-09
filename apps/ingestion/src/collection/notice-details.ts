@@ -1,4 +1,4 @@
-import {type NoticeDetailParams,type NoticeDetailPart} from '@seap/scraper-clients';
+import {noticeArchiveKey,type NoticeDetailParams,type NoticeDetailPart} from '@seap/scraper-clients';
 import {task,type Task,type TaskPlan,type PageResult} from './plan.js';
 /** A rejected public detail is a visible gap for this notice, never a completed archive. */
 export class NoticeDetailValidationError extends Error {}
@@ -64,5 +64,5 @@ export function planNoticeDetail(t:Task,value:unknown,previous:PageResult[]):Tas
   if(part==='lot'&&v.sysNoticeTypeId)identity(v.sysNoticeTypeId,p.noticeType,'lotului');
  }
  const prefix=award?'award':'tender';
- return {status:'complete',result,children,docs:[{source:'elicitatie',externalId:`${prefix}:${p.noticeId}${part==='root'?'':`:${part}${p.lotId?`:${p.lotId}`:''}${part==='lots'?`:${p.page}`:''}`}`,endpointVersion:`${prefix}-detail-${part}:v2`,payload:{noticeId:p.noticeId,internalNoticeId:p.internalNoticeId,noticeType:p.noticeType,noticeNo:p.noticeNo,part,page:p.page,...(p.lotId?{lotId:p.lotId}:{}),data:value}}]};
+ return {status:'complete',result,children,docs:[{source:'elicitatie',externalId:`${noticeArchiveKey(award?'awards':'tenders',p.noticeId,p.noticeType)}${part==='root'?'':`:${part}${p.lotId?`:${p.lotId}`:''}${part==='lots'?`:${p.page}`:''}`}`,endpointVersion:`${prefix}-detail-${part}:v2`,payload:{noticeId:p.noticeId,internalNoticeId:p.internalNoticeId,noticeType:p.noticeType,noticeNo:p.noticeNo,part,page:p.page,...(p.lotId?{lotId:p.lotId}:{}),data:value}}]};
 }

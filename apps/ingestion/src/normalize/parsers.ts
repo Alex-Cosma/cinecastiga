@@ -1,6 +1,7 @@
 import { normalizeContractMoney } from "./contract-money.js";
 import { reviewedWinnerIdentity } from './reviewed-winner.js';
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
+import {participationNamespace} from '@seap/scraper-clients';
 import { z } from "zod";
 import {
   awards,
@@ -65,6 +66,7 @@ export interface Parser {
 const tenderListSchema = z
   .object({
     cNoticeId: z.number(),
+    noticeId: z.number().int().positive().nullish(),
     noticeNo: z.string().nullish(),
     contractTitle: z.string().nullish(),
     contractingAuthorityNameAndFN: z.string().nullish(),
@@ -139,24 +141,31 @@ async function loadNoticeLike(
       .values({ ...awardCols, caNoticeId: BigInt(p.cNoticeId) })
       .onConflictDoUpdate({ target: awards.caNoticeId, set: awardCols });
   } else {
-    await ctx.tx
+    participationNamespace(p.sysNoticeTypeId);
+    const saved=await ctx.tx
       .insert(notices)
       .values({
         ...common,
         cNoticeId: BigInt(p.cNoticeId),
+        internalNoticeId:p.noticeId==null?null:BigInt(p.noticeId),
         isOnline: p.isOnline ?? null,
         procedureType: labelText(p.sysProcedureType),
         hasLots: p.hasLots ?? null,
       })
       .onConflictDoUpdate({
-        target: notices.cNoticeId,
+        target: [notices.noticeNamespace,notices.cNoticeId],
         set: {
           ...common,
+          noticeNo:sql`coalesce(excluded.notice_no,${notices.noticeNo})`,
+          internalNoticeId:sql`coalesce(excluded.internal_notice_id,${notices.internalNoticeId})`,
           isOnline: p.isOnline ?? null,
           procedureType: labelText(p.sysProcedureType),
           hasLots: p.hasLots ?? null,
         },
-      });
+        setWhere:sql`(${notices.noticeNo} is null or excluded.notice_no is null or ${notices.noticeNo}=excluded.notice_no)
+          and (${notices.internalNoticeId} is null or excluded.internal_notice_id is null or ${notices.internalNoticeId}=excluded.internal_notice_id)`,
+      }).returning({id:notices.id});
+    if(!saved.length)throw Error('Identitatea anunțului diferă în același namespace; înregistrarea existentă a fost păstrată.');
   }
 }
 

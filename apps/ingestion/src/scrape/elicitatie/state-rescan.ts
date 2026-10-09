@@ -4,6 +4,7 @@ import { rawDocuments } from "@seap/db";
 import {
   listNotices,
   noticeIdOf,
+  noticeArchiveKey,
   NOTICE_TYPE_IDS,
   type NoticeListItem,
 } from "@seap/scraper-clients";
@@ -78,7 +79,7 @@ export async function rescanNoticeStates(
             for (const item of changedItems) {
               docs.push({
                 source: "elicitatie",
-                externalId: `${prefix}:${noticeIdOf(item)}`,
+                externalId: noticeArchiveKey(familyKey,noticeIdOf(item),item.sysNoticeTypeId),
                 endpointVersion: `${prefix}-list:v1`,
                 payload: item,
               });
@@ -125,7 +126,8 @@ async function findChangedItems(
   prefix: string,
   items: NoticeListItem[],
 ): Promise<NoticeListItem[]> {
-  const ids = items.map((i) => `${prefix}:${noticeIdOf(i)}`);
+  const family=prefix==='tender'?'tenders':'awards';
+  const ids = items.flatMap(i=>[noticeArchiveKey(family,noticeIdOf(i),i.sysNoticeTypeId),`${prefix}:${noticeIdOf(i)}`]);
   const rows = await deps.db
     .select({
       externalId: rawDocuments.externalId,
@@ -144,14 +146,13 @@ async function findChangedItems(
 
   const latestStateDate = new Map<string, string | undefined>();
   for (const row of rows) {
-    if (!latestStateDate.has(row.externalId)) {
-      const payload = row.payload as { noticeStateDate?: string };
-      latestStateDate.set(row.externalId, payload.noticeStateDate);
-    }
+    const payload = row.payload as NoticeListItem;
+    const identity=noticeArchiveKey(family,noticeIdOf(payload),payload.sysNoticeTypeId);
+    if (!latestStateDate.has(identity)) latestStateDate.set(identity,payload.noticeStateDate);
   }
 
   return items.filter((item) => {
-    const key = `${prefix}:${noticeIdOf(item)}`;
+    const key = noticeArchiveKey(family,noticeIdOf(item),item.sysNoticeTypeId);
     if (!latestStateDate.has(key)) return true; // never archived — take it
     return latestStateDate.get(key) !== item.noticeStateDate;
   });
