@@ -7,6 +7,15 @@ const db=url?createDb(url):null;afterAll(async()=>{await db?.sql.end()});
 describe.skipIf(!db)('real recovery metadata aggregation',()=>{
  beforeEach(async()=>{const q=db!.sql;await q`truncate app.collection_tasks,app.collection_batches cascade`;await q`insert into app.collection_control(id) values(1) on conflict do nothing`;await q`insert into app.collection_proxy_control(id) values(1) on conflict do nothing`;});
  it('handles no batch without breaking the admin snapshot',async()=>{expect((await collectionStatus(db!.sql)).forecast).toBeNull();});
+ it('accepts list-only inventory alongside full recovery without inflating it into detail work',async()=>{
+  const q=db!.sql;
+  await q`insert into app.collection_batches(id,end_day) values('inventory','2026-10-08')`;
+  await q`insert into app.collection_tasks(batch_id,key,partition,stream,kind,status,params,result)
+   values('inventory','historical','historical','tenders','list','complete','{"from":"2020-01-01","page":0,"inventoryOnly":true}','{"total":100}')`;
+  const data=await collectionStatus(q);
+  expect(data.forecast!.sampled.find(s=>s.stream==='tenders')).toEqual({stream:'tenders',sampled:1,units:1});
+  expect(data.forecast!.layers).toEqual([]);
+ });
  it('counts closed split authorities once and excludes failed/deferred work',async()=>{const q=db!.sql;await q`insert into app.collection_batches(id,end_day,created_at) values('fixture','2026-09-25',now()-interval '2 days')`;
  for(const [key,stream,kind,status,params,result] of [
  ['cat','catalogue','catalogue','complete',{page:0},{total:1}],

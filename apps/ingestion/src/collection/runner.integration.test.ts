@@ -11,6 +11,14 @@ describe.skipIf(!url)('recovery manifest (isolated DB, no source traffic)',()=>{
  beforeEach(async()=>{await q`truncate app.collection_tasks,app.collection_batches cascade`;await q`truncate app.collection_requests`;await q`update app.collection_control set paused=false,maintenance=false,blocked_reason=null,blocked_until=null,paused_streams='[]',daily_limit=null`;
  await q`insert into app.collection_batches(id,end_day,next_stream) values('fixture','2026-09-25',0)`;});
  afterAll(async()=>{await q.end();});
+ it('archives inventory evidence and comparison without enqueuing a full historical detail sweep',async()=>{
+  await insertTasks(q,[task('fixture','tenders','list',{from:'2020-01-01',to:'2020-01-01',page:0,inventoryOnly:true})]);
+  await recoveryStep(q,async()=>({total:1,items:[{cNoticeId:99988449,noticeNo:'CN-inventory',sysNoticeTypeId:2,noticeStateDate:'2020-01-01T12:00:00+02:00'}]}));
+  const rows=await q`select status,result from app.collection_tasks`;
+  expect(rows).toHaveLength(1);expect(rows[0]?.status).toBe('complete');
+  expect(rows[0]?.result.inventory).toEqual({checked:1,matched:0,missing:[{key:'cn:99988449',noticeNo:'CN-inventory'}],unverified:[]});
+  expect((await q`select count(*)::int n from raw.raw_documents where external_id='tender:cn:99988449'`)[0]?.n).toBe(1);
+ });
  it('commits archive, checkpoint and child tasks together and does not repeat a finished task',async()=>{
   await insertTasks(q,[task('fixture','da','da',{authorityId:7848,from:'2026-07-01',to:'2026-09-25',page:0})]);
   let calls=0;const fetcher=async()=>{calls++;return {total:1,items:[{directAcquisitionId:99123456,finalizationDate:'2026-07-15T12:00:00+03:00'}]};};

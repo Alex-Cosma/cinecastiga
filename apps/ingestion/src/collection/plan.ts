@@ -5,7 +5,7 @@ import {redactPayload} from '../scrape/redact.js';
 import type {ArchivableDocument} from '../scrape/archive.js';
 import {isDeepStrictEqual} from 'node:util';
 export type Stream='da'|'tenders'|'awards'|'catalogue';
-export interface Task {id?:number;batch_id:string;key:string;partition:string;stream:Stream;kind:'da'|'list'|'detail'|'contracts'|'catalogue';params:{from?:string;to?:string;page:number;authorityId?:number;noticeId?:number}&Partial<NoticeDetailParams>;status?:string;priority:number;error?:string}
+export interface Task {id?:number;batch_id:string;key:string;partition:string;stream:Stream;kind:'da'|'list'|'detail'|'contracts'|'catalogue';params:{from?:string;to?:string;page:number;authorityId?:number;noticeId?:number;inventoryOnly?:boolean}&Partial<NoticeDetailParams>;status?:string;priority:number;error?:string}
 export interface PageResult {total:number;ids:number[];identities?:string[];items?:Record<string,unknown>[]}
 export interface TaskPlan {status:'complete'|'split';result:PageResult|{detail:true};docs:ArchivableDocument[];children:Task[]}
 const integer=(x:unknown):x is number=>Number.isSafeInteger(x)&&Number(x)>0;
@@ -56,13 +56,15 @@ function mergeContractPageRow(a:Record<string,unknown>,b:Record<string,unknown>)
  return merged;
 }
 export function task(batch:string,stream:Stream,kind:Task['kind'],params:Task['params'],priority=10):Task{
+ if(params.inventoryOnly&&(kind!=='list'||!['tenders','awards'].includes(stream)))throw Error('Inventory mode supports notice lists only');
  const identity=stream==='tenders'&&kind==='detail'?participationKey(params.noticeId!,params.noticeType):params.authorityId??params.noticeId??'';
- const partition=[stream,kind,identity,params.from??'',params.to??''].join(':')+(kind==='detail'&&params.part&&params.part!=='root'?`:${params.part}:${params.lotId??''}`:'');
+ const partition=[stream,kind,identity,params.from??'',params.to??''].join(':')+(kind==='detail'&&params.part&&params.part!=='root'?`:${params.part}:${params.lotId??''}`:'')+(params.inventoryOnly?':inventory':'');
  return {batch_id:batch,key:`${partition}:${params.page}`,partition,stream,kind,params,priority};
 }
 const document=(stream:Stream,id:number,version:string,payload:unknown):ArchivableDocument=>({source:'elicitatie',externalId:`${stream==='tenders'?'tender':stream==='awards'?'award':'da'}:${id}`,endpointVersion:version,payload});
 /** One task consumes exactly one HTTP attempt. No cursor moves on validation failure. */
 export function planResponse(t:Task,value:unknown,previous:PageResult[],batchEnd:string):TaskPlan{
+ if(t.params.inventoryOnly&&(t.kind!=='list'||!['tenders','awards'].includes(t.stream)))throw Error('Inventory mode supports notice lists only');
  const prefix=t.stream==='tenders'?'tender':'award';
  if(t.kind==='detail'){
   return planNoticeDetail(t,value,previous);
@@ -107,6 +109,9 @@ export function planResponse(t:Task,value:unknown,previous:PageResult[],batchEnd
    if(typeof i.noticeStateDate!=='string'||bucharestDayOf(i.noticeStateDate)<t.params.from!)throw Error('Filtrul de publicare nu este respectat.');
    if(typeof i.publicationDate==='string'&&bucharestDayOf(i.publicationDate)!==t.params.from)throw Error('Anunț din afara zilei solicitate.');
    const id=noticeIdOf(i as NoticeListItem);docs.push({source:'elicitatie',externalId:noticeArchiveKey(t.stream as 'tenders'|'awards',id,i.sysNoticeTypeId),endpointVersion:`${prefix}-list:v1`,payload:i});
+   // Explicit list inventory retains source evidence and exact pagination, but
+   // does not mistake list coverage for complete forms/contracts/PDF coverage.
+   if(t.params.inventoryOnly)continue;
    const detail=task(t.batch_id,t.stream,'detail',{noticeId:id,page:0,noticeType:Number(i.sysNoticeTypeId),noticeVersion:Number(i.sysNoticeVersionId),...(integer(i.noticeId)?{internalNoticeId:i.noticeId}:{}),...(typeof i.noticeNo==='string'?{noticeNo:i.noticeNo}:{})},2);
    children.push(detail);
    if(t.stream==='awards')children.push(task(t.batch_id,t.stream,'contracts',{noticeId:id,page:0},1));
