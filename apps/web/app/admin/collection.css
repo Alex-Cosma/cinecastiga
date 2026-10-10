@@ -157,3 +157,14 @@
 .collection-admin .proxy-selection .proxy-picks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 24px;max-width:720px;margin-top:12px}
 .collection-admin .proxy-bulk{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
 @media(max-width:600px){.collection-admin .proxy-selection .proxy-picks{grid-template-columns:1fr}.collection-admin .proxy-toolbar{align-items:stretch}.collection-admin .proxy-toolbar label{flex:1 1 140px}}
+.document-storage{margin:24px 0;padding:18px 0;border-block:1px solid var(--line);font-variant-numeric:tabular-nums}
+.document-storage .storage-heading,.document-storage .storage-values{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline}
+.document-storage h3{margin:0;font-size:18px}
+.document-storage time,.document-storage p{font-size:13px;color:var(--muted)}
+.document-storage p{margin:10px 0 0;max-width:none}
+.document-storage .storage-values{margin-top:12px;font-size:15px}
+.document-storage meter{display:block;width:100%;height:14px;margin-top:8px;accent-color:var(--accent)}
+.document-storage meter::-webkit-meter-bar{background:var(--sunk);border:0}
+.document-storage meter::-webkit-meter-optimum-value{background:var(--accent)}
+.document-storage meter::-webkit-meter-suboptimum-value{background:var(--orange)}
+.document-storage meter::-moz-meter-bar{background:var(--accent)}

@@ -7,7 +7,7 @@ const collectionId=collectionWorkerId('documents');
 export const DOCUMENT_LOCK=[729114,1] as const;
 // The worker owns a reserved postgres.js connection, which has no begin() helper.
 async function atomic(q:DbSql,work:(q:DbSql)=>Promise<void>){await q`begin`;try{await work(q);await q`commit`;}catch(e){await q`rollback`;throw e;}}
-export async function runDocumentJob(q:DbSql,job:Record<string,any>,signal:AbortSignal,maxRequests?:number){
+export async function runDocumentJob(q:DbSql,job:Record<string,any>,signal:AbortSignal,maxRequests?:number,phase:'all'|'download'|'process'='all',maxFileBytes?:number){
  validateDocumentRequestLimit(maxRequests);
  const [notice]=await q`select * from app.document_notices where key=${job.notice_key}`;
  if(!notice)throw Error('Anunțul sursă lipsește.');
@@ -17,8 +17,9 @@ export async function runDocumentJob(q:DbSql,job:Record<string,any>,signal:Abort
  let original:Buffer|undefined;
  if(doc?.original_hash){const [b]=await q`select bytes from app.document_blobs where hash=${doc.original_hash}`;if(!b)throw Error('Originalul arhivat nu poate fi citit.');original=b.bytes;}
  if(!original){
+  if(phase==='process')throw Error('Originalul arhivat lipsește; procesarea nu face cereri SEAP.');
   if(process.env.DOCUMENTS_OFFLINE==='true')throw Error('Modul de verificare locală nu permite cereri SEAP.');
-  await progress('source');const seap=await openSeap(q,job.id,notice.url,signal,maxRequests);
+  await progress('source');const seap=await openSeap(q,job.id,notice.url,signal,maxRequests,maxFileBytes);
   try{
    await progress('list');const list=await seap.list(notice.notice_id,notice.notice_no);
    // Publish metadata atomically only after all pages have been validated.
@@ -37,6 +38,7 @@ export async function runDocumentJob(q:DbSql,job:Record<string,any>,signal:Abort
     await tx`update app.procurement_documents set original_hash=${hash},downloaded_at=now() where id=${job.document_id} and original_hash is null`;});
   }finally{await seap.close();}
  }
+ if(phase==='download')return;
  if(!original)throw Error('Original indisponibil.');
  const result=await processPdf(original,signal,progress),hash=sha256(result.pdf);
  signal.throwIfAborted();
@@ -52,7 +54,7 @@ export async function runWorkerOnce(sql:DbSql,shutdown:AbortSignal,work=runDocum
  if(shutdown.aborted)return false;
  await collectionHeartbeat(sql,collectionId,'documents','idle');
  if((await collectionQuietWindow(sql)).active)return false;
- const [retry]=await sql`select task_id from app.collection_retries where status='pending'`;
+ const [retry]=await sql`select x.task_id from app.collection_retries x join app.collection_requests r on r.id=x.last_request_id where x.status='pending' and r.proxy_id is null`;
  if(retry)return false;
  const [control]=await sql`select paused,maintenance,blocked_reason,paused_streams from app.collection_control where id=1`;
  if(!control||control.paused||control.maintenance||control.blocked_reason||control.paused_streams.includes('documents'))return false;
@@ -62,15 +64,16 @@ export async function runWorkerOnce(sql:DbSql,shutdown:AbortSignal,work=runDocum
  try{
   const [lock]=await q`select pg_try_advisory_lock(${DOCUMENT_LOCK[0]},${DOCUMENT_LOCK[1]}) acquired,pg_backend_pid() pid`;
   if(!lock?.acquired)return false;acquired=true;
+  if((await q`select id from app.document_jobs where batch_id is not null and status='running' limit 1`).length)return false;
   // A targeted pilot must never clean up or consume someone else's work.
   if(onlyJobId){const [running]=await q`select id from app.document_jobs where status='running' limit 1`;if(running)return false;}
   const pid=lock.pid;
   heartbeat=setInterval(()=>{void q`select pg_backend_pid() pid`.then(async r=>{if(r[0]?.pid!==pid)controller.abort();else await collectionHeartbeat(q,collectionId,'documents','processing');}).catch(()=>controller.abort());},2000);
-  const orphan=await q`update app.document_jobs set status='failed',stage='failed',error='Procesarea a fost întreruptă. Reia operațiunea; originalul păstrat va fi reutilizat.',finished_at=now() where status='running' returning id`;
+  const orphan=await q`update app.document_jobs set status='failed',stage='failed',error='Procesarea a fost întreruptă. Reia operațiunea; originalul păstrat va fi reutilizat.',finished_at=now() where status='running' and batch_id is null returning id`;
   // A killed worker's bounded child tools/network must finish before replacement starts.
   if(orphan.length)await pause(120000,undefined,{signal:controller.signal});
   controller.signal.throwIfAborted();
-  const [job]=await q`update app.document_jobs set status='running',stage='source',started_at=now() where id=(select id from app.document_jobs where status='queued' and (${onlyJobId??null}::uuid is null or id=${onlyJobId??null}::uuid) order by created_at,id limit 1) returning *`;
+  const [job]=await q`update app.document_jobs set status='running',stage='source',started_at=now() where id=(select id from app.document_jobs where status='queued' and batch_id is null and (${onlyJobId??null}::uuid is null or id=${onlyJobId??null}::uuid) order by created_at,id limit 1) returning *`;
   if(!job)return false;
   const deadline=setTimeout(()=>controller.abort(),20*60*1000);
   try{await work(q,job,controller.signal);controller.signal.throwIfAborted();await q`update app.document_jobs set status='complete',stage='complete',finished_at=now() where id=${job.id}`;}
