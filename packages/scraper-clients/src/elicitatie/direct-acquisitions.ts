@@ -27,6 +27,7 @@ export function listDirectAcquisitions(
       finalizationDateEnd: req.finalizationDateEnd,
       cpvCategoryId: req.cpvCategoryId ?? null,
       cpvCodeId: req.cpvCodeId ?? null,
+      ...(req.cpvCodeText===undefined?{}:{cpvCodeText:req.cpvCodeText}),
       sysDirectAcquisitionStateId: req.sysDirectAcquisitionStateId ?? null,
       contractingAuthorityId: req.contractingAuthorityId ?? null,
       supplierId: req.supplierId ?? null,

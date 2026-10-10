@@ -1,6 +1,7 @@
+import {DA_STRATEGY} from './da-partition.js';
 import {NoticeDetailValidationError} from './notice-details.js';
 import {CollectionProxyFailureError,collectionQuietWindow,diagnosticError,sanitizeDiagnostics,CollectionSuspendedError,collectionHeartbeat,collectionWorkerId,withCollectionStream,type DbSql} from '@seap/db';
-import {getNoticeContracts,getNoticeDetailPart,type NoticeDetailParams,ScrapeError,listContractingAuthorities,listDirectAcquisitions,listNotices,NOTICE_TYPE_IDS,type ElicitatieClient} from '@seap/scraper-clients';
+import {searchCpvs,getDirectAcquisitionDetail,getNoticeContracts,getNoticeDetailPart,type NoticeDetailParams,ScrapeError,listContractingAuthorities,listDirectAcquisitions,listNotices,NOTICE_TYPE_IDS,type ElicitatieClient} from '@seap/scraper-clients';
 import {archiveDocumentsSql} from '../scrape/archive.js';
 import {isoDaysAgo} from '../scrape/window.js';
 import {planResponse,task,noticePageSize,NoticePageOverlapError,type Task,type PageResult} from './plan.js';
@@ -33,8 +34,10 @@ export async function seedRecovery(q:DbSql,end=isoDaysAgo(1)){
 export async function fetchTask(client:ElicitatieClient,t:Task):Promise<unknown>{
  return withCollectionStream(t.stream,async()=>{
   const p=t.params;
+  if(t.kind==='cpv-catalogue')return searchCpvs(client,{pageIndex:p.page,pageSize:50});
   if(t.kind==='catalogue')return listContractingAuthorities(client,{pageIndex:p.page,pageSize:2000});
-  if(t.kind==='da')return (await listDirectAcquisitions(client,{finalizationDateStart:p.from!,finalizationDateEnd:p.to!,contractingAuthorityId:p.authorityId!,pageIndex:p.page,pageSize:2000})).data;
+  if(t.kind==='da-detail')return (await getDirectAcquisitionDetail(client,p.noticeId!)).data;
+  if(t.kind==='da')return (await listDirectAcquisitions(client,{finalizationDateStart:p.from!,finalizationDateEnd:p.to!,contractingAuthorityId:p.authorityId??null,...(p.cpvPrefix?{cpvCodeText:p.cpvPrefix}:{}),pageIndex:p.page,pageSize:2000})).data;
   if(t.kind==='list')return (await listNotices(client,{sysNoticeTypeIds:t.stream==='tenders'?NOTICE_TYPE_IDS.participation:NOTICE_TYPE_IDS.award,startPublicationDate:p.from!,endPublicationDate:p.to!,pageIndex:p.page,pageSize:noticePageSize(t)})).data;
   if(t.kind==='detail')return (await getNoticeDetailPart(client,p as NoticeDetailParams)).data;
   return (await getNoticeContracts(client,{caNoticeId:p.noticeId!,skip:p.page*200,take:200})).data;
@@ -99,16 +102,28 @@ export async function recoveryStep(q:DbSql,fetcher:(t:Task)=>Promise<unknown>,la
   const prior=await q`select result from app.collection_tasks where batch_id=${t.batch_id} and partition=${t.partition} and status='complete' order by (params->>'page')::int`;
   const plan=planResponse(t,response,prior.map(r=>r.result as PageResult),end);
   await q.begin(async tx=>{
-   const [scope]=t.kind==='catalogue'?await tx`select end_day from app.collection_batches where id=${t.batch_id} for share`:[];
+   const [scope]=t.kind==='catalogue'?await tx`select end_day,da_strategy from app.collection_batches where id=${t.batch_id} for share`:[];
    const [current]=await tx`select status from app.collection_tasks where id=${t.id!} for update`;
    if(current?.status!=='running')throw Error('Task ownership changed before archive commit');
    const inventory=t.params.inventoryOnly?await compareNoticeInventory(tx as unknown as DbSql,t,(response as {items:NoticeListItem[]}).items):undefined;
    const archive=await archiveDocumentsSql(tx as unknown as DbSql,plan.docs);
-   if(t.kind==='catalogue'){
+   if(t.kind==='catalogue'&&!t.params.daFallback&&scope?.da_strategy===DA_STRATEGY)plan.children=plan.children.filter(c=>c.kind!=='da');
+   if(t.kind==='catalogue'&&!t.params.daFallback){
     const ids=plan.children.filter(c=>c.kind==='da').map(c=>c.params.authorityId!);
     const known=await tx`select distinct (params->>'authorityId')::bigint id from app.collection_tasks where batch_id=${t.batch_id} and kind='da' and (params->>'authorityId')::bigint=any(${ids}::bigint[])`;
     const seen=new Set(known.map(r=>Number(r.id)));
     plan.children=plan.children.map(child=>child.kind==='da'&&!seen.has(child.params.authorityId!)?task(t.batch_id,'da','da',{...child.params,from:'2026-07-01',to:String(scope!.end_day)},child.priority):child);
+   }
+   if(t.kind==='da'&&t.params.daStrategy===DA_STRATEGY&&plan.status==='complete'&&!t.params.authorityId){
+    // Compare against the independently normalized day. Missing IDs get their own
+    // metered detail tasks; never delete a record because a list no longer shows it.
+    const p=t.params,ids=(plan.result as PageResult).ids;
+    const missing=await tx`select sicap_da_id::text id from core.direct_acquisitions
+     where finalization_date>=(${p.from!}::date::timestamp at time zone 'Europe/Bucharest')
+     and finalization_date<((${p.from!}::date+1)::timestamp at time zone 'Europe/Bucharest')
+     and (${p.cpvPrefix??null}::text is null or cpv_code like ${`${p.cpvPrefix??''}%`} or (${p.cpvPrefix==='00000000'} and cpv_code is null))
+     and not(sicap_da_id=any(${ids}::bigint[]))`;
+    plan.children.push(...missing.map(r=>task(t.batch_id,'da','da-detail',{...p,noticeId:Number(r.id),page:0},3)));
    }
    await insertTasks(tx as unknown as DbSql,plan.children);
    const result=JSON.stringify({...plan.result,...(inventory?{inventory}:{}),archived:archive.inserted,duplicates:archive.skipped}).replace(/\\u0000/g,'');

@@ -30,7 +30,14 @@ describe.skipIf(!db)('real recovery metadata aggregation',()=>{
  ] as const)await q`insert into app.collection_tasks(batch_id,key,partition,stream,kind,status,params,result,finished_at) values('fixture',${key},${key},${stream},${kind},${status},${JSON.stringify(params)}::jsonb,${JSON.stringify(result)}::jsonb,now())`;
  const data=await collectionStatus(q);expect(data.forecast!.sampled.find(s=>s.stream==='da')).toEqual({stream:'da',sampled:1,units:2});expect(data.forecast!.completed).toBe(6);expect(data.forecast!.failed).toBe(1);expect(data.forecast!.deferred).toBe(1);expect(data.forecast!.state).toBe('gaps');expect(data.forecast!.minutesHigh).toBeNull();
  });
- it.each(['proxies','processing-complete','processing-failed','resume-archive-during-maintenance','notice-details-activation'])('uses only completions since %s in its ten-minute window',async action=>{
+ it('counts CPV leaves and detail verification within each day and scan',async()=>{
+  const q=db!.sql;await q`insert into app.collection_batches(id,end_day) values('national','2026-10-09')`;
+  for(const [key,day,status] of [['one','2026-10-08','split'],['one-a','2026-10-08','complete'],['one-b','2026-10-08','complete'],['two','2026-10-09','pending']] as const){
+   await q`insert into app.collection_tasks(batch_id,key,partition,stream,kind,status,params) values('national',${key},${key},'da','da',${status},${JSON.stringify({from:day,daScan:'2026-10-09',daStrategy:'cpv-day-v1',page:0})}::jsonb)`;
+  }
+  const data=await collectionStatus(q);expect(data.forecast!.sampled.find(s=>s.stream==='da')).toEqual({stream:'da',sampled:1,units:2});
+ });
+ it.each(['proxies','processing-complete','processing-failed','resume-archive-during-maintenance','notice-details-activation','da-national-activation'])('uses only completions since %s in its ten-minute window',async action=>{
   const q=db!.sql;await q`truncate app.collection_audit`;await q`update app.collection_proxy_control set enabled=false`;
   await q`update app.collection_control set min_seconds=1,max_seconds=1,daily_limit=null`;
   await q`insert into app.collection_batches(id,end_day,created_at) values('pace','2026-10-05',now()-interval '2 days')`;

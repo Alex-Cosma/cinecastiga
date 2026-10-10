@@ -8,9 +8,9 @@ export async function recoveryStatus(q:DbSql,batchId:string,progress:RecoveryCou
     case when jsonb_typeof(result->'total')='number' then (result->>'total')::numeric else null end total
    from app.collection_tasks where batch_id=${batchId}
   ), da_units as (
-   select params->>'authorityId' unit,count(*)::numeric work,
+   select case when params->>'daStrategy'='cpv-day-v1' then 'day:'||(params->>'from')||':'||(params->>'daScan') else 'authority:'||(params->>'authorityId') end unit,count(*)::numeric work,
     bool_and(status in ('complete','split')) closed
-   from tasks where kind='da' group by params->>'authorityId'
+   from tasks where kind in ('da','da-detail') group by 1
   ), notice_days as (
    select stream,params->>'from' as unit_day,coalesce((params->>'inventoryOnly')::boolean,false) inventory_only,count(*)::numeric list_work,
     max(total) filter(where (params->>'page')::int=0 and status='complete') total
@@ -36,7 +36,7 @@ export async function recoveryStatus(q:DbSql,batchId:string,progress:RecoveryCou
  // Use the current operating regime, not the old single-IP recovery average.
  const [pace]=await q`with boundary as (
    select greatest(b.created_at,now()-interval '10 minutes',coalesce((select max(created_at) from app.collection_audit
-    where action in ('proxies','pause','unblock','settings','processing-complete','processing-failed','resume-archive-during-maintenance','notice-details-activation')),b.created_at)) at
+    where action in ('proxies','pause','unblock','settings','processing-complete','processing-failed','resume-archive-during-maintenance','notice-details-activation','da-national-activation')),b.created_at)) at
    from app.collection_batches b where b.id=${batchId}
   ) select extract(epoch from(now()-at))/86400 elapsed_days,
    (select count(*)::int from app.collection_tasks where batch_id=${batchId} and status in ('complete','split') and finished_at>=boundary.at and finished_at<=now()) recent_completed

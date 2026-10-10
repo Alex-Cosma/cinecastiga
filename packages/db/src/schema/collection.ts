@@ -46,6 +46,7 @@ export const collectionWorkers = appSchema.table('collection_workers', {
 export const collectionBatches = appSchema.table('collection_batches', {
  id:text('id').primaryKey(), endDay:text('end_day').notNull(),
  seedEndDay:text('seed_end_day'), followLatest:boolean('follow_latest').notNull().default(false),
+ daStrategy:text('da_strategy').notNull().default('authority'),
  status:text('status').notNull().default('collecting'), nextStream:integer('next_stream').notNull().default(3),
  createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
 },t=>[check('collection_batch_status',sql`${t.status} in ('collecting','collected','incomplete')`)]);
