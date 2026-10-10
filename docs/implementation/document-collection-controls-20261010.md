@@ -38,3 +38,13 @@ The persistent data worker checks for a new closed-day horizon once per minute. 
 -Full Turbo typecheck/lint/test/build:20/20tasks successful. Unit suites:414web,243ingestion,35scraper,26domain,10db passed; database suites skipped by the ordinary unit invocation were run separately as specified above.
 -22host deployment/nightly tests passed.
 -Authenticated local Next preview on3115 against the isolated database: `/admin/fisiere` and `/admin`, desktop1440 andmobile390, light/dark, no horizontal overflow or browser errors. Real pause/resume API buttons verified; status200. Screenshots/logs in private `.local/document-pool-20261010/auto-*`. No source network requests were made.
+
+## Production release verified —10October2026
+
+Runtime **24c9e89**; GitHub Actions **38051234321**, CI and automatic deploy both successful. Migration0068 applied,69migration records. Web healthy, collection and document containers restarted. Document status function executed with the production document-worker role:154,151eligible notices,53,847other notices; automatic control disabled, revision0,10network/4processing. No sweep or OCR jobs were started by deployment. Today's64document source attempts are the earlier successful pilot, not new deployment traffic.
+
+Deployment pause/drain was explicit and revision guarded:124→125paused→126resumed. Final data control:paused=false,maintenance=false,no block; follow_latest=true,end_day2026-10-09. The running collector's compiled02:00cutoff was verified. Proxy settings unchanged:94enabled out of100registered,200starts/min,10in-flight,35–45seconds/IP.
+
+Public health200; anonymous `/api/admin/documents`403. Existing public archived PDF200,205,313bytes and unchanged SHA256`84b16da017fa5c9cab89aebc845fb32e03829ed342ddf9c5b017492b7d9f4a79`. Production admin status was verified via the worker's read-only status function; authenticated visual/button tests ran locally against the isolated fixture DB.
+
+Next operator action:open `/admin/fisiere` and press **Pornește colectarea fișierelor**. It inventories existing normalized compatible history and continues discovering newly normalized notices after future processing. No claim of all-family document completeness.
