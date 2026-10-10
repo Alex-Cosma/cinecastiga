@@ -27,3 +27,5 @@ The guarded `resume.sql` was applied once, then normal collection and documents 
 Settings unchanged: proxy mode,200requests/minute ceiling,10concurrent,35–45seconds/IP. Site stays public; raw collection does not imply immediate statistical publication. Daily05:00processing and Sundayrisk schedule remain unchanged. No additional recalculation was triggered.
 
 Local tests:229ingestion units plus2new request/bounds units;12collector DB integration and8admin DB integration passed. Production final state should be re-read before further work; dated scripts are already executed and must not be replayed.
+
+Final verification: procedure/checkpoint commit `257f40e` also passed CI and deploy **38033632254**. Following that deployment, control remained revision114, paused=false, maintenance=false, no block; **580 successful requests and zero new errors** since resumption (four in flight). The collector remained running. This supersedes the earlier93-request observation; the seven old failed detail tasks are not newly caused by this recovery.
