@@ -207,6 +207,19 @@ describe.skipIf(!connection)('shared proxy scheduling (PostgreSQL, NO network)',
    const work=vi.fn(async()=>({value:'bad',status:200}));await expect(request(work,{stream:'documents',proxyId:selected!.id,documentJobId:id},AbortSignal.timeout(150))).rejects.toThrow();expect(work).not.toHaveBeenCalled();
   }finally{await releaseDocumentProxy(c,id);await q`delete from app.document_jobs where id=${id}`;c.release();}
  });
+ it('enforces a persistent batch cap across racing document sessions without the legacy file gap',async()=>{
+  await q`insert into app.document_batches(id,max_requests,max_files,concurrency) values('fixture-pool',1,2,2) on conflict(id) do update set requests_started=0,status='running'`;
+  await q`update app.collection_proxy_control set requests_per_minute=200,max_in_flight=2,min_seconds=1,max_seconds=1`;
+  await q`update app.collection_control set last_file_at=clock_timestamp()`;
+  const jobs=await q`insert into app.document_jobs(notice_key,kind,dedup_key,requested_by,status,batch_id,slot) values('proxy-fixture','list','pool-1','fixture','running','fixture-pool',1),('proxy-fixture','list','pool-2','fixture','running','fixture-pool',2) returning id,slot`;
+  let called=0;const work=vi.fn(async()=>{called++;return {value:'ok',status:200};});
+  const results=await Promise.allSettled(jobs.map(j=>request(work,{stream:'documents',fileDownload:true,documentJobId:j.id,proxyId:`proxy-${j.slot}`},AbortSignal.timeout(3000))));
+  expect(called).toBe(1);expect(results.filter(r=>r.status==='fulfilled')).toHaveLength(1);
+  expect((await q`select requests_started from app.document_batches where id='fixture-pool'`)[0]!.requests_started).toBe(1);
+  expect(await q`select id from app.collection_requests`).toHaveLength(1);
+  await expect(request(work,{stream:'documents',documentJobId:jobs[0]!.id})).rejects.toThrow('limita lotului');expect(called).toBe(1);
+  await q`delete from app.document_jobs where batch_id='fixture-pool'`;await q`delete from app.document_batches where id='fixture-pool'`;
+ });
  it('keeps the global sixty-second file gap even with a different available IP',async()=>{
   await q`update app.collection_control set last_file_at=clock_timestamp()`;
   const work=vi.fn(async()=>({value:'bad',status:200}));await expect(request(work,{stream:'documents',fileDownload:true},AbortSignal.timeout(150))).rejects.toThrow();expect(work).not.toHaveBeenCalled();

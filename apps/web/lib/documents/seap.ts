@@ -1,3 +1,4 @@
+import {browserDocumentRequest} from './browser-request';
 import {type Browser} from 'playwright-core';
 import {reserveDocumentProxy,releaseDocumentProxy,proxyConnection,runCollectionRequest,collectionWorkerId,type DbSql} from '@seap/db';
 import {safeFileUrl} from './shared';
@@ -13,8 +14,9 @@ export function parseList(data:unknown,noticeNo:string):{items:ListedDocument[];
  return {items:r.items,total:r.total!};
 }
 /** A fresh isolated browser session; only explicit requests can reach the network. */
-export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortSignal,maxRequests?:number){
+export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortSignal,maxRequests?:number,maxFileBytes=50*1024*1024){
  validateDocumentRequestLimit(maxRequests);
+ if(!Number.isSafeInteger(maxFileBytes)||maxFileBytes<1||maxFileBytes>50*1024*1024)throw Error("Invalid file limit");
  let browser:Browser|undefined, allowed:{url:string;method:string}|null=null;
  if(!/^https:\/\/www\.e-licitatie\.ro\/pub\/notices\/simplified-notice\/v2\/view\/[1-9]\d*$/.test(referer))throw Error('Anunț SEAP neacceptat.');
  const managedProxy=await reserveDocumentProxy(q,jobId);
@@ -46,26 +48,21 @@ export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortS
    console.log(JSON.stringify({event:'seap-request',request:row!.id,job:jobId,method,transport,endpoint:navigate?'notice-page':url.includes('/noticedoc/')?'noticedoc':'document-list'}));
    allowed={url,method};
    try{
-    let status:number,bytes:Buffer,retryAfter:string|null=null;
-    if(navigate){const res=await page.goto(url,{waitUntil:'domcontentloaded'});status=res?.status()??0;retryAfter=res?.headers()['retry-after']??null;bytes=res?await res.body():Buffer.alloc(0);if(bytes.length>2*1024*1024)throw Error('Răspuns SEAP prea mare.');}
+    let status:number,bytes:Buffer,retryAfter:string|null=null,oversized=false,receivedBytes:number|undefined;
+    if(navigate){const res=await page.goto(url,{waitUntil:'domcontentloaded'});status=res?.status()??0;retryAfter=res?.headers()['retry-after']??null;bytes=res?await res.body():Buffer.alloc(0);receivedBytes=bytes.length;oversized=bytes.length>2*1024*1024;if(oversized)bytes=Buffer.alloc(0);}
     else{
-     const result=await page.evaluate(async({url,method,body})=>{
-      const response=await fetch(url,{method,credentials:'include',redirect:'manual',signal:AbortSignal.timeout(40000),headers:{Accept:'application/json, text/plain, */*',Authorization:'Bearer null',HttpSessionID:'null',RefreshToken:'null',Culture:'ro-RO',...(body===null?{}:{'Content-Type':'application/json;charset=UTF-8'})},...(body===null?{}:{body:JSON.stringify(body)})});
-      const chunks:Uint8Array[]=[];let size=0;const reader=response.body?.getReader();
-      if(reader)for(;;){const x=await reader.read();if(x.done)break;size+=x.value.length;if(size>(method==='GET'?50*1024*1024:2*1024*1024)){await reader.cancel();throw Error('Fișier prea mare.');}chunks.push(x.value);}
-      let binary='';for(const c of chunks)for(let i=0;i<c.length;i+=4096)binary+=String.fromCharCode(...c.subarray(i,i+4096));
-      return {status:response.status,base64:btoa(binary),retryAfter:response.headers.get('retry-after')};
-     },{url,method,body});status=result.status;retryAfter=result.retryAfter;bytes=Buffer.from(result.base64,'base64');
+     const result=await page.evaluate(browserDocumentRequest,{url,method,body,maxFileBytes});status=result.status;retryAfter=result.retryAfter;bytes=Buffer.from(result.base64,'base64');oversized=result.oversized;receivedBytes=result.receivedBytes;
     }
-    await q`update app.document_requests set status=${status},bytes=${bytes.length},finished_at=now() where id=${row!.id}`;
+    await q`update app.document_requests set status=${status},bytes=${receivedBytes??bytes.length},finished_at=now() where id=${row!.id}`;
     let challenge=false;
-    if(status===200&&method==='POST'){try{JSON.parse(bytes.toString('utf8'));}catch{challenge=true;}}
+    if(!oversized&&status===200&&method==='POST'){try{JSON.parse(bytes.toString('utf8'));}catch{challenge=true;}}
     if(status===200&&navigate)challenge=/cf-chl-|<title>[^<]*(?:access denied|just a moment|attention required)/i.test(bytes.toString('utf8'));
-    return {value:{bytes,status},status,bytes:bytes.length,retryAfter,challenge};
+    return {value:{bytes,status,oversized},status,bytes:receivedBytes??bytes.length,retryAfter,challenge,...(oversized?{diagnostics:{response:{status,receivedBytes,bodyTruncated:true},reason:'document_size_limit'}}:{})};
    }catch(error){if(proxy)throw proxyTransportError(error);throw error;}
    finally{allowed=null;await q`update app.document_requests set finished_at=coalesce(finished_at,now()) where id=${row!.id}`;}
    }finally{gateSignal.removeEventListener('abort',gateStop);}
    },signal);
+   if(result.oversized)throw Error(`SEAP: răspunsul depășește limita de ${method==='GET'?maxFileBytes/1024/1024:2} MiB a acestei operațiuni. Fișierul nu a fost arhivat.`);
    if(result.status!==200)throw Error(`SEAP a răspuns cu HTTP ${result.status}. Poți reîncerca mai târziu.`);
    return result.bytes;
   }

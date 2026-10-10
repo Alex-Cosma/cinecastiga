@@ -143,9 +143,9 @@ services:
     image: cinecastiga-documents
     restart: unless-stopped
     init: true
-    mem_limit: 2g
-    cpus: 2
-    pids_limit: 256
+    mem_limit: 4g
+    cpus: 4
+    pids_limit: 512
     stop_grace_period: 100s
     environment:
       DATABASE_URL: postgres://seap_web:${SEAP_WEB_PASSWORD:?set in .env}@postgres:5432/seap

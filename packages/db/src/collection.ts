@@ -68,13 +68,18 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
     if(c.daily_limit!==null){const [n]=await q`select count(*)::int n from app.collection_requests where started_at >= ((clock_timestamp() at time zone 'Europe/Bucharest')::date::timestamp at time zone 'Europe/Bucharest')`;if(Number(n?.n)>=Number(c.daily_limit))throw new CollectionSuspendedError('Limita zilnică SEAP a fost atinsă.');}
     const admission=await proxyAdmission(q,info.proxyId,info.documentJobId);
     selectedProxy=admission?.proxy??null;
+    // Batch policy is read from the DB, not a caller-controlled rate-limit bypass.
+    const [documentBatch]=info.documentJobId?await q`select b.id,b.status,b.max_requests,b.requests_started,j.status job_status from app.document_jobs j join app.document_batches b on b.id=j.batch_id where j.id=${info.documentJobId}`:[];
+    if(documentBatch&&(documentBatch.status!=='running'||documentBatch.job_status!=='running'||Number(documentBatch.requests_started)>=Number(documentBatch.max_requests)))throw new CollectionSuspendedError('SEAP: limita lotului de documente a fost atinsă sau lotul este oprit.');
+    if(documentBatch&&!admission)throw new CollectionSuspendedError('Lotul de documente necesită poolul proxy activ.');
     const [inFlight]=await q`select count(*)::int n from pg_locks where database=(select oid from pg_database where datname=current_database()) and locktype='advisory' and classid=729119::oid and objsubid=2 and granted`;
     const concurrency=admission?Number(admission.settings.max_in_flight):1;
-    delay=Math.max(Number(inFlight!.n)>=concurrency?1000:0,admission?.delay??0,Number(c.next_ms??0)-Number(c.now_ms),info.fileDownload?Number(c.file_ms??0)+60000-Number(c.now_ms):0);
+    delay=Math.max(Number(inFlight!.n)>=concurrency?1000:0,admission?.delay??0,Number(c.next_ms??0)-Number(c.now_ms),info.fileDownload&&!documentBatch?Number(c.file_ms??0)+60000-Number(c.now_ms):0);
     if(delay<=0){
      // Recheck after taking the control-row lock and on every rate-limit retry.
      // Suspension precedes the ledger: no HTTP attempt, error or manual-pause mutation.
      if((await collectionQuietWindow(q)).active)throw new CollectionSuspendedError('Pauză SEAP programată: 02:59–03:30, ora României. Reluare automată după încheierea pauzei.');
+     if(documentBatch)await q`update app.document_batches set requests_started=requests_started+1 where id=${documentBatch.id}`;
      const policy=admission?.settings??c;
      const jitter=Math.floor(Number(policy.min_seconds)+Math.random()*(Number(policy.max_seconds)-Number(policy.min_seconds)+1));
      const globalDelay=admission?60/Number(policy.requests_per_minute):jitter;
