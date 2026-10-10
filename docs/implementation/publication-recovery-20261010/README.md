@@ -38,7 +38,7 @@ Next normal schedule remains daily05:00RO /Sundayrisk. Full recovery now is nece
 
 ## Current state
 
-Implementation and copied validation complete; deployment/recovery verification follows below when actually observed. Do not infer production success from this section alone.
+**Code deployed and recovery running, not yet published.** See the latest operational checkpoint below. Earlier sections describe their respective copied datasets; the refreshed live-state proof supersedes the initial counts.
 
 ### Release check, 07:22 RO
 
@@ -53,3 +53,19 @@ A new isolated local copy (`seap_test_currency_publication_20261010`) was export
 Actual cohort marts reconcile all10,214eligible economic contracts and13,196supplier allocations, exact10,129,056,141.84RON, with zero differences. [Refreshed exact-state proof](copy-proof.json). This copy intentionally verifies the normalized live state; the earlier real-envelope replay and integration tests remain separately recorded above.
 
 The dated claim now pins these refreshed counts and checks copy/live boundary, membership and canonical-change agreement. Initial failed preflight/claim log is preserved; no run-id or audit claim existed. Full production backup, processing and final publication validation still required; the collector remains blocked independently.
+
+### Production recovery running — 10 October, 07:38 RO
+
+CI **38024557775** and deploy both succeeded; server checkout **4f4137f0d10598d20eaec0fdd7891ffb8110bc94**,66migrations. The repeated live preflight matches the refreshed copy:8,045groups,21,241publications,37canonical changes, boundary18294756. No source HTTP requests were made.
+
+Manual full run **4e67b730-618a-4182-9310-fe97356c68bc** was claimed successfully and is **running at backup**, heartbeat04:38:36UTC. Controlrevision106,maintenance=true,paused=true,collection_during_maintenance=false; source block542533preserved. Collection and document workers are stopped during processing. The host recovery started04:37:26UTC under `nohup`, with deployment lock held. It continues independently of the local terminal.
+
+- Durable log: `/srv/seap/repairs/publication-20261010/run.log` (includes initial pre-claim rejection and the successful second attempt).
+- Run identity: `/srv/seap/repairs/publication-20261010/run-id`.
+- Backup: `/srv/seap/backups/processing/4e67b730-618a-4182-9310-fe97356c68bc/database.dump.partial` until complete; verified dump/list/SHA256 thereafter.
+- The prior morning backup took about18minutes; the full rebuild previously took roughly1.5–2hours. These are historical observations, not a completion promise.
+- Public pages must still return503 now. The ordinary finish gate reopens only after ready snapshot, verified search, restart/health and unchanged operator revision. It preserves the independent source pause/block.
+
+**Continuation:** inspect this exact run and log; do not start another recovery or clear run-id/audit. If failed, inspect the failed stage and diagnostics, retain maintenance, repair only after validation. If ready, confirm `stage=complete`, `search_verified`, latest monitoring checkpoint ready with all checks passed, controlmaintenance=false/paused=true/sourceblock542533 unchanged. Verify `/api/health`, `/intreaba`, `/domenii` and old/new contract107338420/108153641routes, including49,781,431.91vs57,143,904.29RON history. Then record actual timings/results here. No final production publication validation has yet been observed at this checkpoint.
+
+Ordinary local application DB is unchanged. Isolated copied DBs, logs and UI screenshots remain in `.local/publication-recovery-20261009/` and `.local/publication-recovery-20261010/`. Temporary scoped export was deleted from the server after the refreshed local copy passed. No production account/session data were exported for this verification.
