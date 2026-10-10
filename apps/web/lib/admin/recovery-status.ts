@@ -3,14 +3,14 @@ import {recoveryForecast,type RecoveryCounts,type RecoverySample} from './recove
 /** Only aggregate task metadata. Never fetch result bodies/ids into the web process. */
 export async function recoveryStatus(q:DbSql,batchId:string,progress:RecoveryCounts[],control:Record<string,any>){
  const samples=await q`
-  with tasks as materialized (
+  with strategy as (select da_strategy from app.collection_batches where id=${batchId}), tasks as materialized (
    select stream,kind,params,status,partition,
     case when jsonb_typeof(result->'total')='number' then (result->>'total')::numeric else null end total
    from app.collection_tasks where batch_id=${batchId}
   ), da_units as (
    select case when params->>'daStrategy'='cpv-day-v1' then 'day:'||(params->>'from')||':'||(params->>'daScan') else 'authority:'||(params->>'authorityId') end unit,count(*)::numeric work,
     bool_and(status in ('complete','split')) closed
-   from tasks where kind in ('da','da-detail') group by 1
+   from tasks where kind in ('da','da-detail') and coalesce(params->>'daStrategy','authority')=(select da_strategy from strategy) group by 1
   ), notice_days as (
    select stream,params->>'from' as unit_day,coalesce((params->>'inventoryOnly')::boolean,false) inventory_only,count(*)::numeric list_work,
     max(total) filter(where (params->>'page')::int=0 and status='complete') total
@@ -28,11 +28,12 @@ export async function recoveryStatus(q:DbSql,batchId:string,progress:RecoveryCou
   )
   select 'da' stream,count(*)::int units,count(*) filter(where closed)::int sampled,
     coalesce(avg(work) filter(where closed),0)::float8 mean_work,coalesce(stddev_samp(work) filter(where closed),0)::float8 sd_work,
-    0::int months,0::int total_months from da_units
+    0::int months,0::int total_months,
+    (select count(*)::int from tasks where kind in ('da','da-detail') and coalesce(params->>'daStrategy','authority')<>(select da_strategy from strategy)) base_work from da_units
   union all
   select stream,count(*)::int units,count(work)::int sampled,coalesce(avg(work),0)::float8 mean_work,
     coalesce(stddev_samp(work),0)::float8 sd_work,count(distinct left(unit_day,7)) filter(where work is not null)::int months,
-    count(distinct left(unit_day,7))::int total_months from day_work group by stream`;
+    count(distinct left(unit_day,7))::int total_months,0::int base_work from day_work group by stream`;
  // Use the current operating regime, not the old single-IP recovery average.
  const [pace]=await q`with boundary as (
    select greatest(b.created_at,now()-interval '10 minutes',coalesce((select max(created_at) from app.collection_audit
