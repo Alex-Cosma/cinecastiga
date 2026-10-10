@@ -110,3 +110,11 @@ Owner confirmed scope: entire history, newest first, and authorized the proxy pi
 - Anonymous public PDF delivery verified with curl: HTTP 200, 205313 bytes, SHA256 matches archived derived PDF (`172ab462-ae78-4663-adc8-e99bed190366`). Python urllib was denied by the edge, but the ordinary HTTP/browser-facing file path succeeded; no authentication bypass was introduced.
 - This is a small transport/extraction pilot, not certification of all attachment families or complete national document coverage. Four processing lanes were verified by the isolated concurrency test; the short real files do not establish sustained four-worker throughput. Shared 200/min is a ceiling, not an achieved document rate: pinned browser sessions spend time waiting for per-IP spacing.
 - Disk after pilot: approximately 293 GiB used / 1007 GiB total, 673 GiB available. Dashboard reads current measured capacity every 60 seconds and logical archive bytes separately.
+
+### Final release verification
+
+Production code `3dbde92` passed GitHub Actions CI/deploy (run 38049580714). Recreated document container confirms 4 CPU, 4 GiB and 2,048 PID limits. Normal collection resumed with audited control revision 124, maintenance=false, no source block, and no running requests/document jobs during the release drain. `/api/health` returned 200. The normal document worker is idle after the bounded pilot; no unattended national document sweep was enabled.
+
+Public contract association checked on `/api/contracte/108161448/files`: SCN1179465, archived original, derived PDF, processed timestamp and 2 pages. Public reader `/api/documents/172ab462-ae78-4663-adc8-e99bed190366?page=1` returned OCR text (2,135 characters), without authentication. Source-download authentication rules are unchanged.
+
+Local writes were limited to the isolated `seap_test_document_pool_20261010` fixture; the main local database was not migrated by this task. Apply the repository's normal migration command before using the updated admin/source gate against that local database. Unrelated pre-existing markdown changes in the workspace were preserved and not included in these commits.
