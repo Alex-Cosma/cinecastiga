@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { pgTable, text, integer, jsonb, timestamp, uuid, bigint, bigserial, uniqueIndex, index, check, customType, primaryKey } from 'drizzle-orm/pg-core';
+import { pgTable, boolean, text, integer, jsonb, timestamp, uuid, bigint, bigserial, uniqueIndex, index, check, customType, primaryKey } from 'drizzle-orm/pg-core';
 import { appSchema } from './app.js';
 const bytea = customType<{ data: Buffer }>({dataType: () => 'bytea'});
 // Archived source and derivative bytes are immutable, content-addressed, and shared.
@@ -10,6 +10,7 @@ export const documentBlobs = appSchema.table('document_blobs', {
 export const documentNotices = appSchema.table('document_notices', {
   key: text('key').primaryKey(), noticeId: text('notice_id').notNull(), noticeType: integer('notice_type').notNull(),
   noticeNo: text('notice_no').notNull(), title: text('title').notNull(), url: text('url').notNull(),
+  automatic:boolean('automatic').notNull().default(false), sourceDate:timestamp('source_date',{withTimezone:true}),
   checkedAt: timestamp('checked_at',{withTimezone:true}), total: integer('total'),
 });
 export const procurementDocuments = appSchema.table('procurement_documents', {
@@ -34,6 +35,7 @@ export const documentBatches = appSchema.table('document_batches', {
 },t=>[check('document_batch_limits',sql`${t.maxRequests} between 1 and 300 and ${t.requestsStarted} between 0 and ${t.maxRequests} and ${t.maxFiles} between 1 and 50 and ${t.concurrency} between 1 and 10`),check('document_batch_status',sql`${t.status} in ('running','complete','stopped')`)]);
 export const documentJobs = appSchema.table('document_jobs', {
   id: uuid('id').primaryKey().defaultRandom(), noticeKey: text('notice_key').notNull().references(()=>documentNotices.key),
+  automatic:boolean('automatic').notNull().default(false), attempts:integer('attempts').notNull().default(0), retryAt:timestamp('retry_at',{withTimezone:true}),
   batchId:text('batch_id').references(()=>documentBatches.id), slot:integer('slot').notNull().default(0),
   documentId: uuid('document_id').references(()=>procurementDocuments.id), kind: text('kind').notNull(),
   dedupKey: text('dedup_key').notNull(), status: text('status').notNull().default('queued'), stage: text('stage').notNull().default('queued'),
@@ -42,10 +44,16 @@ export const documentJobs = appSchema.table('document_jobs', {
   startedAt: timestamp('started_at',{withTimezone:true}), finishedAt: timestamp('finished_at',{withTimezone:true}),
 },t=>[uniqueIndex('document_jobs_active_key').on(t.dedupKey).where(sql`${t.status} in ('queued','running')`),
   uniqueIndex('document_jobs_running_slot').on(t.slot).where(sql`${t.status} = 'running'`),index('document_jobs_queue').on(t.status,t.createdAt),
-  check('document_job_slot',sql`${t.slot} between 0 and 13 and (${t.batchId} is not null or ${t.slot}=0)`),
+  check('document_job_slot',sql`${t.slot} between 0 and 13 and (${t.batchId} is not null or ${t.automatic} or ${t.slot}=0)`),
   check('document_job_status',sql`${t.status} in ('queued','running','complete','failed')`),check('document_job_kind',sql`${t.kind} in ('list','file')`)]);
 export const documentRequests = appSchema.table('document_requests', {
   id: bigserial('id',{mode:'number'}).primaryKey(), jobId: uuid('job_id').notNull().references(()=>documentJobs.id),
   method: text('method').notNull(), endpoint: text('endpoint').notNull(), status: integer('status'), bytes: integer('bytes'),
   startedAt: timestamp('started_at',{withTimezone:true}).defaultNow().notNull(), finishedAt: timestamp('finished_at',{withTimezone:true}),
 });
+
+export const documentCollectionControl=appSchema.table('document_collection_control',{
+ id:integer('id').primaryKey().default(1),enabled:boolean('enabled').notNull().default(false),paused:boolean('paused').notNull().default(false),revision:integer('revision').notNull().default(0),
+ downloadConcurrency:integer('download_concurrency').notNull().default(10),processingConcurrency:integer('processing_concurrency').notNull().default(4),
+ startedAt:timestamp('started_at',{withTimezone:true}),heartbeatAt:timestamp('heartbeat_at',{withTimezone:true}),scannedAt:timestamp('scanned_at',{withTimezone:true}),error:text('error'),
+},t=>[check('document_collection_singleton',sql`${t.id}=1`),check('document_collection_concurrency',sql`${t.downloadConcurrency} between 1 and 10 and ${t.processingConcurrency} between 1 and 4`)]);

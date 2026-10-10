@@ -477,6 +477,13 @@
       "when": 1791630758335,
       "tag": "0067_messy_lord_tyger",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1791633271007,
+      "tag": "0068_flippant_firestar",
+      "breakpoints": true
     }
   ]
 }
