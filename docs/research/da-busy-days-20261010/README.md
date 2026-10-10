@@ -43,3 +43,7 @@ python3 docs/research/da-busy-days-20261010/verify.py SOURCE_DIRECTORY BASELINE_
 The verifier emits the114missing documents for the guarded archive operation. Reviewed input SHA256: `ea6267061f70c4c3abead0657063991e4116f7d3713ee2d02309394fabb57ac9`. These go through ordinary redaction/hash archival and subsequent scheduled normalization; no immediate core/statistics rebuild is part of activation.
 
 A ten-day sample does not certify every historical day. The records and source evidence above justify this strategy for the tested source contract; unknown/saturated cases remain explicit, bounded fallback or gaps.
+
+## Release
+
+Implemented, committed and deployed on 10 October 2026. [Activation, recovered records, production checks and current limitations](../../../scripts/operations/20261010-da-national/README.md).
