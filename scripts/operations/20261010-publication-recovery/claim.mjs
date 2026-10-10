@@ -5,7 +5,7 @@ const {sql}=createDb();
 try{
  const copy=JSON.parse(await readFile('/reports/copy-proof.json','utf8'));
  const live=JSON.parse(await readFile('/reports/live-preflight.json','utf8'));
- if(!copy.identity.after.valid||copy.marts.validation.differences!==0||copy.marts.validation.actual!==10004||live.groups!==8045||live.publications!==20519||live.versionedGroups!==34||live.canonicalChanges!==34||live.boundary!=='18294756')throw Error('Complete copied and live source verification required');
+ if(copy.identity.applied.rawBoundary!==live.boundary||copy.identity.after.members!==live.publications||copy.identity.applied.canonicalIdsChanged!==live.canonicalChanges||!copy.identity.after.valid||copy.marts.validation.differences!==0||copy.marts.validation.actual!==10214||live.groups!==8045||live.publications!==21241||live.versionedGroups!==37||live.canonicalChanges!==37||live.boundary!=='18294756')throw Error('Complete copied and live source verification required');
  const run=await sql.begin(async q=>{
   const [control]=await q`select * from app.collection_control where id=1 for update`;
   if(control.revision!==105||!control.maintenance||!control.paused||control.blocked_reason!=='Sarcina 542533: SEAP a repetat înregistrări între pagini.')throw Error('Operator state changed');

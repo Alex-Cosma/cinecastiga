@@ -26,7 +26,7 @@ Frozen boundary18294756; copied cohort23,346contracts,327awards,372archived enve
 -228ingestion units,406web units and10DBunits pass in the workspace suite.187optional webDB tests are skipped in that general suite, not claimed passed. Workspace20build/typecheck/lint/test tasks passed. The extra explicit DBsuites above are run separately.
 - UI component inspected at390pxand1280pxin both themes, keyboard disclosure tested, no horizontal overflow. Existing styles retained; history is collapsed by default and opened when viewing an older economic version. The mechanical detector's type-size advisory was corrected to the existing15pxstep.
 
-[Copied cohort proof](copy-proof.json). This is not a whole-production snapshot validation; the full production pipeline/search gate remains required before reopening.
+[Initial copied cohort proof](initial-copy-proof.json). This is not a whole-production snapshot validation; the full production pipeline/search gate remains required before reopening.
 
 ## Operations
 
@@ -43,3 +43,13 @@ Implementation and copied validation complete; deployment/recovery verification 
 ### Release check, 07:22 RO
 
 Commit035050eis onmain. First Actions run38023675065passed host checks but failed the web build; deploy was skipped, so production was unchanged. GitHub's public annotations only expose the failed build command; detailed job logs require authentication. A fresh local production web build of the same committed source passed completely. This does not establish the CI failure's cause. Repeating CI through this recorded verification update; no bypass of deployment checks.
+
+### Live preflight and refreshed cohort, 10 October morning
+
+CI and deploy38023871947 succeeded for b1e265c; all66migrations applied. The first recovery attempt stopped **before claiming or changing data**: morning normalization had materialized more of the archived data than the9October copied cohort. This is why a fresh live preflight is mandatory. The same raw boundary18294756 now has24,279contracts,338awards and394archived envelopes in the affected cohort.
+
+A new isolated local copy (`seap_test_currency_publication_20261010`) was exported read-only from that exact normalized live state. All8,045groups pass;21,241publications retained;4,465groups extended;37canonical versions updated;zero stale/invalid decisions;repeat is a no-op. The three additional amendments have source-verified changed amounts: CAN1121795 decreases483,837.35→480,786.57; CAN1132215 increases933,939.24→962,556.07; CAN1042407 increases1,509,308.44→1,623,146.18RON. Existing sibling104380499remains distinct.
+
+Actual cohort marts reconcile all10,214eligible economic contracts and13,196supplier allocations, exact10,129,056,141.84RON, with zero differences. [Refreshed exact-state proof](copy-proof.json). This copy intentionally verifies the normalized live state; the earlier real-envelope replay and integration tests remain separately recorded above.
+
+The dated claim now pins these refreshed counts and checks copy/live boundary, membership and canonical-change agreement. Initial failed preflight/claim log is preserved; no run-id or audit claim existed. Full production backup, processing and final publication validation still required; the collector remains blocked independently.

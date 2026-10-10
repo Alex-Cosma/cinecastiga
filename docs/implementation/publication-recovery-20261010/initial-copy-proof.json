@@ -1,0 +1,94 @@
+{
+  "identity": {
+    "before": {
+      "members": 16090,
+      "staleMembers": 12467,
+      "invalidDecisions": 0,
+      "examples": [
+        "361507",
+        "361510",
+        "361512",
+        "361513",
+        "361514",
+        "361515",
+        "361516",
+        "361517",
+        "361518",
+        "361519"
+      ],
+      "valid": false
+    },
+    "applied": {
+      "changedGroups": 8045,
+      "extendedGroups": 4425,
+      "quality": {
+        "members": 20519,
+        "staleMembers": 0,
+        "invalidDecisions": 0,
+        "examples": [],
+        "valid": true
+      },
+      "impact": {
+        "duplicates": 11408,
+        "reduction_ron": "12132010677.72",
+        "additional_duplicates": 4076,
+        "additional_reduction_ron": "4736436135.98"
+      },
+      "rawBoundary": "18294756",
+      "canonicalIdsChanged": 34
+    },
+    "repeated": {
+      "changedGroups": 0,
+      "quality": {
+        "members": 20519,
+        "staleMembers": 0,
+        "invalidDecisions": 0,
+        "examples": [],
+        "valid": true
+      }
+    },
+    "after": {
+      "members": 20519,
+      "staleMembers": 0,
+      "invalidDecisions": 0,
+      "examples": [],
+      "valid": true
+    },
+    "durationMs": 36669
+  },
+  "marts": {
+    "quality": {
+      "members": 20519,
+      "staleMembers": 0,
+      "invalidDecisions": 0,
+      "examples": [],
+      "valid": true
+    },
+    "report": {
+      "nationalStats": 11,
+      "spendByType": 6,
+      "spendByCpv": 48,
+      "spendByCounty": 63,
+      "entityProfiles": 640,
+      "topEntities": 262,
+      "topPartners": 982,
+      "concentration": 62,
+      "contractTransactions": 12633
+    },
+    "validation": {
+      "expected": 10004,
+      "actual": 10004,
+      "expected_total": "9950461813.41",
+      "actual_total": "9950461813.4100",
+      "differences": 0
+    },
+    "example": {
+      "id": "108153641",
+      "value": "57143904.29"
+    },
+    "distinct": {
+      "grouped": false
+    },
+    "durationMs": 19634
+  }
+}
