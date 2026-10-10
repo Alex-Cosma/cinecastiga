@@ -1192,7 +1192,7 @@ export interface ContractDetail {
   flags: { code: string; severity: number | null; evidence: Record<string, unknown> | null }[];
   /** how many contracts (lots) the same award notice produced */
   noticeLotCount: number;
-  publications: {natId:string;noticeId:string;noticeNo:string|null;canonical:boolean}[];
+  publications: {natId:string;noticeId:string;noticeNo:string|null;canonical:boolean;publishedOn:string|null;valueRon:string|null;title:string|null;supplierIds:string[];supplierNames:string[]}[];
   countedOnce: boolean;
 }
 
@@ -1225,12 +1225,16 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
 
   const publications = await sql`
     select c.ca_notice_contract_id::text nat_id,c.ca_notice_id::text notice_id,a.notice_no,
-      c.id=d.canonical_contract_id canonical,d.canonical_contract_id::text canonical_id
+      c.id=d.canonical_contract_id canonical,d.canonical_contract_id::text canonical_id,
+      to_char(a.state_date at time zone 'Europe/Bucharest','YYYY-MM-DD') published_on,
+      trim_scale(${contractRonValue(sql)})::text value_ron,c.title,
+      array(select w.entity_id::text from core.contract_winners w where w.contract_id=c.id order by w.entity_id) supplier_ids,
+      array(select e.name_display from core.contract_winners w join core.entities e on e.id=w.entity_id where w.contract_id=c.id order by w.entity_id) supplier_names
     from marts.contract_identity_members selected
     join marts.contract_identity_decisions d on d.candidate_id=selected.candidate_id
     join marts.contract_identity_members m on m.candidate_id=d.candidate_id
     join core.contracts c on c.id=m.contract_id left join core.awards a on a.ca_notice_id=c.ca_notice_id
-    where selected.contract_id=${contractId} order by c.id`;
+    where selected.contract_id=${contractId} order by a.state_date nulls first,c.id`;
   const statisticsId=publications[0]?.canonical_id ?? contractId;
   const caId = r["ca_notice_id"] != null ? String(r["ca_notice_id"]) : null;
   const [mart, winners, flags, lotCount] = await Promise.all([
@@ -1257,14 +1261,19 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
       : Promise.resolve([{ c: 1 }]),
   ]);
 
+  const openedPublication=publications.find(p=>String(p.nat_id)===nid);
+  const currentPublication=publications.find(p=>p.canonical===true);
+  const sameStatisticalVersion=!openedPublication||!currentPublication||(
+    openedPublication.value_ron===currentPublication.value_ron&&openedPublication.title===currentPublication.title&&
+    JSON.stringify(openedPublication.supplier_ids)===JSON.stringify(currentPublication.supplier_ids));
   const shareBySupplier = new Map<string, string | null>();
-  for (const m of mart) {
+  for (const m of sameStatisticalVersion?mart:[]) {
     shareBySupplier.set(
       String(m["supplier_id"]),
       m["closing_value"] != null ? String(m["closing_value"]) : null,
     );
   }
-  const m0 = mart[0];
+  const m0 = sameStatisticalVersion?mart[0]:undefined;
 
   // pair history: authority × each winner, both channels (skip if no authority)
   const winnerIds = winners.map((w) => String(w["entity_id"]));
@@ -1295,7 +1304,7 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
   }
 
   return {
-    publications:publications.map(p=>({natId:String(p.nat_id),noticeId:String(p.notice_id),noticeNo:p.notice_no as string|null,canonical:p.canonical===true})),
+    publications:publications.map(p=>({natId:String(p.nat_id),noticeId:String(p.notice_id),noticeNo:p.notice_no as string|null,canonical:p.canonical===true,publishedOn:p.published_on as string|null,valueRon:p.value_ron as string|null,title:p.title as string|null,supplierIds:p.supplier_ids as string[],supplierNames:p.supplier_names as string[]})),
     countedOnce:publications.length>1&&mart.length>0,
     natId: String(r["nat_id"]),
     contractId,

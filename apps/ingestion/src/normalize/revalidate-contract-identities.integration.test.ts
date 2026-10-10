@@ -41,7 +41,7 @@ describe.skipIf(!isolated)('backed-up publication evidence revalidation',()=>{
    await expect(revalidateApprovedContractIdentities(q,run)).rejects.toThrow('missing_archive');
    expect((await q`select count(*)::int n from marts.contract_identity_revisions`)[0]!.n).toBe(0);
    const third=structuredClone(archives.slice(2));
-   third[0]!.payload.caNoticeId=300;third[1]!.payload.caNoticeId=300;
+   third[0]!.payload.caNoticeId=300;third[0]!.payload.noticeStateDate='2026-10-03T10:00:00+03:00';third[1]!.payload.caNoticeId=300;
    Object.assign(third[1]!.payload.items[0],{caNoticeId:300,caNoticeContractId:103});
    for(let i=0;i<third.length;i++)await q`insert into raw.raw_documents(id,source,external_id,endpoint_version,content_hash,payload)
     values(${30+i},'elicitatie','award:300',${third[i]!.endpoint},${'third-'+i},${JSON.stringify(third[i]!.payload)}::jsonb)`;
@@ -56,7 +56,7 @@ describe.skipIf(!isolated)('backed-up publication evidence revalidation',()=>{
    await expect(q.begin(async nested=>{
     await nested`update core.contracts set contract_value=110 where id=3`;
     await revalidateApprovedContractIdentities(nested as unknown as DbSql,run);
-   })).rejects.toThrow('Conflicting publication of an approved contract');
+   })).rejects.toThrow('archive_disagrees_with_core');
    await expect(q.begin(async nested=>{
     await nested`update raw.raw_documents set payload=jsonb_set(payload,'{procedureId}','999') where id=30`;
     await revalidateApprovedContractIdentities(nested as unknown as DbSql,run);
@@ -88,6 +88,30 @@ describe.skipIf(!isolated)('backed-up publication evidence revalidation',()=>{
    const members=await readContractIdentityMembers(q,['1','2','3']);
    const registry=await q`select c.*,to_jsonb(d) decision from marts.contract_identity_candidates c join marts.contract_identity_decisions d on d.candidate_id=c.id`;
    expect(()=>verifyApprovedPublications(registry as any,[...members,{...members[2],identity:{...members[2]!.identity,id:'4',publicId:'104'}}] as any,[...archives,...third])).toThrow('ambiguous_multiplicity');
+   // A source-dated amendment contributes its latest amount once and preserves
+   // every older publication/decision. The count is corroboration, not an ID.
+   await q`insert into core.awards(id,raw_id,ca_notice_id,notice_no,authority_entity_id,cpv_code,procedure_type,acquisition_type)
+    select 4,40,400,notice_no,authority_entity_id,cpv_code,procedure_type,acquisition_type from core.awards where id=1`;
+   await q`insert into core.contracts(id,raw_id,ca_notice_contract_id,ca_notice_id,contract_no,contract_date,contract_value,currency,title,lots_caption,cpv_code)
+    select 4,41,104,400,contract_no,contract_date,110,currency,title,lots_caption,cpv_code from core.contracts where id=1`;
+   await q`insert into core.contract_winners(contract_id,entity_id) values(4,10)`;
+   const fourth=structuredClone(third);fourth[0]!.payload.caNoticeId=400;fourth[0]!.payload.noticeStateDate='2026-10-04T10:00:00+03:00';
+   fourth[1]!.payload.caNoticeId=400;Object.assign(fourth[1]!.payload.items[0],{caNoticeId:400,caNoticeContractId:104,contractValue:110,defaultCurrencyContractValue:110,hasModifiedVersions:true,modifiedCount:1});
+   for(let i=0;i<fourth.length;i++)await q`insert into raw.raw_documents(id,source,external_id,endpoint_version,content_hash,payload)
+    values(${40+i},'elicitatie','award:400',${fourth[i]!.endpoint},${'fourth-'+i},${JSON.stringify(fourth[i]!.payload)}::jsonb)`;
+   await expect(q.begin(async nested=>{
+    await nested`update raw.raw_documents set payload=jsonb_set(payload,'{items,0,hasModifiedVersions}','false') where id=41`;
+    await revalidateApprovedContractIdentities(nested as unknown as DbSql,run);
+   })).rejects.toThrow('missing_amendment_evidence');
+   await expect(q.begin(async nested=>{
+    await nested`update raw.raw_documents set payload=jsonb_set(payload,'{noticeStateDate}','"2026-10-03T10:00:00+03:00"') where id=40`;
+    await revalidateApprovedContractIdentities(nested as unknown as DbSql,run);
+   })).rejects.toThrow('ambiguous_version_order');
+   expect((await revalidateApprovedContractIdentities(q,run)).quality.valid).toBe(true);
+   expect((await q`select canonical_contract_id::text id from marts.contract_identity_decisions`)[0]!.id).toBe('4');
+   expect((await q`select count(*)::int n from marts.contract_identity_members`)[0]!.n).toBe(4);
+   expect((await q`select previous_snapshot->'decision'->>'canonical_contract_id' old from marts.contract_identity_revisions order by id desc limit 1`)[0]!.old).toBe('1');
+   expect((await revalidateApprovedContractIdentities(q,run)).changedGroups).toBe(0);
    throw rollback;
   })).rejects.toBe(rollback);}finally{await rm(dir,{recursive:true,force:true});}
  },60_000);

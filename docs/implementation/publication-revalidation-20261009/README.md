@@ -1,3 +1,5 @@
+**10 October update:** the owner approved latest verified version once, with history preserved. See [implementation and recovery status](../publication-recovery-20261010/README.md); the policy hold below is historical.
+
 # Publication recovery — 9 October 2026, late evening
 
 ## Current decision: HOLD, no reopening promised

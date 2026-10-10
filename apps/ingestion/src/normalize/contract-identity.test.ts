@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {assessContractIdentity,assessContractPublicationGroup,contractIdentitySignature,type IdentityContract,type ArchivedAward} from './contract-identity.js';
+import {assessContractIdentity,assessContractPublicationGroup,assessContractVersions,contractIdentitySignature,type IdentityContract,type ArchivedAward} from './contract-identity.js';
 const base:IdentityContract={id:'1',publicId:'101',noticeId:'10',noticeNo:'CAN123',authority:'7',authorityCui:'4278337',number:'C/1',date:'2026-07-06',value:'100',currency:'RON',title:'Contract',lots:'Lot 1',cpv:'45000000-7',procedure:'Licitatie',acquisition:'Lucrari',winners:['20'],winnerCuis:['15219174']};
 const other={...base,id:'2',publicId:'102',noticeId:'11'};
 function sources(c:IdentityContract):ArchivedAward[]{return [
@@ -72,5 +72,40 @@ describe('source verification of additional publications',()=>{
  it('rejects a missing source or repeated member within a publication',()=>{
   expect(assessContractPublicationGroup([base,other,third],archives()).status).toBe('needs_evidence');
   expect(assessContractPublicationGroup([base,other,other],archives()).reasons).toContain('ambiguous_multiplicity');
+ });
+});
+
+describe('latest verified contract version',()=>{
+ const latest={...base,id:'3',publicId:'99',noticeId:'12',value:'80'};
+ function versionSources(){
+  const all=[...sources(base),...sources(other),...sources(latest)];
+  for(let i=0;i<3;i++)all[i*2]!.payload.noticeStateDate=`2026-10-0${i+1}T10:00:00+03:00`;
+  Object.assign(all[5]!.payload.items[0],{contractValue:80,defaultCurrencyContractValue:80,hasModifiedVersions:true,modifiedCount:1});
+  return all;
+ }
+ it('selects a source-dated decrease even with a lower source ID; keeps all versions',()=>{
+  const result=assessContractVersions([base,other,latest],versionSources());
+  expect(result.status).toBe('source_verified');expect(result.latestPublicId).toBe('99');expect(result.members).toHaveLength(3);
+ });
+ it('requires amendment evidence for changed amounts',()=>{
+  const all=versionSources();all[5]!.payload.items[0].hasModifiedVersions=false;
+  expect(assessContractVersions([base,other,latest],all).reasons).toContain('missing_amendment_evidence');
+ });
+ it('refuses ambiguous or missing publication dates',()=>{
+  const all=versionSources();all[4]!.payload.noticeStateDate=all[2]!.payload.noticeStateDate;
+  expect(assessContractVersions([base,other,latest],all).reasons).toContain('ambiguous_version_order');
+  delete all[4]!.payload.noticeStateDate;
+  expect(assessContractVersions([base,other,latest],all).reasons).toContain('unverified_publication_order');
+ });
+ it('verifies a supplier amendment against the actual archived fiscal IDs',()=>{
+  const changed={...latest,winners:['21'],winnerCuis:['391391']},all=versionSources();
+  all[5]!.payload.items[0].winner.fiscalNumber='391391';
+  expect(assessContractVersions([base,other,changed],all).status).toBe('source_verified');
+  all[5]!.payload.items[0].winner.fiscalNumber='15219174';
+  expect(assessContractVersions([base,other,changed],all).status).toBe('conflict');
+ });
+ it('does not merge different dates/lots/procedures or two records in one publication',()=>{
+  expect(assessContractVersions([base,other,{...latest,date:'2026-07-07'}],versionSources()).status).toBe('conflict');
+  expect(assessContractVersions([base,other,{...latest,noticeId:other.noticeId}],versionSources()).reasons).toContain('ambiguous_multiplicity');
  });
 });
