@@ -38,7 +38,7 @@ Next normal schedule remains daily05:00RO /Sundayrisk. Full recovery now is nece
 
 ## Current state
 
-**Code deployed and recovery running, not yet published.** See the latest operational checkpoint below. Earlier sections describe their respective copied datasets; the refreshed live-state proof supersedes the initial counts.
+**Production recovery complete; public site reopened at 09:49 RO on 10 October.** See the final operational checkpoint below. Earlier sections describe their respective copied datasets; the refreshed live-state proof supersedes the initial counts.
 
 ### Release check, 07:22 RO
 
@@ -69,3 +69,13 @@ Manual full run **4e67b730-618a-4182-9310-fe97356c68bc** was claimed successfull
 **Continuation:** inspect this exact run and log; do not start another recovery or clear run-id/audit. If failed, inspect the failed stage and diagnostics, retain maintenance, repair only after validation. If ready, confirm `stage=complete`, `search_verified`, latest monitoring checkpoint ready with all checks passed, controlmaintenance=false/paused=true/sourceblock542533 unchanged. Verify `/api/health`, `/intreaba`, `/domenii` and old/new contract107338420/108153641routes, including49,781,431.91vs57,143,904.29RON history. Then record actual timings/results here. No final production publication validation has yet been observed at this checkpoint.
 
 Ordinary local application DB is unchanged. Isolated copied DBs, logs and UI screenshots remain in `.local/publication-recovery-20261009/` and `.local/publication-recovery-20261010/`. Temporary scoped export was deleted from the server after the refreshed local copy passed. No production account/session data were exported for this verification.
+
+### Production recovery complete — verified 10 October, 09:56 RO
+
+Run `4e67b730-618a-4182-9310-fe97356c68bc` completed successfully at **06:49:20 UTC / 09:49:20 Romania**, status `ready`, stage `complete`. Total time **2h 11m 16.991s**, including a fresh verified backup (18m 16s). The version repair passed on production: 8,045 groups, 4,465 extended, 21,241 verified source publications. All **12** complete-snapshot checks passed, including publication identity, currency, TED normalization, contract/allocation populations, totals and risk-source reconciliation.
+
+Checkpoint `0c084c3d-829a-4a3e-94df-32b8ce2e3c0a` is ready. Search verified: 21,177,828 acquisition titles prepared in 401 seconds; all 183,993 entities indexed. Web and documents worker restarted, health passed, and the ordinary finish gate reopened the site automatically.
+
+Control revision **107**, maintenance=false, paused=true. Independent collection block remains exactly `Sarcina 542533: SEAP a repetat înregistrări între pagini.` No collection restart or relaxation of historical inventory checks. Public `/api/health`, `/intreaba`, `/domenii`, `/contracte/107338420` and `/contracte/108153641` all returned **HTTP 200** during the final check. Source-history behavior was validated on the copied cohort earlier; the final route checks confirm availability, not a new browser inspection.
+
+**Recovery is finished. Do not rerun the dated operation.** Next independent work is the historical collection pagination discrepancy; daily 05:00 publication and Sunday risk scheduling are unchanged. Earlier running/maintenance notes above are historical checkpoints, superseded by this completion.
