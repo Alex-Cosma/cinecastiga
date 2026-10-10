@@ -5,9 +5,16 @@ import {redactPayload} from '../scrape/redact.js';
 import type {ArchivableDocument} from '../scrape/archive.js';
 import {isDeepStrictEqual} from 'node:util';
 export type Stream='da'|'tenders'|'awards'|'catalogue';
-export interface Task {id?:number;batch_id:string;key:string;partition:string;stream:Stream;kind:'da'|'list'|'detail'|'contracts'|'catalogue';params:{from?:string;to?:string;page:number;authorityId?:number;noticeId?:number;inventoryOnly?:boolean}&Partial<NoticeDetailParams>;status?:string;priority:number;error?:string}
+export interface Task {id?:number;batch_id:string;key:string;partition:string;stream:Stream;kind:'da'|'list'|'detail'|'contracts'|'catalogue';params:{from?:string;to?:string;page:number;authorityId?:number;noticeId?:number;inventoryOnly?:boolean;singlePageTotal?:number}&Partial<NoticeDetailParams>;status?:string;priority:number;error?:string}
 export interface PageResult {total:number;ids:number[];identities?:string[];items?:Record<string,unknown>[]}
 export interface TaskPlan {status:'complete'|'split';result:PageResult|{detail:true};docs:ArchivableDocument[];children:Task[]}
+export class NoticePageOverlapError extends Error { constructor(readonly total:number){super('SEAP a repetat înregistrări între pagini.');} }
+export function noticePageSize(t:Pick<Task,'kind'|'params'>){
+ const n=t.params.singlePageTotal;
+ if(n===undefined)return 100;
+ if(t.kind!=='list'||!Number.isSafeInteger(n)||n<1||n>2000||t.params.page!==0||!t.params.from||t.params.from!==t.params.to)throw Error('Fereastra de recuperare trebuie să încapă într-o singură pagină.');
+ return 2000;
+}
 const integer=(x:unknown):x is number=>Number.isSafeInteger(x)&&Number(x)>0;
 const emptyPart=(v:unknown)=>v==null||v===''||(Array.isArray(v)&&v.length===0);
 /** Compare full winner records by their source IDs, never just names or CUIs. */
@@ -57,14 +64,16 @@ function mergeContractPageRow(a:Record<string,unknown>,b:Record<string,unknown>)
 }
 export function task(batch:string,stream:Stream,kind:Task['kind'],params:Task['params'],priority=10):Task{
  if(params.inventoryOnly&&(kind!=='list'||!['tenders','awards'].includes(stream)))throw Error('Inventory mode supports notice lists only');
+ noticePageSize({kind,params});
  const identity=stream==='tenders'&&kind==='detail'?participationKey(params.noticeId!,params.noticeType):params.authorityId??params.noticeId??'';
- const partition=[stream,kind,identity,params.from??'',params.to??''].join(':')+(kind==='detail'&&params.part&&params.part!=='root'?`:${params.part}:${params.lotId??''}`:'')+(params.inventoryOnly?':inventory':'');
+ const partition=[stream,kind,identity,params.from??'',params.to??''].join(':')+(kind==='detail'&&params.part&&params.part!=='root'?`:${params.part}:${params.lotId??''}`:'')+(params.inventoryOnly?':inventory':'')+(params.singlePageTotal===undefined?'':`:single:${params.singlePageTotal}`);
  return {batch_id:batch,key:`${partition}:${params.page}`,partition,stream,kind,params,priority};
 }
 const document=(stream:Stream,id:number,version:string,payload:unknown):ArchivableDocument=>({source:'elicitatie',externalId:`${stream==='tenders'?'tender':stream==='awards'?'award':'da'}:${id}`,endpointVersion:version,payload});
 /** One task consumes exactly one HTTP attempt. No cursor moves on validation failure. */
 export function planResponse(t:Task,value:unknown,previous:PageResult[],batchEnd:string):TaskPlan{
  if(t.params.inventoryOnly&&(t.kind!=='list'||!['tenders','awards'].includes(t.stream)))throw Error('Inventory mode supports notice lists only');
+ noticePageSize(t);
  const prefix=t.stream==='tenders'?'tender':'award';
  if(t.kind==='detail'){
   return planNoticeDetail(t,value,previous);
@@ -76,8 +85,9 @@ export function planResponse(t:Task,value:unknown,previous:PageResult[],batchEnd
   const days=Math.round((Date.parse(to)-Date.parse(from))/86400000)+1,mid=addDays(from,Math.floor(days/2)-1);
   return {status:'split',result:{total:e.total,ids:[]},docs:[],children:[task(t.batch_id,'da','da',{...t.params,to:mid,page:0},1),task(t.batch_id,'da','da',{...t.params,from:addDays(mid,1),page:0},1)]};
  }
+ if(t.params.singlePageTotal!==undefined&&e.total!==t.params.singlePageTotal)throw Error('Totalul s-a modificat la reverificarea zilei.');
  if(e.searchTooLong)throw Error('Fereastra SEAP este trunchiată; colectarea se oprește.');
- const pageSize=t.kind==='da'||t.kind==='catalogue'?2000:t.kind==='contracts'?200:100;
+ const pageSize=t.kind==='da'||t.kind==='catalogue'?2000:t.kind==='contracts'?200:noticePageSize(t);
  // CANoticeContracts can return surplus rows and overlap adjacent pages.
  // Keep the requested offsets, validate repeated payloads and reconcile the
  // final DISTINCT contract population to total before archiving anything.
@@ -93,7 +103,11 @@ export function planResponse(t:Task,value:unknown,previous:PageResult[],batchEnd
  const identities=scoped?e.items.map((i,index)=>participationKey(validIds[index]!,i.sysNoticeTypeId)):undefined;
  if(scoped&&previous.some(p=>!p.identities||p.identities.length!==p.ids.length))throw Error('Identitatea paginilor istorice trebuie reconciliată înainte de continuare.');
  const uniqueCurrent=identities??validIds,uniqueBefore=scoped?previous.flatMap(p=>p.identities!):before;
- if(new Set<string|number>(uniqueCurrent).size!==uniqueCurrent.length||(!contracts&&new Set([...uniqueBefore,...uniqueCurrent]).size!==uniqueBefore.length+uniqueCurrent.length))throw Error('SEAP a repetat înregistrări între pagini.');
+ if(new Set<string|number>(uniqueCurrent).size!==uniqueCurrent.length)throw Error('SEAP a repetat înregistrări în aceeași pagină.');
+ if(!contracts&&new Set([...uniqueBefore,...uniqueCurrent]).size!==uniqueBefore.length+uniqueCurrent.length){
+  if(t.kind==='list')throw new NoticePageOverlapError(e.total);
+  throw Error('SEAP a repetat înregistrări între pagini.');
+ }
  const expected=Math.min(pageSize,Math.max(0,e.total-t.params.page*pageSize));
  if(contracts?e.items.length<expected:e.items.length!==expected)throw Error('Numărul de înregistrări nu corespunde totalului SEAP.');
  const docs:ArchivableDocument[]=[],children:Task[]=[];

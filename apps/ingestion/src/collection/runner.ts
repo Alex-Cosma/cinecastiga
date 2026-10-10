@@ -3,7 +3,7 @@ import {CollectionProxyFailureError,collectionQuietWindow,diagnosticError,saniti
 import {getNoticeContracts,getNoticeDetailPart,type NoticeDetailParams,ScrapeError,listContractingAuthorities,listDirectAcquisitions,listNotices,NOTICE_TYPE_IDS,type ElicitatieClient} from '@seap/scraper-clients';
 import {archiveDocumentsSql} from '../scrape/archive.js';
 import {isoDaysAgo} from '../scrape/window.js';
-import {planResponse,task,type Task,type PageResult} from './plan.js';
+import {planResponse,task,noticePageSize,NoticePageOverlapError,type Task,type PageResult} from './plan.js';
 import {compareNoticeInventory} from './inventory.js';
 import type {NoticeListItem} from '@seap/scraper-clients';
 export const RECOVERY_LOCK=[729114,5] as const;
@@ -35,10 +35,27 @@ export async function fetchTask(client:ElicitatieClient,t:Task):Promise<unknown>
   const p=t.params;
   if(t.kind==='catalogue')return listContractingAuthorities(client,{pageIndex:p.page,pageSize:2000});
   if(t.kind==='da')return (await listDirectAcquisitions(client,{finalizationDateStart:p.from!,finalizationDateEnd:p.to!,contractingAuthorityId:p.authorityId!,pageIndex:p.page,pageSize:2000})).data;
-  if(t.kind==='list')return (await listNotices(client,{sysNoticeTypeIds:t.stream==='tenders'?NOTICE_TYPE_IDS.participation:NOTICE_TYPE_IDS.award,startPublicationDate:p.from!,endPublicationDate:p.to!,pageIndex:p.page,pageSize:100})).data;
+  if(t.kind==='list')return (await listNotices(client,{sysNoticeTypeIds:t.stream==='tenders'?NOTICE_TYPE_IDS.participation:NOTICE_TYPE_IDS.award,startPublicationDate:p.from!,endPublicationDate:p.to!,pageIndex:p.page,pageSize:noticePageSize(t)})).data;
   if(t.kind==='detail')return (await getNoticeDetailPart(client,p as NoticeDetailParams)).data;
   return (await getNoticeContracts(client,{caNoticeId:p.noticeId!,skip:p.page*200,take:200})).data;
  },{taskId:t.id,batchId:t.batch_id,partition:t.partition,kind:t.kind,parameters:t.params});
+}
+/** Replace an unstable small daily pagination with one bounded source response.
+ * Original attempts/results remain audited; the replacement must still prove
+ * every distinct identity and exactly the same source total. No recursive retry. */
+export async function scheduleNoticeOverlapRecovery(q:DbSql,t:Task,total:number){
+ if(t.kind!=='list'||!['awards','tenders'].includes(t.stream)||t.params.singlePageTotal!==undefined||!t.params.from||t.params.from!==t.params.to||!Number.isSafeInteger(total)||total<1||total>2000)return false;
+ const replacement=task(t.batch_id,t.stream,'list',{...t.params,page:0,singlePageTotal:total},0);
+ await q.begin(async tx=>{
+  const rows=await tx`select * from app.collection_tasks where batch_id=${t.batch_id} and partition=${t.partition} for update`;
+  if(!rows.some(r=>String(r.id)===String(t.id)&&r.status==='running')||rows.some(r=>!['complete','running'].includes(r.status)))throw Error('Notice partition ownership changed');
+  if((await tx`select id from app.collection_tasks where batch_id=${t.batch_id} and key=${replacement.key}`).length)throw Error('Notice single-page recovery was already attempted');
+  await insertTasks(tx as unknown as DbSql,[replacement]);
+  await tx`insert into app.collection_audit(actor_id,actor_name,action,before,after) values('system:collector','Reverificare paginare','notice-pagination-recovery',${JSON.stringify({tasks:rows})}::jsonb,${JSON.stringify({replacement:replacement.key,total,pageSize:2000})}::jsonb)`;
+  await tx`update app.collection_tasks set status='split',finished_at=clock_timestamp(),error='Paginare suprapusă; reverificare într-o singură pagină.',result=coalesce(result,'{}'::jsonb)||${JSON.stringify({supersededBy:replacement.key})}::jsonb where batch_id=${t.batch_id} and partition=${t.partition}`;
+  await tx`update app.collection_retries set status='resolved',retry_at=null,updated_at=clock_timestamp() where task_id=${t.id!} and status='pending'`;
+ });
+ return true;
 }
 /** Caller holds RECOVERY_LOCK for the entire worker lifetime, including archive commits. */
 export async function recoverInterrupted(q:DbSql){
@@ -108,6 +125,7 @@ export async function recoveryStep(q:DbSql,fetcher:(t:Task)=>Promise<unknown>,la
   const message=isolatedDetailFailure&&error instanceof ScrapeError?`Detaliu SEAP indisponibil (HTTP ${error.status}); celelalte anunțuri continuă.`:error instanceof Error?error.message:'Eroare de colectare';
   const safe=/^(Structur|Detaliu|Identitatea|O singură|Fereastra|Dimensiunea|Totalul|Lipsește|Lista|SEAP|Numărul|Data|Filtrul|Tip de|Anunț)/.test(message)?message:'Cererea sau arhivarea nu a fost confirmată. Verifică jurnalul înainte de reluare.';
   await q`update app.collection_requests set diagnostics=coalesce(diagnostics,'{}'::jsonb)||${JSON.stringify(sanitizeDiagnostics({taskFailure:{taskId:t.id,exception:diagnosticError(error),...(response===undefined?{}:{response})}}))}::jsonb where id=(select id from app.collection_requests where diagnostics->'context'->>'taskId'=${String(t.id)} order by id desc limit 1)`;
+  if(error instanceof NoticePageOverlapError&&await scheduleNoticeOverlapRecovery(q,t,error.total)){console.log(JSON.stringify({event:'notice-pagination-recovery',task:t.id,total:error.total}));return true;}
   await q.begin(async tx=>{await tx`update app.collection_retries set status='stopped',retry_at=null,updated_at=clock_timestamp() where task_id=${t.id!} and status='pending'`;await tx`update app.collection_tasks set status='failed',error=${safe.slice(0,500)},finished_at=clock_timestamp() where id=${t.id!}`;if(!isolatedDetailFailure)await tx`update app.collection_control set blocked_reason=coalesce(blocked_reason,${`Sarcina ${t.id}: ${safe}`}) where id=1`;});
   console.error(JSON.stringify({event:isolatedDetailFailure?'recovery-detail-gap':'recovery-stopped',task:t.id,error:safe}));
  }
