@@ -1,5 +1,6 @@
 import {createDb} from '@seap/db';
 import {setTimeout as pause} from 'node:timers/promises';
+import {runAutomaticCollector} from '../../lib/documents/collection';
 import {runWorkerOnce} from '../../lib/documents/worker';
 import {loadDocumentProxy} from '../../lib/documents/proxy';
 const stop=new AbortController();
@@ -11,5 +12,5 @@ if(process.env.DOCUMENTS_ENABLED!=='true'){
 }
 // Reject a bad/missing required proxy before claiming any queued job.
 try{await loadDocumentProxy();}catch{console.error('Configurația proxy pentru documente este invalidă. Workerul nu a preluat niciun job.');process.exit(1);}
-const {sql}=createDb();
-try{do{try{const worked=await runWorkerOnce(sql,stop.signal);if(process.argv.includes('--once'))break;if(!worked)await pause(3000,undefined,{signal:stop.signal});}catch(error){if(stop.signal.aborted)break;console.error('Document worker:',error instanceof Error?error.message:'failed');if(process.argv.includes('--once')){process.exitCode=1;break;}await pause(5000,undefined,{signal:stop.signal});}}while(!stop.signal.aborted);}finally{await sql.end({timeout:5});}
+const {sql}=createDb(undefined,{max:20});
+try{do{try{const worked=(!process.argv.includes('--once')&&await runAutomaticCollector(sql,stop.signal))||await runWorkerOnce(sql,stop.signal);if(process.argv.includes('--once'))break;if(!worked)await pause(3000,undefined,{signal:stop.signal});}catch(error){if(stop.signal.aborted)break;console.error('Document worker:',error instanceof Error?error.message:'failed');if(process.argv.includes('--once')){process.exitCode=1;break;}await pause(5000,undefined,{signal:stop.signal});}}while(!stop.signal.aborted);}finally{await sql.end({timeout:5});}

@@ -14,7 +14,7 @@ export async function advanceRecovery(q:DbSql,{enable=false,now}:{enable?:boolea
   if(batches.length!==1)throw Error('Inspect multiple recovery batches before advancing their scope.');
   const b=batches[0]!;
   if(!enable&&!b.follow_latest)return null;
-  const [clock]=await tx`select (d::date-case when d::time<'03:30'::time then 2 else 1 end)::text target from
+  const [clock]=await tx`select (d::date-case when d::time<'02:00'::time then 2 else 1 end)::text target from
    (select coalesce(${now?.toISOString()??null}::timestamptz,clock_timestamp()) at time zone 'Europe/Bucharest' d) x`;
   const target=String(clock!.target);
   if(target<=String(b.end_day)){

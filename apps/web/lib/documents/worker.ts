@@ -64,16 +64,16 @@ export async function runWorkerOnce(sql:DbSql,shutdown:AbortSignal,work=runDocum
  try{
   const [lock]=await q`select pg_try_advisory_lock(${DOCUMENT_LOCK[0]},${DOCUMENT_LOCK[1]}) acquired,pg_backend_pid() pid`;
   if(!lock?.acquired)return false;acquired=true;
-  if((await q`select id from app.document_jobs where batch_id is not null and status='running' limit 1`).length)return false;
+  if((await q`select id from app.document_jobs where (batch_id is not null or automatic) and status='running' limit 1`).length)return false;
   // A targeted pilot must never clean up or consume someone else's work.
   if(onlyJobId){const [running]=await q`select id from app.document_jobs where status='running' limit 1`;if(running)return false;}
   const pid=lock.pid;
   heartbeat=setInterval(()=>{void q`select pg_backend_pid() pid`.then(async r=>{if(r[0]?.pid!==pid)controller.abort();else await collectionHeartbeat(q,collectionId,'documents','processing');}).catch(()=>controller.abort());},2000);
-  const orphan=await q`update app.document_jobs set status='failed',stage='failed',error='Procesarea a fost întreruptă. Reia operațiunea; originalul păstrat va fi reutilizat.',finished_at=now() where status='running' and batch_id is null returning id`;
+  const orphan=await q`update app.document_jobs set status='failed',stage='failed',error='Procesarea a fost întreruptă. Reia operațiunea; originalul păstrat va fi reutilizat.',finished_at=now() where status='running' and batch_id is null and not automatic returning id`;
   // A killed worker's bounded child tools/network must finish before replacement starts.
   if(orphan.length)await pause(120000,undefined,{signal:controller.signal});
   controller.signal.throwIfAborted();
-  const [job]=await q`update app.document_jobs set status='running',stage='source',started_at=now() where id=(select id from app.document_jobs where status='queued' and batch_id is null and (${onlyJobId??null}::uuid is null or id=${onlyJobId??null}::uuid) order by created_at,id limit 1) returning *`;
+  const [job]=await q`update app.document_jobs set status='running',stage='source',started_at=now() where id=(select id from app.document_jobs where status='queued' and batch_id is null and not automatic and (${onlyJobId??null}::uuid is null or id=${onlyJobId??null}::uuid) order by created_at,id limit 1) returning *`;
   if(!job)return false;
   const deadline=setTimeout(()=>controller.abort(),20*60*1000);
   try{await work(q,job,controller.signal);controller.signal.throwIfAborted();await q`update app.document_jobs set status='complete',stage='complete',finished_at=now() where id=${job.id}`;}

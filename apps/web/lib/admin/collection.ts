@@ -13,6 +13,7 @@ export async function collectionStatus(q:DbSql=collectionDb()){
   const [control]=await tx`select *,clock_timestamp() server_now from app.collection_control where id=1`;
   if(!control)throw Error('Configurația colectării lipsește.');
   const today=await tx`select count(*)::int attempts,count(*) filter(where outcome='success')::int succeeded,count(*) filter(where outcome in ('failed','interrupted'))::int failed,coalesce(sum(records),0)::text received from app.collection_requests where started_at>=((now() at time zone 'Europe/Bucharest')::date::timestamp at time zone 'Europe/Bucharest')`;
+  const [dataToday]=await tx`select count(*)::int attempts,count(*) filter(where outcome='success')::int succeeded,count(*) filter(where outcome in ('failed','interrupted'))::int failed,coalesce(sum(records),0)::text received from app.collection_requests where stream<>'documents' and started_at>=((now() at time zone 'Europe/Bucharest')::date::timestamp at time zone 'Europe/Bucharest')`;
   const streams=await tx`select stream,count(*)::int attempts,coalesce(sum(records),0)::text received,count(*) filter(where outcome in ('failed','interrupted'))::int failed from app.collection_requests group by stream`;
   const requests=await tx`select id::text,proxy_id,stream,method,endpoint,parameters,status,outcome,error,records,bytes::text,diagnostics is not null as has_diagnostics,started_at,finished_at,extract(epoch from(finished_at-started_at))*1000 duration_ms from app.collection_requests order by app.collection_requests.id desc limit 100`;
   const failures=await tx`select id::text,proxy_id,stream,method,endpoint,parameters,status,outcome,error,records,bytes::text,diagnostics is not null as has_diagnostics,started_at,finished_at,extract(epoch from(finished_at-started_at))*1000 duration_ms from app.collection_requests where outcome in ('failed','interrupted') order by app.collection_requests.id desc limit 100`;
@@ -38,7 +39,7 @@ export async function collectionStatus(q:DbSql=collectionDb()){
   const poolSize=proxies.endpoints.filter(p=>p.enabled).length;
   const proxySeconds=proxies.settings.enabled?Math.max(60/Number(proxies.settings.requests_per_minute),(Number(proxies.settings.min_seconds)+Number(proxies.settings.max_seconds))/2/Math.max(1,poolSize)):null;
   const forecast=batch?await recoveryStatus(tx as unknown as DbSql,batch.id,progress as unknown as RecoveryCounts[],proxySeconds===null?control:{...control,min_seconds:proxySeconds,max_seconds:proxySeconds}):null;
-  return {proxies,proxyRetries,moneyQuality,forecast,timeoutRetry:timeoutRetry??null,quietWindow,recovery:batch?{batch,progress}:null,control,today:today[0]!,streams,requests,failures,workers,audit,runs,documents:documents!,raw:raw!,publication:publication[0]??null,lastVerified:lastVerified??null,processing:{runs:processingRuns,schedule:{next_at:iso(schedule.next_at),next_risk_at:iso(schedule.next_risk_at)},schedulerAlive:scheduler?.alive===true}};
+  return {proxies,proxyRetries,moneyQuality,forecast,timeoutRetry:timeoutRetry??null,quietWindow,recovery:batch?{batch,progress}:null,control,dataToday:dataToday!,today:today[0]!,streams,requests,failures,workers,audit,runs,documents:documents!,raw:raw!,publication:publication[0]??null,lastVerified:lastVerified??null,processing:{runs:processingRuns,schedule:{next_at:iso(schedule.next_at),next_risk_at:iso(schedule.next_risk_at)},schedulerAlive:scheduler?.alive===true}};
  });
 }
 export type CollectionStatus=Awaited<ReturnType<typeof collectionStatus>>;
@@ -67,7 +68,8 @@ export async function changeCollection(actor:{id:string;name:string},body:Record
    await tx`update app.collection_control set paused=${body.paused} where id=1`;
   }else if(body.action==='stream'){
    if(typeof body.stream!=='string'||!COLLECTION_STREAMS.includes(body.stream as typeof COLLECTION_STREAMS[number])||typeof body.paused!=='boolean')throw Error('Flux invalid.');
-   const streams=new Set<string>(before.paused_streams);if(body.paused)streams.add(body.stream);else streams.delete(body.stream);
+   const [dataToday]=await tx`select count(*)::int attempts,count(*) filter(where outcome='success')::int succeeded,count(*) filter(where outcome in ('failed','interrupted'))::int failed,coalesce(sum(records),0)::text received from app.collection_requests where stream<>'documents' and started_at>=((now() at time zone 'Europe/Bucharest')::date::timestamp at time zone 'Europe/Bucharest')`;
+  const streams=new Set<string>(before.paused_streams);if(body.paused)streams.add(body.stream);else streams.delete(body.stream);
    await tx`update app.collection_control set paused_streams=${JSON.stringify([...streams])}::jsonb where id=1`;
   }else if(body.action==='unblock'){
    const [lock]=await tx`select pg_try_advisory_xact_lock(729114,4) acquired`;

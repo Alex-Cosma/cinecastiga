@@ -168,3 +168,27 @@
 .document-storage meter::-webkit-meter-optimum-value{background:var(--accent)}
 .document-storage meter::-webkit-meter-suboptimum-value{background:var(--orange)}
 .document-storage meter::-moz-meter-bar{background:var(--accent)}
+
+.collection-admin .document-collection{padding:24px 0;margin:20px 0;border-block:1px solid var(--line)}
+.collection-admin .document-collection .section-heading{gap:16px;align-items:flex-start;flex-wrap:wrap}
+.collection-admin .document-collection-progress{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px;margin:22px 0 14px}
+.collection-admin .document-collection-progress h3{font:500 14px var(--body);margin:0 0 8px}
+.collection-admin .document-collection-progress strong{font-size:23px;font-variant-numeric:tabular-nums}
+.collection-admin .document-collection-progress strong span{font-size:15px;font-weight:400;color:var(--muted)}
+.collection-admin .document-collection progress{display:block;width:100%;height:6px;margin:9px 0;accent-color:var(--accent);border:0;background:var(--sunk)}
+.collection-admin .document-collection progress::-webkit-progress-bar{background:var(--sunk)}
+.collection-admin .document-collection progress::-webkit-progress-value{background:var(--accent)}
+.collection-admin .document-collection-progress p,.collection-admin .document-collection-meta{font-size:12px;color:var(--muted)}
+.collection-admin .document-collection-actions{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:20px 0}
+.collection-admin .document-collection-actions>span{font-size:12px;color:var(--muted)}
+.collection-admin .document-collection details{font-size:13px;margin:16px 0}
+.collection-admin .document-collection summary{cursor:pointer;font-weight:500;padding:8px 0}
+.collection-admin .document-collection details p{max-width:75ch;line-height:1.6;margin:10px 0;color:var(--secondary)}
+.collection-admin .document-collection-active{list-style:none;padding:0;margin:22px 0}
+.collection-admin .document-collection-active li{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid var(--line);font-size:12px}
+.collection-admin .document-collection-active li>div{min-width:0;flex:1}
+.collection-admin .document-collection-active strong{display:block;overflow-wrap:anywhere;font-size:13px}
+.collection-admin .document-collection-active span{color:var(--muted)}
+.collection-admin .document-collection-active label{min-width:110px;font-variant-numeric:tabular-nums}
+.collection-admin .document-collection.compact .text-button{display:inline-flex;margin-top:14px}
+@media(max-width:600px){.collection-admin .document-collection-progress{gap:18px;grid-template-columns:1fr}.collection-admin .document-collection-progress>div{display:grid;grid-template-columns:1fr auto;gap:0 12px}.collection-admin .document-collection-progress progress{grid-column:1/-1}.collection-admin .document-collection-progress p{grid-column:1/-1}.collection-admin .document-collection-progress strong{font-size:20px}.collection-admin .document-collection-actions .button{width:100%}}

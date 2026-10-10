@@ -71,10 +71,12 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
     // Batch policy is read from the DB, not a caller-controlled rate-limit bypass.
     const [documentBatch]=info.documentJobId?await q`select b.id,b.status,b.max_requests,b.requests_started,j.status job_status from app.document_jobs j join app.document_batches b on b.id=j.batch_id where j.id=${info.documentJobId}`:[];
     if(documentBatch&&(documentBatch.status!=='running'||documentBatch.job_status!=='running'||Number(documentBatch.requests_started)>=Number(documentBatch.max_requests)))throw new CollectionSuspendedError('SEAP: limita lotului de documente a fost atinsă sau lotul este oprit.');
-    if(documentBatch&&!admission)throw new CollectionSuspendedError('Lotul de documente necesită poolul proxy activ.');
+    const [automatic]=info.documentJobId?await q`select j.automatic,j.status,c.enabled,c.paused from app.document_jobs j cross join app.document_collection_control c where j.id=${info.documentJobId} and c.id=1`:[];
+    if(automatic?.automatic&&(automatic.status!=='running'||!automatic.enabled||automatic.paused))throw new CollectionSuspendedError('Colectarea automată a documentelor este oprită.');
+    if((documentBatch||automatic?.automatic)&&!admission)throw new CollectionSuspendedError('Lotul de documente necesită poolul proxy activ.');
     const [inFlight]=await q`select count(*)::int n from pg_locks where database=(select oid from pg_database where datname=current_database()) and locktype='advisory' and classid=729119::oid and objsubid=2 and granted`;
     const concurrency=admission?Number(admission.settings.max_in_flight):1;
-    delay=Math.max(Number(inFlight!.n)>=concurrency?1000:0,admission?.delay??0,Number(c.next_ms??0)-Number(c.now_ms),info.fileDownload&&!documentBatch?Number(c.file_ms??0)+60000-Number(c.now_ms):0);
+    delay=Math.max(Number(inFlight!.n)>=concurrency?1000:0,admission?.delay??0,Number(c.next_ms??0)-Number(c.now_ms),info.fileDownload&&!documentBatch&&!automatic?.automatic?Number(c.file_ms??0)+60000-Number(c.now_ms):0);
     if(delay<=0){
      // Recheck after taking the control-row lock and on every rate-limit retry.
      // Suspension precedes the ledger: no HTTP attempt, error or manual-pause mutation.
@@ -122,6 +124,10 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
   return result.value;
  }catch(error){
   if(id!==undefined&&!finished){
+   if(abortReason==='parent_cancelled'){
+    await q`update app.collection_requests set outcome='failed',error='Cerere întreruptă la oprirea workerului; operațiunea poate fi reluată.',diagnostics=${diagnostics(error)}::jsonb,finished_at=clock_timestamp() where id=${id}`;
+    throw new CollectionSuspendedError('Workerul a fost oprit; progresul se păstrează.');
+   }
    if(selectedProxy)await q`update app.collection_proxies set last_error='Eroare de transport; verifică jurnalul.' where id=${selectedProxy.id}`;
    const response=(error instanceof CollectionTransportError?error.diagnostics.response:transportDiagnostics?.response) as {status?:number;receivedBytes?:number}|undefined;
    const scoped=selectedProxy&&(abortReason==='request_timeout'||(!abortReason&&error instanceof CollectionTransportError&&error.diagnostics.retryableProxyTransport===true))&&(!response?.status||(response.status>=200&&response.status<300)||[407,408,500,502,503,504].includes(response.status));

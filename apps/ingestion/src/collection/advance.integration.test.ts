@@ -31,12 +31,18 @@ describe.skipIf(!url)('daily closed-window extension (no source HTTP)',()=>{
   expect((await q`select timeouts,status from app.collection_retries`)[0]).toMatchObject({timeouts:3,status:'stopped'});
   expect(await q`select * from core.ingestion_watermarks`).toEqual(watermarks);
  });
- it('waits until 03:30 Bucharest and concurrent invocations append each day once',async()=>{
-  await advanceRecovery(q,{enable:true,now:new Date('2026-10-06T00:29:00Z')});
+ it('waits until 02:00 Bucharest and concurrent invocations append each day once',async()=>{
+  await advanceRecovery(q,{enable:true,now:new Date('2026-10-05T22:59:00Z')});
   expect((await q`select end_day from app.collection_batches`)[0]!.end_day).toBe('2026-10-04');
-  const results=await Promise.all([1,2].map(()=>advanceRecovery(q,{now:new Date('2026-10-06T00:30:00Z')})));
+  const results=await Promise.all([1,2].map(()=>advanceRecovery(q,{now:new Date('2026-10-05T23:00:00Z')})));
   expect(results.filter(r=>r!.added>0)).toHaveLength(1);
   expect((await q`select count(*)::int n from app.collection_tasks where kind='list' and params->>'from'='2026-10-05'`)[0]!.n).toBe(2);
+ });
+ it('uses 02:00 Bucharest in winter too, without including an open day',async()=>{
+  await advanceRecovery(q,{enable:true,now:new Date('2026-12-05T23:59:00Z')});
+  expect((await q`select end_day from app.collection_batches`)[0]!.end_day).toBe('2026-12-04');
+  await advanceRecovery(q,{now:new Date('2026-12-06T00:00:00Z')});
+  expect((await q`select end_day from app.collection_batches`)[0]!.end_day).toBe('2026-12-05');
  });
  it('does not modify scope during maintenance',async()=>{
   await q`update app.collection_control set maintenance=true`;
