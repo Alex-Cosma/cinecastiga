@@ -13,11 +13,14 @@ try{
  const existing=await q`select id from app.document_batches where id=${id}`;
  if(existing.length)throw Error('Batch already exists; inspect its persisted results. No automatic replay.');
  const candidates=await q`with recent as materialized (
-  select c_notice_id,notice_namespace,state_date,authority_entity_id from core.notices where sys_notice_type_id=17 order by state_date desc nulls last,c_notice_id desc limit 10000
+  select c_notice_id,notice_namespace,state_date,authority_entity_id,procedure_id from core.notices where sys_notice_type_id=17 order by state_date desc nulls last,c_notice_id desc limit 10000
+ ), associated as (
+  select n.c_notice_id,n.state_date,a.ca_notice_id from recent n join core.awards a on a.procedure_id=n.procedure_id and a.authority_entity_id=n.authority_entity_id where n.procedure_id is not null
+  union
+  select n.c_notice_id,n.state_date,a.ca_notice_id from recent n join core.notice_award_sources l on l.c_notice_id=n.c_notice_id and l.notice_namespace=n.notice_namespace
+  join core.awards a on a.ca_notice_id=l.ca_notice_id and a.authority_entity_id=n.authority_entity_id
  ) select distinct on(n.state_date,n.c_notice_id) c.ca_notice_contract_id::text contract_id,n.c_notice_id::text notice_id,n.state_date
- from recent n join core.notice_award_sources l on l.c_notice_id=n.c_notice_id and l.notice_namespace=n.notice_namespace
- join core.awards a on a.ca_notice_id=l.ca_notice_id and a.authority_entity_id=n.authority_entity_id
- join core.contracts c on c.ca_notice_id=a.ca_notice_id
+ from associated n join core.contracts c on c.ca_notice_id=n.ca_notice_id
  order by n.state_date desc nulls last,n.c_notice_id desc,c.ca_notice_contract_id limit 60`;
  const notices=new Map<string,{notice:NonNullable<Awaited<ReturnType<typeof contractNotice>>>;contractId:string}>();
  for(const c of candidates){const notice=await contractNotice(c.contract_id,q);if(notice&&notice.noticeId===c.notice_id)notices.set(notice.key,{notice,contractId:c.contract_id});if(notices.size===20)break;}

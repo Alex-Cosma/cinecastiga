@@ -14,6 +14,8 @@ Owner chose the entire available history, newest procedures first, and subsequen
 - `/admin/fisiere` reports total filesystem usage, available capacity, archived original/derived bytes (content-deduplicated), and sample time. Sample shared/cached for 60 seconds. Missing samples are shown unavailable, not zero. The production web overlay was checked against the host `/srv/seap` filesystem: same total/free blocks. Set `DOCUMENT_STORAGE_MOUNT` if future deployment places storage on another mounted filesystem. Logical blob bytes exclude PostgreSQL indexes, TOAST overhead, WAL and backups; filesystem usage includes them.
 - Isolated fixture verification: 38 integration/unit checks including concurrent request admission, atomic cap, per-IP/session reservation, bounded parallel OCR with parallel downloads, ordinary queue exclusion, missing-original processing, oversized HTTP bodies, and filesystem reserved-block semantics. Source traffic is never part of these tests.
 
+Preflight validation on production found 20 uniquely associated recent procedures after including both exact procedure+authority matches and explicit source links. The initial link-table-only candidate scan found none; it made no source requests and was corrected before starting the pilot.
+
 Production run results are recorded below once observed. Until then this section describes code, not successful production collection.
 
 ## Verified production state, approximately 13:37 RO
