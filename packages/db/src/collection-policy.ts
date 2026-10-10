@@ -15,6 +15,8 @@ export function safeCollectionParameters(value:unknown):Record<string,unknown>{
  const out:Record<string,unknown>={};
  const allowed=['pageIndex','pageSize','skip','take','contractingAuthorityId','caNoticeId','cNoticeId','rfqInvitationId','pcNoticeId','dcNoticeId','noticeId','noticeLotId','dfNoticeId','initNoticeId','sysNoticeTypeId','sysNoticeTypeIds','finalizationDateStart','finalizationDateEnd','startPublicationDate','endPublicationDate'];
  for(const key of allowed){const v=(value as Record<string,unknown>)[key];if(v===null||typeof v==='number'&&Number.isFinite(v)||typeof v==='string'&&/^\d{4}-\d{2}-\d{2}(?:[T\d:.+Z-]*)$/.test(v)||Array.isArray(v)&&v.length<20&&v.every(x=>Number.isSafeInteger(x)))out[key]=v;}
+ const cpv=(value as Record<string,unknown>).cpvCodeText;
+ if(typeof cpv==='string'&&/^\d{2,8}$/.test(cpv))out.cpvCodeText=cpv;
  if(typeof (value as Record<string,unknown>).isNoticeChange==='boolean')out.isNoticeChange=(value as Record<string,unknown>).isNoticeChange;
  return out;
 }

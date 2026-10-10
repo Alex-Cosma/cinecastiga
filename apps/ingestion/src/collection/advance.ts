@@ -1,3 +1,6 @@
+import {DA_STRATEGY} from './da-partition.js';
+import {task} from './plan.js';
+import {insertTasks} from './runner.js';
 import type {DbSql} from '@seap/db';
 
 /** Metadata only. Append immutable closed windows; never rewrite existing tasks or retry budgets. */
@@ -24,7 +27,15 @@ export async function advanceRecovery(q:DbSql,{enable=false,now}:{enable?:boolea
   const [range]=await tx`select (${b.end_day}::date+1)::text start`;
   const from=String(range!.start);
   // Include catalogue-discovered authorities even if nightly core processing has not published them yet.
-  const da=await tx`with authorities as (
+  let da:{id:unknown}[]=[];
+  if(b.da_strategy===DA_STRATEGY){
+   // Revisit the trailing week: source values/states change without changing dates.
+   const days=await tx`select d::date::text unit_day from generate_series(least(${from}::date,greatest('2026-07-01'::date,${target}::date-6)),${target}::date,interval '1 day') d`;
+   const tasks=days.map(d=>task(String(b.id),'da','da',{from:String(d.unit_day),to:String(d.unit_day),daStrategy:DA_STRATEGY,daScan:target,page:0},10));
+   await insertTasks(tx as unknown as DbSql,tasks);da=tasks.map(t=>({id:t.key}));
+   const [week]=await tx`select date_trunc('week',${target}::date)::date::text unit_day`;
+   await insertTasks(tx as unknown as DbSql,[task(String(b.id),'catalogue','cpv-catalogue',{from:String(week!.unit_day),to:String(week!.unit_day),page:0},0)]);
+  }else da=await tx`with authorities as (
    select sicap_id id from core.entity_sicap_ids where namespace='authority'
    union select (params->>'authorityId')::bigint from app.collection_tasks where batch_id=${b.id} and kind='da'
   ) insert into app.collection_tasks(batch_id,key,partition,stream,kind,params,priority)

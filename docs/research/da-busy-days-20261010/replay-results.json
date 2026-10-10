@@ -1,0 +1,82 @@
+[
+  {
+    "date": "2023-10-27",
+    "documents": 22481,
+    "sourceRows": 90632,
+    "listCalls": 143,
+    "ownershipDuplicates": 0,
+    "matchingUnionIds": true
+  },
+  {
+    "date": "2024-08-28",
+    "documents": 22044,
+    "sourceRows": 91950,
+    "listCalls": 153,
+    "ownershipDuplicates": 0,
+    "matchingUnionIds": true
+  },
+  {
+    "date": "2018-12-18",
+    "documents": 20876,
+    "sourceRows": 84331,
+    "listCalls": 137,
+    "ownershipDuplicates": 0,
+    "matchingUnionIds": true
+  },
+  {
+    "date": "2018-12-19",
+    "documents": 20647,
+    "sourceRows": 83807,
+    "listCalls": 137,
+    "ownershipDuplicates": 0,
+    "matchingUnionIds": true
+  },
+  {
+    "date": "2022-12-13",
+    "documents": 19722,
+    "sourceRows": 77286,
+    "listCalls": 120,
+    "ownershipDuplicates": 0,
+    "matchingUnionIds": true
+  },
+  {
+    "date": "2018-12-17",
+    "documents": 19773,
+    "sourceRows": 77086,
+    "listCalls": 121,
+    "ownershipDuplicates": 0,
+    "matchingUnionIds": true
+  },
+  {
+    "date": "2022-12-14",
+    "documents": 19449,
+    "sourceRows": 74618,
+    "listCalls": 111,
+    "ownershipDuplicates": 0,
+    "matchingUnionIds": true
+  },
+  {
+    "date": "2021-12-15",
+    "documents": 19411,
+    "sourceRows": 74494,
+    "listCalls": 111,
+    "ownershipDuplicates": 0,
+    "matchingUnionIds": true
+  },
+  {
+    "date": "2021-12-16",
+    "documents": 19301,
+    "sourceRows": 73149,
+    "listCalls": 102,
+    "ownershipDuplicates": 0,
+    "matchingUnionIds": true
+  },
+  {
+    "date": "2023-10-26",
+    "documents": 19579,
+    "sourceRows": 78912,
+    "listCalls": 126,
+    "ownershipDuplicates": 0,
+    "matchingUnionIds": true
+  }
+]

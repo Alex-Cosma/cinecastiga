@@ -91,6 +91,8 @@ export interface DirectAcquisitionListRequest {
   pageSize: number;
   cpvCategoryId?: number | null;
   cpvCodeId?: number | null;
+  /** Substring search, NOT a disjoint CPV subtree. */
+  cpvCodeText?: string | null;
   sysDirectAcquisitionStateId?: number | null;
   contractingAuthorityId?: number | null;
   supplierId?: number | null;

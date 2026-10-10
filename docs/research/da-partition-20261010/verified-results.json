@@ -1,0 +1,110 @@
+[
+  {
+    "date": "2026-10-08",
+    "requests": 61,
+    "baseline": 10940,
+    "distinct": 10937,
+    "leafRows": 30810,
+    "duplicateRows": 19873,
+    "missingExplained": [
+      {
+        "id": "123196124",
+        "baselineDate": "2026-10-08",
+        "sourceDate": "2026-10-09T14:05:02+03:00",
+        "sourceState": 6
+      },
+      {
+        "id": "123198973",
+        "baselineDate": "2026-10-08",
+        "sourceDate": "2026-10-09T11:56:34+03:00",
+        "sourceState": 6
+      },
+      {
+        "id": "123200693",
+        "baselineDate": "2026-10-08",
+        "sourceDate": null,
+        "sourceState": 5
+      }
+    ],
+    "missingUnexplained": [],
+    "extra": [],
+    "valueChanges": [
+      {
+        "id": "123187952",
+        "baseline": "4799.9",
+        "source": "5994.9"
+      }
+    ],
+    "cuiDifferences": [],
+    "cpvDifferences": [],
+    "stateDifferences": [],
+    "conflicts": [],
+    "catalogueCodesCoveredExactlyOnce": 9454
+  },
+  {
+    "date": "2026-10-07",
+    "requests": 61,
+    "baseline": 11219,
+    "distinct": 11212,
+    "leafRows": 31978,
+    "duplicateRows": 20766,
+    "missingExplained": [
+      {
+        "id": "123136127",
+        "baselineDate": "2026-10-07",
+        "sourceDate": null,
+        "sourceState": 5
+      },
+      {
+        "id": "123182718",
+        "baselineDate": "2026-10-07",
+        "sourceDate": null,
+        "sourceState": 5
+      },
+      {
+        "id": "123183059",
+        "baselineDate": "2026-10-07",
+        "sourceDate": null,
+        "sourceState": 5
+      },
+      {
+        "id": "123186597",
+        "baselineDate": "2026-10-07",
+        "sourceDate": "2026-10-09T10:39:38+03:00",
+        "sourceState": 6
+      },
+      {
+        "id": "123188553",
+        "baselineDate": "2026-10-07",
+        "sourceDate": "2026-10-09T11:24:49+03:00",
+        "sourceState": 6
+      },
+      {
+        "id": "123190560",
+        "baselineDate": "2026-10-07",
+        "sourceDate": null,
+        "sourceState": 5
+      },
+      {
+        "id": "123190942",
+        "baselineDate": "2026-10-07",
+        "sourceDate": null,
+        "sourceState": 5
+      }
+    ],
+    "missingUnexplained": [],
+    "extra": [],
+    "valueChanges": [
+      {
+        "id": "123184633",
+        "baseline": "1541",
+        "source": "1675"
+      }
+    ],
+    "cuiDifferences": [],
+    "cpvDifferences": [],
+    "stateDifferences": [],
+    "conflicts": [],
+    "catalogueCodesCoveredExactlyOnce": 9454
+  }
+]

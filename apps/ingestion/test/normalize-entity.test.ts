@@ -87,6 +87,13 @@ describe("normalizeName", () => {
 });
 
 describe("parseEntityString", () => {
+  it("recognizes a fiscal identifier after a stray SEAP backtick, without stripping names", () => {
+    expect(parseEntityString('`4278205 Colegiul National "Dimitrie Cantemir" Onesti')).toEqual({
+      cuiRaw: "4278205", name: 'Colegiul National "Dimitrie Cantemir" Onesti',
+    });
+    expect(parseEntityString("`RO 4278205 Colegiul National").cuiRaw).toBe("RO4278205");
+    expect(parseEntityString("`Atelierul 4278205")).toEqual({cuiRaw: null, name: "`Atelierul 4278205"});
+  });
   it("parses a supplier string with RO prefix", () => {
     expect(parseEntityString("RO21255449 S.C. INGRID S.R.L.")).toEqual({
       cuiRaw: "RO21255449",

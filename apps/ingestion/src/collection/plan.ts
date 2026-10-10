@@ -1,3 +1,4 @@
+import {DA_STRATEGY,validateDaScope,planNationalDa,planDaVerification,planCpvCatalogue} from './da-partition.js';
 import {planNoticeDetail} from './notice-details.js';
 import {NOTICE_TYPE_IDS, noticeIdOf, participationKey,noticeArchiveKey, type NoticeDetailParams, type NoticeListItem} from '@seap/scraper-clients';
 import {addDays,bucharestDayOf} from '../scrape/window.js';
@@ -5,8 +6,8 @@ import {redactPayload} from '../scrape/redact.js';
 import type {ArchivableDocument} from '../scrape/archive.js';
 import {isDeepStrictEqual} from 'node:util';
 export type Stream='da'|'tenders'|'awards'|'catalogue';
-export interface Task {id?:number;batch_id:string;key:string;partition:string;stream:Stream;kind:'da'|'list'|'detail'|'contracts'|'catalogue';params:{from?:string;to?:string;page:number;authorityId?:number;noticeId?:number;inventoryOnly?:boolean;singlePageTotal?:number}&Partial<NoticeDetailParams>;status?:string;priority:number;error?:string}
-export interface PageResult {total:number;ids:number[];identities?:string[];items?:Record<string,unknown>[]}
+export interface Task {id?:number;batch_id:string;key:string;partition:string;stream:Stream;kind:'da'|'list'|'detail'|'contracts'|'catalogue'|'da-detail'|'cpv-catalogue';params:{from?:string;to?:string;page:number;authorityId?:number;noticeId?:number;inventoryOnly?:boolean;singlePageTotal?:number;daStrategy?:typeof DA_STRATEGY;cpvPrefix?:string;daScan?:string;daFallback?:boolean}&Partial<NoticeDetailParams>;status?:string;priority:number;error?:string}
+export interface PageResult {total:number;ids:number[];identities?:string[];items?:Record<string,unknown>[];sourceTotal?:number}
 export interface TaskPlan {status:'complete'|'split';result:PageResult|{detail:true};docs:ArchivableDocument[];children:Task[]}
 export class NoticePageOverlapError extends Error { constructor(readonly total:number){super('SEAP a repetat înregistrări între pagini.');} }
 export function noticePageSize(t:Pick<Task,'kind'|'params'>){
@@ -65,8 +66,9 @@ function mergeContractPageRow(a:Record<string,unknown>,b:Record<string,unknown>)
 export function task(batch:string,stream:Stream,kind:Task['kind'],params:Task['params'],priority=10):Task{
  if(params.inventoryOnly&&(kind!=='list'||!['tenders','awards'].includes(stream)))throw Error('Inventory mode supports notice lists only');
  noticePageSize({kind,params});
+ validateDaScope({stream,kind,params});
  const identity=stream==='tenders'&&kind==='detail'?participationKey(params.noticeId!,params.noticeType):params.authorityId??params.noticeId??'';
- const partition=[stream,kind,identity,params.from??'',params.to??''].join(':')+(kind==='detail'&&params.part&&params.part!=='root'?`:${params.part}:${params.lotId??''}`:'')+(params.inventoryOnly?':inventory':'')+(params.singlePageTotal===undefined?'':`:single:${params.singlePageTotal}`);
+ const partition=[stream,kind,identity,params.from??'',params.to??''].join(':')+(kind==='detail'&&params.part&&params.part!=='root'?`:${params.part}:${params.lotId??''}`:'')+(params.inventoryOnly?':inventory':'')+(params.singlePageTotal===undefined?'':`:single:${params.singlePageTotal}`)+(params.daStrategy?`:cpv-day:${params.daScan}:${params.cpvPrefix??'all'}:${params.daFallback?'fallback':'national'}`:'');
  return {batch_id:batch,key:`${partition}:${params.page}`,partition,stream,kind,params,priority};
 }
 const document=(stream:Stream,id:number,version:string,payload:unknown):ArchivableDocument=>({source:'elicitatie',externalId:`${stream==='tenders'?'tender':stream==='awards'?'award':'da'}:${id}`,endpointVersion:version,payload});
@@ -74,6 +76,9 @@ const document=(stream:Stream,id:number,version:string,payload:unknown):Archivab
 export function planResponse(t:Task,value:unknown,previous:PageResult[],batchEnd:string):TaskPlan{
  if(t.params.inventoryOnly&&(t.kind!=='list'||!['tenders','awards'].includes(t.stream)))throw Error('Inventory mode supports notice lists only');
  noticePageSize(t);
+ if(t.kind==='cpv-catalogue')return planCpvCatalogue(t,value,previous);
+ if(t.kind==='da-detail')return planDaVerification(t,value);
+ if(t.kind==='da'&&t.params.daStrategy===DA_STRATEGY)return planNationalDa(t,value);
  const prefix=t.stream==='tenders'?'tender':'award';
  if(t.kind==='detail'){
   return planNoticeDetail(t,value,previous);
@@ -129,7 +134,7 @@ export function planResponse(t:Task,value:unknown,previous:PageResult[],batchEnd
    const detail=task(t.batch_id,t.stream,'detail',{noticeId:id,page:0,noticeType:Number(i.sysNoticeTypeId),noticeVersion:Number(i.sysNoticeVersionId),...(integer(i.noticeId)?{internalNoticeId:i.noticeId}:{}),...(typeof i.noticeNo==='string'?{noticeNo:i.noticeNo}:{})},2);
    children.push(detail);
    if(t.stream==='awards')children.push(task(t.batch_id,t.stream,'contracts',{noticeId:id,page:0},1));
-  }else if(t.kind==='catalogue')children.push(task(t.batch_id,'da','da',{authorityId:Number(i.id),from:t.params.from??'2026-07-01',to:t.params.to??batchEnd,page:0}));
+  }else if(t.kind==='catalogue')children.push(task(t.batch_id,'da','da',{...t.params,authorityId:Number(i.id),from:t.params.from??'2026-07-01',to:t.params.to??batchEnd,page:0}));
  }
  let more=before.length+validIds.length<e.total;
  let contractItems:Record<string,unknown>[]=[];
