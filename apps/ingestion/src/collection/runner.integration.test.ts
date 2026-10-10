@@ -19,6 +19,29 @@ describe.skipIf(!url)('recovery manifest (isolated DB, no source traffic)',()=>{
   expect(rows[0]?.result.inventory).toEqual({checked:1,matched:0,missing:[{key:'cn:99988449',noticeNo:'CN-inventory'}],unverified:[]});
   expect((await q`select count(*)::int n from raw.raw_documents where external_id='tender:cn:99988449'`)[0]?.n).toBe(1);
  });
+ it.each([false,true])('reconciles notice pagination once, stops if the full response is invalid (%s)',async invalid=>{
+  const day='2020-01-01';
+  const items=Array.from({length:180},(_,i)=>({caNoticeId:99880000+i,noticeNo:`CAN-overlap-${i}`,sysNoticeTypeId:18,noticeStateDate:day+'T12:00:00+02:00'}));
+  await insertTasks(q,[task('fixture','awards','list',{from:day,to:day,page:0,inventoryOnly:true})]);
+  await recoveryStep(q,async()=>({total:180,items:items.slice(0,100)}));
+  await recoveryStep(q,async()=>({total:180,items:[items[99],...items.slice(101)]}));
+  const rows=await q`select status,params,result from app.collection_tasks order by id`;
+  expect(rows.map(r=>r.status)).toEqual(['split','split','pending']);
+  expect(rows[0]!.result.ids).toHaveLength(100);
+  expect(rows[0]!.result.supersededBy).toBeTruthy();
+  expect(rows[2]!.params.singlePageTotal).toBe(180);
+  expect((await q`select blocked_reason from app.collection_control`)[0]!.blocked_reason).toBeNull();
+  expect((await q`select before from app.collection_audit where action='notice-pagination-recovery' order by id desc limit 1`)[0]!.before.tasks).toHaveLength(2);
+  await recoveryStep(q,async t=>{
+   expect(t.params.singlePageTotal).toBe(180);
+   return {total:180,items:invalid?[...items.slice(0,179),items[0]]:items};
+  });
+  const [last]=await q`select status,result from app.collection_tasks where params ? 'singlePageTotal'`;
+  expect(last!.status).toBe(invalid?'failed':'complete');
+  expect((await q`select count(*)::int n from app.collection_tasks`)[0]!.n).toBe(3);
+  if(invalid)expect((await q`select blocked_reason from app.collection_control`)[0]!.blocked_reason).toBeTruthy();
+  else {expect(last!.result.ids).toHaveLength(180);expect(last!.result.inventory.checked).toBe(180);}
+ });
  it('commits archive, checkpoint and child tasks together and does not repeat a finished task',async()=>{
   await insertTasks(q,[task('fixture','da','da',{authorityId:7848,from:'2026-07-01',to:'2026-09-25',page:0})]);
   let calls=0;const fetcher=async()=>{calls++;return {total:1,items:[{directAcquisitionId:99123456,finalizationDate:'2026-07-15T12:00:00+03:00'}]};};

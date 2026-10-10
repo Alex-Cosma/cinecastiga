@@ -132,3 +132,19 @@ describe('winner order in overlapping contract pages',()=>{
   expect(()=>overlap(reordered,{...row,lotsNoCaption:'159'})).toThrow('modificat');
  });
 });
+
+it('uses one isolated bounded request to reconcile an overlapping notice day',()=>{
+ const base=task('fixture','awards','list',{from:end,to:end,page:0,inventoryOnly:true});
+ const retry=task('fixture','awards','list',{...base.params,singlePageTotal:180});
+ expect(retry.partition).not.toBe(base.partition);
+ const items=Array.from({length:180},(_,i)=>({caNoticeId:i+1,sysNoticeTypeId:18,noticeStateDate:end+'T12:00:00+03:00'}));
+ const p=planResponse(retry,{total:180,items},[],end);
+ expect(p.docs).toHaveLength(180);expect(p.children).toHaveLength(0);
+ expect(()=>planResponse(retry,{total:180,items:items.slice(0,179)},[],end)).toThrow('Numărul');
+ expect(()=>planResponse(retry,{total:180,items:[...items.slice(0,179),items[0]]},[],end)).toThrow('repetat');
+ expect(()=>planResponse(retry,{total:179,items:items.slice(0,179)},[],end)).toThrow('Totalul');
+ expect(()=>planResponse(retry,{total:180,items},[{total:100,ids:[]}],end)).toThrow();
+ expect(()=>task('fixture','awards','list',{...base.params,singlePageTotal:2001})).toThrow('singură');
+ expect(()=>task('fixture','awards','list',{...retry.params,page:1})).toThrow('singură');
+ expect(()=>task('fixture','da','da',{...retry.params,inventoryOnly:false})).toThrow('singură');
+});

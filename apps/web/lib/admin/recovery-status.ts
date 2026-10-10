@@ -12,7 +12,7 @@ export async function recoveryStatus(q:DbSql,batchId:string,progress:RecoveryCou
     bool_and(status in ('complete','split')) closed
    from tasks where kind='da' group by params->>'authorityId'
   ), notice_days as (
-   select stream,params->>'from' as unit_day,coalesce((params->>'inventoryOnly')::boolean,false) inventory_only,
+   select stream,params->>'from' as unit_day,coalesce((params->>'inventoryOnly')::boolean,false) inventory_only,count(*)::numeric list_work,
     max(total) filter(where (params->>'page')::int=0 and status='complete') total
    from tasks where kind='list' group by stream,params->>'from',coalesce((params->>'inventoryOnly')::boolean,false)
   ), contract_pages as (
@@ -22,7 +22,7 @@ export async function recoveryStatus(q:DbSql,batchId:string,progress:RecoveryCou
   ), detail_mean as (
    select stream,avg(work) work from detail_work group by stream
   ), day_work as (
-   select n.stream,n.unit_day,case when n.total is not null then greatest(1,ceil(n.total/100)) + case when n.inventory_only then 0 else n.total *
+   select n.stream,n.unit_day,case when n.total is not null then greatest(1,ceil(n.total/100),n.list_work) + case when n.inventory_only then 0 else n.total *
     (coalesce(d.work,1) + case when n.stream='awards' then coalesce((select avg(work) from contract_pages),1) else 0 end) end end work
    from notice_days n left join detail_mean d on d.stream=n.stream
   )

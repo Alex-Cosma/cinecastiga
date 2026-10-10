@@ -7,7 +7,7 @@ WITH pages AS (
  (result->'inventory'->>'matched')::int matched,
  jsonb_array_length(result->'inventory'->'missing') missing,
  jsonb_array_length(result->'inventory'->'unverified') unverified
- FROM app.collection_tasks WHERE params->>'inventoryOnly'='true'
+ FROM app.collection_tasks WHERE params->>'inventoryOnly'='true' AND result->>'supersededBy' IS NULL
 ), days AS (
  SELECT stream,unit_day,bool_and(status='complete') AND sum(records)=max(total) reconciled,
  max(total) source_total,sum(records) archived,sum(matched) matched,sum(missing) missing,sum(unverified) unverified
@@ -22,7 +22,7 @@ SELECT id,stream,params,error FROM app.collection_tasks WHERE params->>'inventor
 WITH gaps AS (
  SELECT DISTINCT j->>'key' identity,j->>'noticeNo' notice_no
  FROM app.collection_tasks t CROSS JOIN LATERAL jsonb_array_elements(t.result->'inventory'->'missing') j
- WHERE t.params->>'inventoryOnly'='true' AND t.stream='tenders'
+ WHERE t.params->>'inventoryOnly'='true' AND t.stream='tenders' AND t.result->>'supersededBy' IS NULL
 )
 SELECT count(*) missing_scoped_identities,count(*) FILTER(WHERE EXISTS(
  SELECT 1 FROM core.notices n WHERE n.c_notice_id=split_part(g.identity,':',2)::bigint
