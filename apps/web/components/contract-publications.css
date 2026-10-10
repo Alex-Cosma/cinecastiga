@@ -8,3 +8,12 @@
 .contract-publications details p { margin: 8px 0 0; max-width: 75ch; }
 .contract-publications :is(a, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
 @media (max-width: 600px) { .contract-publications li { display: grid; gap: 6px; } }
+.contract-publications ol { margin: 12px 0 0; padding: 0; list-style: none; }
+.contract-publication-record { display: grid; gap: 4px; flex: 1 1 320px; min-width: 0; overflow-wrap: anywhere; }
+.contract-publication-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; }
+.contract-publication-current { color: var(--accent-ink); font-size: 13px; }
+.contract-publication-value { font-variant-numeric: tabular-nums; font-size: 15px; }
+.contract-publication-suppliers { font-size: 13px; color: var(--ink-secondary); }
+.contract-publication-previous { padding-top: 8px; border-top: 1px solid var(--line); }
+.contract-publications details > .note { max-width: none; }
+.contract-publications summary { min-height: 40px; }

@@ -33,12 +33,21 @@ export function assessContractIdentity(members:IdentityContract[],archives:Archi
 export function assessContractPublicationGroup(members:IdentityContract[],archives:ArchivedAward[]) {
  return assessPublications(members,archives,true);
 }
-function assessPublications(members:IdentityContract[],archives:ArchivedAward[],extended:boolean) {
+export function contractVersionAnchor(c:IdentityContract) {
+ return hash([c.noticeNo,c.authority,c.number,c.date,c.currency,c.lots,c.cpv,c.procedure,c.acquisition]);
+}
+export function assessContractVersions(members:IdentityContract[],archives:ArchivedAward[]) {
+ return assessPublications(members,archives,true,true);
+}
+export function assessContractSource(member:IdentityContract,archives:ArchivedAward[]) {
+ return assessPublications([member],archives,true,false,true);
+}
+function assessPublications(members:IdentityContract[],archives:ArchivedAward[],extended:boolean,versions=false,single=false) {
  archives=[...archives].sort((a,b)=>`${a.source}:${a.rawId}:${a.hash}`.localeCompare(`${b.source}:${b.rawId}:${b.hash}`));
  const ordered=[...members].sort((a,b)=>a.id.localeCompare(b.id,'en',{numeric:true}));
  const reasons:string[]=[];
- if((extended?ordered.length<2:ordered.length!==2)||new Set(ordered.map(x=>x.noticeId)).size!==ordered.length||new Set(ordered.map(x=>x.publicId)).size!==ordered.length||new Set(ordered.map(x=>x.id)).size!==ordered.length)reasons.push('ambiguous_multiplicity');
- if(new Set(ordered.map(contractIdentitySignature)).size!==1)reasons.push('different_contract_fields');
+ if((extended?ordered.length<(single?1:2):ordered.length!==2)||new Set(ordered.map(x=>x.noticeId)).size!==ordered.length||new Set(ordered.map(x=>x.publicId)).size!==ordered.length||new Set(ordered.map(x=>x.id)).size!==ordered.length)reasons.push('ambiguous_multiplicity');
+ if(new Set(ordered.map(versions?contractVersionAnchor:contractIdentitySignature)).size!==1)reasons.push('different_contract_fields');
  for(const c of ordered) {
   if(!c.number?.trim()||!c.date||!c.title?.trim()||!c.lots?.trim()||!c.cpv||!c.procedure||!c.acquisition||!c.authority||!cui(c.authorityCui)||!c.winners.length||c.winnerCuis.some(x=>!cui(x))||c.currency!=='RON'||numeric(c.value)===null)reasons.push('incomplete_identity');
  }
@@ -74,12 +83,30 @@ function assessPublications(members:IdentityContract[],archives:ArchivedAward[],
   proofs.push({contract:c.publicId,notice:c.noticeId,procedure:procedureIds[0],source:m.a.source,rawId:m.a.rawId,hash:m.a.hash,
    noticeSource:goodNotices[0]!.source,noticeHash:goodNotices[0]!.hash,
    contractType:m.item.contractType??null,conditions:m.item.conditions??null,
+   ...(versions?{publishedAt:[...new Set(goodNotices.map(a=>a.payload.noticeStateDate))],
+    modificationEvidence:matches.map(m=>({count:m.item.modifiedCount,hasVersions:m.item.hasModifiedVersions,hash:m.a.hash}))}:{}),
    url:`https://www.e-licitatie.ro/pub/notices/ca-notices/view-c/${c.noticeId}`});
  }
  if(procedures.length===ordered.length&&new Set(procedures).size!==1)reasons.push('different_procedures');
  if(proofs.length>=2&&new Set(proofs.map(p=>JSON.stringify([p.contractType,p.conditions]))).size!==1)reasons.push('different_source_conditions');
+ let latestPublicId:string|null=null;
+ if(versions&&proofs.length===ordered.length){
+  const versionsByTime=ordered.map(c=>{const p=proofs.find(p=>p.contract===c.publicId)!;
+   const dates=p.publishedAt as unknown[];
+   if(dates.length!==1||typeof dates[0]!=='string'||!/(Z|[+-]\d{2}:\d{2})$/.test(dates[0])||!Number.isFinite(Date.parse(dates[0])))reasons.push('unverified_publication_order');
+   return {c,p,time:Date.parse(String(dates[0]))};
+  }).sort((a,b)=>a.time-b.time||(BigInt(a.c.publicId)<BigInt(b.c.publicId)?-1:1));
+  for(let i=1;i<versionsByTime.length;i++){
+   const old=versionsByTime[i-1]!,next=versionsByTime[i]!;
+   if(contractIdentitySignature(old.c)===contractIdentitySignature(next.c))continue;
+   if(next.time<=old.time)reasons.push('ambiguous_version_order');
+   const explicitAddendum=/valoare modificata prin AA /i.test(next.c.title??'')&&next.c.title!==old.c.title;
+   if(!(next.p.modificationEvidence as {count:unknown;hasVersions:unknown}[]).some(e=>e.hasVersions===true&&typeof e.count==='number'&&e.count>0)&&!explicitAddendum)reasons.push('missing_amendment_evidence');
+  }
+  latestPublicId=versionsByTime.at(-1)?.c.publicId??null;
+ }
  const unique=[...new Set(reasons)].sort();
  const status=unique.length===0?'source_verified':unique.every(r=>['missing_archive','incomplete_identity','archive_authority_unverified','missing_procedure'].includes(r))?'needs_evidence':'conflict';
  const id=hash(ordered.map(x=>x.publicId));
- return {id,fingerprint:hash([extended?2:1,ordered,proofs,unique,status]),status,reasons:unique,members:ordered,proofs,methodology:extended?'contract-identity-2':'contract-identity-1',decision:'unreviewed' as const};
+ return {id,fingerprint:hash([versions?3:extended?2:1,ordered,proofs,unique,status]),status,reasons:unique,members:ordered,proofs,methodology:versions?'contract-identity-3':extended?'contract-identity-2':'contract-identity-1',...(versions?{latestPublicId}:{}),decision:'unreviewed' as const};
 }

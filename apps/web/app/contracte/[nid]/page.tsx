@@ -114,7 +114,7 @@ export default async function ContractPage({
         <div className="stat">
           <div className="n">{c.contractValueExact != null ? `${formatExactDecimal(c.contractValueExact)} ${c.currency?.toUpperCase() === "RON" ? "lei" : c.currency ?? "(monedă neprecizată)"}` : "—"}</div>
           <div className="l">
-            {c.amountStatus === 'legacy_ron' ? 'Valoare înregistrată' : 'Valoare originală'}{c.currency && c.currency !== "RON" ? ` (${c.currency})` : ""}
+            {c.amountStatus === 'legacy_ron' ? 'Valoare înregistrată' : 'Valoarea acestei publicații'}{c.currency && c.currency !== "RON" ? ` (${c.currency})` : ""}
           </div>
         </div>
         <div className="stat">

@@ -16,7 +16,7 @@ import { validateBatch1Snapshot } from "./validate.js";
 import { monitoringSourceCoverage, validateCoverageCounts } from "./coverage.js";
 
 export const MONITORING_METHODOLOGY = {
-  contractIdentity: "verified-publications-1", contractMoney: "source-currency-1", monitoring: "monitoring-refresh-1", flags: METHODOLOGY_VERSION,
+  contractIdentity: "verified-publications-2-latest", contractMoney: "source-currency-1", monitoring: "monitoring-refresh-1", flags: METHODOLOGY_VERSION,
   tedNormalization: TED_NORMALIZATION_VERSION, transactionPopulation: "batch1-canonical-1", procurementCalendar: "Europe/Bucharest-v1",
 };
 

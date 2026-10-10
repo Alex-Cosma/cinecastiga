@@ -1,20 +1,21 @@
 import {isDeepStrictEqual} from 'node:util';
 import {assertContractIdentityQuality,readContractIdentityMembers,readContractIdentityQuality,type DbSql} from '@seap/db';
-import {assessContractPublicationGroup,contractIdentitySignature,type ArchivedAward,type IdentityContract} from './contract-identity.js';
+import {assessContractPublicationGroup,assessContractVersions,assessContractSource,contractVersionAnchor,contractIdentitySignature,type ArchivedAward,type IdentityContract} from './contract-identity.js';
 import {IDENTITY_REPAIR_ID,loadIdentityRepairBundle,type IdentityRepairBundle} from './scheduled-contract-identity.js';
 
 type MemberRow={identity:IdentityContract;eligible:boolean;snapshot_hash:string};
 type RegistryRow={id:string;fingerprint:string;evidence:{members:IdentityContract[]};decision:{canonical_contract_id:string|number;fingerprint:string}};
 
 /** Only extend an existing, explicitly approved identity. Every old economic
- * field must remain identical; all publications need complete archived proof.
+ * field of a stored publication must remain identical; separately published
+ * amendments need complete proof and unambiguous source dates.
  * Unrelated new contracts never become approvals through this function. */
 export function verifyApprovedPublications(registry:RegistryRow[],rows:MemberRow[],archives:ArchivedAward[]) {
  const byId=new Map(rows.map(r=>[r.identity.id,r]));
  const bySignature=new Map<string,IdentityContract[]>();
- const anchor=(m:IdentityContract)=>JSON.stringify([m.noticeNo,m.authority,m.number,m.date,m.lots]);
- const byAnchor=new Map<string,Set<string>>();
- for(const r of rows){const key=contractIdentitySignature(r.identity);bySignature.set(key,[...(bySignature.get(key)??[]),r.identity]);const a=anchor(r.identity);byAnchor.set(a,(byAnchor.get(a)??new Set()).add(key));}
+ const anchor=contractVersionAnchor;
+ const byAnchor=new Map<string,IdentityContract[]>();
+ for(const r of rows){const key=contractIdentitySignature(r.identity);bySignature.set(key,[...(bySignature.get(key)??[]),r.identity]);const a=anchor(r.identity);byAnchor.set(a,[...(byAnchor.get(a)??[]),r.identity]);}
  const byNotice=new Map<string,ArchivedAward[]>();
  for(const a of archives){const key=String(a.payload.caNoticeId);byNotice.set(key,[...(byNotice.get(key)??[]),a]);}
  const used=new Set<string>();
@@ -24,13 +25,22 @@ export function verifyApprovedPublications(registry:RegistryRow[],rows:MemberRow
   for(const member of previous.evidence.members){
    if(!isDeepStrictEqual(byId.get(member.id)?.identity,member))throw Error(`Approved economic identity changed: ${member.publicId}`);
   }
-  if((byAnchor.get(anchor(previous.evidence.members[0]!))?.size??0)>1)throw Error(`Conflicting publication of an approved contract: ${previous.id}`);
-  const members=bySignature.get(contractIdentitySignature(previous.evidence.members[0]!))??[];
+  const originalSignature=contractIdentitySignature(previous.evidence.members[0]!);
+  const exact=bySignature.get(originalSignature)??[];
+  const anchored=byAnchor.get(anchor(previous.evidence.members[0]!))??[];
+  const siblingSignatures=new Set(anchored.filter(m=>contractIdentitySignature(m)!==originalSignature&&exact.some(e=>e.noticeId===m.noticeId)).map(contractIdentitySignature));
+  const siblings=anchored.filter(m=>siblingSignatures.has(contractIdentitySignature(m)));
+  for(const sibling of siblings){
+   if(!exact.some(m=>m.noticeId===sibling.noticeId)||assessContractSource(sibling,byNotice.get(sibling.noticeId)??[]).status!=='source_verified')throw Error(`Ambiguous coexisting contract: ${sibling.publicId}`);
+  }
+  const members=anchored.filter(m=>!siblingSignatures.has(contractIdentitySignature(m)));
+  const revised=new Set(members.map(contractIdentitySignature)).size>1;
+  if(revised&&siblings.length)throw Error(`Version lineage is ambiguous between coexisting contracts: ${previous.id}`);
   if(previous.evidence.members.some(m=>!members.some(n=>n.id===m.id)))throw Error(`Approved member disappeared: ${previous.id}`);
-  const verified=assessContractPublicationGroup(members,members.flatMap(m=>byNotice.get(m.noticeId)??[]));
+  const verified=(revised?assessContractVersions:assessContractPublicationGroup)(members,members.flatMap(m=>byNotice.get(m.noticeId)??[]));
   if(verified.status!=='source_verified')throw Error(`Publication evidence needs review: ${previous.id}: ${verified.reasons.join(', ')}`);
-  const canonical=String(previous.decision.canonical_contract_id);
-  if(!members.some(m=>m.id===canonical)||(!byId.get(canonical)?.eligible&&members.some(m=>byId.get(m.id)?.eligible)))throw Error(`Canonical publication eligibility changed: ${previous.id}`);
+  const canonical=revised?members.find(m=>m.publicId===verified.latestPublicId)!.id:String(previous.decision.canonical_contract_id);
+  if(!members.some(m=>m.id===canonical)||(!revised&&!byId.get(canonical)?.eligible&&members.some(m=>byId.get(m.id)?.eligible)))throw Error(`Canonical publication eligibility changed: ${previous.id}`);
   for(const m of members){if(used.has(m.id))throw Error(`Overlapping approved groups: ${m.publicId}`);used.add(m.id);}
   return [{id:previous.id,previous,verified,canonical,members:members.map(m=>({contract_id:m.id,candidate_id:previous.id,snapshot_hash:byId.get(m.id)!.snapshot_hash}))}];
   } catch(error) { blocked.push(error instanceof Error?error.message:String(error));return []; }
@@ -59,19 +69,23 @@ export async function prepareApprovedRevalidation(q:DbSql,bundle:IdentityRepairB
  const archives=[...bundle.archives,...fresh.map(r=>({source:'production-current',rawId:String(r.id),hash:String(r.content_hash),endpoint:String(r.endpoint_version),payload:r.payload}))];
  const groups=verifyApprovedPublications(registry as unknown as RegistryRow[],rows,archives);
  const beforeMembers=await q`select contract_id::text,candidate_id,snapshot_hash from marts.contract_identity_members order by contract_id`;
- const oldIds=new Set(beforeMembers.map(m=>String(m.contract_id)));
  const eligibleIds=new Set(rows.filter(r=>r.eligible).map(r=>r.identity.id));
- const population=groups.flatMap(g=>g.verified.members.filter(m=>eligibleIds.has(m.id)&&m.id!==g.canonical)
-   .map(m=>({value:m.value,added:!oldIds.has(m.id)})));
- const [impact]=await q`select count(*)::int duplicates,trim_scale(coalesce(sum(value),0))::text reduction_ron,
-   count(*) filter(where added)::int additional_duplicates,trim_scale(coalesce(sum(value) filter(where added),0))::text additional_reduction_ron
-   from jsonb_to_recordset(${JSON.stringify(population)}::jsonb) x(value numeric,added boolean)`;
+ const population=groups.flatMap(g=>[
+  ...g.verified.members.filter(m=>eligibleIds.has(m.id)&&m.id!==g.canonical).map(m=>({value:m.value,previous:false})),
+  ...g.previous.evidence.members.filter(m=>eligibleIds.has(m.id)&&m.id!==String(g.previous.decision.canonical_contract_id)).map(m=>({value:m.value,previous:true})),
+ ]);
+ const [impact]=await q`select count(*) filter(where not previous)::int excluded_publications,
+   trim_scale(coalesce(sum(value) filter(where not previous),0))::text excluded_value_ron,
+   (count(*) filter(where not previous)-count(*) filter(where previous))::int additional_exclusions,
+   trim_scale(coalesce(sum(value) filter(where not previous),0)-coalesce(sum(value) filter(where previous),0))::text net_reduction_ron
+   from jsonb_to_recordset(${JSON.stringify(population)}::jsonb) x(value numeric,previous boolean)`;
  return {groups,beforeMembers,impact};
 }
 
 /** Atomic, fully audited replacement of evidence for already approved groups.
  * Called only within backed-up, frozen nightly publication after normalization.
- * No changes to collection controls, original source rows or canonical IDs. */
+ * No changes to collection controls or original source rows. Versioned groups
+ * select the latest source-dated, verified version; prior choices are audited. */
 export async function revalidateApprovedContractIdentities(q:DbSql,runId:string,log:(message:string)=>void=()=>{}) {
  return q.begin(async tx=>{
   const sql=tx as unknown as DbSql;
@@ -102,8 +116,8 @@ export async function revalidateApprovedContractIdentities(q:DbSql,runId:string,
     select fingerprint,id,evidence from jsonb_to_recordset(${JSON.stringify(batch)}::jsonb) x(id text,fingerprint text,evidence jsonb) on conflict(fingerprint) do nothing`;
    await sql`update marts.contract_identity_candidates c set fingerprint=x.fingerprint,evidence=x.evidence,observed_at=clock_timestamp()
     from jsonb_to_recordset(${JSON.stringify(batch)}::jsonb) x(id text,fingerprint text,evidence jsonb) where c.id=x.id`;
-   await sql`update marts.contract_identity_decisions d set fingerprint=x.fingerprint
-    from jsonb_to_recordset(${JSON.stringify(batch)}::jsonb) x(id text,fingerprint text) where d.candidate_id=x.id`;
+   await sql`update marts.contract_identity_decisions d set fingerprint=x.fingerprint,canonical_contract_id=(x.next_snapshot->>'canonical_contract_id')::bigint
+    from jsonb_to_recordset(${JSON.stringify(batch)}::jsonb) x(id text,fingerprint text,next_snapshot jsonb) where d.candidate_id=x.id`;
    const members=changed.slice(i,i+100).flatMap(g=>g.members);
    await sql`insert into marts.contract_identity_members(contract_id,candidate_id,snapshot_hash)
     select contract_id,candidate_id,snapshot_hash from jsonb_to_recordset(${JSON.stringify(members)}::jsonb) x(contract_id bigint,candidate_id text,snapshot_hash text)
@@ -111,7 +125,7 @@ export async function revalidateApprovedContractIdentities(q:DbSql,runId:string,
   }
   const after=await assertContractIdentityQuality(sql);
   const report={changedGroups:changed.length,extendedGroups:changed.filter(g=>g.verified.members.length>g.previous.evidence.members.length).length,
-   quality:after,impact:prepared.impact,rawBoundary:String(run.raw_boundary),canonicalIdsChanged:0};
+   quality:after,impact:prepared.impact,rawBoundary:String(run.raw_boundary),canonicalIdsChanged:changed.filter(g=>g.canonical!==String(g.previous.decision.canonical_contract_id)).length};
   await sql`insert into app.collection_audit(actor_id,actor_name,action,before,after)
    values('system:processor','Reverificarea publicațiilor aprobate','identity-revalidation',${JSON.stringify({runId,quality:before})}::jsonb,${JSON.stringify(report)}::jsonb)`;
   log(`Publication revalidation: ${report.changedGroups} groups, ${report.extendedGroups} extended; ${after.members} verified source publications`);
