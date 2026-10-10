@@ -50,6 +50,8 @@ describe.skipIf(!url)('persistent national DA discovery (isolated DB, no source 
   const result=await activateNationalDa(q);expect(result).toMatchObject({added:7,superseded:1,strategy:DA_STRATEGY});
   expect((await q`select status from app.collection_tasks where id=${retry!.id}`)[0]!.status).toBe('pending');
   expect((await q`select timeouts from app.collection_retries`)[0]!.timeouts).toBe(1);
+  const [audit]=await q`select before from app.collection_audit where action='da-national-activation'`;
+  expect(audit!.before).toMatchObject({pendingTasks:1});expect(audit!.before.tasks).toBeUndefined();
   expect(await activateNationalDa(q)).toMatchObject({alreadyActive:true,added:0});
   expect((await q`select paused from app.collection_control`)[0]!.paused).toBe(true);
  });

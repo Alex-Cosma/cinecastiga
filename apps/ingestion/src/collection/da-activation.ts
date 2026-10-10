@@ -14,7 +14,7 @@ export async function activateNationalDa(q:DbSql){
   if(b.da_strategy!=='authority')throw Error('Unknown prior discovery strategy');
   if((await tx`select id from app.collection_tasks where batch_id=${b.id} and status='running' limit 1`).length)throw Error('Wait for all admitted tasks to drain.');
   // Retry budgets and failed tasks remain intact. Only untouched pending authority work is replaced.
-  const pending=await tx`select id,params,result,error from app.collection_tasks t where batch_id=${b.id} and kind='da' and status='pending' and not(params ? 'daStrategy')
+  const pending=await tx`select id from app.collection_tasks t where batch_id=${b.id} and kind='da' and status='pending' and not(params ? 'daStrategy')
    and not exists(select 1 from app.collection_retries r where r.task_id=t.id) for update`;
   const days=await tx`select distinct d::date::text unit_day from (
    select (params->>'from')::date a,(params->>'to')::date z from app.collection_tasks t where id=any(${pending.map(r=>r.id)}::bigint[])
@@ -25,8 +25,8 @@ export async function activateNationalDa(q:DbSql){
   await insertTasks(tx as unknown as DbSql,roots);
   const [week]=await tx`select date_trunc('week',${b.end_day}::date)::date::text unit_day`;
   await insertTasks(tx as unknown as DbSql,[task(String(b.id),'catalogue','cpv-catalogue',{from:String(week!.unit_day),to:String(week!.unit_day),page:0},0)]);
-  await tx`insert into app.collection_audit(actor_id,actor_name,action,before,after) values('system:da-activation','Colector','da-national-activation',${JSON.stringify({batchId:b.id,strategy:b.da_strategy,tasks:pending})}::jsonb,${JSON.stringify({strategy:DA_STRATEGY,roots:roots.map(t=>t.key),scan:b.end_day})}::jsonb)`;
-  await tx`update app.collection_tasks set status='split',finished_at=clock_timestamp(),error=null,result=coalesce(result,'{}'::jsonb)||${JSON.stringify({supersededBy:`national-da:${b.end_day}`,replacementDays:days.map(d=>d.unit_day)})}::jsonb where id=any(${pending.map(r=>r.id)}::bigint[])`;
+  await tx`insert into app.collection_audit(actor_id,actor_name,action,before,after) values('system:da-activation','Colector','da-national-activation',${JSON.stringify({batchId:b.id,strategy:b.da_strategy,pendingTasks:pending.length})}::jsonb,${JSON.stringify({strategy:DA_STRATEGY,roots:roots.map(t=>t.key),scan:b.end_day})}::jsonb)`;
+  await tx`update app.collection_tasks set status='split',finished_at=clock_timestamp(),result=coalesce(result,'{}'::jsonb)||${JSON.stringify({supersededBy:`national-da:${b.end_day}`,replacementDays:days.map(d=>d.unit_day)})}::jsonb where id=any(${pending.map(r=>r.id)}::bigint[])`;
   await tx`update app.collection_batches set da_strategy=${DA_STRATEGY},status='collecting' where id=${b.id}`;
   return {batchId:b.id,added:roots.length,superseded:pending.length,days:days.map(d=>d.unit_day),strategy:DA_STRATEGY};
  });
