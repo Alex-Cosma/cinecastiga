@@ -31,7 +31,8 @@ describe.skipIf(!db)('real recovery metadata aggregation',()=>{
  const data=await collectionStatus(q);expect(data.forecast!.sampled.find(s=>s.stream==='da')).toEqual({stream:'da',sampled:1,units:2});expect(data.forecast!.completed).toBe(6);expect(data.forecast!.failed).toBe(1);expect(data.forecast!.deferred).toBe(1);expect(data.forecast!.state).toBe('gaps');expect(data.forecast!.minutesHigh).toBeNull();
  });
  it('counts CPV leaves and detail verification within each day and scan',async()=>{
-  const q=db!.sql;await q`insert into app.collection_batches(id,end_day) values('national','2026-10-09')`;
+  const q=db!.sql;await q`insert into app.collection_batches(id,end_day,da_strategy) values('national','2026-10-09','cpv-day-v1')`;
+  await q`insert into app.collection_tasks(batch_id,key,partition,stream,kind,status,params) values('national','legacy','legacy','da','da','split','{"authorityId":77,"page":0}')`;
   for(const [key,day,status] of [['one','2026-10-08','split'],['one-a','2026-10-08','complete'],['one-b','2026-10-08','complete'],['two','2026-10-09','pending']] as const){
    await q`insert into app.collection_tasks(batch_id,key,partition,stream,kind,status,params) values('national',${key},${key},'da','da',${status},${JSON.stringify({from:day,daScan:'2026-10-09',daStrategy:'cpv-day-v1',page:0})}::jsonb)`;
   }

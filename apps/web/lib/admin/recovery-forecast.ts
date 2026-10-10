@@ -1,7 +1,7 @@
 /** Read-only planning estimate. Bounds are scenarios, not confidence intervals. */
 export interface RecoverySample {
  stream: string; units: number; sampled: number; mean_work: number; sd_work: number;
- months: number; total_months: number;
+ months: number; total_months: number; base_work?:number;
 }
 export interface RecoveryCounts {stream:string;complete:number;split:number;pending:number;running:number;failed:number;deferred:number}
 export interface RecoveryForecastInput {
@@ -28,7 +28,8 @@ export function recoveryForecast(input:RecoveryForecastInput){
   for(const s of input.samples){
    // Allow at least 25% variation: discovery is ordered, not a random sample.
    const mean=n(s.mean_work),spread=Math.max(mean*.25,2*n(s.sd_work)/Math.sqrt(Math.max(1,n(s.sampled))));
-   low+=n(s.units)*Math.max(1,mean-spread);high+=n(s.units)*(mean+spread);
+   // Finished work from a previous strategy stays in totals, never in the new unit mean.
+   low+=n(s.base_work)+n(s.units)*Math.max(1,mean-spread);high+=n(s.base_work)+n(s.units)*(mean+spread);
   }
   const catalogue=input.progress.find(s=>s.stream==='catalogue');
   low+=n(catalogue?.complete);high+=n(catalogue?.complete);
