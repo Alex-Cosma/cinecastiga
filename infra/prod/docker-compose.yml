@@ -145,7 +145,7 @@ services:
     init: true
     mem_limit: 4g
     cpus: 4
-    pids_limit: 512
+    pids_limit: 2048
     stop_grace_period: 100s
     environment:
       DATABASE_URL: postgres://seap_web:${SEAP_WEB_PASSWORD:?set in .env}@postgres:5432/seap
