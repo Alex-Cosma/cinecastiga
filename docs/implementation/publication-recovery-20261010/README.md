@@ -39,3 +39,7 @@ Next normal schedule remains daily05:00RO /Sundayrisk. Full recovery now is nece
 ## Current state
 
 Implementation and copied validation complete; deployment/recovery verification follows below when actually observed. Do not infer production success from this section alone.
+
+### Release check, 07:22 RO
+
+Commit035050eis onmain. First Actions run38023675065passed host checks but failed the web build; deploy was skipped, so production was unchanged. GitHub's public annotations only expose the failed build command; detailed job logs require authentication. A fresh local production web build of the same committed source passed completely. This does not establish the CI failure's cause. Repeating CI through this recorded verification update; no bypass of deployment checks.
