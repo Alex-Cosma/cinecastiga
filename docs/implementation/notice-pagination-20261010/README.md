@@ -17,3 +17,13 @@ Superseded task rows remain as `split`, with their original results plus a link 
 Dated operation scripts are in `scripts/operations/20261010-resume-inventory/`. The first two rechecks were executed and failed safely; control revision is111, paused=true, maintenance=false, with the original block intact. The third script must run only after the new collector image deploys, under the deployment lock with document/collection workers stopped. It first schedules the verified replacement, issues one gated source request, validates/archives it, and returns to pause. A successful exact reconciliation is required before clearing the pause and starting the ordinary collector. Inspect state before any retry; these are not reusable operational commands.
 
 Deployment and live result pending at this checkpoint. No claim of complete historical collection.
+
+## Production recovered and collecting — 10 October, 10:11 RO
+
+Implementation `14f5d6a`, CI/deploy **38033256020** passed. The bounded live request returned **180/180 distinct notices**, including all 179 IDs from the two freshly repeated pages. Recovered ID **100510128**; overlap was **100512354**. Source inventory compared all180against core:180matched,zero missing/unverified. Replacement task **580966** completed; original537029and542533remain audited as superseded `split` tasks, never deleted. Three diagnostic source calls total in this intervention before ordinary collection resumed.
+
+The guarded `resume.sql` was applied once, then normal collection and documents workers started. Control **revision114**, paused=false,maintenance=false,no source block. Daily follow-latest work includes **9 October 2026**, and the historical inventory remains queued. At07:11:46UTC,93new requests had succeeded after resumption,one was in flight,zero new failures. Seven pre-existing failed details remain separate known gaps; do not claim all historical data are complete.
+
+Settings unchanged: proxy mode,200requests/minute ceiling,10concurrent,35–45seconds/IP. Site stays public; raw collection does not imply immediate statistical publication. Daily05:00processing and Sundayrisk schedule remain unchanged. No additional recalculation was triggered.
+
+Local tests:229ingestion units plus2new request/bounds units;12collector DB integration and8admin DB integration passed. Production final state should be re-read before further work; dated scripts are already executed and must not be replayed.
