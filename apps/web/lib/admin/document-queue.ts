@@ -21,7 +21,7 @@ export async function documentQueueStatus(filter:DocumentQueueFilter='download',
    count(*) filter(where j.status='queued' and j.kind='list')::int list,
    count(*) filter(where j.status='queued')::int all,
    count(*) filter(where j.status='running')::int running
-   from app.document_jobs j left join app.procurement_documents d on d.id=j.document_id where j.status in ('queued','running')`;
+   from app.document_jobs j left join app.procurement_documents d on d.id=j.document_id where j.status in ('queued','running') and j.stage<>'specifications_only'`;
   const summary=counts as unknown as {download:number;processing:number;list:number;all:number;running:number};
   const pageSize=10,total=summary[filter],page=Math.min(requestedPage,Math.max(1,Math.ceil(total/pageSize)));
   const active=await tx`select j.id,j.document_id "documentId",j.kind,j.status,j.stage,d.filename,
@@ -30,7 +30,7 @@ export async function documentQueueStatus(filter:DocumentQueueFilter='download',
    from app.document_jobs j join app.document_notices n on n.key=j.notice_key left join app.procurement_documents d on d.id=j.document_id
    where j.status='running' order by (j.slot=0) desc,j.created_at,j.id limit 1`;
   const jobs=await tx`with ordered as materialized (
-   select j.*,row_number() over(order by created_at,id)::int position from app.document_jobs j where status='queued'
+   select j.*,row_number() over(order by created_at,id)::int position from app.document_jobs j where status='queued' and stage<>'specifications_only'
   ) select j.id,j.document_id "documentId",j.kind,j.status,j.stage,d.filename,
    n.notice_no "noticeNo",n.title "noticeTitle",n.url "noticeUrl",d.original_hash is not null downloaded,d.pdf_hash is not null "hasPdf",
    j.pages_done "pagesDone",j.pages_total "pagesTotal",j.created_at "createdAt",j.started_at "startedAt",j.position

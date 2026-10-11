@@ -1,6 +1,7 @@
 import {afterAll,beforeAll,describe,it,expect} from 'vitest';
 import {createDb,type DbSql} from '@seap/db';import {mkdtemp,rm,readFile,writeFile} from 'node:fs/promises';import {tmpdir} from 'node:os';import {join} from 'node:path';
-import {runTool} from './process';import {prepareDocument} from './prepare';import {storeFile} from './blob-store';import {runDocumentJob} from './worker';import {runAutomaticJob} from './collection';
+import {runTool} from './process';import {prepareDocument,fileKind} from './prepare';
+import {SIGNATURE_VERIFIED} from './shared';import {storeFile} from './blob-store';import {runDocumentJob} from './worker';import {runAutomaticJob} from './collection';
 const enabled=process.env.DOCUMENT_TOOLS_TEST==='true',url=process.env.TEST_DATABASE_URL;
 if(url&&!new URL(url).pathname.startsWith('/seap_test_'))throw Error('Isolated database required');
 const db=enabled&&url?createDb(url,{max:1}):null;let dir:string;
@@ -35,6 +36,15 @@ describe.skipIf(!enabled)('offline document converters',()=>{
   expect(result.pages).toBe(330);expect(result.contents.every(p=>!p.error)).toBe(true);
   expect(await readFile(locked)).toEqual(before);
   expect(await runTool('pdfinfo',[result.pdf],signal)).toMatch(/Encrypted:\s+no/);
+ },60000);
+ it('prepares an attached P7M PDF while preserving signed original bytes and the inner filename',async()=>{
+  const signal=AbortSignal.timeout(60000),source=join(dir,'CS.pdf.p7m'),key=join(dir,'p7m-key'),cert=join(dir,'p7m-cert');
+  await runTool('openssl',['req','-x509','-newkey','rsa:2048','-nodes','-keyout',key,'-out',cert,'-subj','/CN=Fixture','-days','1'],signal);
+  await runTool('openssl',['cms','-sign','-binary','-nodetach','-in',join(dir,'CS.pdf'),'-signer',cert,'-inkey',key,'-outform','DER','-out',source],signal);
+  const original=await readFile(source);expect(await fileKind(source,'CS.pdf.p7m')).toBe('p7s');
+  const result=await prepareDocument(source,'CS.pdf.p7m',join(dir,'p7m-out'),signal);
+  expect(result.pages).toBe(30);expect(result.signature).toBe(SIGNATURE_VERIFIED);expect(result.contents[0]?.name).toBe('CS.pdf');
+  expect(await readFile(source)).toEqual(original);expect(await runTool('pdftotext',[result.pdf,'-'],signal)).toContain('CAIET DE SARCINI');
  },60000);
  it('renders Word and Excel inside an archive with explicit omitted-file provenance',async()=>{
   const result=await prepareDocument(join(dir,'mixed.zip'),'mixed.zip',join(dir,'converted'),AbortSignal.timeout(60000));

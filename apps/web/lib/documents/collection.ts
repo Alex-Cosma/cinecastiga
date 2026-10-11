@@ -16,19 +16,27 @@ export async function seedDocumentInventory(q:DbSql){
  await q`update app.document_collection_control set scanned_at=now(),error=null where id=1`;
 }
 export async function fillDocumentQueue(q:DbSql){
+ // Park old automatic downloads without losing their request history. Manual
+ // requests and processing of already archived originals remain eligible.
+ await q`update app.document_jobs j set stage='specifications_only' from app.procurement_documents d
+  where j.document_id=d.id and j.automatic and j.kind='file' and j.status='queued'
+   and d.original_hash is null and d.priority<>0 and j.stage<>'specifications_only'`;
+ await q`update app.document_jobs j set stage=case when d.original_hash is null then 'queued' else 'process_queued' end from app.procurement_documents d
+  where j.document_id=d.id and j.automatic and j.status='queued' and j.stage='specifications_only'
+   and (d.priority=0 or d.original_hash is not null)`;
  // Bounded materialization: discovery continues throughout the history without a giant job INSERT.
  await q`insert into app.document_jobs(notice_key,kind,dedup_key,requested_by,automatic)
   select n.key,'list','list:'||n.key,'system:document-collection',true from app.document_notices n
   where n.automatic and n.checked_at is null and not exists(select 1 from app.document_jobs j where j.notice_key=n.key and j.kind='list' and j.automatic)
   order by n.source_date desc nulls last,n.key desc limit greatest(0,40-(select count(*)::int from app.document_jobs where automatic and kind='list' and status in ('queued','running'))) on conflict(dedup_key) where status in ('queued','running') do nothing`;
  // Keep a separate bounded frontier for specifications, so forty older queued
- // ordinary files cannot prevent a newly discovered specification entering.
+ // archived ordinary files cannot prevent a newly discovered specification entering.
  for(const specifications of [true,false])await q`insert into app.document_jobs(notice_key,document_id,kind,dedup_key,requested_by,automatic,stage)
   select n.key,d.id,'file','file:'||d.id,'system:document-collection',true,case when d.original_hash is null then 'queued' else 'process_queued' end
   from app.procurement_documents d join app.document_notices n on n.key=d.notice_key
-  where n.automatic and d.processed_at is null and (d.priority=0)=${specifications} and d.filename ~* '[.](pdf|p7s|docx?|xlsx?|zip|rar|7z)$'
+  where n.automatic and d.processed_at is null and (d.priority=0)=${specifications} and (d.priority=0 or d.original_hash is not null) and d.filename ~* '[.](pdf|p7[sm]|docx?|xlsx?|zip|rar|7z)$'
    and not exists(select 1 from app.document_jobs j where j.document_id=d.id and j.automatic)
-  order by n.source_date desc nulls last,d.published_at desc nulls last,d.id limit greatest(0,40-(select count(*)::int from app.document_jobs j join app.procurement_documents f on f.id=j.document_id where j.automatic and j.kind='file' and j.status in ('queued','running') and (f.priority=0)=${specifications}))
+  order by n.source_date desc nulls last,d.published_at desc nulls last,d.id limit greatest(0,40-(select count(*)::int from app.document_jobs j join app.procurement_documents f on f.id=j.document_id where j.automatic and j.kind='file' and j.status in ('queued','running') and (f.priority=0)=${specifications} and (f.priority=0 or f.original_hash is not null)))
   on conflict(dedup_key) where status in ('queued','running') do nothing`;
 }
 
@@ -99,7 +107,7 @@ export async function runAutomaticCollector(sql:DbSql,shutdown:AbortSignal,work=
      where j.status='queued' and j.batch_id is null and (j.retry_at is null or j.retry_at<=now()) and (
       (${slot===0&&source&&networkBusy<Number(state.download_concurrency)} and not j.automatic)
       or (${automatic} and j.automatic and ((${processing} and j.kind='file' and d.original_hash is not null)
-       or (${!processing&&source&&state.proxy_enabled} and (j.kind='list' or d.original_hash is null))))
+       or (${!processing&&source&&state.proxy_enabled} and (j.kind='list' or (d.original_hash is null and d.priority=0)))))
      ) order by j.automatic,case when j.kind='list' then case when ${slot===Number(state.download_concurrency)} then -1 else 1 end else 0 end,coalesce(d.priority,100),n.source_date desc nulls last,j.created_at,j.id limit 1 for update of j skip locked
     ) and status='queued' returning *`;}catch(error){session.release();throw error;}
     if(!job){session.release();continue;}

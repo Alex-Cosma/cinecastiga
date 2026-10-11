@@ -2,7 +2,7 @@
 import {useEffect,useRef,useState} from 'react';
 import Link from 'next/link';
 import DiscoveryIcon from '@/app/DiscoveryIcon';
-import {SIGNATURE_UNVERIFIED,stageLabel,foldText,type ContractFiles as Files,type ContractFile,type DocumentPage} from '@/lib/documents/shared';
+import {SIGNATURE_UNVERIFIED,stageLabel,foldText,isActiveFileJob,type ContractFiles as Files,type ContractFile,type DocumentPage} from '@/lib/documents/shared';
 import './documents.css';
 import PdfPage from './PdfPage';
 import DocumentLibrary from './DocumentLibrary';
@@ -22,7 +22,7 @@ export default function ContractFiles({nid,initial,authenticated,sourceUrl}:{nid
  const [readerHighlight,setReaderHighlight]=useState(''),[documentApplied,setDocumentApplied]=useState('');
  const [documentQuery,setDocumentQuery]=useState(''),[documentHits,setDocumentHits]=useState<{page:number;text:string}[]|null>(null),[documentSearching,setDocumentSearching]=useState(false);
  const [quote,setQuote]=useState('');const ocr=useRef<HTMLDivElement>(null),reader=useRef<HTMLElement>(null);
- const running=[data.job,...data.files.map(f=>f.job)].some(j=>j&&['queued','running'].includes(j.status));
+ const running=[data.job,...data.files.map(f=>f.job)].some(isActiveFileJob);
  const ready=data.files.filter(f=>f.processedAt),total=data.total??data.files.length;
  const load=async()=>{const d=await json(`/api/contracte/${nid}/files`);setData(d);return d as Files;};
  // A tab with no active job must still discover work started elsewhere.
