@@ -4,9 +4,12 @@ import { appSchema } from './app.js';
 const bytea = customType<{ data: Buffer }>({dataType: () => 'bytea'});
 // Archived source and derivative bytes are immutable, content-addressed, and shared.
 export const documentBlobs = appSchema.table('document_blobs', {
-  hash: text('hash').primaryKey(), bytes: bytea('bytes').notNull(), mime: text('mime').notNull(),
+  hash: text('hash').primaryKey(), bytes: bytea('bytes').notNull(), mime: text('mime').notNull(), size: bigint('size',{mode:'number'}),
   createdAt: timestamp('created_at', {withTimezone:true}).defaultNow().notNull(),
 }, t=>[check('document_blob_size',sql`octet_length(${t.bytes}) <= 52428800`)]);
+export const documentBlobChunks = appSchema.table('document_blob_chunks',{
+ hash:text('hash').notNull().references(()=>documentBlobs.hash,{onDelete:'cascade'}), part:integer('part').notNull(), bytes:bytea('bytes').notNull(),
+},t=>[primaryKey({columns:[t.hash,t.part]}),check('document_chunk_size',sql`octet_length(${t.bytes}) between 1 and 1048576`)]);
 export const documentNotices = appSchema.table('document_notices', {
   key: text('key').primaryKey(), noticeId: text('notice_id').notNull(), noticeType: integer('notice_type').notNull(),
   noticeNo: text('notice_no').notNull(), title: text('title').notNull(), url: text('url').notNull(),
@@ -19,7 +22,7 @@ export const procurementDocuments = appSchema.table('procurement_documents', {
   publishedAt: text('published_at'), originalHash: text('original_hash').references(()=>documentBlobs.hash),
   pdfHash: text('pdf_hash').references(()=>documentBlobs.hash), downloadedAt: timestamp('downloaded_at',{withTimezone:true}),
   processedAt: timestamp('processed_at',{withTimezone:true}), pageCount: integer('page_count'),
-  signature: text('signature'), processor: text('processor'),
+  signature: text('signature'), processor: text('processor'), preparation:jsonb('preparation'), contents:jsonb('contents'),
 },t=>[uniqueIndex('procurement_document_source_uq').on(t.noticeKey,t.sourceId)]);
 export const documentPages = appSchema.table('document_pages', {
   documentId: uuid('document_id').notNull().references(()=>procurementDocuments.id),
@@ -48,7 +51,7 @@ export const documentJobs = appSchema.table('document_jobs', {
   check('document_job_status',sql`${t.status} in ('queued','running','complete','failed')`),check('document_job_kind',sql`${t.kind} in ('list','file')`)]);
 export const documentRequests = appSchema.table('document_requests', {
   id: bigserial('id',{mode:'number'}).primaryKey(), jobId: uuid('job_id').notNull().references(()=>documentJobs.id),
-  method: text('method').notNull(), endpoint: text('endpoint').notNull(), status: integer('status'), bytes: integer('bytes'),
+  method: text('method').notNull(), endpoint: text('endpoint').notNull(), status: integer('status'), bytes: bigint('bytes',{mode:'number'}),
   startedAt: timestamp('started_at',{withTimezone:true}).defaultNow().notNull(), finishedAt: timestamp('finished_at',{withTimezone:true}),
 });
 

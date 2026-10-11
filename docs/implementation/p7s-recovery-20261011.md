@@ -26,3 +26,7 @@ Read-only production preflight using the proposed code in a separate temporary d
 -Private reproduction artifacts: `.local/document-failures-20261011/`. No source originals or OCR text are committed.
 
 Production publication and recovery results are appended after verification.
+
+## Production release
+
+Runtime `a1f8f78`, CI/deploy38124882278 both passed; health200. Applied recovery after drained deploy:198candidates,161PDFs queued,37other/page-policy cases precisely reclassified,0unresolved. Source/doc pause restored with revision guards131→132 and2→3; public site stayed live. At11:47RO,120completed/4running/37queued, originals unchanged, **zero extra source requests across the recovered jobs**. The owner subsequently authorized [other formats and large documents](document-formats-20261011.md).

@@ -1,5 +1,5 @@
 import {afterAll,beforeEach,describe,it,expect} from 'vitest';
-import {createDb,runCollectionRequest,type DbSql} from '@seap/db';
+import {createDb,runCollectionRequest,CollectionLocalError,type DbSql} from '@seap/db';
 import {setTimeout as sleep} from 'node:timers/promises';
 import {seedDocumentInventory,fillDocumentQueue,runAutomaticCollector,runAutomaticJob,recoverAutomaticJobs} from './collection';
 import {changeDocumentCollection,documentCollectionStatus} from '../admin/document-collection';
@@ -115,4 +115,14 @@ describe.skipIf(!db)('continuous document collection, no source HTTP',()=>{
    expect((await q`select count(*)::int n from app.document_jobs where status='complete'`)[0]!.n).toBe(14);
   }finally{release();stop.abort();await runner;}
  },15000);
+ it('a local storage failure is audited without stopping source collection or blaming a proxy',async()=>{
+  const q=db!.sql;await q`update app.collection_proxy_control set enabled=false`;
+  await q`update app.collection_control set min_seconds=1,max_seconds=1,next_allowed_at=null,last_file_at=null`;
+  const session=await q.reserve();try{
+  await expect(runCollectionRequest(session as unknown as DbSql,{stream:'documents',worker:'fixture-storage',method:'GET',url:'https://www.e-licitatie.ro/api-pub/files/noticedoc/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',fileDownload:true},async()=>{throw new CollectionLocalError('Procesarea nu poate salva fișierul pe disc.');},new AbortController().signal)).rejects.toThrow('pe disc');
+  }finally{session.release();}
+  expect((await q`select blocked_reason from app.collection_control where id=1`)[0]!.blocked_reason).toBeNull();
+  expect((await q`select outcome,error from app.collection_requests order by id desc limit 1`)[0]).toMatchObject({outcome:'failed',error:'Procesarea nu poate salva fișierul pe disc.'});
+ });
+
 });

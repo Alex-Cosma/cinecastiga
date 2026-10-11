@@ -1,6 +1,9 @@
-import {browserDocumentRequest} from './browser-request';
+import {open} from 'node:fs/promises';
+import {randomUUID} from 'node:crypto';
+import {requireDisk} from './blob-store';
+import {browserDocumentStream,browserDocumentRequest} from './browser-request';
 import {type Browser} from 'playwright-core';
-import {reserveDocumentProxy,releaseDocumentProxy,proxyConnection,runCollectionRequest,collectionWorkerId,type DbSql} from '@seap/db';
+import {CollectionLocalError,reserveDocumentProxy,releaseDocumentProxy,proxyConnection,runCollectionRequest,collectionWorkerId,type DbSql} from '@seap/db';
 import {safeFileUrl} from './shared';
 import {continueDocumentRequest,launchDocumentBrowser,loadDocumentProxy,proxyTransportError} from './proxy';
 import {assertDocumentRequestBudget,validateDocumentRequestLimit} from './request-budget';
@@ -14,9 +17,9 @@ export function parseList(data:unknown,noticeNo:string):{items:ListedDocument[];
  return {items:r.items,total:r.total!};
 }
 /** A fresh isolated browser session; only explicit requests can reach the network. */
-export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortSignal,maxRequests?:number,maxFileBytes=50*1024*1024){
+export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortSignal,maxRequests?:number,maxFileBytes?:number){
  validateDocumentRequestLimit(maxRequests);
- if(!Number.isSafeInteger(maxFileBytes)||maxFileBytes<1||maxFileBytes>50*1024*1024)throw Error("Invalid file limit");
+ if(maxFileBytes!==undefined&&(!Number.isSafeInteger(maxFileBytes)||maxFileBytes<1||maxFileBytes>50*1024*1024))throw Error("Invalid file limit");
  let browser:Browser|undefined, allowed:{url:string;method:string}|null=null;
  if(!/^https:\/\/www\.e-licitatie\.ro\/pub\/notices\/simplified-notice\/v2\/view\/[1-9]\d*$/.test(referer))throw Error('Anunț SEAP neacceptat.');
  const managedProxy=await reserveDocumentProxy(q,jobId);
@@ -33,7 +36,7 @@ export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortS
    allowed=null;await continueDocumentRequest(route);
   });
   const page=await context.newPage();page.setDefaultTimeout(45000);
-  async function request(url:string,method:string,body:unknown=null,navigate=false){
+  async function request(url:string,method:string,body:unknown=null,navigate=false,destination?:string){
    signal.throwIfAborted();
    await assertDocumentRequestBudget(q,jobId,maxRequests);
    if(url!==referer&&url!==origin+'/api-pub/NoticeDocument/GetAll/'&&url!==safeFileUrl(url))throw Error('Adresă neacceptată.');
@@ -50,19 +53,23 @@ export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortS
    try{
     let status:number,bytes:Buffer,retryAfter:string|null=null,oversized=false,receivedBytes:number|undefined;
     if(navigate){const res=await page.goto(url,{waitUntil:'domcontentloaded'});status=res?.status()??0;retryAfter=res?.headers()['retry-after']??null;bytes=res?await res.body():Buffer.alloc(0);receivedBytes=bytes.length;oversized=bytes.length>2*1024*1024;if(oversized)bytes=Buffer.alloc(0);}
-    else{
-     const result=await page.evaluate(browserDocumentRequest,{url,method,body,maxFileBytes});status=result.status;retryAfter=result.retryAfter;bytes=Buffer.from(result.base64,'base64');oversized=result.oversized;receivedBytes=result.receivedBytes;
+    else if(destination){
+     const sink='save_'+randomUUID().replaceAll('-',''),file=await open(destination,'wx',0o600);let received=0;let localError:Error|undefined;
+     await page.exposeFunction(sink,async(base64:string)=>{try{signal.throwIfAborted();const chunk=Buffer.from(base64,'base64');if(maxFileBytes!==undefined&&received+chunk.length>maxFileBytes)throw Error("Pilot file limit exceeded");if(chunk.length>65536)throw Error('Invalid stream chunk');if(received%(16*1024*1024)<65536)await requireDisk(destination);await file.writeFile(chunk);received+=chunk.length;}catch(error){localError=new CollectionLocalError(error instanceof Error&&error.message.startsWith('Procesarea')?error.message:'Procesarea nu poate salva fișierul pe disc. Verifică spațiul disponibil.');throw localError;}});
+     try{const result=await page.evaluate(browserDocumentStream,{url,sink});status=result.status;retryAfter=result.retryAfter;receivedBytes=result.receivedBytes;bytes=Buffer.alloc(0);}catch(error){if(localError)throw localError;throw error;}finally{await file.close();}
+    }else{
+     const result=await page.evaluate(browserDocumentRequest,{url,method,body,maxFileBytes:maxFileBytes??50*1024*1024});status=result.status;retryAfter=result.retryAfter;bytes=Buffer.from(result.base64,'base64');oversized=result.oversized;receivedBytes=result.receivedBytes;
     }
     await q`update app.document_requests set status=${status},bytes=${receivedBytes??bytes.length},finished_at=now() where id=${row!.id}`;
     let challenge=false;
     if(!oversized&&status===200&&method==='POST'){try{JSON.parse(bytes.toString('utf8'));}catch{challenge=true;}}
     if(status===200&&navigate)challenge=/cf-chl-|<title>[^<]*(?:access denied|just a moment|attention required)/i.test(bytes.toString('utf8'));
     return {value:{bytes,status,oversized},status,bytes:receivedBytes??bytes.length,retryAfter,challenge,...(oversized?{diagnostics:{response:{status,receivedBytes,bodyTruncated:true},reason:'document_size_limit'}}:{})};
-   }catch(error){if(proxy)throw proxyTransportError(error);throw error;}
+   }catch(error){if(error instanceof CollectionLocalError)throw error;if(proxy)throw proxyTransportError(error);throw error;}
    finally{allowed=null;await q`update app.document_requests set finished_at=coalesce(finished_at,now()) where id=${row!.id}`;}
    }finally{gateSignal.removeEventListener('abort',gateStop);}
    },signal);
-   if(result.oversized)throw Error(`SEAP: răspunsul depășește limita de ${method==='GET'?maxFileBytes/1024/1024:2} MiB a acestei operațiuni. Fișierul nu a fost arhivat.`);
+   if(result.oversized)throw Error(`SEAP: răspunsul depășește limita de ${method==='GET'?(maxFileBytes??50*1024*1024)/1024/1024:2} MiB a acestei operațiuni. Fișierul nu a fost arhivat.`);
    if(result.status!==200)throw Error(`SEAP a răspuns cu HTTP ${result.status}. Poți reîncerca mai târziu.`);
    return result.bytes;
   }
@@ -80,7 +87,7 @@ export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortS
      if(!parsed.items.length||items.length>total)throw Error('Lista SEAP este incompletă.');
     }throw Error('Lista SEAP este prea mare.');
    },
-   async download(url:string){const fresh=safeFileUrl(url);const verify=await request(fresh,'POST');if(JSON.parse(verify.toString('utf8'))!=='')throw Error('SEAP nu a confirmat descărcarea.');return request(fresh,'GET');},
+   async download(url:string,destination?:string){const fresh=safeFileUrl(url);const verify=await request(fresh,'POST');if(JSON.parse(verify.toString('utf8'))!=='')throw Error('SEAP nu a confirmat descărcarea.');return request(fresh,'GET',null,false,destination);},
    async close(){signal.removeEventListener('abort',stop);try{await browser?.close();}finally{await releaseDocumentProxy(q,jobId);}}
   };
  }catch(e){signal.removeEventListener('abort',stop);try{await browser?.close();}finally{await releaseDocumentProxy(q,jobId);}throw e;}

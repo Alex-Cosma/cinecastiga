@@ -34,7 +34,7 @@ export async function getContractFiles(nid:string,q:DbSql=documentDb()):Promise<
  const jobs=await q`select j.*,case when j.status='queued' then (select count(*) from app.document_jobs p where p.status in ('queued','running') and (p.created_at,p.id)<=(j.created_at,j.id)) else 0 end position from app.document_jobs j where j.notice_key=${notice.key} order by created_at desc,id desc`;
  const [requests]=await q`select count(*) n from app.document_requests r join app.document_jobs j on j.id=r.job_id where j.notice_key=${notice.key}`;
  return {...empty,checkedAt:iso(meta.checked_at),total:meta.total,requestCount:Number(requests?.n??0),job:jobRow(jobs.find(j=>j.kind==='list')),
- files:files.map(r=>({id:r.id,code:r.code,filename:r.filename,publishedAt:r.published_at,originalHash:r.original_hash,pdfHash:r.pdf_hash,downloadedAt:iso(r.downloaded_at),processedAt:iso(r.processed_at),pageCount:r.page_count,signature:r.signature,job:jobRow(jobs.find(j=>j.document_id===r.id))}))};
+ files:files.map(r=>({id:r.id,code:r.code,filename:r.filename,publishedAt:r.published_at,originalHash:r.original_hash,pdfHash:r.pdf_hash,downloadedAt:iso(r.downloaded_at),processedAt:iso(r.processed_at),pageCount:r.page_count,signature:r.signature,contents:r.contents,job:jobRow(jobs.find(j=>j.document_id===r.id))}))};
 }
 export async function enqueueDocument(nid:string,uid:string,documentId:string|null,q:DbSql=documentDb()){
  if(!documentsEnabled())throw new WorkspaceError('Preluarea documentelor nu este activată pe acest server.',503);
@@ -74,7 +74,7 @@ export async function saveDocumentQuote(uid:string,id:string,input:Record<string
   const n=await contractNotice(contractId,s);
   const [r]=await s`select d.*,p.text,p.method,n.url,n.notice_no from app.procurement_documents d join app.document_pages p on p.document_id=d.id join app.document_notices n on n.key=d.notice_key where d.id=${id} and p.page=${Number(page)} and d.processed_at is not null`;
   if(!r||n?.key!==r.notice_key||originalHash!==r.original_hash||!validQuote(r.text,quote))throw new WorkspaceError('Pasajul nu corespunde paginii și versiunii păstrate. Redeschide documentul.',409);
-  const snapshot={verification:'document-passage',title:`${r.filename} · pagina ${page}`,documentId:id,contractId,page,quote,filename:r.filename,originalHash:r.original_hash,pdfHash:r.pdf_hash,method:r.method,processor:r.processor,sourceUrl:r.url,noticeNo:r.notice_no,downloadedAt:r.downloaded_at,processedAt:r.processed_at};
+  const snapshot={verification:'document-passage',title:`${r.filename} · pagina ${page}`,documentId:id,contractId,page,quote,filename:r.filename,originalHash:r.original_hash,pdfHash:r.pdf_hash,method:r.method,processor:r.processor,contentSource:Array.isArray(r.contents)?r.contents.find((p:{firstPage?:number;pages?:number})=>p.firstPage&&Number(page)>=p.firstPage&&Number(page)<p.firstPage+(p.pages??0))??null:null,sourceUrl:r.url,noticeNo:r.notice_no,downloadedAt:r.downloaded_at,processedAt:r.processed_at};
   const [clip]=await s`insert into app.clips(investigation_id,kind,ref_id,snapshot,note,created_by) values(${investigationId},'document_quote',${id},${JSON.stringify(snapshot)}::jsonb,${typeof input.note==='string'?input.note.trim().slice(0,4000):null},${uid}) returning id`;
   await s`update app.investigations set updated_at=now() where id=${investigationId}`;
   return {id:clip!.id,investigationId};
