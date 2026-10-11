@@ -9,7 +9,7 @@ related_targets: ["apps/web/components/documents/DocumentLibrary.tsx", "apps/web
 
 Mode: Operate. The visitor finds a relevant procedure document, understands its preparation and classification state, and opens the exact archived source or page. This implements the user-approved [document categories mockup](../../mockups/document-categories/README.md) within the existing contract document reader. It preserves the visual identity and investigative constraints in [PRODUCT.md](../../PRODUCT.md) and [DESIGN.md](../../DESIGN.md).
 
-Status at 11 October 2026: implemented and verified locally on `fix/document-archive-recovery`; no commit, push or deployment is established by this handoff. The [implementation record](../../docs/implementation/document-categories-20261011.md) owns backend behavior, migrations, test results and operational limitations. The earlier expanded-format production release is a separate change.
+Initial design verification was local on `fix/document-archive-recovery`; the subsequent production release is recorded as `e2ec0ff` in the implementation record. The [implementation record](../../docs/implementation/document-categories-20261011.md) owns backend behavior, migrations, test results and operational limitations. The earlier expanded-format production release is a separate change.
 
 ## Approved behavior
 

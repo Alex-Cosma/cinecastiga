@@ -1,6 +1,6 @@
 # Document categories and specification priority — 11 October 2026
 
-Status: implemented and verified locally on `fix/document-archive-recovery`. Not committed, pushed or deployed in this step. Production source settings and jobs have not been changed by this implementation. This is separate from the earlier expanded-format production release and the still-unfinished multipart-archive recovery.
+Status: **released to production as `e2ec0ff` on 11 October 2026**; CI and deploy 38155289382 both passed. See the release record below. The initial implementation was validated on `fix/document-archive-recovery`. Multipart-archive recovery remains separate and unfinished.
 
 ## Product decision
 
@@ -71,3 +71,13 @@ Both `/admin` and `/admin/fisiere` show a classification progress bar plus speci
 The ordinary local database was read-only:62 recorded migrations, no `core.notices.notice_namespace`,9 original document rows/1 processed. It is behind this branch's notice-identity and document migrations. No historical local repair or production clone was attempted for a UI task. Migration0071 was applied only to the isolated fixture database. Deployment must apply the normal migration chain before starting the new web/worker code; the backfill then runs automatically with the enabled worker. Production activation has not occurred in this step.
 
 Independent visual review: both requested contrast corrections were scored resolved (`ship` for that correction set). Final captures use `*-reviewed.png`; filename-search placeholder dark contrast7.07:1 and highlighted filename light contrast7.18:1. No global design-system rewrite. Temporary browser fixture route was removed; private fixture source remains with the verification artifacts.
+
+## Production release — 11 October, 19:32 RO
+
+Code `e2ec0ff` is pushed to `main` and `fix/document-archive-recovery`; the standard [CI/deploy 38155289382](https://github.com/Alex-Cosma/seap-new/actions/runs/38155289382) completed successfully. Migration0071 is applied; production now has 72 migrations. The web container is healthy and the document worker contains qpdf 11.3.0. No broad failed-job retry or historical recovery was executed.
+
+The classifier started automatically. Samples progressed from 377 to 702 and then **2,157/3,502** analyzed at 16:32 UTC. That snapshot identified 50 specification files/archives, 33 downloaded and 31 readable; these are evolving classification counts, not a statement that all specifications have been discovered. Source control remains revision 137, unpaused, maintenance=false, no block; document control remains revision 7, enabled/unpaused, heartbeat alive, no supervisor error. Existing failed documents/inventories and two pending retries remain in the collection report; this release does not claim to repair them. Three newly finished list jobs retained the known inventory-identity error (16:28–16:30 UTC); they were not retried or bypassed. One source request was recorded as interrupted during worker shutdown (`parent_cancelled`, request 457466), with no global block.
+
+**16 production browser checks passed** against `/contracte/108182744`: live page/inventory, classifications and categories, bounded rows, category switching, mobile layout, public ranged PDF and original reads, anonymous enqueue 401, admin status 403, health 200 and no JS errors. The admin status function was also executed read-only with the deployed worker's actual database role. Browser verification made no SEAP requests. The initially selected Buzău contract 107063311 has a verified source association but no archived file metadata in this production database; a populated contract was used for the document checks. No source inventory was requested merely to populate the test.
+
+[Sanitized release evidence](document-categories-release-20261011.json) records the checks and timestamped status. The initial local-only notes above describe the pre-release verification environment; this section supersedes their deployment status. Ordinary local production-copy migrations were not changed.

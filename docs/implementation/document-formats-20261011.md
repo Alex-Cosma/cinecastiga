@@ -73,3 +73,7 @@ Inventory must keep advancing through older notices while downloads/OCR prioriti
 ### Approved categories implemented locally
 
 The category mock was approved and the library/classifier/priority scheduler are now implemented; see [the implementation and verification record](document-categories-20261011.md). This supersedes the earlier statement that the taxonomy/UI were still under discussion. No production activation in this step. Multipart assembly, ISAM conversion and the separate inventory-identity failures are not claimed resolved by the category feature.
+
+### Category release verified in production
+
+`e2ec0ff` and CI/deploy 38155289382 are live. The release includes the tested qpdf derivative normalization and document categories/priority; [release evidence](document-categories-20261011.md#production-release--11-october-1932-ro). No broad failed-job requeue was performed. Multipart grouping remains an unused helper; safe extraction/queue wiring and the inventory-identity failures remain outstanding. This supersedes deployment-status statements above for classification and qpdf only.
