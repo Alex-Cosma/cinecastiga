@@ -1,5 +1,6 @@
 import {collectionQuietWindow,type DbSql} from '@seap/db';
 import {collectionDb,CollectionConflict} from './collection';
+import {CLASSIFICATION_VERSION} from '../documents/classification';
 
 export async function documentCollectionStatus(q:DbSql=collectionDb()){
  return q.begin('isolation level repeatable read read only',async tx=>{
@@ -11,11 +12,18 @@ export async function documentCollectionStatus(q:DbSql=collectionDb()){
   const [inventory]=await tx`select count(*)::int registered,count(*) filter(where checked_at is not null)::int checked,count(*) filter(where checked_at is not null and total=0)::int empty from app.document_notices where automatic`;
   const [files]=await tx`select count(*)::int discovered,count(*) filter(where filename ~* '[.](pdf|p7s|docx?|xlsx?|zip|rar|7z)$')::int supported,count(*) filter(where filename ~* '[.](pdf|p7s|docx?|xlsx?|zip|rar|7z)$' and original_hash is not null)::int downloaded,count(*) filter(where filename ~* '[.](pdf|p7s|docx?|xlsx?|zip|rar|7z)$' and processed_at is not null)::int processed from app.procurement_documents d join app.document_notices n on n.key=d.notice_key where n.automatic`;
   const [jobs]=await tx`select count(*) filter(where status='queued')::int queued,count(*) filter(where status='running')::int running,count(*) filter(where status='failed')::int failed,count(*) filter(where status='queued' and retry_at>now())::int retries from app.document_jobs where automatic`;
+  const [classification]=await tx`select count(*)::int total,
+   count(*) filter(where classification_version>=${CLASSIFICATION_VERSION} and classification_pdf_hash is not distinct from pdf_hash)::int classified,
+   count(*) filter(where classification is null or classification->'categories' @> '["unknown"]'::jsonb)::int uncertain,
+   count(*) filter(where priority=0)::int specifications,
+   count(*) filter(where priority=0 and original_hash is not null)::int specifications_downloaded,
+   count(*) filter(where priority=0 and processed_at is not null)::int specifications_ready
+   from app.procurement_documents`;
   const active=await tx`select j.id,j.kind,j.stage,j.pages_done,j.pages_total,n.notice_no,d.filename,d.original_hash is not null downloaded from app.document_jobs j join app.document_notices n on n.key=j.notice_key left join app.procurement_documents d on d.id=j.document_id where j.automatic and j.status='running' order by j.slot limit 14`;
   const errors=await tx`select j.id,j.kind,j.error,n.notice_no,d.filename from app.document_jobs j join app.document_notices n on n.key=j.notice_key left join app.procurement_documents d on d.id=j.document_id where j.automatic and j.status='failed' order by j.finished_at desc,j.id limit 10`;
   const [traffic]=await tx`select count(*)::int attempts,count(*) filter(where outcome='success')::int succeeded,count(*) filter(where outcome in ('failed','interrupted'))::int failed from app.collection_requests where stream='documents' and started_at>=((now() at time zone 'Europe/Bucharest')::date::timestamp at time zone 'Europe/Bucharest')`;
   const quiet=await collectionQuietWindow(tx as unknown as DbSql);
-  return {control,source:source!,quiet:quiet.active,coverage:coverage!,inventory:inventory!,files:files!,jobs:jobs!,active,errors,traffic:traffic!};
+  return {control,source:source!,quiet:quiet.active,coverage:coverage!,inventory:inventory!,files:files!,jobs:jobs!,classification:classification!,active,errors,traffic:traffic!};
  });
 }
 export type DocumentCollectionStatus=Awaited<ReturnType<typeof documentCollectionStatus>>;

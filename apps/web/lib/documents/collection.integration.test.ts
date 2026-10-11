@@ -6,6 +6,7 @@ import {createDb,runCollectionRequest,CollectionLocalError,type DbSql} from '@se
 import {setTimeout as sleep} from 'node:timers/promises';
 import {seedDocumentInventory,fillDocumentQueue,runAutomaticCollector,runAutomaticJob,recoverAutomaticJobs} from './collection';
 import {changeDocumentCollection,documentCollectionStatus} from '../admin/document-collection';
+import {classifyDocumentBatch} from './classify';
 const url=process.env.TEST_DATABASE_URL;
 if(url&&!/^seap_test_/.test(new URL(url).pathname.slice(1)))throw Error('Isolated DB required');
 const db=url?createDb(url,{max:20}):null;
@@ -37,6 +38,35 @@ describe.skipIf(!db)('continuous document collection, no source HTTP',()=>{
   expect(await db!.sql`select id from app.document_jobs`).toHaveLength(40);
   expect(await db!.sql`select id from app.document_jobs where notice_key='17:45'`).toHaveLength(0);
  });
+ it('admits older specifications even with forty ordinary files queued; preserves inventory discovery and recent-first order within specifications',async()=>{
+  const q=db!.sql;for(const id of [1,2,100])await notice(id);await seedDocumentInventory(q);
+  await q`insert into app.procurement_documents(notice_key,source_id,code,filename) select '17:1',i::text,i::text,'Formulare '||i||'.pdf' from generate_series(1,40) i`;
+  await classifyDocumentBatch(q,100);await fillDocumentQueue(q);
+  expect(await q`select id from app.document_jobs where kind='file'`).toHaveLength(40);
+  await q`insert into app.procurement_documents(notice_key,source_id,code,filename) values('17:100','cs-old','cs-old','Caiet de sarcini.pdf'),('17:2','cs-new','cs-new','Caiet de sarcini.pdf')`;
+  await classifyDocumentBatch(q,100);await fillDocumentQueue(q);
+  expect(await q`select id from app.document_jobs where kind='file'`).toHaveLength(42);
+  await q`update app.document_collection_control set enabled=true,download_concurrency=2,processing_concurrency=1`;
+  const stop=new AbortController(),claimed:{kind:string;notice:string}[]=[];let release!:()=>void;const held=new Promise<void>(r=>release=r);
+  const runner=runAutomaticCollector(q,stop.signal,async(_db,job)=>{claimed.push({kind:job.kind,notice:job.notice_key});await held;});
+  try{
+   for(let i=0;i<100&&claimed.length<2;i++)await sleep(40);
+   expect(claimed).toEqual([{kind:'file',notice:'17:2'},{kind:'list',notice:'17:1'}]);
+   expect((await documentCollectionStatus(q)).classification).toMatchObject({total:42,classified:42,specifications:2,specifications_ready:0});
+  }finally{stop.abort();release();await runner;}
+ },15000);
+ it('processes specifications ahead of ordinary archived files while retaining the manual slot',async()=>{
+  const q=db!.sql;for(const id of [1,2,3,4,100])await notice(id);await seedDocumentInventory(q);
+  await q`insert into app.procurement_documents(notice_key,source_id,code,filename,original_hash) select key,'1','1',case when key='17:1' then 'Formulare.pdf' else 'CS.pdf' end,'auto-original' from app.document_notices`;
+  await classifyDocumentBatch(q,100);await fillDocumentQueue(q);
+  // The manually requested ordinary file takes the dedicated manual lane.
+  await q`update app.document_jobs set automatic=false,requested_by='fixture' where kind='file' and notice_key='17:1'`;
+  await q`update app.document_collection_control set enabled=true,download_concurrency=1`;
+  const stop=new AbortController(),claimed:string[]=[];let release!:()=>void;const held=new Promise<void>(r=>release=r);
+  const runner=runAutomaticCollector(q,stop.signal,async(_db,job)=>{if(job.kind==='file')claimed.push(job.notice_key);await held;});
+  try{for(let i=0;i<100&&claimed.length<4;i++)await sleep(40);expect(claimed).toEqual(['17:1','17:2','17:3','17:4']);}
+  finally{stop.abort();release();await runner;}
+ },15000);
  it('checkpoints downloads before OCR and retries processing from retained original',async()=>{
   const q=db!.sql;await notice(1);await seedDocumentInventory(q);
   const [d]=await q`insert into app.procurement_documents(notice_key,source_id,code,filename) values('17:1','1','1','file.pdf') returning id`;

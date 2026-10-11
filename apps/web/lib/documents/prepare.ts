@@ -40,7 +40,15 @@ export async function prepareDocument(source:string,filename:string,dir:string,s
   try{
    if(kind==='pdf')await copyFile(path,pdf);
    else await runTool('python3',[converter,path,pdf,kind],signal);
-   const info=await runTool('pdfinfo',[pdf],signal),count=Number(/^Pages:\s+(\d+)/m.exec(info)?.[1]);
+   let info=await runTool('pdfinfo',[pdf],signal);
+   // Some public PDFs open without a password but retain encryption flags that
+   // pdfunite rejects. Normalize only the derivative, never the signed original.
+   if(/^Encrypted:\s+yes/im.test(info)){
+    const unlocked=join(dir,`readable-${entries}.pdf`);
+    await runTool('qpdf',['--password=','--decrypt',pdf,unlocked],signal);
+    await copyFile(unlocked,pdf);info=await runTool('pdfinfo',[pdf],signal);
+   }
+   const count=Number(/^Pages:\s+(\d+)/m.exec(info)?.[1]);
    if(!Number.isSafeInteger(count)||count<1)throw new DocumentFormatError('Procesarea nu a putut identifica paginile PDF.');
    parts.push({name,firstPage:pages+1,pages:count,rendition:kind==='pdf'?'pdf':'text'});pages+=count;pdfs.push(pdf);
   }catch(error){signal.throwIfAborted();if(depth===0)throw error;parts.push({name,error:'Conversia acestui fișier nu a reușit. Consultă originalul.'});}

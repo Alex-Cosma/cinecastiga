@@ -9,6 +9,8 @@ import {prepareDocument,fileKind,PROCESSOR} from './prepare';
 import {readPdfPage} from './process-pages';
 import {DocumentYield,DocumentFormatError} from './errors';
 import {runTool} from './process';
+import {classifyStoredDocument} from './classify';
+import {classifyDocumentName,CLASSIFICATION_VERSION,classificationPriority,classifyDocumentContents,hasSpecifications} from './classification';
 import {validateDocumentRequestLimit} from './request-budget';
 const collectionId=collectionWorkerId('documents');
 export const DOCUMENT_LOCK=[729114,1] as const;
@@ -33,7 +35,7 @@ export async function runDocumentJob(q:DbSql,job:Record<string,any>,signal:Abort
    await progress('list');const list=await seap.list(notice.notice_id,notice.notice_no);
    // Publish metadata atomically only after all pages have been validated.
    await atomic(q,async tx=>{
-    for(const d of list.items)await tx`insert into app.procurement_documents(notice_key,source_id,code,filename,published_at) values(${notice.key},${String(d.noticeDocumentId)},${d.noticeDocumentCode},${d.documentName},${d.transmissionDate??null}) on conflict(notice_key,source_id) do nothing`;
+    for(const d of list.items){const c=classifyDocumentName(d.documentName);await tx`insert into app.procurement_documents(notice_key,source_id,code,filename,published_at,classification,classification_version,priority) values(${notice.key},${String(d.noticeDocumentId)},${d.noticeDocumentCode},${d.documentName},${d.transmissionDate??null},${JSON.stringify(c)}::jsonb,${CLASSIFICATION_VERSION},${classificationPriority(c)}) on conflict(notice_key,source_id) do nothing`;}
     await tx`update app.document_notices set checked_at=now(),total=${list.total} where key=${notice.key}`;
    });
    if(job.kind==='list')return;
@@ -61,17 +63,25 @@ export async function runDocumentJob(q:DbSql,job:Record<string,any>,signal:Abort
   });
  }else{pdf=join(dir,'prepared.pdf');await materializeBlob(q,preparation.pdfHash,pdf);}
  const prepared=preparation!;
+ await classifyStoredDocument(q,{...doc,preparation:prepared});
+ const [classified]=await q`select classification from app.procurement_documents where id=${job.document_id}`;
+ const classification=classified?.classification??classifyDocumentContents(doc!.filename,prepared.contents as any);
+ const priorityPages=new Set<number>();
+ for(const part of classification.parts??[])if(hasSpecifications(part)&&part.firstPage&&part.pages)for(let p=part.firstPage;p<part.firstPage+part.pages&&p<=prepared.pages;p++)priorityPages.add(p);
+ function* pageOrder(){yield* priorityPages;for(let p=1;p<=prepared.pages;p++)if(!priorityPages.has(p))yield p;}
  const completed=await q`select page from app.document_pages where document_id=${job.document_id}`;
  const done=new Set<number>(completed.map(r=>Number(r.page)));let handled=0;const started=Date.now();
- for(let page=1;page<=prepared.pages;page++){
+ for(const page of pageOrder()){
   if(done.has(page))continue;signal.throwIfAborted();await progress('text',done.size,prepared.pages);
   const p=await readPdfPage(pdf,page,dir,signal);
   await q`insert into app.document_pages(document_id,page,text,method) values(${job.document_id},${page},${p.text},${p.method}) on conflict(document_id,page) do nothing`;
   done.add(page);await progress(p.method==='ocr'?'ocr':'text',done.size,prepared.pages);
-  if(++handled>=25||Date.now()-started>120000){if(done.size<prepared.pages)throw new DocumentYield();}
+  if(++handled>=25||Date.now()-started>120000){if(done.size<prepared.pages){await classifyStoredDocument(q,{...doc,preparation:prepared});throw new DocumentYield();}}
  }
  signal.throwIfAborted();
  await q`update app.procurement_documents set pdf_hash=${prepared.pdfHash},processed_at=now(),page_count=${prepared.pages},signature=${prepared.signature},processor=${prepared.processor},contents=${JSON.stringify(prepared.contents)}::jsonb,preparation=null where id=${job.document_id} and processed_at is null`;
+ const [completedDocument]=await q`select * from app.procurement_documents where id=${job.document_id}`;
+ if(completedDocument)await classifyStoredDocument(q,completedDocument);
  }finally{await rm(dir,{recursive:true,force:true});}
 
 }

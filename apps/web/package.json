@@ -15,6 +15,7 @@
     "monitoring:worker": "tsx scripts/monitoring-worker.ts",
     "monitoring:digests": "tsx scripts/monitoring-digests.ts",
     "documents:worker": "tsx scripts/documents/worker.ts",
+    "documents:classify": "tsx scripts/documents/classify.ts",
     "documents:proxy-check": "tsx scripts/documents/check-proxy.ts"
   },
   "dependencies": {
