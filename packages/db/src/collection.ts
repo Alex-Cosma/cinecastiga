@@ -13,6 +13,7 @@ const context=new AsyncLocalStorage<{stream:CollectionStream;context?:unknown}>(
 export const withCollectionStream=<T>(stream:CollectionStream,work:()=>Promise<T>,metadata?:unknown)=>context.run({stream,context:metadata},work);
 export const currentCollectionStream=()=>context.getStore()?.stream;
 export const currentCollectionContext=()=>context.getStore()?.context;
+export class CollectionLocalError extends Error {}
 export class CollectionProxyFailureError extends Error {constructor(message:string){super(message);this.name='CollectionProxyFailureError';}}
 export class CollectionSuspendedError extends Error {constructor(message='Colectarea SEAP este oprită din administrare.'){super(message);this.name='CollectionSuspendedError';}}
 export async function collectionHeartbeat(q:DbSql,id:string,kind:string,state:string){
@@ -29,7 +30,7 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
  const endpoint=safeCollectionEndpoint(info.url),parameters=safeCollectionParameters(info.parameters),taskId=collectionTaskId(info.context);
  let locked=false,requestLocked=false,proxyLocked=false,id:number|undefined,finished=false,selectedProxy:SeapProxy|null=null;
  let abortReason:string|null=null,transportDiagnostics:CollectionDiagnostics|undefined;
- const diagnostics=(error?:unknown)=>JSON.stringify(sanitizeDiagnostics({version:1,timeoutMs:45000,abortReason,context:info.context,...transportDiagnostics,...(error instanceof CollectionTransportError?error.diagnostics:{}),...(error!==undefined?{exception:diagnosticError(error)}:{})}));
+ const diagnostics=(error?:unknown)=>JSON.stringify(sanitizeDiagnostics({version:1,timeoutMs:info.fileDownload?600000:45000,abortReason,context:info.context,...transportDiagnostics,...(error instanceof CollectionTransportError?error.diagnostics:{}),...(error!==undefined?{exception:diagnosticError(error)}:{})}));
  const controller=new AbortController();const abort=()=>{abortReason="parent_cancelled";controller.abort();};parentSignal?.addEventListener('abort',abort,{once:true});
  let heartbeat:ReturnType<typeof setInterval>|undefined,deadline:ReturnType<typeof setTimeout>|undefined;
  try{
@@ -105,7 +106,7 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
    await q`select pg_advisory_unlock_shared(${COLLECTION_LOCK[0]},${COLLECTION_LOCK[1]})`;locked=false;
    await sleep(Math.min(2000,Math.ceil(delay)),undefined,{signal:parentSignal});
   }
-  controller.signal.throwIfAborted();deadline=setTimeout(()=>{abortReason="request_timeout";controller.abort();},45000);
+  controller.signal.throwIfAborted();deadline=setTimeout(()=>{abortReason="request_timeout";controller.abort();},info.fileDownload?600000:45000);
   await collectionHeartbeat(q,info.worker,info.stream==='documents'?'documents':'ingestion','request');
   const result=await work(controller.signal,selectedProxy);transportDiagnostics=result.diagnostics;controller.signal.throwIfAborted();
   const failure=result.status<200||result.status>=300||!!result.challenge;
@@ -128,12 +129,13 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
     await q`update app.collection_requests set outcome='failed',error='Cerere întreruptă la oprirea workerului; operațiunea poate fi reluată.',diagnostics=${diagnostics(error)}::jsonb,finished_at=clock_timestamp() where id=${id}`;
     throw new CollectionSuspendedError('Workerul a fost oprit; progresul se păstrează.');
    }
+   if(error instanceof CollectionLocalError){await q`update app.collection_requests set outcome='failed',error=${error.message.slice(0,500)},diagnostics=${diagnostics(error)}::jsonb,finished_at=clock_timestamp() where id=${id}`;throw error;}
    if(selectedProxy)await q`update app.collection_proxies set last_error='Eroare de transport; verifică jurnalul.' where id=${selectedProxy.id}`;
    const response=(error instanceof CollectionTransportError?error.diagnostics.response:transportDiagnostics?.response) as {status?:number;receivedBytes?:number}|undefined;
    const scoped=selectedProxy&&(abortReason==='request_timeout'||(!abortReason&&error instanceof CollectionTransportError&&error.diagnostics.retryableProxyTransport===true))&&(!response?.status||(response.status>=200&&response.status<300)||[407,408,500,502,503,504].includes(response.status));
    if(!scoped&&abortReason!=='request_timeout')await q`update app.collection_control set blocked_reason=coalesce(blocked_reason,'Eroare de transport. Verifică jurnalul înainte de reluare.'),blocked_until=case when blocked_reason is null then clock_timestamp()+interval '120 seconds' else blocked_until end where id=1`;
    // Keep every attempt and its diagnostics before considering replay.
-   await q`update app.collection_requests set outcome='failed',status=coalesce(status,${response?.status??null}),bytes=coalesce(bytes,${response?.receivedBytes??null}),error=${abortReason==='request_timeout'?'Timeout după 45 de secunde.':'Cerere întreruptă, răspuns nevalid sau eroare de transport. Fără reîncercare automată.'},diagnostics=${diagnostics(error)}::jsonb,finished_at=clock_timestamp() where id=${id}`;
+   await q`update app.collection_requests set outcome='failed',status=coalesce(status,${response?.status??null}),bytes=coalesce(bytes,${response?.receivedBytes??null}),error=${abortReason==='request_timeout'?`Timeout după ${info.fileDownload?600:45} de secunde.`:'Cerere întreruptă, răspuns nevalid sau eroare de transport. Fără reîncercare automată.'},diagnostics=${diagnostics(error)}::jsonb,finished_at=clock_timestamp() where id=${id}`;
 
    if(scoped){
     await recordProxyFailure(q,selectedProxy!.id);

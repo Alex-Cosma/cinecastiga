@@ -1,7 +1,14 @@
 import {collectionQuietWindow,createDb,CollectionSuspendedError,collectionHeartbeat,collectionWorkerId,type DbSql} from '@seap/db';
 import {setTimeout as pause} from 'node:timers/promises';
 import {openSeap} from './seap';
-import {processPdf,sha256,validateOriginal} from './process';
+import {mkdtemp,rm} from 'node:fs/promises';
+import {join} from 'node:path';
+import {tmpdir} from 'node:os';
+import {storeFile,materializeBlob,requireDisk} from './blob-store';
+import {prepareDocument,fileKind,PROCESSOR} from './prepare';
+import {readPdfPage} from './process-pages';
+import {DocumentYield,DocumentFormatError} from './errors';
+import {runTool} from './process';
 import {validateDocumentRequestLimit} from './request-budget';
 const collectionId=collectionWorkerId('documents');
 export const DOCUMENT_LOCK=[729114,1] as const;
@@ -14,9 +21,11 @@ export async function runDocumentJob(q:DbSql,job:Record<string,any>,signal:Abort
  const progress=async(stage:string,done=0,total:number|null=null)=>{signal.throwIfAborted();await q`update app.document_jobs set stage=${stage},pages_done=${done},pages_total=${total} where id=${job.id} and status='running'`;};
  const [doc]=job.document_id?await q`select * from app.procurement_documents where id=${job.document_id}`:[];
  if(job.kind==='file'&&doc?.processed_at)return;
- let original:Buffer|undefined;
- if(doc?.original_hash){const [b]=await q`select bytes from app.document_blobs where hash=${doc.original_hash}`;if(!b)throw Error('Originalul arhivat nu poate fi citit.');original=b.bytes;}
- if(!original){
+ const dir=await mkdtemp(join(tmpdir(),'seap-document-'));
+ try{
+ await requireDisk(dir);const source=join(dir,'original');
+ let originalHash:string|undefined=doc?.original_hash;
+ if(!originalHash){
   if(phase==='process')throw Error('Originalul arhivat lipsește; procesarea nu face cereri SEAP.');
   if(process.env.DOCUMENTS_OFFLINE==='true')throw Error('Modul de verificare locală nu permite cereri SEAP.');
   await progress('source');const seap=await openSeap(q,job.id,notice.url,signal,maxRequests,maxFileBytes);
@@ -30,23 +39,41 @@ export async function runDocumentJob(q:DbSql,job:Record<string,any>,signal:Abort
    if(job.kind==='list')return;
    const selected=list.items.find(d=>String(d.noticeDocumentId)===doc?.source_id&&d.noticeDocumentCode===doc?.code&&d.documentName===doc?.filename);
    if(!selected)throw Error('Documentul nu mai apare cu aceeași identitate în lista SEAP.');
-   await progress('download');original=await seap.download(selected.noticeDocumentUrl);
-   if(!original.length)throw Error('SEAP a trimis un fișier gol.');
-   await validateOriginal(original,signal);
-   const hash=sha256(original),mime=original.subarray(0,5).toString()==='%PDF-'?'application/pdf':'application/octet-stream';
-   await atomic(q,async tx=>{await tx`insert into app.document_blobs(hash,bytes,mime) values(${hash},${original!},${mime}) on conflict(hash) do nothing`;
-    await tx`update app.procurement_documents set original_hash=${hash},downloaded_at=now() where id=${job.document_id} and original_hash is null`;});
+   await progress('download');await seap.download(selected.noticeDocumentUrl,source);
+   const kind=await fileKind(source,doc!.filename);
+   if(kind==='p7s')await runTool('openssl',['cms','-cmsout','-inform','DER','-noout','-in',source],signal);
+   if(kind==='unsupported')throw new DocumentFormatError('SEAP nu a returnat un format de document recunoscut.');
+   await atomic(q,async tx=>{originalHash=await storeFile(tx,source,kind==='pdf'?'application/pdf':'application/octet-stream');
+    await tx`update app.procurement_documents set original_hash=${originalHash},downloaded_at=now() where id=${job.document_id} and original_hash is null`;});
   }finally{await seap.close();}
  }
  if(phase==='download')return;
- if(!original)throw Error('Original indisponibil.');
- const result=await processPdf(original,signal,progress),hash=sha256(result.pdf);
+ if(!originalHash)throw Error('Originalul arhivat lipsește.');
+ let preparation=doc?.preparation as {originalHash:string;pdfHash:string;pages:number;signature:string|null;contents:unknown;processor:string}|null;
+ if(preparation&&(preparation.originalHash!==originalHash||preparation.processor!==PROCESSOR))throw new DocumentFormatError('Procesarea salvată aparține altei versiuni. Originalul rămâne disponibil.');
+ let pdf:string;
+ if(!preparation){
+  if(doc?.original_hash)await materializeBlob(q,originalHash,source);
+  await progress('extract');const result=await prepareDocument(source,doc!.filename,join(dir,'prepared'),signal);pdf=result.pdf;
+  await atomic(q,async tx=>{const pdfHash=await storeFile(tx,result.pdf,'application/pdf');
+   preparation={originalHash:originalHash!,pdfHash,pages:result.pages,signature:result.signature,contents:result.contents,processor:PROCESSOR};
+   await tx`update app.procurement_documents set preparation=${JSON.stringify(preparation)}::jsonb where id=${job.document_id} and processed_at is null`;
+  });
+ }else{pdf=join(dir,'prepared.pdf');await materializeBlob(q,preparation.pdfHash,pdf);}
+ const prepared=preparation!;
+ const completed=await q`select page from app.document_pages where document_id=${job.document_id}`;
+ const done=new Set<number>(completed.map(r=>Number(r.page)));let handled=0;const started=Date.now();
+ for(let page=1;page<=prepared.pages;page++){
+  if(done.has(page))continue;signal.throwIfAborted();await progress('text',done.size,prepared.pages);
+  const p=await readPdfPage(pdf,page,dir,signal);
+  await q`insert into app.document_pages(document_id,page,text,method) values(${job.document_id},${page},${p.text},${p.method}) on conflict(document_id,page) do nothing`;
+  done.add(page);await progress(p.method==='ocr'?'ocr':'text',done.size,prepared.pages);
+  if(++handled>=25||Date.now()-started>120000){if(done.size<prepared.pages)throw new DocumentYield();}
+ }
  signal.throwIfAborted();
- await atomic(q,async tx=>{
-  await tx`insert into app.document_blobs(hash,bytes,mime) values(${hash},${result.pdf},'application/pdf') on conflict(hash) do nothing`;
-  for(const p of result.pages)await tx`insert into app.document_pages(document_id,page,text,method) values(${job.document_id},${p.page},${p.text},${p.method}) on conflict(document_id,page) do nothing`;
-  await tx`update app.procurement_documents set pdf_hash=${hash},processed_at=now(),page_count=${result.pages.length},signature=${result.signature},processor=${result.processor} where id=${job.document_id} and processed_at is null`;
- });
+ await q`update app.procurement_documents set pdf_hash=${prepared.pdfHash},processed_at=now(),page_count=${prepared.pages},signature=${prepared.signature},processor=${prepared.processor},contents=${JSON.stringify(prepared.contents)}::jsonb,preparation=null where id=${job.document_id} and processed_at is null`;
+ }finally{await rm(dir,{recursive:true,force:true});}
+
 }
 /** Session lock has no expiring lease that could admit a second live worker. */
 export async function runWorkerOnce(sql:DbSql,shutdown:AbortSignal,work=runDocumentJob,onlyJobId?:string){
@@ -77,7 +104,7 @@ export async function runWorkerOnce(sql:DbSql,shutdown:AbortSignal,work=runDocum
   if(!job)return false;
   const deadline=setTimeout(()=>controller.abort(),20*60*1000);
   try{await work(q,job,controller.signal);controller.signal.throwIfAborted();await q`update app.document_jobs set status='complete',stage='complete',finished_at=now() where id=${job.id}`;}
-  catch(error){if(error instanceof CollectionSuspendedError){await q`update app.document_jobs set status='queued',stage='queued',started_at=null where id=${job.id}`;return false;}const message=controller.signal.aborted?'Procesarea a fost întreruptă. Poți relua folosind originalul păstrat.':error instanceof Error&&/^(SEAP|Lista|Identitatea|Documentul|Anunțul|Originalul|Procesarea|Formatul|Pagina|Răspuns|Modul|Adresă)/.test(error.message)?error.message:'Nu am putut finaliza procesarea. Originalul păstrat poate fi reutilizat.';await q`update app.document_jobs set status='failed',stage='failed',error=${message.slice(0,500)},finished_at=now() where id=${job.id}`;}
+  catch(error){if(error instanceof DocumentYield){await q`update app.document_jobs set status='queued',stage='process_queued' where id=${job.id}`;return true;}if(error instanceof CollectionSuspendedError){await q`update app.document_jobs set status='queued',stage='queued',started_at=null where id=${job.id}`;return false;}const message=controller.signal.aborted?'Procesarea a fost întreruptă. Poți relua folosind originalul păstrat.':error instanceof Error&&/^(SEAP|Lista|Identitatea|Documentul|Anunțul|Originalul|Procesarea|Formatul|Pagina|Răspuns|Modul|Adresă)/.test(error.message)?error.message:'Nu am putut finaliza procesarea. Originalul păstrat poate fi reutilizat.';await q`update app.document_jobs set status='failed',stage='failed',error=${message.slice(0,500)},finished_at=now() where id=${job.id}`;}
   finally{clearTimeout(deadline);}
   return true;
  }finally{if(heartbeat)clearInterval(heartbeat);controller.abort();shutdown.removeEventListener('abort',abort);if(acquired)await q`select pg_advisory_unlock(${DOCUMENT_LOCK[0]},${DOCUMENT_LOCK[1]})`.catch(()=>{});connection.release();}

@@ -11,7 +11,7 @@ export async function readDocumentStorage(q:DbSql){
   statfs(process.env.DOCUMENT_STORAGE_MOUNT??'/').then(diskCapacity),
   q.begin('read only',async tx=>{
    await tx`set local statement_timeout='3000ms'`;
-   const [row]=await tx`select coalesce(sum(octet_length(bytes)),0)::text bytes,count(*)::int blobs from app.document_blobs`;
+   const [row]=await tx`select coalesce(sum(coalesce(size,octet_length(bytes))),0)::text bytes,count(*)::int blobs from app.document_blobs`;
    return {bytes:Number(row!.bytes),blobs:Number(row!.blobs)};
   }),
  ]);

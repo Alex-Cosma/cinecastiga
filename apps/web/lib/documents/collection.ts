@@ -1,5 +1,6 @@
 import {collectionHeartbeat,collectionQuietWindow,collectionWorkerId,CollectionSuspendedError,type DbSql} from '@seap/db';
 import {setTimeout as sleep} from 'node:timers/promises';
+import {DocumentYield,DocumentFormatError} from './errors';
 import {DOCUMENT_LOCK,runDocumentJob} from './worker';
 
 // No source traffic: discover already normalized, namespace-verified source notices.
@@ -22,7 +23,7 @@ export async function fillDocumentQueue(q:DbSql){
  await q`insert into app.document_jobs(notice_key,document_id,kind,dedup_key,requested_by,automatic,stage)
   select n.key,d.id,'file','file:'||d.id,'system:document-collection',true,case when d.original_hash is null then 'queued' else 'process_queued' end
   from app.procurement_documents d join app.document_notices n on n.key=d.notice_key
-  where n.automatic and d.processed_at is null and d.filename ~* '[.](pdf|p7s)$'
+  where n.automatic and d.processed_at is null and d.filename ~* '[.](pdf|p7s|docx?|xlsx?|zip|rar|7z)$'
    and not exists(select 1 from app.document_jobs j where j.document_id=d.id and j.automatic)
   order by n.source_date desc nulls last,d.published_at desc nulls last,d.id limit greatest(0,40-(select count(*)::int from app.document_jobs where automatic and kind='file' and status in ('queued','running')))
   on conflict(dedup_key) where status in ('queued','running') do nothing`;
@@ -44,9 +45,11 @@ export async function runAutomaticJob(q:DbSql,job:Record<string,any>,phase:'down
   const next=phase==='download'&&job.kind==='file';
   await q`update app.document_jobs set status=${next?'queued':'complete'},stage=${next?'process_queued':'complete'},attempts=0,retry_at=null,error=null,finished_at=case when ${next} then null else now() end where id=${job.id}`;
  }catch(error){
+  if(error instanceof DocumentYield){await q`update app.document_jobs set status='queued',stage='process_queued',retry_at=now()+interval '1 second',error=null,attempts=0 where id=${job.id}`;return;}
   const suspended=signal.aborted||error instanceof CollectionSuspendedError;
-  const attempts=Number(job.attempts)+(suspended?0:1),retry=suspended||job.automatic&&attempts<3;
-  const message=error instanceof Error&&/^(SEAP|Lista|Identitatea|Documentul|Anunțul|Originalul|Procesarea|Formatul|Pagina|Răspuns|Modul|Adresă)/.test(error.message)?error.message:'Operațiunea a fost întreruptă. Originalul păstrat poate fi reutilizat.';
+  const attempts=Number(job.attempts)+(suspended?0:1),retry=suspended||!(error instanceof DocumentFormatError)&&job.automatic&&attempts<3;
+  const [archived]=await q`select original_hash from app.procurement_documents where id=${job.document_id??null}`;
+  const message=error instanceof Error&&/^(SEAP|Lista|Identitatea|Documentul|Anunțul|Originalul|Procesarea|Formatul|Pagina|Răspuns|Modul|Adresă)/.test(error.message)?error.message:archived?.original_hash?'Operațiunea a fost întreruptă. Originalul păstrat poate fi reutilizat.':'Operațiunea s-a întrerupt înainte de arhivarea fișierului.';
   await q`update app.document_jobs set status=${retry?'queued':'failed'},stage=case when ${!retry} then 'failed' when kind='file' and exists(select 1 from app.procurement_documents d where d.id=document_id and d.original_hash is not null) then 'process_queued' else 'queued' end,
    attempts=${attempts},error=${message.slice(0,500)},retry_at=case when ${retry} then now()+${suspended?15:attempts===1?300:600}*interval '1 second' else null end,finished_at=case when ${retry} then null else now() end where id=${job.id}`;
  }finally{clearTimeout(timer);signal.removeEventListener('abort',cancel);}
