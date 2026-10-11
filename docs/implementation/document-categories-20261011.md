@@ -2,7 +2,21 @@
 
 Status: **released to production as `e2ec0ff` on 11 October 2026**; CI and deploy 38155289382 both passed. See the release record below. The initial implementation was validated on `fix/document-archive-recovery`. Multipart-archive recovery remains separate and unfinished.
 
-## Product decision
+## Strict automatic download policy — 11 October, after release verification
+
+The owner approved **only identified specifications for automatic downloads**, replacing the earlier preference-with-fallback rule. Inventory listing continues across the supported historical notices, newest first. No automatic fallback to clarifications, forms or unknown archives is permitted when the known specification queue is empty. Classification remains preliminary when based only on filenames; a generic unclassified archive may still contain a specification and is not automatically downloaded under this policy.
+
+`fillDocumentQueue` admits a new file download only at priority 0 and independently preserves processing of already archived originals. The network claim query enforces the same condition for legacy jobs, retries and restarts. Pending ordinary automatic downloads receive stage `specifications_only`, retaining job/request history and retry timestamps. They do not occupy active queue counts or the processing frontier. A later specification classification (or an archived original) makes the job eligible again. Metadata listing continues when no eligible specification is available.
+
+An authenticated manual request can adopt an existing queued automatic job, including a policy hold, without creating duplicates. The transaction locks the existing row, checks the existing hourly quota, assigns the manual user/slot and records its new request time. It preserves request logs, retry deadlines and original bytes. Contract pages show held files as available on demand with the usual authenticated download button; admin shows held counts separately and download/OCR progress for identified specifications. Previously archived ordinary files may finish processing.
+
+P7M names are admitted alongside P7S. Binary CMS content detection/extraction is reused, and the wrapper suffix is removed when identifying the inner filename; original signed bytes remain immutable. No new migration, source-rate change or broad retry is needed. Existing unknown-format and inventory-identity failures are not bypassed.
+
+Verification: 35 tests passed with real PostgreSQL and Linux document tools on isolated `seap_test_spec_only_20261011`: 15 scheduling/retry/concurrency tests, 2 manual-queue/evidence tests, 5 converter/worker tests and 13 classification cases. They cover an old queue of 40 ordinary files, inventory-only behavior without specifications, P7M admission/extraction, adoption of a held job, deduplication and quota refusal. The first tooling run exposed a stale test-image DB build/converter; mounting the current built DB package and converter resolved those environment failures. No source requests were made. Ordinary local data was untouched.
+
+11 browser checks passed on the real React components with a temporary local fixture: strict admin wording, specification progress totals, held counts, anonymous/authenticated actions, transition from held to manual queue, 390/320px layout and no JS errors/source requests. Captures and logs are private under `.local/specifications-only-20261011/`; the fixture route was removed. Mechanical UI detector: no findings. Release verification for this follow-up is pending. Earlier release evidence below is for `e2ec0ff`.
+
+## Product decision (initial priority policy; strict policy above supersedes fallback)
 
 The approved reference is `mockups/document-categories/`. The contract's existing document section becomes a compact library: desktop category sidebar, mobile select, filename/member-name search, ready-only filter and six original files per page. Original filenames, SEAP codes, archived originals and classification explanations remain accessible. A mixed archive appears in each applicable category but counts once in the all-files list. Categories describe roles, not proof of wrongdoing, signed-contract validity or document completeness.
 

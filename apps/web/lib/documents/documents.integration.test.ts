@@ -42,7 +42,17 @@ describe.skipIf(!connection)('document queue, provenance and private evidence',(
   try{
    const n=await contractNotice(natural,q);expect(n?.noticeId).toBe(natural);key=n!.key;await registerNotice(n!,q);
    const [file]=await q`insert into app.procurement_documents(notice_key,source_id,code,filename) values(${key},'77','SCN_FIXTURE/01','Fixture.pdf') returning id`;
-   const results=await Promise.all([enqueueDocument(natural,uid,file!.id,q),enqueueDocument(natural,outsider,file!.id,q)]);expect(results[0]).toEqual(results[1]);
+   // A strict-policy hold must not swallow an explicit user request.
+   const [parked]=await q`insert into app.document_jobs(notice_key,document_id,kind,dedup_key,requested_by,automatic,stage,created_at)
+    values(${key},${file!.id},'file',${'file:'+file!.id},'system:document-collection',true,'specifications_only',now()-interval '1 day') returning id`;
+   await q`insert into app.document_jobs(notice_key,kind,dedup_key,requested_by,status)
+    select ${key},'list',${key}||'-quota-'||i,${uid},'complete' from generate_series(1,20) i`;
+   await expect(enqueueDocument(natural,uid,file!.id,q)).rejects.toMatchObject({status:429});
+   expect((await q`select automatic,stage from app.document_jobs where id=${parked!.id}`)[0]).toMatchObject({automatic:true,stage:'specifications_only'});
+   await q`delete from app.document_jobs where notice_key=${key} and kind='list'`;
+   const results=await Promise.all([enqueueDocument(natural,uid,file!.id,q),enqueueDocument(natural,outsider,file!.id,q)]);expect(results[0]).toEqual(results[1]);expect(results[0]).toEqual({id:parked!.id});
+   expect((await q`select automatic,stage,slot,requested_by,created_at>now()-interval '1 minute' fresh from app.document_jobs where id=${parked!.id}`)[0]).toMatchObject({automatic:false,stage:'queued',slot:0,fresh:true});
+   expect((await getContractFiles(natural,q)).files.find(f=>f.id===file!.id)?.job).toMatchObject({automatic:false,stage:'queued'});
    const [file2]=await q`insert into app.procurement_documents(notice_key,source_id,code,filename) values(${key},'78','SCN_FIXTURE/02','Second.pdf') returning id`;
    await enqueueDocument(natural,uid,file2!.id,q);
    let active=0,maxActive=0,calls=0;let entered!:()=>void,release!:()=>void;

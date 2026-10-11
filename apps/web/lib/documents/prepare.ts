@@ -26,7 +26,7 @@ export async function prepareDocument(source:string,filename:string,dir:string,s
   const kind=await fileKind(path,name);
   if(kind==='p7s'){
    const dest=join(dir,`signed-${entries}`),signature=await extractSignedContent(path,dest,signal);signatures.push(signature);
-   const start=parts.length;await visit(dest,name.replace(/\.p7s$/i,''),depth+1);for(const p of parts.slice(start))if(p.signature!==SIGNATURE_UNVERIFIED)p.signature=signature;return;
+   const start=parts.length;await visit(dest,name.replace(/\.p7[sm]$/i,''),depth+1);for(const p of parts.slice(start))if(p.signature!==SIGNATURE_UNVERIFIED)p.signature=signature;return;
   }
   if(kind==='archive'){
    const target=await mkdtemp(join(dir,'archive-'));

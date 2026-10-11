@@ -55,10 +55,17 @@ export async function enqueueDocument(nid:string,uid:string,documentId:string|nu
    if(n?.fresh)return {cached:true};
   }
   const key=documentId?`file:${documentId}`:`list:${notice.key}`;
-  const [existing]=await s`select id from app.document_jobs where dedup_key=${key} and status in ('queued','running')`;
-  if(existing)return {id:existing.id};
+  const [existing]=await s`select id,automatic,status from app.document_jobs where dedup_key=${key} and status in ('queued','running') for update`;
+  if(existing&&(!existing.automatic||existing.status==='running'))return {id:existing.id};
   const [quota]=await s`select count(*) n from app.document_jobs where requested_by=${uid} and created_at>now()-interval '1 hour'`;
   if(Number(quota?.n)>=20)throw new WorkspaceError('Ai trimis deja 20 de operațiuni în ultima oră. Revino mai târziu.',429);
+  // Adopt a queued automatic request instead of letting a held job swallow the
+  // user's explicit request. Its new manual request time counts toward quota.
+  if(existing){
+   await s`update app.document_jobs set automatic=false,requested_by=${uid},created_at=now(),slot=0,
+    stage=case when stage='specifications_only' then 'queued' else stage end where id=${existing.id}`;
+   return {id:existing.id};
+  }
   const [r]=await s`insert into app.document_jobs(notice_key,document_id,kind,dedup_key,requested_by) values(${notice.key},${documentId},${documentId?'file':'list'},${key},${uid}) returning id`;
   return {id:r!.id};
  });

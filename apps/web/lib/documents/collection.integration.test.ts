@@ -6,6 +6,7 @@ import {createDb,runCollectionRequest,CollectionLocalError,type DbSql} from '@se
 import {setTimeout as sleep} from 'node:timers/promises';
 import {seedDocumentInventory,fillDocumentQueue,runAutomaticCollector,runAutomaticJob,recoverAutomaticJobs} from './collection';
 import {changeDocumentCollection,documentCollectionStatus} from '../admin/document-collection';
+import {documentQueueStatus} from '../admin/document-queue';
 import {classifyDocumentBatch} from './classify';
 const url=process.env.TEST_DATABASE_URL;
 if(url&&!/^seap_test_/.test(new URL(url).pathname.slice(1)))throw Error('Isolated DB required');
@@ -41,8 +42,11 @@ describe.skipIf(!db)('continuous document collection, no source HTTP',()=>{
  it('admits older specifications even with forty ordinary files queued; preserves inventory discovery and recent-first order within specifications',async()=>{
   const q=db!.sql;for(const id of [1,2,100])await notice(id);await seedDocumentInventory(q);
   await q`insert into app.procurement_documents(notice_key,source_id,code,filename) select '17:1',i::text,i::text,'Formulare '||i||'.pdf' from generate_series(1,40) i`;
+  // Simulate ordinary downloads queued before the strict policy deployed.
+  await q`insert into app.document_jobs(notice_key,document_id,kind,dedup_key,requested_by,automatic)
+   select notice_key,id,'file','file:'||id,'system:document-collection',true from app.procurement_documents`;
   await classifyDocumentBatch(q,100);await fillDocumentQueue(q);
-  expect(await q`select id from app.document_jobs where kind='file'`).toHaveLength(40);
+  expect(await q`select id from app.document_jobs where stage='specifications_only'`).toHaveLength(40);
   await q`insert into app.procurement_documents(notice_key,source_id,code,filename) values('17:100','cs-old','cs-old','Caiet de sarcini.pdf'),('17:2','cs-new','cs-new','Caiet de sarcini.pdf')`;
   await classifyDocumentBatch(q,100);await fillDocumentQueue(q);
   expect(await q`select id from app.document_jobs where kind='file'`).toHaveLength(42);
@@ -55,6 +59,32 @@ describe.skipIf(!db)('continuous document collection, no source HTTP',()=>{
    expect((await documentCollectionStatus(q)).classification).toMatchObject({total:42,classified:42,specifications:2,specifications_ready:0});
   }finally{stop.abort();release();await runner;}
  },15000);
+ it('never falls back to ordinary downloads, keeps metadata advancing and resumes a newly classified specification',async()=>{
+  const q=db!.sql;await notice(1);await notice(2);await seedDocumentInventory(q);
+  await q`insert into app.procurement_documents(notice_key,source_id,code,filename) values('17:1','new','new','Clarificari.pdf'),('17:1','old','old','scan.pdf')`;
+  const [old]=await q`insert into app.document_jobs(notice_key,document_id,kind,dedup_key,requested_by,automatic)
+   select notice_key,id,'file','file:'||id,'system:document-collection',true from app.procurement_documents where source_id='old' returning id,document_id`;
+  await classifyDocumentBatch(q);await fillDocumentQueue(q);await fillDocumentQueue(q);
+  expect(await q`select id from app.document_jobs where kind='file'`).toHaveLength(1);
+  expect((await q`select stage from app.document_jobs where id=${old!.id}`)[0]!.stage).toBe('specifications_only');
+  expect((await documentCollectionStatus(q)).jobs).toMatchObject({queued:2,held:1});
+  expect((await documentQueueStatus('download',1,q)).counts).toMatchObject({download:0,list:2,all:2});
+  await q`update app.document_collection_control set enabled=true,download_concurrency=2,processing_concurrency=1`;
+  const stop=new AbortController(),claimed:string[]=[];let release!:()=>void;const held=new Promise<void>(r=>release=r);
+  const runner=runAutomaticCollector(q,stop.signal,async(_db,job)=>{claimed.push(job.kind);await held;});
+  try{for(let i=0;i<100&&claimed.length<2;i++)await sleep(40);expect(claimed).toEqual(['list','list']);}
+  finally{stop.abort();release();await runner;}
+  // Existing held jobs are reusable after a verified classification update.
+  await q`update app.procurement_documents set priority=0 where id=${old!.document_id}`;
+  await fillDocumentQueue(q);expect((await q`select stage from app.document_jobs where id=${old!.id}`)[0]!.stage).toBe('queued');
+ },15000);
+ it('admits signed P7M specifications but not ordinary P7M files',async()=>{
+  const q=db!.sql;await notice(1);await seedDocumentInventory(q);
+  await q`insert into app.procurement_documents(notice_key,source_id,code,filename) values('17:1','cs','cs','Caiet de sarcini.pdf.p7m'),('17:1','other','other','Formulare.pdf.P7M')`;
+  await classifyDocumentBatch(q);await fillDocumentQueue(q);
+  expect(await q`select d.filename from app.document_jobs j join app.procurement_documents d on d.id=j.document_id`).toEqual([{filename:'Caiet de sarcini.pdf.p7m'}]);
+  expect((await documentCollectionStatus(q)).files.supported).toBe(2);
+ });
  it('processes specifications ahead of ordinary archived files while retaining the manual slot',async()=>{
   const q=db!.sql;for(const id of [1,2,3,4,100])await notice(id);await seedDocumentInventory(q);
   await q`insert into app.procurement_documents(notice_key,source_id,code,filename,original_hash) select key,'1','1',case when key='17:1' then 'Formulare.pdf' else 'CS.pdf' end,'auto-original' from app.document_notices`;
@@ -69,8 +99,8 @@ describe.skipIf(!db)('continuous document collection, no source HTTP',()=>{
  },15000);
  it('checkpoints downloads before OCR and retries processing from retained original',async()=>{
   const q=db!.sql;await notice(1);await seedDocumentInventory(q);
-  const [d]=await q`insert into app.procurement_documents(notice_key,source_id,code,filename) values('17:1','1','1','file.pdf') returning id`;
-  await fillDocumentQueue(q);
+  const [d]=await q`insert into app.procurement_documents(notice_key,source_id,code,filename) values('17:1','1','1','Caiet de sarcini.pdf') returning id`;
+  await classifyDocumentBatch(q);await fillDocumentQueue(q);
   let [job]=await q`update app.document_jobs set status='running' where kind='file' returning *`;
   await runAutomaticJob(q,job!,'download',new AbortController().signal,async()=>{await q`update app.procurement_documents set original_hash='auto-original',downloaded_at=now() where id=${d!.id}`;});
   [job]=await q`select * from app.document_jobs where kind='file'`;expect(job).toMatchObject({status:'queued',stage:'process_queued',attempts:0});
