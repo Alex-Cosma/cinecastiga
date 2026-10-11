@@ -1,3 +1,6 @@
+import {mkdtemp,writeFile,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';import {join} from 'node:path';
+import {proxyTransportError} from './proxy';
 import {afterAll,beforeEach,describe,it,expect} from 'vitest';
 import {createDb,runCollectionRequest,CollectionLocalError,type DbSql} from '@seap/db';
 import {setTimeout as sleep} from 'node:timers/promises';
@@ -123,6 +126,20 @@ describe.skipIf(!db)('continuous document collection, no source HTTP',()=>{
   }finally{session.release();}
   expect((await q`select blocked_reason from app.collection_control where id=1`)[0]!.blocked_reason).toBeNull();
   expect((await q`select outcome,error from app.collection_requests order by id desc limit 1`)[0]).toMatchObject({outcome:'failed',error:'Procesarea nu poate salva fișierul pe disc.'});
+ });
+
+ it('a partially received HTTP200 body retries on its proxy without a global block',async()=>{
+  const q=db!.sql;await q`update app.collection_control set min_seconds=1,max_seconds=1,next_allowed_at=null,last_file_at=null`;
+  await q`update app.collection_proxy_control set min_seconds=1,max_seconds=1`;
+  await q`update app.collection_proxies set server='http://192.0.2.99',next_allowed_at=null,consecutive_failures=0,last_error=null where id='proxy-999'`;
+  const dir=await mkdtemp(join(tmpdir(),'proxy-fixture-')),old=process.env.SEAP_PROXY_FILE;
+  await writeFile(join(dir,'proxy.json'),JSON.stringify([{id:'proxy-999',server:'http://192.0.2.99',username:'fixture',password:'fixture'}]));process.env.SEAP_PROXY_FILE=join(dir,'proxy.json');
+  const session=await q.reserve();try{
+   await expect(runCollectionRequest(session as unknown as DbSql,{stream:'documents',worker:'fixture-body',method:'GET',url:'https://www.e-licitatie.ro/api-pub/files/noticedoc/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',fileDownload:true,proxyId:'proxy-999'},async()=>{throw proxyTransportError(new Error('Failed to fetch'),{status:200,receivedBytes:64000000});},new AbortController().signal)).rejects.toThrow('celelalte proxy-uri continuă');
+  }finally{session.release();if(old===undefined)delete process.env.SEAP_PROXY_FILE;else process.env.SEAP_PROXY_FILE=old;await rm(dir,{recursive:true,force:true});}
+  expect((await q`select blocked_reason from app.collection_control where id=1`)[0]!.blocked_reason).toBeNull();
+  expect((await q`select consecutive_failures from app.collection_proxies where id='proxy-999'`)[0]!.consecutive_failures).toBe(1);
+  expect((await q`select status,bytes from app.collection_requests order by id desc limit 1`)[0]).toMatchObject({status:200,bytes:'64000000'});
  });
 
 });

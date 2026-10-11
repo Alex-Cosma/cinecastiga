@@ -12,6 +12,6 @@ export async function GET(req:Request,ctx:{params:Promise<{id:string}>}){
   if(!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start>end||start<0)return new Response(null,{status:416,headers:{'Content-Range':`bytes */${info.size}`}});status=206;
  }
  let offset=start;const stream=new ReadableStream<Uint8Array>({async pull(controller){try{if(req.signal.aborted){controller.close();return;}if(offset>end){controller.close();return;}const bytes=await readBlobRange(q,hash,offset,Math.min(offset+BLOB_CHUNK-1,end),info.chunked);if(!bytes.length)throw Error('Incomplete blob');offset+=bytes.length;controller.enqueue(new Uint8Array(bytes));}catch(error){controller.error(error);}}});
- const filename=original?doc!.filename:doc!.filename.replace(/(?:\.[^.]+)+$/, '')+'.pdf';
+ const filename=original?doc!.filename:doc!.filename.replace(/(?:\.p7s)+$/i,'').replace(/\.(pdf|docx?|xlsx?|zip|rar|7z)$/i,'')+'.pdf';
  return new Response(stream,{status,headers:{'Content-Type':original?'application/octet-stream':'application/pdf','Content-Disposition':`${original?'attachment':'inline'}; filename*=UTF-8''${encodeURIComponent(filename)}`,'Content-Length':String(end-start+1),'Accept-Ranges':'bytes',...(status===206?{'Content-Range':`bytes ${start}-${end}/${info.size}`} : {}),'ETag':`"${hash}"`,'Cache-Control':'public, max-age=3600','X-Content-Type-Options':'nosniff','Content-Security-Policy':"frame-ancestors 'self'"}});
 }
