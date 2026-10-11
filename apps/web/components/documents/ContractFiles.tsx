@@ -2,7 +2,7 @@
 import {useEffect,useRef,useState} from 'react';
 import Link from 'next/link';
 import DiscoveryIcon from '@/app/DiscoveryIcon';
-import {stageLabel,foldText,type ContractFiles as Files,type ContractFile,type DocumentPage} from '@/lib/documents/shared';
+import {SIGNATURE_UNVERIFIED,stageLabel,foldText,type ContractFiles as Files,type ContractFile,type DocumentPage} from '@/lib/documents/shared';
 import './documents.css';
 import PdfPage from './PdfPage';
 const api=(id:string)=>`/api/documents/${id}`;
@@ -56,6 +56,7 @@ export default function ContractFiles({nid,initial,authenticated,sourceUrl}:{nid
     <span className="df-format" aria-hidden="true">{f.filename.toLowerCase().endsWith('.p7s')?'P7S':'PDF'}</span>
     <div className="df-file-body"><h3>{f.pdfHash?<button className="df-title" onClick={()=>open(f)}>{f.filename}</button>:f.filename}</h3>
      <p className="df-status">{f.originalHash&&<><span className="df-downloaded"><DiscoveryIcon name="checkCircle" className="df-icon"/>Descărcat</span>{' · '}</>}{f.processedAt?`${f.pageCount} pagini · text căutabil`:active?`${stageLabel[j.stage]??j.stage}${j.status==='queued'?` · poziția ${j.position}`:''}`:j?.status==='failed'?j.error:f.originalHash?'Text încă nepregătit':'Disponibil în SEAP · încă nedescărcat'}</p>
+     {f.signature===SIGNATURE_UNVERIFIED&&<p className="df-signature-warning">{SIGNATURE_UNVERIFIED}</p>}
      {j?.status==='running'&&<div className="df-progress"><progress aria-label={stageLabel[j.stage]} {...(j.pagesTotal?{value:j.pagesDone,max:j.pagesTotal}:{})}/>{j.pagesTotal&&<small>{j.pagesDone} din {j.pagesTotal} pagini citite</small>}</div>}
      <details className="df-provenance"><summary>Proveniență și original</summary><dl><dt>Cod SEAP</dt><dd>{f.code}</dd>{f.publishedAt&&<><dt>Publicat</dt><dd>{date(f.publishedAt)}</dd></>}{f.downloadedAt&&<><dt>Original păstrat</dt><dd>{date(f.downloadedAt)}</dd><dt>Amprentă SHA-256</dt><dd className="df-hash">{f.originalHash}</dd></>}{f.signature&&<><dt>Semnătură</dt><dd>{f.signature}</dd></>}</dl>{f.originalHash&&<a href={`${api(f.id)}/file`}>Descarcă originalul{f.filename.endsWith('.p7s')?' semnat (.p7s)':''}</a>}</details>
     </div>
@@ -67,7 +68,8 @@ export default function ContractFiles({nid,initial,authenticated,sourceUrl}:{nid
    </div>}
   </>}
   {error&&<p className="df-error" role="alert">{error}</p>}
-  {selected&&<section className="df-reader" ref={reader} tabIndex={-1} aria-labelledby="reader-heading"><div className="df-heading"><div><h3 id="reader-heading">{selected.filename}</h3><p>Originalul și textul extras, pagină cu pagină.</p></div><button className="df-button" onClick={()=>{setSelected(null);const u=new URL(window.location.href);u.searchParams.delete('document');u.searchParams.delete('page');window.history.replaceState(null,'',u);document.getElementById('files-heading')?.scrollIntoView();}}>Închide documentul</button></div>
+  {selected&&<section className="df-reader" ref={reader} tabIndex={-1} aria-labelledby="reader-heading"><div className="df-heading"><div><h3 id="reader-heading">{selected.filename}</h3><p>PDF-ul și textul extras, pagină cu pagină.</p></div><button className="df-button" onClick={()=>{setSelected(null);const u=new URL(window.location.href);u.searchParams.delete('document');u.searchParams.delete('page');window.history.replaceState(null,'',u);document.getElementById('files-heading')?.scrollIntoView();}}>Închide documentul</button></div>
+   {selected.signature===SIGNATURE_UNVERIFIED&&<p className="df-signature-warning">{SIGNATURE_UNVERIFIED}</p>}
    <div className="df-reader-toolbar"><button className="df-button" disabled={page<=1} onClick={()=>setPage(p=>p-1)}>← Înapoi</button><label>Pagina<select value={page} onChange={e=>setPage(Number(e.target.value))}>{Array.from({length:selected.pageCount??1},(_,i)=><option key={i+1}>{i+1}</option>)}</select></label><span>din {selected.pageCount}</span><button className="df-button" disabled={page>=(selected.pageCount??1)} onClick={()=>setPage(p=>p+1)}>Înainte →</button><a href={`${api(selected.id)}/file?kind=pdf#page=${page}`} target="_blank" rel="noopener noreferrer">PDF în alt tab ↗</a><a href={`${api(selected.id)}/file`}>Originalul ↓</a></div>
    <form className="df-document-search" onSubmit={e=>void searchDocument(e)}><label>Caută în acest document<input type="search" minLength={2} maxLength={150} required value={documentQuery} onChange={e=>setDocumentQuery(e.target.value)} placeholder="Cuvânt sau expresie"/></label><button className="df-button" disabled={documentSearching}>{documentSearching?'Se caută…':'Găsește paginile'}</button></form>
    {documentHits&&<div className="df-page-matches" aria-live="polite">{documentHits.length?<>Pagini cu „{documentApplied}”: {documentHits.map(h=><button key={h.page} className="df-button" aria-current={h.page===page?'page':undefined} onClick={()=>{setPage(h.page);setReaderHighlight(documentApplied);}}>{h.page}</button>)}</>:<>Nu am găsit expresia în textul acestui document.</>}</div>}
