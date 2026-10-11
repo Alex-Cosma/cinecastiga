@@ -23,7 +23,9 @@ export const procurementDocuments = appSchema.table('procurement_documents', {
   pdfHash: text('pdf_hash').references(()=>documentBlobs.hash), downloadedAt: timestamp('downloaded_at',{withTimezone:true}),
   processedAt: timestamp('processed_at',{withTimezone:true}), pageCount: integer('page_count'),
   signature: text('signature'), processor: text('processor'), preparation:jsonb('preparation'), contents:jsonb('contents'),
-},t=>[uniqueIndex('procurement_document_source_uq').on(t.noticeKey,t.sourceId)]);
+  classification:jsonb('classification'), classificationVersion:integer('classification_version').notNull().default(0),
+  classificationPdfHash:text('classification_pdf_hash'), priority:integer('priority').notNull().default(100),
+},t=>[uniqueIndex('procurement_document_source_uq').on(t.noticeKey,t.sourceId),index('procurement_document_priority').on(t.priority,t.noticeKey).where(sql`${t.processedAt} is null`)]);
 export const documentPages = appSchema.table('document_pages', {
   documentId: uuid('document_id').notNull().references(()=>procurementDocuments.id),
   page: integer('page').notNull(), text: text('text').notNull(), method: text('method').notNull(),

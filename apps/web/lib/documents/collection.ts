@@ -2,6 +2,7 @@ import {collectionHeartbeat,collectionQuietWindow,collectionWorkerId,CollectionS
 import {setTimeout as sleep} from 'node:timers/promises';
 import {DocumentYield,DocumentFormatError} from './errors';
 import {DOCUMENT_LOCK,runDocumentJob} from './worker';
+import {classifyDocumentBatch} from './classify';
 
 // No source traffic: discover already normalized, namespace-verified source notices.
 export async function seedDocumentInventory(q:DbSql){
@@ -20,12 +21,14 @@ export async function fillDocumentQueue(q:DbSql){
   select n.key,'list','list:'||n.key,'system:document-collection',true from app.document_notices n
   where n.automatic and n.checked_at is null and not exists(select 1 from app.document_jobs j where j.notice_key=n.key and j.kind='list' and j.automatic)
   order by n.source_date desc nulls last,n.key desc limit greatest(0,40-(select count(*)::int from app.document_jobs where automatic and kind='list' and status in ('queued','running'))) on conflict(dedup_key) where status in ('queued','running') do nothing`;
- await q`insert into app.document_jobs(notice_key,document_id,kind,dedup_key,requested_by,automatic,stage)
+ // Keep a separate bounded frontier for specifications, so forty older queued
+ // ordinary files cannot prevent a newly discovered specification entering.
+ for(const specifications of [true,false])await q`insert into app.document_jobs(notice_key,document_id,kind,dedup_key,requested_by,automatic,stage)
   select n.key,d.id,'file','file:'||d.id,'system:document-collection',true,case when d.original_hash is null then 'queued' else 'process_queued' end
   from app.procurement_documents d join app.document_notices n on n.key=d.notice_key
-  where n.automatic and d.processed_at is null and d.filename ~* '[.](pdf|p7s|docx?|xlsx?|zip|rar|7z)$'
+  where n.automatic and d.processed_at is null and (d.priority=0)=${specifications} and d.filename ~* '[.](pdf|p7s|docx?|xlsx?|zip|rar|7z)$'
    and not exists(select 1 from app.document_jobs j where j.document_id=d.id and j.automatic)
-  order by n.source_date desc nulls last,d.published_at desc nulls last,d.id limit greatest(0,40-(select count(*)::int from app.document_jobs where automatic and kind='file' and status in ('queued','running')))
+  order by n.source_date desc nulls last,d.published_at desc nulls last,d.id limit greatest(0,40-(select count(*)::int from app.document_jobs j join app.procurement_documents f on f.id=j.document_id where j.automatic and j.kind='file' and j.status in ('queued','running') and (f.priority=0)=${specifications}))
   on conflict(dedup_key) where status in ('queued','running') do nothing`;
 }
 
@@ -62,7 +65,7 @@ export async function runAutomaticCollector(sql:DbSql,shutdown:AbortSignal,work=
  if(!enabled?.enabled)return false;
  const owner=await sql.reserve(),q=owner as unknown as DbSql,stop=new AbortController(),abort=()=>stop.abort();
  shutdown.addEventListener('abort',abort,{once:true});if(shutdown.aborted)abort();
- const lanes=new Map<number,Promise<void>>();let locked=false,nextInventory=0,nextQueue=0,manualRunning=false;
+ const lanes=new Map<number,Promise<void>>();let locked=false,nextInventory=0,nextQueue=0,nextClassification=0,manualRunning=false;
  const worker=collectionWorkerId('document-collection');
  try{
   const [lock]=await q`select pg_try_advisory_lock(${DOCUMENT_LOCK[0]},${DOCUMENT_LOCK[1]}) acquired,pg_backend_pid() pid`;
@@ -78,6 +81,7 @@ export async function runAutomaticCollector(sql:DbSql,shutdown:AbortSignal,work=
    await collectionHeartbeat(q,worker,'documents',state.paused?'paused':'automatic');
    await q`update app.document_collection_control set heartbeat_at=now() where id=1`;
    if(state.maintenance){if(lanes.size)stop.abort();else await sleep(1000,undefined,{signal:stop.signal});continue;}
+   if(Date.now()>=nextClassification){await classifyDocumentBatch(sql);nextClassification=Date.now()+3000;}
    const automatic=state.enabled&&!state.paused,source=!state.source_paused&&!state.blocked_reason&&!state.paused_streams.includes('documents')&&!(await collectionQuietWindow(q)).active;
    if(automatic&&Date.now()>=nextInventory){await seedDocumentInventory(q);nextInventory=Date.now()+10000;}
    if(automatic&&Date.now()>=nextQueue){await fillDocumentQueue(q);nextQueue=Date.now()+3000;}
@@ -96,7 +100,7 @@ export async function runAutomaticCollector(sql:DbSql,shutdown:AbortSignal,work=
       (${slot===0&&source&&networkBusy<Number(state.download_concurrency)} and not j.automatic)
       or (${automatic} and j.automatic and ((${processing} and j.kind='file' and d.original_hash is not null)
        or (${!processing&&source&&state.proxy_enabled} and (j.kind='list' or d.original_hash is null))))
-     ) order by j.automatic,case when j.kind='file' then 0 else 1 end,n.source_date desc nulls last,j.created_at,j.id limit 1 for update of j skip locked
+     ) order by j.automatic,case when j.kind='list' then case when ${slot===Number(state.download_concurrency)} then -1 else 1 end else 0 end,coalesce(d.priority,100),n.source_date desc nulls last,j.created_at,j.id limit 1 for update of j skip locked
     ) and status='queued' returning *`;}catch(error){session.release();throw error;}
     if(!job){session.release();continue;}
     if(!job.automatic)manualRunning=true;

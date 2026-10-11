@@ -2,6 +2,7 @@ import {createDb,type DbSql} from '@seap/db';
 import {isWorkspaceId,withInvestigationAccess} from '../investigation-access';
 import {WorkspaceError} from '../investigation-workspace';
 import {validQuote,type ContractFiles,type ContractFile,type DocumentNotice,type FileJob} from './shared';
+import {effectiveClassification} from './classify';
 const iso=(v:unknown)=>v?new Date(v as string).toISOString():null;
 const g=globalThis as unknown as {documentSql?:DbSql};
 export const documentDb=()=>g.documentSql??=createDb().sql;
@@ -23,7 +24,7 @@ export async function registerNotice(n:DocumentNotice,q:DbSql=documentDb()){
  await q`insert into app.document_notices(key,notice_id,notice_type,notice_no,title,url)
  values(${n.key},${n.noticeId},${n.noticeType},${n.noticeNo},${n.title},${n.url}) on conflict(key) do nothing`;
 }
-function jobRow(r:Record<string,any>|undefined):FileJob|null{return r?{id:r.id,status:r.status,stage:r.stage,pagesDone:r.pages_done,pagesTotal:r.pages_total,error:r.error,position:Number(r.position??0)}:null;}
+function jobRow(r:Record<string,any>|undefined):FileJob|null{return r?{id:r.id,status:r.status,stage:r.stage,pagesDone:r.pages_done,pagesTotal:r.pages_total,error:r.error,position:Number(r.position??0),automatic:!!r.automatic}:null;}
 export async function getContractFiles(nid:string,q:DbSql=documentDb()):Promise<ContractFiles>{
  const notice=await contractNotice(nid,q);
  const empty:ContractFiles={notice,checkedAt:null,total:null,files:[],job:null,requestCount:0,enabled:documentsEnabled()};
@@ -31,10 +32,10 @@ export async function getContractFiles(nid:string,q:DbSql=documentDb()):Promise<
  const [meta]=await q`select * from app.document_notices where key=${notice.key}`;
  if(!meta)return empty;
  const files=await q`select * from app.procurement_documents where notice_key=${notice.key} order by published_at desc nulls last,code`;
- const jobs=await q`select j.*,case when j.status='queued' then (select count(*) from app.document_jobs p where p.status in ('queued','running') and (p.created_at,p.id)<=(j.created_at,j.id)) else 0 end position from app.document_jobs j where j.notice_key=${notice.key} order by created_at desc,id desc`;
+ const jobs=await q`select j.* from app.document_jobs j where j.notice_key=${notice.key} order by created_at desc,id desc`;
  const [requests]=await q`select count(*) n from app.document_requests r join app.document_jobs j on j.id=r.job_id where j.notice_key=${notice.key}`;
  return {...empty,checkedAt:iso(meta.checked_at),total:meta.total,requestCount:Number(requests?.n??0),job:jobRow(jobs.find(j=>j.kind==='list')),
- files:files.map(r=>({id:r.id,code:r.code,filename:r.filename,publishedAt:r.published_at,originalHash:r.original_hash,pdfHash:r.pdf_hash,downloadedAt:iso(r.downloaded_at),processedAt:iso(r.processed_at),pageCount:r.page_count,signature:r.signature,contents:r.contents,job:jobRow(jobs.find(j=>j.document_id===r.id))}))};
+ files:files.map(r=>({id:r.id,code:r.code,filename:r.filename,publishedAt:r.published_at,originalHash:r.original_hash,pdfHash:r.pdf_hash,downloadedAt:iso(r.downloaded_at),processedAt:iso(r.processed_at),pageCount:r.page_count,signature:r.signature,contents:r.contents,classification:effectiveClassification({filename:r.filename,classification:r.classification,contents:r.contents}),job:jobRow(jobs.find(j=>j.document_id===r.id))}))};
 }
 export async function enqueueDocument(nid:string,uid:string,documentId:string|null,q:DbSql=documentDb()){
  if(!documentsEnabled())throw new WorkspaceError('Preluarea documentelor nu este activată pe acest server.',503);

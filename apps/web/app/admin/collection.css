@@ -171,7 +171,7 @@
 
 .collection-admin .document-collection{padding:24px 0;margin:20px 0;border-block:1px solid var(--line)}
 .collection-admin .document-collection .section-heading{gap:16px;align-items:flex-start;flex-wrap:wrap}
-.collection-admin .document-collection-progress{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px;margin:22px 0 14px}
+.collection-admin .document-collection-progress{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:28px;margin:22px 0 14px}
 .collection-admin .document-collection-progress h3{font:500 14px var(--body);margin:0 0 8px}
 .collection-admin .document-collection-progress strong{font-size:23px;font-variant-numeric:tabular-nums}
 .collection-admin .document-collection-progress strong span{font-size:15px;font-weight:400;color:var(--muted)}
