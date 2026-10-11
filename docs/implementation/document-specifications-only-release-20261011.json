@@ -1,0 +1,119 @@
+{
+  "release": "5488af2ce069f6fb2490cd9defb1f120a21b325d",
+  "workflow": "https://github.com/Alex-Cosma/seap-new/actions/runs/38157671237",
+  "ci": "success",
+  "deploy": "success",
+  "workerStartedAt": "2026-10-11T17:01:50Z",
+  "production": [
+    {
+      "at": "2026-10-11T17:04:35.295516+00:00",
+      "source_revision": 137,
+      "paused": false,
+      "maintenance": false,
+      "block": null,
+      "document_revision": 7,
+      "document_enabled": true,
+      "document_paused": false,
+      "document_error": null,
+      "heartbeat": "2026-10-11T17:04:34.980993+00:00"
+    },
+    {
+      "status": "queued",
+      "kind": "file",
+      "stage": "process_queued",
+      "priority": 100,
+      "archived": true,
+      "automatic": true,
+      "count": 1
+    },
+    {
+      "status": "queued",
+      "kind": "file",
+      "stage": "specifications_only",
+      "priority": 100,
+      "archived": false,
+      "automatic": true,
+      "count": 36
+    },
+    {
+      "status": "queued",
+      "kind": "list",
+      "stage": "queued",
+      "priority": null,
+      "archived": false,
+      "automatic": true,
+      "count": 30
+    },
+    {
+      "status": "running",
+      "kind": "file",
+      "stage": "text",
+      "priority": 0,
+      "archived": true,
+      "automatic": true,
+      "count": 2
+    },
+    {
+      "status": "running",
+      "kind": "file",
+      "stage": "text",
+      "priority": 100,
+      "archived": true,
+      "automatic": true,
+      "count": 2
+    },
+    {
+      "status": "running",
+      "kind": "list",
+      "stage": "rate_limit",
+      "priority": null,
+      "archived": false,
+      "automatic": true,
+      "count": 10
+    },
+    {
+      "file": "Caiet_de_sarcini_PIDS.pdf.p7m",
+      "downloaded": "2026-10-11T17:03:51.378415+00:00",
+      "processed": "2026-10-11T17:04:13.877103+00:00",
+      "job_status": "complete",
+      "stage": "complete",
+      "error": null
+    },
+    {
+      "file": "Caiet de sarcini-semnat.pdf.p7m",
+      "downloaded": "2026-10-11T17:04:21.711626+00:00",
+      "processed": null,
+      "job_status": "running",
+      "stage": "text",
+      "error": null
+    },
+    {
+      "file": "1.Caiet de sarcini_nou-semnat OK.pdf.p7m",
+      "downloaded": "2026-10-11T17:04:02.560637+00:00",
+      "processed": null,
+      "job_status": "running",
+      "stage": "text",
+      "error": null
+    }
+  ],
+  "browser": {
+    "checks": [
+      "Public contract returns 200",
+      "Published reader states strict policy",
+      "Public files inventory readable",
+      "No browser exceptions"
+    ],
+    "errors": []
+  },
+  "testsPassed": 35,
+  "localBrowserChecks": 11,
+  "initialAutomaticDownloads": {
+    "specifications": 3,
+    "otherCategories": 0,
+    "httpStatuses": [
+      200,
+      200,
+      200
+    ]
+  }
+}
