@@ -36,8 +36,11 @@ export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortS
    allowed=null;await continueDocumentRequest(route);
   });
   const page=await context.newPage();page.setDefaultTimeout(45000);
+  let active:{url:string;method:string}|undefined,observed:{status?:number;receivedBytes?:number;networkFailure?:string}={};
+  page.on('response',r=>{if(r.url()===active?.url&&r.request().method()===active.method)observed.status=r.status();});
+  page.on('requestfailed',r=>{if(r.url()===active?.url&&r.method()===active.method)observed.networkFailure=r.failure()?.errorText??'';});
   async function request(url:string,method:string,body:unknown=null,navigate=false,destination?:string){
-   signal.throwIfAborted();
+   signal.throwIfAborted();active={url,method};observed={};
    await assertDocumentRequestBudget(q,jobId,maxRequests);
    if(url!==referer&&url!==origin+'/api-pub/NoticeDocument/GetAll/'&&url!==safeFileUrl(url))throw Error('Adresă neacceptată.');
    const isFileDownload=method==='GET'&&url.includes('/noticedoc/');
@@ -55,7 +58,7 @@ export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortS
     if(navigate){const res=await page.goto(url,{waitUntil:'domcontentloaded'});status=res?.status()??0;retryAfter=res?.headers()['retry-after']??null;bytes=res?await res.body():Buffer.alloc(0);receivedBytes=bytes.length;oversized=bytes.length>2*1024*1024;if(oversized)bytes=Buffer.alloc(0);}
     else if(destination){
      const sink='save_'+randomUUID().replaceAll('-',''),file=await open(destination,'wx',0o600);let received=0;let localError:Error|undefined;
-     await page.exposeFunction(sink,async(base64:string)=>{try{signal.throwIfAborted();const chunk=Buffer.from(base64,'base64');if(maxFileBytes!==undefined&&received+chunk.length>maxFileBytes)throw Error("Pilot file limit exceeded");if(chunk.length>65536)throw Error('Invalid stream chunk');if(received%(16*1024*1024)<65536)await requireDisk(destination);await file.writeFile(chunk);received+=chunk.length;}catch(error){localError=new CollectionLocalError(error instanceof Error&&error.message.startsWith('Procesarea')?error.message:'Procesarea nu poate salva fișierul pe disc. Verifică spațiul disponibil.');throw localError;}});
+     await page.exposeFunction(sink,async(base64:string)=>{try{signal.throwIfAborted();const chunk=Buffer.from(base64,'base64');if(maxFileBytes!==undefined&&received+chunk.length>maxFileBytes)throw Error("Pilot file limit exceeded");if(chunk.length>65536)throw Error('Invalid stream chunk');if(received%(16*1024*1024)<65536)await requireDisk(destination);await file.writeFile(chunk);received+=chunk.length;observed.receivedBytes=received;}catch(error){localError=new CollectionLocalError(error instanceof Error&&error.message.startsWith('Procesarea')?error.message:'Procesarea nu poate salva fișierul pe disc. Verifică spațiul disponibil.');throw localError;}});
      try{const result=await page.evaluate(browserDocumentStream,{url,sink});status=result.status;retryAfter=result.retryAfter;receivedBytes=result.receivedBytes;bytes=Buffer.alloc(0);}catch(error){if(localError)throw localError;throw error;}finally{await file.close();}
     }else{
      const result=await page.evaluate(browserDocumentRequest,{url,method,body,maxFileBytes:maxFileBytes??50*1024*1024});status=result.status;retryAfter=result.retryAfter;bytes=Buffer.from(result.base64,'base64');oversized=result.oversized;receivedBytes=result.receivedBytes;
@@ -65,7 +68,7 @@ export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortS
     if(!oversized&&status===200&&method==='POST'){try{JSON.parse(bytes.toString('utf8'));}catch{challenge=true;}}
     if(status===200&&navigate)challenge=/cf-chl-|<title>[^<]*(?:access denied|just a moment|attention required)/i.test(bytes.toString('utf8'));
     return {value:{bytes,status,oversized},status,bytes:receivedBytes??bytes.length,retryAfter,challenge,...(oversized?{diagnostics:{response:{status,receivedBytes,bodyTruncated:true},reason:'document_size_limit'}}:{})};
-   }catch(error){if(error instanceof CollectionLocalError)throw error;if(proxy)throw proxyTransportError(error);throw error;}
+   }catch(error){if(error instanceof CollectionLocalError)throw error;if(proxy)throw proxyTransportError(error,observed);throw error;}
    finally{allowed=null;await q`update app.document_requests set finished_at=coalesce(finished_at,now()) where id=${row!.id}`;}
    }finally{gateSignal.removeEventListener('abort',gateStop);}
    },signal);

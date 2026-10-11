@@ -42,3 +42,11 @@ describe('document proxy configuration',()=>{
   expect(error.cause).toBeUndefined();
  });
 });
+it('keeps interrupted response bodies scoped to their proxy with safe diagnostics',()=>{
+ const error=proxyTransportError(new Error('TypeError: Failed to fetch; private-password'),{status:200,receivedBytes:64000000}) as {diagnostics?:Record<string,unknown>;message:string};
+ expect(error.message).toContain('STREAM_INTERRUPTED');expect(error.message).not.toContain('private-password');
+ expect(error.diagnostics).toMatchObject({retryableProxyTransport:true,response:{status:200,receivedBytes:64000000}});
+ const protocol=proxyTransportError(new Error('Failed to fetch'),{networkFailure:'net::ERR_HTTP2_PROTOCOL_ERROR'}) as {diagnostics?:Record<string,unknown>};expect(protocol.diagnostics?.retryableProxyTransport).toBe(true);
+ const unknown=proxyTransportError(new Error('Unknown local failure')) as {diagnostics?:Record<string,unknown>};expect(unknown.diagnostics?.retryableProxyTransport).toBe(false);
+ const refused=proxyTransportError(new Error('Failed to fetch'),{status:403,receivedBytes:10}) as {diagnostics?:Record<string,unknown>};expect(refused.diagnostics).toMatchObject({retryableProxyTransport:false,response:{status:403}});
+});
