@@ -36,8 +36,8 @@ export default function PdfPage({url,page,filename}:{url:string;page:number;file
   return()=>{disposed=true;rendering?.cancel();};
  },[pdf,page,width,zoom]);
  return <div className="df-pdf">
-  <div className="df-pdf-heading"><h4>Original · pagina {page}</h4><label>Mărire<select value={zoom} onChange={event=>setZoom(Number(event.target.value))}><option value={1}>Încadrează</option><option value={1.25}>125%</option><option value={1.5}>150%</option><option value={2}>200%</option></select></label></div>
-  <div className="df-pdf-viewport" ref={viewport} aria-busy={loading} tabIndex={0} aria-label={`Originalul ${filename}, pagina ${page}`}>
+  <div className="df-pdf-heading"><h4>PDF · pagina {page}</h4><label>Mărire<select value={zoom} onChange={event=>setZoom(Number(event.target.value))}><option value={1}>Încadrează</option><option value={1.25}>125%</option><option value={1.5}>150%</option><option value={2}>200%</option></select></label></div>
+  <div className="df-pdf-viewport" ref={viewport} aria-busy={loading} tabIndex={0} aria-label={`PDF-ul ${filename}, pagina ${page}`}>
    {loading&&<p className="df-pdf-message" role="status">Se încarcă pagina {page}…</p>}
    {error&&<div className="df-pdf-message" role="alert"><p>{error}</p><button className="df-button" onClick={()=>setRetry(n=>n+1)}>Reîncearcă afișarea</button></div>}
    <canvas key={`${page}:${zoom}:${retry}`} ref={canvas} role="img" aria-label={`Pagina ${page} din ${filename}; textul extras este alături.`} style={{visibility:loading||error?'hidden':'visible'}}/>

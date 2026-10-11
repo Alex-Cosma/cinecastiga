@@ -12,3 +12,6 @@ export function safeFileUrl(url:string):string {
  if(!['https://www.e-licitatie.ro','https://e-licitatie.ro'].includes(u.origin)||!/^\/api-pub\/files\/noticedoc\/[a-f0-9]{32}$/i.test(u.pathname)||u.search||u.hash||u.username||u.password)throw Error('Adresă de fișier SEAP neacceptată.');
  u.hostname='www.e-licitatie.ro';return u.href;
 }
+
+export const SIGNATURE_VERIFIED='Integritatea semnăturii verificată; încrederea și revocarea certificatului nu au fost verificate.';
+export const SIGNATURE_UNVERIFIED='Verificarea criptografică a semnăturii a eșuat. Conținutul a fost extras fără validarea semnăturii; originalul P7S este păstrat.';
