@@ -26,3 +26,27 @@ Owner requested Word/Excel/archive support and recovery of documents rejected fo
 - Actual reader fixture desktop/mobile/light/dark, page165 and partial archive contents: no JS errors or overflow; PDF canvas and text navigation verified. Temporary route removed. Private artifacts `.local/document-failures-20261011/`, never committed.
 
 Production release/recovery results follow after deployment verification.
+
+## First production publication and recovery
+
+Core implementation4e53e4b plus admin copy175c43b published at12:03RO. Both CI runs passed their checks; automatic SSH deployment failed before updating the server checkout (exact cause not established). The standard `infra/prod/deploy.sh` was then run over the operator's existing SSH connection and completed successfully.71migrations; public health200; document container6GiB, four processing lanes unchanged.
+
+Recovery applied once:190eligible failed file jobs,172retained originals and18requiring a new source download. Audit `documents-formats-recovery` stores full before-state. Reopened source/doc controls at revisions134/5. All172retained originals matched their prior hashes and had zero new source requests in the verification window. Live proof: Word converted to20searchable pages, a220page PDF completed, originals of64,204,348/97,297,294/101,069,585bytes archived in chunks. Derived PDF public Range request returned206and exact64bytes; page-text API returned valid text. Queued is not synonymous with recovered; OCR continues asynchronously.
+
+Additional limits identified while working through the real queue: **split/multivolume RAR archives are not assembled across source-document records by this version**; some archives have CRC errors or contain no renderable supported members. They remain explicitly failed/partial with originals accessible. This is a real follow-up, not a claim that every discovered file can now be rendered. The separate nine list-identity errors remain outside this change.
+
+## Interrupted download incident and follow-up
+
+At12:08RO request451219 (document GET, proxy-103) failed after about90seconds. The browser exposed generic `Failed to fetch`; old redaction reduced it to `TRANSPORT_FAILED`, causing the conservative global gate to stop all source traffic. Other large downloads succeeded, OCR continued. Request451222 subsequently timed out on its own retryable proxy path. Originals and completed results were preserved.
+
+Follow-upc3959f2 captures matching browser response status, bytes written and known Chromium transport failures without logging raw proxy errors/secrets. An interrupted HTTP200 body with received bytes is classified `STREAM_INTERRUPTED` and scoped to its proxy; protocol/content-length/incomplete-chunk errors retain their safe codes. Explicit403/429 and unknown errors retain existing global safeguards.25focused regression tests passed, including the real collection gate with a synthetic partial200response, no global block, proxy failure increment and retained byte/status diagnostics. PDF derivative filenames also preserve dotted source-title prefixes.
+
+Operational rollback: after chunked blobs exist, do not roll back to a pre-chunk reader/worker image. Keep the compatible blob reader and source materializer or forward-fix; the original bytes are intact but old code sees the inline placeholder. Migration additions are additive; never delete blobs/chunks to undo a release.
+
+## Final verified release
+
+Runtime **c3959f2**, CI + **automatic deploy38127754932 both successful**. The attempted duplicate operator deploy refused the deployment lock correctly and changed nothing.71migrations. Source/doc controls restored with compare-and-swap135→136 and6→7; cleared only the reviewed451219block after confirming no active HTTP and no new unreviewed failures. Source is running, maintenance=false,blocked_reason=null; document collection enabled/unpaused. Requests after resumption:16started,15success,0failed at final sample.
+
+Recovery snapshot around12:19RO:190target jobs =40complete,13running,131queued,6failed. Eight originals above50MiB already archived, largest101,069,585bytes. Separate P7S batch:158of161complete,3queued;0changed original hashes and0new source requests. Existing automatic priority remains newest first, so finishing older recovered jobs takes time. Public health200; converted Word page API and PDF range206verified;220-page PDF published and last page publicly readable. Controls/rates/proxy activation are left as authorized, no maintenance.
+
+Remaining work: multipart archive association/extraction with per-volume provenance; other genuinely unsupported payloads (e.g. CAD) and damaged/protected files; nine source-list identity failures. Do not blindly reset these failures or promise all190will succeed. Legacy pilot/recovery diagnostic scripts that inspect inline blob.bytes alone should use the chunk-aware helpers before being repurposed; they are not background jobs. The old one-shot P7S inspector is for its original archived cohort, not a general new-format recovery command.
