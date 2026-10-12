@@ -6,7 +6,7 @@ import { antigrindinaStory } from './antigrindina';
 import { aeroclubStory } from './aeroclub';
 import { a7BuzauStory } from './a7-buzau';
 import { visibleStories,validateStory } from './validation';
-import { readView,sumExact,sourceLinks,safeExternalUrl,countStories,storyTotal } from './shared';
+import { readView,sumExact,sourceLinks,safeExternalUrl,countStories,storyTotal,splitCitations } from './shared';
 import { getStories } from './catalog';
 import type { Story } from './types';
 afterEach(()=>vi.unstubAllEnvs());
@@ -84,6 +84,17 @@ describe('editorial publication and evidence',()=>{
   expect(sumExact(antigrindinaStory.sources.filter(s=>s.kind==='procurement'&&antigrindinaStory.finding.sourceIds.includes(s.id)&&!s.suppliers[0]!.startsWith('ELECTROMECANICA')).map(s=>s.kind==='procurement'?s.amount:'0'))).toBe('59521011.48');
   expect(storyTotal(aeroclubStory)).toBe('29402778.22');expect(aeroclubStory.finding.sourceIds).not.toContain('cadru-paza-159');
   expect(storyTotal(a7BuzauStory)).toBe('49462662.10');expect(a7BuzauStory.finding.sourceIds).toEqual(['cadru-a7']);
+ });
+ it('validates inline citations, figures and supplier profiles against the story sources',()=>{
+  const a=structuredClone(antigrindinaStory);a.intro[0]+='[[missing]]';expect(()=>validateStory(a)).toThrow('unknown source');
+  const b=structuredClone(antigrindinaStory);if(b.visual?.kind==='map')b.visual.regions[0]!.group='nobody';expect(()=>validateStory(b)).toThrow('visual');
+  const c=structuredClone(antigrindinaStory);if(c.visual?.kind==='map')c.visual.regions[0]!.sourceId='missing';expect(()=>validateStory(c)).toThrow('unknown source');
+  const d=structuredClone(aeroclubStory);d.actors!.items[0]!.won='29,4';expect(()=>validateStory(d)).toThrow('actors');
+  const e=structuredClone(a7BuzauStory);e.keyFacts=[];expect(()=>validateStory(e)).toThrow('key facts');
+  expect(splitCitations('A[[x-1]] b.[[y]]')).toEqual([{text:'A'},{ref:'x-1'},{text:' b.'},{ref:'y'}]);
+  // Profile totals restate the finding; they must not drift from the records.
+  expect(antigrindinaStory.actors!.items.map(x=>x.won)).toEqual(['27227467.82','22359019.86','9934523.80']);
+  expect(aeroclubStory.actors!.items[0]!.won).toBe(storyTotal(aeroclubStory));expect(a7BuzauStory.actors!.items[0]!.won).toBe(storyTotal(a7BuzauStory));
  });
  it('preserves high precision and excludes the context purchase from the seven-record total',()=>{
   expect(sumExact(['0.1','0.2'])).toBe('0.30');expect(sumExact(['9007199254740993.12345','0.00006'])).toBe('9007199254740993.12351');

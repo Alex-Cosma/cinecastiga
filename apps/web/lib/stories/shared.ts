@@ -40,3 +40,13 @@ export function readView(path:string[],stories:Story[]):StoryView|null {
   return null;
 }
 export function storyTotal(story:Story) {return sumExact(story.finding.sourceIds.flatMap(id=>{const s=story.sources.find(s=>s.id===id);return s?.kind==='procurement'?[s.amount]:[];}));}
+/** Inline citations: [[source-id]] markers become numbered notes; text stays plain React text. */
+export const CITATION=/\[\[([a-z0-9]+(?:-[a-z0-9]+)*)\]\]/g;
+export function splitCitations(text:string):({text:string}|{ref:string})[] {
+  const parts:({text:string}|{ref:string})[]=[];let last=0;
+  for(const m of text.matchAll(CITATION)){if(m.index>last)parts.push({text:text.slice(last,m.index)});parts.push({ref:m[1]!});last=m.index+m[0].length;}
+  if(last<text.length)parts.push({text:text.slice(last)});
+  return parts;
+}
+export const citedIds=(text:string)=>[...text.matchAll(CITATION)].map(m=>m[1]!);
+export const sourceNumber=(story:Story,id:string)=>story.sources.findIndex(s=>s.id===id)+1;
