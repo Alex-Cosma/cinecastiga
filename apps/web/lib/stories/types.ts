@@ -9,6 +9,15 @@ export type StorySource = {
   | { kind: 'external'; url: string | null; publisher: string; summary: string }
   | { kind: 'note'; text: string }
 );
+/** Large figures beside the headline. Values are display text; amounts must also exist as sources. */
+export type StoryFact = { value: string; label: string };
+/** A story-specific figure. Every mark links to a source of the same story. */
+export type StoryVisual =
+  | { kind: 'map'; title: string; caption: string; groups: { id: string; label: string }[]; regions: { county: string; label: string; group: string; sourceId: string }[]; unlocated?: { label: string; group: string; sourceId: string }[] }
+  | { kind: 'compare'; title: string; caption: string; columns: [string, string]; sourceIds: [string, string]; rows: { label: string; values: [string, string] }[] }
+  | { kind: 'bars'; title: string; caption: string; bars: { label: string; value: number; display: string; note?: string; highlight?: boolean; sourceIds: string[] }[] };
+/** Supplier profile: what the public registers show next to what it won. */
+export type StoryActor = { name: string; entityId?: string; won: string; wonLabel: string; facts: { label: string; value: string }[]; sourceIds: string[] };
 export type Story = {
   slug: string;
   status: 'draft' | 'published' | 'preview';
@@ -22,10 +31,14 @@ export type Story = {
   updatedAt?: string;
   minutes: number;
   period: string;
+  keyFacts?: StoryFact[];
+  visual?: StoryVisual;
+  /** Paragraphs may cite inline with [[source-id]]; markers render as numbered notes. */
   intro: string[];
-  sections?: { id: string; title: string; paragraphs: string[]; sourceIds: string[] }[];
-  finding: { title: string; sourceIds: string[]; explanation: string; after: string };
-  timeline: { id: string; date: string | null; title: string; text: string; sourceIds: string[] }[];
+  sections?: { id: string; title: string; paragraphs: string[]; sourceIds: string[]; quote?: { text: string; attribution: string; sourceId: string } }[];
+  finding: { title: string; sourceIds: string[]; explanation: string; after: string; groupBySupplier?: boolean };
+  actors?: { title: string; intro?: string; items: StoryActor[] };
+  timeline: { id: string; date: string | null; title: string; text: string; sourceIds: string[]; gapBefore?: string; highlight?: boolean }[];
   questions: string[];
   reply: { title: string; text: string; sourceIds: string[] } | null;
   methodology: string;

@@ -5,8 +5,8 @@ import type { Story } from './types';
 export const aeroclubStory: Story = {
   slug: 'aeroclubul-romaniei-pompieri-de-doua-ori',
   status: 'preview',
-  title: 'Aeroclubul României a cumpărat de două ori, în același an, aceiași pompieri pentru doi ani',
-  summary: 'În aprilie și în iunie 2026, Aeroclubul României a anunțat aceeași procedură pentru serviciile de salvare și stingere a incendiilor: aceleași posturi, aceeași durată, același număr de anunț. A câștigat de ambele ori Authentic Blue, o firmă fără activitate raportată până în 2026. Împreună, cele două înregistrări SEAP valorează 29,4 milioane de lei.',
+  title: 'Aeroclubul României a cumpărat de două ori aceiași pompieri. Câștigătoare: o firmă fără activitate raportată',
+  summary: 'În aprilie și în iunie 2026, Aeroclubul României a anunțat aceeași procedură pentru salvare și stingere a incendiilor: aceleași posturi, aceeași durată, același număr de anunț. A câștigat de ambele ori Authentic Blue, o firmă care pentru 2025 a raportat zero venituri și 500 de lei cheltuieli. Împreună, cele două atribuiri valorează 29,4 milioane de lei.',
   counties: ['bucuresti'],
   topic: 'Aviație și siguranță',
   illustration: 'network',
@@ -14,51 +14,85 @@ export const aeroclubStory: Story = {
   publishedAt: '2026-10-12',
   minutes: 6,
   period: 'Februarie 2025 – august 2026',
+  keyFacts: [
+    { value: '29,4 mil. lei', label: 'două atribuiri, același serviciu' },
+    { value: '58 de zile', label: 'între cele două anunțuri' },
+    { value: '0 lei', label: 'veniturile câștigătorului în 2025' },
+    { value: '1', label: 'ofertant în aprilie, potrivit Cațavencii' }
+  ],
+  visual: {
+    kind: 'compare',
+    title: 'Găsește diferențele',
+    caption: 'Cele două anunțuri publicate de Aeroclub, rând cu rând. Câștigătorul și tipul documentului provin din SEAP. Apasă pe titlul unei coloane pentru anunțul original.',
+    columns: ['Anunțul din 22 aprilie', 'Anunțul din 19 iunie'],
+    sourceIds: ['anunt-aprilie', 'anunt-iunie'],
+    rows: [
+      { label: 'Obiect', values: ['Salvare și stingere incendii, aerocluburi teritoriale', 'Salvare și stingere incendii, aerocluburi teritoriale'] },
+      { label: 'Durată', values: ['24 de luni', '24 de luni'] },
+      { label: 'Posturi 24/24', values: ['7–13', '7–13'] },
+      { label: 'Posturi 8/24', values: ['7–24', '7–24'] },
+      { label: 'Posturi 10/24', values: ['7–24', '7–24'] },
+      { label: 'Posturi 12/24', values: ['1–2', '1–2'] },
+      { label: 'Anunț publicitar', values: ['ADV 1525488', 'ADV 1525488'] },
+      { label: 'Câștigător (SEAP)', values: ['Authentic Blue', 'Authentic Blue'] },
+      { label: 'Valoare minimă', values: ['7.057.509,36 lei', '7.105.187,76 lei'] },
+      { label: 'Valoare maximă', values: ['14.619.654,72 lei', '14.783.123,50 lei'] },
+      { label: 'Document în SEAP', values: ['Acord-cadru nr. 90', 'Contract nr. 181'] }
+    ]
+  },
   intro: [
-    'Aeroclubul României cumpără servicii de salvare și stingere a incendiilor pentru aerodromurile aerocluburilor teritoriale. Pe site-ul instituției sunt publicate două anunțuri pentru aceste servicii: unul din 22 aprilie 2026 și unul din 19 iunie 2026. Au același obiect, aceleași posturi (24/24, 8/24, 10/24 și 12/24), aceeași durată de 24 de luni și citează același număr de anunț publicitar, ADV 1525488.',
-    'Ambele au fost câștigate de AUTHENTIC BLUE SRL. În SEAP există acordul-cadru nr. 90 din 30 aprilie 2026, de 14.619.654,72 lei, și contractul nr. 181 din 15 iulie 2026, de 14.783.123,50 lei. Împreună: 29.402.778,22 lei.'
+    'Aeroclubul României cumpără servicii de salvare și stingere a incendiilor pentru aerodromurile aerocluburilor teritoriale. Pe site-ul instituției sunt publicate două anunțuri pentru aceste servicii, din 22 aprilie și din 19 iunie 2026.[[anunt-aprilie]][[anunt-iunie]] Au același obiect, aceleași posturi, aceeași durată de 24 de luni și citează același număr de anunț publicitar.',
+    'Ambele au fost câștigate de AUTHENTIC BLUE SRL: acordul-cadru nr. 90 din 30 aprilie 2026, de 14.619.654,72 lei,[[cadru-90]] și contractul nr. 181 din 15 iulie 2026, de 14.783.123,50 lei.[[contract-181]] Împreună: 29.402.778,22 lei.'
   ],
   finding: {
     title: 'Cele două atribuiri pentru salvare și stingere incendii',
     sourceIds: ['cadru-90', 'contract-181'],
     explanation: 'Valori maxime înregistrate în SEAP, nu plăți. Dacă acordul nr. 90 a fost reziliat sau înlocuit, suma celor două supraestimează angajamentul real; SEAP nu arată o încetare.',
-    after: 'Acordul de pază atribuit în iunie altei firme este context și nu intră în total.'
+    after: 'Acordul de pază atribuit în iunie altei firme este context și nu intră în total.[[cadru-paza-159]]'
+  },
+  actors: {
+    title: 'Câștigătorii, în registre',
+    intro: 'Registrul comerțului (8 iulie 2026) și bilanțurile depuse la Ministerul Finanțelor pentru 2025, lângă valorile câștigate în 2026.',
+    items: [
+      { name: 'Authentic Blue', entityId: '2163235', won: '29402778.22', wonLabel: 'salvare și stingere incendii, două atribuiri', facts: [{ label: 'Înregistrată', value: '2022' }, { label: 'CAEN 2025', value: '8425 · incendii' }, { label: 'Salariați 2025', value: 'neraportați' }, { label: 'Venituri totale 2025', value: '0 lei' }, { label: 'Cheltuieli 2025', value: '500 lei' }], sourceIds: ['registre-firme', 'catavencii'] },
+      { name: 'Tribord Security', entityId: '2162191', won: '24225190.60', wonLabel: 'pază și protecție, 24 de luni', facts: [{ label: 'Înregistrată', value: '2021' }, { label: 'CAEN 2025', value: '8001 · pază' }, { label: 'Salariați 2025', value: '97' }, { label: 'Cifră de afaceri 2025', value: '7.593.279 lei' }], sourceIds: ['registre-firme'] }
+    ]
   },
   sections: [
     {
       id: 'doua-anunturi', title: 'Două anunțuri, același serviciu',
       paragraphs: [
-        'Anunțul din aprilie stabilea un interval de 7.057.509,36–14.619.654,72 lei pentru 24 de luni. Cel din iunie: 7.105.187,76–14.783.123,50 lei, cu aceleași posturi. Ambele sunt proceduri pentru servicii sociale și alte servicii specifice (Anexa 2 a Legii 98/2016), cu norme proprii.',
-        'Anunțul de atribuire pentru acordul din aprilie (CAN1171885) a apărut în SEAP la 23 iulie 2026, după semnarea contractului din iulie. Anunțul pentru acesta din urmă (CAN1173254) a apărut la 21 august. Datele SEAP din aplicație nu arată o încetare a acordului nr. 90.',
-        'În 2025, pentru același serviciu, Aeroclubul anunțase un singur acord pe 12 luni, cu valoarea maximă de 6.551.492 lei. Plafonul anual al unui singur acord din 2026 (circa 7,3 milioane pe an) este apropiat de cel din 2025. Dacă ambele acorduri sunt active, plafonul anual se dublează la circa 14,7 milioane de lei.'
+        'Ambele sunt proceduri pentru servicii sociale și alte servicii specifice (Anexa 2 a Legii 98/2016), după norme proprii. Singura diferență de fond este valoarea: intervalul crește cu circa 48.000 de lei la minim și 163.000 de lei la maxim.[[anunt-aprilie]][[anunt-iunie]]',
+        'Anunțul de atribuire pentru acordul din aprilie a apărut în SEAP abia la 23 iulie 2026, după semnarea contractului din iulie.[[cadru-90]] Anunțul pentru al doilea a apărut la 21 august.[[contract-181]] Datele SEAP din aplicație nu arată o încetare a acordului nr. 90.',
+        'În 2025, pentru același serviciu, Aeroclubul anunțase un singur acord pe 12 luni, cu valoarea maximă de 6.551.492 lei.[[anunt-2025-incendii]] Plafonul anual al unui singur acord din 2026 (circa 7,3 milioane pe an) este apropiat de cel din 2025. Dacă ambele acorduri sunt active, plafonul anual se dublează la circa 14,7 milioane de lei.'
       ],
-      sourceIds: ['anunt-aprilie', 'anunt-iunie', 'anunt-2025-incendii', 'pagina-achizitii', 'cadru-90', 'contract-181']
+      sourceIds: ['pagina-achizitii']
     },
     {
       id: 'firma', title: 'Firma câștigătoare',
       paragraphs: [
-        'AUTHENTIC BLUE SRL (CUI 47385159, București) este înregistrată din 2022. În bilanțul pe 2025 depus la Ministerul Finanțelor declară codul CAEN 8425, activități de luptă împotriva incendiilor, nicio cifră de afaceri, niciun salariat și cheltuieli de 500 de lei.',
-        'În august 2026, Cațavencii a scris despre acordul din aprilie: Authentic Blue a fost singurul ofertant, iar firma nu avusese activitate. Articolul nu menționează a doua atribuire, din iulie.',
+        'AUTHENTIC BLUE SRL (CUI 47385159, București) este înregistrată din 2022. În bilanțul pe 2025 declară codul CAEN 8425, activități de luptă împotriva incendiilor, venituri totale de 0 lei, fără cifră de afaceri sau salariați raportați și cu cheltuieli de 500 de lei.[[registre-firme]]',
+        'În august 2026, Cațavencii a scris despre acordul din aprilie: Authentic Blue a fost singurul ofertant, iar firma nu avusese activitate.[[catavencii]] Articolul nu menționează a doua atribuire, din iulie. Câte oferte au fost depuse în iunie nu reiese din datele SEAP pe care le avem.',
         'O firmă nouă poate angaja personal după câștigarea contractului. Rămâne de aflat câți pompieri au fost angajați efectiv, când a obținut firma autorizațiile necesare și cum a fost evaluată capacitatea ei înainte de semnare.'
       ],
-      sourceIds: ['registre-firme', 'catavencii']
+      sourceIds: []
     },
     {
       id: 'paza', title: 'Și paza a crescut, dar mai puțin',
       paragraphs: [
-        'Tot în iunie, Aeroclubul a semnat cu TRIBORD SECURITY SRL acordul-cadru nr. 159 pentru pază și protecție: 24.225.190,60 lei pe 24 de luni. În 2025, plafonul pentru 12 luni fusese 10.160.808 lei. Pe an, creșterea este de aproximativ 19%. Tribord are activitate reală: 97 de salariați și 7,6 milioane de lei cifră de afaceri în 2025.',
+        'Tot în iunie, Aeroclubul a semnat cu TRIBORD SECURITY SRL acordul-cadru nr. 159 pentru pază și protecție: 24.225.190,60 lei pe 24 de luni.[[cadru-paza-159]] În 2025, plafonul pentru 12 luni fusese 10.160.808 lei.[[anunt-2025-paza]] Pe an, creșterea este de aproximativ 19%. Tribord are activitate reală: 97 de salariați și 7,6 milioane de lei cifră de afaceri în 2025.',
         'Paza nu repetă tiparul pompierilor. O includem pentru a arăta dimensiunea serviciilor externalizate de instituție în același an.'
       ],
-      sourceIds: ['cadru-paza-159', 'anunt-2025-paza']
+      sourceIds: []
     }
   ],
   timeline: [
     { id: 'an-2025', date: null, title: '2025: un singur acord pe 12 luni', text: 'Anunț pentru salvare și stingere incendii, maximum 6.551.492 lei; pentru pază, maximum 10.160.808 lei.', sourceIds: ['anunt-2025-incendii', 'anunt-2025-paza'] },
     { id: 'anunt-1', date: '2026-04-22', title: 'Primul anunț', text: '24 de luni, maximum 14.619.654,72 lei, ADV 1525488.', sourceIds: ['anunt-aprilie'] },
-    { id: 'semnare-90', date: '2026-04-30', title: 'Acordul-cadru nr. 90', text: 'Authentic Blue câștigă, potrivit Cațavencii ca singur ofertant.', sourceIds: ['cadru-90'] },
-    { id: 'anunt-2', date: '2026-06-19', title: 'Al doilea anunț, aceleași posturi', text: '24 de luni, maximum 14.783.123,50 lei, același ADV 1525488.', sourceIds: ['anunt-iunie'] },
+    { id: 'semnare-90', date: '2026-04-30', title: 'Acordul-cadru nr. 90', text: 'Authentic Blue câștigă, potrivit Cațavencii ca singur ofertant.', sourceIds: ['cadru-90'], highlight: true },
+    { id: 'anunt-2', date: '2026-06-19', gapBefore: '58 de zile după primul anunț', title: 'Al doilea anunț, aceleași posturi', text: '24 de luni, maximum 14.783.123,50 lei, același ADV 1525488.', sourceIds: ['anunt-iunie'], highlight: true },
     { id: 'paza-159', date: '2026-06-26', title: 'Acordul de pază nr. 159', text: 'Tribord Security, 24.225.190,60 lei pe 24 de luni.', sourceIds: ['cadru-paza-159'] },
-    { id: 'semnare-181', date: '2026-07-15', title: 'Contractul nr. 181', text: 'Authentic Blue câștigă din nou, la plafonul maxim al celui de-al doilea anunț.', sourceIds: ['contract-181'] },
+    { id: 'semnare-181', date: '2026-07-15', title: 'Contractul nr. 181', text: 'Authentic Blue câștigă din nou, la plafonul maxim al celui de-al doilea anunț.', sourceIds: ['contract-181'], highlight: true },
     { id: 'can-90', date: '2026-07-23', title: 'Abia acum apare în SEAP atribuirea din aprilie', text: 'Anunțul de atribuire CAN1171885, la aproape trei luni după semnare.', sourceIds: ['cadru-90'] },
     { id: 'presa', date: '2026-08-07', title: 'Cațavencii scrie despre primul acord', text: 'Articolul nu menționează a doua atribuire.', sourceIds: ['catavencii'] },
     { id: 'can-181', date: '2026-08-21', title: 'Anunțul de atribuire pentru contractul nr. 181', text: 'CAN1173254.', sourceIds: ['contract-181'] }

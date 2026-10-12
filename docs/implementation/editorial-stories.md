@@ -102,3 +102,17 @@ Adăugate în `local-preview.ts`, status `preview` (numai `NODE_ENV=development`
 Documentarea de lucru nu este în repository, care este public: `../seap-research/docs/research/20261012-claude-stories/`, cu instantaneul read-only al înregistrărilor din producție. Persoanele fizice nu sunt numite. Datele de semnare sunt din `contractDate` al payloadului SEAP, în ora României: `core.contracts.contract_date` stochează miezul nopții românesc ca 21:00 UTC în ziua precedentă, iar o citire naivă a datei UTC dă o zi mai devreme. Testul nou verifică ID-urile, sumele, conversia datelor și totalurile față de instantaneu.
 
 Verificare locală: 12 teste editoriale trecute, typecheck trecut; dev pe 3102, desktop 1440 și mobil 390 fără erori JS sau depășire orizontală. Nicio solicitare trimisă părților, nicio revizie editorială independentă, fără push sau deploy.
+
+### Prezentare cu impact — 12 octombrie 2026
+
+Câmpuri opționale noi în `Story`, toate validate față de sursele poveștii:
+
+- `keyFacts`: 2–4 cifre-cheie, afișate în dreapta titlului în locul ilustrației. Sunt text de afișare; sumele trebuie să existe și ca surse.
+- `visual`: o figură proprie poveștii, sub titlu. `map` colorează județele după un grup (de exemplu câștigătorul), cu `unlocated` pentru elementele fără localizare verificată. `compare` pune două documente rând cu rând; rândurile identice se unesc într-o singură celulă. `bars` desenează valori la aceeași scară. Fiecare element deschide o sursă.
+- `actors`: fișe de furnizor, cu ce arată registrele (ONRC, MF) lângă valoarea câștigată și cu link către `/entitati/:id`.
+- `sections[].quote`: un citat scos în evidență, cu sursă.
+- `finding.groupBySupplier`: barele constatării se grupează pe primul furnizor.
+- `timeline[].highlight` și `gapBefore`: momente-cheie și intervalul dintre ele.
+- Citare în text: `[[source-id]]` în paragrafe, introducere și cronologie devine o notă numerotată care deschide dosarul. Listele de surse din secțiuni și cronologie sunt acum note numerotate compacte, nu câte un buton pentru fiecare document; schimbarea se aplică tuturor poveștilor.
+
+Validarea respinge citările către surse inexistente, regiunile cu grupuri nedeclarate sau județe necunoscute, sumele nezecimale din fișe și listele goale de cifre-cheie. Cele trei previzualizări din 12 octombrie folosesc noile câmpuri; Școala 311 și Aquapark rămân neschimbate, cu note numerotate în loc de butoane. Verificare: 13 teste, typecheck, capturi desktop 1440 și mobil 390 pentru toate patru articolele, fără erori JS și fără depășire orizontală.

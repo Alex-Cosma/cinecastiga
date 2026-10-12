@@ -1,5 +1,5 @@
 import type { Story } from './types';
-import { counties, safeExternalUrl } from './shared';
+import { citedIds, counties, safeExternalUrl } from './shared';
 const slug=/^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const date=(s:string)=>/^\d{4}-\d{2}-\d{2}$/.test(s)&&!Number.isNaN(Date.parse(s))&&new Date(s).toISOString().slice(0,10)===s;
 export function visibleStories(stories:Story[],environment:string|undefined):Story[] {
@@ -22,10 +22,19 @@ export function validateStory(s:Story):void {
     }
     if(source.kind==='external'&&((source.url&&!safeExternalUrl(source.url))||!source.url))fail('external source');
   }
-  const references=[...s.finding.sourceIds,...(s.sections?.flatMap(v=>v.sourceIds)??[]),...s.timeline.flatMap(e=>e.sourceIds),...(s.reply?.sourceIds??[])];
+  const texts=[...s.intro,...(s.sections?.flatMap(v=>v.paragraphs)??[]),...s.timeline.map(e=>e.text)];
+  const v=s.visual;
+  const visualRefs=!v?[]:v.kind==='map'?[...v.regions,...(v.unlocated??[])].map(r=>r.sourceId):v.kind==='compare'?v.sourceIds:v.bars.flatMap(b=>b.sourceIds);
+  const references=[...s.finding.sourceIds,...(s.sections?.flatMap(v=>[...v.sourceIds,...(v.quote?[v.quote.sourceId]:[])])??[]),...s.timeline.flatMap(e=>e.sourceIds),...(s.reply?.sourceIds??[]),
+    ...texts.flatMap(citedIds),...visualRefs,...(s.actors?.items.flatMap(a=>a.sourceIds)??[])];
   if(references.some(id=>!s.sources.some(v=>v.id===id)))fail('unknown source');
   if(new Set(s.finding.sourceIds).size!==s.finding.sourceIds.length||s.finding.sourceIds.some(id=>s.sources.find(v=>v.id===id)?.kind!=='procurement'))fail('total selection');
   const records=s.sources.filter(v=>v.kind==='procurement'&&v.record).map(v=>v.kind==='procurement'&&v.record?`${v.record.type}:${v.record.id}`:'');
   if(new Set(records).size!==records.length)fail('duplicate procurement');
+  if(s.keyFacts&&(s.keyFacts.length===0||s.keyFacts.some(f=>!f.value.trim()||!f.label.trim())))fail('key facts');
+  if(v?.kind==='map'&&([...v.regions,...(v.unlocated??[])].some(r=>!v.groups.some(g=>g.id===r.group))||v.regions.some(r=>!counties.some(c=>c.key===r.county))))fail('visual');
+  if(v?.kind==='compare'&&v.rows.some(r=>r.values.length!==2))fail('visual');
+  if(v?.kind==='bars'&&v.bars.some(b=>!Number.isFinite(b.value)||b.value<0))fail('visual');
+  if(s.actors&&s.actors.items.some(a=>!a.name.trim()||!/^\d+(?:\.\d+)?$/.test(a.won)||(a.entityId!==undefined&&!/^[1-9]\d{0,17}$/.test(a.entityId))))fail('actors');
   if(s.timeline.some(e=>e.date&&!date(e.date))||new Set(s.timeline.map(e=>e.id)).size!==s.timeline.length)fail('timeline');
 }
