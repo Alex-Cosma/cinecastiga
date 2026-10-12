@@ -75,7 +75,7 @@ Politica inițială de 50–70 secunde global, un singur fișier/minut și lipsa
 | 7–8 octombrie, normalizare/paginare | [Recuperare 7 octombrie](../../implementation/recovery-20261007/README.md), [8 octombrie](../../implementation/recovery-20261008/README.md) |
 | 9–10 octombrie, versiuni/republicări noi | [Dovezi și draft](../../implementation/publication-revalidation-20261009/README.md), [publicare încheiată](../../implementation/publication-recovery-20261010/README.md) |
 | 11 octombrie, formate mari/arhive | [Formate](../../implementation/document-formats-20261011.md), [categorii/politică strictă](../../implementation/document-categories-20261011.md) |
-| 11 octombrie, investigații și achiziții neobișnuite | [Runda 1](../../research/20261011-watchdog/), [runda 2](../../research/20261011-watchdog-round2/) |
+| 11 octombrie, investigații și achiziții neobișnuite | Runda 1 și runda 2: în afara depozitului, `../seap-research/docs/research/` (conțin nume de persoane; nu se versionează) |
 | 11 octombrie, corecția curentă | [Clasificare financiară și identități noi](../../implementation/contract-reporting-integrity-20261011/README.md): local, încă nepublicată; 748 grupuri incerte |
 
 DQ-04 a privit și diferența dintre un inventar/metadata și existența fizică a arhivei; nu transforma orice mențiune de „raw/document” într-o promisiune de PDF descărcat. Raportul auditului precizează obiectul exact al verificării.
