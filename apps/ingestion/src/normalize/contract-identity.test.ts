@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {assessContractIdentity,assessContractPublicationGroup,assessContractVersions,contractIdentitySignature,type IdentityContract,type ArchivedAward} from './contract-identity.js';
+import {assessContractIdentity,assessContractPublicationGroup,assessContractVersions,contractIdentitySignature,versionChangeKind,type IdentityContract,type ArchivedAward} from './contract-identity.js';
 const base:IdentityContract={id:'1',publicId:'101',noticeId:'10',noticeNo:'CAN123',authority:'7',authorityCui:'4278337',number:'C/1',date:'2026-07-06',value:'100',currency:'RON',title:'Contract',lots:'Lot 1',cpv:'45000000-7',procedure:'Licitatie',acquisition:'Lucrari',winners:['20'],winnerCuis:['15219174']};
 const other={...base,id:'2',publicId:'102',noticeId:'11'};
 function sources(c:IdentityContract):ArchivedAward[]{return [
@@ -137,9 +137,15 @@ describe('latest verified contract version',()=>{
   const result=assessContractVersions([base,other,latest],versionSources());
   expect(result.status).toBe('source_verified');expect(result.latestPublicId).toBe('99');expect(result.members).toHaveLength(3);
  });
- it('requires amendment evidence for changed amounts',()=>{
+ it('counts an unflagged amount change at the latest value and records it (owner decision 2026-10-12)',()=>{
   const all=versionSources();all[5]!.payload.items[0].hasModifiedVersions=false;
-  expect(assessContractVersions([base,other,latest],all).reasons).toContain('missing_amendment_evidence');
+  const r=assessContractVersions([base,other,latest],all);
+  expect(r.status).toBe('source_verified');expect(r.latestPublicId).toBe('99');
+  expect(r.versionChanges).toEqual([{from:'102',to:'99',kind:'value_changed_without_amendment'}]);
+ });
+ it('still requires amendment evidence when the amount and the title change without amendment wording',()=>{
+  const all=versionSources();all[5]!.payload.items[0].hasModifiedVersions=false;all[5]!.payload.items[0].contractTitle='Contract nr. 9';
+  expect(assessContractVersions([base,other,{...latest,title:'Contract nr. 9'}],all).reasons).toContain('missing_amendment_evidence');
  });
  it('refuses ambiguous or missing publication dates',()=>{
   const all=versionSources();all[4]!.payload.noticeStateDate=all[2]!.payload.noticeStateDate;
@@ -157,5 +163,72 @@ describe('latest verified contract version',()=>{
  it('does not merge different dates/lots/procedures or two records in one publication',()=>{
   expect(assessContractVersions([base,other,{...latest,date:'2026-07-07'}],versionSources()).status).toBe('conflict');
   expect(assessContractVersions([base,other,{...latest,noticeId:other.noticeId}],versionSources()).reasons).toContain('ambiguous_multiplicity');
+ });
+});
+
+describe('unflagged republications accepted by owner decision 2026-10-12',()=>{
+ const next={...base,id:'2',publicId:'102',noticeId:'11'};
+ function pair(edit:(item:any)=>void=()=>{}){
+  const all=[...sources(base),...sources(next)];
+  all[0]!.payload.noticeStateDate='2026-10-01T10:00:00+03:00';all[2]!.payload.noticeStateDate='2026-10-02T10:00:00+03:00';
+  edit(all[3]!.payload.items[0]);return all;
+ }
+ it('keeps an identical republication free of extra evidence (approved fingerprints unchanged)',()=>{
+  const r=assessContractVersions([base,next],pair());expect(r.status).toBe('source_verified');expect(r).not.toHaveProperty('versionChanges');
+ });
+ it('accepts a later value set to a placeholder (0,01 lei) as the latest value',()=>{
+  const r=assessContractVersions([base,{...next,value:'0.01'}],pair(i=>Object.assign(i,{contractValue:'0.01',defaultCurrencyContractValue:'0.01'})));
+  expect(r.status).toBe('source_verified');expect(r.latestPublicId).toBe('102');expect(r.versionChanges?.[0]?.kind).toBe('value_changed_without_amendment');
+ });
+ it('accepts consortium members added later with the same value and title, but not replaced members',()=>{
+  const added={...next,winners:['20','21'],winnerCuis:['15219174','391391']};
+  const archive=pair(i=>{delete i.winner;i.winners=[{fiscalNumber:'RO15219174'},{fiscalNumber:'391391'}];});
+  const r=assessContractVersions([base,added],archive);
+  expect(r.status).toBe('source_verified');expect(r.versionChanges).toEqual([{from:'101',to:'102',kind:'winners_completed'}]);
+  const replaced={...next,winners:['21'],winnerCuis:['391391']};
+  expect(assessContractVersions([base,replaced],pair(i=>{i.winner={fiscalNumber:'391391'};})).reasons).toContain('missing_amendment_evidence');
+  expect(versionChangeKind(base,{...added,value:'90'},true)).toBeNull();
+ });
+ it('accepts an amendment named in the later title; a renumbered title stays excluded',()=>{
+  for(const title of ['Contract, ad diminuare nr 23295/09.07.2026','Contract+act aditional','lot 108, Suplim AC lot 108']){
+   const r=assessContractVersions([base,{...next,title,value:'80'}],pair(i=>Object.assign(i,{contractTitle:title,contractValue:80,defaultCurrencyContractValue:80})));
+   expect(r.status).toBe('source_verified');expect(r.versionChanges?.[0]?.kind).toBe('addendum_in_title');
+  }
+  const renumbered='Contract nr. 11';
+  expect(assessContractVersions([base,{...next,title:renumbered}],pair(i=>{i.contractTitle=renumbered;})).reasons).toContain('missing_amendment_evidence');
+ });
+ it('keeps the legacy "valoare modificata prin AA" acceptance without new evidence',()=>{
+  const title='Contract valoare modificata prin AA 1';
+  const r=assessContractVersions([base,{...next,title,value:'80'}],pair(i=>Object.assign(i,{contractTitle:title,contractValue:80,defaultCurrencyContractValue:80})));
+  expect(r.status).toBe('source_verified');expect(r).not.toHaveProperty('versionChanges');
+ });
+});
+
+describe('identification rules approved 2026-10-12',()=>{
+ const nego={...base,procedure:'Negociere fara publicare prealabila',lots:''},nego2={...other,procedure:'Negociere fara publicare prealabila',lots:''};
+ function noProcedure(...cs:IdentityContract[]){
+  return cs.flatMap(c=>{const s=sources(c);delete s[0]!.payload.procedureId;s[0]!.payload.sysProcedureType.text=c.procedure;s[1]!.payload.items[0].lotsCaption=null;return s;});
+ }
+ it('anchors procedure types published without a procedure ID on the award notice, empty lot allowed',()=>{
+  const r=assessContractIdentity([nego,nego2],noProcedure(nego,nego2));
+  expect(r.status).toBe('source_verified');expect(r.proofs[0]!.procedure).toBe('notice:CAN123');
+ });
+ it('still requires a procedure ID and a lot for open tenders',()=>{
+  const open={...base,lots:''},open2={...other,lots:''};
+  const r=assessContractIdentity([open,open2],noProcedure(open,open2));
+  expect(r.reasons).toContain('missing_procedure');expect(r.reasons).toContain('incomplete_identity');
+ });
+ it('treats a Spanish CIF with and without its entity letter as the same registration, stored as published',()=>{
+  const es={...base,winnerCuis:[null],winnerForeignIds:[{entityId:'20',country:'ES',id:'84840685'}]},es2={...other,winnerCuis:[null],winnerForeignIds:[{entityId:'20',country:'ES',id:'84840685'}]};
+  const a=archives();
+  a[1]!.payload.items[0].winner={fiscalNumber:'84840685',address:{countryItem:{localeKey:'ES'}}};
+  a[3]!.payload.items[0].winner={fiscalNumber:'B84840685',address:{countryItem:{localeKey:'ES'}}};
+  const r=assessContractIdentity([es,es2],a);
+  expect(r.status).toBe('source_verified');
+  expect(r.proofs.map(p=>p.winnerKeys)).toEqual([['foreign:ES:84840685'],['foreign:ES:B84840685']]);
+  a[3]!.payload.items[0].winner={fiscalNumber:'B84840686',address:{countryItem:{localeKey:'ES'}}};
+  expect(assessContractIdentity([es,es2],a).status).toBe('conflict');
+  a[3]!.payload.items[0].winner={fiscalNumber:'B84840685',address:{countryItem:{localeKey:'PT'}}};
+  expect(assessContractIdentity([es,es2],a).status).toBe('conflict');
  });
 });
