@@ -2,6 +2,8 @@
 
 Start with [docs/handover/README.md](docs/handover/README.md). It links the current product decisions, architecture, local setup, public database transfer, production operations and known limitations. Read the relevant feature document before changing its semantics. `HANDOFF.md` contains a long chronology; dated older "pending"/"not deployed" notes may be superseded.
 
+The consolidated [11 October handover](docs/handover/20261011/README.md) includes the product/code map, financial semantics, current proxy/document policies and exact unfinished repair state. Check its status page before publishing `fix/contract-reporting-integrity-20261011`; the local cohort rehearsal is not a completed production repair. The owner approved all ceilings separate and temporary, explicit exclusion of uncertain identities; see the 12 October policy report.
+
 - This is an existing, deployed Romanian procurement investigation product. Preserve exact source transparency, private investigation access and frozen evidence. Signals are leads, not proof of wrongdoing; contract amounts are not payments.
 - UI work follows `PRODUCT.md` and `DESIGN.md`; reuse the existing Romanian interface, themes and source workflows.
 - Inspect `git status` and preserve other contributors' work. Prefer a feature branch for collaboration. A push to `main` automatically deploys after CI; do not use it as a scratch branch.

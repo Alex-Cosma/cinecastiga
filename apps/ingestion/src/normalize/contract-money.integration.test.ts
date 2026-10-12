@@ -14,13 +14,13 @@ describe.skipIf(!isolated)('monetary database constraints and publication gate (
     await expect(db.transaction(async tx => {
       const ctx = { tx, cpvCatalog: new Set<string>(), cpvByPrefix: new Map<string,string>(), units: new Map() };
       const payload = { caNoticeId: -900004, items: [{ caNoticeContractId: -900004, caNoticeId: -900004,
-        contractValue: 100, defaultCurrencyContractValue: 500, currencyRate: 5, currency: { text: 'EUR' } }] };
+        contractValue: 100, defaultCurrencyContractValue: 500, currencyRate: 5, currency: { text: 'EUR' },contractType:2 }] };
       await PARSERS['award-contracts:v1']!.load(ctx, -1n, payload);
       await PARSERS['award-contracts:v1']!.load(ctx, -2n, payload);
       const rows = await tx.execute(query`select original_value::text,original_currency,value_ron::text,
-        contract_value::text,currency,amount_raw_id::text from core.contracts where ca_notice_contract_id=-900004`);
+        contract_value::text,currency,amount_raw_id::text,source_contract_type,contract_type_raw_id::text from core.contracts where ca_notice_contract_id=-900004`);
       expect(rows).toHaveLength(1);
-      expect(rows[0]).toMatchObject({original_value:'100',original_currency:'EUR',value_ron:'500',contract_value:'500',currency:'EUR',amount_raw_id:'-2'});
+      expect(rows[0]).toMatchObject({original_value:'100',original_currency:'EUR',value_ron:'500',contract_value:'500',currency:'EUR',amount_raw_id:'-2',source_contract_type:2,contract_type_raw_id:'-2'});
       throw rollback;
     })).rejects.toBe(rollback);
   });
@@ -31,7 +31,7 @@ describe.skipIf(!isolated)('monetary database constraints and publication gate (
       await q`insert into core.contracts(id,raw_id,ca_notice_id,ca_notice_contract_id,contract_value,currency)
         values(-900001,1,null,-900001,100,'RON'),(-900002,1,null,-900002,500,'EUR'),(-900003,-900010,-900010,-900003,500,'EUR')`;
       const source = {caNoticeId:-900010,items:[{caNoticeId:-900010,caNoticeContractId:-900003,contractValue:100,
-        defaultCurrencyContractValue:500,currencyRate:5,currency:{text:'EUR'}}]};
+        defaultCurrencyContractValue:500,currencyRate:5,currency:{text:'EUR'},contractType:3}]};
       await q`insert into raw.raw_documents(id,source,external_id,endpoint_version,content_hash,payload)
         values(-900010,'elicitatie','award:-900010','award-contracts:v1',${'0'.repeat(64)},${JSON.stringify(source)}::jsonb)`;
       const money = normalizeContractMoney({contractValue:100,defaultCurrencyContractValue:500,currencyRate:5,currency:{text:'EUR'}});
@@ -42,6 +42,11 @@ describe.skipIf(!isolated)('monetary database constraints and publication gate (
         from core.contracts c where c.id between -900003 and -900001 order by c.id`;
       expect(rows.map(r=>[r.id,r.ron,r.original])).toEqual([['-900003','500','100'],['-900002',null,null],['-900001','100','100']]);
       expect((await readContractMoneyQuality(q)).sourceErrors).toBe(0);
+      await q`update core.contracts set source_contract_type=3,contract_type_raw_id=raw_id where id=-900003`;
+      expect((await readContractMoneyQuality(q)).sourceErrors).toBe(0);
+      await q`update core.contracts set source_contract_type=2 where id=-900003`;
+      expect((await readContractMoneyQuality(q)).sourceErrors).toBeGreaterThan(0);
+      await q`update core.contracts set source_contract_type=3 where id=-900003`;
       // Numerically coherent, but different from the archived original:
       await q`update core.contracts set original_value=101,value_ron=505 where id=-900003`;
       expect((await readContractMoneyQuality(q)).sourceErrors).toBeGreaterThan(0);

@@ -29,3 +29,6 @@ next-env.d.ts
 
 # Isolated proxy admin preview
 /.next-proxy-preview/
+
+# Isolated contract-reporting verification build
+/.next-reporting-review/

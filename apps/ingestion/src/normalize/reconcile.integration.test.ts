@@ -33,7 +33,7 @@ async function fixture(run: (q: DbSql) => Promise<void>) {
       for (const table of ["ted_notices", "ted_lot_results", "ted_lot_winners", "awards", "contracts", "contract_winners", "entities"]) {
         await tx.unsafe(`create table ${prefix}.${table} as table core.${table} with no data`);
       }
-      for (const table of ["contract_identity_members","contract_identity_decisions","contract_identity_candidates","contract_identity_observations"]) {
+      for (const table of ["contract_identity_exclusions", "contract_identity_archives", "contract_identity_members","contract_identity_decisions","contract_identity_candidates","contract_identity_observations"]) {
         await tx.unsafe(`create table ${prefix}.${table} as table marts.${table} with no data`);
       }
       const q = isolatedSql(tx as unknown as DbSql, prefix);

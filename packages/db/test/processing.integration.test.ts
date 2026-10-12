@@ -1,6 +1,7 @@
 import {afterAll,beforeEach,describe,expect,it} from 'vitest';
 import {createDb} from '../src/client.js';
 import {claimProcessing,claimRepairProcessing,processingStage,failProcessing,finishProcessing,processingSchedule} from '../src/processing.js';
+import {CONTRACT_REPORTING_VERSION} from '../src/contract-reporting.js';
 const url=process.env['TEST_DATABASE_URL'];
 if(url&&!/^seap_test_/.test(new URL(url).pathname.slice(1)))throw Error('Isolated test database required');
 const suite=url?describe:describe.skip;
@@ -11,6 +12,8 @@ suite('scheduled publication state machine (no network)',()=>{
   await q`insert into app.collection_control(id) values(1) on conflict do nothing`;
   await q`update app.collection_control set revision=1,paused=false,maintenance=false,collection_during_maintenance=false,blocked_reason=null,
     processing_enabled=true,processing_enabled_at='2026-09-26T00:00:00Z',processing_time='05:00',risk_weekday=0 where id=1`;
+  await q`insert into app.monitoring_refreshes(kind,status,completed_at,methodology)
+    values('coordinated','ready',clock_timestamp(),${JSON.stringify({contractReporting:CONTRACT_REPORTING_VERSION})}::jsonb)`;
  });
  afterAll(async()=>{await q.end({timeout:5});});
  const sunday=new Date('2026-09-27T02:00:00Z'),monday=new Date('2026-09-28T02:00:00Z');

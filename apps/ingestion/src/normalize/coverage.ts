@@ -1,4 +1,4 @@
-import type { DbSql } from "@seap/db";
+import { contractKind, contractReportable, contractRonValue, frameworkHasCalloffs, type DbSql } from "@seap/db";
 import { TED_NORMALIZATION_VERSION } from "./ted.js";
 
 /** Persist expensive counts once per refresh. Publish all observations atomically. */
@@ -28,11 +28,23 @@ export async function runCoverage(sql: DbSql): Promise<void> {
           count(*) filter (where contract_date is null)::text missing_date,
           count(*) filter (where cpv_code is null)::text missing_cpv,
           count(*) filter (where currency is null)::text missing_currency,
+          count(*) filter (where ${contractKind(q)}='amendment')::text non_additive_amendments,
+          count(*) filter (where ${contractKind(q)}='review')::text unverified_contract_type,
+          count(*) filter (where ${contractKind(q)}='framework')::text framework_publications,
+          count(*) filter (where ${contractKind(q)}='framework' and not ${frameworkHasCalloffs(q)})::text frameworks_without_identified_calloffs,
           min(contract_date)::date::text date_from, max(contract_date)::date::text date_to
-        from core.contracts
+        from core.contracts c
       ), included as (
         select count(distinct contract_id)::text included, count(*)::text allocations from marts.contract_transactions where closing_value > 0
-      ) select 'contracts', to_jsonb(ct) || jsonb_build_object('included', included.included, 'allocations', included.allocations), now() from ct cross join included
+      ) select 'contracts', to_jsonb(ct) || jsonb_build_object('included', included.included, 'allocations', included.allocations,
+        'temporarily_excluded_groups',(select count(distinct candidate_id)::text from marts.contract_identity_exclusions),
+        'temporarily_excluded_publications',(select count(*)::text from marts.contract_identity_exclusions),
+        'temporarily_excluded_financial_groups',(select count(distinct x.candidate_id)::text
+          from marts.contract_identity_exclusions x join core.contracts c on c.id=x.contract_id
+          join core.awards a using(ca_notice_id)
+          where (${contractReportable(q)}) and ${contractRonValue(q)}>0 and ${contractRonValue(q)}<=1000000000
+            and c.contract_date is not null and a.authority_entity_id is not null
+            and exists(select 1 from core.contract_winners w where w.contract_id=c.id))), now() from ct cross join included
       on conflict (dataset) do update set observation = excluded.observation, calculated_at = excluded.calculated_at
     `;
     await q`

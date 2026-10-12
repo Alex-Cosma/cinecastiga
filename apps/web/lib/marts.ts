@@ -1,4 +1,4 @@
-import { contractRonValue, contractOriginalValue, contractOriginalCurrency, contractAmountStatus } from "@seap/db";
+import { contractRonValue, contractOriginalValue, contractOriginalCurrency, contractAmountStatus, contractKind, contractReportable, contractTemporarilyExcluded } from "@seap/db";
 import { canonicalEntityId } from "@seap/db";
 import { tedPagination, tedCountryFilter, TED_COUNTRY_UNRESOLVED } from "./ted";
 import { createDb, type DbSql } from "@seap/db";
@@ -1194,6 +1194,9 @@ export interface ContractDetail {
   noticeLotCount: number;
   publications: {natId:string;noticeId:string;noticeNo:string|null;canonical:boolean;publishedOn:string|null;valueRon:string|null;title:string|null;supplierIds:string[];supplierNames:string[]}[];
   countedOnce: boolean;
+  financialKind: string;
+  nonAdditive: boolean;
+  excludedIdentity: string | null;
 }
 
 export async function getContractDetail(natId: string): Promise<ContractDetail | null> {
@@ -1201,6 +1204,8 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
   const nid = /^\d+$/.test(natId) ? natId : "0";
   const rows = (await sql`
     select c.id, c.ca_notice_contract_id nat_id, c.contract_no, c.title, c.lots_caption,
+           ${contractKind(sql)} financial_kind, not (${contractReportable(sql)}) non_additive,
+           (select x.candidate_id from marts.contract_identity_exclusions x where x.contract_id=c.id) excluded_identity,
            to_char(c.contract_date at time zone 'Europe/Bucharest', 'YYYY-MM-DD') contract_date, ${contractOriginalValue(sql)}::text contract_value, ${contractOriginalCurrency(sql)} currency,
            ${contractRonValue(sql)}::text value_ron, ${contractAmountStatus(sql)} amount_status, c.currency_rate::text, coalesce(c.cpv_code, a.cpv_code) cpv_code,
            c.cpv_code is null and a.cpv_code is not null cpv_from_notice,
@@ -1306,6 +1311,9 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
   return {
     publications:publications.map(p=>({natId:String(p.nat_id),noticeId:String(p.notice_id),noticeNo:p.notice_no as string|null,canonical:p.canonical===true,publishedOn:p.published_on as string|null,valueRon:p.value_ron as string|null,title:p.title as string|null,supplierIds:p.supplier_ids as string[],supplierNames:p.supplier_names as string[]})),
     countedOnce:publications.length>1&&mart.length>0,
+    financialKind:String(r["financial_kind"]),
+    nonAdditive:r["non_additive"]===true,
+    excludedIdentity:r["excluded_identity"] == null ? null : String(r["excluded_identity"]),
     natId: String(r["nat_id"]),
     contractId,
     contractNo: (r["contract_no"] as string | null) ?? null,
@@ -1372,6 +1380,8 @@ export interface NoticeLot {
   title: string | null;
   contractDate: string | null;
   contractValue: number | null;
+  financialKind: string;
+  temporarilyExcluded: boolean;
   winners: { entityId: string; name: string | null }[];
 }
 
@@ -1391,6 +1401,7 @@ export interface AwardNoticeDetail {
   tedNoticeNo: string | null;
   nLots: number;
   totalContractValue: number | null;
+  frameworkValue: number | null;
   lots: NoticeLot[];
   page: number;
   pageSize: number;
@@ -1420,15 +1431,19 @@ export async function getAwardNoticeDetail(
   if (!h) return null;
 
   const agg = (await sql`
-    select count(*)::int n, sum(${contractRonValue(sql)}) total
+    select count(*)::int n,
+      sum(${contractRonValue(sql)}) filter(where (${contractReportable(sql)}) and not ${contractTemporarilyExcluded(sql)}) total,
+      sum(${contractRonValue(sql)}) filter(where ${contractKind(sql)}='framework') frameworks
     from core.contracts c where ca_notice_id = ${cid}
-  `) as unknown as { n: number; total: string | null }[];
+  `) as unknown as { n: number; total: string | null; frameworks: string | null }[];
   const nLots = Number(agg[0]?.n ?? 0);
   const offset = (Math.max(1, page) - 1) * pageSize;
 
   const lots = (await sql`
     select c.id, c.ca_notice_contract_id nat_id, c.contract_no, c.title,
-           c.contract_date::text, ${contractRonValue(sql)} contract_value
+           to_char(c.contract_date at time zone 'Europe/Bucharest','YYYY-MM-DD') contract_date,
+           ${contractRonValue(sql)} contract_value, ${contractKind(sql)} financial_kind,
+           ${contractTemporarilyExcluded(sql)} temporarily_excluded
     from core.contracts c
     where c.ca_notice_id = ${cid}
     order by ${contractRonValue(sql)} desc nulls last, c.id
@@ -1478,12 +1493,15 @@ export async function getAwardNoticeDetail(
     tedNoticeNo: (h["ted_no"] as string | null) ?? null,
     nLots,
     totalContractValue: agg[0]?.total != null ? Number(agg[0].total) : null,
+    frameworkValue: agg[0]?.frameworks != null ? Number(agg[0].frameworks) : null,
     lots: lots.map((l) => ({
       natId: String(l["nat_id"]),
       contractNo: (l["contract_no"] as string | null) ?? null,
       title: (l["title"] as string | null) ?? null,
       contractDate: (l["contract_date"] as string | null) ?? null,
       contractValue: l["contract_value"] != null ? Number(l["contract_value"]) : null,
+      financialKind: String(l["financial_kind"]),
+      temporarilyExcluded: l["temporarily_excluded"] === true,
       winners: winnersByLot.get(String(l["id"])) ?? [],
     })),
     page: Math.max(1, page),

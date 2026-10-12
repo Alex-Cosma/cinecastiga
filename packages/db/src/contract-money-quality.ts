@@ -21,13 +21,14 @@ export async function readContractMoneyQuality(q: DbSql, previousBoundary?: stri
   // separately. Expand each referenced response once, not once per contract.
   const [source] = await q`
     with verified as materialized (
-      select id,raw_id,ca_notice_id,ca_notice_contract_id,original_value,original_currency,currency_rate,value_ron,amount_status,amount_evidence->>'reportedRon' reported_ron
+      select id,raw_id,ca_notice_id,ca_notice_contract_id,original_value,original_currency,currency_rate,value_ron,amount_status,amount_evidence->>'reportedRon' reported_ron,
+        source_contract_type,contract_type_raw_id
       from core.contracts where amount_status in ('ron','converted')
     ), docs as materialized (
       select r.id,r.payload from raw.raw_documents r
       where r.endpoint_version='award-contracts:v1' and r.id in(select raw_id from verified)
     ), items as materialized (
-      select d.id,item->>'caNoticeContractId' contract_id,
+      select d.id,item->>'caNoticeContractId' contract_id,item->>'contractType' contract_type,
         coalesce(item->>'caNoticeId',d.payload->>'caNoticeId') parent,
         item->>'contractValue' original,
         item->>'currencyRate' rate,item->>'defaultCurrencyContractValue' reported,
@@ -37,6 +38,8 @@ export async function readContractMoneyQuality(q: DbSql, previousBoundary?: stri
     ), compared as (
       select v.id,count(i.id) copies,
         bool_and(i.parent is not distinct from v.ca_notice_id::text
+          and (v.contract_type_raw_id is null or (v.contract_type_raw_id=v.raw_id
+            and i.contract_type is not distinct from v.source_contract_type::text))
           and case when i.original ~ '^-?[0-9]+([.][0-9]+)?([eE][+-]?[0-9]+)?$'
             then i.original::numeric=v.original_value else false end
           and i.currency=v.original_currency

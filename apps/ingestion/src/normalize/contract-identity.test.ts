@@ -46,6 +46,56 @@ describe('contract publication identity evidence (never an implicit merge)',()=>
  it('changes the fingerprint when evidence changes; previous decisions cannot be silently reused',()=>{
   const a=archives(),before=assessContractIdentity([base,other],a);a[3]!.hash='new-hash';expect(assessContractIdentity([base,other],a).fingerprint).not.toBe(before.fingerprint);
  });
+ it('accepts a source-verified foreign-currency equivalent without inventing an exchange rate',()=>{
+  const a=archives();for(const source of a.filter(x=>x.endpoint==='award-contracts:v1'))Object.assign(source.payload.items[0],{contractValue:'20',defaultCurrencyContractValue:'100',currencyRate:'5',currency:{text:'EUR'}});
+  const r=assessContractIdentity([base,other],a);
+  expect(r.status).toBe('source_verified');
+  expect(r.proofs[0]!.money).toEqual({originalCurrency:'EUR',originalValue:'20',valueRon:'100',currencyRate:'5'});
+  delete a[3]!.payload.items[0].currencyRate;
+  expect(assessContractIdentity([base,other],a).reasons).toContain('archive_disagrees_with_core');
+  a[3]!.payload.items[0].currencyRate='4';
+  expect(assessContractIdentity([base,other],a).reasons).toContain('archive_disagrees_with_core');
+ });
+ it('does not equate different original currencies or amounts just because their RON equivalents match',()=>{
+  const a=archives();Object.assign(a[3]!.payload.items[0],{contractValue:'20',currencyRate:'5',currency:{text:'EUR'}});
+  expect(assessContractIdentity([base,other],a).reasons).toContain('different_source_currency');
+  Object.assign(a[1]!.payload.items[0],{contractValue:'25',currencyRate:'4',currency:{text:'EUR'}});
+  expect(assessContractIdentity([base,other],a).reasons).toContain('different_source_money');
+ });
+ it('verifies foreign participants against country and registration id in every archived publication',()=>{
+  const members=[base,other].map(c=>({...c,winnerCuis:[null],winnerForeignIds:[{entityId:'20',country:'NL',id:'NL817417813B01'}]}));
+  const a=archives();for(const source of a.filter(x=>x.endpoint==='award-contracts:v1'))source.payload.items[0].winner={fiscalNumber:'NL 817417813B01',address:{countryItem:{localeKey:'NL'}}};
+  const verified=assessContractIdentity(members,a);
+  expect(verified.status).toBe('source_verified');expect(verified.proofs[0]!.winnerKeys).toEqual(['foreign:NL:NL817417813B01']);
+  a[3]!.payload.items[0].winner.address.countryItem.localeKey='BE';
+  expect(assessContractIdentity(members,a).reasons).toContain('archive_disagrees_with_core');
+  delete a[3]!.payload.items[0].winner.address;
+  expect(assessContractIdentity(members,a).reasons).toContain('archive_disagrees_with_core');
+ });
+ it.each(['RO','', 'ZZZ'])('does not manufacture a foreign identity from country %s',country=>{
+  const members=[base,other].map(c=>({...c,winnerCuis:[null],winnerForeignIds:[{entityId:'20',country,id:'NL817417813B01'}]}));
+  expect(assessContractIdentity(members,archives()).reasons).toContain('incomplete_identity');
+ });
+ it('requires a foreign reference to belong to the actual core participant and rejects placeholder registration IDs',()=>{
+  for(const ref of [{entityId:'21',country:'NL',id:'NL817417813B01'},{entityId:'20',country:'NL',id:'NULL'}]){
+   const members=[base,other].map(c=>({...c,winnerCuis:[null],winnerForeignIds:[ref]}));
+   expect(assessContractIdentity(members,archives()).reasons).toContain('incomplete_identity');
+  }
+ });
+ it('reuses only the narrowly reviewed source correction and records it in the proof',()=>{
+  const changed={...other,publicId:'108105778',winnerCuis:['391391']};
+  const first={...base,winnerCuis:['391391']};const a=[...sources(first),...sources(changed)];
+  a[1]!.payload.items[0].winner={entityId:123,fiscalNumber:'391391',name:'THEOTOP'};
+  a[3]!.payload.items[0].winner={entityId:64188,fiscalNumber:'5394305',name:'THEOTOP'};
+  const r=assessContractIdentity([first,changed],a);
+  expect(r.status).toBe('source_verified');expect(r.proofs[1]!.reviewedWinners).toHaveLength(1);
+  a[3]!.payload.items[0].winner.name='ANOTHER COMPANY';
+  expect(assessContractIdentity([first,changed],a).reasons).toContain('archive_disagrees_with_core');
+ });
+ it('keeps malformed fiscal identifiers under review instead of throwing from a reviewed correction',()=>{
+  const a=archives();a[3]!.payload.items[0].winner={fiscalNumber:123456,name:42};
+  expect(assessContractIdentity([base,other],a).reasons).toContain('archive_disagrees_with_core');
+ });
 });
 
 describe('source verification of additional publications',()=>{

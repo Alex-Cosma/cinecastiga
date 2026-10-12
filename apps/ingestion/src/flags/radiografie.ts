@@ -1,3 +1,4 @@
+import { contractKind } from '@seap/db';
 import type { DbSql } from "@seap/db";
 import { DA_CPV_TYPE_PATTERN } from "@seap/domain";
 import { assertCeilingEras, daThresholdDateSql, daThresholdKeySql } from "./thresholds.js";
@@ -91,8 +92,7 @@ async function buildSupplierDependency(sql: DbSql): Promise<number> {
     with c as (
       select ct.authority_id a, ct.supplier_id s, ct.closing_value v,
              left(ct.finalization_date, 4)::int y,
-             (coalesce(m.assignment_type, '') like 'Acord%'
-               and coalesce(source_contract.title, '') !~* 'subsecvent') fr,
+             (${contractKind(sql, 'source_contract')}='framework') fr,
              ct.is_single_bidder sb, ct.tenders_received tr
       from marts.contract_transactions ct
       left join core.notice_meta m on m.notice_no = ct.notice_no

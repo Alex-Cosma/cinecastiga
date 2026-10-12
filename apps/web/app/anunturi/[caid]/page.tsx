@@ -73,13 +73,13 @@ export default async function NoticePage({
       <div className="stat-grid">
         <div className="stat">
           <div className="n">{formatInt(n.nLots)}</div>
-          <div className="l">{n.nLots === 1 ? "Contract atribuit" : "Contracte atribuite (loturi)"}</div>
+          <div className="l">Înregistrări publicate</div>
         </div>
         <div className="stat">
           <div className="n">
             {n.totalContractValue != null ? formatRon(n.totalContractValue) : "—"}
           </div>
-          <div className="l">Suma contractelor</div>
+          <div className="l">Contracte și comenzi identificate</div>
         </div>
         <div className="stat">
           <div className="n">{n.awardValueRon != null ? formatRon(n.awardValueRon) : "—"}</div>
@@ -102,10 +102,10 @@ export default async function NoticePage({
       </div>
 
       <section className="section">
-        <h2>Contractele din acest anunț</h2>
+        <h2>Înregistrările din acest anunț</h2>
         {pages > 1 && (
           <p className="hint">
-            {formatInt(n.nLots)} contracte · pagina {n.page} din {formatInt(pages)} · ordonate
+            {formatInt(n.nLots)} înregistrări · pagina {n.page} din {formatInt(pages)} · ordonate
             după valoare
           </p>
         )}
@@ -126,9 +126,12 @@ export default async function NoticePage({
                 <td className="county">{l.contractNo ?? "—"}</td>
                 <td>
                   {cleanName(l.title) || "—"}
-                  {l.title && /acord[- ]cadru/i.test(l.title) && !/subsecvent/i.test(l.title) && (
+                  {l.financialKind === 'framework' && (
                     <span className="county"> · plafon, nu comandă</span>
                   )}
+                  {l.financialKind === 'amendment' && <span className="county"> · act adițional, neaditiv</span>}
+                  {l.temporarilyExcluded && <span className="county"> · exclus temporar din totaluri; motivul este în pagina contractului</span>}
+                  {l.financialKind === 'review' && <span className="county"> · tip neclar, de verificat</span>}
                 </td>
                 <td>
                   {l.winners.length === 0
@@ -163,10 +166,11 @@ export default async function NoticePage({
       </section>
 
       <p className="note">
-        „Valoare atribuită” e cifra declarată pe anunț; „Suma contractelor” adună valorile
-        contractelor individuale — pot diferi (acorduri-cadru cu plafoane, loturi neatribuite).
-        Rândurile „acord-cadru” sunt plafoane: banii efectivi sunt contractele subsecvente, iar în
-        statisticile noastre plafonul nu se adună când comenzile lui sunt și ele publicate.
+        „Valoare atribuită” este cifra declarată pe anunț. „Contracte și comenzi identificate” însumează
+        contractele și subsecventele acestei publicații; plafoanele, actele adiționale și tipurile neclare sunt separate.
+        {n.frameworkValue != null && <> Plafoane publicate: {formatRonFull(n.frameworkValue)}.</>}
+        {" "}Lipsa comenzilor identificate nu înseamnă cheltuieli zero. Nu aduna totalurile republicărilor
+        aceluiași contract; profilurile folosesc identitățile verificate. Valorile nu dovedesc plăți.
       </p>
     </>
   );
