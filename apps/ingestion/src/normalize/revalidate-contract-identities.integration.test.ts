@@ -99,8 +99,17 @@ describe.skipIf(!isolated)('backed-up publication evidence revalidation',()=>{
    fourth[1]!.payload.caNoticeId=400;Object.assign(fourth[1]!.payload.items[0],{caNoticeId:400,caNoticeContractId:104,contractValue:110,defaultCurrencyContractValue:110,hasModifiedVersions:true,modifiedCount:1});
    for(let i=0;i<fourth.length;i++)await q`insert into raw.raw_documents(id,source,external_id,endpoint_version,content_hash,payload)
     values(${40+i},'elicitatie','award:400',${fourth[i]!.endpoint},${'fourth-'+i},${JSON.stringify(fourth[i]!.payload)}::jsonb)`;
+   // Owner decision 2026-10-12: an unflagged amount-only change is accepted and
+   // recorded; a changed title without amendment wording still needs proof.
+   const unflagged=Error('unflagged accepted');
    await expect(q.begin(async nested=>{
     await nested`update raw.raw_documents set payload=jsonb_set(payload,'{items,0,hasModifiedVersions}','false') where id=41`;
+    expect((await revalidateApprovedContractIdentities(nested as unknown as DbSql,run)).quality.valid).toBe(true);
+    throw unflagged;
+   })).rejects.toBe(unflagged);
+   await expect(q.begin(async nested=>{
+    await nested`update raw.raw_documents set payload=jsonb_set(jsonb_set(payload,'{items,0,hasModifiedVersions}','false'),'{items,0,contractTitle}','"Contract nr. 9"') where id=41`;
+    await nested`update core.contracts set title='Contract nr. 9' where id=4`;
     await revalidateApprovedContractIdentities(nested as unknown as DbSql,run);
    })).rejects.toThrow('missing_amendment_evidence');
    await expect(q.begin(async nested=>{

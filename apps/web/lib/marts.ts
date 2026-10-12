@@ -1192,7 +1192,7 @@ export interface ContractDetail {
   flags: { code: string; severity: number | null; evidence: Record<string, unknown> | null }[];
   /** how many contracts (lots) the same award notice produced */
   noticeLotCount: number;
-  publications: {natId:string;noticeId:string;noticeNo:string|null;canonical:boolean;publishedOn:string|null;valueRon:string|null;title:string|null;supplierIds:string[];supplierNames:string[]}[];
+  publications: {natId:string;noticeId:string;noticeNo:string|null;canonical:boolean;publishedOn:string|null;valueRon:string|null;title:string|null;supplierIds:string[];supplierNames:string[];unflaggedChange:string|null}[];
   countedOnce: boolean;
   financialKind: string;
   nonAdditive: boolean;
@@ -1231,6 +1231,8 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
   const publications = await sql`
     select c.ca_notice_contract_id::text nat_id,c.ca_notice_id::text notice_id,a.notice_no,
       c.id=d.canonical_contract_id canonical,d.canonical_contract_id::text canonical_id,
+      (select k->>'kind' from marts.contract_identity_candidates x cross join jsonb_array_elements(x.evidence->'versionChanges') k
+        where x.id=d.candidate_id and k->>'to'=c.ca_notice_contract_id::text limit 1) unflagged_change,
       to_char(a.state_date at time zone 'Europe/Bucharest','YYYY-MM-DD') published_on,
       trim_scale(${contractRonValue(sql)})::text value_ron,c.title,
       array(select w.entity_id::text from core.contract_winners w where w.contract_id=c.id order by w.entity_id) supplier_ids,
@@ -1309,7 +1311,7 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
   }
 
   return {
-    publications:publications.map(p=>({natId:String(p.nat_id),noticeId:String(p.notice_id),noticeNo:p.notice_no as string|null,canonical:p.canonical===true,publishedOn:p.published_on as string|null,valueRon:p.value_ron as string|null,title:p.title as string|null,supplierIds:p.supplier_ids as string[],supplierNames:p.supplier_names as string[]})),
+    publications:publications.map(p=>({natId:String(p.nat_id),noticeId:String(p.notice_id),noticeNo:p.notice_no as string|null,canonical:p.canonical===true,publishedOn:p.published_on as string|null,valueRon:p.value_ron as string|null,title:p.title as string|null,supplierIds:p.supplier_ids as string[],supplierNames:p.supplier_names as string[],unflaggedChange:(p.unflagged_change as string|null)??null})),
     countedOnce:publications.length>1&&mart.length>0,
     financialKind:String(r["financial_kind"]),
     nonAdditive:r["non_additive"]===true,

@@ -26,6 +26,18 @@ function foreignKey(country:unknown,id:unknown) {
  const c=normCountry(typeof country==='string'?country:null),n=normForeignId(typeof id==='string'?id:null);
  return c&&/^[A-Z]{2}$/.test(c)&&c!=='RO'&&n&&/\d/.test(n)?`foreign:${c}:${n}`:null;
 }
+/** Owner decision 2026-10-12: a Spanish CIF with and without its leading
+ * entity-type letter (B84840685 / 84840685) is the same registration when the
+ * country already matches. Used ONLY for equality; proofs keep the source form,
+ * so fingerprints of existing approvals do not change. */
+const comparableKey=(k:string|null)=>k?.replace(/^foreign:ES:[ABCDEFGHJNPQRSUVW](\d{8})$/,'foreign:ES:$1')??null;
+const comparableKeys=(x:(string|null)[])=>sorted(x.map(comparableKey));
+/** Procedure types SEAP publishes without a prior procedure: the list carries
+ * no procedureId by design and contracts have no lot caption. The award notice
+ * number (with authority, contract number, date and winners) is the anchor. */
+const NO_PROCEDURE_ID_TYPES=new Set(['Negociere fara publicare prealabila','Norme proprii (Anexa 2)','Procedura simplificata proprie']);
+/** Explicit amendment wording in a later publication title. */
+const ADDENDUM_TITLE=/valoare modificata prin AA |act\s*adi[tț]ional|\bad\s+(?:diminuare|majorare|suplimentare)\b|\bsuplim(?:entare)?\s+AC\b/i;
 function coreWinnerKeys(c:IdentityContract) {
  return c.winners.map((entityId,i)=>{
   const fiscal=cui(c.winnerCuis[i]);if(fiscal)return fiscal;
@@ -68,6 +80,23 @@ export function assessContractVersions(members:IdentityContract[],archives:Archi
 export function assessContractSource(member:IdentityContract,archives:ArchivedAward[]) {
  return assessPublications([member],archives,true,false,true);
 }
+export type VersionChangeKind='value_changed_without_amendment'|'winners_completed'|'addendum_in_title';
+/** Owner decisions 2026-10-12 for a later publication of the same version
+ * anchor that SEAP does not flag as modified. Only these changes are accepted;
+ * the latest verified publication is then counted once, earlier ones stay visible.
+ * - value changed, title and winners identical: the latest published value counts;
+ * - same value and title, winners only added (earlier set strictly contained);
+ * - title names an amendment (act adițional, ad diminuare…), winners identical.
+ * A changed title without amendment wording (e.g. renumbered) stays excluded. */
+export function versionChangeKind(old:IdentityContract,next:IdentityContract,valueChanged:boolean):VersionChangeKind|null {
+ const ow=sorted(old.winners),nw=sorted(next.winners);
+ const sameWinners=JSON.stringify(ow)===JSON.stringify(nw);
+ const titleChanged=(old.title??'')!==(next.title??'');
+ if(!titleChanged&&sameWinners&&valueChanged)return 'value_changed_without_amendment';
+ if(!titleChanged&&!valueChanged&&!sameWinners&&ow.length>0&&ow.every(w=>nw.includes(w)))return 'winners_completed';
+ if(titleChanged&&sameWinners&&ADDENDUM_TITLE.test(next.title??''))return 'addendum_in_title';
+ return null;
+}
 function assessPublications(members:IdentityContract[],archives:ArchivedAward[],extended:boolean,versions=false,single=false) {
  archives=[...archives].sort((a,b)=>`${a.source}:${a.rawId}:${a.hash}`.localeCompare(`${b.source}:${b.rawId}:${b.hash}`));
  const ordered=[...members].sort((a,b)=>a.id.localeCompare(b.id,'en',{numeric:true}));
@@ -75,7 +104,7 @@ function assessPublications(members:IdentityContract[],archives:ArchivedAward[],
  if((extended?ordered.length<(single?1:2):ordered.length!==2)||new Set(ordered.map(x=>x.noticeId)).size!==ordered.length||new Set(ordered.map(x=>x.publicId)).size!==ordered.length||new Set(ordered.map(x=>x.id)).size!==ordered.length)reasons.push('ambiguous_multiplicity');
  if(new Set(ordered.map(versions?contractVersionAnchor:contractIdentitySignature)).size!==1)reasons.push('different_contract_fields');
  for(const c of ordered) {
-  if(!c.number?.trim()||!c.date||!c.title?.trim()||!c.lots?.trim()||!c.cpv||!c.procedure||!c.acquisition||!c.authority||!cui(c.authorityCui)||!c.winners.length||c.winnerCuis.length!==c.winners.length||coreWinnerKeys(c).some(x=>!x)||c.currency!=='RON'||numeric(c.value)===null)reasons.push('incomplete_identity');
+  if(!c.number?.trim()||!c.date||!c.title?.trim()||(!c.lots?.trim()&&!NO_PROCEDURE_ID_TYPES.has(c.procedure??''))||!c.cpv||!c.procedure||!c.acquisition||!c.authority||!cui(c.authorityCui)||!c.winners.length||c.winnerCuis.length!==c.winners.length||coreWinnerKeys(c).some(x=>!x)||c.currency!=='RON'||numeric(c.value)===null)reasons.push('incomplete_identity');
  }
  const proofs:Record<string,unknown>[]=[];
  const procedures:string[]=[];
@@ -87,11 +116,12 @@ function assessPublications(members:IdentityContract[],archives:ArchivedAward[],
   const authorityMatches=notices.filter(a=>cui(c.authorityCui)&&authorityCui(a.payload.contractingAuthorityNameAndFN)===cui(c.authorityCui));
   if(notices.some(a=>!authorityCui(a.payload.contractingAuthorityNameAndFN)))reasons.push('archive_authority_unverified');
   if(notices.some(a=>authorityCui(a.payload.contractingAuthorityNameAndFN)&&cui(c.authorityCui)&&authorityCui(a.payload.contractingAuthorityNameAndFN)!==cui(c.authorityCui)))reasons.push('archive_authority_disagrees');
-  const goodNotices=authorityMatches.filter(a=>a.payload.procedureId!=null);
+  const noProcedureId=authorityMatches.length>0&&authorityMatches.every(a=>a.payload.procedureId==null&&NO_PROCEDURE_ID_TYPES.has(a.payload.sysProcedureType?.text)&&a.payload.sysProcedureType?.text===c.procedure);
+  const goodNotices=authorityMatches.filter(a=>a.payload.procedureId!=null||noProcedureId);
   if(authorityMatches.length&&!goodNotices.length)reasons.push('missing_procedure');
   if(!goodNotices.length||!matches.length){if(!notices.length||!matches.length)reasons.push('missing_archive');continue;}
   for(const a of goodNotices)if(!String(a.payload.cpvCodeAndName??'').startsWith(c.cpv+' - ')||a.payload.sysProcedureType?.text!==c.procedure||a.payload.sysAcquisitionContractType?.text!==c.acquisition||a.payload.sysNoticeState?.text!=='Publicat')reasons.push('archive_notice_disagrees_with_core');
-  const procedureIds=[...new Set(goodNotices.map(a=>String(a.payload.procedureId)))];
+  const procedureIds=[...new Set(goodNotices.map(a=>a.payload.procedureId!=null?String(a.payload.procedureId):`notice:${c.noticeNo}`))];
   if(procedureIds.length!==1){reasons.push('conflicting_procedure');continue;}
   procedures.push(procedureIds[0]!);
   const distinct=new Map<string,{a:ArchivedAward;item:any}>();
@@ -100,9 +130,9 @@ function assessPublications(members:IdentityContract[],archives:ArchivedAward[],
    const money=normalizeContractMoney(item);
    const sourceWinners=item.winners?.length?item.winners:item.winner?[item.winner]:[];
    const winnerIds=sorted(sourceWinners.map((w:any)=>sourceWinnerKey(w,c.publicId)));
-   const signature=[String(item.caNoticeId),item.noticeNo,item.contractNo,day(item.contractDate),money.originalCurrency,numeric(money.originalValue),numeric(money.valueRon),item.contractTitle,item.lotsCaption,winnerIds,item.contractType,item.conditions];
+   const signature=[String(item.caNoticeId),item.noticeNo,item.contractNo,day(item.contractDate),money.originalCurrency,numeric(money.originalValue),numeric(money.valueRon),item.contractTitle,item.lotsCaption,comparableKeys(winnerIds),item.contractType,item.conditions];
    distinct.set(hash(signature),m);
-   if(String(item.caNoticeId)!==c.noticeId||item.noticeNo!==c.noticeNo||item.contractNo!==c.number||day(item.contractDate)!==c.date||!['ron','converted'].includes(money.amountStatus)||numeric(money.valueRon)!==numeric(c.value)||item.contractTitle!==c.title||item.lotsCaption!==c.lots||JSON.stringify(winnerIds)!==JSON.stringify(sorted(coreWinnerKeys(c))))reasons.push('archive_disagrees_with_core');
+   if(String(item.caNoticeId)!==c.noticeId||item.noticeNo!==c.noticeNo||item.contractNo!==c.number||day(item.contractDate)!==c.date||!['ron','converted'].includes(money.amountStatus)||numeric(money.valueRon)!==numeric(c.value)||item.contractTitle!==c.title||(item.lotsCaption??'')!==(c.lots??'')||JSON.stringify(comparableKeys(winnerIds))!==JSON.stringify(comparableKeys(coreWinnerKeys(c))))reasons.push('archive_disagrees_with_core');
   }
   if(distinct.size!==1){reasons.push('conflicting_archived_versions');continue;}
   const m=[...distinct.values()][0]!;
@@ -134,6 +164,7 @@ function assessPublications(members:IdentityContract[],archives:ArchivedAward[],
  if(new Set(proofs.map(p=>moneyIdentity(p)[0])).size>1)reasons.push('different_source_currency');
  if(!versions&&new Set(proofs.map(p=>JSON.stringify(moneyIdentity(p)))).size>1)reasons.push('different_source_money');
  let latestPublicId:string|null=null;
+ const versionChanges:{from:string;to:string;kind:VersionChangeKind}[]=[];
  if(versions&&proofs.length===ordered.length){
   const versionsByTime=ordered.map(c=>{const p=proofs.find(p=>p.contract===c.publicId)!;
    const dates=p.publishedAt as unknown[];
@@ -145,12 +176,19 @@ function assessPublications(members:IdentityContract[],archives:ArchivedAward[],
    if(contractIdentitySignature(old.c)===contractIdentitySignature(next.c)&&JSON.stringify(moneyIdentity(old.p))===JSON.stringify(moneyIdentity(next.p)))continue;
    if(next.time<=old.time)reasons.push('ambiguous_version_order');
    const explicitAddendum=/valoare modificata prin AA /i.test(next.c.title??'')&&next.c.title!==old.c.title;
-   if(!(next.p.modificationEvidence as {count:unknown;hasVersions:unknown}[]).some(e=>e.hasVersions===true&&typeof e.count==='number'&&e.count>0)&&!explicitAddendum)reasons.push('missing_amendment_evidence');
+   const flagged=(next.p.modificationEvidence as {count:unknown;hasVersions:unknown}[]).some(e=>e.hasVersions===true&&typeof e.count==='number'&&e.count>0);
+   if(flagged||explicitAddendum)continue; // unchanged legacy acceptance, no extra evidence
+   const kind=versionChangeKind(old.c,next.c,JSON.stringify(moneyIdentity(old.p))!==JSON.stringify(moneyIdentity(next.p)));
+   if(kind)versionChanges.push({from:old.c.publicId,to:next.c.publicId,kind});
+   else reasons.push('missing_amendment_evidence');
   }
   latestPublicId=versionsByTime.at(-1)?.c.publicId??null;
  }
  const unique=[...new Set(reasons)].sort();
  const status=unique.length===0?'source_verified':unique.every(r=>['missing_archive','incomplete_identity','archive_authority_unverified','missing_procedure'].includes(r))?'needs_evidence':'conflict';
  const id=hash(ordered.map(x=>x.publicId));
- return {id,fingerprint:hash([versions?3:extended?2:1,ordered,proofs,unique,status]),status,reasons:unique,members:ordered,proofs,methodology:versions?'contract-identity-3':extended?'contract-identity-2':'contract-identity-1',...(versions?{latestPublicId}:{}),decision:'unreviewed' as const};
+ // Accepted unflagged changes are part of the observed evidence; omitted when
+ // empty so fingerprints of earlier observations stay unchanged.
+ const changes=versionChanges.length?{versionChanges}:{};
+ return {id,fingerprint:hash([versions?3:extended?2:1,ordered,proofs,unique,status,...(versionChanges.length?[changes]:[])]),status,reasons:unique,members:ordered,proofs,...changes,methodology:versions?'contract-identity-3':extended?'contract-identity-2':'contract-identity-1',...(versions?{latestPublicId}:{}),decision:'unreviewed' as const};
 }

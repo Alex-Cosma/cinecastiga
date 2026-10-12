@@ -91,6 +91,11 @@ export default function MetodologiePage() {
         <p>Toate plafoanele acordurilor-cadru sunt separate de totaluri, inclusiv când nu avem subsecvente identificate.
           Însumăm numai contractele și comenzile identificate. Lipsa comenzilor este o limită de acoperire, nu cheltuială zero.
           Folosim tipul declarat de SEAP; pentru istoricul fără tip, folosim descrierea.</p>
+        <p>Când SEAP republică același contract (același anunț, număr, dată, lot și autoritate), îl numărăm o singură dată, la ultima versiune verificată.
+          Acceptăm și versiunile pe care SEAP nu le marchează ca modificate, dacă diferă doar valoarea, dacă se adaugă furnizori fără să dispară vreunul
+          sau dacă titlul numește un act adițional. Astfel de schimbări sunt semnalate pe pagina contractului. Un titlu schimbat fără mențiunea unui act
+          adițional rămâne exclus până la verificare. Pentru procedurile publicate fără identificator de procedură (negociere fără publicare prealabilă,
+          norme proprii) folosim numărul anunțului de atribuire.</p>
         <p>Publicațiile cu identitate incertă sunt excluse temporar din calcule, fără ștergerea surselor.
           <a href="/metodologie/excluderi"> Lista cazurilor, motivele și sursele comparate</a> este publică.
           Le reverificăm la procesarea datelor; reintră în totaluri numai după verificarea identității.

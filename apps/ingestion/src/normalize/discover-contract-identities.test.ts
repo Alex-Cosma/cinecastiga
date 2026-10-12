@@ -22,8 +22,14 @@ describe('new economic identity discovery',()=>{
   const [g]=discoverPublicationGroups([base,copy],sources(copy));
   expect(g!.status).toBe('needs_evidence');expect(g!.reasons).toContain('missing_archive');
  });
- it('does not trust a changed amount without amendment proof',()=>{
+ it('counts an unflagged changed amount once at the latest value, recording the change (owner decision 2026-10-12)',()=>{
   const changed={...copy,value:'22000000'};
+  const [g]=discoverPublicationGroups([base,changed],[...sources(base),...sources(changed)]);
+  expect(g!.status).toBe('source_verified');expect(g!.latestPublicId).toBe('102');
+  expect(g!.versionChanges).toEqual([{from:'101',to:'102',kind:'value_changed_without_amendment'}]);
+ });
+ it('does not trust a changed amount when the title also changes without amendment wording',()=>{
+  const changed={...copy,value:'22000000',title:'Contract carburant nr. 2'};
   const [g]=discoverPublicationGroups([base,changed],[...sources(base),...sources(changed)]);
   expect(g!.reasons).toContain('missing_amendment_evidence');
  });

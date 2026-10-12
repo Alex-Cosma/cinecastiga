@@ -7,7 +7,14 @@ export interface ContractPublication {
  natId:string;noticeId:string;noticeNo:string|null;canonical:boolean;
  publishedOn?:string|null;valueRon?:string|null;title?:string|null;
  supplierIds?:string[];supplierNames?:string[];
+ /** Change accepted without a SEAP modification flag (owner decision 2026-10-12). */
+ unflaggedChange?:string|null;
 }
+const UNFLAGGED:Record<string,string>={
+ value_changed_without_amendment:'Valoare modificată fără act adițional marcat în SEAP; folosim ultima valoare publicată.',
+ winners_completed:'Furnizori adăugați ulterior în aceeași publicație; valoarea se împarte între toți furnizorii publicați.',
+ addendum_in_title:'Modificare indicată doar în titlu (act adițional); folosim ultima valoare publicată.',
+};
 export default function ContractPublications({publications,currentId,countedOnce}:{
  publications:ContractPublication[];currentId:string;countedOnce:boolean;
 }) {
@@ -39,6 +46,7 @@ export default function ContractPublications({publications,currentId,countedOnce
        <span className="note">{index===0?'Prima publicație verificată':changes.length?changes.join(' · '):'Aceleași date contractuale'} · {p.noticeNo??'Anunț de atribuire'} · ID {p.noticeId}</span>
        {Boolean(p.supplierNames?.length)&&<span className="contract-publication-suppliers">{p.supplierNames!.map(cleanName).join(' · ')}</span>}
        {changes.includes('Titlu modificat')&&<span>{p.title}</span>}
+       {p.unflaggedChange&&UNFLAGGED[p.unflaggedChange]&&<span className="note">{UNFLAGGED[p.unflaggedChange]}</span>}
       </div>
       <span className="contract-publication-links">
        {p.natId===currentId?<span aria-current="page">Publicația deschisă</span>:<Link href={`/contracte/${p.natId}`}>Vezi publicația</Link>}

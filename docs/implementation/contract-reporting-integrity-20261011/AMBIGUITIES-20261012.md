@@ -131,3 +131,36 @@ Jurnale ignorate de Git în `.local/contract-reporting-integrity-20261011/`: `am
 Nu s-au rulat o recalculare națională completă, rebuild Meili sau semnale de risc pe producție. Baza locală obișnuită `seap` a fost doar citită punctual. Producția a fost numai citită pentru arhive publice. Nu s-au modificat rate, proxy-uri, cozi sau conturi. Working tree-ul rămâne necomis pe `fix/contract-reporting-integrity-20261011`.
 
 Preview-ul izolat de pe portul 3101 răspunde HTTP 200 la `/metodologie/excluderi` și afișează 997 de grupuri / 100 pagini. Controlul copiei este `paused=true`, `maintenance=false`; markerul artificial al repetiției a fost închis cu `failed` și explicația „Isolated ambiguity cohort rehearsal only; not a complete production publication”. Acesta nu este un incident live și nu trebuie promovat în `ready` ca publicare de producție. Nu rulează collector/OCR/scheduler pentru această previzualizare.
+
+## Al doilea lot — reguli aprobate de proprietar, 12 octombrie după-amiază
+
+**Local, pe branch-ul `fix/contract-ambiguity-rules-20261012`, necomis/nepublicat.** Producția rulează încă regulile din `main` (`7b13a80`).
+
+Decizii confirmate de proprietar pentru republicările aceluiași contract (aceeași ancoră: anunț, autoritate, număr, dată, lot, CPV, procedură, tip) pe care SEAP **nu** le marchează ca modificate:
+
+| Situație | Decizie | Cod |
+|---|---|---|
+| Diferă doar valoarea (inclusiv valori-placeholder de 0,01 lei) | Se numără o dată ultima valoare publicată | `value_changed_without_amendment` |
+| Aceeași valoare și titlu; furnizori doar adăugați (setul vechi inclus strict) | Același contract, ultima versiune; alocare egală între toți | `winners_completed` |
+| Titlul numește un act adițional („ad diminuare”, „act adițional”, „Suplim AC”) | Ultima valoare publicată | `addendum_in_title` |
+| Titlu schimbat fără mențiunea unui act (ex. „nr. 8” → „nr. 11”) | Rămâne exclus | `missing_amendment_evidence` |
+| Negociere fără publicare / Norme proprii / Procedură simplificată proprie, fără `procedureId` în listă și fără lot | Ancora este numărul anunțului de atribuire (`notice:CAN…`) | — |
+| CIF spaniol cu/fără litera tipului de entitate (B84840685 / 84840685), aceeași țară | Aceeași înregistrare, numai la comparație; dovada păstrează forma publicată | — |
+
+Schimbările acceptate fără marcaj SEAP sunt salvate în observație (`versionChanges`, inclus în fingerprint doar când există, deci aprobările vechi nu își schimbă hash-ul) și afișate pe pagina contractului, în istoricul publicațiilor. Acceptarea veche „valoare modificata prin AA” rămâne identică, fără dovadă suplimentară. Metodologia publică descrie regula.
+
+### Rezultat pe copia `seap_test_currency_inventory_20261011`
+
+| Indicator | Înainte | După |
+|---|---:|---:|
+| Grupuri incerte | 997 | 650 |
+| Publicații excluse temporar | 2.154 | 1.339 |
+| Grupuri incerte cu eligibilitate financiară | 484 | 146 |
+| Contracte distincte în marts | 87.978 | 88.310 |
+| Alocări contract–furnizor | 95.756 | 96.341 |
+
+347 de grupuri aprobate (815 publicații), dintre care 338 financiare (~1,32 mld. lei la ultima valoare, numărați o singură dată). Pe tip: 175 valoare schimbată, 71 furnizori completați, 39 act în titlu, 79 ancorate pe anunț (se suprapun). Revalidarea aprobărilor existente: 0 hash-uri schimbate, 0 decizii invalide (179.683 membri). Reconciliere `eligible_missing=0`, `excluded_included=0`, `allocation_mismatches=0`. Markerul sintetic al repetiției a fost închis `failed` cu explicația că nu este publicare de producție.
+
+Rămân 146 grupuri financiare (~583 mil. lei): 48 identitate incompletă (câștigător fără CUI și fără ID străin în entitate), 37 contradicție arhivă/core + identitate incompletă (furnizori străini, ex. MD, cu ID-ul străin absent în `core.entities`), 20 dovadă de modificare lipsă (titluri renumerotate, furnizori înlocuiți), 18 versiuni arhivate contradictorii, 10 contradicții arhivă/core, 13 combinații mici.
+
+Teste: 189 unitare ingestion, 15 integrări PostgreSQL pe `seap_test_currency_reporting_20261011`, 438 unitare web (224 sărite, nevalidate), typecheck ingestion/web. Notele din pagina contractului au fost verificate în HTML-ul servit de un preview local pe copie; fără captură vizuală. Analiza: `.local/contract-reporting-integrity-20261011/ambiguity-484-categorized-20261012.json`, `ambiguity-audit-20261012-rules2.json`, `ambiguity-rules2-rehearsal.log`.
