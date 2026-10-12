@@ -1,11 +1,16 @@
 import {createHash} from 'node:crypto';
 import {canonicalCui} from './cui.js';
 import {normalizeContractMoney,decimal} from './contract-money.js';
+import {reviewedWinnerIdentity} from './reviewed-winner.js';
+import {normCountry,normForeignId} from './foreign.js';
 export interface IdentityContract {
  id:string; publicId:string; noticeId:string; noticeNo:string; authority:string; authorityCui:string|null;
  number:string|null; date:string|null; value:string|null; currency:string|null;
  title:string|null; lots:string|null; cpv:string|null; procedure:string|null; acquisition:string|null;
  winners:string[]; winnerCuis:(string|null)[];
+ /** Explicit country + registration ID for core winners without a valid RO CUI.
+  * Omitted for ordinary Romanian winners to preserve historical snapshots. */
+ winnerForeignIds?:{entityId:string;country:string;id:string}[];
 }
 export interface ArchivedAward {source:string; hash:string; rawId:string; endpoint:string; payload:Record<string,any>}
 // JSONB reorders object keys; fingerprints must survive a database round trip.
@@ -17,9 +22,30 @@ const cui=(x:unknown)=>{const c=canonicalCui(typeof x==='string'?x:null);return 
 // Some source labels append a trade-register number after the fiscal token.
 const authorityCui=(label:unknown)=>cui(/^((?:RO?\s*)?\d{2,10})(?:\s*\/\s*J\d+\/\d+\/\d{4})?\s+-\s+/i.exec(String(label??''))?.[1]);
 const sorted=(x:(string|null)[])=>[...new Set(x)].sort();
+function foreignKey(country:unknown,id:unknown) {
+ const c=normCountry(typeof country==='string'?country:null),n=normForeignId(typeof id==='string'?id:null);
+ return c&&/^[A-Z]{2}$/.test(c)&&c!=='RO'&&n&&/\d/.test(n)?`foreign:${c}:${n}`:null;
+}
+function coreWinnerKeys(c:IdentityContract) {
+ return c.winners.map((entityId,i)=>{
+  const fiscal=cui(c.winnerCuis[i]);if(fiscal)return fiscal;
+  const foreign=c.winnerForeignIds?.filter(f=>f.entityId===entityId)??[];
+  return foreign.length===1?foreignKey(foreign[0]!.country,foreign[0]!.id):null;
+ });
+}
+function sourceWinnerInput(w:any) {
+ const name=w?.address?.officialName??w?.name;
+ return {sicapId:Number.isSafeInteger(w?.entityId)?w.entityId:null,
+  cuiRaw:typeof w?.fiscalNumber==='string'?w.fiscalNumber:null,nameDisplay:typeof name==='string'?name:'(necunoscut)'};
+}
+function sourceWinnerKey(w:any,contractId:string) {
+ const reviewed=reviewedWinnerIdentity(Number(contractId),sourceWinnerInput(w));
+ return cui(reviewed.cuiRaw)??foreignKey(w?.address?.countryItem?.localeKey??w?.address?.countryItem?.text,reviewed.cuiRaw);
+}
+const romanianDate = new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Bucharest',year:'numeric',month:'2-digit',day:'2-digit'});
 const day=(x:unknown)=>{
  if(typeof x!=='string'||!/^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:\d{2})$/.test(x))return null;
- const d=new Date(x);return Number.isNaN(d.valueOf())?null:new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Bucharest',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
+ const d=new Date(x);return Number.isNaN(d.valueOf())?null:romanianDate.format(d);
 };
 export function contractIdentitySignature(c:IdentityContract) {
  return hash([c.noticeNo,c.authority,c.number,c.date,numeric(c.value),c.currency,c.title,c.lots,c.cpv,c.procedure,c.acquisition,sorted(c.winners)]);
@@ -49,7 +75,7 @@ function assessPublications(members:IdentityContract[],archives:ArchivedAward[],
  if((extended?ordered.length<(single?1:2):ordered.length!==2)||new Set(ordered.map(x=>x.noticeId)).size!==ordered.length||new Set(ordered.map(x=>x.publicId)).size!==ordered.length||new Set(ordered.map(x=>x.id)).size!==ordered.length)reasons.push('ambiguous_multiplicity');
  if(new Set(ordered.map(versions?contractVersionAnchor:contractIdentitySignature)).size!==1)reasons.push('different_contract_fields');
  for(const c of ordered) {
-  if(!c.number?.trim()||!c.date||!c.title?.trim()||!c.lots?.trim()||!c.cpv||!c.procedure||!c.acquisition||!c.authority||!cui(c.authorityCui)||!c.winners.length||c.winnerCuis.some(x=>!cui(x))||c.currency!=='RON'||numeric(c.value)===null)reasons.push('incomplete_identity');
+  if(!c.number?.trim()||!c.date||!c.title?.trim()||!c.lots?.trim()||!c.cpv||!c.procedure||!c.acquisition||!c.authority||!cui(c.authorityCui)||!c.winners.length||c.winnerCuis.length!==c.winners.length||coreWinnerKeys(c).some(x=>!x)||c.currency!=='RON'||numeric(c.value)===null)reasons.push('incomplete_identity');
  }
  const proofs:Record<string,unknown>[]=[];
  const procedures:string[]=[];
@@ -73,22 +99,40 @@ function assessPublications(members:IdentityContract[],archives:ArchivedAward[],
    const item=m.item;
    const money=normalizeContractMoney(item);
    const sourceWinners=item.winners?.length?item.winners:item.winner?[item.winner]:[];
-   const winnerIds=sorted(sourceWinners.map((w:any)=>cui(w.fiscalNumber)));
+   const winnerIds=sorted(sourceWinners.map((w:any)=>sourceWinnerKey(w,c.publicId)));
    const signature=[String(item.caNoticeId),item.noticeNo,item.contractNo,day(item.contractDate),money.originalCurrency,numeric(money.originalValue),numeric(money.valueRon),item.contractTitle,item.lotsCaption,winnerIds,item.contractType,item.conditions];
    distinct.set(hash(signature),m);
-   if(String(item.caNoticeId)!==c.noticeId||item.noticeNo!==c.noticeNo||item.contractNo!==c.number||day(item.contractDate)!==c.date||money.amountStatus!=='ron'||numeric(money.valueRon)!==numeric(c.value)||item.contractTitle!==c.title||item.lotsCaption!==c.lots||JSON.stringify(winnerIds)!==JSON.stringify(sorted(c.winnerCuis.map(cui))))reasons.push('archive_disagrees_with_core');
+   if(String(item.caNoticeId)!==c.noticeId||item.noticeNo!==c.noticeNo||item.contractNo!==c.number||day(item.contractDate)!==c.date||!['ron','converted'].includes(money.amountStatus)||numeric(money.valueRon)!==numeric(c.value)||item.contractTitle!==c.title||item.lotsCaption!==c.lots||JSON.stringify(winnerIds)!==JSON.stringify(sorted(coreWinnerKeys(c))))reasons.push('archive_disagrees_with_core');
   }
   if(distinct.size!==1){reasons.push('conflicting_archived_versions');continue;}
   const m=[...distinct.values()][0]!;
+  const money=normalizeContractMoney(m.item);
+  const sourceWinners=m.item.winners?.length?m.item.winners:m.item.winner?[m.item.winner]:[];
+  const winnerKeys=sorted(sourceWinners.map((w:any)=>sourceWinnerKey(w,c.publicId)));
+  const reviewedWinners=sourceWinners.flatMap((w:any)=>{
+   const input=sourceWinnerInput(w);
+   const output=reviewedWinnerIdentity(Number(c.publicId),input);
+   return output!==input?[{original:input,reviewed:output,rule:'reviewed-winner-20261008'}]:[];
+  });
   proofs.push({contract:c.publicId,notice:c.noticeId,procedure:procedureIds[0],source:m.a.source,rawId:m.a.rawId,hash:m.a.hash,
    noticeSource:goodNotices[0]!.source,noticeHash:goodNotices[0]!.hash,
    contractType:m.item.contractType??null,conditions:m.item.conditions??null,
+   ...(money.amountStatus==='converted'?{money:{originalCurrency:money.originalCurrency,originalValue:numeric(money.originalValue),valueRon:numeric(money.valueRon),currencyRate:numeric(money.currencyRate)}}:{}),
+   ...(winnerKeys.some(k=>k?.startsWith('foreign:'))?{winnerKeys}:{}),
+   ...(reviewedWinners.length?{reviewedWinners}:{}),
    ...(versions?{publishedAt:[...new Set(goodNotices.map(a=>a.payload.noticeStateDate))],
     modificationEvidence:matches.map(m=>({count:m.item.modifiedCount,hasVersions:m.item.hasModifiedVersions,hash:m.a.hash}))}:{}),
    url:`https://www.e-licitatie.ro/pub/notices/ca-notices/view-c/${c.noticeId}`});
  }
  if(procedures.length===ordered.length&&new Set(procedures).size!==1)reasons.push('different_procedures');
  if(proofs.length>=2&&new Set(proofs.map(p=>JSON.stringify([p.contractType,p.conditions]))).size!==1)reasons.push('different_source_conditions');
+ const moneyIdentity=(p:Record<string,unknown>)=>{
+  const m=ordered.find(c=>c.publicId===p.contract)!;
+  const monetary=p.money as {originalCurrency:string;originalValue:string}|undefined;
+  return [monetary?.originalCurrency??'RON',monetary?.originalValue??numeric(m.value)];
+ };
+ if(new Set(proofs.map(p=>moneyIdentity(p)[0])).size>1)reasons.push('different_source_currency');
+ if(!versions&&new Set(proofs.map(p=>JSON.stringify(moneyIdentity(p)))).size>1)reasons.push('different_source_money');
  let latestPublicId:string|null=null;
  if(versions&&proofs.length===ordered.length){
   const versionsByTime=ordered.map(c=>{const p=proofs.find(p=>p.contract===c.publicId)!;
@@ -98,7 +142,7 @@ function assessPublications(members:IdentityContract[],archives:ArchivedAward[],
   }).sort((a,b)=>a.time-b.time||(BigInt(a.c.publicId)<BigInt(b.c.publicId)?-1:1));
   for(let i=1;i<versionsByTime.length;i++){
    const old=versionsByTime[i-1]!,next=versionsByTime[i]!;
-   if(contractIdentitySignature(old.c)===contractIdentitySignature(next.c))continue;
+   if(contractIdentitySignature(old.c)===contractIdentitySignature(next.c)&&JSON.stringify(moneyIdentity(old.p))===JSON.stringify(moneyIdentity(next.p)))continue;
    if(next.time<=old.time)reasons.push('ambiguous_version_order');
    const explicitAddendum=/valoare modificata prin AA /i.test(next.c.title??'')&&next.c.title!==old.c.title;
    if(!(next.p.modificationEvidence as {count:unknown;hasVersions:unknown}[]).some(e=>e.hasVersions===true&&typeof e.count==='number'&&e.count>0)&&!explicitAddendum)reasons.push('missing_amendment_evidence');

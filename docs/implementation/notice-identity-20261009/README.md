@@ -1,5 +1,7 @@
 # Notice namespace repair — 9 October 2026
 
+> **Latest state — 9 October, 23:22 RO: STOPPED.** The owner deferred repair until tomorrow. Task542533 failed historical award pagination for2024-11-28:180reported rows,179distinct IDs across pages; repeated ID100512354. 1,355inventory pages completed;4,957pending. Do not restart or mark the partition complete without resolving the discrepancy. Read the [full continuation checkpoint](../../handover/continuation-20261009-notice-identity.md) and its saved evidence. Earlier running-state observations below are historical.
+
 User authorized: fix notice identity in production, recover known gaps, then reconcile historical inventories with correct identities. Preserve source rate settings and public maintenance; do not bypass the separate contract-publication integrity blocker.
 
 ## Implementation

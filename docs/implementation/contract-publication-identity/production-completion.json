@@ -1,0 +1,60 @@
+{
+  "verifiedOn": "2026-10-04",
+  "environment": "production",
+  "runId": "4c37e37b-6930-4de9-bd06-9f021bd6220d",
+  "status": "ready",
+  "scope": "full",
+  "startedAtUtc": "2026-10-04T02:00:02.762752Z",
+  "completedAtUtc": "2026-10-04T04:08:53.863857Z",
+  "checkpointVersion": 14,
+  "checkpointId": "092b2433-9e9b-44ec-86be-646028825c90",
+  "checksPassed": 13,
+  "checksFailed": 0,
+  "moneyRepair": {
+    "status": "completed",
+    "matched": 29569,
+    "sourceErrors": 0,
+    "structuralErrors": 0
+  },
+  "identityRepair": {
+    "status": "completed",
+    "approvedGroups": 8045,
+    "duplicatesRemovedFromStatistics": 7300,
+    "reductionRon": "7100577914.82",
+    "sourcePublications": 16090,
+    "preservedSources": 16090
+  },
+  "search": {
+    "entities": 181088,
+    "topics": 20589767
+  },
+  "maintenance": false,
+  "collectionPaused": false,
+  "collectionBlocked": false,
+  "recentCollection": {
+    "windowMinutes": 15,
+    "success": 24,
+    "otherOutcomes": 0
+  },
+  "timingsSeconds": {
+    "backup": 968.1,
+    "identityRepair": 50.7,
+    "flags": 3602.1
+  },
+  "publicChecks": {
+    "health": 200,
+    "intreaba": 200,
+    "domenii": 200,
+    "semnale": 200,
+    "radiografie": 200,
+    "pairedContractPages": {
+      "ids": [
+        "107775175",
+        "108112409"
+      ],
+      "bothHttp200": true,
+      "bothShowPublicationsAndSingleCounting": true
+    }
+  },
+  "observation": "Domenii returned HTTP200 but took 20.23s then9.32s; performance issue observed, not investigated or changed in this read-only verification."
+}

@@ -35,3 +35,24 @@ export const contractIdentityRevisions=martsSchema.table('contract_identity_revi
  previousSnapshot:jsonb('previous_snapshot').notNull(),nextSnapshot:jsonb('next_snapshot').notNull(),
  verifiedAt:timestamp('verified_at',{withTimezone:true}).notNull().defaultNow(),
 },t=>[index('contract_identity_revisions_candidate_idx').on(t.candidateId)]);
+
+/** Temporary financial exclusions, not duplicate approvals. Source records stay
+ * intact; immutable observations and revisions preserve the decision trail. */
+export const contractIdentityExclusions=martsSchema.table('contract_identity_exclusions',{
+ contractId:bigint('contract_id',{mode:'bigint'}).primaryKey(),
+ candidateId:text('candidate_id').notNull().references(()=>contractIdentityCandidates.id),
+ fingerprint:text('fingerprint').notNull().references(()=>contractIdentityObservations.fingerprint),
+ snapshotHash:text('snapshot_hash').notNull(),
+ processingRunId:uuid('processing_run_id').notNull(),
+ reviewedAt:timestamp('reviewed_at',{withTimezone:true}).notNull().defaultNow(),
+},t=>[index('contract_identity_exclusions_candidate_idx').on(t.candidateId)]);
+
+/** Historical evidence restored from SHA-pinned public backups. Never replayed
+ * as fresh source data: raw IDs belong to their original archive, not this DB. */
+export const contractIdentityArchives=martsSchema.table('contract_identity_archives',{
+ archiveKey:text('archive_key').primaryKey(),bundleSha256:text('bundle_sha256').notNull(),
+ externalId:text('external_id').notNull(),source:text('source').notNull(),
+ originalRawId:text('original_raw_id').notNull(),endpoint:text('endpoint').notNull(),
+ contentHash:text('content_hash').notNull(),payload:jsonb('payload').notNull(),
+ importedAt:timestamp('imported_at',{withTimezone:true}).notNull().defaultNow(),
+},t=>[index('contract_identity_archives_external_idx').on(t.externalId)]);

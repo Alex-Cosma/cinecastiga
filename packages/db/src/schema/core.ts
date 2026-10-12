@@ -307,6 +307,9 @@ export const contracts = coreSchema.table(
     }).notNull(),
     caNoticeId: bigint("ca_notice_id", { mode: "bigint" }),
     contractNo: text("contract_no"),
+    /** SEAP contractType: 1 contract, 2 framework, 3 call-off. Not an amount role. */
+    sourceContractType: integer("source_contract_type"),
+    contractTypeRawId: bigint("contract_type_raw_id", { mode: "bigint" }),
     contractDate: timestamp("contract_date", { withTimezone: true }),
     contractValue: numeric("contract_value"),
     currency: text("currency"),

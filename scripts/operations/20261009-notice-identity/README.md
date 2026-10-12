@@ -1,5 +1,7 @@
 # 9 October 2026 — notice identity and coverage recovery
 
+> **Latest state — 9 October, 23:22 RO: STOPPED.** The owner deferred repair until tomorrow. Task542533 failed historical award pagination for2024-11-28:180reported rows,179distinct IDs across pages; repeated ID100512354. 1,355inventory pages completed;4,957pending. Do not restart or mark the partition complete without resolving the discrepancy. Read the [full continuation checkpoint](../../../docs/handover/continuation-20261009-notice-identity.md) and its saved evidence. Earlier running-state observations below are historical.
+
 Incident procedures authorized for this specific repair. **Not setup scripts and not scheduled maintenance.** Check the [implementation report](../../../docs/implementation/notice-identity-20261009/README.md) and live state before using anything here.
 
 Already executed in production:

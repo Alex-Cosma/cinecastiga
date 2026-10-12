@@ -117,7 +117,7 @@ Pentru familiile suportate se rezolvă anunțul prin identitate și autoritate, 
 
 Worker-ul folosește o sesiune Chromium nouă, metadata proaspete, POST de verificare urmat de GET în aceeași sesiune, cu Referer-ul familiei corecte. Un GET izolat cu hash vechi poate eșua deși browserul utilizatorului descarcă fișierul. Nu copia Cookie/Authorization/chei din DevTools în cod sau documente. Doar cererile allowlistate ies din browser; resursele și redirecturile nepermise sunt blocate.
 
-Limite inițiale:50 MiB,150 pagini; PDF sau CMS/P 7 S DER suportat. Poppler pentru text nativ, Tesseract `ron+eng` pentru paginile fără text suficient. Originalele și PDF-urile derivate sunt separate și adresate prin SHA-256. Textul și paginile devin disponibile după commit-ul procesării complete. Worker-ul este exclusiv prin advisory lock plus constrângere „un singur job running”.
+Actualizare 11 octombrie: vechile limite de 50 MiB/150 pagini au fost înlocuite cu transport/stocare în bucăți și procesare OCR reluabilă. PDF/CMS, Word/Excel, ZIP/RAR/7z sunt tratate de toolchain; multipart rămâne deschis. Originalele și PDF-urile derivate sunt separate, cu SHA-256. Supervisor-ul exclusiv permite până la 10 lane-uri de rețea și 4 de procesare; nu mai este un singur job global. [Mecanism și limite actuale](20261011/operations.md), [formate](../implementation/document-formats-20261011.md).
 
 ## Migrații și restaurare
 
@@ -127,7 +127,7 @@ Schema curentă include obiecte `auth`, `app`, `reference` bootstrapate istoric 
 
 ## Registrul semnalelor și Radiografie
 
-Cele 13 tipuri de întrebări nu sunt același lucru cu cele 13 familii de semnale. Registrul de calcul este `apps/ingestion/src/flags/methodology.ts` (versiune declarată `rf-2026.5` la predare); prezentarea web este în `apps/web/lib/flags.ts`. Schimbarea unei reguli necesită metodologie/versionare, surse, teste și validarea consecințelor asupra checkpoint-urilor, nu doar schimbarea unui label.
+Cele 13 tipuri de întrebări nu sunt același lucru cu cele 13 familii de semnale. Registrul de calcul este `apps/ingestion/src/flags/methodology.ts` (versiune declarată `rf-2026.6` la consolidarea din 11 octombrie); prezentarea web este în `apps/web/lib/flags.ts`. Schimbarea unei reguli necesită metodologie/versionare, surse, teste și validarea consecințelor asupra checkpoint-urilor, nu doar schimbarea unui label.
 
 | Cod | Denumire în interfață |
 |---|---|

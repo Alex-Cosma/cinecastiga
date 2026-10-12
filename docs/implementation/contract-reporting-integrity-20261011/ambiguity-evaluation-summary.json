@@ -1,0 +1,30 @@
+{
+  "checkedAt": "2026-10-12T07:38:53.676Z",
+  "resolved": 275,
+  "resolvedFinancial": 256,
+  "remaining": 997,
+  "remainingFinancial": 484,
+  "resolvedPreviousReasons": {
+    "archive_disagrees_with_core": 152,
+    "incomplete_identity": 124
+  },
+  "remainingReasons": {
+    "incomplete_identity": 478,
+    "archive_disagrees_with_core": 364,
+    "missing_amendment_evidence": 298,
+    "missing_archive": 207,
+    "missing_procedure": 82,
+    "conflicting_archived_versions": 18,
+    "ambiguous_multiplicity": 2,
+    "different_source_conditions": 1
+  },
+  "remainingFinancialReasons": {
+    "missing_amendment_evidence": 291,
+    "incomplete_identity": 171,
+    "missing_procedure": 78,
+    "archive_disagrees_with_core": 68,
+    "conflicting_archived_versions": 18,
+    "ambiguous_multiplicity": 2,
+    "different_source_conditions": 1
+  }
+}

@@ -1,4 +1,6 @@
+import {runScheduledContractEvidence} from '../normalize/scheduled-contract-evidence.js';
 import {revalidateApprovedContractIdentities} from '../normalize/revalidate-contract-identities.js';
+import {discoverAndApproveContractIdentities} from '../normalize/discover-contract-identities.js';
 import {runScheduledIdentityRepair} from '../normalize/scheduled-contract-identity.js';
 import { runScheduledMoneyRepair } from '../normalize/scheduled-money-repair.js';
 import { diagnosticError, createDb, claimProcessing, claimRepairProcessing, failProcessing, finishProcessing, processingStage, collectionHeartbeat } from '@seap/db';
@@ -45,8 +47,10 @@ async function main() {
   await runScheduledReferenceRepair(sql,id!,console.log);
   const checkpoint=await runMonitoringRefresh(db,sql,{
    repairContractIdentities:async()=>({
+    recoveredEvidence:await runScheduledContractEvidence(sql,id!),
     scheduled:await runScheduledIdentityRepair(sql,id!,console.log),
     revalidated:await revalidateApprovedContractIdentities(sql,id!,console.log),
+    discovered:await discoverAndApproveContractIdentities(sql,id!,console.log),
    }),
    mode:'coordinated',scope:r.scope==='full'?'full':'daily',maxRawId:BigInt(r.raw_boundary),
    log:console.log,onStage:stage=>processingStage(sql,id!,stage),

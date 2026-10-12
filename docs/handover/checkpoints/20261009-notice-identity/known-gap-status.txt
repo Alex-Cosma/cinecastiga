@@ -1,0 +1,9 @@
+original_76|complete|70
+original_76|failed|6
+2022-04-21|contracts|115|115|1382
+2022-04-21|detail|115|113|
+detail|failed|7
+detail|pending|1
+list|failed|1
+list|pending|4957
+103|f|t|Sarcina 542533: SEAP a repetat înregistrări între pagini.

@@ -1,3 +1,4 @@
+import { contractReportable } from '@seap/db';
 import { readContractMoneyQuality } from "@seap/db";
 import { contractRonValue, canonicalContract, readContractIdentityQuality } from "@seap/db";
 import { validateSignalLookup, type DbSql } from "@seap/db";
@@ -165,14 +166,12 @@ export async function validateBatch1Snapshot(q: DbSql, options: {
 /** Complete contract population/allocation reconciliation; usable on public contract fixtures. */
 export async function validateContractPopulation(q: DbSql) {
   const [allocations] = await q`
-    with has_sub as (select distinct ca_notice_id from core.contracts where title ~* 'subsecvent'),
-    winners as (select contract_id, count(distinct entity_id) n from core.contract_winners group by contract_id),
+    with winners as (select contract_id, count(distinct entity_id) n from core.contract_winners group by contract_id),
     source as (
       select c.id, c.ca_notice_contract_id, ${contractRonValue(q)} as contract_value, w.n winners,
         coalesce(${canonicalContract(q)} and ${contractRonValue(q)} > 0 and ${contractRonValue(q)} <= 1000000000 and c.contract_date is not null
            and a.authority_entity_id is not null and w.n > 0
-          and not (coalesce(c.title, '') ~* 'acord[- ]cadru' and coalesce(c.title, '') !~* 'subsecvent'
-            and c.ca_notice_id in (select ca_notice_id from has_sub)), false) eligible
+          and ${contractReportable(q)}, false) eligible
       from core.contracts c left join core.awards a on a.ca_notice_id = c.ca_notice_id
       left join winners w on w.contract_id = c.id
     ), allocated as (

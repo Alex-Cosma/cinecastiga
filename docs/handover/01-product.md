@@ -82,7 +82,7 @@ Pentru alte instituții/furnizori există metoda explicată prin activitatea obs
 
 - Vizitatorii pot vedea originalele/PDF-urile/OCR-ul deja arhivate.
 - Doar utilizatorii autentificați pot cere preluarea de pe SEAP; control și în UI și pe backend.
-- Un singur fișier descărcat/procesat simultan; minimum 60 secunde între începuturile GET-urilor de fișiere, inclusiv încercările eșuate.
+- Actualizare 11 octombrie: pool automat de până la 10 downloaduri / 4 procesări, cu bugetul comun și ritm per IP; manualul păstrează controlul separat. Automat se descarcă strict caiete de sarcini identificate, recentele întâi, fără fallback la toate fișierele. [Politica actuală](20261011/operations.md).
 - Nu există crawl automat de PDF-uri.
 - Descărcat și procesat sunt stări distincte; originalul se păstrează și la eroare OCR.
 - PDF-ul și textul din dreapta trebuie să urmărească aceeași pagină. Citarea unei pagini păstrează hash-ul, textul și metoda de extragere.

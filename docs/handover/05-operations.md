@@ -2,7 +2,7 @@
 
 Acest document transmite mecanisme și decizii, nu autorizație permanentă de administrare. Dezvoltarea locală nu cere acces live. Verificările citire-only sunt distincte de reluarea colectării, migrare, rebuild sau restore.
 
-Consolidat la 1 octombrie 2026. Ultima verificare de producție consemnată este din 30 septembrie, seara: [raport final](../implementation/release-20260930.md). Tranziția calendarului este încheiată; nu se repetă la următorul deploy obișnuit. Pentru starea din momentul intervenției citește controlul și rulările din baza mediului vizat.
+**Pentru politica și starea actualizate la 11 octombrie citește [operarea consolidată](20261011/operations.md).** Documentul de față păstrează și incidente istorice. Consolidarea inițială: 1 octombrie 2026. Ultima verificare de producție consemnată este din 30 septembrie, seara: [raport final](../implementation/release-20260930.md). Tranziția calendarului este încheiată; nu se repetă la următorul deploy obișnuit. Pentru starea din momentul intervenției citește controlul și rulările din baza mediului vizat.
 
 ## Mediu și acces
 
@@ -48,10 +48,10 @@ Schema veche trebuie să poată servi versiunea veche în timpul migrării. Nu e
 
 - Fluxuri: achiziții directe, anunțuri de participare, atribuiri; catalog auxiliar.
 - Recuperare: DAde la 1 iulie 2026, anunțuri/atribuiri de la 1 ianuarie 2026, deduplicare. Vechile loguri nu demonstrau acoperirea completă până la 31 iulie, de aceea s-au ales ferestre suprapuse.
-- Lotul `recovery-2026-09-25` își păstrează identificatorul istoric; după activarea `follow_latest`, ținta se extinde zilnic până ieri, după 03:30 RO. Sarcinile existente nu sunt rescrise. [Extindere și ETA](../implementation/recovery-continuous-eta-20261007.md); verifică starea live și confirmarea activării înainte de intervenții.
+- Lotul `recovery-2026-09-25` își păstrează identificatorul istoric; după activarea `follow_latest`, ținta se extinde zilnic până ieri, de la 02:00 RO (actualizare publicată pe 10 octombrie). Sarcinile existente nu sunt rescrise. [Extindere și ETA](../implementation/recovery-continuous-eta-20261007.md); verifică starea live și confirmarea activării înainte de intervenții.
 - Buget comun pentru colector și documente: în modul direct rămâne o cerere în curs și intervalul din `collection_control`; prin proxy, intervalul pe IP, plafonul total și concurența sunt în `collection_proxy_control`. Limitele acceptate sunt 1–200 porniri/minut și 1–10 cereri simultane, maximum una pe IP. Decizia proprietarului din6octombrie:100proxy-uri noi,35–45s/IP,50/min,10simultane. [Rollout și stare verificată](../implementation/seap-proxy-pool.md#concurrent-requests-and-replacement100-endpoint-pool--2026-10-06). Citește setările live înainte de orice intervenție; valorile istorice nu sunt instrucțiuni de resetare.
-- În plus, GET-urile de fișiere au minimum 60 secunde între începuturi, inclusiv eșecuri.
-- Nicio descărcare automată de PDF-uri; utilizatorul autentificat cere documentul.
+- Regula manuală/serială de minimum 60 secunde între GET-uri nu se aplică identic pool-ului automat autorizat. Acesta folosește bugetul comun, interval per IP și concurență controlată; vezi ghidul consolidat.
+- Colectarea automată de documente este implementată, cu control separat în admin. Politica strictă actuală: numai caiete de sarcini identificate; utilizatorul autentificat poate cere manual și alte fișiere.
 - Pauză zilnică de admitere a cererilor **02:59 inclusiv–03:30 exclusiv**, Europe/Bucharest. Nu schimbă manual paused și nu șterge erori.
 - Cererile deja admise pot termina; OCR poate continua. La 03:30 reluarea este condiționată de celelalte blocaje/bugete.
 - DST: abordare conservatoare pentru ora repetată/lipsă; vezi testele `collection-quiet-window`.

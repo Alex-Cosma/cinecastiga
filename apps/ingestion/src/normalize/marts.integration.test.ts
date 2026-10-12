@@ -18,6 +18,7 @@ afterAll(() => sql.end());
 function isolatedSql(connection: DbSql, prefix: string): DbSql {
   const rewrite = (text: string) => text.replace(/\b(core|marts|reference|raw)\./g, `${prefix}_$1.`);
   const scoped = ((chunks: TemplateStringsArray, ...values: unknown[]) => {
+    if (typeof chunks === "string") return connection(chunks);
     const mapped = chunks.map(rewrite);
     Object.defineProperty(mapped, "raw", { value: chunks.raw.map(rewrite) });
     return connection(mapped as unknown as TemplateStringsArray, ...values as never[]);
@@ -32,7 +33,7 @@ function isolatedSql(connection: DbSql, prefix: string): DbSql {
 
 const tables = {
   core: ["risk_thresholds", "contracts", "awards", "contract_winners", "entities", "cpv_codes", "direct_acquisitions", "notices", "ted_lot_results", "ted_notices", "flags"],
-  marts: ["contract_identity_members", "contract_identity_decisions", "contract_identity_candidates", "contract_identity_observations", "national_stats", "spend_by_type", "spend_by_cpv", "spend_by_county", "entity_profile", "entity_top_partners", "top_entities", "authority_concentration", "contract_transactions", "contract_competition", "da_transactions"],
+  marts: ["contract_identity_exclusions", "contract_identity_archives", "contract_identity_members", "contract_identity_decisions", "contract_identity_candidates", "contract_identity_observations", "national_stats", "spend_by_type", "spend_by_cpv", "spend_by_county", "entity_profile", "entity_top_partners", "top_entities", "authority_concentration", "contract_transactions", "contract_competition", "da_transactions"],
   reference: ["authority_uat", "company_financials", "company_reps"],
   raw: ["raw_documents"],
 };
@@ -147,6 +148,7 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
             (404,4000,'Foreign currency',100,'2025-04-01','EUR','Contract'),
             (405,4000,'Unknown date',100,null,'RON','Contract')`;
         // A verified 10 EUR at 5 RON/EUR must contribute 50 RON, once.
+        await q`update core.contracts set lots_caption='Lot 1' where id in (200,201,202)`;
         await q`update core.contracts set currency='EUR',original_value=10,original_currency='EUR',
           value_ron=50,currency_rate=5,amount_status='converted',raw_id=7,amount_raw_id=7 where id=101`;
         // Even a legacy field saying RON cannot override an unresolved source.
@@ -172,24 +174,24 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
         const contracts = await q`select contract_id::text id, supplier_id::text supplier, closing_value::text value
           from marts.contract_transactions order by contract_id, supplier_id`;
         expect(contracts.filter((r) => r["id"] === "100").map((r) => r["value"])).toEqual(["33.33", "33.33", "33.34"]);
-        expect([...new Set(contracts.map((r) => r["id"]))]).toEqual(["100", "101", "201", "202", "300"]);
+        expect([...new Set(contracts.map((r) => r["id"]))]).toEqual(["100", "101", "201", "202"]);
         expect(contracts.filter(r => r["id"] === "101").map(r => Number(r["value"]))).toEqual([50]);
         const [contractTotal] = await q`select sum(closing_value)::text value from marts.contract_transactions`;
-        expect(Number(contractTotal?.["value"])).toBe(305);
+        expect(Number(contractTotal?.["value"])).toBe(235);
         const [national] = await q`select total_ron::text value from marts.national_stats where kind='spend' and year is null`;
-        expect(Number(national?.["value"])).toBe(455); //305 contracts +150 eligible DAs, including unknown parties.
+        expect(Number(national?.["value"])).toBe(385); //235 contracts +150 eligible DAs, including unknown parties.
         const [da] = await q`select n, total_ron::text value from marts.national_stats where kind='da' and year is null`;
         expect(da?.["n"]).toBe(5); expect(Number(da?.["value"])).toBe(150);
         const profiles = await q`select entity_id::text id, role, n_das, n_contracts, total_ron_split::text value
           from marts.entity_profile order by role, entity_id`;
-        expect(profiles.find((r) => r["id"] === "1" && r["role"] === "authority")).toMatchObject({ n_das: 2, n_contracts: 5 });
-        expect(Number(profiles.find((r) => r["id"] === "1" && r["role"] === "authority")?.["value"])).toBe(355);
-        expect(Number(profiles.find((r) => r["id"] === "10" && r["role"] === "supplier")?.["value"])).toBe(308.33);
+        expect(profiles.find((r) => r["id"] === "1" && r["role"] === "authority")).toMatchObject({ n_das: 2, n_contracts: 4 });
+        expect(Number(profiles.find((r) => r["id"] === "1" && r["role"] === "authority")?.["value"])).toBe(285);
+        expect(Number(profiles.find((r) => r["id"] === "10" && r["role"] === "supplier")?.["value"])).toBe(238.33);
         const totals = await q`select 'type' kind, sum(total_ron)::text value from marts.spend_by_type where kind='all'
           union all select 'cpv',sum(total_ron)::text from marts.spend_by_cpv where kind='all'
           union all select role,sum(total_ron)::text from marts.spend_by_county group by role`;
         const byKind = Object.fromEntries(totals.map((r) => [String(r["kind"]),Number(r["value"])]));
-        expect(byKind).toEqual({ type: 455, cpv: 455, authority: 365, supplier: 375 });
+        expect(byKind).toEqual({ type: 385, cpv: 385, authority: 295, supplier: 305 });
         // Missing entity IDs stay in national/source totals, not in an invented entity profile.
         expect(profiles.some((r) => r["id"] === "0" || r["id"] == null)).toBe(false);
         const [unknownCounty] = await q`select total_ron::text value from marts.spend_by_county where role='authority' and county='Necunoscut'`;
@@ -202,7 +204,7 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
           from marts.authority_concentration order by authority_entity_id`;
         expect(concentration.map(r => ({ id: r["id"], suppliers: r["distinct_suppliers"],
           top: Number(r["top"]), hhi: Number(r["hhi"]), total: Number(r["total"]) }))).toEqual([
-          { id: "1", suppliers: 3, top: 0.7949, hhi: 0.6528, total: 325 },
+          { id: "1", suppliers: 3, top: 0.7385, hhi: 0.5796, total: 255 },
           { id: "2", suppliers: 1, top: 1, hhi: 1, total: 10 },
         ]);
 
@@ -242,12 +244,12 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
         expect(evidence("da_concentration","1")["total"]).toBe(20);
         expect(evidence("da_dependence","10")["total"]).toBe(30);
         expect(evidence("da_year_end","1")["total"]).toBe(50);
-        expect(evidence("award_concentration","1")["total"]).toBe(305);
-        expect(evidence("award_concentration","1")["top_winner_pct"]).toBe(0.7814);
-        expect(evidence("award_dependence","10")["total"]).toBe(238.33);
-        expect(evidence("fin_tiny_staff","10")).toMatchObject({ total: 308.33, year: 2025 });
-        expect(evidence("fin_public_reliance","10")).toMatchObject({ public_total: 308.33, revenue_total: 1000, ratio: 0.3083 });
-        expect(evidence("net_shared_admin","10")).toMatchObject({ combined: 291.66, n_firms: 2 });
+        expect(evidence("award_concentration","1")["total"]).toBe(235);
+        expect(evidence("award_concentration","1")["top_winner_pct"]).toBe(0.7163);
+        expect(evidence("award_dependence","10")["total"]).toBe(168.33);
+        expect(evidence("fin_tiny_staff","10")).toMatchObject({ total: 238.33, year: 2025 });
+        expect(evidence("fin_public_reliance","10")).toMatchObject({ public_total: 238.33, revenue_total: 1000, ratio: 0.2383 });
+        expect(evidence("net_shared_admin","10")).toMatchObject({ combined: 221.66, n_firms: 2 });
 
         // A deliberately failing late rule proves TRUNCATE + earlier inserts roll back together.
         const [beforeFailure] = await q`select jsonb_agg(to_jsonb(f) order by flag_code,subject_id,partner_id) data from core.flags f`;
@@ -273,10 +275,10 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
         expect(radiografie).toMatchObject({ supplierDependency: 3, daSlicing: 0, lotPatterns: 0, patternElsewhere: 0 });
         const [dependency] = await q`select c_frame::text frame, c_plain::text plain from marts.supplier_dependency
           where authority_id=1 and supplier_id=10`;
-        // Explicit call-off 60 stays ordinary; unknown-title 25 keeps the notice fallback,
-        // and standalone framework 70 remains a ceiling.
-        expect(Number(dependency?.["frame"])).toBe(95);
-        expect(Number(dependency?.["plain"])).toBe(143.33);
+        // Contract roles come from the contract itself, not the whole notice:
+        // an unnamed contract is not automatically a framework ceiling.
+        expect(Number(dependency?.["frame"])).toBe(0);
+        expect(Number(dependency?.["plain"])).toBe(168.33);
         throw rollback;
       });
     } catch (error) {
@@ -298,16 +300,17 @@ describe('approved publication identity in actual statistical builders',()=>{
    }
    const q=isolatedSql(tx as unknown as DbSql,prefix);
    const {assessed,archives}=await seedVerifiedIdentity(q,{framework,calloff:framework});
-   const representative=framework?'2':'1';
+   const representative=framework?'3':'1';
+   const expectedValue=framework?'20.00':'100.00';
    await approveContractIdentities(q,[assessed],archives,'Idempotent repeat');
    expect((await q`select count(*)::int n from marts.contract_identity_decisions`)[0]!.n).toBe(1);
    await q`set local time zone 'America/Los_Angeles'`;
    expect((await readContractIdentityQuality(q)).valid).toBe(true);
    await runMarts(q);
    const amounts=await q`select contract_id::text,closing_value::text from marts.contract_transactions`;
-   expect(amounts).toEqual([{contract_id:representative,closing_value:'100.00'}]);
+   expect(amounts).toEqual([{contract_id:representative,closing_value:expectedValue}]);
    expect((await q`select count(*)::int n from core.contracts where id in (1,2)`)[0]!.n).toBe(2);
-   expect((await q`select total_ron_split::text from marts.entity_profile where role='authority'`)[0]!.total_ron_split).toBe('100.00');
+   expect((await q`select total_ron_split::text from marts.entity_profile where role='authority'`)[0]!.total_ron_split).toBe(expectedValue);
    // A changed original amount blocks dependent builders; last mart remains.
    await q`update core.contracts set contract_value=101 where id=2`;
    expect((await readContractIdentityQuality(q)).staleMembers).toBe(1);

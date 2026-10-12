@@ -1,12 +1,13 @@
+import { contractReportable } from './contract-reporting.js';
 import type { DbSql } from './client.js';
 import { contractRonValue } from './contract-money.js';
 type IdentitySql = DbSql | Parameters<Parameters<DbSql['begin']>[1]>[0];
 
 /** Alias c is a source contract. Source records and their URLs remain intact. */
 export function canonicalContract(q: IdentitySql) {
-  return q`not exists (select 1 from marts.contract_identity_members im
+  return q`(not ${contractTemporarilyExcluded(q)} and not exists (select 1 from marts.contract_identity_members im
     join marts.contract_identity_decisions d on d.candidate_id=im.candidate_id
-    where im.contract_id=c.id and d.canonical_contract_id<>c.id)`;
+    where im.contract_id=c.id and d.canonical_contract_id<>c.id))`;
 }
 
 /** Bounded projection of approved/candidate members, with a fingerprint of their
@@ -30,15 +31,23 @@ export async function readContractIdentityMembers(q: IdentitySql, ids: string[])
         array(select we.cui_canonical from core.contract_winners w join core.entities we on we.id=w.entity_id where w.contract_id=c.id order by w.entity_id) "winnerCuis",
         coalesce(${contractRonValue(q)}>0 and ${contractRonValue(q)}<=1000000000 and c.contract_date is not null and a.authority_entity_id is not null
           and exists(select 1 from core.contract_winners w where w.contract_id=c.id)
-          and not(coalesce(c.title,'')~*'acord[- ]cadru' and coalesce(c.title,'')!~*'subsecvent'
-            and exists(select 1 from core.contracts s where s.ca_notice_id=c.ca_notice_id and s.title~*'subsecvent')),false) eligible,
-        jsonb_build_object('contract',(to_jsonb(c)-'contract_date')||jsonb_build_object('date_epoch',extract(epoch from c.contract_date)),
+          and ${contractReportable(q)},false) eligible,
+        jsonb_build_object('contract',(to_jsonb(c)-'contract_date'-'source_contract_type'-'contract_type_raw_id')||jsonb_build_object('date_epoch',extract(epoch from c.contract_date)),
           'award',(to_jsonb(a)-'state_date')||jsonb_build_object('date_epoch',extract(epoch from a.state_date)),
           'cohort',to_jsonb(cohort)) source_state
       from selected c left join core.awards a using(ca_notice_id) left join core.entities e on e.id=a.authority_entity_id
       left join cohort using(notice_no)
-    ) select (to_jsonb(p)-'source_state'-'eligible') identity,eligible,
-      md5((to_jsonb(p))::text) snapshot_hash from projected p order by p.id::bigint`;
+    ), identified as (
+      -- Most contracts have only valid Romanian identities. Avoid a third
+      -- supplier lookup for those, and keep their historical JSON/hash intact.
+      select p.id,p.eligible,to_jsonb(p) || case when array_position(p."winnerCuis",null) is null then '{}'::jsonb
+        else coalesce((select jsonb_build_object('winnerForeignIds',jsonb_agg(
+          jsonb_build_object('entityId',we.id::text,'country',we.country_code,'id',we.foreign_id_norm) order by we.id))
+          from core.contract_winners w join core.entities we on we.id=w.entity_id where w.contract_id=p.id::bigint
+          and we.cui_canonical is null and we.is_foreign and we.country_code<>'RO' and we.foreign_id_norm is not null
+          having count(*)>0),'{}'::jsonb) end state from projected p
+    ) select state-'source_state'-'eligible' identity,eligible,
+      md5(state::text) snapshot_hash from identified order by id::bigint`;
 }
 
 /** Read-only fail-closed check. Never silently revoke approvals and republish a
@@ -68,4 +77,30 @@ export async function assertContractIdentityQuality(q: IdentitySql) {
   const report=await readContractIdentityQuality(q);
   if(!report.valid)throw Error(`Contract publication identity changed: ${report.staleMembers} source members, ${report.invalidDecisions} decisions require review before publication`);
   return report;
+}
+
+/** Kept separate from intrinsic member eligibility to avoid a quarantine /
+ * eligibility feedback loop during later source verification. */
+export function contractTemporarilyExcluded(q: IdentitySql, alias='c') {
+  return q`exists (select 1 from marts.contract_identity_exclusions x where x.contract_id=${q(alias)}.id)`;
+}
+
+export async function assertContractExclusionsQuality(q: IdentitySql) {
+  const excluded=await q`select contract_id::text,snapshot_hash from marts.contract_identity_exclusions`;
+  const current=await readContractIdentityMembers(q,excluded.map(r=>String(r.contract_id)));
+  const hashes=new Map(current.map(r=>[String(r.identity.id),String(r.snapshot_hash)]));
+  const stale=excluded.filter(r=>hashes.get(String(r.contract_id))!==r.snapshot_hash);
+  const invalid=await q`select distinct x.candidate_id from marts.contract_identity_exclusions x
+    left join marts.contract_identity_candidates c on c.id=x.candidate_id
+    left join marts.contract_identity_observations o on o.fingerprint=x.fingerprint and o.candidate_id=x.candidate_id
+    where c.active is distinct from true or c.fingerprint is distinct from x.fingerprint
+      or c.status='source_verified' or o.evidence is distinct from c.evidence
+      or (c.evidence->>'methodology'='contract-identity-review-1' and not exists(
+        select 1 from marts.contract_identity_observations prior where prior.fingerprint=c.evidence->>'previousObservation'))
+      or exists(select 1 from marts.contract_identity_members m where m.contract_id=x.contract_id)
+      or not exists(select 1 from jsonb_array_elements(c.evidence->'members') m where m->>'id'=x.contract_id::text)
+      or exists(select 1 from jsonb_array_elements(c.evidence->'members') m where not exists(
+        select 1 from marts.contract_identity_exclusions other where other.candidate_id=x.candidate_id and other.contract_id=(m->>'id')::bigint))`;
+  if(stale.length||invalid.length)throw Error(`Temporary identity exclusions need review: ${stale.length} changed members, ${invalid.length} invalid groups`);
+  return {excludedPublications:excluded.length,valid:true};
 }

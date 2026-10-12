@@ -1,0 +1,110 @@
+{
+  "environment": "seap_test_currency_inventory_20261011",
+  "productionModified": false,
+  "checkedAt": "2026-10-12T04:33:27.499Z",
+  "repeat": {
+    "approvedGroups": 0,
+    "sourcePublications": 0,
+    "excludedPublications": 2870,
+    "valid": true,
+    "excludedGroups": 1272,
+    "uncertainFinancialGroups": 740
+  },
+  "evidence": [
+    {
+      "action": "identity-discovery",
+      "after": {
+        "runId": "00000000-0000-4000-8000-000000009997",
+        "valid": true,
+        "approvedGroups": 75974,
+        "excludedGroups": 1272,
+        "sourcePublications": 157325,
+        "excludedPublications": 2870,
+        "uncertainFinancialGroups": 740
+      }
+    },
+    {
+      "action": "identity-discovery",
+      "after": {
+        "runId": "00000000-0000-4000-8000-000000009997",
+        "valid": true,
+        "approvedGroups": 0,
+        "excludedGroups": 1272,
+        "sourcePublications": 0,
+        "excludedPublications": 2870,
+        "uncertainFinancialGroups": 740
+      }
+    }
+  ],
+  "coverage": [
+    {
+      "dataset": "contracts",
+      "observation": {
+        "date_to": "2026-10-09",
+        "included": "87726",
+        "available": "209082",
+        "date_from": "2014-12-30",
+        "allocations": "95359",
+        "missing_cpv": "209082",
+        "missing_date": "0",
+        "missing_currency": "6",
+        "framework_publications": "40897",
+        "non_additive_amendments": "296",
+        "unverified_contract_type": "110",
+        "temporarily_excluded_groups": "1272",
+        "temporarily_excluded_publications": "2870",
+        "temporarily_excluded_financial_groups": "740",
+        "frameworks_without_identified_calloffs": "16710"
+      },
+      "calculated_at": "2026-10-12 04:33:17.895478+00"
+    }
+  ],
+  "reasons": [
+    {
+      "reason": "incomplete_identity",
+      "groups": 613
+    },
+    {
+      "reason": "archive_disagrees_with_core",
+      "groups": 467
+    },
+    {
+      "reason": "missing_amendment_evidence",
+      "groups": 298
+    },
+    {
+      "reason": "missing_archive",
+      "groups": 207
+    },
+    {
+      "reason": "missing_procedure",
+      "groups": 82
+    },
+    {
+      "reason": "conflicting_archived_versions",
+      "groups": 18
+    },
+    {
+      "reason": "ambiguous_multiplicity",
+      "groups": 2
+    },
+    {
+      "reason": "different_source_conditions",
+      "groups": 1
+    }
+  ],
+  "classified": [
+    {
+      "status": "needs_evidence",
+      "n": 508
+    },
+    {
+      "status": "source_verified",
+      "n": 84019
+    },
+    {
+      "status": "conflict",
+      "n": 764
+    }
+  ]
+}

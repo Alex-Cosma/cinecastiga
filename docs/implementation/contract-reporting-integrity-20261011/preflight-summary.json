@@ -1,0 +1,154 @@
+{
+  "boundary": "19003257",
+  "existingGroups": 8045,
+  "newGroups": 77246,
+  "verified": 75974,
+  "blocked": 748,
+  "reasons": {
+    "missing_amendment_evidence": 291,
+    "incomplete_identity": 294,
+    "archive_disagrees_with_core": 172,
+    "missing_procedure": 82,
+    "conflicting_archived_versions": 18,
+    "ambiguous_multiplicity": 2,
+    "different_source_conditions": 1
+  },
+  "examples": [
+    {
+      "ids": [
+        "107774037",
+        "107942571"
+      ],
+      "notice": "CAN1081767",
+      "reasons": [
+        "missing_amendment_evidence"
+      ]
+    },
+    {
+      "ids": [
+        "107682358",
+        "107940299"
+      ],
+      "notice": "CAN1017812",
+      "reasons": [
+        "incomplete_identity"
+      ]
+    },
+    {
+      "ids": [
+        "107651688",
+        "108087943"
+      ],
+      "notice": "CAN1077545",
+      "reasons": [
+        "incomplete_identity"
+      ]
+    },
+    {
+      "ids": [
+        "107604441",
+        "108105798"
+      ],
+      "notice": "182371",
+      "reasons": [
+        "archive_disagrees_with_core",
+        "missing_amendment_evidence"
+      ]
+    },
+    {
+      "ids": [
+        "107604479",
+        "108105782"
+      ],
+      "notice": "182371",
+      "reasons": [
+        "archive_disagrees_with_core"
+      ]
+    },
+    {
+      "ids": [
+        "107604474",
+        "108105777"
+      ],
+      "notice": "182371",
+      "reasons": [
+        "archive_disagrees_with_core",
+        "missing_amendment_evidence"
+      ]
+    },
+    {
+      "ids": [
+        "107604475",
+        "108105778"
+      ],
+      "notice": "182371",
+      "reasons": [
+        "archive_disagrees_with_core"
+      ]
+    },
+    {
+      "ids": [
+        "107596670",
+        "108021666"
+      ],
+      "notice": "CAN1077831",
+      "reasons": [
+        "missing_amendment_evidence"
+      ]
+    },
+    {
+      "ids": [
+        "107568902",
+        "107986139"
+      ],
+      "notice": "CAN1074764",
+      "reasons": [
+        "missing_amendment_evidence"
+      ]
+    },
+    {
+      "ids": [
+        "107137663",
+        "107893779"
+      ],
+      "notice": "CAN1083906",
+      "reasons": [
+        "incomplete_identity"
+      ]
+    }
+  ],
+  "classification": {
+    "methodology": "contract-reporting-1",
+    "rows": [
+      {
+        "kind": "amendment",
+        "publications": 296,
+        "excluded": 296
+      },
+      {
+        "kind": "calloff",
+        "publications": 128387,
+        "excluded": 0
+      },
+      {
+        "kind": "contract",
+        "publications": 45268,
+        "excluded": 0
+      },
+      {
+        "kind": "framework",
+        "publications": 35032,
+        "excluded": 20732
+      },
+      {
+        "kind": "review",
+        "publications": 99,
+        "excluded": 99
+      }
+    ]
+  },
+  "scope": "Repeated official award notices only; source proof preflight, not a completed national data repair",
+  "environment": "seap_test_currency_inventory_20261011 (isolated local copy)",
+  "productionMutations": false,
+  "sourceRequests": 0
+}

@@ -505,6 +505,20 @@
       "when": 1791723747584,
       "tag": "0071_perpetual_darwin",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1791746089452,
+      "tag": "0072_flawless_shadow_king",
+      "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1791778488444,
+      "tag": "0073_new_mother_askani",
+      "breakpoints": true
     }
   ]
 }

@@ -11,7 +11,7 @@ const isolated=new URL(process.env.DATABASE_URL??'postgres://invalid/').pathname
 const {sql}=createDb();afterAll(()=>sql.end({timeout:5}));
 function scoped(q:DbSql,prefix:string):DbSql {
  const rewrite=(s:string)=>s.replace(/\b(core|raw|app|marts)\./g,`${prefix}_$1.`);
- const f=((parts:TemplateStringsArray,...values:unknown[])=>{const mapped=parts.map(rewrite);Object.defineProperty(mapped,'raw',{value:parts.raw.map(rewrite)});return q(mapped as unknown as TemplateStringsArray,...values as never[]);}) as unknown as DbSql;
+ const f=((parts:TemplateStringsArray,...values:unknown[])=>{if(typeof parts==='string')return q(parts);const mapped=parts.map(rewrite);Object.defineProperty(mapped,'raw',{value:parts.raw.map(rewrite)});return q(mapped as unknown as TemplateStringsArray,...values as never[]);}) as unknown as DbSql;
  Object.assign(f,{begin:(fn:(tx:DbSql)=>Promise<unknown>)=>(q as any).savepoint((tx:DbSql)=>fn(scoped(tx,prefix)))});return f;
 }
 describe.skipIf(!isolated)('backed-up publication evidence revalidation',()=>{
@@ -19,7 +19,7 @@ describe.skipIf(!isolated)('backed-up publication evidence revalidation',()=>{
   const dir=await mkdtemp(join(tmpdir(),'seap-revalidation-')),path=join(dir,'bundle.gz'),rollback=Error('rollback');
   try{await expect(sql.begin(async tx=>{
    const prefix=`revalidation_${process.pid}`;
-   for(const [schema,tables] of Object.entries({app:['data_repairs','processing_runs','collection_control','collection_audit'],core:['contracts','awards','entities','contract_winners'],raw:['raw_documents'],marts:['contract_identity_members','contract_identity_decisions','contract_identity_candidates','contract_identity_observations','contract_identity_revisions']})){
+   for(const [schema,tables] of Object.entries({app:['data_repairs','processing_runs','collection_control','collection_audit'],core:['contracts','awards','entities','contract_winners'],raw:['raw_documents'],marts:['contract_identity_exclusions','contract_identity_archives','contract_identity_members','contract_identity_decisions','contract_identity_candidates','contract_identity_observations','contract_identity_revisions']})){
     await tx.unsafe(`create schema ${prefix}_${schema}`);
     for(const table of tables)await tx.unsafe(`create table ${prefix}_${schema}.${table} (like ${schema}.${table} including all)`);
    }

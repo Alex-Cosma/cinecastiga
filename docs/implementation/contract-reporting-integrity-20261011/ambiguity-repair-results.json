@@ -1,0 +1,384 @@
+{
+  "checkedAt": "2026-10-12T07:52:32.051Z",
+  "environment": "seap_test_currency_inventory_20261011",
+  "productionModified": false,
+  "seapRequests": 0,
+  "resolvedGroups": 275,
+  "resolvedSourcePublications": 716,
+  "resolvedPreviouslyFinancialGroups": 256,
+  "financiallyReclassified": [
+    {
+      "group": "16a9da794d6fe212c4b73cd51d175a0db3af563b5cc32f274b7159f91c374e5a",
+      "notice": "CAN1136323",
+      "previousReasons": [
+        "incomplete_identity"
+      ],
+      "previousFinancialEligibility": true,
+      "canonical": {
+        "candidate_id": "16a9da794d6fe212c4b73cd51d175a0db3af563b5cc32f274b7159f91c374e5a",
+        "internal_id": "542022",
+        "public_id": "107186411",
+        "source_contract_type": 2,
+        "included": false
+      },
+      "publications": [
+        "107186411",
+        "107859231"
+      ],
+      "proofs": [
+        {
+          "contract": "107186411",
+          "notice": "100603222",
+          "procedure": "100269226",
+          "source": "public-local-dump-20260930",
+          "rawId": "73611",
+          "hash": "d7e16e39fe2c771fe44a5fa204f1ade798db4a96a4ef488d0f8374616887a48d",
+          "noticeSource": "public-local-dump-20260930",
+          "noticeHash": "d1805e702774815e2a1cb125d4290bdb3f40eefe66951c1f23de33e999ccbdc0",
+          "contractType": 2,
+          "conditions": {
+            "hasCompetitionResumeSection": false
+          },
+          "winnerKeys": [
+            "foreign:BG:202458991"
+          ],
+          "url": "https://www.e-licitatie.ro/pub/notices/ca-notices/view-c/100603222"
+        },
+        {
+          "contract": "107859231",
+          "notice": "100642905",
+          "procedure": "100269226",
+          "source": "production-current",
+          "rawId": "17555667",
+          "hash": "345d4d49cddc86b4d9d775ba1194cc573253ab69312b12cf2f1fc770ef8e14f5",
+          "noticeSource": "production-current",
+          "noticeHash": "69e028695bb8b8bdc7395b2b3aa67db3486590d6cdbda061e12a69e01acfff3f",
+          "contractType": 2,
+          "conditions": {
+            "hasCompetitionResumeSection": false
+          },
+          "winnerKeys": [
+            "foreign:BG:202458991"
+          ],
+          "url": "https://www.e-licitatie.ro/pub/notices/ca-notices/view-c/100642905"
+        }
+      ]
+    },
+    {
+      "group": "8c854145f96a55d9a13665ec831d44ea547f6a4d831e36f5943c11ce29d56e10",
+      "notice": "CAN1089681",
+      "previousReasons": [
+        "incomplete_identity"
+      ],
+      "previousFinancialEligibility": true,
+      "canonical": {
+        "candidate_id": "8c854145f96a55d9a13665ec831d44ea547f6a4d831e36f5943c11ce29d56e10",
+        "internal_id": "457166",
+        "public_id": "107630521",
+        "source_contract_type": 2,
+        "included": false
+      },
+      "publications": [
+        "107630521",
+        "108052393"
+      ],
+      "proofs": [
+        {
+          "contract": "107630521",
+          "notice": "100628761",
+          "procedure": "100194888",
+          "source": "public-local-dump-20260930",
+          "rawId": "31207",
+          "hash": "321f0a4663b0f23ec19b57f447b7711b2b6ca8ef953e783c97ac19f14813efb9",
+          "noticeSource": "public-local-dump-20260930",
+          "noticeHash": "992ae8b7b8c1de615fa17b4b78e7b37f7ddbf18bfbfe9cb05d86f92653b25fc0",
+          "contractType": 2,
+          "conditions": {
+            "hasCompetitionResumeSection": false
+          },
+          "winnerKeys": [
+            "16418795",
+            "foreign:NL:NL817417813B01"
+          ],
+          "url": "https://www.e-licitatie.ro/pub/notices/ca-notices/view-c/100628761"
+        },
+        {
+          "contract": "108052393",
+          "notice": "100653829",
+          "procedure": "100194888",
+          "source": "production-current",
+          "rawId": "17569414",
+          "hash": "c5552a0e2f0fae73a26fc9ebb115b7e9ad3eb972ee965fcb83473579d6cfdf22",
+          "noticeSource": "production-current",
+          "noticeHash": "d1ea8dd1507eeab75f46669abe2599f13fa1577993abcb35250526a9aa373d89",
+          "contractType": 2,
+          "conditions": {
+            "hasCompetitionResumeSection": false
+          },
+          "winnerKeys": [
+            "16418795",
+            "foreign:NL:NL817417813B01"
+          ],
+          "url": "https://www.e-licitatie.ro/pub/notices/ca-notices/view-c/100653829"
+        }
+      ]
+    },
+    {
+      "group": "a9980e6b782f12874e8dfa69c1789a2fc3edbeb7b679560a0c151ad19974c853",
+      "notice": "CAN1088251",
+      "previousReasons": [
+        "incomplete_identity"
+      ],
+      "previousFinancialEligibility": true,
+      "canonical": {
+        "candidate_id": "a9980e6b782f12874e8dfa69c1789a2fc3edbeb7b679560a0c151ad19974c853",
+        "internal_id": "366382",
+        "public_id": "107729919",
+        "source_contract_type": 2,
+        "included": false
+      },
+      "publications": [
+        "107729919",
+        "108146653"
+      ],
+      "proofs": [
+        {
+          "contract": "107729919",
+          "notice": "100635719",
+          "procedure": "100181605",
+          "source": "public-local-dump-20260930",
+          "rawId": "4758",
+          "hash": "8ffd75b771b627da11b5f526233b6bcad3cf6d698b62e8b348ef32c1a836bc3d",
+          "noticeSource": "public-local-dump-20260930",
+          "noticeHash": "0bf3c3cfc1c99d807805141d70a1fb00a345cb0d819de4c3c5171cc14c5155d1",
+          "contractType": 2,
+          "conditions": {
+            "hasCompetitionResumeSection": false
+          },
+          "winnerKeys": [
+            "foreign:IT:12612601000"
+          ],
+          "url": "https://www.e-licitatie.ro/pub/notices/ca-notices/view-c/100635719"
+        },
+        {
+          "contract": "108146653",
+          "notice": "100658259",
+          "procedure": "100181605",
+          "source": "production-current",
+          "rawId": "17739643",
+          "hash": "61c51219091df15bb9566633417d6f214ecf7d590263834ac3698d73ff4d34e8",
+          "noticeSource": "production-current",
+          "noticeHash": "0c92bb44200339ad00399b0961b8b5a5b3dfce8225135d85a1fe4c3f4a5cc3c9",
+          "contractType": 2,
+          "conditions": {
+            "hasCompetitionResumeSection": false
+          },
+          "winnerKeys": [
+            "foreign:IT:12612601000"
+          ],
+          "url": "https://www.e-licitatie.ro/pub/notices/ca-notices/view-c/100658259"
+        }
+      ]
+    },
+    {
+      "group": "f4e9c3c547b5a11d696240513f23e63a39c00db25f439ae8a5867501ea66e5a2",
+      "notice": "CAN1167270",
+      "previousReasons": [
+        "incomplete_identity"
+      ],
+      "previousFinancialEligibility": true,
+      "canonical": {
+        "candidate_id": "f4e9c3c547b5a11d696240513f23e63a39c00db25f439ae8a5867501ea66e5a2",
+        "internal_id": "458643",
+        "public_id": "107627105",
+        "source_contract_type": 2,
+        "included": false
+      },
+      "publications": [
+        "107627105",
+        "107983210"
+      ],
+      "proofs": [
+        {
+          "contract": "107627105",
+          "notice": "100628516",
+          "procedure": "100316481",
+          "source": "public-local-dump-20260930",
+          "rawId": "32333",
+          "hash": "2d3f7bfa77296a594a12eb7a5ed8045c83451fa6e3d91252a16c6935236bd14c",
+          "noticeSource": "public-local-dump-20260930",
+          "noticeHash": "51e61be2002d9f820ad51feedba83b508d9c5c791d946a8371a98a5026f4e98a",
+          "contractType": 2,
+          "conditions": {
+            "hasCompetitionResumeSection": false
+          },
+          "winnerKeys": [
+            "foreign:FR:FR06518250337"
+          ],
+          "url": "https://www.e-licitatie.ro/pub/notices/ca-notices/view-c/100628516"
+        },
+        {
+          "contract": "107983210",
+          "notice": "100650152",
+          "procedure": "100316481",
+          "source": "production-current",
+          "rawId": "17564691",
+          "hash": "d43e9cc4b41965f59d477fe94f6acdd6b369eb34cbaa3623d1dd7e18cf098e78",
+          "noticeSource": "production-current",
+          "noticeHash": "6b05cafeb7d3d97a5f8cd503b902be1e551912bc6bd112d4f7126d5230adf073",
+          "contractType": 2,
+          "conditions": {
+            "hasCompetitionResumeSection": false
+          },
+          "winnerKeys": [
+            "foreign:FR:FR06518250337"
+          ],
+          "url": "https://www.e-licitatie.ro/pub/notices/ca-notices/view-c/100650152"
+        }
+      ]
+    }
+  ],
+  "newlyIncludedContracts": 252,
+  "repeat": {
+    "approvedGroups": 0,
+    "sourcePublications": 0,
+    "excludedPublications": 2154,
+    "valid": true,
+    "excludedGroups": 997,
+    "uncertainFinancialGroups": 484
+  },
+  "futureRevalidatedGroups": 275,
+  "sourceProjectionUnchanged": 2870,
+  "identityQuality": {
+    "members": 179683,
+    "staleMembers": 0,
+    "invalidDecisions": 0,
+    "examples": [],
+    "valid": true
+  },
+  "exclusions": {
+    "excludedPublications": 2154,
+    "valid": true
+  },
+  "monetaryQuality": {
+    "checkedAt": "2026-10-12T07:53:28.241Z",
+    "rawBoundary": "18296130",
+    "structuralErrors": 0,
+    "sourceErrors": 0,
+    "newIssues": null,
+    "counts": [
+      {
+        "status": "converted",
+        "count": 4404
+      },
+      {
+        "status": "inconsistent",
+        "count": 55
+      },
+      {
+        "status": "legacy_ron",
+        "count": 82889
+      },
+      {
+        "status": "legacy_unknown",
+        "count": 3505
+      },
+      {
+        "status": "missing_conversion",
+        "count": 6
+      },
+      {
+        "status": "missing_currency",
+        "count": 4
+      },
+      {
+        "status": "missing_value",
+        "count": 297
+      },
+      {
+        "status": "ron",
+        "count": 117922
+      }
+    ],
+    "examples": [
+      {
+        "id": "108187268",
+        "status": "missing_value",
+        "title": "Lucrari de intretinere curenta pe timp de vara parte carosabila, acostamente, benzi de urgenta si benzi de urgenta si benzi de incadrara pentru DRDP CLUJ ( AC 4 ANI )"
+      },
+      {
+        "id": "108183742",
+        "status": "missing_value",
+        "title": "MATERIALE SANITARE 6"
+      },
+      {
+        "id": "108183741",
+        "status": "missing_value",
+        "title": "MATERIALE SANITARE 6"
+      },
+      {
+        "id": "108183740",
+        "status": "missing_value",
+        "title": "MATERIALE SANITARE 6"
+      },
+      {
+        "id": "108183739",
+        "status": "missing_value",
+        "title": "MATERIALE SANITARE 6"
+      },
+      {
+        "id": "108183738",
+        "status": "missing_value",
+        "title": "MATERIALE SANITARE 6"
+      },
+      {
+        "id": "108183737",
+        "status": "missing_value",
+        "title": "MATERIALE SANITARE 6"
+      },
+      {
+        "id": "108183736",
+        "status": "missing_value",
+        "title": "MATERIALE SANITARE 6"
+      },
+      {
+        "id": "108183735",
+        "status": "missing_value",
+        "title": "MATERIALE SANITARE 6"
+      },
+      {
+        "id": "108183734",
+        "status": "missing_value",
+        "title": "MATERIALE SANITARE 6"
+      }
+    ]
+  },
+  "reconciliation": {
+    "contracts_considered": "209082",
+    "eligible_missing": "0",
+    "excluded_included": "0",
+    "allocation_mismatches": "0",
+    "examples": []
+  },
+  "coverage": [
+    {
+      "observation": {
+        "date_to": "2026-10-09",
+        "included": "87978",
+        "available": "209082",
+        "date_from": "2014-12-30",
+        "allocations": "95756",
+        "missing_cpv": "209082",
+        "missing_date": "0",
+        "missing_currency": "6",
+        "framework_publications": "40901",
+        "non_additive_amendments": "296",
+        "unverified_contract_type": "110",
+        "temporarily_excluded_groups": "997",
+        "temporarily_excluded_publications": "2154",
+        "temporarily_excluded_financial_groups": "484",
+        "frameworks_without_identified_calloffs": "16711"
+      }
+    }
+  ]
+}

@@ -13,12 +13,16 @@ export async function seedVerifiedIdentity(q:DbSql,{framework=false,calloff=fals
   (1,3,101,100,'C/1','2026-07-06T00:00:00+03:00',100,'RON',${title},'Lot 1','45000000-7'),
   (2,4,102,200,'C/1','2026-07-06T00:00:00+03:00',100,'RON',${title},'Lot 1','45000000-7')`;
  await q`insert into core.contract_winners(contract_id,entity_id) values(1,10),(2,10)`;
- if(calloff)await q`insert into core.contracts(id,raw_id,ca_notice_contract_id,ca_notice_id,title) values(3,5,103,100,'Contract subsecvent')`;
+ if(calloff){
+  await q`insert into core.contracts(id,raw_id,ca_notice_contract_id,ca_notice_id,title,lots_caption,contract_no,contract_value,currency,contract_date)
+   values(3,5,103,100,'Contract subsecvent','Lot 1','S/1',20,'RON','2026-07-07T00:00:00+03:00')`;
+  await q`insert into core.contract_winners(contract_id,entity_id) values(3,10)`;
+ }
  const rows=await readContractIdentityMembers(q,['1','2']);
  const members=rows.map(r=>r.identity as IdentityContract);
  const archives:ArchivedAward[]=members.flatMap(c=>[
   {source:'fixture',rawId:c.noticeId,hash:'notice-'+c.noticeId,endpoint:'award-list:v1',payload:{caNoticeId:Number(c.noticeId),noticeStateDate:c.noticeId==='100'?'2026-10-01T10:00:00+03:00':'2026-10-02T10:00:00+03:00',noticeNo:c.noticeNo,procedureId:55,cpvCodeAndName:'45000000-7 - Lucrari',sysProcedureType:{text:'Licitatie'},sysAcquisitionContractType:{text:'Lucrari'},sysNoticeState:{text:'Publicat'},contractingAuthorityNameAndFN:'4278337 - Autoritate'}},
-  {source:'fixture',rawId:c.publicId,hash:'contract-'+c.publicId,endpoint:'award-contracts:v1',payload:{caNoticeId:Number(c.noticeId),items:[{caNoticeId:Number(c.noticeId),noticeNo:c.noticeNo,caNoticeContractId:Number(c.publicId),contractNo:c.number,contractDate:'2026-07-06T00:00:00+03:00',contractValue:100,defaultCurrencyContractValue:100,currency:{text:'RON'},contractTitle:c.title,lotsCaption:c.lots,winner:{fiscalNumber:'RO15219174'},contractType:3,conditions:{hasCompetitionResumeSection:true}}]}}
+  {source:'fixture',rawId:c.publicId,hash:'contract-'+c.publicId,endpoint:'award-contracts:v1',payload:{caNoticeId:Number(c.noticeId),items:[{caNoticeId:Number(c.noticeId),noticeNo:c.noticeNo,caNoticeContractId:Number(c.publicId),contractNo:c.number,contractDate:'2026-07-06T00:00:00+03:00',contractValue:100,defaultCurrencyContractValue:100,currency:{text:'RON'},contractTitle:c.title,lotsCaption:c.lots,winner:{fiscalNumber:'RO15219174'},contractType:framework?2:1,conditions:{hasCompetitionResumeSection:true}}]}}
  ]);
  const assessed=assessContractIdentity(members,archives);
  if(assessed.status!=='source_verified')throw Error('Invalid identity test fixture');

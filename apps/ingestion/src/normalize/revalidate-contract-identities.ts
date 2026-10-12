@@ -1,7 +1,9 @@
+import {readRecoveredIdentityArchives} from './contract-identity-archives.js';
 import {isDeepStrictEqual} from 'node:util';
 import {assertContractIdentityQuality,readContractIdentityMembers,readContractIdentityQuality,type DbSql} from '@seap/db';
 import {assessContractPublicationGroup,assessContractVersions,assessContractSource,contractVersionAnchor,contractIdentitySignature,type ArchivedAward,type IdentityContract} from './contract-identity.js';
 import {IDENTITY_REPAIR_ID,loadIdentityRepairBundle,type IdentityRepairBundle} from './scheduled-contract-identity.js';
+import {AUTOMATIC_IDENTITY_REASON} from './discover-contract-identities.js';
 
 type MemberRow={identity:IdentityContract;eligible:boolean;snapshot_hash:string};
 type RegistryRow={id:string;fingerprint:string;evidence:{members:IdentityContract[]};decision:{canonical_contract_id:string|number;fingerprint:string}};
@@ -58,7 +60,8 @@ export async function prepareApprovedRevalidation(q:DbSql,bundle:IdentityRepairB
  const origins=new Map(bundle.groups.map(g=>[g.id,g]));
  for(const row of registry){
   const origin=origins.get(String(row.id));
-  if(!origin||origin.members.some(m=>!row.evidence.members.some((n:IdentityContract)=>isDeepStrictEqual(m,n))))throw Error(`Approval is outside the verified historical bundle: ${row.id}`);
+  if(origin ? origin.members.some(m=>!row.evidence.members.some((n:IdentityContract)=>isDeepStrictEqual(m,n)))
+    : row.decision.reason!==AUTOMATIC_IDENTITY_REASON)throw Error(`Approval is outside the verified historical bundle: ${row.id}`);
  }
  const notices=[...new Set(registry.flatMap(r=>r.evidence.members.map((m:IdentityContract)=>m.noticeNo)))];
  const ids=await q`select c.id::text from core.awards a join core.contracts c using(ca_notice_id) where a.notice_no=any(${notices}::text[])`;
@@ -66,7 +69,7 @@ export async function prepareApprovedRevalidation(q:DbSql,bundle:IdentityRepairB
  const external=[...new Set(rows.map(r=>'award:'+r.identity.noticeId))];
  const fresh=await q`select id::text,content_hash,endpoint_version,payload from raw.raw_documents
    where external_id=any(${external}::text[]) and endpoint_version in ('award-list:v1','award-contracts:v1') and id<=${boundary}::bigint`;
- const archives=[...bundle.archives,...fresh.map(r=>({source:'production-current',rawId:String(r.id),hash:String(r.content_hash),endpoint:String(r.endpoint_version),payload:r.payload}))];
+ const archives=[...bundle.archives,...await readRecoveredIdentityArchives(q,external),...fresh.map(r=>({source:'production-current',rawId:String(r.id),hash:String(r.content_hash),endpoint:String(r.endpoint_version),payload:r.payload}))];
  const groups=verifyApprovedPublications(registry as unknown as RegistryRow[],rows,archives);
  const beforeMembers=await q`select contract_id::text,candidate_id,snapshot_hash from marts.contract_identity_members order by contract_id`;
  const eligibleIds=new Set(rows.filter(r=>r.eligible).map(r=>r.identity.id));

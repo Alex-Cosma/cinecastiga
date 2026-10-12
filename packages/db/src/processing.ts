@@ -1,4 +1,5 @@
 import type { DbSql } from './client.js';
+import { CONTRACT_REPORTING_VERSION } from './contract-reporting.js';
 
 /** Host runner holds the deployment lock before calling these operations. */
 export async function claimProcessing(q: DbSql, at?: Date) {
@@ -17,14 +18,16 @@ export async function claimProcessing(q: DbSql, at?: Date) {
   if(orphan)throw Error('An unfinished publication requires operator recovery');
   // A failed publication can leave historical core rows changed. Rebuild risk
   // once on the next scheduled day rather than reusing its old provenance.
-  const scope=(c.maintenance&&c.collection_during_maintenance)||c.weekday===c.risk_weekday?'full':'daily';
+  const [previous]=await tx`select methodology from app.monitoring_refreshes where status='ready' order by version desc limit 1`;
+  const reportingChanged=previous?.methodology?.contractReporting!==CONTRACT_REPORTING_VERSION;
+  const scope=reportingChanged||(c.maintenance&&c.collection_during_maintenance)||c.weekday===c.risk_weekday?'full':'daily';
   const [run]=await tx`insert into app.processing_runs(scheduled_day,scope,control_revision,before_control)
     values(${c.scheduled_day}::date,${scope},${c.revision+1},${JSON.stringify({paused:c.paused,revision:c.revision})}::jsonb)
     on conflict(scheduled_day) where trigger='scheduled' do nothing returning id,scope`;
   if(!run)return null;
   await tx`update app.collection_control set paused=true,maintenance=true,collection_during_maintenance=false,revision=revision+1,updated_at=clock_timestamp() where id=1`;
   await tx`insert into app.collection_audit(actor_id,actor_name,action,before,after)
-    values('system:processor','Procesare programată','processing-start',${JSON.stringify({paused:c.paused})}::jsonb,${JSON.stringify({runId:run.id,scope,maintenance:true})}::jsonb)`;
+    values('system:processor','Procesare programată','processing-start',${JSON.stringify({paused:c.paused})}::jsonb,${JSON.stringify({runId:run.id,scope,maintenance:true,reportingChanged})}::jsonb)`;
   return {id:String(run.id),scope:String(run.scope)};
  });
 }
@@ -98,12 +101,14 @@ export async function finishProcessing(q:DbSql,id:string) {
 
 /** Romanian wall-clock schedule, computed in PostgreSQL; one row/day handles DST repeats. */
 export async function processingSchedule(q:DbSql) {
- const [schedule]=await q`with days as (
+ const [schedule]=await q`with policy as (
+   select coalesce((select methodology->>'contractReporting' from app.monitoring_refreshes where status='ready' order by version desc limit 1),'')<>${CONTRACT_REPORTING_VERSION} changed
+ ), days as (
    select c.*,d::date as scheduled_day,((d::date+c.processing_time::time) at time zone 'Europe/Bucharest') as scheduled_at
    from app.collection_control c cross join generate_series((now() at time zone 'Europe/Bucharest')::date,
      (now() at time zone 'Europe/Bucharest')::date+8,interval '1 day') d where c.id=1
  ) select min(scheduled_at) filter(where processing_enabled and scheduled_at>=processing_enabled_at and not exists(select 1 from app.processing_runs r where r.scheduled_day=days.scheduled_day and r.trigger='scheduled')) next_at,
-   min(scheduled_at) filter(where processing_enabled and ((maintenance and collection_during_maintenance) or extract(dow from scheduled_day)=risk_weekday) and scheduled_at>=processing_enabled_at and not exists(select 1 from app.processing_runs r where r.scheduled_day=days.scheduled_day and r.trigger='scheduled')) next_risk_at
+   min(scheduled_at) filter(where processing_enabled and ((select changed from policy) or (maintenance and collection_during_maintenance) or extract(dow from scheduled_day)=risk_weekday) and scheduled_at>=processing_enabled_at and not exists(select 1 from app.processing_runs r where r.scheduled_day=days.scheduled_day and r.trigger='scheduled')) next_risk_at
    from days`;
  return schedule??{next_at:null,next_risk_at:null};
 }

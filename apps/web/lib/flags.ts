@@ -138,7 +138,7 @@ export const FLAG_META: Record<string, FlagMeta> = {
     rationale:
       "Merită verificat cum au fost îndeplinite contractele: personal propriu, subcontractori, echipamente sau revânzare de produse.",
     caveat:
-      "Numărul mediu de salariați nu măsoară singur capacitatea de execuție. Dealeri, importatori și firme cu subcontractare pot avea legitim puțini salariați. Valorile înregistrate pot include plafoane de acord-cadru, nu plăți efective.",
+      "Numărul mediu de salariați nu măsoară singur capacitatea de execuție. Dealeri, importatori și firme cu subcontractare pot avea legitim puțini salariați. Valorile sunt contractate, nu plăți efective; plafoanele acordurilor-cadru sunt excluse.",
   },
   fin_public_reliance: {
     code: "fin_public_reliance",
@@ -150,7 +150,7 @@ export const FLAG_META: Record<string, FlagMeta> = {
     rationale:
       "Merită comparate durata contractelor, execuția și veniturile raportate. Raportul ajută la alegerea documentelor de verificat, dar nu măsoară ponderea încasărilor de la stat.",
     caveat:
-      "Compară valori contractate cu cifra de afaceri, nu încasări cu venituri. Contractele multianuale și plafoanele acordurilor-cadru pot duce raportul peste 100%. Cotele consorțiilor sunt estimate; unele sectoare au predominant clienți publici.",
+      "Compară valori contractate cu cifra de afaceri, nu încasări cu venituri. Contractele multianuale pot duce raportul peste 100%; plafoanele acordurilor-cadru sunt excluse. Cotele consorțiilor sunt estimate; unele sectoare au predominant clienți publici.",
   },
   net_shared_admin: {
     code: "net_shared_admin",
