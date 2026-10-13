@@ -19,6 +19,22 @@ export class CollectionSuspendedError extends Error {constructor(message='Colect
 export async function collectionHeartbeat(q:DbSql,id:string,kind:string,state:string){
  await q`insert into app.collection_workers(id,kind,state) values(${id},${kind},${state}) on conflict(id) do update set heartbeat_at=clock_timestamp(),state=excluded.state`;
 }
+/** Document sessions are a separate subsystem: their transport failures stop only their own stream.
+ * Recorded in the audit with the reason; resumed from the stream control in administration. */
+export const UNCLASSIFIED_PROXY_LIMIT=3,UNCLASSIFIED_PROXY_WINDOW_MINUTES=10;
+export async function pauseCollectionStream(q:DbSql,stream:CollectionStream,reason:string){
+ await q`begin`;
+ try{
+  const [c]=await q`select paused_streams from app.collection_control where id=1 for update`;
+  const before=(c?.paused_streams as string[]|undefined)??[];
+  if(!before.includes(stream)){
+   const after=[...before,stream];
+   await q`update app.collection_control set paused_streams=${JSON.stringify(after)}::jsonb,revision=revision+1,updated_at=clock_timestamp() where id=1`;
+   await q`insert into app.collection_audit(actor_id,actor_name,action,before,after) values('system:stream-circuit','Sistem','stream-auto-paused',${JSON.stringify({pausedStreams:before})}::jsonb,${JSON.stringify({pausedStreams:after,stream,reason})}::jsonb)`;
+  }
+  await q`commit`;
+ }catch(error){await q`rollback`.catch(()=>{});throw error;}
+}
 export const collectionWorkerId=(kind:string)=>`${kind}:${process.pid}:${randomUUID().slice(0,8)}`;
 export interface CollectionRequestInfo {stream:CollectionStream;worker:string;method:string;url:string;parameters?:unknown;fileDownload?:boolean;context?:unknown;proxyId?:string;documentJobId?:string}
 export interface CollectionResult<T>{value:T;status:number;bytes?:number;records?:number;retryAfter?:string|null;challenge?:boolean;diagnostics?:CollectionDiagnostics}
@@ -133,18 +149,30 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
    if(selectedProxy)await q`update app.collection_proxies set last_error='Eroare de transport; verifică jurnalul.' where id=${selectedProxy.id}`;
    const response=(error instanceof CollectionTransportError?error.diagnostics.response:transportDiagnostics?.response) as {status?:number;receivedBytes?:number}|undefined;
    const scoped=selectedProxy&&(abortReason==='request_timeout'||(!abortReason&&error instanceof CollectionTransportError&&error.diagnostics.retryableProxyTransport===true))&&(!response?.status||(response.status>=200&&response.status<300)||[407,408,500,502,503,504].includes(response.status));
-   if(!scoped&&abortReason!=='request_timeout')await q`update app.collection_control set blocked_reason=coalesce(blocked_reason,'Eroare de transport. Verifică jurnalul înainte de reluare.'),blocked_until=case when blocked_reason is null then clock_timestamp()+interval '120 seconds' else blocked_until end where id=1`;
+   const transportReason='Eroare de transport. Verifică jurnalul înainte de reluare.';
+   const stopTransport=()=>info.stream==='documents'?pauseCollectionStream(q,'documents',transportReason):q`update app.collection_control set blocked_reason=coalesce(blocked_reason,${transportReason}),blocked_until=case when blocked_reason is null then clock_timestamp()+interval '120 seconds' else blocked_until end where id=1`;
+   if(!scoped&&abortReason!=='request_timeout')await stopTransport();
    // Keep every attempt and its diagnostics before considering replay.
    await q`update app.collection_requests set outcome='failed',status=coalesce(status,${response?.status??null}),bytes=coalesce(bytes,${response?.receivedBytes??null}),error=${abortReason==='request_timeout'?`Timeout după ${info.fileDownload?600:45} de secunde.`:'Cerere întreruptă, răspuns nevalid sau eroare de transport. Fără reîncercare automată.'},diagnostics=${diagnostics(error)}::jsonb,finished_at=clock_timestamp() where id=${id}`;
 
    if(scoped){
     await recordProxyFailure(q,selectedProxy!.id);
+    if(error instanceof CollectionTransportError&&error.diagnostics.unclassifiedTransport===true){
+     // One proxy failing is the proxy; several distinct proxies failing alike points at the source.
+     const [spread]=await q`select count(distinct proxy_id)::int n from app.collection_requests where stream=${info.stream} and outcome='failed' and proxy_id is not null
+      and diagnostics->>'unclassifiedTransport'='true' and started_at>clock_timestamp()-${UNCLASSIFIED_PROXY_WINDOW_MINUTES}*interval '1 minute'`;
+     if(Number(spread?.n)>=UNCLASSIFIED_PROXY_LIMIT){
+      const reason=`Erori de transport neclasificate pe ${spread!.n} proxy-uri diferite în ${UNCLASSIFIED_PROXY_WINDOW_MINUTES} minute. Verifică jurnalul înainte de reluare.`;
+      if(info.stream==='documents')await pauseCollectionStream(q,'documents',reason);
+      else await q`update app.collection_control set blocked_reason=coalesce(blocked_reason,${reason}),blocked_until=case when blocked_reason is null then clock_timestamp()+interval '120 seconds' else blocked_until end where id=1`;
+     }
+    }
     if(await scheduleCollectionTimeout(q,id,taskId,true))throw new CollectionSuspendedError('Cererea va fi reîncercată; celelalte proxy-uri continuă.');
     throw new CollectionProxyFailureError('Cerere prin proxy eșuată; celelalte proxy-uri continuă.');
    }
    if(abortReason==='request_timeout'&&await scheduleCollectionTimeout(q,id,taskId))throw new CollectionSuspendedError('Timeout SEAP. Reîncercarea a fost programată.');
    if(taskId!==null)await q`update app.collection_retries set status='stopped',retry_at=null,updated_at=clock_timestamp() where task_id=${taskId} and status='pending'`;
-   await q`update app.collection_control set blocked_reason=coalesce(blocked_reason,'Eroare de transport. Verifică jurnalul înainte de reluare.'),blocked_until=case when blocked_reason is null then clock_timestamp()+interval '120 seconds' else blocked_until end where id=1`;
+   await stopTransport();
   }
   throw error;
  }finally{

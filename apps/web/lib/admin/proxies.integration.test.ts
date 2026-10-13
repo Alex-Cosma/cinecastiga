@@ -2,7 +2,7 @@ import {afterAll,beforeEach,describe,expect,it,vi} from 'vitest';
 import {mkdtemp,writeFile,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {CollectionTransportError,CollectionProxyFailureError,createDb,runCollectionRequest,registerSeapProxies,reserveDocumentProxy,releaseDocumentProxy,type DbSql} from '@seap/db';
+import {CollectionTransportError,CollectionProxyFailureError,CollectionSuspendedError,createDb,runCollectionRequest,registerSeapProxies,reserveDocumentProxy,releaseDocumentProxy,type DbSql} from '@seap/db';
 import {changeCollection} from './collection';
 import {proxyStatus} from './proxies';
 const url=process.env.TEST_DATABASE_URL;
@@ -195,6 +195,28 @@ describe.skipIf(!connection)('shared proxy scheduling (PostgreSQL, NO network)',
   expect(await q`select task_id from app.collection_retries`).toHaveLength(0);
   await q`update app.collection_control set next_allowed_at=null`;
   expect(await request()).toBe('proxy-2');
+ });
+ it('pauses only document collection when several proxies fail without a classifiable cause',async()=>{
+  const unclassified=()=>vi.fn(async()=>{throw new CollectionTransportError(Error('fixture unknown'),{retryableProxyTransport:true,unclassifiedTransport:true});});
+  const used:string[]=[];
+  for(let n=0;n<3;n++){
+   await q`update app.collection_control set next_allowed_at=null`;
+   await expect(request(unclassified(),{stream:'documents'})).rejects.toBeInstanceOf(CollectionProxyFailureError);
+   used.push(String((await q`select proxy_id from app.collection_requests order by id desc limit 1`)[0]!.proxy_id));
+   expect((await q`select paused_streams from app.collection_control`)[0]!.paused_streams).toEqual(n<2?[]:['documents']);
+  }
+  expect(new Set(used).size).toBe(3);
+  const [c]=await q`select blocked_reason,paused from app.collection_control`;expect(c).toMatchObject({blocked_reason:null,paused:false});
+  expect(await q`select after->>'stream' stream from app.collection_audit where action='stream-auto-paused'`).toEqual([{stream:'documents'}]);
+  await q`update app.collection_control set next_allowed_at=null`;await q`update app.collection_proxies set next_allowed_at=null`;
+  await expect(request(undefined,{stream:'documents'})).rejects.toBeInstanceOf(CollectionSuspendedError);
+  expect(await request()).toMatch(/^proxy-/);
+ });
+ it('stops only document collection on an unscoped document transport error, keeping other streams running',async()=>{
+  await expect(request(vi.fn(async()=>{throw new CollectionTransportError(Error('fixture invalid'),{retryableProxyTransport:false});}),{stream:'documents'})).rejects.toBeInstanceOf(CollectionTransportError);
+  const [c]=await q`select blocked_reason,paused_streams from app.collection_control`;expect(c).toMatchObject({blocked_reason:null,paused_streams:['documents']});
+  await q`update app.collection_control set next_allowed_at=null`;await q`update app.collection_proxies set next_allowed_at=null`;
+  expect(await request()).toMatch(/^proxy-/);
  });
  it('pins a document chain and lets other requests use a different IP',async()=>{
   const id='a725a132-b6c0-4282-afbf-ae854427ea64',c=await q.reserve();

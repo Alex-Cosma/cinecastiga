@@ -32,7 +32,10 @@ export function proxyTransportError(error:unknown,observed:{status?:number;recei
  const message=error instanceof Error?error.message:'';
  const codes=['ERR_PROXY_CONNECTION_FAILED','ERR_TUNNEL_CONNECTION_FAILED','ERR_INVALID_AUTH_CREDENTIALS','ERR_PROXY_AUTH_UNSUPPORTED','ERR_TIMED_OUT','ERR_CONNECTION_CLOSED','ERR_CONNECTION_RESET','ERR_CERT_AUTHORITY_INVALID','ERR_HTTP2_PROTOCOL_ERROR','ERR_INCOMPLETE_CHUNKED_ENCODING','ERR_CONTENT_LENGTH_MISMATCH','ERR_CONNECTION_ABORTED','ERR_EMPTY_RESPONSE','ERR_NETWORK_CHANGED'];
  const code=codes.find(c=>message.includes(c)||observed.networkFailure?.includes(c))??(/timeout/i.test(message)?'TIMEOUT':observed.status===200&&(observed.receivedBytes??0)>0?'STREAM_INTERRUPTED':'TRANSPORT_FAILED');
- const safe=new CollectionTransportError(new Error(`SEAP: conexiunea prin proxy a eșuat (${code}). Nu s-a încercat o conexiune directă.`),{retryableProxyTransport:code!=='TRANSPORT_FAILED',...(observed.status!==undefined||observed.receivedBytes!==undefined?{response:{status:observed.status,receivedBytes:observed.receivedBytes}}:{})});
+ // An unrecognised failure without a source response is attributed to the proxy, not to SEAP:
+ // the per-proxy circuit isolates it, and runCollectionRequest escalates when several proxies fail alike.
+ const unclassified=code==='TRANSPORT_FAILED'&&observed.status===undefined;
+ const safe=new CollectionTransportError(new Error(`SEAP: conexiunea prin proxy a eșuat (${code}). Nu s-a încercat o conexiune directă.`),{retryableProxyTransport:code!=='TRANSPORT_FAILED'||unclassified,...(unclassified?{unclassifiedTransport:true}:{}),...(observed.status!==undefined||observed.receivedBytes!==undefined?{response:{status:observed.status,receivedBytes:observed.receivedBytes}}:{})});
  delete safe.cause;return safe;
 }
 
