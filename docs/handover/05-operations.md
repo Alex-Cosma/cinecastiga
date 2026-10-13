@@ -70,6 +70,15 @@ Sunt 3 încercări totale, aceeași identitate/query. Bugetul persistă în `app
 
 403/429/challenge, răspuns invalid, eroare SQL, conexiune pierdută fără deadline-ul confirmat sau anulare nu sunt tratate automat ca timeout. Păstrează diagnosticele, statusul, parametrii siguri, faza, durata și excepția sanitizată. Nu stoca parole/tokenuri/cookies în jurnal.
 
+**Izolarea erorilor de transport (13 octombrie 2026).** 403/429/challenge și cererile rămase fără rezultat opresc în continuare toată colectarea. În rest:
+
+- Documente: o eroare de proxy pe care browserul nu o poate clasifica (`TRANSPORT_FAILED`, fără răspuns SEAP) e atribuită proxy-ului. Circuitul per proxy o izolează: pauză 5/10 minute, oprire după 3 erori consecutive. Jobul automat se reia cu bugetul lui.
+- Escaladare: dacă **3 proxy-uri diferite** dau asemenea erori neclasificate în **10 minute**, cauza e probabil sursa. Atunci se oprește fluxul `documents` (intrare `stream-auto-paused` în audit, cu motivul).
+- Orice altă eroare de transport nescoped din fluxul de documente oprește **doar** fluxul `documents` (`paused_streams`), nu anunțurile/DA. Reluarea se face din controlul fluxurilor, după verificarea jurnalului.
+- Fluxurile de ingestie (`da`, `tenders`, `awards`, `catalogue`) păstrează oprirea globală pentru erorile nescoped.
+
+Motiv: între 11 și 12 octombrie, 4 opriri globale au venit din câte o singură eroare `TRANSPORT_FAILED` la documente, pe proxy-uri diferite. Cererile prin alte proxy-uri primeau 200 în aceeași secundă, iar în 14 zile nu a existat niciun 403/429/challenge. Pragurile sunt în `UNCLASSIFIED_PROXY_LIMIT` / `UNCLASSIFIED_PROXY_WINDOW_MINUTES` (`packages/db/src/collection.ts`).
+
 Orice manual pause, stream pause, maintenance, daily cap sau source block rămâne independent. O cerere rămasă „running” după pierderea worker-ului impune inspecție; nu o marca success pentru a debloca UI-ul.
 
 ## Procesare/publicare
