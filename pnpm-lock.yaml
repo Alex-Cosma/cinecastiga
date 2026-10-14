@@ -42,6 +42,9 @@ importers:
       meilisearch:
         specifier: ^0.59.0
         version: 0.59.0
+      nodemailer:
+        specifier: ^9.0.3
+        version: 9.0.3
       undici:
         specifier: ^7
         version: 7.30.0
@@ -52,6 +55,9 @@ importers:
       '@types/node':
         specifier: ^22
         version: 22.20.1
+      '@types/nodemailer':
+        specifier: ^8.0.1
+        version: 8.0.1
       tsx:
         specifier: ^4.19.0
         version: 4.23.0

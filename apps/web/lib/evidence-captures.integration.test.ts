@@ -17,11 +17,14 @@ if(url&&!/^seap_test_[a-z0-9_]+$/i.test(new URL(url).pathname.slice(1)))throw ne
 describe.skipIf(!url)("server evidence captures (dedicated PostgreSQL database)",()=>{
   let sql:DbSql;
   const uid=`capture-test-${randomUUID()}`,editor=uid+"-editor",viewer=uid+"-viewer",outsider=uid+"-outsider";
-  const inv=randomUUID(),other=randomUUID(),checkpoint=randomUUID();
+  const inv=randomUUID(),other=randomUUID(),checkpoint=randomUUID(),older=randomUUID();
   const authority="887770001",supplier="887770002",supplier2="887770003",da="887770011",daNull="887770012",contract="887770021",natural="887770099";
   beforeAll(async()=>{
     sql=createDb(url).sql;
-    await sql`insert into app.monitoring_refreshes(id,kind,status,completed_at,methodology) values(${checkpoint},'baseline','ready',now(),' {"flags":"fixture-risk-version"}'::jsonb)`;
+    // Versions 9…9 then 10…0: sorting the text-cast version would pick the older one.
+    const [{next}]=await sql`select greatest(10,power(10,ceil(log(coalesce(max(version),0)+2))))::bigint::text next from app.monitoring_refreshes`;
+    await sql`insert into app.monitoring_refreshes(id,version,kind,status,completed_at) values(${older},${BigInt(next)-1n},'baseline','ready',now())`;
+    await sql`insert into app.monitoring_refreshes(id,version,kind,status,completed_at,methodology) values(${checkpoint},${next},'baseline','ready',now(),' {"flags":"fixture-risk-version"}'::jsonb)`;
     for(const id of [uid,editor,viewer,outsider])await sql`insert into auth.users(id,name,email) values(${id},'Evidence fixture',${id+"@example.invalid"})`;
     await sql`insert into app.investigations(id,owner_user_id,title) values(${inv},${uid},'Frozen evidence fixture'),(${other},${uid},'Other fixture')`;
     await sql`insert into app.investigation_members(investigation_id,user_id,role) values(${inv},${editor},'editor'),(${inv},${viewer},'viewer')`;
@@ -45,7 +48,7 @@ describe.skipIf(!url)("server evidence captures (dedicated PostgreSQL database)"
     await sql`delete from marts.lot_patterns where authority_id=${authority}`;
     await sql`delete from core.contracts where id=${contract}`;
     await sql`delete from core.entities where id in (${authority},${supplier},${supplier2})`;
-    await sql`delete from app.monitoring_refreshes where id=${checkpoint}`;
+    await sql`delete from app.monitoring_refreshes where id in (${checkpoint},${older})`;
     await sql.end();
   });
   async function queued(kind:string,refId:string|null,spec:unknown=null,snapshot:unknown=null,user=uid){

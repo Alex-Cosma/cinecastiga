@@ -8,6 +8,7 @@ import {runScheduledReferenceRepair} from '../reference/scheduled-repair.js';
 import { runMonitoringRefresh } from '../monitoring/refresh.js';
 import {indexTopics} from '../search/index-topics.js';
 import { indexEntities, meiliClient } from '../search/index-entities.js';
+import {deliverOperationalAlerts,smtpSender} from '../alerts/operational-alerts.js';
 
 async function main() {
  const [command,id,arg]=process.argv.slice(2);
@@ -18,7 +19,14 @@ async function main() {
  const {db,sql}=createDb(url.toString());
  let heartbeat:ReturnType<typeof setInterval>|undefined;
  try {
-  if(command==='claim') {const run=await claimProcessing(sql);if(run)console.log(run.id);return;}
+  if(command==='claim') {
+   // The minute scheduler is also the operator alarm: when nothing starts,
+   // including an orphan refusal, it mails new incidents to admins.
+   let run:Awaited<ReturnType<typeof claimProcessing>>=null;
+   try{run=await claimProcessing(sql);if(run)console.log(run.id);}
+   finally{if(!run)await deliverOperationalAlerts(sql,smtpSender(),process.env['ALERT_ORIGIN']||'https://cinecastiga.ro');}
+   return;
+  }
   if(command==='claim-repair'){const run=await claimRepairProcessing(sql,id!);console.log(run.id);return;}
   if(command==='fail'){await failProcessing(sql,id!);return;}
   if(command==='finish'){await finishProcessing(sql,id!);return;}
