@@ -3,7 +3,7 @@ import {revalidateApprovedContractIdentities} from '../normalize/revalidate-cont
 import {discoverAndApproveContractIdentities} from '../normalize/discover-contract-identities.js';
 import {runScheduledIdentityRepair} from '../normalize/scheduled-contract-identity.js';
 import { runScheduledMoneyRepair } from '../normalize/scheduled-money-repair.js';
-import { diagnosticError, createDb, claimProcessing, claimRepairProcessing, failProcessing, finishProcessing, processingStage, collectionHeartbeat } from '@seap/db';
+import { diagnosticError, createDb, claimProcessing, claimRepairProcessing, claimRecoveryProcessing, failProcessing, finishProcessing, processingStage, collectionHeartbeat } from '@seap/db';
 import {runScheduledReferenceRepair} from '../reference/scheduled-repair.js';
 import { runMonitoringRefresh } from '../monitoring/refresh.js';
 import {indexTopics} from '../search/index-topics.js';
@@ -12,7 +12,7 @@ import {deliverOperationalAlerts,smtpSender} from '../alerts/operational-alerts.
 
 async function main() {
  const [command,id,arg]=process.argv.slice(2);
- if(!['claim','claim-repair','stage','freeze','refresh','finish','fail'].includes(command??''))throw Error('Unknown processing command');
+ if(!['claim','claim-repair','claim-recovery','stage','freeze','refresh','finish','fail'].includes(command??''))throw Error('Unknown processing command');
  if(!['claim','claim-repair'].includes(command!)&&!/^[0-9a-f-]{36}$/.test(id??''))throw Error('A processing run ID is required');
  // The reserved publication session must survive hour-long risk stages.
  const url=new URL(process.env['DATABASE_URL']!);url.searchParams.set('max_lifetime','0');
@@ -28,6 +28,7 @@ async function main() {
    return;
   }
   if(command==='claim-repair'){const run=await claimRepairProcessing(sql,id!);console.log(run.id);return;}
+  if(command==='claim-recovery'){const run=await claimRecoveryProcessing(sql,id!);console.log(run.id);return;}
   if(command==='fail'){await failProcessing(sql,id!);return;}
   if(command==='finish'){await finishProcessing(sql,id!);return;}
   const [r]=await sql`select r.*,c.maintenance,c.paused from app.processing_runs r cross join app.collection_control c where r.id=${id!}::uuid and c.id=1`;

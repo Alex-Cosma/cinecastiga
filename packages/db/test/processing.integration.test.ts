@@ -1,6 +1,6 @@
 import {afterAll,beforeEach,describe,expect,it} from 'vitest';
 import {createDb} from '../src/client.js';
-import {claimProcessing,claimRepairProcessing,processingStage,failProcessing,finishProcessing,processingSchedule} from '../src/processing.js';
+import {claimProcessing,claimRepairProcessing,claimRecoveryProcessing,processingStage,failProcessing,finishProcessing,processingSchedule} from '../src/processing.js';
 import {CONTRACT_REPORTING_VERSION} from '../src/contract-reporting.js';
 const url=process.env['TEST_DATABASE_URL'];
 if(url&&!/^seap_test_/.test(new URL(url).pathname.slice(1)))throw Error('Isolated test database required');
@@ -120,5 +120,21 @@ suite('scheduled publication state machine (no network)',()=>{
   await q`update app.collection_control set maintenance=false,paused=false`;
   await q`update app.data_repairs set status='completed' where id='reference-import-v1'`;
   await expect(claimRepairProcessing(q,'reference-import-v1')).rejects.toThrow('scheduled for today');
+ });
+ it('recovers only the latest failed publication while its retained control is unchanged',async()=>{
+  const failed=(await claimProcessing(q,monday))!;
+  await expect(claimRecoveryProcessing(q,failed.id)).rejects.toThrow('latest failed');
+  await failProcessing(q,failed.id);
+  const [control]=await q`select revision from app.collection_control`;
+  await q`update app.collection_control set revision=revision+1`;
+  await expect(claimRecoveryProcessing(q,failed.id)).rejects.toThrow('Operator control changed');
+  await q`update app.collection_control set revision=${control!.revision}`;
+  const run=await claimRecoveryProcessing(q,failed.id);
+  expect(run.scope).toBe('full');
+  expect((await q`select trigger,before_control->>'recoveryOf' origin from app.processing_runs where id=${run.id}`)[0]).toMatchObject({trigger:'manual',origin:failed.id});
+  expect((await q`select status from app.processing_runs where id=${failed.id}`)[0]!.status).toBe('failed');
+  expect((await q`select paused,maintenance from app.collection_control`)[0]).toMatchObject({paused:true,maintenance:true});
+  // Never twice: the recovery is now the latest run, and it is running.
+  await expect(claimRecoveryProcessing(q,failed.id)).rejects.toThrow('latest failed');
  });
 });

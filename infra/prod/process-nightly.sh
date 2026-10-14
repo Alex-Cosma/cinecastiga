@@ -13,6 +13,8 @@ run() { docker compose --profile processing run --rm --no-deps -T processor node
 case "${1:-}" in
  "") run_id=$(run claim);;
  --reference-repair-now) run_id=$(run claim-repair reference-import-v1);;
+ # Operator-authorized retry of the latest failed publication (full scope).
+ --recover-failed) [[ "${2:-}" =~ ^[a-f0-9-]{36}$ ]] || exit 2; run_id=$(run claim-recovery "$2");;
  *) echo 'Unsupported processing invocation' >&2; exit 2;;
 esac
 [[ -n "$run_id" ]] || exit 0
