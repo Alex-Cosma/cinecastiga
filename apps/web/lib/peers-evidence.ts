@@ -19,7 +19,7 @@ export interface BoundPeerEvidence {
 export async function bindPeerEvidence(q: DbSql, raw: unknown): Promise<BoundPeerEvidence> {
   const selection = validatePeerEvidence(raw);
   if ("error" in selection) throw new PeerError(selection.error);
-  const [checkpoint] = await q`select id,status,version::text,completed_at::text,source_coverage from app.monitoring_refreshes order by version desc limit 1`;
+  const [checkpoint] = await q`select id,status,version::text,completed_at::text,source_coverage from app.monitoring_refreshes order by monitoring_refreshes.version desc limit 1`;
   if (!checkpoint || checkpoint.status !== "ready" || checkpoint.id !== selection.checkpointId)
     throw new PeerError("Datele comparației s-au schimbat. Reia comparația înainte de a vedea sau salva sursele.", 409);
   const { entityId, identity, role, dataset, year, cpv, county, checkpointId } = selection;

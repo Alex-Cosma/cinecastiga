@@ -23,3 +23,4 @@ export * from "./contract-reporting.js";
 
 export * from './proxy-config.js';
 export * from './collection-proxies.js';
+export * from './operational-alerts.js';

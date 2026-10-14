@@ -9,7 +9,7 @@ export async function repairContractTypes(q: DbSql, boundary?: bigint) {
     const rows = await q`select id::text,raw_id::text from core.contracts
       where id>${cursor}::bigint and contract_type_raw_id is distinct from raw_id
         and (${boundary?.toString() ?? null}::bigint is null or raw_id<=${boundary?.toString() ?? null}::bigint)
-      order by id limit 5000`;
+      order by contracts.id limit 5000`;
     if (!rows.length) break;
     const ids = rows.map(r=>String(r.id));
     const rawIds = [...new Set(rows.map(r=>String(r.raw_id)))];

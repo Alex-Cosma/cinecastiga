@@ -342,7 +342,7 @@ export async function processCapture(userId: string, investigationId: string, ca
       if (Number(totals!.n)!==result.expectedRows || !totals!.reconciled) throw new CaptureError("Captura nu corespunde selecției complete. Nu am salvat o listă parțială.");
       const totalExact = totals!.unknown ? null : String(totals!.known_value);
       const coverage = await readCoverage(q);
-      const [published]=await q`select id,version::text,methodology from app.monitoring_refreshes order by version desc limit 1`;
+      const [published]=await q`select id,version::text,methodology from app.monitoring_refreshes order by monitoring_refreshes.version desc limit 1`;
       const methodology={...result.methodology,checkpointId:String(published!.id),checkpointVersion:String(published!.version),
         riskVersion:typeof published!.methodology?.flags==='string'?published!.methodology.flags:null};
       const summary = { ...result.summary, verification:"server-verified", capturedAt:time!.captured_at,

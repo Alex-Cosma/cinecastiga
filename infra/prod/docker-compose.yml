@@ -196,6 +196,15 @@ services:
       DATABASE_URL: postgres://seap:${POSTGRES_PASSWORD:?set in .env}@postgres:5432/seap
       MEILISEARCH_URL: http://meilisearch:7700
       MEILISEARCH_KEY: ${MEILI_MASTER_KEY}
+      # The minute scheduler mails failed/stalled publications and collection
+      # stops to verified admins; unset SMTP only logs them.
+      ALERT_ORIGIN: https://${DOMAIN:-cinecastiga.ro}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
 
   caddy:
     <<: *logging
