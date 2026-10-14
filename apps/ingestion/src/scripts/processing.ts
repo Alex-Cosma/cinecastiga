@@ -77,4 +77,8 @@ async function main() {
   await collectionHeartbeat(sql,`processor:${id}`,'processor','complete');
  } finally {clearInterval(heartbeat);await sql.end({timeout:10});}
 }
-main().catch(error=>{console.error('Processing command failed. Maintenance must remain active; inspect the run, checkpoint and stage log.');console.error(JSON.stringify(diagnosticError(error)));process.exitCode=1;});
+main().catch(error=>{console.error('Processing command failed. Maintenance must remain active; inspect the run, checkpoint and stage log.');console.error(JSON.stringify(diagnosticError(error)));process.exitCode=1;})
+ // The command is finished and its connections closed. A lingering handle once
+ // kept a failed refresh alive for 20+ minutes, so the host never recorded the
+ // failure. The unref'd timer exits only if something else still holds the loop.
+ .finally(()=>{setTimeout(()=>{console.error('Processing command exit forced after cleanup timeout');process.exit(process.exitCode??0);},30_000).unref();});
