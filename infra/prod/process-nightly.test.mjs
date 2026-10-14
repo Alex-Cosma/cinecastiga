@@ -11,7 +11,7 @@ async function run(failure='',due=true,args=[],rawResume=false){
   await mkdir(join(dir,'bin'));await mkdir(join(dir,'.git'));await mkdir(join(dir,'infra/prod'),{recursive:true});
   const docker=`echo "docker $*" >> "$TEST_LOG"
 case "$*" in
- *"processing.js claim"|*"processing.js claim-repair reference-import-v1") if read -r caller_input; then echo "CONSUMED_CALLER_INPUT" >> "$TEST_LOG"; fi; if [ "$TEST_DUE" = yes ]; then echo 00000000-0000-4000-8000-000000000001; fi;;
+ *"processing.js claim"|*"processing.js claim-repair reference-import-v1"|*"processing.js claim-recovery 11111111-1111-4111-8111-111111111111") if read -r caller_input; then echo "CONSUMED_CALLER_INPUT" >> "$TEST_LOG"; fi; if [ "$TEST_DUE" = yes ]; then echo 00000000-0000-4000-8000-000000000001; fi;;
  *"ps --status running -q collection") echo collection-fixture;;
  "inspect --format "*) echo False;;
  *"psql -X -v ON_ERROR_STOP=1 -U seap -d seap -Atc "*) if [ "$TEST_FAILURE" = drain ]; then exit 1; fi; echo 0;;
@@ -43,6 +43,13 @@ test('explicit reference repair uses the same backup and publication path',async
  assert.match(r.calls,/processing.js claim-repair reference-import-v1/);
  assert.match(r.calls,/pg_dump /);assert.match(r.calls,/processing.js refresh /);assert.match(r.calls,/processing.js finish /);
  assert.doesNotMatch(r.calls,/CONSUMED_CALLER_INPUT/);
+});
+
+test('operator recovery of a failed run uses the same backup and publication path',async()=>{
+ const r=await run('',true,['--recover-failed','11111111-1111-4111-8111-111111111111']);assert.equal(r.status,0);
+ assert.match(r.calls,/processing.js claim-recovery 11111111-1111-4111-8111-111111111111/);
+ assert.match(r.calls,/pg_dump /);assert.match(r.calls,/processing.js refresh /);assert.match(r.calls,/processing.js finish /);
+ const invalid=await run('',true,['--recover-failed','; reboot']);assert.equal(invalid.status,2);assert.equal(invalid.calls,'');
 });
 
 test('verified failure resumes only collection, retaining public maintenance and document stop',async()=>{

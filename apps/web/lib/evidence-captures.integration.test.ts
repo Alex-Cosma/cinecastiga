@@ -22,8 +22,9 @@ describe.skipIf(!url)("server evidence captures (dedicated PostgreSQL database)"
   beforeAll(async()=>{
     sql=createDb(url).sql;
     // Versions 9…9 then 10…0: sorting the text-cast version would pick the older one.
-    const [{next}]=await sql`select greatest(10,power(10,ceil(log(coalesce(max(version),0)+2))))::bigint::text next from app.monitoring_refreshes`;
-    await sql`insert into app.monitoring_refreshes(id,version,kind,status,completed_at) values(${older},${BigInt(next)-1n},'baseline','ready',now())`;
+    const [latest]=await sql`select greatest(10,power(10,ceil(log(coalesce(max(version),0)+2))))::bigint::text next from app.monitoring_refreshes`;
+    const next=String(latest!.next);
+    await sql`insert into app.monitoring_refreshes(id,version,kind,status,completed_at) values(${older},${(BigInt(next)-1n).toString()},'baseline','ready',now())`;
     await sql`insert into app.monitoring_refreshes(id,version,kind,status,completed_at,methodology) values(${checkpoint},${next},'baseline','ready',now(),' {"flags":"fixture-risk-version"}'::jsonb)`;
     for(const id of [uid,editor,viewer,outsider])await sql`insert into auth.users(id,name,email) values(${id},'Evidence fixture',${id+"@example.invalid"})`;
     await sql`insert into app.investigations(id,owner_user_id,title) values(${inv},${uid},'Frozen evidence fixture'),(${other},${uid},'Other fixture')`;

@@ -53,6 +53,30 @@ export async function claimRepairProcessing(q: DbSql, repairId: string) {
  });
 }
 
+/** Explicit host invocation only: one full publication retry for the latest
+ * failed run, while its retained maintenance and operator control are unchanged.
+ * Never resets the failed run; the scheduled run for a later day stays separate. */
+export async function claimRecoveryProcessing(q: DbSql, failedRunId: string) {
+ return q.begin(async tx=>{
+  const [c]=await tx`select *, (clock_timestamp() at time zone 'Europe/Bucharest')::date::text as recovery_day
+    from app.collection_control where id=1 for update`;
+  const [failed]=await tx`select * from app.processing_runs where id=${failedRunId}::uuid for update`;
+  const [latest]=await tx`select id from app.processing_runs order by started_at desc limit 1`;
+  if(!c||!failed||failed.status!=='failed'||latest?.id!==failed.id)throw Error('Only the latest failed publication can be recovered');
+  if((await tx`select id from app.processing_runs where status='running' limit 1`).length)throw Error('An unfinished publication requires recovery');
+  // failProcessing bumps the revision exactly once; any later operator change needs a fresh inspection.
+  if(!c.maintenance||c.revision!==failed.control_revision+1)throw Error('Operator control changed after the failed publication; inspect before recovery');
+  const [run]=await tx`insert into app.processing_runs(scheduled_day,trigger,scope,control_revision,before_control)
+    values(${c.recovery_day}::date,'manual','full',${c.revision+1},${JSON.stringify({paused:c.paused,revision:c.revision,recoveryOf:failed.id})}::jsonb)
+    returning id,scope`;
+  await tx`update app.collection_control set paused=true,maintenance=true,collection_during_maintenance=false,revision=revision+1,updated_at=clock_timestamp() where id=1`;
+  await tx`insert into app.collection_audit(actor_id,actor_name,action,before,after)
+    values('system:processor','Recuperare autorizată','processing-start',${JSON.stringify({paused:c.paused})}::jsonb,
+      ${JSON.stringify({runId:run!.id,scope:'full',trigger:'manual',recoveryOf:failed.id,maintenance:true})}::jsonb)`;
+  return {id:String(run!.id),scope:'full'};
+ });
+}
+
 export async function processingStage(q:DbSql,id:string,stage:string) {
  const rows=await q`update app.processing_runs set
    stages=case when stage<>${stage} then stages||jsonb_build_object(stage,jsonb_build_object('startedAt',stage_started_at,'completedAt',clock_timestamp(),'durationMs',round(extract(epoch from(clock_timestamp()-stage_started_at))*1000))) else stages end,
