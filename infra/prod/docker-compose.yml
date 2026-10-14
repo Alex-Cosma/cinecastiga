@@ -188,7 +188,10 @@ services:
     image: cinecastiga-collection
     restart: "no"
     init: true
-    mem_limit: 2g
+    # Identity revalidation reads approved groups with all their source
+    # payloads; 14 October 2026 exhausted the default ~1 GB Node heap even in
+    # slices. Explicit heap below the container limit, leaving native headroom.
+    mem_limit: 6g
     cpus: 2
     volumes:
       - /srv/seap/repairs:/repairs:ro
@@ -198,6 +201,7 @@ services:
       MEILISEARCH_KEY: ${MEILI_MASTER_KEY}
       # The minute scheduler mails failed/stalled publications and collection
       # stops to verified admins; unset SMTP only logs them.
+      NODE_OPTIONS: --max-old-space-size=4096
       ALERT_ORIGIN: https://${DOMAIN:-cinecastiga.ro}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
