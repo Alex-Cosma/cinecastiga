@@ -1,5 +1,5 @@
 import {afterAll,describe,expect,it} from 'vitest';
-import {createDb,readContractIdentityMembers,readContractIdentityQuality,type DbSql} from '@seap/db';
+import {createDb,currentSnapshotHashes,readContractIdentityMembers,readContractIdentityQuality,type DbSql} from '@seap/db';
 import {mkdtemp,writeFile,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
@@ -38,6 +38,9 @@ describe.skipIf(!isolated)('backed-up publication evidence revalidation',()=>{
     select 3,31,103,300,contract_no,contract_date,contract_value,currency,title,lots_caption,cpv_code from core.contracts where id=1`;
    await q`insert into core.contract_winners(contract_id,entity_id) values(3,10)`;
    expect((await readContractIdentityQuality(q)).valid).toBe(false);
+   // Chunked hashes equal one read: cohorts span every publication of the notice number.
+   const single=await readContractIdentityMembers(q,['1','2','3']);
+   expect(await currentSnapshotHashes(q,['1','2','3'],1)).toEqual(new Map(single.map(r=>[String(r.identity.id),String(r.snapshot_hash)])));
    await expect(revalidateApprovedContractIdentities(q,run)).rejects.toThrow('missing_archive');
    expect((await q`select count(*)::int n from marts.contract_identity_revisions`)[0]!.n).toBe(0);
    const third=structuredClone(archives.slice(2));

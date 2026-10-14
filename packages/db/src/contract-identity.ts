@@ -50,12 +50,24 @@ export async function readContractIdentityMembers(q: IdentitySql, ids: string[])
       md5(state::text) snapshot_hash from identified order by id::bigint`;
 }
 
+export const SNAPSHOT_HASH_CHUNK=20000;
+/** Current snapshot hashes in bounded id chunks. Each member's cohort is computed
+ * per official notice number over ALL its publications, independent of which
+ * contracts a chunk selects, so the hashes equal a single read. Keeps each
+ * statement under publication timeouts (180k approved members, 14 October 2026). */
+export async function currentSnapshotHashes(q: IdentitySql, ids: string[], size=SNAPSHOT_HASH_CHUNK) {
+  const hashes=new Map<string,string>();
+  for(let i=0;i<ids.length;i+=size){
+    for(const r of await readContractIdentityMembers(q,ids.slice(i,i+size)))hashes.set(String(r.identity.id),String(r.snapshot_hash));
+  }
+  return hashes;
+}
+
 /** Read-only fail-closed check. Never silently revoke approvals and republish a
  * doubled total. A changed decision needs source review while maintenance stays on. */
 export async function readContractIdentityQuality(q: IdentitySql) {
   const members=await q`select contract_id::text,snapshot_hash from marts.contract_identity_members`;
-  const current=await readContractIdentityMembers(q,members.map(m=>String(m.contract_id)));
-  const hashes=new Map(current.map(r=>[String(r.identity.id),String(r.snapshot_hash)]));
+  const hashes=await currentSnapshotHashes(q,members.map(m=>String(m.contract_id)));
   const stale=members.filter(m=>hashes.get(String(m.contract_id))!==m.snapshot_hash).map(m=>String(m.contract_id));
   const invalid=await q`select d.candidate_id from marts.contract_identity_decisions d
     left join marts.contract_identity_candidates c on c.id=d.candidate_id
@@ -87,8 +99,7 @@ export function contractTemporarilyExcluded(q: IdentitySql, alias='c') {
 
 export async function assertContractExclusionsQuality(q: IdentitySql) {
   const excluded=await q`select contract_id::text,snapshot_hash from marts.contract_identity_exclusions`;
-  const current=await readContractIdentityMembers(q,excluded.map(r=>String(r.contract_id)));
-  const hashes=new Map(current.map(r=>[String(r.identity.id),String(r.snapshot_hash)]));
+  const hashes=await currentSnapshotHashes(q,excluded.map(r=>String(r.contract_id)));
   const stale=excluded.filter(r=>hashes.get(String(r.contract_id))!==r.snapshot_hash);
   const invalid=await q`select distinct x.candidate_id from marts.contract_identity_exclusions x
     left join marts.contract_identity_candidates c on c.id=x.candidate_id
