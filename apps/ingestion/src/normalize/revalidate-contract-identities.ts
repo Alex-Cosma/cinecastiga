@@ -1,6 +1,6 @@
 import {readRecoveredIdentityArchives} from './contract-identity-archives.js';
 import {isDeepStrictEqual} from 'node:util';
-import {assertContractIdentityQuality,readContractIdentityMembers,readContractIdentityQuality,type DbSql} from '@seap/db';
+import {assertContractIdentityQuality,inspectContractIdentityQuality,readContractIdentityMembers,type DbSql} from '@seap/db';
 import {assessContractPublicationGroup,assessContractVersions,assessContractSource,contractVersionAnchor,contractIdentitySignature,type ArchivedAward,type IdentityContract} from './contract-identity.js';
 import {IDENTITY_REPAIR_ID,loadIdentityRepairBundle,type IdentityRepairBundle} from './scheduled-contract-identity.js';
 import {AUTOMATIC_IDENTITY_REASON} from './discover-contract-identities.js';
@@ -59,7 +59,14 @@ function verifyApprovedBatch(registry:RegistryRow[],rows:MemberRow[],archives:Ar
 }
 
 export const REVALIDATION_BATCH=500;
+/** Bump whenever an assessment rule in contract-identity.ts changes: the next
+ * revalidation is then full, and targeted runs wait for a clean full baseline. */
+export const IDENTITY_RULES_VERSION='contract-identity-rules-20261012';
 type Population={value:string|null;previous:boolean};
+type Member={contract_id:string;candidate_id:string;snapshot_hash:string};
+/** Membership order is not identity: rows read in text order must not count as a change. */
+const byContract=(members:Member[]=[])=>[...members].map(m=>({contract_id:String(m.contract_id),candidate_id:String(m.candidate_id),snapshot_hash:String(m.snapshot_hash)}))
+ .sort((a,b)=>BigInt(a.contract_id)<BigInt(b.contract_id)?-1:BigInt(a.contract_id)>BigInt(b.contract_id)?1:0);
 
 /** Read-only, in bounded slices of the approval registry. Each slice reads every
  * contract and archive of its official notice numbers, so anchors, siblings and
@@ -67,13 +74,14 @@ type Population={value:string|null;previous:boolean};
  * The old bundle supplies historical sources no longer present in raw; fresh
  * revisions are added, never substituted to hide conflicts. Review failures are
  * collected across slices and thrown once at the end. */
-export async function* approvedRevalidationBatches(q:DbSql,bundle:IdentityRepairBundle,boundary:string,size=REVALIDATION_BATCH) {
+export async function* approvedRevalidationBatches(q:DbSql,bundle:IdentityRepairBundle,boundary:string,size=REVALIDATION_BATCH,only?:string[]) {
  const origins=new Map(bundle.groups.map(g=>[g.id,g]));
- const historical=new Map<string,ArchivedAward[]>();
+ const historical=new Map<string,ArchivedAward[]>(),targets=only&&new Set(only);
  for(const a of bundle.archives){const key=String(a.payload.caNoticeId);historical.set(key,[...(historical.get(key)??[]),a]);}
  const ids=(await q`select d.candidate_id::text id from marts.contract_identity_decisions d
-   join marts.contract_identity_candidates c on c.id=d.candidate_id order by d.candidate_id`).map(r=>String(r.id));
- const used=new Set<string>(),blocked:string[]=[];
+   join marts.contract_identity_candidates c on c.id=d.candidate_id order by d.candidate_id`).map(r=>String(r.id)).filter(id=>!targets||targets.has(id));
+ // A targeted pass still rejects a contract claimed by any group it does not re-verify.
+ const used=new Set<string>(only?(await q`select contract_id::text from marts.contract_identity_members where not (candidate_id=any(${only}::text[]))`).map(r=>String(r.contract_id)):[]),blocked:string[]=[];
  for(let i=0;i<ids.length;i+=size){
   const slice=ids.slice(i,i+size);
   const registry=await q`select c.id,c.fingerprint,c.evidence,to_jsonb(d) decision
@@ -134,29 +142,40 @@ export async function revalidateApprovedContractIdentities(q:DbSql,runId:string,
   await sql`set local statement_timeout='180s'`;await sql`set local work_mem='8MB'`;await sql`set local max_parallel_workers_per_gather=0`;await sql`set local jit=off`;
   const [run]=await sql`select r.*,c.maintenance,c.paused,c.revision from app.processing_runs r cross join app.collection_control c where r.id=${runId}::uuid and c.id=1 for update of r,c`;
   if(!run||run.status!=='running'||!run.maintenance||!run.paused||run.revision!==run.control_revision||run.stage!=='identity-repair'||!run.raw_boundary||!run.stages?.backup?.completedAt||!run.stages?.['backup-verified']?.completedAt||!run.stages?.normalize?.completedAt)throw Error('Publication revalidation requires backed-up, normalized maintenance with unchanged operator control');
-  const before=await readContractIdentityQuality(sql);
-  if(before.valid)return {changedGroups:0,quality:before};
+  const {report:before,staleGroups}=await inspectContractIdentityQuality(sql);
+  if(before.valid)return {changedGroups:0,quality:before,mode:'none' as const};
   if(before.invalidDecisions)throw Error('Invalid approval registry requires manual recovery');
   const [repair]=await sql`select status,report from app.data_repairs where id=${IDENTITY_REPAIR_ID}`;
   const config=repair?.report?.configuration;
   if(repair?.status!=='completed'||!config?.path||!config?.sha256)throw Error('Completed historical approval and pinned evidence are required');
   const bundle=await loadIdentityRepairBundle(config.path,config.sha256);
+  // Only groups with a stale member can change (verified against every full run
+  // since 10 October). Full passes remain the weekly scheduled risk run, any rule
+  // change, and every run until a full pass under the current rules confirms that
+  // nothing outside the stale groups changed.
+  const [baseline]=await sql`select after->>'rules' rules,(after->>'changedOutsideTargets')::int outside from app.collection_audit
+    where action='identity-revalidation' and after->>'mode'='full' order by id desc limit 1`;
+  const weekly=run.trigger==='scheduled'&&run.scope==='full';
+  const mode=!weekly&&baseline?.rules===IDENTITY_RULES_VERSION&&baseline?.outside===0?'targeted':'full';
+  log(`Publication revalidation: ${mode}, ${staleGroups.length} approved groups with changed members`);
   // Every slice is verified before its writes; a review failure in any later
   // slice rolls back candidates, observations, decisions, memberships AND history.
   const population:Population[]=[];
   let changedGroups=0,extendedGroups=0,canonicalIdsChanged=0;
-  for await(const slice of approvedRevalidationBatches(sql,bundle,String(run.raw_boundary))){
+  let changedOutsideTargets=0;
+  const targets=new Set(staleGroups);
+  for await(const slice of approvedRevalidationBatches(sql,bundle,String(run.raw_boundary),REVALIDATION_BATCH,mode==='targeted'?staleGroups:undefined)){
    population.push(...slice.population);
    const oldByGroup=new Map<string,Array<(typeof slice.beforeMembers)[number]>>();
    for(const m of slice.beforeMembers)oldByGroup.set(String(m.candidate_id),[...(oldByGroup.get(String(m.candidate_id))??[]),m]);
-   const changed=slice.groups.filter(g=>g.verified.fingerprint!==g.previous.fingerprint||!isDeepStrictEqual(oldByGroup.get(g.id),g.members));
-   changedGroups+=changed.length;
+   const changed=slice.groups.filter(g=>g.verified.fingerprint!==g.previous.fingerprint||!isDeepStrictEqual(byContract(oldByGroup.get(g.id) as Member[]),byContract(g.members)));
+   changedGroups+=changed.length;changedOutsideTargets+=changed.filter(g=>!targets.has(g.id)).length;
    extendedGroups+=changed.filter(g=>g.verified.members.length>g.previous.evidence.members.length).length;
    canonicalIdsChanged+=changed.filter(g=>g.canonical!==String(g.previous.decision.canonical_contract_id)).length;
    for(let i=0;i<changed.length;i+=100){
     const batch=changed.slice(i,i+100).map(g=>({id:g.id,fingerprint:g.verified.fingerprint,evidence:g.verified,
-     previous_snapshot:{decision:g.previous.decision,members:oldByGroup.get(g.id)},
-     next_snapshot:{fingerprint:g.verified.fingerprint,canonical_contract_id:g.canonical,members:g.members}}));
+     previous_snapshot:{decision:g.previous.decision,members:byContract(oldByGroup.get(g.id) as Member[])},
+     next_snapshot:{fingerprint:g.verified.fingerprint,canonical_contract_id:g.canonical,members:byContract(g.members)}}));
     await sql`insert into marts.contract_identity_revisions(candidate_id,processing_run_id,previous_snapshot,next_snapshot)
      select id,${runId}::uuid,previous_snapshot,next_snapshot from jsonb_to_recordset(${JSON.stringify(batch)}::jsonb)
      x(id text,previous_snapshot jsonb,next_snapshot jsonb)`;
@@ -175,10 +194,12 @@ export async function revalidateApprovedContractIdentities(q:DbSql,runId:string,
   }
   const impact=await revalidationImpact(sql,population);
   const after=await assertContractIdentityQuality(sql);
-  const report={changedGroups,extendedGroups,quality:after,impact,rawBoundary:String(run.raw_boundary),canonicalIdsChanged};
+  // Impact covers the re-verified groups only; a targeted pass leaves the rest untouched.
+  const report={changedGroups,extendedGroups,quality:after,impact,rawBoundary:String(run.raw_boundary),canonicalIdsChanged,
+   mode,rules:IDENTITY_RULES_VERSION,staleGroups:staleGroups.length,...(mode==='full'?{changedOutsideTargets}:{})};
   await sql`insert into app.collection_audit(actor_id,actor_name,action,before,after)
    values('system:processor','Reverificarea publicațiilor aprobate','identity-revalidation',${JSON.stringify({runId,quality:before})}::jsonb,${JSON.stringify(report)}::jsonb)`;
-  log(`Publication revalidation: ${report.changedGroups} groups, ${report.extendedGroups} extended; ${after.members} verified source publications`);
+  log(`Publication revalidation: ${report.changedGroups} groups, ${report.extendedGroups} extended; ${after.members} verified source publications${mode==='full'?`; ${changedOutsideTargets} changed outside the stale groups`:''}`);
   return report;
  });
 }
