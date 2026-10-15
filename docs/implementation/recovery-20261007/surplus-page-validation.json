@@ -1,0 +1,15 @@
+{
+  "status": "passed",
+  "pages": 4,
+  "pageSizes": [
+    201,
+    200,
+    200,
+    203
+  ],
+  "distinctContracts": 803,
+  "total": 1041,
+  "nextPage": 4,
+  "archivedBeforeCompletion": 0,
+  "newSourceRequests": 0
+}

@@ -42,6 +42,10 @@ if ! docker compose exec -T caddy cat /etc/caddy/Caddyfile | cmp -s Caddyfile -;
 fi
 docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
 # set -e prevents this restart when migration/history/grant/proxy checks fail.
+# Optional fixed-proxy network boundary; never enabled by an ordinary deployment.
+if docker compose --profile collection config --services | grep -qx 'proxy-egress'; then
+  docker compose up -d --no-deps proxy-egress
+fi
 docker compose --profile documents up -d --no-deps web documents
 if [[ "$collection_active" == true ]]; then
   docker compose --profile collection up -d --no-deps collection

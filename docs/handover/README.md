@@ -1,4 +1,6 @@
-# Handover pentru un nou dezvoltator și asistentul lui
+# Handover cinecâștigă? — punctul de intrare
+
+**Consolidare: 11 octombrie 2026.** Acesta este ghidul pentru un coleg și modelul său LLM, fără acces la conversația inițială. Începe cu [predarea integrală](20261011/README.md). Indexul anterior, cu toate notele deja existente și stările datate, este păstrat integral în [HISTORY-INDEX.md](HISTORY-INDEX.md).
 
 **3 octombrie — funcționalitate pusă separat:** codul, macheta și documentarea „Ce bate la ochi” sunt pe `feat/ce-bate-la-ochi`. Nu se integrează în main și nu se publică poveștile; notele de mai jos păstrează cronologia lucrului local.
 
@@ -8,60 +10,41 @@
 
 **2 octombrie, copie locală actualizată:** [transferul integral din producție](../implementation/local-production-copy-20261002.md) este încheiat: baza locală are checkpoint 12, identitățile reparate și copia exactă Meilisearch. Artefactele sunt private, distincte de dumpul public pentru coleg. Etichetele CPV sunt publicate în `1d72085`.
 
-**Ultima publicare a datelor verificată,1 octombrie:** [reparația identităților istorice](../implementation/entity-identity-release-20261001.md) este încheiată, site-ul redeschis și colectarea reluată.4.231.642 de asocieri corectate,14.264 de redirecturi, checkpoint11 ready și ambele indexuri refăcute. Nu relansa operațiunea. Codul final `c6763f3` este live, inclusiv corecția inițializării căutării; CI/deploy `36906296990` trecute și24 verificări publice în browser trecute. Baza locală obișnuită și dumpul local anterior nu sunt reparate. [Checkpoint-ul de pregătire](continuation-identity-20261001.md) este istoric.
+## Ordinea de citire
 
-**Documentație consolidată la 1 octombrie:** [checkpoint final](continuation-20261001.md). Publicarea aplicației și pregătirea pachetului local sunt încheiate; copierea pe stick nu a fost efectuată de agent. Nu există operațiuni din sesiunea precedentă de relansat. Ultima verificare de producție consemnată este din 30 septembrie, seara, nu din noaptea următoare.
+| Scop | Document |
+|---|---|
+| Reguli de lucru | [AGENTS.md](../../AGENTS.md) |
+| Deciziile proprietarului și contextul | [Predarea integrală](20261011/README.md) |
+| Funcționalități, UX și cod | [Produs și implementare](20261011/product-and-code.md) |
+| Identități, sume, versiuni, surse | [Date și calcule](20261011/data-and-calculations.md) |
+| Crawl, proxy-uri, PDF/OCR, calendar, deploy | [Operare actualizată](20261011/operations.md) |
+| Istoric și documentație pe funcționalități | [Index tematic](20261011/history-and-reference-map.md) |
+| Lucru nepublicat și pașii următori | [Stare și continuare](20261011/status-and-continuation.md) |
+| Planul de clarificare a grupurilor excluse | [Checkpoint 12 octombrie: motive, dovezi și pași de reluare](continuation-20261012-contract-ambiguities.md) |
+| Primul lot de clarificări, aplicat local | [275 grupuri rezolvate; 997/484 rămase și dovezi suplimentare](../implementation/contract-reporting-integrity-20261011/AMBIGUITIES-20261012.md) |
+| Pornire locală, cont nou, teste | [Dezvoltare](03-development.md) |
+| Dump public, restore și stick | [Transfer](04-database-transfer.md), [manifest/stare](TRANSFER-STATUS.md) |
+| Prompt pentru alt LLM | [MODEL-START.md](MODEL-START.md) |
+| Principii și identitate vizuală | [PRODUCT.md](../../PRODUCT.md), [DESIGN.md](../../DESIGN.md) |
 
-**Publicare anterioară, 30 septembrie 2026:** codul aplicației `43c0d4a` și corecția deploy `f474c3e` sunt pe main și în producție, ambele CI/deploy trecute. Tranziția calendarului în producție este validată, site-ul redeschis și colectarea reluată; verifică [raportul lansării](../implementation/release-20260930.md) înaintea oricărei operațiuni. Un nou dump LOCAL complet pentru coleg este exportat și verificat în `infra/prod/dumps/handover-local-20260930`; [starea transferului](TRANSFER-STATUS.md) este autoritatea pentru finalizarea/verificarea lui.
+Documentele originale [01](01-product.md), [02](02-architecture.md), [05](05-operations.md) și [06](06-status-and-roadmap.md) păstrează detalii și istoricul etapelor. Consolidarea din 11 octombrie are prioritate pentru politicile care au evoluat: pool-ul de documente, ora 02:00, formatele mari, colectarea continuă și starea reparațiilor.
 
-Funcționalitățile recente: [Semnale A](../implementation/signals-redesign.md), [feedback anonim și admin](../implementation/anonymous-feedback.md), [întrebări salvate fără cont](../implementation/local-saved-questions.md), [traseul surselor și exporturilor](../implementation/answer-actions.md), [căutare orientată spre instituție](../implementation/search-intent.md), [calendar și detalii](../implementation/acquisition-details-calendar.md), [limbajul riscului](../implementation/risk-language.md), [lookup complet pentru semnale](../implementation/signal-timeout.md). Opțiunea de login fără 2FA este exclusiv locală/development și necesită configurare proprie; nu este activă în producție.
+## Starea la predare
 
-**Checkpoint-uri istorice:** [implementarea locală](continuation-20260930.md) și [publicarea](continuation-release-20260930.md) păstrează etapele sesiunii; starea finală din raportul lansării are prioritate.
+- Repository: `git@github.com:Alex-Cosma/seap-new.git`; aplicație: `https://cinecastiga.ro`.
+- Ultima publicare de cod documentată: `5488af2`, download automat strict pentru caiete de sarcini; CI/deploy `38157671237` trecute. `d16d866` este commitul documentar de pe care începe lucrarea curentă. Verifică runtime-ul serverului pentru starea de acum.
+- Lucrarea curentă: **`fix/contract-reporting-integrity-20261011`**, necomisă/nepublicată la redactare. [Raport și verificări](../implementation/contract-reporting-integrity-20261011/README.md).
+- Preflight-ul pe copia publicațiilor repetate a verificat 75.974 de grupuri candidate noi. **748 de grupuri aveau posibil impact financiar în regula veche**; nu sunt dubluri dovedite. La 12 octombrie proprietarul a ales excluderea temporară explicită și separarea tuturor plafoanelor. Vezi [implementarea și verificările](../implementation/contract-reporting-integrity-20261011/POLICY-20261012.md); producția nu a fost modificată de această intervenție.
+- Baza locală obișnuită, dump-ul public din 30 septembrie și producția sunt snapshot-uri diferite. Bazele noi `seap_test_currency_*_20261011` sunt exclusiv pentru validarea reparației.
+- La citirea din 11 octombrie, aproximativ 22:25 RO, site-ul era live, procesarea `full/ready/complete`; colectarea avea un blocaj de transport separat. Nu s-a intervenit asupra lui.
 
-Acesta este punctul de intrare pentru colaborare, nu un plan de rescriere a proiectului. Documentația descrie codul existent și deciziile utilizatorului; stările operaționale au dată și trebuie reverificate înaintea unei intervenții.
+## După un clone
 
-## Citește în această ordine
+Primești codul și documentația, **nu baza și secretele**. Pentru date reale cere separat pachetul public, verifică manifestul/hash-ul, restaurează într-o bază nouă și creează un cont local nou. Ghidurile descriu procedura verificată; bootstrap-ul de la o bază complet goală nu este încă standardizat.
 
-1. [Produs, decizii și comportamente de păstrat](01-product.md).
-2. [Arhitectură, date, identități și harta codului](02-architecture.md).
-3. [Pornire locală, cont, teste și lucru în echipă](03-development.md).
-4. [Transferul complet al datelor publice](04-database-transfer.md).
-5. [Producție, colectare, publicare și recuperare](05-operations.md).
-6. [Stare curentă, limite și ce urmează](06-status-and-roadmap.md).
-7. [Prompt de inițializare pentru modelul colegului](MODEL-START.md).
+Nu porni colectorul, worker-ul de documente sau scheduler-ul doar pentru a vedea interfața. Nu copia conturi/sesiuni/proxy-uri din producție. Nu reexecuta scripturile datate din `scripts/operations/` ca pași de instalare.
 
-[PRODUCT.md](../../PRODUCT.md) explică principiile produsului; [DESIGN.md](../../DESIGN.md) documentează interfața existentă. [HANDOFF.md](../../HANDOFF.md) păstrează cronologia amplă. Nu trebuie încărcate toate capturile și toate documentele istorice în contextul modelului: acest dosar oferă trasee către informațiile relevante.
+## Documente care se contrazic
 
-## Starea de plecare
-
-- Repository: `git@github.com:Alex-Cosma/seap-new.git`; aplicație: <https://cinecastiga.ro>.
-- Codul reparației și corecției finale verificat în producție: `c6763f3`. Pentru commitul final și verificări citește raportul din1 octombrie; commiturile exclusiv documentare pot exista pe `main` fără deploy.
-- CI + deploy al reparației: Actions `36886537522`, apoi `36906296990` pentru corecția finală, confirmate reușite. Publicarea datelor are propriile verificări și raport; un deploy reușit singur nu certifică reparația.
-- Lotul recent include Semnale A, feedback anonim cu secțiune admin separată, căutare/Explorează și corectarea calendarului. Funcționalitățile și backlogul sunt în [06-status-and-roadmap.md](06-status-and-roadmap.md).
-- Producție:47 migrări, checkpoint11 ready, calendar `rf-2026.6` / `Europe/Bucharest-v1`. Dump local: tot 46 migrări, dar baseline v1 din 19 septembrie, fără reprocesarea calendarului. Manifestul exportului este autoritatea pentru copia transferată.
-- Colegul primește **toate datele publice disponibile în copia aleasă**, inclusiv arhiva brută existentă, datele normalizate, statisticile și documentele publice. Nu primește conturi, sesiuni, anchete, urmăriri private sau cozi active.
-- **Decizia finală a proprietarului: export din baza LOCALĂ a autorului, transfer pe stick.** Include arhiva brută locală mai mare și cele două documente publice ale pilotului. Nu este identică cu producția. Manifestul local marchează sursa și checkpoint-ul; nu prezenta copia drept ultima publicare live.
-
-## Cum se rezolvă contradicțiile din documente
-
-Există documente scrise înaintea deploy-urilor care spun încă „local”, „pending” sau „nu face deploy”. Sunt evidențe istorice, nu starea curentă și nici interdicții perpetue. Ordinea practică:
-
-1. Instrucțiunea actuală a proprietarului și starea verificată a mediului vizat.
-2. Codul și migrațiile commit-ului folosit, plus manifestul snapshot-ului.
-3. Acest handover și cele mai recente secțiuni datate din HANDOFF.
-4. Documentele detaliate ale funcționalității.
-5. Planurile inițiale și README-urile vechi.
-
-Nu deduce că o funcționalitate este activă doar pentru că există cod sau un script. Nu trata o rulare locală drept verificare de producție. Nu reutiliza autorizații pentru intervenții one-off deja finalizate.
-
-## Pachetul de predare
-
-- Repository și acest dosar: cod, decizii, documentație și teste.
-- Bundle separat: `database.dump`, `manifest.json`, `SHA256SUMS`, `archive.list`, `export.log`.
-- Un cont **local nou**, creat de coleg. Chei și secrete noi, locale.
-- Acces GitHub individual; acces SSH individual numai dacă rolul lui îl cere. Nu se copiază cheia SSH, `.env` sau sesiunea browserului autorului.
-- Datele mari și secretele nu intră în Git. Există instrucțiuni și scripturi de export/restaurare, cu validări și destinație nouă obligatorie.
-
-**După un clone:** cere separat pachetul public, apoi urmează ghidul local. Fără pachet poți inspecta codul și rula testele care nu cer baza de date; nu poți reproduce explorarea datelor reale. Bootstrapul dintr-o bază goală nu este încă traseul standardizat. Pentru modelul colegului folosește `MODEL-START.md`, chiar dacă instrumentul său nu încarcă automat `AGENTS.md`.
-
-„Complet” înseamnă copia integrală a datelor publice din sursa declarată, nu certificarea că SEAP a fost colectat complet. Golurile și estimările sunt explicate în documentele de mai jos.
+Prioritate: instrucțiunea actuală și mediul verificat → cod/migrații/manifest → consolidarea și ultimul raport de finalizare → planurile și cronologia istorică. „Implementat”, „testat pe copie”, „deploy-at” și „aplicat/publicat” sunt stări distincte. Un procent al cozii nu certifică întregul SEAP; un test sărit nu este un test trecut.

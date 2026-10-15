@@ -1,0 +1,75 @@
+{
+  "release": "e2ec0ffb918776426a4b134a58ad333685cc3f69",
+  "workflow": "https://github.com/Alex-Cosma/seap-new/actions/runs/38155289382",
+  "ci": "success",
+  "deploy": "success",
+  "migrations": 72,
+  "production": {
+    "at": "2026-10-11T16:32:18.712Z",
+    "runtime": "e2ec0ff",
+    "classification": {
+      "total": 3502,
+      "classified": 2157,
+      "uncertain": 1791,
+      "specifications": 50,
+      "specifications_downloaded": 33,
+      "specifications_ready": 31
+    },
+    "files": {
+      "discovered": 3502,
+      "supported": 3347,
+      "downloaded": 2240,
+      "processed": 2206
+    },
+    "jobs": {
+      "queued": 82,
+      "running": 14,
+      "failed": 62,
+      "retries": 2
+    },
+    "control": {
+      "enabled": true,
+      "paused": false,
+      "alive": true,
+      "error": null,
+      "revision": 7
+    },
+    "global": {
+      "revision": 137,
+      "paused": false,
+      "maintenance": false,
+      "blocked_reason": null
+    }
+  },
+  "publicVerification": {
+    "url": "https://cinecastiga.ro/contracte/108182744",
+    "checks": [
+      "Contract details return 200",
+      "Public document inventory returns 200",
+      "Real procedure has document metadata",
+      "Public files carry classification",
+      "All documents plus eight categories visible",
+      "At most six rows",
+      "Specification category works",
+      "Archived PDF remains public with ranged read",
+      "Archived original remains public with ranged read",
+      "Anonymous source enqueue denied before processing",
+      "Admin status requires authentication",
+      "Application health 200",
+      "Mobile category selector visible",
+      "Mobile no horizontal overflow",
+      "No browser exceptions",
+      "Verification sent no requests to SEAP"
+    ],
+    "files": 2,
+    "ready": 2,
+    "errors": [],
+    "sourceRequests": 0
+  },
+  "oneInterruptedRequest": {
+    "id": 457466,
+    "reason": "parent_cancelled during worker restart",
+    "globalBlock": false
+  },
+  "originalsRequeuedByRelease": 0
+}

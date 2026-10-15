@@ -85,7 +85,10 @@ export interface ParsedEntityString {
  * CUI-shaped value, the whole string is treated as the name.
  */
 export function parseEntityString(raw: string): ParsedEntityString {
-  const trimmed = raw.trim();
+  // Public SEAP example: `4278205 Colegiul National ... (DA102356646).
+  // Strip only stray leading backticks immediately before a fiscal-id shape;
+  // ordinary quoted names remain names and the checksum gate still applies.
+  const trimmed = raw.trim().replace(/^`+(?=(?:RO?)?\s*\d{2,10}\b)/i, "");
   // Leading fiscal id in several real formats:
   //   "RO21255449 S.C. INGRID S.R.L."   (RO glued, space separator)
   //   "RO 14056826 - Societatea …"      (RO + space, dash separator)

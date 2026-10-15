@@ -1,0 +1,13 @@
+{
+  "synthetic": true,
+  "viewports": [
+    1440,
+    390
+  ],
+  "adminAuth": 403,
+  "csrf": 403,
+  "persistedCap": 4,
+  "pageOverflow": false,
+  "errors": [],
+  "sourceRequests": 0
+}

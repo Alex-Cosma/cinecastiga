@@ -26,7 +26,12 @@ jobs:
 
       - run: node --test infra/prod/deploy.test.mjs infra/prod/process-nightly.test.mjs
 
-      - run: pnpm turbo typecheck lint test build
+      # Next generates typed route declarations inside `.next`. Running a web
+      # typecheck alongside the build triggered by its tests can read that file
+      # mid-generation and reject a valid newly added route.
+      - run: pnpm turbo typecheck lint
+      - run: pnpm turbo build
+      - run: pnpm turbo test
 
   # Pushes to main that pass CI are deployed to the production server: SSH in with
   # a key whose authorized_keys entry forces infra/prod/deploy.sh (git pull +

@@ -1,0 +1,30 @@
+import {createRequire} from 'node:module';
+import {mkdir,writeFile} from 'node:fs/promises';
+const require=createRequire(new URL('../../apps/web/package.json',import.meta.url));
+const {chromium}=require('playwright-core');
+const out=new URL('../../.local/document-categories-preview/',import.meta.url);await mkdir(out,{recursive:true});
+const browser=await chromium.launch({executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true});
+const page=await browser.newPage({viewport:{width:1440,height:1100},deviceScaleFactor:1});
+const errors=[],external=[],checks=[];page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(/^https?:/.test(r.url())&&!/^http:\/\/(localhost|127\.0\.0\.1):/.test(r.url()))external.push(r.url());});
+const assert=(ok,msg)=>{if(!ok)throw Error(msg);checks.push(msg);};
+const shot=async name=>{await page.evaluate(()=>document.fonts.ready);await page.waitForTimeout(250);await page.screenshot({path:new URL(name+'.png',out).pathname,fullPage:true});};
+try{
+ await page.goto('http://127.0.0.1:3112/document-categories/');await page.evaluate(()=>document.fonts.ready);
+ assert(await page.locator('.file').count()===6,'Six rows maximum');await shot('desktop');
+ await page.locator('[data-category=spec]').click();assert(await page.locator('.file').count()===2,'Specification category');assert((await page.locator('#result-count').innerText()).includes('2'),'Matching count');await shot('specifications');
+ await page.locator('#only-ready').check();assert(await page.locator('.file').count()===1,'Prepared-file filter');
+ await page.locator('[data-open=cs]').first().click();assert(await page.locator('#reader').isVisible(),'Inline reader opens');await page.locator('#close-reader').click();
+ await page.locator('#only-ready').uncheck();await page.locator('[data-category=all]').click();await page.locator('#search').fill('cerinte');assert(await page.locator('.file').count()===1,'Search ignores Romanian diacritics');
+ await page.locator('#search').fill('zznotfound');assert(await page.locator('.empty').isVisible(),'Useful empty state');await page.locator('[data-clear]').click();
+ await page.locator('#next').click();assert((await page.locator('#page-description').innerText()).startsWith('7–12'),'Pagination works');await page.locator('#previous').click();
+ await page.locator('[data-category=technical]').click();await page.locator('[data-expand=archive]').click();assert(await page.locator('#contents-archive').isVisible(),'Archive expands with members');assert(await page.locator('#contents-archive .member').count()===3,'Three individual archive members');await shot('archive');
+ await page.locator('#session').selectOption('guest');await page.locator('[data-category=contracts]').click();assert(await page.locator('[data-enqueue=signed]').isDisabled(),'Guest cannot enqueue');await page.locator('[data-category=spec]').click();assert(await page.locator('[data-open=cs]').first().isEnabled(),'Guest can read archived document');
+ await page.locator('#session').selectOption('member');await page.locator('[data-category=contracts]').click();await page.locator('[data-enqueue=signed]').click();assert((await page.locator('[data-file=signed]').innerText()).includes('În coadă'),'Download gives simulated queue feedback');
+ await page.goto('http://127.0.0.1:3112/document-categories/');await page.setViewportSize({width:390,height:844});await page.evaluate(()=>scrollTo(0,0));assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Mobile no horizontal overflow');await shot('mobile');
+ await page.locator('#category-select').selectOption('spec');assert(await page.locator('.file').count()===2,'Mobile category selector');await shot('mobile-specifications');
+ await page.setViewportSize({width:1440,height:1100});await page.locator('[data-category=all]').click();await page.locator('#theme').click();await shot('dark');
+ await page.setViewportSize({width:320,height:800});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'320px no overflow');
+ await page.emulateMedia({reducedMotion:'reduce'});assert(await page.evaluate(()=>getComputedStyle(document.documentElement).scrollBehavior)==='auto','Reduced motion honored');
+ assert(!errors.length,'No JS errors');assert(!external.length,'No external requests');
+ await writeFile(new URL('verification.json',out),JSON.stringify({checks,errors,external},null,2));console.log(JSON.stringify({passed:checks.length,output:out.pathname}));
+}finally{await browser.close();}

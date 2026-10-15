@@ -1,0 +1,161 @@
+{
+  "query": "reconciliation",
+  "elapsed_seconds": 20.282,
+  "exit_code": 0,
+  "rows": [
+    {
+      "test": "aggregate_vs_transactions",
+      "data": [
+        {
+          "src": "da",
+          "actual_n": 19608121,
+          "cached_n": 19608121,
+          "actual_value": "126884935657.35",
+          "cached_value": "126884935657.35"
+        },
+        {
+          "src": "contracts",
+          "actual_n": 1110721,
+          "cached_n": 1110721,
+          "actual_value": "935335692864.7400",
+          "cached_value": "935335692864.7400"
+        }
+      ]
+    },
+    {
+      "test": "headline_vs_profiles",
+      "data": {
+        "by_cpv": "1062220571799.5100",
+        "by_type": "1062220628522.0900",
+        "headline": "1062220628522.0900",
+        "profile_supplier": "1062220628522.0900",
+        "profile_authority": "1062220628522.0900"
+      }
+    },
+    {
+      "test": "contracts_by_year",
+      "data": [
+        {
+          "rows": 35,
+          "year": "2000",
+          "total": "528938.41",
+          "contracts": 33
+        },
+        {
+          "rows": 1,
+          "year": "2002",
+          "total": "886762.16",
+          "contracts": 1
+        },
+        {
+          "rows": 1,
+          "year": "2007",
+          "total": "386324.40",
+          "contracts": 1
+        },
+        {
+          "rows": 1,
+          "year": "2008",
+          "total": "537883.87",
+          "contracts": 1
+        },
+        {
+          "rows": 1,
+          "year": "2011",
+          "total": "6921.25",
+          "contracts": 1
+        },
+        {
+          "rows": 1,
+          "year": "2012",
+          "total": "1162866.27",
+          "contracts": 1
+        },
+        {
+          "rows": 2,
+          "year": "2013",
+          "total": "1372648.71",
+          "contracts": 2
+        },
+        {
+          "rows": 10,
+          "year": "2014",
+          "total": "138665861.95",
+          "contracts": 8
+        },
+        {
+          "rows": 28,
+          "year": "2015",
+          "total": "198413130.43",
+          "contracts": 26
+        },
+        {
+          "rows": 133,
+          "year": "2016",
+          "total": "666663522.03",
+          "contracts": 131
+        },
+        {
+          "rows": 3117,
+          "year": "2017",
+          "total": "2098682218.90",
+          "contracts": 2628
+        },
+        {
+          "rows": 47433,
+          "year": "2018",
+          "total": "36941643664.56",
+          "contracts": 45343
+        },
+        {
+          "rows": 95268,
+          "year": "2019",
+          "total": "66144300459.5800",
+          "contracts": 95036
+        },
+        {
+          "rows": 107378,
+          "year": "2020",
+          "total": "67958051779.8700",
+          "contracts": 106557
+        },
+        {
+          "rows": 151923,
+          "year": "2021",
+          "total": "89496042981.2400",
+          "contracts": 138687
+        },
+        {
+          "rows": 164322,
+          "year": "2022",
+          "total": "128657987871.0000",
+          "contracts": 142232
+        },
+        {
+          "rows": 147274,
+          "year": "2023",
+          "total": "146234045864.4200",
+          "contracts": 126335
+        },
+        {
+          "rows": 163105,
+          "year": "2024",
+          "total": "168056864535.7000",
+          "contracts": 133380
+        },
+        {
+          "rows": 157433,
+          "year": "2025",
+          "total": "161656981970.9200",
+          "contracts": 130309
+        },
+        {
+          "rows": 73255,
+          "year": "2026",
+          "total": "67082466659.0700",
+          "contracts": 59846
+        }
+      ]
+    }
+  ]
+}

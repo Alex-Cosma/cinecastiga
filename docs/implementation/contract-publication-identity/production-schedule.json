@@ -1,0 +1,60 @@
+{
+  "control": {
+    "time": "05:00",
+    "paused": false,
+    "enabled": true,
+    "maxSeconds": 45,
+    "minSeconds": 30,
+    "maintenance": false,
+    "riskWeekday": 0
+  },
+  "repairs": [
+    {
+      "id": "contract-money-v1",
+      "day": "2026-10-04",
+      "report": null,
+      "status": "scheduled"
+    },
+    {
+      "id": "contract-publication-identity-v1",
+      "day": "2026-10-04",
+      "report": {
+        "expected": {
+          "groups": 8045,
+          "duplicates": 7300,
+          "reductionRon": "7100577914.82"
+        },
+        "configuration": {
+          "path": "/repairs/dq02-20261004/approved-bundle.json.gz",
+          "sha256": "c3a570b5ad4638778183c77b2e0a7385a3467ae6c22af1e012afd22151621596"
+        }
+      },
+      "status": "scheduled"
+    }
+  ],
+  "checkedAt": "2026-10-03T18:50:57.501173+00:00",
+  "migrations": 53,
+  "approvedGroupsBeforeNight": 0,
+  "runtimeCommit": "63981c6",
+  "workflow": "https://github.com/Alex-Cosma/seap-new/actions/runs/37145428452",
+  "ci": "success",
+  "deploy": "success",
+  "scheduledAtUtc": "2026-10-04T02:00:00Z",
+  "scheduledAtRomania": "2026-10-04T05:00:00+03:00",
+  "sourceRequestsMadeByThisOperation": 0,
+  "http": {
+    "/api/health": 200,
+    "/intreaba": 200,
+    "/contracte/108116047": 200,
+    "/admin_anonymous": 307
+  },
+  "processorImagePreflight": {
+    "groups": 8045,
+    "impact": {
+      "duplicates": 7300,
+      "reduction_ron": "7100577914.82"
+    },
+    "rawBoundary": "17376079",
+    "checkedAt": "2026-10-03T18:49:57.026Z"
+  }
+}

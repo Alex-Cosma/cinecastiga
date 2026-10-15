@@ -1,0 +1,327 @@
+{
+  "query": "currency-source-evidence",
+  "elapsed_seconds": 1.688,
+  "exit_code": 0,
+  "rows": [
+    {
+      "ca_notice_contract_id": 108116047,
+      "stored_currency": "EUR",
+      "stored_value": "27427441.23",
+      "source_contract_value": "5195772",
+      "source_default_value": "27427441.23",
+      "source_currency": {
+        "id": 2,
+        "text": "EUR",
+        "localeKey": "EUR",
+        "apiActionResult": null
+      },
+      "currency_rate": "5.2788",
+      "content_hash": "d8eea3218334c09b6ff3beb13441cde580eb3d10a67d2eece0b09be19a460fd3",
+      "included": false
+    },
+    {
+      "ca_notice_contract_id": 108117161,
+      "stored_currency": "EUR",
+      "stored_value": "41250",
+      "source_contract_value": "7500",
+      "source_default_value": "41250",
+      "source_currency": {
+        "id": 2,
+        "text": "EUR",
+        "localeKey": "EUR",
+        "apiActionResult": null
+      },
+      "currency_rate": "5.5",
+      "content_hash": "c9ebac4d0e16518341b47fc97dadb78ce4fd15a742e7bf8edb9b28d514186ca7",
+      "included": false
+    },
+    {
+      "ca_notice_contract_id": 108117154,
+      "stored_currency": "EUR",
+      "stored_value": "49500",
+      "source_contract_value": "9000",
+      "source_default_value": "49500",
+      "source_currency": {
+        "id": 2,
+        "text": "EUR",
+        "localeKey": "EUR",
+        "apiActionResult": null
+      },
+      "currency_rate": "5.5",
+      "content_hash": "c9ebac4d0e16518341b47fc97dadb78ce4fd15a742e7bf8edb9b28d514186ca7",
+      "included": false
+    },
+    {
+      "ca_notice_contract_id": 107214962,
+      "stored_currency": "EUR",
+      "stored_value": "1422263.02",
+      "source_contract_value": "279094",
+      "source_default_value": "1422263.02",
+      "source_currency": {
+        "id": 2,
+        "text": "EUR",
+        "localeKey": "EUR",
+        "apiActionResult": null
+      },
+      "currency_rate": "5.096",
+      "content_hash": "7e4bb5c751c68e864b9cad0f91f6792006aa1a0373f89dcf7d4a7e2134ce62eb",
+      "included": false
+    },
+    {
+      "ca_notice_contract_id": 107219613,
+      "stored_currency": "EUR",
+      "stored_value": "139880",
+      "source_contract_value": "26000",
+      "source_default_value": "139880",
+      "source_currency": {
+        "id": 2,
+        "text": "EUR",
+        "localeKey": "EUR",
+        "apiActionResult": null
+      },
+      "currency_rate": "5.38",
+      "content_hash": "8ad0cf42d9ce5ef1affd40f84ff22a422f8a0afee49d20a0d4f2750244c81f18",
+      "included": false
+    },
+    {
+      "ca_notice_contract_id": 108117233,
+      "stored_currency": "EUR",
+      "stored_value": "24067.26",
+      "source_contract_value": "4725",
+      "source_default_value": "24067.26",
+      "source_currency": {
+        "id": 2,
+        "text": "EUR",
+        "localeKey": "EUR",
+        "apiActionResult": null
+      },
+      "currency_rate": "5.0936",
+      "content_hash": "c9ebac4d0e16518341b47fc97dadb78ce4fd15a742e7bf8edb9b28d514186ca7",
+      "included": false
+    },
+    {
+      "ca_notice_contract_id": 108117178,
+      "stored_currency": "EUR",
+      "stored_value": "27505.44",
+      "source_contract_value": "5400",
+      "source_default_value": "27505.44",
+      "source_currency": {
+        "id": 2,
+        "text": "EUR",
+        "localeKey": "EUR",
+        "apiActionResult": null
+      },
+      "currency_rate": "5.0936",
+      "content_hash": "c9ebac4d0e16518341b47fc97dadb78ce4fd15a742e7bf8edb9b28d514186ca7",
+      "included": false
+    },
+    {
+      "ca_notice_contract_id": 107211927,
+      "stored_currency": "EUR",
+      "stored_value": "217885.04",
+      "source_contract_value": "42916.1",
+      "source_default_value": "217885.04",
+      "source_currency": {
+        "id": 2,
+        "text": "EUR",
+        "localeKey": "EUR",
+        "apiActionResult": null
+      },
+      "currency_rate": "5.077",
+      "content_hash": "397799d4ba605aaf31ac3b4e3e157478b4266f0f430a648cda1212430ff7efb9",
+      "included": false
+    },
+    {
+      "ca_notice_contract_id": 107190481,
+      "stored_currency": "EUR",
+      "stored_value": "630057.75",
+      "source_contract_value": "124032",
+      "source_default_value": "630057.75",
+      "source_currency": {
+        "id": 2,
+        "text": "EUR",
+        "localeKey": "EUR",
+        "apiActionResult": null
+      },
+      "currency_rate": "5.0798",
+      "content_hash": "74a5429d3e3eca4bf3613973f93965275ae153cda730c76ffd00ce00017a6abc",
+      "included": false
+    },
+    {
+      "ca_notice_contract_id": 107194169,
+      "stored_currency": "EUR",
+      "stored_value": "2321997.6",
+      "source_contract_value": "456000",
+      "source_default_value": "2321997.6",
+      "source_currency": {
+        "id": 2,
+        "text": "EUR",
+        "localeKey": "EUR",
+        "apiActionResult": null
+      },
+      "currency_rate": "5.0921",
+      "content_hash": "630fc3838a452f3053f6ad3aad84c90e7c9459299e1c60676f7f9cf295354da9",
+      "included": false
+    },
+    {
+      "ca_notice_contract_id": 107186178,
+      "stored_currency": "EUR",
+      "stored_value": "368464.36",
+      "source_contract_value": "72360",
+      "source_default_value": "368464.36",
+      "source_currency": {
+        "id": 2,
+        "text": "EUR",
+        "localeKey": "EUR",
+        "apiActionResult": null
+      },
+      "currency_rate": "5.0921",
+      "content_hash": "69af6f9c5a897f76a530e896ec17573d62924c069b271419651e8fd1bf54f9d8",
+      "included": false
+    },
+    {
+      "ca_notice_contract_id": 107185843,
+      "stored_currency": "EUR",
+      "stored_value": "693475.42",
+      "source_contract_value": "137101.96",
+      "source_default_value": "693475.42",
+      "source_currency": {
+        "id": 2,
+        "text": "EUR",
+        "localeKey": "EUR",
+        "apiActionResult": null
+      },
+      "currency_rate": "5.0581",
+      "content_hash": "d22aef17a2eef09f5bb745653836303a3da79dd32867d87c94419426df3c5cf1",
+      "included": false
+    },
+    {
+      "ca_notice_contract_id": 107172888,
+      "stored_currency": "EUR",
+      "stored_value": "2271301.36",
+      "source_contract_value": "449300",
+      "source_default_value": "2271301.36",
+      "source_currency": {
+        "id": 2,
+        "text": "EUR",
+        "localeKey": "EUR",
+        "apiActionResult": null
+      },
+      "currency_rate": "5.0552",
+      "content_hash": "4bf207eaeb3db2575dd6793064e0856c11e5235e28d96facecbdf835fca6b0b4",
+      "included": false
+    },
+    {
+      "ca_notice_contract_id": 107180703,
+      "stored_currency": "EUR",
+      "stored_value": "1334464.86",
+      "source_contract_value": "263916",
+      "source_default_value": "1334464.86",
+      "source_currency": {
+        "id": 2,
+        "text": "EUR",
+        "localeKey": "EUR",
+        "apiActionResult": null
+      },
+      "currency_rate": "5.0564",
+      "content_hash": "a5bded3b4d0ce08c2c1d7cd25b8686644250b064b41e3d3aae369c5796dc6eeb",
+      "included": false
+    },
+    {
+      "ca_notice_contract_id": 107204222,
+      "stored_currency": "EUR",
+      "stored_value": "60700.9",
+      "source_contract_value": "12140.18",
+      "source_default_value": "60700.9",
+      "source_currency": {
+        "id": 2,
+        "text": "EUR",
+        "localeKey": "EUR",
+        "apiActionResult": null
+      },
+      "currency_rate": "5",
+      "content_hash": "0085d0c93bff5d84ecfe248488af4a6b3cddc05c9c83dea9f0aec592b44c1d08",
+      "included": false
+    },
+    {
+      "ca_notice_contract_id": 107164084,
+      "stored_currency": "EUR",
+      "stored_value": "610752",
+      "source_contract_value": "120000",
+      "source_default_value": "610752",
+      "source_currency": {
+        "id": 2,
+        "text": "EUR",
+        "localeKey": "EUR",
+        "apiActionResult": null
+      },
+      "currency_rate": "5.0896",
+      "content_hash": "406c20d02d567df10fac1ca6fae35fc9a667e4ea7509982316077fce22e66a23",
+      "included": false
+    },
+    {
+      "ca_notice_contract_id": 107142989,
+      "stored_currency": "EUR",
+      "stored_value": "5960160.89",
+      "source_contract_value": "1197805.6",
+      "source_default_value": "5960160.89",
+      "source_currency": {
+        "id": 2,
+        "text": "EUR",
+        "localeKey": "EUR",
+        "apiActionResult": null
+      },
+      "currency_rate": "4.9759",
+      "content_hash": "5c70b1b8581506aa644808eb3341d4f5829ad592617070c2d73c9d2ed4e5e6bd",
+      "included": false
+    },
+    {
+      "ca_notice_contract_id": 107156095,
+      "stored_currency": "EUR",
+      "stored_value": "2223207.56",
+      "source_contract_value": "437690.98",
+      "source_default_value": "2223207.56",
+      "source_currency": {
+        "id": 2,
+        "text": "EUR",
+        "localeKey": "EUR",
+        "apiActionResult": null
+      },
+      "currency_rate": "5.0794",
+      "content_hash": "530d6306a0b218aa4b3e7eb709700d465e9b283ec9cb2850b64a9896fbfc640b",
+      "included": false
+    },
+    {
+      "ca_notice_contract_id": 107156156,
+      "stored_currency": "EUR",
+      "stored_value": "2886756.41",
+      "source_contract_value": "568326.26",
+      "source_default_value": "2886756.41",
+      "source_currency": {
+        "id": 2,
+        "text": "EUR",
+        "localeKey": "EUR",
+        "apiActionResult": null
+      },
+      "currency_rate": "5.0794",
+      "content_hash": "530d6306a0b218aa4b3e7eb709700d465e9b283ec9cb2850b64a9896fbfc640b",
+      "included": false
+    },
+    {
+      "ca_notice_contract_id": 107156157,
+      "stored_currency": "EUR",
+      "stored_value": "1396932.17",
+      "source_contract_value": "275019.13",
+      "source_default_value": "1396932.17",
+      "source_currency": {
+        "id": 2,
+        "text": "EUR",
+        "localeKey": "EUR",
+        "apiActionResult": null
+      },
+      "currency_rate": "5.0794",
+      "content_hash": "530d6306a0b218aa4b3e7eb709700d465e9b283ec9cb2850b64a9896fbfc640b",
+      "included": false
+    }
+  ]
+}

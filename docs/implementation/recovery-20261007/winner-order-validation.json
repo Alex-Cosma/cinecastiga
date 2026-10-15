@@ -1,0 +1,65 @@
+{
+  "status": "passed",
+  "source": "saved production pages only",
+  "pageSizes": [
+    201,
+    200,
+    200
+  ],
+  "total": 1041,
+  "nextPage": 3,
+  "archivedBeforeCompletion": 0,
+  "changedAmountRejected": true,
+  "newSourceRequests": 0,
+  "comparison": {
+    "noticeId": 100648909,
+    "requestId": 55309,
+    "total": 1041,
+    "pageSizes": [
+      201,
+      200,
+      200
+    ],
+    "distinctInFirstThreePages": 600,
+    "overlaps": [
+      {
+        "id": 107959041,
+        "onPage": 2,
+        "changedFields": [
+          "lotsCaption",
+          "lotsNoCaption",
+          "winnerCaption",
+          "winners"
+        ],
+        "winnerOrderBefore": [
+          109585388,
+          109585462,
+          109585902
+        ],
+        "winnerOrderAfter": [
+          109585388,
+          109585902,
+          109585462
+        ],
+        "winnerRecordsEqualById": true,
+        "winnerIdsUnique": true,
+        "captionNamesEqualAsMultiset": true,
+        "otherFactsEqual": true,
+        "lotsBefore": [
+          "",
+          ""
+        ],
+        "lotsAfter": [
+          "160",
+          "160. COMBINATII (FLUOCINOLONI ACETONIDUM 0.25 MG, NEOMICINI SULFAS 5MG)"
+        ]
+      }
+    ],
+    "newSourceRequests": 0
+  },
+  "checks": {
+    "plannerTests": 21,
+    "turboTasks": 20,
+    "skippedDbIntegrationTests": "Full Turbo does not run DB integration fixtures; this change is pure planning."
+  }
+}

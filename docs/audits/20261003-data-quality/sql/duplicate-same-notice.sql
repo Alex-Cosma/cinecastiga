@@ -1,0 +1,8 @@
+WITH w AS (SELECT contract_id,array_agg(entity_id ORDER BY entity_id) ids FROM core.contract_winners GROUP BY 1), inc AS (SELECT contract_id,sum(closing_value) value FROM marts.contract_transactions GROUP BY 1), g AS (
+SELECT a.notice_no,a.authority_entity_id,c.contract_no,c.contract_date,c.contract_value,c.currency,c.title,c.lots_caption,w.ids,count(*) n,count(distinct c.ca_notice_id) notices,count(i.contract_id) included
+FROM core.contracts c JOIN core.awards a USING(ca_notice_id) JOIN w ON w.contract_id=c.id LEFT JOIN inc i ON i.contract_id=c.id
+WHERE c.contract_value>0 AND c.contract_no IS NOT NULL AND a.notice_no IS NOT NULL
+GROUP BY 1,2,3,4,5,6,7,8,9 HAVING count(*)>1)
+SELECT 'same_notice_summary' test,jsonb_build_object('groups',count(*),'cross_version_groups',count(*) FILTER(WHERE notices>1),'included_multiple_groups',count(*) FILTER(WHERE included>1),'extra_included_records',sum(greatest(included-1,0)),'candidate_excess_ron',sum(greatest(included-1,0)*contract_value)::text) data FROM g
+UNION ALL SELECT 'cross_version_only',jsonb_build_object('groups',count(*),'extra_included_records',sum(greatest(included-1,0)),'candidate_excess_ron',sum(greatest(included-1,0)*contract_value)::text) FROM g WHERE notices>1
+UNION ALL SELECT 'by_authority',jsonb_agg(x) FROM (SELECT g.authority_entity_id,e.name_display,count(*) groups,sum(greatest(included-1,0)) extra_records,sum(greatest(included-1,0)*contract_value)::text candidate_excess FROM g JOIN core.entities e ON e.id=g.authority_entity_id WHERE included>1 AND notices>1 GROUP BY 1,2 ORDER BY sum(greatest(included-1,0)*contract_value) DESC LIMIT 10) x

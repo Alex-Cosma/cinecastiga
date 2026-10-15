@@ -1,0 +1,28 @@
+{
+  "checks": [
+    "Inventory capped at ten rows",
+    "Selection capped at ten checkboxes",
+    "Current count excludes retired inventory",
+    "Inventory pagination",
+    "Search by IP resets page",
+    "Retired history remains inspectable",
+    "Cannot enable pool with empty selection",
+    "Select matching results",
+    "Bulk selection includes nonvisible pages",
+    "Concurrency draft preserved across tabs",
+    "Real isolated API persisted ten simultaneous and fifty/min",
+    "API kept all hundred selected",
+    "Saving preserves pause",
+    "Desktop no page overflow",
+    "Mobile no page overflow",
+    "Narrow dark no overflow",
+    "Keyboard opens explanation",
+    "Offline disables settings",
+    "No runtime errors",
+    "Zero external requests"
+  ],
+  "errors": [],
+  "external": [],
+  "fixture": "seap_test_proxy_pool",
+  "sourceRequests": 0
+}

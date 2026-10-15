@@ -28,6 +28,14 @@ export interface CollectionDiagnostics {request?:unknown;response?:unknown;phase
 export class CollectionTransportError extends Error {
  constructor(error:unknown,public diagnostics:CollectionDiagnostics){super(error instanceof Error?error.message:String(error),{cause:error});this.name='CollectionTransportError';}
 }
+/** Classify transport failures without retaining proxy credentials from raw errors. */
+export function retryableProxyTransport(error:unknown):boolean {
+ const codes=new Set(['ECONNRESET','ECONNREFUSED','ETIMEDOUT','EHOSTUNREACH','ENETUNREACH','EAI_AGAIN','UND_ERR_CONNECT_TIMEOUT','UND_ERR_HEADERS_TIMEOUT','UND_ERR_BODY_TIMEOUT','UND_ERR_SOCKET','UND_ERR_ABORTED']);
+ for(let depth=0;depth<6&&error instanceof Error;depth++,error=error.cause){
+  if(codes.has(String((error as Error&{code?:string}).code)))return true;
+ }
+ return false;
+}
 export function responseDiagnosticBody(bytes: Uint8Array, complete: boolean) {
  const text=Buffer.from(bytes).toString('utf8');
  let body:unknown=text;try{body=JSON.parse(text);}catch{}

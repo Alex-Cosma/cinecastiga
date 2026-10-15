@@ -1,6 +1,9 @@
 import {createDb} from '@seap/db';
 import {setTimeout as pause} from 'node:timers/promises';
+import {runAutomaticCollector} from '../../lib/documents/collection';
 import {runWorkerOnce} from '../../lib/documents/worker';
+import {loadDocumentProxy} from '../../lib/documents/proxy';
+import {classifyDocumentBatch} from '../../lib/documents/classify';
 const stop=new AbortController();
 process.once('SIGTERM',()=>stop.abort());process.once('SIGINT',()=>stop.abort());
 if(process.env.DOCUMENTS_ENABLED!=='true'){
@@ -8,5 +11,7 @@ if(process.env.DOCUMENTS_ENABLED!=='true'){
  if(!process.argv.includes('--once'))while(!stop.signal.aborted){try{await pause(60_000,undefined,{signal:stop.signal});}catch{break;}}
  process.exit(0);
 }
-const {sql}=createDb();
-try{do{try{const worked=await runWorkerOnce(sql,stop.signal);if(process.argv.includes('--once'))break;if(!worked)await pause(3000,undefined,{signal:stop.signal});}catch(error){if(stop.signal.aborted)break;console.error('Document worker:',error instanceof Error?error.message:'failed');if(process.argv.includes('--once')){process.exitCode=1;break;}await pause(5000,undefined,{signal:stop.signal});}}while(!stop.signal.aborted);}finally{await sql.end({timeout:5});}
+// Reject a bad/missing required proxy before claiming any queued job.
+try{await loadDocumentProxy();}catch{console.error('Configurația proxy pentru documente este invalidă. Workerul nu a preluat niciun job.');process.exit(1);}
+const {sql}=createDb(undefined,{max:20});
+try{do{try{const [control]=await sql`select maintenance from app.collection_control where id=1`;if(!control?.maintenance)await classifyDocumentBatch(sql);const worked=(!process.argv.includes('--once')&&await runAutomaticCollector(sql,stop.signal))||await runWorkerOnce(sql,stop.signal);if(process.argv.includes('--once'))break;if(!worked)await pause(3000,undefined,{signal:stop.signal});}catch(error){if(stop.signal.aborted)break;console.error('Document worker:',error instanceof Error?error.message:'failed');if(process.argv.includes('--once')){process.exitCode=1;break;}await pause(5000,undefined,{signal:stop.signal});}}while(!stop.signal.aborted);}finally{await sql.end({timeout:5});}

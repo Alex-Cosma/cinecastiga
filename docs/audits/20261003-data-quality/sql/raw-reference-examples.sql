@@ -1,0 +1,2 @@
+SELECT 'contract' kind,c.ca_notice_contract_id::text record_id,c.ca_notice_id::text parent_id,c.raw_id,r.external_id,r.endpoint_version,c.contract_date::text record_date FROM core.contracts c JOIN raw.raw_documents r ON r.id=c.raw_id WHERE c.ca_notice_contract_id IN (1161898,1160333,101404335,100758611)
+UNION ALL SELECT 'da',d.sicap_da_id::text,null,d.raw_id,r.external_id,r.endpoint_version,d.finalization_date::text FROM (SELECT * FROM core.direct_acquisitions WHERE raw_id>17300000 LIMIT 5) d JOIN raw.raw_documents r ON r.id=d.raw_id

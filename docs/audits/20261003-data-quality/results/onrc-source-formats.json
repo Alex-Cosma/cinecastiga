@@ -1,0 +1,14 @@
+{
+  "file": "2026-07-08-od_reprezentanti_legali.csv",
+  "sha256": "9e22d07e4d81add109d0279fc6b13075bf5a84a436e7b56623aaa3b30813508b",
+  "date_formats": {
+    "empty": 472600,
+    "date": 2087408,
+    "date_with_time": 1119170
+  },
+  "administrator_date_formats": {
+    "empty": 52912,
+    "date": 2020408,
+    "date_with_time": 1046254
+  }
+}

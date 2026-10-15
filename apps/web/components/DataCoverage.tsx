@@ -13,10 +13,12 @@ const n = (value: string | undefined) => value === undefined ? "necunoscut" : fo
 
 export async function CoverageSummary() {
   const coverage = await getCoverage();
+  const excluded=coverage?.observations.find(o=>o.dataset==='contracts')?.observation.temporarily_excluded_groups;
   const freshness=await getProcessingFreshness();
   return <div className="coverage-summary">
     <Link href="/metodologie#acoperire">Surse, acoperire și actualizare ↗</Link>
     {coverage?.observations.length ? <span>Inventar recalculat la {coverageDate(coverage.observations[0]?.calculated_at)} · completitudinea surselor nu este confirmată</span> : <span>Inventarul datelor nu a fost încă recalculat.</span>}
+    {excluded && Number(excluded)>0 && <Link href="/metodologie/excluderi">{n(excluded)} grupuri excluse temporar din totaluri · verifică sursele</Link>}
     {freshness?.riskAt&&<span>Semnale de risc recalculate la {coverageDate(freshness.riskAt)}.</span>}
   </div>;
 }
@@ -39,11 +41,18 @@ export default async function DataCoverage() {
           <div><dt>{dataset === "contracts" ? "CPV necompletat în înregistrarea contractului" : "Fără CPV"}</dt><dd>{n(o.missing_cpv)}</dd></div>
           {o.missing_raw !== undefined && <div><dt>Fără document brut arhivat</dt><dd>{n(o.missing_raw)}</dd></div>}
           {o.missing_currency !== undefined && <div><dt>Înregistrări sursă fără monedă</dt><dd>{n(o.missing_currency)}</dd></div>}
+          {o.non_additive_amendments !== undefined && <div><dt>Publicații de acte adiționale, neadăugate în totaluri</dt><dd>{n(o.non_additive_amendments)}</dd></div>}
+          {o.unverified_contract_type !== undefined && <div><dt>Tip de contract neclar, exclus din totaluri</dt><dd>{n(o.unverified_contract_type)}</dd></div>}
+          {o.framework_publications !== undefined && <div><dt>Publicații de plafoane, separate de totaluri</dt><dd>{n(o.framework_publications)}</dd></div>}
+          {o.frameworks_without_identified_calloffs !== undefined && <div><dt>Publicații de plafoane fără comenzi identificate pentru același lot</dt><dd>{n(o.frameworks_without_identified_calloffs)}</dd></div>}
+          {o.temporarily_excluded_groups !== undefined && <div><dt><Link href="/metodologie/excluderi">Grupuri excluse temporar · motive și surse</Link></dt><dd>{n(o.temporarily_excluded_groups)}</dd></div>}
+          {o.temporarily_excluded_financial_groups !== undefined && <div><dt>Dintre acestea, cu sume altfel eligibile</dt><dd>{n(o.temporarily_excluded_financial_groups)}</dd></div>}
+          {o.temporarily_excluded_publications !== undefined && <div><dt>Înregistrări sursă din aceste grupuri</dt><dd>{n(o.temporarily_excluded_publications)}</dd></div>}
           {o.results !== undefined && <div><dt>Rezultate de lot</dt><dd>{n(o.results)}</dd></div>}
           {o.unknown_competition !== undefined && <div><dt>Rezultate fără număr de oferte</dt><dd>{n(o.unknown_competition)}</dd></div>}
           {o.unverified !== undefined && <div><dt>Publicații cu interpretare de reverificat</dt><dd>{n(o.unverified)}</dd></div>}
         </dl>
-        {dataset === "contracts" && <p className="note">Pentru căutări și gruparea pe domenii folosim CPV-ul anunțului de atribuire, când este disponibil.</p>}
+        {dataset === "contracts" && <p className="note">Plafoanele nu sunt comenzi. Lipsa subsecventelor înseamnă acoperire incompletă, nu cheltuieli zero. Numărăm publicațiile sursă; categoriile de excludere se pot suprapune.</p>}
         <p className="note">Inventar recalculat: {coverageDate(calculated_at)}</p>
       </article>)}
     </div>

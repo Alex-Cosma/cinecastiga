@@ -1,0 +1,67 @@
+{
+  "query": "notice-versions",
+  "elapsed_seconds": 1.164,
+  "exit_code": 0,
+  "rows": [
+    {
+      "test": "summary",
+      "data": {
+        "notice_rows": 310,
+        "duplicate_notice_numbers": 155
+      }
+    },
+    {
+      "test": "examples",
+      "data": [
+        {
+          "errata_no": null,
+          "notice_no": "CAN1133082",
+          "state_date": "2026-07-08T11:01:25+03:00",
+          "ca_notice_id": 100640649,
+          "procedure_id": null,
+          "raw_notice_id": null,
+          "raw_version_no": null,
+          "notice_version_no": null,
+          "sys_notice_type_id": 3,
+          "sys_notice_version_id": 2
+        },
+        {
+          "errata_no": "0",
+          "notice_no": "CAN1133082",
+          "state_date": "2026-09-25T13:06:48+03:00",
+          "ca_notice_id": 100657121,
+          "procedure_id": "100260608",
+          "raw_notice_id": "101399721",
+          "raw_version_no": null,
+          "notice_version_no": null,
+          "sys_notice_type_id": 3,
+          "sys_notice_version_id": 2
+        },
+        {
+          "errata_no": null,
+          "notice_no": "CAN1161722",
+          "state_date": "2026-07-09T13:04:18+03:00",
+          "ca_notice_id": 100641160,
+          "procedure_id": null,
+          "raw_notice_id": null,
+          "raw_version_no": null,
+          "notice_version_no": null,
+          "sys_notice_type_id": 3,
+          "sys_notice_version_id": 2
+        },
+        {
+          "errata_no": "0",
+          "notice_no": "CAN1161722",
+          "state_date": "2026-09-25T13:06:19+03:00",
+          "ca_notice_id": 100657001,
+          "procedure_id": "100301859",
+          "raw_notice_id": "101399475",
+          "raw_version_no": null,
+          "notice_version_no": null,
+          "sys_notice_type_id": 3,
+          "sys_notice_version_id": 2
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "checks": [
+    "Visible duration estimate",
+    "Visible estimated completion date",
+    "Known queue explicitly identified when samples are incomplete",
+    "Rolling scope identified",
+    "Unimplemented details do not suppress useful ETA",
+    "No mobile overflow",
+    "Closed-day schedule disclosed",
+    "Manual pause suspends completion deadline",
+    "Stale state explains suspended ETA",
+    "Zero source requests",
+    "No browser errors",
+    "No external network requests"
+  ],
+  "errors": [],
+  "external": [],
+  "scope": "Synthetic isolated database; authenticated production build; desktop/mobile, dark, paused and offline"
+}

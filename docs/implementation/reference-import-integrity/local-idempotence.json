@@ -1,0 +1,793 @@
+{
+  "database": "seap_test_references_20261004",
+  "onrc": {
+    "snapshot": "2026-07-08",
+    "sha256": "9e22d07e4d81add109d0279fc6b13075bf5a84a436e7b56623aaa3b30813508b",
+    "formats": {
+      "empty": 472600,
+      "date": 2087408,
+      "date_time": 1119170
+    },
+    "changed": 0,
+    "before": {
+      "total_rows": "3679178",
+      "dated_rows": "3206578",
+      "dates_for_review": "420",
+      "supplier_rows_without_date": "6741",
+      "person_keys_in_multiple_suppliers": "7901"
+    },
+    "after": {
+      "total_rows": "3679178",
+      "dated_rows": "3206578",
+      "dates_for_review": "420",
+      "supplier_rows_without_date": "6741",
+      "person_keys_in_multiple_suppliers": "7901"
+    }
+  },
+  "financials": {
+    "changed": 0,
+    "impact": [],
+    "manifest": [
+      {
+        "year": 2018,
+        "category": "ASIG",
+        "vintage": 2021,
+        "sha256": "f688cb795f89e969d04a9e00261f4ae87e19830c076ebb3ea4b984e5f839c1ce",
+        "specSha256": "ee237da773e7419fb825ce56a434c87a0173975e901b6784d199d77c93f2778f",
+        "rows": 46,
+        "code": "I31"
+      },
+      {
+        "year": 2018,
+        "category": "BROK",
+        "vintage": 2021,
+        "sha256": "095c0434ca14040e5691b15034dc7d696ca5f5a9be63b4d1468de07d2eaba383",
+        "specSha256": "bad8a3fdb523bf5eee3ba4e6de7bb9c3ddeb911526706ab0fba0f950766f9cb6",
+        "rows": 337,
+        "code": "I22"
+      },
+      {
+        "year": 2019,
+        "category": "ASIG",
+        "vintage": 2021,
+        "sha256": "4c8eb4a28bf927e709628a684ab4baee715b15a9c33a3407be66eff28d01a2a1",
+        "specSha256": "141583d52aa71096306d26453e975745c1849414f1eb3de42ea7bd5406f85d77",
+        "rows": 43,
+        "code": "I31"
+      },
+      {
+        "year": 2019,
+        "category": "BL_BS_SL",
+        "vintage": 2021,
+        "sha256": "81503511c38117aea98462197ef946675fe354997bd70c68d3bca1e4890707ce",
+        "specSha256": "07f42f7f7ef309036563a4963731a2fe7730ce52b573c7352c7b98d7b9bd4269",
+        "rows": 81944,
+        "code": "I18"
+      },
+      {
+        "year": 2019,
+        "category": "BROK",
+        "vintage": 2021,
+        "sha256": "fff78f59bbb19876d84186fa218c56bbd6388667c15487cf4d9f9ce5d102fb0e",
+        "specSha256": "0fc6c95236c7553a5ccf460f12570868960325b8343fc0f88499e07aa663fe8c",
+        "rows": 326,
+        "code": "I22"
+      },
+      {
+        "year": 2019,
+        "category": "FOND_GARANTARE",
+        "vintage": 2021,
+        "sha256": "c22572991a49061432508e935e560a19a5097e838667e84b0642bc32406aa650",
+        "specSha256": "258d861243fc784bc2fa502c4b6765bed4b6020329d6ac401618018b73338de3",
+        "rows": 1,
+        "code": "I20"
+      },
+      {
+        "year": 2019,
+        "category": "PENSII",
+        "vintage": 2021,
+        "sha256": "63e71534bee164540262b0185648889cf96917fc94431e8d2b275792f741e274",
+        "specSha256": "3e326b72e2151a8e57f791727fec7df0b6aabcf8b86d24ab61f266de2756e3d7",
+        "rows": 13,
+        "code": "I18"
+      },
+      {
+        "year": 2019,
+        "category": "SIF",
+        "vintage": 2021,
+        "sha256": "86bd01a4d5faf3e3ca8c56dc78d6842c82640554be9a80af00318ecac598c44f",
+        "specSha256": "ed4f5acefdb4fdc71bdf5587d70e9ff997d6fbd3cd6dace1f0f4863f041c4aba",
+        "rows": 6,
+        "code": "I22"
+      },
+      {
+        "year": 2019,
+        "category": "UU",
+        "vintage": 2021,
+        "sha256": "c19799bef9aceabaf78cecd7368745979a80a813598187ce0074e70be5837e94",
+        "specSha256": "c24bcdbd423ebc5c6d619ac0a9ce5bb2ff21121c151336609d1fb6c4cfa0d8ef",
+        "rows": 710432,
+        "code": "I18"
+      },
+      {
+        "year": 2019,
+        "category": "VM",
+        "vintage": 2021,
+        "sha256": "5378f632b9189bf4c57e847fc883928d1971cdb4edadd01ad4195ae37bbe4ecf",
+        "specSha256": "0127be78cbadb602902b27ce3bcee6d1439d3d526b8623c6585c413870b2e37d",
+        "rows": 4,
+        "code": "I25"
+      },
+      {
+        "year": 2019,
+        "category": "VS",
+        "vintage": 2021,
+        "sha256": "d4ffef0af667227efe12f3902a4ab4bd88912768009cdb297e1620c7f277b751",
+        "specSha256": "ec9e106317da672bd5fdd0038176fd0727b7de11995bdd9db364479d1d0b59c4",
+        "rows": 39,
+        "code": "I29"
+      },
+      {
+        "year": 2020,
+        "category": "ASIG",
+        "vintage": 2021,
+        "sha256": "10296b61e1635ffab30e157a29cfbf23c6a366ed3b1303d713d85c77db594001",
+        "specSha256": "141583d52aa71096306d26453e975745c1849414f1eb3de42ea7bd5406f85d77",
+        "rows": 44,
+        "code": "I31"
+      },
+      {
+        "year": 2020,
+        "category": "BL_BS_SL",
+        "vintage": 2021,
+        "sha256": "4c45b8aae29384d164d4c872dc9d111f66c8560c5d9e5bbfcc0fd77342cb009f",
+        "specSha256": "07f42f7f7ef309036563a4963731a2fe7730ce52b573c7352c7b98d7b9bd4269",
+        "rows": 78670,
+        "code": "I18"
+      },
+      {
+        "year": 2020,
+        "category": "BROK",
+        "vintage": 2021,
+        "sha256": "5fe66cf2e2e0e8b1b8a4e5a69912316d0033d1c83a25db75ea6e8bd05cfa1a2b",
+        "specSha256": "0fc6c95236c7553a5ccf460f12570868960325b8343fc0f88499e07aa663fe8c",
+        "rows": 309,
+        "code": "I22"
+      },
+      {
+        "year": 2020,
+        "category": "FOND_GARANTARE",
+        "vintage": 2021,
+        "sha256": "20bb66e03bb8b863d08bc952c7653aa32c3e6b2a61d98e006879e524134b33f6",
+        "specSha256": "258d861243fc784bc2fa502c4b6765bed4b6020329d6ac401618018b73338de3",
+        "rows": 1,
+        "code": "I20"
+      },
+      {
+        "year": 2020,
+        "category": "PENSII",
+        "vintage": 2021,
+        "sha256": "3bc50abcb1b2f683148e7fc61fbb2bfee1cbc39d69d74cda492464eaa7ffceef",
+        "specSha256": "3e326b72e2151a8e57f791727fec7df0b6aabcf8b86d24ab61f266de2756e3d7",
+        "rows": 12,
+        "code": "I18"
+      },
+      {
+        "year": 2020,
+        "category": "SIF",
+        "vintage": 2021,
+        "sha256": "61088954992bf7aa7396cee65073ae4ee1ea83241286108f499ddbe8c5abdacc",
+        "specSha256": "ed4f5acefdb4fdc71bdf5587d70e9ff997d6fbd3cd6dace1f0f4863f041c4aba",
+        "rows": 6,
+        "code": "I22"
+      },
+      {
+        "year": 2020,
+        "category": "UU",
+        "vintage": 2021,
+        "sha256": "9094df8075f10f66c00307651cb0b14109e9add7087e1d8b6a40bdddace0712c",
+        "specSha256": "c24bcdbd423ebc5c6d619ac0a9ce5bb2ff21121c151336609d1fb6c4cfa0d8ef",
+        "rows": 737109,
+        "code": "I18"
+      },
+      {
+        "year": 2020,
+        "category": "VM",
+        "vintage": 2021,
+        "sha256": "6a17f94050b7135f7b950ce2e2fa13cbd10ecb57057bd668a409f5061cf422db",
+        "specSha256": "0127be78cbadb602902b27ce3bcee6d1439d3d526b8623c6585c413870b2e37d",
+        "rows": 4,
+        "code": "I25"
+      },
+      {
+        "year": 2020,
+        "category": "VS",
+        "vintage": 2021,
+        "sha256": "dcfd1e70001466dc073a03e71a85c53414734cdcfbe63e9caf6a03fee2e7fb7c",
+        "specSha256": "ec9e106317da672bd5fdd0038176fd0727b7de11995bdd9db364479d1d0b59c4",
+        "rows": 37,
+        "code": "I29"
+      },
+      {
+        "year": 2021,
+        "category": "ASIG",
+        "vintage": 2021,
+        "sha256": "684a70ba13f2c6fe1216fba55804534b9b65dbf36758c5fc5cc6d6e7b89e6397",
+        "specSha256": "141583d52aa71096306d26453e975745c1849414f1eb3de42ea7bd5406f85d77",
+        "rows": 39,
+        "code": "I31"
+      },
+      {
+        "year": 2021,
+        "category": "BL_BS_SL",
+        "vintage": 2021,
+        "sha256": "f71591d417044f5a0e1332f046c9e40ba97124f3597f2b813a6e7022cfb8b023",
+        "specSha256": "07f42f7f7ef309036563a4963731a2fe7730ce52b573c7352c7b98d7b9bd4269",
+        "rows": 71808,
+        "code": "I18"
+      },
+      {
+        "year": 2021,
+        "category": "BROK",
+        "vintage": 2021,
+        "sha256": "41beafa12a69f022d66ac61ad212014e7fefc032c72e63b3344800da138b4634",
+        "specSha256": "0fc6c95236c7553a5ccf460f12570868960325b8343fc0f88499e07aa663fe8c",
+        "rows": 288,
+        "code": "I22"
+      },
+      {
+        "year": 2021,
+        "category": "FOND_GARANTARE",
+        "vintage": 2021,
+        "sha256": "79bc6fa4a4f13ee53e5b8fcb92f37c4dc451beec56f50f47f46927d22ef5fcb5",
+        "specSha256": "258d861243fc784bc2fa502c4b6765bed4b6020329d6ac401618018b73338de3",
+        "rows": 1,
+        "code": "I20"
+      },
+      {
+        "year": 2021,
+        "category": "PENSII",
+        "vintage": 2021,
+        "sha256": "e3a5974bd174f914a9232f40df385eeeb1ef9de9644f80f229d67959d361cea4",
+        "specSha256": "3e326b72e2151a8e57f791727fec7df0b6aabcf8b86d24ab61f266de2756e3d7",
+        "rows": 11,
+        "code": "I18"
+      },
+      {
+        "year": 2021,
+        "category": "SIF",
+        "vintage": 2021,
+        "sha256": "31340c77e9f2a0c1a73913baeffc727588ba5b9b259e9fed97f913daf104f01d",
+        "specSha256": "f715ea1f60af14c19534ddfb100ed2198be15a5309159e729942bf0019a61dbe",
+        "rows": 6,
+        "code": "I24"
+      },
+      {
+        "year": 2021,
+        "category": "UU",
+        "vintage": 2021,
+        "sha256": "173abc7207dbf0d1d4dcc5d1dd57c0d5707b3fd36cd66b5918e34b79b11b0dd4",
+        "specSha256": "c24bcdbd423ebc5c6d619ac0a9ce5bb2ff21121c151336609d1fb6c4cfa0d8ef",
+        "rows": 709662,
+        "code": "I18"
+      },
+      {
+        "year": 2021,
+        "category": "VS",
+        "vintage": 2021,
+        "sha256": "2ff1a4a1ecf484e9719b8b371fc1936b26f21deb0d9ce04fa518e5c51672f226",
+        "specSha256": "ec9e106317da672bd5fdd0038176fd0727b7de11995bdd9db364479d1d0b59c4",
+        "rows": 33,
+        "code": "I29"
+      },
+      {
+        "year": 2022,
+        "category": "ASIG",
+        "vintage": 2022,
+        "sha256": "1cdc2c6f08940c38205ccbee003104d2192dcb059a679a32d23949c187a075f6",
+        "specSha256": "141583d52aa71096306d26453e975745c1849414f1eb3de42ea7bd5406f85d77",
+        "rows": 45,
+        "code": "I31"
+      },
+      {
+        "year": 2022,
+        "category": "BL_BS_SL",
+        "vintage": 2022,
+        "sha256": "bba24e8292f3d01f1a76e8d5897d818c00578d04809958185bad2cebc87ed7c3",
+        "specSha256": "07f42f7f7ef309036563a4963731a2fe7730ce52b573c7352c7b98d7b9bd4269",
+        "rows": 76639,
+        "code": "I18"
+      },
+      {
+        "year": 2022,
+        "category": "BROK",
+        "vintage": 2022,
+        "sha256": "0e51e57799de4b09fd0d82ba2354cdecf7f5cf78039743e30809332c6989f251",
+        "specSha256": "0fc6c95236c7553a5ccf460f12570868960325b8343fc0f88499e07aa663fe8c",
+        "rows": 281,
+        "code": "I22"
+      },
+      {
+        "year": 2022,
+        "category": "FOND_GARANTARE",
+        "vintage": 2022,
+        "sha256": "e7d42cf3ccb56e9b9a3411b97cab156bc9a566725e5be1de6aff620671b6682a",
+        "specSha256": "258d861243fc784bc2fa502c4b6765bed4b6020329d6ac401618018b73338de3",
+        "rows": 1,
+        "code": "I20"
+      },
+      {
+        "year": 2022,
+        "category": "PENSII",
+        "vintage": 2022,
+        "sha256": "09a0638d203f7fa0b8c850fe1077d51fbf7424f6bb7d792fb565369bc11acaf7",
+        "specSha256": "3e326b72e2151a8e57f791727fec7df0b6aabcf8b86d24ab61f266de2756e3d7",
+        "rows": 12,
+        "code": "I18"
+      },
+      {
+        "year": 2022,
+        "category": "UU",
+        "vintage": 2022,
+        "sha256": "4e011cfa747b9e9d4f551f7ad109b5a112492fc570cfed65a1675460cb4fe476",
+        "specSha256": "c24bcdbd423ebc5c6d619ac0a9ce5bb2ff21121c151336609d1fb6c4cfa0d8ef",
+        "rows": 785925,
+        "code": "I18"
+      },
+      {
+        "year": 2023,
+        "category": "ASIG",
+        "vintage": 2023,
+        "sha256": "399f3b6e50629fe13a806b7292e2e9373ba397c2e65adb7a3925e01860af2681",
+        "specSha256": "141583d52aa71096306d26453e975745c1849414f1eb3de42ea7bd5406f85d77",
+        "rows": 43,
+        "code": "I31"
+      },
+      {
+        "year": 2023,
+        "category": "BL_BS_SL",
+        "vintage": 2023,
+        "sha256": "3d0a7246d6eec3b5e1a4aa09d672100c901d5b3a18a5bb8cee3c137c8643667b",
+        "specSha256": "07f42f7f7ef309036563a4963731a2fe7730ce52b573c7352c7b98d7b9bd4269",
+        "rows": 79949,
+        "code": "I18"
+      },
+      {
+        "year": 2023,
+        "category": "BROK",
+        "vintage": 2023,
+        "sha256": "cba80910f13a263255fc903f5112c39699c1df59bbc4a7827c724102c4b27f27",
+        "specSha256": "0fc6c95236c7553a5ccf460f12570868960325b8343fc0f88499e07aa663fe8c",
+        "rows": 270,
+        "code": "I22"
+      },
+      {
+        "year": 2023,
+        "category": "FOND_GARANTARE",
+        "vintage": 2023,
+        "sha256": "84943a33206518b696ef2db98d47321353617f6f5dc8fda7b3a790a441998e11",
+        "specSha256": "a4fead9af2362930ac8ef135e2dc8bb2247b61a9e0704645c6d50b13702f07d1",
+        "rows": 1,
+        "code": "I20"
+      },
+      {
+        "year": 2023,
+        "category": "PENSII",
+        "vintage": 2023,
+        "sha256": "5f307fe71dcc60e5b868ab6e3c7a7c2f8dc61669c4f23126fdd59ce3c9f8a5e9",
+        "specSha256": "3e326b72e2151a8e57f791727fec7df0b6aabcf8b86d24ab61f266de2756e3d7",
+        "rows": 11,
+        "code": "I18"
+      },
+      {
+        "year": 2023,
+        "category": "UU",
+        "vintage": 2023,
+        "sha256": "fa03a36ad9145eeb5ec644996009a32242df1b3ae8cc20299de4e0fda42116f7",
+        "specSha256": "c24bcdbd423ebc5c6d619ac0a9ce5bb2ff21121c151336609d1fb6c4cfa0d8ef",
+        "rows": 810887,
+        "code": "I18"
+      },
+      {
+        "year": 2024,
+        "category": "ASIG",
+        "vintage": 2024,
+        "sha256": "b9ff31e60d2d7716994cf4711b37b038bdd34320b41188ff2dddb8c9b20fc996",
+        "specSha256": "57322c0527a824197983e2c0de86ede44ece5da41f1770c79dbfe644effcd967",
+        "rows": 44,
+        "code": "I36"
+      },
+      {
+        "year": 2024,
+        "category": "BL_BS_SL",
+        "vintage": 2024,
+        "sha256": "6426a132816841ea7974ca1dc85370b6d2027662e71e228a2a252f8c7a8fd4d3",
+        "specSha256": "07f42f7f7ef309036563a4963731a2fe7730ce52b573c7352c7b98d7b9bd4269",
+        "rows": 77669,
+        "code": "I18"
+      },
+      {
+        "year": 2024,
+        "category": "BROK",
+        "vintage": 2024,
+        "sha256": "d30aafb8c6fd157d9f18558ba6841b24607c454ce5fd6dc19a48037271295138",
+        "specSha256": "7f815b3eacc4fe265d23232bf15596a35f1eca343dbb01466c2e89438f81e9ca",
+        "rows": 263,
+        "code": "I24"
+      },
+      {
+        "year": 2024,
+        "category": "FOND_GARANTARE",
+        "vintage": 2024,
+        "sha256": "41785248332993f2a6e14e107c4865949e4519e334c90a31bbe7c4578b2b9c59",
+        "specSha256": "a4fead9af2362930ac8ef135e2dc8bb2247b61a9e0704645c6d50b13702f07d1",
+        "rows": 1,
+        "code": "I20"
+      },
+      {
+        "year": 2024,
+        "category": "IR",
+        "vintage": 2024,
+        "sha256": "d99c6ef13aea4ccd5daa18ab4aa5161a5cef9c8e22ce8b8ac1915010bcb435c6",
+        "specSha256": "5bce8f59759eec9b2793b142d63281dcfb3c103d87bc8c57c7dbe8664d2d10bf",
+        "rows": 93,
+        "code": "I18"
+      },
+      {
+        "year": 2024,
+        "category": "PENSII",
+        "vintage": 2024,
+        "sha256": "a18461b8a9bf4475b1c150ecb0c7d751cb25dc2e0fd70d60466890ff4f4df29a",
+        "specSha256": "3e326b72e2151a8e57f791727fec7df0b6aabcf8b86d24ab61f266de2756e3d7",
+        "rows": 11,
+        "code": "I18"
+      },
+      {
+        "year": 2024,
+        "category": "UU",
+        "vintage": 2024,
+        "sha256": "0cc2496a17b3a7bf3405294ac26cda85f5aa2e258717027d63119e78492d21aa",
+        "specSha256": "c24bcdbd423ebc5c6d619ac0a9ce5bb2ff21121c151336609d1fb6c4cfa0d8ef",
+        "rows": 822292,
+        "code": "I18"
+      },
+      {
+        "year": 2024,
+        "category": "VM",
+        "vintage": 2024,
+        "sha256": "b013e9fbc163bc622f061d3295143296512e5961c0740e2cd874312f212308bc",
+        "specSha256": "f074de00d429e04bd800f8bec23edb04a7ea30ff4ba653e39079408941a74ea7",
+        "rows": 5,
+        "code": "I25"
+      },
+      {
+        "year": 2025,
+        "category": "ASIG",
+        "vintage": 2025,
+        "sha256": "f7b80fc56960a3256a22176814d7914a6f4ee28cf2b668b45bd7324acb31d7ad",
+        "specSha256": "57322c0527a824197983e2c0de86ede44ece5da41f1770c79dbfe644effcd967",
+        "rows": 43,
+        "code": "I36"
+      },
+      {
+        "year": 2025,
+        "category": "BL_BS_SL",
+        "vintage": 2025,
+        "sha256": "4c429645283a03dd44af9986c3661648ddb276b273859876a03a9aa883c9a175",
+        "specSha256": "07f42f7f7ef309036563a4963731a2fe7730ce52b573c7352c7b98d7b9bd4269",
+        "rows": 74025,
+        "code": "I18"
+      },
+      {
+        "year": 2025,
+        "category": "BROK",
+        "vintage": 2025,
+        "sha256": "06e737606515f3628cac1697bc70594c476aebf86c80017ead7bae6462cf86c1",
+        "specSha256": "7f815b3eacc4fe265d23232bf15596a35f1eca343dbb01466c2e89438f81e9ca",
+        "rows": 273,
+        "code": "I24"
+      },
+      {
+        "year": 2025,
+        "category": "FOND_GARANTARE",
+        "vintage": 2025,
+        "sha256": "ff215e7211a9c0d546e61a29ca732d17b3acabddb79c6608564f582316be5d7c",
+        "specSha256": "a4fead9af2362930ac8ef135e2dc8bb2247b61a9e0704645c6d50b13702f07d1",
+        "rows": 1,
+        "code": "I20"
+      },
+      {
+        "year": 2025,
+        "category": "PENSII",
+        "vintage": 2025,
+        "sha256": "8a84484ffa3614106ab007c355865efde1086c47658eba49123620038e1a3273",
+        "specSha256": "3e326b72e2151a8e57f791727fec7df0b6aabcf8b86d24ab61f266de2756e3d7",
+        "rows": 11,
+        "code": "I18"
+      },
+      {
+        "year": 2025,
+        "category": "UU",
+        "vintage": 2025,
+        "sha256": "2c7e67d51f6700a28fb31644e8e2abf4334ee788f1c5fb07cb6df1a9321683e2",
+        "specSha256": "c24bcdbd423ebc5c6d619ac0a9ce5bb2ff21121c151336609d1fb6c4cfa0d8ef",
+        "rows": 844207,
+        "code": "I18"
+      }
+    ],
+    "skipped": [
+      {
+        "year": 2018,
+        "category": "BL_BS_SL",
+        "reason": "No cached spec; repair does not infer indicator numbers"
+      },
+      {
+        "year": 2018,
+        "category": "FOND_GARANTARE",
+        "reason": "No cached spec; repair does not infer indicator numbers"
+      },
+      {
+        "year": 2018,
+        "category": "IFN",
+        "reason": "No cached spec; repair does not infer indicator numbers"
+      },
+      {
+        "year": 2018,
+        "category": "INST_DE_CREDIT",
+        "reason": "No cached spec; repair does not infer indicator numbers"
+      },
+      {
+        "year": 2018,
+        "category": "IR",
+        "reason": "No cached spec; repair does not infer indicator numbers"
+      },
+      {
+        "year": 2018,
+        "category": "ONG",
+        "reason": "No cached spec; repair does not infer indicator numbers"
+      },
+      {
+        "year": 2018,
+        "category": "ONG",
+        "reason": "No unambiguous explicit net-profit indicator"
+      },
+      {
+        "year": 2018,
+        "category": "PENSII",
+        "reason": "No cached spec; repair does not infer indicator numbers"
+      },
+      {
+        "year": 2018,
+        "category": "SIF",
+        "reason": "No cached spec; repair does not infer indicator numbers"
+      },
+      {
+        "year": 2018,
+        "category": "UU",
+        "reason": "No cached spec; repair does not infer indicator numbers"
+      },
+      {
+        "year": 2018,
+        "category": "VM",
+        "reason": "No cached spec; repair does not infer indicator numbers"
+      },
+      {
+        "year": 2018,
+        "category": "VS",
+        "reason": "No cached spec; repair does not infer indicator numbers"
+      },
+      {
+        "year": 2019,
+        "category": "IFN",
+        "reason": "No unambiguous explicit net-profit indicator"
+      },
+      {
+        "year": 2019,
+        "category": "INST_DE_CREDIT",
+        "reason": "No cached spec; repair does not infer indicator numbers"
+      },
+      {
+        "year": 2019,
+        "category": "IR",
+        "reason": "No cached spec; repair does not infer indicator numbers"
+      },
+      {
+        "year": 2019,
+        "category": "ONG",
+        "reason": "No unambiguous explicit net-profit indicator"
+      },
+      {
+        "year": 2020,
+        "category": "IFN",
+        "reason": "No unambiguous explicit net-profit indicator"
+      },
+      {
+        "year": 2020,
+        "category": "INST_DE_CREDIT",
+        "reason": "No cached spec; repair does not infer indicator numbers"
+      },
+      {
+        "year": 2020,
+        "category": "IR",
+        "reason": "No cached spec; repair does not infer indicator numbers"
+      },
+      {
+        "year": 2020,
+        "category": "ONG",
+        "reason": "No unambiguous explicit net-profit indicator"
+      },
+      {
+        "year": 2021,
+        "category": "IFN",
+        "reason": "No unambiguous explicit net-profit indicator"
+      },
+      {
+        "year": 2021,
+        "category": "INST_DE_CREDIT",
+        "reason": "No unambiguous explicit net-profit indicator"
+      },
+      {
+        "year": 2021,
+        "category": "IR",
+        "reason": "No cached spec; repair does not infer indicator numbers"
+      },
+      {
+        "year": 2021,
+        "category": "ONG",
+        "reason": "No unambiguous explicit net-profit indicator"
+      },
+      {
+        "year": 2021,
+        "category": "VM",
+        "reason": "No cached spec; repair does not infer indicator numbers"
+      },
+      {
+        "year": 2022,
+        "category": "IFN",
+        "reason": "No unambiguous explicit net-profit indicator"
+      },
+      {
+        "year": 2022,
+        "category": "INST_DE_CREDIT",
+        "reason": "No unambiguous explicit net-profit indicator"
+      },
+      {
+        "year": 2022,
+        "category": "IR",
+        "reason": "No cached spec; repair does not infer indicator numbers"
+      },
+      {
+        "year": 2022,
+        "category": "ONG",
+        "reason": "No unambiguous explicit net-profit indicator"
+      },
+      {
+        "year": 2022,
+        "category": "SIF",
+        "reason": "No unambiguous explicit net-profit indicator"
+      },
+      {
+        "year": 2022,
+        "category": "VM",
+        "reason": "No cached spec; repair does not infer indicator numbers"
+      },
+      {
+        "year": 2022,
+        "category": "VS",
+        "reason": "No unambiguous explicit net-profit indicator"
+      },
+      {
+        "year": 2023,
+        "category": "IFN",
+        "reason": "No unambiguous explicit net-profit indicator"
+      },
+      {
+        "year": 2023,
+        "category": "INST_DE_CREDIT",
+        "reason": "No unambiguous explicit net-profit indicator"
+      },
+      {
+        "year": 2023,
+        "category": "IP_IEME",
+        "reason": "No unambiguous explicit net-profit indicator"
+      },
+      {
+        "year": 2023,
+        "category": "IR",
+        "reason": "No cached spec; repair does not infer indicator numbers"
+      },
+      {
+        "year": 2023,
+        "category": "ONG",
+        "reason": "No unambiguous explicit net-profit indicator"
+      },
+      {
+        "year": 2023,
+        "category": "SIF",
+        "reason": "No unambiguous explicit net-profit indicator"
+      },
+      {
+        "year": 2023,
+        "category": "VM",
+        "reason": "No cached spec; repair does not infer indicator numbers"
+      },
+      {
+        "year": 2023,
+        "category": "VS",
+        "reason": "No unambiguous explicit net-profit indicator"
+      },
+      {
+        "year": 2024,
+        "category": "IFN",
+        "reason": "No unambiguous explicit net-profit indicator"
+      },
+      {
+        "year": 2024,
+        "category": "INST_DE_CREDIT",
+        "reason": "No unambiguous explicit net-profit indicator"
+      },
+      {
+        "year": 2024,
+        "category": "IP_IEME",
+        "reason": "No unambiguous explicit net-profit indicator"
+      },
+      {
+        "year": 2024,
+        "category": "ONG",
+        "reason": "No unambiguous explicit net-profit indicator"
+      },
+      {
+        "year": 2024,
+        "category": "SIF",
+        "reason": "No unambiguous explicit net-profit indicator"
+      },
+      {
+        "year": 2024,
+        "category": "VS",
+        "reason": "No unambiguous explicit net-profit indicator"
+      },
+      {
+        "year": 2025,
+        "category": "IFN",
+        "reason": "No unambiguous explicit net-profit indicator"
+      },
+      {
+        "year": 2025,
+        "category": "INSTIT_DE_CREDIT",
+        "reason": "No cached spec; repair does not infer indicator numbers"
+      },
+      {
+        "year": 2025,
+        "category": "IP_IEME",
+        "reason": "No unambiguous explicit net-profit indicator"
+      },
+      {
+        "year": 2025,
+        "category": "IR",
+        "reason": "No cached spec; repair does not infer indicator numbers"
+      },
+      {
+        "year": 2025,
+        "category": "ONG",
+        "reason": "No unambiguous explicit net-profit indicator"
+      },
+      {
+        "year": 2025,
+        "category": "SIF",
+        "reason": "No unambiguous explicit net-profit indicator"
+      },
+      {
+        "year": 2025,
+        "category": "VM",
+        "reason": "No cached spec; repair does not infer indicator numbers"
+      },
+      {
+        "year": 2025,
+        "category": "VS",
+        "reason": "No unambiguous explicit net-profit indicator"
+      }
+    ]
+  },
+  "completedAt": "2026-10-04T05:46:17.683Z",
+  "seconds": 324.161
+}

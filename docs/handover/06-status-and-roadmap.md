@@ -1,4 +1,6 @@
-# Stare curentă, limite și următoarele direcții
+# Stare, limite și direcții — istoric și referințe
+
+**Actualizare 11 octombrie:** pentru starea curentă citește [continuarea consolidată](20261011/status-and-continuation.md). Paragrafele de mai jos sunt fotografii istorice; extinderea zilnică, pool-ul de documente și reparațiile ulterioare sunt deja documentate separat.
 
 **Ultima verificare de producție:1 octombrie,seara.** Codul final `c6763f3` este live, CI/deploy trecute,47 migrări, checkpoint11 ready, identitățile istorice reparate, ambele căutări reconstruite și24 probe în browser trecute. Site redeschis și colectare activă, buget40–60s, program05:00RO/risc duminică păstrat. [Raportul verificat](../implementation/entity-identity-release-20261001.md) are prioritate față de fotografiile istorice. Copia locală obișnuită și dumpul anterior rămân nereparate.
 
@@ -74,9 +76,19 @@ Ordinea se decide cu proprietarul; acestea nu sunt sarcini începute automat pen
 - **Publicat: traseul de verificare.** Un acces principal la surse, exporturi grupate și explicația calculului lângă rezultat; stările documentelor invită numai la acțiuni disponibile. [Implementare](../implementation/answer-actions.md).
 - **Publicat: prima experiență Explorează.** Drawer cu loading vizibil/schelet, întrebarea implicită pe toți anii disponibili prin agregatele existente, text desktop ajustat la30px ca semnul întrebării să rămână pe rând. Clasamentele precalculate pe ani rămân doar o propunere. [Checkpoint de reluare](continuation-20260930.md).
 - **Publicat: feedback anonim.** Proprietarul a ales să nu afișeze niciun nume public. Formular fără cont/nume/e-mail, cu pagină publică atașată; mesaje private pentru administratori în `/admin/feedback`, paginare10 și ștergere individuală confirmată. [Implementare](../implementation/anonymous-feedback.md). Nu mai solicita identitatea operatorului pentru acest flux.
-- **Comis local, 1 octombrie: acoperire compactă (`d51fb29`).** Homepage are „Ce date includ aceste cifre?” lângă totaluri, cu textul lung mutat în interior. Explorează integrează perioadele în „Datele și calculul”, în locul explicației pliabile existente. Citire doar la deschidere, surse adaptate întrebării aplicate, fără procente de completitudine. [Implementare și verificări](../implementation/compact-coverage.md). Fără push/deploy.
-- **Local, 1 octombrie: două corecții mici.** Linkurile numărătorilor homepage deschid măsura „număr”; metodologia descrie „Copiază întrebarea”, fără promisiunea unui buton „citează” absent. [Continuarea auditului](../implementation/reddit-small-fixes-20261001.md). Incluse în lotul ulterior autorizat pentru commit/push; confirmarea deployului rămâne separată.
-- **Mockup local: citare durabilă.** Direcție acceptată, prototip interactiv în [mockups/signal-citation](../../mockups/signal-citation/README.md), cu date fictive. Demonstrează referința datată, sursele exacte și situația actuală separată. Backendul nu este implementat; capturile private existente nu sunt publicate implicit. Așteaptă feedbackul proprietarului.
+- **Comis și împins pe main, 1 octombrie: acoperire compactă (`d51fb29`).** Homepage are „Ce date includ aceste cifre?” lângă totaluri, cu textul lung mutat în interior. Explorează integrează perioadele în „Datele și calculul”, în locul explicației pliabile existente. Citire doar la deschidere, surse adaptate întrebării aplicate, fără procente de completitudine. [Implementare și verificări](../implementation/compact-coverage.md). Push confirmat împreună cu `b293eea`; finalizarea deployului nu a fost verificată aici.
+- **Comis și împins pe main, 1 octombrie: două corecții mici (`b293eea`).** Linkurile numărătorilor homepage deschid măsura „număr”; metodologia descrie „Copiază întrebarea”, fără promisiunea unui buton „citează” absent. [Continuarea auditului](../implementation/reddit-small-fixes-20261001.md). Push confirmat; confirmarea deployului rămâne separată.
+- **Abandonat la cererea proprietarului: citarea publică a semnalelor.** [Mockupul](../../mockups/signal-citation/README.md) rămâne doar explorare, fără integrare/backend planificat. Distribuirea se concentrează pe anchete, date și interogări. Nu publica implicit anchetele private și nu relua propunerea ca sarcină restantă a auditului.
+
+### Reverificare prin parcursuri — 1 octombrie 2026
+
+[Raportul celor cinci parcursuri](../reviews/user-journeys-20261001/report.md) documentează observații noi, nu remedieri deja autorizate:
+
+- Clarificarea profilurilor omonime din Cluj; verificare de proveniență înainte de orice asociere.
+- Explicarea accesului pe invitație la Anchete și o eventuală cale de solicitare.
+- Continuarea din căutare în constructor fără pierderea neexplicată a contextului; fără echivalențe tacite text–CPV sau UAT–județ.
+- Titluri disponibile și valori complet lizibile în tabelul profilului,10 rânduri/pagină păstrate.
+- Copierea căutării mai accesibilă pe mobil și reducerea secțiunilor goale redundante.
 
 ### Direcții generale
 

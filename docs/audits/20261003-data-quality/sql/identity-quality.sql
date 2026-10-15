@@ -1,0 +1,3 @@
+SELECT 'redirect_profile_residue' test,jsonb_build_object('rows',count(*),'value',sum(ep.total_ron_split)::text) data FROM marts.entity_profile ep JOIN core.entity_redirects r ON r.old_id=ep.entity_id
+UNION ALL SELECT 'cui_collisions',jsonb_build_object('groups',count(*)) FROM (SELECT cui_canonical FROM core.entities e WHERE cui_valid AND NOT EXISTS (SELECT 1 FROM core.entity_redirects r WHERE r.old_id=e.id) GROUP BY 1 HAVING count(*)>1) x
+UNION ALL SELECT 'uat_population',jsonb_build_object('authorities',count(*),'missing_population',count(*) FILTER(WHERE population IS NULL),'nonpositive_population',count(*) FILTER(WHERE population<=0)) FROM reference.authority_uat

@@ -1,0 +1,22 @@
+{
+  "seap": {
+    "onrc_rows": 3679178,
+    "onrc_dated_rows": 2087408,
+    "mf_sample": {
+      "cui": "30976819",
+      "year": 2025,
+      "profit_net": null
+    },
+    "migrations": 47
+  },
+  "seap_test_references_20261004": {
+    "onrc_rows": 3679178,
+    "onrc_dated_rows": 3206578,
+    "mf_sample": {
+      "cui": "30976819",
+      "year": 2025,
+      "profit_net": "999104"
+    },
+    "migrations": 47
+  }
+}

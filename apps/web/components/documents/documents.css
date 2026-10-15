@@ -25,3 +25,8 @@
 .df-pdf-message{position:absolute;inset:20px 16px auto;margin:0;max-width:60ch;color:var(--ink);font-size:14px;line-height:1.6}
 @media(max-width:760px){.df-pdf-viewport{height:480px}}
 @media(max-width:380px){.df-pdf-heading{flex-direction:column;align-items:flex-start}}
+
+.df-signature-warning{padding:10px 12px;margin:10px 0;background:var(--amber-soft);color:var(--ink);font-size:13px;line-height:1.6;max-width:75ch;border-radius:6px}
+
+.df-contents { max-height: 24rem; overflow: auto; padding-inline-start: 1.25rem; }
+.df-contents li { margin-block: .6rem; overflow-wrap: anywhere; }

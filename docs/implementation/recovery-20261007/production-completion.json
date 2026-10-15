@@ -1,0 +1,567 @@
+{
+  "batch": {
+    "id": "recovery-2026-09-25",
+    "endDay": "2026-10-06",
+    "status": "collecting",
+    "followLatest": true
+  },
+  "control": {
+    "paused": false,
+    "revision": 91,
+    "maintenance": false,
+    "riskWeekday": 0,
+    "blockedReason": null,
+    "processingTime": "05:00",
+    "processingEnabled": true
+  },
+  "proxies": {
+    "enabled": 94,
+    "disabled": 16
+  },
+  "checkedAt": "2026-10-07T06:24:03.185132+00:00",
+  "processing": {
+    "id": "c741d751-4d0d-46da-b9ea-14b865e2dbee",
+    "scope": "full",
+    "stage": "complete",
+    "stages": {
+      "drain": {
+        "startedAt": "2026-10-07T04:29:19.577054+00:00",
+        "durationMs": 1588,
+        "completedAt": "2026-10-07T04:29:21.165528+00:00"
+      },
+      "flags": {
+        "startedAt": "2026-10-07T04:46:24.384125+00:00",
+        "durationMs": 3945893,
+        "completedAt": "2026-10-07T05:52:10.277085+00:00"
+      },
+      "marts": {
+        "startedAt": "2026-10-07T04:42:32.654451+00:00",
+        "durationMs": 231730,
+        "completedAt": "2026-10-07T04:46:24.384125+00:00"
+      },
+      "reopen": {
+        "startedAt": "2026-10-07T06:22:24.855173+00:00",
+        "durationMs": 1245,
+        "completedAt": "2026-10-07T06:22:26.100074+00:00"
+      },
+      "search": {
+        "startedAt": "2026-10-07T06:17:17.963558+00:00",
+        "durationMs": 303404,
+        "completedAt": "2026-10-07T06:22:21.367864+00:00"
+      },
+      "restart": {
+        "startedAt": "2026-10-07T06:22:21.367864+00:00",
+        "durationMs": 3487,
+        "completedAt": "2026-10-07T06:22:24.855173+00:00"
+      },
+      "coverage": {
+        "startedAt": "2026-10-07T06:15:38.733041+00:00",
+        "durationMs": 37511,
+        "completedAt": "2026-10-07T06:16:16.24393+00:00"
+      },
+      "ted-mart": {
+        "startedAt": "2026-10-07T04:39:50.961699+00:00",
+        "durationMs": 161693,
+        "completedAt": "2026-10-07T04:42:32.654452+00:00"
+      },
+      "normalize": {
+        "startedAt": "2026-10-07T04:29:21.165528+00:00",
+        "durationMs": 2845,
+        "completedAt": "2026-10-07T04:29:24.010566+00:00"
+      },
+      "reconcile": {
+        "startedAt": "2026-10-07T04:29:42.092049+00:00",
+        "durationMs": 608870,
+        "completedAt": "2026-10-07T04:39:50.961699+00:00"
+      },
+      "flag-marts": {
+        "startedAt": "2026-10-07T05:52:10.277085+00:00",
+        "durationMs": 42498,
+        "completedAt": "2026-10-07T05:52:52.775207+00:00"
+      },
+      "validation": {
+        "startedAt": "2026-10-07T06:16:16.24393+00:00",
+        "durationMs": 61720,
+        "completedAt": "2026-10-07T06:17:17.963559+00:00"
+      },
+      "radiografie": {
+        "startedAt": "2026-10-07T06:05:43.33183+00:00",
+        "durationMs": 595401,
+        "completedAt": "2026-10-07T06:15:38.733041+00:00"
+      },
+      "transactions": {
+        "startedAt": "2026-10-07T05:52:52.775206+00:00",
+        "durationMs": 770557,
+        "completedAt": "2026-10-07T06:05:43.33183+00:00"
+      },
+      "money-quality": {
+        "startedAt": "2026-10-07T04:29:24.010566+00:00",
+        "durationMs": 6813,
+        "completedAt": "2026-10-07T04:29:30.823718+00:00"
+      },
+      "identity-repair": {
+        "startedAt": "2026-10-07T04:29:30.823718+00:00",
+        "durationMs": 3,
+        "completedAt": "2026-10-07T04:29:30.826926+00:00"
+      },
+      "identity-quality": {
+        "startedAt": "2026-10-07T04:29:30.826926+00:00",
+        "durationMs": 11265,
+        "completedAt": "2026-10-07T04:29:42.092049+00:00"
+      }
+    },
+    "status": "ready",
+    "startedAt": "2026-10-07T04:29:19.577054+00:00",
+    "completedAt": "2026-10-07T06:22:26.100924+00:00",
+    "rawBoundary": "17561344",
+    "checkpointId": "91f132c0-56fb-4b53-a7ca-d666bbb1e0bc",
+    "searchVerified": {
+      "topics": {
+        "records": "20732740"
+      },
+      "documents": 182028
+    },
+    "durationMinutes": 113.11
+  },
+  "ciDeployRun": "37571381653",
+  "publication": {
+    "checks": [
+      {
+        "check": "contract_publication_identity",
+        "scope": "all approved publications and current source fingerprints",
+        "passed": true,
+        "details": {
+          "valid": true,
+          "members": 16090,
+          "examples": [],
+          "staleMembers": 0,
+          "invalidDecisions": 0
+        }
+      },
+      {
+        "check": "contract_currency_integrity",
+        "scope": "all contract monetary records and verified archive amounts; exclusions retained explicitly",
+        "passed": true,
+        "details": {
+          "counts": [
+            {
+              "count": 3484,
+              "status": "converted"
+            },
+            {
+              "count": 91,
+              "status": "inconsistent"
+            },
+            {
+              "count": 1011289,
+              "status": "legacy_ron"
+            },
+            {
+              "count": 15757,
+              "status": "legacy_unknown"
+            },
+            {
+              "count": 12,
+              "status": "missing_conversion"
+            },
+            {
+              "count": 5,
+              "status": "missing_currency"
+            },
+            {
+              "count": 591,
+              "status": "missing_value"
+            },
+            {
+              "count": 144175,
+              "status": "ron"
+            }
+          ],
+          "examples": [
+            {
+              "id": "107932180",
+              "title": "Acord Cadru Lot 1 Șapcă vară",
+              "status": "missing_conversion"
+            },
+            {
+              "id": "107932179",
+              "title": "Acord Cadru Lot 2 Șapcă iarnă",
+              "status": "missing_conversion"
+            },
+            {
+              "id": "107930581",
+              "title": "ACORD CADRU - Servicii de colectare, de transport, procesare si de eliminare a deseurilor spitalicesti",
+              "status": "missing_value"
+            },
+            {
+              "id": "107919254",
+              "title": "Acord – cadru de “Furnizare de produse alimentare”\n\nLOT 1- OUĂ, CEREALE , LEGUME, FRUCTE ȘI PRODUSE CONEXE, CONSERVE DE PEȘTE, ULEIURI ȘI GRĂSIMI",
+              "status": "missing_value"
+            },
+            {
+              "id": "107745981",
+              "title": "SERVICII DE TRANSPORT AERIAN INTERN SI INTERNATIONAL",
+              "status": "missing_conversion"
+            },
+            {
+              "id": "107920481",
+              "title": "ACORD CADRU",
+              "status": "missing_value"
+            },
+            {
+              "id": "107920479",
+              "title": "ACORD CADRU",
+              "status": "missing_value"
+            },
+            {
+              "id": "107920478",
+              "title": "ACORD CADRU",
+              "status": "missing_value"
+            },
+            {
+              "id": "107920475",
+              "title": "ACORD CADRU",
+              "status": "missing_value"
+            },
+            {
+              "id": "107920474",
+              "title": "ACORD CADRU",
+              "status": "missing_value"
+            }
+          ],
+          "checkedAt": "2026-10-07T06:16:36.909Z",
+          "newIssues": null,
+          "rawBoundary": "17561344",
+          "sourceErrors": 0,
+          "structuralErrors": 0
+        }
+      },
+      {
+        "check": "ted_normalization",
+        "scope": "all TED notices",
+        "passed": true,
+        "details": {
+          "total": "161633",
+          "pending": "0",
+          "unexpected_newer": "0"
+        }
+      },
+      {
+        "check": "legal_threshold_registry",
+        "scope": "all canonical ceiling eras",
+        "passed": true,
+        "details": {
+          "eraCount": 6
+        }
+      },
+      {
+        "check": "contract_population_and_allocations",
+        "scope": "all source contracts and contract allocations; every identified winner retains a positive share",
+        "passed": true,
+        "details": {
+          "examples": [],
+          "eligible_missing": "0",
+          "excluded_included": "0",
+          "contracts_considered": "1175404",
+          "allocation_mismatches": "0"
+        }
+      },
+      {
+        "check": "canonical_national_and_role_totals",
+        "scope": "full accepted positive DA population<=2M and canonical contract allocations",
+        "passed": true,
+        "details": [
+          {
+            "matches": true,
+            "check_name": "ask_contracts",
+            "actual_exact": "976741633850.3500",
+            "expected_exact": "976741633850.3500"
+          },
+          {
+            "matches": true,
+            "check_name": "ask_da",
+            "actual_exact": "128058949504.20",
+            "expected_exact": "128058949504.20"
+          },
+          {
+            "matches": true,
+            "check_name": "authority_profiles",
+            "actual_exact": "1104800583354.5500",
+            "expected_exact": "1104800583354.5500"
+          },
+          {
+            "matches": true,
+            "check_name": "national_spend",
+            "actual_exact": "1104800583354.5500",
+            "expected_exact": "1104800583354.5500"
+          },
+          {
+            "matches": true,
+            "check_name": "supplier_profiles",
+            "actual_exact": "1104800583354.5500",
+            "expected_exact": "1104800583354.5500"
+          }
+        ]
+      },
+      {
+        "check": "entity_profile_reconciliation",
+        "scope": "all entity/roles, including expected but absent profiles",
+        "passed": true,
+        "details": {
+          "checked": "183726",
+          "examples": [],
+          "mismatches": "0",
+          "available_profiles": "183726"
+        }
+      },
+      {
+        "check": "flag_methodology",
+        "scope": "all current flags; this populated dataset is expected to have flags",
+        "passed": true,
+        "details": {
+          "total": "2474396",
+          "wrong_version": "0"
+        }
+      },
+      {
+        "check": "complete_signal_lookup",
+        "scope": "all eligible signal rows, parties, values and sort severity",
+        "passed": true,
+        "details": {
+          "compared": "2474396",
+          "mismatches": "0"
+        }
+      },
+      {
+        "check": "flag_sample_references",
+        "scope": "all stored flag_instances; this checks their references, not whether capped samples cover all core flags",
+        "passed": true,
+        "details": {
+          "stored_samples": "106315",
+          "absent_flag_ids": "0",
+          "mismatched_samples": "0"
+        }
+      },
+      {
+        "check": "annual_signal_source_membership",
+        "scope": "all annual split signals; exact recorded IDs/counts/current numeric sums",
+        "passed": true,
+        "details": {
+          "checked": "17921",
+          "examples": [],
+          "mismatches": "0",
+          "available_flags": "17921"
+        }
+      },
+      {
+        "check": "coverage_observations",
+        "scope": "DA/contracts/TED object shape and required keys; years array exists. Does not establish external source completeness.",
+        "passed": true,
+        "details": [
+          {
+            "dataset": "contracts",
+            "matches": true,
+            "actual_kind": "object",
+            "calculated_at": "2026-10-07 06:15:38.734434+00"
+          },
+          {
+            "dataset": "da",
+            "matches": true,
+            "actual_kind": "object",
+            "calculated_at": "2026-10-07 06:15:38.734434+00"
+          },
+          {
+            "dataset": "ted",
+            "matches": true,
+            "actual_kind": "object",
+            "calculated_at": "2026-10-07 06:15:38.734434+00"
+          },
+          {
+            "dataset": "years",
+            "matches": true,
+            "actual_kind": "array",
+            "calculated_at": "2026-10-07 06:15:38.734434+00"
+          }
+        ]
+      },
+      {
+        "check": "coverage_record_counts",
+        "scope": "all source record counts compared with the preserved inventory",
+        "passed": true,
+        "details": [
+          {
+            "dataset": "contracts",
+            "matches": true,
+            "recorded": "1175404",
+            "available": "1175404"
+          },
+          {
+            "dataset": "da",
+            "matches": true,
+            "recorded": "20948515",
+            "available": "20948515"
+          },
+          {
+            "dataset": "ted",
+            "matches": true,
+            "recorded": "161633",
+            "available": "161633"
+          }
+        ]
+      }
+    ],
+    "status": "ready",
+    "version": 19,
+    "completedAt": "2026-10-07T06:17:17.949554+00:00"
+  },
+  "oldReferences": {
+    "tedWinners": 0,
+    "seapWinners": 0
+  },
+  "proxySettings": {
+    "id": 1,
+    "enabled": true,
+    "max_seconds": 45,
+    "min_seconds": 35,
+    "max_in_flight": 10,
+    "requests_per_minute": 200
+  },
+  "runtimeCommit": "65cc86d3c0c3590ad3f30762f1ef1e1d916eba36",
+  "paginationTasks": [
+    {
+      "id": 190888,
+      "page": 0,
+      "status": "complete",
+      "noticeId": 100646288
+    },
+    {
+      "id": 229448,
+      "page": 1,
+      "status": "complete",
+      "noticeId": 100646288
+    },
+    {
+      "id": 229449,
+      "page": 2,
+      "status": "complete",
+      "noticeId": 100646288
+    }
+  ],
+  "repairedAliases": [
+    {
+      "oldId": 2276078,
+      "reason": "verified-sicap-cui-typo",
+      "canonicalId": 2071542
+    },
+    {
+      "oldId": 2276333,
+      "reason": "verified-sicap-cui-typo",
+      "canonicalId": 2084714
+    }
+  ],
+  "requestsAfterResume": [
+    {
+      "last_id": 52009,
+      "outcome": "failed",
+      "first_id": 52009,
+      "requests": 1
+    },
+    {
+      "last_id": 52201,
+      "outcome": "success",
+      "first_id": 51982,
+      "requests": 216
+    },
+    {
+      "last_id": 52199,
+      "outcome": "running",
+      "first_id": 52196,
+      "requests": 3
+    }
+  ],
+  "diagnosticSourceRequests": 2,
+  "httpVerification": [
+    {
+      "path": "/api/health",
+      "status": "200",
+      "location": null,
+      "exitCode": 0
+    },
+    {
+      "path": "/",
+      "status": "200",
+      "location": null,
+      "exitCode": 0
+    },
+    {
+      "path": "/domenii",
+      "status": "200",
+      "location": null,
+      "exitCode": 0
+    },
+    {
+      "path": "/entitati/2276078",
+      "status": "307",
+      "location": "/entitati/2071542",
+      "exitCode": 0
+    },
+    {
+      "path": "/entitati/2276333",
+      "status": "307",
+      "location": "/entitati/2084714",
+      "exitCode": 0
+    },
+    {
+      "path": "/entitati/2071542",
+      "status": "200",
+      "location": null,
+      "exitCode": 0
+    },
+    {
+      "path": "/entitati/2084714",
+      "status": "200",
+      "location": null,
+      "exitCode": 0
+    }
+  ],
+  "httpBodyVerification": {
+    "noErrorBoundaryFallback": true,
+    "noMaintenancePlaceholder": true,
+    "paths": [
+      "/",
+      "/domenii",
+      "/entitati/2071542",
+      "/entitati/2084714"
+    ]
+  },
+  "collectionFollowup": {
+    "checkedAt": "2026-10-07T06:29:24.721698Z",
+    "initialFailedRequestId": 52009,
+    "proxyId": "proxy-40",
+    "type": "body timeout after HTTP 200",
+    "taskId": 190970,
+    "retryStatus": "resolved",
+    "taskStatus": "complete",
+    "retryStartedAt": "2026-10-07T06:28:24.701544Z",
+    "retryCompletedAt": "2026-10-07T06:28:31.711462Z",
+    "requestsAfterResume": {
+      "success": 949,
+      "failed": 1,
+      "running": 7
+    },
+    "globalBlock": false,
+    "maintenance": false,
+    "paused": false
+  },
+  "notes": [
+    "Ready publication verifies internal consistency, not external SEAP completeness.",
+    "Stored source fingerprint mismatch origin remains undetermined; original evidence and canonical decisions independently reverified before dated repair.",
+    "Six previously excluded bad proxy endpoints remain disabled.",
+    "No production account, proxy credential, response payload or private investigation data in this report."
+  ],
+  "normalizedPaginationNotice": {
+    "noticeId": 100646288,
+    "contracts": 585,
+    "distinctContractIds": 585
+  }
+}

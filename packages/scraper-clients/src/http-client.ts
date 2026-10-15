@@ -217,7 +217,7 @@ export function createHttpClient(opts: HttpClientOptions): HttpClient {
             },
           });
         } catch (error) {
-          if (error instanceof Error && error.name === "CollectionSuspendedError") throw error;
+          if (error instanceof Error && ["CollectionSuspendedError", "CollectionProxyFailureError"].includes(error.name)) throw error;
           lastStatus = null; // network error — a server failure
           serverFailed = true;
           noteServerFailure();

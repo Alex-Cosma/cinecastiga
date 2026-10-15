@@ -1,0 +1,15 @@
+{
+  "checkedAt": "2026-10-12T07:58:45.372Z",
+  "milliseconds": 50407,
+  "identity": {
+    "members": 179683,
+    "staleMembers": 0,
+    "invalidDecisions": 0,
+    "examples": [],
+    "valid": true
+  },
+  "exclusions": {
+    "excludedPublications": 2154,
+    "valid": true
+  }
+}

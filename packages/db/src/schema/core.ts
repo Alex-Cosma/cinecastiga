@@ -1,8 +1,10 @@
 import { sql } from "drizzle-orm";
+import { CONTRACT_MONEY_VALID_SQL } from '../contract-money.js';
 import {
   bigint,
   bigserial,
   boolean,
+  check,
   index,
   integer,
   jsonb,
@@ -216,9 +218,13 @@ export const notices = coreSchema.table(
     id: bigserial("id", { mode: "bigint" }).primaryKey(),
     /** Provenance: raw doc that last populated this row (not unique). */
     rawId: bigint("raw_id", { mode: "bigint" }).notNull(),
-    /** SICAP cNoticeId — natural key, idempotent under replay. */
+    /** Public ID within its source endpoint namespace, never globally unique. */
     cNoticeId: bigint("c_notice_id", { mode: "bigint" }).notNull(),
+    noticeNamespace: text('notice_namespace').generatedAlwaysAs(sql`case when sys_notice_type_id=2 then 'cn' when sys_notice_type_id=6 then 'dc' when sys_notice_type_id=7 then 'pc' when sys_notice_type_id in (12,17,19) then 'rfq' end`).notNull(),
+    internalNoticeId: bigint('internal_notice_id',{mode:'bigint'}),
     noticeNo: text("notice_no"),
+    procedureId: text("procedure_id"),
+    title: text("title"),
     sysNoticeTypeId: integer("sys_notice_type_id"),
     sysNoticeVersionId: integer("sys_notice_version_id"),
     authorityEntityId: bigint("authority_entity_id", {
@@ -237,8 +243,10 @@ export const notices = coreSchema.table(
     hasLots: boolean("has_lots"),
   },
   (t) => [
-    uniqueIndex("notices_c_notice_id_uq").on(t.cNoticeId),
+    uniqueIndex("notices_namespace_public_id_uq").on(t.noticeNamespace,t.cNoticeId),
+    index("notices_public_id_idx").on(t.cNoticeId),
     index("notices_authority_idx").on(t.authorityEntityId),
+    index("notices_procedure_authority_idx").on(t.procedureId,t.authorityEntityId),
     index("notices_cpv_idx").on(t.cpvCode),
     index("notices_state_date_idx").on(t.stateDate),
   ],
@@ -254,6 +262,8 @@ export const awards = coreSchema.table(
     /** SICAP caNoticeId — natural key; contracts link back via this. */
     caNoticeId: bigint("ca_notice_id", { mode: "bigint" }).notNull(),
     noticeNo: text("notice_no"),
+    procedureId: text("procedure_id"),
+    title: text("title"),
     sysNoticeTypeId: integer("sys_notice_type_id"),
     sysNoticeVersionId: integer("sys_notice_version_id"),
     authorityEntityId: bigint("authority_entity_id", {
@@ -297,9 +307,20 @@ export const contracts = coreSchema.table(
     }).notNull(),
     caNoticeId: bigint("ca_notice_id", { mode: "bigint" }),
     contractNo: text("contract_no"),
+    /** SEAP contractType: 1 contract, 2 framework, 3 call-off. Not an amount role. */
+    sourceContractType: integer("source_contract_type"),
+    contractTypeRawId: bigint("contract_type_raw_id", { mode: "bigint" }),
     contractDate: timestamp("contract_date", { withTimezone: true }),
     contractValue: numeric("contract_value"),
     currency: text("currency"),
+    /** Legacy fields above are retained for forensic comparison, never relabeled. */
+    originalValue: numeric("original_value"),
+    originalCurrency: text("original_currency"),
+    valueRon: numeric("value_ron"),
+    currencyRate: numeric("currency_rate"),
+    amountStatus: text("amount_status"),
+    amountRawId: bigint("amount_raw_id", { mode: "bigint" }),
+    amountEvidence: jsonb("amount_evidence"),
     cpvCode: text("cpv_code").references(() => cpvCodes.code),
     title: text("title"),
     lotsCaption: text("lots_caption"),
@@ -307,6 +328,7 @@ export const contracts = coreSchema.table(
   (t) => [
     uniqueIndex("contracts_ca_notice_contract_id_uq").on(t.caNoticeContractId),
     index("contracts_ca_notice_idx").on(t.caNoticeId),
+    check("contracts_money_consistent", sql.raw(CONTRACT_MONEY_VALID_SQL)),
   ],
 );
 
@@ -606,6 +628,8 @@ export const quarantine = coreSchema.table(
     rawId: bigint("raw_id", { mode: "bigint" }).notNull(),
     endpointVersion: text("endpoint_version").notNull(),
     zodError: text("zod_error").notNull(),
+    retryRequired: boolean("retry_required").notNull().default(true),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
     payloadExcerpt: jsonb("payload_excerpt"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -680,3 +704,12 @@ export const riskThresholds = coreSchema.table(
   },
   (t) => [primaryKey({ columns: [t.key, t.validFrom] })],
 );
+
+/** Exact links recovered from official notice metadata, retained independently of raw retention. */
+export const noticeAwardSources = coreSchema.table('notice_award_sources', {
+ caNoticeId:bigint('ca_notice_id',{mode:'bigint'}).notNull(),
+ cNoticeId:bigint('c_notice_id',{mode:'bigint'}).notNull(),
+ noticeNamespace:text('notice_namespace').notNull(),
+ sourceUrl:text('source_url').notNull(), sourceHash:text('source_hash').notNull(), evidence:jsonb('evidence').notNull(),
+ fetchedAt:timestamp('fetched_at',{withTimezone:true}).notNull(),
+},t=>[primaryKey({columns:[t.caNoticeId,t.noticeNamespace,t.cNoticeId]})]);

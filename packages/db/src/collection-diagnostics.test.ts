@@ -1,6 +1,13 @@
 import {describe,it,expect} from 'vitest';
-import {diagnosticError,sanitizeDiagnostics,responseDiagnosticBody} from './collection-diagnostics.js';
+import {diagnosticError,sanitizeDiagnostics,responseDiagnosticBody,retryableProxyTransport} from './collection-diagnostics.js';
 describe('failure diagnostic preservation',()=>{
+ it('distinguishes network failures from invalid data and unexpected errors',()=>{
+  const socket=Object.assign(new Error('private proxy endpoint'),{code:'ECONNRESET'});
+  expect(retryableProxyTransport(new TypeError('fetch failed',{cause:socket}))).toBe(true);
+  expect(retryableProxyTransport(new SyntaxError('Invalid JSON response'))).toBe(false);
+  expect(retryableProxyTransport(new Error('Source response exceeds budget'))).toBe(false);
+  expect(retryableProxyTransport(new Error('unknown failure'))).toBe(false);
+ });
  it('retains causes, stack and socket error codes without credentials',()=>{
   const cause=Object.assign(new Error('connect failed https://user:private@host/path'),{code:'ECONNRESET',syscall:'read'});
   const d=diagnosticError(new Error('fetch failed',{cause})) as any;

@@ -1,0 +1,17 @@
+{
+  "query": "final-health",
+  "started_at": "2026-10-03T06:37:03.108625+00:00",
+  "elapsed_seconds": 0.131,
+  "exit_code": 0,
+  "rows": [
+    {
+      "database": "seap",
+      "read_only": "on",
+      "in_recovery": false,
+      "work_mem": "8MB",
+      "parallel_workers": "0",
+      "latest_ready_checkpoint": 12,
+      "collectors_stopped": true
+    }
+  ]
+}

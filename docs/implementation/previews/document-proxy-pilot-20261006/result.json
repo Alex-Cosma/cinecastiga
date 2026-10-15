@@ -1,0 +1,166 @@
+{
+  "executedAt": "2026-10-06T08:17:54.972Z",
+  "elapsedSeconds": 222,
+  "job": {
+    "id": "17453eb2-225f-463b-9ee7-656c93d5c866",
+    "status": "complete",
+    "stage": "complete",
+    "error": null,
+    "pages_done": 10,
+    "pages_total": 10,
+    "started_at": "2026-10-06 08:14:13.284781+00",
+    "finished_at": "2026-10-06 08:17:54.968639+00"
+  },
+  "requests": [
+    {
+      "id": "1",
+      "method": "GET",
+      "endpoint": "notice-page",
+      "status": 200,
+      "bytes": 23940,
+      "started_at": "2026-10-06 08:14:14.499465+00",
+      "finished_at": "2026-10-06 08:14:15.552476+00"
+    },
+    {
+      "id": "2",
+      "method": "POST",
+      "endpoint": "document-list",
+      "status": 200,
+      "bytes": 4332,
+      "started_at": "2026-10-06 08:14:57.591262+00",
+      "finished_at": "2026-10-06 08:14:58.847461+00"
+    },
+    {
+      "id": "3",
+      "method": "POST",
+      "endpoint": "document-list",
+      "status": 200,
+      "bytes": 3547,
+      "started_at": "2026-10-06 08:15:43.707588+00",
+      "finished_at": "2026-10-06 08:15:44.753612+00"
+    },
+    {
+      "id": "4",
+      "method": "POST",
+      "endpoint": "noticedoc",
+      "status": 200,
+      "bytes": 2,
+      "started_at": "2026-10-06 08:16:29.835503+00",
+      "finished_at": "2026-10-06 08:16:30.263833+00"
+    },
+    {
+      "id": "5",
+      "method": "GET",
+      "endpoint": "noticedoc",
+      "status": 200,
+      "bytes": 632876,
+      "started_at": "2026-10-06 08:17:16.926627+00",
+      "finished_at": "2026-10-06 08:17:17.600526+00"
+    }
+  ],
+  "requestCount": 5,
+  "result": {
+    "id": "54d11bff-5905-4d53-8f68-7f2d3887d6aa",
+    "filename": "HC-127-2025.pdf",
+    "original_hash": "9b305927ede6acf7a831ecde2a111df668bac20e046d61fefdf33f879b3cb4da",
+    "pdf_hash": "9b305927ede6acf7a831ecde2a111df668bac20e046d61fefdf33f879b3cb4da",
+    "downloaded_at": "2026-10-06 08:17:17.618346+00",
+    "processed_at": "2026-10-06 08:17:54.94901+00",
+    "page_count": 10,
+    "processor": "poppler+tesseract-ron-eng-v1",
+    "signature": null,
+    "original_bytes": 632876
+  },
+  "pages": [
+    {
+      "page": 1,
+      "method": "ocr",
+      "characters": 3146
+    },
+    {
+      "page": 2,
+      "method": "ocr",
+      "characters": 4739
+    },
+    {
+      "page": 3,
+      "method": "ocr",
+      "characters": 4373
+    },
+    {
+      "page": 4,
+      "method": "ocr",
+      "characters": 4723
+    },
+    {
+      "page": 5,
+      "method": "ocr",
+      "characters": 4689
+    },
+    {
+      "page": 6,
+      "method": "ocr",
+      "characters": 5041
+    },
+    {
+      "page": 7,
+      "method": "ocr",
+      "characters": 4569
+    },
+    {
+      "page": 8,
+      "method": "ocr",
+      "characters": 4378
+    },
+    {
+      "page": 9,
+      "method": "ocr",
+      "characters": 4653
+    },
+    {
+      "page": 10,
+      "method": "ocr",
+      "characters": 628
+    }
+  ],
+  "maxRequests": 6,
+  "proxyId": "proxy-1",
+  "sourceUrl": "https://www.e-licitatie.ro/pub/notices/simplified-notice/v2/view/100231768",
+  "contractAssociationAvailable": false,
+  "verification": {
+    "pdfHttpStatus": 200,
+    "pdfMime": "application/pdf",
+    "pdfHashMatches": true,
+    "pages": [
+      {
+        "page": 1,
+        "characters": 3146,
+        "method": "ocr"
+      },
+      {
+        "page": 2,
+        "characters": 4739,
+        "method": "ocr"
+      },
+      {
+        "page": 10,
+        "characters": 628,
+        "method": "ocr"
+      }
+    ],
+    "byteRangeWorks": true,
+    "originalMatchesArchivedPilot": true,
+    "firstPageVisuallyChecked": true,
+    "collectionPausedAfter": true,
+    "activeJobsAfter": 0,
+    "activeRequestsAfter": 0,
+    "productionTouched": false
+  },
+  "processingSeconds": 37.33,
+  "requestStartIntervalsSeconds": [
+    43.09,
+    46.12,
+    46.13,
+    47.09
+  ]
+}

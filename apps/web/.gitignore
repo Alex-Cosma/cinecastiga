@@ -26,3 +26,9 @@ next-env.d.ts
 
 # Isolated identity-repair route validation
 /.next-identity-check/
+
+# Isolated proxy admin preview
+/.next-proxy-preview/
+
+# Isolated contract-reporting verification build
+/.next-reporting-review/

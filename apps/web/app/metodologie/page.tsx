@@ -84,13 +84,25 @@ export default function MetodologiePage() {
         <h2>Cum se formează totalurile</h2>
         <p>Profilurile entităților, partenerii, harta și căutările obișnuite după valoare folosesc aceeași populație.
           Pentru proceduri sunt incluse contractele cu valoare pozitivă de cel mult 1 miliard lei, dată și autoritate cunoscute,
-          cel puțin un câștigător și monedă RON. Înregistrările istorice fără monedă sunt tratate ca RON. Inventarul de mai sus declară lipsa monedei în toate înregistrările sursă, înainte de aplicarea celorlalte filtre. Această presupunere trebuie verificată în documentul sursă pentru o investigație.</p>
+          cel puțin un câștigător și valoare RON verificată (declarată sau convertită din sursă). Fără monedă ori conversie verificabilă, suma nu intră în totaluri. Inventarul declară lipsurile din înregistrările sursă înainte de celelalte filtre.</p>
         <p>Pe profilul entității, fiecare contract apare o singură dată în numărul de contracte distincte. Căutările și lista surselor numără rânduri contract–furnizor:
           câte unul pentru fiecare câștigător. În lipsa cotelor reale, valoarea unui consorțiu este împărțită egal între membri.
           Cotele însumate refac valoarea contractului; nu dovedesc venitul încasat de fiecare firmă.</p>
-        <p>Dacă același anunț conține un acord-cadru și contracte explicit subsecvente, excludem plafonul acordului din total.
-          Acordurile fără subsecvente publicate rămân valori înregistrate și pot fi plafoane neutilizate. Anunțurile de atribuire
-          și publicațiile TED descriu aceste achiziții și nu se adaugă ca o cheltuială suplimentară.</p>
+        <p>Toate plafoanele acordurilor-cadru sunt separate de totaluri, inclusiv când nu avem subsecvente identificate.
+          Însumăm numai contractele și comenzile identificate. Lipsa comenzilor este o limită de acoperire, nu cheltuială zero.
+          Folosim tipul declarat de SEAP; pentru istoricul fără tip, folosim descrierea.</p>
+        <p>Când SEAP republică același contract (același anunț, număr, dată, lot și autoritate), îl numărăm o singură dată, la ultima versiune verificată.
+          Acceptăm și versiunile pe care SEAP nu le marchează ca modificate, dacă diferă doar valoarea, dacă se adaugă furnizori fără să dispară vreunul
+          sau dacă titlul numește un act adițional. Astfel de schimbări sunt semnalate pe pagina contractului. Un titlu schimbat fără mențiunea unui act
+          adițional rămâne exclus până la verificare. Pentru procedurile publicate fără identificator de procedură (negociere fără publicare prealabilă,
+          norme proprii) folosim numărul anunțului de atribuire.</p>
+        <p>Publicațiile cu identitate incertă sunt excluse temporar din calcule, fără ștergerea surselor.
+          <a href="/metodologie/excluderi"> Lista cazurilor, motivele și sursele comparate</a> este publică.
+          Le reverificăm la procesarea datelor; reintră în totaluri numai după verificarea identității.
+          Această excludere nu este o constatare de neregulă.</p>
+        <p>Actele adiționale identificate rămân accesibile în surse, dar nu sunt adăugate ca achiziții noi:
+          suma publicată poate reprezenta un total actualizat, o diferență sau o modificare fără impact financiar.
+          Până la verificarea legăturii cu contractul inițial, totalurile nu includ separat aceste sume și pot să nu reflecte toate ajustările.</p>
         <p>Întrebările care numără înregistrări pot include valori pozitive peste filtrul de plauzibilitate; rezultatul și lista
           surselor declară această selecție. Analizele CRI folosesc istoricul achizițiilor directe acceptate și explică filtrele
           pe care le pot aplica. CRI este proporția unor criterii declanșate, nu probabilitatea unei ilegalități.</p>
@@ -138,8 +150,7 @@ export default function MetodologiePage() {
             Pentru fiecare furnizor cu cel puțin 0,1% din contractele autorității (sau 500 k lei): ponderea lui în cheltuiala
             autorității, ponderea autorității în tot ce a câștigat el pe SEAP și raportul dintre <strong>valoarea contractată</strong> în
             ultimii patru ani cu bilanț și <strong>cifra de afaceri</strong> din anii acoperiți de acele contracte. Un contract
-            simplu acoperă anul semnării; un acord-cadru (tipul vine din anunțul de atribuire) acoperă până la 4 ani, valoarea lui
-            fiind un plafon, nu bani încasați. Un raport peste 1 poate însemna plafon nefolosit, încasări viitoare sau lucrări
+            sau o comandă identificată acoperă anul semnării; plafoanele acordurilor-cadru sunt excluse. Un raport peste 1 poate însemna încasări viitoare sau lucrări
             făcute de altcineva; e un semnal, nu o dovadă.
           </p>
         </div>

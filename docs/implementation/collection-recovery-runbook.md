@@ -1,5 +1,7 @@
 # Durable recovery worker — first production activation
 
+**Actualizare:** [colectare zilnică până ieri și ETA la ritmul recent](recovery-continuous-eta-20261007.md). Comportamentul cu dată fixă de mai jos descrie lotul inițial; activarea `follow_latest` este explicită.
+
 User explicitly authorized commit, push, deployment and crawl startup on 2026-09-26. This worker collects and archives source data only. **Daily processing/publication is still not scheduled.** Existing public data is unchanged by raw archival; never invoke normalize `--rebuild` against the production archive that excluded historical payloads.
 
 ## Fixed recovery scope

@@ -1,0 +1,2214 @@
+{
+  "run": {
+    "id": "96c15b43-6ad8-4d41-a94d-16b9c160e114",
+    "error": null,
+    "scope": "full",
+    "stage": "complete",
+    "stages": {
+      "drain": {
+        "startedAt": "2026-10-04T06:14:45.468968+00:00",
+        "durationMs": 7772,
+        "completedAt": "2026-10-04T06:14:53.241285+00:00"
+      },
+      "flags": {
+        "startedAt": "2026-10-04T06:56:11.788398+00:00",
+        "durationMs": 3753554,
+        "completedAt": "2026-10-04T07:58:45.342508+00:00"
+      },
+      "marts": {
+        "startedAt": "2026-10-04T06:52:07.588619+00:00",
+        "durationMs": 244200,
+        "completedAt": "2026-10-04T06:56:11.788398+00:00"
+      },
+      "backup": {
+        "startedAt": "2026-10-04T06:14:53.241285+00:00",
+        "durationMs": 955797,
+        "completedAt": "2026-10-04T06:30:49.038758+00:00"
+      },
+      "reopen": {
+        "startedAt": "2026-10-04T08:30:30.014824+00:00",
+        "durationMs": 1381,
+        "completedAt": "2026-10-04T08:30:31.396024+00:00"
+      },
+      "search": {
+        "startedAt": "2026-10-04T08:24:27.824496+00:00",
+        "durationMs": 358493,
+        "completedAt": "2026-10-04T08:30:26.317323+00:00"
+      },
+      "restart": {
+        "startedAt": "2026-10-04T08:30:26.317323+00:00",
+        "durationMs": 3698,
+        "completedAt": "2026-10-04T08:30:30.014824+00:00"
+      },
+      "coverage": {
+        "startedAt": "2026-10-04T08:22:52.624396+00:00",
+        "durationMs": 34402,
+        "completedAt": "2026-10-04T08:23:27.025957+00:00"
+      },
+      "ted-mart": {
+        "startedAt": "2026-10-04T06:49:11.405017+00:00",
+        "durationMs": 176184,
+        "completedAt": "2026-10-04T06:52:07.588619+00:00"
+      },
+      "normalize": {
+        "startedAt": "2026-10-04T06:38:33.486838+00:00",
+        "durationMs": 7921,
+        "completedAt": "2026-10-04T06:38:41.407382+00:00"
+      },
+      "reconcile": {
+        "startedAt": "2026-10-04T06:38:57.258181+00:00",
+        "durationMs": 614147,
+        "completedAt": "2026-10-04T06:49:11.405017+00:00"
+      },
+      "flag-marts": {
+        "startedAt": "2026-10-04T07:58:45.342508+00:00",
+        "durationMs": 54774,
+        "completedAt": "2026-10-04T07:59:40.116605+00:00"
+      },
+      "validation": {
+        "startedAt": "2026-10-04T08:23:27.025957+00:00",
+        "durationMs": 60799,
+        "completedAt": "2026-10-04T08:24:27.824496+00:00"
+      },
+      "radiografie": {
+        "startedAt": "2026-10-04T08:12:36.618557+00:00",
+        "durationMs": 616006,
+        "completedAt": "2026-10-04T08:22:52.624396+00:00"
+      },
+      "transactions": {
+        "startedAt": "2026-10-04T07:59:40.116605+00:00",
+        "durationMs": 776502,
+        "completedAt": "2026-10-04T08:12:36.618557+00:00"
+      },
+      "money-quality": {
+        "startedAt": "2026-10-04T06:38:41.407382+00:00",
+        "durationMs": 2805,
+        "completedAt": "2026-10-04T06:38:44.212241+00:00"
+      },
+      "backup-verified": {
+        "startedAt": "2026-10-04T06:30:49.038758+00:00",
+        "durationMs": 4338,
+        "completedAt": "2026-10-04T06:30:53.377204+00:00"
+      },
+      "identity-repair": {
+        "startedAt": "2026-10-04T06:38:44.212241+00:00",
+        "durationMs": 5,
+        "completedAt": "2026-10-04T06:38:44.217428+00:00"
+      },
+      "identity-quality": {
+        "startedAt": "2026-10-04T06:38:44.217428+00:00",
+        "durationMs": 13041,
+        "completedAt": "2026-10-04T06:38:57.258181+00:00"
+      },
+      "reference-repair": {
+        "startedAt": "2026-10-04T06:30:53.377204+00:00",
+        "durationMs": 460110,
+        "completedAt": "2026-10-04T06:38:33.486839+00:00"
+      }
+    },
+    "status": "ready",
+    "trigger": "manual",
+    "started_at": "2026-10-04T06:14:45.468968+00:00",
+    "completed_at": "2026-10-04T08:30:31.397158+00:00",
+    "heartbeat_at": "2026-10-04T08:30:31.396024+00:00",
+    "raw_boundary": "17380386",
+    "checkpoint_id": "e42f6743-0d03-431c-870e-c79870df1b8f",
+    "scheduled_day": "2026-10-04",
+    "before_control": {
+      "paused": false,
+      "repairId": "reference-import-v1",
+      "revision": 34
+    },
+    "search_verified": {
+      "topics": {
+        "records": "20590561"
+      },
+      "documents": 181096
+    },
+    "control_revision": 35,
+    "stage_started_at": "2026-10-04T08:30:31.396024+00:00"
+  },
+  "repair": {
+    "id": "reference-import-v1",
+    "error": null,
+    "report": {
+      "onrc": {
+        "after": {
+          "dated_rows": "3206578",
+          "total_rows": "3679178",
+          "dates_for_review": "420",
+          "supplier_rows_without_date": "6741",
+          "person_keys_in_multiple_suppliers": "7903"
+        },
+        "before": {
+          "dated_rows": "2087408",
+          "total_rows": "3679178",
+          "dates_for_review": "418",
+          "supplier_rows_without_date": "77595",
+          "person_keys_in_multiple_suppliers": "2646"
+        },
+        "sha256": "9e22d07e4d81add109d0279fc6b13075bf5a84a436e7b56623aaa3b30813508b",
+        "changed": 1119170,
+        "formats": {
+          "date": 2087408,
+          "empty": 472600,
+          "date_time": 1119170
+        },
+        "snapshot": "2026-07-08"
+      },
+      "financials": {
+        "impact": [
+          {
+            "year": 2018,
+            "category": "ASIG",
+            "recovered": "46",
+            "zero_profit": "21",
+            "supplier_filings": "23"
+          },
+          {
+            "year": 2018,
+            "category": "BROK",
+            "recovered": "337",
+            "zero_profit": "80",
+            "supplier_filings": "121"
+          },
+          {
+            "year": 2019,
+            "category": "ASIG",
+            "recovered": "43",
+            "zero_profit": "17",
+            "supplier_filings": "23"
+          },
+          {
+            "year": 2019,
+            "category": "BROK",
+            "recovered": "326",
+            "zero_profit": "77",
+            "supplier_filings": "124"
+          },
+          {
+            "year": 2019,
+            "category": "FOND_GARANTARE",
+            "recovered": "1",
+            "zero_profit": "0",
+            "supplier_filings": "0"
+          },
+          {
+            "year": 2019,
+            "category": "PENSII",
+            "recovered": "13",
+            "zero_profit": "11",
+            "supplier_filings": "0"
+          },
+          {
+            "year": 2019,
+            "category": "SIF",
+            "recovered": "6",
+            "zero_profit": "0",
+            "supplier_filings": "0"
+          },
+          {
+            "year": 2019,
+            "category": "UU",
+            "recovered": "706920",
+            "zero_profit": "317346",
+            "supplier_filings": "84007"
+          },
+          {
+            "year": 2019,
+            "category": "VM",
+            "recovered": "4",
+            "zero_profit": "2",
+            "supplier_filings": "0"
+          },
+          {
+            "year": 2019,
+            "category": "VS",
+            "recovered": "39",
+            "zero_profit": "9",
+            "supplier_filings": "2"
+          },
+          {
+            "year": 2020,
+            "category": "ASIG",
+            "recovered": "44",
+            "zero_profit": "19",
+            "supplier_filings": "23"
+          },
+          {
+            "year": 2020,
+            "category": "BROK",
+            "recovered": "309",
+            "zero_profit": "63",
+            "supplier_filings": "124"
+          },
+          {
+            "year": 2020,
+            "category": "FOND_GARANTARE",
+            "recovered": "1",
+            "zero_profit": "0",
+            "supplier_filings": "0"
+          },
+          {
+            "year": 2020,
+            "category": "PENSII",
+            "recovered": "12",
+            "zero_profit": "7",
+            "supplier_filings": "0"
+          },
+          {
+            "year": 2020,
+            "category": "SIF",
+            "recovered": "6",
+            "zero_profit": "2",
+            "supplier_filings": "0"
+          },
+          {
+            "year": 2020,
+            "category": "UU",
+            "recovered": "733493",
+            "zero_profit": "331908",
+            "supplier_filings": "87021"
+          },
+          {
+            "year": 2020,
+            "category": "VM",
+            "recovered": "4",
+            "zero_profit": "2",
+            "supplier_filings": "0"
+          },
+          {
+            "year": 2020,
+            "category": "VS",
+            "recovered": "37",
+            "zero_profit": "11",
+            "supplier_filings": "2"
+          },
+          {
+            "year": 2021,
+            "category": "ASIG",
+            "recovered": "39",
+            "zero_profit": "13",
+            "supplier_filings": "20"
+          },
+          {
+            "year": 2021,
+            "category": "BROK",
+            "recovered": "288",
+            "zero_profit": "51",
+            "supplier_filings": "122"
+          },
+          {
+            "year": 2021,
+            "category": "FOND_GARANTARE",
+            "recovered": "1",
+            "zero_profit": "0",
+            "supplier_filings": "0"
+          },
+          {
+            "year": 2021,
+            "category": "PENSII",
+            "recovered": "11",
+            "zero_profit": "2",
+            "supplier_filings": "0"
+          },
+          {
+            "year": 2021,
+            "category": "SIF",
+            "recovered": "6",
+            "zero_profit": "0",
+            "supplier_filings": "0"
+          },
+          {
+            "year": 2021,
+            "category": "UU",
+            "recovered": "706620",
+            "zero_profit": "292182",
+            "supplier_filings": "83029"
+          },
+          {
+            "year": 2021,
+            "category": "VS",
+            "recovered": "33",
+            "zero_profit": "7",
+            "supplier_filings": "2"
+          },
+          {
+            "year": 2022,
+            "category": "ASIG",
+            "recovered": "45",
+            "zero_profit": "14",
+            "supplier_filings": "22"
+          },
+          {
+            "year": 2022,
+            "category": "BROK",
+            "recovered": "281",
+            "zero_profit": "52",
+            "supplier_filings": "123"
+          },
+          {
+            "year": 2022,
+            "category": "FOND_GARANTARE",
+            "recovered": "1",
+            "zero_profit": "0",
+            "supplier_filings": "0"
+          },
+          {
+            "year": 2022,
+            "category": "PENSII",
+            "recovered": "12",
+            "zero_profit": "5",
+            "supplier_filings": "0"
+          },
+          {
+            "year": 2022,
+            "category": "UU",
+            "recovered": "782556",
+            "zero_profit": "314932",
+            "supplier_filings": "89797"
+          },
+          {
+            "year": 2023,
+            "category": "ASIG",
+            "recovered": "43",
+            "zero_profit": "13",
+            "supplier_filings": "22"
+          },
+          {
+            "year": 2023,
+            "category": "BROK",
+            "recovered": "270",
+            "zero_profit": "69",
+            "supplier_filings": "120"
+          },
+          {
+            "year": 2023,
+            "category": "FOND_GARANTARE",
+            "recovered": "1",
+            "zero_profit": "0",
+            "supplier_filings": "0"
+          },
+          {
+            "year": 2023,
+            "category": "PENSII",
+            "recovered": "11",
+            "zero_profit": "5",
+            "supplier_filings": "0"
+          },
+          {
+            "year": 2023,
+            "category": "UU",
+            "recovered": "807244",
+            "zero_profit": "353322",
+            "supplier_filings": "90078"
+          },
+          {
+            "year": 2024,
+            "category": "ASIG",
+            "recovered": "44",
+            "zero_profit": "13",
+            "supplier_filings": "22"
+          },
+          {
+            "year": 2024,
+            "category": "BROK",
+            "recovered": "263",
+            "zero_profit": "59",
+            "supplier_filings": "118"
+          },
+          {
+            "year": 2024,
+            "category": "FOND_GARANTARE",
+            "recovered": "1",
+            "zero_profit": "0",
+            "supplier_filings": "0"
+          },
+          {
+            "year": 2024,
+            "category": "IR",
+            "recovered": "93",
+            "zero_profit": "31",
+            "supplier_filings": "53"
+          },
+          {
+            "year": 2024,
+            "category": "PENSII",
+            "recovered": "11",
+            "zero_profit": "3",
+            "supplier_filings": "0"
+          },
+          {
+            "year": 2024,
+            "category": "UU",
+            "recovered": "818698",
+            "zero_profit": "378520",
+            "supplier_filings": "88720"
+          },
+          {
+            "year": 2024,
+            "category": "VM",
+            "recovered": "5",
+            "zero_profit": "3",
+            "supplier_filings": "0"
+          },
+          {
+            "year": 2025,
+            "category": "ASIG",
+            "recovered": "43",
+            "zero_profit": "15",
+            "supplier_filings": "21"
+          },
+          {
+            "year": 2025,
+            "category": "BROK",
+            "recovered": "273",
+            "zero_profit": "57",
+            "supplier_filings": "119"
+          },
+          {
+            "year": 2025,
+            "category": "FOND_GARANTARE",
+            "recovered": "1",
+            "zero_profit": "0",
+            "supplier_filings": "0"
+          },
+          {
+            "year": 2025,
+            "category": "PENSII",
+            "recovered": "11",
+            "zero_profit": "3",
+            "supplier_filings": "0"
+          },
+          {
+            "year": 2025,
+            "category": "UU",
+            "recovered": "840798",
+            "zero_profit": "381098",
+            "supplier_filings": "88271"
+          }
+        ],
+        "changed": 5399344,
+        "skipped": [
+          {
+            "year": 2018,
+            "reason": "No cached source for the stored vintage",
+            "category": "BL_BS_SL"
+          },
+          {
+            "year": 2018,
+            "reason": "No cached source for the stored vintage",
+            "category": "FOND_GARANTARE"
+          },
+          {
+            "year": 2018,
+            "reason": "No cached source for the stored vintage",
+            "category": "IFN"
+          },
+          {
+            "year": 2018,
+            "reason": "No cached source for the stored vintage",
+            "category": "INST_DE_CREDIT"
+          },
+          {
+            "year": 2018,
+            "reason": "No cached source for the stored vintage",
+            "category": "IR"
+          },
+          {
+            "year": 2018,
+            "reason": "No cached source for the stored vintage",
+            "category": "ONG"
+          },
+          {
+            "year": 2018,
+            "reason": "No cached source for the stored vintage",
+            "category": "ONG"
+          },
+          {
+            "year": 2018,
+            "reason": "No cached source for the stored vintage",
+            "category": "PENSII"
+          },
+          {
+            "year": 2018,
+            "reason": "No cached source for the stored vintage",
+            "category": "SIF"
+          },
+          {
+            "year": 2018,
+            "reason": "No cached source for the stored vintage",
+            "category": "UU"
+          },
+          {
+            "year": 2018,
+            "reason": "No cached source for the stored vintage",
+            "category": "VM"
+          },
+          {
+            "year": 2018,
+            "reason": "No cached source for the stored vintage",
+            "category": "VS"
+          },
+          {
+            "year": 2019,
+            "reason": "No cached source for the stored vintage",
+            "category": "IFN"
+          },
+          {
+            "year": 2019,
+            "reason": "No cached source for the stored vintage",
+            "category": "INST_DE_CREDIT"
+          },
+          {
+            "year": 2019,
+            "reason": "No cached source for the stored vintage",
+            "category": "IR"
+          },
+          {
+            "year": 2019,
+            "reason": "No cached source for the stored vintage",
+            "category": "ONG"
+          },
+          {
+            "year": 2020,
+            "reason": "No cached source for the stored vintage",
+            "category": "IFN"
+          },
+          {
+            "year": 2020,
+            "reason": "No cached source for the stored vintage",
+            "category": "INST_DE_CREDIT"
+          },
+          {
+            "year": 2020,
+            "reason": "No cached source for the stored vintage",
+            "category": "IR"
+          },
+          {
+            "year": 2020,
+            "reason": "No cached source for the stored vintage",
+            "category": "ONG"
+          },
+          {
+            "year": 2021,
+            "reason": "No cached source for the stored vintage",
+            "category": "IFN"
+          },
+          {
+            "year": 2021,
+            "reason": "No cached source for the stored vintage",
+            "category": "INST_DE_CREDIT"
+          },
+          {
+            "year": 2021,
+            "reason": "No cached source for the stored vintage",
+            "category": "IR"
+          },
+          {
+            "year": 2021,
+            "reason": "No cached source for the stored vintage",
+            "category": "ONG"
+          },
+          {
+            "year": 2021,
+            "reason": "No cached source for the stored vintage",
+            "category": "VM"
+          },
+          {
+            "year": 2022,
+            "reason": "No cached source for the stored vintage",
+            "category": "IFN"
+          },
+          {
+            "year": 2022,
+            "reason": "No cached source for the stored vintage",
+            "category": "INST_DE_CREDIT"
+          },
+          {
+            "year": 2022,
+            "reason": "No cached source for the stored vintage",
+            "category": "IR"
+          },
+          {
+            "year": 2022,
+            "reason": "No cached source for the stored vintage",
+            "category": "ONG"
+          },
+          {
+            "year": 2022,
+            "reason": "No cached source for the stored vintage",
+            "category": "SIF"
+          },
+          {
+            "year": 2022,
+            "reason": "No cached source for the stored vintage",
+            "category": "VM"
+          },
+          {
+            "year": 2022,
+            "reason": "No cached source for the stored vintage",
+            "category": "VS"
+          },
+          {
+            "year": 2023,
+            "reason": "No cached source for the stored vintage",
+            "category": "IFN"
+          },
+          {
+            "year": 2023,
+            "reason": "No cached source for the stored vintage",
+            "category": "INST_DE_CREDIT"
+          },
+          {
+            "year": 2023,
+            "reason": "No cached source for the stored vintage",
+            "category": "IP_IEME"
+          },
+          {
+            "year": 2023,
+            "reason": "No cached source for the stored vintage",
+            "category": "IR"
+          },
+          {
+            "year": 2023,
+            "reason": "No cached source for the stored vintage",
+            "category": "ONG"
+          },
+          {
+            "year": 2023,
+            "reason": "No cached source for the stored vintage",
+            "category": "SIF"
+          },
+          {
+            "year": 2023,
+            "reason": "No cached source for the stored vintage",
+            "category": "VM"
+          },
+          {
+            "year": 2023,
+            "reason": "No cached source for the stored vintage",
+            "category": "VS"
+          },
+          {
+            "year": 2024,
+            "reason": "No cached source for the stored vintage",
+            "category": "IFN"
+          },
+          {
+            "year": 2024,
+            "reason": "No cached source for the stored vintage",
+            "category": "INST_DE_CREDIT"
+          },
+          {
+            "year": 2024,
+            "reason": "No cached source for the stored vintage",
+            "category": "IP_IEME"
+          },
+          {
+            "year": 2024,
+            "reason": "No cached source for the stored vintage",
+            "category": "ONG"
+          },
+          {
+            "year": 2024,
+            "reason": "No cached source for the stored vintage",
+            "category": "SIF"
+          },
+          {
+            "year": 2024,
+            "reason": "No cached source for the stored vintage",
+            "category": "VS"
+          },
+          {
+            "year": 2025,
+            "reason": "No cached source for the stored vintage",
+            "category": "IFN"
+          },
+          {
+            "year": 2025,
+            "reason": "No cached source for the stored vintage",
+            "category": "INSTIT_DE_CREDIT"
+          },
+          {
+            "year": 2025,
+            "reason": "No cached source for the stored vintage",
+            "category": "IP_IEME"
+          },
+          {
+            "year": 2025,
+            "reason": "No cached source for the stored vintage",
+            "category": "IR"
+          },
+          {
+            "year": 2025,
+            "reason": "No cached source for the stored vintage",
+            "category": "ONG"
+          },
+          {
+            "year": 2025,
+            "reason": "No cached source for the stored vintage",
+            "category": "SIF"
+          },
+          {
+            "year": 2025,
+            "reason": "No cached source for the stored vintage",
+            "category": "VM"
+          },
+          {
+            "year": 2025,
+            "reason": "No cached source for the stored vintage",
+            "category": "VS"
+          }
+        ],
+        "manifest": [
+          {
+            "code": "I31",
+            "rows": 46,
+            "year": 2018,
+            "sha256": "f688cb795f89e969d04a9e00261f4ae87e19830c076ebb3ea4b984e5f839c1ce",
+            "vintage": 2021,
+            "category": "ASIG",
+            "specSha256": "ee237da773e7419fb825ce56a434c87a0173975e901b6784d199d77c93f2778f"
+          },
+          {
+            "code": "I22",
+            "rows": 337,
+            "year": 2018,
+            "sha256": "095c0434ca14040e5691b15034dc7d696ca5f5a9be63b4d1468de07d2eaba383",
+            "vintage": 2021,
+            "category": "BROK",
+            "specSha256": "bad8a3fdb523bf5eee3ba4e6de7bb9c3ddeb911526706ab0fba0f950766f9cb6"
+          },
+          {
+            "code": "I31",
+            "rows": 43,
+            "year": 2019,
+            "sha256": "4c8eb4a28bf927e709628a684ab4baee715b15a9c33a3407be66eff28d01a2a1",
+            "vintage": 2021,
+            "category": "ASIG",
+            "specSha256": "141583d52aa71096306d26453e975745c1849414f1eb3de42ea7bd5406f85d77"
+          },
+          {
+            "code": "I18",
+            "rows": 81944,
+            "year": 2019,
+            "sha256": "81503511c38117aea98462197ef946675fe354997bd70c68d3bca1e4890707ce",
+            "vintage": 2021,
+            "category": "BL_BS_SL",
+            "specSha256": "07f42f7f7ef309036563a4963731a2fe7730ce52b573c7352c7b98d7b9bd4269"
+          },
+          {
+            "code": "I22",
+            "rows": 326,
+            "year": 2019,
+            "sha256": "fff78f59bbb19876d84186fa218c56bbd6388667c15487cf4d9f9ce5d102fb0e",
+            "vintage": 2021,
+            "category": "BROK",
+            "specSha256": "0fc6c95236c7553a5ccf460f12570868960325b8343fc0f88499e07aa663fe8c"
+          },
+          {
+            "code": "I20",
+            "rows": 1,
+            "year": 2019,
+            "sha256": "c22572991a49061432508e935e560a19a5097e838667e84b0642bc32406aa650",
+            "vintage": 2021,
+            "category": "FOND_GARANTARE",
+            "specSha256": "258d861243fc784bc2fa502c4b6765bed4b6020329d6ac401618018b73338de3"
+          },
+          {
+            "code": "I18",
+            "rows": 13,
+            "year": 2019,
+            "sha256": "63e71534bee164540262b0185648889cf96917fc94431e8d2b275792f741e274",
+            "vintage": 2021,
+            "category": "PENSII",
+            "specSha256": "3e326b72e2151a8e57f791727fec7df0b6aabcf8b86d24ab61f266de2756e3d7"
+          },
+          {
+            "code": "I22",
+            "rows": 6,
+            "year": 2019,
+            "sha256": "86bd01a4d5faf3e3ca8c56dc78d6842c82640554be9a80af00318ecac598c44f",
+            "vintage": 2021,
+            "category": "SIF",
+            "specSha256": "ed4f5acefdb4fdc71bdf5587d70e9ff997d6fbd3cd6dace1f0f4863f041c4aba"
+          },
+          {
+            "code": "I18",
+            "rows": 710432,
+            "year": 2019,
+            "sha256": "c19799bef9aceabaf78cecd7368745979a80a813598187ce0074e70be5837e94",
+            "vintage": 2021,
+            "category": "UU",
+            "specSha256": "c24bcdbd423ebc5c6d619ac0a9ce5bb2ff21121c151336609d1fb6c4cfa0d8ef"
+          },
+          {
+            "code": "I25",
+            "rows": 4,
+            "year": 2019,
+            "sha256": "5378f632b9189bf4c57e847fc883928d1971cdb4edadd01ad4195ae37bbe4ecf",
+            "vintage": 2021,
+            "category": "VM",
+            "specSha256": "0127be78cbadb602902b27ce3bcee6d1439d3d526b8623c6585c413870b2e37d"
+          },
+          {
+            "code": "I29",
+            "rows": 39,
+            "year": 2019,
+            "sha256": "d4ffef0af667227efe12f3902a4ab4bd88912768009cdb297e1620c7f277b751",
+            "vintage": 2021,
+            "category": "VS",
+            "specSha256": "ec9e106317da672bd5fdd0038176fd0727b7de11995bdd9db364479d1d0b59c4"
+          },
+          {
+            "code": "I31",
+            "rows": 44,
+            "year": 2020,
+            "sha256": "10296b61e1635ffab30e157a29cfbf23c6a366ed3b1303d713d85c77db594001",
+            "vintage": 2021,
+            "category": "ASIG",
+            "specSha256": "141583d52aa71096306d26453e975745c1849414f1eb3de42ea7bd5406f85d77"
+          },
+          {
+            "code": "I18",
+            "rows": 78670,
+            "year": 2020,
+            "sha256": "4c45b8aae29384d164d4c872dc9d111f66c8560c5d9e5bbfcc0fd77342cb009f",
+            "vintage": 2021,
+            "category": "BL_BS_SL",
+            "specSha256": "07f42f7f7ef309036563a4963731a2fe7730ce52b573c7352c7b98d7b9bd4269"
+          },
+          {
+            "code": "I22",
+            "rows": 309,
+            "year": 2020,
+            "sha256": "5fe66cf2e2e0e8b1b8a4e5a69912316d0033d1c83a25db75ea6e8bd05cfa1a2b",
+            "vintage": 2021,
+            "category": "BROK",
+            "specSha256": "0fc6c95236c7553a5ccf460f12570868960325b8343fc0f88499e07aa663fe8c"
+          },
+          {
+            "code": "I20",
+            "rows": 1,
+            "year": 2020,
+            "sha256": "20bb66e03bb8b863d08bc952c7653aa32c3e6b2a61d98e006879e524134b33f6",
+            "vintage": 2021,
+            "category": "FOND_GARANTARE",
+            "specSha256": "258d861243fc784bc2fa502c4b6765bed4b6020329d6ac401618018b73338de3"
+          },
+          {
+            "code": "I18",
+            "rows": 12,
+            "year": 2020,
+            "sha256": "3bc50abcb1b2f683148e7fc61fbb2bfee1cbc39d69d74cda492464eaa7ffceef",
+            "vintage": 2021,
+            "category": "PENSII",
+            "specSha256": "3e326b72e2151a8e57f791727fec7df0b6aabcf8b86d24ab61f266de2756e3d7"
+          },
+          {
+            "code": "I22",
+            "rows": 6,
+            "year": 2020,
+            "sha256": "61088954992bf7aa7396cee65073ae4ee1ea83241286108f499ddbe8c5abdacc",
+            "vintage": 2021,
+            "category": "SIF",
+            "specSha256": "ed4f5acefdb4fdc71bdf5587d70e9ff997d6fbd3cd6dace1f0f4863f041c4aba"
+          },
+          {
+            "code": "I18",
+            "rows": 737109,
+            "year": 2020,
+            "sha256": "9094df8075f10f66c00307651cb0b14109e9add7087e1d8b6a40bdddace0712c",
+            "vintage": 2021,
+            "category": "UU",
+            "specSha256": "c24bcdbd423ebc5c6d619ac0a9ce5bb2ff21121c151336609d1fb6c4cfa0d8ef"
+          },
+          {
+            "code": "I25",
+            "rows": 4,
+            "year": 2020,
+            "sha256": "6a17f94050b7135f7b950ce2e2fa13cbd10ecb57057bd668a409f5061cf422db",
+            "vintage": 2021,
+            "category": "VM",
+            "specSha256": "0127be78cbadb602902b27ce3bcee6d1439d3d526b8623c6585c413870b2e37d"
+          },
+          {
+            "code": "I29",
+            "rows": 37,
+            "year": 2020,
+            "sha256": "dcfd1e70001466dc073a03e71a85c53414734cdcfbe63e9caf6a03fee2e7fb7c",
+            "vintage": 2021,
+            "category": "VS",
+            "specSha256": "ec9e106317da672bd5fdd0038176fd0727b7de11995bdd9db364479d1d0b59c4"
+          },
+          {
+            "code": "I31",
+            "rows": 39,
+            "year": 2021,
+            "sha256": "684a70ba13f2c6fe1216fba55804534b9b65dbf36758c5fc5cc6d6e7b89e6397",
+            "vintage": 2021,
+            "category": "ASIG",
+            "specSha256": "141583d52aa71096306d26453e975745c1849414f1eb3de42ea7bd5406f85d77"
+          },
+          {
+            "code": "I18",
+            "rows": 71808,
+            "year": 2021,
+            "sha256": "f71591d417044f5a0e1332f046c9e40ba97124f3597f2b813a6e7022cfb8b023",
+            "vintage": 2021,
+            "category": "BL_BS_SL",
+            "specSha256": "07f42f7f7ef309036563a4963731a2fe7730ce52b573c7352c7b98d7b9bd4269"
+          },
+          {
+            "code": "I22",
+            "rows": 288,
+            "year": 2021,
+            "sha256": "41beafa12a69f022d66ac61ad212014e7fefc032c72e63b3344800da138b4634",
+            "vintage": 2021,
+            "category": "BROK",
+            "specSha256": "0fc6c95236c7553a5ccf460f12570868960325b8343fc0f88499e07aa663fe8c"
+          },
+          {
+            "code": "I20",
+            "rows": 1,
+            "year": 2021,
+            "sha256": "79bc6fa4a4f13ee53e5b8fcb92f37c4dc451beec56f50f47f46927d22ef5fcb5",
+            "vintage": 2021,
+            "category": "FOND_GARANTARE",
+            "specSha256": "258d861243fc784bc2fa502c4b6765bed4b6020329d6ac401618018b73338de3"
+          },
+          {
+            "code": "I18",
+            "rows": 11,
+            "year": 2021,
+            "sha256": "e3a5974bd174f914a9232f40df385eeeb1ef9de9644f80f229d67959d361cea4",
+            "vintage": 2021,
+            "category": "PENSII",
+            "specSha256": "3e326b72e2151a8e57f791727fec7df0b6aabcf8b86d24ab61f266de2756e3d7"
+          },
+          {
+            "code": "I24",
+            "rows": 6,
+            "year": 2021,
+            "sha256": "31340c77e9f2a0c1a73913baeffc727588ba5b9b259e9fed97f913daf104f01d",
+            "vintage": 2021,
+            "category": "SIF",
+            "specSha256": "f715ea1f60af14c19534ddfb100ed2198be15a5309159e729942bf0019a61dbe"
+          },
+          {
+            "code": "I18",
+            "rows": 709662,
+            "year": 2021,
+            "sha256": "173abc7207dbf0d1d4dcc5d1dd57c0d5707b3fd36cd66b5918e34b79b11b0dd4",
+            "vintage": 2021,
+            "category": "UU",
+            "specSha256": "c24bcdbd423ebc5c6d619ac0a9ce5bb2ff21121c151336609d1fb6c4cfa0d8ef"
+          },
+          {
+            "code": "I29",
+            "rows": 33,
+            "year": 2021,
+            "sha256": "2ff1a4a1ecf484e9719b8b371fc1936b26f21deb0d9ce04fa518e5c51672f226",
+            "vintage": 2021,
+            "category": "VS",
+            "specSha256": "ec9e106317da672bd5fdd0038176fd0727b7de11995bdd9db364479d1d0b59c4"
+          },
+          {
+            "code": "I31",
+            "rows": 45,
+            "year": 2022,
+            "sha256": "1cdc2c6f08940c38205ccbee003104d2192dcb059a679a32d23949c187a075f6",
+            "vintage": 2022,
+            "category": "ASIG",
+            "specSha256": "141583d52aa71096306d26453e975745c1849414f1eb3de42ea7bd5406f85d77"
+          },
+          {
+            "code": "I18",
+            "rows": 76639,
+            "year": 2022,
+            "sha256": "bba24e8292f3d01f1a76e8d5897d818c00578d04809958185bad2cebc87ed7c3",
+            "vintage": 2022,
+            "category": "BL_BS_SL",
+            "specSha256": "07f42f7f7ef309036563a4963731a2fe7730ce52b573c7352c7b98d7b9bd4269"
+          },
+          {
+            "code": "I22",
+            "rows": 281,
+            "year": 2022,
+            "sha256": "0e51e57799de4b09fd0d82ba2354cdecf7f5cf78039743e30809332c6989f251",
+            "vintage": 2022,
+            "category": "BROK",
+            "specSha256": "0fc6c95236c7553a5ccf460f12570868960325b8343fc0f88499e07aa663fe8c"
+          },
+          {
+            "code": "I20",
+            "rows": 1,
+            "year": 2022,
+            "sha256": "e7d42cf3ccb56e9b9a3411b97cab156bc9a566725e5be1de6aff620671b6682a",
+            "vintage": 2022,
+            "category": "FOND_GARANTARE",
+            "specSha256": "258d861243fc784bc2fa502c4b6765bed4b6020329d6ac401618018b73338de3"
+          },
+          {
+            "code": "I18",
+            "rows": 12,
+            "year": 2022,
+            "sha256": "09a0638d203f7fa0b8c850fe1077d51fbf7424f6bb7d792fb565369bc11acaf7",
+            "vintage": 2022,
+            "category": "PENSII",
+            "specSha256": "3e326b72e2151a8e57f791727fec7df0b6aabcf8b86d24ab61f266de2756e3d7"
+          },
+          {
+            "code": "I18",
+            "rows": 785925,
+            "year": 2022,
+            "sha256": "4e011cfa747b9e9d4f551f7ad109b5a112492fc570cfed65a1675460cb4fe476",
+            "vintage": 2022,
+            "category": "UU",
+            "specSha256": "c24bcdbd423ebc5c6d619ac0a9ce5bb2ff21121c151336609d1fb6c4cfa0d8ef"
+          },
+          {
+            "code": "I31",
+            "rows": 43,
+            "year": 2023,
+            "sha256": "399f3b6e50629fe13a806b7292e2e9373ba397c2e65adb7a3925e01860af2681",
+            "vintage": 2023,
+            "category": "ASIG",
+            "specSha256": "141583d52aa71096306d26453e975745c1849414f1eb3de42ea7bd5406f85d77"
+          },
+          {
+            "code": "I18",
+            "rows": 79949,
+            "year": 2023,
+            "sha256": "3d0a7246d6eec3b5e1a4aa09d672100c901d5b3a18a5bb8cee3c137c8643667b",
+            "vintage": 2023,
+            "category": "BL_BS_SL",
+            "specSha256": "07f42f7f7ef309036563a4963731a2fe7730ce52b573c7352c7b98d7b9bd4269"
+          },
+          {
+            "code": "I22",
+            "rows": 270,
+            "year": 2023,
+            "sha256": "cba80910f13a263255fc903f5112c39699c1df59bbc4a7827c724102c4b27f27",
+            "vintage": 2023,
+            "category": "BROK",
+            "specSha256": "0fc6c95236c7553a5ccf460f12570868960325b8343fc0f88499e07aa663fe8c"
+          },
+          {
+            "code": "I20",
+            "rows": 1,
+            "year": 2023,
+            "sha256": "84943a33206518b696ef2db98d47321353617f6f5dc8fda7b3a790a441998e11",
+            "vintage": 2023,
+            "category": "FOND_GARANTARE",
+            "specSha256": "a4fead9af2362930ac8ef135e2dc8bb2247b61a9e0704645c6d50b13702f07d1"
+          },
+          {
+            "code": "I18",
+            "rows": 11,
+            "year": 2023,
+            "sha256": "5f307fe71dcc60e5b868ab6e3c7a7c2f8dc61669c4f23126fdd59ce3c9f8a5e9",
+            "vintage": 2023,
+            "category": "PENSII",
+            "specSha256": "3e326b72e2151a8e57f791727fec7df0b6aabcf8b86d24ab61f266de2756e3d7"
+          },
+          {
+            "code": "I18",
+            "rows": 810887,
+            "year": 2023,
+            "sha256": "fa03a36ad9145eeb5ec644996009a32242df1b3ae8cc20299de4e0fda42116f7",
+            "vintage": 2023,
+            "category": "UU",
+            "specSha256": "c24bcdbd423ebc5c6d619ac0a9ce5bb2ff21121c151336609d1fb6c4cfa0d8ef"
+          },
+          {
+            "code": "I36",
+            "rows": 44,
+            "year": 2024,
+            "sha256": "b9ff31e60d2d7716994cf4711b37b038bdd34320b41188ff2dddb8c9b20fc996",
+            "vintage": 2024,
+            "category": "ASIG",
+            "specSha256": "57322c0527a824197983e2c0de86ede44ece5da41f1770c79dbfe644effcd967"
+          },
+          {
+            "code": "I18",
+            "rows": 77669,
+            "year": 2024,
+            "sha256": "6426a132816841ea7974ca1dc85370b6d2027662e71e228a2a252f8c7a8fd4d3",
+            "vintage": 2024,
+            "category": "BL_BS_SL",
+            "specSha256": "07f42f7f7ef309036563a4963731a2fe7730ce52b573c7352c7b98d7b9bd4269"
+          },
+          {
+            "code": "I24",
+            "rows": 263,
+            "year": 2024,
+            "sha256": "d30aafb8c6fd157d9f18558ba6841b24607c454ce5fd6dc19a48037271295138",
+            "vintage": 2024,
+            "category": "BROK",
+            "specSha256": "7f815b3eacc4fe265d23232bf15596a35f1eca343dbb01466c2e89438f81e9ca"
+          },
+          {
+            "code": "I20",
+            "rows": 1,
+            "year": 2024,
+            "sha256": "41785248332993f2a6e14e107c4865949e4519e334c90a31bbe7c4578b2b9c59",
+            "vintage": 2024,
+            "category": "FOND_GARANTARE",
+            "specSha256": "a4fead9af2362930ac8ef135e2dc8bb2247b61a9e0704645c6d50b13702f07d1"
+          },
+          {
+            "code": "I18",
+            "rows": 93,
+            "year": 2024,
+            "sha256": "d99c6ef13aea4ccd5daa18ab4aa5161a5cef9c8e22ce8b8ac1915010bcb435c6",
+            "vintage": 2024,
+            "category": "IR",
+            "specSha256": "5bce8f59759eec9b2793b142d63281dcfb3c103d87bc8c57c7dbe8664d2d10bf"
+          },
+          {
+            "code": "I18",
+            "rows": 11,
+            "year": 2024,
+            "sha256": "a18461b8a9bf4475b1c150ecb0c7d751cb25dc2e0fd70d60466890ff4f4df29a",
+            "vintage": 2024,
+            "category": "PENSII",
+            "specSha256": "3e326b72e2151a8e57f791727fec7df0b6aabcf8b86d24ab61f266de2756e3d7"
+          },
+          {
+            "code": "I18",
+            "rows": 822292,
+            "year": 2024,
+            "sha256": "0cc2496a17b3a7bf3405294ac26cda85f5aa2e258717027d63119e78492d21aa",
+            "vintage": 2024,
+            "category": "UU",
+            "specSha256": "c24bcdbd423ebc5c6d619ac0a9ce5bb2ff21121c151336609d1fb6c4cfa0d8ef"
+          },
+          {
+            "code": "I25",
+            "rows": 5,
+            "year": 2024,
+            "sha256": "b013e9fbc163bc622f061d3295143296512e5961c0740e2cd874312f212308bc",
+            "vintage": 2024,
+            "category": "VM",
+            "specSha256": "f074de00d429e04bd800f8bec23edb04a7ea30ff4ba653e39079408941a74ea7"
+          },
+          {
+            "code": "I36",
+            "rows": 43,
+            "year": 2025,
+            "sha256": "f7b80fc56960a3256a22176814d7914a6f4ee28cf2b668b45bd7324acb31d7ad",
+            "vintage": 2025,
+            "category": "ASIG",
+            "specSha256": "57322c0527a824197983e2c0de86ede44ece5da41f1770c79dbfe644effcd967"
+          },
+          {
+            "code": "I18",
+            "rows": 74025,
+            "year": 2025,
+            "sha256": "4c429645283a03dd44af9986c3661648ddb276b273859876a03a9aa883c9a175",
+            "vintage": 2025,
+            "category": "BL_BS_SL",
+            "specSha256": "07f42f7f7ef309036563a4963731a2fe7730ce52b573c7352c7b98d7b9bd4269"
+          },
+          {
+            "code": "I24",
+            "rows": 273,
+            "year": 2025,
+            "sha256": "06e737606515f3628cac1697bc70594c476aebf86c80017ead7bae6462cf86c1",
+            "vintage": 2025,
+            "category": "BROK",
+            "specSha256": "7f815b3eacc4fe265d23232bf15596a35f1eca343dbb01466c2e89438f81e9ca"
+          },
+          {
+            "code": "I20",
+            "rows": 1,
+            "year": 2025,
+            "sha256": "ff215e7211a9c0d546e61a29ca732d17b3acabddb79c6608564f582316be5d7c",
+            "vintage": 2025,
+            "category": "FOND_GARANTARE",
+            "specSha256": "a4fead9af2362930ac8ef135e2dc8bb2247b61a9e0704645c6d50b13702f07d1"
+          },
+          {
+            "code": "I18",
+            "rows": 11,
+            "year": 2025,
+            "sha256": "8a84484ffa3614106ab007c355865efde1086c47658eba49123620038e1a3273",
+            "vintage": 2025,
+            "category": "PENSII",
+            "specSha256": "3e326b72e2151a8e57f791727fec7df0b6aabcf8b86d24ab61f266de2756e3d7"
+          },
+          {
+            "code": "I18",
+            "rows": 844207,
+            "year": 2025,
+            "sha256": "2c7e67d51f6700a28fb31644e8e2abf4334ee788f1c5fb07cb6df1a9321683e2",
+            "vintage": 2025,
+            "category": "UU",
+            "specSha256": "c24bcdbd423ebc5c6d619ac0a9ce5bb2ff21121c151336609d1fb6c4cfa0d8ef"
+          }
+        ]
+      },
+      "configuration": {
+        "directory": "/repairs/reference-import-v1",
+        "manifestSha256": "5ef5a9610204f12c9103268518a78f56aef06b25afa41185919f41f507268f2e"
+      }
+    },
+    "status": "completed",
+    "applied_at": "2026-10-04T06:38:32.518402+00:00",
+    "created_at": "2026-10-04T06:14:37.097488+00:00",
+    "completed_at": "2026-10-04T08:30:31.399975+00:00",
+    "scheduled_day": "2026-10-04",
+    "processing_run_id": "96c15b43-6ad8-4d41-a94d-16b9c160e114"
+  },
+  "control": {
+    "paused": false,
+    "revision": 36,
+    "maxSeconds": 45,
+    "minSeconds": 30,
+    "maintenance": false,
+    "riskWeekday": 0,
+    "blockedReason": null,
+    "processingTime": "05:00",
+    "processingEnabled": true
+  },
+  "capturedAt": "2026-10-04T08:32:38.369104+00:00",
+  "checkpoint": {
+    "id": "e42f6743-0d03-431c-870e-c79870df1b8f",
+    "kind": "coordinated",
+    "error": null,
+    "status": "ready",
+    "version": 15,
+    "started_at": "2026-10-04T06:38:33.47893+00:00",
+    "validation": {
+      "mode": "coordinated",
+      "risk": {
+        "calculatedAt": "2026-10-04T08:24:27.810Z",
+        "recalculated": true
+      },
+      "scope": "full",
+      "checks": [
+        {
+          "check": "contract_publication_identity",
+          "scope": "all approved publications and current source fingerprints",
+          "passed": true,
+          "details": {
+            "valid": true,
+            "members": 16090,
+            "examples": [],
+            "staleMembers": 0,
+            "invalidDecisions": 0
+          }
+        },
+        {
+          "check": "contract_currency_integrity",
+          "scope": "all contract monetary records and verified archive amounts; exclusions retained explicitly",
+          "passed": true,
+          "details": {
+            "counts": [
+              {
+                "count": 506,
+                "status": "converted"
+              },
+              {
+                "count": 30,
+                "status": "inconsistent"
+              },
+              {
+                "count": 1091187,
+                "status": "legacy_ron"
+              },
+              {
+                "count": 17009,
+                "status": "legacy_unknown"
+              },
+              {
+                "count": 4,
+                "status": "missing_conversion"
+              },
+              {
+                "count": 205,
+                "status": "missing_value"
+              },
+              {
+                "count": 35006,
+                "status": "ron"
+              }
+            ],
+            "examples": [
+              {
+                "id": "107278993",
+                "title": "Baterii de acumulatori pentru vehicule de transport public (autobuze, troleibuze, tramvaie), autovehicule cu destinatie speciala utilaje (autoturisme, autocamionete, autocamioane, autovehicule utilitare) utilaje si instalatii fixe",
+                "status": "missing_value"
+              },
+              {
+                "id": "107272497",
+                "title": "Acord-cadru în baza căruia se vor încheia contracte subsecvente având ca obiect achiziția de licențe software, prin închiriere, pentru asigurarea legalității utilizării produselor software utilizate în ANCOM",
+                "status": "missing_conversion"
+              },
+              {
+                "id": "107277433",
+                "title": "Contract Transport aerian de pasageri pe curse interne și internaționale",
+                "status": "missing_value"
+              },
+              {
+                "id": "107240805",
+                "title": "Acord cadru  lot 5 - materiale sanitare de protectie, materiale sanitare uzuale, alcool etilic, alcool sanitar, iod povidona sol cutanata 100 mg/ml",
+                "status": "missing_value"
+              },
+              {
+                "id": "107240804",
+                "title": "ACORD CADRU FURNIZARE MATERIALE SANITARE DE PROTECTIE, MATERIALE SANITARE  UZUALE, ALCOOL ETILIC, ALCOOL SANITAR, IOD POVIDONA SOL CUTANATA 100mg/ml , MANUSI  EXAMINARE",
+                "status": "missing_value"
+              },
+              {
+                "id": "107240803",
+                "title": "ACORD CADRU FURNIZARE MATERIALE SANITARE DE PROTECTIE, MATERIALE SANITARE  UZUALE, ALCOOL ETILIC, ALCOOL SANITAR, IOD POVIDONA SOL CUTANATA 100mg/ml , MANUSI  EXAMINARE",
+                "status": "missing_value"
+              },
+              {
+                "id": "107240802",
+                "title": "ACORD CADRU FURNIZARE MATERIALE SANITARE DE PROTECTIE, MATERIALE SANITARE  UZUALE, ALCOOL ETILIC, ALCOOL SANITAR, IOD POVIDONA SOL CUTANATA 100mg/ml , MANUSI  EXAMINARE",
+                "status": "missing_value"
+              },
+              {
+                "id": "107240801",
+                "title": "ACORD CADRU FURNIZARE MATERIALE SANITARE DE PROTECTIE, MATERIALE SANITARE  UZUALE, ALCOOL ETILIC, ALCOOL SANITAR, IOD POVIDONA SOL CUTANATA 100mg/ml , MANUSI  EXAMINARE",
+                "status": "missing_value"
+              },
+              {
+                "id": "107240800",
+                "title": "ACORD CADRU FURNIZARE MATERIALE SANITARE DE PROTECTIE, MATERIALE SANITARE  UZUALE, ALCOOL ETILIC, ALCOOL SANITAR, IOD POVIDONA SOL CUTANATA 100mg/ml , MANUSI  EXAMINARE",
+                "status": "missing_value"
+              },
+              {
+                "id": "107240799",
+                "title": "ACORD CADRU FURNIZARE MATERIALE SANITARE DE PROTECTIE, MATERIALE SANITARE  UZUALE, ALCOOL ETILIC, ALCOOL SANITAR, IOD POVIDONA SOL CUTANATA 100mg/ml , MANUSI  EXAMINARE",
+                "status": "missing_value"
+              }
+            ],
+            "checkedAt": "2026-10-04T08:23:42.456Z",
+            "newIssues": null,
+            "rawBoundary": "17380386",
+            "sourceErrors": 0,
+            "structuralErrors": 0
+          }
+        },
+        {
+          "check": "ted_normalization",
+          "scope": "all TED notices",
+          "passed": true,
+          "details": {
+            "total": "161633",
+            "pending": "0",
+            "unexpected_newer": "0"
+          }
+        },
+        {
+          "check": "legal_threshold_registry",
+          "scope": "all canonical ceiling eras",
+          "passed": true,
+          "details": {
+            "eraCount": 6
+          }
+        },
+        {
+          "check": "contract_population_and_allocations",
+          "scope": "all source contracts and contract allocations; every identified winner retains a positive share",
+          "passed": true,
+          "details": {
+            "examples": [],
+            "eligible_missing": "0",
+            "excluded_included": "0",
+            "contracts_considered": "1143947",
+            "allocation_mismatches": "0"
+          }
+        },
+        {
+          "check": "canonical_national_and_role_totals",
+          "scope": "full accepted positive DA population<=2M and canonical contract allocations",
+          "passed": true,
+          "details": [
+            {
+              "matches": true,
+              "check_name": "ask_contracts",
+              "actual_exact": "929539345490.5500",
+              "expected_exact": "929539345490.5500"
+            },
+            {
+              "matches": true,
+              "check_name": "ask_da",
+              "actual_exact": "126945965793.80",
+              "expected_exact": "126945965793.80"
+            },
+            {
+              "matches": true,
+              "check_name": "authority_profiles",
+              "actual_exact": "1056485311284.3500",
+              "expected_exact": "1056485311284.3500"
+            },
+            {
+              "matches": true,
+              "check_name": "national_spend",
+              "actual_exact": "1056485311284.3500",
+              "expected_exact": "1056485311284.3500"
+            },
+            {
+              "matches": true,
+              "check_name": "supplier_profiles",
+              "actual_exact": "1056485311284.3500",
+              "expected_exact": "1056485311284.3500"
+            }
+          ]
+        },
+        {
+          "check": "entity_profile_reconciliation",
+          "scope": "all entity/roles, including expected but absent profiles",
+          "passed": true,
+          "details": {
+            "checked": "182786",
+            "examples": [],
+            "mismatches": "0",
+            "available_profiles": "182786"
+          }
+        },
+        {
+          "check": "flag_methodology",
+          "scope": "all current flags; this populated dataset is expected to have flags",
+          "passed": true,
+          "details": {
+            "total": "2451031",
+            "wrong_version": "0"
+          }
+        },
+        {
+          "check": "complete_signal_lookup",
+          "scope": "all eligible signal rows, parties, values and sort severity",
+          "passed": true,
+          "details": {
+            "compared": "2451031",
+            "mismatches": "0"
+          }
+        },
+        {
+          "check": "flag_sample_references",
+          "scope": "all stored flag_instances; this checks their references, not whether capped samples cover all core flags",
+          "passed": true,
+          "details": {
+            "stored_samples": "105725",
+            "absent_flag_ids": "0",
+            "mismatched_samples": "0"
+          }
+        },
+        {
+          "check": "annual_signal_source_membership",
+          "scope": "all annual split signals; exact recorded IDs/counts/current numeric sums",
+          "passed": true,
+          "details": {
+            "checked": "17853",
+            "examples": [],
+            "mismatches": "0",
+            "available_flags": "17853"
+          }
+        },
+        {
+          "check": "coverage_observations",
+          "scope": "DA/contracts/TED object shape and required keys; years array exists. Does not establish external source completeness.",
+          "passed": true,
+          "details": [
+            {
+              "dataset": "contracts",
+              "matches": true,
+              "actual_kind": "object",
+              "calculated_at": "2026-10-04 08:22:52.625618+00"
+            },
+            {
+              "dataset": "da",
+              "matches": true,
+              "actual_kind": "object",
+              "calculated_at": "2026-10-04 08:22:52.625618+00"
+            },
+            {
+              "dataset": "ted",
+              "matches": true,
+              "actual_kind": "object",
+              "calculated_at": "2026-10-04 08:22:52.625618+00"
+            },
+            {
+              "dataset": "years",
+              "matches": true,
+              "actual_kind": "array",
+              "calculated_at": "2026-10-04 08:22:52.625618+00"
+            }
+          ]
+        },
+        {
+          "check": "coverage_record_counts",
+          "scope": "all source record counts compared with the preserved inventory",
+          "passed": true,
+          "details": [
+            {
+              "dataset": "contracts",
+              "matches": true,
+              "recorded": "1143947",
+              "available": "1143947"
+            },
+            {
+              "dataset": "da",
+              "matches": true,
+              "recorded": "20831537",
+              "available": "20831537"
+            },
+            {
+              "dataset": "ted",
+              "matches": true,
+              "recorded": "161633",
+              "available": "161633"
+            }
+          ]
+        }
+      ],
+      "stages": {
+        "flags": {
+          "da_rapid": 2255321,
+          "da_round": 59763,
+          "da_split": 17853,
+          "da_year_end": 6117,
+          "da_dependence": 29939,
+          "fin_tiny_staff": 6349,
+          "award_dependence": 1981,
+          "award_single_bid": 6018,
+          "da_concentration": 654,
+          "net_shared_admin": 30770,
+          "award_concentration": 862,
+          "fin_public_reliance": 9200,
+          "award_no_competition": 26204
+        },
+        "marts": {
+          "spendByCpv": 135,
+          "spendByType": 11,
+          "topEntities": 400,
+          "topPartners": 568209,
+          "concentration": 19529,
+          "nationalStats": 33,
+          "spendByCounty": 91,
+          "entityProfiles": 182786,
+          "contractTransactions": 1102392
+        },
+        "ted-mart": {
+          "foreign": 4221,
+          "tedOnly": 2048399,
+          "tedAwards": 4032082,
+          "alsoInSeap": 946591,
+          "singleBidder": 847437,
+          "contractsSingleBidder": 60871,
+          "contractsWithCompetition": 155999
+        },
+        "normalize": {
+          "processed": 1226,
+          "quarantined": 0,
+          "perTransform": [
+            {
+              "processed": 0,
+              "transform": "tender-list:v1",
+              "quarantined": 0
+            },
+            {
+              "processed": 123,
+              "transform": "award-list:v1",
+              "quarantined": 0
+            },
+            {
+              "processed": 99,
+              "transform": "award-contracts:v1",
+              "quarantined": 0
+            },
+            {
+              "processed": 1004,
+              "transform": "da-list:v1",
+              "quarantined": 0
+            },
+            {
+              "processed": 0,
+              "transform": "da-detail:v1",
+              "quarantined": 0
+            },
+            {
+              "processed": 0,
+              "transform": "ted-eforms:v1",
+              "quarantined": 0
+            },
+            {
+              "processed": 0,
+              "transform": "ted-fforms:v1",
+              "quarantined": 0
+            }
+          ]
+        },
+        "reconcile": {
+          "links": 2544402,
+          "primaryLinks": 1983683,
+          "scoreBuckets": {
+            "ge70": 1337257,
+            "ge90": 1039964,
+            "lt70": 167181
+          },
+          "tedLotsMatched": 1983683,
+          "contractsMatched": 361207,
+          "tedLotsMultiMatch": 290213
+        },
+        "flag-marts": {
+          "entityFlags": 172827,
+          "flagInstances": 105725,
+          "daTransactions": 19616035,
+          "entityTopPartners": 568209,
+          "authorityConcentration": 19529
+        },
+        "radiografie": {
+          "daSlicing": 5529,
+          "noticeMeta": 312681,
+          "lotPatterns": 3834,
+          "patternElsewhere": 122335,
+          "supplierDependency": 175652
+        },
+        "transactions": {
+          "daTransactions": 19616829
+        },
+        "money-quality": {
+          "counts": [
+            {
+              "count": 506,
+              "status": "converted"
+            },
+            {
+              "count": 30,
+              "status": "inconsistent"
+            },
+            {
+              "count": 1091187,
+              "status": "legacy_ron"
+            },
+            {
+              "count": 17009,
+              "status": "legacy_unknown"
+            },
+            {
+              "count": 4,
+              "status": "missing_conversion"
+            },
+            {
+              "count": 205,
+              "status": "missing_value"
+            },
+            {
+              "count": 35006,
+              "status": "ron"
+            }
+          ],
+          "examples": [
+            {
+              "id": "107278993",
+              "title": "Baterii de acumulatori pentru vehicule de transport public (autobuze, troleibuze, tramvaie), autovehicule cu destinatie speciala utilaje (autoturisme, autocamionete, autocamioane, autovehicule utilitare) utilaje si instalatii fixe",
+              "status": "missing_value"
+            },
+            {
+              "id": "107272497",
+              "title": "Acord-cadru în baza căruia se vor încheia contracte subsecvente având ca obiect achiziția de licențe software, prin închiriere, pentru asigurarea legalității utilizării produselor software utilizate în ANCOM",
+              "status": "missing_conversion"
+            },
+            {
+              "id": "107277433",
+              "title": "Contract Transport aerian de pasageri pe curse interne și internaționale",
+              "status": "missing_value"
+            },
+            {
+              "id": "107240805",
+              "title": "Acord cadru  lot 5 - materiale sanitare de protectie, materiale sanitare uzuale, alcool etilic, alcool sanitar, iod povidona sol cutanata 100 mg/ml",
+              "status": "missing_value"
+            },
+            {
+              "id": "107240804",
+              "title": "ACORD CADRU FURNIZARE MATERIALE SANITARE DE PROTECTIE, MATERIALE SANITARE  UZUALE, ALCOOL ETILIC, ALCOOL SANITAR, IOD POVIDONA SOL CUTANATA 100mg/ml , MANUSI  EXAMINARE",
+              "status": "missing_value"
+            },
+            {
+              "id": "107240803",
+              "title": "ACORD CADRU FURNIZARE MATERIALE SANITARE DE PROTECTIE, MATERIALE SANITARE  UZUALE, ALCOOL ETILIC, ALCOOL SANITAR, IOD POVIDONA SOL CUTANATA 100mg/ml , MANUSI  EXAMINARE",
+              "status": "missing_value"
+            },
+            {
+              "id": "107240802",
+              "title": "ACORD CADRU FURNIZARE MATERIALE SANITARE DE PROTECTIE, MATERIALE SANITARE  UZUALE, ALCOOL ETILIC, ALCOOL SANITAR, IOD POVIDONA SOL CUTANATA 100mg/ml , MANUSI  EXAMINARE",
+              "status": "missing_value"
+            },
+            {
+              "id": "107240801",
+              "title": "ACORD CADRU FURNIZARE MATERIALE SANITARE DE PROTECTIE, MATERIALE SANITARE  UZUALE, ALCOOL ETILIC, ALCOOL SANITAR, IOD POVIDONA SOL CUTANATA 100mg/ml , MANUSI  EXAMINARE",
+              "status": "missing_value"
+            },
+            {
+              "id": "107240800",
+              "title": "ACORD CADRU FURNIZARE MATERIALE SANITARE DE PROTECTIE, MATERIALE SANITARE  UZUALE, ALCOOL ETILIC, ALCOOL SANITAR, IOD POVIDONA SOL CUTANATA 100mg/ml , MANUSI  EXAMINARE",
+              "status": "missing_value"
+            },
+            {
+              "id": "107240799",
+              "title": "ACORD CADRU FURNIZARE MATERIALE SANITARE DE PROTECTIE, MATERIALE SANITARE  UZUALE, ALCOOL ETILIC, ALCOOL SANITAR, IOD POVIDONA SOL CUTANATA 100mg/ml , MANUSI  EXAMINARE",
+              "status": "missing_value"
+            }
+          ],
+          "checkedAt": "2026-10-04T06:38:44.208Z",
+          "newIssues": 0,
+          "rawBoundary": "17380386",
+          "sourceErrors": 0,
+          "structuralErrors": 0
+        },
+        "identity-repair": null,
+        "identity-quality": {
+          "valid": true,
+          "members": 16090,
+          "examples": [],
+          "staleMembers": 0,
+          "invalidDecisions": 0
+        }
+      },
+      "checkedAt": "2026-10-04T08:24:27.810Z",
+      "rawBoundary": "17380386",
+      "refreshScope": "full",
+      "existingSnapshot": false,
+      "collectionPerformed": false
+    },
+    "methodology": {
+      "flags": "rf-2026.6",
+      "monitoring": "monitoring-refresh-1",
+      "contractMoney": "source-currency-1",
+      "contractIdentity": "verified-publications-1",
+      "tedNormalization": 2,
+      "procurementCalendar": "Europe/Bucharest-v1",
+      "transactionPopulation": "batch1-canonical-1"
+    },
+    "completed_at": "2026-10-04T08:24:27.811622+00:00",
+    "source_coverage": {
+      "note": "Datele de achiziție, ultima colectare reușită și calcularea inventarului sunt momente diferite. Publicarea acestei versiuni nu înseamnă o colectare nouă.",
+      "normalized": [
+        {
+          "lastRawId": "17380386",
+          "transform": "award-contracts:v1",
+          "updatedAt": "2026-10-04 06:38:34.969+00"
+        },
+        {
+          "lastRawId": "17379786",
+          "transform": "award-list:v1",
+          "updatedAt": "2026-10-04 06:38:34.18+00"
+        },
+        {
+          "lastRawId": "223337",
+          "transform": "da-detail:v1",
+          "updatedAt": "2026-07-22 05:41:13.569+00"
+        },
+        {
+          "lastRawId": "17380385",
+          "transform": "da-list:v1",
+          "updatedAt": "2026-10-04 06:38:41.202+00"
+        },
+        {
+          "lastRawId": "16289783",
+          "transform": "ted-eforms:v1",
+          "updatedAt": "2026-07-22 14:49:09.716+00"
+        },
+        {
+          "lastRawId": "17129558",
+          "transform": "ted-fforms:v1",
+          "updatedAt": "2026-07-22 16:28:29.157+00"
+        },
+        {
+          "lastRawId": "17328529",
+          "transform": "tender-list:v1",
+          "updatedAt": "2026-09-28 02:14:59.655+00"
+        }
+      ],
+      "collections": [
+        {
+          "source": "elicitatie:awards",
+          "windowTo": "2018-01-01 20:59:59+00",
+          "deviation": 0,
+          "windowFrom": "2017-12-31 21:00:00+00",
+          "fetchedCount": "0",
+          "latestStatus": "completed",
+          "reportedCount": "0",
+          "lastSucceededAt": "2026-07-21 14:22:25.114138+00",
+          "latestStartedAt": "2026-07-21 14:22:24.272374+00"
+        },
+        {
+          "source": "elicitatie:das",
+          "windowTo": "2020-12-31 20:59:59+00",
+          "deviation": null,
+          "windowFrom": "2019-12-31 21:00:00+00",
+          "fetchedCount": "494650",
+          "latestStatus": "completed",
+          "reportedCount": null,
+          "lastSucceededAt": "2026-07-17 20:58:03.142223+00",
+          "latestStartedAt": "2026-07-17 10:20:20.758874+00"
+        },
+        {
+          "source": "elicitatie:tenders",
+          "windowTo": "2018-01-01 20:59:59+00",
+          "deviation": 0,
+          "windowFrom": "2017-12-31 21:00:00+00",
+          "fetchedCount": "0",
+          "latestStatus": "completed",
+          "reportedCount": "0",
+          "lastSucceededAt": "2026-07-21 14:22:13.543289+00",
+          "latestStartedAt": "2026-07-21 14:22:12.771743+00"
+        },
+        {
+          "source": "ted:can-standard",
+          "windowTo": "2018-01-31 23:59:59+00",
+          "deviation": 0,
+          "windowFrom": "2018-01-01 00:00:00+00",
+          "fetchedCount": "0",
+          "latestStatus": "completed",
+          "reportedCount": "0",
+          "lastSucceededAt": "2026-07-17 12:13:05.013049+00",
+          "latestStartedAt": "2026-07-17 12:12:39.152236+00"
+        },
+        {
+          "source": "ted:fforms",
+          "windowTo": "2023-01-31 23:59:59+00",
+          "deviation": 0,
+          "windowFrom": "2023-01-01 00:00:00+00",
+          "fetchedCount": "2484",
+          "latestStatus": "completed",
+          "reportedCount": "2484",
+          "lastSucceededAt": "2026-07-20 13:57:09.487793+00",
+          "latestStartedAt": "2026-07-20 13:56:18.485202+00"
+        }
+      ],
+      "observations": [
+        {
+          "dataset": "contracts",
+          "observation": {
+            "date_to": "2026-09-25",
+            "included": "973732",
+            "available": "1143947",
+            "date_from": "2000-01-06",
+            "allocations": "1102392",
+            "missing_cpv": "1143947",
+            "missing_date": "3",
+            "missing_currency": "404"
+          },
+          "calculatedAt": "2026-10-04 08:22:52.625618+00"
+        },
+        {
+          "dataset": "da",
+          "observation": {
+            "date_to": "2026-09-25",
+            "included": "19616321",
+            "available": "20831537",
+            "date_from": "2018-04-02",
+            "missing_cpv": "12",
+            "missing_raw": "4781104",
+            "missing_date": "4"
+          },
+          "calculatedAt": "2026-10-04 08:22:52.625618+00"
+        },
+        {
+          "dataset": "ted",
+          "observation": {
+            "date_to": "2026-06-30",
+            "results": "4032082",
+            "available": "161633",
+            "date_from": "2018-01-03",
+            "unverified": "0",
+            "missing_cpv": "0",
+            "missing_date": "0",
+            "unknown_competition": "726330"
+          },
+          "calculatedAt": "2026-10-04 08:22:52.625618+00"
+        },
+        {
+          "dataset": "years",
+          "observation": [
+            {
+              "n": "33",
+              "src": "contracts",
+              "year": 2000
+            },
+            {
+              "n": "1",
+              "src": "contracts",
+              "year": 2002
+            },
+            {
+              "n": "1",
+              "src": "contracts",
+              "year": 2007
+            },
+            {
+              "n": "1",
+              "src": "contracts",
+              "year": 2008
+            },
+            {
+              "n": "1",
+              "src": "contracts",
+              "year": 2011
+            },
+            {
+              "n": "1",
+              "src": "contracts",
+              "year": 2012
+            },
+            {
+              "n": "2",
+              "src": "contracts",
+              "year": 2013
+            },
+            {
+              "n": "8",
+              "src": "contracts",
+              "year": 2014
+            },
+            {
+              "n": "33",
+              "src": "contracts",
+              "year": 2015
+            },
+            {
+              "n": "199",
+              "src": "contracts",
+              "year": 2016
+            },
+            {
+              "n": "3640",
+              "src": "contracts",
+              "year": 2017
+            },
+            {
+              "n": "59967",
+              "src": "contracts",
+              "year": 2018
+            },
+            {
+              "n": "129947",
+              "src": "contracts",
+              "year": 2019
+            },
+            {
+              "n": "139362",
+              "src": "contracts",
+              "year": 2020
+            },
+            {
+              "n": "159123",
+              "src": "contracts",
+              "year": 2021
+            },
+            {
+              "n": "159650",
+              "src": "contracts",
+              "year": 2022
+            },
+            {
+              "n": "141565",
+              "src": "contracts",
+              "year": 2023
+            },
+            {
+              "n": "144820",
+              "src": "contracts",
+              "year": 2024
+            },
+            {
+              "n": "141937",
+              "src": "contracts",
+              "year": 2025
+            },
+            {
+              "n": "63653",
+              "src": "contracts",
+              "year": 2026
+            },
+            {
+              "n": "2160990",
+              "src": "da",
+              "year": 2018
+            },
+            {
+              "n": "2620114",
+              "src": "da",
+              "year": 2019
+            },
+            {
+              "n": "2384803",
+              "src": "da",
+              "year": 2020
+            },
+            {
+              "n": "2515063",
+              "src": "da",
+              "year": 2021
+            },
+            {
+              "n": "2606625",
+              "src": "da",
+              "year": 2022
+            },
+            {
+              "n": "2457129",
+              "src": "da",
+              "year": 2023
+            },
+            {
+              "n": "2479490",
+              "src": "da",
+              "year": 2024
+            },
+            {
+              "n": "2357081",
+              "src": "da",
+              "year": 2025
+            },
+            {
+              "n": "1250238",
+              "src": "da",
+              "year": 2026
+            },
+            {
+              "n": "5985",
+              "src": "ted",
+              "year": 2018
+            },
+            {
+              "n": "10756",
+              "src": "ted",
+              "year": 2019
+            },
+            {
+              "n": "16094",
+              "src": "ted",
+              "year": 2020
+            },
+            {
+              "n": "19482",
+              "src": "ted",
+              "year": 2021
+            },
+            {
+              "n": "23019",
+              "src": "ted",
+              "year": 2022
+            },
+            {
+              "n": "24858",
+              "src": "ted",
+              "year": 2023
+            },
+            {
+              "n": "25014",
+              "src": "ted",
+              "year": 2024
+            },
+            {
+              "n": "24262",
+              "src": "ted",
+              "year": 2025
+            },
+            {
+              "n": "12163",
+              "src": "ted",
+              "year": 2026
+            }
+          ],
+          "calculatedAt": "2026-10-04 08:22:52.625618+00"
+        }
+      ],
+      "sourceCompletenessVerified": false
+    }
+  },
+  "otherRepairs": [
+    {
+      "id": "contract-money-v1",
+      "status": "completed",
+      "completedAt": "2026-10-04T04:08:53.865985+00:00",
+      "processingRunId": "4c37e37b-6930-4de9-bd06-9f021bd6220d"
+    },
+    {
+      "id": "contract-publication-identity-v1",
+      "status": "completed",
+      "completedAt": "2026-10-04T04:08:53.866017+00:00",
+      "processingRunId": "4c37e37b-6930-4de9-bd06-9f021bd6220d"
+    }
+  ],
+  "previousFlags": {
+    "da_rapid": 2255139,
+    "da_round": 59763,
+    "da_split": 17853,
+    "da_year_end": 6117,
+    "da_dependence": 29940,
+    "fin_tiny_staff": 6349,
+    "award_dependence": 1981,
+    "award_single_bid": 6018,
+    "da_concentration": 654,
+    "net_shared_admin": 9291,
+    "award_concentration": 862,
+    "fin_public_reliance": 9200,
+    "award_no_competition": 26204
+  },
+  "migrationCount": 54,
+  "resumedRequests": [
+    {
+      "id": 10957,
+      "stream": "awards",
+      "outcome": "success",
+      "started_at": "2026-10-04T08:32:22.965344+00:00",
+      "finished_at": "2026-10-04T08:32:23.276066+00:00"
+    },
+    {
+      "id": 10956,
+      "stream": "da",
+      "outcome": "success",
+      "started_at": "2026-10-04T08:31:45.944494+00:00",
+      "finished_at": "2026-10-04T08:31:46.110563+00:00"
+    },
+    {
+      "id": 10955,
+      "stream": "awards",
+      "outcome": "success",
+      "started_at": "2026-10-04T08:31:12.924133+00:00",
+      "finished_at": "2026-10-04T08:31:13.188184+00:00"
+    }
+  ],
+  "runtimeCommit": "2e8757147ed8538657f8b83e2388ff256ab06d1f",
+  "deploymentWorkflow": 37181807983,
+  "backup": {
+    "bytes": 5688218630,
+    "sha256": "6c9f71dfecf3ce7359ef44e0fd540ded2a1ff0f2172e0b73415fdbd33d3d0fdf",
+    "directory": "/srv/seap/backups/processing/96c15b43-6ad8-4d41-a94d-16b9c160e114",
+    "verification": "pg_restore --list and SHA-256 recorded by host runner"
+  },
+  "independentVerification": {
+    "script": "scripts/operations/verify-reference-repair-20261004.sql",
+    "passed": true,
+    "onrcRows": 3679178,
+    "onrcDatedRows": 3206578,
+    "mfRows": 7186912,
+    "mfRowsWithProfit": 6692833,
+    "validOnrcIndexes": 3,
+    "exampleFinancial": {
+      "cui": "30976819",
+      "entityId": "2082932",
+      "year": 2025,
+      "profitNet": "999104"
+    },
+    "http200": [
+      "/api/health",
+      "/",
+      "/intreaba",
+      "/semnale",
+      "/entitati/2082932",
+      "/entitati/2146146/radiografie"
+    ]
+  }
+}

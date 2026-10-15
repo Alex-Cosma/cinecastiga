@@ -1,0 +1,31 @@
+# Dated national DA activation — 10 October 2026
+
+Only run under the owner's explicit authorization after the ten-day shadow audit passes. This is not a routine deployment hook. [Source proof](../../../docs/research/da-busy-days-20261010/README.md).
+
+Implementation:
+- Migration0066 adds `collection_batches.da_strategy`, default `authority`. Old behavior is preserved until explicit activation.
+- `collection national-da` requires a paused, drained collector, no global source block, and one continuous recovery batch. It atomically seeds national closed-day roots covering untouched pending authority windows plus the trailing7days; preserves original task parameters/results and an audit of replaced pending tasks; leaves all failed/retry-budget work intact. It leaves the pause enabled.
+- A national day starts with one request. Overflow→verified CPV prefixes; source substring results overlap but each archived list item belongs only to its leading-prefix leaf. Includes the source placeholder00000000. Saturated exact codes/observed unknown codes use a fresh authority-catalogue fallback. Saturation within one authority still fails closed.
+- Completed leaves reconcile previously normalized IDs. A disappeared ID gets a metered full-detail task. Only verified date/CPV relocation or reopened state can explain absence; no deletion based on absence. Source versions are archived normally and normalized at the scheduled boundary.
+- Automatic daily extension revisits the trailing7closed days, and validates the whole CPV vocabulary once per week. Source changes beyond that window still require historical audits; this is not a modification-date feed.
+- Ordinary institution-catalogue refreshes no longer spawn38000DAqueries in the national strategy. The catalogue remains available for fallback.
+- Admin states the active approach and groups estimation samples by DA day/scan. Activation resets the useful-pace observation boundary.
+
+Release procedure: verify CI/deploy and migrated schema; pause/drain with revision check and audit, preserving all other settings; run the explicit activation; optionally execute the reviewed114record gap archive; resume with another revision check; verify successful national root/split/leaf/vocabulary work, source/error diagnostics, app health and unchanged public availability. Never clear an unrelated source block to make deployment succeed.
+
+`archive-shadow-gaps.mjs FILE SHA256` runs inside the collector environment after the private reviewed file is installed. It checks114unique IDs from the three2018days, requires paused/drained/no processing, refuses changed normalized baseline, archives through `archiveDocumentsSql`, and records an idempotent operation audit. It does not mutate core, statistics, rates or processing schedules.
+
+Local validation: full20-task turbo build/typecheck/lint/test, separate24ingestion DB tests and10admin DB tests, plus host deployment/scheduler checks. DB fixtures use a new isolated `seap_test_da_national_20261010`, populated with schema only and migration0066DDL; this is a fixture, not a restored production database or fabricated migration baseline.
+
+## Production activation — 10 October 2026
+
+- Feature `1869aa4`, compact activation audit `885f868`, strategy-aware ETA `a4f482d`, all on `main`. First Actions deploy failed before updating the checkout; the unchanged standard deploy script then succeeded over operator SSH. The second release passed both CI and automatic deploy (run 38038527553). Final forecast release verification is recorded below.
+- Migration 0066 applied normally; production has 67 migration records. No baseline/history reset.
+- Controlled pause/drain: revision 114 → 115. Activation replaced **35,185 untouched pending authority tasks** with **101 daily roots, 1 July–9 October 2026**, plus the weekly CPV catalogue root. Some remaining authority tasks still covered the full recovery interval, so replacing just seven days would have lost scope. Original rows/parameters/errors remain, marked `split` with `result.supersededBy = national-da:2026-10-09`; the audit stores a compact summary instead of returning all replaced rows to `/admin`.
+- Archived the exact reviewed **114 missing 2018 acquisitions**, inserted 114 / skipped 0. Audit action `da-shadow-gap-recovery` records the input hash. Ordinary scheduled normalization/publication will consume them; no immediate core/mart recalculation.
+- First resumption: revision 116, paused=false, maintenance=false, no block. Verified 184 successful source requests with no errors at the initial observation, including successful national splits/leaves/placeholder and catalogue pages. Two national days completed. Seven older failed award details remain unrelated; do not represent the batch as globally gap-free.
+- ETA follow-up: revision 117 pauses/drains for the final web release. Legacy authority work remains in completed totals but is excluded from the national-day sample mean. Production read-only execution of the actual forecast function took 7.465 seconds; sample = 2/101 DA days, ETA basis = known queue. No source requests from this check.
+- Rates, proxy pool, quiet window and nightly processing schedule preserved: 200/min ceiling, 10 concurrent, 35–45 seconds/IP, 94 enabled proxies. Public home, Explore and health remained available.
+- Private logs/source evidence: local `.local/da-busy-days-20261010/`, server `/srv/seap/repairs/da-busy-days-20261010/`. Do not rerun dated activation/gap scripts as onboarding.
+
+Final forecast release/resumption: **`a4f482d` deployed; CI and automatic deploy run 38038851547 both passed. Control revision 118, paused=false, maintenance=false, blocked_reason=null.** No additional migration in either follow-up. Initial resumption guard rejected a mistyped evidence checksum before any write; corrected against the SHA256 of the original evidence file, then transaction succeeded. At 11:47 RO, verified **35 successful requests after the final resume, zero failed/interrupted**; national tasks had 65 completed leaves, 5 split parents and no failures, and the weekly vocabulary check had completed 36 pages and was continuing. Health, home and Explore returned HTTP 200. Collection and historical notice recovery are still running; this is not a claim that all 101 days or the whole historical inventory have finished.

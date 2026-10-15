@@ -3,6 +3,33 @@ import {planResponse,task} from './plan.js';
 const end='2026-09-25';
 const da=task('fixture','da','da',{from:'2026-07-01',to:end,authorityId:7848,page:0});
 describe('durable recovery plans (no network)',()=>{
+ it('keeps historical inventory distinct from full recovery and paginates without spawning detail work',()=>{
+  const params={from:end,to:end,page:0,inventoryOnly:true};
+  const t=task('fixture','tenders','list',params);
+  expect(t.key).not.toBe(task('fixture','tenders','list',{...params,inventoryOnly:false}).key);
+  const items=Array.from({length:100},(_,i)=>({cNoticeId:i+1,noticeNo:`CN${i+1}`,sysNoticeTypeId:2,noticeStateDate:end+'T12:00:00+03:00'}));
+  const first=planResponse(t,{total:101,items},[],end);
+  expect(first.docs).toHaveLength(100);expect(first.children).toHaveLength(1);
+  expect(first.children[0]).toMatchObject({kind:'list',params:{page:1,inventoryOnly:true}});
+  const last=planResponse(first.children[0]!,{total:101,items:[{...items[0],sysNoticeTypeId:17}]},[first.result as any],end);
+  expect(last.docs[0]?.externalId).toBe('tender:rfq:1');expect(last.children).toHaveLength(0);
+  const award=planResponse(task('fixture','awards','list',params),{total:1,items:[{caNoticeId:1,sysNoticeTypeId:18,noticeStateDate:end+'T12:00:00+03:00'}]},[],end);
+  expect(award.docs).toHaveLength(1);expect(award.children).toHaveLength(0);
+  expect(()=>task('fixture','awards','contracts',{noticeId:1,page:0,inventoryOnly:true})).toThrow('Inventory');
+  expect(()=>planResponse(t,{total:3000,items,searchTooLong:true},[],end)).toThrow('trunchiată');
+ });
+ it('keeps overlapping participation counters in one page and across pages without merging their work',()=>{
+  const t=task('fixture','tenders','list',{from:end,to:end,page:0});
+  const item=(id:number,type:number)=>({cNoticeId:id,sysNoticeTypeId:type,noticeStateDate:end+'T12:00:00+03:00'});
+  const r=planResponse(t,{total:2,items:[item(100004524,2),item(100004524,17)]},[],end);
+  expect(r.docs.map(d=>d.externalId)).toEqual(['tender:cn:100004524','tender:rfq:100004524']);
+  expect(new Set(r.children.map(t=>t.key)).size).toBe(2);
+  const first=planResponse(t,{total:101,items:Array.from({length:100},(_,i)=>item(i+1,2))},[],end);
+  const next=first.children.find(t=>t.kind==='list')!;
+  expect(planResponse(next,{total:101,items:[item(1,17)]},[first.result as any],end).status).toBe('complete');
+  expect(()=>planResponse(next,{total:101,items:[item(1,2)]},[first.result as any],end)).toThrow('repetat');
+  expect(()=>planResponse(t,{total:2,items:[item(1,12),item(1,17)]},[],end)).toThrow('repetat');
+ });
  it('archives valid DA only within the selected finalization window',()=>{
   const r=planResponse(da,{total:1,items:[{directAcquisitionId:123,finalizationDate:'2026-07-01T12:00:00+03:00'}]},[],end);
   expect(r.docs[0]?.externalId).toBe('da:123');expect(r.status).toBe('complete');
@@ -23,10 +50,10 @@ describe('durable recovery plans (no network)',()=>{
   expect(()=>planResponse(t,{total:201,items:[]},[],end)).toThrow('Lipsește');
   expect(()=>planResponse(t,{total:201,items:[]},[{total:202,ids:[]}],end)).toThrow('Totalul');
  });
- it('persists eForms detail gaps independently of award contract work',()=>{
+ it('schedules v2 detail routing independently of award contract work',()=>{
   const t=task('fixture','awards','list',{from:end,to:end,page:0});
   const r=planResponse(t,{total:1,items:[{caNoticeId:2,sysNoticeTypeId:18,sysNoticeVersionId:2,noticeStateDate:end+'T12:00:00+03:00'}]},[],end);
-  expect(r.children.find(t=>t.kind==='detail')?.status).toBe('deferred');expect(r.children.find(t=>t.kind==='contracts')?.params.noticeId).toBe(2);expect(r.docs[0]?.endpointVersion).toBe('award-list:v1');
+  expect(r.children.find(t=>t.kind==='detail')?.params.noticeType).toBe(18);expect(r.children.find(t=>t.kind==='contracts')?.params.noticeId).toBe(2);expect(r.docs[0]?.endpointVersion).toBe('award-list:v1');
  });
  it('only archives the combined contracts envelope after every page reconciles',()=>{
   const first=task('fixture','awards','contracts',{noticeId:2,page:0});
@@ -39,4 +66,85 @@ describe('durable recovery plans (no network)',()=>{
   const r=planResponse(task('fixture','catalogue','catalogue',{page:0}),{total:1,items:[{id:7848}]},[],end);
   expect(r.children[0]?.key).toBe(da.key);expect(r.docs).toHaveLength(0);
  });
+});
+
+it('reconciles surplus and overlapping contract pages without dropping a source contract',()=>{
+ const row=(id:number)=>({caNoticeContractId:id,contractValue:id});
+ const t=task('fixture','awards','contracts',{noticeId:2,page:0});
+ const a=planResponse(t,{total:585,items:Array.from({length:201},(_,i)=>row(i+1))},[],end);
+ const b=planResponse(a.children[0]!,{total:585,items:[row(199),row(200),...Array.from({length:199},(_,i)=>row(i+202))]},[a.result as any],end);
+ expect(a.docs).toHaveLength(0);expect(b.docs).toHaveLength(0);
+ const last=Array.from({length:185},(_,i)=>row(i+401));
+ const c=planResponse(b.children[0]!,{total:585,items:last},[a.result as any,b.result as any],end);
+ expect((c.docs[0]!.payload as any).items).toHaveLength(585);expect(c.children).toHaveLength(0);
+ expect(()=>planResponse(b.children[0]!,{total:585,items:[row(1),...last.slice(1)]},[a.result as any,b.result as any],end)).toThrow('unice');
+ expect(()=>planResponse(a.children[0]!,{total:585,items:[{...row(199),contractValue:999},row(200),...Array.from({length:199},(_,i)=>row(i+202))]},[a.result as any],end)).toThrow('modificat');
+ expect(()=>planResponse(t,{total:201,items:Array.from({length:202},(_,i)=>row(i+1))},[],end)).toThrow('Dimensiunea');
+});
+it('reconciles multiple surplus rows by final distinct population, keeping requested offsets',()=>{
+ const rows=(start:number,count:number)=>Array.from({length:count},(_,i)=>({caNoticeContractId:start+i,contractValue:10}));
+ const first=planResponse(task('fixture','awards','contracts',{noticeId:2,page:0}),{total:600,items:rows(1,203)},[],end);
+ const second=planResponse(first.children[0]!,{total:600,items:rows(204,203)},[first.result as any],end);
+ expect(first.children[0]!.params.page).toBe(1);expect(second.children[0]!.params.page).toBe(2);
+ expect(first.docs).toHaveLength(0);expect(second.docs).toHaveLength(0);
+ const last=planResponse(second.children[0]!,{total:600,items:rows(401,200)},[first.result as any,second.result as any],end);
+ expect((last.docs[0]!.payload as any).items).toHaveLength(600);expect(last.children).toHaveLength(0);
+ expect(()=>planResponse(second.children[0]!,{total:600,items:rows(407,200)},[first.result as any,second.result as any],end)).toThrow('unice');
+});
+it('combines only complementary winner/lot fragments across an overlap',()=>{
+ const t=task('fixture','awards','contracts',{noticeId:2,page:0});
+ const items=Array.from({length:201},(_,i)=>({caNoticeContractId:i+1,contractValue:10,winner:null,winners:[],lotsCaption:'1. Lot'}));
+ const first=planResponse(t,{total:202,items},[],end);
+ const second=planResponse(first.children[0]!,{total:202,items:[{caNoticeContractId:201,contractValue:10,winner:{entityId:1},winners:[{entityId:1}],lotsCaption:''},{caNoticeContractId:202,contractValue:10}]},[first.result as any],end);
+ const result=(second.docs[0]!.payload as any).items.find((r:any)=>r.caNoticeContractId===201);
+ expect(result).toMatchObject({lotsCaption:'1. Lot',winner:{entityId:1},winners:[{entityId:1}]});
+});
+
+describe('winner order in overlapping contract pages',()=>{
+ const winners=[{id:11,entityId:101,name:'Alpha, SRL',fiscalNumber:'RO123'},{id:12,entityId:102,name:'Beta',fiscalNumber:'RO456'},{id:13,entityId:103,name:'Gamma',fiscalNumber:'RO789'}] as const;
+ const row={caNoticeContractId:201,contractValue:100,contractDate:'2026-10-01',winner:winners[0],winners,winnerCaption:'Beta,Alpha, SRL,Gamma',lotsCaption:'',lotsNoCaption:''};
+ const reordered={...row,winners:[winners[0],winners[2],winners[1]],winnerCaption:'Gamma,Beta,Alpha, SRL',lotsCaption:'160. Lot',lotsNoCaption:'160'};
+ function overlap(later:Record<string,unknown>,earlier:Record<string,unknown>=row){
+  const t=task('fixture','awards','contracts',{noticeId:2,page:0});
+  const first=planResponse(t,{total:202,items:[...Array.from({length:200},(_,i)=>({caNoticeContractId:i+1})),earlier]},[],end);
+  return planResponse(first.children[0]!,{total:202,items:[later,{caNoticeContractId:202}]},[first.result as any],end);
+ }
+ it('accepts identical winner records in another order and captions with commas in names',()=>{
+  const plan=overlap(reordered),items=(plan.docs[0]!.payload as any).items;
+  expect(items).toHaveLength(202);
+  expect(items.find((r:any)=>r.caNoticeContractId===201)).toEqual({...row,lotsCaption:'160. Lot',lotsNoCaption:'160'});
+ });
+ it.each([
+  ['amount',{...reordered,contractValue:101}],
+  ['date',{...reordered,contractDate:'2026-10-02'}],
+  ['winner identity',{...reordered,winners:[winners[0],winners[2],{...winners[1],fiscalNumber:'RO999'}]}],
+  ['winner metadata',{...reordered,winners:[winners[0],winners[2],{...winners[1],name:'Different'}]}],
+  ['singular winner',{...reordered,winner:winners[1]}],
+  ['missing winner',{...reordered,winners:[winners[0],winners[2]]}],
+  ['duplicate winner ID',{...reordered,winners:[winners[0],winners[0],winners[1]]}],
+  ['missing winner ID',{...reordered,winners:reordered.winners.map(({id,...rest})=>rest)}],
+  ['changed caption',{...reordered,winnerCaption:'Unrelated,Gamma,Beta'}],
+  ['rearranged fragments within a company name',{...reordered,winnerCaption:'SRL,Alpha,Gamma,Beta'}],
+ ])('still rejects a real or unverifiable difference: %s',(_name,later)=>{
+  expect(()=>overlap(later)).toThrow('modificat');
+ });
+ it('rejects changed nonempty lot facts even when winners are equivalent',()=>{
+  expect(()=>overlap(reordered,{...row,lotsNoCaption:'159'})).toThrow('modificat');
+ });
+});
+
+it('uses one isolated bounded request to reconcile an overlapping notice day',()=>{
+ const base=task('fixture','awards','list',{from:end,to:end,page:0,inventoryOnly:true});
+ const retry=task('fixture','awards','list',{...base.params,singlePageTotal:180});
+ expect(retry.partition).not.toBe(base.partition);
+ const items=Array.from({length:180},(_,i)=>({caNoticeId:i+1,sysNoticeTypeId:18,noticeStateDate:end+'T12:00:00+03:00'}));
+ const p=planResponse(retry,{total:180,items},[],end);
+ expect(p.docs).toHaveLength(180);expect(p.children).toHaveLength(0);
+ expect(()=>planResponse(retry,{total:180,items:items.slice(0,179)},[],end)).toThrow('Numărul');
+ expect(()=>planResponse(retry,{total:180,items:[...items.slice(0,179),items[0]]},[],end)).toThrow('repetat');
+ expect(()=>planResponse(retry,{total:179,items:items.slice(0,179)},[],end)).toThrow('Totalul');
+ expect(()=>planResponse(retry,{total:180,items},[{total:100,ids:[]}],end)).toThrow();
+ expect(()=>task('fixture','awards','list',{...base.params,singlePageTotal:2001})).toThrow('singură');
+ expect(()=>task('fixture','awards','list',{...retry.params,page:1})).toThrow('singură');
+ expect(()=>task('fixture','da','da',{...retry.params,inventoryOnly:false})).toThrow('singură');
 });

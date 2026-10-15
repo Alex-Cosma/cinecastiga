@@ -1,0 +1,97 @@
+# Document categories and specification priority — 11 October 2026
+
+Status: **strict policy released to production as `5488af2` on 11 October 2026**; CI and deploy 38157671237 both passed. Initial category release: `e2ec0ff` / 38155289382. See the release record below. The initial implementation was validated on `fix/document-archive-recovery`. Multipart-archive recovery remains separate and unfinished.
+
+## Strict automatic download policy — 11 October, after release verification
+
+The owner approved **only identified specifications for automatic downloads**, replacing the earlier preference-with-fallback rule. Inventory listing continues across the supported historical notices, newest first. No automatic fallback to clarifications, forms or unknown archives is permitted when the known specification queue is empty. Classification remains preliminary when based only on filenames; a generic unclassified archive may still contain a specification and is not automatically downloaded under this policy.
+
+`fillDocumentQueue` admits a new file download only at priority 0 and independently preserves processing of already archived originals. The network claim query enforces the same condition for legacy jobs, retries and restarts. Pending ordinary automatic downloads receive stage `specifications_only`, retaining job/request history and retry timestamps. They do not occupy active queue counts or the processing frontier. A later specification classification (or an archived original) makes the job eligible again. Metadata listing continues when no eligible specification is available.
+
+An authenticated manual request can adopt an existing queued automatic job, including a policy hold, without creating duplicates. The transaction locks the existing row, checks the existing hourly quota, assigns the manual user/slot and records its new request time. It preserves request logs, retry deadlines and original bytes. Contract pages show held files as available on demand with the usual authenticated download button; admin shows held counts separately and download/OCR progress for identified specifications. Previously archived ordinary files may finish processing.
+
+P7M names are admitted alongside P7S. Binary CMS content detection/extraction is reused, and the wrapper suffix is removed when identifying the inner filename; original signed bytes remain immutable. No new migration, source-rate change or broad retry is needed. Existing unknown-format and inventory-identity failures are not bypassed.
+
+Verification: 35 tests passed with real PostgreSQL and Linux document tools on isolated `seap_test_spec_only_20261011`: 15 scheduling/retry/concurrency tests, 2 manual-queue/evidence tests, 5 converter/worker tests and 13 classification cases. They cover an old queue of 40 ordinary files, inventory-only behavior without specifications, P7M admission/extraction, adoption of a held job, deduplication and quota refusal. The first tooling run exposed a stale test-image DB build/converter; mounting the current built DB package and converter resolved those environment failures. No source requests were made. Ordinary local data was untouched.
+
+11 browser checks passed on the real React components with a temporary local fixture: strict admin wording, specification progress totals, held counts, anonymous/authenticated actions, transition from held to manual queue, 390/320px layout and no JS errors/source requests. Captures and logs are private under `.local/specifications-only-20261011/`; the fixture route was removed. Mechanical UI detector: no findings. The follow-up is live as `5488af2`, with [CI/deploy 38157671237](https://github.com/Alex-Cosma/seap-new/actions/runs/38157671237) successful. Worker restart: 17:01:50 UTC. At 17:04:35 UTC, 36 legacy ordinary downloads were held, source/document controls remained 137/7, the site was live and neither supervisor nor source had a block. The first three automatic `noticedoc` GETs after restart were the three previously excluded P7M specifications, all HTTP 200; all three originals were archived, one processed and two extracting text. No ordinary automatic file GET occurred in that observed interval. Previously archived ordinary files continued processing, as intended. Admin status and queue queries were verified with the deployed application role. Four public browser checks passed, including the published strict-policy wording and readable inventory. Health returned 200. Earlier release evidence below is for `e2ec0ff`; [strict-policy evidence](document-specifications-only-release-20261011.json) records the later snapshot.
+
+## Product decision (initial priority policy; strict policy above supersedes fallback)
+
+The approved reference is `mockups/document-categories/`. The contract's existing document section becomes a compact library: desktop category sidebar, mobile select, filename/member-name search, ready-only filter and six original files per page. Original filenames, SEAP codes, archived originals and classification explanations remain accessible. A mixed archive appears in each applicable category but counts once in the all-files list. Categories describe roles, not proof of wrongdoing, signed-contract validity or document completeness.
+
+Categories, in display order:
+
+1. Caiete de sarcini.
+2. Clarificări și modificări.
+3. Documentație tehnică.
+4. Participare și formulare.
+5. Modele de contract.
+6. Evaluare și atribuire.
+7. Contracte și acte adiționale.
+8. Neclasificate.
+
+The user chose specification documents throughout the history, newest procedures first within that priority. A manual job retains precedence. Files already running are not interrupted to reorder them. Only known/identified specifications can be prioritized; an unseen file inside an unprocessed generic archive cannot be inferred.
+
+## Classification
+
+`apps/web/lib/documents/classification.ts` contains deterministic versioned rules. Diacritics and punctuation are normalized. Filename results are explicitly preliminary. Clarifications, templates and forms take precedence over references to specifications/contracts. A bounded CS abbreviation at the start is a candidate. Technical evaluations are not automatically procurement-award evaluations.
+
+Existing native/OCR text supplies stronger evidence only when an explicit heading appears near the start of the document/member's first page. Mentioning a specification in body prose is insufficient. Members of a prepared archive are classified individually and retain their original combined-PDF page references. Unrecognized members keep `unknown`; a file extension or an archive container is not a document role.
+
+Persisted JSON includes rule version, category IDs, method, filename/heading evidence and member/page evidence. Migration `0071_perpetual_darwin.sql` adds this JSON, classification version, classified-PDF hash, queue priority and a partial priority index. There is no raw-document rewrite or statistical recalculation in this migration.
+
+`classifyDocumentBatch` processes up to25 records per transaction with `FOR UPDATE SKIP LOCKED` and a15s statement timeout. It uses stored metadata and existing text only: no SEAP request, conversion or OCR. Version/PDF-hash checkpoints make completed passes idempotent; a newly published PDF triggers reclassification. Future manual classifications are preserved, but **no manual correction editor is implemented in this release**.
+
+New metadata is classified during inventory insertion. The worker also reclassifies at preparation, OCR checkpoints and completion. The supervisor runs a small backfill batch every3s outside maintenance; the ordinary worker loop does the same when automatic collection is disabled. It requires the document worker to be enabled and configured. It never enables source collection by itself.
+
+Explicit offline CLI, with `DATABASE_URL` already pointing to the intended database:
+
+```sh
+pnpm --filter web documents:classify          # read-only count
+pnpm --filter web documents:classify --apply  # classification + scheduling priority
+```
+
+This command does not enqueue/cancel jobs, change source controls or modify original bytes/pages. It does change which pending automatic files the scheduler prefers. Apply migrations first. Ordinary local development still does not run a source worker.
+
+## Scheduler and OCR
+
+`priority=0` means a file contains/appears to be a specification; other files use100. There are separately bounded frontiers of40 specification files and40 other files, plus40 inventory-list jobs. The second file frontier prevents already-queued ordinary files from blocking admission of newly identified specifications.
+
+Automatic download and OCR claims prefer priority first, then procedure source date descending. A network lane favors inventory jobs so discovery can continue through older notices. The remaining lanes prefer file jobs; existing source budget, proxy pacing, quiet window, maintenance, retries, 10-download ceiling and4-processing ceiling remain unchanged.
+
+Within an already prepared archive, the OCR traversal visits known specification members before other pages. **The combined PDF itself is not reordered.** Page numbers, originals, page checkpoints and frozen investigation evidence remain unchanged. The existing publication gate still requires all pages to finish before that combined document becomes publicly readable; this feature does not publish partial OCR results.
+
+Archive-volume prerequisite scheduling is **not implemented here**. The separate `volumes.ts` helper is only filename grouping, not automatic multipart extraction or follower-document publication. Do not describe those failed files as fixed by this classification feature.
+
+## UI and admin
+
+`DocumentLibrary.tsx` replaces the old unpaginated file list within `ContractFiles.tsx`; the existing PDF/page reader, transcript, text search and quote-saving remain. Archive members open at their actual combined-PDF page. The stored original stays publicly downloadable; asking SEAP for a file still requires authentication on both UI and API. Unknown/empty categories do not assert a document is missing from the procedure.
+
+FIFO position is no longer shown: it is misleading with priorities and parallel lanes. Actual download/OCR states and page progress remain. The library uses the existing theme, typography and icon system, including dark mode, reduced motion and the corrected text contrast.
+
+Both `/admin` and `/admin/fisiere` show a classification progress bar plus specification counts: identified (including archives), downloaded, ready and unknown categories. A completed classification pass can legitimately contain unknown categories; the progress label states this. A missing classification field in an older status response is tolerated during rollout.
+
+## Verification performed
+
+- Web and database-package TypeScript checks passed. Production web build passed in the separate `.next-documents` directory. The first build found stale generated types left by removal of the temporary browser fixture route; removing only those generated fixture/validator files allowed the clean build to pass. No application-code build failure remains.
+-26 focused unit tests passed (classification, document helpers, request limits, volume grouping).
+-16 PostgreSQL integration tests passed, genuinely executed on `seap_test_document_pool_20261010`, including idempotency, immutable originals/pages, unfinished archive metadata, preservation of manual overrides,40 queued ordinary files not blocking a specification, newest-first ordering, inventory capacity, manual precedence and existing concurrency/retry gates.
+-4 converter/worker integration tests passed inside Linux document tooling, with the isolated PostgreSQL database. They include165-page resumption and a60-page archive whose specification pages31–55 are processed in the first25-page slice while its PDF order remains unchanged. The other two cover Word/Excel archive conversion and the earlier qpdf recovery for a PDF that opens without a password.
+-22 browser checks passed on the actual React components through a temporary local fixture route, including real PDF rendering at an archive member's page2, six-row pagination, search, categories, anonymous/read/download distinction, queued feedback,320/390px widths, dark mode, reduced motion and the corrected text contrast. Fixture API responses were intercepted; no SEAP traffic. This is component integration evidence, not a complete production-contract-page verification.
+-Offline filename-only preview on3,502 previously saved metadata rows:79 specification candidates,2,420 clarifications,100 technical,117 participation,45 templates,16 award,8 contracts,717 unknown. These are candidates from that snapshot, not a count of confirmed specifications or current live totals. No original downloads or database writes were needed.
+-Private captures, browser report and filename-preview details: `.local/document-categories-implementation/`. No secrets or private data belong in Git.
+
+The ordinary local database was read-only:62 recorded migrations, no `core.notices.notice_namespace`,9 original document rows/1 processed. It is behind this branch's notice-identity and document migrations. No historical local repair or production clone was attempted for a UI task. Migration0071 was applied only to the isolated fixture database. Deployment must apply the normal migration chain before starting the new web/worker code; the backfill then runs automatically with the enabled worker. Production activation has not occurred in this step.
+
+Independent visual review: both requested contrast corrections were scored resolved (`ship` for that correction set). Final captures use `*-reviewed.png`; filename-search placeholder dark contrast7.07:1 and highlighted filename light contrast7.18:1. No global design-system rewrite. Temporary browser fixture route was removed; private fixture source remains with the verification artifacts.
+
+## Production release — 11 October, 19:32 RO
+
+Code `e2ec0ff` is pushed to `main` and `fix/document-archive-recovery`; the standard [CI/deploy 38155289382](https://github.com/Alex-Cosma/seap-new/actions/runs/38155289382) completed successfully. Migration0071 is applied; production now has 72 migrations. The web container is healthy and the document worker contains qpdf 11.3.0. No broad failed-job retry or historical recovery was executed.
+
+The classifier started automatically. Samples progressed from 377 to 702 and then **2,157/3,502** analyzed at 16:32 UTC. That snapshot identified 50 specification files/archives, 33 downloaded and 31 readable; these are evolving classification counts, not a statement that all specifications have been discovered. Source control remains revision 137, unpaused, maintenance=false, no block; document control remains revision 7, enabled/unpaused, heartbeat alive, no supervisor error. Existing failed documents/inventories and two pending retries remain in the collection report; this release does not claim to repair them. Three newly finished list jobs retained the known inventory-identity error (16:28–16:30 UTC); they were not retried or bypassed. One source request was recorded as interrupted during worker shutdown (`parent_cancelled`, request 457466), with no global block.
+
+**16 production browser checks passed** against `/contracte/108182744`: live page/inventory, classifications and categories, bounded rows, category switching, mobile layout, public ranged PDF and original reads, anonymous enqueue 401, admin status 403, health 200 and no JS errors. The admin status function was also executed read-only with the deployed worker's actual database role. Browser verification made no SEAP requests. The initially selected Buzău contract 107063311 has a verified source association but no archived file metadata in this production database; a populated contract was used for the document checks. No source inventory was requested merely to populate the test.
+
+[Sanitized release evidence](document-categories-release-20261011.json) records the checks and timestamped status. The initial local-only notes above describe the pre-release verification environment; this section supersedes their deployment status. Ordinary local production-copy migrations were not changed.

@@ -1,5 +1,6 @@
 import {beforeAll,afterAll,beforeEach,describe,it,expect} from 'vitest';
-import {createDb} from '@seap/db';
+import {createDb,CollectionProxyFailureError} from '@seap/db';
+import {createHttpClient,ScrapeError} from '@seap/scraper-clients';
 import {insertTasks,recoveryStep,recoverInterrupted,seedRecovery} from './runner.js';
 import {task} from './plan.js';
 const url=process.env['TEST_DATABASE_URL'];
@@ -10,12 +11,81 @@ describe.skipIf(!url)('recovery manifest (isolated DB, no source traffic)',()=>{
  beforeEach(async()=>{await q`truncate app.collection_tasks,app.collection_batches cascade`;await q`truncate app.collection_requests`;await q`update app.collection_control set paused=false,maintenance=false,blocked_reason=null,blocked_until=null,paused_streams='[]',daily_limit=null`;
  await q`insert into app.collection_batches(id,end_day,next_stream) values('fixture','2026-09-25',0)`;});
  afterAll(async()=>{await q.end();});
+ it('archives inventory evidence and comparison without enqueuing a full historical detail sweep',async()=>{
+  await insertTasks(q,[task('fixture','tenders','list',{from:'2020-01-01',to:'2020-01-01',page:0,inventoryOnly:true})]);
+  await recoveryStep(q,async()=>({total:1,items:[{cNoticeId:99988449,noticeNo:'CN-inventory',sysNoticeTypeId:2,noticeStateDate:'2020-01-01T12:00:00+02:00'}]}));
+  const rows=await q`select status,result from app.collection_tasks`;
+  expect(rows).toHaveLength(1);expect(rows[0]?.status).toBe('complete');
+  expect(rows[0]?.result.inventory).toEqual({checked:1,matched:0,missing:[{key:'cn:99988449',noticeNo:'CN-inventory'}],unverified:[]});
+  expect((await q`select count(*)::int n from raw.raw_documents where external_id='tender:cn:99988449'`)[0]?.n).toBe(1);
+ });
+ it.each([false,true])('reconciles notice pagination once, stops if the full response is invalid (%s)',async invalid=>{
+  const day='2020-01-01';
+  const items=Array.from({length:180},(_,i)=>({caNoticeId:99880000+i,noticeNo:`CAN-overlap-${i}`,sysNoticeTypeId:18,noticeStateDate:day+'T12:00:00+02:00'}));
+  await insertTasks(q,[task('fixture','awards','list',{from:day,to:day,page:0,inventoryOnly:true})]);
+  await recoveryStep(q,async()=>({total:180,items:items.slice(0,100)}));
+  await recoveryStep(q,async()=>({total:180,items:[items[99],...items.slice(101)]}));
+  const rows=await q`select status,params,result from app.collection_tasks order by id`;
+  expect(rows.map(r=>r.status)).toEqual(['split','split','pending']);
+  expect(rows[0]!.result.ids).toHaveLength(100);
+  expect(rows[0]!.result.supersededBy).toBeTruthy();
+  expect(rows[2]!.params.singlePageTotal).toBe(180);
+  expect((await q`select blocked_reason from app.collection_control`)[0]!.blocked_reason).toBeNull();
+  expect((await q`select before from app.collection_audit where action='notice-pagination-recovery' order by id desc limit 1`)[0]!.before.tasks).toHaveLength(2);
+  await recoveryStep(q,async t=>{
+   expect(t.params.singlePageTotal).toBe(180);
+   return {total:180,items:invalid?[...items.slice(0,179),items[0]]:items};
+  });
+  const [last]=await q`select status,result from app.collection_tasks where params ? 'singlePageTotal'`;
+  expect(last!.status).toBe(invalid?'failed':'complete');
+  expect((await q`select count(*)::int n from app.collection_tasks`)[0]!.n).toBe(3);
+  if(invalid)expect((await q`select blocked_reason from app.collection_control`)[0]!.blocked_reason).toBeTruthy();
+  else {expect(last!.result.ids).toHaveLength(180);expect(last!.result.inventory.checked).toBe(180);}
+ });
  it('commits archive, checkpoint and child tasks together and does not repeat a finished task',async()=>{
   await insertTasks(q,[task('fixture','da','da',{authorityId:7848,from:'2026-07-01',to:'2026-09-25',page:0})]);
   let calls=0;const fetcher=async()=>{calls++;return {total:1,items:[{directAcquisitionId:99123456,finalizationDate:'2026-07-15T12:00:00+03:00'}]};};
   expect(await recoveryStep(q,fetcher)).toBe(true);expect(await recoveryStep(q,fetcher)).toBe(false);expect(calls).toBe(1);
   const [t]=await q`select * from app.collection_tasks`;expect(t?.status).toBe('complete');
   const [r]=await q`select count(*)::int n from raw.raw_documents where external_id='da:99123456'`;expect(r?.n).toBe(1);
+ });
+ it('lets two lanes claim distinct tasks and commit their independent archives',async()=>{
+  await insertTasks(q,[task('fixture','da','da',{authorityId:7848,from:'2026-07-01',to:'2026-09-25',page:0}),task('fixture','da','da',{authorityId:7849,from:'2026-07-01',to:'2026-09-25',page:0})]);
+  let release!:()=>void,started!:()=>void;
+  const held=new Promise<void>(r=>release=r),ready=new Promise<void>(r=>started=r);const ids:number[]=[];
+  const first=recoveryStep(q,async t=>{ids.push(t.id!);started();await held;return {total:0,items:[]};},'0');
+  await ready;
+  try{
+   expect(await recoveryStep(q,async t=>{ids.push(t.id!);return {total:0,items:[]};},'1')).toBe(true);
+   expect(new Set(ids).size).toBe(2);
+   expect((await q`select status from app.collection_batches where id='fixture'`)[0]!.status).toBe('collecting');
+  }finally{release();await first;}
+  expect((await q`select count(*)::int n from app.collection_tasks where status='complete'`)[0]!.n).toBe(2);
+ });
+ it('does not turn an exhausted proxy failure into a global stop through the HTTP-client boundary',async()=>{
+  await insertTasks(q,[task('fixture','da','da',{authorityId:7848,from:'2026-07-01',to:'2026-09-25',page:0}),task('fixture','da','da',{authorityId:7849,from:'2026-07-01',to:'2026-09-25',page:0})]);
+  const client=createHttpClient({baseUrl:'https://example.test',userAgent:'fixture',maxRetries:0,transport:async()=>{throw new CollectionProxyFailureError('Scoped failure');}});
+  expect(await recoveryStep(q,()=>client.getJson('/fixture'))).toBe(true);
+  expect((await q`select blocked_reason from app.collection_control`)[0]!.blocked_reason).toBeNull();
+  expect((await q`select count(*)::int n from app.collection_tasks where status='failed'`)[0]!.n).toBe(1);
+  expect(await recoveryStep(q,async()=>({total:0,items:[]}))).toBe(true);
+ });
+ it('isolates a source detail error and continues with another notice',async()=>{
+  await insertTasks(q,[task('fixture','tenders','detail',{noticeId:99123460,noticeType:2,page:0}),task('fixture','da','da',{authorityId:7848,from:'2026-07-01',to:'2026-09-25',page:0})]);
+  await q`update app.collection_batches set next_stream=1`;
+  expect(await recoveryStep(q,async()=>{throw new ScrapeError('Unavailable','https://e-licitatie.ro/api-pub/fixture',404,1);})).toBe(true);
+  expect((await q`select blocked_reason from app.collection_control`)[0]!.blocked_reason).toBeNull();
+  expect((await q`select status from app.collection_tasks where kind='detail'`)[0]!.status).toBe('failed');
+  expect(await recoveryStep(q,async()=>({total:0,items:[]}))).toBe(true);
+ });
+ it('commits detail children with the root archive and keeps the batch open until they complete',async()=>{
+  await insertTasks(q,[task('fixture','awards','detail',{noticeId:99123461,internalNoticeId:99123462,noticeType:3,noticeVersion:2,noticeNo:'CAN-test',page:0})]);
+  await recoveryStep(q,async()=>({caNoticeID:99123461,noticeID:99123462,noticeNumber:'CAN-test',conditions:{hasEformsDocument:true}}));
+  expect((await q`select count(*)::int n from app.collection_tasks where status='pending'`)[0]!.n).toBe(1);
+  expect((await q`select status from app.collection_batches`)[0]!.status).toBe('collecting');
+  await recoveryStep(q,async()=>({headerModel:{noticeId:99123462,noticeNumber:'CAN-test',sysNoticeType:{id:3}},changeNoticeHtml:'<p>'+('source content '.repeat(20))+'</p>'}));
+  await recoveryStep(q,async()=>{throw Error('Unexpected call');});
+  expect((await q`select status from app.collection_batches`)[0]!.status).toBe('collected');
  });
  it('rolls back task completion and archive if a downstream task write fails',async()=>{
   await insertTasks(q,[task('fixture','awards','list',{from:'2026-09-25',to:'2026-09-25',page:0})]);

@@ -1,0 +1,385 @@
+{
+  "query": "duplicate-impact",
+  "elapsed_seconds": 17.116,
+  "exit_code": 0,
+  "rows": [
+    {
+      "test": "strict_summary",
+      "data": {
+        "rows": 18691,
+        "groups": 9336,
+        "cross_notice_groups": 8237,
+        "candidate_excess_ron": "7422221055.05",
+        "extra_included_records": 8578,
+        "included_multiple_groups": 8559
+      }
+    },
+    {
+      "test": "latest_included",
+      "data": [
+        {
+          "n": 2,
+          "ids": [
+            2127703
+          ],
+          "title": "Contract REACTIVI",
+          "notices": 2,
+          "currency": "RON",
+          "included": 2,
+          "contract_no": "A1641",
+          "external_ids": [
+            107828300,
+            108117421
+          ],
+          "lots_caption": "4. REACTIVI  de HEMATOLOGIE   CU DETERMINARE FORMULEI  LEUCOCITARE   5 DIFF  PRIN CITOMETRIE ÎN FLUX CU TEHNOLOGIE LASER",
+          "contract_date": "2026-07-07T00:00:00+03:00",
+          "contract_value": 26376.9,
+          "included_value": 52753.8,
+          "authority_entity_id": 2019012
+        },
+        {
+          "n": 2,
+          "ids": [
+            2127703
+          ],
+          "title": "Contract REACTIVI",
+          "notices": 2,
+          "currency": "RON",
+          "included": 2,
+          "contract_no": "A1642",
+          "external_ids": [
+            107828298,
+            108117419
+          ],
+          "lots_caption": "3. REACTIVI PENTRU TESTELE   DE COAGULARE",
+          "contract_date": "2026-07-07T00:00:00+03:00",
+          "contract_value": 19850.16,
+          "included_value": 39700.32,
+          "authority_entity_id": 2019012
+        },
+        {
+          "n": 2,
+          "ids": [
+            2127797
+          ],
+          "title": "Contract REACTIVI",
+          "notices": 2,
+          "currency": "RON",
+          "included": 2,
+          "contract_no": "A1643",
+          "external_ids": [
+            107828301,
+            108117420
+          ],
+          "lots_caption": "2. REACTIVI  de  HEMATOLOGIE CU DETERMINAREA  FORMULEI LEUCOCITARE  6 DIFF PRIN CITOMETRIE ÎN FLUX CU FLUORESCENȚĂ",
+          "contract_date": "2026-07-07T00:00:00+03:00",
+          "contract_value": 16732,
+          "included_value": 33464.0,
+          "authority_entity_id": 2019012
+        },
+        {
+          "n": 2,
+          "ids": [
+            2093737
+          ],
+          "title": "Contract REACTIVI",
+          "notices": 2,
+          "currency": "RON",
+          "included": 2,
+          "contract_no": "A1640",
+          "external_ids": [
+            107828299,
+            108117418
+          ],
+          "lots_caption": "8. CONTROL EXTERN DE CALITATE BIOCHIMIE",
+          "contract_date": "2026-07-07T00:00:00+03:00",
+          "contract_value": 1950,
+          "included_value": 3900.0,
+          "authority_entity_id": 2019012
+        },
+        {
+          "n": 2,
+          "ids": [
+            2075122
+          ],
+          "title": "CONTRACT SUBSECVENT NR : 3 - Lucrări și servicii privind întreținerea periodică a drumurilor publice – Covoare bituminoase BA 16 cu frezare 4 cm – An I – An IV pe autostrăzile și drumurile naționale din administrarea D.R.D.P. Cluj, Acord - cadru 4 ani pe SDN Baia Mare\" pe DN 18 km 90+816 – km 96+053",
+          "notices": 2,
+          "currency": "RON",
+          "included": 2,
+          "contract_no": "24/2007/4",
+          "external_ids": [
+            107819123,
+            108119107
+          ],
+          "lots_caption": "1. Default lot",
+          "contract_date": "2026-07-06T00:00:00+03:00",
+          "contract_value": 1973400,
+          "included_value": 3946800.0,
+          "authority_entity_id": 2146146
+        },
+        {
+          "n": 2,
+          "ids": [
+            2098958
+          ],
+          "title": "LOT 8 BORCA - AGREGATE NATURALE DE BALASTIERA/CARIERA",
+          "notices": 2,
+          "currency": "RON",
+          "included": 2,
+          "contract_no": "166",
+          "external_ids": [
+            107811449,
+            108115854
+          ],
+          "lots_caption": "8. BORCA",
+          "contract_date": "2026-07-02T00:00:00+03:00",
+          "contract_value": 21500,
+          "included_value": 43000.0,
+          "authority_entity_id": 2109412
+        },
+        {
+          "n": 2,
+          "ids": [
+            2070083
+          ],
+          "title": "Contract",
+          "notices": 2,
+          "currency": "RON",
+          "included": 2,
+          "contract_no": "11841",
+          "external_ids": [
+            107806047,
+            108052859
+          ],
+          "lots_caption": "131. Fire de sutura cu acoperire antibacteriana",
+          "contract_date": "2026-07-02T00:00:00+03:00",
+          "contract_value": 909.6,
+          "included_value": 1819.2,
+          "authority_entity_id": 2146486
+        },
+        {
+          "n": 2,
+          "ids": [
+            2125397
+          ],
+          "title": "Contract subsecvent",
+          "notices": 2,
+          "currency": "RON",
+          "included": 2,
+          "contract_no": "1/102",
+          "external_ids": [
+            107798656,
+            108117914
+          ],
+          "lots_caption": "8. Branule",
+          "contract_date": "2026-07-01T00:00:00+03:00",
+          "contract_value": 15700,
+          "included_value": 31400.0,
+          "authority_entity_id": 2146573
+        },
+        {
+          "n": 2,
+          "ids": [
+            1971147
+          ],
+          "title": "Contract subsecvent",
+          "notices": 2,
+          "currency": "RON",
+          "included": 2,
+          "contract_no": "2/88",
+          "external_ids": [
+            107798653,
+            108117883
+          ],
+          "lots_caption": "31. Perfuzoare ac plastic",
+          "contract_date": "2026-07-01T00:00:00+03:00",
+          "contract_value": 1566,
+          "included_value": 3132.0,
+          "authority_entity_id": 2146573
+        },
+        {
+          "n": 2,
+          "ids": [
+            1999088
+          ],
+          "title": "Contract subsecvent",
+          "notices": 2,
+          "currency": "RON",
+          "included": 2,
+          "contract_no": "3/81",
+          "external_ids": [
+            107798657,
+            108117880
+          ],
+          "lots_caption": "29. Sonda urologica, 16. Fesi, 43. Seringi",
+          "contract_date": "2026-07-01T00:00:00+03:00",
+          "contract_value": 1451.5,
+          "included_value": 2903.0,
+          "authority_entity_id": 2146573
+        }
+      ]
+    },
+    {
+      "test": "largest_included",
+      "data": [
+        {
+          "n": 2,
+          "ids": [
+            2124463,
+            2125531
+          ],
+          "title": "Contract LOT 4  “Reabilitare sistem rutier pe arterele Sfântul Constantin, Strada Ionel Perlea, Strada Grigore Cobălcescu și traseul de pe B-dul Ion Mihalache, Calea Griviței, B-dul Bucureștii Noi, B-dul Gloriei inclusiv cap terminal Strada Piatra Morii”",
+          "notices": 2,
+          "currency": "RON",
+          "included": 2,
+          "contract_no": "260",
+          "external_ids": [
+            107561313,
+            108118977
+          ],
+          "lots_caption": "4. LOT 4 - Reabilitare sistem rutier pe arterele Sfântul Constantin, Strada Ionel Perlea, Strada Grigore Cobălcescu și traseul de pe B-dul Ion Mihalache, Calea Griviței, B-dul Bucureștii Noi, B-dul Gloriei inclusiv cap terminal Strada Piatra Morii”, lungime traseu 6,700 km cale dublă linie curentă",
+          "contract_date": "2024-06-03T00:00:00+03:00",
+          "contract_value": 292831934.98,
+          "included_value": 585663869.96,
+          "authority_entity_id": 2144903
+        },
+        {
+          "n": 2,
+          "ids": [
+            2124463,
+            2125531
+          ],
+          "title": "Contract de servicii de proiectare şi execuţie lucrări reabilitare linii de tramvaie având ca obiect ”Achiziții de servicii de proiectare, asistență tehnică din partea proiectantului și lucrări de execuție reabilitare sistem rutier\" - Lot 6 “Reabilitare sistem rutier pe Bulevadul Dimitrie Pompeiu, Șoseaua Petricani, Bulevardul Lacul Tei, Strada Maica Domnului, Strada Reînvierii și Strada Turmelor”",
+          "notices": 2,
+          "currency": "RON",
+          "included": 2,
+          "contract_no": "806",
+          "external_ids": [
+            107561308,
+            108118974
+          ],
+          "lots_caption": "6. LOT 6 - Reabilitare sistem rutier pe Bulevadul Dimitrie Pompeiu, Șoseaua Petricani, Bulevardul Lacul Tei, Strada Maica Domnului, Strada Reînvierii și Strada Turmelor” , lungime traseu 5,300 km cale dublă linie curentă",
+          "contract_date": "2023-10-18T00:00:00+03:00",
+          "contract_value": 217303683.01,
+          "included_value": 434607366.02,
+          "authority_entity_id": 2144903
+        },
+        {
+          "n": 2,
+          "ids": [
+            1982224,
+            2027510,
+            2052925,
+            2077132,
+            2083300,
+            2086611,
+            2097874,
+            2099063,
+            2103270,
+            2105896,
+            2107493,
+            2107654,
+            2111025,
+            2114690,
+            2116890,
+            2119172,
+            2122315,
+            2126583,
+            2126720,
+            2127081
+          ],
+          "title": "Executia lucrarilor de înlocuiri conducte şi racorduri şi realizări  de noi distribuţii de gaze naturale pentru Delgaz Grid S.A. lot 4 NORD",
+          "notices": 2,
+          "currency": "RON",
+          "included": 2,
+          "contract_no": "24424",
+          "external_ids": [
+            107801183,
+            108115496
+          ],
+          "lots_caption": "4. Executia lucrarilor de inlocuiri conducte si bransamente si realizari de noi distributii de gaze naturale - NORD - Jud. Cluj, Bistrita Nasaud, Salaj, Bihor, Maramures, Satu Mare",
+          "contract_date": "2023-04-20T00:00:00+03:00",
+          "contract_value": 198426546.25,
+          "included_value": 396853092.5,
+          "authority_entity_id": 2145705
+        },
+        {
+          "n": 2,
+          "ids": [
+            1982224,
+            2000889,
+            2018815,
+            2059577,
+            2077132,
+            2083300,
+            2086611,
+            2097874,
+            2099063,
+            2103270,
+            2105896,
+            2107493,
+            2107654,
+            2110886,
+            2111025,
+            2114690,
+            2117899,
+            2123330,
+            2126497,
+            2126583,
+            2126720,
+            2126953
+          ],
+          "title": "Executia lucrarilor de înlocuiri conducte şi racorduri şi realizări de noi distribuţii de gaze naturale pentru Delgaz Grid S.A. lot 3 SUD",
+          "notices": 2,
+          "currency": "RON",
+          "included": 2,
+          "contract_no": "24423",
+          "external_ids": [
+            107801118,
+            108115642
+          ],
+          "lots_caption": "3. Executia lucrarilor de inlocuiri conducte si bransamente si realizari de noi distributii de gaze naturale - SUD- Jud. Sibiu, Alba, Mures, Harghita",
+          "contract_date": "2023-04-20T00:00:00+03:00",
+          "contract_value": 198426546.25,
+          "included_value": 396853092.5,
+          "authority_entity_id": 2145705
+        },
+        {
+          "n": 2,
+          "ids": [
+            1982224,
+            1991980,
+            2027063,
+            2083300,
+            2086611,
+            2098244,
+            2099063,
+            2102005,
+            2103270,
+            2107654,
+            2110886,
+            2110890,
+            2111025,
+            2119172,
+            2126583,
+            2126720
+          ],
+          "title": "Executia lucrarilor de înlocuiri conducte şi racorduri şi realizări  de noi distribuţii de gaze naturale pentru Delgaz Grid S.A. lot 2 VEST",
+          "notices": 2,
+          "currency": "RON",
+          "included": 2,
+          "contract_no": "24422",
+          "external_ids": [
+            107801121,
+            108115354
+          ],
+          "lots_caption": "2. Executia lucrarilor de inlocuiri conducte si bransamente si realizari de noi distributii de gaze naturale - VEST  Jud. Timis, Caras Severin, Arad, Hunedoara",
+          "contract_date": "2023-04-20T00:00:00+03:00",
+          "contract_value": 126334171.61,
+          "included_value": 252668343.22,
+          "authority_entity_id": 2145705
+        }
+      ]
+    }
+  ]
+}

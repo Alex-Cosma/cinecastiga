@@ -1,0 +1,350 @@
+{
+  "query": "snapshot",
+  "elapsed_seconds": 1.174,
+  "exit_code": 0,
+  "rows": [
+    {
+      "kind": "refreshes",
+      "data": [
+        {
+          "kind": "coordinated",
+          "status": "ready",
+          "version": 12,
+          "started_at": "2026-10-02T05:15:53.009824+03:00",
+          "methodology": {
+            "flags": "rf-2026.6",
+            "monitoring": "monitoring-refresh-1",
+            "tedNormalization": 2,
+            "procurementCalendar": "Europe/Bucharest-v1",
+            "transactionPopulation": "batch1-canonical-1"
+          },
+          "completed_at": "2026-10-02T05:55:30.606313+03:00"
+        },
+        {
+          "kind": "coordinated",
+          "status": "ready",
+          "version": 11,
+          "started_at": "2026-10-01T19:15:16.900805+03:00",
+          "methodology": {
+            "flags": "rf-2026.6",
+            "monitoring": "monitoring-refresh-1",
+            "tedNormalization": 2,
+            "procurementCalendar": "Europe/Bucharest-v1",
+            "transactionPopulation": "batch1-canonical-1"
+          },
+          "completed_at": "2026-10-01T21:07:38.839464+03:00"
+        },
+        {
+          "kind": "manual",
+          "status": "failed",
+          "version": 10,
+          "started_at": "2026-10-01T18:58:04.056502+03:00",
+          "methodology": {
+            "action": "verified historical authority identity repair"
+          },
+          "completed_at": "2026-10-01T18:58:04.060585+03:00"
+        }
+      ]
+    },
+    {
+      "kind": "controls",
+      "data": [
+        {
+          "paused": true,
+          "maintenance": false,
+          "processing_enabled": false
+        }
+      ]
+    },
+    {
+      "kind": "normalization",
+      "data": [
+        {
+          "transform": "ted-fforms:v1",
+          "updated_at": "2026-07-22T19:28:29.157+03:00",
+          "last_raw_id": 17129558
+        },
+        {
+          "transform": "ted-eforms:v1",
+          "updated_at": "2026-07-22T17:49:09.716+03:00",
+          "last_raw_id": 16289783
+        },
+        {
+          "transform": "da-detail:v1",
+          "updated_at": "2026-07-22T08:41:13.569+03:00",
+          "last_raw_id": 223337
+        },
+        {
+          "transform": "da-list:v1",
+          "updated_at": "2026-10-02T05:16:04.315+03:00",
+          "last_raw_id": 17366058
+        },
+        {
+          "transform": "award-list:v1",
+          "updated_at": "2026-10-02T05:15:54.265+03:00",
+          "last_raw_id": 17365296
+        },
+        {
+          "transform": "award-contracts:v1",
+          "updated_at": "2026-10-02T05:15:58.142+03:00",
+          "last_raw_id": 17366019
+        },
+        {
+          "transform": "tender-list:v1",
+          "updated_at": "2026-09-28T05:14:59.655+03:00",
+          "last_raw_id": 17328529
+        }
+      ]
+    },
+    {
+      "kind": "migrations",
+      "data": [
+        {
+          "count": 47
+        }
+      ]
+    },
+    {
+      "kind": "coverage",
+      "data": [
+        {
+          "dataset": "da",
+          "observation": {
+            "date_to": "2026-09-25",
+            "included": "19608121",
+            "available": "20822960",
+            "date_from": "2018-04-02",
+            "missing_cpv": "12",
+            "missing_raw": "4781104",
+            "missing_date": "4"
+          },
+          "calculated_at": "2026-10-02T05:54:13.361003+03:00"
+        },
+        {
+          "dataset": "contracts",
+          "observation": {
+            "date_to": "2026-09-25",
+            "included": "980558",
+            "available": "1143947",
+            "date_from": "2000-01-06",
+            "allocations": "1110721",
+            "missing_cpv": "1143947",
+            "missing_date": "3",
+            "missing_currency": "404"
+          },
+          "calculated_at": "2026-10-02T05:54:13.361003+03:00"
+        },
+        {
+          "dataset": "ted",
+          "observation": {
+            "date_to": "2026-06-30",
+            "results": "4032082",
+            "available": "161633",
+            "date_from": "2018-01-03",
+            "unverified": "0",
+            "missing_cpv": "0",
+            "missing_date": "0",
+            "unknown_competition": "726330"
+          },
+          "calculated_at": "2026-10-02T05:54:13.361003+03:00"
+        },
+        {
+          "dataset": "years",
+          "observation": [
+            {
+              "n": "33",
+              "src": "contracts",
+              "year": 2000
+            },
+            {
+              "n": "1",
+              "src": "contracts",
+              "year": 2002
+            },
+            {
+              "n": "1",
+              "src": "contracts",
+              "year": 2007
+            },
+            {
+              "n": "1",
+              "src": "contracts",
+              "year": 2008
+            },
+            {
+              "n": "1",
+              "src": "contracts",
+              "year": 2011
+            },
+            {
+              "n": "1",
+              "src": "contracts",
+              "year": 2012
+            },
+            {
+              "n": "2",
+              "src": "contracts",
+              "year": 2013
+            },
+            {
+              "n": "8",
+              "src": "contracts",
+              "year": 2014
+            },
+            {
+              "n": "33",
+              "src": "contracts",
+              "year": 2015
+            },
+            {
+              "n": "199",
+              "src": "contracts",
+              "year": 2016
+            },
+            {
+              "n": "3640",
+              "src": "contracts",
+              "year": 2017
+            },
+            {
+              "n": "59967",
+              "src": "contracts",
+              "year": 2018
+            },
+            {
+              "n": "129947",
+              "src": "contracts",
+              "year": 2019
+            },
+            {
+              "n": "139362",
+              "src": "contracts",
+              "year": 2020
+            },
+            {
+              "n": "159123",
+              "src": "contracts",
+              "year": 2021
+            },
+            {
+              "n": "159650",
+              "src": "contracts",
+              "year": 2022
+            },
+            {
+              "n": "141565",
+              "src": "contracts",
+              "year": 2023
+            },
+            {
+              "n": "144820",
+              "src": "contracts",
+              "year": 2024
+            },
+            {
+              "n": "141937",
+              "src": "contracts",
+              "year": 2025
+            },
+            {
+              "n": "63653",
+              "src": "contracts",
+              "year": 2026
+            },
+            {
+              "n": "2160990",
+              "src": "da",
+              "year": 2018
+            },
+            {
+              "n": "2620114",
+              "src": "da",
+              "year": 2019
+            },
+            {
+              "n": "2384803",
+              "src": "da",
+              "year": 2020
+            },
+            {
+              "n": "2515063",
+              "src": "da",
+              "year": 2021
+            },
+            {
+              "n": "2606625",
+              "src": "da",
+              "year": 2022
+            },
+            {
+              "n": "2457129",
+              "src": "da",
+              "year": 2023
+            },
+            {
+              "n": "2479490",
+              "src": "da",
+              "year": 2024
+            },
+            {
+              "n": "2357081",
+              "src": "da",
+              "year": 2025
+            },
+            {
+              "n": "1241661",
+              "src": "da",
+              "year": 2026
+            },
+            {
+              "n": "5985",
+              "src": "ted",
+              "year": 2018
+            },
+            {
+              "n": "10756",
+              "src": "ted",
+              "year": 2019
+            },
+            {
+              "n": "16094",
+              "src": "ted",
+              "year": 2020
+            },
+            {
+              "n": "19482",
+              "src": "ted",
+              "year": 2021
+            },
+            {
+              "n": "23019",
+              "src": "ted",
+              "year": 2022
+            },
+            {
+              "n": "24858",
+              "src": "ted",
+              "year": 2023
+            },
+            {
+              "n": "25014",
+              "src": "ted",
+              "year": 2024
+            },
+            {
+              "n": "24262",
+              "src": "ted",
+              "year": 2025
+            },
+            {
+              "n": "12163",
+              "src": "ted",
+              "year": 2026
+            }
+          ],
+          "calculated_at": "2026-10-02T05:54:13.361003+03:00"
+        }
+      ]
+    }
+  ]
+}

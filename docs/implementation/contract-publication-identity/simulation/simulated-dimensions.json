@@ -1,0 +1,4208 @@
+[
+  {
+    "dimension": "authority",
+    "key": "2145391",
+    "contracts": 3,
+    "reduction_ron": "3498200"
+  },
+  {
+    "dimension": "authority",
+    "key": "2145460",
+    "contracts": 4,
+    "reduction_ron": "4784620.21"
+  },
+  {
+    "dimension": "authority",
+    "key": "2145018",
+    "contracts": 6,
+    "reduction_ron": "96496.60"
+  },
+  {
+    "dimension": "authority",
+    "key": "2144982",
+    "contracts": 29,
+    "reduction_ron": "55434431.93"
+  },
+  {
+    "dimension": "authority",
+    "key": "2112186",
+    "contracts": 6,
+    "reduction_ron": "840130.16"
+  },
+  {
+    "dimension": "authority",
+    "key": "2146599",
+    "contracts": 5,
+    "reduction_ron": "8471814.21"
+  },
+  {
+    "dimension": "authority",
+    "key": "2143304",
+    "contracts": 1,
+    "reduction_ron": "12718452.78"
+  },
+  {
+    "dimension": "authority",
+    "key": "2019012",
+    "contracts": 70,
+    "reduction_ron": "33997787.93"
+  },
+  {
+    "dimension": "authority",
+    "key": "2145533",
+    "contracts": 3,
+    "reduction_ron": "342074.62"
+  },
+  {
+    "dimension": "authority",
+    "key": "2146443",
+    "contracts": 1905,
+    "reduction_ron": "49355033.80"
+  },
+  {
+    "dimension": "authority",
+    "key": "2146585",
+    "contracts": 194,
+    "reduction_ron": "5590832.68"
+  },
+  {
+    "dimension": "authority",
+    "key": "2146536",
+    "contracts": 3,
+    "reduction_ron": "29885370.0"
+  },
+  {
+    "dimension": "authority",
+    "key": "2146623",
+    "contracts": 126,
+    "reduction_ron": "13285596.68"
+  },
+  {
+    "dimension": "authority",
+    "key": "2145586",
+    "contracts": 6,
+    "reduction_ron": "676333.84"
+  },
+  {
+    "dimension": "authority",
+    "key": "2145253",
+    "contracts": 15,
+    "reduction_ron": "84870"
+  },
+  {
+    "dimension": "authority",
+    "key": "2145556",
+    "contracts": 41,
+    "reduction_ron": "8572217.88"
+  },
+  {
+    "dimension": "authority",
+    "key": "2145416",
+    "contracts": 3,
+    "reduction_ron": "23392514.70"
+  },
+  {
+    "dimension": "authority",
+    "key": "2145626",
+    "contracts": 53,
+    "reduction_ron": "1529986.75"
+  },
+  {
+    "dimension": "authority",
+    "key": "2145660",
+    "contracts": 4,
+    "reduction_ron": "247563290.77"
+  },
+  {
+    "dimension": "authority",
+    "key": "2145862",
+    "contracts": 1,
+    "reduction_ron": "97500"
+  },
+  {
+    "dimension": "authority",
+    "key": "2144029",
+    "contracts": 57,
+    "reduction_ron": "1069919633.03"
+  },
+  {
+    "dimension": "authority",
+    "key": "2144903",
+    "contracts": 16,
+    "reduction_ron": "1059465147.60"
+  },
+  {
+    "dimension": "authority",
+    "key": "2146560",
+    "contracts": 1,
+    "reduction_ron": "42642631.97"
+  },
+  {
+    "dimension": "authority",
+    "key": "2146078",
+    "contracts": 7,
+    "reduction_ron": "28252496.65"
+  },
+  {
+    "dimension": "authority",
+    "key": "2146135",
+    "contracts": 218,
+    "reduction_ron": "188172812.73"
+  },
+  {
+    "dimension": "authority",
+    "key": "2103773",
+    "contracts": 1,
+    "reduction_ron": "621000"
+  },
+  {
+    "dimension": "authority",
+    "key": "2089608",
+    "contracts": 99,
+    "reduction_ron": "560003.75"
+  },
+  {
+    "dimension": "authority",
+    "key": "2146781",
+    "contracts": 15,
+    "reduction_ron": "2115869.60"
+  },
+  {
+    "dimension": "authority",
+    "key": "2145853",
+    "contracts": 16,
+    "reduction_ron": "313249.82"
+  },
+  {
+    "dimension": "authority",
+    "key": "2145299",
+    "contracts": 18,
+    "reduction_ron": "54840029.32"
+  },
+  {
+    "dimension": "authority",
+    "key": "2145910",
+    "contracts": 5,
+    "reduction_ron": "1280621.5"
+  },
+  {
+    "dimension": "authority",
+    "key": "2145178",
+    "contracts": 18,
+    "reduction_ron": "136608"
+  },
+  {
+    "dimension": "authority",
+    "key": "2125638",
+    "contracts": 29,
+    "reduction_ron": "10773662.74"
+  },
+  {
+    "dimension": "authority",
+    "key": "2145933",
+    "contracts": 19,
+    "reduction_ron": "24757579"
+  },
+  {
+    "dimension": "authority",
+    "key": "2129984",
+    "contracts": 70,
+    "reduction_ron": "50442850.11"
+  },
+  {
+    "dimension": "authority",
+    "key": "2145779",
+    "contracts": 7,
+    "reduction_ron": "168480"
+  },
+  {
+    "dimension": "authority",
+    "key": "2048576",
+    "contracts": 5,
+    "reduction_ron": "243880"
+  },
+  {
+    "dimension": "authority",
+    "key": "2146486",
+    "contracts": 1864,
+    "reduction_ron": "905516611.70"
+  },
+  {
+    "dimension": "authority",
+    "key": "2146264",
+    "contracts": 32,
+    "reduction_ron": "4730515.73"
+  },
+  {
+    "dimension": "authority",
+    "key": "2146337",
+    "contracts": 6,
+    "reduction_ron": "15251742"
+  },
+  {
+    "dimension": "authority",
+    "key": "2146127",
+    "contracts": 12,
+    "reduction_ron": "371643888.83"
+  },
+  {
+    "dimension": "authority",
+    "key": "2146510",
+    "contracts": 2,
+    "reduction_ron": "50519"
+  },
+  {
+    "dimension": "authority",
+    "key": "2145826",
+    "contracts": 3,
+    "reduction_ron": "26453620.02"
+  },
+  {
+    "dimension": "authority",
+    "key": "2146247",
+    "contracts": 4,
+    "reduction_ron": "36282324.58"
+  },
+  {
+    "dimension": "authority",
+    "key": "2145705",
+    "contracts": 355,
+    "reduction_ron": "1140203373.06"
+  },
+  {
+    "dimension": "authority",
+    "key": "2053814",
+    "contracts": 1,
+    "reduction_ron": "220661.16"
+  },
+  {
+    "dimension": "authority",
+    "key": "2145827",
+    "contracts": 32,
+    "reduction_ron": "249581142.41"
+  },
+  {
+    "dimension": "authority",
+    "key": "2128745",
+    "contracts": 3,
+    "reduction_ron": "38204635.42"
+  },
+  {
+    "dimension": "authority",
+    "key": "2109562",
+    "contracts": 11,
+    "reduction_ron": "20067.81"
+  },
+  {
+    "dimension": "authority",
+    "key": "2072119",
+    "contracts": 77,
+    "reduction_ron": "536917.4"
+  },
+  {
+    "dimension": "authority",
+    "key": "2146312",
+    "contracts": 1000,
+    "reduction_ron": "694416594.86"
+  },
+  {
+    "dimension": "authority",
+    "key": "2042750",
+    "contracts": 401,
+    "reduction_ron": "49322287.78"
+  },
+  {
+    "dimension": "authority",
+    "key": "2109412",
+    "contracts": 83,
+    "reduction_ron": "23039513.39"
+  },
+  {
+    "dimension": "authority",
+    "key": "2146573",
+    "contracts": 16,
+    "reduction_ron": "26667.2"
+  },
+  {
+    "dimension": "authority",
+    "key": "2145866",
+    "contracts": 220,
+    "reduction_ron": "923632.73"
+  },
+  {
+    "dimension": "authority",
+    "key": "2145402",
+    "contracts": 29,
+    "reduction_ron": "192697191.31"
+  },
+  {
+    "dimension": "authority",
+    "key": "2146146",
+    "contracts": 47,
+    "reduction_ron": "281465676.52"
+  },
+  {
+    "dimension": "authority",
+    "key": "1994645",
+    "contracts": 19,
+    "reduction_ron": "31799131.55"
+  },
+  {
+    "dimension": "authority",
+    "key": "2028258",
+    "contracts": 4,
+    "reduction_ron": "3267089.00"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33651520-9",
+    "contracts": 83,
+    "reduction_ron": "68728986.47"
+  },
+  {
+    "dimension": "cpv",
+    "key": "39715200-9",
+    "contracts": 2,
+    "reduction_ron": "2990592.62"
+  },
+  {
+    "dimension": "cpv",
+    "key": "15811100-7",
+    "contracts": 1,
+    "reduction_ron": "97500"
+  },
+  {
+    "dimension": "cpv",
+    "key": "43611000-9",
+    "contracts": 4,
+    "reduction_ron": "21371945"
+  },
+  {
+    "dimension": "cpv",
+    "key": "50720000-8",
+    "contracts": 10,
+    "reduction_ron": "20595115.65"
+  },
+  {
+    "dimension": "cpv",
+    "key": "38554000-3",
+    "contracts": 4,
+    "reduction_ron": "11591662.4"
+  },
+  {
+    "dimension": "cpv",
+    "key": "45231113-0",
+    "contracts": 347,
+    "reduction_ron": "1126489763.06"
+  },
+  {
+    "dimension": "cpv",
+    "key": "63712000-3",
+    "contracts": 2,
+    "reduction_ron": "1232254.8"
+  },
+  {
+    "dimension": "cpv",
+    "key": "15110000-2",
+    "contracts": 5,
+    "reduction_ron": "1280621.5"
+  },
+  {
+    "dimension": "cpv",
+    "key": "38424000-3",
+    "contracts": 8,
+    "reduction_ron": "13713610"
+  },
+  {
+    "dimension": "cpv",
+    "key": "79521000-2",
+    "contracts": 15,
+    "reduction_ron": "84870"
+  },
+  {
+    "dimension": "cpv",
+    "key": "15500000-3",
+    "contracts": 126,
+    "reduction_ron": "13285596.68"
+  },
+  {
+    "dimension": "cpv",
+    "key": "03200000-3",
+    "contracts": 3,
+    "reduction_ron": "342074.62"
+  },
+  {
+    "dimension": "cpv",
+    "key": "39000000-2",
+    "contracts": 8,
+    "reduction_ron": "11528045.38"
+  },
+  {
+    "dimension": "cpv",
+    "key": "48821000-9",
+    "contracts": 6,
+    "reduction_ron": "2850016.15"
+  },
+  {
+    "dimension": "cpv",
+    "key": "71354300-7",
+    "contracts": 525,
+    "reduction_ron": "687874452.52"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33182210-4",
+    "contracts": 7,
+    "reduction_ron": "45352150"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33696100-6",
+    "contracts": 7,
+    "reduction_ron": "2685540"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33600000-6",
+    "contracts": 220,
+    "reduction_ron": "923632.73"
+  },
+  {
+    "dimension": "cpv",
+    "key": "44411000-4",
+    "contracts": 1,
+    "reduction_ron": "621000"
+  },
+  {
+    "dimension": "cpv",
+    "key": "71520000-9",
+    "contracts": 4,
+    "reduction_ron": "2431110.93"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33141111-1",
+    "contracts": 49,
+    "reduction_ron": "2024030.62"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33631600-8",
+    "contracts": 1,
+    "reduction_ron": "220661.16"
+  },
+  {
+    "dimension": "cpv",
+    "key": "71322000-1",
+    "contracts": 3,
+    "reduction_ron": "3498200"
+  },
+  {
+    "dimension": "cpv",
+    "key": "42419500-1",
+    "contracts": 29,
+    "reduction_ron": "192697191.31"
+  },
+  {
+    "dimension": "cpv",
+    "key": "39162200-7",
+    "contracts": 4,
+    "reduction_ron": "14297114"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33169000-2",
+    "contracts": 1,
+    "reduction_ron": "45500"
+  },
+  {
+    "dimension": "cpv",
+    "key": "77230000-1",
+    "contracts": 51,
+    "reduction_ron": "14768035.39"
+  },
+  {
+    "dimension": "cpv",
+    "key": "30213000-5",
+    "contracts": 6,
+    "reduction_ron": "29014869.94"
+  },
+  {
+    "dimension": "cpv",
+    "key": "77310000-6",
+    "contracts": 30,
+    "reduction_ron": "246590549.79"
+  },
+  {
+    "dimension": "cpv",
+    "key": "45213321-9",
+    "contracts": 3,
+    "reduction_ron": "38204635.42"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33696500-0",
+    "contracts": 88,
+    "reduction_ron": "34134395.93"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33141110-4",
+    "contracts": 30,
+    "reduction_ron": "5511742.6"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33192120-9",
+    "contracts": 2,
+    "reduction_ron": "2894000"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33652000-5",
+    "contracts": 68,
+    "reduction_ron": "30584023.71"
+  },
+  {
+    "dimension": "cpv",
+    "key": "09132000-3",
+    "contracts": 3,
+    "reduction_ron": "26453620.02"
+  },
+  {
+    "dimension": "cpv",
+    "key": "15000000-8",
+    "contracts": 115,
+    "reduction_ron": "873253.57"
+  },
+  {
+    "dimension": "cpv",
+    "key": "79713000-5",
+    "contracts": 26,
+    "reduction_ron": "7987212.34"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33662000-8",
+    "contracts": 8,
+    "reduction_ron": "1255325.8"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33171110-3",
+    "contracts": 41,
+    "reduction_ron": "1782387.6"
+  },
+  {
+    "dimension": "cpv",
+    "key": "72253200-5",
+    "contracts": 29,
+    "reduction_ron": "10773662.74"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33694000-1",
+    "contracts": 15,
+    "reduction_ron": "3437416.26"
+  },
+  {
+    "dimension": "cpv",
+    "key": "50110000-9",
+    "contracts": 3,
+    "reduction_ron": "222607.84"
+  },
+  {
+    "dimension": "cpv",
+    "key": "45232140-5",
+    "contracts": 1,
+    "reduction_ron": "61050236.05"
+  },
+  {
+    "dimension": "cpv",
+    "key": "66513000-9",
+    "contracts": 6,
+    "reduction_ron": "807143.08"
+  },
+  {
+    "dimension": "cpv",
+    "key": "45233139-3",
+    "contracts": 13,
+    "reduction_ron": "84227455.68"
+  },
+  {
+    "dimension": "cpv",
+    "key": "60400000-2",
+    "contracts": 11,
+    "reduction_ron": "20067.81"
+  },
+  {
+    "dimension": "cpv",
+    "key": "90910000-9",
+    "contracts": 8,
+    "reduction_ron": "745348.22"
+  },
+  {
+    "dimension": "cpv",
+    "key": "14210000-6",
+    "contracts": 32,
+    "reduction_ron": "8271478.0"
+  },
+  {
+    "dimension": "cpv",
+    "key": "45214200-2",
+    "contracts": 51,
+    "reduction_ron": "1079943589.97"
+  },
+  {
+    "dimension": "cpv",
+    "key": "39162110-9",
+    "contracts": 6,
+    "reduction_ron": "96496.60"
+  },
+  {
+    "dimension": "cpv",
+    "key": "45410000-4",
+    "contracts": 4,
+    "reduction_ron": "4784620.21"
+  },
+  {
+    "dimension": "cpv",
+    "key": "14820000-5",
+    "contracts": 5,
+    "reduction_ron": "243880"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33615100-5",
+    "contracts": 53,
+    "reduction_ron": "1529986.75"
+  },
+  {
+    "dimension": "cpv",
+    "key": "45233140-2",
+    "contracts": 12,
+    "reduction_ron": "371643888.83"
+  },
+  {
+    "dimension": "cpv",
+    "key": "50532400-7",
+    "contracts": 25,
+    "reduction_ron": "43842769.53"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33172200-8",
+    "contracts": 2,
+    "reduction_ron": "2688177"
+  },
+  {
+    "dimension": "cpv",
+    "key": "45215140-0",
+    "contracts": 1,
+    "reduction_ron": "42642631.97"
+  },
+  {
+    "dimension": "cpv",
+    "key": "45200000-9",
+    "contracts": 3,
+    "reduction_ron": "23392514.70"
+  },
+  {
+    "dimension": "cpv",
+    "key": "45212350-4",
+    "contracts": 1,
+    "reduction_ron": "27445353.57"
+  },
+  {
+    "dimension": "cpv",
+    "key": "09310000-5",
+    "contracts": 4,
+    "reduction_ron": "1147913.54"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33141125-2",
+    "contracts": 12,
+    "reduction_ron": "53938.08"
+  },
+  {
+    "dimension": "cpv",
+    "key": "60112000-6",
+    "contracts": 4,
+    "reduction_ron": "247563290.77"
+  },
+  {
+    "dimension": "cpv",
+    "key": "35121000-8",
+    "contracts": 5,
+    "reduction_ron": "8471814.21"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33194100-7",
+    "contracts": 4,
+    "reduction_ron": "2295200"
+  },
+  {
+    "dimension": "cpv",
+    "key": "45233221-4",
+    "contracts": 12,
+    "reduction_ron": "188018933.56"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33690000-3",
+    "contracts": 409,
+    "reduction_ron": "213938098.62"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33141800-8",
+    "contracts": 41,
+    "reduction_ron": "8572217.88"
+  },
+  {
+    "dimension": "cpv",
+    "key": "66172000-6",
+    "contracts": 473,
+    "reduction_ron": "6399849.27"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33100000-1",
+    "contracts": 25,
+    "reduction_ron": "40009321"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33141000-0",
+    "contracts": 92,
+    "reduction_ron": "104063418.3"
+  },
+  {
+    "dimension": "cpv",
+    "key": "45332000-3",
+    "contracts": 1,
+    "reduction_ron": "18381704.77"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33183100-7",
+    "contracts": 376,
+    "reduction_ron": "144741223.67"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33124130-5",
+    "contracts": 22,
+    "reduction_ron": "17866300.17"
+  },
+  {
+    "dimension": "cpv",
+    "key": "50730000-1",
+    "contracts": 6,
+    "reduction_ron": "676333.84"
+  },
+  {
+    "dimension": "cpv",
+    "key": "39294100-0",
+    "contracts": 77,
+    "reduction_ron": "536917.4"
+  },
+  {
+    "dimension": "cpv",
+    "key": "44162500-8",
+    "contracts": 6,
+    "reduction_ron": "840130.16"
+  },
+  {
+    "dimension": "cpv",
+    "key": "44167000-8",
+    "contracts": 4,
+    "reduction_ron": "3267089.00"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33652100-6",
+    "contracts": 57,
+    "reduction_ron": "60382638.60"
+  },
+  {
+    "dimension": "cpv",
+    "key": "45234126-5",
+    "contracts": 11,
+    "reduction_ron": "995983800.62"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33198200-6",
+    "contracts": 25,
+    "reduction_ron": "2044975.73"
+  },
+  {
+    "dimension": "cpv",
+    "key": "72590000-7",
+    "contracts": 3,
+    "reduction_ron": "29885370.0"
+  },
+  {
+    "dimension": "cpv",
+    "key": "50323000-5",
+    "contracts": 7,
+    "reduction_ron": "168480"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33661000-1",
+    "contracts": 205,
+    "reduction_ron": "64668766.00"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33692800-5",
+    "contracts": 87,
+    "reduction_ron": "246186507.25"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33141642-2",
+    "contracts": 2,
+    "reduction_ron": "47077.5"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33141220-8",
+    "contracts": 10,
+    "reduction_ron": "102470"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33195100-4",
+    "contracts": 2,
+    "reduction_ron": "5225400"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33651400-2",
+    "contracts": 1911,
+    "reduction_ron": "52301764.33"
+  },
+  {
+    "dimension": "cpv",
+    "key": "24310000-0",
+    "contracts": 9,
+    "reduction_ron": "10427006.69"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33111710-1",
+    "contracts": 256,
+    "reduction_ron": "23463933.70"
+  },
+  {
+    "dimension": "cpv",
+    "key": "33140000-3",
+    "contracts": 841,
+    "reduction_ron": "95493753.46"
+  },
+  {
+    "dimension": "cpv",
+    "key": "79930000-2",
+    "contracts": 70,
+    "reduction_ron": "50442850.11"
+  },
+  {
+    "dimension": "cpv",
+    "key": "30125100-2",
+    "contracts": 4,
+    "reduction_ron": "192812.07"
+  },
+  {
+    "dimension": "year",
+    "key": "2024",
+    "contracts": 1490,
+    "reduction_ron": "1916208769.87"
+  },
+  {
+    "dimension": "year",
+    "key": "2023",
+    "contracts": 808,
+    "reduction_ron": "1988101386.46"
+  },
+  {
+    "dimension": "year",
+    "key": "2022",
+    "contracts": 643,
+    "reduction_ron": "683588322.32"
+  },
+  {
+    "dimension": "year",
+    "key": "2018",
+    "contracts": 1,
+    "reduction_ron": "7260833.45"
+  },
+  {
+    "dimension": "year",
+    "key": "2021",
+    "contracts": 189,
+    "reduction_ron": "347108467.49"
+  },
+  {
+    "dimension": "year",
+    "key": "2019",
+    "contracts": 11,
+    "reduction_ron": "20188581.27"
+  },
+  {
+    "dimension": "year",
+    "key": "2026",
+    "contracts": 1447,
+    "reduction_ron": "438712291.24"
+  },
+  {
+    "dimension": "year",
+    "key": "2025",
+    "contracts": 2687,
+    "reduction_ron": "1675150738.81"
+  },
+  {
+    "dimension": "year",
+    "key": "2020",
+    "contracts": 24,
+    "reduction_ron": "24258523.91"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2065370",
+    "contracts": 70,
+    "reduction_ron": "12610712.3675"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2067852",
+    "contracts": 3,
+    "reduction_ron": "2735308.63"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2086934",
+    "contracts": 1,
+    "reduction_ron": "223380.90"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128488",
+    "contracts": 15,
+    "reduction_ron": "3437416.26"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2114690",
+    "contracts": 33,
+    "reduction_ron": "33306411.5150"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2113762",
+    "contracts": 6,
+    "reduction_ron": "2689000.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1982224",
+    "contracts": 18,
+    "reduction_ron": "85675907.90"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2115198",
+    "contracts": 1,
+    "reduction_ron": "29933.84"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2058004",
+    "contracts": 7,
+    "reduction_ron": "21544.70"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2044479",
+    "contracts": 3,
+    "reduction_ron": "33761.13"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2093409",
+    "contracts": 2,
+    "reduction_ron": "2522871.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2016796",
+    "contracts": 1,
+    "reduction_ron": "403778.09"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2025401",
+    "contracts": 1,
+    "reduction_ron": "411750.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128603",
+    "contracts": 5,
+    "reduction_ron": "10740.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2124395",
+    "contracts": 3,
+    "reduction_ron": "3278141.62"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2126820",
+    "contracts": 6,
+    "reduction_ron": "65917.28"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2059577",
+    "contracts": 10,
+    "reduction_ron": "11473902.2050"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2056583",
+    "contracts": 1,
+    "reduction_ron": "1080771.23"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128516",
+    "contracts": 3,
+    "reduction_ron": "66660.02"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2119690",
+    "contracts": 2,
+    "reduction_ron": "510150.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128540",
+    "contracts": 1,
+    "reduction_ron": "280250.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1999563",
+    "contracts": 1,
+    "reduction_ron": "97500.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128332",
+    "contracts": 1,
+    "reduction_ron": "117852.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2084804",
+    "contracts": 1,
+    "reduction_ron": "1119932.51"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2122423",
+    "contracts": 5,
+    "reduction_ron": "99009.19"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128524",
+    "contracts": 1,
+    "reduction_ron": "909036.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2104852",
+    "contracts": 1,
+    "reduction_ron": "18350.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2089380",
+    "contracts": 4,
+    "reduction_ron": "245225.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2124670",
+    "contracts": 1,
+    "reduction_ron": "117852.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2081720",
+    "contracts": 1,
+    "reduction_ron": "20.73"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2093319",
+    "contracts": 31,
+    "reduction_ron": "14963879.71"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2124178",
+    "contracts": 1,
+    "reduction_ron": "66957.84"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127006",
+    "contracts": 14,
+    "reduction_ron": "22556791.33"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2101140",
+    "contracts": 1,
+    "reduction_ron": "1205333.25"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127134",
+    "contracts": 142,
+    "reduction_ron": "45859339.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2000889",
+    "contracts": 15,
+    "reduction_ron": "25633204.65"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2046263",
+    "contracts": 2,
+    "reduction_ron": "2345140.73"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2108864",
+    "contracts": 1,
+    "reduction_ron": "11458.96"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2066275",
+    "contracts": 61,
+    "reduction_ron": "2311370.26"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1987089",
+    "contracts": 3,
+    "reduction_ron": "136250.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2085854",
+    "contracts": 6,
+    "reduction_ron": "182301.33"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2076645",
+    "contracts": 2,
+    "reduction_ron": "20.86"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2069787",
+    "contracts": 111,
+    "reduction_ron": "18508529.78"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2124740",
+    "contracts": 5,
+    "reduction_ron": "4851029.79"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127597",
+    "contracts": 89,
+    "reduction_ron": "3723984.25"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2072200",
+    "contracts": 1,
+    "reduction_ron": "20.73"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2117825",
+    "contracts": 17,
+    "reduction_ron": "4706995.95"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2111644",
+    "contracts": 1,
+    "reduction_ron": "18381704.77"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2095005",
+    "contracts": 2,
+    "reduction_ron": "2480.56"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2111383",
+    "contracts": 8,
+    "reduction_ron": "85647.68"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2119172",
+    "contracts": 5,
+    "reduction_ron": "21842892.90"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2058470",
+    "contracts": 11,
+    "reduction_ron": "25294993.87"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128243",
+    "contracts": 1,
+    "reduction_ron": "11666.66"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2118194",
+    "contracts": 3,
+    "reduction_ron": "2375025.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2116142",
+    "contracts": 6,
+    "reduction_ron": "9671623.30"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2122257",
+    "contracts": 21,
+    "reduction_ron": "14409499.12"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2081460",
+    "contracts": 1,
+    "reduction_ron": "9250000.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2073806",
+    "contracts": 4,
+    "reduction_ron": "393539.62"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1998033",
+    "contracts": 4,
+    "reduction_ron": "2298223.12"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2082783",
+    "contracts": 1,
+    "reduction_ron": "580224.15"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2111376",
+    "contracts": 16,
+    "reduction_ron": "244981.76"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2058505",
+    "contracts": 1,
+    "reduction_ron": "326400.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2123884",
+    "contracts": 91,
+    "reduction_ron": "22993270.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1967186",
+    "contracts": 6,
+    "reduction_ron": "1681371.94"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2126085",
+    "contracts": 7,
+    "reduction_ron": "321580.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2066095",
+    "contracts": 3,
+    "reduction_ron": "679397.15"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1981134",
+    "contracts": 1,
+    "reduction_ron": "1908000.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2126953",
+    "contracts": 3,
+    "reduction_ron": "9692294.17"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2117899",
+    "contracts": 10,
+    "reduction_ron": "17637291.68"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2122464",
+    "contracts": 2,
+    "reduction_ron": "345300.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2120190",
+    "contracts": 1,
+    "reduction_ron": "14214210.67"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2018815",
+    "contracts": 11,
+    "reduction_ron": "19489704.80"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2110704",
+    "contracts": 3,
+    "reduction_ron": "4792583.49"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2105624",
+    "contracts": 3,
+    "reduction_ron": "26453620.02"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2111515",
+    "contracts": 3,
+    "reduction_ron": "2978809.01"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1971166",
+    "contracts": 1,
+    "reduction_ron": "4746972.32"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2079116",
+    "contracts": 30,
+    "reduction_ron": "82196849.82"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2054727",
+    "contracts": 1,
+    "reduction_ron": "5517184.91"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2013875",
+    "contracts": 7,
+    "reduction_ron": "62064.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2112043",
+    "contracts": 1,
+    "reduction_ron": "1616788.62"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1990121",
+    "contracts": 39,
+    "reduction_ron": "5428840.16"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2126787",
+    "contracts": 6,
+    "reduction_ron": "284826.80"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2078861",
+    "contracts": 4,
+    "reduction_ron": "5938.46"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1968778",
+    "contracts": 1,
+    "reduction_ron": "1910971.23"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128259",
+    "contracts": 1,
+    "reduction_ron": "414876.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127439",
+    "contracts": 72,
+    "reduction_ron": "4578048.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2088963",
+    "contracts": 37,
+    "reduction_ron": "30051240.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2052375",
+    "contracts": 1,
+    "reduction_ron": "223482.08"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2162400",
+    "contracts": 2,
+    "reduction_ron": "4443885.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2111162",
+    "contracts": 4,
+    "reduction_ron": "11012227.45"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2101717",
+    "contracts": 5,
+    "reduction_ron": "2117936.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2093737",
+    "contracts": 2,
+    "reduction_ron": "48300.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127148",
+    "contracts": 4,
+    "reduction_ron": "427363.34"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128593",
+    "contracts": 3,
+    "reduction_ron": "6168.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1970037",
+    "contracts": 37,
+    "reduction_ron": "4757220.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2095167",
+    "contracts": 10,
+    "reduction_ron": "228281.05"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2117674",
+    "contracts": 5,
+    "reduction_ron": "4840166.68"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127378",
+    "contracts": 13,
+    "reduction_ron": "380353.30"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2125230",
+    "contracts": 70,
+    "reduction_ron": "12610713.0075"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2115579",
+    "contracts": 30,
+    "reduction_ron": "82196849.82"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2125554",
+    "contracts": 2,
+    "reduction_ron": "1175430.88"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2117248",
+    "contracts": 7,
+    "reduction_ron": "4440041.60"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2110920",
+    "contracts": 7,
+    "reduction_ron": "1295215.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2162216",
+    "contracts": 11,
+    "reduction_ron": "62343.34"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2081036",
+    "contracts": 35,
+    "reduction_ron": "9402532.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128506",
+    "contracts": 2,
+    "reduction_ron": "52972.08"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128437",
+    "contracts": 6,
+    "reduction_ron": "430964.30"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127412",
+    "contracts": 1,
+    "reduction_ron": "4746972.32"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2112463",
+    "contracts": 1,
+    "reduction_ron": "61050236.05"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2082594",
+    "contracts": 2,
+    "reduction_ron": "4085681.53"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2122017",
+    "contracts": 9,
+    "reduction_ron": "10427006.69"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2001139",
+    "contracts": 42,
+    "reduction_ron": "3467260.90"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2123180",
+    "contracts": 1,
+    "reduction_ron": "41429.50"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2066075",
+    "contracts": 8,
+    "reduction_ron": "10322848.60"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2126583",
+    "contracts": 29,
+    "reduction_ron": "84499753.20"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127153",
+    "contracts": 3,
+    "reduction_ron": "200901.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2098424",
+    "contracts": 1,
+    "reduction_ron": "223380.90"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2058889",
+    "contracts": 13,
+    "reduction_ron": "5001974.45"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2162096",
+    "contracts": 26,
+    "reduction_ron": "20320927.18"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2084599",
+    "contracts": 1,
+    "reduction_ron": "16440403.57"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2102367",
+    "contracts": 10,
+    "reduction_ron": "16161389.78"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2125078",
+    "contracts": 3,
+    "reduction_ron": "19055000.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2005427",
+    "contracts": 2,
+    "reduction_ron": "1800848.83"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1973879",
+    "contracts": 2,
+    "reduction_ron": "14039340.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2076787",
+    "contracts": 7,
+    "reduction_ron": "1723376.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2094047",
+    "contracts": 19,
+    "reduction_ron": "65323494.4148"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2126505",
+    "contracts": 28,
+    "reduction_ron": "131476710.3320"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2095113",
+    "contracts": 42,
+    "reduction_ron": "310778.40"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2062872",
+    "contracts": 1,
+    "reduction_ron": "205546.03"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2077392",
+    "contracts": 7,
+    "reduction_ron": "1865187.83"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2066843",
+    "contracts": 50,
+    "reduction_ron": "975964.07"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2110030",
+    "contracts": 2,
+    "reduction_ron": "20664347.55"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2027413",
+    "contracts": 4,
+    "reduction_ron": "58.60"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2115022",
+    "contracts": 2,
+    "reduction_ron": "7960.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2032334",
+    "contracts": 4,
+    "reduction_ron": "15965617.54"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2102468",
+    "contracts": 1,
+    "reduction_ron": "411750.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2123483",
+    "contracts": 2,
+    "reduction_ron": "4299194.48"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2117427",
+    "contracts": 6,
+    "reduction_ron": "351196.85"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2025058",
+    "contracts": 2,
+    "reduction_ron": "20664347.55"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127639",
+    "contracts": 10,
+    "reduction_ron": "5573460.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2111209",
+    "contracts": 13,
+    "reduction_ron": "3648802.25"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2113405",
+    "contracts": 52,
+    "reduction_ron": "5573229.33"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2077132",
+    "contracts": 7,
+    "reduction_ron": "23299360.52"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2110081",
+    "contracts": 2,
+    "reduction_ron": "20.90"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2090832",
+    "contracts": 1,
+    "reduction_ron": "697248.55"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2073971",
+    "contracts": 1,
+    "reduction_ron": "13722676.79"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2094502",
+    "contracts": 3,
+    "reduction_ron": "525440.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1992495",
+    "contracts": 9,
+    "reduction_ron": "64800.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2012502",
+    "contracts": 1,
+    "reduction_ron": "193823.19"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1991980",
+    "contracts": 1,
+    "reduction_ron": "7895885.72"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2097874",
+    "contracts": 11,
+    "reduction_ron": "31307225.89"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2117342",
+    "contracts": 1,
+    "reduction_ron": "67000.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127833",
+    "contracts": 15,
+    "reduction_ron": "3331734.50"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2027063",
+    "contracts": 2,
+    "reduction_ron": "8265817.55"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2079160",
+    "contracts": 1,
+    "reduction_ron": "907580.87"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2125847",
+    "contracts": 1,
+    "reduction_ron": "45500.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2074763",
+    "contracts": 43,
+    "reduction_ron": "42759990.77"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2112586",
+    "contracts": 118,
+    "reduction_ron": "398014.59"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2115860",
+    "contracts": 33,
+    "reduction_ron": "14287462.03"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2114517",
+    "contracts": 2,
+    "reduction_ron": "10218643.20"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2120087",
+    "contracts": 37,
+    "reduction_ron": "425534.87"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2163252",
+    "contracts": 7,
+    "reduction_ron": "37503.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2027593",
+    "contracts": 1,
+    "reduction_ron": "298692.52"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2064565",
+    "contracts": 1,
+    "reduction_ron": "412165.10"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2099624",
+    "contracts": 3,
+    "reduction_ron": "1773521.87"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2070844",
+    "contracts": 3,
+    "reduction_ron": "3150786.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2086614",
+    "contracts": 1,
+    "reduction_ron": "16440403.57"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127508",
+    "contracts": 18,
+    "reduction_ron": "4455917.20"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2161716",
+    "contracts": 2,
+    "reduction_ron": "8444441.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2114974",
+    "contracts": 6,
+    "reduction_ron": "9671623.30"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127703",
+    "contracts": 9,
+    "reduction_ron": "4879250.78"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2054810",
+    "contracts": 4,
+    "reduction_ron": "672902.54"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2162083",
+    "contracts": 1,
+    "reduction_ron": "1910971.28"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2101580",
+    "contracts": 1,
+    "reduction_ron": "401325.93"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1992192",
+    "contracts": 1,
+    "reduction_ron": "16440403.57"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127249",
+    "contracts": 6,
+    "reduction_ron": "92951850.86"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2094421",
+    "contracts": 11,
+    "reduction_ron": "121444.80"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2083300",
+    "contracts": 35,
+    "reduction_ron": "82211955.07"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2125158",
+    "contracts": 2,
+    "reduction_ron": "1959000.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2075601",
+    "contracts": 5,
+    "reduction_ron": "17451451.18"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127577",
+    "contracts": 1,
+    "reduction_ron": "292284.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2125688",
+    "contracts": 8,
+    "reduction_ron": "14046.38"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2107493",
+    "contracts": 11,
+    "reduction_ron": "28135791.50"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2116429",
+    "contracts": 3,
+    "reduction_ron": "87192677.91"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2073388",
+    "contracts": 42,
+    "reduction_ron": "42553899.29"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2119933",
+    "contracts": 18,
+    "reduction_ron": "208788.80"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2020423",
+    "contracts": 4,
+    "reduction_ron": "47432.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1967166",
+    "contracts": 21,
+    "reduction_ron": "2584363.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2106052",
+    "contracts": 1,
+    "reduction_ron": "492650.27"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2065053",
+    "contracts": 4,
+    "reduction_ron": "1147913.54"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2123699",
+    "contracts": 3,
+    "reduction_ron": "1749100.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2099063",
+    "contracts": 12,
+    "reduction_ron": "36670417.29"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2092154",
+    "contracts": 7,
+    "reduction_ron": "1772300.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2107859",
+    "contracts": 7,
+    "reduction_ron": "43809.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2116213",
+    "contracts": 1,
+    "reduction_ron": "2326639.32"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128542",
+    "contracts": 63,
+    "reduction_ron": "14132423.04"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2103499",
+    "contracts": 1,
+    "reduction_ron": "77200.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2125650",
+    "contracts": 10,
+    "reduction_ron": "159341128.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2080440",
+    "contracts": 2,
+    "reduction_ron": "3118500.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2059279",
+    "contracts": 3,
+    "reduction_ron": "2224112.79"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2105695",
+    "contracts": 3,
+    "reduction_ron": "855504.60"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2095891",
+    "contracts": 73,
+    "reduction_ron": "1315684.40"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2125569",
+    "contracts": 2,
+    "reduction_ron": "3679230.72"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2004753",
+    "contracts": 42,
+    "reduction_ron": "2067482.96"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2125809",
+    "contracts": 5,
+    "reduction_ron": "847136.05"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1984936",
+    "contracts": 22,
+    "reduction_ron": "9759209.85"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1990169",
+    "contracts": 1,
+    "reduction_ron": "14214210.65"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2056131",
+    "contracts": 1,
+    "reduction_ron": "1586031.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2114185",
+    "contracts": 30,
+    "reduction_ron": "672640.77"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2102035",
+    "contracts": 4,
+    "reduction_ron": "501258.33"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128224",
+    "contracts": 198,
+    "reduction_ron": "10037073.83"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2126463",
+    "contracts": 28,
+    "reduction_ron": "131476710.0320"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2116890",
+    "contracts": 2,
+    "reduction_ron": "11587856.16"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2104118",
+    "contracts": 3,
+    "reduction_ron": "3785936.82"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1983771",
+    "contracts": 1,
+    "reduction_ron": "1245504.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2161966",
+    "contracts": 33,
+    "reduction_ron": "1276138.01"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2123368",
+    "contracts": 1,
+    "reduction_ron": "16440403.59"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2057184",
+    "contracts": 2,
+    "reduction_ron": "554616.76"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127708",
+    "contracts": 1,
+    "reduction_ron": "2540000.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2045294",
+    "contracts": 1,
+    "reduction_ron": "6359226.39"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2115701",
+    "contracts": 2,
+    "reduction_ron": "1232254.80"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2089820",
+    "contracts": 3,
+    "reduction_ron": "5315305.93"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127758",
+    "contracts": 1,
+    "reduction_ron": "124662.60"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2109930",
+    "contracts": 1,
+    "reduction_ron": "4746972.32"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2079587",
+    "contracts": 21,
+    "reduction_ron": "544675.25"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2073729",
+    "contracts": 473,
+    "reduction_ron": "6399849.27"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2110890",
+    "contracts": 2,
+    "reduction_ron": "8950001.95"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2107654",
+    "contracts": 64,
+    "reduction_ron": "112702945.11"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128489",
+    "contracts": 147,
+    "reduction_ron": "1993763.23"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2164467",
+    "contracts": 1,
+    "reduction_ron": "39297.50"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1981211",
+    "contracts": 7,
+    "reduction_ron": "22068900.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2114777",
+    "contracts": 2,
+    "reduction_ron": "3515882.93"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127797",
+    "contracts": 4,
+    "reduction_ron": "611414.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128402",
+    "contracts": 57,
+    "reduction_ron": "2045947.48"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2125645",
+    "contracts": 2,
+    "reduction_ron": "510235.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2106745",
+    "contracts": 4,
+    "reduction_ron": "988200.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2060166",
+    "contracts": 22,
+    "reduction_ron": "82014.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128662",
+    "contracts": 129,
+    "reduction_ron": "28111614.94"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127715",
+    "contracts": 25,
+    "reduction_ron": "43842769.53"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1989207",
+    "contracts": 4,
+    "reduction_ron": "64728.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2096161",
+    "contracts": 3,
+    "reduction_ron": "3829254.53"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127806",
+    "contracts": 3,
+    "reduction_ron": "29885370.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2125632",
+    "contracts": 53,
+    "reduction_ron": "6723931.99"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2102043",
+    "contracts": 3,
+    "reduction_ron": "5818674.11"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128431",
+    "contracts": 20,
+    "reduction_ron": "485349.60"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2087159",
+    "contracts": 18,
+    "reduction_ron": "2206040.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127838",
+    "contracts": 35,
+    "reduction_ron": "2784830.58"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2055218",
+    "contracts": 1,
+    "reduction_ron": "690252.75"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127513",
+    "contracts": 7,
+    "reduction_ron": "2663977.50"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128200",
+    "contracts": 20,
+    "reduction_ron": "2450469.36"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2116865",
+    "contracts": 25,
+    "reduction_ron": "4743904.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2126524",
+    "contracts": 1,
+    "reduction_ron": "4746972.32"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128309",
+    "contracts": 10,
+    "reduction_ron": "3728790.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2034253",
+    "contracts": 2,
+    "reduction_ron": "24450.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2113867",
+    "contracts": 1,
+    "reduction_ron": "20.73"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128368",
+    "contracts": 2,
+    "reduction_ron": "3120.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2085387",
+    "contracts": 8,
+    "reduction_ron": "114655.20"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2074426",
+    "contracts": 158,
+    "reduction_ron": "40320613.88"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2058076",
+    "contracts": 6,
+    "reduction_ron": "3696185.90"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128272",
+    "contracts": 3,
+    "reduction_ron": "319580.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2117253",
+    "contracts": 1,
+    "reduction_ron": "4792605.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127699",
+    "contracts": 3,
+    "reduction_ron": "12655.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2091386",
+    "contracts": 1,
+    "reduction_ron": "50185.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2111918",
+    "contracts": 1,
+    "reduction_ron": "1353898.50"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127485",
+    "contracts": 12,
+    "reduction_ron": "6066666.79"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2167313",
+    "contracts": 2,
+    "reduction_ron": "151982.09"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2126863",
+    "contracts": 1,
+    "reduction_ron": "220661.16"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2117161",
+    "contracts": 1,
+    "reduction_ron": "621000.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2121085",
+    "contracts": 1,
+    "reduction_ron": "114000.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128561",
+    "contracts": 148,
+    "reduction_ron": "8271103.40"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2088410",
+    "contracts": 2,
+    "reduction_ron": "3969000.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2164063",
+    "contracts": 2,
+    "reduction_ron": "20664347.59"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2126394",
+    "contracts": 8,
+    "reduction_ron": "13713610.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2034724",
+    "contracts": 4,
+    "reduction_ron": "58.64"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2118450",
+    "contracts": 3,
+    "reduction_ron": "1749100.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2124764",
+    "contracts": 8,
+    "reduction_ron": "665036.33"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127766",
+    "contracts": 30,
+    "reduction_ron": "1098249.86"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2090451",
+    "contracts": 31,
+    "reduction_ron": "6566212.22"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2106359",
+    "contracts": 3,
+    "reduction_ron": "312000.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2061841",
+    "contracts": 1,
+    "reduction_ron": "4746972.32"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2075271",
+    "contracts": 1,
+    "reduction_ron": "410827.50"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2068484",
+    "contracts": 1,
+    "reduction_ron": "652799.89"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128399",
+    "contracts": 1,
+    "reduction_ron": "4746972.32"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2070083",
+    "contracts": 11,
+    "reduction_ron": "856256.63"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2019162",
+    "contracts": 1,
+    "reduction_ron": "42840.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2161959",
+    "contracts": 1,
+    "reduction_ron": "6400.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2031711",
+    "contracts": 1,
+    "reduction_ron": "12445357.97"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2085248",
+    "contracts": 11,
+    "reduction_ron": "8091723.08"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2118403",
+    "contracts": 5,
+    "reduction_ron": "1848200.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128499",
+    "contracts": 2,
+    "reduction_ron": "9694.08"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2124554",
+    "contracts": 20,
+    "reduction_ron": "532033.40"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2122315",
+    "contracts": 6,
+    "reduction_ron": "16549158.68"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2089943",
+    "contracts": 1,
+    "reduction_ron": "1910971.23"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2038300",
+    "contracts": 7,
+    "reduction_ron": "45338.33"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1977569",
+    "contracts": 2,
+    "reduction_ron": "212296.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2110886",
+    "contracts": 5,
+    "reduction_ron": "27774961.03"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2084802",
+    "contracts": 84,
+    "reduction_ron": "11732537.50"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2119115",
+    "contracts": 6,
+    "reduction_ron": "4606800.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2123341",
+    "contracts": 5,
+    "reduction_ron": "5378477.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2105688",
+    "contracts": 2,
+    "reduction_ron": "151982.07"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2065413",
+    "contracts": 114,
+    "reduction_ron": "62401096.66"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2090504",
+    "contracts": 15,
+    "reduction_ron": "2820093.57"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2164064",
+    "contracts": 1,
+    "reduction_ron": "36897886.76"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2098807",
+    "contracts": 10,
+    "reduction_ron": "8430300.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2115547",
+    "contracts": 2,
+    "reduction_ron": "1756515.66"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1967951",
+    "contracts": 33,
+    "reduction_ron": "27512000.20"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2095342",
+    "contracts": 20,
+    "reduction_ron": "2152594.16"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2077986",
+    "contracts": 70,
+    "reduction_ron": "12610712.3675"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128023",
+    "contracts": 42,
+    "reduction_ron": "7750852.82"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2161781",
+    "contracts": 2,
+    "reduction_ron": "5955.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1967158",
+    "contracts": 28,
+    "reduction_ron": "131476710.0320"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2103507",
+    "contracts": 1,
+    "reduction_ron": "36897886.76"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2126396",
+    "contracts": 4,
+    "reduction_ron": "60698.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2126287",
+    "contracts": 4,
+    "reduction_ron": "6540897.86"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2115970",
+    "contracts": 1,
+    "reduction_ron": "223482.08"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2125531",
+    "contracts": 4,
+    "reduction_ron": "360034484.12"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2161891",
+    "contracts": 1,
+    "reduction_ron": "108000.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2096850",
+    "contracts": 19,
+    "reduction_ron": "65323494.4148"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2123629",
+    "contracts": 10,
+    "reduction_ron": "29838367.05"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2072996",
+    "contracts": 6,
+    "reduction_ron": "199100.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2123375",
+    "contracts": 2,
+    "reduction_ron": "1586196.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2098958",
+    "contracts": 3,
+    "reduction_ron": "387760.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2162089",
+    "contracts": 1,
+    "reduction_ron": "908697.95"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1971147",
+    "contracts": 46,
+    "reduction_ron": "3406161.82"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2162181",
+    "contracts": 25,
+    "reduction_ron": "175981.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2112085",
+    "contracts": 6,
+    "reduction_ron": "60000.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2104533",
+    "contracts": 28,
+    "reduction_ron": "131476710.0320"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2005065",
+    "contracts": 1,
+    "reduction_ron": "15000.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2063424",
+    "contracts": 1,
+    "reduction_ron": "12445357.97"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2126116",
+    "contracts": 1,
+    "reduction_ron": "78450.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2161861",
+    "contracts": 5,
+    "reduction_ron": "715780.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2118230",
+    "contracts": 4,
+    "reduction_ron": "16886000.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2075995",
+    "contracts": 70,
+    "reduction_ron": "12610712.3675"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2111827",
+    "contracts": 1,
+    "reduction_ron": "4746972.32"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2077080",
+    "contracts": 6,
+    "reduction_ron": "132907.60"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2023823",
+    "contracts": 7,
+    "reduction_ron": "26529250.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127259",
+    "contracts": 4,
+    "reduction_ron": "797468.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2161704",
+    "contracts": 217,
+    "reduction_ron": "153268739.03"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128151",
+    "contracts": 33,
+    "reduction_ron": "1144259.78"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2123330",
+    "contracts": 3,
+    "reduction_ron": "11416833.98"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2052925",
+    "contracts": 13,
+    "reduction_ron": "15496249.31"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128457",
+    "contracts": 1,
+    "reduction_ron": "1325055.56"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2056562",
+    "contracts": 26,
+    "reduction_ron": "8766469.67"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2061712",
+    "contracts": 1,
+    "reduction_ron": "717000.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1999088",
+    "contracts": 2,
+    "reduction_ron": "3153.50"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2122075",
+    "contracts": 8,
+    "reduction_ron": "1035144.89"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2079959",
+    "contracts": 6,
+    "reduction_ron": "1742112.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2123758",
+    "contracts": 30,
+    "reduction_ron": "82196850.15"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2111025",
+    "contracts": 15,
+    "reduction_ron": "43073294.27"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2162062",
+    "contracts": 5,
+    "reduction_ron": "570700.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2066447",
+    "contracts": 3,
+    "reduction_ron": "2086059.60"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2161971",
+    "contracts": 1,
+    "reduction_ron": "4746972.43"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128656",
+    "contracts": 28,
+    "reduction_ron": "34719.80"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2077801",
+    "contracts": 27,
+    "reduction_ron": "13497361.06"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2161723",
+    "contracts": 21,
+    "reduction_ron": "162181.56"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2074988",
+    "contracts": 1,
+    "reduction_ron": "12005815.21"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128486",
+    "contracts": 2,
+    "reduction_ron": "26878.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2108071",
+    "contracts": 5,
+    "reduction_ron": "2523392.26"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2118005",
+    "contracts": 28,
+    "reduction_ron": "834132.80"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2034895",
+    "contracts": 5,
+    "reduction_ron": "243880.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2164062",
+    "contracts": 2,
+    "reduction_ron": "20664347.55"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2080523",
+    "contracts": 1,
+    "reduction_ron": "205546.03"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2125397",
+    "contracts": 27,
+    "reduction_ron": "11635622.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2124748",
+    "contracts": 19,
+    "reduction_ron": "65323494.4148"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2124463",
+    "contracts": 32,
+    "reduction_ron": "491511194.1420"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2113577",
+    "contracts": 4,
+    "reduction_ron": "12518444.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2065404",
+    "contracts": 20,
+    "reduction_ron": "79046171.1948"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2109090",
+    "contracts": 3,
+    "reduction_ron": "2463988.04"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2126980",
+    "contracts": 1,
+    "reduction_ron": "42840.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2092369",
+    "contracts": 56,
+    "reduction_ron": "1651035.45"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2088844",
+    "contracts": 2,
+    "reduction_ron": "194904.60"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127122",
+    "contracts": 3,
+    "reduction_ron": "81048.50"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2112321",
+    "contracts": 1,
+    "reduction_ron": "3363138.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127175",
+    "contracts": 15,
+    "reduction_ron": "16149.10"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2105441",
+    "contracts": 1,
+    "reduction_ron": "2838060.58"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127081",
+    "contracts": 3,
+    "reduction_ron": "15289426.11"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127451",
+    "contracts": 16,
+    "reduction_ron": "498047.75"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2162081",
+    "contracts": 1,
+    "reduction_ron": "1910971.23"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2091998",
+    "contracts": 1,
+    "reduction_ron": "205546.04"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2086611",
+    "contracts": 15,
+    "reduction_ron": "64207649.05"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2118863",
+    "contracts": 12,
+    "reduction_ron": "770933.79"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2126722",
+    "contracts": 4,
+    "reduction_ron": "3267089.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2120040",
+    "contracts": 2,
+    "reduction_ron": "216045.85"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2112098",
+    "contracts": 7,
+    "reduction_ron": "3835034.35"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2043481",
+    "contracts": 5,
+    "reduction_ron": "20640.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2068900",
+    "contracts": 7,
+    "reduction_ron": "11725980.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128597",
+    "contracts": 5,
+    "reduction_ron": "3533.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128622",
+    "contracts": 449,
+    "reduction_ron": "193274151.72"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2105245",
+    "contracts": 1,
+    "reduction_ron": "30800.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2110241",
+    "contracts": 1,
+    "reduction_ron": "4746972.32"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2078618",
+    "contracts": 3,
+    "reduction_ron": "32457.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2053945",
+    "contracts": 2,
+    "reduction_ron": "5269714.20"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2164060",
+    "contracts": 1,
+    "reduction_ron": "12445358.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2114108",
+    "contracts": 15,
+    "reduction_ron": "2704192.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2080550",
+    "contracts": 1,
+    "reduction_ron": "907580.87"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2073787",
+    "contracts": 1,
+    "reduction_ron": "12445357.97"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2105859",
+    "contracts": 1,
+    "reduction_ron": "146699.52"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2161967",
+    "contracts": 16,
+    "reduction_ron": "6450440.67"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2057970",
+    "contracts": 1,
+    "reduction_ron": "5122601.45"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2114968",
+    "contracts": 3,
+    "reduction_ron": "285277.70"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2117992",
+    "contracts": 5,
+    "reduction_ron": "3364473.20"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2074331",
+    "contracts": 27,
+    "reduction_ron": "394295.69"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2111245",
+    "contracts": 1,
+    "reduction_ron": "4746972.32"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2109343",
+    "contracts": 2,
+    "reduction_ron": "2500861.29"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2162090",
+    "contracts": 1,
+    "reduction_ron": "908697.95"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2069809",
+    "contracts": 5,
+    "reduction_ron": "3680.28"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2162082",
+    "contracts": 1,
+    "reduction_ron": "1910971.23"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2058908",
+    "contracts": 7,
+    "reduction_ron": "3398075.53"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2104386",
+    "contracts": 6,
+    "reduction_ron": "840130.16"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127252",
+    "contracts": 4,
+    "reduction_ron": "18519.40"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128077",
+    "contracts": 50,
+    "reduction_ron": "4257979.80"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128471",
+    "contracts": 1,
+    "reduction_ron": "4746972.32"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2090194",
+    "contracts": 4,
+    "reduction_ron": "2431110.93"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1985873",
+    "contracts": 4,
+    "reduction_ron": "1457121.25"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2124578",
+    "contracts": 1,
+    "reduction_ron": "7260833.45"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2126720",
+    "contracts": 28,
+    "reduction_ron": "65198735.72"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1975989",
+    "contracts": 3,
+    "reduction_ron": "1396288.97"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2119195",
+    "contracts": 5,
+    "reduction_ron": "87844.40"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2116444",
+    "contracts": 15,
+    "reduction_ron": "9982396.41"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2124806",
+    "contracts": 1,
+    "reduction_ron": "36511.36"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2016380",
+    "contracts": 2,
+    "reduction_ron": "711678.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2120028",
+    "contracts": 26,
+    "reduction_ron": "205801.07"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2098980",
+    "contracts": 7,
+    "reduction_ron": "870440.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2161857",
+    "contracts": 5,
+    "reduction_ron": "14604.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2059875",
+    "contracts": 1,
+    "reduction_ron": "89877.11"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2124844",
+    "contracts": 1,
+    "reduction_ron": "223680.93"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2088386",
+    "contracts": 4,
+    "reduction_ron": "151600.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2027510",
+    "contracts": 6,
+    "reduction_ron": "12622074.17"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2126741",
+    "contracts": 1,
+    "reduction_ron": "20.78"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128430",
+    "contracts": 582,
+    "reduction_ron": "17309902.37"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2076270",
+    "contracts": 10,
+    "reduction_ron": "4459154.58"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2124565",
+    "contracts": 5,
+    "reduction_ron": "3840000.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2071708",
+    "contracts": 1,
+    "reduction_ron": "74.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127900",
+    "contracts": 1,
+    "reduction_ron": "1353898.50"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2075122",
+    "contracts": 3,
+    "reduction_ron": "8686292.32"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127726",
+    "contracts": 6,
+    "reduction_ron": "185740187.09"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2104357",
+    "contracts": 1,
+    "reduction_ron": "492623.97"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2107344",
+    "contracts": 19,
+    "reduction_ron": "65323494.4148"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2111896",
+    "contracts": 1,
+    "reduction_ron": "255832.06"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2121406",
+    "contracts": 1,
+    "reduction_ron": "340312.67"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2120658",
+    "contracts": 12,
+    "reduction_ron": "128354.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127024",
+    "contracts": 17,
+    "reduction_ron": "101834.60"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2030281",
+    "contracts": 1,
+    "reduction_ron": "7020.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2089071",
+    "contracts": 19,
+    "reduction_ron": "1098710.81"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1997169",
+    "contracts": 22,
+    "reduction_ron": "27887992.65"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2106932",
+    "contracts": 2,
+    "reduction_ron": "180312.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127490",
+    "contracts": 2,
+    "reduction_ron": "1016176.24"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2086783",
+    "contracts": 10,
+    "reduction_ron": "20595115.65"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1994575",
+    "contracts": 38,
+    "reduction_ron": "20199839.97"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2070299",
+    "contracts": 5,
+    "reduction_ron": "97027.20"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1968766",
+    "contracts": 9,
+    "reduction_ron": "723760.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2123838",
+    "contracts": 9,
+    "reduction_ron": "1763996.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2122084",
+    "contracts": 8,
+    "reduction_ron": "4749870.60"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2021160",
+    "contracts": 5,
+    "reduction_ron": "54330.60"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2110059",
+    "contracts": 9,
+    "reduction_ron": "9496842.92"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2161705",
+    "contracts": 3,
+    "reduction_ron": "10320.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1983811",
+    "contracts": 3,
+    "reduction_ron": "22500.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2120104",
+    "contracts": 11,
+    "reduction_ron": "168924.27"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2085338",
+    "contracts": 1,
+    "reduction_ron": "141120.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2108050",
+    "contracts": 2,
+    "reduction_ron": "110954724.97"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2098244",
+    "contracts": 1,
+    "reduction_ron": "7895885.72"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2115727",
+    "contracts": 12,
+    "reduction_ron": "147271856.66"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2071104",
+    "contracts": 22,
+    "reduction_ron": "6111418.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2162061",
+    "contracts": 2,
+    "reduction_ron": "118466.40"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2111321",
+    "contracts": 2,
+    "reduction_ron": "367977.38"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2094872",
+    "contracts": 3,
+    "reduction_ron": "16934256.64"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2163309",
+    "contracts": 1,
+    "reduction_ron": "6359226.39"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2163588",
+    "contracts": 2,
+    "reduction_ron": "20664347.55"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2126497",
+    "contracts": 3,
+    "reduction_ron": "10556357.35"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2054597",
+    "contracts": 1,
+    "reduction_ron": "322079.64"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2097397",
+    "contracts": 3,
+    "reduction_ron": "3038214.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1977040",
+    "contracts": 1,
+    "reduction_ron": "151885.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128223",
+    "contracts": 1,
+    "reduction_ron": "29400.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2063944",
+    "contracts": 6,
+    "reduction_ron": "6284566.53"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127057",
+    "contracts": 117,
+    "reduction_ron": "19805836.06"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2126908",
+    "contracts": 3,
+    "reduction_ron": "62735.47"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127571",
+    "contracts": 2,
+    "reduction_ron": "2688177.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127805",
+    "contracts": 6,
+    "reduction_ron": "213736.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128575",
+    "contracts": 1,
+    "reduction_ron": "15061.20"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2161794",
+    "contracts": 3,
+    "reduction_ron": "1714.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2097983",
+    "contracts": 2,
+    "reduction_ron": "3118500.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2125308",
+    "contracts": 6,
+    "reduction_ron": "20070.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2102943",
+    "contracts": 3,
+    "reduction_ron": "1962395.87"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127440",
+    "contracts": 8,
+    "reduction_ron": "9267000.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128539",
+    "contracts": 7,
+    "reduction_ron": "2026000.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2161687",
+    "contracts": 26,
+    "reduction_ron": "8766469.77"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2102114",
+    "contracts": 19,
+    "reduction_ron": "3518376.30"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2121963",
+    "contracts": 1,
+    "reduction_ron": "2489535.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128633",
+    "contracts": 7,
+    "reduction_ron": "68354.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2020186",
+    "contracts": 39,
+    "reduction_ron": "32694929.42"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2102005",
+    "contracts": 13,
+    "reduction_ron": "14560753.75"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2115381",
+    "contracts": 6,
+    "reduction_ron": "41840.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2068164",
+    "contracts": 2,
+    "reduction_ron": "151982.07"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2080762",
+    "contracts": 13,
+    "reduction_ron": "38061775.71"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1991869",
+    "contracts": 1,
+    "reduction_ron": "124662.60"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2123708",
+    "contracts": 1,
+    "reduction_ron": "334.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2105896",
+    "contracts": 9,
+    "reduction_ron": "38291085.83"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2125957",
+    "contracts": 2,
+    "reduction_ron": "7147777.40"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2085654",
+    "contracts": 7,
+    "reduction_ron": "422040.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128660",
+    "contracts": 1,
+    "reduction_ron": "6216.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2125861",
+    "contracts": 6,
+    "reduction_ron": "62040.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2103270",
+    "contracts": 16,
+    "reduction_ron": "56441081.95"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127549",
+    "contracts": 1,
+    "reduction_ron": "2500.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128600",
+    "contracts": 160,
+    "reduction_ron": "8338878.97"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2107505",
+    "contracts": 1,
+    "reduction_ron": "9088626.69"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128212",
+    "contracts": 378,
+    "reduction_ron": "136145981.98"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2066812",
+    "contracts": 161,
+    "reduction_ron": "218984939.01"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2161692",
+    "contracts": 6,
+    "reduction_ron": "92951850.88"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127694",
+    "contracts": 2,
+    "reduction_ron": "17625.60"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2124529",
+    "contracts": 3,
+    "reduction_ron": "9077754.21"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2127957",
+    "contracts": 7,
+    "reduction_ron": "11114.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128061",
+    "contracts": 8,
+    "reduction_ron": "21628.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2126729",
+    "contracts": 19,
+    "reduction_ron": "65323494.8460"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2101712",
+    "contracts": 6,
+    "reduction_ron": "11953436.19"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2094778",
+    "contracts": 15,
+    "reduction_ron": "3502800.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2162080",
+    "contracts": 1,
+    "reduction_ron": "1910971.23"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2074585",
+    "contracts": 31,
+    "reduction_ron": "1307126.50"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2090592",
+    "contracts": 1,
+    "reduction_ron": "14214210.65"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2161939",
+    "contracts": 1,
+    "reduction_ron": "50000.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2074288",
+    "contracts": 5,
+    "reduction_ron": "21439661.09"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2081278",
+    "contracts": 2,
+    "reduction_ron": "20.86"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2072339",
+    "contracts": 1,
+    "reduction_ron": "18000.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2128512",
+    "contracts": 1,
+    "reduction_ron": "561.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2061939",
+    "contracts": 19,
+    "reduction_ron": "7626237.03"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2108386",
+    "contracts": 4,
+    "reduction_ron": "5084203.91"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2161822",
+    "contracts": 5,
+    "reduction_ron": "71488.85"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2063034",
+    "contracts": 17,
+    "reduction_ron": "5900972.88"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2102580",
+    "contracts": 2,
+    "reduction_ron": "115051.99"
+  },
+  {
+    "dimension": "supplier",
+    "key": "1989980",
+    "contracts": 1,
+    "reduction_ron": "424626.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2074893",
+    "contracts": 3,
+    "reduction_ron": "4488741.78"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2079081",
+    "contracts": 53,
+    "reduction_ron": "1282185.10"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2122853",
+    "contracts": 1,
+    "reduction_ron": "1533771.38"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2019084",
+    "contracts": 2,
+    "reduction_ron": "700345.68"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2003154",
+    "contracts": 7,
+    "reduction_ron": "5736338.22"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2016290",
+    "contracts": 3,
+    "reduction_ron": "270691.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2069783",
+    "contracts": 3,
+    "reduction_ron": "38204635.42"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2102989",
+    "contracts": 2,
+    "reduction_ron": "20664347.55"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2113509",
+    "contracts": 2,
+    "reduction_ron": "45240.00"
+  },
+  {
+    "dimension": "supplier",
+    "key": "2060060",
+    "contracts": 3,
+    "reduction_ron": "2407378.45"
+  }
+]

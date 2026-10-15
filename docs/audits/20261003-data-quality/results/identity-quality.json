@@ -1,0 +1,28 @@
+{
+  "query": "identity-quality",
+  "elapsed_seconds": 1.355,
+  "exit_code": 0,
+  "rows": [
+    {
+      "test": "uat_population",
+      "data": {
+        "authorities": 3164,
+        "missing_population": 0,
+        "nonpositive_population": 5
+      }
+    },
+    {
+      "test": "redirect_profile_residue",
+      "data": {
+        "rows": 0,
+        "value": null
+      }
+    },
+    {
+      "test": "cui_collisions",
+      "data": {
+        "groups": 0
+      }
+    }
+  ]
+}

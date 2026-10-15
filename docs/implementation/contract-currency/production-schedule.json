@@ -1,0 +1,28 @@
+{
+  "checkedAt": "2026-10-03T15:20:20.695987+00:00",
+  "runtimeCommit": "074bc8c8b5ce5f6530649e546910f11daa3e0097",
+  "workflow": "https://github.com/Alex-Cosma/seap-new/actions/runs/37132496528",
+  "ci": "success",
+  "deploy": "success",
+  "productionMigrations": 50,
+  "normalizedContractsBeforeScheduledRepair": 0,
+  "schedule": {
+    "id": "contract-money-v1",
+    "paused": false,
+    "status": "scheduled",
+    "enabled": true,
+    "maxSeconds": 45,
+    "minSeconds": 30,
+    "maintenance": false,
+    "riskWeekday": 0,
+    "scheduledDay": "2026-10-04",
+    "scheduledAtUtc": "2026-10-04T02:00:00+00:00"
+  },
+  "http": {
+    "/api/health": 200,
+    "/intreaba": 200,
+    "/contracte/108116047": 200,
+    "/admin_anonymous": 307
+  },
+  "sourceRequestsMadeByThisOperation": 0
+}

@@ -1,0 +1,35 @@
+{
+  "capturedAt": "2026-10-09T20:21:33.286365+00:00",
+  "failedTaskId": 542533,
+  "previousTaskId": 537029,
+  "requestId": 421931,
+  "httpStatus": 200,
+  "httpOutcome": "success",
+  "parameters": {
+    "pageSize": 100,
+    "pageIndex": 1,
+    "sysNoticeTypeIds": [
+      3,
+      13,
+      18,
+      16,
+      8,
+      20
+    ],
+    "endPublicationDate": "2024-11-28",
+    "startPublicationDate": "2024-11-28",
+    "contractingAuthorityId": null
+  },
+  "responseSha256": "18b1d3e37c064bf8e91819a5d0e865300c941c5504586932277063328beaa43a",
+  "previousTotal": 180,
+  "responseTotal": 180,
+  "previousCount": 100,
+  "currentCount": 80,
+  "currentUniqueCount": 80,
+  "duplicatesWithinPage": {},
+  "overlapWithPreviousPage": [
+    100512354
+  ],
+  "combinedUniqueCount": 179,
+  "note": "Read only extraction of already received response. No new SEAP request; no repair or restart."
+}

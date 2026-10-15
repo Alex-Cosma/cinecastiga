@@ -12,7 +12,7 @@ import os
 from pathlib import Path
 import subprocess
 
-PUBLIC_APP = {'document_blobs', 'document_notices', 'procurement_documents',
+PUBLIC_APP = {'document_blob_chunks', 'document_blobs', 'document_notices', 'procurement_documents',
               'document_pages', 'monitoring_refreshes'}
 PUBLIC_SCHEMAS = {'public', 'core', 'marts', 'raw', 'reference', 'drizzle', 'app', 'auth'}
 

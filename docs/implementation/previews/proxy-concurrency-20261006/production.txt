@@ -1,0 +1,63 @@
+Pager usage is off.
+ revision | paused | maintenance | blocked_reason |        next_allowed_at
+----------+--------+-------------+----------------+-------------------------------
+       63 | f      | f           |                | 2026-10-06 16:01:06.139098+00
+(1 row)
+
+ id | enabled | requests_per_minute | min_seconds | max_seconds | max_in_flight
+----+---------+---------------------+-------------+-------------+---------------
+  1 | t       |                  50 |          35 |          45 |            10
+(1 row)
+
+ configured | enabled | count
+------------+---------+-------
+ t          | t       |   100
+ f          | f       |    10
+(2 rows)
+
+ migration_count
+-----------------
+              60
+(1 row)
+
+        activation_utc         |         observed_utc          | attempts | successes | failed | running | distinct_proxies | observed_starts_per_minute
+-------------------------------+-------------------------------+----------+-----------+--------+---------+------------------+----------------------------
+ 2026-10-06 15:57:46.696237+00 | 2026-10-06 16:01:05.658671+00 |      126 |       120 |      6 |       0 |              100 |                      48.96
+(1 row)
+
+ minimum_global_start_gap_seconds | minimum_ip_start_gap_seconds
+----------------------------------+------------------------------
+                         1.213035 |                   117.597657
+(1 row)
+
+ peak_concurrent_requests
+--------------------------
+                        9
+(1 row)
+
+ peak_concurrent_on_one_proxy
+------------------------------
+                            1
+(1 row)
+
+  id   |  status  | error
+-------+----------+-------
+ 92661 | complete |
+(1 row)
+
+ task_id | timeouts |  status  | last_request_id
+---------+----------+----------+-----------------
+   92661 |        3 | resolved |           15927
+(1 row)
+
+  id   | proxy_id | status | outcome |  phase   | error
+-------+----------+--------+---------+----------+-------
+ 16053 | proxy-24 |    200 | success | complete |
+ 16052 | proxy-28 |    200 | success | complete |
+ 16051 | proxy-23 |    200 | success | complete |
+ 16050 | proxy-25 |    200 | success | complete |
+ 16049 | proxy-21 |    200 | success | complete |
+ 16048 | proxy-19 |    200 | success | complete |
+ 16047 | proxy-20 |    200 | success | complete |
+ 16046 | proxy-17 |    200 | success | complete |
+(8 rows)

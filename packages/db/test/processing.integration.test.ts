@@ -1,16 +1,19 @@
 import {afterAll,beforeEach,describe,expect,it} from 'vitest';
 import {createDb} from '../src/client.js';
-import {claimProcessing,processingStage,failProcessing,finishProcessing,processingSchedule} from '../src/processing.js';
+import {claimProcessing,claimRepairProcessing,claimRecoveryProcessing,processingStage,failProcessing,finishProcessing,processingSchedule} from '../src/processing.js';
+import {CONTRACT_REPORTING_VERSION} from '../src/contract-reporting.js';
 const url=process.env['TEST_DATABASE_URL'];
 if(url&&!/^seap_test_/.test(new URL(url).pathname.slice(1)))throw Error('Isolated test database required');
 const suite=url?describe:describe.skip;
 suite('scheduled publication state machine (no network)',()=>{
  const {sql:q}=createDb(url);
  beforeEach(async()=>{
-  await q`truncate app.processing_runs,app.collection_audit,app.monitoring_refreshes cascade`;
+  await q`truncate app.data_repairs,app.processing_runs,app.collection_audit,app.monitoring_refreshes cascade`;
   await q`insert into app.collection_control(id) values(1) on conflict do nothing`;
-  await q`update app.collection_control set revision=1,paused=false,maintenance=false,blocked_reason=null,
+  await q`update app.collection_control set revision=1,paused=false,maintenance=false,collection_during_maintenance=false,blocked_reason=null,
     processing_enabled=true,processing_enabled_at='2026-09-26T00:00:00Z',processing_time='05:00',risk_weekday=0 where id=1`;
+  await q`insert into app.monitoring_refreshes(kind,status,completed_at,methodology)
+    values('coordinated','ready',clock_timestamp(),${JSON.stringify({contractReporting:CONTRACT_REPORTING_VERSION})}::jsonb)`;
  });
  afterAll(async()=>{await q.end({timeout:5});});
  const sunday=new Date('2026-09-27T02:00:00Z'),monday=new Date('2026-09-28T02:00:00Z');
@@ -43,6 +46,26 @@ suite('scheduled publication state machine (no network)',()=>{
   expect((await q`select maintenance,paused from app.collection_control`)[0]).toMatchObject({maintenance:true,paused:true});
   expect(await claimProcessing(q,monday)).toBeNull();
  });
+ async function backedUp(id:string){
+  await q`update app.processing_runs set raw_boundary=123,stages='{"backup-verified":{"completedAt":"2026-09-28T02:01:00Z"}}',stage='normalize' where id=${id}::uuid`;
+ }
+ it('resumes archive collection after a backed-up failure, keeps publication closed, and retries full next day',async()=>{
+  const run=(await claimProcessing(q,monday))!;await backedUp(run.id);await failProcessing(q,run.id);
+  expect((await q`select maintenance,paused,collection_during_maintenance from app.collection_control`)[0]).toEqual({maintenance:true,paused:false,collection_during_maintenance:true});
+  expect(await claimProcessing(q,monday)).toBeNull();
+  const next=await claimProcessing(q,new Date('2026-09-29T02:00:00Z'));expect(next?.scope).toBe('full');
+  expect((await q`select maintenance,paused,collection_during_maintenance from app.collection_control`)[0]).toEqual({maintenance:true,paused:true,collection_during_maintenance:false});
+ });
+ it.each(['manual','source','revision','busy'])('keeps collection paused for %s despite a verified backup',async why=>{
+  if(why==='manual')await q`update app.collection_control set paused=true`;
+  if(why==='source')await q`update app.collection_control set blocked_reason='source failure'`;
+  const run=(await claimProcessing(q,monday))!;await backedUp(run.id);
+  if(why==='revision')await q`update app.collection_control set revision=revision+1`;
+  if(why==='busy')await q`insert into app.collection_requests(stream,worker,method,endpoint,parameters,outcome) values('da','test','GET','/fixture','{}','running')`;
+  try{await failProcessing(q,run.id);
+   expect((await q`select maintenance,paused,collection_during_maintenance from app.collection_control`)[0]).toEqual({maintenance:true,paused:true,collection_during_maintenance:why==='manual'||why==='source'});
+  }finally{await q`delete from app.collection_requests where worker='test'`;}
+ });
  async function verified(id:string){
   const [cp]=await q`insert into app.monitoring_refreshes(kind,status,completed_at) values('coordinated','ready',now()) returning id`;
   await q`update app.processing_runs set checkpoint_id=${cp!.id},search_verified='{"documents":3}' where id=${id}::uuid`;
@@ -55,6 +78,15 @@ suite('scheduled publication state machine (no network)',()=>{
   expect((await q`select maintenance,paused from app.collection_control`)[0]).toMatchObject({maintenance:false,paused:false});
   expect((await q`select status,stages from app.processing_runs`)[0]).toMatchObject({status:'ready',stages:{reopen:expect.any(Object)}});
   expect(await claimProcessing(q,monday)).toBeNull();
+ });
+ it('marks a one-time repair completed only when its verified publication reopens',async()=>{
+  const run=(await claimProcessing(q,sunday))!;
+  await q`insert into app.data_repairs(id,scheduled_day,status,processing_run_id,applied_at)
+    values('contract-money-v1','2026-09-27','applied',${run.id}::uuid,now())`;
+  await expect(finishProcessing(q,run.id)).rejects.toThrow('maintenance retained');
+  expect((await q`select status from app.data_repairs`)[0]?.status).toBe('applied');
+  await verified(run.id);await finishProcessing(q,run.id);
+  expect((await q`select status,completed_at is not null completed from app.data_repairs`)[0]).toMatchObject({status:'completed',completed:true});
  });
  it('does not override a subsequent administrator change',async()=>{
   const run=(await claimProcessing(q,monday))!;await verified(run.id);
@@ -73,5 +105,36 @@ suite('scheduled publication state machine (no network)',()=>{
  it('reports no next run for a disabled schedule',async()=>{
   await q`update app.collection_control set processing_enabled=false`;
   expect(await processingSchedule(q)).toEqual({next_at:null,next_risk_at:null});
+ });
+ it('allows an explicit full repair today without replacing the completed scheduled run',async()=>{
+  const [clock]=await q`select (now() at time zone 'Europe/Bucharest')::date::text as repair_day`;
+  const [old]=await q`insert into app.processing_runs(scheduled_day,scope,status,completed_at,control_revision,before_control)
+    values(${clock!.repair_day}::date,'full','ready',now(),1,'{}') returning id`;
+  await expect(claimRepairProcessing(q,'reference-import-v1')).rejects.toThrow('scheduled for today');
+  await q`insert into app.data_repairs(id,scheduled_day) values('reference-import-v1',${clock!.repair_day}::date)`;
+  const run=await claimRepairProcessing(q,'reference-import-v1');expect(run.scope).toBe('full');
+  expect((await q`select status,trigger from app.processing_runs where id=${old!.id}`)[0]).toMatchObject({status:'ready',trigger:'scheduled'});
+  expect((await q`select trigger from app.processing_runs where id=${run.id}`)[0]!.trigger).toBe('manual');
+  await expect(claimRepairProcessing(q,'reference-import-v1')).rejects.toThrow('maintenance');
+  await failProcessing(q,run.id);
+  await q`update app.collection_control set maintenance=false,paused=false`;
+  await q`update app.data_repairs set status='completed' where id='reference-import-v1'`;
+  await expect(claimRepairProcessing(q,'reference-import-v1')).rejects.toThrow('scheduled for today');
+ });
+ it('recovers only the latest failed publication while its retained control is unchanged',async()=>{
+  const failed=(await claimProcessing(q,monday))!;
+  await expect(claimRecoveryProcessing(q,failed.id)).rejects.toThrow('latest failed');
+  await failProcessing(q,failed.id);
+  const [control]=await q`select revision from app.collection_control`;
+  await q`update app.collection_control set revision=revision+1`;
+  await expect(claimRecoveryProcessing(q,failed.id)).rejects.toThrow('Operator control changed');
+  await q`update app.collection_control set revision=${control!.revision}`;
+  const run=await claimRecoveryProcessing(q,failed.id);
+  expect(run.scope).toBe('full');
+  expect((await q`select trigger,before_control->>'recoveryOf' origin from app.processing_runs where id=${run.id}`)[0]).toMatchObject({trigger:'manual',origin:failed.id});
+  expect((await q`select status from app.processing_runs where id=${failed.id}`)[0]!.status).toBe('failed');
+  expect((await q`select paused,maintenance from app.collection_control`)[0]).toMatchObject({paused:true,maintenance:true});
+  // Never twice: the recovery is now the latest run, and it is running.
+  await expect(claimRecoveryProcessing(q,failed.id)).rejects.toThrow('latest failed');
  });
 });

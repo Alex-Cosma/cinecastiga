@@ -1,3 +1,5 @@
+import { contractReportable } from '@seap/db';
+import { contractRonValue, canonicalContract, assertContractIdentityQuality, assertContractExclusionsQuality } from "@seap/db";
 import type { DbSql } from "@seap/db";
 
 /**
@@ -46,6 +48,8 @@ export async function runMarts(
   log(`marts bounds: da_max_plausible=${daBound} award_max_plausible=${awBound}`);
 
   const report = await sql.begin(async (q) => {
+    await assertContractIdentityQuality(q);
+    await assertContractExclusionsQuality(q);
     // Calendar days/years must match SEAP detail pages in Romanian time.
     await q`set local time zone 'Europe/Bucharest'`;
     await q`
@@ -62,11 +66,8 @@ export async function runMarts(
     // allocations sum exactly to the source amount. Sub-cent shares keep enough
     // decimal places to retain every positive winner allocation. Competition columns
     // from the CONFIRMED TED crosswalk tier only; null = unknown.
-    // Framework/call-off dedup: an "acord-cadru" row is a CEILING, not money —
-    // when the same notice also published explicit "contract subsecvent" rows
-    // (the actual orders), the framework row would double-count them and is
-    // excluded. Frameworks whose call-offs were never published stay (they are
-    // the available commitment record, not confirmed payments).
+    // Shared source-role policy: republication identity, framework ceilings and
+    // non-additive amendments are handled independently; amounts stay intact.
     await q`
       insert into marts.contract_transactions (
         contract_id, supplier_id, contract_no, ca_notice_id, notice_no,
@@ -75,25 +76,17 @@ export async function runMarts(
         closing_value, contract_value_full, n_winners, finalization_date,
         tenders_received, is_single_bidder, also_in_ted, ted_pubnum
       )
-      with has_sub as (
-        select distinct ca_notice_id from core.contracts
-        where title ~* 'subsecvent'
-      ),
-      base as (
+      with base as (
         select c.id contract_id, c.contract_no, c.ca_notice_id, aw.notice_no,
-               aw.authority_entity_id authority_id, c.contract_value, c.contract_date,
+               aw.authority_entity_id authority_id, ${contractRonValue(q)} as contract_value, c.contract_date,
                aw.cpv_code, aw.procedure_type, aw.acquisition_type
         from core.contracts c
         join core.awards aw on aw.ca_notice_id = c.ca_notice_id
-        where c.contract_value is not null and c.contract_value > 0
-          and c.contract_value <= ${awBound}
+        where ${canonicalContract(q)} and ${contractRonValue(q)} is not null and ${contractRonValue(q)} > 0
+          and ${contractRonValue(q)} <= ${awBound}
           and c.contract_date is not null
-          and (c.currency is null or c.currency ilike '%ron%')
           and aw.authority_entity_id is not null
-          and not (
-            coalesce(c.title, '') ~* 'acord[- ]cadru' and coalesce(c.title, '') !~* 'subsecvent'
-            and c.ca_notice_id in (select ca_notice_id from has_sub)
-          )
+          and ${contractReportable(q)}
       ),
       w as (
         select contract_id, entity_id

@@ -1,0 +1,105 @@
+{
+  "database": "seap_test_currency_20261003",
+  "matched": 25209,
+  "changedMonetaryRecords": 527,
+  "before": {
+    "contracts": "980558",
+    "total_ron": "935335692864.7400"
+  },
+  "after": {
+    "contracts": "980925",
+    "total_ron": "936141296594.43"
+  },
+  "difference": {
+    "delta_ron": "805603729.6900"
+  },
+  "quality": {
+    "checkedAt": "2026-10-03T14:57:29.172Z",
+    "rawBoundary": "17366019",
+    "structuralErrors": 0,
+    "sourceErrors": 0,
+    "newIssues": 0,
+    "counts": [
+      {
+        "status": "converted",
+        "count": 392
+      },
+      {
+        "status": "inconsistent",
+        "count": 24
+      },
+      {
+        "status": "legacy_ron",
+        "count": 1101612
+      },
+      {
+        "status": "legacy_unknown",
+        "count": 17126
+      },
+      {
+        "status": "missing_conversion",
+        "count": 2
+      },
+      {
+        "status": "missing_value",
+        "count": 109
+      },
+      {
+        "status": "ron",
+        "count": 24682
+      }
+    ],
+    "examples": [
+      {
+        "id": "107199273",
+        "status": "missing_value",
+        "title": "Acord cadru Lotul 17 – furnizare alune de pădure, zona Satu Mare, zona Carei, zona Negrești Oaș, zona Tășnad"
+      },
+      {
+        "id": "107199270",
+        "status": "missing_value",
+        "title": "Acord cadru Lotul 15 – furnizare prune proaspete, zona Satu Mare, zona Carei, zona Negrești Oaș, zona Tășnad"
+      },
+      {
+        "id": "107199181",
+        "status": "missing_value",
+        "title": "Acord cadru de lucrari"
+      },
+      {
+        "id": "107200188",
+        "status": "missing_value",
+        "title": "Acord Cadru"
+      },
+      {
+        "id": "107192321",
+        "status": "inconsistent",
+        "title": "ACORD CADRU - Dezinfectant detergent de nivel inalt pentru suprafete, pavimente si aparatura medicala"
+      },
+      {
+        "id": "107080751",
+        "status": "missing_value",
+        "title": "Acord cadru lot 2"
+      },
+      {
+        "id": "107195585",
+        "status": "inconsistent",
+        "title": "Servicii de publicitate video, producere spot TV publicitar - Lot 4"
+      },
+      {
+        "id": "107170673",
+        "status": "missing_value",
+        "title": "Inchiriere AUTOGREDER 8-12 tone , cu operator"
+      },
+      {
+        "id": "107176187",
+        "status": "missing_value",
+        "title": "Servicii de intretinere a Parcului Drumul Taberei"
+      },
+      {
+        "id": "107175123",
+        "status": "missing_value",
+        "title": "Acord cadru  manusi examinare din latex nepudrate"
+      }
+    ]
+  }
+}

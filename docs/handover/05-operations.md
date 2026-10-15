@@ -2,7 +2,7 @@
 
 Acest document transmite mecanisme și decizii, nu autorizație permanentă de administrare. Dezvoltarea locală nu cere acces live. Verificările citire-only sunt distincte de reluarea colectării, migrare, rebuild sau restore.
 
-Consolidat la 1 octombrie 2026. Ultima verificare de producție consemnată este din 30 septembrie, seara: [raport final](../implementation/release-20260930.md). Tranziția calendarului este încheiată; nu se repetă la următorul deploy obișnuit. Pentru starea din momentul intervenției citește controlul și rulările din baza mediului vizat.
+**Pentru politica și starea actualizate la 11 octombrie citește [operarea consolidată](20261011/operations.md).** Documentul de față păstrează și incidente istorice. Consolidarea inițială: 1 octombrie 2026. Ultima verificare de producție consemnată este din 30 septembrie, seara: [raport final](../implementation/release-20260930.md). Tranziția calendarului este încheiată; nu se repetă la următorul deploy obișnuit. Pentru starea din momentul intervenției citește controlul și rulările din baza mediului vizat.
 
 ## Mediu și acces
 
@@ -48,15 +48,15 @@ Schema veche trebuie să poată servi versiunea veche în timpul migrării. Nu e
 
 - Fluxuri: achiziții directe, anunțuri de participare, atribuiri; catalog auxiliar.
 - Recuperare: DAde la 1 iulie 2026, anunțuri/atribuiri de la 1 ianuarie 2026, deduplicare. Vechile loguri nu demonstrau acoperirea completă până la 31 iulie, de aceea s-au ales ferestre suprapuse.
-- Lotul curent `recovery-2026-09-25` are capăt fix 25 septembrie 2026. Nu se extinde automat doar fiindcă azi e o zi nouă.
-- Buget comun pentru colector și documente: interval aleator între începuturile cererilor, configurat prin `app.collection_control.min_seconds/max_seconds`; un request în zbor. **50–70 secunde** este decizia inițială. Ultima setare observată în producție, la 30 septembrie seara, era **40–60 secunde** și a fost păstrată la deploy. Verifică setarea efectivă înainte de operare; nu o reseta automat la valoarea istorică.
-- În plus, GET-urile de fișiere au minimum 60 secunde între începuturi, inclusiv eșecuri.
-- Nicio descărcare automată de PDF-uri; utilizatorul autentificat cere documentul.
+- Lotul `recovery-2026-09-25` își păstrează identificatorul istoric; după activarea `follow_latest`, ținta se extinde zilnic până ieri, de la 02:00 RO (actualizare publicată pe 10 octombrie). Sarcinile existente nu sunt rescrise. [Extindere și ETA](../implementation/recovery-continuous-eta-20261007.md); verifică starea live și confirmarea activării înainte de intervenții.
+- Buget comun pentru colector și documente: în modul direct rămâne o cerere în curs și intervalul din `collection_control`; prin proxy, intervalul pe IP, plafonul total și concurența sunt în `collection_proxy_control`. Limitele acceptate sunt 1–200 porniri/minut și 1–10 cereri simultane, maximum una pe IP. Decizia proprietarului din6octombrie:100proxy-uri noi,35–45s/IP,50/min,10simultane. [Rollout și stare verificată](../implementation/seap-proxy-pool.md#concurrent-requests-and-replacement100-endpoint-pool--2026-10-06). Citește setările live înainte de orice intervenție; valorile istorice nu sunt instrucțiuni de resetare.
+- Regula manuală/serială de minimum 60 secunde între GET-uri nu se aplică identic pool-ului automat autorizat. Acesta folosește bugetul comun, interval per IP și concurență controlată; vezi ghidul consolidat.
+- Colectarea automată de documente este implementată, cu control separat în admin. Politica strictă actuală: numai caiete de sarcini identificate; utilizatorul autentificat poate cere manual și alte fișiere.
 - Pauză zilnică de admitere a cererilor **02:59 inclusiv–03:30 exclusiv**, Europe/Bucharest. Nu schimbă manual paused și nu șterge erori.
 - Cererile deja admise pot termina; OCR poate continua. La 03:30 reluarea este condiționată de celelalte blocaje/bugete.
 - DST: abordare conservatoare pentru ora repetată/lipsă; vezi testele `collection-quiet-window`.
 
-Poarta comună este în PostgreSQL, cu advisory lock ținut pe conexiune rezervată și verificarea PID-ului sesiunii. Nu poate fi înlocuită cu un `sleep` în fiecare worker: două sleep-uri independente dublează traficul.
+Poarta comună este în PostgreSQL: tranzacție pe control pentru admitere, lock comun de drenare și lock-uri exclusive pe cerere/IP, ținute pe sesiuni rezervate. PID-ul și proprietatea cererii sunt verificate; o înregistrare în curs fără lock este tratată ca întrerupere. Nu poate fi înlocuită cu un `sleep` în fiecare worker: două sleep-uri independente dublează traficul.
 
 ### Timeout și diagnostic
 
@@ -69,6 +69,15 @@ Deadline transport 45 secunde. Pentru timeout confirmat pe o sarcină a recuper�
 Sunt 3 încercări totale, aceeași identitate/query. Bugetul persistă în `app.collection_retries` și supraviețuiește restartului. Numai finalizarea validării/arhivării/checkpoint-ului rezolvă sarcina. Documentele din sesiunea browser nu au această reluare automată.
 
 403/429/challenge, răspuns invalid, eroare SQL, conexiune pierdută fără deadline-ul confirmat sau anulare nu sunt tratate automat ca timeout. Păstrează diagnosticele, statusul, parametrii siguri, faza, durata și excepția sanitizată. Nu stoca parole/tokenuri/cookies în jurnal.
+
+**Izolarea erorilor de transport (13 octombrie 2026).** 403/429/challenge și cererile rămase fără rezultat opresc în continuare toată colectarea. În rest:
+
+- Documente: o eroare de proxy pe care browserul nu o poate clasifica (`TRANSPORT_FAILED`, fără răspuns SEAP) e atribuită proxy-ului. Circuitul per proxy o izolează: pauză 5/10 minute, oprire după 3 erori consecutive. Jobul automat se reia cu bugetul lui.
+- Escaladare: dacă **3 proxy-uri diferite** dau asemenea erori neclasificate în **10 minute**, cauza e probabil sursa. Atunci se oprește fluxul `documents` (intrare `stream-auto-paused` în audit, cu motivul).
+- Orice altă eroare de transport nescoped din fluxul de documente oprește **doar** fluxul `documents` (`paused_streams`), nu anunțurile/DA. Reluarea se face din controlul fluxurilor, după verificarea jurnalului.
+- Fluxurile de ingestie (`da`, `tenders`, `awards`, `catalogue`) păstrează oprirea globală pentru erorile nescoped.
+
+Motiv: între 11 și 12 octombrie, 4 opriri globale au venit din câte o singură eroare `TRANSPORT_FAILED` la documente, pe proxy-uri diferite. Cererile prin alte proxy-uri primeau 200 în aceeași secundă, iar în 14 zile nu a existat niciun 403/429/challenge. Pragurile sunt în `UNCLASSIFIED_PROXY_LIMIT` / `UNCLASSIFIED_PROXY_WINDOW_MINUTES` (`packages/db/src/collection.ts`).
 
 Orice manual pause, stream pause, maintenance, daily cap sau source block rămâne independent. O cerere rămasă „running” după pierderea worker-ului impune inspecție; nu o marca success pentru a debloca UI-ul.
 
@@ -95,6 +104,12 @@ Procedura:
 7. Repornește cache-uri/worker-i, verifică health și redeschide doar checkpoint-ul validat, cu revision neschimbat.
 
 La eroare, **mentenanța rămâne activă**, fără retry automat și fără redeschidere pe date amestecate. Un daily poate refuza păstrarea riscului vechi dacă sursele istorice s-au schimbat și nu mai reconciliază; atunci se validează pe copie un full sau restaurarea. Nu dezactiva verificarea ca să termine.
+
+**Recuperarea unei publicări eșuate.** Cu acordul explicit al proprietarului, după ce cauza e corectată și livrată, rulează pe server `nohup bash /srv/seap/src/infra/prod/process-nightly.sh --recover-failed <run-id-eșuat> >> /srv/seap/backups/processing-scheduler.log 2>&1 &`. Comanda acceptă doar ultima rulare, cu status `failed`, cât timp mentenanța e activă și revision-ul e exact cel lăsat de eșec. Orice schimbare de operator după eșec cere o nouă inspecție. Rularea e una manuală `full`, cu backup nou și aceleași porți ca noaptea, iar rularea eșuată rămâne neschimbată în istoric. Nu o folosi pentru a ocoli o verificare care a refuzat datele.
+
+**Alerte pentru operator.** Comanda `claim`, rulată de cron în fiecare minut, trimite pe e-mail adminilor verificați (`auth.users`, rol `admin`) incidentele care cer intervenție: procesare eșuată, procesare fără heartbeat de 15 minute, colectare oprită global (`blocked_reason`) și flux pus automat pe pauză (`stream-auto-paused`). Fiecare incident are o cheie în `app.operational_alerts` și se trimite o singură dată. O oprire globală e un singur incident până se ridică; următoarea oprire primește alt mesaj. Eșecurile SMTP se reîncearcă de cel mult 5 ori. Fără `SMTP_HOST`, incidentele rămân `pending` și apar doar în `processing-scheduler.log`. Incidentele mai vechi de 24 de ore nu se anunță retroactiv. În timpul unei procesări, lock-ul de deploy oprește verificarea, iar alerta pleacă în primul minut după eșec.
+
+**Memoria la `identity-repair`.** Reverificarea publicațiilor aprobate citește registrul în loturi de 500 de grupuri (`REVALIDATION_BATCH`). Fiecare lot include toate contractele și arhivele numerelor sale oficiale de anunț, iar suprapunerile și erorile de verificare se adună peste loturi. Scrierile rămân într-o singură tranzacție, iar o eroare în orice lot anulează tot. Pe 14 octombrie 2026, citirea întregului registru (84.641 de grupuri după aprobările automate din 13 octombrie) a depășit heap-ul Node de ~1 GB, iar site-ul a rămas în mentenanță. Preflight-ul read-only `apps/ingestion/dist/scripts/preflight-publication-versions.js` folosește aceleași loturi și raportează `peakHeapMb`. Rulat cu două valori `REVALIDATION_BATCH`, trebuie să dea aceleași totaluri. Loturile singure n-au fost suficiente: preflight-ul din 14 octombrie a depășit tot ~1 GB după 40 de minute. De aceea containerul `processor` are acum `mem_limit: 6g` și `NODE_OPTIONS=--max-old-space-size=4096`. Ce anume ține memoria rămâne de investigat.
 
 Un fix postgres.js folosește shutdown cu timeout pentru conexiuni rezervate expirate. Un proces care pare blocat după „toate verificările trecute” poate fi în cleanup, nu în calcul; inspectează activitatea DB/logul înainte de a rerula pipeline-ul.
 

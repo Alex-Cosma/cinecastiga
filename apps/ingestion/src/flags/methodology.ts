@@ -5,7 +5,8 @@
  * changes; every flag instance is stamped with it.
  */
 // rf-2026.6: annual/monthly periods use Europe/Bucharest consistently with the source calendar.
-export const METHODOLOGY_VERSION = "rf-2026.6";
+// rf-2026.7: ceilings/addenda are non-additive; uncertain publication identities are temporarily excluded.
+export const METHODOLOGY_VERSION = "rf-2026.7";
 
 export type FlagSubject = "da" | "award" | "authority" | "supplier" | "pair";
 
@@ -139,7 +140,7 @@ export const FLAG_DEFS: FlagDef[] = [
     rationale:
       "Merită verificat cum au fost îndeplinite contractele: personal propriu, subcontractori, echipamente sau revânzare de produse.",
     caveat:
-      "Numărul mediu de salariați nu măsoară singur capacitatea de execuție. Dealeri, importatori și firme cu subcontractare pot avea legitim puțini salariați. Valorile înregistrate pot include plafoane de acord-cadru, nu plăți efective.",
+      "Numărul mediu de salariați nu măsoară singur capacitatea de execuție. Dealeri, importatori și firme cu subcontractare pot avea legitim puțini salariați. Valorile sunt contractate, nu plăți efective; plafoanele acordurilor-cadru sunt excluse.",
   },
   {
     code: "fin_public_reliance",
@@ -150,7 +151,7 @@ export const FLAG_DEFS: FlagDef[] = [
     rationale:
       "Merită comparate durata contractelor, execuția și veniturile raportate. Raportul ajută la alegerea documentelor de verificat, dar nu măsoară ponderea încasărilor de la stat.",
     caveat:
-      "Compară valori contractate cu cifra de afaceri, nu încasări cu venituri. Contractele multianuale și plafoanele acordurilor-cadru pot duce raportul peste 100%. Cotele consorțiilor sunt estimate; unele sectoare au predominant clienți publici.",
+      "Compară valori contractate cu cifra de afaceri, nu încasări cu venituri. Contractele multianuale pot duce raportul peste 100%; plafoanele acordurilor-cadru sunt excluse. Cotele consorțiilor sunt estimate; unele sectoare au predominant clienți publici.",
   },
   {
     code: "net_shared_admin",

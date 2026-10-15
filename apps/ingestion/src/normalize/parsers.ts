@@ -1,4 +1,7 @@
-import { eq } from "drizzle-orm";
+import { normalizeContractMoney } from "./contract-money.js";
+import { reviewedWinnerIdentity } from './reviewed-winner.js';
+import { eq, sql } from "drizzle-orm";
+import {participationNamespace} from '@seap/scraper-clients';
 import { z } from "zod";
 import {
   awards,
@@ -63,6 +66,7 @@ export interface Parser {
 const tenderListSchema = z
   .object({
     cNoticeId: z.number(),
+    noticeId: z.number().int().positive().nullish(),
     noticeNo: z.string().nullish(),
     contractTitle: z.string().nullish(),
     contractingAuthorityNameAndFN: z.string().nullish(),
@@ -108,6 +112,8 @@ async function loadNoticeLike(
   const common = {
     rawId,
     noticeNo: p.noticeNo ?? null,
+    procedureId: (typeof p.procedureId === "string" || (typeof p.procedureId === "number" && Number.isSafeInteger(p.procedureId))) && /^[1-9][0-9]{0,17}$/.test(String(p.procedureId)) ? String(p.procedureId) : null,
+    title: typeof p.contractTitle === "string" ? p.contractTitle : null,
     sysNoticeTypeId: p.sysNoticeTypeId ?? null,
     sysNoticeVersionId: p.sysNoticeVersionId ?? null,
     authorityEntityId,
@@ -135,24 +141,31 @@ async function loadNoticeLike(
       .values({ ...awardCols, caNoticeId: BigInt(p.cNoticeId) })
       .onConflictDoUpdate({ target: awards.caNoticeId, set: awardCols });
   } else {
-    await ctx.tx
+    participationNamespace(p.sysNoticeTypeId);
+    const saved=await ctx.tx
       .insert(notices)
       .values({
         ...common,
         cNoticeId: BigInt(p.cNoticeId),
+        internalNoticeId:p.noticeId==null?null:BigInt(p.noticeId),
         isOnline: p.isOnline ?? null,
         procedureType: labelText(p.sysProcedureType),
         hasLots: p.hasLots ?? null,
       })
       .onConflictDoUpdate({
-        target: notices.cNoticeId,
+        target: [notices.noticeNamespace,notices.cNoticeId],
         set: {
           ...common,
+          noticeNo:sql`coalesce(excluded.notice_no,${notices.noticeNo})`,
+          internalNoticeId:sql`coalesce(excluded.internal_notice_id,${notices.internalNoticeId})`,
           isOnline: p.isOnline ?? null,
           procedureType: labelText(p.sysProcedureType),
           hasLots: p.hasLots ?? null,
         },
-      });
+        setWhere:sql`(${notices.noticeNo} is null or excluded.notice_no is null or ${notices.noticeNo}=excluded.notice_no)
+          and (${notices.internalNoticeId} is null or excluded.internal_notice_id is null or ${notices.internalNoticeId}=excluded.internal_notice_id)`,
+      }).returning({id:notices.id});
+    if(!saved.length)throw Error('Identitatea anunțului diferă în același namespace; înregistrarea existentă a fost păstrată.');
   }
 }
 
@@ -204,12 +217,14 @@ const awardContractsSchema = z
           caNoticeContractId: z.number(),
           caNoticeId: z.number().nullish(),
           contractNo: z.string().nullish(),
+          contractType: z.number().int().nullish(),
           contractTitle: z.string().nullish(),
           contractDate: z.string().nullish(),
-          contractValue: z.number().nullish(),
-          defaultCurrencyContractValue: z.number().nullish(),
+          contractValue: z.union([z.number(), z.string()]).nullish(),
+          defaultCurrencyContractValue: z.union([z.number(), z.string()]).nullish(),
+          currencyRate: z.union([z.number(), z.string()]).nullish(),
           lotsCaption: z.string().nullish(),
-          currency: labeled,
+          currency: z.object({ text: z.string().nullish(), localeKey: z.string().nullish() }).nullish(),
           winner: winnerSchema.nullish(),
           winners: z.array(winnerSchema).nullish(),
         })
@@ -225,6 +240,7 @@ async function loadAwardContracts(
 ): Promise<void> {
   for (const item of p.items) {
     const contractDate = toDate(item.contractDate);
+    const money = { ...normalizeContractMoney(item), amountRawId: rawId };
     const inserted = await ctx.tx
       .insert(contracts)
       .values({
@@ -232,7 +248,10 @@ async function loadAwardContracts(
         caNoticeContractId: BigInt(item.caNoticeContractId),
         caNoticeId: item.caNoticeId != null ? BigInt(item.caNoticeId) : null,
         contractNo: item.contractNo ?? null,
+        sourceContractType: item.contractType ?? null,
+        contractTypeRawId: rawId,
         contractDate,
+        ...money,
         contractValue: dec(item.defaultCurrencyContractValue ?? item.contractValue),
         currency: labelText(item.currency),
         cpvCode: null,
@@ -244,8 +263,11 @@ async function loadAwardContracts(
         set: {
           rawId,
           contractNo: item.contractNo ?? null,
+          sourceContractType: item.contractType ?? null,
+          contractTypeRawId: rawId,
           contractDate,
-          contractValue: dec(item.defaultCurrencyContractValue ?? item.contractValue),
+          ...money,
+        contractValue: dec(item.defaultCurrencyContractValue ?? item.contractValue),
           currency: labelText(item.currency),
           title: item.contractTitle ?? null,
           lotsCaption: item.lotsCaption ?? null,
@@ -262,10 +284,11 @@ async function loadAwardContracts(
           : [];
     for (const w of winnerList) {
       const entityId = await resolveEntity(ctx.tx, {
-        sicapId: w.entityId ?? null,
         namespace: "winner",
-        cuiRaw: w.fiscalNumber ?? null,
-        nameDisplay: w.address?.officialName ?? w.name ?? "(necunoscut)",
+        ...reviewedWinnerIdentity(item.caNoticeContractId,{
+          sicapId:w.entityId??null,cuiRaw:w.fiscalNumber??null,
+          nameDisplay:w.address?.officialName??w.name??"(necunoscut)",
+        }),
         county: labelText(w.address?.county),
         nutsCode: labelText(w.address?.nutsCodeItem),
         country:

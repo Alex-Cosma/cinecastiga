@@ -1,0 +1,32 @@
+{
+  "status": "passed",
+  "copy": "targeted public production rows, isolated local database",
+  "repairs": [
+    {
+      "old": 2276078,
+      "canonical": 2071542,
+      "contracts": 31,
+      "ted": 83
+    },
+    {
+      "old": 2276333,
+      "canonical": 2084714,
+      "contracts": 5,
+      "ted": 5
+    }
+  ],
+  "replayed": 4,
+  "replayPasses": [
+    {
+      "contracts": 141,
+      "winners": 182,
+      "ted": 276
+    },
+    {
+      "contracts": 141,
+      "winners": 182,
+      "ted": 276
+    }
+  ],
+  "oldReferences": 0
+}

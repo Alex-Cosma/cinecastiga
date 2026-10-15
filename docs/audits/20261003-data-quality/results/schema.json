@@ -1,0 +1,302 @@
+{
+  "query": "schema",
+  "elapsed_seconds": 0.332,
+  "exit_code": 0,
+  "rows": [
+    {
+      "table_schema": "app",
+      "table_name": "collection_control",
+      "columns": "id:integer, revision:integer, min_seconds:integer, max_seconds:integer, daily_limit:integer, processing_time:text, paused:boolean, paused_streams:jsonb, blocked_reason:text, blocked_until:timestamp with time zone, next_allowed_at:timestamp with time zone, last_file_at:timestamp with time zone, maintenance:boolean, created_at:timestamp with time zone, updated_at:timestamp with time zone, processing_enabled:boolean, processing_enabled_at:timestamp with time zone, risk_weekday:integer"
+    },
+    {
+      "table_schema": "app",
+      "table_name": "monitoring_refreshes",
+      "columns": "id:uuid, version:bigint, kind:text, status:text, started_at:timestamp with time zone, completed_at:timestamp with time zone, source_coverage:jsonb, methodology:jsonb, validation:jsonb, error:text"
+    },
+    {
+      "table_schema": "core",
+      "table_name": "award_links",
+      "columns": "id:bigint, ted_lot_result_id:bigint, contract_id:bigint, ted_notice_id:bigint, ca_notice_id:bigint, match_score:real, match_method:text, value_diff_pct:numeric, date_diff_days:integer, evidence:jsonb, created_at:timestamp with time zone, is_primary:boolean"
+    },
+    {
+      "table_schema": "core",
+      "table_name": "awards",
+      "columns": "id:bigint, raw_id:bigint, ca_notice_id:bigint, notice_no:text, sys_notice_type_id:integer, sys_notice_version_id:integer, authority_entity_id:bigint, cpv_code:text, cpv_valid:boolean, cpv_raw:text, estimated_value_ron:numeric, ron_contract_value:numeric, lowest_offer_value:numeric, highest_offer_value:numeric, state:text, state_date:timestamp with time zone, acquisition_type:text, procedure_type:text"
+    },
+    {
+      "table_schema": "core",
+      "table_name": "contract_winners",
+      "columns": "contract_id:bigint, entity_id:bigint"
+    },
+    {
+      "table_schema": "core",
+      "table_name": "contracts",
+      "columns": "id:bigint, raw_id:bigint, ca_notice_contract_id:bigint, ca_notice_id:bigint, contract_no:text, contract_date:timestamp with time zone, contract_value:numeric, currency:text, cpv_code:text, title:text, lots_caption:text"
+    },
+    {
+      "table_schema": "core",
+      "table_name": "cpv_codes",
+      "columns": "code:text, name_ro:text, name_en:text, revision:text, division:text"
+    },
+    {
+      "table_schema": "core",
+      "table_name": "da_items",
+      "columns": "id:bigint, da_id:bigint, cpv_code:text, catalog_item_name:text, quantity:numeric, unit_raw:text, unit_canonical:text, unit_factor:numeric, unit_price:numeric, closing_price:numeric, sicap_item_id:bigint"
+    },
+    {
+      "table_schema": "core",
+      "table_name": "direct_acquisitions",
+      "columns": "id:bigint, raw_id:bigint, da_code:text, sicap_da_id:bigint, authority_entity_id:bigint, supplier_entity_id:bigint, cpv_code:text, cpv_valid:boolean, cpv_raw:text, estimated_value_ron:numeric, closing_value:numeric, publication_date:timestamp with time zone, finalization_date:timestamp with time zone, state:text, acquisition_type:text"
+    },
+    {
+      "table_schema": "core",
+      "table_name": "entities",
+      "columns": "id:bigint, cui_canonical:text, cui_valid:boolean, name_display:text, name_normalized:text, legal_form:text, county:text, nuts_code:text, cui_raw_variants:ARRAY, first_seen:timestamp with time zone, last_seen:timestamp with time zone, country_code:text, is_foreign:boolean, foreign_id_raw:text, foreign_id_norm:text"
+    },
+    {
+      "table_schema": "core",
+      "table_name": "entity_name_suggestions",
+      "columns": "id:bigint, entity_a:bigint, entity_b:bigint, score:real, evidence:jsonb, status:text, created_at:timestamp with time zone"
+    },
+    {
+      "table_schema": "core",
+      "table_name": "entity_redirects",
+      "columns": "old_id:bigint, canonical_id:bigint, reason:text, evidence:jsonb, created_at:timestamp with time zone"
+    },
+    {
+      "table_schema": "core",
+      "table_name": "entity_sicap_ids",
+      "columns": "entity_id:bigint, namespace:text, sicap_id:integer"
+    },
+    {
+      "table_schema": "core",
+      "table_name": "flags",
+      "columns": "id:bigint, subject_type:text, subject_id:bigint, partner_id:bigint, flag_code:text, period:text, triggered:boolean, severity:real, evidence:jsonb, methodology_version:text"
+    },
+    {
+      "table_schema": "core",
+      "table_name": "ingestion_watermarks",
+      "columns": "source:text, cursor:text, updated_at:timestamp with time zone"
+    },
+    {
+      "table_schema": "core",
+      "table_name": "normalize_watermarks",
+      "columns": "transform:text, last_raw_id:bigint, updated_at:timestamp with time zone"
+    },
+    {
+      "table_schema": "core",
+      "table_name": "notice_meta",
+      "columns": "notice_no:text, assignment_type:text, has_subsequent:boolean, updated_at:timestamp with time zone"
+    },
+    {
+      "table_schema": "core",
+      "table_name": "notices",
+      "columns": "id:bigint, raw_id:bigint, notice_no:text, sys_notice_type_id:integer, sys_notice_version_id:integer, authority_entity_id:bigint, cpv_code:text, cpv_valid:boolean, cpv_raw:text, estimated_value_ron:numeric, state:text, state_date:timestamp with time zone, is_online:boolean, procedure_type:text, has_lots:boolean, c_notice_id:bigint, acquisition_type:text"
+    },
+    {
+      "table_schema": "core",
+      "table_name": "quarantine",
+      "columns": "id:bigint, raw_id:bigint, endpoint_version:text, zod_error:text, payload_excerpt:jsonb, created_at:timestamp with time zone"
+    },
+    {
+      "table_schema": "core",
+      "table_name": "risk_thresholds",
+      "columns": "key:text, valid_from:timestamp with time zone, valid_to:timestamp with time zone, value_num:numeric, note:text"
+    },
+    {
+      "table_schema": "core",
+      "table_name": "scrape_runs",
+      "columns": "id:bigint, source:text, started_at:timestamp with time zone, finished_at:timestamp with time zone, window_start:timestamp with time zone, window_end:timestamp with time zone, status:text, reported_total:integer, fetched_count:integer, inserted_count:integer, skipped_count:integer, pages_fetched:integer, deviation:integer, error:text"
+    },
+    {
+      "table_schema": "core",
+      "table_name": "sicap_cpv_ids",
+      "columns": "sicap_id:integer, code:text"
+    },
+    {
+      "table_schema": "core",
+      "table_name": "ted_lot_results",
+      "columns": "id:bigint, ted_notice_id:bigint, lot_id:text, result_id:text, cpv_code:text, cpv_valid:boolean, cpv_raw:text, contract_nature:text, title:text, estimated_value_ron:numeric, awarded_value:numeric, currency:text, tenders_received:integer, is_single_bidder:boolean, winner_selection_status:text, contract_date:timestamp with time zone, amount_kind:text, amount_details:jsonb"
+    },
+    {
+      "table_schema": "core",
+      "table_name": "ted_lot_winners",
+      "columns": "lot_result_id:bigint, entity_id:bigint"
+    },
+    {
+      "table_schema": "core",
+      "table_name": "ted_notices",
+      "columns": "id:bigint, raw_id:bigint, publication_number:text, ojs_notice_id:text, notice_type:text, regulatory_domain:text, contract_folder_id:text, notice_uuid:text, procedure_type:text, buyer_entity_id:bigint, buyer_legal_type:text, buyer_activity:text, cpv_code:text, cpv_valid:boolean, cpv_raw:text, contract_nature:text, title:text, estimated_value_ron:numeric, currency:text, awarded_value_total:numeric, eu_funded:boolean, lot_count:integer, publication_date:timestamp with time zone, issue_date:timestamp with time zone, award_date:timestamp with time zone, normalization_version:integer"
+    },
+    {
+      "table_schema": "core",
+      "table_name": "unit_map",
+      "columns": "raw_pattern:text, canonical_unit:text, factor:numeric"
+    },
+    {
+      "table_schema": "marts",
+      "table_name": "agg_map_county",
+      "columns": "county:text, v_plaf:numeric, n_plaf:bigint, v_all:numeric, n_all:bigint"
+    },
+    {
+      "table_schema": "marts",
+      "table_name": "agg_national",
+      "columns": "src:text, v_plaf:numeric, n_plaf:bigint, v_all:numeric, n_all:bigint"
+    },
+    {
+      "table_schema": "marts",
+      "table_name": "agg_top_entities",
+      "columns": "role:text, eid:bigint, nm:text, county:text, v_plaf:numeric, n_plaf:bigint, v_all:numeric, n_all:bigint"
+    },
+    {
+      "table_schema": "marts",
+      "table_name": "agg_years",
+      "columns": "y:text, v_plaf:numeric, n_plaf:bigint, v_all:numeric, n_all:bigint"
+    },
+    {
+      "table_schema": "marts",
+      "table_name": "authority_concentration",
+      "columns": "authority_entity_id:bigint, distinct_suppliers:integer, top_supplier_pct:numeric, hhi:numeric, total_ron:numeric"
+    },
+    {
+      "table_schema": "marts",
+      "table_name": "contract_competition",
+      "columns": "contract_id:bigint, ca_notice_id:bigint, ted_lot_result_id:bigint, match_score:numeric, tenders_received:integer, is_single_bidder:boolean"
+    },
+    {
+      "table_schema": "marts",
+      "table_name": "contract_transactions",
+      "columns": "contract_id:bigint, supplier_id:bigint, contract_no:text, ca_notice_id:bigint, notice_no:text, authority_id:bigint, authority_name:text, supplier_name:text, county:text, cpv_code:text, cpv_name:text, procedure_type:text, acquisition_type:text, closing_value:numeric, contract_value_full:numeric, n_winners:integer, finalization_date:text, tenders_received:integer, is_single_bidder:boolean, also_in_ted:boolean, ted_pubnum:text"
+    },
+    {
+      "table_schema": "marts",
+      "table_name": "cpv_tree",
+      "columns": "code:text, parent_code:text, level:integer, name_ro:text, total_ron:numeric, n_children:integer"
+    },
+    {
+      "table_schema": "marts",
+      "table_name": "da_slicing",
+      "columns": "authority_id:bigint, supplier_id:bigint, supplier_name:text, cpv_class:text, cpv_name:text, d0:date, d1:date, n:bigint, sum_window:numeric, ceiling:numeric, ratio:numeric, acquisition_type:text, date_fallback_count:bigint, type_inferred_count:bigint, methodology_version:text, n_total:bigint, v_total:numeric"
+    },
+    {
+      "table_schema": "marts",
+      "table_name": "da_transactions",
+      "columns": "sicap_da_id:bigint, da_code:text, authority_id:bigint, authority_name:text, supplier_id:bigint, supplier_name:text, county:text, cpv_code:text, cpv_name:text, acquisition_type:text, estimated_value_ron:numeric, closing_value:numeric, publication_date:text, finalization_date:text, gap_minutes:integer, da_flags:ARRAY, value_suspect:boolean"
+    },
+    {
+      "table_schema": "marts",
+      "table_name": "data_coverage",
+      "columns": "dataset:text, observation:jsonb, calculated_at:timestamp with time zone"
+    },
+    {
+      "table_schema": "marts",
+      "table_name": "entity_flags",
+      "columns": "entity_id:bigint, role:text, name_display:text, county:text, n_das:integer, total_ron:numeric, cri:numeric, n_flags:integer, flags:jsonb, cui_canonical:text"
+    },
+    {
+      "table_schema": "marts",
+      "table_name": "entity_profile",
+      "columns": "entity_id:bigint, role:text, n_contracts:integer, n_das:integer, total_ron_full:numeric, total_ron_split:numeric, first_activity:text, last_activity:text, name_display:text, county:text, country_code:text, is_foreign:boolean, uat_siruta:integer, population:integer, employees:integer, employees_year:integer, net_turnover:numeric"
+    },
+    {
+      "table_schema": "marts",
+      "table_name": "entity_top_partners",
+      "columns": "entity_id:bigint, role:text, partner_entity_id:bigint, rank:integer, n:integer, total_ron:numeric"
+    },
+    {
+      "table_schema": "marts",
+      "table_name": "flag_instances",
+      "columns": "id:bigint, flag_code:text, subject_type:text, entity_id:bigint, entity_name:text, entity_county:text, partner_id:bigint, partner_name:text, severity:numeric, total_ron:numeric, period:text, evidence:jsonb"
+    },
+    {
+      "table_schema": "marts",
+      "table_name": "lot_patterns",
+      "columns": "id:integer, authority_id:bigint, cpv_class:text, kind:text, set_key:text, member_ids:ARRAY, member_names:ARRAY, reps:integer, n_lot_tenders:integer, value:numeric, single:integer, known:integer, strength:text, shared_admin:text, y0:text, y1:text, notices:ARRAY"
+    },
+    {
+      "table_schema": "marts",
+      "table_name": "national_stats",
+      "columns": "kind:text, year:integer, n:integer, total_ron:numeric"
+    },
+    {
+      "table_schema": "marts",
+      "table_name": "pattern_elsewhere",
+      "columns": "set_key:text, authority_id:bigint, authority_name:text, n_notices:integer, value:numeric, y0:text, y1:text"
+    },
+    {
+      "table_schema": "marts",
+      "table_name": "spend_by_county",
+      "columns": "county:text, role:text, n:integer, total_ron:numeric"
+    },
+    {
+      "table_schema": "marts",
+      "table_name": "spend_by_cpv",
+      "columns": "division:text, name_ro:text, kind:text, n:integer, total_ron:numeric"
+    },
+    {
+      "table_schema": "marts",
+      "table_name": "spend_by_type",
+      "columns": "kind:text, acquisition_type:text, n:integer, total_ron:numeric"
+    },
+    {
+      "table_schema": "marts",
+      "table_name": "supplier_dependency",
+      "columns": "authority_id:bigint, supplier_id:bigint, supplier_name:text, county:text, is_foreign:boolean, v_here:numeric, v_total:numeric, n_auth:bigint, n_here:bigint, ns_here:bigint, nk_here:bigint, y0:integer, y1:integer, c_frame:numeric, c_plain:numeric, yrs:ARRAY, turn_win:numeric, ny_win:integer, turn_last:numeric, emp_last:integer, win_from:integer, win_to:integer"
+    },
+    {
+      "table_schema": "marts",
+      "table_name": "ted_awards",
+      "columns": "ted_lot_result_id:bigint, ted_notice_id:bigint, publication_number:text, buyer_entity_id:bigint, buyer_name:text, buyer_county:text, winner_names:ARRAY, winner_entity_ids:ARRAY, winner_countries:ARRAY, is_foreign:boolean, cpv_code:text, cpv_name:text, contract_nature:text, title:text, awarded_value:numeric, currency:text, award_date:text, publication_date:text, procedure_type:text, tenders_received:integer, is_single_bidder:boolean, eu_funded:boolean, label:text, matched_contract_id:bigint, match_score:numeric, lot_id:text, winner_selection_status:text, amount_kind:text, amount_details:jsonb"
+    },
+    {
+      "table_schema": "marts",
+      "table_name": "ted_stats",
+      "columns": "metric:text, dimension:text, n:integer, total_ron:numeric"
+    },
+    {
+      "table_schema": "marts",
+      "table_name": "top_entities",
+      "columns": "role:text, rank:integer, entity_id:bigint, total_ron_full:numeric, n_contracts:integer"
+    },
+    {
+      "table_schema": "marts",
+      "table_name": "topic_acquisitions",
+      "columns": "id:text, kind:text, ref_id:bigint, title:text, search:tsvector, authority_id:bigint, supplier_ids:ARRAY, county:text, uat_siruta:integer, year:integer, date:text, value:numeric, procedure_id:text"
+    },
+    {
+      "table_schema": "marts",
+      "table_name": "topic_search_state",
+      "columns": "id:integer, built_at:timestamp with time zone, records:bigint, titled_records:bigint"
+    },
+    {
+      "table_schema": "reference",
+      "table_name": "authority_uat",
+      "columns": "entity_id:bigint, uat_siruta:integer, population:integer"
+    },
+    {
+      "table_schema": "reference",
+      "table_name": "company_financials",
+      "columns": "cui:text, year:integer, caen:text, category:text, source_vintage:integer, employees:integer, net_turnover:numeric, total_revenue:numeric, total_expenses:numeric, profit_net:numeric, loss_net:numeric"
+    },
+    {
+      "table_schema": "reference",
+      "table_name": "company_reps",
+      "columns": "j_number:text, cui:text, person_name:text, calitate:text, birth_date:date, birth_locality:text, birth_county:text, birth_country:text, res_locality:text, res_county:text, res_country:text, person_key:text, snapshot_date:date"
+    },
+    {
+      "table_schema": "reference",
+      "table_name": "cpv_synonym",
+      "columns": "term:text, cpv_prefix:text, note:text"
+    },
+    {
+      "table_schema": "reference",
+      "table_name": "onrc_firm",
+      "columns": "j_number:text, cui:text, name:text, legal_form:text, county:text, locality:text, snapshot_date:date"
+    },
+    {
+      "table_schema": "reference",
+      "table_name": "uat",
+      "columns": "siruta:integer, name:text, county:text, tip:text, population:integer"
+    }
+  ]
+}

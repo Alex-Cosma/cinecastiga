@@ -1,0 +1,6 @@
+{
+  "query": "raw-provenance",
+  "elapsed_seconds": 71.23,
+  "exit_code": 2,
+  "error": "server closed the connection unexpectedly\n\tThis probably means the server terminated abnormally\n\tbefore or while processing the request.\nconnection to server was lost"
+}

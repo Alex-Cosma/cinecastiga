@@ -330,6 +330,202 @@
       "when": 1790857419943,
       "tag": "0046_entity_identity_redirects",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1791037721096,
+      "tag": "0047_next_radioactive_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1791037870903,
+      "tag": "0048_fine_ben_grimm",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1791039995858,
+      "tag": "0049_past_shadowcat",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1791049051622,
+      "tag": "0050_typical_iron_fist",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1791049612193,
+      "tag": "0051_long_ironclad",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1791051323809,
+      "tag": "0052_even_cerebro",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1791093197593,
+      "tag": "0053_pink_wolverine",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1791281620356,
+      "tag": "0054_woozy_echo",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1791284528747,
+      "tag": "0055_daffy_sleepwalker",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1791289903020,
+      "tag": "0056_thin_zemo",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1791300259834,
+      "tag": "0057_easy_mandrill",
+      "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1791300585490,
+      "tag": "0058_demonic_lilandra",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1791300742307,
+      "tag": "0059_glossy_edwin_jarvis",
+      "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1791319952559,
+      "tag": "0060_milky_maestro",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1791321378346,
+      "tag": "0061_worthless_firestar",
+      "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1791435070547,
+      "tag": "0062_adorable_gambit",
+      "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1791549995645,
+      "tag": "0063_collection_running_index",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1791574102336,
+      "tag": "0064_notice_namespace_identity",
+      "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1791578083283,
+      "tag": "0065_publication_revalidation",
+      "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1791619055148,
+      "tag": "0066_quiet_moondragon",
+      "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1791630758335,
+      "tag": "0067_messy_lord_tyger",
+      "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1791633271007,
+      "tag": "0068_flippant_firestar",
+      "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1791707639851,
+      "tag": "0069_graceful_tyrannus",
+      "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1791708234616,
+      "tag": "0070_ambitious_silver_surfer",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1791723747584,
+      "tag": "0071_perpetual_darwin",
+      "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1791746089452,
+      "tag": "0072_flawless_shadow_king",
+      "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1791778488444,
+      "tag": "0073_new_mother_askani",
+      "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1791976963469,
+      "tag": "0074_lowly_ricochet",
+      "breakpoints": true
     }
   ]
 }

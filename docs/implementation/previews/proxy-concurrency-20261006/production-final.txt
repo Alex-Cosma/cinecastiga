@@ -1,0 +1,73 @@
+Pager usage is off.
+ revision | paused | maintenance | blocked_reason |        next_allowed_at
+----------+--------+-------------+----------------+-------------------------------
+       65 | f      | f           |                | 2026-10-06 16:14:20.605601+00
+(1 row)
+
+ id | enabled | requests_per_minute | min_seconds | max_seconds | max_in_flight
+----+---------+---------------------+-------------+-------------+---------------
+  1 | t       |                  50 |          35 |          45 |            10
+(1 row)
+
+ configured | enabled | count
+------------+---------+-------
+ t          | t       |   100
+ f          | f       |    10
+(2 rows)
+
+ migration_count
+-----------------
+              60
+(1 row)
+
+        activation_utc         |         observed_utc          | attempts | successes | failed | running | distinct_proxies | observed_starts_per_minute
+-------------------------------+-------------------------------+----------+-----------+--------+---------+------------------+----------------------------
+ 2026-10-06 16:10:13.541108+00 | 2026-10-06 16:14:19.432242+00 |      165 |       158 |      6 |       1 |              100 |                      49.00
+(1 row)
+
+ minimum_global_start_gap_seconds | minimum_ip_start_gap_seconds
+----------------------------------+------------------------------
+                         1.213898 |                   116.267568
+(1 row)
+
+ peak_concurrent_requests
+--------------------------
+                        9
+(1 row)
+
+ peak_concurrent_on_one_proxy
+------------------------------
+                            1
+(1 row)
+
+  id   |  status  | error
+-------+----------+-------
+ 92661 | complete |
+(1 row)
+
+ task_id | timeouts |  status  | last_request_id
+---------+----------+----------+-----------------
+   92661 |        3 | resolved |           15927
+(1 row)
+
+  id   | proxy_id | status | outcome |  phase   | error
+-------+----------+--------+---------+----------+-------
+ 16251 | proxy-33 |        | running |          |
+ 16250 | proxy-39 |    200 | success | complete |
+ 16249 | proxy-30 |    200 | success | complete |
+ 16248 | proxy-29 |    200 | success | complete |
+ 16247 | proxy-24 |    200 | success | complete |
+ 16246 | proxy-28 |    200 | success | complete |
+ 16245 | proxy-23 |    200 | success | complete |
+ 16244 | proxy-21 |    200 | success | complete |
+(8 rows)
+
+ task_id | timeouts |  status  | retry_at
+---------+----------+----------+----------
+    7791 |        1 | resolved |
+    7798 |        1 | resolved |
+   92693 |        1 | resolved |
+   92721 |        1 | resolved |
+   92735 |        1 | resolved |
+   92739 |        1 | resolved |
+(6 rows)

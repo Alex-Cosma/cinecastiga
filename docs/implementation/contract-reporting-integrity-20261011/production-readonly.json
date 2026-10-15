@@ -1,0 +1,19 @@
+{
+  "time": "2026-10-11T20:18:14.557168+00:00",
+  "control": {
+    "paused": false,
+    "maintenance": false,
+    "revision": 137,
+    "blocked_reason": "Eroare de transport. Verifică jurnalul înainte de reluare."
+  },
+  "processing": {
+    "id": "a12a5e51-1e13-47b1-bfe1-8a8e60dc5e3a",
+    "status": "ready",
+    "stage": "complete",
+    "scope": "full",
+    "completed_at": "2026-10-11T04:44:27.38508+00:00"
+  },
+  "migrations": 72,
+  "checkout": "5488af2ce069f6fb2490cd9defb1f120a21b325d",
+  "intervention": "Read-only verification; no production mutation or source requests"
+}

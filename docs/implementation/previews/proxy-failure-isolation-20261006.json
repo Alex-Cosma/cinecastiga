@@ -1,0 +1,41 @@
+{
+  "date": "2026-10-06",
+  "runtime": "3c67bba",
+  "workflow": 37464862632,
+  "migrations": 57,
+  "proxy7": {
+    "observedRequests": 13,
+    "timeouts": 13,
+    "successful": 0,
+    "disabled": true,
+    "allAffectedTasksResolved": true
+  },
+  "healthyProxies": 9,
+  "minSecondsPerIp": 40,
+  "maxSecondsPerIp": 60,
+  "globalRequestsPerMinute": 15,
+  "postDisableVerification": {
+    "successful": 93,
+    "failed": 0,
+    "throughCompletedRequest": 14221
+  },
+  "newWorkerSuccessfulRequests": [
+    14217,
+    14218,
+    14219,
+    14220,
+    14221
+  ],
+  "tests": {
+    "retryDatabase": 15,
+    "adminAndDocumentDatabase": 28,
+    "webUnits": 394,
+    "webOptInSkipped": 166,
+    "fullTurboTasksPassed": 20
+  },
+  "limits": [
+    "No deliberate production failure injected; failure isolation tested against isolated PostgreSQL fixtures.",
+    "Proxy7 timeout occurred before headers; the failing network segment or cause was not determined.",
+    "One HTTP request remains in flight; others proceed after it finishes or times out."
+  ]
+}

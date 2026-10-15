@@ -1,24 +1,40 @@
-import { createDb, claimProcessing, failProcessing, finishProcessing, processingStage, collectionHeartbeat } from '@seap/db';
+import {runScheduledContractEvidence} from '../normalize/scheduled-contract-evidence.js';
+import {revalidateApprovedContractIdentities} from '../normalize/revalidate-contract-identities.js';
+import {discoverAndApproveContractIdentities} from '../normalize/discover-contract-identities.js';
+import {runScheduledIdentityRepair} from '../normalize/scheduled-contract-identity.js';
+import { runScheduledMoneyRepair } from '../normalize/scheduled-money-repair.js';
+import { diagnosticError, createDb, claimProcessing, claimRepairProcessing, claimRecoveryProcessing, failProcessing, finishProcessing, processingStage, collectionHeartbeat } from '@seap/db';
+import {runScheduledReferenceRepair} from '../reference/scheduled-repair.js';
 import { runMonitoringRefresh } from '../monitoring/refresh.js';
 import {indexTopics} from '../search/index-topics.js';
 import { indexEntities, meiliClient } from '../search/index-entities.js';
+import {deliverOperationalAlerts,smtpSender} from '../alerts/operational-alerts.js';
 
 async function main() {
  const [command,id,arg]=process.argv.slice(2);
- if(!['claim','stage','freeze','refresh','finish','fail'].includes(command??''))throw Error('Unknown processing command');
- if(command!=='claim'&&!/^[0-9a-f-]{36}$/.test(id??''))throw Error('A processing run ID is required');
+ if(!['claim','claim-repair','claim-recovery','stage','freeze','refresh','finish','fail'].includes(command??''))throw Error('Unknown processing command');
+ if(!['claim','claim-repair'].includes(command!)&&!/^[0-9a-f-]{36}$/.test(id??''))throw Error('A processing run ID is required');
  // The reserved publication session must survive hour-long risk stages.
  const url=new URL(process.env['DATABASE_URL']!);url.searchParams.set('max_lifetime','0');
  const {db,sql}=createDb(url.toString());
  let heartbeat:ReturnType<typeof setInterval>|undefined;
  try {
-  if(command==='claim') {const run=await claimProcessing(sql);if(run)console.log(run.id);return;}
+  if(command==='claim') {
+   // The minute scheduler is also the operator alarm: when nothing starts,
+   // including an orphan refusal, it mails new incidents to admins.
+   let run:Awaited<ReturnType<typeof claimProcessing>>=null;
+   try{run=await claimProcessing(sql);if(run)console.log(run.id);}
+   finally{if(!run)await deliverOperationalAlerts(sql,smtpSender(),process.env['ALERT_ORIGIN']||'https://cinecastiga.ro');}
+   return;
+  }
+  if(command==='claim-repair'){const run=await claimRepairProcessing(sql,id!);console.log(run.id);return;}
+  if(command==='claim-recovery'){const run=await claimRecoveryProcessing(sql,id!);console.log(run.id);return;}
   if(command==='fail'){await failProcessing(sql,id!);return;}
   if(command==='finish'){await finishProcessing(sql,id!);return;}
   const [r]=await sql`select r.*,c.maintenance,c.paused from app.processing_runs r cross join app.collection_control c where r.id=${id!}::uuid and c.id=1`;
   if(!r||r.status!=='running'||!r.maintenance||!r.paused)throw Error('Processing requires an active run and maintenance');
   if(command==='stage'){
-   if(!['backup','restart','reopen'].includes(arg??''))throw Error('Unknown host stage');
+   if(!['backup','backup-verified','restart','reopen'].includes(arg??''))throw Error('Unknown host stage');
    await processingStage(sql,id!,arg!);return;
   }
   if(command==='freeze') {
@@ -36,7 +52,15 @@ async function main() {
    await collectionHeartbeat(sql,`processor:${id}`,'processor','refresh');
   };
   await beat();heartbeat=setInterval(()=>{void beat().catch(()=>{});},10000);
+  await runScheduledMoneyRepair(sql,id!,console.log);
+  await runScheduledReferenceRepair(sql,id!,console.log);
   const checkpoint=await runMonitoringRefresh(db,sql,{
+   repairContractIdentities:async()=>({
+    recoveredEvidence:await runScheduledContractEvidence(sql,id!),
+    scheduled:await runScheduledIdentityRepair(sql,id!,console.log),
+    revalidated:await revalidateApprovedContractIdentities(sql,id!,console.log),
+    discovered:await discoverAndApproveContractIdentities(sql,id!,console.log),
+   }),
    mode:'coordinated',scope:r.scope==='full'?'full':'daily',maxRawId:BigInt(r.raw_boundary),
    log:console.log,onStage:stage=>processingStage(sql,id!,stage),
   });
@@ -53,4 +77,8 @@ async function main() {
   await collectionHeartbeat(sql,`processor:${id}`,'processor','complete');
  } finally {clearInterval(heartbeat);await sql.end({timeout:10});}
 }
-main().catch(()=>{console.error('Processing command failed. Maintenance must remain active; inspect the run, checkpoint and stage log.');process.exitCode=1;});
+main().catch(error=>{console.error('Processing command failed. Maintenance must remain active; inspect the run, checkpoint and stage log.');console.error(JSON.stringify(diagnosticError(error)));process.exitCode=1;})
+ // The command is finished and its connections closed. A lingering handle once
+ // kept a failed refresh alive for 20+ minutes, so the host never recorded the
+ // failure. The unref'd timer exits only if something else still holds the loop.
+ .finally(()=>{setTimeout(()=>{console.error('Processing command exit forced after cleanup timeout');process.exit(process.exitCode??0);},30_000).unref();});
