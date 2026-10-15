@@ -15,6 +15,7 @@ coverage/
 
 # local data
 *.local
+/Webshare*.txt
 .DS_Store
 
 # IDE

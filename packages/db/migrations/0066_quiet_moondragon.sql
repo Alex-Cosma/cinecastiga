@@ -1,0 +1,1 @@
+ALTER TABLE "app"."collection_batches" ADD COLUMN "da_strategy" text DEFAULT 'authority' NOT NULL;

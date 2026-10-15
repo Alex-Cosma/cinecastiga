@@ -2,10 +2,9 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import type { Task } from "graphile-worker";
 import { rawDocuments } from "@seap/db";
 import {
-  getNoticeContracts,
-  getNoticeDetail,
   listNotices,
   noticeIdOf,
+  noticeArchiveKey,
   NOTICE_TYPE_IDS,
   type NoticeListItem,
 } from "@seap/scraper-clients";
@@ -16,7 +15,7 @@ import {
   type ArchivableDocument,
 } from "../archive.js";
 import { closedWindow, eachDay } from "../window.js";
-import type { ScrapeDeps } from "./notices.js";
+import { collectNoticeParts, type ScrapeDeps } from "./notices.js";
 
 const SOURCE = "elicitatie:state-rescan";
 
@@ -80,30 +79,12 @@ export async function rescanNoticeStates(
             for (const item of changedItems) {
               docs.push({
                 source: "elicitatie",
-                externalId: `${prefix}:${noticeIdOf(item)}`,
+                externalId: noticeArchiveKey(familyKey,noticeIdOf(item),item.sysNoticeTypeId),
                 endpointVersion: `${prefix}-list:v1`,
                 payload: item,
               });
-              const detail = await getNoticeDetail(client, noticeIdOf(item));
-              docs.push({
-                source: "elicitatie",
-                externalId: `${prefix}:${noticeIdOf(item)}`,
-                endpointVersion: `${prefix}-detail:v1`,
-                payload: detail.data,
-              });
-              if (familyKey === "awards") {
-                const contracts = await getNoticeContracts(client, {
-                  caNoticeId: noticeIdOf(item),
-                  skip: 0,
-                  take: 200,
-                });
-                docs.push({
-                  source: "elicitatie",
-                  externalId: `${prefix}:${noticeIdOf(item)}`,
-                  endpointVersion: `${prefix}-contracts:v1`,
-                  payload: { caNoticeId: noticeIdOf(item), ...contracts.data },
-                });
-              }
+              docs.push(...await collectNoticeParts(client,item,familyKey));
+              if(familyKey==='awards')docs.push(...await collectNoticeParts(client,item,familyKey,'contracts'));
             }
             const result = await archiveDocuments(db, docs);
             inserted += result.inserted;
@@ -145,7 +126,8 @@ async function findChangedItems(
   prefix: string,
   items: NoticeListItem[],
 ): Promise<NoticeListItem[]> {
-  const ids = items.map((i) => `${prefix}:${noticeIdOf(i)}`);
+  const family=prefix==='tender'?'tenders':'awards';
+  const ids = items.flatMap(i=>[noticeArchiveKey(family,noticeIdOf(i),i.sysNoticeTypeId),`${prefix}:${noticeIdOf(i)}`]);
   const rows = await deps.db
     .select({
       externalId: rawDocuments.externalId,
@@ -164,14 +146,13 @@ async function findChangedItems(
 
   const latestStateDate = new Map<string, string | undefined>();
   for (const row of rows) {
-    if (!latestStateDate.has(row.externalId)) {
-      const payload = row.payload as { noticeStateDate?: string };
-      latestStateDate.set(row.externalId, payload.noticeStateDate);
-    }
+    const payload = row.payload as NoticeListItem;
+    const identity=noticeArchiveKey(family,noticeIdOf(payload),payload.sysNoticeTypeId);
+    if (!latestStateDate.has(identity)) latestStateDate.set(identity,payload.noticeStateDate);
   }
 
   return items.filter((item) => {
-    const key = `${prefix}:${noticeIdOf(item)}`;
+    const key = noticeArchiveKey(family,noticeIdOf(item),item.sysNoticeTypeId);
     if (!latestStateDate.has(key)) return true; // never archived — take it
     return latestStateDate.get(key) !== item.noticeStateDate;
   });

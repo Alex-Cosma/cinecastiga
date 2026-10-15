@@ -1,4 +1,6 @@
-import { publishMonitoringRefresh, type Db, type DbSql } from "@seap/db";
+import { runContractMoneyQuality } from "../normalize/contract-money-quality.js";
+import { repairContractTypes } from '../normalize/contract-reporting.js';
+import { CONTRACT_REPORTING_VERSION, assertContractIdentityQuality, assertContractExclusionsQuality, publishMonitoringRefresh, type Db, type DbSql } from "@seap/db";
 import { runNormalize } from "../normalize/pipeline.js";
 import { runReconcile } from "../normalize/reconcile.js";
 import { runTedMart } from "../normalize/ted-mart.js";
@@ -15,7 +17,7 @@ import { validateBatch1Snapshot } from "./validate.js";
 import { monitoringSourceCoverage, validateCoverageCounts } from "./coverage.js";
 
 export const MONITORING_METHODOLOGY = {
-  monitoring: "monitoring-refresh-1", flags: METHODOLOGY_VERSION,
+  contractIdentity: "verified-publications-3-discovery", contractReporting: CONTRACT_REPORTING_VERSION, contractMoney: "source-currency-1", monitoring: "monitoring-refresh-1", flags: METHODOLOGY_VERSION,
   tedNormalization: TED_NORMALIZATION_VERSION, transactionPopulation: "batch1-canonical-1", procurementCalendar: "Europe/Bucharest-v1",
 };
 
@@ -23,7 +25,7 @@ export const MONITORING_METHODOLOGY = {
 export async function runMonitoringRefresh(db: Db, sql: DbSql, options: {
   mode: "coordinated" | "baseline"; log?: (message: string) => void; timeoutMs?: number;
   scope?: RefreshScope; onStage?: (name: MonitoringStage | "validation") => Promise<void>;
-  maxRawId?: bigint;
+  maxRawId?: bigint; repairContractIdentities?: () => Promise<unknown>;
 }) {
   const log = options.log ?? (() => {});
   const scope = options.scope ?? "full";
@@ -37,8 +39,16 @@ export async function runMonitoringRefresh(db: Db, sql: DbSql, options: {
     const retainedRisk = previousValidation?.risk ? {...previousValidation.risk,checkpointId:previousValidation.risk.checkpointId??String(previous!.id)} : (previousValidation?.stages?.flags && previousValidation?.stages?.['flag-marts']
       ? { checkpointId: String(previous!.id), calculatedAt: new Date(previous!.completed_at).toISOString() } : null);
     if (scope === "daily" && (!retainedRisk || previous?.status!=='ready' || previous?.kind!=='coordinated' || previous?.methodology?.flags!==METHODOLOGY_VERSION)) throw new Error("Daily refresh requires a verified full risk baseline with the same methodology");
+    if (scope === 'daily' && previous?.methodology?.contractReporting!==CONTRACT_REPORTING_VERSION)
+      throw Error('Contract reporting policy changed; a full verified publication is required before retaining old risk');
     const stages = options.mode === "baseline" ? {} : await executeMonitoringStages({
       normalize: () => runNormalize(db, sql, { log, ...(options.maxRawId === undefined ? {} : {maxRawId:options.maxRawId}) }),
+      "money-quality": async () => {
+        await repairContractTypes(sql, options.maxRawId);
+        return runContractMoneyQuality(sql);
+      },
+      "identity-repair": () => options.repairContractIdentities?.() ?? Promise.resolve(null),
+      "identity-quality": async () => ({identities:await assertContractIdentityQuality(sql),exclusions:await assertContractExclusionsQuality(sql)}),
       reconcile: () => runReconcile(sql, { log }),
       "ted-mart": () => runTedMart(sql, { log }),
       marts: () => runMarts(sql, { log }),

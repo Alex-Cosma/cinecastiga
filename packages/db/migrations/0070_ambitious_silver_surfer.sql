@@ -1,0 +1,1 @@
+ALTER TABLE "app"."document_requests" ALTER COLUMN "bytes" SET DATA TYPE bigint;

@@ -1,0 +1,52 @@
+// Synthetic admin forecast on an isolated DB. No worker or SEAP request is started.
+import {readFile,mkdir,writeFile} from 'node:fs/promises';
+import {parseEnv} from 'node:util';
+import {createHmac,randomUUID,randomBytes} from 'node:crypto';
+import {chromium} from 'playwright-core';
+import {createDb} from '@seap/db';
+const base='http://localhost:3130',url=process.env.TEST_DATABASE_URL;
+if(!url||!['localhost','127.0.0.1'].includes(new URL(url).hostname)||new URL(url).pathname!='/seap_test_proxy_pool')throw Error('Dedicated local fixture database required');
+const {BETTER_AUTH_SECRET:secret}=parseEnv(await readFile('.env.local','utf8'));
+const {sql:q}=createDb(url),browser=await chromium.launch({channel:'chrome',headless:true});
+const id=randomUUID(),token=randomBytes(32).toString('hex'),errors=[],checks=[],external=[];
+const out='../../docs/implementation/previews/recovery-eta-20261007';let heartbeat;
+const check=(ok,label)=>{if(!ok)throw Error(label);checks.push(label);};
+await mkdir(out,{recursive:true});
+try{
+ await q`truncate app.collection_tasks,app.collection_batches,app.collection_requests,app.collection_workers,app.collection_audit cascade`;
+ await q`update app.collection_control set revision=1,paused=false,maintenance=false,blocked_reason=null,paused_streams='[]',min_seconds=1,max_seconds=1,daily_limit=null`;
+ await q`update app.collection_proxy_control set enabled=false`;
+ await q`insert into app.collection_batches(id,end_day,seed_end_day,follow_latest,created_at) values('eta-fixture','2026-10-05','2026-09-25',true,now()-interval '2 days')`;
+ await q`insert into app.collection_tasks(batch_id,key,partition,stream,kind,params,status,result,finished_at)
+  select 'eta-fixture',i::text,i::text,'da','da',jsonb_build_object('authorityId',i,'page',0),case when i<=300 then 'complete' else 'pending' end,'{"total":1}',case when i<=300 then now()-interval '2 minutes' end from generate_series(1,2300)i`;
+ await q`insert into app.collection_tasks(batch_id,key,partition,stream,kind,params,status) values('eta-fixture','gap','gap','awards','detail','{}','deferred')`;
+ await q`insert into app.collection_workers(id,kind,state) values('eta-fixture','ingestion','waiting')`;
+ heartbeat=setInterval(()=>void q`update app.collection_workers set heartbeat_at=now() where id='eta-fixture'`,10000);
+ await q`insert into auth.users(id,name,email,email_verified,role) values(${id},'Administrator de test',${id+'@example.test'},true,'admin')`;
+ await q`insert into auth.sessions(id,token,user_id,expires_at) values(${randomUUID()},${token},${id},now()+interval '1 hour')`;
+ const context=await browser.newContext({viewport:{width:1440,height:1050},reducedMotion:'reduce'});
+ await context.addCookies([{name:'better-auth.session_token',value:encodeURIComponent(token+'.'+createHmac('sha256',secret).update(token).digest('base64')),url:base}]);
+ await context.route('**/*',r=>{if(/^https?:/.test(r.request().url())&&!r.request().url().startsWith(base)){external.push(r.request().url());return r.abort();}return r.continue();});
+ const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(15000);
+ await page.goto(base+'/admin',{waitUntil:'networkidle'});const section=page.locator('.recovery-overview');await section.locator('.recovery-finish').waitFor();
+ check((await section.innerText()).includes('rămase'),'Visible duration estimate');
+ check((await section.innerText()).includes('Încheiere estimată:'),'Visible estimated completion date');
+ check((await section.innerText()).includes('Pentru coada cunoscută'),'Known queue explicitly identified when samples are incomplete');
+ check((await section.innerText()).includes('extindere zilnică automată'),'Rolling scope identified');
+ check(await section.locator('.recovery-gaps').isVisible(),'Unimplemented details do not suppress useful ETA');
+ await section.screenshot({path:out+'/desktop.png'});
+ await page.setViewportSize({width:390,height:844});await section.screenshot({path:out+'/mobile.png'});
+ check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No mobile overflow');
+ await section.locator('summary').click();check((await section.innerText()).includes('după 03:30'),'Closed-day schedule disclosed');await section.locator('summary').click();
+ await page.evaluate(()=>document.documentElement.dataset.theme='dark');await section.screenshot({path:out+'/mobile-dark.png'});
+ await q`update app.collection_control set paused=true`;
+ await section.getByRole('heading',{name:'Estimare suspendată'}).waitFor();check(!(await section.locator('.recovery-finish').count()),'Manual pause suspends completion deadline');
+ await q`update app.collection_control set paused=false`;
+ await section.locator('.recovery-finish').waitFor();
+ await page.route('**/api/admin/collection',r=>r.abort());
+ await page.waitForTimeout(16000);check((await section.innerText()).includes('reconectarea'),'Stale state explains suspended ETA');
+ check((await q`select count(*)::int n from app.collection_requests`)[0].n===0,'Zero source requests');
+ check(errors.length===0,'No browser errors');check(external.length===0,'No external network requests');
+ await writeFile(out+'/verification.json',JSON.stringify({checks,errors,external,scope:'Synthetic isolated database; authenticated production build; desktop/mobile, dark, paused and offline'},null,2));
+ console.log(JSON.stringify({checks:checks.length,errors:errors.length,external:external.length}));
+}finally{clearInterval(heartbeat);await q`delete from auth.sessions where user_id=${id}`;await q`delete from auth.users where id=${id}`;await q`update app.collection_control set paused=true`;await browser.close();await q.end();}

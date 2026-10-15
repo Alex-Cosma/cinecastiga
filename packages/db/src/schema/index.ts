@@ -18,3 +18,8 @@ export * from "./processing.js";
 export * from './topic-search.js';
 export * from "./feedback.js";
 export * from "./entity-redirects.js";
+
+export * from "./contract-money-quality.js";
+export * from './data-repairs.js';
+export * from './contract-identity.js';
+export * from './operational-alerts.js';

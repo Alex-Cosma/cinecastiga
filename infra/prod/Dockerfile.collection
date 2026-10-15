@@ -12,6 +12,7 @@ COPY packages/db packages/db
 COPY packages/domain packages/domain
 COPY packages/scraper-clients packages/scraper-clients
 COPY apps/ingestion apps/ingestion
+COPY scripts/proxies scripts/proxies
 RUN pnpm --filter @seap/db build && pnpm --filter @seap/domain build && pnpm --filter @seap/scraper-clients build && pnpm --filter ingestion build
 ENV NODE_ENV=production
 USER node

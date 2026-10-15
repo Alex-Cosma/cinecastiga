@@ -10,10 +10,26 @@ cd infra/prod
 # These commands never consume input; do not let Compose eat a caller's SSH
 # script and silently skip the commands following this runner.
 run() { docker compose --profile processing run --rm --no-deps -T processor node apps/ingestion/dist/scripts/processing.js "$@" </dev/null; }
-run_id=$(run claim)
+case "${1:-}" in
+ "") run_id=$(run claim);;
+ --reference-repair-now) run_id=$(run claim-repair reference-import-v1);;
+ # Operator-authorized retry of the latest failed publication (full scope).
+ --recover-failed) [[ "${2:-}" =~ ^[a-f0-9-]{36}$ ]] || exit 2; run_id=$(run claim-recovery "$2");;
+ *) echo 'Unsupported processing invocation' >&2; exit 2;;
+esac
 [[ -n "$run_id" ]] || exit 0
 [[ "$run_id" =~ ^[a-f0-9-]{36}$ ]] || exit 1
-failed() { trap - ERR INT TERM; run fail "$run_id" || true; echo "Publication failed; maintenance retained: $run_id"; exit 1; }
+failed() {
+ trap - ERR INT TERM
+ run fail "$run_id" || true
+ # Only resume the archive collector after the DB gate verified backup, no
+ # remaining work, and unchanged operator control. Documents/public site stay shut.
+ if [[ "${collection_active:-false}" == true ]] && [[ "$(docker exec cinecastiga-postgres-1 psql -X -U seap -d seap -Atc "select maintenance and collection_during_maintenance and not paused and blocked_reason is null from app.collection_control where id=1" || true)" == t ]]; then
+  docker compose --profile collection up -d --no-deps collection || true
+ fi
+ echo "Publication failed; maintenance retained: $run_id"
+ exit 1
+}
 trap failed ERR INT TERM
 root="${SEAP_PROCESSING_BACKUPS:-/srv/seap/backups/processing}"
 mkdir -p "$root/$run_id"
@@ -54,6 +70,7 @@ docker exec cinecastiga-postgres-1 pg_dump -U seap -d seap -Fc > "$root/$run_id/
 mv "$root/$run_id/database.dump.partial" "$root/$run_id/database.dump"
 docker exec -i cinecastiga-postgres-1 pg_restore --list < "$root/$run_id/database.dump" > "$root/$run_id/database.list"
 sha256sum "$root/$run_id/database.dump" > "$root/$run_id/database.sha256"
+run stage "$run_id" backup-verified
 run refresh "$run_id"
 run stage "$run_id" restart
 # Clear Next server caches before reopening; source workers restart while paused.

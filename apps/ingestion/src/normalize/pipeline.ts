@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, lte } from "drizzle-orm";
+import { and, asc, eq, gt, lte, isNull } from "drizzle-orm";
 import {
   normalizeWatermarks,
   quarantine,
@@ -107,6 +107,27 @@ export async function runNormalize(
     let processed = 0;
     let quarantined = 0;
 
+    // A failed row has already advanced the ordinary cursor. Retry unresolved
+    // failures once per run, or tomorrow could publish while silently skipping
+    // yesterday's quarantined documents. Preserve the original failure history.
+    const pending=await sql`select r.id,r.payload from (select distinct raw_id from core.quarantine where retry_required and resolved_at is null) pending
+      join raw.raw_documents r on r.id=pending.raw_id where r.endpoint_version=${transform}
+      and (${opts.maxRawId?.toString()??null}::bigint is null or r.id<=${opts.maxRawId?.toString()??null}::bigint)
+      order by r.id`;
+    const pendingIds=new Set(pending.map(row=>String(row.id)));
+    for(const row of pending.filter(row=>BigInt(row.id)<=cursor)){
+      try{
+        await db.transaction(async tx=>{
+          await parser.load({tx,cpvCatalog,cpvByPrefix,units},BigInt(row.id),row.payload);
+          await tx.update(quarantine).set({resolvedAt:new Date()}).where(and(eq(quarantine.rawId,BigInt(row.id)),eq(quarantine.retryRequired,true),isNull(quarantine.resolvedAt)));
+        });
+        processed++;
+      }catch(err){
+        await db.insert(quarantine).values({rawId:BigInt(row.id),endpointVersion:transform,zodError:errMessage(err),payloadExcerpt:excerpt(row.payload)});
+        quarantined++;
+      }
+    }
+
     for (;;) {
       const rows = await db
         .select({ id: rawDocuments.id, payload: rawDocuments.payload })
@@ -127,6 +148,7 @@ export async function runNormalize(
         try {
           await db.transaction(async (tx) => {
             await parser.load({ ...ctx, tx }, row.id, row.payload);
+            if(pendingIds.has(String(row.id)))await tx.update(quarantine).set({resolvedAt:new Date()}).where(and(eq(quarantine.rawId,row.id),eq(quarantine.retryRequired,true),isNull(quarantine.resolvedAt)));
           });
           processed += 1;
         } catch (err) {

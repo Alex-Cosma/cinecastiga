@@ -1,0 +1,2 @@
+ALTER TABLE "app"."collection_proxy_control" ADD COLUMN "max_in_flight" integer DEFAULT 1 NOT NULL;--> statement-breakpoint
+ALTER TABLE "app"."collection_proxy_control" ADD CONSTRAINT "proxy_concurrency_bounds" CHECK ("app"."collection_proxy_control"."max_in_flight" between 1 and 2);

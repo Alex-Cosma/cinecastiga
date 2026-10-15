@@ -146,6 +146,7 @@ describe("elicitatie clients", () => {
       pageIndex: 2,
       pageSize: 500,
       cpvCategoryId: 6,
+      cpvCodeText: "33",
     });
 
     expect(requests[0]!.url).toBe(
@@ -154,6 +155,8 @@ describe("elicitatie clients", () => {
     const body = requests[0]!.body as Record<string, unknown>;
     expect(body["finalizationDateStart"]).toBe("2026-07-01");
     expect(body["cpvCategoryId"]).toBe(6);
+    expect(body["cpvCodeText"]).toBe("33");
+    expect(body["contractingAuthorityId"]).toBeNull();
     expect(body["showOngoingDa"]).toBe(false);
     expect(body).not.toHaveProperty("publicationDateStart");
     expect(body).not.toHaveProperty("publicationDateEnd");

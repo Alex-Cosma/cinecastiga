@@ -373,7 +373,7 @@ export async function runSpec(
   if (dataset === "contracts") {
     caveats.push(
       "Sursă: DOAR contracte atribuite prin proceduri. Valoarea consorțiilor e împărțită egal între câștigători. " +
-        "Când un anunț publică și acordul-cadru și contractele subsecvente, plafonul acordului nu se adună (banii reali sunt comenzile).",
+        "Plafoanele acordurilor-cadru și publicațiile cu identitate incertă sunt excluse din totaluri. Lipsa comenzilor identificate înseamnă acoperire incompletă.",
     );
   } else if (dataset === "da") {
     caveats.push("Sursă: DOAR achiziții directe.");

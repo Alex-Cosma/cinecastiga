@@ -14,6 +14,13 @@ const opts = {
 afterEach(() => vi.restoreAllMocks());
 
 describe("http-client circuit breaker", () => {
+  it.each(['CollectionSuspendedError','CollectionProxyFailureError'])('preserves %s from the metered transport without wrapping or retrying',async name=>{
+    const original=Object.assign(new Error('Metered transport owns recovery'),{name});
+    const transport=vi.fn(async()=>{throw original;});
+    const client=createHttpClient({...opts,maxRetries:3,transport});
+    await expect(client.getJson('/fixture')).rejects.toBe(original);
+    expect(transport).toHaveBeenCalledTimes(1);
+  });
   it("opens after N consecutive server failures and then fails fast without hitting the server", async () => {
     let calls = 0;
     vi.stubGlobal(

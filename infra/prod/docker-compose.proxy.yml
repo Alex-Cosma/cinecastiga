@@ -1,0 +1,66 @@
+# Opt-in only. Persist COMPOSE_FILE=docker-compose.yml:docker-compose.proxy.yml
+# in the production .env AFTER paused rollout checks documented in seap-proxy-pool.md.
+# Requires Docker Compose >=2.24.4 (!override).
+services:
+  postgres:
+    networks: [default, source-isolated]
+  collection:
+    networks: !override [source-isolated]
+    environment:
+      SEAP_PROXY_FILE: /run/seap/proxies.json
+      SEAP_PROXY_REQUIRED: 'true'
+      SEAP_PROXY_RELAY_HOST: proxy-egress
+    volumes:
+      - type: bind
+        source: ${SEAP_PROXY_HOST_FILE:?set absolute proxy pool path}
+        target: /run/seap/proxies.json
+        read_only: true
+        bind:
+          create_host_path: false
+  documents:
+    networks: !override [source-isolated]
+    environment:
+      SEAP_PROXY_FILE: /run/seap/proxies.json
+      SEAP_PROXY_REQUIRED: 'true'
+      SEAP_PROXY_RELAY_HOST: proxy-egress
+      XDG_CONFIG_HOME: /tmp/seap-chromium-config
+      XDG_CACHE_HOME: /tmp/seap-chromium-cache
+    volumes:
+      - type: bind
+        source: ${SEAP_PROXY_HOST_FILE:?set absolute proxy pool path}
+        target: /run/seap/proxies.json
+        read_only: true
+        bind:
+          create_host_path: false
+  web:
+    environment:
+      SEAP_PROXY_REQUIRED: 'true'
+  proxy-egress:
+    image: node:22-bookworm-slim
+    restart: unless-stopped
+    init: true
+    user: node
+    read_only: true
+    mem_limit: 128m
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    networks: [default, source-isolated]
+    environment:
+      SEAP_PROXY_FILE: /run/seap/proxies.json
+    volumes:
+      - ../../scripts/proxies/relay.mjs:/relay.mjs:ro
+      - type: bind
+        source: ${SEAP_PROXY_HOST_FILE:?set absolute proxy pool path}
+        target: /run/seap/proxies.json
+        read_only: true
+        bind:
+          create_host_path: false
+    command: [node, /relay.mjs]
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: '2'
+networks:
+  source-isolated:
+    internal: true

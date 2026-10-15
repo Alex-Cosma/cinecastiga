@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ContractPublications from "@/components/ContractPublications";
 import ContractFiles from "@/components/documents/ContractFiles";
 import { getContractFiles } from "@/lib/documents/store";
 import { sessionUserId } from "@/lib/session";
@@ -85,7 +86,7 @@ export default async function ContractPage({
         <div className="ext-links">
           {c.caNoticeId && c.noticeLotCount > 1 && (
             <Link href={`/anunturi/${c.caNoticeId}`}>
-              parte dintr-un anunț cu {formatInt(c.noticeLotCount)} contracte — vezi-le pe toate →
+              parte dintr-un anunț cu {formatInt(c.noticeLotCount)} înregistrări — vezi-le pe toate →
             </Link>
           )}
           {c.caNoticeId && (
@@ -105,12 +106,15 @@ export default async function ContractPage({
         </div>
       </div>
 
+      <ContractPublications publications={c.publications} currentId={nid} countedOnce={c.countedOnce} />
       <nav className="ext-links" aria-label="Secțiunile contractului"><a href="#fisiere">Fișiere și căutare în documente ↓</a></nav>
+      {c.amountStatus === 'converted' && c.valueRonExact !== null && <p className="note">Echivalent verificat în sursa SEAP: <strong>{formatExactDecimal(c.valueRonExact)} lei</strong> · curs raportat {c.currencyRate}. Această valoare este folosită pentru calculele în lei, dacă înregistrarea îndeplinește și celelalte criterii de includere.</p>}
+      {!['ron','converted','legacy_ron'].includes(c.amountStatus) && <p className="note">Valoarea în lei nu este verificată ({c.amountStatus === 'legacy_unknown' ? 'înregistrare istorică fără unitate confirmată' : c.amountStatus === 'inconsistent' ? 'sume sau monede neconcordante în sursă' : 'date monetare incomplete sau de reverificat'}). Înregistrarea este exclusă din totalurile în lei după recalculare. Verifică documentele SEAP.</p>}
       <div className="stat-grid">
         <div className="stat">
           <div className="n">{c.contractValueExact != null ? `${formatExactDecimal(c.contractValueExact)} ${c.currency?.toUpperCase() === "RON" ? "lei" : c.currency ?? "(monedă neprecizată)"}` : "—"}</div>
           <div className="l">
-            Valoare contract{c.currency && c.currency !== "RON" ? ` (${c.currency})` : ""}
+            {c.financialKind === 'framework' ? 'Plafon publicat, separat de totaluri' : c.financialKind === 'amendment' ? 'Valoarea publicată a actului adițional' : c.excludedIdentity ? 'Valoare sursă · exclusă temporar' : c.amountStatus === 'legacy_ron' ? 'Valoare înregistrată' : 'Valoarea acestei publicații'}{c.currency && c.currency !== "RON" ? ` (${c.currency})` : ""}
           </div>
         </div>
         <div className="stat">
@@ -224,14 +228,21 @@ export default async function ContractPage({
         </section>
       )}
 
-      {c.title && /acord[- ]cadru/i.test(c.title) && !/subsecvent/i.test(c.title) && (
-        <p className="note">
-          Acesta e un <b>acord-cadru</b> — un plafon sub care se dau comenzi, nu o plată în sine.
-          Comenzile efective sunt „contractele subsecvente”
-          {c.caNoticeId && c.noticeLotCount > 1 ? " din același anunț (vezi mai sus)" : ""}; când
-          ele sunt publicate, plafonul nu se adună în statisticile noastre.
-        </p>
+      {c.financialKind === 'amendment' && (
+        <p className="note"><b>Act adițional — sumă neaditivă.</b> Valoarea din sursă poate fi totalul actualizat,
+          o diferență sau o sumă repetată la o modificare fără impact financiar. Nu o adăugăm drept contract nou.
+          Legătura cu contractul inițial și impactul financiar necesită verificare în documente.</p>
       )}
+      {c.financialKind === 'review' && (
+        <p className="note"><b>Tip de contract neclar.</b> Păstrăm valoarea sursă, dar o excludem din totaluri până la verificare.</p>
+      )}
+      {c.financialKind === 'framework' && (
+        <p className="note"><b>Plafon de acord-cadru, separat de totaluri.</b> Însumăm doar contractele și comenzile identificate.
+          Dacă lipsesc subsecventele, acoperirea este incompletă; nu înseamnă că nu s-au cheltuit bani.</p>
+      )}
+      {c.excludedIdentity && <p className="note"><b>Exclus temporar din totaluri.</b> Identitatea acestei înregistrări
+        față de alte publicații nu este încă lămurită. <Link href={`/metodologie/excluderi?grup=${c.excludedIdentity}`}>Vezi motivul și toate sursele comparate</Link>.</p>}
+
       <p className="note">
         Date din anunțul de atribuire SICAP{c.noticeNo ? ` ${c.noticeNo}` : ""}. Documentele disponibile și starea preluării lor sunt afișate în secțiunea Fișiere. Pentru detalii nepreluate, consultă anunțul oficial.
       </p>

@@ -7,11 +7,11 @@ import { createDb, type Db } from "@seap/db";
 let shared: ReturnType<typeof createDb> | null = null;
 
 export function getSharedDb(): Db {
-  shared ??= createDb();
+  shared ??= createDb(undefined,{max:16});
   return shared.db;
 }
 
-export function getSharedSql() { shared ??= createDb(); return shared.sql; }
+export function getSharedSql() { shared ??= createDb(undefined,{max:16}); return shared.sql; }
 
 export async function closeSharedDb(): Promise<void> {
   if (shared) {

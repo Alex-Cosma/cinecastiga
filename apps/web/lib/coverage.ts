@@ -11,6 +11,13 @@ export interface Observation {
   missing_cpv: string;
   missing_raw?: string;
   missing_currency?: string;
+  non_additive_amendments?: string;
+  unverified_contract_type?: string;
+  framework_publications?: string;
+  frameworks_without_identified_calloffs?: string;
+  temporarily_excluded_groups?: string;
+  temporarily_excluded_financial_groups?: string;
+  temporarily_excluded_publications?: string;
   unknown_competition?: string;
   unverified?: string;
   date_from: string | null;
@@ -65,7 +72,7 @@ export const getCoverage = unstable_cache(async (): Promise<Coverage | null> => 
     if ((error as { code?: string }).code === "42P01") return null;
     throw error;
   }
-}, ["data-coverage-v2"], { revalidate: 300 });
+}, ["data-coverage-v3"], { revalidate: 300 });
 
 /** Date only, as recorded by the source; don't shift source days to browser time zones. */
 export function coverageDate(value: string | null | undefined): string {
