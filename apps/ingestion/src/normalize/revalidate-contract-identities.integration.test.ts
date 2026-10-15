@@ -85,8 +85,32 @@ describe.skipIf(!isolated)('backed-up publication evidence revalidation',()=>{
    expect((await revalidateApprovedContractIdentities(q,run)).changedGroups).toBe(0);
    // A later identical re-import changes a raw pointer, not economic identity.
    await q`update core.contracts set raw_id=99 where id=3`;
-   expect((await revalidateApprovedContractIdentities(q,run)).changedGroups).toBe(1);
+   const pointer=await revalidateApprovedContractIdentities(q,run);
+   expect(pointer).toMatchObject({changedGroups:1,mode:'full',staleGroups:1,changedOutsideTargets:0});
    expect((await q`select count(*)::int n from marts.contract_identity_revisions`)[0]!.n).toBe(2);
+   // Membership read back in text order ('10' < '9') is not a change.
+   const [revision]=await q`select previous_snapshot->'members' before,next_snapshot->'members' after from marts.contract_identity_revisions order by id desc limit 1`;
+   expect(revision!.before.map((m:{contract_id:string})=>m.contract_id)).toEqual(revision!.after.map((m:{contract_id:string})=>m.contract_id));
+   // After a clean full baseline under the same rules, a daily run re-verifies only
+   // groups with a changed member.
+   await q`update app.processing_runs set scope='daily'`;
+   await q`update core.contracts set raw_id=98 where id=3`;
+   expect(await revalidateApprovedContractIdentities(q,run)).toMatchObject({changedGroups:1,mode:'targeted',staleGroups:1});
+   expect((await q`select count(*)::int n from marts.contract_identity_revisions`)[0]!.n).toBe(3);
+   // A rule change, or a full pass that found changes outside the stale groups, forces full again.
+   await q`update core.contracts set raw_id=97 where id=3`;
+   await expect(q.begin(async nested=>{
+    await nested`update app.collection_audit set after=jsonb_set(after,'{rules}','"older-rules"') where after->>'mode'='full'`;
+    expect((await revalidateApprovedContractIdentities(nested as unknown as DbSql,run)).mode).toBe('full');
+    throw rollback;
+   })).rejects.toBe(rollback);
+   await expect(q.begin(async nested=>{
+    await nested`update app.collection_audit set after=jsonb_set(after,'{changedOutsideTargets}','2') where after->>'mode'='full'`;
+    expect((await revalidateApprovedContractIdentities(nested as unknown as DbSql,run)).mode).toBe('full');
+    throw rollback;
+   })).rejects.toBe(rollback);
+   expect((await revalidateApprovedContractIdentities(q,run)).mode).toBe('targeted');
+   await q`update app.processing_runs set scope='full'`;
    // Same-publication duplication remains ambiguous; new unrelated contracts stay unapproved.
    const members=await readContractIdentityMembers(q,['1','2','3']);
    const registry=await q`select c.*,to_jsonb(d) decision from marts.contract_identity_candidates c join marts.contract_identity_decisions d on d.candidate_id=c.id`;
@@ -102,6 +126,13 @@ describe.skipIf(!isolated)('backed-up publication evidence revalidation',()=>{
    fourth[1]!.payload.caNoticeId=400;Object.assign(fourth[1]!.payload.items[0],{caNoticeId:400,caNoticeContractId:104,contractValue:110,defaultCurrencyContractValue:110,hasModifiedVersions:true,modifiedCount:1});
    for(let i=0;i<fourth.length;i++)await q`insert into raw.raw_documents(id,source,external_id,endpoint_version,content_hash,payload)
     values(${40+i},'elicitatie','award:400',${fourth[i]!.endpoint},${'fourth-'+i},${JSON.stringify(fourth[i]!.payload)}::jsonb)`;
+   // A targeted pass still rejects a new member already held by a group it does not re-verify.
+   await expect(q.begin(async nested=>{
+    await nested`update app.processing_runs set scope='daily'`;
+    const current=(await currentSnapshotHashes(nested as unknown as DbSql,['4'])).get('4');
+    await nested`insert into marts.contract_identity_members(contract_id,candidate_id,snapshot_hash) values(4,'another-approved-group',${current!})`;
+    await revalidateApprovedContractIdentities(nested as unknown as DbSql,run);
+   })).rejects.toThrow('Overlapping approved groups');
    // Owner decision 2026-10-12: an unflagged amount-only change is accepted and
    // recorded; a changed title without amendment wording still needs proof.
    const unflagged=Error('unflagged accepted');

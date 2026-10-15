@@ -66,9 +66,15 @@ export async function currentSnapshotHashes(q: IdentitySql, ids: string[], size=
 /** Read-only fail-closed check. Never silently revoke approvals and republish a
  * doubled total. A changed decision needs source review while maintenance stays on. */
 export async function readContractIdentityQuality(q: IdentitySql) {
-  const members=await q`select contract_id::text,snapshot_hash from marts.contract_identity_members`;
+  return (await inspectContractIdentityQuality(q)).report;
+}
+/** The quality report plus the approved groups holding a stale member, which a
+ * targeted revalidation must re-verify. Kept out of the report: it is audited. */
+export async function inspectContractIdentityQuality(q: IdentitySql) {
+  const members=await q`select contract_id::text,candidate_id,snapshot_hash from marts.contract_identity_members`;
   const hashes=await currentSnapshotHashes(q,members.map(m=>String(m.contract_id)));
-  const stale=members.filter(m=>hashes.get(String(m.contract_id))!==m.snapshot_hash).map(m=>String(m.contract_id));
+  const staleRows=members.filter(m=>hashes.get(String(m.contract_id))!==m.snapshot_hash);
+  const stale=staleRows.map(m=>String(m.contract_id));
   const invalid=await q`select d.candidate_id from marts.contract_identity_decisions d
     left join marts.contract_identity_candidates c on c.id=d.candidate_id
     left join marts.contract_identity_observations o on o.fingerprint=d.fingerprint and o.candidate_id=d.candidate_id
@@ -83,7 +89,8 @@ export async function readContractIdentityQuality(q: IdentitySql) {
       or not exists(select 1 from marts.contract_identity_members m where m.candidate_id=d.candidate_id and m.contract_id=d.canonical_contract_id)
       or (c.evidence->>'methodology'='contract-identity-3' and not exists(
         select 1 from core.contracts chosen where chosen.id=d.canonical_contract_id and chosen.ca_notice_contract_id::text=c.evidence->>'latestPublicId'))`;
-  return {members:members.length,staleMembers:stale.length,invalidDecisions:invalid.length,examples:stale.slice(0,10),valid:!stale.length&&!invalid.length};
+  const report={members:members.length,staleMembers:stale.length,invalidDecisions:invalid.length,examples:stale.slice(0,10),valid:!stale.length&&!invalid.length};
+  return {report,staleGroups:[...new Set(staleRows.map(m=>String(m.candidate_id)))].sort()};
 }
 export async function assertContractIdentityQuality(q: IdentitySql) {
   const report=await readContractIdentityQuality(q);
