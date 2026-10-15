@@ -2,8 +2,8 @@ import type { Story } from './types';
 import { citedIds, counties, safeExternalUrl } from './shared';
 const slug=/^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const date=(s:string)=>/^\d{4}-\d{2}-\d{2}$/.test(s)&&!Number.isNaN(Date.parse(s))&&new Date(s).toISOString().slice(0,10)===s;
-export function visibleStories(stories:Story[],environment:string|undefined):Story[] {
-  return stories.filter(s=>s.status==='published'||(environment==='development'&&s.status==='preview')).sort((a,b)=>b.publishedAt.localeCompare(a.publishedAt));
+export function visibleStories(stories:Story[],previews:boolean):Story[] {
+  return stories.filter(s=>s.status==='published'||(previews&&s.status==='preview')).sort((a,b)=>b.publishedAt.localeCompare(a.publishedAt));
 }
 /** Fail closed on invalid references. No HTML, private dossier links, or executable URLs. */
 export function validateStory(s:Story):void {

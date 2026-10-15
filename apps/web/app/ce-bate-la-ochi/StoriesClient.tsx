@@ -44,7 +44,7 @@ export default function StoriesClient({stories,initialView}:{stories:Story[];ini
   const card=a.closest('.story-card');if(card){const cover=card.querySelector<HTMLElement>('.cover');const slug=url.pathname.split('/').at(-1);if(cover&&slug){root.current?.querySelectorAll<HTMLElement>('.cover').forEach(el=>{if(el.style.viewTransitionName===`story-cover-${slug}`)el.style.viewTransitionName='none';});cover.style.viewTransitionName=`story-cover-${slug}`;}}
   void navigate.current(url.pathname);
  }}>
- {stories.some(s=>s.status==='preview')&&<div className="editorial-banner"><span>În documentare · doar local</span> Date reale. Text în lucru, înainte de publicare.</div>}
+ {stories.some(s=>s.status==='preview')&&<div className="editorial-banner"><span>În documentare · doar administratori</span> Date reale. Text în lucru, înainte de publicare.</div>}
  {view.kind==='atlas'?<Atlas stories={stories}/>:view.kind==='county'?<County county={view.county} stories={stories} key={view.county}/>:story&&view.kind==='source'?<SourcePage story={story} source={story.sources.find(s=>s.id===view.sourceId)!}/>:story?<StoryArticle key={story.slug} story={story} stories={stories} openSource={setSourceId}/>:null}
  {story&&sourceId&&<StoryEvidence story={story} sourceId={sourceId} onSelect={setSourceId} onClose={()=>setSourceId(null)}/>}
  </div>;

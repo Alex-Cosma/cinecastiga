@@ -42,6 +42,10 @@ Cloudflare poate trata diferit User-Agent-urile: o cerere Python fără antete a
 
 Un push reușit nu dovedește deploy. Verifică ambele joburi Actions, hash-ul serverului, health, o pagină publică, autentificarea/admin și worker-ii. O schimbare exclusiv documentară poate folosi `[skip ci]`; nu folosi asta pentru cod sau migrații.
 
+### Povești „Ce bate la ochi” în lucru
+
+Fișierele JSON ale poveștilor nepublicate stau numai pe server, în `/srv/seap/stories/` (proprietar `seap`, citite de containerul web ca `/stories`, read-only). Deploy-ul nu le atinge și nu sunt în Git. O poveste nouă sau corectată se copiază acolo (`scp poveste.json seap@server:/srv/seap/stories/`) și apare la următoarea cerere a unui admin; un fișier nevalid este omis și apare în `docker compose logs web` ca `Editorial preview … skipped`. Ștergerea fișierului retrage povestea. Directorul trebuie să existe înainte de pornirea containerului web; altfel Docker îl creează gol, ca root.
+
 Schema veche trebuie să poată servi versiunea veche în timpul migrării. Nu există rollback destructiv automat al migrațiilor deja comise. Nu rezolva o eroare de istoric prin resetarea migrațiilor sau ștergerea tabelelor.
 
 ## Colectare SEAP — politica efectivă

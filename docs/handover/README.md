@@ -2,7 +2,7 @@
 
 **Consolidare: 11 octombrie 2026.** Acesta este ghidul pentru un coleg și modelul său LLM, fără acces la conversația inițială. Începe cu [predarea integrală](20261011/README.md). Indexul anterior, cu toate notele deja existente și stările datate, este păstrat integral în [HISTORY-INDEX.md](HISTORY-INDEX.md).
 
-**3 octombrie — funcționalitate pusă separat:** codul, macheta și documentarea „Ce bate la ochi” sunt pe `feat/ce-bate-la-ochi`. Nu se integrează în main și nu se publică poveștile; notele de mai jos păstrează cronologia lucrului local.
+**15 octombrie — „Ce bate la ochi” în producție, numai pentru administratori:** cod pe `main`; poveștile în lucru sunt fișiere JSON numai pe server (`/srv/seap/stories/`), nu în repository. Vizitatorii și watchdogii nu văd secțiunea. Vezi [implementarea](../implementation/editorial-stories.md) și [operațiunile](05-operations.md#povești-ce-bate-la-ochi-în-lucru). Notele de mai jos păstrează cronologia lucrului local.
 
 **2 octombrie, a doua documentare reală:** [Aquapark Buzău](../research/20261002-aquapark-buzau/README.md) este adăugată exclusiv local, alături de Școala 311. Leagă achiziția din septembrie de calendar, auditul de conformitate și proprietatea constructorului. Nu s-au trimis solicitări și nu s-a publicat. Catalogul de producție rămâne gol.
 

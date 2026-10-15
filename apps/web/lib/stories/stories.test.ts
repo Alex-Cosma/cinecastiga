@@ -1,138 +1,79 @@
-import { afterEach,describe,expect,it,vi } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { scoala311Story } from './scoala311';
-import { aquaparkBuzauStory } from './aquapark-buzau';
-import { antigrindinaStory } from './antigrindina';
-import { aeroclubStory } from './aeroclub';
-import { a7BuzauStory } from './a7-buzau';
+import { afterEach,beforeEach,describe,expect,it,vi } from 'vitest';
+import { mkdtempSync,rmSync,writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { visibleStories,validateStory } from './validation';
-import { readView,sumExact,sourceLinks,safeExternalUrl,countStories,storyTotal,splitCitations } from './shared';
+import { readView,sumExact,sourceLinks,safeExternalUrl,countStories,storyTotal } from './shared';
+import { readPreviewStories } from './preview-files';
 import { getStories } from './catalog';
+import { canSeeStoryPreviews } from './access';
 import type { Story } from './types';
-afterEach(()=>vi.unstubAllEnvs());
-const example=()=>structuredClone(scoala311Story);
+
+const mocks=vi.hoisted(()=>({session:vi.fn()}));
+vi.mock('@/lib/auth',()=>({auth:{api:{getSession:mocks.session}}}));
+vi.mock('next/headers',()=>({headers:async()=>new Headers()}));
+
+/** Synthetic structure only: placeholder records, never loaded by the application. */
+const example=():Story=>({
+ slug:'poveste-de-test',status:'preview',title:'Titlu de test',summary:'Rezumat de test.',counties:['cluj'],topic:'Test',illustration:'road',
+ author:'Redacția de test',publishedAt:'2026-10-01',minutes:3,period:'2026',intro:['Introducere [[achizitie-a]].'],
+ sections:[{id:'context',title:'Context',paragraphs:['Paragraf.'],sourceIds:['achizitie-a']}],
+ finding:{title:'Total',sourceIds:['achizitie-a','achizitie-b'],explanation:'Explicație.',after:'După.'},
+ timeline:[{id:'t1',date:'2026-09-01',title:'Moment',text:'Text.',sourceIds:['achizitie-b']}],
+ questions:['Întrebare?'],reply:null,methodology:'Metodologie.',corrections:[],
+ sources:[
+  {id:'achizitie-a',title:'Achiziția A',observedAt:'2026-10-01',kind:'procurement',record:{type:'direct',id:'1001'},date:'2026-09-01',amount:'0.10',currency:'RON',authority:'Instituția A',suppliers:['Furnizor A']},
+  {id:'achizitie-b',title:'Achiziția B',observedAt:'2026-10-01',kind:'procurement',record:{type:'contract',id:'2002',awardNoticeId:'3003'},date:'2026-09-02',amount:'0.2',currency:'RON',authority:'Instituția A',suppliers:['Furnizor B']},
+  {id:'context-c',title:'Context C',observedAt:'2026-10-01',kind:'procurement',record:{type:'direct',id:'4004'},date:'2026-09-03',amount:'5',currency:'RON',authority:'Instituția A',suppliers:['Furnizor C']},
+  {id:'presa',title:'Articol',observedAt:'2026-10-01',kind:'external',url:'https://example.org/articol',publisher:'Publicație',summary:'Rezumat.'},
+ ],
+});
+let dir='';
+beforeEach(()=>{dir=mkdtempSync(join(tmpdir(),'stories-'));});
+afterEach(()=>{rmSync(dir,{recursive:true,force:true});vi.unstubAllEnvs();mocks.session.mockReset();});
+const write=(name:string,value:unknown)=>writeFileSync(join(dir,name),typeof value==='string'?value:JSON.stringify(value));
+
 describe('editorial publication and evidence',()=>{
- it('keeps unfinished real reporting and drafts out of production and tests, including direct links',async()=>{
-  for(const env of ['production','test']) {
-   vi.stubEnv('NODE_ENV',env);expect(await getStories()).toEqual([]);
-   expect(visibleStories([example(),aquaparkBuzauStory,{...example(),status:'draft'}],env)).toEqual([]);
-   expect(readView(['poveste',scoala311Story.slug],await getStories())).toBeNull();
-   expect(readView(['poveste',scoala311Story.slug,'surse','da41081778'],await getStories())).toBeNull();
-  }
+ it('keeps previews and drafts out of the public catalog, including direct links',async()=>{
+  vi.stubEnv('STORIES_PREVIEW_DIR',dir);write('a.json',example());
+  expect(await getStories()).toEqual([]);
+  expect(visibleStories([example(),{...example(),slug:'ciorna',status:'draft'}],false)).toEqual([]);
+  expect(visibleStories([{...example(),status:'draft'}],true)).toEqual([]);
+  expect(readView(['poveste',example().slug],await getStories())).toBeNull();
+  expect(readView(['poveste',example().slug,'surse','achizitie-a'],await getStories())).toBeNull();
+  expect(visibleStories([{...example(),status:'published'}],false)).toHaveLength(1);
  });
- it('loads only the real local previews; deleted fictional stories cannot be opened',async()=>{
-  vi.stubEnv('NODE_ENV','development');const stories=await getStories();expect(stories.map(s=>s.slug)).toEqual([antigrindinaStory.slug,aeroclubStory.slug,a7BuzauStory.slug,aquaparkBuzauStory.slug,scoala311Story.slug]);
-  for(const s of stories)expect(()=>validateStory(s)).not.toThrow();expect(readView(['poveste','acelasi-drum'],stories)).toBeNull();
-  expect(visibleStories([{...example(),status:'published'}],'production')).toHaveLength(1);
+ it('reads only valid preview files from the server directory and skips the rest',async()=>{
+  vi.stubEnv('STORIES_PREVIEW_DIR',dir);const logs:string[]=[];
+  write('a.json',example());write('b.json',{...example(),slug:'publicata-din-fisier',status:'published'});
+  write('c.json',{...example(),slug:'fara-surse',sources:[]});write('d.json','{nu e json');write('note.txt','ignorat');
+  expect((await readPreviewStories(dir,m=>logs.push(m))).map(s=>s.slug)).toEqual(['poveste-de-test']);
+  expect(logs).toHaveLength(3);expect(logs.join('\n')).toContain('status must be preview');
+  const quiet=vi.spyOn(console,'error').mockImplementation(()=>{});
+  expect((await getStories({previews:true})).map(s=>s.slug)).toEqual(['poveste-de-test']);
+  expect(await readPreviewStories(join(dir,'lipsa'),()=>{})).toEqual([]);
+  vi.stubEnv('STORIES_PREVIEW_DIR','');expect(await getStories({previews:true})).toEqual([]);
+  quiet.mockRestore();
  });
- it('keeps the Buzău procurement snapshot separate from payments and the historical contract',()=>{
-  const raw=JSON.parse(readFileSync(new URL('../../../../docs/research/20261002-aquapark-buzau/seap-records.json',import.meta.url),'utf8'));
-  const story=aquaparkBuzauStory;
-  expect(storyTotal(story)).toBe('882174.93');
-  expect(story.finding.sourceIds).toEqual(['da41151373']);
-  const sources=story.sources.filter(s=>s.kind==='procurement');expect(sources).toHaveLength(2);
-  for(const source of sources){
-   const r=raw.find((r:{sicapId:string})=>r.sicapId===source.record?.id);expect(r).toBeDefined();
-   expect(source.amount).toBe(r.amount);expect(source.code).toBe(r.code);expect(source.authority).toBe(r.authority);
-   expect(r.authorityCui).toBe('4233874');
-   if(source.record?.type==='direct'){
-    expect(source.title).toBe(r.payload.directAcquisitionName);expect(source.suppliers).toEqual([r.supplier]);
-    expect(r.supplierCui).toBe('36486492');expect(r.state).toBe('Oferta acceptata');
-    expect(source.publishedAt).toBe(r.payload.publicationDate);expect(source.finalizedAt).toBe(r.payload.finalizationDate);
-    expect(source.date).toBe('2026-09-11');expect(source.cpv).toBe(r.cpv);
-   }else{
-    expect(source.record?.awardNoticeId).toBe(r.awardNoticeId);expect(source.title).toBe(r.title);
-    expect(source.suppliers).toEqual(r.suppliers.map((s:{name:string})=>s.name));
-    expect(r.suppliers.map((s:{cui:string})=>s.cui)).toEqual(['24031012']);
-    expect(r.archivedPayloadAvailable).toBe(false);expect(r.awardArchivedPayloadAvailable).toBe(false);
-    expect(source.date).toBe('2024-11-05');
-    expect(new Date(r.contractDate).toLocaleDateString('sv-SE',{timeZone:'Europe/Bucharest'})).toBe(source.date);
-    expect(story.finding.sourceIds).not.toContain(source.id);
-   }
-  }
-  expect((Date.parse('2026-09-11')-Date.parse('2026-06-01'))/86400000).toBe(102);
-  // Amount correction from audit includes 19% VAT; these are not separate contracts to sum.
-  expect((4814242200n-4790726600n)*119n/100n).toBe(27983564n);
-  expect(story.sources.find(s=>s.id==='audit-conformitate')?.title).toContain('7–10');
+ it('shows previews only to admins outside local development',async()=>{
+  vi.stubEnv('NODE_ENV','production');
+  mocks.session.mockResolvedValue(null);expect(await canSeeStoryPreviews()).toBe(false);
+  mocks.session.mockResolvedValue({user:{role:'watchdog'}});expect(await canSeeStoryPreviews()).toBe(false);
+  mocks.session.mockResolvedValue({user:{role:'admin'}});expect(await canSeeStoryPreviews()).toBe(true);
+  vi.stubEnv('NODE_ENV','development');mocks.session.mockResolvedValue(null);expect(await canSeeStoryPreviews()).toBe(true);
  });
- it('keeps the 12 October previews tied to the production records, with ceilings separate from context',()=>{
-  // Snapshot read from production on 12 October 2026: contract id, award notice id, stored timestamp (UTC), amount.
-  const records:Record<string,[string,string,string,string]>={
-   'cadru-maramures':['107816316','100640464','2026-07-01T21:00:00Z','17000639.44'],'cadru-oltenia':['107816308','100640459','2026-07-01T21:00:00Z','9305892.82'],
-   'cadru-vrancea-2026':['107816307','100640457','2026-07-01T21:00:00Z','9934523.80'],'cadru-iasi':['107816306','100640456','2026-07-01T21:00:00Z','8214018.69'],
-   'cadru-prahova':['107816304','100640455','2026-07-01T21:00:00Z','5982230.34'],'cadru-timis':['107816312','100640460','2026-07-01T21:00:00Z','5194815.64'],
-   'cadru-mures':['107816313','100640462','2026-07-01T21:00:00Z','5032012.74'],'cadru-gc-sud':['107816315','100640463','2026-07-01T21:00:00Z','4839108.35'],
-   'cadru-vrancea-2025':['106787907','100576044','2025-09-14T21:00:00Z','11390700'],
-   'cadru-90':['107798317','100639377','2026-04-29T21:00:00Z','14619654.72'],'contract-181':['107891460','100644936','2026-07-14T21:00:00Z','14783123.50'],
-   'cadru-paza-159':['107797347','100639307','2026-06-25T21:00:00Z','24225190.60'],
-   'cadru-a7':['108065116','100654428','2026-09-07T21:00:00Z','49462662.10'],'contract-velstand':['107534726','100623199','2026-04-16T21:00:00Z','357825.26'],
-   'cadru-a2-a4':['107779497','100638274','2024-07-15T21:00:00Z','31483826.63'],
-   'da-decembrie':['121289388','','2025-12-19T05:22:16Z','242699'],'da-februarie':['121503914','','2026-02-06T06:54:43Z','242699'],
-  };
-  const stories=[antigrindinaStory,aeroclubStory,a7BuzauStory];
-  for(const story of stories){
-   expect(()=>validateStory(story)).not.toThrow();expect(story.status).toBe('preview');
-   for(const source of story.sources)if(source.kind==='procurement'){
-    const r=records[source.id];expect(r,source.id).toBeDefined();const [id,award,stored,amount]=r!;
-    expect(source.record?.id).toBe(id);if(source.record?.type==='contract')expect(source.record.awardNoticeId).toBe(award);
-    expect(source.amount).toBe(amount);
-    // SEAP stores Romanian midnight as 21:00 UTC on the previous day; the calendar date is Romanian.
-    expect(new Date(stored).toLocaleDateString('sv-SE',{timeZone:'Europe/Bucharest'})).toBe(source.date);
-   }
-  }
-  expect(storyTotal(antigrindinaStory)).toBe('65503241.82');expect(antigrindinaStory.finding.sourceIds).not.toContain('cadru-vrancea-2025');
-  expect(sumExact(antigrindinaStory.sources.filter(s=>s.kind==='procurement'&&antigrindinaStory.finding.sourceIds.includes(s.id)&&!s.suppliers[0]!.startsWith('ELECTROMECANICA')).map(s=>s.kind==='procurement'?s.amount:'0'))).toBe('59521011.48');
-  expect(storyTotal(aeroclubStory)).toBe('29402778.22');expect(aeroclubStory.finding.sourceIds).not.toContain('cadru-paza-159');
-  expect(storyTotal(a7BuzauStory)).toBe('49462662.10');expect(a7BuzauStory.finding.sourceIds).toEqual(['cadru-a7']);
- });
- it('validates inline citations, figures and supplier profiles against the story sources',()=>{
-  const a=structuredClone(antigrindinaStory);a.intro[0]+='[[missing]]';expect(()=>validateStory(a)).toThrow('unknown source');
-  const b=structuredClone(antigrindinaStory);if(b.visual?.kind==='map')b.visual.regions[0]!.group='nobody';expect(()=>validateStory(b)).toThrow('visual');
-  const c=structuredClone(antigrindinaStory);if(c.visual?.kind==='map')c.visual.regions[0]!.sourceId='missing';expect(()=>validateStory(c)).toThrow('unknown source');
-  const d=structuredClone(aeroclubStory);d.actors!.items[0]!.won='29,4';expect(()=>validateStory(d)).toThrow('actors');
-  const e=structuredClone(a7BuzauStory);e.keyFacts=[];expect(()=>validateStory(e)).toThrow('key facts');
-  expect(splitCitations('A[[x-1]] b.[[y]]')).toEqual([{text:'A'},{ref:'x-1'},{text:' b.'},{ref:'y'}]);
-  // Profile totals restate the finding; they must not drift from the records.
-  expect(antigrindinaStory.actors!.items.map(x=>x.won)).toEqual(['27227467.82','22359019.86','9934523.80']);
-  expect(aeroclubStory.actors!.items[0]!.won).toBe(storyTotal(aeroclubStory));expect(a7BuzauStory.actors!.items[0]!.won).toBe(storyTotal(a7BuzauStory));
- });
- it('preserves high precision and excludes the context purchase from the seven-record total',()=>{
+ it('preserves high precision and excludes context purchases from the total',()=>{
   expect(sumExact(['0.1','0.2'])).toBe('0.30');expect(sumExact(['9007199254740993.12345','0.00006'])).toBe('9007199254740993.12351');
-  expect(storyTotal(example())).toBe('919661.16');expect(example().finding.sourceIds).not.toContain('da41159391');expect(()=>sumExact(['NaN'])).toThrow();
- });
- it('matches each published fact sheet to the archived public record, including exact timestamps and identity',()=>{
-  const raw=JSON.parse(readFileSync(new URL('../../../../docs/research/20261002-scoala311/seap-records.json',import.meta.url),'utf8'));
-  const records=example().sources.filter(s=>s.kind==='procurement').filter(s=>!['da38610396','da39350427'].includes(s.id));expect(records).toHaveLength(8);
-  for(const source of records) {
-   const r=raw.find((v:{sicapId:string})=>v.sicapId===source.record?.id);expect(r).toBeDefined();
-   expect(source.amount).toBe(r.amount);expect(source.title).toBe(r.payload.directAcquisitionName);
-   expect(source.code).toBe(r.code);expect(source.cpv).toBe(r.cpv);expect(source.publishedAt).toBe(r.payload.publicationDate);expect(source.finalizedAt).toBe(r.payload.finalizationDate);
-   expect(r.state).toBe('Oferta acceptata');expect(r.authorityCui).toBe('32167245');expect(source.suppliers).toEqual([r.supplier]);
-  }
-  const included=records.filter(s=>example().finding.sourceIds.includes(s.id));expect(included).toHaveLength(7);
-  const times=included.map(s=>Date.parse(s.finalizedAt!));expect((Math.max(...times)-Math.min(...times))/1000).toBe(99);
-  expect(sumExact(records.filter(s=>['da41081898','da41081882','da41081842'].includes(s.id)).map(s=>s.amount))).toBe('511594.44');
- });
- it('preserves the separate M&M evidence and discloses its missing original payloads',()=>{
-  const raw=JSON.parse(readFileSync(new URL('../../../../docs/research/20261002-scoala311/mm-records.json',import.meta.url),'utf8'));
-  const records=example().sources.filter(s=>s.kind==='procurement').filter(s=>['da38610396','da39350427'].includes(s.id));
-  expect(records).toHaveLength(2);expect(sumExact(records.map(s=>s.amount))).toBe('161436.39');
-  for(const source of records){
-   const r=raw.find((v:{sicapId:string})=>v.sicapId===source.record?.id);expect(r).toBeDefined();
-   expect(source.amount).toBe(r.amount);expect(source.code).toBe(r.code);expect(source.cpv).toBe(r.cpv);
-   expect(source.suppliers).toEqual([r.supplier]);expect(r.authorityCui).toBe('32167245');expect(r.supplierCui).toBe('16617020');
-   expect(Date.parse(source.finalizedAt!)).toBe(Date.parse(r.finalizedAt));expect(Date.parse(source.publishedAt!)).toBe(Date.parse(r.publishedAt));
-   expect(r.archivedPayloadAvailable).toBe(false);expect(r.title).toBeNull();expect(source.title).toContain('titlu indisponibil');
-   expect(example().finding.sourceIds).not.toContain(source.id);
-  }
-  expect(storyTotal(example())).toBe('919661.16');
+  expect(storyTotal(example())).toBe('0.30');expect(()=>sumExact(['NaN'])).toThrow();
  });
  it('rejects phantom citations in the narrative and duplicate procurement references',()=>{
   const s=example();s.sections![0]!.sourceIds.push('missing');expect(()=>validateStory(s)).toThrow('unknown source');
+  const i=example();i.intro[0]+='[[missing]]';expect(()=>validateStory(i)).toThrow('unknown source');
   const q=example();q.finding.sourceIds.push(q.finding.sourceIds[0]!);expect(()=>validateStory(q)).toThrow('total selection');
   const r=example();for(const source of r.sources)if(source.kind==='procurement')source.record={type:'direct',id:'123'};expect(()=>validateStory(r)).toThrow('duplicate procurement');
  });
- it('requires real record references even for local previews',()=>{
+ it('requires real record references even for previews',()=>{
+  expect(()=>validateStory(example())).not.toThrow();
   const s=example();const record=s.sources.find(s=>s.kind==='procurement')!;if(record.kind==='procurement')record.record=null;
   expect(()=>validateStory(s)).toThrow('missing public record');
   const q=example(),external=q.sources.find(s=>s.kind==='external')!;if(external.kind==='external')external.url=null;expect(()=>validateStory(q)).toThrow('external source');
