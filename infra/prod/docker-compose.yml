@@ -107,6 +107,10 @@ services:
       DATA_AS_OF: ${DATA_AS_OF:-2026-07-31}
       DATA_MODE: ${DATA_MODE:-snapshot}
       DOCUMENTS_ENABLED: ${DOCUMENTS_ENABLED:-true}
+      # Unpublished "Ce bate la ochi" stories, admins only; never in the public repository.
+      STORIES_PREVIEW_DIR: /stories
+    volumes:
+      - /srv/seap/stories:/stories:ro
     depends_on:
       postgres:
         condition: service_healthy

@@ -12,6 +12,7 @@ import GlobalSearch from "./GlobalSearch";
 import Reveal from "./Reveal";
 import { CoverageSummary } from "@/components/DataCoverage";
 import { SITE_DESCRIPTION, SITE_NAME, pageTitle } from "@/lib/site";
+import { publishedStories } from "@/lib/stories/published";
 
 const display = Bricolage_Grotesque({ subsets: ["latin", "latin-ext"], weight: ["500", "700", "800"], variable: "--font-display", display: "swap" });
 const body = IBM_Plex_Sans({ subsets: ["latin", "latin-ext"], weight: ["400", "500", "600"], style: ["normal", "italic"], variable: "--font-body", display: "swap" });
@@ -41,7 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Link href="/" className="brand" aria-label={SITE_NAME}>
               cine<em>câștigă</em><b>?</b>
             </Link>
-            <SiteNav />
+            <SiteNav storiesPublished={publishedStories.length > 0} />
             <div className="hdr-right">
               <Link href="/metodologie" className="d-method-link">Cum funcționează</Link>
               <GlobalSearch />
