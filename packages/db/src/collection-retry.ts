@@ -27,7 +27,8 @@ export async function scheduleCollectionTimeout(q:DbSql,requestId:number,taskId:
    values(${taskId},${requestId},${requestId},${timeouts},${retryable?'pending':'stopped'},case when ${retryable} then clock_timestamp()+${delay}*interval '1 second' else null end)
    on conflict(task_id) do update set last_request_id=excluded.last_request_id,timeouts=excluded.timeouts,status=excluded.status,retry_at=excluded.retry_at,updated_at=clock_timestamp()`;
   if(retryable)await q`update app.collection_tasks set status='pending',started_at=null where id=${taskId}`;
-  else if(!attempt.proxy_id)await q`update app.collection_control set blocked_reason='Timeout repetat. Cele două reîncercări automate au fost epuizate. Verifică jurnalul înainte de reluare.',blocked_until=null where id=1`;
+  // TED has its own stream stop (the gate pauses 'ted'); never a global SEAP block.
+  else if(!attempt.proxy_id&&t.stream!=='ted')await q`update app.collection_control set blocked_reason='Timeout repetat. Cele două reîncercări automate au fost epuizate. Verifică jurnalul înainte de reluare.',blocked_until=null where id=1`;
   if(!retryable&&attempt.proxy_id)await q`update app.collection_tasks set status='failed',error='Cerere prin proxy eșuată după trei încercări. Restul colectării continuă.',finished_at=clock_timestamp() where id=${taskId}`;
   const label=attempt.reason==='request_timeout'?'Timeout după 45 de secunde.':'Conexiune proxy eșuată.';
   await q`update app.collection_requests set diagnostics=diagnostics||${JSON.stringify({retry:{taskId,timeouts,scheduled:retryable,delaySeconds:retryable?delay:null}})}::jsonb,error=${retryable?`${label} Reîncercare automată ${timeouts}/2 după ${delay/60} minute.`:`${label} Limita reîncercărilor automate a fost atinsă.`} where id=${requestId}`;

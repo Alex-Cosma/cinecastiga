@@ -19,9 +19,8 @@ case "$*" in
  *"pg_dump "*) if [ "$TEST_FAILURE" = backup ]; then exit 1; fi; echo backup;;
  *"pg_restore --list"*) cat >/dev/null; echo archive;;
  *"processing.js refresh "*) if [ "$TEST_FAILURE" = refresh ]; then exit 1; fi;;
- *"ted-incremental.js") if read -r caller_input; then echo "CONSUMED_CALLER_INPUT" >> "$TEST_LOG"; fi; if [ "$TEST_FAILURE" = ted ]; then exit 1; fi;;
 esac`;
-  const bins={timeout:'echo "timeout $1 $2" >> "$TEST_LOG"; shift 2; exec "$@"',docker,flock:'[ "$TEST_FAILURE" != lock ]',curl:'case "$*" in *api/health*) echo 200;; *) echo 503;; esac',sha256sum:'echo sha256'};
+  const bins={docker,flock:'[ "$TEST_FAILURE" != lock ]',curl:'case "$*" in *api/health*) echo 200;; *) echo 503;; esac',sha256sum:'echo sha256'};
   for(const [name,body] of Object.entries(bins))await writeFile(join(dir,'bin',name),'#!/bin/sh\n'+body+'\n',{mode:0o755});
   const r=spawnSync('bash',[script,...args],{input:'caller-script-must-not-reach-container\n',env:{...process.env,PATH:join(dir,'bin')+':'+process.env.PATH,SEAP_DEPLOY_CHECKOUT:dir,SEAP_PROCESSING_BACKUPS:join(dir,'backups'),TEST_LOG:join(dir,'calls'),TEST_FAILURE:failure,TEST_RAW_RESUME:rawResume?'yes':'no',TEST_DUE:due?'yes':'no'},encoding:'utf8'});
   return {status:r.status,calls:await readFile(join(dir,'calls'),'utf8').catch(()=> '')};
@@ -56,24 +55,4 @@ test('operator recovery of a failed run uses the same backup and publication pat
 test('verified failure resumes only collection, retaining public maintenance and document stop',async()=>{
  const r=await run('refresh',true,[],true);assert.equal(r.status,1);
  assert.match(r.calls,/up -d --no-deps collection/);assert.doesNotMatch(r.calls,/processing.js finish |restart web|up -d --no-deps documents/);
-});
-
-test('scheduled run imports TED after stopping SEAP workers and before the raw boundary',async()=>{
- const r=await run();assert.equal(r.status,0);
- const steps=['stop collection documents','timeout --kill-after=30s 15m','--name cinecastiga-ted-import processor node apps/ingestion/dist/scripts/ted-incremental.js','processing.js freeze ','processing.js refresh ','processing.js finish '];
- let previous=-1;for(const step of steps){const position=r.calls.indexOf(step);assert.ok(position>previous,step);previous=position;}
- assert.doesNotMatch(r.calls,/CONSUMED_CALLER_INPUT/);
-});
-
-test('a TED import failure is logged and never fails or holds the publication',async()=>{
- const r=await run('ted');assert.equal(r.status,0);
- assert.match(r.calls,/rm -f cinecastiga-ted-import/);
- assert.match(r.calls,/processing.js freeze /);assert.match(r.calls,/processing.js refresh /);assert.match(r.calls,/processing.js finish /);
- assert.doesNotMatch(r.calls,/processing.js fail /);
-});
-
-test('operator repair and recovery runs keep their exact path without the TED import',async()=>{
- for(const args of [['--reference-repair-now'],['--recover-failed','11111111-1111-4111-8111-111111111111']]){
-  const r=await run('',true,args);assert.equal(r.status,0);assert.doesNotMatch(r.calls,/ted-incremental/);assert.match(r.calls,/processing.js finish /);
- }
 });

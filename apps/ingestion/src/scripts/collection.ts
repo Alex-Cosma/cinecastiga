@@ -1,5 +1,6 @@
 import {activateNationalDa} from '../collection/da-activation.js';
 import {advanceRecovery} from '../collection/advance.js';
+import {enableTedCollection} from '../collection/ted-activation.js';
 import {setTimeout as sleep} from 'node:timers/promises';
 import type {DbSql} from '@seap/db';
 import {getSharedSql,closeSharedDb} from '../db.js';
@@ -11,6 +12,7 @@ process.on('SIGTERM',()=>{stopping=true;});process.on('SIGINT',()=>{stopping=tru
 try{
  if(args[0]==='seed'){console.log(JSON.stringify({batch:await seedRecovery(q,args[1]),networkRequests:0}));}
  else if(args[0]==='follow-latest'){console.log(JSON.stringify({scope:await advanceRecovery(q,{enable:true}),networkRequests:0}));}
+ else if(args[0]==='ted-enable'){console.log(JSON.stringify({activation:await enableTedCollection(q),networkRequests:0}));}
  else if(args[0]==='national-da'){console.log(JSON.stringify({activation:await activateNationalDa(q),networkRequests:0}));}
  else if(args[0]==='run'){
   const boundArg=args.find(a=>a.startsWith('--max-tasks='));const bound=boundArg?Number(boundArg.split('=')[1]):Infinity;
@@ -38,5 +40,5 @@ try{
    const failed=results.find(r=>r.status==='rejected');if(failed?.status==='rejected')throw failed.reason;
    console.log(JSON.stringify({event:'recovery-worker-exit',tasks:attempts,bounded:bound!==Infinity}));
   }finally{await lock`select pg_advisory_unlock(${RECOVERY_LOCK[0]},${RECOVERY_LOCK[1]})`.catch(()=>{});lock.release();}
- }else throw Error('Usage: collection seed [closed-end-day] | follow-latest | national-da | run [--max-tasks=N]');
+ }else throw Error('Usage: collection seed [closed-end-day] | follow-latest | national-da | ted-enable | run [--max-tasks=N]');
 }finally{await closeSharedDb();}
