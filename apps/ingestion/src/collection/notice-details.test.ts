@@ -14,6 +14,16 @@ describe('complete notice detail graph',()=>{
   expect(()=>plan(e,{...html,changeNoticeHtml:''})).toThrow('gol');
   expect(()=>plan(t,{...data,noticeID:201})).toThrow('identitatea');
  });
+ it('keeps the parts of a background backfill notice in the background',()=>{
+  const t={...root('awards',3),params:{...root('awards',3).params,metadataRawId:7,backfill:true},priority:60};
+  const [lots]=plan(t,{caNoticeID:100,noticeID:200,conditions:{hasEformsDocument:false},caNoticeEdit_New:{section1:{}}}).children;
+  expect(lots).toMatchObject({priority:60,params:{part:'lots',backfill:true,metadataRawId:7}});
+  const [eform]=plan(t,{caNoticeID:100,noticeID:200,conditions:{hasEformsDocument:true}}).children;
+  expect(eform).toMatchObject({priority:60,params:{part:'eform',backfill:true}});
+  const page=plan(lots!,{total:101,items:Array.from({length:100},(_,i)=>({noticeLotID:400+i}))});
+  expect(page.children.map(c=>[c.params.part,c.priority])).toEqual([['lots',60]]);
+  expect(plan(root('awards',3),{caNoticeID:100,noticeID:200,conditions:{hasEformsDocument:true}}).children[0]!.priority).toBe(1);
+ });
  it('does not confuse the parent participation ID with the current award ID',()=>{
   const r=plan(root('awards',18),{caNoticeID:100,cNoticeId:999,noticeID:200,conditions:{hasEformsDocument:false},caNoticeEdit_New:{section1:{}}});
   expect(r.children[0]!.params.part).toBe('lots');

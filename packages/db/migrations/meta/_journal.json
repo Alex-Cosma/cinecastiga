@@ -526,6 +526,13 @@
       "when": 1791976963469,
       "tag": "0074_lowly_ricochet",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1792135801542,
+      "tag": "0075_simple_mercury",
+      "breakpoints": true
     }
   ]
 }

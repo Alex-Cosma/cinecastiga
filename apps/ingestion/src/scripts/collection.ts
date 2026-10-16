@@ -1,5 +1,6 @@
 import {activateNationalDa} from '../collection/da-activation.js';
 import {advanceRecovery} from '../collection/advance.js';
+import {enqueueAwardDetailBackfill,setBackgroundLanes} from '../collection/award-backfill.js';
 import {setTimeout as sleep} from 'node:timers/promises';
 import type {DbSql} from '@seap/db';
 import {getSharedSql,closeSharedDb} from '../db.js';
@@ -12,6 +13,16 @@ try{
  if(args[0]==='seed'){console.log(JSON.stringify({batch:await seedRecovery(q,args[1]),networkRequests:0}));}
  else if(args[0]==='follow-latest'){console.log(JSON.stringify({scope:await advanceRecovery(q,{enable:true}),networkRequests:0}));}
  else if(args[0]==='national-da'){console.log(JSON.stringify({activation:await activateNationalDa(q),networkRequests:0}));}
+ else if(args[0]==='backfill-award-details'){
+  const limitArg=args.find(a=>a.startsWith('--limit='));if(!limitArg)throw Error('--limit=N is required');
+  if(args.slice(1).some(a=>!a.startsWith('--limit=')&&a!=='--pilot'))throw Error('Usage: collection backfill-award-details --limit=N [--pilot]');
+  const {queued,byTypeVersion,...rest}=await enqueueAwardDetailBackfill(q,{limit:Number(limitArg.split('=')[1]),pilot:args.includes('--pilot')});
+  console.log(JSON.stringify({queued,byTypeVersion,...rest,networkRequests:0}));
+ }
+ else if(args[0]==='background-lanes'){
+  if(args.length!==2||!/^(10|[0-9])$/.test(args[1]!))throw Error('Usage: collection background-lanes <0..10>');
+  console.log(JSON.stringify({...await setBackgroundLanes(q,Number(args[1])),networkRequests:0}));
+ }
  else if(args[0]==='run'){
   const boundArg=args.find(a=>a.startsWith('--max-tasks='));const bound=boundArg?Number(boundArg.split('=')[1]):Infinity;
   if(!(bound>0)||bound!==Infinity&&!Number.isSafeInteger(bound))throw Error('Invalid task bound');
@@ -38,5 +49,5 @@ try{
    const failed=results.find(r=>r.status==='rejected');if(failed?.status==='rejected')throw failed.reason;
    console.log(JSON.stringify({event:'recovery-worker-exit',tasks:attempts,bounded:bound!==Infinity}));
   }finally{await lock`select pg_advisory_unlock(${RECOVERY_LOCK[0]},${RECOVERY_LOCK[1]})`.catch(()=>{});lock.release();}
- }else throw Error('Usage: collection seed [closed-end-day] | follow-latest | national-da | run [--max-tasks=N]');
+ }else throw Error('Usage: collection seed [closed-end-day] | follow-latest | national-da | backfill-award-details --limit=N [--pilot] | background-lanes <0..10> | run [--max-tasks=N]');
 }finally{await closeSharedDb();}

@@ -15,9 +15,11 @@ export const collectionControl = appSchema.table('collection_control', {
  nextAllowedAt: timestamp('next_allowed_at',{withTimezone:true}), lastFileAt: timestamp('last_file_at',{withTimezone:true}),
  maintenance: boolean('maintenance').notNull().default(false),
  collectionDuringMaintenance: boolean('collection_during_maintenance').notNull().default(false),
+ // Recovery lanes (by index) that may claim background work (priority>=50) once ordinary work is empty. 0 disables it.
+ backgroundLanes: integer('background_lanes').notNull().default(0),
  createdAt: timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
  updatedAt: timestamp('updated_at',{withTimezone:true}).notNull().defaultNow(),
-},t=>[check('collection_singleton',sql`${t.id}=1`),check('collection_risk_weekday',sql`${t.riskWeekday} between 0 and 6`),check('collection_processing_activation',sql`not ${t.processingEnabled} or ${t.processingEnabledAt} is not null`),check('collection_delay_bounds',sql`${t.minSeconds} between 1 and 3600 and ${t.maxSeconds} between ${t.minSeconds} and 3600`),check('collection_daily_limit',sql`${t.dailyLimit} is null or ${t.dailyLimit}>0`),check('collection_processing_time',sql`${t.processingTime} ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'`)]);
+},t=>[check('collection_singleton',sql`${t.id}=1`),check('collection_risk_weekday',sql`${t.riskWeekday} between 0 and 6`),check('collection_processing_activation',sql`not ${t.processingEnabled} or ${t.processingEnabledAt} is not null`),check('collection_delay_bounds',sql`${t.minSeconds} between 1 and 3600 and ${t.maxSeconds} between ${t.minSeconds} and 3600`),check('collection_daily_limit',sql`${t.dailyLimit} is null or ${t.dailyLimit}>0`),check('collection_processing_time',sql`${t.processingTime} ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'`),check('collection_background_lanes',sql`${t.backgroundLanes} between 0 and 10`)]);
 export const collectionRequests = appSchema.table('collection_requests', {
  id: bigserial('id',{mode:'number'}).primaryKey(), stream: text('stream').notNull(), worker: text('worker').notNull(),
  method: text('method').notNull(), endpoint: text('endpoint').notNull(), parameters: jsonb('parameters').notNull().default({}),

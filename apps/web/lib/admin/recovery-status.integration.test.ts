@@ -30,6 +30,20 @@ describe.skipIf(!db)('real recovery metadata aggregation',()=>{
  ] as const)await q`insert into app.collection_tasks(batch_id,key,partition,stream,kind,status,params,result,finished_at) values('fixture',${key},${key},${stream},${kind},${status},${JSON.stringify(params)}::jsonb,${JSON.stringify(result)}::jsonb,now())`;
  const data=await collectionStatus(q);expect(data.forecast!.sampled.find(s=>s.stream==='da')).toEqual({stream:'da',sampled:1,units:2});expect(data.forecast!.completed).toBe(6);expect(data.forecast!.failed).toBe(1);expect(data.forecast!.deferred).toBe(1);expect(data.forecast!.state).toBe('gaps');expect(data.forecast!.minutesHigh).toBeNull();
  });
+ it('reports background backfill separately from progress, layers and pace',async()=>{
+  const q=db!.sql;await q`update app.collection_control set background_lanes=2`;
+  await q`insert into app.collection_batches(id,end_day) values('background','2026-10-08')`;
+  await q`insert into app.collection_tasks(batch_id,key,partition,stream,kind,status,params,priority,finished_at) values
+   ('background','day','day','awards','list','complete','{"from":"2026-10-08","page":0}',10,now()),
+   ('background','bg1','bg1','awards','detail','pending','{"noticeId":1,"page":0,"backfill":true}',60,null),
+   ('background','bg2','bg2','awards','detail','complete','{"noticeId":2,"page":0,"backfill":true}',60,now()),
+   ('background','bg3','bg3','awards','detail','failed','{"noticeId":3,"page":0,"backfill":true}',60,now())`;
+  const data=await collectionStatus(q);
+  expect(data.recovery!.progress).toEqual([expect.objectContaining({stream:'awards',complete:1,pending:0,failed:0})]);
+  expect(data.recovery!.background).toEqual({pending:1,running:0,complete:1,failed:1,lanes:2});
+  expect(data.forecast!.layers).toEqual([]);expect(data.forecast!.pending).toBe(0);expect(data.forecast!.failed).toBe(0);
+  await q`update app.collection_control set background_lanes=0`;
+ });
  it('counts CPV leaves and detail verification within each day and scan',async()=>{
   const q=db!.sql;await q`insert into app.collection_batches(id,end_day,da_strategy) values('national','2026-10-09','cpv-day-v1')`;
   await q`insert into app.collection_tasks(batch_id,key,partition,stream,kind,status,params) values('national','legacy','legacy','da','da','split','{"authorityId":77,"page":0}')`;

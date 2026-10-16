@@ -85,6 +85,19 @@ Motiv: între 11 și 12 octombrie, 4 opriri globale au venit din câte o singur�
 
 Orice manual pause, stream pause, maintenance, daily cap sau source block rămâne independent. O cerere rămasă „running” după pierderea worker-ului impune inspecție; nu o marca success pentru a debloca UI-ul.
 
+### Descărcarea istorică a detaliilor de atribuire
+
+Anunțurile de atribuire arhivate doar ca rând de listă (`award-list:v1`, fără `award-detail-root:v2`) pot primi formularul și loturile printr-o descărcare în fundal (16 octombrie 2026). **Este oprită implicit.**
+
+- Sarcinile au prioritate 60 (fundal: `priority >= 50`). Colectorul le ia numai când niciun flux nepus pe pauză nu mai are lucru obișnuit executabil, și numai pe benzile `0…background_lanes-1`. Reluările programate au întâietate ca până acum. Părțile descoperite (loturi, eForms) moștenesc prioritatea și `backfill:true`. Nu se programează contracte.
+- Folosesc aceeași poartă: intervalul pe IP (35–45 s), plafonul și concurența din `collection_proxy_control` rămân neschimbate. Benzile peste `max_in_flight` nu pornesc. Ritmul este cât lasă liber pool-ul.
+- Pornire/oprire: `collection.js background-lanes <0..10>` (incrementează `revision`, scrie audit `background-lanes`). `0` oprește preluarea de sarcini noi. Cele deja admise se termină, iar o reluare după timeout deja programată pentru o sarcină de fundal rulează tot (bugetul de 3 încercări neschimbat).
+- Programare, fără trafic SEAP: `collection.js backfill-award-details --limit=N [--pilot]`. Ia ultimul rând de listă per anunț, cele mai noi primele. Validează metadatele (ca la activarea din 8 octombrie) și omite anunțurile cu detaliu arhivat sau cu orice sarcină de detaliu în lot. Comanda poate fi rulată din nou fără dubluri. Scrie audit `award-detail-backfill` cu numărul pe tip/versiune. Refuză fără un lot `collecting` unic sau în timpul unei procesări.
+- **Pilotul întâi:** `--pilot` programează cel mult 2 anunțuri pe fiecare combinație tip/versiune. Formularele v1 (`get_v1`) nu au fost încă verificate live. Inspectează arhivele și golurile pilotului înainte de un `--limit` mare.
+- Panoul admin raportează fundalul separat; nu intră în progresul, ETA-ul sau golurile recuperării. Sarcinile de fundal în așteptare țin lotul `collecting`.
+
+Rulare în producție, prin containerul de colectare: `docker compose --profile collection run --rm --no-deps collection node apps/ingestion/dist/scripts/collection.js <comanda>`.
+
 ## Procesare/publicare
 
 Cronul host rulează o verificare la fiecare minut:
