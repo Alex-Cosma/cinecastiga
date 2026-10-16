@@ -1,0 +1,2 @@
+ALTER TABLE "app"."collection_control" ADD COLUMN "background_lanes" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "app"."collection_control" ADD CONSTRAINT "collection_background_lanes" CHECK ("app"."collection_control"."background_lanes" between 0 and 10);

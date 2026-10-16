@@ -1,12 +1,13 @@
 import type {DbSql} from '@seap/db';
 import {recoveryForecast,type RecoveryCounts,type RecoverySample} from './recovery-forecast';
-/** Only aggregate task metadata. Never fetch result bodies/ids into the web process. */
+/** Only aggregate task metadata. Never fetch result bodies/ids into the web process.
+ * Background tasks (priority>=50, historical backfill) are excluded: they are reported separately. */
 export async function recoveryStatus(q:DbSql,batchId:string,progress:RecoveryCounts[],control:Record<string,any>){
  const samples=await q`
   with strategy as (select da_strategy from app.collection_batches where id=${batchId}), tasks as materialized (
    select stream,kind,params,status,partition,
     case when jsonb_typeof(result->'total')='number' then (result->>'total')::numeric else null end total
-   from app.collection_tasks where batch_id=${batchId}
+   from app.collection_tasks where batch_id=${batchId} and priority<50
   ), da_units as (
    select case when params->>'daStrategy'='cpv-day-v1' then 'day:'||(params->>'from')||':'||(params->>'daScan') else 'authority:'||(params->>'authorityId') end unit,count(*)::numeric work,
     bool_and(status in ('complete','split')) closed
@@ -40,14 +41,14 @@ export async function recoveryStatus(q:DbSql,batchId:string,progress:RecoveryCou
     where action in ('proxies','pause','unblock','settings','processing-complete','processing-failed','resume-archive-during-maintenance','notice-details-activation','da-national-activation')),b.created_at)) at
    from app.collection_batches b where b.id=${batchId}
   ) select extract(epoch from(now()-at))/86400 elapsed_days,
-   (select count(*)::int from app.collection_tasks where batch_id=${batchId} and status in ('complete','split') and finished_at>=boundary.at and finished_at<=now()) recent_completed
+   (select count(*)::int from app.collection_tasks where batch_id=${batchId} and priority<50 and status in ('complete','split') and finished_at>=boundary.at and finished_at<=now()) recent_completed
   from boundary`;
  const catalogue=progress.find(s=>s.stream==='catalogue');
  const catalogueReady=!!catalogue&&Number(catalogue.complete)>0&&!['pending','running','failed','deferred'].some(k=>Number(catalogue[k as keyof RecoveryCounts])>0);
  const layers=await q`with notices as (select stream,kind,(case when stream='tenders' then case (params->>'noticeType')::int when 2 then 'cn' when 6 then 'dc' when 7 then 'pc' else 'rfq' end else 'award' end)||':'||(params->>'noticeId') notice,
     bool_and(status='complete') complete,bool_or(status in ('failed','deferred')) gap,
     bool_or(kind='detail' and coalesce(params->>'part','root') in ('root','general','lots') and status<>'complete') discovering
-   from app.collection_tasks where batch_id=${batchId} and kind in ('detail','contracts') group by stream,kind,notice)
+   from app.collection_tasks where batch_id=${batchId} and priority<50 and kind in ('detail','contracts') group by stream,kind,notice)
    select stream,kind,count(*)::int total,count(*) filter(where complete)::int complete,count(*) filter(where gap)::int gaps,
    count(*) filter(where not complete and not gap)::int pending,bool_or(discovering) discovering from notices group by stream,kind order by stream,kind`;
  const forecast=recoveryForecast({samples:samples as unknown as RecoverySample[],progress,catalogueReady,detailDiscoveryPending:layers.some(r=>r.discovering),

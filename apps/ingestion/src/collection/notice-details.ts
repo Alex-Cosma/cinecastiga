@@ -1,5 +1,5 @@
 import {noticeArchiveKey,type NoticeDetailParams,type NoticeDetailPart} from '@seap/scraper-clients';
-import {task,type Task,type TaskPlan,type PageResult} from './plan.js';
+import {task,BACKGROUND_PRIORITY,type Task,type TaskPlan,type PageResult} from './plan.js';
 /** A rejected public detail is a visible gap for this notice, never a completed archive. */
 export class NoticeDetailValidationError extends Error {}
 const fail=(message:string):never=>{throw new NoticeDetailValidationError(`Detaliu SEAP: ${message}`);};
@@ -10,7 +10,9 @@ export function planNoticeDetail(t:Task,value:unknown,previous:PageResult[]):Tas
  const v=value as Record<string,any>;
  if(v.hasError===true||v.hasErrors===true||v.canViewPublic===false||Array.isArray(v.errorList)&&v.errorList.length)fail('sursa nu confirmă un formular disponibil.');
  const children:Task[]=[];
- const child=(part:NoticeDetailPart,extra:Partial<NoticeDetailParams>={})=>children.push(task(t.batch_id,t.stream,'detail',{...p,part,page:0,...extra},1));
+ // Parts of a background (backfill) notice stay in the background with their parent's priority and params.
+ const priority=Number(t.priority)>=BACKGROUND_PRIORITY?Number(t.priority):1;
+ const child=(part:NoticeDetailPart,extra:Partial<NoticeDetailParams>={})=>children.push(task(t.batch_id,t.stream,'detail',{...p,part,page:0,...extra},priority));
  const identity=(actual:unknown,expected:unknown,label:string)=>{if(actual!==expected)fail(`identitatea ${label} nu corespunde.`);};
  let result:TaskPlan['result']={detail:true};
  if(part==='root'){

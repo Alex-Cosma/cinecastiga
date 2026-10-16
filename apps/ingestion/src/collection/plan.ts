@@ -6,7 +6,9 @@ import {redactPayload} from '../scrape/redact.js';
 import type {ArchivableDocument} from '../scrape/archive.js';
 import {isDeepStrictEqual} from 'node:util';
 export type Stream='da'|'tenders'|'awards'|'catalogue';
-export interface Task {id?:number;batch_id:string;key:string;partition:string;stream:Stream;kind:'da'|'list'|'detail'|'contracts'|'catalogue'|'da-detail'|'cpv-catalogue';params:{from?:string;to?:string;page:number;authorityId?:number;noticeId?:number;inventoryOnly?:boolean;singlePageTotal?:number;daStrategy?:typeof DA_STRATEGY;cpvPrefix?:string;daScan?:string;daFallback?:boolean}&Partial<NoticeDetailParams>;status?:string;priority:number;error?:string}
+export interface Task {id?:number;batch_id:string;key:string;partition:string;stream:Stream;kind:'da'|'list'|'detail'|'contracts'|'catalogue'|'da-detail'|'cpv-catalogue';params:{from?:string;to?:string;page:number;authorityId?:number;noticeId?:number;inventoryOnly?:boolean;singlePageTotal?:number;daStrategy?:typeof DA_STRATEGY;cpvPrefix?:string;daScan?:string;daFallback?:boolean;metadataRawId?:number;backfill?:boolean}&Partial<NoticeDetailParams>;status?:string;priority:number;error?:string}
+/** Priority at or above this is background work: claimed only by enabled background lanes once ordinary work is empty. */
+export const BACKGROUND_PRIORITY=50;
 export interface PageResult {total:number;ids:number[];identities?:string[];items?:Record<string,unknown>[];sourceTotal?:number}
 export interface TaskPlan {status:'complete'|'split';result:PageResult|{detail:true};docs:ArchivableDocument[];children:Task[]}
 export class NoticePageOverlapError extends Error { constructor(readonly total:number){super('SEAP a repetat înregistrări între pagini.');} }

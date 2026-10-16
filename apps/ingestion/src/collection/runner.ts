@@ -4,7 +4,7 @@ import {CollectionProxyFailureError,collectionQuietWindow,diagnosticError,saniti
 import {searchCpvs,getDirectAcquisitionDetail,getNoticeContracts,getNoticeDetailPart,type NoticeDetailParams,ScrapeError,listContractingAuthorities,listDirectAcquisitions,listNotices,NOTICE_TYPE_IDS,type ElicitatieClient} from '@seap/scraper-clients';
 import {archiveDocumentsSql} from '../scrape/archive.js';
 import {isoDaysAgo} from '../scrape/window.js';
-import {planResponse,task,noticePageSize,NoticePageOverlapError,type Task,type PageResult} from './plan.js';
+import {planResponse,task,noticePageSize,NoticePageOverlapError,BACKGROUND_PRIORITY,type Task,type PageResult} from './plan.js';
 import {compareNoticeInventory} from './inventory.js';
 import type {NoticeListItem} from '@seap/scraper-clients';
 export const RECOVERY_LOCK=[729114,5] as const;
@@ -70,7 +70,7 @@ export async function recoveryStep(q:DbSql,fetcher:(t:Task)=>Promise<unknown>,la
  await collectionHeartbeat(q,`${recoveryWorker}:${lane}`,'ingestion','idle');
  if((await collectionQuietWindow(q)).active)return false;
  const claimed=await q.begin(async tx=>{
-  const [c]=await tx`select paused,maintenance,collection_during_maintenance,blocked_reason,daily_limit,paused_streams from app.collection_control where id=1`;
+  const [c]=await tx`select paused,maintenance,collection_during_maintenance,blocked_reason,daily_limit,paused_streams,background_lanes from app.collection_control where id=1`;
   if(!c||c.paused||(c.maintenance&&!c.collection_during_maintenance)||c.blocked_reason)return null;
   if(c.maintenance&&(await tx`select id from app.processing_runs where status='running' limit 1`).length)return null;
   if(c.daily_limit!==null){const [n]=await tx`select count(*)::int n from app.collection_requests where started_at>=((now() at time zone 'Europe/Bucharest')::date::timestamp at time zone 'Europe/Bucharest')`;if(Number(n?.n)>=c.daily_limit)return null;}
@@ -86,8 +86,21 @@ export async function recoveryStep(q:DbSql,fetcher:(t:Task)=>Promise<unknown>,la
   for(let i=0;i<streams.length;i++){
    const index=(Number(b.next_stream)+i)%streams.length,stream=streams[index]!;
    if(c.paused_streams.includes(stream))continue;
-   const [t]=await tx`select * from app.collection_tasks where batch_id=${b.id} and stream=${stream} and status='pending' and not exists(select 1 from app.collection_retries r where r.task_id=app.collection_tasks.id and r.status in ('pending','stopped')) order by priority,id limit 1 for update`;
+   const [t]=await tx`select * from app.collection_tasks where batch_id=${b.id} and stream=${stream} and status='pending' and priority<${BACKGROUND_PRIORITY} and not exists(select 1 from app.collection_retries r where r.task_id=app.collection_tasks.id and r.status in ('pending','stopped')) order by priority,id limit 1 for update`;
    if(t){await tx`update app.collection_tasks set status='running',started_at=clock_timestamp() where id=${t.id}`;await tx`update app.collection_batches set next_stream=${(index+1)%streams.length} where id=${b.id}`;return {t:t as unknown as Task,end:String(b.seed_end_day??b.end_day)};}
+  }
+  // Background work (historical backfill) only after every stream had no ordinary work,
+  // and only in the lowest lanes the operator enabled. It shares the same request gate.
+  if(Number(lane)<Number(c.background_lanes??0)){
+   const candidates=[];
+   for(const stream of streams){
+    if(c.paused_streams.includes(stream))continue;
+    const [t]=await tx`select id,priority from app.collection_tasks where batch_id=${b.id} and stream=${stream} and status='pending' and priority>=${BACKGROUND_PRIORITY} and not exists(select 1 from app.collection_retries r where r.task_id=app.collection_tasks.id and r.status in ('pending','stopped')) order by priority,id limit 1`;
+    if(t)candidates.push(t);
+   }
+   const next=candidates.sort((a,b)=>Number(a.priority)-Number(b.priority)||Number(a.id)-Number(b.id))[0];
+   const [t]=next?await tx`select * from app.collection_tasks where id=${next.id} and status='pending' for update`:[];
+   if(t){await tx`update app.collection_tasks set status='running',started_at=clock_timestamp() where id=${t.id}`;return {t:t as unknown as Task,end:String(b.seed_end_day??b.end_day)};}
   }
   const [left]=await tx`select count(*) filter(where status in ('pending','running'))::int pending,count(*) filter(where status in ('failed','deferred'))::int gaps from app.collection_tasks where batch_id=${b.id}`;
   if(!left?.pending)await tx`update app.collection_batches set status=${left?.gaps?'incomplete':'collected'} where id=${b.id}`;
