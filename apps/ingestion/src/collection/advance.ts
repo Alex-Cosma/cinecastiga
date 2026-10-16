@@ -1,6 +1,7 @@
 import {DA_STRATEGY} from './da-partition.js';
 import {task} from './plan.js';
 import {insertTasks} from './runner.js';
+import {TED_OVERLAP_DAYS,tedListTask} from './ted.js';
 import type {DbSql} from '@seap/db';
 
 /** Metadata only. Append immutable closed windows; never rewrite existing tasks or retry budgets. */
@@ -48,9 +49,16 @@ export async function advanceRecovery(q:DbSql,{enable=false,now}:{enable?:boolea
   const catalogue=await tx`insert into app.collection_tasks(batch_id,key,partition,stream,kind,params,priority)
    values(${b.id},${`catalogue:catalogue::${from}:${target}:0`},${`catalogue:catalogue::${from}:${target}`},'catalogue','catalogue',${JSON.stringify({from,to:target,page:0})}::jsonb,10)
    on conflict(batch_id,key) do nothing returning id`;
-  const added=da.length+notices.length+catalogue.length;
+  // TED, once explicitly enabled: each newly closed day plus the trailing overlap, scanned again.
+  let ted:unknown[]=[];
+  if((await tx`select 1 from app.collection_tasks where batch_id=${b.id} and stream='ted' limit 1`).length){
+   const days=await tx`select d::date::text unit_day from generate_series(${from}::date-${TED_OVERLAP_DAYS}::int,${target}::date,interval '1 day') d`;
+   const tasks=days.map(d=>tedListTask(String(b.id),String(d.unit_day),target));
+   await insertTasks(tx as unknown as DbSql,tasks);ted=tasks;
+  }
+  const added=da.length+notices.length+catalogue.length+ted.length;
   await tx`update app.collection_batches set seed_end_day=coalesce(seed_end_day,end_day),end_day=${target},follow_latest=true,status='collecting' where id=${b.id}`;
-  await tx`insert into app.collection_audit(actor_id,actor_name,action,before,after) values('system:recovery-scope','Colector','recovery-scope',${JSON.stringify({batchId:b.id,endDay:b.end_day,followLatest:b.follow_latest})}::jsonb,${JSON.stringify({batchId:b.id,from,endDay:target,followLatest:true,added,direct:da.length,noticeDays:notices.length,catalogue:catalogue.length})}::jsonb)`;
+  await tx`insert into app.collection_audit(actor_id,actor_name,action,before,after) values('system:recovery-scope','Colector','recovery-scope',${JSON.stringify({batchId:b.id,endDay:b.end_day,followLatest:b.follow_latest})}::jsonb,${JSON.stringify({batchId:b.id,from,endDay:target,followLatest:true,added,direct:da.length,noticeDays:notices.length,catalogue:catalogue.length,tedDays:ted.length})}::jsonb)`;
   return {batchId:b.id,from,endDay:target,added};
  });
 }
