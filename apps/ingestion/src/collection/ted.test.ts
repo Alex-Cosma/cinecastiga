@@ -1,40 +1,79 @@
-import {readFileSync} from 'node:fs';
 import {describe,expect,it} from 'vitest';
 import {planResponse,task,type PageResult} from './plan.js';
-import {TED_PAGE_SIZE,tedListTask} from './ted.js';
-import {tedRequestParameters} from '../scrape/ted/collection-client.js';
+import {gazetteOjs,nextOjs,ojsLabel,TED_PAGE_SIZE,tedPackageCandidates,tedPackageDay,tedPackageTask,tedReverifications,tedVerifyTask,type TedAttempt,type TedPackageFetch} from './ted.js';
+import {readTedDailyPackage} from '../scrape/ted/package.js';
+import {tedDailyPackage,tedNoticeXml} from '../test/ted-package-fixture.js';
 
-const FIXTURE=readFileSync(new URL('../../test/fixtures/ted-298320-2026.xml',import.meta.url),'utf8');
-const xmlFor=(pubnum:string)=>{const [n,y]=pubnum.split('-');return FIXTURE.replace('00298320-2026',`${n!.padStart(8,'0')}-${y}`);};
-const day='2026-10-15',scan='2026-10-15';
+const day='2026-10-15',ojs='202600200',scan='2026-10-15T09';
 const notices=(from:number,count:number)=>Array.from({length:count},(_,i)=>({'publication-number':`${from+i}-2026`,'publication-date':`${day}+02:00`,'notice-type':'can-standard'}));
+const fetched=async(romanian:string[],o:{ojs?:string;day?:string;filename?:string}={}):Promise<TedPackageFetch>=>{const p=tedDailyPackage(o.ojs??ojs,o.day??day,romanian);return {status:200,filename:o.filename??p.filename,...await readTedDailyPackage(p.bytes)};};
+const pkgTask={...tedPackageTask('b',ojs,scan),id:1};
 
 describe('TED collection tasks',()=>{
- it('keys one search per day and scan, and one XML per notice and scan',()=>{
-  const list=tedListTask('b',day,scan);
-  expect(list).toMatchObject({stream:'ted',kind:'ted-list',key:`ted:ted-list::${day}:${day}:scan:${scan}:0`,priority:10});
-  expect(tedListTask('b',day,'2026-10-16').key).not.toBe(list.key);
-  const xml=task('b','ted','ted-xml',{publicationNumber:'506645-2026',publicationDate:day,tedScan:scan,page:0},2);
-  expect(xml.key).toBe(`ted:ted-xml:506645-2026:::scan:${scan}:0`);
-  expect(()=>task('b','ted','ted-list',{from:day,to:'2026-10-16',tedScan:scan,page:0})).toThrow(/singură zi/);
-  expect(()=>task('b','ted','ted-xml',{publicationNumber:'../x',publicationDate:day,tedScan:scan,page:0})).toThrow(/publicare/);
+ it('keys one package per OJ S issue and attempt, and one verification per issue and scan',()=>{
+  expect(pkgTask).toMatchObject({stream:'ted',kind:'ted-package',key:`ted:ted-package:${ojs}:::scan:${scan}:0`,priority:10});
+  expect(tedPackageTask('b',ojs,'2026-10-15T10').key).not.toBe(pkgTask.key);
+  expect(tedVerifyTask('b',ojs,day,day).key).toBe(`ted:ted-list:${ojs}:${day}:${day}:scan:${day}:0`);
+  expect(()=>task('b','ted','ted-package',{ojs:'2026200',tedScan:scan,page:0})).toThrow(/OJ S nevalid/);
+  expect(()=>task('b','ted','ted-package',{ojs:'202600000',tedScan:scan,page:0})).toThrow(/OJ S nevalid/);
+  expect(()=>task('b','ted','ted-list',{from:day,to:'2026-10-16',ojs,tedScan:day,page:0})).toThrow(/singură zi/);
+  expect(()=>task('b','ted','ted-list',{from:day,to:day,tedScan:day,page:0})).toThrow(/OJ S/);
   expect(()=>task('b','tenders','list',{from:day,to:day,page:0,tedScan:scan})).toThrow(/TED/);
+  // The per-notice XML design is refused cleanly.
+  expect(()=>task('b','ted','ted-xml',{publicationNumber:'506645-2026',publicationDate:day,tedScan:day,page:0},2)).toThrow(/înlocuită de pachetul zilnic/);
+  expect([ojsLabel(ojs),gazetteOjs('200/2026'),gazetteOjs(' 84/2026 '),gazetteOjs('2026/200'),gazetteOjs(null),nextOjs('202600200'),nextOjs('202699999')]).toEqual(['200/2026',ojs,'202600084',null,null,'202600201',null]);
  });
 
- it('plans XML children and the next page from an exact day population',()=>{
-  const t={...tedListTask('b',day,scan),id:1};
+ it('validates the package name against the requested issue',()=>{
+  expect(tedPackageDay('20261015_2026200.tar.gz',ojs)).toBe(day);
+  expect(tedPackageDay('20270104_20271.tar.gz','202700001')).toBe('2027-01-04');
+  for(const name of [null,'20261015_2026201.tar.gz','20261015_2025200.tar.gz','20251015_2026200.tar.gz','20261315_2026200.tar.gz','x.tar.gz','20261015_2026200.zip'])expect(()=>tedPackageDay(name,ojs)).toThrow(/TED/);
+ });
+
+ it('archives the Romanian award notices of the issue and queues verification and the next issue',async()=>{
+  const plan=planResponse(pkgTask,await fetched(['634512-2026','634513-2026']),[],day);
+  expect(plan.docs).toEqual(['634512-2026','634513-2026'].map(p=>({source:'ted',externalId:`can-standard:${p}`,endpointVersion:'ted-eforms:v1',
+   payload:{'publication-number':p,'notice-type':'can-standard','publication-date':day,'buyer-name':null,xml:tedNoticeXml({publication:p,ojs,day})}})));
+  expect(plan.result).toMatchObject({total:2,identities:['634512-2026','634513-2026'],ojs,published:true,publicationDate:day,files:5,xmlFiles:4,candidates:3,otherCountry:1,otherType:0});
+  expect(plan.children.map(c=>c.key)).toEqual([`ted:ted-list:${ojs}:${day}:${day}:scan:${day}:0`,`ted:ted-package:202600201:::scan:${scan}:0`]);
+ });
+
+ it('a 404 is an issue not published yet: complete, no documents, no children',()=>{
+  const plan=planResponse(pkgTask,{status:404,filename:null},[],day);
+  expect(plan).toEqual({status:'complete',result:{total:0,ids:[],ojs,published:false},docs:[],children:[]});
+ });
+
+ it('fails closed on another issue, day, number or an empty package',async()=>{
+  const other=await fetched(['1-2026'],{filename:'20261016_2026201.tar.gz'});
+  expect(()=>planResponse(pkgTask,other,[],day)).toThrow(/am cerut OJ S 200\/2026, dar pachetul primit este 201\/2026/);
+  const gazette=await fetched(['1-2026'],{ojs:'202600199',filename:'20261015_2026200.tar.gz'});
+  expect(()=>planResponse(pkgTask,gazette,[],day)).toThrow(/altui număr OJ S \(199\/2026\)/);
+  const date=await fetched(['1-2026'],{day:'2026-10-14',filename:'20261015_2026200.tar.gz'});
+  expect(()=>planResponse(pkgTask,date,[],day)).toThrow(/altă dată/);
+  const v=await fetched(['1-2026']);v.candidates![0]!.name='x/00000002_2026.xml';
+  expect(()=>planResponse(pkgTask,v,[],day)).toThrow(/alt număr de publicare/);
+  expect(()=>planResponse(pkgTask,{status:200,filename:'20261015_2026200.tar.gz',files:1,xmlFiles:0,candidates:[]},[],day)).toThrow(/nu conține fișiere XML/);
+  expect(()=>planResponse(pkgTask,{status:500,filename:null},[],day)).toThrow(/HTTP 500/);
+  const broken=await fetched(['1-2026']);broken.candidates![0]!.xml='<ContractAwardNotice><efac:Publication>';
+  expect(()=>planResponse(pkgTask,broken,[],day)).toThrow(/nu poate fi citit/);
+  // A structurally different notice type that matched the text pre-filter is counted, not archived.
+  const modif=await fetched([]);modif.candidates=[{name:'x/00000003_2026.xml',xml:tedNoticeXml({publication:'3-2026',ojs,day,type:'can-modif'}).replace('</ContractAwardNotice>','<!-- >can-standard< --></ContractAwardNotice>')}];
+  expect(planResponse(pkgTask,modif,[],day)).toMatchObject({docs:[],result:{total:0,otherType:1}});
+ });
+
+ it('pages a day verification without per-notice children',()=>{
+  const t={...tedVerifyTask('b',ojs,day,day),id:1};
   const first=planResponse(t,{totalNoticeCount:150,notices:notices(1,TED_PAGE_SIZE)},[],day);
   expect(first.docs).toEqual([]);
-  expect(first.children.filter(c=>c.kind==='ted-xml')).toHaveLength(100);
-  const next=first.children.find(c=>c.kind==='ted-list')!;
-  expect(next).toMatchObject({priority:0,params:{page:1,from:day,tedScan:scan}});
-  const last=planResponse({...next,id:2},{totalNoticeCount:150,notices:notices(101,50)},[first.result as PageResult],day);
-  expect(last.children.every(c=>c.kind==='ted-xml')).toBe(true);
-  expect(last.children).toHaveLength(50);
+  expect(first.children).toHaveLength(1);
+  expect(first.children[0]).toMatchObject({kind:'ted-list',priority:0,params:{page:1,from:day,ojs,tedScan:day}});
+  const last=planResponse({...first.children[0]!,id:2},{totalNoticeCount:150,notices:notices(101,50)},[first.result as PageResult],day);
+  expect(last.children).toEqual([]);
+  expect((last.result as PageResult).identities).toHaveLength(50);
  });
 
  it('fails closed on unstable or foreign search pages',()=>{
-  const t={...tedListTask('b',day,scan),id:1};
+  const t={...tedVerifyTask('b',ojs,day,day),id:1};
   const first=planResponse(t,{totalNoticeCount:150,notices:notices(1,100)},[],day).result as PageResult;
   const page1={...t,params:{...t.params,page:1}};
   expect(()=>planResponse(page1,{totalNoticeCount:150,notices:notices(100,50)},[first],day)).toThrow(/paginare instabilă/);
@@ -45,19 +84,51 @@ describe('TED collection tasks',()=>{
   expect(()=>planResponse(t,{notices:[]},[],day)).toThrow(/structura/);
   expect(planResponse(t,{totalNoticeCount:0,notices:[]},[],day).children).toEqual([]);
  });
+});
 
- it('archives only XML the nightly parser reads back with the same number',()=>{
-  const t={...task('b','ted','ted-xml',{publicationNumber:'506645-2026',publicationDate:day,tedScan:scan,page:0},2),id:3};
-  const ok=planResponse(t,xmlFor('506645-2026'),[],day);
-  expect(ok.docs).toEqual([{source:'ted',externalId:'can-standard:506645-2026',endpointVersion:'ted-eforms:v1',payload:{'publication-number':'506645-2026','notice-type':'can-standard','publication-date':day,'buyer-name':null,xml:xmlFor('506645-2026')}}]);
-  expect(()=>planResponse(t,xmlFor('1-2026'),[],day)).toThrow(/alt număr/);
-  expect(()=>planResponse(t,'',[],day)).toThrow(/lipsește/);
+describe('OJ S sequencing',()=>{
+ const now=Date.parse('2026-10-16T12:00:00Z'),hour=3600_000;
+ const a=(ojs:string,status:string,published:boolean|null,ago=2*hour):TedAttempt=>({ojs,status,published,finishedMs:status==='pending'||status==='running'?null:now-ago});
+ const next=(attempts:TedAttempt[],at=now,year=2026)=>tedPackageCandidates({attempts,nowMs:at,year});
+ it('follows the issue numbers from the latest archived one, one attempt in flight',()=>{
+  expect(next([])).toEqual([]);
+  expect(next([a('202600200','complete',true),a('202600201','pending',null)])).toEqual([]);
+  expect(next([a('202600200','complete',true),a('202600201','running',null)])).toEqual([]);
+  expect(next([a('202600199','complete',true),a('202600200','complete',true)])).toEqual(['202600201']);
  });
-
- it('records only the day, page and publication number in the request ledger',()=>{
-  const body=JSON.stringify({query:'buyer-country="ROU" AND notice-type="can-standard" AND publication-date>=20261015 AND publication-date<=20261015 SORT BY publication-date DESC',page:2,limit:100,fields:['x']});
-  expect(tedRequestParameters('https://api.ted.europa.eu/v3/notices/search','POST',body)).toEqual({publicationDate:'2026-10-15',page:2,limit:100});
-  expect(tedRequestParameters('https://ted.europa.eu/en/notice/506645-2026/xml','GET',undefined)).toEqual({publicationNumber:'506645-2026'});
-  expect(()=>tedRequestParameters('https://api.ted.europa.eu/v3/notices/search','GET',undefined)).toThrow();
+ it('retries a not-yet-published issue (404) at most once per hour',()=>{
+  expect(next([a('202600200','complete',true),a('202600201','complete',false,30*60_000)])).toEqual([]);
+  expect(next([a('202600200','complete',true),a('202600201','complete',false,59*60_000),a('202600201','complete',false,3*hour)])).toEqual([]);
+  expect(next([a('202600200','complete',true),a('202600201','complete',false,61*60_000)])).toEqual(['202600201']);
+  // A failed attempt (stream paused, audited) is queued again only after an hour; it waits for the operator's resume.
+  expect(next([a('202600200','complete',true),a('202600201','failed',null,10*60_000)])).toEqual([]);
+  expect(next([a('202600200','complete',true),a('202600201','failed',null,2*hour)])).toEqual(['202600201']);
+ });
+ it('retries the seed issue when nothing was archived yet',()=>{
+  expect(next([a('202600198','failed',null)])).toEqual(['202600198']);
+  expect(next([a('202600198','complete',false,10*60_000)])).toEqual([]);
+ });
+ it('rolls over to the first issue of the next year only after a 404 in a later Romanian year',()=>{
+  const dec=[a('202600250','complete',true)];
+  expect(next(dec,now,2027)).toEqual(['202600251']);
+  expect(next([...dec,a('202600251','complete',false)],now,2026)).toEqual(['202600251']);
+  expect(next([...dec,a('202600251','complete',false)],now,2027)).toEqual(['202600251','202700001']);
+  expect(next([...dec,a('202600251','complete',false),a('202700001','complete',false,10*60_000)],now,2027)).toEqual(['202600251']);
+  expect(next([...dec,a('202600251','complete',false),a('202700001','complete',true)],now,2027)).toEqual(['202700002']);
+  // A late-December issue published after all keeps the old year's sequence going.
+  expect(next([...dec,a('202600251','complete',true)],now,2027)).toEqual(['202600252']);
+  expect(next([a('202699999','complete',true)],now,2027)).toEqual(['202700001']);
+ });
+ it('searches a failed day verification again on each of the next three days only',()=>{
+  const v=(scan:string,status:string,error:string|null=null)=>({ojs,day,scan,status,error});
+  const failed=v(day,'failed','TED: verificare eșuată pentru OJ S 200/2026');
+  expect(tedReverifications([failed],'2026-10-15')).toEqual([]);
+  expect(tedReverifications([failed],'2026-10-16')).toEqual([{ojs,day}]);
+  expect(tedReverifications([failed],'2026-10-18')).toEqual([{ojs,day}]);
+  expect(tedReverifications([failed],'2026-10-19')).toEqual([]);
+  expect(tedReverifications([failed,v('2026-10-16','complete')],'2026-10-17')).toEqual([]);
+  expect(tedReverifications([failed,v('2026-10-16','pending')],'2026-10-17')).toEqual([]);
+  expect(tedReverifications([v(day,'failed','TED: structura căutării nu este validă.')],'2026-10-16')).toEqual([]);
+  expect(tedReverifications([v(day,'complete')],'2026-10-16')).toEqual([]);
  });
 });

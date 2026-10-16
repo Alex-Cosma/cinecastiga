@@ -1,8 +1,29 @@
 import {DA_STRATEGY} from './da-partition.js';
 import {task} from './plan.js';
 import {insertTasks} from './runner.js';
-import {TED_OVERLAP_DAYS,tedListTask} from './ted.js';
+import {TED_OVERLAP_DAYS,tedPackageCandidates,tedPackageTask,tedReverifications,tedVerifyTask} from './ted.js';
 import type {DbSql} from '@seap/db';
+
+/** Metadata only, no traffic. Once `ted-enable` queued the first package: the next OJ S
+ * issue (and, after a 404 in a later year, the new year's first issue), at most once per
+ * hour per issue and one in flight; failed day verifications are searched again daily. */
+export async function advanceTedPackages(tx:DbSql,batch:string,now?:Date){
+ const attempts=await tx`select params->>'ojs' ojs,status,(result->>'published')::boolean published,extract(epoch from finished_at)*1000 finished_ms
+  from app.collection_tasks where batch_id=${batch} and stream='ted' and kind='ted-package'`;
+ if(!attempts.length)return 0;
+ const [clock]=await tx`select extract(epoch from x)*1000 now_ms,to_char(x at time zone 'Europe/Bucharest','YYYY-MM-DD') today,to_char(x at time zone 'Europe/Bucharest','YYYY-MM-DD"T"HH24') attempt
+  from (select coalesce(${now?.toISOString()??null}::timestamptz,clock_timestamp()) x) c`;
+ const today=String(clock!.today);
+ const candidates=tedPackageCandidates({attempts:attempts.map(a=>({ojs:String(a.ojs),status:String(a.status),published:a.published==null?null:Boolean(a.published),finishedMs:a.finished_ms==null?null:Number(a.finished_ms)})),nowMs:Number(clock!.now_ms),year:Number(today.slice(0,4))});
+ const verifications=await tx`select params->>'ojs' as ojs,params->>'from' as day,params->>'tedScan' as scan,status,error from app.collection_tasks
+  where batch_id=${batch} and stream='ted' and kind='ted-list' and params ? 'ojs' and (params->>'from')::date>=${today}::date-${TED_OVERLAP_DAYS+1}::int`;
+ const again=tedReverifications(verifications.map(v=>({ojs:String(v.ojs),day:String(v.day),scan:String(v.scan),status:String(v.status),error:v.error==null?null:String(v.error)})),today);
+ const tasks=[...candidates.map(ojs=>tedPackageTask(batch,ojs,String(clock!.attempt))),...again.map(v=>tedVerifyTask(batch,v.ojs,v.day,today))];
+ if(!tasks.length)return 0;
+ await insertTasks(tx,tasks);
+ await tx`update app.collection_batches set status='collecting' where id=${batch} and status<>'collecting'`;
+ return tasks.length;
+}
 
 /** Metadata only. Append immutable closed windows; never rewrite existing tasks or retry budgets. */
 export async function advanceRecovery(q:DbSql,{enable=false,now}:{enable?:boolean;now?:Date}={}){
@@ -15,6 +36,8 @@ export async function advanceRecovery(q:DbSql,{enable=false,now}:{enable?:boolea
   if(batches.length!==1)throw Error('Inspect multiple recovery batches before advancing their scope.');
   const b=batches[0]!;
   if(!enable&&!b.follow_latest)return null;
+  // TED runs on OJ S issues, not closed days: checked on every tick, at most hourly per issue.
+  const tedTasks=await advanceTedPackages(tx as unknown as DbSql,String(b.id),now);
   const [clock]=await tx`select (d::date-case when d::time<'02:00'::time then 2 else 1 end)::text target from
    (select coalesce(${now?.toISOString()??null}::timestamptz,clock_timestamp()) at time zone 'Europe/Bucharest' d) x`;
   const target=String(clock!.target);
@@ -23,7 +46,7 @@ export async function advanceRecovery(q:DbSql,{enable=false,now}:{enable?:boolea
     await tx`update app.collection_batches set follow_latest=true,seed_end_day=coalesce(seed_end_day,end_day) where id=${b.id}`;
     await tx`insert into app.collection_audit(actor_id,actor_name,action,before,after) values('system:recovery-scope','Colector','recovery-scope',${JSON.stringify({batchId:b.id,endDay:b.end_day,followLatest:false})}::jsonb,${JSON.stringify({batchId:b.id,endDay:b.end_day,followLatest:true,added:0})}::jsonb)`;
    }
-   return {batchId:b.id,endDay:b.end_day,added:0};
+   return {batchId:b.id,endDay:b.end_day,added:0,...(tedTasks?{tedTasks}:{})};
   }
   const [range]=await tx`select (${b.end_day}::date+1)::text start`;
   const from=String(range!.start);
@@ -49,16 +72,9 @@ export async function advanceRecovery(q:DbSql,{enable=false,now}:{enable?:boolea
   const catalogue=await tx`insert into app.collection_tasks(batch_id,key,partition,stream,kind,params,priority)
    values(${b.id},${`catalogue:catalogue::${from}:${target}:0`},${`catalogue:catalogue::${from}:${target}`},'catalogue','catalogue',${JSON.stringify({from,to:target,page:0})}::jsonb,10)
    on conflict(batch_id,key) do nothing returning id`;
-  // TED, once explicitly enabled: each newly closed day plus the trailing overlap, scanned again.
-  let ted:unknown[]=[];
-  if((await tx`select 1 from app.collection_tasks where batch_id=${b.id} and stream='ted' limit 1`).length){
-   const days=await tx`select d::date::text unit_day from generate_series(${from}::date-${TED_OVERLAP_DAYS}::int,${target}::date,interval '1 day') d`;
-   const tasks=days.map(d=>tedListTask(String(b.id),String(d.unit_day),target));
-   await insertTasks(tx as unknown as DbSql,tasks);ted=tasks;
-  }
-  const added=da.length+notices.length+catalogue.length+ted.length;
+  const added=da.length+notices.length+catalogue.length+tedTasks;
   await tx`update app.collection_batches set seed_end_day=coalesce(seed_end_day,end_day),end_day=${target},follow_latest=true,status='collecting' where id=${b.id}`;
-  await tx`insert into app.collection_audit(actor_id,actor_name,action,before,after) values('system:recovery-scope','Colector','recovery-scope',${JSON.stringify({batchId:b.id,endDay:b.end_day,followLatest:b.follow_latest})}::jsonb,${JSON.stringify({batchId:b.id,from,endDay:target,followLatest:true,added,direct:da.length,noticeDays:notices.length,catalogue:catalogue.length,tedDays:ted.length})}::jsonb)`;
-  return {batchId:b.id,from,endDay:target,added};
+  await tx`insert into app.collection_audit(actor_id,actor_name,action,before,after) values('system:recovery-scope','Colector','recovery-scope',${JSON.stringify({batchId:b.id,endDay:b.end_day,followLatest:b.follow_latest})}::jsonb,${JSON.stringify({batchId:b.id,from,endDay:target,followLatest:true,added,direct:da.length,noticeDays:notices.length,catalogue:catalogue.length})}::jsonb)`;
+  return {batchId:b.id,from,endDay:target,added,...(tedTasks?{tedTasks}:{})};
  });
 }
