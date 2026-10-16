@@ -162,7 +162,7 @@ describe.skipIf(!url)('TED daily packages as a collection stream (real gate and 
   await tick('2026-10-13T09:15:00Z');await drain();await tick('2026-10-13T09:30:00Z');await drain();
   const [gap]=await q`select status,error from app.collection_tasks where kind='ted-list' and params->>'ojs'='202600198'`;
   expect(gap).toMatchObject({status:'failed'});
-  expect(gap!.error).toBe('TED: verificare eșuată pentru OJ S 198/2026 (2026-10-13): pachetul are 1 anunțuri românești, căutarea TED 2. Lipsesc din pachet: 105-2026.');
+  expect(gap!.error).toBe('TED: verificare eșuată pentru OJ S 198/2026 (2026-10-13): pachetul are 1 anunțuri românești, căutarea TED 2. Lipsesc din pachet: 105-2026 (absent din pachet).');
   expect(await control()).toEqual({paused_streams:[],blocked_reason:null});
   expect(await raw()).toEqual(['100-2026','110-2026','50-2026']);
   expect((await q`select status from app.collection_tasks where kind='ted-list' and params->>'ojs'='202600199'`)[0]!.status).toBe('complete');
