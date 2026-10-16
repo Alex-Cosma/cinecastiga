@@ -5,6 +5,7 @@ import type { DbSql } from './client.js';
 export interface OperationalAlert { key: string; kind: string; subject: string; body: string }
 
 const STALLED_MINUTES = 15;
+const TED_FAILED_RUNS = 3;
 // Older incidents are not announced retroactively when alerting is first deployed.
 const LOOKBACK_HOURS = 24;
 export const ALERT_MAX_ATTEMPTS = 5;
@@ -35,6 +36,23 @@ export async function detectOperationalAlerts(q: DbSql, origin: string): Promise
     key: `stream-auto-paused:${r.id}`, kind: 'stream-auto-paused',
     subject: `Fluxul „${r.stream}” a fost pus automat pe pauză`,
     body: `La ${r.seen} (ora României), fluxul „${r.stream}” a fost pus automat pe pauză.${r.reason ? `\n\nMotiv: ${r.reason}` : ''}\n\nCelelalte fluxuri continuă. Verifică jurnalul și reia fluxul din ${admin}.`,
+  });
+  // Automatic TED import: one night without it is not an incident (a 429 or a
+  // TED outage just defers it). Three unsuccessful runs in a row since the last
+  // success are, while the job is still running. One mail per streak; publication
+  // itself never waits for TED.
+  const [ted] = await q`with last_ok as (select coalesce(max(id),0) id from core.scrape_runs
+        where source='ted:incremental' and status='completed'),
+      streak as (select r.id,r.started_at,r.error from core.scrape_runs r,last_ok
+        where r.source='ted:incremental' and r.id>last_ok.id)
+    select min(id)::text first_id,count(*)::int runs,coalesce(max(started_at)>now()-interval '48 hours',false) recent,
+      (select error from streak order by id desc limit 1) last_error,
+      (select cursor::jsonb->>'day' from core.ingestion_watermarks where source='ted:incremental') through
+    from streak`;
+  if (ted && ted.runs >= TED_FAILED_RUNS && ted.recent) alerts.push({
+    key: `ted-import-failing:${ted.first_id}`, kind: 'ted-import-failing',
+    subject: `Importul TED automat nu a reușit de ${ted.runs} ori la rând`,
+    body: `Ultimele ${ted.runs} rulări ale importului TED automat nu s-au încheiat cu succes. Publicarea nocturnă continuă cu datele TED deja arhivate; site-ul nu este oprit.\n\nAnunțurile TED sunt importate până la data de publicare ${ted.through ?? 'încă nicio rulare reușită'}.${ted.last_error ? `\nUltima eroare: ${ted.last_error}` : ''}\n\nVerifică jurnalul rulării nocturne și core.scrape_runs (source='ted:incremental'). Oprire: TED_INCREMENTAL=off în infra/prod/.env.`,
   });
   // A global stop has no natural ID: one open incident until the block clears.
   const [control] = await q`select blocked_reason from app.collection_control where id=1`;

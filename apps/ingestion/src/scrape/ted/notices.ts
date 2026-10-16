@@ -5,6 +5,7 @@ import {
   tedCountryWindowQuery,
   tedPublicationNumber,
   type TedClient,
+  type TedNoticeSummary,
 } from "@seap/scraper-clients";
 import {
   archiveDocuments,
@@ -48,6 +49,28 @@ export interface ScrapeTedOpts {
   noticeType?: string;
   /** Notices per search page. */
   pageSize?: number;
+}
+
+/** The archived eForms record, shared by the manual and the automatic import so
+ *  both produce the same external id, endpoint version and content hash. */
+export function tedArchiveDocument(
+  n: TedNoticeSummary,
+  pubnum: string,
+  noticeType: string,
+  xml: string,
+): ArchivableDocument {
+  return {
+    source: "ted",
+    externalId: `${noticeType}:${pubnum}`,
+    endpointVersion: "ted-eforms:v1",
+    payload: {
+      "publication-number": pubnum,
+      "notice-type": noticeType,
+      "publication-date": n["publication-date"] ?? null,
+      "buyer-name": n["buyer-name"] ?? null,
+      xml,
+    },
+  };
 }
 
 // TED caps the reachable result window; a scrape window that exceeds this many
@@ -127,18 +150,7 @@ export async function scrapeTedNotices(
       const settled = await Promise.allSettled(
         targets.map(async ({ n, pubnum }): Promise<ArchivableDocument> => {
           const xml = await fetchTedNoticeXml(client, pubnum);
-          return {
-            source: "ted",
-            externalId: `${noticeType}:${pubnum}`,
-            endpointVersion: "ted-eforms:v1",
-            payload: {
-              "publication-number": pubnum,
-              "notice-type": noticeType,
-              "publication-date": n["publication-date"] ?? null,
-              "buyer-name": n["buyer-name"] ?? null,
-              xml,
-            },
-          };
+          return tedArchiveDocument(n, pubnum, noticeType, xml);
         }),
       );
       const docs = settled
