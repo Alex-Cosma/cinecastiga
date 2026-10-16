@@ -213,6 +213,12 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-}
+      # Nightly TED import before the raw boundary (ted.europa.eu directly from
+      # this container's default network; never the SEAP gate or proxy pool).
+      TED_INCREMENTAL: ${TED_INCREMENTAL:-off}
+      TED_INCREMENTAL_MAX_REQUESTS: ${TED_INCREMENTAL_MAX_REQUESTS:-}
+      TED_INCREMENTAL_MAX_MINUTES: ${TED_INCREMENTAL_MAX_MINUTES:-}
+      SCRAPE_UA: cinecastiga.ro/1.0 (public procurement archive; contact cineseuita@gmail.com)
 
   caddy:
     <<: *logging
