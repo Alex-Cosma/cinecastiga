@@ -68,3 +68,23 @@ it('accepts an exact full award-lot inventory when SEAP ignores pageSize, withou
  expect(()=>plan(t,{total:300,items})).toThrow('paginarea');
  expect(()=>plan(t,{total:297,items:[...items.slice(1),items[1]]})).toThrow('repetați');
 });
+it('archives legacy v1 award forms, which echo no internal ID, and collects their lots by public ID',()=>{
+ const t={...root('awards',18),params:{...root('awards',18).params,noticeVersion:1}};
+ const view={publicationDetailsModel:{},section1_V1:{}};
+ const data={caNoticeId:100,cNoticeId:null,noticeNumber:'CAN100',sysNoticeType:{id:18},conditions:{hasEformsDocument:false},caNoticeView_V1:view,caNoticeView_V1_U:null};
+ const r=plan(t,data);
+ expect(r.children.map(c=>c.params.part)).toEqual(['lots']);
+ expect(r.docs[0]).toMatchObject({externalId:'award:100',endpointVersion:'award-detail-root:v2'});
+ expect(plan(t,{...data,caNoticeView_V1:null,caNoticeView_V1_U:view}).children[0]!.params.part).toBe('lots');
+ expect(()=>plan(t,{...data,caNoticeView_V1:null})).toThrow('secțiunile');
+ expect(()=>plan(t,{...data,caNoticeId:101})).toThrow('identitatea');
+ expect(()=>plan(t,{...data,noticeNumber:'CAN999'})).toThrow('identitatea');
+ expect(()=>plan(t,{...data,conditions:{hasEformsDocument:true}})).toThrow('v1');
+ // Version 2 still requires the internal ID.
+ expect(()=>plan(root('awards',18),{...data,caNoticeEdit_New:{}})).toThrow('identificatorul intern');
+});
+it('reports a SEAP rendering error inside an eForm as a source gap naming the TED twin',()=>{
+ const e={...root('awards',8),params:{...root('awards',8).params,part:'eform' as const}};
+ const v={headerModel:{noticeId:200,noticeNumber:'CAN100',sysNoticeType:{id:8}},changeNoticeHtml:'400 Missing Authorization header in request',tedNoticeNo:'579218-2025'};
+ expect(()=>plan(e,v)).toThrow('SEAP nu redă formularul eForms (400 Missing Authorization header in request); anunțul are corespondent TED 579218-2025.');
+});
