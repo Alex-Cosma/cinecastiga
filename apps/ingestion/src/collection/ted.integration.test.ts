@@ -62,6 +62,8 @@ const control=async()=>(await q`select paused_streams,blocked_reason from app.co
 const raw=async()=>(await q`select external_id from raw.raw_documents where source='ted' order by external_id`).map(r=>String(r.external_id).replace('can-standard:',''));
 const tasks=async()=>(await q`select kind,params->>'ojs' ojs,status,error from app.collection_tasks where stream='ted' order by id`).map(r=>`${r.kind} ${r.ojs??'-'} ${r.status}`);
 const later=(hours:number)=>new Date(Date.now()+hours*3600_000);
+// A collector tick at `at`, after the 10-minute package spacing (finished_at moved before `at` when the test clock is in the past).
+const tick=async(at:string)=>{await q`update app.collection_tasks set finished_at=least(finished_at,${at}::timestamptz-interval '11 minutes') where stream='ted' and finished_at is not null`;return advanceRecovery(q,{now:new Date(at)});};
 // Latest archived TED issue in raw: OJ S 198/2026 (13 October), as archived by the import.
 const BASELINE={'202600150':{day:'2026-09-01',notices:['50-2026']},'202600198':{day:'2026-10-13',notices:['100-2026']}};
 
@@ -122,6 +124,12 @@ describe.skipIf(!url)('TED daily packages as a collection stream (real gate and 
   // Keep the SEAP day scope fixed: these ticks only exercise TED.
   await q`update app.collection_batches set end_day='2027-12-31'`;
   await enableTedCollection(q);await drain();
+  // One package per tick, ten minutes apart; never chained back to back.
+  expect(ted.calls).toEqual(['package 202600198','search 2026-10-13#1']);
+  expect((await tick('2026-10-15T09:05:00Z'))!.tedTasks).toBe(1);
+  expect((await advanceRecovery(q,{now:new Date('2026-10-15T09:06:00Z')}))?.tedTasks).toBeUndefined();
+  for(const at of ['2026-10-15T09:20:00Z','2026-10-15T09:35:00Z']){await drain();await tick(at);}
+  await drain();
   expect(ted.calls).toEqual(['package 202600198','search 2026-10-13#1','package 202600199','search 2026-10-14#1','package 202600200','search 2026-10-15#1','package 202600201']);
   // Only Romanian-buyer award notices; the overlap issue's known notice is a duplicate (same content hash).
   expect(await raw()).toEqual(['100-2026','101-2026','110-2026','50-2026']);
@@ -151,6 +159,7 @@ describe.skipIf(!url)('TED daily packages as a collection stream (real gate and 
   ted.searchDays.set('2026-10-13',['100-2026','105-2026']);vi.stubGlobal('fetch',ted.fetch);
   await q`update app.collection_batches set end_day='2027-12-31'`;
   await enableTedCollection(q,new Date('2026-10-13T09:00:00Z'));await drain();
+  await tick('2026-10-13T09:15:00Z');await drain();await tick('2026-10-13T09:30:00Z');await drain();
   const [gap]=await q`select status,error from app.collection_tasks where kind='ted-list' and params->>'ojs'='202600198'`;
   expect(gap).toMatchObject({status:'failed'});
   expect(gap!.error).toBe('TED: verificare eșuată pentru OJ S 198/2026 (2026-10-13): pachetul are 1 anunțuri românești, căutarea TED 2. Lipsesc din pachet: 105-2026.');
@@ -227,14 +236,15 @@ describe.skipIf(!url)('TED daily packages as a collection stream (real gate and 
   await archiveDocumentsSql(q,[tedArchiveDocument({'publication-date':'2026-12-31'},'790000-2026','can-standard',tedNoticeXml({publication:'790000-2026',ojs:'202600252',day:'2026-12-31'}))]);
   const ted=mockTed({'202600252':{day:'2026-12-31',notices:['790000-2026']},'202700001':{day:'2027-01-04',notices:['1000-2027']}});vi.stubGlobal('fetch',ted.fetch);
   await q`update app.collection_batches set end_day='2027-12-31'`;
-  await enableTedCollection(q);await drain();
+  await enableTedCollection(q);await drain();await tick('2026-12-31T09:15:00Z');await drain();
   expect(ted.calls).toEqual(['package 202600252','search 2026-12-31#1','package 202600253']);
   // Still 2026 in Romania: only the next number of the old year is retried.
   expect((await advanceRecovery(q,{now:new Date(Math.max(Date.now(),Date.parse('2026-12-31T10:00:00Z'))+2*3600_000)}))?.tedTasks).toBe(1);
   await q`delete from app.collection_tasks where kind='ted-package' and status='pending'`;
-  expect((await advanceRecovery(q,{now:new Date('2027-01-04T12:00:00Z')}))!.tedTasks).toBe(2);
+  // New year: the first issue of 2027 goes first (one download per spacing window).
+  expect((await advanceRecovery(q,{now:new Date('2027-01-04T12:00:00Z')}))!.tedTasks).toBe(1);
   ted.calls.length=0;await drain();
-  expect(ted.calls).toEqual(['package 202600253','package 202700001','search 2027-01-04#1','package 202700002']);
+  expect(ted.calls).toEqual(['package 202700001','search 2027-01-04#1']);
   expect(await raw()).toContain('1000-2027');
   expect((await advanceRecovery(q,{now:new Date('2027-01-04T14:00:00Z')}))!.tedTasks).toBe(1);
   expect((await q`select params->>'ojs' ojs from app.collection_tasks where kind='ted-package' and status='pending'`).map(r=>r.ojs)).toEqual(['202700002']);
