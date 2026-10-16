@@ -1,6 +1,9 @@
 import {DA_STRATEGY} from './da-partition.js';
 import {NoticeDetailValidationError} from './notice-details.js';
-import {CollectionProxyFailureError,collectionQuietWindow,diagnosticError,sanitizeDiagnostics,CollectionSuspendedError,collectionHeartbeat,collectionWorkerId,withCollectionStream,type DbSql} from '@seap/db';
+import {CollectionProxyFailureError,collectionQuietWindow,diagnosticError,sanitizeDiagnostics,CollectionSuspendedError,collectionHeartbeat,collectionWorkerId,pauseCollectionStreamInTransaction,withCollectionStream,type DbSql} from '@seap/db';
+import {fetchTedNoticeXml,searchTedNotices,tedCountryWindowQuery,type TedClient} from '@seap/scraper-clients';
+import {getTedCollectionClient} from '../scrape/ted/collection-client.js';
+import {filterTedChildren,TED_NOTICE_TYPE,TED_PAGE_SIZE} from './ted.js';
 import {searchCpvs,getDirectAcquisitionDetail,getNoticeContracts,getNoticeDetailPart,type NoticeDetailParams,ScrapeError,listContractingAuthorities,listDirectAcquisitions,listNotices,NOTICE_TYPE_IDS,type ElicitatieClient} from '@seap/scraper-clients';
 import {archiveDocumentsSql} from '../scrape/archive.js';
 import {isoDaysAgo} from '../scrape/window.js';
@@ -9,7 +12,7 @@ import {compareNoticeInventory} from './inventory.js';
 import type {NoticeListItem} from '@seap/scraper-clients';
 export const RECOVERY_LOCK=[729114,5] as const;
 export const recoveryWorker=collectionWorkerId('recovery');
-const streams=['da','tenders','awards','catalogue'] as const;
+const streams=['da','tenders','awards','catalogue','ted'] as const;
 export async function insertTasks(q:DbSql,tasks:Task[]){
  for(const t of tasks)await q`insert into app.collection_tasks(batch_id,key,partition,stream,kind,params,priority,status,error) values(${t.batch_id},${t.key},${t.partition},${t.stream},${t.kind},${JSON.stringify(t.params)}::jsonb,${t.priority},${t.status??'pending'},${t.error??null}) on conflict(batch_id,key) do nothing`;
 }
@@ -31,9 +34,12 @@ export async function seedRecovery(q:DbSql,end=isoDaysAgo(1)){
  });
  return batch;
 }
-export async function fetchTask(client:ElicitatieClient,t:Task):Promise<unknown>{
+export async function fetchTask(client:ElicitatieClient,t:Task,ted:()=>TedClient=getTedCollectionClient):Promise<unknown>{
  return withCollectionStream(t.stream,async()=>{
   const p=t.params;
+  // TED: TED's own client, through the same gate and proxies; TED pages are 1-based.
+  if(t.kind==='ted-list')return searchTedNotices(ted(),{query:tedCountryWindowQuery({country:'ROU',noticeType:TED_NOTICE_TYPE,start:p.from!,end:p.from!}),page:p.page+1,limit:TED_PAGE_SIZE});
+  if(t.kind==='ted-xml')return fetchTedNoticeXml(ted(),p.publicationNumber!);
   if(t.kind==='cpv-catalogue')return searchCpvs(client,{pageIndex:p.page,pageSize:50});
   if(t.kind==='catalogue')return listContractingAuthorities(client,{pageIndex:p.page,pageSize:2000});
   if(t.kind==='da-detail')return (await getDirectAcquisitionDetail(client,p.noticeId!)).data;
@@ -127,6 +133,7 @@ export async function recoveryStep(q:DbSql,fetcher:(t:Task)=>Promise<unknown>,la
     const seen=new Set(known.map(r=>Number(r.id)));
     plan.children=plan.children.map(child=>child.kind==='da'&&!seen.has(child.params.authorityId!)?task(t.batch_id,'da','da',{...child.params,from:'2026-07-01',to:String(scope!.end_day)},child.priority):child);
    }
+   if(t.kind==='ted-list')plan.children=await filterTedChildren(tx as unknown as DbSql,t,plan.children);
    if(t.kind==='da'&&t.params.daStrategy===DA_STRATEGY&&plan.status==='complete'&&!t.params.authorityId){
     // Compare against the independently normalized day. Missing IDs get their own
     // metered detail tasks; never delete a record because a list no longer shows it.
@@ -149,12 +156,16 @@ export async function recoveryStep(q:DbSql,fetcher:(t:Task)=>Promise<unknown>,la
   if(error instanceof CollectionSuspendedError){await q`update app.collection_tasks set status='pending',started_at=null where id=${t.id!}`;return false;}
   // Only gate-confirmed timeouts are requeued above. Other failures may have partly succeeded. Keep
   // the exact task identity and stop admission until an operator inspects it.
-  const isolatedDetailFailure=t.kind==='detail'&&(error instanceof NoticeDetailValidationError||error instanceof ScrapeError&&[400,404,410].includes(error.status??0));
-  const message=isolatedDetailFailure&&error instanceof ScrapeError?`Detaliu SEAP indisponibil (HTTP ${error.status}); celelalte anunțuri continuă.`:error instanceof Error?error.message:'Eroare de colectare';
-  const safe=/^(Structur|Detaliu|Identitatea|O singură|Fereastra|Dimensiunea|Totalul|Lipsește|Lista|SEAP|Numărul|Data|Filtrul|Tip de|Anunț)/.test(message)?message:'Cererea sau arhivarea nu a fost confirmată. Verifică jurnalul înainte de reluare.';
+  const tedGap=t.kind==='ted-xml'&&error instanceof ScrapeError&&[404,410].includes(error.status??0);
+  const isolatedDetailFailure=tedGap||t.kind==='detail'&&(error instanceof NoticeDetailValidationError||error instanceof ScrapeError&&[400,404,410].includes(error.status??0));
+  const message=tedGap?`TED: notificarea ${t.params.publicationNumber} nu este disponibilă (HTTP ${(error as ScrapeError).status}); celelalte continuă.`:isolatedDetailFailure&&error instanceof ScrapeError?`Detaliu SEAP indisponibil (HTTP ${error.status}); celelalte anunțuri continuă.`:error instanceof Error?error.message:'Eroare de colectare';
+  const safe=/^(Structur|Detaliu|Identitatea|O singură|Fereastra|Dimensiunea|Totalul|Lipsește|Lista|SEAP|TED|Numărul|Data|Filtrul|Tip de|Anunț)/.test(message)?message:'Cererea sau arhivarea nu a fost confirmată. Verifică jurnalul înainte de reluare.';
   await q`update app.collection_requests set diagnostics=coalesce(diagnostics,'{}'::jsonb)||${JSON.stringify(sanitizeDiagnostics({taskFailure:{taskId:t.id,exception:diagnosticError(error),...(response===undefined?{}:{response})}}))}::jsonb where id=(select id from app.collection_requests where diagnostics->'context'->>'taskId'=${String(t.id)} order by id desc limit 1)`;
   if(error instanceof NoticePageOverlapError&&await scheduleNoticeOverlapRecovery(q,t,error.total)){console.log(JSON.stringify({event:'notice-pagination-recovery',task:t.id,total:error.total}));return true;}
-  await q.begin(async tx=>{await tx`update app.collection_retries set status='stopped',retry_at=null,updated_at=clock_timestamp() where task_id=${t.id!} and status='pending'`;await tx`update app.collection_tasks set status='failed',error=${safe.slice(0,500)},finished_at=clock_timestamp() where id=${t.id!}`;if(!isolatedDetailFailure)await tx`update app.collection_control set blocked_reason=coalesce(blocked_reason,${`Sarcina ${t.id}: ${safe}`}) where id=1`;});
+  await q.begin(async tx=>{await tx`update app.collection_retries set status='stopped',retry_at=null,updated_at=clock_timestamp() where task_id=${t.id!} and status='pending'`;await tx`update app.collection_tasks set status='failed',error=${safe.slice(0,500)},finished_at=clock_timestamp() where id=${t.id!}`;if(isolatedDetailFailure)return;
+   // A TED problem stops only the TED stream (audited, alerted); SEAP keeps collecting.
+   if(t.stream==='ted')await pauseCollectionStreamInTransaction(tx as unknown as DbSql,'ted',`Sarcina ${t.id}: ${safe}`);
+   else await tx`update app.collection_control set blocked_reason=coalesce(blocked_reason,${`Sarcina ${t.id}: ${safe}`}) where id=1`;});
   console.error(JSON.stringify({event:isolatedDetailFailure?'recovery-detail-gap':'recovery-stopped',task:t.id,error:safe}));
  }
  return true;

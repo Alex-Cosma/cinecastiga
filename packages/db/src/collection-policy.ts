@@ -1,4 +1,4 @@
-export const COLLECTION_STREAMS=['da','tenders','awards','documents','catalogue'] as const;
+export const COLLECTION_STREAMS=['da','tenders','awards','documents','catalogue','ted'] as const;
 export type CollectionStream=typeof COLLECTION_STREAMS[number];
 export interface CollectionSettings {revision:number;minSeconds:number;maxSeconds:number;dailyLimit:number|null;processingTime:string;paused:boolean;pausedStreams:string[]}
 export function validateCollectionSettings(value:unknown):Omit<CollectionSettings,'paused'|'pausedStreams'>{
@@ -13,15 +13,36 @@ export function validateCollectionSettings(value:unknown):Omit<CollectionSetting
 export function safeCollectionParameters(value:unknown):Record<string,unknown>{
  if(!value||typeof value!=='object')return {};
  const out:Record<string,unknown>={};
- const allowed=['pageIndex','pageSize','skip','take','contractingAuthorityId','caNoticeId','cNoticeId','rfqInvitationId','pcNoticeId','dcNoticeId','noticeId','noticeLotId','dfNoticeId','initNoticeId','sysNoticeTypeId','sysNoticeTypeIds','finalizationDateStart','finalizationDateEnd','startPublicationDate','endPublicationDate'];
+ const allowed=['page','limit','publicationDate','pageIndex','pageSize','skip','take','contractingAuthorityId','caNoticeId','cNoticeId','rfqInvitationId','pcNoticeId','dcNoticeId','noticeId','noticeLotId','dfNoticeId','initNoticeId','sysNoticeTypeId','sysNoticeTypeIds','finalizationDateStart','finalizationDateEnd','startPublicationDate','endPublicationDate'];
  for(const key of allowed){const v=(value as Record<string,unknown>)[key];if(v===null||typeof v==='number'&&Number.isFinite(v)||typeof v==='string'&&/^\d{4}-\d{2}-\d{2}(?:[T\d:.+Z-]*)$/.test(v)||Array.isArray(v)&&v.length<20&&v.every(x=>Number.isSafeInteger(x)))out[key]=v;}
  const cpv=(value as Record<string,unknown>).cpvCodeText;
  if(typeof cpv==='string'&&/^\d{2,8}$/.test(cpv))out.cpvCodeText=cpv;
+ const publication=(value as Record<string,unknown>).publicationNumber;
+ if(typeof publication==='string'&&TED_PUBLICATION.test(publication))out.publicationNumber=publication;
  if(typeof (value as Record<string,unknown>).isNoticeChange==='boolean')out.isNoticeChange=(value as Record<string,unknown>).isNoticeChange;
  return out;
 }
+const TED_PUBLICATION=/^\d{1,8}-\d{4}$/;
+/** TED (EU Official Journal) goes through the same gate and proxies as SEAP, but
+ * only these two exact resources: the search API and one notice's XML. */
+export const TED_SEARCH_URL='https://api.ted.europa.eu/v3/notices/search';
+export const tedNoticeXmlUrl=(publicationNumber:string)=>{
+ if(!TED_PUBLICATION.test(publicationNumber))throw Error('Număr de publicare TED nevalid.');
+ return `https://ted.europa.eu/en/notice/${publicationNumber}/xml`;
+};
+export function isTedCollectionUrl(url:string){
+ const u=new URL(url);
+ return u.protocol==='https:'&&!u.port&&!u.username&&!u.password&&!u.search&&!u.hash&&(
+  u.hostname==='api.ted.europa.eu'&&u.pathname==='/v3/notices/search'||
+  u.hostname==='ted.europa.eu'&&/^\/en\/notice\/\d{1,8}-\d{4}\/xml$/.test(u.pathname));
+}
 export function safeCollectionEndpoint(url:string){
- const path=new URL(url,'https://www.e-licitatie.ro').pathname;
+ const u=new URL(url,'https://www.e-licitatie.ro'),path=u.pathname;
+ if(u.hostname.endsWith('ted.europa.eu')){
+  if(!isTedCollectionUrl(u.href))throw Error('Endpoint TED neacceptat.');
+  return `${u.hostname}${path}`;
+ }
+ if(!['www.e-licitatie.ro','e-licitatie.ro'].includes(u.hostname))throw Error('Endpoint SEAP neacceptat.');
  if(path.startsWith('/api-pub/files/noticedoc/'))return '/api-pub/files/noticedoc/{fișier}';
  // Public notice UI modules are used for bounded API discovery through the same request budget.
  if(/^\/views\/pub\/(?:notices|sad)\/[\w/-]+(?:\.min)?\.js$/.test(path))return path.slice(0,300);

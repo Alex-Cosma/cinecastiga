@@ -22,18 +22,28 @@ export async function collectionHeartbeat(q:DbSql,id:string,kind:string,state:st
 /** Document sessions are a separate subsystem: their transport failures stop only their own stream.
  * Recorded in the audit with the reason; resumed from the stream control in administration. */
 export const UNCLASSIFIED_PROXY_LIMIT=3,UNCLASSIFIED_PROXY_WINDOW_MINUTES=10;
+/** Caller owns the transaction (also used by the task runner for TED task failures). */
+export async function pauseCollectionStreamInTransaction(q:DbSql,stream:CollectionStream,reason:string){
+ const [c]=await q`select paused_streams from app.collection_control where id=1 for update`;
+ const before=(c?.paused_streams as string[]|undefined)??[];
+ if(!before.includes(stream)){
+  const after=[...before,stream];
+  await q`update app.collection_control set paused_streams=${JSON.stringify(after)}::jsonb,revision=revision+1,updated_at=clock_timestamp() where id=1`;
+  await q`insert into app.collection_audit(actor_id,actor_name,action,before,after) values('system:stream-circuit','Sistem','stream-auto-paused',${JSON.stringify({pausedStreams:before})}::jsonb,${JSON.stringify({pausedStreams:after,stream,reason})}::jsonb)`;
+ }
+}
 export async function pauseCollectionStream(q:DbSql,stream:CollectionStream,reason:string){
  await q`begin`;
- try{
-  const [c]=await q`select paused_streams from app.collection_control where id=1 for update`;
-  const before=(c?.paused_streams as string[]|undefined)??[];
-  if(!before.includes(stream)){
-   const after=[...before,stream];
-   await q`update app.collection_control set paused_streams=${JSON.stringify(after)}::jsonb,revision=revision+1,updated_at=clock_timestamp() where id=1`;
-   await q`insert into app.collection_audit(actor_id,actor_name,action,before,after) values('system:stream-circuit','Sistem','stream-auto-paused',${JSON.stringify({pausedStreams:before})}::jsonb,${JSON.stringify({pausedStreams:after,stream,reason})}::jsonb)`;
-  }
-  await q`commit`;
- }catch(error){await q`rollback`.catch(()=>{});throw error;}
+ try{await pauseCollectionStreamInTransaction(q,stream,reason);await q`commit`;}
+ catch(error){await q`rollback`.catch(()=>{});throw error;}
+}
+/** 404/410 for one notice is a gap for that notice only (handled by the task), not a source stop. */
+export function tedFailureReason(status:number,retryAfter:string|null):string|null{
+ if(status===404||status===410)return null;
+ const after=retryAfterSeconds(retryAfter);
+ if(status===429)return `TED a răspuns cu 429${after===null?'':`; Retry-After ${after} secunde`}. Fluxul TED este pe pauză; SEAP continuă. Reia fluxul după termen.`;
+ if(status===403)return 'TED a refuzat accesul (403). Fluxul TED este pe pauză; SEAP continuă.';
+ return `TED a răspuns HTTP ${status}. Fluxul TED este pe pauză; SEAP continuă.`;
 }
 export const collectionWorkerId=(kind:string)=>`${kind}:${process.pid}:${randomUUID().slice(0,8)}`;
 export interface CollectionRequestInfo {stream:CollectionStream;worker:string;method:string;url:string;parameters?:unknown;fileDownload?:boolean;context?:unknown;proxyId?:string;documentJobId?:string}
@@ -126,18 +136,30 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
   await collectionHeartbeat(q,info.worker,info.stream==='documents'?'documents':'ingestion','request');
   const result=await work(controller.signal,selectedProxy);transportDiagnostics=result.diagnostics;controller.signal.throwIfAborted();
   const failure=result.status<200||result.status>=300||!!result.challenge;
-  const reason=result.challenge?'SEAP solicită o verificare suplimentară.':result.status===429?'SEAP a răspuns cu 429. Verifică limita înainte de reluare.':result.status===403?'SEAP a refuzat accesul (403).':null;
+  // TED is another source behind the same gate: its refusals and outages pause
+  // only the 'ted' stream (audited, operator alert), never SEAP or the proxy circuit.
+  const ted=info.stream==='ted';
+  const tedReason=ted&&failure?tedFailureReason(result.status,result.retryAfter??null):null;
+  const reason=ted?null:result.challenge?'SEAP solicită o verificare suplimentară.':result.status===429?'SEAP a răspuns cu 429. Verifică limita înainte de reluare.':result.status===403?'SEAP a refuzat accesul (403).':null;
   if(reason){const after=retryAfterSeconds(result.retryAfter??null);await q`update app.collection_control set blocked_reason=${reason},blocked_until=case when ${after}::int is null then null else clock_timestamp()+${after}::int*interval '1 second' end where id=1`;}
-  await q`update app.collection_requests set status=${result.status},outcome=${failure?'failed':'success'},bytes=${result.bytes??null},records=${result.records??null},error=${reason??(failure?`HTTP ${result.status}`:null)},diagnostics=${failure?diagnostics():JSON.stringify(sanitizeDiagnostics({...transportDiagnostics,response:transportDiagnostics?.response?{...(transportDiagnostics.response as object),body:undefined}:undefined,context:info.context}))}::jsonb,finished_at=clock_timestamp() where id=${id!}`;
+  await q`update app.collection_requests set status=${result.status},outcome=${failure?'failed':'success'},bytes=${result.bytes??null},records=${result.records??null},error=${reason??tedReason??(failure?`HTTP ${result.status}`:null)},diagnostics=${failure?diagnostics():JSON.stringify(sanitizeDiagnostics({...transportDiagnostics,response:transportDiagnostics?.response?{...(transportDiagnostics.response as object),body:undefined}:undefined,context:info.context}))}::jsonb,finished_at=clock_timestamp() where id=${id!}`;
   if(selectedProxy)await q`update app.collection_proxies set consecutive_failures=case when ${failure} then consecutive_failures else 0 end,last_error=${failure?(reason??`HTTP ${result.status}`):null} where id=${selectedProxy.id}`;
   finished=true;
-  if(selectedProxy&&!result.challenge&&[407,408,500,502,503,504].includes(result.status)){
+  if(selectedProxy&&!ted&&!result.challenge&&[407,408,500,502,503,504].includes(result.status)){
    await recordProxyFailure(q,selectedProxy.id);
    if(await scheduleCollectionTimeout(q,id!,taskId,true))throw new CollectionSuspendedError('Cererea va fi reîncercată; celelalte proxy-uri continuă.');
    throw new CollectionProxyFailureError('Cerere prin proxy eșuată; celelalte proxy-uri continuă.');
   }
+  // TED 5xx/408: the same 5/10-minute task retries as SEAP's proxy failures; the stream pauses only once they are exhausted.
+  if(ted&&tedReason&&[408,500,502,503,504].includes(result.status)&&await scheduleCollectionTimeout(q,id!,taskId,true))throw new CollectionSuspendedError('TED indisponibil temporar; cererea va fi reîncercată.');
   if(failure&&taskId!==null)await q`update app.collection_retries set status='stopped',retry_at=null,updated_at=clock_timestamp() where task_id=${taskId} and status='pending'`;
   if(reason)throw new CollectionSuspendedError(reason);
+  if(tedReason){
+   await pauseCollectionStream(q,'ted',tedReason);
+   // Exhausted outage retries leave a task gap (a later overlap scan re-lists it); a refusal keeps the task queued.
+   if([408,500,502,503,504].includes(result.status))throw new CollectionProxyFailureError(tedReason);
+   throw new CollectionSuspendedError(tedReason);
+  }
   return result.value;
  }catch(error){
   if(id!==undefined&&!finished){
@@ -150,24 +172,27 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
    const response=(error instanceof CollectionTransportError?error.diagnostics.response:transportDiagnostics?.response) as {status?:number;receivedBytes?:number}|undefined;
    const scoped=selectedProxy&&(abortReason==='request_timeout'||(!abortReason&&error instanceof CollectionTransportError&&error.diagnostics.retryableProxyTransport===true))&&(!response?.status||(response.status>=200&&response.status<300)||[407,408,500,502,503,504].includes(response.status));
    const transportReason='Eroare de transport. Verifică jurnalul înainte de reluare.';
-   const stopTransport=()=>info.stream==='documents'?pauseCollectionStream(q,'documents',transportReason):q`update app.collection_control set blocked_reason=coalesce(blocked_reason,${transportReason}),blocked_until=case when blocked_reason is null then clock_timestamp()+interval '120 seconds' else blocked_until end where id=1`;
+   const ownStream=info.stream==='documents'||info.stream==='ted';
+   const stopTransport=()=>ownStream?pauseCollectionStream(q,info.stream,info.stream==='ted'?'Eroare de transport TED. Verifică jurnalul înainte de reluare.':transportReason):q`update app.collection_control set blocked_reason=coalesce(blocked_reason,${transportReason}),blocked_until=case when blocked_reason is null then clock_timestamp()+interval '120 seconds' else blocked_until end where id=1`;
    if(!scoped&&abortReason!=='request_timeout')await stopTransport();
    // Keep every attempt and its diagnostics before considering replay.
    await q`update app.collection_requests set outcome='failed',status=coalesce(status,${response?.status??null}),bytes=coalesce(bytes,${response?.receivedBytes??null}),error=${abortReason==='request_timeout'?`Timeout după ${info.fileDownload?600:45} de secunde.`:'Cerere întreruptă, răspuns nevalid sau eroare de transport. Fără reîncercare automată.'},diagnostics=${diagnostics(error)}::jsonb,finished_at=clock_timestamp() where id=${id}`;
 
    if(scoped){
-    await recordProxyFailure(q,selectedProxy!.id);
+    // A TED outage looks like failures on every proxy; it must not disable SEAP's pool.
+    if(info.stream!=='ted')await recordProxyFailure(q,selectedProxy!.id);
     if(error instanceof CollectionTransportError&&error.diagnostics.unclassifiedTransport===true){
      // One proxy failing is the proxy; several distinct proxies failing alike points at the source.
      const [spread]=await q`select count(distinct proxy_id)::int n from app.collection_requests where stream=${info.stream} and outcome='failed' and proxy_id is not null
       and diagnostics->>'unclassifiedTransport'='true' and started_at>clock_timestamp()-${UNCLASSIFIED_PROXY_WINDOW_MINUTES}*interval '1 minute'`;
      if(Number(spread?.n)>=UNCLASSIFIED_PROXY_LIMIT){
       const reason=`Erori de transport neclasificate pe ${spread!.n} proxy-uri diferite în ${UNCLASSIFIED_PROXY_WINDOW_MINUTES} minute. Verifică jurnalul înainte de reluare.`;
-      if(info.stream==='documents')await pauseCollectionStream(q,'documents',reason);
+      if(ownStream)await pauseCollectionStream(q,info.stream,reason);
       else await q`update app.collection_control set blocked_reason=coalesce(blocked_reason,${reason}),blocked_until=case when blocked_reason is null then clock_timestamp()+interval '120 seconds' else blocked_until end where id=1`;
      }
     }
     if(await scheduleCollectionTimeout(q,id,taskId,true))throw new CollectionSuspendedError('Cererea va fi reîncercată; celelalte proxy-uri continuă.');
+    if(info.stream==='ted')await pauseCollectionStream(q,'ted','TED nu a răspuns după trei încercări prin proxy-uri diferite. Verifică jurnalul înainte de reluare.');
     throw new CollectionProxyFailureError('Cerere prin proxy eșuată; celelalte proxy-uri continuă.');
    }
    if(abortReason==='request_timeout'&&await scheduleCollectionTimeout(q,id,taskId))throw new CollectionSuspendedError('Timeout SEAP. Reîncercarea a fost programată.');
