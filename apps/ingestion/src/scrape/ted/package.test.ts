@@ -56,18 +56,23 @@ describe('TED daily package reader',()=>{
   expect(r.candidates.map(c=>c.name)).toEqual(['20261015_2026200/00000001_2026.xml','20261015_2026200/00000002_2026.xml','20261015_2026200/00900200_2026.xml']);
   expect(r.candidates[0]!.xml).toBe(tedNoticeXml({publication:'1-2026',ojs:'202600200',day:'2026-10-15'}));
  });
+ it('accepts the Romanian country code under either eForms list name',async()=>{
+  const xml=(list:string)=>`<x><cbc:IdentificationCode listName="${list}">ROU</cbc:IdentificationCode><cbc:NoticeTypeCode listName="result">can-standard</cbc:NoticeTypeCode></x>`;
+  const r=await readTedDailyPackage(tarGz([{name:'d/00000001_2026.xml',data:xml('country')},{name:'d/00000002_2026.xml',data:xml('eforms-country')},{name:'d/00000003_2026.xml',data:xml('language')}]));
+  expect(r.candidates.map(c=>c.name)).toEqual(['d/00000001_2026.xml','d/00000002_2026.xml']);
+ });
  it('records, by name and markup only, can-standard XML that mentions ROU but misses the country pre-filter',async()=>{
-  const odd='<x><cac:Country><cbc:IdentificationCode listName="country">ROU</cbc:IdentificationCode></cac:Country><cbc:NoticeTypeCode listName="result">can-standard</cbc:NoticeTypeCode><cbc:Name>Secret person</cbc:Name></x>';
+  const odd='<x><cac:Country><cbc:IdentificationCode listName="other-country">ROU</cbc:IdentificationCode></cac:Country><cbc:NoticeTypeCode listName="result">can-standard</cbc:NoticeTypeCode><cbc:Name>Secret person</cbc:Name></x>';
   const r=await readTedDailyPackage(tarGz([{name:'d/00449040_2026.xml',data:odd},{name:'d/00000009_2026.xml',data:'<x>ROU only, no type</x>'}]));
   expect(r.candidates).toEqual([]);
-  expect(r.misses).toEqual([{name:'d/00449040_2026.xml',countryMarker:false,typeMarker:true,rouTags:['cbc:IdentificationCode listName="country"']}]);
+  expect(r.misses).toEqual([{name:'d/00449040_2026.xml',countryMarker:false,typeMarker:true,rouTags:['cbc:IdentificationCode listName="other-country"']}]);
   expect(JSON.stringify(r.misses)).not.toContain('Secret');
  });
  it('refuses a body that is not gzip and duplicate members',async()=>{
   await expect(readTedDailyPackage(Buffer.from(''))).rejects.toThrow(/gzip/);
   await expect(readTedDailyPackage(Buffer.from('<html>challenge</html>'))).rejects.toThrow(/gzip/);
   await expect(readTedDailyPackage(tarGz([{name:'a.xml',data:'x'},{name:'a.xml',data:'y'}]))).rejects.toThrow(/de două ori/);
-  const invalid=Buffer.concat([Buffer.from('eforms-country">ROU >can-standard< '),Buffer.from([0xff,0xfe])]);
+  const invalid=Buffer.concat([Buffer.from('listName="eforms-country">ROU >can-standard< '),Buffer.from([0xff,0xfe])]);
   await expect(readTedDailyPackage(tarGz([{name:'a.xml',data:invalid}]))).rejects.toThrow(/UTF-8/);
  });
 });

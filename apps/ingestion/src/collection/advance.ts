@@ -3,6 +3,7 @@ import {task} from './plan.js';
 import {insertTasks} from './runner.js';
 import {TED_OVERLAP_DAYS,tedPackageCandidates,tedPackageTask,tedReverifications,tedVerifyTask} from './ted.js';
 import type {DbSql} from '@seap/db';
+import {TED_PREFILTER_VERSION} from '../scrape/ted/package.js';
 
 /** Metadata only, no traffic. Once `ted-enable` queued the first package: the next OJ S
  * issue (and, after a 404 in a later year, the new year's first issue), at most once per
@@ -14,7 +15,12 @@ export async function advanceTedPackages(tx:DbSql,batch:string,now?:Date){
  const [clock]=await tx`select extract(epoch from x)*1000 now_ms,to_char(x at time zone 'Europe/Bucharest','YYYY-MM-DD') today,to_char(x at time zone 'Europe/Bucharest','YYYY-MM-DD"T"HH24') attempt
   from (select coalesce(${now?.toISOString()??null}::timestamptz,clock_timestamp()) x) c`;
  const today=String(clock!.today);
- const candidates=tedPackageCandidates({attempts:attempts.map(a=>({ojs:String(a.ojs),status:String(a.status),published:a.published==null?null:Boolean(a.published),finishedMs:a.finished_ms==null?null:Number(a.finished_ms)})),nowMs:Number(clock!.now_ms),year:Number(today.slice(0,4))});
+ // A failed day verification of a package read before the current pre-filter: download that issue again.
+ const redownload=(await tx`select distinct v.params->>'ojs' ojs from app.collection_tasks v
+  where v.batch_id=${batch} and v.stream='ted' and v.kind='ted-list' and v.params ? 'ojs' and v.status='failed' and v.error like 'TED: verificare eșuată%'
+   and not exists(select 1 from app.collection_tasks p where p.batch_id=${batch} and p.stream='ted' and p.kind='ted-package' and p.params->>'ojs'=v.params->>'ojs'
+    and (p.status in ('pending','running') or p.status='complete' and coalesce((p.result->>'prefilter')::int,1)>=${TED_PREFILTER_VERSION}))`).map(r=>String(r.ojs));
+ const candidates=tedPackageCandidates({redownload,attempts:attempts.map(a=>({ojs:String(a.ojs),status:String(a.status),published:a.published==null?null:Boolean(a.published),finishedMs:a.finished_ms==null?null:Number(a.finished_ms)})),nowMs:Number(clock!.now_ms),year:Number(today.slice(0,4))});
  const verifications=await tx`select params->>'ojs' as ojs,params->>'from' as day,params->>'tedScan' as scan,status,error from app.collection_tasks
   where batch_id=${batch} and stream='ted' and kind='ted-list' and params ? 'ojs' and (params->>'from')::date>=${today}::date-${TED_OVERLAP_DAYS+1}::int`;
  const again=tedReverifications(verifications.map(v=>({ojs:String(v.ojs),day:String(v.day),scan:String(v.scan),status:String(v.status),error:v.error==null?null:String(v.error)})),today);

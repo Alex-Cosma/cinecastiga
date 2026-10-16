@@ -1,7 +1,7 @@
 import {TED_OJS,type DbSql} from '@seap/db';
 import {extractTedNotice} from '../normalize/ted.js';
 import {tedArchiveDocument} from '../scrape/ted/notices.js';
-import type {TedPackageCandidate,TedPackageMiss} from '../scrape/ted/package.js';
+import {TED_PREFILTER_VERSION,type TedPackageCandidate,type TedPackageMiss} from '../scrape/ted/package.js';
 import {task,type PageResult,type Task,type TaskPlan} from './plan.js';
 
 /**
@@ -124,8 +124,9 @@ function planTedPackage(t:Task,value:unknown):TaskPlan{
  if(new Set(identities).size!==identities.length)throw Error(`TED: OJ S ${ojsLabel(ojs)} conține același anunț de mai multe ori.`);
  identities.sort();
  // The next issue is queued by advanceTedPackages, TED_PACKAGE_SPACING_MS after this one finished.
- const children=[tedVerifyTask(t.batch_id,ojs,day,day)];
- return {status:'complete',result:{total:identities.length,ids:[],identities,ojs,published:true,publicationDate:day,files:v.files,xmlFiles:v.xmlFiles,candidates:v.candidates.length,otherCountry,otherType,notArchived:notArchived.slice(0,200)} as PageResult,docs,children};
+ // Scanned on the attempt's day: a re-downloaded issue gets its own verification.
+ const children=[tedVerifyTask(t.batch_id,ojs,day,t.params.tedScan!.slice(0,10))];
+ return {status:'complete',result:{total:identities.length,ids:[],identities,ojs,published:true,publicationDate:day,files:v.files,xmlFiles:v.xmlFiles,candidates:v.candidates.length,otherCountry,otherType,notArchived:notArchived.slice(0,200),prefilter:TED_PREFILTER_VERSION} as PageResult,docs,children};
 }
 
 /** On the last page of a day verification: the search's exact population must equal the
@@ -173,9 +174,12 @@ export interface TedAttempt {ojs:string;status:string;published:boolean|null;fin
  * latest archived issue; after a 404 in a later (Romanian) year, also the new year's first
  * issue. One attempt in flight, none within TED_PACKAGE_SPACING_MS of the previous one;
  * a finished attempt is repeated at most once per hour. */
-export function tedPackageCandidates({attempts,nowMs,year}:{attempts:TedAttempt[];nowMs:number;year:number}):string[]{
+export function tedPackageCandidates({attempts,nowMs,year,redownload=[]}:{attempts:TedAttempt[];nowMs:number;year:number;redownload?:string[]}):string[]{
  if(!attempts.length||attempts.some(a=>a.status==='pending'||a.status==='running'))return [];
  if(attempts.some(a=>a.finishedMs!=null&&nowMs-a.finishedMs<TED_PACKAGE_SPACING_MS))return [];
+ // Issues read with an older pre-filter whose verification failed go first, oldest first.
+ const again=[...redownload].sort().filter(ojs=>{const last=attempts.filter(a=>a.ojs===ojs).map(a=>a.finishedMs??0).sort((a,b)=>b-a)[0];return last===undefined||nowMs-last>=3600_000;});
+ if(again.length)return again.slice(0,1);
  const published=attempts.filter(a=>a.status==='complete'&&a.published).map(a=>a.ojs).sort(),frontier=published.at(-1);
  const candidates:string[]=[];
  if(frontier){
