@@ -30,12 +30,12 @@ describe('TED collection tasks',()=>{
   for(const name of [null,'20261015_2026201.tar.gz','20261015_2025200.tar.gz','20251015_2026200.tar.gz','20261315_2026200.tar.gz','x.tar.gz','20261015_2026200.zip'])expect(()=>tedPackageDay(name,ojs)).toThrow(/TED/);
  });
 
- it('archives the Romanian award notices of the issue and queues verification and the next issue',async()=>{
+ it('archives the Romanian award notices of the issue and queues its verification (the next issue waits for the spacing tick)',async()=>{
   const plan=planResponse(pkgTask,await fetched(['634512-2026','634513-2026']),[],day);
   expect(plan.docs).toEqual(['634512-2026','634513-2026'].map(p=>({source:'ted',externalId:`can-standard:${p}`,endpointVersion:'ted-eforms:v1',
    payload:{'publication-number':p,'notice-type':'can-standard','publication-date':day,'buyer-name':null,xml:tedNoticeXml({publication:p,ojs,day})}})));
   expect(plan.result).toMatchObject({total:2,identities:['634512-2026','634513-2026'],ojs,published:true,publicationDate:day,files:5,xmlFiles:4,candidates:3,otherCountry:1,otherType:0});
-  expect(plan.children.map(c=>c.key)).toEqual([`ted:ted-list:${ojs}:${day}:${day}:scan:${day}:0`,`ted:ted-package:202600201:::scan:${scan}:0`]);
+  expect(plan.children.map(c=>c.key)).toEqual([`ted:ted-list:${ojs}:${day}:${day}:scan:${day}:0`]);
  });
 
  it('a 404 is an issue not published yet: complete, no documents, no children',()=>{
@@ -104,6 +104,11 @@ describe('OJ S sequencing',()=>{
   expect(next([a('202600200','complete',true),a('202600201','failed',null,10*60_000)])).toEqual([]);
   expect(next([a('202600200','complete',true),a('202600201','failed',null,2*hour)])).toEqual(['202600201']);
  });
+ it('waits ten minutes after any package download before the next one',()=>{
+  expect(next([a('202600200','complete',true,9*60_000)])).toEqual([]);
+  expect(next([a('202600199','complete',true),a('202600200','complete',true,10*60_000)])).toEqual(['202600201']);
+  expect(next([a('202600200','complete',true),a('202600201','failed',null,2*hour),a('202600150','complete',true,5*60_000)])).toEqual([]);
+ });
  it('retries the seed issue when nothing was archived yet',()=>{
   expect(next([a('202600198','failed',null)])).toEqual(['202600198']);
   expect(next([a('202600198','complete',false,10*60_000)])).toEqual([]);
@@ -112,7 +117,7 @@ describe('OJ S sequencing',()=>{
   const dec=[a('202600250','complete',true)];
   expect(next(dec,now,2027)).toEqual(['202600251']);
   expect(next([...dec,a('202600251','complete',false)],now,2026)).toEqual(['202600251']);
-  expect(next([...dec,a('202600251','complete',false)],now,2027)).toEqual(['202600251','202700001']);
+  expect(next([...dec,a('202600251','complete',false)],now,2027)).toEqual(['202700001']);
   expect(next([...dec,a('202600251','complete',false),a('202700001','complete',false,10*60_000)],now,2027)).toEqual(['202600251']);
   expect(next([...dec,a('202600251','complete',false),a('202700001','complete',true)],now,2027)).toEqual(['202700002']);
   // A late-December issue published after all keeps the old year's sequence going.

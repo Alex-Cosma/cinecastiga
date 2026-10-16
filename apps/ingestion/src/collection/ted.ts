@@ -120,7 +120,8 @@ function planTedPackage(t:Task,value:unknown):TaskPlan{
  }
  if(new Set(identities).size!==identities.length)throw Error(`TED: OJ S ${ojsLabel(ojs)} conține același anunț de mai multe ori.`);
  identities.sort();
- const next=nextOjs(ojs),children=[tedVerifyTask(t.batch_id,ojs,day,day),...(next?[tedPackageTask(t.batch_id,next,t.params.tedScan!)]:[])];
+ // The next issue is queued by advanceTedPackages, TED_PACKAGE_SPACING_MS after this one finished.
+ const children=[tedVerifyTask(t.batch_id,ojs,day,day)];
  return {status:'complete',result:{total:identities.length,ids:[],identities,ojs,published:true,publicationDate:day,files:v.files,xmlFiles:v.xmlFiles,candidates:v.candidates.length,otherCountry,otherType} as PageResult,docs,children};
 }
 
@@ -160,23 +161,28 @@ export async function latestArchivedTedIssue(q:DbSql):Promise<{ojs:string;day:st
  return best;
 }
 
+/** TED answers 429 to package downloads about a minute apart (16 October 2026): at least 10 minutes between two packages, any issue. */
+export const TED_PACKAGE_SPACING_MS=600_000;
 export interface TedAttempt {ojs:string;status:string;published:boolean|null;finishedMs:number|null}
 /** Which OJ S issues to try now. Never guessed from dates: the next number after the
  * latest archived issue; after a 404 in a later (Romanian) year, also the new year's first
- * issue. One attempt in flight; a finished attempt is repeated at most once per hour. */
+ * issue. One attempt in flight, none within TED_PACKAGE_SPACING_MS of the previous one;
+ * a finished attempt is repeated at most once per hour. */
 export function tedPackageCandidates({attempts,nowMs,year}:{attempts:TedAttempt[];nowMs:number;year:number}):string[]{
  if(!attempts.length||attempts.some(a=>a.status==='pending'||a.status==='running'))return [];
+ if(attempts.some(a=>a.finishedMs!=null&&nowMs-a.finishedMs<TED_PACKAGE_SPACING_MS))return [];
  const published=attempts.filter(a=>a.status==='complete'&&a.published).map(a=>a.ojs).sort(),frontier=published.at(-1);
  const candidates:string[]=[];
  if(frontier){
   const next=nextOjs(frontier),frontierYear=Number(frontier.slice(0,4));
   if(next)candidates.push(next);
-  if(year>frontierYear&&(!next||attempts.some(a=>a.ojs===next&&a.status==='complete'&&a.published===false)))candidates.push(ojsOf(frontierYear+1,1));
+  // Rollover first: with one download per spacing window, the new year must not wait behind a repeated 404.
+  if(year>frontierYear&&(!next||attempts.some(a=>a.ojs===next&&a.status==='complete'&&a.published===false)))candidates.unshift(ojsOf(frontierYear+1,1));
  }else candidates.push([...attempts].sort((a,b)=>a.ojs.localeCompare(b.ojs))[0]!.ojs);
  return candidates.filter(ojs=>{
   const last=attempts.filter(a=>a.ojs===ojs).map(a=>a.finishedMs??0).sort((a,b)=>b-a)[0];
   return last===undefined||nowMs-last>=3600_000;
- });
+ }).slice(0,1);
 }
 
 export interface TedVerification {ojs:string;day:string;scan:string;status:string;error:string|null}
