@@ -190,7 +190,8 @@ describe('unflagged republications accepted by owner decision 2026-10-12',()=>{
   expect(versionChangeKind(base,{...added,value:'90'},true)).toBeNull();
  });
  it('accepts an amendment named in the later title; a renumbered title stays excluded',()=>{
-  for(const title of ['Contract, ad diminuare nr 23295/09.07.2026','Contract+act aditional','lot 108, Suplim AC lot 108']){
+  for(const title of ['Contract, ad diminuare nr 23295/09.07.2026','Contract+act aditional','lot 108, Suplim AC lot 108',
+   'Contract subsecvent+Act adit dimin nr. 1159/02.10.2026','Contract+act ad. major nr. 4']){
    const r=assessContractVersions([base,{...next,title,value:'80'}],pair(i=>Object.assign(i,{contractTitle:title,contractValue:80,defaultCurrencyContractValue:80})));
    expect(r.status).toBe('source_verified');expect(r.versionChanges?.[0]?.kind).toBe('addendum_in_title');
   }

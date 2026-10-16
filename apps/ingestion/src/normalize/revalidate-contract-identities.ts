@@ -61,7 +61,7 @@ function verifyApprovedBatch(registry:RegistryRow[],rows:MemberRow[],archives:Ar
 export const REVALIDATION_BATCH=500;
 /** Bump whenever an assessment rule in contract-identity.ts changes: the next
  * revalidation is then full, and targeted runs wait for a clean full baseline. */
-export const IDENTITY_RULES_VERSION='contract-identity-rules-20261012';
+export const IDENTITY_RULES_VERSION='contract-identity-rules-20261016';
 type Population={value:string|null;previous:boolean};
 type Member={contract_id:string;candidate_id:string;snapshot_hash:string};
 /** Membership order is not identity: rows read in text order must not count as a change. */
