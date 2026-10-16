@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Invoked once/minute by seap's crontab. PostgreSQL decides the Romanian local
-# schedule and records one attempt/day. No SEAP requests in this runner; the only
-# source traffic is the optional, bounded TED import (ted_import below).
+# schedule and records one attempt/day. No source HTTP requests in this runner.
 set -Eeuo pipefail
 umask 077
 cd "${SEAP_DEPLOY_CHECKOUT:-/srv/seap/src}"
@@ -11,10 +10,6 @@ cd infra/prod
 # These commands never consume input; do not let Compose eat a caller's SSH
 # script and silently skip the commands following this runner.
 run() { docker compose --profile processing run --rm --no-deps -T processor node apps/ingestion/dist/scripts/processing.js "$@" </dev/null; }
-# The one source request in this runner: the automatic TED import (ted.europa.eu,
-# not SEAP; no shared request gate, budget or proxy). Off unless TED_INCREMENTAL=on
-# in .env. The job bounds itself (requests, minutes); the timeout is a backstop.
-ted_import() { timeout --kill-after=30s 15m docker compose --profile processing run --rm --no-deps -T --name cinecastiga-ted-import processor node apps/ingestion/dist/scripts/ted-incremental.js </dev/null; }
 case "${1:-}" in
  "") run_id=$(run claim);;
  --reference-repair-now) run_id=$(run claim-repair reference-import-v1);;
@@ -67,11 +62,6 @@ for attempt in $(seq 1 150); do
 done
 test "$pending" = 0
 docker compose --profile collection stop collection documents
-# Scheduled nights only, before the boundary so tonight's normalize/ted-mart read
-# it. A TED failure never fails or delays publication beyond the bound above.
-if [[ -z "${1:-}" ]]; then
- ted_import || { echo "TED import incomplete (exit $?); publication continues without it."; docker rm -f cinecastiga-ted-import >/dev/null 2>&1 || true; }
-fi
 run freeze "$run_id"
 run stage "$run_id" backup
 test "$(df -Pk "$root" | awk 'NR==2 {print $4}')" -ge 20971520

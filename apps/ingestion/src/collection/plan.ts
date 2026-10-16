@@ -1,12 +1,13 @@
 import {DA_STRATEGY,validateDaScope,planNationalDa,planDaVerification,planCpvCatalogue} from './da-partition.js';
 import {planNoticeDetail} from './notice-details.js';
+import {planTedTask,validateTedScope} from './ted.js';
 import {NOTICE_TYPE_IDS, noticeIdOf, participationKey,noticeArchiveKey, type NoticeDetailParams, type NoticeListItem} from '@seap/scraper-clients';
 import {addDays,bucharestDayOf} from '../scrape/window.js';
 import {redactPayload} from '../scrape/redact.js';
 import type {ArchivableDocument} from '../scrape/archive.js';
 import {isDeepStrictEqual} from 'node:util';
-export type Stream='da'|'tenders'|'awards'|'catalogue';
-export interface Task {id?:number;batch_id:string;key:string;partition:string;stream:Stream;kind:'da'|'list'|'detail'|'contracts'|'catalogue'|'da-detail'|'cpv-catalogue';params:{from?:string;to?:string;page:number;authorityId?:number;noticeId?:number;inventoryOnly?:boolean;singlePageTotal?:number;daStrategy?:typeof DA_STRATEGY;cpvPrefix?:string;daScan?:string;daFallback?:boolean}&Partial<NoticeDetailParams>;status?:string;priority:number;error?:string}
+export type Stream='da'|'tenders'|'awards'|'catalogue'|'ted';
+export interface Task {id?:number;batch_id:string;key:string;partition:string;stream:Stream;kind:'da'|'list'|'detail'|'contracts'|'catalogue'|'da-detail'|'cpv-catalogue'|'ted-list'|'ted-xml';params:{from?:string;to?:string;page:number;publicationNumber?:string;publicationDate?:string;tedScan?:string;authorityId?:number;noticeId?:number;inventoryOnly?:boolean;singlePageTotal?:number;daStrategy?:typeof DA_STRATEGY;cpvPrefix?:string;daScan?:string;daFallback?:boolean}&Partial<NoticeDetailParams>;status?:string;priority:number;error?:string}
 export interface PageResult {total:number;ids:number[];identities?:string[];items?:Record<string,unknown>[];sourceTotal?:number}
 export interface TaskPlan {status:'complete'|'split';result:PageResult|{detail:true};docs:ArchivableDocument[];children:Task[]}
 export class NoticePageOverlapError extends Error { constructor(readonly total:number){super('SEAP a repetat înregistrări între pagini.');} }
@@ -67,8 +68,9 @@ export function task(batch:string,stream:Stream,kind:Task['kind'],params:Task['p
  if(params.inventoryOnly&&(kind!=='list'||!['tenders','awards'].includes(stream)))throw Error('Inventory mode supports notice lists only');
  noticePageSize({kind,params});
  validateDaScope({stream,kind,params});
- const identity=stream==='tenders'&&kind==='detail'?participationKey(params.noticeId!,params.noticeType):params.authorityId??params.noticeId??'';
- const partition=[stream,kind,identity,params.from??'',params.to??''].join(':')+(kind==='detail'&&params.part&&params.part!=='root'?`:${params.part}:${params.lotId??''}`:'')+(params.inventoryOnly?':inventory':'')+(params.singlePageTotal===undefined?'':`:single:${params.singlePageTotal}`)+(params.daStrategy?`:cpv-day:${params.daScan}:${params.cpvPrefix??'all'}:${params.daFallback?'fallback':'national'}`:'');
+ validateTedScope({stream,kind,params});
+ const identity=stream==='tenders'&&kind==='detail'?participationKey(params.noticeId!,params.noticeType):params.authorityId??params.noticeId??params.publicationNumber??'';
+ const partition=[stream,kind,identity,params.from??'',params.to??''].join(':')+(kind==='detail'&&params.part&&params.part!=='root'?`:${params.part}:${params.lotId??''}`:'')+(params.inventoryOnly?':inventory':'')+(params.singlePageTotal===undefined?'':`:single:${params.singlePageTotal}`)+(params.daStrategy?`:cpv-day:${params.daScan}:${params.cpvPrefix??'all'}:${params.daFallback?'fallback':'national'}`:'')+(params.tedScan?`:scan:${params.tedScan}`:'');
  return {batch_id:batch,key:`${partition}:${params.page}`,partition,stream,kind,params,priority};
 }
 const document=(stream:Stream,id:number,version:string,payload:unknown):ArchivableDocument=>({source:'elicitatie',externalId:`${stream==='tenders'?'tender':stream==='awards'?'award':'da'}:${id}`,endpointVersion:version,payload});
@@ -76,6 +78,7 @@ const document=(stream:Stream,id:number,version:string,payload:unknown):Archivab
 export function planResponse(t:Task,value:unknown,previous:PageResult[],batchEnd:string):TaskPlan{
  if(t.params.inventoryOnly&&(t.kind!=='list'||!['tenders','awards'].includes(t.stream)))throw Error('Inventory mode supports notice lists only');
  noticePageSize(t);
+ if(t.stream==='ted')return planTedTask(t,value,previous);
  if(t.kind==='cpv-catalogue')return planCpvCatalogue(t,value,previous);
  if(t.kind==='da-detail')return planDaVerification(t,value);
  if(t.kind==='da'&&t.params.daStrategy===DA_STRATEGY)return planNationalDa(t,value);

@@ -99,7 +99,7 @@ Toate căile sunt relative la rădăcină.
 | Poarta comună SEAP | `packages/db/src/collection.ts`, `collection-policy.ts`, `collection-quiet-window.ts`, `collection-retry.ts`, `collection-diagnostics.ts` |
 | Publicare și validare | `apps/ingestion/src/monitoring/{refresh,pipeline,validate,coverage,cli}.ts`; `packages/db/src/processing.ts` |
 | Parsare/asociere TED | `apps/ingestion/src/normalize/{ted,ted-fforms,ted-load,ted-replay,reconcile,ted-mart}.ts` |
-| Import TED automat (nocturn, oprit implicit) | `apps/ingestion/src/scrape/ted/incremental.ts`, `src/scripts/ted-incremental.ts`; pasul din `infra/prod/process-nightly.sh` |
+| Flux de colectare TED (oprit până la `ted-enable`) | `apps/ingestion/src/collection/{ted,ted-activation}.ts`, `src/scrape/ted/collection-client.ts`; ținte în `packages/db/src/collection-policy.ts` |
 | Index de căutare | `apps/ingestion/src/search/index-entities.ts`, `src/scripts/index-search.ts`; `apps/web/lib/search.ts` |
 | Deploy și scheduler | `infra/prod/deploy.sh`, `process-nightly.sh`, Dockerfiles, compose; `.github/workflows/ci.yml` |
 | Migrații | `packages/db/migrations/`, `src/schema/`, `scripts/deploy-migrate.mjs`, `migration-history.mjs` |
