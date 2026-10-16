@@ -153,6 +153,10 @@ interface TedNotice {
   amountReplaySafe: boolean;
   publicationNumber: string | null;
   ojsNoticeId: string | null;
+  /** OJ S issue as printed, e.g. '200/2026' (efbc:GazetteID). */
+  gazetteId: string | null;
+  /** Every contracting party (joint procurement has several), not only the first. */
+  buyerOrgIds: string[];
   noticeType: string | null;
   regulatoryDomain: string | null;
   contractFolderId: string | null;
@@ -460,6 +464,10 @@ export function extractTedNotice(xml: string): TedNotice {
       txt(dig(publication, "efbc:NoticePublicationID")),
     ),
     ojsNoticeId: txt(dig(publication, "efbc:NoticePublicationID")),
+    gazetteId: txt(dig(publication, "efbc:GazetteID")),
+    buyerOrgIds: asArray(dig(root, "cac:ContractingParty"))
+      .map((p) => txt(dig(p, "cac:Party", "cac:PartyIdentification", "cbc:ID")))
+      .filter((id): id is string => !!id),
     noticeType: txt(dig(root, "cbc:NoticeTypeCode")),
     regulatoryDomain: txt(dig(root, "cbc:RegulatoryDomain")),
     contractFolderId: txt(dig(root, "cbc:ContractFolderID")),

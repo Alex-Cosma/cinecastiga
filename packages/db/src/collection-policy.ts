@@ -19,22 +19,28 @@ export function safeCollectionParameters(value:unknown):Record<string,unknown>{
  if(typeof cpv==='string'&&/^\d{2,8}$/.test(cpv))out.cpvCodeText=cpv;
  const publication=(value as Record<string,unknown>).publicationNumber;
  if(typeof publication==='string'&&TED_PUBLICATION.test(publication))out.publicationNumber=publication;
+ const ojs=(value as Record<string,unknown>).ojs;
+ if(typeof ojs==='string'&&TED_OJS.test(ojs))out.ojs=ojs;
  if(typeof (value as Record<string,unknown>).isNoticeChange==='boolean')out.isNoticeChange=(value as Record<string,unknown>).isNoticeChange;
  return out;
 }
 const TED_PUBLICATION=/^\d{1,8}-\d{4}$/;
+/** OJ S issue: year + issue number zero-padded to 5 digits (e.g. 202600200). */
+export const TED_OJS=/^(\d{4})(\d{5})$/;
 /** TED (EU Official Journal) goes through the same gate and proxies as SEAP, but
- * only these two exact resources: the search API and one notice's XML. */
+ * only these two exact resources: the search API (day verification) and one OJ S
+ * daily package. The per-notice XML route is not admitted: TED's WAF challenges it
+ * from the proxies (202/429 with x-amzn-waf-action and an empty body). */
 export const TED_SEARCH_URL='https://api.ted.europa.eu/v3/notices/search';
-export const tedNoticeXmlUrl=(publicationNumber:string)=>{
- if(!TED_PUBLICATION.test(publicationNumber))throw Error('Număr de publicare TED nevalid.');
- return `https://ted.europa.eu/en/notice/${publicationNumber}/xml`;
+export const tedDailyPackageUrl=(ojs:string)=>{
+ if(!TED_OJS.test(ojs)||Number(ojs.slice(4))<1)throw Error('Număr OJ S nevalid.');
+ return `https://ted.europa.eu/packages/daily/${ojs}`;
 };
 export function isTedCollectionUrl(url:string){
  const u=new URL(url);
  return u.protocol==='https:'&&!u.port&&!u.username&&!u.password&&!u.search&&!u.hash&&(
   u.hostname==='api.ted.europa.eu'&&u.pathname==='/v3/notices/search'||
-  u.hostname==='ted.europa.eu'&&/^\/en\/notice\/\d{1,8}-\d{4}\/xml$/.test(u.pathname));
+  u.hostname==='ted.europa.eu'&&/^\/packages\/daily\/\d{9}$/.test(u.pathname));
 }
 export function safeCollectionEndpoint(url:string){
  const u=new URL(url,'https://www.e-licitatie.ro'),path=u.pathname;

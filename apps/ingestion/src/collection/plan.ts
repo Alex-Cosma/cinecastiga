@@ -7,7 +7,7 @@ import {redactPayload} from '../scrape/redact.js';
 import type {ArchivableDocument} from '../scrape/archive.js';
 import {isDeepStrictEqual} from 'node:util';
 export type Stream='da'|'tenders'|'awards'|'catalogue'|'ted';
-export interface Task {id?:number;batch_id:string;key:string;partition:string;stream:Stream;kind:'da'|'list'|'detail'|'contracts'|'catalogue'|'da-detail'|'cpv-catalogue'|'ted-list'|'ted-xml';params:{from?:string;to?:string;page:number;publicationNumber?:string;publicationDate?:string;tedScan?:string;authorityId?:number;noticeId?:number;inventoryOnly?:boolean;singlePageTotal?:number;daStrategy?:typeof DA_STRATEGY;cpvPrefix?:string;daScan?:string;daFallback?:boolean;metadataRawId?:number;backfill?:boolean}&Partial<NoticeDetailParams>;status?:string;priority:number;error?:string}
+export interface Task {id?:number;batch_id:string;key:string;partition:string;stream:Stream;kind:'da'|'list'|'detail'|'contracts'|'catalogue'|'da-detail'|'cpv-catalogue'|'ted-list'|'ted-package'|'ted-xml';params:{from?:string;to?:string;page:number;publicationNumber?:string;publicationDate?:string;tedScan?:string;ojs?:string;authorityId?:number;noticeId?:number;inventoryOnly?:boolean;singlePageTotal?:number;daStrategy?:typeof DA_STRATEGY;cpvPrefix?:string;daScan?:string;daFallback?:boolean;metadataRawId?:number;backfill?:boolean}&Partial<NoticeDetailParams>;status?:string;priority:number;error?:string}
 /** Priority at or above this is background work: claimed only by enabled background lanes once ordinary work is empty. */
 export const BACKGROUND_PRIORITY=50;
 export interface PageResult {total:number;ids:number[];identities?:string[];items?:Record<string,unknown>[];sourceTotal?:number}
@@ -71,7 +71,7 @@ export function task(batch:string,stream:Stream,kind:Task['kind'],params:Task['p
  noticePageSize({kind,params});
  validateDaScope({stream,kind,params});
  validateTedScope({stream,kind,params});
- const identity=stream==='tenders'&&kind==='detail'?participationKey(params.noticeId!,params.noticeType):params.authorityId??params.noticeId??params.publicationNumber??'';
+ const identity=stream==='tenders'&&kind==='detail'?participationKey(params.noticeId!,params.noticeType):params.authorityId??params.noticeId??params.publicationNumber??params.ojs??'';
  const partition=[stream,kind,identity,params.from??'',params.to??''].join(':')+(kind==='detail'&&params.part&&params.part!=='root'?`:${params.part}:${params.lotId??''}`:'')+(params.inventoryOnly?':inventory':'')+(params.singlePageTotal===undefined?'':`:single:${params.singlePageTotal}`)+(params.daStrategy?`:cpv-day:${params.daScan}:${params.cpvPrefix??'all'}:${params.daFallback?'fallback':'national'}`:'')+(params.tedScan?`:scan:${params.tedScan}`:'');
  return {batch_id:batch,key:`${partition}:${params.page}`,partition,stream,kind,params,priority};
 }

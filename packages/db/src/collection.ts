@@ -37,8 +37,10 @@ export async function pauseCollectionStream(q:DbSql,stream:CollectionStream,reas
  try{await pauseCollectionStreamInTransaction(q,stream,reason);await q`commit`;}
  catch(error){await q`rollback`.catch(()=>{});throw error;}
 }
-/** 404/410 for one notice is a gap for that notice only (handled by the task), not a source stop. */
-export function tedFailureReason(status:number,retryAfter:string|null):string|null{
+/** 404/410 is handled by the task (an OJ S issue not published yet), not a source stop.
+ * A challenge (WAF header, 202 or a 2xx without the expected content) is never a success. */
+export function tedFailureReason(status:number,retryAfter:string|null,challenge=false):string|null{
+ if(challenge)return `TED a răspuns HTTP ${status} fără conținutul așteptat (verificare anti-robot WAF sau fișier nevalid). Fluxul TED este pe pauză; SEAP continuă.`;
  if(status===404||status===410)return null;
  const after=retryAfterSeconds(retryAfter);
  if(status===429)return `TED a răspuns cu 429${after===null?'':`; Retry-After ${after} secunde`}. Fluxul TED este pe pauză; SEAP continuă. Reia fluxul după termen.`;
@@ -139,7 +141,7 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
   // TED is another source behind the same gate: its refusals and outages pause
   // only the 'ted' stream (audited, operator alert), never SEAP or the proxy circuit.
   const ted=info.stream==='ted';
-  const tedReason=ted&&failure?tedFailureReason(result.status,result.retryAfter??null):null;
+  const tedReason=ted&&failure?tedFailureReason(result.status,result.retryAfter??null,!!result.challenge):null;
   const reason=ted?null:result.challenge?'SEAP solicită o verificare suplimentară.':result.status===429?'SEAP a răspuns cu 429. Verifică limita înainte de reluare.':result.status===403?'SEAP a refuzat accesul (403).':null;
   if(reason){const after=retryAfterSeconds(result.retryAfter??null);await q`update app.collection_control set blocked_reason=${reason},blocked_until=case when ${after}::int is null then null else clock_timestamp()+${after}::int*interval '1 second' end where id=1`;}
   await q`update app.collection_requests set status=${result.status},outcome=${failure?'failed':'success'},bytes=${result.bytes??null},records=${result.records??null},error=${reason??tedReason??(failure?`HTTP ${result.status}`:null)},diagnostics=${failure?diagnostics():JSON.stringify(sanitizeDiagnostics({...transportDiagnostics,response:transportDiagnostics?.response?{...(transportDiagnostics.response as object),body:undefined}:undefined,context:info.context}))}::jsonb,finished_at=clock_timestamp() where id=${id!}`;
