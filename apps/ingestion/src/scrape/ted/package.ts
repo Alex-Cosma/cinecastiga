@@ -121,15 +121,18 @@ export async function readTarGz(gz:Uint8Array,want:(name:string,size:number)=>bo
 export interface TedPackageCandidate {name:string;xml:string}
 /** An XML that mentions ROU but fails the text pre-filter: names and markup only, never content. */
 export interface TedPackageMiss {name:string;countryMarker:boolean;typeMarker:boolean;rouTags:string[]}
-/** Same cheap pre-filter as the manual bulk import (eForms, Romanian address, award
- * notice type); the planner then parses each candidate and decides structurally. */
-const COUNTRY=Buffer.from('eforms-country">ROU'),TYPE=Buffer.from('>can-standard<'),ROU=Buffer.from('ROU');
+/** Cheap pre-filter (a Romanian country code, award notice type); the planner then parses
+ * each candidate and decides structurally. */
+// eForms marks countries with listName="country" (most notices) or "eforms-country"; the old bulk filter knew only the latter.
+export const TED_PREFILTER_VERSION=2;
+const COUNTRIES=[Buffer.from('listName="eforms-country">ROU'),Buffer.from('listName="country">ROU')],TYPE=Buffer.from('>can-standard<'),ROU=Buffer.from('ROU');
+const hasCountry=(data:Buffer)=>COUNTRIES.some(c=>data.includes(c));
 export async function readTedDailyPackage(gz:Uint8Array,limits:TarLimits=TED_PACKAGE_LIMITS){
  if(gz.length<2||gz[0]!==0x1f||gz[1]!==0x8b)throw Error('TED: pachetul primit nu este o arhivă gzip.');
  const candidates:TedPackageCandidate[]=[],misses:TedPackageMiss[]=[];let xmlFiles=0;const names=new Set<string>();
  const files=await readTarGz(gz,name=>/\.xml$/i.test(name),(name,data)=>{
   if(names.has(name))throw Error(`TED: fișierul ${name} apare de două ori în pachet.`);names.add(name);xmlFiles++;
-  const countryMarker=data.includes(COUNTRY),typeMarker=data.includes(TYPE);
+  const countryMarker=hasCountry(data),typeMarker=data.includes(TYPE);
   if(!countryMarker||!typeMarker){
    // Diagnostics for the day verification: which element carries ROU when the pre-filter misses it.
    if(typeMarker&&data.includes(ROU)&&misses.length<200){

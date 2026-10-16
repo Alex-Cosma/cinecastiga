@@ -179,6 +179,28 @@ describe.skipIf(!url)('TED daily packages as a collection stream (real gate and 
   expect((await q`select count(*)::int n from app.collection_tasks where kind='ted-list'`)[0]!.n).toBe(3);
  });
 
+ it('downloads again an issue whose verification failed after being read with an older pre-filter, and verifies it anew',async()=>{
+  const ted=mockTed({'202600198':{day:'2026-10-13',notices:['100-2026']}});
+  ted.searchDays.set('2026-10-13',['100-2026','105-2026']);vi.stubGlobal('fetch',ted.fetch);
+  await q`update app.collection_batches set end_day='2027-12-31'`;
+  await enableTedCollection(q,new Date('2026-10-13T09:00:00Z'));await drain();
+  expect((await q`select status from app.collection_tasks where kind='ted-list'`)[0]!.status).toBe('failed');
+  // Current pre-filter: not downloaded again (the next issue is the candidate instead).
+  await tick('2026-10-13T10:30:00Z');
+  expect((await q`select params->>'ojs' ojs from app.collection_tasks where kind='ted-package' and status='pending'`).map(r=>r.ojs)).toEqual(['202600199']);
+  await q`delete from app.collection_tasks where kind='ted-package' and status='pending'`;
+  // As if read before the fix: the issue goes first, then gets its own verification on the attempt's day.
+  await q`update app.collection_tasks set result=result-'prefilter' where kind='ted-package'`;
+  ted.searchDays.set('2026-10-13',['100-2026']);
+  await tick('2026-10-14T10:30:00Z');
+  expect((await q`select params->>'ojs' ojs from app.collection_tasks where kind='ted-package' and status='pending'`).map(r=>r.ojs)).toEqual(['202600198']);
+  ted.calls.length=0;await drain();
+  expect(ted.calls).toEqual(['package 202600198','search 2026-10-13#1']);
+  expect((await q`select params->>'tedScan' scan,status from app.collection_tasks where kind='ted-list' order by id`).map(r=>`${r.scan} ${r.status}`)).toEqual(['2026-10-13 failed','2026-10-14 complete']);
+  await tick('2026-10-14T12:00:00Z');
+  expect((await q`select params->>'ojs' ojs from app.collection_tasks where kind='ted-package' and status='pending'`).map(r=>r.ojs)).toEqual(['202600199']);
+ });
+
  it('a WAF challenge (202 + x-amzn-waf-action, empty body) is never a success: TED pauses, the task stays queued',async()=>{
   const ted=mockTed({'202600198':{day:'2026-10-13',notices:['100-2026']}});
   ted.fail('202600198',{status:202,headers:{'x-amzn-waf-action':'challenge'}});vi.stubGlobal('fetch',ted.fetch);

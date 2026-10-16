@@ -110,12 +110,12 @@ async function main(): Promise<void> {
     sh("bash", ["-c", `find ${JSON.stringify(work)} -name '*_*.tar.gz' -exec tar -xzf {} -C ${JSON.stringify(work)} \\;`]);
 
     // 3. Filter: RO notices of the wanted type. Two-stage grep (country, then type).
-    // eForms: eforms-country="ROU" + notice-type element. Legacy TED_EXPORT:
+    // eForms: a country code ROU (listName "country" or "eforms-country") + notice-type element. Legacy TED_EXPORT:
     // ISO_COUNTRY VALUE="RO" + award TD_DOCUMENT_TYPE CODE="7".
     const listFile = join(work, "matches.txt");
     const countryGrep = legacy
       ? `grep -lrF 'ISO_COUNTRY VALUE="${country}"'`
-      : `grep -lrF 'eforms-country">${country}'`;
+      : `grep -lrE 'listName="(eforms-)?country">${country}'`;
     const typeGrep = legacy
       ? `grep -lF 'TD_DOCUMENT_TYPE CODE="7"'`
       : `grep -lF '>${noticeType}<'`;
