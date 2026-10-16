@@ -64,3 +64,23 @@ export async function setBackgroundLanes(q:DbSql,lanes:number){
   return {backgroundLanes:Number(after!.background_lanes),revision:Number(after!.revision),effectiveLanes:Math.min(lanes,proxy?.enabled?Number(proxy.max_in_flight):1)};
  });
 }
+/** Metadata only. Return failed backfill detail tasks to the queue once a parser fix is deployed.
+ * Their failed requests stay in the ledger and the previous errors are kept in the audit. */
+export async function retryFailedAwardBackfill(q:DbSql){
+ return q.begin(async tx=>{
+  const batches=await tx`select id,status from app.collection_batches order by created_at`;
+  if(batches.length!==1||batches[0]!.status!=='collecting')throw Error('Exactly one collecting recovery batch is required.');
+  const batchId=String(batches[0]!.id);
+  await tx`select id from app.collection_batches where id=${batchId} for update`;
+  const failed=await tx`select id::text,key,left(error,200) error from app.collection_tasks
+   where batch_id=${batchId} and stream='awards' and kind='detail' and status='failed' and priority>=${BACKGROUND_PRIORITY} and params->>'backfill'='true' order by id for update`;
+  if(failed.length){
+   const ids=failed.map(r=>String(r.id));
+   await tx`update app.collection_retries set status='stopped',retry_at=null,updated_at=clock_timestamp() where task_id=any(${ids}::bigint[]) and status='pending'`;
+   await tx`update app.collection_tasks set status='pending',error=null,result=null,started_at=null,finished_at=null where id=any(${ids}::bigint[])`;
+  }
+  await tx`insert into app.collection_audit(actor_id,actor_name,action,before,after) values('system:award-detail-backfill','Operator — descărcare istorică atribuiri','award-detail-backfill-retry',
+   ${JSON.stringify({batchId,failed:failed.map(r=>({id:r.id,key:r.key,error:r.error}))})}::jsonb,${JSON.stringify({requeued:failed.length})}::jsonb)`;
+  return {batchId,requeued:failed.length};
+ });
+}

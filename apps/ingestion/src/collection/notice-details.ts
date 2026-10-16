@@ -18,17 +18,21 @@ export function planNoticeDetail(t:Task,value:unknown,previous:PageResult[]):Tas
  if(part==='root'){
   const publicId=award?v.caNoticeID??v.caNoticeId:v.cNoticeId??v.rfqInvitationId??v.pcNoticeId??v.entityID;
   identity(publicId,p.noticeId,'publică');
+  // Legacy award forms (get_v1) echo no internal notice ID; their lots are keyed by the public ID.
+  const legacy=award&&p.noticeVersion===1;
   const internal=v.noticeID??v.noticeId;
-  if(!positive(internal))fail('identificatorul intern lipsește.');
-  if(p.internalNoticeId)identity(internal,p.internalNoticeId,'internă');
+  if(!legacy&&!positive(internal))fail('identificatorul intern lipsește.');
+  if(!legacy&&p.internalNoticeId)identity(internal,p.internalNoticeId,'internă');
   if(p.noticeNo&&(v.noticeNumber??v.noticeNo))identity(v.noticeNumber??v.noticeNo,p.noticeNo,'anunțului');
   if(v.sysNoticeType?.id)identity(v.sysNoticeType.id,p.noticeType,'tipului');
   const hasEform=award?v.conditions?.hasEformsDocument:v.hasEformsDocuments;
   if(typeof hasEform!=='boolean')fail('formatul formularului nu este confirmat.');
   if(p.noticeType===19)child('sad',{internalNoticeId:internal});
-  else if(hasEform)child('eform',{internalNoticeId:internal});
-  else if(award){
-   if(!v.caNoticeEdit_New&&!v.caNoticeEdit_New_U)fail('secțiunile atribuirii lipsesc.');
+  else if(hasEform){
+   if(legacy)fail('formularul v1 indică eForms, format neverificat.');
+   child('eform',{internalNoticeId:internal});
+  }else if(award){
+   if(legacy?!v.caNoticeView_V1&&!v.caNoticeView_V1_U:!v.caNoticeEdit_New&&!v.caNoticeEdit_New_U)fail('secțiunile atribuirii lipsesc.');
    child('lots');
   }else child('general',{internalNoticeId:internal});
  }else if(part==='sad'){
@@ -40,6 +44,8 @@ export function planNoticeDetail(t:Task,value:unknown,previous:PageResult[]):Tas
   identity(v.headerModel?.noticeId,p.internalNoticeId,'eForms');
   identity(v.headerModel?.sysNoticeType?.id,p.noticeType,'tipului eForms');
   if(p.noticeNo)identity(v.headerModel?.noticeNumber,p.noticeNo,'numărului eForms');
+  // SEAP sometimes returns its own rendering error as the form text (e.g. "400 Missing Authorization header in request").
+  if(typeof v.changeNoticeHtml==='string'&&/^\d{3}\s/.test(v.changeNoticeHtml.trim())&&v.changeNoticeHtml.trim().length<200)fail(`SEAP nu redă formularul eForms (${v.changeNoticeHtml.trim().slice(0,80)})${typeof v.tedNoticeNo==='string'&&v.tedNoticeNo?`; anunțul are corespondent TED ${v.tedNoticeNo}`:''}.`);
   if(typeof v.changeNoticeHtml!=='string'||v.changeNoticeHtml.trim().length<100)fail('formularul eForms este gol.');
  }else if(part==='general'){
   identity(v.noticeId,p.internalNoticeId,'documentației');

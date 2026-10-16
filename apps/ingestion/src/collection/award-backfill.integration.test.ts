@@ -2,7 +2,7 @@ import {afterAll,beforeAll,beforeEach,describe,expect,it} from 'vitest';
 import {createDb} from '@seap/db';
 import {insertTasks,recoveryStep} from './runner.js';
 import {task,type Task} from './plan.js';
-import {enqueueAwardDetailBackfill,setBackgroundLanes} from './award-backfill.js';
+import {enqueueAwardDetailBackfill,retryFailedAwardBackfill,setBackgroundLanes} from './award-backfill.js';
 const url=process.env['TEST_DATABASE_URL'];
 if(url&&!/^seap_test_/.test(new URL(url).pathname.slice(1)))throw Error('Isolated test DB required');
 const db=url?createDb(url):null;
@@ -100,5 +100,17 @@ describe.skipIf(!db)('background award detail backfill (isolated DB, no source t
   await q`update app.collection_batches set status='collected'`;
   await expect(enqueueAwardDetailBackfill(q,{limit:1})).rejects.toThrow('collecting recovery batch');
   expect((await q`select revision from app.collection_control`)[0]!.revision).toBe(control!.revision);
+ });
+ it('returns only failed backfill details to the queue, keeping the previous errors in the audit',async()=>{
+  const ordinary=task('fixture','awards','detail',{noticeId:99000003,page:0,noticeType:3,noticeVersion:2,internalNoticeId:99001003,noticeNo:'CAN99000003'},1);
+  await insertTasks(q,[background(99000001),background(99000002),ordinary]);
+  await q`update app.collection_tasks set status='failed',error='Detaliu SEAP: identificatorul intern lipsește.',finished_at=now() where params->>'noticeId' in ('99000001','99000003')`;
+  expect(await retryFailedAwardBackfill(q)).toEqual({batchId:'fixture',requeued:1});
+  const rows=await q`select params->>'noticeId' n,status,error from app.collection_tasks order by id`;
+  expect(rows.map(r=>[r.n,r.status,r.error])).toEqual([['99000001','pending',null],['99000002','pending',null],['99000003','failed','Detaliu SEAP: identificatorul intern lipsește.']]);
+  const [audit]=await q`select before,after from app.collection_audit where action='award-detail-backfill-retry' order by id desc limit 1`;
+  expect(audit!.after).toEqual({requeued:1});
+  expect((audit!.before as {failed:{error:string}[]}).failed[0]!.error).toContain('identificatorul intern');
+  expect(await retryFailedAwardBackfill(q)).toMatchObject({requeued:0});
  });
 });
