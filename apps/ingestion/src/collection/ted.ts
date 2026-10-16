@@ -1,7 +1,7 @@
 import {TED_OJS,type DbSql} from '@seap/db';
 import {extractTedNotice} from '../normalize/ted.js';
 import {tedArchiveDocument} from '../scrape/ted/notices.js';
-import type {TedPackageCandidate} from '../scrape/ted/package.js';
+import type {TedPackageCandidate,TedPackageMiss} from '../scrape/ted/package.js';
 import {task,type PageResult,type Task,type TaskPlan} from './plan.js';
 
 /**
@@ -93,7 +93,7 @@ export function tedPackageDay(filename:string|null,ojs:string){
  return day;
 }
 
-export interface TedPackageFetch {status:number;filename:string|null;files?:number;xmlFiles?:number;candidates?:TedPackageCandidate[]}
+export interface TedPackageFetch {status:number;filename:string|null;files?:number;xmlFiles?:number;candidates?:TedPackageCandidate[];misses?:TedPackageMiss[]}
 /** Archive only notices the nightly parser reads back: an eForms `can-standard` of this
  * issue/day with a Romanian contracting party (the TED search's buyer-country="ROU"). */
 function planTedPackage(t:Task,value:unknown):TaskPlan{
@@ -104,25 +104,28 @@ function planTedPackage(t:Task,value:unknown):TaskPlan{
  const day=tedPackageDay(v.filename,ojs);
  if(!v.xmlFiles)throw Error(`TED: pachetul OJ S ${ojsLabel(ojs)} nu conține fișiere XML.`);
  const docs=[],identities:string[]=[];let otherCountry=0,otherType=0;
+ // Not archived, kept for the day verification: publication number and reason only.
+ const pub=(name:string)=>{const m=/(?:^|\/)0*(\d+)_(\d{4})\.xml$/i.exec(name);return m?`${m[1]}-${m[2]}`:name.slice(-60);};
+ const notArchived:{publication:string;reason:string;rouTags?:string[]}[]=(v.misses??[]).map(m=>({publication:pub(m.name),reason:m.countryMarker?'prefiltru-tip':'prefiltru-țară',rouTags:m.rouTags}));
  for(const c of v.candidates){
   let n:ReturnType<typeof extractTedNotice>;
   try{n=extractTedNotice(c.xml);}catch{throw Error(`TED: fișierul ${c.name} din OJ S ${ojsLabel(ojs)} nu poate fi citit.`);}
   if(!n.noticeType)throw Error(`TED: fișierul ${c.name} din OJ S ${ojsLabel(ojs)} nu poate fi citit (fără tip de anunț).`);
-  if(n.noticeType!==TED_NOTICE_TYPE){otherType++;continue;}
+  if(n.noticeType!==TED_NOTICE_TYPE){otherType++;notArchived.push({publication:pub(c.name),reason:`tip ${n.noticeType}`});continue;}
   const publication=n.publicationNumber;
   if(!publication||!PUBLICATION.test(publication))throw Error(`TED: fișierul ${c.name} nu are număr de publicare valid.`);
   const file=/(?:^|\/)0*(\d+)_(\d{4})\.xml$/i.exec(c.name);
   if(file&&`${file[1]}-${file[2]}`!==publication)throw Error(`TED: fișierul ${c.name} poartă alt număr de publicare (${publication}).`);
   if(gazetteOjs(n.gazetteId)!==ojs)throw Error(`TED: anunțul ${publication} aparține altui număr OJ S (${n.gazetteId??'lipsă'}), nu ${ojsLabel(ojs)}.`);
   if(n.publicationDate?.toISOString().slice(0,10)!==day)throw Error(`TED: anunțul ${publication} are altă dată de publicare decât pachetul (${day}).`);
-  if(!n.buyerOrgIds.some(id=>n.orgs.get(id)?.country==='ROU')){otherCountry++;continue;}
+  if(!n.buyerOrgIds.some(id=>n.orgs.get(id)?.country==='ROU')){otherCountry++;notArchived.push({publication,reason:'autoritate din altă țară'});continue;}
   docs.push(tedArchiveDocument({'publication-date':day},publication,TED_NOTICE_TYPE,c.xml));identities.push(publication);
  }
  if(new Set(identities).size!==identities.length)throw Error(`TED: OJ S ${ojsLabel(ojs)} conține același anunț de mai multe ori.`);
  identities.sort();
  // The next issue is queued by advanceTedPackages, TED_PACKAGE_SPACING_MS after this one finished.
  const children=[tedVerifyTask(t.batch_id,ojs,day,day)];
- return {status:'complete',result:{total:identities.length,ids:[],identities,ojs,published:true,publicationDate:day,files:v.files,xmlFiles:v.xmlFiles,candidates:v.candidates.length,otherCountry,otherType} as PageResult,docs,children};
+ return {status:'complete',result:{total:identities.length,ids:[],identities,ojs,published:true,publicationDate:day,files:v.files,xmlFiles:v.xmlFiles,candidates:v.candidates.length,otherCountry,otherType,notArchived:notArchived.slice(0,200)} as PageResult,docs,children};
 }
 
 /** On the last page of a day verification: the search's exact population must equal the
@@ -138,8 +141,10 @@ export async function verifyTedDay(tx:DbSql,t:Task,plan:TaskPlan){
  if((pkg.result as {publicationDate?:string}).publicationDate!==day)throw new TedVerificationError(`TED: verificare imposibilă: pachetul OJ S ${ojsLabel(ojs)} nu este din ${day}.`);
  const inPackage=new Set(archived),inSearch=new Set(search);
  const missing=search.filter(p=>!inPackage.has(p)).sort(),extra=archived.filter(p=>!inSearch.has(p)).sort();
- const list=(xs:string[])=>xs.slice(0,5).join(', ')+(xs.length>5?` și încă ${xs.length-5}`:'');
- if(missing.length||extra.length)throw new TedVerificationError(`TED: verificare eșuată pentru OJ S ${ojsLabel(ojs)} (${day}): pachetul are ${archived.length} anunțuri românești, căutarea TED ${search.length}.${missing.length?` Lipsesc din pachet: ${list(missing)}.`:''}${extra.length?` Doar în pachet: ${list(extra)}.`:''}`);
+ const seen=new Map((((pkg.result as {notArchived?:{publication:string;reason:string;rouTags?:string[]}[]}).notArchived)??[]).map(n=>[n.publication,n]));
+ const why=(p:string)=>{const n=seen.get(p);return n?`${p} (în pachet, neprimit: ${n.reason}${n.rouTags?.length?`; ROU în ${n.rouTags.join(', ')}`:''})`:`${p} (absent din pachet)`;};
+ const list=(xs:string[],f=(x:string)=>x)=>xs.slice(0,5).map(f).join(', ')+(xs.length>5?` și încă ${xs.length-5}`:'');
+ if(missing.length||extra.length)throw new TedVerificationError(`TED: verificare eșuată pentru OJ S ${ojsLabel(ojs)} (${day}): pachetul are ${archived.length} anunțuri românești, căutarea TED ${search.length}.${missing.length?` Lipsesc din pachet: ${list(missing,why)}.`:''}${extra.length?` Doar în pachet: ${list(extra)}.`:''}`);
  return {ojs,day,packageTask:Number(pkg.id),package:archived.length,search:search.length,match:true};
 }
 

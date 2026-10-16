@@ -119,17 +119,28 @@ export async function readTarGz(gz:Uint8Array,want:(name:string,size:number)=>bo
 }
 
 export interface TedPackageCandidate {name:string;xml:string}
+/** An XML that mentions ROU but fails the text pre-filter: names and markup only, never content. */
+export interface TedPackageMiss {name:string;countryMarker:boolean;typeMarker:boolean;rouTags:string[]}
 /** Same cheap pre-filter as the manual bulk import (eForms, Romanian address, award
  * notice type); the planner then parses each candidate and decides structurally. */
-const COUNTRY=Buffer.from('eforms-country">ROU'),TYPE=Buffer.from('>can-standard<');
+const COUNTRY=Buffer.from('eforms-country">ROU'),TYPE=Buffer.from('>can-standard<'),ROU=Buffer.from('ROU');
 export async function readTedDailyPackage(gz:Uint8Array,limits:TarLimits=TED_PACKAGE_LIMITS){
  if(gz.length<2||gz[0]!==0x1f||gz[1]!==0x8b)throw Error('TED: pachetul primit nu este o arhivă gzip.');
- const candidates:TedPackageCandidate[]=[];let xmlFiles=0;const names=new Set<string>();
+ const candidates:TedPackageCandidate[]=[],misses:TedPackageMiss[]=[];let xmlFiles=0;const names=new Set<string>();
  const files=await readTarGz(gz,name=>/\.xml$/i.test(name),(name,data)=>{
   if(names.has(name))throw Error(`TED: fișierul ${name} apare de două ori în pachet.`);names.add(name);xmlFiles++;
-  if(!data.includes(COUNTRY)||!data.includes(TYPE))return;
+  const countryMarker=data.includes(COUNTRY),typeMarker=data.includes(TYPE);
+  if(!countryMarker||!typeMarker){
+   // Diagnostics for the day verification: which element carries ROU when the pre-filter misses it.
+   if(typeMarker&&data.includes(ROU)&&misses.length<200){
+    const text=data.toString('utf8'),tags=new Set<string>();
+    for(const m of text.matchAll(/<([A-Za-z][\w:.-]{0,60})((?:\s+[\w:.-]+="[^"<>]{0,80}")*)\s*>\s*ROU\s*</g)){tags.add(`${m[1]}${m[2]}`.slice(0,160));if(tags.size>=5)break;}
+    misses.push({name,countryMarker,typeMarker,rouTags:[...tags]});
+   }
+   return;
+  }
   if(!isUtf8(data))throw Error(`TED: fișierul ${name} nu este UTF-8 valid.`);
   candidates.push({name,xml:data.toString('utf8')});
  },limits);
- return {files,xmlFiles,candidates};
+ return {files,xmlFiles,candidates,misses};
 }
