@@ -37,7 +37,7 @@ const comparableKeys=(x:(string|null)[])=>sorted(x.map(comparableKey));
  * number (with authority, contract number, date and winners) is the anchor. */
 const NO_PROCEDURE_ID_TYPES=new Set(['Negociere fara publicare prealabila','Norme proprii (Anexa 2)','Procedura simplificata proprie']);
 /** Explicit amendment wording in a later publication title. */
-const ADDENDUM_TITLE=/valoare modificata prin AA |act\s*adi[tț]ional|\bad\s+(?:diminuare|majorare|suplimentare)\b|\bsuplim(?:entare)?\s+AC\b/i;
+const ADDENDUM_TITLE=/valoare modificata prin AA |act\s*adi[tț]ional|\bact\s*adit\b|\bact\s*ad\.?\s+(?:dimin|major|supl)|\bad\s+(?:diminuare|majorare|suplimentare)\b|\bsuplim(?:entare)?\s+AC\b/i;
 function coreWinnerKeys(c:IdentityContract) {
  return c.winners.map((entityId,i)=>{
   const fiscal=cui(c.winnerCuis[i]);if(fiscal)return fiscal;
