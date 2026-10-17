@@ -29,7 +29,7 @@ describe.skipIf(!isolated)('backed-up publication evidence revalidation',()=>{
    const run='00000000-0000-4000-8000-000000009999';
    await q`insert into app.collection_control(id,paused,maintenance,revision,blocked_reason) values(1,true,true,3,'pagination remains blocked')`;
    await q`insert into app.processing_runs(id,scheduled_day,scope,control_revision,before_control,raw_boundary,stage,stages)
-    values(${run}::uuid,'2026-10-10','full',3,'{}','100','identity-repair','{"backup":{"completedAt":"2026-10-10T02:10:00Z"},"backup-verified":{"completedAt":"2026-10-10T02:11:00Z"},"normalize":{"completedAt":"2026-10-10T02:12:00Z"}}')`;
+    values(${run}::uuid,'2026-10-11','full',3,'{}','100','identity-repair','{"backup":{"completedAt":"2026-10-10T02:10:00Z"},"backup-verified":{"completedAt":"2026-10-10T02:11:00Z"},"normalize":{"completedAt":"2026-10-10T02:12:00Z"}}')`;
    await q`insert into app.data_repairs(id,scheduled_day,status,report) values('contract-publication-identity-v1','2026-10-04','completed',${JSON.stringify({configuration:{path,sha256:sha}})}::jsonb)`;
    // A third publication is never accepted by a hash reset alone.
    await q`insert into core.awards(id,raw_id,ca_notice_id,notice_no,authority_entity_id,cpv_code,procedure_type,acquisition_type)
@@ -111,6 +111,14 @@ describe.skipIf(!isolated)('backed-up publication evidence revalidation',()=>{
    })).rejects.toBe(rollback);
    expect((await revalidateApprovedContractIdentities(q,run)).mode).toBe('targeted');
    await q`update app.processing_runs set scope='full'`;
+   // Only the scheduled risk day (Sunday, 2026-10-11) re-verifies everything; a full run on another
+   // day (archive collection during maintenance) or a manual recovery stays targeted.
+   for(const [day,trigger,mode] of [['2026-10-10','scheduled','targeted'],['2026-10-11','manual','targeted'],['2026-10-11','scheduled','full']] as const)await expect(q.begin(async nested=>{
+    await nested`update core.contracts set raw_id=96 where id=3`;
+    await nested`update app.processing_runs set scheduled_day=${day}::date,trigger=${trigger}`;
+    expect(await revalidateApprovedContractIdentities(nested as unknown as DbSql,run)).toMatchObject({changedGroups:1,mode});
+    throw rollback;
+   })).rejects.toBe(rollback);
    // Same-publication duplication remains ambiguous; new unrelated contracts stay unapproved.
    const members=await readContractIdentityMembers(q,['1','2','3']);
    const registry=await q`select c.*,to_jsonb(d) decision from marts.contract_identity_candidates c join marts.contract_identity_decisions d on d.candidate_id=c.id`;
