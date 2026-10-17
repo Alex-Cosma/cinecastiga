@@ -62,8 +62,8 @@ const control=async()=>(await q`select paused_streams,blocked_reason from app.co
 const raw=async()=>(await q`select external_id from raw.raw_documents where source='ted' order by external_id`).map(r=>String(r.external_id).replace('can-standard:',''));
 const tasks=async()=>(await q`select kind,params->>'ojs' ojs,status,error from app.collection_tasks where stream='ted' order by id`).map(r=>`${r.kind} ${r.ojs??'-'} ${r.status}`);
 const later=(hours:number)=>new Date(Date.now()+hours*3600_000);
-// A collector tick at `at`, after the 10-minute package spacing (finished_at moved before `at` when the test clock is in the past).
-const tick=async(at:string)=>{await q`update app.collection_tasks set finished_at=least(finished_at,${at}::timestamptz-interval '11 minutes') where stream='ted' and finished_at is not null`;return advanceRecovery(q,{now:new Date(at)});};
+// A collector tick at `at`, after the 30-minute package spacing (finished_at moved before `at` when the test clock is in the past).
+const tick=async(at:string)=>{await q`update app.collection_tasks set finished_at=least(finished_at,${at}::timestamptz-interval '31 minutes') where stream='ted' and finished_at is not null`;return advanceRecovery(q,{now:new Date(at)});};
 // Latest archived TED issue in raw: OJ S 198/2026 (13 October), as archived by the import.
 const BASELINE={'202600150':{day:'2026-09-01',notices:['50-2026']},'202600198':{day:'2026-10-13',notices:['100-2026']}};
 

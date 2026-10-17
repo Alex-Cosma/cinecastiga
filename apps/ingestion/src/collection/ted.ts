@@ -168,7 +168,7 @@ export async function latestArchivedTedIssue(q:DbSql):Promise<{ojs:string;day:st
 }
 
 /** The least time between two OJ S daily package downloads (owner's setting, 21 November 2026). */
-export const TED_PACKAGE_SPACING_MS=600_000;
+export const TED_PACKAGE_SPACING_MS=1_800_000;
 export interface TedAttempt {ojs:string;status:string;published:boolean|null;finishedMs:number|null}
 /** Which OJ S issues to try now. Never guessed from dates: the next number after the
  * latest archived issue; after a 404 in a later (Romanian) year, also the new year's first
