@@ -140,7 +140,7 @@ export async function revalidateApprovedContractIdentities(q:DbSql,runId:string,
  return q.begin(async tx=>{
   const sql=tx as unknown as DbSql;
   await sql`set local statement_timeout='180s'`;await sql`set local work_mem='8MB'`;await sql`set local max_parallel_workers_per_gather=0`;await sql`set local jit=off`;
-  const [run]=await sql`select r.*,c.maintenance,c.paused,c.revision from app.processing_runs r cross join app.collection_control c where r.id=${runId}::uuid and c.id=1 for update of r,c`;
+  const [run]=await sql`select r.*,c.maintenance,c.paused,c.revision,extract(dow from r.scheduled_day)::int=c.risk_weekday risk_day from app.processing_runs r cross join app.collection_control c where r.id=${runId}::uuid and c.id=1 for update of r,c`;
   if(!run||run.status!=='running'||!run.maintenance||!run.paused||run.revision!==run.control_revision||run.stage!=='identity-repair'||!run.raw_boundary||!run.stages?.backup?.completedAt||!run.stages?.['backup-verified']?.completedAt||!run.stages?.normalize?.completedAt)throw Error('Publication revalidation requires backed-up, normalized maintenance with unchanged operator control');
   const {report:before,staleGroups}=await inspectContractIdentityQuality(sql);
   if(before.valid)return {changedGroups:0,quality:before,mode:'none' as const};
@@ -152,10 +152,12 @@ export async function revalidateApprovedContractIdentities(q:DbSql,runId:string,
   // Only groups with a stale member can change (verified against every full run
   // since 10 October). Full passes remain the weekly scheduled risk run, any rule
   // change, and every run until a full pass under the current rules confirms that
-  // nothing outside the stale groups changed.
+  // nothing outside the stale groups changed. Other full runs (archive collection
+  // during maintenance, reporting changes, manual recovery) stay targeted: about
+  // three hours each since the registry reached ~199,000 members (16 October).
   const [baseline]=await sql`select after->>'rules' rules,(after->>'changedOutsideTargets')::int outside from app.collection_audit
     where action='identity-revalidation' and after->>'mode'='full' order by id desc limit 1`;
-  const weekly=run.trigger==='scheduled'&&run.scope==='full';
+  const weekly=run.trigger==='scheduled'&&run.scope==='full'&&run.risk_day===true;
   const mode=!weekly&&baseline?.rules===IDENTITY_RULES_VERSION&&baseline?.outside===0?'targeted':'full';
   log(`Publication revalidation: ${mode}, ${staleGroups.length} approved groups with changed members`);
   // Every slice is verified before its writes; a review failure in any later
