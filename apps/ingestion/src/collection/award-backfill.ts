@@ -61,8 +61,8 @@ export async function enqueueAwardDetailBackfill(q:DbSql,{limit,pilot=false,auto
  * background tasks wait, or when the latest enqueue predates the `remaining` count. Stops for good
  * after an enqueue that left nothing unscheduled; an operator enqueue restarts it. */
 export async function refillAwardBackfill(q:DbSql){
- const [control]=await q`select maintenance,paused,blocked_reason,background_lanes,paused_streams from app.collection_control where id=1`;
- if(!control||control.maintenance||control.paused||control.blocked_reason||!Number(control.background_lanes)||(control.paused_streams as string[]).includes('awards'))return {refilled:false,reason:'background-off'} as const;
+ const [control]=await q`select maintenance,collection_during_maintenance,paused,blocked_reason,background_lanes,paused_streams from app.collection_control where id=1`;
+ if(!control||(control.maintenance&&!control.collection_during_maintenance)||control.paused||control.blocked_reason||!Number(control.background_lanes)||(control.paused_streams as string[]).includes('awards'))return {refilled:false,reason:'background-off'} as const;
  const [last]=await q`select after from app.collection_audit where action='award-detail-backfill' order by id desc limit 1`;
  const after=last?.after as {pilot?:boolean;remaining?:number}|undefined;
  if(!after||after.pilot)return {refilled:false,reason:'not-started'} as const;
