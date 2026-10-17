@@ -1,6 +1,6 @@
 import {activateNationalDa} from '../collection/da-activation.js';
 import {advanceRecovery} from '../collection/advance.js';
-import {enqueueAwardDetailBackfill,retryFailedAwardBackfill,setBackgroundLanes} from '../collection/award-backfill.js';
+import {enqueueAwardDetailBackfill,refillAwardBackfill,retryFailedAwardBackfill,setBackgroundLanes} from '../collection/award-backfill.js';
 import {enableTedCollection} from '../collection/ted-activation.js';
 import {setTimeout as sleep} from 'node:timers/promises';
 import type {DbSql} from '@seap/db';
@@ -35,11 +35,14 @@ try{
    if(!l?.acquired)throw Error('Recovery worker already running');
    await recoverInterrupted(q);let attempts=0;
    const client=getElicitatieClient();
-   let nextAdvance=0;
+   let nextAdvance=0,nextRefill=0,refilling=false;
+   // Off the claim path: a refill scans the archived award list (seconds) and must not stall lane 0.
+   const refill=()=>{refilling=true;nextRefill=Date.now()+600000;void refillAwardBackfill(q).then(r=>{if(r.refilled)console.log(JSON.stringify({event:'award-backfill-refill',queued:r.queued,remaining:r.remaining,networkRequests:0}));},error=>{console.error(JSON.stringify({event:'award-backfill-refill-failed',error:error instanceof Error?error.message.slice(0,300):String(error)}));}).finally(()=>{refilling=false;});};
    const lane=async(index:number)=>{
     while(!stopping&&attempts<bound){
      const [session]=await lock`select pg_backend_pid() pid`;if(session?.pid!==l.pid){stopping=true;throw Error('Recovery lock session lost');}
      if(index===0&&bound===Infinity&&Date.now()>=nextAdvance){await advanceRecovery(q);nextAdvance=Date.now()+60000;}
+     if(index===0&&bound===Infinity&&!refilling&&!stopping&&Date.now()>=nextRefill)refill();
      // Start work only in lanes enabled by the current operator setting.
      if(index>0){const [p]=await q`select enabled,max_in_flight from app.collection_proxy_control where id=1`;if(!p?.enabled||Number(p.max_in_flight)<=index){await sleep(1000);continue;}}
      if(await recoveryStep(q,t=>fetchTask(client,t),`${index}`))attempts++;

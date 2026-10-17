@@ -27,6 +27,9 @@ export function safeCollectionParameters(value:unknown):Record<string,unknown>{
 const TED_PUBLICATION=/^\d{1,8}-\d{4}$/;
 /** OJ S issue: year + issue number zero-padded to 5 digits (e.g. 202600200). */
 export const TED_OJS=/^(\d{4})(\d{5})$/;
+/** TED answers 429 to package downloads about a minute apart (16 October 2026) and again after
+ * seven downloads ten minutes apart (17 October): at least 30 minutes between two packages, any issue. */
+export const TED_PACKAGE_SPACING_MS=1_800_000;
 /** TED (EU Official Journal) goes through the same gate and proxies as SEAP, but
  * only these two exact resources: the search API (day verification) and one OJ S
  * daily package. The per-notice XML route is not admitted: TED's WAF challenges it

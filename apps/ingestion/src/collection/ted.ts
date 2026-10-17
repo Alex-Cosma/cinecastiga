@@ -1,4 +1,4 @@
-import {TED_OJS,type DbSql} from '@seap/db';
+import {TED_OJS,TED_PACKAGE_SPACING_MS,type DbSql} from '@seap/db';
 import {extractTedNotice} from '../normalize/ted.js';
 import {tedArchiveDocument} from '../scrape/ted/notices.js';
 import {TED_PREFILTER_VERSION,type TedPackageCandidate,type TedPackageMiss} from '../scrape/ted/package.js';
@@ -167,9 +167,7 @@ export async function latestArchivedTedIssue(q:DbSql):Promise<{ojs:string;day:st
  return best;
 }
 
-/** TED answers 429 to package downloads about a minute apart (16 October 2026) and again after
- * seven downloads ten minutes apart (17 October): at least 30 minutes between two packages, any issue. */
-export const TED_PACKAGE_SPACING_MS=1_800_000;
+export {TED_PACKAGE_SPACING_MS};
 export interface TedAttempt {ojs:string;status:string;published:boolean|null;finishedMs:number|null}
 /** Which OJ S issues to try now. Never guessed from dates: the next number after the
  * latest archived issue; after a 404 in a later (Romanian) year, also the new year's first
