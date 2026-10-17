@@ -1,6 +1,7 @@
 import {proxyStatus,changeProxySettings} from './proxies';
 import type { MoneyQuality } from "@seap/db";
 import {recoveryStatus} from './recovery-status';
+import {historicalStatus} from './historical-status';
 import type {RecoveryCounts} from './recovery-forecast';
 import { createDb, COLLECTION_STREAMS, validateCollectionSettings, processingSchedule, collectionQuietWindow, type DbSql } from '@seap/db';
 const g=globalThis as unknown as {collectionSql?:DbSql};
@@ -40,8 +41,9 @@ export async function collectionStatus(q:DbSql=collectionDb()){
   const proxies=await proxyStatus(tx as unknown as DbSql);
   const poolSize=proxies.endpoints.filter(p=>p.enabled).length;
   const proxySeconds=proxies.settings.enabled?Math.max(60/Number(proxies.settings.requests_per_minute),(Number(proxies.settings.min_seconds)+Number(proxies.settings.max_seconds))/2/Math.max(1,poolSize)):null;
+  const historical=batch?await historicalStatus(tx as unknown as DbSql,batch.id,Number(control.background_lanes??0)):null;
   const forecast=batch?await recoveryStatus(tx as unknown as DbSql,batch.id,progress as unknown as RecoveryCounts[],proxySeconds===null?control:{...control,min_seconds:proxySeconds,max_seconds:proxySeconds}):null;
-  return {proxies,proxyRetries,moneyQuality,forecast,timeoutRetry:timeoutRetry??null,quietWindow,recovery:batch?{batch,progress,background:{pending:Number(background?.pending??0),running:Number(background?.running??0),complete:Number(background?.complete??0),failed:Number(background?.failed??0),lanes:Number(control.background_lanes??0)}}:null,control,dataToday:dataToday!,today:today[0]!,streams,requests,failures,workers,audit,runs,documents:documents!,raw:raw!,publication:publication[0]??null,lastVerified:lastVerified??null,processing:{runs:processingRuns,schedule:{next_at:iso(schedule.next_at),next_risk_at:iso(schedule.next_risk_at)},schedulerAlive:scheduler?.alive===true}};
+  return {proxies,proxyRetries,moneyQuality,forecast,historical,timeoutRetry:timeoutRetry??null,quietWindow,recovery:batch?{batch,progress,background:{pending:Number(background?.pending??0),running:Number(background?.running??0),complete:Number(background?.complete??0),failed:Number(background?.failed??0),lanes:Number(control.background_lanes??0)}}:null,control,dataToday:dataToday!,today:today[0]!,streams,requests,failures,workers,audit,runs,documents:documents!,raw:raw!,publication:publication[0]??null,lastVerified:lastVerified??null,processing:{runs:processingRuns,schedule:{next_at:iso(schedule.next_at),next_risk_at:iso(schedule.next_risk_at)},schedulerAlive:scheduler?.alive===true}};
  });
 }
 export type CollectionStatus=Awaited<ReturnType<typeof collectionStatus>>;

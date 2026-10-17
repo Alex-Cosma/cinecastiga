@@ -1,13 +1,13 @@
 import type {CollectionStatus} from '@/lib/admin/collection';
 const fmt=(v:number)=>new Intl.NumberFormat('ro-RO').format(v);
-const duration=(minutes:number)=>{
+export const duration=(minutes:number)=>{
  const rounded=Math.ceil(minutes/5)*5;
  if(rounded<60)return `${rounded} min`;
  if(rounded<1440)return `${Math.floor(rounded/60)} h${rounded%60?` ${rounded%60} min`:''}`;
  const days=Math.ceil(rounded/1440);return `${days} ${days===1?'zi':'zile'}`;
 };
 const day=(value:string)=>new Intl.DateTimeFormat('ro-RO',{day:'numeric',month:'long',year:'numeric',timeZone:'Europe/Bucharest'}).format(new Date(`${value}T12:00:00Z`));
-const finish=(at:string,minutes:number)=>new Intl.DateTimeFormat('ro-RO',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Bucharest'}).format(new Date(new Date(at).getTime()+minutes*60000));
+export const finish=(at:string,minutes:number)=>new Intl.DateTimeFormat('ro-RO',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Bucharest'}).format(new Date(new Date(at).getTime()+minutes*60000));
 export default function RecoveryOverview({data,stale}:{data:CollectionStatus;stale:boolean}){
  const f=data.forecast,c=data.control!;
  if(!f||!data.recovery)return <section className="recovery-overview"><h2>Recuperarea, în ansamblu</h2><p>Niciun lot de recuperare înregistrat. Progresul și timpul rămas vor apărea după inventariere.</p></section>;
@@ -27,7 +27,6 @@ export default function RecoveryOverview({data,stale}:{data:CollectionStatus;sta
   <div className="recovery-caption"><span>{fmt(f.completed)} pași încheiați · {fmt(f.pending)} în așteptare</span><span>Termenul se poate prelungi când descoperim pagini noi.</span></div>
   {(f.failed>0||f.deferred>0)&&<p className="recovery-gaps">Separat: {[f.failed>0?`${fmt(f.failed)} ${f.failed===1?'sarcină eșuată':'sarcini eșuate'}`:null,f.deferred>0?`${fmt(f.deferred)} ${f.deferred===1?'detaliu nepreluat':'detalii nepreluate'}`:null].filter(Boolean).join(' · ')}. Nu intră în timpul rămas.</p>}
   {!!f.layers?.length&&<div className="forecast-method"><h3>Ce am preluat din anunțuri</h3><dl>{f.layers.map(row=><div key={`${row.stream}:${row.kind}`}><dt>{row.stream==='awards'?'Atribuiri':'Participare'} · {row.kind==='contracts'?'contracte':'formulare și loturi'}</dt><dd>{fmt(row.complete)} / {fmt(row.total)} anunțuri{row.pending>0?` · ${fmt(row.pending)} în lucru`:''}{row.gaps>0?` · ${fmt(row.gaps)} cu goluri`:''}</dd></div>)}</dl><p>Un anunț este încheiat aici doar după preluarea tuturor paginilor sau secțiunilor programate. Fișierele PDF nu sunt incluse.</p></div>}
-  {(()=>{const bg=data.recovery.background;return bg&&(bg.lanes>0||bg.pending+bg.running+bg.complete+bg.failed>0)&&<p className="policy-note">Detalii istorice de atribuire, în fundal după colectarea obișnuită: {fmt(bg.complete)} arhivate · {fmt(bg.pending+bg.running)} în așteptare{bg.failed>0?` · ${fmt(bg.failed)} nepreluate`:''} · {bg.lanes>0?`${bg.lanes} ${bg.lanes===1?'bandă activă':'benzi active'}`:'oprite'}. Nu intră în progresul și timpul de mai sus.</p>;})()}
   {data.recovery?.batch.da_strategy==='cpv-day-v1'&&<p className="policy-note">Achiziții directe: căutare națională pe zile și CPV, cu reverificarea ultimelor 7 zile.</p>}
   <details className="forecast-method"><summary>Pe ce se bazează estimarea?</summary>
    <p>Folosim pașii încheiați în ultimele maximum 10 minute, după cea mai recentă reluare sau schimbare a setărilor. Cererile eșuate nu sunt progres. Ritmul include timpul consumat de documente și pauzele din acest interval; nu este plafonul configurat.</p>

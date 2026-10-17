@@ -2,10 +2,13 @@ import type {DbSql} from '@seap/db';
 import {task,BACKGROUND_PRIORITY,type Task} from './plan.js';
 export const AWARD_BACKFILL_PRIORITY=BACKGROUND_PRIORITY+10;
 export const AWARD_BACKFILL_MAX=100000;
+/** The collector queues the next AWARD_BACKFILL_MAX notices when fewer background tasks than this wait. */
+export const AWARD_BACKFILL_REFILL_BELOW=20000;
 const AWARD_TYPES=['3','8','13','16','18','20'];
 /** Metadata only, no source traffic. Queue root details for archived award list rows that never got a
- * detail archive. Tasks run as background work: only in enabled background lanes, after ordinary work. */
-export async function enqueueAwardDetailBackfill(q:DbSql,{limit,pilot=false}:{limit:number;pilot?:boolean}){
+ * detail archive. Tasks run as background work: only in enabled background lanes, after ordinary work.
+ * `remaining` counts the valid notices still unscheduled after this call. */
+export async function enqueueAwardDetailBackfill(q:DbSql,{limit,pilot=false,auto=false}:{limit:number;pilot?:boolean;auto?:boolean}){
  if(!Number.isSafeInteger(limit)||limit<1||limit>AWARD_BACKFILL_MAX)throw Error(`--limit must be an integer between 1 and ${AWARD_BACKFILL_MAX}`);
  return q.begin(async tx=>{
   await tx`set local statement_timeout='300s'`;await tx`set local lock_timeout='10s'`;
@@ -29,7 +32,7 @@ export async function enqueueAwardDetailBackfill(q:DbSql,{limit,pilot=false}:{li
   const rows=await tx`select raw_id::text,notice,payload->>'noticeId' internal,payload->>'noticeNo' notice_no,(payload->>'sysNoticeTypeId')::int notice_type,(payload->>'sysNoticeVersionId')::int notice_version
    from (select *,row_number() over(partition by payload->>'sysNoticeTypeId',payload->>'sysNoticeVersionId' order by payload->>'noticeStateDate' desc nulls last,raw_id desc) shape_rank from award_backfill where valid) c
    where not ${pilot} or shape_rank<=2 order by c.payload->>'noticeStateDate' desc nulls last,c.raw_id desc limit ${limit}`;
-  const [skipped]=await tx`select count(*) filter(where not valid)::int invalid from award_backfill`;
+  const [skipped]=await tx`select count(*) filter(where not valid)::int invalid,count(*) filter(where valid)::int valid from award_backfill`;
   const tasks:Task[]=rows.map(r=>task(batchId,'awards','detail',{noticeId:Number(r.notice),page:0,noticeType:Number(r.notice_type),noticeVersion:Number(r.notice_version),internalNoticeId:Number(r.internal),noticeNo:String(r.notice_no),metadataRawId:Number(r.raw_id),backfill:true},AWARD_BACKFILL_PRIORITY));
   // Never strand tasks in a batch that just closed; claims wait on this lock only for the inserts.
   const [b]=await tx`select status from app.collection_batches where id=${batchId} for update`;
@@ -45,12 +48,31 @@ export async function enqueueAwardDetailBackfill(q:DbSql,{limit,pilot=false}:{li
   }
   const byTypeVersion:Record<string,number>={};
   for(const t of tasks)if(inserted.has(t.key)){const k=`${t.params.noticeType}:v${t.params.noticeVersion}`;byTypeVersion[k]=(byTypeVersion[k]??0)+1;}
-  const result={batchId,queued:inserted.size,byTypeVersion,pilot,limit,skippedInvalid:Number(skipped?.invalid??0),priority:AWARD_BACKFILL_PRIORITY};
-  await tx`insert into app.collection_audit(actor_id,actor_name,action,before,after) values('system:award-detail-backfill','Operator — descărcare istorică atribuiri','award-detail-backfill',
+  const result={batchId,queued:inserted.size,byTypeVersion,pilot,auto,limit,skippedInvalid:Number(skipped?.invalid??0),remaining:Math.max(0,Number(skipped?.valid??0)-inserted.size),priority:AWARD_BACKFILL_PRIORITY};
+  const [actorId,actorName]=auto?['system:award-detail-backfill-auto','Colector — reîncărcare automată a descărcării istorice']:['system:award-detail-backfill','Operator — descărcare istorică atribuiri'];
+  await tx`insert into app.collection_audit(actor_id,actor_name,action,before,after) values(${actorId},${actorName},'award-detail-backfill',
    ${JSON.stringify({batchId,revision:control?.revision,backgroundLanes:control?.background_lanes,backgroundPending:before?.pending,backgroundTotal:before?.total})}::jsonb,
    ${JSON.stringify({...result,sourceMetadata:'latest archived award-list:v1; metadataRawId retained',contracts:false})}::jsonb)`;
   return result;
  });
+}
+/** Collector refill, metadata only. Continues a backfill the operator started (latest enqueue not a pilot)
+ * while background lanes are on: queues the next notices once fewer than AWARD_BACKFILL_REFILL_BELOW
+ * background tasks wait, or when the latest enqueue predates the `remaining` count. Stops for good
+ * after an enqueue that left nothing unscheduled; an operator enqueue restarts it. */
+export async function refillAwardBackfill(q:DbSql){
+ const [control]=await q`select maintenance,paused,blocked_reason,background_lanes,paused_streams from app.collection_control where id=1`;
+ if(!control||control.maintenance||control.paused||control.blocked_reason||!Number(control.background_lanes)||(control.paused_streams as string[]).includes('awards'))return {refilled:false,reason:'background-off'} as const;
+ const [last]=await q`select after from app.collection_audit where action='award-detail-backfill' order by id desc limit 1`;
+ const after=last?.after as {pilot?:boolean;remaining?:number}|undefined;
+ if(!after||after.pilot)return {refilled:false,reason:'not-started'} as const;
+ if(after.remaining===0)return {refilled:false,reason:'complete'} as const;
+ const batches=await q`select id,status from app.collection_batches order by created_at`;
+ if(batches.length!==1||batches[0]!.status!=='collecting')return {refilled:false,reason:'no-batch'} as const;
+ if((await q`select id from app.processing_runs where status='running' limit 1`).length)return {refilled:false,reason:'processing'} as const;
+ const [waiting]=await q`select count(*)::int n from app.collection_tasks where batch_id=${String(batches[0]!.id)} and priority>=${BACKGROUND_PRIORITY} and status in ('pending','running')`;
+ if(after.remaining!==undefined&&Number(waiting?.n)>=AWARD_BACKFILL_REFILL_BELOW)return {refilled:false,reason:'queue-full'} as const;
+ return {refilled:true,...await enqueueAwardDetailBackfill(q,{limit:AWARD_BACKFILL_MAX,auto:true})} as const;
 }
 /** Operator switch for background lanes; 0 disables background work. Lanes above the proxy concurrency never start. */
 export async function setBackgroundLanes(q:DbSql,lanes:number){
