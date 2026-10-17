@@ -124,7 +124,10 @@ describe.skipIf(!db)('background award detail backfill (isolated DB, no source t
   expect(await enqueueAwardDetailBackfill(q,{limit:1})).toMatchObject({queued:1,remaining:1,auto:false});
   await q`update app.collection_control set paused_streams='["awards"]'`;
   expect(await refillAwardBackfill(q)).toEqual({refilled:false,reason:'background-off'});
-  await q`update app.collection_control set paused_streams='[]'`;
+  await q`update app.collection_control set paused_streams='[]',maintenance=true,collection_during_maintenance=false`;
+  expect(await refillAwardBackfill(q)).toEqual({refilled:false,reason:'background-off'});
+  // Maintenance that keeps collection running (the recovery setting) does not stop the refill.
+  await q`update app.collection_control set collection_during_maintenance=true`;
   // Fewer than the threshold wait: the collector queues the rest, audited as its own actor.
   expect(await refillAwardBackfill(q)).toMatchObject({refilled:true,queued:1,remaining:0,auto:true});
   const [audit]=await q`select actor_id,after from app.collection_audit where action='award-detail-backfill' order by id desc limit 1`;
