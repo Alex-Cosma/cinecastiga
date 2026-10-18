@@ -14,7 +14,9 @@ try{await sql.begin('isolation level repeatable read read only',async tx=>{
  // Aggregated per slice: the whole registry never sits in memory at once.
  const totals={groups:0,publications:0,versionedGroups:0,canonicalChanges:0,excludedPublications:0,peakHeapMb:0};
  // REVALIDATION_BATCH lets an operator confirm that totals do not depend on the slice size.
+ const blocked:string[]=[];
  for await(const slice of approvedRevalidationBatches(q,bundle,String(boundary!.id),Number(process.env['REVALIDATION_BATCH'])||undefined)){
+  blocked.push(...slice.blocked.map(b=>b.message));
   totals.groups+=slice.groups.length;
   totals.publications+=slice.groups.reduce((n,g)=>n+g.members.length,0);
   totals.versionedGroups+=slice.groups.filter(g=>g.verified.methodology==='contract-identity-3').length;
@@ -22,5 +24,6 @@ try{await sql.begin('isolation level repeatable read read only',async tx=>{
   totals.excludedPublications+=slice.population.filter(p=>!p.previous).length;
   totals.peakHeapMb=Math.max(totals.peakHeapMb,Math.round(process.memoryUsage().heapUsed/2**20));
  }
- console.log(JSON.stringify({boundary:boundary!.id,quality,...totals}));
+ // Publication would revoke these approvals (or stop above MAX_REVOKED_GROUPS).
+ console.log(JSON.stringify({boundary:boundary!.id,quality,...totals,blocked:blocked.length,blockedExamples:blocked.slice(0,10)}));
 });}finally{await sql.end({timeout:5});}

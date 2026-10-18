@@ -25,6 +25,7 @@
 .collection-admin .processing-decisions summary{cursor:pointer;padding:8px 0;color:var(--accent)}
 .collection-admin .processing-decisions ul{padding-left:18px;line-height:1.7}
 .collection-admin .processing-decisions li+li{margin-top:8px}
+.collection-admin .processing-decisions li p{overflow-wrap:anywhere}
 .collection-admin .document-queue{margin-top:38px;padding-top:30px;border-top:1px solid var(--line);scroll-margin-top:24px}
 .collection-admin .document-queue>.section-heading{align-items:flex-start;gap:20px}
 .collection-admin .document-queue>.section-heading>a{white-space:nowrap}

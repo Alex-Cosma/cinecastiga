@@ -8,7 +8,7 @@ const origin='https://example.invalid';
 describe.skipIf(!connection)('operational alerts',()=>{
  beforeEach(async()=>{
   const q=connection!.sql;
-  await q`truncate app.operational_alerts,app.processing_runs,app.collection_audit`;
+  await q`truncate app.operational_alerts,app.processing_runs,app.collection_audit,core.quarantine`;
   await q`delete from auth.users where id like 'alert-fixture-%'`;
   await q`update app.collection_control set blocked_reason=null where id=1`;
  });
@@ -44,6 +44,21 @@ describe.skipIf(!connection)('operational alerts',()=>{
   expect(await deliverOperationalAlerts(q,send,origin)).toBe(1);
   expect(sent.at(-1)!.text).toContain('Răspuns 429.');
   expect((await q`select count(*)::int n from app.operational_alerts where kind='collection-blocked' and resolved_at is not null`)[0]!.n).toBe(1);
+ });
+ it('announces problems isolated from a publication once each',async()=>{
+  const q=connection!.sql,sent:Parameters<SendAlert>[0][]=[];
+  await q`insert into auth.users(id,name,email,email_verified,role) values('alert-fixture-1','Admin','admin@example.invalid',true,'admin')`;
+  await q`insert into app.collection_audit(actor_id,actor_name,action,before,after)
+   values('system:processor','Sistem','identity-revoked','{}','{"candidateId":"0ce439b5","reason":"missing_amendment_evidence","contracts":["1","2"]}')`;
+  // A record retried on two runs is one incident; an old unretried one is none.
+  await q`insert into core.quarantine(raw_id,endpoint_version,zod_error,created_at) values
+   (19772953,'award-contracts:v1','conflict',now()-interval '2 hours'),(19772953,'award-contracts:v1','conflict',now()),
+   (100,'award-list:v1','old',now()-interval '3 days')`;
+  await q`insert into core.quarantine(raw_id,endpoint_version,zod_error,retry_required) values(101,'award-list:v1','historical',false)`;
+  expect(await deliverOperationalAlerts(q,async m=>{sent.push(m);},origin)).toBe(2);
+  expect(sent.map(m=>m.text).join('\n')).toContain('cele 2 publicări');
+  expect(sent.map(m=>m.text).join('\n')).toContain('19772953 (award-contracts:v1)');
+  expect(await deliverOperationalAlerts(q,async m=>{sent.push(m);},origin)).toBe(0);
  });
  it('retries a failed delivery a bounded number of times and never throws',async()=>{
   const q=connection!.sql,logs:string[]=[];
