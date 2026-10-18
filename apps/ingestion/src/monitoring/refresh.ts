@@ -25,7 +25,7 @@ export const MONITORING_METHODOLOGY = {
 export async function runMonitoringRefresh(db: Db, sql: DbSql, options: {
   mode: "coordinated" | "baseline"; log?: (message: string) => void; timeoutMs?: number;
   scope?: RefreshScope; onStage?: (name: MonitoringStage | "validation") => Promise<void>;
-  maxRawId?: bigint; repairContractIdentities?: () => Promise<unknown>;
+  maxRawId?: bigint; repairContractIdentities?: () => Promise<unknown>; maxQuarantined?: number;
 }) {
   const log = options.log ?? (() => {});
   const scope = options.scope ?? "full";
@@ -57,7 +57,7 @@ export async function runMonitoringRefresh(db: Db, sql: DbSql, options: {
       transactions: () => runTransactionMarts(sql,{log}),
       radiografie: () => runRadiografieMarts(sql, { log }),
       coverage: () => runCoverage(sql),
-    }, log, { scope, ...(options.onStage ? {onStage:options.onStage} : {}) });
+    }, log, { scope, ...(options.onStage ? {onStage:options.onStage} : {}), ...(options.maxQuarantined === undefined ? {} : {maxQuarantined:options.maxQuarantined}) });
     await options.onStage?.("validation");
     return sql.begin("isolation level repeatable read read only", async tx => {
       const q = tx as unknown as DbSql;

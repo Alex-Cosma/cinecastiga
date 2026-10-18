@@ -191,12 +191,14 @@ describe('unflagged republications accepted by owner decision 2026-10-12',()=>{
  });
  it('accepts an amendment named in the later title; a renumbered title stays excluded',()=>{
   for(const title of ['Contract, ad diminuare nr 23295/09.07.2026','Contract+act aditional','lot 108, Suplim AC lot 108',
-   'Contract subsecvent+Act adit dimin nr. 1159/02.10.2026','Contract+act ad. major nr. 4']){
+   'Contract subsecvent+Act adit dimin nr. 1159/02.10.2026','Contract+act ad. major nr. 4',
+   'Contract paine semialba + act ad 61801/08.09.2026','Contract + ACT AD nr. 5']){
    const r=assessContractVersions([base,{...next,title,value:'80'}],pair(i=>Object.assign(i,{contractTitle:title,contractValue:80,defaultCurrencyContractValue:80})));
    expect(r.status).toBe('source_verified');expect(r.versionChanges?.[0]?.kind).toBe('addendum_in_title');
   }
-  const renumbered='Contract nr. 11';
-  expect(assessContractVersions([base,{...next,title:renumbered}],pair(i=>{i.contractTitle=renumbered;})).reasons).toContain('missing_amendment_evidence');
+  for(const renumbered of ['Contract nr. 11','Contract act adjudecare 12']){
+   expect(assessContractVersions([base,{...next,title:renumbered}],pair(i=>{i.contractTitle=renumbered;})).reasons).toContain('missing_amendment_evidence');
+  }
  });
  it('keeps the legacy "valoare modificata prin AA" acceptance without new evidence',()=>{
   const title='Contract valoare modificata prin AA 1';

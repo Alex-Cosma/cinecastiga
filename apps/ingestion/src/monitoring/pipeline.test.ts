@@ -54,4 +54,9 @@ describe("coordinated monitoring refresh", () => {
     }))).rejects.toThrow("quarantined records");
     expect(visited).toEqual(["normalize"]);
   });
+  it("publishes around a few quarantined records up to the ceiling, then stops", async () => {
+    const run = (quarantined: number) => executeMonitoringStages(fixture(async name => name === "normalize" ? { quarantined } : {}), () => {}, { maxQuarantined: 20 });
+    expect(Object.keys(await run(20))).toEqual(MONITORING_STAGES);
+    await expect(run(21)).rejects.toThrow("quarantined records");
+  });
 });

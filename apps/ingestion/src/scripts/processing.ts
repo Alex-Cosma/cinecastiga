@@ -1,11 +1,12 @@
 import {runScheduledContractEvidence} from '../normalize/scheduled-contract-evidence.js';
-import {revalidateApprovedContractIdentities} from '../normalize/revalidate-contract-identities.js';
+import {MAX_REVOKED_GROUPS,revalidateApprovedContractIdentities} from '../normalize/revalidate-contract-identities.js';
 import {discoverAndApproveContractIdentities} from '../normalize/discover-contract-identities.js';
 import {runScheduledIdentityRepair} from '../normalize/scheduled-contract-identity.js';
 import { runScheduledMoneyRepair } from '../normalize/scheduled-money-repair.js';
 import { diagnosticError, createDb, claimProcessing, claimRepairProcessing, claimRecoveryProcessing, failProcessing, finishProcessing, processingStage, collectionHeartbeat } from '@seap/db';
 import {runScheduledReferenceRepair} from '../reference/scheduled-repair.js';
 import { runMonitoringRefresh } from '../monitoring/refresh.js';
+import { MAX_QUARANTINED_RECORDS } from '../monitoring/pipeline.js';
 import {indexTopics} from '../search/index-topics.js';
 import { indexEntities, meiliClient } from '../search/index-entities.js';
 import {deliverOperationalAlerts,smtpSender} from '../alerts/operational-alerts.js';
@@ -58,10 +59,10 @@ async function main() {
    repairContractIdentities:async()=>({
     recoveredEvidence:await runScheduledContractEvidence(sql,id!),
     scheduled:await runScheduledIdentityRepair(sql,id!,console.log),
-    revalidated:await revalidateApprovedContractIdentities(sql,id!,console.log),
+    revalidated:await revalidateApprovedContractIdentities(sql,id!,console.log,MAX_REVOKED_GROUPS),
     discovered:await discoverAndApproveContractIdentities(sql,id!,console.log),
    }),
-   mode:'coordinated',scope:r.scope==='full'?'full':'daily',maxRawId:BigInt(r.raw_boundary),
+   mode:'coordinated',scope:r.scope==='full'?'full':'daily',maxRawId:BigInt(r.raw_boundary),maxQuarantined:MAX_QUARANTINED_RECORDS,
    log:console.log,onStage:stage=>processingStage(sql,id!,stage),
   });
   await sql`update app.processing_runs set checkpoint_id=${checkpoint.id}::uuid where id=${id!}::uuid`;

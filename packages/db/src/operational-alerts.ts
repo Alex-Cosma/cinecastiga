@@ -36,6 +36,24 @@ export async function detectOperationalAlerts(q: DbSql, origin: string): Promise
     subject: `Fluxul „${r.stream}” a fost pus automat pe pauză`,
     body: `La ${r.seen} (ora României), fluxul „${r.stream}” a fost pus automat pe pauză.${r.reason ? `\n\nMotiv: ${r.reason}` : ''}\n\nCelelalte fluxuri continuă. Verifică jurnalul și reia fluxul din ${admin}.`,
   });
+  // Isolated problems (18 October 2026): publication continued without them.
+  const revoked = await q`select id::text,after->>'candidateId' candidate,after->>'reason' reason,jsonb_array_length(after->'contracts') publications,
+      to_char(created_at at time zone 'Europe/Bucharest','DD.MM.YYYY HH24:MI') seen
+    from app.collection_audit where action='identity-revoked' and created_at>now()-make_interval(hours=>${LOOKBACK_HOURS})`;
+  for (const r of revoked) alerts.push({
+    key: `identity-revoked:${r.id}`, kind: 'identity-revoked',
+    subject: 'Un grup de publicări a fost exclus din totaluri — de verificat',
+    body: `La ${r.seen} (ora României), reverificarea a găsit un grup aprobat de publicări ale aceluiași contract care nu mai trece verificarea. Publicarea a continuat fără el: cele ${r.publications} publicări sunt excluse din totaluri până la verificare.\n\nGrup: ${r.candidate}\nMotiv: ${r.reason}\n\nDetalii în ${admin}/procesare.`,
+  });
+  const quarantined = await q`select raw_id::text,max(endpoint_version) endpoint,
+      to_char(min(created_at) at time zone 'Europe/Bucharest','DD.MM.YYYY HH24:MI') seen
+    from core.quarantine where retry_required and resolved_at is null group by raw_id
+    having min(created_at)>now()-make_interval(hours=>${LOOKBACK_HOURS})`;
+  for (const r of quarantined) alerts.push({
+    key: `quarantine:${r.raw_id}`, kind: 'quarantine',
+    subject: 'O înregistrare nouă nu a putut fi procesată — de verificat',
+    body: `La ${r.seen} (ora României), înregistrarea brută ${r.raw_id} (${r.endpoint}) nu a putut fi procesată și a fost pusă în carantină. Publicarea a continuat: rămâne ultima versiune bună, iar înregistrarea se reîncearcă la fiecare rulare.\n\nDetalii în ${admin}/procesare.`,
+  });
   // A global stop has no natural ID: one open incident until the block clears.
   const [control] = await q`select blocked_reason from app.collection_control where id=1`;
   if (control?.blocked_reason) {

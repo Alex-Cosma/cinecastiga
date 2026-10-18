@@ -1,7 +1,7 @@
 import {createHash} from 'node:crypto';
 import { readRecoveredIdentityArchives } from './contract-identity-archives.js';
 import { assertContractIdentityQuality, assertContractExclusionsQuality, readContractIdentityMembers, type DbSql } from '@seap/db';
-import { assessContractPublicationGroup, assessContractVersions, contractIdentitySignature, contractVersionAnchor, type ArchivedAward, type IdentityContract } from './contract-identity.js';
+import { assessContractPublicationGroup, assessContractVersions, contractIdentitySignature, contractVersionAnchor, IDENTITY_RULES_VERSION, type ArchivedAward, type IdentityContract } from './contract-identity.js';
 import { approveContractIdentityBatches } from './approve-contract-identities.js';
 import { IDENTITY_REPAIR_ID, loadIdentityRepairBundle } from './scheduled-contract-identity.js';
 
@@ -40,6 +40,24 @@ export function discoverPublicationGroups(members: IdentityContract[], archives:
         [...new Set(g.map(m=>m.noticeId))].flatMap(id=>byNotice.get(id)??[]));
     });
   });
+}
+
+type AssessedGroup=ReturnType<typeof discoverPublicationGroups>[number];
+/** Approvals revoked by revalidation under the current rules. Their former members
+ * stay excluded until a rule change (or review) instead of being approved again on
+ * the same evidence. Older rules release them to ordinary discovery. */
+export async function revokedIdentityHolds(q: DbSql) {
+  return (await q`select after->>'candidateId' candidate,after->>'fingerprint' observation,
+      array(select jsonb_array_elements_text(after->'contracts')) contracts
+    from app.collection_audit where action='identity-revoked' and after->>'rules'=${IDENTITY_RULES_VERSION} order by id`)
+    .map(r=>({candidate:String(r.candidate),observation:String(r.observation),contracts:(r.contracts as string[]).map(String)}));
+}
+/** A newly found group that contains a revoked publication is recorded, never approved. */
+export function holdRevokedGroup(group: AssessedGroup, observation: string): AssessedGroup {
+  if (group.status!=='source_verified') return group;
+  const held={...group,status:'conflict',reasons:[...new Set([...group.reasons,'approval_revoked_review_required'])].sort(),revokedObservation:observation,
+    fingerprint:createHash('sha256').update(JSON.stringify(['revoked-hold-v1',group.fingerprint,observation])).digest('hex')};
+  return held;
 }
 
 /** Read-only first; reusable for rehearsal. Default scans all repeated notices,
@@ -106,22 +124,32 @@ export async function discoverAndApproveContractIdentities(q: DbSql, runId: stri
     const assigned=new Set(prepared.groups.flatMap(g=>g.members.map(m=>m.id)));
     const approvedIds=new Set((await sql`select contract_id::text from marts.contract_identity_members`).map(r=>String(r.contract_id)));
     const retained=previousExclusions.filter(r=>!assigned.has(String(r.contract_id))&&!approvedIds.has(String(r.contract_id)));
-    for(const candidate of new Set(retained.map(r=>String(r.candidate_id)))){
-      const retainedIds=retained.filter(r=>r.candidate_id===candidate).map(r=>String(r.contract_id));
-      const rows=await readContractIdentityMembers(sql,retainedIds);
-      if(rows.length!==retainedIds.length)throw Error('An excluded source record disappeared; restore or explicitly reconcile it before publication');
-      const [previous]=await sql`select evidence from marts.contract_identity_candidates where id=${candidate}`;
-      if(!previous)throw Error('Exclusion origin disappeared');
+    const reviewGroup=async(ids:string[],origin:string)=>{
+      const rows=await readContractIdentityMembers(sql,ids);
+      if(rows.length!==ids.length)throw Error('An excluded source record disappeared; restore or explicitly reconcile it before publication');
       const members=rows.map(r=>r.identity as IdentityContract);
-      const origin=previous.evidence.previousObservation??previous.evidence.fingerprint;
       const base=assessContractPublicationGroup(members,[]);
       // This is a retained unresolved relationship, not an assertion that the
       // archives are missing or proof that these records are duplicates.
-      const review={...base,status:'needs_evidence' as const,proofs:[],
+      return {...base,status:'needs_evidence' as const,proofs:[],
         reasons:['identity_relationship_unresolved'],previousObservation:origin,
         methodology:'contract-identity-review-1',
         fingerprint:createHash('sha256').update(JSON.stringify(['retained-review-v1',base.fingerprint,origin])).digest('hex')};
-      prepared.groups.push(review);
+    };
+    for(const candidate of new Set(retained.map(r=>String(r.candidate_id)))){
+      const [previous]=await sql`select evidence from marts.contract_identity_candidates where id=${candidate}`;
+      if(!previous)throw Error('Exclusion origin disappeared');
+      prepared.groups.push(await reviewGroup(retained.filter(r=>r.candidate_id===candidate).map(r=>String(r.contract_id)),
+        previous.evidence.previousObservation??previous.evidence.fingerprint));
+    }
+    // Revoked approvals (revalidation): every former member stays excluded under the
+    // current rules, whether or not today's search groups it again.
+    const reviewed=new Set(retained.map(r=>String(r.contract_id)));
+    for(const hold of await revokedIdentityHolds(sql)){
+      prepared.groups=prepared.groups.map(g=>g.members.some(m=>hold.contracts.includes(m.id))?holdRevokedGroup(g,hold.observation):g);
+      const ids=hold.contracts.filter(id=>!assigned.has(id)&&!approvedIds.has(id)&&!reviewed.has(id));
+      ids.forEach(id=>reviewed.add(id));
+      if(ids.length)prepared.groups.push(await reviewGroup(ids,hold.observation));
     }
     for(let i=0;i<prepared.groups.length;i+=200) {
       const batch=prepared.groups.slice(i,i+200).map(g=>({id:g.id,fingerprint:g.fingerprint,status:g.status,evidence:g}));

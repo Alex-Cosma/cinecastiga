@@ -36,8 +36,13 @@ const comparableKeys=(x:(string|null)[])=>sorted(x.map(comparableKey));
  * no procedureId by design and contracts have no lot caption. The award notice
  * number (with authority, contract number, date and winners) is the anchor. */
 const NO_PROCEDURE_ID_TYPES=new Set(['Negociere fara publicare prealabila','Norme proprii (Anexa 2)','Procedura simplificata proprie']);
-/** Explicit amendment wording in a later publication title. */
-const ADDENDUM_TITLE=/valoare modificata prin AA |act\s*adi[tț]ional|\bact\s*adit\b|\bact\s*ad\.?\s+(?:dimin|major|supl)|\bad\s+(?:diminuare|majorare|suplimentare)\b|\bsuplim(?:entare)?\s+AC\b/i;
+/** Bump whenever an assessment rule in this file changes: the next revalidation
+ * is then full, targeted runs wait for a clean full baseline, and approvals
+ * revoked under the previous rules may be approved again. */
+export const IDENTITY_RULES_VERSION='contract-identity-rules-20261018';
+/** Explicit amendment wording in a later publication title. "act ad 61801/08.09.2026"
+ * names a numbered addendum (CAN1148579, 18 October 2026). */
+const ADDENDUM_TITLE=/valoare modificata prin AA |act\s*adi[tț]ional|\bact\s*adit\b|\bact\s*ad\.?\s+(?:dimin|major|supl)|\bact\s*ad\.?\s*(?:nr\.?\s*)?\d|\bad\s+(?:diminuare|majorare|suplimentare)\b|\bsuplim(?:entare)?\s+AC\b/i;
 function coreWinnerKeys(c:IdentityContract) {
  return c.winners.map((entityId,i)=>{
   const fiscal=cui(c.winnerCuis[i]);if(fiscal)return fiscal;

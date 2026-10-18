@@ -25,6 +25,16 @@ export async function collectionStatus(q:DbSql=collectionDb()){
   const [raw]=await tx`select count(*)::int archived from raw.raw_documents where source='elicitatie' and fetched_at>=greatest(${control.created_at}::timestamptz,((now() at time zone 'Europe/Bucharest')::date::timestamp at time zone 'Europe/Bucharest'))`;
   const [moneyReport]=await tx`select observation from marts.contract_money_quality where id=1`;
   const moneyQuality=(moneyReport?.observation as MoneyQuality|undefined)??null;
+  // Problems isolated from publication (18 October 2026), open until resolved: a revoked
+  // approval while any former member is still excluded, a record until its retry succeeds.
+  const revokedIdentities=await tx`select a.id::text,a.after->>'candidateId' candidate,a.after->>'reason' reason,
+    jsonb_array_length(a.after->'contracts')::int publications,a.created_at from app.collection_audit a
+    where a.action='identity-revoked' and exists(select 1 from marts.contract_identity_exclusions x
+      where x.contract_id::text in (select jsonb_array_elements_text(a.after->'contracts')))
+    order by a.id desc limit 20`;
+  const quarantinedRecords=await tx`select raw_id::text,max(endpoint_version) endpoint,min(created_at) first_seen,count(*)::int attempts,
+    left((array_agg(zod_error order by id desc))[1],300) error from core.quarantine where retry_required and resolved_at is null
+    group by raw_id order by min(created_at) desc limit 20`;
   const publication=await tx`select id,version::text,status,kind,started_at,completed_at,validation->'stages' stages,methodology,error,validation->'checks' checks from app.monitoring_refreshes order by monitoring_refreshes.version desc limit 1`;
   const [lastVerified]=await tx`select id,version::text,kind,started_at,completed_at,methodology,validation->'checks' checks,validation->'risk' risk,validation->>'refreshScope' refresh_scope from app.monitoring_refreshes where status='ready' and kind='coordinated' order by monitoring_refreshes.version desc limit 1`;
   const processingRows=await tx`select id,scheduled_day::text,scope,status,stage,started_at,stage_started_at,heartbeat_at,completed_at,stages,raw_boundary,checkpoint_id,error from app.processing_runs order by started_at desc limit 7`;
@@ -43,7 +53,7 @@ export async function collectionStatus(q:DbSql=collectionDb()){
   const proxySeconds=proxies.settings.enabled?Math.max(60/Number(proxies.settings.requests_per_minute),(Number(proxies.settings.min_seconds)+Number(proxies.settings.max_seconds))/2/Math.max(1,poolSize)):null;
   const historical=batch?await historicalStatus(tx as unknown as DbSql,batch.id,Number(control.background_lanes??0)):null;
   const forecast=batch?await recoveryStatus(tx as unknown as DbSql,batch.id,progress as unknown as RecoveryCounts[],proxySeconds===null?control:{...control,min_seconds:proxySeconds,max_seconds:proxySeconds}):null;
-  return {proxies,proxyRetries,moneyQuality,forecast,historical,timeoutRetry:timeoutRetry??null,quietWindow,recovery:batch?{batch,progress,background:{pending:Number(background?.pending??0),running:Number(background?.running??0),complete:Number(background?.complete??0),failed:Number(background?.failed??0),lanes:Number(control.background_lanes??0)}}:null,control,dataToday:dataToday!,today:today[0]!,streams,requests,failures,workers,audit,runs,documents:documents!,raw:raw!,publication:publication[0]??null,lastVerified:lastVerified??null,processing:{runs:processingRuns,schedule:{next_at:iso(schedule.next_at),next_risk_at:iso(schedule.next_risk_at)},schedulerAlive:scheduler?.alive===true}};
+  return {proxies,proxyRetries,moneyQuality,isolated:{revokedIdentities,quarantinedRecords},forecast,historical,timeoutRetry:timeoutRetry??null,quietWindow,recovery:batch?{batch,progress,background:{pending:Number(background?.pending??0),running:Number(background?.running??0),complete:Number(background?.complete??0),failed:Number(background?.failed??0),lanes:Number(control.background_lanes??0)}}:null,control,dataToday:dataToday!,today:today[0]!,streams,requests,failures,workers,audit,runs,documents:documents!,raw:raw!,publication:publication[0]??null,lastVerified:lastVerified??null,processing:{runs:processingRuns,schedule:{next_at:iso(schedule.next_at),next_risk_at:iso(schedule.next_risk_at)},schedulerAlive:scheduler?.alive===true}};
  });
 }
 export type CollectionStatus=Awaited<ReturnType<typeof collectionStatus>>;

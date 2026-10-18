@@ -7,6 +7,7 @@ import {gzipSync} from 'node:zlib';
 import {createHash} from 'node:crypto';
 import {seedVerifiedIdentity} from '../test/contract-identity-fixture.js';
 import {revalidateApprovedContractIdentities,verifyApprovedPublications} from './revalidate-contract-identities.js';
+import {discoverAndApproveContractIdentities,revokedIdentityHolds} from './discover-contract-identities.js';
 const isolated=new URL(process.env.DATABASE_URL??'postgres://invalid/').pathname.startsWith('/seap_test_currency_');
 const {sql}=createDb();afterAll(()=>sql.end({timeout:5}));
 function scoped(q:DbSql,prefix:string):DbSql {
@@ -154,6 +155,38 @@ describe.skipIf(!isolated)('backed-up publication evidence revalidation',()=>{
     await nested`update core.contracts set title='Contract nr. 9' where id=4`;
     await revalidateApprovedContractIdentities(nested as unknown as DbSql,run);
    })).rejects.toThrow('missing_amendment_evidence');
+   // Owner decision 2026-10-18: under a ceiling, a group that no longer verifies loses its
+   // approval and its publications are excluded, instead of stopping publication. Discovery
+   // does not approve them again under the same rules; a rule change releases the hold.
+   const isolated=Error('isolated');
+   await expect(q.begin(async tx=>{
+    const n=tx as unknown as DbSql;
+    const [original]=await n`select payload from raw.raw_documents where id=41`;
+    await n`update raw.raw_documents set payload=jsonb_set(jsonb_set(payload,'{items,0,hasModifiedVersions}','false'),'{items,0,contractTitle}','"Contract nr. 9"') where id=41`;
+    await n`update core.contracts set title='Contract nr. 9' where id=4`;
+    const report=await revalidateApprovedContractIdentities(n,run,()=>{},1);
+    expect(report.quality.valid).toBe(true);
+    expect(report).toMatchObject({revoked:[{publications:3,reason:expect.stringContaining('missing_amendment_evidence')}]});
+    expect((await n`select count(*)::int n from marts.contract_identity_decisions`)[0]!.n).toBe(0);
+    expect((await n`select count(*)::int n from marts.contract_identity_members`)[0]!.n).toBe(0);
+    expect((await n`select status from marts.contract_identity_candidates`).map(r=>r.status)).toEqual(['conflict']);
+    expect((await n`select next_snapshot->>'revoked' revoked from marts.contract_identity_revisions order by id desc limit 1`)[0]!.revoked).toBe('true');
+    expect(await revokedIdentityHolds(n)).toEqual([expect.objectContaining({contracts:['1','2','3']})]);
+    const excluded=async()=>(await n`select contract_id::text id from marts.contract_identity_exclusions order by contract_id`).map(r=>r.id);
+    await discoverAndApproveContractIdentities(n,run);
+    expect(await excluded()).toEqual(['1','2','3','4']);
+    // The source corrected again: same evidence that was approved before, still held.
+    await n`update raw.raw_documents set payload=${JSON.stringify(original!.payload)}::jsonb where id=41`;
+    await n`update core.contracts set title=(select title from core.contracts where id=1) where id=4`;
+    await discoverAndApproveContractIdentities(n,run);
+    expect(await excluded()).toEqual(['1','2','3','4']);
+    expect((await n`select count(*)::int n from marts.contract_identity_decisions`)[0]!.n).toBe(0);
+    await n`update app.collection_audit set after=jsonb_set(after,'{rules}','"older-rules"') where action='identity-revoked'`;
+    await discoverAndApproveContractIdentities(n,run);
+    expect(await excluded()).toEqual([]);
+    expect((await n`select count(*)::int n from marts.contract_identity_members`)[0]!.n).toBe(4);
+    throw isolated;
+   })).rejects.toBe(isolated);
    await expect(q.begin(async nested=>{
     await nested`update raw.raw_documents set payload=jsonb_set(payload,'{noticeStateDate}','"2026-10-03T10:00:00+03:00"') where id=40`;
     await revalidateApprovedContractIdentities(nested as unknown as DbSql,run);
