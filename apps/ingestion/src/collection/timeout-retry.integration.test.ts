@@ -18,7 +18,7 @@ describe.skipIf(!url)('durable timeout retries (real PG, no network)',()=>{
   await q`insert into app.collection_batches(id,end_day,next_stream) values('fixture','2026-09-25',0)`;
   await insertTasks(q,[task('fixture','da','da',{authorityId:7848,from:'2026-07-01',to:'2026-09-25',page:0})]);
  });
- async function transport(t:Task,kind:'timeout'|'ok'|'error'|'403'|'timeout403'|'proxy-error'|'503'='timeout',patch:Record<string,unknown>={}){
+ async function transport(t:Task,kind:'timeout'|'ok'|'error'|'403'|'timeout403'|'proxy-error'|'503'|'400'|'400-system'='timeout',patch:Record<string,unknown>={}){
   const c=await q.reserve();
   const original=setTimeout;
   const timer=vi.spyOn(globalThis,'setTimeout').mockImplementation(((fn:any,ms:any,...args:any[])=>original(fn,ms===45000?20:ms,...args)) as typeof setTimeout);
@@ -26,6 +26,7 @@ describe.skipIf(!url)('durable timeout retries (real PG, no network)',()=>{
    if(kind==='timeout'||kind==='timeout403')return await new Promise((_,reject)=>signal.addEventListener('abort',()=>reject(kind==='timeout403'?new CollectionTransportError(Error('fixture timeout'),{response:{status:403}}):Error('fixture timeout')),{once:true}));
    if(kind==='proxy-error')throw new CollectionTransportError(Error('fixture socket closed'),{retryableProxyTransport:true});
    if(kind==='error')throw Error('non-timeout transport failure');
+   if(kind==='400'||kind==='400-system')return {status:400,value:null,diagnostics:{response:{body:kind==='400'?'Cerere invalidă':['Eroare de sistem 261019-49','The underlying provider failed on EnlistTransaction.']}}};
    return {status:kind==='403'?403:kind==='503'?503:200,value:{total:0,items:[]}};
   });}finally{timer.mockRestore();c.release();}
  }
@@ -48,6 +49,24 @@ describe.skipIf(!url)('durable timeout retries (real PG, no network)',()=>{
   expect(await recoveryStep(q,unexpected)).toBe(false);
   const attempts=await q`select outcome,diagnostics from app.collection_requests order by id`;
   expect(attempts).toHaveLength(3);expect(attempts.map(x=>x.diagnostics.retry.timeouts)).toEqual([1,2,3]);expect(attempts.every(x=>x.outcome==='failed')).toBe(true);
+ });
+ it('retries a SEAP system error answered as 400 twice without ever blocking collection',async()=>{
+  // The HTTP client turns the exhausted 400 into an isolated detail gap; here the fixture just returns.
+  const step=()=>recoveryStep(q,t=>transport(t,'400-system').then(()=>({total:0,items:[]})));
+  expect(await step()).toBe(false);
+  expect((await q`select timeouts,status from app.collection_retries`)[0]).toMatchObject({timeouts:1,status:'pending'});
+  expect((await q`select status from app.collection_tasks`)[0]!.status).toBe('pending');
+  await due();expect(await step()).toBe(false);
+  await due();expect(await step()).toBe(true);
+  expect((await q`select timeouts,status from app.collection_retries`)[0]).toMatchObject({timeouts:3,status:'stopped'});
+  expect((await q`select blocked_reason from app.collection_control`)[0]!.blocked_reason).toBeNull();
+  expect((await q`select error from app.collection_requests order by id`).map(r=>r.error)).toEqual([
+   'Eroare de sistem SEAP (HTTP 400). Reîncercare automată 1/2 după 5 minute.','Eroare de sistem SEAP (HTTP 400). Reîncercare automată 2/2 după 10 minute.','Eroare de sistem SEAP (HTTP 400). Limita reîncercărilor automate a fost atinsă.']);
+ });
+ it('does not retry an ordinary 400',async()=>{
+  expect(await recoveryStep(q,t=>transport(t,'400').then(()=>({total:0,items:[]})))).toBe(true);
+  expect(await q`select 1 from app.collection_retries`).toHaveLength(0);
+  expect((await q`select error from app.collection_requests`)[0]!.error).toBe('HTTP 400');
  });
  it('prioritizes the exact task, resolves after validated success and then returns to other work',async()=>{
   await recoveryStep(q,t=>transport(t));

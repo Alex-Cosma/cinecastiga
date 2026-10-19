@@ -1,6 +1,12 @@
 import {describe,it,expect} from 'vitest';
-import {diagnosticError,sanitizeDiagnostics,responseDiagnosticBody,retryableProxyTransport} from './collection-diagnostics.js';
+import {diagnosticError,sanitizeDiagnostics,responseDiagnosticBody,retryableProxyTransport,seapSystemError} from './collection-diagnostics.js';
 describe('failure diagnostic preservation',()=>{
+ it('recognizes SEAP system errors answered as HTTP 400, nothing else',()=>{
+  expect(seapSystemError({response:{body:['Eroare de sistem 261019-49','\r\nThe underlying provider failed on EnlistTransaction.']}})).toBe(true);
+  expect(seapSystemError({response:{body:' Eroare de sistem 261017-24'}})).toBe(true);
+  for(const body of ['Cerere invalidă',['Missing Authorization header'],{message:'Eroare de sistem'},undefined])expect(seapSystemError({response:{body}})).toBe(false);
+  expect(seapSystemError(undefined)).toBe(false);
+ });
  it('distinguishes network failures from invalid data and unexpected errors',()=>{
   const socket=Object.assign(new Error('private proxy endpoint'),{code:'ECONNRESET'});
   expect(retryableProxyTransport(new TypeError('fetch failed',{cause:socket}))).toBe(true);

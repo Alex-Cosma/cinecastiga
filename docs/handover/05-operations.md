@@ -72,6 +72,8 @@ Deadline transport 45 secunde. Pentru timeout confirmat pe o sarcină a recuper�
 
 Sunt 3 încercări totale, aceeași identitate/query. Bugetul persistă în `app.collection_retries` și supraviețuiește restartului. Numai finalizarea validării/arhivării/checkpoint-ului rezolvă sarcina. Documentele din sesiunea browser nu au această reluare automată.
 
+**„Eroare de sistem” cu HTTP 400 (19 octombrie 2026).** SEAP întoarce propriile erori de bază de date (`EnlistTransaction`, „data reader is closed”, erori de mapare) ca 400 cu un corp care începe cu „Eroare de sistem <cod>”. Pe 16–17 octombrie au fost ~1.200, ~1,7% din detaliile de atribuire `RFQ_PUBLIC_CANotice`, mai multe când descărcarea istorică merge pe multe benzi. Înainte rămâneau lipsă izolată definitivă. Acum primesc aceleași 2 reîncercări (5, apoi 10 minute), indiferent de proxy, fără să penalizeze proxy-ul (`seapSystemError`, `scheduleCollectionTimeout(...,'source')`). Epuizate, anunțul rămâne lipsă izolată, ca înainte, fără blocaj global. Un 400 fără acest corp (de exemplu formularele eForms „Missing Authorization header”) rămâne definitiv.
+
 403/429/challenge, răspuns invalid, eroare SQL, conexiune pierdută fără deadline-ul confirmat sau anulare nu sunt tratate automat ca timeout. Păstrează diagnosticele, statusul, parametrii siguri, faza, durata și excepția sanitizată. Nu stoca parole/tokenuri/cookies în jurnal.
 
 **Izolarea erorilor de transport (13 octombrie 2026).** 403/429/challenge și cererile rămase fără rezultat opresc în continuare toată colectarea. În rest:

@@ -1,6 +1,6 @@
 import {proxyAdmission,recordProxyFailure} from './collection-proxies.js';
 import type {SeapProxy} from './proxy-config.js';
-import { CollectionTransportError, diagnosticError, sanitizeDiagnostics, type CollectionDiagnostics } from './collection-diagnostics.js';
+import { CollectionTransportError, diagnosticError, sanitizeDiagnostics, seapSystemError, type CollectionDiagnostics } from './collection-diagnostics.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -152,6 +152,9 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
    if(await scheduleCollectionTimeout(q,id!,taskId,true))throw new CollectionSuspendedError('Cererea va fi reîncercată; celelalte proxy-uri continuă.');
    throw new CollectionProxyFailureError('Cerere prin proxy eșuată; celelalte proxy-uri continuă.');
   }
+  // SEAP's own database failures answer 400 "Eroare de sistem": the same 5/10-minute task retries,
+  // whatever the proxy. Once exhausted the task fails as before (an isolated detail gap, no block).
+  if(!ted&&result.status===400&&seapSystemError(transportDiagnostics)&&await scheduleCollectionTimeout(q,id!,taskId,'source'))throw new CollectionSuspendedError('Eroare de sistem SEAP; cererea va fi reîncercată.');
   // TED 5xx/408: the same 5/10-minute task retries as SEAP's proxy failures; the stream pauses only once they are exhausted.
   if(ted&&tedReason&&[408,500,502,503,504].includes(result.status)&&await scheduleCollectionTimeout(q,id!,taskId,true))throw new CollectionSuspendedError('TED indisponibil temporar; cererea va fi reîncercată.');
   if(failure&&taskId!==null)await q`update app.collection_retries set status='stopped',retry_at=null,updated_at=clock_timestamp() where task_id=${taskId} and status='pending'`;
