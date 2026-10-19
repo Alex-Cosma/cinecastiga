@@ -131,7 +131,8 @@ suite('scheduled publication state machine (no network)',()=>{
   await q`update app.collection_control set revision=${control!.revision}`;
   const run=await claimRecoveryProcessing(q,failed.id);
   expect(run.scope).toBe('full');
-  expect((await q`select trigger,before_control->>'recoveryOf' origin from app.processing_runs where id=${run.id}`)[0]).toMatchObject({trigger:'manual',origin:failed.id});
+  // The failure paused collection; the recovery restores the state from before the failed run.
+  expect((await q`select trigger,before_control->>'recoveryOf' origin,before_control->>'paused' paused from app.processing_runs where id=${run.id}`)[0]).toMatchObject({trigger:'manual',origin:failed.id,paused:'false'});
   expect((await q`select status from app.processing_runs where id=${failed.id}`)[0]!.status).toBe('failed');
   expect((await q`select paused,maintenance from app.collection_control`)[0]).toMatchObject({paused:true,maintenance:true});
   // Never twice: the recovery is now the latest run, and it is running.

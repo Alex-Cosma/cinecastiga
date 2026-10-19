@@ -8,9 +8,9 @@ const origin='https://example.invalid';
 describe.skipIf(!connection)('operational alerts',()=>{
  beforeEach(async()=>{
   const q=connection!.sql;
-  await q`truncate app.operational_alerts,app.processing_runs,app.collection_audit,core.quarantine`;
+  await q`truncate app.operational_alerts,app.processing_runs,app.collection_audit,core.quarantine,app.collection_requests`;
   await q`delete from auth.users where id like 'alert-fixture-%'`;
-  await q`update app.collection_control set blocked_reason=null where id=1`;
+  await q`update app.collection_control set blocked_reason=null,paused=false,maintenance=false,paused_streams='[]' where id=1`;
  });
  it('mails each incident once to verified admins and reopens a cleared collection stop',async()=>{
   const q=connection!.sql,sent:Parameters<SendAlert>[0][]=[];
@@ -59,6 +59,38 @@ describe.skipIf(!connection)('operational alerts',()=>{
   expect(sent.map(m=>m.text).join('\n')).toContain('cele 2 publicări');
   expect(sent.map(m=>m.text).join('\n')).toContain('19772953 (award-contracts:v1)');
   expect(await deliverOperationalAlerts(q,async m=>{sent.push(m);},origin)).toBe(0);
+ });
+ it('warns when collection brings nothing, reminds every 12 hours and closes once it resumes',async()=>{
+  const q=connection!.sql,sent:Parameters<SendAlert>[0][]=[];
+  const send:SendAlert=async m=>{sent.push(m);};
+  await q`insert into auth.users(id,name,email,email_verified,role) values('alert-fixture-1','Admin','admin@example.invalid',true,'admin')`;
+  const request=(stream:string,outcome:string,hoursAgo:number)=>q`insert into app.collection_requests(stream,worker,method,endpoint,outcome,started_at)
+   values(${stream},'fixture','GET','fixture',${outcome},now()-make_interval(hours=>${hoursAgo}))`;
+  // SEAP: the last success is 4 hours old although a failure is newer. TED polls (a 404 is a failed request).
+  await request('awards','success',4);await request('awards','failed',1);await request('ted','failed',2);
+  await q`update app.collection_control set paused=true where id=1`;
+  expect(await deliverOperationalAlerts(q,send,origin)).toBe(1);
+  expect(sent[0]!.subject).toBe('Colectarea SEAP nu a mai adus nimic de 4 ore');
+  expect(sent[0]!.text).toContain('pusă pe pauză');
+  expect(await deliverOperationalAlerts(q,send,origin)).toBe(0);
+  // A publication's maintenance is not idleness, and its reopening restarts the clock.
+  await q`update app.collection_control set maintenance=true where id=1`;
+  expect(await deliverOperationalAlerts(q,send,origin)).toBe(0);
+  await q`update app.collection_control set maintenance=false where id=1`;
+  await q`insert into app.processing_runs(scheduled_day,scope,status,stage,control_revision,before_control,completed_at)
+   values('2026-10-19','daily','ready','complete',1,'{}',now()-interval '1 hour')`;
+  expect(await deliverOperationalAlerts(q,send,origin)).toBe(0);
+  expect((await q`select count(*)::int n from app.operational_alerts where kind='collection-idle' and resolved_at is null`)[0]!.n).toBe(0);
+  // 27 hours idle: SEAP (3 h threshold) is due a reminder, TED (24 h) its first warning.
+  await q`truncate app.processing_runs,app.collection_requests`;
+  await request('awards','success',27);await request('ted','success',27);
+  await q`update app.collection_control set paused=false,paused_streams='["ted"]' where id=1`;
+  expect(await deliverOperationalAlerts(q,send,origin)).toBe(2);
+  const subjects=sent.slice(1).map(m=>m.subject);
+  expect(subjects).toContain('Reamintire: colectarea SEAP nu a mai adus nimic de 27 ore');
+  expect(subjects).toContain('Colectarea TED nu a mai adus nimic de 27 ore');
+  expect(sent.find(m=>m.subject.includes('TED'))!.text).toContain('Fluxul TED este pus pe pauză.');
+  expect(sent.findLast(m=>m.subject.includes('SEAP'))!.text).toContain('colectorul nu rulează');
  });
  it('retries a failed delivery a bounded number of times and never throws',async()=>{
   const q=connection!.sql,logs:string[]=[];

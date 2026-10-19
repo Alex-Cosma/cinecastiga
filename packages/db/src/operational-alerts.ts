@@ -54,6 +54,7 @@ export async function detectOperationalAlerts(q: DbSql, origin: string): Promise
     subject: 'O înregistrare nouă nu a putut fi procesată — de verificat',
     body: `La ${r.seen} (ora României), înregistrarea brută ${r.raw_id} (${r.endpoint}) nu a putut fi procesată și a fost pusă în carantină. Publicarea a continuat: rămâne ultima versiune bună, iar înregistrarea se reîncearcă la fiecare rulare.\n\nDetalii în ${admin}/procesare.`,
   });
+  alerts.push(...await idleCollectionAlerts(q, admin));
   // A global stop has no natural ID: one open incident until the block clears.
   const [control] = await q`select blocked_reason from app.collection_control where id=1`;
   if (control?.blocked_reason) {
@@ -65,6 +66,46 @@ export async function detectOperationalAlerts(q: DbSql, origin: string): Promise
     });
   } else {
     await q`update app.operational_alerts set resolved_at=clock_timestamp() where kind='collection-blocked' and resolved_at is null`;
+  }
+  return alerts;
+}
+
+// Effect, not cause (19 October 2026): a single blocked mail went unnoticed for 30 hours.
+// SEAP counts successful requests; TED counts any request, since a caught-up TED polls
+// hourly and an unpublished issue answers 404.
+export const COLLECTION_IDLE_HOURS = { seap: 3, ted: 24 } as const;
+export const COLLECTION_IDLE_REMIND_HOURS = 12;
+
+async function idleCollectionAlerts(q: DbSql, admin: string): Promise<OperationalAlert[]> {
+  // Idle time counts from the last reopening, so a publication's maintenance never counts.
+  const [c] = await q`select paused,maintenance,paused_streams,blocked_reason,clock_timestamp() now,
+      (select max(completed_at) from app.processing_runs where status='ready') reopened,
+      (select started_at from app.collection_requests where outcome='success' and stream not in ('documents','ted') order by started_at desc limit 1) seap,
+      (select started_at from app.collection_requests where stream='ted' order by started_at desc limit 1) ted
+    from app.collection_control where id=1`;
+  // Maintenance is covered by the processing alerts.
+  if (!c || c.maintenance) return [];
+  const alerts: OperationalAlert[] = [];
+  for (const [group, label] of [['seap', 'SEAP'], ['ted', 'TED']] as const) {
+    const times = [c[group], c.reopened].filter(Boolean).map(t => new Date(t).getTime());
+    const threshold = COLLECTION_IDLE_HOURS[group];
+    const since = times.length ? Math.max(...times) : null;
+    const hours = since === null ? 0 : (new Date(c.now).getTime() - since) / 3_600_000;
+    if (since === null || hours < threshold) {
+      await q`update app.operational_alerts set resolved_at=clock_timestamp() where kind='collection-idle' and key like ${`collection-idle:${group}:%`} and resolved_at is null`;
+      continue;
+    }
+    const reminder = Math.floor((hours - threshold) / COLLECTION_IDLE_REMIND_HOURS);
+    const cause = c.blocked_reason ? `Colectarea este blocată: ${c.blocked_reason}`
+      : c.paused ? 'Colectarea este pusă pe pauză.'
+      : (c.paused_streams as string[]).includes(group) ? `Fluxul ${label} este pus pe pauză.`
+      : 'Nu există nicio pauză sau blocaj în setări: probabil colectorul nu rulează (container oprit) sau toate cererile eșuează.';
+    const seen = new Date(since).toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    alerts.push({
+      key: `collection-idle:${group}:${new Date(since).toISOString()}:${reminder}`, kind: 'collection-idle',
+      subject: `${reminder ? 'Reamintire: c' : 'C'}olectarea ${label} nu a mai adus nimic de ${Math.floor(hours)} ore`,
+      body: `Ultima activitate ${label}: ${seen} (ora României).\n\n${cause}\n\nMesajul se repetă la ${COLLECTION_IDLE_REMIND_HOURS} ore cât timp colectarea stă. Verifică ${admin}.`,
+    });
   }
   return alerts;
 }
