@@ -36,6 +36,13 @@ export function retryableProxyTransport(error:unknown):boolean {
  }
  return false;
 }
+/** SEAP reports its own database failures (EnlistTransaction, a closed reader, a mapping
+ * error) as HTTP 400 with an "Eroare de sistem <code>" body. They pass on a later attempt. */
+export function seapSystemError(diagnostics: CollectionDiagnostics|undefined): boolean {
+ const body=(diagnostics?.response as {body?:unknown}|undefined)?.body;
+ const first=Array.isArray(body)?body[0]:body;
+ return typeof first==='string'&&/^Eroare de sistem\b/.test(first.trim());
+}
 export function responseDiagnosticBody(bytes: Uint8Array, complete: boolean) {
  const text=Buffer.from(bytes).toString('utf8');
  let body:unknown=text;try{body=JSON.parse(text);}catch{}
