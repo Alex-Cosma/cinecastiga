@@ -143,15 +143,13 @@ new dumps on the Mac, upload, `pg_restore --clean` on the data schemas only
 
 ## Backups
 
-`auth` + `app` are the only state produced on the server; everything else is
-reproducible from the Mac. Nightly (cron as `seap`):
-
-```bash
-docker compose -f /srv/seap/src/infra/prod/docker-compose.yml exec -T postgres \
-  pg_dump -U seap -d seap -Fc -n auth -n app > /srv/seap/backups/state-$(date +%F).dump
-```
-
-Keep 14 days; copy off-box (object storage) once launched.
+The nightly processing (`process-nightly.sh`) takes a full `pg_dump` of the
+whole database before every run into `/srv/seap/backups/processing/<run>/`.
+`retain-processing-backups.py` keeps the two latest successful runs plus the
+latest successful full (weekly) run. These dumps include `auth` and `app`, so
+the separate nightly `state-*.dump` cron was removed on 19 October 2026. While
+processing is disabled no new restore point is taken. All dumps share the
+server disk; an off-box copy is still a separate decision.
 
 ## Cloudflare in front
 
