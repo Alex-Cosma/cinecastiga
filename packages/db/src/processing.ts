@@ -66,8 +66,10 @@ export async function claimRecoveryProcessing(q: DbSql, failedRunId: string) {
   if((await tx`select id from app.processing_runs where status='running' limit 1`).length)throw Error('An unfinished publication requires recovery');
   // failProcessing bumps the revision exactly once; any later operator change needs a fresh inspection.
   if(!c.maintenance||c.revision!==failed.control_revision+1)throw Error('Operator control changed after the failed publication; inspect before recovery');
+  // The pause failProcessing added is not an operator choice (no operator change is allowed since):
+  // a verified recovery restores collection as it was before the failed run. A live block still pauses it.
   const [run]=await tx`insert into app.processing_runs(scheduled_day,trigger,scope,control_revision,before_control)
-    values(${c.recovery_day}::date,'manual','full',${c.revision+1},${JSON.stringify({paused:c.paused,revision:c.revision,recoveryOf:failed.id})}::jsonb)
+    values(${c.recovery_day}::date,'manual','full',${c.revision+1},${JSON.stringify({paused:Boolean(failed.before_control?.paused),revision:c.revision,recoveryOf:failed.id})}::jsonb)
     returning id,scope`;
   await tx`update app.collection_control set paused=true,maintenance=true,collection_during_maintenance=false,revision=revision+1,updated_at=clock_timestamp() where id=1`;
   await tx`insert into app.collection_audit(actor_id,actor_name,action,before,after)
