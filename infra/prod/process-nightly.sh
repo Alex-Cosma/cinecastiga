@@ -85,6 +85,7 @@ test "$(curl -sS -o /dev/null -w '%{http_code}' https://cinecastiga.ro/api/healt
 run stage "$run_id" reopen
 run finish "$run_id"
 date -u '+completed=%FT%TZ'
-# Keep fourteen successful scheduled restore points. Failed runs and the dated
+# Keep the two latest successful restore points plus the latest successful full
+# (weekly) one; a failed run's dump goes once a later run succeeds. The dated
 # TED/benchmark backups outside this directory are never removed.
 python3 ./retain-processing-backups.py "$root" || echo 'Backup retention needs operator attention.'

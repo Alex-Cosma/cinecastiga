@@ -213,7 +213,7 @@ Fișierele din `scripts/operations/` cu date 20260927 sunt audit/proceduri one-o
 
 ## Recuperare și backup
 
-Backup-urile programate conțin și date private. Păstrează cele mai recente 14 puncte de restaurare programate reușite; backup-urile rulărilor eșuate și arhivele TED/benchmark separate sunt conservate. Verifică spațiul și politica înainte de ștergere.
+Backup-urile programate conțin și date private. Din 19 octombrie 2026 se păstrează dump-urile complete (~24 GB fiecare) ale ultimelor 2 rulări reușite plus al ultimei rulări complete reușite (cea săptămânală). Dump-ul unei rulări eșuate se șterge după prima rulare reușită de după ea, pentru că recuperarea face propriul backup. Toate stau pe același disc ca baza de date și nu protejează împotriva pierderii serverului. Arhivele TED/benchmark separate sunt conservate. Verifică spațiul și politica înainte de ștergere.
 
 La eșec: conservă logul, checksum-ul, boundary-ul și checkpoint-ul; validează reparația sau restore-ul într-o bază **nouă**, reconstruiește/verifică search și abia apoi planifică schimbarea live. Nu reda publicului date parțial refăcute. Nu șterge independent un source block ca efect secundar al redeschiderii site-ului.
 

@@ -30,7 +30,7 @@ Migration 0037 adds opt-in settings and `app.processing_runs`. The runner:
 
 Any failure retains maintenance; there is no automatic retry. A killed runner also leaves maintenance enabled. Stale heartbeat is visible in admin. The bounded database shutdown fix prevents completed long-lived reserved connections from hanging process cleanup.
 
-Backups live in `/srv/seap/backups/processing/<run UUID>/`, mode restricted by `umask 077`. Keep the latest fourteen successful scheduled restore points; remove only their older dump/list/hash files. Failed-run backups and the dated TED/benchmark recovery archives outside this directory are preserved. Stage logs and database run history remain available. Retention failure is logged without revoking an already verified publication.
+Backups live in `/srv/seap/backups/processing/<run UUID>/`, mode restricted by `umask 077`. Keep the dumps of the two latest successful runs plus the latest successful full (weekly) run; remove only older dump/list/hash files. A failed run's dump is removed once a later run succeeded, since recovery takes its own fresh backup. The dated TED/benchmark recovery archives outside this directory are preserved. Stage logs and database run history remain available. Retention failure is logged without revoking an already verified publication.
 
 ## Installation after validation
 
