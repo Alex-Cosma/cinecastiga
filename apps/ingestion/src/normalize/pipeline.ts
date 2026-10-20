@@ -13,6 +13,7 @@ import {
   type NormalizeCtx,
 } from "./context.js";
 import { PARSERS } from "./parsers.js";
+import { applyReviewedEntityNames } from "./reviewed-entity-names.js";
 
 /**
  * Replayable raw→core runner (core-layer DEC-004). Processes each
@@ -45,6 +46,8 @@ export interface NormalizeReport {
   perTransform: TransformReport[];
   processed: number;
   quarantined: number;
+  /** Entities renamed now by a reviewed name rule (0 once applied). */
+  reviewedNames: number;
 }
 
 async function getCursor(db: Db, transform: string): Promise<bigint> {
@@ -171,10 +174,16 @@ export async function runNormalize(
     log(`${transform}: processed ${processed}, quarantined ${quarantined}`);
   }
 
+  // After every transform, so an entity created or rebuilt from the source
+  // registrations gets its reviewed name before the marts copy it.
+  const reviewedNames = opts.only ? [] : await sql.begin((q) => applyReviewedEntityNames(q));
+  if (reviewedNames.length) log(`reviewed entity names applied: ${reviewedNames.join(", ")}`);
+
   return {
     perTransform,
     processed: totalProcessed,
     quarantined: totalQuarantined,
+    reviewedNames: reviewedNames.length,
   };
 }
 
