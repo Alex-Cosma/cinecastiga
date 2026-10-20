@@ -8,7 +8,14 @@ export const INITIAL_ZOOM: Zoom = { k: 1, x: 0, y: 0 };
 export function boundZoom(z: Zoom): Zoom { const k = Math.max(1, Math.min(12, z.k)); return { k, x: Math.max(0, Math.min(1 - 1 / k, z.x)), y: Math.max(0, Math.min(1 - 1 / k, z.y)) }; }
 export function zoomAt(z: Zoom, factor: number, x: number, y: number): Zoom { const k = Math.max(1, Math.min(12, z.k * factor)); return boundZoom({ k, x: z.x + x / z.k - x / k, y: z.y + y / z.k - y / k }); }
 export const fold = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-export const rxDate = (s: string) => s.slice(0, 10).split("-").reverse().join(".");
+/** Contract rows whose source date precedes the archive are undated (empty). */
+export const rxDate = (s: string) => s ? s.slice(0, 10).split("-").reverse().join(".") : "dată sursă improbabilă";
+/** Year span; an empty or zero end means no dated record supports it. */
+export function yearRange(from: string | number, to: string | number): string {
+    const a = from ? String(from) : "", b = to ? String(to) : "";
+    if (!a || !b) return a || b || "an nedeterminat";
+    return a === b ? a : `${a}–${b}`;
+}
 export const percent = (n: number) => `${(n * 100).toLocaleString("ro-RO", { maximumFractionDigits: 1 })}%`;
 export function sliceIncludes(s: SliceRow, p: SliceRow["points"][number]) { return p.d >= s.d0 && p.d <= s.d1 && p.cls === s.cpvClass && p.purchaseType != null && p.purchaseType === s.purchaseType && p.ceiling != null && p.v > 0 && p.v < p.ceiling; }
 export interface LotCell {
@@ -42,8 +49,9 @@ export function lotColumns(rows: MatrixRow[], from?: number, to?: number): LotCo
         cell.contracts.push(first);
         col.cells.set(key, cell);
         col.contracts.push(first);
-        col.date = col.date < first.d ? col.date : first.d;
+        // Earliest dated contract; an undated one ("") never wins the minimum.
+        if (first.d && (!col.date || first.d < col.date)) col.date = first.d;
         notices.set(first.notice, col);
     }
-    return [...notices.values()].filter(c => c.contracts.length >= 3).sort((a, b) => a.date.localeCompare(b.date) || a.notice.localeCompare(b.notice));
+    return [...notices.values()].filter(c => c.contracts.length >= 3).sort((a, b) => (a.date || "9999").localeCompare(b.date || "9999") || a.notice.localeCompare(b.notice));
 }

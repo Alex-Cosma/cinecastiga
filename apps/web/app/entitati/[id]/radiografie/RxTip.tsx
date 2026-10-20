@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { yearRange } from "@/lib/radiografie-view";
 
 /**
  * Rich fixed tooltip for the radiografie charts (the ask-engine useTip only
@@ -34,4 +35,4 @@ export const fmtM = (v: number): string =>
       ? `${(v / 1e6).toFixed(1).replace(".", ",")} mil`
       : `${Math.round(v / 1e3)} k`;
 export const pct = (v: number): string => `${(v * 100).toFixed(v * 100 < 1 ? 1 : 0).replace(".", ",")}%`;
-export const yrs = (a: string, b: string): string => (a === b ? a : `${a}–${b}`);
+export const yrs = yearRange;

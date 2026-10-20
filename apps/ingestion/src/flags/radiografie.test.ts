@@ -6,7 +6,7 @@ type Row = Parameters<typeof detectPatterns>[0][number];
 let cid = 0;
 const row = (
   notice: string,
-  d: string,
+  d: string | null,
   suppliers: [string, string][],
   opts: { single?: boolean | null; cls?: string; v?: number; contract?: string } = {},
 ): Row[] => {
@@ -93,5 +93,22 @@ describe("detectPatterns", () => {
     // a third firm taking a lot in N2 breaks "all lots"
     const broken = [...rows, ...row("N2", "2025-12-01", [["42", "Q"]])];
     expect(detectPatterns(broken).filter((p) => p.kind === "impartire")).toHaveLength(0);
+  });
+
+  it("keeps undated contracts (source date before the archive) out of every year span", () => {
+    // The undated tender sorts last and gives no year; it still counts as a repetition.
+    const rows = [
+      ...row("N1", null, [["20", "X"], ["21", "Y"]]),
+      ...row("N2", "2019-04-01", [["20", "X"], ["21", "Y"]]),
+      ...row("N3", "2021-09-01", [["20", "X"], ["21", "Y"]]),
+    ];
+    const cons = detectPatterns(rows).find((p) => p.kind === "consortiu");
+    expect(cons).toMatchObject({ reps: 3, y0: "2019", y1: "2021" });
+    const undated = detectPatterns([
+      ...row("M1", null, [["30", "A"], ["31", "B"]]),
+      ...row("M2", null, [["30", "A"], ["31", "B"]]),
+      ...row("M3", null, [["30", "A"], ["31", "B"]]),
+    ]).find((p) => p.kind === "consortiu");
+    expect(undated).toMatchObject({ reps: 3, y0: "", y1: "" });
   });
 });

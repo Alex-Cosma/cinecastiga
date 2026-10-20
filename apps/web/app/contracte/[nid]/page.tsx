@@ -5,6 +5,7 @@ import { getContractFiles } from "@/lib/documents/store";
 import { sessionUserId } from "@/lib/session";
 import { notFound } from "next/navigation";
 import { getContractDetail } from "@/lib/marts";
+import { CONTRACT_DATE_FLOOR } from "@seap/db";
 import { formatRon, formatRonFull, formatInt, formatExactDecimal, formatCalendarDate, cleanName } from "@/lib/format";
 import { FLAG_META } from "@/lib/flags";
 import { awardUrl } from "@/lib/elicitatie";
@@ -75,7 +76,7 @@ export default async function ContractPage({
           {c.procedureType && <span className="badge plain">{c.procedureType}</span>}
           {c.isSingleBidder === true && <span className="flag-tag">un singur ofertant</span>}
           {c.contractNo && <span className="note">nr. {c.contractNo}</span>}{" "}
-          {c.contractDate && <span className="note">semnat {formatCalendarDate(c.contractDate)}</span>}
+          {c.contractDate && <span className="note">semnat {formatCalendarDate(c.contractDate)}{c.contractDate < CONTRACT_DATE_FLOOR && <span title="Data din sursă este anterioară arhivei (2018). Valoarea rămâne în totaluri, dar contractul nu este atribuit niciunui an."> · dată sursă improbabilă</span>}</span>}
         </div>
         {(c.cpvName || c.cpvCode) && (
           <p className="note">

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAwardNoticeDetail } from "@/lib/marts";
+import { CONTRACT_DATE_FLOOR } from "@seap/db";
 import { formatRon, formatRonFull, formatInt, cleanName } from "@/lib/format";
 import { awardUrl } from "@/lib/elicitatie";
 import ClipButton from "@/components/ClipButton";
@@ -145,7 +146,7 @@ export default async function NoticePage({
                         </span>
                       ))}
                 </td>
-                <td className="county">{l.contractDate ? l.contractDate.slice(0, 10) : "—"}</td>
+                <td className="county">{l.contractDate ? l.contractDate.slice(0, 10) : "—"}{l.contractDate && l.contractDate < CONTRACT_DATE_FLOOR && <small> dată sursă improbabilă</small>}</td>
                 <td className="num">{formatRonFull(l.contractValue)}</td>
                 <td>
                   <Link href={`/contracte/${l.natId}`}>detalii →</Link>

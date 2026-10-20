@@ -7,6 +7,7 @@ import { runMarts } from "./marts.js";
 import { runFlags } from "../flags/build.js";
 import { runRadiografieMarts } from "../flags/radiografie.js";
 import { buildTransactionMarts } from "./transaction-marts.js";
+import { runCoverage } from "./coverage.js";
 
 const { sql } = createDb();
 afterAll(() => sql.end());
@@ -18,22 +19,26 @@ afterAll(() => sql.end());
 function isolatedSql(connection: DbSql, prefix: string): DbSql {
   const rewrite = (text: string) => text.replace(/\b(core|marts|reference|raw)\./g, `${prefix}_$1.`);
   const scoped = ((chunks: TemplateStringsArray, ...values: unknown[]) => {
-    if (typeof chunks === "string") return connection(chunks);
+    // Identifier and row helpers (sql("c"), sql(rows, ...columns)) carry no SQL text.
+    if (typeof chunks === "string" || !Array.isArray((chunks as { raw?: unknown }).raw))
+      return (connection as unknown as (...a: unknown[]) => unknown)(chunks, ...values);
     const mapped = chunks.map(rewrite);
     Object.defineProperty(mapped, "raw", { value: chunks.raw.map(rewrite) });
     return connection(mapped as unknown as TemplateStringsArray, ...values as never[]);
   }) as unknown as DbSql;
   Object.assign(scoped, {
-    begin: (run: (q: DbSql) => Promise<unknown>) => (connection as unknown as {
+    array: (...args: unknown[]) => (connection as unknown as { array: (...a: unknown[]) => unknown }).array(...args),
+    // runCoverage passes isolation options first; a savepoint keeps the outer level.
+    begin: (...args: unknown[]) => (connection as unknown as {
       savepoint: (fn: (q: DbSql) => Promise<unknown>) => Promise<unknown>;
-    }).savepoint((q) => run(isolatedSql(q, prefix))),
+    }).savepoint((q) => (args[args.length - 1] as (q: DbSql) => Promise<unknown>)(isolatedSql(q, prefix))),
   });
   return scoped;
 }
 
 const tables = {
   core: ["risk_thresholds", "contracts", "awards", "contract_winners", "entities", "cpv_codes", "direct_acquisitions", "notices", "ted_lot_results", "ted_notices", "flags"],
-  marts: ["contract_identity_exclusions", "contract_identity_archives", "contract_identity_members", "contract_identity_decisions", "contract_identity_candidates", "contract_identity_observations", "national_stats", "spend_by_type", "spend_by_cpv", "spend_by_county", "entity_profile", "entity_top_partners", "top_entities", "authority_concentration", "contract_transactions", "contract_competition", "da_transactions"],
+  marts: ["contract_identity_exclusions", "contract_identity_archives", "contract_identity_members", "contract_identity_decisions", "contract_identity_candidates", "contract_identity_observations", "national_stats", "spend_by_type", "spend_by_cpv", "spend_by_county", "entity_profile", "entity_top_partners", "top_entities", "authority_concentration", "contract_transactions", "contract_competition", "da_transactions", "data_coverage"],
   reference: ["authority_uat", "company_financials", "company_reps"],
   raw: ["raw_documents"],
 };
@@ -68,6 +73,59 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
         .toMatchObject({ publication_date: "2025-12-31 23:55", finalization_date: "2026-01-01 00:15", gap_minutes: 20 });
       expect((await q`select y,v_plaf::text value from marts.agg_years order by y`).map(r => [r.y,r.value]))
         .toEqual([["2025","200.00"],["2026","112.34"]]);
+      throw rollback;
+    })).rejects.toBe(rollback);
+  });
+  it("keeps contract dates before the archive in totals but out of every year, range and coverage start", async () => {
+    const prefix = `contract_date_fixture_${process.pid}_${Date.now()}`;
+    const rollback = Error("rollback contract date fixture");
+    await expect(sql.begin(async tx => {
+      await tx`select set_config('TimeZone', 'UTC', true)`;
+      for (const [schema, names] of Object.entries(tables)) {
+        await tx.unsafe(`create schema ${prefix}_${schema}`);
+        for (const table of names) await tx.unsafe(`create table ${prefix}_${schema}.${table} as table ${schema}.${table} with no data`);
+      }
+      const [view] = await tx`select pg_get_viewdef('marts.signal_lookup'::regclass, true) definition`;
+      await tx.unsafe(`create materialized view ${prefix}_marts.signal_lookup as ${String(view!.definition).replace(/;\s*$/, "").replace(/\b(core|marts|reference|raw)\./g, `${prefix}_$1.`)} with no data`);
+      const q = isolatedSql(tx as unknown as DbSql, prefix);
+      await q`insert into core.entities(id,name_display) values(1,'Autoritate'),(2,'Furnizor A'),(3,'Furnizor B')`;
+      await q`insert into core.cpv_codes(code,name_ro) values('45000000-7','Lucrări')`;
+      // Award notices published 2018 and later, as for every SICAP contract.
+      await q`insert into core.awards(id,ca_notice_id,notice_no,authority_entity_id,cpv_code,state_date) values
+        (1,100,'CAN-A',1,'45000000-7','2018-02-19'),(2,200,'CAN-B',1,'45000000-7','2024-06-13'),
+        (3,300,'CAN-C',1,'45000000-7','2018-01-03')`;
+      // Romanian time: 2000-01-20 (typed year; the number says 2020, which is NOT used),
+      // 2017-12-31 23:59 (before the archive) and 2018-01-01 00:00 (first archive day).
+      await q`insert into core.contracts(id,ca_notice_id,contract_no,contract_date,contract_value,currency,title) values
+        (1,100,'nr.1700 / Data 20.01.2020','2000-01-19T22:00:00Z',100,'RON','Contract cu an tastat greșit'),
+        (2,200,'nr. 2','2017-12-31T21:59:00Z',100,'RON','Contract înainte de arhivă'),
+        (3,300,'nr. 3','2017-12-31T22:00:00Z',100,'RON','Contract din prima zi')`;
+      await q`insert into core.contract_winners(contract_id,entity_id) values(1,2),(1,3),(2,2),(2,3),(3,2),(3,3)`;
+      await runMarts(q);
+      expect((await q`select contract_id::int id, finalization_date d, sum(closing_value)::text v
+        from marts.contract_transactions group by 1,2 order by 1`).map(r => [r.id, r.d, r.v]))
+        .toEqual([[1, null, "100.00"], [2, null, "100.00"], [3, "2018-01-01", "100.00"]]);
+      // The amounts still count; only the year attribution is withheld.
+      expect((await q`select role, left(first_activity,10) first_activity, left(last_activity,10) last_activity, total_ron_split::text total
+        from marts.entity_profile where entity_id=1`)[0]).toMatchObject({ role: "authority",
+        first_activity: "2018-01-01", last_activity: "2018-01-01", total: "300.00" });
+      await buildTransactionMarts(q as unknown as Parameters<typeof buildTransactionMarts>[0]);
+      expect((await q`select v_plaf::text v from marts.agg_national where src='contracts'`)[0]?.v).toBe("300.00");
+      expect((await q`select y, n_plaf::int n from marts.agg_years order by y`).map(r => [r.y, r.n])).toEqual([["2018", 2]]);
+      await q`alter table marts.data_coverage add primary key (dataset)`;
+      await runCoverage(q);
+      const [coverage] = await q`select observation from marts.data_coverage where dataset='contracts'`;
+      expect(coverage?.observation).toMatchObject({ available: "3", implausible_date: "2", date_from: "2018-01-01", date_to: "2018-01-01" });
+      const [years] = await q`select observation from marts.data_coverage where dataset='years'`;
+      expect(years?.observation).toEqual([{ src: "contracts", year: 2018, n: "1" }]);
+      // Radiografie: the consortium repeats in three procedures, dated only by the 2018 one.
+      for (const threshold of DA_CEILING_SEED_ROWS) {
+        await q`insert into core.risk_thresholds (key,valid_from,valid_to,value_num,note)
+          values (${threshold.key},${threshold.validFrom + "T00:00:00Z"},${threshold.validTo ? threshold.validTo + "T00:00:00Z" : null},${threshold.valueNum},'fixture')`;
+      }
+      await runRadiografieMarts(q);
+      expect((await q`select kind, reps, y0, y1 from marts.lot_patterns`).map(r => ({ ...r }))).toEqual([{ kind: "consortiu", reps: 3, y0: "2018", y1: "2018" }]);
+      expect((await q`select y0, y1 from marts.supplier_dependency where supplier_id=2`).map(r => [r.y0, r.y1])).toEqual([[2018, 2018]]);
       throw rollback;
     })).rejects.toBe(rollback);
   });

@@ -3,6 +3,7 @@ import { patternBinding } from "./radiografie-evidence";
 import { createDb, type DbSql } from "@seap/db";
 import { cleanName, formatRon } from "@/lib/format";
 import { shortName, daysBetween } from "@/lib/radiografie-fmt";
+import { yearRange } from "@/lib/radiografie-view";
 import { daCeiling, daPurchaseType, type DaPurchaseType } from "@seap/domain";
 export { shortName, daysBetween };
 
@@ -307,7 +308,7 @@ export async function getRadiografie(entityId: string): Promise<RxData | null> {
         cls: c,
         externalId: String(r["external_id"]), title: String(r["contract_title"] ?? "Contract fără titlu"), noticeId: r["notice_id"] == null ? null : String(r["notice_id"]), valueExact: String(r["value_exact"]),
         notice: String(r["notice_no"]),
-        d: String(r["d"]),
+        d: r["d"] == null ? "" : String(r["d"]),
         contractId: String(r["contract_id"]),
         supplierId: String(r["supplier_id"]),
         supplierName: cleanName(r["supplier_name"] as string | null),
@@ -397,7 +398,7 @@ export async function getRadiografie(entityId: string): Promise<RxData | null> {
 }
 
 const fmtM = (v: number): string => formatRon(v).replace(" lei", "");
-const yrs = (a: string, b: string): string => (a === b ? a : `${a}–${b}`);
+const yrs = yearRange;
 
 /** Top three findings across the three lenses, worded from templates. */
 /** CPV class name → short lowercase phrase usable after "de": "alte lucrări de finisare a construcțiilor" → "finisare a construcțiilor" */

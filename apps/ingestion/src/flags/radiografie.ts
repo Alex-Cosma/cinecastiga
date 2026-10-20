@@ -223,7 +223,8 @@ interface CRow {
   supplier_id: string;
   supplier_name: string;
   cls: string;
-  d: string;
+  /** Null when the source contract date is before the archive (undated). */
+  d: string | null;
   n_winners: number;
   single: boolean | null;
   vfull: string | null;
@@ -238,6 +239,7 @@ interface Winner {
 
 interface Tender {
   notice: string;
+  /** Earliest dated contract; UNDATED when none of its contracts has a usable date. */
   d: string;
   lots: number;
   v: number;
@@ -261,6 +263,15 @@ export interface PatternRow {
   y0: string;
   y1: string;
   notices: string[];
+}
+
+/** Sorts after every real date, so undated tenders keep their former last place. */
+const UNDATED = "9999";
+
+/** Year span of the dated tenders only; ["", ""] when none is dated. */
+function yearSpan(dates: string[]): [string, string] {
+  const known = dates.filter((d) => d !== UNDATED).sort();
+  return known.length ? [known[0]!.slice(0, 4), known[known.length - 1]!.slice(0, 4)] : ["", ""];
 }
 
 function strength(p: { reps: number; big: boolean; proved: boolean }): Strength {
@@ -301,12 +312,12 @@ export function detectPatterns(rows: CRow[]): Omit<PatternRow, "shared_admin">[]
     };
     const all: Tender[] = [];
     for (const [notice, contracts] of byNotice) {
-      const t: Tender = { notice, d: "9999", lots: contracts.size, v: 0, cells: new Map() };
+      const t: Tender = { notice, d: UNDATED, lots: contracts.size, v: 0, cells: new Map() };
       for (const members of contracts.values()) {
         const w = winnerOf(members);
         const first = members[0]!;
         const v = Number(first.vfull ?? first.v ?? 0);
-        if (first.d < t.d) t.d = first.d;
+        if (first.d && first.d < t.d) t.d = first.d;
         t.v += v;
         let c = t.cells.get(w.key);
         if (!c) t.cells.set(w.key, (c = { w, lots: 0, single: 0, known: 0, v: 0 }));
@@ -323,20 +334,20 @@ export function detectPatterns(rows: CRow[]): Omit<PatternRow, "shared_admin">[]
     const lotTenders = all.filter((t) => t.lots >= RULES.minLots);
 
     // ── stable consortia (any lot count) ──
-    const cons = new Map<string, { w: Winner; notices: Set<string>; v: number; y0: string; y1: string }>();
+    const cons = new Map<string, { w: Winner; notices: Set<string>; v: number; ds: string[] }>();
     for (const t of all) {
       for (const c of t.cells.values()) {
         if (c.w.ids.length < 2) continue;
         let s = cons.get(c.w.key);
-        if (!s) cons.set(c.w.key, (s = { w: c.w, notices: new Set(), v: 0, y0: t.d, y1: t.d }));
+        if (!s) cons.set(c.w.key, (s = { w: c.w, notices: new Set(), v: 0, ds: [] }));
         s.notices.add(t.notice);
         s.v += c.v;
-        if (t.d < s.y0) s.y0 = t.d;
-        if (t.d > s.y1) s.y1 = t.d;
+        s.ds.push(t.d);
       }
     }
     for (const s of cons.values()) {
       if (s.notices.size < 3) continue;
+      const [y0, y1] = yearSpan(s.ds);
       out.push({
         authority_id: rows[0]!.authority_id,
         cpv_class: cls,
@@ -350,8 +361,8 @@ export function detectPatterns(rows: CRow[]): Omit<PatternRow, "shared_admin">[]
         single: 0,
         known: 0,
         strength: strength({ reps: s.notices.size, big: false, proved: false }),
-        y0: s.y0.slice(0, 4),
-        y1: s.y1.slice(0, 4),
+        y0,
+        y1,
         notices: [...s.notices],
       });
     }
@@ -428,7 +439,7 @@ export function detectPatterns(rows: CRow[]): Omit<PatternRow, "shared_admin">[]
         return id;
       });
       g.forEach((k) => grouped.add(k));
-      const ds = common.map((i) => lotTenders[i]!.d).sort();
+      const [y0, y1] = yearSpan(common.map((i) => lotTenders[i]!.d));
       out.push({
         authority_id: rows[0]!.authority_id,
         cpv_class: cls,
@@ -442,13 +453,14 @@ export function detectPatterns(rows: CRow[]): Omit<PatternRow, "shared_admin">[]
         single,
         known,
         strength: strength({ reps: common.length, big: g.length >= 3, proved: single >= 2 }),
-        y0: ds[0]!.slice(0, 4),
-        y1: ds[ds.length - 1]!.slice(0, 4),
+        y0,
+        y1,
         notices: common.map((i) => lotTenders[i]!.notice),
       });
     }
     for (const s of sweeps.values()) {
       if (s.ts.length < RULES.minReps || grouped.has(s.w.key)) continue;
+      const [y0, y1] = yearSpan(s.ts.map((t) => t.d));
       out.push({
         authority_id: rows[0]!.authority_id,
         cpv_class: cls,
@@ -462,8 +474,8 @@ export function detectPatterns(rows: CRow[]): Omit<PatternRow, "shared_admin">[]
         single: 0,
         known: 0,
         strength: strength({ reps: s.ts.length, big: true, proved: false }),
-        y0: s.ts[0]!.d.slice(0, 4),
-        y1: s.ts[s.ts.length - 1]!.d.slice(0, 4),
+        y0,
+        y1,
         notices: s.ts.map((t) => t.notice),
       });
     }
@@ -591,7 +603,7 @@ async function buildLotPatterns(sql: DbSql, log: (m: string) => void): Promise<[
                left(finalization_date, 4) y, coalesce(contract_value_full, closing_value, 0)::float8 v
         from marts.contract_transactions
         where supplier_id = any(${sql.array(allMembers)}::bigint[]) and authority_id is not null
-      `) as unknown as { s: string; a: string; authority_name: string; notice_no: string; c: string; y: string; v: number }[])
+      `) as unknown as { s: string; a: string; authority_name: string; notice_no: string; c: string; y: string | null; v: number }[])
     : [];
   // notice → (authority, members present, contracts, value, year)
   const byNotice = new Map<
@@ -601,7 +613,8 @@ async function buildLotPatterns(sql: DbSql, log: (m: string) => void): Promise<[
   const memberNotices = new Map<string, Set<string>>();
   for (const r of memberContracts) {
     let n = byNotice.get(r.notice_no);
-    if (!n) byNotice.set(r.notice_no, (n = { a: r.a, an: r.authority_name, members: new Set(), contracts: new Set(), v: 0, y: r.y }));
+    if (!n) byNotice.set(r.notice_no, (n = { a: r.a, an: r.authority_name, members: new Set(), contracts: new Set(), v: 0, y: r.y ?? "" }));
+    else if (!n.y && r.y) n.y = r.y; // undated contracts give the notice no year
     n.members.add(r.s);
     if (!n.contracts.has(r.c)) {
       n.contracts.add(r.c);
@@ -644,7 +657,7 @@ async function buildLotPatterns(sql: DbSql, log: (m: string) => void): Promise<[
         if (!p) perAuth.set(t.a, (p = { an: t.an, n: 0, v: 0, y0: t.y, y1: t.y }));
         p.n++;
         p.v += t.v;
-        if (t.y < p.y0) p.y0 = t.y;
+        if (t.y && (!p.y0 || t.y < p.y0)) p.y0 = t.y;
         if (t.y > p.y1) p.y1 = t.y;
       }
     for (const [a, p] of perAuth)
