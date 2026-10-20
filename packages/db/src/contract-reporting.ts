@@ -1,6 +1,6 @@
 import type { DbSql } from './client.js';
 type Query = DbSql | Parameters<Parameters<DbSql['begin']>[1]>[0];
-export const CONTRACT_REPORTING_VERSION = 'contract-reporting-2';
+export const CONTRACT_REPORTING_VERSION = 'contract-reporting-3';
 
 /** Source amounts never change. These predicates only select contributions to
  * statistics. SEAP sometimes encodes addenda as type 3: text takes precedence.
@@ -12,7 +12,9 @@ export function contractIsAmendment(q: Query, alias = 'c') {
 }
 
 /** 1=contract, 2=framework, 3=call-off. Unknown source codes are not guessed.
- * Legacy title inference is explicit fallback only when the source has no type. */
+ * Legacy title inference is explicit fallback only when the source has no type.
+ * SEAP spells the framework phrase many ways ('Acord – cadru', 'ACORD  CADRU',
+ * 'Acord -cadru'): any run of non-alphanumerics may separate the two words. */
 export function contractKind(q: Query, alias = 'c') {
   return q`case
     when (${q(alias)}.contract_type_raw_id is not null or ${q(alias)}.source_contract_type is not null)
@@ -20,11 +22,11 @@ export function contractKind(q: Query, alias = 'c') {
     when ${contractIsAmendment(q, alias)} then 'amendment'
     else case coalesce(${q(alias)}.source_contract_type::text,'legacy')
       when '2' then case when coalesce(${q(alias)}.title,'') ~* '^\\s*contract[[:space:]]+sub(s(ecvent)?|secvent)([[:space:].]|$)' then 'review' else 'framework' end
-      when '3' then case when coalesce(${q(alias)}.title,'') ~* '^\\s*acord[- ]cadru' then 'review' else 'calloff' end
-      when '1' then case when coalesce(${q(alias)}.title,'') ~* '^\\s*acord[- ]cadru' then 'review' else 'contract' end
+      when '3' then case when coalesce(${q(alias)}.title,'') ~* '^\\s*acord[^[:alnum:]]*cadru' then 'review' else 'calloff' end
+      when '1' then case when coalesce(${q(alias)}.title,'') ~* '^\\s*acord[^[:alnum:]]*cadru' then 'review' else 'contract' end
       when 'legacy' then case
         when coalesce(${q(alias)}.title,'') ~* 'subsecvent|contract[[:space:]]+subs([[:space:].]|$)' then 'calloff'
-        when coalesce(${q(alias)}.title,'') ~* 'acord[- ]cadru' then 'framework'
+        when coalesce(${q(alias)}.title,'') ~* 'acord[^[:alnum:]]*cadru' then 'framework'
         else 'contract' end
       else 'review' end end`;
 }

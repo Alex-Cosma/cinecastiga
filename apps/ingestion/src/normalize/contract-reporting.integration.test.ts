@@ -41,3 +41,29 @@ describe.skipIf(!isolated)('source contract kind and non-additive values',()=>{
   })).rejects.toBe(rollback);
  });
 });
+
+// Read-only: evaluates the SQL classification over literal rows, no schema or writes.
+const anyIsolated=new URL(process.env.DATABASE_URL??'postgres://invalid/').pathname.startsWith('/seap_test_');
+describe.skipIf(!anyIsolated)('framework title spellings',()=>{
+ it('treats every SEAP spelling of "acord-cadru" as a framework title, not spending',async()=>{
+  const rows:[number|null,string][]=[
+   [null,'Acord – cadru de furnizare fara reluarea competitiei'],[null,'Acord - cadru'],[null,'ACORD – CADRU'],
+   [null,'ACORD  CADRU'],[null,'Acord- cadru'],[null,'Acord -cadru'],[null,'Acord–cadru'],[null,'Contract- Acord -cadru ,,consumabile'],
+   [null,'Acord-cadru'],[null,'Acord cadru'],
+   [null,'Contract subsecvent 6 la acord - cadru'],[null,'Acordare servicii cadru'],[null,'Furnizare in baza acordului cadru'],
+   [1,'Acord – cadru servicii medicale'],[1,'ACORD  CADRU reactivi'],[1,'Contract furnizare'],
+   [3,'Acord - cadru'],[3,'Comanda 5 la acord – cadru'],
+  ];
+  const actual=await sql`select ${contractKind(sql)} kind,${contractReportable(sql)} included
+   from jsonb_to_recordset(${JSON.stringify(rows.map(([type,title],i)=>({i,type,title})))}::jsonb) x(i int,type int,title text)
+   cross join lateral (select case when x.type is null then null else 1::bigint end contract_type_raw_id,1::bigint raw_id,
+     x.type source_contract_type,null::text contract_no,x.title) c order by x.i`;
+  expect(actual.map(r=>r.kind)).toEqual([
+   'framework','framework','framework','framework','framework','framework','framework','framework','framework','framework',
+   'calloff','contract','contract',
+   'review','review','contract',
+   'review','calloff']);
+  expect(actual.slice(0,10).every(r=>r.included===false)).toBe(true);
+  expect(actual.slice(13,15).every(r=>r.included===false)).toBe(true);
+ });
+});

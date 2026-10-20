@@ -83,6 +83,8 @@ Cod relevant: `packages/db/src/contract-identity.ts`; în ingestion, `normalize/
 
 Noua migrație 0072 adaugă `source_contract_type` și `contract_type_raw_id`. Parserul păstrează tipul SEAP: 1 contract, 2 acord-cadru, 3 subsecvent. Regula nu depinde numai de cuvintele din titlu. Tipuri necunoscute sau titlu/tip explicit contradictorii ajung în `review`.
 
+Fără tip SEAP arhivat (istoric fără răspuns sursă), `contractKind()` folosește titlul: „subsecvent” → comandă, apoi „acord-cadru” → plafon. Din `contract-reporting-3` (21 octombrie), expresia „acord-cadru” este recunoscută indiferent de separatorul dintre cuvinte (`acord[^[:alnum:]]*cadru`): „Acord – cadru”, „Acord - cadru”, „ACORD  CADRU”, „Acord -cadru”. Versiunea 2 accepta doar o cratimă sau un spațiu, așa că aceste plafoane intrau în totaluri ca cheltuială (pe copia de inventar: 30 de rânduri fără tip, 198.180.955,79 lei, ex. 107129367, 107515699, 107614867). Aceeași regulă marchează `review` un tip 1 sau 3 al cărui titlu începe cu expresia (7 rânduri tip 1, 5.370.581,80 lei, ex. 108188027). Noua versiune forțează o publicare `full`.
+
 SEAP poate încadra un act adițional ca tip 3. Identificarea explicită a actului are prioritate: suma poate fi total actualizat, increment sau valoare fără comandă nouă. Codul nou îl ține separat, neaditiv, fără a extrage arbitrar un număr din text. **Nu există încă reconciliere generală act adițional → contract de bază → efect financiar.** Eliminarea dublei numărări nu dovedește că totalul final al tuturor modificărilor este cunoscut.
 
 Deciziile confirmate la 12 octombrie: `contractReportable()` admite numai contracte și comenzi identificate. **Toate plafoanele sunt separate**, inclusiv fără subsecvente. `frameworkHasCalloffs()` descrie numai acoperirea, după autoritate + anunț oficial + lot; nu transformă plafonul în cheltuială. Marts, validarea și afișarea folosesc aceeași clasificare.
@@ -113,7 +115,7 @@ Sunt 13 familii de semnale, distincte de cele 13 tipuri de întrebări. Definiț
 
 Fracționarea grupează achiziții directe după partener, clasă CPV, tip și an; fiecare trebuie să fie strict sub pragul aplicabil datei sale. Suma se raportează la cel mai mare prag aplicabil grupului. Valoarea de închidere este reper de verificare, nu demonstrație despre necesarul estimat legal. Pentru toate semnalele păstrează sursele exacte și limbajul de „de verificat”. [Limbajul riscului](../../implementation/risk-language.md).
 
-Radiografia se actualizează zilnic; flag-urile/riscul, duminică la 05:00. Schimbarea populației sau metodologiei poate cere o primă rulare completă înainte de a reutiliza riscul săptămânal. Branch-ul actual implementează această cerință prin versiunea `contract-reporting-2`; nu schimbă permanent calendarul duminical.
+Radiografia se actualizează zilnic; flag-urile/riscul, duminică la 05:00. Schimbarea populației sau metodologiei poate cere o primă rulare completă înainte de a reutiliza riscul săptămânal. Codul implementează această cerință prin versiunea politicii de raportare (acum `contract-reporting-3`); nu schimbă permanent calendarul duminical.
 
 `monitoring/validate.ts` și `coverage.ts` verifică populația admisă, alocările, profilurile și sursele. Pentru contracte, criteriile de acceptare includ `eligible_missing=0`, `excluded_included=0`, `allocation_mismatches=0`. Trebuie validate și căutarea, sursele din drawer, filtrele și capturile; un total global corect nu compensează atribuirea către instituția greșită.
 
