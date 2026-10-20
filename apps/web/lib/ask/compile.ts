@@ -504,8 +504,11 @@ export async function runSpec(
   // Plafond is a DA-specific plausibility bound (legal DA ceiling ≈ 2M works /
   // far less for goods). Contracts are legitimately huge; their bound (1 mld)
   // was applied at mart build time. On "all" it binds only the DA branch.
+  // The bound applies to every measure: a count question shows the same
+  // population (and the same RON total) as the value question and the entity
+  // profile, never a second, unbounded total.
   const plafond: WhereParts["plafond"] =
-    spec.measure === "count" || dataset === "contracts"
+    dataset === "contracts"
       ? "none"
       : dataset === "da"
         ? "strict"
@@ -639,9 +642,9 @@ export async function runSpec(
   // authority_name; the named variant serves entity-grouped blocks
   const txtAggNames = txAggFragment(sql, dataset, true);
   const txtAgg = w.kind ? txtAggNames : txAggFragment(sql, dataset, false);
-  // A count normally includes DAs above the plausibility bound. The homepage
-  // explicitly retains that bound in its population: reuse the matching mart
-  // only for this exact predicate, never discard a more specific selection.
+  // The homepage states the DA bound explicitly in its population: reuse the
+  // matching mart only for this exact predicate, never discard a more specific
+  // selection.
   const populationGroup = spec.population?.groups[0];
   const populationCondition = populationGroup?.conditions[0];
   const nationalDaBound = spec.block === "stat" && dataset === "da"
@@ -837,7 +840,7 @@ export async function runSpec(
             paged ? { total, page, pageSize: TABLE_PAGE_SIZE } : {};
           if (bare && !paged && spec.measure !== "value_per_capita") {
             const ord =
-              spec.measure === "count" ? s`n_all desc, eid` : s`v_plaf desc, eid`;
+              spec.measure === "count" ? s`${aggN} desc, eid` : s`${aggV} desc, eid`;
             const r = (await s`
               select eid id, nm, county co, ${aggV} v, ${aggN} n
               from marts.agg_top_entities
@@ -1760,7 +1763,7 @@ export async function runRows(
   } else {
     if (spec.population) parts.push(populationSql(sql, spec.population));
     if (spec.population) notes.push(`Selecție precisă aplicată: ${describePopulation(spec.population)}.`);
-    if (spec.measure !== "count" && dataset !== "contracts") parts.push(sql`(d.src = 'contracts' or d.closing_value <= ${DA_PLAFOND_RON})`);
+    if (dataset !== "contracts") parts.push(sql`(d.src = 'contracts' or d.closing_value <= ${DA_PLAFOND_RON})`);
     if (cpvPrefixes.length) parts.push(sql`(${cpvPrefixes.map((prefix) => sql`d.cpv_code like ${prefix + "%"}`).reduce((a, b) => sql`${a} or ${b}`)})`);
     if (grounding.county?.canonical) parts.push(sql`d.county = ${grounding.county.canonical}`);
     if (spec.filters.authorityKind) parts.push(sql`(${KIND_PATTERNS[spec.filters.authorityKind].map((pat) => sql`lower(unaccent(d.authority_name)) like ${fold(pat)}`).reduce((a, b) => sql`${a} or ${b}`)})`);
@@ -1822,7 +1825,7 @@ export async function runRows(
     if (scope.excludeCpvPrefixes) parts.push(sql`not (d.cpv_code like any(${sql.array(scope.excludeCpvPrefixes.map((p) => p + "%"))}::text[]))`);
     if (scope.years) parts.push(sql`substr(d.finalization_date, 1, 4) = any(${sql.array(scope.years.map(String))}::text[])`);
     notes.push("Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.");
-    if (dataset !== "contracts" && spec.measure !== "count") notes.push("Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.");
+    if (dataset !== "contracts") notes.push("Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.");
     if (dataset !== "da") notes.push("Un contract cu mai mulți câștigători apare pe câte un rând pentru fiecare furnizor, cu valoarea împărțită egal. Suma folosește aceste cote; numărul de rânduri nu este numărul de contracte distincte. Detaliile și exportul păstrează valoarea integrală și numărul câștigătorilor.");
     if (spec.block === "table" || spec.block === "network" || spec.block === "trend") notes.push("Lista surselor acoperă întregul rezultat filtrat; limita de poziții din clasament sau diagramă nu limitează sursele.");
   }
