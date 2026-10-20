@@ -104,11 +104,39 @@ describe("source query regression", () => {
     expect(db.statements.some((q) => q.includes("marts.da_transactions") || q.includes("marts.contract_transactions"))).toBe(false);
     if (dataset !== "all") expect(result).not.toHaveProperty("data.stat.byStream");
   });
-  it("count-measure national totals retain the aggregate's unrestricted DA plausibility scope", async () => {
+  // Regression (audit F01, 21 Oct 2026): a count question used the unbounded
+  // population, so "câte" and "cât valorează" showed two RON totals for the
+  // same selection (Comuna Tărcău 3.31 mld vs 58.4 mil. lei, from one DA typed
+  // at 3,249,000,000 lei). Both measures now share the DA plausibility bound.
+  it.each(["all", "da"] as const)("count-measure national %s totals use the same DA plausibility scope as value totals", async (dataset) => {
     const db = database();
-    await runSpec(db.sql, { block: "stat", dataset: "da", measure: "count", filters: {} }, {});
+    const result = await runSpec(db.sql, { block: "stat", dataset, measure: "count", filters: {} }, {});
     const query = db.statements.find((q) => q.includes("marts.agg_national"));
-    expect(query).toContain("v_all v, n_all n");
+    expect(query).toContain("v_plaf v, n_plaf n");
+    expect(query).not.toContain("v_all");
+    const caveats = (result as { caveats: string[] }).caveats.join(" ");
+    expect(caveats).toContain("plafon de plauzibilitate");
+    expect(caveats).toContain("Ofertă acceptată");
+  });
+  it.each(["timeseries", "map", "table"] as const)("unfiltered count %s reads the bounded aggregate columns", async (block) => {
+    const db = database();
+    await runSpec(db.sql, { block, dataset: "all", measure: "count", dim: "authority", topN: 10, filters: {} }, {});
+    const query = db.statements.find((q) => /marts\.agg_(years|map_county|top_entities)/.test(q))!;
+    expect(query).toContain("v_plaf v, n_plaf n");
+    expect(query).not.toContain("n_all");
+  });
+  it("filtered count stats and their sources apply the DA bound and say so", async () => {
+    const countStat: AskSpec = { ...stat, measure: "count" };
+    const db = database();
+    const result = await runSpec(db.sql, countStat, grounding);
+    const query = db.statements.find((q) => q.includes("marts.da_transactions"))!;
+    expect(query).toMatch(/d\.closing_value <= \?\d+/);
+    expect(db.values).toContain(2_000_000);
+    expect((result as { caveats: string[] }).caveats.join(" ")).toContain("plafon de plauzibilitate");
+    const sources = database();
+    const rows = await runRows(sources.sql, countStat, grounding, 0);
+    expect(sources.statements.find((q) => q.includes("group by d.state"))).toMatch(/d\.closing_value <= \?\d+/);
+    expect((rows as { scopeNotes: string[] }).scopeNotes.join(" ")).toContain("peste 2 milioane lei sunt excluse");
   });
   const homepageCount: AskSpec = { block: "stat", dataset: "da", measure: "count", filters: {}, population: { operator: "and", groups: [{ operator: "and", conditions: [{ field: "value", op: "lte", value: "2000000" }] }] } };
   it("keeps the homepage's explicit DA bound in the aggregate and source rows", async () => {
