@@ -466,7 +466,9 @@ export const contractTransactions = martsSchema.table(
     closingValue: numeric("closing_value"),
     contractValueFull: numeric("contract_value_full"),
     nWinners: integer("n_winners").notNull().default(1),
-    /** 'YYYY-MM-DD' (text, matches da_transactions.finalization_date shape). */
+    /** 'YYYY-MM-DD' (text, matches da_transactions.finalization_date shape).
+     * NULL when the source contract date precedes CONTRACT_DATE_FLOOR: the row
+     * counts in totals but is attributed to no year. */
     finalizationDate: text("finalization_date"),
     tendersReceived: integer("tenders_received"),
     isSingleBidder: boolean("is_single_bidder"),

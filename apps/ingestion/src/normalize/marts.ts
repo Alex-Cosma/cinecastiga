@@ -1,4 +1,4 @@
-import { contractReportable } from '@seap/db';
+import { contractReportable, contractDatePlausible } from '@seap/db';
 import { contractRonValue, canonicalContract, assertContractIdentityQuality, assertContractExclusionsQuality } from "@seap/db";
 import type { DbSql } from "@seap/db";
 
@@ -79,6 +79,7 @@ export async function runMarts(
       with base as (
         select c.id contract_id, c.contract_no, c.ca_notice_id, aw.notice_no,
                aw.authority_entity_id authority_id, ${contractRonValue(q)} as contract_value, c.contract_date,
+               ${contractDatePlausible(q)} as date_plausible,
                aw.cpv_code, aw.procedure_type, aw.acquisition_type
         from core.contracts c
         join core.awards aw on aw.ca_notice_id = c.ca_notice_id
@@ -111,7 +112,10 @@ export async function runMarts(
             case when b.contract_value / wn.n < 0.01
               then scale(b.contract_value) + length(wn.n::text) + 1 else 2 end) end,
         b.contract_value, wn.n,
-        to_char(b.contract_date, 'YYYY-MM-DD'),
+        -- A source date before the archive (CONTRACT_DATE_FLOOR) is not placed
+        -- on any year: the row stays in totals but is undated here. The contract
+        -- page still shows the source date, labelled as improbable.
+        case when b.date_plausible then to_char(b.contract_date, 'YYYY-MM-DD') end,
         cc.tenders_received, cc.is_single_bidder,
         cc.contract_id is not null,
         tn.publication_number

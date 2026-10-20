@@ -210,7 +210,7 @@ export default function TxTable({
             {!loading && data?.rows?.map((t, i) => (
               // consortium contracts come as one row per member with the same contract id
               <tr key={`${t.src}-${t.sicapDaId}-${t.partnerId ?? i}`}>
-                <td title={t.src === "contract" ? "Data semnării" : "Data finalizării"}>{formatCalendarDate(t.finalizationDate)}</td>
+                <td title={t.src === "contract" ? "Data semnării" : "Data finalizării"}>{t.src === "contract" && !t.finalizationDate ? "Dată sursă improbabilă" : formatCalendarDate(t.finalizationDate)}</td>
                 {showTip && (
                   <td>
                     <span

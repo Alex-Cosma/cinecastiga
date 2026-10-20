@@ -1,4 +1,4 @@
-import { contractKind, contractReportable, contractRonValue, frameworkHasCalloffs, type DbSql } from "@seap/db";
+import { contractDatePlausible, contractKind, contractReportable, contractRonValue, frameworkHasCalloffs, type DbSql } from "@seap/db";
 import { TED_NORMALIZATION_VERSION } from "./ted.js";
 
 /** Persist expensive counts once per refresh. Publish all observations atomically. */
@@ -32,7 +32,10 @@ export async function runCoverage(sql: DbSql): Promise<void> {
           count(*) filter (where ${contractKind(q)}='review')::text unverified_contract_type,
           count(*) filter (where ${contractKind(q)}='framework')::text framework_publications,
           count(*) filter (where ${contractKind(q)}='framework' and not ${frameworkHasCalloffs(q)})::text frameworks_without_identified_calloffs,
-          min(contract_date)::date::text date_from, max(contract_date)::date::text date_to
+          -- Source dates before the archive start are counted, not used as its interval.
+          count(*) filter (where not ${contractDatePlausible(q)})::text implausible_date,
+          (min(contract_date) filter (where ${contractDatePlausible(q)}))::date::text date_from,
+          (max(contract_date) filter (where ${contractDatePlausible(q)}))::date::text date_to
         from core.contracts c
       ), included as (
         select count(distinct contract_id)::text included, count(*)::text allocations from marts.contract_transactions where closing_value > 0
@@ -71,7 +74,7 @@ export async function runCoverage(sql: DbSql): Promise<void> {
         from core.direct_acquisitions where finalization_date is not null group by 2
         union all
         select 'contracts', extract(year from contract_date)::int, count(*)::text
-        from core.contracts where contract_date is not null group by 2
+        from core.contracts c where ${contractDatePlausible(q)} group by 2
         union all
         select 'ted', extract(year from publication_date)::int, count(*)::text
         from core.ted_notices where publication_date is not null group by 2

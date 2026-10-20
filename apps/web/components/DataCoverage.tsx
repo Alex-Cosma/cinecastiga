@@ -38,6 +38,7 @@ export default async function DataCoverage() {
           {o.included !== undefined && <div><dt>{dataset === "da" ? "Incluse în totaluri" : "Contracte distincte incluse"}</dt><dd>{n(o.included)}</dd></div>}
           {o.allocations !== undefined && <div><dt>Rânduri contract–furnizor</dt><dd>{n(o.allocations)}</dd></div>}
           <div><dt>Fără dată</dt><dd>{n(o.missing_date)}</dd></div>
+          {o.implausible_date !== undefined && <div><dt>Dată sursă improbabilă (înainte de 2018), fără an atribuit</dt><dd>{n(o.implausible_date)}</dd></div>}
           <div><dt>{dataset === "contracts" ? "CPV necompletat în înregistrarea contractului" : "Fără CPV"}</dt><dd>{n(o.missing_cpv)}</dd></div>
           {o.missing_raw !== undefined && <div><dt>Fără document brut arhivat</dt><dd>{n(o.missing_raw)}</dd></div>}
           {o.missing_currency !== undefined && <div><dt>Înregistrări sursă fără monedă</dt><dd>{n(o.missing_currency)}</dd></div>}

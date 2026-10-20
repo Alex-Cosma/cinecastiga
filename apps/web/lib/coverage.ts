@@ -8,6 +8,8 @@ export interface Observation {
   allocations?: string;
   results?: string;
   missing_date: string;
+  /** Contracts dated before the archive start: counted, given no year. */
+  implausible_date?: string;
   missing_cpv: string;
   missing_raw?: string;
   missing_currency?: string;

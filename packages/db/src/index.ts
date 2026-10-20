@@ -20,6 +20,7 @@ export * from "./contract-money-quality.js";
 
 export * from "./contract-identity.js";
 export * from "./contract-reporting.js";
+export * from "./contract-dates.js";
 
 export * from './proxy-config.js';
 export * from './collection-proxies.js';
