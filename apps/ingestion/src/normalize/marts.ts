@@ -1,11 +1,12 @@
 import { contractReportable, contractDatePlausible } from '@seap/db';
-import { contractRonValue, canonicalContract, assertContractIdentityQuality, assertContractExclusionsQuality, CONTRACT_VALUE_CAP_RON } from "@seap/db";
+import { contractRonValue, canonicalContract, assertContractIdentityQuality, assertContractExclusionsQuality, CONTRACT_VALUE_CAP_RON, winnerIsSupplier } from "@seap/db";
 import type { DbSql } from "@seap/db";
 
 /**
  * Rebuild display marts atomically from the same procurement population used by
  * ordinary value queries: accepted, positive DAs up to the plausibility ceiling
- * and positive RON procedure contracts allocated equally to recorded winners.
+ * and positive RON procedure contracts allocated equally to recorded winners
+ * other than the contracting authority itself (winnerIsSupplier).
  * Award notices and TED publications describe those procurements; their values
  * are never added to the transaction spine. Amounts are recorded commitments,
  * not evidence of payment. Contract counts are distinct source contracts.
@@ -89,10 +90,15 @@ export async function runMarts(
           and aw.authority_entity_id is not null
           and ${contractReportable(q)}
       ),
+      -- Only winners that are suppliers: the contracting authority recorded as
+      -- its own winner (audit F12) is a source inconsistency, not a supplier. A
+      -- contract left without suppliers drops out like one without winners.
       w as (
-        select contract_id, entity_id
-        from core.contract_winners
-        group by contract_id, entity_id
+        select cw.contract_id, cw.entity_id
+        from core.contract_winners cw
+        join base b on b.contract_id = cw.contract_id
+        where ${winnerIsSupplier(q, 'cw', 'b', 'authority_id')}
+        group by cw.contract_id, cw.entity_id
       ),
       wn as (
         select contract_id, entity_id,

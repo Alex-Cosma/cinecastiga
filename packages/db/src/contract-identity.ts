@@ -111,7 +111,34 @@ export const CONTRACT_VALUE_CAP_RON = 1_000_000_000;
 export function contractAboveValueCap(q: IdentitySql, award='a') {
   return q`(${contractRonValue(q)} > ${CONTRACT_VALUE_CAP_RON} and c.contract_date is not null
     and ${q(award)}.authority_entity_id is not null and ${contractReportable(q)} and ${canonicalContract(q)}
-    and exists (select 1 from core.contract_winners w where w.contract_id=c.id))`;
+    and ${contractHasSupplier(q, award)})`;
+}
+
+/** A recorded winner is a supplier only when it is not the contracting
+ * authority of the same contract. SICAP sometimes carries the buyer itself in
+ * the winner object (audit F12, 21 October 2026: 90 contracts of 37 authorities,
+ * 1.40 mld. lei, e.g. Transelectrica and CUP Focșani "winning" their own
+ * tenders). The source row stays and the contract page shows it, labelled; it
+ * is never a supplier, partner or dependency. `award` holds `authorityColumn`. */
+export function winnerIsSupplier(q: IdentitySql, winner='w', award='a', authorityColumn='authority_entity_id') {
+  return q`${q(winner)}.entity_id is distinct from ${q(award)}.${q(authorityColumn)}`;
+}
+
+/** Source contract c (award alias a) has at least one winner that is a
+ * supplier. The "câștigător" condition of the contract population: a contract
+ * whose only recorded winner is its own authority has no known supplier and,
+ * like a contract without winners, stays out of every total. */
+export function contractHasSupplier(q: IdentitySql, award='a') {
+  return q`exists (select 1 from core.contract_winners sw where sw.contract_id=c.id and ${winnerIsSupplier(q, 'sw', award)})`;
+}
+
+/** Disclosure only: source contract c has winners, all of them its own
+ * contracting authority (award alias a). Counted in data_coverage and labelled
+ * on the contract page; never summed. */
+export function contractWinnerIsAuthority(q: IdentitySql, award='a') {
+  return q`(${q(award)}.authority_entity_id is not null
+    and exists (select 1 from core.contract_winners sw where sw.contract_id=c.id)
+    and not ${contractHasSupplier(q, award)})`;
 }
 
 /** Kept separate from intrinsic member eligibility to avoid a quarantine /

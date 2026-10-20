@@ -28,18 +28,20 @@ describe.skipIf(!url)("entity and contract pages disclose contracts above the va
       [2, "900000000.25", "Lucrări sub plafon", "2024-05-01"],
       [3, "177930419250", "ACORD CADRU servicii", "2024-05-01"],
       [4, "4729755332.14", "Varianta ocolitoare, consorțiu", "2024-06-30T22:30:00"],
+      // Audit F12: the authority recorded as its own sole winner has no known supplier.
+      [5, "2000000000", "Lucrări cu autoritatea drept câștigător", "2024-05-01"],
     ];
     for (const [n, value, title, date] of rows) {
       await sql`insert into core.contracts(id,raw_id,ca_notice_contract_id,ca_notice_id,contract_no,contract_date,contract_value,currency,title)
         values (${contract(n)},${n},${contract(n)},991192001,${"C" + n},${date.includes("T") ? date + "Z" : date + "T09:00:00Z"},${value},'RON',${title})`;
     }
     await sql`insert into core.contract_winners(contract_id,entity_id) values
-      (${contract(1)},${supplier}),(${contract(2)},${supplier}),(${contract(3)},${supplier}),(${contract(4)},${supplier}),(${contract(4)},${partner})`;
+      (${contract(1)},${supplier}),(${contract(2)},${supplier}),(${contract(3)},${supplier}),(${contract(4)},${supplier}),(${contract(4)},${partner}),(${contract(5)},${authority})`;
   });
   afterAll(async () => {
     if (!sql) return;
     delete globals.__seapSql;
-    await sql`delete from core.contracts where id between ${contract(1)} and ${contract(4)}`;
+    await sql`delete from core.contracts where id between ${contract(1)} and ${contract(5)}`;
     await sql`delete from core.awards where ca_notice_id=991192001`;
     await sql`delete from core.entities where id in (${authority},${supplier},${partner})`;
     await sql.end();
@@ -62,5 +64,14 @@ describe.skipIf(!url)("entity and contract pages disclose contracts above the va
     expect(await getContractDetail(contract(1))).toMatchObject({ aboveValueCap: true, nonAdditive: false, financialKind: "contract" });
     expect(await getContractDetail(contract(2))).toMatchObject({ aboveValueCap: false });
     expect(await getContractDetail(contract(3))).toMatchObject({ aboveValueCap: true, nonAdditive: true, financialKind: "framework" });
+  });
+
+  it("labels a contract whose only winner is its own authority and keeps it out of the above-cap list", async () => {
+    expect(await getContractDetail(contract(5))).toMatchObject({ winnerIsAuthority: true, nonAdditive: false });
+    expect(await getContractDetail(contract(1))).toMatchObject({ winnerIsAuthority: false });
+    expect(await getContractDetail(contract(4))).toMatchObject({ winnerIsAuthority: false });
+    // Not otherwise eligible: no supplier, so it is neither in the totals nor in the cap disclosure.
+    expect(await getEntityContractsAboveCap(authority, "authority", sql)).toMatchObject({ count: 2, totalExact: "11356159333.14" });
+    expect(await getEntityContractsAboveCap(authority, "supplier", sql)).toMatchObject({ count: 0 });
   });
 });

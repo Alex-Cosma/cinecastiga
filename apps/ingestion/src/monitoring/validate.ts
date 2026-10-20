@@ -1,6 +1,6 @@
 import { contractReportable } from '@seap/db';
 import { readContractMoneyQuality } from "@seap/db";
-import { contractRonValue, canonicalContract, readContractIdentityQuality } from "@seap/db";
+import { contractRonValue, canonicalContract, readContractIdentityQuality, winnerIsSupplier } from "@seap/db";
 import { validateSignalLookup, type DbSql } from "@seap/db";
 import { METHODOLOGY_VERSION } from "../flags/methodology.js";
 import { assertCeilingEras } from "../flags/thresholds.js";
@@ -166,7 +166,9 @@ export async function validateBatch1Snapshot(q: DbSql, options: {
 /** Complete contract population/allocation reconciliation; usable on public contract fixtures. */
 export async function validateContractPopulation(q: DbSql) {
   const [allocations] = await q`
-    with winners as (select contract_id, count(distinct entity_id) n from core.contract_winners group by contract_id),
+    with winners as (select w.contract_id, count(distinct w.entity_id) n from core.contract_winners w
+      join core.contracts c on c.id = w.contract_id left join core.awards a on a.ca_notice_id = c.ca_notice_id
+      where ${winnerIsSupplier(q)} group by w.contract_id),
     source as (
       select c.id, c.ca_notice_contract_id, ${contractRonValue(q)} as contract_value, w.n winners,
         coalesce(${canonicalContract(q)} and ${contractRonValue(q)} > 0 and ${contractRonValue(q)} <= 1000000000 and c.contract_date is not null

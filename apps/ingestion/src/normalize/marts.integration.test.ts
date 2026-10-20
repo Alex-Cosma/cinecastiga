@@ -1,13 +1,14 @@
 import {seedVerifiedIdentity} from '../test/contract-identity-fixture.js';
 import {approveContractIdentities} from './approve-contract-identities.js';
 import { afterAll, describe, expect, it } from "vitest";
-import { createDb, readContractIdentityQuality, type DbSql } from "@seap/db";
+import { contractWinnerIsAuthority, createDb, readContractIdentityQuality, type DbSql } from "@seap/db";
 import { DA_CEILING_SEED_ROWS } from "@seap/domain";
 import { runMarts } from "./marts.js";
 import { runFlags } from "../flags/build.js";
 import { runRadiografieMarts } from "../flags/radiografie.js";
 import { buildTransactionMarts } from "./transaction-marts.js";
 import { runCoverage } from "./coverage.js";
+import { validateContractPopulation } from "../monitoring/validate.js";
 
 const { sql } = createDb();
 afterAll(() => sql.end());
@@ -129,6 +130,55 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
       throw rollback;
     })).rejects.toBe(rollback);
   });
+  // Regression (audit F12, 21 Oct 2026): SICAP recorded 37 authorities (Transelectrica,
+  // CUP Focșani, Județul Vrancea, ...) as the sole winner of 90 of their own contracts,
+  // 1.40 mld. lei shown as supplier revenue, top partner and Radiografie dependency.
+  it("never counts a contracting authority recorded as its own winner as a supplier", async () => {
+    const prefix = `self_winner_fixture_${process.pid}_${Date.now()}`;
+    const rollback = Error("rollback self winner fixture");
+    await expect(sql.begin(async tx => {
+      for (const [schema, names] of Object.entries(tables)) {
+        await tx.unsafe(`create schema ${prefix}_${schema}`);
+        for (const table of names) await tx.unsafe(`create table ${prefix}_${schema}.${table} as table ${schema}.${table} with no data`);
+      }
+      const [view] = await tx`select pg_get_viewdef('marts.signal_lookup'::regclass, true) definition`;
+      await tx.unsafe(`create materialized view ${prefix}_marts.signal_lookup as ${String(view!.definition).replace(/;\s*$/, "").replace(/\b(core|marts|reference|raw)\./g, `${prefix}_$1.`)} with no data`);
+      const q = isolatedSql(tx as unknown as DbSql, prefix);
+      await q`insert into core.entities(id,name_display) values(1,'Compania de Utilitati Publice'),(2,'Furnizor'),(3,'Asociat')`;
+      await q`insert into core.awards(id,ca_notice_id,notice_no,authority_entity_id,state_date) values(1,100,'CAN-SELF',1,'2024-01-10')`;
+      await q`insert into core.contracts(id,ca_notice_contract_id,ca_notice_id,contract_no,contract_date,contract_value,currency,title) values
+        (1,103897498,100,'1','2024-02-01T10:00:00Z',1000.25,'RON','Reabilitare rețele de apă'),
+        (2,103897499,100,'2','2024-03-01T10:00:00Z',100,'RON','Furnizare'),
+        (3,103897500,100,'3','2024-04-01T10:00:00Z',50,'RON','Asociere cu autoritatea')`;
+      // 1: the authority is the only winner; 3: the authority is listed beside a real supplier.
+      await q`insert into core.contract_winners(contract_id,entity_id) values(1,1),(2,2),(3,1),(3,3)`;
+      await runMarts(q);
+      expect((await q`select contract_id::int c, supplier_id::int s, closing_value::text v, n_winners n
+        from marts.contract_transactions order by 1`).map(r => [r.c, r.s, r.v, r.n]))
+        .toEqual([[2, 2, "100.00", 1], [3, 3, "50.00", 1]]);
+      expect((await q`select entity_id::int e, role, total_ron_split::text v from marts.entity_profile order by 1, 2`).map(r => [r.e, r.role, r.v]))
+        .toEqual([[1, "authority", "150.00"], [2, "supplier", "100.00"], [3, "supplier", "50.00"]]);
+      expect(await q`select 1 from marts.entity_top_partners where entity_id = partner_entity_id`).toHaveLength(0);
+      expect((await q`select total_ron::text v from marts.national_stats where kind='spend' and year is null`)[0]?.v).toBe("150.00");
+      for (const threshold of DA_CEILING_SEED_ROWS) {
+        await q`insert into core.risk_thresholds (key,valid_from,valid_to,value_num,note)
+          values (${threshold.key},${threshold.validFrom + "T00:00:00Z"},${threshold.validTo ? threshold.validTo + "T00:00:00Z" : null},${threshold.valueNum},'fixture')`;
+      }
+      await runRadiografieMarts(q);
+      expect((await q`select supplier_id::int s, v_here::text v from marts.supplier_dependency where authority_id=1 order by 1`).map(r => [r.s, r.v]))
+        .toEqual([[2, "100.00"], [3, "50.00"]]);
+      // The population check applies the same supplier rule: nothing missing, nothing extra.
+      expect(await validateContractPopulation(q)).toMatchObject({ eligible_missing: "0", excluded_included: "0", allocation_mismatches: "0" });
+      expect((await q`select c.id::int id from core.contracts c join core.awards a using(ca_notice_id)
+        where ${contractWinnerIsAuthority(q)} order by 1`).map(r => r.id)).toEqual([1]);
+      await q`alter table marts.data_coverage add primary key (dataset)`;
+      await runCoverage(q);
+      const [coverage] = await q`select observation from marts.data_coverage where dataset='contracts'`;
+      expect(coverage?.observation).toMatchObject({ included: "2", winner_is_authority: "1", winner_is_authority_value: "1000.25" });
+      throw rollback;
+    })).rejects.toBe(rollback);
+    expect(await sql`select nspname from pg_namespace where nspname like ${`${prefix}_%`}`).toHaveLength(0);
+  }, 30_000);
   it("keeps every winner in a sub-cent consortium allocation and preserves the exact source total", async () => {
     const prefix = `marts_tiny_fixture_${process.pid}_${Date.now()}`;
     const rollback = new Error("ROLL BACK TINY CONSORTIUM FIXTURE");
