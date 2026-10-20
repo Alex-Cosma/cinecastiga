@@ -1,26 +1,56 @@
 'use client';
-import { Fragment } from 'react';
-import { counties,splitCitations,sourceNumber,sumExact } from '@/lib/stories/shared';
-import type { Story,StoryVisual } from '@/lib/stories/types';
+import { Fragment,type PointerEvent as ReactPointerEvent } from 'react';
+import { counties,dateLabel,splitCitations,sourceNumber,sumExact } from '@/lib/stories/shared';
+import { glossaryTerm,markTerms } from '@/lib/stories/glossary';
+import type { Story,StorySource,StoryVisual } from '@/lib/stories/types';
 import { bounds } from './StoryMap';
 import { Icon,money } from './StoryParts';
+import { usePeek } from './StoryPeek';
 type Open=(id:string)=>void;
 const title=(story:Story,id:string)=>story.sources.find(s=>s.id===id)?.title??id;
+const clip=(text:string,n=190)=>text.length>n?`${text.slice(0,n).replace(/\s+\S*$/,'')}…`:text;
+/** Preview of a source: enough to judge it without leaving the paragraph. */
+export function sourcePeek(source:StorySource|undefined,n:number){
+ if(!source)return {kicker:`Sursa ${n}`,title:'Sursă indisponibilă'};
+ if(source.kind==='procurement')return {kicker:`Sursa ${n} · înregistrare de achiziție`,title:source.title,meta:`${money(source.amount)} · ${dateLabel(source.date)}`,text:`${source.authority} → ${source.suppliers.join(', ')}`,hint:'Apasă pentru fișa completă'};
+ if(source.kind==='external')return {kicker:`Sursa ${n} · ${source.publisher}`,title:source.title,text:clip(source.summary),hint:'Apasă pentru fișă și link'};
+ return {kicker:`Sursa ${n} · observația noastră`,title:source.title,text:clip(source.text),hint:'Apasă pentru nota completă'};
+}
+const mouse=(e:ReactPointerEvent)=>e.pointerType==='mouse';
+function CiteButton({story,id,openSource}:{story:Story;id:string;openSource:Open}){
+ const peek=usePeek(),n=sourceNumber(story,id),content=()=>sourcePeek(story.sources.find(s=>s.id===id),n);
+ return <button className="cite" onClick={()=>{peek?.hide();openSource(id);}} aria-label={`Sursa ${n}: ${title(story,id)}`}
+  onPointerEnter={e=>{if(mouse(e))peek?.show(e.currentTarget,content());}} onPointerLeave={e=>{if(mouse(e))peek?.hide();}}
+  onFocus={e=>{if(e.currentTarget.matches(':focus-visible'))peek?.show(e.currentTarget,content());}} onBlur={()=>peek?.hide()}>{n}</button>;
+}
+/** A procurement term explained in place, at its first use in the story. */
+function Term({id,text}:{id:string;text:string}){
+ const peek=usePeek(),t=glossaryTerm(id)!,content={kicker:'Pe înțeles',title:t.term,text:t.text,hint:'Mai multe în Metodologie'};
+ return <button type="button" className="term" aria-describedby={peek?.id}
+  onClick={e=>peek?.toggle(e.currentTarget,content)} onPointerEnter={e=>{if(mouse(e))peek?.show(e.currentTarget,content);}} onPointerLeave={e=>{if(mouse(e))peek?.hide();}}
+  onFocus={e=>{if(e.currentTarget.matches(':focus-visible'))peek?.show(e.currentTarget,content);}} onBlur={()=>peek?.hide()}>{text}</button>;
+}
 
-/** Inline [[source-id]] markers rendered as numbered notes that open the source drawer. */
-export function Cited({story,text,openSource}:{story:Story;text:string;openSource:Open}){
- return <>{splitCitations(text).map((p,i)=>'ref' in p?<button key={i} className="cite" onClick={()=>openSource(p.ref)} aria-label={`Sursa ${sourceNumber(story,p.ref)}: ${title(story,p.ref)}`} title={title(story,p.ref)}>{sourceNumber(story,p.ref)}</button>:<Fragment key={i}>{p.text}</Fragment>)}</>;
+/** Inline [[source-id]] markers rendered as numbered notes that open the source drawer; `terms` are explained here. */
+export function Cited({story,text,openSource,terms=[]}:{story:Story;text:string;openSource:Open;terms?:string[]}){
+ let pending=terms;
+ return <>{splitCitations(text).map((p,i)=>{
+  if('ref' in p)return <CiteButton key={i} story={story} id={p.ref} openSource={openSource}/>;
+  const parts=pending.length?markTerms(p.text,pending):[{text:p.text}];
+  pending=pending.filter(id=>!parts.some(x=>'term' in x&&x.term===id));
+  return <Fragment key={i}>{parts.map((x,j)=>'term' in x?<Term key={j} id={x.term} text={x.text}/>:<Fragment key={j}>{x.text}</Fragment>)}</Fragment>;
+ })}</>;
 }
 /** Compact numbered source list, replacing one button per document. */
 export function Notes({story,ids,openSource,label='Surse'}:{story:Story;ids:string[];openSource:Open;label?:string}){
  const unique=[...new Set(ids)].sort((a,b)=>sourceNumber(story,a)-sourceNumber(story,b));
  if(!unique.length)return null;
- return <div className="notes"><span>{label}</span>{unique.map(id=><button key={id} className="cite" onClick={()=>openSource(id)} aria-label={`Sursa ${sourceNumber(story,id)}: ${title(story,id)}`} title={title(story,id)}>{sourceNumber(story,id)}</button>)}</div>;
+ return <div className="notes"><span>{label}</span>{unique.map(id=><CiteButton key={id} story={story} id={id} openSource={openSource}/>)}</div>;
 }
 export function KeyFacts({story}:{story:Story}){
  return <dl className="key-facts">{story.keyFacts!.map(f=><div key={f.label}><dt>{f.label}</dt><dd>{f.value}</dd></div>)}</dl>;
 }
-function MapFigure({story,v,openSource}:{story:Story;v:Extract<StoryVisual,{kind:'map'}>;openSource:Open}){
+export function MapFigure({story,v,openSource}:{story:Story;v:Extract<StoryVisual,{kind:'map'}>;openSource:Open}){
  const tone=(group:string)=>`tone-${v.groups.findIndex(g=>g.id===group)}`;
  const located=new Map(v.regions.map(r=>[r.county,r])),unlocated=new Set((v.unlocated??[]).map(u=>u.label));
  return <div className="figure-map">
@@ -44,20 +74,26 @@ function BarsFigure({story,v,openSource}:{story:Story;v:Extract<StoryVisual,{kin
  const max=Math.max(...v.bars.map(b=>b.value),1);
  return <div className="figure-bars">{v.bars.map(b=><div key={b.label} className={b.highlight?'highlight':undefined}><span className="bar-label">{b.label}{b.note&&<small>{b.note}</small>}</span><span className="bar-track"><i style={{width:`${b.value/max*100}%`}}/></span><b>{b.display}</b><Notes story={story} ids={b.sourceIds} openSource={openSource} label=""/></div>)}</div>;
 }
-export function StoryFigure({story,openSource}:{story:Story;openSource:Open}){
+export function StoryFigure({story,openSource,inline=false}:{story:Story;openSource:Open;inline?:boolean}){
  const v=story.visual!;
- return <figure className="story-figure"><figcaption><h2>{v.title}</h2><p>{v.caption}</p></figcaption>
+ return <figure className={inline?'story-figure inline':'story-figure'}><figcaption><h2>{v.title}</h2><p>{v.caption}</p></figcaption>
   {v.kind==='map'?<MapFigure story={story} v={v} openSource={openSource}/>:v.kind==='compare'?<CompareFigure story={story} v={v} openSource={openSource}/>:<BarsFigure story={story} v={v} openSource={openSource}/>}
  </figure>;
 }
-export function Actors({story,openSource}:{story:Story;openSource:Open}){
- const a=story.actors!;
- return <div className="actors"><h2>{a.title}</h2>{a.intro&&<p>{a.intro}</p>}<div className="actor-grid">{a.items.map(x=><article key={x.name} className="actor">
+/** Amount won set against the firm's reported size. The ceiling may cover several years; the revenue covers one. */
+function ActorScale({won,revenue}:{won:string;revenue:{amount:string;label:string}}){
+ const r=Number(revenue.amount),ratio=r>0?Number(won)/r:null;
+ return <p className="actor-scale">{ratio===null?<><b>0 lei</b><span>{revenue.label}</span></>:<><b>{ratio>=10?Math.round(ratio).toLocaleString('ro-RO'):ratio.toLocaleString('ro-RO',{maximumFractionDigits:1})}×</b><span>{revenue.label}</span></>}</p>;
+}
+export function Actors({story,openSource,heading=true}:{story:Story;openSource:Open;heading?:boolean}){
+ const a=story.actors!,scaled=a.items.some(x=>x.revenue);
+ return <div className="actors">{heading&&<h2>{a.title}</h2>}{a.intro&&<p>{a.intro}</p>}<div className="actor-grid">{a.items.map(x=><article key={x.name} className="actor">
   <h3>{x.entityId?<a href={`/entitati/${x.entityId}`} target="_blank" rel="noopener noreferrer">{x.name} <Icon name="external"/></a>:x.name}</h3>
   <dl>{x.facts.map(f=><div key={f.label}><dt>{f.label}</dt><dd>{f.value}</dd></div>)}</dl>
   <p className="actor-won"><b>{money(x.won)}</b><span>{x.wonLabel}</span></p>
+  {x.revenue&&<ActorScale won={x.won} revenue={x.revenue}/>}
   <Notes story={story} ids={x.sourceIds} openSource={openSource}/>
- </article>)}</div></div>;
+ </article>)}</div>{scaled&&<p className="actor-note">Raport orientativ: valoarea câștigată poate acoperi mai mulți ani, veniturile raportate acoperă un singur an.</p>}</div>;
 }
 /** Finding bars aggregated by first supplier, for stories where one firm holds several records. */
 export function supplierGroups(story:Story){
