@@ -1,4 +1,4 @@
-import { contractRonValue, contractOriginalValue, contractOriginalCurrency, contractAmountStatus, contractKind, contractReportable, contractTemporarilyExcluded, contractAboveValueCap, CONTRACT_VALUE_CAP_RON } from "@seap/db";
+import { contractRonValue, contractOriginalValue, contractOriginalCurrency, contractAmountStatus, contractKind, contractReportable, contractTemporarilyExcluded, contractAboveValueCap, contractWinnerIsAuthority, CONTRACT_VALUE_CAP_RON } from "@seap/db";
 import { canonicalEntityId } from "@seap/db";
 import { tedPagination, tedCountryFilter, TED_COUNTRY_UNRESOLVED } from "./ted";
 import { createDb, type DbSql } from "@seap/db";
@@ -1247,6 +1247,9 @@ export interface ContractDetail {
   excludedIdentity: string | null;
   /** RON value above the 1 mld. lei product cap: kept out of every total. */
   aboveValueCap: boolean;
+  /** The only recorded winner is the contracting authority itself (audit F12):
+   * no known supplier, so kept out of every total and partner ranking. */
+  winnerIsAuthority: boolean;
 }
 
 export async function getContractDetail(natId: string): Promise<ContractDetail | null> {
@@ -1256,6 +1259,7 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
     select c.id, c.ca_notice_contract_id nat_id, c.contract_no, c.title, c.lots_caption,
            ${contractKind(sql)} financial_kind, not (${contractReportable(sql)}) non_additive,
            coalesce(${contractRonValue(sql)} > ${CONTRACT_VALUE_CAP_RON}, false) above_value_cap,
+           coalesce(${contractWinnerIsAuthority(sql)}, false) winner_is_authority,
            (select x.candidate_id from marts.contract_identity_exclusions x where x.contract_id=c.id) excluded_identity,
            to_char(c.contract_date at time zone 'Europe/Bucharest', 'YYYY-MM-DD') contract_date, ${contractOriginalValue(sql)}::text contract_value, ${contractOriginalCurrency(sql)} currency,
            ${contractRonValue(sql)}::text value_ron, ${contractAmountStatus(sql)} amount_status, c.currency_rate::text, coalesce(c.cpv_code, a.cpv_code) cpv_code,
@@ -1367,6 +1371,7 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
     financialKind:String(r["financial_kind"]),
     nonAdditive:r["non_additive"]===true,
     aboveValueCap:r["above_value_cap"]===true,
+    winnerIsAuthority:r["winner_is_authority"]===true,
     excludedIdentity:r["excluded_identity"] == null ? null : String(r["excluded_identity"]),
     natId: String(r["nat_id"]),
     contractId,

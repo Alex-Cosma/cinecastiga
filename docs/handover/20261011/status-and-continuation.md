@@ -47,7 +47,7 @@ Pentru dovezile lipsă s-a scanat dump-ul public din 30 septembrie, fără SEAP.
 1. **Toate plafoanele acordurilor-cadru sunt separate de totalurile contractelor**, inclusiv fără subsecvente identificate. Lipsurile înseamnă acoperire incompletă, nu zero cheltuieli.
 2. **Grupurile incerte sunt excluse temporar, explicit în acoperire**, cu motive și surse publice. Nu blocăm întreaga publicare numai fiindcă aceste grupuri încă nu au dovadă suficientă. Nu le declarăm dubluri.
 
-Codul aplică acum aceste decizii (`contract-reporting-2`, din 21 octombrie `contract-reporting-3` pentru grafiile titlului „acord-cadru”; `rf-2026.7`). Migrația 0073 adaugă excluderile temporare și arhivele istorice recuperate. Calitatea registrului aprobat rămâne verificată strict; grupurile excluse sunt reverificate și pot reintra numai după dovadă. O excludere care dispare din candidare nu se ridică automat.
+Codul aplică acum aceste decizii (`contract-reporting-2`, din 21 octombrie `contract-reporting-3` pentru grafiile titlului „acord-cadru” și `contract-reporting-4` pentru autoritatea înregistrată drept propriul câștigător; `rf-2026.7`). Migrația 0073 adaugă excluderile temporare și arhivele istorice recuperate. Calitatea registrului aprobat rămâne verificată strict; grupurile excluse sunt reverificate și pot reintra numai după dovadă. O excludere care dispare din candidare nu se ridică automat.
 
 **Nu confunda implementarea locală cu aplicarea în producție.** Vezi [continuarea din 12 octombrie](../../implementation/contract-reporting-integrity-20261011/POLICY-20261012.md) pentru rezultate și procedura de publicare. Numerele 748/524 de mai sus sunt preflight-ul din 11 octombrie, înaintea noii reguli despre plafoane.
 

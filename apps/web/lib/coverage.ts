@@ -24,6 +24,9 @@ export interface Observation {
   above_value_cap?: string;
   above_value_cap_value?: string;
   value_cap?: string;
+  /** Otherwise-included contracts whose only winner is their own authority (audit F12). */
+  winner_is_authority?: string;
+  winner_is_authority_value?: string;
   unknown_competition?: string;
   unverified?: string;
   date_from: string | null;

@@ -1,6 +1,6 @@
 import type { DbSql } from './client.js';
 type Query = DbSql | Parameters<Parameters<DbSql['begin']>[1]>[0];
-export const CONTRACT_REPORTING_VERSION = 'contract-reporting-3';
+export const CONTRACT_REPORTING_VERSION = 'contract-reporting-4';
 
 /** Source amounts never change. These predicates only select contributions to
  * statistics. SEAP sometimes encodes addenda as type 3: text takes precedence.

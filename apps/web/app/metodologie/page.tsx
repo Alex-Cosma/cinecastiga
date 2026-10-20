@@ -87,7 +87,8 @@ export default function MetodologiePage() {
         <h2>Cum se formează totalurile</h2>
         <p>Profilurile entităților, partenerii, harta și căutările obișnuite după valoare folosesc aceeași populație.
           Pentru proceduri sunt incluse contractele cu valoare pozitivă de cel mult 1 miliard lei, dată și autoritate cunoscute,
-          cel puțin un câștigător și valoare RON verificată (declarată sau convertită din sursă). Fără monedă ori conversie verificabilă, suma nu intră în totaluri. Inventarul declară lipsurile din înregistrările sursă înainte de celelalte filtre.</p>
+          cel puțin un câștigător diferit de autoritatea contractantă și valoare RON verificată (declarată sau convertită din sursă).
+          Când singurul câștigător înregistrat este chiar autoritatea, furnizorul nu este cunoscut: contractul rămâne vizibil, marcat, dar nu intră în totaluri. Fără monedă ori conversie verificabilă, suma nu intră în totaluri. Inventarul declară lipsurile din înregistrările sursă înainte de celelalte filtre.</p>
         <p>Pe profilul entității, fiecare contract apare o singură dată în numărul de contracte distincte. Căutările și lista surselor numără rânduri contract–furnizor:
           câte unul pentru fiecare câștigător. În lipsa cotelor reale, valoarea unui consorțiu este împărțită egal între membri.
           Cotele însumate refac valoarea contractului; nu dovedesc venitul încasat de fiecare firmă.</p>
