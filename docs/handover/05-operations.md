@@ -40,6 +40,8 @@ Cloudflare poate trata diferit User-Agent-urile: o cerere Python fără antete a
 6. Validează configurația Caddy din checkout, nu doar fișierul deja montat. Dacă montarea unui fișier unic păstrează inode-ul vechi după Git, recreează Caddy cu volumele/certificatele existente; altfel doar reîncarcă configurația. Apoi repornește serviciile necesare; PostgreSQL și Meilisearch rămân pornite.
 7. Raportează commit-ul deploy-at. Imaginea neschimbată a collectorului poate rămâne pornită dacă Docker nu are motiv să o recreeze.
 
+**Lacătul comun cu planificatorul.** `process-nightly.sh` rulează din cron în fiecare minut și ține `.git/deploy.lock` câteva secunde, cât durează `claim`. Un deploy care pornește exact atunci se oprește în câteva secunde cu „Another deployment is running.”, fără să atingă checkout-ul sau containerele (20 octombrie 2026, `fc14da0`). Se reia deploy-ul: re-run pe jobul din Actions sau un nou push pe `main`.
+
 Un push reușit nu dovedește deploy. Verifică ambele joburi Actions, hash-ul serverului, health, o pagină publică, autentificarea/admin și worker-ii. O schimbare exclusiv documentară poate folosi `[skip ci]`; nu folosi asta pentru cod sau migrații.
 
 ### Povești „Ce bate la ochi” în lucru
