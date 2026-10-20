@@ -114,7 +114,7 @@ Verificare locală: 12 teste editoriale trecute, typecheck trecut; dev pe 3102, 
 
 Câmpuri opționale noi în `Story`, toate validate față de sursele poveștii:
 
-- `keyFacts`: 2–4 cifre-cheie, afișate în dreapta titlului în locul ilustrației. Sunt text de afișare; sumele trebuie să existe și ca surse.
+- `keyFacts`: 2–4 cifre-cheie, afișate într-un rând sub titlu (din 20 octombrie; înainte, în dreapta titlului în locul ilustrației). Sunt text de afișare; sumele trebuie să existe și ca surse.
 - `visual`: o figură proprie poveștii, sub titlu. `map` colorează județele după un grup (de exemplu câștigătorul), cu `unlocated` pentru elementele fără localizare verificată. `compare` pune două documente rând cu rând; rândurile identice se unesc într-o singură celulă. `bars` desenează valori la aceeași scară. Fiecare element deschide o sursă.
 - `actors`: fișe de furnizor, cu ce arată registrele (ONRC, MF) lângă valoarea câștigată și cu link către `/entitati/:id`.
 - `sections[].quote`: un citat scos în evidență, cu sursă.
@@ -123,3 +123,51 @@ Câmpuri opționale noi în `Story`, toate validate față de sursele poveștii:
 - Citare în text: `[[source-id]]` în paragrafe, introducere și cronologie devine o notă numerotată care deschide dosarul. Listele de surse din secțiuni și cronologie sunt acum note numerotate compacte, nu câte un buton pentru fiecare document; schimbarea se aplică tuturor poveștilor.
 
 Validarea respinge citările către surse inexistente, regiunile cu grupuri nedeclarate sau județe necunoscute, sumele nezecimale din fișe și listele goale de cifre-cheie. Cele trei previzualizări din 12 octombrie folosesc noile câmpuri; Școala 311 și Aquapark rămân neschimbate, cu note numerotate în loc de butoane. Verificare: 13 teste, typecheck, capturi desktop 1440 și mobil 390 pentru toate patru articolele, fără erori JS și fără depășire orizontală.
+
+### Parcursul cititorului — 20 octombrie 2026
+
+Local, pe ramura `feat/stories-reader-flow`; fără push sau deploy. Toate câmpurile noi sunt opționale, deci fișierele JSON vechi de pe server rămân valide.
+
+**Ilustrații: o scenă desenată pentru fiecare poveste.** Cele trei desene fixe (`illustration`) se repetau: patru din cinci povești aveau același desen. O primă variantă cu coperți desenate din date (bare, hartă, ceas, linie a timpului) a fost respinsă de owner ca neatractivă, la fel ca fragmentele de document. Owner-ul a ales ilustrații: fiecare poveste are scena ei, desenată în paleta site-ului.
+- `scene` este o cheie din `STORY_SCENES` ([scenes.ts](../../apps/web/lib/stories/scenes.ts)), unde stă și descrierea scenei. Validarea respinge cheile necunoscute.
+- Desenele sunt componente SVG statice în [StoryScenes.tsx](../../apps/web/app/ce-bate-la-ochi/StoryScenes.tsx), pe o pânză de 640×400. Subiectul stă în x 40–600 și y 50–350, zonă vizibilă la orice decupaj (carduri 1,6:1, articol desktop 1,4:1).
+- Scenele arată locuri și obiecte (autostrada, aerodromul, stația antigrindină, aquaparkul, școala cu bazin), niciodată persoane sau verdicte. Pe tema închisă sunt ușor estompate.
+- O poveste nouă primește scena ei prin cod (componentă + descriere), deci printr-un deploy. Până atunci, `illustration` rămâne rezerva generică.
+- În articol, scena ocupă dreapta titlului, iar `keyFacts` trec într-un rând de patru cifre sub el (două pe mobil).
+- Testul de conținut cere ca fiecare previzualizare să aibă o scenă proprie, diferită de a celorlalte.
+
+**Index.**
+- `teaser` (cel mult 200 de caractere) înlocuiește pe carduri rezumatul articolului.
+- Poveștile cu mai mult de două județe afișează „București și 6 județe”; lista completă apare la hover.
+- `patterns` (vocabular fix în `STORY_PATTERNS`; validarea respinge cheile necunoscute) apar ca etichete și ca filtru „Tipar” în lista tuturor poveștilor. Un tipar descrie ce arată documentele, nu un verdict.
+
+**Articol.**
+- `summary` rămâne standfirst-ul, de cel mult două fraze. Testul de conținut verifică lungimea și că valorile din `keyFacts` nu se repetă în el.
+- `brief` („Pe scurt”) are trei coloane: ce arată documentele, ce nu știm, ce urmează. Ultima coloană numără întrebările și starea cererilor din `requests`.
+- „Povestea în timp” pune cronologia pe o scară reală. Momentele `highlight` sunt numite, iar intervalul dintre ele se calculează („după 1 an și 2 luni”). Punctele duc la intrarea din cronologie (`#t-<id>`).
+- Ordinea: secțiunile cu `lead` vin înaintea constatării. `sections[].actors` mută fișele firmelor în secțiunea respectivă. Când harta grupează câștigătorii (`groupBySupplier`), ea înlocuiește barele în caseta constatării. O singură înregistrare nu mai primește o bară.
+- Cuprinsul folosește secțiunile reale și arată minutele rămase. Pe mobil e un meniu „2/8 · capitol ▾”, fără derulare orizontală.
+- Barele hașurate marchează plafoanele de acord-cadru. Recunoașterea se face după titlul sau nota sursei, per înregistrare, așa că un contract simplu rămâne bară plină.
+- `actors[].revenue` arată raportul dintre valoarea câștigată și veniturile raportate (de exemplu „3,3× cifra de afaceri din 2025”). Raportul are o notă: plafonul poate acoperi mai mulți ani.
+- Glosar ([glossary.ts](../../apps/web/lib/stories/glossary.ts)): 13 termeni explicați o singură dată, la prima apariție în ordinea lecturii, prin [StoryPeek.tsx](../../apps/web/app/ce-bate-la-ochi/StoryPeek.tsx). Hover sau focus de la tastatură deschide explicația, tap o deschide și o închide. Definițiile sunt generale, nu constatări.
+- Numerele de sursă din text arată o previzualizare (titlu, sumă, dată, părți, rezumat) la hover sau focus. Click-ul deschide în continuare dosarul.
+- Coloana din dreapta listează sursele capitolului curent. „Ce arată cifrele” se adaptează la lucrări, servicii sau produse, după CPV.
+- Întrebările sunt grupate după destinatar (prefixul „AASNACP: …”) și numerotate continuu. `requests[].status` afișează „Cerere pregătită, netrimisă”, „trimisă”, „răspuns” sau „fără răspuns”.
+- Dosarul are trei grupuri: înregistrări, documente oficiale și presă, observațiile noastre. O serie de cel puțin trei înregistrări cu aceeași dată și instituție se strânge într-un rând expandabil, cu total exact.
+- Finalul cuprinde:
+  - fișele firmelor (`/entitati/:id`);
+  - căutarea altor achiziții ale instituției (`/cauta?q=`);
+  - „Trimite o informație”, care deschide formularul anonim de feedback existent, cu pagina poveștii atașată;
+  - citarea copiabilă.
+- „Alte povești” se aleg după tipar comun, apoi județ, apoi temă, cu motivul afișat.
+
+**Amânat.** Nu am adăugat o imagine de distribuire (Open Graph): cât timp poveștile sunt doar pentru administratori, crawlerele nu le pot vedea. Fonturile vin din `next/font/google`, iar generarea la cerere ar adăuga trafic extern din producție.
+
+**Conținut.** Câmpurile noi (`scene`, `teaser`, `brief`, `patterns`, `requests`, `lead`, `actors`, `revenue`, momente-cheie) au fost adăugate numai în copia locală din `../seap-research/.../preview-stories/`. Copia dinaintea modificării este în `preview-stories-before-20261020/`. Textele reformulează doar fapte deja prezente în fiecare poveste și în sursele ei. Pe server, poveștile rămân cum erau până la copierea fișierelor.
+
+**Verificare locală (dev, `STORIES_PREVIEW_DIR` la copia locală).**
+- `vitest` web, după trecerea la scene: 465 de teste trecute, 227 omise (cer bază de date), inclusiv 22 de teste editoriale pe conținutul real.
+- `pnpm turbo run typecheck lint --filter=web` a trecut.
+- Capturi desktop 1440 și mobil 390, pentru index, cele cinci articole și București, fără erori JS și fără depășire orizontală; 320px fără depășire.
+- Interacțiuni verificate: previzualizarea sursei, termen la click și la tap, Escape, dosarul la click, capitolul activ și coloana din dreapta, rândul expandabil cu 8 înregistrări, saltul din banda de timp, formularul de feedback, filtrul „Tipar”, meniul de capitole pe mobil, tema întunecată.
+- `scripts/checks/editorial-stories.mjs` se oprește înainte de pașii de poveste, la linkul de meniu „Ce bate la ochi”: din 15 octombrie linkul este ascuns pentru vizitatorii neautentificați. Problema exista dinainte; scriptul a fost adaptat doar pentru meniul de capitole de pe mobil.

@@ -89,6 +89,17 @@ describe.skipIf(!dir)('editorial preview content',()=>{
   expect(antigrindinaStory.actors!.items.map(x=>x.won)).toEqual(['27227467.82','22359019.86','9934523.80']);
   expect(aeroclubStory.actors!.items[0]!.won).toBe(storyTotal(aeroclubStory));expect(a7BuzauStory.actors!.items[0]!.won).toBe(storyTotal(a7BuzauStory));
  });
+ it('keeps the reader-flow text short and gives every story its own scene',()=>{
+  const all=[scoala311Story,aquaparkBuzauStory,antigrindinaStory,aeroclubStory,a7BuzauStory];
+  for(const s of all){
+   expect(s.summary.length,s.slug).toBeLessThanOrEqual(330);expect((s.summary.match(/[.!?](?:\s|$)/g)??[]).length,s.slug).toBeLessThanOrEqual(3);
+   if(s.teaser)expect(s.teaser.length,s.slug).toBeLessThanOrEqual(200);
+   // A key fact adds a number the standfirst does not already state.
+   for(const f of s.keyFacts??[])expect(new RegExp(`(?<![\\d.,])${f.value.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}(?![\\d,])`).test(s.summary),`${s.slug}: ${f.value}`).toBe(false);
+   expect(s.brief?.known.length,s.slug).toBeGreaterThan(0);expect(s.patterns?.length,s.slug).toBeGreaterThan(0);
+  }
+  expect(all.every(s=>s.scene),'scene').toBe(true);expect(new Set(all.map(s=>s.scene)).size).toBe(all.length);
+ });
  it('excludes the context purchase from the seven-record total',()=>{
   expect(storyTotal(example())).toBe('919661.16');expect(example().finding.sourceIds).not.toContain('da41159391');expect(()=>sumExact(['NaN'])).toThrow();
  });

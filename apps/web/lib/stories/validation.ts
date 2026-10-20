@@ -1,5 +1,7 @@
 import type { Story } from './types';
 import { citedIds, counties, safeExternalUrl } from './shared';
+import { STORY_PATTERNS } from './editorial';
+import { isStoryScene } from './scenes';
 const slug=/^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const date=(s:string)=>/^\d{4}-\d{2}-\d{2}$/.test(s)&&!Number.isNaN(Date.parse(s))&&new Date(s).toISOString().slice(0,10)===s;
 export function visibleStories(stories:Story[],previews:boolean):Story[] {
@@ -37,4 +39,12 @@ export function validateStory(s:Story):void {
   if(v?.kind==='bars'&&v.bars.some(b=>!Number.isFinite(b.value)||b.value<0))fail('visual');
   if(s.actors&&s.actors.items.some(a=>!a.name.trim()||!/^\d+(?:\.\d+)?$/.test(a.won)||(a.entityId!==undefined&&!/^[1-9]\d{0,17}$/.test(a.entityId))))fail('actors');
   if(s.timeline.some(e=>e.date&&!date(e.date))||new Set(s.timeline.map(e=>e.id)).size!==s.timeline.length)fail('timeline');
+  if(s.actors?.items.some(a=>a.revenue&&(!/^\d+(?:\.\d+)?$/.test(a.revenue.amount)||!a.revenue.label.trim())))fail('actors');
+  if(s.teaser!==undefined&&!s.teaser.trim())fail('teaser');
+  if(s.scene!==undefined&&!isStoryScene(s.scene))fail('scene');
+  if(s.patterns&&(new Set(s.patterns).size!==s.patterns.length||s.patterns.some(p=>!STORY_PATTERNS[p])))fail('patterns');
+  if(s.brief&&([...s.brief.known,...s.brief.unknown].some(t=>typeof t!=='string'||!t.trim())||!s.brief.known.length))fail('brief');
+  if(s.requests?.some(r=>!r.to.trim()||!['pregatita','trimisa','raspuns','fara-raspuns'].includes(r.status)||(r.date&&!date(r.date))))fail('requests');
+  const reserved=new Set(['firul','cronologie','intrebari','surse','pe-scurt']);
+  if(s.sections&&(new Set(s.sections.map(v=>v.id)).size!==s.sections.length||s.sections.some(v=>!slug.test(v.id)||reserved.has(v.id))||s.sections.filter(v=>v.actors).length>1||(s.sections.some(v=>v.actors)&&!s.actors)))fail('sections');
 }

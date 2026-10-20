@@ -5,6 +5,8 @@ import { join } from 'node:path';
 import { visibleStories,validateStory } from './validation';
 import { readView,sumExact,sourceLinks,safeExternalUrl,countStories,storyTotal } from './shared';
 import { readPreviewStories } from './preview-files';
+import { gapLabel,plural,questionGroups,relatedStories,scopeLabel,sourceGroups,timelineStrip,valueNote } from './editorial';
+import { glossaryPlan,markTerms } from './glossary';
 import { getStories } from './catalog';
 import { canSeeStoryPreviews } from './access';
 import type { Story } from './types';
@@ -93,3 +95,36 @@ describe('editorial publication and evidence',()=>{
   expect(readView(['judet','satu-mare'],[s])).toEqual({kind:'county',county:'satu mare'});expect(readView(['poveste',s.slug],[s])).toEqual({kind:'story',slug:s.slug});expect(readView(['poveste',s.slug,'surse','unknown'],[s])).toBeNull();
  });
 });
+
+describe('reader flow',()=>{
+ it('accepts only drawn scenes that exist',()=>{
+  expect(()=>validateStory({...example(),scene:'scoala-bazin'})).not.toThrow();
+  expect(()=>validateStory({...example(),scene:'inventata'})).toThrow('scene');expect(()=>validateStory({...example(),scene:'toString'})).toThrow('scene');
+ });
+ it('relates stories by shared pattern before county, and labels the reason',()=>{
+  const a={...example(),slug:'a',patterns:['fara-anunt']},b={...example(),slug:'b',counties:['buzau'],patterns:['fara-anunt']},c={...example(),slug:'c',topic:'Altceva'},d={...example(),slug:'d',counties:['iasi'],topic:'Altceva'};
+  expect(relatedStories(a,[a,b,c,d]).map(r=>[r.story.slug,r.reason])).toEqual([['b','Același tipar: Fără anunț public'],['c','Tot în Cluj']]);
+  expect(()=>validateStory({...example(),patterns:['inventat']})).toThrow('patterns');
+  expect(()=>validateStory({...example(),sections:[{id:'surse',title:'x',paragraphs:[],sourceIds:[]}]})).toThrow('sections');
+ });
+ it('speaks Romanian counts and gaps',()=>{
+  expect([plural(1,'zi','zile'),plural(2,'zi','zile'),plural(20,'zi','zile'),plural(101,'zi','zile')]).toEqual(['1 zi','2 zile','20 de zile','101 zile']);
+  expect(gapLabel('2026-07-02','2026-07-29')).toBe('27 de zile');expect(gapLabel('2025-04-28','2026-07-02')).toBe('1 an și 2 luni');
+  expect(scopeLabel({...example(),counties:['bucuresti','iasi','timis']})).toBe('București și 2 județe');expect(scopeLabel({...example(),counties:['cluj','buzau']})).toBe('Cluj, Buzău');
+ });
+ it('groups questions by addressee and the dossier by kind',()=>{
+  const s={...example(),questions:['CNAIR: câte oferte?','Și contestații?','Primăriei: ce sume?'],requests:[{to:'CNAIR',status:'pregatita' as const}]};
+  expect(questionGroups(s).map(g=>[g.to,g.items.length,g.request?.status])).toEqual([['CNAIR',2,'pregatita'],['Primăriei',1,undefined]]);expect(questionGroups(s)[0]!.items[0]).toBe('Câte oferte?');
+  const day=example();for(const x of day.sources)if(x.kind==='procurement')x.date='2026-09-01';
+  const groups=sourceGroups(day);expect(groups[0]!.clusters).toHaveLength(1);expect(groups[0]!.clusters[0]!.total).toBe('5.30');expect(groups[0]!.items).toEqual([]);expect(groups[1]!.items.map(x=>x.n)).toEqual([4]);
+  const f=example();for(const x of f.sources)if(x.kind==='procurement')x.title='Acord-cadru nr. 1';expect(valueNote(f).ceiling).toBe(true);expect(valueNote(example())).toMatchObject({ceiling:false,anyCeiling:false});
+  expect(timelineStrip(example())).toBeNull();
+ });
+ it('explains each glossary term once, at its first use, without touching citations',()=>{
+  const plan=glossaryPlan(['Un acord-cadru [[a]] și SEAP.','Alt acord-cadru, negociere fără publicare prealabilă.']);
+  expect(plan.get(0)).toEqual(['acord-cadru','seap']);expect(plan.get(1)).toEqual(['negociere-fara-publicare']);
+  expect(markTerms('Acordurile-cadru din SEAP',['acord-cadru','seap'])).toEqual([{term:'acord-cadru',text:'Acordurile-cadru'},{text:' din '},{term:'seap',text:'SEAP'}]);
+  expect(markTerms('reacord-cadrul',['acord-cadru'])).toEqual([{text:'reacord-cadrul'}]);
+ });
+});
+

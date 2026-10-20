@@ -5,6 +5,7 @@ import { canSeeStoryPreviews } from '@/lib/stories/access';
 import { readView, countyLabel } from '@/lib/stories/shared';
 import StoriesClient from '../StoriesClient';
 import '../stories.css';
+import '../stories-reader.css';
 type Props={params:Promise<{path?:string[]}>};
 export const dynamic='force-dynamic';
 /** Until a story is published, the whole section exists only for admins. */
