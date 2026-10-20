@@ -5,6 +5,7 @@ import type { Grounding } from "./ground";
 import { EVIDENCE_CSV_LIMIT, PROFILE_BLOCKS, sumDecimalStrings, validateEvidenceScope, type EvidenceScope, type EvidenceStatus, type EvidenceProfile } from "./evidence";
 import { minimumRecordsSql, populationSql } from "./population-sql";
 import { describePopulation, isHistoricalProfile, unsupportedPopulationView } from "./population";
+import { PER_CAPITA_SOURCE, perCapitaCaveat, POPULATION_CARD_NOTE, readPerCapitaPopulations, type PerCapitaPopulations } from "./per-capita";
 
 /**
  * Compile a validated AskSpec + grounding into parameterized SQL and execute it
@@ -696,11 +697,10 @@ export async function runSpec(
       "Județul din date este al autorității cumpărătoare (unde s-a cheltuit), nu sediul firmei.",
     );
   }
-  if (spec.measure === "value_per_capita") {
-    caveats.push(
-      "Per cap de locuitor: doar autoritățile-UAT cu populație cunoscută (5.575 de autorități, recensământ 2021, populație estimată). Restul sunt excluse din clasament.",
-    );
-  }
+  // Strict RPL 2021 denominators, never the legacy entity_profile population.
+  const perCapita: PerCapitaPopulations | null =
+    spec.measure === "value_per_capita" ? await readPerCapitaPopulations(sql) : null;
+  if (perCapita) caveats.push(perCapitaCaveat(perCapita));
   if (isHistoricalProfile(spec)) {
     // These blocks use entity_flags, whose historical source population is
     // intentionally different from the accepted-only transaction mart.
@@ -903,24 +903,25 @@ export async function runSpec(
               county: s`max(d.county)`,
               value: s`coalesce(sum(d.closing_value), 0)`,
               count: s`count(*)`,
-              percap: s`coalesce(sum(d.closing_value), 0) / max(ep.population)`,
+              percap: s`coalesce(sum(d.closing_value), 0) / max(rpl.population)`,
             }[tableOpts.sort ?? "percap"];
+            const populations = s`unnest(${s.array(perCapita!.ids)}::bigint[], ${s.array(perCapita!.populations)}::integer[]) rpl(entity_id, population)`;
+            // Repeating the id list as a predicate lets it reach the authority indexes of both streams.
+            const eligible = s`d.authority_id = any(${s.array(perCapita!.ids)}::bigint[])`;
             const cnt = paged
               ? ((await s`
                   select count(distinct d.authority_id) t
                   from ${txtAggNames} d
-                  join marts.entity_profile ep
-                    on ep.entity_id = d.authority_id and ep.role = 'authority'
-                  where ${whereFrag()} and ep.population > 0
+                  join ${populations} on rpl.entity_id = d.authority_id
+                  where ${whereFrag()} and ${eligible}
                 `) as unknown as { t: string }[])
               : null;
             const r = (await s`
               select d.authority_id id, max(d.authority_name) nm, max(d.county) co,
-                     coalesce(sum(d.closing_value), 0) v, count(*) n, max(ep.population) pop
+                     coalesce(sum(d.closing_value), 0) v, count(*) n, max(rpl.population) pop
               from ${txtAggNames} d
-              join marts.entity_profile ep
-                on ep.entity_id = d.authority_id and ep.role = 'authority'
-              where ${whereFrag()} and ep.population > 0
+              join ${populations} on rpl.entity_id = d.authority_id
+              where ${whereFrag()} and ${eligible}
               group by d.authority_id
               order by ${sortFrag} ${tableOpts.sort ? dir : s`desc`}, d.authority_id
               ${limitFrag}
@@ -1026,10 +1027,8 @@ export async function runSpec(
           }
           const r = (await s`
             select ef.entity_id, ef.name_display, ef.county, ef.role, ef.n_das, ef.total_ron,
-                   ef.cri, ef.n_flags, ef.flags, ep.population
+                   ef.cri, ef.n_flags, ef.flags
             from marts.entity_flags ef
-            left join marts.entity_profile ep
-              on ep.entity_id = ef.entity_id and ep.role = ef.role
             where ef.role = ${focalRole} and ef.entity_id in ${s([focalId, compareId])}
           `) as unknown as {
             entity_id: string;
@@ -1041,7 +1040,6 @@ export async function runSpec(
             cri: string | null;
             n_flags: number;
             flags: string[] | null;
-            population: string | null;
           }[];
           if (r.length < 2) {
             return {
@@ -1053,6 +1051,9 @@ export async function runSpec(
           const ordered = [...r].sort((a, b) =>
             String(a.entity_id) === String(focalId) ? -1 : String(b.entity_id) === String(focalId) ? 1 : 0,
           );
+          const compared = focalRole === "authority" ? (await readPerCapitaPopulations(s)).byEntity : null;
+          const comparePopulation = (id: string) => compared?.get(id) ?? null;
+          if (ordered.some((e) => comparePopulation(String(e.entity_id)) !== null)) caveats.push(POPULATION_CARD_NOTE);
           return {
             block: "compare",
             entities: ordered.map((e) => ({
@@ -1065,7 +1066,7 @@ export async function runSpec(
               cri: e.cri === null ? null : Number(e.cri),
               nFlags: Number(e.n_flags),
               flags: e.flags ?? [],
-              population: e.population === null ? null : Number(e.population),
+              population: comparePopulation(String(e.entity_id)),
             })),
           };
         }
@@ -1317,10 +1318,8 @@ export async function runSpec(
               : s`ef.total_ron desc nulls last, ef.entity_id`;
           const r = (await s`
             select ef.entity_id, ef.name_display, ef.county, ef.role, ef.n_das, ef.total_ron,
-                   ef.cri, ef.n_flags, ef.flags, ep.population
+                   ef.cri, ef.n_flags, ef.flags
             from marts.entity_flags ef
-            left join marts.entity_profile ep
-              on ep.entity_id = ef.entity_id and ep.role = ef.role
             where ${efWhere(role, minDas)}
             order by ${order}
             limit 1
@@ -1334,10 +1333,12 @@ export async function runSpec(
             cri: string | null;
             n_flags: number;
             flags: string[] | null;
-            population: string | null;
           }[];
           if (r.length === 0) return { error: "Niciun rezultat pentru aceste filtre." };
           const e = r[0]!;
+          const cardPopulation = role === "authority"
+            ? (await readPerCapitaPopulations(s)).byEntity.get(String(e.entity_id)) ?? null : null;
+          if (cardPopulation !== null) caveats.push(POPULATION_CARD_NOTE);
           return {
             block: "entity_card",
             card: {
@@ -1350,7 +1351,7 @@ export async function runSpec(
               cri: e.cri === null ? null : Number(e.cri),
               nFlags: Number(e.n_flags),
               flags: e.flags ?? [],
-              population: e.population === null ? null : Number(e.population),
+              population: cardPopulation,
             },
           };
         }
@@ -1810,8 +1811,10 @@ export async function runRows(
       else parts.push(spec.dim === "supplier" ? sql`d.supplier_id is not null` : sql`d.authority_id is not null`);
     }
     if (spec.measure === "value_per_capita" && spec.block === "table") {
-      parts.push(sql`d.authority_id in (select entity_id from marts.entity_profile where role = 'authority' and population > 0)`);
-      notes.push("Lei/locuitor: valoarea înregistrărilor unei autorități se împarte la populația acesteia (recensământul 2021). Sursele includ doar autorități cu populație cunoscută.");
+      // Same eligible administrations and denominators as the ranking.
+      const perCapita = await readPerCapitaPopulations(sql);
+      parts.push(sql`d.authority_id = any(${sql.array(perCapita.ids)}::bigint[])`);
+      notes.push(`Lei/locuitor: valoarea înregistrărilor unei administrații se împarte la ${PER_CAPITA_SOURCE}. Sursele includ doar primăriile și consiliile județene identificate strict, ca în clasament.`);
     }
     if (spec.block === "map") parts.push(sql`d.county is not null`);
     if (spec.block === "timeseries") parts.push(sql`substr(d.finalization_date, 1, 4) ~ '^[0-9]{4}$'`);
@@ -2049,7 +2052,7 @@ function buildDisplaySql(spec: AskSpec, w: WhereParts, compareId: string | null 
       const perCap = spec.measure === "value_per_capita";
       return (
         `select ${dimCol}, ${perCap ? "sum(closing_value) / populatie" : measure}\n` +
-        `from ${dtable}${perCap ? "\njoin marts.entity_profile using (entity_id)  -- populație UAT" : ""}\n` +
+        `from ${dtable}${perCap ? "\njoin populatie_rpl2021 using (entity_id)  -- INS RPL 2021, doar primării și consilii județene identificate strict" : ""}\n` +
         `where ${where}\n` +
         `group by ${dimCol}\norder by 2 desc\nlimit ${spec.topN ?? `${TABLE_PAGE_SIZE} offset <pagină>`};`
       );

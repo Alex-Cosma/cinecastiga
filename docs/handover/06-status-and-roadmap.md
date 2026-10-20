@@ -55,7 +55,7 @@ Verificările navigării admin din 28 septembrie: 252 teste unitare web, 2 integ
 3. **PDF-uri:** preluarea verificată suportă anumite familii, în specialSCN/type 17. Nu toate contractele au asociere sigură/anunț suportat. Metadatele de descărcare depind de sesiune și se reobțin.
 4. **Surse vs arhivă:** CSV live poate avea plafon/scop explicit; captura SQL integrală are mecanism separat. Cititorul trebuie să știe ce exportă.
 5. **TED:** tipuri de sume/monede/proveniență incomplete sunt păstrate ca necunoscute, nu normalizate prin presupuneri. Asocierile nu sunt echivalențe perfecte.
-6. **Populație:** census 2021, nu populație curentă în timp real. Identitățile administrative incerte nu sunt forțate; manual rămâne posibil.
+6. **Populație:** comparațiile și „lei pe locuitor” din Întreabă folosesc populația rezidentă INS RPL 2021 (1 decembrie 2021, catalog `ins-rpl-2021-table-1.22-v1`), nu populație curentă. Doar primăriile și consiliile județene identificate strict primesc populație; sectoarele, instituțiile subordonate și asocierile incerte sunt excluse, nu forțate. Vechea populație din `reference.uat`/`marts.entity_profile` (valori din 2011, fără sursă) nu se afișează. Comparația manuală rămâne posibilă.
 7. **Proprietate firme:** date despre reprezentanți și relații de achiziții nu constituie istoric complet de acționariat/beneficiari reali.
 8. **Performanță:** selecțiile naționale/sortările/căutările pot atinge timeout-uri SQL; nu ridica arbitrar limitele sau introduce sampling ascuns.
 9. **Onboarding schema:** bootstrapul istoric face necesar dump-ul cu istorie; procedura de laDB goală merită standardizată separat.

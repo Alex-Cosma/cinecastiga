@@ -3,6 +3,7 @@ import { createDb, type DbSql } from "@seap/db";
 import { cleanName } from "@/lib/format";
 import { devlog } from "@/lib/devlog";
 import { aliasQueries, queryTokens } from "@/lib/ask/entity-alias";
+import { officialUnitPopulation } from "@/lib/peer-population";
 
 /**
  * GET /api/suggest?q=…&county=…  — typeahead feed for the "Construiește"
@@ -173,15 +174,17 @@ export async function GET(req: Request) {
           order by priority, label_length, term
           limit 8
         ` as unknown as Promise<{ term: string; cpv_name: string | null }[]>),
+    // The legacy reference.uat population is unsourced 2011-era data; the
+    // displayed and ranking population is the official RPL 2021 catalog.
     sql`
-      select u.siruta, u.name, u.tip, u.county, u.population
+      select u.siruta, u.name, u.tip, u.county, position(${q} in lower(unaccent(u.name))) pos
       from reference.uat u
       where lower(unaccent(u.name)) like ${like}
         and (${county} = '' or u.county = ${county})
-      order by position(${q} in lower(unaccent(u.name))), u.population desc nulls last
-      limit 6
+      order by pos, u.siruta
+      limit 60
     ` as unknown as Promise<
-      { siruta: number; name: string; tip: string | null; county: string | null; population: number | null }[]
+      { siruta: number; name: string; tip: string | null; county: string | null; pos: number }[]
     >,
     sql`
       select name_display, county from (
@@ -227,13 +230,17 @@ export async function GET(req: Request) {
 
   const body: SuggestResponse = {
     cpv: cpv.map((r) => ({ term: r.term, cpvName: r.cpv_name })),
-    uat: uat.map((r) => ({
-      siruta: Number(r.siruta),
-      name: prettyUat(r.name),
-      tip: TIP_LABEL[String(r.tip ?? "")] ?? "localitate",
-      county: r.county ?? "",
-      population: r.population === null ? null : Number(r.population),
-    })),
+    uat: uat
+      .map((r) => ({ r, population: officialUnitPopulation(Number(r.siruta), r.county) }))
+      .sort((a, b) => Number(a.r.pos) - Number(b.r.pos) || (b.population ?? -1) - (a.population ?? -1) || Number(a.r.siruta) - Number(b.r.siruta))
+      .slice(0, 6)
+      .map(({ r, population }) => ({
+        siruta: Number(r.siruta),
+        name: prettyUat(r.name),
+        tip: TIP_LABEL[String(r.tip ?? "")] ?? "localitate",
+        county: r.county ?? "",
+        population,
+      })),
     authority: authority
       .filter((r) => r.name_display)
       .map((r) => ({ name: cleanName(r.name_display), county: r.county })),

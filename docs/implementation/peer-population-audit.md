@@ -6,7 +6,9 @@
 
 The existing population values must **not** be presented as RPL 2021. For example, `reference.uat` and the Buzău authority mapping contain **115,494**, which is the 2011 figure; the official 2021 total is **103,481**. Other existing values, including Cluj-Napoca 324,576 and Timișoara 319,279, also reflect 2011. The comment in `packages/db/src/schema/marts.ts` calling this population “2021” is not supported by the stored data. No original import script, source year, source URL, or source hash was found for these tables.
 
-An independent versioned 2021 catalog is now available at `apps/web/lib/reference/population-rpl2021.json`. It does not modify the old reference tables or existing per-capita views.
+An independent versioned 2021 catalog is now available at `apps/web/lib/reference/population-rpl2021.json`. It does not modify the old reference tables.
+
+**Update 21 October 2026 (finding F05).** The Întreabă per-capita measure (`value_per_capita` table, its source rows and CSV), the population on authority entity cards and comparisons, and the locality picker no longer read the legacy population (`reference.uat.population`, `reference.authority_uat.population`, `marts.entity_profile.population`). Per-capita denominators come from this catalog through the same strict primary-administration join as peers (`apps/web/lib/ask/per-capita.ts` → `readPopulationMappings`): local administrations get their UAT resident total, county councils the direct county total. Sectors, sector subsidiaries, services sharing a UAT, conflicting or cross-county mappings and ambiguous identities have no denominator and are left out of the ranking. The caveat states the source, reference date, catalog version and the derived number of eligible administrations (2,874 local and 39 county councils on the 1 October snapshot). The locality picker shows the catalog value by SIRUTA only when the catalog county matches. The legacy columns are still built by the marts pipeline but have no public consumer.
 
 ## Official source and reproduction
 

@@ -34,7 +34,7 @@ function database(profileValue = "30.01") {
       return Promise.resolve(resolve([]));
     }
   }
-  const tag = ((chunks: TemplateStringsArray, ...params: unknown[]) => new Fragment(chunks.reduce((query, text, i) => {
+  const tag = ((chunks: TemplateStringsArray | string, ...params: unknown[]) => typeof chunks === "string" ? new Fragment(chunks) : new Fragment(chunks.reduce((query, text, i) => {
     const value = params[i];
     if (i >= params.length) return query + text;
     if (value instanceof Fragment) return query + text + value.text;
@@ -217,7 +217,7 @@ describe("source query regression", () => {
   it("per-capita, category and partner exclusions match the aggregate's eligible population", async () => {
     const perCap = database();
     await runRows(perCap.sql, { ...stat, block: "table", dim: "authority", measure: "value_per_capita" }, grounding, 0);
-    expect(perCap.statements.find((s) => s.includes("group by d.state"))).toContain("population > 0");
+    expect(perCap.statements.find((s) => s.includes("group by d.state"))).toContain("d.authority_id = any(");
     const flow = database();
     await runRows(flow.sql, { ...stat, block: "sankey" }, grounding, 0, { scope: { role: "supplier", excludeEntityIds: ["456"], excludeCpvPrefixes: ["45"] } });
     const query = flow.statements.find((s) => s.includes("group by d.state"))!;

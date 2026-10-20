@@ -18,6 +18,12 @@ const cleanUnit = (name: string) => spelling(populationFold(name).replace(/^(mun
 const countyFold=(name:string)=>populationFold(name).replace(/^municipiul bucuresti$/,"bucuresti");
 const byNameCounty=new Map<string,typeof catalog.units>();
 for(const unit of catalog.units){const key=`${countyFold(unit.county)}:${cleanUnit(unit.name)}`;byNameCounty.set(key,[...(byNameCounty.get(key)??[]),unit]);}
+/** Official RPL 2021 resident population of a UAT, only when the catalog county corroborates the code. */
+export function officialUnitPopulation(siruta: number, county: string | null): number | null {
+  const unit = units.get(siruta);
+  if (!unit || unit.kind === "sector" || !county || countyFold(unit.county) !== countyFold(county)) return null;
+  return unit.population;
+}
 export function governmentLevel(name: string): "local" | "county" | "sector" | null {
   const normalized = populationFold(name);
   if (/^(?:(?:primaria|consiliul local)(?: al)? )?sector(?:ul|ului)? [1-6](?: |$)/.test(normalized)) return "sector";
