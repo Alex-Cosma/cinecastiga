@@ -65,7 +65,7 @@ const populationDescriptions=[
   "Anul, canalul de achiziții și diviziunea CPV schimbă măsurătorile, nu admiterea în grupul bazat pe populație. Filtrul județului restrânge teritoriul deservit al grupului automat.",
   "Membrii fără înregistrări eligibile rămân în listă cu date lipsă; nu presupunem cheltuieli zero. Mediana exclude entitatea analizată și membrii fără înregistrări. Sub cinci alți membri cu date, grupul este prea mic pentru interpretare comparativă.",
   "Valorile sunt valori înregistrate, nu plăți. Contractele cu mai mulți câștigători sunt alocări pe furnizor; numărul de înregistrări nu este numărul contractelor distincte. Media pe înregistrare nu este un preț unitar. Un an încheiat nu garantează colectare completă. Diferențele nu stabilesc o neregulă.",
-  "Sunt incluse valori pozitive; achizițiile directe peste plafonul tehnic de 2 milioane lei sunt excluse. Înregistrările fără an sau CPV utilizabil nu intră în măsurători.",
+  "Sunt incluse valori pozitive; achizițiile directe peste plafonul tehnic de 2 milioane lei și contractele prin proceduri peste 1 miliard lei sunt excluse. Înregistrările fără an sau CPV utilizabil nu intră în măsurători.",
 ];
 /** Analytic shared gate and repeatable-read snapshot are required. Legacy receipts call the separate unchanged getter. */
 export async function getPeersInSnapshot(q:DbSql,raw:PeerInput,checkpoint:ConnectionsResult["checkpoint"],options:{allMembers?:boolean;memberId?:string}={}):Promise<PeersResult> {

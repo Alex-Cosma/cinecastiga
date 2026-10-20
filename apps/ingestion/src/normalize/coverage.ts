@@ -1,4 +1,4 @@
-import { contractDatePlausible, contractKind, contractReportable, contractRonValue, frameworkHasCalloffs, type DbSql } from "@seap/db";
+import { contractAboveValueCap, contractDatePlausible, contractKind, contractReportable, contractRonValue, CONTRACT_VALUE_CAP_RON, frameworkHasCalloffs, type DbSql } from "@seap/db";
 import { TED_NORMALIZATION_VERSION } from "./ted.js";
 
 /** Persist expensive counts once per refresh. Publish all observations atomically. */
@@ -47,7 +47,12 @@ export async function runCoverage(sql: DbSql): Promise<void> {
           join core.awards a using(ca_notice_id)
           where (${contractReportable(q)}) and ${contractRonValue(q)}>0 and ${contractRonValue(q)}<=1000000000
             and c.contract_date is not null and a.authority_entity_id is not null
-            and exists(select 1 from core.contract_winners w where w.contract_id=c.id))), now() from ct cross join included
+            and exists(select 1 from core.contract_winners w where w.contract_id=c.id)))
+        -- Otherwise-included contracts kept out of every total by the value cap.
+        || (select jsonb_build_object('above_value_cap',count(*)::text,
+              'above_value_cap_value',coalesce(trim_scale(sum(${contractRonValue(q)})),0)::text,
+              'value_cap',${String(CONTRACT_VALUE_CAP_RON)}::text)
+            from core.contracts c join core.awards a using(ca_notice_id) where ${contractAboveValueCap(q)}), now() from ct cross join included
       on conflict (dataset) do update set observation = excluded.observation, calculated_at = excluded.calculated_at
     `;
     await q`

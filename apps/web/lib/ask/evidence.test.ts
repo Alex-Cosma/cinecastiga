@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DbSql } from "@seap/db";
-import { runRows, runSpec, DRILLABLE_BLOCKS, type DrillRow } from "./compile";
+import { runRows, runSpec, CONTRACT_CAP_CAVEAT, DRILLABLE_BLOCKS, type DrillRow } from "./compile";
 import { BLOCKS, type AskSpec } from "./spec";
 import { evidenceCsv, evidenceLinks, formatEvidenceAmount, sumDecimalStrings, validateEvidenceScope } from "./evidence";
 import { evidenceOptions } from "./evidence-request";
@@ -124,6 +124,25 @@ describe("source query regression", () => {
     const query = db.statements.find((q) => /marts\.agg_(years|map_county|top_entities)/.test(q))!;
     expect(query).toContain("v_plaf v, n_plaf n");
     expect(query).not.toContain("n_all");
+  });
+  // Regression (audit F09, 21 Oct 2026): "Canalele sunt disjuncte, deci suma e
+  // corectă" while 1 mld.+ contracts (CNAIR, CFR, Cluj-Napoca metro) were absent.
+  it.each(["all", "contracts", "da"] as const)("%s answers and their sources disclose the contract value cap only when contracts are included", async (dataset) => {
+    const spec: AskSpec = { ...stat, dataset };
+    const result = await runSpec(database().sql, spec, grounding);
+    const caveats = (result as { caveats: string[] }).caveats;
+    const rows = await runRows(database().sql, spec, grounding, 0);
+    const notes = (rows as { scopeNotes: string[] }).scopeNotes;
+    expect(caveats.includes(CONTRACT_CAP_CAVEAT)).toBe(dataset !== "da");
+    expect(notes.includes(CONTRACT_CAP_CAVEAT)).toBe(dataset !== "da");
+    expect(caveats.join(" ")).not.toContain("suma e corectă");
+    expect(CONTRACT_CAP_CAVEAT).toContain("1 miliard lei");
+  });
+  it("drops the contract cap caveat from direct-acquisition-only historical profiles", async () => {
+    const result = await runSpec(database().sql, { block: "entity_card", dataset: "all", measure: "value", rankBy: "risk", filters: {} }, {});
+    const caveats = (result as { caveats: string[] }).caveats;
+    expect(caveats.join(" ")).toContain("profiluri istorice de achiziții directe");
+    expect(caveats).not.toContain(CONTRACT_CAP_CAVEAT);
   });
   it("filtered count stats and their sources apply the DA bound and say so", async () => {
     const countStat: AskSpec = { ...stat, measure: "count" };

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { coverageDate, getCoverage, type Dataset } from "@/lib/coverage";
-import { formatInt } from "@/lib/format";
+import { formatExactDecimal, formatInt, formatRon } from "@/lib/format";
 import {getProcessingFreshness} from '@/lib/processing-freshness';
 
 const LABELS: Record<Dataset, string> = { da: "Achiziții directe", contracts: "Contracte prin proceduri", ted: "Publicații TED" };
@@ -46,6 +46,7 @@ export default async function DataCoverage() {
           {o.unverified_contract_type !== undefined && <div><dt>Tip de contract neclar, exclus din totaluri</dt><dd>{n(o.unverified_contract_type)}</dd></div>}
           {o.framework_publications !== undefined && <div><dt>Publicații de plafoane, separate de totaluri</dt><dd>{n(o.framework_publications)}</dd></div>}
           {o.frameworks_without_identified_calloffs !== undefined && <div><dt>Publicații de plafoane fără comenzi identificate pentru același lot</dt><dd>{n(o.frameworks_without_identified_calloffs)}</dd></div>}
+          {o.above_value_cap !== undefined && <div><dt>Contracte peste {o.value_cap ? formatRon(Number(o.value_cap)) : "1 mld. lei"}, altfel eligibile, separate de totaluri</dt><dd>{n(o.above_value_cap)}{o.above_value_cap_value !== undefined && Number(o.above_value_cap) > 0 ? ` · ${formatExactDecimal(o.above_value_cap_value)} lei` : ""}</dd></div>}
           {o.temporarily_excluded_groups !== undefined && <div><dt><Link href="/metodologie/excluderi">Grupuri excluse temporar · motive și surse</Link></dt><dd>{n(o.temporarily_excluded_groups)}</dd></div>}
           {o.temporarily_excluded_financial_groups !== undefined && <div><dt>Dintre acestea, cu sume altfel eligibile</dt><dd>{n(o.temporarily_excluded_financial_groups)}</dd></div>}
           {o.temporarily_excluded_publications !== undefined && <div><dt>Înregistrări sursă din aceste grupuri</dt><dd>{n(o.temporarily_excluded_publications)}</dd></div>}

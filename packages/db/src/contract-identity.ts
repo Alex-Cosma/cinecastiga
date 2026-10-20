@@ -98,6 +98,22 @@ export async function assertContractIdentityQuality(q: IdentitySql) {
   return report;
 }
 
+/** Product filter on procedure contracts (/metodologie#totaluri): a RON value
+ * above it keeps the contract out of every total and partner ranking. It is
+ * not proof that a larger contract is invalid; the disclosures count them. */
+export const CONTRACT_VALUE_CAP_RON = 1_000_000_000;
+
+/** Source contract c (award alias a) meeting every other condition of
+ * marts.contract_transactions but above CONTRACT_VALUE_CAP_RON: canonical,
+ * identified contract/call-off, dated, with authority and winner. Framework
+ * ceilings and addenda are excluded by their own policy, not by the cap.
+ * Disclosure only: these rows are counted and listed, never summed into totals. */
+export function contractAboveValueCap(q: IdentitySql, award='a') {
+  return q`(${contractRonValue(q)} > ${CONTRACT_VALUE_CAP_RON} and c.contract_date is not null
+    and ${q(award)}.authority_entity_id is not null and ${contractReportable(q)} and ${canonicalContract(q)}
+    and exists (select 1 from core.contract_winners w where w.contract_id=c.id))`;
+}
+
 /** Kept separate from intrinsic member eligibility to avoid a quarantine /
  * eligibility feedback loop during later source verification. */
 export function contractTemporarilyExcluded(q: IdentitySql, alias='c') {

@@ -1,4 +1,4 @@
-import { contractRonValue, contractOriginalValue, contractOriginalCurrency, contractAmountStatus, contractKind, contractReportable, contractTemporarilyExcluded } from "@seap/db";
+import { contractRonValue, contractOriginalValue, contractOriginalCurrency, contractAmountStatus, contractKind, contractReportable, contractTemporarilyExcluded, contractAboveValueCap, CONTRACT_VALUE_CAP_RON } from "@seap/db";
 import { canonicalEntityId } from "@seap/db";
 import { tedPagination, tedCountryFilter, TED_COUNTRY_UNRESOLVED } from "./ted";
 import { createDb, type DbSql } from "@seap/db";
@@ -585,6 +585,54 @@ export async function getEntityTxCounts(entityId: string, role: Role): Promise<E
   return { nDa: Number(r?.n_da ?? 0), nCt: Number(r?.n_ct ?? 0), nContracts: Number(r?.contracts ?? 0),
     valueExact: String(r?.value ?? "0"), dateFrom: r?.date_from == null ? null : String(r.date_from).slice(0,10),
     dateTo: r?.date_to == null ? null : String(r.date_to).slice(0,10), excludedDa: Number(r?.excluded ?? 0) };
+}
+
+export interface ContractAboveCap {
+  natId: string;
+  title: string | null;
+  contractNo: string | null;
+  contractDate: string | null;
+  valueRonExact: string;
+  nWinners: number;
+}
+export interface EntityContractsAboveCap {
+  /** All matching contracts, not only the listed ones. */
+  count: number;
+  /** Exact sum of full contract values (for a supplier, consortium partners' shares included). */
+  totalExact: string;
+  rows: ContractAboveCap[];
+}
+
+/** Contracts that meet every other inclusion condition but exceed the 1 mld. lei
+ * value cap, so they are absent from this entity's totals and partner lists.
+ * Disclosure only; the rows link to their contract pages. */
+export async function getEntityContractsAboveCap(entityId: string, role: Role, sql: DbSql = db(), limit = 100): Promise<EntityContractsAboveCap> {
+  const id = await canonicalEntityId(sql, /^\d+$/.test(entityId) ? entityId : "0");
+  const party = role === "authority"
+    ? sql`a.authority_entity_id = ${id}`
+    : sql`exists (select 1 from core.contract_winners p where p.contract_id = c.id and p.entity_id = ${id})`;
+  const rows = await sql`
+    with x as (
+      select c.id, c.ca_notice_contract_id, c.title, c.contract_no, c.contract_date, ${contractRonValue(sql)} v
+      from core.contracts c join core.awards a on a.ca_notice_id = c.ca_notice_id
+      where ${party} and ${contractAboveValueCap(sql)}
+    ), t as (select count(*)::int n, coalesce(trim_scale(sum(v)), 0)::text total from x)
+    select t.n, t.total, l.* from t left join lateral (
+      select x.ca_notice_contract_id::text nat_id, x.title, x.contract_no,
+        to_char(x.contract_date at time zone 'Europe/Bucharest', 'YYYY-MM-DD') contract_date,
+        trim_scale(x.v)::text value_ron,
+        (select count(distinct w.entity_id)::int from core.contract_winners w where w.contract_id = x.id) n_winners
+      from x order by x.v desc, x.id limit ${limit}
+    ) l on true
+  `;
+  return {
+    count: Number(rows[0]?.n ?? 0),
+    totalExact: String(rows[0]?.total ?? "0"),
+    rows: rows.filter((r) => r.nat_id != null).map((r) => ({
+      natId: String(r.nat_id), title: (r.title as string | null) ?? null, contractNo: (r.contract_no as string | null) ?? null,
+      contractDate: (r.contract_date as string | null) ?? null, valueRonExact: String(r.value_ron), nWinners: Number(r.n_winners ?? 0),
+    })),
+  };
 }
 
 /**
@@ -1197,6 +1245,8 @@ export interface ContractDetail {
   financialKind: string;
   nonAdditive: boolean;
   excludedIdentity: string | null;
+  /** RON value above the 1 mld. lei product cap: kept out of every total. */
+  aboveValueCap: boolean;
 }
 
 export async function getContractDetail(natId: string): Promise<ContractDetail | null> {
@@ -1205,6 +1255,7 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
   const rows = (await sql`
     select c.id, c.ca_notice_contract_id nat_id, c.contract_no, c.title, c.lots_caption,
            ${contractKind(sql)} financial_kind, not (${contractReportable(sql)}) non_additive,
+           coalesce(${contractRonValue(sql)} > ${CONTRACT_VALUE_CAP_RON}, false) above_value_cap,
            (select x.candidate_id from marts.contract_identity_exclusions x where x.contract_id=c.id) excluded_identity,
            to_char(c.contract_date at time zone 'Europe/Bucharest', 'YYYY-MM-DD') contract_date, ${contractOriginalValue(sql)}::text contract_value, ${contractOriginalCurrency(sql)} currency,
            ${contractRonValue(sql)}::text value_ron, ${contractAmountStatus(sql)} amount_status, c.currency_rate::text, coalesce(c.cpv_code, a.cpv_code) cpv_code,
@@ -1315,6 +1366,7 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
     countedOnce:publications.length>1&&mart.length>0,
     financialKind:String(r["financial_kind"]),
     nonAdditive:r["non_additive"]===true,
+    aboveValueCap:r["above_value_cap"]===true,
     excludedIdentity:r["excluded_identity"] == null ? null : String(r["excluded_identity"]),
     natId: String(r["nat_id"]),
     contractId,

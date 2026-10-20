@@ -20,6 +20,10 @@ export interface Observation {
   temporarily_excluded_groups?: string;
   temporarily_excluded_financial_groups?: string;
   temporarily_excluded_publications?: string;
+  /** Otherwise-included contracts above the value cap, kept out of totals. */
+  above_value_cap?: string;
+  above_value_cap_value?: string;
+  value_cap?: string;
   unknown_competition?: string;
   unverified?: string;
   date_from: string | null;

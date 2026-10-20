@@ -8,6 +8,7 @@ import DiscoverySearch from "./DiscoverySearch";
 import DiscoveryMap from "./DiscoveryMap";
 import DiscoveryIcon from "./DiscoveryIcon";
 import CoverageDisclosure from "@/components/CoverageDisclosure";
+import { getCoverage } from "@/lib/coverage";
 
 export const dynamic = "force-dynamic";
 const questionHref = (spec: AskSpec) => `/intreaba?spec=${encodeURIComponent(encodeSpec(spec))}`;
@@ -31,7 +32,9 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     for (const [key, value] of Object.entries(params)) for (const item of Array.isArray(value) ? value : value === undefined ? [] : [value]) forwarded.append(key, item);
     redirect(`/intreaba?${forwarded.toString()}`);
   }
-  const headline = await getDiscoverySummary();
+  const [headline, inventory] = await Promise.all([getDiscoverySummary(), getCoverage()]);
+  const contractInventory = inventory?.observations.find(o => o.dataset === "contracts")?.observation;
+  const aboveCap = contractInventory?.above_value_cap === undefined ? null : Number(contractInventory.above_value_cap);
   const coverage = headline.yearFrom && headline.yearTo ? headline.yearFrom === headline.yearTo ? headline.yearFrom : `${headline.yearFrom}–${headline.yearTo}` : "arhiva importată";
   return <div className="discovery-page">
     <section className="d-hero" aria-labelledby="d-hero-title">
@@ -54,7 +57,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     </section>
 
     <CoverageDisclosure>
-      <p>Totalurile includ achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei, și contracte din proceduri. Un contract cu mai mulți furnizori apare pe câte un rând pentru fiecare, cu valoarea împărțită între ei.</p>
+      <p>Totalurile includ achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei, și contracte din proceduri cu valoare pozitivă de cel mult 1 miliard lei.{aboveCap ? ` ${formatInt(aboveCap)} contracte peste acest plafon, în valoare de ${formatRon(Number(contractInventory?.above_value_cap_value ?? 0))}, sunt separate de totaluri și listate pe pagina fiecărei instituții.` : ""} Un contract cu mai mulți furnizori apare pe câte un rând pentru fiecare, cu valoarea împărțită între ei.</p>
       <p>Publicațiile TED se consultă separat și nu se adaugă încă o dată la total. Valorile înregistrate nu confirmă plăți efectuate.</p>
     </CoverageDisclosure>
 
