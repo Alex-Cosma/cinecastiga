@@ -21,6 +21,10 @@ import { PER_CAPITA_SOURCE, perCapitaCaveat, POPULATION_CARD_NOTE, readPerCapita
 
 /** DA rows above this are treated as data-entry errors (legal DA thresholds are far lower). */
 export const DA_PLAFOND_RON = 2_000_000;
+/** Contracts above CONTRACT_VALUE_CAP_RON (@seap/db) never reach the marts, so
+ * every contract answer must say so; the entity page lists them. */
+export const CONTRACT_CAP_CAVEAT =
+  "Contractele prin proceduri cu valoare peste 1 miliard lei sunt separate de totaluri și de clasamente (filtru al aplicației, nu dovada unei erori); pagina instituției le listează.";
 const STATEMENT_TIMEOUT = "20s";
 /** Minimum DA count before an entity participates in risk-based blocks. */
 const RISK_MIN_DAS = 10;
@@ -375,12 +379,14 @@ export async function runSpec(
     caveats.push(
       "Sursă: DOAR contracte atribuite prin proceduri. Valoarea consorțiilor e împărțită egal între câștigători. " +
         "Plafoanele acordurilor-cadru și publicațiile cu identitate incertă sunt excluse din totaluri. Lipsa comenzilor identificate înseamnă acoperire incompletă.",
+      CONTRACT_CAP_CAVEAT,
     );
   } else if (dataset === "da") {
     caveats.push("Sursă: DOAR achiziții directe.");
   } else {
     caveats.push(
-      "Sursă: ambele canale — achiziții directe + contracte atribuite prin proceduri. Canalele sunt disjuncte, deci suma e corectă; TED nu e niciodată însumat.",
+      "Sursă: ambele canale — achiziții directe + contracte atribuite prin proceduri. Canalele sunt disjuncte, deci nicio înregistrare nu e adunată de două ori; TED nu e niciodată însumat.",
+      CONTRACT_CAP_CAVEAT,
     );
   }
   if (spec.filters.singleBidder) {
@@ -504,7 +510,8 @@ export async function runSpec(
 
   // Plafond is a DA-specific plausibility bound (legal DA ceiling ≈ 2M works /
   // far less for goods). Contracts are legitimately huge; their bound (1 mld)
-  // was applied at mart build time. On "all" it binds only the DA branch.
+  // was applied at mart build time and is disclosed by CONTRACT_CAP_CAVEAT
+  // above. On "all" it binds only the DA branch.
   // The bound applies to every measure: a count question shows the same
   // population (and the same RON total) as the value question and the entity
   // profile, never a second, unbounded total.
@@ -705,7 +712,7 @@ export async function runSpec(
     // These blocks use entity_flags, whose historical source population is
     // intentionally different from the accepted-only transaction mart.
     for (let i = caveats.length - 1; i >= 0; i--) {
-      if (/^(Sursă:|Sunt numărate doar|Valorile peste)/.test(caveats[i]!)) caveats.splice(i, 1);
+      if (/^(Sursă:|Sunt numărate doar|Valorile peste)/.test(caveats[i]!) || caveats[i] === CONTRACT_CAP_CAVEAT) caveats.splice(i, 1);
     }
     caveats.push(
       "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
@@ -1829,6 +1836,7 @@ export async function runRows(
     if (scope.years) parts.push(sql`substr(d.finalization_date, 1, 4) = any(${sql.array(scope.years.map(String))}::text[])`);
     notes.push("Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.");
     if (dataset !== "contracts") notes.push("Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.");
+    if (dataset !== "da") notes.push(CONTRACT_CAP_CAVEAT);
     if (dataset !== "da") notes.push("Un contract cu mai mulți câștigători apare pe câte un rând pentru fiecare furnizor, cu valoarea împărțită egal. Suma folosește aceste cote; numărul de rânduri nu este numărul de contracte distincte. Detaliile și exportul păstrează valoarea integrală și numărul câștigătorilor.");
     if (spec.block === "table" || spec.block === "network" || spec.block === "trend") notes.push("Lista surselor acoperă întregul rezultat filtrat; limita de poziții din clasament sau diagramă nu limitează sursele.");
   }

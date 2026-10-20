@@ -38,7 +38,7 @@ export interface DomainAggregate {
 }
 export interface DomainCatalogueEntry { code: string; name: string }
 
-export const DOMAIN_SCOPE_NOTE = "Achiziții directe cu oferta acceptată și valoare pozitivă de cel mult 2 milioane lei, plus contracte atribuite cu valoare pozitivă. Sunt incluse numai înregistrările cu cod CPV. Valorile nu confirmă plăți. Contractele cu mai mulți câștigători sunt împărțite egal; numărul de rânduri nu este numărul de contracte distincte.";
+export const DOMAIN_SCOPE_NOTE = "Achiziții directe cu oferta acceptată și valoare pozitivă de cel mult 2 milioane lei, plus contracte atribuite cu valoare pozitivă de cel mult 1 miliard lei. Sunt incluse numai înregistrările cu cod CPV. Valorile nu confirmă plăți. Contractele cu mai mulți câștigători sunt împărțite egal; numărul de rânduri nu este numărul de contracte distincte.";
 export const DOMAIN_HIERARCHY_NOTE = "Diviziunile CPV se deschid în grupuri numerice disjuncte: 2 → 4 → 5–8 cifre, cu nivelurile intermediare fără ramificații omise. Grupurile după prefix nu reproduc arborele oficial CPV. Frunzele sunt codurile efectiv prezente în selecție. Codurile generale terminate în zero au frunze proprii; fiecare rând este numărat o singură dată.";
 
 /** Preserve an explicitly selected exact leaf; translate old CPV taxonomy URLs. */

@@ -9,13 +9,14 @@ import {
   getEntityFlagEvidence,
   getCompanyReps,
   getEntityTxCounts,
+  getEntityContractsAboveCap,
   getEntityFlagRowCounts,
   type FlagEvidenceRow,
   type Role,
   type EntityFlagRow,
 } from "@/lib/marts";
 import { countryName } from "@/lib/ted";
-import { formatRon, formatRonFull, formatInt, cleanName } from "@/lib/format";
+import { formatRon, formatRonFull, formatInt, formatExactDecimal, formatCalendarDate, cleanName } from "@/lib/format";
 import { FLAG_META, criBand } from "@/lib/flags";
 import { CRI_CRITERIA, riskEvidenceLine, signalPeriodLabel } from "@/lib/risk-presentation";
 import { daUrl, registryLinks } from "@/lib/elicitatie";
@@ -110,7 +111,7 @@ export default async function EntityPage({
   const base = { rol: rolParam, sort: sp["sort"], an: sp["an"], sem: sp["sem"] };
 
   const cui = flagRows.find((r) => r.cui)?.cui ?? null;
-  const [partners, monthly, flagEvidence, reps, txCounts, flagRowCounts] =
+  const [partners, monthly, flagEvidence, reps, txCounts, flagRowCounts, aboveCap] =
     await Promise.all([
       getEntityPartners(id, role, 12),
       getEntityMonthly(id, role),
@@ -118,6 +119,7 @@ export default async function EntityPage({
       cui ? getCompanyReps(cui) : Promise.resolve([]),
       getEntityTxCounts(id, role),
       getEntityFlagRowCounts(id, role),
+      getEntityContractsAboveCap(id, role),
     ]);
 
   const hasRiskScore = flagRowsRaw.some((r) => r.role === role);
@@ -236,8 +238,12 @@ export default async function EntityPage({
 
       <details className="data-context entity-data-context">
         <summary>Ce includ aceste cifre?</summary>
-        <p>Achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei, și contracte prin proceduri.
+        <p>Achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei, și contracte prin proceduri
+          cu valoare pozitivă de cel mult 1 miliard lei.
           Valorile sunt înregistrate în achiziții; nu confirmă plăți. Totalul și lista partenerilor folosesc aceeași selecție.</p>
+        {aboveCap.count > 0 && <p><strong>{formatInt(aboveCap.count)} {aboveCap.count === 1 ? "contract" : "contracte"} peste 1 miliard lei, în valoare
+          integrală de {formatRon(Number(aboveCap.totalExact))}, nu {aboveCap.count === 1 ? "este inclus" : "sunt incluse"} în total și nici în lista partenerilor.</strong>
+          {" "}Plafonul este un filtru al aplicației, nu dovada unei erori. <a href="#peste-plafon">Vezi aceste contracte</a>.</p>}
         <p>{formatInt(txCounts.nContracts)} contracte distincte apar în {formatInt(txCounts.nCt)} înregistrări contract–furnizor.
           Pentru consorții, valoarea este împărțită egal între membrii publicați; aceasta este o estimare a alocării.
           Pot exista plafoane de acord-cadru pentru care nu avem contracte subsecvente identificate.</p>
@@ -474,6 +480,20 @@ export default async function EntityPage({
           flags={row.flags}
           initialFlag={sp["sem"]}
         />
+        {aboveCap.count > 0 && <details className="data-context" id="peste-plafon">
+          <summary>{formatInt(aboveCap.count)} {aboveCap.count === 1 ? "contract peste 1 miliard lei, separat" : "contracte peste 1 miliard lei, separate"} de total · {formatRon(Number(aboveCap.totalExact))}</summary>
+          <p>Contractele îndeplinesc celelalte condiții de includere, dar depășesc plafonul de 1 miliard lei folosit pentru totaluri.
+            Nu sunt adăugate la totalul de mai sus, la parteneri, județ sau la nivel național. Valorile sunt integrale, înregistrate în SEAP; nu confirmă plăți.
+            {role === "supplier" ? " Pentru consorții, valoarea include și cotele celorlalți câștigători." : ""}</p>
+          <div className="ask-tablewrap"><table className="rank"><thead><tr><th scope="col">Contract</th><th scope="col">Semnat</th><th scope="col" className="num">Valoare (lei)</th></tr></thead><tbody>
+            {aboveCap.rows.map((c) => <tr key={c.natId}>
+              <td><Link href={`/contracte/${c.natId}`}>{c.title?.trim() || c.contractNo || `Contract ${c.natId}`}</Link>{c.nWinners > 1 ? <span className="note"> · {formatInt(c.nWinners)} câștigători</span> : null}</td>
+              <td>{c.contractDate ? formatCalendarDate(c.contractDate) : "—"}</td>
+              <td className="num">{formatExactDecimal(c.valueRonExact)}</td>
+            </tr>)}
+          </tbody></table></div>
+          {aboveCap.count > aboveCap.rows.length && <p className="note">Sunt afișate cele mai mari {formatInt(aboveCap.rows.length)} din {formatInt(aboveCap.count)}.</p>}
+        </details>}
       </section>
 
       <p className="note">

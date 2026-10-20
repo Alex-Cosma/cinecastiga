@@ -49,6 +49,9 @@ export default function MetodologiePage() {
             <strong>Excluderi explicite.</strong> Limita de 2 milioane lei pentru o achiziție directă este un filtru analitic de plauzibilitate,
             nu pragul legal și nici dovada unei erori. Valorile nule, nepozitive sau peste această limită rămân accesibile
             în lista achizițiilor unei entități, prin opțiunea „Arată achizițiile directe excluse din total”.
+            Contractele prin proceduri peste 1 miliard lei sunt separate de totaluri după aceeași logică: limita este un filtru
+            al aplicației, nu dovada unei erori. Inventarul de mai jos le numără și le însumează, pagina instituției și a furnizorului
+            le listează, iar pagina contractului arată că nu este inclus în totaluri.
           </li>
         </ul>
       </section>

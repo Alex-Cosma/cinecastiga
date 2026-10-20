@@ -115,7 +115,7 @@ export default async function ContractPage({
         <div className="stat">
           <div className="n">{c.contractValueExact != null ? `${formatExactDecimal(c.contractValueExact)} ${c.currency?.toUpperCase() === "RON" ? "lei" : c.currency ?? "(monedă neprecizată)"}` : "—"}</div>
           <div className="l">
-            {c.financialKind === 'framework' ? 'Plafon publicat, separat de totaluri' : c.financialKind === 'amendment' ? 'Valoarea publicată a actului adițional' : c.excludedIdentity ? 'Valoare sursă · exclusă temporar' : c.amountStatus === 'legacy_ron' ? 'Valoare înregistrată' : 'Valoarea acestei publicații'}{c.currency && c.currency !== "RON" ? ` (${c.currency})` : ""}
+            {c.financialKind === 'framework' ? 'Plafon publicat, separat de totaluri' : c.financialKind === 'amendment' ? 'Valoarea publicată a actului adițional' : c.excludedIdentity ? 'Valoare sursă · exclusă temporar' : c.aboveValueCap ? 'Valoare sursă · peste 1 miliard lei, separată de totaluri' : c.amountStatus === 'legacy_ron' ? 'Valoare înregistrată' : 'Valoarea acestei publicații'}{c.currency && c.currency !== "RON" ? ` (${c.currency})` : ""}
           </div>
         </div>
         <div className="stat">
@@ -241,6 +241,10 @@ export default async function ContractPage({
         <p className="note"><b>Plafon de acord-cadru, separat de totaluri.</b> Însumăm doar contractele și comenzile identificate.
           Dacă lipsesc subsecventele, acoperirea este incompletă; nu înseamnă că nu s-au cheltuit bani.</p>
       )}
+      {c.aboveValueCap && !c.nonAdditive && !c.excludedIdentity && <p className="note"><b>Peste 1 miliard lei, separat de totaluri.</b> Totalurile
+        includ contractele prin proceduri cu valoare de cel mult 1 miliard lei. Acesta este un filtru al aplicației, nu dovada unei erori: valoarea
+        rămâne afișată aici, dar nu este adăugată la totalurile instituției, furnizorilor, județului sau țării și nici în clasamentele partenerilor.
+        Verifică suma în documentele SEAP. <Link href="/metodologie#totaluri">Cum se formează totalurile</Link>.</p>}
       {c.excludedIdentity && <p className="note"><b>Exclus temporar din totaluri.</b> Identitatea acestei înregistrări
         față de alte publicații nu este încă lămurită. <Link href={`/metodologie/excluderi?grup=${c.excludedIdentity}`}>Vezi motivul și toate sursele comparate</Link>.</p>}
 

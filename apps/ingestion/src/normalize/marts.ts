@@ -1,5 +1,5 @@
 import { contractReportable, contractDatePlausible } from '@seap/db';
-import { contractRonValue, canonicalContract, assertContractIdentityQuality, assertContractExclusionsQuality } from "@seap/db";
+import { contractRonValue, canonicalContract, assertContractIdentityQuality, assertContractExclusionsQuality, CONTRACT_VALUE_CAP_RON } from "@seap/db";
 import type { DbSql } from "@seap/db";
 
 /**
@@ -25,7 +25,7 @@ export interface MartsReport {
 const TOP_ENTITIES_LIMIT = 200;
 const TOP_PARTNERS_PER_ENTITY = 5;
 const DA_BOUND_FALLBACK = 2_000_000;
-const AWARD_BOUND_FALLBACK = 1_000_000_000;
+const AWARD_BOUND_FALLBACK = CONTRACT_VALUE_CAP_RON;
 
 async function threshold(sql: DbSql, key: string, fallback: number): Promise<number> {
   const r = (await sql`
