@@ -42,6 +42,7 @@ type SeriesPoint = Extract<
   { block: "timeseries" }
 >["series"][number];
 type CountyValue = Extract<BlockData, { block: "map" }>["counties"][number];
+type MapUnknown = Extract<BlockData, { block: "map" }>["unknown"];
 interface AskResponse {
   ok: boolean;
   error?: string;
@@ -625,10 +626,11 @@ export default function AskPanel({
                 ))}
               {data.block === "map" &&
                 (layout === "visual" ? (
-                  <MapBlock counties={data.counties} spec={applied} />
+                  <MapBlock counties={data.counties} unknown={data.unknown} spec={applied} />
                 ) : (
                   <CountyValues
                     counties={data.counties}
+                    unknown={data.unknown}
                     spec={applied}
                     onSources={openEvidence}
                   />
@@ -842,10 +844,12 @@ function ExactSeries({
 }
 function CountyValues({
   counties,
+  unknown,
   spec,
   onSources,
 }: {
   counties: CountyValue[];
+  unknown: MapUnknown;
   spec: AskSpec;
   onSources: (spec: AskSpec, scope?: EvidenceScope, title?: string) => void;
 }) {
@@ -879,6 +883,14 @@ function CountyValues({
               </td>
             </tr>
           ))}
+        {unknown.count > 0 && (
+          <tr>
+            <th>Județ necunoscut</th>
+            <td>{formatRonFull(unknown.value)}</td>
+            <td>{formatInt(unknown.count)}</td>
+            <td>nu apar pe hartă</td>
+          </tr>
+        )}
       </tbody>
     </table>
   );
@@ -1133,9 +1145,11 @@ const MAP_NO_DATA = "#e8eade";
 
 function MapBlock({
   counties,
+  unknown,
   spec,
 }: {
   counties: CountyValue[];
+  unknown: MapUnknown;
   spec: unknown;
 }) {
   const asCount = (spec as AskSpec).measure === "count";
@@ -1152,10 +1166,12 @@ function MapBlock({
     byKey.set(k, (byKey.get(k) ?? 0) + (asCount ? c.count : c.value));
     cntByKey.set(k, (cntByKey.get(k) ?? 0) + c.count);
   }
-  const national = counties.reduce(
-    (s, c) => s + (asCount ? c.count : c.value),
-    0,
-  );
+  // Shares are of the whole selection, including records whose authority has
+  // no known county and so are not on the map (audit F13).
+  const unknownMeasure = asCount ? unknown.count : unknown.value;
+  const national =
+    counties.reduce((s, c) => s + (asCount ? c.count : c.value), 0) +
+    unknownMeasure;
   const [tip, setTip] = useState<{
     label: string;
     value: number;
@@ -1235,6 +1251,13 @@ function MapBlock({
           ))}
           <span>mai mult</span>
         </div>
+        {unknown.count > 0 && national > 0 && (
+          <p className="ask-fine">
+            {display(unknownMeasure)} ({((unknownMeasure / national) * 100).toFixed(1)}% din
+            selecție, {formatInt(unknown.count)} înregistrări) au instituția fără județ
+            cunoscut și nu apar pe hartă · procentele sunt din totalul selecției
+          </p>
+        )}
         {tip && (
           <div
             className="ask-maptip"
@@ -1330,6 +1353,9 @@ function exportCsv(data: BlockData, spec: AskSpec) {
       lines = [
         "judet,valoare_lei,achizitii",
         ...data.counties.map((c) => `${csvQ(c.county)},${c.value},${c.count}`),
+        ...(data.unknown.count > 0
+          ? [`${csvQ("Județ necunoscut")},${data.unknown.value},${data.unknown.count}`]
+          : []),
       ];
       break;
     case "stat":

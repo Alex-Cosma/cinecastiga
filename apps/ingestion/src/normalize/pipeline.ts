@@ -14,6 +14,7 @@ import {
 } from "./context.js";
 import { PARSERS } from "./parsers.js";
 import { applyReviewedEntityNames } from "./reviewed-entity-names.js";
+import { applyNutsCounties } from "./nuts-county.js";
 
 /**
  * Replayable raw→core runner (core-layer DEC-004). Processes each
@@ -48,6 +49,8 @@ export interface NormalizeReport {
   quarantined: number;
   /** Entities renamed now by a reviewed name rule (0 once applied). */
   reviewedNames: number;
+  /** Romanian entities given a county from their NUTS-3 code now (0 once applied). */
+  nutsCounties: number;
 }
 
 async function getCursor(db: Db, transform: string): Promise<bigint> {
@@ -178,12 +181,16 @@ export async function runNormalize(
   // registrations gets its reviewed name before the marts copy it.
   const reviewedNames = opts.only ? [] : await sql.begin((q) => applyReviewedEntityNames(q));
   if (reviewedNames.length) log(`reviewed entity names applied: ${reviewedNames.join(", ")}`);
+  // Same placement: the marts and search copy core.entities.county (audit F13).
+  const nutsCounties = opts.only ? [] : await sql.begin((q) => applyNutsCounties(q));
+  if (nutsCounties.length) log(`county filled from NUTS-3 code: ${nutsCounties.length} entities`);
 
   return {
     perTransform,
     processed: totalProcessed,
     quarantined: totalQuarantined,
     reviewedNames: reviewedNames.length,
+    nutsCounties: nutsCounties.length,
   };
 }
 
