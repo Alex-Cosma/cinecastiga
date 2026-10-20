@@ -254,10 +254,11 @@ export async function runMarts(
           country_code = e.country_code, is_foreign = e.is_foreign
       from core.entities e where e.id = ep.entity_id
     `;
-    // Per-capita: attach the matched UAT population (durable reference, keyed by
-    // entity_id). Survives this truncate+rebuild. NOTE: if entities are ever
-    // remapped (a re-normalize that changes ids), reference.authority_uat must be
-    // re-matched — the SIRUTA population in reference.uat is stable regardless.
+    // Legacy UAT mapping (durable reference, keyed by entity_id). Survives this
+    // truncate+rebuild. The population is unsourced 2011-era data, not RPL 2021,
+    // and is not used for public per-capita figures (see apps/web/lib/ask/per-capita.ts
+    // and docs/implementation/peer-population-audit.md). NOTE: if entities are ever
+    // remapped (a re-normalize that changes ids), reference.authority_uat must be re-matched.
     await q`
       update marts.entity_profile ep
       set population = au.population, uat_siruta = au.uat_siruta

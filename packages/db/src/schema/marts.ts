@@ -161,8 +161,10 @@ export const entityProfile = martsSchema.table(
     /** Denormalized from core.entities so profiles can badge foreign suppliers. */
     countryCode: text("country_code"),
     isForeign: boolean("is_foreign").notNull().default(false),
-    /** Matched UAT (SIRUTA code) + its 2021 population — for per-capita normalization.
-     *  Only set for authorities that resolve to a commune/city/municipality. */
+    /** Legacy matched UAT (SIRUTA code) + its unsourced, mostly 2011-era population.
+     *  NOT the 2021 census and not a primary-administration identity: sector
+     *  subsidiaries carry whole-sector values. Public per-capita figures use the
+     *  RPL 2021 catalog via apps/web/lib/ask/per-capita.ts instead. */
     uatSiruta: integer("uat_siruta"),
     population: integer("population"),
     nContracts: integer("n_contracts").notNull().default(0),
