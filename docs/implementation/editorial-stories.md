@@ -135,6 +135,7 @@ Local, pe ramura `feat/stories-reader-flow`; fără push sau deploy. Toate câmp
 - O poveste nouă primește scena ei prin cod (componentă + descriere), deci printr-un deploy. Până atunci, `illustration` rămâne rezerva generică.
 - În articol, scena ocupă dreapta titlului, iar `keyFacts` trec într-un rând de patru cifre sub el (două pe mobil).
 - Testul de conținut cere ca fiecare previzualizare să aibă o scenă proprie, diferită de a celorlalte.
+- Toate cele 15 povești de pe server au scena lor (5 din 12 octombrie, 10 din 15–17 octombrie). Câmpul `scene` a fost adăugat și în sursele celor 10, în `../seap-research/docs/research/20261015-agenti-povesti/povesti/` (copia dinainte: `povesti-before-20261020/`).
 
 **Index.**
 - `teaser` (cel mult 200 de caractere) înlocuiește pe carduri rezumatul articolului.
