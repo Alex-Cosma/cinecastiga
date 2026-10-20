@@ -104,4 +104,38 @@ describe.runIf(Boolean(connection))("investigative population SQL (dedicated rol
     } catch (error) { if (error !== rollback) throw error; }
     expect(await sql`select nspname from pg_namespace where nspname=${prefix}`).toHaveLength(0);
   },30000);
+
+  // Data audit F13: records of authorities without a county (e.g. CNIR 2161607
+  // before its county was derived) are off the map but in the national total,
+  // so map shares must be of the whole selection, not of the mapped counties.
+  it("reports the selection's records without a county next to the map, filtered and bare", async () => {
+    const sql = connection!.sql, prefix = `map_fixture_${process.pid}_${Date.now()}`;
+    const rollback = new Error("rollback map fixture");
+    try {
+      await sql.begin(async tx => {
+        await tx.unsafe(`create schema ${prefix}`);
+        for (const table of ["da_transactions", "contract_transactions", "national_stats", "agg_map_county", "agg_national"]) await tx.unsafe(`create table ${prefix}.${table} as table marts.${table} with no data`);
+        const q = scoped(tx as unknown as DbSql, prefix);
+        await q`insert into marts.national_stats (kind,year) values ('da',2025),('award',2025)`;
+        await q`insert into marts.da_transactions (sicap_da_id,da_code,authority_id,authority_name,supplier_id,supplier_name,county,cpv_code,closing_value,finalization_date) values
+          (31,'DA31',1,'Authority A',10,'Supplier A','Cluj','45000000-7',10,'2025-01-01'),
+          (32,'DA32',3,'Authority without county',10,'Supplier A',null,'45000000-7',5,'2025-01-02')`;
+        await q`insert into marts.contract_transactions (contract_id,contract_no,authority_id,authority_name,supplier_id,supplier_name,county,cpv_code,closing_value,finalization_date,ca_notice_id,n_winners,contract_value_full) values
+          (41,'CT41',2,'Authority B',11,'Supplier B','Bucuresti','45000000-7',30,'2025-01-02',1001,1,30),
+          (42,'CT42',3,'Authority without county',11,'Supplier B',null,'45000000-7',55,'2025-01-03',1002,1,55)`;
+        const map:AskSpec = { block:"map", measure:"value", filters:{ yearFrom:2025, yearTo:2025 } };
+        const filtered = await runSpec(q,map,{});
+        expect(filtered).toMatchObject({ data:{ block:"map", unknown:{ value:60, count:2 } } });
+        if (!("data" in filtered) || filtered.data.block !== "map") throw new Error("map expected");
+        expect([...filtered.data.counties].sort((a,b)=>a.county.localeCompare(b.county))).toEqual([
+          { county:"Bucuresti", value:30, count:1 }, { county:"Cluj", value:10, count:1 }]);
+        // The bare national map reads the marts: unknown = national − mapped.
+        await q`insert into marts.agg_map_county (county,v_plaf,n_plaf,v_all,n_all) values ('Cluj',10,1,10,1),('Bucuresti',30,1,30,1)`;
+        await q`insert into marts.agg_national (src,v_plaf,n_plaf,v_all,n_all) values ('da',15,2,15,2),('contracts',85,2,85,2)`;
+        expect(await runSpec(q,{ ...map, filters:{} },{})).toMatchObject({ data:{ block:"map", unknown:{ value:60, count:2 } } });
+        throw rollback;
+      });
+    } catch (error) { if (error !== rollback) throw error; }
+    expect(await sql`select nspname from pg_namespace where nspname=${prefix}`).toHaveLength(0);
+  },30000);
 });

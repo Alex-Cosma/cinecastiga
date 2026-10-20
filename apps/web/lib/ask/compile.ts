@@ -144,7 +144,9 @@ export type BlockData =
   | { block: "table"; rows: TableRow[]; total?: number; page?: number; pageSize?: number }
   | { block: "stat"; stat: StatValue }
   | { block: "timeseries"; series: SeriesPoint[] }
-  | { block: "map"; counties: CountyValue[] }
+  // unknown: records of the same selection whose authority has no county.
+  // They are not on the map, but shares are of the whole selection (audit F13).
+  | { block: "map"; counties: CountyValue[]; unknown: { value: number; count: number } }
   | { block: "compare"; entities: CompareEntity[] }
   | { block: "distribution"; distribution: DistributionData }
   | { block: "breakdown"; slices: BreakdownSlice[]; other: { value: number; count: number } }
@@ -460,6 +462,8 @@ export async function runSpec(
       return { error: `Nu recunosc județul „${spec.filters.county}”.`, caveats };
     }
     county = grounding.county.canonical;
+    // Audit F13: a county comes from the source address or NUTS-3 code.
+    caveats.push("Județul este al sediului instituției, din adresa sau codul NUTS din sursă. Instituțiile fără județ cunoscut nu intră în filtru.");
   }
   let uatSiruta: number | null = null;
   if (spec.filters.uatSiruta) {
@@ -815,21 +819,33 @@ export async function runSpec(
             const r = (await s`
               select county c, ${aggV} v, ${aggN} n from marts.agg_map_county order by 2 desc limit 200
             `) as unknown as { c: string; v: string; n: string }[];
+            // Same population as the national total, minus what the map places.
+            const [rest] = (await s`
+              select (select coalesce(sum(${aggV}), 0) from marts.agg_national)
+                     - (select coalesce(sum(${aggV}), 0) from marts.agg_map_county) v,
+                     (select coalesce(sum(${aggN}), 0) from marts.agg_national)
+                     - (select coalesce(sum(${aggN}), 0) from marts.agg_map_county) n
+            `) as unknown as { v: string; n: string }[];
             return {
               block: "map",
               counties: r.map((p) => ({ county: p.c, value: Number(p.v), count: Number(p.n) })),
+              unknown: { value: Number(rest?.v ?? 0), count: Number(rest?.n ?? 0) },
             };
           }
           const r = (await s`
-            select d.county c, coalesce(sum(d.closing_value), 0) v, count(*) n
+            select nullif(d.county, '') c, coalesce(sum(d.closing_value), 0) v, count(*) n
             from ${txtAgg} d
-            where ${whereFrag()} and d.county is not null
+            where ${whereFrag()}
             group by 1 order by v desc
             limit 200
-          `) as unknown as { c: string; v: string; n: string }[];
+          `) as unknown as { c: string | null; v: string; n: string }[];
+          const unknown = r.find((p) => p.c == null);
           return {
             block: "map",
-            counties: r.map((p) => ({ county: p.c, value: Number(p.v), count: Number(p.n) })),
+            counties: r
+              .filter((p): p is { c: string; v: string; n: string } => p.c != null)
+              .map((p) => ({ county: p.c, value: Number(p.v), count: Number(p.n) })),
+            unknown: { value: Number(unknown?.v ?? 0), count: Number(unknown?.n ?? 0) },
           };
         }
 
