@@ -566,7 +566,7 @@ export function ScatterBlock({
       ctx.restore();
       ctx.textAlign = "center";
       ctx.fillText(
-        "cheltuială totală (scară log)",
+        "valoare totală (scară log)",
         (PAD.l + W - PAD.r) / 2,
         H - 10,
       );
@@ -803,7 +803,7 @@ export function ScatterBlock({
         height={780}
         className="ask-scatterc"
         role="img"
-        aria-label="Risc vs cheltuială — densitate"
+        aria-label="Risc vs valoare — densitate"
       />
       <div className="ask-scatterleg">
         <span className="it">
@@ -816,7 +816,7 @@ export function ScatterBlock({
           <span className="dsw mid" /> CRI 0,3–0,5
         </span>
         <span className="it">
-          <span className="dsw top" /> top cheltuială
+          <span className="dsw top" /> top valoare
         </span>
       </div>
       <details className="cq-calculation">

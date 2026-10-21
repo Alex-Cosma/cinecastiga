@@ -127,8 +127,8 @@ const BLOCKS = [
 
 const DIMS = [
   { id: "authority", l: "autorități", d: "cine cumpără", kw: "autoritati primarii institutii cumparatori" },
-  { id: "supplier", l: "furnizori", d: "cine încasează", kw: "furnizori firme companii vanzatori castigatori" },
-  { id: "county", l: "județe", d: "unde se cheltuie", kw: "judete regiuni geografic" },
+  { id: "supplier", l: "furnizori", d: "cine câștigă contracte", kw: "furnizori firme companii vanzatori castigatori" },
+  { id: "county", l: "județe", d: "județul autorității", kw: "judete regiuni geografic" },
 ];
 const MEASURES = [
   { id: "value", l: "în lei", d: "valoare totală", kw: "lei bani valoare suma" },

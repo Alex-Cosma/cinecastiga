@@ -825,7 +825,7 @@ export async function runSpec(
 
   if (spec.dim === "supplier" && w.county) {
     caveats.push(
-      "Filtrul de județ se aplică județului autorității cumpărătoare (unde s-a cheltuit), nu sediului firmei.",
+      "Filtrul de județ se aplică județului autorității cumpărătoare, nu sediului firmei.",
     );
   }
   if (spec.dim === "supplier" && spec.block === "table") {

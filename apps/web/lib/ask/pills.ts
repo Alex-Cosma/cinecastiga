@@ -45,7 +45,7 @@ export function buildPills(spec: AskSpec, grounding: Grounding): string[] {
   }
   if (spec.block === "entity_card") {
     pills.push(
-      (spec.rankBy ?? "risk") === "risk" ? "cea mai riscantă (CRI)" : "cea mai mare cheltuială",
+      (spec.rankBy ?? "risk") === "risk" ? "cea mai riscantă (CRI)" : "cea mai mare valoare",
     );
     pills.push(DIM_LABEL[spec.dim ?? "authority"]);
   }

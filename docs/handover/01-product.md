@@ -11,6 +11,7 @@ Principiul repetat explicit de proprietar: **„Poți verifica fiecare leu.”**
 ## Reguli semantice
 
 - Contractul înregistrat nu dovedește plata, livrarea sau executarea integrală.
+- Titlurile, etichetele și avertismentele numesc sumele „valoare contractată” sau „valoare înregistrată”, nu „cheltuieli”, „s-a cheltuit” sau „încasări” (auditul F36: titlul /harta, avertismentul de județ și exemplele din Întreabă). Testul `apps/web/lib/ask/value-wording.test.ts` verifică aceste fișiere.
 - Un semnal de risc este o pistă de verificat, nu dovadă de corupție.
 - Un contract prin procedură nu este automat peste pragul european, competitiv sau publicat în TED.
 - Absența unei potriviri automate TED–SEAP nu dovedește absența din SEAP.
