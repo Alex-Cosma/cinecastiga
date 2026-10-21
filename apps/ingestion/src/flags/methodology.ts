@@ -9,7 +9,8 @@
 // rf-2026.8: da_year_end only for calendar years the DA archive covers from January to December.
 // rf-2026.9: award_single_bid treats a 0/missing notice value as unknown and falls back to cited contracts/call-offs.
 // rf-2026.10: net_shared_admin ignores ONRC supervisory-board seats (not legal representation).
-export const METHODOLOGY_VERSION = "rf-2026.10";
+// rf-2026.11: fin_* and net_shared_admin join MF/ONRC only through a corroborated CUI (audit F03 stopgap).
+export const METHODOLOGY_VERSION = "rf-2026.11";
 
 export type FlagSubject = "da" | "award" | "authority" | "supplier" | "pair";
 
@@ -139,7 +140,7 @@ export const FLAG_DEFS: FlagDef[] = [
     title: "Puțini salariați, valori contractate mari",
     subject: "supplier",
     description:
-      "Furnizor cu cel mult 5 salariați (numărul mediu din bilanțul MF al aceluiași an) cu achiziții directe și cote din contracte înregistrate de cel puțin 2 mil. lei într-un singur an.",
+      "Furnizor cu cel mult 5 salariați (numărul mediu din bilanțul MF al aceluiași an) cu achiziții directe și cote din contracte înregistrate de cel puțin 2 mil. lei într-un singur an. Un CUI se leagă de bilanțul MF doar când firma nu este indicată drept străină sau ONRC înregistrează numărul sub un nume asemănător.",
     rationale:
       "Merită verificat cum au fost îndeplinite contractele: personal propriu, subcontractori, echipamente sau revânzare de produse.",
     caveat:
@@ -150,7 +151,7 @@ export const FLAG_DEFS: FlagDef[] = [
     title: "Valori contractate raportate la cifra de afaceri",
     subject: "supplier",
     description:
-      "În anii în care avem atât achiziții înregistrate, cât și bilanț cu cifră de afaceri pozitivă, suma achizițiilor directe și a cotelor din contracte înregistrate este de cel puțin 75% din cifra de afaceri cumulată, cu minimum 1 milion lei în achiziții și 250.000 lei cifră de afaceri.",
+      "În anii în care avem atât achiziții înregistrate, cât și bilanț cu cifră de afaceri pozitivă, suma achizițiilor directe și a cotelor din contracte înregistrate este de cel puțin 75% din cifra de afaceri cumulată, cu minimum 1 milion lei în achiziții și 250.000 lei cifră de afaceri. Un CUI se leagă de bilanțul MF doar când firma nu este indicată drept străină sau ONRC înregistrează numărul sub un nume asemănător.",
     rationale:
       "Merită comparate durata contractelor, execuția și veniturile raportate. Raportul ajută la alegerea documentelor de verificat, dar nu măsoară ponderea încasărilor de la stat.",
     caveat:
@@ -161,7 +162,7 @@ export const FLAG_DEFS: FlagDef[] = [
     title: "Reprezentant comun, aceeași autoritate",
     subject: "supplier",
     description:
-      "Două sau mai multe firme cu un reprezentant legal comun în datele ONRC disponibile au achiziții directe și cote din contracte înregistrate la aceeași autoritate. Identitatea reprezentantului folosește numele, data și locul nașterii. Calitatea de membru în consiliul de supraveghere nu este luată în calcul, pentru că acest consiliu nu reprezintă firma.",
+      "Două sau mai multe firme cu un reprezentant legal comun în datele ONRC disponibile au achiziții directe și cote din contracte înregistrate la aceeași autoritate. Identitatea reprezentantului folosește numele, data și locul nașterii. Calitatea de membru în consiliul de supraveghere nu este luată în calcul, pentru că acest consiliu nu reprezintă firma. Un CUI se leagă de ONRC doar când firma nu este indicată drept străină sau ONRC înregistrează numărul sub un nume asemănător.",
     rationale:
       "Legătura permite analizarea împreună a atribuirilor acestor firme. Merită verificate rolul persoanei, relația dintre firme și situația lor la data achizițiilor.",
     caveat:

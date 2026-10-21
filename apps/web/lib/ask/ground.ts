@@ -1,4 +1,4 @@
-import type { DbSql } from "@seap/db";
+import { cuiCorroborated, type DbSql } from "@seap/db";
 import type { AskFilters } from "./spec";
 import { aliasQueries, queryTokens } from "./entity-alias";
 import { readLocalAuthorityIds } from "../peer-population";
@@ -305,7 +305,9 @@ async function groundAdmin(
            -- "N firme cu bani publici" caveat
            array_agg(distinct e.id) filter (where ep.entity_id is not null) ids
     from reference.company_reps r
-    left join core.entities e on e.cui_canonical = r.cui
+    -- corroborated CUI only: a foreign number that passes the CUI checksum is
+    -- not this person's firm (audit F03)
+    left join core.entities e on e.cui_canonical = r.cui and ${cuiCorroborated(sql, "e")}
     left join marts.entity_profile ep on ep.entity_id = e.id and ep.role = 'supplier'
     where r.person_key = ${personKey}
   `) as unknown as {

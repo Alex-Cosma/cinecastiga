@@ -178,8 +178,9 @@ export const entityProfile = martsSchema.table(
     firstActivity: text("first_activity"),
     lastActivity: text("last_activity"),
     /** MF bilanț (reference.company_financials): latest filing with an employee
-     *  count, joined by cui_canonical at build time. Suppliers only; null =
-     *  no filing (PFA, foreign, dissolved) — an informative absence. */
+     *  count, joined by a corroborated cui_canonical at build time (audit F03).
+     *  Suppliers only; null = no filing (PFA, foreign, dissolved) or a CUI not
+     *  corroborated by ONRC — an informative absence. */
     employees: integer("employees"),
     employeesYear: integer("employees_year"),
     netTurnover: numeric("net_turnover"),
@@ -189,6 +190,21 @@ export const entityProfile = martsSchema.table(
     index("entity_profile_role_full_idx").on(t.role, t.totalRonFull),
   ],
 );
+
+/**
+ * Audit F03 stopgap (option C): entities with a foreign marker whose valid
+ * CUI is registered at ONRC under a name sharing a distinctive token. Only
+ * these, and Romanian entities, may be joined to ONRC/MF by CUI; absence
+ * means "not corroborated" (fail-closed). Rebuilt by the marts build via
+ * refreshCuiCorroborations; read through cuiCorroborated (entity-registry.ts).
+ */
+export const cuiCorroborations = martsSchema.table("cui_corroborations", {
+  entityId: bigint("entity_id", { mode: "bigint" }).primaryKey(),
+  /** The cui_canonical that was corroborated; a later change invalidates the row. */
+  cui: text("cui").notNull(),
+  /** One ONRC name that shares a token with the entity name (for review). */
+  onrcName: text("onrc_name").notNull(),
+});
 
 /** Top counterparties per entity (suppliers↔authorities). Ranked, capped. */
 export const entityTopPartners = martsSchema.table(

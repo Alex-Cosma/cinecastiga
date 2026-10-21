@@ -1,4 +1,4 @@
-import { contractKind } from '@seap/db';
+import { contractKind, corroboratedCui, cuiCorroborated } from '@seap/db';
 import type { DbSql } from "@seap/db";
 import { DA_CPV_TYPE_PATTERN } from "@seap/domain";
 import { assertCeilingEras, daThresholdDateSql, daThresholdKeySql } from "./thresholds.js";
@@ -125,17 +125,20 @@ async function buildSupplierDependency(sql: DbSql): Promise<number> {
            coalesce(p.c_frame, 0) c_frame, coalesce(p.c_plain, 0) c_plain,
            y.yrs,
            (select sum(f.net_turnover) from reference.company_financials f
-             where f.cui = e.cui_canonical and f.year = any(y.yrs)) turn_win,
+             where f.cui = rc.cui and f.year = any(y.yrs)) turn_win,
            (select count(*)::int from reference.company_financials f
-             where f.cui = e.cui_canonical and f.year = any(y.yrs) and f.net_turnover is not null) ny_win,
+             where f.cui = rc.cui and f.year = any(y.yrs) and f.net_turnover is not null) ny_win,
            (select max(f.net_turnover) from reference.company_financials f
-             where f.cui = e.cui_canonical and f.year = ${winTo}) turn_last,
+             where f.cui = rc.cui and f.year = ${winTo}) turn_last,
            (select max(f.employees) from reference.company_financials f
-             where f.cui = e.cui_canonical and f.year = ${winTo}) emp_last,
+             where f.cui = rc.cui and f.year = ${winTo}) emp_last,
            ${winFrom}::int win_from, ${winTo}::int win_to
     from pair p
     join sup on sup.s = p.s
     join core.entities e on e.id = p.s
+    -- MF figures only for a corroborated CUI (audit F03): a foreign number that
+    -- passes the CUI checksum must not take another firm's turnover.
+    cross join lateral (select ${corroboratedCui(sql, 'e')} cui) rc
     left join marts.entity_profile ep on ep.entity_id = p.s and ep.role = 'supplier'
     left join yrs y on y.a = p.a and y.s = p.s
   `;
@@ -558,6 +561,7 @@ async function buildLotPatterns(sql: DbSql, log: (m: string) => void): Promise<[
         join reference.company_reps r on r.cui = e.cui_canonical
         where e.id = any(${sql.array(memberIds)}::bigint[])
           and r.calitate ilike '%administrator%' and r.birth_date is not null
+          and ${cuiCorroborated(sql, 'e')}
       `) as unknown as AdminRepRow[])
     : [];
   const personsOf = adminsByEntity(reps);
