@@ -13,7 +13,8 @@
 // rf-2026.12: award_no_competition/award_single_bid evidence records what the notice holds (notice_contracts, audit F14).
 // rf-2026.13: net_shared_admin and Radiografie shared administrators ignore placeholder/implausible ONRC birth dates (audit F37).
 // rf-2026.14: a DA supplier equal to its own authority is not a supplier (audit F12): no da_split pair, da_concentration/da_dependence share, fin_* or net_shared_admin value, supplier CRI or DA signal partner.
-export const METHODOLOGY_VERSION = "rf-2026.14";
+// rf-2026.15: award_no_competition/award_single_bid count once per award notice (same authority and notice number, across SEAP versions) and take the year of its first contract.
+export const METHODOLOGY_VERSION = "rf-2026.15";
 
 export type FlagSubject = "da" | "award" | "authority" | "supplier" | "pair";
 
@@ -103,7 +104,7 @@ export const FLAG_DEFS: FlagDef[] = [
     rationale:
       "Lipsa unui anunț prealabil justifică verificarea motivului legal invocat și a condițiilor de atribuire (Legea 98/2016 art. 104).",
     caveat:
-      "Unele cazuri sunt legitime (urgențe reale, furnizor unic tehnic). Semnalul contează prin valoare și frecvență. Semnalul se numără o dată pentru fiecare anunț de atribuire publicat (apariții). Același contract republicat sub alt număr de anunț, sau un acord-cadru și contractul subsecvent atribuit din el, pot apărea ca apariții separate. Când anunțul conține doar plafonul unui acord-cadru, valoarea afișată este plafonul, nu o cheltuială, și nu se adună la totaluri.",
+      "Unele cazuri sunt legitime (urgențe reale, furnizor unic tehnic). Semnalul contează prin valoare și frecvență. Semnalul se numără o dată pentru fiecare anunț de atribuire (apariții). Versiunile pe care SEAP le republică sub același număr de anunț se numără o singură dată, la ultima versiune care îndeplinește criteriul. Același contract republicat sub alt număr de anunț, sau un acord-cadru și contractul subsecvent atribuit din el, pot apărea ca apariții separate. Anul semnalului este anul primului contract din anunț, din oricare versiune; un anunț fără contract cu dată plauzibilă primește anul primei versiuni preluate. Când anunțul conține doar plafonul unui acord-cadru, valoarea afișată este plafonul, nu o cheltuială, și nu se adună la totaluri.",
   },
   {
     code: "award_single_bid",
@@ -114,7 +115,7 @@ export const FLAG_DEFS: FlagDef[] = [
     rationale:
       "O singură ofertă primită justifică verificarea accesului la procedură, a cerințelor și a pieței furnizorilor; nu identifică singură cauza concurenței reduse.",
     caveat:
-      "Numărul de oferte nu este numărul membrilor unui consorțiu. Un lot cu o ofertă nu descrie toate loturile anunțului. Valoarea afișată este a anunțului sau, când aceasta lipsește, a contractelor citate; contractele citate pot însuma mai mult decât valoarea anunțului. Numerele lipsă, contradictorii și asocierile ambigue rămân necunoscute. Piețele de nișă pot avea legitim o singură ofertă. Semnalul se numără o dată pentru fiecare anunț de atribuire publicat (apariții). Același contract republicat sub alt număr de anunț, sau un acord-cadru și contractul subsecvent atribuit din el, pot apărea ca apariții separate. Când anunțul conține doar plafonul unui acord-cadru, valoarea afișată este plafonul, nu o cheltuială, și nu se adună la totaluri.",
+      "Numărul de oferte nu este numărul membrilor unui consorțiu. Un lot cu o ofertă nu descrie toate loturile anunțului. Valoarea afișată este a anunțului sau, când aceasta lipsește, a contractelor citate; contractele citate pot însuma mai mult decât valoarea anunțului. Numerele lipsă, contradictorii și asocierile ambigue rămân necunoscute. Piețele de nișă pot avea legitim o singură ofertă. Semnalul se numără o dată pentru fiecare anunț de atribuire (apariții). Versiunile pe care SEAP le republică sub același număr de anunț se numără o singură dată, la ultima versiune care îndeplinește criteriul. Același contract republicat sub alt număr de anunț, sau un acord-cadru și contractul subsecvent atribuit din el, pot apărea ca apariții separate. Anul semnalului este anul primului contract din anunț, din oricare versiune; un anunț fără contract cu dată plauzibilă primește anul primei versiuni preluate. Când anunțul conține doar plafonul unui acord-cadru, valoarea afișată este plafonul, nu o cheltuială, și nu se adună la totaluri.",
   },
   {
     code: "award_concentration",

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAwardNoticeDetail } from "@/lib/marts";
 import { CONTRACT_DATE_FLOOR } from "@seap/db";
-import { formatRon, formatRonFull, formatInt, cleanName } from "@/lib/format";
+import { formatRon, formatRonFull, formatInt, formatCalendarDate, cleanName } from "@/lib/format";
 import { awardUrl } from "@/lib/elicitatie";
 import ClipButton from "@/components/ClipButton";
 
@@ -10,6 +10,11 @@ import ClipButton from "@/components/ClipButton";
  * Award-notice page — the "mother" of its contracts: one procedure, N lots.
  * Keyed by SICAP's ca_notice_id. Each lot links to its /contracte page; big
  * frameworks (max ~2.700 lots) paginate via ?p=.
+ *
+ * SEAP republishes an award notice under the same number when it adds
+ * call-offs (new caNoticeId, new contract ids, new state date). The date shown
+ * is that of this version, next to the first contract of the notice across
+ * its versions (owner decision of 21 October 2026).
  */
 
 export const dynamic = "force-dynamic";
@@ -44,8 +49,28 @@ export default async function NoticePage({
           <span className="badge plain">anunț de atribuire</span>
           {n.procedureType && <span className="badge plain">{n.procedureType}</span>}
           {n.noticeNo && <span className="note">nr. {n.noticeNo}</span>}{" "}
-          {n.stateDate && <span className="note">{n.stateDate.slice(0, 10)}</span>}
+          {n.versionDate && <span className="note">data acestei versiuni: {formatCalendarDate(n.versionDate)}</span>}{" "}
+          <span className="note">
+            primul contract din anunț: {n.firstContractDate ? formatCalendarDate(n.firstContractDate) : "fără dată plauzibilă"}
+          </span>
         </div>
+        {n.versions.length > 1 && (
+          <p className="note">
+            SEAP a publicat acest anunț în {formatInt(n.versions.length)} versiuni sub același număr, de regulă când
+            adaugă contracte subsecvente. Fiecare versiune are propriile înregistrări; nu le aduna. Versiuni:{" "}
+            {n.versions.map((v, i) => (
+              <span key={v.caNoticeId}>
+                {i > 0 && ", "}
+                {v.caNoticeId === n.caNoticeId ? (
+                  <span aria-current="page">{formatCalendarDate(v.versionDate)} (aceasta)</span>
+                ) : (
+                  <Link href={`/anunturi/${v.caNoticeId}`}>{formatCalendarDate(v.versionDate)}</Link>
+                )}
+              </span>
+            ))}
+            .
+          </p>
+        )}
         {n.authority && (
           <p className="note">
             Autoritate:{" "}

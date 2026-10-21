@@ -285,6 +285,10 @@ export const awards = coreSchema.table(
      */
     procedureType: text("procedure_type"),
     state: text("state"),
+    /** noticeStateDate of THIS version (caNoticeId). SEAP republishes an award
+     * notice under the same notice_no, e.g. when it adds call-offs, as a new
+     * caNoticeId with new contract ids and a new date: not a first-publication
+     * date. Award signals take the year of the first contract instead. */
     stateDate: timestamp("state_date", { withTimezone: true }),
   },
   (t) => [

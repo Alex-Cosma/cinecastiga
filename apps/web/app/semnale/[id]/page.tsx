@@ -38,7 +38,7 @@ export default async function SignalSourcesPage({ params, searchParams }: {
       : evidence);
     return <><Link href={`/semnale?tip=${encodeURIComponent(finding.code)}`} className="back">← Înapoi la semnale</Link>
       <h1 className="page-title">Sursele semnalului</h1>
-      <p>{signalPeriodLabel(finding.period)}{explanation ? ` · ${explanation}` : ""}</p>
+      <p>{signalPeriodLabel(finding.period, evidence)}{explanation ? ` · ${explanation}` : ""}</p>
       {meta && <p className="note">{meta.caveat}</p>}
       <SourceEvidenceView evidence={source} href={`/semnale/${id}`} page={Number(p ?? 0)} kind="signal" refId={id} />
       <Link href={`/metodologie#${finding.code}`}>Criterii și limitele semnalului →</Link></>;
@@ -46,7 +46,7 @@ export default async function SignalSourcesPage({ params, searchParams }: {
   return <>
     <Link href={`/semnale?tip=${encodeURIComponent(finding.code)}`} className="back">← Înapoi la semnale</Link>
     <h1 className="page-title">Sursele semnalului</h1>
-    <p className="page-sub">{meta?.title ?? finding.code}{finding.period && finding.period !== "all" ? ` · ${finding.period}` : ""}</p>
+    <p className="page-sub">{meta?.title ?? finding.code}{finding.period && finding.period !== "all" ? ` · ${signalPeriodLabel(finding.period, evidence)}` : ""}</p>
     <p>Metodologie: {finding.methodology}. Acesta este un semnal calculat din date, care trebuie verificat în documentele sursă.</p>
     <ClipButton kind="signal" refId={id} label={meta?.title ?? finding.code} />
     <p><a href={`/api/evidence/sources?kind=signal&id=${id}`} download>Descarcă înregistrările disponibile · CSV ↓</a></p>

@@ -21,10 +21,18 @@ const SOURCE = "elicitatie:state-rescan";
 
 /**
  * Notice state changes (suspension, cancellation, award) mutate
- * sysNoticeState/noticeStateDate WITHOUT changing publicationDate, so the
- * incremental publication cursor never re-surfaces them (DEC-003). This
- * job re-lists a trailing publication window (cheap: list-only) and
- * re-fetches details only where noticeStateDate moved.
+ * sysNoticeState/noticeStateDate of a notice id the incremental day cursor
+ * has already passed, so that cursor does not fetch it again (DEC-003). This
+ * job re-lists a trailing window of days (cheap: list-only) and re-fetches
+ * details only where noticeStateDate moved.
+ *
+ * The window uses SEAP's startPublicationDate/endPublicationDate filter, but
+ * list items carry no publication date: noticeStateDate is the date of the
+ * current state of that notice version (see validateEnvelope in notices.ts).
+ * An award notice that SEAP republishes under the same noticeNo is not a
+ * state change: it is a new caNoticeId with new contract ids and its own state
+ * date, collected as a new item and kept as its own core.awards row. So
+ * core.awards.state_date dates a version, never the first publication.
  */
 export async function rescanNoticeStates(
   deps: ScrapeDeps,

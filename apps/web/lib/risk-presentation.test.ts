@@ -48,6 +48,17 @@ describe("risk explanation limits", () => {
     expect(signalPeriodLabel("all")).toContain("disponibilă la calcul");
     expect(signalPeriodLabel("2021")).toContain("2021");
   });
+  // Owner decision of 21 October 2026 (rf-2026.15): an award signal's year is
+  // its first contract's, not the date of the notice's latest SEAP version.
+  it("says which date gives an award signal its year", () => {
+    expect(signalPeriodLabel("2021", { period_source: "first_contract", first_contract_date: "2021-06-15", version_date: "2026-09-25" }))
+      .toBe("Perioada calculului: 2021 (anul primului contract din anunț)");
+    expect(signalPeriodLabel("2026", { period_source: "notice_version" }))
+      .toBe("Perioada calculului: 2026 (anul primei versiuni preluate a anunțului; anunțul nu are contracte cu dată plauzibilă)");
+    // Signals computed before rf-2026.15 keep the plain label.
+    expect(signalPeriodLabel("2026", { value: 1 })).toBe("Perioada calculului: 2026");
+    expect(signalPeriodLabel("all", { period_source: "first_contract" })).toBe("Întreaga perioadă disponibilă la calcul");
+  });
 });
 
 // Audit F23: say which value an award_single_bid signal uses and never show a

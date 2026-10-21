@@ -43,7 +43,7 @@ export default function ContractPublications({publications,currentId,countedOnce
        <div className="contract-publication-heading"><span>{p.publishedOn?<time dateTime={p.publishedOn}>{formatCalendarDate(p.publishedOn)}</time>:'Dată neprecizată'}</span>
         {p.canonical&&<strong className="contract-publication-current">{countedOnce?'Versiunea din statistici':'Ultima versiune verificată'}</strong>}</div>
        {p.valueRon!=null&&<strong className="contract-publication-value">{formatExactDecimal(p.valueRon)} lei</strong>}
-       <span className="note">{index===0?'Prima publicație verificată':changes.length?changes.join(' · '):'Aceleași date contractuale'} · {p.noticeNo??'Anunț de atribuire'} · ID {p.noticeId}</span>
+       <span className="note">{index===0?'Prima publicație verificată (prima versiune pe care o avem, nu neapărat prima din SEAP)':changes.length?changes.join(' · '):'Aceleași date contractuale'} · {p.noticeNo??'Anunț de atribuire'} · ID {p.noticeId}</span>
        {Boolean(p.supplierNames?.length)&&<span className="contract-publication-suppliers">{p.supplierNames!.map(cleanName).join(' · ')}</span>}
        {changes.includes('Titlu modificat')&&<span>{p.title}</span>}
        {p.unflaggedChange&&UNFLAGGED[p.unflaggedChange]&&<span className="note">{UNFLAGGED[p.unflaggedChange]}</span>}
@@ -54,7 +54,7 @@ export default function ContractPublications({publications,currentId,countedOnce
       </span>
      </li>;
     })}</ol>
-    <p className="note">Datele de mai sus sunt datele publicării anunțurilor. Păstrăm fiecare sursă și valorile sale; versiunile anterioare nu se adună la cea curentă. Valoarea contractului nu este o plată.</p>
+    <p className="note">Datele de mai sus sunt datele versiunilor de anunț pe care le avem. SEAP poate republica un anunț de atribuire sub același număr, cu o dată nouă, când adaugă contracte subsecvente, deci prima dată de aici nu este neapărat data primei publicări în SEAP. Păstrăm fiecare sursă și valorile sale; versiunile anterioare nu se adună la cea curentă. Valoarea contractului nu este o plată.</p>
    </details>
  </aside>;
 }
