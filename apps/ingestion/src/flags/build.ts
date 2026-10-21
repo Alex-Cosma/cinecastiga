@@ -1,4 +1,4 @@
-import { cuiCorroborated, onrcIdentityBirthDate, type DbSql } from "@seap/db";
+import { cuiCorroborated, onrcIdentityBirthDate, repRoleLinksFirms, type DbSql } from "@seap/db";
 import { DA_CPV_TYPE_PATTERN } from "@seap/domain";
 import { METHODOLOGY_VERSION } from "./methodology.js";
 import { assertCeilingEras, daThresholdDateSql, daThresholdKeySql } from "./thresholds.js";
@@ -432,20 +432,24 @@ async function buildFlags(
   await sql`
     insert into core.flags (subject_type, subject_id, partner_id, flag_code, period, triggered, severity, evidence, methodology_version)
     with reps as (
-      -- person (solid identity only) → their firms that exist as entities.
-      -- The signal says "reprezentant legal comun": a supervisory-board member
-      -- (dualist SA, Legea 31/1990) supervises but does not represent the
-      -- company, so that seat does not link the firms (audit F31, rf-2026.10).
+      -- person (solid identity only) → their firms that exist as entities,
+      -- with every ONRC role they hold there (shown in the evidence). The
+      -- signal says "reprezentant legal comun": a firm counts only through a
+      -- role that represents it. A supervisory-board seat (rf-2026.10) and
+      -- insolvency or liquidation roles (rf-2026.16) do not link the firms
+      -- (audit F31, repRoleLinksFirms in @seap/db).
       -- A placeholder (1910-01-01, 1910-10-10) or implausible birth date is
       -- no identity: namesakes would share the key (audit F37, rf-2026.13).
       select r.person_key, max(r.person_name) pname,
-             max(extract(year from r.birth_date))::int pby, e.id sid
+             max(extract(year from r.birth_date))::int pby, e.id sid,
+             coalesce(array_agg(distinct r.calitate order by r.calitate)
+               filter (where r.calitate is not null), '{}') roles
       from reference.company_reps r
       join core.entities e on e.cui_canonical = r.cui
       where ${onrcIdentityBirthDate(sql, 'r')}
-        and coalesce(r.calitate, '') not ilike '%consiliul de supraveghere%'
         and ${cuiCorroborated(sql, 'e')}
       group by r.person_key, e.id
+      having bool_or(${repRoleLinksFirms(sql, 'r')})
     ),
     pair as (
       -- recorded value per (supplier, authority): DAs + canonical contract shares
@@ -477,9 +481,12 @@ async function buildFlags(
       least(1, g.total / ${netSevRef}::numeric),
       jsonb_build_object('person', g.pname, 'birth_year', g.pby,
         'authority_id', g.aid, 'authority', a.name_display,
-        'n_firms', g.nf, 'combined', g.total), ${V}
+        'n_firms', g.nf, 'combined', g.total,
+        -- the person's ONRC role(s) at this firm (calitate), audit F31
+        'roles', to_jsonb(rs.roles)), ${V}
     from g
     cross join lateral unnest(g.sids) s(sid)
+    join reps rs on rs.person_key = g.person_key and rs.sid = s.sid
     left join core.entities a on a.id = g.aid
   `;
 

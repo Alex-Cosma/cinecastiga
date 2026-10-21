@@ -30,3 +30,4 @@ export * from './collection-coverage.js';
 export * from './entity-registry.js';
 
 export * from './onrc-identity.js';
+export * from './onrc-roles.js';

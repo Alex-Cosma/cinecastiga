@@ -92,6 +92,16 @@ export function noticeContractsNote(evidence: Record<string, unknown>): string {
     : ` Anunțul conține ${label}.`;
 }
 
+/** net_shared_admin (rf-2026.13, audit F31): the person's ONRC role(s) at the
+ * signal's firm. Older signals lack `roles` and add nothing. */
+export function onrcRoleNote(evidence: Record<string, unknown>): string {
+  if (!Array.isArray(evidence.roles)) return "";
+  const roles = evidence.roles.filter((role): role is string => typeof role === "string" && role.trim() !== "");
+  return roles.length
+    ? ` ${roles.length === 1 ? "Calitatea" : "Calitățile"} în ONRC la această firmă: ${roles.join("; ")}.`
+    : " Calitatea în ONRC la această firmă nu este precizată.";
+}
+
 /** Display-only explanations shared by entity profiles and the signal explorer. */
 export function riskEvidenceLine(code: string, evidence: Record<string, unknown> | null): string | null {
   if (!evidence) return null;
@@ -136,7 +146,7 @@ export function riskEvidenceLine(code: string, evidence: Record<string, unknown>
     case "fin_public_reliance":
       return `Raport valori contractate / cifră de afaceri: ${pct("ratio")} (${money("public_total")} / ${money("revenue_total")}, ${s("years")} ani cu bilanț). Nu reprezintă ponderea încasărilor de la stat.`;
     case "net_shared_admin":
-      return `${s("person")} apare ca reprezentant legal pentru ${s("n_firms")} firme cu ${money("combined")} în achiziții înregistrate la ${s("authority")}.`;
+      return `${s("person")} apare ca reprezentant legal pentru ${s("n_firms")} firme cu ${money("combined")} în achiziții înregistrate la ${s("authority")}.${onrcRoleNote(evidence)}`;
     default:
       return null;
   }
