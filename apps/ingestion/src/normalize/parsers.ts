@@ -13,6 +13,7 @@ import {
 } from "@seap/db";
 import type { NormalizeCtx } from "./context.js";
 import { parseCpvObject, parseCpvString, resolveCpv } from "./cpv.js";
+import { parseVatPrefixedString } from "./foreign.js";
 import { parseEntityString } from "./name.js";
 import { linkSicapId, resolveEntity } from "./resolve-entity.js";
 import { loadTedNotice } from "./ted.js";
@@ -337,10 +338,14 @@ async function loadDaList(
     });
   }
   if (p.supplier) {
-    const { cuiRaw, name } = parseEntityString(p.supplier);
+    const parsed = parseEntityString(p.supplier);
+    // A foreign supplier is listed as "ATU14260100 ECOLAB GMBH": its VAT number
+    // with the country prefix is the only key the DA list gives (audit F18).
+    const vat = parsed.cuiRaw == null ? parseVatPrefixedString(p.supplier) : null;
     supplierEntityId = await resolveEntity(ctx.tx, {
-      cuiRaw,
-      nameDisplay: name,
+      cuiRaw: vat?.idRaw ?? parsed.cuiRaw,
+      nameDisplay: vat?.name ?? parsed.name,
+      country: vat?.country ?? null,
       namespace: "supplier",
       seenAt,
     });
