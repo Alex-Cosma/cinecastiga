@@ -23,6 +23,9 @@ import { PER_CAPITA_SOURCE, perCapitaCaveat, POPULATION_CARD_NOTE, readPerCapita
 export const DA_PLAFOND_RON = 2_000_000;
 /** Contracts above CONTRACT_VALUE_CAP_RON (@seap/db) never reach the marts, so
  * every contract answer must say so; the entity page lists them. */
+/** Same wording as /metodologie: an analytical filter, never a claim that the record is wrong (audit F25). */
+export const DA_PLAFOND_CAVEAT =
+  `Achizițiile directe peste ${(DA_PLAFOND_RON / 1_000_000).toLocaleString("ro-RO")} milioane lei sunt excluse din totaluri printr-un plafon de plauzibilitate: un filtru analitic al aplicației, nu pragul legal și nici dovada unei erori.`;
 export const CONTRACT_CAP_CAVEAT =
   "Contractele prin proceduri cu valoare peste 1 miliard lei sunt separate de totaluri și de clasamente (filtru al aplicației, nu dovada unei erori); pagina instituției le listează.";
 const STATEMENT_TIMEOUT = "20s";
@@ -644,9 +647,7 @@ export async function runSpec(
         ? "strict"
         : "da-branch";
   if (plafond !== "none") {
-    caveats.push(
-      `Valorile peste ${(DA_PLAFOND_RON / 1_000_000).toLocaleString("ro-RO")} mil. lei pe o achiziție directă sunt excluse ca erori de introducere (plafon de plauzibilitate).`,
-    );
+    caveats.push(DA_PLAFOND_CAVEAT);
     caveats.push(
       "Sunt numărate doar achizițiile directe finalizate («Ofertă acceptată») — comenzile refuzate de furnizor sau neacceptate la termen (~6% din înregistrări) sunt excluse din valorile contractate; acceptarea unei oferte nu dovedește efectuarea unei plăți.",
     );
