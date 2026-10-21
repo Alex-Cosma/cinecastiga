@@ -15,6 +15,7 @@ import {
 import { PARSERS } from "./parsers.js";
 import { applyReviewedEntityNames } from "./reviewed-entity-names.js";
 import { applyNutsCounties } from "./nuts-county.js";
+import { applyDaSupplierVatIdentities } from "./da-supplier-vat.js";
 
 /**
  * Replayable raw→core runner (core-layer DEC-004). Processes each
@@ -51,6 +52,8 @@ export interface NormalizeReport {
   reviewedNames: number;
   /** Romanian entities given a county from their NUTS-3 code now (0 once applied). */
   nutsCounties: number;
+  /** Key-less DA supplier fragments redirected to their VAT-number entity now (0 once applied). */
+  daSupplierVat: number;
 }
 
 async function getCursor(db: Db, transform: string): Promise<bigint> {
@@ -177,6 +180,10 @@ export async function runNormalize(
     log(`${transform}: processed ${processed}, quarantined ${quarantined}`);
   }
 
+  // After every transform, so the DAs of a foreign supplier created before the
+  // list parser read its VAT number reach one entity before the marts (audit F18).
+  const daSupplierVat = opts.only ? [] : await sql.begin((q) => applyDaSupplierVatIdentities(q));
+  if (daSupplierVat.length) log(`DA suppliers redirected to their VAT-number entity: ${daSupplierVat.length}`);
   // After every transform, so an entity created or rebuilt from the source
   // registrations gets its reviewed name before the marts copy it.
   const reviewedNames = opts.only ? [] : await sql.begin((q) => applyReviewedEntityNames(q));
@@ -191,6 +198,7 @@ export async function runNormalize(
     quarantined: totalQuarantined,
     reviewedNames: reviewedNames.length,
     nutsCounties: nutsCounties.length,
+    daSupplierVat: daSupplierVat.length,
   };
 }
 

@@ -69,3 +69,63 @@ export function entityIdentity(
     mergeIdNorm: normForeignId(idRaw),
   };
 }
+
+/**
+ * VAT-number formats (the part after the country prefix, separators removed)
+ * of the countries whose firms win Romanian direct awards. EU formats follow
+ * VIES; CHE is the Swiss UID, NO the Norwegian organisation number. Exact
+ * lengths keep an ordinary name ("DE 3 ...", "IT 2000 ...") from being read as
+ * an identifier. NL also occurs without its "B01" suffix in SEAP.
+ */
+const VAT_FORMATS: Readonly<Record<string, RegExp>> = {
+  AT: /^U\d{8}$/, BE: /^[01]?\d{9}$/, BG: /^\d{9,10}$/, CY: /^\d{8}[A-Z]$/,
+  CZ: /^\d{8,10}$/, DE: /^\d{9}$/, DK: /^\d{8}$/, EE: /^\d{9}$/, EL: /^\d{9}$/,
+  ES: /^[A-Z0-9]\d{7}[A-Z0-9]$/, FI: /^\d{8}$/, FR: /^[A-HJ-NP-Z0-9]{2}\d{9}$/,
+  HR: /^\d{11}$/, HU: /^\d{8}$/, IE: /^(?:\d{7}[A-W][A-I]?|\d[A-Z+*]\d{5}[A-W])$/,
+  IT: /^\d{11}$/, LT: /^(?:\d{9}|\d{12})$/, LU: /^\d{8}$/, LV: /^\d{11}$/,
+  MT: /^\d{8}$/, NL: /^\d{9}(?:B\d{2})?$/, PL: /^\d{10}$/, PT: /^\d{9}$/,
+  SE: /^\d{12}$/, SI: /^\d{8}$/, SK: /^\d{10}$/,
+  GB: /^(?:\d{9}|\d{12}|GD\d{3}|HA\d{3})$/,
+  CHE: /^\d{9}(?:MWST|TVA|IVA)?$/, NO: /^\d{9}(?:MVA)?$/,
+};
+
+/** VAT prefixes that differ from the ISO-2 country code. */
+const VAT_PREFIX_COUNTRY: Readonly<Record<string, string>> = { EL: "GR", CHE: "CH" };
+
+export interface VatPrefixedString {
+  /** ISO-2 country named by the VAT prefix (EL → GR, CHE → CH). */
+  country: string;
+  /** The identifier as written, prefix included (e.g. "ATU 18379608"). */
+  idRaw: string;
+  /** The rest of the string: the firm's name. */
+  name: string;
+}
+
+/**
+ * Split a SEAP "VAT-number name" string whose identifier is a foreign VAT
+ * number with its country prefix: "ATU14260100 ECOLAB GMBH",
+ * "ATU 18379608 Shimadzu …", "CHE-105.678.859 scope solutions ag" (data audit
+ * F18). The DA list gives such suppliers no other key, so the
+ * (country, VAT number) pair is their tier-2b merge key. Returns null for any
+ * string that does not start with a VAT number of the exact national format,
+ * or that has no name after it. The RO prefix is parseEntityString's.
+ */
+export function parseVatPrefixedString(raw: string): VatPrefixedString | null {
+  const s = raw.trim();
+  // The identifier may be split by a space ("AT U16818807", "SE 5569416893 01"):
+  // take the fewest leading tokens that form a valid VAT number.
+  for (let k = 1; k <= 3; k++) {
+    const m = new RegExp(`^(\\S+(?:\\s+\\S+){${k - 1}})\\s+(\\S.*)$`, "s").exec(s);
+    if (!m) return null;
+    const compact = m[1]!.toUpperCase().replace(/[\s.-]/g, "");
+    const pfx = /^(CHE|[A-Z]{2})/.exec(compact)?.[1];
+    if (!pfx) return null;
+    const body = compact.slice(pfx.length);
+    if (VAT_FORMATS[pfx]?.test(body)) {
+      const name = m[2]!.replace(/^[\s,:;–-]+/, "").trim();
+      if (!/\p{L}/u.test(name)) return null;
+      return { country: VAT_PREFIX_COUNTRY[pfx] ?? pfx, idRaw: m[1]!, name };
+    }
+  }
+  return null;
+}
