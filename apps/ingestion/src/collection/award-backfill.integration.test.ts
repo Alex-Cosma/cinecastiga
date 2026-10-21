@@ -1,8 +1,8 @@
 import {afterAll,beforeAll,beforeEach,describe,expect,it} from 'vitest';
-import {createDb} from '@seap/db';
+import {CollectionSuspendedError,createDb} from '@seap/db';
 import {insertTasks,recoveryStep} from './runner.js';
 import {task,type Task} from './plan.js';
-import {AWARD_BACKFILL_REFILL_BELOW,enqueueAwardDetailBackfill,refillAwardBackfill,retryFailedAwardBackfill,setBackgroundLanes} from './award-backfill.js';
+import {AWARD_BACKFILL_REFILL_BELOW,enqueueAwardDetailBackfill,refillAwardBackfill,retryFailedAwardBackfill,retryFailedOrdinaryAwardDetails,setBackgroundLanes} from './award-backfill.js';
 const url=process.env['TEST_DATABASE_URL'];
 if(url&&!/^seap_test_/.test(new URL(url).pathname.slice(1)))throw Error('Isolated test DB required');
 const db=url?createDb(url):null;
@@ -113,6 +113,59 @@ describe.skipIf(!db)('background award detail backfill (isolated DB, no source t
   expect(audit!.after).toEqual({requeued:1});
   expect((audit!.before as {failed:{error:string}[]}).failed[0]!.error).toContain('identificatorul intern');
   expect(await retryFailedAwardBackfill(q)).toMatchObject({requeued:0});
+ });
+ const PROXY_EXHAUSTED='Cerere prin proxy eșuată; celelalte proxy-uri continuă.';
+ const budget=(taskId:string,status:'pending'|'stopped',timeouts:number)=>q`insert into app.collection_retries(task_id,first_request_id,last_request_id,timeouts,status,retry_at)
+  values(${taskId},1,2,${timeouts},${status},case when ${status}='pending' then now()+interval '5 minutes' end)`;
+ const claimOnce=async(lane='0')=>{let claimed:Task|undefined;await recoveryStep(q,async t=>{claimed=t;throw new CollectionSuspendedError('fixture');},lane);return claimed;};
+ it('returns a failed background detail with an exhausted proxy budget to a claimable queue',async()=>{
+  await insertTasks(q,[background(99000001)]);
+  const [t]=await q`update app.collection_tasks set status='failed',error=${PROXY_EXHAUSTED},finished_at=now() returning id::text`;
+  await budget(t!.id,'stopped',3);
+  expect(await retryFailedAwardBackfill(q)).toEqual({batchId:'fixture',requeued:1});
+  expect(await q`select 1 from app.collection_retries`).toHaveLength(0);
+  const [audit]=await q`select before from app.collection_audit where action='award-detail-backfill-retry' order by id desc limit 1`;
+  expect(audit!.before.retryBudgets).toMatchObject([{task_id:t!.id,timeouts:3,status:'stopped'}]);
+  await setBackgroundLanes(q,1);
+  expect((await claimOnce())?.params.noticeId).toBe(99000001);
+ });
+ it('returns only ordinary award details that failed on proxy errors to the queue, keeping their priority',async()=>{
+  const detail=(noticeId:number,extra:Record<string,unknown>={},priority=1)=>task('fixture','awards','detail',{noticeId,page:0,noticeType:3,noticeVersion:2,internalNoticeId:noticeId+1000,noticeNo:`CAN${noticeId}`,...extra},priority);
+  const root=detail(1086297),lots=detail(1086297,{part:'lots'},2),invalid=detail(1058738),unrelated=[background(99000001),task('fixture','awards','contracts',{noticeId:1112296,page:0},1),task('fixture','tenders','detail',{noticeId:1141226,page:0,noticeType:2},1)];
+  await insertTasks(q,[root,lots,invalid,...unrelated]);
+  await q`update app.collection_tasks set status='failed',error=${PROXY_EXHAUSTED},finished_at=now()`;
+  await q`update app.collection_tasks set error='Cerere prin proxy eșuată după trei încercări. Restul colectării continuă.' where key=${lots.key}`;
+  await q`update app.collection_tasks set error='Detaliu SEAP: identificatorul intern lipsește.' where key=${invalid.key}`;
+  const ids=Object.fromEntries((await q`select key,id::text from app.collection_tasks`).map(r=>[r.key,String(r.id)]));
+  await budget(ids[root.key]!,'stopped',3);await budget(ids[lots.key]!,'pending',1);
+  expect(await retryFailedOrdinaryAwardDetails(q)).toEqual({batchId:'fixture',requeued:2,keys:[root.key,lots.key],otherFailures:1});
+  const rows=await q`select key,status,priority,error from app.collection_tasks order by id`;
+  expect(rows.map(r=>[r.key,r.status,r.priority])).toEqual([[root.key,'pending',1],[lots.key,'pending',2],[invalid.key,'failed',1],...unrelated.map(u=>[u.key,'failed',u.priority])]);
+  expect(await q`select 1 from app.collection_retries`).toHaveLength(0);
+  const [audit]=await q`select actor_id,before,after from app.collection_audit where action='award-detail-retry' order by id desc limit 1`;
+  expect(audit!.actor_id).toBe('system:award-detail-retry');
+  expect(audit!.after).toEqual({batchId:'fixture',requeued:2,keys:[root.key,lots.key],otherFailures:1,reason:'proxy-failure'});
+  expect(audit!.before.failed).toEqual([{id:ids[root.key],key:root.key,priority:1,noticeNo:'CAN1086297',part:null,error:PROXY_EXHAUSTED},{id:ids[lots.key],key:lots.key,priority:2,noticeNo:'CAN1086297',part:'lots',error:'Cerere prin proxy eșuată după trei încercări. Restul colectării continuă.'}]);
+  expect(audit!.before.retryBudgets).toHaveLength(2);
+  expect(audit!.before.retryBudgets).toEqual(expect.arrayContaining([expect.objectContaining({task_id:ids[root.key],timeouts:3,status:'stopped'}),expect.objectContaining({task_id:ids[lots.key],timeouts:1,status:'pending'})]));
+  // Ordinary work again, with no background lane enabled. A stopped proxy budget left in place would hide it from every claim.
+  expect((await claimOnce())?.key).toBe(root.key);
+  expect(await retryFailedOrdinaryAwardDetails(q)).toMatchObject({requeued:0,keys:[],otherFailures:1});
+ });
+ it('refuses to retry ordinary details without a single collecting batch or during processing',async()=>{
+  await insertTasks(q,[task('fixture','awards','detail',{noticeId:1128640,page:0,noticeType:3},1)]);
+  await q`update app.collection_tasks set status='failed',error=${PROXY_EXHAUSTED}`;
+  const audits=async()=>(await q`select count(*)::int n from app.collection_audit where action='award-detail-retry'`)[0]!.n;
+  const before=await audits();
+  await q`insert into app.processing_runs(scheduled_day,trigger,scope,control_revision,before_control) values('2026-10-16','manual','daily',1,'{}')`;
+  await expect(retryFailedOrdinaryAwardDetails(q)).rejects.toThrow('processing run');
+  await q`delete from app.processing_runs where scheduled_day='2026-10-16'`;
+  await q`insert into app.collection_batches(id,end_day,next_stream) values('second','2026-09-26',0)`;
+  await expect(retryFailedOrdinaryAwardDetails(q)).rejects.toThrow('collecting recovery batch');
+  await q`delete from app.collection_batches where id='second'`;await q`update app.collection_batches set status='incomplete'`;
+  await expect(retryFailedOrdinaryAwardDetails(q)).rejects.toThrow('collecting recovery batch');
+  expect((await q`select status from app.collection_tasks`)[0]!.status).toBe('failed');
+  expect(await audits()).toBe(before);
  });
  it('refills a started backfill from the collector until nothing is unscheduled',async()=>{
   for(let i=1;i<=3;i++)await archive(`award:9900003${i}`,'award-list:v1',listRow(99000030+i,{noticeStateDate:`2026-04-0${i}T10:00:00+02:00`}));

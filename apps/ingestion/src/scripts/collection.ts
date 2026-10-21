@@ -1,6 +1,6 @@
 import {activateNationalDa} from '../collection/da-activation.js';
 import {advanceRecovery} from '../collection/advance.js';
-import {enqueueAwardDetailBackfill,refillAwardBackfill,retryFailedAwardBackfill,setBackgroundLanes} from '../collection/award-backfill.js';
+import {enqueueAwardDetailBackfill,refillAwardBackfill,retryFailedAwardBackfill,retryFailedOrdinaryAwardDetails,setBackgroundLanes} from '../collection/award-backfill.js';
 import {enableTedCollection} from '../collection/ted-activation.js';
 import {advertiseCollectorCapabilities,cancelContractsAudit,collectorCapability,enqueueContractsAudit,parseAuditNoticeIds,parseContractsAuditArgs} from '../collection/contracts-audit.js';
 import {setTimeout as sleep} from 'node:timers/promises';
@@ -17,6 +17,11 @@ try{
  else if(args[0]==='ted-enable'){console.log(JSON.stringify({activation:await enableTedCollection(q),networkRequests:0}));}
  else if(args[0]==='national-da'){console.log(JSON.stringify({activation:await activateNationalDa(q),networkRequests:0}));}
  else if(args[0]==='backfill-award-details'&&args[1]==='--retry-failed'&&args.length===2){console.log(JSON.stringify({...await retryFailedAwardBackfill(q),networkRequests:0}));}
+ else if(args[0]==='retry-failed-award-details'){
+  // Ordinary (non-background) award details that failed on proxy errors; background ones use backfill-award-details --retry-failed.
+  if(args.length!==1)throw Error('Usage: collection retry-failed-award-details');
+  console.log(JSON.stringify({...await retryFailedOrdinaryAwardDetails(q),networkRequests:0}));
+ }
  else if(args[0]==='backfill-award-details'){
   const limitArg=args.find(a=>a.startsWith('--limit='));if(!limitArg)throw Error('--limit=N is required');
   if(args.slice(1).some(a=>!a.startsWith('--limit=')&&a!=='--pilot'))throw Error('Usage: collection backfill-award-details --limit=N [--pilot] | --retry-failed');
@@ -68,5 +73,5 @@ try{
    const failed=results.find(r=>r.status==='rejected');if(failed?.status==='rejected')throw failed.reason;
    console.log(JSON.stringify({event:'recovery-worker-exit',tasks:attempts,bounded:bound!==Infinity}));
   }finally{await lock`select pg_advisory_unlock(${RECOVERY_LOCK[0]},${RECOVERY_LOCK[1]})`.catch(()=>{});lock.release();}
- }else throw Error('Usage: collection seed [closed-end-day] | follow-latest | national-da | ted-enable | backfill-award-details --limit=N [--pilot] | backfill-award-details --retry-failed | background-lanes <0..10> | contracts-audit --tag=<tag> < ids | contracts-audit --cancel --tag=<tag> | contracts-audit --capability | run [--max-tasks=N]');
+ }else throw Error('Usage: collection seed [closed-end-day] | follow-latest | national-da | ted-enable | backfill-award-details --limit=N [--pilot] | backfill-award-details --retry-failed | retry-failed-award-details | background-lanes <0..10> | contracts-audit --tag=<tag> < ids | contracts-audit --cancel --tag=<tag> | contracts-audit --capability | run [--max-tasks=N]');
 }finally{await closeSharedDb();}
