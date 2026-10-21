@@ -1,6 +1,12 @@
 import { FLAG_META } from "./flags";
 import { COUNTIES } from "./counties";
 import type { RiskGroupSort, Role } from "./marts";
+import { formatInt } from "./format";
+
+/** Badge text for the number of distinct signal types on an entity page ("1 tip", "2 tipuri"). */
+export function signalTypeCountLabel(n: number): string {
+  return n === 1 ? "1 tip" : `${formatInt(n)} tipuri`;
+}
 
 export const SIGNAL_PAGE_SIZE = 10;
 export const RISK_PAGE_SIZE = 10;
