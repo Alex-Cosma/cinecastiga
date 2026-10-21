@@ -2,7 +2,7 @@ import { describe,expect,it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { validateStory } from './validation';
-import { sumExact,storyTotal,splitCitations } from './shared';
+import { sumExact,storyTotal,splitCitations,sourceLinks } from './shared';
 import { readPreviewStories } from './preview-files';
 import type { Story } from './types';
 
@@ -56,6 +56,8 @@ describe.skipIf(!dir)('editorial preview content',()=>{
    'cadru-prahova':['107816304','100640455','2026-07-01T21:00:00Z','5982230.34'],'cadru-timis':['107816312','100640460','2026-07-01T21:00:00Z','5194815.64'],
    'cadru-mures':['107816313','100640462','2026-07-01T21:00:00Z','5032012.74'],'cadru-gc-sud':['107816315','100640463','2026-07-01T21:00:00Z','4839108.35'],
    'cadru-vrancea-2025':['106787907','100576044','2025-09-14T21:00:00Z','11390700'],
+   // Context records cited after the 21 October audit, read from the 1 October production snapshot.
+   'cadre-2024':['105197520','100470834','2024-05-27T21:00:00Z','39041769.10'],'cadru-iaa-2025':['106229402','100541397','2025-04-06T21:00:00Z','13039666.46'],
    'cadru-90':['107798317','100639377','2026-04-29T21:00:00Z','14619654.72'],'contract-181':['107891460','100644936','2026-07-14T21:00:00Z','14783123.50'],
    'cadru-paza-159':['107797347','100639307','2026-06-25T21:00:00Z','24225190.60'],
    'cadru-a7':['108065116','100654428','2026-09-07T21:00:00Z','49462662.10'],'contract-velstand':['107534726','100623199','2026-04-16T21:00:00Z','357825.26'],
@@ -74,6 +76,10 @@ describe.skipIf(!dir)('editorial preview content',()=>{
    }
   }
   expect(storyTotal(antigrindinaStory)).toBe('65503241.82');expect(antigrindinaStory.finding.sourceIds).not.toContain('cadru-vrancea-2025');
+  // The earlier frameworks the text cites link to SEAP, as context outside the total.
+  for(const id of ['cadre-2024','cadru-iaa-2025']){
+   expect(sourceLinks(antigrindinaStory.sources.find(s=>s.id===id)!).official,id).toMatch(/^https:\/\//);expect(antigrindinaStory.finding.sourceIds).not.toContain(id);
+  }
   expect(sumExact(antigrindinaStory.sources.filter(s=>s.kind==='procurement'&&antigrindinaStory.finding.sourceIds.includes(s.id)&&!s.suppliers[0]!.startsWith('ELECTROMECANICA')).map(s=>s.kind==='procurement'?s.amount:'0'))).toBe('59521011.48');
   expect(storyTotal(aeroclubStory)).toBe('29402778.22');expect(aeroclubStory.finding.sourceIds).not.toContain('cadru-paza-159');
   expect(storyTotal(a7BuzauStory)).toBe('49462662.10');expect(a7BuzauStory.finding.sourceIds).toEqual(['cadru-a7']);

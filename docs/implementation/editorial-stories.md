@@ -108,6 +108,8 @@ Adăugate inițial în `local-preview.ts`, status `preview`; din 15 octombrie su
 
 Documentarea de lucru nu este în repository, care este public: `../seap-research/docs/research/20261012-claude-stories/`, cu instantaneul read-only al înregistrărilor din producție. Persoanele fizice nu sunt numite. Datele de semnare sunt din `contractDate` al payloadului SEAP, în ora României: `core.contracts.contract_date` stochează miezul nopții românesc ca 21:00 UTC în ziua precedentă, iar o citire naivă a datei UTC dă o zi mai devreme. Testul nou verifică ID-urile, sumele, conversia datelor și totalurile față de instantaneu.
 
+Audit 21 octombrie 2026: Antigrindina citează două acorduri-cadru anterioare ca înregistrări de achiziție de context, cu link SEAP, în afara totalului: `cadre-2024` (nr. 152 din 28 mai 2024, Electromecanica Ploiești, 105197520; nota listează celelalte șapte, cu IAA) și `cadru-iaa-2025` (nr. 38 din 7 aprilie 2025, IAA, 106229402). ID-urile, sumele și datele lor sunt în lista din `stories-content.test.ts`, citite din instantaneul de producție din 1 octombrie. Fișierul poveștii trebuie copiat pe server.
+
 Verificare locală: 12 teste editoriale trecute, typecheck trecut; dev pe 3102, desktop 1440 și mobil 390 fără erori JS sau depășire orizontală. Nicio solicitare trimisă părților, nicio revizie editorială independentă, fără push sau deploy.
 
 ### Prezentare cu impact — 12 octombrie 2026
