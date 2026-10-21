@@ -1,7 +1,7 @@
 import {createHash} from 'node:crypto';
 import {canonicalCui} from './cui.js';
 import {normalizeContractMoney,decimal} from './contract-money.js';
-import {reviewedWinnerIdentity} from './reviewed-winner.js';
+import {reviewedWinnerIdentity,reviewedWinnerRule} from './reviewed-winner.js';
 import {normCountry,normForeignId} from './foreign.js';
 export interface IdentityContract {
  id:string; publicId:string; noticeId:string; noticeNo:string; authority:string; authorityCui:string|null;
@@ -147,7 +147,7 @@ function assessPublications(members:IdentityContract[],archives:ArchivedAward[],
   const reviewedWinners=sourceWinners.flatMap((w:any)=>{
    const input=sourceWinnerInput(w);
    const output=reviewedWinnerIdentity(Number(c.publicId),input);
-   return output!==input?[{original:input,reviewed:output,rule:'reviewed-winner-20261008'}]:[];
+   return output!==input?[{original:input,reviewed:output,rule:reviewedWinnerRule(input)}]:[];
   });
   proofs.push({contract:c.publicId,notice:c.noticeId,procedure:procedureIds[0],source:m.a.source,rawId:m.a.rawId,hash:m.a.hash,
    noticeSource:goodNotices[0]!.source,noticeHash:goodNotices[0]!.hash,

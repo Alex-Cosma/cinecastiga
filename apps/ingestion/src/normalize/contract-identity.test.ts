@@ -92,6 +92,18 @@ describe('contract publication identity evidence (never an implicit merge)',()=>
   a[3]!.payload.items[0].winner.name='ANOTHER COMPANY';
   expect(assessContractIdentity([first,changed],a).reasons).toContain('archive_disagrees_with_core');
  });
+ it('reads a reviewed-accepted authority CUI as the SICAP winner and names that list in the proof',()=>{
+  const first={...base,authorityCui:'13328043',winnerCuis:['211717']},changed={...other,authorityCui:'13328043',winnerCuis:['211717']};
+  const a=[...sources(first),...sources(changed)];
+  for(const i of [0,2])a[i]!.payload.contractingAuthorityNameAndFN='13328043 - Transelectrica';
+  a[1]!.payload.items[0].winner={entityId:7355,fiscalNumber:'RO 211717',name:'ENERGOBIT'};
+  a[3]!.payload.items[0].winner={entityId:7355,fiscalNumber:'RO 13328043',name:'ENERGOBIT'};
+  const r=assessContractIdentity([first,changed],a);
+  expect(r.status).toBe('source_verified');
+  expect(r.proofs[1]!.reviewedWinners).toEqual([{original:{sicapId:7355,cuiRaw:'RO 13328043',nameDisplay:'ENERGOBIT'},reviewed:{sicapId:7355,cuiRaw:'211717',nameDisplay:'ENERGOBIT'},rule:'accepted-authority-cui-20261021'}]);
+  a[3]!.payload.items[0].winner.entityId=7356;
+  expect(assessContractIdentity([first,changed],a).reasons).toContain('archive_disagrees_with_core');
+ });
  it('keeps malformed fiscal identifiers under review instead of throwing from a reviewed correction',()=>{
   const a=archives();a[3]!.payload.items[0].winner={fiscalNumber:123456,name:42};
   expect(assessContractIdentity([base,other],a).reasons).toContain('archive_disagrees_with_core');
