@@ -75,6 +75,7 @@ Reguli obligatorii:
 
 - Numerele exacte sunt `numeric` în SQL și șiruri zecimale în dovezi/transferuri. Nu folosi o conversie Python/JS în floating point ca intermediar pentru dump-uri financiare.
 - O aproximare vizuală în milioane nu înlocuiește valoarea exactă accesibilă utilizatorului.
+- Afișarea exactă (`formatExactDecimal` din `apps/web/lib/format.ts`) grupează șirul zecimal fără conversie în Number. O sumă cu o singură zecimală (`numeric` fără typmod păstrează `5401738.1`) se afișează cu ban complet: `5.401.738,10 lei`; zecimalele mai lungi și sumele întregi rămân exact ca în bază. Cantitățile care nu sunt bani folosesc `{ money: false }`.
 - Pentru consorții, fără valori individuale cunoscute, alocarea egală este estimată și etichetată; suma cotelor trebuie să fie exact suma contractului, inclusiv fracțiuni sub un ban. Nu atribui întregul contract fiecărui membru și apoi aduna.
 - TVA-ul, unitatea, plafonul, valoarea estimată, contractată și plătită sunt noțiuni diferite. Aplicația nu dovedește efectuarea plății.
 - Ferestrele anuale și datele contractuale folosesc `Europe/Bucharest`. Un timestamp UTC în seara zilei precedente poate fi data locală corectă. Metodologia calendarului este `Europe/Bucharest-v1`; testele folosesc și sesiuni PG în UTC/Los Angeles.

@@ -259,7 +259,7 @@ export default async function EntityPage({
         <p>{formatInt(txCounts.nContracts)} contracte distincte apar în {formatInt(txCounts.nCt)} înregistrări contract–furnizor.
           Pentru consorții, valoarea este împărțită egal între membrii publicați; aceasta este o estimare a alocării.
           Pot exista plafoane de acord-cadru pentru care nu avem contracte subsecvente identificate.</p>
-        <p>Înregistrări datate: {txCounts.dateFrom ?? "dată necunoscută"} — {txCounts.dateTo ?? "dată necunoscută"}.
+        <p>Înregistrări datate: {txCounts.dateFrom ? formatCalendarDate(txCounts.dateFrom) : "dată necunoscută"} — {txCounts.dateTo ? formatCalendarDate(txCounts.dateTo) : "dată necunoscută"}.
           {txCounts.excludedDa > 0 ? ` ${formatInt(txCounts.excludedDa)} achiziții directe cu valori nule, nepozitive sau peste plafon sunt separate de total.` : ""}
           {" "}<Link href="/metodologie#acoperire">Acoperirea surselor și limitele datelor</Link>.</p>
 

@@ -33,12 +33,20 @@ export function formatInt(v: number | string | null | undefined): string {
   return Number.isFinite(n) ? int.format(n) : "—";
 }
 
-/** Group an exact database decimal without converting to Number or rounding. */
-export function formatExactDecimal(value: string | null | undefined): string {
+/**
+ * Group an exact database decimal without converting to Number or rounding.
+ * Money (the default) shows a one-digit fraction in bani: PostgreSQL numeric
+ * without a typmod keeps 5401738.1 as "5401738.1", shown as "5.401.738,10".
+ * Appending a trailing zero keeps the value exact; longer fractions and whole
+ * amounts are left exactly as stored. Pass `{ money: false }` for non-money
+ * quantities (percentiles, ratios).
+ */
+export function formatExactDecimal(value: string | null | undefined, { money = true }: { money?: boolean } = {}): string {
   if (value == null || !/^-?\d+(?:\.\d+)?$/.test(value)) return "—";
   const [whole, fraction] = value.split(".");
   const grouped = whole!.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  return fraction === undefined ? grouped : `${grouped},${fraction}`;
+  if (fraction === undefined) return grouped;
+  return `${grouped},${money && fraction.length === 1 ? `${fraction}0` : fraction}`;
 }
 
 /**
