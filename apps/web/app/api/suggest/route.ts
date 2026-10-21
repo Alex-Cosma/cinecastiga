@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createDb, type DbSql } from "@seap/db";
-import { cleanName } from "@/lib/format";
+import { cleanName, onrcBirthYear } from "@/lib/format";
 import { devlog } from "@/lib/devlog";
 import { aliasQueries, queryTokens } from "@/lib/ask/entity-alias";
 import { officialUnitPopulation } from "@/lib/peer-population";
@@ -53,7 +53,9 @@ export interface SuggestResponse {
   person: {
     key: string;
     name: string;
+    /** Null when ONRC has no date or an implausible one (see onrcBirthYear). */
     birthYear: number | null;
+    birthDateImplausible: boolean;
     birthLocality: string | null;
     nFirms: number;
   }[];
@@ -216,6 +218,7 @@ export async function GET(req: Request) {
       ? (sql`
           select r.person_key, max(r.person_name) nm,
                  max(extract(year from r.birth_date))::int by,
+                 max(extract(year from r.snapshot_date))::int sy,
                  max(r.birth_locality) bl, count(distinct r.cui) nf
           from reference.company_reps r
           where r.birth_date is not null and r.person_name ilike ${like}
@@ -223,7 +226,7 @@ export async function GET(req: Request) {
           order by nf desc
           limit 4
         ` as unknown as Promise<
-          { person_key: string; nm: string; by: number | null; bl: string | null; nf: string }[]
+          { person_key: string; nm: string; by: number | null; sy: number | null; bl: string | null; nf: string }[]
         >)
       : Promise.resolve([]),
   ]);
@@ -250,7 +253,7 @@ export async function GET(req: Request) {
     person: person.map((r) => ({
       key: r.person_key,
       name: cleanName(r.nm),
-      birthYear: r.by === null ? null : Number(r.by),
+      ...onrcBirthYear(r.by, r.sy),
       birthLocality: r.bl && /\p{L}/u.test(r.bl) ? r.bl : null,
       nFirms: Number(r.nf ?? 0),
     })),

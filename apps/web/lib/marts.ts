@@ -1,6 +1,7 @@
 import { contractRonValue, contractOriginalValue, contractOriginalCurrency, contractAmountStatus, contractKind, contractReportable, contractTemporarilyExcluded, contractAboveValueCap, contractWinnerIsAuthority, CONTRACT_VALUE_CAP_RON } from "@seap/db";
 import { canonicalEntityId } from "@seap/db";
 import { tedPagination, tedCountryFilter, TED_COUNTRY_UNRESOLVED } from "./ted";
+import { onrcBirthYear } from "./format";
 import { createDb, type DbSql } from "@seap/db";
 
 /**
@@ -317,7 +318,10 @@ export interface TxQuery {
 export interface CompanyRep {
   personName: string;
   calitate: string | null;
+  /** Null when ONRC has no date or an implausible one (see onrcBirthYear). */
   birthYear: number | null;
+  /** ONRC holds a birth date outside the plausible window — label, never show the year. */
+  birthDateImplausible: boolean;
   birthLocality: string | null;
   personKey: string | null;
   /** Other firms of this person that appear in OUR procurement data — linkable. */
@@ -337,7 +341,8 @@ export async function getCompanyReps(cui: string): Promise<CompanyRep[]> {
   const rows = (await sql`
     select distinct on (r.person_name, r.calitate)
       r.person_name, r.calitate,
-      extract(year from r.birth_date)::int by, r.birth_locality, r.person_key,
+      extract(year from r.birth_date)::int by, extract(year from r.snapshot_date)::int sy,
+      r.birth_locality, r.person_key,
       case when r.birth_date is not null then
         (select count(distinct r2.cui) from reference.company_reps r2
          join core.entities e2 on e2.cui_canonical = r2.cui
@@ -359,6 +364,7 @@ export async function getCompanyReps(cui: string): Promise<CompanyRep[]> {
     person_name: string;
     calitate: string | null;
     by: number | null;
+    sy: number | null;
     birth_locality: string | null;
     person_key: string | null;
     n_other: string | null;
@@ -367,7 +373,7 @@ export async function getCompanyReps(cui: string): Promise<CompanyRep[]> {
   return rows.map((r) => ({
     personName: r.person_name,
     calitate: r.calitate,
-    birthYear: r.by === null ? null : Number(r.by),
+    ...onrcBirthYear(r.by, r.sy),
     // ONRC birth localities can be punctuation-only junk (".")
     birthLocality: r.birth_locality && /\p{L}/u.test(r.birth_locality) ? r.birth_locality : null,
     personKey: r.person_key,

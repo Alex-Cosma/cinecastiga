@@ -1,6 +1,7 @@
 "use client";
 
 import { COUNTIES } from "@/lib/counties";
+import { birthNote } from "@/lib/format";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fold, score, parseIntents } from "@/lib/ask/intent";
@@ -194,7 +195,7 @@ interface RemoteSuggest {
   uat: { siruta: number; name: string; tip: string; county: string; population: number | null }[];
   authority: { name: string; county: string | null }[];
   supplier: { name: string; county: string | null }[];
-  person: { key: string; name: string; birthYear: number | null; birthLocality: string | null; nFirms: number }[];
+  person: { key: string; name: string; birthYear: number | null; birthDateImplausible?: boolean; birthLocality: string | null; nFirms: number }[];
   /** Top CPV divisions (breakdown-form starters, from ?top=1). */
   division?: { code: string; name: string }[];
 }
@@ -889,7 +890,7 @@ function buildCands(s: State, q: string, remote: RemoteSuggest, run: () => void)
       for (const per of remote.person)
         nar.push({
           id: `adm:${per.key}`, ic: "👤", label: `firme conduse de ${per.name}`,
-          sub: `${per.birthYear ? `n. ${per.birthYear}${per.birthLocality ? `, ${per.birthLocality}` : ""} · ` : ""}${per.nFirms} firme · ONRC`,
+          sub: [birthNote(per), `${per.nFirms} firme`, "ONRC"].filter(Boolean).join(" · "),
           sc: (score(qq, per.name) || 0.52) - 0.02,
           apply: (st, ch) => {
             const label = `${per.name}${per.birthYear ? ` (n. ${per.birthYear})` : ""}`;
