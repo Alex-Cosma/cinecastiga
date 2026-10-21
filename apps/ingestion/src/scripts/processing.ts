@@ -5,6 +5,7 @@ import {runScheduledIdentityRepair} from '../normalize/scheduled-contract-identi
 import { runScheduledMoneyRepair } from '../normalize/scheduled-money-repair.js';
 import { diagnosticError, createDb, claimProcessing, claimRepairProcessing, claimRecoveryProcessing, failProcessing, finishProcessing, processingStage, collectionHeartbeat } from '@seap/db';
 import {runScheduledReferenceRepair} from '../reference/scheduled-repair.js';
+import {runAuthorityUatRepair} from '../reference/authority-uat-repair.js';
 import { runMonitoringRefresh } from '../monitoring/refresh.js';
 import { MAX_QUARANTINED_RECORDS } from '../monitoring/pipeline.js';
 import {indexTopics} from '../search/index-topics.js';
@@ -55,6 +56,7 @@ async function main() {
   await beat();heartbeat=setInterval(()=>{void beat().catch(()=>{});},10000);
   await runScheduledMoneyRepair(sql,id!,console.log);
   await runScheduledReferenceRepair(sql,id!,console.log);
+  await runAuthorityUatRepair(sql,id!,console.log);
   const checkpoint=await runMonitoringRefresh(db,sql,{
    repairContractIdentities:async()=>({
     recoveredEvidence:await runScheduledContractEvidence(sql,id!),
