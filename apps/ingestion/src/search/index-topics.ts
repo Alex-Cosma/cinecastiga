@@ -13,6 +13,16 @@ export async function indexTopics(sql:DbSql,log:(message:string)=>void=()=>{}) {
   // row by row is substantially slower. DDL rolls back with the data on failure.
   await q`alter table marts.topic_acquisitions drop constraint topic_acquisitions_pkey`;
   await q`drop index marts.topic_search_idx,marts.topic_authority_idx,marts.topic_suppliers_idx,marts.topic_place_idx,marts.topic_county_year_idx,marts.topic_procedure_idx`;
+  // Locality facet: the legacy reference.authority_uat code was matched by name
+  // without a county (audit F15: five Vânători communes on Mehedinți's code,
+  // Sfântu Gheorghe CV on an Ialomița commune). A code whose official county
+  // contradicts the authority's own county puts its records under no locality.
+  // A code without a catalog row (sectors) or an authority without a county is
+  // not contradicted and keeps its previous behavior.
+  const places=q`(select au.entity_id,au.uat_siruta from reference.authority_uat au
+   left join core.entities e on e.id=au.entity_id left join reference.uat ru on ru.siruta=au.uat_siruta
+   where ru.county is null or nullif(e.county,'') is null
+    or lower(unaccent(ru.county))=regexp_replace(lower(unaccent(e.county)),'[[:space:]-]+',' ','g'))`;
   log('Preparing acquisition title search from the local public archive…');
   await q`truncate marts.topic_acquisitions`;
   // Project only the title before joining: carrying entire JSON payloads through
@@ -27,7 +37,7 @@ export async function indexTopics(sql:DbSql,log:(message:string)=>void=()=>{}) {
     nullif(left(d.finalization_date,4),'')::int,d.finalization_date,d.closing_value
    from marts.da_transactions d join core.direct_acquisitions a on a.sicap_da_id=d.sicap_da_id
    left join (select id,payload->>'directAcquisitionName' title from raw.raw_documents offset 0) r on r.id=a.raw_id
-   left join reference.authority_uat u on u.entity_id=d.authority_id`;
+   left join ${places} u on u.entity_id=d.authority_id`;
   log('Direct acquisition titles prepared. Preparing contracts…');
   await q`insert into marts.topic_acquisitions
    (id,kind,ref_id,title,search,authority_id,supplier_ids,county,uat_siruta,year,date,value,procedure_id)
@@ -38,7 +48,7 @@ export async function indexTopics(sql:DbSql,log:(message:string)=>void=()=>{}) {
     max(county) county,max(finalization_date) date,max(contract_value_full) value
     from marts.contract_transactions group by contract_id) d
    join core.contracts c on c.id=d.contract_id join core.awards a on a.ca_notice_id=c.ca_notice_id
-   left join raw.raw_documents r on r.id=a.raw_id left join reference.authority_uat u on u.entity_id=d.authority_id`;
+   left join raw.raw_documents r on r.id=a.raw_id left join ${places} u on u.entity_id=d.authority_id`;
   log('Building lookup indexes…');
   await q`alter table marts.topic_acquisitions add primary key(id)`;
   await q`create index topic_search_idx on marts.topic_acquisitions using gin(search)`;

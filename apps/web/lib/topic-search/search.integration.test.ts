@@ -95,4 +95,19 @@ suite('public subject search against PostgreSQL',()=>{
   for(const term of ['iluminat','Cluj','4305'])expect((await run(`q=${term}`)).entities.suggestions).toEqual([]);
  });
  it('rejects a geographic identifier not found in the catalog',async()=>{await expect(run('q=locuri&place=uat:1234567')).rejects.toThrow('catalog');});
+ // Last: it adds records and rebuilds the index. Audit F15: the legacy code of a
+ // same-named commune in another county (Vânători GL on Mehedinți's code) must
+ // not put that town hall's purchases under the other locality.
+ it('ignores a legacy UAT code whose county contradicts the authority county',async()=>{
+  await q.unsafe(`insert into core.entities values(20,'COMUNA TEST','comuna test','2000','Galati'),(21,'COMUNA FARA JUDET','comuna fara judet','2100',null);
+   insert into marts.entity_profile values(20,'authority',5),(21,'authority',5);
+   insert into reference.authority_uat values(20,999),(21,999);
+   insert into raw.raw_documents values(20,'{"directAcquisitionName":"Sală de sport Galați"}'),(21,'{"directAcquisitionName":"Sală de sport fără județ"}');
+   insert into core.direct_acquisitions values(20,120,20,'DA120'),(21,121,21,'DA121');
+   insert into marts.da_transactions values(120,20,3,'Galati','2024-02-01',5),(121,21,3,null,'2024-02-02',5);`);
+  const {indexTopics}=await import('../../../ingestion/src/search/index-topics');await indexTopics(q);
+  expect((await run('q=sala+de+sport')).acquisitions.total).toBe(2);
+  expect((await run('q=sala+de+sport&place=uat:999')).acquisitions.hits.map(h=>h.code)).toEqual(['DA121']);
+  expect((await run('q=locuri&place=uat:999')).acquisitions.total).toBe(1);
+ });
 });

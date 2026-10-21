@@ -14,7 +14,7 @@
 
 ## Semantica geografică și de acoperire
 
-Catalogul `reference.uat` are 3.181 municipii, orașe/comune și București în copia locală; **nu are un catalog distinct de sate**. Nu s-au inventat sugestii sau asocieri. Județele folosesc județul cumpărătorului, localitățile folosesc `reference.authority_uat`; instituțiile fără asociere UAT pot lipsi din filtrul local. Acest lucru apare în explicația extensibilă, nu ca avertisment permanent sub filtre.
+Catalogul `reference.uat` are 3.181 municipii, orașe/comune și București în copia locală; **nu are un catalog distinct de sate**. Nu s-au inventat sugestii sau asocieri. Județele folosesc județul cumpărătorului, localitățile folosesc `reference.authority_uat`; instituțiile fără asociere UAT pot lipsi din filtrul local. Din auditul F15 (21 octombrie 2026), o asociere al cărei UAT este în alt județ decât autoritatea nu se folosește: înregistrările acelei autorități nu apar sub nicio localitate (vezi `docs/implementation/peer-population-audit.md`). Acest lucru apare în explicația extensibilă, nu ca avertisment permanent sub filtre.
 
 Data este data finalizării achiziției directe / data contractului. Documentele moștenesc selecția contractului legat, nu anul publicării PDF-ului. Filtrarea entităților cu o geografie/perioadă/tip cere activitate în achizițiile corespunzătoare: un furnizor din alt județ poate apărea dacă a furnizat instituțiilor din selecție.
 
