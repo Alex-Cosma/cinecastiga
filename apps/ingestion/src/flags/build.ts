@@ -434,12 +434,16 @@ async function buildFlags(
   await sql`
     insert into core.flags (subject_type, subject_id, partner_id, flag_code, period, triggered, severity, evidence, methodology_version)
     with reps as (
-      -- person (solid identity only) → their firms that exist as entities
+      -- person (solid identity only) → their firms that exist as entities.
+      -- The signal says "reprezentant legal comun": a supervisory-board member
+      -- (dualist SA, Legea 31/1990) supervises but does not represent the
+      -- company, so that seat does not link the firms (audit F31, rf-2026.10).
       select r.person_key, max(r.person_name) pname,
              max(extract(year from r.birth_date))::int pby, e.id sid
       from reference.company_reps r
       join core.entities e on e.cui_canonical = r.cui
       where r.birth_date is not null
+        and coalesce(r.calitate, '') not ilike '%consiliul de supraveghere%'
       group by r.person_key, e.id
     ),
     pair as (

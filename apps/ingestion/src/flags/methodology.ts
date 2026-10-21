@@ -8,7 +8,8 @@
 // rf-2026.7: ceilings/addenda are non-additive; uncertain publication identities are temporarily excluded.
 // rf-2026.8: da_year_end only for calendar years the DA archive covers from January to December.
 // rf-2026.9: award_single_bid treats a 0/missing notice value as unknown and falls back to cited contracts/call-offs.
-export const METHODOLOGY_VERSION = "rf-2026.9";
+// rf-2026.10: net_shared_admin ignores ONRC supervisory-board seats (not legal representation).
+export const METHODOLOGY_VERSION = "rf-2026.10";
 
 export type FlagSubject = "da" | "award" | "authority" | "supplier" | "pair";
 
@@ -160,7 +161,7 @@ export const FLAG_DEFS: FlagDef[] = [
     title: "Reprezentant comun, aceeași autoritate",
     subject: "supplier",
     description:
-      "Două sau mai multe firme cu un reprezentant legal comun în datele ONRC disponibile au achiziții directe și cote din contracte înregistrate la aceeași autoritate. Identitatea reprezentantului folosește numele, data și locul nașterii.",
+      "Două sau mai multe firme cu un reprezentant legal comun în datele ONRC disponibile au achiziții directe și cote din contracte înregistrate la aceeași autoritate. Identitatea reprezentantului folosește numele, data și locul nașterii. Calitatea de membru în consiliul de supraveghere nu este luată în calcul, pentru că acest consiliu nu reprezintă firma.",
     rationale:
       "Legătura permite analizarea împreună a atribuirilor acestor firme. Merită verificate rolul persoanei, relația dintre firme și situația lor la data achizițiilor.",
     caveat:
