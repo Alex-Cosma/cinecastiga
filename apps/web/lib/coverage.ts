@@ -46,9 +46,10 @@ export interface Collection {
 export interface Coverage {
   observations: { dataset: Dataset; observation: Observation; calculated_at: string }[];
   years: { src: Dataset; year: number; n: string }[];
-  /** Continuous collector: the only current record of when sources were collected. */
+  /** Continuous collector: when its streams were last collected (audit F17). */
   collector: CollectorCoverage;
-  /** Earlier windowed imports (`core.scrape_runs`); historical, no longer written by the collector. */
+  /** Windowed import commands (`core.scrape_runs`), which the collector never writes. They stay the
+   * current record for a source the collector has not collected (TED while its stream is off). */
   collections: Collection[];
   normalized: { transform: string; updated_at: string }[];
 }
@@ -90,7 +91,7 @@ export const getCoverage = unstable_cache(async (): Promise<Coverage | null> => 
     if ((error as { code?: string }).code === "42P01") return null;
     throw error;
   }
-}, ["data-coverage-v5"], { revalidate: 300 });
+}, ["data-coverage-v6"], { revalidate: 300 });
 
 /** Date only, as recorded by the source; don't shift source days to browser time zones. */
 export function coverageDate(value: string | null | undefined): string {
