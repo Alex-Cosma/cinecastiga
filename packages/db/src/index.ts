@@ -26,3 +26,5 @@ export * from './proxy-config.js';
 export * from './collection-proxies.js';
 export * from './operational-alerts.js';
 export * from './collection-coverage.js';
+
+export * from './entity-registry.js';

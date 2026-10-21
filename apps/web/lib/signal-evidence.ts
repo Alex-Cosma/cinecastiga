@@ -1,4 +1,4 @@
-import type { DbSql } from "@seap/db";
+import { cuiCorroborated, type DbSql } from "@seap/db";
 import { FLAG_META } from "./flags";
 import { numericSourceIds } from "./signal-sources";
 import { awardUrl, daUrl } from "./elicitatie";
@@ -55,7 +55,7 @@ export async function readSignalEvidence(sql: DbSql, id: string): Promise<Source
       and ${flag.subject_type === "authority" ? sql`ct.authority_id = ${flag.subject}` : sql`ct.supplier_id = ${flag.subject}`}`);
   } else if (["fin_tiny_staff", "fin_public_reliance"].includes(code)) {
     const financials = await sql`select f.year, f.employees, f.net_turnover::text turnover
-      from reference.company_financials f join core.entities ent on ent.cui_canonical = f.cui where ent.id = ${flag.subject}
+      from reference.company_financials f join core.entities ent on ent.cui_canonical = f.cui where ent.id = ${flag.subject} and ${cuiCorroborated(sql, "ent")}
         and ${code === "fin_tiny_staff" ? sql`f.year::text = ${flag.period}` : sql`f.net_turnover > 0`}`;
     context.financials = financials;
     const years = financials.map(row => Number(row.year));
@@ -69,11 +69,11 @@ export async function readSignalEvidence(sql: DbSql, id: string): Promise<Source
     // unambiguous identity associated with this subject; never merge namesakes.
     const matches = await sql`select distinct r.person_key from reference.company_reps r
       join core.entities ent on ent.cui_canonical = r.cui
-      where ent.id = ${flag.subject} and r.person_name = ${String(e.person ?? "")}
+      where ent.id = ${flag.subject} and ${cuiCorroborated(sql, "ent")} and r.person_name = ${String(e.person ?? "")}
         and extract(year from r.birth_date)::text = ${String(e.birth_year ?? "")}`;
     if (matches.length === 1 && matches[0]?.person_key) {
       const siblings = await sql`select distinct ent.id::text id from reference.company_reps r
-        join core.entities ent on ent.cui_canonical = r.cui where r.person_key = ${matches[0].person_key}`;
+        join core.entities ent on ent.cui_canonical = r.cui where r.person_key = ${matches[0].person_key} and ${cuiCorroborated(sql, "ent")}`;
       const ids = siblings.map(row => String(row.id));
       context.supplierIds = ids;
       if (ids.length && flag.partner) records = [

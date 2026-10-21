@@ -1,7 +1,7 @@
 import {seedVerifiedIdentity} from '../test/contract-identity-fixture.js';
 import {approveContractIdentities} from './approve-contract-identities.js';
 import { afterAll, describe, expect, it } from "vitest";
-import { contractWinnerIsAuthority, createDb, readContractIdentityQuality, type DbSql } from "@seap/db";
+import { contractWinnerIsAuthority, createDb, cuiCorroborated, readContractIdentityQuality, type DbSql } from "@seap/db";
 import { DA_CEILING_SEED_ROWS } from "@seap/domain";
 import { runMarts } from "./marts.js";
 import { runFlags } from "../flags/build.js";
@@ -39,8 +39,8 @@ function isolatedSql(connection: DbSql, prefix: string): DbSql {
 
 const tables = {
   core: ["risk_thresholds", "contracts", "awards", "contract_winners", "entities", "cpv_codes", "direct_acquisitions", "notices", "ted_lot_results", "ted_notices", "flags"],
-  marts: ["contract_identity_exclusions", "contract_identity_archives", "contract_identity_members", "contract_identity_decisions", "contract_identity_candidates", "contract_identity_observations", "national_stats", "spend_by_type", "spend_by_cpv", "spend_by_county", "entity_profile", "entity_top_partners", "top_entities", "authority_concentration", "contract_transactions", "contract_competition", "da_transactions", "data_coverage"],
-  reference: ["authority_uat", "company_financials", "company_reps"],
+  marts: ["cui_corroborations", "contract_identity_exclusions", "contract_identity_archives", "contract_identity_members", "contract_identity_decisions", "contract_identity_candidates", "contract_identity_observations", "national_stats", "spend_by_type", "spend_by_cpv", "spend_by_county", "entity_profile", "entity_top_partners", "top_entities", "authority_concentration", "contract_transactions", "contract_competition", "da_transactions", "data_coverage"],
+  reference: ["authority_uat", "company_financials", "company_reps", "onrc_firm"],
   raw: ["raw_documents"],
 };
 
@@ -336,7 +336,7 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
         for (const [key,value] of Object.entries(lowThresholds)) {
           await q`insert into core.risk_thresholds (key,valid_from,value_num) values (${key},'2020-01-01',${value})`;
         }
-        await q`update core.entities set cui_canonical=id::text where id in (10,11,12)`;
+        await q`update core.entities set cui_canonical=id::text, cui_valid=true where id in (10,11,12)`;
         await q`insert into reference.company_financials (cui,year,employees,net_turnover)
           values ('10',2025,1,1000),('11',2025,1,1000),('12',2025,1,1000)`;
         await q`insert into reference.company_reps (cui,person_key,person_name,birth_date)
@@ -442,6 +442,92 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
       expect(await years()).toEqual(["2019", "2020"]);
       const [evidence] = await q`select evidence from core.flags where flag_code='da_year_end' and period='2020'`;
       expect(evidence?.["evidence"]).toMatchObject({ year: 2020, total: 120000, december: 60000, december_pct: 0.5 });
+      throw rollback;
+    })).rejects.toBe(rollback);
+  }, 30_000);
+});
+
+// Audit F03 (option C stopgap): a foreign number that passes the CUI checksum
+// keeps its identity, but never another firm's ONRC representatives, MF
+// balance sheet or the signals built on them. Company names are public firms;
+// the ONRC names and the person are fictitious.
+describe("ONRC and MF joins only through a corroborated CUI", () => {
+  it("drops a foreign checksum collision and keeps Romanian firms, including one with a stray foreign country", async () => {
+    const prefix = `registry_fixture_${process.pid}_${Date.now()}`;
+    const rollback = Error("rollback registry fixture");
+    await expect(sql.begin(async tx => {
+      for (const [schema, names] of Object.entries(tables)) {
+        await tx.unsafe(`create schema ${prefix}_${schema}`);
+        for (const table of names) await tx.unsafe(`create table ${prefix}_${schema}.${table} as table ${schema}.${table} with no data`);
+      }
+      const [view] = await tx`select pg_get_viewdef('marts.signal_lookup'::regclass, true) definition`;
+      await tx.unsafe(`create materialized view ${prefix}_marts.signal_lookup as ${String(view!.definition).replace(/;\s*$/, "").replace(/\b(core|marts|reference|raw)\./g, `${prefix}_$1.`)} with no data`);
+      const q = isolatedSql(tx as unknown as DbSql, prefix);
+      for (const threshold of DA_CEILING_SEED_ROWS) {
+        await q`insert into core.risk_thresholds (key,valid_from,valid_to,value_num,note)
+          values (${threshold.key},${threshold.validFrom + "T00:00:00Z"},${threshold.validTo ? threshold.validTo + "T00:00:00Z" : null},${threshold.valueNum},'fixture')`;
+      }
+      for (const [key, value] of Object.entries({ fin_tiny_min_value: 1, fin_reliance_min_public: 1,
+        fin_reliance_min_turnover: 1, fin_reliance_min_ratio: 0.1, net_admin_min_total: 1 })) {
+        await q`insert into core.risk_thresholds (key,valid_from,value_num) values (${key},'2020-01-01',${value})`;
+      }
+      // 10: Italian firm whose partita IVA passes the CUI checksum; ONRC holds an
+      // unrelated SNC under that number. 11: Romanian company with a stray "DE".
+      // 12: ordinary Romanian supplier without a country.
+      await q`insert into core.entities (id,name_display,name_normalized,cui_canonical,cui_valid,country_code) values
+        (1,'Autoritate','autoritate',null,false,null),
+        (10,'FRESIA S.P.A.','fresia s p a','1152147',true,'IT'),
+        (11,'COMPANIA NATIONALA DE TRANSPORT AL ENERGIEI ELECTRICE "TRANSELECTRICA" S.A.','transelectrica','13328043',true,'DE'),
+        (12,'Furnizor Exemplu S.R.L.','furnizor exemplu','12',true,null)`;
+      await q`insert into reference.onrc_firm (j_number,cui,name,snapshot_date) values
+        ('J1','1152147','EXEMPLU UNELTE SNC','2026-09-01'),
+        ('J2','13328043','COMPANIA NATIONALA DE TRANSPORT AL ENERGIEI ELECTRICE "TRANSELECTRICA" SA','2026-09-01'),
+        ('J3','12','FURNIZOR EXEMPLU SRL','2026-09-01')`;
+      await q`insert into reference.company_financials (cui,year,category,source_vintage,employees,net_turnover)
+        select cui, year, 'fixture', year, 1, 1000 from unnest(array['1152147','13328043','12']) cui, unnest(array[2024,2025]) year`;
+      await q`insert into reference.company_reps (j_number,cui,person_key,person_name,calitate,birth_date,snapshot_date)
+        select 'J'||cui,cui,'fixture-person','Persoana Fictiva','administrator','1970-01-01','2026-09-01'
+        from unnest(array['1152147','13328043','12']) cui`;
+      await q`insert into core.direct_acquisitions (id,authority_entity_id,supplier_entity_id,state,closing_value,finalization_date) values
+        (1,1,10,'Oferta acceptata',500,'2025-03-01'),(2,1,11,'Oferta acceptata',500,'2025-03-01'),(3,1,12,'Oferta acceptata',500,'2025-03-01')`;
+      await q`insert into core.cpv_codes (code,name_ro) values ('45000000-7','Works')`;
+      await q`insert into core.awards (id,ca_notice_id,notice_no,authority_entity_id,cpv_code,acquisition_type,ron_contract_value,state_date)
+        values (1,1000,'CAN1',1,'45000000-7','Lucrari',600,'2024-05-01')`;
+      await q`insert into core.contracts (id,ca_notice_id,contract_no,contract_value,contract_date,currency,title)
+        values (100,1000,'1',300,'2024-06-01','RON','Contract'),(101,1000,'2',300,'2024-06-01','RON','Contract')`;
+      await q`insert into core.contract_winners (contract_id,entity_id) values (100,10),(101,11)`;
+      const corroborated = async () => Object.fromEntries((await q`select e.id::text id, ${cuiCorroborated(q, "e")} ok
+        from core.entities e where e.id in (10,11,12) order by e.id`).map(r => [String(r["id"]), r["ok"]]));
+      // Fail-closed before the marts build has checked any foreign-marked name.
+      expect(await corroborated()).toEqual({ "10": false, "11": false, "12": true });
+
+      await runMarts(q);
+      expect(await corroborated()).toEqual({ "10": false, "11": true, "12": true });
+      expect((await q`select entity_id::text id, cui from marts.cui_corroborations`).map(r => [r["id"], r["cui"]]))
+        .toEqual([["11", "13328043"]]);
+      const profiles = await q`select entity_id::text id, employees, net_turnover::text turnover
+        from marts.entity_profile where role='supplier' order by entity_id`;
+      expect(profiles.map(r => [r["id"], r["employees"], r["turnover"]]))
+        .toEqual([["10", null, null], ["11", 1, "1000"], ["12", 1, "1000"]]);
+
+      await runFlags(q);
+      const subjects = async (code: string) => (await q`select subject_id::text id from core.flags
+        where flag_code=${code} order by subject_id, period`).map(r => r["id"]);
+      expect(await subjects("fin_tiny_staff")).toEqual(["11", "11", "12"]);
+      expect(await subjects("fin_public_reliance")).toEqual(["11", "12"]);
+      expect(await subjects("net_shared_admin")).toEqual(["11", "12"]);
+      const [shared] = await q`select evidence from core.flags where flag_code='net_shared_admin' and subject_id=11`;
+      expect(shared?.["evidence"]).toMatchObject({ n_firms: 2 });
+
+      await q`create table core.notice_meta (notice_no text primary key, assignment_type text, has_subsequent boolean, updated_at timestamptz)`;
+      await runRadiografieMarts(q);
+      const dependency = await q`select supplier_id::text id, turn_last::text turnover, emp_last employees
+        from marts.supplier_dependency order by supplier_id`;
+      expect(dependency.map(r => [r["id"], r["turnover"], r["employees"]])).toEqual([["10", null, null], ["11", "1000", 1]]);
+
+      // A corroboration belongs to the CUI that was checked.
+      await q`update core.entities set cui_canonical='13328041' where id=11`;
+      expect((await corroborated())["11"]).toBe(false);
       throw rollback;
     })).rejects.toBe(rollback);
   }, 30_000);

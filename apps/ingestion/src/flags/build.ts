@@ -1,4 +1,4 @@
-import type { DbSql } from "@seap/db";
+import { cuiCorroborated, type DbSql } from "@seap/db";
 import { DA_CPV_TYPE_PATTERN } from "@seap/domain";
 import { METHODOLOGY_VERSION } from "./methodology.js";
 import { assertCeilingEras, daThresholdDateSql, daThresholdKeySql } from "./thresholds.js";
@@ -384,9 +384,11 @@ async function buildFlags(
     ),
     tot as (select eid, y, sum(val) val from pub group by 1, 2),
     fin as (
+      -- corroborated CUI only: never another firm's balance sheet (audit F03)
       select e.id eid, cf.year y, cf.employees, cf.net_turnover
       from core.entities e
       join reference.company_financials cf on cf.cui = e.cui_canonical
+      where ${cuiCorroborated(sql, 'e')}
     )
   `;
 
@@ -444,6 +446,7 @@ async function buildFlags(
       join core.entities e on e.cui_canonical = r.cui
       where r.birth_date is not null
         and coalesce(r.calitate, '') not ilike '%consiliul de supraveghere%'
+        and ${cuiCorroborated(sql, 'e')}
       group by r.person_key, e.id
     ),
     pair as (

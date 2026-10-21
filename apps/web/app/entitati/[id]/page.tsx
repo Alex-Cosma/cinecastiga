@@ -8,6 +8,7 @@ import {
   getEntityMonthly,
   getEntityFlagEvidence,
   getCompanyReps,
+  getRegistryCui,
   getEntityTxCounts,
   getEntityContractsAboveCap,
   getEntityFlagRowCounts,
@@ -113,17 +114,22 @@ export default async function EntityPage({
   const base = { rol: rolParam, sort: sp["sort"], an: sp["an"], sem: sp["sem"] };
 
   const cui = flagRows.find((r) => r.cui)?.cui ?? null;
-  const [partners, monthly, flagEvidence, reps, txCounts, flagRowCounts, aboveCap, signalCounts] =
+  // ONRC/MF data only through a corroborated CUI (audit F03): a foreign number
+  // that passes the CUI checksum keeps its label but not another firm's records.
+  const registryCuiLookup = cui ? getRegistryCui(id) : Promise.resolve(null);
+  const [partners, monthly, flagEvidence, reps, txCounts, flagRowCounts, aboveCap, signalCounts, registryCui] =
     await Promise.all([
       getEntityPartners(id, role, 12),
       getEntityMonthly(id, role),
       getEntityFlagEvidence(id),
-      cui ? getCompanyReps(cui) : Promise.resolve([]),
+      registryCuiLookup.then((registry) => (registry ? getCompanyReps(registry) : [])),
       getEntityTxCounts(id, role),
       getEntityFlagRowCounts(id, role),
       getEntityContractsAboveCap(id, role),
       getEntitySignalCounts(id, role),
+      registryCuiLookup,
     ]);
+  const cuiUncorroborated = cui !== null && registryCui === null;
 
   const hasRiskScore = flagRowsRaw.some((r) => r.role === role);
   const criteria = CRI_CRITERIA[role];
@@ -165,6 +171,11 @@ export default async function EntityPage({
             ) : null}
             {county ? <span>{county}</span> : null}
             {cui ? <span className="mono">CUI {cui}</span> : null}
+            {cuiUncorroborated ? (
+              <span title="Numărul trece cifra de control a unui CUI, dar sursa indică o firmă străină, iar ONRC nu înregistrează acest număr sub un nume asemănător. Nu afișăm reprezentanți, bilanț sau linkuri de registru pentru el.">
+                număr necoroborat cu ONRC
+              </span>
+            ) : null}
           </div>
         </div>
         <div className="ehead-acts">
@@ -179,8 +190,8 @@ export default async function EntityPage({
           <ClipButton kind="entity" refId={id} label={cleanName(row.name)} />
           {/* No e-licitatie entity link: SICAP has no per-entity page, and every
               transaction row already deep-links to its exact record */}
-          {cui
-            ? registryLinks(cui, cleanName(row.name)).map((l) => (
+          {registryCui
+            ? registryLinks(registryCui, cleanName(row.name)).map((l) => (
                 <a key={l.label} href={l.url} target="_blank" rel="noopener noreferrer" className="btn">
                   {l.label} ↗
                 </a>
@@ -234,13 +245,13 @@ export default async function EntityPage({
           <div className="n"><a href={entityTxSearchUrl(id, cleanName(row.name), role, "all")}>{formatRon(Number(txCounts.valueExact))} ↗</a></div>
           <div className="l">Valoare înregistrată · ambele canale</div>
         </div>
-        {role === "supplier" && profile?.employees != null && (
+        {role === "supplier" && registryCui !== null && profile?.employees != null && (
           <div className="stat">
             <div className="n">{formatInt(profile.employees)}</div>
             <div className="l">Angajați (bilanț {profile.employeesYear})</div>
           </div>
         )}
-        {role === "supplier" && profile?.netTurnover != null && profile.netTurnover > 0 && (
+        {role === "supplier" && registryCui !== null && profile?.netTurnover != null && profile.netTurnover > 0 && (
           <div className="stat">
             <div className="n">{formatRon(profile.netTurnover)}</div>
             <div className="l">Cifră de afaceri ({profile.employeesYear})</div>
@@ -253,6 +264,9 @@ export default async function EntityPage({
         <p>Achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei, și contracte prin proceduri
           cu valoare pozitivă de cel mult 1 miliard lei.
           Valorile sunt înregistrate în achiziții; nu confirmă plăți. Totalul și lista partenerilor folosesc aceeași selecție.</p>
+        {cuiUncorroborated && <p>Numărul {cui} trece cifra de control a unui CUI românesc, dar sursa indică o firmă străină,
+          iar ONRC nu înregistrează acest număr sub un nume asemănător. Poate fi un cod fiscal străin. Nu afișăm pentru el
+          reprezentanți ONRC, date din bilanț sau semnale bazate pe bilanț.</p>}
         {aboveCap.count > 0 && <p><strong>{formatInt(aboveCap.count)} {aboveCap.count === 1 ? "contract" : "contracte"} peste 1 miliard lei, în valoare
           integrală de {formatRon(Number(aboveCap.totalExact))}, nu {aboveCap.count === 1 ? "este inclus" : "sunt incluse"} în total și nici în lista partenerilor.</strong>
           {" "}Plafonul este un filtru al aplicației, nu dovada unei erori. <a href="#peste-plafon">Vezi aceste contracte</a>.</p>}

@@ -1,4 +1,4 @@
-import { contractReportable, contractDatePlausible } from '@seap/db';
+import { contractReportable, contractDatePlausible, cuiCorroborated, refreshCuiCorroborations } from '@seap/db';
 import { contractRonValue, canonicalContract, assertContractIdentityQuality, assertContractExclusionsQuality, CONTRACT_VALUE_CAP_RON, winnerIsSupplier } from "@seap/db";
 import type { DbSql } from "@seap/db";
 
@@ -60,6 +60,9 @@ export async function runMarts(
         marts.entity_profile, marts.entity_top_partners, marts.top_entities,
         marts.authority_concentration, marts.contract_transactions
     `;
+    // Which foreign-marked CUIs ONRC corroborates by name; every ONRC/MF join
+    // below and in the risk build reads it through cuiCorroborated (audit F03).
+    log(`marts cui_corroborations: ${await refreshCuiCorroborations(q)}`);
 
     // ── contract_transactions: the canonical procedure-contract population ─────────
     // One row per (contract, winner); consortium value split equally into
@@ -272,7 +275,9 @@ export async function runMarts(
       where au.entity_id = ep.entity_id and ep.role = 'authority'
     `;
     // MF bilanț financials (latest filing with an employee count) — suppliers
-    // only; null = PFA/foreign/dissolved, an informative absence.
+    // only; null = PFA/foreign/dissolved, an informative absence. Only a
+    // corroborated CUI is joined: a foreign number that passes the CUI
+    // checksum must not take another firm's balance sheet (audit F03).
     await q`
       update marts.entity_profile ep
       set employees = cf.employees, employees_year = cf.year, net_turnover = cf.net_turnover
@@ -284,7 +289,7 @@ export async function runMarts(
         order by year desc
         limit 1
       ) cf
-      where e.id = ep.entity_id and ep.role = 'supplier'
+      where e.id = ep.entity_id and ep.role = 'supplier' and ${cuiCorroborated(q, 'e')}
     `;
 
     // ── spend_by_county (choropleth source, both roles) ─────────────────────

@@ -1,4 +1,4 @@
-import { contractRonValue } from "@seap/db";
+import { contractRonValue, cuiCorroborated } from "@seap/db";
 import { createDb, type DbSql } from "@seap/db";
 import { isWorkspaceId, withInvestigationAccess, type InvestigationAccess } from "./investigation-access";
 import { EVIDENCE_KINDS, type EvidenceKind, type CaptureSummary } from "./evidence-captures-shared";
@@ -509,6 +509,7 @@ async function castRelations(clipRows: ClipRow[]): Promise<{
       join reference.company_reps r on r.cui = e.cui_canonical
       where e.id = any(${sql.array(entityIds)}::bigint[])
         and r.birth_date is not null and r.person_key is not null
+        and ${cuiCorroborated(sql, "e")}
     `) as unknown as MemberRepRow[];
     for (const srow of sharedRepresentativePairs(memberReps)) {
       relations.push({
@@ -527,6 +528,7 @@ async function castRelations(clipRows: ClipRow[]): Promise<{
       join core.entities e on e.cui_canonical = r.cui
       where r.person_key = any(${sql.array(personKeys)}::text[])
         and e.id = any(${sql.array(entityIds)}::bigint[])
+        and ${cuiCorroborated(sql, "e")}
       group by 1, 2
     `) as unknown as { pk: string; eid: string; nm: string }[];
     for (const arow of adminOf) {
