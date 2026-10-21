@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DbSql } from "@seap/db";
-import { runRows, runSpec, CONTRACT_CAP_CAVEAT, DRILLABLE_BLOCKS, type DrillRow } from "./compile";
+import { runRows, runSpec, CONTRACT_CAP_CAVEAT, DA_PLAFOND_CAVEAT, DRILLABLE_BLOCKS, type DrillRow } from "./compile";
 import { BLOCKS, type AskSpec } from "./spec";
 import { evidenceCsv, evidenceLinks, formatEvidenceAmount, sumDecimalStrings, validateEvidenceScope } from "./evidence";
 import { evidenceOptions } from "./evidence-request";
@@ -137,6 +137,17 @@ describe("source query regression", () => {
     expect(notes.includes(CONTRACT_CAP_CAVEAT)).toBe(dataset !== "da");
     expect(caveats.join(" ")).not.toContain("suma e corectă");
     expect(CONTRACT_CAP_CAVEAT).toContain("1 miliard lei");
+  });
+  // Regression (audit F25, 21 Oct 2026): every DA answer called the excluded
+  // records "erori de introducere", contradicting /metodologie.
+  it.each(["all", "da"] as const)("%s answers describe the DA bound as an analytical filter, not as entry errors", async (dataset) => {
+    const result = await runSpec(database().sql, { ...stat, dataset }, grounding);
+    const caveats = (result as { caveats: string[] }).caveats;
+    expect(caveats).toContain(DA_PLAFOND_CAVEAT);
+    expect(caveats.join(" ")).not.toMatch(/erori de introducere|excluse ca erori/);
+    expect(DA_PLAFOND_CAVEAT).toContain("2 milioane lei");
+    expect(DA_PLAFOND_CAVEAT).toContain("filtru analitic");
+    expect(DA_PLAFOND_CAVEAT).toContain("nici dovada unei erori");
   });
   it("drops the contract cap caveat from direct-acquisition-only historical profiles", async () => {
     const result = await runSpec(database().sql, { block: "entity_card", dataset: "all", measure: "value", rankBy: "risk", filters: {} }, {});
