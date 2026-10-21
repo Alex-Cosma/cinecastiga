@@ -10,7 +10,9 @@ export async function GET() {
     const [coverage, freshness] = await Promise.all([getCoverage(), getProcessingFreshness()]);
     const result: PublicCoverage = {
       sources: (coverage?.observations ?? []).map(({ dataset, observation, calculated_at }) => ({
-        dataset, from: observation.date_from, to: observation.date_to, inventoriedAt: calculated_at,
+        dataset, from: observation.date_from, to: observation.date_to,
+        ...(observation.complete_until === undefined ? {} : { completeUntil: observation.complete_until }),
+        inventoriedAt: calculated_at,
       })),
       dataAt: freshness?.dataAt ?? null,
       riskAt: freshness?.riskAt ?? null,

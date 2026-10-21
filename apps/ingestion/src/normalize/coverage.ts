@@ -1,11 +1,78 @@
 import { canonicalContract, contractAboveValueCap, contractDatePlausible, contractHasSupplier, contractWinnerIsAuthority, contractKind, contractKindFromTitle, contractReportable, contractRonValue, CONTRACT_VALUE_CAP_RON, frameworkHasCalloffs, type DbSql } from "@seap/db";
 import { TED_NORMALIZATION_VERSION } from "./ted.js";
 
+/** Collector tasks at or above this priority are background backfill (`BACKGROUND_PRIORITY`). */
+const BACKGROUND_PRIORITY = 50;
+/** A contract month counts as complete once it has this share of the same month a year earlier. */
+export const CONTRACT_MONTH_COMPLETE_RATIO = 0.9;
+
+/**
+ * "Complete until" per stream (audit F10), a Bucharest calendar day or null when it cannot be
+ * established. Nightly, from the collection record and the published marts; no source traffic.
+ * - DA: the last day of the unbroken run of days, from the collector's first DA day, on which
+ *   one scan of the day finished every ordinary task (complete or split, at least one complete,
+ *   nothing queued, running, failed or deferred). A later re-scan of a finished day does not
+ *   undo it; a day without tasks or with an unfinished scan ends the run.
+ * - Contracts: the end of the latest ended month whose distinct included contracts reach
+ *   CONTRACT_MONTH_COMPLETE_RATIO of the same month a year earlier. SEAP publishes award
+ *   notices weeks or months after signature, so recent months fill in late.
+ * - TED: the publication day of the newest OJ S package the collector archived, or the last
+ *   day of the newest finished windowed TED import, whichever is later.
+ */
+export async function completeUntil(q: DbSql): Promise<Record<"da" | "contracts" | "ted", string | null>> {
+  // Probed separately: a missing table must not abort the caller's transaction.
+  const [tables] = await q`select to_regclass('app.collection_tasks') is not null tasks, to_regclass('core.scrape_runs') is not null runs`;
+  let da: string | null = null, tedPackage: string | null = null, tedImport: string | null = null;
+  if (tables?.["tasks"]) {
+    const [row] = await q`
+      with windows as (
+        -- Group before expanding: days share few (window, scan) combinations.
+        select (params->>'from')::date f, (params->>'to')::date t, coalesce(params->>'daScan', '') scan,
+          count(*) filter (where status not in ('complete', 'split')) unfinished,
+          count(*) filter (where status = 'complete') complete
+        from app.collection_tasks
+        where priority < ${BACKGROUND_PRIORITY} and params ? 'from' and params ? 'to'
+          and ((stream = 'da' and kind in ('da', 'da-detail')) or (stream = 'catalogue' and kind = 'catalogue' and params ? 'daStrategy'))
+        group by 1, 2, 3
+      ), scans as (
+        select g::date d, w.scan, sum(w.unfinished) = 0 and sum(w.complete) > 0 done
+        from windows w cross join generate_series(w.f, w.t, interval '1 day') g group by 1, 2
+      ), days as (select d, bool_or(done) done from scans group by 1),
+      first_open as (
+        select min(g::date) d from generate_series((select min(d) from days), (select max(d) from days) + 1, interval '1 day') g
+        where not exists (select 1 from days x where x.d = g::date and x.done)
+      )
+      select case when f.d > (select min(d) from days) then (f.d - 1)::text end until from first_open f`;
+    da = row?.["until"] == null ? null : String(row["until"]);
+    const [pkg] = await q`select max(result->>'publicationDate') last_day from app.collection_tasks
+      where stream = 'ted' and kind = 'ted-package' and status = 'complete' and result->>'published' = 'true'
+        and result->>'publicationDate' ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'`;
+    tedPackage = pkg?.["last_day"] == null ? null : String(pkg["last_day"]);
+  }
+  if (tables?.["runs"]) {
+    // TED import windows are encoded in UTC (scrape/ted): the window end's UTC day is its last day.
+    const [run] = await q`select max((window_end at time zone 'UTC')::date)::text last_day from core.scrape_runs
+      where source like 'ted:%' and status = 'completed' and window_end is not null`;
+    tedImport = run?.["last_day"] == null ? null : String(run["last_day"]);
+  }
+  const [contracts] = await q`
+    with months as (
+      select left(finalization_date, 7) ym, count(distinct contract_id) n
+      from marts.contract_transactions where closing_value > 0 and finalization_date ~ '^[0-9]{4}-[0-9]{2}' group by 1
+    )
+    select (max(to_date(m.ym, 'YYYY-MM')) + interval '1 month' - interval '1 day')::date::text until
+    from months m join months p on p.ym = to_char(to_date(m.ym, 'YYYY-MM') - interval '1 year', 'YYYY-MM')
+    where to_date(m.ym, 'YYYY-MM') < date_trunc('month', now())::date and m.n >= ${CONTRACT_MONTH_COMPLETE_RATIO}::numeric * p.n`;
+  const ted = [tedPackage, tedImport].filter((day): day is string => day !== null).sort().at(-1) ?? null;
+  return { da, contracts: contracts?.["until"] == null ? null : String(contracts["until"]), ted };
+}
+
 /** Persist expensive counts once per refresh. Publish all observations atomically. */
 export async function runCoverage(sql: DbSql): Promise<void> {
   await sql.begin("isolation level repeatable read", async (q) => {
     // Calendar days/years must match SEAP detail pages in Romanian time.
     await q`set local time zone 'Europe/Bucharest'`;
+    const until = await completeUntil(q as unknown as DbSql);
     const selfSupplied = q`state = 'Oferta acceptata' and closing_value > 0 and closing_value <= 2000000
       and supplier_entity_id = authority_entity_id`;
     await q`
@@ -24,7 +91,7 @@ export async function runCoverage(sql: DbSql): Promise<void> {
       ), included as (
         select count(*)::text included from marts.da_transactions
         where closing_value > 0 and closing_value <= 2000000
-      ) select 'da', to_jsonb(da) || jsonb_build_object('included', included.included), now() from da cross join included
+      ) select 'da', to_jsonb(da) || jsonb_build_object('included', included.included, 'complete_until', ${until.da}::text), now() from da cross join included
       on conflict (dataset) do update set observation = excluded.observation, calculated_at = excluded.calculated_at
     `;
     await q`
@@ -45,6 +112,7 @@ export async function runCoverage(sql: DbSql): Promise<void> {
       ), included as (
         select count(distinct contract_id)::text included, count(*)::text allocations from marts.contract_transactions where closing_value > 0
       ) select 'contracts', to_jsonb(ct) || jsonb_build_object('included', included.included, 'allocations', included.allocations,
+        'complete_until', ${until.contracts}::text,
         'temporarily_excluded_groups',(select count(distinct candidate_id)::text from marts.contract_identity_exclusions),
         'temporarily_excluded_publications',(select count(*)::text from marts.contract_identity_exclusions),
         'temporarily_excluded_financial_groups',(select count(distinct x.candidate_id)::text
@@ -97,7 +165,7 @@ export async function runCoverage(sql: DbSql): Promise<void> {
         select count(*)::text results,
           count(*) filter (where tenders_received is null)::text unknown_competition
         from core.ted_lot_results
-      ) select 'ted', to_jsonb(notices) || to_jsonb(lots), now() from notices cross join lots
+      ) select 'ted', to_jsonb(notices) || to_jsonb(lots) || jsonb_build_object('complete_until', ${until.ted}::text), now() from notices cross join lots
       on conflict (dataset) do update set observation = excluded.observation, calculated_at = excluded.calculated_at
     `;
     await q`

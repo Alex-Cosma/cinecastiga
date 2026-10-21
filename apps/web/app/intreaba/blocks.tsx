@@ -1631,7 +1631,9 @@ export function TrendBlock({
       </p>
       {shownPartial.length > 0 && (
         <p className="ask-fine ask-partial-note">
-          * an acoperit parțial, diferența reflectă și perioada neacoperită:{" "}
+          {shownPartial.some((p) => p.provisional)
+            ? "* an cu date parțiale sau provizorii, diferența reflectă și perioada neacoperită sau încă nepublicată: "
+            : "* an acoperit parțial, diferența reflectă și perioada neacoperită: "}
           {shownPartial.map((p) => `${p.year} (${p.note})`).join(", ")}.
         </p>
       )}
