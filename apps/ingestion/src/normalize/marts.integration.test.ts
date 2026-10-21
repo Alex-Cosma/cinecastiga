@@ -1,7 +1,7 @@
 import {seedVerifiedIdentity} from '../test/contract-identity-fixture.js';
 import {approveContractIdentities} from './approve-contract-identities.js';
 import { afterAll, describe, expect, it } from "vitest";
-import { contractWinnerIsAuthority, createDb, cuiCorroborated, readContractIdentityQuality, type DbSql } from "@seap/db";
+import { contractKindFromTitle, contractWinnerIsAuthority, createDb, cuiCorroborated, readContractIdentityQuality, type DbSql } from "@seap/db";
 import { DA_CEILING_SEED_ROWS } from "@seap/domain";
 import { runMarts } from "./marts.js";
 import { runFlags } from "../flags/build.js";
@@ -175,6 +175,45 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
       await runCoverage(q);
       const [coverage] = await q`select observation from marts.data_coverage where dataset='contracts'`;
       expect(coverage?.observation).toMatchObject({ included: "2", winner_is_authority: "1", winner_is_authority_value: "1000.25" });
+      throw rollback;
+    })).rejects.toBe(rollback);
+    expect(await sql`select nspname from pg_namespace where nspname like ${`${prefix}_%`}`).toHaveLength(0);
+  }, 30_000);
+  // Regression (audit F08, 21 Oct 2026): contracts without an archived SEAP type are
+  // typed by their title, which misses about a third of known frameworks; the
+  // inventory did not say how many contracts or how much value rested on that rule.
+  it("counts and sums contracts typed by the title rule, in all and inside the totals", async () => {
+    const prefix = `title_rule_fixture_${process.pid}_${Date.now()}`;
+    const rollback = Error("rollback title rule fixture");
+    await expect(sql.begin(async tx => {
+      for (const [schema, names] of Object.entries(tables)) {
+        await tx.unsafe(`create schema ${prefix}_${schema}`);
+        for (const table of names) await tx.unsafe(`create table ${prefix}_${schema}.${table} as table ${schema}.${table} with no data`);
+      }
+      const [view] = await tx`select pg_get_viewdef('marts.signal_lookup'::regclass, true) definition`;
+      await tx.unsafe(`create materialized view ${prefix}_marts.signal_lookup as ${String(view!.definition).replace(/;\s*$/, "").replace(/\b(core|marts|reference|raw)\./g, `${prefix}_$1.`)} with no data`);
+      const q = isolatedSql(tx as unknown as DbSql, prefix);
+      await q`insert into core.entities(id,name_display) values(1,'Autoritate'),(2,'Furnizor')`;
+      await q`insert into core.awards(id,ca_notice_id,notice_no,authority_entity_id,state_date) values(1,100,'CAN-TITLE',1,'2024-01-10')`;
+      await q`insert into core.contracts(id,raw_id,ca_notice_contract_id,ca_notice_id,contract_no,contract_date,contract_value,currency,title,source_contract_type,contract_type_raw_id) values
+        (1,11,108115496,100,'1','2024-02-01T10:00:00Z',1000.25,'RON','Furnizare motorină',null,11),
+        (2,12,108115497,100,'2','2024-02-01T10:00:00Z',5000,'RON','Acord-cadru lucrări',null,null),
+        (3,13,108115498,100,'3','2024-02-01T10:00:00Z',300,'RON','Contract subsecvent nr. 3',null,null),
+        (4,14,108115499,100,'4','2024-02-01T10:00:00Z',200,'RON','Lucrări de întreținere',1,14),
+        (5,15,108115500,100,'5','2024-02-01T10:00:00Z',70,'RON','Act adițional nr. 1',null,null),
+        (6,16,108115501,100,'6','2024-02-01T10:00:00Z',90,'RON','Servicii de pază',null,99),
+        (7,17,108115502,100,'7',null,40,'RON','Servicii fără dată',null,null)`;
+      await q`insert into core.contract_winners(contract_id,entity_id) select id,2 from core.contracts`;
+      await runMarts(q);
+      // Title rule: 1 (contract), 2 (framework), 3 (call-off), 7 (contract, undated). Not 4 (source
+      // type), 5 (addendum) or 6 (type from another archive, under review). In totals: 1 and 3.
+      expect((await q`select contract_id::int c from marts.contract_transactions order by 1`).map(r => r.c)).toEqual([1, 3, 4]);
+      expect((await q`select c.id::int id from core.contracts c where ${contractKindFromTitle(q)} order by 1`).map(r => r.id)).toEqual([1, 2, 3, 7]);
+      await q`alter table marts.data_coverage add primary key (dataset)`;
+      await runCoverage(q);
+      const [coverage] = await q`select observation from marts.data_coverage where dataset='contracts'`;
+      expect(coverage?.observation).toMatchObject({ title_classified: "4", title_classified_value: "6340.25",
+        title_classified_included: "2", title_classified_included_value: "1300.25" });
       throw rollback;
     })).rejects.toBe(rollback);
     expect(await sql`select nspname from pg_namespace where nspname like ${`${prefix}_%`}`).toHaveLength(0);

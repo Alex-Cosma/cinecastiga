@@ -94,7 +94,9 @@ export default function MetodologiePage() {
           Cotele însumate refac valoarea contractului; nu dovedesc venitul încasat de fiecare firmă.</p>
         <p>Toate plafoanele acordurilor-cadru sunt separate de totaluri, inclusiv când nu avem subsecvente identificate.
           Însumăm numai contractele și comenzile identificate. Lipsa comenzilor este o limită de acoperire, nu cheltuială zero.
-          Folosim tipul declarat de SEAP; pentru istoricul fără tip, folosim descrierea.</p>
+          Folosim tipul declarat de SEAP; pentru istoricul fără tip, folosim descrierea.
+          Încadrarea după descriere poate greși, de exemplu un acord-cadru al cărui titlu nu spune asta;
+          <a href="#acoperire">inventarul</a> arată câte contracte și ce valoare depind de ea.</p>
         <p>Când SEAP republică același contract (același anunț, număr, dată, lot și autoritate), îl numărăm o singură dată, la ultima versiune verificată.
           Acceptăm și versiunile pe care SEAP nu le marchează ca modificate, dacă diferă doar valoarea, dacă se adaugă furnizori fără să dispară vreunul
           sau dacă titlul numește un act adițional. Astfel de schimbări sunt semnalate pe pagina contractului. Un titlu schimbat fără mențiunea unui act

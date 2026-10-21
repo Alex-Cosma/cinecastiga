@@ -1,4 +1,4 @@
-import { canonicalContract, contractAboveValueCap, contractDatePlausible, contractHasSupplier, contractWinnerIsAuthority, contractKind, contractReportable, contractRonValue, CONTRACT_VALUE_CAP_RON, frameworkHasCalloffs, type DbSql } from "@seap/db";
+import { canonicalContract, contractAboveValueCap, contractDatePlausible, contractHasSupplier, contractWinnerIsAuthority, contractKind, contractKindFromTitle, contractReportable, contractRonValue, CONTRACT_VALUE_CAP_RON, frameworkHasCalloffs, type DbSql } from "@seap/db";
 import { TED_NORMALIZATION_VERSION } from "./ted.js";
 
 /** Persist expensive counts once per refresh. Publish all observations atomically. */
@@ -62,7 +62,16 @@ export async function runCoverage(sql: DbSql): Promise<void> {
               'winner_is_authority_value',coalesce(trim_scale(sum(${contractRonValue(q)})),0)::text)
             from core.contracts c join core.awards a using(ca_notice_id)
             where ${contractWinnerIsAuthority(q)} and ${canonicalContract(q)} and (${contractReportable(q)})
-              and ${contractRonValue(q)}>0 and ${contractRonValue(q)}<=${CONTRACT_VALUE_CAP_RON} and c.contract_date is not null), now() from ct cross join included
+              and ${contractRonValue(q)}>0 and ${contractRonValue(q)}<=${CONTRACT_VALUE_CAP_RON} and c.contract_date is not null)
+        -- Canonical contracts typed by the title rule, without an archived SEAP
+        -- type (audit F08), and the part of them that reached the totals.
+        || (select jsonb_build_object('title_classified',count(*)::text,
+              'title_classified_value',coalesce(trim_scale(sum(${contractRonValue(q)})),0)::text)
+            from core.contracts c where ${contractKindFromTitle(q)} and ${canonicalContract(q)})
+        || (select jsonb_build_object('title_classified_included',count(distinct t.contract_id)::text,
+              'title_classified_included_value',coalesce(trim_scale(sum(t.closing_value)),0)::text)
+            from marts.contract_transactions t join core.contracts c on c.id=t.contract_id
+            where t.closing_value>0 and ${contractKindFromTitle(q)}), now() from ct cross join included
       on conflict (dataset) do update set observation = excluded.observation, calculated_at = excluded.calculated_at
     `;
     await q`
