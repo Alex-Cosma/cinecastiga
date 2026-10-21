@@ -2,11 +2,12 @@ import {activateNationalDa} from '../collection/da-activation.js';
 import {advanceRecovery} from '../collection/advance.js';
 import {enqueueAwardDetailBackfill,refillAwardBackfill,retryFailedAwardBackfill,setBackgroundLanes} from '../collection/award-backfill.js';
 import {enableTedCollection} from '../collection/ted-activation.js';
+import {advertiseCollectorCapabilities,cancelContractsAudit,collectorCapability,enqueueContractsAudit,parseAuditNoticeIds,parseContractsAuditArgs} from '../collection/contracts-audit.js';
 import {setTimeout as sleep} from 'node:timers/promises';
 import type {DbSql} from '@seap/db';
 import {getSharedSql,closeSharedDb} from '../db.js';
 import {getElicitatieClient} from '../scrape/elicitatie/client.js';
-import {fetchTask,recoverInterrupted,recoveryStep,RECOVERY_LOCK,seedRecovery} from '../collection/runner.js';
+import {fetchTask,recoverInterrupted,recoveryStep,recoveryWorker,RECOVERY_LOCK,seedRecovery} from '../collection/runner.js';
 const args=process.argv.slice(2),q=getSharedSql();
 let stopping=false;
 process.on('SIGTERM',()=>{stopping=true;});process.on('SIGINT',()=>{stopping=true;});
@@ -26,6 +27,17 @@ try{
   if(args.length!==2||!/^(10|[0-9])$/.test(args[1]!))throw Error('Usage: collection background-lanes <0..10>');
   console.log(JSON.stringify({...await setBackgroundLanes(q,Number(args[1])),networkRequests:0}));
  }
+ else if(args[0]==='contracts-audit'){
+  // No source traffic: queue (IDs on stdin), cancel or report whether the live collector can run an audit.
+  const command=parseContractsAuditArgs(args.slice(1)),actor=process.env['SEAP_OPERATOR']||'operator';
+  if(command.action==='capability')console.log(JSON.stringify({...await collectorCapability(q),networkRequests:0}));
+  else if(command.action==='cancel')console.log(JSON.stringify({...await cancelContractsAudit(q,{tag:command.tag,actor}),networkRequests:0}));
+  else{
+   if(process.stdin.isTTY)throw Error('Pipe the caNoticeId list on stdin (one per line).');
+   let text='';for await(const chunk of process.stdin)text+=chunk;
+   console.log(JSON.stringify({...await enqueueContractsAudit(q,{tag:command.tag,ids:parseAuditNoticeIds(text),actor}),networkRequests:0}));
+  }
+ }
  else if(args[0]==='run'){
   const boundArg=args.find(a=>a.startsWith('--max-tasks='));const bound=boundArg?Number(boundArg.split('=')[1]):Infinity;
   if(!(bound>0)||bound!==Infinity&&!Number.isSafeInteger(bound))throw Error('Invalid task bound');
@@ -34,6 +46,7 @@ try{
    const [l]=await lock`select pg_try_advisory_lock(${RECOVERY_LOCK[0]},${RECOVERY_LOCK[1]}) acquired,pg_backend_pid() pid`;
    if(!l?.acquired)throw Error('Recovery worker already running');
    await recoverInterrupted(q);let attempts=0;
+   await advertiseCollectorCapabilities(q,recoveryWorker);
    const client=getElicitatieClient();
    let nextAdvance=0,nextRefill=0,refilling=false;
    // Off the claim path: a refill scans the archived award list (seconds) and must not stall lane 0.
@@ -55,5 +68,5 @@ try{
    const failed=results.find(r=>r.status==='rejected');if(failed?.status==='rejected')throw failed.reason;
    console.log(JSON.stringify({event:'recovery-worker-exit',tasks:attempts,bounded:bound!==Infinity}));
   }finally{await lock`select pg_advisory_unlock(${RECOVERY_LOCK[0]},${RECOVERY_LOCK[1]})`.catch(()=>{});lock.release();}
- }else throw Error('Usage: collection seed [closed-end-day] | follow-latest | national-da | ted-enable | backfill-award-details --limit=N [--pilot] | backfill-award-details --retry-failed | background-lanes <0..10> | run [--max-tasks=N]');
+ }else throw Error('Usage: collection seed [closed-end-day] | follow-latest | national-da | ted-enable | backfill-award-details --limit=N [--pilot] | backfill-award-details --retry-failed | background-lanes <0..10> | contracts-audit --tag=<tag> < ids | contracts-audit --cancel --tag=<tag> | contracts-audit --capability | run [--max-tasks=N]');
 }finally{await closeSharedDb();}
