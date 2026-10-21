@@ -8,7 +8,9 @@ export const COVERAGE_LABELS = {
 };
 export type CoverageSource = keyof typeof COVERAGE_LABELS;
 export interface PublicCoverage {
-  sources: { dataset: CoverageSource; from: string | null; to: string | null; inventoriedAt: string }[];
+  /** completeUntil (audit F10): last day considered complete; later records are provisional.
+   * null when it cannot be established, absent from an inventory calculated before the rule. */
+  sources: { dataset: CoverageSource; from: string | null; to: string | null; completeUntil?: string | null; inventoriedAt: string }[];
   dataAt: string | null;
   riskAt: string | null;
 }

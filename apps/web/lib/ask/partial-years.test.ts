@@ -11,7 +11,7 @@ const periods: CoveragePeriods = {
 };
 
 /** SQL tag harness: answers the coverage reads, records nothing else. */
-function database(coverage: { present: boolean; rows?: { dataset: string; date_from: string; date_to: string }[] }) {
+function database(coverage: { present: boolean; rows?: { dataset: string; date_from: string; date_to: string; complete_until?: string | null }[] }) {
   const statements: string[] = [];
   class Fragment {
     constructor(public text: string) {}
@@ -125,5 +125,61 @@ describe("Ask answers over partially covered years", () => {
     if ("error" in result) throw new Error(result.error);
     expect(result.caveats).toContain(PERIOD_UNKNOWN_CAVEAT);
     expect(db.statements.some((q) => q.includes("from marts.data_coverage"))).toBe(false);
+  });
+});
+
+// Regression (audit F10, 21 Oct 2026): production had DA to 20.10.2026 but contracts
+// reliable only through 30.06.2026 (July 79%, September 57%, October 15% of the year
+// before), while the yearly charts showed only "date până la 20.10.2026". Contract months
+// after the nightly "complet până la" day are marked provisional.
+describe("provisional contract months", () => {
+  const prod: CoveragePeriods = {
+    da: { from: "2018-04-02", to: "2026-10-20" },
+    contracts: { from: "2018-01-03", to: "2026-10-20", completeUntil: "2026-06-30" },
+  };
+  it("adds the provisional contracts to the partial last year, for contracts only", () => {
+    expect(partialYears(prod, "all", [2025, 2026])).toEqual([
+      { year: 2026, note: "date până la 20.10.2026; contractele datate după 30.06.2026 sunt provizorii", provisional: true },
+    ]);
+    expect(partialYears(prod, "contracts", [2026])).toEqual([
+      { year: 2026, note: "date până la 20.10.2026; contractele datate după 30.06.2026 sunt provizorii", provisional: true },
+    ]);
+    expect(partialYears(prod, "da", [2026])).toEqual([{ year: 2026, note: "date până la 20.10.2026" }]);
+  });
+  it("marks a calendar-complete year whose last contract months are still provisional", () => {
+    const january: CoveragePeriods = {
+      da: { from: "2018-04-02", to: "2027-01-20" },
+      contracts: { from: "2018-01-03", to: "2027-01-20", completeUntil: "2026-09-30" },
+    };
+    expect(partialYears(january, "all", [2025, 2026])).toEqual([
+      { year: 2026, note: "contractele datate după 30.09.2026 sunt provizorii", provisional: true },
+    ]);
+    expect(partialYears(january, "da", [2026])).toEqual([]);
+    expect(partialYearsCaveat(partialYears(january, "all", [2025, 2026]), "series")).toBe(
+      "An cu date parțiale sau provizorii: 2026 (contractele datate după 30.09.2026 sunt provizorii). Totalul lui nu este complet; nu îl compara direct cu ceilalți ani din grafic. SEAP publică multe contracte la câteva săptămâni sau luni după semnare: cifrele provizorii pot crește la actualizările următoare.",
+    );
+  });
+  it("judges selected months against the complete-until day", () => {
+    expect(partialYears(prod, "all", [2026], { yearFrom: 2026, yearTo: 2026, monthFrom: 1, monthTo: 6 })).toEqual([]);
+    expect(partialYears(prod, "contracts", [2026], { yearFrom: 2026, yearTo: 2026, monthFrom: 7, monthTo: 7 })).toEqual([
+      { year: 2026, note: "contractele datate după 30.06.2026 sunt provizorii", provisional: true },
+    ]);
+  });
+  it("leaves the F19 marking unchanged without a complete-until day", () => {
+    const unknown: CoveragePeriods = { da: prod.da, contracts: { from: "2018-01-03", to: "2026-10-20", completeUntil: null } };
+    expect(partialYears(unknown, "all", [2026])).toEqual([{ year: 2026, note: "date până la 20.10.2026" }]);
+  });
+  it("a year comparison and an annual total name the provisional contracts", async () => {
+    const rows = [
+      { dataset: "da", date_from: "2018-04-02", date_to: "2026-10-20" },
+      { dataset: "contracts", date_from: "2018-01-03", date_to: "2026-10-20", complete_until: "2026-06-30" },
+    ];
+    const trend = await runSpec(database({ present: true, rows }).sql, { block: "trend", dataset: "contracts", measure: "value", dim: "authority", filters: { yearFrom: 2025, yearTo: 2026 } }, {});
+    if ("error" in trend) throw new Error(trend.error);
+    expect(trend.partialYears).toEqual([{ year: 2026, note: "date până la 20.10.2026; contractele datate după 30.06.2026 sunt provizorii", provisional: true }]);
+    expect(trend.caveats.join(" ")).toContain("reflectă și perioada neacoperită sau încă nepublicată");
+    const stat = await runSpec(database({ present: true, rows }).sql, { block: "stat", dataset: "contracts", measure: "value", filters: { yearFrom: 2026, yearTo: 2026, monthFrom: 7, monthTo: 9 } }, {});
+    if ("error" in stat) throw new Error(stat.error);
+    expect(stat.caveats.join(" ")).toContain("Perioada aleasă include un an cu date parțiale sau provizorii: 2026 (contractele datate după 30.06.2026 sunt provizorii).");
   });
 });

@@ -6,6 +6,12 @@ import {getProcessingFreshness} from '@/lib/processing-freshness';
 
 const LABELS: Record<Dataset, string> = { da: "Achiziții directe", contracts: "Contracte prin proceduri", ted: "Publicații TED" };
 const n = (value: string | undefined) => value === undefined ? "necunoscut" : formatInt(Number(value));
+/** Audit F10: how each stream's "complet până la" day is established (apps/ingestion normalize/coverage.ts). */
+const COMPLETE_RULE: Record<Dataset, string> = {
+  da: "ultima zi dintr-un șir neîntrerupt de zile colectate integral de colectarea continuă, fără cereri rămase în așteptare, eșuate sau amânate",
+  contracts: "sfârșitul ultimei luni încheiate cu cel puțin 90% din numărul de contracte al aceleiași luni de anul trecut; lunile de după sunt provizorii, pentru că SEAP publică multe contracte la câteva săptămâni sau luni după semnare",
+  ted: "data celui mai nou pachet zilnic TED arhivat sau ultima zi a celui mai nou import TED încheiat",
+};
 
 export async function CoverageSummary() {
   const coverage = await getCoverage();
@@ -25,12 +31,14 @@ export default async function DataCoverage() {
   const years = [...new Set(data.years.map(row => row.year))].sort((a, b) => b - a);
   return <div className="coverage-data">
     <p>Inventarul de mai jos descrie înregistrările disponibile în aplicație. Capetele intervalului arată cele mai vechi și cele mai recente date observate; ele nu confirmă că fiecare zi sau fiecare autoritate este acoperită.</p>
+    <p>„Complet până la” este ultima zi pe care o considerăm completă pentru fiecare sursă, recalculată la fiecare actualizare nocturnă. Înregistrările de după ea sunt provizorii. În Întreabă, graficele pe ani și comparațiile dintre ani marchează cu „*” un an cu contracte provizorii.</p>
     <div className="coverage-grid">
       {data.observations.map(({ dataset, observation: o, calculated_at }) => <article key={dataset} className="coverage-source">
         <h3>{LABELS[dataset]}</h3>
         <p className="coverage-number">{n(o.available)} <span>{dataset === "ted" ? "publicații" : "înregistrări sursă"}</span></p>
         <dl>
           <div><dt>Interval observat</dt><dd>{coverageDate(o.date_from)} — {coverageDate(o.date_to)}</dd></div>
+          {o.complete_until !== undefined && <div><dt>Complet până la</dt><dd>{o.complete_until ? coverageDate(o.complete_until) : "neconfirmat"}</dd></div>}
           {o.included !== undefined && <div><dt>{dataset === "da" ? "Incluse în totaluri" : "Contracte distincte incluse"}</dt><dd>{n(o.included)}</dd></div>}
           {o.allocations !== undefined && <div><dt>Rânduri contract–furnizor</dt><dd>{n(o.allocations)}</dd></div>}
           <div><dt>Fără dată</dt><dd>{n(o.missing_date)}</dd></div>
@@ -58,6 +66,7 @@ export default async function DataCoverage() {
           {o.unknown_competition !== undefined && <div><dt>Rezultate fără număr de oferte</dt><dd>{n(o.unknown_competition)}</dd></div>}
           {o.unverified !== undefined && <div><dt>Publicații cu interpretare de reverificat</dt><dd>{n(o.unverified)}</dd></div>}
         </dl>
+        {o.complete_until !== undefined && <p className="note">Complet până la: {COMPLETE_RULE[dataset]}.</p>}
         {dataset === "contracts" && <p className="note">Pentru căutări, totaluri și gruparea pe domenii folosim CPV-ul anunțului de atribuire. Plafoanele nu sunt comenzi. Lipsa subsecventelor înseamnă acoperire incompletă, nu cheltuieli zero. Numărăm publicațiile sursă; categoriile de excludere se pot suprapune.</p>}
         <p className="note">Inventar recalculat: {coverageDate(calculated_at)}</p>
       </article>)}

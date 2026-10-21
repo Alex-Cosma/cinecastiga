@@ -283,11 +283,13 @@ export async function daCoverageYears(sql: DbSql, kind: "da" | "award" = "da"): 
   return years;
 }
 
-/** First and last dated record of a channel (marts.data_coverage, Bucharest calendar days). */
-export interface ChannelPeriod { from: string | null; to: string | null }
+/** First and last dated record of a channel (marts.data_coverage, Bucharest calendar days),
+ * and the last day considered complete (audit F10; null or absent when not established). */
+export interface ChannelPeriod { from: string | null; to: string | null; completeUntil?: string | null }
 export type CoveragePeriods = Record<"da" | "contracts", ChannelPeriod>;
-/** A year (or the selected months of it) that the archive covers only in part. */
-export interface PartialYear { year: number; note: string }
+/** A year (or the selected months of it) that the archive covers only in part,
+ * or whose contracts are provisional (audit F10). */
+export interface PartialYear { year: number; note: string; provisional?: true }
 let periodCache: { periods: CoveragePeriods | null; at: number } | undefined;
 /** Archive period per channel, or null when the inventory has not been calculated. */
 export async function coveragePeriods(sql: DbSql): Promise<CoveragePeriods | null> {
@@ -298,13 +300,14 @@ export async function coveragePeriods(sql: DbSql): Promise<CoveragePeriods | nul
   let periods: CoveragePeriods | null = null;
   if (table?.ok) {
     const rows = (await sql`
-      select dataset, observation->>'date_from' date_from, observation->>'date_to' date_to
+      select dataset, observation->>'date_from' date_from, observation->>'date_to' date_to,
+        observation->>'complete_until' complete_until
       from marts.data_coverage where dataset in ('da', 'contracts')
-    `) as unknown as { dataset: "da" | "contracts"; date_from: string | null; date_to: string | null }[];
+    `) as unknown as { dataset: "da" | "contracts"; date_from: string | null; date_to: string | null; complete_until?: string | null }[];
     const da = rows.find((r) => r.dataset === "da"), contracts = rows.find((r) => r.dataset === "contracts");
     if (da && contracts) periods = {
       da: { from: da.date_from, to: da.date_to },
-      contracts: { from: contracts.date_from, to: contracts.date_to },
+      contracts: { from: contracts.date_from, to: contracts.date_to, completeUntil: contracts.complete_until ?? null },
     };
   }
   if (!fresh) periodCache = { periods, at: Date.now() };
@@ -347,7 +350,10 @@ export function partialYears(
         if (to < end) parts.push({ channel, kind: "to", day: to });
       }
     }
-    if (parts.length === 0) continue;
+    // Audit F10: contracts dated after the nightly "complete until" day are still being published.
+    const until = periods.contracts.completeUntil?.slice(0, 10), last = periods.contracts.to?.slice(0, 10);
+    const provisional = channels.some((c) => c === "contracts") && !!until && !!last && until < end && last > until && last >= start;
+    if (parts.length === 0 && !provisional) continue;
     const phrases: string[] = [];
     for (const kind of ["starts", "from", "to", "stops"] as const) {
       const ofKind = parts.filter((p) => p.kind === kind);
@@ -360,7 +366,8 @@ export function partialYears(
       if (kind === "from") kindPhrases[kindPhrases.length - 1] += ", începutul arhivei";
       phrases.push(...kindPhrases);
     }
-    out.push({ year, note: phrases.join("; ") });
+    if (provisional) phrases.push(`contractele datate după ${roDay(until!)} sunt provizorii`);
+    out.push({ year, note: phrases.join("; "), ...(provisional ? { provisional: true as const } : {}) });
   }
   return out;
 }
@@ -372,6 +379,18 @@ export function partialYearsCaveat(list: readonly PartialYear[], context: "serie
   const byNote = new Map<string, number[]>();
   for (const p of list) byNote.set(p.note, [...(byNote.get(p.note) ?? []), p.year]);
   const named = [...byNote].map(([note, years]) => `${years.join(", ")} (${note})`).join(", ");
+  // Audit F10: provisional contract months are a publication lag, not a gap in the archive.
+  if (list.some((p) => p.provisional)) {
+    const lead = context === "selection"
+      ? `Perioada aleasă include ${one ? "un an" : "ani"} cu date parțiale sau provizorii: ${named}.`
+      : `${one ? "An" : "Ani"} cu date parțiale sau provizorii: ${named}.`;
+    const tail = context === "series"
+      ? ` ${one ? "Totalul lui nu este complet" : "Totalurile lor nu sunt complete"}; nu ${one ? "îl" : "le"} compara direct cu ceilalți ani din grafic.`
+      : context === "comparison"
+        ? " Diferența dintre cei doi ani reflectă și perioada neacoperită sau încă nepublicată, nu doar o schimbare reală."
+        : ` ${one ? "Valoarea lui nu este completă" : "Valorile lor nu sunt complete"}.`;
+    return `${lead}${tail} SEAP publică multe contracte la câteva săptămâni sau luni după semnare: cifrele provizorii pot crește la actualizările următoare.`;
+  }
   const lead = context === "selection"
     ? `Perioada aleasă include ${one ? "un an acoperit" : "ani acoperiți"} parțial de date: ${named}.`
     : `${one ? "An acoperit" : "Ani acoperiți"} parțial de date: ${named}.`;

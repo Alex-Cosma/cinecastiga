@@ -829,7 +829,7 @@ function ExactSeries({
           <tr key={r.year}>
             <th>
               {r.year}
-              {part && <small className="ask-partial-note">an acoperit parțial: {part.note}</small>}
+              {part && <small className="ask-partial-note">{part.provisional ? "date parțiale sau provizorii" : "an acoperit parțial"}: {part.note}</small>}
             </th>
             <td>{formatRonFull(r.value)}</td>
             <td>{formatInt(r.count)}</td>
@@ -1137,7 +1137,7 @@ function SeriesBlock({
               asCount
                 ? formatInt(p.count) + " înregistrări"
                 : formatRonFull(p.value),
-              `${formatInt(p.count)} achiziții${p.year === peak.year ? " · vârful seriei" : ""}${part ? ` · an acoperit parțial: ${part.note}` : ""} · click → achizițiile anului`,
+              `${formatInt(p.count)} achiziții${p.year === peak.year ? " · vârful seriei" : ""}${part ? ` · ${part.provisional ? "date parțiale sau provizorii" : "an acoperit parțial"}: ${part.note}` : ""} · click → achizițiile anului`,
             )}
           >
             <div className="cv">{display(p)}</div>
@@ -1156,7 +1156,7 @@ function SeriesBlock({
       </p>
       {shownPartial.length > 0 && (
         <p className="ask-fine ask-partial-note">
-          * an acoperit parțial, nu se compară direct cu un an întreg:{" "}
+          * {shownPartial.some((x) => x.provisional) ? "an cu date parțiale sau provizorii" : "an acoperit parțial"}, nu se compară direct cu un an întreg:{" "}
           {shownPartial.map((x) => `${x.year} (${x.note})`).join(", ")}.
         </p>
       )}

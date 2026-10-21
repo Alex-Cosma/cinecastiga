@@ -47,6 +47,10 @@ export interface Observation {
   unverified?: string;
   date_from: string | null;
   date_to: string | null;
+  /** Audit F10: last day the stream is considered complete, computed nightly (see
+   * `completeUntil` in apps/ingestion normalize/coverage.ts); null when it cannot be established.
+   * Absent from an inventory calculated before the rule existed. */
+  complete_until?: string | null;
 }
 export interface Collection {
   source: string;
@@ -116,7 +120,7 @@ export const getCoverage = unstable_cache(async (): Promise<Coverage | null> => 
     if ((error as { code?: string }).code === "42P01") return null;
     throw error;
   }
-}, ["data-coverage-v7"], { revalidate: 300 });
+}, ["data-coverage-v8"], { revalidate: 300 });
 
 /** Date only, as recorded by the source; don't shift source days to browser time zones. */
 export function coverageDate(value: string | null | undefined): string {

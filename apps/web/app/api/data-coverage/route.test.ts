@@ -13,6 +13,18 @@ it("exposes only public periods, not collector diagnostics or raw inventory payl
   expect(response.status).toBe(200);
   expect(await response.json()).toEqual({ sources: [{ dataset: "da", from: "2020-01-01", to: "2026-07-31", inventoriedAt: "2026-09-30T12:00:00Z" }], dataAt: "2026-09-30T12:00:00Z", riskAt: "2026-09-27T12:00:00Z" });
 });
+// Audit F10: the public panel shows per stream the day the data is considered complete.
+it("exposes each stream's complete-until day, null when it is not established", async () => {
+  vi.mocked(getCoverage).mockResolvedValue({ observations: [
+    { dataset: "contracts", calculated_at: "2026-10-21T03:00:00Z", observation: { available: "1", date_from: "2018-01-03", date_to: "2026-10-20", complete_until: "2026-06-30", missing_date: "0" } },
+    { dataset: "da", calculated_at: "2026-10-21T03:00:00Z", observation: { available: "1", date_from: "2018-04-02", date_to: "2026-10-20", complete_until: null, missing_date: "0" } },
+  ], collector: { batch: null, streams: [] }, collections: [], years: [], normalized: [] });
+  vi.mocked(getProcessingFreshness).mockResolvedValue(null);
+  expect((await (await GET()).json()).sources).toEqual([
+    { dataset: "contracts", from: "2018-01-03", to: "2026-10-20", completeUntil: "2026-06-30", inventoriedAt: "2026-10-21T03:00:00Z" },
+    { dataset: "da", from: "2018-04-02", to: "2026-10-20", completeUntil: null, inventoriedAt: "2026-10-21T03:00:00Z" },
+  ]);
+});
 it("keeps an unconfirmed inventory distinct from a failed read", async () => {
   vi.mocked(getCoverage).mockResolvedValue(null);
   vi.mocked(getProcessingFreshness).mockResolvedValue(null);
