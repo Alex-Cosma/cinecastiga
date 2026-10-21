@@ -56,6 +56,18 @@ describe("locality scope of Întreabă (finding F15)", () => {
     expect(localAuthorityIdsForUnit(twoCandidates, pitesti)).toEqual([]);
     expect(localAuthorityIdsForUnit([row("3", "COMUNA VANATORI", null, vanatoriMH)], vanatoriMH)).toEqual([]);
   });
+
+  it("recovers an administration spelled without diacritics or with the legacy î, only in its own county (owner decision F05/F15)", () => {
+    // Snapshot row without a legacy code: the commune itself, spelled "Sfintu".
+    const ialomita = row("2146046", "COMUNA SFINTU GHEORGHE,JUDETUL IALOMITA", "Ialomita", null);
+    expect(localAuthorityIdsForUnit([...rows, ialomita], sfGheorgheIL)).toEqual(["2146046"]);
+    // Covasna's municipality, with its wrong Ialomița code, still never enters.
+    expect(localAuthorityIdsForUnit([...rows, ialomita], sfGheorgheIL)).not.toContain("2146546");
+    expect(localAuthorityIdsForUnit([row("4", "COMUNA SFINTU GHEORGHE", "Covasna", null)], sfGheorgheIL)).toEqual([]);
+    const tulcea = unit("SFÂNTU GHEORGHE", "TULCEA");
+    expect(localAuthorityIdsForUnit([row("5", "Comuna Sfîntu Gheorghe", "Tulcea", null)], tulcea)).toEqual(["5"]);
+    expect(localAuthorityIdsForUnit([row("5", "Comuna Sfîntu Gheorghe", "Tulcea", null)], sfGheorgheIL)).toEqual([]);
+  });
 });
 
 function database(legacy: PopulationMappingRow[]) {
