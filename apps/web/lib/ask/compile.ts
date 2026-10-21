@@ -180,14 +180,33 @@ const KIND_LABEL: Record<AuthorityKind, string> = {
   scoala: "școli/licee/grădinițe",
 };
 
+// Audit F15: the locality filter is the UAT's own administration, strictly
+// associated (localAuthorityIdsForUnit) — never every institution in the UAT.
+const UAT_SCOPE_METHOD =
+  "Asocierea autoritate–UAT este o inferență a aplicației (cod SIRUTA din același județ sau nume și județ identice, CUI valid); asocierile din alt județ sau nesigure sunt excluse.";
+const BUCURESTI_SIRUTA = 179132;
+export function uatScopeCaveat(label: string, n: number, siruta?: number): string {
+  const who = n === 1
+    ? "doar administrația locală a UAT-ului (primăria / consiliul local)"
+    : `cele ${n} identități înregistrate ale administrației locale a UAT-ului (primăria / consiliul local)`;
+  const sectors = siruta === BUCURESTI_SIRUTA ? " Primăriile celor șase sectoare sunt autorități separate și nu sunt incluse." : "";
+  return `Localitatea „${label}”: includ ${who}, nu și școlile, spitalele sau alte instituții din localitate.${sectors} ${UAT_SCOPE_METHOD}`;
+}
+export function uatUnmappedError(label: string): string {
+  return `Nu am putut asocia sigur nicio autoritate contractantă cu localitatea „${label}”. ${UAT_SCOPE_METHOD} ` +
+    "Asta nu înseamnă că localitatea nu are achiziții: căutați primăria după nume.";
+}
+
 interface WhereParts {
   cpvPrefixes: string[];
   county: string | null;
   kind: AuthorityKind | null;
   authorityId: string | null;
   supplierId: string | null;
-  /** Locality scope: all authorities mapped to this UAT (reference.authority_uat). */
+  /** Locality scope: the UAT's own local administration (grounding.uat). */
   uatSiruta: number | null;
+  /** Strictly associated authority ids of that UAT (audit F15). */
+  uatAuthorityIds: string[];
   /** dataset "contracts" only: keep rows with is_single_bidder = true. */
   singleBidder: boolean;
   /** Supplier size bounds (MF bilanț employees via marts.entity_profile). */
@@ -466,21 +485,16 @@ export async function runSpec(
     caveats.push("Județul este al sediului instituției, din adresa sau codul NUTS din sursă. Instituțiile fără județ cunoscut nu intră în filtru.");
   }
   let uatSiruta: number | null = null;
+  let uatAuthorityIds: string[] = [];
   if (spec.filters.uatSiruta) {
     const uat = grounding.uat;
     const uatLabel = spec.filters.uatName ?? uat?.name ?? `UAT ${spec.filters.uatSiruta}`;
-    if (!uat || uat.nAuthorities === 0) {
-      return {
-        error: `Nu am găsit autorități contractante pentru localitatea „${uatLabel}”.`,
-        caveats,
-      };
+    if (!uat || !uat.authorityIds?.length) {
+      return { error: uatUnmappedError(uatLabel), caveats };
     }
     uatSiruta = uat.siruta;
-    caveats.push(
-      uat.nAuthorities === 1
-        ? `Localitatea „${uatLabel}”: o singură autoritate contractantă înregistrată în acest UAT.`
-        : `Localitatea „${uatLabel}”: includ toate cele ${uat.nAuthorities} autorități publice din UAT (primărie, școli, alte instituții), nu doar primăria.`,
-    );
+    uatAuthorityIds = uat.authorityIds;
+    caveats.push(uatScopeCaveat(uatLabel, uat.authorityIds.length, uat.siruta));
   }
 
   // --- year clamping against actual coverage (union of both streams on "all")
@@ -541,6 +555,7 @@ export async function runSpec(
     authorityId,
     supplierId,
     uatSiruta,
+    uatAuthorityIds,
     singleBidder: dataset === "contracts" && spec.filters.singleBidder === true,
     adminSupplierIds: grounding.admin ? grounding.admin.supplierIds : null,
     minEmployees: spec.filters.minEmployees ?? null,
@@ -624,7 +639,7 @@ export async function runSpec(
     if (opts?.comparison) parts.push(focalRole === "authority" ? sql`d.authority_id in (${focalId}, ${compareId})` : sql`d.supplier_id in (${focalId}, ${compareId})`);
     if (useIds && w.uatSiruta !== null)
       parts.push(
-        sql`d.authority_id in (select au.entity_id from reference.authority_uat au where au.uat_siruta = ${w.uatSiruta})`,
+        sql`d.authority_id = any(${sql.array(w.uatAuthorityIds)}::bigint[])`,
       );
     if (w.singleBidder) parts.push(sql`d.is_single_bidder = true`);
     if (w.adminSupplierIds !== null)
@@ -688,7 +703,7 @@ export async function runSpec(
     if (w.county) parts.push(sql`lower(unaccent(ef.county)) = ${fold(w.county)}`);
     if (w.uatSiruta !== null && role === "authority")
       parts.push(
-        sql`ef.entity_id in (select au.entity_id from reference.authority_uat au where au.uat_siruta = ${w.uatSiruta})`,
+        sql`ef.entity_id = any(${sql.array(w.uatAuthorityIds)}::bigint[])`,
       );
     if (w.kind && role === "authority") {
       const ors = KIND_PATTERNS[w.kind]
@@ -1662,10 +1677,8 @@ export async function runRows(
   ) {
     return { error: "Nu am găsit firmele persoanei în date (filtrul «conduse de»)." };
   }
-  if (spec.filters.uatSiruta && (!grounding.uat || grounding.uat.nAuthorities === 0)) {
-    return {
-      error: `Nu am găsit autorități pentru localitatea „${spec.filters.uatName ?? spec.filters.uatSiruta}”.`,
-    };
+  if (spec.filters.uatSiruta && !grounding.uat?.authorityIds?.length) {
+    return { error: uatUnmappedError(spec.filters.uatName ?? grounding.uat?.name ?? `UAT ${spec.filters.uatSiruta}`) };
   }
   const scope = validateEvidenceScope(opts.scope);
   if ("error" in scope) return scope;
@@ -1728,7 +1741,7 @@ export async function runRows(
         .reduce((a, b) => sql`${a} or ${b}`);
       profileParts.push(sql`(${ors})`);
     }
-    if (grounding.uat && role === "authority") profileParts.push(sql`ef.entity_id in (select au.entity_id from reference.authority_uat au where au.uat_siruta = ${grounding.uat.siruta})`);
+    if (grounding.uat && role === "authority") profileParts.push(sql`ef.entity_id = any(${sql.array(grounding.uat.authorityIds)}::bigint[])`);
     if (spec.block === "scatter") profileParts.push(sql`ef.cri is not null`);
   }
   const baseProfileWhere = profileParts.reduce((a, b) => sql`${a} and ${b}`);
@@ -1801,7 +1814,7 @@ export async function runRows(
       if (comparison) parts.push(focalRole === "authority" ? sql`d.authority_id in (${focalId!}, ${grounding.compare!.entityId!})` : sql`d.supplier_id in (${focalId!}, ${grounding.compare!.entityId!})`);
       if (grounding.authority?.entityId && !(comparison && focalRole === "authority")) parts.push(sql`d.authority_id = ${grounding.authority.entityId}`);
       if (grounding.supplier?.entityId && !(comparison && focalRole === "supplier")) parts.push(sql`d.supplier_id = ${grounding.supplier.entityId}`);
-      if (grounding.uat) parts.push(sql`d.authority_id in (select au.entity_id from reference.authority_uat au where au.uat_siruta = ${grounding.uat.siruta})`);
+      if (grounding.uat) parts.push(sql`d.authority_id = any(${sql.array(grounding.uat.authorityIds)}::bigint[])`);
     }
     if (spec.filters.singleBidder && dataset === "contracts") parts.push(sql`d.is_single_bidder = true`);
     if (grounding.admin) parts.push(sql`d.supplier_id = any(${sql.array(grounding.admin.supplierIds)}::bigint[])`);
@@ -2028,7 +2041,7 @@ function buildDisplaySql(spec: AskSpec, w: WhereParts, compareId: string | null 
   if (w.supplierId) conds.push(transactionalCompare && !w.authorityId ? `supplier_id in (${w.supplierId}, ${compareId})` : `supplier_id = ${w.supplierId}`);
   if (w.uatSiruta !== null)
     conds.push(
-      `authority_id in (select entity_id from reference.authority_uat\n                   where uat_siruta = ${w.uatSiruta})  -- toate autoritățile din localitate`,
+      `authority_id in (${w.uatAuthorityIds.join(", ")})  -- administrația locală a UAT ${w.uatSiruta} (asociere strictă)`,
     );
   if (w.singleBidder) conds.push("is_single_bidder = true  -- un singur ofertant (din TED)");
   if (w.minEmployees !== null || w.maxEmployees !== null) {

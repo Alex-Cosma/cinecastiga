@@ -101,7 +101,51 @@ export function peerRolePredicate(q:DbSql,role:ConnectionRole) {
     or exists(select 1 from marts.da_transactions d where d.${column}=e.id)
     or exists(select 1 from marts.contract_transactions c where c.${column}=e.id))`;
 }
+// Legal forms under which a UAT's own administration buys in SICAP, beyond the
+// governmentLevel prefixes ("UAT X", "Unitatea administrativ-teritorială X",
+// "Consiliul local X", "X (Consiliul local X)").
+const administrationForm = /^(?:uat|unitatea? administrativ teritoriala|consiliul local) | consiliul local /;
+/**
+ * Locality scope of Întreabă (finding F15): the valid-CUI authorities that are
+ * the local administration of one UAT. The legacy `reference.authority_uat`
+ * code was matched by name without a county (five Vânători communes from five
+ * counties share one code, Sfântu Gheorghe CV points to an Ialomița commune),
+ * so a positive legacy code counts only when the official county of that code
+ * is the authority's own county and the name has a local-administration legal
+ * form. When no such row exists, the strict exact name+county fallback of the
+ * population join applies to authorities without a positive legacy code
+ * (Pitești, Târgu Jiu, București), only when it yields a single candidate. As
+ * in that join, a conflicting legacy code never falls back to a name guess.
+ * Unlike the population index, two corroborated legacy identities of the same
+ * administration are both kept: this is a filter, not a denominator, and
+ * dropping them would hide the administration's own records. Schools,
+ * services, companies, sector bodies and entities without a county never enter.
+ */
+export function localAuthorityIdsForUnit(rows: PopulationMappingRow[], siruta: number): string[] {
+  const unit = units.get(siruta);
+  if (!unit || unit.kind === "sector") return [];
+  const legacy = new Set<string>(), fallback = new Set<string>();
+  for (const row of rows) {
+    if (row.siruta !== null && row.siruta > 0) {
+      if (row.siruta === siruta && row.county && countyFold(row.county) === countyFold(unit.county)
+        && (governmentLevel(row.name) === "local" || administrationForm.test(populationFold(row.name)))) legacy.add(row.id);
+      continue;
+    }
+    const population = populationForMapping(row);
+    if (population?.level === "local" && population.siruta === siruta) fallback.add(row.id);
+  }
+  // The name fallback recovers a missing mapping; it never adds a second
+  // identity beside a corroborated one or chooses between several candidates.
+  const ids = legacy.size > 0 ? legacy : fallback.size === 1 ? fallback : new Set<string>();
+  return [...ids].sort((a, b) => Number(a) - Number(b));
+}
+export async function readLocalAuthorityIds(q: DbSql, siruta: number): Promise<string[]> {
+  return localAuthorityIdsForUnit(await readPopulationMappingRows(q), siruta);
+}
 export async function readPopulationMappings(q: DbSql): Promise<Map<string,PeerPopulation>> {
+  return uniquePopulationMappings(await readPopulationMappingRows(q));
+}
+export async function readPopulationMappingRows(q: DbSql): Promise<PopulationMappingRow[]> {
   const [tables] = await q`select to_regclass('reference.authority_uat') is not null present`;
   const localRows = tables?.present ? await q`select e.id::text id,e.name_display name,e.county,e.cui_canonical cui,au.uat_siruta siruta
     from reference.authority_uat au join core.entities e on e.id=au.entity_id where e.cui_valid and e.cui_canonical is not null and e.id<=9007199254740991 and ${peerRolePredicate(q,"authority")}` : [];
@@ -111,7 +155,7 @@ export async function readPopulationMappings(q: DbSql): Promise<Map<string,PeerP
   const countyRows = await q`select e.id::text id,e.name_display name,e.county,e.cui_canonical cui,null::integer siruta from core.entities e
     where e.cui_valid and e.cui_canonical is not null and e.id<=9007199254740991
       and e.name_normalized like any(${prefixes}::text[]) and ${missingMappings} and ${peerRolePredicate(q,"authority")}`;
-  return uniquePopulationMappings([...localRows,...countyRows] as unknown as PopulationMappingRow[]);
+  return [...localRows,...countyRows] as unknown as PopulationMappingRow[];
 }
 export function nearestPopulationMembers(index: Map<string,PeerPopulation>, focalId: string, county?: string): [string,PeerPopulation][] {
   const focal = index.get(focalId); if (!focal) return [];
