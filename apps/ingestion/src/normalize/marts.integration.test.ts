@@ -202,17 +202,22 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
         (4,14,108115499,100,'4','2024-02-01T10:00:00Z',200,'RON','Lucrări de întreținere',1,14),
         (5,15,108115500,100,'5','2024-02-01T10:00:00Z',70,'RON','Act adițional nr. 1',null,null),
         (6,16,108115501,100,'6','2024-02-01T10:00:00Z',90,'RON','Servicii de pază',null,99),
-        (7,17,108115502,100,'7',null,40,'RON','Servicii fără dată',null,null)`;
+        (7,17,108115502,100,'7',null,40,'RON','Servicii fără dată',null,null),
+        (8,18,108115503,100,'8','2024-02-01T10:00:00Z',2000,'EUR','Furnizare echipamente',null,null),
+        (9,19,108115504,100,'9','2024-02-01T10:00:00Z',null,'RON','Servicii fără sumă',null,null)`;
       await q`insert into core.contract_winners(contract_id,entity_id) select id,2 from core.contracts`;
       await runMarts(q);
-      // Title rule: 1 (contract), 2 (framework), 3 (call-off), 7 (contract, undated). Not 4 (source
-      // type), 5 (addendum) or 6 (type from another archive, under review). In totals: 1 and 3.
+      // Title rule: 1 (contract), 2 (framework), 3 (call-off), 7 (contract, undated), 8 (EUR) and
+      // 9 (no amount). Not 4 (source type), 5 (addendum) or 6 (type from another archive, under
+      // review). In totals: 1 and 3. 8 and 9 have no verifiable sum in lei: counted apart, the
+      // lei value covers only 1, 2, 3 and 7 (review of 7ced992: EUR rows were in the count only).
       expect((await q`select contract_id::int c from marts.contract_transactions order by 1`).map(r => r.c)).toEqual([1, 3, 4]);
-      expect((await q`select c.id::int id from core.contracts c where ${contractKindFromTitle(q)} order by 1`).map(r => r.id)).toEqual([1, 2, 3, 7]);
+      expect((await q`select c.id::int id from core.contracts c where ${contractKindFromTitle(q)} order by 1`).map(r => r.id)).toEqual([1, 2, 3, 7, 8, 9]);
       await q`alter table marts.data_coverage add primary key (dataset)`;
       await runCoverage(q);
       const [coverage] = await q`select observation from marts.data_coverage where dataset='contracts'`;
-      expect(coverage?.observation).toMatchObject({ title_classified: "4", title_classified_value: "6340.25",
+      expect(coverage?.observation).toMatchObject({ title_classified: "6", title_classified_valued: "4",
+        title_classified_value: "6340.25", title_classified_without_ron_value: "2",
         title_classified_included: "2", title_classified_included_value: "1300.25" });
       throw rollback;
     })).rejects.toBe(rollback);

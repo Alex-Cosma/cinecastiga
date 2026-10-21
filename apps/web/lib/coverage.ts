@@ -30,10 +30,13 @@ export interface Observation {
   /** Otherwise-included contracts whose only winner is their own authority (audit F12). */
   winner_is_authority?: string;
   winner_is_authority_value?: string;
-  /** Canonical contracts typed by the title rule, without an archived SEAP type (audit F08),
-   * and the distinct contracts and value of them inside the totals. */
+  /** Canonical contracts typed by the title rule, without an archived SEAP type (audit F08):
+   * all of them, those with a verifiable sum in lei and that sum, those without one
+   * (legacy EUR/USD or no amount), and the distinct contracts and value inside the totals. */
   title_classified?: string;
+  title_classified_valued?: string;
   title_classified_value?: string;
+  title_classified_without_ron_value?: string;
   title_classified_included?: string;
   title_classified_included_value?: string;
   unknown_competition?: string;

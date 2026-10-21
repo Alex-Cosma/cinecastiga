@@ -95,7 +95,7 @@ export default function MetodologiePage() {
         <p>Toate plafoanele acordurilor-cadru sunt separate de totaluri, inclusiv când nu avem subsecvente identificate.
           Însumăm numai contractele și comenzile identificate. Lipsa comenzilor este o limită de acoperire, nu cheltuială zero.
           Folosim tipul declarat de SEAP; pentru istoricul fără tip, folosim descrierea.
-          Încadrarea după descriere poate greși, de exemplu un acord-cadru al cărui titlu nu spune asta;
+          Încadrarea după descriere poate greși, de exemplu un acord-cadru al cărui titlu nu spune asta;{" "}
           <a href="#acoperire">inventarul</a> arată câte contracte și ce valoare depind de ea.</p>
         <p>Când SEAP republică același contract (același anunț, număr, dată, lot și autoritate), îl numărăm o singură dată, la ultima versiune verificată.
           Acceptăm și versiunile pe care SEAP nu le marchează ca modificate, dacă diferă doar valoarea, dacă se adaugă furnizori fără să dispară vreunul
