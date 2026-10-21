@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectPatterns } from "./radiografie.js";
+import { adminsByEntity, detectPatterns, sharedAdminNames } from "./radiografie.js";
 
 type Row = Parameters<typeof detectPatterns>[0][number];
 
@@ -110,5 +110,32 @@ describe("detectPatterns", () => {
       ...row("M3", null, [["30", "A"], ["31", "B"]]),
     ]).find((p) => p.kind === "consortiu");
     expect(undated).toMatchObject({ reps: 3, y0: "", y1: "" });
+  });
+});
+
+describe("shared administrators (audit F32)", () => {
+  it("links members only through name + birth date, never a name-only row", () => {
+    const personsOf = adminsByEntity([
+      // name-only rows: a natural person matched on name + locality, a legal-person
+      // administrator and an insolvency practitioner, each on two members
+      { id: "1", person_name: "NACIADI CAMELIA", birth_date: null },
+      { id: "2", person_name: "NACIADI CAMELIA", birth_date: null },
+      { id: "1", person_name: "ZACMAN CONSULTING SRL", birth_date: null },
+      { id: "2", person_name: "ZACMAN CONSULTING SRL", birth_date: null },
+      { id: "1", person_name: "ROVIGO SPRL FILIALA BRAŞOV", birth_date: null },
+      { id: "2", person_name: "ROVIGO SPRL FILIALA BRAŞOV", birth_date: null },
+    ]);
+    expect(sharedAdminNames(["1", "2"], personsOf)).toBeNull();
+  });
+
+  it("keeps a solid identity and does not merge namesakes born on different dates", () => {
+    const personsOf = adminsByEntity([
+      { id: "1", person_name: "POPESCU ION", birth_date: "1970-01-02" },
+      { id: "2", person_name: "POPESCU ION", birth_date: "1970-01-02" },
+      { id: "1", person_name: "IONESCU ANA", birth_date: "1980-05-05" },
+      { id: "3", person_name: "IONESCU ANA", birth_date: "1981-05-05" },
+    ]);
+    expect(sharedAdminNames(["1", "2", "3"], personsOf)).toBe("POPESCU ION");
+    expect(sharedAdminNames(["1", "3"], personsOf)).toBeNull();
   });
 });

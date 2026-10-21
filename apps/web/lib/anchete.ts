@@ -4,6 +4,7 @@ import { isWorkspaceId, withInvestigationAccess, type InvestigationAccess } from
 import { EVIDENCE_KINDS, type EvidenceKind, type CaptureSummary } from "./evidence-captures-shared";
 import { validateCaptureRequest } from "./evidence-capture-input";
 import { captureSummary, queueCapture } from "./evidence-captures";
+import { sharedRepresentativePairs, type MemberRepRow } from "./shared-representatives";
 
 /**
  * Data access for watchdog investigations ("anchete"). Server-only.
@@ -500,27 +501,21 @@ async function castRelations(clipRows: ClipRow[]): Promise<{
         count: Number(p.n),
       });
     }
-    // shared administrators between entity members (matched via CUI)
-    const shared = (await sql`
-      with member_cuis as (
-        select e.id entity_id, e.cui_canonical cui
-        from core.entities e
-        where e.id = any(${sql.array(entityIds)}::bigint[]) and e.cui_canonical is not null
-      )
-      select m1.entity_id a, m2.entity_id b, r1.person_key, max(r1.person_name) nm
-      from member_cuis m1
-      join reference.company_reps r1 on r1.cui = m1.cui
-      join reference.company_reps r2 on r2.person_key = r1.person_key
-      join member_cuis m2 on m2.cui = r2.cui and m2.entity_id > m1.entity_id
-      where r1.person_key is not null
-      group by 1, 2, 3
-    `) as unknown as { a: string; b: string; person_key: string; nm: string }[];
-    for (const srow of shared) {
+    // shared administrators between entity members (matched via CUI), solid
+    // person identity only: see shared-representatives.ts (audit F32)
+    const memberReps = (await sql`
+      select e.id::text entity_id, r.person_key, r.person_name, r.birth_date::text birth_date
+      from core.entities e
+      join reference.company_reps r on r.cui = e.cui_canonical
+      where e.id = any(${sql.array(entityIds)}::bigint[])
+        and r.birth_date is not null and r.person_key is not null
+    `) as unknown as MemberRepRow[];
+    for (const srow of sharedRepresentativePairs(memberReps)) {
       relations.push({
-        a: String(srow.a),
-        b: String(srow.b),
+        a: srow.a,
+        b: srow.b,
         type: "shared_admin",
-        label: `administrator comun: ${srow.nm}`,
+        label: `administrator comun: ${srow.name}`,
       });
     }
   }

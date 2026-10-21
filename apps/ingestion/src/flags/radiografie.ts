@@ -483,6 +483,46 @@ export function detectPatterns(rows: CRow[]): Omit<PatternRow, "shared_admin">[]
   return out;
 }
 
+export interface AdminRepRow {
+  id: string;
+  person_name: string | null;
+  birth_date: string | null;
+}
+
+/**
+ * entity id → (person identity → display name) for ONRC administrator rows.
+ * The identity is name + birth date: person_key also carries the birth
+ * locality, whose spelling drifts between filings. A row without a birth date
+ * is never an identity (audit F32): its key would be the name alone, which
+ * merges namesakes and links firms through a legal-person administrator or an
+ * insolvency practitioner. Same rule as net_shared_admin and getCompanyReps.
+ */
+export function adminsByEntity(reps: AdminRepRow[]): Map<string, Map<string, string>> {
+  const out = new Map<string, Map<string, string>>();
+  for (const r of reps) {
+    if (!r.birth_date || !r.person_name) continue;
+    const key = `${r.person_name.toLowerCase()}|${r.birth_date}`;
+    let m = out.get(r.id);
+    if (!m) out.set(r.id, (m = new Map()));
+    const prev = m.get(key);
+    if (prev === undefined || r.person_name > prev) m.set(key, r.person_name);
+  }
+  return out;
+}
+
+/** Names of administrators shared by at least two members, or null. */
+export function sharedAdminNames(memberIds: string[], personsOf: Map<string, Map<string, string>>): string | null {
+  const count = new Map<string, { n: number; name: string }>();
+  for (const id of new Set(memberIds))
+    for (const [k, name] of personsOf.get(id) ?? []) {
+      const c = count.get(k) ?? { n: 0, name };
+      c.n++;
+      count.set(k, c);
+    }
+  const hits = [...count.values()].filter((c) => c.n >= 2).map((c) => c.name);
+  return hits.length ? hits.join("; ") : null;
+}
+
 async function buildLotPatterns(sql: DbSql, log: (m: string) => void): Promise<[number, number]> {
   const patterns: Omit<PatternRow, "shared_admin">[] = [];
   let cur: CRow[] = [];
@@ -513,37 +553,16 @@ async function buildLotPatterns(sql: DbSql, log: (m: string) => void): Promise<[
   const memberIds = [...new Set(patterns.filter((p) => p.member_ids.length > 1).flatMap((p) => p.member_ids))];
   const reps = memberIds.length
     ? ((await sql`
-        select e.id::text id,
-               -- person_key carries the locality spelling, which drifts between
-               -- filings; name + birth date is the stable identity when we have it
-               coalesce(lower(r.person_name) || '|' || r.birth_date::text, r.person_key) person_key,
-               max(r.person_name) person_name
+        select distinct e.id::text id, r.person_name, r.birth_date::text birth_date
         from core.entities e
         join reference.company_reps r on r.cui = e.cui_canonical
         where e.id = any(${sql.array(memberIds)}::bigint[])
-          and r.calitate ilike '%administrator%' and r.person_key is not null
-        group by e.id, 2
-      `) as unknown as { id: string; person_key: string; person_name: string }[])
+          and r.calitate ilike '%administrator%' and r.birth_date is not null
+      `) as unknown as AdminRepRow[])
     : [];
-  const personsOf = new Map<string, Map<string, string>>();
-  for (const r of reps) {
-    let m = personsOf.get(r.id);
-    if (!m) personsOf.set(r.id, (m = new Map()));
-    m.set(r.person_key, r.person_name);
-  }
+  const personsOf = adminsByEntity(reps);
   const rows: PatternRow[] = patterns.map((p) => {
-    let shared: string | null = null;
-    if (p.member_ids.length > 1) {
-      const count = new Map<string, { n: number; name: string }>();
-      for (const id of p.member_ids)
-        for (const [k, name] of personsOf.get(id) ?? []) {
-          const c = count.get(k) ?? { n: 0, name };
-          c.n++;
-          count.set(k, c);
-        }
-      const hits = [...count.values()].filter((c) => c.n >= 2).map((c) => c.name);
-      if (hits.length) shared = hits.join("; ");
-    }
+    const shared = p.member_ids.length > 1 ? sharedAdminNames(p.member_ids, personsOf) : null;
     const st = shared ? "puternic" : p.strength;
     return { ...p, shared_admin: shared, strength: st };
   });
