@@ -495,7 +495,9 @@ export default async function EntityPage({
             <Link href="/semnale">Semnale</Link> pentru {isAuth ? "această autoritate" : "această firmă"}, ca{" "}
             {isAuth ? "autoritate contractantă" : "furnizor"}. Doar criteriile pentru achiziții directe intră în indicele
             de risc; semnalele din proceduri, bilanțuri și ONRC se arată separat. Aparițiile pot acoperi aceleași
-            achiziții și nu se adună. Fiecare semnal este o pistă de verificat, nu o dovadă.
+            achiziții și nu se adună. Semnalele din proceduri se numără o dată pentru fiecare anunț publicat: același
+            contract republicat sub alt număr de anunț, sau un acord-cadru și contractul subsecvent, pot apărea separat.
+            Fiecare semnal este o pistă de verificat, nu o dovadă.
           </p>
           <div className="ask-tablewrap"><table className="rank">
             <thead>

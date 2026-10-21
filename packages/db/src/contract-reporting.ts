@@ -52,3 +52,19 @@ export function frameworkHasCalloffs(q: Query, alias = 'c') {
       and ${contractKind(q, 'calloff')}='calloff'
   )`;
 }
+
+/** Kinds a notice can hold, by contractKind over every contract published
+ * under it: one kind, 'mixed' for several, 'none' without contracts. */
+export const NOTICE_CONTRACT_KINDS = ['contract', 'framework', 'calloff', 'amendment', 'review', 'mixed', 'none'] as const;
+export type NoticeContractsKind = typeof NOTICE_CONTRACT_KINDS[number];
+
+/** Disclosure for notice-level signals (audit F14): what the award notice
+ * `award` (alias with a ca_notice_id column) publishes. 'framework' means
+ * ceilings only, 'calloff' subsequent contracts only, 'contract' ordinary
+ * contracts only. It selects and sums nothing; a ceiling stays a ceiling. */
+export function noticeContractsKind(q: Query, award = 'a', contracts?: ReturnType<DbSql>) {
+  return q`(select case when count(*)=0 then 'none'
+      when count(distinct notice_kind.k)=1 then min(notice_kind.k) else 'mixed' end
+    from (select ${contractKind(q, 'notice_contract')} k from ${contracts ?? q`core.contracts`} notice_contract
+      where notice_contract.ca_notice_id=${q(award)}.ca_notice_id) notice_kind)`;
+}

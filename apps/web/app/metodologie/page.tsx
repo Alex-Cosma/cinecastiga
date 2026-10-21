@@ -100,6 +100,11 @@ export default function MetodologiePage() {
           sau dacă titlul numește un act adițional. Astfel de schimbări sunt semnalate pe pagina contractului. Un titlu schimbat fără mențiunea unui act
           adițional rămâne exclus până la verificare. Pentru procedurile publicate fără identificator de procedură (negociere fără publicare prealabilă,
           norme proprii) folosim numărul anunțului de atribuire.</p>
+        <p>Semnalele pe anunțuri de atribuire („Negociere fără publicare prealabilă”, „O singură ofertă raportată în TED”) se numără
+          altfel: o apariție pentru fiecare anunț publicat. Același contract republicat sub alt număr de anunț, sau un acord-cadru și
+          contractul subsecvent atribuit din el, pot apărea ca apariții separate. Fiecare semnal spune ce conține anunțul: contracte
+          obișnuite, doar plafonul unui acord-cadru, doar contracte subsecvente sau tipuri diferite. Valoarea unui anunț care conține doar
+          un acord-cadru este plafonul acordului, nu o cheltuială; valorile semnalelor nu se adună la niciun total.</p>
         <p>Publicațiile cu identitate incertă sunt excluse temporar din calcule, fără ștergerea surselor.
           <a href="/metodologie/excluderi"> Lista cazurilor, motivele și sursele comparate</a> este publică.
           Le reverificăm la procesarea datelor; reintră în totaluri numai după verificarea identității.

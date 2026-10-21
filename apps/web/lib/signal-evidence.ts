@@ -45,6 +45,9 @@ export async function readSignalEvidence(sql: DbSql, id: string): Promise<Source
       warnings.push("Lista arată cotele furnizorilor din contractele identificate în semnal. Numărul de oferte se referă la loturile TED asociate, nu la toate loturile anunțului.");
     } else if (award) records = await readContractEvidence(sql, sql`ct.ca_notice_id = ${award.id}`);
     warnings.push("Valoarea anunțului și suma contractelor disponibile au definiții diferite. Verifică și anunțul SEAP original; nu presupune că sumele trebuie să coincidă.");
+    // Audit F14: one signal per published notice; a ceiling is never spending.
+    if (e.notice_contracts === "framework") warnings.push("Anunțul conține doar plafonul unui acord-cadru. Valoarea semnalului este plafonul, nu o cheltuială, și nu se adună la totaluri.");
+    warnings.push("Semnalul se numără o dată pentru fiecare anunț publicat. Același contract republicat sub alt număr de anunț, sau contractul subsecvent al unui acord-cadru, poate apărea ca semnal separat.");
   } else if (["da_concentration", "da_dependence", "da_year_end"].includes(code)) {
     const roleWhere = flag.subject_type === "authority" ? sql`da.authority_entity_id = ${flag.subject}` : sql`da.supplier_entity_id = ${flag.subject}`;
     const period = code === "da_year_end" ? sql`and extract(year from da.finalization_date)::text = ${flag.period}` : sql``;

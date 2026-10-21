@@ -59,6 +59,39 @@ export function singleBidValueNote(evidence: Record<string, unknown>): string {
   return parts.length ? ` ${parts.join(" ")}` : "";
 }
 
+/** What an award notice publishes (evidence.notice_contracts, rf-2026.12, audit
+ * F14), by the shared contract classification. */
+export const NOTICE_CONTRACTS_LABEL: Record<string, string> = {
+  contract: "contracte obișnuite",
+  framework: "doar plafonul unui acord-cadru",
+  calloff: "doar contracte subsecvente",
+  mixed: "contracte de tipuri diferite",
+  amendment: "doar acte adiționale",
+  review: "contracte cu tip neclar, de verificat",
+  none: "fără contracte publicate",
+};
+
+/** The notice holds only framework ceilings: its value is a ceiling, not spending. */
+export function noticeIsFrameworkOnly(evidence: Record<string, unknown> | null | undefined): boolean {
+  return evidence?.notice_contracts === "framework";
+}
+
+/** Label of the value an award signal shows. Older signals lack notice_contracts. */
+export function awardValueLabel(evidence: Record<string, unknown> | null | undefined): string {
+  if (evidence?.value_scope === "confirmed_contracts") return "contractele citate";
+  return noticeIsFrameworkOnly(evidence) ? "plafon acord-cadru" : "valoarea anunțului";
+}
+
+/** One sentence on what the notice publishes; empty for older signals. */
+export function noticeContractsNote(evidence: Record<string, unknown>): string {
+  const label = typeof evidence.notice_contracts === "string" ? NOTICE_CONTRACTS_LABEL[evidence.notice_contracts] : undefined;
+  if (!label) return "";
+  if (evidence.notice_contracts === "none") return " Anunțul nu are contracte publicate.";
+  return noticeIsFrameworkOnly(evidence)
+    ? ` Anunțul conține ${label}: valoarea este plafonul acordului, nu o cheltuială, și nu se adună la totaluri.`
+    : ` Anunțul conține ${label}.`;
+}
+
 /** Display-only explanations shared by entity profiles and the signal explorer. */
 export function riskEvidenceLine(code: string, evidence: Record<string, unknown> | null): string | null {
   if (!evidence) return null;
@@ -85,10 +118,10 @@ export function riskEvidenceLine(code: string, evidence: Record<string, unknown>
     case "da_dependence":
       return `Autoritatea principală: ${pct("top_authority_pct")} din valoarea achizițiilor directe ale furnizorului (${s("authorities")} autorități în date).`;
     case "award_no_competition":
-      return `${s("procedure")} · valoarea anunțului: ${money("value")} · CPV ${s("cpv")}.`;
+      return `${s("procedure")} · ${awardValueLabel(evidence)}: ${money("value")} · CPV ${s("cpv")}.${noticeContractsNote(evidence)}`;
     case "award_single_bid":
       return evidence.confirmed_contract_count
-        ? `${n("confirmed_contract_count") === 1 ? "1 contract asociat unui lot TED" : `${s("confirmed_contract_count")} contracte asociate unor loturi TED`} cu o singură ofertă raportată.${singleBidValueNote(evidence)}`
+        ? `${n("confirmed_contract_count") === 1 ? "1 contract asociat unui lot TED" : `${s("confirmed_contract_count")} contracte asociate unor loturi TED`} cu o singură ofertă raportată.${singleBidValueNote(evidence)}${noticeContractsNote(evidence)}`
         : "Lista contractelor cu o singură ofertă raportată nu este disponibilă în această versiune a semnalului.";
     case "award_concentration":
       return `Furnizorul principal: ${pct("top_winner_pct")} din valoarea contractelor (${s("winners")} furnizori în date, HHI ${s("hhi")}).`;
