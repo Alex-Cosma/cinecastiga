@@ -85,11 +85,11 @@ describe("threshold and competition SQL (read-only fixtures)", () => {
   const singleBid = (q: DbSql, awards: Record<string, unknown>[], contracts: Record<string, unknown>[], competition: Record<string, unknown>[]) => q`
     with awards as (select * from jsonb_to_recordset(${JSON.stringify(awards)}::jsonb) as r(
       id bigint, ca_notice_id bigint, state_date timestamptz, procedure_type text, ron_contract_value numeric,
-      cpv_code text, lowest_offer_value numeric, highest_offer_value numeric)),
+      cpv_code text, lowest_offer_value numeric, highest_offer_value numeric, authority_entity_id bigint, notice_no text)),
     contracts as (select * from jsonb_to_recordset(${JSON.stringify(contracts)}::jsonb) as r(
       id bigint, raw_id bigint, ca_notice_id bigint, ca_notice_contract_id bigint, contract_no text, title text,
       source_contract_type int, contract_type_raw_id bigint, amount_status text, amount_raw_id bigint,
-      value_ron numeric, currency text, contract_value numeric)),
+      value_ron numeric, currency text, contract_value numeric, contract_date timestamptz)),
     competition as (select * from jsonb_to_recordset(${JSON.stringify(competition)}::jsonb) as r(
       contract_id bigint, ted_lot_result_id bigint, match_score real, tenders_received int, is_single_bidder boolean))
     select * from (${confirmedSingleBidAwardsSql(q, limits, { awards: q`awards`, contracts: q`contracts`, competition: q`competition` })}) single_bid
@@ -157,7 +157,7 @@ describe("threshold and competition SQL (read-only fixtures)", () => {
       const ev = (id: string) => byId.get(id)!["evidence"] as Record<string, unknown>;
       expect(ev("11")).toMatchObject({ value: 1_500_000, value_scope: "confirmed_contracts", notice_value: 0,
         cited_contracts_value: 1_500_000, cited_reportable_value: 1_500_000, cited_unknown_value_count: 0 });
-      expect(Number(byId.get("11")!["least"])).toBeCloseTo(0.15);
+      expect(Number(byId.get("11")!["severity"])).toBeCloseTo(0.15);
       expect(ev("13")).toMatchObject({ value: 1_100_000, value_scope: "confirmed_contracts", notice_value: null,
         cited_contracts_value: 51_100_000, cited_reportable_value: 1_100_000, confirmed_contract_count: 3 });
       expect(ev("15")).toMatchObject({ value: 9_263_922.09, value_scope: "notice", notice_value: 9_263_922.09,
@@ -169,6 +169,17 @@ describe("threshold and competition SQL (read-only fixtures)", () => {
       expect(ev("13")["notice_contracts"]).toBe("mixed");
     });
   });
+
+  const noCompetition = (q: DbSql, awards: Record<string, unknown>[], contracts: Record<string, unknown>[]) => q`
+    with awards as (select * from jsonb_to_recordset(${JSON.stringify(awards)}::jsonb) as r(
+      id bigint, ca_notice_id bigint, state_date timestamptz, procedure_type text, ron_contract_value numeric, cpv_code text,
+      authority_entity_id bigint, notice_no text)),
+    contracts as (select * from jsonb_to_recordset(${JSON.stringify(contracts)}::jsonb) as r(
+      id bigint, raw_id bigint, ca_notice_id bigint, ca_notice_contract_id bigint, contract_no text, title text,
+      source_contract_type int, contract_type_raw_id bigint, amount_status text, amount_raw_id bigint,
+      value_ron numeric, currency text, contract_value numeric, contract_date timestamptz))
+    select * from (${noCompetitionAwardsSql(q, limits, { awards: q`awards`, contracts: q`contracts` })}) no_competition
+  `;
 
   // Audit F14 (option A): award_no_competition stays one signal per published
   // notice. A framework and its call-off under separate notices are two signals
@@ -193,23 +204,75 @@ describe("threshold and competition SQL (read-only fixtures)", () => {
         typed(17, 7, 1, "Contract"), // another procedure
         legacyContract(18, 108, 5_000_000, "Acord – cadru servicii"), // no SEAP type: title rule
       ];
-      const rows = await q`
-        with awards as (select * from jsonb_to_recordset(${JSON.stringify(awards)}::jsonb) as r(
-          id bigint, ca_notice_id bigint, state_date timestamptz, procedure_type text, ron_contract_value numeric, cpv_code text)),
-        contracts as (select * from jsonb_to_recordset(${JSON.stringify(contracts)}::jsonb) as r(
-          id bigint, raw_id bigint, ca_notice_id bigint, ca_notice_contract_id bigint, contract_no text, title text,
-          source_contract_type int, contract_type_raw_id bigint, amount_status text, amount_raw_id bigint,
-          value_ron numeric, currency text, contract_value numeric))
-        select * from (${noCompetitionAwardsSql(q, limits, { awards: q`awards`, contracts: q`contracts` })}) no_competition
-      `;
+      const rows = await noCompetition(q, awards, contracts);
       const byId = new Map(rows.map((r) => [String(r["id"]), r]));
       expect([...byId.keys()].sort()).toEqual(["1", "2", "3", "4", "5", "8"]);
       const held = Object.fromEntries([...byId].map(([id, r]) => [id, (r["evidence"] as Record<string, unknown>)["notice_contracts"]]));
       expect(held).toEqual({ "1": "framework", "2": "calloff", "3": "contract", "4": "mixed", "5": "none", "8": "framework" });
       // The ceiling-only notice keeps its signal, value and severity.
       expect(byId.get("1")!["evidence"]).toMatchObject({ value: 454_992_000, procedure: "Negociere fara publicare prealabila" });
-      expect(Number(byId.get("1")!["least"])).toBe(1);
-      expect(Number(byId.get("2")!["least"])).toBe(1);
+      expect(Number(byId.get("1")!["severity"])).toBe(1);
+      expect(Number(byId.get("2")!["severity"])).toBe(1);
+    });
+  });
+
+  // Owner decision of 21 October 2026 (rf-2026.15). SEAP republishes an award
+  // notice under the same number when it adds call-offs (new caNoticeId, new
+  // contract ids, new state date; e.g. CAN1042407: 10.07 and 25.09.2026, first
+  // contract 15.06.2021). The versions of one notice give one appearance, on the
+  // latest version meeting the rule, dated by the first plausible contract
+  // across all versions; without one, by the first version.
+  it("counts an award notice once across its SEAP versions and dates it by its first contract", async () => {
+    await sql.begin("read only", async (tx) => {
+      const q = tx as unknown as DbSql;
+      const version = (id: number, authority: number | null, no: string, stateDate: string, value = 2_000_000, procedure = "Negociere fara publicare prealabila") => ({
+        id, ca_notice_id: id + 100, state_date: stateDate, procedure_type: procedure, ron_contract_value: value, cpv_code: "35000000-4",
+        authority_entity_id: authority, notice_no: no });
+      const dated = (id: number, award: number, date: string, title = "Contract de furnizare"): Record<string, unknown> => ({
+        ...legacyContract(id, award + 100, 1_000, title), contract_date: date });
+      const awards = [
+        version(1, 7, "CAN1042407", "2026-07-10T12:00:04Z"), version(2, 7, "CAN1042407", "2026-09-25T10:07:13Z"),
+        version(3, 8, "CAN1042407", "2023-03-01T10:00:00Z"), // same number, another authority: another notice
+        version(4, 9, "CAN2", "2019-12-31T23:30:00Z"), version(5, 9, "CAN2", "2022-05-05T10:00:00Z"), // no contracts
+        version(6, 10, "CAN3", "2024-01-01T10:00:00Z"), version(7, 10, "CAN3", "2025-01-01T10:00:00Z", 50_000), // latest under the floor
+        version(8, null, "CAN4", "2024-02-01T10:00:00Z"), version(9, null, "CAN4", "2024-03-01T10:00:00Z"), // no authority: not grouped
+      ];
+      const contracts = [
+        dated(11, 1, "2021-06-14T21:00:00Z"), // 15.06.2021 in Bucharest
+        dated(12, 2, "2021-06-14T21:00:00Z"), dated(13, 2, "2026-09-19T21:00:00Z", "Contract subsecvent nr. 7"),
+        dated(14, 2, "2000-01-19T22:00:00Z"), // implausible source date: never the period
+        dated(15, 3, "2022-12-31T22:00:00Z"), // 01.01.2023 in Bucharest, not 2022
+        dated(16, 4, "2000-01-19T22:00:00Z"), // only an implausible date: falls back to the first version
+        dated(17, 7, "2023-12-19T22:00:00Z"), // a version that does not meet the rule still dates the notice
+        dated(18, 8, "2024-01-15T10:00:00Z"), dated(19, 9, "2024-02-15T10:00:00Z"),
+      ];
+      const rows = await noCompetition(q, awards, contracts);
+      const byId = new Map(rows.map((r) => [String(r["id"]), r]));
+      // Before rf-2026.15: nine appearances, CAN1042407 twice under 2026.
+      expect([...byId.keys()].sort()).toEqual(["2", "3", "5", "6", "8", "9"]);
+      const ev = (id: string) => byId.get(id)!["evidence"] as Record<string, unknown>;
+      expect(byId.get("2")!["period"]).toBe("2021");
+      expect(ev("2")).toMatchObject({ period_source: "first_contract", first_contract_date: "2021-06-15",
+        first_version_date: "2026-07-10", version_date: "2026-09-25", notice_versions: 2, value: 2_000_000 });
+      expect(byId.get("3")!["period"]).toBe("2023");
+      expect(ev("3")).toMatchObject({ period_source: "first_contract", first_contract_date: "2023-01-01", notice_versions: 1 });
+      expect(byId.get("5")!["period"]).toBe("2020");
+      expect(ev("5")).toMatchObject({ period_source: "notice_version", first_contract_date: null,
+        first_version_date: "2020-01-01", version_date: "2022-05-05", notice_versions: 2 });
+      expect(byId.get("6")!["period"]).toBe("2023");
+      expect(ev("6")).toMatchObject({ period_source: "first_contract", first_contract_date: "2023-12-20", notice_versions: 2 });
+      expect([byId.get("8")!["period"], byId.get("9")!["period"]]).toEqual(["2024", "2024"]);
+      expect(ev("9")).toMatchObject({ notice_versions: 1, first_contract_date: "2024-02-15" });
+      expect(rows.every((r) => r["flag_code"] === "award_no_competition" && r["subject_type"] === "award")).toBe(true);
+
+      // award_single_bid follows the same rule.
+      const open = awards.slice(0, 2).map((a) => ({ ...a, procedure_type: "Licitatie deschisa" }));
+      const cited = contracts.filter((c) => [11, 12].includes(Number(c["id"])));
+      const single = await singleBid(q, open, cited, cited.map((c, i) => ({ contract_id: c["id"], ted_lot_result_id: 700 + i,
+        match_score: 0.95, tenders_received: 1, is_single_bidder: true })));
+      expect(single.map((r) => [String(r["id"]), r["period"]])).toEqual([["2", "2021"]]);
+      expect(single[0]!["evidence"]).toMatchObject({ period_source: "first_contract", first_contract_date: "2021-06-15",
+        version_date: "2026-09-25", notice_versions: 2, confirmed_contract_count: 1 });
     });
   });
 });

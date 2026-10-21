@@ -74,11 +74,16 @@ function validateEnvelope(
   if (envelope.searchTooLong) {
     return `searchTooLong on day ${day} — result window exceeded, data loss`;
   }
-  // Live reality (2026-07-12): list items carry NO publicationDate — only
-  // noticeStateDate, which mutates on state changes and therefore can
-  // postdate publication but never precede it. An item whose state date
-  // precedes the requested day proves the server ignored our date filter
-  // (the "silently-ignored filter field" trap — unfiltered firehose).
+  // Live reality (2026-07-12): the request filter is named
+  // startPublicationDate, but list items carry NO publicationDate — only
+  // noticeStateDate, the date of the current state of THIS notice version.
+  // It moves on state changes, and SEAP republishes an award notice under the
+  // same noticeNo (e.g. when it adds call-offs) as a new caNoticeId with its
+  // own state date. It is not a publication date, so nothing here can date a
+  // first publication. The only invariant relied on: an item's state date is
+  // never before the requested day. One that precedes it proves the server
+  // ignored our date filter (the "silently-ignored filter field" trap —
+  // unfiltered firehose).
   const dated = envelope.items.filter(
     (i) => typeof i.noticeStateDate === "string",
   );

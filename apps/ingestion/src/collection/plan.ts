@@ -141,6 +141,9 @@ export function planResponse(t:Task,value:unknown,previous:PageResult[],batchEnd
   }else if(t.kind==='list'){
    const types=t.stream==='tenders'?NOTICE_TYPE_IDS.participation:NOTICE_TYPE_IDS.award;
    if(!(types as readonly number[]).includes(Number(i.sysNoticeTypeId)))throw Error('Tip de anunț în afara fluxului solicitat.');
+   // The list is requested with SEAP's publication filter, but items carry only noticeStateDate: the date of this
+   // notice version's state (it moves on state changes; a republished award notice is a new id with its own date).
+   // A state date before the requested day proves the filter was ignored; it does not date the first publication.
    if(typeof i.noticeStateDate!=='string'||bucharestDayOf(i.noticeStateDate)<t.params.from!)throw Error('Filtrul de publicare nu este respectat.');
    if(typeof i.publicationDate==='string'&&bucharestDayOf(i.publicationDate)!==t.params.from)throw Error('Anunț din afara zilei solicitate.');
    const id=noticeIdOf(i as NoticeListItem);docs.push({source:'elicitatie',externalId:noticeArchiveKey(t.stream as 'tenders'|'awards',id,i.sysNoticeTypeId),endpointVersion:`${prefix}-list:v1`,payload:i});

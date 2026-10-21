@@ -105,7 +105,11 @@ export default function MetodologiePage() {
           adițional rămâne exclus până la verificare. Pentru procedurile publicate fără identificator de procedură (negociere fără publicare prealabilă,
           norme proprii) folosim numărul anunțului de atribuire.</p>
         <p>Semnalele pe anunțuri de atribuire („Negociere fără publicare prealabilă”, „O singură ofertă raportată în TED”) se numără
-          altfel: o apariție pentru fiecare anunț publicat. Același contract republicat sub alt număr de anunț, sau un acord-cadru și
+          altfel: o apariție pentru fiecare anunț. SEAP republică un anunț de atribuire sub același număr când adaugă contracte subsecvente;
+          versiunile aceleiași autorități cu același număr de anunț dau o singură apariție, la ultima versiune care îndeplinește criteriul.
+          Anul semnalului este anul primului contract din anunț, din oricare versiune, nu data ultimei versiuni. Un anunț fără contract
+          cu dată plauzibilă primește anul primei versiuni preluate, iar semnalul spune asta.
+          Același contract republicat sub alt număr de anunț, sau un acord-cadru și
           contractul subsecvent atribuit din el, pot apărea ca apariții separate. Fiecare semnal spune ce conține anunțul: contracte
           obișnuite, doar plafonul unui acord-cadru, doar contracte subsecvente sau tipuri diferite. Valoarea unui anunț care conține doar
           un acord-cadru este plafonul acordului, nu o cheltuială; valorile semnalelor nu se adună la niciun total.</p>

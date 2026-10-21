@@ -142,7 +142,17 @@ export function riskEvidenceLine(code: string, evidence: Record<string, unknown>
   }
 }
 
-export function signalPeriodLabel(period: string | null): string {
-  return period === "all" ? "Întreaga perioadă disponibilă la calcul"
-    : period ? `Perioada calculului: ${period}` : "Perioada calculului nu este precizată";
+/** Award signals (rf-2026.15) are dated by the first contract of the notice,
+ * across its SEAP versions, or, without one, by its first version we hold.
+ * Older signals carry no period_source and keep the plain label. */
+const PERIOD_SOURCE_LABEL: Record<string, string> = {
+  first_contract: "anul primului contract din anunț",
+  notice_version: "anul primei versiuni preluate a anunțului; anunțul nu are contracte cu dată plauzibilă",
+};
+
+export function signalPeriodLabel(period: string | null, evidence?: Record<string, unknown> | null): string {
+  if (period === "all") return "Întreaga perioadă disponibilă la calcul";
+  if (!period) return "Perioada calculului nu este precizată";
+  const source = typeof evidence?.period_source === "string" ? PERIOD_SOURCE_LABEL[evidence.period_source] : undefined;
+  return source ? `Perioada calculului: ${period} (${source})` : `Perioada calculului: ${period}`;
 }

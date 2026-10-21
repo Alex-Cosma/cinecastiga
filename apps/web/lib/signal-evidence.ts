@@ -49,7 +49,7 @@ export async function readSignalEvidence(sql: DbSql, id: string): Promise<Source
     warnings.push("Valoarea anunțului și suma contractelor disponibile au definiții diferite. Verifică și anunțul SEAP original; nu presupune că sumele trebuie să coincidă.");
     // Audit F14: one signal per published notice; a ceiling is never spending.
     if (e.notice_contracts === "framework") warnings.push("Anunțul conține doar plafonul unui acord-cadru. Valoarea semnalului este plafonul, nu o cheltuială, și nu se adună la totaluri.");
-    warnings.push("Semnalul se numără o dată pentru fiecare anunț publicat. Același contract republicat sub alt număr de anunț, sau contractul subsecvent al unui acord-cadru, poate apărea ca semnal separat.");
+    warnings.push("Semnalul se numără o dată pentru fiecare anunț: versiunile republicate de SEAP sub același număr de anunț se numără o singură dată, iar lista arată contractele versiunii afișate. Același contract republicat sub alt număr de anunț, sau contractul subsecvent al unui acord-cadru, poate apărea ca semnal separat.");
   } else if (["da_concentration", "da_dependence", "da_year_end"].includes(code)) {
     const roleWhere = flag.subject_type === "authority" ? sql`da.authority_entity_id = ${flag.subject}` : sql`da.supplier_entity_id = ${flag.subject}`;
     const period = code === "da_year_end" ? sql`and extract(year from da.finalization_date)::text = ${flag.period}` : sql``;

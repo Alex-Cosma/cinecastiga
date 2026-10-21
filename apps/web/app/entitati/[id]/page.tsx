@@ -431,7 +431,7 @@ export default async function EntityPage({
                     const lines = evs
                       .map((e) => {
                         const line = riskEvidenceLine(code, e.evidence);
-                        return line ? `${signalPeriodLabel(e.period)} · ${line}` : null;
+                        return line ? `${signalPeriodLabel(e.period, e.evidence)} · ${line}` : null;
                       })
                       .filter((l): l is string => l !== null);
                     if (lines.length === 0) return null;
@@ -495,8 +495,9 @@ export default async function EntityPage({
             <Link href="/semnale">Semnale</Link> pentru {isAuth ? "această autoritate" : "această firmă"}, ca{" "}
             {isAuth ? "autoritate contractantă" : "furnizor"}. Doar criteriile pentru achiziții directe intră în indicele
             de risc; semnalele din proceduri, bilanțuri și ONRC se arată separat. Aparițiile pot acoperi aceleași
-            achiziții și nu se adună. Semnalele din proceduri se numără o dată pentru fiecare anunț publicat: același
-            contract republicat sub alt număr de anunț, sau un acord-cadru și contractul subsecvent, pot apărea separat.
+            achiziții și nu se adună. Semnalele din proceduri se numără o dată pentru fiecare anunț, oricâte versiuni ar avea în SEAP, și
+            poartă anul primului contract din anunț. Același contract republicat sub alt număr de anunț, sau un
+            acord-cadru și contractul subsecvent, pot apărea separat.
             Fiecare semnal este o pistă de verificat, nu o dovadă.
           </p>
           <div className="ask-tablewrap"><table className="rank">

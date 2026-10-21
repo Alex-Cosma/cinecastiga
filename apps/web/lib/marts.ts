@@ -1,4 +1,4 @@
-import { contractRonValue, contractOriginalValue, contractOriginalCurrency, contractAmountStatus, contractKind, contractReportable, contractTemporarilyExcluded, contractAboveValueCap, contractWinnerIsAuthority, CONTRACT_VALUE_CAP_RON } from "@seap/db";
+import { contractRonValue, contractOriginalValue, contractOriginalCurrency, contractAmountStatus, contractKind, contractReportable, contractTemporarilyExcluded, contractAboveValueCap, contractWinnerIsAuthority, contractDatePlausible, CONTRACT_VALUE_CAP_RON } from "@seap/db";
 import { canonicalEntityId, corroboratedCui, cuiCorroborated, onrcIdentityBirthDate } from "@seap/db";
 import { tedPagination, tedCountryFilter, TED_COUNTRY_UNRESOLVED } from "./ted";
 import { onrcBirthYear } from "./format";
@@ -1335,10 +1335,15 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
       left join core.entities e on e.id = cw.entity_id
       where cw.contract_id = ${contractId}
     ` as unknown as Promise<Record<string, unknown>[]>,
+    // Award signals count once per notice, on its latest version that meets
+    // the rule (rf-2026.15): a contract of an earlier version of the same
+    // notice (same authority and notice number) still shows them.
     awardId
       ? (sql`
-          select flag_code, severity, evidence from core.flags
-          where subject_type = 'award' and subject_id = ${awardId}
+          select distinct on (f.flag_code) f.flag_code, f.severity, f.evidence
+          from core.awards v join core.flags f on f.subject_type = 'award' and f.subject_id = v.id
+          where v.id = ${awardId} ${authId && r["notice_no"] ? sql`or (v.authority_entity_id = ${authId} and v.notice_no = ${String(r["notice_no"])})` : sql``}
+          order by f.flag_code, v.state_date desc nulls last, v.ca_notice_id desc
         ` as unknown as Promise<Record<string, unknown>[]>)
       : Promise.resolve([] as Record<string, unknown>[]),
     caId
@@ -1473,7 +1478,15 @@ export interface AwardNoticeDetail {
   noticeNo: string | null;
   procedureType: string | null;
   acquisitionType: string | null;
-  stateDate: string | null;
+  /** Date of THIS SEAP version (noticeStateDate, Bucharest day). SEAP
+   * republishes an award notice under the same number when it adds call-offs,
+   * so this is not the first publication. */
+  versionDate: string | null;
+  /** Earliest plausible contract date over every version of the notice (same
+   * authority and notice number); null without one. */
+  firstContractDate: string | null;
+  /** Every archived version of the notice, oldest first (this one included). */
+  versions: { caNoticeId: string; versionDate: string | null }[];
   // No estimate, as in ContractDetail (data audit F22).
   awardValueRon: number | null;
   lowestOfferRon: number | null;
@@ -1499,7 +1512,7 @@ export async function getAwardNoticeDetail(
   const cid = /^\d+$/.test(caNoticeId) ? caNoticeId : "0";
   const head = (await sql`
     select a.ca_notice_id, a.notice_no, a.procedure_type, a.acquisition_type,
-           a.state_date::text, a.ron_contract_value,
+           to_char(a.state_date at time zone 'Europe/Bucharest','YYYY-MM-DD') version_date, a.ron_contract_value,
            a.lowest_offer_value, a.highest_offer_value, a.cpv_code,
            (select name_ro from core.cpv_codes k where k.code = a.cpv_code) cpv_name,
            a.authority_entity_id, e.name_display auth_name, e.county auth_county,
@@ -1512,6 +1525,22 @@ export async function getAwardNoticeDetail(
   `) as unknown as Record<string, unknown>[];
   const h = head[0];
   if (!h) return null;
+
+  // Versions of the same notice: same authority and notice number (as the
+  // award signals and frameworkHasCalloffs group them).
+  const sameNotice = h["authority_entity_id"] != null && h["notice_no"] != null && h["notice_no"] !== ""
+    ? sql`or (v.authority_entity_id = ${String(h["authority_entity_id"])} and v.notice_no = ${String(h["notice_no"])})` : sql``;
+  const dated = (await sql`
+    with versions as (
+      select v.ca_notice_id, v.state_date from core.awards v where v.ca_notice_id = ${cid} ${sameNotice}
+    )
+    select (select to_char(min(c.contract_date) at time zone 'Europe/Bucharest','YYYY-MM-DD')
+        from core.contracts c join versions v on v.ca_notice_id = c.ca_notice_id
+        where ${contractDatePlausible(sql)}) first_contract_date,
+      (select jsonb_agg(jsonb_build_object('caNoticeId', ca_notice_id::text,
+          'versionDate', to_char(state_date at time zone 'Europe/Bucharest','YYYY-MM-DD'))
+        order by state_date nulls first, ca_notice_id) from versions) versions
+  `) as unknown as { first_contract_date: string | null; versions: { caNoticeId: string; versionDate: string | null }[] | null }[];
 
   const agg = (await sql`
     select count(*)::int n,
@@ -1558,7 +1587,9 @@ export async function getAwardNoticeDetail(
     noticeNo: (h["notice_no"] as string | null) ?? null,
     procedureType: (h["procedure_type"] as string | null) ?? null,
     acquisitionType: (h["acquisition_type"] as string | null) ?? null,
-    stateDate: (h["state_date"] as string | null) ?? null,
+    versionDate: (h["version_date"] as string | null) ?? null,
+    firstContractDate: dated[0]?.first_contract_date ?? null,
+    versions: dated[0]?.versions ?? [],
     awardValueRon: h["ron_contract_value"] != null ? Number(h["ron_contract_value"]) : null,
     lowestOfferRon: h["lowest_offer_value"] != null ? Number(h["lowest_offer_value"]) : null,
     highestOfferRon: h["highest_offer_value"] != null ? Number(h["highest_offer_value"]) : null,
