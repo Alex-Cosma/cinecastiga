@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { competitionLabel, formatTedAmount, TED_LABEL, tedPagination, tedAmountHeadline } from "./ted";
+import { competitionLabel, entityCountryLabel, formatTedAmount, TED_LABEL, tedPagination, tedAmountHeadline } from "./ted";
 
 describe("TED evidence presentation", () => {
   it("preserves exact decimals above the safe integer boundary and original currencies", () => {
@@ -31,5 +31,12 @@ describe("TED evidence presentation", () => {
     expect(competitionLabel(0)).toBe("0 oferte primite");
     expect(competitionLabel(1)).toBe("1 ofertă primită");
     expect(TED_LABEL["possible-match"]?.title).toContain("posibilă");
+  });
+  it("does not call an entity with a foreign marker and country RO either foreign or Romanian (audit F26)", () => {
+    expect(entityCountryLabel(true, "RO")).toBe("țară de verificat");
+    expect(entityCountryLabel(true, " ro ")).toBe("țară de verificat");
+    expect(entityCountryLabel(true, "CA")).toBe("firmă străină · Canada");
+    expect(entityCountryLabel(true, null)).toBe("firmă străină");
+    expect(entityCountryLabel(false, "DE")).toBeNull();
   });
 });
