@@ -31,6 +31,13 @@ export function contractKind(q: Query, alias = 'c') {
       else 'review' end end`;
 }
 
+/** The kind came from the legacy title rule above: no archived SEAP contract
+ * type, not an addendum, not under review (audit F08). Coverage only: the
+ * inventory says how many publications and how much value rest on it. */
+export function contractKindFromTitle(q: Query, alias = 'c') {
+  return q`(${q(alias)}.source_contract_type is null and ${contractKind(q, alias)} in ('contract','calloff','framework'))`;
+}
+
 /** Only identified contracts/orders contribute. A framework ceiling is never
  * a substitute for missing call-offs, and an addendum is not a new order. */
 export function contractReportable(q: Query, alias = 'c') {
