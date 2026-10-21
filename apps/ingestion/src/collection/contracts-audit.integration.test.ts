@@ -19,7 +19,7 @@ describe.skipIf(!connection)('fetch-only contracts audit (isolated DB, no source
  beforeEach(async()=>{
   await q`truncate app.collection_tasks,app.collection_batches cascade`;await q`truncate app.collection_requests,app.collection_workers,app.collection_audit`;
   await q`truncate core.quarantine,core.normalize_watermarks,core.contract_winners,core.contracts,core.entity_sicap_ids,core.entities,raw.raw_documents restart identity cascade`;
-  await q`delete from app.processing_runs where scheduled_day='2026-10-21'`;
+  await q`delete from app.processing_runs where scheduled_day='2026-10-21' or status='running'`;
   await q`update app.collection_control set paused=false,maintenance=false,blocked_reason=null,blocked_until=null,paused_streams='[]',daily_limit=null,background_lanes=1`;
   await q`insert into app.collection_batches(id,end_day,next_stream) values('fixture','2026-09-25',0)`;
  });
