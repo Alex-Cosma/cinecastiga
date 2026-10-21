@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DbSql } from "@seap/db";
-import { parseSignalState, signalUrl, signalPopulation, readSignalPage, readSignalOverview, readSignalRiskGroup, readEntitySignalCounts } from "./signals";
+import { parseSignalState, signalUrl, signalPopulation, readSignalPage, readSignalOverview, readSignalRiskGroup, readEntitySignalCounts, signalTypeCountLabel } from "./signals";
 
 /** Captures parameterized queries, without reading or mutating a database. */
 function database(total = 125) {
@@ -105,6 +105,14 @@ describe("complete signal population", () => {
     const queries = db.statements.filter((q) => q.includes("marts.entity_flags"));
     for (const query of queries) expect(query).toContain("width_bucket(coalesce(cri, 0), 0, 1.0000001, 10) between");
     expect(db.values).toContain(2);
+  });
+});
+
+describe("entity signal type badge", () => {
+  it("uses the singular for exactly one signal type", () => {
+    expect(signalTypeCountLabel(1)).toBe("1 tip");
+    expect(signalTypeCountLabel(2)).toBe("2 tipuri");
+    expect(signalTypeCountLabel(13)).toBe("13 tipuri");
   });
 });
 

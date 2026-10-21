@@ -19,7 +19,7 @@ import { countryName } from "@/lib/ted";
 import { formatRon, formatRonFull, formatInt, formatExactDecimal, formatCalendarDate, cleanName } from "@/lib/format";
 import { FLAG_META, FLAG_ORDER, criBand } from "@/lib/flags";
 import { getEntitySignalCounts } from "@/lib/signals";
-import { parseSignalState, signalUrl } from "@/lib/signals-shared";
+import { parseSignalState, signalTypeCountLabel, signalUrl } from "@/lib/signals-shared";
 import { CRI_CRITERIA, riskEvidenceLine, signalPeriodLabel } from "@/lib/risk-presentation";
 import { daUrl, registryLinks } from "@/lib/elicitatie";
 import ClipButton from "@/components/ClipButton";
@@ -285,7 +285,7 @@ export default async function EntityPage({
           { id: "top", label: "Rezumat" },
           ...(row.flags.length > 0 || signalTypes.length > 0
             ? [{ id: row.flags.length > 0 ? "semnale" : "toate-semnalele", label: "Semnale",
-                count: `${formatInt(new Set([...row.flags, ...signalTypes]).size)} tipuri` }]
+                count: signalTypeCountLabel(new Set([...row.flags, ...signalTypes]).size) }]
             : []),
           { id: "parteneri", label: isAuth ? "Furnizori" : "Autorități" },
           { id: "achizitii", label: "Achiziții", count: formatInt(txCounts.nDa + txCounts.nCt) },
