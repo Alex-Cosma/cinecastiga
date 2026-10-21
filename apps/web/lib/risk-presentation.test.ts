@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { FLAG_META } from "./flags";
 import { awardValueLabel, nearThresholdEvidence, noticeContractsNote, riskEvidenceLine, signalPeriodLabel, singleBidValueNote } from "./risk-presentation";
 
 describe("distance from a procurement threshold", () => {
@@ -102,5 +103,29 @@ describe("what an award notice holds", () => {
     expect(awardValueLabel({ value: 1 })).toBe("valoarea anunțului");
     expect(riskEvidenceLine("award_no_competition", { procedure, value: 2000000, cpv: "45000000-7" }))
       .toMatch(/^Negociere fara publicare prealabila · valoarea anunțului: [^·]+ · CPV 45000000-7\.$/);
+  });
+});
+
+// Audit F30: the owner kept da_dependence without a minimum number of
+// authorities; a supplier with one public client meets it by construction, and
+// every place that explains the signal says so.
+describe("supplier dependence on a single public client", () => {
+  const evidence = { total: 3150000, authorities: 1, top_authority_pct: 1 };
+  it("says the signal fires automatically for one client and that this is the lead, not proof", () => {
+    const line = riskEvidenceLine("da_dependence", evidence)!;
+    expect(line).toContain("Autoritatea principală: 100% din valoarea achizițiilor directe ale furnizorului (o singură autoritate în date).");
+    expect(line).toContain("Cu un singur client public, semnalul apare automat");
+    expect(line).toContain("nu o dovadă de neregulă");
+    expect(line).not.toContain("1 autorități");
+    expect(riskEvidenceLine("da_dependence", { ...evidence, authorities: "1" })).toBe(line);
+  });
+  it("leaves suppliers with several authorities unchanged", () => {
+    expect(riskEvidenceLine("da_dependence", { total: 900000, authorities: 3, top_authority_pct: 0.9 }))
+      .toBe("Autoritatea principală: 90% din valoarea achizițiilor directe ale furnizorului (3 autorități în date).");
+  });
+  it("states the rule in the methodology caveat", () => {
+    const caveat = FLAG_META.da_dependence!.caveat;
+    expect(caveat).toContain("Un furnizor cu un singur client public în achizițiile directe din date primește semnalul automat");
+    expect(caveat).toContain("chiar pista pe care o arată semnalul, nu o dovadă de neregulă");
   });
 });

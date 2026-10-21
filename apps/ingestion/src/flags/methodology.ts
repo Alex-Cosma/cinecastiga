@@ -58,7 +58,7 @@ export const FLAG_DEFS: FlagDef[] = [
       "O singură autoritate reprezintă cea mai mare parte din valoarea achizițiilor directe înregistrate pentru furnizor în datele disponibile.",
     rationale:
       "Merită verificat istoricul relației cu autoritatea și modul de selectare a furnizorului.",
-    caveat: "Această pondere nu descrie toate veniturile firmei: nu include vânzările private sau contractele prin proceduri. Un client public principal poate fi explicat de specializare sau de piața locală.",
+    caveat: "Această pondere nu descrie toate veniturile firmei: nu include vânzările private sau contractele prin proceduri. Un furnizor cu un singur client public în achizițiile directe din date primește semnalul automat, dacă valoarea totală atinge pragul folosit la calcul. Dependența de un singur client este chiar pista pe care o arată semnalul, nu o dovadă de neregulă. Un client public principal poate fi explicat de specializare sau de piața locală.",
   },
   {
     code: "da_rapid",
