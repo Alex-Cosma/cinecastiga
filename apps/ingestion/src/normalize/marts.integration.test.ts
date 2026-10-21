@@ -184,6 +184,8 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
   // Audit F12 leftovers: accepted DAs whose recorded supplier is the authority itself (22 on
   // the 1 October snapshot, 19.205,19 lei, 21 of them CB Palatul Copiilor Suceava 2006463, its
   // own top supplier partner) and award signals that named the authority as their partner.
+  // 2006463 also supplied 7 DAs to other authorities (3.186,40 lei): those stay its supplier
+  // profile, so the post-deploy check is the profile shrinking, not disappearing.
   it("keeps a DA whose recorded supplier is its own authority in the authority's total only, and never names the authority as a signal partner", async () => {
     const prefix = `self_supplier_fixture_${process.pid}_${Date.now()}`;
     const rollback = Error("rollback self supplier fixture");
@@ -203,10 +205,12 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
       }
       await q`insert into core.entities(id,name_display) values(1,'CB Palatul Copiilor'),(2,'Furnizor'),(3,'Autoritate')`;
       // DAs 1 and 2: the authority recorded as its own supplier (DA 1 finalised in 20 minutes); DA 3: a real supplier.
+      // DA 4: entity 1 as the supplier of another authority, which stays supplier revenue.
       await q`insert into core.direct_acquisitions(id,sicap_da_id,authority_entity_id,supplier_entity_id,state,closing_value,publication_date,finalization_date) values
         (1,100060303,1,1,'Oferta acceptata',60000,'2024-03-01T08:00:00Z','2024-03-01T08:20:00Z'),
         (2,100060304,1,1,'Oferta acceptata',10000.5,'2024-04-01T08:00:00Z','2024-04-03T08:00:00Z'),
-        (3,100060305,1,2,'Oferta acceptata',5000,'2024-05-01T08:00:00Z','2024-05-03T08:00:00Z')`;
+        (3,100060305,1,2,'Oferta acceptata',5000,'2024-05-01T08:00:00Z','2024-05-03T08:00:00Z'),
+        (4,100060306,3,1,'Oferta acceptata',3167.5,'2024-06-03T08:00:00Z','2024-06-05T08:00:00Z')`;
       // Notice 100: authority 3 recorded as the only winner of its own contract.
       await q`insert into core.awards(id,ca_notice_id,notice_no,authority_entity_id,state_date) values(1,100,'CAN-SELF',3,'2024-01-10')`;
       await q`insert into core.contracts(id,ca_notice_contract_id,ca_notice_id,contract_no,contract_date,contract_value,currency,title) values
@@ -214,10 +218,10 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
       await q`insert into core.contract_winners(contract_id,entity_id) values(1,3)`;
       await runMarts(q);
       expect((await q`select entity_id::int e, role, total_ron_split::text v, n_das n from marts.entity_profile order by 1, 2`).map(r => [r.e, r.role, r.v, r.n]))
-        .toEqual([[1, "authority", "75000.5", 3], [2, "supplier", "5000", 1]]);
-      expect((await q`select entity_id::int e, role, partner_entity_id::int p from marts.entity_top_partners order by 1, 2`).map(r => [r.e, r.role, r.p]))
-        .toEqual([[1, "authority", 2], [2, "supplier", 1]]);
-      expect((await q`select total_ron::text v from marts.national_stats where kind='spend' and year is null`)[0]?.v).toBe("75000.5");
+        .toEqual([[1, "authority", "75000.5", 3], [1, "supplier", "3167.5", 1], [2, "supplier", "5000", 1], [3, "authority", "3167.5", 1]]);
+      expect((await q`select entity_id::int e, role, partner_entity_id::int p from marts.entity_top_partners order by 1, 2, 3`).map(r => [r.e, r.role, r.p]))
+        .toEqual([[1, "authority", 2], [1, "supplier", 3], [2, "supplier", 1], [3, "authority", 1]]);
+      expect((await q`select total_ron::text v from marts.national_stats where kind='spend' and year is null`)[0]?.v).toBe("78168.0");
       await runFlags(q);
       // 70.000,5 lei from a single authority would have made the authority "dependent" on itself.
       expect(await q`select 1 from core.flags where flag_code in ('da_dependence','da_concentration','da_split') or subject_id = 1 and subject_type = 'supplier'`).toHaveLength(0);
@@ -226,20 +230,20 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
         values(9001,'award',1,'award_no_competition','2024',true,0.9,'{"value":2000}','fixture')`;
       await runFlagMarts(q);
       expect((await q`select entity_id::int e, role, n_das n from marts.entity_flags order by 1, 2`).map(r => [r.e, r.role, r.n]))
-        .toEqual([[1, "authority", 3], [2, "supplier", 1]]);
+        .toEqual([[1, "authority", 3], [1, "supplier", 1], [2, "supplier", 1], [3, "authority", 1]]);
       expect((await q`select flag_code, entity_id::int e, partner_id, partner_name from marts.flag_instances order by flag_code`).map(r => [r.flag_code, r.e, r.partner_id, r.partner_name]))
         .toEqual([["award_no_competition", 3, null, null], ["da_rapid", 1, null, null]]);
       expect((await q`select entity_id::int e, partner_id from marts.signal_lookup where flag_code='da_rapid'`)).toEqual([{ e: 1, partner_id: null }]);
       // The source row keeps the recorded name; it just has no supplier entity.
       expect((await q`select sicap_da_id::text id, supplier_id, supplier_name from marts.da_transactions order by 1`).map(r => [r.id, r.supplier_id, r.supplier_name]))
-        .toEqual([["100060303", null, "CB Palatul Copiilor"], ["100060304", null, "CB Palatul Copiilor"], ["100060305", "2", "Furnizor"]]);
+        .toEqual([["100060303", null, "CB Palatul Copiilor"], ["100060304", null, "CB Palatul Copiilor"], ["100060305", "2", "Furnizor"], ["100060306", "1", "CB Palatul Copiilor"]]);
       // The publication gate reconciles role totals and every profile with the same supplier rule.
       const checks = Object.fromEntries((await validateBatch1Snapshot(q, { fullProfiles: true, allAnnual: true })).map(c => [c.check, c.passed]));
       expect(checks).toMatchObject({ canonical_national_and_role_totals: true, entity_profile_reconciliation: true, contract_population_and_allocations: true });
       await q`alter table marts.data_coverage add primary key (dataset)`;
       await runCoverage(q);
       const [coverage] = await q`select observation from marts.data_coverage where dataset='da'`;
-      expect(coverage?.observation).toMatchObject({ included: "3", supplier_is_authority: "2", supplier_is_authority_value: "70000.5" });
+      expect(coverage?.observation).toMatchObject({ included: "4", supplier_is_authority: "2", supplier_is_authority_value: "70000.5" });
       throw rollback;
     })).rejects.toBe(rollback);
     expect(await sql`select nspname from pg_namespace where nspname like ${`${prefix}_%`}`).toHaveLength(0);
