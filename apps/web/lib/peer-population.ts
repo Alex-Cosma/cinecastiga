@@ -18,11 +18,72 @@ const cleanUnit = (name: string) => spelling(populationFold(name).replace(/^(mun
 const countyFold=(name:string)=>populationFold(name).replace(/^municipiul bucuresti$/,"bucuresti");
 const byNameCounty=new Map<string,typeof catalog.units>();
 for(const unit of catalog.units){const key=`${countyFold(unit.county)}:${cleanUnit(unit.name)}`;byNameCounty.set(key,[...(byNameCounty.get(key)??[]),unit]);}
-/** Official RPL 2021 resident population of a UAT, only when the catalog county corroborates the code. */
+/** Official RPL 2021 resident population of a UAT or București sector, only when the catalog county corroborates the code. */
 export function officialUnitPopulation(siruta: number, county: string | null): number | null {
   const unit = units.get(siruta);
-  if (!unit || unit.kind === "sector" || !county || countyFold(unit.county) !== countyFold(county)) return null;
+  if (!unit || !county || countyFold(unit.county) !== countyFold(county)) return null;
   return unit.population;
+}
+/** RPL 2021 rows "BUCUREȘTI SECTORUL N", by sector number. */
+const sectorUnits = new Map<number, (typeof catalog.units)[number]>();
+for (const unit of catalog.units) {
+  const match = unit.kind === "sector" ? /SECTORUL ([1-6])$/.exec(unit.name) : null;
+  if (match) sectorUnits.set(Number(match[1]), unit);
+}
+/** The catalog row of a București sector, by its official SIRUTA code. */
+export function sectorUnit(siruta: number): { siruta: number; name: string; county: string; population: number } | undefined {
+  const unit = units.get(siruta);
+  return unit?.kind === "sector" ? unit : undefined;
+}
+// The whole name is the sector administration, optionally repeated with the same number:
+// "Sectorul 2 al Municipiului București", "Sector 4 (Primăria Sectorului 4 București)",
+// "Sector 1 (Sectorul 1 al municipiului București)". Anything else ("Poliția Locală Sector 1",
+// "Clubul Copiilor Sector 6", "DGASPC Sector 3") is a subordinate institution.
+const sectorTownHallName = /^(?:primaria )?sector(?:ul|ului)? ([1-6])(?:(?: al)? (?:municipiului )?bucuresti)?(?: (?:primaria )?sector(?:ul|ului)? ([1-6])(?:(?: al)? (?:municipiului )?bucuresti)?)?$/;
+/**
+ * Owner decision F05 (21 October 2026): the town hall of a București sector is
+ * its own administration, with its own sector's RPL 2021 population. Only the
+ * sector administration itself qualifies: valid CUI, county București, a name
+ * that is only "Sectorul N" (see sectorTownHallName) and, when the legacy table
+ * holds a code, the same sector's synthetic code (-N) or official SIRUTA. The
+ * sector's subordinate institutions share the legacy code but never match, and
+ * Primăria Municipiului București keeps the population of the whole city.
+ */
+export function sectorTownHallUnit(row: PopulationMappingRow): { siruta: number; name: string; county: string; population: number; sourceRow: number } | undefined {
+  if (!row.cui || !row.county || countyFold(row.county) !== "bucuresti") return undefined;
+  const match = sectorTownHallName.exec(populationFold(row.name));
+  if (!match || (match[2] !== undefined && match[2] !== match[1])) return undefined;
+  const unit = sectorUnits.get(Number(match[1]));
+  if (!unit) return undefined;
+  if (row.siruta !== null && row.siruta !== -Number(match[1]) && row.siruta !== unit.siruta) return undefined;
+  return unit;
+}
+/** Sector town halls with their sector's population, only when exactly one entity qualifies for the sector. */
+export function sectorTownHallPopulations(rows: PopulationMappingRow[]): Map<string, PeerPopulation> {
+  const perUnit = new Map<number, Map<string, boolean>>();
+  for (const row of rows) {
+    const unit = sectorTownHallUnit(row);
+    if (unit) perUnit.set(unit.siruta, (perUnit.get(unit.siruta) ?? new Map()).set(row.id, row.siruta !== null));
+  }
+  const result = new Map<string, PeerPopulation>();
+  for (const [siruta, ids] of perUnit) {
+    if (ids.size !== 1) continue;
+    const unit = units.get(siruta)!, [[id, coded]] = [...ids] as [[string, boolean]];
+    result.set(id, { value:unit.population, siruta:unit.siruta, unitName:unit.name, county:unit.county, level:"sector", referenceDate:catalog.referenceDate,
+      sourceUrl:catalog.source.url, sourceSha256:catalog.source.sha256, sourceRow:unit.sourceRow, catalogVersion:POPULATION_VERSION, differencePercent:null, mappingMethod:coded?"siruta_name_county":"exact_name_county" });
+  }
+  return result;
+}
+/** București sectors for the locality picker: "sector 3", "sectorul 3", "bucurești sector 3". */
+export function sectorSuggestions(query: string, county: string): { siruta: number; name: string; population: number; pos: number }[] {
+  if (county && countyFold(county) !== "bucuresti") return [];
+  const q = populationFold(query).replace(/\bsector(?:ul|ului)?\b/g, "sector");
+  if (q.length < 2 || "municipiul ".includes(q)) return [];
+  return [...sectorUnits].flatMap(([n, unit]) => {
+    // A city search gets the same position as "municipiul bucuresti", so the city ranks first by population.
+    const pos = `municipiul bucuresti sector ${n}`.indexOf(q) + 1 || `sector ${n} bucuresti`.indexOf(q) + 1;
+    return pos > 0 ? [{ siruta: unit.siruta, name: `Sectorul ${n}`, population: unit.population, pos }] : [];
+  });
 }
 export function governmentLevel(name: string): "local" | "county" | "sector" | null {
   const normalized = populationFold(name);
@@ -119,12 +180,20 @@ const administrationForm = /^(?:uat|unitatea? administrativ teritoriala|consiliu
  * Unlike the population index, two corroborated legacy identities of the same
  * administration are both kept: this is a filter, not a denominator, and
  * dropping them would hide the administration's own records. Schools,
- * services, companies, sector bodies and entities without a county never enter.
+ * services, companies, sector institutions and entities without a county never
+ * enter. A București sector selects only its own town hall (sectorTownHallUnit),
+ * and the city selects Primăria Municipiului București, never the sectors.
  */
 export function localAuthorityIdsForUnit(rows: PopulationMappingRow[], siruta: number): string[] {
   const unit = units.get(siruta);
-  if (!unit || unit.kind === "sector") return [];
+  if (!unit) return [];
   const legacy = new Set<string>(), fallback = new Set<string>();
+  if (unit.kind === "sector") {
+    // Owner decision F05: a sector selects only its own town hall (sectorTownHallUnit).
+    for (const row of rows) if (sectorTownHallUnit(row)?.siruta === siruta) (row.siruta !== null ? legacy : fallback).add(row.id);
+    const ids = legacy.size > 0 ? legacy : fallback.size === 1 ? fallback : new Set<string>();
+    return [...ids].sort((a, b) => Number(a) - Number(b));
+  }
   for (const row of rows) {
     if (row.siruta !== null && row.siruta > 0) {
       if (row.siruta === siruta && row.county && countyFold(row.county) === countyFold(unit.county)
@@ -150,7 +219,7 @@ export async function readPopulationMappingRows(q: DbSql): Promise<PopulationMap
   const localRows = tables?.present ? await q`select e.id::text id,e.name_display name,e.county,e.cui_canonical cui,au.uat_siruta siruta
     from reference.authority_uat au join core.entities e on e.id=au.entity_id where e.cui_valid and e.cui_canonical is not null and e.id<=9007199254740991 and ${peerRolePredicate(q,"authority")}` : [];
   const prefixes=['consiliul judetean %','consiliu judetean %','judetul %','judet %','uat %','unitatea administrativ teritoriala %',
-    'municipiul %','municipiu %','orasul %','oras %','comuna %','primaria %','consiliul local %','u a t %'];
+    'municipiul %','municipiu %','orasul %','oras %','comuna %','primaria %','consiliul local %','u a t %','sector %','sectorul %'];
   const missingMappings=tables?.present?q`not exists(select 1 from reference.authority_uat au where au.entity_id=e.id)`:q`true`;
   const countyRows = await q`select e.id::text id,e.name_display name,e.county,e.cui_canonical cui,null::integer siruta from core.entities e
     where e.cui_valid and e.cui_canonical is not null and e.id<=9007199254740991
