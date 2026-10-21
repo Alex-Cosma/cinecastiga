@@ -8,7 +8,11 @@ const COLLECTION_LABELS: Record<string, string> = {
   "elicitatie:das": "SEAP · achiziții directe", "elicitatie:awards": "SEAP · atribuiri",
   "ted:can-standard": "TED · eForms", "ted:fforms": "TED · formulare istorice",
 };
-const STATUS: Record<string, string> = { completed: "finalizată", failed: "eșuată", running: "în curs" };
+// The legacy log is no longer written: a run left "running" there was never finished.
+const STATUS: Record<string, string> = { completed: "finalizată", failed: "eșuată", running: "neîncheiată" };
+const STREAM_LABELS: Record<string, string> = {
+  da: "SEAP · achiziții directe", awards: "SEAP · atribuiri și contracte", ted: "TED · anunțuri de atribuire",
+};
 const n = (value: string | undefined) => value === undefined ? "necunoscut" : formatInt(Number(value));
 
 export async function CoverageSummary() {
@@ -69,11 +73,21 @@ export default async function DataCoverage() {
     <details className="data-context">
       <summary>Când au fost colectate și prelucrate datele?</summary>
       <p>O colectare reușită poate acoperi doar o fereastră sau un lot de autorități. Data ei nu dovedește că întregul istoric este complet sau că înregistrările au ajuns deja în totalurile afișate.</p>
-      {data.collections.length ? data.collections.map(c => <div className="coverage-run" key={c.source}>
-        <h4>{COLLECTION_LABELS[c.source] ?? c.source}</h4>
-        <p>Ultima colectare reușită: <strong>{coverageDate(c.last_success)}</strong>. Cea mai recentă încercare: {coverageDate(c.latest_started)}, {STATUS[c.latest_status] ?? "stare necunoscută"}.</p>
-        <p className="note">Fereastra ultimei încercări: {coverageDate(c.window_from)} — {coverageDate(c.window_to)}. Înregistrări preluate: {formatInt(c.fetched)}; raportate de sursă: {c.reported === null ? "necunoscut" : formatInt(c.reported)}. {c.deviation === null ? "Diferența nu a putut fi verificată." : `Diferență raportate − preluate: ${formatInt(c.deviation)}.`}</p>
-      </div>) : <p>Nu există un jurnal de colectare pentru sursele din acest instantaneu.</p>}
+      {data.collector.streams.length ? <>
+        {data.collector.batch && <p>Colectarea continuă urmărește publicațiile până la <strong>{coverageDate(data.collector.batch.endDay)}</strong>{data.collector.batch.followLatest ? ", cu avans zilnic" : ""}.</p>}
+        {data.collector.streams.map(s => <div className="coverage-run" key={s.stream}>
+          <h4>{STREAM_LABELS[s.stream] ?? s.stream}</h4>
+          <p>Ultima colectare reușită: <strong>{coverageDate(s.lastSuccessAt)}</strong>.{data.collector.batch && ` Lotul curent: ${s.open ? "în curs" : "fără sarcini în așteptare"}${s.gaps ? ", cu sarcini amânate sau eșuate" : ""}.`}</p>
+        </div>)}
+      </> : <p>Nu există un jurnal al colectării continue în acest instantaneu.</p>}
+      {data.collections.length > 0 && <details><summary>Importurile anterioare pe ferestre (arhivă)</summary>
+        <p className="note">Jurnalul importurilor făcute înaintea colectării continue. Colectarea continuă nu îl mai actualizează, deci datele de mai jos nu arată vechimea datelor actuale.</p>
+        {data.collections.map(c => <div className="coverage-run" key={c.source}>
+          <h4>{COLLECTION_LABELS[c.source] ?? c.source}</h4>
+          <p>Ultimul import reușit: <strong>{coverageDate(c.last_success)}</strong>. Ultimul import început: {coverageDate(c.latest_started)}, {STATUS[c.latest_status] ?? "stare necunoscută"}.</p>
+          <p className="note">Fereastra ultimului import: {coverageDate(c.window_from)} — {coverageDate(c.window_to)}. Înregistrări preluate: {formatInt(c.fetched)}; raportate de sursă: {c.reported === null ? "necunoscut" : formatInt(c.reported)}. {c.deviation === null ? "Diferența nu a putut fi verificată." : `Diferență raportate − preluate: ${formatInt(c.deviation)}.`}</p>
+        </div>)}
+      </details>}
       {data.normalized.length > 0 && <details><summary>Jurnalul prelucrării surselor</summary><ul>{data.normalized.map(row => <li key={row.transform}>{row.transform}: {coverageDate(row.updated_at)}</li>)}</ul></details>}
     </details>
     <p className="note">Bilanțurile MF oferă context pe anul raportării. Datele ONRC descriu reprezentanții din registrul importat, fără a reconstrui istoricul conducerii. Un câmp necunoscut rămâne necunoscut; nu este tratat ca zero sau ca absență a unui risc.</p>

@@ -7,7 +7,7 @@ import { GET } from "./route";
 
 beforeEach(() => vi.resetAllMocks());
 it("exposes only public periods, not collector diagnostics or raw inventory payloads", async () => {
-  vi.mocked(getCoverage).mockResolvedValue({ observations: [{ dataset: "da", calculated_at: "2026-09-30T12:00:00Z", observation: { available: "12", date_from: "2020-01-01", date_to: "2026-07-31", missing_date: "0", missing_cpv: "0" } }], collections: [{ source: "internal-diagnostic" }] as never, years: [], normalized: [] });
+  vi.mocked(getCoverage).mockResolvedValue({ observations: [{ dataset: "da", calculated_at: "2026-09-30T12:00:00Z", observation: { available: "12", date_from: "2020-01-01", date_to: "2026-07-31", missing_date: "0", missing_cpv: "0" } }], collector: { batch: { id: "internal-batch", endDay: "2026-09-25", status: "collecting", followLatest: false }, streams: [] }, collections: [{ source: "internal-diagnostic" }] as never, years: [], normalized: [] });
   vi.mocked(getProcessingFreshness).mockResolvedValue({ dataAt: "2026-09-30T12:00:00Z", riskAt: "2026-09-27T12:00:00Z" });
   const response = await GET();
   expect(response.status).toBe(200);
