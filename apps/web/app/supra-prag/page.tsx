@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { getTedStats, getTedAwards, type TedAward } from "@/lib/marts";
-import { countryName, procedureName, TED_LABEL, TED_AMOUNT_LABEL, formatTedAmount, competitionLabel, tedAmountHeadline, tedCountryNeedsReview, TED_COUNTRY_UNRESOLVED, TED_COUNTRY_REVIEW_LABEL } from "@/lib/ted";
+import { countryName, procedureName, TED_LABEL, TED_AMOUNT_LABEL, formatTedAmount, competitionLabel, tedAmountHeadline, tedCountryNeedsReview, tedCoverageNote, TED_COUNTRY_UNRESOLVED, TED_COUNTRY_REVIEW_LABEL } from "@/lib/ted";
+import { getCoverage } from "@/lib/coverage";
 import { formatInt, cleanName } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -72,8 +73,9 @@ export default async function SupraPragPage({
   const requestedPage = Number(sp["p"] ?? "1");
   const PAGE_SIZE = 60;
 
-  const [stats, awards] = await Promise.all([
+  const [stats, coverage, awards] = await Promise.all([
     getTedStats(),
+    getCoverage(),
     getTedAwards({
       ...(label ? { label } : {}),
       foreign,
@@ -111,6 +113,10 @@ export default async function SupraPragPage({
       <p className="page-sub">
         Anunțuri de atribuire din Jurnalul Oficial al UE. Consultă sursa europeană și potrivirile identificate
         în SEAP. Valorile TED <strong>nu se adaugă totalurilor SEAP</strong>.
+      </p>
+      <p className="hint" id="ted-coverage-period">
+        {tedCoverageNote(coverage)}{" "}
+        <Link href="/metodologie#acoperire">Acoperirea surselor</Link>
       </p>
 
       <section className="section">

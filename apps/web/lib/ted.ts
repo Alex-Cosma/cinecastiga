@@ -1,4 +1,5 @@
 import type { DbSql } from "@seap/db";
+import { coverageDate, type Coverage } from "./coverage";
 
 /**
  * Display metadata for the TED publication source. Plain-Romanian
@@ -161,4 +162,26 @@ export function tedCountryNeedsReview(isForeign: boolean, countries: (string | n
     const code = country?.trim().toUpperCase();
     return !!code && code !== "RO";
   });
+}
+
+/**
+ * Period of the TED publications behind /supra-prag (data audit F29). TED is
+ * imported separately from SEAP and can stop months earlier (local snapshot of
+ * 1 Oct 2026: TED to 30.06.2026, SEAP to 25.09.2026), so the page's totals,
+ * single-bid and "Fără potrivire SEAP" counts must say which publication days
+ * they cover. Endpoints are the oldest and newest stored publication dates
+ * (marts.data_coverage), not a promise that every day in between is complete.
+ */
+export function tedCoverageNote(coverage: Pick<Coverage, "observations"> | null | undefined): string {
+  const observation = (dataset: string) => coverage?.observations.find((o) => o.dataset === dataset)?.observation;
+  const ted = observation("ted");
+  const tedTo = ted?.date_to?.slice(0, 10);
+  if (!ted?.date_from || !tedTo) return "Perioada publicațiilor TED preluate nu este încă inventariată; cifrele de mai jos nu au un interval confirmat.";
+  const seapTo = [observation("da")?.date_to, observation("contracts")?.date_to]
+    .map((d) => d?.slice(0, 10)).filter((d): d is string => !!d).sort().at(-1);
+  const later = seapTo && seapTo > tedTo
+    ? ` Datele SEAP din aplicație ajung până la ${coverageDate(seapTo)}, deci cifrele de mai jos acoperă o perioadă mai scurtă decât cele SEAP.`
+    : "";
+  return `Publicații TED preluate: ${coverageDate(ted.date_from)} – ${coverageDate(tedTo)} (data publicării în Jurnalul Oficial al UE). `
+    + `Anunțurile publicate în TED după ${coverageDate(tedTo)} nu sunt încă preluate.${later}`;
 }
