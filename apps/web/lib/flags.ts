@@ -158,7 +158,7 @@ export const FLAG_META: Record<string, FlagMeta> = {
     subject: "supplier",
     short: "Firme cu un reprezentant legal comun au achiziții la aceeași autoritate.",
     description:
-      "Două sau mai multe firme cu un reprezentant legal comun în datele ONRC disponibile au achiziții directe și cote din contracte înregistrate la aceeași autoritate. Identitatea reprezentantului folosește numele, data și locul nașterii.",
+      "Două sau mai multe firme cu un reprezentant legal comun în datele ONRC disponibile au achiziții directe și cote din contracte înregistrate la aceeași autoritate. Identitatea reprezentantului folosește numele, data și locul nașterii. Calitatea de membru în consiliul de supraveghere nu este luată în calcul, pentru că acest consiliu nu reprezintă firma.",
     rationale:
       "Legătura permite analizarea împreună a atribuirilor acestor firme. Merită verificate rolul persoanei, relația dintre firme și situația lor la data achizițiilor.",
     caveat:

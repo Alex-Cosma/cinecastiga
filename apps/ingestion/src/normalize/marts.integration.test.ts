@@ -342,6 +342,11 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
         await q`insert into reference.company_reps (cui,person_key,person_name,birth_date)
           values ('10','fixture-person','Shared representative','1980-01-01'),
             ('11','fixture-person','Shared representative','1980-01-01')`;
+        // Audit F31: a supervisory-board seat is not legal representation, so a
+        // board member shared by firms 10 and 12 must not link them.
+        await q`insert into reference.company_reps (cui,person_key,person_name,calitate,birth_date)
+          values ('10','fixture-board','Shared board member','membru în consiliul de supraveghere','1976-01-01'),
+            ('12','fixture-board','Shared board member','membru în consiliul de supraveghere','1976-01-01')`;
         await q`update core.direct_acquisitions set publication_date=finalization_date-interval '30 minutes'`;
         // Refused records outside every rule; the archive now spans all of 2025,
         // which da_year_end requires before it evaluates that year.
@@ -362,6 +367,9 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
         expect(evidence("fin_tiny_staff","10")).toMatchObject({ total: 238.33, year: 2025 });
         expect(evidence("fin_public_reliance","10")).toMatchObject({ public_total: 238.33, revenue_total: 1000, ratio: 0.2383 });
         expect(evidence("net_shared_admin","10")).toMatchObject({ combined: 221.66, n_firms: 2 });
+        expect(flags.filter(r => r["flag_code"] === "net_shared_admin")
+          .map(r => [r["subject"], (r["evidence"] as Record<string, unknown>)["person"]]).sort())
+          .toEqual([["10", "Shared representative"], ["11", "Shared representative"]]);
 
         // A deliberately failing late rule proves TRUNCATE + earlier inserts roll back together.
         const [beforeFailure] = await q`select jsonb_agg(to_jsonb(f) order by flag_code,subject_id,partner_id) data from core.flags f`;
