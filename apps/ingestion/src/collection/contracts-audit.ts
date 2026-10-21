@@ -63,7 +63,8 @@ export async function enqueueContractsAudit(q:DbSql,{tag,ids,actor='operator'}:{
   if((await tx`select id from app.processing_runs where status='running' limit 1`).length)throw Error('A processing run is running; enqueue after it finishes.');
   const batchId=String(batches[0]!.id);
   // Never strand tasks in a batch that just closed; claims wait on this lock only for the inserts.
-  await tx`select id from app.collection_batches where id=${batchId} for update`;
+  const [locked]=await tx`select status from app.collection_batches where id=${batchId} for update`;
+  if(locked?.status!=='collecting')throw Error('The recovery batch stopped collecting; nothing was queued.');
   const [control]=await tx`select revision,background_lanes from app.collection_control where id=1`;
   const tasks=sorted.map(id=>auditTask(batchId,id,tag));
   let queued=0;
