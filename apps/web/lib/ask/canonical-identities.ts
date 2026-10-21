@@ -15,6 +15,7 @@ export function mapAskIdentities(spec:AskSpec, grounding:Grounding, scope:Eviden
   const mappedGrounding={...grounding};
   for(const key of ['authority','supplier','compare'] as const){const entity=grounding[key];if(entity?.entityId)mappedGrounding[key]={...entity,entityId:id(entity.entityId)};}
   if(grounding.admin)mappedGrounding.admin={...grounding.admin,supplierIds:[...new Set(grounding.admin.supplierIds.map(id))]};
+  if(grounding.uat?.authorityIds)mappedGrounding.uat={...grounding.uat,authorityIds:[...new Set(grounding.uat.authorityIds.map(id))]};
   const mappedScope=scope?{...scope}:undefined;
   if(mappedScope?.entityIds)mappedScope.entityIds=[...new Set(mappedScope.entityIds.map(id))];
   if(mappedScope?.excludeEntityIds)mappedScope.excludeEntityIds=[...new Set(mappedScope.excludeEntityIds.map(id))];
@@ -24,7 +25,7 @@ export async function canonicalAskIdentities(sql:DbSql,spec:AskSpec,grounding:Gr
   const ids:string[]=[];
   for(const key of ['authorityId','supplierId','compareWithId'] as const)if(spec.filters[key]!==undefined)ids.push(String(spec.filters[key]));
   for(const key of ['authority','supplier','compare'] as const)if(grounding[key]?.entityId)ids.push(grounding[key]!.entityId!);
-  ids.push(...grounding.admin?.supplierIds??[],...scope?.entityIds??[],...scope?.excludeEntityIds??[]);
+  ids.push(...grounding.admin?.supplierIds??[],...grounding.uat?.authorityIds??[],...scope?.entityIds??[],...scope?.excludeEntityIds??[]);
   for(const g of spec.population?.groups??[])for(const c of g.conditions)if(c.field==='authority'||c.field==='supplier')ids.push(...c.values);
   return mapAskIdentities(spec,grounding,scope,await entityRedirectMap(sql,ids));
 }

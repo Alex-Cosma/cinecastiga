@@ -1,6 +1,7 @@
 import type { DbSql } from "@seap/db";
 import type { AskFilters } from "./spec";
 import { aliasQueries, queryTokens } from "./entity-alias";
+import { readLocalAuthorityIds } from "../peer-population";
 
 /**
  * Grounding: turn the spec's free-text fields (cpvTerm, authorityName,
@@ -32,7 +33,10 @@ export interface UatGrounding {
   /** UAT name from the registry (uppercase old orthography) — display fallback. */
   name: string | null;
   county: string | null;
-  /** How many buying authorities map to this UAT (primărie, școli, spital…). */
+  /** Valid-CUI identities of the UAT's own local administration, strictly
+   * associated (see localAuthorityIdsForUnit). Schools and other institutions
+   * located in the UAT are not included. */
+  authorityIds: string[];
   nAuthorities: number;
 }
 
@@ -340,17 +344,17 @@ async function groundCounty(
 
 async function groundUat(sql: DbSql, siruta: number): Promise<UatGrounding> {
   const rows = (await sql`
-    select u.name, u.county,
-           (select count(*) from reference.authority_uat au where au.uat_siruta = u.siruta) n
-    from reference.uat u
-    where u.siruta = ${siruta}
-  `) as unknown as { name: string | null; county: string | null; n: string }[];
+    select u.name, u.county from reference.uat u where u.siruta = ${siruta}
+  `) as unknown as { name: string | null; county: string | null }[];
   const r = rows[0];
+  // Audit F15: never the raw legacy code, which links communes of other counties.
+  const authorityIds = r ? await readLocalAuthorityIds(sql, siruta) : [];
   return {
     siruta,
     name: r?.name ?? null,
     county: r?.county ?? null,
-    nAuthorities: r ? Number(r.n) : 0,
+    authorityIds,
+    nAuthorities: authorityIds.length,
   };
 }
 
