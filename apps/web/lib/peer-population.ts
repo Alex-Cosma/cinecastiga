@@ -16,8 +16,25 @@ export function populationSearchVariants(value:string):string[]{
 }
 const cleanUnit = (name: string) => spelling(populationFold(name).replace(/^(municipiul|municipiu|orasul|oras) /, ""));
 const countyFold=(name:string)=>populationFold(name).replace(/^municipiul bucuresti$/,"bucuresti");
+/**
+ * Owner decision F05/F15 (21 October 2026): a SICAP name matches a catalog UAT
+ * when it differs only by diacritics (populationFold drops them, so ș/ş, ț/ţ, ă,
+ * î and â compare as their base letter) or by the pre-1993 spelling that wrote a
+ * word-internal â as î ("COMUNA CIRJITI" for CÂRJIȚI). The î variants are
+ * derived from the catalog's own â letters, never from an arbitrary a/i swap,
+ * and every caller still requires the authority's county to be the unit's.
+ */
+export function unitNameKeys(name: string): Set<string> {
+  const parts = name.split(/[âÂ]/);
+  const keys = new Set<string>();
+  // Catalog names hold at most two â; the bound only guards the combinations.
+  for (let mask = 0; mask < 2 ** Math.min(parts.length - 1, 4); mask++)
+    keys.add(cleanUnit(parts.reduce((text, part, i) => i === 0 ? part : text + (mask & (1 << (i - 1)) ? "î" : "â") + part, "")));
+  return keys;
+}
+const keysBySiruta=new Map(catalog.units.map(unit=>[unit.siruta,unitNameKeys(unit.name)]));
 const byNameCounty=new Map<string,typeof catalog.units>();
-for(const unit of catalog.units){const key=`${countyFold(unit.county)}:${cleanUnit(unit.name)}`;byNameCounty.set(key,[...(byNameCounty.get(key)??[]),unit]);}
+for(const unit of catalog.units)for(const name of keysBySiruta.get(unit.siruta)!){const key=`${countyFold(unit.county)}:${name}`;byNameCounty.set(key,[...(byNameCounty.get(key)??[]),unit]);}
 /** Official RPL 2021 resident population of a UAT or București sector, only when the catalog county corroborates the code. */
 export function officialUnitPopulation(siruta: number, county: string | null): number | null {
   const unit = units.get(siruta);
@@ -92,7 +109,8 @@ export function governmentLevel(name: string): "local" | "county" | "sector" | n
   if (localPrefix.test(normalized) || /^primaria /.test(normalized)) return "local";
   return null;
 }
-function localName(name: string,county:string): string | null {
+/** The locality name of a local administration, plus the name its legal suffix repeats (both must name the same UAT). */
+function localName(name: string,county:string): string[] | null {
   if (governmentLevel(name) !== "local") return null;
   let normalized=populationFold(name);
   const countySuffix=normalized.match(/ (?:judetul|judet|jud) (.+)$/);
@@ -106,11 +124,12 @@ function localName(name: string,county:string): string | null {
     const primary=clean(normalized.slice(0,repeated.index));
     const qualifier=normalized.slice(repeated.index!+repeated[0].length);
     // Legal suffixes may repeat the SAME administration or be a bare label.
-    // "Comuna Corabia (Primăria Cobia)" is conflicting and must never match.
-    if(qualifier && clean(qualifier)!==primary)return null;
-    return primary;
+    // "Comuna Corabia (Primăria Cobia)" is conflicting and must never match;
+    // "Comuna Gircov (Primăria comunei Gârcov)" spells one UAT two ways, so
+    // both spellings must be names of the matched unit (unitNameKeys).
+    return qualifier ? [primary,clean(qualifier)] : [primary];
   }
-  return clean(normalized);
+  return [clean(normalized)];
 }
 export interface PopulationMappingRow { id: string; name: string; county: string | null; cui: string | null; siruta: number | null }
 export function populationForMapping(row: PopulationMappingRow): PeerPopulation | undefined {
@@ -127,11 +146,12 @@ export function populationForMapping(row: PopulationMappingRow): PeerPopulation 
       sourceUrl:catalog.source.url, sourceSha256:catalog.source.sha256, sourceRow:county.sourceRow, catalogVersion:POPULATION_VERSION, differencePercent:null, mappingMethod:"exact_name_county" };
   }
   if (level !== "local" || !row.county) return undefined;
-  const name=localName(row.name,row.county);
-  const exact = (byNameCounty.get(`${countyFold(row.county)}:${name}`)??[]).filter(unit=>unit.kind!=="sector");
+  const names=localName(row.name,row.county);
+  if (!names) return undefined;
+  const exact = (byNameCounty.get(`${countyFold(row.county)}:${names[0]}`)??[]).filter(unit=>unit.kind!=="sector");
   // A conflicting existing positive SIRUTA never falls back to a name guess.
   const unit = row.siruta!==null && row.siruta>0 ? units.get(row.siruta) : exact.length===1 ? exact[0] : undefined;
-  if (!unit || unit.kind === "sector" || countyFold(row.county) !== countyFold(unit.county) || name !== cleanUnit(unit.name)) return undefined;
+  if (!unit || unit.kind === "sector" || countyFold(row.county) !== countyFold(unit.county) || !names.every(name=>keysBySiruta.get(unit.siruta)!.has(name))) return undefined;
   return { value:unit.population, siruta:unit.siruta, unitName:unit.name, county:unit.county, level:"local", referenceDate:catalog.referenceDate,
     sourceUrl:catalog.source.url, sourceSha256:catalog.source.sha256, sourceRow:unit.sourceRow, catalogVersion:POPULATION_VERSION, differencePercent:null,
     mappingMethod:row.siruta!==null&&row.siruta>0?"siruta_name_county":"exact_name_county" };

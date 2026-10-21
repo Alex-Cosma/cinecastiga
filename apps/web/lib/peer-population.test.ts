@@ -23,6 +23,28 @@ describe("official population comparison identity",()=>{
     expect(populationForMapping(entity("MUNICIPIUL BUZAU JUDETUL CLUJ","Buzau"))).toBeUndefined();
     expect(populationForMapping(entity("MUNICIPIUL BUZAU JUDETUL BUZAU","Buzau"))).toBeDefined();
   });
+  it("matches names that differ only by diacritics or the legacy î for â, and only in the unit's county (owner decision F05/F15)",()=>{
+    const cirjiti=lookup("CÂRJIȚI"),gircov=lookup("GÂRCOV");
+    // SICAP rows of the 1 Oct 2026 snapshot that the strict join had dropped.
+    expect(populationForMapping(entity("COMUNA CIRJITI","Hunedoara",cirjiti.siruta))).toMatchObject({siruta:cirjiti.siruta,value:cirjiti.population,mappingMethod:"siruta_name_county"});
+    expect(populationForMapping(entity("COMUNA CIRJITI","Hunedoara"))).toMatchObject({siruta:cirjiti.siruta,mappingMethod:"exact_name_county"});
+    expect(populationForMapping(entity("Comuna Cîrjiţi","Hunedoara"))).toMatchObject({siruta:cirjiti.siruta});
+    expect(populationForMapping(entity("Comuna Cârjiți","Hunedoara"))).toMatchObject({siruta:cirjiti.siruta});
+    expect(populationForMapping(entity("COMUNA GIRCOV (PRIMARIA COMUNEI GARCOV)","Olt",gircov.siruta))).toMatchObject({siruta:gircov.siruta});
+    expect(populationForMapping(entity("COMUNA SINNICOLAU ROMAN","Bihor"))).toMatchObject({siruta:lookup("SÂNNICOLAU ROMÂN").siruta});
+    expect(populationForMapping(entity("COMUNA SFINTU GHEORGHE,JUDETUL IALOMITA","Ialomita"))).toMatchObject({unitName:"SFÂNTU GHEORGHE",county:"IALOMIȚA"});
+    // ș/ş and ț/ţ are the same letter after folding.
+    expect(populationForMapping(entity("Municipiul Piteşti","Argeş"))).toMatchObject({unitName:"MUNICIPIUL PITEȘTI"});
+    // The county must still match: no name-only or cross-county recovery.
+    expect(populationForMapping(entity("COMUNA CIRJITI","Alba"))).toBeUndefined();
+    expect(populationForMapping(entity("COMUNA CIRJITI",null))).toBeUndefined();
+    expect(populationForMapping(entity("COMUNA CIRJITI","Alba",cirjiti.siruta))).toBeUndefined();
+    // î only stands for a catalog â: other a/i swaps and other letters stay different names.
+    expect(populationForMapping(entity("COMUNA CARJATI","Hunedoara"))).toBeUndefined();
+    expect(populationForMapping(entity("COMUNA COVASINT","Arad"))).toMatchObject({unitName:"COVĂSINȚ"});
+    expect(populationForMapping(entity("COMUNA COVASANT","Arad"))).toBeUndefined();
+    expect(populationForMapping(entity("COMUNA GIRCOV (PRIMARIA COMUNEI GURCOV)","Olt",gircov.siruta))).toBeUndefined();
+  });
   it("uses county resident totals and served county, not the council office county",()=>{
     expect(populationForMapping(entity("JUDETUL ILFOV - CONSILIUL JUDETEAN","Bucuresti",-100))).toMatchObject({value:542704,county:"ILFOV",level:"county"});
     expect(populationForMapping(entity("U.A.T. JUDETUL HUNEDOARA","Hunedoara",-100))).toMatchObject({level:"county"});
