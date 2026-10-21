@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DbSql } from "@seap/db";
-import { parseSignalState, signalUrl, signalPopulation, readSignalPage, readSignalOverview, readSignalRiskGroup } from "./signals";
+import { parseSignalState, signalUrl, signalPopulation, readSignalPage, readSignalOverview, readSignalRiskGroup, readEntitySignalCounts } from "./signals";
 
 /** Captures parameterized queries, without reading or mutating a database. */
 function database(total = 125) {
@@ -133,5 +133,60 @@ describe("redesigned signal navigation", () => {
   it("uses the correct denominator for supplier selections",()=>{
     expect(parseSignalState({view:"cri",rol:"supplier",criteria:"5"}).criteria).toBeNull();
     expect(parseSignalState({view:"cri",criteria:"0"}).criteria).toBe(0);
+  });
+});
+
+describe("signals of one entity (audit F24)", () => {
+  it("round-trips the entity filter through type changes and paging, and resets the page when it is removed", () => {
+    const state = parseSignalState({ tip: "fin_tiny_staff", rol: "supplier", ent: "1967166", p: "2" });
+    expect(state).toMatchObject({ entity: "1967166", role: "supplier", page: 2 });
+    const typed = parseSignalState(Object.fromEntries(new URL(signalUrl(state, { code: "fin_public_reliance" }), "http://local").searchParams));
+    expect(typed).toMatchObject({ entity: "1967166", code: "fin_public_reliance", page: 0 });
+    const paged = parseSignalState(Object.fromEntries(new URL(signalUrl(state, { page: 5 }), "http://local").searchParams));
+    expect(paged).toEqual({ ...state, page: 5 });
+    const cleared = new URL(signalUrl(state, { entity: null }), "http://local");
+    expect(cleared.searchParams.has("ent")).toBe(false);
+    expect(cleared.searchParams.has("p")).toBe(false);
+  });
+  it.each(["0", "-1", "12a", "1.5", "1".repeat(19), ""])("ignores the invalid entity id %j", (ent) => {
+    expect(parseSignalState({ ent }).entity).toBeNull();
+  });
+  it("does not carry the entity into the CRI cohort view", () => {
+    expect(parseSignalState({ view: "cri", ent: "5" }).entity).toBeNull();
+    expect(signalUrl(parseSignalState({ ent: "5" }), { view: "cri" })).not.toContain("ent=");
+  });
+  it("restricts a supplier to its own endpoint and to the award notices it won, without changing the population", async () => {
+    const db = database();
+    await signalPopulation(db.sql, { role: "supplier", county: null, entity: "1967166" });
+    const query = db.statements[0]!;
+    // the exact endpoint test appears in both non-award branches; the OR is only an index hint
+    expect(query.match(/then f\.partner_id else f\.entity_id end = \?\d+ and \(f\.entity_id = \?\d+ or f\.partner_id = \?\d+\)/g)).toHaveLength(2);
+    expect(query).toMatch(/own_cw\.entity_id = \?\d+/);
+    expect(query).toContain("exists (select 1 from core.contracts c join core.contract_winners cw");
+    expect(db.values.length).toBeGreaterThan(0);
+    expect(db.values.every((v) => v === "1967166" || v === "supplier")).toBe(true);
+  });
+  it("restricts an authority's award signals to its own notices", async () => {
+    const db = database();
+    await signalPopulation(db.sql, { role: "authority", county: null, entity: "2146146" });
+    const query = db.statements[0]!;
+    expect(query).toMatch(/f\.subject_type = 'award'\s+and f\.entity_id is not null\s+and f\.entity_id = \?\d+/);
+    expect(query).not.toContain("own_cw");
+  });
+  it("leaves the national population untouched without an entity", async () => {
+    const db = database();
+    await signalPopulation(db.sql, { role: "supplier", county: null });
+    expect(db.statements[0]).not.toContain("own_cw");
+    expect(db.statements[0]).not.toMatch(/f\.partner_id = \?/);
+  });
+  it("counts every signal type of the profile with the same population, and rejects malformed ids without a query", async () => {
+    const db = database();
+    await readEntitySignalCounts(db.sql, "1967166", "supplier");
+    const counts = db.statements.find((q) => q.includes("group by flag_code"))!;
+    expect(counts).toContain("marts.signal_lookup");
+    expect(counts).toMatch(/own_cw\.entity_id = \?\d+/);
+    const none = database();
+    expect(await readEntitySignalCounts(none.sql, "1; drop", "supplier")).toEqual({});
+    expect(none.statements).toHaveLength(0);
   });
 });

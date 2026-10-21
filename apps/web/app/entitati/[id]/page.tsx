@@ -17,7 +17,9 @@ import {
 } from "@/lib/marts";
 import { countryName } from "@/lib/ted";
 import { formatRon, formatRonFull, formatInt, formatExactDecimal, formatCalendarDate, cleanName } from "@/lib/format";
-import { FLAG_META, criBand } from "@/lib/flags";
+import { FLAG_META, FLAG_ORDER, criBand } from "@/lib/flags";
+import { getEntitySignalCounts } from "@/lib/signals";
+import { parseSignalState, signalUrl } from "@/lib/signals-shared";
 import { CRI_CRITERIA, riskEvidenceLine, signalPeriodLabel } from "@/lib/risk-presentation";
 import { daUrl, registryLinks } from "@/lib/elicitatie";
 import ClipButton from "@/components/ClipButton";
@@ -111,7 +113,7 @@ export default async function EntityPage({
   const base = { rol: rolParam, sort: sp["sort"], an: sp["an"], sem: sp["sem"] };
 
   const cui = flagRows.find((r) => r.cui)?.cui ?? null;
-  const [partners, monthly, flagEvidence, reps, txCounts, flagRowCounts, aboveCap] =
+  const [partners, monthly, flagEvidence, reps, txCounts, flagRowCounts, aboveCap, signalCounts] =
     await Promise.all([
       getEntityPartners(id, role, 12),
       getEntityMonthly(id, role),
@@ -120,6 +122,7 @@ export default async function EntityPage({
       getEntityTxCounts(id, role),
       getEntityFlagRowCounts(id, role),
       getEntityContractsAboveCap(id, role),
+      getEntitySignalCounts(id, role),
     ]);
 
   const hasRiskScore = flagRowsRaw.some((r) => r.role === role);
@@ -127,6 +130,14 @@ export default async function EntityPage({
   const band = criBand(row.cri);
   const county = flagRows.find((r) => r.county)?.county ?? null;
   const isAuth = role === "authority";
+  // Every signal type in /semnale for this entity and role, CRI or not (audit F24):
+  // the CRI section alone hid procedure, MF and ONRC signals from the profile.
+  const signalTypes = [...FLAG_ORDER, ...Object.keys(signalCounts).filter((c) => !FLAG_ORDER.includes(c))]
+    .filter((code) => (signalCounts[code] ?? 0) > 0 && FLAG_META[code]);
+  const inCri = (code: string) => (criteria as readonly string[]).includes(code);
+  const nOutsideCri = signalTypes.filter((code) => !inCri(code)).length;
+  const unmetWithOccurrences = hasRiskScore && signalTypes.some((code) => inCri(code) && !row.flags.includes(code));
+  const entitySignalsUrl = (code: string) => signalUrl(parseSignalState({ tip: code, rol: role, ent: id }));
 
   return (
     <>
@@ -187,6 +198,7 @@ export default async function EntityPage({
           <div className="l">{hasRiskScore ? `indice de risc · ${band.label.toLowerCase()}` : "Indice de risc necalculat"}</div>
           <p className="note">{hasRiskScore ? `${row.nFlags} din ${criteria.length} criterii · achiziții directe` : "Nu există un scor calculat pentru acest rol."}</p>
           {hasRiskScore && <a href="#criterii-scor" className="hint">Cum se explică scorul?</a>}
+          {nOutsideCri > 0 && <p className="note"><a href="#toate-semnalele">{nOutsideCri === 1 ? "Un tip de semnal" : `${formatInt(nOutsideCri)} tipuri de semnale`} în afara indicelui →</a></p>}
         </div>
         <div className="stat">
           <div className="n">
@@ -263,14 +275,18 @@ export default async function EntityPage({
           <Link href={`/metodologie#${code}`}>{FLAG_META[code]!.title}</Link>
         </li>)}</ul>
         <p>Scorul nu este o probabilitate de corupție.
-          Semnalele din contracte prin proceduri, bilanțuri și ONRC se consultă separat și nu intră în acest scor.
+          Semnalele din contracte prin proceduri, bilanțuri și ONRC nu intră în acest scor; sunt listate la{" "}
+          <a href="#toate-semnalele">toate semnalele</a>.
           Lipsa unui semnal nu certifică absența neregulilor. <Link href="/metodologie#indice">Formula și limitele scorului →</Link></p>
       </details>}
 
       <SectionNav
         items={[
           { id: "top", label: "Rezumat" },
-          ...(row.flags.length > 0 ? [{ id: "semnale", label: "Semnale", count: String(row.nFlags) }] : []),
+          ...(row.flags.length > 0 || signalTypes.length > 0
+            ? [{ id: row.flags.length > 0 ? "semnale" : "toate-semnalele", label: "Semnale",
+                count: `${formatInt(new Set([...row.flags, ...signalTypes]).size)} tipuri` }]
+            : []),
           { id: "parteneri", label: isAuth ? "Furnizori" : "Autorități" },
           { id: "achizitii", label: "Achiziții", count: formatInt(txCounts.nDa + txCounts.nCt) },
           ...(reps.length > 0 ? [{ id: "conducere", label: "Conducere" }] : []),
@@ -456,6 +472,54 @@ export default async function EntityPage({
           })}
         </section>
       ) : null}
+
+      {/* Every signal type for this entity, kept apart from the CRI (audit F24) */}
+      {signalTypes.length > 0 && (
+        <section className="section" id="toate-semnalele">
+          <h2>Toate semnalele</h2>
+          <p className="hint">
+            {signalTypes.length === 1 ? "Un tip de semnal apare" : `${formatInt(signalTypes.length)} tipuri de semnale apar`} în{" "}
+            <Link href="/semnale">Semnale</Link> pentru {isAuth ? "această autoritate" : "această firmă"}, ca{" "}
+            {isAuth ? "autoritate contractantă" : "furnizor"}. Doar criteriile pentru achiziții directe intră în indicele
+            de risc; semnalele din proceduri, bilanțuri și ONRC se arată separat. Aparițiile pot acoperi aceleași
+            achiziții și nu se adună. Fiecare semnal este o pistă de verificat, nu o dovadă.
+          </p>
+          <div className="ask-tablewrap"><table className="rank">
+            <thead>
+              <tr>
+                <th scope="col">Semnal</th>
+                <th scope="col">Indicele de risc</th>
+                <th scope="col" className="num">Apariții</th>
+              </tr>
+            </thead>
+            <tbody>
+              {signalTypes.map((code) => {
+                const m = FLAG_META[code]!;
+                const n = signalCounts[code] ?? 0;
+                return (
+                  <tr key={code}>
+                    <td>
+                      <Link href={entitySignalsUrl(code)}>{m.title}</Link>
+                      <div className="note">{m.short}</div>
+                    </td>
+                    <td className="county">
+                      {!inCri(code) ? "Nu intră în indice" : !hasRiskScore ? "Indice necalculat" : row.flags.includes(code) ? "Criteriu îndeplinit" : "Criteriu neîndeplinit"}
+                    </td>
+                    <td className="num">
+                      <Link href={entitySignalsUrl(code)}>{formatInt(n)}</Link>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table></div>
+          {unmetWithOccurrences && <p className="note">
+            Un criteriu al indicelui poate rămâne neîndeplinit chiar dacă există apariții: finalizarea rapidă și valorile
+            aproape de prag cer o pondere minimă din achizițiile directe ale entității.{" "}
+            <Link href="/metodologie#indice">Cum se calculează indicele →</Link>
+          </p>}
+        </section>
+      )}
 
       {/* Counterparties */}
       <section className="section" id="parteneri">

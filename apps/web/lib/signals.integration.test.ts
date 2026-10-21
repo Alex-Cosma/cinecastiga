@@ -1,9 +1,9 @@
 import {afterAll,beforeAll,describe,expect,it} from 'vitest';
 import {createDb,validateSignalLookup,type DbSql} from '@seap/db';
 import {readFile} from 'node:fs/promises';
-import {parseSignalState,readSignalOverview,readSignalPage,readSignalRiskGroup,readSignalTypeCounts,readRiskCriteriaDistribution} from './signals';
+import {parseSignalState,readSignalOverview,readSignalPage,readSignalRiskGroup,readSignalTypeCounts,readRiskCriteriaDistribution,readEntitySignalCounts} from './signals';
 const url=process.env.TEST_SIGNAL_DATABASE_URL;
-if(url && new URL(url).pathname!=='/seap_test_signals') throw Error('Dedicated seap_test_signals database required');
+if(url && !/^\/seap_test_(signals|audit_[a-z0-9_]+)$/.test(new URL(url).pathname)) throw Error('Dedicated seap_test_signals (or fresh seap_test_audit_*) database required');
 const sql=url?createDb(url).sql:null;
 const precisionMigration=await readFile(new URL('../../../packages/db/migrations/0044_signal_sort_precision.sql',import.meta.url),'utf8');
 const recordedValueMigration=await readFile(new URL('../../../packages/db/migrations/0076_signal_lookup_recorded_value.sql',import.meta.url),'utf8');
@@ -110,6 +110,23 @@ describe.skipIf(!sql)('complete signal queries on PostgreSQL',()=>{
  it('keeps the new counts-only path identical to the complete overview',async()=>{
   const state=parseSignalState({rol:'supplier',jud:'Buzau'});
   expect(await readSignalTypeCounts(sql!,state)).toEqual((await readSignalOverview(sql!,state)).counts);
+ });
+ it('counts one entity exactly as /semnale lists it, per role, including award notices it won (audit F24)',async()=>{
+  expect(await readEntitySignalCounts(sql!,'11','supplier')).toEqual({da_rapid:623,da_round:1,award_single_bid:2});
+  expect(await readEntitySignalCounts(sql!,'12','supplier')).toEqual({da_rapid:1,da_split:1,fin_public_reliance:1,award_single_bid:2});
+  expect(await readEntitySignalCounts(sql!,'1','authority')).toEqual({da_rapid:624,da_round:1,da_split:2,award_single_bid:2});
+  expect(await readEntitySignalCounts(sql!,'2','authority')).toEqual({award_single_bid:1});
+  expect(await readEntitySignalCounts(sql!,'999','supplier')).toEqual({});
+  for(const [ent,rol] of [['12','supplier'],['1','authority']] as const){
+   const counts=await readEntitySignalCounts(sql!,ent,rol);
+   expect(await readSignalTypeCounts(sql!,parseSignalState({rol,ent}))).toEqual(counts);
+   for(const [tip,n] of Object.entries(counts)) expect((await readSignalPage(sql!,parseSignalState({tip,rol,ent}))).total).toBe(n);
+  }
+  const won=await readSignalPage(sql!,parseSignalState({tip:'award_single_bid',rol:'supplier',ent:'11'}));
+  expect(won.rows.map(r=>r.id)).toEqual(['2011','2010']);
+  expect(won.rows[1]?.winners.map(w=>w.entityId)).toEqual(['11','12']);
+  const fin=await readSignalPage(sql!,parseSignalState({tip:'fin_public_reliance',ent:'12'}));
+  expect(fin).toMatchObject({total:1});expect(fin.rows[0]).toMatchObject({id:'1005',entityId:'12'});
  });
  it('matches criterion distribution to the exact CRI cohort and preserves the all view',async()=>{
   const state=parseSignalState({view:'cri'});

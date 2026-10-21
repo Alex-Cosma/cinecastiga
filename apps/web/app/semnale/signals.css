@@ -25,6 +25,7 @@
 .sg-explorer select,.sg-dialog select{background:var(--surface);border:1px solid var(--accent-line);border-radius:7px;min-height:44px;width:100%;padding:9px 30px 9px 12px;font-size:14px}
 .sg-explorer .sg-mobile-filter,.sg-mobile-scope{display:none}
 .sg-notice{font-size:12px;color:var(--muted);margin:10px 0 0}
+.sg-entity-scope{font-size:13px;color:var(--ink2);margin:10px 0 0;overflow-wrap:anywhere}.sg-entity-scope button{background:none;border:0;padding:0;font:inherit;color:var(--accent);text-decoration:underline;cursor:pointer}
 .sg-context{display:flex;justify-content:space-between;align-items:start;gap:26px;padding:22px 0 18px}
 .sg-context h2{font-size:23px;margin:0 0 8px}.sg-context p{font-size:14px;line-height:1.55;color:var(--ink2);margin:0;max-width:80ch}
 .sg-context>a{font-size:13px;white-space:nowrap}
