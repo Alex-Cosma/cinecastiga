@@ -26,7 +26,6 @@ export async function runCoverage(sql: DbSql): Promise<void> {
       with ct as (
         select count(*)::text available,
           count(*) filter (where contract_date is null)::text missing_date,
-          count(*) filter (where cpv_code is null)::text missing_cpv,
           count(*) filter (where currency is null)::text missing_currency,
           count(*) filter (where ${contractKind(q)}='amendment')::text non_additive_amendments,
           count(*) filter (where ${contractKind(q)}='review')::text unverified_contract_type,
@@ -48,6 +47,10 @@ export async function runCoverage(sql: DbSql): Promise<void> {
           where (${contractReportable(q)}) and ${contractRonValue(q)}>0 and ${contractRonValue(q)}<=1000000000
             and c.contract_date is not null and a.authority_entity_id is not null
             and ${contractHasSupplier(q)}))
+        -- CPV as the totals use it (audit F38): the parser leaves contracts.cpv_code
+        -- empty, so contract rows take the CPV of their award notice.
+        || (select jsonb_build_object('missing_notice_cpv',count(*)::text)
+            from core.contracts c left join core.awards a using(ca_notice_id) where a.cpv_code is null)
         -- Otherwise-included contracts kept out of every total by the value cap.
         || (select jsonb_build_object('above_value_cap',count(*)::text,
               'above_value_cap_value',coalesce(trim_scale(sum(${contractRonValue(q)})),0)::text,

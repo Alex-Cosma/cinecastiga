@@ -150,7 +150,7 @@ export async function validateBatch1Snapshot(q: DbSql, options: {
   const coverage = await q`
     with expected(dataset, kind, keys) as (values
       ('da', 'object', array['available','included','missing_date','missing_cpv','missing_raw','date_from','date_to']),
-      ('contracts', 'object', array['available','included','allocations','missing_date','missing_cpv','missing_currency','date_from','date_to']),
+      ('contracts', 'object', array['available','included','allocations','missing_date','missing_notice_cpv','missing_currency','date_from','date_to']),
       ('ted', 'object', array['available','results','unknown_competition','unverified','missing_date','missing_cpv','date_from','date_to']),
       ('years', 'array', array[]::text[]))
     select e.dataset, c.calculated_at::text calculated_at, jsonb_typeof(c.observation) actual_kind,

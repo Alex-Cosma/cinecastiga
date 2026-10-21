@@ -35,7 +35,10 @@ export default async function DataCoverage() {
           {o.allocations !== undefined && <div><dt>Rânduri contract–furnizor</dt><dd>{n(o.allocations)}</dd></div>}
           <div><dt>Fără dată</dt><dd>{n(o.missing_date)}</dd></div>
           {o.implausible_date !== undefined && <div><dt>Dată sursă improbabilă (înainte de 2018), fără an atribuit</dt><dd>{n(o.implausible_date)}</dd></div>}
-          <div><dt>{dataset === "contracts" ? "CPV necompletat în înregistrarea contractului" : "Fără CPV"}</dt><dd>{n(o.missing_cpv)}</dd></div>
+          {/* Contracts use the CPV of their award notice (audit F38); the contract record's own CPV field is never filled. */}
+          {dataset === "contracts"
+            ? o.missing_notice_cpv !== undefined && <div><dt>Fără CPV în anunțul de atribuire</dt><dd>{n(o.missing_notice_cpv)}</dd></div>
+            : <div><dt>Fără CPV</dt><dd>{n(o.missing_cpv)}</dd></div>}
           {o.missing_raw !== undefined && <div><dt>Fără document brut arhivat</dt><dd>{n(o.missing_raw)}</dd></div>}
           {o.missing_currency !== undefined && <div><dt>Înregistrări sursă fără monedă</dt><dd>{n(o.missing_currency)}</dd></div>}
           {o.non_additive_amendments !== undefined && <div><dt>Publicații de acte adiționale, neadăugate în totaluri</dt><dd>{n(o.non_additive_amendments)}</dd></div>}
@@ -51,7 +54,7 @@ export default async function DataCoverage() {
           {o.unknown_competition !== undefined && <div><dt>Rezultate fără număr de oferte</dt><dd>{n(o.unknown_competition)}</dd></div>}
           {o.unverified !== undefined && <div><dt>Publicații cu interpretare de reverificat</dt><dd>{n(o.unverified)}</dd></div>}
         </dl>
-        {dataset === "contracts" && <p className="note">Plafoanele nu sunt comenzi. Lipsa subsecventelor înseamnă acoperire incompletă, nu cheltuieli zero. Numărăm publicațiile sursă; categoriile de excludere se pot suprapune.</p>}
+        {dataset === "contracts" && <p className="note">Pentru căutări, totaluri și gruparea pe domenii folosim CPV-ul anunțului de atribuire. Plafoanele nu sunt comenzi. Lipsa subsecventelor înseamnă acoperire incompletă, nu cheltuieli zero. Numărăm publicațiile sursă; categoriile de excludere se pot suprapune.</p>}
         <p className="note">Inventar recalculat: {coverageDate(calculated_at)}</p>
       </article>)}
     </div>

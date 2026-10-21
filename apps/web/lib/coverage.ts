@@ -10,7 +10,10 @@ export interface Observation {
   missing_date: string;
   /** Contracts dated before the archive start: counted, given no year. */
   implausible_date?: string;
-  missing_cpv: string;
+  /** DA and TED: CPV absent from the record itself. */
+  missing_cpv?: string;
+  /** Contracts (audit F38): records whose award notice, the CPV the totals use, has none. */
+  missing_notice_cpv?: string;
   missing_raw?: string;
   missing_currency?: string;
   non_additive_amendments?: string;
