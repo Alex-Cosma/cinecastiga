@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createDb, type DbSql } from "@seap/db";
+import { createDb, onrcIdentityBirthDate, type DbSql } from "@seap/db";
 import { cleanName, onrcBirthYear } from "@/lib/format";
 import { devlog } from "@/lib/devlog";
 import { aliasQueries, queryTokens } from "@/lib/ask/entity-alias";
@@ -213,7 +213,8 @@ export async function GET(req: Request) {
       order by d.total_ron_full desc nulls last
       limit 5
     ` as unknown as Promise<{ name_display: string | null; county: string | null }[]>,
-    // ONRC administrators (solid identities only: name + birth data). ilike
+    // ONRC administrators (solid identities only: name + a birth date that may
+    // identify a person, so no placeholder or implausible one, audit F37). ilike
     // rides the trigram GIN index; needs 4+ chars to stay cheap on 3.7M rows.
     q.length >= 4
       ? (sql`
@@ -222,7 +223,7 @@ export async function GET(req: Request) {
                  max(extract(year from r.snapshot_date))::int sy,
                  max(r.birth_locality) bl, count(distinct r.cui) nf
           from reference.company_reps r
-          where r.birth_date is not null and r.person_name ilike ${like}
+          where ${onrcIdentityBirthDate(sql, "r")} and r.person_name ilike ${like}
           group by r.person_key
           order by nf desc
           limit 4

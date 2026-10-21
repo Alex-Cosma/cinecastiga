@@ -1,4 +1,4 @@
-import { cuiCorroborated, type DbSql } from "@seap/db";
+import { cuiCorroborated, onrcIdentityBirthDate, type DbSql } from "@seap/db";
 import { DA_CPV_TYPE_PATTERN } from "@seap/domain";
 import { METHODOLOGY_VERSION } from "./methodology.js";
 import { assertCeilingEras, daThresholdDateSql, daThresholdKeySql } from "./thresholds.js";
@@ -432,11 +432,13 @@ async function buildFlags(
       -- The signal says "reprezentant legal comun": a supervisory-board member
       -- (dualist SA, Legea 31/1990) supervises but does not represent the
       -- company, so that seat does not link the firms (audit F31, rf-2026.10).
+      -- A placeholder (1910-01-01, 1910-10-10) or implausible birth date is
+      -- no identity: namesakes would share the key (audit F37, rf-2026.13).
       select r.person_key, max(r.person_name) pname,
              max(extract(year from r.birth_date))::int pby, e.id sid
       from reference.company_reps r
       join core.entities e on e.cui_canonical = r.cui
-      where r.birth_date is not null
+      where ${onrcIdentityBirthDate(sql, 'r')}
         and coalesce(r.calitate, '') not ilike '%consiliul de supraveghere%'
         and ${cuiCorroborated(sql, 'e')}
       group by r.person_key, e.id

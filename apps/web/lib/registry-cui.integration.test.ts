@@ -17,7 +17,7 @@ describe.skipIf(!url)("ONRC data on the entity page only through a corroborated 
   const globals = globalThis as unknown as { __seapSql?: DbSql };
   beforeAll(async () => {
     sql = createDb(url).sql;
-    const [existing] = await sql`select count(*)::int n from reference.company_reps where person_key='fixture-f03'`;
+    const [existing] = await sql`select count(*)::int n from reference.company_reps where person_key in ('fixture-f03','fixture-f37')`;
     if (Number(existing?.n) !== 0) throw new Error("Expected no leftover F03 fixture");
     globals.__seapSql = sql;
     await sql`insert into core.entities(id,name_display,name_normalized,cui_canonical,cui_valid,country_code,is_foreign) values
@@ -31,11 +31,16 @@ describe.skipIf(!url)("ONRC data on the entity page only through a corroborated 
     await sql`insert into reference.company_reps(j_number,cui,person_name,calitate,birth_date,person_key,snapshot_date)
       select 'J-F03-'||cui,cui,'PERSOANA FICTIVA','administrator','1970-01-01','fixture-f03','2026-09-01'
       from unnest(array['1152147','13328043','99120011']) cui`;
+    // Audit F37: a namesake under the ONRC placeholder 1910-01-01 on two
+    // corroborated firms identifies nobody.
+    await sql`insert into reference.company_reps(j_number,cui,person_name,calitate,birth_date,person_key,snapshot_date)
+      select 'J-F37-'||cui,cui,'PERSOANA SUBSTITUT','lichidator judiciar','1910-01-01','fixture-f37','2026-09-01'
+      from unnest(array['13328043','99120011']) cui`;
   });
   afterAll(async () => {
     if (!sql) return;
     delete globals.__seapSql;
-    await sql`delete from reference.company_reps where person_key='fixture-f03'`;
+    await sql`delete from reference.company_reps where person_key in ('fixture-f03','fixture-f37')`;
     await sql`delete from marts.entity_profile where entity_id = any(${[foreign, stray, romanian]}::bigint[])`;
     await sql`delete from marts.cui_corroborations where entity_id = any(${[foreign, stray, romanian]}::bigint[])`;
     await sql`delete from core.entities where id = any(${[foreign, stray, romanian]}::bigint[])`;
@@ -50,8 +55,13 @@ describe.skipIf(!url)("ONRC data on the entity page only through a corroborated 
 
   it("does not count a foreign collision among the representative's other firms", async () => {
     const reps = await getCompanyReps("99120011");
-    expect(reps).toHaveLength(1);
+    expect(reps).toHaveLength(2);
     // The stray-country Romanian company counts; FRESIA's colliding number does not.
-    expect(reps[0]).toMatchObject({ personName: "PERSOANA FICTIVA", nOtherFirms: 1 });
+    expect(reps.find((r) => r.personName === "PERSOANA FICTIVA")).toMatchObject({ nOtherFirms: 1, birthYear: 1970 });
+  });
+
+  it("labels a placeholder birth date and never links firms through it (audit F37)", async () => {
+    const rep = (await getCompanyReps("99120011")).find((r) => r.personName === "PERSOANA SUBSTITUT");
+    expect(rep).toMatchObject({ birthYear: null, birthDateImplausible: true, nOtherFirms: 0, nOtherOnrcOnly: 0 });
   });
 });

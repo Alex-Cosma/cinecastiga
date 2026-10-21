@@ -133,9 +133,28 @@ describe("shared administrators (audit F32)", () => {
       { id: "1", person_name: "POPESCU ION", birth_date: "1970-01-02" },
       { id: "2", person_name: "POPESCU ION", birth_date: "1970-01-02" },
       { id: "1", person_name: "IONESCU ANA", birth_date: "1980-05-05" },
-      { id: "3", person_name: "IONESCU ANA", birth_date: "1975-02-03" },
+      { id: "3", person_name: "IONESCU ANA", birth_date: "1981-05-05" },
     ]);
     expect(sharedAdminNames(["1", "2", "3"], personsOf)).toBe("POPESCU ION");
     expect(sharedAdminNames(["1", "3"], personsOf)).toBeNull();
+  });
+
+  it("never links namesakes through a placeholder or implausible birth date (audit F37)", () => {
+    const personsOf = adminsByEntity([
+      { id: "1", person_name: "EXEMPLU MARIA", birth_date: "1910-01-01", snapshot_date: "2026-07-08" },
+      { id: "2", person_name: "EXEMPLU MARIA", birth_date: "1910-01-01", snapshot_date: "2026-07-08" },
+      { id: "1", person_name: "FICTIV ION", birth_date: "1910-10-10", snapshot_date: "2026-07-08" },
+      { id: "2", person_name: "FICTIV ION", birth_date: "1910-10-10", snapshot_date: "2026-07-08" },
+      { id: "1", person_name: "SUBSTITUT ANA", birth_date: "1900-01-01", snapshot_date: "2026-07-08" },
+      { id: "2", person_name: "SUBSTITUT ANA", birth_date: "1900-01-01", snapshot_date: "2026-07-08" },
+      { id: "1", person_name: "X Y", birth_date: "2058-01-01", snapshot_date: "2026-07-08" },
+      { id: "2", person_name: "X Y", birth_date: "2058-01-01", snapshot_date: "2026-07-08" },
+    ]);
+    expect(sharedAdminNames(["1", "2"], personsOf)).toBeNull();
+    const real = adminsByEntity([
+      { id: "1", person_name: "EXEMPLU MARIA", birth_date: "1910-01-02", snapshot_date: "2026-07-08" },
+      { id: "2", person_name: "EXEMPLU MARIA", birth_date: "1910-01-02", snapshot_date: "2026-07-08" },
+    ]);
+    expect(sharedAdminNames(["1", "2"], real)).toBe("EXEMPLU MARIA");
   });
 });

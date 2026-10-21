@@ -686,7 +686,9 @@ export async function runSpec(
   if (spec.filters.adminPersonKey || spec.filters.adminName) {
     if (!grounding.admin?.personKey) {
       return {
-        error: `Nu am găsit niciun administrator „${spec.filters.adminName ?? "?"}” în Registrul Comerțului.`,
+        error: grounding.admin?.unidentified
+          ? `Registrul Comerțului nu are pentru „${spec.filters.adminName ?? "persoana selectată"}” o dată de naștere care să o identifice (lipsește, este de completare sau este neplauzibilă). Firmele nu pot fi grupate fără riscul de a amesteca persoane cu același nume.`
+          : `Nu am găsit niciun administrator „${spec.filters.adminName ?? "?"}” în Registrul Comerțului.`,
         caveats,
       };
     }

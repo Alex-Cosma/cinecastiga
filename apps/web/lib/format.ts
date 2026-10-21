@@ -72,25 +72,31 @@ export function looksLikeCompany(name: string | null | undefined): boolean {
 /**
  * ONRC birth dates that cannot belong to a living legal representative: before
  * 1910 (aged 116+ in 2026; 0002-06-20 and 1000-01-01 occur) or under 16 in the
- * year of the ONRC snapshot, which also covers future dates (2074, 9999-01-01).
- * The 4 October repair kept these as audit cases, without invented corrections
+ * year of the ONRC snapshot, which also covers future dates (2074, 9999-01-01),
+ * and the placeholders 1910-01-01 and 1910-10-10 (audit F37). The 4 October
+ * repair kept these as audit cases, without invented corrections
  * (docs/implementation/reference-import-integrity/VALIDATION.md). The database
- * and the person key (identity) are untouched; only the displayed year is
- * withheld and labelled.
+ * is untouched; the displayed year is withheld and labelled, and such a date
+ * never links two firms (`onrcIdentityBirthDate` in @seap/db, same constants:
+ * this module stays free of server imports because client components use it).
  */
 export const ONRC_BIRTH_YEAR_MIN = 1910;
 export const ONRC_REPRESENTATIVE_MIN_AGE = 16;
+export const ONRC_PLACEHOLDER_BIRTH_DATES: readonly string[] = ["1910-01-01", "1910-10-10"];
 export const IMPLAUSIBLE_BIRTH_DATE_LABEL = "dată de naștere ONRC neplauzibilă";
 
+/** `birthDate` (YYYY-MM-DD), when known, also catches the 1910 placeholders. */
 export function onrcBirthYear(
   year: number | string | null | undefined,
   snapshotYear: number | string | null | undefined,
+  birthDate?: string | null,
 ): { birthYear: number | null; birthDateImplausible: boolean } {
   if (year == null || year === "") return { birthYear: null, birthDateImplausible: false };
   const y = Number(year);
   const ref = snapshotYear == null || snapshotYear === "" ? NaN : Number(snapshotYear);
   const max = (Number.isInteger(ref) ? ref : new Date().getUTCFullYear()) - ONRC_REPRESENTATIVE_MIN_AGE;
-  if (!Number.isInteger(y) || y < ONRC_BIRTH_YEAR_MIN || y > max)
+  if (!Number.isInteger(y) || y < ONRC_BIRTH_YEAR_MIN || y > max
+    || (birthDate != null && ONRC_PLACEHOLDER_BIRTH_DATES.includes(birthDate.trim())))
     return { birthYear: null, birthDateImplausible: true };
   return { birthYear: y, birthDateImplausible: false };
 }

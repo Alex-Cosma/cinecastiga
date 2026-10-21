@@ -158,7 +158,7 @@ export const FLAG_META: Record<string, FlagMeta> = {
     subject: "supplier",
     short: "Firme cu un reprezentant legal comun au achiziții la aceeași autoritate.",
     description:
-      "Două sau mai multe firme cu un reprezentant legal comun în datele ONRC disponibile au achiziții directe și cote din contracte înregistrate la aceeași autoritate. Identitatea reprezentantului folosește numele, data și locul nașterii. Calitatea de membru în consiliul de supraveghere nu este luată în calcul, pentru că acest consiliu nu reprezintă firma. Un CUI se leagă de ONRC doar când firma nu este indicată drept străină sau ONRC înregistrează numărul sub un nume asemănător.",
+      "Două sau mai multe firme cu un reprezentant legal comun în datele ONRC disponibile au achiziții directe și cote din contracte înregistrate la aceeași autoritate. Identitatea reprezentantului folosește numele, data și locul nașterii. O dată de naștere de completare (1910-01-01, 1910-10-10) sau neplauzibilă (înainte de 1910 ori sub 16 ani în anul instantaneului ONRC) nu identifică o persoană, deci nu leagă firmele. Calitatea de membru în consiliul de supraveghere nu este luată în calcul, pentru că acest consiliu nu reprezintă firma. Un CUI se leagă de ONRC doar când firma nu este indicată drept străină sau ONRC înregistrează numărul sub un nume asemănător.",
     rationale:
       "Legătura permite analizarea împreună a atribuirilor acestor firme. Merită verificate rolul persoanei, relația dintre firme și situația lor la data achizițiilor.",
     caveat:

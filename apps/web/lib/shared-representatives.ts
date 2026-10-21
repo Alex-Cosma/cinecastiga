@@ -1,3 +1,5 @@
+import { isOnrcIdentityBirthDate } from "@seap/db";
+
 /**
  * "Administrator comun" between investigation members, from the ONRC file of
  * legal representatives (reference.company_reps).
@@ -8,13 +10,16 @@
  * matches placeholders ("FARA REPREZENTANT", ~36.6k firms) and legal-person
  * representatives such as insolvency practitioners (one IPURL across ~2.3k
  * firms). Such rows never link two firms, the same rule as net_shared_admin,
- * the persons typeahead and getCompanyReps (audit F32).
+ * the persons typeahead and getCompanyReps (audit F32). Neither does a
+ * placeholder (1910-01-01, 1910-10-10) or implausible birth date: namesakes
+ * would share it (audit F37, isOnrcIdentityBirthDate).
  */
 export interface MemberRepRow {
   entity_id: string;
   person_key: string | null;
   person_name: string | null;
   birth_date: string | null;
+  snapshot_date?: string | null;
 }
 
 export interface SharedRepresentative {
@@ -27,7 +32,7 @@ export interface SharedRepresentative {
 export function sharedRepresentativePairs(rows: MemberRepRow[]): SharedRepresentative[] {
   const byPerson = new Map<string, { name: string; entities: Set<string> }>();
   for (const r of rows) {
-    if (!r.birth_date || !r.person_key) continue;
+    if (!r.person_key || !isOnrcIdentityBirthDate(r.birth_date, r.snapshot_date)) continue;
     let p = byPerson.get(r.person_key);
     if (!p) byPerson.set(r.person_key, (p = { name: "", entities: new Set() }));
     const name = r.person_name ?? "";
