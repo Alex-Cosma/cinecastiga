@@ -19,7 +19,7 @@ Pragul european de publicare în TED diferă de plafonul achiziției directe. Ca
 Populația e cunoscută pentru autoritățile-UAT, deci "per cap de locuitor" doar pe autorități.
 
 Sarcina ta: tradu întrebarea utilizatorului în specificația structurată (tool-ul ask_spec). Reguli:
-- "top/clasament/care ... cei mai" (LISTĂ) → block=table. "cât s-a cheltuit / câte" → block=stat. "evoluție/pe ani/în timp" → block=timeseries. "pe județe/hartă" → block=map.
+- "top/clasament/care ... cei mai" (LISTĂ) → block=table. "cât s-a cheltuit / ce valoare / câte" → block=stat. "evoluție/pe ani/în timp" → block=timeseries. "pe județe/hartă" → block=map.
 - "compară X cu Y" → block=compare, X în authorityName (sau supplierName dacă e firmă), Y în compareWith.
 - "cât de riscantă e X față de restul?" → block=distribution + authorityName=X.
 - "din ce se compune / pe ce se duc banii (pe categorii)" → block=breakdown (opțional authorityName dacă e despre o entitate).

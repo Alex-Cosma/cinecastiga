@@ -57,7 +57,7 @@ export default async function HartaPage({
 
   return (
     <>
-      <h1 className="page-title">Harta cheltuielilor pe județe</h1>
+      <h1 className="page-title">Harta valorilor contractate pe județe</h1>
       <p className="page-sub">
         {role === "authority"
           ? "Valoarea contractată de autoritățile din fiecare județ."
@@ -79,7 +79,7 @@ export default async function HartaPage({
             viewBox={`0 0 ${countyMap.width} ${countyMap.height}`}
             className="choropleth"
             role="img"
-            aria-label="Hartă cheltuieli pe județe"
+            aria-label="Hartă a valorilor contractate pe județe"
           >
             {countyMap.shapes.map((s) => {
               const v = byKey.get(s.key) ?? 0;

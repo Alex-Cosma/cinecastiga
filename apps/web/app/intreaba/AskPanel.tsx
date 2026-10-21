@@ -59,7 +59,7 @@ interface AskResponse {
 }
 export type PanelMode = "search" | "ask" | "build";
 const EXAMPLES = [
-  "Cât s-a cheltuit pe medicamente în Cluj, în 2026?",
+  "Ce valoare au achizițiile de medicamente din Cluj, în 2026?",
   "Cine furnizează cel mai mult pentru spitale?",
   "Cum s-au schimbat achizițiile de lucrări, pe ani?",
 ];
