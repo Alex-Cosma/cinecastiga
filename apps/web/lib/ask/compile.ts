@@ -162,6 +162,8 @@ export interface EngineResult {
   displaySql: string;
   caveats: string[];
   tookMs: number;
+  /** timeseries/trend: years the archive covers only in part (audit F19). */
+  partialYears?: PartialYear[];
 }
 
 export const KIND_PATTERNS: Record<AuthorityKind, string[]> = {
@@ -272,6 +274,108 @@ export async function daCoverageYears(sql: DbSql, kind: "da" | "award" = "da"): 
   if (!fresh) coverageCache.set(kind, { years, at: Date.now() });
   return years;
 }
+
+/** First and last dated record of a channel (marts.data_coverage, Bucharest calendar days). */
+export interface ChannelPeriod { from: string | null; to: string | null }
+export type CoveragePeriods = Record<"da" | "contracts", ChannelPeriod>;
+/** A year (or the selected months of it) that the archive covers only in part. */
+export interface PartialYear { year: number; note: string }
+let periodCache: { periods: CoveragePeriods | null; at: number } | undefined;
+/** Archive period per channel, or null when the inventory has not been calculated. */
+export async function coveragePeriods(sql: DbSql): Promise<CoveragePeriods | null> {
+  const fresh = snapshotCoverageConnections.has(sql);
+  if (!fresh && periodCache && Date.now() - periodCache.at < 600_000) return periodCache.periods;
+  // Additive deployment: probe first, so a missing table cannot abort a caller's transaction.
+  const [table] = (await sql`select to_regclass('marts.data_coverage') is not null ok`) as unknown as { ok: boolean }[];
+  let periods: CoveragePeriods | null = null;
+  if (table?.ok) {
+    const rows = (await sql`
+      select dataset, observation->>'date_from' date_from, observation->>'date_to' date_to
+      from marts.data_coverage where dataset in ('da', 'contracts')
+    `) as unknown as { dataset: "da" | "contracts"; date_from: string | null; date_to: string | null }[];
+    const da = rows.find((r) => r.dataset === "da"), contracts = rows.find((r) => r.dataset === "contracts");
+    if (da && contracts) periods = {
+      da: { from: da.date_from, to: da.date_to },
+      contracts: { from: contracts.date_from, to: contracts.date_to },
+    };
+  }
+  if (!fresh) periodCache = { periods, at: Date.now() };
+  return periods;
+}
+
+const PERIOD_CHANNEL: Record<"da" | "contracts", string> = { da: "achizițiile directe", contracts: "contractele" };
+const roDay = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}`;
+const pad2 = (n: number) => String(n).padStart(2, "0");
+
+/**
+ * Audit F19: years whose selected window (the calendar year, or the chosen
+ * months of the first/last selected year) begins before or ends after the
+ * archive of a channel in the dataset. 2018 direct acquisitions start on
+ * 2 April and the latest year stops at the last collected day, so their
+ * totals are not comparable with complete years.
+ */
+export function partialYears(
+  periods: CoveragePeriods,
+  dataset: "all" | "da" | "contracts",
+  years: readonly number[],
+  window: { yearFrom?: number | null; yearTo?: number | null; monthFrom?: number | null; monthTo?: number | null } = {},
+): PartialYear[] {
+  const channels = dataset === "all" ? (["da", "contracts"] as const) : ([dataset] as const);
+  const out: PartialYear[] = [];
+  for (const year of [...new Set(years)].sort((a, b) => a - b)) {
+    const m0 = window.monthFrom && year === window.yearFrom ? window.monthFrom : 1;
+    const m1 = window.monthTo && year === window.yearTo ? window.monthTo : 12;
+    const start = `${year}-${pad2(m0)}-01`;
+    const end = `${year}-${pad2(m1)}-${pad2(new Date(Date.UTC(year, m1, 0)).getUTCDate())}`;
+    // phrase kind + boundary date per channel; channels sharing both are merged
+    const parts: { channel: "da" | "contracts"; kind: "starts" | "from" | "to" | "stops"; day: string }[] = [];
+    for (const channel of channels) {
+      const from = periods[channel].from?.slice(0, 10), to = periods[channel].to?.slice(0, 10);
+      if (!from || !to) continue;
+      if (from > end) parts.push({ channel, kind: "starts", day: from });
+      else if (to < start) parts.push({ channel, kind: "stops", day: to });
+      else {
+        if (from > start) parts.push({ channel, kind: "from", day: from });
+        if (to < end) parts.push({ channel, kind: "to", day: to });
+      }
+    }
+    if (parts.length === 0) continue;
+    const phrases: string[] = [];
+    for (const kind of ["starts", "from", "to", "stops"] as const) {
+      const ofKind = parts.filter((p) => p.kind === kind);
+      if (ofKind.length === 0) continue;
+      const verb = { starts: "încep la", from: "de la", to: "până la", stops: "se opresc la" }[kind];
+      const kindPhrases = ofKind.length === channels.length && ofKind.every((p) => p.day === ofKind[0]!.day)
+        ? [kind === "starts" || kind === "stops" ? `înregistrările ${verb} ${roDay(ofKind[0]!.day)}` : `date ${verb} ${roDay(ofKind[0]!.day)}`]
+        : ofKind.map((p) => `${PERIOD_CHANNEL[p.channel]} ${verb} ${roDay(p.day)}`);
+      // A first archive year can also be thinner after its first day (contracts ramp up through 2018).
+      if (kind === "from") kindPhrases[kindPhrases.length - 1] += ", începutul arhivei";
+      phrases.push(...kindPhrases);
+    }
+    out.push({ year, note: phrases.join("; ") });
+  }
+  return out;
+}
+
+export function partialYearsCaveat(list: readonly PartialYear[], context: "series" | "comparison" | "selection"): string | null {
+  if (list.length === 0) return null;
+  const one = list.length === 1;
+  // Years sharing a note are listed once: "2016, 2017 (…)".
+  const byNote = new Map<string, number[]>();
+  for (const p of list) byNote.set(p.note, [...(byNote.get(p.note) ?? []), p.year]);
+  const named = [...byNote].map(([note, years]) => `${years.join(", ")} (${note})`).join(", ");
+  const lead = context === "selection"
+    ? `Perioada aleasă include ${one ? "un an acoperit" : "ani acoperiți"} parțial de date: ${named}.`
+    : `${one ? "An acoperit" : "Ani acoperiți"} parțial de date: ${named}.`;
+  const tail = context === "series"
+    ? ` ${one ? "Totalul lui nu acoperă" : "Totalurile lor nu acoperă"} un an întreg; nu ${one ? "îl" : "le"} compara direct cu ceilalți ani din grafic.`
+    : context === "comparison"
+      ? " Diferența dintre cei doi ani reflectă și perioada neacoperită, nu doar o schimbare reală."
+      : ` ${one ? "Valoarea lui nu acoperă" : "Valorile lor nu acoperă"} un an întreg.`;
+  return lead + tail;
+}
+export const PERIOD_UNKNOWN_CAVEAT =
+  "Nu am putut citi perioada acoperită de date; primul și ultimul an pot fi acoperiți doar parțial.";
 
 /**
  * The FROM target per dataset. For "all", a UNION ALL subquery with aligned
@@ -1531,7 +1635,31 @@ export async function runSpec(
 
   const data = await exec();
   if ("error" in data) return { error: data.error, caveats };
-  return { data, displaySql, caveats, tookMs: Date.now() - started };
+  // Audit F19: an annual total or comparison over a partly covered year says so.
+  // The markers travel beside `data`, so watched results keep their shape.
+  let partial: PartialYear[] | undefined;
+  const annual = data.block === "timeseries" || data.block === "trend";
+  const selected = !annual && !isHistoricalProfile(spec) && (w.yearFrom !== null || w.yearTo !== null);
+  if (annual || selected) {
+    const periods = await coveragePeriods(sql);
+    if (!periods) {
+      if (annual) caveats.push(PERIOD_UNKNOWN_CAVEAT);
+    } else if (data.block === "timeseries") {
+      partial = partialYears(periods, dataset, data.series.map((p) => p.year), w);
+      const note = partialYearsCaveat(partial, "series");
+      if (note) caveats.push(note);
+    } else if (data.block === "trend") {
+      partial = partialYears(periods, dataset, [data.yearA, data.yearB]);
+      const note = partialYearsCaveat(partial, "comparison");
+      if (note) caveats.push(note);
+    } else {
+      const from = w.yearFrom ?? minY, to = w.yearTo ?? maxY;
+      const years = Array.from({ length: Math.max(0, to - from + 1) }, (_, i) => from + i);
+      const note = partialYearsCaveat(partialYears(periods, dataset, years, w), "selection");
+      if (note) caveats.push(note);
+    }
+  }
+  return { data, displaySql, caveats, tookMs: Date.now() - started, ...(partial ? { partialYears: partial } : {}) };
 }
 
 export interface DrillRow {

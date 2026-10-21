@@ -381,6 +381,9 @@
 .cq-result .ask-ts .bar.peak {
   background: var(--accent);
 }
+.cq-result .ask-ts .col.partial .bar {
+  background-image: repeating-linear-gradient(135deg, transparent 0 4px, var(--paper) 4px 7px);
+}
 .cq-result .ask-ts .cl,
 .cq-result .ask-ts .cv {
   font-size: 12px;
