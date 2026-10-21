@@ -16,7 +16,7 @@ import {
   type EntityFlagRow,
 } from "@/lib/marts";
 import { entityCountryLabel } from "@/lib/ted";
-import { formatRon, formatRonFull, formatInt, formatExactDecimal, formatCalendarDate, cleanName } from "@/lib/format";
+import { formatRon, formatRonFull, formatInt, formatExactDecimal, formatCalendarDate, cleanName, birthNote } from "@/lib/format";
 import { FLAG_META, FLAG_ORDER, criBand } from "@/lib/flags";
 import { getEntitySignalCounts } from "@/lib/signals";
 import { parseSignalState, signalTypeCountLabel, signalUrl } from "@/lib/signals-shared";
@@ -315,11 +315,10 @@ export default async function EntityPage({
                 <tr key={`${r.personName}-${i}`}>
                   <td>
                     {cleanName(r.personName)}
-                    {r.birthYear && (
+                    {(r.birthYear || r.birthDateImplausible) && (
                       <span className="county">
                         {" "}
-                        n. {r.birthYear}
-                        {r.birthLocality ? `, ${cleanName(r.birthLocality)}` : ""}
+                        {birthNote({ ...r, birthLocality: r.birthLocality ? cleanName(r.birthLocality) : null })}
                       </span>
                     )}
                   </td>

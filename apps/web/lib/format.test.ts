@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatRon, formatInt, formatRonFull, formatExactDecimal, formatCalendarDate } from "./format.js";
+import { formatRon, formatInt, formatRonFull, formatExactDecimal, formatCalendarDate, onrcBirthYear, birthNote, IMPLAUSIBLE_BIRTH_DATE_LABEL } from "./format.js";
 
 it("formats normalized civil dates without reinterpreting a timezone or dropping an unknown", () => {
   expect(formatCalendarDate("2026-01-01 00:15", true)).toBe("01.01.2026, 00:15");
@@ -44,5 +44,34 @@ describe("exact source decimals", () => {
   it("leaves missing and invalid values unrepresented", () => {
     expect(formatExactDecimal(null)).toBe("—");
     expect(formatExactDecimal("NaN")).toBe("—");
+  });
+});
+
+describe("ONRC birth years (audit F37)", () => {
+  // Observed on the 2026-07-08 ONRC snapshot: 0002-06-20, 959, 1000-01-01,
+  // 1900-01-01 placeholders, 2058, 2074, 4949, 9999-01-01.
+  it("withholds and labels years before 1910, in the future or under 16 at the snapshot", () => {
+    for (const y of [2, 959, 1000, 1900, 1909, 2011, 2022, 2058, 2074, 4949, 9999])
+      expect(onrcBirthYear(y, 2026)).toEqual({ birthYear: null, birthDateImplausible: true });
+  });
+  it("keeps plausible years, including the boundaries", () => {
+    expect(onrcBirthYear(1910, 2026)).toEqual({ birthYear: 1910, birthDateImplausible: false });
+    expect(onrcBirthYear(1963, 2026)).toEqual({ birthYear: 1963, birthDateImplausible: false });
+    expect(onrcBirthYear(2010, 2026)).toEqual({ birthYear: 2010, birthDateImplausible: false });
+    expect(onrcBirthYear("1974", "2026")).toEqual({ birthYear: 1974, birthDateImplausible: false });
+  });
+  it("measures age against the snapshot year, not today", () => {
+    expect(onrcBirthYear(2010, 2025).birthDateImplausible).toBe(true);
+    expect(onrcBirthYear(2009, 2025).birthYear).toBe(2009);
+  });
+  it("does not invent a label when ONRC has no date", () => {
+    expect(onrcBirthYear(null, 2026)).toEqual({ birthYear: null, birthDateImplausible: false });
+    expect(birthNote({ birthYear: null, birthDateImplausible: false, birthLocality: "Cluj-Napoca" })).toBeNull();
+  });
+  it("renders the year or the label, never an implausible year", () => {
+    expect(birthNote({ birthYear: 1963, birthLocality: "Cluj-Napoca" })).toBe("n. 1963, Cluj-Napoca");
+    const note = birthNote({ ...onrcBirthYear(2074, 2026), birthLocality: null });
+    expect(note).toBe(IMPLAUSIBLE_BIRTH_DATE_LABEL);
+    expect(note).not.toMatch(/\d/);
   });
 });

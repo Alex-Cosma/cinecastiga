@@ -4,6 +4,7 @@ import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "rea
 import Link from "next/link";
 import { describePopulation } from "@/lib/ask/population";
 import { COUNTIES } from "@/lib/counties";
+import { IMPLAUSIBLE_BIRTH_DATE_LABEL } from "@/lib/format";
 import type { EntityHit } from "@/lib/search";
 import type { AskSpec } from "@/lib/ask/spec";
 import {
@@ -34,7 +35,7 @@ interface SuggestionData {
   cpv?: { term: string; cpvName: string | null }[];
   division?: { code: string; name: string }[];
   uat?: { siruta: number; name: string; tip: string; county: string; population: number | null }[];
-  person?: { key: string; name: string; birthYear: number | null; birthLocality: string | null; nFirms: number }[];
+  person?: { key: string; name: string; birthYear: number | null; birthDateImplausible?: boolean; birthLocality: string | null; nFirms: number }[];
 }
 interface Choice { value: string; label: string; detail?: string; }
 
@@ -451,7 +452,7 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
     </form>;
     if (isEntityPicker) return <><div className="qb-options">{entityChoices.map((item, index) => <button type="button" className="qb-option" key={`${item.id ?? item.name}-${index}`} onClick={() => pickEntity(item.name, item.id)}><span><strong>{item.name}</strong><small>{item.detail}{item.id ? ` · ID ${item.id}` : ""}</small></span><Glyph name="arrow" /></button>)}{!loading && !entityChoices.length && <p className="qb-empty">{search.trim().length < 2 ? "Scrie cel puțin două litere pentru a căuta." : "Nicio potrivire. Încearcă un nume mai scurt sau codul fiscal."}</p>}{search.trim().length >= 2 && <button type="button" className="qb-text-choice" onClick={() => pickEntity(search.trim())}>Caută numele exact „{search.trim()}”<small>Vei vedea identitatea găsită și eventualele ambiguități lângă răspuns.</small></button>}</div></>;
     if (field === "uat") return <div className="qb-options">{(remote.uat ?? []).map((item) => <button key={item.siruta} type="button" className="qb-option" onClick={() => { const next = cloneQuestion(draft); next.filters.uatSiruta = item.siruta; next.filters.uatName = `${item.name} (${item.county})`; if (item.county) next.filters.county = item.county; replaceDraft(next); closePicker(); }}><span><strong>{item.name}</strong><small>{item.tip} · {item.county}{item.population ? ` · ${item.population.toLocaleString("ro-RO")} locuitori (RPL 2021)` : ""}</small></span><Glyph name="arrow" /></button>)}{!loading && !(remote.uat ?? []).length && <p className="qb-empty">{search.length < 2 ? "Scrie numele localității." : "Nicio localitate găsită. Încearcă și județul."}</p>}</div>;
-    if (field === "admin") return <div className="qb-options">{(remote.person ?? []).map((person) => <button type="button" className="qb-option" key={person.key} onClick={() => { const next = cloneQuestion(draft); next.filters.adminPersonKey = person.key; next.filters.adminName = `${person.name}${person.birthYear ? ` (n. ${person.birthYear}${person.birthLocality ? `, ${person.birthLocality}` : ""})` : ""}`; replaceDraft(next); closePicker(); }}><span><strong>{person.name}</strong><small>{[person.birthYear ? `n. ${person.birthYear}` : null, person.birthLocality, `${person.nFirms} firme`].filter(Boolean).join(" · ")}</small></span><Glyph name="arrow" /></button>)}{!loading && !(remote.person ?? []).length && <p className="qb-empty">{search.length < 2 ? "Scrie numele reprezentantului legal." : "Nicio persoană găsită. Încearcă numele complet."}</p>}</div>;
+    if (field === "admin") return <div className="qb-options">{(remote.person ?? []).map((person) => <button type="button" className="qb-option" key={person.key} onClick={() => { const next = cloneQuestion(draft); next.filters.adminPersonKey = person.key; next.filters.adminName = `${person.name}${person.birthYear ? ` (n. ${person.birthYear}${person.birthLocality ? `, ${person.birthLocality}` : ""})` : ""}`; replaceDraft(next); closePicker(); }}><span><strong>{person.name}</strong><small>{[person.birthYear ? `n. ${person.birthYear}` : person.birthDateImplausible ? IMPLAUSIBLE_BIRTH_DATE_LABEL : null, person.birthLocality, `${person.nFirms} firme`].filter(Boolean).join(" · ")}</small></span><Glyph name="arrow" /></button>)}{!loading && !(remote.person ?? []).length && <p className="qb-empty">{search.length < 2 ? "Scrie numele reprezentantului legal." : "Nicio persoană găsită. Încearcă numele complet."}</p>}</div>;
     if (field === "cpvTerm") return <div className="qb-options">{(remote.cpv ?? []).map((item) => {
       const isCode = /^(?:\d{2,8}|\d{8}-\d)$/.test(item.term);
       return <button type="button" className="qb-option" key={item.term} onClick={() => {

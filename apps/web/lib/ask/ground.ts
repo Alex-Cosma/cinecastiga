@@ -2,6 +2,7 @@ import type { DbSql } from "@seap/db";
 import type { AskFilters } from "./spec";
 import { aliasQueries, queryTokens } from "./entity-alias";
 import { readLocalAuthorityIds } from "../peer-population";
+import { onrcBirthYear } from "../format";
 
 /**
  * Grounding: turn the spec's free-text fields (cpvTerm, authorityName,
@@ -254,6 +255,7 @@ async function groundAdmin(
       select r.person_key,
              max(r.person_name) nm,
              max(extract(year from r.birth_date))::int by,
+             max(extract(year from r.snapshot_date))::int sy,
              max(r.birth_locality) bl,
              count(distinct r.cui) nf,
              max((lower(unaccent(r.person_name)) like ${"%" + folded + "%"})::int) has_sub,
@@ -269,6 +271,7 @@ async function groundAdmin(
       person_key: string;
       nm: string;
       by: number | null;
+      sy: number | null;
       bl: string | null;
       nf: string;
     }[];
@@ -277,7 +280,11 @@ async function groundAdmin(
       personKey = first.person_key;
       alternatives = cands
         .slice(1)
-        .map((c) => `${c.nm}${c.by ? ` (n. ${c.by})` : ""}`);
+        .map((c) => {
+          // implausible ONRC dates (before 1910, future, under 16) are not shown as a year
+          const { birthYear } = onrcBirthYear(c.by, c.sy);
+          return `${c.nm}${birthYear ? ` (n. ${birthYear})` : ""}`;
+        });
     }
   }
   if (!personKey)
@@ -291,6 +298,7 @@ async function groundAdmin(
     };
   const rows = (await sql`
     select max(r.person_name) nm, max(extract(year from r.birth_date))::int by,
+           max(extract(year from r.snapshot_date))::int sy,
            max(r.birth_locality) bl, count(distinct r.cui) nf,
            -- only entities that actually appear as suppliers: bare core.entities
            -- rows can be ghosts with zero transactions, which would inflate the
@@ -303,6 +311,7 @@ async function groundAdmin(
   `) as unknown as {
     nm: string | null;
     by: number | null;
+    sy: number | null;
     bl: string | null;
     nf: string;
     ids: string[] | null;
@@ -319,10 +328,11 @@ async function groundAdmin(
     };
   // ONRC birth localities can be punctuation-only junk (".") — drop those
   const loc = r.bl && /\p{L}/u.test(r.bl) ? r.bl : null;
+  const { birthYear } = onrcBirthYear(r.by, r.sy);
   return {
     query: q.name ?? r.nm,
     personKey,
-    display: `${r.nm}${r.by ? ` (n. ${r.by}${loc ? `, ${loc}` : ""})` : ""}`,
+    display: `${r.nm}${birthYear ? ` (n. ${birthYear}${loc ? `, ${loc}` : ""})` : ""}`,
     supplierIds: (r.ids ?? []).map(String).slice(0, 1000),
     nFirms: Number(r.nf ?? 0),
     alternatives,
