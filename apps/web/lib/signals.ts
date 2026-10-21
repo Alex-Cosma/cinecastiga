@@ -35,17 +35,18 @@ export function signalPopulation(sql: DbSql, state: Pick<SignalState, "role" | "
   const awardMembership = state.role === "authority"
     ? sql`f.entity_id is not null ${countyFor(sql`f.entity_id`)}`
     : sql`exists (select 1 from core.contracts c join core.contract_winners cw on cw.contract_id = c.id
-        where c.ca_notice_id = f.source_id ${countyFor(sql`cw.entity_id`)})`;
+        where c.ca_notice_id = f.source_id and cw.entity_id is distinct from f.entity_id ${countyFor(sql`cw.entity_id`)})`;
   const type = code ? sql`and f.flag_code = ${code}` : sql``;
   // One entity's occurrences in the same population, so its profile counts equal
   // /semnale?ent=. The endpoint test is exact; the OR only lets the planner use
-  // the entity/partner indexes. A supplier's award signals are the notices it won.
+  // the entity/partner indexes. A supplier's award signals are the notices it won;
+  // an authority recorded as winner of its own notice is not a supplier (audit F12).
   const entity = state.entity ?? null;
   const ownEntity = entity === null ? sql``
     : sql`and ${entityId} = ${entity} and (f.entity_id = ${entity} or f.partner_id = ${entity})`;
   const ownAward = entity === null ? sql``
     : state.role === "authority" ? sql`and f.entity_id = ${entity}`
-    : sql`and f.source_id in (select own_c.ca_notice_id from core.contract_winners own_cw
+    : sql`and f.entity_id is distinct from ${entity} and f.source_id in (select own_c.ca_notice_id from core.contract_winners own_cw
         join core.contracts own_c on own_c.id = own_cw.contract_id where own_cw.entity_id = ${entity})`;
   return sql`(
     select f.id, f.flag_code, f.subject_type, ${entityId} entity_id, ${partnerId} partner_id,
@@ -104,6 +105,7 @@ export async function readSignalPage(sql: DbSql, state: SignalState): Promise<Si
             select distinct cw.entity_id::text entity_id, we.name_display name, we.county
             from core.contracts c join core.contract_winners cw on cw.contract_id = c.id
             left join core.entities we on we.id = cw.entity_id where c.ca_notice_id = selected.source_id
+              and cw.entity_id is distinct from selected.entity_id
           ) winner
         ) else '[]'::jsonb end winners
       from (select * from ${population} population

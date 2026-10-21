@@ -19,6 +19,8 @@ export async function readSignalEvidence(sql: DbSql, id: string): Promise<Source
     membership: "reconstructed_from_current_records",
   };
   let records: DrillRow[] = [];
+  // A recorded DA supplier equal to its authority is not a supplier (audit F12):
+  // the supplier-side selections below leave it out, as the flag build does.
   const eligibleDa = sql`da.state = 'Oferta acceptata' and da.closing_value > 0 and da.closing_value <= 2000000`;
   if (flag.subject_type === "da") {
     records = await readDaEvidence(sql, sql`da.id = ${flag.subject}`);
@@ -51,7 +53,7 @@ export async function readSignalEvidence(sql: DbSql, id: string): Promise<Source
   } else if (["da_concentration", "da_dependence", "da_year_end"].includes(code)) {
     const roleWhere = flag.subject_type === "authority" ? sql`da.authority_entity_id = ${flag.subject}` : sql`da.supplier_entity_id = ${flag.subject}`;
     const period = code === "da_year_end" ? sql`and extract(year from da.finalization_date)::text = ${flag.period}` : sql``;
-    const knownParties = code === "da_year_end" ? sql`` : sql`and da.authority_entity_id is not null and da.supplier_entity_id is not null`;
+    const knownParties = code === "da_year_end" ? sql`` : sql`and da.authority_entity_id is not null and da.supplier_entity_id is not null and da.supplier_entity_id <> da.authority_entity_id`;
     records = await readDaEvidence(sql, sql`${eligibleDa} and ${roleWhere} ${period} ${knownParties}`);
   } else if (["award_concentration", "award_dependence"].includes(code)) {
     records = await readContractEvidence(sql, sql`ct.closing_value > 0 and ct.authority_id is not null and ct.supplier_id is not null
@@ -63,7 +65,7 @@ export async function readSignalEvidence(sql: DbSql, id: string): Promise<Source
     context.financials = financials;
     const years = financials.map(row => Number(row.year));
     if (years.length) records = [
-      ...await readDaEvidence(sql, sql`${eligibleDa} and da.supplier_entity_id = ${flag.subject} and extract(year from da.finalization_date)::int = any(${years}::int[])`),
+      ...await readDaEvidence(sql, sql`${eligibleDa} and da.supplier_entity_id = ${flag.subject} and da.supplier_entity_id is distinct from da.authority_entity_id and extract(year from da.finalization_date)::int = any(${years}::int[])`),
       ...await readContractEvidence(sql, sql`ct.supplier_id = ${flag.subject} and left(ct.finalization_date,4)::int = any(${years}::int[])`),
     ];
     warnings.push("Valorile contractate nu sunt plăți sau venituri încasate. Datele bilanțului sunt păstrate separat de înregistrările de achiziție.");
@@ -80,7 +82,7 @@ export async function readSignalEvidence(sql: DbSql, id: string): Promise<Source
       const ids = siblings.map(row => String(row.id));
       context.supplierIds = ids;
       if (ids.length && flag.partner) records = [
-        ...await readDaEvidence(sql, sql`${eligibleDa} and da.authority_entity_id = ${flag.partner} and da.supplier_entity_id = any(${ids}::bigint[])`),
+        ...await readDaEvidence(sql, sql`${eligibleDa} and da.authority_entity_id = ${flag.partner} and da.supplier_entity_id = any(${ids}::bigint[]) and da.supplier_entity_id <> da.authority_entity_id`),
         ...await readContractEvidence(sql, sql`ct.authority_id = ${flag.partner} and ct.supplier_id = any(${ids}::bigint[])`),
       ];
     } else warnings.push("Identitatea reprezentantului nu poate fi reconstituită fără ambiguitate. Nu am substituit un grup de firme ales doar după nume.");

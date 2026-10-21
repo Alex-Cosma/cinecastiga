@@ -12,8 +12,10 @@ export async function buildTransactionMarts(q:TransactionSql){
         (sicap_da_id, da_code, authority_id, authority_name, supplier_id, supplier_name,
          county, cpv_code, cpv_name, acquisition_type, estimated_value_ron, closing_value,
          publication_date, finalization_date, gap_minutes, da_flags, value_suspect)
+      -- A recorded supplier equal to the authority (audit F12) is not a supplier:
+      -- no supplier id, so no supplier total, partner or pattern; the source name stays.
       select da.sicap_da_id, da.da_code,
-        da.authority_entity_id, a.name_display, da.supplier_entity_id, s.name_display,
+        da.authority_entity_id, a.name_display, nullif(da.supplier_entity_id, da.authority_entity_id), s.name_display,
         a.county, da.cpv_code, cpv.name_ro, da.acquisition_type,
         da.estimated_value_ron, da.closing_value,
         to_char(da.publication_date, 'YYYY-MM-DD HH24:MI'),

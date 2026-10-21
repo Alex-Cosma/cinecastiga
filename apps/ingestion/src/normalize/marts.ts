@@ -147,9 +147,13 @@ export async function runMarts(
              acquisition_type atype, cpv_code cpv
       from marts.contract_transactions where closing_value > 0
     `;
+    // A DA whose recorded supplier is its own authority (audit F12) has no known
+    // supplier: it stays in the authority's total, like a DA without supplier,
+    // and never becomes supplier revenue, a partner or a dependency.
     await q`
       create temp table pair_spend on commit drop as
-      select da.authority_entity_id authority_id, da.supplier_entity_id supplier_id,
+      select da.authority_entity_id authority_id,
+             nullif(da.supplier_entity_id, da.authority_entity_id) supplier_id,
              'da'::text src, da.id record_id, da.closing_value ron_full,
              da.closing_value ron_split, da.finalization_date activity_date
       from core.direct_acquisitions da

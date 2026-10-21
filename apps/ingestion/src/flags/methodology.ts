@@ -12,7 +12,8 @@
 // rf-2026.11: fin_* and net_shared_admin join MF/ONRC only through a corroborated CUI (audit F03 stopgap).
 // rf-2026.12: award_no_competition/award_single_bid evidence records what the notice holds (notice_contracts, audit F14).
 // rf-2026.13: net_shared_admin and Radiografie shared administrators ignore placeholder/implausible ONRC birth dates (audit F37).
-export const METHODOLOGY_VERSION = "rf-2026.13";
+// rf-2026.14: a DA supplier equal to its own authority is not a supplier (audit F12): no da_split pair, da_concentration/da_dependence share, fin_* or net_shared_admin value, supplier CRI or DA signal partner.
+export const METHODOLOGY_VERSION = "rf-2026.14";
 
 export type FlagSubject = "da" | "award" | "authority" | "supplier" | "pair";
 

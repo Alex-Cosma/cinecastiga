@@ -8,9 +8,11 @@ const { default: CollectionHistory } = await import("./CollectionHistory");
 
 const run = (source: string, over: Partial<Coverage["collections"][number]> = {}): Coverage["collections"][number] => ({
   source, last_success: "2026-07-17 23:58:03", latest_status: "completed", latest_started: "2026-07-17 13:20:20",
-  window_from: "2020-01-01 00:00:00", window_to: "2020-12-31 23:59:59", reported: null, fetched: 494650, deviation: null, ...over,
+  completed_window_from: "2020-01-01 00:00:00", completed_window_to: "2020-12-31 23:59:59", completed_reported: null, completed_fetched: 494650, completed_deviation: null, ...over,
 });
-const collections = [run("elicitatie:das"), run("ted:can-standard", { window_from: "2018-01-01 00:00:00", window_to: "2018-01-31 23:59:59", fetched: 0, reported: 0, deviation: 0 }), run("ted:fforms", { last_success: "2026-07-20 16:57:09", latest_status: "running" })];
+// TED eForms as in production: the last started import was a January 2018 backfill with 0 records;
+// the newest completed window is June 2026.
+const collections = [run("elicitatie:das"), run("ted:can-standard", { completed_window_from: "2026-06-01 00:00:00", completed_window_to: "2026-06-30 23:59:59", completed_fetched: 1996, completed_reported: 1996, completed_deviation: 0 }), run("ted:fforms", { last_success: "2026-07-20 16:57:09", latest_status: "running" })];
 const collector: Coverage["collector"] = {
   batch: { id: "recovery-2026-09-25", endDay: "2026-09-25", status: "collecting", followLatest: false },
   streams: [
@@ -33,7 +35,9 @@ describe("public collection panel", () => {
     expect(main).toContain("TED · formulare istorice");
     expect(main).toContain("Colectarea continuă nu a colectat încă această sursă.");
     expect(main).toContain("Ultimul import reușit: <strong>20.07.2026</strong>. Ultimul import început: 17.07.2026, neîncheiat.");
-    expect(main).toContain("Fereastra ultimului import început: 01.01.2018 — 31.01.2018. Înregistrări preluate: 0");
+    // Audit F17 follow-up: the window shown is the newest a finished import covered.
+    expect(main).toContain("Cea mai nouă fereastră a unui import finalizat: 01.06.2026 — 30.06.2026. Înregistrări preluate în acest import: 1.996; raportate de sursă: 1.996. Diferență raportate − preluate: 0.");
+    expect(main).not.toContain("ultimului import început:");
     // Only the superseded SEAP import goes to the archive, with its 2020 window decoded in Bucharest days.
     const archive = html.slice(main.length);
     expect(archive).toContain("Importuri anterioare pe ferestre");
@@ -49,6 +53,11 @@ describe("public collection panel", () => {
     // TED collected by the collector: its imports move to the archive; SEAP imports stay current.
     expect(outsideArchive(html)).toContain("SEAP · achiziții directe</h4><p class=\"note\">Importuri pe ferestre.");
     expect(html.slice(outsideArchive(html).length)).toContain("TED · eForms");
+  });
+  it("says so when no import of a source finished with a window", () => {
+    const html = render({ collector, collections: [run("ted:can-standard", { latest_status: "failed", last_success: null, completed_window_from: null, completed_window_to: null, completed_fetched: null, completed_reported: null })] });
+    expect(html).toContain("Niciun import finalizat cu fereastră înregistrată.");
+    expect(html).not.toContain("Cea mai nouă fereastră");
   });
   it("shows every windowed import as current when the collector never ran", () => {
     const html = render({ collector: { batch: null, streams: [] }, collections });

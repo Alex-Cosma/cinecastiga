@@ -1911,7 +1911,8 @@ export async function runRows(
   if (scope.riskBucket) selectionParts.push(sql`width_bucket(coalesce(ef.cri, 0), 0, 1.0000001, 10) = ${Math.round(scope.riskBucket.from * 10) + 1}`);
   const profileSelection = selectionParts.reduce((a, b) => sql`${a} and ${b}`);
   const cohort = sql`(select ef.* from ${profileBase} ef where ${profileSelection})`;
-  const partyCore = role === "authority" ? sql`da.authority_entity_id` : sql`da.supplier_entity_id`;
+  // Same supplier as marts.da_transactions: one equal to the authority is not a supplier (audit F12).
+  const partyCore = role === "authority" ? sql`da.authority_entity_id` : sql`nullif(da.supplier_entity_id, da.authority_entity_id)`;
   const daTx = sql`(
     select sicap_da_id as ref_id, da_code, finalization_date, authority_id, authority_name,
            supplier_id, supplier_name, county, cpv_code, cpv_name, closing_value,
@@ -1931,7 +1932,7 @@ export async function runRows(
   const txt = profile ? sql`(
     select da.sicap_da_id as ref_id, da.da_code, to_char(da.finalization_date at time zone 'Europe/Bucharest', 'YYYY-MM-DD HH24:MI') as finalization_date,
            da.authority_entity_id as authority_id, a.name_display as authority_name,
-           da.supplier_entity_id as supplier_id, su.name_display as supplier_name,
+           nullif(da.supplier_entity_id, da.authority_entity_id) as supplier_id, su.name_display as supplier_name,
            a.county, da.cpv_code, cpv.name_ro as cpv_name, da.closing_value,
            'da'::text as src, null::bigint as ca_notice_id, null::text as ted_pubnum,
            da.estimated_value_ron, false as value_suspect, da.state,

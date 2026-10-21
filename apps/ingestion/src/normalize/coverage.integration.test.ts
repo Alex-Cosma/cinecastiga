@@ -37,7 +37,8 @@ async function fixture(run: (q: DbSql) => Promise<void>) {
       await transaction.unsafe(`create schema ${prefix}_marts`);
       const q = isolatedSql(transaction as unknown as DbSql, prefix);
       await q`create table core.direct_acquisitions (
-        state text, closing_value numeric, finalization_date timestamptz, cpv_code text, raw_id bigint)`;
+        state text, closing_value numeric, finalization_date timestamptz, cpv_code text, raw_id bigint,
+        authority_entity_id bigint, supplier_entity_id bigint)`;
       await q`create table core.contracts (contract_date timestamptz, cpv_code text, currency text)`;
       await q`create table core.ted_notices (publication_date timestamptz, cpv_code text, normalization_version int)`;
       await q`create table core.ted_lot_results (tenders_received int)`;

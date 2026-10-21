@@ -48,6 +48,10 @@ export default async function Acquisition({ params }: { params: Promise<{ id: st
         <div><dt>Instituție</dt><dd>{d.authorityId ? <Link href={`/entitati/${d.authorityId}`}>{cleanName(d.authority)}</Link> : d.authority ?? "Instituție neprecizată"}</dd></div>
         <div><dt>Furnizor</dt><dd>{d.supplierId ? <Link href={`/entitati/${d.supplierId}`}>{cleanName(d.supplier)}</Link> : d.supplier ?? "Furnizor neprecizat"}</dd></div>
       </dl>
+      {d.supplierId && d.supplierId === d.authorityId && <p className="ad-note"><b>Furnizorul înregistrat este chiar instituția.</b> Tratăm
+        înregistrarea ca neconcordanță în datele sursă, nu ca furnizor. Valoarea rămâne în totalul instituției, ca la o achiziție fără furnizor
+        cunoscut, dar nu este adăugată la furnizori, în clasamentele partenerilor sau în dependența de furnizori. Verifică furnizorul real în SEAP.{" "}
+        <Link href="/metodologie#totaluri">Cum se formează totalurile</Link>.</p>}
     </section>
     <section className="ad-section" aria-labelledby="ad-source">
       <h2 id="ad-source">Fișiere</h2>

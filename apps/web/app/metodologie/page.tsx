@@ -88,7 +88,9 @@ export default function MetodologiePage() {
         <p>Profilurile entităților, partenerii, harta și căutările obișnuite după valoare folosesc aceeași populație.
           Pentru proceduri sunt incluse contractele cu valoare pozitivă de cel mult 1 miliard lei, dată și autoritate cunoscute,
           cel puțin un câștigător diferit de autoritatea contractantă și valoare RON verificată (declarată sau convertită din sursă).
-          Când singurul câștigător înregistrat este chiar autoritatea, furnizorul nu este cunoscut: contractul rămâne vizibil, marcat, dar nu intră în totaluri. Fără monedă ori conversie verificabilă, suma nu intră în totaluri. Inventarul declară lipsurile din înregistrările sursă înainte de celelalte filtre.</p>
+          Când singurul câștigător înregistrat este chiar autoritatea, furnizorul nu este cunoscut: contractul rămâne vizibil, marcat, dar nu intră în totaluri.
+          O achiziție directă al cărei furnizor înregistrat este chiar autoritatea rămâne în totalul autorității, ca o achiziție fără furnizor cunoscut,
+          dar nu apare ca venit de furnizor, partener sau dependență. Fără monedă ori conversie verificabilă, suma nu intră în totaluri. Inventarul declară lipsurile din înregistrările sursă înainte de celelalte filtre.</p>
         <p>Pe profilul entității, fiecare contract apare o singură dată în numărul de contracte distincte. Căutările și lista surselor numără rânduri contract–furnizor:
           câte unul pentru fiecare câștigător. În lipsa cotelor reale, valoarea unui consorțiu este împărțită egal între membri.
           Cotele însumate refac valoarea contractului; nu dovedesc venitul încasat de fiecare firmă.</p>
@@ -158,8 +160,8 @@ export default function MetodologiePage() {
             <h3>Dependență reciprocă</h3>
           </div>
           <p>
-            Pentru fiecare furnizor cu cel puțin 0,1% din contractele autorității (sau 500 k lei): ponderea lui în cheltuiala
-            autorității, ponderea autorității în tot ce a câștigat el pe SEAP și raportul dintre <strong>valoarea contractată</strong> în
+            Pentru fiecare furnizor cu cel puțin 0,1% din contractele autorității (sau 500 k lei): ponderea lui în valoarea
+            contractată de autoritate, ponderea autorității în tot ce a câștigat el pe SEAP și raportul dintre <strong>valoarea contractată</strong> în
             ultimii patru ani cu bilanț și <strong>cifra de afaceri</strong> din anii acoperiți de acele contracte. Un contract
             sau o comandă identificată acoperă anul semnării; plafoanele acordurilor-cadru sunt excluse. Un raport peste 1 poate însemna încasări viitoare sau lucrări
             făcute de altcineva; e un semnal, nu o dovadă.
