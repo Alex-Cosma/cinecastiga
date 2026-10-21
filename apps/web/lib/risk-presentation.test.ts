@@ -140,3 +140,24 @@ describe("supplier dependence on a single public client", () => {
     expect(caveat).toContain("chiar pista pe care o arată semnalul, nu o dovadă de neregulă");
   });
 });
+
+describe("common representative role (audit F31)", () => {
+  const evidence = { person: "POPESCU ION", n_firms: 2, combined: 300000, authority: "Primăria X" };
+  const base = "POPESCU ION apare ca reprezentant legal pentru 2 firme cu 300.000 lei în achiziții înregistrate la Primăria X.";
+  it("shows the person's ONRC role at the signal's firm", () => {
+    expect(riskEvidenceLine("net_shared_admin", { ...evidence, roles: ["administrator"] }))
+      .toBe(`${base} Calitatea în ONRC la această firmă: administrator.`);
+    expect(riskEvidenceLine("net_shared_admin", { ...evidence, roles: ["administrator", "reprezentant al persoanei juridice"] }))
+      .toBe(`${base} Calitățile în ONRC la această firmă: administrator; reprezentant al persoanei juridice.`);
+  });
+  it("says when ONRC records no role, and leaves older signals unchanged", () => {
+    expect(riskEvidenceLine("net_shared_admin", { ...evidence, roles: [] }))
+      .toBe(`${base} Calitatea în ONRC la această firmă nu este precizată.`);
+    expect(riskEvidenceLine("net_shared_admin", evidence)).toBe(base);
+  });
+  it("states the excluded roles in the methodology", () => {
+    const description = FLAG_META.net_shared_admin!.description;
+    expect(description).toContain("consiliul de supraveghere");
+    expect(description).toContain("insolvență sau lichidare (administrator judiciar sau special, administrator concordatar, lichidator)");
+  });
+});

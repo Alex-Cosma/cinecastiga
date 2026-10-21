@@ -14,7 +14,8 @@
 // rf-2026.13: net_shared_admin and Radiografie shared administrators ignore placeholder/implausible ONRC birth dates (audit F37).
 // rf-2026.14: a DA supplier equal to its own authority is not a supplier (audit F12): no da_split pair, da_concentration/da_dependence share, fin_* or net_shared_admin value, supplier CRI or DA signal partner.
 // rf-2026.15: award_no_competition/award_single_bid count once per award notice (same authority and notice number, across SEAP versions) and take the year of its first contract.
-export const METHODOLOGY_VERSION = "rf-2026.15";
+// rf-2026.16: net_shared_admin ignores ONRC insolvency/liquidation roles (administrator provizoriu stays) and records the person's role(s) at each firm (audit F31).
+export const METHODOLOGY_VERSION = "rf-2026.16";
 
 export type FlagSubject = "da" | "award" | "authority" | "supplier" | "pair";
 
@@ -166,7 +167,7 @@ export const FLAG_DEFS: FlagDef[] = [
     title: "Reprezentant comun, aceeași autoritate",
     subject: "supplier",
     description:
-      "Două sau mai multe firme cu un reprezentant legal comun în datele ONRC disponibile au achiziții directe și cote din contracte înregistrate la aceeași autoritate. Identitatea reprezentantului folosește numele, data și locul nașterii. O dată de naștere de completare (1910-01-01, 1910-10-10) sau neplauzibilă (înainte de 1910 ori sub 16 ani în anul instantaneului ONRC) nu identifică o persoană, deci nu leagă firmele. Calitatea de membru în consiliul de supraveghere nu este luată în calcul, pentru că acest consiliu nu reprezintă firma. Un CUI se leagă de ONRC doar când firma nu este indicată drept străină sau ONRC înregistrează numărul sub un nume asemănător.",
+      "Două sau mai multe firme cu un reprezentant legal comun în datele ONRC disponibile au achiziții directe și cote din contracte înregistrate la aceeași autoritate. Identitatea reprezentantului folosește numele, data și locul nașterii. O dată de naștere de completare (1910-01-01, 1910-10-10) sau neplauzibilă (înainte de 1910 ori sub 16 ani în anul instantaneului ONRC) nu identifică o persoană, deci nu leagă firmele. Nu se iau în calcul calitatea de membru în consiliul de supraveghere, pentru că acest consiliu nu reprezintă firma, și rolurile din procedurile de insolvență sau lichidare (administrator judiciar sau special, administrator concordatar, lichidator), atribuite în cadrul procedurii, nu în conducerea obișnuită a firmei. Dovada fiecărui semnal arată calitatea persoanei la firma respectivă. Un CUI se leagă de ONRC doar când firma nu este indicată drept străină sau ONRC înregistrează numărul sub un nume asemănător.",
     rationale:
       "Legătura permite analizarea împreună a atribuirilor acestor firme. Merită verificate rolul persoanei, relația dintre firme și situația lor la data achizițiilor.",
     caveat:

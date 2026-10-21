@@ -452,14 +452,27 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
         await q`update core.entities set cui_canonical=id::text, cui_valid=true where id in (10,11,12)`;
         await q`insert into reference.company_financials (cui,year,employees,net_turnover)
           values ('10',2025,1,1000),('11',2025,1,1000),('12',2025,1,1000)`;
-        await q`insert into reference.company_reps (cui,person_key,person_name,birth_date)
-          values ('10','fixture-person','Shared representative','1980-01-01'),
-            ('11','fixture-person','Shared representative','1980-01-01')`;
+        await q`insert into reference.company_reps (cui,person_key,person_name,calitate,birth_date)
+          values ('10','fixture-person','Shared representative','administrator','1980-01-01'),
+            ('11','fixture-person','Shared representative',null,'1980-01-01')`;
         // Audit F31: a supervisory-board seat is not legal representation, so a
-        // board member shared by firms 10 and 12 must not link them.
+        // board member shared by firms 10 and 12 must not link them. Neither do
+        // insolvency or liquidation roles (rf-2026.16): administrator special
+        // at 12 (administrator at 10), lichidator at 11 and 12, administrator
+        // judiciar provizoriu at 10 and administrator concordatar at 11. An
+        // administrator provizoriu (interim board seat, OUG 109/2011) still links.
         await q`insert into reference.company_reps (cui,person_key,person_name,calitate,birth_date)
           values ('10','fixture-board','Shared board member','membru în consiliul de supraveghere','1976-01-01'),
-            ('12','fixture-board','Shared board member','membru în consiliul de supraveghere','1976-01-01')`;
+            ('12','fixture-board','Shared board member','membru în consiliul de supraveghere','1976-01-01'),
+            ('10','fixture-person','Shared representative','administrator special','1980-01-01'),
+            ('10','fixture-special','Insolvency administrator','administrator','1970-01-01'),
+            ('12','fixture-special','Insolvency administrator','administrator special','1970-01-01'),
+            ('11','fixture-liquidator','Liquidator','lichidator judiciar','1965-01-01'),
+            ('12','fixture-liquidator','Liquidator','lichidator','1965-01-01'),
+            ('10','fixture-judicial','Judicial administrator','administrator judiciar provizoriu','1968-01-01'),
+            ('11','fixture-judicial','Judicial administrator','ADMINISTRATOR CONCORDATAR','1968-01-01'),
+            ('11','fixture-interim','Interim board member','administrator provizoriu','1972-01-01'),
+            ('12','fixture-interim','Interim board member','administrator provizoriu','1972-01-01')`;
         // Audit F37: namesakes under an ONRC placeholder or implausible birth
         // date share a person_key, which identifies nobody: no link 11–12.
         await q`insert into reference.company_reps (cui,person_key,person_name,calitate,birth_date)
@@ -491,7 +504,14 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
         expect(evidence("net_shared_admin","10")).toMatchObject({ combined: 221.66, n_firms: 2 });
         expect(flags.filter(r => r["flag_code"] === "net_shared_admin")
           .map(r => [r["subject"], (r["evidence"] as Record<string, unknown>)["person"]]).sort())
-          .toEqual([["10", "Shared representative"], ["11", "Shared representative"]]);
+          .toEqual([["10", "Shared representative"], ["11", "Interim board member"], ["11", "Shared representative"],
+            ["12", "Interim board member"]]);
+        // The evidence records every ONRC role the person holds at each firm.
+        const personEvidence = (subject: string, person: string) => flags.find(r => r["flag_code"] === "net_shared_admin"
+          && r["subject"] === subject && (r["evidence"] as Record<string, unknown>)["person"] === person)?.["evidence"];
+        expect(personEvidence("10", "Shared representative")).toMatchObject({ roles: ["administrator", "administrator special"] });
+        expect(personEvidence("11", "Shared representative")).toMatchObject({ roles: [] });
+        expect(personEvidence("12", "Interim board member")).toMatchObject({ roles: ["administrator provizoriu"] });
 
         // A deliberately failing late rule proves TRUNCATE + earlier inserts roll back together.
         const [beforeFailure] = await q`select jsonb_agg(to_jsonb(f) order by flag_code,subject_id,partner_id) data from core.flags f`;
