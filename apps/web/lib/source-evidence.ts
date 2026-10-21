@@ -33,7 +33,9 @@ export function sourceEvidence(input: Omit<SourceEvidence, "sourceCount" | "tota
 export async function readDaEvidence(sql: DbSql, where: ReturnType<DbSql>): Promise<SourceRecord[]> {
   const rows = await sql`select da.da_code "daCode", (da.finalization_date at time zone 'Europe/Bucharest')::date::text date,
       da.authority_entity_id::text "authorityId", a.name_display authority, a.county,
-      da.supplier_entity_id::text "supplierId", s.name_display supplier,
+      -- A recorded supplier equal to the authority is not a supplier (audit F12), as in
+      -- marts.da_transactions: no supplier entity or link, the source name stays.
+      nullif(da.supplier_entity_id, da.authority_entity_id)::text "supplierId", s.name_display supplier,
       da.cpv_code "cpvCode", cpv.name_ro "cpvName", coalesce(da.closing_value, 0)::text "valueExact",
       da.closing_value::text "originalValueExact",
       'da'::text src, da.sicap_da_id::text "refId", null::text "caNoticeId", null::text "tedPubnum",
