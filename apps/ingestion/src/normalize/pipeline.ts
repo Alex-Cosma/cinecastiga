@@ -15,6 +15,7 @@ import {
 import { PARSERS } from "./parsers.js";
 import { applyReviewedEntityNames } from "./reviewed-entity-names.js";
 import { applyNutsCounties } from "./nuts-county.js";
+import { applyRegistryCounties } from "./registry-county.js";
 import { applyDaSupplierVatIdentities } from "./da-supplier-vat.js";
 import { reopenFixedQuarantine } from "./quarantine-reopen.js";
 import { clearCopiedAwardEstimates } from "./award-estimate.js";
@@ -54,6 +55,10 @@ export interface NormalizeReport {
   reviewedNames: number;
   /** Romanian entities given a county from their NUTS-3 code now (0 once applied). */
   nutsCounties: number;
+  /** Suppliers given the county of their ONRC registered office now (0 once applied). */
+  onrcCounties: number;
+  /** Authorities given the county of a strict UAT link now (0 once applied). */
+  authorityUatCounties: number;
   /** Key-less DA supplier fragments redirected to their VAT-number entity now (0 once applied). */
   daSupplierVat: number;
   /** Award "estimates" that were a copy of the awarded value, emptied now (0 once applied). */
@@ -202,6 +207,10 @@ export async function runNormalize(
   // Same placement: the marts and search copy core.entities.county (audit F13).
   const nutsCounties = opts.only ? [] : await sql.begin((q) => applyNutsCounties(q));
   if (nutsCounties.length) log(`county filled from NUTS-3 code: ${nutsCounties.length} entities`);
+  // Then the ONRC registered office (suppliers) and strict UAT links (authorities); owner decision F13.
+  const registryCounties = opts.only ? { onrc: [], authorityUat: [] } : await sql.begin((q) => applyRegistryCounties(q));
+  if (registryCounties.onrc.length) log(`county filled from the ONRC registered office: ${registryCounties.onrc.length} suppliers`);
+  if (registryCounties.authorityUat.length) log(`county filled from a strict UAT link: ${registryCounties.authorityUat.length} authorities`);
   // The award list's "estimate" is a copy of the awarded value (audit F22).
   const awardEstimates = opts.only ? 0 : await sql.begin((q) => clearCopiedAwardEstimates(q));
   if (awardEstimates) log(`award estimates copied from the awarded value cleared: ${awardEstimates}`);
@@ -212,6 +221,8 @@ export async function runNormalize(
     quarantined: totalQuarantined,
     reviewedNames: reviewedNames.length,
     nutsCounties: nutsCounties.length,
+    onrcCounties: registryCounties.onrc.length,
+    authorityUatCounties: registryCounties.authorityUat.length,
     daSupplierVat: daSupplierVat.length,
     awardEstimates,
   };
