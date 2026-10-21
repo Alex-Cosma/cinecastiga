@@ -12,6 +12,7 @@ if (url && !/^seap_test_[a-z0-9_]+$/i.test(new URL(url).pathname.slice(1))) thro
 const authority = "991090001", supplier = "991090002", partner = "991090003";
 const contract = (n: number) => String(991091000 + n);
 const evidence = { version: "1" };
+const fixtureCpv = "99909901-0";
 
 describe.skipIf(!url)("contracts above the value cap (isolated PostgreSQL)", () => {
   let sql: DbSql;
@@ -22,8 +23,10 @@ describe.skipIf(!url)("contracts above the value cap (isolated PostgreSQL)", () 
     await sql`insert into core.entities(id,name_display,name_normalized,cui_valid,country_code) values
       (${authority},'Compania de drumuri','compania de drumuri',false,'RO'),
       (${supplier},'Constructor','constructor',false,'RO'),(${partner},'Asociat','asociat',false,'RO')`;
-    await sql`insert into core.awards(raw_id,ca_notice_id,notice_no,authority_entity_id) values
-      (1,991092001,'CAN1',${authority}),(2,991092002,'CAN2',null)`;
+    await sql`insert into core.cpv_codes(code,name_ro,revision,division) values (${fixtureCpv},'Cod CPV de test','fixture','99')`;
+    // Only the first award notice carries a CPV; contract records never do (audit F38).
+    await sql`insert into core.awards(raw_id,ca_notice_id,notice_no,authority_entity_id,cpv_code) values
+      (1,991092001,'CAN1',${authority},${fixtureCpv}),(2,991092002,'CAN2',null,null)`;
     const rows: [number, number, string | null, string | null, string, string][] = [
       // n, award, value, currency, title, date
       [1, 991092001, "1500000000.50", "RON", "Proiectare și execuție autostradă secțiunea 1", "2024-05-01"],
@@ -65,6 +68,7 @@ describe.skipIf(!url)("contracts above the value cap (isolated PostgreSQL)", () 
     await sql`delete from marts.contract_identity_candidates where id='f09-fixture'`;
     await sql`delete from core.contracts where id between ${contract(1)} and ${contract(11)}`;
     await sql`delete from core.awards where ca_notice_id in (991092001,991092002)`;
+    await sql`delete from core.cpv_codes where code=${fixtureCpv}`;
     await sql`delete from core.entities where id in (${authority},${supplier},${partner})`;
     await sql`delete from marts.data_coverage where dataset in ('da','contracts','ted','years')`;
     await sql.end();
@@ -81,5 +85,16 @@ describe.skipIf(!url)("contracts above the value cap (isolated PostgreSQL)", () 
     await runCoverage(sql);
     const [row] = await sql`select observation from marts.data_coverage where dataset='contracts'`;
     expect(row?.observation).toMatchObject({ above_value_cap: "3", above_value_cap_value: "4200000000.5", value_cap: "1000000000" });
+  });
+
+  // Regression (audit F38): the inventory counted contracts.cpv_code, which the
+  // parser never fills, so /metodologie showed CPV missing for every contract.
+  // Totals use the award notice CPV; only contract 10 (award 991092002) lacks it.
+  it("counts missing CPV on the award notice the totals use, not on the contract record", async () => {
+    await runCoverage(sql);
+    const [row] = await sql`select observation from marts.data_coverage where dataset='contracts'`;
+    const observation = row?.observation as Record<string, string>;
+    expect(observation).toMatchObject({ available: "11", missing_notice_cpv: "1" });
+    expect(observation).not.toHaveProperty("missing_cpv");
   });
 });
