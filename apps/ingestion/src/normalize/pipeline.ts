@@ -18,6 +18,7 @@ import { applyNutsCounties } from "./nuts-county.js";
 import { applyRegistryCounties } from "./registry-county.js";
 import { applyDaSupplierVatIdentities } from "./da-supplier-vat.js";
 import { applyForeignCountrySpellings } from "./foreign-country-spelling.js";
+import { applyReviewedSupplierMerges } from "./reviewed-supplier-merges.js";
 import { applyRegistryRomanianCountries } from "./registry-country.js";
 import { reopenFixedQuarantine } from "./quarantine-reopen.js";
 import { clearCopiedAwardEstimates } from "./award-estimate.js";
@@ -65,6 +66,8 @@ export interface NormalizeReport {
   daSupplierVat: number;
   /** Foreign entities redirected to the same firm under another spelling of its country code now (0 once applied). */
   foreignCountrySpelling: number;
+  /** Key-less Romanian supplier profiles redirected now to the valid-CUI firm a reviewed list names (0 once applied). */
+  reviewedSupplierMerges: number;
   /** Valid-CUI firms stored with a foreign country that ONRC corroborates, set to RO now (0 once applied). */
   registryCountries: number;
   /** Award "estimates" that were a copy of the awarded value, emptied now (0 once applied). */
@@ -210,6 +213,10 @@ export async function runNormalize(
   const countrySpellings = opts.only ? { redirected: [], skipped: [] } : await sql.begin((q) => applyForeignCountrySpellings(q));
   if (countrySpellings.redirected.length) log(`foreign entities redirected across country-code spellings: ${countrySpellings.redirected.length}`);
   for (const s of countrySpellings.skipped) log(`foreign entities with one id under several country-code spellings left for review (${s.reason}): ${s.ids.join(", ")}`);
+  // Same placement: the reviewed key-less duplicates of valid-CUI firms (audit F28).
+  const supplierMerges = opts.only ? { redirected: [], skipped: [] } : await sql.begin((q) => applyReviewedSupplierMerges(q));
+  if (supplierMerges.redirected.length) log(`reviewed key-less supplier profiles redirected to their valid-CUI firm: ${supplierMerges.redirected.join(", ")}`);
+  for (const s of supplierMerges.skipped) log(`reviewed supplier merge ${s.sourceId} -> ${s.targetId} not applied (${s.reason})`);
   // Before the county steps, which fill only Romanian entities: a valid CUI
   // that ONRC registers under the firm's name makes it Romanian (audit F26).
   const registryCountries = opts.only ? [] : await sql.begin((q) => applyRegistryRomanianCountries(q));
@@ -239,6 +246,7 @@ export async function runNormalize(
     authorityUatCounties: registryCounties.authorityUat.length,
     daSupplierVat: daSupplierVat.length,
     foreignCountrySpelling: countrySpellings.redirected.length,
+    reviewedSupplierMerges: supplierMerges.redirected.length,
     registryCountries: registryCountries.length,
     awardEstimates,
   };
