@@ -7,9 +7,18 @@ import {redactPayload} from '../scrape/redact.js';
 import type {ArchivableDocument} from '../scrape/archive.js';
 import {isDeepStrictEqual} from 'node:util';
 export type Stream='da'|'tenders'|'awards'|'catalogue'|'ted';
-export interface Task {id?:number;batch_id:string;key:string;partition:string;stream:Stream;kind:'da'|'list'|'detail'|'contracts'|'catalogue'|'da-detail'|'cpv-catalogue'|'ted-list'|'ted-package'|'ted-xml';params:{from?:string;to?:string;page:number;publicationNumber?:string;publicationDate?:string;tedScan?:string;ojs?:string;authorityId?:number;noticeId?:number;inventoryOnly?:boolean;singlePageTotal?:number;daStrategy?:typeof DA_STRATEGY;cpvPrefix?:string;daScan?:string;daFallback?:boolean;metadataRawId?:number;backfill?:boolean}&Partial<NoticeDetailParams>;status?:string;priority:number;error?:string}
+export interface Task {id?:number;batch_id:string;key:string;partition:string;stream:Stream;kind:'da'|'list'|'detail'|'contracts'|'catalogue'|'da-detail'|'cpv-catalogue'|'ted-list'|'ted-package'|'ted-xml';params:{from?:string;to?:string;page:number;publicationNumber?:string;publicationDate?:string;tedScan?:string;ojs?:string;authorityId?:number;noticeId?:number;inventoryOnly?:boolean;singlePageTotal?:number;daStrategy?:typeof DA_STRATEGY;cpvPrefix?:string;daScan?:string;daFallback?:boolean;metadataRawId?:number;backfill?:boolean;audit?:string}&Partial<NoticeDetailParams>;status?:string;priority:number;error?:string}
 /** Priority at or above this is background work: claimed only by enabled background lanes once ordinary work is empty. */
 export const BACKGROUND_PRIORITY=50;
+/** F27 record-level verification: contract pages fetched again and archived under their own
+ * endpoint version, which no normalizer, identity, reporting or money reader selects. */
+export const CONTRACTS_AUDIT_VERSION='award-contracts-audit:v1';
+export const CONTRACTS_AUDIT_TAG=/^[a-z0-9-]{1,40}$/;
+export function validateContractsAudit({stream,kind,params}:Pick<Task,'stream'|'kind'|'params'>){
+ if(params.audit===undefined)return;
+ if(stream!=='awards'||kind!=='contracts')throw Error('Contracts audit applies to award contract pages only');
+ if(typeof params.audit!=='string'||!CONTRACTS_AUDIT_TAG.test(params.audit))throw Error('Contracts audit tag must match ^[a-z0-9-]{1,40}$');
+}
 export interface PageResult {total:number;ids:number[];identities?:string[];items?:Record<string,unknown>[];sourceTotal?:number}
 export interface TaskPlan {status:'complete'|'split';result:PageResult|{detail:true};docs:ArchivableDocument[];children:Task[]}
 export class NoticePageOverlapError extends Error { constructor(readonly total:number){super('SEAP a repetat înregistrări între pagini.');} }
@@ -71,8 +80,9 @@ export function task(batch:string,stream:Stream,kind:Task['kind'],params:Task['p
  noticePageSize({kind,params});
  validateDaScope({stream,kind,params});
  validateTedScope({stream,kind,params});
+ validateContractsAudit({stream,kind,params});
  const identity=stream==='tenders'&&kind==='detail'?participationKey(params.noticeId!,params.noticeType):params.authorityId??params.noticeId??params.publicationNumber??params.ojs??'';
- const partition=[stream,kind,identity,params.from??'',params.to??''].join(':')+(kind==='detail'&&params.part&&params.part!=='root'?`:${params.part}:${params.lotId??''}`:'')+(params.inventoryOnly?':inventory':'')+(params.singlePageTotal===undefined?'':`:single:${params.singlePageTotal}`)+(params.daStrategy?`:cpv-day:${params.daScan}:${params.cpvPrefix??'all'}:${params.daFallback?'fallback':'national'}`:'')+(params.tedScan?`:scan:${params.tedScan}`:'');
+ const partition=[stream,kind,identity,params.from??'',params.to??''].join(':')+(kind==='detail'&&params.part&&params.part!=='root'?`:${params.part}:${params.lotId??''}`:'')+(params.inventoryOnly?':inventory':'')+(params.singlePageTotal===undefined?'':`:single:${params.singlePageTotal}`)+(params.daStrategy?`:cpv-day:${params.daScan}:${params.cpvPrefix??'all'}:${params.daFallback?'fallback':'national'}`:'')+(params.tedScan?`:scan:${params.tedScan}`:'')+(params.audit?`:audit:${params.audit}`:'');
  return {batch_id:batch,key:`${partition}:${params.page}`,partition,stream,kind,params,priority};
 }
 const document=(stream:Stream,id:number,version:string,payload:unknown):ArchivableDocument=>({source:'elicitatie',externalId:`${stream==='tenders'?'tender':stream==='awards'?'award':'da'}:${id}`,endpointVersion:version,payload});
@@ -80,6 +90,7 @@ const document=(stream:Stream,id:number,version:string,payload:unknown):Archivab
 export function planResponse(t:Task,value:unknown,previous:PageResult[],batchEnd:string):TaskPlan{
  if(t.params.inventoryOnly&&(t.kind!=='list'||!['tenders','awards'].includes(t.stream)))throw Error('Inventory mode supports notice lists only');
  noticePageSize(t);
+ validateContractsAudit(t);
  if(t.stream==='ted')return planTedTask(t,value,previous);
  if(t.kind==='cpv-catalogue')return planCpvCatalogue(t,value,previous);
  if(t.kind==='da-detail')return planDaVerification(t,value);
@@ -154,11 +165,16 @@ export function planResponse(t:Task,value:unknown,previous:PageResult[],batchEnd
   if(!more&&unique.size!==e.total)throw Error('Numărul de contracte unice nu corespunde totalului SEAP.');
   contractItems=[...unique.values()];
  }
- if(more)children.push(task(t.batch_id,t.stream,t.kind,{...t.params,page:t.params.page+1},0));
+ // An audit's next page stays in the background with its tag (own partition, own archive version).
+ const audit=contracts?t.params.audit:undefined;
+ if(more)children.push(task(t.batch_id,t.stream,t.kind,{...t.params,page:t.params.page+1},audit?Number(t.priority):0));
  const result:PageResult={total:e.total,ids:validIds,...(identities?{identities}:{})};
  if(t.kind==='contracts'){
   result.items=redactPayload(e.items,'award-contracts:v1') as Record<string,unknown>[];
-  if(!more)docs.push(document('awards',t.params.noticeId!,'award-contracts:v1',{caNoticeId:t.params.noticeId,total:e.total,items:contractItems}));
+  // The tag is part of the hashed payload: raw dedup keys on (source, external id, hash) only,
+  // so an identical ordinary archive never swallows the audit row, nor the audit a later ordinary one.
+  if(!more)docs.push(audit?document('awards',t.params.noticeId!,CONTRACTS_AUDIT_VERSION,{caNoticeId:t.params.noticeId,total:e.total,items:contractItems,audit:{tag:audit}})
+   :document('awards',t.params.noticeId!,'award-contracts:v1',{caNoticeId:t.params.noticeId,total:e.total,items:contractItems}));
  }
  return {status:'complete',result,docs,children};
 }
