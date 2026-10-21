@@ -108,32 +108,39 @@ export async function buildTransactionMarts(q:TransactionSql){
       ) x where y is not null group by y
     `;
     await q`alter table marts.agg_years add primary key (y)`;
+    // County is the entity's own (entity_profile, as the live table path
+    // shows it), never derived from the transactions: their county is the
+    // buying authority's, so max() over a supplier's rows picked whichever
+    // buyer county sorts last (audit F16: Alliance Healthcare 2128212 shown
+    // as Vrancea instead of Bucuresti).
     await q`
       create table marts.agg_top_entities as
       with base as (
-        select authority_id eid, 'authority'::text role, authority_name nm, county,
+        select authority_id eid, 'authority'::text role, authority_name nm,
                closing_value cv, (closing_value <= 2000000) plaf
         from marts.da_transactions where closing_value > 0
         union all
-        select authority_id, 'authority', authority_name, county, closing_value, true
+        select authority_id, 'authority', authority_name, closing_value, true
         from marts.contract_transactions where closing_value > 0
         union all
-        select supplier_id, 'supplier', supplier_name, county, closing_value, (closing_value <= 2000000)
+        select supplier_id, 'supplier', supplier_name, closing_value, (closing_value <= 2000000)
         from marts.da_transactions where closing_value > 0
         union all
-        select supplier_id, 'supplier', supplier_name, county, closing_value, true
+        select supplier_id, 'supplier', supplier_name, closing_value, true
         from marts.contract_transactions where closing_value > 0
       ), g as (
-        select role, eid, max(nm) nm, max(county) county,
+        select role, eid, max(nm) nm,
                coalesce(sum(cv) filter (where plaf), 0) v_plaf, count(*) filter (where plaf) n_plaf,
                coalesce(sum(cv), 0) v_all, count(*) n_all
         from base where eid is not null group by role, eid
       )
-      select role, eid, nm, county, v_plaf, n_plaf, v_all, n_all from (
+      select r.role, r.eid, r.nm, ep.county, r.v_plaf, r.n_plaf, r.v_all, r.n_all from (
         select g.*, row_number() over (partition by role order by v_plaf desc, eid) rv,
                     row_number() over (partition by role order by n_all desc, eid) rn
         from g
-      ) r where rv <= 2000 or rn <= 2000
+      ) r
+      left join marts.entity_profile ep on ep.entity_id = r.eid and ep.role = r.role
+      where r.rv <= 2000 or r.rn <= 2000
     `;
     await q`alter table marts.agg_top_entities add primary key (role, eid)`;
 

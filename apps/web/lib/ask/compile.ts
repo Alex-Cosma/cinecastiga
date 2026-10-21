@@ -718,9 +718,14 @@ export async function runSpec(
   if (spec.population) caveats.push(`Selecție precisă aplicată: ${describePopulation(spec.population)}. Datele și limitele sunt inclusive; valorile se referă la cota alocată fiecărui furnizor.`);
   if (spec.minimumRecords) caveats.push(`Păstrăm ${spec.minimumRecords.role === "authority" ? "instituțiile" : "firmele"} cu cel puțin ${spec.minimumRecords.count} înregistrări în selecția filtrată. O atribuire pe câștigător este o înregistrare; pragul nu numără contracte distincte.`);
 
-  if (spec.dim === "supplier" && (w.county || spec.block === "table")) {
+  if (spec.dim === "supplier" && w.county) {
     caveats.push(
-      "Județul din date este al autorității cumpărătoare (unde s-a cheltuit), nu sediul firmei.",
+      "Filtrul de județ se aplică județului autorității cumpărătoare (unde s-a cheltuit), nu sediului firmei.",
+    );
+  }
+  if (spec.dim === "supplier" && spec.block === "table") {
+    caveats.push(
+      "Coloana Județ arată județul firmei, nu județele autorităților care au cumpărat de la ea.",
     );
   }
   // Strict RPL 2021 denominators, never the legacy entity_profile population.
@@ -1018,20 +1023,29 @@ export async function runSpec(
               ...pagedMeta(Number(cnt?.[0]?.t ?? 0)),
             };
           }
+          // The entity's own county, as on the value/count path above: a
+          // transaction's county is the buyer's, so max() over a supplier's
+          // rows would be an arbitrary buyer county (audit F16). Joined after
+          // aggregation, once per entity.
           const sortFrag = {
-            name: s`max(${nameCol})`,
-            county: s`max(d.county)`,
-            value: s`coalesce(sum(d.closing_value), 0)`,
-            count: s`count(*)`,
-            percap: s`coalesce(sum(d.closing_value), 0)`,
+            name: s`g.nm`,
+            county: s`ep.county`,
+            value: s`g.v`,
+            count: s`g.n`,
+            percap: s`g.v`,
           }[sortKey];
           const r = (await s`
-            select ${idCol} id, max(${nameCol}) nm, max(d.county) co,
-                   coalesce(sum(d.closing_value), 0) v, count(*) n
-            from ${txtAggNames} d
-            where ${whereFrag()} and ${idCol} is not null
-            group by ${idCol}
-            order by ${sortFrag} ${tableOpts.sort ? dir : s`desc`}, ${idCol}
+            with g as (
+              select ${idCol} id, max(${nameCol}) nm,
+                     coalesce(sum(d.closing_value), 0) v, count(*) n
+              from ${txtAggNames} d
+              where ${whereFrag()} and ${idCol} is not null
+              group by ${idCol}
+            )
+            select g.id, g.nm, ep.county co, g.v, g.n
+            from g
+            left join marts.entity_profile ep on ep.entity_id = g.id and ep.role = ${dim}
+            order by ${sortFrag} ${tableOpts.sort ? dir : s`desc`}, g.id
             ${limitFrag}
           `) as unknown as { id: string; nm: string; co: string | null; v: string; n: string }[];
           return {
