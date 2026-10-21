@@ -7,7 +7,7 @@ import { FLAG_META } from "../../lib/flags";
 const labels: Record<string, string> = {
   stat: "Totalul selecției", rows: "Clasament", series: "Evoluția în timp", counties: "Distribuția pe județe",
   entities: "Entitățile comparate", distribution: "Distribuția riscului", buckets: "Intervalele de risc",
-  focal: "Entitatea urmărită", slices: "Domeniile achizițiilor", other: "Celelalte domenii",
+  focal: "Entitatea urmărită", slices: "Domeniile achizițiilor", other: "Celelalte domenii", unknown: "Fără județ cunoscut",
   points: "Entitățile din diagramă", density: "Distribuția întregii populații", cells: "Grupele statistice",
   flows: "Relațiile comerciale pe domenii", nodes: "Partenerii comerciali", card: "Profilul entității",
   fact: "Relația comercială verificată", samples: "Exemplele din rezultat", rowsTrend: "Comparația dintre ani", byStream: "Canalele de achiziție",

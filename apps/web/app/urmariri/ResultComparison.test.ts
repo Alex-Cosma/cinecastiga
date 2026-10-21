@@ -35,6 +35,13 @@ describe("human-readable monitoring result comparisons", () => {
     expect(formatResultValue(1e-7, "value")).toBe("0,0000001 lei");
     expect(formatResultValue(2026, "year")).toBe("2026");
   });
+  it("names the map records whose authority has no county in Romanian", () => {
+    const before = { block: "map", counties: [{ county: "Buzău", value: 1 }], unknown: { value: 60, count: 2 } };
+    const after = { block: "map", counties: [{ county: "Buzău", value: 1 }], unknown: { value: 40, count: 1 } };
+    expect(resultDifferences(before, after).map(row => [row.context, row.field])).toEqual([
+      ["Fără județ cunoscut", "Valoare înregistrată"], ["Fără județ cunoscut", "Număr de înregistrări"],
+    ]);
+  });
   it("compares histogram cells by coordinates and explains flag codes", () => {
     const changes = resultDifferences({ density: { cells: [[1, 2, 5], [2, 3, 8]] } }, { density: { cells: [[2, 3, 8], [1, 2, 6]] } });
     expect(changes).toHaveLength(1); expect(changes[0]?.context).toContain("Grupa valorii 1 · grupa de risc 2");

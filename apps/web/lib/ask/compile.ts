@@ -593,8 +593,9 @@ export async function runSpec(
       return { error: `Nu recunosc județul „${spec.filters.county}”.`, caveats };
     }
     county = grounding.county.canonical;
-    // Audit F13: a county comes from the source address or NUTS-3 code.
-    caveats.push("Județul este al sediului instituției, din adresa sau codul NUTS din sursă. Instituțiile fără județ cunoscut nu intră în filtru.");
+    // Audit F13: a county comes from the source address or NUTS-3 code, the ONRC
+    // registered office of a supplier, or a strict UAT link (normalize step).
+    caveats.push("Județul este al sediului instituției, din adresa sau codul NUTS din sursă, din registrul ONRC pentru firme sau din codul UAT verificat. Instituțiile fără județ cunoscut nu intră în filtru.");
   }
   let uatSiruta: number | null = null;
   let uatAuthorityIds: string[] = [];
