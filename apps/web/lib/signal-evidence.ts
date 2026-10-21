@@ -1,4 +1,4 @@
-import { cuiCorroborated, type DbSql } from "@seap/db";
+import { cuiCorroborated, onrcIdentityBirthDate, type DbSql } from "@seap/db";
 import { FLAG_META } from "./flags";
 import { numericSourceIds } from "./signal-sources";
 import { awardUrl, daUrl } from "./elicitatie";
@@ -73,7 +73,7 @@ export async function readSignalEvidence(sql: DbSql, id: string): Promise<Source
     const matches = await sql`select distinct r.person_key from reference.company_reps r
       join core.entities ent on ent.cui_canonical = r.cui
       where ent.id = ${flag.subject} and ${cuiCorroborated(sql, "ent")} and r.person_name = ${String(e.person ?? "")}
-        and extract(year from r.birth_date)::text = ${String(e.birth_year ?? "")}`;
+        and extract(year from r.birth_date)::text = ${String(e.birth_year ?? "")} and ${onrcIdentityBirthDate(sql, "r")}`;
     if (matches.length === 1 && matches[0]?.person_key) {
       const siblings = await sql`select distinct ent.id::text id from reference.company_reps r
         join core.entities ent on ent.cui_canonical = r.cui where r.person_key = ${matches[0].person_key} and ${cuiCorroborated(sql, "ent")}`;

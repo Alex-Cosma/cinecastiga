@@ -11,7 +11,8 @@
 // rf-2026.10: net_shared_admin ignores ONRC supervisory-board seats (not legal representation).
 // rf-2026.11: fin_* and net_shared_admin join MF/ONRC only through a corroborated CUI (audit F03 stopgap).
 // rf-2026.12: award_no_competition/award_single_bid evidence records what the notice holds (notice_contracts, audit F14).
-export const METHODOLOGY_VERSION = "rf-2026.12";
+// rf-2026.13: net_shared_admin and Radiografie shared administrators ignore placeholder/implausible ONRC birth dates (audit F37).
+export const METHODOLOGY_VERSION = "rf-2026.13";
 
 export type FlagSubject = "da" | "award" | "authority" | "supplier" | "pair";
 
@@ -163,7 +164,7 @@ export const FLAG_DEFS: FlagDef[] = [
     title: "Reprezentant comun, aceeași autoritate",
     subject: "supplier",
     description:
-      "Două sau mai multe firme cu un reprezentant legal comun în datele ONRC disponibile au achiziții directe și cote din contracte înregistrate la aceeași autoritate. Identitatea reprezentantului folosește numele, data și locul nașterii. Calitatea de membru în consiliul de supraveghere nu este luată în calcul, pentru că acest consiliu nu reprezintă firma. Un CUI se leagă de ONRC doar când firma nu este indicată drept străină sau ONRC înregistrează numărul sub un nume asemănător.",
+      "Două sau mai multe firme cu un reprezentant legal comun în datele ONRC disponibile au achiziții directe și cote din contracte înregistrate la aceeași autoritate. Identitatea reprezentantului folosește numele, data și locul nașterii. O dată de naștere de completare (1910-01-01, 1910-10-10) sau neplauzibilă (înainte de 1910 ori sub 16 ani în anul instantaneului ONRC) nu identifică o persoană, deci nu leagă firmele. Calitatea de membru în consiliul de supraveghere nu este luată în calcul, pentru că acest consiliu nu reprezintă firma. Un CUI se leagă de ONRC doar când firma nu este indicată drept străină sau ONRC înregistrează numărul sub un nume asemănător.",
     rationale:
       "Legătura permite analizarea împreună a atribuirilor acestor firme. Merită verificate rolul persoanei, relația dintre firme și situația lor la data achizițiilor.",
     caveat:

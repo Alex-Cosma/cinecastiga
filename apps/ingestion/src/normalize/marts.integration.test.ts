@@ -347,6 +347,15 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
         await q`insert into reference.company_reps (cui,person_key,person_name,calitate,birth_date)
           values ('10','fixture-board','Shared board member','membru în consiliul de supraveghere','1976-01-01'),
             ('12','fixture-board','Shared board member','membru în consiliul de supraveghere','1976-01-01')`;
+        // Audit F37: namesakes under an ONRC placeholder or implausible birth
+        // date share a person_key, which identifies nobody: no link 11–12.
+        await q`insert into reference.company_reps (cui,person_key,person_name,calitate,birth_date)
+          values ('11','fixture-placeholder','Placeholder namesake','lichidator judiciar','1910-01-01'),
+            ('12','fixture-placeholder','Placeholder namesake','lichidator judiciar','1910-01-01'),
+            ('11','fixture-placeholder-2','Second namesake','administrator','1910-10-10'),
+            ('12','fixture-placeholder-2','Second namesake','administrator','1910-10-10'),
+            ('11','fixture-implausible','Implausible namesake','administrator','1900-01-01'),
+            ('12','fixture-implausible','Implausible namesake','administrator','1900-01-01')`;
         await q`update core.direct_acquisitions set publication_date=finalization_date-interval '30 minutes'`;
         // Refused records outside every rule; the archive now spans all of 2025,
         // which da_year_end requires before it evaluates that year.

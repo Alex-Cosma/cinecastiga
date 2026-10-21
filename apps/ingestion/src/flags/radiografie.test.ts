@@ -138,4 +138,23 @@ describe("shared administrators (audit F32)", () => {
     expect(sharedAdminNames(["1", "2", "3"], personsOf)).toBe("POPESCU ION");
     expect(sharedAdminNames(["1", "3"], personsOf)).toBeNull();
   });
+
+  it("never links namesakes through a placeholder or implausible birth date (audit F37)", () => {
+    const personsOf = adminsByEntity([
+      { id: "1", person_name: "EXEMPLU MARIA", birth_date: "1910-01-01", snapshot_date: "2026-07-08" },
+      { id: "2", person_name: "EXEMPLU MARIA", birth_date: "1910-01-01", snapshot_date: "2026-07-08" },
+      { id: "1", person_name: "FICTIV ION", birth_date: "1910-10-10", snapshot_date: "2026-07-08" },
+      { id: "2", person_name: "FICTIV ION", birth_date: "1910-10-10", snapshot_date: "2026-07-08" },
+      { id: "1", person_name: "SUBSTITUT ANA", birth_date: "1900-01-01", snapshot_date: "2026-07-08" },
+      { id: "2", person_name: "SUBSTITUT ANA", birth_date: "1900-01-01", snapshot_date: "2026-07-08" },
+      { id: "1", person_name: "X Y", birth_date: "2058-01-01", snapshot_date: "2026-07-08" },
+      { id: "2", person_name: "X Y", birth_date: "2058-01-01", snapshot_date: "2026-07-08" },
+    ]);
+    expect(sharedAdminNames(["1", "2"], personsOf)).toBeNull();
+    const real = adminsByEntity([
+      { id: "1", person_name: "EXEMPLU MARIA", birth_date: "1910-01-02", snapshot_date: "2026-07-08" },
+      { id: "2", person_name: "EXEMPLU MARIA", birth_date: "1910-01-02", snapshot_date: "2026-07-08" },
+    ]);
+    expect(sharedAdminNames(["1", "2"], real)).toBe("EXEMPLU MARIA");
+  });
 });

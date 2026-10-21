@@ -72,6 +72,12 @@ describe("ONRC birth years (audit F37)", () => {
     expect(onrcBirthYear(2010, 2025).birthDateImplausible).toBe(true);
     expect(onrcBirthYear(2009, 2025).birthYear).toBe(2009);
   });
+  it("labels the 1910 placeholders when the full date is known (audit F37)", () => {
+    expect(onrcBirthYear(1910, 2026, "1910-01-01")).toEqual({ birthYear: null, birthDateImplausible: true });
+    expect(onrcBirthYear(1910, 2026, "1910-10-10")).toEqual({ birthYear: null, birthDateImplausible: true });
+    expect(onrcBirthYear(1910, 2026, "1910-03-15")).toEqual({ birthYear: 1910, birthDateImplausible: false });
+    expect(birthNote({ ...onrcBirthYear(1910, 2026, "1910-01-01"), birthLocality: null })).toBe(IMPLAUSIBLE_BIRTH_DATE_LABEL);
+  });
   it("does not invent a label when ONRC has no date", () => {
     expect(onrcBirthYear(null, 2026)).toEqual({ birthYear: null, birthDateImplausible: false });
     expect(birthNote({ birthYear: null, birthDateImplausible: false, birthLocality: "Cluj-Napoca" })).toBeNull();

@@ -1,4 +1,4 @@
-import { cuiCorroborated, type DbSql } from "@seap/db";
+import { cuiCorroborated, onrcIdentityBirthDate, type DbSql } from "@seap/db";
 import type { AskFilters } from "./spec";
 import { aliasQueries, queryTokens } from "./entity-alias";
 import { readLocalAuthorityIds, sectorUnit } from "../peer-population";
@@ -51,6 +51,9 @@ export interface AdminGrounding {
   /** Total firms the person represents (incl. ones not in our data). */
   nFirms: number;
   alternatives: string[];
+  /** The key exists in ONRC, but without a birth date that may identify a
+   *  person (none, a placeholder or an implausible one; audit F32/F37). */
+  unidentified?: boolean;
 }
 
 export interface Grounding {
@@ -261,7 +264,7 @@ async function groundAdmin(
              max((lower(unaccent(r.person_name)) like ${"%" + folded + "%"})::int) has_sub,
              max(similarity(lower(unaccent(r.person_name)), ${folded})) sim
       from reference.company_reps r
-      where r.birth_date is not null
+      where ${onrcIdentityBirthDate(sql, "r")}
         and (lower(unaccent(r.person_name)) like ${"%" + folded + "%"}
              or lower(unaccent(r.person_name)) % ${folded})
       group by r.person_key
@@ -309,7 +312,9 @@ async function groundAdmin(
     -- not this person's firm (audit F03)
     left join core.entities e on e.cui_canonical = r.cui and ${cuiCorroborated(sql, "e")}
     left join marts.entity_profile ep on ep.entity_id = e.id and ep.role = 'supplier'
-    where r.person_key = ${personKey}
+    -- a key without a birth date that may identify a person (none, placeholder
+    -- or implausible: audit F32/F37) merges namesakes, so it groups no firms
+    where r.person_key = ${personKey} and ${onrcIdentityBirthDate(sql, "r")}
   `) as unknown as {
     nm: string | null;
     by: number | null;
@@ -319,7 +324,10 @@ async function groundAdmin(
     ids: string[] | null;
   }[];
   const r = rows[0];
-  if (!r?.nm)
+  if (!r?.nm) {
+    const [known] = await sql`
+      select 1 from reference.company_reps where person_key = ${personKey} limit 1
+    `;
     return {
       query: q.name ?? personKey,
       personKey: null,
@@ -327,7 +335,9 @@ async function groundAdmin(
       supplierIds: [],
       nFirms: 0,
       alternatives,
+      ...(known ? { unidentified: true } : {}),
     };
+  }
   // ONRC birth localities can be punctuation-only junk (".") — drop those
   const loc = r.bl && /\p{L}/u.test(r.bl) ? r.bl : null;
   const { birthYear } = onrcBirthYear(r.by, r.sy);

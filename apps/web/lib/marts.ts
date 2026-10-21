@@ -1,5 +1,5 @@
 import { contractRonValue, contractOriginalValue, contractOriginalCurrency, contractAmountStatus, contractKind, contractReportable, contractTemporarilyExcluded, contractAboveValueCap, contractWinnerIsAuthority, CONTRACT_VALUE_CAP_RON } from "@seap/db";
-import { canonicalEntityId, corroboratedCui, cuiCorroborated } from "@seap/db";
+import { canonicalEntityId, corroboratedCui, cuiCorroborated, onrcIdentityBirthDate } from "@seap/db";
 import { tedPagination, tedCountryFilter, TED_COUNTRY_UNRESOLVED } from "./ted";
 import { onrcBirthYear } from "./format";
 import { createDb, type DbSql } from "@seap/db";
@@ -349,7 +349,8 @@ export async function getRegistryCui(entityId: string): Promise<string | null> {
  * Legal representatives of a company (ONRC monthly snapshot). Only the birth
  * year is exposed (full birth dates stay in the DB — disambiguation needs no
  * more). nOtherFirms counts only via the solid person key (name+birth data);
- * juridical-person representatives get 0. Pass only a corroborated CUI
+ * juridical-person representatives and rows with a placeholder or implausible
+ * birth date (audit F37, onrcIdentityBirthDate) get 0. Pass only a corroborated CUI
  * (getRegistryCui); other entities sharing a person count only through theirs.
  */
 export async function getCompanyReps(cui: string): Promise<CompanyRep[]> {
@@ -358,14 +359,14 @@ export async function getCompanyReps(cui: string): Promise<CompanyRep[]> {
     select distinct on (r.person_name, r.calitate)
       r.person_name, r.calitate,
       extract(year from r.birth_date)::int by, extract(year from r.snapshot_date)::int sy,
-      r.birth_locality, r.person_key,
-      case when r.birth_date is not null then
+      r.birth_date::text bd, r.birth_locality, r.person_key,
+      case when ${onrcIdentityBirthDate(sql, "r")} then
         (select count(distinct r2.cui) from reference.company_reps r2
          join core.entities e2 on e2.cui_canonical = r2.cui
          join marts.entity_profile ep on ep.entity_id = e2.id and ep.role = 'supplier'
          where r2.person_key = r.person_key and r2.cui <> ${cui} and ${cuiCorroborated(sql, "e2")})
       else 0 end n_other,
-      case when r.birth_date is not null then
+      case when ${onrcIdentityBirthDate(sql, "r")} then
         (select count(distinct r2.cui) from reference.company_reps r2
          where r2.person_key = r.person_key and r2.cui is not null
            and r2.cui <> ${cui}
@@ -381,6 +382,7 @@ export async function getCompanyReps(cui: string): Promise<CompanyRep[]> {
     calitate: string | null;
     by: number | null;
     sy: number | null;
+    bd: string | null;
     birth_locality: string | null;
     person_key: string | null;
     n_other: string | null;
@@ -389,7 +391,7 @@ export async function getCompanyReps(cui: string): Promise<CompanyRep[]> {
   return rows.map((r) => ({
     personName: r.person_name,
     calitate: r.calitate,
-    ...onrcBirthYear(r.by, r.sy),
+    ...onrcBirthYear(r.by, r.sy, r.bd),
     // ONRC birth localities can be punctuation-only junk (".")
     birthLocality: r.birth_locality && /\p{L}/u.test(r.birth_locality) ? r.birth_locality : null,
     personKey: r.person_key,

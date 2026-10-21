@@ -1,4 +1,4 @@
-import { contractRonValue, cuiCorroborated } from "@seap/db";
+import { contractRonValue, cuiCorroborated, onrcIdentityBirthDate } from "@seap/db";
 import { createDb, type DbSql } from "@seap/db";
 import { isWorkspaceId, withInvestigationAccess, type InvestigationAccess } from "./investigation-access";
 import { EVIDENCE_KINDS, type EvidenceKind, type CaptureSummary } from "./evidence-captures-shared";
@@ -504,11 +504,12 @@ async function castRelations(clipRows: ClipRow[]): Promise<{
     // shared administrators between entity members (matched via CUI), solid
     // person identity only: see shared-representatives.ts (audit F32)
     const memberReps = (await sql`
-      select e.id::text entity_id, r.person_key, r.person_name, r.birth_date::text birth_date
+      select e.id::text entity_id, r.person_key, r.person_name, r.birth_date::text birth_date,
+             r.snapshot_date::text snapshot_date
       from core.entities e
       join reference.company_reps r on r.cui = e.cui_canonical
       where e.id = any(${sql.array(entityIds)}::bigint[])
-        and r.birth_date is not null and r.person_key is not null
+        and ${onrcIdentityBirthDate(sql, "r")} and r.person_key is not null
         and ${cuiCorroborated(sql, "e")}
     `) as unknown as MemberRepRow[];
     for (const srow of sharedRepresentativePairs(memberReps)) {
@@ -521,12 +522,14 @@ async function castRelations(clipRows: ClipRow[]): Promise<{
     }
   }
   if (personKeys.length > 0 && entityIds.length > 0) {
-    // person member administers an entity member
+    // person member administers an entity member; a key without an
+    // identifying birth date merges namesakes and links nothing (audit F37)
     const adminOf = (await sql`
       select r.person_key pk, e.id eid, max(r.person_name) nm
       from reference.company_reps r
       join core.entities e on e.cui_canonical = r.cui
       where r.person_key = any(${sql.array(personKeys)}::text[])
+        and ${onrcIdentityBirthDate(sql, "r")}
         and e.id = any(${sql.array(entityIds)}::bigint[])
         and ${cuiCorroborated(sql, "e")}
       group by 1, 2

@@ -1,4 +1,4 @@
-import { contractKind, corroboratedCui, cuiCorroborated } from '@seap/db';
+import { contractKind, corroboratedCui, cuiCorroborated, isOnrcIdentityBirthDate, onrcIdentityBirthDate } from '@seap/db';
 import type { DbSql } from "@seap/db";
 import { DA_CPV_TYPE_PATTERN } from "@seap/domain";
 import { assertCeilingEras, daThresholdDateSql, daThresholdKeySql } from "./thresholds.js";
@@ -490,6 +490,7 @@ export interface AdminRepRow {
   id: string;
   person_name: string | null;
   birth_date: string | null;
+  snapshot_date?: string | null;
 }
 
 /**
@@ -498,12 +499,14 @@ export interface AdminRepRow {
  * locality, whose spelling drifts between filings. A row without a birth date
  * is never an identity (audit F32): its key would be the name alone, which
  * merges namesakes and links firms through a legal-person administrator or an
- * insolvency practitioner. Same rule as net_shared_admin and getCompanyReps.
+ * insolvency practitioner. Same for a placeholder (1910-01-01, 1910-10-10) or
+ * implausible birth date (audit F37): namesakes would share it.
+ * Same rule as net_shared_admin and getCompanyReps.
  */
 export function adminsByEntity(reps: AdminRepRow[]): Map<string, Map<string, string>> {
   const out = new Map<string, Map<string, string>>();
   for (const r of reps) {
-    if (!r.birth_date || !r.person_name) continue;
+    if (!r.person_name || !isOnrcIdentityBirthDate(r.birth_date, r.snapshot_date)) continue;
     const key = `${r.person_name.toLowerCase()}|${r.birth_date}`;
     let m = out.get(r.id);
     if (!m) out.set(r.id, (m = new Map()));
@@ -556,11 +559,12 @@ async function buildLotPatterns(sql: DbSql, log: (m: string) => void): Promise<[
   const memberIds = [...new Set(patterns.filter((p) => p.member_ids.length > 1).flatMap((p) => p.member_ids))];
   const reps = memberIds.length
     ? ((await sql`
-        select distinct e.id::text id, r.person_name, r.birth_date::text birth_date
+        select distinct e.id::text id, r.person_name, r.birth_date::text birth_date,
+               r.snapshot_date::text snapshot_date
         from core.entities e
         join reference.company_reps r on r.cui = e.cui_canonical
         where e.id = any(${sql.array(memberIds)}::bigint[])
-          and r.calitate ilike '%administrator%' and r.birth_date is not null
+          and r.calitate ilike '%administrator%' and ${onrcIdentityBirthDate(sql, 'r')}
           and ${cuiCorroborated(sql, 'e')}
       `) as unknown as AdminRepRow[])
     : [];
