@@ -6,6 +6,7 @@ const url=process.env.TEST_SIGNAL_DATABASE_URL;
 if(url && new URL(url).pathname!=='/seap_test_signals') throw Error('Dedicated seap_test_signals database required');
 const sql=url?createDb(url).sql:null;
 const precisionMigration=await readFile(new URL('../../../packages/db/migrations/0044_signal_sort_precision.sql',import.meta.url),'utf8');
+const recordedValueMigration=await readFile(new URL('../../../packages/db/migrations/0076_signal_lookup_recorded_value.sql',import.meta.url),'utf8');
 const lookupMigration=await readFile(new URL('../../../packages/db/migrations/0043_complete_signal_lookup.sql',import.meta.url),'utf8');
 const migration=await readFile(new URL('../../../packages/db/migrations/0042_signal_lookup_indexes.sql',import.meta.url),'utf8');
 afterAll(async()=>{await sql?.end()});
@@ -35,6 +36,7 @@ describe.skipIf(!sql)('complete signal queries on PostgreSQL',()=>{
   for(const statement of migration.split('--> statement-breakpoint')) await sql!.unsafe(statement);
   for(const statement of lookupMigration.split('--> statement-breakpoint')) await sql!.unsafe(statement);
   for(const statement of precisionMigration.split('--> statement-breakpoint')) await sql!.unsafe(statement);
+  for(const statement of recordedValueMigration.split('--> statement-breakpoint')) await sql!.unsafe(statement);
  });
  it('accepts identical prebuilt indexes and rejects a different index with the same name',async()=>{
   for(const statement of migration.split('--> statement-breakpoint')) await sql!.unsafe(statement);
@@ -87,6 +89,19 @@ describe.skipIf(!sql)('complete signal queries on PostgreSQL',()=>{
    throw rollback;
   })).rejects.toBe(rollback);
   expect((await sql!`select total_ron::text value from marts.signal_lookup where id=1`)[0]?.value).toBe('100');
+ });
+ it('sorts and shows an award signal by its recorded value, falling back to the notice value',async()=>{
+  // Audit F23: a 0 notice value is unknown; the signal records the cited contracts' sum instead.
+  const rollback=Error('rollback recorded value fixture');
+  await expect(sql!.begin(async tx=>{
+   await tx`update core.awards set ron_contract_value=0 where id=10`;
+   await tx`update core.flags set evidence='{"value":5000000,"value_scope":"confirmed_contracts"}' where id=2010`;
+   await tx`refresh materialized view marts.signal_lookup`;
+   expect((await validateSignalLookup(tx as unknown as DbSql)).mismatches).toBe('0');
+   const rows=await tx`select id::text, total_ron::text value from marts.signal_lookup where subject_type='award' order by total_ron desc, id`;
+   expect(rows.map(r=>[r.id,r.value])).toEqual([['2010','5000000'],['2013','4000000'],['2012','3000000'],['2011','2000000']]);
+   throw rollback;
+  })).rejects.toBe(rollback);
  });
  it('keeps CRI cohort boundaries and county filters',async()=>{
   const group=await readSignalRiskGroup(sql!,parseSignalState({criMin:'0.5',criMax:'0.6',jud:'Cluj'}));
