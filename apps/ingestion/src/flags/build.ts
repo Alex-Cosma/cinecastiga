@@ -2,7 +2,7 @@ import { cuiCorroborated, type DbSql } from "@seap/db";
 import { DA_CPV_TYPE_PATTERN } from "@seap/domain";
 import { METHODOLOGY_VERSION } from "./methodology.js";
 import { assertCeilingEras, daThresholdDateSql, daThresholdKeySql } from "./thresholds.js";
-import { confirmedSingleBidAwardsSql } from "./competition.js";
+import { confirmedSingleBidAwardsSql, noCompetitionAwardsSql } from "./competition.js";
 
 /**
  * DA red-flag build (red-flags DEC-005). Truncate + recompute `core.flags` from
@@ -297,15 +297,7 @@ async function buildFlags(
   // ── award_no_competition: negotiation without prior publication (per award) ─
   await sql`
     insert into core.flags (subject_type, subject_id, flag_code, period, triggered, severity, evidence, methodology_version)
-    select 'award', id, 'award_no_competition', to_char(state_date,'YYYY'), true,
-      least(1, ron_contract_value / ${awSevRef}::numeric),
-      jsonb_build_object('procedure', procedure_type, 'value', ron_contract_value,
-        'cpv', cpv_code), ${V}
-    from core.awards
-    where procedure_type ilike '%fara publicare prealabila%'
-      and ron_contract_value is not null
-      and ron_contract_value >= ${awMinValue}::numeric
-      and ron_contract_value <= ${awMaxPlausible}::numeric
+    ${noCompetitionAwardsSql(sql, { minValue: awMinValue, maxValue: awMaxPlausible, severityReference: awSevRef })}
   `;
 
   // One confirmed lot/contract is enough to flag the notice for review; it does

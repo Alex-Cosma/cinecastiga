@@ -2,7 +2,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { createDb, type DbSql } from "@seap/db";
 import { DA_CEILING_SEED_ROWS } from "@seap/domain";
 import { daSlicingSelectSql } from "./radiografie.js";
-import { confirmedSingleBidAwardsSql } from "./competition.js";
+import { confirmedSingleBidAwardsSql, noCompetitionAwardsSql } from "./competition.js";
 import { daThresholdDateSql, daThresholdKeySql } from "./thresholds.js";
 
 /** SELECT-only fixtures. No inserts, schema changes, or derived-data rebuilds. */
@@ -164,6 +164,52 @@ describe("threshold and competition SQL (read-only fixtures)", () => {
         cited_contracts_value: 22_551_839 });
       expect(ev("16")).toMatchObject({ value: 1_200_000, value_scope: "confirmed_contracts",
         cited_contracts_value: 1_200_000, cited_unknown_value_count: 1 });
+      // Audit F14: the evidence records what the notice holds.
+      expect(ev("11")["notice_contracts"]).toBe("contract");
+      expect(ev("13")["notice_contracts"]).toBe("mixed");
+    });
+  });
+
+  // Audit F14 (option A): award_no_competition stays one signal per published
+  // notice. A framework and its call-off under separate notices are two signals
+  // at the same value and severity; each records what its notice holds, by the
+  // shared contract classification (SEAP type, else the legacy title rule).
+  it("keeps one negotiated-procedure signal per notice and records what the notice holds", async () => {
+    await sql.begin("read only", async (tx) => {
+      const q = tx as unknown as DbSql;
+      const notice = (id: number, value: number, procedure = "Negociere fara publicare prealabila") => ({ id, ca_notice_id: id + 100,
+        state_date: "2022-12-26T10:00:00Z", procedure_type: procedure, ron_contract_value: value, cpv_code: "35000000-4" });
+      const typed = (id: number, award: number, type: number, title: string) => ({
+        ...legacyContract(id, award + 100, 1_000, title), source_contract_type: type, contract_type_raw_id: id });
+      const awards = [notice(1, 454_992_000), notice(2, 454_992_000), notice(3, 2_000_000), notice(4, 3_000_000),
+        notice(5, 2_000_000), notice(6, 500_000), notice(7, 2_000_000, "Licitatie deschisa"), notice(8, 5_000_000)];
+      const contracts = [
+        typed(11, 1, 2, "Acord cadru"), // ceiling only
+        typed(12, 2, 3, "Contract subsecvent nr.1/2022 la Acordul cadru"), // its call-off, own notice
+        typed(13, 3, 1, "Contract de furnizare"),
+        typed(14, 4, 1, "Contract de furnizare"), typed(15, 4, 2, "Acord-cadru"), // several kinds
+        // notice 5 publishes no contract
+        typed(16, 6, 1, "Contract"), // below the floor
+        typed(17, 7, 1, "Contract"), // another procedure
+        legacyContract(18, 108, 5_000_000, "Acord – cadru servicii"), // no SEAP type: title rule
+      ];
+      const rows = await q`
+        with awards as (select * from jsonb_to_recordset(${JSON.stringify(awards)}::jsonb) as r(
+          id bigint, ca_notice_id bigint, state_date timestamptz, procedure_type text, ron_contract_value numeric, cpv_code text)),
+        contracts as (select * from jsonb_to_recordset(${JSON.stringify(contracts)}::jsonb) as r(
+          id bigint, raw_id bigint, ca_notice_id bigint, ca_notice_contract_id bigint, contract_no text, title text,
+          source_contract_type int, contract_type_raw_id bigint, amount_status text, amount_raw_id bigint,
+          value_ron numeric, currency text, contract_value numeric))
+        select * from (${noCompetitionAwardsSql(q, limits, { awards: q`awards`, contracts: q`contracts` })}) no_competition
+      `;
+      const byId = new Map(rows.map((r) => [String(r["id"]), r]));
+      expect([...byId.keys()].sort()).toEqual(["1", "2", "3", "4", "5", "8"]);
+      const held = Object.fromEntries([...byId].map(([id, r]) => [id, (r["evidence"] as Record<string, unknown>)["notice_contracts"]]));
+      expect(held).toEqual({ "1": "framework", "2": "calloff", "3": "contract", "4": "mixed", "5": "none", "8": "framework" });
+      // The ceiling-only notice keeps its signal, value and severity.
+      expect(byId.get("1")!["evidence"]).toMatchObject({ value: 454_992_000, procedure: "Negociere fara publicare prealabila" });
+      expect(Number(byId.get("1")!["least"])).toBe(1);
+      expect(Number(byId.get("2")!["least"])).toBe(1);
     });
   });
 });

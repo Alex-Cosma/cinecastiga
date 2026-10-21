@@ -8,6 +8,7 @@ import { getContractDetail } from "@/lib/marts";
 import { CONTRACT_DATE_FLOOR } from "@seap/db";
 import { formatRon, formatRonFull, formatInt, formatExactDecimal, formatCalendarDate, cleanName } from "@/lib/format";
 import { FLAG_META } from "@/lib/flags";
+import { awardValueLabel, noticeContractsNote } from "@/lib/risk-presentation";
 import { awardUrl } from "@/lib/elicitatie";
 import ClipButton from "@/components/ClipButton";
 import { encodeSpec } from "@/lib/ask/permalink";
@@ -213,7 +214,8 @@ export default async function ContractPage({
                 {val != null && (
                   <p className="note">
                     {String(f.evidence?.["procedure"] ?? c.procedureType ?? "")} ·{" "}
-                    {formatRonFull(Number(val))}
+                    {awardValueLabel(f.evidence)}: {formatRonFull(Number(val))}
+                    {f.evidence ? noticeContractsNote(f.evidence) : ""}
                   </p>
                 )}
                 {m?.caveat && <p className="note">{m.caveat}</p>}

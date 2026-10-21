@@ -1,7 +1,28 @@
-import { canonicalContract, contractReportable, contractRonValue, type DbSql } from "@seap/db";
+import { canonicalContract, contractReportable, contractRonValue, noticeContractsKind, type DbSql } from "@seap/db";
 import { METHODOLOGY_VERSION } from "./methodology.js";
 
 type Fragment = ReturnType<DbSql>;
+
+/** award_no_competition: one signal per published award notice declaring a
+ * negotiation without prior publication (audit F14, option A). A republication
+ * under a new notice number, or a framework and its call-off, stay separate
+ * signals; the evidence records what the notice holds ('notice_contracts', see
+ * noticeContractsKind), so a ceiling-only notice is shown as a framework
+ * ceiling. The value, floor and severity stay the notice value. */
+export function noCompetitionAwardsSql(sql: DbSql, limits: { minValue: number; maxValue: number; severityReference: number },
+  tables: { awards?: Fragment; contracts?: Fragment } = {}): Fragment {
+  return sql`
+    select 'award', a.id, 'award_no_competition', to_char(a.state_date,'YYYY'), true,
+      least(1, a.ron_contract_value / ${limits.severityReference}::numeric),
+      jsonb_build_object('procedure', a.procedure_type, 'value', a.ron_contract_value,
+        'cpv', a.cpv_code, 'notice_contracts', ${noticeContractsKind(sql, 'a', tables.contracts)}) evidence, ${METHODOLOGY_VERSION}
+    from ${tables.awards ?? sql`core.awards`} a
+    where a.procedure_type ilike '%fara publicare prealabila%'
+      and a.ron_contract_value is not null
+      and a.ron_contract_value >= ${limits.minValue}::numeric
+      and a.ron_contract_value <= ${limits.maxValue}::numeric
+  `;
+}
 
 /** Same confirmed contract-to-TED-lot population as the query builder.
  *
@@ -14,12 +35,13 @@ type Fragment = ReturnType<DbSql>;
  * never a substitute for a missing value: a notice whose only cited values
  * are ceilings stays unevaluated. The evidence keeps the notice value, the
  * cited sums and the count of cited contracts without a RON value, so the
- * page can say when the cited contracts exceed the notice value. */
+ * page can say when the cited contracts exceed the notice value. Like
+ * award_no_competition, it records what the notice holds ('notice_contracts'). */
 export function confirmedSingleBidAwardsSql(sql: DbSql, limits: { minValue: number; maxValue: number; severityReference: number },
   tables: { awards?: Fragment; contracts?: Fragment; competition?: Fragment } = {}): Fragment {
   return sql`
     with cited as (
-      select a.id, a.state_date, a.procedure_type, a.ron_contract_value, a.cpv_code,
+      select a.id, a.ca_notice_id, a.state_date, a.procedure_type, a.ron_contract_value, a.cpv_code,
         c.ca_notice_contract_id, cc.ted_lot_result_id, cc.match_score, cc.tenders_received,
         ${contractRonValue(sql)} ron,
         (${contractReportable(sql)} and ${canonicalContract(sql)}) reportable
@@ -29,7 +51,7 @@ export function confirmedSingleBidAwardsSql(sql: DbSql, limits: { minValue: numb
       where cc.tenders_received = 1 and cc.is_single_bidder = true and cc.match_score >= 0.9::real
         and a.procedure_type in ('Licitatie deschisa','Licitatie deschisa accelerata','Licitatie restransa')
     ), notice as (
-      select id, state_date, procedure_type, ron_contract_value, cpv_code, count(*) confirmed_contract_count,
+      select id, ca_notice_id, state_date, procedure_type, ron_contract_value, cpv_code, count(*) confirmed_contract_count,
         sum(ron) cited_contracts_value, sum(ron) filter (where reportable) cited_reportable_value,
         count(*) filter (where ron is null) cited_unknown_value_count,
         jsonb_agg(jsonb_build_object(
@@ -38,7 +60,7 @@ export function confirmedSingleBidAwardsSql(sql: DbSql, limits: { minValue: numb
           'match_score', match_score, 'tenders_received', tenders_received
         ) order by ca_notice_contract_id) contracts
       from cited
-      group by id, state_date, procedure_type, ron_contract_value, cpv_code
+      group by id, ca_notice_id, state_date, procedure_type, ron_contract_value, cpv_code
     ), valued as (
       select notice.*, ron_contract_value > 0 notice_known,
         case when ron_contract_value > 0 then ron_contract_value else cited_reportable_value end signal_value
@@ -54,6 +76,7 @@ export function confirmedSingleBidAwardsSql(sql: DbSql, limits: { minValue: numb
         'cited_unknown_value_count', cited_unknown_value_count,
         'cpv', cpv_code, 'tenders_received', 1,
         'confirmed_contract_count', confirmed_contract_count, 'source', 'TED',
+        'notice_contracts', ${noticeContractsKind(sql, 'valued', tables.contracts)},
         'contracts', contracts) evidence, ${METHODOLOGY_VERSION}
     from valued
     where signal_value >= ${limits.minValue}::numeric

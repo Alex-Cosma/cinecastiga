@@ -10,7 +10,8 @@
 // rf-2026.9: award_single_bid treats a 0/missing notice value as unknown and falls back to cited contracts/call-offs.
 // rf-2026.10: net_shared_admin ignores ONRC supervisory-board seats (not legal representation).
 // rf-2026.11: fin_* and net_shared_admin join MF/ONRC only through a corroborated CUI (audit F03 stopgap).
-export const METHODOLOGY_VERSION = "rf-2026.11";
+// rf-2026.12: award_no_competition/award_single_bid evidence records what the notice holds (notice_contracts, audit F14).
+export const METHODOLOGY_VERSION = "rf-2026.12";
 
 export type FlagSubject = "da" | "award" | "authority" | "supplier" | "pair";
 
@@ -100,7 +101,7 @@ export const FLAG_DEFS: FlagDef[] = [
     rationale:
       "Lipsa unui anunț prealabil justifică verificarea motivului legal invocat și a condițiilor de atribuire (Legea 98/2016 art. 104).",
     caveat:
-      "Unele cazuri sunt legitime (urgențe reale, furnizor unic tehnic). Semnalul contează prin valoare și frecvență.",
+      "Unele cazuri sunt legitime (urgențe reale, furnizor unic tehnic). Semnalul contează prin valoare și frecvență. Semnalul se numără o dată pentru fiecare anunț de atribuire publicat (apariții). Același contract republicat sub alt număr de anunț, sau un acord-cadru și contractul subsecvent atribuit din el, pot apărea ca apariții separate. Când anunțul conține doar plafonul unui acord-cadru, valoarea afișată este plafonul, nu o cheltuială, și nu se adună la totaluri.",
   },
   {
     code: "award_single_bid",
@@ -111,7 +112,7 @@ export const FLAG_DEFS: FlagDef[] = [
     rationale:
       "O singură ofertă primită justifică verificarea accesului la procedură, a cerințelor și a pieței furnizorilor; nu identifică singură cauza concurenței reduse.",
     caveat:
-      "Numărul de oferte nu este numărul membrilor unui consorțiu. Un lot cu o ofertă nu descrie toate loturile anunțului. Valoarea afișată este a anunțului sau, când aceasta lipsește, a contractelor citate; contractele citate pot însuma mai mult decât valoarea anunțului. Numerele lipsă, contradictorii și asocierile ambigue rămân necunoscute. Piețele de nișă pot avea legitim o singură ofertă.",
+      "Numărul de oferte nu este numărul membrilor unui consorțiu. Un lot cu o ofertă nu descrie toate loturile anunțului. Valoarea afișată este a anunțului sau, când aceasta lipsește, a contractelor citate; contractele citate pot însuma mai mult decât valoarea anunțului. Numerele lipsă, contradictorii și asocierile ambigue rămân necunoscute. Piețele de nișă pot avea legitim o singură ofertă. Semnalul se numără o dată pentru fiecare anunț de atribuire publicat (apariții). Același contract republicat sub alt număr de anunț, sau un acord-cadru și contractul subsecvent atribuit din el, pot apărea ca apariții separate. Când anunțul conține doar plafonul unui acord-cadru, valoarea afișată este plafonul, nu o cheltuială, și nu se adună la totaluri.",
   },
   {
     code: "award_concentration",

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nearThresholdEvidence, riskEvidenceLine, signalPeriodLabel, singleBidValueNote } from "./risk-presentation";
+import { awardValueLabel, nearThresholdEvidence, noticeContractsNote, riskEvidenceLine, signalPeriodLabel, singleBidValueNote } from "./risk-presentation";
 
 describe("distance from a procurement threshold", () => {
   it("shows the one-leu gap rather than rounding a sub-threshold value to 100%", () => {
@@ -71,5 +71,36 @@ describe("single-tender signal value", () => {
       .toBe("1 contract asociat unui lot TED cu o singură ofertă raportată.");
     expect(riskEvidenceLine("award_single_bid", { confirmed_contract_count: 2, value: 2000000, value_scope: "notice" }))
       .toBe("2 contracte asociate unor loturi TED cu o singură ofertă raportată.");
+  });
+});
+
+// Audit F14: notice-level signals stay one per published notice; each says what
+// the notice holds, and a ceiling-only notice shows its value as a ceiling.
+describe("what an award notice holds", () => {
+  const procedure = "Negociere fara publicare prealabila";
+  it("labels a ceiling-only notice's value as a framework ceiling that is never added to totals", () => {
+    const evidence = { procedure, value: 454992000, cpv: "35000000-4", notice_contracts: "framework" };
+    expect(awardValueLabel(evidence)).toBe("plafon acord-cadru");
+    const line = riskEvidenceLine("award_no_competition", evidence)!;
+    expect(line).toContain("plafon acord-cadru: ");
+    expect(line).not.toContain("valoarea anunțului");
+    expect(line).toContain("Anunțul conține doar plafonul unui acord-cadru: valoarea este plafonul acordului, nu o cheltuială, și nu se adună la totaluri.");
+  });
+  it("names subsequent-only, ordinary and mixed notices without changing the value label", () => {
+    const line = (kind: string) => riskEvidenceLine("award_no_competition", { procedure, value: 454992000, cpv: "35000000-4", notice_contracts: kind })!;
+    expect(line("calloff")).toContain("valoarea anunțului: ");
+    expect(line("calloff")).toContain("Anunțul conține doar contracte subsecvente.");
+    expect(line("contract")).toContain("Anunțul conține contracte obișnuite.");
+    expect(line("mixed")).toContain("Anunțul conține contracte de tipuri diferite.");
+    expect(line("none")).toContain("Anunțul nu are contracte publicate.");
+  });
+  it("applies to the single-tender signal and leaves older signals unchanged", () => {
+    expect(riskEvidenceLine("award_single_bid", { confirmed_contract_count: 1, value: 2000000, value_scope: "notice", notice_contracts: "framework" }))
+      .toContain("Anunțul conține doar plafonul unui acord-cadru");
+    expect(awardValueLabel({ value_scope: "confirmed_contracts", notice_contracts: "mixed" })).toBe("contractele citate");
+    expect(noticeContractsNote({ value: 1 })).toBe("");
+    expect(awardValueLabel({ value: 1 })).toBe("valoarea anunțului");
+    expect(riskEvidenceLine("award_no_competition", { procedure, value: 2000000, cpv: "45000000-7" }))
+      .toMatch(/^Negociere fara publicare prealabila · valoarea anunțului: [^·]+ · CPV 45000000-7\.$/);
   });
 });
