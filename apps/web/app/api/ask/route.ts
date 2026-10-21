@@ -118,6 +118,7 @@ export async function POST(req: Request) {
       pills: buildPills(spec, grounding),
       caveats: result.caveats,
       data: result.data,
+      ...(result.partialYears ? { partialYears: result.partialYears } : {}),
       displaySql: result.displaySql,
       tookMs: result.tookMs,
     });

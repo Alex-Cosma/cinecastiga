@@ -83,6 +83,7 @@ import type {
   EntityCardData,
   FactCheckData,
   TrendRow,
+  PartialYear,
 } from "@/lib/ask/compile";
 
 /** Renderers for the risk/relationship result blocks (mockup blocks 5–13). */
@@ -1546,22 +1547,27 @@ export function TrendBlock({
   yearA,
   yearB,
   spec,
+  partial = [],
 }: {
   rows: TrendRow[];
   yearA: number;
   yearB: number;
   spec?: AskSpec;
+  /** Audit F19: endpoint years the archive covers only in part. */
+  partial?: PartialYear[];
 }) {
   const evidence = useAnswerEvidence();
   if (rows.length === 0) return <p className="ask-empty">Niciun rezultat.</p>;
+  const shownPartial = partial.filter((p) => p.year === yearA || p.year === yearB);
+  const yearLabel = (year: number) => shownPartial.some((p) => p.year === year) ? `${year}*` : year;
   return (
     <div>
       <div className="ask-trend">
         <div className="tr head">
           <span />
-          <span className="yv">{yearA}</span>
+          <span className="yv">{yearLabel(yearA)}</span>
           <span className="arrow" />
-          <span className="yv">{yearB}</span>
+          <span className="yv">{yearLabel(yearB)}</span>
           <span className="delta">Δ</span>
         </div>
         {rows.map((r) => {
@@ -1623,6 +1629,12 @@ export function TrendBlock({
         Ordonate după schimbarea absolută (creșteri și scăderi). „nou” = fără
         înregistrări în selecție pentru {yearA}.
       </p>
+      {shownPartial.length > 0 && (
+        <p className="ask-fine ask-partial-note">
+          * an acoperit parțial, diferența reflectă și perioada neacoperită:{" "}
+          {shownPartial.map((p) => `${p.year} (${p.note})`).join(", ")}.
+        </p>
+      )}
     </div>
   );
 }

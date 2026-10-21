@@ -13,7 +13,7 @@ import { entitySourceLink, entitySourceScope, yearSourceLink } from "@/lib/ask/s
 import { describeQuestion, questionKey } from "@/lib/ask/question-ui";
 import { NATURAL_LANGUAGE_ENABLED, NATURAL_LANGUAGE_UNAVAILABLE } from "@/lib/ask/features";
 import { validateEvidenceScope, validateEvidenceFilters, type EvidenceScope, type EvidenceFilters } from "@/lib/ask/evidence";
-import type { BlockData } from "@/lib/ask/compile";
+import type { BlockData, PartialYear } from "@/lib/ask/compile";
 import {
   CompareBlock,
   DistributionBlock,
@@ -51,6 +51,8 @@ interface AskResponse {
   pills?: string[];
   caveats?: string[];
   data?: BlockData;
+  /** timeseries/trend: years the archive covers only in part (audit F19). */
+  partialYears?: PartialYear[];
   displaySql?: string;
   tookMs?: number;
   executedAt?: string;
@@ -616,10 +618,11 @@ export default function AskPanel({
                 ))}
               {data.block === "timeseries" &&
                 (layout === "visual" ? (
-                  <SeriesBlock series={data.series} spec={applied} />
+                  <SeriesBlock series={data.series} spec={applied} partial={resp.partialYears ?? []} />
                 ) : (
                   <ExactSeries
                     series={data.series}
+                    partial={resp.partialYears ?? []}
                     spec={applied}
                     onSources={openEvidence}
                   />
@@ -675,6 +678,7 @@ export default function AskPanel({
                   rows={data.rowsTrend}
                   yearA={data.yearA}
                   yearB={data.yearB}
+                  partial={resp.partialYears ?? []}
                   spec={applied}
                 />
               )}
@@ -799,10 +803,12 @@ function RankingBars({
 }
 function ExactSeries({
   series,
+  partial,
   spec,
   onSources,
 }: {
   series: SeriesPoint[];
+  partial: PartialYear[];
   spec: AskSpec;
   onSources: (spec: AskSpec, scope?: EvidenceScope, title?: string) => void;
 }) {
@@ -817,9 +823,14 @@ function ExactSeries({
         </tr>
       </thead>
       <tbody>
-        {series.map((r) => (
+        {series.map((r) => {
+          const part = partial.find((p) => p.year === r.year);
+          return (
           <tr key={r.year}>
-            <th>{r.year}</th>
+            <th>
+              {r.year}
+              {part && <small className="ask-partial-note">an acoperit parțial: {part.note}</small>}
+            </th>
             <td>{formatRonFull(r.value)}</td>
             <td>{formatInt(r.count)}</td>
             <td>
@@ -837,7 +848,8 @@ function ExactSeries({
               </button>
             </td>
           </tr>
-        ))}
+          );
+        })}
       </tbody>
     </table>
   );
@@ -1078,9 +1090,11 @@ function TableBlock({
 function SeriesBlock({
   series,
   spec,
+  partial,
 }: {
   series: SeriesPoint[];
   spec: unknown;
+  partial: PartialYear[];
 }) {
   const t = useTip();
   const evidence = useAnswerEvidence();
@@ -1094,14 +1108,17 @@ function SeriesBlock({
   if (series.length === 0) return <p className="ask-empty">Niciun rezultat.</p>;
   const max = Math.max(...series.map(metric), 1);
   const peak = series.reduce((a, b) => (metric(b) > metric(a) ? b : a));
+  const shownPartial = partial.filter((x) => series.some((p) => p.year === x.year));
   return (
     <div>
       {t.el}
       <div className="ask-ts">
-        {series.map((p) => (
+        {series.map((p) => {
+          const part = partial.find((x) => x.year === p.year);
+          return (
           <a
             key={p.year}
-            className="col"
+            className={part ? "col partial" : "col"}
             href={yearUrl(p.year)}
             onClick={(event) => {
               if (evidence && !event.ctrlKey && !event.metaKey) {
@@ -1120,7 +1137,7 @@ function SeriesBlock({
               asCount
                 ? formatInt(p.count) + " înregistrări"
                 : formatRonFull(p.value),
-              `${formatInt(p.count)} achiziții${p.year === peak.year ? " · vârful seriei" : ""} · click → achizițiile anului`,
+              `${formatInt(p.count)} achiziții${p.year === peak.year ? " · vârful seriei" : ""}${part ? ` · an acoperit parțial: ${part.note}` : ""} · click → achizițiile anului`,
             )}
           >
             <div className="cv">{display(p)}</div>
@@ -1128,14 +1145,21 @@ function SeriesBlock({
               className={p.year === peak.year ? "bar peak" : "bar"}
               style={{ height: `${Math.max(2, (metric(p) / max) * 100)}%` }}
             />
-            <div className="cl">{p.year}</div>
+            <div className="cl">{part ? `${p.year}*` : p.year}</div>
           </a>
-        ))}
+          );
+        })}
       </div>
       <p className="ask-fine">
         vârful ({peak.year}) este marcat · valori contractate, nu plăți · click
         pe un an → lista achizițiilor lui
       </p>
+      {shownPartial.length > 0 && (
+        <p className="ask-fine ask-partial-note">
+          * an acoperit parțial, nu se compară direct cu un an întreg:{" "}
+          {shownPartial.map((x) => `${x.year} (${x.note})`).join(", ")}.
+        </p>
+      )}
     </div>
   );
 }
