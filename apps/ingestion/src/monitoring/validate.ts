@@ -37,7 +37,9 @@ export async function validateBatch1Snapshot(q: DbSql, options: {
     with da as (
       select coalesce(sum(closing_value), 0) total,
         coalesce(sum(closing_value) filter (where authority_entity_id is not null), 0) authority,
-        coalesce(sum(closing_value) filter (where supplier_entity_id is not null), 0) supplier
+        -- A supplier equal to the authority is not a supplier (audit F12).
+        coalesce(sum(closing_value) filter (where supplier_entity_id is not null
+          and supplier_entity_id is distinct from authority_entity_id), 0) supplier
       from core.direct_acquisitions where state = 'Oferta acceptata' and closing_value > 0 and closing_value <= 2000000
     ), ct as (
       select coalesce(sum(closing_value), 0) total,
@@ -74,6 +76,7 @@ export async function validateBatch1Snapshot(q: DbSql, options: {
         and (${fullProfiles} or authority_entity_id in (select entity_id from selected where role = 'authority')) group by 1
       union all select supplier_entity_id, 'supplier', sum(closing_value), count(*), 0::bigint
       from core.direct_acquisitions where supplier_entity_id is not null and state = 'Oferta acceptata'
+        and supplier_entity_id is distinct from authority_entity_id
         and closing_value > 0 and closing_value <= 2000000
         and (${fullProfiles} or supplier_entity_id in (select entity_id from selected where role = 'supplier')) group by 1
       union all select authority_id, 'authority', sum(closing_value), 0::bigint, count(distinct contract_id)

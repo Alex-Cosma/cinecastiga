@@ -30,6 +30,10 @@ export interface Observation {
   /** Otherwise-included contracts whose only winner is their own authority (audit F12). */
   winner_is_authority?: string;
   winner_is_authority_value?: string;
+  /** Included DAs whose recorded supplier is their own authority (audit F12): in the
+   * authority's total, never a supplier's. */
+  supplier_is_authority?: string;
+  supplier_is_authority_value?: string;
   /** Canonical contracts typed by the title rule, without an archived SEAP type (audit F08):
    * all of them, those with a verifiable sum in lei and that sum, those without one
    * (legacy EUR/USD or no amount), and the distinct contracts and value inside the totals. */
@@ -49,11 +53,13 @@ export interface Collection {
   last_success: string | null;
   latest_status: string;
   latest_started: string;
-  window_from: string | null;
-  window_to: string | null;
-  reported: number | null;
-  fetched: number;
-  deviation: number | null;
+  /** Newest window a completed import covered (largest window end), with that import's counts
+   * (audit F17): the last started import is often an old backfill window. Null without one. */
+  completed_window_from: string | null;
+  completed_window_to: string | null;
+  completed_reported: number | null;
+  completed_fetched: number | null;
+  completed_deviation: number | null;
 }
 export interface Coverage {
   observations: { dataset: Dataset; observation: Observation; calculated_at: string }[];
@@ -72,16 +78,23 @@ export async function readCoverage(sql: DbSql): Promise<Coverage> {
     sql`select dataset, observation, calculated_at::text from marts.data_coverage order by dataset`,
     collectorCoverage(sql),
     // Run times in Bucharest. Windows are decoded as the importers encoded the requested days:
-    // SEAP as `T00:00:00+03:00` (scrape/elicitatie), TED as UTC (scrape/ted).
-    sql`select distinct on (source) source, status latest_status,
-          (started_at at time zone 'Europe/Bucharest')::text latest_started,
-          (max(finished_at) filter (where status = 'completed') over (partition by source) at time zone 'Europe/Bucharest')::text last_success,
-          ((window_start at time zone 'UTC') + case when source like 'elicitatie:%' then interval '3 hours' else interval '0' end)::text window_from,
-          ((window_end at time zone 'UTC') + case when source like 'elicitatie:%' then interval '3 hours' else interval '0' end)::text window_to,
-          reported_total reported, fetched_count fetched, deviation
-        from core.scrape_runs
-        where source in ('elicitatie:das', 'elicitatie:awards', 'ted:can-standard', 'ted:fforms')
-        order by source, started_at desc, id desc`,
+    // SEAP as `T00:00:00+03:00` (scrape/elicitatie), TED as UTC (scrape/ted). The window shown is
+    // the newest one a completed import covered, not the last started import's (audit F17).
+    sql`select l.source, l.status latest_status,
+          (l.started_at at time zone 'Europe/Bucharest')::text latest_started,
+          (s.finished_at at time zone 'Europe/Bucharest')::text last_success,
+          ((c.window_start at time zone 'UTC') + case when l.source like 'elicitatie:%' then interval '3 hours' else interval '0' end)::text completed_window_from,
+          ((c.window_end at time zone 'UTC') + case when l.source like 'elicitatie:%' then interval '3 hours' else interval '0' end)::text completed_window_to,
+          c.reported_total completed_reported, c.fetched_count completed_fetched, c.deviation completed_deviation
+        from (select distinct on (source) source, status, started_at from core.scrape_runs
+          where source in ('elicitatie:das', 'elicitatie:awards', 'ted:can-standard', 'ted:fforms')
+          order by source, started_at desc, id desc) l
+        left join lateral (select max(r.finished_at) finished_at from core.scrape_runs r
+          where r.source = l.source and r.status = 'completed') s on true
+        left join lateral (select r.window_start, r.window_end, r.reported_total, r.fetched_count, r.deviation
+          from core.scrape_runs r where r.source = l.source and r.status = 'completed' and r.window_end is not null
+          order by r.window_end desc, r.finished_at desc nulls last, r.id desc limit 1) c on true
+        order by l.source`,
     sql`select transform, updated_at::text from core.normalize_watermarks order by transform`,
   ]);
   return {
@@ -103,7 +116,7 @@ export const getCoverage = unstable_cache(async (): Promise<Coverage | null> => 
     if ((error as { code?: string }).code === "42P01") return null;
     throw error;
   }
-}, ["data-coverage-v6"], { revalidate: 300 });
+}, ["data-coverage-v7"], { revalidate: 300 });
 
 /** Date only, as recorded by the source; don't shift source days to browser time zones. */
 export function coverageDate(value: string | null | undefined): string {

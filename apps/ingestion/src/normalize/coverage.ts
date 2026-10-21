@@ -6,6 +6,8 @@ export async function runCoverage(sql: DbSql): Promise<void> {
   await sql.begin("isolation level repeatable read", async (q) => {
     // Calendar days/years must match SEAP detail pages in Romanian time.
     await q`set local time zone 'Europe/Bucharest'`;
+    const selfSupplied = q`state = 'Oferta acceptata' and closing_value > 0 and closing_value <= 2000000
+      and supplier_entity_id = authority_entity_id`;
     await q`
       insert into marts.data_coverage (dataset, observation, calculated_at)
       with da as (
@@ -13,6 +15,10 @@ export async function runCoverage(sql: DbSql): Promise<void> {
           count(*) filter (where finalization_date is null)::text missing_date,
           count(*) filter (where cpv_code is null)::text missing_cpv,
           count(*) filter (where raw_id is null)::text missing_raw,
+          -- Included DAs whose recorded supplier is their own authority (audit F12):
+          -- in the authority's total, never a supplier's.
+          count(*) filter (where ${selfSupplied})::text supplier_is_authority,
+          coalesce(trim_scale(sum(closing_value) filter (where ${selfSupplied})), 0)::text supplier_is_authority_value,
           min(finalization_date)::date::text date_from, max(finalization_date)::date::text date_to
         from core.direct_acquisitions
       ), included as (

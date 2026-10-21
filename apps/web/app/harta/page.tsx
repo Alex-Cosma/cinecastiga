@@ -122,7 +122,9 @@ export default async function HartaPage({
       <p className="note">
         {coverage.toFixed(0)}% din valoarea entităților cu rolul selectat este localizată într-un județ
         cartografiabil; restul are județ necunoscut, nestandardizat sau străin. Județul este cel al sediului
-        {role === "authority" ? " autorității" : " furnizorului"}, nu neapărat locul executării contractului.{" "}
+        {role === "authority" ? " autorității" : " furnizorului"}, nu neapărat locul executării contractului.
+        Valorile includ achiziții directe acceptate de cel mult 2 milioane lei și contracte din proceduri de cel mult 1 miliard lei;
+        contractele peste acest plafon sunt separate de totaluri și listate pe pagina fiecărei instituții.{" "}
         <Link href="/metodologie#acoperire">Vezi perioada și acoperirea datelor ↗</Link>
       </p>
     </>

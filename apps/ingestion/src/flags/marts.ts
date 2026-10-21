@@ -53,9 +53,10 @@ export async function runFlagMarts(
         where authority_entity_id is not null and state = 'Oferta acceptata' and closing_value > 0 and closing_value <= ${b}
         group by authority_entity_id
         union all
+        -- A recorded supplier equal to the authority is not a supplier (audit F12).
         select supplier_entity_id, 'supplier', count(*), sum(closing_value)
         from core.direct_acquisitions
-        where supplier_entity_id is not null and state = 'Oferta acceptata' and closing_value > 0 and closing_value <= ${b}
+        where supplier_entity_id is not null and supplier_entity_id <> authority_entity_id and state = 'Oferta acceptata' and closing_value > 0 and closing_value <= ${b}
         group by supplier_entity_id
       ),
       daf_pivot as (
@@ -68,7 +69,7 @@ export async function runFlagMarts(
           where f.subject_type = 'da' and f.triggered and da.state = 'Oferta acceptata'
             and da.closing_value > 0 and da.closing_value <= ${b}
           union all
-          select da.supplier_entity_id, 'supplier', f.flag_code
+          select nullif(da.supplier_entity_id, da.authority_entity_id), 'supplier', f.flag_code
           from core.flags f join core.direct_acquisitions da on da.id = f.subject_id
           where f.subject_type = 'da' and f.triggered and da.state = 'Oferta acceptata'
             and da.closing_value > 0 and da.closing_value <= ${b}
@@ -128,7 +129,7 @@ export async function runFlagMarts(
         (id, flag_code, subject_type, entity_id, entity_name, entity_county, partner_id, partner_name, severity, total_ron, period, evidence)
       select f.id, f.flag_code, 'da',
         da.authority_entity_id, a.name_display, a.county,
-        da.supplier_entity_id, s.name_display,
+        nullif(da.supplier_entity_id, da.authority_entity_id), s.name_display,
         f.severity, da.closing_value, f.period, f.evidence
       from (
         select *, row_number() over (partition by flag_code order by severity desc nulls last) rn
@@ -136,7 +137,7 @@ export async function runFlagMarts(
       ) f
       join core.direct_acquisitions da on da.id = f.subject_id
       left join core.entities a on a.id = da.authority_entity_id
-      left join core.entities s on s.id = da.supplier_entity_id
+      left join core.entities s on s.id = nullif(da.supplier_entity_id, da.authority_entity_id)
       where f.rn <= 500
     `;
     // ── per-award flags (award_no_competition / award_single_bid): top examples ─
@@ -157,7 +158,8 @@ export async function runFlagMarts(
         select cw.entity_id
         from core.contracts c
         join core.contract_winners cw on cw.contract_id = c.id
-        where c.ca_notice_id = aw.ca_notice_id
+        -- The authority recorded as its own winner is not a partner (audit F12).
+        where c.ca_notice_id = aw.ca_notice_id and cw.entity_id is distinct from aw.authority_entity_id
         limit 1
       ) w on true
       left join core.entities s on s.id = w.entity_id

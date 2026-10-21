@@ -17,7 +17,11 @@ function ImportRun({ run, label }: { run: Coverage["collections"][number]; label
     <h4>{IMPORT_LABELS[run.source] ?? run.source}</h4>
     {label && <p className="note">{label}</p>}
     <p>Ultimul import reușit: <strong>{coverageDate(run.last_success)}</strong>. Ultimul import început: {coverageDate(run.latest_started)}, {STATUS[run.latest_status] ?? "stare necunoscută"}.</p>
-    <p className="note">Fereastra ultimului import început: {coverageDate(run.window_from)} — {coverageDate(run.window_to)}. Înregistrări preluate: {formatInt(run.fetched)}; raportate de sursă: {run.reported === null ? "necunoscut" : formatInt(run.reported)}. {run.deviation === null ? "Diferența nu a putut fi verificată." : `Diferență raportate − preluate: ${formatInt(run.deviation)}.`}</p>
+    {/* Audit F17: the newest window a finished import covered says how recent the data is; the last
+        started import may be an old backfill window. */}
+    {run.completed_window_to === null
+      ? <p className="note">Niciun import finalizat cu fereastră înregistrată.</p>
+      : <p className="note">Cea mai nouă fereastră a unui import finalizat: {coverageDate(run.completed_window_from)} — {coverageDate(run.completed_window_to)}. Înregistrări preluate în acest import: {run.completed_fetched === null ? "necunoscut" : formatInt(run.completed_fetched)}; raportate de sursă: {run.completed_reported === null ? "necunoscut" : formatInt(run.completed_reported)}. {run.completed_deviation === null ? "Diferența nu a putut fi verificată." : `Diferență raportate − preluate: ${formatInt(run.completed_deviation)}.`}</p>}
   </div>;
 }
 

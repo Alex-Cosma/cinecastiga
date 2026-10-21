@@ -182,6 +182,7 @@ async function buildFlags(
        and (th.valid_to is null or (th.valid_to at time zone 'UTC')::date > ${daDate})
       where da.state = 'Oferta acceptata'
         and da.authority_entity_id is not null and da.supplier_entity_id is not null
+        and da.supplier_entity_id <> da.authority_entity_id -- not a supplier (audit F12)
         and da.closing_value > 0 and da.closing_value <= ${maxPlausible}
         and da.finalization_date is not null
         and btrim(da.cpv_code) ~ ${DA_CPV_TYPE_PATTERN}
@@ -211,6 +212,7 @@ async function buildFlags(
       from core.direct_acquisitions
       where state = 'Oferta acceptata'
         and authority_entity_id is not null and supplier_entity_id is not null
+        and supplier_entity_id <> authority_entity_id -- not a supplier (audit F12)
         and closing_value > 0 and closing_value <= ${maxPlausible}
       group by a, s
     ),
@@ -236,6 +238,7 @@ async function buildFlags(
       from core.direct_acquisitions
       where state = 'Oferta acceptata'
         and authority_entity_id is not null and supplier_entity_id is not null
+        and supplier_entity_id <> authority_entity_id -- not a supplier (audit F12)
         and closing_value > 0 and closing_value <= ${maxPlausible}
       group by s, a
     ),
@@ -365,6 +368,7 @@ async function buildFlags(
       from core.direct_acquisitions
       where state = 'Oferta acceptata'
         and supplier_entity_id is not null and finalization_date is not null
+        and supplier_entity_id is distinct from authority_entity_id -- not a supplier (audit F12)
         and closing_value is not null and closing_value > 0
         and closing_value <= ${maxPlausible}::numeric
       group by 1, 2
@@ -449,6 +453,7 @@ async function buildFlags(
       from core.direct_acquisitions
       where state = 'Oferta acceptata'
         and supplier_entity_id is not null and authority_entity_id is not null
+        and supplier_entity_id <> authority_entity_id -- not a supplier (audit F12)
         and closing_value > 0 and closing_value <= ${maxPlausible}::numeric
       group by 1, 2
       union all

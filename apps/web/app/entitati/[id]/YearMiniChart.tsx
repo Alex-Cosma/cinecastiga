@@ -10,7 +10,7 @@ const LUNI = [
 ];
 
 /**
- * 12-bar mini-chart of one year's monthly DA spend — December highlighted,
+ * 12-bar mini-chart of one year's monthly DA value — December highlighted,
  * instant hover tooltip (house rule, docs/PRINCIPLES.md), every bar deep-links
  * to the search drill for exactly that month's rows.
  */
@@ -51,7 +51,7 @@ export default function YearMiniChart({
     return `/?spec=${encodeURIComponent(encodeSpec(spec))}&drill=1`;
   };
   return (
-    <div className="yem" aria-label={`Cheltuiala lunară ${year}`}>
+    <div className="yem" aria-label={`Valoarea lunară a achizițiilor directe, ${year}`}>
       {t.el}
       {months.map((p) => (
         <a

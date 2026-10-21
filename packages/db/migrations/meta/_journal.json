@@ -547,6 +547,13 @@
       "when": 1792570128794,
       "tag": "0077_cui_corroborations",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1792583894145,
+      "tag": "0078_signal_lookup_self_supplier",
+      "breakpoints": true
     }
   ]
 }

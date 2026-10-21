@@ -22,7 +22,9 @@ export const martsSchema = pgSchema("marts");
 
 /** Award rows sort and display the value the signal recorded (evidence.value):
  * the notice value, or for award_single_bid with a missing notice value the
- * cited contracts' sum (audit F23). Older signals recorded the notice value. */
+ * cited contracts' sum (audit F23). Older signals recorded the notice value.
+ * A DA whose recorded supplier is its own authority has no partner (audit F12):
+ * the authority is not its own supplier. */
 export const SIGNAL_LOOKUP_QUERY = `
   select f.id, f.flag_code, f.subject_type, f.subject_id entity_id, f.partner_id,
     f.severity severity,
@@ -30,7 +32,7 @@ export const SIGNAL_LOOKUP_QUERY = `
     null::bigint source_id
   from core.flags f where f.triggered and f.subject_type in ('authority','supplier','pair')
   union all
-  select f.id, f.flag_code, f.subject_type, da.authority_entity_id, da.supplier_entity_id,
+  select f.id, f.flag_code, f.subject_type, da.authority_entity_id, nullif(da.supplier_entity_id, da.authority_entity_id),
     f.severity, da.closing_value, da.sicap_da_id
   from core.flags f join core.direct_acquisitions da on da.id=f.subject_id
   where f.triggered and f.subject_type='da'

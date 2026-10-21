@@ -7,6 +7,7 @@ if(url && !/^\/seap_test_(signals|audit_[a-z0-9_]+)$/.test(new URL(url).pathname
 const sql=url?createDb(url).sql:null;
 const precisionMigration=await readFile(new URL('../../../packages/db/migrations/0044_signal_sort_precision.sql',import.meta.url),'utf8');
 const recordedValueMigration=await readFile(new URL('../../../packages/db/migrations/0076_signal_lookup_recorded_value.sql',import.meta.url),'utf8');
+const selfSupplierMigration=await readFile(new URL('../../../packages/db/migrations/0078_signal_lookup_self_supplier.sql',import.meta.url),'utf8');
 const lookupMigration=await readFile(new URL('../../../packages/db/migrations/0043_complete_signal_lookup.sql',import.meta.url),'utf8');
 const migration=await readFile(new URL('../../../packages/db/migrations/0042_signal_lookup_indexes.sql',import.meta.url),'utf8');
 afterAll(async()=>{await sql?.end()});
@@ -37,6 +38,7 @@ describe.skipIf(!sql)('complete signal queries on PostgreSQL',()=>{
   for(const statement of lookupMigration.split('--> statement-breakpoint')) await sql!.unsafe(statement);
   for(const statement of precisionMigration.split('--> statement-breakpoint')) await sql!.unsafe(statement);
   for(const statement of recordedValueMigration.split('--> statement-breakpoint')) await sql!.unsafe(statement);
+  for(const statement of selfSupplierMigration.split('--> statement-breakpoint')) await sql!.unsafe(statement);
  });
  it('accepts identical prebuilt indexes and rejects a different index with the same name',async()=>{
   for(const statement of migration.split('--> statement-breakpoint')) await sql!.unsafe(statement);
@@ -143,6 +145,34 @@ describe.skipIf(!sql)('complete signal queries on PostgreSQL',()=>{
    const q=Object.assign((...args: unknown[]) => (tx as any)(...args), {begin: async (_options: string, run: (db: DbSql) => unknown) => run(tx as unknown as DbSql)}) as unknown as DbSql;
    const page=await readSignalPage(q,parseSignalState({tip:'da_round'}));
    expect(page.rows[0]?.totalExact).toBe('9007199254740993.123456');
+   throw rollback;
+  })).rejects.toBe(rollback);
+ });
+
+ it('never lists an authority as the supplier or winner of its own records (audit F12)',async()=>{
+  const rollback=Error('rollback self-supplier fixture');
+  await expect(sql!.begin(async tx=>{
+   // DA 626: authority 1 recorded as its own supplier. Notice 10014: authority 1 beside supplier 11.
+   // Notice 10015: authority 2 (Buzău) recorded as the only winner of its own notice.
+   await tx`insert into core.direct_acquisitions values(626,100626,1,1,62600)`;
+   await tx`insert into core.flags values(626,'da_rapid','da',626,null,true,0.5,'{}','2025','test')`;
+   await tx`insert into core.awards values(14,10014,1,5000000),(15,10015,2,6000000)`;
+   await tx`insert into core.contracts values(105,10014),(106,10015)`;
+   await tx`insert into core.contract_winners values(105,1),(105,11),(106,2)`;
+   await tx`insert into core.flags values(2014,'award_single_bid','award',14,null,true,0.5,'{}','2025','test'),(2015,'award_single_bid','award',15,null,true,0.5,'{}','2025','test')`;
+   await tx`refresh materialized view marts.signal_lookup`;
+   expect((await validateSignalLookup(tx as unknown as DbSql)).mismatches).toBe('0');
+   expect((await tx`select entity_id::text, partner_id from marts.signal_lookup where id=626`)[0]).toEqual({entity_id:'1',partner_id:null});
+   const q=Object.assign((...args: unknown[]) => (tx as any)(...args), {begin: async (_options: string, run: (db: DbSql) => unknown) => run(tx as unknown as DbSql)}) as unknown as DbSql;
+   // The authority's own DA still counts on its authority side.
+   expect((await readEntitySignalCounts(q,'1','authority')).da_rapid).toBe(625);
+   expect(await readEntitySignalCounts(q,'1','supplier')).toEqual({});
+   expect(await readEntitySignalCounts(q,'2','supplier')).toEqual({});
+   expect((await readSignalOverview(q,parseSignalState({rol:'supplier'}))).counts).toMatchObject({da_rapid:624,award_single_bid:4});
+   const won=await readSignalPage(q,parseSignalState({tip:'award_single_bid',rol:'supplier'}));
+   expect(won.rows.map(r=>r.id)).toEqual(['2014','2012','2011','2010']);
+   expect(won.rows[0]?.winners.map(w=>w.entityId)).toEqual(['11']);
+   expect((await readSignalPage(q,parseSignalState({tip:'award_single_bid',rol:'supplier',jud:'Buzău'}))).total).toBe(2);
    throw rollback;
   })).rejects.toBe(rollback);
  });
