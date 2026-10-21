@@ -138,4 +138,42 @@ describe.runIf(Boolean(connection))("investigative population SQL (dedicated rol
     } catch (error) { if (error !== rollback) throw error; }
     expect(await sql`select nspname from pg_namespace where nspname=${prefix}`).toHaveLength(0);
   },30000);
+
+  // Data audit F16: a supplier sells to buyers in many counties, so its table
+  // county is its own (entity_profile) on every path, never max() over buyers.
+  it("shows a supplier's own county in bare, filtered and county-sorted tables", async () => {
+    const sql = connection!.sql, prefix = `county_fixture_${process.pid}_${Date.now()}`;
+    const rollback = new Error("rollback county fixture");
+    try {
+      await sql.begin(async tx => {
+        await tx.unsafe(`create schema ${prefix}`);
+        for (const table of ["da_transactions", "contract_transactions", "national_stats", "entity_profile", "agg_top_entities"]) await tx.unsafe(`create table ${prefix}.${table} as table marts.${table} with no data`);
+        const q = scoped(tx as unknown as DbSql, prefix);
+        await q`insert into marts.national_stats (kind,year) values ('da',2025),('award',2025)`;
+        await q`insert into marts.entity_profile (entity_id,role,name_display,county,n_contracts,n_das,is_foreign) values
+          (1,'authority','Authority Bucuresti','Bucuresti',0,1,false),(2,'authority','Authority Vrancea','Vrancea',0,1,false),
+          (10,'supplier','Supplier Ilfov','Ilfov',0,2,false),(11,'supplier','Supplier Cluj','Cluj',0,1,false)`;
+        await q`insert into marts.da_transactions (sicap_da_id,da_code,authority_id,authority_name,supplier_id,supplier_name,county,cpv_code,closing_value,finalization_date) values
+          (51,'DA51',1,'Authority Bucuresti',10,'Supplier Ilfov','Bucuresti','45000000-7',900,'2025-01-01'),
+          (52,'DA52',2,'Authority Vrancea',10,'Supplier Ilfov','Vrancea','45000000-7',100,'2025-01-02'),
+          (53,'DA53',2,'Authority Vrancea',11,'Supplier Cluj','Vrancea','45000000-7',50,'2025-01-03')`;
+        await q`insert into marts.agg_top_entities (role,eid,nm,county,v_plaf,n_plaf,v_all,n_all) values
+          ('supplier',10,'Supplier Ilfov','Ilfov',1000,2,1000,2),('supplier',11,'Supplier Cluj','Cluj',50,1,50,1)`;
+        const table:AskSpec = { block:"table", dataset:"all", dim:"supplier", measure:"value", topN:5, filters:{} };
+        const expected = [{ entityId:"10", county:"Ilfov" },{ entityId:"11", county:"Cluj" }];
+        const bare = await runSpec(q,table,{});
+        expect(bare).toMatchObject({ data:{ block:"table", rows:expected } });
+        expect(await runSpec(q,{ ...table, filters:{ yearFrom:2025 } },{})).toMatchObject({ data:{ block:"table", rows:expected } });
+        const paged:AskSpec = { block:"table", dataset:"all", dim:"supplier", measure:"value", filters:{ yearFrom:2025 } };
+        const bySort = await runSpec(q,paged,{},{ sort:"county", dir:"asc" });
+        expect(bySort).toMatchObject({ data:{ block:"table", rows:[{ entityId:"11", county:"Cluj" },{ entityId:"10", county:"Ilfov" }] } });
+        expect(await runSpec(q,paged,{},{ sort:"name", dir:"desc" })).toMatchObject({ data:{ block:"table", rows:[{ entityId:"10", county:"Ilfov" },{ entityId:"11", county:"Cluj" }] } });
+        if (!("data" in bare)) throw new Error("table expected");
+        expect(bare.caveats).toContain("Coloana Județ arată județul firmei, nu județele autorităților care au cumpărat de la ea.");
+        expect(bare.caveats.some(c => c.includes("autorității cumpărătoare"))).toBe(false);
+        throw rollback;
+      });
+    } catch (error) { if (error !== rollback) throw error; }
+    expect(await sql`select nspname from pg_namespace where nspname=${prefix}`).toHaveLength(0);
+  },30000);
 });
