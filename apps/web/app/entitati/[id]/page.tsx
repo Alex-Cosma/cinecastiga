@@ -15,7 +15,7 @@ import {
   type Role,
   type EntityFlagRow,
 } from "@/lib/marts";
-import { countryName } from "@/lib/ted";
+import { entityCountryLabel } from "@/lib/ted";
 import { formatRon, formatRonFull, formatInt, formatExactDecimal, formatCalendarDate, cleanName } from "@/lib/format";
 import { FLAG_META, FLAG_ORDER, criBand } from "@/lib/flags";
 import { getEntitySignalCounts } from "@/lib/signals";
@@ -146,7 +146,7 @@ export default async function EntityPage({
         <div className="ehead-main">
           <p className="eyebrow">
             {role === "authority" && profile?.isPublicCompany ? "Companie publică · autoritate contractantă" : ROLE_LABEL[role]}
-            {profile?.isForeign ? ` · firmă străină${profile.countryCode ? ` · ${countryName(profile.countryCode)}` : ""}` : ""}
+            {profile?.isForeign ? ` · ${entityCountryLabel(true, profile.countryCode)}` : ""}
           </p>
           <h1 className="page-title">{cleanName(row.name)}</h1>
           <div className="id-meta">

@@ -141,6 +141,21 @@ export function tedCountryFilter(sql: TedSql, country?: string) {
   return country ? sql`${country} = any(winner_countries)` : sql`true`;
 }
 
+/**
+ * Country part of an entity page's eyebrow. An entity whose stored foreign
+ * marker sits next to the country RO (data audit F26: Candu Energy Inc.
+ * 2270125, Synevo Romania 2270902) has sources that disagree about its
+ * country. The page then states neither "firmă străină" nor "România", only
+ * that the country needs checking, as the TED list does for its result rows.
+ * The stored identity is not changed.
+ */
+export function entityCountryLabel(isForeign: boolean, countryCode: string | null | undefined): string | null {
+  if (!isForeign) return null;
+  const code = countryCode?.trim().toUpperCase();
+  if (code === "RO") return "țară de verificat";
+  return code ? `firmă străină · ${countryName(code)}` : "firmă străină";
+}
+
 export function tedCountryNeedsReview(isForeign: boolean, countries: (string | null)[]) {
   return isForeign && !countries.some(country => {
     const code = country?.trim().toUpperCase();
