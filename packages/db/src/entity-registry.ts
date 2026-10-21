@@ -53,6 +53,15 @@ export function cuiCorroborated(q: Query, alias = 'e') {
       where registry_check.entity_id=${q(alias)}.id and registry_check.cui=${q(alias)}.cui_canonical)))`;
 }
 
+/** Boolean: ONRC registers the CUI of entity `alias` under a name sharing a
+ * distinctive token with the entity name — the name check of
+ * refreshCuiCorroborations, read directly. Needs reference.onrc_firm. */
+export function registryNameCorroborates(q: Query, alias = 'e') {
+  return q`exists (select 1 from reference.onrc_firm registry_firm
+    where registry_firm.cui=${q(alias)}.cui_canonical
+      and ${nameTokens(q, q`registry_firm.name`)} && ${nameTokens(q, q`${q(alias)}.name_display`)})`;
+}
+
 /** The CUI to use for an ONRC/MF join on entity `alias`, or NULL. */
 export function corroboratedCui(q: Query, alias = 'e') {
   return q`(case when ${cuiCorroborated(q, alias)} then ${q(alias)}.cui_canonical end)`;

@@ -18,6 +18,7 @@ import { applyNutsCounties } from "./nuts-county.js";
 import { applyRegistryCounties } from "./registry-county.js";
 import { applyDaSupplierVatIdentities } from "./da-supplier-vat.js";
 import { applyForeignCountrySpellings } from "./foreign-country-spelling.js";
+import { applyRegistryRomanianCountries } from "./registry-country.js";
 import { reopenFixedQuarantine } from "./quarantine-reopen.js";
 import { clearCopiedAwardEstimates } from "./award-estimate.js";
 
@@ -64,6 +65,8 @@ export interface NormalizeReport {
   daSupplierVat: number;
   /** Foreign entities redirected to the same firm under another spelling of its country code now (0 once applied). */
   foreignCountrySpelling: number;
+  /** Valid-CUI firms stored with a foreign country that ONRC corroborates, set to RO now (0 once applied). */
+  registryCountries: number;
   /** Award "estimates" that were a copy of the awarded value, emptied now (0 once applied). */
   awardEstimates: number;
 }
@@ -207,6 +210,10 @@ export async function runNormalize(
   const countrySpellings = opts.only ? { redirected: [], skipped: [] } : await sql.begin((q) => applyForeignCountrySpellings(q));
   if (countrySpellings.redirected.length) log(`foreign entities redirected across country-code spellings: ${countrySpellings.redirected.length}`);
   for (const s of countrySpellings.skipped) log(`foreign entities with one id under several country-code spellings left for review (${s.reason}): ${s.ids.join(", ")}`);
+  // Before the county steps, which fill only Romanian entities: a valid CUI
+  // that ONRC registers under the firm's name makes it Romanian (audit F26).
+  const registryCountries = opts.only ? [] : await sql.begin((q) => applyRegistryRomanianCountries(q));
+  if (registryCountries.length) log(`country set to RO from an ONRC-corroborated CUI: ${registryCountries.map((c) => `${c.id} (was ${c.previous})`).join(", ")}`);
   // After every transform, so an entity created or rebuilt from the source
   // registrations gets its reviewed name before the marts copy it.
   const reviewedNames = opts.only ? [] : await sql.begin((q) => applyReviewedEntityNames(q));
@@ -232,6 +239,7 @@ export async function runNormalize(
     authorityUatCounties: registryCounties.authorityUat.length,
     daSupplierVat: daSupplierVat.length,
     foreignCountrySpelling: countrySpellings.redirected.length,
+    registryCountries: registryCountries.length,
     awardEstimates,
   };
 }
