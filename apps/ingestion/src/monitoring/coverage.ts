@@ -9,8 +9,8 @@ export async function monitoringSourceCoverage(q: DbSql): Promise<Record<string,
     fetched_count::text "fetchedCount", deviation
     from core.scrape_runs order by source, started_at desc, id desc`;
   const normalized = await q`select transform, last_raw_id::text "lastRawId", updated_at::text "updatedAt" from core.normalize_watermarks order by transform`;
-  // `collections` is the legacy windowed-import log (core.scrape_runs), kept for older readers;
-  // `collector` is the continuous collector, the current record of source collection (audit F17).
+  // `collections` is the log of the windowed import commands (core.scrape_runs); `collector` is the
+  // continuous collector, which never writes that log (audit F17). Readers use the newer of the two.
   return { observations: [...observations], collector: await collectorCoverage(q), collections: [...collections], normalized: [...normalized],
     sourceCompletenessVerified: false,
     note: "Datele de achiziție, ultima colectare reușită și calcularea inventarului sunt momente diferite. Publicarea acestei versiuni nu înseamnă o colectare nouă." };

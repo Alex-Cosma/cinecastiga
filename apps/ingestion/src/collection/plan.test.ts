@@ -1,5 +1,6 @@
 import {describe,it,expect} from 'vitest';
-import {planResponse,task} from './plan.js';
+import {COLLECTION_BACKGROUND_PRIORITY} from '@seap/db';
+import {BACKGROUND_PRIORITY,planResponse,task} from './plan.js';
 const end='2026-09-25';
 const da=task('fixture','da','da',{from:'2026-07-01',to:end,authorityId:7848,page:0});
 describe('durable recovery plans (no network)',()=>{
@@ -148,3 +149,6 @@ it('uses one isolated bounded request to reconcile an overlapping notice day',()
  expect(()=>task('fixture','awards','list',{...retry.params,page:1})).toThrow('singură');
  expect(()=>task('fixture','da','da',{...retry.params,inventoryOnly:false})).toThrow('singură');
 });
+
+// The public collection panel (packages/db collection-coverage.ts) leaves background backfill out by this threshold.
+it('shares the background threshold with the public collection record',()=>{expect(COLLECTION_BACKGROUND_PRIORITY).toBe(BACKGROUND_PRIORITY);});
