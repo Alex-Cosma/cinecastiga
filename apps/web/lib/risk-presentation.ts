@@ -116,7 +116,11 @@ export function riskEvidenceLine(code: string, evidence: Record<string, unknown>
     case "da_concentration":
       return `Furnizorul principal: ${pct("top_supplier_pct")} din valoarea achizițiilor directe (${money("total")} în total, ${s("suppliers")} furnizori, HHI ${s("hhi")}).`;
     case "da_dependence":
-      return `Autoritatea principală: ${pct("top_authority_pct")} din valoarea achizițiilor directe ale furnizorului (${s("authorities")} autorități în date).`;
+      // Audit F30: a supplier with one public client meets the share criterion
+      // by construction; the owner kept the rule and asked for it to be said.
+      return n("authorities") === 1
+        ? `Autoritatea principală: ${pct("top_authority_pct")} din valoarea achizițiilor directe ale furnizorului (o singură autoritate în date). Cu un singur client public, semnalul apare automat: dependența de acest client este pista de verificat, nu o dovadă de neregulă.`
+        : `Autoritatea principală: ${pct("top_authority_pct")} din valoarea achizițiilor directe ale furnizorului (${s("authorities")} autorități în date).`;
     case "award_no_competition":
       return `${s("procedure")} · ${awardValueLabel(evidence)}: ${money("value")} · CPV ${s("cpv")}.${noticeContractsNote(evidence)}`;
     case "award_single_bid":
