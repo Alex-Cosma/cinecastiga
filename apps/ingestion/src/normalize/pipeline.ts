@@ -16,6 +16,7 @@ import { PARSERS } from "./parsers.js";
 import { applyReviewedEntityNames } from "./reviewed-entity-names.js";
 import { applyNutsCounties } from "./nuts-county.js";
 import { applyDaSupplierVatIdentities } from "./da-supplier-vat.js";
+import { reopenFixedQuarantine } from "./quarantine-reopen.js";
 
 /**
  * Replayable raw→core runner (core-layer DEC-004). Processes each
@@ -104,6 +105,13 @@ export async function runNormalize(
   const cpvByPrefix = await loadCpvPrefixMap(db);
   const units = await loadUnitMap(db);
   log(`loaded ${cpvCatalog.size} CPV codes, ${units.size} unit mappings`);
+
+  // Before the retry below reads pending rows: historical failures whose cause
+  // the resolver no longer has go back to the ordinary retry (audit F21).
+  if (!opts.only || opts.only === "award-contracts:v1") {
+    const reopened = await reopenFixedQuarantine(sql);
+    if (reopened.length) log(`historical quarantine reopened for retry: ${reopened.length} raw documents`);
+  }
 
   const perTransform: TransformReport[] = [];
   let totalProcessed = 0;
