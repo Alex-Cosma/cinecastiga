@@ -30,8 +30,9 @@ export const DA_SUPPLIER_VAT_REASON = "da-supplier-vat-number";
 
 const PREFIX = "^\\s*(AT|BE|BG|CY|CZ|DE|DK|EE|EL|ES|FI|FR|HR|HU|IE|IT|LT|LU|LV|MT|NL|PL|PT|SE|SI|SK|GB|CHE|NO)[\\s.-]*[A-Za-z]{0,2}[\\s.-]*[0-9]";
 
-/** Same shape the web reads with readConnectionEntities / readMonitoringBindings. */
-function identityOf(q: TransactionSql, ids: string[]) {
+/** Same shape the web reads with readConnectionEntities / readMonitoringBindings:
+ * the previous and canonical identities a redirect records as evidence. */
+export function identityOf(q: TransactionSql, ids: string[]) {
   return q`
     select e.id::text id, jsonb_build_object(
       'id', e.id::text,

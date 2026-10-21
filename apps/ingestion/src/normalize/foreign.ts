@@ -26,6 +26,34 @@ export function normCountry(raw: string | null | undefined): string | null {
 }
 
 /**
+ * Stored country spellings that normCountry keeps as they are: the "UK" of
+ * legacy TED and the eForms ISO-3 codes missing from ISO3_TO_ISO2 (data audit
+ * F26). Used only to tell that two stored codes name the same country; stored
+ * codes, normCountry and therefore the `foreign:` keys inside approved
+ * contract-identity proofs do not change.
+ */
+const STORED_SPELLING_TO_ISO2: Record<string, string> = {
+  UK: "GB", AUS: "AU", HKG: "HK", KAZ: "KZ", MKD: "MK", BIH: "BA", PER: "PE",
+  ARG: "AR", BRA: "BR", COL: "CO", GTM: "GT", IDN: "ID", KEN: "KE", LKA: "LK",
+  MEX: "MX", PHL: "PH", SGP: "SG", THA: "TH", TWN: "TW", UZB: "UZ", ZAF: "ZA",
+};
+
+/**
+ * The ISO-2 country a stored country code names, for comparing two stored
+ * codes ("UK" and "GB", "HKG" and "HK"). Null for an unknown 3-letter code or
+ * anything else, so an unrecognised spelling never matches.
+ */
+export function countryIso2(raw: string | null | undefined): string | null {
+  const s = raw?.trim().toUpperCase();
+  if (!s) return null;
+  const spelled = STORED_SPELLING_TO_ISO2[s];
+  if (spelled) return spelled;
+  if (/^[A-Z]{2}$/.test(s)) return s;
+  if (/^[A-Z]{3}$/.test(s)) return ISO3_TO_ISO2[s] ?? null;
+  return null;
+}
+
+/**
  * Normalize a foreign registration/VAT id for use as a merge key. Returns null
  * for values too short or placeholder-like to trust (avoids merging distinct
  * firms onto a junk id).

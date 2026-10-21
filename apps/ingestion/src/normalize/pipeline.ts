@@ -17,6 +17,7 @@ import { applyReviewedEntityNames } from "./reviewed-entity-names.js";
 import { applyNutsCounties } from "./nuts-county.js";
 import { applyRegistryCounties } from "./registry-county.js";
 import { applyDaSupplierVatIdentities } from "./da-supplier-vat.js";
+import { applyForeignCountrySpellings } from "./foreign-country-spelling.js";
 import { reopenFixedQuarantine } from "./quarantine-reopen.js";
 import { clearCopiedAwardEstimates } from "./award-estimate.js";
 
@@ -61,6 +62,8 @@ export interface NormalizeReport {
   authorityUatCounties: number;
   /** Key-less DA supplier fragments redirected to their VAT-number entity now (0 once applied). */
   daSupplierVat: number;
+  /** Foreign entities redirected to the same firm under another spelling of its country code now (0 once applied). */
+  foreignCountrySpelling: number;
   /** Award "estimates" that were a copy of the awarded value, emptied now (0 once applied). */
   awardEstimates: number;
 }
@@ -200,6 +203,10 @@ export async function runNormalize(
   // list parser read its VAT number reach one entity before the marts (audit F18).
   const daSupplierVat = opts.only ? [] : await sql.begin((q) => applyDaSupplierVatIdentities(q));
   if (daSupplierVat.length) log(`DA suppliers redirected to their VAT-number entity: ${daSupplierVat.length}`);
+  // Same placement: one foreign firm under "UK"/"GB", "HKG"/"HK"… is one supplier in the marts (audit F26).
+  const countrySpellings = opts.only ? { redirected: [], skipped: [] } : await sql.begin((q) => applyForeignCountrySpellings(q));
+  if (countrySpellings.redirected.length) log(`foreign entities redirected across country-code spellings: ${countrySpellings.redirected.length}`);
+  for (const s of countrySpellings.skipped) log(`foreign entities with one id under several country-code spellings left for review (${s.reason}): ${s.ids.join(", ")}`);
   // After every transform, so an entity created or rebuilt from the source
   // registrations gets its reviewed name before the marts copy it.
   const reviewedNames = opts.only ? [] : await sql.begin((q) => applyReviewedEntityNames(q));
@@ -224,6 +231,7 @@ export async function runNormalize(
     onrcCounties: registryCounties.onrc.length,
     authorityUatCounties: registryCounties.authorityUat.length,
     daSupplierVat: daSupplierVat.length,
+    foreignCountrySpelling: countrySpellings.redirected.length,
     awardEstimates,
   };
 }
