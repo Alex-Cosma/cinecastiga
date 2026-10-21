@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nearThresholdEvidence, riskEvidenceLine, signalPeriodLabel } from "./risk-presentation";
+import { nearThresholdEvidence, riskEvidenceLine, signalPeriodLabel, singleBidValueNote } from "./risk-presentation";
 
 describe("distance from a procurement threshold", () => {
   it("shows the one-leu gap rather than rounding a sub-threshold value to 100%", () => {
@@ -46,5 +46,28 @@ describe("risk explanation limits", () => {
     expect(signalPeriodLabel(null)).toContain("nu este precizată");
     expect(signalPeriodLabel("all")).toContain("disponibilă la calcul");
     expect(signalPeriodLabel("2021")).toContain("2021");
+  });
+});
+
+// Audit F23: say which value an award_single_bid signal uses and never show a
+// value below the cited contracts without saying so.
+describe("single-tender signal value", () => {
+  it("names the cited-contract fallback when the notice has no value", () => {
+    const line = riskEvidenceLine("award_single_bid", { confirmed_contract_count: 1, value: 83946600, value_scope: "confirmed_contracts",
+      notice_value: 0, cited_contracts_value: 83946600, cited_reportable_value: 83946600, cited_unknown_value_count: 0 });
+    expect(line).toContain("Anunțul SEAP nu are o valoare; valoarea semnalului (83.946.600 lei)");
+    expect(line).toContain("fără plafoane de acord-cadru");
+    expect(line).not.toContain("mai mult decât");
+  });
+  it("discloses cited contracts that exceed the notice value", () => {
+    const line = riskEvidenceLine("award_single_bid", { confirmed_contract_count: 24, value: 9263922.09, value_scope: "notice",
+      notice_value: 9263922.09, cited_contracts_value: 22551839, cited_reportable_value: 22551839, cited_unknown_value_count: 2 });
+    expect(line).toContain("însumează 22.551.839 lei, mai mult decât valoarea anunțului (9.263.922,09 lei)");
+    expect(line).toContain("2 contracte citate nu au valoare cunoscută în lei.");
+  });
+  it("adds nothing for older signals without the value fields", () => {
+    expect(singleBidValueNote({ value: 2000000, value_scope: "notice" })).toBe("");
+    expect(riskEvidenceLine("award_single_bid", { confirmed_contract_count: 1, value: 2000000, value_scope: "notice" }))
+      .toBe("1 contracte asociate unor loturi TED cu o singură ofertă raportată.");
   });
 });

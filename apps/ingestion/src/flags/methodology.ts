@@ -7,7 +7,8 @@
 // rf-2026.6: annual/monthly periods use Europe/Bucharest consistently with the source calendar.
 // rf-2026.7: ceilings/addenda are non-additive; uncertain publication identities are temporarily excluded.
 // rf-2026.8: da_year_end only for calendar years the DA archive covers from January to December.
-export const METHODOLOGY_VERSION = "rf-2026.8";
+// rf-2026.9: award_single_bid treats a 0/missing notice value as unknown and falls back to cited contracts/call-offs.
+export const METHODOLOGY_VERSION = "rf-2026.9";
 
 export type FlagSubject = "da" | "award" | "authority" | "supplier" | "pair";
 
@@ -104,11 +105,11 @@ export const FLAG_DEFS: FlagDef[] = [
     title: "O singură ofertă raportată în TED",
     subject: "award",
     description:
-      "Anunț de atribuire de cel puțin 1 milion lei, prin licitație deschisă sau restrânsă, cu cel puțin un contract asociat unui lot TED care raportează exact o ofertă primită. Asocierea și numărul trebuie confirmate; egalitatea prețului minim cu cel maxim nu este o dovadă.",
+      "Anunț de atribuire de cel puțin 1 milion lei, prin licitație deschisă sau restrânsă, cu cel puțin un contract asociat unui lot TED care raportează exact o ofertă primită. Asocierea și numărul trebuie confirmate; egalitatea prețului minim cu cel maxim nu este o dovadă. Valoarea este cea a anunțului. Când anunțul nu are valoare (SEAP raportează 0), se folosește suma în lei a contractelor citate care sunt contracte sau comenzi subsecvente; plafoanele acordurilor-cadru nu înlocuiesc valoarea lipsă, deci un astfel de anunț care citează numai plafoane nu este evaluat.",
     rationale:
       "O singură ofertă primită justifică verificarea accesului la procedură, a cerințelor și a pieței furnizorilor; nu identifică singură cauza concurenței reduse.",
     caveat:
-      "Numărul de oferte nu este numărul membrilor unui consorțiu. Un lot cu o ofertă nu descrie toate loturile anunțului; valoarea afișată este a anunțului. Numerele lipsă, contradictorii și asocierile ambigue rămân necunoscute. Piețele de nișă pot avea legitim o singură ofertă.",
+      "Numărul de oferte nu este numărul membrilor unui consorțiu. Un lot cu o ofertă nu descrie toate loturile anunțului. Valoarea afișată este a anunțului sau, când aceasta lipsește, a contractelor citate; contractele citate pot însuma mai mult decât valoarea anunțului. Numerele lipsă, contradictorii și asocierile ambigue rămân necunoscute. Piețele de nișă pot avea legitim o singură ofertă.",
   },
   {
     code: "award_concentration",

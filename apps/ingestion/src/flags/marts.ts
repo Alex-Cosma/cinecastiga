@@ -146,7 +146,7 @@ export async function runFlagMarts(
       select f.id, f.flag_code, 'award',
         aw.authority_entity_id, a.name_display, a.county,
         w.entity_id, s.name_display,
-        f.severity, aw.ron_contract_value, f.period, f.evidence
+        f.severity, coalesce(nullif(f.evidence->>'value','')::numeric, aw.ron_contract_value), f.period, f.evidence
       from (
         select *, row_number() over (partition by flag_code order by severity desc nulls last) rn
         from core.flags where subject_type = 'award'

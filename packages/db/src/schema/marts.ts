@@ -20,6 +20,9 @@ import {
  */
 export const martsSchema = pgSchema("marts");
 
+/** Award rows sort and display the value the signal recorded (evidence.value):
+ * the notice value, or for award_single_bid with a missing notice value the
+ * cited contracts' sum (audit F23). Older signals recorded the notice value. */
 export const SIGNAL_LOOKUP_QUERY = `
   select f.id, f.flag_code, f.subject_type, f.subject_id entity_id, f.partner_id,
     f.severity severity,
@@ -33,7 +36,7 @@ export const SIGNAL_LOOKUP_QUERY = `
   where f.triggered and f.subject_type='da'
   union all
   select f.id, f.flag_code, f.subject_type, aw.authority_entity_id, null::bigint,
-    f.severity, aw.ron_contract_value, aw.ca_notice_id
+    f.severity, coalesce(nullif(f.evidence->>'value','')::numeric, aw.ron_contract_value), aw.ca_notice_id
   from core.flags f join core.awards aw on aw.id=f.subject_id
   where f.triggered and f.subject_type='award'
 `;

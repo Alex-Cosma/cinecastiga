@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSignalSources } from "@/lib/signal-sources";
 import { FLAG_META } from "@/lib/flags";
-import { riskEvidenceLine, signalPeriodLabel, thresholdTypeLabel } from "@/lib/risk-presentation";
+import { riskEvidenceLine, signalPeriodLabel, singleBidValueNote, thresholdTypeLabel } from "@/lib/risk-presentation";
 import { daUrl } from "@/lib/elicitatie";
 import { coverageDate } from "@/lib/coverage";
 import { formatInt, formatExactDecimal } from "@/lib/format";
@@ -69,6 +69,7 @@ export default async function SignalSourcesPage({ params, searchParams }: {
       <h2>Contractele și loturile folosite în semnal</h2>
       {!finding.contractMembershipValid && <p className="note">Lista înregistrată conține referințe incomplete sau nevalide. Sursele de mai jos reprezintă numai partea care poate fi verificată.</p>}
       <p>Calculul a identificat o singură ofertă la aceste contracte și loturi. Nu presupune că toate loturile anunțului au avut o singură ofertă.</p>
+      {singleBidValueNote(evidence) && <p className="note">{singleBidValueNote(evidence).trim()}</p>}
       <div className="ask-tablewrap"><table className="rank"><thead><tr><th scope="col">Contract SEAP</th><th scope="col">Lot și publicație TED</th><th scope="col">Oferte raportate</th><th scope="col" className="num">Valoare contract</th></tr></thead><tbody>
         {finding.contracts.map(row => <tr key={row.id}><td><Link href={`/contracte/${row.id}`}>Contract {row.id} →</Link>{(!row.available || !row.linked || row.tenders !== 1) && <div className="note">Datele sau asocierea s-au schimbat; semnalul necesită recalculare.</div>}</td><td>{row.tedPublication ? <a href={`https://ted.europa.eu/ro/notice/-/detail/${row.tedPublication}`} target="_blank" rel="noreferrer">{row.tedPublication} · {row.lot} ↗</a> : "Asociere indisponibilă"}</td><td>{row.tenders ?? "necunoscut"}</td><td className="num">{exact(row.value)} {row.currency ?? "monedă nespecificată"}</td></tr>)}
       </tbody></table></div>

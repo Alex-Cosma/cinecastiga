@@ -36,6 +36,29 @@ export function nearThresholdEvidence(evidence: Record<string, unknown>): string
   return `${formatExactDecimal(closing.text)} lei — ${relation} ${formatExactDecimal(ceiling.text)} lei (${thresholdTypeLabel(evidence.type)}).`;
 }
 
+/** award_single_bid (rf-2026.9): which value the signal uses and whether the
+ * cited contracts exceed it. Older signals lack these fields and add nothing. */
+export function singleBidValueNote(evidence: Record<string, unknown>): string {
+  const n = (key: string): number | null => {
+    const raw = evidence[key];
+    if (raw == null || raw === "" || !["string", "number"].includes(typeof raw)) return null;
+    const value = Number(raw);
+    return Number.isFinite(value) ? value : null;
+  };
+  // Exact, like the signal card: these are source sums, not headline figures.
+  const lei = (key: string) => {
+    const raw = evidence[key];
+    const text = typeof raw === "string" ? raw : typeof raw === "number" && Number.isFinite(raw) ? String(raw) : "";
+    return /^\d+(?:\.\d+)?$/.test(text) ? `${formatExactDecimal(text)} lei` : "valoare necunoscută";
+  };
+  const value = n("value"), cited = n("cited_contracts_value"), unknown = n("cited_unknown_value_count");
+  const parts: string[] = [];
+  if (evidence.value_scope === "confirmed_contracts") parts.push(`Anunțul SEAP nu are o valoare; valoarea semnalului (${lei("value")}) este suma contractelor citate care sunt contracte sau comenzi subsecvente, fără plafoane de acord-cadru.`);
+  if (value !== null && cited !== null && cited > value) parts.push(`Contractele citate însumează ${lei("cited_contracts_value")}, mai mult decât ${evidence.value_scope === "confirmed_contracts" ? "valoarea semnalului" : `valoarea anunțului (${lei("value")})`}; suma poate include plafoane de acord-cadru, care nu sunt cheltuieli. Verifică anunțul SEAP.`);
+  if (unknown) parts.push(`${formatInt(unknown)} ${unknown === 1 ? "contract citat nu are" : "contracte citate nu au"} valoare cunoscută în lei.`);
+  return parts.length ? ` ${parts.join(" ")}` : "";
+}
+
 /** Display-only explanations shared by entity profiles and the signal explorer. */
 export function riskEvidenceLine(code: string, evidence: Record<string, unknown> | null): string | null {
   if (!evidence) return null;
@@ -65,7 +88,7 @@ export function riskEvidenceLine(code: string, evidence: Record<string, unknown>
       return `${s("procedure")} · valoarea anunțului: ${money("value")} · CPV ${s("cpv")}.`;
     case "award_single_bid":
       return evidence.confirmed_contract_count
-        ? `${s("confirmed_contract_count")} contracte asociate unor loturi TED cu o singură ofertă raportată.`
+        ? `${s("confirmed_contract_count")} contracte asociate unor loturi TED cu o singură ofertă raportată.${singleBidValueNote(evidence)}`
         : "Lista contractelor cu o singură ofertă raportată nu este disponibilă în această versiune a semnalului.";
     case "award_concentration":
       return `Furnizorul principal: ${pct("top_winner_pct")} din valoarea contractelor (${s("winners")} furnizori în date, HHI ${s("hhi")}).`;

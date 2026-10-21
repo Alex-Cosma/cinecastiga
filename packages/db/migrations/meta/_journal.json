@@ -533,6 +533,13 @@
       "when": 1792135801542,
       "tag": "0075_simple_mercury",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1792550360350,
+      "tag": "0076_signal_lookup_recorded_value",
+      "breakpoints": true
     }
   ]
 }
