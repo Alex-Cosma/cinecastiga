@@ -64,9 +64,13 @@ export async function runCoverage(sql: DbSql): Promise<void> {
             where ${contractWinnerIsAuthority(q)} and ${canonicalContract(q)} and (${contractReportable(q)})
               and ${contractRonValue(q)}>0 and ${contractRonValue(q)}<=${CONTRACT_VALUE_CAP_RON} and c.contract_date is not null)
         -- Canonical contracts typed by the title rule, without an archived SEAP
-        -- type (audit F08), and the part of them that reached the totals.
+        -- type (audit F08), and the part of them that reached the totals. The
+        -- value covers only the rows with a verifiable sum in lei: legacy EUR/USD
+        -- rows have no verified conversion, so they are counted apart, not as zero.
         || (select jsonb_build_object('title_classified',count(*)::text,
-              'title_classified_value',coalesce(trim_scale(sum(${contractRonValue(q)})),0)::text)
+              'title_classified_valued',count(*) filter (where ${contractRonValue(q)}>0)::text,
+              'title_classified_value',coalesce(trim_scale(sum(${contractRonValue(q)}) filter (where ${contractRonValue(q)}>0)),0)::text,
+              'title_classified_without_ron_value',count(*) filter (where coalesce(${contractRonValue(q)},0)<=0)::text)
             from core.contracts c where ${contractKindFromTitle(q)} and ${canonicalContract(q)})
         || (select jsonb_build_object('title_classified_included',count(distinct t.contract_id)::text,
               'title_classified_included_value',coalesce(trim_scale(sum(t.closing_value)),0)::text)
