@@ -1,4 +1,4 @@
-import { createDb, type DbSql } from "@seap/db";
+import { collectorCoverage, createDb, type CollectorCoverage, type DbSql } from "@seap/db";
 import { unstable_cache } from "next/cache";
 
 export type Dataset = "da" | "contracts" | "ted";
@@ -46,17 +46,25 @@ export interface Collection {
 export interface Coverage {
   observations: { dataset: Dataset; observation: Observation; calculated_at: string }[];
   years: { src: Dataset; year: number; n: string }[];
+  /** Continuous collector: the only current record of when sources were collected. */
+  collector: CollectorCoverage;
+  /** Earlier windowed imports (`core.scrape_runs`); historical, no longer written by the collector. */
   collections: Collection[];
   normalized: { transform: string; updated_at: string }[];
 }
 const globalDb = globalThis as unknown as { __seapSql?: DbSql };
 
 export async function readCoverage(sql: DbSql): Promise<Coverage> {
-  const [observations, collections, normalized] = await Promise.all([
+  const [observations, collector, collections, normalized] = await Promise.all([
     sql`select dataset, observation, calculated_at::text from marts.data_coverage order by dataset`,
-    sql`select distinct on (source) source, status latest_status, started_at::text latest_started,
-          max(finished_at) filter (where status = 'completed') over (partition by source)::text last_success,
-          window_start::text window_from, window_end::text window_to,
+    collectorCoverage(sql),
+    // Run times in Bucharest. Windows are decoded as the importers encoded the requested days:
+    // SEAP as `T00:00:00+03:00` (scrape/elicitatie), TED as UTC (scrape/ted).
+    sql`select distinct on (source) source, status latest_status,
+          (started_at at time zone 'Europe/Bucharest')::text latest_started,
+          (max(finished_at) filter (where status = 'completed') over (partition by source) at time zone 'Europe/Bucharest')::text last_success,
+          ((window_start at time zone 'UTC') + case when source like 'elicitatie:%' then interval '3 hours' else interval '0' end)::text window_from,
+          ((window_end at time zone 'UTC') + case when source like 'elicitatie:%' then interval '3 hours' else interval '0' end)::text window_to,
           reported_total reported, fetched_count fetched, deviation
         from core.scrape_runs
         where source in ('elicitatie:das', 'elicitatie:awards', 'ted:can-standard', 'ted:fforms')
@@ -67,6 +75,7 @@ export async function readCoverage(sql: DbSql): Promise<Coverage> {
     observations: observations.filter(r => ["da", "contracts", "ted"].includes(r.dataset)
       && r.observation && !Array.isArray(r.observation) && typeof r.observation.available === "string") as unknown as Coverage["observations"],
     years: observations.find(r => r.dataset === "years")?.observation ?? [],
+    collector,
     collections: collections as unknown as Collection[],
     normalized: normalized as unknown as Coverage["normalized"],
   };
@@ -81,7 +90,7 @@ export const getCoverage = unstable_cache(async (): Promise<Coverage | null> => 
     if ((error as { code?: string }).code === "42P01") return null;
     throw error;
   }
-}, ["data-coverage-v3"], { revalidate: 300 });
+}, ["data-coverage-v5"], { revalidate: 300 });
 
 /** Date only, as recorded by the source; don't shift source days to browser time zones. */
 export function coverageDate(value: string | null | undefined): string {
