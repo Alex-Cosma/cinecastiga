@@ -123,12 +123,6 @@ export default async function ContractPage({
           <div className="l">Valoare atribuită (tot anunțul)</div>
         </div>
         <div className="stat">
-          <div className="n">
-            {c.estimatedValueRon != null ? formatRon(c.estimatedValueRon) : "—"}
-          </div>
-          <div className="l">Valoare estimată</div>
-        </div>
-        <div className="stat">
           <div className="n">{c.tendersReceived != null ? formatInt(c.tendersReceived) : "—"}</div>
           <div className="l">Oferte primite</div>
         </div>

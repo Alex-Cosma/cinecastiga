@@ -1223,7 +1223,8 @@ export interface ContractDetail {
   // award (the money + procedure live on the award notice)
   caNoticeId: string | null;
   noticeNo: string | null;
-  estimatedValueRon: number | null;
+  // No estimate: SICAP's award list repeats the awarded value as its
+  // "estimate", so core.awards has none of its own (data audit F22).
   awardValueRon: number | null;
   lowestOfferRon: number | null;
   highestOfferRon: number | null;
@@ -1265,7 +1266,7 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
            ${contractRonValue(sql)}::text value_ron, ${contractAmountStatus(sql)} amount_status, c.currency_rate::text, coalesce(c.cpv_code, a.cpv_code) cpv_code,
            c.cpv_code is null and a.cpv_code is not null cpv_from_notice,
            (select name_ro from core.cpv_codes k where k.code = coalesce(c.cpv_code, a.cpv_code)) cpv_name,
-           a.id award_id, a.ca_notice_id, a.notice_no, a.estimated_value_ron,
+           a.id award_id, a.ca_notice_id, a.notice_no,
            a.ron_contract_value, a.lowest_offer_value, a.highest_offer_value,
            a.procedure_type, a.acquisition_type, a.state_date::text,
            a.authority_entity_id, e.name_display auth_name, e.county auth_county,
@@ -1390,7 +1391,6 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
     cpvName: (r["cpv_name"] as string | null) ?? null,
     caNoticeId: r["ca_notice_id"] != null ? String(r["ca_notice_id"]) : null,
     noticeNo: (r["notice_no"] as string | null) ?? null,
-    estimatedValueRon: r["estimated_value_ron"] != null ? Number(r["estimated_value_ron"]) : null,
     awardValueRon: r["ron_contract_value"] != null ? Number(r["ron_contract_value"]) : null,
     lowestOfferRon: r["lowest_offer_value"] != null ? Number(r["lowest_offer_value"]) : null,
     highestOfferRon: r["highest_offer_value"] != null ? Number(r["highest_offer_value"]) : null,
@@ -1450,7 +1450,7 @@ export interface AwardNoticeDetail {
   procedureType: string | null;
   acquisitionType: string | null;
   stateDate: string | null;
-  estimatedValueRon: number | null;
+  // No estimate, as in ContractDetail (data audit F22).
   awardValueRon: number | null;
   lowestOfferRon: number | null;
   highestOfferRon: number | null;
@@ -1475,7 +1475,7 @@ export async function getAwardNoticeDetail(
   const cid = /^\d+$/.test(caNoticeId) ? caNoticeId : "0";
   const head = (await sql`
     select a.ca_notice_id, a.notice_no, a.procedure_type, a.acquisition_type,
-           a.state_date::text, a.estimated_value_ron, a.ron_contract_value,
+           a.state_date::text, a.ron_contract_value,
            a.lowest_offer_value, a.highest_offer_value, a.cpv_code,
            (select name_ro from core.cpv_codes k where k.code = a.cpv_code) cpv_name,
            a.authority_entity_id, e.name_display auth_name, e.county auth_county,
@@ -1535,7 +1535,6 @@ export async function getAwardNoticeDetail(
     procedureType: (h["procedure_type"] as string | null) ?? null,
     acquisitionType: (h["acquisition_type"] as string | null) ?? null,
     stateDate: (h["state_date"] as string | null) ?? null,
-    estimatedValueRon: h["estimated_value_ron"] != null ? Number(h["estimated_value_ron"]) : null,
     awardValueRon: h["ron_contract_value"] != null ? Number(h["ron_contract_value"]) : null,
     lowestOfferRon: h["lowest_offer_value"] != null ? Number(h["lowest_offer_value"]) : null,
     highestOfferRon: h["highest_offer_value"] != null ? Number(h["highest_offer_value"]) : null,

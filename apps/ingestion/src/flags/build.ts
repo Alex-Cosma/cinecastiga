@@ -300,7 +300,7 @@ async function buildFlags(
     select 'award', id, 'award_no_competition', to_char(state_date,'YYYY'), true,
       least(1, ron_contract_value / ${awSevRef}::numeric),
       jsonb_build_object('procedure', procedure_type, 'value', ron_contract_value,
-        'estimate', estimated_value_ron, 'cpv', cpv_code), ${V}
+        'cpv', cpv_code), ${V}
     from core.awards
     where procedure_type ilike '%fara publicare prealabila%'
       and ron_contract_value is not null
