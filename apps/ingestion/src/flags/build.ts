@@ -251,9 +251,17 @@ async function buildFlags(
   `;
 
   // ── da_year_end: December spend spike (per authority-year) ────────────────
+  // Only calendar years the DA archive covers from 1 January to 31 December
+  // (audit F20): the archive starts on 2 April 2018, and the current year has
+  // no December yet, so a partial year would inflate or hide December's share.
+  // The span is the same first/last finalization day as marts.data_coverage.
   await sql`
     insert into core.flags (subject_type, subject_id, flag_code, period, triggered, severity, evidence, methodology_version)
-    with m as (
+    with span as (
+      select min(finalization_date)::date date_from, max(finalization_date)::date date_to
+      from core.direct_acquisitions
+    ),
+    m as (
       select authority_entity_id a, extract(year from finalization_date)::int y,
         sum(closing_value) tot,
         sum(case when extract(month from finalization_date) = 12 then closing_value else 0 end) dec
@@ -267,8 +275,9 @@ async function buildFlags(
       least(1, dec / nullif(tot,0)),
       jsonb_build_object('year', y, 'total', tot, 'december', dec,
         'december_pct', round(dec/nullif(tot,0),4)), ${V}
-    from m
+    from m cross join span
     where tot >= ${yeMinTot} and dec/nullif(tot,0) >= ${yeShare}
+      and span.date_from <= make_date(y, 1, 1) and span.date_to >= make_date(y, 12, 31)
   `;
 
   // ══ Procedure flags ═══════════════════════════════════════════════════════

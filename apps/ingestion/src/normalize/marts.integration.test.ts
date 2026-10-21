@@ -343,6 +343,10 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
           values ('10','fixture-person','Shared representative','1980-01-01'),
             ('11','fixture-person','Shared representative','1980-01-01')`;
         await q`update core.direct_acquisitions set publication_date=finalization_date-interval '30 minutes'`;
+        // Refused records outside every rule; the archive now spans all of 2025,
+        // which da_year_end requires before it evaluates that year.
+        await q`insert into core.direct_acquisitions (id, authority_entity_id, supplier_entity_id, state, closing_value, finalization_date)
+          values (11,1,10,'Oferta refuzata',1,'2024-12-30'),(12,1,10,'Oferta refuzata',1,'2026-01-02')`;
         // The financial comparison must use each contract's year, not its notice publication year.
         await q`update core.awards set state_date='2024-01-01'`;
         const report = await runFlags(q);
@@ -394,6 +398,44 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
     }
     const schemas = await sql`select nspname from pg_namespace where nspname like ${`${prefix}_%`}`;
     expect(schemas).toHaveLength(0);
+  }, 30_000);
+
+  // Audit F20: the DA archive starts on 2 April 2018. A year without January–March
+  // (or without December) must not be read as a whole year's December share.
+  it("evaluates December concentration only in years the DA archive covers from January to December", async () => {
+    const prefix = `year_end_fixture_${process.pid}_${Date.now()}`;
+    const rollback = Error("rollback year-end fixture");
+    await expect(sql.begin(async tx => {
+      await tx`select set_config('TimeZone', 'UTC', true)`;
+      for (const [schema, names] of Object.entries(tables)) {
+        await tx.unsafe(`create schema ${prefix}_${schema}`);
+        for (const table of names) await tx.unsafe(`create table ${prefix}_${schema}.${table} as table ${schema}.${table} with no data`);
+      }
+      const q = isolatedSql(tx as unknown as DbSql, prefix);
+      for (const threshold of DA_CEILING_SEED_ROWS) {
+        await q`insert into core.risk_thresholds (key,valid_from,valid_to,value_num,note)
+          values (${threshold.key},${threshold.validFrom + "T00:00:00Z"},${threshold.validTo ? threshold.validTo + "T00:00:00Z" : null},${threshold.valueNum},'fixture')`;
+      }
+      await q`insert into core.entities(id,name_display) values(1,'Autoritate'),(2,'Furnizor')`;
+      // Each year: 50% of a 120,000 lei total in December. Instants are UTC;
+      // the archive opens 2018-04-02 00:30 and closes 2020-12-30 in Romanian time.
+      await q`insert into core.direct_acquisitions(id,authority_entity_id,supplier_entity_id,state,closing_value,finalization_date) values
+        (1,1,2,'Oferta acceptata',60000,'2018-04-01T21:30:00Z'),(2,1,2,'Oferta acceptata',60000,'2018-12-10T10:00:00Z'),
+        (3,1,2,'Oferta acceptata',60000,'2019-02-10T10:00:00Z'),(4,1,2,'Oferta acceptata',60000,'2019-12-10T10:00:00Z'),
+        (5,1,2,'Oferta acceptata',60000,'2020-02-10T10:00:00Z'),(6,1,2,'Oferta acceptata',60000,'2020-12-30T10:00:00Z')`;
+      const years = async () => (await q`select period from core.flags where flag_code='da_year_end' order by period`).map(r => r["period"]);
+      await runFlags(q);
+      // 2018 lacks January–March; 2020 is not over yet in the archive.
+      expect(await years()).toEqual(["2019"]);
+      // 2020-12-31 22:30 UTC is already 1 January 2021 in Romania: 2020 is complete.
+      await q`insert into core.direct_acquisitions(id,authority_entity_id,supplier_entity_id,state,closing_value,finalization_date)
+        values (7,1,2,'Oferta refuzata',1,'2020-12-31T22:30:00Z')`;
+      await runFlags(q);
+      expect(await years()).toEqual(["2019", "2020"]);
+      const [evidence] = await q`select evidence from core.flags where flag_code='da_year_end' and period='2020'`;
+      expect(evidence?.["evidence"]).toMatchObject({ year: 2020, total: 120000, december: 60000, december_pct: 0.5 });
+      throw rollback;
+    })).rejects.toBe(rollback);
   }, 30_000);
 });
 

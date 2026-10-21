@@ -75,7 +75,7 @@ export const FLAG_META: Record<string, FlagMeta> = {
     subject: "authority",
     short: "O pondere mare din valoarea anuală a achizițiilor directe este finalizată în decembrie.",
     description:
-      "Cel puțin 35% din valoarea achizițiilor directe finalizate într-un an este concentrată în decembrie, pentru un total anual de cel puțin 100.000 lei.",
+      "Cel puțin 35% din valoarea achizițiilor directe finalizate într-un an este concentrată în decembrie, pentru un total anual de cel puțin 100.000 lei. Se evaluează doar anii acoperiți integral, din ianuarie până în decembrie: arhiva achizițiilor directe începe la 02.04.2018, deci 2018 nu este evaluat, iar anul în curs intră după încheierea lui.",
     rationale:
       "Merită verificate calendarul necesarului, justificările achizițiilor și momentul finalizării lor.",
     caveat: "Sezonalitatea și calendarul proiectelor pot explica vârful. Data finalizării în SEAP nu este data plății; semnalul nu dovedește epuizarea intenționată a bugetului.",

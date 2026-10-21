@@ -6,7 +6,8 @@
  */
 // rf-2026.6: annual/monthly periods use Europe/Bucharest consistently with the source calendar.
 // rf-2026.7: ceilings/addenda are non-additive; uncertain publication identities are temporarily excluded.
-export const METHODOLOGY_VERSION = "rf-2026.7";
+// rf-2026.8: da_year_end only for calendar years the DA archive covers from January to December.
+export const METHODOLOGY_VERSION = "rf-2026.8";
 
 export type FlagSubject = "da" | "award" | "authority" | "supplier" | "pair";
 
@@ -81,7 +82,7 @@ export const FLAG_DEFS: FlagDef[] = [
     title: "Achiziții concentrate în decembrie",
     subject: "authority",
     description:
-      "Cel puțin 35% din valoarea achizițiilor directe finalizate într-un an este concentrată în decembrie, pentru un total anual de cel puțin 100.000 lei.",
+      "Cel puțin 35% din valoarea achizițiilor directe finalizate într-un an este concentrată în decembrie, pentru un total anual de cel puțin 100.000 lei. Se evaluează doar anii acoperiți integral, din ianuarie până în decembrie: arhiva achizițiilor directe începe la 02.04.2018, deci 2018 nu este evaluat, iar anul în curs intră după încheierea lui.",
     rationale:
       "Merită verificate calendarul necesarului, justificările achizițiilor și momentul finalizării lor.",
     caveat: "Sezonalitatea și calendarul proiectelor pot explica vârful. Data finalizării în SEAP nu este data plății; semnalul nu dovedește epuizarea intenționată a bugetului.",
