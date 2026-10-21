@@ -24,11 +24,11 @@ Proprietarul a cerut explorare rapidă și plăcută, dar cu date verificabile. 
 | `/intreaba` | Descoperă / Construiește; întrebare editabilă cu filtre clare, răspuns și surse | `apps/web/app/intreaba/`, `apps/web/lib/ask/` |
 | `/cauta` | Căutare entități și achiziții tematice; typeahead geografic; interval de ani/toți anii | `apps/web/app/cauta/`, `apps/web/lib/topic-search*`, `apps/ingestion/src/search/` |
 | `/domenii` | Atlas CPV; click pe părinte aprofundează, frunza deschide detalii, săgeata deschide detalii la orice nivel | `docs/implementation/domains-atlas.md` |
-| `/entitati/[id]` | Profil, parteneri, istoric, semnale, transparența populației | `apps/web/app/entitati/`, `apps/web/lib/marts.ts` |
+| `/entitati/[id]` | Profil, parteneri, istoric, semnale (CRI separat de „Toate semnalele”, cu linkuri `/semnale?ent=`), transparența populației | `apps/web/app/entitati/`, `apps/web/lib/marts.ts` |
 | Radiografie | Comparații, furnizori, dependență, achiziții directe, loturi și surse | `apps/web/app/entitati/[id]/radiografie/`, `apps/ingestion/src/flags/radiografie.ts` |
 | `/contracte/[nid]` | Sursă contractuală, furnizori, publicații/versiuni, fișiere și text | `apps/web/app/contracte/`, `apps/web/lib/marts.ts`, `apps/web/lib/documents/` |
 | `/anunturi/[caid]` | Anunț și contractele/loturile lui | `apps/web/app/anunturi/`, `apps/web/lib/marts.ts` |
-| `/semnale` și detalii | Explorare compactă/paginată a indicatorilor cu limite și dovezi | `apps/web/app/semnale/`, `apps/web/lib/signals.ts`, `flags.ts` |
+| `/semnale` și detalii | Explorare compactă/paginată a indicatorilor cu limite și dovezi; filtru opțional `ent` pentru o entitate | `apps/web/app/semnale/`, `apps/web/lib/signals.ts`, `flags.ts` |
 | `/supra-prag` | Atribuiri publicate în TED; nu promite toate achizițiile peste prag | `apps/web/app/supra-prag/`, `apps/web/lib/ted.ts` |
 | Anchete | Spațiu privat de lucru, roluri, capturi, note, cronologie, sarcini | `docs/implementation/batch2-investigation-workspace.md` |
 | Urmăriri | Comparații între checkpoint-uri validate, diferențe și dovezi | `docs/implementation/batch3-monitoring.md` |

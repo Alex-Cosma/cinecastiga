@@ -15,7 +15,10 @@ export interface SignalState {
   band: { from: number; to: number } | null;
   sort: RiskGroupSort;
   dir: "asc" | "desc";
+  /** Signals of one entity (from its profile), in the role it is viewed in. Signals view only. */
+  entity: string | null;
 }
+const ENTITY_ID = /^[1-9]\d{0,17}$/;
 const fold = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 export function parseSignalState(params: Record<string, string | undefined>): SignalState {
   const code = params.tip && Object.hasOwn(FLAG_META, params.tip) ? params.tip : "da_split";
@@ -33,7 +36,8 @@ export function parseSignalState(params: Record<string, string | undefined>): Si
   const p = Number(params.p ?? 0);
   return { view, criteria, code, role, county, page: Number.isSafeInteger(p) && p >= 0 ? p : 0,
     band: validBand && criteria === null ? { from, to } : null, sort,
-    dir: params.dir === "asc" || params.dir === "desc" ? params.dir : sort === "name" ? "asc" : "desc" };
+    dir: params.dir === "asc" || params.dir === "desc" ? params.dir : sort === "name" ? "asc" : "desc",
+    entity: view === "signals" && params.ent && ENTITY_ID.test(params.ent) ? params.ent : null };
 }
 
 /** Every navigation keeps the applied role/county; changing a condition resets paging. */
@@ -49,11 +53,12 @@ export function signalUrl(state: SignalState, patch: Partial<SignalState> = {}):
       next.code = next.role === "authority" ? "da_concentration" : "da_dependence";
   }
   if (Object.hasOwn(patch, "role")) { next.criteria = null; next.band = null; }
-  if (next.view === "signals") { next.band = null; next.criteria = null; }
-  const changedFilter = ["view", "code", "role", "county", "band", "criteria", "sort", "dir"].some((key) => Object.hasOwn(patch, key));
+  if (next.view === "signals") { next.band = null; next.criteria = null; } else next.entity = null;
+  const changedFilter = ["view", "code", "role", "county", "band", "criteria", "sort", "dir", "entity"].some((key) => Object.hasOwn(patch, key));
   const page = patch.page ?? (changedFilter ? 0 : state.page);
   const q = new URLSearchParams({ tip: next.code, rol: next.role });
   if (next.county) q.set("jud", next.county);
+  if (next.entity) q.set("ent", next.entity);
   if (next.view === "cri") q.set("view", "cri");
   if (next.view === "cri" && next.criteria !== null) q.set("criteria", String(next.criteria));
   if (next.band) {

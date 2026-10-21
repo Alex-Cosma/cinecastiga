@@ -24,7 +24,7 @@ const database = () => globalDb.__seapSignalSql ??= createDb().sql;
 
 /** Complete population refreshed with transaction marts, never the 500-example
  * flag_instances mart. A notice is counted once even with several winners. */
-export function signalPopulation(sql: DbSql, state: Pick<SignalState, "role" | "county">, code?: string) {
+export function signalPopulation(sql: DbSql, state: Pick<SignalState, "role" | "county"> & { entity?: string | null }, code?: string) {
   const entityId = state.role === "authority" ? sql`f.entity_id`
     : sql`case when f.subject_type in ('pair', 'da') then f.partner_id else f.entity_id end`;
   const partnerId = state.role === "authority" ? sql`f.partner_id`
@@ -37,19 +37,29 @@ export function signalPopulation(sql: DbSql, state: Pick<SignalState, "role" | "
     : sql`exists (select 1 from core.contracts c join core.contract_winners cw on cw.contract_id = c.id
         where c.ca_notice_id = f.source_id ${countyFor(sql`cw.entity_id`)})`;
   const type = code ? sql`and f.flag_code = ${code}` : sql``;
+  // One entity's occurrences in the same population, so its profile counts equal
+  // /semnale?ent=. The endpoint test is exact; the OR only lets the planner use
+  // the entity/partner indexes. A supplier's award signals are the notices it won.
+  const entity = state.entity ?? null;
+  const ownEntity = entity === null ? sql``
+    : sql`and ${entityId} = ${entity} and (f.entity_id = ${entity} or f.partner_id = ${entity})`;
+  const ownAward = entity === null ? sql``
+    : state.role === "authority" ? sql`and f.entity_id = ${entity}`
+    : sql`and f.source_id in (select own_c.ca_notice_id from core.contract_winners own_cw
+        join core.contracts own_c on own_c.id = own_cw.contract_id where own_cw.entity_id = ${entity})`;
   return sql`(
     select f.id, f.flag_code, f.subject_type, ${entityId} entity_id, ${partnerId} partner_id,
       f.severity, f.total_ron, f.source_id
     from marts.signal_lookup f
     where f.subject_type in (${state.role}, 'pair') ${type}
-      and ${entityId} is not null ${countyFor(entityId)}
+      and ${entityId} is not null ${countyFor(entityId)} ${ownEntity}
     union all
     select f.id, f.flag_code, f.subject_type, ${entityId}, ${partnerId}, f.severity, f.total_ron, f.source_id
     from marts.signal_lookup f
-    where f.subject_type = 'da' ${type} and ${entityId} is not null ${countyFor(entityId)}
+    where f.subject_type = 'da' ${type} and ${entityId} is not null ${countyFor(entityId)} ${ownEntity}
     union all
     select f.id, f.flag_code, f.subject_type, f.entity_id, f.partner_id, f.severity, f.total_ron, f.source_id
-    from marts.signal_lookup f where f.subject_type = 'award' ${type} and ${awardMembership}
+    from marts.signal_lookup f where f.subject_type = 'award' ${type} and ${awardMembership} ${ownAward}
   )`;
 }
 
@@ -160,4 +170,25 @@ export async function readRiskCriteriaDistribution(sql: DbSql, state: SignalStat
   });
 }
 export const getSignalTypeCounts = (state: SignalState) => readSignalTypeCounts(database(), state);
+
+/** Every signal type of one entity in one role: the same population and counts
+ * as /semnale?ent=, including types outside the CRI (procedures, MF, ONRC). */
+export async function readEntitySignalCounts(sql: DbSql, entityId: string, role: SignalState["role"]): Promise<Record<string, number>> {
+  if (!/^[1-9]\d{0,17}$/.test(entityId)) return {};
+  return sql.begin("isolation level repeatable read read only", async tx => {
+    const q = tx as unknown as DbSql;
+    await q`set local statement_timeout = '20s'`;
+    const population = signalPopulation(q, { role, county: null, entity: entityId });
+    const rows = await q`select flag_code, count(*)::text n from ${population} population group by flag_code`;
+    return Object.fromEntries(rows.map(r => [String(r.flag_code), Number(r.n)]));
+  });
+}
+export const getEntitySignalCounts = (entityId: string, role: SignalState["role"]) => readEntitySignalCounts(database(), entityId, role);
+
+/** Display name for the /semnale entity filter; null when the id is unknown, empty when unnamed. */
+export async function readSignalEntityName(sql: DbSql, entityId: string): Promise<string | null> {
+  const rows = await sql`select name_display from core.entities where id = ${entityId}`;
+  return rows[0] ? String(rows[0].name_display ?? "") : null;
+}
+export const getSignalEntityName = (entityId: string) => readSignalEntityName(database(), entityId);
 export const getRiskCriteriaDistribution = (state: SignalState) => readRiskCriteriaDistribution(database(), state);

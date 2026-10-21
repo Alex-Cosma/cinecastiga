@@ -23,6 +23,12 @@ Vizualizarea «Entități după CRI» folosește numărul stocat de criterii `n_
 
 Linkurile vechi cu `criMin`/`criMax` deschid vizualizarea CRI și păstrează intervalele și sortările existente. Noul filtru pe numărul exact de criterii folosește `n_flags`, nu o aproximare din scorul rotunjit. Extinderea rândului arată criteriile reale ale entității.
 
+## Semnalele unei entități (auditul F24, 21 octombrie)
+
+Profilul arăta secțiunea și tabul „Semnale” doar pentru criteriile CRI îndeplinite, iar `/semnale` nu se putea filtra după entitate. Semnalele din proceduri, bilanțuri și ONRC nu aveau niciun drum din profil. Exemple: NEURO MED THERAPY (1967166), primul rezultat la „Puțini salariați” (flag 31329498), avea scor 0 și niciun tab; CNAIR (2146146) arăta „Semnale 1”, deși avea 805 apariții `award_no_competition` și 120 `award_single_bid`. Pe snapshotul local erau 7.293 de furnizori cu astfel de semnale și `n_flags = 0`.
+
+`/semnale?ent=<id>` păstrează populația de mai sus (`signalPopulation`), restrânsă la capătul entității în rolul ales: autoritatea, sau furnizorul (partenerul la rândurile `pair`/`da`). Semnalele de atribuire ale unui furnizor sunt anunțurile la care este câștigător; semnalul se numără tot o dată pe anunț. Filtrul există doar în vizualizarea „Semnale”, nu în cohorta CRI, și se elimină din bara „Doar semnalele pentru …”. Profilul are secțiunea „Toate semnalele” (`#toate-semnalele`): fiecare tip prezent, numărul de apariții calculat de `readEntitySignalCounts` cu aceeași populație (deci egal cu totalul din `/semnale?ent=`), link către lista filtrată și relația cu indicele („Criteriu îndeplinit/neîndeplinit” sau „Nu intră în indice”). Scorul CRI, criteriile și formula nu se schimbă. Tabul „Semnale” apare când există criterii CRI sau apariții și numără tipurile, nu aparițiile. Un criteriu poate rămâne neîndeplinit cu apariții (finalizarea rapidă și valorile aproape de prag cer o pondere minimă), iar pagina spune asta. Nu sunt necesare migrații sau reprocesare.
+
 ## Verificări
 
 - 51 teste web trecute: 24 pentru starea/navigarea semnalelor, 10 integrări PostgreSQL, 14 pentru prezentarea riscului și 3 regresii pentru sursele radiografiei. Nicio integrare omisă. Fixture-ul `seap_test_signals` a fost creat separat și eliminat după verificare.

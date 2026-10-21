@@ -22,7 +22,7 @@ const groups: [string, string[]][] = [
 ];
 const fold = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 const sorts: [RiskGroupSort, string][] = [["cri", "După CRI"], ["flags", "După numărul de criterii"], ["das", "După achiziții directe"], ["total", "După valoare"], ["name", "După nume"]];
-const scopeKey = (s: SignalState) => `${s.role}:${s.county ?? ""}`;
+const scopeKey = (s: SignalState) => `${s.role}:${s.county ?? ""}:${s.entity ?? ""}`;
 function Arrow({ back = false }: { back?: boolean }) { return <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path d={back ? "m14 5-7 7 7 7" : "m10 5 7 7-7 7"} fill="none" stroke="currentColor" strokeWidth="1.7"/></svg>; }
 function Entity({ id, name }: { id: string | null; name: string | null }) { return id ? <Link href={`/entitati/${id}`}>{cleanName(name)}</Link> : <>{cleanName(name)}</>; }
 function Pager({ page, total, navigate }: { page: number; total: number; navigate: (p: number) => void }) {
@@ -34,7 +34,7 @@ function Pager({ page, total, navigate }: { page: number; total: number; navigat
     <button disabled={page + 1 === pages} aria-label="Pagina următoare" onClick={() => navigate(page + 1)}><Arrow/></button>
   </nav>;
 }
-function TypeChooser({ code, role, counts, choose, close }: { code: string; role: SignalState["role"]; counts: Record<string, number>; choose: (c: string) => void; close: () => void }) {
+function TypeChooser({ code, role, counts, choose, close, entity = false }: { code: string; role: SignalState["role"]; counts: Record<string, number>; choose: (c: string) => void; close: () => void; entity?: boolean }) {
   const [search, setSearch] = useState("");
   let found = 0;
   return <SignalDialog title="Ce vrei să verifici?" description="13 tipuri de semnale, grupate după observație." onClose={close}>
@@ -47,7 +47,7 @@ function TypeChooser({ code, role, counts, choose, close }: { code: string; role
         return <button key={c} className="sg-type-option" aria-pressed={code === c} onClick={() => choose(c)}><span><strong>{m.title}</strong><small>{exclusive ? (m.subject === "supplier" ? "Firme" : "Autorități") : "Autorități și firme"} · {c.startsWith("da_") ? "achiziții directe" : c.startsWith("award_") ? "proceduri" : c.startsWith("fin_") ? "achiziții și bilanțuri" : "achiziții și ONRC"}</small></span>{compatible && counts[c] !== undefined && <span className="sg-type-count">{formatInt(counts[c])}</span>}</button>;
       })}</section> : null;
     })}{found === 0 && <p className="sg-no-types">Niciun tip găsit. Încearcă „prag” sau „oferte”.</p>}</div>
-    <p className="sg-dialog-note">Numerele arată apariții pentru rolul și județul selectat, nu entități unice. Alegerea unui tip exclusiv firmelor sau autorităților actualizează și rolul.</p>
+    <p className="sg-dialog-note">Numerele arată apariții pentru rolul și județul selectat{entity ? " și pentru entitatea aleasă" : ""}, nu entități unice. Alegerea unui tip exclusiv firmelor sau autorităților actualizează și rolul.</p>
   </SignalDialog>;
 }
 function County({ value, role, onChange, id }: { value: string | null; role: SignalState["role"]; onChange: (value: string | null) => void; id: string }) {
@@ -57,9 +57,11 @@ function MobileFilters({ state, apply, close }: { state: SignalState; apply: (pa
   const [role, setRole] = useState(state.role), [county, setCounty] = useState(state.county);
   return <SignalDialog title="Restrânge rezultatele" onClose={close}><form className="sg-mobile-form" onSubmit={e => { e.preventDefault(); apply({ ...(role !== state.role ? { role } : {}), county }); }}><label><span className="sg-label">Cine</span><select value={role} onChange={e => setRole(e.target.value as SignalState["role"])}><option value="authority">Autorități</option><option value="supplier">Firme</option></select></label><County id="sg-mobile-county" value={county} role={role} onChange={setCounty}/><button className="sg-primary" type="submit">Arată rezultatele</button></form></SignalDialog>;
 }
-export default function SignalsExplorer({ state, signals, risk, counts, distribution, freshness, error }: {
+export default function SignalsExplorer({ state, signals, risk, counts, distribution, freshness, error, entityName = null }: {
   state: SignalState; signals: SignalPage | null; risk: { rows: RiskEntity[]; page: number; total: number; pageSize: number } | null;
   counts: Record<string, number>; distribution: { criteria: number; n: number }[]; freshness: ReactNode; error?: string | undefined;
+  /** Name of the entity in the `ent` filter; null when the id is unknown. */
+  entityName?: string | null;
 }) {
   const router = useRouter(), [pending, startTransition] = useTransition();
   const [requested, setRequested] = useState(state), [dialog, setDialog] = useState<"type" | "filters" | null>(null);
@@ -108,6 +110,7 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
       <button className="sg-mobile-filter sg-secondary" onClick={() => setDialog("filters")}>Filtre{active.county ? " · 1" : ""}</button>
       <p className="sg-mobile-scope">{active.role === "authority" ? "Autorități" : "Firme"} · {active.county ?? "Toate județele"}</p>
     </section>
+    {active.view === "signals" && active.entity && <p className="sg-entity-scope">Doar semnalele pentru {entityName !== null ? <Link href={`/entitati/${active.entity}?rol=${active.role === "supplier" ? "furnizor" : "autoritate"}`}>{cleanName(entityName) || `entitatea ${active.entity}`}</Link> : `entitatea ${active.entity} (necunoscută)`}, ca {active.role === "supplier" ? "firmă" : "autoritate"}. <button onClick={() => navigate({ entity: null })}>Arată toate entitățile</button></p>}
     {notice && <p className="sg-notice" role="status">{notice}</p>}
     <div className="sg-context"><div><h2>{active.view === "signals" ? meta.title : "Câte criterii apar împreună?"}</h2><p>{active.view === "cri" ? `CRI sintetizează ${criteria.length} criterii din achizițiile directe. Nu este o probabilitate de corupție.` : code === "da_split" ? "Cel puțin 3 achiziții între aceeași autoritate și același furnizor, în același an, aceeași clasă CPV și același tip. Fiecare sub plafonul propriu; împreună depășesc cel mai mare plafon aplicabil." : meta.short}</p></div><Link href={`/metodologie#${active.view === "cri" ? "indice" : code}`} target="_blank" rel="noopener">Criterii și limite ↗</Link></div>
     <p className="sr-only" role="status" aria-live="polite">{pending ? "Se încarcă rezultatele…" : error ? "Rezultatele nu s-au încărcat." : `${formatInt(total)} ${active.view === "cri" ? "entități" : "apariții"}. Pagina ${state.page + 1}.`}</p>
@@ -118,11 +121,11 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
         {total > 0 ? <><div className="sg-list-head" aria-hidden="true"><span>{active.view === "signals" && meta.subject === "award" ? "AUTORITATE ȘI CÂȘTIGĂTORI" : active.role === "authority" ? "AUTORITATE" : "FIRMĂ"}</span><span>{active.view === "signals" ? "OBSERVAȚIA DIN DATE" : "INDICE ȘI CRITERII"}</span><span>{active.view === "signals" ? "VALOARE · LEI" : "ACHIZIȚII DIRECTE"}</span><span/></div>
           {signals?.rows.map(signalRow)}
           {risk?.rows.map(r => <article className="sg-result" key={r.entityId}><div className="sg-row sg-cri-row"><div className="sg-entity"><div className="sg-entity-name"><Entity id={r.entityId} name={r.name}/></div><p className="sg-meta">{r.county ?? "Județ neprecizat"} · Întreaga perioadă disponibilă</p></div><div className="sg-observation"><strong className="sg-cri-value">{r.cri.toFixed(2).replace(".", ",")}</strong> CRI<small>{r.nFlags} din {criteria.length} criterii îndeplinite</small></div><div className="sg-amount"><strong>{formatInt(r.nDas)}</strong><small>{formatRon(r.totalRon)} înregistrate</small></div><button className="sg-verify" onClick={() => toggle(r.entityId)} aria-expanded={expanded === r.entityId}>{expanded === r.entityId ? "Închide" : "Criterii"}<span className="sg-chevron"/></button></div>{expanded === r.entityId && <div className="sg-expanded"><h3>Criteriile din calculul CRI</h3><ul className="sg-criteria-list">{criteria.map(c => <li key={c}><span>{FLAG_META[c]?.title}</span><strong>{r.flags.includes(c) ? "Îndeplinit" : "Neîndeplinit"}</strong></li>)}</ul><p className="sg-meta">Numărul de criterii se referă la întregul istoric de achiziții directe disponibil la calcul. Alte tipuri de semnale nu intră în CRI.</p><div className="sg-detail-footer"><Link href={`/metodologie#indice`} target="_blank" rel="noopener">Cum se calculează ↗</Link><Link href={`/entitati/${r.entityId}`} target="_blank" rel="noopener">Vezi profilul și achizițiile ↗</Link></div></div>}</article>)}
-          {toolbar(true)}</> : <div className="sg-empty"><h3>Niciun rezultat pentru această selecție</h3><p>Nu există {active.view === "signals" ? "apariții calculate" : "entități eligibile"} pentru {active.role === "authority" ? "autorități" : "firme"}{active.county ? ` din ${active.county}` : " în selecția curentă"}.</p>{active.county ? <button className="sg-primary" onClick={() => navigate({ county: null })}>Caută în toate județele</button> : active.view === "cri" ? <button className="sg-primary" onClick={() => navigate({ criteria: null, band: null })}>Arată toate valorile CRI</button> : <button className="sg-primary" onClick={() => setDialog("type")}>Alege alt tip de semnal</button>}</div>}
+          {toolbar(true)}</> : <div className="sg-empty"><h3>Niciun rezultat pentru această selecție</h3><p>Nu există {active.view === "signals" ? "apariții calculate" : "entități eligibile"} pentru {active.view === "signals" && active.entity ? `această ${active.role === "authority" ? "autoritate" : "firmă"}` : active.role === "authority" ? "autorități" : "firme"}{active.county ? ` din ${active.county}` : " în selecția curentă"}.</p>{active.view === "signals" && active.entity ? <button className="sg-primary" onClick={() => setDialog("type")}>Alege alt tip de semnal</button> : active.county ? <button className="sg-primary" onClick={() => navigate({ county: null })}>Caută în toate județele</button> : active.view === "cri" ? <button className="sg-primary" onClick={() => navigate({ criteria: null, band: null })}>Arată toate valorile CRI</button> : <button className="sg-primary" onClick={() => setDialog("type")}>Alege alt tip de semnal</button>}</div>}
       </>}
     </section>
     <footer className="sg-foot"><p>Un semnal nu este o dovadă de ilegalitate. Valorile pot acoperi aceleași achiziții și nu se adună.</p>{active.view === "signals" && meta.subject === "award" && <p>Un semnal se numără o singură dată pe anunț. Filtrarea firmelor după județ păstrează anunțurile cu cel puțin un câștigător din județul ales; sunt afișați toți câștigătorii. Valoarea aparține anunțului, nu unui lot sau fiecărei firme.</p>}</footer>
-    {dialog === "type" && <TypeChooser code={code} role={active.role} counts={pending ? {} : counts} choose={code => navigate({ code })} close={() => setDialog(null)}/>}
+    {dialog === "type" && <TypeChooser code={code} role={active.role} counts={pending ? {} : counts} entity={active.entity !== null} choose={code => navigate({ code })} close={() => setDialog(null)}/>}
     {dialog === "filters" && <MobileFilters state={active} apply={navigate} close={() => setDialog(null)}/>}
     {sourceId && <SignalSources key={sourceId} id={sourceId} onClose={() => setSourceId(null)}/>}
   </div>;
