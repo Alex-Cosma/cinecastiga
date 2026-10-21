@@ -86,12 +86,6 @@ export default async function NoticePage({
           <div className="n">{n.awardValueRon != null ? formatRon(n.awardValueRon) : "—"}</div>
           <div className="l">Valoare atribuită (anunț)</div>
         </div>
-        <div className="stat">
-          <div className="n">
-            {n.estimatedValueRon != null ? formatRon(n.estimatedValueRon) : "—"}
-          </div>
-          <div className="l">Valoare estimată</div>
-        </div>
         {n.lowestOfferRon != null && n.highestOfferRon != null && n.highestOfferRon > 0 && (
           <div className="stat">
             <div className="n">

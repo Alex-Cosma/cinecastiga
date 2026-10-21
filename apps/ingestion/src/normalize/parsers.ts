@@ -37,22 +37,6 @@ const toDate = (s: string | null | undefined): Date | null => {
 const dec = (n: number | string | null | undefined): string | null =>
   n == null ? null : String(n);
 
-/**
- * Award list carries the estimate as a display string, e.g. "272352 RON" or
- * "1.234.567,89 RON". Strip the currency suffix + RO thousands/decimal marks and
- * return a numeric string (or null). Only RON has been observed (all 21k rows).
- */
-const parseRonExport = (v: unknown): string | null => {
-  if (typeof v === "number") return Number.isFinite(v) ? String(v) : null;
-  if (typeof v !== "string") return null;
-  const m = v.replace(/\s*RON\s*$/i, "").trim();
-  if (!m) return null;
-  // RO format: '.' thousands, ',' decimal. Drop dots, swap comma to dot.
-  const normalized = m.replace(/\./g, "").replace(",", ".");
-  const n = Number(normalized);
-  return Number.isFinite(n) ? String(n) : null;
-};
-
 const labeled = z.object({ text: z.string().nullish() }).nullish();
 const labelText = (
   v: { text?: string | null | undefined } | null | undefined,
@@ -93,7 +77,6 @@ async function loadNoticeLike(
     lowest?: number | null;
     highest?: number | null;
     procedureType?: string | null;
-    estimatedValueRon?: string | null;
   } = {},
   target: typeof notices | typeof awards = notices,
 ): Promise<void> {
@@ -130,8 +113,11 @@ async function loadNoticeLike(
   if (target === awards) {
     const awardCols = {
       ...common,
-      // Award estimate comes from the parsed export string, not estimatedValueRon.
-      estimatedValueRon: extra.estimatedValueRon ?? null,
+      // The award list has no estimate of its own: its estimatedValueExport is
+      // ronContractValue formatted as text (equal on every award, data audit F22),
+      // so storing it would show the awarded value a second time as an
+      // "estimate". The column stays empty until an independent source fills it.
+      estimatedValueRon: null,
       ronContractValue: dec(extra.ronContractValue),
       lowestOfferValue: dec(extra.lowest),
       highestOfferValue: dec(extra.highest),
@@ -186,7 +172,6 @@ const awardListSchema = z
     sysNoticeVersionId: z.number().nullish(),
     sysAcquisitionContractType: labeled,
     sysProcedureType: labeled,
-    estimatedValueExport: z.unknown().nullish(),
   })
   .passthrough();
 
@@ -491,7 +476,6 @@ export const PARSERS: Record<string, Parser> = {
           lowest: p.lowestOfferValue ?? null,
           highest: p.highestOfferValue ?? null,
           procedureType: labelText(p.sysProcedureType),
-          estimatedValueRon: parseRonExport(p.estimatedValueExport),
         },
         awards,
       );

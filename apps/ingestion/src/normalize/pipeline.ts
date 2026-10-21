@@ -17,6 +17,7 @@ import { applyReviewedEntityNames } from "./reviewed-entity-names.js";
 import { applyNutsCounties } from "./nuts-county.js";
 import { applyDaSupplierVatIdentities } from "./da-supplier-vat.js";
 import { reopenFixedQuarantine } from "./quarantine-reopen.js";
+import { clearCopiedAwardEstimates } from "./award-estimate.js";
 
 /**
  * Replayable raw→core runner (core-layer DEC-004). Processes each
@@ -55,6 +56,8 @@ export interface NormalizeReport {
   nutsCounties: number;
   /** Key-less DA supplier fragments redirected to their VAT-number entity now (0 once applied). */
   daSupplierVat: number;
+  /** Award "estimates" that were a copy of the awarded value, emptied now (0 once applied). */
+  awardEstimates: number;
 }
 
 async function getCursor(db: Db, transform: string): Promise<bigint> {
@@ -199,6 +202,9 @@ export async function runNormalize(
   // Same placement: the marts and search copy core.entities.county (audit F13).
   const nutsCounties = opts.only ? [] : await sql.begin((q) => applyNutsCounties(q));
   if (nutsCounties.length) log(`county filled from NUTS-3 code: ${nutsCounties.length} entities`);
+  // The award list's "estimate" is a copy of the awarded value (audit F22).
+  const awardEstimates = opts.only ? 0 : await sql.begin((q) => clearCopiedAwardEstimates(q));
+  if (awardEstimates) log(`award estimates copied from the awarded value cleared: ${awardEstimates}`);
 
   return {
     perTransform,
@@ -207,6 +213,7 @@ export async function runNormalize(
     reviewedNames: reviewedNames.length,
     nutsCounties: nutsCounties.length,
     daSupplierVat: daSupplierVat.length,
+    awardEstimates,
   };
 }
 
