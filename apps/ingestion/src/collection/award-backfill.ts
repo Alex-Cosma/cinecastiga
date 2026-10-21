@@ -96,13 +96,49 @@ export async function retryFailedAwardBackfill(q:DbSql){
   await tx`select id from app.collection_batches where id=${batchId} for update`;
   const failed=await tx`select id::text,key,left(error,200) error from app.collection_tasks
    where batch_id=${batchId} and stream='awards' and kind='detail' and status='failed' and priority>=${BACKGROUND_PRIORITY} and params->>'backfill'='true' order by id for update`;
-  if(failed.length){
-   const ids=failed.map(r=>String(r.id));
-   await tx`update app.collection_retries set status='stopped',retry_at=null,updated_at=clock_timestamp() where task_id=any(${ids}::bigint[]) and status='pending'`;
-   await tx`update app.collection_tasks set status='pending',error=null,result=null,started_at=null,finished_at=null where id=any(${ids}::bigint[])`;
-  }
+  const retryBudgets=await requeueFailedTasks(tx as unknown as DbSql,failed.map(r=>String(r.id)));
   await tx`insert into app.collection_audit(actor_id,actor_name,action,before,after) values('system:award-detail-backfill','Operator — descărcare istorică atribuiri','award-detail-backfill-retry',
-   ${JSON.stringify({batchId,failed:failed.map(r=>({id:r.id,key:r.key,error:r.error}))})}::jsonb,${JSON.stringify({requeued:failed.length})}::jsonb)`;
+   ${JSON.stringify({batchId,failed:failed.map(r=>({id:r.id,key:r.key,error:r.error})),retryBudgets})}::jsonb,${JSON.stringify({requeued:failed.length})}::jsonb)`;
   return {batchId,requeued:failed.length};
+ });
+}
+/** Return failed tasks to the queue, keeping their priority. The claim skips any task with a pending or
+ * stopped retry row, and a proxy failure leaves one stopped after its three attempts: such a task set back
+ * to pending would never run and would hold the batch open. The row is removed (returned for the audit),
+ * so the task also gets the gate's usual retry budget again. Failed requests stay in the ledger. */
+async function requeueFailedTasks(tx:DbSql,ids:string[]){
+ if(!ids.length)return [];
+ const budgets=await tx`delete from app.collection_retries where task_id=any(${ids}::bigint[])
+  returning task_id::text,first_request_id::text,last_request_id::text,timeouts,status,retry_at,updated_at`;
+ await tx`update app.collection_tasks set status='pending',error=null,result=null,started_at=null,finished_at=null where id=any(${ids}::bigint[])`;
+ return budgets.map(r=>({...r}));
+}
+/** The gate's message for a request that failed through every proxy attempt (`collection-retry.ts` and
+ * `CollectionProxyFailureError` in @seap/db). Only this transient failure is an approved reason to ask
+ * SEAP again for an ordinary detail; validation and HTTP 4xx gaps stay failed. */
+export const PROXY_FAILURE_PREFIX='Cerere prin proxy eșuată';
+export const isProxyFailure=(error:unknown)=>typeof error==='string'&&error.startsWith(PROXY_FAILURE_PREFIX);
+/** Metadata only, no source traffic. Return the ordinary (non-background) award detail tasks of the single
+ * collecting batch that failed on proxy errors to the queue, keeping their priority. Background backfill
+ * tasks keep their own command; any other failure stays failed and is only counted. Same batch and
+ * processing guards as the backfill enqueue; the previous errors and retry budgets go into the audit. */
+export async function retryFailedOrdinaryAwardDetails(q:DbSql){
+ return q.begin(async tx=>{
+  await tx`set local lock_timeout='10s'`;
+  const batches=await tx`select id,status from app.collection_batches order by created_at`;
+  if(batches.length!==1||batches[0]!.status!=='collecting')throw Error('Exactly one collecting recovery batch is required.');
+  if((await tx`select id from app.processing_runs where status='running' limit 1`).length)throw Error('A processing run is running; retry after it finishes.');
+  const batchId=String(batches[0]!.id);
+  const [b]=await tx`select status from app.collection_batches where id=${batchId} for update`;
+  if(b?.status!=='collecting')throw Error('The recovery batch closed while preparing the retry; nothing was queued.');
+  const failed=await tx`select id::text,key,priority,params->>'noticeNo' notice_no,params->>'part' part,left(error,300) error from app.collection_tasks
+   where batch_id=${batchId} and stream='awards' and kind='detail' and status='failed' and priority<${BACKGROUND_PRIORITY} and coalesce(params->>'backfill','')<>'true' order by id for update`;
+  const chosen=failed.filter(r=>isProxyFailure(r.error));
+  const retryBudgets=await requeueFailedTasks(tx as unknown as DbSql,chosen.map(r=>String(r.id)));
+  const result={batchId,requeued:chosen.length,keys:chosen.map(r=>String(r.key)),otherFailures:failed.length-chosen.length};
+  await tx`insert into app.collection_audit(actor_id,actor_name,action,before,after) values('system:award-detail-retry','Operator — reluare detalii atribuiri eșuate','award-detail-retry',
+   ${JSON.stringify({batchId,failed:chosen.map(r=>({id:r.id,key:r.key,priority:Number(r.priority),noticeNo:r.notice_no,part:r.part,error:r.error})),retryBudgets})}::jsonb,
+   ${JSON.stringify({...result,reason:'proxy-failure'})}::jsonb)`;
+  return result;
  });
 }
