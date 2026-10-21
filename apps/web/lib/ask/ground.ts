@@ -1,7 +1,7 @@
 import { cuiCorroborated, type DbSql } from "@seap/db";
 import type { AskFilters } from "./spec";
 import { aliasQueries, queryTokens } from "./entity-alias";
-import { readLocalAuthorityIds } from "../peer-population";
+import { readLocalAuthorityIds, sectorUnit } from "../peer-population";
 import { onrcBirthYear } from "../format";
 
 /**
@@ -358,7 +358,9 @@ async function groundUat(sql: DbSql, siruta: number): Promise<UatGrounding> {
   const rows = (await sql`
     select u.name, u.county from reference.uat u where u.siruta = ${siruta}
   `) as unknown as { name: string | null; county: string | null }[];
-  const r = rows[0];
+  // reference.uat has no București sectors; their code and name come from the RPL 2021 catalog (owner decision F05).
+  const sector = sectorUnit(siruta);
+  const r = rows[0] ?? (sector ? { name: sector.name, county: "bucuresti" } : undefined);
   // Audit F15: never the raw legacy code, which links communes of other counties.
   const authorityIds = r ? await readLocalAuthorityIds(sql, siruta) : [];
   return {

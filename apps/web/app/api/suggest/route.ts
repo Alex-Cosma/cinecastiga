@@ -3,7 +3,7 @@ import { createDb, type DbSql } from "@seap/db";
 import { cleanName, onrcBirthYear } from "@/lib/format";
 import { devlog } from "@/lib/devlog";
 import { aliasQueries, queryTokens } from "@/lib/ask/entity-alias";
-import { officialUnitPopulation } from "@/lib/peer-population";
+import { officialUnitPopulation, sectorSuggestions } from "@/lib/peer-population";
 
 /**
  * GET /api/suggest?q=…&county=…  — typeahead feed for the "Construiește"
@@ -42,6 +42,7 @@ const TIP_LABEL: Record<string, string> = {
   "3": "comună",
   "4": "municipiu",
   "9": "municipiu",
+  sector: "sector",
 };
 
 export interface SuggestResponse {
@@ -233,7 +234,11 @@ export async function GET(req: Request) {
 
   const body: SuggestResponse = {
     cpv: cpv.map((r) => ({ term: r.term, cpvName: r.cpv_name })),
-    uat: uat
+    uat: [
+      ...uat,
+      // reference.uat has no București sectors; they come from the RPL 2021 catalog (owner decision F05).
+      ...sectorSuggestions(q, county).map((s) => ({ siruta: s.siruta, name: s.name, tip: "sector", county: "bucuresti", pos: s.pos })),
+    ]
       .map((r) => ({ r, population: officialUnitPopulation(Number(r.siruta), r.county) }))
       .sort((a, b) => Number(a.r.pos) - Number(b.r.pos) || (b.population ?? -1) - (a.population ?? -1) || Number(a.r.siruta) - Number(b.r.siruta))
       .slice(0, 6)

@@ -6,6 +6,7 @@ import { EVIDENCE_CSV_LIMIT, PROFILE_BLOCKS, sumDecimalStrings, validateEvidence
 import { minimumRecordsSql, populationSql } from "./population-sql";
 import { describePopulation, isHistoricalProfile, unsupportedPopulationView } from "./population";
 import { PER_CAPITA_SOURCE, perCapitaCaveat, POPULATION_CARD_NOTE, readPerCapitaPopulations, type PerCapitaPopulations } from "./per-capita";
+import { sectorUnit } from "../peer-population";
 
 /**
  * Compile a validated AskSpec + grounding into parameterized SQL and execute it
@@ -191,10 +192,14 @@ const UAT_SCOPE_METHOD =
   "Asocierea autoritate–UAT este o inferență a aplicației (cod SIRUTA din același județ sau nume și județ identice, CUI valid); asocierile din alt județ sau nesigure sunt excluse.";
 const BUCURESTI_SIRUTA = 179132;
 export function uatScopeCaveat(label: string, n: number, siruta?: number): string {
-  const who = n === 1
+  const sector = siruta !== undefined && sectorUnit(siruta) !== undefined;
+  const who = sector
+    ? n === 1 ? "doar primăria sectorului" : `cele ${n} identități înregistrate ale primăriei sectorului`
+    : n === 1
     ? "doar administrația locală a UAT-ului (primăria / consiliul local)"
     : `cele ${n} identități înregistrate ale administrației locale a UAT-ului (primăria / consiliul local)`;
-  const sectors = siruta === BUCURESTI_SIRUTA ? " Primăriile celor șase sectoare sunt autorități separate și nu sunt incluse." : "";
+  const sectors = siruta === BUCURESTI_SIRUTA ? " Primăriile celor șase sectoare sunt autorități separate și nu sunt incluse."
+    : sector ? " Primăria Municipiului București și instituțiile subordonate sectorului (direcții, poliție locală, administrații, companii) sunt autorități separate și nu sunt incluse." : "";
   return `Localitatea „${label}”: includ ${who}, nu și școlile, spitalele sau alte instituții din localitate.${sectors} ${UAT_SCOPE_METHOD}`;
 }
 export function uatUnmappedError(label: string): string {
@@ -1993,7 +1998,7 @@ export async function runRows(
       // Same eligible administrations and denominators as the ranking.
       const perCapita = await readPerCapitaPopulations(sql);
       parts.push(sql`d.authority_id = any(${sql.array(perCapita.ids)}::bigint[])`);
-      notes.push(`Lei/locuitor: valoarea înregistrărilor unei administrații se împarte la ${PER_CAPITA_SOURCE}. Sursele includ doar primăriile și consiliile județene identificate strict, ca în clasament.`);
+      notes.push(`Lei/locuitor: valoarea înregistrărilor unei administrații se împarte la ${PER_CAPITA_SOURCE}. Sursele includ doar primăriile (inclusiv cele de sector) și consiliile județene identificate strict, ca în clasament.`);
     }
     if (spec.block === "map") parts.push(sql`d.county is not null`);
     if (spec.block === "timeseries") parts.push(sql`substr(d.finalization_date, 1, 4) ~ '^[0-9]{4}$'`);
@@ -2232,7 +2237,7 @@ function buildDisplaySql(spec: AskSpec, w: WhereParts, compareId: string | null 
       const perCap = spec.measure === "value_per_capita";
       return (
         `select ${dimCol}, ${perCap ? "sum(closing_value) / populatie" : measure}\n` +
-        `from ${dtable}${perCap ? "\njoin populatie_rpl2021 using (entity_id)  -- INS RPL 2021, doar primării și consilii județene identificate strict" : ""}\n` +
+        `from ${dtable}${perCap ? "\njoin populatie_rpl2021 using (entity_id)  -- INS RPL 2021, doar primării (inclusiv de sector) și consilii județene identificate strict" : ""}\n` +
         `where ${where}\n` +
         `group by ${dimCol}\norder by 2 desc\nlimit ${spec.topN ?? `${TABLE_PAGE_SIZE} offset <pagină>`};`
       );
