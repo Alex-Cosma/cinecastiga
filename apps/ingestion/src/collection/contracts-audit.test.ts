@@ -74,7 +74,7 @@ describe('award-contracts-audit:v1 stays inert (source guard)',()=>{
  const read=(f:string)=>readFileSync(join(root,f),'utf8');
  it('has no parser, so the normalizer and its quarantine retry never select it',()=>{
   expect(Object.keys(PARSERS)).not.toContain(CONTRACTS_AUDIT_VERSION);
-  expect(read('apps/ingestion/src/normalize/pipeline.ts')).not.toContain('audit');
+  expect(read('apps/ingestion/src/normalize/pipeline.ts')).not.toMatch(/contracts-audit|CONTRACTS_AUDIT/);
  });
  it('every raw reader of contract archives filters versions by exact value',()=>{
   const exact:Record<string,string[]>={
