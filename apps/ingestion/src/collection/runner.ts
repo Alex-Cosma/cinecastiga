@@ -124,11 +124,11 @@ export async function recoveryStep(q:DbSql,fetcher:(t:Task)=>Promise<unknown>,la
  if(!claimed)return false;
  const {t,end}=claimed;
  console.log(JSON.stringify({event:'recovery-task',task:t.id,stream:t.stream,kind:t.kind,parameters:t.params}));
- let response:unknown;
+ let response:unknown,rejected=false;
  try{
   response=await fetcher(t);
   const prior=await q`select result from app.collection_tasks where batch_id=${t.batch_id} and partition=${t.partition} and status='complete' order by (params->>'page')::int`;
-  const plan=planResponse(t,response,prior.map(r=>r.result as PageResult),end);
+  const plan=(()=>{try{return planResponse(t,response,prior.map(r=>r.result as PageResult),end);}catch(error){rejected=true;throw error;}})();
   await q.begin(async tx=>{
    const [scope]=t.kind==='catalogue'?await tx`select end_day,da_strategy from app.collection_batches where id=${t.batch_id} for share`:[];
    const [current]=await tx`select status from app.collection_tasks where id=${t.id!} for update`;
@@ -169,9 +169,13 @@ export async function recoveryStep(q:DbSql,fetcher:(t:Task)=>Promise<unknown>,la
   // the exact task identity and stop admission until an operator inspects it.
   // A package/search difference is a visible gap for that issue only; the next issues continue.
   const tedGap=error instanceof TedVerificationError;
-  const isolatedDetailFailure=tedGap||t.kind==='detail'&&(error instanceof NoticeDetailValidationError||error instanceof ScrapeError&&[400,404,410].includes(error.status??0));
+  const unavailable=error instanceof ScrapeError&&[400,404,410].includes(error.status??0);
+  // A contracts audit only verifies archived records: a rejected page or a missing notice is that task's gap.
+  // 403/429/challenge already stopped the gate; transport, SQL and ownership errors still stop everything.
+  const auditGap=t.kind==='contracts'&&!!t.params.audit&&(rejected||unavailable);
+  const isolatedDetailFailure=tedGap||auditGap||t.kind==='detail'&&(error instanceof NoticeDetailValidationError||unavailable);
   if(t.kind==='ted-package'&&response&&typeof response==='object'){const {candidates,...rest}=response as TedPackageFetch;response={...rest,candidates:candidates?.map(c=>c.name)};}
-  const message=isolatedDetailFailure&&error instanceof ScrapeError?`Detaliu SEAP indisponibil (HTTP ${error.status}); celelalte anunțuri continuă.`:error instanceof Error?error.message:'Eroare de colectare';
+  const message=auditGap&&error instanceof ScrapeError?`SEAP: contractele anunțului nu sunt disponibile (HTTP ${error.status}); verificarea continuă.`:isolatedDetailFailure&&error instanceof ScrapeError?`Detaliu SEAP indisponibil (HTTP ${error.status}); celelalte anunțuri continuă.`:error instanceof Error?error.message:'Eroare de colectare';
   const safe=/^(Structur|Detaliu|Identitatea|O singură|Fereastra|Dimensiunea|Totalul|Lipsește|Lista|SEAP|TED|Numărul|Data|Filtrul|Tip de|Anunț)/.test(message)?message:'Cererea sau arhivarea nu a fost confirmată. Verifică jurnalul înainte de reluare.';
   await q`update app.collection_requests set diagnostics=coalesce(diagnostics,'{}'::jsonb)||${JSON.stringify(sanitizeDiagnostics({taskFailure:{taskId:t.id,exception:diagnosticError(error),...(response===undefined?{}:{response})}}))}::jsonb where id=(select id from app.collection_requests where diagnostics->'context'->>'taskId'=${String(t.id)} order by id desc limit 1)`;
   if(error instanceof NoticePageOverlapError&&await scheduleNoticeOverlapRecovery(q,t,error.total)){console.log(JSON.stringify({event:'notice-pagination-recovery',task:t.id,total:error.total}));return true;}
@@ -179,7 +183,7 @@ export async function recoveryStep(q:DbSql,fetcher:(t:Task)=>Promise<unknown>,la
    // A TED problem stops only the TED stream (audited, alerted); SEAP keeps collecting.
    if(t.stream==='ted')await pauseCollectionStreamInTransaction(tx as unknown as DbSql,'ted',`Sarcina ${t.id}: ${safe}`);
    else await tx`update app.collection_control set blocked_reason=coalesce(blocked_reason,${`Sarcina ${t.id}: ${safe}`}) where id=1`;});
-  console.error(JSON.stringify({event:isolatedDetailFailure?'recovery-detail-gap':'recovery-stopped',task:t.id,error:safe}));
+  console.error(JSON.stringify({event:auditGap?'contracts-audit-gap':isolatedDetailFailure?'recovery-detail-gap':'recovery-stopped',task:t.id,error:safe}));
  }
  return true;
 }
