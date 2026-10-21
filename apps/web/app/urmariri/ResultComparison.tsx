@@ -112,8 +112,9 @@ export function formatResultValue(value: unknown, field: string): string {
   if (typeof value === "number" || typeof value === "string" && /^-?\d+(?:\.\d+)?$/.test(value)) {
     const text = typeof value === "number" ? expandedNumber(value) : value;
     if (["year", "yearA", "yearB", "yearFirst", "yearLast", "code", "categoryCode", "daCode"].includes(field)) return text;
-    const numeric = formatExactDecimal(text);
-    return ["value", "valueA", "valueB", "valueExact", "contractValueFull"].includes(field) ? `${numeric} lei` : field === "percentile" ? `${numeric}%` : numeric;
+    const money = ["value", "valueA", "valueB", "valueExact", "contractValueFull"].includes(field);
+    const numeric = formatExactDecimal(text, { money });
+    return money ? `${numeric} lei` : field === "percentile" ? `${numeric}%` : numeric;
   }
   return channels[String(value)] ?? String(value);
 }

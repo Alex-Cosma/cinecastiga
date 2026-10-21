@@ -88,7 +88,7 @@ export function riskEvidenceLine(code: string, evidence: Record<string, unknown>
       return `${s("procedure")} · valoarea anunțului: ${money("value")} · CPV ${s("cpv")}.`;
     case "award_single_bid":
       return evidence.confirmed_contract_count
-        ? `${s("confirmed_contract_count")} contracte asociate unor loturi TED cu o singură ofertă raportată.${singleBidValueNote(evidence)}`
+        ? `${n("confirmed_contract_count") === 1 ? "1 contract asociat unui lot TED" : `${s("confirmed_contract_count")} contracte asociate unor loturi TED`} cu o singură ofertă raportată.${singleBidValueNote(evidence)}`
         : "Lista contractelor cu o singură ofertă raportată nu este disponibilă în această versiune a semnalului.";
     case "award_concentration":
       return `Furnizorul principal: ${pct("top_winner_pct")} din valoarea contractelor (${s("winners")} furnizori în date, HHI ${s("hhi")}).`;

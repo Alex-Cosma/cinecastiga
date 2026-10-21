@@ -41,6 +41,14 @@ describe("exact source decimals", () => {
     expect(formatExactDecimal("900400")).toBe("900.400");
     expect(formatExactDecimal("0.00")).toBe("0,00");
   });
+  it("shows a one-digit money fraction in bani without changing the value (audit F39)", () => {
+    // marts.signal_lookup id 31239736: total_ron::text = '5401738.1'
+    expect(formatExactDecimal("5401738.1")).toBe("5.401.738,10");
+    expect(formatExactDecimal("-0.5")).toBe("-0,50");
+    expect(formatExactDecimal("10523096.15")).toBe("10.523.096,15");
+    expect(formatExactDecimal("123456.789")).toBe("123.456,789");
+    expect(formatExactDecimal("12.5", { money: false })).toBe("12,5");
+  });
   it("leaves missing and invalid values unrepresented", () => {
     expect(formatExactDecimal(null)).toBe("—");
     expect(formatExactDecimal("NaN")).toBe("—");

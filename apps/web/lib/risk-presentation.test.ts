@@ -68,6 +68,8 @@ describe("single-tender signal value", () => {
   it("adds nothing for older signals without the value fields", () => {
     expect(singleBidValueNote({ value: 2000000, value_scope: "notice" })).toBe("");
     expect(riskEvidenceLine("award_single_bid", { confirmed_contract_count: 1, value: 2000000, value_scope: "notice" }))
-      .toBe("1 contracte asociate unor loturi TED cu o singură ofertă raportată.");
+      .toBe("1 contract asociat unui lot TED cu o singură ofertă raportată.");
+    expect(riskEvidenceLine("award_single_bid", { confirmed_contract_count: 2, value: 2000000, value_scope: "notice" }))
+      .toBe("2 contracte asociate unor loturi TED cu o singură ofertă raportată.");
   });
 });

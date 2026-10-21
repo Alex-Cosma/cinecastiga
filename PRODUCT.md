@@ -25,7 +25,7 @@ The public record sources include SEAP/SICAP and TED, supplemented by Ministry o
 - A saved scope includes the question, precise grouped conditions, and source-drawer filters. Human summaries must distinguish base query conditions from additional restrictions and the effective source stream.
 - Historical profile views and transaction views use different populations; their source scope must be stated accurately.
 - Procurement date, time first observed in a watched selection, and technical validation time have different meanings.
-- Monetary source values retain their exact stored decimal precision. Registered contract values are not necessarily payments; consortium attribution may be estimated where member values are unavailable.
+- Monetary source values retain their exact stored decimal precision; a one-digit fraction is shown in bani with a trailing zero (5.401.738,10 lei), which does not change the value. Registered contract values are not necessarily payments; consortium attribution may be estimated where member values are unavailable.
 - Entering or leaving a selection does not by itself establish a new procurement, cancellation, first import, or wrongdoing.
 - A failed or incomplete refresh must not produce an apparently successful check. The last successful frozen version remains available.
 - Monitoring is private to its owner. Copying a change into an authorized investigation preserves both source versions and its explanation under the investigation's access controls; it does not grant access to the original private watch.
