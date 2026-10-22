@@ -131,7 +131,7 @@ Textul paginilor este indexat în `app.document_page_search` (`to_tsvector('simp
 
 Legătura document → procedură rămâne cea de dinainte: anunțul documentului → `core.notices` → `procedureId` din payload-ul brut **și** același cumpărător → contractul din `topic_acquisitions` care respectă filtrele. Niciodată după titlu sau nume de fișier. Se calculează o singură dată pe cerere și pe anunț (nu de trei ori și nu pe fiecare fișier), într-o singură interogare. Nu este materializată: un document procesat acum este căutabil imediat, fără să aștepte procesarea de noapte. Dacă numărul de anunțuri cu documente crește mult, materializarea legăturii în build-ul nocturn rămâne opțiunea următoare, cu prețul acestei întârzieri.
 
-Pe pagină, o căutare nouă nu mai arată rezultatele căutării anterioare: zona păstrează înălțimea cu rânduri-schelet până sosesc rezultatele selecției curente. La schimbarea doar a tabului sau a paginii, numerele din taburi rămân, pentru că aparțin aceleiași selecții. În „Unde cauți?”, după ce scrii, prima potrivire este evidențiată și Enter o alege.
+Pe pagină, o căutare nouă nu mai arată rezultatele căutării anterioare: zona păstrează înălțimea cu rânduri-schelet până sosesc rezultatele selecției curente. La schimbarea doar a tabului sau a paginii, numerele din taburi rămân, pentru că aparțin aceleiași selecții. În „Unde cauți?”, după ce modifici textul, prima potrivire este evidențiată și Enter o alege; numele locului deja aplicat nu contează ca text scris (multe localități au același nume în județe diferite), iar un Enter apăsat înainte de sosirea sugestiilor nu alege singur când primele potriviri au același nume.
 
 ## Migrații și restaurare
 
