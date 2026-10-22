@@ -45,14 +45,20 @@
 .ia-unknown .ia-fallback { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 14px; }
 .ia-unknown .ia-example { border-top: 1px solid var(--amber-line, var(--line)); }
 .ia-try { font-weight: 600; color: var(--ink) !important; margin-top: 4px !important; }
-.ia-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.ia-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; list-style: none; margin: 0; padding: 0; }
+.ia-choices li { min-width: 0; }
 .ia-choices button {
+  width: 100%; height: 100%;
   display: flex; flex-direction: column; gap: 4px; min-height: 44px; padding: 12px 14px; text-align: left;
   border: 1px solid var(--accent-line, var(--line)); border-radius: 9px; background: var(--paper, var(--surface)); color: var(--ink); cursor: pointer; min-width: 0;
 }
 .ia-choices button strong { font-size: 15px; color: var(--accent); }
 .ia-choices button small { font-size: 12px; color: var(--muted); line-height: 1.45; overflow-wrap: anywhere; }
 .ia-choices button:hover { background: var(--accent-soft); }
+.ia-partial { margin-top: 12px !important; font-size: 13px !important; color: var(--ink2) !important; }
+.ia-partial a, .ia-choose a { color: var(--accent); }
+.ia-panel h2:focus { outline: none; }
+.ia-panel h2:focus-visible { outline: 3px solid var(--orange); outline-offset: 3px; }
 
 .ia-note { position: relative; padding-left: 14px; color: var(--ink2) !important; }
 .ia-note::before { content: ""; position: absolute; left: 0; top: .65em; width: 6px; height: 6px; border-radius: 50%; background: var(--amber, var(--muted)); }
@@ -66,13 +72,17 @@
 .ia-leftover { color: var(--ink) !important; }
 .ia-leftover q, .ia-unknown q { font-weight: 600; }
 .ia-outro a { color: var(--accent); }
-.ia-alts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; }
-.ia-alts > span { color: var(--muted); font-size: 13px; }
+.ia-alts { margin-top: 6px; }
+.ia-alts-title { margin: 0 0 6px; color: var(--muted); font: 500 13px/1.4 var(--body); }
+.ia-alts ul { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.ia-alts li { min-width: 0; max-width: 100%; }
 .ia-alts button {
-  min-height: 40px; padding: 8px 12px; border: 1px solid var(--accent-line, var(--line)); border-radius: 8px;
-  background: var(--surface); color: var(--accent); font: 500 13px/1.3 var(--body); cursor: pointer; text-align: left; max-width: 100%;
+  display: flex; flex-direction: column; gap: 2px; min-height: 44px; max-width: 420px; padding: 8px 12px; border: 1px solid var(--accent-line, var(--line)); border-radius: 8px;
+  background: var(--surface); color: var(--accent); font: 500 13px/1.3 var(--body); cursor: pointer; text-align: left;
 }
+.ia-alts button small { color: var(--muted); font-weight: 400; font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
 .ia-alts button:hover { background: var(--accent-soft); }
+.ia-intro h2:focus { outline: none; }
 
 .ia-builder { scroll-margin-top: 90px; }
 .ia-builder-title { margin: 8px 0 14px; font: 600 17px/1.35 var(--body); color: var(--ink); }

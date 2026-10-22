@@ -11,7 +11,9 @@ import type { IntentResult } from "@/lib/intent/types";
  * AskSpec the builder can edit and /api/ask can run, a plain sentence and
  * ready alternatives. Deterministic rules only (owner decision 1); nothing
  * is sent to an external service. Bounded: 300 characters, read-only
- * transaction with a statement timeout, small in-process cache.
+ * transaction with a statement timeout, a time budget that stops further
+ * lookups, small in-process cache keyed on the Romanian calendar date
+ * ("anul trecut" changes at midnight in București, not on the server's zone).
  */
 
 const g = globalThis as unknown as { __seapIntentSql?: DbSql; __seapIntentCache?: Map<string, { at: number; body: IntentResult }> };
@@ -22,6 +24,10 @@ function db(): DbSql {
 const CACHE_MAX = 300;
 const CACHE_MS = 10 * 60 * 1000;
 const TIME_BUDGET_MS = 4000;
+
+function bucharestDate(now: Date): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Bucharest", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+}
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -37,16 +43,22 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Scrie o întrebare." }, { status: 400 });
   }
   const now = new Date();
-  // Relative periods ("anul trecut") depend on the date: part of the key.
-  const key = `${now.getFullYear()}|${q.toLowerCase()}`;
+  const key = `${bucharestDate(now)}|${q.toLowerCase()}`;
   const cache = (g.__seapIntentCache ??= new Map());
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < CACHE_MS) return respond(hit.body, 0, true);
   const started = Date.now();
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     const body = await Promise.race([
-      interpretQuestion(db(), q, { now }),
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("intent-timeout")), TIME_BUDGET_MS)),
+      interpretQuestion(db(), q, { now, signal: controller.signal }),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => {
+          controller.abort();
+          reject(new Error("intent-timeout"));
+        }, TIME_BUDGET_MS);
+      }),
     ]);
     if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value!);
     cache.set(key, { at: Date.now(), body });
@@ -59,12 +71,15 @@ export async function GET(req: Request) {
       { error: "Nu am putut interpreta întrebarea acum. Încearcă din nou sau construiește întrebarea pas cu pas." },
       { status: 503 },
     );
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 
 function respond(body: IntentResult, tookMs: number, cached: boolean) {
+  // Relative periods follow the date: keep shared caches short.
   return NextResponse.json(
     { interpreter: RULES_INTERPRETER_ID, ...body, tookMs, cached },
-    { headers: { "cache-control": "public, max-age=300, stale-while-revalidate=3600" } },
+    { headers: { "cache-control": "public, max-age=60" } },
   );
 }
