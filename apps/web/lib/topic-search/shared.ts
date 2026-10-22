@@ -4,7 +4,10 @@ export type Place={id:string;name:string;detail:string;kind:'county'|'locality'}
 export type AcquisitionHit={id:string;kind:'da'|'contracts';title:string;date:string|null;value:string|null;authorityId:string|null;authorityName:string|null;suppliers:string[];county:string|null;code:string|null;href:string;sourceUrl:string};
 export type DocumentHit={id:string;filename:string;page:number;pages:number[];text:string;method:string;noticeNo:string;noticeTitle:string;sourceUrl:string;contractId:string|null};
 export type EntityHit={id:string;name:string;cui:string|null;roles:string[];county:string|null};
-export type TopicResult={scope:TopicScope;place:Place|null;acquisitions:{total:number;hits:AcquisitionHit[]};documents:{total:number;hits:DocumentHit[]};entities:{total:number;hits:EntityHit[];suggestions?:EntityHit[]};coverage:{known:number;ready:number;pages:number};builtAt:string|null;titleCoverage:{total:number;searchable:number}};
+/** Titles, institutions and firms: the fast part of a search. */
+export type TopicResult={scope:TopicScope;place:Place|null;acquisitions:{total:number;hits:AcquisitionHit[]};entities:{total:number;hits:EntityHit[];suggestions?:EntityHit[]};builtAt:string|null;titleCoverage:{total:number;searchable:number}};
+/** Prepared document pages for the same selection, from /api/topic-search/documents. */
+export type TopicDocumentsResult={scope:TopicScope;documents:{total:number;hits:DocumentHit[]};coverage:{known:number;ready:number;pages:number}};
 export const PAGE_SIZE=10;
 export function parseTopicScope(p:URLSearchParams):TopicScope {
  const q=(p.get('q')??'').trim().replace(/\s+/g,' ');
@@ -32,3 +35,9 @@ export function topicParams(s:TopicScope):URLSearchParams {
 }
 export const fold=(s:string)=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 export function excerpt(text:string,q:string){const needle=fold(q).split(/\s+/)[0]??'',pos=fold(text).indexOf(needle),start=Math.max(0,pos-100);return `${start?'…':''}${text.slice(start,start+380)}${text.length>start+380?'…':''}`;}
+/** The documents request for a selection. Only the Documents tab pages through
+ * documents; elsewhere the first hits and the count do not depend on the open
+ * tab, page or entity role, so switching those reuses the documents already loaded. */
+export function documentScope(s:TopicScope):TopicScope{
+ return s.tab==='documents'?{...s,role:''}:{...s,tab:'all',page:1,role:''};
+}

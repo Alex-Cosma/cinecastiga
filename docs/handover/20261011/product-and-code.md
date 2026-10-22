@@ -22,7 +22,7 @@ Proprietarul a cerut explorare rapidă și plăcută, dar cu date verificabile. 
 |---|---|---|
 | Pagina principală | Întrebări/teme ilustrate, intrare accesibilă în date | `apps/web/app/page.tsx`, `PRODUCT.md`, `DESIGN.md` |
 | `/intreaba` | Descoperă / Construiește; întrebare editabilă cu filtre clare, răspuns și surse | `apps/web/app/intreaba/`, `apps/web/lib/ask/` |
-| `/cauta` | Căutare entități și achiziții tematice; typeahead geografic; interval de ani/toți anii | `apps/web/app/cauta/`, `apps/web/lib/topic-search*`, `apps/ingestion/src/search/` |
+| `/cauta` | Căutare entități și achiziții tematice; typeahead geografic; interval de ani/toți anii; documentele vin dintr-o cerere separată (`/api/topic-search/documents`, vezi [arhitectura](../02-architecture.md)) | `apps/web/app/cauta/`, `apps/web/lib/topic-search*`, `apps/ingestion/src/search/` |
 | `/domenii` | Atlas CPV; click pe părinte aprofundează, frunza deschide detalii, săgeata deschide detalii la orice nivel | `docs/implementation/domains-atlas.md` |
 | `/entitati/[id]` | Profil, parteneri, istoric, semnale (CRI separat de „Toate semnalele”, cu linkuri `/semnale?ent=`), transparența populației | `apps/web/app/entitati/`, `apps/web/lib/marts.ts` |
 | Radiografie | Comparații, furnizori, dependență, achiziții directe, loturi și surse | `apps/web/app/entitati/[id]/radiografie/`, `apps/ingestion/src/flags/radiografie.ts` |

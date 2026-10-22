@@ -24,7 +24,7 @@ try{
  await page.locator('.topic-period > button').click();await page.getByRole('button',{name:'Toți anii',exact:true}).click();await settle();check(!new URL(page.url()).searchParams.has('from'),'All years clears both boundaries');
  await page.getByRole('button',{name:'Șterge filtrul de localitate'}).click();await settle();
  await go('q=primaria+buzau&tab=entities');check((await page.locator('.topic-records').innerText()).replace(/\s+/g,' ').includes('MUNICIPIUL BUZAU'),'Colloquial city-hall lookup still finds municipality');
- await go('q=iluminat&tab=documents');check(await page.locator('.topic-document').count()>0,'Existing processed files are searchable across contracts');await shot('documents-desktop');
+ await go('q=iluminat&tab=documents');await page.locator('.topic-docs-wait').waitFor({state:'detached'});check(await page.locator('.topic-document').count()>0,'Existing processed files are searchable across contracts');await shot('documents-desktop');
  const documentLink=page.locator('.topic-document-pages a').first(),href=await documentLink.getAttribute('href');check(await documentLink.getAttribute('target')==='_blank','Document results preserve search in a separate tab');
  const reader=await ctx.newPage();await reader.goto(base+href);await reader.locator('.df-page-text[aria-busy=false]').waitFor();check((await reader.locator('.df-page-text').innerText()).length>20,'Deep link opens actual page text in existing reader');const expected=new URL(base+href).searchParams.get('page');check((await reader.locator('.df-transcript h4').innerText()).trim()===`Textul paginii ${expected}`,'Reader page agrees with matched page');await reader.close();
  await go('q=locuri+de+joaca&place=county:buzau');await page.setViewportSize({width:390,height:844});await shot('mobile');check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Mobile page has no horizontal overflow');await place.click();await place.fill('buzau');await page.locator('.topic-options li button').filter({hasText:'MUNICIPIUL BUZAU'}).waitFor();await shot('location-mobile');await page.keyboard.press('Escape');
@@ -32,8 +32,8 @@ try{
  await page.evaluate(()=>document.documentElement.dataset.theme='dark');await shot('dark-mobile');await page.setViewportSize({width:1440,height:1000});await shot('dark-desktop');
  await page.evaluate(()=>document.documentElement.dataset.theme='light');await go('q=zzzxnevermatchtopiczzzx');check(await page.locator('.topic-record').count()===0,'Empty search is explicit');await shot('empty');
  await go('q=locuri+de+joaca');const height=await page.locator('.topic-results').evaluate(el=>el.getBoundingClientRect().height);
- await page.route('**/api/topic-search?**',async r=>{await new Promise(resolve=>setTimeout(resolve,800));await r.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Eroare simulată pentru verificare.'})});});await page.locator('#topic-query').fill('drumuri');await page.locator('.topic-query button').click();await page.locator('.topic-results[aria-busy=true]').waitFor();check(await page.locator('.topic-results').evaluate((el,h)=>el.getBoundingClientRect().height>=h,height),'Loading retains result area height');await page.locator('.topic-error[role=alert]').waitFor();check((await page.locator('.topic-results').innerText()).includes('ultima căutare încheiată'),'Failure labels retained results as preceding search');await shot('error');await page.unroute('**/api/topic-search?**');await page.getByRole('button',{name:'Reîncearcă',exact:true}).click();await settle();
- // Failed navigation must never relabel records with a scope that did not finish.
+ await page.route('**/api/topic-search?**',async r=>{await new Promise(resolve=>setTimeout(resolve,800));await r.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Eroare simulată pentru verificare.'})});});await page.locator('#topic-query').fill('drumuri');await page.locator('.topic-query button').click();await page.locator('.topic-results[aria-busy=true]').waitFor();check(await page.locator('.topic-results').evaluate((el,h)=>el.getBoundingClientRect().height>=h,height),'Loading retains result area height');check(await page.locator('.topic-record').count()===0,'A new search never shows the previous search’s records');check(await page.locator('.topic-skeleton').count()>0,'Loading shows placeholders for the new selection');await page.locator('.topic-error[role=alert]').waitFor();check(await page.locator('.topic-record').count()===0,'Failure shows no records from another selection');await shot('error');await page.unroute('**/api/topic-search?**');await page.getByRole('button',{name:'Reîncearcă',exact:true}).click();await settle();
+ // Failed navigation must never present records of a scope that did not finish.
  for(const scenario of ['page','tab','place']){
   await go('q=locuri+de+joaca&tab=acquisitions');
   await page.route('**/api/topic-search?**',r=>r.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Eroare simulată pentru verificare.'})}));
@@ -41,14 +41,15 @@ try{
   else if(scenario==='tab')await page.locator('.topic-tabs button').filter({hasText:'Documente'}).click();
   else {await place.fill('buzau');await page.locator('.topic-options li button').filter({hasText:'MUNICIPIUL BUZAU'}).click();}
   await page.locator('.topic-error[role=alert]').waitFor();
-  check((await page.locator('.topic-tabs [aria-current=page]').innerText()).includes('Achiziții'),`Failed ${scenario} keeps actual result tab`);
-  check((await page.locator('.topic-pagination').innerText()).includes('Pagina 1 din'),`Failed ${scenario} keeps actual page`);
-  const notice=await page.locator('.topic-results > .topic-help').innerText();
-  check(notice.includes('toată țara')&&notice.includes('toți anii')&&notice.includes('pagina 1'),`Failed ${scenario} identifies actual geographic and period scope`);
-  check(await page.getByRole('button',{name:'Înainte',exact:true}).isDisabled(),`Failed ${scenario} does not navigate stale results`);
+  check(await page.locator('.topic-record').count()===0,`Failed ${scenario} shows no records of another scope`);
   if(scenario==='place'){await shot('retained-error-desktop');await page.setViewportSize({width:390,height:844});await shot('retained-error-mobile');await page.setViewportSize({width:1440,height:1000});}
   await page.unroute('**/api/topic-search?**');
  }
+ // Documents load separately and never hold back titles.
+ await page.route('**/api/topic-search/documents?**',async r=>{await new Promise(resolve=>setTimeout(resolve,1500));await r.continue();});
+ await page.goto(`${base}/cauta?q=locuri+de+joaca`);await page.locator('.topic-docs-wait').waitFor();check(await page.locator('.topic-record').count()>0,'Titles are shown before documents arrive');await page.locator('.topic-docs-wait').waitFor({state:'detached'});await page.unroute('**/api/topic-search/documents?**');
+ // Enter in the place field chooses the highlighted first match without arrow keys.
+ await place.fill('municipiul buzau');await page.locator('.topic-options li[aria-selected=true]').filter({hasText:'MUNICIPIUL BUZAU'}).waitFor();await place.press('Enter');await settle();check(new URL(page.url()).searchParams.get('place')==='uat:44818','Enter chooses the first matching place');
  check(errors.length===0,'No browser runtime errors');check(external.length===0,'No external requests or SEAP acquisition from search');
  await writeFile(`${out}/verification.json`,JSON.stringify({base,checks,errors,external},null,2));console.log(JSON.stringify({checks:checks.length,errors,external,out}));
 }finally{await browser.close();}
