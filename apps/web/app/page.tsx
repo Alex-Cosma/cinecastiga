@@ -2,16 +2,19 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getDiscoverySummary } from "@/lib/discovery";
 import { formatRon, formatInt } from "@/lib/format";
-import { encodeSpec } from "@/lib/ask/permalink";
 import type { AskSpec } from "@/lib/ask/spec";
+import { askHref } from "@/lib/discovery-links";
+import { sessionUserId } from "@/lib/session";
+import Term from "@/components/Term";
 import DiscoverySearch from "./DiscoverySearch";
 import DiscoveryMap from "./DiscoveryMap";
 import DiscoveryIcon from "./DiscoveryIcon";
 import CoverageDisclosure from "@/components/CoverageDisclosure";
 import { getCoverage } from "@/lib/coverage";
 
+// Rendered per request (runtime data and the viewer's session); never cached.
 export const dynamic = "force-dynamic";
-const questionHref = (spec: AskSpec) => `/intreaba?spec=${encodeURIComponent(encodeSpec(spec))}`;
+const questionHref = askHref;
 const QUESTIONS = [
   { title: "Cine repară drumurile?", description: "Urmărește firmele din spatele lucrărilor și achizițiile care le aduc împreună.", kind: "road", label: "DRUMURI ȘI CONSTRUCȚII", action: "Vezi firmele și achizițiile", spec: { block: "table", dataset: "all", dim: "supplier", measure: "value", topN: 10, filters: { cpvTerm: "drumuri" } } },
   { title: "Ce cumpără spitalele?", description: "De la medicamente la echipamente. Vezi pe ce se duc banii și cine furnizează.", kind: "hospital", label: "SĂNĂTATE", action: "Explorează achizițiile", spec: { block: "breakdown", dataset: "all", measure: "value", filters: { authorityKind: "spital" } } },
@@ -32,7 +35,9 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     for (const [key, value] of Object.entries(params)) for (const item of Array.isArray(value) ? value : value === undefined ? [] : [value]) forwarded.append(key, item);
     redirect(`/intreaba?${forwarded.toString()}`);
   }
-  const [headline, inventory] = await Promise.all([getDiscoverySummary(), getCoverage()]);
+  // Only a yes/no reaches the page: investigations are invitation-only, so an
+  // anonymous visitor gets a neutral line instead of a login dead end.
+  const [headline, inventory, signedIn] = await Promise.all([getDiscoverySummary(), getCoverage(), sessionUserId().then(id => id !== null, () => false)]);
   const contractInventory = inventory?.observations.find(o => o.dataset === "contracts")?.observation;
   const aboveCap = contractInventory?.above_value_cap === undefined ? null : Number(contractInventory.above_value_cap);
   const coverage = headline.yearFrom && headline.yearTo ? headline.yearFrom === headline.yearTo ? headline.yearFrom : `${headline.yearFrom}–${headline.yearTo}` : "arhiva importată";
@@ -51,9 +56,11 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
 
     <section className="d-national-strip" aria-label="Datele din arhiva publică">
       <div className="d-national-label"><span><DiscoveryIcon name="database" /></span><div><b>O arhivă de urmărit.</b><small>Înregistrări din {coverage}</small></div></div>
-      <Link href={questionHref({ block: "stat", dataset: "da", measure: "count", filters: {}, population: { operator: "and", groups: [{ operator: "and", conditions: [{ field: "value", op: "lte", value: "2000000" }] }] } })}><strong>{formatInt(headline.directRecords)}</strong><small>achiziții directe acceptate</small></Link>
-      <Link href={questionHref({ block: "stat", dataset: "contracts", measure: "count", filters: {} })}><strong>{formatInt(headline.contractRecords)}</strong><small>înregistrări contract–furnizor</small></Link>
-      <Link href={questionHref({ block: "stat", dataset: "all", measure: "value", filters: {} })}><strong>{formatRon(headline.totalRon)}</strong><small>valoare înregistrată · nu plăți</small></Link>
+      {/* The number opens its answer; the label explains the word. A Term is a
+          button, so it sits next to the link instead of inside it. */}
+      <div className="d-national-item"><Link href={questionHref({ block: "stat", dataset: "da", measure: "count", filters: {}, population: { operator: "and", groups: [{ operator: "and", conditions: [{ field: "value", op: "lte", value: "2000000" }] }] } })}><strong>{formatInt(headline.directRecords)}</strong></Link><small><Term id="achizitie-directa">achiziții directe acceptate</Term></small></div>
+      <div className="d-national-item"><Link href={questionHref({ block: "stat", dataset: "contracts", measure: "count", filters: {} })}><strong>{formatInt(headline.contractRecords)}</strong></Link><small><Term id="inregistrare-contract-furnizor">înregistrări contract–furnizor</Term></small></div>
+      <div className="d-national-item"><Link href={questionHref({ block: "stat", dataset: "all", measure: "value", filters: {} })}><strong>{formatRon(headline.totalRon)}</strong></Link><small><Term id="valoare-inregistrata">valoare înregistrată · nu plăți</Term></small></div>
     </section>
 
     <CoverageDisclosure>
@@ -68,7 +75,8 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       </Link>)}</div>
     </section>
 
-    <section className="d-investigation-invite" aria-labelledby="d-investigation-title"><div className="d-folder-art" aria-hidden="true"><div className="d-folder-back" /><div className="d-folder-paper"><i /><i /><i /></div><div className="d-folder-front"><span>+</span></div></div><div><p className="eyebrow">DE LA CURIOZITATE LA ANCHETĂ</p><h2 id="d-investigation-title">Ai găsit un fir? Urmărește-l.</h2><p>Strânge contracte, surse și notițe într-un dosar privat. Revino la ele când apare următoarea întrebare.</p></div><Link href="/anchete" className="d-button d-button-primary">Începe o anchetă <DiscoveryIcon name="arrow" /></Link></section>
+    {signedIn ? <section className="d-investigation-invite" aria-labelledby="d-investigation-title"><div className="d-folder-art" aria-hidden="true"><div className="d-folder-back" /><div className="d-folder-paper"><i /><i /><i /></div><div className="d-folder-front"><span>+</span></div></div><div><p className="eyebrow">DE LA CURIOZITATE LA ANCHETĂ</p><h2 id="d-investigation-title">Ai găsit un fir? Urmărește-l.</h2><p>Strânge contracte, surse și notițe într-un dosar privat. Revino la ele când apare următoarea întrebare.</p></div><Link href="/anchete" className="d-button d-button-primary">Începe o anchetă <DiscoveryIcon name="arrow" /></Link></section>
+      : <p className="d-invite-note">Pentru jurnaliști: dosare private, pe invitație.</p>}
 
     <section className="d-deeper" aria-labelledby="d-deeper-title"><div><p className="eyebrow">PRIVEȘTE MAI DE APROAPE</p><h2 id="d-deeper-title">Mai multe feluri<br />de a urmări banii.</h2><p>Fiecare perspectivă te ajută să pui întrebări mai precise.</p></div><div className="d-deeper-links">{[
       { href: "/semnale", icon: "shield" as const, title: "Semnale care merită verificate", description: "Indicatori explicați, cu metodologia și sursele lor. Un semnal invită la verificare." },

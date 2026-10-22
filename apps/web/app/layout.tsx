@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { headers } from "next/headers";
+import { getSessionCookie } from "better-auth/cookies";
 import { Bricolage_Grotesque, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import "./approved.css";
+import "./guide.css";
 import ReportProblem from "@/components/feedback/ReportProblem";
 import FooterAuthLink from "./FooterAuthLink";
 import HeaderUserNav from "./HeaderUserNav";
@@ -31,7 +34,10 @@ export const metadata: Metadata = {
 // leaves the attribute off and lets prefers-color-scheme decide.
 const themeScript = `try{var t=localStorage.getItem("theme");if(t==="dark"||t==="light")document.documentElement.setAttribute("data-theme",t)}catch(e){}`;
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Only whether a session cookie was sent: no lookup, no identity, no token
+  // reaches the client. The navigation confirms the session after hydration.
+  const sessionHint = getSessionCookie(await headers()) !== null;
   return (
     <html lang="ro" className={`${display.variable} ${body.variable} ${mono.variable}`} suppressHydrationWarning>
       <body>
@@ -42,9 +48,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Link href="/" className="brand" aria-label={SITE_NAME}>
               cine<em>câștigă</em><b>?</b>
             </Link>
-            <SiteNav storiesPublished={publishedStories.length > 0} />
+            <SiteNav storiesPublished={publishedStories.length > 0} sessionHint={sessionHint} />
             <div className="hdr-right">
-              <Link href="/metodologie" className="d-method-link">Cum funcționează</Link>
+              <Link href="/ghid" className="d-method-link">Cum funcționează</Link>
               <GlobalSearch />
               <ThemeToggle />
               <HeaderUserNav />
@@ -72,6 +78,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div>
               <h4>Proiect</h4>
               <ul>
+                <li><Link href="/ghid">Ghid pentru început</Link></li>
                 <li>
                   <Link href="/metodologie">Metodologie</Link>
                 </li>
