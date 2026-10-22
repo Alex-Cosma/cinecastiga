@@ -53,4 +53,9 @@ describe("saved question identity", () => {
     });
     expect(draft.filters.authorityId).toBeUndefined();
   });
+  it("keeps the county with its Romanian spelling, as people read it", () => {
+    const applied = resolvedSpec({ block: "breakdown", measure: "value", filters: { county: "buzau" } }, { county: { query: "buzau", canonical: "Buzau" } });
+    expect(applied.filters.county).toBe("Buzău");
+    expect(resolvedSpec({ block: "stat", measure: "value", filters: { county: "x" } }, { county: { query: "x", canonical: "Caras-Severin" } }).filters.county).toBe("Caraș-Severin");
+  });
 });
