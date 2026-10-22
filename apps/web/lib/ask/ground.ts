@@ -18,7 +18,12 @@ export interface CpvGrounding {
   /** Human-readable CPV names matched, for the "am înțeles" pills. */
   matchedNames: string[];
   method: "code" | "synonym" | "fuzzy" | "none";
+  /** Curated notes on the synonym rows used, shown to people with the subject and the answer. */
+  notes?: string[];
 }
+
+/** Every curated synonym note is meant for people ("include și semnalizarea rutieră…"). */
+export const isPublicSynonymNote = (note: string | null | undefined): note is string => Boolean(note && note.trim());
 
 export interface EntityGrounding {
   query: string;
@@ -83,6 +88,37 @@ function cpvSubtreePrefix(code: string): string {
   return stripped.length >= 2 ? stripped : bare.slice(0, 2);
 }
 
+export interface SynonymRow { term: string; cpv_prefix: string; note: string | null }
+
+/**
+ * Synonyms for a query that is not itself a curated term. Words are matched
+ * from a word start, so letters inside another word do not count ("gaz" is
+ * not in "gazon", "apa" is not in "capacitate"):
+ *   - terms the query contains ("reabilitare drumuri scoala" → "reabilitare
+ *     drumuri" and "scoala"), without those already inside a longer picked
+ *     term ("drumuri" inside "reabilitare drumuri");
+ *   - otherwise the shortest terms that contain the query ("ilum" → "iluminat").
+ * Every row of a picked term is kept: a term's meaning is never cut short.
+ */
+export function pickContainedSynonyms(folded: string, candidates: SynonymRow[]): SynonymRow[] {
+  const q = folded.replace(/[^a-z0-9]+/g, " ").trim();
+  const at = (hay: string, needle: string) => ` ${hay}`.includes(` ${needle}`);
+  // a whole term, inflected or not ("drumurile", "iluminatul"), never a longer word ("gazon")
+  const whole = (hay: string, t: string) => new RegExp(`(?:^| )${t.replace(/[^a-z0-9 ]/g, "")}(?:ul|ului|le|lor|l|a|ei|i|e)?(?= |$)`).test(hay);
+  const terms = [...new Set(candidates.map((r) => r.term))];
+  const inQuery = terms.filter((t) => whole(q, t)).sort((a, b) => b.length - a.length || a.localeCompare(b));
+  const picked: string[] = [];
+  for (const t of inQuery) if (!picked.some((p) => at(p, t))) picked.push(t);
+  if (!picked.length) {
+    const containing = terms.filter((t) => at(t, q));
+    const shortest = Math.min(...containing.map((t) => t.length));
+    picked.push(...containing.filter((t) => t.length === shortest));
+  }
+  return candidates
+    .filter((r) => picked.includes(r.term))
+    .sort((a, b) => a.term.localeCompare(b.term) || a.cpv_prefix.localeCompare(b.cpv_prefix));
+}
+
 async function groundCpv(sql: DbSql, term: string): Promise<CpvGrounding> {
   const folded = fold(term);
 
@@ -110,13 +146,22 @@ async function groundCpv(sql: DbSql, term: string): Promise<CpvGrounding> {
     return { term, prefixes: [], matchedNames: [], method: "none" };
   }
 
-  // 1. Curated synonym table (exact term or term contained in the query).
-  const syn = (await sql`
-    select cpv_prefix, note from reference.cpv_synonym
+  // 1. Curated synonym table. Rows written for exactly this term are its
+  // whole meaning ("iluminat" → lamps, street lighting, its installation and
+  // maintenance), so no longer term crowds them out and no unrelated term
+  // that merely contains the letters joins in ("apa" ⊂ "aparatura medicala").
+  // Only a term without rows of its own falls back to containment
+  // (pickContainedSynonyms), which also takes every row of the terms it picks.
+  const exact = (await sql`
+    select term, cpv_prefix, note from reference.cpv_synonym
+    where term = ${folded}
+    order by cpv_prefix
+    limit 12
+  `) as unknown as SynonymRow[];
+  const syn = exact.length > 0 ? exact : pickContainedSynonyms(folded, (await sql`
+    select term, cpv_prefix, note from reference.cpv_synonym
     where ${folded} like '%' || term || '%' or term like '%' || ${folded} || '%'
-    order by length(term) desc
-    limit 4
-  `) as unknown as { cpv_prefix: string; note: string | null }[];
+  `) as unknown as SynonymRow[]);
   if (syn.length > 0) {
     const prefixes = [
       ...new Set(syn.map((r) => cpvSubtreePrefix(r.cpv_prefix))),
@@ -134,6 +179,7 @@ async function groundCpv(sql: DbSql, term: string): Promise<CpvGrounding> {
       prefixes,
       matchedNames: names.map((n) => `${n.name_ro ?? "?"} (${n.code})`),
       method: "synonym",
+      notes: [...new Set(syn.map((r) => r.note).filter(isPublicSynonymNote))],
     };
   }
 

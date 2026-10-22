@@ -31,7 +31,7 @@
 }
 ::selection{background:var(--accent-soft);color:var(--ink)}
 .d-icon{width:20px;height:20px;flex:none;vertical-align:middle}
-.d-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.d-sr-only,.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .d-skip-link{position:fixed;top:-80px;left:16px;padding:12px 20px;z-index:100;background:var(--accent);color:var(--on-accent);border-radius:6px}.d-skip-link:focus{top:12px}
 :where(a,button,input,select,summary,textarea):focus-visible{outline:3px solid var(--orange);outline-offset:4px}
 #main-content:focus{outline:none}
@@ -93,6 +93,12 @@
 @media(max-width:700px){.d-search-dialog{height:min(650px,calc(100dvh - 28px));max-height:calc(100dvh - 28px)}.d-search-dialog .d-search input{font-size:16px}}
 @media(max-height:520px){.d-search-dialog{height:calc(100dvh - 24px);max-height:calc(100dvh - 24px);padding:16px}.d-search-dialog .d-dialog-head .eyebrow{display:none}.d-search-dialog .d-dialog-head h2{font-size:25px}.d-search-dialog>p{margin:8px 0 12px;font-size:11px}.d-search-dialog>.d-dialog-hint{margin:10px 0 0}.d-search-modal .d-search-state{min-height:130px;padding:18px 12px}}
 @media(max-height:400px){.d-search-dialog>p:not(.d-dialog-hint){display:none}.d-search-dialog .d-search-modal{margin-top:12px}}
+.d-search-group+.d-search-group{border-top:1px solid var(--line);margin-top:4px;padding-top:2px}
+.d-search-group-title{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:9px 10px 3px}
+.d-search-group-likely li>a{background:var(--sunk)}.d-search-group-likely li>a b{font-size:13px;line-height:1.45}
+.d-search-group-words .d-search-all{border-top:0;margin-top:0}
+.d-search-none{font-size:12px;color:var(--muted);padding:10px 10px 2px;margin:0}
+.d-search-pending{display:flex;align-items:center;gap:10px;padding:10px;font-size:11px;color:var(--muted)}.d-search-pending .d-search-progress{width:16px;height:16px;margin:0;flex:none}
 @media(prefers-reduced-motion:reduce){.d-search-progress{animation:none}}
 
 /* Source context: quiet disclosure beside the numbers it explains. */
