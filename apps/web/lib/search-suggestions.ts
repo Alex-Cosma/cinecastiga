@@ -135,12 +135,16 @@ export function buildSuggestionGroups(input: SuggestionInput): SuggestionGroup[]
     { word: text, rest: "", whole: false, vocab: input.vocab },
     ...(input.lastWord ? [{ word: input.lastWord.word, rest: text.slice(0, Math.max(0, text.length - input.lastWord.word.length)).trim(), whole: true, vocab: input.lastWord.vocab }] : []),
   ];
+  // Institution words before a place name ("primaria buzau") name an institution, not a subject to search in the place.
+  const INSTITUTION = /^(primari[ae]i?|primaria|municipiul|orasul|oras|comuna|judetul|consiliul|cj|spitalul|spital|scoala|liceul|prefectura|directia|institutia)$/;
   for (const { word, rest, whole, vocab } of placeSources) {
     const key = fold(word).trim();
+    if (whole && fold(rest).split(/[^a-z0-9]+/).filter(Boolean).some((w) => INSTITUTION.test(w))) continue;
     const fits = (name: string) => (whole ? fold(name).split(/[^a-z0-9]+/).filter(Boolean).join(" ") === key : fold(name).startsWith(key));
     // Only names that start with the typed word ("buzau" → Buzău, not Sita Buzăului).
     if (key.length >= 3) for (const name of COUNTIES) if (fits(name)) placeRow(`county:${fold(name)}`, countyLabel(name), "Ce cumpără instituțiile din județ", rest, countyLabel(name));
-    for (const u of vocab?.uat ?? []) {
+    // After other words, a locality comes only from the interpreter (rows above, official name with diacritics).
+    for (const u of whole && i ? [] : vocab?.uat ?? []) {
       if (u.tip === "sector" || !fits(u.name)) continue;
       const kind = u.tip === "municipiu" ? "Municipiul" : u.tip === "oraș" ? "Orașul" : "Comuna";
       const county = COUNTIES.find((c) => fold(c) === fold(u.county)) ?? u.county;

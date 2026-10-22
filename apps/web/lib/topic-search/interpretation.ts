@@ -114,7 +114,9 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
     sentence: result.sentence, problem: result.problem, confidence: i.confidenceLabel, hasEntity,
   };
   // The words that explain the rest: subjects and the kind of buyer.
-  const keep: Span[] = [...i.subjects.map((s) => s.matched), ...(i.authorityKind ? [i.authorityKind.matched] : [])];
+  const keep: Span[] = i.subjects.map((s) => s.matched);
+  // The kind of buyer ("școala") becomes a chip, not a word the titles must contain.
+  const kindSpan: Span[] = i.authorityKind ? [i.authorityKind.matched] : [];
   // An inflected curated subject ("medicamentele") is searched in its base form.
   const subjectBase = subjectOk && s0!.source === 'synonym' && !s0!.label.includes(' ') && foldText(s0!.label) !== foldText(s0!.matched.text) ? { ...s0!.matched, text: s0!.label } : undefined;
 
@@ -127,6 +129,7 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
   const remove: Span[] = [];
   if (!scope.place && interpretedPlace && interpretedChip) remove.push(interpretedPlace.matched!);
   if (wordsPeriod) remove.push(i.period!.matched);
+  if (subjectOk) remove.push(...kindSpan);
   const reading = subjectWords(i.text, { remove, keep, base: subjectBase });
   const applies = subjectOk && remove.length > 0 && reading.clean && reading.words.length >= 2;
   const place = applies && remove.includes(interpretedPlace?.matched as Span) ? interpretedPlace : null;
@@ -139,7 +142,7 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
 
   // Other readings of the place: the person picks; the subject words stay the search.
   const placeSpan = interpretedPlace?.matched ?? (i.placeAmbiguous ? [i.place, ...i.placeAlternatives].find((p) => p?.matched)?.matched : undefined);
-  const choiceReading = placeSpan ? subjectWords(i.text, { remove: [placeSpan, ...(i.period ? [i.period.matched] : [])], keep, base: subjectBase }) : null;
+  const choiceReading = placeSpan ? subjectWords(i.text, { remove: [placeSpan, ...(i.period ? [i.period.matched] : []), ...kindSpan], keep, base: subjectBase }) : null;
   if (subjectOk && choiceReading?.clean && choiceReading.words.length >= 2) {
     const choices = (i.placeAmbiguous ? [i.place, ...i.placeAlternatives] : interpretedPlace ? i.placeAlternatives : []).filter((p): p is PlaceMatch => Boolean(p));
     const offer = (c: ChipPlace | null, choice: string) => {
