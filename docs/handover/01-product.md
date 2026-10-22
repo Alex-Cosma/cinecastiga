@@ -24,7 +24,7 @@ Principiul repetat explicit de proprietar: **„Poți verifica fiecare leu.”**
 
 ## Întrebările și sursele
 
-„Explorează”/`/intreaba` înlocuiește vechiul builder cu o propoziție românească editabilă. Există 13 tipuri, definite în `apps/web/lib/ask/spec.ts`, nu 13 modele SQL inventate de un LLM:
+„Întreabă” (în meniu; până la 22 octombrie 2026 „Explorează”)/`/intreaba` înlocuiește vechiul builder cu o propoziție românească editabilă. Există 13 tipuri, definite în `apps/web/lib/ask/spec.ts`, nu 13 modele SQL inventate de un LLM:
 
 | Cod | Utilizare |
 |---|---|
