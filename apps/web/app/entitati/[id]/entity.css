@@ -1,0 +1,86 @@
+/* Entity page (/entitati/[id]) — beginner pass, 22 Oct 2026.
+   Scoped to classes used only on this page: "Pe scurt", consortium labels,
+   full amounts in the transactions table, stacked cards under 720px. */
+
+/* ---- "Pe scurt" ---- */
+.ent-brief{margin:22px 0 8px;padding:20px 22px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r2,10px);display:grid;gap:10px}
+.ent-brief h2{font-family:var(--display);font-size:20px;letter-spacing:-.015em;margin:0}
+.ent-brief>p{margin:0;max-width:78ch;font-size:15.5px;line-height:1.6;color:var(--ink2)}
+.ent-brief>p strong{color:var(--ink);font-weight:600}
+.ent-brief>p.note{font-size:13px;color:var(--muted)}
+.ent-brief-lists{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px 28px;margin-top:6px}
+.ent-brief-list{min-width:0}
+.ent-brief-list h3{margin:0 0 6px;font:600 13px/1.4 var(--body);color:var(--ink2)}
+.ent-brief-list ul{list-style:none;margin:0;padding:0;display:grid;gap:9px}
+.ent-brief-list li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 12px;align-items:center;font-size:13.5px}
+.ent-brief-label{display:flex;align-items:baseline;gap:6px;min-width:0}
+.ent-brief-label>a,.ent-brief-label>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.ent-brief-track{grid-column:1/-1;grid-row:2;height:6px;background:var(--sunk);border-radius:3px;overflow:hidden}
+.ent-brief-track i{display:block;height:100%;background:var(--accent);border-radius:3px}
+.ent-brief-val{grid-column:2;grid-row:1;font:12.5px var(--mono);font-variant-numeric:tabular-nums;color:var(--ink2);white-space:nowrap}
+.ent-brief-more{display:inline-block;margin-top:8px;font-size:13px}
+
+/* ---- consortium labels ---- */
+.cons-tag{display:inline-block;flex:none;padding:0 7px;border:1px solid var(--accent-line);border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);font:500 11.5px/1.6 var(--body);white-space:nowrap;cursor:help}
+.ent-tx .cons-line{display:block;white-space:normal;overflow:visible;font:12px/1.4 var(--body);color:var(--muted);margin-top:2px}
+.ent-tx td.num .cons-line{text-align:right}
+.ent-partners .bar-val{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:4px 8px}
+.ent-partners .bar-val .v{white-space:nowrap}
+
+/* ---- full amounts on desktop (no "303.349.549 …") ---- */
+.ent-tx th.col-value{width:176px}
+.ent-tx td.num{overflow:visible;text-overflow:clip}
+.ent-tx tbody td{vertical-align:top}
+
+/* ---- the section navigation matches the page gutter on phones ---- */
+@media (max-width:720px){
+  .subnav{margin-left:-18px;margin-right:-18px;padding-left:18px;padding-right:18px}
+}
+
+/* ---- phones: rows become stacked cards; the page never scrolls sideways ---- */
+@media (max-width:720px){
+  .ent-brief{padding:16px}
+  .ent-brief>p{font-size:15px}
+
+  .ent-tx,.ent-tx tbody,.ent-tx tr,.ent-tx td{display:block}
+  .ent-tx{table-layout:auto}
+  .ent-tx thead tr{display:flex;flex-wrap:wrap;gap:6px;padding:8px 12px}
+  .ent-tx thead th{display:none}
+  .ent-tx thead th.sortable{display:inline-block;width:auto;border:1px solid var(--line);border-radius:999px;padding:3px 10px;background:var(--surface);text-transform:none;letter-spacing:0;font-size:12.5px}
+  .ent-tx thead th.sortable::before{content:"sortează după ";color:var(--muted);font-weight:400}
+  .ent-tx tbody tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:12px 12px;border-bottom:1px solid var(--line)}
+  .ent-tx tbody tr td{padding:0;border:0;white-space:normal;overflow:visible;text-overflow:clip;min-width:0}
+  .ent-tx tbody tr td[colspan]{grid-column:1/-1}
+  .ent-tx td.c-party{grid-column:1/-1;font-weight:500;font-size:14.5px}
+  .ent-tx td.c-val{grid-column:1/-1;text-align:left;font-size:15px;font-weight:600}
+  .ent-tx td.num .cons-line{text-align:left;font-weight:400}
+  .ent-tx td.c-date{grid-column:1;color:var(--muted);font-size:13px}
+  .ent-tx td.c-src{grid-column:2;grid-row:auto;justify-self:end}
+  .ent-tx td.c-cpv{grid-column:1/-1;color:var(--ink2);font-size:13px}
+  .ent-tx td.c-gap::before{content:"Interval: ";color:var(--muted)}
+  .ent-tx td.c-gap{font-size:13px}
+  .ent-tx td.c-flags{grid-column:1/-1}
+  .ent-tx td.c-links{grid-column:1/-1;font-size:13px}
+  .ent-tx td[data-empty="1"]{display:none}
+  .ent-tx tr.tx-ghost{display:block;padding:10px 0}
+  .ent-tx tr.tx-ghost td{display:inline-block;width:30%;margin-right:3%}
+
+  .split-pairs .split-pairs-scroll{overflow:visible}
+  .split-pairs table.split-pairs-table{min-width:0;width:100%}
+  .split-pairs table.split-pairs-table,.split-pairs .split-pairs-table tbody,.split-pairs .split-pairs-table tr,.split-pairs .split-pairs-table td{display:block}
+  .split-pairs .split-pairs-table thead{display:none}
+  .split-pairs .split-pairs-table tbody tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:10px 18px;border-bottom:1px solid var(--line)}
+  .split-pairs .split-pairs-table tbody tr td{padding:0;border:0;background:none}
+  .split-pairs .split-pairs-table td.c-party{grid-column:1/-1;font-weight:500}
+  .split-pairs .split-pairs-table td.c-year{grid-column:1}
+  .split-pairs .split-pairs-table td.c-count{grid-column:2;text-align:right;white-space:nowrap}
+  .split-pairs .split-pairs-table td.c-count::before{content:attr(data-label) " ";color:var(--muted);font-size:12.5px}
+  .split-pairs .split-pairs-table td.c-total{grid-column:1/-1;text-align:left;white-space:normal}
+  .split-pairs .split-pairs-table tr.split-pairs-placeholder td{grid-column:1/-1}
+
+  .ent-partners .bar-row{grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:6px 0}
+  .ent-partners .bar-label{grid-column:1/-1;white-space:normal;overflow:visible}
+  .ent-partners .bar-track{grid-column:1/-1}
+  .ent-partners .bar-val{grid-column:1;justify-content:flex-start;text-align:left}
+  .ent-partners .bar-go{grid-column:2;min-width:0}
+}

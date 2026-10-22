@@ -24,15 +24,15 @@ export default function SplitPairsTable({ entityId, isAuth }: { entityId: string
       </p>
       {error && <p className="split-pairs-status" role="alert">{error} <button type="button" className="btn" onClick={retry}>Reîncearcă</button></p>}
       <div className="split-pairs-scroll" role="region" aria-label="Grupuri de achiziții sub prag" tabIndex={0} aria-busy={loading}>
-        <table className="rank">
+        <table className="rank split-pairs-table">
           <thead><tr><th scope="col">{isAuth ? "Furnizor" : "Autoritate"}</th><th scope="col">An</th><th scope="col">Achiziții</th><th scope="col" className="num">Total vs prag</th></tr></thead>
           <tbody>
             {loading ? Array.from({ length: 10 }, (_, i) => <tr className="split-pairs-placeholder" key={i} aria-hidden="true"><td colSpan={4}><span /></td></tr>) : !error && data?.rows.map(s => (
               <tr key={s.flagId}>
-                <td>{s.partnerId ? <Link prefetch={false} href={`/entitati/${s.partnerId}`}>{cleanName(s.partnerName)}</Link> : (s.partnerName ?? "—")}</td>
-                <td>{s.year}<div className="county">CPV {s.cpvClass ?? "—"} · {s.purchaseType ?? "tip necunoscut"}</div></td>
-                <td><a href={`/semnale/${s.flagId}`} target="_blank" rel="noopener noreferrer" title="Deschide lista achizițiilor (tab nou)">{s.count} ↗</a></td>
-                <td className="num">{formatRon(s.totalRon)} <span className="county">· {(s.totalRon / s.ceiling).toFixed(1).replace(".", ",")}× pragul de {formatInt(s.ceiling)} lei</span></td>
+                <td className="c-party">{s.partnerId ? <Link prefetch={false} href={`/entitati/${s.partnerId}`}>{cleanName(s.partnerName)}</Link> : (s.partnerName ?? "—")}</td>
+                <td className="c-year">{s.year}<div className="county">CPV {s.cpvClass ?? "—"} · {s.purchaseType ?? "tip necunoscut"}</div></td>
+                <td className="c-count" data-label="Achiziții"><a href={`/semnale/${s.flagId}`} target="_blank" rel="noopener noreferrer" title="Deschide lista achizițiilor (tab nou)">{s.count} ↗</a></td>
+                <td className="num c-total">{formatRon(s.totalRon)} <span className="county">· {(s.totalRon / s.ceiling).toFixed(1).replace(".", ",")}× pragul de {formatInt(s.ceiling)} lei</span></td>
               </tr>
             ))}
           </tbody>

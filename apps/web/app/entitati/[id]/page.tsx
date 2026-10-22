@@ -13,6 +13,8 @@ import {
   getEntityTxCounts,
   getEntityContractsAboveCap,
   getEntityFlagRowCounts,
+  getEntityPartnersPaged,
+  getEntitySubjects,
   type FlagEvidenceRow,
   type Role,
   type EntityFlagRow,
@@ -32,6 +34,9 @@ import TxTable from "./TxTable";
 import PartnersTable from "./PartnersTable";
 import SplitPairsTable from "./SplitPairsTable";
 import SectionNav from "./SectionNav";
+import EntityBrief from "./EntityBrief";
+import { composeEntitySummary } from "@/lib/entity-summary";
+import "./entity.css";
 
 /** Stat card → search drill with exactly this entity's rows from one channel. */
 function entityTxSearchUrl(
@@ -118,7 +123,7 @@ export default async function EntityPage({
   // ONRC/MF data only through a corroborated CUI (audit F03): a foreign number
   // that passes the CUI checksum keeps its label but not another firm's records.
   const registryCuiLookup = cui ? getRegistryCui(id) : Promise.resolve(null);
-  const [partners, monthly, flagEvidence, reps, txCounts, flagRowCounts, aboveCap, signalCounts, registryCui] =
+  const [partners, monthly, flagEvidence, reps, txCounts, flagRowCounts, aboveCap, signalCounts, registryCui, subjects, topPartners] =
     await Promise.all([
       getEntityPartners(id, role, 12),
       getEntityMonthly(id, role),
@@ -129,6 +134,8 @@ export default async function EntityPage({
       getEntityContractsAboveCap(id, role),
       getEntitySignalCounts(id, role),
       registryCuiLookup,
+      getEntitySubjects(id, role),
+      getEntityPartnersPaged(id, role, 1, 3),
     ]);
   const cuiUncorroborated = cui !== null && registryCui === null;
   // Audit F03 (b): a reviewed collision is a Romanian-looking record whose
@@ -148,6 +155,12 @@ export default async function EntityPage({
   const nOutsideCri = signalTypes.filter((code) => !inCri(code)).length;
   const unmetWithOccurrences = hasRiskScore && signalTypes.some((code) => inCri(code) && !row.flags.includes(code));
   const entitySignalsUrl = (code: string) => signalUrl(parseSignalState({ tip: code, rol: role, ent: id }));
+  // "Pe scurt": the KPI numbers above, the same selection by CPV division, the partner list's top rows.
+  const summary = composeEntitySummary({
+    role, totalExact: txCounts.valueExact, nDa: txCounts.nDa, nContracts: txCounts.nContracts,
+    dateFrom: txCounts.dateFrom, dateTo: txCounts.dateTo, divisions: subjects.divisions,
+    nConsortium: subjects.nConsortium, partners: topPartners.rows,
+  });
 
   return (
     <>
@@ -264,6 +277,8 @@ export default async function EntityPage({
           </div>
         )}
       </div>
+
+      {summary && <EntityBrief summary={summary} isAuth={isAuth} />}
 
       <details className="data-context entity-data-context">
         <summary>Ce includ aceste cifre?</summary>

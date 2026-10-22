@@ -46,10 +46,10 @@ export default function ReportProblem() {
   // Admin is internal; the public entry point is not shown there.
   if (pathname === "/admin" || pathname?.startsWith("/admin/")) return null;
   return <>
-    <aside aria-label="Feedback">
+    <aside aria-label="Feedback" className="feedback-dock">
       <button ref={trigger} type="button" className="feedback-fab" aria-haspopup="dialog" aria-label="Feedback: semnalează o problemă sau trimite o sugestie" onClick={open}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v8.5A1.5 1.5 0 0 1 19 17h-7.2L7.5 20.2V17H5a1.5 1.5 0 0 1-1.5-1.5V7A1.5 1.5 0 0 1 5 5.5Z"/><path d="M12 8.5v3.2M12 14.4v.1"/></svg>
-        <span>Feedback</span>
+        <span>Feedback<span className="feedback-fab-more"> · semnalează o problemă</span></span>
       </button>
     </aside>
     <dialog ref={dialog} className="feedback-dialog" aria-labelledby={heading} aria-describedby={description} onCancel={event => { event.preventDefault(); close(); }}>

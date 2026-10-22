@@ -298,6 +298,12 @@ export interface DaTx {
   natId: string | null;
   /** Recorded value implausible (>2M or ≥100× estimate) — UI warns. */
   valueSuspect: boolean;
+  /** Contract rows: published winners. >1 means closingValue is an equal-split share. */
+  nWinners: number | null;
+  /** Contract rows: the whole contract amount the share was split from. */
+  contractValueFull: number | null;
+  /** Consortium rows: names of the other winners (at most 4), never invented. */
+  consortiumOthers: string[];
 }
 
 export interface TxQuery {
@@ -459,7 +465,8 @@ export async function getEntityTransactions(
            county, cpv_code, cpv_name, estimated_value_ron, closing_value,
            finalization_date, gap_minutes, da_flags,
            null::text procedure_type, null::bigint ca_notice_id, null::boolean single_bidder,
-           null::bigint nat_id, value_suspect
+           null::bigint nat_id, value_suspect,
+           null::int n_winners, null::numeric contract_value_full
     from marts.da_transactions
     where ${partyCol} = ${id}
       and ${q.excluded ? sql`(closing_value is null or closing_value <= 0 or closing_value > 2000000)` : sql`closing_value > 0 and closing_value <= 2000000`}
@@ -469,7 +476,8 @@ export async function getEntityTransactions(
            t.county, t.cpv_code, t.cpv_name, null::numeric estimated_value_ron, t.closing_value,
            t.finalization_date, null::int gap_minutes, array[]::text[] da_flags,
            t.procedure_type, t.ca_notice_id, t.is_single_bidder single_bidder,
-           cc.ca_notice_contract_id nat_id, false value_suspect
+           cc.ca_notice_contract_id nat_id, false value_suspect,
+           t.n_winners, t.contract_value_full
     from marts.contract_transactions t
     left join core.contracts cc on cc.id = t.contract_id
     where t.${partyCol} = ${id} and t.closing_value > 0 ${yearCond}`;
@@ -484,6 +492,26 @@ export async function getEntityTransactions(
   const totalRows = (await sql`
     select count(*)::int c from (${body}) u
   `) as unknown as { c: number }[];
+
+  // Name the other members of each consortium on this page (one indexed lookup).
+  const consortiumIds = [...new Set(rows
+    .filter((r) => r["src"] === "contract" && Number(r["n_winners"] ?? 1) > 1)
+    .map((r) => String(r["rid"])))];
+  const members = new Map<string, { supplierId: string; name: string | null }[]>();
+  if (consortiumIds.length > 0) {
+    const memberRows = (await sql`
+      select contract_id::text cid, supplier_id::text sid, supplier_name
+      from marts.contract_transactions
+      where contract_id = any(${sql.array(consortiumIds)}::bigint[])
+      order by contract_id, supplier_id
+    `) as unknown as { cid: string; sid: string; supplier_name: string | null }[];
+    for (const m of memberRows) {
+      const list = members.get(m.cid) ?? [];
+      list.push({ supplierId: m.sid, name: m.supplier_name });
+      members.set(m.cid, list);
+    }
+  }
+  const winnerOf = (r: Record<string, unknown>) => (isAuth ? String(r["cp_id"]) : String(id));
 
   return {
     total: Number(totalRows[0]?.c ?? 0),
@@ -506,6 +534,13 @@ export async function getEntityTransactions(
       singleBidder: (r["single_bidder"] as boolean | null) ?? null,
       natId: r["nat_id"] != null ? String(r["nat_id"]) : null,
       valueSuspect: Boolean(r["value_suspect"]),
+      nWinners: r["n_winners"] != null ? Number(r["n_winners"]) : null,
+      contractValueFull: r["contract_value_full"] != null ? Number(r["contract_value_full"]) : null,
+      consortiumOthers: (members.get(String(r["rid"])) ?? [])
+        .filter((m) => m.supplierId !== winnerOf(r))
+        .slice(0, 4)
+        .map((m) => m.name ?? "")
+        .filter((n) => n.length > 0),
     })),
   };
 }
@@ -516,6 +551,8 @@ export interface Partner {
   n: number;
   totalRon: number;
   pct: number;
+  /** Contract rows in the total that are equal-split consortium shares. */
+  nConsortium: number;
 }
 
 /** Top counterparties for an entity, by DA value, with share of total. */
@@ -553,6 +590,7 @@ export async function getEntityPartners(
     n: Number(r.n),
     totalRon: Number(r.t ?? 0),
     pct: Number(r.pct ?? 0),
+    nConsortium: 0,
   }));
 }
 
@@ -679,20 +717,20 @@ export async function getEntityPartnersPaged(
   const offset = (Math.max(1, page) - 1) * pageSize;
   const rows = (await sql`
     with u as (
-      select ${cpId} pid, ${cpName} pname, closing_value cv
+      select ${cpId} pid, ${cpName} pname, closing_value cv, false cons
       from marts.da_transactions
       where ${partyCol} = ${id} and closing_value > 0 and closing_value <= 2000000
       union all
-      select ${cpId}, ${cpName}, closing_value
+      select ${cpId}, ${cpName}, closing_value, n_winners > 1
       from marts.contract_transactions
       where ${partyCol} = ${id} and closing_value > 0
     ),
     agg as (
-      select pid, max(pname) pname, count(*) n, sum(cv) t
+      select pid, max(pname) pname, count(*) n, sum(cv) t, count(*) filter (where cons) nc
       from u group by pid
     ),
     tot as (select sum(t) grand, count(*) parties from agg)
-    select pid, pname, n, t,
+    select pid, pname, n, t, nc,
            round(t/nullif((select grand from tot),0),4) pct,
            (select parties from tot)::int parties
     from agg order by t desc nulls last, pid asc nulls last
@@ -702,6 +740,7 @@ export async function getEntityPartnersPaged(
     pname: string | null;
     n: number;
     t: string | null;
+    nc: number | string | null;
     pct: string | null;
     parties: number;
   }[];
@@ -727,6 +766,63 @@ export async function getEntityPartnersPaged(
       n: Number(r.n),
       totalRon: Number(r.t ?? 0),
       pct: Number(r.pct ?? 0),
+      nConsortium: Number(r.nc ?? 0),
+    })),
+  };
+}
+
+export interface EntityDivision {
+  /** Two-digit CPV division; null for records without a CPV code. */
+  code: string | null;
+  name: string | null;
+  valueExact: string;
+  n: number;
+}
+
+export interface EntitySubjects {
+  /** Largest divisions by recorded value, at most `limit`. */
+  divisions: EntityDivision[];
+  /** Divisions with a CPV code across the whole selection. */
+  nDivisions: number;
+  /** Distinct contracts in the selection awarded to a consortium (equal-split shares). */
+  nConsortium: number;
+}
+
+/**
+ * "Pe scurt": the entity's recorded value by CPV division, over exactly the
+ * population of getEntityTxCounts and the partner list (DAs with a positive value
+ * of at most 2 million lei + contract rows with a positive winner share). The
+ * division values therefore add up to the page's total.
+ */
+export async function getEntitySubjects(entityId: string, role: Role, limit = 3, sql: DbSql = db()): Promise<EntitySubjects> {
+  const id = await canonicalEntityId(sql, /^\d+$/.test(entityId) ? entityId : "0");
+  const partyCol = role === "authority" ? sql`authority_id` : sql`supplier_id`;
+  const rows = (await sql`
+    with u as (
+      select left(cpv_code, 2) d, closing_value v, null::bigint cid
+      from marts.da_transactions
+      where ${partyCol} = ${id} and closing_value > 0 and closing_value <= 2000000
+      union all
+      select left(cpv_code, 2), closing_value, case when n_winners > 1 then contract_id end
+      from marts.contract_transactions
+      where ${partyCol} = ${id} and closing_value > 0
+    ),
+    agg as (select d, count(*)::int n, sum(v) v from u group by d),
+    meta as (
+      select (select count(*)::int from agg where d is not null) n_div,
+             (select count(distinct cid)::int from u) n_cons
+    )
+    select meta.n_div, meta.n_cons, top.* from meta left join lateral (
+      select agg.d, agg.n, agg.v::text v_exact,
+             (select k.name_ro from core.cpv_codes k where left(k.code, 8) = agg.d || '000000' order by k.code limit 1) name
+      from agg order by agg.v desc nulls last, agg.d asc nulls last limit ${limit}
+    ) top on true
+  `) as unknown as { n_div: number; n_cons: number; d: string | null; n: number | null; v_exact: string | null; name: string | null }[];
+  return {
+    nDivisions: Number(rows[0]?.n_div ?? 0),
+    nConsortium: Number(rows[0]?.n_cons ?? 0),
+    divisions: rows.filter((r) => r.v_exact != null).map((r) => ({
+      code: r.d, name: r.name, valueExact: String(r.v_exact), n: Number(r.n ?? 0),
     })),
   };
 }
@@ -1258,6 +1354,8 @@ export interface ContractDetail {
   authority: { entityId: string; name: string | null; county: string | null } | null;
   winners: ContractWinner[];
   nWinners: number;
+  /** The RON amount the winner shares were split from (marts), when counted. */
+  splitFromRonExact: string | null;
   tendersReceived: number | null;
   isSingleBidder: boolean | null;
   tedNoticeNo: string | null;
@@ -1326,7 +1424,7 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
   const caId = r["ca_notice_id"] != null ? String(r["ca_notice_id"]) : null;
   const [mart, winners, flags, lotCount] = await Promise.all([
     sql`
-      select supplier_id, closing_value, n_winners, tenders_received, is_single_bidder
+      select supplier_id, closing_value, n_winners, tenders_received, is_single_bidder, contract_value_full::text contract_value_full
       from marts.contract_transactions where contract_id = ${statisticsId}
     ` as unknown as Promise<Record<string, unknown>[]>,
     sql`
@@ -1448,6 +1546,7 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
       };
     }),
     nWinners: m0 ? Number(m0["n_winners"] ?? winners.length) : winners.length,
+    splitFromRonExact: m0?.["contract_value_full"] != null ? String(m0["contract_value_full"]) : null,
     tendersReceived: m0?.["tenders_received"] != null ? Number(m0["tenders_received"]) : null,
     isSingleBidder: m0?.["is_single_bidder"] == null ? null : Boolean(m0["is_single_bidder"]),
     tedNoticeNo: (r["ted_no"] as string | null) ?? null,
