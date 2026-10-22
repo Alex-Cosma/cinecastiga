@@ -1,4 +1,5 @@
 import type { DbSql } from './client.js';
+import { REVIEWED_REGISTRY_COLLISION_KEYS } from './registry-collisions.js';
 type Query = DbSql | Parameters<Parameters<DbSql['begin']>[1]>[0];
 
 /**
@@ -20,6 +21,11 @@ type Query = DbSql | Parameters<Parameters<DbSql['begin']>[1]>[0];
  * foreign-marked entity missing from it is not corroborated (fail-closed).
  * Identity (cui_canonical, cui_valid, is_foreign, contract-identity hashes)
  * does not change; the reviewed identity repair (option A) is still pending.
+ *
+ * Option (b) (owner decision of 22 October 2026): an entity in the reviewed
+ * manifest of ONRC name collisions (REVIEWED_REGISTRY_COLLISIONS,
+ * registry-collisions.ts) is never corroborated while it holds the recorded
+ * CUI, foreign marker or not.
  */
 
 /** Legal forms and generic organisation words: a shared one proves nothing.
@@ -50,7 +56,14 @@ function romanianEntity(q: Query, alias: string) {
 export function cuiCorroborated(q: Query, alias = 'e') {
   return q`(${q(alias)}.cui_valid and ${q(alias)}.cui_canonical is not null and (${romanianEntity(q, alias)}
     or exists (select 1 from marts.cui_corroborations registry_check
-      where registry_check.entity_id=${q(alias)}.id and registry_check.cui=${q(alias)}.cui_canonical)))`;
+      where registry_check.entity_id=${q(alias)}.id and registry_check.cui=${q(alias)}.cui_canonical))
+    and ${notReviewedCollision(q, alias)})`;
+}
+
+/** Boolean: entity `alias` is not a reviewed ONRC name collision holding the
+ * recorded CUI (audit F03, option b). */
+function notReviewedCollision(q: Query, alias: string) {
+  return q`(${q(alias)}.id::text||':'||${q(alias)}.cui_canonical) <> all(${REVIEWED_REGISTRY_COLLISION_KEYS as string[]}::text[])`;
 }
 
 /** Boolean: ONRC registers the CUI of entity `alias` under a name sharing a

@@ -615,23 +615,28 @@ describe("ONRC and MF joins only through a corroborated CUI", () => {
       }
       // 10: Italian firm whose partita IVA passes the CUI checksum; ONRC holds an
       // unrelated SNC under that number. 11: Romanian company with a stray "DE".
-      // 12: ordinary Romanian supplier without a country.
+      // 12: ordinary Romanian supplier without a country. 2095043: INTRASOFT
+      // International, no foreign marker, in the reviewed collision manifest
+      // (F03 option b): ONRC registers its CUI 16853659 as MEGASPEED TRANS.
       await q`insert into core.entities (id,name_display,name_normalized,cui_canonical,cui_valid,country_code) values
         (1,'Autoritate','autoritate',null,false,null),
         (10,'FRESIA S.P.A.','fresia s p a','1152147',true,'IT'),
         (11,'COMPANIA NATIONALA DE TRANSPORT AL ENERGIEI ELECTRICE "TRANSELECTRICA" S.A.','transelectrica','13328043',true,'DE'),
-        (12,'Furnizor Exemplu S.R.L.','furnizor exemplu','12',true,null)`;
+        (12,'Furnizor Exemplu S.R.L.','furnizor exemplu','12',true,null),
+        (2095043,'INTRASOFT International','intrasoft international','16853659',true,null)`;
       await q`insert into reference.onrc_firm (j_number,cui,name,snapshot_date) values
         ('J1','1152147','EXEMPLU UNELTE SNC','2026-09-01'),
         ('J2','13328043','COMPANIA NATIONALA DE TRANSPORT AL ENERGIEI ELECTRICE "TRANSELECTRICA" SA','2026-09-01'),
-        ('J3','12','FURNIZOR EXEMPLU SRL','2026-09-01')`;
+        ('J3','12','FURNIZOR EXEMPLU SRL','2026-09-01'),
+        ('J4','16853659','MEGASPEED TRANS SRL','2026-09-01')`;
       await q`insert into reference.company_financials (cui,year,category,source_vintage,employees,net_turnover)
-        select cui, year, 'fixture', year, 1, 1000 from unnest(array['1152147','13328043','12']) cui, unnest(array[2024,2025]) year`;
+        select cui, year, 'fixture', year, 1, 1000 from unnest(array['1152147','13328043','12','16853659']) cui, unnest(array[2024,2025]) year`;
       await q`insert into reference.company_reps (j_number,cui,person_key,person_name,calitate,birth_date,snapshot_date)
         select 'J'||cui,cui,'fixture-person','Persoana Fictiva','administrator','1970-01-01','2026-09-01'
-        from unnest(array['1152147','13328043','12']) cui`;
+        from unnest(array['1152147','13328043','12','16853659']) cui`;
       await q`insert into core.direct_acquisitions (id,authority_entity_id,supplier_entity_id,state,closing_value,finalization_date) values
-        (1,1,10,'Oferta acceptata',500,'2025-03-01'),(2,1,11,'Oferta acceptata',500,'2025-03-01'),(3,1,12,'Oferta acceptata',500,'2025-03-01')`;
+        (1,1,10,'Oferta acceptata',500,'2025-03-01'),(2,1,11,'Oferta acceptata',500,'2025-03-01'),(3,1,12,'Oferta acceptata',500,'2025-03-01'),
+        (4,1,2095043,'Oferta acceptata',500,'2025-03-01')`;
       await q`insert into core.cpv_codes (code,name_ro) values ('45000000-7','Works')`;
       await q`insert into core.awards (id,ca_notice_id,notice_no,authority_entity_id,cpv_code,acquisition_type,ron_contract_value,state_date)
         values (1,1000,'CAN1',1,'45000000-7','Lucrari',600,'2024-05-01')`;
@@ -639,18 +644,19 @@ describe("ONRC and MF joins only through a corroborated CUI", () => {
         values (100,1000,'1',300,'2024-06-01','RON','Contract'),(101,1000,'2',300,'2024-06-01','RON','Contract')`;
       await q`insert into core.contract_winners (contract_id,entity_id) values (100,10),(101,11)`;
       const corroborated = async () => Object.fromEntries((await q`select e.id::text id, ${cuiCorroborated(q, "e")} ok
-        from core.entities e where e.id in (10,11,12) order by e.id`).map(r => [String(r["id"]), r["ok"]]));
+        from core.entities e where e.id in (10,11,12,2095043) order by e.id`).map(r => [String(r["id"]), r["ok"]]));
       // Fail-closed before the marts build has checked any foreign-marked name.
-      expect(await corroborated()).toEqual({ "10": false, "11": false, "12": true });
+      // The reviewed collision is never corroborated.
+      expect(await corroborated()).toEqual({ "10": false, "11": false, "12": true, "2095043": false });
 
       await runMarts(q);
-      expect(await corroborated()).toEqual({ "10": false, "11": true, "12": true });
+      expect(await corroborated()).toEqual({ "10": false, "11": true, "12": true, "2095043": false });
       expect((await q`select entity_id::text id, cui from marts.cui_corroborations`).map(r => [r["id"], r["cui"]]))
         .toEqual([["11", "13328043"]]);
       const profiles = await q`select entity_id::text id, employees, net_turnover::text turnover
         from marts.entity_profile where role='supplier' order by entity_id`;
       expect(profiles.map(r => [r["id"], r["employees"], r["turnover"]]))
-        .toEqual([["10", null, null], ["11", 1, "1000"], ["12", 1, "1000"]]);
+        .toEqual([["10", null, null], ["11", 1, "1000"], ["12", 1, "1000"], ["2095043", null, null]]);
 
       await runFlags(q);
       const subjects = async (code: string) => (await q`select subject_id::text id from core.flags
@@ -670,6 +676,9 @@ describe("ONRC and MF joins only through a corroborated CUI", () => {
       // A corroboration belongs to the CUI that was checked.
       await q`update core.entities set cui_canonical='13328041' where id=11`;
       expect((await corroborated())["11"]).toBe(false);
+      // A reviewed collision applies only to the recorded entity and CUI.
+      await q`update core.entities set cui_canonical='16853650' where id=2095043`;
+      expect((await corroborated())["2095043"]).toBe(true);
       throw rollback;
     })).rejects.toBe(rollback);
   }, 30_000);

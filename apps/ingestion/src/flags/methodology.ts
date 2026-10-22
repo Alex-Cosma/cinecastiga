@@ -15,7 +15,8 @@
 // rf-2026.14: a DA supplier equal to its own authority is not a supplier (audit F12): no da_split pair, da_concentration/da_dependence share, fin_* or net_shared_admin value, supplier CRI or DA signal partner.
 // rf-2026.15: award_no_competition/award_single_bid count once per award notice (same authority and notice number, across SEAP versions) and take the year of its first contract.
 // rf-2026.16: net_shared_admin ignores ONRC insolvency/liquidation roles (administrator provizoriu stays) and records the person's role(s) at each firm (audit F31).
-export const METHODOLOGY_VERSION = "rf-2026.16";
+// rf-2026.17: fin_* and net_shared_admin skip the reviewed ONRC name collisions of Romanian-looking entities (audit F03, option b).
+export const METHODOLOGY_VERSION = "rf-2026.17";
 
 export type FlagSubject = "da" | "award" | "authority" | "supplier" | "pair";
 
