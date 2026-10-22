@@ -37,7 +37,8 @@ export default function DiscoveryMap({ counties }: { counties: DiscoveryCounty[]
     </svg>
     <div className="d-map-legend"><span>Valoare înregistrată</span><div aria-label="De la valoare mai mică la valoare mai mare">{[0, 1, 2, 3, 4].map((n) => <i key={n} className={`d-map-swatch-${n}`} />)}</div><span>mai mare</span></div>
     <div className="d-map-choice"><div className="d-map-select"><DiscoveryIcon name="pin" /><label className="d-sr-only" htmlFor="discovery-county">Alege județul</label><select id="discovery-county" value={selected} onChange={(event) => { setSelected(event.target.value); setHovered(""); }}><option value="">Alege județul tău</option>{[...countyMap.shapes].sort((a, b) => a.label.localeCompare(b.label, "ro")).map((shape) => <option key={shape.key} value={shape.key}>{shape.label}</option>)}</select></div><Link href={selected ? countyHref(countyMap.shapes.find((shape) => shape.key === selected)!.label) : mapHref} aria-label={selected ? "Vezi pe ce se duc banii în județul selectat" : "Deschide harta tuturor județelor"}><DiscoveryIcon name="arrow" /></Link></div>
-    <p className="d-map-current" role="status">{current ? <><b>{current.label}</b> · {total ? `${formatRon(total.amount)} · ${formatInt(total.count)} înregistrări` : "Fără valoare localizată în arhivă"}</> : present ? <>Județele și București · <Term id="sediul-institutiei">sediul instituției, nu locul lucrării</Term></> : <>Nu avem încă date cartografiate.</>}</p>
-    <p className="d-map-basis">Harta include doar înregistrările cu județ cunoscut.</p>
+    <p className="d-map-current" role="status">{current ? <><b>{current.label}</b> · {total ? `${formatRon(total.amount)} · ${formatInt(total.count)} înregistrări` : "Fără valoare localizată în arhivă"}</> : present ? <>Județele și București</> : <>Nu avem încă date cartografiate.</>}</p>
+    {/* Outside the live region: a button must not sit inside role="status". */}
+    <p className="d-map-basis">Harta include doar înregistrările cu județ cunoscut, după <Term id="sediul-institutiei">sediul instituției, nu locul lucrării</Term>.</p>
   </section>;
 }

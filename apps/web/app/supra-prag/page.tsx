@@ -105,7 +105,8 @@ export default async function SupraPragPage({
     const s = qp.toString();
     return s ? `/supra-prag?${s}` : "/supra-prag";
   };
-  const pageUrl = (n: number) => qstr({ p: n > 1 ? String(n) : undefined });
+  // The pager sits below the table: the next page opens at the start of the list.
+  const pageUrl = (n: number) => `${qstr({ p: n > 1 ? String(n) : undefined })}#atribuiri-lista`;
 
   return (
     <>
@@ -160,7 +161,7 @@ export default async function SupraPragPage({
           <p className="hint">Număr de rezultate cu cel puțin un câștigător din țara indicată. Consorțiile multinaționale apar în fiecare țară relevantă; țările nu se însumează.</p>
           <div className="filters" style={{ flexWrap: "wrap" }}>
             {stats.byCountry.slice(0, 12).map((c) => (
-              <Link key={c.country} href={qstr({ tara: country === c.country ? undefined : c.country, extern: "1" })}
+              <Link key={c.country} scroll={false} href={qstr({ tara: country === c.country ? undefined : c.country, extern: "1" })}
                 className={country === c.country ? "on" : ""}>
                 {countryName(c.country)} · {formatInt(c.n)} rezultate
               </Link>
@@ -176,31 +177,31 @@ export default async function SupraPragPage({
           corespunzătoare în datele SEAP analizate. Atribuirea poate exista în SEAP chiar dacă potrivirea lipsește.
         </p>
         <div className="filters" style={{ flexWrap: "wrap" }} aria-describedby="ted-matching-note">
-          <Link href={qstr({ "etichetă": undefined })} className={!label ? "on" : ""}>Toate</Link>
-          <Link href={qstr({ "etichetă": "ted-only" })} className={label === "ted-only" ? "on" : ""}>
+          <Link scroll={false} href={qstr({ "etichetă": undefined })} className={!label ? "on" : ""}>Toate</Link>
+          <Link scroll={false} href={qstr({ "etichetă": "ted-only" })} className={label === "ted-only" ? "on" : ""}>
             {TED_LABEL["ted-only"]!.title}
           </Link>
-          <Link href={qstr({ "etichetă": "also-in-seap" })} className={label === "also-in-seap" ? "on" : ""}>
+          <Link scroll={false} href={qstr({ "etichetă": "also-in-seap" })} className={label === "also-in-seap" ? "on" : ""}>
             {TED_LABEL["also-in-seap"]!.title}
           </Link>
-          <Link href={qstr({ "etichetă": "possible-match" })} className={label === "possible-match" ? "on" : ""}>
+          <Link scroll={false} href={qstr({ "etichetă": "possible-match" })} className={label === "possible-match" ? "on" : ""}>
             {TED_LABEL["possible-match"]!.title}
           </Link>
-          <Link href={qstr({ extern: foreign ? undefined : "1" })} className={foreign ? "on" : ""}>
+          <Link scroll={false} href={qstr({ extern: foreign ? undefined : "1" })} className={foreign ? "on" : ""}>
             Marcate „străin”
           </Link>
           {stats.foreignCountryUnresolved > 0 || country === TED_COUNTRY_UNRESOLVED ? (
-            <Link href={qstr({ tara: country === TED_COUNTRY_UNRESOLVED ? undefined : TED_COUNTRY_UNRESOLVED })}
+            <Link scroll={false} href={qstr({ tara: country === TED_COUNTRY_UNRESOLVED ? undefined : TED_COUNTRY_UNRESOLVED })}
               className={country === TED_COUNTRY_UNRESOLVED ? "on" : ""}>
               {TED_COUNTRY_REVIEW_LABEL}
             </Link>
           ) : null}
-          <Link href={qstr({ unic: singleBidder ? undefined : "1" })} className={singleBidder ? "on" : ""}>
+          <Link scroll={false} href={qstr({ unic: singleBidder ? undefined : "1" })} className={singleBidder ? "on" : ""}>
             Ofertant unic
           </Link>
           <span className="filler" />
-          <Link href={qstr({ sort: undefined })} className={sort === "date" ? "on" : ""}>După dată</Link>
-          <Link href={qstr({ sort: "value" })} className={sort === "value" ? "on" : ""}>Valori RON, descrescător</Link>
+          <Link scroll={false} href={qstr({ sort: undefined })} className={sort === "date" ? "on" : ""}>După dată</Link>
+          <Link scroll={false} href={qstr({ sort: "value" })} className={sort === "value" ? "on" : ""}>Valori RON, descrescător</Link>
         </div>
 
         {country === TED_COUNTRY_UNRESOLVED ? <p className="hint">
@@ -210,7 +211,7 @@ export default async function SupraPragPage({
         <p className="hint">{sort === "value"
           ? "Comparația include numai valori de ofertă / rezultat și valori de contract publicate în RON. Exclude intervalele, ofertele multiple, plafoanele și tipurile încă neverificate."
           : "Valorile rămân în moneda și forma publicate: ofertă, interval sau plafon. Nu calculăm un total comun."}</p>
-        <table className="rank">
+        <table className="rank list-anchor" id="atribuiri-lista">
           <thead>
             <tr>
               <th>Autoritate → Câștigător</th>

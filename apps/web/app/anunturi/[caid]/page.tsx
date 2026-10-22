@@ -122,7 +122,7 @@ export default async function NoticePage({
       </div>
 
       <section className="section">
-        <h2>Înregistrările din acest anunț</h2>
+        <h2 id="inregistrari" className="list-anchor">Înregistrările din acest anunț</h2>
         {pages > 1 && (
           <p className="hint">
             {formatInt(n.nLots)} înregistrări · pagina {n.page} din {formatInt(pages)} · ordonate
@@ -176,11 +176,11 @@ export default async function NoticePage({
         </table>
         {pages > 1 && (
           <div className="pager">
-            {n.page > 1 && <Link href={`?p=${n.page - 1}`}>← Anterior</Link>}
+            {n.page > 1 && <Link href={`?p=${n.page - 1}#inregistrari`}>← Anterior</Link>}
             <span className="note">
               Pagina {n.page} din {formatInt(pages)}
             </span>
-            {n.page < pages && <Link href={`?p=${n.page + 1}`}>Următor →</Link>}
+            {n.page < pages && <Link href={`?p=${n.page + 1}#inregistrari`}>Următor →</Link>}
           </div>
         )}
       </section>
