@@ -5,11 +5,14 @@ import { useMemo, useState } from "react";
 import type { DiscoveryCounty } from "@/lib/discovery";
 import { countyMap, foldCounty } from "@/lib/map";
 import { formatRon, formatInt } from "@/lib/format";
-import { encodeSpec } from "@/lib/ask/permalink";
+import { askHref, countyBreakdownHref } from "@/lib/discovery-links";
+import Term from "@/components/Term";
 import DiscoveryIcon from "./DiscoveryIcon";
 
-const countyHref = (county: string) => `/intreaba?spec=${encodeURIComponent(encodeSpec({ block: "stat", dataset: "all", measure: "value", filters: { county } }))}`;
-const mapHref = `/intreaba?spec=${encodeURIComponent(encodeSpec({ block: "map", dataset: "all", measure: "value", filters: {} }))}`;
+// A county opens "Pe ce se duc banii?" (the breakdown by subject) for it, the
+// question this card asks, rather than a single total.
+const countyHref = countyBreakdownHref;
+const mapHref = askHref({ block: "map", dataset: "all", measure: "value", filters: {} });
 
 export default function DiscoveryMap({ counties }: { counties: DiscoveryCounty[] }) {
   const [selected, setSelected] = useState(""), [hovered, setHovered] = useState("");
@@ -29,12 +32,12 @@ export default function DiscoveryMap({ counties }: { counties: DiscoveryCounty[]
     <svg viewBox={`0 0 ${countyMap.width} ${countyMap.height}`} className="d-romania-map" role="group" aria-label="Alege un județ pe hartă. Aceleași opțiuni sunt disponibile în selectorul de mai jos." onMouseLeave={() => setHovered("")}>
       {countyMap.shapes.map((shape) => {
         const data = values.get(shape.key), bucket = data ? thresholds.filter((threshold) => data.amount > threshold).length : -1;
-        return <a key={shape.key} href={countyHref(shape.label)} aria-label={`${shape.label}: ${data ? `${formatRon(data.amount)}, ${formatInt(data.count)} înregistrări. Vezi achizițiile.` : "Fără valoare localizată în arhivă. Explorează județul."}`} onFocus={() => setHovered(shape.key)} onBlur={() => setHovered("")} onMouseEnter={() => setHovered(shape.key)}><path d={shape.d} className={`d-county d-county-${bucket}${focusKey === shape.key ? " selected" : ""}`}><title>{`${shape.label}${data ? ` · ${formatRon(data.amount)}` : " · date indisponibile"}`}</title></path></a>;
+        return <a key={shape.key} href={countyHref(shape.label)} aria-label={`${shape.label}: ${data ? `${formatRon(data.amount)}, ${formatInt(data.count)} înregistrări. Vezi pe ce se duc banii.` : "Fără valoare localizată în arhivă. Vezi pe ce se duc banii."}`} onFocus={() => setHovered(shape.key)} onBlur={() => setHovered("")} onMouseEnter={() => setHovered(shape.key)}><path d={shape.d} className={`d-county d-county-${bucket}${focusKey === shape.key ? " selected" : ""}`}><title>{`${shape.label}${data ? ` · ${formatRon(data.amount)}` : " · date indisponibile"}`}</title></path></a>;
       })}
     </svg>
     <div className="d-map-legend"><span>Valoare înregistrată</span><div aria-label="De la valoare mai mică la valoare mai mare">{[0, 1, 2, 3, 4].map((n) => <i key={n} className={`d-map-swatch-${n}`} />)}</div><span>mai mare</span></div>
-    <div className="d-map-choice"><div className="d-map-select"><DiscoveryIcon name="pin" /><label className="d-sr-only" htmlFor="discovery-county">Alege județul</label><select id="discovery-county" value={selected} onChange={(event) => { setSelected(event.target.value); setHovered(""); }}><option value="">Alege județul tău</option>{[...countyMap.shapes].sort((a, b) => a.label.localeCompare(b.label, "ro")).map((shape) => <option key={shape.key} value={shape.key}>{shape.label}</option>)}</select></div><Link href={selected ? countyHref(countyMap.shapes.find((shape) => shape.key === selected)!.label) : mapHref} aria-label={selected ? "Explorează achizițiile județului selectat" : "Deschide harta tuturor județelor"}><DiscoveryIcon name="arrow" /></Link></div>
-    <p className="d-map-current" role="status">{current ? <><b>{current.label}</b> · {total ? `${formatRon(total.amount)} · ${formatInt(total.count)} înregistrări` : "Fără valoare localizată în arhivă"}</> : present ? <>Județele și București · sediul instituției, nu locul lucrării</> : <>Nu avem încă date cartografiate.</>}</p>
+    <div className="d-map-choice"><div className="d-map-select"><DiscoveryIcon name="pin" /><label className="d-sr-only" htmlFor="discovery-county">Alege județul</label><select id="discovery-county" value={selected} onChange={(event) => { setSelected(event.target.value); setHovered(""); }}><option value="">Alege județul tău</option>{[...countyMap.shapes].sort((a, b) => a.label.localeCompare(b.label, "ro")).map((shape) => <option key={shape.key} value={shape.key}>{shape.label}</option>)}</select></div><Link href={selected ? countyHref(countyMap.shapes.find((shape) => shape.key === selected)!.label) : mapHref} aria-label={selected ? "Vezi pe ce se duc banii în județul selectat" : "Deschide harta tuturor județelor"}><DiscoveryIcon name="arrow" /></Link></div>
+    <p className="d-map-current" role="status">{current ? <><b>{current.label}</b> · {total ? `${formatRon(total.amount)} · ${formatInt(total.count)} înregistrări` : "Fără valoare localizată în arhivă"}</> : present ? <>Județele și București · <Term id="sediul-institutiei">sediul instituției, nu locul lucrării</Term></> : <>Nu avem încă date cartografiate.</>}</p>
     <p className="d-map-basis">Harta include doar înregistrările cu județ cunoscut.</p>
   </section>;
 }

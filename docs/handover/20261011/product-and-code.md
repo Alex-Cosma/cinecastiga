@@ -20,7 +20,9 @@ Proprietarul a cerut explorare rapidă și plăcută, dar cu date verificabile. 
 
 | Zonă | Funcție și decizie | Puncte de intrare |
 |---|---|---|
-| Pagina principală | Întrebări/teme ilustrate, intrare accesibilă în date | `apps/web/app/page.tsx`, `PRODUCT.md`, `DESIGN.md` |
+| Pagina principală | Întrebări/teme ilustrate, intrare accesibilă în date. Județul ales pe hartă deschide „Pe ce se duc banii?” (breakdown pe domenii) pentru acel județ. Etichetele benzii de cifre au explicații `<Term>`. Blocul „Începe o anchetă” apare doar cu sesiune; anonim, o linie neutră | `apps/web/app/page.tsx`, `DiscoveryMap.tsx`, `apps/web/lib/discovery-links.ts`, `PRODUCT.md`, `DESIGN.md` |
+| Navigare și `/ghid` | Meniul: Descoperă, **Întreabă** (fostul „Explorează”, aceeași țintă `/intreaba`), Ce bate la ochi (regula existentă), Anchete doar cu sesiune. „Cum funcționează” deschide ghidul pentru început; sub 1100 px ghidul apare ca „Ghid” în meniu. Metodologia rămâne legată din ghid și footer | `apps/web/lib/site-nav.ts`, `apps/web/app/SiteNav.tsx`, `apps/web/app/ghid/`, `apps/web/app/guide.css` |
+| Glosar | Un singur dicționar de definiții pentru începători (ghid + `<Term id="…">`): buton accesibil, explicația se deschide în fluxul paginii, fără hover. Nu pune un `Term` într-un link | `apps/web/lib/glossary.ts`, `apps/web/components/Term.tsx` |
 | `/intreaba` | „Întreabă”: casetă de text liber → „Am înțeles așa” (întrebare editabilă) → răspuns și surse; exemple pe obiective; constructorul pas cu pas și cele 13 modele rămân secundare | `apps/web/app/intreaba/`, `apps/web/lib/ask/`, `apps/web/lib/intent/` |
 | `/cauta` | Căutare entități și achiziții tematice; typeahead geografic; interval de ani/toți anii; documentele vin dintr-o cerere separată (`/api/topic-search/documents`, vezi [arhitectura](../02-architecture.md)) | `apps/web/app/cauta/`, `apps/web/lib/topic-search*`, `apps/ingestion/src/search/` |
 | `/domenii` | Atlas CPV; click pe părinte aprofundează, frunza deschide detalii, săgeata deschide detalii la orice nivel | `docs/implementation/domains-atlas.md` |
@@ -90,6 +92,10 @@ Nu mapa automat o companie subordonată sau o instituție cu nume asemănător l
 Identitatea forest-green/ivory, fonturile existente, tema deschisă/închisă și componentele aprobate sunt deliberate. Preferă informația progresivă: rezumat scurt, explicație la cerere, surse clare. Nu umple partea superioară a paginii cu paragrafe repetitive.
 
 Dialogurile nu își schimbă violent înălțimea în timpul căutării; cererile vechi nu suprascriu rezultatele noi. Drawer-ul are feedback vizibil de încărcare. Tabelele lungi sunt paginate; admin folosește 10 rânduri/pagină. Sumele sunt aliniate la antet și păstrează accesul la valoarea exactă, nu doar abrevierea în milioane.
+
+Meniul principal primește doar un indiciu că există un cookie de sesiune (`getSessionCookie`, fără căutare în bază și fără token trimis clientului); sesiunea confirmată în browser decide. Pagina principală verifică sesiunea pe server și transmite doar da/nu; este `force-dynamic`, cu `Cache-Control: private, no-store`.
+
+Derularea la navigare folosește `experimental.appNewScrollHandler` (`apps/web/next.config.mjs`). Handlerul implicit din Next 16.2 pornea de la primul nod al segmentului; în producție acela este un `<script>`/stylesheet mutat de React în `<head>`, așa că handlerul renunța și pagini ca `/semnale` sau `/domenii` se deschideau la poziția de derulare a paginii anterioare. Verificat local pe build de producție: navigarea înainte începe sus, „Înapoi” restaurează poziția, ancorele `#` funcționează. La un upgrade Next, retestează înainte să scoți opțiunea.
 
 Feedbackul poate fi trimis anonim, fără nume/email impus. Butonul este o filă pe marginea dreaptă de la 1360 px, un buton rotund în colț între 701 și 1359 px și un rând la finalul paginii sub 700 px, ca să nu acopere sumele. Este vizibil în secțiunea separată de admin; administratorul poate șterge individual intrări. Nu expune mesajele de feedback printr-un endpoint public.
 
