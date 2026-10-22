@@ -45,7 +45,7 @@ export async function GET(req:Request){
   if(t.subject){
    const cpv=(await ground(db(),{cpvTerm:t.subject.term})).cpv;
    t.subject.notes=cpv?.notes??[];
-   if(t.answer&&t.answer.total.spec.filters.cpvTerm===t.subject.term)t.answer.cpv=cpv?.matchedNames??[];
+   if(t.answer&&t.answer.total.spec.filters.cpvTerm===t.subject.term){t.answer.cpv=cpv?.matchedNames??[];t.answer.cpvExcluded=cpv?.excludedNames??[];}
   }
   return Response.json({interpretation:t},{headers:{'Cache-Control':'no-store'}});
  }catch(e){

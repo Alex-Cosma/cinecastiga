@@ -63,6 +63,8 @@ export function buildPills(spec: AskSpec, grounding: Grounding): string[] {
     const names = grounding.cpv.matchedNames;
     if (names.length === 0) pills.push(`CPV ${grounding.cpv.prefixes.join(", ")}`);
     else pills.push(names.length <= 2 ? names.join(" + ") : `${names[0]} +${names.length - 1} CPV`);
+    const excluded = grounding.cpv.excludePrefixes?.length ?? 0;
+    if (excluded) pills.push(`fără ${excluded === 1 ? "o subclasă" : `${excluded} subclase`} (vezi limitele)`);
   }
   if (spec.filters.authorityKind) pills.push(KIND_LABEL[spec.filters.authorityKind]);
   if (grounding.authority?.nameDisplay) pills.push(grounding.authority.nameDisplay);
