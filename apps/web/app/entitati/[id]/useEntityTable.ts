@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createLatestRequest } from "@/lib/latest-request";
+import { shouldFetchEntityTable } from "./entity-table-fetch";
 
 /**
  * The previous response supplies stable controls, but never selectable stale rows.
@@ -19,7 +20,7 @@ export function useEntityTable<T extends { ok: boolean; error?: string }>(url: s
   const shown = useRef(response);
   shown.current = response;
   useEffect(() => {
-    if (attempt === 0 && shown.current?.url === url && shown.current.data && shown.current.data === initial?.data) {
+    if (!shouldFetchEntityTable({ url, attempt, shown: shown.current, initialData: initial?.data })) {
       setPending(false);
       return;
     }
