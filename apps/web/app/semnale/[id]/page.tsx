@@ -63,7 +63,7 @@ export default async function SignalSourcesPage({ params, searchParams }: {
         {finding.records.map(row => <tr key={row.id}><td><a href={daUrl(row.id)} target="_blank" rel="noreferrer">{row.code ?? `SEAP ${row.id}`} ↗</a>{!row.available && <div className="note">Înregistrare indisponibilă în datele curente</div>}</td><td>{coverageDate(row.date)}</td><td>{row.cpv ?? "necunoscut"}</td><td className="num">{exact(row.value)}</td></tr>)}
       </tbody></table></div>
       <p className="note">Pagina {finding.page + 1} din {Math.max(1, Math.ceil(finding.sourceIds.length / 50))} · maximum 50 de înregistrări pe pagină.</p>
-      <nav className="pager" aria-label="Paginarea surselor">{finding.page > 0 && <Link href={`/semnale/${id}?p=${finding.page - 1}`}>← Anterioara</Link>}{(finding.page + 1) * 50 < finding.sourceIds.length && <Link href={`/semnale/${id}?p=${finding.page + 1}`}>Următoarea →</Link>}</nav>
+      <nav className="pager" aria-label="Paginarea surselor">{finding.page > 0 && <Link scroll={false} href={`/semnale/${id}?p=${finding.page - 1}`}>← Anterioara</Link>}{(finding.page + 1) * 50 < finding.sourceIds.length && <Link scroll={false} href={`/semnale/${id}?p=${finding.page + 1}`}>Următoarea →</Link>}</nav>
     </section>}
     {finding.contracts.length > 0 && <section className="section">
       <h2>Contractele și loturile folosite în semnal</h2>

@@ -160,7 +160,7 @@ export default async function SupraPragPage({
           <p className="hint">Număr de rezultate cu cel puțin un câștigător din țara indicată. Consorțiile multinaționale apar în fiecare țară relevantă; țările nu se însumează.</p>
           <div className="filters" style={{ flexWrap: "wrap" }}>
             {stats.byCountry.slice(0, 12).map((c) => (
-              <Link key={c.country} href={qstr({ tara: country === c.country ? undefined : c.country, extern: "1" })}
+              <Link key={c.country} scroll={false} href={qstr({ tara: country === c.country ? undefined : c.country, extern: "1" })}
                 className={country === c.country ? "on" : ""}>
                 {countryName(c.country)} · {formatInt(c.n)} rezultate
               </Link>
@@ -176,31 +176,31 @@ export default async function SupraPragPage({
           corespunzătoare în datele SEAP analizate. Atribuirea poate exista în SEAP chiar dacă potrivirea lipsește.
         </p>
         <div className="filters" style={{ flexWrap: "wrap" }} aria-describedby="ted-matching-note">
-          <Link href={qstr({ "etichetă": undefined })} className={!label ? "on" : ""}>Toate</Link>
-          <Link href={qstr({ "etichetă": "ted-only" })} className={label === "ted-only" ? "on" : ""}>
+          <Link scroll={false} href={qstr({ "etichetă": undefined })} className={!label ? "on" : ""}>Toate</Link>
+          <Link scroll={false} href={qstr({ "etichetă": "ted-only" })} className={label === "ted-only" ? "on" : ""}>
             {TED_LABEL["ted-only"]!.title}
           </Link>
-          <Link href={qstr({ "etichetă": "also-in-seap" })} className={label === "also-in-seap" ? "on" : ""}>
+          <Link scroll={false} href={qstr({ "etichetă": "also-in-seap" })} className={label === "also-in-seap" ? "on" : ""}>
             {TED_LABEL["also-in-seap"]!.title}
           </Link>
-          <Link href={qstr({ "etichetă": "possible-match" })} className={label === "possible-match" ? "on" : ""}>
+          <Link scroll={false} href={qstr({ "etichetă": "possible-match" })} className={label === "possible-match" ? "on" : ""}>
             {TED_LABEL["possible-match"]!.title}
           </Link>
-          <Link href={qstr({ extern: foreign ? undefined : "1" })} className={foreign ? "on" : ""}>
+          <Link scroll={false} href={qstr({ extern: foreign ? undefined : "1" })} className={foreign ? "on" : ""}>
             Marcate „străin”
           </Link>
           {stats.foreignCountryUnresolved > 0 || country === TED_COUNTRY_UNRESOLVED ? (
-            <Link href={qstr({ tara: country === TED_COUNTRY_UNRESOLVED ? undefined : TED_COUNTRY_UNRESOLVED })}
+            <Link scroll={false} href={qstr({ tara: country === TED_COUNTRY_UNRESOLVED ? undefined : TED_COUNTRY_UNRESOLVED })}
               className={country === TED_COUNTRY_UNRESOLVED ? "on" : ""}>
               {TED_COUNTRY_REVIEW_LABEL}
             </Link>
           ) : null}
-          <Link href={qstr({ unic: singleBidder ? undefined : "1" })} className={singleBidder ? "on" : ""}>
+          <Link scroll={false} href={qstr({ unic: singleBidder ? undefined : "1" })} className={singleBidder ? "on" : ""}>
             Ofertant unic
           </Link>
           <span className="filler" />
-          <Link href={qstr({ sort: undefined })} className={sort === "date" ? "on" : ""}>După dată</Link>
-          <Link href={qstr({ sort: "value" })} className={sort === "value" ? "on" : ""}>Valori RON, descrescător</Link>
+          <Link scroll={false} href={qstr({ sort: undefined })} className={sort === "date" ? "on" : ""}>După dată</Link>
+          <Link scroll={false} href={qstr({ sort: "value" })} className={sort === "value" ? "on" : ""}>Valori RON, descrescător</Link>
         </div>
 
         {country === TED_COUNTRY_UNRESOLVED ? <p className="hint">
@@ -264,11 +264,11 @@ export default async function SupraPragPage({
 
         {totalPages > 1 ? (
           <div className="pager">
-            {page > 1 ? <Link href={pageUrl(page - 1)}>← anterioarele</Link> : <span className="off">← anterioarele</span>}
+            {page > 1 ? <Link scroll={false} href={pageUrl(page - 1)}>← anterioarele</Link> : <span className="off">← anterioarele</span>}
             <span className="pager-pos">
               pagina {formatInt(page)} / {formatInt(totalPages)} · {formatInt(awards.total)} rezultate
             </span>
-            {page < totalPages ? <Link href={pageUrl(page + 1)}>următoarele →</Link> : <span className="off">următoarele →</span>}
+            {page < totalPages ? <Link scroll={false} href={pageUrl(page + 1)}>următoarele →</Link> : <span className="off">următoarele →</span>}
           </div>
         ) : null}
 

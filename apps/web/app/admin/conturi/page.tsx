@@ -131,7 +131,7 @@ export default async function AdminPage({
           </table>
         </div>
       </section>
-      <nav className="queue-pagination" aria-label="Paginile conturilor"><span>{res.total ? `${Math.min((page-1)*10+1,res.total)}–${Math.min(page*10,res.total)} din ${res.total}` : 'Niciun cont'}</span>{page>1&&<Link className="button" href={`/admin/conturi?page=${page-1}`}>Înapoi</Link>}{page*10<res.total&&<Link className="button" href={`/admin/conturi?page=${page+1}`}>Următoarele</Link>}</nav>
+      <nav className="queue-pagination" aria-label="Paginile conturilor"><span>{res.total ? `${Math.min((page-1)*10+1,res.total)}–${Math.min(page*10,res.total)} din ${res.total}` : 'Niciun cont'}</span>{page>1&&<Link className="button" scroll={false} href={`/admin/conturi?page=${page-1}`}>Înapoi</Link>}{page*10<res.total&&<Link className="button" scroll={false} href={`/admin/conturi?page=${page+1}`}>Următoarele</Link>}</nav>
     </AccountDraftGuard>
   );
 }
