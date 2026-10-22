@@ -3,6 +3,7 @@ import type { DbSql } from "@seap/db";
 import { runRows, runSpec } from "./compile";
 import { ground, splitSynonymRows, type Grounding, type SynonymRow } from "./ground";
 import type { AskSpec } from "./spec";
+import { RETIRED_TERMS, retiredTerm, retiredText } from "./retired-terms";
 
 /** A tagged-template stand-in that records every statement and bound value. */
 function database() {
@@ -60,7 +61,7 @@ describe("synonym exclusions", () => {
   });
 
   it("never guesses a retired word: saved links get the choices instead of a fuzzy match", async () => {
-    for (const term of ["mese", "lucrari", "Lucrări", "programe", "mese calde"]) {
+    for (const term of ["mese", "lucrari", "Lucrări", "programe", "mesele", "Lucrările", "programelor", "lucrari de", "mese si"]) {
       const db = database();
       const grounding = await ground(db.sql, { cpvTerm: term });
       expect(grounding.cpv, term).toMatchObject({ prefixes: [], method: "none", retired: expect.objectContaining({ message: expect.any(String) }) });
@@ -71,6 +72,17 @@ describe("synonym exclusions", () => {
     }
     const mese = await runSpec(database().sql, { block: "stat", dataset: "all", measure: "value", filters: { cpvTerm: "mese" } }, await ground(database().sql, { cpvTerm: "mese" }));
     expect("error" in mese && mese.error).toBe("„Mese” poate însemna masa servită sau mobilierul. Alege la care te gândești. Poți alege: „catering (mese servite)”, „mobilier: mese”.");
+  });
+
+  it("grounds normally when a real subject stands next to the retired word, and never matches other words", async () => {
+    for (const term of ["lucrari de pavare", "lucrari de instalatii electrice", "programe de formare", "mese si scaune", "meserii", "mesaje", "mesager"]) {
+      const grounding = await ground(database().sql, { cpvTerm: term });
+      expect(grounding.cpv?.retired, term).toBeUndefined();
+    }
+    expect(retiredTerm("meserii")).toBeNull();
+    expect(retiredTerm("mesele")?.forms).toContain("meselor");
+    expect(retiredText("lucrarile de")).toBe(RETIRED_TERMS["lucrari"]);
+    expect(retiredText("lucrari de pavare")).toBeNull();
   });
 
   it("leaves groundings stored before exclusions unchanged", async () => {

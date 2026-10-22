@@ -3,7 +3,7 @@ import type { AskFilters } from "./spec";
 import { aliasQueries, queryTokens } from "./entity-alias";
 import { readLocalAuthorityIds, sectorUnit } from "../peer-population";
 import { onrcBirthYear } from "../format";
-import { retiredTerm, type RetiredTerm } from "./retired-terms";
+import { retiredText, type RetiredTerm } from "./retired-terms";
 
 /**
  * Grounding: turn the spec's free-text fields (cpvTerm, authorityName,
@@ -174,7 +174,7 @@ async function groundCpv(sql: DbSql, term: string): Promise<CpvGrounding> {
   }
 
   // A retired word is never guessed (no synonym, no trigram match): the person chooses.
-  const retired = retiredTerm(folded);
+  const retired = retiredText(folded);
   if (retired) return { term, prefixes: [], matchedNames: [], method: "none", retired };
 
   // 1. Curated synonym table. Rows written for exactly this term are its
@@ -221,10 +221,6 @@ async function groundCpv(sql: DbSql, term: string): Promise<CpvGrounding> {
       ...(excludePrefixes.length ? { excludePrefixes, excludedNames: excluded.map((n) => `${n.name_ro ?? "?"} (${n.code})`) } : {}),
     };
   }
-
-  // A text without synonyms that holds a retired word ("mese calde") is not guessed either.
-  const retiredInside = folded.split(/[^a-z0-9]+/).map(retiredTerm).find((r): r is RetiredTerm => Boolean(r));
-  if (retiredInside) return { term, prefixes: [], matchedNames: [], method: "none", retired: retiredInside };
 
   // 2. Trigram similarity over the CPV catalog names.
   const fuzzy = (await sql`
