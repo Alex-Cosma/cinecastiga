@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { pgTable, boolean, text, integer, jsonb, timestamp, uuid, bigint, bigserial, uniqueIndex, index, check, customType, primaryKey } from 'drizzle-orm/pg-core';
+import { pgTable, boolean, text, integer, jsonb, timestamp, uuid, bigint, bigserial, uniqueIndex, index, check, customType, primaryKey, foreignKey } from 'drizzle-orm/pg-core';
 import { appSchema } from './app.js';
 const bytea = customType<{ data: Buffer }>({dataType: () => 'bytea'});
 // Archived source and derivative bytes are immutable, content-addressed, and shared.
@@ -30,6 +30,17 @@ export const documentPages = appSchema.table('document_pages', {
   documentId: uuid('document_id').notNull().references(()=>procurementDocuments.id),
   page: integer('page').notNull(), text: text('text').notNull(), method: text('method').notNull(),
 },t=>[primaryKey({columns:[t.documentId,t.page]}),check('document_page_positive',sql`${t.page}>0`)]);
+const tsvector = customType<{ data: string }>({dataType: () => 'tsvector'});
+// Full-text index of page text, same expression as title search:
+// to_tsvector('simple', unaccent(text)). A separate table, filled by a trigger on
+// app.document_pages (migration 0079), so adding it never takes an exclusive lock
+// on the page table that the reader and the running web use, and pages written
+// by any worker version are indexed. A page without a row is readable, not searchable.
+export const documentPageSearch = appSchema.table('document_page_search', {
+  documentId: uuid('document_id').notNull(), page: integer('page').notNull(), search: tsvector('search').notNull(),
+},t=>[primaryKey({columns:[t.documentId,t.page]}),
+  foreignKey({name:'document_page_search_page_fk',columns:[t.documentId,t.page],foreignColumns:[documentPages.documentId,documentPages.page]}).onDelete('cascade'),
+  index('document_page_search_idx').using('gin',t.search)]);
 // Explicit, bounded operator pilots; ordinary on-demand jobs retain their serial policy.
 export const documentBatches = appSchema.table('document_batches', {
  id: text('id').primaryKey(), status:text('status').notNull().default('running'),

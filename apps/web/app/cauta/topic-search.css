@@ -46,3 +46,16 @@
 .topic-other-identities[open] summary{margin-bottom:8px}
 .topic-filter-toggle>.d-icon{flex-shrink:0}
 .topic-filter-toggle[aria-expanded=true]>.d-icon{transform:rotate(180deg)}
+
+/* A new selection never shows the previous one's records: placeholders hold the
+   layout until its own results arrive. Documents load separately. */
+.topic-waiting{display:grid;gap:0}
+.topic-skeleton{padding:21px 0;border-bottom:1px solid var(--line)}
+.topic-skeleton>span{display:block;height:12px;border-radius:5px;background:var(--sunk);margin:0 0 12px;max-width:100%;animation:topic-pulse 1.4s ease-in-out infinite}
+.topic-skeleton>span:nth-child(1){width:34%}.topic-skeleton>span:nth-child(2){width:78%;height:18px}.topic-skeleton>span:nth-child(3){width:52%;margin-bottom:0}
+.topic-context-waiting .topic-skeleton{border:0;padding:4px 0}
+.topic-docs-wait{display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin:12px 0 0;font-size:14px;color:var(--topic-muted)}
+.topic-count-wait{color:var(--topic-muted)}
+.topic-records>section>.topic-error{margin-top:14px}
+@keyframes topic-pulse{50%{opacity:.45}}
+@media(prefers-reduced-motion:reduce){.topic-skeleton>span{animation:none}}
