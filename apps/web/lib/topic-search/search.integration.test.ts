@@ -77,6 +77,31 @@ suite('public subject search against PostgreSQL',()=>{
   expect((await docs('q=joaca&tab=documents')).documents.hits).toHaveLength(1);
   expect((await docs('q=joaca&tab=documents&page=2')).documents).toEqual({total:1,hits:[]});
  });
+ it('shows at most two documents on the overview and pages through many documents in the Documents tab',async()=>{
+  const ids=Array.from({length:12},(_,i)=>`00000000-0000-4000-8000-0000000001${String(i+10)}`);
+  try{
+   for(const [i,id] of ids.entries()){
+    await q`insert into app.procurement_documents values(${id},${`Pavaj-${i}.pdf`},'17:80',now(),'hash')`;
+    await q`insert into app.document_pages values(${id},1,'Pavaj din dale','pdf'),(${id},2,${i%2?'Pavaj nou':'Borduri'},'ocr')`;
+   }
+   const overview=await docs('q=pavaj');
+   expect(overview.documents.total).toBe(12);expect(overview.documents.hits.map(h=>h.id)).toEqual(ids.slice(0,2));
+   expect(overview.coverage).toEqual({known:14,ready:13,pages:26});
+   const first=await docs('q=pavaj&tab=documents'),second=await docs('q=pavaj&tab=documents&page=2');
+   expect(first.documents.hits.map(h=>h.id)).toEqual(ids.slice(0,10));expect(second.documents.hits.map(h=>h.id)).toEqual(ids.slice(10));
+   expect(second.documents.total).toBe(12);
+   expect(first.documents.hits.map(h=>h.pages)).toEqual(ids.slice(0,10).map((_,i)=>i%2?[1,2]:[1]));
+   expect(first.documents.hits[0]).toMatchObject({page:1,filename:'Pavaj-0.pdf',contractId:'500'});
+  }finally{
+   await q`delete from app.document_pages where document_id=any(${ids}::uuid[])`;await q`delete from app.procurement_documents where id=any(${ids}::uuid[])`;
+  }
+ });
+ it('indexes a page written with an empty search_path (fixed path in the trigger functions)',async()=>{
+  const id='00000000-0000-4000-8000-000000000001';
+  await q.begin(async tx=>{await tx`set local search_path=''`;await tx`insert into app.document_pages values(${id},5,'Ștergătoare de parbriz','ocr')`;});
+  expect((await docs('q=stergatoare')).documents.hits[0]?.pages).toEqual([5]);
+  await q`delete from app.document_pages where document_id=${id} and page=5`;
+ });
  it('indexes pages written after the migration and follows text changes and deletions',async()=>{
   const id='00000000-0000-4000-8000-000000000001';
   await q`insert into app.document_pages values(${id},3,'Stâlpi de iluminat stradal','ocr')`;
