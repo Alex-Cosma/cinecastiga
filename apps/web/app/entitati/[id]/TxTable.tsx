@@ -8,6 +8,7 @@ import { daUrl, awardUrl } from "@/lib/elicitatie";
 import { useTip } from "../../intreaba/blocks";
 import type { DaTx } from "@/lib/marts";
 import { useEntityTable } from "./useEntityTable";
+import { consortiumExplanation, consortiumPhrase, consortiumShareLabel, isConsortium } from "@/lib/consortium";
 
 /**
  * The entity page's transaction table, redesigned to the drill-table standard:
@@ -161,7 +162,7 @@ export default function TxTable({
         {loading ? "Se încarcă înregistrările…" : error ? "Înregistrările nu au putut fi încărcate." : <>{formatInt(total)} înregistrări{src === "all" ? " (ambele canale)" : ""} · pagina {page} din {formatInt(pages)}</>}
       </div>
       <div className="ask-tablewrap" aria-busy={loading}>
-        <table className="ask-table ask-drill">
+        <table className="ask-table ask-drill ent-tx">
           <thead>
             <tr>
               <th className="col-date sortable" onClick={() => sortBy("date")} title="sortează">
@@ -210,9 +211,9 @@ export default function TxTable({
             {!loading && data?.rows?.map((t, i) => (
               // consortium contracts come as one row per member with the same contract id
               <tr key={`${t.src}-${t.sicapDaId}-${t.partnerId ?? i}`}>
-                <td title={t.src === "contract" ? "Data semnării" : "Data finalizării"}>{t.src === "contract" && !t.finalizationDate ? "Dată sursă improbabilă" : formatCalendarDate(t.finalizationDate)}</td>
+                <td className="c-date" title={t.src === "contract" ? "Data semnării" : "Data finalizării"}>{t.src === "contract" && !t.finalizationDate ? "Dată sursă improbabilă" : formatCalendarDate(t.finalizationDate)}</td>
                 {showTip && (
-                  <td>
+                  <td className="c-src">
                     <span
                       className={`ask-srctag ${t.src === "contract" ? "contracts" : "da"}`}
                       title={
@@ -226,17 +227,22 @@ export default function TxTable({
                     {t.singleBidder === true ? " 1 ofertant" : ""}
                   </td>
                 )}
-                <td className="clip" {...tip.bindClip(cleanName(t.partnerName))}>
+                <td className="clip c-party" {...tip.bindClip(cleanName(t.partnerName))}>
                   {t.partnerId ? (
                     <Link href={`/entitati/${t.partnerId}`}>{cleanName(t.partnerName)}</Link>
                   ) : (
                     (t.partnerName ?? "—")
                   )}
+                  {isConsortium(t.nWinners) && (
+                    <span className="cons-line">
+                      {consortiumPhrase(t.consortiumOthers.map(cleanName), t.nWinners)}
+                    </span>
+                  )}
                 </td>
-                <td className="clip" {...tip.bindClip(t.cpvName ?? t.cpvCode)}>
+                <td className="clip c-cpv" {...tip.bindClip(t.cpvName ?? t.cpvCode)}>
                   {t.cpvName ?? t.cpvCode ?? "—"}
                 </td>
-                <td className={`num${t.valueSuspect ? " val-suspect" : ""}`}>
+                <td className={`num c-val${t.valueSuspect ? " val-suspect" : ""}`}>
                   {formatRonFull(t.closingValue)}
                   {t.valueSuspect && (
                     <span
@@ -255,16 +261,21 @@ export default function TxTable({
                       ⚠
                     </span>
                   )}
+                  {isConsortium(t.nWinners) && (
+                    <span className="cons-line" title={consortiumExplanation(t.nWinners)}>
+                      {consortiumShareLabel(t.nWinners, t.contractValueFull != null ? formatRonFull(t.contractValueFull) : null)}
+                    </span>
+                  )}
                 </td>
-                <td>{gapLabel(t.gapMinutes)}</td>
-                <td className="clip">
+                <td className="c-gap" data-empty={t.gapMinutes == null ? "1" : undefined}>{gapLabel(t.gapMinutes)}</td>
+                <td className="clip c-flags" data-empty={t.daFlags.length === 0 ? "1" : undefined}>
                   {t.daFlags.map((f) => (
                     <span className="flag-badge sm" key={f} title={FLAG_META[f]?.short}>
                       {FLAG_META[f]?.title ?? f}
                     </span>
                   ))}
                 </td>
-                <td>
+                <td className="c-links">
                   {t.src === "contract" ? (
                     t.natId ? (
                       <Link href={`/contracte/${t.natId}`}>detalii →</Link>

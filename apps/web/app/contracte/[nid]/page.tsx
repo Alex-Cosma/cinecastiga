@@ -12,6 +12,7 @@ import { awardValueLabel, noticeContractsNote } from "@/lib/risk-presentation";
 import { awardUrl } from "@/lib/elicitatie";
 import ClipButton from "@/components/ClipButton";
 import { encodeSpec } from "@/lib/ask/permalink";
+import { consortiumShareLabel } from "@/lib/consortium";
 
 /**
  * Contract detail — the plain-language twin of SEAP's award-notice page,
@@ -66,6 +67,8 @@ export default async function ContractPage({
   const headline = isGenericTitle(c.title) ? (files.notice?.title ?? c.cpvName ?? c.title ?? "Contract") : c.title!;
   const ted = c.tedNoticeNo ? tedPubnum(c.tedNoticeNo) : null;
   const multiWinner = c.winners.length > 1 || c.nWinners > 1;
+  // "⅓ din 381.909.792,16 lei · consorțiu de 3": the equal split the marts apply.
+  const splitLabel = consortiumShareLabel(c.nWinners, c.splitFromRonExact ? `${formatExactDecimal(c.splitFromRonExact)} lei` : null);
 
   return (
     <>
@@ -165,7 +168,7 @@ export default async function ContractPage({
                   <Link href={`/entitati/${w.entityId}?rol=furnizor`}>{cleanName(w.name)}</Link>
                   {w.county && <span className="county"> · {w.county}</span>}
                   {multiWinner && w.shareRon != null && (
-                    <span className="county"> · {multiWinner ? "cotă estimată" : "valoare alocată"}: {formatExactDecimal(w.shareRonExact)} lei</span>
+                    <span className="county"> · cotă estimată: {formatExactDecimal(w.shareRonExact)} lei{splitLabel ? ` (${splitLabel})` : ""}</span>
                   )}
                   {c.authority && (w.pairNDa > 0 || w.pairNCt > 0) && (
                     <>
@@ -195,6 +198,7 @@ export default async function ContractPage({
             Anunțul are {formatInt(Math.max(c.nWinners, c.winners.length))} câștigători — valoarea
             atribuită acoperă tot anunțul, iar în statisticile noastre fiecare câștigător poartă
             doar partea sa (împărțire egală), ca banii să nu fie numărați de două ori.
+            Sursa nu publică partea fiecărui membru: cota este o estimare, nu o plată.
           </p>
         )}
       </section>
