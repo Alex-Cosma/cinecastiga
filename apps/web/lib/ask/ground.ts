@@ -3,6 +3,7 @@ import type { AskFilters } from "./spec";
 import { aliasQueries, queryTokens } from "./entity-alias";
 import { readLocalAuthorityIds, sectorUnit } from "../peer-population";
 import { onrcBirthYear } from "../format";
+import { retiredTerm, type RetiredTerm } from "./retired-terms";
 
 /**
  * Grounding: turn the spec's free-text fields (cpvTerm, authorityName,
@@ -28,6 +29,8 @@ export interface CpvGrounding {
   excludePrefixes?: string[];
   /** Human-readable names of the excluded sub-trees, for "fără …". */
   excludedNames?: string[];
+  /** A word that is not a subject on its own ("lucrari", "mese"): no prefixes, these choices instead. */
+  retired?: RetiredTerm;
 }
 
 /** Every curated synonym note is meant for people ("include și semnalizarea rutieră…"). */
@@ -170,6 +173,10 @@ async function groundCpv(sql: DbSql, term: string): Promise<CpvGrounding> {
     return { term, prefixes: [], matchedNames: [], method: "none" };
   }
 
+  // A retired word is never guessed (no synonym, no trigram match): the person chooses.
+  const retired = retiredTerm(folded);
+  if (retired) return { term, prefixes: [], matchedNames: [], method: "none", retired };
+
   // 1. Curated synonym table. Rows written for exactly this term are its
   // whole meaning ("iluminat" → lamps, street lighting, its installation and
   // maintenance), so no longer term crowds them out and no unrelated term
@@ -214,6 +221,10 @@ async function groundCpv(sql: DbSql, term: string): Promise<CpvGrounding> {
       ...(excludePrefixes.length ? { excludePrefixes, excludedNames: excluded.map((n) => `${n.name_ro ?? "?"} (${n.code})`) } : {}),
     };
   }
+
+  // A text without synonyms that holds a retired word ("mese calde") is not guessed either.
+  const retiredInside = folded.split(/[^a-z0-9]+/).map(retiredTerm).find((r): r is RetiredTerm => Boolean(r));
+  if (retiredInside) return { term, prefixes: [], matchedNames: [], method: "none", retired: retiredInside };
 
   // 2. Trigram similarity over the CPV catalog names.
   const fuzzy = (await sql`

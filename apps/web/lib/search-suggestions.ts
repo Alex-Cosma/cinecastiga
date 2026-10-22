@@ -78,7 +78,7 @@ export function buildSuggestionGroups(input: SuggestionInput): SuggestionGroup[]
   const exactVocab = (input.vocab?.cpv ?? []).some((c) => fold(/^\d/.test(c.term) ? c.cpvName ?? "" : c.term).trim() === fold(text));
   const anySubject = subjects.some((s) => !weakSubject(s)) || exactVocab;
   const place = i && !i.placeAmbiguous && i.place?.matched ? i.place : null;
-  const named = Boolean(i && (i.authority || i.supplier || i.person || i.entityAlternatives.length || i.personAlternatives.length));
+  const named = Boolean(i && (i.authority || i.supplier || i.person || i.entityAlternatives.length || i.personAlternatives.length || i.subjectChoices));
   // A subject reading must explain every word ("drumuri si poduri buzau" read as
   // drumuri in Comuna Poduri leaves "buzau" unexplained): otherwise it is not offered.
   const keep = i ? [...subjects.map((s) => s.matched), ...(i.authorityKind ? [i.authorityKind.matched] : [])] : [];

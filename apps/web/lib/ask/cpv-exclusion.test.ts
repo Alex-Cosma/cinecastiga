@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DbSql } from "@seap/db";
 import { runRows, runSpec } from "./compile";
-import { splitSynonymRows, type Grounding, type SynonymRow } from "./ground";
+import { ground, splitSynonymRows, type Grounding, type SynonymRow } from "./ground";
 import type { AskSpec } from "./spec";
 
 /** A tagged-template stand-in that records every statement and bound value. */
@@ -57,6 +57,20 @@ describe("synonym exclusions", () => {
     if ("error" in sources) throw new Error(sources.error);
     expect(rows.statements.some((s) => s.includes("not (d.cpv_code like"))).toBe(true);
     expect(rows.values).toEqual(expect.arrayContaining(["33696%"]));
+  });
+
+  it("never guesses a retired word: saved links get the choices instead of a fuzzy match", async () => {
+    for (const term of ["mese", "lucrari", "Lucrări", "programe", "mese calde"]) {
+      const db = database();
+      const grounding = await ground(db.sql, { cpvTerm: term });
+      expect(grounding.cpv, term).toMatchObject({ prefixes: [], method: "none", retired: expect.objectContaining({ message: expect.any(String) }) });
+      // no trigram query against the catalogue
+      expect(db.statements.some((s) => s.includes("similarity(")), term).toBe(false);
+      const result = await runSpec(db.sql, { block: "stat", dataset: "all", measure: "value", filters: { cpvTerm: term } }, grounding);
+      expect("error" in result && result.error, term).toContain("Poți alege:");
+    }
+    const mese = await runSpec(database().sql, { block: "stat", dataset: "all", measure: "value", filters: { cpvTerm: "mese" } }, await ground(database().sql, { cpvTerm: "mese" }));
+    expect("error" in mese && mese.error).toBe("„Mese” poate însemna masa servită sau mobilierul. Alege la care te gândești. Poți alege: „catering (mese servite)”, „mobilier: mese”.");
   });
 
   it("leaves groundings stored before exclusions unchanged", async () => {
