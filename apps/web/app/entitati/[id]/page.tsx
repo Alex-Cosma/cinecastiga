@@ -1,5 +1,6 @@
 import { redirectCanonicalEntity } from "@/lib/entity-navigation";
 import Link from "next/link";
+import { reviewedRegistryCollision } from "@seap/db";
 import { notFound } from "next/navigation";
 import {
   getEntityFlags,
@@ -130,6 +131,9 @@ export default async function EntityPage({
       registryCuiLookup,
     ]);
   const cuiUncorroborated = cui !== null && registryCui === null;
+  // Audit F03 (b): a reviewed collision is a Romanian-looking record whose
+  // number ONRC registers to another firm, not a foreign number.
+  const registryCollision = cuiUncorroborated ? reviewedRegistryCollision(id, cui) : null;
 
   const hasRiskScore = flagRowsRaw.some((r) => r.role === role);
   const criteria = CRI_CRITERIA[role];
@@ -172,7 +176,9 @@ export default async function EntityPage({
             {county ? <span>{county}</span> : null}
             {cui ? <span className="mono">CUI {cui}</span> : null}
             {cuiUncorroborated ? (
-              <span title="Numărul trece cifra de control a unui CUI, dar sursa indică o firmă străină, iar ONRC nu înregistrează acest număr sub un nume asemănător. Nu afișăm reprezentanți, bilanț sau linkuri de registru pentru el.">
+              <span title={registryCollision
+                ? "La verificarea manuală, ONRC înregistrează acest număr la o altă firmă decât cea din SEAP. Nu afișăm reprezentanți, bilanț sau linkuri de registru pentru el."
+                : "Numărul trece cifra de control a unui CUI, dar sursa indică o firmă străină, iar ONRC nu înregistrează acest număr sub un nume asemănător. Nu afișăm reprezentanți, bilanț sau linkuri de registru pentru el."}>
                 număr necoroborat cu ONRC
               </span>
             ) : null}
@@ -264,9 +270,13 @@ export default async function EntityPage({
         <p>Achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei, și contracte prin proceduri
           cu valoare pozitivă de cel mult 1 miliard lei.
           Valorile sunt înregistrate în achiziții; nu confirmă plăți. Totalul și lista partenerilor folosesc aceeași selecție.</p>
-        {cuiUncorroborated && <p>Numărul {cui} trece cifra de control a unui CUI românesc, dar sursa indică o firmă străină,
-          iar ONRC nu înregistrează acest număr sub un nume asemănător. Poate fi un cod fiscal străin. Nu afișăm pentru el
-          reprezentanți ONRC, date din bilanț sau semnale bazate pe bilanț.</p>}
+        {cuiUncorroborated && (registryCollision
+          ? <p>Numărul {cui} apare în SEAP la această firmă, dar ONRC îl înregistrează la o altă firmă. Am verificat manual
+            diferența: firmă străină, sediu în afara României sau o formă juridică ce nu poate avea acest număr. Nu afișăm
+            pentru el reprezentanți ONRC, date din bilanț sau semnale bazate pe bilanț.</p>
+          : <p>Numărul {cui} trece cifra de control a unui CUI românesc, dar sursa indică o firmă străină,
+            iar ONRC nu înregistrează acest număr sub un nume asemănător. Poate fi un cod fiscal străin. Nu afișăm pentru el
+            reprezentanți ONRC, date din bilanț sau semnale bazate pe bilanț.</p>)}
         {aboveCap.count > 0 && <p><strong>{formatInt(aboveCap.count)} {aboveCap.count === 1 ? "contract" : "contracte"} peste 1 miliard lei, în valoare
           integrală de {formatRon(Number(aboveCap.totalExact))}, nu {aboveCap.count === 1 ? "este inclus" : "sunt incluse"} în total și nici în lista partenerilor.</strong>
           {" "}Plafonul este un filtru al aplicației, nu dovada unei erori. <a href="#peste-plafon">Vezi aceste contracte</a>.</p>}
