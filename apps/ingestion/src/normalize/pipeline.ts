@@ -19,6 +19,7 @@ import { applyRegistryCounties } from "./registry-county.js";
 import { applyDaSupplierVatIdentities } from "./da-supplier-vat.js";
 import { applyForeignCountrySpellings } from "./foreign-country-spelling.js";
 import { applyReviewedSupplierMerges } from "./reviewed-supplier-merges.js";
+import { applyReviewedForeignTwinMerges } from "./reviewed-foreign-twin-merges.js";
 import { applyRegistryRomanianCountries } from "./registry-country.js";
 import { reopenFixedQuarantine } from "./quarantine-reopen.js";
 import { clearCopiedAwardEstimates } from "./award-estimate.js";
@@ -68,6 +69,8 @@ export interface NormalizeReport {
   foreignCountrySpelling: number;
   /** Key-less Romanian supplier profiles redirected now to the valid-CUI firm a reviewed list names (0 once applied). */
   reviewedSupplierMerges: number;
+  /** Reviewed foreign firms under country RO redirected now to their twin under the firm's country (0 once applied). */
+  reviewedForeignTwinMerges: number;
   /** Valid-CUI firms stored with a foreign country that ONRC corroborates, set to RO now (0 once applied). */
   registryCountries: number;
   /** Award "estimates" that were a copy of the awarded value, emptied now (0 once applied). */
@@ -217,6 +220,10 @@ export async function runNormalize(
   const supplierMerges = opts.only ? { redirected: [], skipped: [] } : await sql.begin((q) => applyReviewedSupplierMerges(q));
   if (supplierMerges.redirected.length) log(`reviewed key-less supplier profiles redirected to their valid-CUI firm: ${supplierMerges.redirected.join(", ")}`);
   for (const s of supplierMerges.skipped) log(`reviewed supplier merge ${s.sourceId} -> ${s.targetId} not applied (${s.reason})`);
+  // Same placement: the reviewed foreign firms stored once under country RO (audit F26 C(i)).
+  const foreignTwinMerges = opts.only ? { redirected: [], skipped: [] } : await sql.begin((q) => applyReviewedForeignTwinMerges(q));
+  if (foreignTwinMerges.redirected.length) log(`reviewed foreign firms under country RO redirected to their foreign twin: ${foreignTwinMerges.redirected.join(", ")}`);
+  for (const s of foreignTwinMerges.skipped) log(`reviewed foreign twin merge ${s.sourceId} -> ${s.targetId} not applied (${s.reason})`);
   // Before the county steps, which fill only Romanian entities: a valid CUI
   // that ONRC registers under the firm's name makes it Romanian (audit F26).
   const registryCountries = opts.only ? [] : await sql.begin((q) => applyRegistryRomanianCountries(q));
@@ -247,6 +254,7 @@ export async function runNormalize(
     daSupplierVat: daSupplierVat.length,
     foreignCountrySpelling: countrySpellings.redirected.length,
     reviewedSupplierMerges: supplierMerges.redirected.length,
+    reviewedForeignTwinMerges: foreignTwinMerges.redirected.length,
     registryCountries: registryCountries.length,
     awardEstimates,
   };
