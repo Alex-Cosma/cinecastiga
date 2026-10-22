@@ -14,7 +14,7 @@ export interface GlossaryEntry {
 export const GLOSSARY = {
   "achizitie-directa": {
     title: "Achiziție directă",
-    text: "O cumpărare fără licitație: instituția alege direct firma, dacă valoarea estimată fără TVA rămâne sub pragul legal. Din 10.09.2022 pragul este 270.120 lei pentru produse și servicii și 900.400 lei pentru lucrări; înainte a fost mai mic. În totaluri numărăm achizițiile directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei: această limită este un filtru de plauzibilitate al site-ului, nu pragul legal.",
+    text: "O cumpărare fără licitație: instituția alege direct firma, dacă valoarea estimată fără TVA rămâne sub pragul legal, numit pe site și plafon. Pentru majoritatea instituțiilor (Legea 98/2016), din 10.09.2022 plafonul este 270.120 lei pentru produse și servicii și 900.400 lei pentru lucrări; înainte a fost mai mic, iar entitățile din utilități (Legea 99/2016) pot avea alte praguri. În totaluri numărăm achizițiile directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei: această limită este un filtru de plauzibilitate al site-ului, nu pragul legal.",
   },
   "contract-procedura": {
     title: "Contract din licitație sau procedură",
@@ -26,7 +26,7 @@ export const GLOSSARY = {
   },
   semnal: {
     title: "Semnal",
-    text: "Un tipar din date care merită verificat. De exemplu, posibila fracționare: cel puțin 3 achiziții directe ale aceleiași instituții de la aceeași firmă, în același an, cu aceeași clasă CPV și același tip, fiecare sub plafonul ei, dar care împreună depășesc plafonul aplicabil. Este o pistă de verificat, nu o acuzație și nu dovedește o ilegalitate.",
+    text: "Un tipar din date care merită verificat. De exemplu, posibila fracționare: cel puțin 3 achiziții directe ale aceleiași instituții de la aceeași firmă, în același an, cu aceeași clasă CPV și același tip, fiecare sub plafonul ei de achiziție directă, dar care împreună depășesc cel mai mare plafon aplicabil grupului. Este o pistă de verificat, nu o acuzație și nu dovedește o ilegalitate.",
   },
   cpv: {
     title: "Subiect (cod CPV)",
