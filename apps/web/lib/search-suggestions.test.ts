@@ -38,13 +38,31 @@ describe("home search suggestions", () => {
     expect(ids(groups).slice(0, 3)).toEqual(["likely", "subjects", "places"]);
   });
 
-  it("completes a place being typed after other words", async () => {
+  it("offers a place named by the last word, not one it merely begins", async () => {
     const groups = buildSuggestionGroups({
-      text: "iluminat buz", intent: null, vocab: vocab(),
-      lastWord: { word: "buz", vocab: vocab({ uat: [{ siruta: 44818, name: "Buzău", tip: "municipiu", county: "buzau", population: 1 }] }) },
+      text: "iluminat buzau", intent: null, vocab: vocab(),
+      lastWord: { word: "buzau", vocab: vocab({ uat: [{ siruta: 44818, name: "Buzău", tip: "municipiu", county: "buzau", population: 1 }, { siruta: 1, name: "Sita Buzăului", tip: "comună", county: "covasna", population: 1 }] }) },
     });
-    const places = groups.find((g) => g.id === "places")!.items;
-    expect(places.map((p) => p.href)).toEqual(["/cauta?q=iluminat&place=county%3Abuzau", "/cauta?q=iluminat&place=uat%3A44818"]);
+    expect(groups.find((g) => g.id === "places")!.items.map((p) => p.href)).toEqual(["/cauta?q=iluminat&place=county%3Abuzau", "/cauta?q=iluminat&place=uat%3A44818"]);
+    const nova = buildSuggestionGroups({ text: "apa nova", intent: null, vocab: vocab(), lastWord: { word: "nova", vocab: vocab({ uat: [{ siruta: 2, name: "Novaci", tip: "oraș", county: "gorj", population: 1 }] }) } });
+    expect(nova.find((g) => g.id === "places")).toBeUndefined();
+    // the whole text still completes a name being typed
+    const typing = buildSuggestionGroups({ text: "buz", intent: null, vocab: vocab() });
+    expect(typing.find((g) => g.id === "places")!.items[0]!.label).toBe("Județul Buzău");
+  });
+
+  it("lets names lead when the subject reading leaves words unexplained", async () => {
+    const intent = await intentFor("apa nova");
+    expect(intent.interpretation.leftover).toContain("nova");
+    const groups = buildSuggestionGroups({ text: "apa nova", intent, vocab: vocab({ cpv: [{ term: "apa", cpvName: "Apă" }] }), entities: [entity(13102711, "S.C. APA NOVA PLOIESTI S.R.L.", ["authority"])] });
+    expect(ids(groups)).toEqual(["authorities", "subjects", "words"]);
+  });
+
+  it("offers no subject-and-place reading that leaves a word unexplained", async () => {
+    const intent = await intentFor("drumuri si poduri buzau");
+    const groups = buildSuggestionGroups({ text: "drumuri si poduri buzau", intent, vocab: vocab() });
+    expect(ids(groups)).not.toContain("likely");
+    expect(groups.find((g) => g.id === "places")?.items.some((p) => p.label.includes("Poduri"))).toBeFalsy();
   });
 
   it("puts names first when the subject is only a fragment of a catalogue word", async () => {
