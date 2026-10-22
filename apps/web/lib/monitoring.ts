@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { getMonitoringRefreshStatus, withMonitoringSnapshot, type DbSql } from "@seap/db";
 import { ground } from "./ask/ground";
 import { resolvedSpec } from "./ask/resolved-spec";
-import { describeQuestion, questionKey, type QuestionSpec } from "./ask/question-ui";
+import { describeQuestion, localityScopeError, questionKey, type QuestionSpec } from "./ask/question-ui";
 import { runRows, runSpec, useSnapshotCoverage } from "./ask/compile";
 import { captureTransaction } from "./evidence-captures";
 import { isWorkspaceId } from "./investigation-access";
@@ -36,6 +36,8 @@ export function monitoringRunSummary(row:Record<string,unknown>):MonitoringRun {
 export async function createMonitoringWatch(userId:string,input:unknown,sql=monitoringDatabase()):Promise<MonitoringWatch>{
   const body=monitoringObject(input),scope=monitoringScope(body),prefs=monitoringPreferences(body.preferences),recipe=monitoringRecipe(body);
   if(Object.keys(body).some(k=>!["spec","options","title","preferences","recipeId","recipeVersion"].includes(k)))throw new MonitoringError("Câmp necunoscut în urmărire.");
+  // a new watch never follows a locality its view cannot honour (the builder's and /api/ask's rule); existing watches re-run unchanged
+  const localityError=localityScopeError(scope.spec);if(localityError)throw new MonitoringError(localityError,422);
   try{return await withMonitoringSnapshot(sql,async(q)=>{
     await requireDigestEmail(q,userId,prefs.digest);
     if(recipe.recipeId){
