@@ -39,7 +39,7 @@ describe('interpretation → /cauta selection', () => {
     const { scope, result } = await read('iluminat in municipiul buzau 2023');
     const t = applyInterpretation(scope, result);
     expect(t.applied).toEqual({ q: 'iluminat', place: 'uat:44818', from: '2023', to: '2023' });
-    expect(t.fromWords.period).toEqual({ from: '2023', to: '2023' });
+    expect(t.fromWords.period).toEqual({ from: '2023', to: '2023', label: '2023' });
     expect(t.answer?.total.spec.filters).toMatchObject({ uatSiruta: 44818, yearFrom: 2023, yearTo: 2023 });
     // a locality can always widen to its county
     expect(t.placeChoices).toContainEqual(expect.objectContaining({ id: 'county:buzau', choice: 'Tot județul Buzău' }));
@@ -75,6 +75,39 @@ describe('interpretation → /cauta selection', () => {
     expect(t.answer?.total.spec.filters).toMatchObject({ cpvTerm: 'asfalt', uatSiruta: 44818 });
     // explicit filters are not in the words: the full answer is the spec itself
     expect(t.answer?.href).toMatch(/^\/intreaba\?spec=/);
+  });
+
+  it('applies no place when other words are left unexplained or name a firm or institution', async () => {
+    for (const q of ['drumuri si poduri buzau', 'drumuri si poduri', 'apa nova bucuresti', 'apa nova', 'spitalul judetean buzau', 'piata romana bucuresti']) {
+      const { scope, result } = await read(q);
+      const t = applyInterpretation(scope, result);
+      expect(t.applied, q).toEqual({ q, place: '', from: '', to: '' });
+      expect(t.fromWords.place, q).toBeNull();
+      expect(t.answer, q).toBeNull();
+      expect(t.placeChoices, q).toEqual([]);
+    }
+    // a firm read in the words, or unexplained words, leave no subject reading at all
+    for (const q of ['apa nova bucuresti', 'spitalul judetean buzau', 'piata romana bucuresti']) {
+      const { scope, result } = await read(q);
+      expect(applyInterpretation(scope, result).subject, q).toBeNull();
+    }
+  });
+
+  it('shows in chips every scope of the short answer, or gives no answer', async () => {
+    const after = await read('iluminat dupa 2020');
+    const t1 = applyInterpretation(after.scope, after.result, null, new Date('2026-10-22T12:00:00Z'));
+    expect(t1.applied).toEqual({ q: 'iluminat', place: '', from: '2021', to: '2026' });
+    expect(t1.fromWords.period?.label).toBe('din 2021');
+    expect(t1.answer?.total.spec.filters).toMatchObject({ cpvTerm: 'iluminat', yearFrom: 2021 });
+    expect(t1.answer?.total.spec.filters.yearTo).toBeUndefined();
+    const sector = await read('iluminat sector 3');
+    const t2 = applyInterpretation(sector.scope, sector.result);
+    expect(t2.answer).toBeNull();
+    expect(t2.note).toMatch(/Sectorul 3/);
+    const schools = await read('laptopuri scoala');
+    const t3 = applyInterpretation(schools.scope, schools.result);
+    expect(t3.kind).toEqual({ label: 'școlile', withoutQ: 'laptopuri' });
+    expect(t3.answer?.total.spec.filters).toMatchObject({ authorityKind: 'scoala' });
   });
 
   it('does not read a fragment of a catalogue word as a subject', async () => {

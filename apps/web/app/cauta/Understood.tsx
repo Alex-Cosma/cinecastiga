@@ -21,10 +21,10 @@ const periodLabel=(from:string,to:string)=>from===to?from:`${from}–${to}`;
 export function Understood({scope,effective,t,place}:{scope:TopicScope;effective:TopicScope;t:TopicInterpretation;place:Place|null}){
  const fromWords=t.fromWords,placeChip=fromWords.place??(t.explicitPlace?.id===effective.place?t.explicitPlace:null)??(effective.place&&place?.id===effective.place?{id:place.id,label:place.kind==='county'?(place.name==='București'?'Municipiul București':`Județul ${place.name}`):place.name,kind:place.kind}:null);
  const removePlace=fromWords.place?searchHref(scope,{q:t.applied.q,place:'',from:effective.from,to:effective.to}):searchHref(scope,{place:''});
- const period=fromWords.period??(effective.from?{from:effective.from,to:effective.to}:null);
+ const period=fromWords.period??(effective.from?{from:effective.from,to:effective.to,label:periodLabel(effective.from,effective.to)}:null);
  const removePeriod=fromWords.period?searchHref(scope,{q:t.applied.q,place:effective.place,from:'',to:''}):searchHref(scope,{from:'',to:''});
  const literal=searchHref(scope,{},true);
- if(!t.subject&&!placeChip&&!period&&!t.placeAmbiguous){
+ if(!t.subject&&!placeChip&&!period&&!t.placeAmbiguous&&!t.note){
   // Nothing applied: a reading that needs a choice (same-named firms or persons) is chosen in Întreabă.
   return t.problem&&t.askHref?<p className="topic-help topic-understood-note">{t.problem} <Link prefetch={false} href={t.askHref}>Alege în Întreabă</Link></p>:null;
  }
@@ -41,16 +41,19 @@ export function Understood({scope,effective,t,place}:{scope:TopicScope;effective
       {t.placeChoices.map(c=><Link prefetch={false} key={c.id} href={searchHref(scope,{q:c.q,place:c.id,from:effective.from,to:effective.to})}>{c.choice}</Link>)}
      </div></details>}
      <Link prefetch={false} className="topic-chip-remove" href={removePlace} aria-label={`Scoate locul „${placeChip.label}”: caută în toată țara`}><DiscoveryIcon name="close"/></Link></li>}
-    {period&&<li className="topic-chip"><span>Perioada:</span> <strong>{periodLabel(period.from,period.to)}</strong><Link prefetch={false} className="topic-chip-remove" href={removePeriod} aria-label="Scoate perioada: toți anii"><DiscoveryIcon name="close"/></Link></li>}
+    {t.kind&&<li className="topic-chip"><span>Cine cumpără:</span> <strong>{t.kind.label}</strong><small className="topic-chip-scope">doar în „Pe scurt”</small><Link prefetch={false} className="topic-chip-remove" href={searchHref(scope,{q:t.kind.withoutQ,place:effective.place,from:effective.from,to:effective.to})} aria-label={`Scoate „${t.kind.label}”: toate instituțiile`}><DiscoveryIcon name="close"/></Link></li>}
+    {period&&<li className="topic-chip"><span>Perioada:</span> <strong>{period.label}</strong><Link prefetch={false} className="topic-chip-remove" href={removePeriod} aria-label="Scoate perioada: toți anii"><DiscoveryIcon name="close"/></Link></li>}
    </ul>
   </div>
-  {t.placeAmbiguous&&t.placeChoices.length>0&&<div className="topic-understood-choose"><p>Mai multe localități au acest nume. Pe care o cauți?</p><div>{t.placeChoices.map(c=><Link prefetch={false} className="topic-control" key={c.id} href={searchHref(scope,{q:c.q,place:c.id})}>{c.choice}<DiscoveryIcon name="arrow"/></Link>)}</div></div>}
+  {t.subject?.notes.map(n=><p key={n} className="topic-subject-note">{n}</p>)}
+  {t.note&&<p className="topic-help">{t.note}{t.askHref&&<> <Link prefetch={false} href={t.askHref}>Deschide în Întreabă</Link></>}</p>}
+  {(t.placeAmbiguous||(t.note&&!placeChip))&&t.placeChoices.length>0&&<div className="topic-understood-choose"><p>{t.placeAmbiguous?'Mai multe localități au acest nume. Pe care o cauți?':'Poți căuta în titluri:'}</p><div>{t.placeChoices.map(c=><Link prefetch={false} className="topic-control" key={c.id} href={searchHref(scope,{q:c.q,place:c.id})}>{c.choice}<DiscoveryIcon name="arrow"/></Link>)}</div></div>}
   {fromWords.place||fromWords.period?<p className="topic-help">Căutăm „{t.applied.q}” în titluri, cu {[fromWords.place?'locul':null,fromWords.period?'perioada':null].filter(Boolean).join(' și ')} din cuvintele tale ca filtru. <Link prefetch={false} href={literal}>Caută exact ce ai scris</Link></p>
    :t.subject?<p className="topic-help"><Link prefetch={false} href={literal}>Caută exact ce ai scris, fără interpretare</Link></p>:null}
  </section>;
 }
 
-type AskOk={ok:true;data:{block:'stat';stat:{value:number;count:number}}|{block:'table';rows:{entityId:string|null;name:string;value:number;count:number}[]};pills?:string[]};
+type AskOk={ok:true;data:{block:'stat';stat:{value:number;count:number}}|{block:'table';rows:{entityId:string|null;name:string;value:number;count:number}[]};caveats?:string[]};
 type AskReply=AskOk|{ok:false;error?:string};
 async function ask(spec:AskSpec,signal:AbortSignal):Promise<AskReply>{
  const r=await fetch('/api/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({spec}),signal});
@@ -58,7 +61,7 @@ async function ask(spec:AskSpec,signal:AbortSignal):Promise<AskReply>{
 }
 
 /** Short subject answer through the Ask engine: total recorded value and the first three winners. */
-export function SubjectAnswer({answer}:{answer:NonNullable<TopicInterpretation['answer']>}){
+export function SubjectAnswer({answer,notes=[]}:{answer:NonNullable<TopicInterpretation['answer']>;notes?:string[]}){
  const key=JSON.stringify([answer.total.spec,answer.top.spec]);
  const [state,setState]=useState<{key:string;total:AskReply|null;top:AskReply|null;failed:boolean}|null>(null);
  useEffect(()=>{const abort=new AbortController();
@@ -69,15 +72,18 @@ export function SubjectAnswer({answer}:{answer:NonNullable<TopicInterpretation['
  const ready=state?.key===key?state:null;
  const total=ready?.total?.ok&&ready.total.data.block==='stat'?ready.total.data.stat:null;
  const rows=ready?.top?.ok&&ready.top.data.block==='table'?ready.top.data.rows:null;
- const cpv=ready?.top?.ok?ready.top.pills?.find(p=>/\(\d{8}-\d\)/.test(p))??null:null;
+ // The same limits /intreaba shows for these specs.
+ const caveats=[...new Set([...(ready?.total?.ok?ready.total.caveats??[]:[]),...(ready?.top?.ok?ready.top.caveats??[]:[])])];
  return <section className="topic-answer" aria-label="Răspuns pe scurt" aria-busy={!ready}>
   <h2>Pe scurt</h2>
   <p className="topic-answer-question">{answer.total.sentence}</p>
   {!ready?<p className="topic-answer-wait" role="status"><span className="topic-spinner" aria-hidden="true"/>Calculăm în Întreabă…</p>
    :ready.failed||!total?<p className="topic-help" role="status">Răspunsul pe scurt nu este disponibil acum. {ready.total&&!ready.total.ok&&ready.total.error?ready.total.error:''}</p>
-   :<><p className="topic-answer-value"><strong title={formatRonFull(total.value)}>{formatRon(total.value)}</strong><span>în {formatInt(total.count)} {total.count===1?'achiziție':'achiziții'} · valoare înregistrată, nu plăți</span></p>
+   :<><p className="topic-answer-value"><strong title={formatRonFull(total.value)}>{formatRon(total.value)}</strong><span>în {formatInt(total.count)} {total.count===1?'înregistrare':'înregistrări'} · valoare înregistrată, nu plăți</span></p>
     {rows&&rows.length>0&&<><p className="topic-answer-question">{answer.top.sentence}</p><ol className="topic-answer-top">{rows.map(r=><li key={r.entityId??r.name}>{r.entityId?<Link prefetch={false} href={`/entitati/${r.entityId}?rol=furnizor`}>{cleanName(r.name)}</Link>:<span>{cleanName(r.name)}</span>}<span>{formatRon(r.value)}</span></li>)}</ol></>}
-    {cpv&&<p className="topic-help">Domenii incluse: {cpv}.</p>}</>}
+    {caveats.length>0&&<details className="topic-answer-limits"><summary>Ce include și ce lasă deoparte calculul</summary><ul>{caveats.map(c=><li key={c}>{c}</li>)}</ul></details>}</>}
+  {answer.cpv.length>0&&<p className="topic-help">Domenii incluse ({answer.cpv.length}): {answer.cpv.join('; ')}.</p>}
+  {notes.map(n=><p key={n} className="topic-subject-note">{n}</p>)}
   <Link prefetch={false} className="topic-answer-link" href={answer.href}>Vezi răspunsul complet în Întreabă <DiscoveryIcon name="arrow"/></Link>
  </section>;
 }
@@ -95,7 +101,7 @@ export function Broader({scope,effective,t,place,onDocuments}:{scope:TopicScope;
   {county&&<li><Link prefetch={false} href={searchHref(scope,{q:effective.q,place:`county:${county}`,from:effective.from,to:effective.to})}>„{effective.q}” în tot județul</Link></li>}
   {effective.place&&<li><Link prefetch={false} href={searchHref(scope,{q:effective.q,place:'',from:effective.from,to:effective.to})}>„{effective.q}” în toată țara</Link></li>}
   {effective.from&&<li><Link prefetch={false} href={searchHref(scope,{q:effective.q,place:effective.place,from:'',to:''})}>„{effective.q}” în toți anii</Link></li>}
-  {t?.sentence&&t.askHref&&<li><Link prefetch={false} href={t.askHref}>Întreabă: {t.sentence}</Link></li>}
+  {t?.trusted&&t.sentence&&t.askHref&&<li><Link prefetch={false} href={t.askHref}>Întreabă: {t.sentence}</Link></li>}
   <li><button type="button" className="topic-text-button" onClick={onDocuments}>Caută „{effective.q}” în documentele pregătite</button></li>
   {subjects.map(s=><li key={s}><Link prefetch={false} href={searchHref(scope,{q:s,place:effective.place,from:effective.from,to:effective.to})}>Subiect apropiat: {capital(s)}</Link></li>)}
  </ul></div>;

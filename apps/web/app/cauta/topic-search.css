@@ -103,3 +103,6 @@
 .topic-broader ul{margin:0;padding:0 0 0 18px}
 .topic-broader li{padding:3px 0}
 @media(max-width:650px){.topic-understood{padding:12px}.topic-answer{padding:16px}.topic-answer-value>strong{font-size:26px}.topic-understood{position:relative}.topic-chip{position:static}.topic-chip-menu>div{left:0;right:0;min-width:0;max-width:none}}
+.topic-chip-scope{font-size:11px;color:var(--topic-muted);margin-left:2px}
+.topic-answer-limits{margin:6px 0 4px;font-size:13px;color:var(--topic-muted)}.topic-answer-limits summary{cursor:pointer;color:var(--ink);min-height:32px;display:flex;align-items:center}.topic-answer-limits ul{margin:6px 0 0;padding-left:18px;line-height:1.6}
+.topic-subject-note{margin:8px 0 0!important;padding:8px 12px;border-left:3px solid var(--accent-line);background:var(--accent-soft);border-radius:0 6px 6px 0;font-size:13px;color:var(--ink);line-height:1.5}

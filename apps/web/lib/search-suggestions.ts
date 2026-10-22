@@ -5,7 +5,7 @@ import { cleanName } from "./format";
 import type { IntentResult, PlaceMatch } from "./intent/types";
 import type { EntityHit } from "./search";
 import { fold } from "./topic-search/shared";
-import { placeId, remainingWords, weakSubject } from "./topic-search/words";
+import { placeId, remainingWords, subjectWords, weakSubject } from "./topic-search/words";
 export { weakSubject };
 
 /**
@@ -76,10 +76,18 @@ export function buildSuggestionGroups(input: SuggestionInput): SuggestionGroup[]
   const subjects = i?.subjects ?? [];
   // A vocabulary label equal to the whole text is a subject even without the interpreter.
   const exactVocab = (input.vocab?.cpv ?? []).some((c) => fold(/^\d/.test(c.term) ? c.cpvName ?? "" : c.term).trim() === fold(text));
-  const strongSubject = subjects.some((s) => !weakSubject(s)) || exactVocab;
+  const anySubject = subjects.some((s) => !weakSubject(s)) || exactVocab;
   const place = i && !i.placeAmbiguous && i.place?.matched ? i.place : null;
   const named = Boolean(i && (i.authority || i.supplier || i.person || i.entityAlternatives.length || i.personAlternatives.length));
-  const understood = strongSubject || Boolean(place) || named || Boolean(i?.placeAmbiguous);
+  // A subject reading must explain every word ("drumuri si poduri buzau" read as
+  // drumuri in Comuna Poduri leaves "buzau" unexplained): otherwise it is not offered.
+  const keep = i ? [...subjects.map((s) => s.matched), ...(i.authorityKind ? [i.authorityKind.matched] : [])] : [];
+  const readingFor = (remove: { from: number; to: number }[]) => subjectWords(text, { remove, keep });
+  const placeSpan = place?.matched ?? (i?.placeAmbiguous ? [i.place, ...i.placeAlternatives].find((p) => p?.matched)?.matched : undefined);
+  const clean = !subjects.length || (!i?.leftover.length && readingFor([...(placeSpan ? [placeSpan] : []), ...(i?.period ? [i.period.matched] : [])]).clean);
+  // Subjects lead only for a clean reading: "apa nova" leaves "nova" unexplained, so names lead.
+  const strongSubject = anySubject && clean && !named;
+  const understood = clean && (anySubject || Boolean(place) || named || Boolean(i?.placeAmbiguous));
   const groups = new Map<SuggestionGroupId, Suggestion[]>();
   const push = (g: SuggestionGroupId, s: Suggestion) => {
     const list = groups.get(g) ?? [];
@@ -116,18 +124,24 @@ export function buildSuggestionGroups(input: SuggestionInput): SuggestionGroup[]
   };
   const placeMatches: PlaceMatch[] = i ? [...(i.place ? [i.place] : []), ...i.placeAlternatives] : [];
   for (const p of placeMatches) {
-    const rest = p.matched ? remainingWords(text, [p.matched]) : subjectRest;
+    const reading = p.matched ? readingFor([p.matched]) : null;
+    if (subjects.length && !(clean && reading?.clean)) continue;
+    const rest = reading && subjects.length ? reading.words : p.matched ? remainingWords(text, [p.matched]) : subjectRest;
     placeRow(placeId(p), p.kind === "county" ? p.name : p.label, p.kind === "county" ? "Ce cumpără instituțiile din județ" : "Ce cumpără primăria", rest, p.name);
   }
-  const placeSources: { word: string; rest: string; vocab: SuggestResponse | null | undefined }[] = [
-    { word: text, rest: "", vocab: input.vocab },
-    ...(input.lastWord ? [{ word: input.lastWord.word, rest: text.slice(0, Math.max(0, text.length - input.lastWord.word.length)).trim(), vocab: input.lastWord.vocab }] : []),
+  // The whole text completes a place name while typing ("buz" → Buzău); the last word of a
+  // longer text must be a whole place name ("iluminat buzau"), not any prefix ("apa nova" ≠ Novaci).
+  const placeSources: { word: string; rest: string; whole: boolean; vocab: SuggestResponse | null | undefined }[] = [
+    { word: text, rest: "", whole: false, vocab: input.vocab },
+    ...(input.lastWord ? [{ word: input.lastWord.word, rest: text.slice(0, Math.max(0, text.length - input.lastWord.word.length)).trim(), whole: true, vocab: input.lastWord.vocab }] : []),
   ];
-  for (const { word, rest, vocab } of placeSources) {
+  for (const { word, rest, whole, vocab } of placeSources) {
     const key = fold(word).trim();
-    if (key.length >= 3) for (const name of COUNTIES) if (fold(name).startsWith(key)) placeRow(`county:${fold(name)}`, countyLabel(name), "Ce cumpără instituțiile din județ", rest, countyLabel(name));
+    const fits = (name: string) => (whole ? fold(name).split(/[^a-z0-9]+/).filter(Boolean).join(" ") === key : fold(name).startsWith(key));
+    // Only names that start with the typed word ("buzau" → Buzău, not Sita Buzăului).
+    if (key.length >= 3) for (const name of COUNTIES) if (fits(name)) placeRow(`county:${fold(name)}`, countyLabel(name), "Ce cumpără instituțiile din județ", rest, countyLabel(name));
     for (const u of vocab?.uat ?? []) {
-      if (u.tip === "sector") continue;
+      if (u.tip === "sector" || !fits(u.name)) continue;
       const kind = u.tip === "municipiu" ? "Municipiul" : u.tip === "oraș" ? "Orașul" : "Comuna";
       const county = COUNTIES.find((c) => fold(c) === fold(u.county)) ?? u.county;
       placeRow(`uat:${u.siruta}`, `${kind} ${u.name} (${county})`, "Ce cumpără primăria", rest, `${kind} ${u.name}`);

@@ -1,4 +1,4 @@
-import { fold as foldText, stems, tokenize } from '../intent/text';
+import { STOPWORDS, fold as foldText, stems, tokenize } from '../intent/text';
 import type { PlaceMatch, Span, SubjectMatch } from '../intent/types';
 import { fold } from './shared';
 
@@ -33,6 +33,37 @@ export function remainingWords(text: string, spans: Pick<Span, 'from' | 'to'>[],
   while (kept.length && CONNECTOR.has(kept.at(-1)!.f)) kept.pop();
   while (kept.length && CONNECTOR.has(kept[0]!.f)) kept.shift();
   return kept.map((t) => t.raw).join(' ');
+}
+
+/** Question words the interpreter reads as the question itself, not as a subject or a name. */
+const QUESTION_WORDS = new Set(['cine', 'cat', 'cata', 'cate', 'cati', 'cel', 'cea', 'mai', 'firme', 'firmele', 'firmelor', 'firma', 'companii', 'companiile', 'furnizori', 'furnizorii', 'institutii', 'institutiile', 'total', 'totalul']);
+
+/**
+ * The subject words of a question once its place/period spans are removed,
+ * and whether that reading is clean: every other word is a connector or a
+ * question word. "drumuri si poduri buzau" with the place "Poduri" leaves
+ * "buzau" unexplained, so it is not clean and no place is applied.
+ */
+export function subjectWords(
+  text: string,
+  { remove, keep, base }: { remove: Pick<Span, 'from' | 'to'>[]; keep: Pick<Span, 'from' | 'to'>[]; base?: Pick<Span, 'from' | 'to' | 'text'> | undefined },
+): { words: string; clean: boolean } {
+  const tokens = tokenize(text);
+  const removed = new Array<boolean>(tokens.length).fill(false);
+  for (const s of remove) for (let k = s.from; k < s.to && k < tokens.length; k++) removed[k] = true;
+  const covered = new Array<boolean>(tokens.length).fill(false);
+  for (const s of keep) for (let k = s.from; k < s.to && k < tokens.length; k++) covered[k] = true;
+  if (base && base.to - base.from === 1 && base.from < tokens.length && /^\p{L}+$/u.test(base.text))
+    tokens[base.from] = { ...tokens[base.from]!, raw: base.text };
+  let clean = true;
+  const words: string[] = [];
+  tokens.forEach((t, k) => {
+    if (removed[k]) return;
+    if (covered[k]) { words.push(t.raw); return; }
+    // "și" joins two subjects ("drumuri și poduri"): what it joins is not a place to apply
+    if (t.f === 'si' || (!CONNECTOR.has(t.f) && !STOPWORDS.has(t.f) && !QUESTION_WORDS.has(t.f))) clean = false;
+  });
+  return { words: words.join(' '), clean };
 }
 
 const wordsOf = (s: string) => foldText(s).split(/[^a-z0-9]+/).filter(Boolean);

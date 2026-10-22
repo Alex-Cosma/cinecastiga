@@ -111,7 +111,7 @@ export default function DiscoverySearch({ hero = false, modal = false, onNavigat
         }} />
       <button type="submit" aria-label="Vezi rezultatele căutării"><DiscoveryIcon name="arrow" /></button>
     </form>
-    <span className="d-sr-only" role="status">{!expanded ? "" : failedAll ? "Sugestiile nu sunt disponibile momentan. Apasă Enter pentru rezultate." : loading && !options.length ? "Căutăm…" : `${options.length} sugestii. Folosește săgețile pentru a le parcurge; Enter fără o sugestie aleasă deschide rezultatele.`}</span>
+    <span className="d-sr-only" role="status">{!expanded ? "" : failedAll ? "Sugestiile nu sunt disponibile momentan. Apasă Enter pentru rezultate." : loading && !options.length ? "Căutăm…" : `${options.length === 1 ? "O sugestie" : `${options.length} sugestii`}. Folosește săgețile pentru a le parcurge; Enter fără o sugestie aleasă deschide rezultatele.`}</span>
     <div className="d-search-results" hidden={!modal && !open}>
       {term.length < 2 ? <div className="d-search-state"><DiscoveryIcon name="search" /><b>Ce vrei să urmărești?</b><p>Scrie un subiect („iluminat”), un loc, numele unei instituții, o firmă sau un CUI.</p></div>
         : failedAll ? <div className="d-search-state"><DiscoveryIcon name="search" /><b>Sugestiile nu sunt disponibile momentan.</b><p>Apasă Enter pentru a căuta „{term}” în achiziții și documente.</p></div>
@@ -123,7 +123,7 @@ export default function DiscoverySearch({ hero = false, modal = false, onNavigat
           {group.items.map((item) => {
             const at = ++index;
             return <li key={item.id} id={`${id}-option-${at}`} role="option" aria-selected={active === at}>
-              <a href={item.href} tabIndex={-1} className={`${active === at ? "active" : ""}${group.id === "words" ? " d-search-all" : ""}`} onMouseEnter={() => setActive(at)} onClick={(event) => { event.preventDefault(); navigate(item.href); }}>
+              <a href={item.href} tabIndex={-1} className={`${active === at ? "active" : ""}${group.id === "words" ? " d-search-all" : ""}`} onClick={(event) => { event.preventDefault(); navigate(item.href); }}>
                 <span className="d-search-symbol"><DiscoveryIcon name={item.icon} /></span>
                 <span><b>{item.label}</b>{item.detail && <small>{item.detail}</small>}</span><DiscoveryIcon name="arrow" />
               </a>
