@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BLOCKS, validateSpec } from "./spec";
-import { QUESTION_GROUPS, QUESTION_TYPES, defaultQuestion, describeQuestion, periodLabel, questionErrors, questionKey, reconcileQuestionDraft, transitionQuestion, type QuestionSpec } from "./question-ui";
+import { QUESTION_GROUPS, QUESTION_TYPES, defaultQuestion, describeQuestion, localityScopeSupport, periodLabel, questionErrors, questionKey, reconcileQuestionDraft, transitionQuestion, type QuestionSpec } from "./question-ui";
 
 const authority: QuestionSpec = {
   block: "table", dim: "supplier", dataset: "contracts", measure: "value", topN: 7,
@@ -188,5 +188,26 @@ describe("the editable question contract", () => {
     const newRanking = transitionQuestion({ block: "stat", measure: "value", filters: {} }, "table");
     expect(newRanking.spec.topN).toBe(10);
     expect(defaultQuestion().topN).toBe(10);
+  });
+});
+
+describe("locality scope in the place picker", () => {
+  const locality = { uatSiruta: 44818, uatName: "Municipiul Buzău (Buzău)" };
+  it.each(["table", "trend", "stat", "timeseries", "breakdown"])("offers a locality for %s and the engine accepts it", (block) => {
+    const spec: QuestionSpec = { block, dim: "supplier", measure: "value", topN: 10, filters: { ...locality, ...(block === "trend" ? { yearFrom: 2023, yearTo: 2024 } : {}) } };
+    expect(localityScopeSupport(spec)).toEqual({ ok: true });
+    expect(validateSpec(spec)).not.toHaveProperty("error");
+  });
+  it("offers it for the value leader (a one-row transaction ranking)", () => {
+    expect(localityScopeSupport({ block: "entity_card", rankBy: "value", dim: "supplier", measure: "value", filters: {} })).toEqual({ ok: true });
+  });
+  it.each(["map", "compare", "network", "sankey", "fact_check", "scatter", "distribution"])("does not offer it for %s, and says why", (block) => {
+    const support = localityScopeSupport({ block, measure: "value", filters: {} });
+    expect(support.ok).toBe(false);
+    if (!support.ok) expect(support.reason).toMatch(/județul/);
+  });
+  it("does not offer it for county rankings or risk leaders", () => {
+    expect(localityScopeSupport({ block: "table", dim: "county", measure: "value", filters: {} }).ok).toBe(false);
+    expect(localityScopeSupport({ block: "entity_card", rankBy: "risk", dim: "authority", measure: "value", filters: {} }).ok).toBe(false);
   });
 });

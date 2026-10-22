@@ -11,6 +11,7 @@ import { isHistoricalProfile } from "@/lib/ask/population";
 import { validateSpec, type AskSpec } from "@/lib/ask/spec";
 import { entitySourceLink, entitySourceScope, yearSourceLink } from "@/lib/ask/source-spec";
 import { describeQuestion, questionKey } from "@/lib/ask/question-ui";
+import type { IntentResult } from "@/lib/intent/types";
 import { NATURAL_LANGUAGE_ENABLED, NATURAL_LANGUAGE_UNAVAILABLE } from "@/lib/ask/features";
 import { validateEvidenceScope, validateEvidenceFilters, type EvidenceScope, type EvidenceFilters } from "@/lib/ask/evidence";
 import type { BlockData, PartialYear } from "@/lib/ask/compile";
@@ -35,6 +36,9 @@ import "./question-results.css";
 import DiscoveryIcon from "../DiscoveryIcon";
 import AnswerExports from "./AnswerExports";
 import CoverageDisclosure from "@/components/CoverageDisclosure";
+import { AskBox, AskExamples, IntentChoose, IntentIntro, IntentOutro, IntentUnknown, MAX_QUESTION_CHARS, type IntentChoice } from "./IntentAsk";
+import type { AskExample } from "./ask-examples";
+import "./ask-intent.css";
 
 type TableRow = Extract<BlockData, { block: "table" }>["rows"][number];
 type SeriesPoint = Extract<
@@ -120,6 +124,16 @@ export default function AskPanel({
   });
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Free-text question → /api/intent (deterministic rules) → editable builder.
+  const [askText, setAskText] = useState("");
+  const [intent, setIntent] = useState<IntentResult | null>(null);
+  const [intentLoading, setIntentLoading] = useState(false);
+  const [intentError, setIntentError] = useState<string | null>(null);
+  const [chosen, setChosen] = useState<IntentChoice | null>(null);
+  const [builderOpen, setBuilderOpen] = useState(false);
+  const [lastRun, setLastRun] = useState<string | null>(null);
+  const askRef = useRef<HTMLInputElement>(null);
+  const intentRequest = useRef<AbortController | null>(null);
   const showToast = useCallback((text: string) => {
     setToast(text);
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -131,6 +145,8 @@ export default function AskPanel({
       drill = false,
       savedScope?: EvidenceScope,
       savedFilters?: EvidenceFilters,
+      /** False when the page opens from a link: keep the question and heading in view. */
+      scroll = true,
     ) => {
       if (!NATURAL_LANGUAGE_ENABLED && typeof body.question === "string") {
         setError(NATURAL_LANGUAGE_UNAVAILABLE);
@@ -159,6 +175,7 @@ export default function AskPanel({
           return false;
         }
         setResp(answer);
+        if (body.spec && !("tablePage" in body)) setLastRun(questionKey(body.spec as BuilderSpec));
         if (body.spec && !("tablePage" in body)) {
           setBuilderResolution({ submitted: body.spec as BuilderSpec, resolved: answer.spec as unknown as BuilderSpec });
         }
@@ -171,7 +188,9 @@ export default function AskPanel({
         if (!("tablePage" in body)) setTableOpts({ page: 0 });
         const url = new URL(window.location.href);
         url.searchParams.delete("q");
-        url.searchParams.set("spec", encodeSpec(answer.spec));
+        // The executed identities, plus an explicit data stream the link asked for.
+        const submitted = body.spec as AskSpec | undefined;
+        url.searchParams.set("spec", encodeSpec(submitted?.dataset && !answer.spec.dataset ? { ...answer.spec, dataset: submitted.dataset } : answer.spec));
         url.searchParams.delete("drill");
         url.searchParams.delete("evidence");
         url.searchParams.delete("sourceFilters");
@@ -185,7 +204,7 @@ export default function AskPanel({
               answer.question ||
               describeQuestion(answer.spec as unknown as BuilderSpec),
           });
-        if (!drill)
+        if (!drill && scroll)
           requestAnimationFrame(() =>
             document
               .getElementById("raspuns")
@@ -210,23 +229,90 @@ export default function AskPanel({
     },
     [],
   );
+  const adopt = useCallback((choice: IntentChoice) => {
+    setChosen(choice);
+    setBuilderInit(choice.spec as unknown as BuilderSpec);
+    setBuilderResolution(null);
+    setBuilderFromAi(false);
+    setBuilderOpen(true);
+    setMode("build");
+    requestAnimationFrame(() => document.getElementById("intrebarea")?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
+      block: "start",
+    }));
+  }, []);
+  const interpret = useCallback(async (raw: string, fromHistory = false) => {
+    const text = raw.replace(/\s+/g, " ").trim().slice(0, MAX_QUESTION_CHARS);
+    if (text.length < 2) return;
+    intentRequest.current?.abort();
+    const controller = new AbortController();
+    intentRequest.current = controller;
+    setIntentLoading(true);
+    setIntentError(null);
+    try {
+      const r = await fetch(`/api/intent?q=${encodeURIComponent(text)}`, { signal: controller.signal });
+      const body = (await r.json()) as IntentResult & { error?: string };
+      if (controller.signal.aborted) return;
+      if (!r.ok || body.error) {
+        setIntentError(body.error ?? "Nu am putut citi întrebarea acum. Încearcă din nou.");
+        return;
+      }
+      setIntent(body);
+      // A new question starts a new answer: the previous one belonged to other words.
+      setResp(null);
+      setError(null);
+      setEvidence(null);
+      if (body.spec && body.sentence) adopt({ spec: body.spec, sentence: body.sentence });
+      else {
+        setChosen(null);
+        setBuilderInit(null);
+        setBuilderOpen(false);
+      }
+      if (!fromHistory) {
+        const url = new URL(window.location.href);
+        url.searchParams.set("q", text);
+        for (const key of ["spec", "drill", "evidence", "sourceFilters"]) url.searchParams.delete(key);
+        window.history.pushState(null, "", url);
+      }
+    } catch {
+      if (!controller.signal.aborted) setIntentError("Nu am putut citi întrebarea acum. Încearcă din nou; textul tău este păstrat.");
+    } finally {
+      if (intentRequest.current === controller) setIntentLoading(false);
+    }
+  }, [adopt]);
+  const pickExample = useCallback((example: AskExample) => {
+    if (example.fill) {
+      setAskText(example.fill);
+      requestAnimationFrame(() => {
+        const input = askRef.current;
+        if (!input) return;
+        input.focus();
+        input.setSelectionRange(example.fill!.length, example.fill!.length);
+        input.scrollIntoView({ block: "center" });
+      });
+      return;
+    }
+    setAskText(example.text);
+    void interpret(example.text);
+  }, [interpret]);
   useEffect(() => {
     const restore = () => {
       const params = new URLSearchParams(window.location.search),
         question = params.get("q"),
         encoded = params.get("spec");
       setAiLinkNotice(false);
-      if (question && !NATURAL_LANGUAGE_ENABLED) {
-        setQ(question);
-        setMode("build");
-        setAiLinkNotice(true);
+      if (question && !NATURAL_LANGUAGE_ENABLED && !encoded) {
+        // A question in the address (also from the home search) is read by the rules.
+        setAskText(question);
+        void interpret(question, true);
       }
       if (question && NATURAL_LANGUAGE_ENABLED) {
         setQ(question);
         setMode("ask");
         void execute({ question });
       } else if (encoded) {
-        const parsed = validateSpec(decodeSpec(encoded));
+        const decoded = decodeSpec(encoded);
+        const parsed = validateSpec(decoded);
         if ("error" in parsed) {
           setError(
             "Legătura conține o întrebare invalidă. Poți construi una nouă mai jos.",
@@ -234,6 +320,7 @@ export default function AskPanel({
           return;
         }
         setBuilderInit(parsed as unknown as BuilderSpec);
+        setBuilderOpen(true);
         setMode("build");
         let scope: EvidenceScope | undefined;
         let sourceFilters: EvidenceFilters | undefined;
@@ -254,7 +341,10 @@ export default function AskPanel({
           setError("Selecția de surse din această legătură este invalidă.");
           return;
         }
-        void execute({ spec: parsed }, params.get("drill") === "1", scope, sourceFilters);
+        // validateSpec omits the default stream; a link that names it keeps it.
+        const linkDataset = decoded && typeof decoded === "object" && "dataset" in decoded ? (decoded as { dataset?: unknown }).dataset : undefined;
+        const asGiven = typeof linkDataset === "string" && !parsed.dataset ? { ...parsed, dataset: linkDataset as AskSpec["dataset"] } : parsed;
+        void execute({ spec: asGiven }, params.get("drill") === "1", scope, sourceFilters, false);
       }
     };
     restore();
@@ -264,11 +354,13 @@ export default function AskPanel({
       request.current.controller?.abort();
       if (toastTimer.current) clearTimeout(toastTimer.current);
     };
-  }, [execute]);
+  }, [execute, interpret]);
   const applied = resp?.spec;
   const title =
     resp?.question ||
-    (applied
+    (chosen && lastRun === questionKey(chosen.spec as unknown as BuilderSpec)
+      ? chosen.sentence
+      : applied
       ? describeQuestion(applied as unknown as BuilderSpec)
       : "Răspunsul tău");
   const openEvidence = useCallback(
@@ -351,6 +443,18 @@ export default function AskPanel({
           {toast}
         </div>
       )}
+      <header className="cq-workspace-header ia-head">
+        <div>
+          <h1>Întreabă</h1>
+          <p>Despre banii publici, în cuvintele tale.</p>
+        </div>
+        <div className="cq-workspace-actions"><Link href="/cauta">Caută un subiect</Link></div>
+      </header>
+      <AskBox value={askText} onChange={setAskText} onSubmit={(text) => void interpret(text)} loading={intentLoading} inputRef={askRef} />
+      {intentError && <div className="cq-error" role="alert"><strong>Întrebarea ta este păstrată.</strong><p>{intentError}</p></div>}
+      {intent && !intent.spec && intent.alternatives.some((alt) => alt.kind !== "intent") && !chosen && <IntentChoose result={intent} onAdopt={adopt} />}
+      {intent && !intent.spec && !intent.alternatives.some((alt) => alt.kind !== "intent") && <IntentUnknown result={intent} onPick={pickExample} />}
+      {!intent && !builderInit && !resp && <AskExamples onPick={pickExample} />}
       {(withSearch || NATURAL_LANGUAGE_ENABLED) && <div className="cq-modes" aria-label="Cum vrei să explorezi?">
         {withSearch && (
           <button
@@ -435,8 +539,9 @@ export default function AskPanel({
           </div>
         </section>
       )}
-      {
-        <div hidden={mode !== "build"}>
+      {builderOpen ? (
+        <div hidden={mode !== "build"} id="intrebarea" className="ia-builder">
+          {!chosen && <h2 className="ia-builder-title">Construiește întrebarea pas cu pas</h2>}
           <QuestionBuilder
             key={builderInit ? encodeSpec(builderInit) : "start"}
             initial={builderInit}
@@ -445,9 +550,19 @@ export default function AskPanel({
             running={loading}
             onDraftChange={setDirty}
             onRun={(spec) => execute({ spec })}
+            initialApplied={!chosen}
+            {...(chosen && intent ? {
+              intro: <IntentIntro result={intent} />,
+              outro: <IntentOutro result={intent} chosen={chosen} onAdopt={adopt} />,
+            } : {})}
           />
         </div>
-      }
+      ) : (
+        <button type="button" className="ia-open-builder" onClick={() => setBuilderOpen(true)}>
+          <strong>Construiește întrebarea pas cu pas</strong>
+          <span>Alege din 13 modele de întrebări: clasamente, totaluri, evoluții, comparații, relații și semnale.</span>
+        </button>
+      )}
       {loading && <Loader label="Căutăm răspunsul în date" />}
       {error && (
         <div className="cq-error" role="alert">

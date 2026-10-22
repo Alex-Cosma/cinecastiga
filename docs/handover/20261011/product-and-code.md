@@ -21,7 +21,7 @@ Proprietarul a cerut explorare rapidă și plăcută, dar cu date verificabile. 
 | Zonă | Funcție și decizie | Puncte de intrare |
 |---|---|---|
 | Pagina principală | Întrebări/teme ilustrate, intrare accesibilă în date | `apps/web/app/page.tsx`, `PRODUCT.md`, `DESIGN.md` |
-| `/intreaba` | Descoperă / Construiește; întrebare editabilă cu filtre clare, răspuns și surse | `apps/web/app/intreaba/`, `apps/web/lib/ask/` |
+| `/intreaba` | „Întreabă”: casetă de text liber → „Am înțeles așa” (întrebare editabilă) → răspuns și surse; exemple pe obiective; constructorul pas cu pas și cele 13 modele rămân secundare | `apps/web/app/intreaba/`, `apps/web/lib/ask/`, `apps/web/lib/intent/` |
 | `/cauta` | Căutare entități și achiziții tematice; typeahead geografic; interval de ani/toți anii; documentele vin dintr-o cerere separată (`/api/topic-search/documents`, vezi [arhitectura](../02-architecture.md)) | `apps/web/app/cauta/`, `apps/web/lib/topic-search*`, `apps/ingestion/src/search/` |
 | `/domenii` | Atlas CPV; click pe părinte aprofundează, frunza deschide detalii, săgeata deschide detalii la orice nivel | `docs/implementation/domains-atlas.md` |
 | `/entitati/[id]` | Profil, parteneri, istoric, semnale (CRI separat de „Toate semnalele”, cu linkuri `/semnale?ent=`), transparența populației | `apps/web/app/entitati/`, `apps/web/lib/marts.ts` |
@@ -46,6 +46,16 @@ Seturile de date sunt `all`, `da`, `contracts`. TED nu este încă un set aditiv
 Păstrează separarea dintre draftul formularului și întrebarea executată. Un răspuns vechi nu devine rezultatul unor filtre nou editate. Rezolvarea asincronă a etichetei unui ID nu trebuie să marcheze întrebarea ca modificată. Un query național costisitor nu trebuie să fie prima execuție automată a vizitatorului.
 
 Căutarea CPV ignoră diacriticele și folosește sinonime; „spații verzi” trebuie să conducă și la 77310000-6. O divizie precum 45 include subdomeniile. Etichetele CPV afișează numele inteligibil, nu doar un cod. „Toți anii” și intervalele nu se rescriu arbitrar ca anul implicit.
+
+### Întrebări în cuvintele omului (22 octombrie 2026)
+
+Decizia proprietarului: întrebarea liberă este înțeleasă de **reguli deterministe**, nu de un model de limbaj; textul nu pleacă la un serviciu extern. `apps/web/lib/intent/` conține interpretorul (`rules.ts`, contractul `QuestionInterpreter` din `types.ts`, prin care un interpretor LLM se poate adăuga ulterior fără a schimba API-ul sau UI-ul), maparea la `AskSpec` validată cu `validateSpec` și propoziția în română (`to-spec.ts`). Vocabularul este cel din `/api/suggest`: interogările au fost mutate în `lib/intent/vocabulary-queries.ts`, iar răspunsul `/api/suggest` a rămas același. Localitățile vin din `reference.uat` (plus sectoarele din catalogul RPL 2021), cu numele oficiale cu diacritice.
+
+`GET /api/intent?q=…` (maximum 300 de caractere, tranzacție read-only cu `statement_timeout` 1,5 s, cache în proces 10 minute) întoarce interpretarea (intenție din cuvinte-cheie, subiect CPV/sinonim, loc, tip de instituție, instituție/firmă/persoană doar la potrivire puternică, perioadă relativă la data curentă, cuvintele neînțelese, încredere), `spec` sau `null`, propoziția și alternative gata de rulat. Măsurat local pe `seap`: 15–110 ms pentru întrebări obișnuite; întrebările despre persoane (ONRC) ~400 ms.
+
+Reguli care nu se negociază: un nume de loc ambiguu (două comune „Sălcioara”, persoane omonime în ONRC) nu este ghicit — `spec` este `null` și fiecare variantă vine ca alternativă; „Buzău” fără alt cuvânt este județul, cu „Doar primăria Municipiului Buzău” ca alternativă; „primăria X”, „municipiul/orașul/comuna X” înseamnă localitatea. Localitatea (`uatSiruta`) înseamnă numai administrația locală a UAT-ului (vezi `uatScopeCaveat`): pentru școli, spitale sau consiliul județean dintr-o localitate interpretorul folosește județul și o spune. Semnalele și indicele de risc ignoră explicit domeniul și perioada (profiluri istorice) și o spun. Cuvintele neînțelese sunt afișate, nu ignorate în tăcere.
+
+Selectorul de loc din constructor oferă și localități (municipiu/oraș/comună/sector) acolo unde motorul le aplică: clasament (fără dimensiunea județ), total, evoluție, schimbare între ani, „pe ce se duc banii” și liderul după valoare. Harta, clasamentele pe județe, comparațiile, relațiile și profilurile de risc oferă doar județul și explică de ce (`localityScopeSupport` în `question-ui.ts`). Legăturile `/intreaba?q=…` (de exemplu din căutarea de pe prima pagină) deschid interpretarea, nu răspunsul direct. Un link `?spec=` nu mai derulează pagina la răspuns și păstrează `dataset`; județul rezolvat apare cu diacritice.
 
 ## Întrebări salvate și autentificare
 

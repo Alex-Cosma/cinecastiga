@@ -1,6 +1,7 @@
 import type { AskSpec } from "./spec";
 import type { Grounding } from "./ground";
 import { isHistoricalProfile } from "./population";
+import { countyDisplay } from "./resolved-spec";
 
 /** The "am înțeles" pills — the spec, restated in plain Romanian. */
 
@@ -70,7 +71,7 @@ export function buildPills(spec: AskSpec, grounding: Grounding): string[] {
   if (grounding.uat) {
     pills.push(spec.filters.uatName ?? grounding.uat.name ?? `UAT ${grounding.uat.siruta}`);
   }
-  if (grounding.county?.canonical) pills.push(`județul ${grounding.county.canonical}`);
+  if (grounding.county?.canonical) pills.push(grounding.county.canonical === "Bucuresti" ? "București" : `județul ${countyDisplay(grounding.county.canonical)}`);
   if (grounding.admin?.personKey && grounding.admin.display)
     pills.push(`conduse de ${grounding.admin.display}`);
   if (spec.filters.yearFrom || spec.filters.yearTo) {
