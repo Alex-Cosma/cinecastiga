@@ -32,13 +32,14 @@ describe("beginner glossary", () => {
 
   it("names the legal direct-acquisition thresholds and keeps the 2 million lei filter apart from them", () => {
     const text = GLOSSARY["achizitie-directa"].text;
-    expect(text).toContain("Din 10.09.2022 pragul este 270.120 lei pentru produse și servicii și 900.400 lei pentru lucrări");
+    expect(text).toContain("Pentru majoritatea instituțiilor (Legea 98/2016), din 10.09.2022 plafonul este 270.120 lei pentru produse și servicii și 900.400 lei pentru lucrări");
+    expect(text).toContain("pragul legal, numit pe site și plafon");
     expect(text).toContain("fără TVA");
     expect(text).toContain("2 milioane lei: această limită este un filtru de plauzibilitate al site-ului, nu pragul legal");
   });
 
   it("describes the split-purchase example with the real da_split conditions", () => {
-    expect(GLOSSARY.semnal.text).toContain("cel puțin 3 achiziții directe ale aceleiași instituții de la aceeași firmă, în același an, cu aceeași clasă CPV și același tip, fiecare sub plafonul ei, dar care împreună depășesc plafonul aplicabil");
+    expect(GLOSSARY.semnal.text).toContain("cel puțin 3 achiziții directe ale aceleiași instituții de la aceeași firmă, în același an, cu aceeași clasă CPV și același tip, fiecare sub plafonul ei de achiziție directă, dar care împreună depășesc cel mai mare plafon aplicabil grupului");
   });
 
   it("states the consortium rule exactly as the methodology does", () => {
