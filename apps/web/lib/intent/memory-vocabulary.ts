@@ -55,28 +55,21 @@ export function memoryVocabulary(fx: MemoryFixture): Vocabulary {
         .slice(0, 8)
         .map(({ term, cpvName }) => ({ term, cpvName }));
     },
-    async authorities(q) {
-      const pats = aliasQueries(q);
+    async entities(role, q) {
+      const pats = role === "authority" ? aliasQueries(q) : [q];
       const toks = queryTokens(q);
-      return fx.authorities
+      const all = (role === "authority" ? fx.authorities : fx.suppliers)
         .filter((e) => {
           const name = f(e.name);
           return pats.some((p) => name.includes(p)) || (toks.length > 1 && toks.every((t) => name.includes(t)));
         })
-        .sort(byTotal).slice(0, 5).map(strip);
+        .sort((a, b) => Number(f(b.name) === q) - Number(f(a.name) === q) || byTotal(a, b));
+      return { hits: all.slice(0, 25).map(strip), total: all.length };
     },
-    async suppliers(q) {
-      const toks = queryTokens(q);
-      return fx.suppliers
-        .filter((e) => {
-          const name = f(e.name);
-          return name.includes(q) || (toks.length > 1 && toks.every((t) => name.includes(t)));
-        })
-        .sort(byTotal).slice(0, 5).map(strip);
-    },
-    async persons(q) {
-      if (q.length < 4) return [];
-      return fx.persons.filter((p) => f(p.name).includes(q)).sort((a, b) => b.nFirms - a.nFirms).slice(0, 4);
+    async personsNamed(names) {
+      const wanted = new Set(names.map((n) => n.replace(/\s+/g, " ").trim()));
+      const all = fx.persons.filter((p) => wanted.has(f(p.name).replace(/\s+/g, " "))).sort((a, b) => b.nFirms - a.nFirms);
+      return { hits: all.slice(0, 8), total: all.length };
     },
   };
 }

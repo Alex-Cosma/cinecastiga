@@ -1,13 +1,14 @@
 import type { DbSql } from "@seap/db";
 import { cleanName, onrcBirthYear } from "../format";
 import { buildPlaces, type UatSource } from "./places";
-import { suggestAuthorities, suggestCpv, suggestPersons, suggestSuppliers } from "./vocabulary-queries";
+import { entityCandidates, personsByExactName, suggestCpv } from "./vocabulary-queries";
 import type { PlaceEntry, Vocabulary } from "./types";
 
 /**
- * The SQL vocabulary: /api/suggest's queries for CPV, authorities, suppliers
- * and persons; the place gazetteer and the synonym list are small, read once
- * per process and kept in memory (reference data, changed only by imports).
+ * The SQL vocabulary: /api/suggest's CPV query, a non-collapsing entity
+ * lookup and an exact ONRC name lookup (both with total counts); the place
+ * gazetteer and the synonym list are small, read once per process and kept
+ * in memory (reference data, changed only by imports).
  */
 
 const TTL_MS = 6 * 60 * 60 * 1000;
@@ -35,31 +36,45 @@ export async function loadSynonyms(sql: DbSql): Promise<string[]> {
   return rows.map((r) => r.term);
 }
 
+const LETTER = /\p{L}/u;
+
+/** Registry names sometimes start with a fiscal code ("`4278205 - Colegiul …"); readers need the name. */
+function registryName(name: string | null): string {
+  return cleanName(name).replace(/^[`'"]?\s*\d{4,10}\s*[-–]?\s*/, "").trim() || cleanName(name);
+}
+
 /**
  * `sql` is used for the per-question lookups (callers pass a read-only
  * transaction with a statement timeout); `shared` loads the cached lists.
+ * Once `signal` aborts (the API's time budget), no further lookup starts.
  */
-export function sqlVocabulary(sql: DbSql, shared: DbSql = sql, opts: { cache?: boolean } = {}): Vocabulary {
+export function sqlVocabulary(sql: DbSql, shared: DbSql = sql, opts: { cache?: boolean; signal?: AbortSignal } = {}): Vocabulary {
   const useCache = opts.cache ?? true;
+  const live = <T>(run: () => Promise<T>): Promise<T> =>
+    opts.signal?.aborted ? Promise.reject(new Error("intent-aborted")) : run();
   return {
     places: () => (useCache ? cached("__seapIntentPlaces", () => loadPlaces(shared)) : loadPlaces(shared)),
     synonyms: () => (useCache ? cached("__seapIntentSynonyms", () => loadSynonyms(shared)) : loadSynonyms(shared)),
-    cpv: async (q) => (await suggestCpv(sql, q)).map((r) => ({ term: r.term, cpvName: r.cpv_name })),
-    authorities: async (q) =>
-      (await suggestAuthorities(sql, q))
-        .filter((r) => r.name_display)
-        .map((r) => ({ id: r.entity_id ? Number(r.entity_id) : null, name: cleanName(r.name_display), county: r.county })),
-    suppliers: async (q) =>
-      (await suggestSuppliers(sql, q))
-        .filter((r) => r.name_display)
-        .map((r) => ({ id: r.entity_id ? Number(r.entity_id) : null, name: cleanName(r.name_display), county: r.county })),
-    persons: async (q) =>
-      (await suggestPersons(sql, q)).map((r) => ({
-        key: r.person_key,
-        name: cleanName(r.nm),
-        birthYear: onrcBirthYear(r.by, r.sy).birthYear,
-        birthLocality: r.bl && /\p{L}/u.test(r.bl) ? r.bl : null,
-        nFirms: Number(r.nf ?? 0),
-      })),
+    cpv: (q) => live(async () => (await suggestCpv(sql, q)).map((r) => ({ term: r.term, cpvName: r.cpv_name }))),
+    entities: (role, q) => live(async () => {
+      const rows = await entityCandidates(sql, role, q);
+      return {
+        hits: rows.map((r) => ({ id: Number(r.entity_id), name: registryName(r.name_display), county: r.county })),
+        total: Number(rows[0]?.total ?? 0),
+      };
+    }),
+    personsNamed: (names) => live(async () => {
+      const rows = await personsByExactName(sql, names);
+      return {
+        hits: rows.map((r) => ({
+          key: r.person_key,
+          name: cleanName(r.nm),
+          birthYear: onrcBirthYear(r.by, r.sy).birthYear,
+          birthLocality: r.bl && LETTER.test(r.bl) ? r.bl : null,
+          nFirms: Number(r.nf ?? 0),
+        })),
+        total: Number(rows[0]?.total ?? 0),
+      };
+    }),
   };
 }

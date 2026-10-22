@@ -76,20 +76,28 @@ describe("the editable question contract", () => {
     expect(questionErrors(spec).join(" ")).toContain("Condițiile sunt păstrate");
   });
   it("retains the supported authority cohort conditions", () => {
-    const input:QuestionSpec = { block:"distribution", dataset:"da", dim:"authority", measure:"value", filters:{ authorityId:811, authorityName:"Comuna", county:"Timiș", authorityKind:"comuna", uatSiruta:12345, uatName:"Dumbrăvița" } };
+    const input:QuestionSpec = { block:"distribution", dataset:"da", dim:"authority", measure:"value", filters:{ authorityId:811, authorityName:"Comuna", county:"Timiș", authorityKind:"comuna" } };
     expect(transitionQuestion(input).spec.filters).toEqual(input.filters);
     expect(questionErrors(input)).toEqual([]);
+  });
+  it("keeps a locality on a risk cohort visible as an error (a one-town-hall cohort would mislead)", () => {
+    const input:QuestionSpec = { block:"distribution", dataset:"da", dim:"authority", measure:"value", filters:{ authorityId:811, authorityName:"Comuna", county:"Timiș", uatSiruta:12345, uatName:"Dumbrăvița" } };
+    expect(transitionQuestion(input).spec.filters).toEqual(input.filters);
+    expect(questionErrors(input).join(" ")).toContain("Elimină localitatea „Dumbrăvița”");
   });
   it("rejects unsupported buyer conditions on supplier profiles while retaining the draft", () => {
     const input:QuestionSpec = { block:"distribution", dim:"supplier", measure:"value", filters:{ supplierId:733, supplierName:"Firma", county:"Timiș", authorityKind:"comuna", uatSiruta:12345 } };
     expect(transitionQuestion(input).spec.filters).toEqual(input.filters);
     expect(questionErrors(input).join(" ")).toContain("Condițiile sunt păstrate");
   });
-  it.each(["network", "sankey", "map"])("retains counterpart, UAT and county restrictions in %s", block => {
+  it.each(["network", "sankey", "map"])("retains counterpart, UAT and county restrictions in %s, and flags the locality it cannot honour", block => {
     const input = { ...authority, filters:{ ...authority.filters, supplierId:733, supplierName:"Firma", uatSiruta:12345, uatName:"Dumbrăvița" } };
     const { spec } = transitionQuestion(input, block);
     expect(spec.filters).toEqual(input.filters);
-    expect(questionErrors(spec)).toEqual([]);
+    expect(questionErrors(spec)).toEqual([expect.stringContaining("Elimină localitatea „Dumbrăvița”")]);
+    const withoutLocality = { ...spec, filters: { ...spec.filters } };
+    delete withoutLocality.filters.uatSiruta; delete withoutLocality.filters.uatName;
+    expect(questionErrors(withoutLocality)).toEqual([]);
   });
   it("keeps legacy compare links historical and explicitly chooses transactional new comparisons", () => {
     const legacy:QuestionSpec = { block:"compare", measure:"value", filters:{ authorityId:811, compareWithId:922 } };
@@ -209,5 +217,11 @@ describe("locality scope in the place picker", () => {
   it("does not offer it for county rankings or risk leaders", () => {
     expect(localityScopeSupport({ block: "table", dim: "county", measure: "value", filters: {} }).ok).toBe(false);
     expect(localityScopeSupport({ block: "entity_card", rankBy: "risk", dim: "authority", measure: "value", filters: {} }).ok).toBe(false);
+  });
+  it("switching to a view without locality keeps it visible as an error, never silently", () => {
+    const { spec } = transitionQuestion({ block: "table", dim: "supplier", measure: "value", topN: 10, filters: { ...locality } }, "map");
+    expect(spec.filters.uatSiruta).toBe(44818);
+    expect(questionErrors(spec).join(" ")).toMatch(/Harta arată județele.*Elimină localitatea „Municipiul Buzău \(Buzău\)”/);
+    expect(questionErrors({ ...spec, block: "stat" })).toEqual([]);
   });
 });

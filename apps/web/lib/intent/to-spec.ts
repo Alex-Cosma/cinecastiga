@@ -1,6 +1,6 @@
 import { cleanName } from "../format";
 import { validateSpec, type AskFilters, type AskSpec, type AuthorityKind } from "../ask/spec";
-import { genitive } from "./rules";
+import { genitive, hasNamedScope } from "./rules";
 import type { EntityMatch, IntentAlternative, IntentKind, IntentResult, Interpretation, PersonMatch, PlaceMatch } from "./types";
 
 /**
@@ -86,6 +86,15 @@ export function specFor(input: Interpretation, intent: IntentKind, choice: Choic
       notes.push(`Indicele de risc și semnalele sunt calculate pe toată activitatea din achizițiile directe, deci nu am aplicat ${what.join(", ")}. Semnalele sunt piste de verificat, nu dovezi.`);
     }
   };
+  const place = choice.place === undefined ? i.place : choice.place;
+  /** The locality scope is the town hall only; questions about "institutions in X" or risk profiles use the county. */
+  const localityToCounty = (why: string) => {
+    if (!f.uatSiruta || !place) return;
+    delete f.uatSiruta; delete f.uatName;
+    f.county = place.county;
+    notes.push(why);
+  };
+  const townHallOnly = (what: string) => `Datele leagă de o localitate doar primăria ei; pentru ${what} am folosit județul ${place?.county ?? ""}.`;
   switch (intent) {
     case "ranking_suppliers":
     case "ranking_authorities": {
@@ -93,6 +102,7 @@ export function specFor(input: Interpretation, intent: IntentKind, choice: Choic
       if (dim === "supplier" && (f.supplierName || f.supplierId)) dim = "authority";
       else if (dim === "authority" && (f.authorityName || f.authorityId)) dim = "supplier";
       raw.dim = dim;
+      if (dim === "authority" && !(f.supplierName || f.supplierId) && !(f.authorityName || f.authorityId)) localityToCounty(townHallOnly("„ce instituții”"));
       if (i.measure === "value_per_capita") {
         if (dim === "authority") raw.measure = "value_per_capita";
         else notes.push("Valoarea pe locuitor se calculează doar pentru primării; clasamentul firmelor folosește valoarea totală.");
@@ -116,6 +126,7 @@ export function specFor(input: Interpretation, intent: IntentKind, choice: Choic
       if (twoYears && i.dimHint) {
         raw.block = "trend";
         raw.dim = i.dimHint === "supplier" && !(f.supplierName || f.supplierId) ? "supplier" : "authority";
+        if (raw.dim === "authority") localityToCounty(townHallOnly("schimbarea pe instituții"));
         raw.topN = i.topN ?? 10;
         raw.measure = "value";
       } else {
@@ -132,11 +143,14 @@ export function specFor(input: Interpretation, intent: IntentKind, choice: Choic
       break;
     case "signals": {
       raw.measure = "value";
+      // risk profiles compare institutions with each other; never a one-town-hall population (localityScopeSupport)
+      if (!named) localityToCounty(townHallOnly("semnale"));
       if (named) {
         raw.block = "distribution";
         if (f.authorityName && f.supplierName) { delete f.supplierName; delete f.supplierId; }
         const supplierFocal = Boolean(f.supplierName);
-        if (supplierFocal || f.uatSiruta) { delete f.uatSiruta; delete f.uatName; delete f.authorityKind; }
+        if (f.uatSiruta) localityToCounty(townHallOnly("grupul de comparație"));
+        if (supplierFocal) { delete f.authorityKind; delete f.uatSiruta; delete f.uatName; }
         if (supplierFocal) delete f.county;
         dropForProfiles(true);
       } else {
@@ -144,9 +158,9 @@ export function specFor(input: Interpretation, intent: IntentKind, choice: Choic
         raw.block = i.superlative ? "entity_card" : "scatter";
         raw.dim = dim;
         if (i.superlative) raw.rankBy = "risk";
-        if (dim === "supplier" && (f.uatSiruta || f.authorityKind)) {
-          delete f.uatSiruta; delete f.uatName; delete f.authorityKind;
-          notes.push("Profilurile firmelor nu se pot restrânge după localitatea sau tipul instituției care cumpără; am păstrat doar județul.");
+        if (dim === "supplier" && f.authorityKind) {
+          delete f.authorityKind;
+          notes.push("Profilurile firmelor nu se pot restrânge după tipul instituției care cumpără; am păstrat doar județul.");
         }
         dropForProfiles(false);
       }
@@ -192,7 +206,8 @@ function buyers(f: AskFilters): string {
 }
 
 function wherePlain(f: AskFilters): string {
-  if (f.uatSiruta) return ` din ${uatPhrase(f.uatName ?? "").replace(/^Municipiului /, "Municipiul ").replace(/^Orașului /, "Orașul ").replace(/^Comunei /, "Comuna ").replace(/^Sectorului /, "Sectorul ")}`;
+  // the engine scopes a locality to its town hall (compile.ts), so the sentence says so
+  if (f.uatSiruta) return ` ale primăriei ${uatPhrase(f.uatName ?? `localității ${f.uatSiruta}`)}`;
   if (f.county) return ` ${countyPhrase(f.county)}`;
   return "";
 }
@@ -265,10 +280,10 @@ export function sentenceFor(spec: AskSpec, labels: SentenceLabels = {}): string 
       return `Ce ${dimNoun}${wherePlain(f)} ies din tipar după indicele de risc și valoarea achizițiilor?`;
     case "entity_card":
       if (spec.rankBy === "risk")
-        return `Care ${spec.dim === "supplier" ? "firmă" : f.authorityKind === "spital" ? "spital" : f.authorityKind === "scoala" ? "școală" : "instituție"}${wherePlain(f)} are cel mai ridicat indice de risc?`;
+        return `Care ${spec.dim === "supplier" ? "firmă" : f.authorityKind === "spital" ? "spital" : f.authorityKind === "scoala" ? "școală" : f.authorityKind === "comuna" ? "primărie de comună" : f.authorityKind === "oras_municipiu" ? "primărie de oraș" : f.authorityKind === "consiliu_judetean" ? "consiliu județean" : "instituție"}${wherePlain(f)} are cel mai ridicat indice de risc?`;
       return spec.dim === "supplier"
         ? `Care firmă are contractele de cea mai mare valoare${subj} de la ${buyers(f)}, ${when}${tail}?`
-        : `Care instituție${wherePlain(f)} cumpără cel mai mult${subj}${fromSupplier}, ${when}${tail}?`;
+        : `Care ${f.authorityKind === "spital" ? "spital" : f.authorityKind === "scoala" ? "școală" : f.authorityKind === "comuna" ? "primărie de comună" : f.authorityKind === "oras_municipiu" ? "primărie de oraș" : f.authorityKind === "consiliu_judetean" ? "consiliu județean" : "instituție"}${wherePlain(f)} cumpără cel mai mult${subj}${fromSupplier}, ${when}${tail}?`;
     case "distribution":
       return `Unde se situează „${f.authorityName ?? f.supplierName ?? "?"}” după indicele de risc, față de ${f.supplierName ? "alte firme" : "alte instituții"}${f.county && !f.supplierName ? ` ${countyPhrase(f.county)}` : ""}?`;
     case "network":
@@ -320,9 +335,16 @@ export function resultFor(i: Interpretation): IntentResult {
     // never guess between localities of the same name: each is an alternative
     problem = "Alege localitatea la care te gândești; există mai multe cu același nume.";
   } else if (i.intent && i.entityAlternatives.length && !i.supplier && !i.authority) {
-    problem = "Mai multe firme sau instituții au acest nume. Alege-o pe cea la care te gândești.";
+    problem = i.choicesPartial
+      ? `${i.choicesPartial.total} firme sau instituții se potrivesc. Alege una dintre primele ${i.choicesPartial.shown} sau scrie numele complet.`
+      : "Mai multe firme sau instituții au acest nume. Alege-o pe cea la care te gândești.";
+  } else if (i.intent && !hasNamedScope(i) && i.leftover.length) {
+    // only defaults matched ("<script> cine câștigă"): do not answer a national question nobody asked
+    problem = "Nu am recunoscut în întrebare un subiect, un loc, o instituție sau o firmă.";
   } else if (i.intent && i.personAlternatives.length && !i.person) {
-    problem = "Alege persoana la care te gândești; în Registrul Comerțului sunt mai multe cu același nume.";
+    problem = i.choicesPartial
+      ? `În Registrul Comerțului sunt ${i.choicesPartial.total} persoane cu acest nume. Alege una dintre primele ${i.choicesPartial.shown} sau caut-o după nume.`
+      : "Alege persoana la care te gândești; în Registrul Comerțului sunt mai multe cu același nume.";
   } else if (i.intent) {
     const built = specFor(i, i.intent);
     spec = built.spec;
@@ -339,13 +361,30 @@ export function resultFor(i: Interpretation): IntentResult {
     alternatives.push({ label, kind, spec: s, sentence: sentenceFor(s, labels) });
   };
   const intent = i.intent ?? "ranking_suppliers";
-  for (const p of i.placeAlternatives) {
-    const label = p.kind === "locality" && i.place?.kind === "county" ? `Doar primăria ${genitive(p)}` : p.label;
-    add(label, "place", specFor(i, intent, { place: p }).spec);
+  // While something must be chosen, offer only that choice: other alternatives would silently drop it.
+  const choosing = spec ? null
+    : i.placeAmbiguous ? "place"
+    : i.entityAlternatives.length && !i.supplier && !i.authority ? "entity"
+    : i.personAlternatives.length && !i.person ? "person"
+    : "none";
+  for (const p of choosing === null || choosing === "place" ? i.placeAlternatives : []) {
+    const label = p.kind === "locality" && i.place?.kind === "county" ? `Doar primăria ${genitive(p)}`
+      : p.kind === "county" && i.place?.kind === "locality" ? (p.county === "București" ? "Tot Bucureștiul" : `Tot județul ${p.county}`)
+      : p.label;
+    const alt = specFor(i, intent, { place: p }).spec;
+    // an alternative must keep the scope its label promises (never a silent nationwide answer)
+    if (alt && p.kind === "locality" && !alt.filters.uatSiruta) continue;
+    if (alt && p.kind === "county" && alt.filters.county !== p.county) continue;
+    add(label, "place", alt);
   }
-  for (const p of i.personAlternatives) add(personDisplay(p), "person", specFor(i, intent, { person: p }).spec);
-  if (!i.supplier && !i.authority)
-    for (const e of i.entityAlternatives) add(`${cleanName(e.name)}${e.county && !/^(na|necunoscut)$/i.test(e.county) ? ` (${e.county})` : ""}`, "entity", specFor(i, intent, { entity: e }).spec);
+  if (choosing === "person") for (const p of i.personAlternatives) add(personDisplay(p), "person", specFor(i, intent, { person: p }).spec);
+  if (choosing === "entity") {
+    const base = (e: EntityMatch) => `${cleanName(e.name)}${e.county && !/^(na|necunoscut)$/i.test(e.county) ? ` (${e.county})` : ""}`;
+    const counts = new Map<string, number>();
+    for (const e of i.entityAlternatives) counts.set(base(e), (counts.get(base(e)) ?? 0) + 1);
+    // same name and county: the registry id is the only honest difference
+    for (const e of i.entityAlternatives) add(`${base(e)}${(counts.get(base(e)) ?? 0) > 1 && e.id ? ` · ID ${e.id}` : ""}`, "entity", specFor(i, intent, { entity: e }).spec);
+  }
   if (spec && i.intent) {
     const follow = [...i.otherIntents, ...FOLLOW_UPS[i.intent]].filter((k) => k !== i.intent && k !== "compare");
     let n = 0;

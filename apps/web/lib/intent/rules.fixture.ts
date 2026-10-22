@@ -7,7 +7,15 @@ import type { MemoryFixture } from "./memory-vocabulary";
  */
 const SYNONYMS = "brichete=03413000,lemn de foc=03413000,lemne=03413000,peleti=03413000,combustibil=09100000,carbune=09110000,gaz=09123000,gaze naturale=09123000,carburant=09130000,carburanti=09130000,benzina=09132000,motorina=09134000,curent=09310000,electricitate=09310000,energie electrica=09310000,caldura=09320000,energie termica=09320000,incalzire=09320000,panouri solare=09331000,fotovoltaice=09331200,nisip=14211000,balast=14212000,pietris=14212000,alimente=15000000,hrana=15000000,mancare=15000000,carne=15100000,fructe=15300000,legume=15300000,lapte=15500000,paine=15811000,apa minerala=15981000,imbracaminte=18000000,uniforme=18100000,incaltaminte=18800000,cartuse=30125100,toner=30125100,birotica=30190000,papetarie=30190000,hartie=30197630,calculatoare=30200000,computere=30200000,laptopuri=30213100,becuri=31500000,iluminat=31500000,aparatura medicala=33100000,echipamente medicale=33100000,seringi=33141310,manusi=33141420,doctorii=33600000,medicamente=33600000,produse farmaceutice=33600000,dezinfectant=33631600,vaccinuri=33651600,reactivi=33696000,autovehicule=34100000,autoturisme=34110000,masini=34110000,ambulante=34114121,autobuze=34121000,autoutilitare=34130000,masti=35113400,mobila=39100000,mobilier=39100000,apa=41000000,ciment=44111200,beton=44114000,constructii=45000000,lucrari=45000000,cladiri=45210000,scoala=45214000,poduri=45221000,alimentare cu apa=45232150,canalizare=45232400,asfalt=45233000,asfaltare=45233000,drumuri=45233000,sosele=45233000,reabilitare drumuri=45233140,licente=48000000,programe=48000000,software=48000000,intretinere=50000000,mentenanta=50000000,reparatii=50000000,catering=55520000,mese=55520000,transport=60000000,proiectare=71000000,arhitectura=71200000,inginerie=71300000,servicii it=72000000,consultanta=79400000,paza=79710000,securitate=79710000,deseuri=90500000,gunoi=90500000,salubrizare=90500000,curatenie=90910000";
 
-const CATALOG = `03410000-7|Lemn
+const CATALOG = `03221410-3|Varză albă
+03311110-6|Limbă-de-mare
+14522100-7|Piatră ponce
+24590000-6|Siliconi primari
+34327200-7|Coloane şi cutii de direcţie
+44212230-0|Turnuri
+80200000-6|Servicii de învăţământ gimnazial
+85310000-5|Servicii de asistenţă socială
+03410000-7|Lemn
 03413000-8|Lemn de foc
 09123000-7|Gaze naturale
 15981320-7|Zăpadă
@@ -66,6 +74,16 @@ export const FIXTURE: MemoryFixture = {
     { id: 3000002, name: "SPITALUL JUDETEAN DE URGENTA BRAILA", county: "Braila", total: 650_000_000 },
     { id: 4000001, name: "COMPANIA NATIONALA DE ADMINISTRARE A INFRASTRUCTURII RUTIERE S.A.", county: "Bucuresti", total: 90_000_000_000 },
     { id: 5000001, name: "COMUNA SALCIOARA", county: "Ialomita", total: 20_000_000 },
+    // same-named buyers: never one of them silently
+    { id: 2108930, name: "COMPANIA DE UTILITATI PUBLICE", county: "Vaslui", total: 30_000_000 },
+    { id: 2128336, name: "Compania de Utilitati Publice", county: "Vrancea", total: 50_000_000 },
+    { id: 2135748, name: "COMPANIA DE UTILITATI PUBLICE TECUCI SRL", county: "Galati", total: 10_000_000 },
+    { id: 2146486, name: "SPITALUL JUDETEAN SATU MARE", county: "Satu Mare", total: 400_000_000 },
+    { id: 2146743, name: "Spitalul Judetean Giurgiu", county: "Giurgiu", total: 300_000_000 },
+    { id: 2135939, name: "Directia de Asistenta Sociala a Municipiului Buzau", county: "Buzau", total: 20_000_000 },
+    { id: 2135940, name: "Directia de Asistenta Sociala Focsani", county: "Vrancea", total: 15_000_000 },
+    { id: 6000001, name: "COLEGIUL NATIONAL DIMITRIE CANTEMIR", county: "Suceava", total: 3_000_000 },
+    { id: 6000002, name: "Colegiul National Dimitrie Cantemir Onesti", county: "Bacau", total: 2_000_000 },
   ],
   suppliers: [
     { id: 9000001, name: "CONSTRUCTII ERBASU S.A.", county: "Bucuresti", total: 3_000_000_000 },
@@ -76,10 +94,19 @@ export const FIXTURE: MemoryFixture = {
     { id: 9000006, name: "CRACIUN IMPEX SRL", county: "Cluj", total: 1_000_000 },
     { id: 9000007, name: "SC STRABAG SRL", county: "NA", total: 3_000_000 },
     { id: 9000008, name: "ILUMINAT FESTIV S.R.L.", county: "Ilfov", total: 2_000_000 },
+    { id: 2020739, name: "PROACTIV", county: "Neamt", total: 5_000_000 },
+    { id: 2089443, name: "PROACTIV", county: "Hunedoara", total: 8_000_000 },
+    { id: 2128430, name: "MEDIPLUS EXIM", county: "Ilfov", total: 900_000_000 },
+    { id: 2277951, name: "MEDIPLUS EXIM", county: null, total: 100_000 },
+    { id: 9000010, name: "POPESCU MARIAN II", county: "Arges", total: 50_000 },
   ],
   persons: [
     { key: "ion popescu|1960-01-01|buzau", name: "POPESCU ION", birthYear: 1960, birthLocality: "Buzău", nFirms: 4 },
     { key: "ion popescu|1975-05-05|iasi", name: "POPESCU ION", birthYear: 1975, birthLocality: "Iași", nFirms: 2 },
     { key: "matei ioan|1957-01-01|batin", name: "MATEI IOAN", birthYear: 1957, birthLocality: "Sat Batin", nFirms: 3 },
+    { key: "popescu marian|1970", name: "POPESCU MARIAN", birthYear: 1970, birthLocality: "Pitești", nFirms: 5 },
+    // ten namesakes: the choice list shows eight and says so; two records describe the same person
+    ...Array.from({ length: 10 }, (_, k) => ({ key: `popa ion|${1950 + k}`, name: k % 2 ? "ION POPA" : "POPA ION", birthYear: 1950 + k, birthLocality: k === 1 ? "BUZĂU" : `Loc ${k}`, nFirms: 20 - k })),
+    { key: "popa ion|1950-dup", name: "POPA ION", birthYear: 1950, birthLocality: "Loc 0", nFirms: 15 },
   ],
 };

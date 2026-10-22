@@ -76,7 +76,7 @@ export function stems(word: string): string[] {
   strip("ilor");
   strip("elor", 4, "e");
   strip("ului");
-  strip("ul");
+  strip("ul", 3);
   strip("lui");
   strip("le");
   strip("lor");

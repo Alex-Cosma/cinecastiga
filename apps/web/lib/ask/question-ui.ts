@@ -427,16 +427,22 @@ export function questionErrors(spec: QuestionSpec): string[] {
     errors.push(
       "Numărul minim de angajați trebuie să fie mai mic sau egal cu maximul.",
     );
-  if (errors.length) return errors;
+  // A locality the view cannot honour is never carried silently (localityScopeSupport).
+  if (spec.filters.uatSiruta) {
+    const support = localityScopeSupport(spec);
+    if (!support.ok) errors.push(`${support.reason} Elimină localitatea „${spec.filters.uatName ?? spec.filters.uatSiruta}” sau alege altă întrebare.`);
+  }
+  if (errors.length > (spec.filters.uatSiruta && !localityScopeSupport(spec).ok ? 1 : 0)) return errors;
   const validated = validateSpec(spec);
   if ("error" in validated) {
     return [
+      ...errors,
       validated.error.startsWith("value_per_capita")
         ? "Valoarea pe locuitor se aplică instituțiilor cu populație cunoscută."
         : validated.error,
     ];
   }
-  return [];
+  return errors;
 }
 
 /**
