@@ -71,7 +71,6 @@ describe.skipIf(!url)("entity page consortium labels and summary (isolated Postg
   it("groups exactly the KPI selection by CPV division, with distinct consortium contracts", async () => {
     const [subjects, counts] = await Promise.all([getEntitySubjects(authority, "authority", 3, sql), getEntityTxCounts(authority, "authority")]);
     expect(subjects).toEqual({
-      nDivisions: 2,
       nConsortium: 1,
       divisions: [
         { code: "45", name: "Lucrări de construcţii", valueExact: "381909792.16", n: 3 },
@@ -84,7 +83,7 @@ describe.skipIf(!url)("entity page consortium labels and summary (isolated Postg
     const cents = subjects.divisions.reduce((total, d) => total + Math.round(Number(d.valueExact) * 100), 0);
     expect(cents).toBe(Math.round(Number(counts.valueExact) * 100));
     expect(await getEntitySubjects(winnerB, "supplier", 1, sql)).toEqual({
-      nDivisions: 1, nConsortium: 1, divisions: [{ code: "45", name: "Lucrări de construcţii", valueExact: "127303264.05", n: 1 }],
+      nConsortium: 1, divisions: [{ code: "45", name: "Lucrări de construcţii", valueExact: "127303264.05", n: 1 }],
     });
   });
 });
