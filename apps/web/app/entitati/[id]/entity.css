@@ -41,12 +41,17 @@
 @media (max-width:720px){
   .ent-brief{padding:16px}
   .ent-brief>p{font-size:15px}
+  .ent-brief-list li{grid-template-columns:minmax(0,1fr)}
+  .ent-brief-label{flex-wrap:wrap}
+  .ent-brief-label>a,.ent-brief-label>span:first-child{white-space:normal;overflow:visible}
+  .ent-brief-track{grid-row:auto}
+  .ent-brief-val{grid-column:1;grid-row:auto}
 
   .ent-tx,.ent-tx tbody,.ent-tx tr,.ent-tx td{display:block}
   .ent-tx{table-layout:auto}
   .ent-tx thead tr{display:flex;flex-wrap:wrap;gap:6px;padding:8px 12px}
   .ent-tx thead th{display:none}
-  .ent-tx thead th.sortable{display:inline-block;width:auto;border:1px solid var(--line);border-radius:999px;padding:3px 10px;background:var(--surface);text-transform:none;letter-spacing:0;font-size:12.5px}
+  .ent-tx thead th.sortable{display:inline-block;width:auto;border:1px solid var(--line);border-radius:999px;padding:3px 10px;background:var(--surface);text-transform:none;letter-spacing:0;font:500 12.5px/1.6 var(--body)}
   .ent-tx thead th.sortable::before{content:"sortează după ";color:var(--muted);font-weight:400}
   .ent-tx tbody tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:12px 12px;border-bottom:1px solid var(--line)}
   .ent-tx tbody tr td{padding:0;border:0;white-space:normal;overflow:visible;text-overflow:clip;min-width:0}

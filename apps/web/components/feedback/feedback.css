@@ -1,7 +1,7 @@
 /* Single entry point. ≥1360px: a tab docked to the right edge, which only exists there because the 1256px
-   shell leaves a real gutter. 701–1359px: a round icon button in the bottom-right corner, off the content
+   shell leaves a real gutter. 721–1359px: a round icon button in the bottom-right corner, off the content
    edge; the footer reserve keeps the end of every page clear (mid-scroll it can still pass over content,
-   like any floating button). ≤700px: not floating, a row after the footer (see below). Above sticky subnavs (≤20), below popovers (40), tooltips and toasts;
+   like any floating button). ≤720px (the breakpoint where entity tables become cards): not floating, a row after the footer (see below). Above sticky subnavs (≤20), below popovers (40), tooltips and toasts;
    modal dialogs sit in the top layer and cover it. */
 .feedback-fab{position:fixed;z-index:30;right:0;top:50%;transform:translateY(-50%);display:inline-flex;align-items:center;gap:8px;writing-mode:vertical-rl;padding:16px 10px 16px 9px;border:1px solid var(--accent-line);border-right:0;border-radius:8px 0 0 8px;background:var(--surface);color:var(--accent);font:500 14px/1 var(--font-body);cursor:pointer;box-shadow:var(--shadow2);transition:background-color .16s ease}
 .feedback-fab svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
@@ -14,9 +14,9 @@
   /* Keep the end of every page clear of the button */
   .site-footer{padding-bottom:72px}
 }
-/* Phones (≤700px): a floating button covers right-aligned amounts in tables and cards, so the entry point
+/* Phones (≤720px): a floating button covers right-aligned amounts in tables and cards, so the entry point
    leaves the overlay and becomes a full-width row at the very end of the page, after the footer. */
-@media(max-width:700px){
+@media(max-width:720px){
   .feedback-dock{background:var(--surface);border-top:1px solid var(--line);padding:12px 16px calc(12px + env(safe-area-inset-bottom))}
   .feedback-fab{position:static;width:100%;height:auto;min-height:44px;padding:10px 14px;gap:10px;border:1px solid var(--accent-line);border-radius:8px;box-shadow:none}
   .feedback-fab span{position:static;width:auto;height:auto;overflow:visible;clip-path:none}
@@ -48,4 +48,4 @@
 .feedback-dialog :focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 @media(max-width:600px){.feedback-dialog{padding:22px}.feedback-dialog h2{font-size:25px}}
 .feedback-fab-more{display:none}
-@media(max-width:700px){.feedback-fab .feedback-fab-more{display:inline}}
+@media(max-width:720px){.feedback-fab .feedback-fab-more{display:inline}}
