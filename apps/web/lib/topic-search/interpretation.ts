@@ -5,7 +5,7 @@ import { fold as foldText } from '../intent/text';
 import { sentenceFor, specFor } from '../intent/to-spec';
 import type { IntentResult, Interpretation, PlaceMatch, Span } from '../intent/types';
 import { topicParams, type Place, type TopicScope } from './shared';
-import { placeId, remainingWords } from './words';
+import { placeId, remainingWords, weakSubject } from './words';
 export { placeId, remainingWords };
 
 /**
@@ -85,7 +85,8 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
   if (foldText(i.text).trim() !== foldText(scope.q).trim()) return base;
   const out: TopicInterpretation = {
     ...base,
-    subject: i.subjects[0] ? { label: i.subjects[0].label, cpvName: i.subjects[0].cpvName, source: i.subjects[0].source } : null,
+    // a fragment of a catalogue word ("construct") is more likely a name: no subject reading
+    subject: i.subjects[0] && !weakSubject(i.subjects[0]) ? { label: i.subjects[0].label, cpvName: i.subjects[0].cpvName, source: i.subjects[0].source } : null,
     otherSubjects: i.subjects.slice(1).map((s) => ({ label: s.label, cpvName: s.cpvName })),
     placeAmbiguous: i.placeAmbiguous,
     sentence: result.sentence, problem: result.problem, confidence: i.confidenceLabel,
@@ -101,7 +102,10 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
     period = { from: String(i.period.yearFrom), to: String(i.period.yearTo) };
     spans.push(i.period.matched);
   }
-  const remaining = spans.length ? remainingWords(i.text, spans) : scope.q;
+  // An inflected curated subject ("medicamentele") is searched in its base form.
+  const s0 = i.subjects[0];
+  const subjectBase = s0 && out.subject && s0.source === 'synonym' && !s0.label.includes(' ') && foldText(s0.label) !== foldText(s0.matched.text) ? { ...s0.matched, text: s0.label } : undefined;
+  const remaining = spans.length ? remainingWords(i.text, spans, subjectBase) : scope.q;
   if (spans.length && remaining.length >= 2) {
     out.applied = { q: remaining, place: place ? interpretedChip!.id : scope.place, from: period?.from ?? scope.from, to: period?.to ?? scope.to };
     out.fromWords = { place: place ? interpretedChip : null, period };
@@ -115,16 +119,19 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
   const offer = (c: ChipPlace | null, choice: string) => {
     if (c && c.id !== out.applied.place && !out.placeChoices.some((x) => x.id === c.id)) out.placeChoices.push({ ...c, choice, q: searchWords });
   };
+  const wholeCounty = (county: string) => (county === 'București' ? 'Tot Bucureștiul' : `Tot județul ${county}`);
   for (const p of choices)
-    offer(chip(p), p.kind === 'locality' && interpretedPlace?.kind === 'county' && !i.placeAmbiguous ? `Doar ${p.name}` : p.label);
+    offer(chip(p), i.placeAmbiguous ? p.label
+      : p.kind === 'locality' && interpretedPlace?.kind === 'county' ? `Doar ${p.name}`
+      : p.kind === 'county' && interpretedPlace?.kind === 'locality' ? wholeCounty(p.county) : p.label);
   // A locality can always widen to its county.
   const local = out.applied.place.startsWith('uat:') ? (place ?? (explicitPlace ? placeMatchFor(explicitPlace) : null)) : null;
   if (local?.county) {
     const name = local.county === 'București' ? 'Municipiul București' : `Județul ${local.county}`;
-    offer(chip({ kind: 'county', county: local.county, name, label: name }), local.county === 'București' ? 'Tot Bucureștiul' : `Tot județul ${local.county}`);
+    offer(chip({ kind: 'county', county: local.county, name, label: name }), wholeCounty(local.county));
   }
   // The answer: only an unambiguous reading with a subject (spec present).
-  const subject = i.subjects[0];
+  const subject = out.subject ? i.subjects[0] : undefined;
   if (subject && result.spec) {
     const answerPlace = place ?? (explicitPlace ? placeMatchFor(explicitPlace) : null) ?? (scope.place ? null : i.place);
     const years = period ?? (scope.from ? { from: scope.from, to: scope.to } : null);

@@ -77,6 +77,15 @@ describe('interpretation → /cauta selection', () => {
     expect(t.answer?.href).toMatch(/^\/intreaba\?spec=/);
   });
 
+  it('does not read a fragment of a catalogue word as a subject', async () => {
+    const { result } = await read('iluminat');
+    const scope = parseTopicScope(new URLSearchParams('q=construct'));
+    const weak = { ...result, interpretation: { ...result.interpretation, text: 'construct', subjects: [{ term: '45247110-4', label: 'Construcţie de canale', cpvName: 'Construcţie de canale', source: 'catalog' as const, matched: { text: 'construct', from: 0, to: 1 } }] } };
+    const t = applyInterpretation(scope, weak);
+    expect(t.subject).toBeNull();
+    expect(t.answer).toBeNull();
+  });
+
   it('returns the words unchanged without an interpretation or for another text', async () => {
     const { scope, result } = await read('iluminat buzau');
     expect(applyInterpretation(scope, null).applied.q).toBe('iluminat buzau');
@@ -90,6 +99,7 @@ describe('word plumbing', () => {
     expect(remainingWords('iluminat în Buzău', [{ from: 2, to: 3 }])).toBe('iluminat');
     expect(remainingWords('asfaltare din judetul Buzau 2022', [{ from: 3, to: 4 }, { from: 4, to: 5 }])).toBe('asfaltare');
     expect(remainingWords('Buzău iluminat', [{ from: 0, to: 1 }])).toBe('iluminat');
+    expect(remainingWords('medicamentele din Buzău', [{ from: 2, to: 3 }], { from: 0, to: 1, text: 'medicamente' })).toBe('medicamente');
   });
   it('maps places to /cauta filters; sectors have none', () => {
     expect(placeId({ kind: 'county', county: 'Caraș-Severin' })).toBe('county:caras-severin');

@@ -78,7 +78,7 @@
 .topic-understood-choose>p{margin:12px 0 8px;font-size:14px;color:var(--ink)}
 .topic-understood-choose>div{display:flex;flex-wrap:wrap;gap:8px}
 .topic-understood-choose .topic-control{text-decoration:none}
-.topic-literal{margin:-6px 0 16px}
+.topic-literal,.topic-understood-note{margin:-6px 0 16px}
 /* Short subject answer, computed by the Ask engine */
 .topic-answer{margin:0 0 28px;padding:20px 22px;border-radius:13px;background:var(--sunk);border:1px solid var(--line)}
 .topic-answer h2{font-size:18px!important;font-weight:600}
