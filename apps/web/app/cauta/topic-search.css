@@ -59,3 +59,47 @@
 .topic-records>section>.topic-error{margin-top:14px}
 @keyframes topic-pulse{50%{opacity:.45}}
 @media(prefers-reduced-motion:reduce){.topic-skeleton>span{animation:none}}
+/* "Am înțeles": what was taken from the words, as removable chips */
+.topic-understood{margin:0 0 22px;padding:14px 16px;border:1px solid var(--line2);border-radius:11px;background:var(--surface)}
+.topic-understood-line{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px}
+.topic-understood-label{font-size:13px;font-weight:600;color:var(--ink)}
+.topic-chips{display:flex;flex-wrap:wrap;gap:8px;list-style:none;margin:0;padding:0;min-width:0}
+.topic-chip{position:relative;display:inline-flex;align-items:center;gap:5px;min-height:36px;padding:3px 4px 3px 12px;border:1px solid var(--accent-line);border-radius:999px;background:var(--accent-soft);font-size:13px;color:var(--ink2);max-width:100%}
+.topic-chip>strong{font-weight:600;color:var(--ink);overflow-wrap:anywhere}
+.topic-chip-remove,.topic-chip-menu>summary{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;color:var(--ink);cursor:pointer;list-style:none;flex:none}
+.topic-chip-menu>summary::-webkit-details-marker{display:none}
+.topic-chip-remove:hover,.topic-chip-menu>summary:hover{background:var(--surface)}
+.topic-chip .d-icon{width:15px!important;height:15px!important}
+.topic-chip-menu{position:static}
+.topic-chip-menu>div{position:absolute;top:calc(100% + 6px);left:0;z-index:30;display:flex;flex-direction:column;min-width:240px;max-width:min(340px,calc(100vw - 48px));padding:6px;background:var(--surface);border:1px solid var(--line2);border-radius:10px;box-shadow:var(--shadow)}
+.topic-chip-menu>div>a{padding:9px 10px;border-radius:6px;color:var(--ink);text-decoration:none;font-size:13px;line-height:1.45}
+.topic-chip-menu>div>a:hover{background:var(--accent-soft)}
+.topic-understood>.topic-help{margin:10px 0 0}
+.topic-understood-choose>p{margin:12px 0 8px;font-size:14px;color:var(--ink)}
+.topic-understood-choose>div{display:flex;flex-wrap:wrap;gap:8px}
+.topic-understood-choose .topic-control{text-decoration:none}
+.topic-literal{margin:-6px 0 16px}
+/* Short subject answer, computed by the Ask engine */
+.topic-answer{margin:0 0 28px;padding:20px 22px;border-radius:13px;background:var(--sunk);border:1px solid var(--line)}
+.topic-answer h2{font-size:18px!important;font-weight:600}
+.topic-answer-question{margin:10px 0 4px!important;font-size:14px;color:var(--topic-muted)}
+.topic-answer-value{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px;margin:4px 0 10px!important}
+.topic-answer-value>strong{font:600 30px var(--display);letter-spacing:-.025em;font-variant-numeric:tabular-nums}
+.topic-answer-value>span{font-size:13px;color:var(--topic-muted)}
+.topic-answer-top{margin:6px 0 10px;padding:0 0 0 22px;max-width:640px}
+.topic-answer-top>li{padding:5px 0;border-bottom:1px solid var(--line)}
+.topic-answer-top>li{display:list-item}
+.topic-answer-top>li>a,.topic-answer-top>li>span:first-child{overflow-wrap:anywhere}
+.topic-answer-top>li>span:last-child{float:right;margin-left:12px;font-variant-numeric:tabular-nums;color:var(--ink2);font-size:14px}
+.topic-answer-wait{display:flex;align-items:center;font-size:14px;color:var(--topic-muted)}
+.topic-answer-link{display:inline-flex;align-items:center;gap:6px;margin-top:6px;font-weight:500;min-height:36px}
+/* A name match when a subject leads */
+.topic-identity.is-secondary{background:var(--surface);border-color:var(--line2);padding:16px 18px}
+.topic-identity.is-secondary h2{font-size:15px}
+.topic-identity.is-secondary h3{font-size:19px}
+/* No records: wider selections */
+.topic-broader{padding:6px 0 0;font-size:14px}
+.topic-broader>p{margin:12px 0 6px;color:var(--ink)}
+.topic-broader ul{margin:0;padding:0 0 0 18px}
+.topic-broader li{padding:3px 0}
+@media(max-width:650px){.topic-understood{padding:12px}.topic-answer{padding:16px}.topic-answer-value>strong{font-size:26px}.topic-understood{position:relative}.topic-chip{position:static}.topic-chip-menu>div{left:0;right:0;min-width:0;max-width:none}}
