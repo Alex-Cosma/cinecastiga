@@ -555,6 +555,8 @@ export async function runSpec(
       caveats,
     };
   }
+  // Curated notes about what a subject includes ("iluminat" includes traffic signalling).
+  for (const note of grounding.cpv?.notes ?? []) caveats.push(`Despre „${grounding.cpv!.term}”: ${note}`);
   if (grounding.cpv && grounding.cpv.method === "fuzzy") {
     caveats.push(
       `Am interpretat „${grounding.cpv.term}” prin potrivire aproximativă pe catalogul CPV: ${grounding.cpv.matchedNames.join("; ")}. Verifică dacă e ce ai vrut.`,
