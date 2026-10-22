@@ -46,6 +46,9 @@ describe("home search suggestions", () => {
     expect(groups.find((g) => g.id === "places")!.items.map((p) => p.href)).toEqual(["/cauta?q=iluminat&place=county%3Abuzau", "/cauta?q=iluminat&place=uat%3A44818"]);
     const nova = buildSuggestionGroups({ text: "apa nova", intent: null, vocab: vocab(), lastWord: { word: "nova", vocab: vocab({ uat: [{ siruta: 2, name: "Novaci", tip: "oraș", county: "gorj", population: 1 }] }) } });
     expect(nova.find((g) => g.id === "places")).toBeUndefined();
+    // institution words before the place name an institution, not a subject to search there
+    const primaria = buildSuggestionGroups({ text: "primaria buzau", intent: null, vocab: vocab(), lastWord: { word: "buzau", vocab: vocab() } });
+    expect(primaria.find((g) => g.id === "places")).toBeUndefined();
     // the whole text still completes a name being typed
     const typing = buildSuggestionGroups({ text: "buz", intent: null, vocab: vocab() });
     expect(typing.find((g) => g.id === "places")!.items[0]!.label).toBe("Județul Buzău");

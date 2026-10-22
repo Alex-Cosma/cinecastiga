@@ -107,6 +107,8 @@ describe('interpretation → /cauta selection', () => {
     const schools = await read('laptopuri scoala');
     const t3 = applyInterpretation(schools.scope, schools.result);
     expect(t3.kind).toEqual({ label: 'școlile', withoutQ: 'laptopuri' });
+    // the kind word is a chip, not a word the titles must contain
+    expect(t3.applied).toEqual({ q: 'laptopuri', place: '', from: '', to: '' });
     expect(t3.answer?.total.spec.filters).toMatchObject({ authorityKind: 'scoala' });
   });
 
