@@ -9,6 +9,7 @@ import { runRows, runSpec } from "./ask/compile";
 import { canonicalAskIdentities } from "./ask/canonical-identities";
 import { buildPills } from "./ask/pills";
 import type { AskSpec } from "./ask/spec";
+import { localityScopeError } from "./ask/question-ui";
 import { readCoverage } from "./coverage";
 import { readSignalEvidence } from "./signal-evidence";
 import { bindRadiografiePattern, readRadiografieEvidence, requireRadiografiePattern, RadiografieIdentityError, validateRadiografieSelection } from "./radiografie-evidence";
@@ -55,6 +56,9 @@ export function captureSummary(row: Record<string, unknown>): CaptureSummary {
 export async function queueCapture(q: DbSql, userId: string, investigationId: string, clipId: string, request: CaptureRequest): Promise<CaptureSummary> {
   if (request.kind === "monitoring") throw new CaptureError("Adaugă o actualizare nouă din Urmăriri. Versiunile unei modificări rămân neschimbate.");
   if (request.kind === "note") throw new CaptureError("O notă este conținut editorial, nu o captură de date.");
+  // a new capture never freezes a locality its view cannot honour (the builder's and /api/ask's rule)
+  const localityError = request.spec && typeof request.spec === "object" && "filters" in request.spec ? localityScopeError(request.spec as AskSpec) : null;
+  if (localityError) throw new CaptureError(localityError);
   let boundRequest=request;
   if(request.peer){
     const bound=await bindPeerEvidence(q,request.peer);

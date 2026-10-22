@@ -1,5 +1,6 @@
 import { onrcIdentityBirthDate, type DbSql } from "@seap/db";
 import { aliasQueries, queryTokens } from "../ask/entity-alias";
+import { personPatterns } from "./text";
 
 /**
  * The vocabulary lookups behind /api/suggest (the builder's typeahead), shared
@@ -173,4 +174,63 @@ export function suggestPersons(sql: DbSql, q: string): Promise<PersonRow[]> {
     order by nf desc
     limit 4
   ` as unknown as Promise<PersonRow[]>;
+}
+
+// ----------------------------------------------------- interpreter lookups
+
+export interface CandidateRow { entity_id: string; name_display: string | null; county: string | null; total: string }
+
+/**
+ * The interpreter's entity lookup: unlike the typeahead, it never collapses
+ * same-named entities (two "Compania de Utilitati Publice" are two buyers),
+ * puts exact names first and counts every match, so a caller can tell a
+ * single identity from the first of many.
+ */
+export function entityCandidates(sql: DbSql, role: "authority" | "supplier", q: string, limit = 25): Promise<CandidateRow[]> {
+  const pats = (role === "authority" ? aliasQueries(q) : [q]).map((a) => `%${a}%`);
+  const toks = queryTokens(q).map((t) => `%${t}%`);
+  const tokFrag =
+    toks.length > 1
+      ? sql`or lower(unaccent(ep.name_display)) like all(${textArray(sql, toks)}::text[])`
+      : sql``;
+  return sql`
+    select ep.entity_id, ep.name_display, ep.county, count(*) over() total
+    from marts.entity_profile ep
+    where ep.role = ${role} and ep.name_display is not null
+      and (lower(unaccent(ep.name_display)) like any(${textArray(sql, pats)}::text[]) ${tokFrag})
+    order by (lower(unaccent(ep.name_display)) = ${q}) desc, ep.total_ron_full desc nulls last, ep.entity_id
+    limit ${limit}
+  ` as unknown as Promise<CandidateRow[]>;
+}
+
+export interface NamedPersonRow extends PersonRow { total: string }
+
+export { personNamePattern, personPatterns, searchablePersonPattern } from "./text";
+
+/**
+ * ONRC identities whose folded name is exactly one of `names` (word orders).
+ * One bound ilike per pattern, OR-ed, so each rides the trigram GIN index
+ * ("ilike any(array)" cannot); callers set plan_cache_mode = force_custom_plan
+ * so the planner sees the pattern. The exact folded comparison keeps
+ * "MARIAN" out of "Maria". `total` counts every identity.
+ */
+export function personsByExactName(sql: DbSql, names: string[], limit = 8): Promise<NamedPersonRow[]> {
+  const folded = [...new Set(names.map((n) => n.normalize("NFKC").replace(/[\s-]+/g, " ").trim()).filter((n) => n.length >= 4))];
+  // defence in depth: only folded letters, digits and wildcards reach the query
+  const patterns = personPatterns(folded).patterns.filter((p) => /^[a-z0-9_%]+$/.test(p));
+  if (!patterns.length) return Promise.resolve([]);
+  const nameMatch = patterns.map((p) => sql`r.person_name ilike ${p}`).reduce((x, y) => sql`${x} or ${y}`);
+  return sql`
+    select r.person_key, max(r.person_name) nm,
+           max(extract(year from r.birth_date))::int by,
+           max(extract(year from r.snapshot_date))::int sy,
+           max(r.birth_locality) bl, count(distinct r.cui) nf, count(*) over() total
+    from reference.company_reps r
+    where ${onrcIdentityBirthDate(sql, "r")}
+      and (${nameMatch})
+      and regexp_replace(lower(unaccent(r.person_name)), '[[:space:]-]+', ' ', 'g') = any(${textArray(sql, folded)}::text[])
+    group by r.person_key
+    order by nf desc, r.person_key
+    limit ${limit}
+  ` as unknown as Promise<NamedPersonRow[]>;
 }

@@ -10,7 +10,7 @@ import { encodeSpec, decodeSpec } from "@/lib/ask/permalink";
 import { isHistoricalProfile } from "@/lib/ask/population";
 import { validateSpec, type AskSpec } from "@/lib/ask/spec";
 import { entitySourceLink, entitySourceScope, yearSourceLink } from "@/lib/ask/source-spec";
-import { describeQuestion, questionKey } from "@/lib/ask/question-ui";
+import { describeQuestion, localityScopeError, questionKey } from "@/lib/ask/question-ui";
 import type { IntentResult } from "@/lib/intent/types";
 import { NATURAL_LANGUAGE_ENABLED, NATURAL_LANGUAGE_UNAVAILABLE } from "@/lib/ask/features";
 import { validateEvidenceScope, validateEvidenceFilters, type EvidenceScope, type EvidenceFilters } from "@/lib/ask/evidence";
@@ -36,7 +36,7 @@ import "./question-results.css";
 import DiscoveryIcon from "../DiscoveryIcon";
 import AnswerExports from "./AnswerExports";
 import CoverageDisclosure from "@/components/CoverageDisclosure";
-import { AskBox, AskExamples, IntentChoose, IntentIntro, IntentOutro, IntentUnknown, MAX_QUESTION_CHARS, type IntentChoice } from "./IntentAsk";
+import { AskBox, AskExamples, IntentAnnouncer, IntentChoose, IntentIntro, IntentOutro, IntentUnknown, MAX_QUESTION_CHARS, type IntentChoice } from "./IntentAsk";
 import type { AskExample } from "./ask-examples";
 import "./ask-intent.css";
 
@@ -229,6 +229,16 @@ export default function AskPanel({
     },
     [],
   );
+  /** Bring the understood question (or the choice to make) into view and move focus to its heading. */
+  const focusResult = useCallback((id: string, scrollTo: string) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      document.getElementById(scrollTo)?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
+        block: "start",
+      });
+      document.getElementById(id)?.focus({ preventScroll: true });
+    }));
+  }, []);
   const adopt = useCallback((choice: IntentChoice) => {
     setChosen(choice);
     setBuilderInit(choice.spec as unknown as BuilderSpec);
@@ -236,11 +246,8 @@ export default function AskPanel({
     setBuilderFromAi(false);
     setBuilderOpen(true);
     setMode("build");
-    requestAnimationFrame(() => document.getElementById("intrebarea")?.scrollIntoView({
-      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
-      block: "start",
-    }));
-  }, []);
+    focusResult("ia-understood", "intrebarea");
+  }, [focusResult]);
   const interpret = useCallback(async (raw: string, fromHistory = false) => {
     const text = raw.replace(/\s+/g, " ").trim().slice(0, MAX_QUESTION_CHARS);
     if (text.length < 2) return;
@@ -267,6 +274,7 @@ export default function AskPanel({
         setChosen(null);
         setBuilderInit(null);
         setBuilderOpen(false);
+        focusResult("ia-result-title", "ia-result-title");
       }
       if (!fromHistory) {
         const url = new URL(window.location.href);
@@ -279,7 +287,7 @@ export default function AskPanel({
     } finally {
       if (intentRequest.current === controller) setIntentLoading(false);
     }
-  }, [adopt]);
+  }, [adopt, focusResult]);
   const pickExample = useCallback((example: AskExample) => {
     if (example.fill) {
       setAskText(example.fill);
@@ -344,6 +352,9 @@ export default function AskPanel({
         // validateSpec omits the default stream; a link that names it keeps it.
         const linkDataset = decoded && typeof decoded === "object" && "dataset" in decoded ? (decoded as { dataset?: unknown }).dataset : undefined;
         const asGiven = typeof linkDataset === "string" && !parsed.dataset ? { ...parsed, dataset: linkDataset as AskSpec["dataset"] } : parsed;
+        // An old link with a locality its view cannot honour opens in the builder, which explains the
+        // condition to remove; it is not run (the API would refuse it too).
+        if (localityScopeError(asGiven as AskSpec)) return;
         void execute({ spec: asGiven }, params.get("drill") === "1", scope, sourceFilters, false);
       }
     };
@@ -452,6 +463,7 @@ export default function AskPanel({
       </header>
       <AskBox value={askText} onChange={setAskText} onSubmit={(text) => void interpret(text)} loading={intentLoading} inputRef={askRef} />
       {intentError && <div className="cq-error" role="alert"><strong>Întrebarea ta este păstrată.</strong><p>{intentError}</p></div>}
+      <IntentAnnouncer result={intent} error={intentError} />
       {intent && !intent.spec && intent.alternatives.some((alt) => alt.kind !== "intent") && !chosen && <IntentChoose result={intent} onAdopt={adopt} />}
       {intent && !intent.spec && !intent.alternatives.some((alt) => alt.kind !== "intent") && <IntentUnknown result={intent} onPick={pickExample} />}
       {!intent && !builderInit && !resp && <AskExamples onPick={pickExample} />}

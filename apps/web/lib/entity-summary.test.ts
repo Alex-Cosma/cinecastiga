@@ -33,20 +33,20 @@ describe("“Pe scurt” for an authority", () => {
     expect(s.sentences[0]).toContainEqual({ text: "1,6 mld. lei", strong: true });
   });
   it("names the largest supplier with its share and the largest subject area", () => {
-    expect(text(s.sentences[1]!)).toBe("Cel mai mare furnizor este RER SUD, cu 21% din valoare. Cei mai mulți bani merg la lucrări de construcții (55%).");
+    expect(text(s.sentences[1]!)).toBe("Cel mai mare furnizor este RER SUD, cu 21% din valoare. Cea mai mare parte din valoare privește lucrări de construcții (55%).");
     expect(s.sentences[1]).toContainEqual({ text: "RER SUD", href: "/entitati/2044213" });
   });
   it("explains consortium contracts without changing any amount", () => {
-    expect(text(s.sentences[2]!)).toBe("30 de contracte au fost atribuite unor consorții: fiecare membru apare cu o parte egală din valoare, iar suma nu se adună de mai multe ori.");
+    expect(text(s.sentences[2]!)).toBe("30 de contracte au fost atribuite unor consorții: fiecare membru apare cu o parte egală estimată din valoare, iar suma nu se adună de mai multe ori.");
   });
   it("builds two bar lists of at most three rows, shares of the same total", () => {
-    expect(s.subjectsTitle).toBe("Pe ce cheltuie");
+    expect(s.subjectsTitle).toBe("Ce a atribuit");
     expect(s.subjects.map((b) => [b.label, b.shareLabel, b.valueLabel])).toEqual([
       ["Lucrări de construcții", "55%", "864 mil. lei"],
       ["Servicii de evacuare a apelor reziduale, de eliminare a deșeurilor", "23%", "369 mil. lei"],
       ["Fără cod CPV", "<1%", "1.000 lei"],
     ]);
-    expect(s.partnersTitle).toBe("De la cine cumpără");
+    expect(s.partnersTitle).toBe("Cui a atribuit");
     expect(s.partners[0]).toMatchObject({ label: "RER SUD", href: "/entitati/2044213", shareLabel: "21%", share: 0.2114 });
     expect(s.partners[0]!.consortium).toBeUndefined();
     expect(s.partners[1]!.consortium).toContain("2 contracte în consorțiu");
@@ -65,10 +65,10 @@ describe("“Pe scurt” for a supplier", () => {
     })!;
     expect(s.sentences.map(text)).toEqual([
       "A câștigat 3,3 mil. lei (valoare înregistrată, nu plăți) din 15 achiziții directe, în 2025.",
-      "Cel mai mare client este COMUNA APAHIDA, cu 99% din valoare. Vinde mai ales lucrări de construcții (67%).",
+      "Cel mai mare client este COMUNA APAHIDA, cu 99% din valoare. Cea mai mare parte din valoare privește lucrări de construcții (67%).",
     ]);
-    expect(s.subjectsTitle).toBe("Ce vinde");
-    expect(s.partnersTitle).toBe("Cui vinde");
+    expect(s.subjectsTitle).toBe("Ce a câștigat");
+    expect(s.partnersTitle).toBe("Cine i-a atribuit");
   });
   it("says that a consortium winner's total holds only its estimated part", () => {
     const s = composeEntitySummary({ ...authority, role: "supplier", nDa: 0, nContracts: 1, nConsortium: 1, partners: [] })!;
@@ -76,6 +76,24 @@ describe("“Pe scurt” for a supplier", () => {
     expect(text(s.sentences.at(-1)!)).toBe("Un contract a fost câștigat în consorțiu: în total intră doar partea estimată a firmei (valoarea împărțită egal între membri).");
     expect(text(composeEntitySummary({ ...authority, role: "supplier", nConsortium: 349 })!.sentences.at(-1)!))
       .toBe("349 de contracte au fost câștigate în consorțiu: în total intră doar partea estimată a firmei (valoarea împărțită egal între membri).");
+  });
+});
+
+describe("summary wording never overstates the top subject area", () => {
+  const withTop = (valueExact: string) => composeEntitySummary({ ...authority, nConsortium: 0,
+    divisions: [{ code: "45", name: "Lucrări de construcţii", valueExact, n: 1 }] })!;
+  it("says “cea mai mare parte” only above half of the value", () => {
+    // total 1.572.884.046,27: half is 786.442.023,135
+    expect(text(withTop("786442023.14").sentences[1]!)).toContain("Cea mai mare parte din valoare privește lucrări de construcții (50%).");
+    expect(text(withTop("786442023.13").sentences[1]!)).toContain("Cel mai mare domeniu: lucrări de construcții (50%).");
+    expect(text(withTop("471865213.88").sentences[1]!)).toContain("Cel mai mare domeniu: lucrări de construcții (30%).");
+  });
+  it("uses the same rule for a supplier and never speaks of spending", () => {
+    const s = composeEntitySummary({ ...authority, role: "supplier", nConsortium: 0,
+      divisions: [{ code: "45", name: "Lucrări de construcţii", valueExact: "471865213.88", n: 1 }] })!;
+    expect(text(s.sentences[1]!)).toContain("Cel mai mare domeniu: lucrări de construcții (30%).");
+    const all = [s, composeEntitySummary(authority)!].flatMap((x) => [...x.sentences.map(text), x.subjectsTitle, x.partnersTitle]).join(" ");
+    expect(all).not.toMatch(/cheltu|bani merg|mai ales|plătit/i);
   });
 });
 
