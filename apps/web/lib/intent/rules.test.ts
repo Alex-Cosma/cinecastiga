@@ -6,6 +6,8 @@ import { RulesInterpreter, strongNameMatch } from "./rules";
 import { FIXTURE } from "./rules.fixture";
 import { stems, tokenize, wordMatches } from "./text";
 import { countOf, resultFor, sentenceFor } from "./to-spec";
+import { sentenceScopeProblems } from "./scope-check";
+import type { AskSpec } from "../ask/spec";
 
 const NOW = new Date("2026-10-22T12:00:00Z");
 const interpreter = new RulesInterpreter(memoryVocabulary(FIXTURE));
@@ -253,10 +255,12 @@ describe("beginner phrasings → interpretation", () => {
     expect(i.place?.county).toBe("Buzău");
   });
 
-  it("27. a firm by a distinctive word («erbașu»): institutions that buy from it", async () => {
+  it("27. one distinctive word carried by several firms («erbașu») is a choice, not a pick", async () => {
     const { i, r } = await ask("cu cine lucreaza erbasu");
-    expect(i.supplier).toMatchObject({ id: 9000001 });
-    expect(r.spec).toMatchObject({ block: "table", dim: "authority", filters: { supplierId: 9000001 } });
+    expect(i.supplier).toBeNull();
+    expect(r.spec).toBeNull();
+    expect(r.alternatives.map((a) => a.spec.filters.supplierId)).toEqual([9000001, 9000002]);
+    expect(r.alternatives[0]!.spec).toMatchObject({ block: "table", dim: "authority" });
   });
 
   it("27b. a firm whose name starts with a subject word («constructii erbasu»)", async () => {
@@ -293,7 +297,7 @@ describe("beginner phrasings → interpretation", () => {
   });
 
   it("31. compare two firms with a year", async () => {
-    const { r } = await ask("compara erbasu cu elbi energy projects in 2024");
+    const { r } = await ask("compara constructii erbasu cu elbi energy projects in 2024");
     expect(r.spec).toMatchObject({ block: "compare", filters: { supplierId: 9000001, compareWithId: 9000003, yearFrom: 2024, yearTo: 2024 } });
     expect(r.sentence).toBe("Cum se compară contractele câștigate de „CONSTRUCTII ERBASU S.A.” cu cele câștigate de „ELBI ENERGY PROJECTS SRL”, în 2024?");
   });
@@ -384,11 +388,19 @@ describe("beginner phrasings → interpretation", () => {
     expect(r.spec?.dataset).toBe("da");
   });
 
-  it("47. a person with one ONRC identity («firmele lui Matei Ioan»), name order reversed", async () => {
-    const { i, r } = await ask("firmele lui matei ioan din 2020");
-    expect(i.person?.key).toBe("matei ioan|1957-01-01|batin");
+  it("47. a person with one ONRC identity, name order reversed («firmele lui Marian Popescu»)", async () => {
+    const { i, r } = await ask("firmele lui marian popescu din 2020");
+    expect(i.person?.key).toBe("popescu marian|1970");
     expect(i.place).toBeNull();
-    expect(r.spec?.filters).toMatchObject({ adminPersonKey: "matei ioan|1957-01-01|batin", yearFrom: 2020 });
+    expect(r.spec?.filters).toMatchObject({ adminPersonKey: "popescu marian|1970", yearFrom: 2020 });
+  });
+  it("47b. a name the index cannot search with diacritics («Matei Ioan») is confirmed, not picked", async () => {
+    const { i, r } = await ask("firmele lui matei ioan din 2020");
+    expect(i.person).toBeNull();
+    expect(i.place).toBeNull();
+    expect(r.spec).toBeNull();
+    expect(r.alternatives).toHaveLength(1);
+    expect(r.alternatives[0]!.spec.filters).toMatchObject({ adminPersonKey: "matei ioan|1957-01-01|batin", yearFrom: 2020 });
   });
 
   it("48. namesakes in ONRC: choose by birth year, no guess", async () => {
@@ -434,7 +446,7 @@ describe("beginner phrasings → interpretation", () => {
 
 describe("spec mapping", () => {
   it("every produced spec and alternative passes the engine validation", async () => {
-    const qs = ["cine face iluminatul în buzău și cât costă", "pe ce cheltuie primăria din Râmnicu Sărat", "Sălcioara", "firmele lui Ion Popescu", "ce e suspect la asfaltarea din prahova in 2024", "compara erbasu cu elbi energy projects in 2024", "firma strabag", "laptopuri pentru școli"];
+    const qs = ["cine face iluminatul în buzău și cât costă", "pe ce cheltuie primăria din Râmnicu Sărat", "Sălcioara", "firmele lui Ion Popescu", "ce e suspect la asfaltarea din prahova in 2024", "compara constructii erbasu cu elbi energy projects in 2024", "firma strabag", "laptopuri pentru școli"];
     for (const q of qs) {
       const { r } = await ask(q);
       for (const spec of [r.spec, ...r.alternatives.map((a) => a.spec)].filter(Boolean)) {
@@ -449,3 +461,358 @@ describe("spec mapping", () => {
     expect(sentenceFor({ block: "scatter", dim: "supplier", measure: "value", filters: {} })).toBe("Ce firme ies din tipar după indicele de risc și valoarea achizițiilor?");
   });
 });
+
+// ------------------------------------------------------------------------
+// Review of 22 Oct 2026 (approve=false): every failing phrasing is a case.
+
+describe("review B1: persons are picked only when the registry holds one identity with that exact name", () => {
+  it("«firmele lui Popa Ion»: 11 namesakes → a partial, deduplicated choice list, no pick", async () => {
+    const { i, r } = await ask("firmele lui Popa Ion");
+    expect(i.person).toBeNull();
+    expect(r.spec).toBeNull();
+    expect(i.choicesPartial).toMatchObject({ total: 11, search: "Popa Ion" });
+    const labels = r.alternatives.map((a) => a.label);
+    expect(new Set(labels).size).toBe(labels.length); // the duplicate 1950 record is one choice
+    expect(labels).toContain("ION POPA (n. 1951, BUZĂU)");
+    expect(r.problem).toMatch(/11 persoane/);
+  });
+  it("«firmele lui Maria Popescu»: never «Marian», never a firm, the name stays reported", async () => {
+    const { i, r } = await ask("firmele lui Maria Popescu");
+    expect(i.person).toBeNull();
+    expect(i.personAlternatives).toEqual([]);
+    expect(i.supplier).toBeNull();
+    expect(i.entityAlternatives).toEqual([]);
+    expect(i.leftover).toEqual(["Maria", "Popescu"]);
+    expect(r.spec).toBeNull();
+    expect(i.notes.join(" ")).toMatch(/Nu am găsit în Registrul Comerțului/);
+  });
+  it("«firmele lui Marian Popescu»: the single identity is picked", async () => {
+    expect((await ask("firmele lui Marian Popescu")).i.person?.key).toBe("popescu marian|1970");
+  });
+});
+
+describe("review B2: same-named or partially named institutions and firms are choices", () => {
+  it.each([
+    ["Compania de Utilitati Publice", [2128336, 2108930]],
+    ["cine castiga la Compania de Utilitati Publice", [2128336, 2108930]],
+    ["cine cumpara de la firma Proactiv", [2089443, 2020739]],
+    ["Proactiv", [2089443, 2020739]],
+    ["firma Mediplus Exim", [2128430, 2277951]],
+  ] as const)("«%s» → choice between %j", async (q, ids) => {
+    const { i, r } = await ask(q);
+    expect(i.authority).toBeNull();
+    expect(i.supplier).toBeNull();
+    expect(r.spec).toBeNull();
+    const chosen = r.alternatives.map((a) => a.spec.filters.authorityId ?? a.spec.filters.supplierId);
+    for (const id of ids) expect(chosen).toContain(id);
+  });
+  it("«Spitalul Județean» is a partial name: no hospital is picked", async () => {
+    const { i, r } = await ask("cine castiga la Spitalul Judetean");
+    expect(i.authority).toBeNull();
+    expect(r.spec).toBeNull();
+    expect(r.alternatives.length).toBeGreaterThan(1);
+  });
+  it("«Colegiul Național Dimitrie Cantemir»: two colleges carry the name; never the commune Dimitrie Cantemir", async () => {
+    const { i, r } = await ask("cine castiga la Colegiul National Dimitrie Cantemir");
+    expect(i.place).toBeNull();
+    expect(r.spec).toBeNull();
+    expect(r.alternatives.map((a) => a.spec.filters.authorityId)).toEqual([6000001, 6000002]);
+  });
+  it("«Spitalul Județean de Urgență Buzău» is one exact name and is picked", async () => {
+    expect((await ask("cine castiga la Spitalul Judetean de Urgenta Buzau")).i.authority?.id).toBe(2144002);
+  });
+});
+
+describe("review B3: place names are read before subjects; institution words are never purchases", () => {
+  it.each([
+    ["cheltuieli Alba Iulia 2025", "Municipiul Alba Iulia"],
+    ["Alba Iulia", "Municipiul Alba Iulia"],
+    ["cat a cheltuit Baia Mare", "Municipiul Baia Mare"],
+    ["ce cumpara Piatra Neamt", "Municipiul Piatra-Neamț"],
+    ["cat a cheltuit Turnu Magurele", "Municipiul Turnu Măgurele"],
+    ["cine castiga in Turnu Magurele", "Municipiul Turnu Măgurele"],
+  ])("«%s» → %s, no subject", async (q, name) => {
+    const { i } = await ask(q);
+    expect(i.place?.name).toBe(name);
+    expect(i.subjects).toEqual([]);
+    expect(i.leftover).toEqual([]);
+  });
+  it.each([["cheltuieli Alba", "Alba"], ["cat a cheltuit Satu Mare", "Satu Mare"], ["Satu Mare", "Satu Mare"]])("«%s» → county %s, no subject", async (q, county) => {
+    const { i } = await ask(q);
+    expect(i.place).toMatchObject({ kind: "county", county });
+    expect(i.subjects).toEqual([]);
+  });
+  it("«Constanta asfaltare» → Constanța and asfaltare (not «consultanță»)", async () => {
+    const { i } = await ask("Constanta asfaltare");
+    expect(i.place?.county).toBe("Constanța");
+    expect(i.subjects.map((x) => x.term)).toEqual(["asfaltare"]);
+  });
+  it("«Direcția de Asistență Socială» is an institution (choice), not steering columns or social services", async () => {
+    const { i, r } = await ask("ce cumpara Directia de Asistenta Sociala");
+    expect(i.subjects).toEqual([]);
+    const ids = r.alternatives.map((a) => a.spec.filters.authorityId);
+    expect(ids).toContain(2135939);
+    expect(ids).toContain(2135940);
+  });
+  it("«la primărie» without a name is not «siliconi primari»", async () => {
+    const { i } = await ask("cine castiga licitatiile la primarie");
+    expect(i.subjects).toEqual([]);
+    expect(i.notes.join(" ")).toMatch(/numele primăriei/);
+  });
+  it("generic «lucrări» alone is not a subject", async () => {
+    const { i } = await ask("ce firme mici castiga lucrari in Suceava");
+    expect(i.subjects).toEqual([]);
+    expect(i.leftover).toEqual(["lucrari"]);
+  });
+});
+
+describe("review B4: the sentence says the scope the spec runs", () => {
+  it("«ce instituții din Râmnicu Sărat…» uses the county (a locality is only its town hall) and says why", async () => {
+    const { r } = await ask("ce instituții din Râmnicu Sărat cumpără cel mai mult");
+    expect(r.spec).toMatchObject({ block: "table", dim: "authority", filters: { county: "Buzău" } });
+    expect(r.spec?.filters.uatSiruta).toBeUndefined();
+    expect(r.interpretation.notes.join(" ")).toMatch(/doar primăria ei/);
+  });
+  it("risk questions never keep a locality and never offer a nationwide «doar primăria» alternative", async () => {
+    for (const q of ["care institutie are cel mai mare risc in Buzau", "semnale in Ramnicu Sarat", "ce merita verificat in Buzau"]) {
+      const { r } = await ask(q);
+      for (const spec of [r.spec, ...r.alternatives.map((a) => a.spec)].filter((x): x is AskSpec => Boolean(x))) {
+        if (spec.block === "scatter" || spec.block === "entity_card" || spec.block === "distribution") expect(spec.filters.uatSiruta, q).toBeUndefined();
+      }
+      for (const a of r.alternatives.filter((x) => x.kind === "place")) expect(a.spec.filters.uatSiruta ?? a.spec.filters.county, `${q} → ${a.label}`).toBeDefined();
+    }
+  });
+  it("a locality offers the whole county as an alternative", async () => {
+    const { r } = await ask("ce cumpara Piatra Neamt");
+    expect(r.alternatives[0]).toMatchObject({ label: "Tot județul Neamț", spec: { filters: { county: "Neamț" } } });
+  });
+});
+
+describe("review: non-blocking rules", () => {
+  it("«ce spitale cumpără medicamente» ranks hospitals; «cele mai multe contracte» counts", async () => {
+    expect((await ask("ce spitale din buzau cumpara medicamente")).r.spec).toMatchObject({ block: "table", dim: "authority", filters: { authorityKind: "spital", county: "Buzău" } });
+    expect((await ask("cine castiga cele mai multe contracte in Vrancea")).r.spec).toMatchObject({ measure: "count", dim: "supplier" });
+  });
+  it("future years are refused; relative years follow the calendar in București", async () => {
+    const { i } = await ask("cheltuieli Alba 2027");
+    expect(i.period).toBeNull();
+    expect(i.notes.join(" ")).toMatch(/2027/);
+    const nye = await interpreter.interpret("asfaltare anul trecut", { now: new Date("2026-12-31T23:30:00Z") });
+    expect(nye.period).toMatchObject({ yearFrom: 2026, yearTo: 2026 }); // 01:30 on 1 Jan 2027 in București
+  });
+  it("only defaults matched: no national answer to «<script>alert(1)</script> cine câștigă»", async () => {
+    const { r } = await ask("<script>alert(1)</script> cine castiga");
+    expect(r.spec).toBeNull();
+    expect(r.problem).toMatch(/Nu am recunoscut/);
+  });
+  it("«cine câștigă în România» is a real national question", async () => {
+    expect((await ask("cine castiga in Romania")).r.spec).toMatchObject({ block: "table", dim: "supplier", filters: {} });
+  });
+});
+
+const REVIEW_PHRASINGS: string[] = [
+"cine castiga asfaltarea in buzau",
+"CINE CÂȘTIGĂ CONTRACTELE DE DESZĂPEZIRE ÎN RÂMNICU SĂRAT ANUL TRECUT",
+"ce instituții din Râmnicu Sărat cumpără cel mai mult",
+"care institutie din ramnicu sarat cheltuie cel mai mult",
+"cum au evoluat achizitiile in Ramnicu Sarat intre 2020 si 2024",
+"ce cumpara primaria din Buzau",
+"pe ce se duc banii la Sălcioara",
+"pe ce se duc banii la Salcioara Ialomita",
+"ce spitale din buzau cumpara medicamente",
+"scolile din ramnicu sarat ce cumpara",
+"cat a cheltuit Cluj pe laptopuri in 2023",
+"cât a cheltuit Cluj-Napoca pe laptopuri în 2023",
+"licitatii pentru drumuri in prahova anul trecut",
+"achizitii directe de calculatoare in iasi in ultimii 3 ani",
+"achizitii directe cu un singur ofertant in Bacau",
+"firmele lui Popescu Ion",
+"firmele lui Ion Popescu",
+"cine ia bani de la CNAIR",
+"compara Spitalul Judetean de Urgenta Buzau cu Spitalul Judetean de Urgenta Braila",
+"semnale la primaria Buzau",
+"ce merita verificat in Vaslui",
+"care firma are cel mai mare risc in Buzau",
+"top 5 firme care castiga iluminat in Timisoara 2019-2021",
+"iluminat public in sectorul 3",
+"cine face iluminatul public in bucuresti",
+"deszapezire",
+"medicamnte spitale",
+"asfaltare comune buzau dupa 2020",
+"inainte de 2019 cat s a cheltuit pe mobilier in Brasov",
+"din 2022 incoace cine a castigat cele mai multe contracte la Primaria Constanta",
+"ce firme mici castiga lucrari in Suceava",
+"firme cu peste 100 de angajati care fac drumuri in Arges",
+"cine castiga contracte pe locuitor in Olt",
+"ce primarii cheltuie cel mai mult pe locuitor in Teleorman",
+"pomul de craciun",
+"<script>alert(1)</script> cine castiga",
+"'; drop table users; -- asfalt buzau",
+"vreau sa stiu va rog frumos daca puteti sa imi spuneti cine a castigat banii pentru asfaltul de pe strada mea din comuna Berca judetul Buzau in anul 2024 ca am auzit ca e o firma a primarului si as vrea sa verific daca e adevarat sau nu",
+"Erbasu",
+"constructii erbasu",
+"cine castiga in Sfantu Gheorghe",
+"cine castiga in Targu Jiu",
+"cine castiga in tg mures",
+"cine castiga in Bistrita",
+"cheltuieli Alba Iulia 2025",
+"cheltuieli Alba 2027",
+"cat costa pixurile la ministerul educatiei",
+"ce a cumparat primaria Ploiesti de la firma Erbasu",
+"cine castiga in 2020 2021",
+"cine castiga anul acesta in Iasi",
+"cine castiga in Alba",
+"cheltuieli Alba",
+"Alba Iulia",
+"cine castiga la Alba Iulia",
+"cheltuieli Arad 2024",
+"cheltuieli Olt 2024",
+"Neamt 2023",
+"cheltuieli Sibiu",
+"cheltuieli Valcea",
+"cheltuieli Mures",
+"ce cumpara Piatra Neamt",
+"cat a cheltuit Baia Mare",
+"cat a cheltuit Satu Mare",
+"cat a cheltuit Turnu Magurele",
+"Craiova cine castiga",
+"Constanta asfaltare",
+"ce firme lucreaza cu primaria Brasov",
+"ce spitale cumpara cele mai multe medicamente",
+"cine vinde lapte scolilor din Iasi",
+"cine a castigat cel mai mult in judetul Ilfov in 2023",
+"pe ce cheltuie Spitalul Judetean de Urgenta Buzau",
+"firmele lui Ion Ionescu",
+"firmele lui Gheorghe Pop",
+"firmele administrate de Vasile Popa",
+"compara Buzau cu Braila",
+"compara primaria Buzau cu primaria Braila",
+"cum a crescut cheltuiala pe asfalt in Buzau intre 2019 si 2024",
+"ce firme au crescut cel mai mult intre 2022 si 2024 in Cluj",
+"cine castiga cele mai multe contracte in Vrancea",
+"cate achizitii directe a facut primaria Focsani in 2024",
+"de la cine cumpara primaria Pitesti calculatoare",
+"pe ce se duc banii in Voluntari",
+"cine castiga la Primaria Sectorului 1",
+"cine castiga la primaria capitalei",
+"lucrari de reabilitare scoli Bacau 2021",
+"servicii de curatenie spitale Dolj",
+"benzina primarii",
+"combustibil Buzau 2024",
+"masini de politie",
+"autobuze Cluj",
+"ministerul sanatatii medicamente 2020",
+"cine castiga in Romania",
+"Cine câștigă în Ştefăneşti",
+"cine castiga in ultimii 2 ani in Galati",
+"cine castiga in anul 2015",
+"cine castiga intre 2024 si 2020",
+"cine castiga pana in 2021 in buzau",
+"semnale firme Buzau",
+"care spital din Iasi are cel mai mare risc",
+"ce primarie are cel mai mare risc in Buzau",
+"cine castiga la Scoala Gimnaziala nr. 1",
+"ce cumpara Directia de Asistenta Sociala",
+"ce cumpara Directia de Asistenta Sociala Buzau",
+"cine cumpara de la firma Proactiv",
+"Proactiv",
+"firma Mediplus Exim",
+"Compania de Utilitati Publice",
+"cine castiga la Compania de Utilitati Publice",
+"firmele lui Ion Pop",
+"firmele lui Maria Popescu",
+"firmele lui Ion Stan",
+"firmele lui Mihai Popescu",
+"firmele lui Popa Ion",
+"firmele lui Liviu Dragnea",
+"cine castiga la Colegiul National Dimitrie Cantemir",
+"cat a cheltuit Turnu Magurele",
+"cine castiga in Turnu Magurele",
+"Satu Mare",
+"cine castiga la Spitalul Judetean",
+"cine castiga la Spitalul Judetean Arad",
+"cine castiga licitatiile la primarie",
+"cate licitatii a facut Ministerul Transporturilor anul trecut",
+"Cine câștigă cele mai multe licitații de asfaltare din comunele din județul Buzău, în ultimii 5 ani, cu un singur ofertant?"
+];
+
+describe("every spec and alternative says its own scope (regression set)", () => {
+  const own = [
+    "cine face iluminatul în buzău și cât costă", "pe ce cheltuie primăria din Râmnicu Sărat", "laptopuri pentru școli",
+    "firme de asfalt din buzău", "Sălcioara", "primăria Buzău", "ce cumpără Sălcioara din județul Dâmbovița",
+    "câte achiziții directe a făcut primăria comunei Sălcioara din Ialomița în 2025", "cat a cheltuit primaria sectorului 3 pe curățenie",
+    "care spital are cel mai ridicat indice de risc", "ce e suspect la asfaltarea din prahova in 2024", "laptopuri pentru scolile din municipiul buzau",
+  ];
+  it.each([...own, ...REVIEW_PHRASINGS])("%s", async (q) => {
+    const { r } = await ask(q);
+    const emitted = [...(r.spec && r.sentence ? [{ spec: r.spec, sentence: r.sentence }] : []), ...r.alternatives];
+    for (const { spec, sentence } of emitted) {
+      expect(validateSpec(spec), sentence).not.toHaveProperty("error");
+      expect(sentenceScopeProblems(spec, sentence), sentence).toEqual([]);
+    }
+  });
+});
+
+describe("re-review of 4cda2e6", () => {
+  it("a name the index cannot search at all is not searched; the person is asked for the full name", async () => {
+    const { i, r } = await ask("firmele lui Ab Cd");
+    expect(r.spec).toBeNull();
+    expect(i.personAlternatives).toEqual([]);
+    expect(i.notes.join(" ")).toMatch(/prea scurt pentru o căutare sigură/);
+  });
+  it("a name made only of a/i/s/t is searched as written only (no all-wildcard scan) and never picked silently", async () => {
+    const { i, r } = await ask("firmele lui Tasia Stati");
+    expect(r.spec).toBeNull();
+    expect(i.person).toBeNull();
+  });
+  it("hyphenated surnames match («Maria Popescu-Ionescu»)", async () => {
+    expect((await ask("firmele lui Maria Popescu-Ionescu")).i.person?.key).toBe("popescu-ionescu maria|1980");
+  });
+  it("fullwidth letters are normalized (NFKC)", async () => {
+    const { i } = await ask("ｃｉｎｅ ｃâｓｔｉｇă ｉｎ ｂｕｚăｕ");
+    expect(i.place).toMatchObject({ kind: "county", county: "Buzău" });
+  });
+  it("«compară Buzău cu Brăila»: town halls offered as a comparison, never another question type", async () => {
+    const { i, r } = await ask("compara Buzau cu Braila");
+    expect(i.intent).toBe("compare");
+    expect(r.spec).toBeNull();
+    expect(r.alternatives.map((a) => a.spec.block)).toEqual(["compare"]);
+    expect(r.alternatives[0]!.spec.filters).toMatchObject({ authorityId: 2144364, compareWithId: 3000001 });
+  });
+  it("«compară primăria Buzău cu primăria Brăila» compares directly", async () => {
+    expect((await ask("compară primăria Buzău cu primăria Brăila")).r.spec).toMatchObject({ block: "compare", filters: { authorityId: 2144364, compareWithId: 3000001 } });
+  });
+  it.each(["cine castiga in Turnu Severin", "cine castiga in Dr. Tr. Severin"])("short municipality names: «%s» → Drobeta-Turnu Severin", async (q) => {
+    expect((await ask(q)).i.place?.name).toBe("Municipiul Drobeta-Turnu Severin");
+  });
+  it("«și» inside an institution name; the county narrows the choice", async () => {
+    expect((await ask("ce cumpara Directia Generala de Asistenta Sociala si Protectia Copilului Iasi")).i.authority?.id).toBe(2145066);
+    expect((await ask("ce cumpara Directia Generala de Asistenta Sociala si Protectia Copilului din Iasi")).i.authority?.id).toBe(2145066);
+  });
+  it("«ce primărie are cel mai mare risc» says that every institution is ranked", async () => {
+    const { r } = await ask("ce primarie are cel mai mare risc in Buzau");
+    expect(r.spec).toMatchObject({ block: "entity_card", rankBy: "risk", filters: { county: "Buzău" } });
+    expect(r.sentence).toContain("nu doar primăriile");
+  });
+  it("«Consiliul Județean Buzău» is the named council; «consiliile județene» stays a kind", async () => {
+    expect((await ask("ce cumpara Consiliul Judetean Buzau")).i.authority?.id).toBe(2144001);
+    expect((await ask("ce cumpara consiliile judetene din Moldova")).i.authorityKind?.kind).toBe("consiliu_judetean");
+  });
+  it("«stradal» is a subject word, not a street: «iluminat stradal Baia Mare anul trecut»", async () => {
+    const { i } = await ask("iluminat stradal Baia Mare anul trecut");
+    expect(i.place?.name).toBe("Municipiul Baia Mare");
+    expect(i.subjects[0]?.term).toBe("34993000-4");
+    expect(i.leftover).toEqual([]);
+  });
+  it("a plural kind before a town does not hide the town («laptopuri școli Târgu Mureș»)", async () => {
+    const { i, r } = await ask("laptopuri scoli Targu Mures");
+    expect(i.leftover).toEqual([]);
+    expect(r.spec?.filters).toMatchObject({ authorityKind: "scoala", county: "Mureș" });
+  });
+  it("«firmele lui» without a name is not a national ranking", async () => {
+    const { r } = await ask("firmele lui %% __");
+    expect(r.spec).toBeNull();
+    expect(r.interpretation.notes.join(" ")).toMatch(/Scrie numele persoanei/);
+  });
+});
+
