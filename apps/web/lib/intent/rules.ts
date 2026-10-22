@@ -651,7 +651,9 @@ export class RulesInterpreter implements QuestionInterpreter {
       // the name stays a name: reported, never read as a commune or a firm
       c.take(h.i, h.j, "filler");
       c.take(h.j, end, "blocked");
-      out.notes.push(`Nu am găsit în Registrul Comerțului o persoană cu numele „${typedName}” (cu data nașterii cunoscută).`);
+      out.notes.push(exhaustive
+        ? `Nu am găsit în Registrul Comerțului o persoană cu numele „${typedName}” (cu data nașterii cunoscută).`
+        : `Nu am găsit în Registrul Comerțului o persoană cu numele „${typedName}” scris exact așa. Același nume scris cu diacritice nu a putut fi căutat sigur; scrie-l cu diacritice sau complet.`);
       return;
     }
     c.take(h.i, end, "person");
