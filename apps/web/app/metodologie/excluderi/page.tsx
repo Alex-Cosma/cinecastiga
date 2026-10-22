@@ -14,7 +14,7 @@ export default async function ExcluderiPage({searchParams}:{searchParams:Promise
   <Link href="/metodologie#acoperire">Înapoi la acoperirea datelor</Link>
   <h1 className="page-title">Excluderi temporare din totaluri</h1>
   <p className="page-sub">Aceste publicații ar putea descrie aceleași contracte. Până lămurim identitatea lor, valorile rămân în surse și sunt excluse din calcule.</p>
-  <p>{formatInt(data.total)} {data.total===1?'grup de verificat':'grupuri de verificat'}{data.total>0&&` · pagina ${data.page} din ${data.pages}`}.
+  <p id="grupuri" className="list-anchor">{formatInt(data.total)} {data.total===1?'grup de verificat':'grupuri de verificat'}{data.total>0&&` · pagina ${data.page} din ${data.pages}`}.
    {' '}Lista nu este un semnal de neregulă.</p>
   {params.grup&&<p><Link href="/metodologie/excluderi">Vezi toate grupurile excluse</Link></p>}
   {!data.groups.length&&<p className="note">{params.grup?'Acest grup nu mai este exclus temporar. Consultă paginile contractelor pentru starea actuală.':'Nu există grupuri excluse temporar în această versiune a datelor. Aceasta nu confirmă completitudinea colectării.'}</p>}
@@ -37,9 +37,9 @@ export default async function ExcluderiPage({searchParams}:{searchParams:Promise
    </details>
   </section>)}
   {data.pages>1&&<nav className="pagination" aria-label="Paginarea grupurilor excluse">
-    {data.page>1&&<Link scroll={false} href={`/metodologie/excluderi?pagina=${data.page-1}`}>Pagina precedentă</Link>}
+    {data.page>1&&<Link href={`/metodologie/excluderi?pagina=${data.page-1}#grupuri`}>Pagina precedentă</Link>}
     <span> {data.page} / {data.pages} </span>
-    {data.page<data.pages&&<Link scroll={false} href={`/metodologie/excluderi?pagina=${data.page+1}`}>Pagina următoare</Link>}
+    {data.page<data.pages&&<Link href={`/metodologie/excluderi?pagina=${data.page+1}#grupuri`}>Pagina următoare</Link>}
   </nav>}
  </>;
 }
