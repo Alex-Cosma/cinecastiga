@@ -567,7 +567,7 @@ export default async function EntityPage({
       <section className="section" id="parteneri">
         <h2>{isAuth ? "Principalii furnizori" : "Principalele autorități"}</h2>
         <PartnersTable
-          key={`${id}:${rolParam}`}
+          key={`${id}-${role}`}
           entityId={id}
           entityName={cleanName(row.name)}
           role={rolParam as "furnizor" | "autoritate"}
