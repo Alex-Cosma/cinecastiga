@@ -29,7 +29,7 @@ export default async function SavedSourcesPage({ params, searchParams }: { param
         <td>{row.authority ?? "Autoritate necunoscută"}<div className="iw-muted">{row.supplier ?? "Furnizor necunoscut"}</div></td><td className="iw-source-date">{row.date ?? "Necunoscută"}</td><td>{row.cpvCode ?? "Necunoscut"}<div className="iw-muted">{row.cpvName}</div></td><td className="num">{row.valueExact === null ? "Valoare lipsă" : formatExactDecimal(row.valueExact)}</td>
       </tr>)}</tbody></table></div>
       {!rows.length && <p className="iw-muted">Nu există înregistrări pe această pagină.</p>}
-      <nav className="iw-source-pager" aria-label="Paginarea surselor păstrate">{cursor > 0 && <Link href={`/anchete/${id}/dovezi/${captureId}`}>Înapoi la prima pagină</Link>}{nextCursor !== null && nextCursor !== undefined && Number(nextCursor) < (capture.rowCount ?? 0) && <Link href={`/anchete/${id}/dovezi/${captureId}?after=${nextCursor}`}>Următoarele înregistrări →</Link>}</nav>
+      <nav className="iw-source-pager" aria-label="Paginarea surselor păstrate">{cursor > 0 && <Link scroll={false} href={`/anchete/${id}/dovezi/${captureId}`}>Înapoi la prima pagină</Link>}{nextCursor !== null && nextCursor !== undefined && Number(nextCursor) < (capture.rowCount ?? 0) && <Link scroll={false} href={`/anchete/${id}/dovezi/${captureId}?after=${nextCursor}`}>Următoarele înregistrări →</Link>}</nav>
     </>}
     <details className="iw-journal"><summary>Selecția și metodologia păstrate</summary><p className="iw-muted">Parametrii exacți folosiți la această captură.</p><pre>{JSON.stringify({ selection: capture.scope, methodology: capture.methodology, summary: capture.summary }, null, 2)}</pre></details>
   </div>;

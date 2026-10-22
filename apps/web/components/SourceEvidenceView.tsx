@@ -35,7 +35,7 @@ export default function SourceEvidenceView({ evidence, href, page: requestedPage
         </tr>;
       })}
     </tbody></table></div> : <p className="source-evidence-empty">Nu există înregistrări verificabile în selecția curentă. Contextul și limitele semnalului pot fi păstrate; lipsa surselor rămâne explicită.</p>}
-    {pages > 1 && <nav className="pager" aria-label="Paginarea înregistrărilor">{page > 0 && <Link href={pageHref(page - 1)}>← Anterioara</Link>}<span>Pagina {page + 1} din {pages}</span>{page + 1 < pages && <Link href={pageHref(page + 1)}>Următoarea →</Link>}</nav>}
+    {pages > 1 && <nav className="pager" aria-label="Paginarea înregistrărilor">{page > 0 && <Link scroll={false} href={pageHref(page - 1)}>← Anterioara</Link>}<span>Pagina {page + 1} din {pages}</span>{page + 1 < pages && <Link scroll={false} href={pageHref(page + 1)}>Următoarea →</Link>}</nav>}
     {urls.length > 0 && <details className="source-evidence-notes"><summary>Referințe păstrate în calcul · {formatInt(urls.length)}</summary><ul>{urls.map(url => <li key={url}><a href={url} target="_blank" rel="noreferrer">{url.includes("/direct-acquisition/") ? "Achiziție SEAP" : "Anunț sursă"} {url.split("/").at(-1)} ↗</a></li>)}</ul></details>}
   </div>;
 }

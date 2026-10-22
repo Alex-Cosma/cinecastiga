@@ -176,11 +176,11 @@ export default async function NoticePage({
         </table>
         {pages > 1 && (
           <div className="pager">
-            {n.page > 1 && <Link href={`?p=${n.page - 1}`}>← Anterior</Link>}
+            {n.page > 1 && <Link href={`?p=${n.page - 1}`} scroll={false}>← Anterior</Link>}
             <span className="note">
               Pagina {n.page} din {formatInt(pages)}
             </span>
-            {n.page < pages && <Link href={`?p=${n.page + 1}`}>Următor →</Link>}
+            {n.page < pages && <Link href={`?p=${n.page + 1}`} scroll={false}>Următor →</Link>}
           </div>
         )}
       </section>

@@ -37,9 +37,9 @@ export default async function ExcluderiPage({searchParams}:{searchParams:Promise
    </details>
   </section>)}
   {data.pages>1&&<nav className="pagination" aria-label="Paginarea grupurilor excluse">
-    {data.page>1&&<Link href={`/metodologie/excluderi?pagina=${data.page-1}`}>Pagina precedentă</Link>}
+    {data.page>1&&<Link scroll={false} href={`/metodologie/excluderi?pagina=${data.page-1}`}>Pagina precedentă</Link>}
     <span> {data.page} / {data.pages} </span>
-    {data.page<data.pages&&<Link href={`/metodologie/excluderi?pagina=${data.page+1}`}>Pagina următoare</Link>}
+    {data.page<data.pages&&<Link scroll={false} href={`/metodologie/excluderi?pagina=${data.page+1}`}>Pagina următoare</Link>}
   </nav>}
  </>;
 }
