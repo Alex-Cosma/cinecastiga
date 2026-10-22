@@ -1,6 +1,6 @@
 import { aliasQueries, queryTokens } from "../ask/entity-alias";
 import { buildPlaces, catalogUatSource, type UatSource } from "./places";
-import { fold } from "./text";
+import { fold, personPatterns } from "./text";
 import type { CpvHit, EntityHit, PersonHit, PlaceEntry, Vocabulary } from "./types";
 
 /**
@@ -67,9 +67,11 @@ export function memoryVocabulary(fx: MemoryFixture): Vocabulary {
       return { hits: all.slice(0, 25).map(strip), total: all.length };
     },
     async personsNamed(names) {
-      const wanted = new Set(names.map((n) => n.replace(/\s+/g, " ").trim()));
-      const all = fx.persons.filter((p) => wanted.has(f(p.name).replace(/\s+/g, " "))).sort((a, b) => b.nFirms - a.nFirms);
-      return { hits: all.slice(0, 8), total: all.length };
+      // same contract as the SQL lookup: hyphens and repeated spaces are word gaps
+      const wanted = new Set(names.map((n) => n.replace(/[\s-]+/g, " ").trim()));
+      const all = fx.persons.filter((p) => wanted.has(f(p.name).replace(/[\s-]+/g, " "))).sort((a, b) => b.nFirms - a.nFirms);
+      // the same search limits as SQL: names the index cannot search tolerantly are not exhaustive
+      return { hits: all.slice(0, 8), total: all.length, exhaustive: personPatterns([...wanted]).exhaustive };
     },
   };
 }

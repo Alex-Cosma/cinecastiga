@@ -117,3 +117,37 @@ export function titleCase(name: string): string {
 export function rawSpan(tokens: Token[], from: number, to: number): string {
   return tokens.slice(from, to).map((t) => t.raw).join(" ");
 }
+
+/** ONRC name pattern: letters that may carry a diacritic become one-character wildcards. */
+export function personNamePattern(folded: string): string {
+  // spaces and hyphens become "%": ONRC doubles spaces ("ŞTEFAN  ION") and hyphenates ("POPESCU-IONESCU")
+  return folded.replace(/[_%\\]/g, "").replace(/[aist]/g, "_").replace(/[ -]+/g, "%");
+}
+
+/**
+ * A pattern the trigram index can use: at least one run of three literal
+ * letters. Names made only of a/i/s/t ("Tasia Stati") would otherwise scan
+ * all ONRC rows; the interpreter asks for the full name instead.
+ */
+export function searchablePersonPattern(pattern: string): boolean {
+  return /[^_%]{3}/.test(pattern);
+}
+
+/**
+ * The ilike patterns for a set of folded name orders. Diacritic-tolerant
+ * patterns when the index can use them; otherwise the name as written
+ * ("matei ioan"), which cannot see "MĂTEI": then the search is not
+ * exhaustive and a single hit must not be picked silently.
+ */
+export function personPatterns(foldedNames: string[]): { patterns: string[]; exhaustive: boolean } {
+  let exhaustive = true;
+  const patterns = new Set<string>();
+  for (const name of foldedNames) {
+    const tolerant = personNamePattern(name);
+    if (searchablePersonPattern(tolerant)) { patterns.add(tolerant); continue; }
+    exhaustive = false;
+    const written = name.replace(/[_%\\]/g, "").replace(/[ -]+/g, "%");
+    if (searchablePersonPattern(written)) patterns.add(written);
+  }
+  return { patterns: [...patterns], exhaustive };
+}

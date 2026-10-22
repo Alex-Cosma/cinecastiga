@@ -10,7 +10,7 @@ import { encodeSpec, decodeSpec } from "@/lib/ask/permalink";
 import { isHistoricalProfile } from "@/lib/ask/population";
 import { validateSpec, type AskSpec } from "@/lib/ask/spec";
 import { entitySourceLink, entitySourceScope, yearSourceLink } from "@/lib/ask/source-spec";
-import { describeQuestion, questionKey } from "@/lib/ask/question-ui";
+import { describeQuestion, localityScopeError, questionKey } from "@/lib/ask/question-ui";
 import type { IntentResult } from "@/lib/intent/types";
 import { NATURAL_LANGUAGE_ENABLED, NATURAL_LANGUAGE_UNAVAILABLE } from "@/lib/ask/features";
 import { validateEvidenceScope, validateEvidenceFilters, type EvidenceScope, type EvidenceFilters } from "@/lib/ask/evidence";
@@ -352,6 +352,9 @@ export default function AskPanel({
         // validateSpec omits the default stream; a link that names it keeps it.
         const linkDataset = decoded && typeof decoded === "object" && "dataset" in decoded ? (decoded as { dataset?: unknown }).dataset : undefined;
         const asGiven = typeof linkDataset === "string" && !parsed.dataset ? { ...parsed, dataset: linkDataset as AskSpec["dataset"] } : parsed;
+        // An old link with a locality its view cannot honour opens in the builder, which explains the
+        // condition to remove; it is not run (the API would refuse it too).
+        if (localityScopeError(asGiven as AskSpec)) return;
         void execute({ spec: asGiven }, params.get("drill") === "1", scope, sourceFilters, false);
       }
     };

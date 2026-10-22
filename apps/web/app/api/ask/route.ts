@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createDb, type DbSql } from "@seap/db";
 import { validateSpec, type AskSpec } from "@/lib/ask/spec";
+import { localityScopeError } from "@/lib/ask/question-ui";
 import { ground } from "@/lib/ask/ground";
 import {
   runSpec,
@@ -79,6 +80,10 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
+
+  // a locality the view cannot honour is refused, as in the builder (never run degenerate or ignored)
+  const localityError = localityScopeError(spec);
+  if (localityError) return NextResponse.json({ ok: false, error: localityError, spec }, { status: 400 });
 
   const tableOpts: TableOpts = {};
   if (Number.isFinite(Number(body.tablePage)))

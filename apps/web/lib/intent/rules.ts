@@ -1,7 +1,7 @@
 import type { AuthorityKind } from "../ask/spec";
 import { lev } from "../ask/intent";
 import { placeKey } from "./places";
-import { NUMBER_WORDS, STOPWORDS, fold, rawSpan, stems, tokenize, wordMatches, type Token } from "./text";
+import { NUMBER_WORDS, STOPWORDS, fold, personPatterns, rawSpan, stems, tokenize, wordMatches, type Token } from "./text";
 import type {
   CpvHit, EntityHit, EntityMatch, IntentKind, InterpretContext, Interpretation, PersonHit, PersonMatch,
   PlaceEntry, PlaceMatch, QuestionInterpreter, Span, Vocabulary,
@@ -100,15 +100,18 @@ const KIND_CUES: [AuthorityKind, RegExp][] = [
 ];
 
 /** A singular institution noun opens a named authority ("Spitalul Județean…"). */
-const INSTITUTION_NOUN = /\b(?:spitalul|liceul|colegiul|scoala|universitatea|directia|compania|inspectoratul|agentia|administratia|regia|institutul|institutia|serviciul|politia|teatrul|muzeul|biblioteca|clubul|centrul|casa|ministerul|autoritatea|oficiul|camera|tribunalul|curtea|parchetul|cnair|anaf)\b/;
+const INSTITUTION_NOUN = /\b(?:consiliul|cj|spitalul|liceul|colegiul|scoala|universitatea|directia|compania|inspectoratul|agentia|administratia|regia|institutul|institutia|serviciul|politia|teatrul|muzeul|biblioteca|clubul|centrul|casa|ministerul|autoritatea|oficiul|camera|tribunalul|curtea|parchetul|cnair|anaf)\b/;
 /** Words of institution names: never a purchase subject, and they keep a following name from being read as a locality. */
-const INSTITUTION_WORD = /^(?:spital\w*|liceu\w*|licee\w*|colegi\w*|scoal\w*|scoli\w*|universitat\w*|directi\w*|inspectorat\w*|agenti\w*|administrati\w*|regia|institut\w*|teatr\w*|muze\w*|bibliotec\w*|club\w*|minister\w*|autoritat\w*|oficiu\w*|tribunal\w*|curte\w*|parchet\w*|primari\w*|consili\w*|judetean\w*|national\w*|gimnazial\w*|tehnolog\w*|teoretic\w*|clinic\w*|municipal\w*|orasenesc|asistenta|sociala|sociale|strad\w*|capital\w*|nr|numarul)$/;
+const INSTITUTION_WORD = /^(?:spital\w*|liceu\w*|licee\w*|colegi\w*|scoal\w*|scoli\w*|universitat\w*|directi\w*|inspectorat\w*|agenti\w*|administrati\w*|regia|institut\w*|teatr\w*|muze\w*|bibliotec\w*|club\w*|minister\w*|autoritat\w*|oficiu\w*|tribunal\w*|curte\w*|parchet\w*|primari\w*|consili\w*|judetean\w*|national\w*|gimnazial\w*|tehnolog\w*|teoretic\w*|clinic\w*|municipal\w*|orasenesc|asistenta|sociala|sociale|strada|strazi|strazii|strazile|strazilor|capital\w*|nr|numarul)$/;
+/** Words that open or qualify a singular institution name ("Colegiul Național Dimitrie Cantemir"): a name after them is not a locality. */
+const INSTITUTION_NAME_CONTEXT = /^(?:spitalul|liceul|colegiul|scoala|universitatea|directia|inspectoratul|agentia|institutul|national|nationala|gimnaziala|tehnologic|teoretic|clinic|judetean|judeteana|municipal|orasenesc|nr|numarul)$/;
 
 /** Acronyms people use for large national buyers. */
 const ACRONYMS: Record<string, string> = {
   cnair: "compania nationala de administrare a infrastructurii rutiere",
   cnadnr: "compania nationala de administrare a infrastructurii rutiere",
   anaf: "agentia nationala de administrare fiscala",
+  cj: "consiliul judetean",
 };
 
 const LEGAL = new Set(["sc", "srl", "sa", "s", "r", "l", "srlv", "pfa", "ii", "if", "snc", "scs", "ra", "spa", "ltd", "gmbh", "sas", "sl", "bv", "nv"]);
@@ -119,7 +122,15 @@ const MODIFIER = /\b(?:(?:cel|cea|cele|cei) mai (?:mare|mari|mult|multe|multi|mu
 
 const PREPOSITION = new Set(["in", "din", "la", "pentru", "spre", "catre", "dinspre", "de"]);
 /** Place aliases people use for București. */
-const PLACE_ALIAS: Record<string, string> = { capitalei: "bucuresti", capitala: "bucuresti", "capitala tarii": "bucuresti" };
+const PLACE_ALIAS: Record<string, string> = {
+  capitalei: "bucuresti", capitala: "bucuresti", "capitala tarii": "bucuresti",
+  // names people use for municipalities registered under a longer one
+  "turnu severin": "drobeta turnu severin", "tr severin": "drobeta turnu severin", "dr tr severin": "drobeta turnu severin",
+  "drobeta": "drobeta turnu severin", "severin": "drobeta turnu severin",
+  "campulung muscel": "campulung", "cimpulung muscel": "campulung",
+  "sighet": "sighetu marmatiei", "odorhei": "odorheiu secuiesc",
+  "rm valcea": "ramnicu valcea", "rm sarat": "ramnicu sarat", "valcea ramnicu": "ramnicu valcea",
+};
 
 /** The calendar year in Romania (relative periods follow the visitor's year, not the server's zone). */
 export function bucharestYear(now: Date): number {
@@ -136,10 +147,20 @@ function significant(folded: string): string[] {
 }
 
 function typedForName(typedWords: string[], name: string): string[] {
+  const n = fold(name).trim();
   // "primăria Buzău" names the UAT itself ("MUNICIPIUL BUZAU")
-  return /^(municipiul|orasul|oras|comuna|sectorul) /.test(fold(name).trim())
-    ? typedWords.filter((w) => !/^(primari\w*|consiliul|local)$/.test(w))
-    : typedWords;
+  if (/^(municipiul|orasul|oras|comuna|sectorul) /.test(n)) return typedWords.filter((w) => !/^(primari\w*|consiliul|local)$/.test(w));
+  // "Consiliul Județean Iași" is registered as "JUDETUL IASI" or "JUDETUL CLUJ (CONSILIUL JUDETEAN)"
+  if (/^judetul /.test(n)) return typedWords.filter((w) => !/^(consiliul|judetean|cj)$/.test(w));
+  return typedWords;
+}
+
+/** The town-hall / county-council title word that the typed words replace ("municipiul", "judetul"). */
+function titleWordDropped(typedWords: string[], words: string[]): string[] {
+  const first = words[0] ?? "";
+  if (/^(municipiul|orasul|oras|comuna|sectorul)$/.test(first) && typedWords.some((w) => /^primari/.test(w))) return words.slice(1);
+  if (first === "judetul" && typedWords.some((w) => /^(consiliul|cj)$/.test(w))) return words.slice(1);
+  return words;
 }
 
 /** Every typed word is a word of the name (inflection and light typos allowed). */
@@ -167,9 +188,8 @@ export function strongNameMatch(typedWords: string[], name: string): boolean {
 
 /** The name is exactly the typed words (legal forms and connectors aside). */
 function sameName(typedWords: string[], name: string): boolean {
-  const all = significant(fold(name));
-  const words = /^(municipiul|orasul|oras|comuna|sectorul)$/.test(all[0] ?? "") && typedWords.some((w) => /^primari/.test(w)) ? all.slice(1) : all;
-  const typed = typedForName(typedWords, name);
+  const words = [...new Set(titleWordDropped(typedWords, significant(fold(name))))];
+  const typed = [...new Set(typedForName(typedWords, name))];
   return words.length === typed.length && [...typed].sort().join(" ") === [...words].sort().join(" ");
 }
 
@@ -196,6 +216,7 @@ function emptyInterpretation(text: string, id: string): Interpretation {
     authority: null, supplier: null, entityAlternatives: [], choicesPartial: null, compareWith: null, person: null, personAlternatives: [],
     period: null, dataset: null, singleBidder: false, measure: null, topN: null, superlative: false,
     employees: null, leftover: [], confidence: 0, confidenceLabel: "none", notes: [], placeNote: null,
+    compareChoices: [], askedTownHalls: false,
   };
 }
 
@@ -204,7 +225,7 @@ export class RulesInterpreter implements QuestionInterpreter {
   constructor(private readonly vocab: Vocabulary) {}
 
   async interpret(input: string, context: InterpretContext): Promise<Interpretation> {
-    const text = input.replace(/\s+/g, " ").trim().slice(0, MAX_QUESTION_LENGTH);
+    const text = input.normalize("NFKC").replace(/\s+/g, " ").trim().slice(0, MAX_QUESTION_LENGTH);
     const out = emptyInterpretation(text, this.id);
     const tokens = tokenize(text);
     if (!tokens.length) return out;
@@ -219,8 +240,8 @@ export class RulesInterpreter implements QuestionInterpreter {
     await this.people(c, out);
     const cues = this.cues(c, out);
     this.kinds(c, out);
-    await this.institutions(c, out);
     const compareCue = cues.find((x) => x.intent === "compare")?.at ?? null;
+    await this.institutions(c, out, compareCue !== null);
     await this.compare(c, out, compareCue);
     await this.suppliersByMarker(c, out);
     // Place names before subjects: "Alba Iulia", "Satu Mare", "Constanța" are places, not cabbage, sole or consultancy.
@@ -310,7 +331,14 @@ export class RulesInterpreter implements QuestionInterpreter {
       out.superlative = true;
       const noun = h.m[1]!;
       if (/^(firma|companie|societate)$/.test(noun)) { out.dimHint = "supplier"; c.take(h.i, h.j, "cue"); }
-      else if (/^(institutie|autoritate|primarie)$/.test(noun)) { out.dimHint = "authority"; c.take(h.i, h.j, "cue"); }
+      else if (/^(institutie|autoritate|primarie)$/.test(noun)) {
+        out.dimHint = "authority";
+        c.take(h.i, h.j, "cue");
+        if (noun === "primarie") {
+          out.askedTownHalls = true;
+          out.notes.push("Nu putem restrânge clasamentul doar la primării (primăriile de comună și de oraș sunt tipuri separate); clasamentul cuprinde toate instituțiile.");
+        }
+      }
       else { out.dimHint = "authority"; c.take(h.i, h.i + 1, "cue"); }
     }
     for (const h of c.all(MODIFIER)) c.take(h.i, h.j, "modifier");
@@ -335,6 +363,7 @@ export class RulesInterpreter implements QuestionInterpreter {
     // "primării" alone has no kind in the engine: say what the ranking covers
     for (const h of c.all(/\bprimari(?:i|ile|ilor)\b/)) {
       c.take(h.i, h.j, "kind");
+      if (!out.authorityKind) out.askedTownHalls = true;
       if (out.measure !== "value_per_capita" && !out.authorityKind)
         out.notes.push("Nu putem restrânge clasamentul doar la primării (primăriile de comună și de oraș sunt tipuri separate); arătăm toate instituțiile. Valoarea pe locuitor se calculează doar pentru primării.");
     }
@@ -346,7 +375,7 @@ export class RulesInterpreter implements QuestionInterpreter {
       // a singular institution noun followed by a name is a named authority (handled next)
       for (const h of c.all(re)) {
         const word = c.f(h.i);
-        const singular = /^(spitalul|scoala|liceul|colegiul)$/.test(word);
+        const singular = /^(spitalul|scoala|liceul|colegiul)$/.test(word) || (/^(consiliul|cj)$/.test(word) && (word === "cj" || c.f(h.i + 1) === "judetean"));
         if (singular && h.j < c.tokens.length && c.isFree(h.j, h.j + 1) && !PREPOSITION.has(c.f(h.j)) && !STOPWORDS.has(c.f(h.j))) continue;
         c.take(h.i, h.j, "kind");
         if (!out.authorityKind) out.authorityKind = { kind, matched: c.span(h.i, h.j) };
@@ -372,7 +401,7 @@ export class RulesInterpreter implements QuestionInterpreter {
     const containing = loose.filter((e) => e !== exact[0] && carriesName(typed, e.name));
     if (exact.length === 1 && !containing.length && (complete || loose.length === exact.length)) return { kind: "one", role, hit: exact[0]! };
     // "primăria X" is the UAT itself; bodies named after it ("Municipiul X - Serviciul …") are other buyers
-    if (exact.length === 1 && typed.some((w) => /^primari/.test(w))) return { kind: "one", role, hit: exact[0]! };
+    if (exact.length === 1 && typed.some((w) => /^(primari\w*|consiliul|cj)$/.test(w))) return { kind: "one", role, hit: exact[0]! };
     if (exact.length > 1) return { kind: "many", role, hits: exact, total: exact.length };
     if (exact.length === 1) return { kind: "many", role, hits: [exact[0]!, ...containing, ...loose.filter((e) => e !== exact[0] && !containing.includes(e))], total: complete ? loose.length : Math.max(total, loose.length) };
     if (loose.length === 1 && complete) return { kind: "one", role, hit: loose[0]! };
@@ -404,15 +433,19 @@ export class RulesInterpreter implements QuestionInterpreter {
   }
 
   /** "Spitalul Județean de Urgență Buzău", "Compania Națională …": a named authority. */
-  private async institutions(c: Cursor, out: Interpretation) {
+  private async institutions(c: Cursor, out: Interpretation, comparing: boolean) {
     for (const h of c.all(INSTITUTION_NOUN)) {
       if (out.authority || out.entityAlternatives.length) break;
       // "spitalul din Buzău": a kind and a place, not a name
-      if (h.j < c.tokens.length && /^(din|la|in|pentru)$/.test(c.f(h.j)) && !/^(cnair|anaf)$/.test(c.f(h.i))) continue;
+      if (h.j < c.tokens.length && /^(din|la|in|pentru)$/.test(c.f(h.j)) && !/^(cnair|anaf|cj)$/.test(c.f(h.i))) continue;
+      // "consiliul local" is a town hall (a place marker), not a named institution
+      if (c.f(h.i) === "consiliul" && c.f(h.j) !== "judetean") continue;
       let end = h.j;
-      while (end < c.tokens.length && end - h.i < 9 && !c.used[end] && !/^(si|sau|cu|vs)$/.test(c.f(end))) end++;
+      // "și" belongs to names ("… Asistență Socială și Protecția Copilului Iași") unless two names are compared
+      const stop = comparing ? /^(si|sau|cu|vs)$/ : /^(sau|cu|vs)$/;
+      while (end < c.tokens.length && end - h.i < 12 && !c.used[end] && !stop.test(c.f(end))) end++;
       while (end > h.j && NAME_STOP.has(c.f(end - 1))) end--;
-      const acronym = /^(cnair|anaf)$/.test(c.f(h.i));
+      const acronym = /^(cnair|anaf|cj)$/.test(c.f(h.i));
       if (end - h.i < 2 && !acronym) continue;
       // the longest name first, then shorter ones ("Ministerul Sănătății medicamente" → "Ministerul Sănătății")
       let resolved = false;
@@ -427,16 +460,16 @@ export class RulesInterpreter implements QuestionInterpreter {
       }
       if (resolved) break;
       // a name we cannot resolve stays a name: reported, never a subject or a place
-      if (!/^(spitalul|scoala|liceul|colegiul)$/.test(c.f(h.i))) {
+      if (!/^(spitalul|scoala|liceul|colegiul|consiliul|cj)$/.test(c.f(h.i))) {
         c.take(h.i, end, "blocked");
         out.notes.push(`Nu am găsit instituția „${c.span(h.i, end).text}”. Scrie numele complet, de exemplu cu localitatea.`);
       } else c.take(h.i + 1, end, "blocked");
     }
     // singular nouns without a (resolvable) name fall back to their kind ("spitalul din Buzău")
     if (!out.authority && !out.entityAlternatives.length) {
-      for (const h of c.all(/\b(?:spitalul|scoala|liceul|colegiul)\b/)) {
+      for (const h of c.all(/\b(?:spitalul|scoala|liceul|colegiul|consiliul judetean|cj)\b/)) {
         c.take(h.i, h.j, "kind");
-        const kind: AuthorityKind = c.f(h.i) === "spitalul" ? "spital" : "scoala";
+        const kind: AuthorityKind = c.f(h.i) === "spitalul" ? "spital" : /^(consiliul|cj)$/.test(c.f(h.i)) ? "consiliu_judetean" : "scoala";
         if (!out.authorityKind) out.authorityKind = { kind, matched: c.span(h.i, h.j) };
       }
     }
@@ -516,7 +549,7 @@ export class RulesInterpreter implements QuestionInterpreter {
       // "firmele lui Matei": a person, not the commune Matei
       if (i > 0 && /^(lui|domnul|doamna|dl|dna|administratorul)$/.test(c.f(i - 1))) continue;
       // "Colegiul Național Dimitrie Cantemir": part of an institution's name, not the commune
-      if (!counties.length && [1, 2, 3].some((d) => i - d >= 0 && INSTITUTION_WORD.test(c.f(i - d)))) continue;
+      if (!counties.length && [1, 2, 3].some((d) => i - d >= 0 && c.used[i - d] !== "kind" && INSTITUTION_NAME_CONTEXT.test(c.f(i - d)))) continue;
       c.take(i, at.j, "place");
       found.push({ from: i, to: at.j, entries: at.entries, constraint: "any", span: c.span(i, at.j) });
       i = at.j - 1;
@@ -582,15 +615,34 @@ export class RulesInterpreter implements QuestionInterpreter {
     if (!h) return;
     let end = h.j;
     while (end < c.tokens.length && end - h.j < 4 && !c.used[end] && !STOPWORDS.has(c.f(end)) && !PREPOSITION.has(c.f(end))) end++;
+    if (end === h.j) {
+      // "firmele lui …" without a name: never a national ranking nobody asked for
+      c.take(h.i, h.j, "blocked");
+      out.notes.push("Scrie numele persoanei ale cărei firme vrei să le vezi.");
+      return;
+    }
     if (end - h.j < 2) return;
     if (/^(firmele|firmelor|companiile|societatile|afacerile)$/.test(c.f(h.i))) out.dimHint = out.dimHint ?? "supplier";
     const words = c.tokens.slice(h.j, end).map((t) => t.f);
     const typedName = rawSpan(c.tokens, h.j, end);
     // ONRC writes the surname first ("POPESCU ION"); people write it last. Exact names only: "Maria" is not "Marian".
     const orders = [...new Set([words.join(" "), [...words.slice(1), words[0]!].join(" "), [...words].reverse().join(" ")])];
-    const { hits, total } = await this.vocab.personsNamed(orders);
+    if (!personPatterns(orders).patterns.length) {
+      // only letters that may carry diacritics: no index can find it safely
+      c.take(h.i, h.j, "filler");
+      c.take(h.j, end, "blocked");
+      out.notes.push(`Numele „${typedName}” e prea scurt pentru o căutare sigură în Registrul Comerțului. Scrie numele complet al persoanei.`);
+      return;
+    }
+    const { hits, total, exhaustive = true, timedOut = false } = await this.vocab.personsNamed(orders);
+    if (timedOut) {
+      c.take(h.i, h.j, "filler");
+      c.take(h.j, end, "blocked");
+      out.notes.push(`Căutarea numelui „${typedName}” în Registrul Comerțului a durat prea mult. Scrie numele complet al persoanei sau încearcă din nou.`);
+      return;
+    }
     const asMatch = (p: PersonHit): PersonMatch => ({ ...p, matched: c.span(h.i, end) });
-    if (total === 1 && hits.length === 1) {
+    if (total === 1 && hits.length === 1 && exhaustive) {
       c.take(h.i, end, "person");
       out.person = asMatch(hits[0]!);
       return;
@@ -608,7 +660,9 @@ export class RulesInterpreter implements QuestionInterpreter {
     const unique = [...new Map(hits.map((p) => [label(p), p])).values()];
     out.personAlternatives = unique.map(asMatch);
     if (total > hits.length) out.choicesPartial = { shown: unique.length, total, search: typedName };
-    out.notes.push(`${total} persoane se numesc „${typedName}” în Registrul Comerțului. ${total > hits.length ? `Arătăm primele ${unique.length}, cele cu cele mai multe firme. ` : ""}Alege persoana după anul și locul nașterii.`);
+    out.notes.push(total === 1
+      ? `Am găsit o persoană cu numele „${typedName}” scris exact așa. Același nume scris cu diacritice nu a putut fi căutat sigur; alege persoana dacă este cea la care te gândești.`
+      : `${total} persoane se numesc „${typedName}” în Registrul Comerțului. ${total > hits.length ? `Arătăm primele ${unique.length}, cele cu cele mai multe firme. ` : ""}${exhaustive ? "" : "Variantele scrise cu diacritice nu au putut fi căutate sigur. "}Alege persoana după anul și locul nașterii.`);
   }
 
   private async suppliersByMarker(c: Cursor, out: Interpretation) {
@@ -780,21 +834,52 @@ export class RulesInterpreter implements QuestionInterpreter {
       return null;
     };
     let focal: EntityMatch | null = out.supplier ?? out.authority;
+    // two named institutions or firms first; two places only when no name resolves
+    const placesInstead = async () => {
+      if (out.supplier || out.authority) return;
+      const pairs = await this.comparePlaces(c, side(cueAt, connector.i), side(connector.j, c.tokens.length));
+      if (!pairs.length) return;
+      out.compareChoices = pairs;
+      for (let k = cueAt; k < c.tokens.length; k++) if (!c.used[k] && !STOPWORDS.has(c.f(k))) c.take(k, k + 1, "entity");
+      c.take(connector.i, connector.j, "cue");
+    };
     let focalKs: number[] = [];
     if (!focal) {
       focalKs = side(cueAt, connector.i);
       const hit = await lookup(focalKs, null);
-      if (!hit) return;
+      if (!hit) return placesInstead();
       focal = { role: hit.role, id: hit.id, name: hit.name, county: hit.county, matched: c.span(focalKs[0]!, focalKs[focalKs.length - 1]! + 1) };
     }
     const ks = side(connector.j, c.tokens.length);
     const other = await lookup(ks, focal.role);
-    if (!other || other.id === focal.id) return;
+    if (!other || other.id === focal.id) return placesInstead();
     for (const k of focalKs) c.take(k, k + 1, "entity");
     if (!out.supplier && !out.authority) { if (focal.role === "supplier") out.supplier = focal; else out.authority = focal; }
     c.take(connector.i, connector.j, "cue");
     for (const k of ks) c.take(k, k + 1, "entity");
     out.compareWith = { role: focal.role, id: other.id, name: other.name, county: other.county, matched: c.span(ks[0]!, ks[ks.length - 1]! + 1) };
+  }
+
+  /**
+   * "compară Buzău cu Brăila": places are not comparable entities. The
+   * engine compares two institutions, so the honest readings are the two
+   * town halls and the two county councils, offered as choices.
+   */
+  private async comparePlaces(c: Cursor, left: number[], right: number[]): Promise<NonNullable<Interpretation["compareChoices"]>> {
+    const words = (ks: number[]) => significant(ks.map((k) => c.f(k)).filter((w) => !/^(primari\w*|judetul|judetului|municipiul|orasul)$/.test(w)).join(" "));
+    const a = words(left), b = words(right);
+    if (!a.length || !b.length || a.length > 3 || b.length > 3) return [];
+    const one = async (typed: string[]) => {
+      const r = await this.resolve("authority", typed);
+      return r.kind === "one" ? r.hit : null;
+    };
+    const span = (ks: number[]) => c.span(ks[0]!, ks[ks.length - 1]! + 1);
+    const asMatch = (e: EntityHit, ks: number[]): EntityMatch => ({ role: "authority", id: e.id, name: e.name, county: e.county, matched: span(ks) });
+    const out: NonNullable<Interpretation["compareChoices"]> = [];
+    const [ha, hb, ca, cb] = await Promise.all([one(["primaria", ...a]), one(["primaria", ...b]), one(["consiliul", "judetean", ...a]), one(["consiliul", "judetean", ...b])]);
+    if (ha && hb && ha.id !== hb.id) out.push({ label: `Primăriile: ${ha.name} și ${hb.name}`, focal: asMatch(ha, left), other: asMatch(hb, right) });
+    if (ca && cb && ca.id !== cb.id) out.push({ label: `Consiliile județene: ${ca.name} și ${cb.name}`, focal: asMatch(ca, left), other: asMatch(cb, right) });
+    return out;
   }
 
   /**
@@ -871,11 +956,11 @@ export class RulesInterpreter implements QuestionInterpreter {
     const ordered = [...cues].sort((a, b) => a.at - b.at).map((x) => x.intent);
     const has = (k: IntentKind) => ordered.includes(k);
     let primary: IntentKind | null = null;
-    if (has("compare") && out.compareWith) primary = "compare";
+    if (has("compare") && (out.compareWith || out.compareChoices?.length)) primary = "compare";
     else if (has("signals")) primary = "signals";
     else if (has("trend")) primary = "trend";
     else primary = ordered.find((k) => k !== "compare") ?? null;
-    if (has("compare") && !out.compareWith)
+    if (has("compare") && !out.compareWith && !out.compareChoices?.length)
       out.notes.push("Pentru o comparație, numește două instituții sau două firme, de exemplu „compară Spitalul Județean de Urgență Buzău cu Spitalul Județean de Urgență Brăila”.");
     if (primary) {
       out.intent = primary;

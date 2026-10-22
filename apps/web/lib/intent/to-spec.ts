@@ -13,7 +13,7 @@ import type { EntityMatch, IntentAlternative, IntentKind, IntentResult, Interpre
 const NOT_IN_LOCALITY: AuthorityKind[] = ["scoala", "spital", "consiliu_judetean"];
 const PROFILE_DROPPED: (keyof AskFilters)[] = ["cpvTerm", "yearFrom", "yearTo", "monthFrom", "monthTo", "singleBidder", "minEmployees", "maxEmployees", "adminName", "adminPersonKey"];
 
-interface Choice { place?: PlaceMatch | null; person?: PersonMatch | null; entity?: EntityMatch }
+interface Choice { place?: PlaceMatch | null; person?: PersonMatch | null; entity?: EntityMatch; pair?: { focal: EntityMatch; other: EntityMatch } }
 
 function personDisplay(p: PersonMatch): string {
   return `${cleanName(p.name)}${p.birthYear ? ` (n. ${p.birthYear}${p.birthLocality ? `, ${p.birthLocality}` : ""})` : ""}`;
@@ -63,7 +63,8 @@ function baseFilters(i: Interpretation, choice: Choice, notes: string[]): AskFil
 
 /** Build the spec of one intent. Returns the engine's validation message when impossible. */
 export function specFor(input: Interpretation, intent: IntentKind, choice: Choice = {}): { spec: AskSpec | null; error: string | null; notes: string[] } {
-  const i = choice.entity ? { ...input, [choice.entity.role]: choice.entity } : input;
+  const i = choice.pair ? { ...input, authority: choice.pair.focal, compareWith: choice.pair.other, place: null }
+    : choice.entity ? { ...input, [choice.entity.role]: choice.entity } : input;
   const notes: string[] = [];
   const f = baseFilters(i, choice, notes);
   const raw: Record<string, unknown> = { block: "table", measure: i.measure === "count" ? "count" : "value", filters: f };
@@ -239,6 +240,8 @@ function suffix(spec: AskSpec): string {
 }
 
 export interface SentenceLabels {
+  /** The person asked about town halls; the ranking covers every institution, and the sentence says so. */
+  allInstitutions?: boolean;
   /** Readable subject for the spec's cpvTerm ("iluminat", "Servicii de deszăpezire"). */
   subject?: string | null;
 }
@@ -252,7 +255,8 @@ export function sentenceFor(spec: AskSpec, labels: SentenceLabels = {}): string 
   const admin = f.adminName ? ` de la firmele conduse de ${f.adminName}` : "";
   const when = period(f);
   const tail = suffix(spec);
-  const dimNoun = spec.dim === "supplier" ? "firme" : spec.dim === "county" ? "județe" : f.authorityKind ? KIND_PLURAL[f.authorityKind][1] : "instituții";
+  const anyInstitution = labels.allInstitutions ? " (toate instituțiile, nu doar primăriile)" : "";
+  const dimNoun = spec.dim === "supplier" ? "firme" : spec.dim === "county" ? "județe" : f.authorityKind ? KIND_PLURAL[f.authorityKind][1] : `instituții${anyInstitution}`;
   switch (spec.block) {
     case "table":
       if (spec.dim === "supplier")
@@ -280,10 +284,10 @@ export function sentenceFor(spec: AskSpec, labels: SentenceLabels = {}): string 
       return `Ce ${dimNoun}${wherePlain(f)} ies din tipar după indicele de risc și valoarea achizițiilor?`;
     case "entity_card":
       if (spec.rankBy === "risk")
-        return `Care ${spec.dim === "supplier" ? "firmă" : f.authorityKind === "spital" ? "spital" : f.authorityKind === "scoala" ? "școală" : f.authorityKind === "comuna" ? "primărie de comună" : f.authorityKind === "oras_municipiu" ? "primărie de oraș" : f.authorityKind === "consiliu_judetean" ? "consiliu județean" : "instituție"}${wherePlain(f)} are cel mai ridicat indice de risc?`;
+        return `Care ${spec.dim === "supplier" ? "firmă" : f.authorityKind === "spital" ? "spital" : f.authorityKind === "scoala" ? "școală" : f.authorityKind === "comuna" ? "primărie de comună" : f.authorityKind === "oras_municipiu" ? "primărie de oraș" : f.authorityKind === "consiliu_judetean" ? "consiliu județean" : `instituție${labels.allInstitutions ? " (oricare, nu doar primăriile)" : ""}`}${wherePlain(f)} are cel mai ridicat indice de risc?`;
       return spec.dim === "supplier"
         ? `Care firmă are contractele de cea mai mare valoare${subj} de la ${buyers(f)}, ${when}${tail}?`
-        : `Care ${f.authorityKind === "spital" ? "spital" : f.authorityKind === "scoala" ? "școală" : f.authorityKind === "comuna" ? "primărie de comună" : f.authorityKind === "oras_municipiu" ? "primărie de oraș" : f.authorityKind === "consiliu_judetean" ? "consiliu județean" : "instituție"}${wherePlain(f)} cumpără cel mai mult${subj}${fromSupplier}, ${when}${tail}?`;
+        : `Care ${f.authorityKind === "spital" ? "spital" : f.authorityKind === "scoala" ? "școală" : f.authorityKind === "comuna" ? "primărie de comună" : f.authorityKind === "oras_municipiu" ? "primărie de oraș" : f.authorityKind === "consiliu_judetean" ? "consiliu județean" : `instituție${labels.allInstitutions ? " (oricare, nu doar primăriile)" : ""}`}${wherePlain(f)} cumpără cel mai mult${subj}${fromSupplier}, ${when}${tail}?`;
     case "distribution":
       return `Unde se situează „${f.authorityName ?? f.supplierName ?? "?"}” după indicele de risc, față de ${f.supplierName ? "alte firme" : "alte instituții"}${f.county && !f.supplierName ? ` ${countyPhrase(f.county)}` : ""}?`;
     case "network":
@@ -327,11 +331,13 @@ function specKey(spec: AskSpec): string {
 
 /** Assemble the API answer: spec, sentence and ready alternatives. */
 export function resultFor(i: Interpretation): IntentResult {
-  const labels: SentenceLabels = { subject: i.subjects[0]?.label ?? null };
+  const labels: SentenceLabels = { subject: i.subjects[0]?.label ?? null, ...(i.askedTownHalls && !i.authorityKind && i.measure !== "value_per_capita" ? { allInstitutions: true } : {}) };
   const notes = [...i.notes];
   let spec: AskSpec | null = null;
   let problem: string | null = null;
-  if (i.intent && i.placeAmbiguous) {
+  if (i.intent === "compare" && !i.compareWith && i.compareChoices.length) {
+    problem = "Ce vrei să compari? Comparăm două instituții, nu două locuri.";
+  } else if (i.intent && i.placeAmbiguous) {
     // never guess between localities of the same name: each is an alternative
     problem = "Alege localitatea la care te gândești; există mai multe cu același nume.";
   } else if (i.intent && i.entityAlternatives.length && !i.supplier && !i.authority) {
@@ -344,7 +350,9 @@ export function resultFor(i: Interpretation): IntentResult {
   } else if (i.intent && i.personAlternatives.length && !i.person) {
     problem = i.choicesPartial
       ? `În Registrul Comerțului sunt ${i.choicesPartial.total} persoane cu acest nume. Alege una dintre primele ${i.choicesPartial.shown} sau caut-o după nume.`
-      : "Alege persoana la care te gândești; în Registrul Comerțului sunt mai multe cu același nume.";
+      : i.personAlternatives.length === 1
+        ? "Confirmă persoana: am căutat numele așa cum l-ai scris."
+        : "Alege persoana la care te gândești; în Registrul Comerțului sunt mai multe cu același nume.";
   } else if (i.intent) {
     const built = specFor(i, i.intent);
     spec = built.spec;
@@ -363,6 +371,7 @@ export function resultFor(i: Interpretation): IntentResult {
   const intent = i.intent ?? "ranking_suppliers";
   // While something must be chosen, offer only that choice: other alternatives would silently drop it.
   const choosing = spec ? null
+    : i.intent === "compare" && i.compareChoices.length ? "pair"
     : i.placeAmbiguous ? "place"
     : i.entityAlternatives.length && !i.supplier && !i.authority ? "entity"
     : i.personAlternatives.length && !i.person ? "person"
@@ -377,6 +386,7 @@ export function resultFor(i: Interpretation): IntentResult {
     if (alt && p.kind === "county" && alt.filters.county !== p.county) continue;
     add(label, "place", alt);
   }
+  if (choosing === "pair") for (const pair of i.compareChoices) add(pair.label, "entity", specFor(i, "compare", { pair }).spec);
   if (choosing === "person") for (const p of i.personAlternatives) add(personDisplay(p), "person", specFor(i, intent, { person: p }).spec);
   if (choosing === "entity") {
     const base = (e: EntityMatch) => `${cleanName(e.name)}${e.county && !/^(na|necunoscut)$/i.test(e.county) ? ` (${e.county})` : ""}`;

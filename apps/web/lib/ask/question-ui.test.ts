@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BLOCKS, validateSpec } from "./spec";
-import { QUESTION_GROUPS, QUESTION_TYPES, defaultQuestion, describeQuestion, localityScopeSupport, periodLabel, questionErrors, questionKey, reconcileQuestionDraft, transitionQuestion, type QuestionSpec } from "./question-ui";
+import { QUESTION_GROUPS, QUESTION_TYPES, defaultQuestion, describeQuestion, localityScopeError, localityScopeSupport, periodLabel, questionErrors, questionKey, reconcileQuestionDraft, transitionQuestion, type QuestionSpec } from "./question-ui";
 
 const authority: QuestionSpec = {
   block: "table", dim: "supplier", dataset: "contracts", measure: "value", topN: 7,
@@ -223,5 +223,11 @@ describe("locality scope in the place picker", () => {
     expect(spec.filters.uatSiruta).toBe(44818);
     expect(questionErrors(spec).join(" ")).toMatch(/Harta arată județele.*Elimină localitatea „Municipiul Buzău \(Buzău\)”/);
     expect(questionErrors({ ...spec, block: "stat" })).toEqual([]);
+  });
+  it("the API refuses what the builder flags: one shared rule (localityScopeError)", () => {
+    expect(localityScopeError({ block: "map", measure: "value", filters: { ...locality } })).toMatch(/Harta arată județele/);
+    expect(localityScopeError({ block: "scatter", dim: "authority", measure: "value", filters: { ...locality } })).toMatch(/Indicele de risc/);
+    expect(localityScopeError({ block: "stat", measure: "value", filters: { ...locality } })).toBeNull();
+    expect(localityScopeError({ block: "map", measure: "value", filters: {} })).toBeNull();
   });
 });

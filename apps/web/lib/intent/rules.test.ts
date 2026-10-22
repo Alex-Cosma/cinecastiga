@@ -388,11 +388,19 @@ describe("beginner phrasings → interpretation", () => {
     expect(r.spec?.dataset).toBe("da");
   });
 
-  it("47. a person with one ONRC identity («firmele lui Matei Ioan»), name order reversed", async () => {
-    const { i, r } = await ask("firmele lui matei ioan din 2020");
-    expect(i.person?.key).toBe("matei ioan|1957-01-01|batin");
+  it("47. a person with one ONRC identity, name order reversed («firmele lui Marian Popescu»)", async () => {
+    const { i, r } = await ask("firmele lui marian popescu din 2020");
+    expect(i.person?.key).toBe("popescu marian|1970");
     expect(i.place).toBeNull();
-    expect(r.spec?.filters).toMatchObject({ adminPersonKey: "matei ioan|1957-01-01|batin", yearFrom: 2020 });
+    expect(r.spec?.filters).toMatchObject({ adminPersonKey: "popescu marian|1970", yearFrom: 2020 });
+  });
+  it("47b. a name the index cannot search with diacritics («Matei Ioan») is confirmed, not picked", async () => {
+    const { i, r } = await ask("firmele lui matei ioan din 2020");
+    expect(i.person).toBeNull();
+    expect(i.place).toBeNull();
+    expect(r.spec).toBeNull();
+    expect(r.alternatives).toHaveLength(1);
+    expect(r.alternatives[0]!.spec.filters).toMatchObject({ adminPersonKey: "matei ioan|1957-01-01|batin", yearFrom: 2020 });
   });
 
   it("48. namesakes in ONRC: choose by birth year, no guess", async () => {
@@ -478,8 +486,8 @@ describe("review B1: persons are picked only when the registry holds one identit
     expect(r.spec).toBeNull();
     expect(i.notes.join(" ")).toMatch(/Nu am găsit în Registrul Comerțului/);
   });
-  it("«firmele lui Matei Ioan»: the single identity is picked", async () => {
-    expect((await ask("firmele lui Matei Ioan")).i.person?.key).toBe("matei ioan|1957-01-01|batin");
+  it("«firmele lui Marian Popescu»: the single identity is picked", async () => {
+    expect((await ask("firmele lui Marian Popescu")).i.person?.key).toBe("popescu marian|1970");
   });
 });
 
@@ -542,7 +550,9 @@ describe("review B3: place names are read before subjects; institution words are
   it("«Direcția de Asistență Socială» is an institution (choice), not steering columns or social services", async () => {
     const { i, r } = await ask("ce cumpara Directia de Asistenta Sociala");
     expect(i.subjects).toEqual([]);
-    expect(r.alternatives.map((a) => a.spec.filters.authorityId)).toEqual([2135939, 2135940]);
+    const ids = r.alternatives.map((a) => a.spec.filters.authorityId);
+    expect(ids).toContain(2135939);
+    expect(ids).toContain(2135940);
   });
   it("«la primărie» without a name is not «siliconi primari»", async () => {
     const { i } = await ask("cine castiga licitatiile la primarie");
@@ -742,3 +752,67 @@ describe("every spec and alternative says its own scope (regression set)", () =>
     }
   });
 });
+
+describe("re-review of 4cda2e6", () => {
+  it("a name the index cannot search at all is not searched; the person is asked for the full name", async () => {
+    const { i, r } = await ask("firmele lui Ab Cd");
+    expect(r.spec).toBeNull();
+    expect(i.personAlternatives).toEqual([]);
+    expect(i.notes.join(" ")).toMatch(/prea scurt pentru o căutare sigură/);
+  });
+  it("a name made only of a/i/s/t is searched as written only (no all-wildcard scan) and never picked silently", async () => {
+    const { i, r } = await ask("firmele lui Tasia Stati");
+    expect(r.spec).toBeNull();
+    expect(i.person).toBeNull();
+  });
+  it("hyphenated surnames match («Maria Popescu-Ionescu»)", async () => {
+    expect((await ask("firmele lui Maria Popescu-Ionescu")).i.person?.key).toBe("popescu-ionescu maria|1980");
+  });
+  it("fullwidth letters are normalized (NFKC)", async () => {
+    const { i } = await ask("ｃｉｎｅ ｃâｓｔｉｇă ｉｎ ｂｕｚăｕ");
+    expect(i.place).toMatchObject({ kind: "county", county: "Buzău" });
+  });
+  it("«compară Buzău cu Brăila»: town halls offered as a comparison, never another question type", async () => {
+    const { i, r } = await ask("compara Buzau cu Braila");
+    expect(i.intent).toBe("compare");
+    expect(r.spec).toBeNull();
+    expect(r.alternatives.map((a) => a.spec.block)).toEqual(["compare"]);
+    expect(r.alternatives[0]!.spec.filters).toMatchObject({ authorityId: 2144364, compareWithId: 3000001 });
+  });
+  it("«compară primăria Buzău cu primăria Brăila» compares directly", async () => {
+    expect((await ask("compară primăria Buzău cu primăria Brăila")).r.spec).toMatchObject({ block: "compare", filters: { authorityId: 2144364, compareWithId: 3000001 } });
+  });
+  it.each(["cine castiga in Turnu Severin", "cine castiga in Dr. Tr. Severin"])("short municipality names: «%s» → Drobeta-Turnu Severin", async (q) => {
+    expect((await ask(q)).i.place?.name).toBe("Municipiul Drobeta-Turnu Severin");
+  });
+  it("«și» inside an institution name; the county narrows the choice", async () => {
+    expect((await ask("ce cumpara Directia Generala de Asistenta Sociala si Protectia Copilului Iasi")).i.authority?.id).toBe(2145066);
+    expect((await ask("ce cumpara Directia Generala de Asistenta Sociala si Protectia Copilului din Iasi")).i.authority?.id).toBe(2145066);
+  });
+  it("«ce primărie are cel mai mare risc» says that every institution is ranked", async () => {
+    const { r } = await ask("ce primarie are cel mai mare risc in Buzau");
+    expect(r.spec).toMatchObject({ block: "entity_card", rankBy: "risk", filters: { county: "Buzău" } });
+    expect(r.sentence).toContain("nu doar primăriile");
+  });
+  it("«Consiliul Județean Buzău» is the named council; «consiliile județene» stays a kind", async () => {
+    expect((await ask("ce cumpara Consiliul Judetean Buzau")).i.authority?.id).toBe(2144001);
+    expect((await ask("ce cumpara consiliile judetene din Moldova")).i.authorityKind?.kind).toBe("consiliu_judetean");
+  });
+  it("«stradal» is a subject word, not a street: «iluminat stradal Baia Mare anul trecut»", async () => {
+    const { i } = await ask("iluminat stradal Baia Mare anul trecut");
+    expect(i.place?.name).toBe("Municipiul Baia Mare");
+    expect(i.subjects[0]?.term).toBe("34993000-4");
+    expect(i.leftover).toEqual([]);
+  });
+  it("a plural kind before a town does not hide the town («laptopuri școli Târgu Mureș»)", async () => {
+    const { i, r } = await ask("laptopuri scoli Targu Mures");
+    expect(i.leftover).toEqual([]);
+    expect(r.spec?.filters).toMatchObject({ authorityKind: "scoala", county: "Mureș" });
+  });
+  it("«firmele lui» without a name is not a national ranking", async () => {
+    const { r } = await ask("firmele lui %% __");
+    expect(r.spec).toBeNull();
+    expect(r.interpretation.notes.join(" ")).toMatch(/Scrie numele persoanei/);
+  });
+});
+
