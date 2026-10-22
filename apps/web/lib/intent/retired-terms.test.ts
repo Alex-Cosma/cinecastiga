@@ -39,6 +39,19 @@ describe("retired words are offered as choices, never guessed", () => {
     expect(asphalt.spec?.filters.cpvTerm).toBe("45233222-1"); // „Lucrări de pavare şi de asfaltare”
   });
 
+  it("reads inflected forms the same way, and never other words", async () => {
+    for (const q of ["mesele", "meselor de la scoala"]) {
+      const r = await read(q);
+      expect(r.spec, q).toBeNull();
+      expect(r.alternatives.map((a) => a.spec.filters.cpvTerm), q).toEqual(["catering", "39121200"]);
+    }
+    const school = await read("mesele scolii");
+    expect(school.interpretation.subjectChoices?.options.map((o) => o.term)).toEqual(["catering", "39121200"]);
+    expect((await read("lucrarile buzau")).interpretation.subjectChoices?.options).toHaveLength(5);
+    expect((await read("programelor")).interpretation.subjectChoices?.options).toHaveLength(2);
+    for (const q of ["meserii", "mesaje", "mesager"]) expect((await read(q)).interpretation.subjectChoices ?? null, q).toBeNull();
+  });
+
   it("„programe” is software or training", async () => {
     const r = await read("programe");
     expect(r.alternatives.map((a) => a.spec.filters.cpvTerm)).toEqual(["software", "80500000"]);
