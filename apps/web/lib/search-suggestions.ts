@@ -2,10 +2,11 @@ import type { SuggestResponse } from "@/app/api/suggest/route";
 import { COUNTIES } from "./counties";
 import { askHref } from "./discovery-links";
 import { cleanName } from "./format";
-import type { IntentResult, PlaceMatch, SubjectMatch } from "./intent/types";
+import type { IntentResult, PlaceMatch } from "./intent/types";
 import type { EntityHit } from "./search";
 import { fold } from "./topic-search/shared";
-import { placeId, remainingWords } from "./topic-search/words";
+import { placeId, remainingWords, weakSubject } from "./topic-search/words";
+export { weakSubject };
 
 /**
  * Grouped suggestions of the home search box (and the header search dialog).
@@ -54,21 +55,8 @@ const TITLES: Record<SuggestionGroupId, string> = {
 };
 const MAX = { subjects: 4, places: 4, authorities: 4, suppliers: 4, persons: 3 };
 
-const words = (s: string) => fold(s).split(/[^a-z0-9]+/).filter(Boolean);
 const capital = (s: string) => s.charAt(0).toLocaleUpperCase("ro-RO") + s.slice(1);
 const cauta = (q: string, place?: string | null) => `/cauta?${new URLSearchParams({ q, ...(place ? { place } : {}) })}`;
-
-/**
- * A catalogue subject matched only on a fragment of a word ("construct" →
- * "Construcţie de canale") is a weak reading: the person is more likely
- * typing a name. Curated synonyms and whole catalogue words are not weak.
- */
-export function weakSubject(s: SubjectMatch): boolean {
-  if (s.source !== "catalog") return false;
-  const typed = words(s.matched.text);
-  const label = new Set(words(s.cpvName ?? s.label));
-  return typed.some((w) => !label.has(w));
-}
 
 /** The interpretation of exactly this text, or null (stale or failed). */
 function current(input: SuggestionInput) {
@@ -90,7 +78,7 @@ export function buildSuggestionGroups(input: SuggestionInput): SuggestionGroup[]
   const exactVocab = (input.vocab?.cpv ?? []).some((c) => fold(/^\d/.test(c.term) ? c.cpvName ?? "" : c.term).trim() === fold(text));
   const strongSubject = subjects.some((s) => !weakSubject(s)) || exactVocab;
   const place = i && !i.placeAmbiguous && i.place?.matched ? i.place : null;
-  const named = Boolean(i && (i.authority || i.supplier || i.person));
+  const named = Boolean(i && (i.authority || i.supplier || i.person || i.entityAlternatives.length || i.personAlternatives.length));
   const understood = strongSubject || Boolean(place) || named || Boolean(i?.placeAmbiguous);
   const groups = new Map<SuggestionGroupId, Suggestion[]>();
   const push = (g: SuggestionGroupId, s: Suggestion) => {
