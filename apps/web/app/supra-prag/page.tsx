@@ -105,7 +105,8 @@ export default async function SupraPragPage({
     const s = qp.toString();
     return s ? `/supra-prag?${s}` : "/supra-prag";
   };
-  const pageUrl = (n: number) => qstr({ p: n > 1 ? String(n) : undefined });
+  // The pager sits below the table: the next page opens at the start of the list.
+  const pageUrl = (n: number) => `${qstr({ p: n > 1 ? String(n) : undefined })}#atribuiri-lista`;
 
   return (
     <>
@@ -210,7 +211,7 @@ export default async function SupraPragPage({
         <p className="hint">{sort === "value"
           ? "Comparația include numai valori de ofertă / rezultat și valori de contract publicate în RON. Exclude intervalele, ofertele multiple, plafoanele și tipurile încă neverificate."
           : "Valorile rămân în moneda și forma publicate: ofertă, interval sau plafon. Nu calculăm un total comun."}</p>
-        <table className="rank">
+        <table className="rank list-anchor" id="atribuiri-lista">
           <thead>
             <tr>
               <th>Autoritate → Câștigător</th>
@@ -264,11 +265,11 @@ export default async function SupraPragPage({
 
         {totalPages > 1 ? (
           <div className="pager">
-            {page > 1 ? <Link scroll={false} href={pageUrl(page - 1)}>← anterioarele</Link> : <span className="off">← anterioarele</span>}
+            {page > 1 ? <Link href={pageUrl(page - 1)}>← anterioarele</Link> : <span className="off">← anterioarele</span>}
             <span className="pager-pos">
               pagina {formatInt(page)} / {formatInt(totalPages)} · {formatInt(awards.total)} rezultate
             </span>
-            {page < totalPages ? <Link scroll={false} href={pageUrl(page + 1)}>următoarele →</Link> : <span className="off">următoarele →</span>}
+            {page < totalPages ? <Link href={pageUrl(page + 1)}>următoarele →</Link> : <span className="off">următoarele →</span>}
           </div>
         ) : null}
 

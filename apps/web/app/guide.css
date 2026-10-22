@@ -7,12 +7,17 @@
 .term-trigger{display:inline;padding:0;margin:0;border:0;background:none;color:inherit;font:inherit;letter-spacing:inherit;text-align:inherit;cursor:pointer;text-decoration:underline dotted;text-decoration-thickness:1px;text-underline-offset:.22em;text-decoration-color:var(--faint)}
 /* Small labels (10 px) still get a ≥ 28 px touch target, without changing the line. */
 .term-trigger{position:relative}
-.term-trigger:after{content:"";position:absolute;left:-4px;right:-4px;top:50%;height:100%;min-height:28px;transform:translateY(-50%)}
+/* The extra area grows only downward and sideways, never over a link above the label. */
+.term-trigger:after{content:"";position:absolute;left:-4px;right:-4px;top:0;height:100%;min-height:28px}
 .term-trigger:hover,.term-open>.term-trigger{text-decoration-color:var(--accent);color:var(--accent-ink)}
 .term-mark{display:inline-grid;place-items:center;width:1.35em;height:1.35em;margin-left:.35em;border:1px solid currentColor;border-radius:50%;font-size:.78em;line-height:1;font-weight:600;vertical-align:.08em;opacity:.75;text-decoration:none}
 .term-def{display:block;max-width:46ch;margin:7px 0 2px;padding:9px 11px;background:var(--sunk);border-left:2px solid var(--accent-line);border-radius:6px;color:var(--ink2);font:400 13px/1.55 var(--body);letter-spacing:0;text-transform:none;white-space:normal;text-align:left}
 .term-def[hidden]{display:none}
 .term-def b{font-weight:600;color:var(--ink)}
+
+/* ---- Lists reached by a pager anchor (`?p=2#id`) land below the sticky header ---- */
+.list-anchor{scroll-margin-top:104px}
+@media(max-width:700px){.list-anchor{scroll-margin-top:128px}}
 
 /* ---- Home: national strip items (number links to its answer, label explains) ---- */
 .d-national-strip{align-items:start}
