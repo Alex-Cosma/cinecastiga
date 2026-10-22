@@ -65,7 +65,7 @@ describe.runIf(Boolean(connection))("migration 0080: beginner CPV vocabulary (de
     const before = await rows();
     for (const run of [1, 2]) for (const statement of migration.split("--> statement-breakpoint")) await sql.unsafe(statement);
     const after = await rows();
-    expect(after).toHaveLength(99 + 82);
+    expect(after).toHaveLength(99 + 84);
     expect(before.every((r) => after.includes(r))).toBe(true);
     await sql.unsafe(seed);
     expect(await rows()).toEqual(after);
@@ -77,10 +77,24 @@ describe.runIf(Boolean(connection))("migration 0080: beginner CPV vocabulary (de
     expect(await prefixes("apa")).toEqual(["41", "4523215", "651"]);
     expect(await prefixes("transport elevi")).toEqual(["341144", "6013"]);
     expect(await prefixes("laptop")).toEqual(["302131"]);
+    // road rehabilitation stays in "reabilitare" and the whole of 45233 in "reabilitare drumuri"
+    expect(await prefixes("reabilitare")).toEqual(["4523314", "45321", "45453"]);
+    expect(await prefixes("reabilitare drumuri")).toEqual(["45233", "4523314"]);
+    expect(await prefixes("alimentare cu apa")).toEqual(["41", "4523215"]);
     // a term without rows of its own still falls back to containment
     expect(await prefixes("transport public")).toEqual(["60"]);
-    // …deterministically (longest term, then term and prefix order)
-    expect(await prefixes("iluminat stradal")).toEqual(["315", "349285", "34993", "45316"]);
+    // …and keeps every row of the term it falls back to
+    expect(await prefixes("iluminat stradal")).toEqual(["315", "349285", "34993", "45316", "50232"]);
+  });
+
+  it("carries every row note to the people who read the answer", async () => {
+    const sql = connection!.sql;
+    const notes = async (term: string) => (await ground(sql, { cpvTerm: term })).cpv?.notes;
+    expect(await notes("iluminat")).toEqual([expect.stringMatching(/^Include și semnalizarea rutieră \(semafoare, balizaj\).*aproximativ 7% din valoare\.$/)]);
+    expect(await notes("iluminat public")).toHaveLength(1);
+    expect(await notes("iluminat festiv")).toEqual([]);
+    // notes of older rows are surfaced the same way
+    expect(await notes("lemne")).toEqual(["lemn de foc"]);
   });
 
   it("is the vocabulary the interpreter and the home search read", async () => {
