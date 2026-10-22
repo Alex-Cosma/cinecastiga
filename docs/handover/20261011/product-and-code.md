@@ -24,7 +24,7 @@ Proprietarul a cerut explorare rapidă și plăcută, dar cu date verificabile. 
 | `/intreaba` | Descoperă / Construiește; întrebare editabilă cu filtre clare, răspuns și surse | `apps/web/app/intreaba/`, `apps/web/lib/ask/` |
 | `/cauta` | Căutare entități și achiziții tematice; typeahead geografic; interval de ani/toți anii | `apps/web/app/cauta/`, `apps/web/lib/topic-search*`, `apps/ingestion/src/search/` |
 | `/domenii` | Atlas CPV; click pe părinte aprofundează, frunza deschide detalii, săgeata deschide detalii la orice nivel | `docs/implementation/domains-atlas.md` |
-| `/entitati/[id]` | Profil, parteneri, istoric, semnale (CRI separat de „Toate semnalele”, cu linkuri `/semnale?ent=`), transparența populației | `apps/web/app/entitati/`, `apps/web/lib/marts.ts` |
+| `/entitati/[id]` | Profil, „Pe scurt”, parteneri, istoric, semnale (CRI separat de „Toate semnalele”, cu linkuri `/semnale?ent=`), transparența populației, etichete de consorțiu; vezi [Pagina entității](#pagina-entității) | `apps/web/app/entitati/`, `apps/web/lib/marts.ts`, `apps/web/lib/entity-summary.ts`, `apps/web/lib/consortium.ts` |
 | Radiografie | Comparații, furnizori, dependență, achiziții directe, loturi și surse | `apps/web/app/entitati/[id]/radiografie/`, `apps/ingestion/src/flags/radiografie.ts` |
 | `/contracte/[nid]` | Sursă contractuală, furnizori, publicații/versiuni, fișiere și text | `apps/web/app/contracte/`, `apps/web/lib/marts.ts`, `apps/web/lib/documents/` |
 | `/anunturi/[caid]` | Anunț și contractele/loturile lui | `apps/web/app/anunturi/`, `apps/web/lib/marts.ts` |
@@ -36,6 +36,14 @@ Proprietarul a cerut explorare rapidă și plăcută, dar cu date verificabile. 
 | Metodologie/acoperire | Definiții, limite, surse și starea datelor | `apps/web/app/metodologie/`, `apps/web/components/DataCoverage.tsx` |
 
 Căile cu `*` sunt indicații de căutare, nu nume exacte de fișier. Folosește `rg --files` înainte de a deschide un modul mutat.
+
+## Pagina entității
+
+Actualizat 22 octombrie 2026 (testul cu un vizitator începător). Indicele de risc rămâne primul card din rândul de cifre, neschimbat (decizia proprietarului 3).
+
+- **„Pe scurt”** stă imediat sub rândul de cifre, înainte de „Ce includ aceste cifre?”. Are 1–3 propoziții și două liste scurte: domeniile (diviziunile CPV, cu numele oficial) și primii trei parteneri. Totalul, numărul de achiziții directe, de contracte distincte și intervalul de ani sunt chiar cifrele din `getEntityTxCounts`. Domeniile vin din `getEntitySubjects`, pe aceeași selecție: achiziții directe pozitive de cel mult 2 milioane lei și rânduri de contract cu cotă pozitivă. Suma domeniilor este totalul paginii. Partenerii sunt prima pagină din `getEntityPartnersPaged`, aceeași cu lista „Principalii furnizori/Principalele autorități”. Textul spune „valoare înregistrată, nu plăți”. Compunerea frazelor este în `lib/entity-summary.ts`, fără acces la bază.
+- **Consorții.** Un contract cu mai mulți câștigători are câte un rând pe câștigător, cu partea egală (`closing_value`; ultimul membru primește restul de rotunjire). Regula nu s-a schimbat. Tabelul de achiziții arată acum, sub sumă, „⅓ din 381.909.792 lei · consorțiu de 3” (fracții exacte până la 6 membri, apoi „parte egală din …”). Sub partener apar ceilalți membri („consorțiu cu CONCELEX și …”, cel mult 4 nume citite din `marts.contract_transactions`). Clasamentul partenerilor are eticheta „în consorțiu” când totalul include asemenea cote (`Partner.nConsortium`). Pagina contractului adaugă la cota estimată fracția și valoarea din care a fost împărțită. Exemplu verificat în producție: contractul 607956 (Municipiul Buzău, nr. 108758), 381.909.792,16 lei, 3 câștigători, câte 127.303.264 lei.
+- **Sume întregi și mobil.** Coloana „Închidere” nu mai taie sumele pe desktop. Sub 720 px, rândurile tabelului de achiziții și ale grupurilor „Posibilă fracționare sub prag” devin carduri, iar partenerii au numele pe un rând separat. Pagina nu are scroll orizontal la 390 px. Sub 700 px, butonul Feedback nu mai plutește peste conținut: devine un rând la finalul paginii, după subsol.
 
 ## Motorul întrebărilor
 
@@ -73,7 +81,7 @@ Identitatea forest-green/ivory, fonturile existente, tema deschisă/închisă ș
 
 Dialogurile nu își schimbă violent înălțimea în timpul căutării; cererile vechi nu suprascriu rezultatele noi. Drawer-ul are feedback vizibil de încărcare. Tabelele lungi sunt paginate; admin folosește 10 rânduri/pagină. Sumele sunt aliniate la antet și păstrează accesul la valoarea exactă, nu doar abrevierea în milioane.
 
-Feedbackul poate fi trimis anonim, fără nume/email impus. Este vizibil în secțiunea separată de admin; administratorul poate șterge individual intrări. Nu expune mesajele de feedback printr-un endpoint public.
+Feedbackul poate fi trimis anonim, fără nume/email impus. Butonul este o filă pe marginea dreaptă de la 1360 px, un buton rotund în colț între 701 și 1359 px și un rând la finalul paginii sub 700 px, ca să nu acopere sumele. Este vizibil în secțiunea separată de admin; administratorul poate șterge individual intrări. Nu expune mesajele de feedback printr-un endpoint public.
 
 ## Lucrări exploratorii și cercetare
 
