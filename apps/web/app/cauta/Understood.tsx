@@ -82,7 +82,7 @@ export function SubjectAnswer({answer,notes=[]}:{answer:NonNullable<TopicInterpr
    :<><p className="topic-answer-value"><strong title={formatRonFull(total.value)}>{formatRon(total.value)}</strong><span>în {formatInt(total.count)} {total.count===1?'înregistrare':'înregistrări'} · valoare înregistrată, nu plăți</span></p>
     {rows&&rows.length>0&&<><p className="topic-answer-question">{answer.top.sentence}</p><ol className="topic-answer-top">{rows.map(r=><li key={r.entityId??r.name}>{r.entityId?<Link prefetch={false} href={`/entitati/${r.entityId}?rol=furnizor`}>{cleanName(r.name)}</Link>:<span>{cleanName(r.name)}</span>}<span>{formatRon(r.value)}</span></li>)}</ol></>}
     {caveats.length>0&&<details className="topic-answer-limits"><summary>Ce include și ce lasă deoparte calculul</summary><ul>{caveats.map(c=><li key={c}>{c}</li>)}</ul></details>}</>}
-  {answer.cpv.length>0&&<p className="topic-help">Domenii incluse ({answer.cpv.length}): {answer.cpv.join('; ')}.</p>}
+  {answer.cpv.length>0&&<p className="topic-help">Domenii incluse ({answer.cpv.length}): {answer.cpv.join('; ')}{answer.cpvExcluded.length>0&&<>; fără: {answer.cpvExcluded.join('; ')}</>}.</p>}
   {notes.map(n=><p key={n} className="topic-subject-note">{n}</p>)}
   <Link prefetch={false} className="topic-answer-link" href={answer.href}>Vezi răspunsul complet în Întreabă <DiscoveryIcon name="arrow"/></Link>
  </section>;

@@ -337,6 +337,9 @@ export function resultFor(i: Interpretation): IntentResult {
   let problem: string | null = null;
   if (i.intent === "compare" && !i.compareWith && i.compareChoices.length) {
     problem = "Ce vrei să compari? Comparăm două instituții, nu două locuri.";
+  } else if (i.intent && i.subjectChoices) {
+    // a word that is not a subject on its own: each meaning is an alternative
+    problem = i.subjectChoices.message;
   } else if (i.intent && i.placeAmbiguous) {
     // never guess between localities of the same name: each is an alternative
     problem = "Alege localitatea la care te gândești; există mai multe cu același nume.";
@@ -372,6 +375,7 @@ export function resultFor(i: Interpretation): IntentResult {
   // While something must be chosen, offer only that choice: other alternatives would silently drop it.
   const choosing = spec ? null
     : i.intent === "compare" && i.compareChoices.length ? "pair"
+    : i.subjectChoices ? "subject"
     : i.placeAmbiguous ? "place"
     : i.entityAlternatives.length && !i.supplier && !i.authority ? "entity"
     : i.personAlternatives.length && !i.person ? "person"
@@ -385,6 +389,14 @@ export function resultFor(i: Interpretation): IntentResult {
     if (alt && p.kind === "locality" && !alt.filters.uatSiruta) continue;
     if (alt && p.kind === "county" && alt.filters.county !== p.county) continue;
     add(label, "place", alt);
+  }
+  if (choosing === "subject" && i.subjectChoices) {
+    const { matched } = i.subjectChoices;
+    for (const o of i.subjectChoices.options) {
+      const chosen: Interpretation = { ...i, subjectChoices: null, subjects: [{ term: o.term, label: o.label, cpvName: null, source: /^\d/.test(o.term) ? "catalog" : "synonym", matched }, ...i.subjects] };
+      const alt = specFor(chosen, intent).spec;
+      if (alt) { alternatives.push({ label: o.label, kind: "subject", spec: alt, sentence: sentenceFor(alt, { ...labels, subject: o.label }) }); seen.add(specKey(alt)); }
+    }
   }
   if (choosing === "pair") for (const pair of i.compareChoices) add(pair.label, "entity", specFor(i, "compare", { pair }).spec);
   if (choosing === "person") for (const p of i.personAlternatives) add(personDisplay(p), "person", specFor(i, intent, { person: p }).spec);
