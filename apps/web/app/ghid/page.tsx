@@ -17,9 +17,9 @@ const PATHS = [
     text: "Alege un județ pe harta de pe prima pagină. De exemplu, Buzău: achizițiile instituțiilor din județ, împărțite pe domenii.",
   },
   {
-    href: "/cauta?q=Erbasu&tab=entities",
-    title: "Caută o firmă sau o instituție",
-    text: "Scrie numele sau CUI-ul. Pagina ei arată cu cine lucrează, ce a câștigat și de când.",
+    href: "/cauta?q=Municipiul%20Buz%C4%83u&tab=entities",
+    title: "Caută o instituție, de exemplu „Municipiul Buzău”",
+    text: "Scrie numele sau CUI-ul unei instituții sau firme. Pagina ei arată ce a cumpărat sau ce a câștigat, cu cine a lucrat și când.",
   },
   {
     href: askHref({ block: "table", dataset: "all", dim: "supplier", measure: "value", topN: 10, filters: { cpvTerm: "drumuri" } }),
@@ -29,7 +29,7 @@ const PATHS = [
   {
     href: "/semnale",
     title: "Vezi ce merită verificat",
-    text: "Semnalele arată tipare din date, de exemplu achiziții directe repetate care împreună depășesc pragul. Fiecare are explicația și sursele lui.",
+    text: "Semnalele arată tipare din date care merită verificate, nu acuzații. Fiecare are condițiile, limitele și sursele lui.",
   },
 ];
 

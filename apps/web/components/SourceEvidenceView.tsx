@@ -11,7 +11,8 @@ export default function SourceEvidenceView({ evidence, href, page: requestedPage
 }) {
   const pages = Math.max(1, Math.ceil(evidence.sourceCount / 50));
   const page = Math.max(0, Math.min(Number.isSafeInteger(requestedPage) ? requestedPage : 0, pages - 1));
-  const pageHref = (p: number) => `${href}${href.includes("?") ? "&" : "?"}p=${p}`;
+  // The pager sits below the table: the next page opens at the start of the list.
+  const pageHref = (p: number) => `${href}${href.includes("?") ? "&" : "?"}p=${p}#surse-lista`;
   const csvQuery = new URLSearchParams({ kind, id: refId });
   if (kind === "radiografie" && spec && typeof spec === "object") for (const [key, value] of Object.entries(spec)) if (typeof value === "string") csvQuery.set(key, value);
   const urls = Array.isArray(evidence.context.sourceUrls) ? evidence.context.sourceUrls.filter((value): value is string => typeof value === "string" && /^https:\/\/(e-licitatie\.ro|ted\.europa\.eu)\//.test(value)) : [];
@@ -24,7 +25,7 @@ export default function SourceEvidenceView({ evidence, href, page: requestedPage
     <a href={`/api/evidence/sources?${csvQuery}`} download>Descarcă înregistrările disponibile · CSV ↓</a>
     {evidence.warnings.length > 0 && <details className="source-evidence-notes" open><summary>Ce trebuie verificat înainte de a cita</summary><ul>{evidence.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul></details>}
     <p className="hint">Metodologie: {evidence.methodology}. Sumele sunt valori înregistrate, nu plăți. Pentru consorții, rândul reprezintă cota alocată unui furnizor.</p>
-    {evidence.records.length > 0 ? <div className="ask-tablewrap"><table className="rank source-evidence-table"><thead><tr><th scope="col">Înregistrare și sursă</th><th scope="col">Autoritate / furnizor</th><th scope="col">Data</th><th scope="col" className="num">Valoare exactă · lei</th></tr></thead><tbody>
+    {evidence.records.length > 0 ? <div className="ask-tablewrap list-anchor" id="surse-lista"><table className="rank source-evidence-table"><thead><tr><th scope="col">Înregistrare și sursă</th><th scope="col">Autoritate / furnizor</th><th scope="col">Data</th><th scope="col" className="num">Valoare exactă · lei</th></tr></thead><tbody>
       {evidence.records.slice(page * 50, (page + 1) * 50).map((row, index) => {
         const links = evidenceLinks(row);
         return <tr key={`${row.src}:${row.refId}:${row.supplierId}:${index}`}>

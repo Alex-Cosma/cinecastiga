@@ -17,7 +17,8 @@ function Bars({ title, bars, more }: { title: string; bars: SummaryBar[]; more?:
         {bars.map((b) => (
           <li key={b.key}>
             <div className="ent-brief-label">
-              {b.href ? <Link href={b.href}>{b.label}</Link> : <span>{b.label}</span>}
+              {/* The full name stays in the text (screen readers, wrapping on phones); the title shows it where it is clipped. */}
+              {b.href ? <Link href={b.href} title={b.label}>{b.label}</Link> : <span title={b.label}>{b.label}</span>}
               {b.consortium && <span className="cons-tag" title={b.consortium}>în consorțiu</span>}
             </div>
             <div className="ent-brief-track" aria-hidden="true"><i style={{ width: `${Math.min(100, Math.max(0, b.share * 100))}%` }} /></div>

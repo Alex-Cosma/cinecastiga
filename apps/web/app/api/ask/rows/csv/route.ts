@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createDb, type DbSql } from "@seap/db";
 import { validateSpec } from "../../../../../lib/ask/spec";
+import { localityScopeError } from "../../../../../lib/ask/question-ui";
 import { ground } from "../../../../../lib/ask/ground";
 import {
   runRows,
@@ -36,6 +37,8 @@ export async function POST(req: Request) {
   if (body.peer !== undefined && body.connection !== undefined) return NextResponse.json({ok:false,error:"Alege o singură selecție documentată."},{status:400});
   const v = validateSpec(body.spec);
   if ("error" in v) return NextResponse.json({ ok: false, error: v.error }, { status: 400 });
+  const localityError = localityScopeError(v);
+  if (localityError) return NextResponse.json({ ok: false, error: localityError }, { status: 400 });
   const opts = evidenceOptions(body);
   if ("error" in opts) return NextResponse.json({ ok: false, error: opts.error }, { status: 400 });
   opts.limit = CSV_MAX_ROWS;

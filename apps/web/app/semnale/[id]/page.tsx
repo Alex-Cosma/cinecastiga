@@ -51,7 +51,7 @@ export default async function SignalSourcesPage({ params, searchParams }: {
     <ClipButton kind="signal" refId={id} label={meta?.title ?? finding.code} />
     <p><a href={`/api/evidence/sources?kind=signal&id=${id}`} download>Descarcă înregistrările disponibile · CSV ↓</a></p>
     {finding.sourceIds.length > 0 && <section className="section">
-      <h2>Achizițiile care au declanșat acest semnal</h2>
+      <h2 id="achizitii-semnal" className="list-anchor">Achizițiile care au declanșat acest semnal</h2>
       <p><strong>{formatInt(finding.sourceIds.length)} achiziții identificate în calcul</strong> · CPV {String(evidence.cpv_class ?? "necunoscut")} · tip: {purchaseType}.</p>
       <p>Semnalul înregistrează {formatInt(recordedCount)} achiziții, în valoare de <strong>{exact(recordedTotal)} lei</strong>.
         Înregistrările sursă disponibile acum: {formatInt(finding.found)}, total <strong>{exact(finding.totalExact)} lei</strong>.</p>
@@ -63,7 +63,7 @@ export default async function SignalSourcesPage({ params, searchParams }: {
         {finding.records.map(row => <tr key={row.id}><td><a href={daUrl(row.id)} target="_blank" rel="noreferrer">{row.code ?? `SEAP ${row.id}`} ↗</a>{!row.available && <div className="note">Înregistrare indisponibilă în datele curente</div>}</td><td>{coverageDate(row.date)}</td><td>{row.cpv ?? "necunoscut"}</td><td className="num">{exact(row.value)}</td></tr>)}
       </tbody></table></div>
       <p className="note">Pagina {finding.page + 1} din {Math.max(1, Math.ceil(finding.sourceIds.length / 50))} · maximum 50 de înregistrări pe pagină.</p>
-      <nav className="pager" aria-label="Paginarea surselor">{finding.page > 0 && <Link href={`/semnale/${id}?p=${finding.page - 1}`}>← Anterioara</Link>}{(finding.page + 1) * 50 < finding.sourceIds.length && <Link href={`/semnale/${id}?p=${finding.page + 1}`}>Următoarea →</Link>}</nav>
+      <nav className="pager" aria-label="Paginarea surselor">{finding.page > 0 && <Link href={`/semnale/${id}?p=${finding.page - 1}#achizitii-semnal`}>← Anterioara</Link>}{(finding.page + 1) * 50 < finding.sourceIds.length && <Link href={`/semnale/${id}?p=${finding.page + 1}#achizitii-semnal`}>Următoarea →</Link>}</nav>
     </section>}
     {finding.contracts.length > 0 && <section className="section">
       <h2>Contractele și loturile folosite în semnal</h2>

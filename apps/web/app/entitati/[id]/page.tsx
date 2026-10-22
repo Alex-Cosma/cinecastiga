@@ -135,7 +135,8 @@ export default async function EntityPage({
       getEntitySignalCounts(id, role),
       registryCuiLookup,
       getEntitySubjects(id, role),
-      getEntityPartnersPaged(id, role, 1, 3),
+      // Page 1 of the partner list: "Pe scurt" uses its top rows, PartnersTable shows it without refetching.
+      getEntityPartnersPaged(id, role, 1, 10),
     ]);
   const cuiUncorroborated = cui !== null && registryCui === null;
   // Audit F03 (b): a reviewed collision is a Romanian-looking record whose
@@ -159,7 +160,7 @@ export default async function EntityPage({
   const summary = composeEntitySummary({
     role, totalExact: txCounts.valueExact, nDa: txCounts.nDa, nContracts: txCounts.nContracts,
     dateFrom: txCounts.dateFrom, dateTo: txCounts.dateTo, divisions: subjects.divisions,
-    nConsortium: subjects.nConsortium, partners: topPartners.rows,
+    nConsortium: subjects.nConsortium, partners: topPartners.rows.slice(0, 3),
   });
 
   return (
@@ -566,11 +567,12 @@ export default async function EntityPage({
       <section className="section" id="parteneri">
         <h2>{isAuth ? "Principalii furnizori" : "Principalele autorități"}</h2>
         <PartnersTable
-          key={`${id}:${rolParam}`}
+          key={`${id}-${role}`}
           entityId={id}
           entityName={cleanName(row.name)}
           role={rolParam as "furnizor" | "autoritate"}
           isAuth={isAuth}
+          initial={topPartners}
         />
       </section>
 

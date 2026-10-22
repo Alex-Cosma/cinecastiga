@@ -99,6 +99,15 @@ export interface Interpretation {
   supplier: EntityMatch | null;
   /** Several firms/institutions carry the typed name and none was chosen. */
   entityAlternatives: EntityMatch[];
+  /**
+   * The person/entity choices are the first of more matches: how many exist
+   * in total and what to search for to see them all (null = list complete).
+   */
+  choicesPartial: { shown: number; total: number; search: string } | null;
+  /** "compară Buzău cu Brăila": the institution pairs the places can mean (town halls, county councils). */
+  compareChoices: { label: string; focal: EntityMatch; other: EntityMatch }[];
+  /** The person asked about town halls ("primării") but the engine ranks every institution. */
+  askedTownHalls: boolean;
   /** Second entity for "compară X cu Y". */
   compareWith: EntityMatch | null;
   person: PersonMatch | null;
@@ -176,10 +185,19 @@ export interface Vocabulary {
   synonyms(): Promise<string[]>;
   /** /api/suggest CPV semantics: catalogue labels and synonyms containing every word. */
   cpv(foldedPhrase: string): Promise<CpvHit[]>;
-  authorities(foldedPhrase: string): Promise<EntityHit[]>;
-  suppliers(foldedPhrase: string): Promise<EntityHit[]>;
-  persons(foldedPhrase: string): Promise<PersonHit[]>;
+  /**
+   * Every entity (one row per entity id, never collapsed by name) whose name
+   * contains every word, exact names first, then by value; `total` counts all
+   * matches, so callers know when the list is partial.
+   */
+  entities(role: "authority" | "supplier", foldedPhrase: string): Promise<EntityLookup>;
+  /** ONRC identities whose name is exactly one of `foldedNames` (word orders); `total` counts them all. */
+  personsNamed(foldedNames: string[]): Promise<PersonLookup>;
 }
+
+export interface EntityLookup { hits: EntityHit[]; total: number }
+/** `exhaustive` is false when diacritic variants of the name could not be searched. */
+export interface PersonLookup { hits: PersonHit[]; total: number; exhaustive?: boolean; timedOut?: boolean }
 
 // ---------------------------------------------------------------- API shape
 
