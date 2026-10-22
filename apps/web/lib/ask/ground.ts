@@ -110,11 +110,21 @@ async function groundCpv(sql: DbSql, term: string): Promise<CpvGrounding> {
     return { term, prefixes: [], matchedNames: [], method: "none" };
   }
 
-  // 1. Curated synonym table (exact term or term contained in the query).
-  const syn = (await sql`
+  // 1. Curated synonym table. Rows written for exactly this term are its
+  // whole meaning ("iluminat" → lamps, street lighting, its installation and
+  // maintenance), so no longer term crowds them out and no unrelated term
+  // that merely contains the letters joins in ("apa" ⊂ "aparatura medicala").
+  // Only a term without rows of its own falls back to containment.
+  const exact = (await sql`
+    select cpv_prefix, note from reference.cpv_synonym
+    where term = ${folded}
+    order by cpv_prefix
+    limit 12
+  `) as unknown as { cpv_prefix: string; note: string | null }[];
+  const syn = exact.length > 0 ? exact : (await sql`
     select cpv_prefix, note from reference.cpv_synonym
     where ${folded} like '%' || term || '%' or term like '%' || ${folded} || '%'
-    order by length(term) desc
+    order by length(term) desc, term, cpv_prefix
     limit 4
   `) as unknown as { cpv_prefix: string; note: string | null }[];
   if (syn.length > 0) {
