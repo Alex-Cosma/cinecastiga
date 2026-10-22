@@ -209,6 +209,8 @@ export function uatUnmappedError(label: string): string {
 
 interface WhereParts {
   cpvPrefixes: string[];
+  /** Sub-trees of the subject left out (synonym exclusions): `and not (cpv_code like …)`. */
+  cpvExclude: string[];
   county: string | null;
   kind: AuthorityKind | null;
   authorityId: string | null;
@@ -557,6 +559,9 @@ export async function runSpec(
   }
   // Curated notes about what a subject includes ("iluminat" includes traffic signalling).
   for (const note of grounding.cpv?.notes ?? []) caveats.push(`Despre „${grounding.cpv!.term}”: ${note}`);
+  const cpvExclude = grounding.cpv?.excludePrefixes ?? [];
+  if (cpvExclude.length)
+    caveats.push(`Din „${grounding.cpv!.term}” nu sunt numărate: ${(grounding.cpv!.excludedNames?.length ? grounding.cpv!.excludedNames : cpvExclude).join("; ")}.`);
   if (grounding.cpv && grounding.cpv.method === "fuzzy") {
     caveats.push(
       `Am interpretat „${grounding.cpv.term}” prin potrivire aproximativă pe catalogul CPV: ${grounding.cpv.matchedNames.join("; ")}. Verifică dacă e ce ai vrut.`,
@@ -682,6 +687,7 @@ export async function runSpec(
 
   const w: WhereParts = {
     cpvPrefixes,
+    cpvExclude,
     county,
     kind: spec.filters.authorityKind ?? null,
     authorityId,
@@ -761,6 +767,8 @@ export async function runSpec(
         .reduce((a, b) => sql`${a} or ${b}`);
       parts.push(sql`(${ors})`);
     }
+    if (w.cpvExclude.length > 0)
+      parts.push(sql`not (${w.cpvExclude.map((p) => sql`d.cpv_code like ${p + "%"}`).reduce((a, b) => sql`${a} or ${b}`)})`);
     if (w.county) parts.push(sql`d.county = ${w.county}`);
     if (w.kind) {
       const ors = KIND_PATTERNS[w.kind]
@@ -1975,6 +1983,8 @@ export async function runRows(
     if (spec.population) notes.push(`Selecție precisă aplicată: ${describePopulation(spec.population)}.`);
     if (dataset !== "contracts") parts.push(sql`(d.src = 'contracts' or d.closing_value <= ${DA_PLAFOND_RON})`);
     if (cpvPrefixes.length) parts.push(sql`(${cpvPrefixes.map((prefix) => sql`d.cpv_code like ${prefix + "%"}`).reduce((a, b) => sql`${a} or ${b}`)})`);
+    const cpvExclude = grounding.cpv?.excludePrefixes ?? [];
+    if (cpvExclude.length) parts.push(sql`not (${cpvExclude.map((prefix) => sql`d.cpv_code like ${prefix + "%"}`).reduce((a, b) => sql`${a} or ${b}`)})`);
     if (grounding.county?.canonical) parts.push(sql`d.county = ${grounding.county.canonical}`);
     if (spec.filters.authorityKind) parts.push(sql`(${KIND_PATTERNS[spec.filters.authorityKind].map((pat) => sql`lower(unaccent(d.authority_name)) like ${fold(pat)}`).reduce((a, b) => sql`${a} or ${b}`)})`);
     const isRelationship = spec.block === "network" || spec.block === "sankey";
@@ -2207,6 +2217,8 @@ function buildDisplaySql(spec: AskSpec, w: WhereParts, compareId: string | null 
     );
   if (w.cpvPrefixes.length > 0)
     conds.push("(" + w.cpvPrefixes.map((p) => `cpv_code like '${p}%'`).join(" or ") + ")");
+  if (w.cpvExclude.length > 0)
+    conds.push("not (" + w.cpvExclude.map((p) => `cpv_code like '${p}%'`).join(" or ") + ")  -- excluse din subiect");
   if (w.county) conds.push(`unaccent(county) ilike '${fold(w.county)}'`);
   if (w.kind) conds.push(`-- doar ${KIND_LABEL[w.kind]} (filtru pe nume)`);
   const transactionalCompare = spec.block === "compare" && spec.comparisonMode === "transactions";

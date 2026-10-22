@@ -20,6 +20,14 @@ export interface CpvGrounding {
   method: "code" | "synonym" | "fuzzy" | "none";
   /** Curated notes on the synonym rows used, shown to people with the subject and the answer. */
   notes?: string[];
+  /**
+   * Sub-trees left out of `prefixes` (synonym rows with exclude = true):
+   * "medicamente" counts 336… but not 33696 (laboratory reagents).
+   * Absent on groundings stored before exclusions existed.
+   */
+  excludePrefixes?: string[];
+  /** Human-readable names of the excluded sub-trees, for "fără …". */
+  excludedNames?: string[];
 }
 
 /** Every curated synonym note is meant for people ("include și semnalizarea rutieră…"). */
@@ -88,7 +96,23 @@ function cpvSubtreePrefix(code: string): string {
   return stripped.length >= 2 ? stripped : bare.slice(0, 2);
 }
 
-export interface SynonymRow { term: string; cpv_prefix: string; note: string | null }
+export interface SynonymRow { term: string; cpv_prefix: string; note: string | null; exclude?: boolean | null }
+
+/**
+ * Include and exclude prefixes of the synonym rows used for a subject. An
+ * exclusion counts only inside one of the included sub-trees and never
+ * removes what another picked term includes ("medicamente si reactivi");
+ * notes come from the included rows.
+ */
+export function splitSynonymRows(rows: SynonymRow[]): { prefixes: string[]; excludePrefixes: string[]; notes: string[] } {
+  const prefixes = [...new Set(rows.filter((r) => !r.exclude).map((r) => cpvSubtreePrefix(r.cpv_prefix)))];
+  const excludePrefixes = [...new Set(rows.filter((r) => r.exclude).map((r) => cpvSubtreePrefix(r.cpv_prefix)))]
+    // inside an included sub-tree, and not re-included by another term of the same text
+    .filter((x) => prefixes.some((p) => x.startsWith(p) && x !== p) && !prefixes.some((p) => p.startsWith(x)))
+    .sort();
+  const notes = [...new Set(rows.filter((r) => !r.exclude).map((r) => r.note).filter(isPublicSynonymNote))];
+  return { prefixes, excludePrefixes, notes };
+}
 
 /**
  * Synonyms for a query that is not itself a curated term. Words are matched
@@ -152,20 +176,21 @@ async function groundCpv(sql: DbSql, term: string): Promise<CpvGrounding> {
   // that merely contains the letters joins in ("apa" ⊂ "aparatura medicala").
   // Only a term without rows of its own falls back to containment
   // (pickContainedSynonyms), which also takes every row of the terms it picks.
+  // `exclude` is read through to_jsonb so a database not yet at migration 0081 still answers.
   const exact = (await sql`
-    select term, cpv_prefix, note from reference.cpv_synonym
+    select term, cpv_prefix, note, coalesce((to_jsonb(s) ->> 'exclude')::boolean, false) as exclude
+    from reference.cpv_synonym s
     where term = ${folded}
     order by cpv_prefix
-    limit 12
+    limit 40
   `) as unknown as SynonymRow[];
-  const syn = exact.length > 0 ? exact : pickContainedSynonyms(folded, (await sql`
-    select term, cpv_prefix, note from reference.cpv_synonym
+  const syn = exact.some((r) => !r.exclude) ? exact : pickContainedSynonyms(folded, (await sql`
+    select term, cpv_prefix, note, coalesce((to_jsonb(s) ->> 'exclude')::boolean, false) as exclude
+    from reference.cpv_synonym s
     where ${folded} like '%' || term || '%' or term like '%' || ${folded} || '%'
   `) as unknown as SynonymRow[]);
-  if (syn.length > 0) {
-    const prefixes = [
-      ...new Set(syn.map((r) => cpvSubtreePrefix(r.cpv_prefix))),
-    ];
+  const { prefixes, excludePrefixes, notes } = splitSynonymRows(syn);
+  if (prefixes.length > 0) {
     // Catalog codes carry the check-digit suffix ("03413000-8"); synonyms store
     // bare prefixes — match by prefix, shortest catalog entry per prefix.
     const names = (await sql`
@@ -174,12 +199,19 @@ async function groundCpv(sql: DbSql, term: string): Promise<CpvGrounding> {
       join core.cpv_codes c on c.code like p.pref || '%'
       order by p.pref, length(c.code), c.code
     `) as unknown as { code: string; name_ro: string | null }[];
+    const excluded = excludePrefixes.length ? (await sql`
+      select distinct on (p.pref) c.code, c.name_ro
+      from unnest(${sql.array(excludePrefixes)}::text[]) p(pref)
+      join core.cpv_codes c on c.code like p.pref || '%'
+      order by p.pref, length(c.code), c.code
+    `) as unknown as { code: string; name_ro: string | null }[] : [];
     return {
       term,
       prefixes,
       matchedNames: names.map((n) => `${n.name_ro ?? "?"} (${n.code})`),
       method: "synonym",
-      notes: [...new Set(syn.map((r) => r.note).filter(isPublicSynonymNote))],
+      notes,
+      ...(excludePrefixes.length ? { excludePrefixes, excludedNames: excluded.map((n) => `${n.name_ro ?? "?"} (${n.code})`) } : {}),
     };
   }
 

@@ -62,7 +62,7 @@ export interface TopicInterpretation {
   confidence: Interpretation['confidenceLabel'];
   hasEntity: boolean;
   /** Subject answer through the Ask engine (/api/ask), only when the reading is unambiguous. */
-  answer: { total: { spec: AskSpec; sentence: string }; top: { spec: AskSpec; sentence: string }; href: string; cpv: string[] } | null;
+  answer: { total: { spec: AskSpec; sentence: string }; top: { spec: AskSpec; sentence: string }; href: string; cpv: string[]; cpvExcluded: string[] } | null;
   /** The interpreter's sentence is what the page shows (an answer, or a reading with no subject). */
   trusted: boolean;
   /** "Vezi răspunsul complet în Întreabă". */
@@ -181,6 +181,7 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
         top: { spec: top, sentence: sentenceFor(top, labels) },
         href: explicit ? askHref(top) : `/intreaba?q=${encodeURIComponent(scope.q)}`,
         cpv: [],
+        cpvExcluded: [],
       };
     }
   }
