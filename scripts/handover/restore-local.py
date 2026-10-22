@@ -9,7 +9,7 @@ import re
 import subprocess
 
 PUBLIC_APP = {'document_blob_chunks', 'document_blobs', 'document_notices', 'procurement_documents',
-              'document_pages', 'monitoring_refreshes'}
+              'document_pages', 'document_page_search', 'monitoring_refreshes'}
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)

@@ -120,6 +120,19 @@ Worker-ul folosește o sesiune Chromium nouă, metadata proaspete, POST de verif
 
 Actualizare 11 octombrie: vechile limite de 50 MiB/150 pagini au fost înlocuite cu transport/stocare în bucăți și procesare OCR reluabilă. PDF/CMS, Word/Excel, ZIP/RAR/7z sunt tratate de toolchain; multipart rămâne deschis. Originalele și PDF-urile derivate sunt separate, cu SHA-256. Supervisor-ul exclusiv permite până la 10 lane-uri de rețea și 4 de procesare; nu mai este un singur job global. [Mecanism și limite actuale](20261011/operations.md), [formate](../implementation/document-formats-20261011.md).
 
+## Căutarea `/cauta` — două cereri
+
+Actualizare 22 octombrie 2026. Pagina face două cereri pentru aceeași selecție (subiect, loc, perioadă, tip, potrivire):
+
+- `/api/topic-search` — titluri (`marts.topic_acquisitions`), instituții și firme, locul ales, data indexului și acoperirea titlurilor. Nu atinge documentele; răspunde de regulă sub o secundă.
+- `/api/topic-search/documents` — pasajele din documentele pregătite și acoperirea lor („X din Y fișiere”). Pagina o cere în paralel, o afișează separat („Căutăm și în documentele procedurilor…”) și nu blochează restul. O eroare rămâne în secțiunea Documente, cu „Reîncearcă documentele”. Schimbarea tabului sau a paginii de achiziții nu o repetă (`documentScope` în `lib/topic-search/shared.ts`).
+
+Textul paginilor este indexat în `app.document_page_search` (`to_tsvector('simple', unaccent(text))`, GIN), aceeași expresie ca la titluri. `unaccent()` nu este IMMUTABLE, deci nu poate susține o coloană generată sau un index pe expresie; vectorul este scris de un trigger pe `app.document_pages` (migrația 0079). Astfel sunt indexate și paginile scrise de un worker vechi sau de orice alt scriitor; o pagină peste limita tsvector (1 MB de lexeme) rămâne citibilă, dar nu apare în căutare. Ștergerea paginii șterge și vectorul (cascadă).
+
+Legătura document → procedură rămâne cea de dinainte: anunțul documentului → `core.notices` → `procedureId` din payload-ul brut **și** același cumpărător → contractul din `topic_acquisitions` care respectă filtrele. Niciodată după titlu sau nume de fișier. Se calculează o singură dată pe cerere și pe anunț (nu de trei ori și nu pe fiecare fișier), într-o singură interogare. Nu este materializată: un document procesat acum este căutabil imediat, fără să aștepte procesarea de noapte. Dacă numărul de anunțuri cu documente crește mult, materializarea legăturii în build-ul nocturn rămâne opțiunea următoare, cu prețul acestei întârzieri.
+
+Pe pagină, o căutare nouă nu mai arată rezultatele căutării anterioare: zona păstrează înălțimea cu rânduri-schelet până sosesc rezultatele selecției curente. La schimbarea doar a tabului sau a paginii, numerele din taburi rămân, pentru că aparțin aceleiași selecții. În „Unde cauți?”, după ce scrii, prima potrivire este evidențiată și Enter o alege.
+
 ## Migrații și restaurare
 
 Schema curentă include obiecte `auth`, `app`, `reference` bootstrapate istoric și apoi reflectate în snapshot-uri Drizzle. Migrarea de la o bază complet goală **nu este procedura verificată de onboarding**. Folosește dump-ul care include structura și istoricul exact; nu sintetiza manual baseline-uri.

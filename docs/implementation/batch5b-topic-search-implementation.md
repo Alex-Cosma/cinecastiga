@@ -45,6 +45,8 @@ Nu se transferă anchetele demonstrative din localStorage. Salvarea citatului fo
 
 Documentele sunt căutate în textul public din PostgreSQL la cerere. Catalogul local are doar două documente procesate; acest acces nu este încă un index național de pagini OCR. Extinderea la multe milioane de pagini va necesita indexarea lor și un refresh legat de worker.
 
+**Actualizare 22 octombrie 2026.** La 59.483 de pagini în producție, căutarea dura ~23 s pentru orice interogare. Textul paginilor este acum indexat (`app.document_page_search`, GIN, completat de un trigger, migrația 0079), iar documentele vin dintr-o cerere separată, `/api/topic-search/documents`. Detalii în [arhitectură](../handover/02-architecture.md#căutarea-cauta--două-cereri).
+
 ## Verificare
 
 - `pnpm --filter web typecheck`

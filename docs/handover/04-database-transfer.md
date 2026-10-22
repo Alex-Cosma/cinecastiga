@@ -32,7 +32,7 @@ Producția: marts 17 GB, core 13 GB, reference aproximativ 2,4 GB, raw aproximat
 
 - Întreaga structură a schemelor aplicației, extensii, constrângeri, secvențe și indexuri.
 - Toate datele din `raw`, `core`, `marts`, `reference` și istoricul `drizzle`.
-- Din `app`: `document_notices`, `procurement_documents`, `document_blobs`, `document_pages`, `monitoring_refreshes`.
+- Din `app`: `document_notices`, `procurement_documents`, `document_blobs`, `document_pages`, `document_page_search` (de la migrația 0079), `monitoring_refreshes`.
 - Astfel se păstrează originalele/PDF-urile, OCR-ul, relațiile și proveniența publicării analitice.
 
 **Fără rânduri:** `auth.*` și orice tabel `app` care nu este în lista explicită de mai sus. Prin urmare nu se transmit conturi, hash-uri de parole, sesiuni, 2FA, emailuri de utilizatori, anchete/note/citate private, invitații, rețete, urmăriri, digest-uri, audit admin, joburi, cereri și control activ.
