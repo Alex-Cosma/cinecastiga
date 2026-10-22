@@ -463,3 +463,15 @@ export function localityScopeSupport(spec: QuestionSpec): { ok: true } | { ok: f
     return { ok: false, reason: "Clasamentul pe județe nu se poate restrânge la o localitate, deci aici poți alege doar județul." };
   return { ok: true };
 }
+
+/**
+ * Server-side twin of the builder rule: a spec carrying a locality its view
+ * cannot honour is refused (never run with the locality silently ignored or
+ * degenerate). Null when the spec is fine.
+ */
+export function localityScopeError(spec: AskSpec | QuestionSpec): string | null {
+  const q = spec as unknown as QuestionSpec;
+  if (!q.filters?.uatSiruta) return null;
+  const support = localityScopeSupport(q);
+  return support.ok ? null : `${support.reason} Elimină localitatea „${q.filters.uatName ?? q.filters.uatSiruta}” sau alege altă întrebare.`;
+}

@@ -104,6 +104,10 @@ export interface Interpretation {
    * in total and what to search for to see them all (null = list complete).
    */
   choicesPartial: { shown: number; total: number; search: string } | null;
+  /** "compară Buzău cu Brăila": the institution pairs the places can mean (town halls, county councils). */
+  compareChoices: { label: string; focal: EntityMatch; other: EntityMatch }[];
+  /** The person asked about town halls ("primării") but the engine ranks every institution. */
+  askedTownHalls: boolean;
   /** Second entity for "compară X cu Y". */
   compareWith: EntityMatch | null;
   person: PersonMatch | null;
@@ -192,7 +196,8 @@ export interface Vocabulary {
 }
 
 export interface EntityLookup { hits: EntityHit[]; total: number }
-export interface PersonLookup { hits: PersonHit[]; total: number }
+/** `exhaustive` is false when diacritic variants of the name could not be searched. */
+export interface PersonLookup { hits: PersonHit[]; total: number; exhaustive?: boolean; timedOut?: boolean }
 
 // ---------------------------------------------------------------- API shape
 

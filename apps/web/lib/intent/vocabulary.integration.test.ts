@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createDb } from "@seap/db";
 import { catalogUatSource } from "./places";
 import { interpretQuestion } from "./server";
-import { sqlVocabulary } from "./vocabulary-sql";
+import { loadSharedLists, resetSharedLists, sqlVocabulary } from "./vocabulary-sql";
 import { entityCandidates, personsByExactName, suggestAuthorities, suggestCpv, suggestPersons, suggestSuppliers, suggestUat } from "./vocabulary-queries";
 
 /**
@@ -48,7 +48,9 @@ beforeAll(async () => {
     (9000001,'supplier','CONSTRUCTII ERBASU S.A.','Bucuresti',3000000000), (9000002,'supplier','S.C. ERBASU EDIL CONSTRUCT S.A.','Bucuresti',200000000),
     (9000006,'supplier','CRACIUN IMPEX SRL','Cluj',1000000),
     (2108930,'authority','COMPANIA DE UTILITATI PUBLICE','Vaslui',30000000), (2128336,'authority','Compania de Utilitati Publice','Vrancea',50000000),
-    (2020739,'supplier','PROACTIV','Neamt',5000000), (2089443,'supplier','PROACTIV','Hunedoara',8000000)`;
+    (2020739,'supplier','PROACTIV','Neamt',5000000), (2089443,'supplier','PROACTIV','Hunedoara',8000000),
+    (2146819,'authority','Consiliul Judetean Buzau','Buzau',800000000), (2146193,'authority','INSTITUTIA PREFECTULUI JUDETUL BUZAU','Buzau',5000000),
+    (2144818,'authority','JUDETUL IASI','Iasi',900000000), (2145026,'authority','MUNICIPIUL BRAILA','Braila',1200000000)`;
   await sql`insert into reference.company_reps (person_key, person_name, birth_date, snapshot_date, birth_locality, cui) values
     ('matei ioan|1957', 'MATEI IOAN', '1957-03-04', '2025-01-01', 'Sat Batin', '111'),
     ('matei ioan|1957', 'MATEI IOAN', '1957-03-04', '2025-01-01', 'Sat Batin', '222'),
@@ -56,7 +58,9 @@ beforeAll(async () => {
     ('popescu ion|1975', 'POPESCU ION', '1975-05-05', '2025-01-01', 'Iași', '444'),
     ('placeholder|1900', 'MATEI IOAN', '1900-01-01', '2025-01-01', null, '555'),
     ('stefan ion|1970', 'ŞTEFAN  ION', '1970-02-02', '2025-01-01', 'Iași', '666'),
-    ('popescu marian|1970', 'POPESCU MARIAN', '1970-01-01', '2025-01-01', 'Pitești', '777')`;
+    ('serban popescu|1971', 'ŞERBAN  POPESCU', '1971-02-02', '2025-01-01', 'Iași', '667'),
+    ('popescu marian|1970', 'POPESCU MARIAN', '1970-01-01', '2025-01-01', 'Pitești', '777'),
+    ('popescu-ionescu maria|1980', 'POPESCU-IONESCU MARIA', '1980-01-01', '2025-01-01', 'Brăila', '888')`;
 });
 afterAll(async () => { await connection?.sql.end(); });
 
@@ -74,7 +78,7 @@ describe.runIf(Boolean(connection))("intent vocabulary SQL (dedicated seap_test_
   });
 
   it("builds the gazetteer from reference.uat with official names and sectors", async () => {
-    const vocab = sqlVocabulary(connection!.sql, connection!.sql, { cache: false });
+    const vocab = sqlVocabulary(connection!.sql, await loadSharedLists(connection!.sql, { cache: false }));
     const places = await vocab.places();
     expect(places.find((p) => p.siruta === 44818)).toMatchObject({ name: "Municipiul Buzău", county: "Buzău", tip: "municipiu" });
     expect(places.filter((p) => p.key === "salcioara").map((p) => p.label).sort()).toEqual(["Comuna Sălcioara (Dâmbovița)", "Comuna Sălcioara (Ialomița)"]);
@@ -119,8 +123,27 @@ describe.runIf(Boolean(connection))("intent vocabulary SQL (dedicated seap_test_
     const maria = await interpretQuestion(sql, "firmele lui Maria Popescu", { now: NOW });
     expect(maria.spec).toBeNull();
     expect(maria.alternatives).toEqual([]);
+    // diacritics and double spaces in ONRC are matched when the index can search the name tolerantly
+    const serban = await interpretQuestion(sql, "firmele lui Popescu Serban", { now: NOW });
+    expect(serban.interpretation.person?.key).toBe("serban popescu|1971");
+    // "Ion Stefan" is all short or a/i/s/t-letter words: searched as written only, never a silent pick
     const stefan = await interpretQuestion(sql, "firmele lui Ion Stefan", { now: NOW });
-    expect(stefan.interpretation.person?.key).toBe("stefan ion|1970");
+    expect(stefan.interpretation.person).toBeNull();
+
+    const hyphen = await interpretQuestion(sql, "firmele lui Maria Popescu-Ionescu", { now: NOW });
+    expect(hyphen.interpretation.person?.key).toBe("popescu-ionescu maria|1980");
+
+    // a county council is a named buyer, registered as "Consiliul Judetean X" or "JUDETUL X"
+    // two registry entities for one council ("JUDETUL BUZAU" and "Consiliul Judetean Buzau") are a choice
+    const cjBuzau = await interpretQuestion(sql, "ce cumpara Consiliul Judetean Buzau", { now: NOW });
+    expect(cjBuzau.spec).toBeNull();
+    expect(cjBuzau.alternatives.map((a) => a.spec.filters.authorityId).sort()).toEqual([2144001, 2146819]);
+    expect((await interpretQuestion(sql, "ce cumpara consiliul judetean iasi", { now: NOW })).spec).toMatchObject({ filters: { authorityId: 2144818 } });
+
+    // two places are not comparable entities: town halls (or councils) are offered, never another question
+    const places = await interpretQuestion(sql, "compara Buzau cu Braila", { now: NOW });
+    expect(places.spec).toBeNull();
+    expect(places.alternatives[0]).toMatchObject({ spec: { block: "compare", filters: { authorityId: 2144364, compareWithId: 2145026 } } });
 
     const craciun = await interpretQuestion(sql, "iluminat festiv de craciun", { now: NOW });
     expect(craciun.interpretation.supplier).toBeNull();
@@ -144,5 +167,39 @@ describe.runIf(Boolean(connection))("intent vocabulary SQL (dedicated seap_test_
     const started = performance.now();
     await interpretQuestion(sql, "cine face iluminatul în buzău și cât costă", { now: NOW });
     expect(performance.now() - started).toBeLessThan(300);
+  });
+
+  it("never deadlocks its pool: six concurrent cold questions on a 2-connection pool all answer", async () => {
+    const small = createDb(testUrl!, { max: 2 });
+    try {
+      resetSharedLists();
+      const qs = ["cine castiga in buzau", "asfalt buzau", "ce cumpara primaria buzau", "deszapezire buzau", "medicamente spitale", "iluminat salcioara ialomita"];
+      const results = await Promise.all(qs.map(async (q) => {
+        const controller = new AbortController();
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        try {
+          return await Promise.race([
+            interpretQuestion(small.sql, q, { now: NOW, signal: controller.signal }).then(() => "ok"),
+            new Promise<string>((resolve) => { timer = setTimeout(() => { controller.abort(); resolve("timeout"); }, 4000); }),
+          ]);
+        } finally { clearTimeout(timer); }
+      }));
+      expect(results).toEqual(qs.map(() => "ok"));
+      await expect(interpretQuestion(small.sql, "cine castiga in braila", { now: NOW })).resolves.toBeTruthy();
+    } finally {
+      await small.sql.end();
+    }
+  });
+
+  it("does not cache a failed reference load", async () => {
+    resetSharedLists();
+    const broken = createDb(testUrl!.replace(/\/seap_test_[a-z0-9_]+$/, "/seap_test_i_missing_db"), { max: 1 });
+    try {
+      await expect(loadSharedLists(broken.sql)).rejects.toBeTruthy();
+    } finally {
+      await broken.sql.end();
+    }
+    const lists = await loadSharedLists(connection!.sql);
+    expect(lists.places.length).toBeGreaterThan(40);
   });
 });

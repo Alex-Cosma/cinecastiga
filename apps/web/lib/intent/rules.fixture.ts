@@ -84,6 +84,8 @@ export const FIXTURE: MemoryFixture = {
     { id: 2135940, name: "Directia de Asistenta Sociala Focsani", county: "Vrancea", total: 15_000_000 },
     { id: 6000001, name: "COLEGIUL NATIONAL DIMITRIE CANTEMIR", county: "Suceava", total: 3_000_000 },
     { id: 6000002, name: "Colegiul National Dimitrie Cantemir Onesti", county: "Bacau", total: 2_000_000 },
+    { id: 2145066, name: "Directia Generala de Asistenta Sociala si Protectia Copilului Iasi", county: "Iasi", total: 90_000_000 },
+    { id: 2145067, name: "Directia Generala de Asistenta Sociala si Protectia Copilului Sector 1", county: "Bucuresti", total: 80_000_000 },
   ],
   suppliers: [
     { id: 9000001, name: "CONSTRUCTII ERBASU S.A.", county: "Bucuresti", total: 3_000_000_000 },
@@ -105,6 +107,7 @@ export const FIXTURE: MemoryFixture = {
     { key: "ion popescu|1975-05-05|iasi", name: "POPESCU ION", birthYear: 1975, birthLocality: "Iași", nFirms: 2 },
     { key: "matei ioan|1957-01-01|batin", name: "MATEI IOAN", birthYear: 1957, birthLocality: "Sat Batin", nFirms: 3 },
     { key: "popescu marian|1970", name: "POPESCU MARIAN", birthYear: 1970, birthLocality: "Pitești", nFirms: 5 },
+    { key: "popescu-ionescu maria|1980", name: "POPESCU-IONESCU MARIA", birthYear: 1980, birthLocality: "Brăila", nFirms: 2 },
     // ten namesakes: the choice list shows eight and says so; two records describe the same person
     ...Array.from({ length: 10 }, (_, k) => ({ key: `popa ion|${1950 + k}`, name: k % 2 ? "ION POPA" : "POPA ION", birthYear: 1950 + k, birthLocality: k === 1 ? "BUZĂU" : `Loc ${k}`, nFirms: 20 - k })),
     { key: "popa ion|1950-dup", name: "POPA ION", birthYear: 1950, birthLocality: "Loc 0", nFirms: 15 },

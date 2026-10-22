@@ -1,5 +1,6 @@
 import { onrcIdentityBirthDate, type DbSql } from "@seap/db";
 import { aliasQueries, queryTokens } from "../ask/entity-alias";
+import { personPatterns } from "./text";
 
 /**
  * The vocabulary lookups behind /api/suggest (the builder's typeahead), shared
@@ -204,26 +205,21 @@ export function entityCandidates(sql: DbSql, role: "authority" | "supplier", q: 
 
 export interface NamedPersonRow extends PersonRow { total: string }
 
-/** Letters that may carry a diacritic in ONRC names become one-character wildcards. */
-export function personNamePattern(folded: string): string {
-  // spaces become "%": ONRC sometimes doubles them ("ŞTEFAN  ION"); the exact folded comparison still applies
-  return folded.replace(/[_%\\]/g, "").replace(/[aist]/g, "_").replace(/ +/g, "%");
-}
+export { personNamePattern, personPatterns, searchablePersonPattern } from "./text";
 
 /**
- * ONRC identities whose folded name is exactly one of `names` (both word
- * orders). The ilike pattern rides the trigram index; the exact folded
- * comparison keeps "MARIAN" out of "Maria". `total` counts every identity.
+ * ONRC identities whose folded name is exactly one of `names` (word orders).
+ * One bound ilike per pattern, OR-ed, so each rides the trigram GIN index
+ * ("ilike any(array)" cannot); callers set plan_cache_mode = force_custom_plan
+ * so the planner sees the pattern. The exact folded comparison keeps
+ * "MARIAN" out of "Maria". `total` counts every identity.
  */
 export function personsByExactName(sql: DbSql, names: string[], limit = 8): Promise<NamedPersonRow[]> {
-  const folded = [...new Set(names.map((n) => n.replace(/\s+/g, " ").trim()).filter((n) => n.length >= 4))];
-  if (!folded.length) return Promise.resolve([]);
-  // One ilike per pattern (OR), so each rides the trigram GIN index ("ilike any(array)" cannot).
-  // The patterns are inlined: with a bound parameter the planner falls back to a 3.7M-row scan
-  // (4 s measured). They are folded words only ([a-z0-9 _]), checked here, so inlining is safe.
-  const patterns = [...new Set(folded.map(personNamePattern))].filter((p) => /^[a-z0-9 _%]+$/.test(p));
+  const folded = [...new Set(names.map((n) => n.normalize("NFKC").replace(/[\s-]+/g, " ").trim()).filter((n) => n.length >= 4))];
+  // defence in depth: only folded letters, digits and wildcards reach the query
+  const patterns = personPatterns(folded).patterns.filter((p) => /^[a-z0-9_%]+$/.test(p));
   if (!patterns.length) return Promise.resolve([]);
-  const nameMatch = sql.unsafe(patterns.map((p) => `r.person_name ilike '${p}'`).join(" or "));
+  const nameMatch = patterns.map((p) => sql`r.person_name ilike ${p}`).reduce((x, y) => sql`${x} or ${y}`);
   return sql`
     select r.person_key, max(r.person_name) nm,
            max(extract(year from r.birth_date))::int by,
@@ -232,7 +228,7 @@ export function personsByExactName(sql: DbSql, names: string[], limit = 8): Prom
     from reference.company_reps r
     where ${onrcIdentityBirthDate(sql, "r")}
       and (${nameMatch})
-      and regexp_replace(lower(unaccent(r.person_name)), '[[:space:]]+', ' ', 'g') = any(${textArray(sql, folded)}::text[])
+      and regexp_replace(lower(unaccent(r.person_name)), '[[:space:]-]+', ' ', 'g') = any(${textArray(sql, folded)}::text[])
     group by r.person_key
     order by nf desc, r.person_key
     limit ${limit}
