@@ -438,3 +438,22 @@ export function questionErrors(spec: QuestionSpec): string[] {
   }
   return [];
 }
+
+/**
+ * Can this question be scoped to one locality (AskFilters.uatSiruta)? The
+ * engine applies a locality as the UAT's own administration (primărie /
+ * consiliu local). Checked against compile.ts: the transaction blocks below
+ * filter every query and every source list by it; the county map, county
+ * rankings, relationship and comparison views and the historical risk
+ * profiles do not offer it (a county view of one town hall, or a risk
+ * population of one to three identities, would mislead).
+ */
+export function localityScopeSupport(spec: QuestionSpec): { ok: true } | { ok: false; reason: string } {
+  if (isHistoricalProfile(spec))
+    return { ok: false, reason: "Indicele de risc compară instituții între ele, deci aici poți alege doar județul." };
+  if (["map", "compare", "network", "sankey", "fact_check"].includes(spec.block))
+    return { ok: false, reason: spec.block === "map" ? "Harta arată județele, deci aici poți alege doar județul." : "Această întrebare pornește de la instituții sau firme anume, deci aici poți alege doar județul." };
+  if ((spec.block === "table" || spec.block === "trend") && spec.dim === "county")
+    return { ok: false, reason: "Clasamentul pe județe nu se poate restrânge la o localitate, deci aici poți alege doar județul." };
+  return { ok: true };
+}
