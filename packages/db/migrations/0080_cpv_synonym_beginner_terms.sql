@@ -14,12 +14,12 @@ CREATE TABLE IF NOT EXISTS reference.cpv_synonym (term text NOT NULL, cpv_prefix
 INSERT INTO reference.cpv_synonym (term, cpv_prefix, note) VALUES
 ('iluminat','34993000',null),
 ('iluminat','34928500',null),
-('iluminat','45316000','Include și semnalizarea rutieră (semafoare, balizaj), clasificată în CPV în aceleași coduri cu iluminatul public; aproximativ 7% din valoare.'),
-('iluminat','50232000','Include și semnalizarea rutieră (semafoare, balizaj), clasificată în CPV în aceleași coduri cu iluminatul public; aproximativ 7% din valoare.'),
+('iluminat','45316000','Include și semnalizarea rutieră (semafoare, balizaj), clasificată în aceleași coduri CPV cu iluminatul public. La nivel național e circa 7% din valoare, dar în unele județe mult mai mult.'),
+('iluminat','50232000','Include și semnalizarea rutieră (semafoare, balizaj), clasificată în aceleași coduri CPV cu iluminatul public. La nivel național e circa 7% din valoare, dar în unele județe mult mai mult.'),
 ('iluminat public','34993000',null),
 ('iluminat public','34928500',null),
-('iluminat public','45316000','Include și semnalizarea rutieră (semafoare, balizaj), clasificată în CPV în aceleași coduri cu iluminatul public; aproximativ 7% din valoare.'),
-('iluminat public','50232000','Include și semnalizarea rutieră (semafoare, balizaj), clasificată în CPV în aceleași coduri cu iluminatul public; aproximativ 7% din valoare.'),
+('iluminat public','45316000','Include și semnalizarea rutieră (semafoare, balizaj), clasificată în aceleași coduri CPV cu iluminatul public. La nivel național e circa 7% din valoare, dar în unele județe mult mai mult.'),
+('iluminat public','50232000','Include și semnalizarea rutieră (semafoare, balizaj), clasificată în aceleași coduri CPV cu iluminatul public. La nivel național e circa 7% din valoare, dar în unele județe mult mai mult.'),
 ('iluminat festiv','31522000',null),
 ('iluminat festiv','39298500',null),
 ('iluminat de craciun','31522000',null),
@@ -97,3 +97,22 @@ INSERT INTO reference.cpv_synonym (term, cpv_prefix, note) VALUES
 ('camere video','35125300',null),
 ('camere video','32323500',null)
 ON CONFLICT DO NOTHING;
+
+--> statement-breakpoint
+-- Notes are now shown to people. The 13 older notes were the curator's row
+-- labels ("apa captata si epurata"), not explanations: blank exactly those
+-- values. A note edited since then is kept; re-running changes nothing.
+UPDATE reference.cpv_synonym SET note = NULL WHERE (term, cpv_prefix, note) IN (VALUES
+('lemne','03413000','lemn de foc'),
+('peleti','03413000','biomasa lemnoasa'),
+('gaz','09123000','gaze naturale'),
+('curent','09310000','energie electrica'),
+('caldura','09320000','energie termica'),
+('panouri solare','09331000','fotovoltaice'),
+('medicamente','33600000','produse farmaceutice'),
+('masini','34110000','autoturisme'),
+('masti','35113400','echipament de protectie'),
+('apa','41000000','apa captata si epurata'),
+('scoala','45214000','constructii invatamant'),
+('licente','48000000','programe informatice'),
+('mese','55520000','servicii de masa'));

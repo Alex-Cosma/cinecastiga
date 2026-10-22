@@ -19,6 +19,13 @@ const seed = readFileSync(new URL("seeds/cpv-synonyms.sql", root), "utf8");
 const migration = readFileSync(new URL("migrations/0080_cpv_synonym_beginner_terms.sql", root), "utf8");
 const MARKER = "-- Beginner vocabulary (22 October 2026).";
 const NOW = new Date("2026-10-22T12:00:00Z");
+const OLD_NOTES: [string, string, string][] = [
+  ["lemne", "03413000", "lemn de foc"], ["peleti", "03413000", "biomasa lemnoasa"], ["gaz", "09123000", "gaze naturale"],
+  ["curent", "09310000", "energie electrica"], ["caldura", "09320000", "energie termica"], ["panouri solare", "09331000", "fotovoltaice"],
+  ["medicamente", "33600000", "produse farmaceutice"], ["masini", "34110000", "autoturisme"], ["masti", "35113400", "echipament de protectie"],
+  ["apa", "41000000", "apa captata si epurata"], ["scoala", "45214000", "constructii invatamant"], ["licente", "48000000", "programe informatice"],
+  ["mese", "55520000", "servicii de masa"],
+];
 
 const CATALOG: [string, string][] = [
   ["31500000-1", "Aparatură de iluminat şi lămpi electrice"], ["31522000-1", "Ghirlande luminoase pentru pomul de Crăciun"],
@@ -44,8 +51,10 @@ beforeAll(async () => {
     create table reference.company_reps (person_key text, person_name text, birth_date date, snapshot_date date, birth_locality text, cui text);
   `);
   for (const [code, name] of CATALOG) await sql`insert into core.cpv_codes (code, name_ro) values (${code}, ${name})`;
-  // production before 0080: the seed as it was (everything before the new block)
+  // production before 0080: the seed as it was (everything before the new block),
+  // with the 13 curator labels it carried in the note column then
   await sql.unsafe(seed.slice(0, seed.indexOf(MARKER)));
+  for (const [term, prefix, note] of OLD_NOTES) await sql`update reference.cpv_synonym set note = ${note} where term = ${term} and cpv_prefix = ${prefix}`;
 });
 afterAll(async () => { await connection?.sql.end(); });
 
@@ -55,6 +64,7 @@ const rows = async () => (await connection!.sql`select term, cpv_prefix, note fr
 describe.runIf(Boolean(connection))("migration 0080: beginner CPV vocabulary (dedicated seap_test_* fixture)", () => {
   it("was the old meaning before: iluminat = lamps only, apa caught medical equipment", async () => {
     expect(await rows()).toHaveLength(99);
+    expect((await connection!.sql`select count(*)::int n from reference.cpv_synonym where note is not null`)[0]!.n).toBe(13);
     expect(await prefixes("iluminat")).toEqual(["315"]);
     // exact rows first: "apa" no longer picks up "aparatura medicala" or "apa minerala"
     expect(await prefixes("apa")).toEqual(["41"]);
@@ -66,7 +76,11 @@ describe.runIf(Boolean(connection))("migration 0080: beginner CPV vocabulary (de
     for (const run of [1, 2]) for (const statement of migration.split("--> statement-breakpoint")) await sql.unsafe(statement);
     const after = await rows();
     expect(after).toHaveLength(99 + 84);
-    expect(before.every((r) => after.includes(r))).toBe(true);
+    // every old (term, prefix) stays; only the 13 old labels are blanked
+    const key = (r: string) => r.split("|").slice(0, 2).join("|");
+    expect(before.map(key).every((k) => after.map(key).includes(k))).toBe(true);
+    const noted = (await sql`select term, note from reference.cpv_synonym where note is not null order by term, cpv_prefix`).map((r) => r.term);
+    expect(noted).toEqual(["iluminat", "iluminat", "iluminat public", "iluminat public"]);
     await sql.unsafe(seed);
     expect(await rows()).toEqual(after);
   });
@@ -90,11 +104,12 @@ describe.runIf(Boolean(connection))("migration 0080: beginner CPV vocabulary (de
   it("carries every row note to the people who read the answer", async () => {
     const sql = connection!.sql;
     const notes = async (term: string) => (await ground(sql, { cpvTerm: term })).cpv?.notes;
-    expect(await notes("iluminat")).toEqual([expect.stringMatching(/^Include și semnalizarea rutieră \(semafoare, balizaj\).*aproximativ 7% din valoare\.$/)]);
+    expect(await notes("iluminat")).toEqual(["Include și semnalizarea rutieră (semafoare, balizaj), clasificată în aceleași coduri CPV cu iluminatul public. La nivel național e circa 7% din valoare, dar în unele județe mult mai mult."]);
     expect(await notes("iluminat public")).toHaveLength(1);
     expect(await notes("iluminat festiv")).toEqual([]);
-    // notes of older rows are surfaced the same way
-    expect(await notes("lemne")).toEqual(["lemn de foc"]);
+    // the older curator labels are blank: nothing misleading is shown ("apa")
+    expect(await notes("lemne")).toEqual([]);
+    expect(await notes("apa")).toEqual([]);
   });
 
   it("is the vocabulary the interpreter and the home search read", async () => {
