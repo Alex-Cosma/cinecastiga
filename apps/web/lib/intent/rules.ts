@@ -1,4 +1,5 @@
 import type { AuthorityKind } from "../ask/spec";
+import { retiredTerm } from "../ask/retired-terms";
 import { lev } from "../ask/intent";
 import { placeKey } from "./places";
 import { NUMBER_WORDS, STOPWORDS, fold, personPatterns, rawSpan, stems, tokenize, wordMatches, type Token } from "./text";
@@ -747,6 +748,8 @@ export class RulesInterpreter implements QuestionInterpreter {
     }
     const synonyms = await this.vocab.synonyms();
     const candidates: { i: number; j: number; hit: CpvHit; generic: boolean }[] = [];
+    // words that are not a subject on their own: never looked up, offered as choices below
+    let retired: { k: number; entry: NonNullable<ReturnType<typeof retiredTerm>> } | null = null;
     for (const [i, j] of runs.slice(0, 4)) {
       const content = c.tokens.slice(i, j).map((t) => t.f).filter((w) => w !== "de");
       if (content.length >= 2) {
@@ -756,10 +759,11 @@ export class RulesInterpreter implements QuestionInterpreter {
       const words: { k: number; hit: CpvHit | null }[] = await Promise.all(
         c.tokens.slice(i, j).map(async (t, idx) => ({
           k: i + idx,
-          hit: t.f.length >= 3 && t.f !== "de" && !GENERIC_SUBJECT.has(t.f) ? await this.cpvFor([t.f]) ?? typoSynonym(t.f, synonyms) : null,
+          hit: t.f.length >= 3 && t.f !== "de" && !GENERIC_SUBJECT.has(t.f) && !retiredTerm(t.f) ? await this.cpvFor([t.f]) ?? typoSynonym(t.f, synonyms) : null,
         })),
       );
       for (const w of words) if (w.hit) candidates.push({ i: w.k, j: w.k + 1, hit: w.hit, generic: false });
+      for (let k = i; k < j && !retired; k++) { const entry = retiredTerm(c.f(k)); if (entry) retired = { k, entry }; }
     }
     const isSynonym = (h: CpvHit) => !/^\d/.test(h.term);
     const ordered = [...candidates.filter((x) => isSynonym(x.hit)), ...candidates.filter((x) => !isSynonym(x.hit))];
@@ -775,6 +779,11 @@ export class RulesInterpreter implements QuestionInterpreter {
         matched: c.span(cand.i, cand.j),
       });
       if (out.subjects.length >= 3) break;
+    }
+    // a retired word alone ("lucrări", "mese"): the person chooses what it means
+    if (!out.subjects.length && retired && c.isFree(retired.k, retired.k + 1)) {
+      c.take(retired.k, retired.k + 1, "subject");
+      out.subjectChoices = { matched: c.span(retired.k, retired.k + 1), message: retired.entry.message, options: retired.entry.choices.map((o) => ({ label: o.label, term: o.cpvTerm })) };
     }
     // generic words ("lucrări", "servicii") are understood next to a real subject, never a subject alone
     if (out.subjects.length) for (let k = 0; k < c.tokens.length; k++) if (!c.used[k] && GENERIC_SUBJECT.has(c.f(k))) c.take(k, k + 1, "filler");
@@ -967,13 +976,13 @@ export class RulesInterpreter implements QuestionInterpreter {
     if (primary) {
       out.intent = primary;
       out.intentSource = "cue";
-    } else if (out.subjects.length || out.place || out.placeAmbiguous || out.authorityKind || out.authority || out.supplier || out.entityAlternatives.length || out.person || out.personAlternatives.length || out.singleBidder || out.dataset || out.period || out.employees) {
+    } else if (out.subjects.length || out.subjectChoices || out.place || out.placeAmbiguous || out.authorityKind || out.authority || out.supplier || out.entityAlternatives.length || out.person || out.personAlternatives.length || out.singleBidder || out.dataset || out.period || out.employees) {
       out.intentSource = "default";
       const supplierLike = out.supplier || (out.entityAlternatives[0]?.role === "supplier");
       const authorityLike = out.authority || (out.entityAlternatives[0]?.role === "authority");
       out.intent = supplierLike && !authorityLike ? "ranking_authorities"
         : authorityLike || ((out.place?.kind === "locality" || out.placeAmbiguous) && !out.subjects.length) ? "breakdown"
-        : out.subjects.length || out.person || out.personAlternatives.length || out.singleBidder || out.employees ? "ranking_suppliers"
+        : out.subjects.length || out.subjectChoices || out.person || out.personAlternatives.length || out.singleBidder || out.employees ? "ranking_suppliers"
         : out.place || out.authorityKind ? "breakdown"
         : "total";
     }
@@ -1012,7 +1021,7 @@ export class RulesInterpreter implements QuestionInterpreter {
 
 /** Something in the question narrows the answer beyond "everything, everywhere". */
 export function hasNamedScope(i: Interpretation): boolean {
-  return Boolean(i.subjects.length || i.place || i.placeAmbiguous || i.authorityKind || i.authority || i.supplier || i.entityAlternatives.length
+  return Boolean(i.subjects.length || i.subjectChoices || i.place || i.placeAmbiguous || i.authorityKind || i.authority || i.supplier || i.entityAlternatives.length
     || i.person || i.personAlternatives.length || i.period || i.dataset || i.singleBidder || i.employees || i.measure === "value_per_capita");
 }
 
