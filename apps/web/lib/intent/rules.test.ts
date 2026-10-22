@@ -814,5 +814,14 @@ describe("re-review of 4cda2e6", () => {
     expect(r.spec).toBeNull();
     expect(r.interpretation.notes.join(" ")).toMatch(/Scrie numele persoanei/);
   });
+  it("a name searched only as written that finds nobody says so, with the diacritics caveat", async () => {
+    const { r } = await ask("firmele lui Ana Tita");
+    expect(r.spec).toBeNull();
+    expect(r.interpretation.notes.join(" ")).toMatch(/scris exact așa\. Același nume scris cu diacritice nu a putut fi căutat sigur/);
+  });
+  it("an exhaustive search that finds nobody says a plain «Nu am găsit»", async () => {
+    const { r } = await ask("firmele lui Maria Popescu");
+    expect(r.interpretation.notes.join(" ")).toMatch(/Nu am găsit în Registrul Comerțului o persoană cu numele „Maria Popescu” \(cu data nașterii cunoscută\)/);
+  });
 });
 
