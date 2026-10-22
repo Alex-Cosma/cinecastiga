@@ -14,19 +14,19 @@ export interface GlossaryEntry {
 export const GLOSSARY = {
   "achizitie-directa": {
     title: "Achiziție directă",
-    text: "O cumpărare mică, fără licitație: sub un prag stabilit de lege, instituția alege direct firma. În totaluri numărăm achizițiile directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei.",
+    text: "O cumpărare fără licitație: instituția alege direct firma, dacă valoarea estimată fără TVA rămâne sub pragul legal. Din 10.09.2022 pragul este 270.120 lei pentru produse și servicii și 900.400 lei pentru lucrări; înainte a fost mai mic. În totaluri numărăm achizițiile directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei: această limită este un filtru de plauzibilitate al site-ului, nu pragul legal.",
   },
   "contract-procedura": {
     title: "Contract din licitație sau procedură",
-    text: "Un contract atribuit printr-o procedură publică, de exemplu o licitație: instituția publică un anunț, iar firmele depun oferte. Procedura nu garantează că au existat mai mulți ofertanți.",
+    text: "Un contract atribuit printr-o procedură, de exemplu o licitație: de obicei instituția publică un anunț, iar firmele depun oferte. Există și proceduri fără anunț prealabil, de exemplu negocierea fără publicare prealabilă; procedura nu garantează că au existat mai mulți ofertanți.",
   },
   "valoare-inregistrata": {
     title: "Valoare înregistrată, nu plată",
-    text: "Arătăm suma din contract sau din oferta acceptată, așa cum apare în sursă. O ofertă acceptată sau un contract semnat nu dovedește că banii au fost plătiți.",
+    text: "Arătăm valori calculate pornind de la suma din sursă a contractului sau a ofertei acceptate, de exemplu convertite în lei sau împărțite egal între membrii unui consorțiu. O ofertă acceptată sau un contract semnat nu dovedește că banii au fost plătiți.",
   },
   semnal: {
     title: "Semnal",
-    text: "Un tipar din date care merită verificat, de exemplu mai multe achiziții directe de la aceeași firmă care împreună depășesc pragul. Este o pistă de verificat, nu o acuzație și nu dovedește o ilegalitate.",
+    text: "Un tipar din date care merită verificat. De exemplu, posibila fracționare: cel puțin 3 achiziții directe ale aceleiași instituții de la aceeași firmă, în același an, cu aceeași clasă CPV și același tip, fiecare sub plafonul ei, dar care împreună depășesc plafonul aplicabil. Este o pistă de verificat, nu o acuzație și nu dovedește o ilegalitate.",
   },
   cpv: {
     title: "Subiect (cod CPV)",
