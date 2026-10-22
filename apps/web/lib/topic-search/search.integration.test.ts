@@ -6,7 +6,7 @@ const url=process.env.TEST_TOPIC_DATABASE_URL;
 if(url&&!/^seap_test_/.test(new URL(url).pathname.slice(1)))throw Error('Only isolated seap_test_* databases are allowed.');
 const suite=url?describe:describe.skip;
 suite('public subject search against PostgreSQL',()=>{
- let q:ReturnType<typeof createDb>['sql'];let search:typeof import('./server')['searchTopics'];
+ let q:ReturnType<typeof createDb>['sql'];let search:typeof import('./server')['searchTopics'];let documents:typeof import('./server')['searchTopicDocuments'];
  beforeAll(async()=>{
   process.env.DATABASE_URL=url!;q=createDb(url).sql;
   await q.unsafe(`create extension if not exists unaccent;create schema core;create schema marts;create schema app;create schema reference;create schema raw;
@@ -23,7 +23,7 @@ suite('public subject search against PostgreSQL',()=>{
   create table core.notices(c_notice_id bigint,sys_notice_type_id int,authority_entity_id bigint,raw_id bigint);
   create table app.document_notices(key text,notice_id text,notice_type int,notice_no text,title text,url text);
   create table app.procurement_documents(id uuid,filename text,notice_key text,processed_at timestamptz,pdf_hash text);
-  create table app.document_pages(document_id uuid,page int,text text,method text);
+  create table app.document_pages(document_id uuid,page int,text text not null,method text,primary key(document_id,page));
   `);
   await q.unsafe((await readFile('../../packages/db/migrations/0039_ancient_gressill.sql','utf8')).replaceAll('--> statement-breakpoint',''));
   await q.unsafe(await readFile('../../packages/db/migrations/0040_nosy_maginty.sql','utf8'));
@@ -32,16 +32,21 @@ suite('public subject search against PostgreSQL',()=>{
    insert into marts.entity_profile values(1,'authority',300),(2,'supplier',200),(3,'supplier',100),(4,'authority',100);
    insert into reference.uat values(44818,'MUNICIPIUL BUZĂU','buzau',103481,'1'),(999,'COMUNA TEST','buzau',1000,'3');
    insert into reference.authority_uat values(1,44818),(4,999);
-   insert into raw.raw_documents values(1,'{"directAcquisitionName":"Locuri de joacă accesibile"}'),(2,'{"directAcquisitionName":"Locuri de odihnă și joacă"}'),(3,'{"procedureId":123}'),(4,'{"procedureId":123}');
+   insert into raw.raw_documents values(1,'{"directAcquisitionName":"Locuri de joacă accesibile"}'),(2,'{"directAcquisitionName":"Locuri de odihnă și joacă"}'),(3,'{"procedureId":123}'),(4,'{"procedureId":123}'),(5,'{"procedureId":123}');
    insert into core.direct_acquisitions values(11,101,1,'DA101'),(12,102,2,'DA102'),(13,103,null,'DA103');
    insert into marts.da_transactions values(101,1,2,'Buzău','2022-12-31',123456789012345.6789),(102,4,3,'Buzau','2024-01-01',10),(103,4,3,'Buzau','2023-01-01',20);
    insert into core.contracts values(30,500,'Iluminat public','C30',70);
    insert into core.awards values(70,3);
    insert into marts.contract_transactions values(30,1,2,'Buzău','2024-12-31',100.123456),(30,1,3,'Buzau','2024-12-31',100.123456);
-   insert into core.notices values(80,17,1,4);
-   insert into app.document_notices values('17:80','80',17,'SCN80','Procedură iluminat','https://www.e-licitatie.ro/pub/notices/simplified-notice/v2/view/80');
-   insert into app.procurement_documents values('00000000-0000-4000-8000-000000000001','Caiet.pdf','17:80',now(),'hash'),('00000000-0000-4000-8000-000000000002','Nepregătit.pdf','17:80',null,null);
-   insert into app.document_pages values('00000000-0000-4000-8000-000000000001',1,'Locuri de joacă, accesibile.','pdf'),('00000000-0000-4000-8000-000000000001',2,'Locuri de joacă și spații verzi.','ocr');`);
+   insert into core.notices values(80,17,1,4),(81,17,4,5);
+   insert into app.document_notices values('17:80','80',17,'SCN80','Procedură iluminat','https://www.e-licitatie.ro/pub/notices/simplified-notice/v2/view/80'),
+    ('17:81','81',17,'SCN81','Procedură iluminat','https://www.e-licitatie.ro/pub/notices/simplified-notice/v2/view/81');
+   insert into app.procurement_documents values('00000000-0000-4000-8000-000000000001','Caiet.pdf','17:80',now(),'hash'),('00000000-0000-4000-8000-000000000002','Nepregătit.pdf','17:80',null,null),
+    ('00000000-0000-4000-8000-000000000003','Caiet.pdf','17:81',now(),'hash');
+   insert into app.document_pages values('00000000-0000-4000-8000-000000000001',1,'Locuri de joacă, accesibile.','pdf'),('00000000-0000-4000-8000-000000000001',2,'Locuri de joacă și spații verzi.','ocr'),
+    ('00000000-0000-4000-8000-000000000003',1,'Locuri de joacă, același proiect la alt cumpărător.','pdf');`);
+  // Pages above exist before the migration (backfill); later tests add pages through its trigger.
+  await q.unsafe((await readFile('../../packages/db/migrations/0079_document_page_search.sql','utf8')).replaceAll('--> statement-breakpoint',''));
   await q.unsafe(`insert into core.entities values
    (10,'Municipiul Cluj-Napoca','municipiul cluj napoca','4305857','Cluj'),
    (11,'COMUNA EXEMPLU JUDETUL CLUJ','comuna exemplu judetul cluj','1100','Cluj'),
@@ -49,19 +54,53 @@ suite('public subject search against PostgreSQL',()=>{
    (13,'Firma A Construct','firma a construct','1300','Cluj');
    insert into marts.entity_profile values(10,'authority',100),(11,'authority',999999999),(12,'authority',50),(13,'supplier',999999999);`);
   const {indexTopics}=await import('../../../ingestion/src/search/index-topics');await indexTopics(q);
-  search=(await import('./server')).searchTopics;
+  ({searchTopics:search,searchTopicDocuments:documents}=await import('./server'));
  },30000);
  afterAll(async()=>{await (globalThis as unknown as {topicSql?:typeof q}).topicSql?.end();await q?.end();});
  const run=(p:string)=>search(parseTopicScope(new URLSearchParams(p)));
+ const docs=(p:string)=>documents(parseTopicScope(new URLSearchParams(p)));
  it('counts an entire consortium once and preserves decimal precision',async()=>{const r=await run('q=iluminat');expect(r.acquisitions.total).toBe(1);expect(r.acquisitions.hits[0]).toMatchObject({value:'100.123456',href:'/contracte/500',suppliers:['Firma A','Firma B'],sourceUrl:'https://e-licitatie.ro/pub/notices/ca-notices/view-c/70'});});
- it('separates matching documents from acquisitions and maps exact pages',async()=>{const r=await run('q=locuri+de+joaca');expect(r.acquisitions.total).toBe(2);expect(r.documents.total).toBe(1);expect(r.documents.hits[0]).toMatchObject({pages:[1,2],contractId:'500'});expect(r.coverage).toEqual({known:2,ready:1,pages:2});});
+ it('separates matching documents from acquisitions and maps exact pages',async()=>{const r=await run('q=locuri+de+joaca');expect(r.acquisitions.total).toBe(2);expect(r).not.toHaveProperty('documents');const d=await docs('q=locuri+de+joaca');expect(d.documents.total).toBe(1);expect(d.documents.hits[0]).toMatchObject({id:'00000000-0000-4000-8000-000000000001',filename:'Caiet.pdf',page:1,pages:[1,2],method:'pdf',noticeNo:'SCN80',contractId:'500'});expect(d.coverage).toEqual({known:2,ready:1,pages:2});});
+ it('links documents by procedure identity and buyer, never by the same procedure number at another buyer',async()=>{
+  const all=await docs('q=alt+cumparator');expect(all.documents.total).toBe(0);expect(all.coverage.known).toBe(2);
+  expect((await q`select count(*)::int n from app.document_page_search where document_id='00000000-0000-4000-8000-000000000003'`)[0]?.n).toBe(1);
+ });
+ it('matches document text without accents or case and honors phrase order',async()=>{
+  for(const term of ['JOACĂ','joaca','spatii+verzi'])expect((await docs(`q=${term}`)).documents.total).toBe(1);
+  expect((await docs('q=spatii+verzi')).documents.hits[0]?.pages).toEqual([2]);
+  expect((await docs('q=verzi+spatii')).documents.total).toBe(1);
+  expect((await docs('q=verzi+spatii&match=phrase')).documents.total).toBe(0);
+  expect((await docs('q=locuri+de+joaca&match=phrase')).documents.hits[0]?.pages).toEqual([1,2]);
+  expect((await docs('q=joaca+locuri&match=phrase')).documents.total).toBe(0);
+ });
+ it('pages through documents only in the Documents tab',async()=>{
+  expect((await docs('q=joaca&tab=documents')).documents.hits).toHaveLength(1);
+  expect((await docs('q=joaca&tab=documents&page=2')).documents).toEqual({total:1,hits:[]});
+ });
+ it('indexes pages written after the migration and follows text changes and deletions',async()=>{
+  const id='00000000-0000-4000-8000-000000000001';
+  await q`insert into app.document_pages values(${id},3,'Stâlpi de iluminat stradal','ocr')`;
+  expect((await docs('q=stalpi')).documents.hits[0]?.pages).toEqual([3]);
+  await q`update app.document_pages set text='Bănci de parc' where document_id=${id} and page=3`;
+  expect((await docs('q=stalpi')).documents.total).toBe(0);expect((await docs('q=banci')).documents.total).toBe(1);
+  await q`delete from app.document_pages where document_id=${id} and page=3`;
+  expect((await docs('q=banci')).documents.total).toBe(0);
+  expect((await q`select count(*)::int n from app.document_page_search where document_id=${id}`)[0]?.n).toBe(2);
+ });
+ it('keeps a page over the full-text size limit readable instead of failing the insert',async()=>{
+  const id='00000000-0000-4000-8000-000000000001',huge=Array.from({length:160000},(_,i)=>`w${i.toString(36)}x${(i*7919).toString(36)}`).join(' ');
+  await q`insert into app.document_pages values(${id},4,${huge},'ocr')`;
+  expect((await q`select count(*)::int n from app.document_page_search where document_id=${id} and page=4`)[0]?.n).toBe(0);
+  expect((await docs('q=joaca')).coverage.pages).toBe(3);
+  await q`delete from app.document_pages where document_id=${id} and page=4`;
+ });
  it('matches accentless words and distinguishes ordered phrases',async()=>{const r=await run('q=locuri+de+joaca&match=phrase');expect(r.acquisitions.total).toBe(1);expect(r.acquisitions.hits[0]?.value).toBe('123456789012345.6789');});
- it('includes both year boundaries and applies all filters to documents',async()=>{expect((await run('q=locuri&from=2022&to=2024')).acquisitions.total).toBe(2);const r=await run('q=locuri&from=2022&to=2022');expect(r.acquisitions.total).toBe(1);expect(r.documents.total).toBe(0);expect(r.coverage.known).toBe(0);});
- it('uses a specific UAT instead of all authorities in the county',async()=>{expect((await run('q=locuri&place=county:buzau')).acquisitions.total).toBe(2);expect((await run('q=locuri&place=uat:44818')).acquisitions.total).toBe(1);expect((await run('q=locuri&place=uat:999')).documents.total).toBe(0);});
+ it('includes both year boundaries and applies all filters to documents',async()=>{expect((await run('q=locuri&from=2022&to=2024')).acquisitions.total).toBe(2);expect((await run('q=locuri&from=2022&to=2022')).acquisitions.total).toBe(1);const d=await docs('q=locuri&from=2022&to=2022');expect(d.documents.total).toBe(0);expect(d.coverage.known).toBe(0);expect((await docs('q=locuri&from=2024&to=2024')).documents.total).toBe(1);});
+ it('uses a specific UAT instead of all authorities in the county',async()=>{expect((await run('q=locuri&place=county:buzau')).acquisitions.total).toBe(2);expect((await run('q=locuri&place=uat:44818')).acquisitions.total).toBe(1);expect((await docs('q=locuri&place=uat:999')).documents.total).toBe(0);expect((await docs('q=locuri&place=uat:44818')).documents.total).toBe(1);await expect(docs('q=locuri&place=uat:1234567')).rejects.toThrow('catalog');});
  it('applies buyer location and period to suppliers’ activity',async()=>{expect((await run('q=firma&place=uat:44818&from=2022&to=2022')).entities.hits.map(x=>x.id)).toEqual(['2']);});
  it('honors phrase order for entity names as well',async()=>{expect((await run('q=buzau+municipiul')).entities.total).toBe(1);expect((await run('q=buzau+municipiul&match=phrase')).entities.total).toBe(0);});
  it('retains colloquial city-hall aliases and CUI lookup',async()=>{expect((await run('q=primaria+buzau')).entities.hits[0]?.id).toBe('1');expect((await run('q=200')).entities.hits[0]?.id).toBe('2');});
- it('does not turn punctuation into a wildcard or expose unprocessed files',async()=>{const r=await run('q=%25%27');expect(r.acquisitions.total+r.documents.total+r.entities.total).toBe(0);expect((await run('q=locuri&type=da')).documents.total).toBe(0);});
+ it('does not turn punctuation into a wildcard or expose unprocessed files',async()=>{const r=await run('q=%25%27');expect(r.acquisitions.total+r.entities.total+(await docs('q=%25%27')).documents.total).toBe(0);expect(await docs('q=locuri&type=da')).toMatchObject({documents:{total:0,hits:[]},coverage:{known:0,ready:0,pages:0}});expect((await docs('q=locuri&type=contracts')).documents.total).toBe(1);});
  it('retains records without raw titles in activity filters and reports title coverage',async()=>{const r=await run('q=firma&place=uat:999&from=2023&to=2023');expect(r.entities.hits.map(x=>x.id)).toEqual(['3']);expect(r.titleCoverage).toEqual({total:4,searchable:3});});
  it('keeps the preceding index and indexes if a rebuild fails',async()=>{
   const [before]=await q`select built_at from marts.topic_search_state where id=1`;

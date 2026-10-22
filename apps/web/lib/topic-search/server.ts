@@ -3,8 +3,13 @@ import {daUrl,awardUrl} from '../elicitatie';
 import {aliasQueries} from '../ask/entity-alias';
 import {entityIntent} from './entity-intent';
 import {COUNTIES} from '../counties';
-import {fold,PAGE_SIZE,excerpt,type TopicScope,type Place,type TopicResult,type AcquisitionHit,type DocumentHit,type EntityHit} from './shared';
+import {fold,PAGE_SIZE,excerpt,type TopicScope,type Place,type TopicResult,type TopicDocumentsResult,type AcquisitionHit,type DocumentHit,type EntityHit} from './shared';
 export class TopicInputError extends Error {}
+export function topicFailure(e:unknown,slow:string){
+ if(e instanceof TopicInputError)return Response.json({error:e.message},{status:400});
+ const code=(e as {code?:string}).code;console.error('Topic search failed',code??'query');
+ return Response.json({error:code==='57014'?slow:'Căutarea nu este disponibilă momentan. Încearcă din nou în câteva momente.'},{status:503});
+}
 const globalSql=globalThis as unknown as {topicSql?:DbSql};
 const db=()=>globalSql.topicSql??=createDb().sql;
 export const countyPlaces:Place[]=COUNTIES.map(name=>({id:`county:${fold(name)}`,name,detail:name==='București'?'Municipiul București':'Județ',kind:'county'}));
@@ -51,31 +56,43 @@ async function acquisitions(s:TopicScope):Promise<TopicResult['acquisitions']>{r
  });}
 // Only public archive tables. Map document procedures by source identity AND buyer,
 // just as the contract reader does; never by a similar title or filename.
-function documentScope(q:DbSql,s:TopicScope){return q`with sources as (
- select d.id,d.filename,d.processed_at,d.pdf_hash,n.notice_no,n.title notice_title,n.url,
-  linked.ref_id from app.procurement_documents d join app.document_notices n on n.key=d.notice_key
+// One statement per request: the notice→procedure link is computed once per
+// notice (not per file, not once per count/rows/coverage), and the text match
+// uses the GIN index on app.document_page_search (migration 0079).
+async function documentSearch(s:TopicScope):Promise<Omit<TopicDocumentsResult,'scope'>>{
+ // A procedure-document link is always to a contract; direct acquisitions have none.
+ if(s.type==='da')return {documents:{total:0,hits:[]},coverage:{known:0,ready:0,pages:0}};
+ return bounded(async q=>{
+ const ts=s.match==='phrase'?q`phraseto_tsquery('simple',unaccent(${s.q}))`:q`plainto_tsquery('simple',unaccent(${s.q}))`;
+ const match=s.q?q`p.search @@ ${ts}`:q`false`;
+ const limit=s.tab==='documents'?PAGE_SIZE:2,offset=s.tab==='documents'?(s.page-1)*PAGE_SIZE:0;
+ const [r]=await q`with linked as materialized (
+  select n.key,n.notice_no,n.title notice_title,n.url,l.ref_id from app.document_notices n
   join core.notices cn on cn.c_notice_id=case when n.notice_id ~ '^[1-9][0-9]{0,17}$' then n.notice_id::bigint end and cn.sys_notice_type_id=n.notice_type
   join raw.raw_documents nr on nr.id=cn.raw_id
   join lateral (select a.ref_id from marts.topic_acquisitions a where a.kind='contracts'
    and a.authority_id=cn.authority_entity_id and a.procedure_id=nr.payload->>'procedureId'
-   and ${scopeSql(q,s)} order by a.ref_id limit 1) linked on true
- )`;}
-async function documents(s:TopicScope):Promise<{result:TopicResult['documents'];coverage:TopicResult['coverage']}>{return bounded(async q=>{
- const sources=documentScope(q,s);
- const [coverage]=await q`${sources} select count(*)::int known,count(*) filter(where processed_at is not null and pdf_hash is not null)::int ready,
- (select count(*)::int from app.document_pages p join sources s on s.id=p.document_id where s.processed_at is not null and s.pdf_hash is not null) pages from sources`;
- if(!s.q||s.type==='da')return {result:{total:0,hits:[]},coverage:coverage as TopicResult['coverage']};
- const ts=s.match==='phrase'?q`phraseto_tsquery('simple',unaccent(${s.q}))`:q`plainto_tsquery('simple',unaccent(${s.q}))`;
- const matches=q`${sources},matches as (select s.*,p.page,p.text,p.method from sources s join app.document_pages p on p.document_id=s.id
- where s.processed_at is not null and s.pdf_hash is not null and to_tsvector('simple',unaccent(p.text)) @@ ${ts})`;
- const [count]=await q`${matches} select count(distinct id)::int total from matches`;
- const limit=s.tab==='all'?2:PAGE_SIZE,offset=s.tab==='all'?0:(s.page-1)*PAGE_SIZE;
- const rows=await q`${matches}, selected as (select id,array_agg(page order by page) pages from matches group by id order by id limit ${limit} offset ${offset})
- select m.*,s.pages,c.ca_notice_contract_id::text contract_id from selected s join matches m on m.id=s.id and m.page=s.pages[1]
- join core.contracts c on c.id=m.ref_id order by s.id`;
- const hits:DocumentHit[]=rows.map(r=>({id:r.id,filename:r.filename,page:r.page,pages:r.pages,text:excerpt(r.text,s.q),method:r.method,noticeNo:r.notice_no,noticeTitle:r.notice_title,sourceUrl:r.url,contractId:r.contract_id}));
- return {result:{total:Number(count!.total),hits},coverage:coverage as TopicResult['coverage']};
- });}
+   and ${scopeSql(q,s)} order by a.ref_id limit 1) l on true
+  where exists(select 1 from app.procurement_documents d where d.notice_key=n.key)
+ ),sources as materialized (
+  select d.id,d.filename,d.processed_at is not null and d.pdf_hash is not null ready,l.notice_no,l.notice_title,l.url,l.ref_id
+  from app.procurement_documents d join linked l on l.key=d.notice_key
+ ),matches as materialized (
+  select s.id,p.page from sources s join app.document_page_search p on p.document_id=s.id where s.ready and ${match}
+ ),selected as (
+  select id,array_agg(page order by page) pages from matches group by id order by id limit ${limit} offset ${offset}
+ )
+ select (select count(*)::int from sources) known,(select count(*)::int from sources where ready) ready,
+  (select count(*)::int from app.document_pages p join sources s on s.id=p.document_id where s.ready) pages,
+  (select count(distinct id)::int from matches) total,
+  coalesce((select json_agg(h order by h.id) from (
+   select x.id,src.filename,x.pages[1] page,x.pages,p.text,p.method,src.notice_no,src.notice_title,src.url,c.ca_notice_contract_id::text contract_id
+   from selected x join sources src on src.id=x.id join app.document_pages p on p.document_id=x.id and p.page=x.pages[1]
+   join core.contracts c on c.id=src.ref_id) h),'[]'::json) hits`;
+ const hits:DocumentHit[]=(r!.hits as Record<string,any>[]).map(h=>({id:h.id,filename:h.filename,page:h.page,pages:h.pages,text:excerpt(h.text,s.q),method:h.method,noticeNo:h.notice_no,noticeTitle:h.notice_title,sourceUrl:h.url,contractId:h.contract_id}));
+ return {documents:{total:Number(r!.total),hits},coverage:{known:Number(r!.known),ready:Number(r!.ready),pages:Number(r!.pages)}};
+ });
+}
 async function entities(s:TopicScope):Promise<TopicResult['entities']>{return bounded(async q=>{
  // Existing trigram index on canonical normalized names; all query terms required.
  const terms=fold(s.q).split(/[^\p{L}\p{N}]+/u).filter(Boolean).slice(0,30);
@@ -108,11 +125,20 @@ async function entities(s:TopicScope):Promise<TopicResult['entities']>{return bo
  const hits=rows.map(({match_rank,...entity})=>entity) as unknown as EntityHit[];
  return {total:Number(count!.total),hits,suggestions:s.tab==='all'?hits.filter((_,i)=>Number(rows[i]!.match_rank)>0):[]};
  });}
+async function checkedPlace(s:TopicScope){
+ const place=await resolvePlace(s.place);if(s.place&&!place)throw new TopicInputError('Localitatea sau județul ales nu există în catalog. Alege din sugestii.');return place;
+}
+/** Titles, institutions and firms. Fast: never waits for document text. */
 export async function searchTopics(s:TopicScope):Promise<TopicResult>{
- const place=await resolvePlace(s.place);if(s.place&&!place)throw new TopicInputError('Localitatea sau județul ales nu există în catalog. Alege din sugestii.');
+ const place=await checkedPlace(s);
  const [state]=await db()`select built_at,records,titled_records from marts.topic_search_state where id=1`;
  if(!state)throw Error('Indexul de achiziții este în curs de pregătire. Încearcă din nou după finalizarea indexării.');
  const empty={total:0,hits:[]};
- const [a,d,e]=await Promise.all([s.q?acquisitions(s):empty,documents(s),s.q?entities(s):empty]);
- return {scope:s,place,acquisitions:a,documents:d.result,entities:e,coverage:d.coverage,builtAt:new Date(state.built_at).toISOString(),titleCoverage:{total:Number(state.records),searchable:Number(state.titled_records)}};
+ const [a,e]=await Promise.all([s.q?acquisitions(s):empty,s.q?entities(s):empty]);
+ return {scope:s,place,acquisitions:a,entities:e,builtAt:new Date(state.built_at).toISOString(),titleCoverage:{total:Number(state.records),searchable:Number(state.titled_records)}};
+}
+/** Prepared document pages linked to the selection; requested separately by the page. */
+export async function searchTopicDocuments(s:TopicScope):Promise<TopicDocumentsResult>{
+ await checkedPlace(s);
+ return {scope:s,...await documentSearch(s)};
 }
