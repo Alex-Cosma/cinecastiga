@@ -1,4 +1,5 @@
 import { canonicalAskIdentities } from "./canonical-identities";
+import { retiredChoicesText } from "./retired-terms";
 import type { DbSql } from "@seap/db";
 import type { AskSpec, AuthorityKind, Dim } from "./spec";
 import type { Grounding } from "./ground";
@@ -552,8 +553,11 @@ export async function runSpec(
   // --- resolve grounded anchors, failing loudly when grounding came up empty
   const cpvPrefixes = grounding.cpv?.prefixes ?? [];
   if (spec.filters.cpvTerm && cpvPrefixes.length === 0) {
+    const retired = grounding.cpv?.retired;
     return {
-      error: `Nu am găsit nicio categorie CPV pentru „${spec.filters.cpvTerm}”. Încearcă alt cuvânt (ex: „lemn de foc”, „medicamente”, „asfaltare”).`,
+      error: retired
+        ? `${retired.message} ${retiredChoicesText(retired)}`
+        : `Nu am găsit nicio categorie CPV pentru „${spec.filters.cpvTerm}”. Încearcă alt cuvânt (ex: „lemn de foc”, „medicamente”, „asfaltare”).`,
       caveats,
     };
   }
@@ -1836,7 +1840,8 @@ export async function runRows(
   }
   const cpvPrefixes = grounding.cpv?.prefixes ?? [];
   if (spec.filters.cpvTerm && cpvPrefixes.length === 0) {
-    return { error: `Nu am găsit CPV pentru „${spec.filters.cpvTerm}”.` };
+    const retired = grounding.cpv?.retired;
+    return { error: retired ? `${retired.message} ${retiredChoicesText(retired)}` : `Nu am găsit CPV pentru „${spec.filters.cpvTerm}”.` };
   }
   if ((spec.filters.authorityName || spec.filters.authorityId) && !grounding.authority?.entityId) {
     return {

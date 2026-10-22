@@ -103,6 +103,11 @@ describe.runIf(Boolean(connection))("migrations 0080 and 0081: CPV vocabulary (d
     // a text without rows of its own still falls back to containment, with the picked term's exclusions
     expect(await prefixes("transport public")).toEqual(["60"]);
     expect(await grounded("medicamentele")).toMatchObject({ prefixes: ["336"], excludePrefixes: ["33682", "33683", "33696"] });
+    // the retired words are offered as choices, never fuzzy-matched
+    for (const term of ["lucrari", "mese", "programe"]) expect(await grounded(term), term).toMatchObject({ prefixes: [], retired: expect.anything() });
+    const mese = await interpretQuestion(connection!.sql, "mese calde scoala", { now: NOW });
+    expect(mese.spec).toBeNull();
+    expect(mese.alternatives.map((a) => a.spec.filters.cpvTerm)).toEqual(["catering", "39121200"]);
     // an exclusion never removes what another term of the same text includes
     expect((await grounded("medicamente reactivi"))?.excludePrefixes ?? []).toEqual(["33682", "33683"]);
   });

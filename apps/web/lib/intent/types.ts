@@ -89,6 +89,11 @@ export interface Interpretation {
   /** Rows the person wants ranked or profiled, from "firme"/"instituții". */
   dimHint: "supplier" | "authority" | null;
   subjects: SubjectMatch[];
+  /**
+   * A word that is not a subject on its own ("lucrări", "mese", "programe";
+   * lib/ask/retired-terms): no subject is guessed, the person chooses one.
+   */
+  subjectChoices?: { matched: Span; message: string; options: { label: string; term: string }[] } | null;
   place: PlaceMatch | null;
   /** Other readings of the place: the same name elsewhere, or county vs city. */
   placeAlternatives: PlaceMatch[];
@@ -204,7 +209,7 @@ export interface PersonLookup { hits: PersonHit[]; total: number; exhaustive?: b
 export interface IntentAlternative {
   /** Short Romanian label for a button ("Doar primăria Municipiului Buzău"). */
   label: string;
-  kind: "place" | "intent" | "person" | "entity";
+  kind: "place" | "intent" | "person" | "entity" | "subject";
   sentence: string;
   spec: AskSpec;
 }
