@@ -782,8 +782,6 @@ export interface EntityDivision {
 export interface EntitySubjects {
   /** Largest divisions by recorded value, at most `limit`. */
   divisions: EntityDivision[];
-  /** Divisions with a CPV code across the whole selection. */
-  nDivisions: number;
   /** Distinct contracts in the selection awarded to a consortium (equal-split shares). */
   nConsortium: number;
 }
@@ -792,34 +790,36 @@ export interface EntitySubjects {
  * "Pe scurt": the entity's recorded value by CPV division, over exactly the
  * population of getEntityTxCounts and the partner list (DAs with a positive value
  * of at most 2 million lei + contract rows with a positive winner share). The
- * division values therefore add up to the page's total.
+ * division values therefore add up to the page's total. The transaction rows are
+ * aggregated once and never materialized; the consortium count reads only the
+ * multi-winner contract rows (no sort of every DA row, no spill to disk).
  */
 export async function getEntitySubjects(entityId: string, role: Role, limit = 3, sql: DbSql = db()): Promise<EntitySubjects> {
   const id = await canonicalEntityId(sql, /^\d+$/.test(entityId) ? entityId : "0");
   const partyCol = role === "authority" ? sql`authority_id` : sql`supplier_id`;
   const rows = (await sql`
-    with u as (
-      select left(cpv_code, 2) d, closing_value v, null::bigint cid
-      from marts.da_transactions
-      where ${partyCol} = ${id} and closing_value > 0 and closing_value <= 2000000
-      union all
-      select left(cpv_code, 2), closing_value, case when n_winners > 1 then contract_id end
-      from marts.contract_transactions
-      where ${partyCol} = ${id} and closing_value > 0
+    with agg as (
+      select d, count(*)::int n, sum(v) v from (
+        select left(cpv_code, 2) d, closing_value v
+        from marts.da_transactions
+        where ${partyCol} = ${id} and closing_value > 0 and closing_value <= 2000000
+        union all
+        select left(cpv_code, 2), closing_value
+        from marts.contract_transactions
+        where ${partyCol} = ${id} and closing_value > 0
+      ) u group by d
     ),
-    agg as (select d, count(*)::int n, sum(v) v from u group by d),
     meta as (
-      select (select count(*)::int from agg where d is not null) n_div,
-             (select count(distinct cid)::int from u) n_cons
+      select (select count(distinct contract_id)::int from marts.contract_transactions
+              where ${partyCol} = ${id} and closing_value > 0 and n_winners > 1) n_cons
     )
-    select meta.n_div, meta.n_cons, top.* from meta left join lateral (
+    select meta.n_cons, top.* from meta left join lateral (
       select agg.d, agg.n, agg.v::text v_exact,
              (select k.name_ro from core.cpv_codes k where left(k.code, 8) = agg.d || '000000' order by k.code limit 1) name
       from agg order by agg.v desc nulls last, agg.d asc nulls last limit ${limit}
     ) top on true
-  `) as unknown as { n_div: number; n_cons: number; d: string | null; n: number | null; v_exact: string | null; name: string | null }[];
+  `) as unknown as { n_cons: number; d: string | null; n: number | null; v_exact: string | null; name: string | null }[];
   return {
-    nDivisions: Number(rows[0]?.n_div ?? 0),
     nConsortium: Number(rows[0]?.n_cons ?? 0),
     divisions: rows.filter((r) => r.v_exact != null).map((r) => ({
       code: r.d, name: r.name, valueExact: String(r.v_exact), n: Number(r.n ?? 0),

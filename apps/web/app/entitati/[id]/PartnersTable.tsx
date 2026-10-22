@@ -47,16 +47,20 @@ export default function PartnersTable({
   entityName,
   role,
   isAuth,
+  initial,
 }: {
   entityId: string;
   entityName: string;
   role: "furnizor" | "autoritate";
   isAuth: boolean;
+  /** Page 1 as rendered by the server (also feeds "Pe scurt"), so it is not fetched twice. */
+  initial?: { rows: Partner[]; total: number };
 }) {
   const [page, setPage] = useState(1);
   const tip = useTip();
-  const p = new URLSearchParams({ id: entityId, rol: role, page: String(page) });
-  const { data, loading, error, retry } = useEntityTable<Resp>(`/api/entity-partners?${p.toString()}`);
+  const urlFor = (n: number) => `/api/entity-partners?${new URLSearchParams({ id: entityId, rol: role, page: String(n) }).toString()}`;
+  const [first] = useState(() => (initial ? { url: urlFor(1), data: { ok: true, rows: initial.rows, total: initial.total } as Resp } : undefined));
+  const { data, loading, error, retry } = useEntityTable<Resp>(urlFor(page), first);
 
   const total = data?.total ?? 0;
   const pages = Math.max(1, Math.ceil(total / 10));

@@ -116,7 +116,9 @@ export function composeEntitySummary(input: SummaryInput): EntitySummary | null 
   }
   if (topDivision) {
     const share = Number(topDivision.valueExact) / total;
-    second.push(`${second.length > 0 ? " " : ""}${isAuth ? "Cei mai mulți bani merg la " : "Vinde mai ales "}${lowerFirst(divisionLabel(topDivision))} (${shareLabel(share)}).`);
+    // "Cea mai mare parte" only for a real majority of the value.
+    const lead = share > 0.5 ? "Cea mai mare parte din valoare privește " : "Cel mai mare domeniu: ";
+    second.push(`${second.length > 0 ? " " : ""}${lead}${lowerFirst(divisionLabel(topDivision))} (${shareLabel(share)}).`);
   }
   if (second.length > 0) sentences.push(second);
 
@@ -124,8 +126,8 @@ export function composeEntitySummary(input: SummaryInput): EntitySummary | null 
     const n = input.nConsortium;
     sentences.push([isAuth
       ? n === 1
-        ? "Un contract a fost atribuit unui consorțiu: fiecare membru apare cu o parte egală din valoare, iar suma nu se adună de mai multe ori."
-        : `${roCount(n, "un contract", "contracte")} au fost atribuite unor consorții: fiecare membru apare cu o parte egală din valoare, iar suma nu se adună de mai multe ori.`
+        ? "Un contract a fost atribuit unui consorțiu: fiecare membru apare cu o parte egală estimată din valoare, iar suma nu se adună de mai multe ori."
+        : `${roCount(n, "un contract", "contracte")} au fost atribuite unor consorții: fiecare membru apare cu o parte egală estimată din valoare, iar suma nu se adună de mai multe ori.`
       : n === 1
         ? "Un contract a fost câștigat în consorțiu: în total intră doar partea estimată a firmei (valoarea împărțită egal între membri)."
         : `${roCount(n, "un contract", "contracte")} au fost câștigate în consorțiu: în total intră doar partea estimată a firmei (valoarea împărțită egal între membri).`]);
@@ -147,9 +149,9 @@ export function composeEntitySummary(input: SummaryInput): EntitySummary | null 
 
   return {
     sentences,
-    subjectsTitle: isAuth ? "Pe ce cheltuie" : "Ce vinde",
+    subjectsTitle: isAuth ? "Ce a atribuit" : "Ce a câștigat",
     subjects,
-    partnersTitle: isAuth ? "De la cine cumpără" : "Cui vinde",
+    partnersTitle: isAuth ? "Cui a atribuit" : "Cine i-a atribuit",
     partners,
   };
 }
