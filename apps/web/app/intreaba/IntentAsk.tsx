@@ -73,15 +73,15 @@ export function AskExamples({ onPick }: { onPick: (example: AskExample) => void 
 export function IntentUnknown({ result, onPick }: { result: IntentResult; onPick: (example: AskExample) => void }) {
   const words = result.interpretation.leftover;
   return (
-    <section className="ia-panel ia-unknown" role="status" aria-live="polite">
-      <h2>Nu am înțeles întrebarea</h2>
+    <section className="ia-panel ia-unknown" aria-labelledby="ia-result-title">
+      <h2 id="ia-result-title" tabIndex={-1}>Nu am înțeles întrebarea</h2>
       <p>
         {words.length
-          ? <>Nu am găsit în datele noastre {words.length === 1 ? "cuvântul" : "cuvintele"} {words.map((w, i) => <span key={`${w}-${i}`}>{i > 0 ? ", " : ""}<q>{w}</q></span>)}. </>
+          ? <>Nu am găsit în datele noastre {words.length === 1 ? "cuvântul" : "cuvintele"} {words.map((w, i) => <span key={i}>{i > 0 ? ", " : ""}<q>{w}</q></span>)}. </>
           : <>Nu am găsit în întrebare un domeniu, un loc, o instituție sau o firmă. </>}
         Încearcă să spui <strong>ce</strong> s-a cumpărat (asfalt, medicamente, iluminat), <strong>unde</strong> (un județ sau o localitate) sau numele unei instituții ori al unei firme.
       </p>
-      {result.interpretation.notes.map((note) => <p key={note} className="ia-note">{note}</p>)}
+      {result.interpretation.notes.map((note, i) => <p key={i} className="ia-note">{note}</p>)}
       <p className="ia-try">Poți porni de la una dintre aceste întrebări:</p>
       <div className="ia-fallback">
         {FALLBACK_EXAMPLES.map((example) => <ExampleButton key={example.text} example={example} onPick={onPick} />)}
@@ -90,29 +90,47 @@ export function IntentUnknown({ result, onPick }: { result: IntentResult; onPick
   );
 }
 
-/** Several readings and none chosen (namesakes, localities of the same name). */
+/** Several readings and none chosen (namesakes, same-named institutions or firms, localities of the same name). */
 export function IntentChoose({ result, onAdopt }: { result: IntentResult; onAdopt: (choice: IntentChoice) => void }) {
+  const partial = result.interpretation.choicesPartial;
+  const choices = result.alternatives.filter((alt) => alt.kind !== "intent");
   return (
-    <section className="ia-panel ia-choose" role="status" aria-live="polite">
-      <h2>{result.problem}</h2>
+    <section className="ia-panel ia-choose" aria-labelledby="ia-result-title">
+      <h2 id="ia-result-title" tabIndex={-1}>{result.problem}</h2>
       {result.interpretation.placeNote && <p className="ia-note">{result.interpretation.placeNote}</p>}
-      {result.interpretation.notes.map((note) => <p key={note} className="ia-note">{note}</p>)}
-      <div className="ia-choices">
-        {result.alternatives.filter((alt) => alt.kind !== "intent").map((alt) => (
-          <button type="button" key={alt.label} onClick={() => onAdopt({ spec: alt.spec, sentence: alt.sentence, label: alt.label })}>
-            <strong>{alt.label}</strong>
-            <small>{alt.sentence}</small>
-          </button>
+      {result.interpretation.notes.map((note, i) => <p key={i} className="ia-note">{note}</p>)}
+      <ul className="ia-choices">
+        {choices.map((alt, i) => (
+          <li key={i}>
+            <button type="button" onClick={() => onAdopt({ spec: alt.spec, sentence: alt.sentence, label: alt.label })}>
+              <strong>{alt.label}</strong>
+              <small>{alt.sentence}</small>
+            </button>
+          </li>
         ))}
-      </div>
+      </ul>
+      {partial && (
+        <p className="ia-partial">
+          Lista arată {partial.shown} din {partial.total} potriviri. Dacă nu găsești ce cauți, <a href={`/cauta?q=${encodeURIComponent(partial.search)}`}>caută „{partial.search}”</a> sau scrie numele complet (cu localitatea ori anul nașterii).
+        </p>
+      )}
     </section>
   );
+}
+
+/** One polite announcement per interpretation, kept out of the panels that hold buttons. */
+export function IntentAnnouncer({ result, error }: { result: IntentResult | null; error: string | null }) {
+  const text = error ? error
+    : !result ? ""
+    : result.spec ? `Am înțeles așa: ${result.sentence ?? ""} Poți schimba orice parte a întrebării, apoi apasă „Vezi răspunsul”.`
+    : result.problem ?? "Nu am înțeles întrebarea.";
+  return <p className="d-sr-only" role="status" aria-live="polite">{text}</p>;
 }
 
 export function IntentIntro({ result }: { result: IntentResult }) {
   return (
     <div className="ia-intro">
-      <p className="ia-eyebrow">Am înțeles așa <span>· apasă pe un cuvânt evidențiat ca să-l schimbi</span></p>
+      <h2 id="ia-understood" className="ia-eyebrow" tabIndex={-1}>Am înțeles așa <span>· apasă pe un cuvânt evidențiat ca să-l schimbi</span></h2>
       <p className="ia-asked">Ai întrebat: <q>{result.q}</q></p>
     </div>
   );
@@ -135,16 +153,23 @@ export function IntentOutro({ result, chosen, onAdopt }: { result: IntentResult;
     <div className="ia-outro">
       {words.length > 0 && (
         <p className="ia-leftover">
-          Nu am înțeles: {words.map((w, i) => <span key={`${w}-${i}`}>{i > 0 ? ", " : ""}<q>{w}</q></span>)}. Răspunsul nu ține cont de {words.length === 1 ? "acest cuvânt" : "aceste cuvinte"}. Le poți <a href={`/cauta?q=${encodeURIComponent(words.join(" "))}`}>căuta în titlurile achizițiilor</a>.
+          Nu am înțeles: {words.map((w, i) => <span key={i}>{i > 0 ? ", " : ""}<q>{w}</q></span>)}. Răspunsul nu ține cont de {words.length === 1 ? "acest cuvânt" : "aceste cuvinte"}. Le poți <a href={`/cauta?q=${encodeURIComponent(words.join(" "))}`}>căuta în titlurile achizițiilor</a>.
         </p>
       )}
-      {notes.map((note) => <p key={note} className="ia-note">{note}</p>)}
+      {notes.map((note, i) => <p key={i} className="ia-note">{note}</p>)}
       {options.length > 0 && (
-        <div className="ia-alts" aria-label="Alte variante ale întrebării">
-          <span>sau:</span>
-          {options.map((option) => (
-            <button type="button" key={option.label} title={option.sentence} onClick={() => onAdopt(option)}>{option.label}</button>
-          ))}
+        <div className="ia-alts">
+          <h3 className="ia-alts-title">Sau întreabă altfel:</h3>
+          <ul>
+            {options.map((option, i) => (
+              <li key={i}>
+                <button type="button" onClick={() => onAdopt(option)}>
+                  <strong>{option.label}</strong>
+                  <small>{option.sentence}</small>
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>
