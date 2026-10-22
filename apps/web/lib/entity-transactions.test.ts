@@ -65,3 +65,45 @@ describe("entity source pagination", () => {
     expect(statements[1]?.query).not.toContain("count(distinct pid)");
   });
 });
+
+describe("consortium rows in the entity table", () => {
+  function consortiumDatabase() {
+    const statements: string[] = [];
+    const page = [
+      { src: "contract", rid: "607956", cp_id: "2126729", cp_name: "CONCELEX", closing_value: "127303264.06", contract_value_full: "381909792.16", n_winners: 3, da_flags: [] },
+      { src: "da", rid: "55", cp_id: "9", cp_name: "FIRMA", closing_value: "100", contract_value_full: null, n_winners: null, da_flags: [] },
+    ];
+    const members = [
+      { cid: "607956", sid: "2065404", supplier_name: "Concelex Engineering S.R.L" },
+      { cid: "607956", sid: "2124463", supplier_name: "CONSTRUCTII ERBASU S.A." },
+      { cid: "607956", sid: "2126729", supplier_name: "CONCELEX" },
+    ];
+    class Fragment {
+      constructor(public query: string) {}
+      then(resolve: (rows: unknown[]) => unknown) {
+        if (this.query.includes("core.canonical_entity_id")) return Promise.resolve(resolve([{ id: "2144364" }]));
+        statements.push(this.query);
+        if (this.query.includes("count(*)::int c")) return Promise.resolve(resolve([{ c: 2 }]));
+        if (this.query.includes("supplier_id::text sid")) return Promise.resolve(resolve(members));
+        return Promise.resolve(resolve(this.query.includes("limit") ? page : []));
+      }
+    }
+    const sql = ((chunks: TemplateStringsArray, ...params: unknown[]) =>
+      new Fragment(chunks.reduce((q, part, i) => q + part + (i < params.length ? (params[i] instanceof Fragment ? (params[i] as Fragment).query : "?") : ""), ""))) as unknown as DbSql;
+    Object.assign(sql, { array: (values: unknown[]) => values });
+    globalDb.__seapSql = sql;
+    return statements;
+  }
+
+  it("looks up the other members only for consortium rows and keeps the split amounts", async () => {
+    const statements = consortiumDatabase();
+    const { rows } = await getEntityTransactions("2144364", "authority", { pageSize: 10 });
+    expect(statements).toHaveLength(3);
+    expect(statements[2]).toContain("where contract_id = any(");
+    expect(rows[0]).toMatchObject({
+      closingValue: 127303264.06, contractValueFull: 381909792.16, nWinners: 3,
+      consortiumOthers: ["Concelex Engineering S.R.L", "CONSTRUCTII ERBASU S.A."],
+    });
+    expect(rows[1]).toMatchObject({ src: "da", nWinners: null, contractValueFull: null, consortiumOthers: [] });
+  });
+});

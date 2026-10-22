@@ -7,6 +7,7 @@ import { encodeSpec } from "@/lib/ask/permalink";
 import { useTip } from "../../intreaba/blocks";
 import type { Partner } from "@/lib/marts";
 import { useEntityTable } from "./useEntityTable";
+import { consortiumRankingNote } from "@/lib/consortium";
 
 /**
  * "Principalele autorități / Principalii furnizori" — paginated counterparty
@@ -67,7 +68,7 @@ export default function PartnersTable({
       <p className="hint" role="status">
         {loading ? "Se încarcă partenerii…" : error ? "Partenerii nu au putut fi încărcați." : <>{formatInt(total)} parteneri · ambele canale (directe + contracte) · partenerii identificați se deschid în căutare cu filtrele puse.</>}
       </p>
-      <div className="bars" aria-busy={loading}>
+      <div className="bars ent-partners" aria-busy={loading}>
         {loading &&
           Array.from({ length: 10 }, (_, i) => (
             <div className="bar-row tx-ghost" key={`g-${i}`}>
@@ -91,7 +92,8 @@ export default function PartnersTable({
               <div className="bar-fill" style={{ width: `${Math.min(100, p.pct * 100)}%` }} />
             </div>
             <div className="bar-val">
-              {formatRon(p.totalRon)} · {Math.round(p.pct * 100)}%
+              <span className="v">{formatRon(p.totalRon)} · {Math.round(p.pct * 100)}%</span>
+              {p.nConsortium > 0 && <span className="cons-tag" title={consortiumRankingNote(p.nConsortium)}>în consorțiu</span>}
             </div>
             <div className="bar-go">
               {p.partnerId !== "0" && p.partnerName ? (
@@ -113,6 +115,12 @@ export default function PartnersTable({
           </div>
         ))}
       </div>
+      {!loading && data?.rows?.some((r) => r.nConsortium > 0) && (
+        <p className="note">
+          „În consorțiu”: totalul include partea estimată din contracte câștigate de mai multe firme împreună.
+          Sursa nu publică partea fiecăruia, așa că valoarea contractului este împărțită egal între membri; suma nu este numărată de mai multe ori.
+        </p>
+      )}
       {pages > 1 && (
         <div className="pager">
           <button type="button" disabled={loading || page <= 1} onClick={() => setPage(page - 1)}>
