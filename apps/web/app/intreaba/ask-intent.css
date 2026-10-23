@@ -29,13 +29,16 @@
 .ia-group h3 { margin: 0 0 8px; font: 700 13px/1.4 var(--body); letter-spacing: .02em; color: var(--accent-ink, var(--accent)); text-transform: uppercase; }
 .ia-group-note { margin: -4px 0 8px !important; color: var(--muted); font-size: 12px !important; }
 .ia-example {
-  display: flex; width: 100%; align-items: baseline; justify-content: space-between; gap: 12px;
+  display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 12px;
   min-height: 44px; padding: 10px 12px; margin: 0; border: 0; border-top: 1px solid var(--line);
   background: transparent; color: var(--ink); text-align: left; font: 400 15px/1.45 var(--body); cursor: pointer;
 }
 .ia-group .ia-example:first-of-type { border-top: 0; }
 .ia-example > span { min-width: 0; overflow-wrap: anywhere; }
-.ia-example small { flex-shrink: 0; color: var(--accent); font-size: 12px; white-space: nowrap; }
+.ia-example-go { flex: none; width: 28px; height: 28px; border: 1px solid var(--line); border-radius: 50%; display: grid; place-items: center; color: var(--accent); }
+.ia-example-go .d-icon { width: 14px; height: 14px; }
+.ia-example:hover .ia-example-go { border-color: var(--accent); }
+.ia-group-art { display: block; width: 100%; height: 64px; margin: 0 0 10px; }
 .ia-example:hover { background: var(--accent-soft); }
 
 .ia-panel { margin: 0 0 28px; padding: 18px 20px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); min-width: 0; }
@@ -107,7 +110,6 @@
   .ia-row input { font-size: 17px; }
   .ia-row button { width: 100%; }
   .ia-groups, .ia-unknown .ia-fallback, .ia-choices { grid-template-columns: minmax(0, 1fr); }
-  .ia-example { flex-direction: column; gap: 2px; }
   .ia-panel { padding: 16px; }
 }
 
@@ -115,3 +117,4 @@
 .ia-builder-collapsed { margin: 4px 0 0; }
 .ia-change-question { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 10px 16px; border: 1px solid var(--line-strong, var(--line)); border-radius: 8px; background: var(--surface); color: var(--accent); font: 600 14px/1.3 var(--body); cursor: pointer; }
 .ia-change-question:hover { border-color: var(--accent); background: var(--accent-soft); }
+

@@ -4,6 +4,8 @@ import type { RefObject } from "react";
 import type { AskSpec } from "@/lib/ask/spec";
 import type { IntentResult } from "@/lib/intent/types";
 import { ASK_EXAMPLE_GROUPS, FALLBACK_EXAMPLES, type AskExample } from "./ask-examples";
+import DiscoveryIcon from "../DiscoveryIcon";
+import AskExampleArt from "./AskExampleArt";
 
 /** The interpretation the builder was seeded with: the main one or an alternative. */
 export interface IntentChoice {
@@ -47,7 +49,8 @@ function ExampleButton({ example, onPick }: { example: AskExample; onPick: (exam
   return (
     <button type="button" className="ia-example" onClick={() => onPick(example)}>
       <span>{example.text}</span>
-      <small aria-hidden="true">{example.fill ? "completează →" : "întreabă →"}</small>
+      {/* A pencil puts the half-written question in the box; an arrow asks it. */}
+      <span className="ia-example-go" aria-hidden="true"><DiscoveryIcon name={example.fill ? "pencil" : "arrow"} /></span>
     </button>
   );
 }
@@ -59,6 +62,7 @@ export function AskExamples({ onPick }: { onPick: (example: AskExample) => void 
       <div className="ia-groups">
         {ASK_EXAMPLE_GROUPS.map((group) => (
           <div className="ia-group" key={group.id}>
+            <AskExampleArt id={group.id} />
             <h3>{group.title}</h3>
             {group.note && <p className="ia-group-note">{group.note}</p>}
             {group.examples.map((example) => <ExampleButton key={example.text} example={example} onPick={onPick} />)}

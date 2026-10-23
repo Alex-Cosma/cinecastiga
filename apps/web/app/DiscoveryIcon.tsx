@@ -13,6 +13,7 @@ const paths = {
   retry: <path d="M3 10a9 9 0 1 1 2 8M3 4v6h6" />,
   search: <><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 4 4" /></>,
   arrow: <path d="M4 12h16m-6-6 6 6-6 6" />,
+  pencil: <path d="M4 20h4L19 9l-4-4L4 16v4Zm9-13 4 4" />,
   external: <path d="M14 4h6v6M20 4 10 14M20 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5" />,
   pin: <><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z" /><circle cx="12" cy="10" r="2.5" /></>,
   database: <><ellipse cx="12" cy="5" rx="8" ry="3" /><path d="M4 5v14c0 4 16 4 16 0V5M4 12c0 4 16 4 16 0" /></>,
