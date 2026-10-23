@@ -704,10 +704,37 @@ export class RulesInterpreter implements QuestionInterpreter {
     out.notes.push(`Codul fiscal „${span.text}” aparține mai multor rânduri din date (firmă și instituție sau mai multe identități). Alege-l pe cel la care te gândești.`);
   }
 
+  /**
+   * "cine e administratorul la Conextrust", "administratorul firmei X": the
+   * person is asked about through the firm. The firm is read (its page lists
+   * the administrators from the Trade Register); a name right after the word
+   * ("administratorul Popescu Ion") stays a person.
+   */
+  private async administratorOfFirm(c: Cursor, out: Interpretation, at: number, after: number): Promise<boolean> {
+    let from = after;
+    while (from < c.tokens.length && !c.used[from] && /^(la|de|al|a|firmei|companiei|societatii|firma|compania|societatea|de la)$/.test(c.f(from))) from++;
+    if (from === after) return false;
+    let to = from;
+    while (to < c.tokens.length && to - from < 6 && !c.used[to] && !(STOPWORDS.has(c.f(to)) && !LEGAL.has(c.f(to))) && !PREPOSITION.has(c.f(to))) to++;
+    const typed = significant(c.tokens.slice(from, to).map((t) => t.f).join(" "));
+    if (!typed.length) return false;
+    const result = this.applyResolution(await this.resolve("supplier", typed), out, c.span(from, to), rawSpan(c.tokens, from, to));
+    c.take(at, from, "filler");
+    if (result === "none") {
+      c.take(from, to, "blocked");
+      out.notes.push(`Nu am găsit firma „${c.span(from, to).text}”.`);
+      return true;
+    }
+    c.take(from, to, "entity");
+    out.notes.push("Administratorii unei firme apar pe pagina ei, la „Conducere”, din Registrul Comerțului.");
+    return true;
+  }
+
   // --------------------------------------------------------- persons, firms
   private async people(c: Cursor, out: Interpretation) {
     const h = c.first(/\b(?:(?:firmele|firmelor|companiile|societatile|afacerile)\s+(?:lui|conduse de|administrate de|detinute de|ale lui)|conduse de|administrate de|detinute de|administratorul|administratoarea|patronul|patroana|omul de afaceri|afaceristul)\b/);
     if (!h) return;
+    if (/^(administratorul|administratoarea|patronul|patroana)$/.test(c.f(h.i)) && await this.administratorOfFirm(c, out, h.i, h.j)) return;
     let end = h.j;
     while (end < c.tokens.length && end - h.j < 4 && !c.used[end] && !STOPWORDS.has(c.f(end)) && !PREPOSITION.has(c.f(end))) end++;
     if (end === h.j) {

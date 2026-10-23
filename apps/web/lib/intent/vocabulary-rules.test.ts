@@ -181,6 +181,19 @@ describe("vocabulary from the first-visitor test (migration 0082 and the rules a
     expect(roads.i.subjects.map((s) => s.term)).toEqual(["drumuri"]);
   });
 
+  it("„administratorul la <firmă>” reads the firm and says where its administrators are", async () => {
+    const { i } = await ask("cine e administratorul la constructii erbasu");
+    expect(i.supplier?.name).toBe("CONSTRUCTII ERBASU S.A.");
+    expect(i.leftover).toEqual([]);
+    expect(i.notes).toContain("Administratorii unei firme apar pe pagina ei, la „Conducere”, din Registrul Comerțului.");
+    const missing = await ask("administratorul firmei xyzabc");
+    expect(missing.i.supplier).toBeNull();
+    expect(missing.i.notes.join(" ")).toMatch(/Nu am găsit firma „xyzabc”/);
+    // a name right after the word stays a person
+    const person = await ask("administratorul popescu marian");
+    expect(person.i.person?.name).toBe("POPESCU MARIAN");
+  });
+
   it("the hint for a partial list asks institutions for a locality, people for birth data", async () => {
     const hospitals = await ask("spitalul judetean de urgenta");
     expect(hospitals.i.choicesPartial?.hint).toBe(ENTITY_HINT);
