@@ -4,6 +4,8 @@ import { getTedStats, getTedAwards, type TedAward } from "@/lib/marts";
 import { countryName, procedureName, TED_LABEL, TED_AMOUNT_LABEL, formatTedAmount, competitionLabel, tedAmountHeadline, tedCountryNeedsReview, tedCoverageNote, TED_COUNTRY_UNRESOLVED, TED_COUNTRY_REVIEW_LABEL } from "@/lib/ted";
 import { getCoverage } from "@/lib/coverage";
 import { formatInt, cleanName } from "@/lib/format";
+import Term from "@/components/Term";
+import "./supra-prag.css";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
@@ -87,6 +89,7 @@ export default async function SupraPragPage({
     }),
   ]);
   const page = awards.page;
+  const coverageNote = tedCoverageNote(coverage);
   const totalPages = Math.max(1, Math.ceil(awards.total / PAGE_SIZE));
 
   // Filter links omit `p` (any filter change resets to page 1); pagination links
@@ -112,19 +115,18 @@ export default async function SupraPragPage({
     <>
       <h1 className="page-title">Atribuiri publicate în TED</h1>
       <p className="page-sub">
-        Anunțuri de atribuire din Jurnalul Oficial al UE. Consultă sursa europeană și potrivirile identificate
-        în SEAP. Valorile TED <strong>nu se adaugă totalurilor SEAP</strong>.
+        Anunțuri de atribuire din Jurnalul Oficial al UE. Valorile TED <strong>nu se adaugă</strong> totalurilor SEAP.
       </p>
-      <p className="hint" id="ted-coverage-period">
-        {tedCoverageNote(coverage)}{" "}
-        <Link href="/metodologie#acoperire">Acoperirea surselor</Link>
+      <p className="hint ted-tip-line">
+        {coverageNote.line}{coverageNote.tip && <Term tip title="Acoperire TED" text={coverageNote.tip} />}{" · "}
+        <Link href="/metodologie#acoperire">Acoperire →</Link>
       </p>
 
       <section className="section">
-        <div className="stat-row">
+        <div className="stat-row ted-stats">
           <div className="stat">
             <div className="n">{formatInt(stats.total)}</div>
-            <div className="l">rezultate de loturi TED</div>
+            <div className="l">rezultate de loturi TED <Term id="rezultat-lot-ted" tip /></div>
           </div>
           <div className="stat">
             <div className="n">{formatInt(stats.tedOnly)}</div>
@@ -140,9 +142,8 @@ export default async function SupraPragPage({
           </div>
         </div>
         <p className="hint">
-          {stats.notices != null ? `${formatInt(stats.notices)} anunțuri distincte. ` : ""}
-          {stats.unknownCompetition != null ? `Numărul de oferte este necunoscut pentru ${formatInt(stats.unknownCompetition)} rezultate. ` : "Statistica privind datele de competiție lipsă este în curs de actualizare. "}
-          Un anunț poate conține mai multe loturi; un lot poate reuni mai multe rezultate publicate.
+          {stats.notices != null ? `${formatInt(stats.notices)} anunțuri · ` : ""}
+          {stats.unknownCompetition != null ? `${formatInt(stats.unknownCompetition)} rezultate fără număr de oferte` : "rezultatele fără număr de oferte: statistică în curs de actualizare"}
         </p>
         {stats.foreignCountryUnresolved > 0 ? <p className="note">
           În {formatInt(stats.foreignCountryUnresolved)} rezultate, marcajul „străin” nu este confirmat de țara
@@ -157,8 +158,7 @@ export default async function SupraPragPage({
 
       {stats.byCountry.length > 0 ? (
         <section className="section">
-          <h2>Firme străine câștigătoare, după țară</h2>
-          <p className="hint">Număr de rezultate cu cel puțin un câștigător din țara indicată. Consorțiile multinaționale apar în fiecare țară relevantă; țările nu se însumează.</p>
+          <h2 className="ted-tip-line">Firme străine câștigătoare, după țară <Term id="ted-tari" tip /></h2>
           <div className="filters" style={{ flexWrap: "wrap" }}>
             {stats.byCountry.slice(0, 12).map((c) => (
               <Link key={c.country} scroll={false} href={qstr({ tara: country === c.country ? undefined : c.country, extern: "1" })}
@@ -172,15 +172,12 @@ export default async function SupraPragPage({
 
       <section className="section">
         <h2>Explorează atribuirile</h2>
-        <p className="hint" id="ted-matching-note">
-          <strong>{TED_LABEL["ted-only"]!.title}</strong> înseamnă că nu am identificat încă o înregistrare
-          corespunzătoare în datele SEAP analizate. Atribuirea poate exista în SEAP chiar dacă potrivirea lipsește.
-        </p>
-        <div className="filters" style={{ flexWrap: "wrap" }} aria-describedby="ted-matching-note">
+        <div className="filters ted-tip-line" style={{ flexWrap: "wrap" }}>
           <Link scroll={false} href={qstr({ "etichetă": undefined })} className={!label ? "on" : ""}>Toate</Link>
           <Link scroll={false} href={qstr({ "etichetă": "ted-only" })} className={label === "ted-only" ? "on" : ""}>
             {TED_LABEL["ted-only"]!.title}
           </Link>
+          <Term id="ted-fara-potrivire" tip className="ted-tip-above" />
           <Link scroll={false} href={qstr({ "etichetă": "also-in-seap" })} className={label === "also-in-seap" ? "on" : ""}>
             {TED_LABEL["also-in-seap"]!.title}
           </Link>
@@ -202,15 +199,13 @@ export default async function SupraPragPage({
           <span className="filler" />
           <Link scroll={false} href={qstr({ sort: undefined })} className={sort === "date" ? "on" : ""}>După dată</Link>
           <Link scroll={false} href={qstr({ sort: "value" })} className={sort === "value" ? "on" : ""}>Valori RON, descrescător</Link>
+          <Term id="ted-valori" tip />
         </div>
 
         {country === TED_COUNTRY_UNRESOLVED ? <p className="hint">
           Sunt afișate rezultatele marcate „străin” pentru care țările câștigătorilor sunt România sau nu sunt
           precizate. Verifică sursa TED; identitatea și țara nu au fost corectate automat.
         </p> : null}
-        <p className="hint">{sort === "value"
-          ? "Comparația include numai valori de ofertă / rezultat și valori de contract publicate în RON. Exclude intervalele, ofertele multiple, plafoanele și tipurile încă neverificate."
-          : "Valorile rămân în moneda și forma publicate: ofertă, interval sau plafon. Nu calculăm un total comun."}</p>
         <table className="rank list-anchor" id="atribuiri-lista">
           <thead>
             <tr>
@@ -273,10 +268,8 @@ export default async function SupraPragPage({
           </div>
         ) : null}
 
-        <p className="note">
-          Potrivirile cu SEAP folosesc cumpărătorul, câștigătorii, valori comparabile în aceeași monedă, data și codul CPV. Legăturile posibile sunt marcate separat de cele confirmate automat.
-          Verifică anunțurile originale și{" "}
-          <Link href="/metodologie">metodologia</Link>.
+        <p className="note ted-tip-line ted-tip-up">
+          Potrivirile posibile sunt marcate separat de cele confirmate <Term id="potrivire-ted" tip /> · <Link href="/metodologie">Metodologia →</Link>
         </p>
       </section>
     </>

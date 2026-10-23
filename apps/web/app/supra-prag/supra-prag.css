@@ -1,0 +1,7 @@
+/* (?) tips anchor to their line and open below it; the closing note and the
+   first filter (top row of a wrapping block) open them above. */
+.ted-tip-line,.ted-stats .stat{position:relative}
+.ted-tip-line .term-tip>.term-def,.ted-stats .term-tip>.term-def{top:calc(100% + 6px);bottom:auto;right:auto;width:min(420px,calc(100vw - 32px))}
+.ted-tip-up .term-tip>.term-def,.ted-tip-line .term-tip.ted-tip-above>.term-def{top:auto;bottom:calc(100% + 6px)}
+h2.ted-tip-line .term-tip{font-size:15px;font-weight:400;letter-spacing:0}
+.filters.ted-tip-line .term-tip{align-self:center}

@@ -171,17 +171,18 @@ export function tedCountryNeedsReview(isForeign: boolean, countries: (string | n
  * single-bid and "Fără potrivire SEAP" counts must say which publication days
  * they cover. Endpoints are the oldest and newest stored publication dates
  * (marts.data_coverage), not a promise that every day in between is complete.
+ * `line` is the short period shown under the title; `tip` explains it in a (?).
  */
-export function tedCoverageNote(coverage: Pick<Coverage, "observations"> | null | undefined): string {
+export function tedCoverageNote(coverage: Pick<Coverage, "observations"> | null | undefined): { line: string; tip: string | null } {
   const observation = (dataset: string) => coverage?.observations.find((o) => o.dataset === dataset)?.observation;
   const ted = observation("ted");
   const tedTo = ted?.date_to?.slice(0, 10);
-  if (!ted?.date_from || !tedTo) return "Perioada publicațiilor TED preluate nu este încă inventariată; cifrele de mai jos nu au un interval confirmat.";
+  if (!ted?.date_from || !tedTo) return { line: "Perioada publicațiilor TED preluate nu este încă inventariată; cifrele de mai jos nu au un interval confirmat.", tip: null };
   const seapTo = [observation("da")?.date_to, observation("contracts")?.date_to]
     .map((d) => d?.slice(0, 10)).filter((d): d is string => !!d).sort().at(-1);
-  const later = seapTo && seapTo > tedTo
-    ? ` Datele SEAP din aplicație ajung până la ${coverageDate(seapTo)}, deci cifrele de mai jos acoperă o perioadă mai scurtă decât cele SEAP.`
-    : "";
-  return `Publicații TED preluate: ${coverageDate(ted.date_from)} – ${coverageDate(tedTo)} (data publicării în Jurnalul Oficial al UE). `
-    + `Anunțurile publicate în TED după ${coverageDate(tedTo)} nu sunt încă preluate.${later}`;
+  const later = seapTo && seapTo > tedTo ? coverageDate(seapTo) : null;
+  return {
+    line: `TED: ${coverageDate(ted.date_from)} – ${coverageDate(tedTo)}${later ? ` · SEAP: până la ${later}` : ""}`,
+    tip: `Data publicării în Jurnalul Oficial al UE. Anunțurile publicate în TED după ${coverageDate(tedTo)} nu sunt încă preluate${later ? ", deci cifrele TED acoperă o perioadă mai scurtă decât cele SEAP" : ""}.`,
+  };
 }

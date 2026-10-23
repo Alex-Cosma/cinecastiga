@@ -2,6 +2,8 @@ import Link from "next/link";
 import { getSpendByCounty, type Role } from "@/lib/marts";
 import { countyMap, foldCounty } from "@/lib/map";
 import { formatRon } from "@/lib/format";
+import Term from "@/components/Term";
+import "./harta.css";
 
 export const dynamic = "force-dynamic";
 
@@ -57,19 +59,14 @@ export default async function HartaPage({
 
   return (
     <>
-      <h1 className="page-title">Harta valorilor contractate pe județe</h1>
-      <p className="page-sub">
-        {role === "authority"
-          ? "Valoarea contractată de autoritățile din fiecare județ."
-          : "Valoarea câștigată de furnizorii din fiecare județ."}
-      </p>
+      <h1 className="page-title">Valori contractate pe județe</h1>
 
       <div className="toggle">
         <Link href="/harta" className={role === "authority" ? "on" : ""}>
-          Autorități
+          Autorități · cumpără
         </Link>
         <Link href="/harta?rol=furnizor" className={role === "supplier" ? "on" : ""}>
-          Furnizori
+          Furnizori · câștigă
         </Link>
       </div>
 
@@ -119,13 +116,11 @@ export default async function HartaPage({
         </div>
       </div>
 
-      <p className="note">
-        {coverage.toFixed(0)}% din valoarea entităților cu rolul selectat este localizată într-un județ
-        cartografiabil; restul are județ necunoscut, nestandardizat sau străin. Județul este cel al sediului
-        {role === "authority" ? " autorității" : " furnizorului"}, nu neapărat locul executării contractului.
-        Valorile includ achiziții directe acceptate de cel mult 2 milioane lei și contracte din proceduri de cel mult 1 miliard lei;
-        contractele peste acest plafon sunt separate de totaluri și listate pe pagina fiecărei instituții.{" "}
-        <Link href="/metodologie#acoperire">Vezi perioada și acoperirea datelor →</Link>
+      <p className="note map-note">
+        {coverage.toFixed(0)}% din valoare are județ cunoscut · județul sediului{" "}
+        <Term tip title="Județul de pe hartă" text={`Fiecare valoare apare în județul unde are sediul ${role === "authority" ? "autoritatea" : "furnizorul"}, nu neapărat unde se execută contractul. Restul valorii are județ necunoscut, nestandardizat sau străin și nu apare pe hartă.`} />
+        {" "}· plafoane <Term id="plafoane-totaluri" tip /> ·{" "}
+        <Link href="/metodologie#acoperire">Acoperire →</Link>
       </p>
     </>
   );

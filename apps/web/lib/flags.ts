@@ -13,6 +13,10 @@ export interface FlagMeta {
   caveat: string;
 }
 
+/** How the signals on award notices are counted. Both award caveats end with it;
+ * /metodologie states it once, under "Cum se formează totalurile". */
+export const AWARD_COUNTING_CAVEAT = "Semnalul se numără o dată pentru fiecare anunț de atribuire (apariții). Versiunile pe care SEAP le republică sub același număr de anunț se numără o singură dată, la ultima versiune care îndeplinește criteriul. Același contract republicat sub alt număr de anunț, sau un acord-cadru și contractul subsecvent atribuit din el, pot apărea ca apariții separate. Anul semnalului este anul primului contract din anunț, din oricare versiune; un anunț fără contract cu dată plauzibilă primește anul primei versiuni preluate. Când anunțul conține doar plafonul unui acord-cadru, valoarea afișată este plafonul, nu o cheltuială, și nu se adună la totaluri.";
+
 export const FLAG_META: Record<string, FlagMeta> = {
   da_split: {
     code: "da_split",
@@ -22,7 +26,7 @@ export const FLAG_META: Record<string, FlagMeta> = {
     description:
       "Cel puțin 3 achiziții directe între aceeași autoritate și același furnizor, în același an, aceeași clasă CPV și același tip de achiziție. Fiecare este sub plafonul de referință propriu, iar suma depășește cel mai mare plafon aplicabil grupului.",
     rationale:
-      "Legea 98/2016 art. 7(5) privește valoarea estimată fără TVA, iar art. 11 interzice divizarea pentru evitarea procedurii. Plafoanele pentru produse/servicii sunt 132.519 lei din 26.05.2016, 135.060 lei din 04.06.2018 și 270.120 lei din 10.09.2022; pentru lucrări: 441.730, 450.200 și 900.400 lei. Se folosește tipul declarat, iar în lipsa lui o clasificare CPV; un tip necunoscut nu primește automat plafonul mai mic.",
+      "Legea 98/2016 art. 7(5) privește valoarea estimată fără TVA, iar art. 11 interzice divizarea pentru evitarea procedurii. Plafoanele, pe date și tipuri: vezi Principii. Se folosește tipul declarat, iar în lipsa lui o clasificare CPV; un tip necunoscut nu primește automat plafonul mai mic.",
     caveat:
       "Valoarea de închidere și data publicării sunt repere analitice, nu o verificare juridică a necesarului estimat. În lipsa publicării se folosește finalizarea, fapt declarat în dovezi. La schimbarea plafonului folosim maximul din grup. O clasă CPV comună nu dovedește o nevoie unică; achizițiile recurente pot fi legitime. Datele anterioare datei de 26.05.2016 și clasificările necunoscute sunt excluse din acest calcul.",
   },
@@ -90,7 +94,7 @@ export const FLAG_META: Record<string, FlagMeta> = {
     rationale:
       "Lipsa unui anunț prealabil justifică verificarea motivului legal invocat și a condițiilor de atribuire (Legea 98/2016 art. 104).",
     caveat:
-      "Unele cazuri sunt legitime (urgențe reale, furnizor unic tehnic). Semnalul contează prin valoare și frecvență. Semnalul se numără o dată pentru fiecare anunț de atribuire (apariții). Versiunile pe care SEAP le republică sub același număr de anunț se numără o singură dată, la ultima versiune care îndeplinește criteriul. Același contract republicat sub alt număr de anunț, sau un acord-cadru și contractul subsecvent atribuit din el, pot apărea ca apariții separate. Anul semnalului este anul primului contract din anunț, din oricare versiune; un anunț fără contract cu dată plauzibilă primește anul primei versiuni preluate. Când anunțul conține doar plafonul unui acord-cadru, valoarea afișată este plafonul, nu o cheltuială, și nu se adună la totaluri.",
+      `Unele cazuri sunt legitime (urgențe reale, furnizor unic tehnic). Semnalul contează prin valoare și frecvență. ${AWARD_COUNTING_CAVEAT}`,
   },
   award_single_bid: {
     code: "award_single_bid",
@@ -102,7 +106,7 @@ export const FLAG_META: Record<string, FlagMeta> = {
     rationale:
       "O singură ofertă primită justifică verificarea accesului la procedură, a cerințelor și a pieței furnizorilor; nu identifică singură cauza concurenței reduse.",
     caveat:
-      "Numărul de oferte nu este numărul membrilor unui consorțiu. Un lot cu o ofertă nu descrie toate loturile anunțului. Valoarea afișată este a anunțului sau, când aceasta lipsește, a contractelor citate; contractele citate pot însuma mai mult decât valoarea anunțului. Numerele lipsă, contradictorii și asocierile ambigue rămân necunoscute. Piețele de nișă pot avea legitim o singură ofertă. Semnalul se numără o dată pentru fiecare anunț de atribuire (apariții). Versiunile pe care SEAP le republică sub același număr de anunț se numără o singură dată, la ultima versiune care îndeplinește criteriul. Același contract republicat sub alt număr de anunț, sau un acord-cadru și contractul subsecvent atribuit din el, pot apărea ca apariții separate. Anul semnalului este anul primului contract din anunț, din oricare versiune; un anunț fără contract cu dată plauzibilă primește anul primei versiuni preluate. Când anunțul conține doar plafonul unui acord-cadru, valoarea afișată este plafonul, nu o cheltuială, și nu se adună la totaluri.",
+      `Numărul de oferte nu este numărul membrilor unui consorțiu. Un lot cu o ofertă nu descrie toate loturile anunțului. Valoarea afișată este a anunțului sau, când aceasta lipsește, a contractelor citate; contractele citate pot însuma mai mult decât valoarea anunțului. Numerele lipsă, contradictorii și asocierile ambigue rămân necunoscute. Piețele de nișă pot avea legitim o singură ofertă. ${AWARD_COUNTING_CAVEAT}`,
   },
   award_concentration: {
     code: "award_concentration",

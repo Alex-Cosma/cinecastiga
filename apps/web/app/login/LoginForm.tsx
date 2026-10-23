@@ -128,7 +128,6 @@ export default function LoginForm({ twoFactorRequired }: { twoFactorRequired:boo
       ) : (
         <form className="auth-form" onSubmit={submitOtp}>
           {info && <p className="auth-info">{info}</p>}
-          <p className="hint">Codul confirmă autentificarea și adresa ta de e-mail, pentru accesul la dosarele private.</p>
           <label>
             Cod de verificare
             <input
@@ -157,7 +156,7 @@ export default function LoginForm({ twoFactorRequired }: { twoFactorRequired:boo
         </form>
       )}
       <p className="hint auth-hint">
-        Conturile sunt create de administrator.{twoFactorRequired ? " Autentificarea cere întotdeauna un cod primit pe email." : " Local, te autentifici cu email și parolă."}
+        Conturile sunt create de administrator.{twoFactorRequired ? "" : " Local, te autentifici cu email și parolă."}
       </p>
     </div>
   );

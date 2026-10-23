@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useId, useRef, type ReactNode } from "react";
 
-export default function SignalDialog({ title, description, children, onClose, wide = false }: {
-  title: string; description?: string; children: ReactNode; onClose: () => void; wide?: boolean;
+export default function SignalDialog({ title, children, onClose, wide = false }: {
+  title: string; children: ReactNode; onClose: () => void; wide?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null), titleId = useId(), close = useRef(onClose);
   close.current = onClose;
@@ -13,7 +13,7 @@ export default function SignalDialog({ title, description, children, onClose, wi
   }, []);
   return <dialog ref={ref} className={`sg-dialog${wide ? " sg-dialog-wide" : ""}`} aria-labelledby={titleId}
     onCancel={e => { e.preventDefault(); close.current(); }}>
-    <header><div><h2 id={titleId}>{title}</h2>{description && <p>{description}</p>}</div>
+    <header><div><h2 id={titleId}>{title}</h2></div>
       <button className="sg-icon" onClick={onClose} aria-label="Închide dialogul"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" strokeWidth="1.7" /></svg></button></header>
     {children}
   </dialog>;

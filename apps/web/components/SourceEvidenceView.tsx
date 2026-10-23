@@ -3,6 +3,8 @@ import type { SourceEvidence } from "@/lib/source-evidence";
 import { evidenceLinks, formatEvidenceAmount } from "@/lib/ask/evidence";
 import { formatInt } from "@/lib/format";
 import ClipButton from "./ClipButton";
+import SourceCaptureTip from "./SourceCaptureTip";
+import Term from "./Term";
 import "./source-evidence.css";
 
 export default function SourceEvidenceView({ evidence, href, page: requestedPage = 0, kind, refId, spec }: {
@@ -19,12 +21,11 @@ export default function SourceEvidenceView({ evidence, href, page: requestedPage
   return <div className="source-evidence">
     <div className="source-evidence-intro">
       <div><h2>{evidence.title}</h2><p>{formatInt(evidence.sourceCount)} înregistrări disponibile · <strong>{formatEvidenceAmount(evidence.totalExact, true)}</strong></p></div>
-      <ClipButton kind={kind} refId={refId} spec={spec} label={evidence.title} />
+      <div className="source-evidence-save"><ClipButton kind={kind} refId={refId} spec={spec} label={evidence.title} /><SourceCaptureTip /></div>
     </div>
-    <p className="source-evidence-purpose">Verifică sursele, apoi păstrează această versiune în anchetă. Captura include toate înregistrările selecției, nu doar pagina afișată.</p>
     <a href={`/api/evidence/sources?${csvQuery}`} download>Descarcă înregistrările disponibile · CSV ↓</a>
     {evidence.warnings.length > 0 && <details className="source-evidence-notes" open><summary>Ce trebuie verificat înainte de a cita</summary><ul>{evidence.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul></details>}
-    <p className="hint">Metodologie: {evidence.methodology}. Sumele sunt valori înregistrate, nu plăți. Pentru consorții, rândul reprezintă cota alocată unui furnizor.</p>
+    <p className="hint source-evidence-basis"><Term tip title="Valori înregistrate" text={`Sume înregistrate în SEAP, calculate după metodologia ${evidence.methodology}; nu dovedesc plăți.`}>Valori înregistrate, nu plăți</Term>{evidence.records.some((row) => (row.nWinners ?? 1) > 1) && " · Pentru consorții, rândul reprezintă cota alocată unui furnizor."}</p>
     {evidence.records.length > 0 ? <div className="ask-tablewrap list-anchor" id="surse-lista"><table className="rank source-evidence-table"><thead><tr><th scope="col">Înregistrare și sursă</th><th scope="col">Autoritate / furnizor</th><th scope="col">Data</th><th scope="col" className="num">Valoare exactă · lei</th></tr></thead><tbody>
       {evidence.records.slice(page * 50, (page + 1) * 50).map((row, index) => {
         const links = evidenceLinks(row);

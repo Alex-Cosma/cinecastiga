@@ -10,10 +10,13 @@ import { createDb } from "@seap/db";
 import { readSignalEvidence } from "@/lib/signal-evidence";
 import SourceEvidenceView from "@/components/SourceEvidenceView";
 import ClipButton from "@/components/ClipButton";
+import Term from "@/components/Term";
+import "../signals.css";
 
 export const dynamic = "force-dynamic";
 // Keep every source decimal; display formatting must not round the evidence.
 const exact = (value: string | null) => value === null ? "necunoscută" : formatExactDecimal(value);
+const Limits = ({ caveat }: { caveat: string }) => <details className="sg-limits"><summary>Limitele semnalului</summary><p>{caveat}</p></details>;
 
 export default async function SignalSourcesPage({ params, searchParams }: {
   params: Promise<{ id: string }>; searchParams: Promise<{ p?: string }>;
@@ -26,6 +29,8 @@ export default async function SignalSourcesPage({ params, searchParams }: {
   const purchaseType = thresholdTypeLabel(evidence.type);
   const recordedCount = Number(evidence.count ?? 0);
   const recordedTotal = finding.recordedTotalExact;
+  const dateFallback = Number(evidence.date_fallback_count ?? 0), typeInferred = Number(evidence.type_inferred_count ?? 0);
+  const pages = Math.max(1, Math.ceil(finding.sourceIds.length / 50));
   if (!["da_split", "award_single_bid"].includes(finding.code)) {
     const { sql } = createDb();
     const source = await sql.begin("isolation level repeatable read read only", async tx => {
@@ -39,7 +44,7 @@ export default async function SignalSourcesPage({ params, searchParams }: {
     return <><Link href={`/semnale?tip=${encodeURIComponent(finding.code)}`} className="back">← Înapoi la semnale</Link>
       <h1 className="page-title">Sursele semnalului</h1>
       <p>{signalPeriodLabel(finding.period, evidence)}{explanation ? ` · ${explanation}` : ""}</p>
-      {meta && <p className="note">{meta.caveat}</p>}
+      {meta && <Limits caveat={meta.caveat} />}
       <SourceEvidenceView evidence={source} href={`/semnale/${id}`} page={Number(p ?? 0)} kind="signal" refId={id} />
       <Link href={`/metodologie#${finding.code}`}>Criterii și limitele semnalului →</Link></>;
   }
@@ -47,37 +52,38 @@ export default async function SignalSourcesPage({ params, searchParams }: {
     <Link href={`/semnale?tip=${encodeURIComponent(finding.code)}`} className="back">← Înapoi la semnale</Link>
     <h1 className="page-title">Sursele semnalului</h1>
     <p className="page-sub">{meta?.title ?? finding.code}{finding.period && finding.period !== "all" ? ` · ${signalPeriodLabel(finding.period, evidence)}` : ""}</p>
-    <p>Metodologie: {finding.methodology}. Acesta este un semnal calculat din date, care trebuie verificat în documentele sursă.</p>
+    <p>Metodologie {finding.methodology} · pistă de verificat, nu dovadă.</p>
     <ClipButton kind="signal" refId={id} label={meta?.title ?? finding.code} />
     <p><a href={`/api/evidence/sources?kind=signal&id=${id}`} download>Descarcă înregistrările disponibile · CSV ↓</a></p>
     {finding.sourceIds.length > 0 && <section className="section">
       <h2 id="achizitii-semnal" className="list-anchor">Achizițiile care au declanșat acest semnal</h2>
-      <p><strong>{formatInt(finding.sourceIds.length)} achiziții identificate în calcul</strong> · CPV {String(evidence.cpv_class ?? "necunoscut")} · tip: {purchaseType}.</p>
-      <p>Semnalul înregistrează {formatInt(recordedCount)} achiziții, în valoare de <strong>{exact(recordedTotal)} lei</strong>.
-        Înregistrările sursă disponibile acum: {formatInt(finding.found)}, total <strong>{exact(finding.totalExact)} lei</strong>.</p>
+      {finding.reconciled
+        ? <p><strong>{formatInt(recordedCount)} achiziții · {exact(recordedTotal)} lei</strong> · CPV {String(evidence.cpv_class ?? "necunoscut")} · {purchaseType}</p>
+        : <><p><strong>{formatInt(finding.sourceIds.length)} achiziții identificate în calcul</strong> · CPV {String(evidence.cpv_class ?? "necunoscut")} · tip: {purchaseType}.</p>
+          <p>Semnalul înregistrează {formatInt(recordedCount)} achiziții, în valoare de <strong>{exact(recordedTotal)} lei</strong>.
+            Înregistrările sursă disponibile acum: {formatInt(finding.found)}, total <strong>{exact(finding.totalExact)} lei</strong>.</p></>}
       {!finding.reconciled && <p className="note">Lista actuală nu reconciliază numărul sau totalul înregistrat în semnal. Pot exista corecții ale sursei sau o recalculare incompletă; comparați documentele înainte de a cita rezultatul.</p>}
-      <p className="note">Plafon de referință: {exact(finding.ceilingExact)} lei, fără TVA.
-        Publicarea aproximează data inițierii; în lipsa ei, calculul folosește finalizarea. Pragul fiecărei achiziții și tipul sunt cele aplicabile la acea dată.
-        {` Data finalizării a fost folosită pentru ${Number(evidence.date_fallback_count ?? 0)} achiziții; clasificarea CPV a înlocuit tipul lipsă pentru ${Number(evidence.type_inferred_count ?? 0)}.`}</p>
+      <p className="note sg-tip-line">Plafon de referință: {exact(finding.ceilingExact)} lei, fără TVA <Term id="data-si-pragul" tip />
+        {dateFallback > 0 && ` · Data finalizării folosită: ${formatInt(dateFallback)}`}{typeInferred > 0 && ` · Tip dedus din CPV: ${formatInt(typeInferred)}`}</p>
       <div className="ask-tablewrap"><table className="rank"><thead><tr><th scope="col">Achiziție / sursă</th><th scope="col">Finalizare</th><th scope="col">CPV</th><th scope="col" className="num">Valoare înregistrată · lei</th></tr></thead><tbody>
         {finding.records.map(row => <tr key={row.id}><td><a href={daUrl(row.id)} target="_blank" rel="noreferrer">{row.code ?? `SEAP ${row.id}`} ↗</a>{!row.available && <div className="note">Înregistrare indisponibilă în datele curente</div>}</td><td>{coverageDate(row.date)}</td><td>{row.cpv ?? "necunoscut"}</td><td className="num">{exact(row.value)}</td></tr>)}
       </tbody></table></div>
-      <p className="note">Pagina {finding.page + 1} din {Math.max(1, Math.ceil(finding.sourceIds.length / 50))} · maximum 50 de înregistrări pe pagină.</p>
+      {pages > 1 && <p className="note">Pagina {finding.page + 1} / {pages}</p>}
       <nav className="pager" aria-label="Paginarea surselor">{finding.page > 0 && <Link href={`/semnale/${id}?p=${finding.page - 1}#achizitii-semnal`}>← Anterioara</Link>}{(finding.page + 1) * 50 < finding.sourceIds.length && <Link href={`/semnale/${id}?p=${finding.page + 1}#achizitii-semnal`}>Următoarea →</Link>}</nav>
     </section>}
     {finding.contracts.length > 0 && <section className="section">
       <h2>Contractele și loturile folosite în semnal</h2>
       {!finding.contractMembershipValid && <p className="note">Lista înregistrată conține referințe incomplete sau nevalide. Sursele de mai jos reprezintă numai partea care poate fi verificată.</p>}
-      <p>Calculul a identificat o singură ofertă la aceste contracte și loturi. Nu presupune că toate loturile anunțului au avut o singură ofertă.</p>
+      <p>O singură ofertă la aceste loturi, nu neapărat la toate loturile anunțului.</p>
       {singleBidValueNote(evidence) && <p className="note">{singleBidValueNote(evidence).trim()}</p>}
       {noticeContractsNote(evidence) && <p className="note">{noticeContractsNote(evidence).trim()}</p>}
-      {meta && <p className="note">{meta.caveat}</p>}
+      {meta && <Limits caveat={meta.caveat} />}
       <div className="ask-tablewrap"><table className="rank"><thead><tr><th scope="col">Contract SEAP</th><th scope="col">Lot și publicație TED</th><th scope="col">Oferte raportate</th><th scope="col" className="num">Valoare contract</th></tr></thead><tbody>
         {finding.contracts.map(row => <tr key={row.id}><td><Link href={`/contracte/${row.id}`}>Contract {row.id} →</Link>{(!row.available || !row.linked || row.tenders !== 1) && <div className="note">Datele sau asocierea s-au schimbat; semnalul necesită recalculare.</div>}</td><td>{row.tedPublication ? <a href={`https://ted.europa.eu/ro/notice/-/detail/${row.tedPublication}`} target="_blank" rel="noreferrer">{row.tedPublication} · {row.lot} ↗</a> : "Asociere indisponibilă"}</td><td>{row.tenders ?? "necunoscut"}</td><td className="num">{exact(row.value)} {row.currency ?? "monedă nespecificată"}</td></tr>)}
       </tbody></table></div>
     </section>}
     {!finding.sourceIds.length && !finding.contracts.length && <p className="note">Această versiune a semnalului nu conține o listă exactă de surse. Este necesară recalcularea lui; o listă mai largă de achiziții nu ar verifica același rezultat.</p>}
-    <p className="note">Semnalele sunt recalculate când se actualizează datele. Lista arată sursele calculului curent și poate deveni indisponibilă după o reconstrucție.</p>
+    <p className="note">Lista reflectă calculul curent și se poate schimba la recalculare.</p>
     <Link href={`/metodologie#${finding.code}`}>Criterii și limitele semnalului →</Link>
   </>;
 }

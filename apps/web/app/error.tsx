@@ -14,10 +14,7 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
   return (
     <div className="err-page" role="alert">
       <h1 className="page-title">Pagina nu <span className="nowrap">s-a putut</span> încărca</h1>
-      <p className="page-sub">
-        Ceva nu a mers când am pregătit datele pentru această pagină. De obicei e o problemă trecătoare:
-        încearcă din nou peste câteva momente sau caută altceva între timp.
-      </p>
+      <p className="page-sub">De obicei e trecător. Încearcă din nou.</p>
       <div className="err-acts">
         <button type="button" className="btn pri" onClick={() => startTransition(() => { router.refresh(); reset(); })}>
           Încearcă din nou

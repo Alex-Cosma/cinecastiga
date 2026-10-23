@@ -33,7 +33,7 @@ export default async function DosarPage({ params, searchParams }: { params: Prom
         <p className="iw-muted">Starea „Publicată editorial” nu face dosarul public. Accesul rămâne limitat la colaboratorii invitați.</p><button type="submit">Salvează detaliile</button>
       </form>{workspace.access.canManage && <details className="iw-delete"><summary>Șterge dosarul</summary><p>Se elimină dosarul, notele, capturile și accesul colaboratorilor. Acțiunea este definitivă.</p><form action={deleteAncheta}><input type="hidden" name="id" value={id} /><button type="submit" className="iw-danger">Confirmă ștergerea definitivă</button></form></details>}</details>}
     </div>
-    {!workspace.access.canEdit && <p className="iw-readonly">Ai acces de cititor: poți consulta sursele și exporta dosarul. Pentru modificări, cere proprietarului acces de editor.</p>}
+    {!workspace.access.canEdit && <p className="iw-readonly">Doar consultare. Pentru modificări, cere acces de editor.</p>}
     <Workspace investigationId={id} initial={workspace} initialTab={tab} clips={dosar.clips.map(clip => ({ id: clip.id, title: clipTitle(clip), kind: clip.kind, createdAt: clip.createdAt }))}
       evidence={<DossierEvidence id={id} clips={dosar.clips} canEdit={workspace.access.canEdit} />} />
     {dosar.cast.members.length > 0 && <details className="iw-cast"><summary>Actorii și relațiile cunoscute în date · {dosar.cast.members.length}</summary><div>

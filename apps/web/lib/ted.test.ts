@@ -45,14 +45,17 @@ describe("TED evidence presentation", () => {
     // Local snapshot of 1 Oct 2026 (marts.data_coverage).
     const snapshot = { observations: [obs("da", "2018-04-02", "2026-09-25"), obs("contracts", "2000-01-06", "2026-09-25"), obs("ted", "2018-01-03", "2026-06-30")] };
     const note = tedCoverageNote(snapshot);
-    expect(note).toContain("Publicații TED preluate: 03.01.2018 – 30.06.2026");
-    expect(note).toContain("după 30.06.2026 nu sunt încă preluate");
-    expect(note).toContain("Datele SEAP din aplicație ajung până la 25.09.2026");
+    expect(note.line).toBe("TED: 03.01.2018 – 30.06.2026 · SEAP: până la 25.09.2026");
+    expect(note.tip).toContain("Data publicării în Jurnalul Oficial al UE.");
+    expect(note.tip).toContain("după 30.06.2026 nu sunt încă preluate");
+    expect(note.tip).toContain("cifrele TED acoperă o perioadă mai scurtă decât cele SEAP");
     // TED as current as SEAP: no shorter-period warning.
-    expect(tedCoverageNote({ observations: [obs("da", "2018-04-02", "2026-06-30"), obs("ted", "2018-01-03", "2026-06-30")] }))
-      .not.toContain("Datele SEAP");
+    const same = tedCoverageNote({ observations: [obs("da", "2018-04-02", "2026-06-30"), obs("ted", "2018-01-03", "2026-06-30")] });
+    expect(same.line).not.toContain("SEAP");
+    expect(same.tip).not.toContain("mai scurtă");
     // No inventory: never invent a period.
-    expect(tedCoverageNote(null)).toContain("nu este încă inventariată");
-    expect(tedCoverageNote({ observations: [obs("ted", null, null)] })).toContain("nu este încă inventariată");
+    expect(tedCoverageNote(null).line).toContain("nu este încă inventariată");
+    expect(tedCoverageNote(null).tip).toBeNull();
+    expect(tedCoverageNote({ observations: [obs("ted", null, null)] }).line).toContain("nu este încă inventariată");
   });
 });

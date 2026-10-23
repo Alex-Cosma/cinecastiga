@@ -33,7 +33,7 @@ export default function SignalSources({ id, onClose }: { id: string; onClose: ()
   return <SignalDialog title="Înregistrările sursă" wide onClose={onClose}>
     <div className="sg-source-body" aria-busy={busy || (!result && !error)}>
       <Link href={`/semnale/${id}`} className="sg-page-link">Deschide pagina surselor →</Link>
-      {(busy || (!result && !error)) && <div className="sg-source-loading" role="status"><span className="sg-spinner" aria-hidden="true"/><strong>Se încarcă înregistrările sursă…</strong><p>{slow ? "Selecția conține multe date. Încă verificăm sursele disponibile." : "Pregătim lista, valorile exacte și limitele verificării."}</p>{Array.from({ length: 5 }, (_, i) => <div key={i} className="sg-skeleton" aria-hidden="true"><span/><span/></div>)}</div>}
+      {(busy || (!result && !error)) && <div className="sg-source-loading" role="status"><span className="sg-spinner" aria-hidden="true"/><strong>Se încarcă înregistrările sursă…</strong>{slow && <p>Durează mai mult decât de obicei…</p>}{Array.from({ length: 5 }, (_, i) => <div key={i} className="sg-skeleton" aria-hidden="true"><span/><span/></div>)}</div>}
       {error && <div className="sg-empty" role="alert"><h3>Sursele nu s-au încărcat</h3><p>{error}</p><button className="sg-primary" onClick={() => { setBusy(true); setError(""); setRetry(n => n + 1); }}>Reîncearcă</button></div>}
       {result && !busy && !error && <>
         <div className="sg-source-summary"><h3>{result.title}</h3><p>{formatInt(result.sourceCount)} înregistrări disponibile · <strong>{formatEvidenceAmount(result.totalExact, true)}</strong></p><p>Metodologie: {result.methodology}. Valorile înregistrate nu sunt plăți.</p></div>

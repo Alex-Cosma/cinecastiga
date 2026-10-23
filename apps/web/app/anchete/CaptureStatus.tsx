@@ -32,11 +32,11 @@ export default function CaptureStatus({ investigationId, clipId, capture, versio
   const all = [...new Map([...versions, ...(current ? [current] : [])].map(item => [item.id, item])).values()].sort((a, b) => b.version - a.version);
   if (current?.scope.kind === "monitoring") return <div className="iw-capture"><strong>Ambele versiuni sunt păstrate</strong><p className="iw-muted">Înregistrările afectate și explicația modificării rămân exact cum au fost observate.</p><div className="iw-capture-actions">{[...all].sort((a, b) => a.version - b.version).map(item => <Link key={item.id} className="iw-frozen-source" href={`/anchete/${investigationId}/dovezi/${item.id}`}>{item.summary?.monitoringSide === "before" ? "Sursele înainte" : item.summary?.monitoringSide === "after" ? "Sursele după" : `Versiunea ${item.version}`} · {formatInt(item.rowCount)} înregistrări →</Link>)}</div></div>;
   return <div className="iw-capture">
-    {!current ? <p className="iw-caution">Salvare veche, fără o captură verificată a surselor. Rezultatul păstrat nu dovedește componența completă a selecției.</p> : <>
+    {!current ? <p className="iw-caution">Salvare veche, fără captură verificată: selecția poate fi incompletă.</p> : <>
       <div className="iw-capture-status" role="status"><strong>{current.status === "complete" ? "Surse păstrate" : current.status === "failed" ? "Captură nefinalizată" : current.status === "running" ? "Se păstrează sursele…" : "Captură în așteptare"}</strong><span>Versiunea {current.version}</span></div>
       {current.status === "complete" ? <><p>{formatInt(current.rowCount)} înregistrări · {current.totalExact === null ? "total necunoscut" : `${formatExactDecimal(current.totalExact)} lei`}</p><Link className="iw-frozen-source" href={`/anchete/${investigationId}/dovezi/${current.id}`}>Deschide sursele păstrate →</Link></>
         : current.status === "failed" ? <p className="iw-caution">{current.error ?? "Capturarea nu s-a încheiat. Nu este prezentată ca dovadă completă."}</p>
-          : <p className="iw-muted">Poți continua lucrul. Versiunea devine disponibilă după păstrarea și verificarea întregii selecții.</p>}
+          : <p className="iw-muted">Poți continua lucrul. Versiunea apare după verificare.</p>}
     </>}
     {error && <p className="iw-error" role="alert">{error}</p>}
     <div className="iw-capture-actions">{canEdit && (!current || current.status === "complete") && <button type="button" disabled={busy} onClick={() => void request(true)}>{busy ? "Se pregătește…" : current ? "Păstrează o versiune nouă" : "Capturează sursele disponibile acum"}</button>}
