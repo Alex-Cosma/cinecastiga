@@ -157,6 +157,8 @@ const OPTIONAL_NAME_WORD = /^(?:urgenta|clinic|clinica)$/;
 const LEGAL = new Set(["sc", "srl", "sa", "s", "r", "l", "srlv", "pfa", "ii", "if", "snc", "scs", "ra", "spa", "ltd", "gmbh", "sas", "sl", "bv", "nv"]);
 /** Generic subject words: never a subject on their own, understood next to a real one. */
 const GENERIC_SUBJECT = new Set(["lucrari", "lucrare", "lucrarile", "servicii", "serviciu", "serviciile", "produse", "produs", "echipamente", "echipament", "materiale", "material", "reparatii", "reparatie", "intretinere", "constructii", "constructie", "mentenanta", "furnizare", "livrare", "achizitionare", "bunuri", "dotari", "investitii", "investitie", "proiecte", "proiect", "modernizare", "reabilitare", "chestii", "lucruri"]);
+/** Generic words that keep a curated subject's meaning: "lucrări de drumuri" is "drumuri". */
+const WORKS_OR_SERVICES = new Set(["lucrari", "lucrare", "lucrarile", "lucrarilor", "servicii", "serviciu", "serviciile", "serviciilor"]);
 /** Words that only modify a cue ("cel mai mare", "cele mai multe"). */
 const MODIFIER = /\b(?:(?:cel|cea|cele|cei) mai (?:mare|mari|mult|multe|multi|multa|bogat\w*|scump\w*|riscant\w*|ridicat\w*|important\w*|mici|mic)|cel mai|cea mai|cele mai|cei mai|in romania|din romania|toata tara|din tara|la nivel national|in total)\b/;
 
@@ -934,9 +936,10 @@ export class RulesInterpreter implements QuestionInterpreter {
     };
     const best = accepted.map((h, idx) => ({ h, idx })).sort((a, b) => rank(a.h) - rank(b.h) || labelWords(a.h).length - labelWords(b.h).length || a.idx - b.idx)[0]?.h ?? null;
     // "lucrări de drumuri": the curated "drumuri" (the whole road-works family) beats the
-    // narrower catalogue label "Lucrări de drumuri"; a generic word adds nothing to the subject
+    // narrower catalogue label "Lucrări de drumuri"; "lucrări"/"servicii" add nothing to the
+    // subject (unlike "echipamente", "materiale", which make it goods)
     if (best && rank(best) === 0) return best;
-    const core = words.filter((w) => !GENERIC_SUBJECT.has(w));
+    const core = words.filter((w) => !WORKS_OR_SERVICES.has(w));
     if (words.length > 1 && core.length && core.length < words.length) {
       const broad = await this.cpvFor(core);
       const label = broad ? significant(fold(broad.term)).join(" ") : "";

@@ -22,6 +22,7 @@ const fx: MemoryFixture = {
     { code: "39221121-5", name: "Căni" },
     { code: "39241100-3", name: "Cuţite" },
     { code: "30197321-6", name: "Cuţite de deschis scrisori" },
+    { code: "44110000-4", name: "Materiale de construcţii" },
   ],
   synonyms: [
     ...FIXTURE.synonyms.filter((s) => s.term !== "lucrari"),
@@ -75,6 +76,9 @@ describe("vocabulary from the first-visitor test (migration 0082 and the rules a
     // without a dedicated row, „lucrări de canalizare” is the curated „canalizare”, not one catalogue leaf
     const { i } = await ask("lucrari de canalizare in buzau");
     expect(i.subjects.map((s) => s.term)).toEqual(["canalizare"]);
+    // goods words change the subject: „materiale de construcții” stays the catalogue's building materials
+    const goods = await ask("materiale de constructii pentru drumuri");
+    expect(goods.i.subjects.map((s) => s.term)).not.toContain("constructii");
     const roads = new RulesInterpreter(memoryVocabulary({ ...fx, synonyms: fx.synonyms.filter((s) => !s.term.startsWith("lucrari")) }));
     const old = await roads.interpret("lucrari de drumuri bacau", { now: NOW });
     expect(old.subjects.map((s) => s.term)).toEqual(["drumuri"]);
