@@ -1,5 +1,5 @@
 import {sql} from 'drizzle-orm';
-import {bigint,bigserial,boolean,check,index,jsonb,text,timestamp,uuid} from 'drizzle-orm/pg-core';
+import {bigint,bigserial,boolean,check,customType,index,jsonb,smallint,text,timestamp,uuid} from 'drizzle-orm/pg-core';
 import {martsSchema} from './marts.js';
 /** Evidence inventory only: no candidate implicitly removes a source contract. */
 export const contractIdentityCandidates=martsSchema.table('contract_identity_candidates',{
@@ -56,3 +56,16 @@ export const contractIdentityArchives=martsSchema.table('contract_identity_archi
  contentHash:text('content_hash').notNull(),payload:jsonb('payload').notNull(),
  importedAt:timestamp('imported_at',{withTimezone:true}).notNull().defaultNow(),
 },t=>[index('contract_identity_archives_external_idx').on(t.externalId)]);
+
+const xid8=customType<{data:string}>({dataType:()=>'xid8'});
+/** Version of the four relations the current snapshot hashes read (migration
+ * 0083): each transaction that writes core.contracts, core.awards,
+ * core.contract_winners or core.entities stamps the single row with the next
+ * sequence value and its transaction id, through statement triggers. Lets one
+ * processing run reuse the hashes while nothing they read has changed
+ * (SnapshotHashCache). Never written by application code. */
+export const contractIdentitySourceVersion=martsSchema.sequence('contract_identity_source_version_seq');
+export const contractIdentitySourceState=martsSchema.table('contract_identity_source_state',{
+ id:smallint('id').primaryKey(),instance:uuid('instance').notNull().defaultRandom(),
+ version:bigint('version',{mode:'bigint'}).notNull(),changedBy:xid8('changed_by'),
+},t=>[check('contract_identity_source_state_single',sql`${t.id} = 1`)]);
