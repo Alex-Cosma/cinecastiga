@@ -130,6 +130,8 @@ Orchestratorul host și deploy-ul folosesc un lock comun. Fluxul esențial este:
 6. Validări și checkpoint analitic; indexare/verificare căutare.
 7. Redeschidere numai dacă toate condițiile sunt îndeplinite și operatorul nu a schimbat controlul între timp.
 
+Din 23 octombrie 2026, site-ul public rămâne deschis la pașii 2–3 (drain și backup) și se închide la `backup-verified`, înainte de pasul 4; regulile sunt în [operațiuni](../05-operations.md#procesarepublicare).
+
 Eroarea păstrează mentenanța. Codul poate relua doar arhivarea brută după un eșec cu backup verificat, prin `collection_during_maintenance`, dacă starea anterioară și controalele o permit; asta nu redeschide automat site-ul. O pauză manuală sau un blocaj de sursă rămâne respectat. Nu schimba manual `maintenance=false` peste o populație parțial reconstruită.
 
 Reparațiile one-off folosesc `app.data_repairs` și marker persistent. Nu se repetă duminica doar pentru că există scriptul. Un marker `applied` nu este `completed`: completarea este legată de publicarea verificată/redeschidere. Reparațiile monetară, ONRC/MF, TED și identitățile vechi au rapoarte finale; verifică-le înainte de orice rerulare.

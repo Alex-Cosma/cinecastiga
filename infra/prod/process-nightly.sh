@@ -46,7 +46,10 @@ exec >>"$root/$run_id/run.log" 2>&1
 heartbeat_pid=$!
 trap 'kill "$heartbeat_pid" 2>/dev/null || true' EXIT
 date -u '+started=%FT%TZ'
-test "$(curl -sS -o /dev/null -w '%{http_code}' https://cinecastiga.ro/domenii)" = 503
+# Readers keep the site during drain and backup (owner decision, 23 October 2026);
+# it closes at backup-verified, asserted below before any data changes. A run
+# claimed on an already closed site (recovery, after a failure) stays closed.
+echo "public_status_at_claim=$(curl -sS -o /dev/null -w '%{http_code}' https://cinecastiga.ro/domenii || true)"
 collection_active=false
 for container in $(docker compose --profile collection ps --status running -q collection); do
  if [[ "$(docker inspect --format '{{ index .Config.Labels "com.docker.compose.oneoff" }}' "$container")" == False ]]; then collection_active=true; fi
@@ -71,6 +74,14 @@ mv "$root/$run_id/database.dump.partial" "$root/$run_id/database.dump"
 docker exec -i cinecastiga-postgres-1 pg_restore --list < "$root/$run_id/database.dump" > "$root/$run_id/database.list"
 sha256sum "$root/$run_id/database.dump" > "$root/$run_id/database.sha256"
 run stage "$run_id" backup-verified
+# The proxy now answers 503; confirm it before the first data change, then let
+# requests admitted just before finish (the web role's statement timeout is 30 s).
+for attempt in $(seq 1 10); do
+ if [[ "$(curl -sS -o /dev/null -w '%{http_code}' https://cinecastiga.ro/domenii || true)" == 503 ]]; then break; fi
+ sleep 3
+done
+test "$(curl -sS -o /dev/null -w '%{http_code}' https://cinecastiga.ro/domenii || true)" = 503
+sleep 30
 run refresh "$run_id"
 run stage "$run_id" restart
 # Clear Next server caches before reopening; source workers restart while paused.

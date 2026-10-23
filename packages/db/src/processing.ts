@@ -22,7 +22,7 @@ export async function claimProcessing(q: DbSql, at?: Date) {
   const reportingChanged=previous?.methodology?.contractReporting!==CONTRACT_REPORTING_VERSION;
   const scope=reportingChanged||(c.maintenance&&c.collection_during_maintenance)||c.weekday===c.risk_weekday?'full':'daily';
   const [run]=await tx`insert into app.processing_runs(scheduled_day,scope,control_revision,before_control)
-    values(${c.scheduled_day}::date,${scope},${c.revision+1},${JSON.stringify({paused:c.paused,revision:c.revision})}::jsonb)
+    values(${c.scheduled_day}::date,${scope},${c.revision+1},${JSON.stringify({paused:c.paused,maintenance:c.maintenance,revision:c.revision})}::jsonb)
     on conflict(scheduled_day) where trigger='scheduled' do nothing returning id,scope`;
   if(!run)return null;
   await tx`update app.collection_control set paused=true,maintenance=true,collection_during_maintenance=false,revision=revision+1,updated_at=clock_timestamp() where id=1`;
@@ -43,7 +43,7 @@ export async function claimRepairProcessing(q: DbSql, repairId: string) {
   const [repair]=await tx`select status,scheduled_day from app.data_repairs where id=${repairId} for update`;
   if(repair?.status!=='scheduled'||repair.scheduled_day!==c.repair_day)throw Error('An explicit repair scheduled for today is required');
   const [run]=await tx`insert into app.processing_runs(scheduled_day,trigger,scope,control_revision,before_control)
-    values(${c.repair_day}::date,'manual','full',${c.revision+1},${JSON.stringify({paused:c.paused,revision:c.revision,repairId})}::jsonb)
+    values(${c.repair_day}::date,'manual','full',${c.revision+1},${JSON.stringify({paused:c.paused,maintenance:c.maintenance,revision:c.revision,repairId})}::jsonb)
     returning id,scope`;
   await tx`update app.collection_control set paused=true,maintenance=true,collection_during_maintenance=false,revision=revision+1,updated_at=clock_timestamp() where id=1`;
   await tx`insert into app.collection_audit(actor_id,actor_name,action,before,after)
@@ -69,7 +69,7 @@ export async function claimRecoveryProcessing(q: DbSql, failedRunId: string) {
   // The pause failProcessing added is not an operator choice (no operator change is allowed since):
   // a verified recovery restores collection as it was before the failed run. A live block still pauses it.
   const [run]=await tx`insert into app.processing_runs(scheduled_day,trigger,scope,control_revision,before_control)
-    values(${c.recovery_day}::date,'manual','full',${c.revision+1},${JSON.stringify({paused:Boolean(failed.before_control?.paused),revision:c.revision,recoveryOf:failed.id})}::jsonb)
+    values(${c.recovery_day}::date,'manual','full',${c.revision+1},${JSON.stringify({paused:Boolean(failed.before_control?.paused),maintenance:c.maintenance,revision:c.revision,recoveryOf:failed.id})}::jsonb)
     returning id,scope`;
   await tx`update app.collection_control set paused=true,maintenance=true,collection_during_maintenance=false,revision=revision+1,updated_at=clock_timestamp() where id=1`;
   await tx`insert into app.collection_audit(actor_id,actor_name,action,before,after)
@@ -123,6 +123,37 @@ export async function finishProcessing(q:DbSql,id:string) {
   await tx`insert into app.collection_audit(actor_id,actor_name,action,before,after)
     values('system:processor','Procesare programată','processing-complete','{}',${JSON.stringify({runId:id,scope:r.scope})}::jsonb)`;
  });
+}
+
+/** Stages before a run changes any data: workers finish what they started, then
+ * the private backup is written and checked. The runner records `backup-verified`
+ * right before the first data change, so that stage already closes the site. */
+export const PUBLIC_OPEN_STAGES=['drain','backup'] as const;
+export type PublicGateState={maintenance:unknown;revision:unknown;running:unknown};
+
+/** Owner decision (23 October 2026): readers keep the site while a publication
+ * drains and backs up; private writes made then are not in that run's backup.
+ * Anything else under maintenance stays closed: no control row, maintenance
+ * without a running run (operator or failed publication), a later stage, more
+ * than one running run, a run claimed while the site was already closed (a
+ * recovery or the run after a failure may start on mixed data), or any control
+ * change since the claim. */
+export function publicSiteOpen(state:PublicGateState|undefined):boolean{
+ if(!state)return false;
+ if(state.maintenance===false)return true;
+ if(state.maintenance!==true||!Array.isArray(state.running)||state.running.length!==1)return false;
+ const run=state.running[0] as {stage?:unknown;controlRevision?:unknown;maintenanceBefore?:unknown}|null;
+ return !!run&&(PUBLIC_OPEN_STAGES as readonly unknown[]).includes(run.stage)&&run.maintenanceBefore===false
+  &&typeof run.controlRevision==='number'&&run.controlRevision===state.revision;
+}
+
+/** One small read for every public request. Callers fail closed if it throws. */
+export async function publicSiteGate(q:DbSql):Promise<boolean>{
+ const [state]=await q`select c.maintenance,c.revision,case when c.maintenance then coalesce((
+   select jsonb_agg(jsonb_build_object('stage',r.stage,'controlRevision',r.control_revision,'maintenanceBefore',r.before_control->'maintenance'))
+   from app.processing_runs r where r.status='running'),'[]'::jsonb) else '[]'::jsonb end running
+  from app.collection_control c where c.id=1`;
+ return publicSiteOpen(state as PublicGateState|undefined);
 }
 
 /** Romanian wall-clock schedule, computed in PostgreSQL; one row/day handles DST repeats. */

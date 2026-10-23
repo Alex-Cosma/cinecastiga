@@ -147,7 +147,11 @@ The nightly processing (`process-nightly.sh`) takes a full `pg_dump` of the
 whole database before every run into `/srv/seap/backups/processing/<run>/`.
 `retain-processing-backups.py` keeps the two latest successful runs plus the
 latest successful full (weekly) run. These dumps include `auth` and `app`, so
-the separate nightly `state-*.dump` cron was removed on 19 October 2026. While
+the separate nightly `state-*.dump` cron was removed on 19 October 2026. The
+public site stays open during the drain and this dump and answers 503 from the
+`backup-verified` stage on (owner decision, 23 October 2026); private writes made
+after the dump starts (sessions, feedback, investigations, saved questions) stay
+in the database but are not in that run's dump. While
 processing is disabled no new restore point is taken. All dumps share the
 server disk; an off-box copy is still a separate decision.
 

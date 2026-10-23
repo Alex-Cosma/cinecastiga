@@ -20,7 +20,11 @@ case "$*" in
  *"pg_restore --list"*) cat >/dev/null; echo archive;;
  *"processing.js refresh "*) if [ "$TEST_FAILURE" = refresh ]; then exit 1; fi;;
 esac`;
-  const bins={docker,flock:'[ "$TEST_FAILURE" != lock ]',curl:'case "$*" in *api/health*) echo 200;; *) echo 503;; esac',sha256sum:'echo sha256'};
+  // The public page answers 200 only when the test says the proxy never closed.
+  const curl='echo "curl $*" >> "$TEST_LOG"\ncase "$*" in *api/health*) echo 200;; *) if [ "$TEST_FAILURE" = open ]; then echo 200; else echo 503; fi;; esac';
+  // Gate retries and the in-flight grace are logged, not waited; the heartbeat keeps real sleep.
+  const sleep='case "$1" in 3|30) echo "sleep $1" >> "$TEST_LOG";; *) exec /bin/sleep "$@";; esac';
+  const bins={docker,flock:'[ "$TEST_FAILURE" != lock ]',curl,sleep,sha256sum:'echo sha256'};
   for(const [name,body] of Object.entries(bins))await writeFile(join(dir,'bin',name),'#!/bin/sh\n'+body+'\n',{mode:0o755});
   const r=spawnSync('bash',[script,...args],{input:'caller-script-must-not-reach-container\n',env:{...process.env,PATH:join(dir,'bin')+':'+process.env.PATH,SEAP_DEPLOY_CHECKOUT:dir,SEAP_PROCESSING_BACKUPS:join(dir,'backups'),TEST_LOG:join(dir,'calls'),TEST_FAILURE:failure,TEST_RAW_RESUME:rawResume?'yes':'no',TEST_DUE:due?'yes':'no'},encoding:'utf8'});
   return {status:r.status,calls:await readFile(join(dir,'calls'),'utf8').catch(()=> '')};
@@ -33,9 +37,22 @@ test('drain, backup and processing failure retain maintenance and never finish o
 });
 test('drains, backs up, verifies and restarts before the guarded reopen',async()=>{
  const r=await run();assert.equal(r.status,0);
- const steps=['psql -X -v ON_ERROR_STOP=1 -U seap -d seap -Atc','stop collection documents','processing.js freeze ','pg_dump ','pg_restore --list','processing.js stage 00000000-0000-4000-8000-000000000001 backup-verified','processing.js refresh ','restart web','up -d --no-deps collection','processing.js finish '];
+ const steps=['psql -X -v ON_ERROR_STOP=1 -U seap -d seap -Atc','stop collection documents','processing.js freeze ','pg_dump ','pg_restore --list','processing.js stage 00000000-0000-4000-8000-000000000001 backup-verified','sleep 30','processing.js refresh ','restart web','up -d --no-deps collection','processing.js finish '];
  let previous=-1;for(const step of steps){const position=r.calls.indexOf(step);assert.ok(position>previous,step);previous=position;}
  assert.doesNotMatch(r.calls,/processing.js fail /);
+});
+
+test('readers keep the site through drain and backup; it must answer 503 before data changes',async()=>{
+ const r=await run();assert.equal(r.status,0);
+ // The claim-time check only records the status: a recovery starts on a closed site.
+ const first=r.calls.indexOf('cinecastiga.ro/domenii'),drained=r.calls.indexOf('stop collection documents');
+ assert.ok(first>=0&&first<drained);
+ const verified=r.calls.indexOf('backup-verified'),refresh=r.calls.indexOf('processing.js refresh ');
+ assert.ok(r.calls.indexOf('cinecastiga.ro/domenii',verified)>verified&&r.calls.indexOf('cinecastiga.ro/domenii',verified)<refresh);
+ const open=await run('open');assert.equal(open.status,1);
+ assert.match(open.calls,/pg_dump [\s\S]*backup-verified[\s\S]*processing.js fail /);
+ assert.equal(open.calls.match(/^sleep 3$/gm)?.length,10);
+ assert.doesNotMatch(open.calls,/processing.js refresh |sleep 30|processing.js finish |restart web|up -d/);
 });
 
 test('explicit reference repair uses the same backup and publication path',async()=>{
