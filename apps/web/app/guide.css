@@ -71,3 +71,33 @@
   .guide-section{padding-top:30px}
   .guide-paths a{padding:15px 14px;gap:12px}
 }
+
+/* ---- Readable microcopy on desktop and tablet (23 Oct): body text ≥13px,
+   captions 12px, eyebrows 11px. Phones keep their tuned sizes; the map
+   credit stays a footnote. Last in the cascade, so it wins over the
+   per-breakpoint sizes in approved.css. ---- */
+@media(min-width:701px){
+  .discovery-page .d-reassurance{font-size:13px!important;line-height:1.6}
+  .d-quick-links,.d-quick-links>a{font-size:13px}
+  .discovery-page .d-hero-eyebrow{font-size:11px!important}
+  .discovery-page .eyebrow,.d-map-head .eyebrow,.d-question-top,.d-dialog-head .eyebrow{font-size:11px}
+  .discovery-page .d-map-current{font-size:12px!important}
+  .discovery-page .d-map-basis{font-size:12px}
+  .d-map-legend{font-size:11px}
+  .d-national-label{font-size:13px}
+  .d-national-label small,.d-national-strip>a>small,.d-national-item>small{font-size:12px}
+  .d-text-link,.d-section-heading>.d-text-link{font-size:13px}
+  .d-section-heading p{font-size:13px}
+  .d-question-card>p,.d-question-bottom{font-size:13px}
+  .d-deeper-links small{font-size:13px}
+  .d-invite-note{font-size:13px}
+  .site-footer .wrap{font-size:13px}
+  .site-footer h4{font-size:11px}
+  .d-search-results small{font-size:12px}
+  .d-search-dialog>.d-dialog-hint,.d-search-state>p,.d-search-pending{font-size:13px}
+  .d-search-group-title{font-size:11px}
+}
+@media(min-width:901px){
+  .hdr-right .user-nav{font-size:13px}
+  .d-global-search{font-size:12px}
+}
