@@ -41,6 +41,15 @@ describe("answer titles", () => {
       .toBe("Ce cumpără „Comuna Dumbrăvița” în domeniul CPV 4523, în toți anii?");
   });
 
+  it("keeps the county and kind in leader and risk-profile titles", () => {
+    expect(describeQuestion({ block: "entity_card", dim: "authority", rankBy: "risk", measure: "value", filters: { county: "Bihor" } }))
+      .toBe("Care instituție din județul Bihor are cel mai ridicat indice de risc?");
+    expect(describeQuestion({ block: "entity_card", dim: "authority", rankBy: "value", measure: "value", filters: { authorityKind: "spital", county: "Cluj", yearFrom: 2025, yearTo: 2025 } }))
+      .toBe("Care spital din județul Cluj are cea mai mare valoare a achizițiilor, în 2025?");
+    expect(describeQuestion({ block: "scatter", dim: "authority", measure: "value", filters: { county: "București" } }))
+      .toBe("Ce instituții din București ies din tipar după risc și valoarea achizițiilor?");
+  });
+
   it("keeps month bounds and supplier-size conditions readable", () => {
     expect(describeQuestion({ block: "stat", measure: "count", filters: { county: "Timiș", yearFrom: 2024, yearTo: 2025, monthFrom: 3, monthTo: 8, maxEmployees: 49 } }))
       .toBe("Câte achiziții au fost făcute de instituțiile din județul Timiș, în perioada 2024-03–2025-08, firme cu cel mult 49 de angajați?");
