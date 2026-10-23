@@ -81,11 +81,16 @@ export interface CompareEntity {
   partners?: number;
   topPartners?: ComparePartner[];
   years?: { year: number; value: number }[];
-  /** Top 5-digit CPV groups by value. */
+  /** Top 5-digit CPV groups by value (at most COMPARE_DOMAINS), out of `domainCount`. */
   domains?: { code: string; name: string | null; value: number }[];
+  domainCount?: number;
+  /** Selection value whose records have no CPV code. */
+  noCpvValue?: number;
   active?: { from: number | null; to: number | null } | null;
   firm?: { employees: number | null; year: number | null; turnover: number | null } | null;
 }
+/** A comparison lists each entity's CPV groups up to this many; the rest is one line. */
+export const COMPARE_DOMAINS = 30;
 export interface ComparePartner { entityId: string; name: string; value: number; count: number }
 export interface CompareData {
   block: "compare";
@@ -1249,16 +1254,18 @@ export async function runSpec(
                         c.closing_value, c.finalization_date, c.is_single_bidder, 'contracts'::text src, c.contract_id
                  from marts.contract_transactions c)`;
           const [streams, parties, years, domains, top, shared, joint, profiles, risk] = await Promise.all([
-            s`select ${party}::text id, ${src} src, sum(d.closing_value)::text value, count(*)::int n, ${singleBid}
+            s`select ${party}::text id, ${src} src, sum(d.closing_value)::text value, count(*)::int n, ${singleBid},
+                     coalesce(sum(d.closing_value) filter (where d.cpv_code is null), 0)::text no_cpv
               from ${txtAgg} d where ${where} group by 1, 2`,
             s`select ${party}::text id, count(distinct ${other})::int n from ${txtAgg} d where ${where} and ${other} is not null group by 1`,
             s`select ${party}::text id, substr(d.finalization_date, 1, 4)::int y, sum(d.closing_value)::text value
               from ${txtAgg} d where ${where} and d.finalization_date is not null group by 1, 2`,
-            s`select id, g, value from (
+            s`select id, g, value, groups from (
                 select ${party}::text id, substr(d.cpv_code, 1, 5) g, sum(d.closing_value) value,
-                       row_number() over (partition by ${party} order by sum(d.closing_value) desc) r
+                       row_number() over (partition by ${party} order by sum(d.closing_value) desc, substr(d.cpv_code, 1, 5)) r,
+                       count(*) over (partition by ${party})::int groups
                 from ${txtAgg} d where ${where} and d.cpv_code is not null group by ${party}, 2) x
-              where r <= 4`,
+              where r <= ${COMPARE_DOMAINS}`,
             s`select id, other_id, name, value, n from (
                 select ${party}::text id, ${other}::text other_id, max(${otherName}) name, sum(d.closing_value)::text value, count(*)::int n,
                        row_number() over (partition by ${party} order by sum(d.closing_value) desc, ${other}) r
@@ -1284,10 +1291,10 @@ export async function runSpec(
               from marts.entity_profile where role = ${focalRole} and entity_id = any(${s.array(ids)}::bigint[])`,
             s`select entity_id::text id, cri, n_flags, flags from marts.entity_flags where role = ${focalRole} and entity_id = any(${s.array(ids)}::bigint[])`,
           ]) as unknown as [
-            { id: string; src: string; value: string; n: number; single_bid: string; single_known: string }[],
+            { id: string; src: string; value: string; n: number; single_bid: string; single_known: string; no_cpv: string }[],
             { id: string; n: number }[],
             { id: string; y: number; value: string }[],
-            { id: string; g: string; value: string }[],
+            { id: string; g: string; value: string; groups: number }[],
             { id: string; other_id: string; name: string | null; value: string; n: number }[],
             { other_id: string; name: string | null; value_a: string; n_a: number; value_b: string; n_b: number; total: number }[],
             { nid: string; authority: string | null; date: string | null; value: string; total: number }[],
@@ -1327,6 +1334,8 @@ export async function runSpec(
                 years: years.filter((y) => y.id === identity.id).map((y) => ({ year: y.y, value: Number(y.value) })).sort((a, b) => a.year - b.year),
                 domains: domains.filter((d) => d.id === identity.id).sort((a, b) => Number(b.value) - Number(a.value))
                   .map((d) => ({ code: d.g, name: cpvNames.get(d.g) ?? null, value: Number(d.value) })),
+                domainCount: domains.find((d) => d.id === identity.id)?.groups ?? 0,
+                noCpvValue: Number(sumDecimalStrings(mine.map((r) => r.no_cpv))),
                 active: profile ? { from: year(profile.first_activity), to: year(profile.last_activity) } : null,
                 firm: focalRole === "supplier" && profile && (profile.employees !== null || profile.turnover !== null)
                   ? { employees: profile.employees, year: profile.employees_year, turnover: profile.turnover === null ? null : Number(profile.turnover) }

@@ -67,6 +67,8 @@
 .cmp-track i { display: block; height: 100%; border-radius: 3px; background: var(--cmp-a); }
 .cmp-b .cmp-track i { background: var(--cmp-b); }
 .cmp-share small { display: block; margin-top: 3px; font-size: 11.5px; color: var(--muted); }
+.cmp-rest { padding-top: 2px; border-top: 1px dashed var(--line2); color: var(--muted); }
+.cmp-rest .cmp-track i { background: var(--line2); }
 .cmp-all { display: inline-block; margin-top: 8px; font-size: 13px; font-weight: 600; }
 .cmp-joint { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; font-size: 13.5px; }
 .cmp-joint li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
