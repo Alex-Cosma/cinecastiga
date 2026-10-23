@@ -1,6 +1,6 @@
 import {afterAll,beforeEach,describe,expect,it} from 'vitest';
 import {createDb} from '../src/client.js';
-import {claimProcessing,claimRepairProcessing,claimRecoveryProcessing,processingStage,failProcessing,finishProcessing,processingSchedule} from '../src/processing.js';
+import {claimProcessing,claimRepairProcessing,claimRecoveryProcessing,processingStage,failProcessing,finishProcessing,processingSchedule,publicSiteGate} from '../src/processing.js';
 import {CONTRACT_REPORTING_VERSION} from '../src/contract-reporting.js';
 const url=process.env['TEST_DATABASE_URL'];
 if(url&&!/^seap_test_/.test(new URL(url).pathname.slice(1)))throw Error('Isolated test database required');
@@ -137,5 +137,44 @@ suite('scheduled publication state machine (no network)',()=>{
   expect((await q`select paused,maintenance from app.collection_control`)[0]).toMatchObject({paused:true,maintenance:true});
   // Never twice: the recovery is now the latest run, and it is running.
   await expect(claimRecoveryProcessing(q,failed.id)).rejects.toThrow('latest failed');
+ });
+ // Owner decision (23 October 2026): readers keep the site during drain and backup.
+ it('keeps the public site open only while a run claimed on an open site drains and backs up',async()=>{
+  expect(await publicSiteGate(q)).toBe(true);
+  const run=(await claimProcessing(q,monday))!;
+  expect((await q`select stage,before_control->'maintenance' before from app.processing_runs where id=${run.id}`)[0]).toEqual({stage:'drain',before:false});
+  expect((await q`select maintenance,paused from app.collection_control`)[0]).toEqual({maintenance:true,paused:true});
+  expect(await publicSiteGate(q)).toBe(true);
+  await processingStage(q,run.id,'backup');expect(await publicSiteGate(q)).toBe(true);
+  await processingStage(q,run.id,'backup-verified');expect(await publicSiteGate(q)).toBe(false);
+  await processingStage(q,run.id,'normalize');expect(await publicSiteGate(q)).toBe(false);
+  await failProcessing(q,run.id);expect(await publicSiteGate(q)).toBe(false);
+  // A recovery starts on whatever the failed run left: closed from its claim.
+  const recovery=await claimRecoveryProcessing(q,run.id);
+  expect((await q`select stage,before_control->'maintenance' before from app.processing_runs where id=${recovery.id}`)[0]).toEqual({stage:'drain',before:true});
+  expect(await publicSiteGate(q)).toBe(false);
+  await processingStage(q,recovery.id,'backup');expect(await publicSiteGate(q)).toBe(false);
+ });
+ it('closes the drain for a control change, a failed backup, operator maintenance and the run after a failure',async()=>{
+  const run=(await claimProcessing(q,monday))!;await processingStage(q,run.id,'backup');
+  await q`update app.collection_control set revision=revision+1`;expect(await publicSiteGate(q)).toBe(false);
+  await q`update app.collection_control set revision=revision-1`;expect(await publicSiteGate(q)).toBe(true);
+  await failProcessing(q,run.id);expect(await publicSiteGate(q)).toBe(false);
+  await q`truncate app.processing_runs cascade`;
+  await q`update app.collection_control set maintenance=true,paused=true`;expect(await publicSiteGate(q)).toBe(false);
+  await q`update app.collection_control set maintenance=false,paused=false`;
+  const failed=(await claimProcessing(q,monday))!;await backedUp(failed.id);await failProcessing(q,failed.id);
+  const next=(await claimProcessing(q,new Date('2026-09-29T02:00:00Z')))!;
+  expect((await q`select stage,before_control->'maintenance' before from app.processing_runs where id=${next.id}`)[0]).toEqual({stage:'drain',before:true});
+  expect(await publicSiteGate(q)).toBe(false);
+ });
+ it('opens a repair run during its backup and reopens after the verified publication',async()=>{
+  const [clock]=await q`select (now() at time zone 'Europe/Bucharest')::date::text as repair_day`;
+  await q`insert into app.data_repairs(id,scheduled_day) values('reference-import-v1',${clock!.repair_day}::date)`;
+  const repair=await claimRepairProcessing(q,'reference-import-v1');
+  await processingStage(q,repair.id,'backup');expect(await publicSiteGate(q)).toBe(true);
+  await processingStage(q,repair.id,'backup-verified');expect(await publicSiteGate(q)).toBe(false);
+  await verified(repair.id);expect(await publicSiteGate(q)).toBe(false);
+  await finishProcessing(q,repair.id);expect(await publicSiteGate(q)).toBe(true);
  });
 });
