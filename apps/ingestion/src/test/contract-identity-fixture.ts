@@ -1,10 +1,14 @@
 import {readContractIdentityMembers,type DbSql} from '@seap/db';
 import {assessContractIdentity,type ArchivedAward,type IdentityContract} from '../normalize/contract-identity.js';
 import {approveContractIdentities} from '../normalize/approve-contract-identities.js';
-/** Only call with isolated schema connections inside a rollback fixture. */
-export async function seedVerifiedIdentity(q:DbSql,{framework=false,calloff=false}={}) {
- await q`create unique index on marts.contract_identity_decisions(candidate_id)`;
- await q`create unique index on marts.contract_identity_members(contract_id)`;
+/** Only call with isolated schema connections inside a rollback fixture, or on a
+ * dedicated migrated seap_test_* database (`indexes: false`: its tables already
+ * have their keys). */
+export async function seedVerifiedIdentity(q:DbSql,{framework=false,calloff=false,indexes=true}={}) {
+ if(indexes){
+  await q`create unique index on marts.contract_identity_decisions(candidate_id)`;
+  await q`create unique index on marts.contract_identity_members(contract_id)`;
+ }
  await q`insert into core.entities(id,name_display,name_normalized,cui_canonical) values(1,'Autoritate','autoritate','4278337'),(10,'Furnizor','furnizor','15219174')`;
  await q`insert into core.awards(id,raw_id,ca_notice_id,notice_no,authority_entity_id,cpv_code,procedure_type,acquisition_type)
    values(1,1,100,'CAN-test',1,'45000000-7','Licitatie','Lucrari'),(2,2,200,'CAN-test',1,'45000000-7','Licitatie','Lucrari')`;

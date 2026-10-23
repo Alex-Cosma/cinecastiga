@@ -3,7 +3,7 @@ import {MAX_REVOKED_GROUPS,revalidateApprovedContractIdentities} from '../normal
 import {discoverAndApproveContractIdentities} from '../normalize/discover-contract-identities.js';
 import {runScheduledIdentityRepair} from '../normalize/scheduled-contract-identity.js';
 import { runScheduledMoneyRepair } from '../normalize/scheduled-money-repair.js';
-import { diagnosticError, createDb, claimProcessing, claimRepairProcessing, claimRecoveryProcessing, failProcessing, finishProcessing, processingStage, collectionHeartbeat } from '@seap/db';
+import { diagnosticError, createDb, createSnapshotHashCache, claimProcessing, claimRepairProcessing, claimRecoveryProcessing, failProcessing, finishProcessing, processingStage, collectionHeartbeat } from '@seap/db';
 import {runScheduledReferenceRepair} from '../reference/scheduled-repair.js';
 import {runAuthorityUatRepair} from '../reference/authority-uat-repair.js';
 import { runMonitoringRefresh } from '../monitoring/refresh.js';
@@ -57,16 +57,21 @@ async function main() {
   await runScheduledMoneyRepair(sql,id!,console.log);
   await runScheduledReferenceRepair(sql,id!,console.log);
   await runAuthorityUatRepair(sql,id!,console.log);
+  // Current snapshot hashes of approved identities, computed once and reused by
+  // the identity gates of this run while nothing they read changes (source
+  // version, migration 0083). In memory only: a new command starts empty.
+  const identityHashes=createSnapshotHashCache(`processing:${id}`);
   const checkpoint=await runMonitoringRefresh(db,sql,{
    repairContractIdentities:async()=>({
     recoveredEvidence:await runScheduledContractEvidence(sql,id!),
     scheduled:await runScheduledIdentityRepair(sql,id!,console.log),
-    revalidated:await revalidateApprovedContractIdentities(sql,id!,console.log,MAX_REVOKED_GROUPS),
-    discovered:await discoverAndApproveContractIdentities(sql,id!,console.log),
+    revalidated:await revalidateApprovedContractIdentities(sql,id!,console.log,MAX_REVOKED_GROUPS,identityHashes),
+    discovered:await discoverAndApproveContractIdentities(sql,id!,console.log,identityHashes),
    }),
    mode:'coordinated',scope:r.scope==='full'?'full':'daily',maxRawId:BigInt(r.raw_boundary),maxQuarantined:MAX_QUARANTINED_RECORDS,
-   log:console.log,onStage:stage=>processingStage(sql,id!,stage),
+   log:console.log,onStage:stage=>processingStage(sql,id!,stage),identityHashes,
   });
+  console.log(`identity snapshot hashes: ${JSON.stringify(identityHashes.stats)}`);
   await sql`update app.processing_runs set checkpoint_id=${checkpoint.id}::uuid where id=${id!}::uuid`;
   await processingStage(sql,id!,'search');
   const since=new Date().toISOString();

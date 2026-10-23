@@ -1,8 +1,10 @@
 import {afterAll,beforeEach,describe,expect,it,vi} from 'vitest';
-import {createDb} from '@seap/db';
+import {createDb,createSnapshotHashCache} from '@seap/db';
 import {runMonitoringRefresh,MONITORING_METHODOLOGY} from './refresh.js';
 import {runFlags} from '../flags/build.js';
 import {runFlagMarts} from '../flags/marts.js';
+import {runReconcile} from '../normalize/reconcile.js';
+import {runMarts} from '../normalize/marts.js';
 import {runNormalize} from '../normalize/pipeline.js';
 import {runTransactionMarts} from '../normalize/transaction-marts.js';
 import {validateBatch1Snapshot} from './validate.js';
@@ -67,6 +69,18 @@ describe.skipIf(!url)('daily risk provenance with real publication gate and stub
   expect(vi.mocked(runTransactionMarts).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(validateBatch1Snapshot).mock.invocationCallOrder[0]!);
   const risk=cp.validation['risk'] as {calculatedAt:string;recalculated:boolean};
   expect(risk.recalculated).toBe(true);expect(new Date(risk.calculatedAt).getTime()).toBeGreaterThanOrEqual(start);
+ });
+ it('shares one run\'s snapshot hash memo with every identity gate and the validation',async()=>{
+  await baseline();
+  const identityHashes=createSnapshotHashCache('refresh-test');
+  const repair=vi.fn(async()=>null);
+  await runMonitoringRefresh(db,sql,{mode:'coordinated',scope:'daily',maxRawId:5n,repairContractIdentities:repair,identityHashes});
+  expect(repair).toHaveBeenCalledOnce();
+  expect(runReconcile).toHaveBeenCalledWith(sql,expect.objectContaining({identityHashes}));
+  expect(runMarts).toHaveBeenCalledWith(sql,expect.objectContaining({identityHashes}));
+  expect(validateBatch1Snapshot).toHaveBeenCalledWith(expect.anything(),{fullProfiles:true,allAnnual:true,identityHashes},expect.any(Function));
+  // The identity-quality stage ran its real gates through the memo (empty registry here).
+  expect(identityHashes.token).not.toBeNull();
  });
  it('refuses publication when the complete signal lookup differs from its sources',async()=>{
   await baseline();

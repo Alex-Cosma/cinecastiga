@@ -1,6 +1,6 @@
 import { runContractMoneyQuality } from "../normalize/contract-money-quality.js";
 import { repairContractTypes } from '../normalize/contract-reporting.js';
-import { CONTRACT_REPORTING_VERSION, assertContractIdentityQuality, assertContractExclusionsQuality, publishMonitoringRefresh, type Db, type DbSql } from "@seap/db";
+import { CONTRACT_REPORTING_VERSION, assertContractIdentityQuality, assertContractExclusionsQuality, publishMonitoringRefresh, type Db, type DbSql, type SnapshotHashCache } from "@seap/db";
 import { runNormalize } from "../normalize/pipeline.js";
 import { runReconcile } from "../normalize/reconcile.js";
 import { runTedMart } from "../normalize/ted-mart.js";
@@ -26,7 +26,12 @@ export async function runMonitoringRefresh(db: Db, sql: DbSql, options: {
   mode: "coordinated" | "baseline"; log?: (message: string) => void; timeoutMs?: number;
   scope?: RefreshScope; onStage?: (name: MonitoringStage | "validation") => Promise<void>;
   maxRawId?: bigint; repairContractIdentities?: () => Promise<unknown>; maxQuarantined?: number;
+  /** One processing run's snapshot hash memo, shared with repairContractIdentities:
+   * the identity gates of identity-quality, reconcile and marts reuse hashes
+   * while their sources are unchanged; the validation recomputes all of them. */
+  identityHashes?: SnapshotHashCache;
 }) {
+  const identityHashes = options.identityHashes;
   const log = options.log ?? (() => {});
   const scope = options.scope ?? "full";
   if (options.mode === 'baseline' && scope === 'daily') throw new Error('A daily update must process and validate its data');
@@ -48,10 +53,10 @@ export async function runMonitoringRefresh(db: Db, sql: DbSql, options: {
         return runContractMoneyQuality(sql);
       },
       "identity-repair": () => options.repairContractIdentities?.() ?? Promise.resolve(null),
-      "identity-quality": async () => ({identities:await assertContractIdentityQuality(sql),exclusions:await assertContractExclusionsQuality(sql)}),
-      reconcile: () => runReconcile(sql, { log }),
+      "identity-quality": async () => ({identities:await assertContractIdentityQuality(sql, identityHashes),exclusions:await assertContractExclusionsQuality(sql, identityHashes)}),
+      reconcile: () => runReconcile(sql, { log, ...(identityHashes ? {identityHashes} : {}) }),
       "ted-mart": () => runTedMart(sql, { log }),
-      marts: () => runMarts(sql, { log }),
+      marts: () => runMarts(sql, { log, ...(identityHashes ? {identityHashes} : {}) }),
       flags: () => runFlags(sql, { log }),
       "flag-marts": () => runFlagMarts(sql, { log, transactions:false }),
       transactions: () => runTransactionMarts(sql,{log}),
@@ -63,7 +68,7 @@ export async function runMonitoringRefresh(db: Db, sql: DbSql, options: {
       const q = tx as unknown as DbSql;
       await q`select set_config('statement_timeout', ${String(options.timeoutMs ?? 900_000)}, true)`;
       log("monitoring refresh: validating the complete snapshot");
-      const checks = await validateBatch1Snapshot(q, { fullProfiles: true, allAnnual: true }, check => log(`${check.passed ? "passed" : "FAILED"}: ${check.check}`));
+      const checks = await validateBatch1Snapshot(q, { fullProfiles: true, allAnnual: true, ...(identityHashes ? {identityHashes} : {}) }, check => log(`${check.passed ? "passed" : "FAILED"}: ${check.check}`));
       checks.push(await validateCoverageCounts(q));
       if (checks.some(check => !check.passed)) throw new Error(`Snapshot checks failed: ${checks.filter(check => !check.passed).map(check => check.check).join(", ")}`);
       return { sourceCoverage: await monitoringSourceCoverage(q), validation: {
