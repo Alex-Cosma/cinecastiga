@@ -101,3 +101,23 @@
   .hdr-right .user-nav{font-size:13px}
   .d-global-search{font-size:12px}
 }
+/* Bare "?" with a floating explanation (home map): it opens above its row on
+   hover, focus or tap and never pushes the layout; the row is the anchor so
+   the box keeps the card's width at 390 px. */
+.term-tip{display:inline-flex}
+.term-tip>.term-trigger{text-decoration:none;min-width:24px;min-height:24px;display:inline-grid;place-items:center}
+.term-tip>.term-trigger>.term-mark{margin-left:0}
+.term-tip>.term-def{display:none;position:absolute;left:0;right:0;bottom:calc(100% + 6px);z-index:3;max-width:none;margin:0;box-shadow:0 6px 18px rgba(0,0,0,.12);background:var(--surface);border:1px solid var(--line)}
+.term-tip:hover>.term-def,.term-tip:focus-within>.term-def,.term-tip.term-open>.term-def{display:block}
+.d-map-current-row{position:relative;display:flex;align-items:center;gap:2px;margin-top:10px}
+.discovery-page .d-map-current-row>.d-map-current{margin:0}
+.coverage-disclosure.coverage-disclosure-home .coverage-disclosure-body{max-width:none}
+.d-footer-motto{font-weight:600;color:var(--ink2);margin:0 0 8px}
+/* Number strip on the home page: the label keeps its dotted "?" word and the
+   explanation floats under the item, so the strip keeps its height. */
+.term-tip-text>.term-trigger{text-decoration:underline dotted;text-decoration-thickness:1px;text-underline-offset:.2em;min-height:0;display:inline}
+.term-tip-text>.term-trigger>.term-mark{margin-left:.35em}
+.d-national-item{position:relative}
+.d-national-item .term-tip>.term-def{top:calc(100% + 6px);bottom:auto;left:0;right:auto;width:min(340px,calc(100vw - 40px))}
+.d-national-item:last-child .term-tip>.term-def{left:auto;right:0}
+.term-tip>.term-def{max-height:min(320px,60vh);overflow:auto}
