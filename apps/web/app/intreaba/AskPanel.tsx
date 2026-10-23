@@ -587,7 +587,7 @@ export default function AskPanel({
                   inputRef.current?.focus();
                 }}
               >
-                {text} ↗
+                {text} →
               </button>
             ))}
           </div>

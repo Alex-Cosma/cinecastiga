@@ -252,6 +252,14 @@ const KIND_WORDS: Record<string, { the: string; bare: string }> = {
   scoala: { the: "școlile", bare: "școli" },
 };
 
+const KIND_ONE: Record<string, string> = {
+  comuna: "primărie de comună",
+  oras_municipiu: "primărie de oraș",
+  consiliu_judetean: "consiliu județean",
+  spital: "spital",
+  scoala: "școală",
+};
+
 function countyWords(county: string): string {
   return /^bucure[sș]ti$/i.test(county) ? "din București" : `din județul ${county}`;
 }
@@ -387,6 +395,12 @@ function moneyTitle(spec: QuestionSpec): string | null {
           ? `Ce județe au cea mai mare schimbare a achizițiilor${subj}${fromSupplier} între ${from} și ${to}${tail}?`
           : `Ce ${institutions}${rankingPlace(spec)} au cea mai mare schimbare a achizițiilor${subj}${fromSupplier} între ${from} și ${to}${tail}?`;
     }
+    case "entity_card": {
+      if (spec.dim === "supplier")
+        return `Care firmă are cea mai mare valoare a achizițiilor${subj} de la ${buyersPhrase(spec)}${admin}, ${when}${tail}?`;
+      const one = f.authorityKind ? KIND_ONE[String(f.authorityKind)] ?? "instituție" : "instituție";
+      return `Care ${one}${rankingPlace(spec)} are cea mai mare valoare a achizițiilor${subj}${fromSupplier}${admin}, ${when}${tail}?`;
+    }
     default:
       return null;
   }
@@ -420,11 +434,13 @@ export function describeQuestion(input: QuestionSpec | AskSpec): string {
     case "fact_check":
       return `A cumpărat „${entityLabel(spec, "authority")}” de la „${entityLabel(spec, "supplier")}”?`;
     case "distribution":
-      return `Unde se situează ${focal} după indicele de risc?`;
+      return `Unde se situează ${focal} după indicele de risc${f.county ? `, față de cele ${countyWords(String(f.county))}` : ""}?`;
     case "scatter":
-      return `Ce ${dims} ies din tipar după risc și valoarea achizițiilor?`;
-    case "entity_card":
-      return `Care ${spec.dim === "supplier" ? "firmă" : "instituție"} are ${spec.rankBy === "risk" ? "cel mai ridicat indice de risc" : "cea mai mare valoare a achizițiilor"}?`;
+      return `Ce ${spec.dim !== "supplier" && f.authorityKind ? KIND_WORDS[String(f.authorityKind)]?.bare ?? dims : dims}${f.county ? ` ${countyWords(String(f.county))}` : ""} ies din tipar după risc și valoarea achizițiilor?`;
+    case "entity_card": {
+      const one = spec.dim === "supplier" ? "firmă" : f.authorityKind ? KIND_ONE[String(f.authorityKind)] ?? "instituție" : "instituție";
+      return `Care ${one}${f.county ? ` ${countyWords(String(f.county))}` : ""} are ${spec.rankBy === "risk" ? "cel mai ridicat indice de risc" : "cea mai mare valoare a achizițiilor"}?`;
+    }
     default:
       return "Întrebarea ta";
   }
