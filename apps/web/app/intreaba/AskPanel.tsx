@@ -1319,7 +1319,7 @@ function TableBlock({
         </div>
       )}
       <p className="ask-fine">
-        nume → profilul entității · numărul de achiziții → lista lor în căutare
+        nume → profilul entității · numărul de achiziții → înregistrările lor
       </p>
     </div>
   );
@@ -1729,7 +1729,8 @@ function exportCsv(data: BlockData, spec: AskSpec, title: string) {
       ];
       break;
   }
-  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  // Same file conventions as the source export: UTF-8 BOM (Excel keeps the diacritics) and CRLF.
+  const blob = new Blob(["﻿" + lines.join("\r\n") + "\r\n"], { type: "text/csv;charset=utf-8" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = `${fileSlug(title)}.csv`;
