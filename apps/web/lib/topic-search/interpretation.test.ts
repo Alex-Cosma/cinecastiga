@@ -3,7 +3,7 @@ import { memoryVocabulary } from '../intent/memory-vocabulary';
 import { RulesInterpreter } from '../intent/rules';
 import { FIXTURE } from '../intent/rules.fixture';
 import { resultFor } from '../intent/to-spec';
-import { applyInterpretation, placeId, placeMatchFor, remainingWords } from './interpretation';
+import { applyInterpretation, emptyAnswerText, isCleanQuestion, placeId, placeMatchFor, remainingWords } from './interpretation';
 import { parseTopicScope } from './shared';
 
 const NOW = new Date('2026-10-22T12:00:00Z');
@@ -119,6 +119,64 @@ describe('interpretation → /cauta selection', () => {
     const t = applyInterpretation(scope, weak);
     expect(t.subject).toBeNull();
     expect(t.answer).toBeNull();
+  });
+
+  it('answers a whole question first, with the interpreter’s sentence and its specs', async () => {
+    for (const q of ['cine ia banii buzau', 'cat a cheltuit primaria buzau pe iluminat']) {
+      const { scope, result } = await read(q);
+      const t = applyInterpretation(scope, result);
+      expect(isCleanQuestion(result), q).toBe(true);
+      expect(t.question, q).toEqual({ sentence: result.sentence });
+      expect(t.trusted, q).toBe(true);
+      // the words themselves are searched as written, below the answer
+      expect(t.applied.q, q).toBe(q);
+      expect(t.answer?.total.spec.block, q).toBe('stat');
+      expect(t.answer?.top.spec, q).toMatchObject({ block: 'table', dim: 'supplier', topN: 3 });
+      expect(t.answer?.href, q).toBe(`/intreaba?q=${encodeURIComponent(q)}`);
+      expect(t.answer?.evidenceHref, q).toMatch(/^\/intreaba\?spec=.+&drill=1$/);
+    }
+    const { scope, result } = await read('cat a cheltuit primaria buzau pe iluminat');
+    const t = applyInterpretation(scope, result);
+    expect(t.answer?.total.spec.filters).toMatchObject({ cpvTerm: 'iluminat' });
+    // the subject the answer counts is kept, so the route lists its CPV classes
+    expect(t.subject?.term).toBe('iluminat');
+  });
+
+  it('never answers a question with unexplained words, a choice to make, or a name search', async () => {
+    // "podu" is not understood: no answer about all of Buzău's spending
+    for (const q of ['cat a costat podu buzau', 'cine ia banii salcioara', 'primaria buzau', 'buzau']) {
+      const { scope, result } = await read(q);
+      const t = applyInterpretation(scope, result);
+      expect(t.question, q).toBeNull();
+    }
+    const amb = await read('cine ia banii salcioara');
+    expect(applyInterpretation(amb.scope, amb.result).answer).toBeNull();
+    // a subject applied to the titles stays a subject search with chips
+    const subject = await read('iluminat buzau');
+    expect(applyInterpretation(subject.scope, subject.result).question).toBeNull();
+    // a filter chosen on the page is never overridden by the place in the words
+    for (const extra of ['&place=county:ialomita', '&from=2023&to=2023', '&type=da']) {
+      const filtered = await read('cine ia banii buzau', extra);
+      expect(applyInterpretation(filtered.scope, filtered.result).question, extra).toBeNull();
+    }
+  });
+
+  it('offers the same buyers by domain as the alternative to an empty subject', async () => {
+    const { scope, result } = await read('iluminat in municipiul buzau');
+    const t = applyInterpretation(scope, result);
+    expect(t.answer?.domains?.label).toBe('Vezi la ce domenii sunt încadrate achizițiile făcute de primăria Municipiului Buzău, în toți anii');
+    expect(t.answer?.domains?.href).toMatch(/^\/intreaba\?spec=/);
+    // no buyer named: nothing narrower than the whole country to offer
+    const national = await read('iluminat');
+    expect(applyInterpretation(national.scope, national.result).answer?.domains ?? null).toBeNull();
+  });
+
+  it('says what was not found instead of a zero total', () => {
+    expect(emptyAnswerText('Cât valorează achizițiile pentru „Pod” făcute de primăria Municipiului Oradea (Bihor), în toți anii?', 'Pod'))
+      .toBe('Niciun contract încadrat la „Pod” la primăria Municipiului Oradea (Bihor), în toți anii.');
+    expect(emptyAnswerText('Cât valorează achizițiile făcute de instituțiile din județul Buzău, în 2023?', null))
+      .toBe('Nicio achiziție înregistrată la instituțiile din județul Buzău, în 2023.');
+    expect(emptyAnswerText('Altă formulare', 'parcuri')).toBe('Niciun contract încadrat la „parcuri” în această selecție.');
   });
 
   it('returns the words unchanged without an interpretation or for another text', async () => {

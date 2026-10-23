@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {parseTopicScope,topicParams,documentScope} from './shared';
+import {parseTopicScope,topicParams,documentScope,answerShape} from './shared';
 describe('subject search URLs',()=>{
  it('defaults to all years and all sources',()=>{expect(parseTopicScope(new URLSearchParams('q=iluminat'))).toMatchObject({from:'',to:'',type:'all',place:'',page:1});});
  it('round-trips a shared selection, including a county with accents folded',()=>{const s=parseTopicScope(new URLSearchParams('q=locuri+de+joacă&place=county:buzau&from=2022&to=2024&type=contracts&match=phrase&tab=documents&page=2'));expect(parseTopicScope(topicParams(s))).toEqual(s);});
@@ -14,4 +14,12 @@ describe('subject search URLs',()=>{
   expect(key('q=iluminat&match=phrase&type=contracts')).not.toBe(key('q=iluminat'));
  });
  it('allows a single year, and punctuation remains data',()=>{expect(parseTopicScope(new URLSearchParams('from=2022&to=2022&q=%25%27')).q).toBe("%'");});
+});
+describe('short answer hero',()=>{
+ it('never shows a zero total as the answer',()=>{
+  expect(answerShape({value:0,count:0})).toBe('empty');
+  expect(answerShape({value:0,count:3})).toBe('count-only');
+  expect(answerShape({value:109_500_000,count:816})).toBe('value');
+  expect(answerShape(null)).toBe('none');
+ });
 });

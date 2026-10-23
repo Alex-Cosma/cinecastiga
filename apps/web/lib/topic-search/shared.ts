@@ -41,3 +41,9 @@ export function excerpt(text:string,q:string){const needle=fold(q).split(/\s+/)[
 export function documentScope(s:TopicScope):TopicScope{
  return s.tab==='documents'?{...s,role:''}:{...s,tab:'all',page:1,role:''};
 }
+/** The hero of "Pe scurt": never "0 lei" for an empty selection (owner decision 6). */
+export function answerShape(total:{value:number;count:number}|null):'none'|'empty'|'count-only'|'value'{
+ if(!total)return 'none';
+ if(!total.count)return 'empty';
+ return total.value>0?'value':'count-only';
+}
