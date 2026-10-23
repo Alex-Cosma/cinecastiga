@@ -575,6 +575,13 @@
       "when": 1792690572932,
       "tag": "0081_cpv_synonym_exclusions",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1792694172932,
+      "tag": "0082_cpv_synonym_parks_bridges_roads",
+      "breakpoints": true
     }
   ]
 }

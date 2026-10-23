@@ -22,7 +22,8 @@ beforeAll(async () => {
     create extension if not exists unaccent;
     create extension if not exists pg_trgm;
     create schema if not exists core; create schema if not exists reference; create schema if not exists marts;
-    drop table if exists core.cpv_codes, reference.cpv_synonym, reference.uat, marts.entity_profile, reference.company_reps;
+    drop table if exists core.cpv_codes, reference.cpv_synonym, reference.uat, marts.entity_profile, reference.company_reps, core.entities;
+    create table core.entities (id bigint primary key, cui_canonical text, name_display text);
     create table core.cpv_codes (code text primary key, name_ro text, division text);
     create table reference.cpv_synonym (term text not null, cpv_prefix text not null, note text, primary key (term, cpv_prefix));
     create table reference.uat (siruta integer primary key, name text, county text, tip text, population integer);
@@ -33,9 +34,12 @@ beforeAll(async () => {
   await sql`insert into core.cpv_codes (code, name_ro) values
     ('34993000-4','Iluminat stradal'), ('31527200-8','Iluminat exterior'), ('31500000-1','Echipament de iluminat şi lămpi electrice'),
     ('90620000-9','Servicii de deszăpezire'), ('44113620-7','Asfalt'), ('45233140-2','Lucrări de drumuri'), ('39298910-9','Pom de Crăciun'),
-    ('79953000-9','Servicii de organizare de festivaluri'), ('33600000-6','Produse farmaceutice'), ('30213100-6','Computere portabile')`;
+    ('79953000-9','Servicii de organizare de festivaluri'), ('33600000-6','Produse farmaceutice'), ('30213100-6','Computere portabile'),
+    ('44212100-3','Pod'), ('45221000-2','Lucrări de construcţii de poduri şi tuneluri, puţuri şi pasaje subterane')`;
   await sql`insert into reference.cpv_synonym (term, cpv_prefix) values
-    ('iluminat','31500000'), ('asfalt','45233000'), ('drumuri','45233000'), ('medicamente','33600000'), ('laptopuri','30213100'), ('lemn de foc','03413000')`;
+    ('iluminat','31500000'), ('asfalt','45233000'), ('drumuri','45233000'), ('medicamente','33600000'), ('laptopuri','30213100'), ('lemn de foc','03413000'),
+    ('pod','45221000'), ('lucrari drumuri','45233000'), ('lucrari de drumuri','45233000')`;
+  await sql`insert into core.entities (id, cui_canonical, name_display) values (2144364, '1234567', 'MUNICIPIUL BUZAU'), (9000001, '7654321', 'CONSTRUCTII ERBASU S.A.')`;
   // reference.uat stores folded counties and registry names in mixed orthography
   const uats = catalogUatSource().filter((u) => ["buzau", "ialomita", "dambovita", "prahova"].includes(u.county ?? ""));
   for (const u of uats) {
@@ -159,6 +163,20 @@ describe.runIf(Boolean(connection))("intent vocabulary SQL (dedicated seap_test_
     expect(people.map((r) => r.person_key).sort()).toEqual(["popescu ion|1960", "popescu ion|1975"]);
     expect(Number(people[0]!.total)).toBe(2);
     expect(await personsByExactName(sql, ["maria popescu", "popescu maria"])).toEqual([]);
+  });
+
+  it("reads fiscal codes, typed CPV codes and the synonym before a same-named catalogue label", async () => {
+    const sql = connection!.sql;
+    expect((await suggestCpv(sql, "pod")).map((r) => r.term).slice(0, 2)).toEqual(["pod", "44212100-3"]);
+    expect((await interpretQuestion(sql, "pod buzau", { now: NOW })).spec?.filters.cpvTerm).toBe("pod");
+    expect((await interpretQuestion(sql, "lucrari de drumuri buzau", { now: NOW })).spec?.filters.cpvTerm).toBe("lucrari drumuri");
+    expect((await interpretQuestion(sql, "45233140-2", { now: NOW })).spec?.filters.cpvTerm).toBe("45233140-2");
+    const town = await interpretQuestion(sql, "RO1234567", { now: NOW });
+    expect(town.interpretation.authority).toMatchObject({ id: 2144364, name: "MUNICIPIUL BUZAU" });
+    const firm = await interpretQuestion(sql, "cui 7654321", { now: NOW });
+    expect(firm.interpretation.supplier).toMatchObject({ id: 9000001 });
+    const none = await interpretQuestion(sql, "RO99", { now: NOW });
+    expect(none.interpretation.notes.join(" ")).toMatch(/Nu am găsit o firmă sau o instituție cu codul fiscal/);
   });
 
   it("answers quickly for typical questions once the gazetteer is cached", async () => {
