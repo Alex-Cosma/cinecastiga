@@ -8,6 +8,7 @@ import { daUrl, awardUrl } from "@/lib/elicitatie";
 import { useTip } from "../../intreaba/blocks";
 import type { DaTx } from "@/lib/marts";
 import { useEntityTable } from "./useEntityTable";
+import { contractKindLabel, republishedContractKeys, txRowKey } from "./tx-rows";
 import { consortiumExplanation, consortiumPhrase, consortiumShareLabel, isConsortium } from "@/lib/consortium";
 
 /**
@@ -78,6 +79,7 @@ export default function TxTable({
   };
 
   const showTip = src === "all";
+  const republished = republishedContractKeys(data?.rows ?? []);
   const nCols = showTip ? 8 : 7;
   return (
     <div>
@@ -210,7 +212,7 @@ export default function TxTable({
             {!loading && !error && !data?.rows?.length && <tr><td colSpan={nCols} className="county">Nicio înregistrare pentru filtrele alese.</td></tr>}
             {!loading && data?.rows?.map((t, i) => (
               // consortium contracts come as one row per member with the same contract id
-              <tr key={`${t.src}-${t.sicapDaId}-${t.partnerId ?? i}`}>
+              <tr key={txRowKey(t, i)}>
                 <td className="c-date" title={t.src === "contract" ? "Data semnării" : "Data finalizării"}>{t.src === "contract" && !t.finalizationDate ? "Dată sursă improbabilă" : formatCalendarDate(t.finalizationDate)}</td>
                 {showTip && (
                   <td className="c-src">
@@ -266,6 +268,10 @@ export default function TxTable({
                       {consortiumShareLabel(t.nWinners, t.contractValueFull != null ? formatRonFull(t.contractValueFull) : null)}
                     </span>
                   )}
+                  {(() => {
+                    const kind = contractKindLabel(t.financialKind);
+                    return kind ? <span className="cons-line kind-line" title={kind.title}>{kind.text}</span> : null;
+                  })()}
                 </td>
                 <td className="c-gap" data-empty={t.gapMinutes == null ? "1" : undefined}>{gapLabel(t.gapMinutes)}</td>
                 <td className="clip c-flags" data-empty={t.daFlags.length === 0 ? "1" : undefined}>
@@ -276,6 +282,14 @@ export default function TxTable({
                   ))}
                 </td>
                 <td className="c-links">
+                  {t.src === "contract" && t.daCode?.trim() ? (
+                    <span className="c-no" title={`Numărul contractului în sursă: ${t.daCode.trim()}`}>nr. {t.daCode.trim()}</span>
+                  ) : null}
+                  {republished.has(txRowKey(t, i)) ? (
+                    <span className="c-no c-dup" title="Același număr, aceeași dată, aceeași valoare și același partener apar și sub alt anunț de atribuire. Deschide detaliile ca să compari anunțurile.">
+                      apare și sub alt anunț
+                    </span>
+                  ) : null}
                   {t.src === "contract" ? (
                     t.natId ? (
                       <Link href={`/contracte/${t.natId}`}>detalii →</Link>

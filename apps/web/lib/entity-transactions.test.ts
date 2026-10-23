@@ -16,7 +16,9 @@ function database() {
       return Promise.resolve(resolve(this.query.includes("count(*)::int c") ? [{ c: 2 }] : []));
     }
   }
-  const sql = ((chunks: TemplateStringsArray, ...params: unknown[]) => {
+  const sql = ((chunks: TemplateStringsArray | string, ...params: unknown[]) => {
+    // sql("alias") is an identifier (contractKind uses it), not a statement.
+    if (typeof chunks === "string") return new Fragment(`"${chunks}"`);
     const values: unknown[] = [];
     const query = chunks.reduce((result, part, i) => {
       if (i >= params.length) return result + part;
@@ -70,7 +72,7 @@ describe("consortium rows in the entity table", () => {
   function consortiumDatabase() {
     const statements: string[] = [];
     const page = [
-      { src: "contract", rid: "607956", cp_id: "2126729", cp_name: "CONCELEX", closing_value: "127303264.06", contract_value_full: "381909792.16", n_winners: 3, da_flags: [] },
+      { src: "contract", rid: "607956", cp_id: "2126729", cp_name: "CONCELEX", closing_value: "127303264.06", contract_value_full: "381909792.16", n_winners: 3, da_flags: [], financial_kind: "framework" },
       { src: "da", rid: "55", cp_id: "9", cp_name: "FIRMA", closing_value: "100", contract_value_full: null, n_winners: null, da_flags: [] },
     ];
     const members = [
@@ -88,7 +90,7 @@ describe("consortium rows in the entity table", () => {
         return Promise.resolve(resolve(this.query.includes("limit") ? page : []));
       }
     }
-    const sql = ((chunks: TemplateStringsArray, ...params: unknown[]) =>
+    const sql = ((chunks: TemplateStringsArray | string, ...params: unknown[]) => typeof chunks === "string" ? new Fragment(`"${chunks}"`) :
       new Fragment(chunks.reduce((q, part, i) => q + part + (i < params.length ? (params[i] instanceof Fragment ? (params[i] as Fragment).query : "?") : ""), ""))) as unknown as DbSql;
     Object.assign(sql, { array: (values: unknown[]) => values });
     globalDb.__seapSql = sql;
@@ -104,6 +106,8 @@ describe("consortium rows in the entity table", () => {
       closingValue: 127303264.06, contractValueFull: 381909792.16, nWinners: 3,
       consortiumOthers: ["Concelex Engineering S.R.L", "CONSTRUCTII ERBASU S.A."],
     });
-    expect(rows[1]).toMatchObject({ src: "da", nWinners: null, contractValueFull: null, consortiumOthers: [] });
+    expect(rows[0]?.financialKind).toBe("framework");
+    expect(statements[0]).toContain("\"cc\".source_contract_type");
+    expect(rows[1]).toMatchObject({ src: "da", nWinners: null, contractValueFull: null, consortiumOthers: [], financialKind: null });
   });
 });
