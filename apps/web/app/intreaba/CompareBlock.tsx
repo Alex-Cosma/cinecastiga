@@ -230,23 +230,51 @@ function TopPartners({ entity: e, side, firms }: { entity: CompareEntity; side: 
   );
 }
 
+const SHOWN_DOMAINS = 4;
+
 function Domains({ a, b, firms }: { a: CompareEntity; b: CompareEntity; firms: boolean }) {
+  const [all, setAll] = useState(false);
   if (!a.domains?.length && !b.domains?.length) return null;
+  const more = [a, b].some((e) => (e.domains?.length ?? 0) > SHOWN_DOMAINS);
   return (
     <section className="cmp-section">
       <h3>{firms ? "Ce vinde fiecare" : "Ce cumpără fiecare"}</h3>
       <div className="cmp-two">
-        {[a, b].map((e, i) => (
-          <div key={e.entityId} className={`cmp-panel cmp-${i === 0 ? "a" : "b"}`}>
-            <p className="cmp-panel-head">{cleanName(e.name)}</p>
-            {(e.domains ?? []).map((d) => (
-              <ShareRow key={d.code} label={d.name ? readableCpvName(d.name) : `CPV ${d.code}`} value={d.value} total={e.value} />
-            ))}
-          </div>
-        ))}
+        {[a, b].map((e, i) => {
+          const shown = (e.domains ?? []).slice(0, all ? undefined : SHOWN_DOMAINS);
+          return (
+            <div key={e.entityId} className={`cmp-panel cmp-${i === 0 ? "a" : "b"}`}>
+              <p className="cmp-panel-head">{cleanName(e.name)}</p>
+              {shown.map((d) => (
+                <ShareRow key={d.code} label={d.name ? readableCpvName(d.name) : `CPV ${d.code}`} value={d.value} total={e.value} />
+              ))}
+              <RestRow entity={e} shown={shown} />
+            </div>
+          );
+        })}
       </div>
+      {more && (
+        <button type="button" className="cmp-more" aria-expanded={all} onClick={() => setAll((v) => !v)}>
+          {all ? "Arată mai puține" : "Vezi toate domeniile"}
+        </button>
+      )}
     </section>
   );
+}
+
+/** The value outside the listed groups, so each panel adds up to 100%. */
+function RestRow({ entity: e, shown }: { entity: CompareEntity; shown: NonNullable<CompareEntity["domains"]> }) {
+  const listed = shown.reduce((sum, d) => sum + d.value, 0);
+  const rest = Math.max(e.value - listed, 0);
+  if (e.domainCount === undefined) return null;
+  const groups = e.domainCount - shown.length;
+  const noCpv = (e.noCpvValue ?? 0) > 0;
+  // Unlisted groups always get the line, however small; otherwise only CPV-less value.
+  if (groups <= 0 && (!noCpv || rest <= e.value * 0.0005)) return null;
+  const label = groups > 0
+    ? `Restul · ${countWords(groups, "domeniu", "domenii")}${noCpv ? " și fără cod CPV" : ""}`
+    : "Fără cod CPV";
+  return <div className="cmp-rest"><ShareRow label={label} value={rest} total={e.value} /></div>;
 }
 
 function ShareRow({ label, value, total, detail }: { label: ReactNode; value: number; total: number; detail?: string }) {
