@@ -247,6 +247,8 @@ type Resolution =
   | { kind: "many"; role: "authority" | "supplier"; hits: EntityHit[]; total: number }
   | { kind: "none" };
 
+const TOWN_HALL_UNKNOWN = "Nu am recunoscut numele primăriei. Scrie localitatea, de exemplu „primăria din Râmnicu Sărat”.";
+
 function confidenceLabel(c: number): Interpretation["confidenceLabel"] {
   return c >= 0.75 ? "high" : c >= 0.5 ? "medium" : c > 0 ? "low" : "none";
 }
@@ -276,6 +278,7 @@ export class RulesInterpreter implements QuestionInterpreter {
     const places = await this.vocab.places();
     const byKey = new Map<string, PlaceEntry[]>();
     for (const p of places) byKey.set(p.key, [...(byKey.get(p.key) ?? []), p]);
+    const localities = places.filter((p) => p.kind === "locality");
 
     this.periods(c, out, year);
     this.modifiers(c, out);
@@ -288,7 +291,7 @@ export class RulesInterpreter implements QuestionInterpreter {
     await this.compare(c, out, compareCue);
     await this.suppliersByMarker(c, out);
     // Place names before subjects: "Alba Iulia", "Satu Mare", "Constanța" are places, not cabbage, sole or consultancy.
-    const marked = this.markedPlaces(c, out, byKey);
+    const marked = this.markedPlaces(c, out, byKey, localities);
     const unmarked = this.unmarkedPlaces(c, byKey);
     await this.namedRuns(c, out);
     await this.subjects(c, out);
@@ -361,6 +364,9 @@ export class RulesInterpreter implements QuestionInterpreter {
     // "cele mai multe licitații": the number of records, before "licitații" is read as the stream
     once(/\b(?:cele mai multe|cei mai multi|cel mai des)(?=\s+(?:contracte|contractele|achizitii|achizitiile|licitatii|licitatiile|cumparari))/, () => { if (out.measure === null) out.measure = "count"; });
     once(/\b(?:licitati(?:e|i|ile|ilor)|proceduri(?:le|lor)?|procedura|procedurii)\b/, () => { if (out.dataset !== "da") out.dataset = "contracts"; });
+    // "firmele abonate la primărie", "firmele de casă", "cine câștigă cel mai des": the firms that keep coming back,
+    // ranked by how many purchases they won (the sentence stays neutral: a count, not a judgement)
+    once(/\b(?:abonat(?:a|e|i|ii|ele)?|(?<=\b(?:firme|firmele|firmelor|furnizori|furnizorii|furnizorilor|companii|companiile)\s)de\s+casa|mereu\s+aceleasi|aceleasi\s+firme|cel\s+mai\s+(?:des|frecvent)|castiga\s+mereu|tot\s+castiga)\b/, () => { if (out.measure === null) out.measure = "count"; out.dimHint = out.dimHint ?? "supplier"; });
     once(/\b(?:pe|per)\s+(?:cap\s+de\s+)?locuitor\b|\bpe\s+cap\s+de\s+om\b/, () => { out.measure = "value_per_capita"; });
     once(/\b(?:cate|numarul(?:\s+de)?|cat de multe)\s+(?:achizitii|contracte|cumparari|licitatii)\b|\bde cate ori\b/, () => { if (out.measure === null) out.measure = "count"; });
     once(/\b(?:top|primele|primii|primul|primele cele)\s+(\d{1,3}|cinci|zece|trei|douazeci|cincizeci|cincisprezece)\b/, (m) => {
@@ -566,7 +572,7 @@ export class RulesInterpreter implements QuestionInterpreter {
     return null;
   }
 
-  private markedPlaces(c: Cursor, out: Interpretation, byKey: Map<string, PlaceEntry[]>): PlaceFound[] {
+  private markedPlaces(c: Cursor, out: Interpretation, byKey: Map<string, PlaceEntry[]>, localities: PlaceEntry[]): PlaceFound[] {
     const found: PlaceFound[] = [];
     const markers: [RegExp, PlaceFound["constraint"]][] = [
       [/\bjud(?:etul|etului|et)?\b/, "county"],
@@ -586,24 +592,49 @@ export class RulesInterpreter implements QuestionInterpreter {
     }
     for (const [re, constraint] of markers) {
       for (const h of c.all(re)) {
-        const at = this.placeAt(c, h.j, byKey, true);
+        let at = this.placeAt(c, h.j, byKey, true);
+        let typed: string | undefined;
+        // "primăria Cluj", "orașul Alba": a town named by the start of its name (Cluj-Napoca, Alba Iulia).
+        // An exact name wins unless a larger town starts with it: "primăria Piatra" may be Piatra-Neamț.
+        if (constraint !== "county" && constraint !== "any" && h.j < c.tokens.length && !STOPWORDS.has(c.f(h.j))) {
+          const len = at ? at.j - h.j : 1;
+          const joined = c.tokens.slice(h.j, h.j + len).map((t) => t.f).join(" ");
+          const key = placeKey(PLACE_ALIAS[joined] ?? joined);
+          const exact = (at?.entries ?? []).filter((e) => fits(e, constraint));
+          const longer = localities.filter((e) => e.key.startsWith(`${key} `) && fits(e, constraint) && !exact.includes(e));
+          const largest = Math.max(0, ...longer.map((e) => e.population ?? 0));
+          if (c.isFree(h.j, h.j + len) && longer.length && !(exact.length === 1 && (exact[0]!.population ?? 0) >= largest)) {
+            at = { j: h.j + len, entries: [...exact, ...longer] };
+            typed = c.span(h.j, h.j + len).text;
+          }
+        }
         if (!at) {
           if (constraint === "locality" && /^primari/.test(c.f(h.i))) {
             c.take(h.i, h.i + 1, "filler");
-            out.notes.push("Nu am recunoscut numele primăriei. Scrie localitatea, de exemplu „primăria din Râmnicu Sărat”.");
+            out.notes.push(TOWN_HALL_UNKNOWN);
           }
           continue;
         }
         const entries = at.entries.filter((e) => fits(e, constraint));
-        if (!entries.length) continue;
+        if (!entries.length) {
+          // "primăria Dolj": a county has no town hall. Ask: one of its towns, or every institution in it.
+          const county = at.entries.find((e) => e.kind === "county");
+          if (county && constraint === "locality" && /^primari/.test(c.f(h.i))) {
+            const inCounty = localities.filter((e) => e.county === county.county).sort((a, b) => (b.population ?? 0) - (a.population ?? 0));
+            const towns = inCounty.filter((e) => e.tip === "municipiu");
+            c.take(h.i, at.j, "place");
+            found.push({ from: h.i, to: at.j, entries: (towns.length ? towns : inCounty.filter((e) => e.tip === "oraș")).slice(0, 4), constraint, span: c.span(h.i, at.j), countyChoice: county.county });
+          }
+          continue;
+        }
         c.take(h.i, at.j, "place");
-        found.push({ from: h.i, to: at.j, entries, constraint, span: c.span(h.i, at.j) });
+        found.push({ from: h.i, to: at.j, entries, constraint, span: c.span(h.i, at.j), ...(typed ? { typed } : {}) });
       }
     }
     // "primărie" with no name: understood as a word, not a purchase
     for (const h of c.all(/\bprimari(?:e|a|ei)\b/)) {
       c.take(h.i, h.j, "filler");
-      out.notes.push("Nu am recunoscut numele primăriei. Scrie localitatea, de exemplu „primăria din Râmnicu Sărat”.");
+      out.notes.push(TOWN_HALL_UNKNOWN);
     }
     return found;
   }
@@ -657,6 +688,12 @@ export class RulesInterpreter implements QuestionInterpreter {
     }
     const extra = found.filter((f) => f !== pick && !(usedQualifier && f === qualifierFound));
     if (extra.length) out.notes.push(`Am folosit un singur loc; „${extra.map((f) => f.span.text).join("”, „")}” nu a fost aplicat.`);
+    if (pick.countyChoice) {
+      out.placeAmbiguous = true;
+      out.placeAlternatives = [...locs.sort(byPopulation).map((e) => match(e)), countyMatch(pick.countyChoice)];
+      out.placeNote = `${pick.countyChoice} este un județ, nu o localitate. Alege orașul sau toate instituțiile din județ.`;
+      return;
+    }
     if (counties.length && !explicitLocality(pick)) {
       const county = counties[0]!;
       out.place = match(county);
@@ -672,13 +709,17 @@ export class RulesInterpreter implements QuestionInterpreter {
       out.place = match(locs[0]!);
       // a locality means its town hall; the whole county is one click away
       out.placeAlternatives = [countyMatch(locs[0]!.county)];
+      if (pick.typed) out.placeNote = `Am înțeles „${pick.typed}” ca ${locs[0]!.name}.`;
       return;
     }
     out.placeAmbiguous = true;
     out.placeAlternatives = [...locs].sort(byPopulation).slice(0, 6).map((e) => match(e));
     const bare = locs[0]!.name.replace(/^(Comuna|Orașul|Municipiul) /, "");
     const where = [...new Set(locs.map((e) => e.county))];
-    out.placeNote = `Există ${locs.length} localități cu numele „${bare}”, în ${where.length > 1 ? `${where.slice(0, -1).join(", ")} și ${where.at(-1)}` : where[0]}.`;
+    const inCounties = where.length > 1 ? `${where.slice(0, -1).join(", ")} și ${where.at(-1)}` : where[0];
+    out.placeNote = pick.typed
+      ? `${locs.length} localități au numele „${pick.typed}” sau încep cu el, în ${inCounties}.`
+      : `Există ${locs.length} localități cu numele „${bare}”, în ${inCounties}.`;
   }
 
   // ---------------------------------------------------------- fiscal codes
@@ -1206,6 +1247,7 @@ export class RulesInterpreter implements QuestionInterpreter {
     let score = content ? understood / content : 0;
     if (out.intentSource === "default") score -= 0.1;
     if (out.placeAmbiguous) score -= 0.25;
+    if (out.notes.includes(TOWN_HALL_UNKNOWN)) score -= 0.3;
     if (out.personAlternatives.length || out.entityAlternatives.length) score -= 0.2;
     if (!hasNamedScope(out)) score -= 0.15;
     out.confidence = Math.max(0.05, Math.min(1, Math.round(score * 100) / 100));
@@ -1225,6 +1267,10 @@ interface PlaceFound {
   entries: PlaceEntry[];
   constraint: "county" | "locality" | "municipiu" | "oras" | "comuna" | "any";
   span: Span;
+  /** The words matched as the start of a longer name ("Cluj" for Cluj-Napoca). */
+  typed?: string;
+  /** "primăria Dolj": the county named as a town hall; its towns and the whole county are offered. */
+  countyChoice?: string;
 }
 
 function fits(e: PlaceEntry, constraint: PlaceFound["constraint"]): boolean {

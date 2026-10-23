@@ -350,7 +350,7 @@ export function resultFor(i: Interpretation): IntentResult {
     problem = i.subjectChoices.message;
   } else if (i.intent && i.placeAmbiguous) {
     // never guess between localities of the same name: each is an alternative
-    problem = "Alege localitatea la care te gândești; există mai multe cu același nume.";
+    problem = "Alege localitatea la care te gândești.";
   } else if (i.intent && i.entityAlternatives.length && !i.supplier && !i.authority) {
     problem = i.choicesPartial
       ? `${i.choicesPartial.total} firme sau instituții se potrivesc. Alege una dintre primele ${i.choicesPartial.shown} sau scrie numele complet.`
