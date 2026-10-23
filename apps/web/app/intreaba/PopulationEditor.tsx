@@ -8,6 +8,7 @@ import "./query-recipes.css";
 
 const fields = { date:"Data achiziției", value:"Valoare pe înregistrare (lei)", authority:"Instituții", supplier:"Firme", cpv:"Coduri CPV", county:"Județele cumpărătorilor" };
 const blank = (): PopulationCondition => ({ field:"value", op:"gte", value:"" });
+const isBlank = (c:PopulationCondition) => "value" in c ? c.value.trim() === "" : c.values.length === 0;
 
 function EntitySet({ condition, onChange, disabled }: { condition:Extract<PopulationCondition, { values:string[] }>; onChange:(value:PopulationCondition)=>void; disabled:boolean }) {
   const [search, setSearch] = useState("");
@@ -36,7 +37,9 @@ export default function PopulationEditor({ value, onChange, disabled = false, em
   const id = useId();
   const [open, setOpen] = useState(Boolean(value));
   const count = value?.groups.reduce((n, g) => n + g.conditions.length, 0) ?? 0;
-  const validation = value ? validatePopulation(value) : null;
+  // A condition still empty is unfinished, not wrong: judge only what has been filled in.
+  const filled = value && { ...value, groups:value.groups.map(g => ({ ...g, conditions:g.conditions.filter(c => !isBlank(c)) })).filter(g => g.conditions.length > 0) };
+  const validation = filled && filled.groups.length > 0 ? validatePopulation(filled) : null;
   function updateGroup(index:number, next:QueryPopulation["groups"][number]) { if (value) onChange({ ...value, groups:value.groups.map((g, i) => i === index ? next : g) }); }
   return <section className="qp-editor" aria-label="Selecție precisă">{embedded ? <h3 className="qp-section-title">Selecție precisă <Term id="selectie-precisa" tip /></h3> : <button className="qp-toggle" type="button" aria-expanded={open} aria-controls={id} onClick={() => setOpen(v => !v)}><span>Selecție precisă{count > 0 ? ` · ${count} condiții` : ""}</span><span>{open ? "Restrânge" : "Date, valori și grupuri"}</span></button>}{(embedded || open) && <div id={id} className="qp-body">{!value ? <div className="qp-start"><button type="button" disabled={disabled} onClick={() => onChange({ operator:"and", groups:[{ operator:"and", conditions:[blank()] }] })}>Adaugă prima condiție</button></div> : <><label className="qp-operator">Între grupuri<select value={value.operator} disabled={disabled} onChange={e => onChange({ ...value, operator:e.target.value as "and" | "or" })}><option value="and">ȘI — trebuie îndeplinite toate grupurile</option><option value="or">SAU — ajunge oricare dintre grupuri</option></select></label>{value.groups.map((group, gi) => <fieldset key={gi} className="qp-group" disabled={disabled}><legend>Grupul {gi + 1}</legend><div className="qp-group-head"><label>În acest grup<select value={group.operator} onChange={e => updateGroup(gi, { ...group, operator:e.target.value as "and" | "or" })}><option value="and">Toate condițiile (ȘI)</option><option value="or">Oricare condiție (SAU)</option></select></label><button type="button" onClick={() => { const groups = value.groups.filter((_, i) => i !== gi); onChange(groups.length ? { ...value, groups } : undefined); }}>Elimină grupul</button></div>{group.conditions.map((condition, ci) => {
       const update = (next:PopulationCondition) => updateGroup(gi, { ...group, conditions:group.conditions.map((c, i) => i === ci ? next : c) });
