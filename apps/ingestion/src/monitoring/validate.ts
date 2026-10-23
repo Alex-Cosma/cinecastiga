@@ -1,7 +1,7 @@
 import { contractReportable } from '@seap/db';
 import { readContractMoneyQuality } from "@seap/db";
-import { contractRonValue, canonicalContract, readContractIdentityQuality, winnerIsSupplier } from "@seap/db";
-import { validateSignalLookup, type DbSql } from "@seap/db";
+import { contractRonValue, canonicalContract, readContractExclusionsQuality, readContractIdentityQuality, verifyContractIdentityQuality, winnerIsSupplier } from "@seap/db";
+import { validateSignalLookup, type DbSql, type SnapshotHashCache } from "@seap/db";
 import { METHODOLOGY_VERSION } from "../flags/methodology.js";
 import { assertCeilingEras } from "../flags/thresholds.js";
 import { TED_NORMALIZATION_VERSION } from "../normalize/ted.js";
@@ -10,14 +10,21 @@ export interface SnapshotCheck { check: string; passed: boolean; scope: string; 
 /** SELECT-only consistency checks; caller controls transaction and the writer gate. */
 export async function validateBatch1Snapshot(q: DbSql, options: {
   fullProfiles: boolean; allAnnual: boolean; profileLimit?: number; annualLimit?: number;
+  /** The processing run's snapshot hash memo: never read for the check; its
+   * still-current entries must equal the recomputed hashes. */
+  identityHashes?: SnapshotHashCache;
 }, emit?: (check: SnapshotCheck) => void): Promise<SnapshotCheck[]> {
   const { fullProfiles, allAnnual, profileLimit = 100, annualLimit = 500 } = options;
   const checks: SnapshotCheck[] = [];
   const report = (check: string, passed: boolean, scope: string, details: unknown) => {
     const item = { check, passed, scope, details }; checks.push(item); emit?.(item);
   };
-  const identityQuality = await readContractIdentityQuality(q);
+  // Always recomputed from the sources (a fresh full pass), never from the memo.
+  const identityQuality = options.identityHashes ? await verifyContractIdentityQuality(q, options.identityHashes) : await readContractIdentityQuality(q);
   report("contract_publication_identity",identityQuality.valid,"all approved publications and current source fingerprints",identityQuality);
+  // Temporary exclusions, likewise recomputed: the earlier exclusion gates of a run may use the memo.
+  const exclusionQuality = await readContractExclusionsQuality(q);
+  report("contract_identity_exclusions",exclusionQuality.valid,"all temporarily excluded publications and current source fingerprints",exclusionQuality);
   const moneyQuality = await readContractMoneyQuality(q);
   report("contract_currency_integrity", moneyQuality.structuralErrors === 0 && moneyQuality.sourceErrors === 0, "all contract monetary records and verified archive amounts; exclusions retained explicitly", moneyQuality);
   const [ted] = await q`select count(*)::text total,

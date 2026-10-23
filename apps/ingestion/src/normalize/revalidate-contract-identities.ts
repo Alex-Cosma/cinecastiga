@@ -1,7 +1,7 @@
 import {readRecoveredIdentityArchives} from './contract-identity-archives.js';
 import {createHash} from 'node:crypto';
 import {isDeepStrictEqual} from 'node:util';
-import {assertContractIdentityQuality,inspectContractIdentityQuality,readContractIdentityMembers,type DbSql} from '@seap/db';
+import {assertContractIdentityQuality,inspectContractIdentityQuality,readContractIdentityMembers,type DbSql,type SnapshotHashCache} from '@seap/db';
 import {assessContractPublicationGroup,assessContractVersions,assessContractSource,contractVersionAnchor,contractIdentitySignature,IDENTITY_RULES_VERSION,type ArchivedAward,type IdentityContract} from './contract-identity.js';
 import {IDENTITY_REPAIR_ID,loadIdentityRepairBundle,type IdentityRepairBundle} from './scheduled-contract-identity.js';
 import {AUTOMATIC_IDENTITY_REASON} from './discover-contract-identities.js';
@@ -177,14 +177,16 @@ async function revokeApprovals(sql:DbSql,runId:string,blocked:Blocked[],log:(mes
  * No changes to collection controls or original source rows. Versioned groups
  * select the latest source-dated, verified version; prior choices are audited.
  * Up to `maxRevoked` groups that no longer verify lose their approval instead of
- * stopping publication; the default stops on the first one. */
-export async function revalidateApprovedContractIdentities(q:DbSql,runId:string,log:(message:string)=>void=()=>{},maxRevoked=0) {
+ * stopping publication; the default stops on the first one. `identityHashes`: the
+ * processing run's snapshot hash memo, for the opening and closing quality checks;
+ * the evidence and the hashes written come from fresh reads either way. */
+export async function revalidateApprovedContractIdentities(q:DbSql,runId:string,log:(message:string)=>void=()=>{},maxRevoked=0,identityHashes?:SnapshotHashCache) {
  return q.begin(async tx=>{
   const sql=tx as unknown as DbSql;
   await sql`set local statement_timeout='180s'`;await sql`set local work_mem='8MB'`;await sql`set local max_parallel_workers_per_gather=0`;await sql`set local jit=off`;
   const [run]=await sql`select r.*,c.maintenance,c.paused,c.revision,extract(dow from r.scheduled_day)::int=c.risk_weekday risk_day from app.processing_runs r cross join app.collection_control c where r.id=${runId}::uuid and c.id=1 for update of r,c`;
   if(!run||run.status!=='running'||!run.maintenance||!run.paused||run.revision!==run.control_revision||run.stage!=='identity-repair'||!run.raw_boundary||!run.stages?.backup?.completedAt||!run.stages?.['backup-verified']?.completedAt||!run.stages?.normalize?.completedAt)throw Error('Publication revalidation requires backed-up, normalized maintenance with unchanged operator control');
-  const {report:before,staleGroups}=await inspectContractIdentityQuality(sql);
+  const {report:before,staleGroups}=await inspectContractIdentityQuality(sql,identityHashes);
   if(before.valid)return {changedGroups:0,quality:before,mode:'none' as const};
   if(before.invalidDecisions)throw Error('Invalid approval registry requires manual recovery');
   const [repair]=await sql`select status,report from app.data_repairs where id=${IDENTITY_REPAIR_ID}`;
@@ -242,7 +244,7 @@ export async function revalidateApprovedContractIdentities(q:DbSql,runId:string,
   const revoked=await revokeApprovals(sql,runId,blocked,log);
   changedOutsideTargets+=revoked.filter(r=>!targets.has(r.candidateId)).length;
   const impact=await revalidationImpact(sql,population);
-  const after=await assertContractIdentityQuality(sql);
+  const after=await assertContractIdentityQuality(sql,identityHashes);
   // Impact covers the re-verified groups only; a targeted pass leaves the rest untouched.
   const report={changedGroups,extendedGroups,quality:after,impact,rawBoundary:String(run.raw_boundary),canonicalIdsChanged,
    mode,rules:IDENTITY_RULES_VERSION,staleGroups:staleGroups.length,...(mode==='full'?{changedOutsideTargets}:{}),

@@ -54,8 +54,11 @@ export const SNAPSHOT_HASH_CHUNK=20000;
 /** Current snapshot hashes in bounded id chunks. Each member's cohort is computed
  * per official notice number over ALL its publications, independent of which
  * contracts a chunk selects, so the hashes equal a single read. Keeps each
- * statement under publication timeouts (180k approved members, 14 October 2026). */
-export async function currentSnapshotHashes(q: IdentitySql, ids: string[], size=SNAPSHOT_HASH_CHUNK) {
+ * statement under publication timeouts (180k approved members, 14 October 2026).
+ * With `cache`, hashes still valid for the current source version are reused
+ * (see SnapshotHashCache); the result is the same map either way. */
+export async function currentSnapshotHashes(q: IdentitySql, ids: string[], size=SNAPSHOT_HASH_CHUNK, cache?: SnapshotHashCache) {
+  if(cache)return cachedSnapshotHashes(q,ids,size,cache);
   const hashes=new Map<string,string>();
   for(let i=0;i<ids.length;i+=size){
     for(const r of await readContractIdentityMembers(q,ids.slice(i,i+size)))hashes.set(String(r.identity.id),String(r.snapshot_hash));
@@ -63,16 +66,127 @@ export async function currentSnapshotHashes(q: IdentitySql, ids: string[], size=
   return hashes;
 }
 
+/** Every relation readContractIdentityMembers reads, and nothing else: contracts
+ * (also counted per notice in the cohort), awards (row and cohort), winners and
+ * the authority/winner entities. Migration 0083 puts the statement trigger
+ * `contract_identity_source_changed` on each; keep the two lists identical. */
+export const CONTRACT_IDENTITY_HASH_SOURCES=['core.contracts','core.awards','core.contract_winners','core.entities'] as const;
+/** md5(prosrc) of marts.contract_identity_source_changed() as created by
+ * migration 0083. A migration that changes the body must change this too;
+ * until then the memo stays off (hashes computed as without it). */
+export const CONTRACT_IDENTITY_SOURCE_TRIGGER_MD5='aa7470bc2803dfe442891e18673436c5';
+
+/** In-process memo of current snapshot hashes for ONE processing run. A daily run
+ * otherwise recomputes the hash of every approved member up to nine times (~2 min
+ * each in production, 23 October 2026) although nothing they read has changed.
+ * Entries are valid for one source token (snapshotHashSourceToken): any committed
+ * write to CONTRACT_IDENTITY_HASH_SOURCES changes it and empties the memo. Only
+ * the current hashes are kept; stored member hashes, decisions and exclusions are
+ * always read fresh. The publication validation never reads it
+ * (verifyContractIdentityQuality). Never share one between databases or runs. */
+export interface SnapshotHashCache {
+  readonly label: string;
+  token: string | null;
+  /** null: no current contract with that id (a fresh read omits it too). */
+  readonly hashes: Map<string, string | null>;
+  readonly stats: { reused: number; computed: number; invalidated: number; bypassed: number };
+}
+export function createSnapshotHashCache(label = 'processing'): SnapshotHashCache {
+  return { label, token: null, hashes: new Map(), stats: { reused: 0, computed: 0, invalidated: 0, bypassed: 0 } };
+}
+
+/** The version of everything the snapshot hashes read, as visible to this
+ * statement. Migration 0083 stamps marts.contract_identity_source_state with a
+ * new, never reused sequence value in every transaction that writes any source
+ * relation (statement triggers: insert, update, delete, truncate), so two reads
+ * returning the same token saw the same committed source rows. Null whenever the
+ * memo must not be used: the state row or one of the four triggers is missing,
+ * disabled or altered, this session does not fire triggers, or this transaction
+ * has itself written a source relation (its later writes would not change the
+ * version again, and a rollback would hide them). The trigger function must
+ * still have the body of migration 0083 (CONTRACT_IDENTITY_SOURCE_TRIGGER_MD5);
+ * a replaced body disables the memo. Also part of the token: the database, the
+ * columns of the source relations and the settings that affect the JSON text of
+ * a row. */
+export async function snapshotHashSourceToken(q: IdentitySql): Promise<string | null> {
+  const [state]=await q`select to_regclass('marts.contract_identity_source_state') is not null present`;
+  if(!state?.present)return null;
+  const [s]=await q`with sources as (select to_regclass(name) rel from unnest(array['core.contracts','core.awards','core.contract_winners','core.entities']) name)
+    select s.instance::text instance,s.version::text version,current_database() db,
+      coalesce(s.changed_by=pg_current_xact_id_if_assigned(),false) own,
+      current_setting('session_replication_role')='origin' fires,
+      (select count(*) from sources where rel is null)::int missing,
+      (select count(*) from pg_trigger t join sources on sources.rel=t.tgrelid
+        where t.tgname='contract_identity_source_changed' and not t.tgisinternal and t.tgenabled in ('O','A')
+          and t.tgtype=60 and cardinality(t.tgattr::int2[])=0 and t.tgqual is null
+          and t.tgfoid=to_regprocedure('marts.contract_identity_source_changed()'))::int triggers,
+      (select md5(string_agg(a.attrelid::regclass::text||'.'||a.attname||':'||format_type(a.atttypid,a.atttypmod),',' order by a.attrelid::regclass::text,a.attnum))
+        from pg_attribute a join sources on sources.rel=a.attrelid where a.attnum>0 and not a.attisdropped) columns,
+      (select md5(p.prosrc) from pg_proc p where p.oid=to_regprocedure('marts.contract_identity_source_changed()')) body,
+      current_setting('TimeZone') timezone,current_setting('extra_float_digits') digits
+    from marts.contract_identity_source_state s where s.id=1`;
+  if(!s||s.own||!s.fires||s.missing!==0||s.triggers!==CONTRACT_IDENTITY_HASH_SOURCES.length||s.body!==CONTRACT_IDENTITY_SOURCE_TRIGGER_MD5)return null;
+  return JSON.stringify([s.db,s.instance,s.version,s.columns,s.timezone,s.digits]);
+}
+
+async function cachedSnapshotHashes(q: IdentitySql, ids: string[], size: number, cache: SnapshotHashCache): Promise<Map<string, string>> {
+  const reset=()=>{cache.token=null;cache.hashes.clear();cache.stats.bypassed++;};
+  const token=await snapshotHashSourceToken(q);
+  if(token===null){reset();return currentSnapshotHashes(q,ids,size);}
+  if(cache.token!==token){
+    if(cache.hashes.size)cache.stats.invalidated++;
+    cache.hashes.clear();cache.token=token;
+  }
+  const missing=[...new Set(ids)].filter(id=>!cache.hashes.has(id));
+  if(missing.length){
+    const fresh=await currentSnapshotHashes(q,missing,size);
+    // Kept only if nothing the hashes read changed while they were computed;
+    // otherwise everything is recomputed exactly as without a memo.
+    if(await snapshotHashSourceToken(q)!==token||cache.token!==token){reset();return currentSnapshotHashes(q,ids,size);}
+    for(const id of missing)cache.hashes.set(id,fresh.get(id)??null);
+    cache.stats.computed+=missing.length;
+  }
+  cache.stats.reused+=ids.length-missing.length;
+  const hashes=new Map<string,string>();
+  for(const id of ids){const hash=cache.hashes.get(id);if(hash!=null)hashes.set(id,hash);}
+  return hashes;
+}
+
 /** Read-only fail-closed check. Never silently revoke approvals and republish a
  * doubled total. A changed decision needs source review while maintenance stays on. */
-export async function readContractIdentityQuality(q: IdentitySql) {
-  return (await inspectContractIdentityQuality(q)).report;
+export async function readContractIdentityQuality(q: IdentitySql, cache?: SnapshotHashCache) {
+  return (await inspectContractIdentityQuality(q, cache)).report;
 }
 /** The quality report plus the approved groups holding a stale member, which a
  * targeted revalidation must re-verify. Kept out of the report: it is audited. */
-export async function inspectContractIdentityQuality(q: IdentitySql) {
+export async function inspectContractIdentityQuality(q: IdentitySql, cache?: SnapshotHashCache) {
+  const {report,staleGroups}=await inspectWithHashes(q,ids=>currentSnapshotHashes(q,ids,SNAPSHOT_HASH_CHUNK,cache));
+  return {report,staleGroups};
+}
+
+/** The publication gate. Every member hash is recomputed, never taken from the
+ * memo. Where the memo is still valid for the current source token, EVERY entry
+ * (members, temporary exclusions, any other contract) is recomputed and must
+ * equal the memo; a difference means the change tracking failed, so earlier
+ * checks of this run may have used stale hashes, and publication stops
+ * (`hashCache.mismatches`, `valid: false`). Exclusions themselves are checked
+ * separately, also fresh: readContractExclusionsQuality. */
+export async function verifyContractIdentityQuality(q: IdentitySql, cache?: SnapshotHashCache) {
+  const {report,ids,hashes}=await inspectWithHashes(q,ids=>currentSnapshotHashes(q,ids));
+  if(!cache)return report;
+  const token=await snapshotHashSourceToken(q);
+  const compared=token!==null&&token===cache.token?[...cache.hashes.keys()]:[];
+  const members=new Set(ids);
+  const others=await currentSnapshotHashes(q,compared.filter(id=>!members.has(id)));
+  const fresh=(id:string)=>members.has(id)?hashes.get(id):others.get(id);
+  const mismatches=compared.filter(id=>(cache.hashes.get(id)??undefined)!==fresh(id)).length;
+  return {...report,valid:report.valid&&!mismatches,hashCache:{compared:compared.length,mismatches,...cache.stats}};
+}
+
+async function inspectWithHashes(q: IdentitySql, current: (ids: string[]) => Promise<Map<string, string>>) {
   const members=await q`select contract_id::text,candidate_id,snapshot_hash from marts.contract_identity_members`;
-  const hashes=await currentSnapshotHashes(q,members.map(m=>String(m.contract_id)));
+  const ids=members.map(m=>String(m.contract_id));
+  const hashes=await current(ids);
   const staleRows=members.filter(m=>hashes.get(String(m.contract_id))!==m.snapshot_hash);
   const stale=staleRows.map(m=>String(m.contract_id));
   const invalid=await q`select d.candidate_id from marts.contract_identity_decisions d
@@ -90,10 +204,10 @@ export async function inspectContractIdentityQuality(q: IdentitySql) {
       or (c.evidence->>'methodology'='contract-identity-3' and not exists(
         select 1 from core.contracts chosen where chosen.id=d.canonical_contract_id and chosen.ca_notice_contract_id::text=c.evidence->>'latestPublicId'))`;
   const report={members:members.length,staleMembers:stale.length,invalidDecisions:invalid.length,examples:stale.slice(0,10),valid:!stale.length&&!invalid.length};
-  return {report,staleGroups:[...new Set(staleRows.map(m=>String(m.candidate_id)))].sort()};
+  return {report,staleGroups:[...new Set(staleRows.map(m=>String(m.candidate_id)))].sort(),ids,hashes};
 }
-export async function assertContractIdentityQuality(q: IdentitySql) {
-  const report=await readContractIdentityQuality(q);
+export async function assertContractIdentityQuality(q: IdentitySql, cache?: SnapshotHashCache) {
+  const report=await readContractIdentityQuality(q, cache);
   if(!report.valid)throw Error(`Contract publication identity changed: ${report.staleMembers} source members, ${report.invalidDecisions} decisions require review before publication`);
   return report;
 }
@@ -147,9 +261,21 @@ export function contractTemporarilyExcluded(q: IdentitySql, alias='c') {
   return q`exists (select 1 from marts.contract_identity_exclusions x where x.contract_id=${q(alias)}.id)`;
 }
 
-export async function assertContractExclusionsQuality(q: IdentitySql) {
+export async function assertContractExclusionsQuality(q: IdentitySql, cache?: SnapshotHashCache) {
+  const {excluded,stale,invalid}=await inspectExclusions(q,ids=>currentSnapshotHashes(q,ids,SNAPSHOT_HASH_CHUNK,cache));
+  if(stale.length||invalid.length)throw Error(`Temporary identity exclusions need review: ${stale.length} changed members, ${invalid.length} invalid groups`);
+  return {excludedPublications:excluded.length,valid:true};
+}
+/** The publication validation's exclusion check: every hash recomputed, never
+ * from a memo; a report instead of an error. */
+export async function readContractExclusionsQuality(q: IdentitySql) {
+  const {excluded,stale,invalid}=await inspectExclusions(q,ids=>currentSnapshotHashes(q,ids));
+  return {excludedPublications:excluded.length,staleExclusions:stale.length,invalidGroups:invalid.length,
+    examples:stale.slice(0,10).map(r=>String(r.contract_id)),valid:!stale.length&&!invalid.length};
+}
+async function inspectExclusions(q: IdentitySql, current: (ids: string[]) => Promise<Map<string, string>>) {
   const excluded=await q`select contract_id::text,snapshot_hash from marts.contract_identity_exclusions`;
-  const hashes=await currentSnapshotHashes(q,excluded.map(r=>String(r.contract_id)));
+  const hashes=await current(excluded.map(r=>String(r.contract_id)));
   const stale=excluded.filter(r=>hashes.get(String(r.contract_id))!==r.snapshot_hash);
   const invalid=await q`select distinct x.candidate_id from marts.contract_identity_exclusions x
     left join marts.contract_identity_candidates c on c.id=x.candidate_id
@@ -162,6 +288,5 @@ export async function assertContractExclusionsQuality(q: IdentitySql) {
       or not exists(select 1 from jsonb_array_elements(c.evidence->'members') m where m->>'id'=x.contract_id::text)
       or exists(select 1 from jsonb_array_elements(c.evidence->'members') m where not exists(
         select 1 from marts.contract_identity_exclusions other where other.candidate_id=x.candidate_id and other.contract_id=(m->>'id')::bigint))`;
-  if(stale.length||invalid.length)throw Error(`Temporary identity exclusions need review: ${stale.length} changed members, ${invalid.length} invalid groups`);
-  return {excludedPublications:excluded.length,valid:true};
+  return {excluded,stale,invalid};
 }

@@ -1,6 +1,6 @@
 import { contractReportable, contractDatePlausible, cuiCorroborated, refreshCuiCorroborations } from '@seap/db';
 import { contractRonValue, canonicalContract, assertContractIdentityQuality, assertContractExclusionsQuality, CONTRACT_VALUE_CAP_RON, winnerIsSupplier } from "@seap/db";
-import type { DbSql } from "@seap/db";
+import type { DbSql, SnapshotHashCache } from "@seap/db";
 
 /**
  * Rebuild display marts atomically from the same procurement population used by
@@ -38,7 +38,7 @@ async function threshold(sql: DbSql, key: string, fallback: number): Promise<num
 
 export async function runMarts(
   sql: DbSql,
-  opts: { log?: (m: string) => void } = {},
+  opts: { log?: (m: string) => void; identityHashes?: SnapshotHashCache } = {},
 ): Promise<MartsReport> {
   const log = opts.log ?? (() => {});
   const daBound = await threshold(sql, "da_max_plausible", DA_BOUND_FALLBACK);
@@ -49,8 +49,8 @@ export async function runMarts(
   log(`marts bounds: da_max_plausible=${daBound} award_max_plausible=${awBound}`);
 
   const report = await sql.begin(async (q) => {
-    await assertContractIdentityQuality(q);
-    await assertContractExclusionsQuality(q);
+    await assertContractIdentityQuality(q, opts.identityHashes);
+    await assertContractExclusionsQuality(q, opts.identityHashes);
     // Calendar days/years must match SEAP detail pages in Romanian time.
     await q`set local time zone 'Europe/Bucharest'`;
     await q`
