@@ -161,6 +161,16 @@ describe('interpretation → /cauta selection', () => {
     }
   });
 
+  it('offers the same buyers by domain as the alternative to an empty subject', async () => {
+    const { scope, result } = await read('iluminat in municipiul buzau');
+    const t = applyInterpretation(scope, result);
+    expect(t.answer?.domains?.label).toBe('Vezi la ce domenii sunt încadrate achizițiile făcute de primăria Municipiului Buzău, în toți anii');
+    expect(t.answer?.domains?.href).toMatch(/^\/intreaba\?spec=/);
+    // no buyer named: nothing narrower than the whole country to offer
+    const national = await read('iluminat');
+    expect(applyInterpretation(national.scope, national.result).answer?.domains ?? null).toBeNull();
+  });
+
   it('says what was not found instead of a zero total', () => {
     expect(emptyAnswerText('Cât valorează achizițiile pentru „Pod” făcute de primăria Municipiului Oradea (Bihor), în toți anii?', 'Pod'))
       .toBe('Niciun contract încadrat la „Pod” la primăria Municipiului Oradea (Bihor), în toți anii.');
