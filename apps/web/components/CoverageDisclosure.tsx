@@ -58,7 +58,7 @@ export default function CoverageDisclosure({ spec, children }: { spec?: AskSpec;
         </>}
       </div>
       {children}
-      <Link href={spec ? "/metodologie" : "/metodologie#acoperire"}>Metodologie, surse și limite ↗</Link>
+      <Link href={spec ? "/metodologie" : "/metodologie#acoperire"}>Metodologie, surse și limite →</Link>
     </div>
   </details>;
 }

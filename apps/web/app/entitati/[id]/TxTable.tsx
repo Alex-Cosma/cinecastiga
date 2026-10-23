@@ -176,7 +176,7 @@ export default function TxTable({
                 onClick={() => sortBy("value")}
                 title="sortează"
               >
-                Închidere{sort === "value" ? (dir === "desc" ? " ▾" : " ▴") : ""}
+                Valoare{sort === "value" ? (dir === "desc" ? " ▾" : " ▴") : ""}
               </th>
               <th
                 className="col-gap sortable"
@@ -224,7 +224,7 @@ export default function TxTable({
                     >
                       {t.src === "contract" ? "contract" : "directă"}
                     </span>
-                    {t.singleBidder === true ? " 1 ofertant" : ""}
+                    {t.singleBidder === true ? <span className="c-bid" title="O singură ofertă raportată în sursă">1 ofertant</span> : null}
                   </td>
                 )}
                 <td className="clip c-party" {...tip.bindClip(cleanName(t.partnerName))}>

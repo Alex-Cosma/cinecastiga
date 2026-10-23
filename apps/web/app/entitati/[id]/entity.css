@@ -32,6 +32,14 @@
 .ent-tx td.num{overflow:visible;text-overflow:clip}
 .ent-tx tbody td{vertical-align:top}
 
+/* ---- "1 ofertant" is its own line under the type tag, never cut to "contract ···" ---- */
+.ent-tx td.c-src{white-space:normal;overflow:visible;text-overflow:clip}
+.ent-tx .c-bid{display:block;margin-top:4px;font:500 12px/1.3 var(--body);color:var(--ink2);white-space:nowrap}
+
+/* ---- a section reached by its anchor (#achizitii, #semnale…) starts below
+   the sticky header and the section tabs, not under them ---- */
+.section[id],.ehead[id]{scroll-margin-top:calc(var(--site-header-h,91px) + 64px)}
+
 /* ---- the section navigation matches the page gutter on phones ---- */
 @media (max-width:720px){
   .subnav{margin-left:-18px;margin-right:-18px;padding-left:18px;padding-right:18px}
@@ -46,7 +54,11 @@
   .ent-brief-label>a,.ent-brief-label>span:first-child{white-space:normal;overflow:visible}
   .ent-brief-track{grid-row:auto}
   .ent-brief-val{grid-column:1;grid-row:auto}
+}
 
+/* ---- phones and tablets: the 8-column table has no room for the firm and
+   the object below ~900px, so rows become stacked cards there too ---- */
+@media (max-width:900px){
   .ent-tx,.ent-tx tbody,.ent-tx tr,.ent-tx td{display:block}
   .ent-tx{table-layout:auto}
   .ent-tx thead tr{display:flex;flex-wrap:wrap;gap:6px;padding:8px 12px}
@@ -69,7 +81,10 @@
   .ent-tx td[data-empty="1"]{display:none}
   .ent-tx tr.tx-ghost{display:block;padding:10px 0}
   .ent-tx tr.tx-ghost td{display:inline-block;width:30%;margin-right:3%}
+  .ent-tx td.c-src .c-bid{display:inline;margin:0 0 0 6px}
+}
 
+@media (max-width:720px){
   .split-pairs .split-pairs-scroll{overflow:visible}
   .split-pairs table.split-pairs-table{min-width:0;width:100%}
   .split-pairs table.split-pairs-table,.split-pairs .split-pairs-table tbody,.split-pairs .split-pairs-table tr,.split-pairs .split-pairs-table td{display:block}

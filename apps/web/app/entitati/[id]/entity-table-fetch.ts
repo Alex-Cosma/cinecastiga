@@ -14,3 +14,6 @@ export function shouldFetchEntityTable<T>(state: {
   const showingInitial = initialData !== undefined && shown !== null && shown.url === url && shown.data === initialData;
   return attempt > 0 || !showingInitial;
 }
+
+/** What a reader sees when a table page fails: never the raw exception (SQL, network or parser text). */
+export const ENTITY_TABLE_ERROR = "Înregistrările nu au putut fi încărcate acum. Încearcă din nou peste câteva momente.";

@@ -28,7 +28,7 @@ export default function DiscoveryMap({ counties }: { counties: DiscoveryCounty[]
   const focusKey = hovered || selected, current = countyMap.shapes.find((shape) => shape.key === focusKey), total = values.get(focusKey);
   const present = countyMap.shapes.filter((shape) => values.has(shape.key)).length;
   return <section className="d-map-card" aria-labelledby="d-map-title">
-    <div className="d-map-head"><div><p className="eyebrow">ROMÂNIA, MAI DE APROAPE</p><h2 id="d-map-title">Pe ce se duc banii<br />în județul tău?</h2></div><span className="d-map-compass" aria-hidden="true">N<svg viewBox="0 0 20 26"><path d="m10 3 5 16-5-4-5 4Z" /><path d="M10 3v21" /></svg></span></div>
+    <div className="d-map-head"><div><p className="eyebrow">ROMÂNIA, MAI DE APROAPE</p><h2 id="d-map-title">Pe ce se duc banii <br />în județul tău?</h2></div><span className="d-map-compass" aria-hidden="true">N<svg viewBox="0 0 20 26"><path d="m10 3 5 16-5-4-5 4Z" /><path d="M10 3v21" /></svg></span></div>
     <svg viewBox={`0 0 ${countyMap.width} ${countyMap.height}`} className="d-romania-map" role="group" aria-label="Alege un județ pe hartă. Aceleași opțiuni sunt disponibile în selectorul de mai jos." onMouseLeave={() => setHovered("")}>
       {countyMap.shapes.map((shape) => {
         const data = values.get(shape.key), bucket = data ? thresholds.filter((threshold) => data.amount > threshold).length : -1;

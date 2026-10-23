@@ -31,7 +31,7 @@ export default function SplitPairsTable({ entityId, isAuth }: { entityId: string
               <tr key={s.flagId}>
                 <td className="c-party">{s.partnerId ? <Link prefetch={false} href={`/entitati/${s.partnerId}`}>{cleanName(s.partnerName)}</Link> : (s.partnerName ?? "—")}</td>
                 <td className="c-year">{s.year}<div className="county">CPV {s.cpvClass ?? "—"} · {s.purchaseType ?? "tip necunoscut"}</div></td>
-                <td className="c-count" data-label="Achiziții"><a href={`/semnale/${s.flagId}`} target="_blank" rel="noopener noreferrer" title="Deschide lista achizițiilor (tab nou)">{s.count} ↗</a></td>
+                <td className="c-count" data-label="Achiziții"><Link prefetch={false} href={`/semnale/${s.flagId}`} title="Deschide lista achizițiilor">{s.count} →</Link></td>
                 <td className="num c-total">{formatRon(s.totalRon)} <span className="county">· {(s.totalRon / s.ceiling).toFixed(1).replace(".", ",")}× pragul de {formatInt(s.ceiling)} lei</span></td>
               </tr>
             ))}

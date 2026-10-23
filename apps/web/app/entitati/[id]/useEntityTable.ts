@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createLatestRequest } from "@/lib/latest-request";
-import { shouldFetchEntityTable } from "./entity-table-fetch";
+import { ENTITY_TABLE_ERROR, shouldFetchEntityTable } from "./entity-table-fetch";
 
 /**
  * The previous response supplies stable controls, but never selectable stale rows.
@@ -28,10 +28,12 @@ export function useEntityTable<T extends { ok: boolean; error?: string }>(url: s
     return latest.run(async (signal) => {
       const result = await fetch(url, { signal });
       const data = await result.json() as T;
-      if (!result.ok || !data.ok) throw new Error(data.error || "Datele nu au putut fi încărcate. Încearcă din nou.");
+      if (!result.ok || !data.ok) throw new Error(data.error || ENTITY_TABLE_ERROR);
       return data;
     }, (data) => { setResponse({ url, data, error: null }); setPending(false); }, (error) => {
-      setResponse({ url, data: null, error: error instanceof Error ? error.message : "Datele nu au putut fi încărcate." });
+      // The reader gets a plain sentence; the technical cause stays in the console.
+      console.error("entity table", url, error);
+      setResponse({ url, data: null, error: ENTITY_TABLE_ERROR });
       setPending(false);
     });
     // `initial` is server data for the first render only; it never triggers a fetch.

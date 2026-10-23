@@ -48,7 +48,7 @@ export const GLOSSARY = {
 
 export type GlossaryId = keyof typeof GLOSSARY;
 
-/** The five ideas of the beginner guide, in reading order, then the consortium rule. */
+/** The ideas of the beginner guide, in reading order. */
 export const GUIDE_IDEAS: readonly GlossaryId[] = [
   "achizitie-directa",
   "contract-procedura",
@@ -57,6 +57,13 @@ export const GUIDE_IDEAS: readonly GlossaryId[] = [
   "cpv",
   "consortiu",
 ];
+
+const IDEA_COUNT = ["", "O idee care te ajută", "Două idei care te ajută", "Trei idei care te ajută", "Patru idei care te ajută", "Cinci idei care te ajută", "Șase idei care te ajută", "Șapte idei care te ajută", "Opt idei care te ajută"];
+
+/** The guide heading counts the cards it actually shows. */
+export function guideIdeasHeading(count: number = GUIDE_IDEAS.length): string {
+  return `${IDEA_COUNT[count] ?? `${count} idei care te ajută`} să citești cifrele`;
+}
 
 export function glossaryEntry(id: GlossaryId): GlossaryEntry {
   return GLOSSARY[id];

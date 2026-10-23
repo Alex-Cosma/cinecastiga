@@ -202,7 +202,7 @@ export default function MetodologiePage() {
       <section className="section" id="citare">
         <h2>Cum citez</h2>
         <p className="hint">
-          În „Explorează”, „Copiază întrebarea” copiază linkul cu filtrele aplicate. Pentru celelalte pagini,
+          În „Întreabă”, „Copiază întrebarea” copiază linkul cu filtrele aplicate. Pentru celelalte pagini,
           copiază adresa din browser. Citează astfel: „<i>titlul paginii sau întrebarea</i>” — cinecâștigă?,
           perioada analizată, sursa indicată în rezultat, data consultării și linkul.
         </p>

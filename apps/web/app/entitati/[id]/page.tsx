@@ -20,7 +20,7 @@ import {
   type EntityFlagRow,
 } from "@/lib/marts";
 import { entityCountryLabel } from "@/lib/ted";
-import { formatRon, formatRonFull, formatInt, formatExactDecimal, formatCalendarDate, cleanName, birthNote } from "@/lib/format";
+import { formatRon, formatRonFull, formatInt, formatExactDecimal, formatCalendarDate, cleanName, birthNote, countyLabel, isAbroadCounty } from "@/lib/format";
 import { FLAG_META, FLAG_ORDER, criBand } from "@/lib/flags";
 import { getEntitySignalCounts } from "@/lib/signals";
 import { parseSignalState, signalTypeCountLabel, signalUrl } from "@/lib/signals-shared";
@@ -187,7 +187,7 @@ export default async function EntityPage({
                 ))}
               </span>
             ) : null}
-            {county ? <span>{county}</span> : null}
+            {county && !(profile?.isForeign && isAbroadCounty(county)) ? <span>{countyLabel(county)}</span> : null}
             {cui ? <span className="mono">CUI {cui}</span> : null}
             {cuiUncorroborated ? (
               <span title={registryCollision
@@ -234,12 +234,8 @@ export default async function EntityPage({
         <div className="stat">
           <div className="n">
             {txCounts.nDa > 0 ? (
-              <a
-                href={entityTxSearchUrl(id, cleanName(row.name), role, "da")}
-                target="_blank"
-                rel="noopener"
-              >
-                {formatInt(txCounts.nDa)} ↗
+              <a href={entityTxSearchUrl(id, cleanName(row.name), role, "da")}>
+                {formatInt(txCounts.nDa)} →
               </a>
             ) : (
               formatInt(txCounts.nDa)
@@ -250,19 +246,15 @@ export default async function EntityPage({
         {txCounts.nCt > 0 && (
           <div className="stat">
             <div className="n">
-              <a
-                href={entityTxSearchUrl(id, cleanName(row.name), role, "contracts")}
-                target="_blank"
-                rel="noopener"
-              >
-                {formatInt(txCounts.nContracts)} ↗
+              <a href={entityTxSearchUrl(id, cleanName(row.name), role, "contracts")}>
+                {formatInt(txCounts.nContracts)} →
               </a>
             </div>
             <div className="l">Contracte distincte prin proceduri</div>
           </div>
         )}
         <div className="stat">
-          <div className="n"><a href={entityTxSearchUrl(id, cleanName(row.name), role, "all")}>{formatRon(Number(txCounts.valueExact))} ↗</a></div>
+          <div className="n"><a href={entityTxSearchUrl(id, cleanName(row.name), role, "all")}>{formatRon(Number(txCounts.valueExact))} →</a></div>
           <div className="l">Valoare înregistrată · ambele canale</div>
         </div>
         {role === "supplier" && registryCui !== null && profile?.employees != null && (
@@ -365,12 +357,8 @@ export default async function EntityPage({
                   <td className="county">{r.calitate ?? "—"}</td>
                   <td>
                     {r.nOtherFirms > 0 && r.personKey ? (
-                      <a
-                        href={personFirmsUrl(r.personKey, cleanName(r.personName))}
-                        target="_blank"
-                        rel="noopener"
-                      >
-                        {r.nOtherFirms === 1 ? "încă o firmă" : `încă ${formatInt(r.nOtherFirms)} firme`} ↗
+                      <a href={personFirmsUrl(r.personKey, cleanName(r.personName))}>
+                        {r.nOtherFirms === 1 ? "încă o firmă" : `încă ${formatInt(r.nOtherFirms)} firme`} →
                       </a>
                     ) : null}
                     {r.nOtherOnrcOnly > 0 && (

@@ -59,6 +59,24 @@ export function cleanName(name: string | null | undefined): string {
   return name.replace(/^(RO)?\d{2,10}\s+/i, "").trim() || name;
 }
 
+/** SICAP writes "NA" (not applicable) as the county of an entity registered abroad. */
+const ABROAD_COUNTY = /^(n\/?a|-+)$/i;
+
+export function isAbroadCounty(county: string | null | undefined): boolean {
+  return !!county && ABROAD_COUNTY.test(county.trim());
+}
+
+/**
+ * The county as a reader should see it: never the raw "NA" placeholder. A firm
+ * registered abroad reads as its country when known, otherwise "firmă străină".
+ */
+export function countyLabel(county: string | null | undefined, country?: string | null): string | null {
+  const value = county?.trim();
+  if (!value) return null;
+  if (isAbroadCounty(value)) return country?.trim() || "firmă străină";
+  return value;
+}
+
 /**
  * Name-only guess that an entity is a commercial company (SRL/SA/RA). Used where
  * the legal form is not in the row (search hits): a company acting as a

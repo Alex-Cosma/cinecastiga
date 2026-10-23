@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { GLOSSARY, GUIDE_IDEAS } from "@/lib/glossary";
+import { GLOSSARY, GUIDE_IDEAS, guideIdeasHeading } from "@/lib/glossary";
 import { askHref, countyBreakdownHref } from "@/lib/discovery-links";
 import DiscoveryIcon from "../DiscoveryIcon";
 
 export const metadata: Metadata = {
   title: "Ghid pentru început",
-  description: "Ce arată cinecâștigă?, cinci idei pentru a citi cifrele și patru feluri de a începe.",
+  description: "Ce arată cinecâștigă?, ce înseamnă cifrele și patru feluri de a începe.",
 };
 
 /** Four first steps; each opens a page that answers on its own. */
@@ -46,11 +46,11 @@ export default function GuidePage() {
     </header>
 
     <section className="guide-section" aria-labelledby="guide-ideas">
-      <h2 id="guide-ideas">Cinci idei care te ajută să citești cifrele</h2>
+      <h2 id="guide-ideas">{guideIdeasHeading()}</h2>
       <ol className="guide-ideas">
         {GUIDE_IDEAS.map((id) => {
           const entry = GLOSSARY[id];
-          return <li key={id} id={id} className={id === "consortiu" ? "guide-extra" : undefined}>
+          return <li key={id} id={id}>
             <h3>{entry.title}</h3>
             <p>{entry.text}</p>
           </li>;

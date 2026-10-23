@@ -29,17 +29,28 @@ describe("main navigation", () => {
     expect(labels({ storiesPublished: true })).toContain("Ce bate la ochi");
   });
 
-  it("keeps the active-state rules", () => {
+  it("marks the section a page belongs to, in agreement with the „Descoperă / Caută” breadcrumb", () => {
     expect(active("/")).toEqual(["Descoperă"]);
-    for (const path of ["/intreaba", "/cauta", "/entitati/12", "/semnale", "/harta", "/domenii", "/supra-prag", "/contracte/1", "/anunturi/2", "/achizitii/3"]) expect(active(path)).toEqual(["Întreabă"]);
+    for (const path of ["/cauta", "/entitati/12", "/entitati/12/radiografie", "/semnale", "/semnale/abc", "/harta", "/domenii", "/supra-prag", "/contracte/1", "/anunturi/2", "/achizitii/3"]) expect(active(path)).toEqual(["Descoperă"]);
+    expect(active("/intreaba")).toEqual(["Întreabă"]);
+    expect(active("/intreabare")).toEqual([]);
     expect(active("/anchete/abc")).toEqual(["Anchete"]);
     expect(active("/urmariri")).toEqual(["Anchete"]);
     expect(active("/ghid")).toEqual(["Ghid"]);
+    expect(active("/metodologie")).toEqual(["Ghid"]);
+    expect(active("/metodologie/excluderi")).toEqual(["Ghid"]);
     expect(active("/ghidaj")).toEqual([]);
+    expect(active("/login")).toEqual([]);
   });
 
-  it("marks the guide item as the narrow-screen replacement of the header link", () => {
-    expect(navItems(base).find(item => item.href === "/ghid")?.className).toBe("d-nav-guide");
+  it("never highlights „Întreabă” outside the question builder", () => {
+    for (const path of ["/cauta", "/semnale", "/harta", "/domenii", "/contracte/9", "/entitati/2146445"]) expect(active(path)).not.toContain("Întreabă");
+  });
+
+  it("names the guide the same way at every width", () => {
+    const guide = navItems(base).find(item => item.href === "/ghid");
+    expect(guide?.label).toBe("Ghid");
+    expect(guide).not.toHaveProperty("className");
   });
 });
 
