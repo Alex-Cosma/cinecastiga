@@ -111,7 +111,7 @@ export function IntentChoose({ result, onAdopt }: { result: IntentResult; onAdop
       </ul>
       {partial && (
         <p className="ia-partial">
-          Lista arată {partial.shown} din {partial.total} potriviri. Dacă nu găsești ce cauți, <a href={`/cauta?q=${encodeURIComponent(partial.search)}`}>caută „{partial.search}”</a> sau scrie numele complet (cu localitatea ori anul nașterii).
+          Lista arată {partial.shown} din {partial.total} potriviri. Dacă nu găsești ce cauți, <a href={`/cauta?q=${encodeURIComponent(partial.search)}`}>caută „{partial.search}”</a>. {partial.hint ?? "Scrie numele complet, cu localitatea ori anul nașterii."}
         </p>
       )}
     </section>
