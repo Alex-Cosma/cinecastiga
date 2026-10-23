@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { getSessionCookie } from "better-auth/cookies";
-import { Bricolage_Grotesque, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
+import "./fonts.css";
 import "./globals.css";
 import "./approved.css";
 import "./guide.css";
@@ -17,10 +17,6 @@ import { CoverageSummary } from "@/components/DataCoverage";
 import { SITE_DESCRIPTION, SITE_NAME, pageTitle } from "@/lib/site";
 import { publishedStories } from "@/lib/stories/published";
 import { GUIDE_HREF, GUIDE_LABEL } from "@/lib/site-nav";
-
-const display = Bricolage_Grotesque({ subsets: ["latin", "latin-ext"], weight: ["500", "700", "800"], variable: "--font-display", display: "swap" });
-const body = IBM_Plex_Sans({ subsets: ["latin", "latin-ext"], weight: ["400", "500", "600"], style: ["normal", "italic"], variable: "--font-body", display: "swap" });
-const mono = IBM_Plex_Mono({ subsets: ["latin", "latin-ext"], weight: ["400", "500"], variable: "--font-mono", display: "swap" });
 
 // Coverage and account state are runtime data; builds have no database.
 export const dynamic = "force-dynamic";
@@ -40,7 +36,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // reaches the client. The navigation confirms the session after hydration.
   const sessionHint = getSessionCookie(await headers()) !== null;
   return (
-    <html lang="ro" className={`${display.variable} ${body.variable} ${mono.variable}`} suppressHydrationWarning>
+    <html lang="ro" suppressHydrationWarning>
       <body>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <a className="d-skip-link" href="#main-content">Mergi la conținut</a>
