@@ -138,7 +138,6 @@ export default function AskPanel({
   const [intentError, setIntentError] = useState<string | null>(null);
   const [chosen, setChosen] = useState<IntentChoice | null>(null);
   const [builderOpen, setBuilderOpen] = useState(false);
-  const [lastRun, setLastRun] = useState<string | null>(null);
   const askRef = useRef<HTMLInputElement>(null);
   const intentRequest = useRef<AbortController | null>(null);
   const showToast = useCallback((text: string) => {
@@ -195,7 +194,6 @@ export default function AskPanel({
           return false;
         }
         setResp(answer);
-        if (body.spec && !("tablePage" in body)) setLastRun(questionKey(body.spec as BuilderSpec));
         if (body.spec && !("tablePage" in body)) {
           setBuilderResolution({ submitted: body.spec as BuilderSpec, resolved: answer.spec as unknown as BuilderSpec });
         }
@@ -398,11 +396,11 @@ export default function AskPanel({
     };
   }, [execute, interpret]);
   const applied = resp?.spec;
+  // One title per answered spec: the same words whether the answer came from
+  // typed text, a builder edit or a shared link, in every view, the drawer and the export.
   const title =
     resp?.question ||
-    (chosen && lastRun === questionKey(chosen.spec as unknown as BuilderSpec)
-      ? chosen.sentence
-      : applied
+    (applied
       ? describeQuestion(applied as unknown as BuilderSpec)
       : "Răspunsul tău");
   const openEvidence = useCallback(
@@ -1018,8 +1016,8 @@ function RankingBars({
               <strong>Alte {entityNoun(spec.dim, rest.entities)}</strong>
             </span>
             <span className="cq-rank-value">
-              <strong>{formatRonFull(rest.value)}</strong>
-              <small>{formatShare(rest.share)} din total · {countWords(rest.count, "înregistrare", "înregistrări")}</small>
+              <strong>{spec.measure === "count" ? countWords(rest.count, "înregistrare", "înregistrări") : formatRonFull(rest.value)}</strong>
+              <small>{spec.measure === "count" ? formatRonFull(rest.value) : countWords(rest.count, "înregistrare", "înregistrări")} · {formatShare(rest.share)} din total</small>
             </span>
           </div>
         )}
@@ -1254,7 +1252,7 @@ function TableBlock({
             {perCapita && <th className="num">Populație</th>}
             {perCapita && <Th k="percap" label="lei / locuitor" num />}
             <Th k="value" label="Valoare" num />
-            {shareTotals && <th className="num">% din total</th>}
+            {shareTotals && <th className="num cq-share-col">% din total</th>}
             <Th k="count" label="Achiziții" num />
           </tr>
         </thead>
@@ -1285,7 +1283,7 @@ function TableBlock({
                 </td>
               )}
               <td className="num">{formatRonFull(r.value)}</td>
-              {shareTotals && <td className="num">{rankingShare(r.value, shareTotals) !== null ? formatShare(rankingShare(r.value, shareTotals)!) : "—"}</td>}
+              {shareTotals && <td className="num cq-share-col">{rankingShare(r.value, shareTotals) !== null ? formatShare(rankingShare(r.value, shareTotals)!) : "—"}</td>}
               <td className="num">
                 {(() => {
                   const u = rowUrl(r);
