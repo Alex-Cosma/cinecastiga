@@ -4,6 +4,7 @@ import { aliasQueries, queryTokens } from "./entity-alias";
 import { readLocalAuthorityIds, sectorUnit } from "../peer-population";
 import { onrcBirthYear } from "../format";
 import { retiredText, type RetiredTerm } from "./retired-terms";
+import { cpvTermParts } from "./cpv-terms";
 
 /**
  * Grounding: turn the spec's free-text fields (cpvTerm, authorityName,
@@ -108,14 +109,63 @@ export interface SynonymRow { term: string; cpv_prefix: string; note: string | n
  * notes come from the included rows.
  */
 export function splitSynonymRows(rows: SynonymRow[]): { prefixes: string[]; excludePrefixes: string[]; notes: string[] } {
+  const terms = [...new Set(rows.map((r) => r.term))];
+  const parts = terms.map((term): CpvPart => {
+    const own = rows.filter((r) => r.term === term);
+    const prefixes = [...new Set(own.filter((r) => !r.exclude).map((r) => cpvSubtreePrefix(r.cpv_prefix)))];
+    // an exclusion counts only inside the term's own included sub-trees, never over one of them
+    const excludePrefixes = [...new Set(own.filter((r) => r.exclude).map((r) => cpvSubtreePrefix(r.cpv_prefix)))]
+      .filter((x) => prefixes.some((p) => x.startsWith(p) && x !== p) && !prefixes.some((p) => p.startsWith(x)));
+    return { prefixes, excludePrefixes };
+  });
+  // several terms of the same text ("medicamente si reactivi"): what any of them counts is counted
+  const union = unionCpvParts(parts);
   const prefixes = [...new Set(rows.filter((r) => !r.exclude).map((r) => cpvSubtreePrefix(r.cpv_prefix)))];
-  const excludePrefixes = [...new Set(rows.filter((r) => r.exclude).map((r) => cpvSubtreePrefix(r.cpv_prefix)))]
-    // inside an included sub-tree, and not re-included by another term of the same text
-    .filter((x) => prefixes.some((p) => x.startsWith(p) && x !== p) && !prefixes.some((p) => p.startsWith(x)))
-    .sort();
   const notes = [...new Set(rows.filter((r) => !r.exclude).map((r) => r.note).filter(isPublicSynonymNote))];
-  return { prefixes, excludePrefixes, notes };
+  return { prefixes, excludePrefixes: union.excludePrefixes, notes };
 }
+
+/** One subject: CPV sub-trees counted, minus the sub-trees it leaves out. */
+export interface CpvPart { prefixes: string[]; excludePrefixes: string[] }
+
+/** Prefixes covering every code under `x` except those under one of `holes` (CPV codes are 8 digits). */
+export function carvePrefixes(x: string, holes: string[]): string[] {
+  if (holes.some((h) => x.startsWith(h))) return [];
+  const inside = holes.filter((h) => h.startsWith(x));
+  if (!inside.length || x.length >= 8) return [x];
+  return Array.from({ length: 10 }, (_, d) => `${x}${d}`).flatMap((child) => carvePrefixes(child, inside));
+}
+
+/**
+ * Several subjects asked together ("parcuri și spații verzi"): a record is
+ * counted when ANY subject counts it (its include sub-trees minus its own
+ * exclusions), and once. Written as the engine's single condition
+ * `like any(prefixes) and not like any(excludePrefixes)`, exactly:
+ *   - an exclusion is dropped when another subject counts that sub-tree (it
+ *     includes it or a parent and does not leave it out);
+ *   - an exclusion holding a narrower class another subject includes is
+ *     carved around that class;
+ *   - otherwise it is kept.
+ */
+export function unionCpvParts(parts: CpvPart[]): { prefixes: string[]; excludePrefixes: string[] } {
+  const all = [...new Set(parts.flatMap((p) => p.prefixes))];
+  // a sub-tree inside another included one adds nothing
+  const prefixes = all.filter((p) => !all.some((q) => q !== p && p.startsWith(q)));
+  const excluded = new Set<string>();
+  parts.forEach((part, k) => {
+    const others = parts.filter((_, m) => m !== k);
+    for (const x of part.excludePrefixes) {
+      const countedElsewhere = others.some((o) => o.prefixes.some((p) => x.startsWith(p)) && !o.excludePrefixes.some((e) => x.startsWith(e)));
+      if (countedElsewhere) continue;
+      const holes = others.flatMap((o) => o.prefixes.filter((p) => p.startsWith(x) && p !== x));
+      for (const piece of carvePrefixes(x, holes)) excluded.add(piece);
+    }
+  });
+  const list = [...excluded];
+  return { prefixes, excludePrefixes: list.filter((x) => !list.some((y) => y !== x && x.startsWith(y))).sort() };
+}
+
+export { CPV_TERM_SEPARATOR, cpvTermParts, joinCpvTerms } from "./cpv-terms";
 
 /**
  * Synonyms for a query that is not itself a curated term. Words are matched
@@ -146,7 +196,42 @@ export function pickContainedSynonyms(folded: string, candidates: SynonymRow[]):
     .sort((a, b) => a.term.localeCompare(b.term) || a.cpv_prefix.localeCompare(b.cpv_prefix));
 }
 
+/** Catalogue names of CPV prefixes, the shortest code under each ("Lucrări de drumuri (45233140-2)"). */
+async function prefixNames(sql: DbSql, prefixes: string[]): Promise<string[]> {
+  if (!prefixes.length) return [];
+  const rows = (await sql`
+    select distinct on (p.pref) c.code, c.name_ro
+    from unnest(${sql.array(prefixes)}::text[]) p(pref)
+    join core.cpv_codes c on c.code like p.pref || '%'
+    order by p.pref, length(c.code), c.code
+  `) as unknown as { code: string; name_ro: string | null }[];
+  return rows.map((n) => `${n.name_ro ?? "?"} (${n.code})`);
+}
+
+/**
+ * "parcuri + spatii verzi": each subject grounded on its own, then counted
+ * together (unionCpvParts). A subject that cannot be grounded is never
+ * dropped silently: the whole term then has no prefixes and the engine says so.
+ */
+async function groundCpvParts(sql: DbSql, term: string, parts: string[]): Promise<CpvGrounding> {
+  const groundings = await Promise.all(parts.map((p) => groundCpv(sql, p)));
+  const missing = groundings.find((g) => g.prefixes.length === 0);
+  if (missing) return { term, prefixes: [], matchedNames: [], method: "none", ...(missing.retired ? { retired: missing.retired } : {}) };
+  const { prefixes, excludePrefixes } = unionCpvParts(groundings.map((g) => ({ prefixes: g.prefixes, excludePrefixes: g.excludePrefixes ?? [] })));
+  const notes = [...new Set(groundings.flatMap((g) => g.notes ?? []))];
+  return {
+    term,
+    prefixes,
+    matchedNames: [...new Set(groundings.flatMap((g) => g.matchedNames))],
+    method: groundings.some((g) => g.method === "fuzzy") ? "fuzzy" : groundings.every((g) => g.method === "code") ? "code" : "synonym",
+    notes,
+    ...(excludePrefixes.length ? { excludePrefixes, excludedNames: await prefixNames(sql, excludePrefixes) } : {}),
+  };
+}
+
 async function groundCpv(sql: DbSql, term: string): Promise<CpvGrounding> {
+  const parts = cpvTermParts(term);
+  if (parts.length > 1) return groundCpvParts(sql, term, parts);
   const folded = fold(term);
 
   // 0. A CPV code typed directly ("45233", "45233120", "03413000-8"):

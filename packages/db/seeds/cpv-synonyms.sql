@@ -3,7 +3,7 @@
 -- Engine resolves a term: its include rows (code like prefix||'%') minus its
 -- exclude rows (exclude = true); a term without rows falls back to trigrams.
 -- A row's note is shown to people wherever the term is used: write it as a
--- sentence for a reader. Migrations 0080 and 0081 bring an existing database
+-- sentence for a reader. Migrations 0080, 0081 and 0082 bring an existing database
 -- to this same state; keep them in step.
 -- Reproducible seed — re-run to rebuild. Extend freely.
 create schema if not exists reference;
@@ -75,12 +75,15 @@ insert into reference.cpv_synonym (term, cpv_prefix, note, exclude) values
 ('constructii','45000000',null,false),
 ('cladiri','45210000',null,false),
 ('poduri','45221000',null,false),
+('pod','45221000',null,false),
 ('alimentare cu apa','45232150',null,false),
 ('canalizare','45232400',null,false),
 ('asfalt','45233000',null,false),
 ('asfaltare','45233000',null,false),
 ('drumuri','45233000',null,false),
 ('sosele','45233000',null,false),
+('lucrari de drumuri','45233000',null,false),
+('lucrari drumuri','45233000',null,false),
 ('reabilitare drumuri','45233140',null,false),
 ('licente','48000000',null,false),
 ('software','48000000',null,false),
@@ -156,6 +159,7 @@ insert into reference.cpv_synonym (term, cpv_prefix, note, exclude) values
 ('izolare termica','45321000',null,false),
 ('parcuri','45112711',null,false),
 ('parcuri','43325000',null,false),
+('parcuri','77310000','Include amenajarea și întreținerea tuturor spațiilor verzi, nu doar a parcurilor: primăriile trec întreținerea parcurilor mai ales sub acest cod.',false),
 ('spatii verzi','77310000',null,false),
 ('spatii verzi','71421000',null,false),
 ('locuri de joaca','37535200',null,false),
@@ -257,8 +261,6 @@ insert into reference.cpv_synonym (term, cpv_prefix, note, exclude) values
 ('reabilitare drumuri','45233139',null,false),
 ('reabilitare drumuri','45233251',null,false),
 ('reabilitare drumuri','45233223',null,false),
-('parcuri','77313000',null,false),
-('parcuri','77311000',null,false),
 ('brichete','09111400',null,false),
 ('peleti','09111400',null,false),
 ('hartie','30197600',null,false),
