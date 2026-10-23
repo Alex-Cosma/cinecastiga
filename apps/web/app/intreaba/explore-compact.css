@@ -8,7 +8,6 @@
 .explore-compact .qb-editor { padding:24px; border-radius:13px; box-shadow:none; }
 .explore-compact .qb-sentence { margin:0 0 10px; font-size:30px; line-height:1.55; letter-spacing:-.025em; }
 .explore-compact .qb-desktop-break { display:none; }
-.explore-compact .cq-edit-hint { margin:0 0 22px; font-size:12px; line-height:1.6; color:var(--ink-secondary); }
 .explore-compact .qb-conditions { margin-bottom:18px; }
 .explore-compact .qb-chip>button,.explore-compact .qb-add { min-height:44px; font-size:13px; }
 .cq-more-filters { margin:0 0 18px; color:var(--ink); font-size:13px; }
@@ -31,7 +30,6 @@
   .explore-compact .qb-shortcuts { display:none; }
   .explore-compact .qb-editor { padding:18px; }
   .explore-compact .qb-sentence { font-size:26px; line-height:1.65; }
-  .explore-compact .cq-edit-hint { margin-bottom:18px; }
   .cq-more-filters>summary>span { display:none; }
   .explore-compact .qb-editor-bottom { gap:14px; }
   .explore-compact .qb-apply-area,.explore-compact .qb-apply { width:100%; }

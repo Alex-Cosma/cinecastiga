@@ -40,6 +40,10 @@ export const GLOSSARY = {
     title: "Înregistrare contract–furnizor",
     text: "Un rând pentru fiecare firmă câștigătoare a unui contract. Un contract cu 3 câștigători apare pe 3 rânduri, cu valoarea împărțită între ei, așa că numărul de rânduri poate fi mai mare decât numărul de contracte.",
   },
+  "selectie-precisa": {
+    title: "Selecție precisă",
+    text: "Condițiile de aici se adaugă celor de mai sus, iar răspunsul, sursele și exportul folosesc aceeași selecție. O excludere păstrează înregistrările cu identitate sau categorie necunoscută. La un contract cu mai mulți câștigători, valoarea este cota alocată fiecărui furnizor, nu valoarea integrală.",
+  },
   "sediul-institutiei": {
     title: "Județul de pe hartă",
     text: "Harta include doar înregistrările cu județ cunoscut și pune fiecare achiziție în județul unde are sediul instituția care cumpără, nu unde se face lucrarea sau se livrează produsul. Un minister din București apare la București, chiar dacă lucrarea e în alt județ.",
