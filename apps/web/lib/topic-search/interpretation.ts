@@ -2,7 +2,7 @@ import type { AskSpec } from '../ask/spec';
 import { askHref } from '../discovery-links';
 import { buildPlaces, countyDisplay } from '../intent/places';
 import { fold as foldText } from '../intent/text';
-import { sentenceFor, specFor } from '../intent/to-spec';
+import { sentenceFor, specFor, type SentenceLabels } from '../intent/to-spec';
 import type { AuthorityKind } from '../ask/spec';
 import type { IntentResult, Interpretation, PlaceMatch, Span } from '../intent/types';
 import type { Place, TopicScope } from './shared';
@@ -61,8 +61,17 @@ export interface TopicInterpretation {
   problem: string | null;
   confidence: Interpretation['confidenceLabel'];
   hasEntity: boolean;
-  /** Subject answer through the Ask engine (/api/ask), only when the reading is unambiguous. */
-  answer: { total: { spec: AskSpec; sentence: string }; top: { spec: AskSpec; sentence: string }; href: string; cpv: string[]; cpvExcluded: string[] } | null;
+  /**
+   * Subject answer through the Ask engine (/api/ask), only when the reading is unambiguous.
+   * `evidenceHref` opens every record the total counts; `empty` is said instead of "0 lei".
+   */
+  answer: { total: { spec: AskSpec; sentence: string }; top: { spec: AskSpec; sentence: string }; href: string; evidenceHref: string; empty: string; cpv: string[]; cpvExcluded: string[] } | null;
+  /**
+   * The words are a whole question the rules read cleanly ("cine ia banii
+   * oradea"): the page answers it first and the words, searched as written,
+   * go below. Null for a subject or a name search.
+   */
+  question: { sentence: string } | null;
   /** The interpreter's sentence is what the page shows (an answer, or a reading with no subject). */
   trusted: boolean;
   /** "Vezi răspunsul complet în Întreabă". */
@@ -94,7 +103,7 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
   const base: TopicInterpretation = {
     q: scope.q, applied: { q: scope.q, place: scope.place, from: scope.from, to: scope.to },
     fromWords: { place: null, period: null }, kind: null, note: null, explicitPlace: null, subject: null, otherSubjects: [], placeChoices: [], placeAmbiguous: false,
-    sentence: null, problem: null, confidence: 'none', hasEntity: false, answer: null, askHref: null, trusted: false,
+    sentence: null, problem: null, confidence: 'none', hasEntity: false, answer: null, question: null, askHref: null, trusted: false,
   };
   const named = explicitPlace ? placeMatchFor(explicitPlace) : null;
   if (explicitPlace && named) base.explicitPlace = { id: explicitPlace.id, label: named.kind === 'county' ? named.name : named.label, kind: named.kind };
@@ -171,23 +180,62 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
       period: years ? { ...(years.yearFrom !== undefined ? { yearFrom: years.yearFrom } : {}), ...(years.yearTo !== undefined ? { yearTo: years.yearTo } : {}), matched: i.period?.matched ?? { text: '', from: 0, to: 0 } } : null,
     };
     const choice = { place: answerPlace };
-    const total = specFor(answerReading, 'total', choice).spec;
-    const top = specFor(answerReading, 'ranking_suppliers', choice).spec;
-    const labels = { subject: s0!.label };
-    if (total && top) {
-      const explicit = Boolean(scope.place || scope.from);
-      out.answer = {
-        total: { spec: total, sentence: sentenceFor(total, labels) },
-        top: { spec: top, sentence: sentenceFor(top, labels) },
-        href: explicit ? askHref(top) : `/intreaba?q=${encodeURIComponent(scope.q)}`,
-        cpv: [],
-        cpvExcluded: [],
-      };
+    const explicit = Boolean(scope.place || scope.from);
+    out.answer = shortAnswer(answerReading, choice, { subject: s0!.label }, (top) => (explicit ? askHref(top) : `/intreaba?q=${encodeURIComponent(scope.q)}`));
+  }
+  // Question first: the words are a question the rules read cleanly, not title words.
+  // A subject applied to the titles ("iluminat buzau") stays a subject search.
+  if (!applies && isCleanQuestion(result)) {
+    out.question = { sentence: result.sentence! };
+    // "Cine…" and "cât…" get the total and the first three winners; other questions open in Întreabă.
+    if (!out.answer && (i.intent === 'ranking_suppliers' || i.intent === 'total')) {
+      const labels = { subject: s0?.label ?? null, ...(i.askedTownHalls && !i.authorityKind ? { allInstitutions: true } : {}) };
+      out.answer = shortAnswer({ ...i, topN: 3, superlative: false, measure: null }, {}, labels, () => `/intreaba?q=${encodeURIComponent(scope.q)}`);
     }
+    // The subject the answer counts, so the route can list its CPV classes ("Domenii incluse").
+    if (s0 && !out.subject && out.answer?.total.spec.filters.cpvTerm === s0.term)
+      out.subject = { term: s0.term, label: s0.label, cpvName: s0.cpvName, source: s0.source, notes: [] };
   }
   // Chips say what is searched or answered: a subject reading used for neither is not shown.
   if (!out.answer && !applies) { out.subject = null; out.otherSubjects = []; out.kind = null; }
-  out.trusted = Boolean(out.answer) || (!i.subjects.length && !i.leftover.length && Boolean(result.spec));
+  out.trusted = Boolean(out.answer) || Boolean(out.question) || (!i.subjects.length && !i.leftover.length && Boolean(result.spec));
   out.askHref = out.answer?.href ?? (result.spec || result.alternatives.length ? `/intreaba?q=${encodeURIComponent(scope.q)}` : null);
   return out;
+}
+
+/**
+ * A question to answer first: the person asked ("cine", "cât"), the rules
+ * built one spec with high confidence and every word is explained. A reading
+ * with a choice to make (same-named places, firms or persons) has no spec and
+ * is never answered by a guess.
+ */
+export function isCleanQuestion(result: IntentResult): boolean {
+  const i = result.interpretation;
+  return Boolean(result.spec && result.sentence) && i.intentSource === 'cue' && i.confidenceLabel === 'high' && !i.leftover.length
+    && !i.placeAmbiguous && !i.subjectChoices && !(i.entityAlternatives.length && !i.authority && !i.supplier) && !(i.personAlternatives.length && !i.person);
+}
+
+/** "Niciun contract încadrat la „Pod” la primăria Municipiului Oradea (Bihor), în toți anii." */
+export function emptyAnswerText(totalSentence: string, subject: string | null): string {
+  const where = /făcute de (.+)\?$/.exec(totalSentence)?.[1];
+  if (subject) return where ? `Niciun contract încadrat la „${subject}” la ${where}.` : `Niciun contract încadrat la „${subject}” în această selecție.`;
+  return where ? `Nicio achiziție înregistrată la ${where}.` : 'Nicio achiziție înregistrată în această selecție.';
+}
+
+/** Total and the first three winners of one reading, as Ask specs. */
+function shortAnswer(reading: Interpretation, choice: { place?: PlaceMatch | null }, labels: SentenceLabels, href: (top: AskSpec) => string): TopicInterpretation['answer'] {
+  const total = specFor(reading, 'total', choice).spec;
+  const top = specFor(reading, 'ranking_suppliers', choice).spec;
+  if (!total || !top) return null;
+  const totalSentence = sentenceFor(total, labels);
+  return {
+    total: { spec: total, sentence: totalSentence },
+    top: { spec: top, sentence: sentenceFor(top, labels) },
+    href: href(top),
+    // Ask runs the spec and opens the records behind the total.
+    evidenceHref: `${askHref(total)}&drill=1`,
+    empty: emptyAnswerText(totalSentence, labels.subject ?? null),
+    cpv: [],
+    cpvExcluded: [],
+  };
 }
