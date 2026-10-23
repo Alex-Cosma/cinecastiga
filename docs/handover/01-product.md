@@ -53,6 +53,10 @@ Căutarea CPV folosește catalogul oficial plus sinonime, ignoră diacriticele �
 - Identitate forest-green/ivory, teme deschis/închis, Bricolage Grotesque + IBM Plex. Reutilizează CSS-ul și iconografia existente.
 - Dialogurile de căutare își păstrează dimensiunea în loading/empty/error; rezultate cu scroll intern; cererile vechi nu suprascriu căutarea nouă.
 - Drawer-ul de surse păstrează contextul; titlul unui contract deschide detaliul **în tab nou**.
+- În rest (23.10.2026): paginile interne (`/entitati`, `/contracte`, `/achizitii`, `/anunturi`, `/semnale`, `/metodologie`, drill-urile „X tranzacții”) se deschid **în același tab**, marcate cu „→”. „↗” + tab nou rămâne numai pentru site-uri externe (e-licitatie.ro, TED, ANAF, termene.ro, listafirme.ro, INS) și pentru fișiere/PDF.
+- Navigarea principală: „Descoperă” e activ pe prima pagină, `/cauta` (breadcrumb „Descoperă / Caută”), `/semnale`, `/harta`, `/domenii`, `/supra-prag` și paginile de entitate/contract/achiziție/anunț; „Întreabă” numai pe `/intreaba`; „Ghid” pe `/ghid` și `/metodologie`. Ghidul are un singur nume, „Ghid”, în header, meniul mobil și footer. Regulile sunt în `apps/web/lib/site-nav.ts`, cu teste.
+- Barele sticky de sub header (tab-urile entității) citesc `--site-header-h`, măsurat de `SiteNav`; pe telefon rândul de tab-uri se derulează lateral, cu estompare la marginea care ascunde tab-uri.
+- Erorile de pagină arată o frază în română, „Încearcă din nou”, linkuri spre prima pagină și Semnale, iar codul tehnic doar pliat; textul excepției nu ajunge pe ecran (nici în tabelele entității).
 - Redirectul de la ID intern trebuie să fie relativ: nu construi linkuri publice din originea internă `0.0.0.0:3000`.
 - `/domenii`: atlas CPV interactiv. Click pe părinte = drill-down în atlas; click pe frunză = detaliu; săgeata↗ = detaliu indiferent de nivel. Tooltip imediat pentru dreptunghiurile mici și listă lizibilă alături.
 - `/supra-prag`: „Atribuiri publicate în TED”, nu „toate achizițiile peste pragul european”.

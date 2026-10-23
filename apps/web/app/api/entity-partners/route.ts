@@ -21,8 +21,10 @@ export async function GET(req: Request) {
     const { rows, total } = await getEntityPartnersPaged(id, role, page, 10);
     return NextResponse.json({ ok: true, rows, total, pageSize: 10 });
   } catch (e) {
+    // The technical cause goes to the server log, never to the reader.
+    console.error("entity-partners", { id, role, page }, e);
     return NextResponse.json(
-      { ok: false, error: `Eroare: ${e instanceof Error ? e.message : String(e)}` },
+      { ok: false, error: "Partenerii nu au putut fi încărcați acum. Încearcă din nou peste câteva momente." },
       { status: 500 },
     );
   }

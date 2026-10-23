@@ -138,3 +138,32 @@
 
 /* Four primary destinations, including editorial stories, fit narrow screens. */
 @media(max-width:700px){.d-main-nav{gap:clamp(4px,2vw,16px);max-width:460px;min-width:0}.d-main-nav>a{flex:0 1 auto}}
+
+/* Sticky bars sit under the sticky header at every width. SiteNav measures the
+   header into --site-header-h; these are first-paint fallbacks per breakpoint. */
+:root{--site-header-h:91px}
+@media(max-width:900px){:root{--site-header-h:81px}}
+@media(max-width:700px){:root{--site-header-h:112px}}
+.subnav{top:var(--site-header-h)}
+.sem-side,.ask-rail,.dosar-side{top:calc(var(--site-header-h) + 16px)}
+/* A tab row wider than the screen scrolls sideways and fades at the edge that hides tabs. */
+.subnav-in[data-fade=right]{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 40px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 40px),transparent)}
+.subnav-in[data-fade=left]{-webkit-mask-image:linear-gradient(90deg,transparent,#000 40px);mask-image:linear-gradient(90deg,transparent,#000 40px)}
+.subnav-in[data-fade=both]{-webkit-mask-image:linear-gradient(90deg,transparent,#000 40px,#000 calc(100% - 40px),transparent);mask-image:linear-gradient(90deg,transparent,#000 40px,#000 calc(100% - 40px),transparent)}
+
+/* Dark theme: controls whose light colours are written directly in their own
+   stylesheet (segmented question shortcuts, the question count badge). */
+:root[data-theme="dark"] .qb-shortcuts{background:var(--sunk);border-color:var(--line)}
+:root[data-theme="dark"] .qb-shortcuts button{color:var(--muted)}
+:root[data-theme="dark"] .qb-shortcuts button:hover{background:var(--surface);color:var(--ink)}
+:root[data-theme="dark"] .qb-shortcuts button[aria-pressed=true]{background:var(--surface);color:var(--accent)}
+:root[data-theme="dark"] .qb-catalogue-trigger{border-color:var(--line2)}
+:root[data-theme="dark"] .qb-catalogue-trigger>span{background:var(--accent-soft);color:var(--accent)}
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) .qb-shortcuts{background:var(--sunk);border-color:var(--line)}
+  :root:not([data-theme="light"]) .qb-shortcuts button{color:var(--muted)}
+  :root:not([data-theme="light"]) .qb-shortcuts button:hover{background:var(--surface);color:var(--ink)}
+  :root:not([data-theme="light"]) .qb-shortcuts button[aria-pressed=true]{background:var(--surface);color:var(--accent)}
+  :root:not([data-theme="light"]) .qb-catalogue-trigger{border-color:var(--line2)}
+  :root:not([data-theme="light"]) .qb-catalogue-trigger>span{background:var(--accent-soft);color:var(--accent)}
+}

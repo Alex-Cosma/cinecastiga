@@ -6,7 +6,7 @@ import { sessionUserId } from "@/lib/session";
 import { notFound } from "next/navigation";
 import { getContractDetail } from "@/lib/marts";
 import { CONTRACT_DATE_FLOOR } from "@seap/db";
-import { formatRon, formatRonFull, formatInt, formatExactDecimal, formatCalendarDate, cleanName } from "@/lib/format";
+import { formatRon, formatRonFull, formatInt, formatExactDecimal, formatCalendarDate, cleanName, countyLabel } from "@/lib/format";
 import { FLAG_META } from "@/lib/flags";
 import { awardValueLabel, noticeContractsNote } from "@/lib/risk-presentation";
 import { awardUrl } from "@/lib/elicitatie";
@@ -156,7 +156,7 @@ export default async function ContractPage({
                 ) : (
                   "—"
                 )}
-                {c.authority?.county && <span className="county"> · {c.authority.county}</span>}
+                {countyLabel(c.authority?.county) && <span className="county"> · {countyLabel(c.authority?.county)}</span>}
               </td>
             </tr>
             {c.winners.map((w, i) => (
@@ -166,7 +166,7 @@ export default async function ContractPage({
                 </td>
                 <td>
                   <Link href={`/entitati/${w.entityId}?rol=furnizor`}>{cleanName(w.name)}</Link>
-                  {w.county && <span className="county"> · {w.county}</span>}
+                  {countyLabel(w.county) && <span className="county"> · {countyLabel(w.county)}</span>}
                   {multiWinner && w.shareRon != null && (
                     <span className="county"> · cotă estimată: {formatExactDecimal(w.shareRonExact)} lei{splitLabel ? ` (${splitLabel})` : ""}</span>
                   )}
@@ -178,13 +178,11 @@ export default async function ContractPage({
                           { id: c.authority.entityId, name: cleanName(c.authority.name) },
                           { id: w.entityId, name: cleanName(w.name) },
                         )}
-                        target="_blank"
-                        rel="noopener"
                       >
                         {w.pairNDa + w.pairNCt === 1
                           ? "o tranzacție"
                           : `${formatInt(w.pairNDa + w.pairNCt)} tranzacții`}{" "}
-                        · {formatRon(w.pairTotalRon)} ↗
+                        · {formatRon(w.pairTotalRon)} →
                       </a>
                     </>
                   )}
