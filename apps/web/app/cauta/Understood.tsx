@@ -51,7 +51,7 @@ export function Understood({scope,effective,t,place}:{scope:TopicScope;effective
     {period&&<li className="topic-chip"><span>Perioada:</span> <strong>{period.label}</strong><Link prefetch={false} className="topic-chip-remove" href={removePeriod} aria-label="Scoate perioada: toți anii"><DiscoveryIcon name="close"/></Link></li>}
    </ul>
   </div>
-  {t.subject?.notes.map(n=><p key={n} className="topic-subject-note">{n}</p>)}
+  {(!t.answer||scope.tab!=='all')&&t.subject?.notes.map(n=><p key={n} className="topic-subject-note">{n}</p>)}
   {t.note&&<p className="topic-help">{t.note}{t.askHref&&<> <Link prefetch={false} href={t.askHref}>Deschide în Întreabă</Link></>}</p>}
   {(t.placeAmbiguous||(t.note&&!placeChip))&&t.placeChoices.length>0&&<div className="topic-understood-choose"><p>{t.placeAmbiguous?'Mai multe localități au acest nume. Pe care o cauți?':'Poți căuta în titluri:'}</p><div>{t.placeChoices.map(c=><Link prefetch={false} className="topic-control" key={c.id} href={searchHref(scope,{q:c.q,place:c.id})}>{c.choice}<DiscoveryIcon name="arrow"/></Link>)}</div></div>}
   {fromWords.place||fromWords.period?<p className="topic-help">Căutăm „{t.applied.q}” în titluri, cu {[fromWords.place?'locul':null,fromWords.period?'perioada':null].filter(Boolean).join(' și ')} din cuvintele tale ca filtru. <Link prefetch={false} href={literal}>Caută exact ce ai scris</Link></p>
