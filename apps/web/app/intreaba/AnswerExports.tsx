@@ -1,11 +1,10 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import type {AskSpec} from '@/lib/ask/spec';
-import type {BlockData} from '@/lib/ask/compile';
 import {requestSourceCsv,downloadSourceCsv} from '@/lib/ask/source-csv';
 import DiscoveryIcon from '../DiscoveryIcon';
 
-export default function AnswerExports({spec,data,disabled,onResult}:{spec:AskSpec;data:BlockData;disabled:boolean;onResult:()=>void}){
+export default function AnswerExports({spec,disabled,onResult}:{spec:AskSpec;disabled:boolean;onResult:()=>void}){
  const controller=useRef<AbortController|null>(null);
  const [busy,setBusy]=useState(false),[message,setMessage]=useState('');
  useEffect(()=>{if(disabled){controller.current?.abort();setBusy(false);setMessage('');}},[disabled]);
@@ -19,8 +18,8 @@ export default function AnswerExports({spec,data,disabled,onResult}:{spec:AskSpe
  return <details className="cq-export">
   <summary><DiscoveryIcon name="download"/>Exportă<DiscoveryIcon name="chevronDown"/></summary>
   <div className="cq-export-options">
-   <div><button type="button" disabled={disabled||busy} onClick={onResult}>Rezultatul afișat · CSV</button><p>{data.block==='fact_check'?'Doar exemplele afișate în rezultat.':data.block==='table'?'Doar rândurile clasamentului afișate acum.':'Valorile din vizualizarea afișată.'} Pentru datele individuale, alege înregistrările sursă.</p></div>
-   <div><button type="button" disabled={disabled||busy} onClick={()=>void sources()}>{busy?'Se pregătește exportul…':'Înregistrările sursă · CSV'}</button><p>Selecția completă din spatele răspunsului, cu sume exacte și linkuri oficiale. Maximum 100.000 de rânduri într-un fișier; un export parțial este indicat explicit.</p></div>
+   <div><button type="button" disabled={disabled||busy} onClick={onResult}>Rezultatul afișat · CSV</button><p>Doar ce vezi acum.</p></div>
+   <div><button type="button" disabled={disabled||busy} onClick={()=>void sources()}>{busy?'Se pregătește exportul…':'Înregistrările sursă · CSV'}</button><p>Toată selecția, cu sume exacte și linkuri oficiale. Max. 100.000 de rânduri.</p></div>
   </div>
   {message&&<p className="cq-export-status" role="status">{message}</p>}
  </details>;

@@ -139,7 +139,7 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
     <div className={`ev-load-status${busy ? " is-active" : ""}`} role="status" aria-live="polite" aria-atomic="true">
       {busy && <><span className="ev-load-spinner" aria-hidden="true" /><div>
         <strong>{result ? "Se actualizează lista…" : "Se încarcă înregistrările sursă…"}</strong>
-        <p>{slow ? "Încă se lucrează. Pentru selecții mari, încărcarea poate dura mai mult." : result ? "Păstrăm lista anterioară până sosesc rezultatele noi." : "Pregătim lista și totalurile pentru această selecție."}</p>
+        {slow && <p>Încă se lucrează. Pentru selecții mari, încărcarea poate dura mai mult.</p>}
       </div></>}
     </div>
     <div className="ev-content">
@@ -213,7 +213,7 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
         </table>}
       </div>
       {result && result.total > result.pageSize && <nav className="ev-pagination" aria-label="Pagini de înregistrări"><button type="button" disabled={busy || result.page === 0} onClick={() => setPage(result.page - 1)}>← Înapoi</button><span>Pagina {count(result.page + 1)} din {count(Math.ceil(result.total / result.pageSize))}</span><button type="button" disabled={busy || (result.page + 1) * result.pageSize >= result.total} onClick={() => setPage(result.page + 1)}>Înainte →</button></nav>}
-      {result && result.sourceTotal > EVIDENCE_CSV_LIMIT && <p className="ev-export-limit">Un export este limitat la 100.000 de rânduri. Dacă selecția depășește limita, fișierul și confirmarea indică explicit că exportul este parțial.</p>}
+      {result && result.sourceTotal > EVIDENCE_CSV_LIMIT && <p className="ev-export-limit">Export: max. 100.000 de rânduri; fișierul spune dacă e parțial.</p>}
       {exportMessage && <p className="ev-export-message" role="status">{exportMessage}</p>}
     </div>
     <footer className="ev-footer"><div>{result && !busy && !connection && !peer && <FollowButton spec={spec} options={{ ...(scope ? { scope } : {}), search, state, ...(stream === "da" || stream === "contracts" ? { stream } : {}) }} title={title} label="Urmărește această selecție" />}<button type="button" className="ev-export-main" disabled={!result || busy || !!exporting} onClick={() => void exportCsv("all")}>{exporting === "all" ? "Se exportă…" : result && result.sourceTotal > EVIDENCE_CSV_LIMIT ? "Exportă primele 100.000 · CSV" : "Exportă toate · CSV"}</button><button type="button" disabled={!result || busy || !!exporting || !filtered} onClick={() => void exportCsv("filtered")}>{exporting === "filtered" ? "Se exportă…" : result && result.total > EVIDENCE_CSV_LIMIT ? "Lista filtrată · primele 100.000" : "Exportă lista filtrată"}</button></div>{onSave ? <button type="button" className="ev-save" onClick={onSave}>+ Salvează în Anchete</button> : result && !busy && <ClipButton key={JSON.stringify({ queryKey, search, state, stream })} kind="query" spec={spec} label={title} snapshot={{

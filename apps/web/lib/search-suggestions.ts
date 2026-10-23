@@ -119,7 +119,7 @@ export function buildSuggestionGroups(input: SuggestionInput): SuggestionGroup[]
   // 3. Places. With other words ("iluminat buzau"), the place narrows the search for them.
   const placeRow = (id: string | null, label: string, detail: string, rest: string, askAbout: string) => {
     if (!id) return;
-    if (rest.length >= 2) push("places", { id: `place:${id}`, label: `${rest} · ${label}`, detail: `Caută „${rest}” doar în ${label}`, href: cauta(rest, id), icon: "pin" });
+    if (rest.length >= 2) push("places", { id: `place:${id}`, label: `${rest} · ${label}`, href: cauta(rest, id), icon: "pin" });
     else push("places", { id: `place:${id}`, label, detail, href: `/intreaba?q=${encodeURIComponent(askAbout)}`, icon: "pin" });
   };
   const placeMatches: PlaceMatch[] = i ? [...(i.place ? [i.place] : []), ...i.placeAlternatives] : [];

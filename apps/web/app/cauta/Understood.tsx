@@ -2,6 +2,7 @@
 import {useEffect,useState} from 'react';
 import Link from 'next/link';
 import DiscoveryIcon from '../DiscoveryIcon';
+import Term from '@/components/Term';
 import {cleanName,formatInt,formatRon,formatRonFull} from '@/lib/format';
 import type {AskSpec} from '@/lib/ask/spec';
 import type {SuggestResponse} from '@/app/api/suggest/route';
@@ -54,8 +55,7 @@ export function Understood({scope,effective,t,place}:{scope:TopicScope;effective
   {(!t.answer||scope.tab!=='all')&&t.subject?.notes.map(n=><p key={n} className="topic-subject-note">{n}</p>)}
   {t.note&&<p className="topic-help">{t.note}{t.askHref&&<> <Link prefetch={false} href={t.askHref}>Deschide în Întreabă</Link></>}</p>}
   {(t.placeAmbiguous||(t.note&&!placeChip))&&t.placeChoices.length>0&&<div className="topic-understood-choose"><p>{t.placeAmbiguous?'Mai multe localități au acest nume. Pe care o cauți?':'Poți căuta în titluri:'}</p><div>{t.placeChoices.map(c=><Link prefetch={false} className="topic-control" key={c.id} href={searchHref(scope,{q:c.q,place:c.id})}>{c.choice}<DiscoveryIcon name="arrow"/></Link>)}</div></div>}
-  {fromWords.place||fromWords.period?<p className="topic-help">Căutăm „{t.applied.q}” în titluri, cu {[fromWords.place?'locul':null,fromWords.period?'perioada':null].filter(Boolean).join(' și ')} din cuvintele tale ca filtru. <Link prefetch={false} href={literal}>Caută exact ce ai scris</Link></p>
-   :t.subject?<p className="topic-help"><Link prefetch={false} href={literal}>Caută exact ce ai scris, fără interpretare</Link></p>:null}
+  {(fromWords.place||fromWords.period||t.subject)&&<p className="topic-help"><Link prefetch={false} href={literal}>Caută exact ce ai scris</Link></p>}
  </section>;
 }
 
@@ -98,18 +98,19 @@ export function SubjectAnswer({answer,notes=[],literalHref,titles,onCount,asked}
  const titleCount=titles?.count??0;
  return <section className="topic-answer" aria-label="Răspuns pe scurt" aria-busy={!ready}>
   <h2>Pe scurt</h2>
-  {answer.total.sentence!==asked&&<p className="topic-answer-question">{answer.total.sentence}</p>}
+  {/* The chips („Am înțeles”) already show the scope. The sentence stays for a whole question, and when
+      the answer counts only a town hall while the titles cover every institution of the locality. */}
+  {(asked!==undefined?answer.total.sentence!==asked:answer.total.spec.filters.uatSiruta!==undefined)&&<p className="topic-answer-question">{answer.total.sentence}</p>}
   {!ready?<p className="topic-answer-wait" role="status"><span className="topic-spinner" aria-hidden="true"/>Calculăm în Întreabă…</p>
    :ready.failed||!total?<p className="topic-help" role="status">Răspunsul pe scurt nu este disponibil acum. {ready.total&&!ready.total.ok&&ready.total.error?ready.total.error:''}</p>
    :shape==='empty'?<div className="topic-answer-empty" role="status"><p><strong>{answer.empty}</strong></p>
-     {answer.cpv.length>0&&<p className="topic-help">Calculul numără doar achizițiile încadrate oficial la domeniile de mai jos. O achiziție încadrată altfel nu intră aici, chiar dacă titlul ei pomenește subiectul.</p>}
      {titles&&titleCount>0&&<p className="topic-answer-alternative"><button type="button" className="topic-text-button" onClick={titles.onShow}>{titleCount===1?`Un titlu conține „${titles.q}”`:`${formatInt(titleCount)} titluri conțin „${titles.q}”`}: vezi {titleCount===1?'achiziția':'achizițiile'} <DiscoveryIcon name="arrow"/></button></p>}
      {answer.domains&&<p className="topic-answer-alternative"><Link prefetch={false} href={answer.domains.href}>{answer.domains.label} <DiscoveryIcon name="arrow"/></Link></p>}</div>
    :<><p className="topic-answer-value">{shape==='value'?<><strong title={formatRonFull(total.value)}>{formatRon(total.value)}</strong><span>în {records(total.count)} · valoare înregistrată, nu plăți</span></>:<><strong>{records(total.count)}</strong><span>fără valoare înregistrată</span></>}</p>
     <p className="topic-answer-records"><Link prefetch={false} href={answer.evidenceHref}>Vezi {total.count===1?'înregistrarea':`toate cele ${records(total.count)}`} <DiscoveryIcon name="arrow"/></Link></p>
-    {rows&&rows.length>0&&<><p className="topic-answer-question">{answer.top.sentence!==asked?answer.top.sentence:"Firmele cu cea mai mare valoare înregistrată:"}</p><ol className="topic-answer-top">{rows.map(r=><li key={r.entityId??r.name}>{r.entityId?<Link prefetch={false} href={`/entitati/${r.entityId}?rol=furnizor`}>{cleanName(r.name)}</Link>:<span>{cleanName(r.name)}</span>}<span>{formatRon(r.value)}</span></li>)}</ol></>}
-    {caveats.length>0&&<details className="topic-answer-limits"><summary>Ce include și ce lasă deoparte calculul</summary><ul>{caveats.map(c=><li key={c}>{c}</li>)}</ul></details>}</>}
-  {answer.cpv.length>0&&<p className="topic-help">Domenii incluse ({answer.cpv.length}): {answer.cpv.join('; ')}{answer.cpvExcluded.length>0&&<>; fără: {answer.cpvExcluded.join('; ')}</>}.</p>}
+    {rows&&rows.length>0&&<><p className="topic-answer-question">{asked===undefined?'Cine câștigă cel mai mult:':answer.top.sentence!==asked?answer.top.sentence:'Firmele cu cea mai mare valoare înregistrată:'}</p><ol className="topic-answer-top">{rows.map(r=><li key={r.entityId??r.name}>{r.entityId?<Link prefetch={false} href={`/entitati/${r.entityId}?rol=furnizor`}>{cleanName(r.name)}</Link>:<span>{cleanName(r.name)}</span>}<span>{formatRon(r.value)}</span></li>)}</ol></>}
+    {caveats.length>0&&<details className="topic-answer-limits"><summary>Ce include calculul · {caveats.length}</summary><ul>{caveats.map(c=><li key={c}>{c}</li>)}</ul></details>}</>}
+  {answer.cpv.length>0&&<p className="topic-help topic-answer-domains">Domenii incluse ({answer.cpv.length}): {answer.cpv.join('; ')}{answer.cpvExcluded.length>0&&<>; fără: {answer.cpvExcluded.join('; ')}</>}. <Term tip title="Domenii" text="Numărăm după încadrarea oficială (CPV), nu după titlu."/></p>}
   {notes.map(n=><p key={n} className="topic-subject-note">{n}</p>)}
   <div className="topic-answer-actions">{shape!=='empty'&&<Link prefetch={false} className={literalHref?'topic-primary':'topic-answer-link'} href={answer.href}>{literalHref?'Vezi răspunsul complet':'Vezi răspunsul complet în Întreabă'} <DiscoveryIcon name="arrow"/></Link>}{literalHref&&<Link prefetch={false} className="topic-control" href={literalHref}>Caută exact ce ai scris</Link>}</div>
  </section>;

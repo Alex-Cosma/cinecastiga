@@ -69,7 +69,7 @@ describe("beginner phrasings → interpretation", () => {
     expect(i.place).toMatchObject({ kind: "county", county: "Buzău" });
     expect(i.placeAlternatives[0]).toMatchObject({ kind: "locality", siruta: 44818 });
     expect(i.leftover).toEqual([]);
-    expect(i.placeNote).toMatch(/Am ales județul/);
+    expect(i.placeNote).toBe("„Buzău”: am ales tot județul.");
     expect(r.spec).toEqual({ block: "table", dim: "supplier", measure: "value", topN: 10, filters: { cpvTerm: "iluminat", county: "Buzău" } });
     expect(r.sentence).toBe("Cine câștigă contractele pentru „iluminat” de la instituțiile din județul Buzău, în toți anii?");
     expect(r.alternatives.map((a) => a.label)).toEqual(["Doar primăria Municipiului Buzău", "Cât valorează în total", "Cum s-a schimbat de la an la an"]);

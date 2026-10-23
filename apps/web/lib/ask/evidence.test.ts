@@ -115,7 +115,7 @@ describe("source query regression", () => {
     expect(query).toContain("v_plaf v, n_plaf n");
     expect(query).not.toContain("v_all");
     const caveats = (result as { caveats: string[] }).caveats.join(" ");
-    expect(caveats).toContain("plafon de plauzibilitate");
+    expect(caveats).toContain("filtru analitic de plauzibilitate");
     expect(caveats).toContain("Ofertă acceptată");
   });
   it.each(["timeseries", "map", "table"] as const)("unfiltered count %s reads the bounded aggregate columns", async (block) => {
@@ -162,7 +162,7 @@ describe("source query regression", () => {
     const query = db.statements.find((q) => q.includes("marts.da_transactions"))!;
     expect(query).toMatch(/d\.closing_value <= \?\d+/);
     expect(db.values).toContain(2_000_000);
-    expect((result as { caveats: string[] }).caveats.join(" ")).toContain("plafon de plauzibilitate");
+    expect((result as { caveats: string[] }).caveats.join(" ")).toContain("filtru analitic de plauzibilitate");
     const sources = database();
     const rows = await runRows(sources.sql, countStat, grounding, 0);
     expect(sources.statements.find((q) => q.includes("group by d.state"))).toMatch(/d\.closing_value <= \?\d+/);

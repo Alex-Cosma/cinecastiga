@@ -98,7 +98,7 @@ function SavedQuestionsList({ search, current, hasUnsavedChanges, onLoad, userId
 
   const next = `/intreaba?spec=${encodeURIComponent(encodeSpec(current))}&mode=builder`;
   return <div className="cq-saved-list" aria-busy={loading || !!opening}>
-    {!loading && <p className="cq-device-note">{userId ? "Întrebările din cont sunt private. Cele marcate „Pe acest dispozitiv” rămân doar în acest browser; încarcă una și apasă „Salvează întrebarea” pentru a o păstra în cont." : "Salvate pe acest dispozitiv, în acest browser. Ștergerea datelor site-ului șterge și aceste întrebări."}</p>}
+    {!loading && <p className="cq-device-note">{userId ? "Cele din cont sunt private; „Pe acest dispozitiv” = doar în acest browser." : "Salvate pe acest dispozitiv, în acest browser. Ștergerea datelor site-ului șterge și aceste întrebări."}</p>}
     {login && <p>Sesiunea a expirat. <a href={`/login?next=${encodeURIComponent(next)}`}>Autentifică-te pentru întrebările din cont</a>.</p>}
     {loading ? <p role="status">Se încarcă întrebările salvate…</p> : <>
       {candidate && <div className="cq-replace-question" ref={confirmation} role="group" aria-label="Confirmă înlocuirea întrebării">

@@ -172,9 +172,11 @@ export function CompareBlock({ entities, historical = true }: { entities: Compar
           </div>
         );
       })}
-      <p className="ask-methnote">
-        {historical ? <>Indicele de risc (CRI) e un semnal statistic, nu o dovadă de neregulă — <Link href="/metodologie">cum se calculează</Link>.</> : <>Ambele entități sunt comparate folosind aceeași perioadă și aceleași condiții. Deschide înregistrările fiecăreia pentru valorile exacte și sursele SEAP.</>}
-      </p>
+      {historical && (
+        <p className="ask-methnote">
+          Indicele de risc (CRI) e un semnal statistic, nu o dovadă de neregulă — <Link href="/metodologie">cum se calculează</Link>.
+        </p>
+      )}
     </div>
   );
 }
@@ -1367,9 +1369,7 @@ export function NetworkBlock({
         </tbody>
       </table>
       <p className="ask-fine">
-        Diagrama și lista arată primii {nodes.length} parteneri. Butonul
-        principal de surse include întreaga selecție. O relație de achiziții nu
-        dovedește o afiliere sau o legătură personală.
+        O relație de achiziții nu dovedește o afiliere sau o legătură personală.
       </p>
     </div>
   );

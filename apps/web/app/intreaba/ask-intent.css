@@ -73,8 +73,6 @@
 
 .ia-intro { margin: 0 0 6px; }
 .ia-eyebrow { margin: 0 0 4px !important; font: 700 12px/1.5 var(--body) !important; letter-spacing: .06em; text-transform: uppercase; color: var(--accent-ink, var(--accent)); }
-.ia-eyebrow span { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--muted); }
-.ia-asked { margin: 0 0 6px !important; font-size: 13px !important; color: var(--muted); overflow-wrap: anywhere; }
 .ia-outro { margin: 16px 0 0; padding-top: 14px; border-top: 1px dashed var(--line); }
 .ia-outro p { margin: 0 0 8px !important; font-size: 13px !important; line-height: 1.6; max-width: 900px; overflow-wrap: anywhere; }
 .ia-leftover { color: var(--ink) !important; }
@@ -88,7 +86,6 @@
   display: flex; flex-direction: column; gap: 2px; min-height: 44px; max-width: 420px; padding: 8px 12px; border: 1px solid var(--accent-line, var(--line)); border-radius: 8px;
   background: var(--surface); color: var(--accent); font: 500 13px/1.3 var(--body); cursor: pointer; text-align: left;
 }
-.ia-alts button small { color: var(--muted); font-weight: 400; font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
 .ia-alts button:hover { background: var(--accent-soft); }
 .ia-intro h2:focus { outline: none; }
 
@@ -103,7 +100,6 @@
 .ia-open-builder:hover { background: var(--accent-soft); }
 
 .qb-navigation-after { margin: 16px 0 0 !important; flex-wrap: wrap; justify-content: flex-start !important; }
-.qb-navigation-label { color: var(--muted); font-size: 13px; }
 
 .qb-place-localities { margin-top: 12px; }
 .qb-group-label { margin: 6px 0 4px !important; color: var(--muted); font-size: 11px !important; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }

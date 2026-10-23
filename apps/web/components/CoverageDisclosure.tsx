@@ -52,7 +52,7 @@ export default function CoverageDisclosure({ spec, children }: { spec?: AskSpec;
           <p>Intervalele pot avea goluri{spec ? " și descriu arhiva, nu acoperirea fiecărei instituții" : ""}.</p>
           {/* Audit F10: after "complet până la" the records are provisional (contracts are published late). */}
           {coverageSources(spec).some(dataset => data.sources.find(row => row.dataset === dataset)?.completeUntil) &&
-            <p>După data „complet până la”, înregistrările sunt provizorii.{coverageSources(spec).includes("contracts") && " SEAP publică multe contracte abia la câteva săptămâni sau luni după semnare, așa că cifrele lunilor recente pot crește la actualizările următoare."}</p>}
+            <p>{coverageSources(spec).includes("contracts") ? "După „complet până la”, cifrele sunt provizorii și pot crește: SEAP publică multe contracte cu întârziere." : "După „complet până la”, cifrele sunt provizorii."}</p>}
           <p className="coverage-freshness">{data.dataAt ? `Date publicate în aplicație la ${publicationDay(data.dataAt)}.` : "Data publicării acestui set de date nu este confirmată."}
             {spec && isHistoricalProfile(spec) && ` Semnale recalculate: ${publicationDay(data.riskAt)}.`}</p>
         </>}

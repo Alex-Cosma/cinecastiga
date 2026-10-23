@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Term from "./Term";
 import CollectionHistory from "./CollectionHistory";
 import { coverageDate, getCoverage, type Dataset } from "@/lib/coverage";
 import { formatExactDecimal, formatInt, formatRon } from "@/lib/format";
@@ -19,9 +20,10 @@ export async function CoverageSummary() {
   const freshness=await getProcessingFreshness();
   return <div className="coverage-summary">
     <Link href="/metodologie#acoperire">Surse, acoperire și actualizare →</Link>
-    {coverage?.observations.length ? <span>Inventar recalculat la {coverageDate(coverage.observations[0]?.calculated_at)} · completitudinea surselor nu este confirmată</span> : <span>Inventarul datelor nu a fost încă recalculat.</span>}
+    {coverage?.observations.length
+      ? <span>Date la {coverageDate(coverage.observations[0]?.calculated_at)}{freshness?.riskAt ? ` · semnale la ${coverageDate(freshness.riskAt)}` : ""} <Term tip title="Completitudine" text="Completitudinea surselor nu este confirmată; vezi acoperirea." /></span>
+      : <span>Inventarul datelor nu a fost încă recalculat.{freshness?.riskAt ? ` Semnale la ${coverageDate(freshness.riskAt)}.` : ""}</span>}
     {excluded && Number(excluded)>0 && <Link href="/metodologie/excluderi">{n(excluded)} grupuri excluse temporar din totaluri · verifică sursele</Link>}
-    {freshness?.riskAt&&<span>Semnale de risc recalculate la {coverageDate(freshness.riskAt)}.</span>}
   </div>;
 }
 

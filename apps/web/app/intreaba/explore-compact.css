@@ -108,5 +108,5 @@
 .explore-compact .qb-dialog .qb-picker-search { background:var(--sunk); border-color:var(--line); }
 .explore-compact .qb-dialog .qb-picker-search input { color:var(--ink); }
 .explore-compact .qb-dialog .qb-picker-search input::placeholder { color:var(--ink-secondary); }
-.explore-compact .qb-dialog .qb-picker-note,.explore-compact .qb-dialog .qb-picker-footer { color:var(--ink-secondary); }
+.explore-compact .qb-dialog .qb-picker-note { color:var(--ink-secondary); }
 .explore-compact .cq-save-dialog .cq-copy-note { margin:12px 0 0; font-size:13px; }
