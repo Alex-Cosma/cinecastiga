@@ -6,7 +6,8 @@ import {cleanName,formatInt,formatRon,formatRonFull} from '@/lib/format';
 import type {AskSpec} from '@/lib/ask/spec';
 import type {SuggestResponse} from '@/app/api/suggest/route';
 import type {TopicInterpretation} from '@/lib/topic-search/interpretation';
-import {topicParams,type Place,type TopicScope} from '@/lib/topic-search/shared';
+import {answerShape,topicParams,type Place,type TopicScope} from '@/lib/topic-search/shared';
+import {relatedSubjects,relatedWord} from '@/lib/topic-search/related';
 
 const capital=(s:string)=>s.charAt(0).toLocaleUpperCase('ro-RO')+s.slice(1);
 /** A /cauta link for the same selection with some parts changed. */
@@ -24,6 +25,11 @@ export function Understood({scope,effective,t,place}:{scope:TopicScope;effective
  const period=fromWords.period??(effective.from?{from:effective.from,to:effective.to,label:periodLabel(effective.from,effective.to)}:null);
  const removePeriod=fromWords.period?searchHref(scope,{q:t.applied.q,place:effective.place,from:'',to:''}):searchHref(scope,{from:'',to:''});
  const literal=searchHref(scope,{},true);
+ // A whole question: the interpreter's sentence is what is answered; the words are searched as written below.
+ if(t.question)return <section className="topic-understood topic-question" aria-label="Cum am înțeles întrebarea">
+  <p className="topic-question-line"><span className="topic-understood-label">Am înțeles:</span> <strong>{t.question.sentence}</strong></p>
+  {!t.answer&&<div className="topic-question-actions">{t.askHref&&<Link prefetch={false} className="topic-primary" href={t.askHref}>Vezi răspunsul complet <DiscoveryIcon name="arrow"/></Link>}<Link prefetch={false} className="topic-control" href={literal}>Caută exact ce ai scris</Link></div>}
+ </section>;
  if(!t.subject&&!placeChip&&!period&&!t.placeAmbiguous&&!t.note){
   // Nothing applied: a reading that needs a choice (same-named firms or persons) is chosen in Întreabă.
   return t.problem&&t.askHref?<p className="topic-help topic-understood-note">{t.problem} <Link prefetch={false} href={t.askHref}>Alege în Întreabă</Link></p>:null;
@@ -60,8 +66,18 @@ async function ask(spec:AskSpec,signal:AbortSignal):Promise<AskReply>{
  return await r.json() as AskReply;
 }
 
-/** Short subject answer through the Ask engine: total recorded value and the first three winners. */
-export function SubjectAnswer({answer,notes=[]}:{answer:NonNullable<TopicInterpretation['answer']>;notes?:string[]}){
+/** Titles that contain the searched words, offered when the classified total is empty. */
+export type TitleMatches={count:number|null;q:string;onShow:()=>void};
+/** What "Pe scurt" counted, for the line that reconciles it with the title matches. */
+export type AnswerCount={key:string;count:number}|null;
+
+
+/**
+ * Short answer through the Ask engine: total recorded value and the first
+ * three winners. `literalHref` (a whole question) adds "Caută exact ce ai
+ * scris"; `titles` is the alternative offered when nothing is classified there.
+ */
+export function SubjectAnswer({answer,notes=[],literalHref,titles,onCount,asked}:{answer:NonNullable<TopicInterpretation["answer"]>;asked?:string|undefined;notes?:string[];literalHref?:string|undefined;titles?:TitleMatches|undefined;onCount?:(c:AnswerCount)=>void}){
  const key=JSON.stringify([answer.total.spec,answer.top.spec]);
  const [state,setState]=useState<{key:string;total:AskReply|null;top:AskReply|null;failed:boolean}|null>(null);
  useEffect(()=>{const abort=new AbortController();
@@ -72,28 +88,39 @@ export function SubjectAnswer({answer,notes=[]}:{answer:NonNullable<TopicInterpr
  const ready=state?.key===key?state:null;
  const total=ready?.total?.ok&&ready.total.data.block==='stat'?ready.total.data.stat:null;
  const rows=ready?.top?.ok&&ready.top.data.block==='table'?ready.top.data.rows:null;
+ const shape=answerShape(total);
+ useEffect(()=>{onCount?.(total?{key,count:total.count}:null);
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[key,total?.count]);
  // The same limits /intreaba shows for these specs.
  const caveats=[...new Set([...(ready?.total?.ok?ready.total.caveats??[]:[]),...(ready?.top?.ok?ready.top.caveats??[]:[])])];
+ const records=(n:number)=>`${formatInt(n)} ${n===1?'înregistrare':'înregistrări'}`;
+ const titleCount=titles?.count??0;
  return <section className="topic-answer" aria-label="Răspuns pe scurt" aria-busy={!ready}>
   <h2>Pe scurt</h2>
-  <p className="topic-answer-question">{answer.total.sentence}</p>
+  {answer.total.sentence!==asked&&<p className="topic-answer-question">{answer.total.sentence}</p>}
   {!ready?<p className="topic-answer-wait" role="status"><span className="topic-spinner" aria-hidden="true"/>Calculăm în Întreabă…</p>
    :ready.failed||!total?<p className="topic-help" role="status">Răspunsul pe scurt nu este disponibil acum. {ready.total&&!ready.total.ok&&ready.total.error?ready.total.error:''}</p>
-   :<><p className="topic-answer-value"><strong title={formatRonFull(total.value)}>{formatRon(total.value)}</strong><span>în {formatInt(total.count)} {total.count===1?'înregistrare':'înregistrări'} · valoare înregistrată, nu plăți</span></p>
-    {rows&&rows.length>0&&<><p className="topic-answer-question">{answer.top.sentence}</p><ol className="topic-answer-top">{rows.map(r=><li key={r.entityId??r.name}>{r.entityId?<Link prefetch={false} href={`/entitati/${r.entityId}?rol=furnizor`}>{cleanName(r.name)}</Link>:<span>{cleanName(r.name)}</span>}<span>{formatRon(r.value)}</span></li>)}</ol></>}
+   :shape==='empty'?<div className="topic-answer-empty" role="status"><p><strong>{answer.empty}</strong></p>
+     {answer.cpv.length>0&&<p className="topic-help">Calculul numără doar achizițiile încadrate oficial la domeniile de mai jos. O achiziție încadrată altfel nu intră aici, chiar dacă titlul ei pomenește subiectul.</p>}
+     {titles&&titleCount>0&&<p className="topic-answer-alternative"><button type="button" className="topic-text-button" onClick={titles.onShow}>{titleCount===1?`Un titlu conține „${titles.q}”`:`${formatInt(titleCount)} titluri conțin „${titles.q}”`}: vezi {titleCount===1?'achiziția':'achizițiile'} <DiscoveryIcon name="arrow"/></button></p>}</div>
+   :<><p className="topic-answer-value">{shape==='value'?<><strong title={formatRonFull(total.value)}>{formatRon(total.value)}</strong><span>în {records(total.count)} · valoare înregistrată, nu plăți</span></>:<><strong>{records(total.count)}</strong><span>fără valoare înregistrată</span></>}</p>
+    <p className="topic-answer-records"><Link prefetch={false} href={answer.evidenceHref}>Vezi {total.count===1?'înregistrarea':`toate cele ${records(total.count)}`} <DiscoveryIcon name="arrow"/></Link></p>
+    {rows&&rows.length>0&&<><p className="topic-answer-question">{answer.top.sentence!==asked?answer.top.sentence:"Firmele cu cea mai mare valoare înregistrată:"}</p><ol className="topic-answer-top">{rows.map(r=><li key={r.entityId??r.name}>{r.entityId?<Link prefetch={false} href={`/entitati/${r.entityId}?rol=furnizor`}>{cleanName(r.name)}</Link>:<span>{cleanName(r.name)}</span>}<span>{formatRon(r.value)}</span></li>)}</ol></>}
     {caveats.length>0&&<details className="topic-answer-limits"><summary>Ce include și ce lasă deoparte calculul</summary><ul>{caveats.map(c=><li key={c}>{c}</li>)}</ul></details>}</>}
   {answer.cpv.length>0&&<p className="topic-help">Domenii incluse ({answer.cpv.length}): {answer.cpv.join('; ')}{answer.cpvExcluded.length>0&&<>; fără: {answer.cpvExcluded.join('; ')}</>}.</p>}
   {notes.map(n=><p key={n} className="topic-subject-note">{n}</p>)}
-  <Link prefetch={false} className="topic-answer-link" href={answer.href}>Vezi răspunsul complet în Întreabă <DiscoveryIcon name="arrow"/></Link>
+  <div className="topic-answer-actions">{shape!=='empty'&&<Link prefetch={false} className={literalHref?'topic-primary':'topic-answer-link'} href={answer.href}>{literalHref?'Vezi răspunsul complet':'Vezi răspunsul complet în Întreabă'} <DiscoveryIcon name="arrow"/></Link>}{literalHref&&<Link prefetch={false} className="topic-control" href={literalHref}>Caută exact ce ai scris</Link>}</div>
  </section>;
 }
 
 /** No title matched: wider selections to try, without guessing. */
 export function Broader({scope,effective,t,place,onDocuments}:{scope:TopicScope;effective:TopicScope;t:TopicInterpretation|null;place:Place|null;onDocuments:()=>void}){
  const [related,setRelated]=useState<{q:string;items:string[]}|null>(null);
- const first=effective.q.split(/\s+/).find(w=>w.length>=3)??'';
+ // Never from a question or connector word ("cine" → "Porcine"); only names that share a real word.
+ const first=relatedWord(effective.q);
  useEffect(()=>{if(!first)return;const abort=new AbortController();
-  void fetch(`/api/suggest?q=${encodeURIComponent(first)}`,{signal:abort.signal}).then(r=>r.ok?r.json() as Promise<SuggestResponse>:null).then(d=>{if(!abort.signal.aborted&&d)setRelated({q:first,items:d.cpv.map(c=>/^\d/.test(c.term)?c.cpvName??'':c.term).filter(Boolean)});}).catch(()=>{});
+  void fetch(`/api/suggest?q=${encodeURIComponent(first)}`,{signal:abort.signal}).then(r=>r.ok?r.json() as Promise<SuggestResponse>:null).then(d=>{if(!abort.signal.aborted&&d)setRelated({q:first,items:relatedSubjects(first,d.cpv.map(c=>/^\d/.test(c.term)?c.cpvName??'':c.term).filter(Boolean))});}).catch(()=>{});
   return()=>abort.abort();},[first]);
  const county=place?.kind==='locality'?place.detail.split(' · ')[1]:null;
  const subjects=[...(t?.otherSubjects.map(s=>s.label)??[]),...(related?.q===first?related.items:[])].filter((s,i,a)=>a.findIndex(x=>x.toLowerCase()===s.toLowerCase())===i&&s.toLowerCase()!==effective.q.toLowerCase()).slice(0,4);
@@ -101,7 +128,7 @@ export function Broader({scope,effective,t,place,onDocuments}:{scope:TopicScope;
   {county&&<li><Link prefetch={false} href={searchHref(scope,{q:effective.q,place:`county:${county}`,from:effective.from,to:effective.to})}>„{effective.q}” în tot județul</Link></li>}
   {effective.place&&<li><Link prefetch={false} href={searchHref(scope,{q:effective.q,place:'',from:effective.from,to:effective.to})}>„{effective.q}” în toată țara</Link></li>}
   {effective.from&&<li><Link prefetch={false} href={searchHref(scope,{q:effective.q,place:effective.place,from:'',to:''})}>„{effective.q}” în toți anii</Link></li>}
-  {t?.trusted&&t.sentence&&t.askHref&&<li><Link prefetch={false} href={t.askHref}>Întreabă: {t.sentence}</Link></li>}
+  {t?.trusted&&!t.question&&t.sentence&&t.askHref&&<li><Link prefetch={false} href={t.askHref}>Întreabă: {t.sentence}</Link></li>}
   <li><button type="button" className="topic-text-button" onClick={onDocuments}>Caută „{effective.q}” în documentele pregătite</button></li>
   {subjects.map(s=><li key={s}><Link prefetch={false} href={searchHref(scope,{q:s,place:effective.place,from:effective.from,to:effective.to})}>Subiect apropiat: {capital(s)}</Link></li>)}
  </ul></div>;

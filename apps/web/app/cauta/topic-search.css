@@ -106,3 +106,22 @@
 .topic-chip-scope{font-size:11px;color:var(--topic-muted);margin-left:2px}
 .topic-answer-limits{margin:6px 0 4px;font-size:13px;color:var(--topic-muted)}.topic-answer-limits summary{cursor:pointer;color:var(--ink);min-height:32px;display:flex;align-items:center}.topic-answer-limits ul{margin:6px 0 0;padding-left:18px;line-height:1.6}
 .topic-subject-note{margin:8px 0 0!important;padding:8px 12px;border-left:3px solid var(--accent-line);background:var(--accent-soft);border-radius:0 6px 6px 0;font-size:13px;color:var(--ink);line-height:1.5}
+/* A whole question: the interpreter's sentence and its answer first; the words as written go below */
+.topic-question-line{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin:0!important;font-size:16px;line-height:1.45}
+.topic-question-line>strong{font-weight:600;color:var(--ink)}
+.topic-question-actions,.topic-answer-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-top:12px}
+.topic-question-actions>a.topic-primary,.topic-answer-actions>a.topic-primary,.topic-question-actions>a.topic-control,.topic-answer-actions>a.topic-control{display:inline-flex;width:auto;margin:0;text-decoration:none}
+.topic-answer-records{margin:0 0 8px!important;font-size:14px}
+.topic-answer-records>a{display:inline-flex;align-items:center;gap:6px;min-height:36px;font-weight:500}
+.topic-answer-empty{margin:8px 0 10px;padding:12px 14px;border-left:3px solid var(--accent-line);background:var(--surface);border-radius:0 8px 8px 0}
+.topic-answer-empty>p{margin:0 0 6px!important}
+.topic-answer-empty>p>strong{font-size:16px;font-weight:600;color:var(--ink);line-height:1.45}
+.topic-answer-empty>.topic-help{padding:0}
+.topic-answer-alternative .topic-text-button{font-size:14px!important;text-align:left;font-weight:500}
+.topic-literal-quiet{margin:4px 0 24px!important;font-size:14px;color:var(--topic-muted)}
+.topic-literal-quiet>.topic-text-button{font-size:14px!important;margin-left:4px}
+.topic-literal-head{font-size:17px!important;font-weight:600;margin:6px 0 12px!important;color:var(--ink2)}
+.topic-units{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;margin:6px 0 10px!important;padding:10px 12px;border-radius:8px;background:var(--sunk);font-size:13px;color:var(--ink2)}
+.topic-units strong{color:var(--ink);font-weight:600}
+.topic-units>a{display:inline-flex;align-items:center;gap:6px;min-height:32px;font-weight:500}
+@media(max-width:650px){.topic-question-actions>a.topic-primary,.topic-answer-actions>a.topic-primary,.topic-question-actions>a.topic-control,.topic-answer-actions>a.topic-control{width:100%;justify-content:center}}
