@@ -496,12 +496,9 @@ export default function AskPanel({
           {toast}
         </div>
       )}
+      {/* The page title is the question box's label: one line says what this page does. */}
       <header className="cq-workspace-header ia-head">
-        <div>
-          <h1>Întreabă</h1>
-          <p>Despre banii publici, în cuvintele tale.</p>
-        </div>
-        <div className="cq-workspace-actions"><Link href="/cauta">Caută un subiect</Link></div>
+        <h1><label htmlFor="ia-question" className="ia-title-label">Ce vrei să afli despre banii publici?</label></h1>
       </header>
       <AskBox value={askText} onChange={setAskText} onSubmit={(text) => void interpret(text)} loading={intentLoading} inputRef={askRef} />
       {intentError && <div className="cq-error" role="alert"><strong>Întrebarea ta este păstrată.</strong><p>{intentError}</p></div>}

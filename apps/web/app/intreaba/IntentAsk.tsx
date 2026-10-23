@@ -25,7 +25,6 @@ export function AskBox({ value, onChange, onSubmit, loading, inputRef }: {
 }) {
   return (
     <form className="ia-ask" role="search" onSubmit={(event) => { event.preventDefault(); onSubmit(value); }}>
-      <label htmlFor="ia-question" className="ia-label">Scrie întrebarea ta</label>
       <div className="ia-row">
         <input
           id="ia-question"
