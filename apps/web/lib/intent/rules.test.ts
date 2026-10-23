@@ -218,11 +218,13 @@ describe("beginner phrasings → interpretation", () => {
     expect(r.spec).not.toBeNull();
   });
 
-  it("22. «iluminat de crăciun»: second subject named, first one used", async () => {
+  it("22. «iluminat de crăciun»: two subjects named, both counted once", async () => {
     const { i, r } = await ask("ce firme au luat contracte de iluminat de craciun in buzau");
     expect(i.subjects.map((s) => s.term)).toEqual(["iluminat", "39298910-9"]);
-    expect(r.spec?.filters.cpvTerm).toBe("iluminat");
-    expect(r.interpretation.notes.join(" ")).toMatch(/primul domeniu/);
+    expect(r.spec?.filters.cpvTerm).toBe("iluminat + 39298910-9");
+    expect(r.interpretation.notes.join(" ")).toMatch(/Am adunat ambele domenii: „iluminat”, „Pom de Crăciun”/);
+    expect(r.interpretation.notes.join(" ")).not.toMatch(/primul domeniu/);
+    expect(r.sentence).toMatch(/„iluminat și Pom de Crăciun”/);
     expect(i.supplier).toBeNull();
   });
 

@@ -107,8 +107,10 @@ export interface Interpretation {
   /**
    * The person/entity choices are the first of more matches: how many exist
    * in total and what to search for to see them all (null = list complete).
+   * `hint` says how to narrow it: the locality for institutions and firms,
+   * the birth year or locality only for people.
    */
-  choicesPartial: { shown: number; total: number; search: string } | null;
+  choicesPartial: { shown: number; total: number; search: string; hint?: string } | null;
   /** "compară Buzău cu Brăila": the institution pairs the places can mean (town halls, county councils). */
   compareChoices: { label: string; focal: EntityMatch; other: EntityMatch }[];
   /** The person asked about town halls ("primării") but the engine ranks every institution. */
@@ -198,6 +200,8 @@ export interface Vocabulary {
   entities(role: "authority" | "supplier", foldedPhrase: string): Promise<EntityLookup>;
   /** ONRC identities whose name is exactly one of `foldedNames` (word orders); `total` counts them all. */
   personsNamed(foldedNames: string[]): Promise<PersonLookup>;
+  /** Firms and institutions registered with this fiscal code (digits only, no "RO"), largest first. */
+  entitiesByCui?(cui: string): Promise<{ role: "authority" | "supplier"; hit: EntityHit }[]>;
 }
 
 export interface EntityLookup { hits: EntityHit[]; total: number }
