@@ -7,8 +7,10 @@
 set -euo pipefail
 cd "${SEAP_DEPLOY_CHECKOUT:-/srv/seap/src}"
 # Also serialize manual invocations, not only the GitHub Actions deploy job.
+# The scheduler holds this lock a few seconds every minute for its claim, so
+# wait for it briefly; a nightly run or another deploy still stops this one.
 exec 9>.git/deploy.lock
-flock -n 9 || { echo "Another deployment is running." >&2; exit 1; }
+flock -w 120 9 || { echo "Another deployment or the nightly processing is running." >&2; exit 1; }
 git fetch --quiet origin main
 git reset --hard --quiet origin/main
 cd infra/prod
