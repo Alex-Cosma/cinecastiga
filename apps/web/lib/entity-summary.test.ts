@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { composeEntitySummary, divisionLabel, readableCpvName, shareLabel, type Segment, type SummaryInput } from "./entity-summary";
+import { aboveCapSentence, composeEntitySummary, divisionLabel, readableCpvName, shareLabel, shortTitle, type Segment, type SummaryInput } from "./entity-summary";
 import { formatRon } from "./format";
 
 const text = (sentence: Segment[]) => sentence.map((s) => (typeof s === "string" ? s : s.text)).join("");
@@ -119,5 +119,46 @@ describe("summary edge cases", () => {
   it("shows Romanian comma letters and a fallback division name", () => {
     expect(readableCpvName("Lucrări de construcţii şi Ţări Şes")).toBe("Lucrări de construcții și Țări Șes");
     expect(divisionLabel({ code: "99", name: null, valueExact: "1", n: 1 })).toBe("Diviziunea CPV 99");
+  });
+});
+
+describe("contracts above the 1 mld. lei cap", () => {
+  // Shaped on Municipiul Cluj-Napoca (Vlad's evidence): metro line I and the TR35 contract.
+  const aboveCap = {
+    count: 2,
+    totalExact: "13790000000.00",
+    rows: [
+      { natId: "1", title: "Proiectare si executie Magistrala I de metrou si tren metropolitan Cluj-Napoca, Etapa I - sectiune metrou", contractNo: null, valueRonExact: "9060000000.00" },
+      { natId: "2", title: "TR35 Proiectare si executie", contractNo: "12", valueRonExact: "4730000000.00" },
+    ],
+  };
+  it("says right after the total that they are left out, with their value, titles and the list", () => {
+    const s = composeEntitySummary({ ...authority, aboveCap })!;
+    const sentence = s.sentences[1]!;
+    expect(text(sentence)).toBe(
+      `Separat, 2 contracte de peste 1 mld. lei (${formatRon("13790000000.00")}) nu intră în aceste cifre: `
+      + `„Proiectare si executie Magistrala I de metrou si tren metropolitan…” (${formatRon("9060000000.00")}) `
+      + `și „TR35 Proiectare si executie” (${formatRon("4730000000.00")}). Vezi lista.`,
+    );
+    expect(sentence).toContainEqual({ text: "Vezi lista", href: "#peste-plafon" });
+  });
+  it("counts the ones not named and falls back to the list when no title is known", () => {
+    const more = aboveCapSentence({ ...aboveCap, count: 5 })!;
+    expect(text(more)).toContain(", plus încă 3 contracte. Vezi lista.");
+    const one = aboveCapSentence({ count: 1, totalExact: "1200000000", rows: [{ natId: "9", title: null, contractNo: null, valueRonExact: "1200000000" }] })!;
+    expect(text(one)).toBe(`Separat, un contract de peste 1 mld. lei (${formatRon("1200000000")}) nu intră în aceste cifre: vezi lista.`);
+    expect(aboveCapSentence({ count: 0, totalExact: "0", rows: [] })).toBeNull();
+    expect(aboveCapSentence(undefined)).toBeNull();
+    // without such contracts the summary is unchanged
+    expect(composeEntitySummary(authority)!.sentences.map(text).join(" ")).not.toContain("Separat");
+  });
+  it("cuts long titles at a word", () => {
+    expect(shortTitle("Scurt")).toBe("Scurt");
+    // the sentence quotes the title itself: the title's own quotes and a glued "Contract" go
+    expect(shortTitle('Contract"Proiectare și Execuție"')).toBe("Proiectare și Execuție");
+    expect(shortTitle('"PROIECTARE SI EXECUȚIE LUCRĂRI: „Drum TransRegio Feleac TR 35”')).toBe("PROIECTARE SI EXECUȚIE LUCRĂRI: Drum TransRegio Feleac TR 35");
+    // a word boundary too early in the text is not used: the cut stays near the limit
+    expect(shortTitle(`${"a".repeat(30)} ${"b".repeat(60)}`)).toBe(`${"a".repeat(30)} ${"b".repeat(39)}…`);
+    expect(shortTitle(`${"a".repeat(50)} ${"b".repeat(60)}`)).toBe(`${"a".repeat(50)}…`);
   });
 });

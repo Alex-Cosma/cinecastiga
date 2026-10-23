@@ -4,6 +4,8 @@ import type { EntitySummary, Segment, SummaryBar } from "@/lib/entity-summary";
 /** "Pe scurt": plain sentences + two short bar lists, above the detailed sections. */
 function renderSegment(s: Segment, i: number) {
   if (typeof s === "string") return <span key={i}>{s}</span>;
+  // A list further down this page ("#peste-plafon") is a plain anchor.
+  if (s.href?.startsWith("#")) return <a key={i} href={s.href}>{s.text}</a>;
   if (s.href) return <Link key={i} href={s.href}>{s.text}</Link>;
   return s.strong ? <strong key={i}>{s.text}</strong> : <span key={i}>{s.text}</span>;
 }
