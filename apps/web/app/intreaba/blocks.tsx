@@ -6,6 +6,7 @@ import type { AskSpec } from "@/lib/ask/spec";
 import type { EvidenceScope } from "@/lib/ask/evidence";
 import { useEffect, useRef, useState } from "react";
 import { formatRon, formatRonFull, formatInt, cleanName } from "@/lib/format";
+import { countWords, formatChange, formatDecimal, formatShare } from "@/lib/ask/answer-text";
 import { encodeSpec } from "@/lib/ask/permalink";
 
 /**
@@ -130,7 +131,7 @@ export function CompareBlock({ entities, historical = true }: { entities: Compar
               <span
                 className={e.cri !== null && e.cri >= 0.3 ? "num hi" : "num"}
               >
-                {e.cri !== null ? `${e.cri.toFixed(2)} · ${band!.label}` : "—"}
+                {e.cri !== null ? `${formatDecimal(e.cri, 2)} · ${band!.label}` : "—"}
               </span>
             </div>}
             {historical && <div className="row">
@@ -214,7 +215,7 @@ export function DistributionBlock({
       <div className="ask-dist">
         {d.buckets.map((b, i) => {
           const bind = t.bind(
-            `CRI ${b.from.toFixed(1)}–${b.to.toFixed(1)}`,
+            `CRI ${formatDecimal(b.from, 1)}–${formatDecimal(b.to, 1)}`,
             `${formatInt(b.n)} entități`,
             (i === focalBucket ? `aici e ${cleanName(d.focal.name)} · ` : "") +
               (b.n > 0 ? "click → înregistrările profilurilor" : ""),
@@ -226,7 +227,7 @@ export function DistributionBlock({
                 className="bar"
                 style={{ height: `${Math.max(3, (b.n / max) * 100)}%` }}
               />
-              <div className="cl">{b.from.toFixed(1)}</div>
+              <div className="cl">{formatDecimal(b.from, 1)}</div>
             </>
           );
           return b.n > 0 ? (
@@ -240,12 +241,10 @@ export function DistributionBlock({
                   evidence.open(
                     undefined,
                     { riskBucket: { from: b.from, to: b.to } },
-                    `Indice ${b.from.toFixed(1)}–${b.to.toFixed(1)} · înregistrările profilurilor`,
+                    `Indice ${formatDecimal(b.from, 1)}–${formatDecimal(b.to, 1)} · înregistrările profilurilor`,
                   );
                 }
               }}
-              target="_blank"
-              rel="noopener"
               {...bind}
             >
               {inner}
@@ -286,7 +285,7 @@ export function DistributionBlock({
         {d.focal.cri !== null ? (
           <>
             {" "}
-            are indice de risc <b>{d.focal.cri.toFixed(2)}</b>
+            are indice de risc <b>{formatDecimal(d.focal.cri, 2)}</b>
             {d.focal.percentile !== null && (
               <>
                 {" "}
@@ -375,15 +374,13 @@ export function BreakdownBlock({
           const bind = t.bind(
             s.name,
             formatRon(s.value),
-            `${formatInt(s.count)} achiziții · ${((s.value / total) * 100).toFixed(1)}% din total${s.code ? (canDeepen(s.code) ? " · click → structura subcategoriilor" : " · click → achizițiile categoriei") : ""}`,
+            `${countWords(s.count, "achiziție", "achiziții")} · ${formatShare(s.value / total)} din total${s.code ? (canDeepen(s.code) ? " · click → structura subcategoriilor" : " · click → achizițiile categoriei") : ""}`,
           );
           return s.code ? (
             <a
               key={s.name}
               className="seg"
               href={sliceUrl(s.code)}
-              target="_blank"
-              rel="noopener"
               style={{
                 width: `${(s.value / total) * 100}%`,
                 background: s.color,
@@ -409,15 +406,15 @@ export function BreakdownBlock({
             <span className="sw" style={{ background: s.color }} />
             <span className="nm">
               {s.code ? (
-                <a href={sliceUrl(s.code)} target="_blank" rel="noopener">
-                  {s.name} ↗
+                <a href={sliceUrl(s.code)}>
+                  {s.name}
                 </a>
               ) : (
                 s.name
               )}
             </span>
             <span className="vv num">
-              {formatRonFull(s.value)} · {((s.value / total) * 100).toFixed(1)}%
+              <span>{formatRonFull(s.value)} · {formatShare(s.value / total)}</span>
               {evidence && (
                 <button
                   type="button"
@@ -738,7 +735,7 @@ export function ScatterBlock({
       if (h) {
         tipRef.current.show(
           `${cleanName(h.p.name)}${h.p.county ? ` (${h.p.county})` : ""}`,
-          `CRI ${h.p.cri.toFixed(2)} · ${formatRon(h.p.value)}`,
+          `CRI ${formatDecimal(h.p.cri, 2)} · ${formatRon(h.p.value)}`,
           `${h.p.nFlags} semnale de risc · click → pagina entității`,
           ev.clientX,
           ev.clientY,
@@ -842,7 +839,7 @@ export function ScatterBlock({
                   </Link>
                 </td>
                 <td>{formatRonFull(p.value)}</td>
-                <td>{p.cri.toFixed(2)}</td>
+                <td>{formatDecimal(p.cri, 2)}</td>
                 <td>
                   {evidence && (
                     <button
@@ -1039,7 +1036,7 @@ export function SankeyBlock({
               {...t.bind(
                 `${cleanName(f.partner)} → ${f.category ?? "?"}`,
                 formatRon(f.value),
-                `${((f.value / total) * 100).toFixed(1)}% din fluxul afișat${linkable ? " · click → achizițiile acestui flux" : ""}`,
+                `${formatShare(f.value / total)} din fluxul afișat${linkable ? " · click → achizițiile acestui flux" : ""}`,
               )}
             />
           );
@@ -1054,8 +1051,6 @@ export function SankeyBlock({
                 ...partnerExtra(f.partnerId, f.partner),
                 cpvTerm: f.categoryCode,
               })}
-              target="_blank"
-              rel="noopener"
             >
               {ribbon}
             </a>
@@ -1106,8 +1101,6 @@ export function SankeyBlock({
               key={id}
               {...marks(selectedScope(id), cleanName(p.name))}
               href={drillUrl(partnerExtra(id, p.name))}
-              target="_blank"
-              rel="noopener"
             >
               {node}
             </a>
@@ -1151,8 +1144,6 @@ export function SankeyBlock({
               key={id}
               {...marks(selectedScope(undefined, id), c.name ?? id)}
               href={drillUrl({ cpvTerm: id })}
-              target="_blank"
-              rel="noopener"
             >
               {node}
             </a>
@@ -1333,7 +1324,7 @@ export function NetworkBlock({
           <div className="s">
             {formatInt(tip.count)} achiziții
             {totalV > 0 &&
-              ` · ${((tip.value / totalV) * 100).toFixed(1)}% din top-parteneri`}
+              ` · ${formatShare(tip.value / totalV)} din top-parteneri`}
           </div>
         </div>
       )}
@@ -1414,7 +1405,7 @@ export function EntityCardBlock({ card, historical = true }: { card: EntityCardD
         </div>
         {historical && <div className="kpi">
           <div className="v num risk">
-            {card.cri !== null ? card.cri.toFixed(2) : "—"}
+            {card.cri !== null ? formatDecimal(card.cri, 2) : "—"}
           </div>
           <div className="l">indice risc{band ? ` · ${band.label}` : ""}</div>
         </div>}
@@ -1619,7 +1610,7 @@ export function TrendBlock({
               <span className={up ? "delta num up" : "delta num down"}>
                 {pct === null
                   ? "nou"
-                  : `${pct >= 0 ? "+" : ""}${pct.toFixed(0)}%`}
+                  : formatChange(pct)}
               </span>
             </div>
           );
