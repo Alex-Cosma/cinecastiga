@@ -13,8 +13,9 @@ describe("coverage matches the answer's actual source population", () => {
   it("uses only direct acquisitions for historical risk, but both streams for value leaders", () => {
     expect(coverageSources({ ...base, block: "entity_card", rankBy: "risk" })).toEqual(["da"]);
     expect(coverageSources({ ...base, block: "entity_card", rankBy: "value" })).toEqual(["da", "contracts"]);
-    expect(coverageSources({ ...base, block: "compare" })).toEqual(["da"]);
-    expect(coverageSources({ ...base, block: "compare", comparisonMode: "transactions" })).toEqual(["da", "contracts"]);
+    // A comparison is always on the selection; legacy profile links included.
+    expect(coverageSources({ ...base, block: "compare" })).toEqual(["da", "contracts"]);
+    expect(coverageSources({ ...base, block: "compare", comparisonMode: "profiles" })).toEqual(["da", "contracts"]);
   });
   it("does not manufacture narrower archive coverage from an institution or year filter", () => {
     expect(coverageSources({ ...base, filters: { authorityId: 42, yearFrom: 2025, yearTo: 2025 } })).toEqual(["da", "contracts"]);

@@ -31,11 +31,12 @@ describe("portable investigative populations", () => {
     expect(query.population!.groups[0]!.conditions).toHaveLength(2);
     expect(questionKey(query as QuestionSpec)).not.toBe(questionKey(cloned));
   });
-  it("distinguishes legacy historical comparisons and explicitly scoped comparisons", () => {
+  it("runs every comparison on the selection, including legacy profile links (24 Oct 2026)", () => {
     const compare = { ...query, block:"compare", filters:{ authorityId:1, compareWithId:2 } };
-    expect(isHistoricalProfile(compare)).toBe(true);
-    expect(validateSpec(compare)).toHaveProperty("error");
-    expect(validateSpec({ ...compare, comparisonMode:"transactions" })).not.toHaveProperty("error");
+    expect(isHistoricalProfile(compare)).toBe(false);
+    expect(isHistoricalProfile({ ...compare, comparisonMode:"profiles" })).toBe(false);
+    expect(validateSpec(compare)).not.toHaveProperty("error");
+    expect(validateSpec({ ...compare, comparisonMode:"profiles" })).not.toHaveProperty("error");
   });
   it("rejects historical population filters and invalid aggregate thresholds", () => {
     for (const block of ["distribution", "scatter", "entity_card"]) expect(validateSpec({ ...query, block, filters:{ authorityId:1 } })).toHaveProperty("error");

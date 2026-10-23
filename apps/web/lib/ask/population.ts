@@ -57,9 +57,13 @@ export function validatePopulation(raw: unknown): QueryPopulation | { error: str
   return { operator:raw.operator, groups };
 }
 
-/** Historical CRI renderers cannot apply transaction-level populations. */
+/**
+ * Historical CRI renderers cannot apply transaction-level populations. A
+ * comparison is always on the selection (24 Oct 2026); it shows each risk
+ * profile beside it, labelled apart. `comparisonMode` from older links is ignored.
+ */
 export function isHistoricalProfile(spec: { block:string; comparisonMode?:string; rankBy?:string }): boolean {
-  return ["distribution", "scatter"].includes(spec.block) || spec.block === "entity_card" && spec.rankBy !== "value" || spec.block === "compare" && spec.comparisonMode !== "transactions";
+  return ["distribution", "scatter"].includes(spec.block) || spec.block === "entity_card" && spec.rankBy !== "value";
 }
 export function unsupportedPopulationView(spec: { block: string; dataset?: string; dim?: string; comparisonMode?:string; rankBy?:string; population?: QueryPopulation; minimumRecords?:MinimumRecords; filters: object }): string | null {
   if (spec.block === "trend" && spec.minimumRecords) return "Filtrul «cel puțin N înregistrări» se aplică întregii selecții și nu este disponibil în diferența dintre doi ani. Alege evoluția în timp sau elimină explicit acest filtru.";
@@ -68,8 +72,6 @@ export function unsupportedPopulationView(spec: { block: string; dataset?: strin
   const transaction = ["cpvTerm", "yearFrom", "yearTo", "monthFrom", "monthTo", "singleBidder", "minEmployees", "maxEmployees", "adminName", "adminPersonKey"];
   if (spec.population || spec.minimumRecords || transaction.some(k => f[k] !== undefined) || spec.dataset === "contracts")
     return "Acest răspuns folosește profiluri istorice de achiziții directe și nu poate respecta selecția de tranzacții. Condițiile sunt păstrate. Alege un clasament, o evoluție sau un total; pentru profiluri, elimină explicit condițiile de perioadă, domeniu și selecție precisă.";
-  if (spec.block === "compare" && ["county", "authorityKind", "uatSiruta"].some(k => f[k] !== undefined))
-    return "Comparația de profiluri nu poate restrânge județul, tipul instituției sau localitatea. Condițiile sunt păstrate; elimină-le explicit sau alege un clasament.";
   if (["scatter", "entity_card"].includes(spec.block) && ["authorityId", "authorityName", "supplierId", "supplierName"].some(k => f[k] !== undefined))
     return "Acest răspuns compară o populație de profiluri; nu poate fixa o singură entitate. Elimină explicit entitatea sau alege distribuția unui profil.";
   const supplier = f.supplierId || f.supplierName || spec.dim === "supplier";

@@ -68,10 +68,32 @@ export interface CompareEntity {
   role: string;
   value: number;
   count: number;
+  /** Historical risk profile (all direct acquisitions, not the selection). */
   cri: number | null;
   nFlags: number;
   flags: string[];
   population: number | null;
+  // Since 24 Oct 2026; older saved answers lack the fields below.
+  hasProfile?: boolean;
+  /** singleBid counts contracts with one bid among `bidsKnown`, those whose number of bids is published. */
+  streams?: { da: { value: number; count: number }; contracts: { value: number; count: number; singleBid: number | null; bidsKnown: number } };
+  /** Distinct counterparties: institutions for a firm, firms for an institution. */
+  partners?: number;
+  topPartners?: ComparePartner[];
+  years?: { year: number; value: number }[];
+  /** Top 5-digit CPV groups by value. */
+  domains?: { code: string; name: string | null; value: number }[];
+  active?: { from: number | null; to: number | null } | null;
+  firm?: { employees: number | null; year: number | null; turnover: number | null } | null;
+}
+export interface ComparePartner { entityId: string; name: string; value: number; count: number }
+export interface CompareData {
+  block: "compare";
+  entities: CompareEntity[];
+  /** Counterparties of both, by combined value (at most 30 rows). */
+  shared?: { total: number; rows: { entityId: string; name: string; a: { value: number; count: number }; b: { value: number; count: number } }[] };
+  /** Firms only: public contracts both won (at most 5 rows). */
+  joint?: { total: number; rows: { nid: string; authority: string | null; date: string | null; value: number }[] };
 }
 export interface DistributionData {
   /** 10 CRI buckets [0,0.1) … [0.9,1]. */
@@ -156,7 +178,7 @@ export type BlockData =
   // unknown: records of the same selection whose authority has no county.
   // They are not on the map, but shares are of the whole selection (audit F13).
   | { block: "map"; counties: CountyValue[]; unknown: { value: number; count: number } }
-  | { block: "compare"; entities: CompareEntity[] }
+  | CompareData
   | { block: "distribution"; distribution: DistributionData }
   | { block: "breakdown"; slices: BreakdownSlice[]; other: { value: number; count: number } }
   | { block: "scatter"; points: ScatterPoint[]; density?: ScatterDensity | undefined }
@@ -483,7 +505,7 @@ async function cpvNamesFor(
   const rows = (await sql`
     select distinct on (substr(c.code, 1, 8)) substr(c.code, 1, 8) stem8, c.name_ro
     from core.cpv_codes c
-    where substr(c.code, 1, 8) in ${sql(padded)}
+    where substr(c.code, 1, 8) = any(${sql.array(padded)}::text[])
     order by substr(c.code, 1, 8), length(c.code)
   `) as unknown as { stem8: string; name_ro: string | null }[];
   const map = new Map<string, string | null>();
@@ -1211,63 +1233,111 @@ export async function runSpec(
         }
 
         case "compare": {
-          if (spec.comparisonMode === "transactions") {
-            const party = focalRole === "authority" ? s`d.authority_id` : s`d.supplier_id`;
-            const rows = (await s`select ${party} id, sum(d.closing_value)::text value, count(*)::text count
-              from ${txtAgg} d where ${whereFrag({ comparison:true })} and ${party} in (${focalId}, ${compareId})
-              group by ${party}`) as unknown as { id:string; value:string; count:string }[];
-            caveats.push("Comparație pe selecția curentă: aceleași date, valori și condiții pentru ambele entități. CRI și semnalele istorice nu se recalculează pentru această selecție și nu sunt afișate.");
-            const identities = [{ id:focalId!, name:focalName, county:grounding.authority?.county ?? grounding.supplier?.county ?? null },
-              { id:compareId!, name:grounding.compare?.nameDisplay ?? "?", county:grounding.compare?.county ?? null }];
-            return { block:"compare", entities:identities.map(identity => {
-              const row = rows.find(r => String(r.id) === identity.id);
-              return { entityId:identity.id, name:identity.name, county:identity.county, role:focalRole,
-                value:Number(row?.value ?? 0), count:Number(row?.count ?? 0), cri:null, nFlags:0, flags:[], population:null };
-            }) };
-          }
-          const r = (await s`
-            select ef.entity_id, ef.name_display, ef.county, ef.role, ef.n_das, ef.total_ron,
-                   ef.cri, ef.n_flags, ef.flags
-            from marts.entity_flags ef
-            where ef.role = ${focalRole} and ef.entity_id in ${s([focalId, compareId])}
-          `) as unknown as {
-            entity_id: string;
-            name_display: string | null;
-            county: string | null;
-            role: string;
-            n_das: number;
-            total_ron: string | null;
-            cri: string | null;
-            n_flags: number;
-            flags: string[] | null;
-          }[];
-          if (r.length < 2) {
-            return {
-              error:
-                "Una dintre entități nu are activitate pe achiziții directe, deci nu pot construi comparația (profilurile de risc acoperă doar achizițiile directe).",
-            };
-          }
-          // preserve the asked order: focal first
-          const ordered = [...r].sort((a, b) =>
-            String(a.entity_id) === String(focalId) ? -1 : String(b.entity_id) === String(focalId) ? 1 : 0,
-          );
-          const compared = focalRole === "authority" ? (await readPerCapitaPopulations(s)).byEntity : null;
-          const comparePopulation = (id: string) => compared?.get(id) ?? null;
-          if (ordered.some((e) => comparePopulation(String(e.entity_id)) !== null)) caveats.push(POPULATION_CARD_NOTE);
+          // One selection for both entities (same filters, values and periods),
+          // plus each one's historical risk profile, which covers all its direct
+          // acquisitions and ignores the filters. The two are labelled apart.
+          const ids = [focalId!, compareId!];
+          const party = focalRole === "authority" ? s`d.authority_id` : s`d.supplier_id`;
+          const other = focalRole === "authority" ? s`d.supplier_id` : s`d.authority_id`;
+          const otherName = focalRole === "authority" ? s`d.supplier_name` : s`d.authority_name`;
+          const where = whereFrag({ comparison: true });
+          const src = dataset === "all" ? s`d.src` : s`${dataset}::text`;
+          // The number of bids is published only for part of the contracts (mostly via TED).
+          const singleBid = dataset === "da" ? s`0 single_bid, 0 single_known` : s`count(*) filter (where d.is_single_bidder) single_bid, count(*) filter (where d.is_single_bidder is not null) single_known`;
+          const contractRows = dataset === "da" ? null
+            : s`(select c.authority_id, c.authority_name, c.supplier_id, c.supplier_name, c.county, c.cpv_code,
+                        c.closing_value, c.finalization_date, c.is_single_bidder, 'contracts'::text src, c.contract_id
+                 from marts.contract_transactions c)`;
+          const [streams, parties, years, domains, top, shared, joint, profiles, risk] = await Promise.all([
+            s`select ${party}::text id, ${src} src, sum(d.closing_value)::text value, count(*)::int n, ${singleBid}
+              from ${txtAgg} d where ${where} group by 1, 2`,
+            s`select ${party}::text id, count(distinct ${other})::int n from ${txtAgg} d where ${where} and ${other} is not null group by 1`,
+            s`select ${party}::text id, substr(d.finalization_date, 1, 4)::int y, sum(d.closing_value)::text value
+              from ${txtAgg} d where ${where} and d.finalization_date is not null group by 1, 2`,
+            s`select id, g, value from (
+                select ${party}::text id, substr(d.cpv_code, 1, 5) g, sum(d.closing_value) value,
+                       row_number() over (partition by ${party} order by sum(d.closing_value) desc) r
+                from ${txtAgg} d where ${where} and d.cpv_code is not null group by ${party}, 2) x
+              where r <= 4`,
+            s`select id, other_id, name, value, n from (
+                select ${party}::text id, ${other}::text other_id, max(${otherName}) name, sum(d.closing_value)::text value, count(*)::int n,
+                       row_number() over (partition by ${party} order by sum(d.closing_value) desc, ${other}) r
+                from ${txtAggNames} d where ${where} and ${other} is not null group by ${party}, ${other}) x
+              where r <= 4`,
+            s`select ${other}::text other_id, max(${otherName}) name,
+                     coalesce(sum(d.closing_value) filter (where ${party} = ${focalId!}), 0)::text value_a, count(*) filter (where ${party} = ${focalId!})::int n_a,
+                     coalesce(sum(d.closing_value) filter (where ${party} = ${compareId!}), 0)::text value_b, count(*) filter (where ${party} = ${compareId!})::int n_b,
+                     count(*) over ()::int total
+              from ${txtAggNames} d where ${where} and ${other} is not null
+              group by ${other} having count(distinct ${party}) = 2
+              order by sum(d.closing_value) desc, ${other} limit 30`,
+            // Firms only: contracts both won, with the public page key of each.
+            focalRole === "supplier" && contractRows
+              ? s`select k.ca_notice_contract_id::text nid, max(d.authority_name) authority, min(d.finalization_date) date,
+                         sum(d.closing_value)::text value, count(*) over ()::int total
+                  from ${contractRows} d join core.contracts k on k.id = d.contract_id
+                  where ${where} and k.ca_notice_contract_id is not null
+                  group by k.ca_notice_contract_id having count(distinct d.supplier_id) = 2
+                  order by sum(d.closing_value) desc limit 5`
+              : Promise.resolve([]),
+            s`select entity_id::text id, first_activity, last_activity, employees, employees_year, net_turnover::text turnover
+              from marts.entity_profile where role = ${focalRole} and entity_id = any(${s.array(ids)}::bigint[])`,
+            s`select entity_id::text id, cri, n_flags, flags from marts.entity_flags where role = ${focalRole} and entity_id = any(${s.array(ids)}::bigint[])`,
+          ]) as unknown as [
+            { id: string; src: string; value: string; n: number; single_bid: string; single_known: string }[],
+            { id: string; n: number }[],
+            { id: string; y: number; value: string }[],
+            { id: string; g: string; value: string }[],
+            { id: string; other_id: string; name: string | null; value: string; n: number }[],
+            { other_id: string; name: string | null; value_a: string; n_a: number; value_b: string; n_b: number; total: number }[],
+            { nid: string; authority: string | null; date: string | null; value: string; total: number }[],
+            { id: string; first_activity: string | null; last_activity: string | null; employees: number | null; employees_year: number | null; turnover: string | null }[],
+            { id: string; cri: string | null; n_flags: number; flags: string[] | null }[],
+          ];
+          const cpvNames = await cpvNamesFor(s, [...new Set(domains.map((d) => d.g))]);
+          const populations = focalRole === "authority" ? (await readPerCapitaPopulations(s)).byEntity : null;
+          if (populations && ids.some((id) => populations.get(id))) caveats.push(POPULATION_CARD_NOTE);
+          const year = (date: string | null) => (date ? Number(date.slice(0, 4)) : null);
+          const identities = [{ id:focalId!, name:focalName, county:grounding.authority?.county ?? grounding.supplier?.county ?? null },
+            { id:compareId!, name:grounding.compare?.nameDisplay ?? "?", county:grounding.compare?.county ?? null }];
           return {
             block: "compare",
-            entities: ordered.map((e) => ({
-              entityId: String(e.entity_id),
-              name: e.name_display ?? "?",
-              county: e.county,
-              role: e.role,
-              value: Number(e.total_ron ?? 0),
-              count: Number(e.n_das),
-              cri: e.cri === null ? null : Number(e.cri),
-              nFlags: Number(e.n_flags),
-              flags: e.flags ?? [],
-              population: comparePopulation(String(e.entity_id)),
-            })),
+            entities: identities.map((identity) => {
+              const mine = streams.filter((r) => r.id === identity.id);
+              const stream = (name: string) => {
+                const r = mine.find((m) => m.src === name);
+                return { value: Number(r?.value ?? 0), count: r?.n ?? 0 };
+              };
+              const contracts = mine.find((m) => m.src === "contracts");
+              const profile = profiles.find((p) => p.id === identity.id);
+              const flags = risk.find((r) => r.id === identity.id);
+              return {
+                entityId: identity.id, name: identity.name, county: identity.county, role: focalRole,
+                // Exact decimal sum of the streams, so the total equals one SQL sum.
+                value: Number(sumDecimalStrings(mine.map((r) => r.value))),
+                count: mine.reduce((sum, r) => sum + r.n, 0),
+                cri: flags?.cri == null ? null : Number(flags.cri),
+                nFlags: flags?.n_flags ?? 0,
+                flags: flags?.flags ?? [],
+                population: populations?.get(identity.id) ?? null,
+                hasProfile: Boolean(flags),
+                streams: { da: stream("da"), contracts: { ...stream("contracts"), singleBid: contracts ? Number(contracts.single_bid) : null, bidsKnown: contracts ? Number(contracts.single_known) : 0 } },
+                partners: parties.find((p) => p.id === identity.id)?.n ?? 0,
+                topPartners: top.filter((t) => t.id === identity.id).map((t) => ({ entityId: t.other_id, name: t.name ?? "?", value: Number(t.value), count: t.n })),
+                years: years.filter((y) => y.id === identity.id).map((y) => ({ year: y.y, value: Number(y.value) })).sort((a, b) => a.year - b.year),
+                domains: domains.filter((d) => d.id === identity.id).sort((a, b) => Number(b.value) - Number(a.value))
+                  .map((d) => ({ code: d.g, name: cpvNames.get(d.g) ?? null, value: Number(d.value) })),
+                active: profile ? { from: year(profile.first_activity), to: year(profile.last_activity) } : null,
+                firm: focalRole === "supplier" && profile && (profile.employees !== null || profile.turnover !== null)
+                  ? { employees: profile.employees, year: profile.employees_year, turnover: profile.turnover === null ? null : Number(profile.turnover) }
+                  : null,
+              };
+            }),
+            shared: {
+              total: shared[0]?.total ?? 0,
+              rows: shared.map((r) => ({ entityId: r.other_id, name: r.name ?? "?", a: { value: Number(r.value_a), count: r.n_a }, b: { value: Number(r.value_b), count: r.n_b } })),
+            },
+            ...(joint.length ? { joint: { total: joint[0]!.total, rows: joint.map((j) => ({ nid: j.nid, authority: j.authority, date: j.date, value: Number(j.value) })) } } : {}),
           };
         }
 
@@ -1682,7 +1752,7 @@ export async function runSpec(
   // Audit F19: an annual total or comparison over a partly covered year says so.
   // The markers travel beside `data`, so watched results keep their shape.
   let partial: PartialYear[] | undefined;
-  const annual = data.block === "timeseries" || data.block === "trend";
+  const annual = data.block === "timeseries" || data.block === "trend" || data.block === "compare";
   const selected = !annual && !isHistoricalProfile(spec) && (w.yearFrom !== null || w.yearTo !== null);
   if (annual || selected) {
     const periods = await coveragePeriods(sql);
@@ -1690,6 +1760,12 @@ export async function runSpec(
       if (annual) caveats.push(PERIOD_UNKNOWN_CAVEAT);
     } else if (data.block === "timeseries") {
       partial = partialYears(periods, dataset, data.series.map((p) => p.year), w);
+      const note = partialYearsCaveat(partial, "series");
+      if (note) caveats.push(note);
+    } else if (data.block === "compare") {
+      // The side-by-side years hatch partly covered years like the series does.
+      const years = [...new Set(data.entities.flatMap((e) => (e.years ?? []).map((y) => y.year)))].sort((a, b) => a - b);
+      partial = partialYears(periods, dataset, years, w);
       const note = partialYearsCaveat(partial, "series");
       if (note) caveats.push(note);
     } else if (data.block === "trend") {
@@ -2228,7 +2304,7 @@ function buildDisplaySql(spec: AskSpec, w: WhereParts, compareId: string | null 
     conds.push("not (" + w.cpvExclude.map((p) => `cpv_code like '${p}%'`).join(" or ") + ")  -- excluse din subiect");
   if (w.county) conds.push(`unaccent(county) ilike '${fold(w.county)}'`);
   if (w.kind) conds.push(`-- doar ${KIND_LABEL[w.kind]} (filtru pe nume)`);
-  const transactionalCompare = spec.block === "compare" && spec.comparisonMode === "transactions";
+  const transactionalCompare = spec.block === "compare";
   if (w.authorityId) conds.push(transactionalCompare ? `authority_id in (${w.authorityId}, ${compareId})` : `authority_id = ${w.authorityId}`);
   if (w.supplierId) conds.push(transactionalCompare && !w.authorityId ? `supplier_id in (${w.supplierId}, ${compareId})` : `supplier_id = ${w.supplierId}`);
   if (w.uatSiruta !== null)
@@ -2287,8 +2363,7 @@ function buildDisplaySql(spec: AskSpec, w: WhereParts, compareId: string | null 
       );
     }
     case "compare":
-      if (transactionalCompare) return `select ${w.authorityId ? "authority_id" : "supplier_id"}, sum(closing_value), count(*)\nfrom ${dtable}\nwhere ${where}\ngroup by ${w.authorityId ? "authority_id" : "supplier_id"};`;
-      return `select name_display, total_ron, n_das, cri, n_flags, flags\nfrom marts.entity_flags\nwhere entity_id in (cele două entități);`;
+      return `select ${w.authorityId ? "authority_id" : "supplier_id"}, sum(closing_value), count(*)\nfrom ${dtable}\nwhere ${where}\ngroup by ${w.authorityId ? "authority_id" : "supplier_id"};\n-- + ani, domenii, parteneri comuni pe aceeași selecție\n-- + profilul de risc istoric: marts.entity_flags (toate achizițiile directe)`;
     case "distribution":
       return `select width_bucket(cri, 0, 1, 10) interval_risc, count(*)\nfrom marts.entity_flags\nwhere n_das >= ${RISK_MIN_DAS}\ngroup by 1;\n-- + poziția entității tale în distribuție`;
     case "breakdown":

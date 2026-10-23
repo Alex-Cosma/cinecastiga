@@ -427,7 +427,7 @@ export function describeQuestion(input: QuestionSpec | AskSpec): string {
   const focal = `„${entityLabel(spec, focalRole(spec))}”`;
   switch (spec.block) {
     case "compare":
-      return `${spec.comparisonMode !== "transactions" ? "Profiluri istorice" : "Achiziții comparate"}: ${focal} și „${f.compareWith || (f.compareWithId ? `Entitatea #${f.compareWithId}` : "alege a doua entitate")}”${spec.comparisonMode !== "transactions" ? "" : ` · ${period}`}`;
+      return `${focal} și „${f.compareWith || (f.compareWithId ? `Entitatea #${f.compareWithId}` : "alege a doua entitate")}” · ${period}`;
     case "trend":
       return `Ce ${dims} au cea mai mare schimbare între ${f.yearFrom ?? "…"} și ${f.yearTo ?? "…"}?`;
     case "network":
