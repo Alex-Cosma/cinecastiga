@@ -163,12 +163,22 @@ Nu se așteaptă finalizarea recuperării istorice pentru publicarea noilor date
 Procedura:
 
 1. Lock comun cu deploy; o singură încercare pentru ziua programată.
-2. Pausă colectare + mentenanță; păstrează pauza anterioară a operatorului.
+2. Pausă colectare + mentenanță; păstrează pauza anterioară a operatorului. Site-ul public rămâne deschis până la pasul 5 (vezi mai jos).
 3. Drenează cererile/sarcinile/OCR până la 25 minute înainte de oprirea worker-ilor. SIGTERM poate anula OCR; nu îl trimite înainte de drain.
 4. Verifică spațiu liber, creează backup complet privat și SHA-256; `.partial` nu este punct valid de restore.
-5. Rulează pipeline-ul la boundary fix; salvează etape, durate și heartbeat; validează întregul snapshot.
-6. Reindexează Meili; verifică numărul așteptat și absența taskurilor eșuate/în curs.
-7. Repornește cache-uri/worker-i, verifică health și redeschide doar checkpoint-ul validat, cu revision neschimbat.
+5. Marchează `backup-verified`: de aici site-ul public răspunde 503. Scriptul verifică 503 pe `/domenii` (cel mult 10 încercări la 3 s), apoi așteaptă 30 s să se încheie cererile admise chiar înainte (`statement_timeout` al rolului `seap_web` este 30 s). Fără 503, rularea se oprește înainte de orice schimbare de date.
+6. Rulează pipeline-ul la boundary fix; salvează etape, durate și heartbeat; validează întregul snapshot.
+7. Reindexează Meili; verifică numărul așteptat și absența taskurilor eșuate/în curs.
+8. Repornește cache-uri/worker-i, verifică health și redeschide doar checkpoint-ul validat, cu revision neschimbat.
+
+**Site-ul rămâne deschis în timpul drain-ului și al backup-ului (decizia proprietarului, 23 octombrie 2026).** Flagurile nu se schimbă: `claim` pune în continuare `maintenance` și `paused`, iar worker-ii și procesarea le cer ca înainte. Doar proxy-ul web (`apps/web/proxy.ts`, regula `publicSiteGate` din `packages/db/src/processing.ts`) servește paginile și API-urile publice cu `maintenance=true` când sunt îndeplinite toate condițiile:
+- există exact o rulare `running`, iar etapa ei este `drain` (de la `claim`, inclusiv `freeze`) sau `backup`;
+- rularea a pornit pe un site deschis: `before_control.maintenance = false`, salvat de `claim` de la această schimbare;
+- `app.collection_control.revision` este cel de la `claim` (`control_revision`), adică nimeni și nimic nu a schimbat controlul între timp.
+
+Orice altceva răspunde 503 ca înainte: `backup-verified` și etapele de după, o rulare eșuată (și în drain sau backup), mentenanța pusă de operator fără rulare, o recuperare `--recover-failed` și rularea programată de după un eșec (ambele pornesc pe un site închis, cu date posibil amestecate), o rulare pornită de codul vechi (fără cheia `maintenance`), orice schimbare de control după `claim` (acțiune din admin, pauză automată de flux, blocaj de sursă) și o eroare la citirea stării (fail closed). Rutele exceptate (`/admin`, `/login`, `/api/auth/*`, `/api/health`, `/api/admin/collection`, `/api/admin/feedback`) rămân ca înainte. `run.log` notează `public_status_at_claim=<cod>`: 200 la o rulare obișnuită, 503 la o recuperare. `/admin/procesare` arată în continuare „Mentenanță” în aceste minute, pentru că flagul este activ.
+
+**Golul acceptat din backup.** `pg_dump` citește un snapshot de la pornirea lui, în etapa `backup`. Ce scriu utilizatorii după acel moment și până la 503 (autentificări și sesiuni, feedback, anchete, întrebări salvate, cereri de documente) rămâne în baza live, dar nu este în dump-ul acelei rulări; o restaurare din el le pierde. Ce s-a scris în `drain`, înainte de `pg_dump`, este inclus. O cerere de document făcută în aceste minute rămâne în coadă până la redeschidere, pentru că worker-ul de documente nu pornește lucru nou în mentenanță. Dacă runner-ul moare în drain sau backup fără să marcheze eșecul, rularea rămâne `running` și site-ul rămâne deschis, pe date neschimbate; alerta de heartbeat (15 minute) pleacă la fel, iar recuperarea se face ca până acum.
 
 La eroare, **mentenanța rămâne activă**, fără retry automat și fără redeschidere pe date amestecate. Un daily poate refuza păstrarea riscului vechi dacă sursele istorice s-au schimbat și nu mai reconciliază; atunci se validează pe copie un full sau restaurarea. Nu dezactiva verificarea ca să termine.
 
