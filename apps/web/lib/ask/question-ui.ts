@@ -1,5 +1,6 @@
 import { validateSpec, type AskSpec, type Block } from "./spec";
 import { isHistoricalProfile, type MinimumRecords, type QueryPopulation } from "./population";
+import { cpvTermParts } from "./cpv-terms";
 
 /** The builder uses exactly the public /api/ask spec; it owns no query engine. */
 export interface QuestionSpec {
@@ -324,8 +325,10 @@ function periodWords(spec: QuestionSpec): string {
 function subjectWords(spec: QuestionSpec): string | null {
   const term = spec.filters.cpvTerm;
   if (term === undefined || term === "") return null;
-  const text = String(term).trim();
-  return /^\d[\d\s-]*$/.test(text) ? `CPV ${text.replace(/\s+/g, "")}` : `„${text}”`;
+  // Several subjects ("parcuri + spatii verzi") are counted as their union: name each one.
+  const words = cpvTermParts(String(term).trim()).map((text) =>
+    /^\d[\d\s-]*$/.test(text) ? `CPV ${text.replace(/\s+/g, "")}` : `„${text}”`);
+  return words.length > 1 ? `${words.slice(0, -1).join(", ")} și ${words[words.length - 1]}` : words[0]!;
 }
 
 /** Romanian numerals take "de" from 20 on: "5 angajați", "49 de angajați". */

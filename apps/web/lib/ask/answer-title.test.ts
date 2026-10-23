@@ -41,6 +41,11 @@ describe("answer titles", () => {
       .toBe("Ce cumpără „Comuna Dumbrăvița” în domeniul CPV 4523, în toți anii?");
   });
 
+  it("names every subject of a union", () => {
+    expect(describeQuestion({ block: "table", dim: "supplier", measure: "value", topN: 10, filters: { uatSiruta: 155243, uatName: "Municipiul Timișoara (Timiș)", cpvTerm: "parcuri + spatii verzi" } }))
+      .toBe("Cine câștigă contractele pentru „parcuri” și „spatii verzi” de la primăria Municipiului Timișoara (Timiș), în toți anii?");
+  });
+
   it("keeps the county and kind in leader and risk-profile titles", () => {
     expect(describeQuestion({ block: "entity_card", dim: "authority", rankBy: "risk", measure: "value", filters: { county: "Bihor" } }))
       .toBe("Care instituție din județul Bihor are cel mai ridicat indice de risc?");
