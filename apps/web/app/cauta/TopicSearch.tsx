@@ -7,6 +7,7 @@ import {formatExactDecimal,formatInt,cleanName} from '@/lib/format';
 import {parseTopicScope,topicParams,documentScope,fold,PAGE_SIZE,type TopicScope,type TopicResult,type TopicDocumentsResult,type DocumentHit,type Place,type SearchTab,type EntityHit} from '@/lib/topic-search/shared';
 import type {TopicInterpretation} from '@/lib/topic-search/interpretation';
 import {Broader,SubjectAnswer,Understood,searchHref,type AnswerCount} from './Understood';
+import {silentChoice} from '@/lib/topic-search/places';
 
 const defaults:TopicScope={q:'',place:'',from:'',to:'',type:'all',match:'words',tab:'all',page:1,role:''};
 const TABS:{id:SearchTab;label:string}[]=[{id:'all',label:'Toate'},{id:'entities',label:'Instituții și firme'},{id:'acquisitions',label:'Achiziții'},{id:'documents',label:'Documente'}];
@@ -40,9 +41,10 @@ function PlacePicker({value,selected,onChange}:{value:string;selected:Place|null
   const typed=edited(term)&&places.length>0;
   setActive(typed?1:places.findIndex(p=>p.id===value)+1||-1);
   if(pendingEnter.current){pendingEnter.current=false;
-   // Enter before the list was visible: choose only an unambiguous name.
-   const ambiguous=places.length>1&&fold(places[1]!.name)===fold(places[0]!.name);
-   if(typed&&!ambiguous)choose(places[0]!);}
+   // Enter before the list was visible: choose only a clear match. Two places with the
+   // same name, or a guess at a typo ("oradia"), stay in the list for the person to pick.
+   const clear=silentChoice(places);
+   if(typed&&clear)choose(clear);}
  }).catch(e=>{if(!abort.signal.aborted){setItems([]);setError(e.message);pendingEnter.current=false;}}).finally(()=>{if(!abort.signal.aborted)setLoading(false);});},160);
  return()=>{abort.abort();clearTimeout(timer);};
  },[term,open]);
@@ -55,7 +57,7 @@ function PlacePicker({value,selected,onChange}:{value:string;selected:Place|null
   <label htmlFor={id}>Unde cauți?</label><div className="topic-place-input"><DiscoveryIcon name="pin"/><input ref={input} id={id} value={term} placeholder="Toată țara" autoComplete="off" role="combobox" aria-autocomplete="list" aria-expanded={open} aria-controls={`${id}-options`} aria-activedescendant={open&&active>=0?`${id}-${active}`:undefined} onFocus={()=>setOpen(true)} onChange={e=>{setTerm(e.target.value);setOpen(true);}} onKeyDown={e=>{
    if(e.key==='Escape'){e.preventDefault();dismiss();}else if(['ArrowDown','ArrowUp'].includes(e.key)){e.preventDefault();setOpen(true);setActive(a=>e.key==='ArrowDown'?Math.min(a+1,loading?0:items.length):Math.max(0,a-1));}else if(e.key==='Enter'&&open){e.preventDefault();if(active===0)choose(null);else if(loading||itemsFor!==term){if(edited(term))pendingEnter.current=true;}else if(active>0&&items[active-1])choose(items[active-1]!);}
   }}/>{value&&<button type="button" aria-label="Șterge filtrul de localitate" onClick={()=>choose(null)}><DiscoveryIcon name="close"/></button>}</div>
-  {open&&<div className="topic-options"><p className="topic-help" role="status">{loading?'Se caută localități…':error||'Alege un județ, oraș sau o comună.'}</p><ul id={`${id}-options`} role="listbox" aria-label="Județe și localități" aria-busy={loading}>
+  {open&&<div className="topic-options"><p className="topic-help" role="status">{loading?'Se caută localități…':error||(items[0]?.match==='fuzzy'&&itemsFor===term?`Nu am găsit exact „${term.trim()}”. Poate cauți:`:'Alege un județ, oraș sau o comună.')}</p><ul id={`${id}-options`} role="listbox" aria-label="Județe și localități" aria-busy={loading}>
    <li role="option" id={`${id}-0`} aria-selected={active===0} onPointerDown={e=>e.preventDefault()}><button type="button" tabIndex={-1} onClick={()=>choose(null)}>Toată țara</button></li>
    {!loading&&items.map((p,i)=><li role="option" id={`${id}-${i+1}`} key={p.id} aria-selected={active===i+1} onPointerDown={e=>e.preventDefault()}><button type="button" tabIndex={-1} onClick={()=>choose(p)}><strong>{p.name}</strong><small>{p.detail}</small></button></li>)}
   </ul>{!loading&&!items.length&&!error&&<p className="topic-help">Nicio localitate găsită. Încearcă alt nume.</p>}</div>}

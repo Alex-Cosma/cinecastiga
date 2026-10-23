@@ -1,6 +1,8 @@
 export type SearchTab='all'|'acquisitions'|'documents'|'entities';
 export type TopicScope={q:string;place:string;from:string;to:string;type:'all'|'da'|'contracts';match:'words'|'phrase';tab:SearchTab;page:number;role:''|'authority'|'supplier'};
-export type Place={id:string;name:string;detail:string;kind:'county'|'locality'};
+/** How a suggestion matched the typed place name (/api/topic-search/places); absent on stored places. */
+export type PlaceMatchKind='exact'|'prefix'|'word'|'contains'|'county'|'fuzzy';
+export type Place={id:string;name:string;detail:string;kind:'county'|'locality';match?:PlaceMatchKind};
 export type AcquisitionHit={id:string;kind:'da'|'contracts';title:string;date:string|null;value:string|null;authorityId:string|null;authorityName:string|null;suppliers:string[];county:string|null;code:string|null;href:string;sourceUrl:string};
 export type DocumentHit={id:string;filename:string;page:number;pages:number[];text:string;method:string;noticeNo:string;noticeTitle:string;sourceUrl:string;contractId:string|null};
 export type EntityHit={id:string;name:string;cui:string|null;roles:string[];county:string|null};

@@ -26,6 +26,50 @@ export interface SummaryInput {
   nConsortium: number;
   /** First page of the partner list, largest first. */
   partners: readonly SummaryPartner[];
+  /**
+   * Contracts above the 1 mld. lei plausibility cap, kept out of the total and
+   * listed separately on the page (`#peste-plafon`), largest first.
+   */
+  aboveCap?: { count: number; totalExact: string; rows: readonly { natId: string; title: string | null; contractNo: string | null; valueRonExact: string }[] } | undefined;
+}
+
+/** Where the page lists the contracts above the cap. */
+export const ABOVE_CAP_ANCHOR = "#peste-plafon";
+
+/** A long official title cut at a word, for a sentence: "Proiectare și execuție Magistrala I…". */
+export function shortTitle(title: string, max = 70): string {
+  // The sentence adds its own quotes: drop the title's ("Contract\"Proiectare…", "„Drum…”").
+  const t = title.replace(/^\s*contract\s*(?=["„“])/i, "").replace(/["„”“]/g, "").replace(/\s+/g, " ").trim();
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max);
+  const space = cut.lastIndexOf(" ");
+  return `${(space > max * 0.6 ? cut.slice(0, space) : cut).replace(/[\s,;:.–-]+$/, "")}…`;
+}
+
+/**
+ * "Separat, 2 contracte de peste 1 mld. lei (13,8 mld. lei) nu intră în aceste
+ * cifre: „…” (9,1 mld. lei) și „…” (4,7 mld. lei). Vezi lista." Null without such contracts.
+ */
+export function aboveCapSentence(aboveCap: SummaryInput["aboveCap"]): Segment[] | null {
+  if (!aboveCap || aboveCap.count <= 0) return null;
+  const n = aboveCap.count;
+  const named = aboveCap.rows
+    .map((r) => ({ title: r.title?.trim() ? shortTitle(r.title) : r.contractNo?.trim() ? `contractul ${r.contractNo.trim()}` : null, value: r.valueRonExact }))
+    .filter((r): r is { title: string; value: string } => r.title !== null)
+    .slice(0, 2);
+  const out: Segment[] = [
+    n === 1 ? "Separat, un contract de peste 1 mld. lei " : `Separat, ${roCount(n, "un contract", "contracte")} de peste 1 mld. lei `,
+    `(${formatRon(aboveCap.totalExact)}) nu intră în aceste cifre`,
+  ];
+  if (named.length > 0) {
+    const listed = n === 1 ? [`: „${named[0]!.title}”`] : named.map((r, i) => `${i === 0 ? ": " : " și "}„${r.title}” (${formatRon(r.value)})`);
+    out.push(...listed);
+    if (n > named.length && n > 1) out.push(`, plus încă ${roCount(n - named.length, "un contract", "contracte")}`);
+    out.push(". ", { text: "Vezi lista", href: ABOVE_CAP_ANCHOR }, ".");
+  } else {
+    out.push(": ", { text: "vezi lista", href: ABOVE_CAP_ANCHOR }, ".");
+  }
+  return out;
 }
 
 export type Segment = string | { text: string; href?: string; strong?: boolean };
@@ -105,6 +149,9 @@ export function composeEntitySummary(input: SummaryInput): EntitySummary | null 
     withPreposition(isAuth ? "prin" : "din", channelsPhrase(input.nDa, input.nContracts)),
     years ? `, ${years}.` : ".",
   ]);
+  // Right after the total: the contracts above the cap that it leaves out (Cluj-Napoca's metro line).
+  const capped = aboveCapSentence(input.aboveCap);
+  if (capped) sentences.push(capped);
 
   const top = input.partners[0];
   const topDivision = input.divisions.find((d) => d.code != null);
