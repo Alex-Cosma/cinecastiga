@@ -111,7 +111,7 @@ export function IntentChoose({ result, onAdopt }: { result: IntentResult; onAdop
       </ul>
       {partial && (
         <p className="ia-partial">
-          Lista arată {partial.shown} din {partial.total} potriviri. Dacă nu găsești ce cauți, <a href={`/cauta?q=${encodeURIComponent(partial.search)}`}>caută „{partial.search}”</a> sau scrie numele complet (cu localitatea ori anul nașterii).
+          Lista arată {partial.shown} din {partial.total} potriviri. Dacă nu găsești ce cauți, <a href={`/cauta?q=${encodeURIComponent(partial.search)}`}>caută „{partial.search}”</a>. {partial.hint ?? "Scrie numele complet, cu localitatea ori anul nașterii."}
         </p>
       )}
     </section>
@@ -122,7 +122,7 @@ export function IntentChoose({ result, onAdopt }: { result: IntentResult; onAdop
 export function IntentAnnouncer({ result, error }: { result: IntentResult | null; error: string | null }) {
   const text = error ? error
     : !result ? ""
-    : result.spec ? `Am înțeles așa: ${result.sentence ?? ""} Poți schimba orice parte a întrebării, apoi apasă „Vezi răspunsul”.`
+    : result.spec ? `Am înțeles așa: ${result.sentence ?? ""} Răspunsul apare mai jos; poți schimba orice parte a întrebării.`
     : result.problem ?? "Nu am înțeles întrebarea.";
   return <p className="d-sr-only" role="status" aria-live="polite">{text}</p>;
 }
