@@ -82,10 +82,10 @@ export function IntentUnknown({ result, onPick }: { result: IntentResult; onPick
         {words.length
           ? <>Nu am găsit în datele noastre {words.length === 1 ? "cuvântul" : "cuvintele"} {words.map((w, i) => <span key={i}>{i > 0 ? ", " : ""}<q>{w}</q></span>)}. </>
           : <>Nu am găsit în întrebare un domeniu, un loc, o instituție sau o firmă. </>}
-        Încearcă să spui <strong>ce</strong> s-a cumpărat (asfalt, medicamente, iluminat), <strong>unde</strong> (un județ sau o localitate) sau numele unei instituții ori al unei firme.
+        Spune <strong>ce</strong>, <strong>unde</strong> sau numele unei instituții ori firme.
       </p>
       {result.interpretation.notes.map((note, i) => <p key={i} className="ia-note">{note}</p>)}
-      <p className="ia-try">Poți porni de la una dintre aceste întrebări:</p>
+      <p className="ia-try">Exemple:</p>
       <div className="ia-fallback">
         {FALLBACK_EXAMPLES.map((example) => <ExampleButton key={example.text} example={example} onPick={onPick} />)}
       </div>
@@ -130,11 +130,10 @@ export function IntentAnnouncer({ result, error }: { result: IntentResult | null
   return <p className="d-sr-only" role="status" aria-live="polite">{text}</p>;
 }
 
-export function IntentIntro({ result }: { result: IntentResult }) {
+export function IntentIntro() {
   return (
     <div className="ia-intro">
-      <h2 id="ia-understood" className="ia-eyebrow" tabIndex={-1}>Am înțeles așa <span>· apasă pe un cuvânt evidențiat ca să-l schimbi</span></h2>
-      <p className="ia-asked">Ai întrebat: <q>{result.q}</q></p>
+      <h2 id="ia-understood" className="ia-eyebrow" tabIndex={-1}>Am înțeles așa</h2>
     </div>
   );
 }
@@ -156,7 +155,7 @@ export function IntentOutro({ result, chosen, onAdopt }: { result: IntentResult;
     <div className="ia-outro">
       {words.length > 0 && (
         <p className="ia-leftover">
-          Nu am înțeles: {words.map((w, i) => <span key={i}>{i > 0 ? ", " : ""}<q>{w}</q></span>)}. Răspunsul nu ține cont de {words.length === 1 ? "acest cuvânt" : "aceste cuvinte"}. Le poți <a href={`/cauta?q=${encodeURIComponent(words.join(" "))}`}>căuta în titlurile achizițiilor</a>.
+          Am ignorat: {words.map((w, i) => <span key={i}>{i > 0 ? ", " : ""}<q>{w}</q></span>)} · <a href={`/cauta?q=${encodeURIComponent(words.join(" "))}`}>caută în titluri</a>
         </p>
       )}
       {notes.map((note, i) => <p key={i} className="ia-note">{note}</p>)}
@@ -166,9 +165,8 @@ export function IntentOutro({ result, chosen, onAdopt }: { result: IntentResult;
           <ul>
             {options.map((option, i) => (
               <li key={i}>
-                <button type="button" onClick={() => onAdopt(option)}>
+                <button type="button" title={option.sentence} onClick={() => onAdopt(option)}>
                   <strong>{option.label}</strong>
-                  <small>{option.sentence}</small>
                 </button>
               </li>
             ))}

@@ -78,7 +78,7 @@
 .d-search-dialog{height:min(650px,calc(100dvh - 48px));max-height:calc(100dvh - 48px);overflow:hidden}
 .d-search-dialog[open]{display:flex;flex-direction:column}
 .d-search-dialog>.d-dialog-head,.d-search-dialog>p{flex:none}
-.d-search-dialog .d-search-modal{display:flex;flex-direction:column;flex:1;min-height:0;max-height:none;overflow:hidden}
+.d-search-dialog .d-search-modal{display:flex;flex-direction:column;flex:1;min-height:0;max-height:none;overflow:hidden;margin-top:18px}
 .d-search-modal>form{flex:none}
 .d-search-dialog .d-search-results{display:flex;flex-direction:column;flex:1;min-height:0;max-height:none;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
 .d-search-results>ul{flex:none}
@@ -91,7 +91,7 @@
 @keyframes d-search-spin{to{transform:rotate(360deg)}}
 @media(max-width:700px){.d-search-dialog{height:min(650px,calc(100dvh - 28px));max-height:calc(100dvh - 28px)}.d-search-dialog .d-search input{font-size:16px}}
 @media(max-height:520px){.d-search-dialog{height:calc(100dvh - 24px);max-height:calc(100dvh - 24px);padding:16px}.d-search-dialog .d-dialog-head .eyebrow{display:none}.d-search-dialog .d-dialog-head h2{font-size:25px}.d-search-dialog>p{margin:8px 0 12px;font-size:11px}.d-search-dialog>.d-dialog-hint{margin:10px 0 0}.d-search-modal .d-search-state{min-height:130px;padding:18px 12px}}
-@media(max-height:400px){.d-search-dialog>p:not(.d-dialog-hint){display:none}.d-search-dialog .d-search-modal{margin-top:12px}}
+@media(max-height:520px){.d-search-dialog .d-search-modal{margin-top:12px}}
 .d-search-group+.d-search-group{border-top:1px solid var(--line);margin-top:4px;padding-top:2px}
 .d-search-group-title{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:9px 10px 3px}
 .d-search-group-likely li>a{background:var(--sunk)}.d-search-group-likely li>a b{font-size:13px;line-height:1.45}
@@ -106,7 +106,6 @@
 .data-context summary:focus-visible{outline:2px solid var(--accent);outline-offset:5px}
 .data-context p{max-width:85ch;margin:12px 0}
 .entity-data-context p{max-width:none}
-.section .split-pairs-explanation{max-width:none}
 .method-card>.split-pairs{margin:0}
 .split-pairs .split-pairs-status{margin:12px 18px;color:var(--ink2);font-size:13px}
 .split-pairs-scroll{overflow-x:auto;scrollbar-color:var(--line2) var(--surface)}

@@ -176,6 +176,7 @@
 }
 
 .cq-profile-notice {
+  position: relative;
   display: block;
   background: var(--amber-soft);
   border: 1px solid var(--amber-line);
@@ -203,11 +204,8 @@
 .cq-display {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 20px;
+  justify-content: flex-end;
   margin: 24px 0;
-  color: var(--muted);
-  font-size: 12px;
 }
 .cq-display > div {
   display: flex;
@@ -347,6 +345,8 @@
 }
 .cq-result .ask-tablewrap {
   overflow: visible;
+  /* Anchors the (?) of a column header: its explanation floats above the table. */
+  position: relative;
 }
 .cq-result .ask-table {
   width: 100%;
@@ -610,13 +610,6 @@
     font-size: 10px;
     margin: 0;
   }
-  .cq-display {
-    gap: 12px;
-    font-size: 11px;
-  }
-  .cq-display > span {
-    max-width: 52%;
-  }
   .cq-display button {
     font-size: 11px;
     padding: 7px;
@@ -744,7 +737,8 @@
 .cq-answer-head h2:focus { outline: none; }
 .cq-answer-head h2:focus-visible { outline: none; }
 .cq-lead { margin: 6px 0 18px; font-size: 16px; line-height: 1.5; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
-.cq-ranking-note { margin: 0 0 6px; font-size: 13px; line-height: 1.55; color: var(--ink2, var(--muted)); max-width: 70ch; }
+/* The consortium (?) floats above its line. */
+.cq-total-line { position: relative; }
 .cq-rank-rest { display: flex; align-items: center; gap: 20px; padding: 18px 12px; border-bottom: 1px solid var(--line); color: var(--ink2, var(--muted)); }
 .cq-rank-rest .cq-rank-name > strong { margin-bottom: 0; font-weight: 600; }
 .cq-share, .cq-answer-tools .cq-copy { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; }

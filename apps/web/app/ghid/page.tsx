@@ -14,34 +14,31 @@ const PATHS = [
   {
     href: countyBreakdownHref("Buzău"),
     title: "Pe ce se duc banii în județul tău?",
-    text: "Alege un județ pe harta de pe prima pagină. De exemplu, Buzău: achizițiile instituțiilor din județ, împărțite pe domenii.",
+    text: "Harta de pe prima pagină, pe domenii.",
   },
   {
     href: "/cauta?q=Municipiul%20Buz%C4%83u&tab=entities",
     title: "Caută o instituție, de exemplu „Municipiul Buzău”",
-    text: "Scrie numele sau CUI-ul unei instituții sau firme. Pagina ei arată ce a cumpărat sau ce a câștigat, cu cine a lucrat și când.",
+    text: "Nume sau CUI: ce a cumpărat sau câștigat, cu cine, când.",
   },
   {
     href: askHref({ block: "table", dataset: "all", dim: "supplier", measure: "value", topN: 10, filters: { cpvTerm: "drumuri" } }),
     title: "Pune o întrebare: cine repară drumurile?",
-    text: "În „Întreabă” alegi ce vrei să afli, unde și când. Răspunsul vine cu lista înregistrărilor din spate.",
+    text: "Ce, unde, când, cu înregistrările din spate.",
   },
   {
     href: "/semnale",
     title: "Vezi ce merită verificat",
-    text: "Semnalele arată tipare din date care merită verificate, nu acuzații. Fiecare are condițiile, limitele și sursele lui.",
+    text: "Tipare de verificat, nu acuzații.",
   },
 ];
 
 export default function GuidePage() {
   return <article className="guide-page" aria-labelledby="guide-title">
     <header className="guide-head">
-      <p className="eyebrow">GHID PENTRU ÎNCEPUT</p>
       <h1 id="guide-title">Cum citești ce vezi aici</h1>
       <p className="guide-lede">
-        cinecâștigă? arată ce cumpără instituțiile publice din România, de la ce firme și pentru ce sumă,
-        din datele publice ale achizițiilor. Fiecare cifră duce la înregistrările din care a fost calculată,
-        iar fiecare înregistrare duce la sursa ei.
+        Ce cumpără instituțiile publice, de la cine și cu cât. Fiecare cifră duce la înregistrările ei și la sursă.
       </p>
     </header>
 
@@ -56,7 +53,7 @@ export default function GuidePage() {
           </li>;
         })}
       </ol>
-      <p className="guide-note">Un semnal sau o sumă mare nu spun singure că ceva e în neregulă. Sunt motive să te uiți în documente și să întrebi instituția.</p>
+      <p className="guide-note">Un semnal sau o sumă mare nu dovedesc o neregulă: sunt motive să verifici.</p>
     </section>
 
     <section className="guide-section" aria-labelledby="guide-start">
@@ -74,13 +71,13 @@ export default function GuidePage() {
 
     <section className="guide-section" aria-labelledby="guide-sources">
       <h2 id="guide-sources">De unde vin datele</h2>
-      <p>
-        Achizițiile directe, procedurile și contractele vin din SEAP/SICAP (e-licitatie.ro). Publicațiile europene
-        din TED se consultă separat și nu se adaugă încă o dată la totaluri. Bilanțurile Ministerului Finanțelor
-        arată, unde există, numărul de salariați și cifra de afaceri a firmelor, iar registrul ONRC arată
-        reprezentanții lor, de exemplu administratorii. Datele nu sunt preluate în timp real și pot avea lipsuri;
-        pagina de metodologie arată ce perioade acoperă fiecare sursă.
-      </p>
+      <ul className="guide-data">
+        <li><b>SEAP/SICAP</b> (e-licitatie.ro): achiziții și contracte</li>
+        <li><b>TED</b>: separat, nu se adună la totaluri</li>
+        <li><b>Bilanțuri MF</b>: salariați, cifră de afaceri</li>
+        <li><b>ONRC</b>: administratori</li>
+      </ul>
+      <p>Datele nu sunt în timp real și pot avea lipsuri.</p>
       <ul className="guide-sources">
         <li><Link href="/metodologie">Metodologia: cum calculăm totalurile și semnalele</Link></li>
         <li><Link href="/metodologie#acoperire">Sursele și acoperirea datelor</Link></li>

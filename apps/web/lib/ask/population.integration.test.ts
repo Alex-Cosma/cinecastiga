@@ -169,7 +169,8 @@ describe.runIf(Boolean(connection))("investigative population SQL (dedicated rol
         expect(bySort).toMatchObject({ data:{ block:"table", rows:[{ entityId:"11", county:"Cluj" },{ entityId:"10", county:"Ilfov" }] } });
         expect(await runSpec(q,paged,{},{ sort:"name", dir:"desc" })).toMatchObject({ data:{ block:"table", rows:[{ entityId:"10", county:"Ilfov" },{ entityId:"11", county:"Cluj" }] } });
         if (!("data" in bare)) throw new Error("table expected");
-        expect(bare.caveats).toContain("Coloana Județ arată județul firmei, nu județele autorităților care au cumpărat de la ea.");
+        // The column note sits next to the "Județ" header (AskPanel), not in the caveats.
+        expect(bare.caveats.some(c => c.includes("Județ"))).toBe(false);
         expect(bare.caveats.some(c => c.includes("autorității cumpărătoare"))).toBe(false);
         throw rollback;
       });

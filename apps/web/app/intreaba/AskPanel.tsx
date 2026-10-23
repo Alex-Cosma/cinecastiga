@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import ClipButton from "@/components/ClipButton";
 import FollowButton from "@/components/FollowButton";
@@ -37,6 +37,7 @@ import "./question-results.css";
 import DiscoveryIcon from "../DiscoveryIcon";
 import AnswerExports from "./AnswerExports";
 import CoverageDisclosure from "@/components/CoverageDisclosure";
+import Term from "@/components/Term";
 import { AskBox, AskExamples, IntentAnnouncer, IntentChoose, IntentIntro, IntentOutro, IntentUnknown, MAX_QUESTION_CHARS, type IntentChoice } from "./IntentAsk";
 import type { AskExample } from "./ask-examples";
 import "./ask-intent.css";
@@ -610,7 +611,7 @@ export default function AskPanel({
             onRun={(spec) => execute({ spec })}
             initialApplied={!chosen}
             {...(chosen && intent ? {
-              intro: <IntentIntro result={intent} />,
+              intro: <IntentIntro />,
               outro: <IntentOutro result={intent} chosen={chosen} onAdopt={adopt} />,
             } : {})}
           />
@@ -657,8 +658,7 @@ export default function AskPanel({
                 </div>
                 {dirty && (
                   <p className="cq-pending" role="status">
-                    Ai modificări neaplicate. Răspunsul și sursele de mai jos
-                    păstrează întrebarea anterioară.
+                    Răspuns pentru întrebarea anterioară
                   </p>
                 )}
               </div>
@@ -704,11 +704,9 @@ export default function AskPanel({
             {isProfile && (
               <p className="cq-profile-notice">
                 <strong>
-                  Valoare înregistrată în profil, inclusiv oferte neacceptate.
+                  Valori din profil, inclusiv oferte neacceptate; nu plăți.
                 </strong>{" "}
-                Profilurile folosesc istoricul achizițiilor directe; nu
-                reprezintă plăți efectuate. Stările și baza de calcul sunt în
-                lista surselor.
+                <Term tip title="Profil istoric" text="Profilurile folosesc istoricul achizițiilor directe. Stările și calculul sunt în lista surselor." />
               </p>
             )}
             {(resp.caveats?.length ?? 0) > 0 && (
@@ -719,7 +717,7 @@ export default function AskPanel({
                 )}
               >
                 <summary>
-                  Despre această selecție · {resp.caveats!.length} precizări
+                  Ce include calculul · {resp.caveats!.length}
                 </summary>
                 {resp.caveats!.map((c) => (
                   <p key={c}>{c}</p>
@@ -727,11 +725,6 @@ export default function AskPanel({
               </details>
             )}
             <CoverageDisclosure key={JSON.stringify(applied)} spec={applied}>
-              <p>
-                Calculele folosesc condițiile de mai sus. Lista surselor explică
-                selecția și valorile înregistrate; pagina de metodologie descrie
-                indicatorii.
-              </p>
               {resp.displaySql && (
                 <details>
                   <summary>Interogarea SQL · avansat</summary>
@@ -743,11 +736,6 @@ export default function AskPanel({
             </CoverageDisclosure>
             {["table", "timeseries", "map"].includes(data.block) && (
               <div className="cq-display">
-                <span>
-                  {data.block === "table"
-                    ? "Un clasament pe care îl poți verifica."
-                    : "Aceleași date, în forma potrivită pentru tine."}
-                </span>
                 <div>
                   <button
                     type="button"
@@ -891,7 +879,7 @@ export default function AskPanel({
                 <CopyIcon />
                 Copiază linkul
               </button>
-              <AnswerExports key={encodeSpec(applied)} spec={applied} data={data} disabled={loading} onResult={()=>exportCsv(data,applied,title)}/>
+              <AnswerExports key={encodeSpec(applied)} spec={applied} disabled={loading} onResult={()=>exportCsv(data,applied,title)}/>
               {mode === "ask" && (
                 <button
                   type="button"
@@ -948,6 +936,7 @@ function RankingBars({
           : 0
         : r.value;
   const max = Math.max(...rows.map(metric), 1);
+  const hasTotal = shareTotals !== undefined && shareTotals.value > 0;
   if (!rows.length)
     return (
       <p className="ask-empty">
@@ -957,11 +946,6 @@ function RankingBars({
     );
   return (
     <>
-      {spec.dim === "supplier" && (
-        <p className="cq-ranking-note">
-          Când un contract are mai mulți câștigători (consorțiu), fiecare firmă primește aici o cotă egală din valoare (de exemplu ⅓ pentru trei firme). De aceea unele firme pot avea exact aceeași sumă.
-        </p>
-      )}
       <div className="cq-ranking">
         {rows.map((r, i) => (
           <button
@@ -1019,15 +1003,14 @@ function RankingBars({
           </div>
         )}
       </div>
-      {shareTotals && shareTotals.value > 0 && (
-        <p className="ask-fine">
-          Total: {formatRonFull(shareTotals.value)} la {entityNoun(spec.dim, shareTotals.entities)} · valoare înregistrată, nu plăți.
+      {/* A consortium's value is split equally among its winners, so some firms show the same amount. */}
+      {(hasTotal || spec.dim === "supplier") && (
+        <p className="ask-fine cq-total-line">
+          {hasTotal && <>Total: {formatRonFull(shareTotals.value)} la {entityNoun(spec.dim, shareTotals.entities)} · valoare înregistrată, nu plăți</>}
+          {hasTotal && spec.dim === "supplier" && " · "}
+          {spec.dim === "supplier" && <>consorții: cote egale <Term id="consortiu" tip /></>}
         </p>
       )}
-      <p className="ask-fine">
-        {countWords(rows.length, "rezultat afișat", "rezultate afișate")}. „Vezi înregistrările” păstrează
-        întreaga selecție, inclusiv rezultatele din afara acestui clasament.
-      </p>
     </>
   );
 }
@@ -1213,22 +1196,26 @@ function TableBlock({
     k,
     label,
     num,
+    tip,
   }: {
     k: string;
     label: string;
     num?: boolean;
+    tip?: ReactNode;
   }) =>
     paged ? (
       <th
         className={(num ? "num" : "") + " sortable"}
-        onClick={() => sortBy(k)}
+        // The (?) opens its explanation; it does not sort the column.
+        onClick={(event) => { if (!(event.target as Element).closest(".term")) sortBy(k); }}
         title="sortează"
       >
         {label}
         {sort === k ? (dir === "desc" ? " ▾" : " ▴") : ""}
+        {tip && <> {tip}</>}
       </th>
     ) : (
-      <th className={num ? "num" : undefined}>{label}</th>
+      <th className={num ? "num" : undefined}>{label}{tip && <> {tip}</>}</th>
     );
   if (rows.length === 0)
     return <p className="ask-empty">Niciun rezultat pentru aceste filtre.</p>;
@@ -1245,7 +1232,7 @@ function TableBlock({
           <tr>
             <th className="pos">#</th>
             <Th k="name" label="Nume" />
-            <Th k="county" label="Județ" />
+            <Th k="county" label="Județ" tip={(spec as AskSpec | undefined)?.dim === "supplier" ? <Term tip title="Județ" text="Județul firmei, nu al instituțiilor care au cumpărat de la ea." /> : undefined} />
             {perCapita && <th className="num">Populație</th>}
             {perCapita && <Th k="percap" label="lei / locuitor" num />}
             <Th k="value" label="Valoare" num />
@@ -1315,9 +1302,6 @@ function TableBlock({
           </button>
         </div>
       )}
-      <p className="ask-fine">
-        nume → profilul entității · numărul de achiziții → înregistrările lor
-      </p>
     </div>
   );
 }
@@ -1383,10 +1367,7 @@ function SeriesBlock({
           );
         })}
       </div>
-      <p className="ask-fine">
-        vârful ({peak.year}) este marcat · valori contractate, nu plăți · click
-        pe un an → lista achizițiilor lui
-      </p>
+      <p className="ask-fine">valori contractate, nu plăți</p>
       {shownPartial.length > 0 && (
         <p className="ask-fine ask-partial-note">
           * {shownPartial.some((x) => x.provisional) ? "an cu date parțiale sau provizorii" : "an acoperit parțial"}, nu se compară direct cu un an întreg:{" "}

@@ -14,6 +14,7 @@ import ThemeToggle from "./ThemeToggle";
 import GlobalSearch from "./GlobalSearch";
 import Reveal from "./Reveal";
 import { CoverageSummary } from "@/components/DataCoverage";
+import Term from "@/components/Term";
 import { SITE_DESCRIPTION, SITE_NAME, pageTitle } from "@/lib/site";
 import { publishedStories } from "@/lib/stories/published";
 import { GUIDE_HREF, GUIDE_LABEL } from "@/lib/site-nav";
@@ -61,10 +62,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <div>
               <h4 className="d-footer-brand">{SITE_NAME}</h4>
               <p className="d-footer-motto">Date publice. Surse la vedere. Curiozitatea e suficientă.</p>
-              <p>
-                Sursă: e-licitatie.ro (SEAP / SICAP), date publice. Cifrele reprezintă valori înregistrate, nu neapărat plăți
-                efectuate. Atribuirea către consorții este estimată (împărțire egală în lipsa datelor pe membru). Proiect
-                deschis, necomercial.
+              <p className="d-footer-note">
+                Sursă: e-licitatie.ro (SEAP/SICAP). Proiect deschis, necomercial. Valori înregistrate, nu plăți.
+                Consorții: cote egale <Term id="consortiu" tip />
               </p>
             </div>
             <div>

@@ -113,7 +113,7 @@ export default function DiscoverySearch({ hero = false, modal = false, onNavigat
     </form>
     <span className="d-sr-only" role="status">{!expanded ? "" : failedAll ? "Sugestiile nu sunt disponibile momentan. Apasă Enter pentru rezultate." : loading && !options.length ? "Căutăm…" : `${options.length === 1 ? "O sugestie" : `${options.length} sugestii`}. Folosește săgețile pentru a le parcurge; Enter fără o sugestie aleasă deschide rezultatele.`}</span>
     <div className="d-search-results" hidden={!modal && !open}>
-      {term.length < 2 ? <div className="d-search-state"><DiscoveryIcon name="search" /><b>Ce vrei să urmărești?</b><p>Scrie un subiect („iluminat”), un loc, numele unei instituții, o firmă sau un CUI.</p></div>
+      {term.length < 2 ? <div className="d-search-state"><DiscoveryIcon name="search" /><p>De ex.: iluminat, Buzău, o firmă sau un CUI</p></div>
         : failedAll ? <div className="d-search-state"><DiscoveryIcon name="search" /><b>Sugestiile nu sunt disponibile momentan.</b><p>Apasă Enter pentru a căuta „{term}” în achiziții și documente.</p></div>
         : null}
       {term.length >= 2 && !loading && !failedAll && groups.length === 1 && groups[0]!.id === "words" && <p className="d-search-none">Nu am recunoscut un subiect, un loc sau un nume în „{term}”.</p>}

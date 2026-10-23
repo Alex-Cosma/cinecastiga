@@ -129,7 +129,7 @@ function SaveQuestionForm({ spec, disabled, active, onSaved, userId }: Props & {
     }}>
       <form onSubmit={event => void save(event)} aria-busy={busy}>
         <h2 id={headingId}>{copyMode ? "Salvează o copie" : snapshotActive ? "Salvează modificările" : "Salvează întrebarea"}</h2>
-        <p id={descriptionId}>{local ? "Păstrezi întrebarea și filtrele pe acest dispozitiv, în acest browser. Se pierd dacă ștergi datele site-ului și pot fi văzute de oricine folosește același profil de browser." : "Păstrezi întrebarea și filtrele, privat în contul tău."} Rezultatele nu sunt salvate.</p>
+        <p id={descriptionId}>{local ? "Doar în acest browser: se pierde dacă ștergi datele site-ului și o vede oricine folosește același profil. Se salvează întrebarea, nu rezultatele." : "Păstrezi întrebarea și filtrele, privat în contul tău. Rezultatele nu sunt salvate."}</p>
         {login ? <div role="status" className="cq-save-login"><p>Autentifică-te pentru a salva. Întrebarea și filtrele te așteaptă la întoarcere.</p><a href={`/login?next=${encodeURIComponent(next)}`}>Autentifică-te și revino</a></div> : <label>Numele întrebării<input autoFocus required maxLength={160} value={title} disabled={busy} aria-invalid={titleTaken || undefined} onChange={event => { setTitle(event.target.value); setTitleTaken(false); setError(""); }} onFocus={event => event.currentTarget.select()} /></label>}
         {copyMode && !login && <p className="cq-copy-note">Nume propus pentru copie. Îl poți modifica înainte de salvare.</p>}
         {error && <p role="alert" className="cq-save-error">{error}</p>}

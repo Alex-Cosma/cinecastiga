@@ -47,5 +47,3 @@
 .feedback-dialog :disabled{opacity:.55;cursor:wait}
 .feedback-dialog :focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 @media(max-width:600px){.feedback-dialog{padding:22px}.feedback-dialog h2{font-size:25px}}
-.feedback-fab-more{display:none}
-@media(max-width:720px){.feedback-fab .feedback-fab-more{display:inline}}

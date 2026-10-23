@@ -133,7 +133,7 @@ export interface Interpretation {
   confidenceLabel: "high" | "medium" | "low" | "none";
   /** Plain-language notes about choices made. */
   notes: string[];
-  /** Why this place was chosen over its alternatives ("Am ales județul…"); shown with the main reading only. */
+  /** Why this place was chosen over its alternatives ("„Buzău”: am ales tot județul."); shown with the main reading only. */
   placeNote: string | null;
 }
 

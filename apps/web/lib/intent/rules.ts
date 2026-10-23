@@ -700,9 +700,10 @@ export class RulesInterpreter implements QuestionInterpreter {
       // the county seat of the same name, e.g. Municipiul Buzău
       out.placeAlternatives = out.authorityKind ? [] : locs.filter((e) => e.county === county.county).sort(byPopulation).slice(0, 2).map((e) => match(e));
       if (out.placeAlternatives.length && pick.constraint === "any")
-        out.placeNote = (county.county === "București"
-          ? "Am ales tot Bucureștiul, adică toate instituțiile din oraș și din sectoare; poți alege doar Primăria Municipiului București."
-          : `„${county.county}” poate fi județul sau ${out.placeAlternatives[0]!.name}. Am ales județul, adică toate instituțiile din județ; poți alege doar primăria ${genitive(out.placeAlternatives[0]!)}.`);
+        // The button for the town hall alone follows right under the note.
+        out.placeNote = county.county === "București"
+          ? "Am ales tot Bucureștiul, cu sectoarele."
+          : `„${county.county}”: am ales tot județul.`;
       return;
     }
     if (locs.length === 1) {

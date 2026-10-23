@@ -27,9 +27,12 @@ export const DA_PLAFOND_RON = 2_000_000;
  * every contract answer must say so; the entity page lists them. */
 /** Same wording as /metodologie: an analytical filter, never a claim that the record is wrong (audit F25). */
 export const DA_PLAFOND_CAVEAT =
-  `Achizițiile directe peste ${(DA_PLAFOND_RON / 1_000_000).toLocaleString("ro-RO")} milioane lei sunt excluse din totaluri printr-un plafon de plauzibilitate: un filtru analitic al aplicației, nu pragul legal și nici dovada unei erori.`;
+  `Achizițiile directe peste ${(DA_PLAFOND_RON / 1_000_000).toLocaleString("ro-RO")} milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).`;
 export const CONTRACT_CAP_CAVEAT =
-  "Contractele prin proceduri cu valoare peste 1 miliard lei sunt separate de totaluri și de clasamente (filtru al aplicației, nu dovada unei erori); pagina instituției le listează.";
+  "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.";
+/** Historical profiles drop it with the stream caveats: their own source line replaces them. */
+const DA_ACCEPTED_CAVEAT =
+  "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.";
 const STATEMENT_TIMEOUT = "20s";
 /** Minimum DA count before an entity participates in risk-based blocks. */
 const RISK_MIN_DAS = 10;
@@ -541,7 +544,7 @@ export async function runSpec(
     caveats.push("Sursă: DOAR achiziții directe.");
   } else {
     caveats.push(
-      "Sursă: ambele canale — achiziții directe + contracte atribuite prin proceduri. Canalele sunt disjuncte, deci nicio înregistrare nu e adunată de două ori; TED nu e niciodată însumat.",
+      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
       CONTRACT_CAP_CAVEAT,
     );
   }
@@ -626,7 +629,8 @@ export async function runSpec(
     county = grounding.county.canonical;
     // Audit F13: a county comes from the source address or NUTS-3 code, the ONRC
     // registered office of a supplier, or a strict UAT link (normalize step).
-    caveats.push("Județul este al sediului instituției, din adresa sau codul NUTS din sursă, din registrul ONRC pentru firme sau din codul UAT verificat. Instituțiile fără județ cunoscut nu intră în filtru.");
+    // One caveat for every dimension: whose county it is, where it comes from, who is left out.
+    caveats.push("Județul = sediul instituției care cumpără, nu al firmei (din adresă, cod NUTS, ONRC sau UAT verificat). Instituțiile fără județ cunoscut nu intră.");
   }
   let uatSiruta: number | null = null;
   let uatAuthorityIds: string[] = [];
@@ -684,10 +688,7 @@ export async function runSpec(
         ? "strict"
         : "da-branch";
   if (plafond !== "none") {
-    caveats.push(DA_PLAFOND_CAVEAT);
-    caveats.push(
-      "Sunt numărate doar achizițiile directe finalizate («Ofertă acceptată») — comenzile refuzate de furnizor sau neacceptate la termen (~6% din înregistrări) sunt excluse din valorile contractate; acceptarea unei oferte nu dovedește efectuarea unei plăți.",
-    );
+    caveats.push(DA_PLAFOND_CAVEAT, DA_ACCEPTED_CAVEAT);
   }
 
   const w: WhereParts = {
@@ -865,16 +866,8 @@ export async function runSpec(
   if (spec.population) caveats.push(`Selecție precisă aplicată: ${describePopulation(spec.population)}. Datele și limitele sunt inclusive; valorile se referă la cota alocată fiecărui furnizor.`);
   if (spec.minimumRecords) caveats.push(`Păstrăm ${spec.minimumRecords.role === "authority" ? "instituțiile" : "firmele"} cu cel puțin ${spec.minimumRecords.count} înregistrări în selecția filtrată. O atribuire pe câștigător este o înregistrare; pragul nu numără contracte distincte.`);
 
-  if (spec.dim === "supplier" && w.county) {
-    caveats.push(
-      "Filtrul de județ se aplică județului autorității cumpărătoare, nu sediului firmei.",
-    );
-  }
-  if (spec.dim === "supplier" && spec.block === "table") {
-    caveats.push(
-      "Coloana Județ arată județul firmei, nu județele autorităților care au cumpărat de la ea.",
-    );
-  }
+  // The county caveat above already says the filter is the buyer's county, not
+  // the firm's; the firm's own county column is explained next to its header.
   // Strict RPL 2021 denominators, never the legacy entity_profile population.
   const perCapita: PerCapitaPopulations | null =
     spec.measure === "value_per_capita" ? await readPerCapitaPopulations(sql) : null;
@@ -883,7 +876,7 @@ export async function runSpec(
     // These blocks use entity_flags, whose historical source population is
     // intentionally different from the accepted-only transaction mart.
     for (let i = caveats.length - 1; i >= 0; i--) {
-      if (/^(Sursă:|Sunt numărate doar|Valorile peste)/.test(caveats[i]!) || caveats[i] === CONTRACT_CAP_CAVEAT) caveats.splice(i, 1);
+      if (/^(Sursă:|Valorile peste)/.test(caveats[i]!) || caveats[i] === CONTRACT_CAP_CAVEAT || caveats[i] === DA_ACCEPTED_CAVEAT) caveats.splice(i, 1);
     }
     caveats.push(
       "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",

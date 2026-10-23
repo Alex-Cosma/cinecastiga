@@ -49,7 +49,7 @@ export default function ReportProblem() {
     <aside aria-label="Feedback" className="feedback-dock">
       <button ref={trigger} type="button" className="feedback-fab" aria-haspopup="dialog" aria-label="Feedback: semnalează o problemă sau trimite o sugestie" onClick={open}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v8.5A1.5 1.5 0 0 1 19 17h-7.2L7.5 20.2V17H5a1.5 1.5 0 0 1-1.5-1.5V7A1.5 1.5 0 0 1 5 5.5Z"/><path d="M12 8.5v3.2M12 14.4v.1"/></svg>
-        <span>Feedback<span className="feedback-fab-more"> · semnalează o problemă</span></span>
+        <span>Feedback</span>
       </button>
     </aside>
     <dialog ref={dialog} className="feedback-dialog" aria-labelledby={heading} aria-describedby={description} onCancel={event => { event.preventDefault(); close(); }}>
@@ -57,7 +57,7 @@ export default function ReportProblem() {
       {sent ? <><p id={description} role="status">Mulțumim. Mesajul tău a ajuns la administratorii aplicației.</p><p>Fiind anonim, nu îți putem trimite un răspuns.</p><div className="feedback-form-actions"><button data-close type="button" className="feedback-primary" onClick={close}>Înapoi la explorare</button></div></> : <form noValidate onSubmit={event => void submit(event)} aria-busy={busy}>
         <p id={description}>Fără cont, nume sau e-mail. Mesajul este vizibil doar administratorilor aplicației.</p>
         <label>Despre ce este vorba?<select value={category} disabled={busy} onChange={event => setCategory(event.target.value as FeedbackCategory)}>{Object.entries(FEEDBACK_CATEGORIES).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-        <label htmlFor={`${description}-message`}>Descrie problema</label><textarea id={`${description}-message`} required minLength={20} maxLength={3000} rows={5} value={message} disabled={busy} onChange={event => setMessage(event.target.value)} placeholder="Ce ai observat și ce ar trebui să apară? Pentru o problemă cu datele, indică instituția, contractul sau cifra." aria-describedby={invalid ? `${description}-hint ${description}-error` : `${description}-hint`} aria-invalid={invalid} />
+        <label htmlFor={`${description}-message`}>Descrie problema</label><textarea id={`${description}-message`} required minLength={20} maxLength={3000} rows={5} value={message} disabled={busy} onChange={event => setMessage(event.target.value)} placeholder="Ce ai observat? Pentru date: instituția, contractul sau cifra." aria-describedby={invalid ? `${description}-hint ${description}-error` : `${description}-hint`} aria-invalid={invalid} />
         <div className="feedback-field-note" id={`${description}-hint`}><span>Cel puțin 20 de caractere. Nu include date personale în mesaj.</span><span>{message.length.toLocaleString("ro-RO")} / 3.000</span></div>
         {sourcePath && <p className="feedback-source">Pagina atașată: <code>{sourcePath}</code></p>}
         {draftPath && <p className="feedback-source feedback-source-changed">Ai început mesajul pe <code>{draftPath}</code>; se atașează pagina de acum.</p>}
