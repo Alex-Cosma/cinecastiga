@@ -68,12 +68,12 @@ describe("the editable question contract", () => {
     expect(validateSpec(spec)).not.toHaveProperty("error");
   });
 
-  it("preserves unsupported historical conditions and blocks execution rather than silently broadening", () => {
+  it("keeps the selection's conditions when a legacy profile comparison opens", () => {
     const input:QuestionSpec = { ...authority, filters:{ ...authority.filters, compareWithId:922, compareWith:"Comuna Giroc" } };
     const { spec } = transitionQuestion({ ...input, comparisonMode:"profiles", block:"compare" });
     expect(spec.filters).toEqual(input.filters);
     expect(spec.dataset).toBe("contracts");
-    expect(questionErrors(spec).join(" ")).toContain("Condițiile sunt păstrate");
+    expect(questionErrors(spec).join(" ")).not.toContain("Condițiile sunt păstrate");
   });
   it("retains the supported authority cohort conditions", () => {
     const input:QuestionSpec = { block:"distribution", dataset:"da", dim:"authority", measure:"value", filters:{ authorityId:811, authorityName:"Comuna", county:"Timiș", authorityKind:"comuna" } };
@@ -99,10 +99,10 @@ describe("the editable question contract", () => {
     delete withoutLocality.filters.uatSiruta; delete withoutLocality.filters.uatName;
     expect(questionErrors(withoutLocality)).toEqual([]);
   });
-  it("keeps legacy compare links historical and explicitly chooses transactional new comparisons", () => {
-    const legacy:QuestionSpec = { block:"compare", measure:"value", filters:{ authorityId:811, compareWithId:922 } };
-    expect(transitionQuestion(legacy).spec.comparisonMode).toBeUndefined();
-    expect(describeQuestion(legacy)).toContain("Profiluri istorice");
+  it("titles every comparison by its two entities and period, legacy links included", () => {
+    const legacy:QuestionSpec = { block:"compare", measure:"value", filters:{ authorityId:811, authorityName:"Comuna Dumbrăvița", compareWithId:922, compareWith:"Comuna Giroc" } };
+    expect(describeQuestion(legacy)).toBe("„Comuna Dumbrăvița” și „Comuna Giroc” · toți anii disponibili");
+    expect(describeQuestion({ ...legacy, comparisonMode:"profiles" })).toBe(describeQuestion(legacy));
     expect(transitionQuestion(authority, "compare").spec.comparisonMode).toBe("transactions");
   });
 

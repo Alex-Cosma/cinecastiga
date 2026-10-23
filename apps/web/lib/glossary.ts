@@ -189,6 +189,15 @@ export const GLOSSARY = {
     title: "Domeniul CPV",
     text: "Un domeniu CPV ales include toate subdomeniile sale.",
   },
+  // Ask comparison of two entities.
+  "profil-risc": {
+    title: "Profil de risc",
+    text: "Indicele de risc (CRI) și semnalele sunt calculate pe tot istoricul de achiziții directe al entității, nu pe selecția de mai sus. Un semnal este o pistă de verificat, nu o acuzație și nu dovedește o ilegalitate.",
+  },
+  "oferte-cunoscute": {
+    title: "O singură ofertă",
+    text: "Numărul de oferte este publicat doar pentru o parte din contracte, mai ales pentru cele din TED. Procentul se calculează numai pe acestea.",
+  },
 } as const satisfies Record<string, GlossaryEntry>;
 
 export type GlossaryId = keyof typeof GLOSSARY;

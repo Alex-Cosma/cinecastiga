@@ -132,6 +132,7 @@ export interface AskSpec {
   filters: AskFilters;
   /** Explicit transaction conditions, shared by every compatible view and source export. */
   population?: QueryPopulation;
+  /** Accepted from older links and ignored: a comparison is always on the selection (24 Oct 2026). */
   comparisonMode?: "transactions" | "profiles";
   minimumRecords?: MinimumRecords;
 }

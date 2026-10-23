@@ -74,7 +74,6 @@ export function useTip() {
 }
 import { FLAG_META, criBand } from "@/lib/flags";
 import type {
-  CompareEntity,
   DistributionData,
   BreakdownSlice,
   ScatterPoint,
@@ -91,94 +90,6 @@ import type {
 
 function flagTitle(code: string): string {
   return FLAG_META[code]?.title ?? code;
-}
-
-/* ── compare ──────────────────────────────────────────────────────────── */
-
-export function CompareBlock({ entities, historical = true }: { entities: CompareEntity[]; historical?: boolean }) {
-  const evidence = useAnswerEvidence();
-  return (
-    <div className="ask-cmp">
-      {entities.map((e) => {
-        const band = e.cri !== null ? criBand(e.cri) : null;
-        return (
-          <div key={e.entityId} className="col">
-            <h4>
-              <Link href={`/entitati/${e.entityId}`}>{cleanName(e.name)}</Link>
-            </h4>
-            <div className="cty">
-              {e.county ?? "județ necunoscut"} ·{" "}
-              {e.role === "authority" ? "autoritate" : "furnizor"}
-            </div>
-            <div className="row">
-              <span className="k">{historical ? "Valoare în profil" : "Valoare în selecție"}</span>
-              <span className="num">{formatRon(e.value)}</span>
-            </div>
-            <div className="row">
-              <span className="k">{historical ? "Achiziții" : "Înregistrări în selecție"}</span>
-              <span className="num">{formatInt(e.count)}</span>
-            </div>
-            {e.population !== null && e.population > 0 && (
-              <div className="row">
-                <span className="k">Lei / locuitor</span>
-                <span className="num">
-                  {formatInt(Math.round(e.value / e.population))}
-                </span>
-              </div>
-            )}
-            {historical && <div className="row">
-              <span className="k">Indice risc</span>
-              <span
-                className={e.cri !== null && e.cri >= 0.3 ? "num hi" : "num"}
-              >
-                {e.cri !== null ? `${formatDecimal(e.cri, 2)} · ${band!.label}` : "—"}
-              </span>
-            </div>}
-            {historical && <div className="row">
-              <span className="k">Semnale</span>
-              <span className={e.nFlags > 0 ? "hi" : ""}>{e.nFlags}</span>
-            </div>}
-            {evidence && (
-              <button
-                type="button"
-                className="cq-record-link"
-                onClick={() =>
-                  evidence.open(
-                    undefined,
-                    {
-                      entityIds: [e.entityId],
-                      role: e.role === "supplier" ? "supplier" : "authority",
-                    },
-                    `${cleanName(e.name)} · ${historical ? "înregistrările profilului" : "sursele selecției"}`,
-                  )
-                }
-              >
-                Vezi cele {formatInt(e.count)} înregistrări →
-              </button>
-            )}
-            {historical && e.flags.length > 0 && (
-              <div className="ask-fchips">
-                {e.flags.map((f) => (
-                  <span
-                    key={f}
-                    className="ask-fchip"
-                    title={FLAG_META[f]?.short}
-                  >
-                    {flagTitle(f)}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })}
-      {historical && (
-        <p className="ask-methnote">
-          Indicele de risc (CRI) e un semnal statistic, nu o dovadă de neregulă — <Link href="/metodologie">cum se calculează</Link>.
-        </p>
-      )}
-    </div>
-  );
 }
 
 /* ── distribution ─────────────────────────────────────────────────────── */

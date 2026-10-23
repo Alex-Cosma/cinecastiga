@@ -14,6 +14,8 @@ afterAll(async () => { await connection?.sql.end(); });
 function scoped(connection:DbSql, prefix:string): DbSql {
   const rewrite = (text:string) => text.replace(/\bmarts\./g, `${prefix}.`);
   const tag = ((chunks:TemplateStringsArray, ...values:unknown[]) => {
+    // Helper calls (sql(list), sql("identifier")) are not queries: pass them through.
+    if (!Array.isArray(chunks) || !("raw" in chunks)) return (connection as unknown as (...args:unknown[]) => unknown)(chunks, ...values);
     const mapped = chunks.map(rewrite); Object.defineProperty(mapped,"raw",{ value:chunks.raw.map(rewrite) });
     return connection(mapped as unknown as TemplateStringsArray, ...values as never[]);
   }) as unknown as DbSql;
@@ -28,7 +30,7 @@ describe.runIf(Boolean(connection))("investigative population SQL (dedicated rol
     try {
       await sql.begin(async tx => {
         await tx.unsafe(`create schema ${prefix}`);
-        for (const table of ["da_transactions", "contract_transactions", "national_stats", "entity_profile", "agg_top_entities"]) await tx.unsafe(`create table ${prefix}.${table} as table marts.${table} with no data`);
+        for (const table of ["da_transactions", "contract_transactions", "national_stats", "entity_profile", "entity_flags", "agg_top_entities"]) await tx.unsafe(`create table ${prefix}.${table} as table marts.${table} with no data`);
         const q = scoped(tx as unknown as DbSql, prefix);
         await q`insert into marts.national_stats (kind,year) values ('da',2024),('da',2025),('award',2025)`;
         await q`insert into marts.da_transactions (sicap_da_id,da_code,authority_id,authority_name,supplier_id,supplier_name,county,cpv_code,closing_value,finalization_date) values
@@ -147,7 +149,7 @@ describe.runIf(Boolean(connection))("investigative population SQL (dedicated rol
     try {
       await sql.begin(async tx => {
         await tx.unsafe(`create schema ${prefix}`);
-        for (const table of ["da_transactions", "contract_transactions", "national_stats", "entity_profile", "agg_top_entities"]) await tx.unsafe(`create table ${prefix}.${table} as table marts.${table} with no data`);
+        for (const table of ["da_transactions", "contract_transactions", "national_stats", "entity_profile", "entity_flags", "agg_top_entities"]) await tx.unsafe(`create table ${prefix}.${table} as table marts.${table} with no data`);
         const q = scoped(tx as unknown as DbSql, prefix);
         await q`insert into marts.national_stats (kind,year) values ('da',2025),('award',2025)`;
         await q`insert into marts.entity_profile (entity_id,role,name_display,county,n_contracts,n_das,is_foreign) values

@@ -1,0 +1,91 @@
+/* Two entities side by side (Întreabă → Compară). The first is drawn in the
+   accent colour, the second in orange, in every section. */
+.cmp { --cmp-a: var(--accent); --cmp-b: var(--orange); display: grid; gap: 44px; }
+.cmp-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
+.cmp-card { min-width: 0; padding: 24px 28px; background: var(--surface); border: 1px solid var(--line); border-top: 4px solid var(--cmp-a); border-radius: 14px; }
+.cmp-card.cmp-b { border-top-color: var(--cmp-b); }
+.cmp-card h3 { margin: 0; font: 700 22px/1.2 var(--display); letter-spacing: -0.02em; overflow-wrap: anywhere; }
+.cmp-card h3 a { color: inherit; text-decoration: none; }
+.cmp-card h3 a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.cmp-sub { margin: 4px 0 16px; color: var(--muted); font-size: 12.5px; }
+.cmp-big { margin: 0; font: 700 38px/1.05 var(--display); letter-spacing: -0.02em; }
+.cmp-big small { margin-left: 6px; font: 400 13px var(--font-body); letter-spacing: 0; color: var(--muted); }
+.cmp-split { display: flex; height: 8px; margin: 16px 0 8px; overflow: hidden; border-radius: 4px; background: var(--sunk); }
+.cmp-split i { display: block; background: var(--cmp-a); }
+.cmp-split i + i { opacity: 0.35; }
+.cmp-b .cmp-split i { background: var(--cmp-b); }
+.cmp-legend { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; margin: 0; font-size: 12.5px; color: var(--ink2); }
+.cmp-kv { margin: 14px 0 0; border-top: 1px solid var(--line); }
+.cmp-kv > div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+.cmp-kv dt { position: relative; color: var(--muted); white-space: nowrap; }
+.cmp-kv dd { margin: 0; text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.cmp-risk { position: relative; margin-top: 14px; padding: 10px 14px; border: 1px solid var(--amber-line); border-radius: 10px; background: var(--amber-soft); color: var(--ink2); font-size: 13px; }
+.cmp-risk p { margin: 0; }
+.cmp-risk b { font-family: var(--mono); font-weight: 500; }
+.cmp-risk small { display: block; margin-top: 6px; font-size: 11.5px; color: var(--muted); }
+.cmp-risk-none { border-color: var(--line2); background: var(--sunk); }
+.cmp-flags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.cmp-flags span { padding: 2px 7px; border: 1px solid var(--amber-line); border-radius: 6px; background: var(--surface); font-size: 11.5px; }
+.cmp-card .cq-record-link { margin-top: 16px; }
+.cmp-section { display: grid; gap: 14px; min-width: 0; }
+.cmp-section > h3 { position: relative; margin: 0; font: 700 22px/1.2 var(--display); letter-spacing: -0.02em; }
+.cmp-key { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0; font-size: 12.5px; color: var(--muted); }
+.cmp-key-a, .cmp-key-b { color: var(--ink2); }
+.cmp-key-a::before, .cmp-key-b::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 2px; background: var(--cmp-a); vertical-align: -1px; }
+.cmp-key-b::before { background: var(--cmp-b); }
+.cmp-years { display: grid; gap: 10px; border-bottom: 1px solid var(--line2); }
+.cmp-year { display: grid; grid-template-rows: 200px auto; min-width: 0; }
+.cmp-bars { display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 100%; }
+.cmp-bars i { display: block; width: 40%; max-width: 26px; min-height: 1px; border-radius: 3px 3px 0 0; background: var(--cmp-a); }
+.cmp-bars i.cmp-bar-b { background: var(--cmp-b); }
+.cmp-bars i.cmp-part { background-image: repeating-linear-gradient(135deg, transparent 0 4px, var(--paper) 4px 7px); }
+.cmp-year span { padding-top: 6px; text-align: center; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.cmp-none { margin: 0; font-size: 14px; color: var(--ink2); }
+.cmp-mirror { display: grid; gap: 6px; }
+.cmp-mirror-head, .cmp-mirror-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 240px) minmax(0, 1fr); grid-template-areas: "a name b"; align-items: center; gap: 14px; }
+.cmp-mirror-head { margin: 0; padding-bottom: 6px; border-bottom: 1px solid var(--line); font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.cmp-mirror-head span:first-child { text-align: right; }
+.cmp-mirror-head span:nth-child(2) { text-align: center; }
+.cmp-mirror-name { grid-area: name; text-align: center; font-size: 13px; font-weight: 500; line-height: 1.3; overflow-wrap: anywhere; }
+.cmp-mirror-a, .cmp-mirror-b { display: flex; align-items: center; gap: 8px; min-width: 0; font: 12px var(--mono); color: var(--ink2); white-space: nowrap; }
+.cmp-mirror-a { grid-area: a; justify-content: flex-end; }
+.cmp-mirror-b { grid-area: b; }
+.cmp-mirror-a i, .cmp-mirror-b i { display: block; flex: 0 1 auto; height: 14px; max-width: 70%; border-radius: 3px; background: var(--cmp-a); }
+.cmp-mirror-b i { background: var(--cmp-b); }
+.cmp-more { justify-self: start; padding: 6px 0; border: 0; background: none; font: 600 13px var(--font-body); color: var(--accent); cursor: pointer; }
+.cmp-more:focus-visible, .cmp-all:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.cmp-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
+.cmp-panel { min-width: 0; padding: 20px 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+.cmp-panel-head { margin: 0 0 8px; font-size: 12.5px; color: var(--ink2); overflow-wrap: anywhere; }
+.cmp-panel-head::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 2px; background: var(--cmp-a); vertical-align: -1px; }
+.cmp-b .cmp-panel-head::before { background: var(--cmp-b); }
+.cmp-share { margin: 10px 0; }
+.cmp-share p { display: flex; justify-content: space-between; gap: 12px; margin: 0; font-size: 13px; }
+.cmp-share-label { min-width: 0; overflow-wrap: anywhere; }
+.cmp-share .num { flex: none; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.cmp-track { height: 6px; margin-top: 5px; border-radius: 3px; background: var(--sunk); }
+.cmp-track i { display: block; height: 100%; border-radius: 3px; background: var(--cmp-a); }
+.cmp-b .cmp-track i { background: var(--cmp-b); }
+.cmp-share small { display: block; margin-top: 3px; font-size: 11.5px; color: var(--muted); }
+.cmp-all { display: inline-block; margin-top: 8px; font-size: 13px; font-weight: 600; }
+.cmp-joint { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; font-size: 13.5px; }
+.cmp-joint li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+@media (max-width: 760px) {
+  .cmp { gap: 32px; }
+  .cmp-cards, .cmp-two { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .cmp-card { padding: 18px; }
+  .cmp-big { font-size: 30px; }
+  .cmp-kv dd { font-size: 12.5px; }
+  .cmp-years { gap: 4px; }
+  .cmp-year { grid-template-rows: 150px auto; }
+  .cmp-year span { font-size: 10px; }
+  .cmp-bars { gap: 1px; }
+  .cmp-mirror-head { display: none; }
+  .cmp-mirror-row { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "name name" "a b"; gap: 4px 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .cmp-mirror-name { text-align: left; }
+  /* Amount above its bar: a half column cannot hold both on one line. */
+  .cmp-mirror-a, .cmp-mirror-b { flex-direction: column; align-items: flex-start; gap: 3px; white-space: normal; }
+  .cmp-mirror-b { flex-direction: column-reverse; justify-content: flex-end; }
+  .cmp-mirror-a i, .cmp-mirror-b i { max-width: 100%; height: 10px; }
+  .cmp-panel { padding: 16px; }
+}

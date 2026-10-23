@@ -17,7 +17,6 @@ import { NATURAL_LANGUAGE_ENABLED, NATURAL_LANGUAGE_UNAVAILABLE } from "@/lib/as
 import { validateEvidenceScope, validateEvidenceFilters, type EvidenceScope, type EvidenceFilters } from "@/lib/ask/evidence";
 import type { BlockData, PartialYear } from "@/lib/ask/compile";
 import {
-  CompareBlock,
   DistributionBlock,
   BreakdownBlock,
   ScatterBlock,
@@ -33,6 +32,7 @@ import type { BuilderSpec } from "./Builder";
 import EntityTypeahead from "./EntityTypeahead";
 import EvidenceDrawer from "./EvidenceDrawer";
 import { AnswerEvidence, useAnswerEvidence } from "./AnswerEvidence";
+import { CompareBlock } from "./CompareBlock";
 import "./question-results.css";
 import DiscoveryIcon from "../DiscoveryIcon";
 import AnswerExports from "./AnswerExports";
@@ -799,7 +799,7 @@ export default function AskPanel({
                   />
                 ))}
               {data.block === "compare" && (
-                <CompareBlock entities={data.entities} historical={isProfile} />
+                <CompareBlock data={data} partial={resp.partialYears ?? []} dataset={applied.dataset ?? "all"} />
               )}
               {data.block === "distribution" && (
                 <DistributionBlock
@@ -1636,11 +1636,14 @@ function exportCsv(data: BlockData, spec: AskSpec, title: string) {
       ];
       break;
     case "compare":
+      // Selection totals by stream; the risk columns are the historical profile.
       lines = [
-        isHistoricalProfile(spec) ? "nume,judet,valoare_lei,achizitii,cri,semnale,flags" : "nume,judet,valoare_lei,inregistrari",
+        "nume,judet,valoare_lei,inregistrari,valoare_proceduri_lei,contracte_proceduri,o_singura_oferta,oferte_cunoscute,valoare_directe_lei,achizitii_directe,parteneri,cri_istoric,semnale_istorice,flags",
         ...data.entities.map(
           (e) =>
-            `${csvQ(e.name)},${csvQ(e.county)},${e.value},${e.count}${isHistoricalProfile(spec) ? `,${e.cri ?? ""},${e.nFlags},${csvQ(e.flags.join("|"))}` : ""}`,
+            [csvQ(e.name), csvQ(e.county), e.value, e.count, e.streams?.contracts.value ?? "", e.streams?.contracts.count ?? "",
+              e.streams?.contracts.singleBid ?? "", e.streams?.contracts.bidsKnown ?? "", e.streams?.da.value ?? "", e.streams?.da.count ?? "",
+              e.partners ?? "", e.cri ?? "", e.hasProfile === false ? "" : e.nFlags, csvQ(e.flags.join("|"))].join(","),
         ),
       ];
       break;
