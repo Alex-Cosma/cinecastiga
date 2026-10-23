@@ -11,8 +11,10 @@ import { FLAG_META } from "@/lib/flags";
 import { awardValueLabel, noticeContractsNote } from "@/lib/risk-presentation";
 import { awardUrl } from "@/lib/elicitatie";
 import ClipButton from "@/components/ClipButton";
+import Term from "@/components/Term";
 import { encodeSpec } from "@/lib/ask/permalink";
 import { consortiumShareLabel } from "@/lib/consortium";
+import "./contract.css";
 
 /**
  * Contract detail — the plain-language twin of SEAP's award-notice page,
@@ -91,12 +93,12 @@ export default async function ContractPage({
         <div className="ext-links">
           {c.caNoticeId && c.noticeLotCount > 1 && (
             <Link href={`/anunturi/${c.caNoticeId}`}>
-              parte dintr-un anunț cu {formatInt(c.noticeLotCount)} înregistrări — vezi-le pe toate →
+              Anunț cu {formatInt(c.noticeLotCount)} înregistrări →
             </Link>
           )}
           {c.caNoticeId && (
             <a href={awardUrl(c.caNoticeId)} target="_blank" rel="noopener noreferrer">
-              anunțul de atribuire pe e-licitatie.ro ↗
+              Anunțul în SEAP ↗
             </a>
           )}
           {ted && (
@@ -112,7 +114,7 @@ export default async function ContractPage({
       </div>
 
       <ContractPublications publications={c.publications} currentId={nid} countedOnce={c.countedOnce} />
-      <nav className="ext-links" aria-label="Secțiunile contractului"><a href="#fisiere">Fișiere și căutare în documente ↓</a></nav>
+      <nav className="ext-links" aria-label="Secțiunile contractului"><a href="#fisiere">Documente ↓</a></nav>
       {c.amountStatus === 'converted' && c.valueRonExact !== null && <p className="note">Echivalent verificat în sursa SEAP: <strong>{formatExactDecimal(c.valueRonExact)} lei</strong> · curs raportat {c.currencyRate}. Această valoare este folosită pentru calculele în lei, dacă înregistrarea îndeplinește și celelalte criterii de includere.</p>}
       {!['ron','converted','legacy_ron'].includes(c.amountStatus) && <p className="note">Valoarea în lei nu este verificată ({c.amountStatus === 'legacy_unknown' ? 'înregistrare istorică fără unitate confirmată' : c.amountStatus === 'inconsistent' ? 'sume sau monede neconcordante în sursă' : 'date monetare incomplete sau de reverificat'}). Înregistrarea este exclusă din totalurile în lei după recalculare. Verifică documentele SEAP.</p>}
       <div className="stat-grid">
@@ -140,7 +142,7 @@ export default async function ContractPage({
         )}
       </div>
 
-      <section className="section">
+      <section className="section ct-tip-col">
         <h2>Cine cu cine</h2>
         <table className="rank">
           <tbody>
@@ -168,7 +170,7 @@ export default async function ContractPage({
                   <Link href={`/entitati/${w.entityId}?rol=furnizor`}>{cleanName(w.name)}</Link>
                   {countyLabel(w.county) && <span className="county"> · {countyLabel(w.county)}</span>}
                   {multiWinner && w.shareRon != null && (
-                    <span className="county"> · cotă estimată: {formatExactDecimal(w.shareRonExact)} lei{splitLabel ? ` (${splitLabel})` : ""}</span>
+                    <span className="county"> · <Term tip id="consortiu">cotă estimată</Term>: {formatExactDecimal(w.shareRonExact)} lei{splitLabel ? ` (${splitLabel})` : ""}</span>
                   )}
                   {c.authority && (w.pairNDa > 0 || w.pairNCt > 0) && (
                     <>
@@ -191,14 +193,6 @@ export default async function ContractPage({
             ))}
           </tbody>
         </table>
-        {multiWinner && (
-          <p className="note">
-            Anunțul are {formatInt(Math.max(c.nWinners, c.winners.length))} câștigători — valoarea
-            atribuită acoperă tot anunțul, iar în statisticile noastre fiecare câștigător poartă
-            doar partea sa (împărțire egală), ca banii să nu fie numărați de două ori.
-            Sursa nu publică partea fiecărui membru: cota este o estimare, nu o plată.
-          </p>
-        )}
       </section>
 
       <ContractFiles nid={nid} initial={files} authenticated={!!userId} {...(c.caNoticeId?{sourceUrl:awardUrl(c.caNoticeId)}:{})} />
@@ -228,30 +222,26 @@ export default async function ContractPage({
       )}
 
       {c.financialKind === 'amendment' && (
-        <p className="note"><b>Act adițional — sumă neaditivă.</b> Valoarea din sursă poate fi totalul actualizat,
-          o diferență sau o sumă repetată la o modificare fără impact financiar. Nu o adăugăm drept contract nou.
-          Legătura cu contractul inițial și impactul financiar necesită verificare în documente.</p>
+        <p className="note ct-tip"><b>Act adițional, neadăugat la totaluri</b> <Term tip id="act-aditional" /></p>
       )}
       {c.financialKind === 'review' && (
         <p className="note"><b>Tip de contract neclar.</b> Păstrăm valoarea sursă, dar o excludem din totaluri până la verificare.</p>
       )}
       {c.financialKind === 'framework' && (
-        <p className="note"><b>Plafon de acord-cadru, separat de totaluri.</b> Însumăm doar contractele și comenzile identificate.
-          Dacă lipsesc subsecventele, acoperirea este incompletă; nu înseamnă că nu s-au cheltuit bani.</p>
+        <p className="note ct-tip"><b>Plafon de acord-cadru, separat de totaluri</b> <Term tip id="plafon-acord-cadru" /></p>
       )}
-      {c.winnerIsAuthority && <p className="note"><b>Câștigătorul înregistrat este chiar autoritatea contractantă.</b> Tratăm
-        înregistrarea ca neconcordanță în datele sursă, nu ca furnizor. Păstrăm înregistrarea așa cum apare în SEAP, dar nu o
-        adăugăm la totalurile instituției, furnizorilor, județului sau țării și nici în clasamentele partenerilor sau în dependența de furnizori.
-        Verifică furnizorul real în documentele SEAP. <Link href="/metodologie#totaluri">Cum se formează totalurile</Link>.</p>}
-      {c.aboveValueCap && !c.nonAdditive && !c.excludedIdentity && !c.winnerIsAuthority && <p className="note"><b>Peste 1 miliard lei, separat de totaluri.</b> Totalurile
-        includ contractele prin proceduri cu valoare de cel mult 1 miliard lei. Acesta este un filtru al aplicației, nu dovada unei erori: valoarea
-        rămâne afișată aici, dar nu este adăugată la totalurile instituției, furnizorilor, județului sau țării și nici în clasamentele partenerilor.
-        Verifică suma în documentele SEAP. <Link href="/metodologie#totaluri">Cum se formează totalurile</Link>.</p>}
+      {c.winnerIsAuthority && <p className="note"><b>Câștigătorul înregistrat este chiar autoritatea:</b> neconcordanță în sursă,
+        exclusă din totaluri și clasamente. Verifică furnizorul real în SEAP · <Link href="/metodologie#totaluri">Cum se formează totalurile</Link>.</p>}
+      {c.aboveValueCap && !c.nonAdditive && !c.excludedIdentity && !c.winnerIsAuthority && <p className="note"><b>Peste 1 mld. lei:</b> filtru
+        al aplicației, nu o eroare; nu intră în totaluri sau clasamente. Verifică suma în SEAP · <Link href="/metodologie#totaluri">Cum se formează totalurile</Link>.</p>}
       {c.excludedIdentity && <p className="note"><b>Exclus temporar din totaluri.</b> Identitatea acestei înregistrări
         față de alte publicații nu este încă lămurită. <Link href={`/metodologie/excluderi?grup=${c.excludedIdentity}`}>Vezi motivul și toate sursele comparate</Link>.</p>}
 
       <p className="note">
-        Date din anunțul de atribuire SICAP{c.noticeNo ? ` ${c.noticeNo}` : ""}. Documentele disponibile și starea preluării lor sunt afișate în secțiunea <a href="#files-heading">„Documentele procedurii”</a>. Pentru detalii nepreluate, consultă anunțul oficial.
+        Sursa:{" "}
+        {c.caNoticeId
+          ? <a href={awardUrl(c.caNoticeId)} target="_blank" rel="noopener noreferrer">anunțul de atribuire SICAP{c.noticeNo ? ` ${c.noticeNo}` : ""} ↗</a>
+          : <>anunțul de atribuire SICAP{c.noticeNo ? ` ${c.noticeNo}` : ""}</>}
       </p>
     </>
   );

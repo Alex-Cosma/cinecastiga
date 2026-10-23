@@ -28,6 +28,8 @@ import { CRI_CRITERIA, riskEvidenceLine, signalPeriodLabel } from "@/lib/risk-pr
 import { daUrl, registryLinks } from "@/lib/elicitatie";
 import ClipButton from "@/components/ClipButton";
 import FollowButton from "@/components/FollowButton";
+import Term from "@/components/Term";
+import { roCount } from "@/lib/ro-count";
 import { encodeSpec } from "@/lib/ask/permalink";
 import YearMiniChart from "./YearMiniChart";
 import TxTable from "./TxTable";
@@ -222,13 +224,13 @@ export default async function EntityPage({
       </div>
 
       {/* Risk summary */}
-      <div className="stat-grid">
+      <div className="stat-grid ent-stats">
         <div className="stat">
           <div className="n">
             <span className={`cri-pill ${hasRiskScore ? band.className : "risk-none"}`}>{hasRiskScore ? row.cri.toFixed(2).replace(".", ",") : "—"}</span>
           </div>
           <div className="l">{hasRiskScore ? `indice de risc · ${band.label.toLowerCase()}` : "Indice de risc necalculat"}</div>
-          <p className="note">{hasRiskScore ? `${row.nFlags} din ${criteria.length} criterii · achiziții directe` : "Nu există un scor calculat pentru acest rol."}</p>
+          {hasRiskScore && <p className="note">{row.nFlags} din {criteria.length} criterii · achiziții directe</p>}
           {hasRiskScore && <a href="#criterii-scor" className="hint">Cum se explică scorul?</a>}
           {nOutsideCri > 0 && <p className="note"><a href="#toate-semnalele">{nOutsideCri === 1 ? "Un tip de semnal" : `${formatInt(nOutsideCri)} tipuri de semnale`} în afara indicelui →</a></p>}
         </div>
@@ -251,12 +253,12 @@ export default async function EntityPage({
                 {formatInt(txCounts.nContracts)} →
               </a>
             </div>
-            <div className="l">Contracte distincte prin proceduri</div>
+            <div className="l">Contracte prin proceduri</div>
           </div>
         )}
         <div className="stat">
           <div className="n"><a href={entityTxSearchUrl(id, cleanName(row.name), role, "all")}>{formatRon(Number(txCounts.valueExact))} →</a></div>
-          <div className="l">Valoare înregistrată · ambele canale</div>
+          <div className="l ent-tip"><Term tip id="valoare-inregistrata">Valoare înregistrată</Term></div>
         </div>
         {role === "supplier" && registryCui !== null && profile?.employees != null && (
           <div className="stat">
@@ -299,7 +301,7 @@ export default async function EntityPage({
       </details>
 
       {hasRiskScore && <details className="data-context entity-data-context" id="calcul-scor">
-        <summary>{row.nFlags} din {criteria.length} criterii îndeplinite · cum se calculează scorul?</summary>
+        <summary>Cum se calculează scorul?</summary>
         <p id="criterii-scor">Scorul împarte numărul criteriilor îndeplinite la {criteria.length}. Fiecare criteriu contează o singură dată,
           indiferent de numărul achizițiilor semnalate. Folosește achizițiile directe din întreaga perioadă disponibilă
           la ultima recalculare; filtrul de an din tabel nu schimbă scorul.</p>
@@ -330,11 +332,7 @@ export default async function EntityPage({
       {/* Legal representatives (ONRC snapshot) */}
       {reps.length > 0 && (
         <section className="section" id="conducere">
-          <h2>Conducere</h2>
-          <p className="hint">
-            Reprezentanți legali din Registrul Comerțului (instantaneu lunar). Administratorii nu
-            sunt neapărat asociații/proprietarii firmei.
-          </p>
+          <h2 className="ent-tip">Conducere <Term tip id="conducere-onrc" /></h2>
           <table className="rank">
             <thead>
               <tr>
@@ -384,34 +382,28 @@ export default async function EntityPage({
         <section className="section" id="semnale">
           <h2>De ce este semnalată</h2>
           <p className="hint">
-            {row.nFlags} din {criteria.length} criterii pentru achiziții directe sunt îndeplinite în datele evaluate.
-            Perioadele anuale apar în explicațiile semnalelor. Fiecare este o pistă de verificat —{" "}
-            <Link href="/metodologie">metodologie</Link>.
+            Piste de verificat, nu dovezi · <Link href="/metodologie">metodologie</Link>
           </p>
 
           {row.flags.map((code) => {
             const m = FLAG_META[code];
             if (!m) return null;
             return (
-              <div className="method-card" key={code}>
-                <div className="method-head">
-                  <h3>{m.title}</h3>
+              <div className="method-card ent-card" key={code}>
+                <div className="method-head ent-tip-col">
+                  <h3>
+                    {m.title}
+                    {code === "da_round" && row.flags.includes("da_split") && <> <Term tip id="prag-vs-fractionare" /></>}
+                  </h3>
                   <p className="mh-desc">{m.description}</p>
                   <Link href={`/metodologie#${code}`} className="mh-link">
                     cum se calculează →
                   </Link>
+                  <Term tip title="Limite" text={m.caveat} className="mh-limits">limite</Term>
                 </div>
 
                 {code === "da_split" ? (
-                  <>
-                    <SplitPairsTable key={`${id}-${role}`} entityId={id} isAuth={isAuth} />
-                    <p className="hint split-pairs-explanation" style={{ marginTop: 6 }}>
-                      Semnalul grupează achiziții din aceeași clasă CPV și același tip, către același partener,
-                      pe an. Fiecare trebuie să fie strict sub pragul aplicabil datei sale. Suma se compară cu
-                      cel mai mare prag aplicabil în grup. Valorile de închidere sunt un reper pentru verificare;
-                      legea privește necesarul estimat. Lista de surse include exact achizițiile folosite în calcul.
-                    </p>
-                  </>
+                  <SplitPairsTable key={`${id}-${role}`} entityId={id} isAuth={isAuth} />
                 ) : null}
 
                 {code === "da_concentration" || code === "da_dependence" ? (
@@ -475,26 +467,11 @@ export default async function EntityPage({
                     ))}
 
                 {code === "da_rapid" || code === "da_round" ? (
-                  <>
-                    <p>
-                      <b>{formatInt(flagRowCounts[code] ?? 0)} achiziții</b> poartă acest semnal
-                      aici. {m.description}{" "}
-                      <a href={`${q(base, { sem: code, p: undefined })}#achizitii`}>
-                        Vezi {flagRowCounts[code] === 1 ? "achiziția" : "toate cele"}{" "}
-                        {flagRowCounts[code] === 1 ? "" : formatInt(flagRowCounts[code] ?? 0)} în
-                        tabel →
-                      </a>
-                    </p>
-                    {code === "da_round" && row.flags.includes("da_split") && (
-                      <p className="note">
-                        „Valoare aproape de prag” compară o singură achiziție cu plafonul său.
-                        „Posibilă fracționare sub prag” compară suma unui grup de achiziții cu plafonul de referință.
-                        Aceeași achiziție poate apărea în ambele semnale; niciunul nu stabilește intenția de a evita o procedură.
-                      </p>
-                    )}
-                  </>
+                  <p>
+                    <b>{roCount(flagRowCounts[code] ?? 0, "o achiziție", "achiziții")}</b> cu acest semnal ·{" "}
+                    <a href={`${q(base, { sem: code, p: undefined })}#achizitii`}>Vezi în tabel →</a>
+                  </p>
                 ) : null}
-                <p className="note">{m.caveat}</p>
               </div>
             );
           })}
@@ -503,23 +480,14 @@ export default async function EntityPage({
 
       {/* Every signal type for this entity, kept apart from the CRI (audit F24) */}
       {signalTypes.length > 0 && (
-        <section className="section" id="toate-semnalele">
-          <h2>Toate semnalele</h2>
-          <p className="hint">
-            {signalTypes.length === 1 ? "Un tip de semnal apare" : `${formatInt(signalTypes.length)} tipuri de semnale apar`} în{" "}
-            <Link href="/semnale">Semnale</Link> pentru {isAuth ? "această autoritate" : "această firmă"}, ca{" "}
-            {isAuth ? "autoritate contractantă" : "furnizor"}. Doar criteriile pentru achiziții directe intră în indicele
-            de risc; semnalele din proceduri, bilanțuri și ONRC se arată separat. Aparițiile pot acoperi aceleași
-            achiziții și nu se adună. Semnalele din proceduri se numără o dată pentru fiecare anunț, oricâte versiuni ar avea în SEAP, și
-            poartă anul primului contract din anunț. Același contract republicat sub alt număr de anunț, sau un
-            acord-cadru și contractul subsecvent, pot apărea separat.
-            Fiecare semnal este o pistă de verificat, nu o dovadă.
-          </p>
+        <section className="section ent-tip-col" id="toate-semnalele">
+          <h2 className="ent-tip">Toate semnalele <Term tip id="semnale-numarare" /></h2>
+          <p className="hint">Piste de verificat, nu dovezi.</p>
           <div className="ask-tablewrap"><table className="rank">
             <thead>
               <tr>
                 <th scope="col">Semnal</th>
-                <th scope="col">Indicele de risc</th>
+                <th scope="col">Indicele de risc{unmetWithOccurrences && <> <Term tip id="criteriu-neindeplinit" /></>}</th>
                 <th scope="col" className="num">Apariții</th>
               </tr>
             </thead>
@@ -544,11 +512,6 @@ export default async function EntityPage({
               })}
             </tbody>
           </table></div>
-          {unmetWithOccurrences && <p className="note">
-            Un criteriu al indicelui poate rămâne neîndeplinit chiar dacă există apariții: finalizarea rapidă și valorile
-            aproape de prag cer o pondere minimă din achizițiile directe ale entității.{" "}
-            <Link href="/metodologie#indice">Cum se calculează indicele →</Link>
-          </p>}
         </section>
       )}
 
@@ -578,9 +541,8 @@ export default async function EntityPage({
         />
         {aboveCap.count > 0 && <details className="data-context" id="peste-plafon">
           <summary>{formatInt(aboveCap.count)} {aboveCap.count === 1 ? "contract peste 1 miliard lei, separat" : "contracte peste 1 miliard lei, separate"} de total · {formatRon(Number(aboveCap.totalExact))}</summary>
-          <p>Contractele îndeplinesc celelalte condiții de includere, dar depășesc plafonul de 1 miliard lei folosit pentru totaluri.
-            Nu sunt adăugate la totalul de mai sus, la parteneri, județ sau la nivel național. Valorile sunt integrale, înregistrate în SEAP; nu confirmă plăți.
-            {role === "supplier" ? " Pentru consorții, valoarea include și cotele celorlalți câștigători." : ""}</p>
+          <p>Peste plafonul de 1 mld. lei folosit pentru totaluri: nu intră în niciun total. Valori integrale din SEAP, nu plăți.
+            {role === "supplier" ? " Includ și cotele celorlalți membri ai consorțiului." : ""}</p>
           <div className="ask-tablewrap"><table className="rank"><thead><tr><th scope="col">Contract</th><th scope="col">Semnat</th><th scope="col" className="num">Valoare (lei)</th></tr></thead><tbody>
             {aboveCap.rows.map((c) => <tr key={c.natId}>
               <td><Link href={`/contracte/${c.natId}`}>{c.title?.trim() || c.contractNo || `Contract ${c.natId}`}</Link>{c.nWinners > 1 ? <span className="note"> · {formatInt(c.nWinners)} câștigători</span> : null}</td>
@@ -591,12 +553,6 @@ export default async function EntityPage({
           {aboveCap.count > aboveCap.rows.length && <p className="note">Sunt afișate cele mai mari {formatInt(aboveCap.rows.length)} din {formatInt(aboveCap.count)}.</p>}
         </details>}
       </section>
-
-      <p className="note">
-        Tabelul cuprinde ambele canale: achiziții directe și contracte atribuite prin
-        proceduri. Fiecare rând are link direct către înregistrarea oficială de pe
-        e-licitatie.ro.
-      </p>
     </>
   );
 }

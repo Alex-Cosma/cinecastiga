@@ -8,6 +8,7 @@ import { useTip } from "../../intreaba/blocks";
 import type { Partner } from "@/lib/marts";
 import { useEntityTable } from "./useEntityTable";
 import { consortiumRankingNote } from "@/lib/consortium";
+import Term from "@/components/Term";
 
 /**
  * "Principalele autorități / Principalii furnizori" — paginated counterparty
@@ -68,9 +69,8 @@ export default function PartnersTable({
   return (
     <div>
       {tip.el}
-      <p><Link href={`/entitati/${entityId}/legaturi?rol=${role}`}>Explorează legăturile și partenerii comuni →</Link></p>
       <p className="hint" role="status">
-        {loading ? "Se încarcă partenerii…" : error ? "Partenerii nu au putut fi încărcați." : <>{formatInt(total)} parteneri · ambele canale (directe + contracte) · partenerii identificați se deschid în căutare cu filtrele puse.</>}
+        {loading ? "Se încarcă partenerii…" : error ? "Partenerii nu au putut fi încărcați." : <>{formatInt(total)} parteneri · ambele canale</>}
       </p>
       <div className="bars ent-partners" aria-busy={loading}>
         {loading &&
@@ -88,7 +88,7 @@ export default function PartnersTable({
         {error && <p className="county">{error} <button type="button" onClick={retry}>Reîncearcă</button></p>}
         {!loading && !error && !data?.rows?.length && <p className="county">Niciun partener înregistrat.</p>}
         {!loading && data?.rows?.map((p) => (
-          <div className="bar-row" key={p.partnerId}>
+          <div className="bar-row ent-tip" key={p.partnerId}>
             <div className="bar-label" {...tip.bindClip(cleanName(p.partnerName))}>
               {p.partnerId !== "0" ? <Link href={`/entitati/${p.partnerId}`}>{p.partnerName ? cleanName(p.partnerName) : `Entitate #${p.partnerId}`}</Link> : <span>Partener neidentificat</span>}
             </div>
@@ -97,7 +97,7 @@ export default function PartnersTable({
             </div>
             <div className="bar-val">
               <span className="v">{formatRon(p.totalRon)} · {Math.round(p.pct * 100)}%</span>
-              {p.nConsortium > 0 && <span className="cons-tag" title={consortiumRankingNote(p.nConsortium)}>în consorțiu</span>}
+              {p.nConsortium > 0 && <Term tip title="În consorțiu" text={consortiumRankingNote(p.nConsortium)} className="cons-tag">în consorțiu</Term>}
             </div>
             <div className="bar-go">
               {p.partnerId !== "0" && p.partnerName ? (
@@ -117,12 +117,6 @@ export default function PartnersTable({
           </div>
         ))}
       </div>
-      {!loading && data?.rows?.some((r) => r.nConsortium > 0) && (
-        <p className="note">
-          „În consorțiu”: totalul include partea estimată din contracte câștigate de mai multe firme împreună.
-          Sursa nu publică partea fiecăruia, așa că valoarea contractului este împărțită egal între membri; suma nu este numărată de mai multe ori.
-        </p>
-      )}
       {pages > 1 && (
         <div className="pager">
           <button type="button" disabled={loading || page <= 1} onClick={() => setPage(page - 1)}>

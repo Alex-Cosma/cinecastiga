@@ -7,7 +7,6 @@
 .ent-brief h2{font-family:var(--display);font-size:20px;letter-spacing:-.015em;margin:0}
 .ent-brief>p{margin:0;max-width:78ch;font-size:15.5px;line-height:1.6;color:var(--ink2)}
 .ent-brief>p strong{color:var(--ink);font-weight:600}
-.ent-brief>p.note{font-size:13px;color:var(--muted)}
 .ent-brief-lists{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px 28px;margin-top:6px}
 .ent-brief-list{min-width:0}
 .ent-brief-list h3{margin:0 0 6px;font:600 13px/1.4 var(--body);color:var(--ink2)}
@@ -20,12 +19,28 @@
 .ent-brief-val{grid-column:2;grid-row:1;font:12.5px var(--mono);font-variant-numeric:tabular-nums;color:var(--ink2);white-space:nowrap}
 .ent-brief-more{display:inline-block;margin-top:8px;font-size:13px}
 
+/* ---- (?) explanations: each opens under the line or card that holds it,
+   left-aligned and never wider than that box, so a 390 px page never widens ---- */
+/* in a table header, a card head or a list it opens right under its "?",
+   aligned to that whole block (declared first: a nested .ent-tip wins) */
+.ent-tip-col{position:relative}
+.ent-tip-col .term-tip>.term-def{top:auto;bottom:auto;left:0;right:auto;margin-top:28px;width:max-content;max-width:min(46ch,100%)}
+.ent-tip{position:relative}
+.ent-tip .term-tip>.term-def{top:calc(100% + 6px);bottom:auto;right:auto;margin-top:0;width:max-content;max-width:min(46ch,100%)}
+.section>h2 .term-tip{font-size:15px;vertical-align:.1em}
+/* the KPI strip and the signal cards let an explanation overlap what follows */
+.ent-stats,.ent-card{overflow:visible}
+.mh-limits{font-size:13px;white-space:nowrap}
+.tx-excluded{display:flex;align-items:center;gap:2px;margin:16px 0}
+.tx-excluded>.data-exclusion-toggle{margin:0}
+
 /* ---- consortium labels ---- */
-.cons-tag{display:inline-block;flex:none;padding:0 7px;border:1px solid var(--accent-line);border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);font:500 11.5px/1.6 var(--body);white-space:nowrap;cursor:help}
+.cons-tag{display:inline-flex;flex:none;padding:0 7px;border:1px solid var(--accent-line);border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);font:500 11.5px/1.6 var(--body);white-space:nowrap;cursor:help}
 .ent-tx .cons-line{display:block;white-space:normal;overflow:visible;font:12px/1.4 var(--body);color:var(--muted);margin-top:2px}
 .ent-tx td.num .cons-line{text-align:right}
 .ent-partners .bar-val{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:4px 8px}
 .ent-partners .bar-val .v{white-space:nowrap}
+.ent-partners .bar-row .term-tip>.term-def{left:auto;right:0}
 
 /* ---- full amounts on desktop (no "303.349.549 …") ---- */
 .ent-tx th.col-value{width:176px}
@@ -109,5 +124,6 @@
   .ent-partners .bar-label{grid-column:1/-1;white-space:normal;overflow:visible}
   .ent-partners .bar-track{grid-column:1/-1}
   .ent-partners .bar-val{grid-column:1;justify-content:flex-start;text-align:left}
+  .ent-partners .bar-row .term-tip>.term-def{left:0;right:auto}
   .ent-partners .bar-go{grid-column:2;min-width:0}
 }

@@ -1,5 +1,6 @@
 import { cleanName, formatRon } from "./format";
 import { consortiumRankingNote } from "./consortium";
+import type { GlossaryId } from "./glossary";
 import { roCount } from "./ro-count";
 
 /**
@@ -72,7 +73,8 @@ export function aboveCapSentence(aboveCap: SummaryInput["aboveCap"]): Segment[] 
   return out;
 }
 
-export type Segment = string | { text: string; href?: string; strong?: boolean };
+/** `tip`: the words open that glossary explanation (a "(?)" on the page). */
+export type Segment = string | { text: string; href?: string; strong?: boolean; tip?: GlossaryId };
 
 export interface SummaryBar {
   key: string;
@@ -169,15 +171,9 @@ export function composeEntitySummary(input: SummaryInput): EntitySummary | null 
   }
   if (second.length > 0) sentences.push(second);
 
+  // The equal split of consortium shares is explained by the glossary tip on these words.
   if (input.nConsortium > 0) {
-    const n = input.nConsortium;
-    sentences.push([isAuth
-      ? n === 1
-        ? "Un contract a fost atribuit unui consorțiu: fiecare membru apare cu o parte egală estimată din valoare, iar suma nu se adună de mai multe ori."
-        : `${roCount(n, "un contract", "contracte")} au fost atribuite unor consorții: fiecare membru apare cu o parte egală estimată din valoare, iar suma nu se adună de mai multe ori.`
-      : n === 1
-        ? "Un contract a fost câștigat în consorțiu: în total intră doar partea estimată a firmei (valoarea împărțită egal între membri)."
-        : `${roCount(n, "un contract", "contracte")} au fost câștigate în consorțiu: în total intră doar partea estimată a firmei (valoarea împărțită egal între membri).`]);
+    sentences.push([{ text: `${roCount(input.nConsortium, "Un contract", "contracte")} în consorțiu`, tip: "consortiu" }, "."]);
   }
 
   const subjects: SummaryBar[] = input.divisions.slice(0, 3).map((d) => {

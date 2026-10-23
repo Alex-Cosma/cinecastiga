@@ -5,6 +5,8 @@ import { CONTRACT_DATE_FLOOR } from "@seap/db";
 import { formatRon, formatRonFull, formatInt, formatCalendarDate, cleanName, countyLabel } from "@/lib/format";
 import { awardUrl } from "@/lib/elicitatie";
 import ClipButton from "@/components/ClipButton";
+import Term from "@/components/Term";
+import "./notice.css";
 
 /**
  * Award-notice page — the "mother" of its contracts: one procedure, N lots.
@@ -55,9 +57,8 @@ export default async function NoticePage({
           </span>
         </div>
         {n.versions.length > 1 && (
-          <p className="note">
-            SEAP a publicat acest anunț în {formatInt(n.versions.length)} versiuni sub același număr, de regulă când
-            adaugă contracte subsecvente. Fiecare versiune are propriile înregistrări; nu le aduna. Versiuni:{" "}
+          <p className="note nt-tip">
+            {formatInt(n.versions.length)} versiuni SEAP, nu le aduna <Term tip id="versiuni-anunt" />:{" "}
             {n.versions.map((v, i) => (
               <span key={v.caNoticeId}>
                 {i > 0 && ", "}
@@ -96,7 +97,7 @@ export default async function NoticePage({
         </div>
       </div>
 
-      <div className="stat-grid">
+      <div className="stat-grid nt-stats">
         <div className="stat">
           <div className="n">{formatInt(n.nLots)}</div>
           <div className="l">Înregistrări publicate</div>
@@ -105,11 +106,11 @@ export default async function NoticePage({
           <div className="n">
             {n.totalContractValue != null ? formatRon(n.totalContractValue) : "—"}
           </div>
-          <div className="l">Contracte și comenzi identificate</div>
+          <div className="l nt-tip"><Term tip id="comenzi-identificate">Contracte și comenzi identificate</Term></div>
         </div>
         <div className="stat">
           <div className="n">{n.awardValueRon != null ? formatRon(n.awardValueRon) : "—"}</div>
-          <div className="l">Valoare atribuită (anunț)</div>
+          <div className="l nt-tip"><Term tip id="valoare-atribuita">Valoare atribuită (anunț)</Term></div>
         </div>
         {n.lowestOfferRon != null && n.highestOfferRon != null && n.highestOfferRon > 0 && (
           <div className="stat">
@@ -150,7 +151,7 @@ export default async function NoticePage({
                     <span className="county"> · plafon, nu comandă</span>
                   )}
                   {l.financialKind === 'amendment' && <span className="county"> · act adițional, neaditiv</span>}
-                  {l.temporarilyExcluded && <span className="county"> · exclus temporar din totaluri; motivul este în pagina contractului</span>}
+                  {l.temporarilyExcluded && <span className="county"> · exclus temporar din totaluri</span>}
                   {l.financialKind === 'review' && <span className="county"> · tip neclar, de verificat</span>}
                 </td>
                 <td>
@@ -186,11 +187,8 @@ export default async function NoticePage({
       </section>
 
       <p className="note">
-        „Valoare atribuită” este cifra declarată pe anunț. „Contracte și comenzi identificate” însumează
-        contractele și subsecventele acestei publicații; plafoanele, actele adiționale și tipurile neclare sunt separate.
-        {n.frameworkValue != null && <> Plafoane publicate: {formatRonFull(n.frameworkValue)}.</>}
-        {" "}Lipsa comenzilor identificate nu înseamnă cheltuieli zero. Nu aduna totalurile republicărilor
-        aceluiași contract; profilurile folosesc identitățile verificate. Valorile nu dovedesc plăți.
+        {n.frameworkValue != null && <>Plafoane publicate: {formatRonFull(n.frameworkValue)}. </>}
+        Nu aduna republicările. Valori înregistrate, nu plăți.
       </p>
     </>
   );

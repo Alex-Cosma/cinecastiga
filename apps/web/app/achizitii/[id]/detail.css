@@ -16,6 +16,10 @@
 .acquisition-detail .ad-note { font-size: 14px; color: var(--muted); max-width: 72ch; margin-top: 16px; }
 .ad-source { display: inline-flex; padding-block: 10px; font-size: 16px; font-weight: 600; text-underline-offset: 4px; }
 .ad-source:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+/* (?) explanations open under the title or label that holds them, never wider than it */
+.ad-tip { position: relative; }
+.ad-tip .term-tip > .term-def { top: calc(100% + 6px); bottom: auto; right: auto; width: max-content; max-width: min(46ch, 100%); }
+.ad-head h1 .term-tip { font-size: 16px; vertical-align: .35em; }
 @media (max-width: 650px) {
   .acquisition-detail .ad-head { flex-direction: column; gap: 12px; }
   .ad-facts { grid-template-columns: minmax(0, 1fr); gap: 20px; }
