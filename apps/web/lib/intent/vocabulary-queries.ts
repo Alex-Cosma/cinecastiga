@@ -94,7 +94,8 @@ export function suggestCpv(sql: DbSql, q: string): Promise<CpvRow[]> {
       union all
       select * from synonym_matches
     ) matches
-    order by priority, label_length, term
+    -- at equal closeness a curated synonym ("pod" = bridge works) comes before a catalogue label ("Pod")
+    order by priority, (term ~ '^[0-9]'), label_length, term
     limit 8
   ` as unknown as Promise<CpvRow[]>;
 }
@@ -201,6 +202,21 @@ export function entityCandidates(sql: DbSql, role: "authority" | "supplier", q: 
     order by (lower(unaccent(ep.name_display)) = ${q}) desc, ep.total_ron_full desc nulls last, ep.entity_id
     limit ${limit}
   ` as unknown as Promise<CandidateRow[]>;
+}
+
+export interface CuiRow { entity_id: string; name_display: string | null; county: string | null; role: "authority" | "supplier" }
+
+/** Firms and institutions registered with this fiscal code (digits only), the largest first. */
+export function entitiesByCui(sql: DbSql, cui: string): Promise<CuiRow[]> {
+  if (!/^\d{2,10}$/.test(cui)) return Promise.resolve([]);
+  return sql`
+    select ep.entity_id, ep.name_display, ep.county, ep.role
+    from core.entities e
+    join marts.entity_profile ep on ep.entity_id = e.id
+    where e.cui_canonical = ${cui} and ep.name_display is not null and ep.role in ('authority', 'supplier')
+    order by ep.total_ron_full desc nulls last, ep.entity_id, ep.role
+    limit 6
+  ` as unknown as Promise<CuiRow[]>;
 }
 
 export interface NamedPersonRow extends PersonRow { total: string }

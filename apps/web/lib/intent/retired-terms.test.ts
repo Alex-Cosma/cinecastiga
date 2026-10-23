@@ -36,7 +36,8 @@ describe("retired words are offered as choices, never guessed", () => {
     expect(alone.alternatives.every((a) => a.spec.filters.county === "Buzău")).toBe(true);
     const asphalt = await read("lucrari de asfaltare");
     expect(asphalt.interpretation.subjectChoices ?? null).toBeNull();
-    expect(asphalt.spec?.filters.cpvTerm).toBe("45233222-1"); // „Lucrări de pavare şi de asfaltare”
+    // the curated "asfaltare" (road works) beats the narrower catalogue label „Lucrări de pavare şi de asfaltare”
+    expect(asphalt.spec?.filters.cpvTerm).toBe("asfaltare");
   });
 
   it("reads inflected forms the same way, and never other words", async () => {

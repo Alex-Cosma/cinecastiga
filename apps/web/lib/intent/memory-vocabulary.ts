@@ -11,8 +11,8 @@ export interface MemoryFixture {
   uats?: UatSource[];
   catalog: { code: string; name: string }[];
   synonyms: { term: string; prefix: string }[];
-  authorities: (EntityHit & { total: number })[];
-  suppliers: (EntityHit & { total: number })[];
+  authorities: (EntityHit & { total: number; cui?: string })[];
+  suppliers: (EntityHit & { total: number; cui?: string })[];
   persons: PersonHit[];
 }
 
@@ -21,7 +21,7 @@ const f = (s: string) => fold(s).trim();
 export function memoryVocabulary(fx: MemoryFixture): Vocabulary {
   let places: PlaceEntry[] | null = null;
   const byTotal = (a: { total: number }, b: { total: number }) => b.total - a.total;
-  const strip = ({ total: _t, ...e }: EntityHit & { total: number }): EntityHit => e;
+  const strip = ({ total: _t, cui: _c, ...e }: EntityHit & { total: number; cui?: string }): EntityHit => e;
   return {
     async places() {
       places ??= buildPlaces(fx.uats ?? catalogUatSource());
@@ -51,7 +51,7 @@ export function memoryVocabulary(fx: MemoryFixture): Vocabulary {
         rows.push({ term: s.term, cpvName, priority: term === phrase ? 0 : 4, len: s.term.length });
       }
       return rows
-        .sort((a, b) => a.priority - b.priority || a.len - b.len || a.term.localeCompare(b.term))
+        .sort((a, b) => a.priority - b.priority || Number(/^\d/.test(a.term)) - Number(/^\d/.test(b.term)) || a.len - b.len || a.term.localeCompare(b.term))
         .slice(0, 8)
         .map(({ term, cpvName }) => ({ term, cpvName }));
     },
@@ -65,6 +65,11 @@ export function memoryVocabulary(fx: MemoryFixture): Vocabulary {
         })
         .sort((a, b) => Number(f(b.name) === q) - Number(f(a.name) === q) || byTotal(a, b));
       return { hits: all.slice(0, 25).map(strip), total: all.length };
+    },
+    async entitiesByCui(cui) {
+      const of = (role: "authority" | "supplier") => (role === "authority" ? fx.authorities : fx.suppliers)
+        .filter((e) => e.cui === cui).map((e) => ({ role, total: e.total, hit: strip(e) }));
+      return [...of("authority"), ...of("supplier")].sort(byTotal).slice(0, 6).map(({ role, hit }) => ({ role, hit }));
     },
     async personsNamed(names) {
       // same contract as the SQL lookup: hyphens and repeated spaces are word gaps
