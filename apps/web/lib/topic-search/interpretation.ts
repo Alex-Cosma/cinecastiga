@@ -2,7 +2,7 @@ import type { AskSpec } from '../ask/spec';
 import { askHref } from '../discovery-links';
 import { buildPlaces, countyDisplay } from '../intent/places';
 import { fold as foldText } from '../intent/text';
-import { sentenceFor, specFor, type SentenceLabels } from '../intent/to-spec';
+import { sentenceFor, specFor, subjectsLabel, type SentenceLabels } from '../intent/to-spec';
 import type { AuthorityKind } from '../ask/spec';
 import type { IntentResult, Interpretation, PlaceMatch, Span } from '../intent/types';
 import type { Place, TopicScope } from './shared';
@@ -181,7 +181,8 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
     };
     const choice = { place: answerPlace };
     const explicit = Boolean(scope.place || scope.from);
-    out.answer = shortAnswer(answerReading, choice, { subject: s0!.label }, (top) => (explicit ? askHref(top) : `/intreaba?q=${encodeURIComponent(scope.q)}`));
+    // the spec counts every recognised subject ("parcuri + spatii verzi"): so does the sentence
+    out.answer = shortAnswer(answerReading, choice, { subject: subjectsLabel(i.subjects) }, (top) => (explicit ? askHref(top) : `/intreaba?q=${encodeURIComponent(scope.q)}`));
   }
   // Question first: the words are a question the rules read cleanly, not title words.
   // A subject applied to the titles ("iluminat buzau") stays a subject search, and
@@ -190,7 +191,7 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
     out.question = { sentence: result.sentence! };
     // "Cine…" and "cât…" get the total and the first three winners; other questions open in Întreabă.
     if (!out.answer && (i.intent === 'ranking_suppliers' || i.intent === 'total')) {
-      const labels = { subject: s0?.label ?? null, ...(i.askedTownHalls && !i.authorityKind ? { allInstitutions: true } : {}) };
+      const labels = { subject: subjectsLabel(i.subjects), ...(i.askedTownHalls && !i.authorityKind ? { allInstitutions: true } : {}) };
       out.answer = shortAnswer({ ...i, topN: 3, superlative: false, measure: null }, {}, labels, () => `/intreaba?q=${encodeURIComponent(scope.q)}`);
     }
     // The subject the answer counts, so the route can list its CPV classes ("Domenii incluse").
