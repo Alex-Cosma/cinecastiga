@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { GLOSSARY } from "../glossary";
 import { readFileSync } from "node:fs";
 
 /**
@@ -31,7 +32,7 @@ describe("value wording (audit F36)", () => {
 
   it("titles the county map with contracted values for both roles", () => {
     const source = readFileSync(new URL("../../app/harta/page.tsx", import.meta.url), "utf8");
-    expect(source).toContain("Harta valorilor contractate pe județe");
+    expect(source).toContain("Valori contractate pe județe");
     expect(source).toContain('aria-label="Hartă a valorilor contractate pe județe"');
   });
 
@@ -47,6 +48,7 @@ describe("value wording (audit F36)", () => {
 describe("value cap disclosure on /harta (audit F09)", () => {
   it("states the contract cap next to the county totals", () => {
     const source = readFileSync(new URL("../../app/harta/page.tsx", import.meta.url), "utf8").replace(/\s+/g, " ");
-    expect(source).toContain("contracte din proceduri de cel mult 1 miliard lei; contractele peste acest plafon sunt separate de totaluri");
+    expect(source).toContain('<Term id="plafoane-totaluri" tip />');
+    expect(GLOSSARY["plafoane-totaluri"].text).toContain("contractele din proceduri de cel mult 1 miliard lei. Contractele peste acest plafon sunt separate de totaluri");
   });
 });

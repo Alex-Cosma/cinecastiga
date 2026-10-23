@@ -1,0 +1,3 @@
+/* The map note's (?) tips anchor to the note and open above it, over the map. */
+.map-note{position:relative}
+.map-note .term-tip>.term-def{right:auto;width:min(420px,calc(100vw - 32px))}

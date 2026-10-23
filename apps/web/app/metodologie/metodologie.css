@@ -1,0 +1,12 @@
+/* Methodology structure: the thresholds table, the folded totals rules and short lists. */
+table.rank.method-thresholds{width:auto;min-width:min(100%,420px);margin:10px 0 8px}
+table.rank.method-thresholds th.num{text-align:right}
+table.rank.method-thresholds th,table.rank.method-thresholds td{padding:6px 10px}
+.prose li>ul{padding-left:18px;margin:8px 0 0}
+.prose li>ul>li{margin-bottom:6px}
+.method-fold{border-top:1px solid var(--line);padding:10px 0;max-width:78ch}
+.method-fold:last-of-type{border-bottom:1px solid var(--line)}
+.method-fold>summary{cursor:pointer;font-weight:600;color:var(--accent)}
+.method-fold>p{margin:10px 0 4px}
+.method-card>.method-list{padding-left:18px;margin-top:4px;margin-bottom:6px}
+.method-list>li{margin:3px 0}

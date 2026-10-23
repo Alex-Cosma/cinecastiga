@@ -39,3 +39,6 @@ html[data-stories-transition]::view-transition-group(*){animation-duration:520ms
 .stories-page .tone-3{fill:var(--muted);background:var(--muted)}.stories-page .region-label{font-size:21px;stroke-width:5px}
 .stories-page .compare-head,.stories-page .compare-row{padding:10px 0}.stories-page .compare-both{grid-column:2/4;display:flex;align-items:baseline;gap:12px}.stories-page .compare-both em{font-style:normal;font-size:11px;font-weight:600;color:var(--accent);background:var(--accent-soft);padding:2px 8px;border-radius:10px;white-space:nowrap}.stories-page .compare-row.diff{background:none;border-left:3px solid var(--orange);padding-left:10px;margin-left:-13px}.stories-page .compare-row.diff .compare-label{color:var(--orange);font-weight:600}
 @media(max-width:760px){.stories-page .compare-both{grid-column:1/-1;flex-direction:column;gap:4px}.stories-page .region-label{font-size:26px}}
+/* Card text without a teaser: the summary, held to three lines. A lone county story takes one column. */
+.stories-page .story-clamp{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;overflow:hidden}
+.stories-page .county-single{grid-template-columns:minmax(0,1fr)}.stories-page .county-single .featured{max-width:780px}

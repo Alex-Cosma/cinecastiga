@@ -41,7 +41,7 @@ function SourceRow({story,item,openSource}:{story:Story;item:SourceItem;openSour
  return <button onClick={()=>openSource(s.id)}><span className="source-number">{item.n}</span><span><strong>{s.title}</strong><small>{meta}</small></span><Icon name="arrow"/></button>;
 }
 function Sources({story,openSource}:{story:Story;openSource:Open}){
- return <section id="surse"><div className="section-head"><h2>Documentele folosite</h2><span>{story.sources.length} surse</span></div><p>Acesta este dosarul poveștii. Fiecare document se deschide fără să pierzi locul în articol.</p>
+ return <section id="surse"><div className="section-head"><h2>Documentele folosite</h2><span>{story.sources.length} surse</span></div>
   {sourceGroups(story).map(g=><div className="source-group" key={g.id}><h3>{g.title}</h3>
    {g.clusters.map(c=>{const first=c.items[0]!.source;return <details className="source-cluster" key={c.key}><summary><span className="source-number">{c.items.length}×</span><span><strong>{c.title}</strong><small>{first.kind==='procurement'?first.authority:''} · {money(c.total)} în total</small></span></summary><div className="source-list">{c.items.map(x=><SourceRow key={x.source.id} story={story} item={x} openSource={openSource}/>)}</div></details>;})}
    {g.items.length>0&&<div className="source-list">{g.items.map(x=><SourceRow key={x.source.id} story={story} item={x} openSource={openSource}/>)}</div>}
@@ -69,7 +69,7 @@ function Ending({story}:{story:Story}){
   <li><a href="/intreaba"><span>Construiește o întrebare</span><small>explorează toate datele publice</small><Icon name="arrow"/></a></li>
  </ul>
  <div className="ending-actions">
-  <div><h3>Ai informații despre această poveste?</h3><p>Scrie-ne anonim, fără cont. Mesajul ajunge doar la administratorii aplicației. Nu include date personale.</p><button type="button" className="button" onClick={()=>document.querySelector<HTMLButtonElement>('.feedback-fab')?.click()}>Trimite o informație</button></div>
+  <div><h3>Ai informații despre această poveste?</h3><p>Anonim, fără cont; ajunge doar la administratori. Nu include date personale.</p><button type="button" className="button" onClick={()=>document.querySelector<HTMLButtonElement>('.feedback-fab')?.click()}>Trimite o informație</button></div>
   <div><h3>Cum citezi povestea</h3><p className="citation">{citation(story,url)}</p><div className="citation-actions"><button type="button" className="text-link" onClick={async()=>{try{await navigator.clipboard.writeText(citation(story,url));setCopied('Citarea a fost copiată.');}catch{setCopied('Copierea nu a reușit. Selectează textul de mai sus.');}}}><Icon name="link"/> Copiază citarea</button><a className="text-link" href="/metodologie#citare">Reguli de citare <Icon name="arrow"/></a></div><span className="copy-status" role="status">{copied}</span></div>
  </div></div>;
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import type { EntryKind, InvestigationWorkspace, WorkspaceEntry, WorkspaceLink } from "@/lib/investigation-workspace";
+import Term from "@/components/Term";
 
 export interface WorkspaceClip { id: string; title: string; kind: string; createdAt: string }
 export type WorkspaceTab = "questions" | "evidence" | "timeline" | "tasks";
@@ -92,7 +93,7 @@ export default function Workspace({ investigationId, initial, clips, evidence, i
       onCancel={() => setEditing(null)} onSave={async body => { if (await mutate(body)) setEditing(null); }} />}
     <section id="iw-panel" role="tabpanel" aria-labelledby={`iw-tab-${tab}`} tabIndex={0}>
       {tab === "questions" && <>
-        <div className="iw-section-head"><div><h2>De la întrebare la fapte</h2><p>O ipoteză de lucru, dovezile ei și explicațiile care merită testate.</p></div>{canEdit && <button className="iw-primary" type="button" onClick={() => setEditing("question")}>Adaugă întrebare</button>}</div>
+        <div className="iw-section-head"><div><h2>Întrebări</h2></div>{canEdit && <button className="iw-primary" type="button" onClick={() => setEditing("question")}>Adaugă întrebare</button>}</div>
         {questions.length === 0 ? <div className="iw-empty"><h3>Ce vrei să afli?</h3><p>Formulează o întrebare verificabilă. De exemplu: „De ce revine aceeași firmă în achizițiile acestei autorități?”</p><p>Asociază apoi dovezi pro și contra. O întrebare documentată nu este automat o concluzie.</p></div> : questions.map((question, index) => <article className="iw-question" key={question.id}>
           <div className="iw-entry-meta"><span>Întrebarea {index + 1}</span><span>{question.status === "done" ? "Documentată" : question.status === "checking" ? "În verificare" : "Deschisă"}</span></div>
           <h3>{question.title}</h3>{question.body && <p className="iw-prose">{question.body}</p>}
@@ -101,12 +102,12 @@ export default function Workspace({ investigationId, initial, clips, evidence, i
         </article>)}
       </>}
       {tab === "evidence" && <>
-        <div className="iw-section-head"><div><h2>Ce ai păstrat în dosar</h2><p>Surse, rezultate salvate și observațiile redacției.</p></div>{canEdit && <button type="button" className="iw-primary" onClick={() => setEditing("note")}>Adaugă notă</button>}</div>
+        <div className="iw-section-head"><div><h2>Dovezi</h2></div>{canEdit && <button type="button" className="iw-primary" onClick={() => setEditing("note")}>Adaugă notă</button>}</div>
         {notes.map(note => <article className="iw-editorial-note" key={note.id}><div className="iw-entry-meta">Notă editorială · {date(note.updatedAt)}</div><h3>{note.title}</h3><p className="iw-prose">{note.body}</p>{note.alternative && <div className="iw-alternative"><h4>Explicație alternativă</h4><p>{note.alternative}</p></div>}{entryActions(note)}</article>)}
         {evidence}
       </>}
       {tab === "timeline" && <>
-        <div className="iw-section-head"><div><h2>Pune faptele în ordine</h2><p>Datele evenimentelor sunt introduse de redacție. Salvarea unei dovezi are propriul jurnal.</p></div>{canEdit && <button type="button" className="iw-primary" onClick={() => setEditing("event")}>Adaugă eveniment</button>}</div>
+        <div className="iw-section-head"><div><h2>Cronologie <Term id="cronologie-redactie" tip /></h2></div>{canEdit && <button type="button" className="iw-primary" onClick={() => setEditing("event")}>Adaugă eveniment</button>}</div>
         {events.length === 0 && <div className="iw-empty"><h3>Construiește firul evenimentelor</h3><p>Adaugă data unei atribuiri, a unui răspuns primit sau a unei verificări. Explică sursa datei în notă.</p></div>}
         <ol className="iw-timeline">{events.map(event => <li key={event.id}><time dateTime={event.occurredOn ?? undefined}>{event.occurredOn ? date(`${event.occurredOn}T12:00:00`) : "Dată necunoscută"}</time><div><h3>{event.title}</h3><p className="iw-prose">{event.body}</p>{entryActions(event)}</div></li>)}</ol>
         <details className="iw-journal"><summary>Jurnalul dosarului · salvări și revizii</summary><p className="iw-muted">Ordinea salvării în aplicație, nu data faptelor investigate. Cele mai recente 200 de revizii.</p><ol>
@@ -114,7 +115,7 @@ export default function Workspace({ investigationId, initial, clips, evidence, i
         </ol></details>
       </>}
       {tab === "tasks" && <>
-        <div className="iw-section-head"><div><h2>Ce mai trebuie verificat</h2><p>Cere un punct de vedere, verifică o sumă, caută documentul lipsă.</p></div>{canEdit && <button type="button" className="iw-primary" onClick={() => setEditing("task")}>Adaugă verificare</button>}</div>
+        <div className="iw-section-head"><div><h2>De verificat</h2></div>{canEdit && <button type="button" className="iw-primary" onClick={() => setEditing("task")}>Adaugă verificare</button>}</div>
         {tasks.length === 0 && <div className="iw-empty"><h3>Nicio verificare deschisă încă</h3><p>Transformă incertitudinile în pași concreți, cu o notă despre ce ar clarifica răspunsul.</p></div>}
         <div className="iw-tasks">{tasks.map(task => <article key={task.id} className={task.status === "done" ? "iw-task iw-task-done" : "iw-task"}>
           <label className="iw-task-check"><input type="checkbox" checked={task.status === "done"} disabled={!canEdit || busy} onChange={() => void mutate({ action: "update", entryId: task.id, revision: task.revision, entry: { ...task, status: task.status === "done" ? "open" : "done" } })} /><span className="d-sr-only">Marchează „{task.title}” ca {task.status === "done" ? "nefinalizată" : "finalizată"}</span></label>

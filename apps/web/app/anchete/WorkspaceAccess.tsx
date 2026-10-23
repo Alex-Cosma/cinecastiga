@@ -31,7 +31,6 @@ export default function WorkspaceAccess({ id }: { id: string }) {
   return <details className="iw-access" onToggle={event => { if (event.currentTarget.open && !data) void reload().catch(failure => setError(String(failure.message))); }}>
     <summary>Acces privat și colaboratori</summary>
     <div className="iw-access-content"><p>Dosarul este privat. Invitația funcționează doar pentru contul cu adresa aleasă și confirmată; simpla posesie a linkului nu oferă acces.</p>
-      <p className="iw-muted">Editorii pot organiza dosarul și adăuga dovezi. Cititorii pot consulta și exporta. Numai tu administrezi accesul.</p>
       {error && <p className="iw-error" role="alert">{error}</p>}<p role="status">{notice}</p>
       {!data && !error && <p>Se încarcă accesul…</p>}
       {data && <>
@@ -45,7 +44,7 @@ export default function WorkspaceAccess({ id }: { id: string }) {
         <form className="iw-share-form" onSubmit={invitePerson}><fieldset disabled={busy}><h3>Invită un coleg</h3>
           <div className="iw-form-row"><label>Adresa contului<input name="email" type="email" required maxLength={254} placeholder="coleg@redactie.ro" autoComplete="off" /></label>
             <label>Acces<select name="role" defaultValue="viewer"><option value="viewer">Cititor · consultă și exportă</option><option value="editor">Editor · poate modifica dosarul</option></select></label></div>
-          <button type="submit" className="iw-primary">{busy ? "Se creează…" : "Creează link de invitație"}</button><p className="iw-muted">Valabil 7 zile. Trimite tu linkul colegului; aplicația nu expediază un e-mail. Este necesar un cont cu adresa de e-mail confirmată.</p>
+          <button type="submit" className="iw-primary">{busy ? "Se creează…" : "Creează link de invitație"}</button><p className="iw-muted">Valabil 7 zile. Trimite tu linkul; nu trimitem e-mail.</p>
         </fieldset></form>
         {invite && <div className="iw-invite-copy"><label>Linkul creat<input readOnly value={invite} onFocus={event => event.currentTarget.select()} /></label><button type="button" onClick={() => void navigator.clipboard.writeText(invite).then(() => setCopied(true)).catch(() => setError("Selectează și copiază linkul din câmp."))}>{copied ? "Link copiat" : "Copiază linkul"}</button></div>}
         {data.invites.length > 0 && <><h3>Invitații în așteptare</h3><ul className="iw-pending-invites">{data.invites.map(item => <li key={item.id}><span>{item.email} · {item.role === "editor" ? "editor" : "cititor"}<small>Expiră la {new Date(item.expiresAt).toLocaleDateString("ro-RO")}</small></span><button type="button" disabled={busy} onClick={() => { void act(`${base}/invites/${item.id}`, "DELETE"); setInvite(""); }}>Revocă invitația</button></li>)}</ul></>}

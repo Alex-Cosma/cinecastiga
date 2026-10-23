@@ -48,7 +48,10 @@ describe('public maintenance gate',()=>{
   expect(page.status).toBe(503);expect(opened(page)).toBe(false);
   expect(page.headers.get('content-type')).toContain('text/html');
   expect(page.headers.get('cache-control')).toContain('no-store');
-  expect(await page.text()).toContain('Actualizăm datele');
+  const html=await page.text();
+  expect(html).toContain('Actualizăm datele');expect(html).toContain('Anchetele și dovezile tale sunt păstrate');
+  // The owner enters through this link during maintenance.
+  expect(html).toContain('<a href="/admin">Acces administrator</a>');
   const api=await request('/api/search');
   expect(api.status).toBe(503);expect(await api.json()).toHaveProperty('error');
  });
