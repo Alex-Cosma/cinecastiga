@@ -211,6 +211,21 @@ describe("vocabulary from the first-visitor test (migration 0082 and the rules a
     expect((await ask("12345678")).i.supplier).toBeNull();
   });
 
+  it("/cauta answers several subjects together, like Întreabă", async () => {
+    const onCauta = async (q: string) => {
+      const scope = parseTopicScope(new URLSearchParams(`q=${encodeURIComponent(q)}`));
+      return applyInterpretation(scope, resultFor(await interpreter.interpret(scope.q, { now: NOW })), null, NOW);
+    };
+    for (const q of ["parcuri si spatii verzi timisoara", "cat a cheltuit primaria brasov pe parcuri si spatii verzi"]) {
+      const t = await onCauta(q);
+      expect(t.question?.sentence, q).toMatch(/„parcuri și spatii verzi”/);
+      expect(t.answer?.total.spec.filters.cpvTerm, q).toBe("parcuri + spatii verzi");
+      expect(t.answer?.total.spec.filters.uatSiruta, q).toBeGreaterThan(0);
+      // the route lists the classes of what the answer counts ("Domenii incluse")
+      expect(t.subject, q).toMatchObject({ term: "parcuri + spatii verzi", label: "parcuri și spatii verzi" });
+    }
+  });
+
   it("the hint for a partial list asks institutions for a locality, people for birth data", async () => {
     const hospitals = await ask("spitalul judetean de urgenta");
     expect(hospitals.i.choicesPartial?.hint).toBe(ENTITY_HINT);
