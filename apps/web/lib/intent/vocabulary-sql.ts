@@ -1,7 +1,7 @@
 import type { DbSql } from "@seap/db";
 import { cleanName, onrcBirthYear } from "../format";
 import { buildPlaces, type UatSource } from "./places";
-import { entityCandidates, personsByExactName, suggestCpv } from "./vocabulary-queries";
+import { entitiesByCui, entityCandidates, personsByExactName, suggestCpv } from "./vocabulary-queries";
 import type { PlaceEntry, Vocabulary } from "./types";
 import { personPatterns } from "./text";
 
@@ -106,6 +106,10 @@ export function sqlVocabulary(sql: DbSql, shared: SharedLists, opts: { signal?: 
         total: Number(rows[0]?.total ?? 0),
       };
     }),
+    entitiesByCui: (cui) => live(async () => (await entitiesByCui(sql, cui)).map((r) => ({
+      role: r.role,
+      hit: { id: Number(r.entity_id), name: registryName(r.name_display), county: r.county },
+    }))),
     personsNamed: (names) => live(async () => {
       // A slow ONRC lookup (cold index, very common short name) must not abort the whole question:
       // it runs in a savepoint, and a statement timeout there only drops the person part.

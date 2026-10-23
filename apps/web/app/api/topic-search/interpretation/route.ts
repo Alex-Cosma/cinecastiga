@@ -43,9 +43,11 @@ export async function GET(req:Request){
   // The subject as the engine grounds it: every CPV class counted ("Domenii incluse")
   // and the curated notes meant for people (e.g. "iluminat" includes traffic signalling).
   if(t.subject){
-   const cpv=(await ground(db(),{cpvTerm:t.subject.term})).cpv;
+   // the answer may count several subjects together ("parcuri + spatii verzi")
+   const term=t.answer?.total.spec.filters.cpvTerm??t.subject.term;
+   const cpv=(await ground(db(),{cpvTerm:term})).cpv;
    t.subject.notes=cpv?.notes??[];
-   if(t.answer&&t.answer.total.spec.filters.cpvTerm===t.subject.term){t.answer.cpv=cpv?.matchedNames??[];t.answer.cpvExcluded=cpv?.excludedNames??[];}
+   if(t.answer&&t.answer.total.spec.filters.cpvTerm===term){t.answer.cpv=cpv?.matchedNames??[];t.answer.cpvExcluded=cpv?.excludedNames??[];}
   }
   return Response.json({interpretation:t},{headers:{'Cache-Control':'no-store'}});
  }catch(e){
