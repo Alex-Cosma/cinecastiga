@@ -6,8 +6,8 @@ import { suggestCpv } from "../intent/vocabulary-queries";
 import { ground } from "./ground";
 
 /**
- * Migrations 0080 (beginner vocabulary) and 0081 (exclusions and the audit's
- * changes) and the CPV grounding they feed, on a dedicated seap_test_*
+ * Migrations 0080 (beginner vocabulary), 0081 (exclusions and the audit's
+ * changes) and 0082 (parks, bridges, road works) and the CPV grounding they feed, on a dedicated seap_test_*
  * database: the seed as it was before 0080, then each migration twice (they
  * are idempotent), then a re-seed, which must give the same rows, then the
  * same reading the engine and the interpreter do.
@@ -21,6 +21,7 @@ const seed = readFileSync(new URL("seeds/cpv-synonyms.sql", root), "utf8");
 const before0080 = readFileSync(new URL("./fixtures/cpv-synonyms-before-0080.sql", import.meta.url), "utf8");
 const migration = (name: string) => readFileSync(new URL(`migrations/${name}.sql`, root), "utf8");
 const NOW = new Date("2026-10-22T12:00:00Z");
+const PARCURI_NOTE = "Include amenajarea și întreținerea tuturor spațiilor verzi, nu doar a parcurilor: primăriile trec întreținerea parcurilor mai ales sub acest cod.";
 const ILUMINAT_NOTE = "Include și semnalizarea rutieră (semafoare, balizaj), clasificată în aceleași coduri CPV cu iluminatul public. La nivel național e circa 8% din valoare, dar în unele județe mult mai mult.";
 
 const CATALOG: [string, string][] = [
@@ -32,6 +33,9 @@ const CATALOG: [string, string][] = [
   ["65100000-4", "Distribuţie de apă şi servicii conexe"], ["45232150-8", "Lucrări pentru conducte de alimentare cu apă"],
   ["15981000-8", "Apă minerală"], ["33100000-1", "Echipamente medicale"], ["60000000-8", "Servicii de transport"],
   ["60130000-8", "Servicii de transport rutier specializat de pasageri"], ["34114400-3", "Microbuze"], ["30213100-6", "Computere portabile"],
+  ["77310000-6", "Amenajare şi întreţinere de spaţii verzi"], ["77313000-7", "Servicii de întreţinere a parcurilor"],
+  ["45221000-2", "Lucrări de construcţii de poduri şi tuneluri, puţuri şi pasaje subterane"], ["44212100-3", "Pod"],
+  ["45233000-9", "Lucrări de construcţii, de fundaţii şi de îmbrăcare a autostrăzilor şi a drumurilor"], ["45233140-2", "Lucrări de drumuri"],
 ];
 
 beforeAll(async () => {
@@ -75,14 +79,25 @@ describe.runIf(Boolean(connection))("migrations 0080 and 0081: CPV vocabulary (d
     expect((await sql`select term from reference.cpv_synonym where note is not null order by term`).map((r) => r.term)).toEqual(["iluminat", "iluminat", "iluminat public", "iluminat public"]);
   });
 
-  it("0081 adds exclusions, removes the audited rows only, and the seed reproduces the result", async () => {
-    const sql = connection!.sql;
+  it("0081 adds exclusions and removes the audited rows only", async () => {
     await apply("0081_cpv_synonym_exclusions");
     const after = await rows();
     expect(after).toHaveLength(290);
     expect(after.filter((r) => r.endsWith("|exclude"))).toHaveLength(50);
     expect(after.some((r) => r.startsWith("lucrari|") || r.startsWith("programe|") || r.startsWith("mese|"))).toBe(false);
     expect(after.some((r) => r.startsWith("iluminat|31500000|"))).toBe(false);
+    expect(after.filter((r) => r.startsWith("parcuri|"))).toEqual(["parcuri|43325000||", "parcuri|45112711||", "parcuri|77311000||", "parcuri|77313000||"]);
+  });
+
+  it("0082 brings back green spaces for parcuri, adds pod and lucrari (de) drumuri, and the seed reproduces the result", async () => {
+    const sql = connection!.sql;
+    await apply("0082_cpv_synonym_parks_bridges_roads");
+    const after = await rows();
+    expect(after).toHaveLength(292);
+    expect(after.filter((r) => r.endsWith("|exclude"))).toHaveLength(50);
+    expect(after.filter((r) => r.startsWith("parcuri|"))).toEqual(["parcuri|43325000||", "parcuri|45112711||", `parcuri|77310000|${PARCURI_NOTE}|`]);
+    expect(after.filter((r) => /^(pod|lucrari de drumuri|lucrari drumuri)\|/.test(r))).toEqual(["lucrari de drumuri|45233000||", "lucrari drumuri|45233000||", "pod|45221000||"]);
+    expect((await sql`select count(note)::int n from reference.cpv_synonym`)[0]!.n).toBe(19);
     await sql.unsafe(seed);
     expect(await rows()).toEqual(after);
   });
@@ -110,6 +125,12 @@ describe.runIf(Boolean(connection))("migrations 0080 and 0081: CPV vocabulary (d
     expect(mese.alternatives.map((a) => a.spec.filters.cpvTerm)).toEqual(["catering", "39121200"]);
     // an exclusion never removes what another term of the same text includes
     expect((await grounded("medicamente reactivi"))?.excludePrefixes ?? []).toEqual(["33682", "33683"]);
+    // 0082: green spaces, bridges and the whole road-works family
+    expect(await prefixes("parcuri")).toEqual(["43325", "45112711", "7731"]);
+    expect(await prefixes("pod")).toEqual(["45221"]);
+    expect(await prefixes("podul")).toEqual(["45221"]);
+    expect(await prefixes("lucrari de drumuri")).toEqual(["45233"]);
+    expect(await prefixes("lucrari drumuri")).toEqual(["45233"]);
   });
 
   it("carries the reviewed notes to the people who read the answer", async () => {
@@ -121,6 +142,7 @@ describe.runIf(Boolean(connection))("migrations 0080 and 0081: CPV vocabulary (d
     expect(await notes("scoala")).toHaveLength(1);
     expect(await notes("lemne")).toEqual([]);
     expect(await notes("apa")).toEqual([]);
+    expect(await notes("parcuri")).toEqual([PARCURI_NOTE]);
   });
 
   it("is the vocabulary the interpreter and the home search read", async () => {
