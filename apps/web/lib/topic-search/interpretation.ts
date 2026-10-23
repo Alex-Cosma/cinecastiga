@@ -2,6 +2,7 @@ import type { AskSpec } from '../ask/spec';
 import { askHref } from '../discovery-links';
 import { buildPlaces, countyDisplay } from '../intent/places';
 import { fold as foldText } from '../intent/text';
+import { joinCpvTerms } from '../ask/cpv-terms';
 import { sentenceFor, specFor, subjectsLabel, type SentenceLabels } from '../intent/to-spec';
 import type { AuthorityKind } from '../ask/spec';
 import type { IntentResult, Interpretation, PlaceMatch, Span } from '../intent/types';
@@ -194,9 +195,11 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
       const labels = { subject: subjectsLabel(i.subjects), ...(i.askedTownHalls && !i.authorityKind ? { allInstitutions: true } : {}) };
       out.answer = shortAnswer({ ...i, topN: 3, superlative: false, measure: null }, {}, labels, () => `/intreaba?q=${encodeURIComponent(scope.q)}`);
     }
-    // The subject the answer counts, so the route can list its CPV classes ("Domenii incluse").
-    if (s0 && !out.subject && out.answer?.total.spec.filters.cpvTerm === s0.term)
-      out.subject = { term: s0.term, label: s0.label, cpvName: s0.cpvName, source: s0.source, notes: [] };
+    // The subject the answer counts, so the route can list its CPV classes ("Domenii incluse");
+    // several subjects are counted together ("parcuri + spatii verzi").
+    const counted = out.answer?.total.spec.filters.cpvTerm;
+    if (s0 && (!out.subject || i.subjects.length > 1) && counted && counted === joinCpvTerms(i.subjects.map((s) => s.term)))
+      out.subject = { term: counted, label: subjectsLabel(i.subjects) ?? s0.label, cpvName: s0.cpvName, source: s0.source, notes: [] };
   }
   // Chips say what is searched or answered: a subject reading used for neither is not shown.
   if (!out.answer && !applies) { out.subject = null; out.otherSubjects = []; out.kind = null; }
@@ -206,14 +209,16 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
 }
 
 /**
- * A question to answer first: the person asked ("cine", "cât"), the rules
+ * A question to answer first: the person asked ("cine", "cât") or named
+ * several subjects to count together, the rules
  * built one spec with high confidence and every word is explained. A reading
  * with a choice to make (same-named places, firms or persons) has no spec and
  * is never answered by a guess.
  */
 export function isCleanQuestion(result: IntentResult): boolean {
   const i = result.interpretation;
-  return Boolean(result.spec && result.sentence) && i.intentSource === 'cue' && i.confidenceLabel === 'high' && !i.leftover.length
+  // several subjects ("parcuri și spații verzi") are counted together, never searched as title words
+  return Boolean(result.spec && result.sentence) && (i.intentSource === 'cue' || i.subjects.length > 1) && i.confidenceLabel === 'high' && !i.leftover.length
     && !i.placeAmbiguous && !i.subjectChoices && !(i.entityAlternatives.length && !i.authority && !i.supplier) && !(i.personAlternatives.length && !i.person);
 }
 

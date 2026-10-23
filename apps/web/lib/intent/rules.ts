@@ -686,7 +686,7 @@ export class RulesInterpreter implements QuestionInterpreter {
   private async fiscalCodes(c: Cursor, out: Interpretation) {
     if (!this.vocab.entitiesByCui) return;
     const h = c.first(/\b(?:ro(\d{2,10})|(?:ro|cui|cif|cod(?:ul)?\s+fiscal|codul\s+de\s+identificare\s+fiscala)\s+(?:ro\s*)?(\d{2,10}))\b/);
-    if (!h) return;
+    if (!h) return this.bareNumbers(c, out);
     const cui = h.m[1] ?? h.m[2]!;
     const span = c.span(h.i, h.j);
     const found = await this.vocab.entitiesByCui(cui);
@@ -702,6 +702,34 @@ export class RulesInterpreter implements QuestionInterpreter {
     }
     out.entityAlternatives = found.map(({ role, hit }) => ({ role, id: hit.id, name: hit.name, county: hit.county, matched: span }));
     out.notes.push(`Codul fiscal „${span.text}” aparține mai multor rânduri din date (firmă și instituție sau mai multe identități). Alege-l pe cel la care te gândești.`);
+  }
+
+  /**
+   * A bare number of 6 to 10 digits ("28133414") is a fiscal code when a firm
+   * or institution has it. Many CUIs have 8 digits like CPV codes: when the
+   * number is also a CPV code, both readings are offered; a number that is
+   * only a CPV code stays a domain (subjects), any other is left as typed.
+   */
+  private async bareNumbers(c: Cursor, out: Interpretation) {
+    for (let k = 0; k < c.tokens.length; k++) {
+      const n = c.f(k);
+      if (c.used[k] || !/^\d{6,10}$/.test(n)) continue;
+      const found = await this.vocab.entitiesByCui!(n);
+      if (!found.length) continue;
+      const span = c.span(k, k + 1);
+      const cpv = n.length === 8 ? (await this.vocab.cpv(n)).find((x) => x.term.startsWith(n)) : undefined;
+      c.take(k, k + 1, "entity");
+      if (!cpv && found.length === 1) {
+        this.applyResolution({ kind: "one", role: found[0]!.role, hit: found[0]!.hit }, out, span, span.text);
+        return;
+      }
+      out.entityAlternatives = found.map(({ role, hit }) => ({ role, id: hit.id, name: hit.name, county: hit.county, matched: span }));
+      if (cpv) {
+        const label = `domeniul ${cpv.cpvName ?? "CPV"} (${cpv.term})`;
+        out.subjectChoices = { matched: span, message: `„${span.text}” este codul fiscal al ${found.length === 1 ? `${found[0]!.role === "supplier" ? "firmei" : "instituției"} „${found[0]!.hit.name}”` : "mai multor firme sau instituții"} și codul CPV ${cpv.term}. Alege la care te gândești.`, options: [{ label, term: cpv.term }] };
+      } else out.notes.push(`Codul fiscal „${span.text}” aparține mai multor rânduri din date. Alege-l pe cel la care te gândești.`);
+      return;
+    }
   }
 
   /**
