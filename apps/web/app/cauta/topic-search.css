@@ -125,3 +125,15 @@
 .topic-units strong{color:var(--ink);font-weight:600}
 .topic-units>a{display:inline-flex;align-items:center;gap:6px;min-height:32px;font-weight:500}
 @media(max-width:650px){.topic-question-actions>a.topic-primary,.topic-answer-actions>a.topic-primary,.topic-question-actions>a.topic-control,.topic-answer-actions>a.topic-control{width:100%;justify-content:center}}
+/* After a search, phones show the words as the title and drop the subtitle: the answer fits in the first screen */
+.topic-h1-query{display:none}
+@media(max-width:650px){
+ .topic-intro.has-query{margin:0 0 12px}
+ .topic-intro.has-query h1{font-size:22px;margin:8px 0 0;line-height:1.3;overflow-wrap:anywhere}
+ .topic-intro.has-query .topic-h1-default,.topic-intro.has-query>p{display:none}
+ .topic-intro.has-query .topic-h1-query{display:inline}
+ .topic-status.is-quiet{position:absolute;width:1px;height:1px;min-height:0;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+ .topic-status.is-quiet~.topic-understood{margin-top:16px}
+ /* Long titles: three lines, so the amount and "instituție → firmă" stay in view; the link opens the full title */
+ .topic-record:not(.topic-entity):not(.topic-document) h3{display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+}
