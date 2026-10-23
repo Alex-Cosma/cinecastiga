@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp,mkdir,writeFile,readFile,rm} from 'node:fs/promises';
+import {mkdtemp,mkdir,writeFile,readFile,readdir,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {spawnSync} from 'node:child_process';
 const script=new URL('./process-nightly.sh',import.meta.url).pathname;
+const runId='00000000-0000-4000-8000-000000000001',digest='ab'.repeat(32);
 async function run(failure='',due=true,args=[],rawResume=false){
  const dir=await mkdtemp(join(tmpdir(),'seap-nightly-'));
  try{
@@ -16,20 +17,39 @@ case "$*" in
  "inspect --format "*) echo False;;
  *"psql -X -v ON_ERROR_STOP=1 -U seap -d seap -Atc "*) if [ "$TEST_FAILURE" = drain ]; then exit 1; fi; echo 0;;
  *"select maintenance and collection_during_maintenance"*) [ "$TEST_RAW_RESUME" = yes ] && echo t || echo f;;
- *"pg_dump "*) if [ "$TEST_FAILURE" = backup ]; then exit 1; fi; echo backup;;
+ *"pg_dump "*) echo backup; if [ "$TEST_FAILURE" = backup ]; then exit 1; fi;;
  *"pg_restore --list"*) cat >/dev/null; echo archive;;
  *"processing.js refresh "*) if [ "$TEST_FAILURE" = refresh ]; then exit 1; fi;;
 esac`;
-  const bins={docker,flock:'[ "$TEST_FAILURE" != lock ]',curl:'case "$*" in *api/health*) echo 200;; *) echo 503;; esac',sha256sum:'echo sha256'};
+  const bins={docker,flock:'[ "$TEST_FAILURE" != lock ]',curl:'case "$*" in *api/health*) echo 200;; *) echo 503;; esac',sha256sum:`cat >/dev/null; case "$TEST_FAILURE" in checksum) exit 1;; checksum-empty) exit 0;; esac; echo '${digest}  -'`};
   for(const [name,body] of Object.entries(bins))await writeFile(join(dir,'bin',name),'#!/bin/sh\n'+body+'\n',{mode:0o755});
   const r=spawnSync('bash',[script,...args],{input:'caller-script-must-not-reach-container\n',env:{...process.env,PATH:join(dir,'bin')+':'+process.env.PATH,SEAP_DEPLOY_CHECKOUT:dir,SEAP_PROCESSING_BACKUPS:join(dir,'backups'),TEST_LOG:join(dir,'calls'),TEST_FAILURE:failure,TEST_RAW_RESUME:rawResume?'yes':'no',TEST_DUE:due?'yes':'no'},encoding:'utf8'});
-  return {status:r.status,calls:await readFile(join(dir,'calls'),'utf8').catch(()=> '')};
+  const backup=join(dir,'backups',runId);
+  return {status:r.status,calls:await readFile(join(dir,'calls'),'utf8').catch(()=> ''),backup,
+   files:(await readdir(backup).catch(()=>[])).sort(),
+   dump:await readFile(join(backup,'database.dump'),'utf8').catch(()=>null),
+   checksum:await readFile(join(backup,'database.sha256'),'utf8').catch(()=>null)};
  }finally{await rm(dir,{recursive:true,force:true});}
 }
 test('no due run makes no changes and never consumes its caller input',async()=>{const r=await run('',false);assert.equal(r.status,0);assert.doesNotMatch(r.calls,/stop |pg_dump|refresh |finish |CONSUMED_CALLER_INPUT/);});
 test('deployment lock conflict exits before touching containers or database',async()=>{const r=await run('lock');assert.equal(r.status,0);assert.equal(r.calls,'');});
 test('drain, backup and processing failure retain maintenance and never finish or restart workers',async()=>{
- for(const failure of ['drain','backup','refresh']){const r=await run(failure);assert.equal(r.status,1);assert.match(r.calls,/processing.js fail /);assert.doesNotMatch(r.calls,/processing.js finish |restart web|up -d/);if(failure==='drain')assert.doesNotMatch(r.calls,/stop collection documents|pg_dump/);}
+ for(const failure of ['drain','backup','checksum','checksum-empty','refresh']){const r=await run(failure);assert.equal(r.status,1);assert.match(r.calls,/processing.js fail /);assert.doesNotMatch(r.calls,/processing.js finish |restart web|up -d/);if(failure==='drain')assert.doesNotMatch(r.calls,/stop collection documents|pg_dump/);}
+});
+test('a failed dump or streamed checksum leaves only a .partial file, never a restore point',async()=>{
+ for(const failure of ['backup','checksum','checksum-empty']){
+  const r=await run(failure);assert.equal(r.status,1,failure);
+  assert.doesNotMatch(r.calls,/pg_restore --list|backup-verified/,failure);
+  assert.ok(r.files.includes('database.dump.partial'),failure);
+  for(const name of ['database.dump','database.list','database.sha256'])assert.ok(!r.files.includes(name),`${failure}: ${name}`);
+ }
+});
+test('the dump is zstd-compressed and its streamed SHA-256 names the final file',async()=>{
+ const r=await run();assert.equal(r.status,0);
+ assert.match(r.calls,/exec cinecastiga-postgres-1 pg_dump -U seap -d seap -Fc --compress=zstd:1\n/);
+ assert.equal(r.dump,'backup\n');
+ assert.equal(r.checksum,`${digest}  ${join(r.backup,'database.dump')}\n`);
+ assert.deepEqual(r.files,['database.dump','database.list','database.sha256','run.log']);
 });
 test('drains, backs up, verifies and restarts before the guarded reopen',async()=>{
  const r=await run();assert.equal(r.status,0);

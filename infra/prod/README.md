@@ -149,7 +149,11 @@ whole database before every run into `/srv/seap/backups/processing/<run>/`.
 latest successful full (weekly) run. These dumps include `auth` and `app`, so
 the separate nightly `state-*.dump` cron was removed on 19 October 2026. While
 processing is disabled no new restore point is taken. All dumps share the
-server disk; an off-box copy is still a separate decision.
+server disk; an off-box copy is still a separate decision. From the release of
+the owner-approved 23 October 2026 change, the dump is custom format with zstd
+level 1 (`--compress=zstd:1`) and its SHA-256 is computed while streaming;
+restoring needs `pg_restore` 16+ built with zstd (the `postgres:16-alpine`
+image is).
 
 ## Cloudflare in front
 

@@ -165,7 +165,7 @@ Procedura:
 1. Lock comun cu deploy; o singură încercare pentru ziua programată.
 2. Pausă colectare + mentenanță; păstrează pauza anterioară a operatorului.
 3. Drenează cererile/sarcinile/OCR până la 25 minute înainte de oprirea worker-ilor. SIGTERM poate anula OCR; nu îl trimite înainte de drain.
-4. Verifică spațiu liber, creează backup complet privat și SHA-256; `.partial` nu este punct valid de restore.
+4. Verifică spațiu liber, creează backup complet privat (`pg_dump -Fc --compress=zstd:1`) și SHA-256 calculat din același flux; `.partial` nu este punct valid de restore. Format și restore: secțiunea „Recuperare și backup”.
 5. Rulează pipeline-ul la boundary fix; salvează etape, durate și heartbeat; validează întregul snapshot.
 6. Reindexează Meili; verifică numărul așteptat și absența taskurilor eșuate/în curs.
 7. Repornește cache-uri/worker-i, verifică health și redeschide doar checkpoint-ul validat, cu revision neschimbat.
@@ -234,6 +234,7 @@ Adăugat pe 16 octombrie 2026 și trecut în aceeași zi pe pachetul zilnic OJ S
 
 - Reparație TED + recalculare completă 27 septembrie: pipeline 1 h 47 m 49 s; mentenanță 2 h 50 m 31 s inclusivbackup/reparare/search.
 - Repetiție zilnică pe copie:41 m 15,247 s pentrupipeline, exclusiv amprentele de risc/backup/search.
+- Backup complet (etapa `backup`): cu gzip implicit, ~48 min pentru ~26,3 GB, din care ~14,5 GB arhive de documente bytea, plus recitirea fișierului pentru SHA-256. Cu zstd:1, măsurat local pe 23 octombrie pe același flux `docker exec | tee | sha256sum`: baza locală fără documente 619 s → 251 s (5,70 → 5,09 GB); eșantion bytea de 2,48 GB (PDF-uri reale și octeți aleatori) 139 s → 19 s (2,73 → 2,39 GB). Estimare pentru producție: ~15–20 min și ~23 GB. Durata reală a primei rulări: `select stages->'backup'->>'durationMs' from app.processing_runs order by started_at desc limit 1`.
 - Durata unei nopți viitoare depinde de volume și resurse; vezi `app.processing_runs`, nu extrapola un cron 05:00 în „gata la 05:01”.
 
 ## Inspecție read-only
@@ -273,7 +274,11 @@ Fișierele din `scripts/operations/` cu date 20260927 sunt audit/proceduri one-o
 
 ## Recuperare și backup
 
-Backup-urile programate conțin și date private. Din 19 octombrie 2026 se păstrează dump-urile complete (~24 GB fiecare) ale ultimelor 2 rulări reușite plus al ultimei rulări complete reușite (cea săptămânală). Dump-ul unei rulări eșuate se șterge după prima rulare reușită de după ea, pentru că recuperarea face propriul backup. Toate stau pe același disc ca baza de date și nu protejează împotriva pierderii serverului. Arhivele TED/benchmark separate sunt conservate. Verifică spațiul și politica înainte de ștergere.
+Backup-urile programate conțin și date private. Din 19 octombrie 2026 se păstrează dump-urile complete (~24–26 GB fiecare cu gzip; estimat ~23 GB cu zstd) ale ultimelor 2 rulări reușite plus al ultimei rulări complete reușite (cea săptămânală). Dump-ul unei rulări eșuate se șterge după prima rulare reușită de după ea, pentru că recuperarea face propriul backup. Toate stau pe același disc ca baza de date și nu protejează împotriva pierderii serverului. Arhivele TED/benchmark separate sunt conservate. Verifică spațiul și politica înainte de ștergere.
+
+**Formatul backup-ului (aprobat de proprietar pe 23 octombrie 2026; activ de la deploy-ul schimbării).** `database.dump` este arhivă PostgreSQL custom, `pg_dump -Fc --compress=zstd:1`, cu același conținut ca înainte. S-au schimbat doar compresia (zstd nivel 1 în loc de gzip implicit) și calculul hash-ului. `tee` scrie fluxul în `database.dump.partial` și îl trece prin `sha256sum`, deci fișierul nu se mai recitește. Cu `pipefail`, eșecul lui `pg_dump`, `tee` sau `sha256sum` oprește backup-ul și păstrează mentenanța. Abia după `mv` și `pg_restore --list` se scrie `database.sha256`. `--list` validează antetul și catalogul arhivei, nu citește toate datele. Linia are formatul lui `sha256sum`, `<hash>  <cale absolută>`, deci `sha256sum -c database.sha256` funcționează ca înainte.
+
+**Restore-ul cere `pg_restore` 16+ compilat cu zstd.** Imaginea `postgres:16-alpine` îl are (16.13 local, 16.15 în producție). Un client fără zstd refuză arhiva cu „this build does not support compression with zstd”; așa a răspuns pe 23 octombrie `pg_restore` 18.4 din Homebrew. Restaurează prin container, într-o bază **nouă**: `sha256sum -c database.sha256`, apoi `docker exec -i cinecastiga-postgres-1 pg_restore -U seap -d <bază nouă> --exit-on-error < database.dump`. Pentru `-j N`, arhiva trebuie citită ca fișier din container, nu din stdin. Dump-urile gzip mai vechi se restaurează la fel.
 
 La eșec: conservă logul, checksum-ul, boundary-ul și checkpoint-ul; validează reparația sau restore-ul într-o bază **nouă**, reconstruiește/verifică search și abia apoi planifică schimbarea live. Nu reda publicului date parțial refăcute. Nu șterge independent un source block ca efect secundar al redeschiderii site-ului.
 

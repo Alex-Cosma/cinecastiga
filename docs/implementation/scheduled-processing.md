@@ -22,7 +22,7 @@ Migration 0037 adds opt-in settings and `app.processing_runs`. The runner:
 
 1. Atomically records the run, pauses collection and enables maintenance. Preserves the preceding operator pause.
 2. Blocks new work, waits up to 25 minutes for active requests/tasks/documents to finish, then stops workers. Waiting occurs before SIGTERM because the document worker aborts OCR on that signal. Requires zero active work again before freezing the maximum raw ID; an orphan or exhausted drain deadline stops publication.
-3. Checks at least 20 GiB free and takes a private full PostgreSQL dump, archive listing and SHA-256. A `.partial` file is never accepted as a restore point.
+3. Checks at least 20 GiB free and takes a private full PostgreSQL dump, archive listing and SHA-256. A `.partial` file is never accepted as a restore point. From the release of the owner-approved 23 October 2026 change, the dump is custom format compressed with zstd level 1 (`--compress=zstd:1`, restore needs `pg_restore` 16+ built with zstd), and the SHA-256 is computed from the same stream instead of re-reading the file; see "Recuperare și backup" in [operations](../handover/05-operations.md).
 4. Executes the selected pipeline, persists stage durations/heartbeats and validates the full snapshot.
 5. Rebuilds search; requires expected document count, no indexing in progress and no failed/canceled write/settings tasks.
 6. Restarts web caches and previously active workers while still paused; requires healthy web before guarded reopening.
