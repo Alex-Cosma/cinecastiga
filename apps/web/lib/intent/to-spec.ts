@@ -408,7 +408,8 @@ export function resultFor(i: Interpretation): IntentResult {
   }
   if (choosing === "pair") for (const pair of i.compareChoices) add(pair.label, "entity", specFor(i, "compare", { pair }).spec);
   if (choosing === "person") for (const p of i.personAlternatives) add(personDisplay(p), "person", specFor(i, intent, { person: p }).spec);
-  if (choosing === "entity") {
+  // a number that is both a fiscal code and a CPV code: the firm or institution is a choice too
+  if (choosing === "entity" || (choosing === "subject" && i.entityAlternatives.length && !i.supplier && !i.authority)) {
     const base = (e: EntityMatch) => `${cleanName(e.name)}${e.county && !/^(na|necunoscut)$/i.test(e.county) ? ` (${e.county})` : ""}`;
     const counts = new Map<string, number>();
     for (const e of i.entityAlternatives) counts.set(base(e), (counts.get(base(e)) ?? 0) + 1);
