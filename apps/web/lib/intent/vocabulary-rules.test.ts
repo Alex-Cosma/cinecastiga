@@ -34,6 +34,7 @@ const fx: MemoryFixture = {
     { term: "lucrari drumuri", prefix: "45233000" },
     { term: "iluminat public", prefix: "34993000" },
   ],
+  suppliers: [...FIXTURE.suppliers, { id: 8100001, name: "ECO GARDEN CONSTRUCT SRL", county: "Bacau", total: 20_000_000, cui: "28133414" }],
   authorities: [
     ...FIXTURE.authorities.map((a) => (a.id === 2146486 ? { ...a, cui: "3897151" } : a)),
     { id: 7000001, name: "SPITALUL CLINIC JUDETEAN DE URGENTA CRAIOVA", county: "Dolj", total: 2_000_000_000 },
@@ -192,6 +193,37 @@ describe("vocabulary from the first-visitor test (migration 0082 and the rules a
     // a name right after the word stays a person
     const person = await ask("administratorul popescu marian");
     expect(person.i.person?.name).toBe("POPESCU MARIAN");
+  });
+
+  it("a bare number: a fiscal code wins, a CPV code alone stays a domain, both are offered when it is both", async () => {
+    const firm = await ask("28133414");
+    expect(firm.i.supplier).toMatchObject({ id: 8100001, name: "ECO GARDEN CONSTRUCT SRL" });
+    expect(firm.i.subjects).toEqual([]);
+    const code = await ask("45233140");
+    expect(code.i.subjects.map((s) => s.term)).toEqual(["45233140-2"]);
+    expect(code.i.supplier).toBeNull();
+    const both = new RulesInterpreter(memoryVocabulary({ ...fx, suppliers: [...fx.suppliers, { id: 8100002, name: "DRUM CONSTRUCT SRL", county: "Bacau", total: 1, cui: "45233140" }] }));
+    const r = resultFor(await both.interpret("45233140", { now: NOW }));
+    expect(r.spec).toBeNull();
+    expect(r.problem).toMatch(/este codul fiscal al firmei „DRUM CONSTRUCT SRL” și codul CPV 45233140-2/);
+    expect(r.alternatives.map((a) => [a.kind, a.spec.filters.cpvTerm ?? a.spec.filters.supplierId])).toEqual([["subject", "45233140-2"], ["entity", 8100002]]);
+    // a number nobody has stays as typed
+    expect((await ask("12345678")).i.supplier).toBeNull();
+  });
+
+  it("/cauta answers several subjects together, like Întreabă", async () => {
+    const onCauta = async (q: string) => {
+      const scope = parseTopicScope(new URLSearchParams(`q=${encodeURIComponent(q)}`));
+      return applyInterpretation(scope, resultFor(await interpreter.interpret(scope.q, { now: NOW })), null, NOW);
+    };
+    for (const q of ["parcuri si spatii verzi timisoara", "cat a cheltuit primaria brasov pe parcuri si spatii verzi"]) {
+      const t = await onCauta(q);
+      expect(t.question?.sentence, q).toMatch(/„parcuri și spatii verzi”/);
+      expect(t.answer?.total.spec.filters.cpvTerm, q).toBe("parcuri + spatii verzi");
+      expect(t.answer?.total.spec.filters.uatSiruta, q).toBeGreaterThan(0);
+      // the route lists the classes of what the answer counts ("Domenii incluse")
+      expect(t.subject, q).toMatchObject({ term: "parcuri + spatii verzi", label: "parcuri și spatii verzi" });
+    }
   });
 
   it("the hint for a partial list asks institutions for a locality, people for birth data", async () => {
