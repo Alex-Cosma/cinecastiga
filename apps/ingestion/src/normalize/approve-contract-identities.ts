@@ -1,5 +1,5 @@
 import {isDeepStrictEqual} from 'node:util';
-import {assertContractIdentityQuality,readContractIdentityMembers,type DbSql} from '@seap/db';
+import {assertContractIdentityQuality,readContractIdentityMembers,type DbSql,type SnapshotHashCache} from '@seap/db';
 import {assessContractIdentity,assessContractPublicationGroup,assessContractVersions,type ArchivedAward,type IdentityContract} from './contract-identity.js';
 
 /** Caller holds the publication/writer gate and a transaction. Only explicitly
@@ -30,7 +30,12 @@ async function stageApprovals(q:DbSql, selected:{id:string;fingerprint:string}[]
  // Nothing changes the original amount/title or the archived response.
  const types=checkedRegistry.flatMap(g=>g.checked.proofs.flatMap(p=>typeof p.contractType==='number'&&Number.isInteger(p.contractType)
    ? [{public_id:String(p.contract),kind:p.contractType}]:[]));
- if(types.length)await q`update core.contracts c set source_contract_type=proof.kind,contract_type_raw_id=c.raw_id
+ // Written only when a row still lacks its type: any statement on core.contracts,
+ // even one changing nothing, changes the source version and voids the run's
+ // snapshot hash memo (SnapshotHashCache).
+ if(types.length&&(await q`select 1 from core.contracts c join jsonb_to_recordset(${JSON.stringify(types)}::jsonb) proof(public_id bigint,kind integer)
+   on c.ca_notice_contract_id=proof.public_id where c.source_contract_type is null limit 1`).length)
+  await q`update core.contracts c set source_contract_type=proof.kind,contract_type_raw_id=c.raw_id
    from jsonb_to_recordset(${JSON.stringify(types)}::jsonb) proof(public_id bigint,kind integer)
    where c.ca_notice_contract_id=proof.public_id and c.source_contract_type is null`;
  current=await readContractIdentityMembers(q,ids);live=new Map(current.map(r=>[String(r.identity.id),r]));
@@ -54,10 +59,11 @@ async function stageApprovals(q:DbSql, selected:{id:string;fingerprint:string}[]
 
 export type ApprovalBatch={selected:{id:string;fingerprint:string}[];archives:ArchivedAward[]};
 /** One transaction and one final quality gate across bounded evidence batches.
- * The caller owns the transaction; an error rolls back every staged approval. */
-export async function approveContractIdentityBatches(q:DbSql,batches:Iterable<ApprovalBatch>|AsyncIterable<ApprovalBatch>,reason:string) {
+ * The caller owns the transaction; an error rolls back every staged approval.
+ * `identityHashes`: the processing run's snapshot hash memo for both quality gates. */
+export async function approveContractIdentityBatches(q:DbSql,batches:Iterable<ApprovalBatch>|AsyncIterable<ApprovalBatch>,reason:string,identityHashes?:SnapshotHashCache) {
  if(!reason.trim())throw Error('A reason is required');
- await assertContractIdentityQuality(q);
+ await assertContractIdentityQuality(q,identityHashes);
  const result={approvedGroups:0,sourcePublications:0};
  const seen=new Set<string>();
  for await(const batch of batches){
@@ -68,7 +74,7 @@ export async function approveContractIdentityBatches(q:DbSql,batches:Iterable<Ap
   const saved=await stageApprovals(q,batch.selected,batch.archives,reason);
   result.approvedGroups+=saved.approvedGroups;result.sourcePublications+=saved.sourcePublications;
  }
- await assertContractIdentityQuality(q);
+ await assertContractIdentityQuality(q,identityHashes);
  return result;
 }
 export async function approveContractIdentities(q:DbSql,selected:{id:string;fingerprint:string}[],archives:ArchivedAward[],reason:string){

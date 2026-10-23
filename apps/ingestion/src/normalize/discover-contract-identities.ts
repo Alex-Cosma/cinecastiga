@@ -1,6 +1,6 @@
 import {createHash} from 'node:crypto';
 import { readRecoveredIdentityArchives } from './contract-identity-archives.js';
-import { assertContractIdentityQuality, assertContractExclusionsQuality, readContractIdentityMembers, type DbSql } from '@seap/db';
+import { assertContractIdentityQuality, assertContractExclusionsQuality, readContractIdentityMembers, type DbSql, type SnapshotHashCache } from '@seap/db';
 import { assessContractPublicationGroup, assessContractVersions, contractIdentitySignature, contractVersionAnchor, IDENTITY_RULES_VERSION, type ArchivedAward, type IdentityContract } from './contract-identity.js';
 import { approveContractIdentityBatches } from './approve-contract-identities.js';
 import { IDENTITY_REPAIR_ID, loadIdentityRepairBundle } from './scheduled-contract-identity.js';
@@ -98,8 +98,10 @@ export async function prepareNewContractIdentities(q: DbSql, boundary: string, n
 }
 
 /** Called inside frozen publication only. A source mismatch cannot silently
- * publish a doubled sum; unprovable non-additive records remain review leads. */
-export async function discoverAndApproveContractIdentities(q: DbSql, runId: string, log:(message:string)=>void=()=>{}) {
+ * publish a doubled sum; unprovable non-additive records remain review leads.
+ * `identityHashes`: the processing run's snapshot hash memo, for the quality checks only;
+ * candidates, approvals and exclusions are built from fresh reads either way. */
+export async function discoverAndApproveContractIdentities(q: DbSql, runId: string, log:(message:string)=>void=()=>{}, identityHashes?: SnapshotHashCache) {
   return q.begin(async tx=>{
     const sql=tx as unknown as DbSql;
     const [run]=await sql`select r.*,c.maintenance,c.paused,c.revision from app.processing_runs r cross join app.collection_control c
@@ -107,7 +109,7 @@ export async function discoverAndApproveContractIdentities(q: DbSql, runId: stri
     if(!run||run.status!=='running'||!run.maintenance||!run.paused||run.revision!==run.control_revision||run.stage!=='identity-repair'
       ||!run.raw_boundary||!run.stages?.backup?.completedAt||!run.stages?.['backup-verified']?.completedAt||!run.stages?.normalize?.completedAt)
       throw Error('New identity discovery requires backed-up, normalized maintenance with unchanged operator control');
-    await assertContractIdentityQuality(sql);
+    await assertContractIdentityQuality(sql,identityHashes);
     const boundary=String(run.raw_boundary);
     const [repair]=await sql`select status,report from app.data_repairs where id=${IDENTITY_REPAIR_ID}`;
     const config=repair?.report?.configuration;
@@ -175,7 +177,7 @@ export async function discoverAndApproveContractIdentities(q: DbSql, runId: stri
       if(i%2000===0)log(`Identity approvals: ${Math.min(i+100,verified.length)}/${verified.length} groups staged`);
     }
     }
-    const result=await approveContractIdentityBatches(sql,batches(),AUTOMATIC_IDENTITY_REASON);
+    const result=await approveContractIdentityBatches(sql,batches(),AUTOMATIC_IDENTITY_REASON,identityHashes);
     // Approval is the only automatic way out. A candidate disappearing or
     // changing its anchor must never silently release a previous exclusion.
     await sql`delete from marts.contract_identity_exclusions x using marts.contract_identity_members m
@@ -195,7 +197,7 @@ export async function discoverAndApproveContractIdentities(q: DbSql, runId: stri
         on conflict(contract_id) do update set candidate_id=excluded.candidate_id,fingerprint=excluded.fingerprint,
           snapshot_hash=excluded.snapshot_hash,processing_run_id=excluded.processing_run_id,reviewed_at=clock_timestamp()`;
     }
-    const quality=await assertContractExclusionsQuality(sql);
+    const quality=await assertContractExclusionsQuality(sql,identityHashes);
     const exclusions=await sql`select * from marts.contract_identity_exclusions order by contract_id`;
     const before=new Map(previousExclusions.map(r=>[String(r.contract_id),r]));
     const after=new Map(exclusions.map(r=>[String(r.contract_id),r]));
