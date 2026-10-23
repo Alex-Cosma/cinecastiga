@@ -38,6 +38,12 @@
 .ia-example-go { flex: none; width: 28px; height: 28px; border: 1px solid var(--line); border-radius: 50%; display: grid; place-items: center; color: var(--accent); }
 .ia-example-go .d-icon { width: 14px; height: 14px; }
 .ia-example:hover .ia-example-go { border-color: var(--accent); }
+/* With a mouse the icon shows on hover or keyboard focus only; touch screens keep it. */
+@media (hover: hover) and (pointer: fine) {
+  .ia-example-go { opacity: 0; transition: opacity .15s; }
+  .ia-example:hover .ia-example-go, .ia-example:focus-visible .ia-example-go { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .ia-example-go { transition: none; } }
 .ia-group-art { display: block; width: 100%; height: 64px; margin: 0 0 10px; }
 .ia-example:hover { background: var(--accent-soft); }
 
