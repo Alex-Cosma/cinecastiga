@@ -65,11 +65,19 @@ docker compose --profile collection stop collection documents
 run freeze "$run_id"
 run stage "$run_id" backup
 test "$(df -Pk "$root" | awk 'NR==2 {print $4}')" -ge 20971520
-# Fresh, private full backup. An incomplete .partial file is never a restore point.
-docker exec cinecastiga-postgres-1 pg_dump -U seap -d seap -Fc > "$root/$run_id/database.dump.partial"
-mv "$root/$run_id/database.dump.partial" "$root/$run_id/database.dump"
-docker exec -i cinecastiga-postgres-1 pg_restore --list < "$root/$run_id/database.dump" > "$root/$run_id/database.list"
-sha256sum "$root/$run_id/database.dump" > "$root/$run_id/database.sha256"
+# Fresh, private full backup: custom format, zstd level 1 (restore needs pg_restore
+# 16+). The SHA-256 comes from the same stream tee writes, so the file is not read
+# again; pipefail fails the backup if pg_dump, tee or sha256sum fails. An
+# incomplete .partial file is never a restore point.
+dump="$root/$run_id/database.dump"
+docker exec cinecastiga-postgres-1 pg_dump -U seap -d seap -Fc --compress=zstd:1 | tee "$dump.partial" | sha256sum > "$root/$run_id/database.sha256.partial"
+read -r digest _ < "$root/$run_id/database.sha256.partial"
+[[ "$digest" =~ ^[0-9a-f]{64}$ ]]
+mv "$dump.partial" "$dump"
+docker exec -i cinecastiga-postgres-1 pg_restore --list < "$dump" > "$root/$run_id/database.list"
+# Same `<hash>  <path>` line as `sha256sum <file>`, so `sha256sum -c` still works.
+printf '%s  %s\n' "$digest" "$dump" > "$root/$run_id/database.sha256"
+rm -f "$root/$run_id/database.sha256.partial"
 run stage "$run_id" backup-verified
 run refresh "$run_id"
 run stage "$run_id" restart
