@@ -161,6 +161,7 @@ export default async function EntityPage({
     role, totalExact: txCounts.valueExact, nDa: txCounts.nDa, nContracts: txCounts.nContracts,
     dateFrom: txCounts.dateFrom, dateTo: txCounts.dateTo, divisions: subjects.divisions,
     nConsortium: subjects.nConsortium, partners: topPartners.rows.slice(0, 3),
+    aboveCap,
   });
 
   return (

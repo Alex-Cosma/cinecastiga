@@ -2,6 +2,7 @@ import {createDb,type DbSql} from '@seap/db';
 import {daUrl,awardUrl} from '../elicitatie';
 import {aliasQueries} from '../ask/entity-alias';
 import {entityIntent} from './entity-intent';
+import {rankPlaces,type UatRow} from './places';
 import {COUNTIES} from '../counties';
 import {fold,PAGE_SIZE,excerpt,type TopicScope,type Place,type TopicResult,type TopicDocumentsResult,type AcquisitionHit,type DocumentHit,type EntityHit} from './shared';
 export class TopicInputError extends Error {}
@@ -14,13 +15,19 @@ const globalSql=globalThis as unknown as {topicSql?:DbSql};
 const db=()=>globalSql.topicSql??=createDb().sql;
 export const countyPlaces:Place[]=COUNTIES.map(name=>({id:`county:${fold(name)}`,name,detail:name==='București'?'Municipiul București':'Județ',kind:'county'}));
 const local=(r:Record<string,any>):Place=>({id:`uat:${r.siruta}`,name:r.name,detail:`${({1:'Municipiu',2:'Oraș',3:'Comună',4:'Municipiu',9:'Municipiu'} as Record<string,string>)[r.tip]??'Localitate'} · ${r.county}`,kind:'locality'});
+// The locality catalogue (about 3,200 rows) is matched in memory: typos and missing diacritics (lib/topic-search/places).
+const uatCache=globalThis as unknown as {topicUats?:{at:number;rows:Promise<UatRow[]>}};
+const UAT_CACHE_MS=60*60*1000;
+function uatRows():Promise<UatRow[]>{
+ const hit=uatCache.topicUats;if(hit&&Date.now()-hit.at<UAT_CACHE_MS)return hit.rows;
+ const rows=db()<UatRow[]>`select siruta,name,county,tip,population from reference.uat`.then(r=>[...r]);
+ uatCache.topicUats={at:Date.now(),rows};rows.catch(()=>{if(uatCache.topicUats?.rows===rows)delete uatCache.topicUats;});
+ return rows;
+}
 export async function topicPlaces(term:string):Promise<Place[]> {
- const q=db(),word=fold(term.trim()).slice(0,100),pattern=`%${word.replace(/[\\%_]/g,'\\$&')}%`;
- const counties=countyPlaces.filter(p=>fold(p.name).includes(word));
- if(word.length<2)return counties.slice(0,8);
- const rows=await q`select siruta,name,county,tip from reference.uat where lower(unaccent(name)) like ${pattern} or lower(unaccent(county))=${word}
- order by case when lower(unaccent(name)) like ${word.replace(/[\\%_]/g,'\\$&')+'%'} then 0 else 1 end,population desc nulls last,siruta limit 14`;
- return [...counties,...rows.map(local)];
+ const word=fold(term.trim()).slice(0,100);
+ if(word.length<2)return rankPlaces(word,countyPlaces,[]);
+ return rankPlaces(word,countyPlaces,await uatRows());
 }
 export async function resolvePlace(id:string):Promise<Place|null>{
  if(!id)return null;if(id.startsWith('county:'))return countyPlaces.find(p=>p.id===id)??null;
