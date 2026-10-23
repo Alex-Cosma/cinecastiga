@@ -20,7 +20,7 @@
 }
 .ia-row button:hover:not(:disabled) { background: var(--ink); border-color: var(--ink); }
 .ia-row button:disabled { opacity: .55; cursor: default; }
-.ia-help { margin: 10px 0 0 !important; color: var(--muted); font-size: 13px !important; line-height: 1.55; max-width: 760px; }
+.ia-help { margin: 10px 0 0 !important; color: var(--muted); font-size: 13px !important; line-height: 1.55; max-width: none !important; }
 
 .ia-examples { margin: 0 0 32px; }
 .ia-examples h2 { margin: 0 0 14px; font: 600 17px/1.35 var(--body); color: var(--ink); }
