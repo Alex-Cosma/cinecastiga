@@ -10,6 +10,7 @@ import type { DaTx } from "@/lib/marts";
 import { useEntityTable } from "./useEntityTable";
 import { contractKindLabel, republishedContractKeys, txRowKey } from "./tx-rows";
 import { consortiumExplanation, consortiumPhrase, consortiumShareLabel, isConsortium } from "@/lib/consortium";
+import Term from "@/components/Term";
 
 /**
  * The entity page's transaction table, redesigned to the drill-table standard:
@@ -103,8 +104,10 @@ export default function TxTable({
           </button>
         ))}
       </div>
-      <label className="data-exclusion-toggle"><input type="checkbox" checked={excluded} onChange={e => { setExcluded(e.target.checked); setFlag(null); setSrc("da"); setPage(1); }} /> Arată achizițiile directe excluse din total</label>
-      {excluded && <p className="note">Valori nule, nepozitive sau peste 2 milioane lei. Înregistrările rămân verificabile, dar nu sunt adăugate totalului afișat.</p>}
+      <div className="tx-excluded ent-tip">
+        <label className="data-exclusion-toggle"><input type="checkbox" checked={excluded} onChange={e => { setExcluded(e.target.checked); setFlag(null); setSrc("da"); setPage(1); }} /> Arată excluse din total</label>
+        <Term tip id="excluse-total" />
+      </div>
       <div className="txf">
         {/* years scale unbounded (a new one every January) → multi-select dropdown */}
         <div className="txf-dd">

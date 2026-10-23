@@ -4,6 +4,7 @@ import { getAcquisitionDetail } from "@/lib/acquisition-detail";
 import { daUrl } from "@/lib/elicitatie";
 import { formatExactDecimal, formatCalendarDate, cleanName } from "@/lib/format";
 import ClipButton from "@/components/ClipButton";
+import Term from "@/components/Term";
 import "./detail.css";
 
 export const dynamic = "force-dynamic";
@@ -21,8 +22,8 @@ export default async function Acquisition({ params }: { params: Promise<{ id: st
       <span>Achiziție directă</span>
     </nav>
     <header className="profile-head ad-head">
-      <div><h1>{title}</h1>
-        {!d.title && <p className="ad-note">{d.cpvName ? "Denumirea categoriei CPV; titlul original nu este disponibil în arhivă." : "Titlul și denumirea categoriei nu sunt disponibile în arhivă."}</p>}
+      <div><h1 className="ad-tip">{title}{!d.title && d.cpvName && <> <Term tip id="titlu-cpv" /></>}</h1>
+        {!d.title && !d.cpvName && <p className="ad-note">Titlul și denumirea categoriei nu sunt disponibile în arhivă.</p>}
         <p className="ad-identity"><strong>{d.code ?? `ID SEAP ${id}`}</strong><span>{d.state ?? "Stare neprecizată"}</span></p>
       </div>
       <div className="ad-actions">
@@ -33,14 +34,13 @@ export default async function Acquisition({ params }: { params: Promise<{ id: st
     <section className="ad-section" aria-labelledby="ad-data">
       <h2 id="ad-data">Datele achiziției</h2>
       <dl className="ad-facts">
-        <div><dt>Valoare de închidere</dt><dd>{amount(d.value)}</dd></div>
+        <div className="ad-tip"><dt><Term tip id="valoare-inregistrata">Valoare de închidere</Term></dt><dd>{amount(d.value)}</dd></div>
         <div><dt>Valoare estimată</dt><dd>{amount(d.estimate)}</dd></div>
-        <div><dt>Publicată</dt><dd>{formatCalendarDate(d.publishedAt, true)}</dd></div>
+        <div><dt>Publicată (ora României)</dt><dd>{formatCalendarDate(d.publishedAt, true)}</dd></div>
         <div><dt>Finalizată</dt><dd>{formatCalendarDate(d.finalizedAt, true)}</dd></div>
         <div><dt>Domeniu CPV</dt><dd>{d.cpvName ?? "Categorie neprecizată"}{d.cpvCode && <span className="ad-code">{d.cpvCode}</span>}</dd></div>
         <div><dt>Tipul achiziției</dt><dd>{d.acquisitionType ?? "Neprecizat în datele disponibile"}</dd></div>
       </dl>
-      <p className="ad-note">Datele și orele sunt afișate în ora României. Valoarea de închidere este cea înregistrată în SEAP, nu o plată verificată.</p>
     </section>
     <section className="ad-section" aria-labelledby="ad-parties">
       <h2 id="ad-parties">Instituție și furnizor</h2>
@@ -48,14 +48,8 @@ export default async function Acquisition({ params }: { params: Promise<{ id: st
         <div><dt>Instituție</dt><dd>{d.authorityId ? <Link href={`/entitati/${d.authorityId}`}>{cleanName(d.authority)}</Link> : d.authority ?? "Instituție neprecizată"}</dd></div>
         <div><dt>Furnizor</dt><dd>{d.supplierId ? <Link href={`/entitati/${d.supplierId}`}>{cleanName(d.supplier)}</Link> : d.supplier ?? "Furnizor neprecizat"}</dd></div>
       </dl>
-      {d.supplierId && d.supplierId === d.authorityId && <p className="ad-note"><b>Furnizorul înregistrat este chiar instituția.</b> Tratăm
-        înregistrarea ca neconcordanță în datele sursă, nu ca furnizor. Valoarea rămâne în totalul instituției, ca la o achiziție fără furnizor
-        cunoscut, dar nu este adăugată la furnizori, în clasamentele partenerilor sau în dependența de furnizori. Verifică furnizorul real în SEAP.{" "}
-        <Link href="/metodologie#totaluri">Cum se formează totalurile</Link>.</p>}
-    </section>
-    <section className="ad-section" aria-labelledby="ad-source">
-      <h2 id="ad-source">Fișiere</h2>
-      <p>Preluarea fișierelor pentru achiziții directe nu este încă disponibilă. Documentele publicate pot fi consultate în înregistrarea oficială.</p>
+      {d.supplierId && d.supplierId === d.authorityId && <p className="ad-note"><b>Furnizorul înregistrat este chiar instituția:</b> neconcordanță
+        în sursă. Rămâne în totalul instituției, nu la furnizori. Verifică în SEAP · <Link href="/metodologie#totaluri">Cum se formează totalurile</Link>.</p>}
     </section>
   </article>;
 }

@@ -1,0 +1,7 @@
+/* Award notice page (/anunturi/[caid]): where its (?) explanations open.
+   Each opens under the line or number label that holds it, left-aligned and
+   never wider than that box, so a 390 px page never scrolls sideways. */
+.nt-tip{position:relative}
+.nt-tip .term-tip>.term-def{top:calc(100% + 6px);bottom:auto;right:auto;width:max-content;max-width:min(46ch,100%)}
+/* the number strip lets an explanation overlap the table below it */
+.nt-stats{overflow:visible}

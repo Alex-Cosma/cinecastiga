@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import EvidenceDrawer from "@/app/intreaba/EvidenceDrawer";
 import ClipButton from "@/components/ClipButton";
+import Term from "@/components/Term";
 import { cleanName, countyLabel } from "@/lib/format";
 import { formatEvidenceAmount, sumDecimalStrings } from "@/lib/ask/evidence";
 import type { Dataset } from "@/lib/ask/spec";
@@ -181,7 +182,7 @@ export default function ConnectionsExplorer({ entityId, entityName, role, initia
 
   return <div className="cx-shell">
     <Link className="cx-back" href={profileUrl({ id: entityId, role })}>Înapoi la profilul {isAuthority ? "instituției" : "firmei"}</Link>
-    <header className="cx-header"><h1>Cum sunt legate?</h1><p>Pornește de la <strong>{currentName}</strong>. {isAuthority ? "Urmărește furnizorii și vezi la ce alte instituții apar." : "Urmărește instituțiile și vezi cu ce alte firme lucrează."}</p><p className="cx-meta">Fiecare legătură se deschide în achizițiile care o susțin.</p></header>
+    <header className="cx-header"><h1>Cum sunt legate?</h1><p><strong>{currentName}</strong></p></header>
     <form className="cx-filters" onSubmit={apply}>
       <label>Tipul achizițiilor<select value={dataset} onChange={event => setDataset(event.target.value as Dataset)}><option value="all">Toate achizițiile</option><option value="da">Achiziții directe</option><option value="contracts">Contracte prin proceduri</option></select></label>
       <label>Din anul<input type="number" min="2000" max="2099" placeholder="Oricare" value={yearFrom} onChange={event => setYearFrom(event.target.value)} /></label>
@@ -204,7 +205,7 @@ export default function ConnectionsExplorer({ entityId, entityName, role, initia
         {base.data && <Pager data={base.data} busy={listPending} onPage={setPage} />}
       </section>
       <section className="cx-detail" aria-labelledby="connection-title">
-        {!picked ? <div className="cx-start"><h2 id="connection-title">O legătură, apoi următoarea.</h2><p>Alege {isAuthority ? "un furnizor" : "o instituție"} din listă pentru a vedea ce achiziții îl leagă de <strong>{currentName}</strong>.</p><p>De aici poți continua către {isAuthority ? "alte instituții care au cumpărat de la aceeași firmă" : "alte firme care au lucrat cu aceeași instituție"}, fără să pierzi punctul de plecare.</p><p className="cx-meta">Sursele și salvarea în anchetă rămân lângă fiecare legătură.</p></div> : <>
+        {!picked ? <div className="cx-start"><p id="connection-title">Alege {isAuthority ? "un furnizor" : "o instituție"} din listă.</p></div> : <>
           <button className="cx-mobile-back" onClick={resetSelection}>Înapoi la {isAuthority ? "furnizori" : "instituții"}</button>
           <h2 id="connection-title" tabIndex={-1} ref={detailHeading}>{peer ? isAuthority ? "Două instituții, un furnizor comun" : "Două firme, o instituție comună" : "Achizițiile care le leagă"}</h2>
           <ol className="cx-path" aria-label="Traseul legăturilor documentate">
@@ -214,15 +215,15 @@ export default function ConnectionsExplorer({ entityId, entityName, role, initia
             </li>)}
           </ol>
           {peer ? <>
-            <p className="cx-meaning">{isAuthority ? "Aceste instituții apar în achiziții cu același furnizor." : "Aceste firme apar în achiziții ale aceleiași instituții."} Traseul nu stabilește proprietate comună, transferuri între capete sau existența unei nereguli.</p>
+            <p className="cx-meaning">{isAuthority ? "Furnizor comun" : "Instituție comună"}: nu dovedește proprietate comună, transferuri sau o neregulă.</p>
             <div className="cx-legs">{[picked.partner, peer].map((item, index) => <div className="cx-leg" key={index}><h3>{index === 0 ? firstTitle : `${name(picked.partner.entity)} — ${name(peer.entity)}`}</h3><PairFacts item={item} /><button onClick={() => setSources({ selection: selectionFor([pairs[index]!]), title: index === 0 ? firstTitle : `${name(picked.partner.entity)} — ${name(peer.entity)}` })}>{sourceLabel(records(item))}</button></div>)}</div>
-            <p className="cx-meta">Împreună: {recordLabel(records(picked.partner) + records(peer))} · {formatEvidenceAmount(sumDecimalStrings([picked.partner.totalExact, peer.totalExact]))}. Un contract cu mai mulți furnizori poate apărea prin cote diferite.</p>
+            <p className="cx-meta cx-tip">Împreună: {recordLabel(records(picked.partner) + records(peer))} · {formatEvidenceAmount(sumDecimalStrings([picked.partner.totalExact, peer.totalExact]))} <Term tip id="consortiu" /></p>
           </> : <PairFacts item={picked.partner} />}
           <div className="cx-evidence-actions"><button className="cx-primary" onClick={() => setSources({ selection: selection!, title })}>{peer ? "Vezi sursele ambelor legături" : sourceLabel(records(picked.partner))}</button>
             <ClipButton key={JSON.stringify(selection)} kind="query" spec={connectionEvidenceSpec(selection!)} label={title} snapshot={{ connection: selection }} />
-          </div><p className="cx-meta">{peer ? "Salvarea păstrează ambele relații și sursele lor în aceeași probă." : "Salvarea păstrează această relație și toate sursele ei."} Valorile înregistrate nu reprezintă automat plăți.</p>
+          </div><p className="cx-meta">Valori înregistrate, nu plăți.</p>
           {peer ? <button className="cx-return" onClick={() => { setPeer(null); remember(picked, null); }}>Vezi alte legături ale {name(picked.partner.entity)}</button> : <section className="cx-second" aria-labelledby="second-title">
-            <h3 id="second-title">{isAuthority ? "Unde mai apare acest furnizor?" : "Cu ce alte firme lucrează?"}</h3><p className="cx-meta">{isAuthority ? "Alte instituții care au cumpărat de la aceeași firmă." : "Alți furnizori ai aceleiași instituții."} Aceleași filtre de perioadă și achiziții.</p>
+            <h3 id="second-title">{isAuthority ? "Unde mai apare acest furnizor?" : "Cu ce alte firme lucrează?"}</h3>
             <label className="cx-search">{isAuthority ? "Caută între celelalte instituții" : "Caută între ceilalți furnizori"}<input type="search" maxLength={150} placeholder="Nume sau CUI" value={peerSearch} onChange={event => { setPeerSearch(event.target.value); setPeerPage(1); }} /></label>
             {second.error ? <div className="cx-error" role="alert"><p>{second.error}</p><button onClick={second.retry}>Reîncearcă</button> {restart}</div> : <div className="cx-peer-list" aria-busy={secondPending} tabIndex={0} role="region" aria-label="Lista celorlalți parteneri">
               {secondPending ? <LoadingRows /> : second.data?.items.map(item => <div className="cx-peer" key={item.entity.id}><div><strong>{name(item.entity)}</strong><Identity entity={item.entity} /><span className="cx-meta">{formatEvidenceAmount(item.totalExact)} · {recordLabel(records(item))}</span></div><button onClick={() => choosePeer(item)}>Vezi legătura <Chevron /></button></div>)}

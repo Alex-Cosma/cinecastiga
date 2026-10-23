@@ -36,8 +36,9 @@ describe("“Pe scurt” for an authority", () => {
     expect(text(s.sentences[1]!)).toBe("Cel mai mare furnizor este RER SUD, cu 21% din valoare. Cea mai mare parte din valoare privește lucrări de construcții (55%).");
     expect(s.sentences[1]).toContainEqual({ text: "RER SUD", href: "/entitati/2044213" });
   });
-  it("explains consortium contracts without changing any amount", () => {
-    expect(text(s.sentences[2]!)).toBe("30 de contracte au fost atribuite unor consorții: fiecare membru apare cu o parte egală estimată din valoare, iar suma nu se adună de mai multe ori.");
+  it("counts consortium contracts and leaves the equal split to the glossary tip", () => {
+    expect(text(s.sentences[2]!)).toBe("30 de contracte în consorțiu.");
+    expect(s.sentences[2]).toContainEqual({ text: "30 de contracte în consorțiu", tip: "consortiu" });
   });
   it("builds two bar lists of at most three rows, shares of the same total", () => {
     expect(s.subjectsTitle).toBe("Ce a atribuit");
@@ -70,12 +71,12 @@ describe("“Pe scurt” for a supplier", () => {
     expect(s.subjectsTitle).toBe("Ce a câștigat");
     expect(s.partnersTitle).toBe("Cine i-a atribuit");
   });
-  it("says that a consortium winner's total holds only its estimated part", () => {
+  it("counts a consortium winner's contracts and links the equal-split explanation", () => {
     const s = composeEntitySummary({ ...authority, role: "supplier", nDa: 0, nContracts: 1, nConsortium: 1, partners: [] })!;
     expect(text(s.sentences[0]!)).toContain("(valoare înregistrată, nu plăți) dintr-un contract prin procedură, între");
-    expect(text(s.sentences.at(-1)!)).toBe("Un contract a fost câștigat în consorțiu: în total intră doar partea estimată a firmei (valoarea împărțită egal între membri).");
+    expect(s.sentences.at(-1)).toEqual([{ text: "Un contract în consorțiu", tip: "consortiu" }, "."]);
     expect(text(composeEntitySummary({ ...authority, role: "supplier", nConsortium: 349 })!.sentences.at(-1)!))
-      .toBe("349 de contracte au fost câștigate în consorțiu: în total intră doar partea estimată a firmei (valoarea împărțită egal între membri).");
+      .toBe("349 de contracte în consorțiu.");
   });
 });
 

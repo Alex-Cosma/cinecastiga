@@ -15,3 +15,11 @@
 .px-applied{margin:8px 0 0}
 
 @media(min-width:701px){.px-filters-manual fieldset{grid-template-columns:95px minmax(0,1fr) 160px auto}}
+
+/* (?) explanations: the "?" keeps its small look inside this page's buttons
+   and opens under the line that holds it, never wider than that line */
+.px-shell .term-trigger,.px-shell .term-trigger:hover{padding:0;border:0;border-radius:0;background:none;font:inherit}
+.px-shell h2 .term-tip{font-size:15px;vertical-align:.2em}
+.px-tip{position:relative}
+.px-tip .term-tip>.term-def{top:calc(100% + 6px);bottom:auto;right:auto;width:max-content;max-width:min(46ch,100%)}
+.px-label-row{display:flex;align-items:center;gap:2px}
