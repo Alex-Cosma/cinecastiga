@@ -42,7 +42,7 @@ export const GLOSSARY = {
   },
   "sediul-institutiei": {
     title: "Județul de pe hartă",
-    text: "Harta pune fiecare achiziție în județul unde are sediul instituția care cumpără, nu unde se face lucrarea sau se livrează produsul. Un minister din București apare la București, chiar dacă lucrarea e în alt județ.",
+    text: "Harta include doar înregistrările cu județ cunoscut și pune fiecare achiziție în județul unde are sediul instituția care cumpără, nu unde se face lucrarea sau se livrează produsul. Un minister din București apare la București, chiar dacă lucrarea e în alt județ.",
   },
 } as const satisfies Record<string, GlossaryEntry>;
 

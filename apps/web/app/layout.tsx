@@ -64,6 +64,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <div className="wrap">
             <div>
               <h4 className="d-footer-brand">{SITE_NAME}</h4>
+              <p className="d-footer-motto">Date publice. Surse la vedere. Curiozitatea e suficientă.</p>
               <p>
                 Sursă: e-licitatie.ro (SEAP / SICAP), date publice. Cifrele reprezintă valori înregistrate, nu neapărat plăți
                 efectuate. Atribuirea către consorții este estimată (împărțire egală în lipsa datelor pe membru). Proiect

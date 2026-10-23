@@ -49,7 +49,6 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         <p className="d-hero-description">De la strada ta la marile contracte. Urmărește cine cumpără, cine câștigă și ce întrebări merită puse.</p>
         <DiscoverySearch hero />
         <div className="d-quick-links"><span>Încearcă:</span><Link href="/cauta?q=Cluj"><DiscoveryIcon name="pin" />Cluj</Link><Link href="/cauta?q=drumuri">Drumuri</Link><Link href="/cauta?q=iluminat">Iluminat</Link></div>
-        <p className="d-reassurance"><DiscoveryIcon name="shield" /> Date publice. Surse la vedere. Curiozitatea e suficientă.</p>
       </div>
       <DiscoveryMap counties={headline.counties} />
     </section>
@@ -58,31 +57,30 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       <div className="d-national-label"><span><DiscoveryIcon name="database" /></span><div><b>O arhivă de urmărit.</b><small>Înregistrări din {coverage}</small></div></div>
       {/* The number opens its answer; the label explains the word. A Term is a
           button, so it sits next to the link instead of inside it. */}
-      <div className="d-national-item"><Link href={questionHref({ block: "stat", dataset: "da", measure: "count", filters: {}, population: { operator: "and", groups: [{ operator: "and", conditions: [{ field: "value", op: "lte", value: "2000000" }] }] } })}><strong>{formatInt(headline.directRecords)}</strong></Link><small><Term id="achizitie-directa">achiziții directe acceptate</Term></small></div>
-      <div className="d-national-item"><Link href={questionHref({ block: "stat", dataset: "contracts", measure: "count", filters: {} })}><strong>{formatInt(headline.contractRecords)}</strong></Link><small><Term id="inregistrare-contract-furnizor">înregistrări contract–furnizor</Term></small></div>
-      <div className="d-national-item"><Link href={questionHref({ block: "stat", dataset: "all", measure: "value", filters: {} })}><strong>{formatRon(headline.totalRon)}</strong></Link><small><Term id="valoare-inregistrata">valoare înregistrată · nu plăți</Term></small></div>
+      <div className="d-national-item"><Link href={questionHref({ block: "stat", dataset: "da", measure: "count", filters: {}, population: { operator: "and", groups: [{ operator: "and", conditions: [{ field: "value", op: "lte", value: "2000000" }] }] } })}><strong>{formatInt(headline.directRecords)}</strong></Link><small><Term id="achizitie-directa" tip>achiziții directe acceptate</Term></small></div>
+      <div className="d-national-item"><Link href={questionHref({ block: "stat", dataset: "contracts", measure: "count", filters: {} })}><strong>{formatInt(headline.contractRecords)}</strong></Link><small><Term id="inregistrare-contract-furnizor" tip>înregistrări contract–furnizor</Term></small></div>
+      <div className="d-national-item"><Link href={questionHref({ block: "stat", dataset: "all", measure: "value", filters: {} })}><strong>{formatRon(headline.totalRon)}</strong></Link><small><Term id="valoare-inregistrata" tip>valoare înregistrată · nu plăți</Term></small></div>
     </section>
 
-    <CoverageDisclosure>
-      <p>Totalurile includ achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei, și contracte din proceduri cu valoare pozitivă de cel mult 1 miliard lei.{aboveCap ? ` ${formatInt(aboveCap)} contracte peste acest plafon, în valoare de ${formatRon(Number(contractInventory?.above_value_cap_value ?? 0))}, sunt separate de totaluri și listate pe pagina fiecărei instituții.` : ""} Un contract cu mai mulți furnizori apare pe câte un rând pentru fiecare, cu valoarea împărțită între ei.</p>
-      <p>Publicațiile TED se consultă separat și nu se adaugă încă o dată la total. Valorile înregistrate nu confirmă plăți efectuate.</p>
-    </CoverageDisclosure>
-
     <section className="d-starts" aria-labelledby="d-starts-title">
-      <div className="d-section-heading"><div><h2 id="d-starts-title">O întrebare bună e un început.</h2><p>Nu trebuie să știi de unde să începi. Doar ce te interesează.</p></div><Link className="d-text-link" href="/intreaba">Construiește întrebarea ta <DiscoveryIcon name="arrow" /></Link></div>
+      <div className="d-section-heading"><div><h2 id="d-starts-title">O întrebare bună e un început.</h2></div><Link className="d-text-link" href="/intreaba">Construiește întrebarea ta <DiscoveryIcon name="arrow" /></Link></div>
       <div className="d-question-grid">{QUESTIONS.map((question, index) => <Link className="d-question-card" href={questionHref(question.spec)} key={question.kind}>
         <div className="d-question-top"><span>{question.label}</span><span>0{index + 1}</span></div><QuestionArt kind={question.kind} /><h3>{question.title}</h3><p>{question.description}</p><div className="d-question-bottom"><span>{question.action}</span><span><DiscoveryIcon name="arrow" /></span></div>
       </Link>)}</div>
     </section>
 
-    {signedIn ? <section className="d-investigation-invite" aria-labelledby="d-investigation-title"><div className="d-folder-art" aria-hidden="true"><div className="d-folder-back" /><div className="d-folder-paper"><i /><i /><i /></div><div className="d-folder-front"><span>+</span></div></div><div><p className="eyebrow">DE LA CURIOZITATE LA ANCHETĂ</p><h2 id="d-investigation-title">Ai găsit un fir? Urmărește-l.</h2><p>Strânge contracte, surse și notițe într-un dosar privat. Revino la ele când apare următoarea întrebare.</p></div><Link href="/anchete" className="d-button d-button-primary">Începe o anchetă <DiscoveryIcon name="arrow" /></Link></section>
-      : <p className="d-invite-note">Pentru jurnaliști: dosare private, pe invitație.</p>}
+    {signedIn && <section className="d-investigation-invite" aria-labelledby="d-investigation-title"><div className="d-folder-art" aria-hidden="true"><div className="d-folder-back" /><div className="d-folder-paper"><i /><i /><i /></div><div className="d-folder-front"><span>+</span></div></div><div><p className="eyebrow">DE LA CURIOZITATE LA ANCHETĂ</p><h2 id="d-investigation-title">Ai găsit un fir? Urmărește-l.</h2><p>Strânge contracte, surse și notițe într-un dosar privat. Revino la ele când apare următoarea întrebare.</p></div><Link href="/anchete" className="d-button d-button-primary">Începe o anchetă <DiscoveryIcon name="arrow" /></Link></section>}
 
     <section className="d-deeper" aria-labelledby="d-deeper-title"><div><p className="eyebrow">PRIVEȘTE MAI DE APROAPE</p><h2 id="d-deeper-title">Mai multe feluri <br />de a urmări banii.</h2><p>Fiecare perspectivă te ajută să pui întrebări mai precise.</p></div><div className="d-deeper-links">{[
       { href: "/semnale", icon: "shield" as const, title: "Semnale care merită verificate", description: "Indicatori explicați, cu metodologia și sursele lor. Un semnal invită la verificare." },
       { href: "/domenii", icon: "layers" as const, title: "Ce cumpără instituțiile", description: "Domenii de achiziții, de la materiale și echipamente la servicii și lucrări." },
       { href: "/supra-prag", icon: "chart" as const, title: "Atribuiri publicate în TED", description: "Consultă anunțurile europene și potrivirile identificate în SEAP." },
     ].map((item) => <Link href={item.href} key={item.href}><span className="d-deeper-symbol"><DiscoveryIcon name={item.icon} /></span><span><b>{item.title}</b><small>{item.description}</small></span><DiscoveryIcon name="arrow" /></Link>)}</div></section>
+
+    <CoverageDisclosure>
+      <p>Totalurile includ achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei, și contracte din proceduri cu valoare pozitivă de cel mult 1 miliard lei.{aboveCap ? ` ${formatInt(aboveCap)} contracte peste acest plafon, în valoare de ${formatRon(Number(contractInventory?.above_value_cap_value ?? 0))}, sunt separate de totaluri și listate pe pagina fiecărei instituții.` : ""} Un contract cu mai mulți furnizori apare pe câte un rând pentru fiecare, cu valoarea împărțită între ei.</p>
+      <p>Publicațiile TED se consultă separat și nu se adaugă încă o dată la total. Valorile înregistrate nu confirmă plăți efectuate.</p>
+    </CoverageDisclosure>
 
     <p className="d-map-credit">Geometria hărții: GADM, utilizare necomercială.</p>
   </div>;
