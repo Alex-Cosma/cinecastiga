@@ -746,6 +746,7 @@ describe("every spec and alternative says its own scope (regression set)", () =>
     "firme de asfalt din buzău", "Sălcioara", "primăria Buzău", "ce cumpără Sălcioara din județul Dâmbovița",
     "câte achiziții directe a făcut primăria comunei Sălcioara din Ialomița în 2025", "cat a cheltuit primaria sectorului 3 pe curățenie",
     "care spital are cel mai ridicat indice de risc", "ce e suspect la asfaltarea din prahova in 2024", "laptopuri pentru scolile din municipiul buzau",
+    "care sunt firmele abonate la primaria cluj", "ce cumpara primaria dolj", "ce cumpara primaria piatra",
   ];
   it.each([...own, ...REVIEW_PHRASINGS])("%s", async (q) => {
     const { r } = await ask(q);
@@ -826,6 +827,49 @@ describe("re-review of 4cda2e6", () => {
   it("an exhaustive search that finds nobody says a plain «Nu am găsit»", async () => {
     const { r } = await ask("firmele lui Maria Popescu");
     expect(r.interpretation.notes.join(" ")).toMatch(/Nu am găsit în Registrul Comerțului o persoană cu numele „Maria Popescu” \(cu data nașterii cunoscută\)/);
+  });
+});
+
+describe("town halls named the way people say them (23 Oct)", () => {
+  it("«firmele abonate la primăria Cluj»: Cluj-Napoca's town hall, firms ranked by how often they win", async () => {
+    const { i, r } = await ask("care sunt firmele abonate la primaria cluj");
+    expect(i.place).toMatchObject({ kind: "locality", name: "Municipiul Cluj-Napoca", county: "Cluj" });
+    expect(i.placeNote).toBe("Am înțeles „cluj” ca Municipiul Cluj-Napoca.");
+    expect(i.leftover).toEqual([]);
+    expect(i.confidenceLabel).toBe("high");
+    expect(r.spec).toMatchObject({ block: "table", dim: "supplier", measure: "count", filters: { uatSiruta: 54975 } });
+    expect(r.alternatives.some((a) => a.spec.filters.county === "Cluj" && !a.spec.filters.uatSiruta)).toBe(true);
+  });
+  it("«primăria Alba» is Alba Iulia", async () => {
+    expect((await ask("ce cumpara primaria alba")).i.place?.name).toBe("Municipiul Alba Iulia");
+  });
+  it.each(["ce cumpara primaria piatra", "ce cumpara primaria baia"])("«%s»: a small exact name never hides a larger town that starts with it", async (q) => {
+    const { i, r } = await ask(q);
+    expect(r.spec).toBeNull();
+    expect(i.placeAmbiguous).toBe(true);
+    expect(i.placeAlternatives[0]!.name).toMatch(/^Municipiul (Piatra-Neamț|Baia Mare)$/);
+    expect(i.placeNote).toMatch(/au numele „(piatra|baia)” sau încep cu el/);
+  });
+  it("an exact town larger than every longer name still wins («primăria Buzău»)", async () => {
+    expect((await ask("ce cumpara primaria buzau")).i.place).toMatchObject({ name: "Municipiul Buzău" });
+  });
+  it("«primăria Dolj»: a county has no town hall; its towns and the whole county are offered", async () => {
+    const { i, r } = await ask("ce cumpara primaria dolj");
+    expect(r.spec).toBeNull();
+    expect(i.placeAmbiguous).toBe(true);
+    expect(i.placeAlternatives[0]).toMatchObject({ name: "Municipiul Craiova" });
+    expect(i.placeAlternatives.at(-1)).toMatchObject({ kind: "county", county: "Dolj" });
+    expect(i.placeNote).toBe("Dolj este un județ, nu o localitate. Alege orașul sau toate instituțiile din județ.");
+  });
+  it("an unrecognized town hall is never a confident county-wide answer", async () => {
+    const { i } = await ask("cine castiga la primaria zzyzx din cluj");
+    expect(i.notes).toContain("Nu am recunoscut numele primăriei. Scrie localitatea, de exemplu „primăria din Râmnicu Sărat”.");
+    expect(i.confidenceLabel).not.toBe("high");
+  });
+  it.each(["firmele de casa ale primariei buzau", "cine castiga cel mai des la primaria buzau", "ce firme castiga mereu la primaria buzau"])("«%s» counts purchases", async (q) => {
+    const { i, r } = await ask(q);
+    expect(i.measure).toBe("count");
+    expect(r.spec).toMatchObject({ dim: "supplier", measure: "count" });
   });
 });
 
