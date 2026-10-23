@@ -39,8 +39,10 @@ export async function GET(req: Request) {
     ]);
     return NextResponse.json({ ok: true, rows, total, years, pageSize: 10 });
   } catch (e) {
+    // The technical cause goes to the server log, never to the reader.
+    console.error("entity-tx", { id, role, ...q }, e);
     return NextResponse.json(
-      { ok: false, error: `Eroare: ${e instanceof Error ? e.message : String(e)}` },
+      { ok: false, error: "Înregistrările nu au putut fi încărcate acum. Încearcă din nou peste câteva momente." },
       { status: 500 },
     );
   }

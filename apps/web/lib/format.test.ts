@@ -1,5 +1,23 @@
 import { describe, it, expect } from "vitest";
-import { formatRon, formatInt, formatRonFull, formatExactDecimal, formatCalendarDate, onrcBirthYear, birthNote, IMPLAUSIBLE_BIRTH_DATE_LABEL } from "./format.js";
+import { formatRon, formatInt, formatRonFull, formatExactDecimal, formatCalendarDate, onrcBirthYear, birthNote, IMPLAUSIBLE_BIRTH_DATE_LABEL, countyLabel, isAbroadCounty } from "./format.js";
+
+describe("countyLabel", () => {
+  it("never shows the SICAP „NA” placeholder for a firm registered abroad", () => {
+    expect(countyLabel("NA")).toBe("firmă străină");
+    expect(countyLabel(" na ")).toBe("firmă străină");
+    expect(countyLabel("N/A")).toBe("firmă străină");
+    expect(countyLabel("NA", "Polonia")).toBe("Polonia");
+    expect(isAbroadCounty("NA")).toBe(true);
+  });
+  it("keeps real counties and drops empty values", () => {
+    expect(countyLabel("Cluj")).toBe("Cluj");
+    expect(countyLabel("Cluj", "Polonia")).toBe("Cluj");
+    expect(countyLabel("Neamț")).toBe("Neamț");
+    expect(countyLabel("")).toBeNull();
+    expect(countyLabel(null)).toBeNull();
+    expect(isAbroadCounty("Nasaud")).toBe(false);
+  });
+});
 
 it("formats normalized civil dates without reinterpreting a timezone or dropping an unknown", () => {
   expect(formatCalendarDate("2026-01-01 00:15", true)).toBe("01.01.2026, 00:15");

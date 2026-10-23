@@ -32,7 +32,7 @@ export default function SignalSources({ id, onClose }: { id: string; onClose: ()
   const go = (p: number) => { setPage(p); document.querySelector(".sg-dialog-wide")?.scrollTo({ top: 0 }); };
   return <SignalDialog title="Înregistrările sursă" wide onClose={onClose}>
     <div className="sg-source-body" aria-busy={busy || (!result && !error)}>
-      <Link href={`/semnale/${id}`} target="_blank" rel="noopener" className="sg-page-link">Deschide pagina surselor într-un tab nou ↗</Link>
+      <Link href={`/semnale/${id}`} className="sg-page-link">Deschide pagina surselor →</Link>
       {(busy || (!result && !error)) && <div className="sg-source-loading" role="status"><span className="sg-spinner" aria-hidden="true"/><strong>Se încarcă înregistrările sursă…</strong><p>{slow ? "Selecția conține multe date. Încă verificăm sursele disponibile." : "Pregătim lista, valorile exacte și limitele verificării."}</p>{Array.from({ length: 5 }, (_, i) => <div key={i} className="sg-skeleton" aria-hidden="true"><span/><span/></div>)}</div>}
       {error && <div className="sg-empty" role="alert"><h3>Sursele nu s-au încărcat</h3><p>{error}</p><button className="sg-primary" onClick={() => { setBusy(true); setError(""); setRetry(n => n + 1); }}>Reîncearcă</button></div>}
       {result && !busy && !error && <>
@@ -42,13 +42,13 @@ export default function SignalSources({ id, onClose }: { id: string; onClose: ()
         {financials.length > 0 && <details className="sg-limits"><summary>Bilanțurile folosite în verificare · {formatInt(financials.length)}</summary>{financials.map((f, i) => <p key={i}>{f.year} · {f.employees ?? "număr necunoscut de"} salariați · cifră de afaceri {f.turnover === null ? "necunoscută" : `${formatExactDecimal(f.turnover)} lei`}</p>)}</details>}
         {records.map((r, i) => { const links = evidenceLinks(r); return <article className="sg-source-record" key={`${r.src}:${r.refId}:${r.supplierId}:${i}`}>
           <p className="sg-meta">{r.daCode ?? r.refId} · {r.date ?? "Dată neprecizată"} · CPV {r.cpvCode ?? "neprecizat"}</p>
-          <h3><Link href={`/${r.src === "contracts" ? "contracte" : "achizitii"}/${r.refId}`} target="_blank" rel="noopener">{r.title ?? r.cpvName ?? (r.src === "contracts" ? "Contract" : "Achiziție directă")}</Link></h3>
+          <h3><Link href={`/${r.src === "contracts" ? "contracte" : "achizitii"}/${r.refId}`}>{r.title ?? r.cpvName ?? (r.src === "contracts" ? "Contract" : "Achiziție directă")}</Link></h3>
           <p>{r.authority} · {r.supplier}</p><div className="sg-source-actions"><strong>{r.originalValueExact === null ? "Valoare necunoscută" : formatEvidenceAmount(r.valueExact, true)}</strong>{links.seap && <a href={links.seap} target="_blank" rel="noreferrer">Verifică în SEAP ↗</a>}{links.ted && <a href={links.ted} target="_blank" rel="noreferrer">TED ↗</a>}</div>
           {(r.nWinners ?? 1) > 1 && <p className="sg-meta">Cotă alocată · {r.nWinners} membri în asociere</p>}
         </article>; })}
         {result.sourceCount === 0 && <p className="sg-empty">Nu există înregistrări verificabile în selecția curentă. Contextul și limitele rămân disponibile; lipsa surselor nu înseamnă că semnalul a fost verificat.</p>}
         {result.sourceCount > 10 && <nav className="sg-pager sg-source-pager" aria-label="Paginarea surselor"><button disabled={page === 0} onClick={() => go(page - 1)}>Anterior</button><span>{page + 1} / {Math.ceil(result.sourceCount / 10)}</span><button disabled={(page + 1) * 10 >= result.sourceCount} onClick={() => go(page + 1)}>Următor</button></nav>}
-        {urls.length > 0 && <details className="sg-limits"><summary>Referințe originale păstrate în calcul</summary><ul>{urls.slice(0, 10).map(url => <li key={url}><a href={url} target="_blank" rel="noreferrer">{url.includes('ted.europa') ? 'TED' : 'SEAP'} · {url.split('/').at(-1)} ↗</a></li>)}</ul>{urls.length > 10 && <p>{formatInt(urls.length)} referințe în total. <Link href={`/semnale/${id}`} target="_blank" rel="noopener">Vezi pagina completă ↗</Link></p>}</details>}
+        {urls.length > 0 && <details className="sg-limits"><summary>Referințe originale păstrate în calcul</summary><ul>{urls.slice(0, 10).map(url => <li key={url}><a href={url} target="_blank" rel="noreferrer">{url.includes('ted.europa') ? 'TED' : 'SEAP'} · {url.split('/').at(-1)} ↗</a></li>)}</ul>{urls.length > 10 && <p>{formatInt(urls.length)} referințe în total. <Link href={`/semnale/${id}`}>Vezi pagina completă →</Link></p>}</details>}
       </>}
     </div>
   </SignalDialog>;

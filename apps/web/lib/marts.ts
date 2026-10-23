@@ -304,6 +304,8 @@ export interface DaTx {
   contractValueFull: number | null;
   /** Consortium rows: names of the other winners (at most 4), never invented. */
   consortiumOthers: string[];
+  /** Contract rows: contractKind (contract, calloff, framework, amendment, review); null for DAs. */
+  financialKind?: string | null;
 }
 
 export interface TxQuery {
@@ -466,7 +468,7 @@ export async function getEntityTransactions(
            finalization_date, gap_minutes, da_flags,
            null::text procedure_type, null::bigint ca_notice_id, null::boolean single_bidder,
            null::bigint nat_id, value_suspect,
-           null::int n_winners, null::numeric contract_value_full
+           null::int n_winners, null::numeric contract_value_full, null::text financial_kind
     from marts.da_transactions
     where ${partyCol} = ${id}
       and ${q.excluded ? sql`(closing_value is null or closing_value <= 0 or closing_value > 2000000)` : sql`closing_value > 0 and closing_value <= 2000000`}
@@ -477,7 +479,7 @@ export async function getEntityTransactions(
            t.finalization_date, null::int gap_minutes, array[]::text[] da_flags,
            t.procedure_type, t.ca_notice_id, t.is_single_bidder single_bidder,
            cc.ca_notice_contract_id nat_id, false value_suspect,
-           t.n_winners, t.contract_value_full
+           t.n_winners, t.contract_value_full, ${contractKind(sql, "cc")} financial_kind
     from marts.contract_transactions t
     left join core.contracts cc on cc.id = t.contract_id
     where t.${partyCol} = ${id} and t.closing_value > 0 ${yearCond}`;
@@ -536,6 +538,7 @@ export async function getEntityTransactions(
       valueSuspect: Boolean(r["value_suspect"]),
       nWinners: r["n_winners"] != null ? Number(r["n_winners"]) : null,
       contractValueFull: r["contract_value_full"] != null ? Number(r["contract_value_full"]) : null,
+      financialKind: (r["financial_kind"] as string | null) ?? null,
       consortiumOthers: (members.get(String(r["rid"])) ?? [])
         .filter((m) => m.supplierId !== winnerOf(r))
         .slice(0, 4)

@@ -88,7 +88,7 @@ function ActorScale({won,revenue}:{won:string;revenue:{amount:string;label:strin
 export function Actors({story,openSource,heading=true}:{story:Story;openSource:Open;heading?:boolean}){
  const a=story.actors!,scaled=a.items.some(x=>x.revenue);
  return <div className="actors">{heading&&<h2>{a.title}</h2>}{a.intro&&<p>{a.intro}</p>}<div className="actor-grid">{a.items.map(x=><article key={x.name} className="actor">
-  <h3>{x.entityId?<a href={`/entitati/${x.entityId}`} target="_blank" rel="noopener noreferrer">{x.name} <Icon name="external"/></a>:x.name}</h3>
+  <h3>{x.entityId?<a href={`/entitati/${x.entityId}`}>{x.name} <Icon name="arrow"/></a>:x.name}</h3>
   <dl>{x.facts.map(f=><div key={f.label}><dt>{f.label}</dt><dd>{f.value}</dd></div>)}</dl>
   <p className="actor-won"><b>{money(x.won)}</b><span>{x.wonLabel}</span></p>
   {x.revenue&&<ActorScale won={x.won} revenue={x.revenue}/>}

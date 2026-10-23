@@ -58,8 +58,6 @@ export default function YearMiniChart({
           key={p.m}
           className={p.m === 12 ? "b dec" : "b"}
           href={monthUrl(p.m)}
-          target="_blank"
-          rel="noopener noreferrer"
           {...t.bind(
             `${LUNI[p.m - 1]} ${year}`,
             formatRon(p.v),

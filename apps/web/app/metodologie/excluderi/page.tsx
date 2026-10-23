@@ -27,7 +27,7 @@ export default async function ExcluderiPage({searchParams}:{searchParams:Promise
     <div className="ask-tablewrap" role="region" aria-label={`Sursele pentru ${g.members[0]?.noticeNo??'acest grup'}`} tabIndex={0}>
      <table className="rank"><thead><tr><th scope="col">Contract / publicație</th><th scope="col">Data contractului</th><th scope="col" className="num">Valoarea sursă (lei)</th><th scope="col">Sursa oficială</th></tr></thead>
       <tbody>{g.members.map(m=><tr key={m.id}>
-       <td><Link href={`/contracte/${m.publicId}`} target="_blank" rel="noopener noreferrer">{m.title??'Contract fără titlu'}</Link><div className="note">Nr. {m.number??'necunoscut'} · ID {m.publicId}</div></td>
+       <td><Link href={`/contracte/${m.publicId}`}>{m.title??'Contract fără titlu'}</Link><div className="note">Nr. {m.number??'necunoscut'} · ID {m.publicId}</div></td>
        <td>{coverageDate(m.date)}</td><td className="num">{formatExactDecimal(m.value)}</td>
        <td><a href={`https://www.e-licitatie.ro/pub/notices/ca-notices/view-c/${m.noticeId}`} target="_blank" rel="noopener noreferrer">Vezi în SEAP</a></td>
       </tr>)}</tbody>

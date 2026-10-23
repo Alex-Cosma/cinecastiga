@@ -16,6 +16,7 @@ import Reveal from "./Reveal";
 import { CoverageSummary } from "@/components/DataCoverage";
 import { SITE_DESCRIPTION, SITE_NAME, pageTitle } from "@/lib/site";
 import { publishedStories } from "@/lib/stories/published";
+import { GUIDE_HREF, GUIDE_LABEL } from "@/lib/site-nav";
 
 const display = Bricolage_Grotesque({ subsets: ["latin", "latin-ext"], weight: ["500", "700", "800"], variable: "--font-display", display: "swap" });
 const body = IBM_Plex_Sans({ subsets: ["latin", "latin-ext"], weight: ["400", "500", "600"], style: ["normal", "italic"], variable: "--font-body", display: "swap" });
@@ -50,7 +51,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </Link>
             <SiteNav storiesPublished={publishedStories.length > 0} sessionHint={sessionHint} />
             <div className="hdr-right">
-              <Link href="/ghid" className="d-method-link">Cum funcționează</Link>
               <GlobalSearch />
               <ThemeToggle />
               <HeaderUserNav />
@@ -78,7 +78,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <div>
               <h4>Proiect</h4>
               <ul>
-                <li><Link href="/ghid">Ghid pentru început</Link></li>
+                <li><Link href={GUIDE_HREF}>{GUIDE_LABEL}</Link></li>
                 <li>
                   <Link href="/metodologie">Metodologie</Link>
                 </li>

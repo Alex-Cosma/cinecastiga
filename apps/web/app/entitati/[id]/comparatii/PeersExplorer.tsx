@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import EvidenceDrawer from "@/app/intreaba/EvidenceDrawer";
 import ClipButton from "@/components/ClipButton";
-import { cleanName } from "@/lib/format";
+import { cleanName, countyLabel } from "@/lib/format";
 import { formatEvidenceAmount } from "@/lib/ask/evidence";
 import type { ConnectionRole } from "@/lib/connections-shared";
 import PeerGroupEditor, { Population } from "./PeerGroupEditor";
@@ -23,7 +23,7 @@ function initialMembers(value?: string): PeerSelectionMember[] | undefined {
 }
 const kinds: Record<string, string> = { comuna: "comune", oras_municipiu: "orașe / municipii", consiliu_judetean: "consilii județene", spital: "spitale", scoala: "școli", universitate: "universități", minister: "ministere" };
 function Identity({ member }: { member: PeerMember }) {
-  return <span className="px-meta">{member.entity.cui ? `CUI ${member.entity.cui}` : "CUI nepublicat / nevalidat"}{member.entity.county ? ` · ${member.entity.county}` : ""}</span>;
+  return <span className="px-meta">{member.entity.cui ? `CUI ${member.entity.cui}` : "CUI nepublicat / nevalidat"}{countyLabel(member.entity.county) ? ` · ${countyLabel(member.entity.county)}` : ""}</span>;
 }
 function SourceBreakdown({ member }: { member: PeerMember }) {
   return <span className="px-meta">{count(member.recordCount)} {member.recordCount === 1 ? "înregistrare" : "înregistrări"}{member.contractRows > 0 ? ` · ${count(member.distinctContracts)} ${member.distinctContracts === 1 ? "contract distinct" : "contracte distincte"}` : ""}</span>;
