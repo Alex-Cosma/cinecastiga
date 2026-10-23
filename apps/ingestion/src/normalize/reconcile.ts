@@ -1,5 +1,5 @@
 import { contractRonValue, canonicalContract, assertContractIdentityQuality } from "@seap/db";
-import type { DbSql } from "@seap/db";
+import type { DbSql, SnapshotHashCache } from "@seap/db";
 
 /**
  * Reconciliation (#3): link TED lot-awards to their e-licitatie contract twins.
@@ -18,6 +18,8 @@ export interface ReconcileOpts {
   /** Max |days| between TED contract date and e-licitatie contract date (default 45). */
   dateTolDays?: number;
   log?: (m: string) => void;
+  /** The processing run's snapshot hash memo for the identity gate. */
+  identityHashes?: SnapshotHashCache;
 }
 
 export interface ReconcileReport {
@@ -47,7 +49,7 @@ export async function runReconcile(
   // exclusive lock, so readers may wait; failures restore the old rows and
   // identity sequence. Temporary projections roll back with replacement writes.
   return sql.begin(async (q) => {
-    await assertContractIdentityQuality(q);
+    await assertContractIdentityQuality(q, opts.identityHashes);
     await q`set local work_mem = '512MB'`;
     await q`set local temp_file_limit = '32GB'`;
 
