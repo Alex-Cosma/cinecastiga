@@ -69,7 +69,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </div>
             <div>
               <h4>Date</h4>
-              <p>SEAP / SICAP · TED · bilanțuri MF · registrul ONRC</p>
+              <p>SEAP / SICAP · TED · bilanțuri MF · registrul ONRC · hartă&nbsp;GADM</p>
               <CoverageSummary />
             </div>
             <div>
