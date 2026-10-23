@@ -31,6 +31,7 @@ const fx: MemoryFixture = {
     { term: "spatii verzi", prefix: "77310000" },
     { term: "lucrari de drumuri", prefix: "45233000" },
     { term: "lucrari drumuri", prefix: "45233000" },
+    { term: "iluminat public", prefix: "34993000" },
   ],
   authorities: [
     ...FIXTURE.authorities.map((a) => (a.id === 2146486 ? { ...a, cui: "3897151" } : a)),
@@ -155,6 +156,25 @@ describe("vocabulary from the first-visitor test (migration 0082 and the rules a
     const both = await onCauta("parcuri si spatii verzi");
     expect(both.answer?.total.spec.filters.cpvTerm).toBe("parcuri + spatii verzi");
     expect(both.answer?.total.sentence).toMatch(/„parcuri și spatii verzi”/);
+  });
+
+  it("a one-letter typo in a place after a marker, from six letters on („oradia”)", async () => {
+    for (const q of ["primaria oradia", "cat a costat podul din oradia"]) {
+      const { i } = await ask(q);
+      expect(i.place?.name, q).toBe("Municipiul Oradea");
+      expect(i.leftover, q).toEqual([]);
+    }
+  });
+
+  it("English names of frequent subjects map to the curated Romanian term, and say so", async () => {
+    const { i, r } = await ask("street lighting cluj");
+    expect(i.subjects.map((s) => s.term)).toEqual(["iluminat public"]);
+    expect(i.place?.county).toBe("Cluj");
+    expect(i.leftover).toEqual([]);
+    expect(i.notes).toContain("Am citit „street lighting” ca „iluminat public”.");
+    expect(r.spec?.filters.cpvTerm).toBe("iluminat public");
+    const roads = await ask("who wins road works in bacau");
+    expect(roads.i.subjects.map((s) => s.term)).toEqual(["drumuri"]);
   });
 
   it("the hint for a partial list asks institutions for a locality, people for birth data", async () => {

@@ -121,6 +121,31 @@ const ACRONYMS: Record<string, string> = {
  * procedure type the engine cannot filter on yet.
  */
 const PROCEDURE_TYPE = /\b(?:(licitati(?:e|a|ei|i|ile|ilor))\s+(?:deschis(?:a|e)|restrans(?:a|e))|(procedur(?:a|i|ii|ile|ilor))\s+(?:simplificat(?:a|e)|(?:de\s+)?negociere(?:\s+(?:fara|cu)\s+(?:publicare|publicarea)(?:\s+prealabila)?(?:\s+a\s+unui\s+anunt(?:\s+de\s+participare)?)?)?|competitiv(?:a|e))|(negocier(?:e|ea|i|ile))\s+(?:fara|cu)\s+(?:publicare|publicarea)(?:\s+prealabila)?(?:\s+a\s+unui\s+anunt(?:\s+de\s+participare)?)?|(dialog(?:ul)?)\s+competitiv|(cerer(?:e|ea|i|ile))\s+de\s+ofert(?:e|a)|(concurs(?:ul)?)\s+de\s+solutii|(parteneriat(?:ul)?)\s+pentru\s+inovare)\b/;
+/**
+ * English words for frequent subjects (visitors who write in English): each
+ * maps to a curated Romanian term, used only when that term exists, and the
+ * reading says so. Longer phrases first.
+ */
+const ENGLISH_SUBJECTS: [RegExp, string][] = [
+  [/\b(?:street|public)\s+light(?:ing|s)?\b/, "iluminat public"],
+  [/\blighting\b/, "iluminat"],
+  [/\b(?:road\s*works?|roads?|road\s+construction|road\s+repairs?)\b/, "drumuri"],
+  [/\bbridges?\b/, "poduri"],
+  [/\bgreen\s+spaces?\b/, "spatii verzi"],
+  [/\bparks?\b/, "parcuri"],
+  [/\bsnow\s+(?:removal|clearing|ploughing|plowing)\b/, "deszapezire"],
+  [/\b(?:waste\s+collection|garbage|waste|sanitation)\b/, "salubrizare"],
+  [/\b(?:medicines|drugs|pharmaceuticals)\b/, "medicamente"],
+  [/\bmedical\s+equipment\b/, "echipamente medicale"],
+  [/\bcars\b/, "autoturisme"],
+  [/\bbus(?:es|ses)?\b/, "autobuze"],
+  [/\b(?:sewage|sewerage|sewer\s+system)\b/, "canalizare"],
+  [/\b(?:water\s+supply|drinking\s+water)\b/, "alimentare cu apa"],
+  [/\blaptops?\b/, "laptop"],
+  [/\bsoftware\b/, "software"],
+  [/\b(?:fuel|petrol|diesel)\b/, "carburanti"],
+  [/\b(?:cctv|surveillance\s+cameras?|video\s+cameras?)\b/, "camere video"],
+];
 /** How to narrow a partial list of choices: a locality for institutions and firms, birth data only for people. */
 export const ENTITY_HINT = "Scrie numele complet, cu localitatea.";
 export const PERSON_HINT = "Scrie numele complet, cu localitatea ori anul nașterii.";
@@ -531,7 +556,7 @@ export class RulesInterpreter implements QuestionInterpreter {
       const key = placeKey((PLACE_ALIAS[joined] ?? joined).replace(/^rm\b/, "ramnicu").replace(/^tg\b/, "targu").replace(/^sf\b/, "sfantu").replace(/^cimpulung\b/, "campulung"));
       const exact = byKey.get(key);
       if (exact) return { j: i + len, entries: exact };
-      if (fuzzy && key.length >= 7) {
+      if (fuzzy && key.length >= 6) {
         const near = [...byKey.entries()].filter(([k]) => Math.abs(k.length - key.length) <= 1 && k[0] === key[0] && k.slice(0, 3) === key.slice(0, 3) && lev(key, k, 1) <= 1);
         if (near.length === 1) return { j: i + len, entries: near[0]![1] };
       }
@@ -810,6 +835,18 @@ export class RulesInterpreter implements QuestionInterpreter {
       const end = check ? k + 2 : k + 1;
       c.take(k, end, "subject");
       out.subjects.push({ term: hit.term, label: hit.cpvName ?? `CPV ${hit.term}`, cpvName: hit.cpvName, source: "catalog", matched: c.span(k, end) });
+    }
+    // English names of frequent subjects ("street lighting cluj" → „iluminat public”)
+    const synonymsList = await this.vocab.synonyms();
+    for (const [re, term] of ENGLISH_SUBJECTS) {
+      if (!synonymsList.includes(term)) continue;
+      for (const h of c.all(re)) {
+        if (out.subjects.some((s) => s.term === term)) { c.take(h.i, h.j, "subject"); continue; }
+        const cpvName = (await this.vocab.cpv(term)).find((x) => x.term === term)?.cpvName ?? null;
+        c.take(h.i, h.j, "subject");
+        out.subjects.push({ term, label: term, cpvName, source: "synonym", matched: c.span(h.i, h.j) });
+        out.notes.push(`Am citit „${c.span(h.i, h.j).text}” ca „${term}”.`);
+      }
     }
     const runs: [number, number][] = [];
     const usable = (k: number) => !c.used[k] && !INSTITUTION_WORD.test(c.f(k));
