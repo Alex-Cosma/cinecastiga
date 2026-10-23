@@ -1,7 +1,8 @@
 import { cleanName } from "../format";
+import { joinCpvTerms } from "../ask/cpv-terms";
 import { validateSpec, type AskFilters, type AskSpec, type AuthorityKind } from "../ask/spec";
 import { genitive, hasNamedScope } from "./rules";
-import type { EntityMatch, IntentAlternative, IntentKind, IntentResult, Interpretation, PersonMatch, PlaceMatch } from "./types";
+import type { EntityMatch, IntentAlternative, IntentKind, IntentResult, Interpretation, PersonMatch, PlaceMatch, SubjectMatch } from "./types";
 
 /**
  * Interpretation → AskSpec (validated by the engine's own validateSpec) and
@@ -15,14 +16,21 @@ const PROFILE_DROPPED: (keyof AskFilters)[] = ["cpvTerm", "yearFrom", "yearTo", 
 
 interface Choice { place?: PlaceMatch | null; person?: PersonMatch | null; entity?: EntityMatch; pair?: { focal: EntityMatch; other: EntityMatch } }
 
+/** "parcuri și spații verzi": the labels of every recognised subject, for the sentence. */
+export function subjectsLabel(subjects: Pick<SubjectMatch, "label">[]): string | null {
+  const labels = [...new Set(subjects.map((s) => s.label))];
+  if (!labels.length) return null;
+  return labels.length === 1 ? labels[0]! : `${labels.slice(0, -1).join(", ")} și ${labels.at(-1)}`;
+}
+
 function personDisplay(p: PersonMatch): string {
   return `${cleanName(p.name)}${p.birthYear ? ` (n. ${p.birthYear}${p.birthLocality ? `, ${p.birthLocality}` : ""})` : ""}`;
 }
 
 function baseFilters(i: Interpretation, choice: Choice, notes: string[]): AskFilters {
   const f: AskFilters = {};
-  const subject = i.subjects[0];
-  if (subject) f.cpvTerm = subject.term;
+  // several subjects are counted together ("parcuri și spații verzi"), each record once
+  if (i.subjects.length) f.cpvTerm = joinCpvTerms(i.subjects.map((s) => s.term));
   if (i.authorityKind) f.authorityKind = i.authorityKind.kind;
   const place = choice.place === undefined ? i.place : choice.place;
   if (place?.kind === "county") f.county = place.county;
@@ -331,7 +339,7 @@ function specKey(spec: AskSpec): string {
 
 /** Assemble the API answer: spec, sentence and ready alternatives. */
 export function resultFor(i: Interpretation): IntentResult {
-  const labels: SentenceLabels = { subject: i.subjects[0]?.label ?? null, ...(i.askedTownHalls && !i.authorityKind && i.measure !== "value_per_capita" ? { allInstitutions: true } : {}) };
+  const labels: SentenceLabels = { subject: subjectsLabel(i.subjects), ...(i.askedTownHalls && !i.authorityKind && i.measure !== "value_per_capita" ? { allInstitutions: true } : {}) };
   const notes = [...i.notes];
   let spec: AskSpec | null = null;
   let problem: string | null = null;

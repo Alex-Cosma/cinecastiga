@@ -76,6 +76,8 @@ const wordsOf = (s: string) => foldText(s).split(/[^a-z0-9]+/).filter(Boolean);
  */
 export function weakSubject(s: Pick<SubjectMatch, 'source' | 'matched' | 'cpvName' | 'label'>): boolean {
   if (s.source !== 'catalog') return false;
+  // a CPV code typed as such ("45233140", "45233140-2") is the person's own choice of domain
+  if (/^\d{8}(?:[\s-]\d)?$/.test(s.matched.text.trim())) return false;
   const label = new Set(wordsOf(s.cpvName ?? s.label));
   return wordsOf(s.matched.text).some((w) => !label.has(w) && !stems(w).some((b) => label.has(b)));
 }
