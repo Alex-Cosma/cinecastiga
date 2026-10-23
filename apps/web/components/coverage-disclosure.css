@@ -27,9 +27,8 @@
 .coverage-disclosure .coverage-disclosure-body > details { margin-top: 12px; }
 .coverage-disclosure .coverage-disclosure-body > details > summary { min-height: 44px; padding: 10px 0; cursor: pointer; }
 .coverage-disclosure pre { padding: 16px; background: var(--sunk); border-radius: 8px; white-space: pre-wrap; overflow-wrap: anywhere; max-width: 100%; font-size: 12px; }
-.discovery-page .d-national-strip { margin-bottom: 0; }
-.coverage-disclosure-home { margin-bottom: 6px; }
+.coverage-disclosure-home { margin: 28px 0 6px; }
 @media (max-width: 700px) {
   .coverage-periods dl > div { flex-direction: column; gap: 2px; }
-  .coverage-disclosure-home { margin-bottom: 0; }
+  .coverage-disclosure-home { margin: 20px 0 0; }
 }
