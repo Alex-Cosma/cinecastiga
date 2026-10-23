@@ -153,7 +153,11 @@ public site stays open during the drain and this dump and answers 503 from the
 after the dump starts (sessions, feedback, investigations, saved questions) stay
 in the database but are not in that run's dump. While
 processing is disabled no new restore point is taken. All dumps share the
-server disk; an off-box copy is still a separate decision.
+server disk; an off-box copy is still a separate decision. From the release of
+the owner-approved 23 October 2026 change, the dump is custom format with zstd
+level 1 (`--compress=zstd:1`) and its SHA-256 is computed while streaming;
+restoring needs `pg_restore` 16+ built with zstd (the `postgres:16-alpine`
+image is).
 
 ## Cloudflare in front
 
