@@ -251,7 +251,7 @@ export default async function ContractPage({
         față de alte publicații nu este încă lămurită. <Link href={`/metodologie/excluderi?grup=${c.excludedIdentity}`}>Vezi motivul și toate sursele comparate</Link>.</p>}
 
       <p className="note">
-        Date din anunțul de atribuire SICAP{c.noticeNo ? ` ${c.noticeNo}` : ""}. Documentele disponibile și starea preluării lor sunt afișate în secțiunea Fișiere. Pentru detalii nepreluate, consultă anunțul oficial.
+        Date din anunțul de atribuire SICAP{c.noticeNo ? ` ${c.noticeNo}` : ""}. Documentele disponibile și starea preluării lor sunt afișate în secțiunea <a href="#files-heading">„Documentele procedurii”</a>. Pentru detalii nepreluate, consultă anunțul oficial.
       </p>
     </>
   );
