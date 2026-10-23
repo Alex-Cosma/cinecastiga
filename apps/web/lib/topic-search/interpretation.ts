@@ -184,8 +184,9 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
     out.answer = shortAnswer(answerReading, choice, { subject: s0!.label }, (top) => (explicit ? askHref(top) : `/intreaba?q=${encodeURIComponent(scope.q)}`));
   }
   // Question first: the words are a question the rules read cleanly, not title words.
-  // A subject applied to the titles ("iluminat buzau") stays a subject search.
-  if (!applies && isCleanQuestion(result)) {
+  // A subject applied to the titles ("iluminat buzau") stays a subject search, and
+  // filters chosen on the page (place, period, type) are not overridden by the words.
+  if (!applies && !scope.place && !scope.from && scope.type === 'all' && isCleanQuestion(result)) {
     out.question = { sentence: result.sentence! };
     // "Cine…" and "cât…" get the total and the first three winners; other questions open in Întreabă.
     if (!out.answer && (i.intent === 'ranking_suppliers' || i.intent === 'total')) {

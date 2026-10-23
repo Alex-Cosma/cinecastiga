@@ -154,6 +154,11 @@ describe('interpretation → /cauta selection', () => {
     // a subject applied to the titles stays a subject search with chips
     const subject = await read('iluminat buzau');
     expect(applyInterpretation(subject.scope, subject.result).question).toBeNull();
+    // a filter chosen on the page is never overridden by the place in the words
+    for (const extra of ['&place=county:ialomita', '&from=2023&to=2023', '&type=da']) {
+      const filtered = await read('cine ia banii buzau', extra);
+      expect(applyInterpretation(filtered.scope, filtered.result).question, extra).toBeNull();
+    }
   });
 
   it('says what was not found instead of a zero total', () => {
