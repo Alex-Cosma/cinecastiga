@@ -2,7 +2,7 @@ import type { AskSpec } from '../ask/spec';
 import { askHref } from '../discovery-links';
 import { buildPlaces, countyDisplay } from '../intent/places';
 import { fold as foldText } from '../intent/text';
-import { sentenceFor, specFor } from '../intent/to-spec';
+import { sentenceFor, specFor, subjectsLabel } from '../intent/to-spec';
 import type { AuthorityKind } from '../ask/spec';
 import type { IntentResult, Interpretation, PlaceMatch, Span } from '../intent/types';
 import type { Place, TopicScope } from './shared';
@@ -173,7 +173,8 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
     const choice = { place: answerPlace };
     const total = specFor(answerReading, 'total', choice).spec;
     const top = specFor(answerReading, 'ranking_suppliers', choice).spec;
-    const labels = { subject: s0!.label };
+    // the spec counts every recognised subject ("parcuri + spatii verzi"): so does the sentence
+    const labels = { subject: subjectsLabel(i.subjects) };
     if (total && top) {
       const explicit = Boolean(scope.place || scope.from);
       out.answer = {

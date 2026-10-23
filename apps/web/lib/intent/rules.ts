@@ -115,6 +115,20 @@ const ACRONYMS: Record<string, string> = {
   cj: "consiliul judetean",
 };
 
+/**
+ * SEAP procedure types. The first word alone already means "a procedure"
+ * (understood as the contracts stream); the qualifier after it names a
+ * procedure type the engine cannot filter on yet.
+ */
+const PROCEDURE_TYPE = /\b(?:(licitati(?:e|a|ei|i|ile|ilor))\s+(?:deschis(?:a|e)|restrans(?:a|e))|(procedur(?:a|i|ii|ile|ilor))\s+(?:simplificat(?:a|e)|(?:de\s+)?negociere(?:\s+(?:fara|cu)\s+(?:publicare|publicarea)(?:\s+prealabila)?(?:\s+a\s+unui\s+anunt(?:\s+de\s+participare)?)?)?|competitiv(?:a|e))|(negocier(?:e|ea|i|ile))\s+(?:fara|cu)\s+(?:publicare|publicarea)(?:\s+prealabila)?(?:\s+a\s+unui\s+anunt(?:\s+de\s+participare)?)?|(dialog(?:ul)?)\s+competitiv|(cerer(?:e|ea|i|ile))\s+de\s+ofert(?:e|a)|(concurs(?:ul)?)\s+de\s+solutii|(parteneriat(?:ul)?)\s+pentru\s+inovare)\b/;
+/** How to narrow a partial list of choices: a locality for institutions and firms, birth data only for people. */
+export const ENTITY_HINT = "Scrie numele complet, cu localitatea.";
+export const PERSON_HINT = "Scrie numele complet, cu localitatea ori anul nașterii.";
+/** Where an institution's name gives way to its place ("… din județul Satu Mare"). */
+const PLACE_CUT = /^(?:din|in|la|judetul|judetului|jud|municipiul|orasul|comuna|localitatea)$/;
+/** Words institutions' registry names often leave out ("Spitalul Județean Satu Mare" for "… de Urgență Satu Mare"). */
+const OPTIONAL_NAME_WORD = /^(?:urgenta|clinic|clinica)$/;
+
 const LEGAL = new Set(["sc", "srl", "sa", "s", "r", "l", "srlv", "pfa", "ii", "if", "snc", "scs", "ra", "spa", "ltd", "gmbh", "sas", "sl", "bv", "nv"]);
 /** Generic subject words: never a subject on their own, understood next to a real one. */
 const GENERIC_SUBJECT = new Set(["lucrari", "lucrare", "lucrarile", "servicii", "serviciu", "serviciile", "produse", "produs", "echipamente", "echipament", "materiale", "material", "reparatii", "reparatie", "intretinere", "constructii", "constructie", "mentenanta", "furnizare", "livrare", "achizitionare", "bunuri", "dotari", "investitii", "investitie", "proiecte", "proiect", "modernizare", "reabilitare", "chestii", "lucruri"]);
@@ -238,6 +252,7 @@ export class RulesInterpreter implements QuestionInterpreter {
 
     this.periods(c, out, year);
     this.modifiers(c, out);
+    await this.fiscalCodes(c, out);
     await this.people(c, out);
     const cues = this.cues(c, out);
     this.kinds(c, out);
@@ -251,7 +266,7 @@ export class RulesInterpreter implements QuestionInterpreter {
     await this.namedRuns(c, out);
     await this.subjects(c, out);
     this.settlePlaces([...marked, ...unmarked].sort((a, b) => a.from - b.from), out);
-    this.choicesInPlace(out);
+    await this.choicesInPlace(out);
     if (cues.some((x) => x.intent === "signals")) await this.townHall(out);
     await this.leftoverEntity(c, out);
     this.settleIntent(cues, out);
@@ -307,7 +322,14 @@ export class RulesInterpreter implements QuestionInterpreter {
     const once = (re: RegExp, apply: (m: RegExpExecArray) => void, tag: Tag = "modifier") => {
       for (const h of c.all(re)) { c.take(h.i, h.j, tag); apply(h.m); }
     };
-    once(/\b(?:cu\s+)?(?:un\s+singur\s+ofertant|o\s+singura\s+oferta|un\s+singur\s+participant|ofertant\s+unic|fara\s+(?:concurenta|competitie|concurs))\b/, () => { out.singleBidder = true; });
+    once(/\b(?:cu\s+)?(?:un\s+singur\s+ofertant|o\s+singura\s+oferta|un\s+singur\s+participant|ofertant\s+unic|unic\s+ofertant|singurul\s+ofertant|(?:o\s+)?ofert(?:a|e|ele)\s+unic(?:a|e)|fara\s+(?:concurenta|competitie|concurs))\b/, () => { out.singleBidder = true; });
+    // SEAP procedure types: always procedures (contracts), never a purchase subject ("deschisă" is not a letter opener)
+    for (const h of c.all(PROCEDURE_TYPE)) {
+      c.take(h.i, h.i + 1, "modifier");
+      c.take(h.i + 1, h.j, "blocked");
+      if (out.dataset !== "da") out.dataset = "contracts";
+      out.notes.push(`Nu putem filtra încă după tipul procedurii („${c.span(h.i, h.j).text}”); am folosit toate contractele atribuite prin proceduri.`);
+    }
     once(/\b(?:achizitii(?:le|lor)?|cumparari(?:le|lor)?|cumparaturi(?:le|lor)?)\s+direct(?:e|a)\b|\bachizitie\s+directa\b|\bachizitia\s+directa\b|\bin\s+mod\s+direct\b/, () => { out.dataset = "da"; });
     // "cele mai multe licitații": the number of records, before "licitații" is read as the stream
     once(/\b(?:cele mai multe|cei mai multi|cel mai des)(?=\s+(?:contracte|contractele|achizitii|achizitiile|licitatii|licitatiile|cumparari))/, () => { if (out.measure === null) out.measure = "count"; });
@@ -426,7 +448,7 @@ export class RulesInterpreter implements QuestionInterpreter {
     if (r.kind === "many") {
       const shown = r.hits.slice(0, 6);
       out.entityAlternatives = shown.map((e) => ({ role: r.role, id: e.id, name: e.name, county: e.county, matched: span }));
-      if (r.total > shown.length) out.choicesPartial = { shown: shown.length, total: r.total, search };
+      if (r.total > shown.length) out.choicesPartial = { shown: shown.length, total: r.total, search, hint: ENTITY_HINT };
       out.notes.push(`${r.total} ${r.role === "supplier" ? "firme" : "instituții"} se potrivesc cu „${span.text}”.`);
       return "many";
     }
@@ -450,21 +472,43 @@ export class RulesInterpreter implements QuestionInterpreter {
       if (end - h.i < 2 && !acronym) continue;
       // the longest name first, then shorter ones ("Ministerul Sănătății medicamente" → "Ministerul Sănătății")
       let resolved = false;
-      let attempts = 0;
-      for (let j = end; j > h.i && attempts < 3; j--) {
+      const ends: number[] = [];
+      for (let j = end; j > h.i && ends.length < 3; j--) {
         if (j - h.i < 2 && !acronym) break;
         if (NAME_STOP.has(c.f(j - 1))) continue;
-        attempts++;
+        ends.push(j);
+      }
+      // "spitalul județean de urgență din județul Satu Mare": the name ends before the place
+      let cut = -1;
+      for (let k = h.j; k < end && cut < 0; k++) if (PLACE_CUT.test(c.f(k)) && k - h.i >= 2) cut = k;
+      if (cut > 0 && !ends.includes(cut)) ends.push(cut);
+      for (const j of ends) {
         const words = c.tokens.slice(h.i, j).flatMap((t) => (ACRONYMS[t.f] ?? t.f).split(" "));
-        const result = this.applyResolution(await this.resolve("authority", significant(words.join(" "))), out, c.span(h.i, j), rawSpan(c.tokens, h.i, j));
-        if (result !== "none") { c.take(h.i, j, "entity"); resolved = true; break; }
+        const typed = significant(words.join(" "));
+        let resolution = await this.resolve("authority", typed);
+        // "Spitalul Județean de Urgență Satu Mare" is registered as "SPITALUL JUDETEAN SATU MARE"
+        const relaxed = typed.filter((w) => !OPTIONAL_NAME_WORD.test(w)).map((w) => (w === "judeteana" ? "judetean" : w));
+        const left = c.tokens.slice(h.i, j).filter((t) => OPTIONAL_NAME_WORD.test(t.f)).map((t) => t.raw);
+        let usedRelaxed = false;
+        if (resolution.kind === "none" && relaxed.length >= 2 && relaxed.join(" ") !== typed.join(" ")) {
+          resolution = await this.resolve("authority", relaxed);
+          usedRelaxed = resolution.kind !== "none";
+        }
+        const result = this.applyResolution(resolution, out, c.span(h.i, j), rawSpan(c.tokens, h.i, j));
+        if (result !== "none") {
+          c.take(h.i, j, "entity");
+          resolved = true;
+          if (usedRelaxed && left.length) out.notes.push(`Niciun nume din SEAP nu are și ${left.length > 1 ? "cuvintele" : "cuvântul"} „${left.join(" ")}”; am căutat instituția fără ${left.length > 1 ? "ele" : "el"}.`);
+          break;
+        }
       }
       if (resolved) break;
-      // a name we cannot resolve stays a name: reported, never a subject or a place
+      // a name we cannot resolve stays a name: reported, never a subject or a place (a place after it stays a place)
+      const nameEnd = cut > 0 ? cut : end;
       if (!/^(spitalul|scoala|liceul|colegiul|consiliul|cj)$/.test(c.f(h.i))) {
-        c.take(h.i, end, "blocked");
-        out.notes.push(`Nu am găsit instituția „${c.span(h.i, end).text}”. Scrie numele complet, de exemplu cu localitatea.`);
-      } else c.take(h.i + 1, end, "blocked");
+        c.take(h.i, nameEnd, "blocked");
+        out.notes.push(`Nu am găsit instituția „${c.span(h.i, nameEnd).text}”. Scrie numele complet, de exemplu cu localitatea.`);
+      } else c.take(h.i + 1, nameEnd, "blocked");
     }
     // singular nouns without a (resolvable) name fall back to their kind ("spitalul din Buzău")
     if (!out.authority && !out.entityAlternatives.length) {
@@ -610,6 +654,29 @@ export class RulesInterpreter implements QuestionInterpreter {
     out.placeNote = `Există ${locs.length} localități cu numele „${bare}”, în ${where.length > 1 ? `${where.slice(0, -1).join(", ")} și ${where.at(-1)}` : where[0]}.`;
   }
 
+  // ---------------------------------------------------------- fiscal codes
+  /** "RO4305857", "RO 4305857", "CUI 4305857": the firm or institution registered with that fiscal code. */
+  private async fiscalCodes(c: Cursor, out: Interpretation) {
+    if (!this.vocab.entitiesByCui) return;
+    const h = c.first(/\b(?:ro(\d{2,10})|(?:ro|cui|cif|cod(?:ul)?\s+fiscal|codul\s+de\s+identificare\s+fiscala)\s+(?:ro\s*)?(\d{2,10}))\b/);
+    if (!h) return;
+    const cui = h.m[1] ?? h.m[2]!;
+    const span = c.span(h.i, h.j);
+    const found = await this.vocab.entitiesByCui(cui);
+    if (!found.length) {
+      c.take(h.i, h.j, "blocked");
+      out.notes.push(`Nu am găsit o firmă sau o instituție cu codul fiscal „${span.text}”.`);
+      return;
+    }
+    c.take(h.i, h.j, "entity");
+    if (found.length === 1) {
+      this.applyResolution({ kind: "one", role: found[0]!.role, hit: found[0]!.hit }, out, span, span.text);
+      return;
+    }
+    out.entityAlternatives = found.map(({ role, hit }) => ({ role, id: hit.id, name: hit.name, county: hit.county, matched: span }));
+    out.notes.push(`Codul fiscal „${span.text}” aparține mai multor rânduri din date (firmă și instituție sau mai multe identități). Alege-l pe cel la care te gândești.`);
+  }
+
   // --------------------------------------------------------- persons, firms
   private async people(c: Cursor, out: Interpretation) {
     const h = c.first(/\b(?:(?:firmele|firmelor|companiile|societatile|afacerile)\s+(?:lui|conduse de|administrate de|detinute de|ale lui)|conduse de|administrate de|detinute de|administratorul|administratoarea|patronul|patroana|omul de afaceri|afaceristul)\b/);
@@ -662,7 +729,7 @@ export class RulesInterpreter implements QuestionInterpreter {
     const label = (p: PersonHit) => `${fold(p.name)}|${p.birthYear ?? ""}|${fold(p.birthLocality ?? "").replace(/[^a-z]+/g, " ").trim()}`;
     const unique = [...new Map(hits.map((p) => [label(p), p])).values()];
     out.personAlternatives = unique.map(asMatch);
-    if (total > hits.length) out.choicesPartial = { shown: unique.length, total, search: typedName };
+    if (total > hits.length) out.choicesPartial = { shown: unique.length, total, search: typedName, hint: PERSON_HINT };
     out.notes.push(total === 1
       ? `Am găsit o persoană cu numele „${typedName}” scris exact așa. Același nume scris cu diacritice nu a putut fi căutat sigur; alege persoana dacă este cea la care te gândești.`
       : `${total} persoane se numesc „${typedName}” în Registrul Comerțului. ${total > hits.length ? `Arătăm primele ${unique.length}, cele cu cele mai multe firme. ` : ""}${exhaustive ? "" : "Variantele scrise cu diacritice nu au putut fi căutate sigur. "}Alege persoana după anul și locul nașterii.`);
@@ -733,6 +800,17 @@ export class RulesInterpreter implements QuestionInterpreter {
 
   // -------------------------------------------------------------- subjects
   private async subjects(c: Cursor, out: Interpretation) {
+    // a CPV code typed directly ("45233140", "45233140-2") is that domain, with its whole sub-tree
+    for (let k = 0; k < c.tokens.length; k++) {
+      const code = c.f(k);
+      if (c.used[k] || !/^\d{8}$/.test(code)) continue;
+      const hit = (await this.vocab.cpv(code)).find((h) => h.term.startsWith(code));
+      if (!hit) continue;
+      const check = k + 1 < c.tokens.length && !c.used[k + 1] && /^\d$/.test(c.f(k + 1)) && out.text.includes(`${c.tokens[k]!.raw}-${c.tokens[k + 1]!.raw}`);
+      const end = check ? k + 2 : k + 1;
+      c.take(k, end, "subject");
+      out.subjects.push({ term: hit.term, label: hit.cpvName ?? `CPV ${hit.term}`, cpvName: hit.cpvName, source: "catalog", matched: c.span(k, end) });
+    }
     const runs: [number, number][] = [];
     const usable = (k: number) => !c.used[k] && !INSTITUTION_WORD.test(c.f(k));
     for (let i = 0; i < c.tokens.length; i++) {
@@ -771,9 +849,10 @@ export class RulesInterpreter implements QuestionInterpreter {
       if (!c.isFree(cand.i, cand.j)) continue;
       c.take(cand.i, cand.j, "subject");
       const isCode = /^\d/.test(cand.hit.term);
+      const typedWords = significant(fold(rawSpan(c.tokens, cand.i, cand.j))).join(" ");
       out.subjects.push({
         term: cand.hit.term,
-        label: isCode ? cand.hit.cpvName ?? `CPV ${cand.hit.term}` : fold(rawSpan(c.tokens, cand.i, cand.j)) === fold(cand.hit.term) ? rawSpan(c.tokens, cand.i, cand.j).toLocaleLowerCase("ro-RO") : cand.hit.term,
+        label: isCode ? cand.hit.cpvName ?? `CPV ${cand.hit.term}` : typedWords === significant(fold(cand.hit.term)).join(" ") ? rawSpan(c.tokens, cand.i, cand.j).toLocaleLowerCase("ro-RO") : cand.hit.term,
         cpvName: cand.hit.cpvName,
         source: isCode ? "catalog" : "synonym",
         matched: c.span(cand.i, cand.j),
@@ -788,7 +867,7 @@ export class RulesInterpreter implements QuestionInterpreter {
     // generic words ("lucrări", "servicii") are understood next to a real subject, never a subject alone
     if (out.subjects.length) for (let k = 0; k < c.tokens.length; k++) if (!c.used[k] && GENERIC_SUBJECT.has(c.f(k))) c.take(k, k + 1, "filler");
     if (out.subjects.length > 1)
-      out.notes.push(`Am folosit primul domeniu, „${out.subjects[0]!.label}”. Am mai recunoscut: ${out.subjects.slice(1).map((s) => `„${s.label}”`).join(", ")}.`);
+      out.notes.push(`Am adunat ${out.subjects.length === 2 ? "ambele domenii" : `toate cele ${out.subjects.length} domenii`}: ${out.subjects.map((s) => `„${s.label}”`).join(", ")}. O achiziție care se potrivește cu mai multe e numărată o singură dată.`);
   }
 
   /**
@@ -816,7 +895,17 @@ export class RulesInterpreter implements QuestionInterpreter {
       const exact = label === typed || variants.includes(label) || stems(typed).includes(label);
       return synonym && exact ? 0 : exact ? 1 : synonym ? 2 : 3;
     };
-    return accepted.map((h, idx) => ({ h, idx })).sort((a, b) => rank(a.h) - rank(b.h) || labelWords(a.h).length - labelWords(b.h).length || a.idx - b.idx)[0]?.h ?? null;
+    const best = accepted.map((h, idx) => ({ h, idx })).sort((a, b) => rank(a.h) - rank(b.h) || labelWords(a.h).length - labelWords(b.h).length || a.idx - b.idx)[0]?.h ?? null;
+    // "lucrări de drumuri": the curated "drumuri" (the whole road-works family) beats the
+    // narrower catalogue label "Lucrări de drumuri"; a generic word adds nothing to the subject
+    if (best && rank(best) === 0) return best;
+    const core = words.filter((w) => !GENERIC_SUBJECT.has(w));
+    if (words.length > 1 && core.length && core.length < words.length) {
+      const broad = await this.cpvFor(core);
+      const label = broad ? significant(fold(broad.term)).join(" ") : "";
+      if (broad && !/^\d/.test(broad.term) && (label === core.join(" ") || (core.length === 1 && stems(core[0]!).includes(label)))) return broad;
+    }
+    return best;
   }
 
   // ------------------------------------------------- compare, leftovers
@@ -916,12 +1005,22 @@ export class RulesInterpreter implements QuestionInterpreter {
    * "Spitalul Județean Arad": a partial name plus a place. Only the choices in
    * that place's county are offered; one left is the institution meant.
    */
-  private choicesInPlace(out: Interpretation) {
+  private async choicesInPlace(out: Interpretation) {
     const place = out.place;
     // a firm's seat says nothing about where it sells: only institutions are narrowed by place
     if (!place || !out.entityAlternatives.length || out.entityAlternatives.some((e) => e.role !== "authority")) return;
     const key = (s: string | null) => fold(s ?? "").replace(/[^a-z]+/g, " ").trim();
-    const here = out.entityAlternatives.filter((e) => key(e.county) === key(place.county));
+    let here = out.entityAlternatives.filter((e) => key(e.county) === key(place.county));
+    if (!here.length && out.choicesPartial) {
+      // the choices shown are the largest buyers carrying the name: look for the name in that place
+      const span = out.entityAlternatives[0]!.matched;
+      const typed = significant(fold(span.text)).filter((w) => !OPTIONAL_NAME_WORD.test(w));
+      const placeWords = significant(placeKey(place.kind === "county" ? place.county : place.name)).filter((w) => !typed.includes(w));
+      const r = await this.resolve("authority", [...typed, ...placeWords]);
+      const hits = r.kind === "one" ? [r.hit] : r.kind === "many" ? r.hits : [];
+      here = hits.filter((e) => key(e.county) === key(place.county)).slice(0, 6)
+        .map((e): EntityMatch => ({ role: "authority", id: e.id, name: e.name, county: e.county, matched: span }));
+    }
     if (here.length === 1) {
       const e = here[0]!;
       if (e.role === "supplier") out.supplier = e; else out.authority = e;
@@ -958,7 +1057,7 @@ export class RulesInterpreter implements QuestionInterpreter {
     const all = many.flatMap((r) => (r.kind === "one" ? [{ role: r.role, hit: r.hit }] : r.hits.map((hit) => ({ role: r.role, hit }))));
     const total = many.reduce((n, r) => n + (r.kind === "one" ? 1 : r.total), 0);
     out.entityAlternatives = all.slice(0, 6).map(({ role, hit }) => ({ role, id: hit.id, name: hit.name, county: hit.county, matched: span }));
-    if (total > out.entityAlternatives.length) out.choicesPartial = { shown: out.entityAlternatives.length, total, search: span.text };
+    if (total > out.entityAlternatives.length) out.choicesPartial = { shown: out.entityAlternatives.length, total, search: span.text, hint: ENTITY_HINT };
     out.notes.push(`${total} firme sau instituții se potrivesc cu „${span.text}”.`);
   }
 
