@@ -107,10 +107,8 @@ export default function PartnersTable({
                     { id: p.partnerId, name: p.partnerName },
                     isAuth,
                   )}
-                  target="_blank"
-                  rel="noopener"
                 >
-                  {formatInt(p.n)} {p.n === 1 ? "tranzacție" : "tranzacții"} ↗
+                  {formatInt(p.n)} {p.n === 1 ? "tranzacție" : "tranzacții"} →
                 </a>
               ) : (
                 <span className="county">{formatInt(p.n)} {p.n === 1 ? "tranzacție" : "tranzacții"}</span>

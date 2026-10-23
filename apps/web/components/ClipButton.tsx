@@ -163,8 +163,8 @@ function AuthenticatedClipButton({
               {capture && ["queued", "running"].includes(capture.status) && <p className="hint">Poți continua explorarea. Captura va apărea în dosar când este completă.</p>}
               {capture?.status === "failed" && <p className="hint">Nu am marcat o selecție incompletă drept probă. Deschide dosarul pentru detalii și reîncercare.</p>}
               {err && <p className="auth-err">{err}</p>}
-              <a href={`/anchete/${done}`} target="_blank" rel="noopener">
-                Deschide ancheta ↗
+              <a href={`/anchete/${done}`}>
+                Deschide ancheta →
               </a>
             </div>
           ) : (

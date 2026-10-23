@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import EvidenceDrawer from "@/app/intreaba/EvidenceDrawer";
 import ClipButton from "@/components/ClipButton";
-import { cleanName } from "@/lib/format";
+import { cleanName, countyLabel } from "@/lib/format";
 import { formatEvidenceAmount, sumDecimalStrings } from "@/lib/ask/evidence";
 import type { Dataset } from "@/lib/ask/spec";
 import type { ConnectionEntity, ConnectionPartner, ConnectionRole, ConnectionsResponse } from "@/lib/connections-shared";
@@ -70,7 +70,7 @@ function LoadingRows() {
   return <div className="cx-loading" role="status"><p>Se încarcă legăturile…</p>{[0, 1, 2, 3].map(i => <div className="cx-skeleton" key={i} aria-hidden="true"><span /><span /></div>)}</div>;
 }
 function Identity({ entity }: { entity: ConnectionEntity }) {
-  return <span className="cx-identity">{entity.cui ? `CUI ${entity.cui}` : "CUI nepublicat / nevalidat"}{entity.county ? ` · ${entity.county}` : ""}{entity.countryCode && entity.countryCode !== "RO" ? ` · ${entity.countryCode}` : ""}</span>;
+  return <span className="cx-identity">{entity.cui ? `CUI ${entity.cui}` : "CUI nepublicat / nevalidat"}{countyLabel(entity.county) ? ` · ${countyLabel(entity.county)}` : ""}{entity.countryCode && entity.countryCode !== "RO" ? ` · ${entity.countryCode}` : ""}</span>;
 }
 function PairFacts({ item }: { item: ConnectionPartner }) {
   return <><p className="cx-value">{formatEvidenceAmount(item.totalExact)}</p>

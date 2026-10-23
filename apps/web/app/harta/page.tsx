@@ -125,7 +125,7 @@ export default async function HartaPage({
         {role === "authority" ? " autorității" : " furnizorului"}, nu neapărat locul executării contractului.
         Valorile includ achiziții directe acceptate de cel mult 2 milioane lei și contracte din proceduri de cel mult 1 miliard lei;
         contractele peste acest plafon sunt separate de totaluri și listate pe pagina fiecărei instituții.{" "}
-        <Link href="/metodologie#acoperire">Vezi perioada și acoperirea datelor ↗</Link>
+        <Link href="/metodologie#acoperire">Vezi perioada și acoperirea datelor →</Link>
       </p>
     </>
   );

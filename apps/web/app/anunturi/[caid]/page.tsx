@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAwardNoticeDetail } from "@/lib/marts";
 import { CONTRACT_DATE_FLOOR } from "@seap/db";
-import { formatRon, formatRonFull, formatInt, formatCalendarDate, cleanName } from "@/lib/format";
+import { formatRon, formatRonFull, formatInt, formatCalendarDate, cleanName, countyLabel } from "@/lib/format";
 import { awardUrl } from "@/lib/elicitatie";
 import ClipButton from "@/components/ClipButton";
 
@@ -77,7 +77,7 @@ export default async function NoticePage({
             <Link href={`/entitati/${n.authority.entityId}?rol=autoritate`}>
               {cleanName(n.authority.name)}
             </Link>
-            {n.authority.county ? ` · ${n.authority.county}` : ""}
+            {countyLabel(n.authority.county) ? ` · ${countyLabel(n.authority.county)}` : ""}
           </p>
         )}
         <div className="ext-links">

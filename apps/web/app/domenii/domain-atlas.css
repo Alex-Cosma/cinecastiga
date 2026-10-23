@@ -5,7 +5,7 @@
   height: var(--domain-atlas-height, 475px);
   overflow: hidden;
   border-radius: 15px;
-  background: #e6ecdf;
+  background: var(--sunk);
   isolation: isolate;
 }
 
@@ -18,10 +18,10 @@
   width: 310px;
   max-width: calc(100vw - 24px);
   padding: 17px 19px;
-  border: 1px solid #ced8c6;
+  border: 1px solid var(--line2);
   border-radius: 12px;
-  background: #fffef8;
-  color: #203c2f;
+  background: var(--surface);
+  color: var(--ink);
   box-shadow: 0 12px 38px #18302526;
   pointer-events: none;
   font-family: inherit;

@@ -18,7 +18,7 @@ export async function CoverageSummary() {
   const excluded=coverage?.observations.find(o=>o.dataset==='contracts')?.observation.temporarily_excluded_groups;
   const freshness=await getProcessingFreshness();
   return <div className="coverage-summary">
-    <Link href="/metodologie#acoperire">Surse, acoperire și actualizare ↗</Link>
+    <Link href="/metodologie#acoperire">Surse, acoperire și actualizare →</Link>
     {coverage?.observations.length ? <span>Inventar recalculat la {coverageDate(coverage.observations[0]?.calculated_at)} · completitudinea surselor nu este confirmată</span> : <span>Inventarul datelor nu a fost încă recalculat.</span>}
     {excluded && Number(excluded)>0 && <Link href="/metodologie/excluderi">{n(excluded)} grupuri excluse temporar din totaluri · verifică sursele</Link>}
     {freshness?.riskAt&&<span>Semnale de risc recalculate la {coverageDate(freshness.riskAt)}.</span>}

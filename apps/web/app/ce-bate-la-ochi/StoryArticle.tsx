@@ -64,13 +64,13 @@ function Ending({story}:{story:Story}){
  const authorities=[...new Set(story.sources.flatMap(s=>s.kind==='procurement'&&story.finding.sourceIds.includes(s.id)?[s.authority]:[]))].slice(0,2);
  const firms=story.actors?.items.filter(a=>a.entityId)??[];
  return <div className="story-ending"><h2>Continuă verificarea</h2><ul className="next-steps">
-  {firms.map(a=><li key={a.entityId}><a href={`/entitati/${a.entityId}`} target="_blank" rel="noopener noreferrer"><span>Fișa {a.name}</span><small>toate contractele și semnalele firmei</small><Icon name="external"/></a></li>)}
-  {authorities.map(a=><li key={a}><a href={`/cauta?q=${encodeURIComponent(a)}`} target="_blank" rel="noopener noreferrer"><span>Alte achiziții ale instituției</span><small>{a}</small><Icon name="external"/></a></li>)}
-  <li><a href="/intreaba" target="_blank" rel="noopener noreferrer"><span>Construiește o întrebare</span><small>explorează toate datele publice</small><Icon name="external"/></a></li>
+  {firms.map(a=><li key={a.entityId}><a href={`/entitati/${a.entityId}`}><span>Fișa {a.name}</span><small>toate contractele și semnalele firmei</small><Icon name="arrow"/></a></li>)}
+  {authorities.map(a=><li key={a}><a href={`/cauta?q=${encodeURIComponent(a)}`}><span>Alte achiziții ale instituției</span><small>{a}</small><Icon name="arrow"/></a></li>)}
+  <li><a href="/intreaba"><span>Construiește o întrebare</span><small>explorează toate datele publice</small><Icon name="arrow"/></a></li>
  </ul>
  <div className="ending-actions">
   <div><h3>Ai informații despre această poveste?</h3><p>Scrie-ne anonim, fără cont. Mesajul ajunge doar la administratorii aplicației. Nu include date personale.</p><button type="button" className="button" onClick={()=>document.querySelector<HTMLButtonElement>('.feedback-fab')?.click()}>Trimite o informație</button></div>
-  <div><h3>Cum citezi povestea</h3><p className="citation">{citation(story,url)}</p><div className="citation-actions"><button type="button" className="text-link" onClick={async()=>{try{await navigator.clipboard.writeText(citation(story,url));setCopied('Citarea a fost copiată.');}catch{setCopied('Copierea nu a reușit. Selectează textul de mai sus.');}}}><Icon name="link"/> Copiază citarea</button><a className="text-link" href="/metodologie#citare" target="_blank" rel="noopener noreferrer">Reguli de citare <Icon name="external"/></a></div><span className="copy-status" role="status">{copied}</span></div>
+  <div><h3>Cum citezi povestea</h3><p className="citation">{citation(story,url)}</p><div className="citation-actions"><button type="button" className="text-link" onClick={async()=>{try{await navigator.clipboard.writeText(citation(story,url));setCopied('Citarea a fost copiată.');}catch{setCopied('Copierea nu a reușit. Selectează textul de mai sus.');}}}><Icon name="link"/> Copiază citarea</button><a className="text-link" href="/metodologie#citare">Reguli de citare <Icon name="arrow"/></a></div><span className="copy-status" role="status">{copied}</span></div>
  </div></div>;
 }
 
