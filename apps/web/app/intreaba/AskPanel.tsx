@@ -709,31 +709,6 @@ export default function AskPanel({
                 <Term tip title="Profil istoric" text="Profilurile folosesc istoricul achizițiilor directe. Stările și calculul sunt în lista surselor." />
               </p>
             )}
-            {(resp.caveats?.length ?? 0) > 0 && (
-              <details
-                className="cq-caveats"
-                open={resp.caveats!.some((c) =>
-                  /am ales|Am restrâns|nu există|ignor|în afara/i.test(c),
-                )}
-              >
-                <summary>
-                  Ce include calculul · {resp.caveats!.length}
-                </summary>
-                {resp.caveats!.map((c) => (
-                  <p key={c}>{c}</p>
-                ))}
-              </details>
-            )}
-            <CoverageDisclosure key={JSON.stringify(applied)} spec={applied}>
-              {resp.displaySql && (
-                <details>
-                  <summary>Interogarea SQL · avansat</summary>
-                  <pre>
-                    <code>{resp.displaySql}</code>
-                  </pre>
-                </details>
-              )}
-            </CoverageDisclosure>
             {["table", "timeseries", "map"].includes(data.block) && (
               <div className="cq-display">
                 <div>
@@ -868,6 +843,32 @@ export default function AskPanel({
                 />
               )}
             </div>
+            {/* How the number was built reads after the answer, not before it. */}
+            {(resp.caveats?.length ?? 0) > 0 && (
+              <details
+                className="cq-caveats"
+                open={resp.caveats!.some((c) =>
+                  /am ales|Am restrâns|nu există|ignor|în afara/i.test(c),
+                )}
+              >
+                <summary>
+                  Ce include calculul · {resp.caveats!.length}
+                </summary>
+                {resp.caveats!.map((c) => (
+                  <p key={c}>{c}</p>
+                ))}
+              </details>
+            )}
+            <CoverageDisclosure key={JSON.stringify(applied)} spec={applied}>
+              {resp.displaySql && (
+                <details>
+                  <summary>Interogarea SQL · avansat</summary>
+                  <pre>
+                    <code>{resp.displaySql}</code>
+                  </pre>
+                </details>
+              )}
+            </CoverageDisclosure>
             <div className="cq-answer-tools">
               <button
                 type="button"
