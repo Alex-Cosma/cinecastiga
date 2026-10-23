@@ -362,14 +362,19 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
   const where = phrase("county", String(draft.filters.uatName || draft.filters.county || "toată România"));
   const when = phrase("period", periodLabel(draft));
   const focal = phrase("focal", entityLabel(draft, focalRole(draft)));
+  const namedSupplier = Boolean(draft.filters.supplierName || draft.filters.supplierId);
+  const buyer = namedAuthority ? phrase("authority", entityLabel(draft, "authority")) : phrase("authorityKind", kind[1]);
+  // A named firm or institution is the scope: "din toată România" would misstate it.
+  const fromSupplier = namedSupplier ? <> de la {phrase("supplier", entityLabel(draft, "supplier"))}</> : null;
+  const inPlace = (namedAuthority || namedSupplier) && !draft.filters.county && !draft.filters.uatName ? null : <> din {where}</>;
   const what = phrase("dim", draft.dim === "authority" ? "instituții" : draft.dim === "county" ? "județe" : "firme");
   function sentence() {
     switch (draft.block) {
-      case "table": return draft.dim === "supplier" ? <>Cine furnizează {who}<br className="qb-desktop-break" /> din {where}, în {when}?</> : <>Cum se compară {phrase("dim", draft.dim === "authority" ? "instituțiile" : "județele")} după achiziții<br className="qb-desktop-break" /> din {where}, în {when}?</>;
-      case "stat": return <>{draft.measure === "count" ? namedAuthority ? "Câte achiziții are " : "Câte achiziții au " : "Cât valorează achizițiile "}{draft.measure === "count" && !namedAuthority ? phrase("authorityKind", kind[1]) : who}<br className="qb-desktop-break" /> din {where}, în {when}?</>;
-      case "timeseries": return <>Cum evoluează achizițiile {who}<br className="qb-desktop-break" /> din {where}, în {when}?</>;
-      case "map": return <>Cum se împart achizițiile {who}<br className="qb-desktop-break" /> pe județe, în {when}?</>;
-      case "breakdown": return <>Ce cumpără {namedAuthority ? phrase("authority", entityLabel(draft, "authority")) : phrase("authorityKind", kind[1])}<br className="qb-desktop-break" /> din {where}, în {when}?</>;
+      case "table": return draft.dim === "supplier" ? <>Cine câștigă contractele de la {buyer}{fromSupplier}<br className="qb-desktop-break" />{inPlace}, în {when}?</> : <>Ce {phrase("dim", draft.dim === "county" ? "județe" : "instituții")} cumpără cel mai mult{fromSupplier}<br className="qb-desktop-break" />{draft.dim === "county" ? null : inPlace}, în {when}?</>;
+      case "stat": return <>{draft.measure === "count" ? namedAuthority ? "Câte achiziții are " : "Câte achiziții au " : "Cât valorează achizițiile "}{draft.measure === "count" && !namedAuthority ? phrase("authorityKind", kind[1]) : who}{fromSupplier}<br className="qb-desktop-break" />{inPlace}, în {when}?</>;
+      case "timeseries": return <>Cum evoluează achizițiile {who}{fromSupplier}<br className="qb-desktop-break" />{inPlace}, în {when}?</>;
+      case "map": return <>Cum se împart achizițiile {who}{fromSupplier}<br className="qb-desktop-break" /> pe județe, în {when}?</>;
+      case "breakdown": return <>Ce cumpără {buyer}{fromSupplier}<br className="qb-desktop-break" />{inPlace}, în {when}?</>;
       case "compare": return <>Compară profilul {focal}<br className="qb-desktop-break" /> cu {phrase("compareWith", String(draft.filters.compareWith || "alege a doua entitate"))}.</>;
       case "trend": return <>Ce {what} au cea mai mare schimbare<br className="qb-desktop-break" /> între {phrase("period", String(draft.filters.yearFrom || "primul an"))} și {phrase("period", String(draft.filters.yearTo || "al doilea an"))}?</>;
       case "network": return <>Cu cine lucrează<br className="qb-desktop-break" /> {focal}?</>;

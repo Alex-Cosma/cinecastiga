@@ -6,6 +6,7 @@ import type { AskSpec } from "@/lib/ask/spec";
 import type { EvidenceScope } from "@/lib/ask/evidence";
 import { useEffect, useRef, useState } from "react";
 import { formatRon, formatRonFull, formatInt, cleanName } from "@/lib/format";
+import { countWords, formatShare } from "@/lib/ask/answer-text";
 import { encodeSpec } from "@/lib/ask/permalink";
 
 /**
@@ -244,8 +245,6 @@ export function DistributionBlock({
                   );
                 }
               }}
-              target="_blank"
-              rel="noopener"
               {...bind}
             >
               {inner}
@@ -375,15 +374,13 @@ export function BreakdownBlock({
           const bind = t.bind(
             s.name,
             formatRon(s.value),
-            `${formatInt(s.count)} achiziții · ${((s.value / total) * 100).toFixed(1)}% din total${s.code ? (canDeepen(s.code) ? " · click → structura subcategoriilor" : " · click → achizițiile categoriei") : ""}`,
+            `${countWords(s.count, "achiziție", "achiziții")} · ${formatShare(s.value / total)} din total${s.code ? (canDeepen(s.code) ? " · click → structura subcategoriilor" : " · click → achizițiile categoriei") : ""}`,
           );
           return s.code ? (
             <a
               key={s.name}
               className="seg"
               href={sliceUrl(s.code)}
-              target="_blank"
-              rel="noopener"
               style={{
                 width: `${(s.value / total) * 100}%`,
                 background: s.color,
@@ -409,15 +406,15 @@ export function BreakdownBlock({
             <span className="sw" style={{ background: s.color }} />
             <span className="nm">
               {s.code ? (
-                <a href={sliceUrl(s.code)} target="_blank" rel="noopener">
-                  {s.name} ↗
+                <a href={sliceUrl(s.code)}>
+                  {s.name}
                 </a>
               ) : (
                 s.name
               )}
             </span>
             <span className="vv num">
-              {formatRonFull(s.value)} · {((s.value / total) * 100).toFixed(1)}%
+              <span>{formatRonFull(s.value)} · {formatShare(s.value / total)}</span>
               {evidence && (
                 <button
                   type="button"
@@ -1039,7 +1036,7 @@ export function SankeyBlock({
               {...t.bind(
                 `${cleanName(f.partner)} → ${f.category ?? "?"}`,
                 formatRon(f.value),
-                `${((f.value / total) * 100).toFixed(1)}% din fluxul afișat${linkable ? " · click → achizițiile acestui flux" : ""}`,
+                `${formatShare(f.value / total)} din fluxul afișat${linkable ? " · click → achizițiile acestui flux" : ""}`,
               )}
             />
           );
@@ -1054,8 +1051,6 @@ export function SankeyBlock({
                 ...partnerExtra(f.partnerId, f.partner),
                 cpvTerm: f.categoryCode,
               })}
-              target="_blank"
-              rel="noopener"
             >
               {ribbon}
             </a>
@@ -1106,8 +1101,6 @@ export function SankeyBlock({
               key={id}
               {...marks(selectedScope(id), cleanName(p.name))}
               href={drillUrl(partnerExtra(id, p.name))}
-              target="_blank"
-              rel="noopener"
             >
               {node}
             </a>
@@ -1151,8 +1144,6 @@ export function SankeyBlock({
               key={id}
               {...marks(selectedScope(undefined, id), c.name ?? id)}
               href={drillUrl({ cpvTerm: id })}
-              target="_blank"
-              rel="noopener"
             >
               {node}
             </a>
@@ -1333,7 +1324,7 @@ export function NetworkBlock({
           <div className="s">
             {formatInt(tip.count)} achiziții
             {totalV > 0 &&
-              ` · ${((tip.value / totalV) * 100).toFixed(1)}% din top-parteneri`}
+              ` · ${formatShare(tip.value / totalV)} din top-parteneri`}
           </div>
         </div>
       )}

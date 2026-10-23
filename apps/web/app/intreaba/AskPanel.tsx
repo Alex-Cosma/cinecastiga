@@ -11,6 +11,7 @@ import { isHistoricalProfile } from "@/lib/ask/population";
 import { validateSpec, type AskSpec } from "@/lib/ask/spec";
 import { entitySourceLink, entitySourceScope, yearSourceLink } from "@/lib/ask/source-spec";
 import { describeQuestion, localityScopeError, questionKey } from "@/lib/ask/question-ui";
+import { ANSWER_ERROR, breakdownLead, countWords, entityNoun, fileSlug, formatShare, isHumanError, rankingRest, rankingShare, shouldAutoRun, type RankingTotals } from "@/lib/ask/answer-text";
 import type { IntentResult } from "@/lib/intent/types";
 import { NATURAL_LANGUAGE_ENABLED, NATURAL_LANGUAGE_UNAVAILABLE } from "@/lib/ask/features";
 import { validateEvidenceScope, validateEvidenceFilters, type EvidenceScope, type EvidenceFilters } from "@/lib/ask/evidence";
@@ -105,6 +106,11 @@ export default function AskPanel({
   const [dirty, setDirty] = useState(false);
   const [resp, setResp] = useState<AskResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** Technical text behind a failed answer, shown only under "Detalii tehnice". */
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
+  const lastBody = useRef<Record<string, unknown> | null>(null);
+  /** A link that already holds the question opens on its answer; the builder waits under "Schimbă întrebarea". */
+  const [builderCollapsed, setBuilderCollapsed] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [layout, setLayout] = useState<"visual" | "table">("visual");
   const [evidence, setEvidence] = useState<{
@@ -112,6 +118,7 @@ export default function AskPanel({
     scope?: EvidenceScope;
     filters?: EvidenceFilters;
     title: string;
+    scopeLabel?: string;
   } | null>(null);
   const [tableOpts, setTableOpts] = useState<{
     page: number;
@@ -139,6 +146,15 @@ export default function AskPanel({
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), 2600);
   }, []);
+  /** The error appears where the person is looking (on a phone it would otherwise sit under the fold). */
+  const revealError = useCallback(() => {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      document.getElementById("raspuns-eroare")?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
+        block: "center",
+      });
+    }));
+  }, []);
   const execute = useCallback(
     async (
       body: Record<string, unknown>,
@@ -156,8 +172,10 @@ export default function AskPanel({
       const controller = new AbortController(),
         seq = ++request.current.seq;
       request.current.controller = controller;
+      lastBody.current = body;
       setLoading(true);
       setError(null);
+      setErrorDetail(null);
       setEvidence(null);
       try {
         const r = await fetch("/api/ask", {
@@ -166,12 +184,14 @@ export default function AskPanel({
           body: JSON.stringify(body),
           signal: controller.signal,
         });
-        const answer = (await r.json()) as AskResponse;
+        const answer = (await r.json().catch(() => ({ ok: false, error: `HTTP ${r.status}` }))) as AskResponse;
         if (seq !== request.current.seq) return false;
         if (!answer.ok || !answer.data || !answer.spec) {
-          setError(
-            answer.error ?? "Nu am putut calcula răspunsul. Încearcă din nou.",
-          );
+          // Explanations written for people stay visible; technical text goes under "Detalii tehnice".
+          const human = isHumanError(r.status, answer.error);
+          setError(human ? answer.error! : ANSWER_ERROR);
+          setErrorDetail(human ? null : answer.error ?? `HTTP ${r.status}`);
+          revealError();
           return false;
         }
         setResp(answer);
@@ -205,7 +225,8 @@ export default function AskPanel({
               describeQuestion(answer.spec as unknown as BuilderSpec),
           });
         if (!drill && scroll)
-          requestAnimationFrame(() =>
+          // Two frames: the answer is rendered before it is brought under the sticky header.
+          requestAnimationFrame(() => requestAnimationFrame(() => {
             document
               .getElementById("raspuns")
               ?.scrollIntoView({
@@ -214,20 +235,22 @@ export default function AskPanel({
                   ? "instant"
                   : "smooth",
                 block: "start",
-              }),
-          );
+              });
+            document.getElementById("raspuns-titlu")?.focus({ preventScroll: true });
+          }));
         return answer.spec;
       } catch (e) {
-        if (!controller.signal.aborted && seq === request.current.seq)
-          setError(
-            "La date nu am putut ajunge acum. Reîncearcă; întrebarea ta este păstrată.",
-          );
+        if (!controller.signal.aborted && seq === request.current.seq) {
+          setError(ANSWER_ERROR);
+          setErrorDetail(e instanceof Error ? e.message : String(e));
+          revealError();
+        }
         return false;
       } finally {
         if (seq === request.current.seq) setLoading(false);
       }
     },
-    [],
+    [revealError],
   );
   /** Bring the understood question (or the choice to make) into view and move focus to its heading. */
   const focusResult = useCallback((id: string, scrollTo: string) => {
@@ -239,15 +262,22 @@ export default function AskPanel({
       document.getElementById(id)?.focus({ preventScroll: true });
     }));
   }, []);
+  /**
+   * One reading is chosen: the interpreter's only reading, a choice the person
+   * clicked, or "Sau întreabă altfel". Each already holds a whole question, so it
+   * is answered at once; the editable builder stays above the answer.
+   */
   const adopt = useCallback((choice: IntentChoice) => {
     setChosen(choice);
     setBuilderInit(choice.spec as unknown as BuilderSpec);
     setBuilderResolution(null);
     setBuilderFromAi(false);
     setBuilderOpen(true);
+    setBuilderCollapsed(false);
     setMode("build");
     focusResult("ia-understood", "intrebarea");
-  }, [focusResult]);
+    void execute({ spec: choice.spec });
+  }, [focusResult, execute]);
   const interpret = useCallback(async (raw: string, fromHistory = false) => {
     const text = raw.replace(/\s+/g, " ").trim().slice(0, MAX_QUESTION_CHARS);
     if (text.length < 2) return;
@@ -269,7 +299,7 @@ export default function AskPanel({
       setResp(null);
       setError(null);
       setEvidence(null);
-      if (body.spec && body.sentence) adopt({ spec: body.spec, sentence: body.sentence });
+      if (shouldAutoRun(body)) adopt({ spec: body.spec!, sentence: body.sentence! });
       else {
         setChosen(null);
         setBuilderInit(null);
@@ -329,6 +359,7 @@ export default function AskPanel({
         }
         setBuilderInit(parsed as unknown as BuilderSpec);
         setBuilderOpen(true);
+        setBuilderCollapsed(params.get("drill") !== "1");
         setMode("build");
         let scope: EvidenceScope | undefined;
         let sourceFilters: EvidenceFilters | undefined;
@@ -354,8 +385,8 @@ export default function AskPanel({
         const asGiven = typeof linkDataset === "string" && !parsed.dataset ? { ...parsed, dataset: linkDataset as AskSpec["dataset"] } : parsed;
         // An old link with a locality its view cannot honour opens in the builder, which explains the
         // condition to remove; it is not run (the API would refuse it too).
-        if (localityScopeError(asGiven as AskSpec)) return;
-        void execute({ spec: asGiven }, params.get("drill") === "1", scope, sourceFilters, false);
+        if (localityScopeError(asGiven as AskSpec)) { setBuilderCollapsed(false); return; }
+        void execute({ spec: asGiven }, params.get("drill") === "1", scope, sourceFilters);
       }
     };
     restore();
@@ -391,7 +422,8 @@ export default function AskPanel({
         setEvidence({
           spec: selected,
           ...(effectiveScope ? { scope: effectiveScope } : {}),
-          title: label ?? title,
+          title,
+          ...(label ? { scopeLabel: label } : {}),
         });
       }
     },
@@ -406,6 +438,18 @@ export default function AskPanel({
         "Copierea nu este disponibilă. Poți copia adresa din bara browserului.",
       );
     }
+  };
+  /** The phone's share sheet when there is one; otherwise the link is copied. */
+  const share = async (url: string, text: string) => {
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share({ title: text, text, url });
+        return;
+      } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") return;
+      }
+    }
+    await copy(url, "Link copiat. Îl poți lipi în WhatsApp.");
   };
   const interceptSource = (event: React.MouseEvent) => {
     if (
@@ -439,7 +483,7 @@ export default function AskPanel({
       } catch { return; }
     }
     event.preventDefault();
-    openEvidence(spec, scope, `${title} · selecția aleasă`);
+    openEvidence(spec, scope, "selecția aleasă");
   };
   const data = resp?.data,
     count = data ? sourceCount(data) : null;
@@ -551,7 +595,14 @@ export default function AskPanel({
           </div>
         </section>
       )}
-      {builderOpen ? (
+      {builderOpen && builderCollapsed ? (
+        <div hidden={mode !== "build"} id="intrebarea" className="ia-builder ia-builder-collapsed">
+          <button type="button" className="ia-change-question" aria-expanded="false" onClick={() => setBuilderCollapsed(false)}>
+            <PencilIcon />
+            Schimbă întrebarea
+          </button>
+        </div>
+      ) : builderOpen ? (
         <div hidden={mode !== "build"} id="intrebarea" className="ia-builder">
           {!chosen && <h2 className="ia-builder-title">Construiește întrebarea pas cu pas</h2>}
           <QuestionBuilder
@@ -577,9 +628,20 @@ export default function AskPanel({
       )}
       {loading && <Loader label="Căutăm răspunsul în date" />}
       {error && (
-        <div className="cq-error" role="alert">
-          <strong>Întrebarea ta este păstrată.</strong>
-          <p>{error}</p>
+        <div className="cq-error" role="alert" id="raspuns-eroare">
+          <strong>{error}</strong>
+          <p>Întrebarea ta este păstrată.</p>
+          {lastBody.current && (
+            <button type="button" className="cq-retry" disabled={loading} onClick={() => { if (lastBody.current) void execute(lastBody.current); }}>
+              Reîncearcă
+            </button>
+          )}
+          {errorDetail && (
+            <details className="cq-error-detail">
+              <summary>Detalii tehnice</summary>
+              <p>{errorDetail}</p>
+            </details>
+          )}
         </div>
       )}
       {resp?.ok && data && applied && (
@@ -592,7 +654,7 @@ export default function AskPanel({
           >
             <div className="cq-answer-head">
               <div>
-                <h2>{title}</h2>
+                <h2 id="raspuns-titlu" tabIndex={-1}>{title}</h2>
                 <div className="cq-scope">
                   {(resp.pills ?? []).map((p) => (
                     <span key={p}>{p}</span>
@@ -613,8 +675,16 @@ export default function AskPanel({
                 >
                   <DiscoveryIcon name="database"/>
                   {count===null||count===0?'Vezi înregistrările sursă':isProfile||applied.dataset==='da'
-                    ?count===1?'Vezi achiziția':`Vezi cele ${formatInt(count)} achiziții`
-                    :count===1?'Vezi înregistrarea sursă':`Vezi cele ${formatInt(count)} înregistrări`}
+                    ?count===1?'Vezi achiziția':`Vezi cele ${countWords(count, 'achiziție', 'achiziții')}`
+                    :count===1?'Vezi înregistrarea sursă':`Vezi cele ${countWords(count, 'înregistrare', 'înregistrări')}`}
+                </button>
+                <button
+                  type="button"
+                  className="cq-share"
+                  onClick={() => void share(answerLink(applied), title)}
+                >
+                  <ShareIcon />
+                  Trimite
                 </button>
                 <FollowButton key={JSON.stringify(applied)} spec={applied} title={title} />
                 <ClipButton
@@ -626,7 +696,7 @@ export default function AskPanel({
                     headline:
                       count === null
                         ? title
-                        : `${formatInt(count)} înregistrări`,
+                        : countWords(count, "înregistrare", "înregistrări"),
                     result: data,
                     executedAt: resp.executedAt,
                     caveats: resp.caveats ?? [],
@@ -701,6 +771,9 @@ export default function AskPanel({
                 </div>
               </div>
             )}
+            {data.block === "breakdown" && breakdownLead(data.slices, data.other) && (
+              <p className="cq-lead">{breakdownLead(data.slices, data.other)}</p>
+            )}
             <div className={`cq-result cq-result-${data.block}`}>
               {data.block === "stat" && (
                 <StatBlock stat={data.stat} measure={applied.measure} />
@@ -710,12 +783,14 @@ export default function AskPanel({
                   <RankingBars
                     rows={data.rows}
                     spec={applied}
+                    totals={(data.page ?? 0) === 0 && !tableOpts.sort ? data.totals : undefined}
                     onSources={openEvidence}
                   />
                 ) : (
                   <TableBlock
                     rows={data.rows}
                     spec={applied}
+                    totals={data.totals}
                     perCapita={applied.measure === "value_per_capita"}
                     meta={
                       data.total !== undefined
@@ -811,18 +886,17 @@ export default function AskPanel({
               )}
             </div>
             <div className="cq-answer-tools">
-              <AnswerExports key={encodeSpec(applied)} spec={applied} data={data} disabled={loading} onResult={()=>exportCsv(data,applied)}/>
               <button
                 type="button"
+                className="cq-copy"
                 onClick={() =>
-                  void copy(
-                    `${window.location.origin}/intreaba?spec=${encodeURIComponent(encodeSpec(applied))}`,
-                    "Întrebarea aplicată a fost copiată.",
-                  )
+                  void copy(answerLink(applied), "Link copiat. Îl poți lipi în WhatsApp.")
                 }
               >
-                Copiază întrebarea ↗
+                <CopyIcon />
+                Copiază linkul
               </button>
+              <AnswerExports key={encodeSpec(applied)} spec={applied} data={data} disabled={loading} onResult={()=>exportCsv(data,applied,title)}/>
               {mode === "ask" && (
                 <button
                   type="button"
@@ -846,6 +920,7 @@ export default function AskPanel({
           key={JSON.stringify(evidence)}
           spec={evidence.spec}
           title={evidence.title}
+          scopeLabel={evidence.scopeLabel}
           {...(evidence.scope ? { scope: evidence.scope } : {})}
           {...(evidence.filters ? { initialFilters: evidence.filters } : {})}
           onClose={() => setEvidence(null)}
@@ -858,12 +933,17 @@ export default function AskPanel({
 function RankingBars({
   rows,
   spec,
+  totals,
   onSources,
 }: {
   rows: TableRow[];
   spec: AskSpec;
+  totals?: RankingTotals | undefined;
   onSources: (spec: AskSpec, scope?: EvidenceScope, title?: string) => void;
 }) {
+  // Shares are of money: a per-capita ranking has no meaningful "% din total".
+  const shareTotals = spec.measure === "value_per_capita" ? undefined : totals;
+  const rest = rankingRest(rows, shareTotals);
   const metric = (r: TableRow) =>
     spec.measure === "count"
       ? r.count
@@ -882,6 +962,11 @@ function RankingBars({
     );
   return (
     <>
+      {spec.dim === "supplier" && (
+        <p className="cq-ranking-note">
+          Când un contract are mai mulți câștigători (consorțiu), fiecare firmă primește aici o cotă egală din valoare (de exemplu ⅓ pentru trei firme). De aceea unele firme pot avea exact aceeași sumă.
+        </p>
+      )}
       <div className="cq-ranking">
         {rows.map((r, i) => (
           <button
@@ -912,17 +997,40 @@ function RankingBars({
             <span className="cq-rank-value">
               <strong>
                 {spec.measure === "count"
-                  ? formatInt(r.count)
+                  ? countWords(r.count, "înregistrare", "înregistrări")
                   : formatRonFull(metric(r))}
                 {spec.measure === "value_per_capita" ? " / locuitor" : ""}
               </strong>
-              <small>{formatInt(r.count)} înregistrări →</small>
+              <small>
+                {spec.measure === "count"
+                  ? formatRonFull(r.value)
+                  : countWords(r.count, "înregistrare", "înregistrări")}
+                {rankingShare(r.value, shareTotals) !== null && <> · {formatShare(rankingShare(r.value, shareTotals)!)} din total</>}
+                {" →"}
+              </small>
             </span>
           </button>
         ))}
+        {rest && (
+          <div className="cq-rank-rest">
+            <span className="cq-rank-number" aria-hidden="true">…</span>
+            <span className="cq-rank-name">
+              <strong>Alte {entityNoun(spec.dim, rest.entities)}</strong>
+            </span>
+            <span className="cq-rank-value">
+              <strong>{formatRonFull(rest.value)}</strong>
+              <small>{formatShare(rest.share)} din total · {countWords(rest.count, "înregistrare", "înregistrări")}</small>
+            </span>
+          </div>
+        )}
       </div>
+      {shareTotals && shareTotals.value > 0 && (
+        <p className="ask-fine">
+          Total: {formatRonFull(shareTotals.value)} la {entityNoun(spec.dim, shareTotals.entities)} · valoare înregistrată, nu plăți.
+        </p>
+      )}
       <p className="ask-fine">
-        {rows.length} rezultate afișate. „Vezi înregistrările” păstrează
+        {countWords(rows.length, "rezultat afișat", "rezultate afișate")}. „Vezi înregistrările” păstrează
         întreaga selecție, inclusiv rezultatele din afara acestui clasament.
       </p>
     </>
@@ -1053,7 +1161,7 @@ function StatBlock({
         {measure === "count" ? formatInt(stat.count) : formatRon(stat.value)}
       </div>
       <div className="d">
-        {formatRonFull(stat.value)} · {formatInt(stat.count)} înregistrări
+        {formatRonFull(stat.value)} · {countWords(stat.count, "înregistrare", "înregistrări")}
       </div>
       {stat.byStream && (
         <div className="ask-streamsplit">
@@ -1069,6 +1177,7 @@ function StatBlock({
 function TableBlock({
   rows,
   spec,
+  totals,
   perCapita,
   meta,
   sort,
@@ -1077,6 +1186,7 @@ function TableBlock({
 }: {
   rows: TableRow[];
   spec?: unknown;
+  totals?: RankingTotals | undefined;
   perCapita: boolean;
   /** Present only in paged mode (clasament without explicit topN). */
   meta?: { total: number; page: number; pageSize: number } | null;
@@ -1088,6 +1198,7 @@ function TableBlock({
   const rowUrl = (r: TableRow) =>
     entitySourceLink(spec as AskSpec, r);
   const paged = Boolean(meta && onFetch);
+  const shareTotals = perCapita ? undefined : totals;
   const page = meta?.page ?? 0;
   const pageSize = meta?.pageSize ?? rows.length;
   const pages = meta ? Math.max(1, Math.ceil(meta.total / meta.pageSize)) : 1;
@@ -1143,6 +1254,7 @@ function TableBlock({
             {perCapita && <th className="num">Populație</th>}
             {perCapita && <Th k="percap" label="lei / locuitor" num />}
             <Th k="value" label="Valoare" num />
+            {shareTotals && <th className="num">% din total</th>}
             <Th k="count" label="Achiziții" num />
           </tr>
         </thead>
@@ -1173,12 +1285,13 @@ function TableBlock({
                 </td>
               )}
               <td className="num">{formatRonFull(r.value)}</td>
+              {shareTotals && <td className="num">{rankingShare(r.value, shareTotals) !== null ? formatShare(rankingShare(r.value, shareTotals)!) : "—"}</td>}
               <td className="num">
                 {(() => {
                   const u = rowUrl(r);
                   return u ? (
-                    <a href={u} target="_blank" rel="noopener">
-                      {formatInt(r.count)} ↗
+                    <a href={u}>
+                      {formatInt(r.count)} →
                     </a>
                   ) : (
                     formatInt(r.count)
@@ -1257,8 +1370,6 @@ function SeriesBlock({
                 );
               }
             }}
-            target="_blank"
-            rel="noopener"
             {...t.bind(
               String(p.year),
               asCount
@@ -1378,8 +1489,6 @@ function MapBlock({
               <a
                 key={s.key}
                 href={countyUrl(s.label)}
-                target="_blank"
-                rel="noopener"
               >
                 <path
                   d={s.d}
@@ -1404,7 +1513,7 @@ function MapBlock({
         </div>
         {unknown.count > 0 && national > 0 && (
           <p className="ask-fine">
-            {display(unknownMeasure)} ({((unknownMeasure / national) * 100).toFixed(1)}% din
+            {display(unknownMeasure)} ({formatShare(unknownMeasure / national)} din
             selecție, {formatInt(unknown.count)} înregistrări) au instituția fără județ
             cunoscut și nu apar pe hartă · procentele sunt din totalul selecției
           </p>
@@ -1421,7 +1530,7 @@ function MapBlock({
                 <div className="s">
                   {formatInt(tip.count)} achiziții
                   {national > 0 &&
-                    ` · ${((tip.value / national) * 100).toFixed(1)}% din total`}
+                    ` · ${formatShare(tip.value / national)} din total`}
                 </div>
                 <div className="s">click → deschide achizițiile județului</div>
               </>
@@ -1437,8 +1546,8 @@ function MapBlock({
             <tr key={r.key}>
               <td className="pos">{i + 1}</td>
               <td>
-                <a href={countyUrl(r.label)} target="_blank" rel="noopener">
-                  {r.label} ↗
+                <a href={countyUrl(r.label)}>
+                  {r.label} →
                 </a>
               </td>
               <td className="num">{display(r.value)}</td>
@@ -1482,7 +1591,41 @@ function csvQ(s: string | null | undefined): string {
   return `"${safe.replaceAll('"', '""')}"`;
 }
 
-function exportCsv(data: BlockData, spec: AskSpec) {
+/** The link that reopens this answer (the page runs it on arrival). */
+function answerLink(spec: AskSpec): string {
+  return `${window.location.origin}/intreaba?spec=${encodeURIComponent(encodeSpec(spec))}`;
+}
+
+function CopyIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="8" y="8" width="12" height="12" rx="2" />
+      <path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" />
+    </svg>
+  );
+}
+
+function ShareIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="18" cy="5" r="3" />
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="19" r="3" />
+      <path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4" />
+    </svg>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 20h4L19 9l-4-4L4 16v4Z" />
+      <path d="m13.5 6.5 4 4" />
+    </svg>
+  );
+}
+
+function exportCsv(data: BlockData, spec: AskSpec, title: string) {
   let lines: string[];
   switch (data.block) {
     case "table":
@@ -1591,7 +1734,7 @@ function exportCsv(data: BlockData, spec: AskSpec) {
   const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "intreaba-rezultat.csv";
+  a.download = `${fileSlug(title)}.csv`;
   a.click();
   URL.revokeObjectURL(a.href);
 }

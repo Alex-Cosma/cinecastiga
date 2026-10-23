@@ -17,7 +17,10 @@ import {requestSourceCsv,downloadSourceCsv} from "@/lib/ask/source-csv";
 
 export interface EvidenceDrawerProps {
   spec: AskSpec;
+  /** The answer's title: the question exactly as it was answered. */
   title: string;
+  /** The part of the answer opened (a row, a year, a category), shown under the title. */
+  scopeLabel?: string | undefined;
   scope?: EvidenceScope | undefined;
   onClose: () => void;
   onSave?: (() => void) | undefined;
@@ -30,7 +33,9 @@ type Response = ({ ok: true } & DrillResult) | { ok: false; error: string };
 const count = (n: number) => n.toLocaleString("ro-RO");
 const date = (value: string | null) => value ? value.split("-").reverse().join(".") : "Dată neprecizată";
 
-export default function EvidenceDrawer({ spec, title, scope, onClose, onSave, initialFilters, connection, peer }: EvidenceDrawerProps) {
+export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel, scope, onClose, onSave, initialFilters, connection, peer }: EvidenceDrawerProps) {
+  // Saved and followed selections keep both the question and the part opened.
+  const title = scopeLabel ? `${questionTitle} · ${scopeLabel}` : questionTitle;
   const dialog = useRef<HTMLDialogElement>(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
@@ -128,7 +133,7 @@ export default function EvidenceDrawer({ spec, title, scope, onClose, onSave, in
       if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) closeRef.current();
     }}>
     <header className="ev-header">
-      <div><p className="ev-eyebrow">Datele din spatele răspunsului</p><h2 id="evidence-title">Poți verifica fiecare leu.</h2></div>
+      <div><p className="ev-eyebrow">Înregistrările din spatele răspunsului</p><h2 id="evidence-title">{questionTitle}</h2>{scopeLabel && <p className="ev-scope-label">{scopeLabel}</p>}</div>
       <button type="button" className="ev-close" onClick={onClose} aria-label="Închide lista surselor" autoFocus>×</button>
     </header>
     <div className={`ev-load-status${busy ? " is-active" : ""}`} role="status" aria-live="polite" aria-atomic="true">
@@ -138,7 +143,7 @@ export default function EvidenceDrawer({ spec, title, scope, onClose, onSave, in
       </div></>}
     </div>
     <div className="ev-content">
-      <p className="ev-question">{title}</p>
+
       {peer?.selection.kind === "comparison" && <p className="ev-exact-total">La salvare se păstrează grupul complet; filtrele listei nu schimbă comparația salvată.</p>}
       {busy && !result && <div className="ev-skeleton" aria-hidden="true">
         <div className="ev-skeleton-summary"><span /><span /></div>
@@ -165,9 +170,9 @@ export default function EvidenceDrawer({ spec, title, scope, onClose, onSave, in
         {filtered && <p className="ev-exact-total">Suma exactă a listei filtrate: <strong>{formatEvidenceAmount(result.value, true)}</strong>.</p>}
         {result.scopeNotes.map((note, i) => <p key={i}>{note}</p>)}
         {result.profile && <>
-          <p>Indicele de risc (CRI) = numărul semnalelor active ÷ numărul indicatorilor aplicabili: 5 pentru autorități, 4 pentru furnizori. <Link href="/metodologie" target="_blank" rel="noopener noreferrer">Vezi metodologia ↗</Link></p>
+          <p>Indicele de risc (CRI) = numărul semnalelor active ÷ numărul indicatorilor aplicabili: 5 pentru autorități, 4 pentru furnizori. <Link href="/metodologie">Vezi metodologia →</Link></p>
           {result.profiles.map((p) => <div className="ev-formula-profile" key={`${p.role}:${p.entityId}`}>
-            <Link href={`/entitati/${p.entityId}`} target="_blank" rel="noopener noreferrer">{p.name} ↗</Link>
+            <Link href={`/entitati/${p.entityId}`}>{p.name}</Link>
             <span>{p.flags.length} ÷ {p.applicable} = {p.cri === null ? "indice indisponibil" : p.cri.toLocaleString("ro-RO", { maximumFractionDigits: 4 })}</span>
             <small>{p.flags.length ? p.flags.map((flag) => FLAG_META[flag]?.title ?? flag).join(" · ") : "Niciun indicator activ"}</small>
           </div>)}
@@ -197,8 +202,8 @@ export default function EvidenceDrawer({ spec, title, scope, onClose, onSave, in
           <tbody>{result.rows.map((r) => {
             const links = evidenceLinks(r);
             return <tr key={`${r.src}:${r.refId}:${r.supplierId}`}>
-              <td data-label="Înregistrare">{r.refId ? <Link className="ev-contract-title" href={r.src === "contracts" ? `/contracte/i/${r.refId}` : `/achizitii/${r.refId}`} target="_blank" rel="noopener noreferrer">{r.title || r.cpvName || r.daCode || `Înregistrarea ${r.refId}`} ↗</Link> : null}<strong>{r.daCode ?? `#${r.refId ?? "?"}`}</strong><span className="ev-muted">{r.src === "da" ? "Finalizată" : "Semnat"} {r.src === "contracts" && !r.date ? "· dată sursă improbabilă" : date(r.date)} · {r.src === "da" ? "Achiziție directă" : "Contract"}</span><span>{r.cpvName ?? "Categorie CPV neprecizată"}</span><small className="ev-muted">{r.cpvCode ? `CPV ${r.cpvCode}` : ""}</small></td>
-              <td data-label="Instituție și furnizor"><div className="ev-party">{r.authorityId ? <Link href={`/entitati/${r.authorityId}`} target="_blank" rel="noopener noreferrer">{r.authority ?? `Instituție #${r.authorityId}`}</Link> : r.authority ?? "Instituție neprecizată"}</div><span className="ev-party-arrow" aria-hidden="true">↓</span><div className="ev-party">{r.supplierId ? <Link href={`/entitati/${r.supplierId}`} target="_blank" rel="noopener noreferrer">{r.supplier ?? `Furnizor #${r.supplierId}`}</Link> : r.supplier ?? "Furnizor neprecizat"}</div><small className="ev-muted">{r.county ?? "Județ neprecizat"}</small></td>
+              <td data-label="Înregistrare">{r.refId ? <Link className="ev-contract-title" href={r.src === "contracts" ? `/contracte/i/${r.refId}` : `/achizitii/${r.refId}`}>{r.title || r.cpvName || r.daCode || `Înregistrarea ${r.refId}`}</Link> : null}<strong>{r.daCode ?? `#${r.refId ?? "?"}`}</strong><span className="ev-muted">{r.src === "da" ? "Finalizată" : "Semnat"} {r.src === "contracts" && !r.date ? "· dată sursă improbabilă" : date(r.date)} · {r.src === "da" ? "Achiziție directă" : "Contract"}</span><span>{r.cpvName ?? "Categorie CPV neprecizată"}</span><small className="ev-muted">{r.cpvCode ? `CPV ${r.cpvCode}` : ""}</small></td>
+              <td data-label="Instituție și furnizor"><div className="ev-party">{r.authorityId ? <Link href={`/entitati/${r.authorityId}`}>{r.authority ?? `Instituție #${r.authorityId}`}</Link> : r.authority ?? "Instituție neprecizată"}</div>{r.county && <small className="ev-muted">Județul instituției: {r.county}</small>}<span className="ev-party-arrow" aria-hidden="true">↓</span><div className="ev-party">{r.supplierId ? <Link href={`/entitati/${r.supplierId}`}>{r.supplier ?? `Furnizor #${r.supplierId}`}</Link> : r.supplier ?? "Furnizor neprecizat"}</div></td>
               <td data-label="Valoare"><strong className="ev-row-value">{formatEvidenceAmount(r.valueExact)}</strong>{r.valueSuspect && <span className="ev-warning">Valoare posibil introdusă eronat</span>}{r.nWinners && r.nWinners > 1 ? <span className="ev-muted">Cotă 1/{r.nWinners} din contract</span> : null}
                 <details className="ev-record-details"><summary>Detalii importate</summary><dl><dt>ID SEAP</dt><dd>{r.src === "da" ? r.refId : r.caNoticeId ?? "Lipsește"}</dd><dt>ID rând</dt><dd>{r.refId}</dd><dt>Valoare exactă</dt><dd>{r.valueExact} RON</dd>{r.contractValueFull !== null && <><dt>Contract integral</dt><dd>{formatEvidenceAmount(r.contractValueFull)}</dd><dt>Câștigători</dt><dd>{r.nWinners}</dd></>}{r.estimatedValueRon !== null && <><dt>Valoare estimată</dt><dd>{r.estimatedValueRon.toLocaleString("ro-RO")} lei</dd></>}</dl></details>
               </td>
