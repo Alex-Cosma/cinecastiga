@@ -3,6 +3,8 @@ import { memoryVocabulary, type MemoryFixture } from "./memory-vocabulary";
 import { ENTITY_HINT, PERSON_HINT, RulesInterpreter } from "./rules";
 import { FIXTURE } from "./rules.fixture";
 import { resultFor } from "./to-spec";
+import { applyInterpretation } from "../topic-search/interpretation";
+import { parseTopicScope } from "../topic-search/shared";
 
 /**
  * The first-visitor test of 23 Oct 2026 (vocabulary track): the words people
@@ -140,6 +142,19 @@ describe("vocabulary from the first-visitor test (migration 0082 and the rules a
     const { i } = await ask("cat a cheltuit spitalul judetean de urgenta din judetul satu mare");
     expect(i.entityAlternatives.map((e) => e.county).filter((c) => c !== "Satu Mare")).toEqual([]);
     expect(i.authority?.name ?? i.entityAlternatives[0]?.name).toBe("SPITALUL JUDETEAN SATU MARE");
+  });
+
+  it("/cauta answers a typed CPV code and names every subject it counts", async () => {
+    const onCauta = async (q: string) => {
+      const scope = parseTopicScope(new URLSearchParams(`q=${encodeURIComponent(q)}`));
+      return applyInterpretation(scope, resultFor(await interpreter.interpret(scope.q, { now: NOW })), null, NOW);
+    };
+    const code = await onCauta("45233140");
+    expect(code.subject).toMatchObject({ term: "45233140-2", label: "Lucrări de drumuri" });
+    expect(code.answer?.total.spec.filters.cpvTerm).toBe("45233140-2");
+    const both = await onCauta("parcuri si spatii verzi");
+    expect(both.answer?.total.spec.filters.cpvTerm).toBe("parcuri + spatii verzi");
+    expect(both.answer?.total.sentence).toMatch(/„parcuri și spatii verzi”/);
   });
 
   it("the hint for a partial list asks institutions for a locality, people for birth data", async () => {
