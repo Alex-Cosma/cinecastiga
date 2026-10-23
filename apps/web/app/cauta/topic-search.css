@@ -137,3 +137,5 @@
  /* Long titles: three lines, so the amount and "instituție → firmă" stay in view; the link opens the full title */
  .topic-record:not(.topic-entity):not(.topic-document) h3{display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 }
+.topic-answer-alternative{margin:4px 0 0!important}
+.topic-answer-alternative>a{display:inline-flex;align-items:center;gap:6px;min-height:36px;font-size:14px;font-weight:500}

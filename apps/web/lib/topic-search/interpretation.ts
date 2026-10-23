@@ -65,7 +65,7 @@ export interface TopicInterpretation {
    * Subject answer through the Ask engine (/api/ask), only when the reading is unambiguous.
    * `evidenceHref` opens every record the total counts; `empty` is said instead of "0 lei".
    */
-  answer: { total: { spec: AskSpec; sentence: string }; top: { spec: AskSpec; sentence: string }; href: string; evidenceHref: string; empty: string; cpv: string[]; cpvExcluded: string[] } | null;
+  answer: { total: { spec: AskSpec; sentence: string }; top: { spec: AskSpec; sentence: string }; href: string; evidenceHref: string; empty: string; domains: { href: string; label: string } | null; cpv: string[]; cpvExcluded: string[] } | null;
   /**
    * The words are a whole question the rules read cleanly ("cine ia banii
    * oradea"): the page answers it first and the words, searched as written,
@@ -236,7 +236,22 @@ function shortAnswer(reading: Interpretation, choice: { place?: PlaceMatch | nul
     // Ask runs the spec and opens the records behind the total.
     evidenceHref: `${askHref(total)}&drill=1`,
     empty: emptyAnswerText(totalSentence, labels.subject ?? null),
+    domains: domainsOf(reading, choice, total, totalSentence),
     cpv: [],
     cpvExcluded: [],
   };
+}
+
+/**
+ * The same buyers without the subject, by domain: where their acquisitions
+ * are classified when the subject's classes hold nothing ("parcuri" at a town
+ * hall that files them under green spaces). Only for a named buyer scope.
+ */
+function domainsOf(reading: Interpretation, choice: { place?: PlaceMatch | null }, total: AskSpec, totalSentence: string): { href: string; label: string } | null {
+  const f = total.filters;
+  if (!f.cpvTerm || !(f.uatSiruta || f.county || f.authorityName || f.authorityId)) return null;
+  const spec = specFor({ ...reading, subjects: [], subjectChoices: null }, 'breakdown', choice).spec;
+  if (!spec || spec.filters.cpvTerm) return null;
+  const where = /făcute de (.+)\?$/.exec(totalSentence)?.[1];
+  return { href: askHref(spec), label: where ? `Vezi la ce domenii sunt încadrate achizițiile făcute de ${where}` : 'Vezi la ce domenii sunt încadrate achizițiile din această selecție' };
 }
