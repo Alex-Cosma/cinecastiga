@@ -9,6 +9,7 @@ import {assertContractExclusionsQuality,assertContractIdentityQuality,createDb,c
 import {seedVerifiedIdentity} from '../test/contract-identity-fixture.js';
 import type {ArchivedAward,IdentityContract} from './contract-identity.js';
 import {revalidateApprovedContractIdentities} from './revalidate-contract-identities.js';
+import {validateBatch1Snapshot,type SnapshotCheck} from '../monitoring/validate.js';
 import {discoverAndApproveContractIdentities} from './discover-contract-identities.js';
 
 // The memo is never used by a transaction that has itself written a source
@@ -155,7 +156,40 @@ describe.skipIf(!dedicated)('snapshot hashes computed once per processing run',(
   expect(cache.stats.reused).toBeGreaterThan(cache.stats.computed);
   expect(cache.stats.invalidated).toBeGreaterThanOrEqual(1);
   expect(cache.stats.bypassed).toBe(typed?1:3);
-  expect(withMemo.hashCache).toMatchObject({mismatches:0,compared:3});
+  // Every memo entry: the 3 members and the 4 temporarily excluded publications.
+  expect(withMemo.hashCache).toMatchObject({mismatches:0,compared:7});
+ });
+
+ it('final validation recomputes temporary exclusions and every memo entry after a missed invalidation',async()=>{
+  const cache=createSnapshotHashCache('missed-write');
+  const {steps}=await processingRun(true,cache);
+  expect(steps['validation']).toMatchObject({valid:true});
+  expect(await sql`select contract_id::text id from marts.contract_identity_exclusions order by 1`).toEqual([{id:'5'},{id:'6'},{id:'7'},{id:'8'}]);
+  expect(cache.hashes.has('7')).toBe(true);
+  // A write the change tracking cannot see (trigger off for its duration) to an
+  // excluded publication, never a member.
+  const token=await snapshotHashSourceToken(sql);
+  await sql`alter table core.contracts disable trigger contract_identity_source_changed`;
+  try{await sql`update core.contracts set title='Contract lucrari modificat' where id=7`;}
+  finally{await sql`alter table core.contracts enable trigger contract_identity_source_changed`;}
+  expect(await snapshotHashSourceToken(sql)).toBe(token);
+  // The memo-based gates of the run are blind to it; a fresh check is not.
+  await expect(assertContractExclusionsQuality(sql,cache)).resolves.toMatchObject({valid:true});
+  await expect(assertContractExclusionsQuality(sql)).rejects.toThrow('1 changed members');
+  expect(await readContractIdentityQuality(sql)).toMatchObject({valid:true});
+  // The final validation fails twice over: the fresh exclusion check, and the
+  // memo cross-check, which covers excluded ids, not only members.
+  const checks:SnapshotCheck[]=[];
+  await validateBatch1Snapshot(sql,{fullProfiles:false,allAnnual:false,identityHashes:cache},check=>checks.push(check)).catch(()=>null);
+  const byName=Object.fromEntries(checks.map(c=>[c.check,c]));
+  expect(byName['contract_publication_identity']).toMatchObject({passed:false,details:{staleMembers:0,hashCache:{mismatches:1}}});
+  expect(byName['contract_identity_exclusions']).toMatchObject({passed:false,details:{staleExclusions:1,examples:['7']}});
+  // A replaced trigger body turns the memo off.
+  const [fn]=await sql`select pg_get_functiondef('marts.contract_identity_source_changed()'::regprocedure) def`;
+  await sql.unsafe(String(fn!.def).replace('RETURN NULL;','RETURN NULL; -- replaced'));
+  try{expect(await snapshotHashSourceToken(sql)).toBeNull();}
+  finally{await sql.unsafe(String(fn!.def));}
+  expect(await snapshotHashSourceToken(sql)).not.toBeNull();
  });
 
  it('reuses hashes only while every source relation is unchanged and fails closed otherwise',async()=>{

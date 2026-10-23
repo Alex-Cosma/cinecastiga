@@ -1,6 +1,6 @@
 import { contractReportable } from '@seap/db';
 import { readContractMoneyQuality } from "@seap/db";
-import { contractRonValue, canonicalContract, readContractIdentityQuality, verifyContractIdentityQuality, winnerIsSupplier } from "@seap/db";
+import { contractRonValue, canonicalContract, readContractExclusionsQuality, readContractIdentityQuality, verifyContractIdentityQuality, winnerIsSupplier } from "@seap/db";
 import { validateSignalLookup, type DbSql, type SnapshotHashCache } from "@seap/db";
 import { METHODOLOGY_VERSION } from "../flags/methodology.js";
 import { assertCeilingEras } from "../flags/thresholds.js";
@@ -22,6 +22,9 @@ export async function validateBatch1Snapshot(q: DbSql, options: {
   // Always recomputed from the sources (a fresh full pass), never from the memo.
   const identityQuality = options.identityHashes ? await verifyContractIdentityQuality(q, options.identityHashes) : await readContractIdentityQuality(q);
   report("contract_publication_identity",identityQuality.valid,"all approved publications and current source fingerprints",identityQuality);
+  // Temporary exclusions, likewise recomputed: the earlier exclusion gates of a run may use the memo.
+  const exclusionQuality = await readContractExclusionsQuality(q);
+  report("contract_identity_exclusions",exclusionQuality.valid,"all temporarily excluded publications and current source fingerprints",exclusionQuality);
   const moneyQuality = await readContractMoneyQuality(q);
   report("contract_currency_integrity", moneyQuality.structuralErrors === 0 && moneyQuality.sourceErrors === 0, "all contract monetary records and verified archive amounts; exclusions retained explicitly", moneyQuality);
   const [ted] = await q`select count(*)::text total,
