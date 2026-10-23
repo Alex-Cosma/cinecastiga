@@ -70,4 +70,10 @@ describe("<Term>", () => {
   it("falls back to the glossary title when no label is given", () => {
     expect(render("semnal")).toContain(">Semnal<span class=\"term-mark\"");
   });
+
+  it("explains a caveat built from page data without a glossary entry", () => {
+    const html = renderToStaticMarkup(createElement(Term, { tip: true, title: "Plafon", text: "Suma depășește plafonul." }));
+    expect(html).toContain("aria-label=\"Plafon: ce înseamnă\"");
+    expect(html).toContain("<b>Plafon.</b> Suma depășește plafonul.");
+  });
 });

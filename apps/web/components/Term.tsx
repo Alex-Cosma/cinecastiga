@@ -13,8 +13,15 @@ import { GLOSSARY, type GlossaryId } from "../lib/glossary";
  * can widen a 390 px screen). Escape or a second press closes it. Do not
  * place a Term inside a link or another button: split the link instead.
  */
-export default function Term({ id, children, className, tip = false }: { id: GlossaryId; children?: ReactNode; className?: string; tip?: boolean }) {
-  const entry = GLOSSARY[id];
+type TermProps = { children?: ReactNode; className?: string; tip?: boolean } & (
+  | { id: GlossaryId; title?: never; text?: never }
+  // A caveat built from page data (one signal, one contract) that has no
+  // fixed glossary entry. The binding wording still lives in the caller.
+  | { id?: never; title: string; text: ReactNode }
+);
+
+export default function Term({ children, className, tip = false, ...source }: TermProps) {
+  const entry = source.id !== undefined ? GLOSSARY[source.id] : { title: source.title, text: source.text };
   const [open, setOpen] = useState(false);
   const definitionId = useId();
   // The explanation floats on hover, focus or tap instead of opening in the
