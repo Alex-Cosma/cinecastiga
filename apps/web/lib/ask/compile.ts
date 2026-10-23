@@ -146,7 +146,8 @@ export interface TrendRow {
 
 export type BlockData =
   // total/page/pageSize present only in paged mode (clasament without topN)
-  | { block: "table"; rows: TableRow[]; total?: number; page?: number; pageSize?: number }
+  // totals: the whole ranking (every ranked entity, not only the shown rows), when computed in the same query.
+  | { block: "table"; rows: TableRow[]; total?: number; page?: number; pageSize?: number; totals?: { value: number; count: number; entities: number } }
   | { block: "stat"; stat: StatValue }
   | { block: "timeseries"; series: SeriesPoint[] }
   // unknown: records of the same selection whose authority has no county.
@@ -1140,9 +1141,15 @@ export async function runSpec(
             // would force a heap fetch per row, a full seq scan on big
             // counties), then attach display names for just the winners.
             const aggSort = sortKey === "count" ? s`n` : s`v`;
+            // Window totals are evaluated after grouping and before the limit:
+            // the whole ranking's value, records and entities, at no extra scan,
+            // so the answer can say "% din total" and "Alte N firme".
             const r = (await s`
               with topg as (
-                select ${idCol} id, coalesce(sum(d.closing_value), 0) v, count(*) n
+                select ${idCol} id, coalesce(sum(d.closing_value), 0) v, count(*) n,
+                       sum(coalesce(sum(d.closing_value), 0)) over () tv,
+                       sum(count(*)) over () tn,
+                       count(*) over () te
                 from ${txtAgg} d
                 where ${whereFrag()} and ${idCol} is not null
                 group by ${idCol}
@@ -1150,12 +1157,13 @@ export async function runSpec(
                 ${limitFrag}
               )
               select t.id, coalesce(max(ep.name_display), '(fără nume)') nm,
-                     max(ep.county) co, t.v, t.n
+                     max(ep.county) co, t.v, t.n, t.tv, t.tn, t.te
               from topg t
               left join marts.entity_profile ep on ep.entity_id = t.id and ep.role = ${dim}
-              group by t.id, t.v, t.n
+              group by t.id, t.v, t.n, t.tv, t.tn, t.te
               order by ${sortKey === "count" ? s`t.n` : s`t.v`} ${tableOpts.sort ? dir : s`desc`}, t.id
-            `) as unknown as { id: string; nm: string; co: string | null; v: string; n: string }[];
+            `) as unknown as { id: string; nm: string; co: string | null; v: string; n: string; tv: string; tn: string; te: string }[];
+            const first = r[0];
             return {
               block: "table",
               rows: r.map((p) => ({
@@ -1167,6 +1175,7 @@ export async function runSpec(
                 population: null,
               })),
               ...pagedMeta(Number(cnt?.[0]?.t ?? 0)),
+              ...(first ? { totals: { value: Number(first.tv), count: Number(first.tn), entities: Number(first.te) } } : {}),
             };
           }
           // The entity's own county, as on the value/count path above: a

@@ -110,3 +110,8 @@
   .ia-example { flex-direction: column; gap: 2px; }
   .ia-panel { padding: 16px; }
 }
+
+/* A link that held the question: the answer first, the builder one tap away. */
+.ia-builder-collapsed { margin: 4px 0 0; }
+.ia-change-question { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 10px 16px; border: 1px solid var(--line-strong, var(--line)); border-radius: 8px; background: var(--surface); color: var(--accent); font: 600 14px/1.3 var(--body); cursor: pointer; }
+.ia-change-question:hover { border-color: var(--accent); background: var(--accent-soft); }

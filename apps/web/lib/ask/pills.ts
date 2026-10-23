@@ -12,7 +12,7 @@ const BLOCK_LABEL: Record<AskSpec["block"], string> = {
   map: "pe județe (hartă)",
   compare: "comparație",
   distribution: "poziție în distribuția de risc",
-  breakdown: "compoziție pe categorii",
+  breakdown: "pe ce s-au dus banii",
   scatter: "risc vs volum (outlieri)",
   sankey: "fluxul banilor",
   network: "rețea de parteneri",
@@ -56,7 +56,7 @@ export function buildPills(spec: AskSpec, grounding: Grounding): string[] {
         ? "număr de achiziții"
         : spec.measure === "value_per_capita"
           ? "lei / cap de locuitor"
-          : "Σ valoare (lei)",
+          : "Total (lei)",
     );
   }
   if (grounding.cpv && grounding.cpv.prefixes.length > 0) {

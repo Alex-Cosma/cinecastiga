@@ -177,7 +177,7 @@ describe("the editable question contract", () => {
     expect(defaultQuestion()).toEqual({ block: "table", dim: "supplier", measure: "value", topN: 10, filters: {} });
     const validated = validateSpec(defaultQuestion());
     expect(validated).not.toHaveProperty("error");
-    if (!("error" in validated)) expect(describeQuestion(validated)).toContain("toți anii disponibili");
+    if (!("error" in validated)) expect(describeQuestion(validated)).toBe("Cine câștigă contractele de la instituțiile din toată țara, în toți anii?");
   });
 
   it("restores a full paginated ranking without turning it into a dirty top-ten draft", () => {
