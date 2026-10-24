@@ -11,6 +11,7 @@ import {
 import { KIND_LABEL } from "./authority-kind";
 import { countyIsFirmSeat, isHistoricalProfile, unsupportedPopulationView } from "./population";
 import { describeConditions } from "./filters/describe";
+import { retarget } from "./filters/retarget";
 import type { OriginHint } from "./filters/origin";
 import { PER_CAPITA_SOURCE, perCapitaCaveat, POPULATION_CARD_NOTE, readPerCapitaPopulations, type PerCapitaPopulations } from "./per-capita";
 import { sectorUnit } from "../peer-population";
@@ -486,7 +487,7 @@ export async function runSpec(
   // Value superlatives share the transaction ranking, including both streams,
   // its filters, allocation rules and deterministic tie break. CRI stays historical.
   if (spec.block === "entity_card" && spec.rankBy === "value") {
-    const ranked = await runSpec(sql, { ...spec, block: "table", measure: "value", topN: 1 }, grounding);
+    const ranked = await runSpec(sql, { ...retarget(spec, "table"), measure: "value", topN: 1 }, grounding);
     if ("error" in ranked) return ranked;
     const winner = ranked.data.block === "table" ? ranked.data.rows[0] : undefined;
     if (!winner?.entityId) return { error: "Niciun rezultat pentru aceste filtre.", caveats: ranked.caveats };

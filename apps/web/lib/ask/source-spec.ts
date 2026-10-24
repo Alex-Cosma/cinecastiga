@@ -1,17 +1,17 @@
 import { encodeSpec } from "./permalink";
 import type { AskSpec } from "./spec";
+import type { QuestionSpec } from "./question-ui";
 import type { TableRow } from "./compile";
+import { retarget } from "./filters/retarget";
 
 /** Source drill-downs preserve the executed measure's plausibility rule.
  * Count questions can include rows excluded from monetary aggregates. */
-function rowsSpec(spec: AskSpec): AskSpec {
-  return {
-    ...spec,
-    block: "stat",
-    measure: spec.measure === "count" ? "count" : "value",
-    ...(spec.dataset ? { dataset: spec.dataset } : {}),
-    filters: { ...spec.filters },
-  };
+const rowsSpec = (spec: AskSpec): AskSpec => retarget(spec, "stat");
+/** "Ce cumpără…": a slice one CPV level down is the same question on the slice's code. */
+export function breakdownDeeperSpec<S extends QuestionSpec>(spec: S, code: string): S {
+  const next = retarget(spec, "breakdown");
+  next.filters.cpvTerm = code;
+  return next;
 }
 /** Keep aggregate eligibility in the original population when opening a group. */
 export function entitySourceLink(spec: AskSpec, row:Pick<TableRow, "entityId" | "name">): string {
