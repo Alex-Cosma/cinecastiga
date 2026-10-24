@@ -178,12 +178,13 @@ describe("the conditions of a question", () => {
     const [threshold] = groupPredicates(ctx, fake`SOURCE`, andAll(fake, rows)).map(render);
     expect(threshold!.text).toBe(`d.supplier_id in (select d.supplier_id from SOURCE d where ${render(andAll(fake, rows)).text} and d.supplier_id is not null group by d.supplier_id having count(*) >= $${threshold!.params.length})`);
     expect(threshold!.params.at(-1)).toBe(5);
-    expect(groupPredicates(ctxFor({ ...all, minimumRecords: undefined } as AskSpec), fake`SOURCE`, fake`true`)).toEqual([]);
+    const { minimumRecords: _threshold, ...withoutThreshold } = all;
+    expect(groupPredicates(ctxFor(withoutThreshold), fake`SOURCE`, fake`true`)).toEqual([]);
   });
 
   it("bound direct acquisitions on every stream that has them, with one writer per stream", () => {
     expect([plafondFor("all"), plafondFor("da"), plafondFor("contracts")]).toEqual(["da-branch", "strict", "none"]);
-    const bound = (dataset: AskSpec["dataset"]) => texts(rowPredicates(ctxFor({ ...all, dataset, filters: {}, population: undefined, minimumRecords: undefined } as AskSpec)));
+    const bound = (dataset: NonNullable<AskSpec["dataset"]>) => texts(rowPredicates(ctxFor({ block: "stat", measure: "value", dataset, filters: {} })));
     expect(bound("da")).toEqual(["d.closing_value > 0 []", `d.closing_value <= $1 [${DA_PLAFOND_RON}]`]);
     expect(bound("contracts")).toEqual(["d.closing_value > 0 []"]);
   });
