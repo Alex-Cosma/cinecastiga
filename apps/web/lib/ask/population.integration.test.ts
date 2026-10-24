@@ -170,6 +170,12 @@ describe.runIf(Boolean(connection))("investigative population SQL (dedicated rol
         const bySort = await runSpec(q,paged,{},{ sort:"county", dir:"asc" });
         expect(bySort).toMatchObject({ data:{ block:"table", rows:[{ entityId:"11", county:"Cluj" },{ entityId:"10", county:"Ilfov" }] } });
         expect(await runSpec(q,paged,{},{ sort:"name", dir:"desc" })).toMatchObject({ data:{ block:"table", rows:[{ entityId:"10", county:"Ilfov" },{ entityId:"11", county:"Cluj" }] } });
+        // Paged totals come from the ranking's own count(*) over (); a page past the end counts on its own.
+        expect(bySort).toMatchObject({ data:{ total:2, page:0 } });
+        expect(await runSpec(q,paged,{})).toMatchObject({ data:{ block:"table", total:2, rows:[{ entityId:"10" },{ entityId:"11" }] } });
+        expect(await runSpec(q,paged,{},{ page:5 })).toMatchObject({ data:{ block:"table", total:2, page:5, rows:[] } });
+        expect(await runSpec(q,{ ...paged, dim:"county" },{})).toMatchObject({ data:{ block:"table", total:2, rows:[{ name:"Bucuresti" },{ name:"Vrancea" }] } });
+        expect(await runSpec(q,{ ...paged, dim:"county" },{},{ page:1 })).toMatchObject({ data:{ block:"table", total:2, rows:[] } });
         if (!("data" in bare)) throw new Error("table expected");
         // The column note sits next to the "Județ" header (AskPanel), not in the caveats.
         expect(bare.caveats.some(c => c.includes("Județ"))).toBe(false);
