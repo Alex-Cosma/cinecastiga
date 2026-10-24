@@ -135,6 +135,12 @@ export function perfCases(): PerfCase[] {
     perfCase("sources:network-selgros", "sources", "Sursele rețelei SELGROS", "network", firm(), { path: "rows" }),
     perfCase("sources:distribution-cluj-napoca", "sources", "Sursele profilului Municipiului Cluj-Napoca", "distribution", buyer(),
       { path: "rows", scope: { entityIds: [String(PERF_ENTITIES.clujNapoca.id)], role: "authority" } }),
+    // The source paths whose conditions F0 moved into lib/ask/predicates.ts: the DA bound
+    // on direct acquisitions only, a comparison, and a profile population chosen by kind.
+    perfCase("sources:stat-da-2025", "sources", "Sursele achizițiilor directe din 2025", "stat", all(top({ dataset: "da" }), years(2025)), { path: "rows", barMs: 2000 }),
+    perfCase("sources:compare-selgros-dedeman-2025", "sources", "Sursele comparației SELGROS cu DEDEMAN, 2025", "compare", all(CATALOG_CHOICES.compare!.edit, years(2025)), { path: "rows" }),
+    perfCase("sources:entity-card-risk-hospitals", "sources", "Sursele spitalului cu cel mai ridicat indice de risc", "entity_card",
+      all(top({ dim: "authority", rankBy: "risk" }), set({ authorityKind: "spital" })), { path: "rows" }),
     perfCase("csv:table-cluj-2025", "csv", "CSV: clasamentul din Cluj, 2025", "table", all(set({ county: "Cluj" }), years(2025)), { path: "csv", barMs: 2000 }),
     perfCase("csv:trend-2025-2026-selgros-row", "csv", "CSV: rândul SELGROS al trendului 2025 → 2026", "trend", years(2025, 2026), { path: "csv", scope: SELGROS_ROW, barMs: 2000 }),
     perfCase("csv:table-national", "csv", "CSV: clasamentul național implicit (primele 100.000)", "table", () => {}, { path: "csv", barMs: 2000 }),

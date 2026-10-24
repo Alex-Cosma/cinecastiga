@@ -1,6 +1,6 @@
 import { createDb, withMonitoringSnapshot, MonitoringRefreshUnavailableError, type DbSql } from "@seap/db";
-import { DA_PLAFOND_RON, KIND_PATTERNS } from "./ask/compile";
-import { AUTHORITY_KINDS, type AuthorityKind } from "./ask/spec";
+import { DA_PLAFOND_RON } from "./ask/compile";
+import { authorityKindExpression, authorityPeerKind } from "./ask/authority-kind";
 import { ConnectionError, readConnectionEntity, readConnectionEntities, assertConnectionIdentity } from "./connections";
 import { peerSourceSpec, peerScopeDescriptions, type PeerInput, type PeerFilters, type PeersResult, type PeerMember, type PeerYear } from "./peers-shared";
 import type { ConnectionEntity, ConnectionsResult } from "./connections-shared";
@@ -12,11 +12,8 @@ export const PEER_CAPTURE_LIMIT = 499;
 const database = globalThis as typeof globalThis & { __peerSql?: DbSql };
 const peerDatabase = () => database.__peerSql ??= createDb().sql;
 const fold = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-export function authorityPeerKind(name: string): AuthorityKind | null {
-  const matches = AUTHORITY_KINDS.filter(kind => KIND_PATTERNS[kind].some(pattern => new RegExp(`^${fold(pattern).split("%").map(s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join(".*")}$`, "u").test(fold(name))));
-  // A name matching two existing categories is not a reliable classification.
-  return matches.length === 1 ? matches[0]! : null;
-}
+// The kind of an institution has one home (lib/ask/authority-kind.ts), shared with Întreabă.
+export { authorityPeerKind };
 export function parsePeerInput(params: URLSearchParams): PeerInput {
   const allowed = new Set(["entityId", "role", "dataset", "year", "cpv", "county", "page", "identity", "checkpointId"]);
   for (const [key] of params) if (!allowed.has(key) || params.getAll(key).length > 1) throw new PeerError("Filtru necunoscut sau repetat. Comparația nu a fost extinsă.");
@@ -48,14 +45,6 @@ function member(row: Record<string, unknown>, entity: ConnectionEntity, filters:
   return { entity, recordCount: Number(row.record_count), totalExact: String(row.total_exact), meanRounded: String(row.mean_rounded),
     daRows: Number(row.da_rows), contractRows: Number(row.contract_rows), distinctContracts: Number(row.distinct_contracts),
     firstDate: row.first_date == null ? null : String(row.first_date).slice(0,10), lastDate: row.last_date == null ? null : String(row.last_date).slice(0,10), spec: peerSourceSpec(entity,filters) };
-}
-function kindPredicate(q: DbSql, kind: AuthorityKind) {
-  return KIND_PATTERNS[kind].map(pattern => q`lower(unaccent(e.name_display)) like ${fold(pattern)}`).reduce((a,b) => q`${a} or ${b}`);
-}
-function kindExpression(q: DbSql) {
-  const matchCount = AUTHORITY_KINDS.map(kind => q`case when (${kindPredicate(q,kind)}) then 1 else 0 end`).reduce((a,b) => q`${a}+${b}`);
-  const cases = AUTHORITY_KINDS.map(kind => q`when (${kindPredicate(q,kind)}) then ${kind}`).reduce((a,b) => q`${a} ${b}`);
-  return q`case when (${matchCount})=1 then case ${cases} else null end else null end`;
 }
 const methodology: PeersResult["methodology"] = { version: "peers-1", descriptions: [
   "Același an calendaristic, canal de achiziții și diviziune CPV. Grupul include între jumătate și dublul numărului de înregistrări eligibile al entității analizate.",
@@ -106,7 +95,7 @@ export async function getLegacyPeersInSnapshot(q: DbSql, input: PeerInput, check
   const population = q`with sources as (${selected}), stats as (
     select entity_id,${aggregate},sum(closing_value) total_numeric,avg(closing_value) mean_numeric from sources group by entity_id
   ), classified as (
-    select s.*,e.county,${input.role === "authority" ? kindExpression(q) : q`null::text`} authority_kind
+    select s.*,e.county,${input.role === "authority" ? authorityKindExpression(q, q`e.name_display`) : q`null::text`} authority_kind
     from stats s join core.entities e on e.id=s.entity_id and e.id<=9007199254740991 where e.id<>${input.entityId}
       and s.record_count between ${minimum} and ${maximum}
   ), type_eligible as (select * from classified where ${kind ? q`authority_kind=${kind}` : q`true`}),

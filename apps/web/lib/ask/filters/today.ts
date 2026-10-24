@@ -14,8 +14,8 @@ const LOCALITY_FORMS = TRANSACTION_FORMS.filter((form) => !["map", "compare", "n
 
 /**
  * TODAY_SCOPE: every key the engine of 4e90b00 applies, on each question it
- * applies it to. Almost everything is a selection on the records (whereFrag,
- * efWhere): the total and "% din total" change with it.
+ * applies it to. Almost everything is a selection on the records (rowPredicates,
+ * profilePredicates): the total and "% din total" change with it.
  */
 export const TODAY_SCOPE: Readonly<Partial<Record<FilterId, Partial<Record<AnswerForm, Scope>>>>> = {
   dataset: on(TRANSACTION_FORMS, "selection"),

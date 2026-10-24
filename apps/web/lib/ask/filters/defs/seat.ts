@@ -6,7 +6,7 @@ import { readAhead } from "./shared";
  * each record (same, other) or abroad, and an absolute county. Both are
  * selections (the total changes, with the total line) and never sit in a
  * group row. Read ahead (F0a); F4 implements them. Today the only seat a
- * question applies is `county` on firm profiles (efWhere, entity_flags.county).
+ * question applies is `county` on firm profiles (profilePredicates, entity_flags.county).
  */
 
 export const firmSeat = readAhead<string>({

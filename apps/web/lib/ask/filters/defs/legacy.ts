@@ -13,9 +13,10 @@ import { alwaysScope, edited, levels, setFilters } from "./shared";
 export const minimumRecords: FilterDef<MinimumRecords> = {
   id: "minimumRecords", keys: ["minimumRecords"], placement: "advanced", control: "minimum",
   label: "Număr minim de înregistrări",
-  // minimumRecordsSql: rows whose institution (or firm) has at least N rows in the
-  // filtered selection, before grouping. Refused on a trend and on the profiles.
-  engine: levels(TRANSACTION_FORMS.filter((form) => form !== "trend"), "row"), scope: alwaysScope("selection"),
+  // groupPredicates: rows whose institution (or firm) has at least N rows in the
+  // filtered selection, counted per entity before the answer groups them. A
+  // selection (the total changes). Refused on a trend and on the profiles.
+  engine: levels(TRANSACTION_FORMS.filter((form) => form !== "trend"), "group"), scope: alwaysScope("selection"),
   read: (spec) => spec.minimumRecords,
   write: (spec, value) => edited(spec, (next) => { if (value) next.minimumRecords = { ...value }; else delete next.minimumRecords; }),
   // "Adaugă un prag de înregistrări" inserts firms, 5; then "Cine?", "Cel puțin" (1–1.000.000) and "Elimină pragul".
@@ -26,7 +27,7 @@ const conditions = (...groups: QueryPopulation["groups"]): QueryPopulation => ({
 export const population: FilterDef<QueryPopulation> = {
   id: "population", keys: ["population"], placement: "advanced", control: "population",
   label: "Selecție precisă",
-  // populationSql on the record (d.*), also inside a trend's two years; refused on the profiles.
+  // populationSql in rowPredicates, on the record (d.*), also inside a trend's two years; refused on the profiles.
   engine: levels(TRANSACTION_FORMS, "row"), scope: alwaysScope("selection"),
   read: (spec) => spec.population,
   write: (spec, value) => edited(spec, (next) => { if (value) next.population = structuredClone(value); else delete next.population; }),
