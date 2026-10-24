@@ -21,9 +21,13 @@ import { PER_CAPITA_SOURCE, perCapitaCaveat, POPULATION_CARD_NOTE, readPerCapita
 import { martColumns } from "./mart-columns";
 import {
   compareParties, compareSharedPartners, compareTopPartners, planRollup, rollupBreakdown, rollupCountyTable, rollupMap, rollupMinimumCond,
-  monthRollupReady, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrend, rollupTrendMembers, scatterDensity,
+  monthRollupReady, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, rollupTrendMembers, scatterDensity,
   type RollupFilters, type RollupNeed, type RollupSource,
 } from "./rollups";
+import {
+  factsOfRow, factsSource, trendFactsRows, trendListOf, trendNoun, trendPartition, trendProfiles,
+  type TrendComposition, type TrendList, type TrendNoun, type TrendPartitionRow, type TrendRowFacts,
+} from "./trend-partition";
 import { sectorUnit } from "../peer-population";
 
 /**
@@ -206,12 +210,33 @@ export type BlockData =
   | { block: "network"; nodes: NetworkNode[]; focal: { entityId: string; name: string; role: string } }
   | { block: "entity_card"; card: EntityCardData }
   | { block: "fact_check"; fact: FactCheckData }
-  // change and months only when the spec has trend options (F2): a trend without them keeps today's shape.
-  | { block: "trend"; rowsTrend: TrendRow[]; yearA: number; yearB: number; change?: TrendChange; months?: MonthsWindow };
+  // trend-2 (F2, plan §4.7): rowsTrend is the chosen group (today's shape; every change without trend options), beside
+  // the first N of every group, the composition, the group noun and the facts of the shown rows (trend-partition.ts).
+  // The optional fields are absent from answers stored before trend-2 (captures, watch runs).
+  | {
+    block: "trend"; rowsTrend: TrendRow[]; yearA: number; yearB: number; change?: TrendChange; months?: MonthsWindow;
+    /** The list rowsTrend is (the change, or "first" with firstOnly). */
+    list?: TrendList; groups?: Partial<Record<TrendList, TrendRow[]>>; composition?: TrendComposition; noun?: TrendNoun;
+    /** By entity id, for the rows of every list; none on counties. Not compared by a watch (answerCore). */
+    rowFacts?: Record<string, TrendRowFacts>;
+  };
+
+/**
+ * 2018 on a trend (trend final §3.2, decision F2 "2018 scos doar din trend"):
+ * partialYears marks the direct acquisitions from 2 April, not the contracts,
+ * whose archive is dated from 2000 but holds half the contracts of 2019
+ * (59,967 against 129,947 on the local copy). The direct acquisitions alone
+ * have partialYears' own note.
+ */
+export const TREND_2018_NOTE: Record<"all" | "da" | "contracts", string | null> = {
+  all: "2018 e incomplet: achizițiile directe încep pe 2 aprilie, iar contractele din 2018 sunt jumătate din cele din 2019.",
+  contracts: "2018 e incomplet: contractele din 2018 sunt jumătate din cele din 2019.",
+  da: null,
+};
 
 /** The months a trend's answer counted and the data checkpoint it read them at; its sources send them back (runRows `months`). */
 export interface ExecutedWindow { months: MonthWindow; mode: MonthsMode; checkpoint: string | null }
-const monthsOf = (window: MonthsWindow | null): MonthsWindow => window ? { from: window.from, to: window.to, mode: window.mode } : WHOLE_YEAR;
+const monthsOf = (window: MonthsWindow | null): MonthsWindow => window ? { from: window.from, to: window.to, mode: window.mode } : { ...WHOLE_YEAR };
 /** The answer's window is no longer the one the data gives (a new checkpoint moved `auto`): its sources would list other records. */
 export const DATA_CHANGED = "Datele s-au actualizat; reîncarcă răspunsul.";
 
@@ -1607,65 +1632,58 @@ export async function runSpec(
           }
           const topN = spec.topN ?? 10;
           const dim = spec.dim ?? "authority";
-          // The group, its order (trendGroupSql) and the months; without trend options, today's answer and shape.
+          // trend-2 (plan §4.7): the partition of the selection, grouped once by entity or county
+          // (from a rollup when one answers it), with the first N of every group and the composition;
+          // the chosen group is rowsTrend (every change without trend options, as before trend-2).
           const group = trendGroupOf(spec);
-          const lens = spec.trend && Object.keys(spec.trend).length ? { change: group.change, months: monthsOf(trendWindow) } : {};
-          const rolledTrend = rollup ? await rollupTrend(s, rollup, { dim, yearA: yA, yearB: yB, topN, group }) : null;
+          const key: ReturnType<DbSql> = dim === "county" ? s`d.county` : dim === "authority" ? s`d.authority_id` : s`d.supplier_id`;
           const va: ReturnType<DbSql> = s`coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yA)}), 0)`;
           const vb: ReturnType<DbSql> = s`coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yB)}), 0)`;
-          if (dim === "county") {
-            const { having, order } = trendGroupSql(s, va, vb, group);
-            // Equal changes come out by county, as from the rollup.
-            const r = rolledTrend && "rows" in rolledTrend ? rolledTrend.rows.map((p) => ({ c: p.nm, va: p.va, vb: p.vb })) : (await s`
-              select d.county c, ${va} va, ${vb} vb
-              from ${txtAggNames} d
-              where ${whereFrag({ years: false })} and d.county is not null
-                and ${trendYearsPredicate(s, yA, yB, w.trendMonths)}
-              group by 1
-              ${having ? s`having ${having}` : s``}
-              order by ${order} desc, c
-              limit ${topN}
-            `) as unknown as { c: string; va: string; vb: string }[];
-            return {
-              block: "trend",
-              yearA: yA,
-              yearB: yB,
-              rowsTrend: r.map((p) => ({
-                entityId: null,
-                name: p.c,
-                county: null,
-                valueA: Number(p.va),
-                valueB: Number(p.vb),
-              })),
-              ...lens,
-            };
-          }
-          const idCol: ReturnType<DbSql> = dim === "authority" ? s`d.authority_id` : s`d.supplier_id`;
-          const nameCol = dim === "authority" ? s`d.authority_name` : s`d.supplier_name`;
-          const { having, order } = trendGroupSql(s, va, vb, group, { id: idCol, role: dim, yearB: yB });
-          // Equal changes come out by id, as from the rollup (consortium partners share a value).
-          const r = rolledTrend && "rows" in rolledTrend ? rolledTrend.rows : (await s`
-            select ${idCol} id, max(${nameCol}) nm, max(d.county) co, ${va} va, ${vb} vb
-            from ${txtAggNames} d
-            where ${whereFrag({ years: false })} and ${idCol} is not null
-              and ${trendYearsPredicate(s, yA, yB, w.trendMonths)}
-            group by ${idCol}
-            ${having ? s`having ${having}` : s``}
-            order by ${order} desc, ${idCol}
-            limit ${topN}
-          `) as unknown as { id: string; nm: string; co: string | null; va: string; vb: string }[];
+          const selection = andAll(s, [whereFrag({ years: false }), trendYearsPredicate(s, yA, yB, w.trendMonths)]);
+          const rolledTrend = rollup ? rollupTrendGrouped(s, rollup, { dim, yearA: yA, yearB: yB }) : null;
+          // Names and counties come from entity_profile after the grouping, so the live query groups the slim union.
+          const grouped: ReturnType<DbSql> = rolledTrend && "grouped" in rolledTrend ? rolledTrend.grouped : s`
+            select ${key} id, ${va} va, ${vb} vb
+            from ${txtAgg} d
+            where ${selection} and ${key} is not null
+            group by ${key}
+          `;
+          const partition = await trendPartition(s, grouped, { group, topN, first: dim === "county" ? null : { role: dim, yearB: yB } });
+          const lists = Object.entries(partition.lists) as [TrendList, TrendPartitionRow[]][];
+          // The facts and the profile of the shown entities only (≤ 6 × N ids), on the id indexes.
+          const shown = dim === "county" ? [] : [...new Set(lists.flatMap(([, rows]) => rows.map((r) => r.id)))];
+          const partnerRole = dim === "supplier" ? "authority" : "supplier";
+          const facts = dim === "county" ? [] : await trendFactsRows(s, {
+            source: factsSource(s, dataset, Boolean(w.kind)), where: selection, id: key,
+            partner: dim === "supplier" ? s`d.authority_id` : s`d.supplier_id`, ids: shown, yearA: yA, yearB: yB,
+          });
+          const profiles = dim === "county" ? new Map() : await trendProfiles(s, [
+            { role: dim, ids: shown }, { role: partnerRole, ids: facts.flatMap((f) => f.partner ? [f.partner] : []) },
+          ]);
+          // trend-2: the county of an entity's row is its own (entity_profile, as on the rankings), not a buyer's.
+          const toRow = (r: TrendPartitionRow): TrendRow => {
+            if (dim === "county") return { entityId: null, name: r.id, county: null, valueA: Number(r.va), valueB: Number(r.vb) };
+            const profile = profiles.get(`${dim}:${r.id}`);
+            return { entityId: r.id, name: profile?.name ?? "(fără nume)", county: profile?.county ?? null, valueA: Number(r.va), valueB: Number(r.vb) };
+          };
+          const groups = Object.fromEntries(lists.map(([list, rows]) => [list, rows.map(toRow)])) as Partial<Record<TrendList, TrendRow[]>>;
+          const rowFacts: Record<string, TrendRowFacts> = {};
+          for (const row of Object.values(groups).flat())
+            if (row.entityId && !rowFacts[row.entityId])
+              rowFacts[row.entityId] = factsOfRow({ entityId: row.entityId, valueA: row.valueA, valueB: row.valueB }, { yearA: yA, yearB: yB },
+                facts, profiles, { own: dim as "authority" | "supplier", partner: partnerRole });
           return {
             block: "trend",
             yearA: yA,
             yearB: yB,
-            rowsTrend: r.map((p) => ({
-              entityId: String(p.id),
-              name: p.nm,
-              county: p.co,
-              valueA: Number(p.va),
-              valueB: Number(p.vb),
-            })),
-            ...lens,
+            rowsTrend: groups[trendListOf(group)] ?? [],
+            list: trendListOf(group),
+            change: group.change,
+            months: monthsOf(trendWindow),
+            groups,
+            composition: partition.composition,
+            noun: trendNoun(spec),
+            ...(dim === "county" ? {} : { rowFacts }),
           };
         }
       }
@@ -1708,6 +1726,9 @@ export async function runSpec(
       if (note) caveats.push(note);
     }
   }
+  // trend-2: an old link with 2018 still runs, with the note (trend final §3.2); the year picker starts at 2019.
+  const note2018 = data.block === "trend" && (data.yearA === 2018 || data.yearB === 2018) ? TREND_2018_NOTE[dataset] : null;
+  if (note2018) caveats.push(note2018);
   const executed: ExecutedWindow | null = trendWindow
     ? { months: [trendWindow.from, trendWindow.to], mode: trendWindow.mode, checkpoint: trendWindow.checkpoint } : null;
   return { data, displaySql, caveats, tookMs: Date.now() - started, ...(partial ? { partialYears: partial } : {}), ...(executed ? { executed } : {}) };
@@ -2315,7 +2336,8 @@ function buildDisplaySql(spec: AskSpec, w: PredicateCtx): string {
       return (
         `select ${dimCol},\n  sum(closing_value) filter (where an = ${w.yearFrom ?? "primul_an"}) inainte,\n` +
         `  sum(closing_value) filter (where an = ${w.yearTo ?? "ultimul_an"}) dupa\n` +
-        `from ${dtable}\nwhere ${where}\ngroup by ${dimCol}\n${having ? `having ${having}\n` : ""}order by ${order} desc\nlimit ${spec.topN ?? 10};`
+        `from ${dtable}\nwhere ${where}\ngroup by ${dimCol}\n${having ? `having ${having}\n` : ""}order by ${order} desc\nlimit ${spec.topN ?? 10};` +
+        `\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele ${spec.topN ?? 10} din fiecare grupă`
       );
     }
   }

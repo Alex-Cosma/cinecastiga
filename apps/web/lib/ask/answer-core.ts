@@ -12,8 +12,12 @@ import type { AskSpec, Block } from "./spec";
  * one block or key alerts once, only the watches whose question has it.
  */
 
-/** A block whose answer a release changed for the same spec (F2: trend: "trend-2"). Absent: "<block>-1". */
-export const ANSWER_VERSIONS: Partial<Record<Block, string>> = {};
+/**
+ * A block whose answer a release changed for the same spec. Absent: "<block>-1".
+ * trend-2 (F2, plan §4.7): the partition beside the chosen group, the county of
+ * an entity's row from its profile instead of a buyer's, the 2018 note.
+ */
+export const ANSWER_VERSIONS: Partial<Record<Block, string>> = { trend: "trend-2" };
 
 /** A key whose meaning a release changed, on the questions that carry it. */
 export interface KeyVersion {
@@ -91,11 +95,19 @@ export function sameAnswerVersion(before: AnswerVersion, after: AnswerVersion): 
 
 /**
  * The part of an answer a watch compares and "Ce s-a schimbat" lists (plan
- * §2.8). Today the whole answer. F2 narrows it per block (the chosen group of
- * a trend or a network; row facts in `data.rowFacts` stay out).
+ * §2.8): the whole answer, except on a trend (trend-2), where it is the chosen
+ * group: its rows, years, change and months, and the totals of its own list
+ * (`list`: the change, or "Prima dată") and, with the order in percent, of the
+ * growths from the base. The other groups' rows and totals, the group noun and
+ * the row facts stay out, so a change only in "Nu mai apar" or only in a fact
+ * does not change a watch on "Creșteri". An answer stored before trend-2 is whole.
  */
-export function answerCore(_block: string, data: unknown): unknown {
-  return data;
+export function answerCore(block: string, data: unknown): unknown {
+  if (block !== "trend" || !object(data) || !object(data.groups)) return data;
+  const { groups: _groups, composition, noun: _noun, rowFacts: _facts, ...core } = data;
+  const parts = object(composition) ? composition : {};
+  const own = [typeof core.list === "string" ? core.list : "all", "eligible"].filter((part) => part in parts);
+  return { ...core, composition: Object.fromEntries(own.map((part) => [part, parts[part]])) };
 }
 /** The two cores are equal as stored JSON (jsonb: key order does not count, array order does). */
 export function sameAnswerCore(block: string, before: unknown, after: unknown): boolean {

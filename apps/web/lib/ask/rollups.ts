@@ -3,7 +3,7 @@ import type { MinimumRecords, QueryPopulation } from "./population";
 import type { ScatterDensity, TableSort } from "./compile";
 import type { AuthorityKind } from "./spec";
 import { authorityKindCond, KIND_PATTERNS } from "./authority-kind";
-import { employeesCond, trendGroupOf, trendGroupSql, type TrendGroup } from "./predicates";
+import { employeesCond, trendGroupSql, type TrendGroup } from "./predicates";
 
 /**
  * Answers from the rollups of the nightly build (packages/db/src/ask-rollups.ts)
@@ -426,61 +426,31 @@ export async function rollupCountyTable(sql: DbSql, plan: { source: RollupSource
 }
 
 /**
- * case "trend": per entity (or county) the values of year A and year B, the
- * largest absolute changes first, then the id (or county), as the live query:
- * equal changes (consortium partners) come out in one order on both. Names: the rollup's own on agg_entity_year; on the pair rollup,
- * attached to the shown rows from agg_entity_year (the same transaction names).
+ * case "trend": per entity (or county) the values of year A and year B, as the
+ * grouped query trendPartition (trend-partition.ts) partitions: `select id, va,
+ * vb … group by id`, the live query's groups once grouped. Names and counties
+ * come after, from entity_profile, for the shown rows only (as live).
  */
-export async function rollupTrend(sql: DbSql, plan: { source: RollupSource; filters: RollupFilters },
-  o: { dim: Role | "county"; yearA: number; yearB: number; topN: number; group?: TrendGroup }):
-  Promise<{ rows: { id: string | null; nm: string; co: string | null; va: string; vb: string }[] } | { reason: string }> {
+export function rollupTrendGrouped(sql: DbSql, plan: { source: RollupSource; filters: RollupFilters },
+  o: { dim: Role | "county"; yearA: number; yearB: number }): { grouped: Fragment } | { reason: string } {
   const { source, filters } = plan;
   const where = rollupWhere(sql, source, filters, "p", { years: false });
   const a = String(o.yearA), b = String(o.yearB);
   const va: Fragment = sql`coalesce(sum(p.v) filter (where p.y = ${a}), 0)`, vb: Fragment = sql`coalesce(sum(p.v) filter (where p.y = ${b}), 0)`;
-  if (o.dim === "county") {
-    // The live query's group and order (trendGroupSql); a county has no first year.
-    const { having, order } = trendGroupSql(sql, va, vb, o.group ?? trendGroupOf({}));
-    const rows = (await sql`
-      select null::text id, p.county nm, null::text co, ${va} va, ${vb} vb
-      from ${fromSource(sql, source, "p")}
-      where ${where} and p.county is not null and p.y in (${a}, ${b})
-      group by p.county
-      ${having ? sql`having ${having}` : sql``}
-      order by ${order} desc, p.county
-      limit ${o.topN}
-    `) as unknown as { id: null; nm: string; co: null; va: string; vb: string }[];
-    return { rows };
-  }
-  const id = idColumn(sql, source, o.dim, "p");
-  if (!id) return { reason: `the ${source.table} rollup has no ${o.dim} id` };
-  const named = source.table === "entity" || source.table === "entityMonth";
-  const name = named ? sql`max(p.nm)` : sql`null::text`;
-  const { having, order } = trendGroupSql(sql, va, vb, o.group ?? trendGroupOf({}), { id, role: o.dim, yearB: o.yearB });
-  const rows = (await sql`
-    select ${id}::text id, ${name} nm, max(p.county) co, ${va} va, ${vb} vb
+  const key: Fragment | null = o.dim === "county" ? sql`p.county` : idColumn(sql, source, o.dim, "p");
+  if (!key) return { reason: `the ${source.table} rollup has no ${o.dim} id` };
+  return { grouped: sql`
+    select ${key} id, ${va} va, ${vb} vb
     from ${fromSource(sql, source, "p")}
-    where ${where} and ${id} is not null and p.y in (${a}, ${b})
-    group by ${id}
-    ${having ? sql`having ${having}` : sql``}
-    order by ${order} desc, ${id}
-    limit ${o.topN}
-  `) as unknown as { id: string; nm: string | null; co: string | null; va: string; vb: string }[];
-  if (!named && rows.length) {
-    const names = (await sql`
-      select eid::text id, max(nm) nm from marts.agg_entity_year
-      where role = ${o.dim} and eid = any(${sql.array(rows.map((r) => r.id))}::bigint[]) group by eid
-    `) as unknown as { id: string; nm: string | null }[];
-    const byId = new Map(names.map((r) => [r.id, r.nm]));
-    for (const r of rows) r.nm = byId.get(r.id) ?? null;
-  }
-  return { rows: rows as { id: string; nm: string; co: string | null; va: string; vb: string }[] };
+    where ${where} and ${key} is not null and p.y in (${a}, ${b})
+    group by ${key}
+  ` };
 }
 
 /**
  * The members of a trend's group (entity ids, or county names), for its
- * sources: the ids rollupTrend lists, without the limit, as the live members
- * query of runRows (trendMembers in compile.ts).
+ * sources: the ids of the group's list of trendPartition over
+ * rollupTrendGrouped, without the limit, as the live members query of runRows.
  */
 export async function rollupTrendMembers(sql: DbSql, plan: { source: RollupSource; filters: RollupFilters },
   o: { dim: Role | "county"; yearA: number; yearB: number; group: TrendGroup }): Promise<{ members: string[] } | { reason: string }> {
