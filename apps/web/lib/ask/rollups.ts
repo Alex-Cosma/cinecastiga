@@ -231,35 +231,48 @@ function rollupWhere(sql: DbSql, source: RollupSource, f: RollupFilters, alias: 
     parts.push(sql`not (coalesce(${authority!} = any(${sql.array([...f.excludeAuthorities])}::bigint[]), false))`);
   if (f.excludeSuppliers.length)
     parts.push(sql`not (coalesce(${supplier!} = any(${sql.array([...f.excludeSuppliers])}::bigint[]), false))`);
-  if (f.minimum) {
-    // minimumRecordsSql: the parties with at least N records in the same selection.
-    const role = f.minimum.role;
-    const target = idColumn(sql, source, role, alias)!;
-    const everything = f.dataset === "all" && (opts.years === false || (f.yearFrom === null && f.yearTo === null)) && !f.county
-      && !f.cpvPrefixes.length && !f.cpvExclude.length && !f.kind && !f.employees && !f.excludeAuthorities.length && !f.excludeSuppliers.length;
-    if (everything && role === "supplier") {
-      // Over every year and channel a firm's records are n_das + n_contracts of its profile
-      // (equal for all 163,158 firms on 24 Oct 2026; not for institutions, whose profile
-      // counts a contract once): the threshold list without grouping 1.7M rollup rows in
-      // every parallel worker (3.6 s at 4 MB work_mem, 0.96 s at 64 MB).
-      parts.push(sql`${target} in (
-        select ep.entity_id from marts.entity_profile ep
-        where ep.role = 'supplier' and ep.n_das + ep.n_contracts >= ${f.minimum.count}
-      )`);
-    } else {
-      const inner: RollupSource = [f.kind || f.excludeAuthorities.length ? "authority" : null, f.employees || f.excludeSuppliers.length ? "supplier" : null]
-        .every((side) => side === null || side === role) ? { table: "entity", role } : { table: "pair" };
-      const innerAlias = `${alias}m`;
-      const party = idColumn(sql, inner, role, innerAlias)!;
-      const innerWhere = rollupWhere(sql, inner, { ...f, minimum: null }, innerAlias, opts);
-      parts.push(sql`${target} in (
-        select ${party} from ${fromSource(sql, inner, innerAlias)}
-        where ${innerWhere} and ${party} is not null
-        group by ${party} having sum(${sql(innerAlias)}.n) >= ${f.minimum.count}
-      )`);
-    }
-  }
+  if (f.minimum) parts.push(minimumSemiJoin(sql, f, idColumn(sql, source, f.minimum.role, alias)!, `${alias}m`, opts));
   return parts.length ? parts.reduce((a, b) => sql`${a} and ${b}`) : sql`true`;
+}
+
+/**
+ * minimumRecordsSql on the rollups: `target` (an id column) among the parties
+ * with at least N records in the same selection (f without the threshold).
+ */
+function minimumSemiJoin(sql: DbSql, f: RollupFilters, target: Fragment, innerAlias: string, opts: { years?: boolean } = {}): Fragment {
+  const { role, count } = f.minimum!;
+  const everything = f.dataset === "all" && (opts.years === false || (f.yearFrom === null && f.yearTo === null)) && !f.county
+    && !f.cpvPrefixes.length && !f.cpvExclude.length && !f.kind && !f.employees && !f.excludeAuthorities.length && !f.excludeSuppliers.length;
+  if (everything && role === "supplier") {
+    // Over every year and channel a firm's records are n_das + n_contracts of its profile
+    // (equal for all 163,158 firms on 24 Oct 2026; not for institutions, whose profile
+    // counts a contract once): the threshold list without grouping 1.7M rollup rows in
+    // every parallel worker (national: 3.6 s at 4 MB work_mem, 0.96 s at 64 MB; now 0.36 s).
+    return sql`${target} in (
+      select ep.entity_id from marts.entity_profile ep
+      where ep.role = 'supplier' and ep.n_das + ep.n_contracts >= ${count}
+    )`;
+  }
+  const inner: RollupSource = [f.kind || f.excludeAuthorities.length ? "authority" : null, f.employees || f.excludeSuppliers.length ? "supplier" : null]
+    .every((side) => side === null || side === role) ? { table: "entity", role } : { table: "pair" };
+  const party = idColumn(sql, inner, role, innerAlias)!;
+  const innerWhere = rollupWhere(sql, inner, { ...f, minimum: null }, innerAlias, opts);
+  return sql`${target} in (
+    select ${party} from ${fromSource(sql, inner, innerAlias)}
+    where ${innerWhere} and ${party} is not null
+    group by ${party} having sum(${sql(innerAlias)}.n) >= ${count}
+  )`;
+}
+
+/**
+ * The record threshold of a plan as a condition on `column` of the live rows
+ * (d.authority_id or d.supplier_id), for the sources and the CSV of a
+ * thresholded question (runRows), whose rows cannot come from a rollup: it
+ * replaces minimumRecordsSql, the second grouped scan of the union (over 20 s
+ * nationally), by the same party list from the rollups. Null without a threshold.
+ */
+export function rollupMinimumCond(sql: DbSql, plan: { source: RollupSource; filters: RollupFilters }, column: Fragment): Fragment | null {
+  return plan.filters.minimum ? minimumSemiJoin(sql, plan.filters, column, "rm") : null;
 }
 
 /**

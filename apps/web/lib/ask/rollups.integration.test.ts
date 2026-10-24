@@ -4,7 +4,7 @@ import { DA_PLAFOND_RON, runRows, runSpec, TABLE_PAGE_SIZE, type BlockData } fro
 import { sumDecimalStrings } from "./evidence";
 import {
   compareParties, compareSharedPartners, compareTopPartners, forgetRollupsReady, planRollup, rollupBreakdown, rollupCountyTable, rollupMap,
-  rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrend, scatterDensity, type RollupCtx, type RollupNeed,
+  rollupMinimumCond, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrend, scatterDensity, type RollupCtx, type RollupNeed,
 } from "./rollups";
 import { namedKind, type AskSpec } from "./spec";
 import type { Grounding } from "./ground";
@@ -265,6 +265,30 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
             dateTo: r.rows.map((x) => x.date_to).filter((d): d is string => d !== null).sort().at(-1)?.slice(0, 10) ?? null,
           };
           expect([c.name, rolled]).toEqual([c.name, { sourceTotal: live.sourceTotal, sourceValue: live.sourceValue, statuses: byState(live.statuses), dateFrom: live.dateFrom, dateTo: live.dateTo }]);
+          expect([c.name, live.sourceTotal > 0]).toEqual([c.name, true]);
+        }
+
+        // The sources of a thresholded question: the live rows with the party list from the rollups
+        // (rollupMinimumCond) instead of minimumRecordsSql give runRows' totals.
+        const union = q`(
+          select authority_id, supplier_id, closing_value, finalization_date, 'da'::text src from marts.da_transactions
+          union all select authority_id, supplier_id, closing_value, finalization_date, 'contracts' from marts.contract_transactions)`;
+        const THRESHOLDS: { name: string; spec: AskSpec; extra: ReturnType<DbSql> }[] = [
+          { name: "institutions, firms with at least 4 records", spec: base("table", { topN: 10, dim: "authority", minimumRecords: { role: "supplier", count: 4 } }), extra: q`d.authority_id is not null` },
+          { name: "total, institutions with at least 3 records", spec: base("stat", { minimumRecords: { role: "authority", count: 3 } }), extra: q`true` },
+          { name: "firms with at least 2 records in 2025", spec: base("table", { topN: 10, minimumRecords: { role: "supplier", count: 2 } }, { yearFrom: 2025, yearTo: 2025 }),
+            extra: q`d.supplier_id is not null and substr(d.finalization_date, 1, 4) >= '2025' and substr(d.finalization_date, 1, 4) <= '2025'` },
+        ];
+        for (const c of THRESHOLDS) {
+          const live = await runRows(q, c.spec, {}, 0);
+          if ("error" in live) throw new Error(`${c.name}: ${live.error}`);
+          const plan = planRollup(ctxOf(c.spec, {}), needOf(c.spec));
+          if ("reason" in plan) throw new Error(`${c.name}: ${plan.reason}`);
+          const party = (c.spec.minimumRecords!.role === "authority" ? q`d.authority_id` : q`d.supplier_id`) as unknown as ReturnType<DbSql>;
+          const [rows] = await q`select count(*)::int n, coalesce(sum(d.closing_value), 0)::text v from ${union} d
+            where d.closing_value > 0 and (d.src = 'contracts' or d.closing_value <= ${DA_PLAFOND_RON}) and ${c.extra}
+              and ${rollupMinimumCond(q, plan, party)!}`;
+          expect([c.name, rows]).toEqual([c.name, { n: live.sourceTotal, v: live.sourceValue }]);
           expect([c.name, live.sourceTotal > 0]).toEqual([c.name, true]);
         }
 
