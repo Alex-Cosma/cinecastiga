@@ -2,7 +2,7 @@ import { countWords } from "../answer-text";
 import type { Grounding } from "../ground";
 import { countyIsFirmSeat, isHistoricalProfile, type PopulationCondition, type QueryPopulation } from "../population";
 import {
-  KIND_OPTIONS, KIND_WORDS, countyWords, describeQuestion, entityLabel, focalRole, localityGenitive, periodLabel, periodWords, subjectWords,
+  KIND_OPTIONS, KIND_WORDS, countyWords, describeQuestion, entityLabel, focalRole, periodLabel, subjectWords,
   type QuestionSpec,
 } from "../question-ui";
 import { countyDisplay } from "../resolved-spec";
@@ -15,7 +15,7 @@ import { filterContext } from "./context";
 import { selectionOrigin, splitExcluded, exclusionWords, type OriginHint, type OriginWords } from "./origin";
 import { FILTERS, SPEC_PATH_OWNERS, presentPaths } from "./registry";
 import type { FilterId, FilterSpec } from "./types";
-import { employeesCount, employeesPhrase, streamPhrase, titleTailParts } from "./words";
+import { adminPhrase, employeesCount, employeesPhrase, localityName, periodWordsWith, streamPhrase, titleTailParts } from "./words";
 
 /*
  * describeConditions (plan §2.2 describe.ts, §0.4): every condition of a
@@ -203,7 +203,7 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
     const pills = grounding?.uat ? [String(f.uatName ?? grounding.uat.name ?? `UAT ${grounding.uat.siruta}`)] : [];
     if (!f.uatSiruta && !f.uatName) return pills.length ? { pills } : null;
     return {
-      words: `primăria ${localityGenitive(String(f.uatName ?? `localității ${f.uatSiruta}`))}`,
+      words: `primăria ${f.uatName ? localityName(String(f.uatName)) : `localității ${f.uatSiruta}`}`,
       chip: String(f.uatName || `Localitatea #${f.uatSiruta}`), pills,
       scope: [{ label: "Localitate", value: `${f.uatName ?? "Localitate"} · SIRUTA ${f.uatSiruta ?? "nespecificat"}` }],
     };
@@ -225,7 +225,7 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
     const pills = grounding?.admin?.personKey && grounding.admin.display ? [`conduse de ${grounding.admin.display}`] : [];
     if (!f.adminName && !f.adminPersonKey) return pills.length ? { pills } : null;
     return {
-      words: `firmele conduse de ${f.adminName || "persoana aleasă"}`, chip: `Conduse de ${f.adminName || "persoana selectată"}`, pills,
+      words: adminPhrase(f.adminName), chip: `Conduse de ${f.adminName || "persoana selectată"}`, pills,
       scope: [{ label: "Reprezentant legal", value: String(f.adminName ?? f.adminPersonKey) }],
     };
   },
@@ -238,7 +238,7 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
       : isHistoricalProfile(spec) ? [] : ["toți anii disponibili"];
     const mark = (y: unknown, m: unknown) => `${y}${m ? `-${String(m).padStart(2, "0")}` : ""}`;
     return {
-      ...(f.yearFrom || f.yearTo ? { words: periodWords(spec) } : {}),
+      ...(f.yearFrom || f.yearTo ? { words: periodWordsWith(f) } : {}),
       chip: periodLabel(spec), pills,
       scope: [{ label: "Perioada întrebării", value: f.yearFrom || f.yearTo ? `${f.yearFrom ? mark(f.yearFrom, f.monthFrom) : "De la începutul datelor"} — ${f.yearTo ? mark(f.yearTo, f.monthTo) : "fără limită finală"}` : "Fără limite de an în filtrele de pornire" }],
     };
