@@ -39,7 +39,7 @@ export function CountyTip({ label, value, count, national, asCount }: {
           <div className="s">click → înregistrările județului</div>
         </>
       ) : (
-        <div className="s">fără date pentru aceste filtre</div>
+        <div className="s">nicio înregistrare pentru aceste filtre</div>
       )}
     </>
   );

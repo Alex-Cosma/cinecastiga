@@ -15,7 +15,7 @@ import { exclusionWords, isDaBoundPopulation, selectionOrigin, splitExcluded, ty
 import { FILTERS, SPEC_PATH_OWNERS, presentPaths } from "./registry";
 import { sentenceTokens } from "./sentence";
 import type { FilterId, FilterSpec } from "./types";
-import { adminPhrase, employeesCount, employeesPhrase, employeesWords, localityName, periodWordsWith, streamPhrase } from "./words";
+import { SINGLE_OFFER_WORDS, adminPhrase, employeesCount, employeesPhrase, employeesWords, localityName, periodWordsWith, streamPhrase } from "./words";
 
 /*
  * describeConditions (plan §2.2 describe.ts, §0.4): every condition of a
@@ -90,11 +90,12 @@ export interface DescribedConditions {
 export const PROFILE_SOURCE_PILL = "profil istoric: achiziții directe acceptate, toată arhiva";
 /** The builder's data stream chip. */
 const STREAM_CHIP: Record<string, string> = { all: "Toate achizițiile", da: "Achiziții directe", contracts: "Contracte din proceduri" };
-const KIND_PILL: Record<AuthorityKind, string> = {
-  comuna: "doar comune", oras_municipiu: "doar orașe/municipii", consiliu_judetean: "doar consilii județene", spital: "doar spitale", scoala: "doar școli/licee",
-};
+/** The data stream in the pills and a watch's receipt (kit §4: "Toate achizițiile", never "toate sursele"). */
+const STREAM_PILL: Record<string, string> = { all: "toate achizițiile: directe și din proceduri", da: "doar achizițiile directe", contracts: "doar contractele din proceduri" };
+const STREAM_SCOPE: Record<string, string> = { all: "Toate achizițiile: directe și din proceduri", da: "Achizițiile directe", contracts: "Contractele din proceduri" };
+/** The kinds as the windows name them (kit §4 Tipurile), never "Comune", "Orașe și municipii", "Școli și licee". */
 const KIND_SCOPE: Record<AuthorityKind, string> = {
-  comuna: "Comune", oras_municipiu: "Orașe și municipii", consiliu_judetean: "Consilii județene", spital: "Spitale", scoala: "Școli și licee",
+  comuna: "Primării de comună", oras_municipiu: "Primării de oraș și municipiu", consiliu_judetean: "Consilii județene", spital: "Spitale", scoala: "Școli",
 };
 
 const records = (n: number) => countWords(n, "înregistrare", "înregistrări");
@@ -134,8 +135,8 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
     return {
       ...(words ? { words } : {}),
       chip: STREAM_CHIP[ds] ?? STREAM_CHIP.all!,
-      pills: [profile ? PROFILE_SOURCE_PILL : ds === "contracts" ? "doar contracte prin proceduri" : ds === "da" ? "doar achiziții directe" : "toate sursele: achiziții directe + contracte prin proceduri"],
-      scope: [{ label: "Sursele întrebării", value: profile ? "Profiluri istorice: achiziții directe acceptate, cu valoare pozitivă de cel mult 2.000.000 lei" : ds === "da" ? "Achiziții directe" : ds === "contracts" ? "Contracte prin proceduri" : "Achiziții directe și contracte prin proceduri" }],
+      pills: [profile ? PROFILE_SOURCE_PILL : STREAM_PILL[ds] ?? STREAM_PILL.all!],
+      scope: [{ label: "Ce fel de achiziții", value: profile ? "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2.000.000 lei" : STREAM_SCOPE[ds] ?? STREAM_SCOPE.all! }],
       ...(spec.dataset === "contracts" ? { summary: "Contracte din proceduri" } : spec.dataset === "da" ? { summary: "Achiziții directe" } : {}),
     };
   },
@@ -163,12 +164,12 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
     const raw = spec.filters.authorityKind;
     if (!raw) return null;
     const kind = namedKind(raw as ParsedAuthorityKind);
-    const known = kind && KIND_PILL[kind] ? kind : undefined;
+    const known = kind && KIND_SCOPE[kind] ? kind : undefined;
     return {
-      ...(known ? { words: `doar ${KIND_WORDS[known]!.bare}`, pills: [KIND_PILL[known]] } : {}),
+      ...(known ? { words: `doar ${KIND_WORDS[known]!.bare}`, pills: [`doar ${KIND_WORDS[known]!.bare}`] } : {}),
       chip: (KIND_OPTIONS.find(([id]) => id === raw) ?? KIND_OPTIONS[0])[1],
       // A kind read ahead (local_admin) belongs to a newer release; its watch is refused, not shown as another kind.
-      scope: [{ label: "Tip instituție", value: known ? KIND_SCOPE[known] : "dintr-o versiune mai nouă a site-ului" }],
+      scope: [{ label: "Tipul instituției", value: known ? KIND_SCOPE[known] : "dintr-o versiune mai nouă a site-ului" }],
     };
   },
   authority: (spec, { grounding }) => {
@@ -224,10 +225,10 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
   },
   admin: (spec, { grounding }) => {
     const f = spec.filters;
-    const pills = grounding?.admin?.personKey && grounding.admin.display ? [`conduse de ${grounding.admin.display}`] : [];
+    const pills = grounding?.admin?.personKey && grounding.admin.display ? [`conduse azi de ${grounding.admin.display}`] : [];
     if (!f.adminName && !f.adminPersonKey) return pills.length ? { pills } : null;
     return {
-      words: adminPhrase(f.adminName), chip: `Conduse de ${f.adminName || "persoana selectată"}`, pills,
+      words: adminPhrase(f.adminName), chip: `Conduse azi de ${f.adminName || "persoana selectată"}`, pills,
       scope: [{ label: "Reprezentant legal", value: String(f.adminName ?? f.adminPersonKey) }],
     };
   },
@@ -237,7 +238,7 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
     const from = bound(f.yearFrom, f.monthFrom), to = bound(f.yearTo, f.monthTo);
     const pills = f.yearFrom || f.yearTo
       ? [spec.block === "trend" ? `${from ?? "?"} → ${to ?? "?"}` : from && to && from !== to ? `${from}–${to}` : (from ?? to)!]
-      : isHistoricalProfile(spec) ? [] : ["toți anii disponibili"];
+      : isHistoricalProfile(spec) ? [] : ["toți anii"];
     const mark = (y: unknown, m: unknown) => `${y}${m ? `-${String(m).padStart(2, "0")}` : ""}`;
     return {
       ...(f.yearFrom || f.yearTo ? { words: periodWordsWith(f) } : {}),
@@ -245,9 +246,10 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
       scope: [{ label: "Perioada întrebării", value: f.yearFrom || f.yearTo ? `${f.yearFrom ? mark(f.yearFrom, f.monthFrom) : "De la începutul datelor"} — ${f.yearTo ? mark(f.yearTo, f.monthTo) : "fără limită finală"}` : "Fără limite de an în filtrele de pornire" }],
     };
   },
+  // Kit §4 "Oferte": "o singură ofertă", never "un singur ofertant".
   singleBidder: (spec) => spec.filters.singleBidder ? {
-    words: "doar contracte cu un singur ofertant", chip: "Un singur ofertant", pills: ["un singur ofertant"],
-    scope: [{ label: "Concurență", value: "Doar proceduri cu un singur ofertant confirmat" }],
+    words: SINGLE_OFFER_WORDS, chip: "O singură ofertă", pills: ["o singură ofertă"],
+    scope: [{ label: "Concurență", value: "Doar contractele cu o singură ofertă confirmată" }],
   } : null,
   employees: (spec) => {
     const f = spec.filters;

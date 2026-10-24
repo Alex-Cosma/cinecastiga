@@ -111,7 +111,7 @@ describe("the editable question contract", () => {
   it("keeps month-level evidence periods readable and distinct", () => {
     expect(periodLabel(authority)).toBe("2024-03–2025-08");
     expect(periodLabel({ ...authority, filters: { yearFrom: 2025, yearTo: 2025, monthFrom: 8, monthTo: 8 } })).toBe("2025-08");
-    expect(periodLabel({ ...authority, filters: {} })).toBe("toți anii disponibili");
+    expect(periodLabel({ ...authority, filters: {} })).toBe("toți anii");
   });
 
   it("keeps equal years and month bounds until the user explicitly changes them", () => {

@@ -5,7 +5,7 @@ import { buildPlaces, catalogUatSource, countyDisplay, placeKey } from "./places
 import { RulesInterpreter, strongNameMatch } from "./rules";
 import { FIXTURE } from "./rules.fixture";
 import { stems, tokenize, wordMatches } from "./text";
-import { resultFor, sentenceFor } from "./to-spec";
+import { SINGLE_OFFER_NOTE, resultFor, sentenceFor } from "./to-spec";
 import { employeesCount } from "../ask/filters/words";
 import { sentenceScopeProblems } from "./scope-check";
 import type { AskSpec } from "../ask/spec";
@@ -358,9 +358,16 @@ describe("beginner phrasings → interpretation", () => {
     expect(r.spec).toMatchObject({ block: "trend", dim: "supplier", filters: { yearFrom: 2022, yearTo: 2024 } });
   });
 
-  it("41. single bidder implies procedures", async () => {
+  it("41. a single bidder means procedures, never the filter: the offers are known for ~2% of the contracts", async () => {
     const { r } = await ask("contracte cu un singur ofertant in judetul vaslui");
-    expect(r.spec).toMatchObject({ dataset: "contracts", filters: { singleBidder: true, county: "Vaslui" } });
+    expect(r.spec).toMatchObject({ dataset: "contracts", filters: { county: "Vaslui" } });
+    expect(r.spec?.filters.singleBidder).toBeUndefined();
+    expect(r.interpretation.notes).toContain(SINGLE_OFFER_NOTE);
+    // Direct acquisitions keep their stream: they have no offers to count.
+    const da = (await ask("achizitii directe cu un singur ofertant in Bacau")).r;
+    expect(da.spec).toMatchObject({ dataset: "da" });
+    expect(da.spec?.filters.singleBidder).toBeUndefined();
+    expect(da.interpretation.notes.join(" ")).toMatch(/Achizițiile directe nu au oferte/);
   });
 
   it("42. direct acquisitions + count + commune + year", async () => {

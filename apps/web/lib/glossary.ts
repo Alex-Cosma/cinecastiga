@@ -36,6 +36,11 @@ export const GLOSSARY = {
     title: "Consorțiu",
     text: "Mai multe firme care câștigă împreună același contract. În lipsa cotelor reale, valoarea unui consorțiu este împărțită egal între membri. Cotele însumate refac valoarea contractului; nu dovedesc venitul încasat de fiecare firmă.",
   },
+  // Întreabă says it in the kit's words (kit §4 "Asocieri"); the rest of the site keeps "consorțiu".
+  "in-asociere": {
+    title: "În asociere",
+    text: "Mai multe firme care câștigă împreună același contract. În lipsa cotelor reale, valoarea contractului este împărțită egal între ele. Cotele însumate refac valoarea contractului; nu dovedesc venitul încasat de fiecare firmă.",
+  },
   "inregistrare-contract-furnizor": {
     title: "Înregistrare contract–furnizor",
     text: "Un rând pentru fiecare firmă câștigătoare a unui contract. Un contract cu 3 câștigători apare pe 3 rânduri, cu valoarea împărțită între ei, așa că numărul de rânduri poate fi mai mare decât numărul de contracte.",
@@ -193,6 +198,12 @@ export const GLOSSARY = {
   "profil-risc": {
     title: "Profil de risc",
     text: "Indicele de risc (CRI) și semnalele sunt calculate pe tot istoricul de achiziții directe al entității, nu pe selecția de mai sus. Un semnal este o pistă de verificat, nu o acuzație și nu dovedește o ilegalitate.",
+  },
+  // Kit §4 "Prima înregistrare a firmei" (trusa 6): "Prima dată", never "La prima apariție"; the (?) never says
+  // "din aprilie 2018": 953 suppliers have older records (entity_card §3.7).
+  "prima-data": {
+    title: "Prima dată",
+    text: "Prima înregistrare a firmei în datele noastre, nu data înființării ei. Anul înmatriculării vine din Registrul Comerțului.",
   },
   "oferte-cunoscute": {
     title: "O singură ofertă",

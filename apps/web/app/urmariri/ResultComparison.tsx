@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { comparableMethodologies, type MonitoringRunDetail } from "../../lib/monitoring-shared";
 import { answerCore, KEY_VERSIONS } from "../../lib/ask/answer-core";
 import { formatExactDecimal } from "../../lib/format";
+import { countWords } from "../../lib/ask/answer-text";
 import { FLAG_META } from "../../lib/flags";
 
 const labels: Record<string, string> = {
@@ -17,8 +18,8 @@ const labels: Record<string, string> = {
   population: "Populație de referință", cri: "Indice de risc (CRI)", nFlags: "Număr de semnale", flags: "Semnale active",
   name: "Denumire", county: "Județ", role: "Rol", code: "Cod CPV", categoryCode: "Cod CPV", category: "Domeniu",
   partner: "Partener comercial", year: "An", yearA: "Primul an", yearB: "Al doilea an", yearFirst: "Prima achiziție · an",
-  yearLast: "Ultima achiziție · an", date: "Data achiziției", daCode: "Codul achiziției", cpvName: "Domeniul achiziției",
-  src: "Canal", verdict: "Există achiziții între cele două entități", authority: "Autoritatea", supplier: "Furnizorul",
+  yearLast: "Ultima achiziție · an", date: "Data achiziției", daCode: "Codul achiziției", cpvName: "Ce s-a cumpărat",
+  src: "Ce fel de achiziție", verdict: "Există achiziții între cele două entități", authority: "Autoritatea", supplier: "Furnizorul",
   percentile: "Entități cu indice cel mult egal · procent", from: "Limita inferioară", to: "Limita superioară", n: "Entități în interval",
   minLog: "Valoare minimă · scară logaritmică", maxLog: "Valoare maximă · scară logaritmică",
   valueBand: "Grupa valorii", riskBand: "Grupa de risc",
@@ -124,7 +125,7 @@ export function formatResultValue(value: unknown, field: string): string {
 function ChangedValues({ before, after, label }: { before: unknown; after: unknown; label: string }) {
   const differences = useMemo(() => resultDifferences(before, after), [before, after]);
   const [visible, setVisible] = useState(12);
-  return <>{differences.length ? <><div className="mon-table-wrap" role="region" aria-label={label} tabIndex={0}><table className="mon-diff mon-stack mon-stack-pair"><thead><tr><th>Unde în rezultat</th><th>Ce s-a schimbat</th><th>Înainte</th><th>După</th></tr></thead><tbody>{differences.slice(0, visible).map(row => <tr key={row.key}><th scope="row">{row.context}</th><td data-label="Ce s-a schimbat">{row.field}</td><td data-label="Înainte">{formatResultValue(row.before, row.fieldKey)}</td><td data-label="După">{formatResultValue(row.after, row.fieldKey)}</td></tr>)}</tbody></table></div>{visible < differences.length && <><p className="mon-muted" role="status">Sunt afișate {visible} din {differences.length} câmpuri modificate.</p><button type="button" onClick={() => setVisible(count => count + 12)}>Arată următoarele {Math.min(12, differences.length - visible)} modificări</button></>}</> : <p className="mon-muted">Valorile afișate sunt neschimbate. Diferența privește ordinea sau metadatele de prezentare ale rezultatului.</p>}<details className="mon-small-details"><summary>Datele complete ale comparației · detalii tehnice</summary><div className="mon-result-pair"><section><h3>Înainte</h3><pre>{JSON.stringify(before, null, 2)}</pre></section><section><h3>După</h3><pre>{JSON.stringify(after, null, 2)}</pre></section></div></details></>;
+  return <>{differences.length ? <><div className="mon-table-wrap" role="region" aria-label={label} tabIndex={0}><table className="mon-diff mon-stack mon-stack-pair"><thead><tr><th>Unde în rezultat</th><th>Ce s-a schimbat</th><th>Înainte</th><th>După</th></tr></thead><tbody>{differences.slice(0, visible).map(row => <tr key={row.key}><th scope="row">{row.context}</th><td data-label="Ce s-a schimbat">{row.field}</td><td data-label="Înainte">{formatResultValue(row.before, row.fieldKey)}</td><td data-label="După">{formatResultValue(row.after, row.fieldKey)}</td></tr>)}</tbody></table></div>{visible < differences.length && <><p className="mon-muted" role="status">Sunt afișate {visible} din {countWords(differences.length, "câmp modificat", "câmpuri modificate")}.</p><button type="button" onClick={() => setVisible(count => count + 12)}>Arată încă {countWords(Math.min(12, differences.length - visible), "modificare", "modificări")}</button></>}</> : <p className="mon-muted">Valorile afișate sunt neschimbate. Diferența privește ordinea sau metadatele de prezentare ale rezultatului.</p>}<details className="mon-small-details"><summary>Datele complete ale comparației · detalii tehnice</summary><div className="mon-result-pair"><section><h3>Înainte</h3><pre>{JSON.stringify(before, null, 2)}</pre></section><section><h3>După</h3><pre>{JSON.stringify(after, null, 2)}</pre></section></div></details></>;
 }
 
 export default function ResultComparison({ detail }: { detail: MonitoringRunDetail }) {

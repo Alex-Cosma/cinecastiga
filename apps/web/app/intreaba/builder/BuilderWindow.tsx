@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { COUNTIES } from "@/lib/counties";
 import { readableCpvName } from "@/lib/entity-summary";
 import { IMPLAUSIBLE_BIRTH_DATE_LABEL } from "@/lib/format";
+import { countWords } from "@/lib/ask/answer-text";
 import { BLOCK_FILTERS, windowOf } from "@/lib/ask/filters/blocks";
 import { filterContext } from "@/lib/ask/filters/context";
 import type { Choice } from "@/lib/ask/filters/pickers";
@@ -122,7 +123,7 @@ function entityResults(role: Role, data: SuggestionData, hits: readonly EntityHi
 function localityResults(data: SuggestionData, group?: string, clearCounty = false): Found[] {
   return (data.uat ?? []).map((item): Found => ({
     id: `uat:${item.siruta}`, name: `Primăria ${item.name}`,
-    detail: [item.tip, item.population ? `${item.population.toLocaleString("ro-RO")} locuitori` : null].filter(Boolean).join(" · "),
+    detail: [item.tip, item.population ? countWords(item.population, "locuitor", "locuitori") : null].filter(Boolean).join(" · "),
     side: countyOf(item.county), ...(group ? { group } : {}),
     // In the place window the locality is the narrower scope: a county beside it would only hide its rows without a county (today's place picker).
     choices: [...(clearCounty ? [{ filter: "county" as const, value: undefined }] : []), { filter: "locality", value: { siruta: item.siruta, name: localityLabel(item) } }],
@@ -304,7 +305,7 @@ function PersonSearch({ onPick }: { onPick: (choices: Choice[]) => void }) {
   const s = useSuggestions(false);
   const results = useMemo(() => (s.data.person ?? []).map((person): Found => ({
     id: `person:${person.key}`, name: person.name,
-    detail: [person.birthYear ? `n. ${person.birthYear}` : person.birthDateImplausible ? IMPLAUSIBLE_BIRTH_DATE_LABEL : null, person.birthLocality, `${person.nFirms} firme`].filter(Boolean).join(" · "),
+    detail: [person.birthYear ? `n. ${person.birthYear}` : person.birthDateImplausible ? IMPLAUSIBLE_BIRTH_DATE_LABEL : null, person.birthLocality, countWords(person.nFirms, "firmă", "firme")].filter(Boolean).join(" · "),
     choices: [{ filter: "admin", value: { key: person.key, name: `${person.name}${person.birthYear ? ` (n. ${person.birthYear}${person.birthLocality ? `, ${person.birthLocality}` : ""})` : ""}` } }],
   })), [s.data]);
   return <EntitySearch label="Persoană" placeholder="Numele reprezentantului legal" results={results} loading={s.loading}
@@ -420,11 +421,11 @@ function AdvancedWindow({ win, draft, onReplace, onClose }: { win: BuilderWindow
   const write = (change: (next: QuestionSpec) => void) => { const next = cloneQuestion(draft); change(next); onReplace(next); };
   return <>
     {fields.length > 0 && <PopulationEditor embedded fields={fields} value={draft.population} onChange={(population) => write((next) => { if (population) next.population = population; else delete next.population; })} />}
-    {threshold && <fieldset className="qp-minimum qb-minimum"><legend>Număr minim de înregistrări · {role === "authority" ? "instituții" : "firme"}</legend>
+    {threshold && <fieldset className="qp-minimum qb-minimum"><legend>Înregistrări pe {role === "authority" ? "instituție" : "firmă"}</legend>
       {draft.minimumRecords ? <div className="qp-minimum-fields">
         <label>Cel puțin<input type="number" min={1} max={1_000_000} step={1} value={draft.minimumRecords.count} onChange={(event) => write((next) => { next.minimumRecords = { role, count: Number(event.target.value) }; })} /></label>
-        <button type="button" onClick={() => write((next) => { delete next.minimumRecords; })}>Elimină pragul</button>
-      </div> : <button type="button" onClick={() => write((next) => { next.minimumRecords = { role, count: 5 }; })}>Adaugă un prag de înregistrări</button>}
+        <button type="button" onClick={() => write((next) => { delete next.minimumRecords; })}>Scoate pragul</button>
+      </div> : <button type="button" onClick={() => write((next) => { next.minimumRecords = { role, count: 5 }; })}>+ Un prag de înregistrări</button>}
     </fieldset>}
     <div className="fk-pop-foot"><span>{win.slot.id === "population" ? "Câmpurile pe care propoziția nu le are." : ""}</span><button type="button" className="fk-primary" onClick={onClose}>Gata</button></div>
   </>;

@@ -30,22 +30,32 @@ describe("answer pills", () => {
   });
 
   it("keeps the stream pill on a value leader, which runs the transaction ranking", () => {
-    expect(pills({ block: "entity_card", rankBy: "value", measure: "value", dim: "supplier", filters: {} })).toContain("toate sursele: achiziții directe + contracte prin proceduri");
+    expect(pills({ block: "entity_card", rankBy: "value", measure: "value", dim: "supplier", filters: {} })).toContain("toate achizițiile: directe și din proceduri");
   });
 
   it("names the measure the answer shows: lei where the engine ignores a count or per-inhabitant link", () => {
-    expect(pills({ block: "breakdown", measure: "count", filters: {} })).toContain("Total (lei)");
-    expect(pills({ block: "network", measure: "count", filters: { authorityId: 1 } })).toContain("Total (lei)");
-    expect(pills({ block: "stat", measure: "value_per_capita", filters: {} })).toContain("Total (lei)");
+    expect(pills({ block: "breakdown", measure: "count", filters: {} })).toContain("valoarea înregistrată");
+    expect(pills({ block: "network", measure: "count", filters: { authorityId: 1 } })).toContain("valoarea înregistrată");
+    expect(pills({ block: "stat", measure: "value_per_capita", filters: {} })).toContain("valoarea înregistrată");
     expect(pills({ block: "stat", measure: "count", filters: {} })).toContain("numărul de înregistrări");
-    expect(pills({ block: "table", dim: "authority", measure: "value_per_capita", filters: {} })).toContain("lei / cap de locuitor");
+    expect(pills({ block: "table", dim: "authority", measure: "value_per_capita", filters: {} })).toContain("valoarea pe locuitor");
   });
 
   it("names a ranking without topN the complete one, in pages; top N only where the answer stops at N", () => {
     expect(pills({ block: "table", dim: "supplier", measure: "value", filters: {} }).slice(0, 2)).toEqual(["clasament", "toți furnizorii"]);
-    expect(pills({ block: "table", dim: "authority", measure: "value_per_capita", filters: {} })[1]).toBe("toate autoritățile");
+    expect(pills({ block: "table", dim: "authority", measure: "value_per_capita", filters: {} })[1]).toBe("toate instituțiile publice");
     expect(pills({ block: "table", dim: "county", measure: "value", filters: {} })[1]).toBe("toate județele");
     expect(pills({ block: "table", dim: "supplier", measure: "value", topN: 25, filters: {} })[1]).toBe("top 25 de furnizori");
     expect(pills({ block: "trend", dim: "supplier", measure: "value", filters: { yearFrom: 2024, yearTo: 2025 } })[1]).toBe("top 10 furnizori");
+  });
+
+  it("speaks the kit's words (§4): never «toate sursele», «toți anii disponibili», «un singur ofertant», «Total (lei)»", () => {
+    const shown = [
+      pills({ block: "stat", measure: "value", filters: {} }),
+      pills({ block: "stat", measure: "value", dataset: "contracts", filters: { singleBidder: true, authorityKind: "oras_municipiu" } }),
+      pills({ block: "table", dim: "authority", measure: "value", dataset: "da", filters: { authorityKind: "scoala" } }),
+    ].flat();
+    expect(shown).toEqual(expect.arrayContaining(["toți anii", "o singură ofertă", "doar contractele din proceduri", "doar achizițiile directe", "doar primării de oraș și municipiu", "doar școli"]));
+    for (const text of shown) expect(text).not.toMatch(/toate sursele|disponibili|ofertant|Total \(lei\)|prin proceduri|orașe|licee|autorități/);
   });
 });

@@ -1,5 +1,6 @@
 import { cleanName } from "../format";
 import { joinCpvTerms } from "../ask/cpv-terms";
+import { countWords } from "../ask/answer-text";
 import { titleTail } from "../ask/filters/words";
 import { namedKind, validateSpec, type AskFilters, type AskSpec, type AuthorityKind } from "../ask/spec";
 import { genitive, hasNamedScope } from "./rules";
@@ -13,7 +14,15 @@ import type { EntityMatch, IntentAlternative, IntentKind, IntentResult, Interpre
 
 /** Kinds whose institutions are not part of a locality scope (the UAT's own administration only). */
 const NOT_IN_LOCALITY: AuthorityKind[] = ["scoala", "spital", "consiliu_judetean"];
-const PROFILE_DROPPED: (keyof AskFilters)[] = ["cpvTerm", "yearFrom", "yearTo", "monthFrom", "monthTo", "singleBidder", "minEmployees", "maxEmployees", "adminName", "adminPersonKey"];
+const PROFILE_DROPPED: (keyof AskFilters)[] = ["cpvTerm", "yearFrom", "yearTo", "monthFrom", "monthTo", "minEmployees", "maxEmployees", "adminName", "adminPersonKey"];
+/**
+ * "Un singur ofertant" written in words (plan §2.7, §9 F1): the number of
+ * offers is known for ~2% of the contracts of 2024–2026 (1,85% of the records
+ * on the local copy, 25.10.2026), so the interpreter never writes the filter;
+ * it says why. A link that carries the filter still applies it ("Din link").
+ */
+export const SINGLE_OFFER_NOTE = "Numărul de oferte îl știm doar pentru ~2% din contractele din 2024–2026, deci nu îl folosim ca filtru.";
+const SINGLE_OFFER_DA_NOTE = "Achizițiile directe nu au oferte de numărat, deci nu folosim acest filtru.";
 
 interface Choice { place?: PlaceMatch | null; person?: PersonMatch | null; entity?: EntityMatch; pair?: { focal: EntityMatch; other: EntityMatch } }
 
@@ -64,7 +73,6 @@ function baseFilters(i: Interpretation, choice: Choice, notes: string[]): AskFil
   }
   if (i.period?.yearFrom !== undefined) f.yearFrom = i.period.yearFrom;
   if (i.period?.yearTo !== undefined) f.yearTo = i.period.yearTo;
-  if (i.singleBidder) f.singleBidder = true;
   if (i.employees?.min !== undefined) f.minEmployees = i.employees.min;
   if (i.employees?.max !== undefined) f.maxEmployees = i.employees.max;
   return f;
@@ -77,8 +85,10 @@ export function specFor(input: Interpretation, intent: IntentKind, choice: Choic
   const notes: string[] = [];
   const f = baseFilters(i, choice, notes);
   const raw: Record<string, unknown> = { block: "table", measure: i.measure === "count" ? "count" : "value", filters: f };
-  if (i.dataset && !(i.dataset === "da" && i.singleBidder)) raw.dataset = i.dataset;
-  if (i.dataset === "da" && i.singleBidder) notes.push("Numărul de ofertanți există doar pentru contractele din proceduri; am folosit contractele, nu achizițiile directe.");
+  // Offers belong to procedures: the phrase keeps its stream, never the filter.
+  if (i.dataset) raw.dataset = i.dataset;
+  else if (i.singleBidder) raw.dataset = "contracts";
+  if (i.singleBidder) notes.push(i.dataset === "da" ? SINGLE_OFFER_DA_NOTE : SINGLE_OFFER_NOTE);
   const named = Boolean(f.authorityName || f.supplierName);
   const dropForProfiles = (keepEntity: boolean) => {
     const dropped = PROFILE_DROPPED.filter((k) => f[k] !== undefined);
@@ -89,7 +99,6 @@ export function specFor(input: Interpretation, intent: IntentKind, choice: Choic
       const what = [
         dropped.includes("cpvTerm") ? "domeniul" : null,
         dropped.some((k) => k.startsWith("year") || k.startsWith("month")) ? "perioada" : null,
-        dropped.includes("singleBidder") ? "filtrul de ofertanți" : null,
         dropped.some((k) => k.endsWith("Employees")) ? "mărimea firmelor" : null,
         dropped.some((k) => k.startsWith("admin")) ? "persoana" : null,
       ].filter(Boolean);
@@ -340,14 +349,14 @@ export function resultFor(i: Interpretation): IntentResult {
     problem = "Alege localitatea la care te gândești.";
   } else if (i.intent && i.entityAlternatives.length && !i.supplier && !i.authority) {
     problem = i.choicesPartial
-      ? `${i.choicesPartial.total} firme sau instituții se potrivesc. Alege una dintre primele ${i.choicesPartial.shown} sau scrie numele complet.`
+      ? `${countWords(i.choicesPartial.total, "firmă sau instituție", "firme sau instituții")} se potrivesc. Alege una dintre primele ${i.choicesPartial.shown} sau scrie numele complet.`
       : "Mai multe firme sau instituții au acest nume. Alege-o pe cea la care te gândești.";
   } else if (i.intent && !hasNamedScope(i) && i.leftover.length) {
     // only defaults matched ("<script> cine câștigă"): do not answer a national question nobody asked
     problem = "Nu am recunoscut în întrebare un subiect, un loc, o instituție sau o firmă.";
   } else if (i.intent && i.personAlternatives.length && !i.person) {
     problem = i.choicesPartial
-      ? `În Registrul Comerțului sunt ${i.choicesPartial.total} persoane cu acest nume. Alege una dintre primele ${i.choicesPartial.shown} sau caut-o după nume.`
+      ? `În Registrul Comerțului sunt ${countWords(i.choicesPartial.total, "persoană", "persoane")} cu acest nume. Alege una dintre primele ${i.choicesPartial.shown} sau caut-o după nume.`
       : i.personAlternatives.length === 1
         ? "Confirmă persoana: am căutat numele așa cum l-ai scris."
         : "Alege persoana la care te gândești; în Registrul Comerțului sunt mai multe cu același nume.";

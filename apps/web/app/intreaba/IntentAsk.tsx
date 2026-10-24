@@ -3,6 +3,7 @@
 import type { RefObject } from "react";
 import type { AskSpec } from "@/lib/ask/spec";
 import type { IntentResult } from "@/lib/intent/types";
+import { countWords } from "@/lib/ask/answer-text";
 import { ASK_EXAMPLE_GROUPS, FALLBACK_EXAMPLES, type AskExample } from "./ask-examples";
 import DiscoveryIcon from "../DiscoveryIcon";
 import AskExampleArt from "./AskExampleArt";
@@ -114,7 +115,7 @@ export function IntentChoose({ result, onAdopt }: { result: IntentResult; onAdop
       </ul>
       {partial && (
         <p className="ia-partial">
-          Lista arată {partial.shown} din {partial.total} potriviri. Dacă nu găsești ce cauți, <a href={`/cauta?q=${encodeURIComponent(partial.search)}`}>caută „{partial.search}”</a>. {partial.hint ?? "Scrie numele complet, cu localitatea ori anul nașterii."}
+          Lista arată {partial.shown} din {countWords(partial.total, "potrivire", "potriviri")}. Dacă nu găsești ce cauți, <a href={`/cauta?q=${encodeURIComponent(partial.search)}`}>caută „{partial.search}”</a>. {partial.hint ?? "Scrie numele complet, cu localitatea ori anul nașterii."}
         </p>
       )}
     </section>

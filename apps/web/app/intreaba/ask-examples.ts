@@ -52,7 +52,7 @@ export const ASK_EXAMPLE_GROUPS: AskExampleGroup[] = [
     examples: [
       { text: "Ce instituții din județul Buzău ies din tipar?" },
       { text: "Care spital are cel mai ridicat indice de risc?" },
-      { text: "Contracte cu un singur ofertant în județul Vaslui" },
+      { text: "Unde se situează primăria Vaslui după indicele de risc?" },
     ],
   },
 ];

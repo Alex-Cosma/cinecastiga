@@ -28,8 +28,8 @@ export const supplier: FilterDef<Party> = {
 
 export const employees: FilterDef<EmployeesChoice> = {
   id: "employees", keys: ["filters.minEmployees", "filters.maxEmployees"], placement: "invite", control: "range",
-  label: "Mărimea firmelor", detail: "Numărul de angajați din bilanț.",
-  windowTitle: "Ce mărime au firmele?", windowNote: "Numărul de angajați provine din ultimul bilanț disponibil. Firmele fără bilanț sunt excluse.",
+  label: "Angajați", detail: "Numărul de angajați din bilanț.",
+  windowTitle: "Câți angajați au firmele?", windowNote: "Numărul de angajați provine din ultimul bilanț disponibil. Firmele fără bilanț sunt excluse.",
   // employeesCond in rowPredicates: the firm's latest MF filing (marts.entity_profile); refused on profiles.
   engine: levels(TRANSACTION_FORMS, "entityAttr"), scope: alwaysScope("selection"),
   read: (spec) => spec.filters.minEmployees !== undefined || spec.filters.maxEmployees !== undefined

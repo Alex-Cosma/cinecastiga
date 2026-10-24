@@ -1,5 +1,5 @@
 import { newestCollectionDay } from "../../lib/collection-record";
-import { formatInt } from "../../lib/format";
+import { countWords } from "../../lib/ask/answer-text";
 
 const object = (value: unknown): value is Record<string, unknown> => !!value && typeof value === "object" && !Array.isArray(value);
 const sourceNames: Record<string, string> = { da: "Achiziții directe", contracts: "Contracte din proceduri", ted: "Publicații TED" };
@@ -20,6 +20,6 @@ export default function RefreshCoverage({ checkpoint, title }: { checkpoint: Rec
     // Import times are timestamptz text, collector times Bucharest time with an offset: compare instants.
     const success = newestCollectionDay([...matching.map(item => item.lastSucceededAt), ...streams.filter(item => item.stream === stream).map(item => item.lastSuccessAt)]);
     const failed = matching.some(item => item.latestStatus === "failed");
-    return <tr key={dataset}><th scope="row">{sourceNames[dataset]}<div className="mon-muted">{typeof observation.available === "string" ? `${formatInt(observation.available)} înregistrări disponibile` : "Număr de înregistrări necunoscut"}</div></th><td>{date(observation.date_from)} – {date(observation.date_to)}<div className="mon-muted">Inventar calculat la {date(row.calculatedAt)}.</div></td><td>{date(success)}{failed && <div className="mon-caution">Cel puțin o sursă are ultima colectare nereușită.</div>}</td></tr>;
+    return <tr key={dataset}><th scope="row">{sourceNames[dataset]}<div className="mon-muted">{typeof observation.available === "string" ? `${countWords(Number(observation.available), "înregistrare disponibilă", "înregistrări disponibile")}` : "Număr de înregistrări necunoscut"}</div></th><td>{date(observation.date_from)} – {date(observation.date_to)}<div className="mon-muted">Inventar calculat la {date(row.calculatedAt)}.</div></td><td>{date(success)}{failed && <div className="mon-caution">Cel puțin o sursă are ultima colectare nereușită.</div>}</td></tr>;
   })}</tbody></table></div><p className="mon-muted">Intervalele descriu datele existente în această versiune. Ultima colectare poate acoperi doar o parte a sursei; nu dovedește că inventarul este complet sau actualizat până astăzi.</p></>}</section>;
 }

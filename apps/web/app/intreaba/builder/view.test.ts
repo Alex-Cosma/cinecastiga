@@ -76,11 +76,11 @@ describe("the builder's view of a draft (P1, P2, P4, P5, P9)", () => {
     const view = builderView(link);
     expect(view.under.map((u) => u.kind)).toEqual(["only", "legacy"]);
     expect(view.under[0]).toMatchObject({ label: "Selecție avansată: firme cu cel puțin 5 înregistrări în selecție" });
-    expect(view.under[1]).toMatchObject({ words: "doar contracte cu un singur ofertant" });
+    expect(view.under[1]).toMatchObject({ words: "doar contractele cu o singură ofertă" });
     expect(view.refused).toEqual([]);
     const markup = renderToStaticMarkup(createElement(UnderChips, { items: view.under, onRemove: () => {} }));
-    expect(text(markup)).toContain("Din link: doar contracte cu un singur ofertant");
-    expect(markup).toContain('aria-label="Scoate «Din link: doar contracte cu un singur ofertant»"');
+    expect(text(markup)).toContain("Din link: doar contractele cu o singură ofertă");
+    expect(markup).toContain('aria-label="Scoate «Din link: doar contractele cu o singură ofertă»"');
 
     const refused = builderView(q({ block: "trend", dim: "supplier", topN: 10, minimumRecords: { role: "supplier", count: 5 }, filters: { yearFrom: 2024, yearTo: 2025 } }));
     expect(refused.refused.map((c) => c.key)).toEqual(["minimumRecords"]);

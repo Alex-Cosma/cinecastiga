@@ -76,7 +76,7 @@ describe("answer titles", () => {
     expect(questionTitle({ block: "table", measure: "value", dim: "supplier", filters: {}, population }))
       .toBe("Ce firme câștigă achizițiile făcute de instituțiile publice din toată țara, în toți anii, fără SYSTRA SA, selecție precisă, 1 condiție?");
     expect(questionTitle({ block: "trend", dim: "supplier", measure: "value", topN: 10, dataset: "contracts", filters: { yearFrom: 2024, yearTo: 2025, singleBidder: true } }))
-      .toBe("Ce firme au cea mai mare schimbare prin contracte din proceduri între 2024 și 2025, doar contracte cu un singur ofertant?");
+      .toBe("Ce firme au cea mai mare schimbare prin contracte din proceduri între 2024 și 2025, doar contractele cu o singură ofertă?");
     // A comparison's sentence ends with a full stop; the tail goes before it.
     expect(questionTitle({ block: "compare", measure: "value", dim: "authority", filters: { authorityName: "A", compareWith: "B", minEmployees: 0, maxEmployees: 4 } }))
       .toBe("Compară A cu B la toate achizițiile, în toți anii, firme cu 0–4 angajați.");

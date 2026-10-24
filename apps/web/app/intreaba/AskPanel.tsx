@@ -1140,12 +1140,12 @@ function RankingBars({
       {/* A consortium's value is split equally among its winners, so some firms show the same amount. */}
       {conditions.length > 0 ? <>
         <div className="fk cq-total"><TotalLine conditions={conditions}>{hasTotal ? <>Total: <span className="fk-num">{formatRonFull(shareTotals.value)}</span> la {entityNoun(spec.dim, shareTotals.entities)}</> : "Selecția"}</TotalLine></div>
-        {spec.dim === "supplier" && <p className="ask-fine cq-total-line">consorții: cote egale <Term id="consortiu" tip /></p>}
+        {spec.dim === "supplier" && <p className="ask-fine cq-total-line">în asociere: cote egale <Term id="in-asociere" tip /></p>}
       </> : (hasTotal || spec.dim === "supplier") && (
         <p className="ask-fine cq-total-line">
           {hasTotal && <>Total: {formatRonFull(shareTotals.value)} la {entityNoun(spec.dim, shareTotals.entities)} · valoare înregistrată, nu plăți</>}
           {hasTotal && spec.dim === "supplier" && " · "}
-          {spec.dim === "supplier" && <>consorții: cote egale <Term id="consortiu" tip /></>}
+          {spec.dim === "supplier" && <>în asociere: cote egale <Term id="in-asociere" tip /></>}
         </p>
       )}
     </>
@@ -1281,7 +1281,7 @@ function StatBlock({
       {stat.byStream && (
         <div className="ask-streamsplit">
           {formatRon(da?.value ?? 0)} achiziții directe (
-          {formatInt(da?.count ?? 0)}) + {formatRon(ctr?.value ?? 0)} contracte
+          {formatInt(da?.count ?? 0)}) + {formatRon(ctr?.value ?? 0)} contracte din proceduri
           ({formatInt(ctr?.count ?? 0)})
         </div>
       )}
@@ -1360,7 +1360,7 @@ function TableBlock({
     <div className="ask-tablewrap">
       {paged && (
         <div className="ask-detmeta">
-          {formatInt(meta!.total)} entități · pagina {page + 1} din{" "}
+          {countWords(meta!.total, "entitate", "entități")} · pagina {page + 1} din{" "}
           {formatInt(pages)}
         </div>
       )}
@@ -1371,7 +1371,7 @@ function TableBlock({
             <Th k="name" label="Nume" />
             <Th k="county" label="Județ" tip={(spec as AskSpec | undefined)?.dim === "supplier" ? <Term tip title="Județ" text="Județul firmei, nu al instituțiilor care au cumpărat de la ea." /> : undefined} />
             {perCapita && <th className="num">Populație</th>}
-            {perCapita && <Th k="percap" label="lei / locuitor" num />}
+            {perCapita && <Th k="percap" label="Pe locuitor (lei)" num />}
             <Th k="value" label="Valoare" num />
             {shareTotals && <th className="num cq-share-col">% din total</th>}
             <Th k="count" label="Achiziții" num />
@@ -1489,9 +1489,9 @@ function SeriesBlock({
             {...t.bind(
               String(p.year),
               asCount
-                ? formatInt(p.count) + " înregistrări"
+                ? countWords(p.count, "înregistrare", "înregistrări")
                 : formatRonFull(p.value),
-              `${formatInt(p.count)} achiziții${p.year === peak.year ? " · vârful seriei" : ""}${part ? ` · ${part.provisional ? "date parțiale sau provizorii" : "an acoperit parțial"}: ${part.note}` : ""} · click → achizițiile anului`,
+              `${countWords(p.count, "achiziție", "achiziții")}${p.year === peak.year ? " · vârful seriei" : ""}${part ? ` · ${part.provisional ? "date parțiale sau provizorii" : "an acoperit parțial"}: ${part.note}` : ""} · click → achizițiile anului`,
             )}
           >
             <div className="cv">{display(p)}</div>

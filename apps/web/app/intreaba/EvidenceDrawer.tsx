@@ -8,6 +8,7 @@ import type { ConnectionEvidenceSelection } from "@/lib/connection-evidence-shar
 import type { DrillResult, DrillSort } from "@/lib/ask/compile";
 import { EVIDENCE_CSV_LIMIT, evidenceLinks, formatEvidenceAmount, type EvidenceScope, type EvidenceFilters } from "@/lib/ask/evidence";
 import { isHistoricalProfile } from "@/lib/ask/population";
+import { countWords } from "@/lib/ask/answer-text";
 import { FLAG_META } from "@/lib/flags";
 import ClipButton from "@/components/ClipButton";
 import FollowButton from "@/components/FollowButton";
@@ -32,6 +33,7 @@ export interface EvidenceDrawerProps {
 
 type Response = ({ ok: true } & DrillResult) | { ok: false; error: string };
 const count = (n: number) => n.toLocaleString("ro-RO");
+const records = (n: number) => countWords(n, "înregistrare", "înregistrări");
 const date = (value: string | null) => value ? value.split("-").reverse().join(".") : "Dată neprecizată";
 
 export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel, scope, onClose, onSave, initialFilters, connection, peer }: EvidenceDrawerProps) {
@@ -162,7 +164,7 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
       {result && <details className="ev-calculation">
         <summary>Cum ajungem la acest rezultat <span aria-hidden="true">+</span></summary>
         <p>Numărul reprezintă rândurile incluse. Totalul însumează valorile înregistrate ale acelor rânduri, înainte de rotunjirea pentru afișare. Căutarea, starea și pagina din această listă nu schimbă întrebarea aplicată.</p>
-        <p className="ev-exact-total">Suma în precizia stocată: <strong>{formatEvidenceAmount(result.sourceValue, true)}</strong>. Afișarea principală este rotunjită la bani; CSV păstrează toate zecimalele, inclusiv cotele din consorții.</p>
+        <p className="ev-exact-total">Suma în precizia stocată: <strong>{formatEvidenceAmount(result.sourceValue, true)}</strong>. Afișarea principală este rotunjită la bani; CSV păstrează toate zecimalele, inclusiv cotele firmelor în asociere.</p>
         {filtered && <p className="ev-exact-total">Suma exactă a listei filtrate: <strong>{formatEvidenceAmount(result.value, true)}</strong>.</p>}
         {result.scopeNotes.map((note, i) => <p key={i}>{note}</p>)}
         {result.profile && <>
@@ -172,7 +174,7 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
             <span>{p.flags.length} ÷ {p.applicable} = {p.cri === null ? "indice indisponibil" : p.cri.toLocaleString("ro-RO", { maximumFractionDigits: 4 })}</span>
             <small>{p.flags.length ? p.flags.map((flag) => FLAG_META[flag]?.title ?? flag).join(" · ") : "Niciun indicator activ"}</small>
           </div>)}
-          {result.profileCount > result.profiles.length && <p>Sunt prezentate primele {result.profiles.length} profiluri din {count(result.profileCount)}. Pentru formula unei entități, deschide profilul din diagramă. Lista de surse include întreaga selecție.</p>}
+          {result.profileCount > result.profiles.length && <p>Sunt prezentate primele {countWords(result.profiles.length, "profil", "profiluri")} din {count(result.profileCount)}. Pentru formula unei entități, deschide profilul din diagramă. Lista de surse include întreaga selecție.</p>}
         </>}
       </details>}
       <div className="ev-filters">
@@ -181,10 +183,10 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
           <option value="">Toate stările</option>
           {result?.statuses.map((s) => <option key={s.state ?? "__unknown"} value={s.state ?? "__unknown"}>{s.state ?? "Stare nepublicată / contract"} · {count(s.count)}</option>)}
         </select></label>
-        {!result?.profile && (spec.dataset ?? "all") === "all" && <label><span>Canal</span><select value={stream} onChange={(e) => { setStream(e.target.value); setPage(0); }}><option value="">Toate sursele</option><option value="da">Achiziții directe</option><option value="contracts">Contracte</option></select></label>}
+        {!result?.profile && (spec.dataset ?? "all") === "all" && <label><span>Ce fel de achiziții</span><select value={stream} onChange={(e) => { setStream(e.target.value); setPage(0); }}><option value="">Toate achizițiile</option><option value="da">Achizițiile directe</option><option value="contracts">Contractele din proceduri</option></select></label>}
       </div>
       <div className="ev-list-toolbar">
-        <div className="ev-filtered-summary" aria-live="polite">{busy ? "Se actualizează rezultatele…" : result ? <><strong>{count(result.total)} {filtered ? "potriviri" : "înregistrări"}</strong> · {formatEvidenceAmount(result.value)}</> : ""}{filtered && <button type="button" onClick={reset}>Șterge filtrele listei</button>}</div>
+        <div className="ev-filtered-summary" aria-live="polite">{busy ? "Se actualizează rezultatele…" : result ? <><strong>{filtered ? countWords(result.total, "potrivire", "potriviri") : records(result.total)}</strong> · {formatEvidenceAmount(result.value)}</> : ""}{filtered && <button type="button" onClick={reset}>Șterge filtrele listei</button>}</div>
         <label className="ev-sort"><span className="ev-sr-only">Ordonează sursele</span><select value={`${sort}:${dir}`} onChange={(e) => { const [key, direction] = e.target.value.split(":"); setSort(key as DrillSort); setDir(direction as "asc" | "desc"); setPage(0); }}>
           <option value="source:desc">Ordinea sursei</option><option value="value:desc">Valoare ↓</option><option value="value:asc">Valoare ↑</option><option value="date:desc">Cele mai recente</option><option value="date:asc">Cele mai vechi</option><option value="supplier:asc">Furnizor A–Z</option><option value="authority:asc">Instituție A–Z</option>
         </select></label>
@@ -192,7 +194,7 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
       </>}
       {error && <div className="ev-error" role="alert"><p>{error}</p><button type="button" onClick={() => setRetry((v) => v + 1)}>Încearcă din nou</button></div>}
       <div className={`ev-records${busy ? " ev-loading" : ""}`} aria-busy={busy} inert={busy}>
-        {!busy && !error && result && result.rows.length === 0 && <div className="ev-empty"><strong>Nicio înregistrare{filtered ? " pentru aceste filtre" : " în selecție"}.</strong><p>{filtered ? "Totalul selecției rămâne vizibil mai sus. Șterge filtrele pentru a reveni la toate sursele." : "Absența unui rezultat se referă la datele și condițiile acestei întrebări."}</p></div>}
+        {!busy && !error && result && result.rows.length === 0 && <div className="ev-empty"><strong>Nicio înregistrare{filtered ? " pentru aceste filtre" : " în selecție"}.</strong><p>{filtered ? "Totalul selecției rămâne vizibil mai sus. Șterge filtrele pentru a reveni la toate înregistrările." : "Absența unui rezultat se referă la datele și condițiile acestei întrebări."}</p></div>}
         {result && result.rows.length > 0 && <table className="ev-table"><caption className="ev-sr-only">Înregistrările sursă pentru {title}</caption>
           <thead><tr><th>Înregistrare</th><th>Instituție → furnizor</th><th>Valoare (lei)</th><th>Stare și sursă</th></tr></thead>
           <tbody>{result.rows.map((r) => {
@@ -213,7 +215,7 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
       {exportMessage && <p className="ev-export-message" role="status">{exportMessage}</p>}
     </div>
     <footer className="ev-footer"><div>{result && !busy && !connection && !peer && <FollowButton spec={spec} options={{ ...(scope ? { scope } : {}), search, state, ...(stream === "da" || stream === "contracts" ? { stream } : {}) }} title={title} label="Urmărește această selecție" />}<button type="button" className="ev-export-main" disabled={!result || busy || !!exporting} onClick={() => void exportCsv("all")}>{exporting === "all" ? "Se exportă…" : result && result.sourceTotal > EVIDENCE_CSV_LIMIT ? "Exportă primele 100.000 · CSV" : "Exportă toate · CSV"}</button><button type="button" disabled={!result || busy || !!exporting || !filtered} onClick={() => void exportCsv("filtered")}>{exporting === "filtered" ? "Se exportă…" : result && result.total > EVIDENCE_CSV_LIMIT ? "Lista filtrată · primele 100.000" : "Exportă lista filtrată"}</button></div>{onSave ? <button type="button" className="ev-save" onClick={onSave}>+ Salvează în Anchete</button> : result && !busy && <ClipButton key={JSON.stringify({ queryKey, search, state, stream })} kind="query" spec={spec} label={title} snapshot={{
-      title, headline: `${count(result.sourceTotal)} înregistrări · ${formatEvidenceAmount(result.sourceValue)}`,
+      title, headline: `${records(result.sourceTotal)} · ${formatEvidenceAmount(result.sourceValue)}`,
       pills: [], evidenceScope: scope ?? null, evidenceOptions: peer?.selection.kind === "comparison" ? {} : { search, state, stream }, sourceTotal: result.sourceTotal, sourceValue: result.sourceValue,
       dateFrom: result.dateFrom, dateTo: result.dateTo, profile: result.profile, scopeNotes: result.scopeNotes,
       capturedAt: new Date().toISOString(), snapshotKind: "query-scope-and-totals",

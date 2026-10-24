@@ -10,6 +10,7 @@
  *    well they explain what was typed, so the best guess is row 1 and Enter is
  *    safe to press blind.
  */
+import { countWords } from "./answer-text";
 
 /** Diacritic-fold + lowercase — the one true normalization. */
 export function fold(s: string): string {
@@ -177,7 +178,7 @@ export function parseIntents(qRaw: string): Intents {
   }
   if ((m = /^ultimii?\s*(\d{1,2})?\s*ani$/.exec(q))) {
     const n = m[1] ? +m[1] : 3;
-    out.yearRange = { from: CURRENT_YEAR - n, to: CURRENT_YEAR, label: `ultimii ${n} ani` };
+    out.yearRange = { from: CURRENT_YEAR - n, to: CURRENT_YEAR, label: `ultimii ${countWords(n, "an", "ani")}` };
     out.consumed = true;
   }
   if ((m = /^(\d{4})$/.exec(q)) && +m[1]! >= 2015 && +m[1]! <= 2030) {
@@ -212,12 +213,12 @@ export function parseIntents(qRaw: string): Intents {
   } else if ((m = /^(sub|cel mult|maxim?|max)\s+(\d{1,6})\s*angajati?$/.exec(q))) {
     const n = +m[2]!;
     const max = /^sub$/.test(m[1]!) ? Math.max(0, n - 1) : n;
-    out.employees = { max, label: `${m[1]} ${n} angajați` };
+    out.employees = { max, label: `${m[1]} ${countWords(n, "angajat", "angajați")}` };
     out.consumed = true;
   } else if ((m = /^(peste|cel putin|minim?|min)\s+(\d{1,6})\s*angajati?$/.exec(q))) {
     const n = +m[2]!;
     const min = /^peste$/.test(m[1]!) ? n + 1 : n;
-    out.employees = { min, label: `${m[1]} ${n} angajați` };
+    out.employees = { min, label: `${m[1]} ${countWords(n, "angajat", "angajați")}` };
     out.consumed = true;
   } else if (/^(sub|peste|cel mult|cel putin|maxim|minim)\s+\d{0,6}\s*(a|an|ang|anga|angaj|angaja|angajat|angajati?)?$/.test(q) && /\d/.test(q)) {
     out.employees = { label: q, partial: true };

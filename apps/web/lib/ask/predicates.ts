@@ -310,7 +310,7 @@ export function displayPredicates(ctx: PredicateCtx, table: string): string[] {
     conds.push(
       `authority_id in (${ctx.uatAuthorityIds.join(", ")})  -- administrația locală a UAT ${ctx.uatSiruta} (asociere strictă)`,
     );
-  if (ctx.singleBidder) conds.push("is_single_bidder = true  -- un singur ofertant (din TED)");
+  if (ctx.singleBidder) conds.push("is_single_bidder = true  -- o singură ofertă (din TED)");
   if (ctx.minEmployees !== null || ctx.maxEmployees !== null) {
     const b =
       ctx.minEmployees !== null && ctx.maxEmployees !== null

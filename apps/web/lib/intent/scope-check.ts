@@ -32,7 +32,7 @@ export function sentenceScopeProblems(spec: AskSpec, sentence: string): string[]
   const kind = namedKind(f.authorityKind);
   if (kind && !KIND_WORDS[kind].test(sentence)) out.push(`kind ${kind} not in sentence`);
   if (f.singleBidder) {
-    if (!/un singur ofertant/.test(sentence)) out.push("single bidder not in sentence");
+    if (!/o singură ofertă/.test(sentence)) out.push("single offer not in sentence");
   } else if (spec.dataset === "da") {
     if (!/achiziții directe/.test(sentence)) out.push("direct acquisitions not in sentence");
   } else if (spec.dataset === "contracts") {

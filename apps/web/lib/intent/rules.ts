@@ -1,6 +1,7 @@
 import type { AuthorityKind } from "../ask/spec";
 import { retiredTerm } from "../ask/retired-terms";
 import { lev } from "../ask/intent";
+import { countWords } from "../ask/answer-text";
 import { placeKey } from "./places";
 import { NUMBER_WORDS, STOPWORDS, fold, personPatterns, rawSpan, stems, tokenize, wordMatches, type Token } from "./text";
 import type {
@@ -719,8 +720,8 @@ export class RulesInterpreter implements QuestionInterpreter {
     const where = [...new Set(locs.map((e) => e.county))];
     const inCounties = where.length > 1 ? `${where.slice(0, -1).join(", ")} și ${where.at(-1)}` : where[0];
     out.placeNote = pick.typed
-      ? `${locs.length} localități au numele „${pick.typed}” sau încep cu el, în ${inCounties}.`
-      : `Există ${locs.length} localități cu numele „${bare}”, în ${inCounties}.`;
+      ? `${countWords(locs.length, "localitate", "localități")} au numele „${pick.typed}” sau încep cu el, în ${inCounties}.`
+      : `Există ${countWords(locs.length, "localitate", "localități")} cu numele „${bare}”, în ${inCounties}.`;
   }
 
   // ---------------------------------------------------------- fiscal codes
@@ -856,7 +857,7 @@ export class RulesInterpreter implements QuestionInterpreter {
     if (total > hits.length) out.choicesPartial = { shown: unique.length, total, search: typedName, hint: PERSON_HINT };
     out.notes.push(total === 1
       ? `Am găsit o persoană cu numele „${typedName}” scris exact așa. Același nume scris cu diacritice nu a putut fi căutat sigur; alege persoana dacă este cea la care te gândești.`
-      : `${total} persoane se numesc „${typedName}” în Registrul Comerțului. ${total > hits.length ? `Arătăm primele ${unique.length}, cele cu cele mai multe firme. ` : ""}${exhaustive ? "" : "Variantele scrise cu diacritice nu au putut fi căutate sigur. "}Alege persoana după anul și locul nașterii.`);
+      : `${countWords(total, "persoană", "persoane")} se numesc „${typedName}” în Registrul Comerțului. ${total > hits.length ? `Arătăm primele ${unique.length}, cele cu cele mai multe firme. ` : ""}${exhaustive ? "" : "Variantele scrise cu diacritice nu au putut fi căutate sigur. "}Alege persoana după anul și locul nașterii.`);
   }
 
   private async suppliersByMarker(c: Cursor, out: Interpretation) {
@@ -1003,7 +1004,7 @@ export class RulesInterpreter implements QuestionInterpreter {
     // generic words ("lucrări", "servicii") are understood next to a real subject, never a subject alone
     if (out.subjects.length) for (let k = 0; k < c.tokens.length; k++) if (!c.used[k] && GENERIC_SUBJECT.has(c.f(k))) c.take(k, k + 1, "filler");
     if (out.subjects.length > 1)
-      out.notes.push(`Am adunat ${out.subjects.length === 2 ? "ambele domenii" : `toate cele ${out.subjects.length} domenii`}: ${out.subjects.map((s) => `„${s.label}”`).join(", ")}. O achiziție care se potrivește cu mai multe e numărată o singură dată.`);
+      out.notes.push(`Am adunat ${out.subjects.length === 2 ? "ambele domenii" : `toate cele ${countWords(out.subjects.length, "domeniu", "domenii")}`}: ${out.subjects.map((s) => `„${s.label}”`).join(", ")}. O achiziție care se potrivește cu mai multe e numărată o singură dată.`);
   }
 
   /**
@@ -1195,7 +1196,7 @@ export class RulesInterpreter implements QuestionInterpreter {
     const total = many.reduce((n, r) => n + (r.kind === "one" ? 1 : r.total), 0);
     out.entityAlternatives = all.slice(0, 6).map(({ role, hit }) => ({ role, id: hit.id, name: hit.name, county: hit.county, matched: span }));
     if (total > out.entityAlternatives.length) out.choicesPartial = { shown: out.entityAlternatives.length, total, search: span.text, hint: ENTITY_HINT };
-    out.notes.push(`${total} firme sau instituții se potrivesc cu „${span.text}”.`);
+    out.notes.push(total === 1 ? `O firmă sau instituție se potrivește cu „${span.text}”.` : `${countWords(total, "firmă sau instituție", "firme sau instituții")} se potrivesc cu „${span.text}”.`);
   }
 
   private settleIntent(cues: { intent: IntentKind; at: number }[], out: Interpretation) {

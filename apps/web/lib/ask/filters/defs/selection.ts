@@ -18,14 +18,14 @@ export interface PeriodChoice { yearFrom?: number; yearTo?: number; monthFrom?: 
 
 export const dataset: FilterDef<"all" | "da" | "contracts"> = {
   id: "dataset", keys: ["dataset"], placement: "under", control: "list",
-  label: "Canalul achizițiilor",
-  windowTitle: "Ce achiziții includem?", windowNote: "Contractele din proceduri și achizițiile directe sunt surse distincte.",
+  label: "Ce fel de achiziții",
+  windowTitle: "Ce fel de achiziții?", windowNote: "Contractele din proceduri și achizițiile directe nu se suprapun.",
   // Profiles have only direct acquisitions: all and da give the same profile, contracts is refused.
   engine: levels(TRANSACTION_FORMS, "row"), scope: alwaysScope("selection"),
   read: (spec) => spec.dataset as "all" | "da" | "contracts" | undefined,
   write: (spec, value) => edited(spec, (next) => {
     next.dataset = value ?? "all";
-    // chooseValue: "un singur ofertant" exists only on the contracts stream.
+    // chooseValue: "o singură ofertă" exists only on the contracts stream.
     if (value !== "contracts") delete next.filters.singleBidder;
   }),
   choices: () => ["all", "contracts", "da"],
@@ -33,8 +33,8 @@ export const dataset: FilterDef<"all" | "da" | "contracts"> = {
 
 export const cpvTerm: FilterDef<string> = {
   id: "cpvTerm", keys: ["filters.cpvTerm"], placement: "under", control: "domainSearch",
-  label: "Domeniul achiziției", detail: "Medicamente, asfaltare, mobilier…",
-  windowTitle: "Ce fel de achiziții?", windowNote: "Scrie un domeniu, un produs sau un cod CPV: medicamente, asfaltare, mobilier…",
+  label: "Ce s-a cumpărat", detail: "Medicamente, asfaltare, mobilier…",
+  windowTitle: "Ce s-a cumpărat?", windowNote: "Scrie un domeniu, un produs sau un cod CPV: medicamente, asfaltare, mobilier…",
   engine: levels(TRANSACTION_FORMS, "row"), scope: alwaysScope("selection"),
   read: (spec) => spec.filters.cpvTerm as string | undefined,
   write: (spec, value) => setFilters(spec, { cpvTerm: value }),
@@ -57,7 +57,7 @@ export const authority: FilterDef<Party> = {
 
 export const authorityKind: FilterDef<AuthorityKind> = {
   id: "authorityKind", keys: ["filters.authorityKind"], placement: "sentence", control: "list",
-  label: "Tipul instituției", detail: "Comune, spitale, școli și altele.",
+  label: "Tipul instituției", detail: "Primării, spitale, școli…",
   windowTitle: "Ce instituții te interesează?", windowNote: "Poți privi toate instituțiile sau un singur tip.",
   // A name pattern on the buyer (authorityKindCond, authority-kind.ts); on profiles, on an authority's own name only.
   engine: { ...levels(TRANSACTION_FORMS, "row"), ...levels(PROFILE_FORMS, "profile") }, scope: alwaysScope("selection"),

@@ -87,7 +87,7 @@ const PARK = "F1b: the conditions the index cannot apply are set aside (onTransi
 export const TODAY_REFUSALS: readonly TodayRefusal[] = [
   { id: "trend-threshold", filter: "minimumRecords", values: defined, when: (_s, ctx) => ctx.form === "trend", kind: "engine",
     reason: "Filtrul «cel puțin N înregistrări» se aplică întregii selecții și nu este disponibil în diferența dintre doi ani.",
-    fix: "F1b: no record threshold on the trend (hidden; «Mai multe filtre» is gone, R3). A link that carries one shows a refused «Din link» chip." },
+    fix: "F1b: no record threshold on the trend (hidden; the generic section of more filters is gone, R3). A link that carries one shows a refused «Din link» chip." },
   { id: "profile-threshold", filter: "minimumRecords", values: defined, when: (_s, ctx) => ctx.profile, kind: "engine", reason: PROFILE_REASON,
     fix: "F1b: hidden on the three profiles (R3; with variant A, «Selecție avansată» is absent there too)." },
   { id: "profile-population", filter: "population", values: defined, when: (_s, ctx) => ctx.profile, kind: "engine", reason: PROFILE_REASON,

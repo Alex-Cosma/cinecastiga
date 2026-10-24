@@ -12,14 +12,14 @@ import { alwaysScope, edited, levels, setFilters } from "./shared";
 
 export const minimumRecords: FilterDef<MinimumRecords> = {
   id: "minimumRecords", keys: ["minimumRecords"], placement: "advanced", control: "minimum",
-  label: "Număr minim de înregistrări",
+  label: "Prag de înregistrări",
   // groupPredicates: rows whose institution (or firm) has at least N rows in the
   // filtered selection, counted per entity before the answer groups them. A
   // selection (the total changes). Refused on a trend and on the profiles.
   engine: levels(TRANSACTION_FORMS.filter((form) => form !== "trend"), "group"), scope: alwaysScope("selection"),
   read: (spec) => spec.minimumRecords,
   write: (spec, value) => edited(spec, (next) => { if (value) next.minimumRecords = { ...value }; else delete next.minimumRecords; }),
-  // "Adaugă un prag de înregistrări" inserts firms, 5; then "Cine?", "Cel puțin" (1–1.000.000) and "Elimină pragul".
+  // "+ Un prag de înregistrări" inserts firms, 5; then "Cel puțin" (1–1.000.000) and "Scoate pragul" (⋯ › Selecție avansată).
   choices: () => [{ role: "supplier", count: 5 }, { role: "authority", count: 5 }, { role: "supplier", count: 1_000_000 }, undefined],
 };
 
@@ -49,14 +49,14 @@ export const population: FilterDef<QueryPopulation> = {
 
 export const singleBidder: FilterDef<true> = {
   id: "singleBidder", keys: ["filters.singleBidder"], placement: "invite", control: "list",
-  label: "Un singur ofertant", detail: "Contracte cu informații despre competiție.",
+  label: "O singură ofertă", detail: "Contracte cu informații despre competiție.",
   windowTitle: "Vrei să urmărești competiția?",
-  windowNote: "Datele despre ofertanți sunt disponibile pentru o parte a contractelor din proceduri.",
+  windowNote: "Numărul de oferte e publicat doar pentru o parte a contractelor din proceduri.",
   // is_single_bidder on contract rows; validateSpec and transitionQuestion switch the stream to contracts.
   engine: levels(TRANSACTION_FORMS, "row"), scope: alwaysScope("selection"),
   read: (spec) => spec.filters.singleBidder === true ? true : undefined,
   write: (spec, value) => setFilters(spec, { singleBidder: value }),
-  // "Doar contracte cu un singur ofertant" · "Fără acest filtru".
+  // Old links only (kit G1): "Din link: doar contractele cu o singură ofertă".
   choices: () => [true, undefined],
 };
 

@@ -117,9 +117,12 @@ export function periodWordsWith(f: Parameters<typeof periodPhrase>[0], all = "î
   return lead ? `${lead} ${value}` : value;
 }
 
+/** An old link's single-bidder condition (kit §4 "Oferte": "o singură ofertă", never "un singur ofertant"). */
+export const SINGLE_OFFER_WORDS = "doar contractele cu o singură ofertă";
+
 /** The data stream after the period ("doar achiziții directe"); a single bidder says the stream itself. */
 export function streamPhrase(spec: Spec, channelSaid = false): string | null {
-  if (spec.filters.singleBidder) return "doar contracte cu un singur ofertant";
+  if (spec.filters.singleBidder) return SINGLE_OFFER_WORDS;
   if (spec.dataset === "da" && !channelSaid) return "doar achiziții directe";
   if (spec.dataset === "contracts") return "doar contracte din proceduri";
   return null;
