@@ -1,5 +1,5 @@
 import {buildAskRollups,createTransactionMartBuildIndexes,dropTransactionMartBuildIndexes,ensureTransactionMartIndexes,type DbSql} from '@seap/db';
-import {buildAggMapCounty} from './agg-map-county.js';
+import {buildAggMapCounty,buildAggMapCountyTop} from './agg-map-county.js';
 type TransactionSql=Parameters<Parameters<DbSql['begin']>[1]>[0];
 
 /** Daily procurement read models; uses the retained flags without recomputing CRI. */
@@ -76,8 +76,10 @@ export async function buildTransactionMarts(q:TransactionSql){
       drop table if exists marts.agg_map_county, marts.agg_top_entities,
                           marts.agg_national, marts.agg_years
     `;
-    // Per buyer county, with the split by the winning firm's seat.
+    // Per buyer county, with the split by the winning firm's seat, and the
+    // county card's largest buyer and record.
     await buildAggMapCounty(q);
+    const mapCountyTop=await buildAggMapCountyTop(q);
     await q`
       create table marts.agg_national as
       select src,
@@ -147,11 +149,23 @@ export async function buildTransactionMarts(q:TransactionSql){
     await q`refresh materialized view marts.signal_lookup`;
     await q`analyze marts.signal_lookup`;
     const [row]=await q`select count(*)::int n from marts.da_transactions`;
-    return {daTransactions:Number(row!.n),createdIndexes,buildIndexes,rollups:rollups.rows};
+    return {daTransactions:Number(row!.n),createdIndexes,buildIndexes,rollups:rollups.rows,mapCountyTop};
 }
 export async function runTransactionMarts(sql:DbSql,opts:{log?:(message:string)=>void}={}){
  const report=await sql.begin(q=>buildTransactionMarts(q));
- opts.log?.(`transaction marts: da_transactions=${report.daTransactions} agg_entity_year=${report.rollups.agg_entity_year} agg_pair_year=${report.rollups.agg_pair_year} agg_cpv_year=${report.rollups.agg_cpv_year}`);
+ opts.log?.(`transaction marts: da_transactions=${report.daTransactions} agg_entity_year=${report.rollups.agg_entity_year} agg_pair_year=${report.rollups.agg_pair_year} agg_cpv_year=${report.rollups.agg_cpv_year} agg_map_county_top=${report.mapCountyTop}`);
  if(report.createdIndexes.length)opts.log?.(`transaction marts: recreated missing indexes ${report.createdIndexes.join(', ')}`);
- return report;
+ // After the commit (VACUUM cannot run in a transaction), before the site
+ // reopens: the reload leaves no page all-visible, so until autovacuum (cost
+ // limited, minutes later) every index-only answer (the covering county/CPV
+ // indexes, the twins of named entities) reads the heap for each entry, and
+ // the da_split UPDATE leaves its old rows behind. Also fresh statistics.
+ // Local copy of 4.8 GB (24 October 2026): 15 s, 98.4% of the pages
+ // all-visible after; the index pass is skipped while the old rows sit on
+ // fewer than 2% of the pages (1.6%), and the next VACUUM removes them.
+ const started=Date.now();
+ await sql.unsafe('vacuum (analyze) marts.da_transactions');
+ const vacuumMs=Date.now()-started;
+ opts.log?.(`transaction marts: vacuum analyze da_transactions ${vacuumMs} ms`);
+ return {...report,vacuumMs};
 }

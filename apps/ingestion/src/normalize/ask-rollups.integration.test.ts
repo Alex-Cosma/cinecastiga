@@ -46,6 +46,26 @@ it.skipIf(!connection)('builds the Ask rollups and the covering indexes with eve
   const [cpv]=await q`select coalesce(sum(v),0)::text v, coalesce(sum(n),0)::int n from marts.agg_cpv_year`;
   const [national]=await q`select coalesce(sum(v_plaf),0)::text v, coalesce(sum(n_plaf),0)::int n from marts.agg_national`;
   expect(cpv).toEqual(national);
+  // The first and last date of each group (the source drawer's period); 17003 at the ceiling counts.
+  expect((await q`select src,y,county,cpv_code,left(d0,10) d0,left(d1,10) d1 from marts.agg_cpv_year where county in ('Cluj','Iasi') order by y,county,cpv_code`).map(r=>({...r}))).toEqual([
+   {src:'da',y:'2024',county:'Cluj',cpv_code:'45000000-7',d0:'2024-09-22',d1:'2024-09-22'},
+   {src:'da',y:'2024',county:'Iasi',cpv_code:null,d0:'2024-09-26',d1:'2024-09-26'},
+   {src:'da',y:'2025',county:'Cluj',cpv_code:'33600000-6',d0:'2025-03-20',d1:'2025-09-21'},
+  ]);
+  // The county card: per scope, channel and county the total, the largest buyer and the largest
+  // record, as a live grouping of the same rows gives them (only the ceiling scope sees 17004 cut).
+  const card=async(scope:string,channel:string,county:string)=>{
+   const [row]=await q`select v::text,n::int,top_buyer_id::text,top_buyer_name,top_buyer_v::text,top_record_src,top_record_id::text,top_record_v::text
+     from marts.agg_map_county_top where scope=${scope} and channel=${channel} and county=${county}`;
+   return row?{...row}:null;
+  };
+  expect(await card('plaf','all','Cluj')).toEqual({v:'2001000.50',n:3,top_buyer_id:cluj,top_buyer_name:'Spital Cluj',top_buyer_v:'2001000.50',top_record_src:'da',top_record_id:'17003',top_record_v:'2000000'});
+  expect(await card('plaf','all','Iasi')).toEqual({v:'30',n:1,top_buyer_id:iasi,top_buyer_name:'Primaria Iasi',top_buyer_v:'30',top_record_src:'da',top_record_id:'17007',top_record_v:'30'});
+  expect(await card('all','all','Iasi')).toEqual({v:'2000030.01',n:2,top_buyer_id:iasi,top_buyer_name:'Primaria Iasi',top_buyer_v:'2000030.01',top_record_src:'da',top_record_id:'17004',top_record_v:'2000000.01'});
+  expect(await card('plaf','contracts','Cluj')).toBeNull();
+  const [mapTotals]=await q`select count(*)::int differ from marts.agg_map_county_top t join marts.agg_map_county m using (county)
+    where t.channel='all' and ((t.scope='plaf' and (t.v,t.n) is distinct from (m.v_plaf,m.n_plaf)) or (t.scope='all' and (t.v,t.n) is distinct from (m.v_all,m.n_all)))`;
+  expect(mapTotals!.differ).toBe(0);
   const indexes=async()=>(await q`select indexname name,indexdef definition from pg_indexes where schemaname='marts'
    and indexname=any(${TRANSACTION_MART_BUILD_INDEXES.map(i=>i.name)}::text[]) order by indexname collate "C"`).map(r=>({...r}));
   const expected=TRANSACTION_MART_BUILD_INDEXES.map(({name,definition})=>({name,definition})).sort((x,y)=>x.name<y.name?-1:1);
