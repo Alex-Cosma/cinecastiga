@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, type ReactNode } from "react";
+import { useId, useState, type KeyboardEvent, type ReactNode } from "react";
 import { GLOSSARY, type GlossaryId } from "../lib/glossary";
 
 /**
@@ -20,6 +20,16 @@ type TermProps = { children?: ReactNode; className?: string; tip?: boolean } & (
   | { id?: never; title: string; text: ReactNode }
 );
 
+/**
+ * An Escape that closed the definition closes only it: not the window around
+ * it either, by propagation or by a modal dialog's own cancel (which a
+ * cancelled keydown does not fire).
+ */
+function closeOnly(event: KeyboardEvent) {
+  event.preventDefault();
+  event.stopPropagation();
+}
+
 export default function Term({ children, className, tip = false, ...source }: TermProps) {
   const entry = source.id !== undefined ? GLOSSARY[source.id] : { title: source.title, text: source.text };
   const [open, setOpen] = useState(false);
@@ -36,7 +46,7 @@ export default function Term({ children, className, tip = false, ...source }: Te
       aria-label={children ? undefined : `${entry.title}: ce înseamnă`}
       onClick={() => setOpen(value => !value)}
       onBlur={() => setOpen(false)}
-      onKeyDown={event => { if (event.key === "Escape" && open) { event.stopPropagation(); setOpen(false); } }}
+      onKeyDown={event => { if (event.key === "Escape" && open) { closeOnly(event); setOpen(false); } }}
     >
       {children}
       <span className="term-mark" aria-hidden="true">?</span>
@@ -52,7 +62,7 @@ export default function Term({ children, className, tip = false, ...source }: Te
       aria-expanded={open}
       aria-controls={definitionId}
       onClick={() => setOpen(value => !value)}
-      onKeyDown={event => { if (event.key === "Escape" && open) { event.stopPropagation(); setOpen(false); } }}
+      onKeyDown={event => { if (event.key === "Escape" && open) { closeOnly(event); setOpen(false); } }}
     >
       {children ?? entry.title}
       <span className="term-mark" aria-hidden="true">?</span>

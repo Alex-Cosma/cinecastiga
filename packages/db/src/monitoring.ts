@@ -54,6 +54,11 @@ export async function withMonitoringSnapshot<T>(sql: DbSql,
     // .begin method (despite the declaration). Explicit transaction commands are
     // safe here because every command uses this exclusively reserved connection.
     await connection`begin isolation level repeatable read`; transaction = true;
+    // Every statement is prepared; from its sixth run on a pooled session
+    // PostgreSQL may switch to a generic plan, chosen without the bound values.
+    // On the marts that was slower (comparisons and relations of a large firm:
+    // 2.5 s → 3–5 s, once 17.6 s; 1.7 s → 2.6 s). Plan each run for its own values.
+    await connection`set local plan_cache_mode = force_custom_plan`;
     const checkpoint = await latest(connection);
     if (!checkpoint) throw new MonitoringRefreshUnavailableError("unpublished");
     if (checkpoint.status !== "ready") throw new MonitoringRefreshUnavailableError(checkpoint.status === "running" ? "refreshing" : "failed", checkpoint);
