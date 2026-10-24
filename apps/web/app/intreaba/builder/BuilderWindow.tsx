@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { COUNTIES } from "@/lib/counties";
+import { readableCpvName } from "@/lib/entity-summary";
 import { IMPLAUSIBLE_BIRTH_DATE_LABEL } from "@/lib/format";
-import { windowOf } from "@/lib/ask/filters/blocks";
+import { BLOCK_FILTERS, windowOf } from "@/lib/ask/filters/blocks";
 import { filterContext } from "@/lib/ask/filters/context";
 import type { Choice } from "@/lib/ask/filters/pickers";
 import type { Excluded } from "@/lib/ask/filters/origin";
@@ -17,10 +18,10 @@ import PeriodPicker, { EMPTY_RANGE, PeriodRange, periodRangeError, type PeriodRa
 import Segmented from "./Segmented";
 import OptionList from "./pickers/OptionList";
 import Popover from "./pickers/Popover";
-import type { ChangeSource } from "./kit-types";
+import type { ChangeSource, KitRestRow } from "./kit-types";
 import type { BuilderWindowSpec } from "./view";
 import {
-  bandValues, bandsChoice, fromTab, fromTabs, listOptions, periodPresets, windowKind, type ChoiceOption, type CoverageSpan,
+  bandValues, bandsChoice, fromTab, fromTabs, listOptions, periodPresets, windowKind, windowTip, type ChoiceOption, type CoverageSpan,
 } from "./window-model";
 
 /*
@@ -138,9 +139,9 @@ function countyResults(query: string, group?: string): Found[] {
 }
 
 /** A radio list that chooses on a click, Enter or Space; the arrows only move (the window stays open). */
-function ChoiceList({ label, options, value, onPick }: { label: string; options: readonly ChoiceOption[]; value: string | null; onPick: (option: ChoiceOption) => void }) {
+function ChoiceList({ label, options, value, onPick, rest }: { label: string; options: readonly ChoiceOption[]; value: string | null; onPick: (option: ChoiceOption) => void; rest?: readonly KitRestRow[] }) {
   const [checked, setChecked] = useState(value);
-  return <OptionList label={label} options={options} value={checked} onChange={(next: string, source: ChangeSource) => {
+  return <OptionList label={label} options={options} value={checked} {...(rest ? { rest } : {})} onChange={(next: string, source: ChangeSource) => {
     setChecked(next);
     const option = options.find((o) => o.value === next);
     if (option && source === "activate") onPick(option);
@@ -148,16 +149,17 @@ function ChoiceList({ label, options, value, onPick }: { label: string; options:
 }
 
 export default function BuilderWindow(props: BuilderWindowProps) {
-  const { win, anchor, onClose } = props;
+  const { win, anchor, onClose, draft } = props;
   const kind = win ? windowKind(win) : null;
-  const wide = kind !== null && ["advanced", "buyer", "from", "focal", "compareWith", "cpv", "place", "locality", "admin"].includes(kind);
-  return <Popover open={Boolean(win)} anchor={anchor} onClose={onClose} title={win?.title ?? ""} wide={wide}>
+  const wide = kind !== null && ["advanced", "buyer", "from", "peers", "focal", "compareWith", "cpv", "place", "locality", "admin"].includes(kind);
+  const tip = win ? windowTip(win, draft) : undefined;
+  return <Popover open={Boolean(win)} anchor={anchor} onClose={onClose} title={win?.title ?? ""} wide={wide} {...(tip ? { tip } : {})}>
     {win && <WindowBody key={win.key} {...props} win={win} />}
   </Popover>;
 }
 
 /** Windows whose first choice is a list above a search: they open on the chosen row, not the field (on a phone its keyboard would cover the list). */
-const LIST_FIRST = new Set(["buyer", "place", "locality", "from"]);
+const LIST_FIRST = new Set(["buyer", "place", "locality", "from", "peers"]);
 
 function WindowBody({ win, draft, excluded = [], onChoose, onReplace, onRemoveExclusions, onCpvName, onClose }: BuilderWindowProps & { win: BuilderWindowSpec }) {
   const kind = windowKind(win);
@@ -176,16 +178,17 @@ function WindowBody({ win, draft, excluded = [], onChoose, onReplace, onRemoveEx
 
   switch (kind) {
     case "list": case "subject": {
-      const { options, value } = listOf();
-      return <ChoiceList label={win.name} options={options} value={value} onPick={(option) => pick([option.choice])} />;
+      const { options, value, rest } = listOf();
+      return <ChoiceList label={win.name} options={options} value={value} {...(rest ? { rest } : {})} onPick={(option) => pick([option.choice])} />;
     }
+    case "peers": return <>{marker}<PeersWindow win={win} draft={draft} onPick={pick} /></>;
     case "buyer": {
       const kinds = own.includes("authorityKind") ? listOf("authorityKind") : null;
       const named = Boolean(draft.filters.authorityName || draft.filters.authorityId || draft.filters.uatSiruta);
       const searches = own.includes("authority") || own.includes("locality") && ctx.locality.ok;
       return <>
         {marker}
-        {kinds && <ChoiceList label="Tipul instituției" options={kinds.options} value={named ? null : kinds.value} onPick={(option) => pick([option.choice])} />}
+        {kinds && <ChoiceList label="Tipul instituției" options={kinds.options} value={named ? null : kinds.value} {...(kinds.rest ? { rest: kinds.rest } : {})} onPick={(option) => pick([option.choice])} />}
         {searches && <InstitutionSearch draft={draft} authority={own.includes("authority")} locality={own.includes("locality") && ctx.locality.ok} onPick={pick} />}
         {own.includes("county") && <CountySelect draft={draft} onPick={pick} />}
       </>;
@@ -198,7 +201,7 @@ function WindowBody({ win, draft, excluded = [], onChoose, onReplace, onRemoveEx
       return <>
         {marker}
         <ChoiceList label={win.name} options={[first]} value={set ? null : "none"} onPick={() => pick([...(draft.filters.uatSiruta ? [{ filter: "locality" as const, value: undefined }] : []), first.choice])} />
-        {kinds && <><p className="fk-opt-group">Ce fel de instituții</p><ChoiceList label="Tipul instituției" options={kinds.options} value={kinds.value} onPick={(option) => pick([option.choice])} /></>}
+        {kinds && <><p className="fk-opt-group">Ce fel de instituții</p><ChoiceList label="Tipul instituției" options={kinds.options} value={kinds.value} {...(kinds.rest ? { rest: kinds.rest } : {})} onPick={(option) => pick([option.choice])} /></>}
         <PlaceSearch draft={draft} locality={own.includes("locality") && ctx.locality.ok} onPick={pick} />
       </>;
     }
@@ -255,6 +258,24 @@ function PlaceSearch({ draft, locality, counties = true, onPick }: { draft: Ques
     emptyText={locality ? "Niciun județ sau localitate. Verifică numele." : "Niciun județ cu acest nume."} />;
 }
 
+/**
+ * "Față de cine?" (plan §4.11, today's keys until F6a's peers): the group a
+ * distribution places its entity in. Institutions: a kind, then a county;
+ * firms: the county of their seat. Each part has its own first row (R4),
+ * and the two combine.
+ */
+function PeersWindow({ win, draft, onPick }: { win: BuilderWindowSpec; draft: QuestionSpec; onPick: (choices: Choice[]) => void }) {
+  const institutions = windowOf(win.slot).includes("authorityKind");
+  const kinds = institutions ? listOptions(win, draft, "authorityKind") : null;
+  const anywhere: ChoiceOption = { value: "none", label: institutions ? "Toată țara" : "Oriunde", choice: { filter: "county", value: undefined } };
+  return <>
+    {kinds && <><p className="fk-opt-group">Ce fel de instituții</p><ChoiceList label="Tipul instituției" options={kinds.options} value={kinds.value} {...(kinds.rest ? { rest: kinds.rest } : {})} onPick={(option) => onPick([option.choice])} /></>}
+    <p className="fk-opt-group">{institutions ? "Unde" : "Unde au sediul firmele"}</p>
+    <ChoiceList label={institutions ? "Unde" : "Sediul firmei"} options={[anywhere]} value={draft.filters.county ? null : "none"} onPick={() => onPick([anywhere.choice])} />
+    <PlaceSearch draft={draft} locality={false} onPick={onPick} />
+  </>;
+}
+
 function CountySelect({ draft, onPick }: { draft: QuestionSpec; onPick: (choices: Choice[]) => void }) {
   return <label className="fk-field qb-place-field">
     <span>Unde?</span>
@@ -293,12 +314,13 @@ function PersonSearch({ onPick }: { onPick: (choices: Choice[]) => void }) {
 function CpvSearch({ draft, onPick, onCpvName }: { draft: QuestionSpec; onPick: (choices: Choice[]) => void; onCpvName: (code: string, name: string) => void }) {
   const s = useSuggestions(false);
   useEffect(() => { s.search(""); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- the CPV divisions, once
+  // The catalogue's names have cedilla letters; the window and the sentence say them with ș and ț.
   const results = useMemo((): Found[] => [
     ...(s.data.cpv ?? []).map((item): Found => {
-      const code = isCode(item.term);
-      return { id: `cpv:${item.term}`, name: code ? item.cpvName ?? `CPV ${item.term}` : item.term, detail: code ? `CPV ${item.term}` : item.cpvName ?? "", choices: [{ filter: "cpvTerm", value: item.term }], ...(code && item.cpvName ? { cpvName: item.cpvName } : {}) };
+      const code = isCode(item.term), name = item.cpvName ? readableCpvName(item.cpvName) : null;
+      return { id: `cpv:${item.term}`, name: code ? name ?? `CPV ${item.term}` : item.term, detail: code ? `CPV ${item.term}` : name ?? "", choices: [{ filter: "cpvTerm", value: item.term }], ...(code && name ? { cpvName: name } : {}) };
     }),
-    ...(s.data.division ?? []).map((item): Found => ({ id: `div:${item.code}`, name: item.name, detail: `CPV ${item.code}`, choices: [{ filter: "cpvTerm", value: item.code }], cpvName: item.name })),
+    ...(s.data.division ?? []).map((item): Found => ({ id: `div:${item.code}`, name: readableCpvName(item.name), detail: `CPV ${item.code}`, choices: [{ filter: "cpvTerm", value: item.code }], cpvName: readableCpvName(item.name) })),
     ...(s.query.length >= 2 ? [{ id: "cpv:typed", name: `Folosește „${s.query}”`, detail: "Corespondența cu codurile CPV apare lângă răspuns.", choices: [{ filter: "cpvTerm" as const, value: s.query }] }] : []),
   ], [s.data, s.query]);
   return <>
@@ -383,13 +405,21 @@ function PeriodWindow({ draft, year, onPick }: { draft: QuestionSpec; year: numb
   </>;
 }
 
+/**
+ * "⋯ › Selecție avansată" (P9, plan §1.1 variant A): today's precise selection
+ * with only the fields this question offers (BLOCK_FILTERS.advancedFields),
+ * and the record threshold of the role it ranks, where it has one.
+ */
 function AdvancedWindow({ win, draft, onReplace, onClose }: { win: BuilderWindowSpec; draft: QuestionSpec; onReplace: (spec: QuestionSpec) => void; onClose: () => void }) {
   const ctx = filterContext(draft as FilterSpec);
-  const threshold = (ctx.block === "table" || ctx.block === "entity_card") && (draft.dim === "supplier" || draft.dim === "authority") && !ctx.profile;
-  const role = draft.dim === "authority" ? "authority" : "supplier";
+  const entry = BLOCK_FILTERS[ctx.block];
+  const slots = entry?.advanced(draft as FilterSpec, ctx) ?? [];
+  const fields = entry?.advancedFields(draft as FilterSpec, ctx) ?? [];
+  const threshold = slots.find((slot) => slot.id === "minimumRecords");
+  const role = (threshold?.choices?.[0] as { role?: "authority" | "supplier" } | undefined)?.role ?? "supplier";
   const write = (change: (next: QuestionSpec) => void) => { const next = cloneQuestion(draft); change(next); onReplace(next); };
   return <>
-    <PopulationEditor embedded value={draft.population} onChange={(population) => write((next) => { if (population) next.population = population; else delete next.population; })} />
+    {fields.length > 0 && <PopulationEditor embedded fields={fields} value={draft.population} onChange={(population) => write((next) => { if (population) next.population = population; else delete next.population; })} />}
     {threshold && <fieldset className="qp-minimum qb-minimum"><legend>Număr minim de înregistrări · {role === "authority" ? "instituții" : "firme"}</legend>
       {draft.minimumRecords ? <div className="qp-minimum-fields">
         <label>Cel puțin<input type="number" min={1} max={1_000_000} step={1} value={draft.minimumRecords.count} onChange={(event) => write((next) => { next.minimumRecords = { role, count: Number(event.target.value) }; })} /></label>

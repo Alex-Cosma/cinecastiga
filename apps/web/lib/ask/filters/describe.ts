@@ -15,7 +15,7 @@ import { exclusionWords, isDaBoundPopulation, selectionOrigin, splitExcluded, ty
 import { FILTERS, SPEC_PATH_OWNERS, presentPaths } from "./registry";
 import { sentenceTokens } from "./sentence";
 import type { FilterId, FilterSpec } from "./types";
-import { adminPhrase, employeesCount, employeesPhrase, localityName, periodWordsWith, streamPhrase } from "./words";
+import { adminPhrase, employeesCount, employeesPhrase, employeesWords, localityName, periodWordsWith, streamPhrase } from "./words";
 
 /*
  * describeConditions (plan §2.2 describe.ts, §0.4): every condition of a
@@ -335,6 +335,28 @@ function outsideSentence(spec: Spec): FilterId[] {
   return PILL_ORDER.filter((id) => ids.has(id));
 }
 
+/**
+ * The partners' row of a relation (blocks.ts partners, P3b) says whose
+ * condition it is in the title's tail and the total line, as the kit's "doar
+ * furnizorii cu sediul în alt județ" (G8): "doar furnizorii cu 1–9 angajați",
+ * "doar furnizorii conduși azi de X" (the network), "doar clienții din județul
+ * Ilfov", "doar spitalele din județul Ilfov" (a kind with its county, one phrase).
+ * An empty string: said with another chip's words.
+ */
+function partnerWords(spec: Spec): Partial<Record<FilterId, string>> {
+  if (spec.block !== "network" && spec.block !== "sankey") return {};
+  const f = spec.filters;
+  if (focalRole(spec) === "authority") {
+    const size = employeesWords(f.minEmployees, f.maxEmployees);
+    const person = spec.block === "network" && (f.adminName || f.adminPersonKey) ? String(f.adminName ?? "persoana aleasă") : null;
+    return { ...(size ? { employees: `doar furnizorii ${size}` } : {}), ...(person ? { admin: `doar furnizorii conduși azi de ${person}` } : {}) };
+  }
+  const kind = typeof f.authorityKind === "string" ? KIND_WORDS[f.authorityKind]?.the : undefined;
+  const place = f.county ? countyWords(String(f.county)) : null;
+  if (kind) return { authorityKind: `doar ${kind}${place ? ` ${place}` : ""}`, ...(place ? { county: "" } : {}) };
+  return place ? { county: `doar clienții ${place}` } : {};
+}
+
 /** The shape of the answer, not a condition (the sentence's subject, its axis, the presentation line). */
 const SHAPE: ReadonlySet<FilterId> = new Set(["dim", "measure", "topN", "rankBy", "comparisonMode"]);
 
@@ -368,7 +390,12 @@ function titleTailWords(spec: Spec, byId: Partial<Record<FilterId, ConditionWord
       if (rest) words.push(`selecție precisă, ${countWords(conditionsOf(rest), "condiție", "condiții")}`);
     }
   }
-  for (const id of PILL_ORDER) if (id !== "population" && owners.has(id) && byId[id]?.words) words.push(byId[id]!.words!);
+  const row = partnerWords(spec);
+  for (const id of PILL_ORDER) {
+    if (id === "population" || !owners.has(id)) continue;
+    const said = row[id] ?? byId[id]?.words;
+    if (said) words.push(said);
+  }
   return words;
 }
 
@@ -383,7 +410,8 @@ export function describeConditions(input: QuestionSpec | AskSpec, labels: Condit
   const pick = <K extends keyof ConditionWords>(order: readonly FilterId[], key: K) => order.map((id) => byId[id]?.[key]).filter((v): v is NonNullable<ConditionWords[K]> => v !== undefined);
   const exclusions = spec.population && !byId.population?.origin ? splitExcluded(spec.population) : null;
   const receiptPopulation = byId.population?.origin ? spec.population : exclusions?.rest;
-  const total = outsideSentence(spec).map((id) => byId[id]?.words).filter((w): w is string => Boolean(w));
+  const row = partnerWords(spec);
+  const total = outsideSentence(spec).map((id) => row[id] ?? byId[id]?.words).filter((w): w is string => Boolean(w));
   return {
     byId,
     pills: pick(PILL_ORDER, "pills").flat(),

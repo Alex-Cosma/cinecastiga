@@ -384,8 +384,11 @@ a.fk-menu-item{text-decoration:none}
 .fk-empty{padding:16px;border:1px dashed var(--line2);border-radius:12px;background:var(--surface)}
 .fk-empty p{margin:0 0 10px;font-size:14px;color:var(--ink)}
 .fk-relax{display:flex;flex-wrap:wrap;gap:8px}
-.fk-relax button{min-height:36px;padding:7px 12px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--fk-green);font-size:13px;font-weight:500}
-.fk-relax button:hover{background:var(--fk-phrase-bg)}
+.fk-relax button,.fk-relax-link{min-height:36px;padding:7px 12px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--fk-green);font-size:13px;font-weight:500}
+.fk-relax button:hover,.fk-relax-link:hover{background:var(--fk-phrase-bg)}
+/* Another answer about the same entity ("›"), where the answer cannot be given (a group of one). */
+.fk-relax-link{display:inline-flex;align-items:center;text-decoration:none}
+.fk-empty h3{margin:0 0 12px;font-size:17px;line-height:1.35}
 .fk-bottom{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px 20px;padding-top:16px;border-top:1px solid var(--fk-editor-line)}
 .fk-actions{display:flex;flex-wrap:wrap;gap:10px}
 .fk-primary{display:inline-flex;align-items:center;justify-content:center;gap:12px;min-height:44px;padding:11px 18px;border:1px solid var(--fk-green);border-radius:8px;background:var(--fk-green);color:var(--fk-on-green);font-size:14px;font-weight:500}
@@ -398,7 +401,8 @@ a.fk-menu-item{text-decoration:none}
   .fk-editor{padding:20px 16px 18px;border-radius:12px}
   .fk-sentence{font-size:26px;line-height:1.85;letter-spacing:-.6px}
   .fk-phrase{padding-block:.18em}
-  .fk-invite,.fk-chip-main,.fk-toggle,.fk-seg-opt,.fk-pill,.fk-suggest,.fk-relax button,.fk-chip--parked,.fk-more-btn{min-height:44px}
+  .fk-invite,.fk-chip-main,.fk-toggle,.fk-seg-opt,.fk-pill,.fk-suggest,.fk-relax button,.fk-relax-link,.fk-chip--parked,.fk-more-btn{min-height:44px}
+  .fk-empty h3 a{display:inline-flex;align-items:center;min-height:44px}
   .fk-chip-x{min-width:44px}
   .fk .term-tip>.term-trigger{min-width:44px;min-height:44px;margin-block:-10px}
   .fk-tipwrap-sm{position:relative}

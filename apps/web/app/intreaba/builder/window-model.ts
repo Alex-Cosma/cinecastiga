@@ -5,9 +5,9 @@ import type { PeriodChoice } from "../../../lib/ask/filters/defs/selection";
 import { choicesOf, choiceState, type Choice, type SubjectChoice } from "../../../lib/ask/filters/pickers";
 import type { FilterCtx, FilterSpec } from "../../../lib/ask/filters/types";
 import { employeesOnBands, MONTH_SHORT } from "../../../lib/ask/filters/words";
-import { KIND_WORDS, leaderAxis, type QuestionSpec } from "../../../lib/ask/question-ui";
+import { KIND_ONE, KIND_WORDS, leaderAxis, type QuestionSpec } from "../../../lib/ask/question-ui";
 import { EMPLOYEE_BANDS, bandRange } from "./Bands";
-import type { KitOption } from "./kit-types";
+import type { KitOption, KitRestRow, KitTip } from "./kit-types";
 import type { BuilderWindowSpec } from "./view";
 
 /*
@@ -19,7 +19,7 @@ import type { BuilderWindowSpec } from "./view";
  */
 
 export type WindowKind =
-  | "subject" | "focal" | "buyer" | "from" | "period" | "cpv" | "place" | "locality" | "employees" | "admin" | "compareWith"
+  | "subject" | "focal" | "buyer" | "from" | "peers" | "period" | "cpv" | "place" | "locality" | "employees" | "admin" | "compareWith"
   | "list" | "advanced" | "exclusions";
 
 /** The control a window holds, from its place: a composed picker first, then the filter's own. */
@@ -60,6 +60,29 @@ const DATASET_ORDER = ["all", "da", "contracts"];
 /** The lengths a ranking offers (the def's other values are probes of the free number). */
 const TOP_ROWS = [5, 10, 25, 50];
 
+/**
+ * The subject window's words on the profiles' questions: "Cine?" on the risk
+ * cloud names the institutions first, with every one leading and the rest
+ * that cannot be chosen after the kinds (final scatter §3.1); "Cine
+ * concurează?" speaks in the singular of "Care [firmă]" (final entity_card §3.1).
+ */
+function subjectWords(dim: SubjectChoice["dim"], kind: string | undefined, block: string): { label: string; detail?: string; group?: string } {
+  if (block === "entity_card") {
+    if (dim === "supplier") return { label: "Firmă" };
+    return { label: kind ? capital(KIND_ONE[kind] ?? kind) : "Orice instituție publică", group: "Instituție" };
+  }
+  if (dim === "supplier") return { label: "Firme", group: "Firme" };
+  if (dim === "county") return { label: "Județe", group: "Județe" };
+  if (block === "scatter") return kind ? { label: capital(KIND_WORDS[kind]?.bare ?? kind), group: "Instituții publice" } : { ...ALL_INSTITUTIONS, group: "Instituții publice" };
+  return { label: kind ? capital(KIND_WORDS[kind]?.bare ?? kind) : "Instituții publice", group: "Instituții" };
+}
+
+/** The axis of "Cine conduce?": each row says what it changes (final entity_card §3.2). */
+const AXIS_DETAIL = {
+  value: "Valoarea înregistrată, în perioada aleasă.",
+  risk: "Tot istoricul, doar achiziții directe. Perioada, domeniul și cumpărătorul nu se aplică.",
+} as const;
+
 /** The words of one choice in a list window (kit §4: the long form in windows). */
 export function choiceWords(choice: Choice, spec: QuestionSpec): { label: string; detail?: string; group?: string } {
   const { filter, value } = choice;
@@ -70,16 +93,33 @@ export function choiceWords(choice: Choice, spec: QuestionSpec): { label: string
       if (value === "value_per_capita") return { label: "Valoarea pe locuitor", detail: "Primăriile și consiliile județene cu populație cunoscută" };
       return { label: spec.block === "timeseries" ? "Valoarea" : "Valoarea înregistrată" };
     case "topN": return { label: value === undefined ? "Tot clasamentul" : value === 1 ? "Primul" : `Primele ${value}` };
-    case "rankBy": return { label: value === "risk" ? "Are cel mai ridicat indice de risc" : spec.dim === "supplier" ? "Câștigă cel mai mult" : "Cumpără cel mai mult" };
+    case "rankBy": return value === "risk"
+      ? { label: "Are cel mai ridicat indice de risc", detail: AXIS_DETAIL.risk }
+      : { label: spec.dim === "supplier" ? "Câștigă cel mai mult" : "Cumpără cel mai mult", detail: AXIS_DETAIL.value };
     case "authorityKind": return value === undefined ? { ...ALL_INSTITUTIONS } : { label: capital(KIND_WORDS[String(value)]?.bare ?? String(value)) };
     case "dim": {
       const { dim, kind } = (typeof value === "object" && value ? value : { dim: value }) as SubjectChoice;
-      if (dim === "supplier") return { label: "Firme", group: "Firme" };
-      if (dim === "county") return { label: "Județe", group: "Județe" };
-      return { label: kind ? capital(KIND_WORDS[kind]?.bare ?? kind) : "Instituții publice", group: "Instituții" };
+      return subjectWords(dim, kind, spec.block);
     }
     default: return { label: value === undefined ? "Oricare" : String(value) };
   }
+}
+
+/**
+ * The (?) beside a window's title, where its rows need one more sentence
+ * than their own words (kit §4: short labels, the rest in a tip): how the
+ * kinds are told apart, what the index is, what the comparison group holds.
+ */
+export function windowTip(win: BuilderWindowSpec, spec: QuestionSpec): KitTip | undefined {
+  const { block } = spec;
+  if (win.slot.picker === "subject" && block === "scatter")
+    return { title: "Tipul instituției", text: "După denumire, aproximativ. „Alte instituții” nu se poate alege: e restul grupului. Primăriile de oraș și municipiu apar după ce tipul se stabilește din registrul localităților." };
+  if (win.slot.picker === "subject" && block === "entity_card")
+    return { title: "Tipul instituției", text: "După denumire, aproximativ. Spitalele și primăriile de oraș și municipiu apar după ce tipul se stabilește din registre." };
+  if (win.slot.id === "rankBy") return { title: "Indicele de risc", text: "Un semnal statistic, nu o dovadă." };
+  if (win.slot.picker === "peers")
+    return { title: "Grupul de comparație", text: "Profilurile cu cel puțin 10 achiziții directe. Tipul instituției: după denumire, aproximativ." };
+  return undefined;
 }
 
 /** The current value a list window shows checked. */
@@ -99,10 +139,13 @@ function currentOf(filter: Choice["filter"], spec: QuestionSpec): unknown {
  * The rows of a list among this window's choices (one filter, or the buyer's
  * kinds), in the kit's order, without the hidden ones; `value` is the checked row.
  */
-export function listOptions(win: BuilderWindowSpec, spec: QuestionSpec, only?: Choice["filter"], ctx: FilterCtx = filterContext(spec as FilterSpec)): { options: ChoiceOption[]; value: string } {
+export function listOptions(win: BuilderWindowSpec, spec: QuestionSpec, only?: Choice["filter"], ctx: FilterCtx = filterContext(spec as FilterSpec)): { options: ChoiceOption[]; value: string; rest?: KitRestRow[] } {
   const filter = only ?? (win.slot.picker === "subject" ? "dim" : win.slot.id);
   let choices = choicesOf(win.slot, spec as FilterSpec, ctx).filter((c) => c.filter === filter);
   if (filter === "dataset") choices = DATASET_ORDER.flatMap((v) => choices.filter((c) => c.value === v));
+  // The risk cloud is about institutions first (final scatter §3.1): their group leads, the firms follow.
+  const scatterSubject = filter === "dim" && ctx.block === "scatter";
+  if (scatterSubject) choices = [...choices.filter((c) => (c.value as SubjectChoice).dim === "authority"), ...choices.filter((c) => (c.value as SubjectChoice).dim !== "authority")];
   if (filter === "topN") choices = choices.filter((c) => c.value === undefined || TOP_ROWS.includes(Number(c.value)) || c.value === spec.topN);
   // A window opens on its first row (R4): "Toate instituțiile publice" leads its kinds. In the buyer's
   // window that row clears the whole window (an institution, a kind or a town hall: pickers.ts).
@@ -121,8 +164,16 @@ export function listOptions(win: BuilderWindowSpec, spec: QuestionSpec, only?: C
     options.push({ value, ...words, ...(state.state === "disabled" ? { disabled: state.reason } : {}), choice });
   }
   const current = optionValue(currentOf(filter, spec));
-  return { options, value: options.some((o) => o.value === current) ? current : options[0]?.value ?? "" };
+  const value = options.some((o) => o.value === current) ? current : options[0]?.value ?? "";
+  // What no kind names is the rest of the institutions, after the last kind: shown, not chosen (kit §4 Tipurile, R5).
+  const kinds = scatterSubject ? options.filter((o) => (o.choice.value as SubjectChoice).dim === "authority")
+    : filter === "authorityKind" ? options.filter((o) => o.choice.value !== undefined) : [];
+  const lastKind = kinds.length > 1 ? kinds[kinds.length - 1] : undefined;
+  return lastKind ? { options, value, rest: [{ label: OTHER_INSTITUTIONS, after: lastKind.value }] } : { options, value };
 }
+
+/** The institutions no kind names (kit §4): a rest row, never a choice. */
+export const OTHER_INSTITUTIONS = "Alte instituții";
 
 /** The tabs of "De la cine?" this window offers, in the order of its place (kit §5.24). */
 export function fromTabs(win: BuilderWindowSpec): ("supplier" | "admin" | "employees")[] {

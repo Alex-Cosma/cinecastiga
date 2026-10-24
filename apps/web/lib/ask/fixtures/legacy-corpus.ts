@@ -3,7 +3,7 @@ import type { Block } from "../spec";
 import type { EvidenceScope } from "../evidence";
 import type { DrillSort, TableSort } from "../compile";
 import { countyBreakdownSpec } from "../../discovery-links";
-import { breakdownDeeperSpec, entitySourceScope, entitySourceSpec } from "../source-spec";
+import { breakdownDeeperSpec, entitySourceScope, entitySourceSpec, leaderAloneSpecs } from "../source-spec";
 import { domainSourceQuery, type DomainNode } from "../../domains-shared";
 import { connectionPairSpec } from "../../connections-shared";
 import { connectionEvidenceSpec } from "../../connection-evidence-shared";
@@ -176,6 +176,11 @@ export function legacyCorpus(ids: CorpusIdentities): CorpusEntry[] {
   site("ribbon-records", "app/intreaba/blocks.tsx drillUrl (flow ribbon → partner and domain)", builderQuestion("sankey", focalBuyer()),
     { rows: { scope: { role: "supplier", entityIds: [String(supplier.id)], cpvPrefixes: [cpv.division] } } });
   site("map-county-records", "app/intreaba/MapBlock.tsx (county → its records)", NATIONAL_MAP_SPEC, { rows: { scope: { county: ids.county } } });
+  // "Cine conduce?" over one county council (blocks.tsx EntityCardBlock, source-spec.ts leaderAloneSpecs): where it stands, what it buys.
+  const alone = leaderAloneSpecs({ block: "entity_card", dim: "authority", rankBy: "value", measure: "value", filters: { authorityKind: "consiliu_judetean", county: ids.county, yearFrom: b, yearTo: b } },
+    { entityId: String(ids.profileAuthority.id), name: ids.profileAuthority.name });
+  site("leader-alone-peers", "source-spec.ts leaderAloneSpecs (a lone county council → its place among the others)", alone.peers);
+  site("leader-alone-total", "source-spec.ts leaderAloneSpecs (a lone county council → what it buys)", alone.total);
 
   // --- stored shapes: saved questions (device, account), watches, captures
   add("saved:resolved", "saved", "resolved-spec.ts resolvedSpec (what /api/ask returns, saves and watches)",

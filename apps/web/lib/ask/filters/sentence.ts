@@ -52,6 +52,8 @@ export interface SentenceSlot {
    * part of the subject, so the total line repeats it (G8).
    */
   glued?: true;
+  /** The question needs a value here (the pair of a verification): the window has no empty row. */
+  required?: true;
   /** Spoken with the value: "Perioada: 2025" (kit component 1). */
   slot: string;
   value: string;
@@ -127,13 +129,14 @@ class Tokens {
     else if (text) this.list.push({ kind: "text", text });
     return this;
   }
-  slot(filter: FilterId, name: Name, value: string, extra: { says?: readonly FilterId[]; writes?: readonly FilterId[]; picker?: Picker; glued?: true; id?: string } = {}): this {
+  slot(filter: FilterId, name: Name, value: string, extra: { says?: readonly FilterId[]; writes?: readonly FilterId[]; picker?: Picker; glued?: true; required?: true; id?: string } = {}): this {
     const seen = this.ids.get(filter) ?? 0;
     this.ids.set(filter, seen + 1);
     const writes = extra.writes?.filter((id) => id !== filter);
     this.list.push({
       kind: "slot", id: extra.id ?? (seen ? `${filter}.${seen + 1}` : filter), filter, says: extra.says ?? [filter],
       ...(writes?.length ? { writes } : {}), ...(extra.picker ? { picker: extra.picker } : {}), ...(extra.glued ? { glued: true as const } : {}),
+      ...(extra.required ? { required: true as const } : {}),
       slot: NAMES[name][0], value, window: NAMES[name][1],
     });
     return this;
@@ -151,11 +154,15 @@ function kindOf(spec: Spec): string | undefined {
   return KINDS_AFTER_D1[spec.block as Block]?.includes(kind as AuthorityKind) ? undefined : kind;
 }
 
-/** "din [toată țara]", "din [județul Cluj]", "din [București]": the buyer's place (R9). */
-function place(out: Tokens, spec: Spec, ctx: FilterCtx): void {
+/**
+ * "din [toată țara]", "din [județul Cluj]", "din [București]": the buyer's place (R9). Its window
+ * also finds a town hall where the question takes one, unless `locality` is false (an institution
+ * that is the subject: the town hall would be the answer itself).
+ */
+function place(out: Tokens, spec: Spec, ctx: FilterCtx, locality = true): void {
   const county = has(spec.filters.county) ? String(spec.filters.county) : null;
   out.text(" din ").slot("county", "place", county ? countyWords(county).replace(/^din /, "") : "toată țara", {
-    says: county ? ["county"] : [], ...(ctx.locality.ok ? { writes: ["locality"] } : {}),
+    says: county ? ["county"] : [], ...(locality && ctx.locality.ok ? { writes: ["locality"] } : {}),
   });
 }
 
@@ -435,12 +442,13 @@ const sankey: Write = (out, spec, ctx, labels) => {
 
 /**
  * §4.10 "A cumpărat [X] {[„pavaj”]} de la [Y] {prin [achiziții directe]} [până acum]?" The period
- * carries its preposition ("Când?", R10): "în toți anii" would mean "every year".
+ * carries its preposition ("Când?", R10): "în toți anii" would mean "every year". The pair is the
+ * question: each phrase searches one institution or one firm, with no "any" row to clear it (R1).
  */
-const factCheck: Write = (out, spec, ctx, labels) => {
-  out.text("A cumpărat ").slot("authority", "buyer", entityLabel(spec, "authority"), { picker: "buyer" });
+const factCheck: Write = (out, spec, _ctx, labels) => {
+  out.text("A cumpărat ").slot("authority", "buyer", entityLabel(spec, "authority"), { required: true });
   domain(out, spec, labels, " ");
-  out.text(" de la ").slot("supplier", "from", entityLabel(spec, "supplier"), { picker: "from" });
+  out.text(" de la ").slot("supplier", "from", entityLabel(spec, "supplier"), { required: true });
   channel(out, spec);
   // The same words as the condition's ("în 2024", "din 2023 încoace"), "până acum" without one.
   out.text(" ").slot("period", "when", periodWordsWith(spec.filters, "până acum"), { says: hasPeriod(spec) ? ["period"] : [] });
@@ -461,7 +469,7 @@ const distribution: Write = (out, spec, ctx) => {
   focal(out.text("Unde se situează "), spec, ctx);
   out.text(" după indicele de risc, față de ").slot("county", "peers", group, {
     says: [...(county ? ["county" as const] : []), ...(kind ? ["authorityKind" as const] : [])],
-    writes: ctx.role === "authority" ? ["authorityKind"] : [],
+    writes: ctx.role === "authority" ? ["authorityKind"] : [], picker: "peers",
   });
   out.text("?");
 };
@@ -498,7 +506,8 @@ const entityCard: Write = (out, spec, ctx, labels) => {
     if (risk) { if (has(spec.filters.county)) seat(out, spec); }
     else firmsPhrases(out, spec, ctx, true);
   } else if (!risk && ctx.locality.ok && hasLocality(spec)) out.text(" a primăriei ").slot("locality", "place", localityName(String(spec.filters.uatName ?? `SIRUTA ${spec.filters.uatSiruta}`)), { writes: ["county"] });
-  else place(out, spec, ctx);
+  // Institutions compete in a county only: a town hall would be the answer itself (final §3.3).
+  else place(out, spec, ctx, false);
   out.text(" ").slot("rankBy", "axis", risk ? "are cel mai ridicat indice de risc" : firms ? "câștigă cel mai mult" : "cumpără cel mai mult", {
     says: spec.rankBy ? ["rankBy"] : [],
   });
@@ -564,5 +573,6 @@ export function saidFilters(tokens: readonly SentenceToken[]): Set<FilterId> {
 export function sentenceSlots(tokens: readonly SentenceToken[]): Slot[] {
   return tokens.flatMap((token): Slot[] => token.kind !== "slot" ? [] : [{
     id: token.filter, ...(token.picker ? { picker: token.picker } : {}), ...(token.writes ? { writes: token.writes } : {}),
+    ...(token.required ? { required: true as const } : {}),
   }]);
 }

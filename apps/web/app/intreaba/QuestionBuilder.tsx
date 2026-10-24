@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import type { AskSpec } from "@/lib/ask/spec";
+import { readableCpvName } from "@/lib/entity-summary";
 import { withoutLinkConditions } from "@/lib/ask/filters/restore";
 import { chooseQuestion, chooseValue, restoreParked, type Transition } from "@/lib/ask/filters/transition";
 import type { Parked } from "@/lib/ask/filters/parked";
@@ -158,7 +159,7 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
       .then(async (response) => {
         if (!response.ok) return;
         const data: { name?: string | null } = await response.json();
-        if (!ctrl.signal.aborted && data.name) setCpvNames(current => ({ ...current, [cpvTerm]: data.name! }));
+        if (!ctrl.signal.aborted && data.name) setCpvNames(current => ({ ...current, [cpvTerm]: readableCpvName(data.name!) }));
       })
       .catch(() => { /* Keep the explicit CPV code usable if lookup fails. */ });
     return () => ctrl.abort();
@@ -295,7 +296,7 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
       <UnderChips items={view.under} openId={open?.key ?? null} onOpen={openWindow} onRemove={removeUnder} />
       <ParkedRow label={parked?.label ?? ""} {...(parked ? { tip: { title: parked.label, text: parked.tip } } : {})} items={parked?.items.map((item) => ({ id: item.id, label: item.label })) ?? []} onRestore={bringBackParked} />
       {view.refused.length > 0 && <div className="qb-refused" role="alert">
-        <p>{view.refused[0]!.reason}</p>
+        <p>{view.refused[0]!.why ?? view.refused[0]!.reason}</p>
         <button type="button" className="fk-secondary" onClick={removeRefused}>Scoate condițiile din link</button>
       </div>}
       {changes.length > 0 && <div className="qb-notes" role="status"><Glyph name="info" /><div><strong>Ce se schimbă odată cu întrebarea</strong>{changes.map((note) => <p key={note}>{note}</p>)}</div></div>}

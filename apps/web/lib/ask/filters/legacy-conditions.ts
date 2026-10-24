@@ -37,7 +37,16 @@ export interface LegacyCondition {
   status: "applied" | "refused";
   /** The engine's message, on a refused condition. */
   reason?: string;
+  /** The reason in the chip's few words, where the engine's message is a paragraph (a profile's archive). */
+  why?: string;
 }
+
+/**
+ * A profile answers from its whole archive of direct acquisitions: the engine
+ * refuses every transaction key there with one long message; the chip says
+ * it short (kit §4, final scatter §5, distribution §5).
+ */
+export const PROFILE_REFUSAL = "Profilul folosește toată arhiva de achiziții directe; condiția nu se aplică aici.";
 
 /** The shape of the answer, not a condition: the question shows it in its sentence or ignores it. */
 const SHAPE: ReadonlySet<FilterId> = new Set(["dim", "measure", "topN", "rankBy", "comparisonMode"]);
@@ -132,6 +141,7 @@ export function legacyConditions(input: QuestionSpec | AskSpec, labels: Conditio
       ...(words?.detail ? { detail: words.detail } : {}),
       status: reason ? "refused" : "applied",
       ...(reason ? { reason } : {}),
+      ...(reason && ctx.profile && !applied ? { why: PROFILE_REFUSAL } : {}),
     });
   }
   return out;

@@ -48,6 +48,9 @@ describe("legacy conditions of old links (plan §2.6)", () => {
       // The trend says no person (plan §4.7): applied, as a chip.
       "legacy:admin-trend": ["applied · Din link: firmele conduse azi de POPESCU FIXTURE ION"],
       "legacy:months-trend-refused": ["refused · Din link: în ian. 2024 – iun. 2025"],
+      // CPV codes included are the sentence's domain: "Selecție avansată" only leaves codes out (blocks.ts advancedFields).
+      "legacy:population-or-groups": ["applied · Din link: selecție precisă, 4 condiții"],
+      "legacy:population-on-trend": ["applied · Din link: selecție precisă, 1 condiție"],
       "legacy:locality-map-refused": ["refused · Din link: primăria Aiud (Alba)"],
       "legacy:profile-years-refused": ["refused · Din link: în 2025"],
       "legacy:profile-firm-kind-refused": ["refused · Din link: doar spitale"],
@@ -99,8 +102,6 @@ describe("the chips of «Selecție avansată» (plan §1.1 variant A, P9)", () =
       "legacy:population-include-buyers": ["Selecție avansată: selecție precisă, 1 condiție"],
       "legacy:population-counties": ["Selecție avansată: selecție precisă, 1 condiție"],
       "legacy:population-date-value": ["Selecție avansată: selecție precisă, 3 condiții"],
-      "legacy:population-or-groups": ["Selecție avansată: selecție precisă, 4 condiții"],
-      "legacy:population-on-trend": ["Selecție avansată: selecție precisă, 1 condiție"],
     });
   });
 
