@@ -4,6 +4,7 @@ import { isWorkspaceId, withInvestigationAccess } from "./investigation-access";
 import { monitoringDatabase, MONITORING_METHODOLOGY } from "./monitoring-engine";
 import { MonitoringError } from "./monitoring-input";
 import type { MonitoringCaseResult } from "./monitoring-shared";
+import { alignAnswerVersions, readAnswerVersion } from "./ask/answer-core";
 
 const json=(v:unknown)=>JSON.stringify(v??null);
 /** Copy ORIGINAL saved observations, never recompute their present-day scope. */
@@ -23,6 +24,9 @@ export async function addMonitoringRunToCase(userId:string,watchId:string,runId:
     const [previous]=await q`select * from app.monitoring_runs where id=${run.previous_run_id} and watch_id=${watchId}`;
     if(!previous)throw new MonitoringError("Verificarea anterioară nu este disponibilă. Nu am înlocuit-o cu date actuale.",409);
     const clipId=randomUUID(),beforeCaptureId=randomUUID(),afterCaptureId=randomUUID();
+    // The answer version of each result, for readers of the exported result.json (a run from before F0 reads "<id>-1").
+    const block=String((run.spec as {block?:unknown}).block);
+    const [previousVersion,currentVersion]=alignAnswerVersions(readAnswerVersion(previous.methodology?.answer,block),readAnswerVersion(run.methodology?.answer,block));
     const [deltaCount]=await q`select count(*)::int n from app.monitoring_deltas where run_id=${runId}`;
     const context={watchId,runId,previousRunId:String(previous.id),watchTitle:run.watch_title,spec:run.spec,options:run.options,grounding:run.grounding,
       checkpoint:run.checkpoint,previousCheckpoint:previous.checkpoint,counts:run.counts,relevantCounts:run.relevant_counts,
@@ -36,7 +40,8 @@ export async function addMonitoringRunToCase(userId:string,watchId:string,runId:
       const column=side==="before"?q`before_record`:q`after_record`;
       await q`insert into app.evidence_captures(id,investigation_id,clip_id,version,created_by,status,request,summary,result,coverage,methodology,row_count,total_exact,started_at,completed_at)
         values(${captureId},${investigationId},${clipId},${version},${userId},'complete',${json({kind:"monitoring",refId:runId,spec:run.spec,options:run.options})}::jsonb,
-        '{}',${json({...context,monitoringSide:side,originalResult:original.result,previousResult:previous.result,currentResult:run.result})}::jsonb,
+        '{}',${json({...context,monitoringSide:side,originalResult:original.result,previousResult:previous.result,currentResult:run.result,
+          answerVersions:{original:side==="before"?previousVersion:currentVersion,previous:previousVersion,current:currentVersion}})}::jsonb,
         ${json(original.checkpoint)}::jsonb,${json(original.methodology??MONITORING_METHODOLOGY)}::jsonb,0,0,now(),now())`;
       if(deltaCount!.n){
         await q`insert into app.evidence_capture_rows(capture_id,row_no,record,value_exact)

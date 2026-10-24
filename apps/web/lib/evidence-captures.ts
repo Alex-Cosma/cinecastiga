@@ -8,6 +8,7 @@ import { ground } from "./ask/ground";
 import { runRows, runSpec } from "./ask/compile";
 import { canonicalAskIdentities } from "./ask/canonical-identities";
 import { buildPills } from "./ask/pills";
+import { answerVersion } from "./ask/answer-core";
 import { NEWER_VERSION_QUESTION, unimplementedSpecKeys, type AskSpec } from "./ask/spec";
 import { entityCaptureSpec, personCaptureSpec } from "./ask/site-links";
 import { localityScopeError } from "./ask/question-ui";
@@ -189,7 +190,8 @@ async function queryCapture(q: DbSql, captureId: string, spec: AskSpec, request:
   return { summary: { title: connection?.context.title ?? pills.join(" · "), pills, ...(connection ? { connection: connection.selection, connectionContext: {...connection.context,sourcePairs:connectionSources} } : {}), evidenceScope: options.scope ?? {},
     evidenceOptions: { search: request.options.search, state: request.options.state, stream: request.options.stream },
     grounding, effectiveSpec: spec, sources: sourceMetadata, warnings: [...answer.caveats, ...sources.scopeNotes] },
-    result: answer, expectedRows: sources.total, expectedTotal: sources.value, methodology: CAPTURE_METHODOLOGY };
+    // Which meaning of the question the frozen answer was computed with, for readers of result.json (lib/ask/answer-core.ts).
+    result: { ...answer, answerVersion: answerVersion(spec) }, expectedRows: sources.total, expectedTotal: sources.value, methodology: CAPTURE_METHODOLOGY };
 }
 
 async function peerCapture(q: DbSql, captureId: string, request: CaptureRequest, peerEvidence?: BoundPeerEvidence) {

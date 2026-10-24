@@ -2,7 +2,8 @@ import { randomUUID } from "node:crypto";
 import { getMonitoringRefreshStatus, withMonitoringSnapshot, type DbSql } from "@seap/db";
 import { ground } from "./ask/ground";
 import { resolvedSpec } from "./ask/resolved-spec";
-import { describeQuestion, localityScopeError, questionKey, type QuestionSpec } from "./ask/question-ui";
+import { describeQuestion, localityScopeError, questionKey } from "./ask/question-ui";
+import { parseSpec } from "./ask/spec";
 import { runRows, runSpec, useSnapshotCoverage } from "./ask/compile";
 import { captureTransaction } from "./evidence-captures";
 import { isWorkspaceId } from "./investigation-access";
@@ -44,7 +45,9 @@ export async function createMonitoringWatch(userId:string,input:unknown,sql=moni
       const [saved]=await q`select v.spec from app.query_recipe_versions v join app.query_recipes r on r.id=v.recipe_id
         where r.id=${recipe.recipeId} and r.owner_user_id=${userId} and v.version=${recipe.recipeVersion}`;
       if(!saved)throw new MonitoringError("Rețeta sau versiunea nu îți este disponibilă.",404);
-      if(questionKey(saved.spec as QuestionSpec)!==questionKey(scope.spec as unknown as QuestionSpec))throw new MonitoringError("Selecția diferă de versiunea rețetei. Salvează o versiune nouă sau urmărește întrebarea separat.",409);
+      // The recipe as parseSpec reads it (another block's options dropped), so a recipe saved before a shape rule stays watchable.
+      const stored=parseSpec(saved.spec);
+      if("error"in stored||questionKey(stored)!==questionKey(scope.spec))throw new MonitoringError("Selecția diferă de versiunea rețetei. Salvează o versiune nouă sau urmărește întrebarea separat.",409);
     }
     const grounding=await ground(q,scope.spec.filters),spec=resolvedSpec(scope.spec,grounding),database=useSnapshotCoverage(captureTransaction(q));
     const boundGrounding={...grounding,monitoringEntities:await readMonitoringBindings(q,monitoredEntityIds(spec,grounding,scope.options))};

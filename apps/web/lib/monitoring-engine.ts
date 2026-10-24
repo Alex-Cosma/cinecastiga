@@ -6,7 +6,8 @@ import type { Grounding } from "./ask/ground";
 import { isHistoricalProfile } from "./ask/population";
 import { captureTransaction, CAPTURE_METHODOLOGY } from "./evidence-captures";
 import { MonitoringError,monitoringHasLocalSelection,monitoringNewerError,MONITORING_LOCAL_SCOPE_NOTE } from "./monitoring-input";
-import { MONITORING_MAX_ROWS, type MonitoringPreferences } from "./monitoring-shared";
+import { MONITORING_MAX_ROWS, methodologiesDiffer, type MonitoringPreferences } from "./monitoring-shared";
+import { answerVersion, sameAnswerCore } from "./ask/answer-core";
 import { assertMonitoringBindings } from "./monitoring-identity";
 
 const globalDb=globalThis as unknown as {__monitoringSql?:DbSql};
@@ -93,7 +94,8 @@ export async function evaluateMonitoringWatch(watchId:string,expectedCheckpointI
     await assertMonitoringBindings(q,spec,grounding,watch.options);
     const database=useSnapshotCoverage(captureTransaction(q)),answer=await runSpec(database,spec,grounding);
     if("error"in answer)throw new MonitoringError(answer.error,422);
-    const runId=randomUUID(),methodology={...MONITORING_METHODOLOGY,refresh:checkpoint.methodology};
+    // answer: the version of this question's answer (lib/ask/answer-core.ts), so a release that changes one block or key alerts only its watches.
+    const runId=randomUUID(),methodology={...MONITORING_METHODOLOGY,refresh:checkpoint.methodology,answer:answerVersion(spec)};
     const [time]=await q`select to_char(transaction_timestamp() at time zone 'Europe/Bucharest','YYYY-MM-DD"T"HH24:MI:SS') observed_at`;
     const observedAt=String(time!.observed_at);
     await q`insert into app.monitoring_runs(id,watch_id,checkpoint_id,previous_run_id,kind,row_count,known_value_exact,counts,relevant_counts,preferences,result,methodology,checkpoint,notes)
@@ -108,18 +110,20 @@ export async function evaluateMonitoringWatch(watchId:string,expectedCheckpointI
     const [counts]=await q`select count(*) filter(where type='added')::int added,count(*) filter(where type='removed')::int removed,count(*) filter(where type='changed')::int changed,
       count(*) filter(where type='added' and relevant)::int relevant_added,count(*) filter(where type='removed' and relevant)::int relevant_removed,count(*) filter(where type='changed' and relevant)::int relevant_changed
       from app.monitoring_deltas where run_id=${runId}`;
-    const [comparisons]=await q`select ${previous?json(previous.result):null}::jsonb is distinct from ${json(answer.data)}::jsonb result_changed,
-      ${previous?json(previous.methodology):null}::jsonb is distinct from ${json(methodology)}::jsonb methodology_changed,
-      case when ${previous?.total_exact??null}::numeric is not null and ${totals!.unknown}=0 then ${totals!.known}::numeric-${previous?.total_exact??null}::numeric else null end::text difference`;
+    const [comparisons]=await q`select case when ${previous?.total_exact??null}::numeric is not null and ${totals!.unknown}=0 then ${totals!.known}::numeric-${previous?.total_exact??null}::numeric else null end::text difference`;
     // The parent result does not describe an optional drawer subgroup/search.
     // Retain it as context, but it cannot alert on changes outside that list.
+    // Both sides are compared as stored JSON: the core of the answer, and the
+    // methodology with the answer versions read the same way (a run from before F0 has none).
     const localSelection=monitoringHasLocalSelection(watch.options);
-    const resultChanged=!localSelection&&!!previous&&!!comparisons!.result_changed,methodologyChanged=!!previous&&!!comparisons!.methodology_changed;
+    const resultChanged=!localSelection&&!!previous&&!sameAnswerCore(spec.block,previous.result,answer.data);
+    const methodologyChanged=!!previous&&methodologiesDiffer(previous.methodology as Record<string,unknown>|null,methodology,spec.block);
     const all={added:counts!.added,removed:counts!.removed,changed:counts!.changed},relevant={added:counts!.relevant_added,removed:counts!.relevant_removed,changed:counts!.relevant_changed};
     const sourceChanges=all.added+all.removed+all.changed;
     // Ordinary aggregates naturally change with their rows. Historical profile
     // recalculations remain an independent event even when records also change.
-    const recalculated=resultChanged&&(isHistoricalProfile(spec)||sourceChanges===0);
+    // A changed methodology explains a changed result: one alert, not a second "recalculated".
+    const recalculated=resultChanged&&!methodologyChanged&&(isHistoricalProfile(spec)||sourceChanges===0);
     const hasAlert=!!previous&&(relevant.added+relevant.removed+relevant.changed>0||recalculated&&prefs.types.includes("recalculated")||methodologyChanged&&prefs.types.includes("methodology"));
     const notes=[...answer.caveats,...sources.scopeNotes,...(localSelection?[MONITORING_LOCAL_SCOPE_NOTE]:[]),"Primele observații istorice nu sunt confirmări ale datei importului.",...(previous?[]:["Acesta este punctul de plecare. Înregistrările existente nu generează alerte."]),...(resultChanged?["Rezultatul calculat s-a schimbat; sursele și metodologia pot fi verificate separat."]:[])];
     // A pause/preference edit committed during the read aborts this RR
