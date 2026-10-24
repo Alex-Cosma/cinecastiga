@@ -111,11 +111,15 @@ export default function Popover({ open, anchor, onClose, wide = false, ...panel 
     show();
     media.addEventListener("change", show);
     window.addEventListener("resize", place);
+    // A window that grows (the free range of the period, search results) is placed again, so it stays on screen.
+    const grows = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(place);
+    grows?.observe(dialog);
     window.addEventListener("scroll", place, true);
     document.addEventListener("pointerdown", outside);
     return () => {
       media.removeEventListener("change", show);
       window.removeEventListener("resize", place);
+      grows?.disconnect();
       window.removeEventListener("scroll", place, true);
       document.removeEventListener("pointerdown", outside);
     };

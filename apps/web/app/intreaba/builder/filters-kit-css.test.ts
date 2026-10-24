@@ -31,8 +31,8 @@ describe("filter kit styles", () => {
     expect(rules.replace(/\/\*[^]*?\*\//g, "")).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(|(?<![\w-])(white|black)(?![\w-])/i);
   });
 
-  it("styles every kit class the components use", () => {
-    const used = new Set(sources(new URL("./", import.meta.url), /\.tsx$/).join("\n").match(/(?<![\w-])fk-[a-z0-9-]+/g));
+  it("styles every kit class the components use, in the builder and in the answer", () => {
+    const used = new Set([...sources(new URL("./", import.meta.url), /\.tsx$/), ...sources(new URL("../answer/", import.meta.url), /\.tsx$/)].join("\n").match(/(?<![\w-])fk-[a-z0-9-]+/g));
     const missing = [...used].filter(name => !css.includes(`.${name}`));
     expect(missing).toEqual([]);
   });
@@ -41,7 +41,10 @@ describe("filter kit styles", () => {
     const phone = css.slice(css.indexOf("@media (max-width:600px){"));
     const rules = [...phone.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(([, selectors, body]) => ({ selectors: selectors!.split(",").map(item => item.trim()), body: body! }));
     const tall = (selector: string) => rules.some(rule => rule.selectors.includes(selector) && /min-height:4[48]px/.test(rule.body));
-    for (const selector of [".fk-invite", ".fk-chip-main", ".fk-toggle", ".fk-seg-opt", ".fk-pill", ".fk-chip--parked", ".fk-opt--link", ".fk-field input", ".fk-present .fk-phrase"]) expect(tall(selector), selector).toBe(true);
+    for (const selector of [".fk-invite", ".fk-chip-main", ".fk-toggle", ".fk-seg-opt", ".fk-pill", ".fk-chip--parked", ".fk-opt--link", ".fk-field input", ".fk-field select", ".fk-present .fk-phrase", ".fk-suggest", ".fk-relax button", ".fk-more-btn", ".fk-menu-item", ".fk-link", ".fk-rec", ".fk-crumbs a", ".fk-crumbs button", ".fk-search input"]) expect(tall(selector), selector).toBe(true);
+    expect(phone).toContain(".fk-more{width:44px;height:44px}"); // the row's "⋯"
+    // At least 44 px at every width: the bands, the years, the results, the bottom buttons.
+    for (const [selector, height] of [["fk-band", 52], ["fk-year", 50], ["fk-res", 48], ["fk-primary", 44], ["fk-secondary", 44]] as const) expect(css, selector).toMatch(new RegExp(`\\.${selector}\\{[^}]*min-height:${height}px`));
     expect(phone).toContain(".fk-chip-x{min-width:44px}");
     expect(phone).toContain(".fk .term-tip>.term-trigger{min-width:44px;min-height:44px;margin-block:-10px}");
     expect(phone).toContain(".fk-close{width:44px;height:44px}");
@@ -54,7 +57,7 @@ describe("filter kit styles", () => {
   });
 
   it("writes Romanian with ș and ț (comma below), in the kit and its demo", () => {
-    const all = [...sources(new URL("./", import.meta.url)), ...sources(new URL("../trusa/", import.meta.url))].join("\n");
+    const all = [...sources(new URL("./", import.meta.url)), ...sources(new URL("../answer/", import.meta.url)), ...sources(new URL("../trusa/", import.meta.url))].join("\n");
     expect(all).not.toMatch(/[şţŞŢ]/);
     expect(all).toMatch(/ș/);
   });

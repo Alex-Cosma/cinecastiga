@@ -30,7 +30,7 @@
   --fk-sel:#2b4630; --fk-sel-line:var(--accent);
   --fk-warm-bg:var(--amber-soft); --fk-warm-line:var(--amber-line); --fk-warm-ink:#f0cf8c;
   --fk-new:#7fa866; --fk-down:#6e7d68;
-  --fk-muted-strong:var(--muted); --fk-signal-ink:var(--orange);
+  --fk-muted-strong:#b8c5b1; --fk-signal-ink:var(--orange); /* between --muted and --ink2: ≥ 4.5:1 on the hover and chosen greens */
   --fk-shadow:0 1px 4px #0004; --fk-pop-shadow:0 18px 60px #0007;
 }}
 :root[data-theme="dark"] {
@@ -42,7 +42,7 @@
   --fk-sel:#2b4630; --fk-sel-line:var(--accent);
   --fk-warm-bg:var(--amber-soft); --fk-warm-line:var(--amber-line); --fk-warm-ink:#f0cf8c;
   --fk-new:#7fa866; --fk-down:#6e7d68;
-  --fk-muted-strong:var(--muted); --fk-signal-ink:var(--orange);
+  --fk-muted-strong:#b8c5b1; --fk-signal-ink:var(--orange); /* between --muted and --ink2: ≥ 4.5:1 on the hover and chosen greens */
   --fk-shadow:0 1px 4px #0004; --fk-pop-shadow:0 18px 60px #0007;
 }
 
@@ -61,6 +61,8 @@
 /* (?) is a Term tip: it opens above the row that holds it (.fk-tipwrap), on the row's width. */
 .fk-tipwrap{position:relative}
 .fk .term-tip{vertical-align:middle}
+/* The (?) mark at full strength in the kit (guide.css draws it at .75, under 3:1 on some fills). */
+.fk .term-tip .term-mark{opacity:1}
 
 /* Glyphs drawn in CSS (no font dependency) */
 .fk-chev{display:inline-block;width:.42em;height:.42em;border-right:1.6px solid currentColor;border-bottom:1.6px solid currentColor;transform:translateY(-.12em) rotate(45deg);margin-left:.32em;opacity:.65;flex:none}
@@ -108,7 +110,7 @@
 .fk-chip-main>.fk-n{flex-shrink:0} /* the label wraps; the count never shrinks under its glyphs */
 .fk-chip-main:hover,.fk-chip-main.is-hover{background:var(--fk-chip-hover)}
 span.fk-chip-main:hover{background:none}
-.fk-chip-x{display:grid;place-items:center;min-width:34px;padding:0 10px;border-left:1px solid var(--line2);color:var(--muted);font-size:15px;line-height:1}
+.fk-chip-x{display:grid;place-items:center;min-width:34px;padding:0 10px;border-left:1px solid var(--line2);color:var(--fk-muted-strong);font-size:15px;line-height:1}
 .fk-chip-x:hover{background:var(--fk-chip-hover);color:var(--ink)}
 .fk-chip.is-active{background:var(--fk-sel);border-color:var(--fk-sel-line);color:var(--ink)}
 .fk-chip.is-active .fk-chip-main{font-weight:500}
@@ -161,7 +163,7 @@ span.fk-chip-main:hover{background:none}
 .fk-seg-opt.is-inferred{outline:1px dashed var(--fk-phrase-line);outline-offset:-3px;color:var(--fk-green)}
 .fk-seg-l{display:inline-flex;align-items:center;gap:6px;min-width:0}
 .fk-seg-n{font-family:var(--mono);font-size:11px;font-weight:400;color:var(--fk-muted-strong)}
-.fk-seg-opt[aria-checked="true"] .fk-seg-n{color:var(--muted)}
+.fk-seg-opt[aria-checked="true"] .fk-seg-n{color:var(--fk-muted-strong)}
 .fk-seg--sm .fk-seg-opt{min-height:30px;padding:4px 10px;font-size:12px}
 .fk-seg--full{display:flex;width:100%}
 .fk-seg--full .fk-seg-opt{flex:1 1 0}
@@ -196,7 +198,7 @@ dialog.fk-pop::backdrop{background:color-mix(in srgb,var(--ink) 35%,transparent)
 .fk-pop-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px}
 .fk-pop-title{display:flex;align-items:center;gap:4px;min-width:0}
 .fk-pop-head h3{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0;font:500 19px/1.3 var(--display);letter-spacing:-.3px;color:var(--ink);text-wrap:pretty}
-.fk-close{display:grid;place-items:center;width:33px;height:33px;border:1px solid var(--line);border-radius:50%;background:var(--sunk);color:var(--muted);font-size:16px;line-height:1;flex:none}
+.fk-close{display:grid;place-items:center;width:33px;height:33px;border:1px solid var(--line);border-radius:50%;background:var(--sunk);color:var(--fk-muted-strong);font-size:16px;line-height:1;flex:none}
 .fk-pop-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px}
 .fk-pop-foot b{color:var(--ink);font-weight:600}
 .fk-link{color:var(--fk-green);text-decoration:underline;text-decoration-color:var(--fk-phrase-line);text-underline-offset:3px;font-size:13px}
@@ -232,7 +234,7 @@ dialog.fk-pop::backdrop{background:color-mix(in srgb,var(--ink) 35%,transparent)
 .fk-bands{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border:1px solid var(--line2);border-radius:9px;overflow:hidden;background:var(--surface)}
 .fk-band{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-height:52px;padding:6px 4px;border-left:1px solid var(--line);color:var(--ink2);font-size:12.5px;font-weight:500;line-height:1.3;text-align:center}
 .fk-band:first-child{border-left:0}
-.fk-band small{font-family:var(--mono);font-size:11px;font-weight:400;color:var(--muted)}
+.fk-band small{font-family:var(--mono);font-size:11px;font-weight:400;color:var(--fk-muted-strong)}
 .fk-band:hover,.fk-band.is-hover{background:var(--fk-chip-hover)}
 .fk-band[aria-pressed="true"]{background:var(--fk-sel);color:var(--ink);box-shadow:inset 0 -3px 0 var(--fk-green)}
 .fk-band[aria-pressed="true"]+.fk-band[aria-pressed="true"]{border-left-color:transparent}
@@ -255,16 +257,22 @@ dialog.fk-pop::backdrop{background:color-mix(in srgb,var(--ink) 35%,transparent)
 .fk-field>span{font-size:11.5px;color:var(--muted)}
 .fk-field input{width:100%;min-width:0;min-height:40px;padding:8px 10px;border:1px solid var(--line2);border-radius:7px;background:var(--fk-editor);color:var(--ink);font:400 15px/1.4 var(--mono)}
 .fk-field input::placeholder{color:var(--faint);font-family:var(--body);font-size:12.5px}
+.fk-field select{width:100%;min-width:0;min-height:40px;padding:8px 10px;border:1px solid var(--line2);border-radius:7px;background:var(--fk-editor);color:var(--ink);font:400 14px/1.4 var(--body)}
 
 /* ---------- 12. The period: the year grid ---------- */
 .fk-years{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
 .fk-year{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50px;padding:5px 2px;border:1px solid var(--fk-chip-line);border-radius:8px;background:var(--fk-chip-bg);color:var(--ink);font:500 14px/1.25 var(--mono)}
-.fk-year small{font-size:10.5px;font-weight:400;color:var(--muted)}
+.fk-year small{font-size:10.5px;font-weight:400;color:var(--fk-muted-strong)}
 .fk-year:hover,.fk-year.is-hover{background:var(--fk-phrase-hover)}
 .fk-year[aria-checked="true"]{background:var(--fk-sel);border:2px solid var(--fk-sel-line)}
 .fk-year.is-partial{background-image:repeating-linear-gradient(135deg,var(--line) 0 2px,transparent 2px 6px)}
-.fk-year.is-zero{color:var(--faint)}
+.fk-year.is-zero{background-color:transparent;border-style:dashed;color:var(--fk-muted-strong)} /* empty but choosable: the dashed outline says so (kit: --faint text, under 3:1) */
 .fk-year[aria-disabled="true"]{opacity:.4}
+/* The free range ("Alege anii sau lunile…"): opens under the presets, in the window. */
+.fk-range-open{display:inline-flex;align-items:center;margin:8px 0 0 10px}
+.fk-range{margin-top:4px}
+.fk-range .fk-inputs+.fk-inputs{margin-top:8px}
+.fk-form-error{margin:8px 0 0;color:var(--fk-signal-ink);font-size:12.5px}
 
 /* ---------- 13. Entity search (combobox + results) ---------- */
 .fk-search{display:flex;align-items:center;gap:9px;min-height:44px;padding:8px 12px;border:1px solid var(--line2);border-radius:8px;background:var(--sunk);margin:0 0 10px}
@@ -273,12 +281,19 @@ dialog.fk-pop::backdrop{background:color-mix(in srgb,var(--ink) 35%,transparent)
 .fk-search input::placeholder{color:var(--muted);font-size:13px}
 .fk-search.is-focus,.fk-search:focus-within{outline:3px solid var(--orange);outline-offset:2px}
 .fk-search input:focus-visible{outline:0}
-.fk-res{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:48px;padding:8px 10px;border-radius:8px;color:var(--ink)}
+.fk-res{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:48px;padding:8px 10px;border-radius:8px;color:var(--ink);cursor:pointer}
 .fk-res:hover,.fk-res.is-hover,.fk-res[aria-selected="true"]{background:var(--fk-chip-hover)}
 .fk-res-t{display:flex;flex-direction:column;min-width:0}
 .fk-res-t strong{font-size:13.5px;font-weight:500;overflow-wrap:anywhere}
-.fk-res-t small{font-size:11.5px;color:var(--muted)}
-.fk-res-side{font-size:12px;color:var(--muted);white-space:nowrap;text-align:right}
+.fk-res-t small{font-size:11.5px;color:var(--fk-muted-strong)}
+.fk-res-side{font-size:12px;color:var(--fk-muted-strong);white-space:nowrap;text-align:right}
+/* The combobox: the list under the field in a window, or opened under it ("Unde e …?"). */
+.fk-combo{position:relative;min-width:0}
+.fk-listbox{display:flex;flex-direction:column;gap:2px;min-width:0}
+.fk-listbox[hidden]{display:none}
+.fk-combo--pop .fk-listbox{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:30;max-height:min(320px,60vh);overflow:auto;padding:6px;border:1px solid var(--line2);border-radius:10px;background:var(--surface);box-shadow:var(--fk-pop-shadow)}
+.fk-search-status{margin:0 0 6px;color:var(--muted);font-size:12.5px}
+.fk-combo--pop .fk-search-status{margin:6px 0 0}
 
 /* ---------- 14. The strip beside the answer (+ labelled rows) ---------- */
 .fk-strip{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:8px;border:1px solid var(--line);border-radius:12px;background:var(--sunk)}
@@ -287,19 +302,21 @@ dialog.fk-pop::backdrop{background:color-mix(in srgb,var(--ink) 35%,transparent)
 .fk-strip-label{color:var(--fk-muted-strong);font-size:12.5px;white-space:nowrap}
 .fk-suggest{display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:6px 11px;border:1px dashed var(--accent-line);border-radius:8px;background:var(--surface);color:var(--ink2);font-size:12.5px}
 .fk-suggest b{color:var(--fk-green);font-weight:600}
-.fk-crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:4px;font-size:12.5px;color:var(--muted)}
-.fk-crumbs a{color:var(--fk-green);text-decoration:none;border-bottom:1px solid var(--fk-phrase-line)}
+.fk-crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:4px;font-size:12.5px;color:var(--fk-muted-strong)}
+.fk-crumbs a,.fk-crumbs button{color:var(--fk-green);text-decoration:none;border-bottom:1px solid var(--fk-phrase-line)}
+.fk-crumb{display:inline-flex;align-items:center;gap:4px}
 .fk-crumbs b{color:var(--ink);font-weight:600}
 .fk-strip--rows{display:flex;flex-direction:column;align-items:stretch;gap:10px;padding:10px 12px}
 .fk-strip-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;min-width:0}
 .fk-strip-row>.fk-strip-label{display:inline-flex;align-items:center;min-width:104px}
 
 /* ---------- 15. The answer row: facts and the "⋯" menu ---------- */
-.fk-arow{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:4px 14px;padding:12px 0;border-bottom:1px solid var(--line)}
+.fk-alist{min-width:0}
+.fk-arow{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:4px 14px;padding:12px 0;border-bottom:1px solid var(--line)}
 .fk-arow-name{font-weight:600;font-size:14px;overflow-wrap:anywhere}
 .fk-arow-name small{font-weight:400;color:var(--muted);margin-left:6px;font-size:12.5px}
 .fk-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
-.fk-tag{display:inline-flex;align-items:center;gap:4px;padding:1px 7px;border:1px solid var(--line);border-radius:5px;background:var(--sunk);color:var(--ink2);font-size:11.5px;line-height:1.6;white-space:nowrap}
+.fk-tag{display:inline-flex;align-items:center;gap:4px;max-width:100%;padding:1px 7px;border:1px solid var(--line);border-radius:5px;background:var(--sunk);color:var(--ink2);font-size:11.5px;line-height:1.6;overflow-wrap:anywhere} /* wraps only when a long name would not fit (kit: nowrap) */
 .fk-tag--accent{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent-ink)}
 .fk-tag--caveat{background:var(--fk-warm-bg);border-color:var(--fk-warm-line);color:var(--fk-warm-ink)}
 .fk-tag--signal{background:transparent;border-color:color-mix(in srgb,var(--orange) 55%,transparent);color:var(--fk-signal-ink);font-weight:500}
@@ -312,7 +329,15 @@ dialog.fk-pop::backdrop{background:color-mix(in srgb,var(--ink) 35%,transparent)
 .fk-menu{width:240px;max-width:100%;padding:6px;border:1px solid var(--line2);border-radius:10px;background:var(--surface);box-shadow:var(--fk-pop-shadow)}
 .fk-menu-item{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:42px;padding:8px 10px;border-radius:7px;color:var(--ink);font-size:13px}
 .fk-menu-item:hover,.fk-menu-item.is-hover{background:var(--fk-chip-hover)}
-.fk-menu-item span:last-child{color:var(--muted)}
+.fk-menu-item span:last-child{color:var(--fk-muted-strong)}
+a.fk-menu-item{text-decoration:none}
+.fk-menu-t{display:flex;flex-direction:column;min-width:0;text-align:left}
+.fk-menu-t small{color:var(--fk-muted-strong);font-size:11.5px}
+.fk-menu-item[aria-disabled="true"]{color:var(--muted)}
+.fk-menu-item[aria-disabled="true"]:hover{background:none}
+/* The open menu hangs under its row, on the right, inside the row's width. */
+.fk-menu--pop{position:absolute;right:0;top:calc(100% - 6px);z-index:30}
+.fk-glyph{margin-left:.35em}
 
 /* ---------- 21. The total line and the longer list ---------- */
 .fk-total{display:flex;flex-wrap:wrap;align-items:center;gap:2px 6px;margin:12px 0 0;color:var(--muted);font-size:12.5px;line-height:1.55}
@@ -320,6 +345,8 @@ dialog.fk-pop::backdrop{background:color-mix(in srgb,var(--ink) 35%,transparent)
 .fk-total .fk-num{color:var(--ink);font-size:12.5px}
 .fk-total-cond{color:var(--ink2);font-weight:500}
 .fk-total-sep{color:var(--faint)}
+.fk-total-part{display:inline-flex;flex-wrap:wrap;align-items:center;gap:2px 6px;min-width:0}
+.fk-total-cond{overflow-wrap:anywhere}
 .fk-listfoot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 14px;margin:12px 0 0}
 .fk-more-btn{display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:7px 12px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--ink2);font-size:13px;font-weight:500}
 .fk-more-btn:hover,.fk-more-btn.is-hover{background:var(--fk-chip-hover)}
@@ -328,7 +355,7 @@ dialog.fk-pop::backdrop{background:color-mix(in srgb,var(--ink) 35%,transparent)
 /* ---------- 19. The card (point, county, bar) ---------- */
 .fk-card{position:relative;min-width:0;padding:14px 16px 14px 18px;border:1px solid var(--line2);border-radius:12px;background:var(--surface);box-shadow:inset 4px 0 0 var(--fk-green)}
 .fk-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
-.fk-card h4{margin:0;font:600 16px/1.35 var(--body);color:var(--ink);overflow-wrap:anywhere}
+.fk-card h3,.fk-card h4{margin:0;font:600 16px/1.35 var(--body);color:var(--ink);overflow-wrap:anywhere}
 .fk-card-meta{margin:2px 0 10px;color:var(--fk-muted-strong);font-size:12.5px}
 .fk-card-facts{display:flex;flex-wrap:wrap;gap:4px 20px;margin:0 0 10px;font-size:13px;color:var(--ink2)}
 .fk-card-facts .fk-num{color:var(--ink);font-weight:500;font-size:13px}
@@ -340,7 +367,8 @@ dialog.fk-pop::backdrop{background:color-mix(in srgb,var(--ink) 35%,transparent)
 
 /* ---------- 20. "Unde e …?" (finds in the answer; does not filter) ---------- */
 .fk-find{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;min-width:0}
-.fk-find .fk-search{width:min(300px,100%);min-height:38px;margin:0;background:var(--surface)}
+.fk-find .fk-combo{width:min(300px,100%)}
+.fk-find .fk-search{width:100%;min-height:38px;margin:0;background:var(--surface)}
 .fk-find .fk-search input{font-size:14px}
 .fk-find-res{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px 10px;color:var(--ink2);font-size:13px}
 .fk-find-res b{font-weight:600;color:var(--ink)}
@@ -397,8 +425,8 @@ dialog.fk-pop::backdrop{background:color-mix(in srgb,var(--ink) 35%,transparent)
   .fk-bottom .fk-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}
   .fk-present{line-height:2.6}
   .fk-present .fk-phrase{min-height:44px;align-items:center;vertical-align:middle}
-  .fk-link,.fk-crumbs a,.fk-rec{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px}
-  .fk-field input{min-height:44px}
+  .fk-link,.fk-crumbs a,.fk-crumbs button,.fk-rec{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px}
+  .fk-field input,.fk-field select{min-height:44px}
   .fk-pill{min-width:44px;justify-content:center}
   .fk-search{padding:0 12px}
   .fk-search input{min-height:44px}
@@ -406,7 +434,7 @@ dialog.fk-pop::backdrop{background:color-mix(in srgb,var(--ink) 35%,transparent)
   .fk-card .fk-actions{display:grid;grid-template-columns:minmax(0,1fr);width:100%}
   .fk-card .fk-actions>*{width:100%}
   .fk-find{flex-direction:column;align-items:stretch}
-  .fk-find .fk-search{width:100%;min-height:44px}
+  .fk-find .fk-combo,.fk-find .fk-search{width:100%;min-height:44px}
   .fk-listfoot{flex-direction:column;align-items:stretch}
   .fk-listfoot>*{width:100%;justify-content:center}
 }
