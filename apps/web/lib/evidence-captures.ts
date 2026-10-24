@@ -9,6 +9,7 @@ import { runRows, runSpec } from "./ask/compile";
 import { canonicalAskIdentities } from "./ask/canonical-identities";
 import { buildPills } from "./ask/pills";
 import { NEWER_VERSION_QUESTION, unimplementedSpecKeys, type AskSpec } from "./ask/spec";
+import { entityCaptureSpec, personCaptureSpec } from "./ask/site-links";
 import { localityScopeError } from "./ask/question-ui";
 import { readCoverage } from "./coverage";
 import { readSignalEvidence } from "./signal-evidence";
@@ -289,8 +290,7 @@ async function entityOrPerson(q: DbSql, captureId: string, request: CaptureReque
     const [person] = await q`select max(person_name) name,count(distinct cui)::int n_firms,
       to_jsonb(array_agg(distinct cui)) cuis from reference.company_reps where person_key=${id} group by person_key`;
     if (!person) throw new CaptureError("Persoana nu mai este disponibilă.");
-    const spec: AskSpec = { block: "stat", measure: "value", dataset: "all", filters: { adminPersonKey: id } };
-    const result = await queryCapture(q,captureId,spec,request);
+    const result = await queryCapture(q,captureId,personCaptureSpec(id),request);
     result.summary = { ...result.summary, ...{ name: person.name, title: person.name, nFirms: person.n_firms, firms: person.cuis } };
     return result;
   }
@@ -298,10 +298,7 @@ async function entityOrPerson(q: DbSql, captureId: string, request: CaptureReque
   if (!entity) throw new CaptureError("Entitatea nu mai este disponibilă.");
   const profiles = await q`select role,n_das,n_contracts,total_ron_full::text value from marts.entity_profile where entity_id=${id}`;
   const flags = await q`select role,cri::text,n_flags,to_jsonb(flags) flags from marts.entity_flags where entity_id=${id}`;
-  const spec = { block: "stat", measure: "value", dataset: "all", filters: {}, population: { operator: "or", groups: [
-    { operator: "or", conditions: [{ field: "authority", op: "in", values: [id] }, { field: "supplier", op: "in", values: [id] }] },
-  ] } } as unknown as AskSpec;
-  const result = await queryCapture(q,captureId,spec,request);
+  const result = await queryCapture(q,captureId,entityCaptureSpec(id),request);
   result.summary = { ...result.summary, ...{ entityId:id,requestedEntityId:request.refId,title: entity.name, name: entity.name, county: entity.county, cui: entity.cui,
     roles: Object.fromEntries(profiles.map(r => [r.role,{ nDas:r.n_das,nContracts:r.n_contracts,totalRon:r.value }])),
     riskProfiles: flags, cri: flags[0]?.cri ?? null, nFlags: flags[0]?.n_flags ?? 0 } };

@@ -5,7 +5,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperti
 import { domainSourceQuery, normalizeDomainCode, type DomainDataset, type DomainNode } from "@/lib/domains-shared";
 import { formatEvidenceAmount } from "@/lib/ask/evidence";
 import { encodeSpec } from "@/lib/ask/permalink";
-import type { AskSpec } from "@/lib/ask/spec";
+import { domainContextSpec } from "@/lib/ask/site-links";
 import EvidenceDrawer from "../intreaba/EvidenceDrawer";
 import Term from "@/components/Term";
 import DomainAtlas from "./DomainAtlas";
@@ -217,10 +217,8 @@ export default function DomainExplorer({ initialData, initialCode = "", initialV
   const scopeChips = <div className="dm-scope-chips"><span className="dm-scope-chip"><Icon name="globe" size={15} />Toată România</span><label className="dm-scope-chip"><Icon name="calendar" size={15} /><span className="dm-sr-only">Anul achizițiilor</span><select value={requestedYear} onChange={event => { void loadYear(Number(event.target.value)); }} aria-label="Anul achizițiilor">{data.years.map(year => <option key={year} value={year}>{year}{year === currentYear ? " · în curs" : ""}</option>)}</select></label></div>;
   const atlasNodes = useMemo(() => nodes.map(node => ({ ...node, name: label(node), color: index.colors.get(node.code)!, isOther: node.nodeKind === "remainder" })), [nodes, index.colors]);
   const selectedParent = selected ? index.nodes.get(index.parents.get(selected.code) ?? "") : undefined;
-  const contextual = selected?.code.length === 2 && selected.nodeKind !== "remainder" ? (block: "table" | "timeseries", dim?: "supplier" | "authority") => {
-    const spec: AskSpec = { block, dataset: "all", measure: "value", ...(dim ? { dim, topN: 10 } : {}), filters: { cpvTerm: selected.code, yearFrom: data.year, yearTo: data.year } };
-    return `/intreaba?spec=${encodeURIComponent(encodeSpec(spec))}`;
-  } : null;
+  const contextual = selected?.code.length === 2 && selected.nodeKind !== "remainder" ? (block: "table" | "timeseries", dim?: "supplier" | "authority") =>
+    `/intreaba?spec=${encodeURIComponent(encodeSpec(domainContextSpec(block, selected.code, data.year, dim)))}` : null;
 
   return <div className="domains-page">
     <span className="dm-sr-only" role="status">{loading ? `Încărcăm domeniile pentru ${requestedYear}.` : `${selected ? label(selected) : "Toate domeniile"}, ${data.year}. ${number.format(nodes.length)} categorii în această vedere.`}</span>

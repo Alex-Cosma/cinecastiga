@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ClipRow } from "@/lib/anchete";
 import type { CaptureSummary } from "@/lib/evidence-captures-shared";
 import { encodeSpec } from "@/lib/ask/permalink";
+import { personClipSpec } from "@/lib/ask/site-links";
 import { cleanName, formatRon, formatExactDecimal } from "@/lib/format";
 import { FLAG_META } from "@/lib/flags";
 import { removeClip, saveClipNote, toggleClipPin } from "./actions";
@@ -34,7 +35,7 @@ function href(c: ClipRow): string | null {
     case "contract": return c.refId ? `/contracte/${c.refId}` : null;
     case "notice": return c.refId ? `/anunturi/${c.refId}` : null;
     case "query": return queryHref(c);
-    case "person": return c.refId ? `/intreaba?spec=${encodeURIComponent(encodeSpec({ block: "table", measure: "value", dim: "supplier", filters: { adminPersonKey: c.refId } }))}` : null;
+    case "person": return c.refId ? `/intreaba?spec=${encodeURIComponent(encodeSpec(personClipSpec(c.refId)))}` : null;
     case "flag": return c.refId ? `/entitati/${c.refId}` : null;
     case "signal": return c.refId ? `/semnale/${c.refId}` : null;
     default: return null;

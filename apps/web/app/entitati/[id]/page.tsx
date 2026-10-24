@@ -31,6 +31,7 @@ import FollowButton from "@/components/FollowButton";
 import Term from "@/components/Term";
 import { roCount } from "@/lib/ro-count";
 import { encodeSpec } from "@/lib/ask/permalink";
+import { entityChannelSpec, personFirmsSpec } from "@/lib/ask/site-links";
 import YearMiniChart from "./YearMiniChart";
 import TxTable from "./TxTable";
 import PartnersTable from "./PartnersTable";
@@ -47,27 +48,12 @@ function entityTxSearchUrl(
   role: Role,
   dataset: "da" | "contracts" | "all",
 ): string {
-  const spec = {
-    block: "stat",
-    measure: "value",
-    dataset,
-    filters:
-      role === "authority"
-        ? { authorityName: name, authorityId: Number(entityId) }
-        : { supplierName: name, supplierId: Number(entityId) },
-  };
-  return `/?spec=${encodeURIComponent(encodeSpec(spec))}&drill=1`;
+  return `/?spec=${encodeURIComponent(encodeSpec(entityChannelSpec(entityId, name, role, dataset)))}&drill=1`;
 }
 
 /** "Conducere" → clasament of every firm this person represents. */
 function personFirmsUrl(personKey: string, personName: string): string {
-  const spec = {
-    block: "table",
-    dim: "supplier",
-    measure: "value",
-    filters: { adminPersonKey: personKey, adminName: personName },
-  };
-  return `/?spec=${encodeURIComponent(encodeSpec(spec))}`;
+  return `/?spec=${encodeURIComponent(encodeSpec(personFirmsSpec(personKey, personName)))}`;
 }
 
 export const dynamic = "force-dynamic";

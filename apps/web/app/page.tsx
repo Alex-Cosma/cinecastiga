@@ -4,6 +4,7 @@ import { getDiscoverySummary } from "@/lib/discovery";
 import { formatRon, formatInt } from "@/lib/format";
 import type { AskSpec } from "@/lib/ask/spec";
 import { askHref } from "@/lib/discovery-links";
+import { CONTRACT_WINNERS_SPEC, HOSPITALS_BREAKDOWN_SPEC, NATIONAL_CONTRACT_COUNT_SPEC, NATIONAL_DA_COUNT_SPEC, NATIONAL_VALUE_SPEC, ROADS_RANKING_SPEC } from "@/lib/ask/site-links";
 import { sessionUserId } from "@/lib/session";
 import Term from "@/components/Term";
 import DiscoverySearch from "./DiscoverySearch";
@@ -16,9 +17,9 @@ import { getCoverage } from "@/lib/coverage";
 export const dynamic = "force-dynamic";
 const questionHref = askHref;
 const QUESTIONS = [
-  { title: "Cine repară drumurile?", description: "Urmărește firmele din spatele lucrărilor și achizițiile care le aduc împreună.", kind: "road", label: "DRUMURI ȘI CONSTRUCȚII", action: "Vezi firmele și achizițiile", spec: { block: "table", dataset: "all", dim: "supplier", measure: "value", topN: 10, filters: { cpvTerm: "drumuri" } } },
-  { title: "Ce cumpără spitalele?", description: "De la medicamente la echipamente. Vezi pe ce se duc banii și cine furnizează.", kind: "hospital", label: "SĂNĂTATE", action: "Explorează achizițiile", spec: { block: "breakdown", dataset: "all", measure: "value", filters: { authorityKind: "spital" } } },
-  { title: "Cine primește contractele?", description: "Pornește de la un clasament. Ajungi la firme, instituții și fiecare sursă.", kind: "network", label: "FIRME ȘI CONTRACTE", action: "Urmărește contractele", spec: { block: "table", dataset: "contracts", dim: "supplier", measure: "value", topN: 10, filters: {} } },
+  { title: "Cine repară drumurile?", description: "Urmărește firmele din spatele lucrărilor și achizițiile care le aduc împreună.", kind: "road", label: "DRUMURI ȘI CONSTRUCȚII", action: "Vezi firmele și achizițiile", spec: ROADS_RANKING_SPEC },
+  { title: "Ce cumpără spitalele?", description: "De la medicamente la echipamente. Vezi pe ce se duc banii și cine furnizează.", kind: "hospital", label: "SĂNĂTATE", action: "Explorează achizițiile", spec: HOSPITALS_BREAKDOWN_SPEC },
+  { title: "Cine primește contractele?", description: "Pornește de la un clasament. Ajungi la firme, instituții și fiecare sursă.", kind: "network", label: "FIRME ȘI CONTRACTE", action: "Urmărește contractele", spec: CONTRACT_WINNERS_SPEC },
 ] satisfies { title: string; description: string; kind: string; label: string; action: string; spec: AskSpec }[];
 
 const PATHS = [
@@ -73,9 +74,9 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       <div className="d-national-label"><span><DiscoveryIcon name="database" /></span><div><b>O arhivă de urmărit.</b><small>Înregistrări din {coverage}</small></div></div>
       {/* The number opens its answer; the label explains the word. A Term is a
           button, so it sits next to the link instead of inside it. */}
-      <div className="d-national-item"><Link href={questionHref({ block: "stat", dataset: "da", measure: "count", filters: {}, population: { operator: "and", groups: [{ operator: "and", conditions: [{ field: "value", op: "lte", value: "2000000" }] }] } })}><strong>{formatInt(headline.directRecords)}</strong></Link><small><Term id="achizitie-directa" tip>achiziții directe acceptate</Term></small></div>
-      <div className="d-national-item"><Link href={questionHref({ block: "stat", dataset: "contracts", measure: "count", filters: {} })}><strong>{formatInt(headline.contractRecords)}</strong></Link><small><Term id="inregistrare-contract-furnizor" tip>înregistrări contract–furnizor</Term></small></div>
-      <div className="d-national-item"><Link href={questionHref({ block: "stat", dataset: "all", measure: "value", filters: {} })}><strong>{formatRon(headline.totalRon)}</strong></Link><small><Term id="valoare-inregistrata" tip>valoare înregistrată · nu plăți</Term></small></div>
+      <div className="d-national-item"><Link href={questionHref(NATIONAL_DA_COUNT_SPEC)}><strong>{formatInt(headline.directRecords)}</strong></Link><small><Term id="achizitie-directa" tip>achiziții directe acceptate</Term></small></div>
+      <div className="d-national-item"><Link href={questionHref(NATIONAL_CONTRACT_COUNT_SPEC)}><strong>{formatInt(headline.contractRecords)}</strong></Link><small><Term id="inregistrare-contract-furnizor" tip>înregistrări contract–furnizor</Term></small></div>
+      <div className="d-national-item"><Link href={questionHref(NATIONAL_VALUE_SPEC)}><strong>{formatRon(headline.totalRon)}</strong></Link><small><Term id="valoare-inregistrata" tip>valoare înregistrată · nu plăți</Term></small></div>
     </section>
 
     <section className="d-starts" aria-labelledby="d-starts-title">

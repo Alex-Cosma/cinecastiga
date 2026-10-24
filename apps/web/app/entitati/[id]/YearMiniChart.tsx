@@ -3,6 +3,7 @@
 import { useTip } from "../../intreaba/blocks";
 import { formatRon, formatInt } from "@/lib/format";
 import { encodeSpec } from "@/lib/ask/permalink";
+import { entityMonthSpec } from "@/lib/ask/site-links";
 
 const LUNI = [
   "ianuarie", "februarie", "martie", "aprilie", "mai", "iunie",
@@ -34,22 +35,8 @@ export default function YearMiniChart({
   });
   const max = months.reduce((a, b) => Math.max(a, b.v), 0) || 1;
   const total = months.reduce((a, b) => a + b.v, 0);
-  const monthUrl = (m: number) => {
-    const spec = {
-      block: "stat",
-      measure: "value",
-      dataset: "da",
-      filters: {
-        [role === "authority" ? "authorityId" : "supplierId"]: Number(entityId),
-        [role === "authority" ? "authorityName" : "supplierName"]: entityName,
-        yearFrom: Number(year),
-        yearTo: Number(year),
-        monthFrom: m,
-        monthTo: m,
-      },
-    };
-    return `/?spec=${encodeURIComponent(encodeSpec(spec))}&drill=1`;
-  };
+  const monthUrl = (m: number) =>
+    `/?spec=${encodeURIComponent(encodeSpec(entityMonthSpec(entityId, entityName, role, year, m)))}&drill=1`;
   return (
     <div className="yem" aria-label={`Valoarea lunară a achizițiilor directe, ${year}`}>
       {t.el}
