@@ -175,6 +175,8 @@ O condiție nouă a unei întrebări se scrie o singură dată, în `lib/ask/pre
 
 Cuvintele ei se scriu tot o singură dată, în `lib/ask/filters/describe.ts` (`DESCRIBE`): cipul, pastila, rezumatul salvatei, rândul urmăririi, caveat-ul, nota surselor și cuvintele pentru „Din link” și linia de total. Orice număr cu substantiv trece prin `countWords` (`lib/ask/answer-text.ts`). `filters/describe.test.ts` pică dacă o cheie a motorului nu are cuvinte sau dacă un număr de la 20 în sus nu are „de”.
 
+Propoziția unei întrebări se scrie în `lib/ask/filters/sentence.ts`, din cuvintele comune (`filters/words.ts`, `KIND_WORDS`/`KIND_ONE` din `question-ui.ts`), nu din texte proprii; un cuvânt nou pentru o condiție intră acolo și îl folosește și `describe.ts`. `filters/sentence.test.ts` fixează propozițiile linkurilor vechi și pică dacă o frază spune altceva decât `describeConditions` sau folosește un cuvânt retras de trusă (§4).
+
 Un link spre alt răspuns din „Întreabă” („›”) se construiește cu `retarget(spec, block)` (`lib/ask/filters/retarget.ts`), nu prin spread cu alt `block`; `filters/retarget.test.ts` caută în cod și pică altfel. O livrare care schimbă intenționat ce răspunde același spec își mărește versiunea în `lib/ask/answer-core.ts`: pe bloc în `ANSWER_VERSIONS`, pe cheie în `KEY_VERSIONS` (căile, blocurile și eticheta). Urmăririle acelui bloc sau ale acelei chei primesc o singură alertă de metodologie, iar diferența din fișierul „de aur” se explică prin versiune.
 
 `check-navigation.mjs` folosește strict baza sintetică `seap_test_admin_navigation`, preview separat și date fictive. Nu îl îndrepta spre baza colaboratorului. Scripturile de browser pot cere Playwright și o instalare locală de Chromium; citește precondițiile lor.
