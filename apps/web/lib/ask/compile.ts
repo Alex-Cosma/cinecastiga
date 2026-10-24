@@ -1,5 +1,6 @@
 import { canonicalAskIdentities } from "./canonical-identities";
 import { retiredChoicesText } from "./retired-terms";
+import { FORCE_CUSTOM_PLANS } from "../plan-cache";
 import type { DbSql } from "@seap/db";
 import { NEWER_VERSION_LINK, namedKind, unimplementedSpecKeys, type AskSpec, type AuthorityKind, type Dim } from "./spec";
 import type { Grounding } from "./ground";
@@ -936,6 +937,7 @@ export async function runSpec(
   // --- execute under guardrails
   const exec = async (): Promise<BlockData | { error: string }> => {
     return await sql.begin("read only", async (tx) => {
+      await tx.unsafe(FORCE_CUSTOM_PLANS);
       await tx.unsafe(`set local statement_timeout = '${STATEMENT_TIMEOUT}'`);
       const s = tx as unknown as DbSql;
 
@@ -2182,6 +2184,7 @@ export async function runRows(
   const pageSize = opts.limit && opts.limit > 0 ? Math.min(Math.floor(opts.limit), CSV_MAX_ROWS) : DRILL_PAGE_SIZE;
 
   return await sql.begin("isolation level repeatable read read only", async (tx) => {
+    await tx.unsafe(FORCE_CUSTOM_PLANS);
     await tx.unsafe(`set local statement_timeout = '${opts.capture ? '15min' : STATEMENT_TIMEOUT}'`);
     // The production database uses SSD costs. Keep the same covering-index
     // choices in local source verification without changing database settings.
