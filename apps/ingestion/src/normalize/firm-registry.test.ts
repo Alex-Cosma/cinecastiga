@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { onrcRegistration } from "./firm-registry.js";
+import { applyFirmRegistry, onrcRegistration } from "./firm-registry.js";
 
 // Formats on the 2026-07-08 ONRC snapshot (4,197,473 numbers, all parsed):
 // Jcc/n/yyyy with a one- or two-digit office, and Jyyyy + 6-digit sequence + 3 digits.
@@ -22,5 +22,24 @@ describe("ONRC registration numbers (plan F5)", () => {
   it("reads nothing from other shapes", () => {
     for (const value of ["", "J12/345", "J12/345/04", "X12/345/2004", "J202400012340", "J20240001234081", "RO12345678"])
       expect(onrcRegistration(value)).toBeNull();
+  });
+});
+
+describe("applyFirmRegistry", () => {
+  it("analyzes the fresh profiles before joining them to the register", async () => {
+    // Fake transaction: records each statement; the register is absent and no profile is counted.
+    const statements: string[] = [];
+    const q = ((strings: TemplateStringsArray | string) => {
+      if (typeof strings === "string") return strings; // q(identifier)
+      const text = strings.join("?").replace(/\s+/g, " ").trim();
+      statements.push(text);
+      return Promise.resolve(text.includes("to_regclass") ? [{ onrc: false }] : []);
+    }) as unknown as Parameters<typeof applyFirmRegistry>[0];
+    (q as unknown as { array: (v: unknown[]) => unknown[] }).array = (v) => v;
+    await applyFirmRegistry(q);
+    const analyze = statements.findIndex((text) => text === "analyze marts.entity_profile");
+    const update = statements.findIndex((text) => text.includes("update marts.entity_profile"));
+    expect(analyze).toBe(0);
+    expect(update).toBeGreaterThan(analyze);
   });
 });

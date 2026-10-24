@@ -59,6 +59,12 @@ export interface FirmRegistryReport {
 
 /** Fill registered_year, seat_county and seat_source of the supplier profiles, in the caller's transaction. */
 export async function applyFirmRegistry(q: TransactionSql): Promise<FirmRegistryReport> {
+  // The profiles were just written in this transaction. Without statistics (a
+  // new or restored database before its first ANALYZE) the planner expects a
+  // few hundred suppliers and joins the registrations by nested loop: over 10
+  // minutes instead of ~4 s. TRUNCATE keeps pg_statistic, so later nights
+  // already have them; the sample costs ~0.3 s.
+  await q`analyze marts.entity_profile`;
   const counties = [...new Set(Object.values(RO_NUTS3_COUNTY))];
   const [present] = await q`select to_regclass('reference.onrc_firm') is not null onrc`;
   // A reference import, absent from a fresh database: the SEAP county still applies.
