@@ -6,13 +6,14 @@ import type { DiscoveryCounty } from "@/lib/discovery";
 import { countyMap, foldCounty } from "@/lib/map";
 import { formatRon, formatInt } from "@/lib/format";
 import { askHref, countyBreakdownHref } from "@/lib/discovery-links";
+import { NATIONAL_MAP_SPEC } from "@/lib/ask/site-links";
 import Term from "@/components/Term";
 import DiscoveryIcon from "./DiscoveryIcon";
 
 // A county opens "Pe ce se duc banii?" (the breakdown by subject) for it, the
 // question this card asks, rather than a single total.
 const countyHref = countyBreakdownHref;
-const mapHref = askHref({ block: "map", dataset: "all", measure: "value", filters: {} });
+const mapHref = askHref(NATIONAL_MAP_SPEC);
 
 export default function DiscoveryMap({ counties }: { counties: DiscoveryCounty[] }) {
   const [selected, setSelected] = useState(""), [hovered, setHovered] = useState("");

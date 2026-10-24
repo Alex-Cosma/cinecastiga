@@ -13,6 +13,7 @@ import { awardUrl } from "@/lib/elicitatie";
 import ClipButton from "@/components/ClipButton";
 import Term from "@/components/Term";
 import { encodeSpec } from "@/lib/ask/permalink";
+import { pairSpec } from "@/lib/ask/site-links";
 import { consortiumShareLabel } from "@/lib/consortium";
 import "./contract.css";
 
@@ -36,17 +37,7 @@ function pairDrillUrl(
   authority: { id: string; name: string },
   supplier: { id: string; name: string },
 ): string {
-  const spec = {
-    block: "stat",
-    measure: "value",
-    filters: {
-      authorityName: authority.name,
-      supplierName: supplier.name,
-      authorityId: Number(authority.id),
-      supplierId: Number(supplier.id),
-    },
-  };
-  return `/?spec=${encodeURIComponent(encodeSpec(spec))}&drill=1`;
+  return `/?spec=${encodeURIComponent(encodeSpec(pairSpec(authority, supplier)))}&drill=1`;
 }
 
 /** Titles like "Contract", "Contract 707" carry no information — lead with CPV. */

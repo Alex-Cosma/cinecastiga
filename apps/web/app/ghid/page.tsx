@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { GLOSSARY, GUIDE_IDEAS, guideIdeasHeading } from "@/lib/glossary";
 import { askHref, countyBreakdownHref } from "@/lib/discovery-links";
+import { ROADS_RANKING_SPEC } from "@/lib/ask/site-links";
 import DiscoveryIcon from "../DiscoveryIcon";
 
 export const metadata: Metadata = {
@@ -22,7 +23,7 @@ const PATHS = [
     text: "Nume sau CUI: ce a cumpărat sau câștigat, cu cine, când.",
   },
   {
-    href: askHref({ block: "table", dataset: "all", dim: "supplier", measure: "value", topN: 10, filters: { cpvTerm: "drumuri" } }),
+    href: askHref(ROADS_RANKING_SPEC),
     title: "Pune o întrebare: cine repară drumurile?",
     text: "Ce, unde, când, cu înregistrările din spate.",
   },

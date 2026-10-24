@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { formatRon, formatInt, cleanName } from "@/lib/format";
 import { encodeSpec } from "@/lib/ask/permalink";
+import { pairSpec } from "@/lib/ask/site-links";
 import { useTip } from "../../intreaba/blocks";
 import type { Partner } from "@/lib/marts";
 import { useEntityTable } from "./useEntityTable";
@@ -30,17 +31,7 @@ function pairSearchUrl(
 ): string {
   const authority = isAuth ? self : { id: partner.id, name: cleanName(partner.name) };
   const supplier = isAuth ? { id: partner.id, name: cleanName(partner.name) } : self;
-  const spec = {
-    block: "stat",
-    measure: "value",
-    filters: {
-      authorityName: authority.name,
-      supplierName: supplier.name,
-      authorityId: Number(authority.id),
-      supplierId: Number(supplier.id),
-    },
-  };
-  return `/?spec=${encodeURIComponent(encodeSpec(spec))}&drill=1`;
+  return `/?spec=${encodeURIComponent(encodeSpec(pairSpec(authority, supplier)))}&drill=1`;
 }
 
 export default function PartnersTable({
