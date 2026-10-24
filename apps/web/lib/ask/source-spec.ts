@@ -1,6 +1,6 @@
 import { encodeSpec } from "./permalink";
 import type { AskSpec } from "./spec";
-import type { QuestionSpec } from "./question-ui";
+import { countyWords, type QuestionSpec } from "./question-ui";
 import type { TableRow } from "./compile";
 import { retarget } from "./filters/retarget";
 
@@ -41,3 +41,31 @@ export function entitySourceSpec(
 export function yearSourceLink(spec: AskSpec, year: number): string {
   return `/intreaba?spec=${encodeURIComponent(encodeSpec(spec))}&drill=1&evidence=${encodeURIComponent(JSON.stringify({ years: [year] }))}`;
 }
+
+/**
+ * "Cine conduce?" over a group of one (plan §4.13, final entity_card §4 frame F):
+ * a county has one county council, so "which one buys the most" would crown it
+ * without a rival. The answer says so instead, in these words.
+ */
+export function leaderAlone(spec: QuestionSpec): string | null {
+  const f = spec.filters;
+  if (spec.block !== "entity_card" || spec.dim !== "authority" || f.authorityKind !== "consiliu_judetean" || !f.county || f.uatSiruta) return null;
+  return `În ${countyWords(String(f.county)).replace(/^din /, "")} e un singur consiliu județean.`;
+}
+/**
+ * The two answers it offers about that council (R8 "›"): where it stands among
+ * the other councils (a distribution with today's keys: the kind, the whole
+ * country) and what it buys (the same selection as a total, the council named
+ * in place of its kind and county).
+ */
+export function leaderAloneSpecs<S extends QuestionSpec>(spec: S, entity: { entityId: string; name: string }): { peers: QuestionSpec; total: S } {
+  const named = { authorityName: entity.name, ...(entity.entityId ? { authorityId: Number(entity.entityId) } : {}) };
+  const peers: QuestionSpec = { block: "distribution", dim: "authority", measure: "value", filters: { ...named, authorityKind: "consiliu_judetean" } };
+  const total = retarget(spec, "stat");
+  delete total.rankBy;
+  for (const key of ["authorityKind", "county", "uatSiruta", "uatName"]) delete total.filters[key];
+  Object.assign(total.filters, named);
+  return { peers, total };
+}
+/** Another answer in "Întreabă" (R8 "›"), as a link. */
+export const askLink = (spec: QuestionSpec): string => `/intreaba?spec=${encodeURIComponent(encodeSpec(spec))}`;

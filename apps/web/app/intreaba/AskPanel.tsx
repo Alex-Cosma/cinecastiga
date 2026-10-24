@@ -38,6 +38,7 @@ import TotalLine from "./answer/TotalLine";
 import Segmented from "./builder/Segmented";
 import "./builder/filters-kit.css";
 import { answerCsv, type BandState } from "./answer-csv";
+import { useCpvName } from "./cpv-name";
 import { STRIP_QUERY_KEYS, appliedAfterStrip, readThread, shownWords, threadCrumbs, threadWords, type AnswerVariants, type Thread } from "./answer-state";
 import EntityTypeahead from "./EntityTypeahead";
 import EvidenceDrawer from "./EvidenceDrawer";
@@ -465,13 +466,15 @@ export default function AskPanel({
     };
   }, [execute, interpret, revealError]);
   const applied = appliedSpec ?? undefined;
+  // A CPV code is named as the builder names it ("pentru [lucrări de construcții]").
+  const cpvName = useCpvName(applied?.filters.cpvTerm === undefined ? undefined : String(applied.filters.cpvTerm));
   // One title per answered spec, the builder's sentence and the conditions under it (G7): the same
   // words whether the answer came from typed text, a builder edit or a shared link, in every view,
   // the drawer and the export.
   const title =
     resp?.question ||
     (applied
-      ? questionTitle(applied)
+      ? questionTitle(applied, { cpvName })
       : "Răspunsul tău");
   // The strip beside the answer (P6): the keys BLOCK_FILTERS puts there, on the applied question.
   const stripKeys = applied ? BLOCK_FILTERS[applied.block]?.strip ?? [] : [];
@@ -809,7 +812,8 @@ export default function AskPanel({
                 />
               </div>
             </div>
-            {isProfile && <ProfileNotice />}
+            {/* The profile line under the sentence and the pill say the basis; the banner stays where the answer shows lei (not payments). */}
+            {isProfile && applied.block !== "distribution" && <ProfileNotice />}
             {(stripKeys.length > 0 || crumbs || ["table", "timeseries", "map"].includes(data.block)) && (
               <div className="fk cq-strip"><AnswerStrip>
                 {stripKeys.includes("dataset") && (
@@ -949,7 +953,7 @@ export default function AskPanel({
                 <NetworkBlock nodes={data.nodes} focal={data.focal} />
               )}
               {data.block === "entity_card" && (
-                <EntityCardBlock card={data.card} historical={isProfile} />
+                <EntityCardBlock card={data.card} historical={isProfile} spec={applied} />
               )}
               {data.block === "fact_check" && (
                 <FactCheckBlock fact={data.fact} />

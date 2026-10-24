@@ -7360,6 +7360,294 @@
    }
   },
   {
+   "id": "site:leader-alone-peers",
+   "origin": "site",
+   "source": "source-spec.ts leaderAloneSpecs (a lone county council → its place among the others)",
+   "request": {
+    "spec": {
+     "block": "distribution",
+     "dim": "authority",
+     "measure": "value",
+     "filters": {
+      "authorityName": "Consiliul Judetean Alba",
+      "authorityId": 9100000004,
+      "authorityKind": "consiliu_judetean"
+     }
+    }
+   },
+   "answer": {
+    "status": 200,
+    "ok": true,
+    "question": null,
+    "model": null,
+    "spec": {
+     "block": "distribution",
+     "measure": "value",
+     "filters": {
+      "authorityName": "Consiliul Judetean Alba",
+      "authorityId": 9100000004,
+      "authorityKind": "consiliu_judetean"
+     },
+     "dim": "authority"
+    },
+    "pills": ["poziție în distribuția de risc","doar consilii județene","Consiliul Judetean Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "caveats": [
+     "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
+     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+    ],
+    "data": {
+     "block": "distribution",
+     "distribution": {
+      "buckets": [
+       {
+        "from": 0,
+        "to": 0.1,
+        "n": 0
+       },
+       {
+        "from": 0.1,
+        "to": 0.2,
+        "n": 0
+       },
+       {
+        "from": 0.2,
+        "to": 0.3,
+        "n": 1
+       },
+       {
+        "from": 0.3,
+        "to": 0.4,
+        "n": 0
+       },
+       {
+        "from": 0.4,
+        "to": 0.5,
+        "n": 0
+       },
+       {
+        "from": 0.5,
+        "to": 0.6,
+        "n": 0
+       },
+       {
+        "from": 0.6,
+        "to": 0.7,
+        "n": 0
+       },
+       {
+        "from": 0.7,
+        "to": 0.8,
+        "n": 0
+       },
+       {
+        "from": 0.8,
+        "to": 0.9,
+        "n": 0
+       },
+       {
+        "from": 0.9,
+        "to": 1,
+        "n": 0
+       }
+      ],
+      "focal": {
+       "entityId": "9100000004",
+       "name": "Consiliul Judetean Alba",
+       "cri": 0.274,
+       "percentile": 100
+      },
+      "role": "authority",
+      "totalEntities": 1
+     }
+    },
+    "displaySql": "select width_bucket(cri, 0, 1, 10) interval_risc, count(*)\nfrom marts.entity_flags\nwhere n_das >= 10\ngroup by 1;\n-- + poziția entității tale în distribuție"
+   },
+   "sources": {
+    "status": 200,
+    "ok": true,
+    "total": 12,
+    "value": "40463.46",
+    "sourceTotal": 12,
+    "sourceValue": "40463.46",
+    "page": 0,
+    "pageSize": 10,
+    "accepted": {
+     "count": 12,
+     "value": "40463.46"
+    },
+    "dateFrom": "2024-01-12",
+    "dateTo": "2026-05-18",
+    "profile": true,
+    "profiles": [
+     {
+      "entityId": "9100000004",
+      "name": "Consiliul Judetean Alba",
+      "role": "authority",
+      "count": 12,
+      "value": "40463.46",
+      "cri": 0.274,
+      "flags": ["da_concentration"],
+      "applicable": 5
+     }
+    ],
+    "profileCount": 1,
+    "profileReconciled": true,
+    "scopeNotes": [
+     "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă."
+    ],
+    "statuses": [
+     {
+      "state": "Oferta acceptata",
+      "count": 12,
+      "value": "40463.46"
+     }
+    ],
+    "rows": [
+     ["da","9100100212","DA-FX-212","2024-01-12","9100000004","9100000102","Alba","33690000-3","4532.84","Oferta acceptata",null,null,false,null],
+     ["da","9100100211","DA-FX-211","2026-02-11","9100000004","9100000103","Alba","79000000-4","4321.77","Oferta acceptata",null,null,false,null],
+     ["da","9100100210","DA-FX-210","2025-03-10","9100000004","9100000102","Alba","33690000-3","4110.70","Oferta acceptata",null,null,false,null],
+     ["da","9100100209","DA-FX-209","2024-04-19","9100000004","9100000103","Alba","79000000-4","3899.63","Oferta acceptata",null,null,false,null],
+     ["da","9100100208","DA-FX-208","2026-05-18","9100000004","9100000102","Alba","33690000-3","3688.56","Oferta acceptata",null,null,false,null],
+     ["da","9100100207","DA-FX-207","2025-06-17","9100000004","9100000103","Alba","79000000-4","3477.49","Oferta acceptata",null,null,false,null],
+     ["da","9100100206","DA-FX-206","2024-01-16","9100000004","9100000102","Alba","33690000-3","3266.42","Oferta acceptata",null,null,false,null],
+     ["da","9100100205","DA-FX-205","2026-02-15","9100000004","9100000103","Alba","79000000-4","3055.35","Oferta acceptata",null,null,false,null],
+     ["da","9100100204","DA-FX-204","2025-03-14","9100000004","9100000102","Alba","33690000-3","2844.28","Oferta acceptata",null,null,false,null],
+     ["da","9100100203","DA-FX-203","2024-04-13","9100000004","9100000103","Alba","79000000-4","2633.21","Oferta acceptata",null,null,false,null]
+    ]
+   },
+   "csv": {
+    "status": 200,
+    "file": "randuri-12.csv",
+    "x-total-rows": "12",
+    "x-exported-rows": "12",
+    "x-source-rows": "12",
+    "x-source-value": "40463.46",
+    "x-filtered-value": "40463.46",
+    "lines": 13,
+    "sha256": "f3e59395fc433b4a7e488925a8de2d1cf984371125fe4d4cd18f089e78259642"
+   }
+  },
+  {
+   "id": "site:leader-alone-total",
+   "origin": "site",
+   "source": "source-spec.ts leaderAloneSpecs (a lone county council → what it buys)",
+   "request": {
+    "spec": {
+     "block": "stat",
+     "dim": "authority",
+     "measure": "value",
+     "filters": {
+      "yearFrom": 2025,
+      "yearTo": 2025,
+      "authorityName": "Consiliul Judetean Alba",
+      "authorityId": 9100000004
+     }
+    }
+   },
+   "answer": {
+    "status": 200,
+    "ok": true,
+    "question": null,
+    "model": null,
+    "spec": {
+     "block": "stat",
+     "measure": "value",
+     "filters": {
+      "authorityName": "Consiliul Judetean Alba",
+      "authorityId": 9100000004,
+      "yearFrom": 2025,
+      "yearTo": 2025
+     },
+     "dim": "authority"
+    },
+    "pills": ["total","Total (lei)","Consiliul Judetean Alba","2025","toate sursele: achiziții directe + contracte prin proceduri"],
+    "caveats": [
+     "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
+    ],
+    "data": {
+     "block": "stat",
+     "stat": {
+      "value": 99643.54000000001,
+      "count": 5,
+      "byStream": [
+       {
+        "src": "contracts",
+        "value": 87000,
+        "count": 1
+       },
+       {
+        "src": "da",
+        "value": 12643.54,
+        "count": 4
+       }
+      ]
+     }
+    },
+    "displaySql": "select sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000004\n  and an >= 2025\n  and an <= 2025;"
+   },
+   "sources": {
+    "status": 200,
+    "ok": true,
+    "total": 5,
+    "value": "99643.54",
+    "sourceTotal": 5,
+    "sourceValue": "99643.54",
+    "page": 0,
+    "pageSize": 10,
+    "accepted": {
+     "count": 4,
+     "value": "12643.54"
+    },
+    "dateFrom": "2025-02-25",
+    "dateTo": "2025-06-17",
+    "profile": false,
+    "profiles": [],
+    "profileCount": 0,
+    "profileReconciled": null,
+    "scopeNotes": [
+     "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Un contract cu mai mulți câștigători apare pe câte un rând pentru fiecare furnizor, cu valoarea împărțită egal. Suma folosește aceste cote; numărul de rânduri nu este numărul de contracte distincte. Detaliile și exportul păstrează valoarea integrală și numărul câștigătorilor."
+    ],
+    "statuses": [
+     {
+      "state": null,
+      "count": 1,
+      "value": "87000.00"
+     },
+     {
+      "state": "Oferta acceptata",
+      "count": 4,
+      "value": "12643.54"
+     }
+    ],
+    "rows": [
+     ["contracts","9100200005","CT-FX-5","2025-02-25","9100000004","9100000103","Alba","79000000-4","87000.00",null,1,"87000.00",false,"Contract fixture 5"],
+     ["da","9100100210","DA-FX-210","2025-03-10","9100000004","9100000102","Alba","33690000-3","4110.70","Oferta acceptata",null,null,false,null],
+     ["da","9100100207","DA-FX-207","2025-06-17","9100000004","9100000103","Alba","79000000-4","3477.49","Oferta acceptata",null,null,false,null],
+     ["da","9100100204","DA-FX-204","2025-03-14","9100000004","9100000102","Alba","33690000-3","2844.28","Oferta acceptata",null,null,false,null],
+     ["da","9100100201","DA-FX-201","2025-06-11","9100000004","9100000103","Alba","79000000-4","2211.07","Oferta acceptata",null,null,false,null]
+    ]
+   },
+   "csv": {
+    "status": 200,
+    "file": "randuri-5.csv",
+    "x-total-rows": "5",
+    "x-exported-rows": "5",
+    "x-source-rows": "5",
+    "x-source-value": "99643.54",
+    "x-filtered-value": "99643.54",
+    "lines": 6,
+    "sha256": "2de01626f1f65d3224fab38078e5ed3932cc76700141e04daef7a0ba316a394d"
+   }
+  },
+  {
    "id": "saved:resolved",
    "origin": "saved",
    "source": "resolved-spec.ts resolvedSpec (what /api/ask returns, saves and watches)",

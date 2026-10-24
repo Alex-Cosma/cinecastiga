@@ -1,4 +1,4 @@
-import { BLOCK_FILTERS } from "./blocks";
+import { BLOCK_FILTERS, populationFits } from "./blocks";
 import { filterContext } from "./context";
 import { FILTERS } from "./defs";
 import type { Party } from "./defs/selection";
@@ -77,7 +77,7 @@ export const conditionSet = (spec: FilterSpec, id: FilterId): boolean =>
  * The conditions this question shows as its own (BLOCK_FILTERS): what its
  * sentence and presentation line say, the set chips of its rows and strip,
  * and a precise selection or record threshold its "Selecție avansată" offers
- * (P9 with the counted role). A town hall implies its county. A profile reads
+ * (P9 with the counted role and the question's fields). A town hall implies its county. A profile reads
  * every stream as its archive and the home page's direct-acquisition ceiling
  * is the engine's own, so both are shown by the question itself (the profile
  * line, the answer). Anything else a spec carries is a chip under the
@@ -94,7 +94,8 @@ export function visibleFilters(spec: FilterSpec, ctx: FilterCtx = filterContext(
     if (conditionSet(spec, chip.id) && (chip.id !== "employees" || employeesOnBands(spec.filters.minEmployees, spec.filters.maxEmployees))) ids.add(chip.id);
   for (const id of entry.strip) if (conditionSet(spec, id)) ids.add(id);
   for (const slot of entry.advanced(spec, ctx))
-    if (conditionSet(spec, slot.id) && (!slot.choices || slot.choices.some((value) => sameValue(value, FILTERS[slot.id].read(spec), slot.id)))) ids.add(slot.id);
+    if (conditionSet(spec, slot.id) && (!slot.choices || slot.choices.some((value) => sameValue(value, FILTERS[slot.id].read(spec), slot.id)))
+      && (slot.id !== "population" || populationFits(spec.population, entry.advancedFields(spec, ctx)))) ids.add(slot.id);
   if (ids.has("locality")) ids.add("county");
   if (ctx.profile && spec.dataset !== "contracts") ids.add("dataset");
   if (isDaBoundPopulation(spec)) ids.add("population");

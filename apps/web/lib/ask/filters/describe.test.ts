@@ -219,8 +219,13 @@ describe("the words of every condition", () => {
     expect(describeConditions({ block: "network", measure: "value", filters: { supplierId: 1, supplierName: "X", yearFrom: 2024, yearTo: 2024, cpvTerm: "asfaltare" } }).totalLine).toBeNull();
     expect(describeConditions({ block: "stat", measure: "value", dataset: "da", filters: { minEmployees: 1, maxEmployees: 9 } }).totalLine).toBeNull();
     expect(describeConditions({ block: "stat", measure: "value", filters: {} }).totalLine).toBeNull();
-    // A partners' row (P3b) and a link's chip change the total outside it.
-    expect(describeConditions({ block: "network", measure: "value", filters: { authorityId: 1, authorityName: "X", minEmployees: 1, maxEmployees: 9 } }).totalLine).toBe("firme cu 1–9 angajați");
+    // A partners' row (P3b) and a link's chip change the total outside it; the row says whose condition it is (kit G8).
+    expect(describeConditions({ block: "network", measure: "value", filters: { authorityId: 1, authorityName: "X", minEmployees: 1, maxEmployees: 9 } }).totalLine).toBe("doar furnizorii cu 1–9 angajați");
+    expect(describeConditions({ block: "network", measure: "value", filters: { authorityId: 1, authorityName: "X", adminPersonKey: "k", adminName: "ION" } }).tail).toBe("doar furnizorii conduși azi de ION");
+    expect(describeConditions({ block: "sankey", measure: "value", filters: { supplierId: 2, supplierName: "PORR", county: "Ilfov" } }).totalLine).toBe("doar clienții din județul Ilfov");
+    expect(describeConditions({ block: "sankey", measure: "value", filters: { supplierId: 2, supplierName: "PORR", county: "Ilfov", authorityKind: "spital" } }).totalLine).toBe("doar spitalele din județul Ilfov");
+    // The flow's row has no person (blocks.ts partners): a link's administrator keeps the plain words of its chip.
+    expect(describeConditions({ block: "sankey", measure: "value", filters: { authorityId: 1, authorityName: "X", adminPersonKey: "k", adminName: "ION" } }).totalLine).toBe("firmele conduse azi de ION");
     expect(describeConditions({ block: "stat", measure: "value", filters: { supplierId: 2, supplierName: "PORR", adminPersonKey: "k", adminName: "ION" } }).totalLine).toBe("firmele conduse azi de ION");
     // The selections glued to the ranked firms are said again: their size, administrator, seat (on a firm profile, the county).
     expect(describeConditions({ block: "table", measure: "value", dim: "supplier", filters: { minEmployees: 1, maxEmployees: 9, adminPersonKey: "k", adminName: "ION" } }).totalLine)

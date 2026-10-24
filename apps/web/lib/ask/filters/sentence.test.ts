@@ -318,6 +318,8 @@ describe("the sentences of the legacy corpus (plan §2.6, §6.2)", () => {
       "site:node-records": "Cu cine lucrează Municipiul Fixture Nord, în toți anii?",
       "site:ribbon-records": "Ce cumpără Municipiul Fixture Nord și de la cine, în toți anii?",
       "site:map-county-records": "Cum se împart achizițiile făcute de instituțiile publice pe județe, în toți anii?",
+      "site:leader-alone-peers": "Unde se situează Consiliul Judetean Alba după indicele de risc, față de consiliile județene?",
+      "site:leader-alone-total": "Cât valorează achizițiile făcute de Consiliul Judetean Alba, în 2025?",
       "legacy:minimum-table-supplier-role": "Ce instituții publice din toată țara cumpără cel mai mult, prin toate achizițiile, în 2025? · sub propoziție: minimumRecords",
       "legacy:minimum-table-authority-role": "Ce instituții publice din toată țara cumpără cel mai mult, prin toate achizițiile, în 2025? · sub propoziție: minimumRecords",
       "legacy:minimum-stat": "Cât valorează achizițiile făcute de instituțiile publice din toată țara, în toți anii? · sub propoziție: minimumRecords",

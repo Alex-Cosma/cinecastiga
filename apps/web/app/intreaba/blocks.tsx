@@ -8,7 +8,10 @@ import { useEffect, useRef, useState } from "react";
 import { formatRon, formatRonFull, formatInt, cleanName } from "@/lib/format";
 import { countWords, formatChange, formatDecimal, formatShare } from "@/lib/ask/answer-text";
 import { encodeSpec } from "@/lib/ask/permalink";
+import type { QuestionSpec } from "@/lib/ask/question-ui";
+import { askLink, leaderAlone, leaderAloneSpecs } from "@/lib/ask/source-spec";
 import { deeperThread, threadHref, type Thread } from "./answer-state";
+import KitLink from "./answer/KitLink";
 
 /**
  * House rule (docs/PRINCIPLES.md): every graph element answers on hover with an
@@ -1290,9 +1293,24 @@ export function NetworkBlock({
 
 /* ── entity card ──────────────────────────────────────────────────────── */
 
-export function EntityCardBlock({ card, historical = true }: { card: EntityCardData; historical?: boolean }) {
+export function EntityCardBlock({ card, historical = true, spec }: { card: EntityCardData; historical?: boolean; spec?: QuestionSpec }) {
   const evidence = useAnswerEvidence();
   const band = card.cri !== null ? criBand(card.cri) : null;
+  // A group of one (plan §4.13): no crown, the council and two other answers about it.
+  const alone = spec ? leaderAlone(spec) : null;
+  if (alone && spec) {
+    const { peers, total } = leaderAloneSpecs(spec, card);
+    return (
+      <div className="fk fk-empty ask-alone">
+        <p>{alone}</p>
+        <h3><Link href={`/entitati/${card.entityId}`}>{cleanName(card.name)}</Link></h3>
+        <div className="fk-relax">
+          <KitLink className="fk-relax-link" link={{ label: "Unde se situează față de celelalte", glyph: "›", href: askLink(peers) }} />
+          <KitLink className="fk-relax-link" link={{ label: "Cât cumpără", glyph: "›", href: askLink(total) }} />
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="ask-ecard">
       <h3>

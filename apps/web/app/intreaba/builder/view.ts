@@ -8,7 +8,7 @@ import { presentationTokens, sentenceTokens, type SentenceSlot, type SentenceTok
 import type { FilterCtx, FilterId, FilterSpec, Slot } from "../../../lib/ask/filters/types";
 import { employeesOnBands } from "../../../lib/ask/filters/words";
 import type { QueryPopulation } from "../../../lib/ask/population";
-import { KIND_WORDS, cloneQuestion, type QuestionSpec } from "../../../lib/ask/question-ui";
+import { KIND_WORDS, cloneQuestion, countyWords, type QuestionSpec } from "../../../lib/ask/question-ui";
 import type { SentenceToken as KitToken } from "./kit-types";
 import type { UnderChipItem } from "./UnderChips";
 
@@ -72,8 +72,10 @@ export function patchDraft(draft: QuestionSpec, patch: Pick<StripPatch, "path" |
 }
 
 /** The registry's slot of a phrase: its filter, picker and what its window also writes (sentence.ts sentenceSlots). */
-export const phraseSlot = (token: SentenceSlot): Slot =>
-  ({ id: token.filter, ...(token.picker ? { picker: token.picker } : {}), ...(token.writes ? { writes: token.writes } : {}) });
+export const phraseSlot = (token: SentenceSlot): Slot => ({
+  id: token.filter, ...(token.picker ? { picker: token.picker } : {}), ...(token.writes ? { writes: token.writes } : {}),
+  ...(token.required ? { required: true as const } : {}),
+});
 
 const LINK_TIP = "Condiție dintr-un link mai vechi; se aplică la fel. Nu se mai alege aici.";
 const ORIGIN_TIP = "Vine din altă pagină a site-ului; se aplică întocmai.";
@@ -87,7 +89,7 @@ function rowChipLabel(spec: FilterSpec, slot: Slot, described: ReturnType<typeof
   switch (slot.id) {
     case "admin": return `Conduse azi de ${spec.filters.adminName ?? "persoana aleasă"}`;
     case "authorityKind": return capital(KIND_WORDS[String(spec.filters.authorityKind)]?.bare ?? name);
-    case "county": return String(spec.filters.county);
+    case "county": return capital(countyWords(String(spec.filters.county)).replace(/^din /, ""));
     default: return described[slot.id]?.chip ?? name;
   }
 }
@@ -165,11 +167,12 @@ export function builderView(input: QuestionSpec, labels: ConditionLabels = {}, c
   for (const condition of conditions) {
     const id = `l:${condition.key}`;
     removals[id] = { kind: "link", condition };
+    const reason = condition.why ?? condition.reason;
     if (condition.origin !== "link") {
       const label = condition.label.slice(0, condition.label.indexOf(":"));
-      under.push({ kind: "origin", id, prefix: label, words: condition.words, tip: { title: label, text: condition.reason ?? condition.detail ?? ORIGIN_TIP } });
+      under.push({ kind: "origin", id, prefix: label, words: condition.words, tip: { title: label, text: reason ?? condition.detail ?? ORIGIN_TIP } });
     } else {
-      const tip = condition.reason ?? [LINK_TIP, condition.detail].filter(Boolean).join(" ");
+      const tip = reason ?? [LINK_TIP, condition.detail].filter(Boolean).join(" ");
       under.push({ kind: "legacy", id, words: condition.words, tip: { title: "Din link", text: tip } });
     }
   }

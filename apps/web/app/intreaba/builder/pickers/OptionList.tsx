@@ -30,6 +30,15 @@ export interface OptionListProps {
 
 const pct = (share: number) => `${Math.round(Math.max(0, Math.min(1, share)) * 1000) / 10}%`;
 
+/** A rest row: text, out of the radiogroup's roving order. */
+function RestRow({ row }: { row: KitRestRow }) {
+  return <div className="fk-opt fk-opt--rest">
+    <span className="fk-opt-mark" aria-hidden="true" />
+    <span className="fk-opt-t"><strong>{row.label}</strong></span>
+    <span className="fk-opt-n">{row.count}</span>
+  </div>;
+}
+
 export default function OptionList({ label, options, multiple = false, value = null, values = [], onChange, rest = [], link }: OptionListProps) {
   const isOn = (option: KitOption) => multiple ? values.includes(option.value) : option.value === value;
   const stop = multiple ? -1 : rovingStop(options.findIndex(isOn), options.map(option => !!option.disabled));
@@ -64,13 +73,10 @@ export default function OptionList({ label, options, multiple = false, value = n
             </span>
             <span className="fk-opt-n">{option.count}</span>
           </button>
+          {rest.filter(row => row.after === option.value).map(row => <RestRow key={`rest:${row.label}`} row={row} />)}
         </Fragment>;
       })}
-      {rest.map(row => <div className="fk-opt fk-opt--rest" key={`rest:${row.label}`}>
-        <span className="fk-opt-mark" aria-hidden="true" />
-        <span className="fk-opt-t"><strong>{row.label}</strong></span>
-        <span className="fk-opt-n">{row.count}</span>
-      </div>)}
+      {rest.filter(row => row.after === undefined || !options.some(option => option.value === row.after)).map(row => <RestRow key={`rest:${row.label}`} row={row} />)}
     </div>
     {link && <button type="button" className={`fk-opt--link${link.className ? ` ${link.className}` : ""}`} onClick={link.onClick}>{link.label}<span aria-hidden="true">›</span></button>}
   </>;

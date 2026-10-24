@@ -139,9 +139,11 @@ export interface FilterDef<V = unknown> {
  * - focal: the entity of a question about one entity, an institution or a firm (it sets the dimension to the role);
  * - subject: "Ce clasăm?", "Cine?", "Cine concurează?": firms, institutions (with their kind) or counties;
  * - buyer: "Cine a cumpărat?": every institution, a kind, one institution or a town hall, one of them at a time;
- * - from: "De la cine?": the tabs O firmă · Administrator · Ce fel de firme, one of them at a time (kit §5.24).
+ * - from: "De la cine?": the tabs O firmă · Administrator · Ce fel de firme, one of them at a time (kit §5.24);
+ * - peers: "Față de cine?", the group a distribution places its entity in, with today's keys (the county
+ *   and, for institutions, the kind; F6a's peers come later): every one, a kind, a county, or both.
  */
-export type Picker = "focal" | "subject" | "buyer" | "from";
+export type Picker = "focal" | "subject" | "buyer" | "from" | "peers";
 
 /** One control in a place: its filter, and the other filters the same picker writes. */
 export interface Slot {
@@ -159,6 +161,18 @@ export interface Slot {
   window?: string;
   /** The values this place offers when they are fewer than its filter's: a record threshold counts the ranked role only. */
   choices?: readonly unknown[];
+  /** The question needs a value here (the pair of a verification): its window has no empty row (R1). */
+  required?: true;
+}
+
+/**
+ * A field of the precise selection "⋯ › Selecție avansată" offers (P9, plan
+ * §1.1 variant A), with the rules it keeps: what the sentence cannot say
+ * (lists, several counties, exact days, a winner's share, codes left out).
+ */
+export interface AdvancedField {
+  field: "date" | "value" | "authority" | "supplier" | "cpv" | "county";
+  ops: readonly ("gte" | "lte" | "in" | "not_in")[];
 }
 
 export type RowLabel = "Câștigătorii" | "Instituțiile" | "Furnizorii" | "Clienții";
@@ -195,6 +209,8 @@ export interface BlockFilters {
    * Selecție avansată", only on the questions that apply it.
    */
   advanced(spec: FilterSpec, ctx: FilterCtx): readonly Slot[];
+  /** P9's precise selection: the fields its editor offers on this question (none where `advanced` has no population). */
+  advancedFields(spec: FilterSpec, ctx: FilterCtx): readonly AdvancedField[];
   /**
    * P6: the controls beside the answer that write a key (the data stream of the
    * network, the map's lens). Today none: the answer's links (a row's records,

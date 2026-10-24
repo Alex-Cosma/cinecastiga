@@ -1,7 +1,8 @@
 import type { Block } from "../spec";
 import { FILTERS } from "./defs";
+import { splitExcluded } from "./origin";
 import { presentationTokens, sentenceSlots, sentenceTokens, type SentenceSlot } from "./sentence";
-import type { BlockFilters, ConditionRow, FilterCtx, FilterId, FilterSpec, Picker, Slot } from "./types";
+import type { AdvancedField, BlockFilters, ConditionRow, FilterCtx, FilterId, FilterSpec, Picker, Slot } from "./types";
 
 /*
  * BLOCK_FILTERS (plan §2.2, §4, §5 F1b): what each of the 13 questions offers,
@@ -102,7 +103,7 @@ export const PICKER_FAMILY: Partial<Record<Picker, readonly FilterId[]>> = {
  */
 function phraseFilters(t: SentenceSlot): FilterId[] {
   if (t.picker === "focal" || t.picker === "subject") return [t.filter, ...t.says];
-  if (t.picker) return [...PICKER_FAMILY[t.picker] ?? [], t.filter, ...t.says];
+  if (t.picker && PICKER_FAMILY[t.picker]) return [...PICKER_FAMILY[t.picker]!, t.filter, ...t.says];
   return [t.filter, ...t.says, ...(t.writes ?? [])];
 }
 const isSet = (spec: FilterSpec, id: FilterId) => id === "dataset" ? spec.dataset !== undefined && spec.dataset !== "all" : FILTERS[id].read(spec) !== undefined;
@@ -119,14 +120,15 @@ function invites(spec: FilterSpec, ctx: FilterCtx): Slot[] {
 
 /**
  * P3b (plan §4.8, §4.9): who the partners are, a selection with the line of
- * total. An institution in the centre: its firms' size and administrator; a
- * firm: its clients' county and kind. The rest of today's keys would filter
- * the centre itself (all or nothing): a link's chip.
+ * total. An institution in the centre: its firms' size and, on the network,
+ * their administrator (the flow's final leaves the person to the network and
+ * the verification); a firm: its clients' county and kind. The firms' seat
+ * comes with F4. The rest of today's keys would filter the centre itself (all
+ * or nothing): a link's chip.
  */
 function partners(_spec: FilterSpec, ctx: FilterCtx): ConditionRow[] {
-  return ctx.role === "authority"
-    ? [{ label: "Furnizorii", kind: "selection", chips: [placed("employees", "employees"), placed("admin", "admin")] }]
-    : [{ label: "Clienții", kind: "selection", chips: [placed("county", "clientCounty"), placed("authorityKind", "clientKind")] }];
+  if (ctx.role === "supplier") return [{ label: "Clienții", kind: "selection", chips: [placed("county", "clientCounty"), placed("authorityKind", "clientKind")] }];
+  return [{ label: "Furnizorii", kind: "selection", chips: [placed("employees", "employees"), ...(ctx.block === "network" ? [placed("admin", "admin")] : [])] }];
 }
 
 /**
@@ -145,12 +147,44 @@ function advanced(spec: FilterSpec, ctx: FilterCtx): Slot[] {
   ];
 }
 
+/**
+ * P9's precise selection, field by field (plan §1.1 variant A: what the
+ * sentence cannot say): lists of institutions and firms, included or left
+ * out, several counties, exact days, a winner's share and CPV codes left out
+ * (one domain is the sentence's "Ce s-a cumpărat"), with AND/OR between them.
+ * The centre of a relation and the pair of a verification are one entity
+ * each: a list of their role, or of the buyers' counties around an institution
+ * in the centre, would filter that entity itself (all or nothing).
+ */
+const ADVANCED_FIELDS: readonly AdvancedField[] = [
+  { field: "date", ops: ["gte", "lte"] }, { field: "value", ops: ["gte", "lte"] },
+  { field: "authority", ops: ["in", "not_in"] }, { field: "supplier", ops: ["in", "not_in"] },
+  { field: "cpv", ops: ["not_in"] }, { field: "county", ops: ["in", "not_in"] },
+];
+function advancedFields(spec: FilterSpec, ctx: FilterCtx): AdvancedField[] {
+  if (!advanced(spec, ctx).some((s) => s.id === "population")) return [];
+  const fixed = new Set<AdvancedField["field"]>();
+  if (ctx.block === "network" || ctx.block === "sankey") { fixed.add(ctx.role); if (ctx.role === "authority") fixed.add("county"); }
+  if (ctx.block === "fact_check") for (const field of ["authority", "supplier", "county"] as const) fixed.add(field);
+  return ADVANCED_FIELDS.filter((f) => !fixed.has(f.field));
+}
+
+/**
+ * A precise selection the question's "Selecție avansată" can show and edit:
+ * every condition besides the "Fără X" exclusions (their own chips) on an
+ * offered field and rule. Anything else is an old link's chip ("Din link").
+ */
+export function populationFits(population: FilterSpec["population"], fields: readonly AdvancedField[]): boolean {
+  const { rest } = splitExcluded(population);
+  return !rest || rest.groups.every((group) => group.conditions.every((c) => fields.some((f) => f.field === c.field && f.ops.includes(c.op))));
+}
+
 const sentence: BlockFilters["sentence"] = (spec, ctx) => sentenceSlots(sentenceTokens(spec, ctx));
 const presentation: BlockFilters["presentation"] = (spec) => sentenceSlots(presentationTokens(spec));
 
 function entry(extra: Partial<Pick<BlockFilters, "rows" | "strip">> = {}): BlockFilters {
   return {
-    sentence, presentation, invites, advanced,
+    sentence, presentation, invites, advanced, advancedFields,
     scopeLine: (_spec, ctx) => ctx.profile ? "historical-da" : null,
     rows: extra.rows ?? (() => []), under: () => [], strip: extra.strip ?? [],
     // P7–P8 are the answer's (its row menu and facts), drawn with the strip.

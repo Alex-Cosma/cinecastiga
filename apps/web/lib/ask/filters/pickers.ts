@@ -1,5 +1,5 @@
 import { AUTHORITY_KINDS, type AuthorityKind, type Block } from "../spec";
-import { PICKER_FAMILY, windowOf } from "./blocks";
+import { BLOCK_FILTERS, PICKER_FAMILY, populationFits, windowOf } from "./blocks";
 import { filterContext } from "./context";
 import { FILTERS } from "./defs";
 import { edited } from "./defs/shared";
@@ -36,13 +36,25 @@ export const EMPLOYEE_BAND_CHOICES: readonly { minEmployees: number; maxEmployee
   { minEmployees: 0, maxEmployees: 0 }, { minEmployees: 1, maxEmployees: 9 }, { minEmployees: 10, maxEmployees: 49 },
   { minEmployees: 50, maxEmployees: 249 }, { minEmployees: 250 }, { minEmployees: 1, maxEmployees: 49 }, { minEmployees: 0, maxEmployees: 9 },
 ];
-/** A filter's values in F1b's windows: the def's, except where the kit's control offers other ones. */
-const kitChoices = (id: FilterId, spec: FilterSpec, ctx: FilterCtx): readonly unknown[] =>
-  id === "employees" ? EMPLOYEE_BAND_CHOICES : FILTERS[id].choices(spec, ctx);
+/**
+ * A filter's values in F1b's windows: the def's, except where the kit's control offers other ones
+ * (the employee bands) or fewer (a precise selection on the fields this question's P9 offers).
+ */
+function kitChoices(id: FilterId, spec: FilterSpec, ctx: FilterCtx): readonly unknown[] {
+  if (id === "employees") return EMPLOYEE_BAND_CHOICES;
+  const values = FILTERS[id].choices(spec, ctx);
+  if (id !== "population") return values;
+  const fields = BLOCK_FILTERS[ctx.block]?.advancedFields(spec, ctx) ?? [];
+  return values.filter((value) => value === undefined || populationFits(value as FilterSpec["population"], fields));
+}
 
-/** The values of one filter in this place, with the first row that removes it when the place is set (R4). */
+/**
+ * The values of one filter in this place, with the first row that removes it when the place is set
+ * (R4); a place the question needs filled (Slot.required: the pair of a verification) has none.
+ */
 function valuesOf(slot: Slot, id: FilterId, spec: FilterSpec, ctx: FilterCtx): unknown[] {
   const values = [...(id === slot.id && slot.choices ? slot.choices : kitChoices(id, spec, ctx))];
+  if (id === slot.id && slot.required) return values.filter((value) => value !== undefined);
   if (!values.includes(undefined) && !NO_EMPTY_ROW.has(id) && FILTERS[id].read(spec) !== undefined) values.push(undefined);
   return values;
 }

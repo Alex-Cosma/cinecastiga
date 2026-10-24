@@ -49,8 +49,11 @@ export interface KitOption {
   className?: string;
 }
 
-/** A row that cannot be chosen, so the window adds to 100% ("Sediu necunoscut", "Fără bilanț"). */
-export interface KitRestRow { label: string; count?: string }
+/**
+ * A row that cannot be chosen, so the window adds to 100% ("Sediu necunoscut", "Fără bilanț").
+ * `after` places it under that option ("Alte instituții" closes the institutions' group); else it ends the list.
+ */
+export interface KitRestRow { label: string; count?: string; after?: string }
 
 /**
  * A link of the answer, by where it leads (R8): "→" opens the records, "›"
