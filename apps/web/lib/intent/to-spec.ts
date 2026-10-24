@@ -1,5 +1,6 @@
 import { cleanName } from "../format";
 import { joinCpvTerms } from "../ask/cpv-terms";
+import { titleTail } from "../ask/filters/words";
 import { namedKind, validateSpec, type AskFilters, type AskSpec, type AuthorityKind } from "../ask/spec";
 import { genitive, hasNamedScope } from "./rules";
 import type { EntityMatch, IntentAlternative, IntentKind, IntentResult, Interpretation, PersonMatch, PlaceMatch, SubjectMatch } from "./types";
@@ -229,24 +230,8 @@ function period(f: AskFilters): string {
   return "în toți anii";
 }
 
-/** Romanian numerals take "de" from 20 on: "5 angajați", "49 de angajați". */
-export function countOf(n: number, noun: string): string {
-  const lastTwo = n % 100;
-  return `${n}${n !== 0 && (lastTwo === 0 || lastTwo >= 20) ? " de" : ""} ${noun}`;
-}
-
-function suffix(spec: AskSpec): string {
-  const f = spec.filters;
-  const parts: string[] = [];
-  if (f.singleBidder) parts.push("doar contracte cu un singur ofertant");
-  else if (spec.dataset === "da") parts.push("doar achiziții directe");
-  else if (spec.dataset === "contracts") parts.push("doar contracte din proceduri");
-  if (f.maxEmployees === 0) parts.push("firme fără angajați");
-  else if (f.minEmployees !== undefined && f.maxEmployees !== undefined) parts.push(`firme cu ${f.minEmployees}–${countOf(f.maxEmployees, "angajați")}`);
-  else if (f.maxEmployees !== undefined) parts.push(`firme cu cel mult ${countOf(f.maxEmployees, "angajați")}`);
-  else if (f.minEmployees !== undefined) parts.push(`firme cu cel puțin ${countOf(f.minEmployees, "angajați")}`);
-  return parts.length ? `, ${parts.join(", ")}` : "";
-}
+/** The stream and the employees after the period: the title's tail (filters/words.ts), one writer for both. */
+const suffix = (spec: AskSpec): string => titleTail(spec);
 
 export interface SentenceLabels {
   /** The person asked about town halls; the ranking covers every institution, and the sentence says so. */

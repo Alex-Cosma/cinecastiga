@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { RecipeSummary, RecipeVersion } from "@/lib/recipes";
-import { describeQuestion, type QuestionSpec } from "@/lib/ask/question-ui";
-import { describePopulation } from "@/lib/ask/population";
+import type { QuestionSpec } from "@/lib/ask/question-ui";
+import { savedQuestionSummary } from "@/lib/ask/filters/describe";
 import { NEWER_VERSION_QUESTION, unimplementedSpecKeys, validateSpec } from "@/lib/ask/spec";
 import { encodeSpec } from "@/lib/ask/permalink";
 import { useViewer } from "@/lib/use-viewer";
@@ -12,18 +12,7 @@ import { foldQuestion } from "@/lib/ask/question-ui";
 
 export type SavedQuestion = { id:string; title:string; version:number; spec:QuestionSpec; storage?:"local"; ownerId?:string | undefined };
 
-function summary(raw: unknown) {
-  const spec = validateSpec(raw);
-  if ("error" in spec) return "Deschide pentru a verifica această întrebare.";
-  // Its sentence here would leave out the condition this release does not read.
-  if (unimplementedSpecKeys(spec).length) return NEWER_VERSION_QUESTION;
-  return [describeQuestion(spec), spec.dataset === "contracts" ? "Contracte din proceduri" : spec.dataset === "da" ? "Achiziții directe" : null,
-    spec.filters.authorityName || (spec.filters.authorityId ? `Instituția #${spec.filters.authorityId}` : null),
-    spec.filters.supplierName || (spec.filters.supplierId ? `Firma #${spec.filters.supplierId}` : null),
-    spec.filters.cpvTerm ? `CPV: ${spec.filters.cpvTerm}` : null,
-    spec.population ? describePopulation(spec.population) : null,
-    spec.minimumRecords ? `Minimum ${spec.minimumRecords.count} înregistrări` : null].filter(Boolean).join(" · ");
-}
+const summary = savedQuestionSummary;
 
 type Props = { search:string; current:QuestionSpec; hasUnsavedChanges:boolean; onLoad:(question:SavedQuestion)=>void };
 export default function SavedQuestions(props:Props) {

@@ -1,3 +1,6 @@
+import { countWords } from './answer-text';
+import { formatInt } from '../format';
+
 /** Shared by answer exports and the source drawer. Server totals, not the
  * currently displayed page, determine whether a download is partial. */
 export async function requestSourceCsv(body: Record<string, unknown>, signal: AbortSignal) {
@@ -14,11 +17,14 @@ export async function requestSourceCsv(body: Record<string, unknown>, signal: Ab
   if (!/^\d+$/.test(totalHeader??'') || !/^\d+$/.test(exportedHeader??'') || !Number.isSafeInteger(total) || !Number.isSafeInteger(exported) || exported<0 || total<exported)
     throw Error('Exportul nu a putut fi verificat. Reîncearcă.');
   const blob=await response.blob();
-  const count=(n:number)=>n.toLocaleString('ro-RO');
   return {blob,filename:response.headers.get('content-disposition')?.match(/filename="([^"]+)"/)?.[1]??'surse-seap.csv',
-    message:exported<total
-      ? `Export parțial: primele ${count(exported)} din ${count(total)} înregistrări. Limita unui fișier este de 100.000 de rânduri; restrânge întrebarea pentru un export integral.`
-      : `${count(exported)} ${exported===1?'înregistrare exportată':'înregistrări exportate'}, cu valorile exacte și linkurile către surse.`};
+    message:sourceCsvMessage(exported,total)};
+}
+/** The line after an export: every count with its noun through countWords (plan G10). */
+export function sourceCsvMessage(exported:number,total:number):string {
+  return exported<total
+    ? `Export parțial: primele ${formatInt(exported)} din ${countWords(total,'înregistrare','înregistrări')}. Limita unui fișier este de 100.000 de rânduri; restrânge întrebarea pentru un export integral.`
+    : `${countWords(exported,'înregistrare exportată','înregistrări exportate')}, cu valorile exacte și linkurile către surse.`;
 }
 export function downloadSourceCsv(file: {blob:Blob;filename:string}) {
   const href=URL.createObjectURL(file.blob),anchor=document.createElement('a');

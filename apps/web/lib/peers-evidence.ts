@@ -70,7 +70,9 @@ export function peerEvidenceOptions(bound: BoundPeerEvidence, opts: DrillOpts, c
   if (opts.scope && Object.keys(opts.scope).length) throw new PeerError("Selecția comparației este fixată. Reia comparația pentru a schimba membrii sau domeniul.");
   if (capture && bound.selection.selection.kind === "comparison" && (opts.search || opts.state || opts.stream))
     throw new PeerError("Elimină filtrele din lista surselor înainte de salvare. Comparația păstrează toate înregistrările selecției, fără un eșantion filtrat.");
-  return { ...opts, scope: { entityIds: bound.sourceMembers.map(member => member.entity.id), role: bound.selection.role } };
+  // The spec carries only the group's division: the hint lets the sources' note name the group (filters/origin.ts).
+  const origin = { origin: "peers" as const, role: bound.selection.role, ...(bound.selection.selection.kind === "comparison" ? { members: bound.sourceMembers.length } : {}) };
+  return { ...opts, scope: { entityIds: bound.sourceMembers.map(member => member.entity.id), role: bound.selection.role }, origin };
 }
 export async function withPeerEvidence<T>(sql: DbSql, raw: unknown, work: (q: DbSql, evidence: BoundPeerEvidence) => Promise<T>): Promise<T> {
   const selection = validatePeerEvidence(raw);

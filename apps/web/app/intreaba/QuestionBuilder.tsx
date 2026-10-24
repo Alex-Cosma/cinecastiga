@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
-import { countyIsFirmSeat, describePopulation } from "@/lib/ask/population";
+import { countyIsFirmSeat } from "@/lib/ask/population";
+import { describeConditions } from "@/lib/ask/filters/describe";
 import { COUNTIES } from "@/lib/counties";
 import { IMPLAUSIBLE_BIRTH_DATE_LABEL } from "@/lib/format";
 import type { EntityHit } from "@/lib/search";
@@ -127,6 +128,7 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
   const cpvTerm = String(draft.filters.cpvTerm ?? "");
   const cpvIsCode = /^(?:\d{2,8}|\d{8}-\d)$/.test(cpvTerm.replace(/\s+/g, ""));
   const cpvName = cpvNames[cpvTerm];
+  const conditionWords = useMemo(() => describeConditions(draft, { cpvName }), [draft, cpvName]);
   const [hits, setHits] = useState<EntityHit[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
@@ -391,18 +393,21 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
     const focalBlock = ["network", "sankey", "distribution", "compare"].includes(draft.block);
     const scopeInSentence = ["table", "stat", "timeseries", "breakdown"].includes(draft.block);
     const conditions: ReactNode[] = [];
+    // The chip words are describeConditions' (lib/ask/filters/describe.ts); which chips show is this builder's.
+    const words = conditionWords.byId;
+    const label = (id: keyof typeof words) => words[id]?.chip ?? "";
     if (profile) conditions.push(<span className="qb-profile-scope" key="profile"><Glyph name="stat" />Profiluri istorice · achiziții directe</span>);
-    conditions.push(chip("dataset", SOURCES[draft.dataset ?? "all"] ?? SOURCES.all!, false, "stat"));
-    if (f.authorityKind && (!scopeInSentence || namedAuthority || draft.block === "table" && draft.dim !== "supplier")) conditions.push(chip("authorityKind", kind[1], true));
-    if (f.county && (!scopeInSentence || f.uatSiruta)) conditions.push(chip("county", String(f.county), true, "map"));
-    if (f.uatSiruta && !scopeInSentence) conditions.push(chip("uat", String(f.uatName || `Localitatea #${f.uatSiruta}`), true, "map"));
-    if ((profile && (f.yearFrom || f.yearTo)) || !profile && !scopeInSentence && !["trend", "map"].includes(draft.block)) conditions.push(chip("period", periodLabel(draft), Boolean(f.yearFrom || f.yearTo), "calendar"));
-    if (f.cpvTerm) conditions.push(chip("cpvTerm", `Domeniu: ${cpvIsCode ? cpvName ?? `CPV ${cpvTerm}` : cpvTerm}`, true, "breakdown", cpvIsCode && cpvName ? `CPV ${cpvTerm}` : undefined));
-    if (namedAuthority && !scopeInSentence && !["map", "fact_check"].includes(draft.block) && !(focalBlock && focalRole(draft) === "authority")) conditions.push(chip("authority", entityLabel(draft, "authority"), true));
-    if ((f.supplierName || f.supplierId) && draft.block !== "fact_check" && !(focalBlock && focalRole(draft) === "supplier")) conditions.push(chip("supplier", entityLabel(draft, "supplier"), true));
-    if (f.minEmployees !== undefined || f.maxEmployees !== undefined) conditions.push(chip("employees", f.minEmployees !== undefined && f.maxEmployees !== undefined ? `${f.minEmployees}–${f.maxEmployees} angajați` : f.maxEmployees !== undefined ? `Cel mult ${f.maxEmployees} angajați` : `Cel puțin ${f.minEmployees} angajați`, true));
-    if (f.adminName || f.adminPersonKey) conditions.push(chip("admin", `Conduse de ${f.adminName || "persoana selectată"}`, true));
-    if (f.singleBidder) conditions.push(chip("singleBidder", "Un singur ofertant", true));
+    conditions.push(chip("dataset", label("dataset"), false, "stat"));
+    if (f.authorityKind && (!scopeInSentence || namedAuthority || draft.block === "table" && draft.dim !== "supplier")) conditions.push(chip("authorityKind", label("authorityKind"), true));
+    if (f.county && (!scopeInSentence || f.uatSiruta)) conditions.push(chip("county", label("county"), true, "map"));
+    if (f.uatSiruta && !scopeInSentence) conditions.push(chip("uat", label("locality"), true, "map"));
+    if ((profile && (f.yearFrom || f.yearTo)) || !profile && !scopeInSentence && !["trend", "map"].includes(draft.block)) conditions.push(chip("period", label("period"), Boolean(f.yearFrom || f.yearTo), "calendar"));
+    if (f.cpvTerm) conditions.push(chip("cpvTerm", label("cpvTerm"), true, "breakdown", words.cpvTerm?.chipDetail));
+    if (namedAuthority && !scopeInSentence && !["map", "fact_check"].includes(draft.block) && !(focalBlock && focalRole(draft) === "authority")) conditions.push(chip("authority", label("authority"), true));
+    if ((f.supplierName || f.supplierId) && draft.block !== "fact_check" && !(focalBlock && focalRole(draft) === "supplier")) conditions.push(chip("supplier", label("supplier"), true));
+    if (f.minEmployees !== undefined || f.maxEmployees !== undefined) conditions.push(chip("employees", label("employees"), true));
+    if (f.adminName || f.adminPersonKey) conditions.push(chip("admin", label("admin"), true));
+    if (f.singleBidder) conditions.push(chip("singleBidder", label("singleBidder"), true));
     return conditions;
   }
 
@@ -527,7 +532,7 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
       <fieldset className="qp-minimum" disabled={running}><legend>Număr minim de înregistrări</legend>{draft.minimumRecords ? <div className="qp-minimum-fields"><label>Cine?<select value={draft.minimumRecords.role} onChange={event => replaceDraft({ ...cloneQuestion(draft), minimumRecords:{ ...draft.minimumRecords!, role:event.target.value as "authority" | "supplier" } })}><option value="supplier">Firmele</option><option value="authority">Instituțiile</option></select></label><label>Cel puțin<input type="number" min={1} max={1000000} step={1} value={draft.minimumRecords.count} onChange={event => replaceDraft({ ...cloneQuestion(draft), minimumRecords:{ ...draft.minimumRecords!, count:Number(event.target.value) } })} /></label><button type="button" onClick={() => { const next = cloneQuestion(draft); delete next.minimumRecords; replaceDraft(next); }}>Elimină pragul</button></div> : <button type="button" onClick={() => replaceDraft({ ...cloneQuestion(draft), minimumRecords:{ role:"supplier", count:5 } })}>Adaugă un prag de înregistrări</button>}</fieldset>
       <PopulationEditor embedded value={draft.population} disabled={running} onChange={population => { const next = cloneQuestion(draft); if (population) next.population = population; else delete next.population; replaceDraft(next); }} />
       </details>}
-      {!filtersOpen && (draft.population || draft.minimumRecords) && <div className="cq-active-filters" aria-label="Filtre suplimentare active">{draft.population && <p>{describePopulation(draft.population)}</p>}{draft.minimumRecords && <p>{draft.minimumRecords.role === "supplier" ? "Firme" : "Instituții"}: cel puțin {draft.minimumRecords.count} înregistrări în selecție.</p>}</div>}
+      {!filtersOpen && (draft.population || draft.minimumRecords) && <div className="cq-active-filters" aria-label="Filtre suplimentare active">{draft.population && <p>{conditionWords.byId.population?.chip}</p>}{draft.minimumRecords && <p>{conditionWords.byId.minimumRecords?.chip}</p>}</div>}
       {changes.length > 0 && <div className="qb-scope-change" role="status"><Glyph name="info" /><div><strong>Ce se schimbă odată cu întrebarea</strong>{changes.map((note) => <p key={note}>{note}</p>)}</div></div>}
       {profile && <p className="qb-profile-note">Profiluri: achiziții directe, toată perioada. Indicele de risc e un semnal, nu o dovadă.{draft.dim === "supplier" && draft.filters.county ? " Județul grupului este cel înregistrat în profilul firmei." : ""}</p>}
       <div className="qb-editor-bottom"><div className="qb-presentation">{draft.block === "table" ? <>Arată {phrase("topN", draft.topN === undefined ? "toate" : `primele ${draft.topN}`)} {phrase("dim", draft.topN === undefined ? draft.dim === "supplier" ? "firmele" : draft.dim === "county" ? "județele" : "instituțiile" : draft.dim === "supplier" ? "firme" : draft.dim === "county" ? "județe" : "instituții")}, după {phrase("measure", draft.measure === "count" ? "numărul de achiziții" : draft.measure === "value_per_capita" ? "valoarea pe locuitor" : "valoarea înregistrată")}.</> : draft.block === "trend" ? <>Arată {phrase("topN", `primele ${draft.topN ?? 10}`)}, după diferența în lei dintre cei doi ani.</> : ["stat", "timeseries", "map"].includes(draft.block) ? <>Măsoară {phrase("measure", draft.measure === "count" ? "numărul de achiziții" : "valoarea înregistrată")}.</> : <><Glyph name={type.id} />{type.description}</>}</div><div className="qb-apply-area">{dirty ? <button type="button" className="qb-discard" onClick={discard}>Renunță la modificări</button> : applied && <span className="qb-ready"><Glyph name="check" />Întrebare aplicată</span>}<SaveQuestionButton spec={draft} active={savedQuestion} onSaved={question => { setSavedQuestion(question); setSavedNotice(`Salvată ${question.storage === "local" ? "pe acest dispozitiv" : "în cont"}: „${question.title}” · Toate întrebările → Salvate`); }} disabled={running || errors.length > 0} /><button type="button" className="qb-primary qb-apply" disabled={running || errors.length > 0} onClick={apply}>{running ? "Caut în date…" : dirty && applied ? "Actualizează răspunsul" : "Vezi răspunsul"}<Glyph name="arrow" /></button></div></div>
