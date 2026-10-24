@@ -63,6 +63,11 @@ export function answerVersion(spec: AskSpec): AnswerVersion {
   return { question: ANSWER_VERSIONS[spec.block] ?? `${spec.block}-1`, conditions };
 }
 
+/** "<block>-1" with no condition: what a missing version reads as, so a watch need not store it. */
+export function isFirstAnswerVersion(version: AnswerVersion, block: string): boolean {
+  return version.question === `${block}-1` && Object.keys(version.conditions).length === 0;
+}
+
 const object = (value: unknown): value is Record<string, unknown> => !!value && typeof value === "object" && !Array.isArray(value);
 /** A stored version, read with the rule above: missing (a run from before F0) is "<block>-1". */
 export function readAnswerVersion(stored: unknown, block: string): AnswerVersion {

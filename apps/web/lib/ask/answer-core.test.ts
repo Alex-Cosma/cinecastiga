@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
-  alignAnswerVersions, ANSWER_VERSIONS, answerCore, answerVersion, canonicalJson, KEY_VERSIONS, readAnswerVersion,
+  alignAnswerVersions, ANSWER_VERSIONS, answerCore, answerVersion, canonicalJson, isFirstAnswerVersion, KEY_VERSIONS, readAnswerVersion,
   sameAnswerCore, sameAnswerVersion,
 } from "./answer-core";
 import { FILTERS } from "./filters/registry";
@@ -54,6 +54,14 @@ describe("the version of an answer", () => {
       .toEqual([{ question: "stat-1", conditions: { kind: "kind-1" } }, { question: "stat-1", conditions: { kind: "kind-2" } }]);
     expect(sameAnswerVersion({ question: "stat-1", conditions: {} }, { question: "stat-1", conditions: { kind: "kind-1" } })).toBe(true);
     expect(sameAnswerVersion({ question: "stat-1", conditions: {} }, { question: "stat-1", conditions: { kind: "kind-2" } })).toBe(false);
+  });
+
+  it("is the first one, which a watch does not store, until a release bumps it (a revert below F0 then compares equal)", () => {
+    for (const block of BLOCKS) expect(isFirstAnswerVersion(answerVersion({ block, measure: "value", filters: {} }), block), block).toBe(true);
+    bumpKind(); ANSWER_VERSIONS.trend = "trend-2";
+    expect(isFirstAnswerVersion(answerVersion(stat), "stat")).toBe(true);
+    expect(isFirstAnswerVersion(answerVersion(hospitals), "stat")).toBe(false);
+    expect(isFirstAnswerVersion(answerVersion(trend), "trend")).toBe(false);
   });
 
   it("is well formed, and covers every key that leaves the records for a group (plan §2.2)", () => {

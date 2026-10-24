@@ -198,15 +198,21 @@ describe.skipIf(!url)("immutable monitoring (isolated PostgreSQL)",()=>{
   });
   // F0 (plan §2.8, §6.2): answer versions per block and per key, compared in TypeScript.
   const run=async(watchId:string)=>{const id=(await evaluateMonitoringWatch(watchId,checkpointId,sql))!;return (await getMonitoringRun(uid,watchId,id,sql))!;};
-  it("stores the version of the answer, and reads a run stored before versions as the first one: no alert",async()=>{
+  it("stores only a bumped answer version, and reads a run without one (or with the first) as the first one: no alert",async()=>{
     const watch=await createMonitoringWatch(uid,{spec:base,title:"Before answer versions"},sql);
     const first=await run(watch.id);
-    expect(first.methodology.answer).toEqual({question:"stat-1",conditions:{}});
-    await sql`update app.monitoring_runs set methodology=methodology-'answer' where id=${first.run.id}`;
+    // Nothing bumped: the methodology is stored as before F0, so code from before F0 (jsonb equality) sees no change after a revert.
+    expect(first.methodology).not.toHaveProperty("answer");
+    await checkpoint();
+    const second=await run(watch.id);
+    expect(second.run).toMatchObject({kind:"unchanged",methodologyChanged:false,resultChanged:false,hasAlert:false});
+    expect((await sql`select a.methodology=b.methodology same from app.monitoring_runs a,app.monitoring_runs b where a.id=${first.run.id} and b.id=${second.run.id}`)[0]?.same).toBe(true);
+    // A run written while F0 stored the first version explicitly reads the same.
+    await sql`update app.monitoring_runs set methodology=methodology||'{"answer":{"question":"stat-1","conditions":{}}}'::jsonb where id=${second.run.id}`;
     await checkpoint();
     expect((await run(watch.id)).run).toMatchObject({kind:"unchanged",methodologyChanged:false,resultChanged:false,hasAlert:false});
   });
-  it("alerts once on a new answer version, only the watches of that block, and never also as recalculated",async()=>{
+  it("alerts once on a new answer version, only the watches of that block; a watch without methodology alerts hears the new result",async()=>{
     const trend:AskSpec={...base,block:"trend",dim:"supplier",filters:{...base.filters,yearFrom:2024,yearTo:2025}};
     const watches=[];
     for(const spec of [trend,base,{...base,block:"map"} as AskSpec]){const watch=await createMonitoringWatch(uid,{spec,title:"Answer version "+spec.block},sql);await run(watch.id);watches.push(watch);}
@@ -221,8 +227,8 @@ describe.skipIf(!url)("immutable monitoring (isolated PostgreSQL)",()=>{
       expect(trendRun.run).toMatchObject({kind:"update",methodologyChanged:true,resultChanged:false,hasAlert:true,counts:{added:0,removed:0,changed:0}});
       expect(trendRun.methodology.answer).toEqual({question:"trend-2",conditions:{}});
       for(const other of [statRun,mapRun])expect(other.run).toMatchObject({kind:"unchanged",methodologyChanged:false,hasAlert:false});
-      // The changed result is explained by the methodology: no second, "recalculated" alert.
-      expect((await run(quiet.id)).run).toMatchObject({resultChanged:true,methodologyChanged:true,hasAlert:false});
+      // No methodology alert reaches it, so the changed result is not silenced: it alerts as recalculated.
+      expect((await run(quiet.id)).run).toMatchObject({resultChanged:true,methodologyChanged:true,hasAlert:true});
       await checkpoint();
       expect((await run(watches[0]!.id)).run).toMatchObject({kind:"unchanged",methodologyChanged:false,hasAlert:false});
     }finally{delete ANSWER_VERSIONS.trend;}
