@@ -29,6 +29,15 @@ export interface SegmentOption {
   className?: string;
 }
 
+/**
+ * A channel colour with its word, kept on one line so the key is never read
+ * as the neighbour's: `<SwatchLabel swatch="da">Directe</SwatchLabel> /
+ * <SwatchLabel swatch="proc">proceduri</SwatchLabel>` ("Împarte").
+ */
+export function SwatchLabel({ swatch, children }: { swatch: NonNullable<SegmentOption["swatch"]>; children: ReactNode }) {
+  return <span className="fk-sw-l"><i className={`fk-sw fk-sw--${swatch}`} aria-hidden="true" />{children}</span>;
+}
+
 export interface SegmentedProps {
   /** The accessible name ("Ce fel de achiziții"); a visible label is the caller's. */
   label: string;
@@ -70,9 +79,9 @@ export default function Segmented({ label, options, value, onChange, size, full 
         aria-disabled={option.disabled ? true : undefined}
         aria-describedby={reason ? reasonId : undefined}
         tabIndex={index === stop ? 0 : -1}
-        onClick={() => { if (!option.disabled && !on) onChange?.(option.value, "activate"); }}
+        onClick={() => { if (!option.disabled) onChange?.(option.value, "activate"); }}
       >
-        <span className="fk-seg-l">{option.swatch && <i className={`fk-sw fk-sw--${option.swatch}`} aria-hidden="true" />}{option.label}</span>
+        <span className="fk-seg-l">{option.swatch ? <SwatchLabel swatch={option.swatch}>{option.label}</SwatchLabel> : option.label}</span>
         {option.count && <span className="fk-seg-n">{option.count}</span>}
       </button>;
     })}

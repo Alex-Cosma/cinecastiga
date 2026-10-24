@@ -10,7 +10,7 @@ import Invitations, { Invite } from "../builder/Invitations";
 import ParkedRow, { type ParkedItem } from "../builder/ParkedRow";
 import Pills, { RangeFields, type PillOption } from "../builder/Pills";
 import ScopeLine from "../builder/ScopeLine";
-import Segmented, { type SegmentOption } from "../builder/Segmented";
+import Segmented, { SwatchLabel, type SegmentOption } from "../builder/Segmented";
 import Sentence, { Presentation } from "../builder/Sentence";
 import Toggle from "../builder/Toggle";
 import UnderChips, { type UnderChipItem } from "../builder/UnderChips";
@@ -199,7 +199,7 @@ export default function KitDemo() {
         <Cell cap="focus · dezactivat (0)"><Segmented label="Ce fel de achiziții" value="da" options={[{ value: "all", label: "Toate" }, { value: "da", label: "Directe", count: "100%", className: "is-focus" }, { value: "proc", label: "Proceduri", count: "—", disabled: "Nicio înregistrare din proceduri în selecție." }]} /></Cell>
         <Cell cap="Ce s-a cumpărat? · tip dedus din domeniu"><Segmented label="Tipul achiziției" value="orice" options={[{ value: "orice", label: "Orice" }, { value: "produse", label: "Produse", disabled: true }, { value: "servicii", label: "Servicii", disabled: true }, { value: "lucrari", label: "Lucrări", inferred: true }]} /></Cell>
         <Cell cap="mic · hover"><Segmented label="Afișare" size="sm" value="visual" options={[{ value: "visual", label: "Vizual" }, { value: "table", label: "Tabel", className: "is-hover" }]} /></Cell>
-        <Cell cap="Împarte (evoluție) · culorile canalelor"><Segmented label="Împarte" value="channels" options={[{ value: "total", label: "Total" }, { value: "channels", label: <><i className="fk-sw fk-sw--da" aria-hidden="true" />Directe / <i className="fk-sw fk-sw--proc" aria-hidden="true" />proceduri</> }, { value: "cpv", label: "Domenii" }]} /></Cell>
+        <Cell cap="Împarte (evoluție) · culorile canalelor"><Segmented label="Împarte" value="channels" options={[{ value: "total", label: "Total" }, { value: "channels", label: <><SwatchLabel swatch="da">Directe</SwatchLabel> / <SwatchLabel swatch="proc">proceduri</SwatchLabel></> }, { value: "cpv", label: "Domenii" }]} /></Cell>
       </div>
       <Live>
         <div className="kd-cells">

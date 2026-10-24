@@ -40,7 +40,7 @@ export function PopoverPanel({ title, titleId, tip, onClose, foot, children }: P
 /** A window drawn open in the page flow, for the dev demo's frames (kit components.html §6). */
 export function StaticPopover({ wide = false, ...panel }: Omit<PanelProps, "titleId"> & { wide?: boolean }) {
   const titleId = useId();
-  return <div className={`fk-pop fk-tipwrap${wide ? " fk-pop--wide" : ""}`} role="dialog" aria-labelledby={titleId}>
+  return <div className={`fk-pop${wide ? " fk-pop--wide" : ""}`} role="dialog" aria-labelledby={titleId}>
     <PopoverPanel titleId={titleId} {...panel} />
   </div>;
 }
@@ -53,12 +53,16 @@ export interface PopoverProps extends Omit<PanelProps, "titleId"> {
   wide?: boolean;
 }
 
-/** Where focus goes on opening: a marked field, a search field, the chosen option, the first control. */
+/**
+ * Where focus goes on opening: a marked field, a search field, the chosen
+ * option, the first control. A plain field ("Între" of the size) does not
+ * take it first: on a phone its keyboard would cover the sheet.
+ */
 function initialFocus(dialog: HTMLElement): HTMLElement | null {
   const marked = dialog.querySelector<HTMLElement>("[data-autofocus]");
   if (marked) return marked;
-  const input = dialog.querySelector<HTMLElement>("input:not([type=hidden])");
-  if (input) return input;
+  const search = dialog.querySelector<HTMLElement>('input[role="combobox"], input[type="search"]');
+  if (search) return search;
   const chosen = dialog.querySelector<HTMLElement>('[aria-checked="true"][tabindex="0"], [aria-selected="true"][tabindex="0"]');
   if (chosen) return chosen;
   const all = focusables(dialog);
@@ -127,7 +131,7 @@ export default function Popover({ open, anchor, onClose, wide = false, ...panel 
 
   return <dialog
     ref={ref}
-    className={`fk fk-pop fk-tipwrap${wide ? " fk-pop--wide" : ""}`}
+    className={`fk fk-pop${wide ? " fk-pop--wide" : ""}`}
     aria-labelledby={titleId}
     onKeyDown={event => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); onClose(); } }}
     onCancel={event => { event.preventDefault(); onClose(); }}

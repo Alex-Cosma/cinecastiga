@@ -17,12 +17,23 @@ import KitLink from "./KitLink";
 
 export interface ListFootWords { more: string | null; rest: string | null }
 
+/**
+ * The rows' noun, one and many, and its gender, which chooses "alte" or
+ * "alți": ["firmă", "firme", "f"], ["partener", "parteneri", "m"],
+ * ["domeniu", "domenii", "n"].
+ */
+export type ListNoun = readonly [one: string, many: string, gender: "f" | "m" | "n"];
+
+/** "o altă firmă" / "alte 392 de firme", "un alt partener" / "alți 267 de parteneri", "un alt domeniu" / "alte 30 de domenii". */
+const OTHER = { f: ["o altă", "alte"], m: ["un alt", "alți"], n: ["un alt", "alte"] } as const;
+
 /** The words of the foot, numerals with "de" from 20 (kit §4). */
-export function listFootWords({ shown, total, noun, step = 10, all = false, restDetail }: { shown: number; total: number; noun: readonly [string, string]; step?: number; all?: boolean; restDetail?: string }): ListFootWords {
+export function listFootWords({ shown, total, noun, step = 10, all = false, restDetail }: { shown: number; total: number; noun: ListNoun; step?: number; all?: boolean; restDetail?: string }): ListFootWords {
   const remaining = Math.max(0, total - shown);
   if (!remaining) return { more: null, rest: null };
   const more = all ? `Arată toate cele ${formatInt(total)}` : `Arată încă ${formatInt(Math.min(step, remaining))}`;
-  const rest = `${remaining === 1 ? `încă 1 ${noun[0]}` : `alte ${countWords(remaining, noun[0], noun[1])}`}${restDetail ? ` · ${restDetail}` : ""}`;
+  const [one, many] = OTHER[noun[2]];
+  const rest = `${remaining === 1 ? `${one} ${noun[0]}` : `${many} ${countWords(remaining, noun[0], noun[1])}`}${restDetail ? ` · ${restDetail}` : ""}`;
   return { more, rest };
 }
 
@@ -35,8 +46,7 @@ export function focusFirstNew(list: HTMLElement | null, shown: number): void {
 export interface ListFootProps {
   shown: number;
   total: number;
-  /** The rows' noun, one and many: ["firmă", "firme"], ["partener", "parteneri"], ["domeniu", "domenii"]. */
-  noun: readonly [string, string];
+  noun: ListNoun;
   step?: number;
   all?: boolean;
   restDetail?: string;

@@ -38,7 +38,7 @@ export function Invite({ id, label, availability, open = false, onOpen, classNam
     onClick={event => { if (!disabled) onOpen?.(id, event.currentTarget); }}
   ><span className="fk-plus" aria-hidden="true">+</span>{label}</button>;
   if (!disabled) return button;
-  return <span className="fk-pair">{button}<DisabledReason id={reasonId} reason={disabled.reason} />{disabled.tip && <HelpTip tip={disabled.tip} />}</span>;
+  return <span className="fk-pair fk-tipwrap-sm">{button}<DisabledReason id={reasonId} reason={disabled.reason} />{disabled.tip && <HelpTip tip={disabled.tip} />}</span>;
 }
 
 /** The invitations under the sentence; the kit's limit of four is kept here too. */

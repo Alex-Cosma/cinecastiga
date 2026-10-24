@@ -60,18 +60,19 @@ export function UnderChip({ item, openId, onOpen, onRemove }: { item: UnderChipI
       </span>;
     case "auto":
       return <span className="fk-chip fk-chip--auto">{opener(<><i className="fk-half" aria-hidden="true" /><span>{item.label}</span></>)}{remove(item.name)}</span>;
+    // The two with a (?): on a phone the tip opens over its own chip (.fk-tipwrap-sm), outside the chip's clip.
     case "legacy":
-      return <span className="fk-chip fk-chip--legacy">
+      return <span className="fk-tipwrap-sm"><span className="fk-chip fk-chip--legacy">
         <span className="fk-chip-main"><span><b>Din link:</b> {item.words}</span></span>
         <HelpTip tip={item.tip} />
         {remove(`Din link: ${item.words}`)}
-      </span>;
+      </span></span>;
     case "origin":
-      return <span className="fk-chip fk-chip--origin">
+      return <span className="fk-tipwrap-sm"><span className="fk-chip fk-chip--origin">
         <span className="fk-chip-main"><span><b>{item.prefix}:</b> {item.words}</span></span>
         <HelpTip tip={item.tip} />
         {remove(item.prefix)}
-      </span>;
+      </span></span>;
   }
 }
 

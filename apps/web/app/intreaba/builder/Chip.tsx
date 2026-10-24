@@ -30,20 +30,22 @@ export interface ChipProps {
 }
 
 /**
- * Removes through `remove` and then focuses what followed the removed control
- * in its row; if that is gone, the chip itself (now unset), else the row's
- * first control.
+ * Removes through `remove` and then focuses, of what is still there: the
+ * control that followed in its row, the chip itself (now unset), the one
+ * before it in the row, and, when the row left with its last item, the first
+ * control after the row on the page, else the last one before it. Never a
+ * (?), whose definition would open, and never <body>.
  */
 export function removeAndRefocus(event: MouseEvent<HTMLElement>, remove: () => void, holder = ".fk-chip"): void {
   const own = event.currentTarget.closest<HTMLElement>(holder) ?? event.currentTarget;
-  const scope = own.closest<HTMLElement>("[data-fk-row]") ?? own.parentElement;
-  const following = scope ? focusables(scope).filter(element => !own.contains(element) && own.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING) : [];
-  const next = following[0] ?? null, main = own.querySelector<HTMLElement>(".fk-chip-main, button");
+  const scope = own.closest<HTMLElement>("[data-fk-row]") ?? own.parentElement ?? own;
+  const after = (element: HTMLElement) => !!(own.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING);
+  const usable = (element: HTMLElement) => !own.contains(element) && !element.classList.contains("term-trigger");
+  const row = focusables(scope).filter(usable), page = focusables(document.body).filter(element => usable(element) && !scope.contains(element));
+  const main = own.querySelector<HTMLElement>(".fk-chip-main, button");
+  const order = [...row.filter(after), main, ...row.filter(element => !after(element)).reverse(), ...page.filter(after), ...page.filter(element => !after(element)).reverse()];
   remove();
-  requestAnimationFrame(() => {
-    const target = next?.isConnected ? next : main?.isConnected ? main : scope ? focusables(scope)[0] : null;
-    target?.focus();
-  });
+  requestAnimationFrame(() => order.find(element => element?.isConnected && element.tabIndex >= 0)?.focus());
 }
 
 export default function Chip({ id, label, name = label, active = false, count, open = false, availability, onOpen, onRemove, className }: ChipProps) {
@@ -67,5 +69,5 @@ export default function Chip({ id, label, name = label, active = false, count, o
     {active && onRemove && <button type="button" className="fk-chip-x" aria-label={`Scoate «${name}»`} onClick={event => removeAndRefocus(event, () => onRemove(id))}>×</button>}
   </span>;
   if (!disabled) return chip;
-  return <span className="fk-pair">{chip}<DisabledReason id={reasonId} reason={disabled.reason} />{disabled.tip && <HelpTip tip={disabled.tip} />}</span>;
+  return <span className="fk-pair fk-tipwrap-sm">{chip}<DisabledReason id={reasonId} reason={disabled.reason} />{disabled.tip && <HelpTip tip={disabled.tip} />}</span>;
 }

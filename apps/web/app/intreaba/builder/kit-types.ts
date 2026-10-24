@@ -68,6 +68,8 @@ export interface KitLink {
 /**
  * Why a choice changed: "move" is an arrow key inside a radiogroup (the WAI
  * radio pattern checks while moving), "activate" a click, Enter or Space. A
- * window that closes on a choice closes only on "activate".
+ * window that closes on a choice closes only on "activate". "activate" comes
+ * for the option already chosen too (the arrows chose it, the window should
+ * close now), so a caller ignores a value that did not change.
  */
 export type ChangeSource = "move" | "activate";

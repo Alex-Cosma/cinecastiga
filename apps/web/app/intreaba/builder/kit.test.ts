@@ -1,8 +1,8 @@
-import { createElement, type ComponentProps, type FunctionComponent } from "react";
+import { createElement, isValidElement, type ComponentProps, type FunctionComponent, type ReactElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import Chip from "./Chip";
-import ConditionRow from "./ConditionRow";
+import ConditionRow, { rowNoun, selectionTip } from "./ConditionRow";
 import CountGroups from "./CountGroups";
 import Invitations, { Invite } from "./Invitations";
 import ParkedRow, { restoredMessage } from "./ParkedRow";
@@ -23,6 +23,13 @@ const html = <P extends object>(component: FunctionComponent<P>, props: P) => re
 const text = (markup: string) => markup.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 const tags = (markup: string, tag: string) => markup.match(new RegExp(`<${tag}\\b[^>]*>`, "g")) ?? [];
 const attr = (tag: string, name: string) => new RegExp(`\\s${name}="([^"]*)"`).exec(tag)?.[1] ?? null;
+/** The elements of a tree returned by a component without hooks, to press their handlers. */
+type Pressable = ReactElement<{ role?: string; onClick: () => void; children?: ReactNode }>;
+const elements = (node: ReactNode, found: Pressable[] = []): Pressable[] => {
+  if (Array.isArray(node)) for (const child of node) elements(child, found);
+  else if (isValidElement<{ children?: ReactNode }>(node)) { found.push(node as Pressable); elements(node.props.children, found); }
+  return found;
+};
 const describedReason = (markup: string, control: string) => {
   const id = attr(control, "aria-describedby");
   return id ? text(new RegExp(`id="${id}"[^>]*>([^<]*)<`).exec(markup)?.[1] ?? "") : null;
@@ -101,6 +108,17 @@ describe("the condition row (3), the chip (4) and the switch (5)", () => {
     const selection = html(ConditionRow, { label: "Furnizorii", kind: "selection", children: null });
     expect(selection).toContain('class="fk-row fk-row--select fk-tipwrap" role="group" aria-label="Furnizorii"');
     expect(text(selection)).toContain("Totalul se schimbă");
+  });
+  it("says the selection row's own noun in its default (?), as the kit does", () => {
+    expect(selectionTip("Furnizorii")).toEqual({ title: "Furnizorii", text: "Alege ce furnizori intră în calcul. Totalul se schimbă, iar linia de sub răspuns spune cum." });
+    expect(text(html(ConditionRow, { label: "Clienții", kind: "selection", children: null }))).toContain("Alege ce clienți intră în calcul.");
+    expect(["Partenerii", "Câștigătorii", "Firmele", "Instituțiile"].map(rowNoun)).toEqual(["parteneri", "câștigători", "firme", "instituții"]);
+  });
+  it("lets a chip or switch with a (?) anchor its own tip on phones, outside the chip's clip", () => {
+    const disabled = html(Chip, { id: "emp", label: "Angajați", availability: { state: "disabled", reason: "Motiv.", tip: { title: "Angajați", text: "Motiv." } } });
+    expect(disabled).toMatch(/^<span class="fk-pair fk-tipwrap-sm"><span class="fk-chip is-dim">/);
+    const legacy = html(UnderChips, { items: [{ kind: "legacy", id: "min", words: "doar firmele cu cel puțin 5 înregistrări", tip: { title: "Din link", text: "Text." } }] });
+    expect(legacy).toContain('<span class="fk-tipwrap-sm"><span class="fk-chip fk-chip--legacy">');
   });
   it("draws an unset chip as “+ X ▾” without ×, an active one as “✓ value · count ▾ ×”", () => {
     const unset = html(Chip, { id: "emp", label: "Angajați" });
@@ -275,9 +293,19 @@ describe("the window (9): popover, sheet and option list", () => {
   it("is a <dialog> labelled by its title, with its content only while open", () => {
     const props = { anchor: null, onClose: () => undefined, title: "În ce perioadă?", children: createElement("p", null, "conținut") } satisfies Omit<ComponentProps<typeof Popover>, "open">;
     const open = html(Popover, { ...props, open: true });
-    expect(open).toMatch(/^<dialog class="fk fk-pop fk-tipwrap" aria-labelledby="([^"]+)"><span class="fk-sheet-grip"/);
+    // Not a .fk-tipwrap: a (?) in a window anchors inside it (its head or its row) and opens downward (filters-kit.css).
+    expect(open).toMatch(/^<dialog class="fk fk-pop" aria-labelledby="([^"]+)"><span class="fk-sheet-grip"/);
     expect(open).toContain("<p>conținut</p>");
     expect(open).not.toMatch(/<dialog[^>]*\sopen/); // shown by show()/showModal(), never by the attribute
-    expect(html(Popover, { ...props, open: false })).toMatch(/^<dialog class="fk fk-pop fk-tipwrap" aria-labelledby="[^"]+"><\/dialog>$/);
+    expect(html(Popover, { ...props, open: false })).toMatch(/^<dialog class="fk fk-pop" aria-labelledby="[^"]+"><\/dialog>$/);
+  });
+  it("reports “activate” for the option already chosen too, so a window can close on it", () => {
+    const changes: [string, string][] = [];
+    const tree = OptionList({ label: "Sediul firmei", options: seat, value: "same", onChange: (value, source) => changes.push([value, source]) });
+    const radios = elements(tree).filter(element => element.props.role === "radio");
+    radios[1]!.props.onClick(); // the chosen one: Enter, Space or a click after the arrows chose it
+    radios[0]!.props.onClick();
+    radios[2]!.props.onClick(); // disabled: nothing
+    expect(changes).toEqual([["same", "activate"], ["any", "activate"]]);
   });
 });

@@ -8,7 +8,7 @@ import EntitySearch, { type SearchResult } from "../builder/EntitySearch";
 import HelpTip from "../builder/HelpTip";
 import PeriodPicker, { EMPTY_RANGE, YearGrid, periodRangeError, type PeriodRangeValue, type YearCell } from "../builder/PeriodPicker";
 import Pills, { type PillOption } from "../builder/Pills";
-import Segmented from "../builder/Segmented";
+import Segmented, { SwatchLabel } from "../builder/Segmented";
 import Sentence, { Presentation } from "../builder/Sentence";
 import Toggle from "../builder/Toggle";
 import OptionList from "../builder/pickers/OptionList";
@@ -40,7 +40,7 @@ const EMPLOYEES_TIP: KitTip = { title: "Angajați", text: "Din ultimul bilanț d
 const BAND_COUNTS: Record<string, string> = { "0": "6", "1-9": "123", "10-49": "69", "50-249": "29", "250+": "21" };
 const bandsWithCounts = (classes: Record<string, string> = {}): Band[] => EMPLOYEE_BANDS.map(band => ({ ...band, count: BAND_COUNTS[band.value]!, ...(classes[band.value] ? { className: classes[band.value] } : {}) }));
 /** The chip's short words for a run of bands (the registry writes them in F1b). */
-const bandsChip = (values: readonly string[]) => { const range = bandRange(EMPLOYEE_BANDS, values); if (!range) return "Angajați"; const words = bandsWords(range).replace(/^Firme (cu )?/, ""); return words.charAt(0).toUpperCase() + words.slice(1); };
+const bandsChip = (values: readonly string[]) => { const range = bandRange(EMPLOYEE_BANDS, values); if (!range) return "Angajați"; const words = bandsWords(range).replace(/^Firme (cu (?=\d|cel ))?/, ""); return words.charAt(0).toUpperCase() + words.slice(1); };
 
 export function BandsSection() {
   const [open, setOpen] = useState<HTMLElement | null>(null);
@@ -252,7 +252,7 @@ function StripsBlock() {
     <div className="kd-gap" />
     <Cap>evoluție: împarte (eticheta doar pentru cititorul de ecran pe telefon) · aceleași luni</Cap>
     <AnswerStrip>
-      <StripLabelled before="Împarte" smHide><Segmented label="Împarte" value={split} onChange={setSplit} options={[{ value: "total", label: "Total" }, { value: "channels", label: <><i className="fk-sw fk-sw--da" aria-hidden="true" />Directe / <i className="fk-sw fk-sw--proc" aria-hidden="true" />proceduri</> }, { value: "cpv", label: "Domenii" }]} /></StripLabelled>
+      <StripLabelled before="Împarte" smHide><Segmented label="Împarte" value={split} onChange={setSplit} options={[{ value: "total", label: "Total" }, { value: "channels", label: <><SwatchLabel swatch="da">Directe</SwatchLabel> / <SwatchLabel swatch="proc">proceduri</SwatchLabel></> }, { value: "cpv", label: "Domenii" }]} /></StripLabelled>
       <Toggle id="months" label="Aceleași luni: ian.–iun." glyph="half" pressed={months} onToggle={(_, pressed) => setMonths(pressed)} />
       <StripEnd>{display(view, setView)}</StripEnd>
     </AnswerStrip>
@@ -292,7 +292,7 @@ export function AnswerSections() {
       </AnswerList>
       <div className="kd-menu-room" />
       <TotalLine conditions={["fără SYSTRA", "doar firmele cu sediul în alt județ"]}>Din <span className="fk-num">1.550.554.366 lei</span>, câștigați de 412 firme</TotalLine>
-      <ListFoot shown={20} total={412} noun={["firmă", "firme"]} records={{ label: `Vezi cele ${recordsWords(124)}` }} />
+      <ListFoot shown={20} total={412} noun={["firmă", "firme", "f"]} records={{ label: `Vezi cele ${recordsWords(124)}` }} />
       <Live>
         <p className="kd-text">„⋯ › Scoate din calcul” scoate firma: totalul se schimbă și se anunță; de la 5 excluderi, acțiunea rămâne vizibilă, dezactivată. „Arată încă 10” duce focusul pe primul rând nou.</p>
         <AnswerList label="Firmele" listRef={list}>
@@ -303,7 +303,7 @@ export function AnswerSections() {
             ]} />)}
         </AnswerList>
         <TotalLine conditions={exclusion ? [exclusion] : []}>Din <span className="fk-num">{formatRon(total)}</span>, câștigați de {countWords(firms.length, "firmă", "firme")}</TotalLine>
-        <ListFoot shown={Math.min(shown, firms.length)} total={firms.length} noun={["firmă", "firme"]} list={list} onMore={() => setShown(value => value + 10)} records={{ label: `Vezi cele ${recordsWords(firms.slice(0, shown).reduce((sum, firm) => sum + firm.records, 0))}`, onClick: () => setSaid("Sursele listei s-ar deschide în sertar.") }} />
+        <ListFoot shown={Math.min(shown, firms.length)} total={firms.length} noun={["firmă", "firme", "f"]} list={list} onMore={() => setShown(value => value + 10)} records={{ label: `Vezi cele ${recordsWords(firms.slice(0, shown).reduce((sum, firm) => sum + firm.records, 0))}`, onClick: () => setSaid("Sursele listei s-ar deschide în sertar.") }} />
         <p className="kd-text" role="status">{said}</p>
         {excluded.length > 0 && <button type="button" className="fk-secondary" onClick={() => { setExcluded([]); setShown(10); }}>Pune firmele la loc</button>}
       </Live>

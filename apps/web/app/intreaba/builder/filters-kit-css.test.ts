@@ -51,6 +51,16 @@ describe("filter kit styles", () => {
     expect(phone).toMatch(/dialog\.fk-pop\{inset:auto 0 0 0;max-width:100%/); // the bottom sheet
   });
 
+  it("opens a (?) where it can be seen: down inside a window, over its own chip on a phone", () => {
+    // Above, a window's overflow:auto would hide it; the title's (?) anchors on the head, under the title.
+    expect(css).toContain(".fk-pop .term-tip>.term-def{top:calc(100% + 6px);bottom:auto}");
+    expect(css).toMatch(/\.fk-pop-head\{position:relative;/);
+    const phone = css.slice(css.indexOf("@media (max-width:600px){"));
+    expect(phone).toContain(".fk-tipwrap-sm{position:relative}");
+    expect(css.slice(0, css.indexOf("@media (max-width:600px){"))).not.toMatch(/\.fk-tipwrap-sm\{[^}]*position/); // the row's width on desktop (kit)
+    expect(css).toMatch(/\.fk-sw-l\{[^}]*white-space:nowrap/); // a channel's swatch never wraps away from its word
+  });
+
   it("keeps clear of today's builder classes and honours reduced motion", () => {
     expect(uncommented).not.toMatch(/\.qb-/);
     expect(css).toContain("@media (prefers-reduced-motion:reduce){.fk *{transition:none!important;animation:none!important}}");
