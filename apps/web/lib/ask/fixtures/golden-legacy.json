@@ -2696,7 +2696,7 @@
       ]
      }
     },
-    "pills": ["total","număr de achiziții","toți anii disponibili","doar achiziții directe","Selecție precisă · 1 condiție în 1 grup"],
+    "pills": ["total","numărul de înregistrări","toți anii disponibili","doar achiziții directe","Selecție precisă · 1 condiție în 1 grup"],
     "caveats": [
      "Sursă: DOAR achiziții directe.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
@@ -2791,7 +2791,7 @@
      "filters": {},
      "dataset": "contracts"
     },
-    "pills": ["total","număr de achiziții","toți anii disponibili","doar contracte prin proceduri"],
+    "pills": ["total","numărul de înregistrări","toți anii disponibili","doar contracte prin proceduri"],
     "caveats": [
      "Sursă: DOAR contracte atribuite prin proceduri. Valoarea consorțiilor e împărțită egal între câștigători. Plafoanele acordurilor-cadru și publicațiile cu identitate incertă sunt excluse din totaluri. Lipsa comenzilor identificate înseamnă acoperire incompletă.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției."
@@ -3642,7 +3642,7 @@
     },
     "pills": [
      "clasament",
-     "top 10 furnizori",
+     "toți furnizorii",
      "Total (lei)",
      "conduse de POPESCU FIXTURE ION (n. 1970, Cluj-Napoca)",
      "toți anii disponibili",
@@ -4761,7 +4761,7 @@
     },
     "pills": [
      "clasament",
-     "top 10 furnizori",
+     "toți furnizorii",
      "Total (lei)",
      "conduse de POPESCU FIXTURE ION (n. 1970, Cluj-Napoca)",
      "toți anii disponibili",
@@ -7733,7 +7733,7 @@
       "supplierId": 9100000101
      }
     },
-    "pills": ["evoluție pe ani","număr de achiziții","Fixture Construct SRL","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
+    "pills": ["evoluție pe ani","numărul de înregistrări","Fixture Construct SRL","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -8792,7 +8792,7 @@
     },
     "pills": [
      "pe județe (hartă)",
-     "număr de achiziții",
+     "numărul de înregistrări",
      "toți anii disponibili",
      "toate sursele: achiziții directe + contracte prin proceduri",
      "instituții cu ≥ 4 înregistrări în selecție"
@@ -11190,8 +11190,7 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Județul = sediul instituției care cumpără, nu al firmei (din adresă, cod NUTS, ONRC sau UAT verificat). Instituțiile fără județ cunoscut nu intră.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
-     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
-     "Pe locuitor: valoarea se împarte la populația rezidentă la 1 decembrie 2021 (INS, RPL 2021, tabelul 1.22; catalog ins-rpl-2021-table-1.22-v1). Intră doar administrațiile identificate strict, cu CUI valid — primării: 1 (nume, județ și cod SIRUTA concordante); primării de sector din București: 0 (populația propriului sector); consilii județene: 1 (populația județului). Primăria Municipiului București se împarte la populația întregului oraș; primăriile de sector sunt autorități separate, cu achizițiile lor. Instituțiile subordonate (școli, servicii, poliție, companii), inclusiv cele ale sectoarelor, și asocierile ambigue sau din alt județ sunt excluse din clasament. Asocierea autoritate–UAT este o inferență a aplicației, nu o listă oficială INS."
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
     ],
     "data": {
      "block": "stat",
@@ -15786,7 +15785,7 @@
      "filters": {},
      "dim": "supplier"
     },
-    "pills": ["clasament","top 10 furnizori","Total (lei)","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
+    "pills": ["clasament","toți furnizorii","Total (lei)","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -15945,7 +15944,7 @@
      "filters": {},
      "dim": "supplier"
     },
-    "pills": ["clasament","top 10 furnizori","Total (lei)","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
+    "pills": ["clasament","toți furnizorii","Total (lei)","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -16052,7 +16051,7 @@
      "filters": {},
      "dim": "supplier"
     },
-    "pills": ["clasament","top 10 furnizori","Total (lei)","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
+    "pills": ["clasament","toți furnizorii","Total (lei)","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -16208,7 +16207,7 @@
      "filters": {},
      "dim": "authority"
     },
-    "pills": ["clasament","top 10 autorități","Total (lei)","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
+    "pills": ["clasament","toate autoritățile","Total (lei)","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -16371,7 +16370,7 @@
      "filters": {},
      "dim": "county"
     },
-    "pills": ["clasament","top 10 județe","Total (lei)","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
+    "pills": ["clasament","toate județele","Total (lei)","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -16622,7 +16621,7 @@
      "filters": {},
      "dim": "authority"
     },
-    "pills": ["clasament","top 10 autorități","lei / cap de locuitor","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
+    "pills": ["clasament","toate autoritățile","lei / cap de locuitor","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -16745,7 +16744,7 @@
      "dim": "supplier",
      "topN": 10
     },
-    "pills": ["clasament","top 10 furnizori","număr de achiziții","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
+    "pills": ["clasament","top 10 furnizori","numărul de înregistrări","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -19401,7 +19400,7 @@
      "dim": "supplier",
      "topN": 10
     },
-    "pills": ["total","număr de achiziții","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
+    "pills": ["total","numărul de înregistrări","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -21099,7 +21098,7 @@
      "dim": "supplier",
      "topN": 10
     },
-    "pills": ["evoluție pe ani","număr de achiziții","toți anii disponibili","doar contracte prin proceduri"],
+    "pills": ["evoluție pe ani","numărul de înregistrări","toți anii disponibili","doar contracte prin proceduri"],
     "caveats": [
      "Sursă: DOAR contracte atribuite prin proceduri. Valoarea consorțiilor e împărțită egal între câștigători. Plafoanele acordurilor-cadru și publicațiile cu identitate incertă sunt excluse din totaluri. Lipsa comenzilor identificate înseamnă acoperire incompletă.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -21488,7 +21487,7 @@
      "dim": "supplier",
      "topN": 10
     },
-    "pills": ["evoluție pe ani","număr de achiziții","Fixture Construct SRL","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
+    "pills": ["evoluție pe ani","numărul de înregistrări","Fixture Construct SRL","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -22101,7 +22100,7 @@
      "dim": "supplier",
      "topN": 10
     },
-    "pills": ["pe județe (hartă)","număr de achiziții","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
+    "pills": ["pe județe (hartă)","numărul de înregistrări","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",

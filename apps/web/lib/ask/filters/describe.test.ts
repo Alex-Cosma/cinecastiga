@@ -93,7 +93,9 @@ describe("describeConditions says what the six grammars said (plan §2.2)", () =
         if (relabelled(spec)) continue;
         const grounding = groundingOf(spec, cpv);
         expect(describeConditions(spec, { grounding }).pills, JSON.stringify(spec)).toEqual(conditionPillsBefore(spec, grounding).map(fixed));
-        if (spec.block === "table" || spec.block === "trend") expect(buildPills(spec, grounding)).toContain(fixed(topPillBefore(spec)));
+        // A ranking without topN is the complete one, in pages: its pill no longer says "top 10" (pills.ts, after the S1 review).
+        if (spec.block === "table" && spec.topN == null) expect(buildPills(spec, grounding)[1]).toMatch(/^(toate autoritățile|toți furnizorii|toate județele)$/);
+        else if (spec.block === "table" || spec.block === "trend") expect(buildPills(spec, grounding)).toContain(fixed(topPillBefore(spec)));
       }
   });
 
@@ -173,8 +175,10 @@ describe("the changes the plan fixes", () => {
     // A comparison group's spec is one CPV division: labelled only by the page that binds the group.
     const peer: AskSpec = { block: "stat", measure: "value", dataset: "all", filters: {}, population: { operator: "and", groups: [{ operator: "and", conditions: [{ field: "cpv", op: "in", values: ["45"] }] }] } };
     expect(describeConditions(peer).byId.population?.note).toBe("Selecție precisă aplicată: (CPV includ 45).");
-    expect(describeConditions(peer, { origin: { origin: "peers", members: 29, role: "authority" } }).byId.population?.note).toBe("Grupul de comparație: 29 de instituții · CPV 45.");
-    expect(describeConditions(peer, { origin: { origin: "peers", role: "supplier" } }).byId.population?.note).toBe("Grupul de comparație: CPV 45.");
+    // Counted as the comparison page counts them: the analysed entity and the other members.
+    expect(describeConditions(peer, { origin: { origin: "peers", members: 29, focal: "Comuna X" } }).byId.population?.note).toBe("Grupul de comparație: Comuna X și 29 de alți membri · CPV 45.");
+    expect(describeConditions(peer, { origin: { origin: "peers", members: 1 } }).byId.population?.note).toBe("Grupul de comparație: entitatea analizată și 1 alt membru · CPV 45.");
+    expect(describeConditions(peer, { origin: { origin: "peers" } }).byId.population?.note).toBe("Grupul de comparație: CPV 45.");
     // A precise selection a person built names its entities: never read as another page's.
     const named: AskSpec = { ...peer, population: { operator: "or", groups: [{ operator: "or", conditions: [{ field: "authority", op: "in", values: ["77"], labels: ["Comuna X"] }, { field: "supplier", op: "in", values: ["77"], labels: ["Comuna X"] }] }] } };
     expect(describeConditions(named).byId.population?.origin).toBeUndefined();

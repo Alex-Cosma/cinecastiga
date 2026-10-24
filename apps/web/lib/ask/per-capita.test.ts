@@ -93,6 +93,14 @@ describe("per-capita denominators (finding F05)", () => {
     expect(result.caveats.join(" ")).not.toMatch(/5\.575|recensământ 2021|populație estimată/);
   });
 
+  it.each(["stat", "map", "timeseries"] as const)("answers a per-inhabitant %s link in lei, without the per-inhabitant caveat or the population read", async (block) => {
+    const db = database();
+    const result = await runSpec(db.sql, { block, measure: "value_per_capita", filters: { yearFrom: 2025, yearTo: 2025 } }, {});
+    if ("error" in result) throw new Error(result.error);
+    expect(result.caveats.join(" ")).not.toMatch(/Pe locuitor|RPL 2021/);
+    expect(db.statements.join(" ")).not.toContain("reference.authority_uat");
+  });
+
   it("restricts the source rows to the same administrations as the ranking", async () => {
     const db = database();
     const result = await runRows(db.sql, perCapita, {}, 0);

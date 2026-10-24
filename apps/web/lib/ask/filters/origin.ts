@@ -30,8 +30,11 @@ export const ORIGIN_LABEL: Record<SelectionOrigin, string> = {
  * What a page that binds the selection itself knows. A comparison group's spec
  * carries only its CPV division (the members are bound on the server), the same
  * shape as a precise selection of one code: without this hint it is not labelled.
+ * Only the whole group's sources carry it (one member's are that member's
+ * records): `members` counts the other members, as the comparison page does,
+ * and `focal` names the analysed entity.
  */
-export interface OriginHint { origin: "peers"; members?: number; role?: "authority" | "supplier" }
+export interface OriginHint { origin: "peers"; members?: number; focal?: string }
 
 export interface OriginWords { origin: SelectionOrigin; label: string; words: string }
 
@@ -95,7 +98,7 @@ export function selectionOrigin(population: QueryPopulation | undefined, hint?: 
   const division = hint?.origin === "peers" ? divisionOf(population) : null;
   if (division) {
     const members = hint!.members === undefined ? null
-      : hint!.role === "supplier" ? countWords(hint!.members, "firmă", "firme") : countWords(hint!.members, "instituție", "instituții");
+      : `${hint!.focal ?? "entitatea analizată"} și ${countWords(hint!.members, "alt membru", "alți membri")}`;
     return { origin: "peers", label: ORIGIN_LABEL.peers, words: [members, `CPV ${division}`].filter(Boolean).join(" · ") };
   }
   return null;

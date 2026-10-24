@@ -1,4 +1,5 @@
 import Term from "../../components/Term";
+import { countWords } from "../../lib/ask/answer-text";
 
 /**
  * The basis of a historical risk profile, said the same way above the answer
@@ -20,7 +21,7 @@ export function ProfileSourceNote({ reconciled, profileCount }: { reconciled: bo
   return (
     <div className="ev-profile-note">
       <strong>Doar achiziții directe acceptate, ca profilul.</strong>
-      {reconciled === true && <p className="ev-reconciled">✓ Numărul și suma surselor coincid cu agregatele celor {profileCount.toLocaleString("ro-RO")} profiluri selectate.</p>}
+      {reconciled === true && <p className="ev-reconciled">✓ Numărul și suma surselor coincid cu agregatele celor {countWords(profileCount, "profil", "profiluri")} selectate.</p>}
       {reconciled === false && <p className="ev-mismatch">Agregatul profilului și sursele actuale diferă. Lista arată datele disponibile acum; verifică explicația de mai jos.</p>}
     </div>
   );

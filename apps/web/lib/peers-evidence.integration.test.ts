@@ -98,7 +98,11 @@ describe.skipIf(!url)("peer sources and immutable captures (isolated PostgreSQL)
     const rows=await rowsRoute(new Request("http://localhost/api/ask/rows",{method:"POST",body:JSON.stringify(body)}));
     const data=await rows.json();expect(rows.status).toBe(200);expect(data.total).toBe(8);expect(data.value).toBe("121.0106");
     // The spec carries only the group's division; the bound group names its note (describeConditions, origin hint).
-    expect(data.scopeNotes.filter((note:string)=>/Selecție precisă|Grupul de comparație/.test(note))).toEqual([expect.stringMatching(/^Grupul de comparație: \d+ (de )?(instituții|firme) · CPV \d{2}\.$/)]);
+    // Counted as the comparison page counts: the analysed entity and the others.
+    expect(data.scopeNotes.filter((note:string)=>/Selecție precisă|Grupul de comparație/.test(note))).toEqual([expect.stringMatching(/^Grupul de comparație: .+ și 5 alți membri · CPV \d{2}\.$/)]);
+    // One member's sources are that member's records: never labelled as the whole group.
+    const one=await rowsRoute(new Request("http://localhost/api/ask/rows",{method:"POST",body:JSON.stringify({...body,peer:await member("887791006")})}));
+    expect(one.status).toBe(200);expect((await one.json()).scopeNotes.join(" ")).not.toContain("Grupul de comparație");
     const csv=await csvRoute(new Request("http://localhost/api/ask/rows/csv",{method:"POST",body:JSON.stringify(body)}));
     expect(csv.headers.get("x-total-rows")).toBe("8");expect(await csv.text()).toContain("12345-2025");
     const scoped=await rowsRoute(new Request("http://localhost/api/ask/rows",{method:"POST",body:JSON.stringify({...body,scope:{entityIds:["887791007"],role:"supplier"}})}));expect(scoped.status).toBe(400);

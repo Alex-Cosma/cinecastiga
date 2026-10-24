@@ -161,6 +161,11 @@ describe.skipIf(!url)("server evidence captures (dedicated PostgreSQL database)"
       const current=await getCapturedRows(uid,inv,next!.id,0,sql);
       expect(current?.capture.status,current?.capture.error??undefined).toBe('complete');
       expect(current?.capture.summary).toMatchObject({entityId:authority,requestedEntityId:alias,title:'Fixture authority',cui:'4305857',roles:{authority:{nDas:1,nContracts:1}}});
+      // The frozen pills and notes name the entity, not its id (plan §2.6).
+      const named="Activitatea entității: Fixture authority (ca instituție sau ca firmă)";
+      expect(current?.capture.summary?.pills).toContain(named);
+      expect((current?.capture.summary?.warnings as string[]).join(" ")).toContain(named);
+      expect(JSON.stringify(current?.capture.summary)).not.toContain("entitatea #");
       expect(current?.capture.scope.refId).toBe(alias);
       expect(current?.rows).toHaveLength(3);
       expect(current?.rows.every(row=>row.authorityId===authority)).toBe(true);

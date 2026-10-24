@@ -71,8 +71,10 @@ export function peerEvidenceOptions(bound: BoundPeerEvidence, opts: DrillOpts, c
   if (capture && bound.selection.selection.kind === "comparison" && (opts.search || opts.state || opts.stream))
     throw new PeerError("Elimină filtrele din lista surselor înainte de salvare. Comparația păstrează toate înregistrările selecției, fără un eșantion filtrat.");
   // The spec carries only the group's division: the hint lets the sources' note name the group (filters/origin.ts).
-  const origin = { origin: "peers" as const, role: bound.selection.role, ...(bound.selection.selection.kind === "comparison" ? { members: bound.sourceMembers.length } : {}) };
-  return { ...opts, scope: { entityIds: bound.sourceMembers.map(member => member.entity.id), role: bound.selection.role }, origin };
+  // One member's sources are that member's records in the division, a precise selection: no group label.
+  const origin = bound.selection.selection.kind === "comparison"
+    ? { origin: "peers" as const, members: bound.sourceMembers.length - 1, focal: bound.comparison.entity.name } : undefined;
+  return { ...opts, scope: { entityIds: bound.sourceMembers.map(member => member.entity.id), role: bound.selection.role }, ...(origin ? { origin } : {}) };
 }
 export async function withPeerEvidence<T>(sql: DbSql, raw: unknown, work: (q: DbSql, evidence: BoundPeerEvidence) => Promise<T>): Promise<T> {
   const selection = validatePeerEvidence(raw);

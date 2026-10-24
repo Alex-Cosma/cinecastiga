@@ -37,7 +37,15 @@ describe("answer pills", () => {
     expect(pills({ block: "breakdown", measure: "count", filters: {} })).toContain("Total (lei)");
     expect(pills({ block: "network", measure: "count", filters: { authorityId: 1 } })).toContain("Total (lei)");
     expect(pills({ block: "stat", measure: "value_per_capita", filters: {} })).toContain("Total (lei)");
-    expect(pills({ block: "stat", measure: "count", filters: {} })).toContain("număr de achiziții");
+    expect(pills({ block: "stat", measure: "count", filters: {} })).toContain("numărul de înregistrări");
     expect(pills({ block: "table", dim: "authority", measure: "value_per_capita", filters: {} })).toContain("lei / cap de locuitor");
+  });
+
+  it("names a ranking without topN the complete one, in pages; top N only where the answer stops at N", () => {
+    expect(pills({ block: "table", dim: "supplier", measure: "value", filters: {} }).slice(0, 2)).toEqual(["clasament", "toți furnizorii"]);
+    expect(pills({ block: "table", dim: "authority", measure: "value_per_capita", filters: {} })[1]).toBe("toate autoritățile");
+    expect(pills({ block: "table", dim: "county", measure: "value", filters: {} })[1]).toBe("toate județele");
+    expect(pills({ block: "table", dim: "supplier", measure: "value", topN: 25, filters: {} })[1]).toBe("top 25 de furnizori");
+    expect(pills({ block: "trend", dim: "supplier", measure: "value", filters: { yearFrom: 2024, yearTo: 2025 } })[1]).toBe("top 10 furnizori");
   });
 });
