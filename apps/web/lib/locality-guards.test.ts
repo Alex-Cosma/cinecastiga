@@ -20,7 +20,7 @@ describe("locality rule on new watches and captures", () => {
   });
   it("refuses a new capture of a risk profile scoped to a locality", async () => {
     const request: CaptureRequest = { kind: "query", refId: null, spec: { block: "scatter", dim: "authority", measure: "value", filters: locality }, options: {} };
-    await expect(queueCapture(noDatabase, "user-1", "inv-1", "clip-1", request)).rejects.toThrow(/Indicele de risc compară instituții/);
+    await expect(queueCapture(noDatabase, "user-1", "inv-1", "clip-1", request)).rejects.toThrow(/Indicele de risc compară profiluri/);
   });
   it("lets a supported locality through to the usual checks (the database is reached)", async () => {
     const request: CaptureRequest = { kind: "query", refId: null, spec: { block: "stat", measure: "value", filters: locality }, options: {} };

@@ -44,6 +44,9 @@
 :root[data-theme=dark] .explore-compact .qb-primary { color:var(--on-accent); background:var(--accent); border-color:var(--accent); }
 :root[data-theme=dark] .explore-compact .qb-primary:hover:not(:disabled) { color:var(--on-accent); background:var(--ink); }
 :root[data-theme=dark] .explore-compact .qb-presentation { color:var(--ink-secondary); }
+/* Picker rows: the light hover/selected fill is written in question-builder.css; under light text it would vanish. */
+:root[data-theme=dark] .explore-compact .qb-option:hover, :root[data-theme=dark] .explore-compact .qb-option.is-selected { background:var(--accent-soft); border-color:var(--accent-line); }
+:root[data-theme=dark] .explore-compact .qb-option small { color:var(--muted); }
 @media(prefers-color-scheme:dark) {
 :root:not([data-theme=light]) .explore-compact .question-builder { --qb-ink:var(--ink); --qb-muted:var(--ink-secondary); --qb-green:var(--accent); --qb-line:var(--line); --qb-surface:var(--surface); --qb-soft:var(--accent-soft); --qb-warm:var(--amber-soft); }
 :root:not([data-theme=light]) .explore-compact .qb-editor { border-color:var(--line); }
@@ -54,6 +57,8 @@
 :root:not([data-theme=light]) .explore-compact .qb-primary { color:var(--on-accent); background:var(--accent); border-color:var(--accent); }
 :root:not([data-theme=light]) .explore-compact .qb-primary:hover:not(:disabled) { color:var(--on-accent); background:var(--ink); }
 :root:not([data-theme=light]) .explore-compact .qb-presentation { color:var(--ink-secondary); }
+:root:not([data-theme=light]) .explore-compact .qb-option:hover, :root:not([data-theme=light]) .explore-compact .qb-option.is-selected { background:var(--accent-soft); border-color:var(--accent-line); }
+:root:not([data-theme=light]) .explore-compact .qb-option small { color:var(--muted); }
 }
 .explore-compact .qb-apply-area { flex-wrap:wrap; justify-content:flex-end; }
 .cq-save-question { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:49px; padding:12px 14px; border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--ink); font:500 14px/1.6 var(--font-body); cursor:pointer; }
@@ -94,8 +99,10 @@
 .cq-saved-summary { display:block; margin-top:4px; color:var(--ink-secondary); font:400 13px/1.65 var(--font-body); overflow-wrap:anywhere; }
 .cq-saved-row small { display:block; margin-top:8px; color:var(--ink-secondary); font-size:12px; }
 .cq-saved-row svg { width:18px; height:18px; flex-shrink:0; color:var(--accent); }
-.cq-saved-row:hover:not(:disabled) { background:var(--accent-soft); }
+.cq-saved-row:hover:not(:disabled):not([aria-disabled=true]) { background:var(--accent-soft); }
 .cq-saved-row:disabled { cursor:wait; opacity:.65; }
+/* A newer release's question: listed, not openable here. */
+.cq-saved-row[aria-disabled=true] { cursor:default; box-sizing:border-box; }
 .cq-saved-row[hidden] { display:none; }
 .cq-replace-question { padding:16px 0; }
 .cq-replace-question h3 { margin:0; font:600 20px/1.4 var(--font-display); }

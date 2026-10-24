@@ -100,7 +100,7 @@ export const TODAY_REFUSALS: readonly TodayRefusal[] = [
   { id: "risk-firm-buyer", filter: "rankBy", values: (value) => value === "risk", when: (spec, ctx) => ctx.form === "entity_card:value" && spec.dim === "supplier" && buyerPlace(spec),
     kind: "engine", reason: FIRM_PROFILE_REASON, fix: PARK },
   { id: "risk-locality", filter: "rankBy", values: (value) => value === "risk", when: (spec, ctx) => ctx.form === "entity_card:value" && Boolean(spec.filters.uatSiruta),
-    kind: "engine", reason: "Indicele de risc compară instituții între ele, deci aici poți alege doar județul.", fix: PARK },
+    kind: "engine", reason: "Indicele de risc compară profiluri între ele, deci aici poți alege doar județul.", fix: PARK },
   { id: "firm-profile-buyer", filter: "dim", values: (value) => value === "supplier", when: (spec, ctx) => ["scatter", "entity_card:risk"].includes(ctx.form) && buyerPlace(spec),
     kind: "engine", reason: FIRM_PROFILE_REASON,
     fix: "F1b: the kind of institution is a phrase of the institutions' sentence; changing the subject to firms drops it with a note (onTransition)." },
