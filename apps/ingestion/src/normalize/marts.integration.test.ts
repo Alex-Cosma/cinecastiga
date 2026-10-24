@@ -1,9 +1,10 @@
 import {seedVerifiedIdentity} from '../test/contract-identity-fixture.js';
 import {approveContractIdentities} from './approve-contract-identities.js';
 import { afterAll, describe, expect, it } from "vitest";
-import { contractKindFromTitle, contractWinnerIsAuthority, createDb, cuiCorroborated, readContractIdentityQuality, type DbSql } from "@seap/db";
+import { AGG_MAP_COUNTY_SEAT_COLUMNS, contractKindFromTitle, contractWinnerIsAuthority, createDb, cuiCorroborated, readContractIdentityQuality, TRANSACTION_MART_BUILD_INDEXES, TRANSACTION_MART_INDEXES, type DbSql } from "@seap/db";
 import { DA_CEILING_SEED_ROWS } from "@seap/domain";
 import { runMarts } from "./marts.js";
+import { applyFirmRegistry, onrcRegistration } from "./firm-registry.js";
 import { runFlags } from "../flags/build.js";
 import { runFlagMarts } from "../flags/marts.js";
 import { runRadiografieMarts } from "../flags/radiografie.js";
@@ -76,6 +77,40 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
         .toMatchObject({ publication_date: "2025-12-31 23:55", finalization_date: "2026-01-01 00:15", gap_minutes: 20 });
       expect((await q`select y,v_plaf::text value from marts.agg_years order by y`).map(r => [r.y,r.value]))
         .toEqual([["2025","200.00"],["2026","112.34"]]);
+      throw rollback;
+    })).rejects.toBe(rollback);
+  });
+  // Marts audit, 24 October 2026: the county/CPV covering indexes existed only
+  // because the builds TRUNCATE; a table rebuilt without them made Ask 8–17 s.
+  it("creates the covering county/CPV indexes on transaction tables that lack them", async () => {
+    const prefix = `index_fixture_${process.pid}_${Date.now()}`;
+    const rollback = Error("rollback index fixture");
+    await expect(sql.begin(async tx => {
+      for (const [schema, names] of Object.entries(tables)) {
+        await tx.unsafe(`create schema ${prefix}_${schema}`);
+        for (const table of names) await tx.unsafe(`create table ${prefix}_${schema}.${table} as table ${schema}.${table} with no data`);
+      }
+      const [view] = await tx`select pg_get_viewdef('marts.signal_lookup'::regclass, true) definition`;
+      await tx.unsafe(`create materialized view ${prefix}_marts.signal_lookup as ${String(view!.definition).replace(/;\s*$/, "").replace(/\b(core|marts|reference|raw)\./g, `${prefix}_$1.`)} with no data`);
+      const q = isolatedSql(tx as unknown as DbSql, prefix);
+      const indexes = () => tx`select indexname, indexdef from pg_indexes where schemaname = ${prefix + "_marts"}
+        and tablename in ('da_transactions', 'contract_transactions') order by indexname collate "C"`;
+      expect((await indexes()).length).toBe(0);
+      await q`insert into core.entities(id,name_display) values(1,'Autoritate'),(2,'Furnizor')`;
+      await q`insert into core.awards(id,ca_notice_id,authority_entity_id) values(1,100,1)`;
+      await q`insert into core.contracts(id,ca_notice_id,contract_date,contract_value,currency,title) values(1,100,'2025-07-15T09:00:00Z',100,'RON','Contract')`;
+      await q`insert into core.contract_winners(contract_id,entity_id) values(1,2)`;
+      await q`insert into core.direct_acquisitions(id,sicap_da_id,authority_entity_id,supplier_entity_id,state,closing_value,finalization_date)
+        values(1,99001,1,2,'Oferta acceptata',12.34,'2025-07-15T09:00:00Z')`;
+      expect((await runMarts(q)).createdIndexes).toEqual(["ctx_county_idx", "ctx_county_ent_idx", "ctx_cpv_idx", "ctx_cpv_val_idx"]);
+      const built = await buildTransactionMarts(q as unknown as Parameters<typeof buildTransactionMarts>[0]);
+      expect(built.createdIndexes).toEqual(["da_tx_county_date_idx", "da_tx_county_ent_idx", "da_tx_cpv_idx", "da_tx_cpv_val_idx"]);
+      // With the covering twins, which the DA build always drops and builds again.
+      expect((await indexes()).map(r => [r.indexname, r.indexdef])).toEqual([...TRANSACTION_MART_INDEXES, ...TRANSACTION_MART_BUILD_INDEXES]
+        .map(index => [index.name, index.definition.replace(" ON marts.", ` ON ${prefix}_marts.`)])
+        .sort(([a], [b]) => a! < b! ? -1 : 1));
+      // The next nightly build finds them and creates nothing.
+      expect((await buildTransactionMarts(q as unknown as Parameters<typeof buildTransactionMarts>[0])).createdIndexes).toEqual([]);
       throw rollback;
     })).rejects.toBe(rollback);
   });
@@ -681,6 +716,145 @@ describe("ONRC and MF joins only through a corroborated CUI", () => {
       expect((await corroborated())["2095043"]).toBe(true);
       throw rollback;
     })).rejects.toBe(rollback);
+  }, 30_000);
+});
+
+// Plan F5 / F6a phase 2 (24 October 2026): firm columns for Ask's filters, built
+// from data already imported. Firm names are fictitious.
+describe("registration year, seat and main CPV division of the firms", () => {
+  it("reads both ONRC formats, picks the seat deterministically, splits the map by seat and names a main division", async () => {
+    const prefix = `firm_registry_fixture_${process.pid}_${Date.now()}`;
+    const rollback = Error("rollback firm registry fixture");
+    await expect(sql.begin(async tx => {
+      await tx`select set_config('TimeZone', 'UTC', true)`;
+      for (const [schema, names] of Object.entries(tables)) {
+        await tx.unsafe(`create schema ${prefix}_${schema}`);
+        for (const table of [...names, ...(schema === "marts" ? ["entity_flags", "flag_instances"] : [])])
+          await tx.unsafe(`create table ${prefix}_${schema}.${table} as table ${schema}.${table} with no data`);
+      }
+      const [view] = await tx`select pg_get_viewdef('marts.signal_lookup'::regclass, true) definition`;
+      await tx.unsafe(`create materialized view ${prefix}_marts.signal_lookup as ${String(view!.definition).replace(/;\s*$/, "").replace(/\b(core|marts|reference|raw)\./g, `${prefix}_$1.`)} with no data`);
+      const q = isolatedSql(tx as unknown as DbSql, prefix);
+      await q`insert into core.entities (id,name_display,cui_canonical,cui_valid,county,country_code,is_foreign) values
+        (1,'Spitalul Judetean Cluj',null,false,'Cluj',null,false),
+        (2,'Primaria Sectorului 1',null,false,'Bucuresti',null,false),
+        (10,'Firma Veche SRL','10',true,'Cluj',null,false),
+        (11,'Firma Noua SRL','11',true,null,'RO',false),
+        (12,'Firma Mutata SRL','12',true,'Bucuresti',null,false),
+        (13,'Firma Egala SRL','13',true,'Cluj',null,false),
+        (14,'Firma Din SEAP SRL',null,false,'SIBIU',null,false),
+        (15,'Firma Fara Sediu SRL',null,false,null,null,false),
+        (16,'Exemplu Bau GmbH','16',true,'NA','DE',true),
+        (17,'Esempio Costruzioni SpA',null,false,null,'IT',false),
+        (18,'PFA Popescu Ion','18',true,null,null,false),
+        (19,'Firma Fara Judet Nou SRL','19',true,'Timis',null,false),
+        (20,'Firma Mare SRL','20',true,'Cluj',null,false),
+        (21,'Firma Nehotarata SRL','21',true,'Cluj',null,false),
+        (22,'Firma Renumerotata SRL','22',true,'Bucuresti',null,false)`;
+      // 12: a seat move (Bucharest 2010, Ilfov 2023); 13: two old 2015 numbers from two
+      // county offices, one of them the SEAP county (the higher sequence, 100, is lower
+      // as text than 99); 16: a foreign firm whose name ONRC corroborates; 18: a PFA (F);
+      // 19: the latest number names no county; 21: two old 2015 numbers, neither in the
+      // SEAP county (undecided); 22: an old and a new 2024 number (the new one is later).
+      const registry = [
+        ["J12/345/2004", "10", "FIRMA VECHE SRL", "Cluj"],
+        ["J2024000123408", "11", "FIRMA NOUA SRL", "Bucureşti"],
+        ["J40/1000/2010", "12", "FIRMA MUTATA SRL", "Bucureşti"],
+        ["J2023000555123", "12", "FIRMA MUTATA SRL", "Ilfov"],
+        ["J12/99/2015", "13", "FIRMA EGALA SRL", "Cluj"],
+        ["J05/100/2015", "13", "FIRMA EGALA SRL", "Bihor"],
+        ["J40/16/2016", "16", "EXEMPLU BAU SRL", "Bucureşti"],
+        ["F12/661/2014", "18", "POPESCU ION PERSOANA FIZICA AUTORIZATA", "Cluj"],
+        ["J35/5/2001", "19", "FIRMA FARA JUDET NOU SRL", "Timiş"],
+        ["J2025000001001", "19", "FIRMA FARA JUDET NOU SRL", ""],
+        ["J12/7/2019", "20", "FIRMA MARE SRL", "Cluj"],
+        ["J05/7/2015", "21", "FIRMA NEHOTARATA SRL", "Bihor"],
+        ["J02/8/2015", "21", "FIRMA NEHOTARATA SRL", "Arad"],
+        ["J40/50000/2024", "22", "FIRMA RENUMEROTATA SRL", "Bucureşti"],
+        ["J2024000001123", "22", "FIRMA RENUMEROTATA SRL", "Ilfov"],
+      ] as const;
+      const loadRegistry = async (rows: readonly (readonly [string, string, string, string])[]) => {
+        await q`delete from reference.onrc_firm`;
+        for (const [j, cui, name, county] of rows)
+          await q`insert into reference.onrc_firm (j_number,cui,name,county,snapshot_date) values (${j},${cui},${name},${county},'2026-07-08')`;
+      };
+      await loadRegistry(registry);
+      await q`insert into core.cpv_codes (code,name_ro) values ('45000000-7','Lucrări'),('44000000-0','Materiale'),('33600000-6','Medicamente'),('33100000-1','Echipamente'),('09100000-0','Combustibili')`;
+      // Per firm, the main-division case: 10 45 (60%); 11 33 (two classes); 12 an exact
+      // 50/50 tie; 13 no half; 14 half in 45, half without CPV; 15 the 2.5M DA is
+      // outside the profile, so 09; 20 only a DA above the ceiling (no profile).
+      await q`insert into core.direct_acquisitions (id,sicap_da_id,authority_entity_id,supplier_entity_id,state,closing_value,finalization_date,cpv_code) values
+        (1,9001,1,10,'Oferta acceptata',60,'2025-03-01','45000000-7'),(2,9002,1,10,'Oferta acceptata',40,'2025-03-01','44000000-0'),
+        (3,9003,1,11,'Oferta acceptata',30,'2025-03-01','33600000-6'),(4,9004,2,11,'Oferta acceptata',20,'2025-03-01','33100000-1'),
+        (5,9005,1,12,'Oferta acceptata',50,'2025-03-01','45000000-7'),(6,9006,1,12,'Oferta acceptata',50,'2025-03-01','44000000-0'),
+        (7,9007,1,13,'Oferta acceptata',40,'2025-03-01','45000000-7'),(8,9008,1,13,'Oferta acceptata',30,'2025-03-01','44000000-0'),
+        (9,9009,1,13,'Oferta acceptata',30,'2025-03-01','33600000-6'),
+        (10,9010,1,14,'Oferta acceptata',50,'2025-03-01','45000000-7'),(11,9011,1,14,'Oferta acceptata',50,'2025-03-01',null),
+        (12,9012,1,15,'Oferta acceptata',2500000,'2025-03-01','45000000-7'),(13,9013,1,15,'Oferta acceptata',5,'2025-03-01','09100000-0'),
+        (14,9014,1,16,'Oferta acceptata',70,'2025-03-01','45000000-7'),(15,9015,1,17,'Oferta acceptata',80,'2025-03-01','45000000-7'),
+        (16,9016,1,18,'Oferta acceptata',90,'2025-03-01','45000000-7'),(17,9017,1,19,'Oferta acceptata',10,'2025-03-01','45000000-7'),
+        (18,9018,1,null,'Oferta acceptata',7,'2025-03-01','45000000-7'),(19,9019,1,20,'Oferta acceptata',3000000,'2025-03-01','45000000-7'),
+        (20,9020,1,10,'Oferta refuzata',1000,'2025-03-01','09100000-0'),
+        (21,9021,2,21,'Oferta acceptata',4,'2025-03-01','45000000-7'),(22,9022,2,22,'Oferta acceptata',6,'2025-03-01','45000000-7')`;
+      // A consortium contract in Cluj: Firma Veche (Cluj) and Firma Mutata (now Ilfov).
+      await q`insert into core.awards (id,ca_notice_id,notice_no,authority_entity_id,cpv_code,acquisition_type,ron_contract_value,state_date)
+        values (1,1000,'CAN-SEAT',1,'45000000-7','Lucrari',100,'2025-01-10')`;
+      await q`insert into core.contracts (id,ca_notice_id,contract_no,contract_value,contract_date,currency,title)
+        values (100,1000,'1',100,'2025-02-01','RON','Contract')`;
+      await q`insert into core.contract_winners (contract_id,entity_id) values (100,10),(100,12)`;
+
+      const seats = async () => (await q`select entity_id::int id, role, registered_year, seat_county, seat_source
+        from marts.entity_profile order by entity_id, role`).map(r => [r["id"], r["role"], r["registered_year"], r["seat_county"], r["seat_source"]]);
+      const report = await runMarts(q);
+      const expected = [
+        [1, "authority", null, null, null], [2, "authority", null, null, null],
+        [10, "supplier", 2004, "Cluj", "onrc"], [11, "supplier", 2024, "Bucuresti", "onrc"],
+        [12, "supplier", 2010, "Ilfov", "onrc"], [13, "supplier", 2015, "Cluj", "onrc"],
+        [14, "supplier", null, "Sibiu", "seap"], [15, "supplier", null, null, null],
+        [16, "supplier", null, null, "foreign"], [17, "supplier", null, null, "foreign"],
+        [18, "supplier", 2014, "Cluj", "onrc"], [19, "supplier", 2001, "Timis", "seap"],
+        [21, "supplier", 2015, "Cluj", "seap"], [22, "supplier", 2024, "Ilfov", "onrc"],
+      ];
+      expect(await seats()).toEqual(expected);
+      expect(report.firmRegistry).toEqual({ registeredYear: 8, seat: { onrc: 6, seap: 3, foreign: 2, unknown: 1 } });
+      // The SQL reads each number as onrcRegistration does.
+      expect(registry.map(([j]) => onrcRegistration(j)?.year)).toEqual([2004, 2024, 2010, 2023, 2015, 2015, 2016, 2014, 2001, 2025, 2019, 2015, 2015, 2024, 2024]);
+      // Deterministic: the register loaded in reverse order gives the same seats.
+      await loadRegistry([...registry].reverse());
+      await q`update marts.entity_profile set registered_year = null, seat_county = null, seat_source = null`;
+      await applyFirmRegistry(q as unknown as Parameters<typeof applyFirmRegistry>[0]);
+      expect(await seats()).toEqual(expected);
+
+      await buildTransactionMarts(q as unknown as Parameters<typeof buildTransactionMarts>[0]);
+      const columns = (await tx`select column_name from information_schema.columns
+        where table_schema = ${prefix + "_marts"} and table_name = 'agg_map_county' order by ordinal_position`).map(r => r["column_name"]);
+      expect(columns).toEqual(["county", "v_plaf", "n_plaf", "v_all", "n_all", ...AGG_MAP_COUNTY_SEAT_COLUMNS]);
+      const map = Object.fromEntries((await q`select * from marts.agg_map_county`).map(r => [String(r["county"]),
+        Object.fromEntries(Object.entries(r).filter(([k]) => k !== "county").map(([k, v]) => [k, Number(v)]))]));
+      // Cluj: same = 10 (100 + its 50 of the contract), 13 (100) and 18 (90); other = 11
+      // (30, in București), 12 (100 + 50, now Ilfov), 14 (100, Sibiu), 19 (10);
+      // foreign = 16, 17; unknown = 15 (5) and the DA without supplier (7). Above the
+      // ceiling (v_all only): 15's 2.5M, and 20's 3M, unknown because 20 has no profile.
+      expect(map["Cluj"]).toMatchObject({
+        v_plaf: 792, n_plaf: 18, v_all: 5500792, n_all: 20,
+        v_plaf_same: 340, n_plaf_same: 7, v_plaf_other: 290, n_plaf_other: 7, v_plaf_bucuresti: 30, n_plaf_bucuresti: 1,
+        v_plaf_foreign: 150, n_plaf_foreign: 2, v_plaf_unknown: 12, n_plaf_unknown: 2,
+        v_all_same: 340, n_all_same: 7, v_all_unknown: 5500012, n_all_unknown: 4,
+      });
+      // In București a București firm is 'same', never 'bucuresti'; 21 (Cluj) and 22 (Ilfov) are other.
+      expect(map["Bucuresti"]).toMatchObject({ v_plaf: 30, v_plaf_same: 20, v_plaf_other: 10, v_plaf_bucuresti: 0 });
+      for (const county of Object.values(map))
+        for (const scope of ["plaf", "all"])
+          expect(["same", "other", "foreign", "unknown"].reduce((sum, seat) => sum + county[`v_${scope}_${seat}`]!, 0)).toBe(county[`v_${scope}`]);
+
+      await runFlagMarts(q, { transactions: false });
+      expect((await q`select entity_id::int id, role, main_cpv_div from marts.entity_flags order by entity_id, role`).map(r => [r["id"], r["role"], r["main_cpv_div"]]))
+        .toEqual([[1, "authority", null], [2, "authority", null], [10, "supplier", "45"], [11, "supplier", "33"], [12, "supplier", null],
+          [13, "supplier", null], [14, "supplier", "45"], [15, "supplier", "09"], [16, "supplier", "45"], [17, "supplier", "45"],
+          [18, "supplier", "45"], [19, "supplier", "45"], [21, "supplier", "45"], [22, "supplier", "45"]]);
+      throw rollback;
+    })).rejects.toBe(rollback);
+    expect(await sql`select nspname from pg_namespace where nspname like ${`${prefix}_%`}`).toHaveLength(0);
   }, 30_000);
 });
 

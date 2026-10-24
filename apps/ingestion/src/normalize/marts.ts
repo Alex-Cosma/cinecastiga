@@ -1,6 +1,7 @@
 import { contractReportable, contractDatePlausible, cuiCorroborated, refreshCuiCorroborations } from '@seap/db';
-import { contractRonValue, canonicalContract, assertContractIdentityQuality, assertContractExclusionsQuality, CONTRACT_VALUE_CAP_RON, winnerIsSupplier } from "@seap/db";
+import { contractRonValue, canonicalContract, assertContractIdentityQuality, assertContractExclusionsQuality, CONTRACT_VALUE_CAP_RON, winnerIsSupplier, ensureTransactionMartIndexes } from "@seap/db";
 import type { DbSql, SnapshotHashCache } from "@seap/db";
+import { applyFirmRegistry, type FirmRegistryReport } from "./firm-registry.js";
 
 /**
  * Rebuild display marts atomically from the same procurement population used by
@@ -21,6 +22,10 @@ export interface MartsReport {
   topPartners: number;
   concentration: number;
   contractTransactions: number;
+  /** Covering indexes the build had to recreate (empty when none was lost). */
+  createdIndexes: string[];
+  /** Supplier profiles with an ONRC registration year, and per seat source. */
+  firmRegistry: FirmRegistryReport;
 }
 
 const TOP_ENTITIES_LIMIT = 200;
@@ -137,6 +142,8 @@ export async function runMarts(
       left join core.ted_lot_results tlr on tlr.id = cc.ted_lot_result_id
       left join core.ted_notices tn on tn.id = tlr.ted_notice_id
     `;
+    // Ask's county/CPV answers read these index-only; recreated here if lost.
+    const createdIndexes = await ensureTransactionMartIndexes(q, "contract_transactions");
 
     // Shared transaction population. Use contract values already allocated per
     // recorded winner, never an award-notice total repeated over its contracts.
@@ -295,6 +302,8 @@ export async function runMarts(
       ) cf
       where e.id = ep.entity_id and ep.role = 'supplier' and ${cuiCorroborated(q, 'e')}
     `;
+    // ONRC registration year and the firm's seat (ONRC, then SEAP) for Ask's filters.
+    const firmRegistry = await applyFirmRegistry(q);
 
     // ── spend_by_county (choropleth source, both roles) ─────────────────────
     await q`
@@ -385,6 +394,8 @@ export async function runMarts(
       topPartners: tp!.c as number,
       concentration: ac!.c as number,
       contractTransactions: ctx!.c as number,
+      createdIndexes,
+      firmRegistry,
     };
   });
 
@@ -395,5 +406,7 @@ export async function runMarts(
       `top_partners=${report.topPartners}, concentration=${report.concentration}, ` +
       `contract_transactions=${report.contractTransactions}`,
   );
+  log(`marts firm registry: registered_year=${report.firmRegistry.registeredYear} seat=${JSON.stringify(report.firmRegistry.seat)}`);
+  if (report.createdIndexes.length) log(`marts: recreated missing indexes ${report.createdIndexes.join(", ")}`);
   return report;
 }

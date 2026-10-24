@@ -1,0 +1,60 @@
+import type { ReactNode } from "react";
+import HelpTip from "../builder/HelpTip";
+import type { KitTip } from "../builder/kit-types";
+
+/*
+ * Component 14, the strip beside the answer (P6): what applies at once and
+ * has numbers from the answer, or changes only the display. The same key as
+ * the sentence's may sit here (R2: mirrored; the caller hides it while the
+ * builder is open). "Vizual | Tabel" is always last (StripEnd). Each control
+ * keeps its own Tab stop and arrow keys, so the strip is a named group, not a
+ * toolbar with its own arrow navigation. The rows variant (scatter: "Primele
+ * după", "Semnal") puts each control on a labelled line.
+ */
+
+export default function AnswerStrip({ label = "Ajustează răspunsul", rows = false, children }: { label?: string; rows?: boolean; children: ReactNode }) {
+  return <div className={`fk-strip${rows ? " fk-strip--rows fk-tipwrap" : ""}`} role="group" aria-label={label}>{children}</div>;
+}
+
+/** A labelled line of the rows strip: the label (with its (?)) above the control on phones. */
+export function StripRow({ label, tip, children }: { label: string; tip?: KitTip; children: ReactNode }) {
+  return <div className="fk-strip-row">
+    <span className="fk-strip-label">{label}{tip && <HelpTip tip={tip} />}</span>
+    {children}
+  </div>;
+}
+
+/**
+ * A control with short words around it ("Arată [6 · 10 · 15] firme"). A label
+ * that would squeeze the control on a phone ("Împarte") is kept for screen
+ * readers only there (`smHide`).
+ */
+export function StripLabelled({ before, after, smHide = false, children }: { before?: string; after?: string; smHide?: boolean; children: ReactNode }) {
+  return <span className="fk-row">
+    {before && <span className={`fk-strip-label${smHide ? " fk-strip-label--sm-hide" : ""}`}>{before}</span>}
+    {children}
+    {after && <span className="fk-strip-label">{after}</span>}
+  </span>;
+}
+
+/** The end of the strip: "Vizual | Tabel". */
+export function StripEnd({ children }: { children: ReactNode }) {
+  return <span className="fk-strip-end">{children}</span>;
+}
+
+/** The suggestion to go down a level: "99,9% e Construcții · Detaliază ›" (R8: › is another answer). */
+export function Suggest({ text, action = "Detaliază", onClick }: { text: string; action?: string; onClick?: () => void }) {
+  return <button type="button" className="fk-suggest" onClick={onClick}>{text}<span aria-hidden="true">·</span><b>{action}<span className="fk-glyph" aria-hidden="true">›</span></b></button>;
+}
+
+/** The thread of a drill-down ("Domenii: toate › Construcții"): each step goes back; the current one is text. */
+export function Crumbs({ label, items, current }: { label: string; items: readonly { label: string; onClick?: () => void; href?: string }[]; current: string }) {
+  return <nav className="fk-crumbs" aria-label={label}>
+    <span>{label}:</span>
+    {items.map((item, index) => <span className="fk-crumb" key={`${index}:${item.label}`}>
+      {item.href ? <a href={item.href}>{item.label}</a> : <button type="button" onClick={item.onClick}>{item.label}</button>}
+      <span aria-hidden="true">›</span>
+    </span>)}
+    <b aria-current="location">{current}</b>
+  </nav>;
+}

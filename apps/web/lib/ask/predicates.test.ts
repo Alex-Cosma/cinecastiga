@@ -164,13 +164,27 @@ describe("the conditions of a question", () => {
       "d.supplier_id in ( select ep.entity_id from marts.entity_profile ep where ep.role = 'supplier' and ep.employees is not null and ep.employees between $1 and $2 )",
       "substr(d.finalization_date, 1, 7) >= $1",
       "substr(d.finalization_date, 1, 7) <= $1",
+      // An id-anchored selection repeats the period as a range its (id, date) indexes can bound.
+      "d.finalization_date >= $1",
+      "d.finalization_date < $1",
     ]);
+    expect(texts(rowPredicates(ctx)).slice(-2)).toEqual(['d.finalization_date >= $1 ["2024-03"]', 'd.finalization_date < $1 ["2025-07"]']);
     expect(texts(profilePredicates(ctx, "authority", 10))).toEqual([
       'ef.role = $1 ["authority"]', "ef.n_das >= $1 [10]", 'lower(unaccent(ef.county)) = $1 ["cluj"]',
       'ef.entity_id = any($1::bigint[]) [["9404"]]', '(lower(unaccent(ef.name_display)) like $1) ["spital%"]',
     ]);
     // Firm profiles: the firm's own county, never the buyer's kind or locality.
     expect(texts(profilePredicates(ctx, "supplier", 20))).toEqual(['ef.role = $1 ["supplier"]', "ef.n_das >= $1 [20]", 'lower(unaccent(ef.county)) = $1 ["cluj"]']);
+  });
+
+  it("repeat the period as a range on id-anchored selections only", () => {
+    const range = (filters: AskSpec["filters"]) => texts(rowPredicates(ctxFor({ block: "stat", measure: "value", dataset: "da", filters })))
+      .filter((t) => t.startsWith("d.finalization_date"));
+    expect(range({ county: "Cluj", yearFrom: 2025, yearTo: 2025 })).toEqual([]);
+    expect(range({ supplierId: 22, yearFrom: 2025, yearTo: 2025 })).toEqual(['d.finalization_date >= $1 ["2025"]', 'd.finalization_date < $1 ["2026"]']);
+    expect(range({ authorityId: 11, yearFrom: 2024, yearTo: 2025, monthFrom: 1, monthTo: 12 }))
+      .toEqual(['d.finalization_date >= $1 ["2024-01"]', 'd.finalization_date < $1 ["2026-01"]']);
+    expect(range({ supplierId: 22, yearTo: 2023 })).toEqual(['d.finalization_date < $1 ["2024"]']);
   });
 
   it("count the record threshold over the rows of the same selection", () => {

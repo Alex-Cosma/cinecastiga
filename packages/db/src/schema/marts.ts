@@ -186,6 +186,19 @@ export const entityProfile = martsSchema.table(
     employees: integer("employees"),
     employeesYear: integer("employees_year"),
     netTurnover: numeric("net_turnover"),
+    /** Suppliers only (F5, 0086): the oldest year among the ONRC registration
+     *  numbers of a corroborated CUI, both formats (Jcc/n/yyyy and Jyyyy…).
+     *  A seat move gives a new number, hence the oldest. Null = no ONRC
+     *  number (foreign, not corroborated, no CUI) or a foreign seat. */
+    registeredYear: integer("registered_year"),
+    /** Suppliers only (F5, 0086): the firm's seat, in the county spelling of
+     *  `county` (the buyer county of the transaction rows). The latest ONRC
+     *  registration of a corroborated CUI first, else the SEAP county; null
+     *  for a foreign or unknown seat. Authority rows keep it null: an
+     *  authority's county is `county`. */
+    seatCounty: text("seat_county"),
+    /** 'onrc' | 'seap' | 'foreign'; null = seat unknown. */
+    seatSource: text("seat_source"),
   },
   (t) => [
     primaryKey({ columns: [t.entityId, t.role] }),
@@ -276,12 +289,20 @@ export const entityFlags = martsSchema.table(
     county: text("county"),
     nDas: integer("n_das").notNull().default(0),
     totalRon: numeric("total_ron"),
+    /** Ask's risk scatter x axis (compile.ts, case "scatter"): the very
+     * expression it binned at read time, ~0.8 s a pass on numeric. Stored by
+     * PostgreSQL on every insert, so it cannot drift from total_ron (0085). */
+    logTotalRon: numeric("log_total_ron").generatedAlwaysAs(sql`log(greatest(coalesce(total_ron, 0), 1))`),
     /** 0–1 binary CRI. */
     cri: numeric("cri"),
     /** Distinct flag types triggered. */
     nFlags: integer("n_flags").notNull().default(0),
     /** [{ code, severity, evidence }] for the triggered flags. */
     flags: jsonb("flags"),
+    /** Suppliers only (F6a phase 2, 0086): the CPV division (two digits) with
+     *  at least half of `total_ron`, the same DA population. Null when no
+     *  division has half, at an exact 50/50 tie, and for authorities. */
+    mainCpvDiv: text("main_cpv_div"),
   },
   (t) => [
     primaryKey({ columns: [t.entityId, t.role] }),
@@ -353,6 +374,8 @@ export const daTransactions = martsSchema.table(
     index("da_tx_authority_idx").on(t.authorityId, t.finalizationDate),
     index("da_tx_supplier_idx").on(t.supplierId, t.finalizationDate),
     index("da_tx_authority_value_idx").on(t.authorityId, t.closingValue),
+    // + 4 county/CPV indexes in TRANSACTION_MART_INDEXES (migration 0084):
+    // Drizzle cannot declare INCLUDE.
   ],
 );
 
@@ -505,5 +528,7 @@ export const contractTransactions = martsSchema.table(
     index("ctx_authority_idx").on(t.authorityId, t.finalizationDate),
     index("ctx_supplier_idx").on(t.supplierId, t.finalizationDate),
     index("ctx_single_idx").on(t.isSingleBidder),
+    // + 4 county/CPV indexes in TRANSACTION_MART_INDEXES (migration 0084):
+    // Drizzle cannot declare INCLUDE.
   ],
 );

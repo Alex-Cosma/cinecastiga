@@ -589,6 +589,27 @@
       "when": 1792750187637,
       "tag": "0083_contract_identity_source_state",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1792841905744,
+      "tag": "0084_transaction_mart_covering_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 85,
+      "version": "7",
+      "when": 1792846392083,
+      "tag": "0085_entity_flags_log_total_ron",
+      "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "7",
+      "when": 1792849584193,
+      "tag": "0086_firm_seat_registry_columns",
+      "breakpoints": true
     }
   ]
 }

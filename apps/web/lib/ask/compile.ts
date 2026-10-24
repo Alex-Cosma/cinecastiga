@@ -1,5 +1,6 @@
 import { canonicalAskIdentities } from "./canonical-identities";
 import { retiredChoicesText } from "./retired-terms";
+import { FORCE_CUSTOM_PLANS } from "../plan-cache";
 import type { DbSql } from "@seap/db";
 import { NEWER_VERSION_LINK, unimplementedSpecKeys, type AskSpec, type Dim } from "./spec";
 import type { Grounding } from "./ground";
@@ -14,6 +15,11 @@ import { describeConditions, type ConditionLabels } from "./filters/describe";
 import { retarget } from "./filters/retarget";
 import type { OriginHint } from "./filters/origin";
 import { PER_CAPITA_SOURCE, perCapitaCaveat, POPULATION_CARD_NOTE, readPerCapitaPopulations, type PerCapitaPopulations } from "./per-capita";
+import { martColumns } from "./mart-columns";
+import {
+  compareParties, compareSharedPartners, compareTopPartners, planRollup, rollupBreakdown, rollupCountyTable, rollupMap, rollupMinimumCond,
+  rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrend, scatterDensity, type RollupFilters, type RollupNeed, type RollupSource,
+} from "./rollups";
 import { sectorUnit } from "../peer-population";
 
 /**
@@ -474,6 +480,32 @@ export interface TableOpts {
   dir?: "asc" | "desc";
 }
 
+/**
+ * What a block groups by, for planRollup (rollups.ts); null for the blocks the
+ * rollups do not serve (profiles, relationships, compare, scatter).
+ */
+function rollupNeed(spec: AskSpec): RollupNeed | null {
+  switch (spec.block) {
+    case "stat": case "timeseries": case "map": return { by: "total" };
+    case "breakdown": return { by: "cpv" };
+    case "table": case "trend": return spec.dim === "county" ? { by: "county" } : { by: spec.dim === "supplier" ? "supplier" : "authority" };
+    default: return null;
+  }
+}
+
+/**
+ * The rollup plan of a selection, or null for its live query: the rollups are
+ * read only once the nightly build has created them (rollupsReady, with the
+ * pool, before the caller's transaction) and only for what planRollup can
+ * answer exactly.
+ */
+async function rollupPlanFor(sql: DbSql, spec: AskSpec, ctx: PredicateCtx): Promise<{ source: RollupSource; filters: RollupFilters } | null> {
+  const need = rollupNeed(spec);
+  if (!need || spec.measure === "value_per_capita" || !(await rollupsReady(sql))) return null;
+  const plan = planRollup(ctx, need);
+  return "source" in plan ? plan : null;
+}
+
 export async function runSpec(
   sql: DbSql,
   spec: AskSpec,
@@ -768,9 +800,14 @@ export async function runSpec(
     );
   }
 
+  // The nightly rollups answer the selections that otherwise group the transaction marts.
+  const rollup = isHistoricalProfile(spec) ? null : await rollupPlanFor(sql, spec, w);
+  const columns = spec.block === "scatter" ? await martColumns(sql) : null;
+
   // --- execute under guardrails
   const exec = async (): Promise<BlockData | { error: string }> => {
     return await sql.begin("read only", async (tx) => {
+      await tx.unsafe(FORCE_CUSTOM_PLANS);
       await tx.unsafe(`set local statement_timeout = '${STATEMENT_TIMEOUT}'`);
       const s = tx as unknown as DbSql;
 
@@ -792,7 +829,7 @@ export async function runSpec(
             };
           }
           if (dataset === "all") {
-            const r = (await s`
+            const r = rollup ? (await rollupStat(s, rollup)).rows as { src: "da" | "contracts"; v: string; n: string }[] : (await s`
               select d.src, coalesce(sum(d.closing_value), 0) v, count(*) n
               from ${txtAgg} d
               where ${whereFrag()}
@@ -812,7 +849,7 @@ export async function runSpec(
               },
             };
           }
-          const r = (await s`
+          const r = rollup ? (await rollupStat(s, rollup)).rows : (await s`
             select coalesce(sum(d.closing_value), 0) v, count(*) n
             from ${txtAgg} d
             where ${whereFrag()}
@@ -835,18 +872,18 @@ export async function runSpec(
                 .map((p) => ({ year: Number(p.y), value: Number(p.v), count: Number(p.n) })),
             };
           }
-          const r = (await s`
+          const r = rollup ? (await rollupTimeseries(s, rollup)).rows : (await s`
             select substr(d.finalization_date, 1, 4) y,
                    coalesce(sum(d.closing_value), 0) v, count(*) n
             from ${txtAgg} d
             where ${whereFrag()}
             group by 1 order by 1
             limit 60
-          `) as unknown as { y: string; v: string; n: string }[];
+          `) as unknown as { y: string | null; v: string; n: string }[];
           return {
             block: "timeseries",
             series: r
-              .filter((p) => /^\d{4}$/.test(p.y))
+              .filter((p) => /^\d{4}$/.test(p.y ?? ""))
               .map((p) => ({ year: Number(p.y), value: Number(p.v), count: Number(p.n) })),
           };
         }
@@ -869,7 +906,7 @@ export async function runSpec(
               unknown: { value: Number(rest?.v ?? 0), count: Number(rest?.n ?? 0) },
             };
           }
-          const r = (await s`
+          const r = rollup ? (await rollupMap(s, rollup)).rows : (await s`
             select nullif(d.county, '') c, coalesce(sum(d.closing_value), 0) v, count(*) n
             from ${txtAgg} d
             where ${whereFrag()}
@@ -896,8 +933,15 @@ export async function runSpec(
             : s`limit ${topN}`;
           const dir = tableOpts.dir === "asc" ? s`asc nulls first` : s`desc nulls last`;
           const dim = spec.dim ?? "authority";
-          const pagedMeta = (total: number) =>
-            paged ? { total, page, pageSize: TABLE_PAGE_SIZE } : {};
+          // The paged total is the number of ranked groups, `count(*) over ()`
+          // on the grouped rows before LIMIT/OFFSET in the ranking statement
+          // itself. A separate count(distinct) read the whole selection again:
+          // 5–8 s on the national supplier ranking. Only a page past the end
+          // has no row to carry it; that page counts on its own.
+          const pagedMeta = async (r: { te: string }[], count: () => Promise<{ t: string }[]>) =>
+            paged
+              ? { total: r[0] ? Number(r[0].te) : page > 0 ? Number((await count())[0]?.t ?? 0) : 0, page, pageSize: TABLE_PAGE_SIZE }
+              : {};
           if (bare && !paged && spec.measure !== "value_per_capita") {
             const ord =
               spec.measure === "count" ? s`${aggN} desc, eid` : s`${aggV} desc, eid`;
@@ -920,6 +964,18 @@ export async function runSpec(
               })),
             };
           }
+          const rollupOpts = {
+            measure: spec.measure === "count" ? "count" as const : "value" as const, paged, topN, page, pageSize: TABLE_PAGE_SIZE,
+            ...(tableOpts.sort ? { sort: tableOpts.sort } : {}), ...(tableOpts.dir ? { dir: tableOpts.dir } : {}),
+          };
+          if (dim === "county" && rollup) {
+            const r = await rollupCountyTable(s, rollup, rollupOpts);
+            return {
+              block: "table",
+              rows: r.rows.map((p) => ({ entityId: null, name: p.c, county: null, value: Number(p.v), count: Number(p.n), population: null })),
+              ...(paged ? { total: r.total ?? 0, page, pageSize: TABLE_PAGE_SIZE } : {}),
+            };
+          }
           if (dim === "county") {
             const sortFrag = {
               name: s`c`,
@@ -928,20 +984,18 @@ export async function runSpec(
               count: s`n`,
               percap: s`v`,
             }[tableOpts.sort ?? (spec.measure === "count" ? "count" : "value")];
-            const cnt = paged
-              ? ((await s`
-                  select count(distinct d.county) t from ${txtAgg} d
-                  where ${whereFrag()} and d.county is not null
-                `) as unknown as { t: string }[])
-              : null;
+            const count = () => s`
+              select count(distinct d.county) t from ${txtAgg} d
+              where ${whereFrag()} and d.county is not null
+            ` as unknown as Promise<{ t: string }[]>;
             const r = (await s`
-              select d.county c, coalesce(sum(d.closing_value), 0) v, count(*) n
+              select d.county c, coalesce(sum(d.closing_value), 0) v, count(*) n, count(*) over () te
               from ${txtAgg} d
               where ${whereFrag()} and d.county is not null
               group by 1
               order by ${sortFrag} ${tableOpts.sort ? dir : s`desc`}, c
               ${limitFrag}
-            `) as unknown as { c: string; v: string; n: string }[];
+            `) as unknown as { c: string; v: string; n: string; te: string }[];
             return {
               block: "table",
               rows: r.map((p) => ({
@@ -952,7 +1006,7 @@ export async function runSpec(
                 count: Number(p.n),
                 population: null,
               })),
-              ...pagedMeta(Number(cnt?.[0]?.t ?? 0)),
+              ...(await pagedMeta(r, count)),
             };
           }
           const idCol = dim === "authority" ? s`d.authority_id` : s`d.supplier_id`;
@@ -968,24 +1022,23 @@ export async function runSpec(
             const populations = s`unnest(${s.array(perCapita!.ids)}::bigint[], ${s.array(perCapita!.populations)}::integer[]) rpl(entity_id, population)`;
             // Repeating the id list as a predicate lets it reach the authority indexes of both streams.
             const eligible = perCapitaPredicate(s, perCapita!.ids);
-            const cnt = paged
-              ? ((await s`
-                  select count(distinct d.authority_id) t
-                  from ${txtAggNames} d
-                  join ${populations} on rpl.entity_id = d.authority_id
-                  where ${whereFrag()} and ${eligible}
-                `) as unknown as { t: string }[])
-              : null;
+            const count = () => s`
+              select count(distinct d.authority_id) t
+              from ${txtAggNames} d
+              join ${populations} on rpl.entity_id = d.authority_id
+              where ${whereFrag()} and ${eligible}
+            ` as unknown as Promise<{ t: string }[]>;
             const r = (await s`
               select d.authority_id id, max(d.authority_name) nm, max(d.county) co,
-                     coalesce(sum(d.closing_value), 0) v, count(*) n, max(rpl.population) pop
+                     coalesce(sum(d.closing_value), 0) v, count(*) n, max(rpl.population) pop,
+                     count(*) over () te
               from ${txtAggNames} d
               join ${populations} on rpl.entity_id = d.authority_id
               where ${whereFrag()} and ${eligible}
               group by d.authority_id
               order by ${sortFrag} ${tableOpts.sort ? dir : s`desc`}, d.authority_id
               ${limitFrag}
-            `) as unknown as { id: string; nm: string; co: string | null; v: string; n: string; pop: string }[];
+            `) as unknown as { id: string; nm: string; co: string | null; v: string; n: string; pop: string; te: string }[];
             return {
               block: "table",
               rows: r.map((p) => ({
@@ -996,16 +1049,24 @@ export async function runSpec(
                 count: Number(p.n),
                 population: Number(p.pop),
               })),
-              ...pagedMeta(Number(cnt?.[0]?.t ?? 0)),
+              ...(await pagedMeta(r, count)),
+            };
+          }
+          const rolled = rollup ? await rollupTable(s, rollup, { ...rollupOpts, dim }) : null;
+          if (rolled && "rows" in rolled) {
+            const first = rolled.rows[0];
+            return {
+              block: "table",
+              rows: rolled.rows.map((p) => ({ entityId: String(p.id), name: p.nm, county: p.co, value: Number(p.v), count: Number(p.n), population: null })),
+              ...(paged ? { total: rolled.total ?? 0, page, pageSize: TABLE_PAGE_SIZE } : {}),
+              ...(first?.tv !== undefined ? { totals: { value: Number(first.tv), count: Number(first.tn), entities: Number(first.te) } } : {}),
             };
           }
           const sortKey = tableOpts.sort ?? (spec.measure === "count" ? "count" : "value");
-          const cnt = paged
-            ? ((await s`
-                select count(distinct ${idCol}) t from ${txtAgg} d
-                where ${whereFrag()} and ${idCol} is not null
-              `) as unknown as { t: string }[])
-            : null;
+          const count = () => s`
+            select count(distinct ${idCol}) t from ${txtAgg} d
+            where ${whereFrag()} and ${idCol} is not null
+          ` as unknown as Promise<{ t: string }[]>;
           if (sortKey === "value" || sortKey === "count" || sortKey === "percap") {
             // Aggregate WITHOUT names (index-only over the slim union — names
             // would force a heap fetch per row, a full seq scan on big
@@ -1044,7 +1105,7 @@ export async function runSpec(
                 count: Number(p.n),
                 population: null,
               })),
-              ...pagedMeta(Number(cnt?.[0]?.t ?? 0)),
+              ...(await pagedMeta(r, count)),
               ...(first ? { totals: { value: Number(first.tv), count: Number(first.tn), entities: Number(first.te) } } : {}),
             };
           }
@@ -1062,17 +1123,17 @@ export async function runSpec(
           const r = (await s`
             with g as (
               select ${idCol} id, max(${nameCol}) nm,
-                     coalesce(sum(d.closing_value), 0) v, count(*) n
+                     coalesce(sum(d.closing_value), 0) v, count(*) n, count(*) over () te
               from ${txtAggNames} d
               where ${whereFrag()} and ${idCol} is not null
               group by ${idCol}
             )
-            select g.id, g.nm, ep.county co, g.v, g.n
+            select g.id, g.nm, ep.county co, g.v, g.n, g.te
             from g
             left join marts.entity_profile ep on ep.entity_id = g.id and ep.role = ${dim}
             order by ${sortFrag} ${tableOpts.sort ? dir : s`desc`}, g.id
             ${limitFrag}
-          `) as unknown as { id: string; nm: string; co: string | null; v: string; n: string }[];
+          `) as unknown as { id: string; nm: string; co: string | null; v: string; n: string; te: string }[];
           return {
             block: "table",
             rows: r.map((p) => ({
@@ -1083,7 +1144,7 @@ export async function runSpec(
               count: Number(p.n),
               population: null,
             })),
-            ...pagedMeta(Number(cnt?.[0]?.t ?? 0)),
+            ...(await pagedMeta(r, count)),
           };
         }
 
@@ -1093,9 +1154,10 @@ export async function runSpec(
           // acquisitions and ignores the filters. The two are labelled apart.
           const ids = [focalId!, compareId!];
           const party = focalRole === "authority" ? s`d.authority_id` : s`d.supplier_id`;
-          const other = focalRole === "authority" ? s`d.supplier_id` : s`d.authority_id`;
-          const otherName = focalRole === "authority" ? s`d.supplier_name` : s`d.authority_name`;
           const where = whereFrag();
+          // Partners, top partners and shared partners group the slim union and
+          // name the shown partners from entity_profile after (rollups.ts).
+          const partners = { source: txtAgg as unknown as ReturnType<DbSql>, where, focalRole, focalId: focalId!, compareId: compareId! };
           const src = dataset === "all" ? s`d.src` : s`${dataset}::text`;
           // The number of bids is published only for part of the contracts (mostly via TED).
           const singleBid = dataset === "da" ? s`0 single_bid, 0 single_known` : s`count(*) filter (where d.is_single_bidder) single_bid, count(*) filter (where d.is_single_bidder is not null) single_known`;
@@ -1107,7 +1169,7 @@ export async function runSpec(
             s`select ${party}::text id, ${src} src, sum(d.closing_value)::text value, count(*)::int n, ${singleBid},
                      coalesce(sum(d.closing_value) filter (where d.cpv_code is null), 0)::text no_cpv
               from ${txtAgg} d where ${where} group by 1, 2`,
-            s`select ${party}::text id, count(distinct ${other})::int n from ${txtAgg} d where ${where} and ${other} is not null group by 1`,
+            compareParties(s, partners),
             s`select ${party}::text id, substr(d.finalization_date, 1, 4)::int y, sum(d.closing_value)::text value
               from ${txtAgg} d where ${where} and d.finalization_date is not null group by 1, 2`,
             s`select id, g, value, groups from (
@@ -1116,18 +1178,8 @@ export async function runSpec(
                        count(*) over (partition by ${party})::int groups
                 from ${txtAgg} d where ${where} and d.cpv_code is not null group by ${party}, 2) x
               where r <= ${COMPARE_DOMAINS}`,
-            s`select id, other_id, name, value, n from (
-                select ${party}::text id, ${other}::text other_id, max(${otherName}) name, sum(d.closing_value)::text value, count(*)::int n,
-                       row_number() over (partition by ${party} order by sum(d.closing_value) desc, ${other}) r
-                from ${txtAggNames} d where ${where} and ${other} is not null group by ${party}, ${other}) x
-              where r <= 4`,
-            s`select ${other}::text other_id, max(${otherName}) name,
-                     coalesce(sum(d.closing_value) filter (where ${party} = ${focalId!}), 0)::text value_a, count(*) filter (where ${party} = ${focalId!})::int n_a,
-                     coalesce(sum(d.closing_value) filter (where ${party} = ${compareId!}), 0)::text value_b, count(*) filter (where ${party} = ${compareId!})::int n_b,
-                     count(*) over ()::int total
-              from ${txtAggNames} d where ${where} and ${other} is not null
-              group by ${other} having count(distinct ${party}) = 2
-              order by sum(d.closing_value) desc, ${other} limit 30`,
+            compareTopPartners(s, partners),
+            compareSharedPartners(s, partners),
             // Firms only: contracts both won, with the public page key of each.
             focalRole === "supplier" && contractRows
               ? s`select k.ca_notice_contract_id::text nid, max(d.authority_name) authority, min(d.finalization_date) date,
@@ -1257,12 +1309,14 @@ export async function runSpec(
           // full 8-digit code). Otherwise: top-level divisions (2-digit).
           const plen = w.cpvPrefixes.reduce((a, p) => Math.max(a, p.length), 0);
           const stemLen = plen === 0 ? 2 : Math.min(plen + 2, 8);
-          const r = (await s`
+          const rolled = rollup ? await rollupBreakdown(s, rollup, stemLen) : null;
+          // Equal values come out by stem, as from the rollup.
+          const r = rolled && "rows" in rolled ? rolled.rows : (await s`
             select substr(d.cpv_code, 1, ${stemLen}) stem,
                    coalesce(sum(d.closing_value), 0) v, count(*) n
             from ${txtAgg} d
             where ${whereFrag()} and d.cpv_code is not null
-            group by 1 order by v desc
+            group by 1 order by v desc, stem
           `) as unknown as { stem: string; v: string; n: string }[];
           const top = r.slice(0, 8);
           const rest = r.slice(8);
@@ -1302,38 +1356,9 @@ export async function runSpec(
             cri: string;
             n_flags: number;
           }[];
-          // full-population density layer (same filters as the sample)
-          const NX = 80;
-          const NY = 46;
-          const ext = (await s`
-            select min(log(greatest(coalesce(ef.total_ron, 0), 1))) mn,
-                   max(log(greatest(coalesce(ef.total_ron, 0), 1))) mx,
-                   count(*) n
-            from marts.entity_flags ef
-            where ${efWhere(role as "authority" | "supplier", RISK_MIN_DAS)} and ef.cri is not null
-          `) as unknown as { mn: string | null; mx: string | null; n: string }[];
-          let density: ScatterDensity | undefined;
-          const popN = Number(ext[0]?.n ?? 0);
-          if (popN > 0 && ext[0]!.mn !== null) {
-            const mn = Number(ext[0]!.mn);
-            const mx = Math.max(Number(ext[0]!.mx), mn + 0.01);
-            const cells = (await s`
-              select width_bucket(log(greatest(coalesce(ef.total_ron, 0), 1)), ${mn}, ${mx + 1e-9}, ${NX}) bx,
-                     width_bucket(coalesce(ef.cri, 0), 0, 1.0000001, ${NY}) by,
-                     count(*) n
-              from marts.entity_flags ef
-              where ${efWhere(role as "authority" | "supplier", RISK_MIN_DAS)} and ef.cri is not null
-              group by 1, 2
-            `) as unknown as { bx: number; by: number; n: string }[];
-            density = {
-              minLog: mn,
-              maxLog: mx,
-              nx: NX,
-              ny: NY,
-              total: popN,
-              cells: cells.map((c) => [Number(c.bx), Number(c.by), Number(c.n)]),
-            };
-          }
+          // full-population density layer (same filters as the sample), from the
+          // stored log_total_ron once migration 0085 has added it (rollups.ts)
+          const density = await scatterDensity(s, efWhere(role as "authority" | "supplier", RISK_MIN_DAS), columns?.logTotal ?? false);
           return {
             block: "scatter",
             points: r.map((p) => ({
@@ -1545,8 +1570,10 @@ export async function runSpec(
           }
           const topN = spec.topN ?? 10;
           const dim = spec.dim ?? "authority";
+          const rolledTrend = rollup ? await rollupTrend(s, rollup, { dim, yearA: yA, yearB: yB, topN }) : null;
           if (dim === "county") {
-            const r = (await s`
+            // Equal changes come out by county, as from the rollup.
+            const r = rolledTrend && "rows" in rolledTrend ? rolledTrend.rows.map((p) => ({ c: p.nm, va: p.va, vb: p.vb })) : (await s`
               select d.county c,
                      coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yA)}), 0) va,
                      coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yB)}), 0) vb
@@ -1557,7 +1584,7 @@ export async function runSpec(
               order by abs(
                 coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yB)}), 0)
                 - coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yA)}), 0)
-              ) desc
+              ) desc, c
               limit ${topN}
             `) as unknown as { c: string; va: string; vb: string }[];
             return {
@@ -1575,7 +1602,8 @@ export async function runSpec(
           }
           const idCol = dim === "authority" ? s`d.authority_id` : s`d.supplier_id`;
           const nameCol = dim === "authority" ? s`d.authority_name` : s`d.supplier_name`;
-          const r = (await s`
+          // Equal changes come out by id, as from the rollup (consortium partners share a value).
+          const r = rolledTrend && "rows" in rolledTrend ? rolledTrend.rows : (await s`
             select ${idCol} id, max(${nameCol}) nm, max(d.county) co,
                    coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yA)}), 0) va,
                    coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yB)}), 0) vb
@@ -1586,7 +1614,7 @@ export async function runSpec(
             order by abs(
               coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yB)}), 0)
               - coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yA)}), 0)
-            ) desc
+            ) desc, ${idCol}
             limit ${topN}
           `) as unknown as { id: string; nm: string; co: string | null; va: string; vb: string }[];
           return {
@@ -1855,6 +1883,9 @@ export async function runRows(
   }
   // The question's conditions, written for the sources as for the answer (predicates.ts).
   const ctx = predicateContext(sql, spec, grounding, { dataset, yearFrom, yearTo });
+  // The rollups give the record threshold's party list and, without a local
+  // filter, the totals of a selection without entity conditions (rollups.ts).
+  const rollup = profile || valueWinner ? null : await rollupPlanFor(sql, spec, ctx);
   let profileParts: ReturnType<DbSql>[];
   if (spec.block === "compare") {
     profileParts = [sql`ef.role = ${role}`, sql`ef.entity_id in (${focalId!}, ${grounding.compare!.entityId!})`];
@@ -1937,7 +1968,10 @@ export async function runRows(
       notes.push(`Schimbare între ${yearFrom ?? minY} și ${yearTo ?? maxY}: sursele includ numai cei doi ani; diferența este totalul final minus totalul inițial.`);
     }
     if (spec.minimumRecords) {
-      parts.push(...groupPredicates(ctx, txt as unknown as ReturnType<DbSql>, andAll(sql, parts)));
+      // Counted over the selection itself (rowPredicates): the rollups hold the same party list.
+      const party = (spec.minimumRecords.role === "authority" ? sql`d.authority_id` : sql`d.supplier_id`) as unknown as ReturnType<DbSql>;
+      const fromRollups = rollup && !isRelationship && spec.block !== "trend" ? rollupMinimumCond(sql, rollup, party) : null;
+      parts.push(...(fromRollups ? [fromRollups] : groupPredicates(ctx, txt as unknown as ReturnType<DbSql>, andAll(sql, parts))));
       if (conditions.minimumRecords?.note) notes.push(conditions.minimumRecords.note);
     }
     if (valueWinner) {
@@ -1984,6 +2018,9 @@ export async function runRows(
     localParts.push(sql`strpos(lower(unaccent(concat_ws(' ', d.da_code, d.authority_name, d.supplier_name, d.cpv_name, d.cpv_code, d.county, d.ref_id::text))), ${fold(search)}) > 0`);
   }
   const localWhere = localParts.reduce((a, b) => sql`${a} and ${b}`);
+  // The blocks whose source condition rollupSourceTotals adds itself.
+  const totalsBlock = spec.block === "stat" || spec.block === "map" || spec.block === "breakdown" || spec.block === "timeseries" ? spec.block
+    : spec.block === "table" && spec.dim === "county" ? "county" as const : null;
   const defaultSort = !profile && !grounding.authority?.entityId && !grounding.supplier?.entityId ? "source" : "value";
   const sortKey: DrillSort = opts.sort && Object.hasOwn(DRILL_SORTS, opts.sort) ? opts.sort : defaultSort;
   const sortFrag = { source: sql`d.ref_id`, value: sql`d.closing_value`, date: sql`d.finalization_date`, authority: sql`d.authority_name`, supplier: sql`d.supplier_name`, county: sql`d.county`, cpv: sql`d.cpv_name` }[sortKey];
@@ -1993,12 +2030,15 @@ export async function runRows(
   const pageSize = opts.limit && opts.limit > 0 ? Math.min(Math.floor(opts.limit), CSV_MAX_ROWS) : DRILL_PAGE_SIZE;
 
   return await sql.begin("isolation level repeatable read read only", async (tx) => {
+    await tx.unsafe(FORCE_CUSTOM_PLANS);
     await tx.unsafe(`set local statement_timeout = '${opts.capture ? '15min' : STATEMENT_TIMEOUT}'`);
     // The production database uses SSD costs. Keep the same covering-index
     // choices in local source verification without changing database settings.
     await tx.unsafe("set local random_page_cost = 1.1");
     const s = tx as unknown as DbSql;
-    const totals = (await readEvidenceQuery(s`
+    const rolledTotals = rollup && totalsBlock && localParts.length === 1 && Object.keys(scope).every((key) => key === "role")
+      ? await rollupSourceTotals(s, rollup, totalsBlock) : null;
+    const totals = rolledTotals && "rows" in rolledTotals ? rolledTotals.rows : (await readEvidenceQuery(s`
       select d.state, count(*) n, coalesce(sum(d.closing_value), 0)::text v,
              count(*) filter (where ${localWhere}) fn,
              coalesce(sum(d.closing_value) filter (where ${localWhere}), 0)::text fv,
