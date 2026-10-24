@@ -52,7 +52,7 @@ export default function OptionList({ label, options, multiple = false, value = n
             aria-checked={on}
             aria-disabled={option.disabled ? true : undefined}
             tabIndex={multiple ? undefined : index === stop ? 0 : -1}
-            onClick={() => { if (!option.disabled && (multiple || !on)) onChange?.(option.value, "activate"); }}
+            onClick={() => { if (!option.disabled) onChange?.(option.value, "activate"); }}
           >
             <span className="fk-opt-mark" aria-hidden="true" />
             <span className="fk-opt-t">

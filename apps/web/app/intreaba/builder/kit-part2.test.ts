@@ -1,7 +1,7 @@
 import { createElement, type FunctionComponent } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import Bands, { EMPLOYEE_BANDS, bandRange, bandsMessage, bandsWords } from "./Bands";
+import Bands, { EMPLOYEE_BANDS, bandRange, bandsMessage, bandsWords, spokenCount } from "./Bands";
 import EntitySearch, { resultGroups, type SearchResult } from "./EntitySearch";
 import PeriodPicker, { EMPTY_RANGE, PeriodRange, YEAR_COLUMNS, YearGrid, periodRangeError } from "./PeriodPicker";
 
@@ -20,7 +20,9 @@ describe("the adjoining bands (10)", () => {
     expect(markup).toContain('class="fk-bands" role="group" aria-label="Benzi de angajați"');
     const buttons = tags(markup, "button");
     expect(buttons.map(button => attr(button, "aria-pressed"))).toEqual(["false", "true", "true", "false", "false"]);
-    expect(buttons.map(button => attr(button, "aria-label"))).toEqual(["Fără angajați, 6", "1–9 angajați, 123", "10–49 de angajați, 69", "50–249 de angajați, 29", "Cel puțin 250 de angajați, 21"]);
+    // Each name starts with what the band shows (WCAG 2.5.3) and says what its number counts.
+    expect(buttons.map(button => attr(button, "aria-label"))).toEqual(["0 angajați, 6 firme", "1–9 angajați, 123 de firme", "10–49 de angajați, 69 de firme", "50–249 de angajați, 29 de firme", "250+ angajați, 21 de firme"]);
+    for (const band of EMPLOYEE_BANDS) expect(band.name?.startsWith(band.label), band.label).toBe(true);
     expect(markup).toMatch(/<div class="fk-opt fk-opt--rest">[^]*Fără bilanț[^]*4,1% · 34/);
     expect(markup).toContain('role="status" aria-live="polite"'); // what a press chose besides itself is said
     expect(markup).not.toMatch(/<input/); // no free fields (kit §5.5)
@@ -32,8 +34,20 @@ describe("the adjoining bands (10)", () => {
     expect(bandsWords({ min: 1, max: 49 })).toBe("Firme cu 1–49 de angajați");
     expect(bandsWords({ min: 1, max: 9 })).toBe("Firme cu 1–9 angajați");
     expect(bandsWords({ min: 0, max: 0 })).toBe("Firme fără angajați");
-    expect(bandsWords({ min: 0, max: 9 })).toBe("Firme cu 0–9 angajați");
     expect(bandsWords({ min: 250, max: null })).toBe("Firme cu cel puțin 250 de angajați");
+  });
+  it("says a run from 0 as “cel mult”, and all the bands as the firms with a balance sheet", () => {
+    expect(bandsWords({ min: 0, max: 9 })).toBe("Firme cu cel mult 9 angajați");
+    expect(bandsWords({ min: 0, max: 49 })).toBe("Firme cu cel mult 49 de angajați");
+    // Every band still leaves out the rest row ("Fără bilanț"): never "cel puțin 0 angajați".
+    expect(bandsWords(bandRange(EMPLOYEE_BANDS, EMPLOYEE_BANDS.map(band => band.value))!)).toBe("Firme cu bilanț");
+  });
+  it("reads a whole count with its noun, anything else as shown", () => {
+    expect(spokenCount("6", ["firmă", "firme"])).toBe("6 firme");
+    expect(spokenCount("1", ["firmă", "firme"])).toBe("1 firmă");
+    expect(spokenCount("1.234", ["firmă", "firme"])).toBe("1.234 de firme");
+    expect(spokenCount("4,1% · 34", ["firmă", "firme"])).toBe("4,1% · 34");
+    expect(html(Bands, { label: "Benzi", bands: [{ ...EMPLOYEE_BANDS[1]!, count: "20" }], value: [], noun: ["partener", "parteneri"] })).toContain('aria-label="1–9 angajați, 20 de parteneri"');
   });
   it("announces the bands a press chose or dropped besides itself", () => {
     expect(bandsMessage(EMPLOYEE_BANDS, [2], [])).toBe("Am ales și 10–49.");
@@ -94,7 +108,8 @@ describe("the period (12)", () => {
     expect(markup).toContain('class="fk-years" role="radiogroup" aria-label="Anul" data-roving=""');
     const radios = tags(markup, "button");
     expect(radios.map(radio => attr(radio, "tabindex"))).toEqual(["-1", "0", "-1", "-1", "-1"]);
-    expect(radios.map(radio => attr(radio, "aria-label"))).toEqual(["2024, 7", "2025, 7", "2026, până la 25 sept., 7", "Interval", "2017"]);
+    expect(radios.map(radio => attr(radio, "aria-label"))).toEqual(["2024, 7 înregistrări", "2025, 7 înregistrări", "2026, până la 25 sept., 7 înregistrări", "Interval", "2017"]);
+    expect(html(YearGrid, { label: "Anul", years: [{ value: "2024", label: "2024", count: "21" }], value: null, noun: ["contract", "contracte"] })).toContain('aria-label="2024, 21 de contracte"');
     expect(attr(radios[2]!, "class")).toBe("fk-year is-partial");
     expect(attr(radios[3]!, "class")).toBe("fk-year is-zero");
     expect(attr(radios[4]!, "aria-disabled")).toBe("true");

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { KeyboardEvent } from "react";
-import { comboboxKey, debounce, gridTarget, menuButtonKey, menuKey, popoverPlacement, rovingGridKeyDown, rovingKeyDown, rovingStop, rovingTarget, toggleBand } from "./keyboard";
+import { comboboxKey, debounce, gridTarget, menuButtonKey, menuKey, popoverPlacement, revealDelta, rovingGridKeyDown, rovingKeyDown, rovingStop, rovingTarget, toggleBand } from "./keyboard";
 
 // Kit §8: one Tab stop per group, arrows move and choose, disabled options are skipped.
 describe("roving tabindex", () => {
@@ -104,6 +104,29 @@ describe("window placement", () => {
   });
   it("never starts above the top gutter, even when taller than both sides", () => {
     expect(popoverPlacement(anchor(10, 300), { width: 340, height: 900 }, { width: 1280, height: 800 }).top).toBeGreaterThanOrEqual(16);
+  });
+  it("pulls a window that fits on neither side up until its bottom is on screen", () => {
+    // 1280×720, the phrase at 30% of the height, the period window with its free range open (537 px).
+    const viewport = { width: 1280, height: 720 };
+    for (const trigger of [anchor(200, 216), anchor(200, 420)]) {
+      const { top } = popoverPlacement(trigger, { width: 340, height: 537 }, viewport);
+      expect(top).toBeGreaterThanOrEqual(16);
+      expect(top + 537).toBeLessThanOrEqual(720 - 16);
+    }
+    expect(popoverPlacement(anchor(200, 216), { width: 340, height: 537 }, viewport).top).toBe(720 - 16 - 537);
+    // Still under the trigger when that already fits, above it when that fits.
+    expect(popoverPlacement(anchor(200, 100), { width: 340, height: 537 }, viewport).top).toBe(138);
+    expect(popoverPlacement(anchor(200, 640), { width: 340, height: 537 }, viewport).top).toBe(640 - 8 - 537);
+  });
+});
+
+describe("revealing the active result", () => {
+  it("scrolls its box only as far as needed, and not at all when it is in view", () => {
+    const box = { top: 100, bottom: 400 };
+    expect(revealDelta({ top: 150, bottom: 198 }, box)).toBe(0);
+    expect(revealDelta({ top: 380, bottom: 428 }, box)).toBe(28);
+    expect(revealDelta({ top: 60, bottom: 108 }, box)).toBe(-40);
+    expect(revealDelta({ top: 120, bottom: 520 }, box)).toBe(20); // taller than the box: its top in view
   });
 });
 
@@ -209,6 +232,15 @@ describe("the combobox", () => {
   });
   it("leaves Home, End, Tab and letters to the field", () => {
     for (const key of ["Home", "End", "Tab", "a", " "]) expect(comboboxKey(key, { active: 1, expanded: true }, 3, true)).toBeNull();
+  });
+  it("never picks from the previous text's results while the new search is due or loading", () => {
+    // "cluj" found 3; "buzău" is typed and Enter comes before its results: wait, then pick the first fresh one.
+    expect(comboboxKey("Enter", open, 3, true, true, true)).toEqual({ wait: true });
+    expect(comboboxKey("Enter", { active: 1, expanded: true }, 3, true, false, true)).toEqual({ wait: true });
+    expect(comboboxKey("ArrowDown", open, 3, true, true, true)).toBeNull(); // the old list is not walked
+    expect(comboboxKey("ArrowUp", open, 3, true, true, true)).toBeNull();
+    expect(comboboxKey("Escape", open, 3, true, true, true)).toEqual({ clear: true }); // Escape still works
+    expect(comboboxKey("Enter", open, 3, true, true, false)).toEqual({ pick: 0 });
   });
 });
 

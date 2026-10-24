@@ -124,7 +124,7 @@ export function menuKey(key: string, current: number, labels: readonly string[])
 }
 
 export interface ComboState { active: number; expanded: boolean }
-export type ComboKey = { state: ComboState } | { pick: number } | { clear: true } | null;
+export type ComboKey = { state: ComboState } | { pick: number } | { wait: true } | { clear: true } | null;
 
 /**
  * A key in the field of a combobox (entity search, "Unde e …?"; WAI
@@ -132,10 +132,15 @@ export type ComboKey = { state: ComboState } | { pick: number } | { clear: true 
  * Enter picks it (or the first result, as the site's search does), Escape
  * first leaves the list, then empties the field, and only then is left to the
  * window (null), which closes. `inline` lists stay drawn under the field;
- * the others collapse. Home/End stay the field's own.
+ * the others collapse. Home/End stay the field's own. While the typed text
+ * has no results yet (`busy`: the search is due or loading), the list on
+ * screen belongs to the previous text: ↑/↓ leave it alone and Enter waits
+ * for the fresh results (`wait`), so it never picks an out-of-date one.
  */
-export function comboboxKey(key: string, state: ComboState, count: number, hasText: boolean, inline = false): ComboKey {
+export function comboboxKey(key: string, state: ComboState, count: number, hasText: boolean, inline = false, busy = false): ComboKey {
   const { active, expanded } = state;
+  if (busy && (key === "ArrowDown" || key === "ArrowUp")) return null;
+  if (busy && key === "Enter" && hasText) return { wait: true };
   if (key === "ArrowDown" && count) return { state: { active: expanded && active >= 0 ? (active + 1) % count : 0, expanded: true } };
   if (key === "ArrowUp" && count) return { state: { active: expanded && active > 0 ? active - 1 : count - 1, expanded: true } };
   if (key === "Enter" && count && (expanded || inline)) return { pick: active >= 0 && active < count ? active : 0 };
@@ -194,18 +199,31 @@ export interface Box { top: number; bottom: number; left: number; right: number 
 /**
  * Where a desktop window opens: under its trigger, or above it when the
  * screen has no room below, and always inside the viewport with a gutter, so
- * it can never cause horizontal scroll.
+ * it can never cause horizontal scroll. A window that fits on neither side
+ * is pulled up until its bottom is inside the screen (it then covers its
+ * trigger): a fixed window cannot be scrolled to.
  */
 export function popoverPlacement(anchor: Box, pop: { width: number; height: number }, viewport: { width: number; height: number }, gutter = 16, gap = 8): { top: number; left: number } {
   const maxLeft = viewport.width - gutter - pop.width;
   const left = Math.max(gutter, Math.min(anchor.left, maxLeft));
   const below = anchor.bottom + gap, above = anchor.top - gap - pop.height;
-  const roomBelow = viewport.height - gutter - below, roomAbove = anchor.top - gap - gutter;
+  const roomBelow = viewport.height - gutter - below;
   let top: number;
   if (pop.height <= roomBelow) top = below;
   else if (above >= gutter) top = above;
-  else top = roomBelow >= roomAbove ? below : gutter;
+  else top = Math.min(below, viewport.height - gutter - pop.height);
   return { top: Math.round(Math.max(gutter, top)), left: Math.round(left) };
+}
+
+/**
+ * How far a scrolling box must scroll so an item is wholly inside it
+ * (negative: up), 0 when it already is: the active result of a search,
+ * scrolled into its list or its window without moving the page.
+ */
+export function revealDelta(item: { top: number; bottom: number }, box: { top: number; bottom: number }): number {
+  if (item.top < box.top) return item.top - box.top;
+  if (item.bottom > box.bottom) return Math.min(item.bottom - box.bottom, item.top - box.top);
+  return 0;
 }
 
 /** The elements a keyboard can reach inside `root`, in document order. */

@@ -58,8 +58,10 @@
 .fk-num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
 .fk-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .fk-nowrap{white-space:nowrap}
-/* (?) is a Term tip: it opens above the row that holds it (.fk-tipwrap), on the row's width. */
+/* (?) is a Term tip: it opens above the row that holds it (.fk-tipwrap), on the row's width.
+   Under 600 px a chip of a wrapping row is its own anchor (.fk-tipwrap-sm), so the tip opens over that chip, not over the whole row. */
 .fk-tipwrap{position:relative}
+.fk-tipwrap-sm{display:inline-flex;max-width:100%;min-width:0}
 .fk .term-tip{vertical-align:middle}
 /* The (?) mark at full strength in the kit (guide.css draws it at .75, under 3:1 on some fills). */
 .fk .term-tip .term-mark{opacity:1}
@@ -176,6 +178,9 @@ span.fk-chip-main:hover{background:none}
 .fk-sw--all{background:linear-gradient(90deg,var(--accent) 0 33%,var(--fk-new) 33% 66%,var(--fk-down) 66%)}
 .fk-sw--proc{background:var(--fk-proc)}
 .fk-sw--da{background:var(--fk-da)}
+/* A swatch with its word (SwatchLabel): they never wrap apart, so the key stays readable. */
+.fk-sw-l{display:inline-flex;align-items:baseline;gap:6px;white-space:nowrap}
+.fk-sw-l>.fk-sw{align-self:center}
 
 /* ---------- 8. Count groups (kind of change, which partners) ---------- */
 .fk-groups-head{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 10px;color:var(--muted);font-size:13px}
@@ -195,7 +200,9 @@ span.fk-chip-main:hover{background:none}
 dialog.fk-pop{position:fixed;inset:auto;margin:0;z-index:60;max-width:calc(100vw - 32px);max-height:min(560px,calc(100dvh - 32px));overflow:auto;overscroll-behavior:contain}
 dialog.fk-pop:not([open]){display:none}
 dialog.fk-pop::backdrop{background:color-mix(in srgb,var(--ink) 35%,transparent)}
-.fk-pop-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px}
+.fk-pop-head{position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px}
+/* In a window a (?) opens downward, inside its scroll area: above, the window's overflow would hide it. The title's opens under the title, on the head's width. */
+.fk-pop .term-tip>.term-def{top:calc(100% + 6px);bottom:auto}
 .fk-pop-title{display:flex;align-items:center;gap:4px;min-width:0}
 .fk-pop-head h3{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0;font:500 19px/1.3 var(--display);letter-spacing:-.3px;color:var(--ink);text-wrap:pretty}
 .fk-close{display:grid;place-items:center;width:33px;height:33px;border:1px solid var(--line);border-radius:50%;background:var(--sunk);color:var(--fk-muted-strong);font-size:16px;line-height:1;flex:none}
@@ -340,12 +347,12 @@ a.fk-menu-item{text-decoration:none}
 .fk-glyph{margin-left:.35em}
 
 /* ---------- 21. The total line and the longer list ---------- */
-.fk-total{display:flex;flex-wrap:wrap;align-items:center;gap:2px 6px;margin:12px 0 0;color:var(--muted);font-size:12.5px;line-height:1.55}
+/* Text in one flow (not flex): the (?) sits outside the live words and still stays on the line of the last two. */
+.fk-total{margin:12px 0 0;color:var(--muted);font-size:12.5px;line-height:1.55}
 .fk-total b{color:var(--ink2);font-weight:600}
 .fk-total .fk-num{color:var(--ink);font-size:12.5px}
 .fk-total-cond{color:var(--ink2);font-weight:500}
 .fk-total-sep{color:var(--faint)}
-.fk-total-part{display:inline-flex;flex-wrap:wrap;align-items:center;gap:2px 6px;min-width:0}
 .fk-total-cond{overflow-wrap:anywhere}
 .fk-listfoot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 14px;margin:12px 0 0}
 .fk-more-btn{display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:7px 12px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--ink2);font-size:13px;font-weight:500}
@@ -394,6 +401,7 @@ a.fk-menu-item{text-decoration:none}
   .fk-invite,.fk-chip-main,.fk-toggle,.fk-seg-opt,.fk-pill,.fk-suggest,.fk-relax button,.fk-chip--parked,.fk-more-btn{min-height:44px}
   .fk-chip-x{min-width:44px}
   .fk .term-tip>.term-trigger{min-width:44px;min-height:44px;margin-block:-10px}
+  .fk-tipwrap-sm{position:relative}
   .fk-more{width:44px;height:44px}
   .fk-menu-item,.fk-opt--link{min-height:48px}
   .fk-close{width:44px;height:44px}
@@ -403,7 +411,7 @@ a.fk-menu-item{text-decoration:none}
   .fk-seg-opt{flex:1 1 0;min-width:min-content;padding:6px;white-space:normal;text-align:center;flex-direction:column;gap:0}
   .fk-seg--sm .fk-seg-opt{min-height:44px}
   .fk-seg-l{display:inline;overflow-wrap:break-word}
-  .fk-seg-l>.fk-sw{display:inline-block;margin-right:4px;vertical-align:.05em}
+  .fk-seg-l .fk-sw-l{gap:4px}
   .fk-groups{grid-template-columns:repeat(2,minmax(0,1fr))}
   .fk-group--all{grid-column:1/-1}
   .fk-pop,.fk-pop--wide{width:100%;border-radius:17px 17px 0 0;border-bottom:0;padding:10px 16px 16px}

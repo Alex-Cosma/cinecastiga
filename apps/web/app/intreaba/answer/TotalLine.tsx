@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import HelpTip from "../builder/HelpTip";
 import type { KitTip } from "../builder/kit-types";
 
@@ -7,10 +7,11 @@ import type { KitTip } from "../builder/kit-types";
  * on every answer where an exclusion ("Scoate din calcul"), a selection row
  * (P3b) or the seat phrase changes the total: "Din 1.550.554.366 lei,
  * câștigați de 412 firme · fără SYSTRA · doar firmele cu sediul în alt județ
- * · valoare înregistrată, nu plăți (?)". It is a polite live region, read
- * whole, so the new total is heard after a chip or an exclusion. The words of
- * the conditions come from describeConditions(spec).totalLine (F1b); it never
- * asks for a second query.
+ * · valoare înregistrată, nu plăți (?)". Its words are a polite live region,
+ * read whole, so the new total is heard after a chip or an exclusion; the
+ * (?) stays outside it, or its definition would be read with every total. The
+ * words of the conditions come from describeConditions(spec).totalLine (F1b);
+ * it never asks for a second query.
  */
 
 export const RECORDED_VALUE = { text: "valoare înregistrată, nu plăți", tip: { id: "valoare-inregistrata" } } as const satisfies { text: string; tip: KitTip };
@@ -24,12 +25,19 @@ export interface TotalLineProps {
 }
 
 export default function TotalLine({ children, conditions = [], note = RECORDED_VALUE }: TotalLineProps) {
-  const sep = <span className="fk-total-sep" aria-hidden="true">·</span>;
-  // The (?) stays on the line of the note's last two words ("nu plăți (?)").
+  // One flow of text: a line breaks before a "·", never after it, so the dot goes with its condition.
+  const sep = <>{" "}<span className="fk-total-sep" aria-hidden="true">·</span>{" "}</>;
+  // The (?) stays on the line of the note's last two words ("nu plăți (?)"): both in one unbreakable
+  // span after the live words, which say those two words for screen readers, so the caveat is announced too.
   const split = note ? /^(.*?)(\S+\s+\S+|\S+)$/s.exec(note.text) : null;
-  return <p className="fk-total fk-tipwrap" aria-live="polite" aria-atomic="true">
-    <span>{children}</span>
-    {conditions.map(condition => <span className="fk-total-part" key={condition}>{sep}<span className="fk-total-cond">{condition}</span></span>)}
-    {note && <span className="fk-total-part">{sep}<span>{split?.[1]}<span className="fk-nowrap">{split?.[2] ?? note.text}{note.tip && <> <HelpTip tip={note.tip} /></>}</span></span></span>}
+  const last = split?.[2] ?? (note ? note.text : "");
+  const tip = note && note.tip ? note.tip : null;
+  return <p className="fk-total fk-tipwrap">
+    <span aria-live="polite" aria-atomic="true">
+      {children}
+      {conditions.map(condition => <Fragment key={condition}>{sep}<span className="fk-total-cond">{condition}</span></Fragment>)}
+      {note && <>{sep}{split?.[1]}<span className={tip ? "fk-sr" : "fk-nowrap"}>{last}</span></>}
+    </span>
+    {tip && <span className="fk-nowrap"><span aria-hidden="true">{last}</span> <HelpTip tip={tip} /></span>}
   </p>;
 }

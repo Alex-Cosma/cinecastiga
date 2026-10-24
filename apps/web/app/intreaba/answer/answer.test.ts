@@ -98,27 +98,44 @@ describe("the row menu (P7, menu button)", () => {
 });
 
 describe("the total line and the longer list (21)", () => {
-  it("is a polite live region read whole, with the conditions and the caveat on amounts", () => {
+  it("says its words in a polite live region read whole, with the conditions and the caveat on amounts", () => {
     const markup = html(TotalLine, { conditions: ["fără SYSTRA", "doar firmele cu sediul în alt județ"], children: "Din 1.550.554.366 lei, câștigați de 412 firme" });
-    expect(markup.startsWith('<p class="fk-total fk-tipwrap" aria-live="polite" aria-atomic="true">')).toBe(true);
-    expect(text(markup)).toMatch(/^Din 1\.550\.554\.366 lei, câștigați de 412 firme · fără SYSTRA · doar firmele cu sediul în alt județ · valoare înregistrată, nu plăți \?/);
-    expect(markup).toContain('<span class="fk-nowrap">nu plăți <span class="term term-tip');
+    expect(markup.startsWith('<p class="fk-total fk-tipwrap"><span aria-live="polite" aria-atomic="true">')).toBe(true);
+    const live = /<span aria-live="polite" aria-atomic="true">(.*?)<\/span><span class="fk-nowrap">/.exec(markup)?.[1] ?? "";
+    expect(text(live).replace(/ /g, " ")).toBe("Din 1.550.554.366 lei, câștigați de 412 firme · fără SYSTRA · doar firmele cu sediul în alt județ · valoare înregistrată, nu plăți");
     expect(text(html(TotalLine, { note: false, children: "Din 10 lei" }))).toBe("Din 10 lei");
   });
+  it("keeps the (?) out of the live region, on the line of the last two words", () => {
+    const markup = html(TotalLine, { children: "Din 10 lei" });
+    const live = /<span aria-live="polite" aria-atomic="true">(.*?)<\/span><span class="fk-nowrap">/.exec(markup)?.[1] ?? "";
+    expect(live).toMatch(/<span class="fk-sr">nu plăți<\/span>$/); // the caveat is announced, the definition is not
+    expect(live).not.toContain("term-");
+    // On screen: the two words and the (?) in one unbreakable span, the words hidden from the reader (said above).
+    expect(markup).toMatch(/<span class="fk-nowrap"><span aria-hidden="true">nu plăți<\/span> <span class="term term-tip[^"]*"><button[^>]*aria-label="Valoare înregistrată, nu plată: ce înseamnă"/);
+    expect(html(TotalLine, { note: { text: "valoare înregistrată, nu plăți" }, children: "Din 10 lei" })).not.toContain("fk-sr"); // no (?), no copy
+    // a line breaks before a "·", never between it and its condition
+    expect(html(TotalLine, { note: false, conditions: ["fără SYSTRA"], children: "Din 10 lei" })).toContain('Din 10 lei <span class="fk-total-sep" aria-hidden="true">·</span> <span class="fk-total-cond">fără SYSTRA</span>');
+  });
   it("pages by ten, shows all up to the caller's limit, and folds the rest in words", () => {
-    expect(listFootWords({ shown: 20, total: 412, noun: ["firmă", "firme"] })).toEqual({ more: "Arată încă 10", rest: "alte 392 de firme" });
-    expect(listFootWords({ shown: 10, total: 14, noun: ["firmă", "firme"] })).toEqual({ more: "Arată încă 4", rest: "alte 4 firme" });
-    expect(listFootWords({ shown: 5, total: 14, noun: ["firmă", "firme"], all: true })).toEqual({ more: "Arată toate cele 14", rest: "alte 9 firme" });
-    expect(listFootWords({ shown: 15, total: 282, noun: ["partener", "parteneri"], step: 15, restDetail: "25% din valoare" })).toEqual({ more: "Arată încă 15", rest: "alte 267 de parteneri · 25% din valoare" });
-    expect(listFootWords({ shown: 13, total: 14, noun: ["domeniu", "domenii"] }).rest).toBe("încă 1 domeniu");
-    expect(listFootWords({ shown: 14, total: 14, noun: ["firmă", "firme"] })).toEqual({ more: null, rest: null });
+    expect(listFootWords({ shown: 20, total: 412, noun: ["firmă", "firme", "f"] })).toEqual({ more: "Arată încă 10", rest: "alte 392 de firme" });
+    expect(listFootWords({ shown: 10, total: 14, noun: ["firmă", "firme", "f"] })).toEqual({ more: "Arată încă 4", rest: "alte 4 firme" });
+    expect(listFootWords({ shown: 5, total: 14, noun: ["firmă", "firme", "f"], all: true })).toEqual({ more: "Arată toate cele 14", rest: "alte 9 firme" });
+    expect(listFootWords({ shown: 14, total: 14, noun: ["firmă", "firme", "f"] })).toEqual({ more: null, rest: null });
+  });
+  it("agrees “alte” / “alți” and a single rest with the noun's gender", () => {
+    expect(listFootWords({ shown: 15, total: 282, noun: ["partener", "parteneri", "m"], step: 15, restDetail: "25% din valoare" })).toEqual({ more: "Arată încă 15", rest: "alți 267 de parteneri · 25% din valoare" });
+    expect(listFootWords({ shown: 10, total: 22, noun: ["furnizor", "furnizori", "m"] }).rest).toBe("alți 12 furnizori");
+    expect(listFootWords({ shown: 10, total: 40, noun: ["domeniu", "domenii", "n"] }).rest).toBe("alte 30 de domenii");
+    expect(listFootWords({ shown: 13, total: 14, noun: ["domeniu", "domenii", "n"] })).toEqual({ more: "Arată încă 1", rest: "un alt domeniu" });
+    expect(listFootWords({ shown: 13, total: 14, noun: ["partener", "parteneri", "m"] }).rest).toBe("un alt partener");
+    expect(listFootWords({ shown: 13, total: 14, noun: ["firmă", "firme", "f"] }).rest).toBe("o altă firmă");
   });
   it("draws the button, the folded rest as text, and the records at the end", () => {
-    const markup = html(ListFoot, { shown: 20, total: 412, noun: ["firmă", "firme"], records: { label: `Vezi cele ${recordsWords(124)}` } });
+    const markup = html(ListFoot, { shown: 20, total: 412, noun: ["firmă", "firme", "f"], records: { label: `Vezi cele ${recordsWords(124)}` } });
     expect(text(markup)).toBe("Arată încă 10 alte 392 de firme Vezi cele 124 de înregistrări →");
     expect(markup).toContain('<span class="fk-rest">alte 392 de firme</span>');
     expect(tags(markup, "button")).toHaveLength(2);
-    expect(html(ListFoot, { shown: 4, total: 4, noun: ["firmă", "firme"] })).toBe("");
+    expect(html(ListFoot, { shown: 4, total: 4, noun: ["firmă", "firme", "f"] })).toBe("");
   });
   it("moves focus to the first new row", () => {
     const rows = Array.from({ length: 20 }, () => ({ focus: vi.fn() }));

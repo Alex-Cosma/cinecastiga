@@ -54,7 +54,7 @@ export default function Pills({ label, options, value, onChange }: PillsProps) {
         aria-describedby={reason ? `${base}-r${index}` : undefined}
         title={reason}
         tabIndex={index === stop ? 0 : -1}
-        onClick={() => { if (!option.disabled && !on) onChange?.(option.value, "activate"); }}
+        onClick={() => { if (!option.disabled) onChange?.(option.value, "activate"); }}
       >
         {option.signal && <i className="fk-dot fk-dot--signal" aria-hidden="true" />}
         {option.label}

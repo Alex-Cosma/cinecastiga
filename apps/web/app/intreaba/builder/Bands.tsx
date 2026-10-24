@@ -23,19 +23,31 @@ export interface Band {
   max: number | null;
   /** The firms in the band on the draft, without this window's own key (R5), formatted upstream. */
   count?: string;
-  /** The accessible name before the count ("1–9 angajați", "Fără angajați"); the label otherwise. */
+  /**
+   * The accessible name before the count ("1–9 angajați"); the label
+   * otherwise. It starts with the label, so a speech user can say what is
+   * shown (WCAG 2.5.3).
+   */
   name?: string;
   className?: string;
 }
 
 /** The kit's bands of employees, the same on every question (kit §4 Angajați). */
 export const EMPLOYEE_BANDS: readonly Band[] = [
-  { value: "0", label: "0", min: 0, max: 0, name: "Fără angajați" },
+  { value: "0", label: "0", min: 0, max: 0, name: "0 angajați" },
   { value: "1-9", label: "1–9", min: 1, max: 9, name: "1–9 angajați" },
   { value: "10-49", label: "10–49", min: 10, max: 49, name: "10–49 de angajați" },
   { value: "50-249", label: "50–249", min: 50, max: 249, name: "50–249 de angajați" },
-  { value: "250+", label: "250+", min: 250, max: null, name: "Cel puțin 250 de angajați" },
+  { value: "250+", label: "250+", min: 250, max: null, name: "250+ angajați" },
 ];
+
+/**
+ * A count as it is said: a whole number shown as "1.234" gets its noun
+ * ("1.234 de firme", countWords); anything else is read as shown.
+ */
+export function spokenCount(count: string, noun: readonly [string, string]): string {
+  return /^\d{1,3}(\.\d{3})*$/.test(count) ? countWords(Number(count.replace(/\./g, "")), noun[0], noun[1]) : count;
+}
 
 /** The run the chosen bands cover, as the keys store it (min/maxEmployees); null when none. */
 export function bandRange(bands: readonly Band[], values: readonly string[]): { min: number; max: number | null } | null {
@@ -44,9 +56,15 @@ export function bandRange(bands: readonly Band[], values: readonly string[]): { 
   return { min: Math.min(...chosen.map(band => band.min)), max: chosen.some(band => band.max === null) ? null : Math.max(...chosen.map(band => band.max ?? 0)) };
 }
 
-/** What a run of employee bands applies, for the bottom button and the chip: "Firme cu 1–49 de angajați". */
+/**
+ * What a run of employee bands applies, for the bottom button and the chip:
+ * "Firme cu 1–49 de angajați". A run from 0 says "cel mult"; all the bands
+ * still leave out the firms without a balance sheet (the rest row), so they
+ * say "Firme cu bilanț", not a limit of 0.
+ */
 export function bandsWords(range: { min: number; max: number | null }): string {
   if (range.max === 0) return "Firme fără angajați";
+  if (range.min === 0) return range.max === null ? "Firme cu bilanț" : `Firme cu cel mult ${countWords(range.max, "angajat", "angajați")}`;
   if (range.max === null) return `Firme cu cel puțin ${countWords(range.min, "angajat", "angajați")}`;
   if (range.min === range.max) return `Firme cu ${countWords(range.max, "angajat", "angajați")}`;
   return `Firme cu ${range.min}–${countWords(range.max, "angajat", "angajați")}`;
@@ -68,9 +86,11 @@ export interface BandsProps {
   onChange?: (values: string[]) => void;
   /** "Fără bilanț · 4,1% · 34": not a band, so the window adds to 100%. */
   rest?: readonly KitRestRow[];
+  /** What the counts count, one and many, for the bands' names ("0 angajați, 6 firme"). */
+  noun?: readonly [string, string];
 }
 
-export default function Bands({ label, bands, value, onChange, rest = [] }: BandsProps) {
+export default function Bands({ label, bands, value, onChange, rest = [], noun = ["firmă", "firme"] }: BandsProps) {
   const [message, setMessage] = useState("");
   const pressed = bands.map(band => value.includes(band.value));
   return <>
@@ -80,7 +100,7 @@ export default function Bands({ label, bands, value, onChange, rest = [] }: Band
         type="button"
         className={`fk-band${band.className ? ` ${band.className}` : ""}`}
         aria-pressed={pressed[index]}
-        aria-label={`${band.name ?? band.label}${band.count ? `, ${band.count}` : ""}`}
+        aria-label={`${band.name ?? band.label}${band.count ? `, ${spokenCount(band.count, noun)}` : ""}`}
         onClick={() => {
           const next = toggleBand(pressed, index);
           setMessage(bandsMessage(bands, next.added, next.removed));

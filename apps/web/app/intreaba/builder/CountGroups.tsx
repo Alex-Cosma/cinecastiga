@@ -62,7 +62,7 @@ export default function CountGroups({ label, groups, value, onChange, head }: Co
           aria-disabled={group.disabled ? true : undefined}
           aria-describedby={typeof group.disabled === "string" ? `${base}-r${index}` : undefined}
           tabIndex={index === stop ? 0 : -1}
-          onClick={() => { if (!group.disabled && !on) onChange?.(group.value, "activate"); }}
+          onClick={() => { if (!group.disabled) onChange?.(group.value, "activate"); }}
         >
           <span className="fk-group-name">{group.swatch && <i className={`fk-sw fk-sw--${group.swatch}`} aria-hidden="true" />}{group.name}</span>
           <span className="fk-group-n">{group.count}</span>

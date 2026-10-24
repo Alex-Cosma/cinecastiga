@@ -38,5 +38,5 @@ export default function Toggle({ id, label, pressed, count, onToggle, availabili
     onClick={() => { if (!disabled) onToggle?.(id, !pressed); }}
   >{mark}{label}{count && <span className="fk-n">{count}</span>}</button>;
   if (!disabled) return button;
-  return <span className="fk-pair">{button}<DisabledReason id={reasonId} reason={disabled.reason} />{disabled.tip && <HelpTip tip={disabled.tip} />}</span>;
+  return <span className="fk-pair fk-tipwrap-sm">{button}<DisabledReason id={reasonId} reason={disabled.reason} />{disabled.tip && <HelpTip tip={disabled.tip} />}</span>;
 }

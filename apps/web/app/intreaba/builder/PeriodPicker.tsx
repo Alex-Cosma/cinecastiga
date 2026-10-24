@@ -1,6 +1,7 @@
 "use client";
 
 import { useId } from "react";
+import { spokenCount } from "./Bands";
 import { DisabledReason } from "./HelpTip";
 import { rovingGridKeyDown, rovingStop } from "./keyboard";
 import OptionList from "./pickers/OptionList";
@@ -38,7 +39,8 @@ export interface YearCell {
   className?: string;
 }
 
-export function YearGrid({ label, years, value, onChange }: { label: string; years: readonly YearCell[]; value: string | null; onChange?: (value: string, source: ChangeSource) => void }) {
+/** `noun`: what the counts count, for the names built here ("2024, 11 înregistrări"). */
+export function YearGrid({ label, years, value, onChange, noun = ["înregistrare", "înregistrări"] }: { label: string; years: readonly YearCell[]; value: string | null; onChange?: (value: string, source: ChangeSource) => void; noun?: readonly [string, string] }) {
   const base = useId();
   const checked = years.findIndex(year => year.value === value);
   const stop = rovingStop(checked, years.map(year => !!year.disabled));
@@ -59,9 +61,9 @@ export function YearGrid({ label, years, value, onChange }: { label: string; yea
         aria-checked={on}
         aria-disabled={year.disabled ? true : undefined}
         aria-describedby={reason ? `${base}-r${index}` : undefined}
-        aria-label={year.name ?? [year.label, year.partial, year.count].filter(Boolean).join(", ")}
+        aria-label={year.name ?? [year.label, year.partial, year.count && spokenCount(year.count, noun)].filter(Boolean).join(", ")}
         tabIndex={index === stop ? 0 : -1}
-        onClick={() => { if (!year.disabled && !on) onChange?.(year.value, "activate"); }}
+        onClick={() => { if (!year.disabled) onChange?.(year.value, "activate"); }}
       >{year.label}{year.count && <small>{year.count}</small>}</button>;
     })}
     {years.map((year, index) => typeof year.disabled === "string" && <DisabledReason key={`r${index}`} id={`${base}-r${index}`} reason={year.disabled} />)}
