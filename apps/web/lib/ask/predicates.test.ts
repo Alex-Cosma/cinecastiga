@@ -193,6 +193,8 @@ describe("the conditions of a question", () => {
     expect(range({ authorityId: 11, yearFrom: 2024, yearTo: 2025, monthFrom: 1, monthTo: 12 }))
       .toEqual(['d.finalization_date >= $1 ["2024-01"]', 'd.finalization_date < $1 ["2026-01"]']);
     expect(range({ supplierId: 22, yearTo: 2023 })).toEqual(['d.finalization_date < $1 ["2024"]']);
+    // A kind of institution is its list of ids (D1), read from the same (authority_id, finalization_date) indexes.
+    expect(range({ authorityKind: "spital", yearFrom: 2025, yearTo: 2025 })).toEqual(['d.finalization_date >= $1 ["2025"]', 'd.finalization_date < $1 ["2026"]']);
   });
 
   it("count the record threshold over the rows of the same selection", () => {
