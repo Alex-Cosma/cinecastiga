@@ -9,7 +9,7 @@ import type { DbSql } from "@seap/db";
 const national: RollupCtx = {
   plafond: "da-branch", population: null, minimumRecords: null, cpvPrefixes: [], cpvExclude: [], county: null, kind: null,
   authorityId: null, supplierId: null, uatSiruta: null, uatAuthorityIds: [], singleBidder: false,
-  minEmployees: null, maxEmployees: null, yearFrom: null, yearTo: null, monthFrom: null, monthTo: null,
+  minEmployees: null, maxEmployees: null, yearFrom: null, yearTo: null, monthFrom: null, monthTo: null, trendMonths: null,
   adminSupplierIds: null, comparison: null,
 };
 const source = (ctx: Partial<RollupCtx> & Record<string, unknown>, need: Parameters<typeof planRollup>[1]) => {
@@ -104,7 +104,7 @@ describe("which rollup answers a selection (24 Oct 2026 slow cases)", () => {
     const active: { [K in keyof RollupCtx]: RollupCtx[K] } = {
       plafond: "strict", population: without("supplier", "9"), minimumRecords: { role: "supplier", count: 2 }, cpvPrefixes: ["33"],
       cpvExclude: ["3361"], county: "Cluj", kind: "spital", authorityId: "1", supplierId: "2", uatSiruta: 1, uatAuthorityIds: ["3"],
-      singleBidder: true, minEmployees: 1, maxEmployees: 9, yearFrom: 2024, yearTo: 2025, monthFrom: 1, monthTo: 6,
+      singleBidder: true, minEmployees: 1, maxEmployees: 9, yearFrom: 2024, yearTo: 2025, monthFrom: 1, monthTo: 6, trendMonths: [1, 5],
       adminSupplierIds: ["4"], comparison: { role: "supplier", focalId: "2", compareId: "5" },
     };
     for (const key of Object.keys(active) as (keyof RollupCtx)[]) {

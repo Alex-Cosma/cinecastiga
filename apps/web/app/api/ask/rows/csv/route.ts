@@ -54,7 +54,8 @@ export async function POST(req: Request) {
       ? await withConnectionEvidence(sql, body.connection, async (q, bound) => runRows(q, bound.spec, bound.grounding, 0, opts))
       : await runRows(sql, v, await ground(sql, v.filters), 0, opts);
     if ("error" in result) {
-      return NextResponse.json({ ok: false, error: result.error }, { status: 200 });
+      // A trend's months moved with the data since its answer (plan §2.8): reload, never another list.
+      return NextResponse.json({ ok: false, error: result.error }, { status: "conflict" in result ? 409 : 200 });
     }
     const truncated = result.total > result.rows.length;
     const name = truncated

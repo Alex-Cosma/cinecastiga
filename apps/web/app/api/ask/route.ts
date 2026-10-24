@@ -125,6 +125,8 @@ export async function POST(req: Request) {
       caveats: result.caveats,
       data: result.data,
       ...(result.partialYears ? { partialYears: result.partialYears } : {}),
+      // A trend's months as executed; `spec` keeps `auto` (plan §2.8).
+      ...(result.executed ? { executed: result.executed } : {}),
       displaySql: result.displaySql,
       tookMs: result.tookMs,
     });

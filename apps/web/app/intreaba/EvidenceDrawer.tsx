@@ -28,13 +28,15 @@ export interface EvidenceDrawerProps {
   initialFilters?: EvidenceFilters | undefined;
   connection?: ConnectionEvidenceSelection | undefined;
   peer?: PeerEvidenceSelection | undefined;
+  /** A trend's executed months, sent with every request; not part of the scope saved links and watches keep. */
+  months?: readonly [number, number] | undefined;
 }
 
 type Response = ({ ok: true } & DrillResult) | { ok: false; error: string };
 const count = (n: number) => n.toLocaleString("ro-RO");
 const date = (value: string | null) => value ? value.split("-").reverse().join(".") : "Dată neprecizată";
 
-export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel, scope, onClose, onSave, initialFilters, connection, peer }: EvidenceDrawerProps) {
+export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel, scope, onClose, onSave, initialFilters, connection, peer, months }: EvidenceDrawerProps) {
   // Saved and followed selections keep both the question and the part opened.
   const title = scopeLabel ? `${questionTitle} · ${scopeLabel}` : questionTitle;
   const dialog = useRef<HTMLDialogElement>(null);
@@ -55,7 +57,7 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
   const [exporting, setExporting] = useState<"all" | "filtered" | null>(null);
   const [exportMessage, setExportMessage] = useState("");
   const exportController = useRef<AbortController | null>(null);
-  const queryKey = JSON.stringify({ spec, scope, connection, peer });
+  const queryKey = JSON.stringify({ spec, scope, connection, peer, months });
   const result = loadedKey === queryKey ? responseData : null;
   const activeQuery = useRef(queryKey);
   activeQuery.current = queryKey;

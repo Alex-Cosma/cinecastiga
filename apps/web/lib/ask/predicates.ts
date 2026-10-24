@@ -1,7 +1,7 @@
 import type { DbSql } from "@seap/db";
 import type { Grounding } from "./ground";
 import type { MinimumRecords, PopulationCondition, QueryPopulation } from "./population";
-import { namedKind, type AskSpec, type AuthorityKind, type Dataset } from "./spec";
+import { DEFAULT_TREND_MIN_BASE, namedKind, type AskSpec, type AuthorityKind, type Dataset, type MonthWindow, type TrendChange } from "./spec";
 import { authorityKindCond, KIND_LABEL } from "./authority-kind";
 
 /*
@@ -72,6 +72,8 @@ export interface PredicateCtx {
   /** 1–12; only applied together with the corresponding year bound. */
   monthFrom: number | null;
   monthTo: number | null;
+  /** trend: the same months of both years (sameMonthsWindow, resolved by the caller); null for whole years. */
+  trendMonths: MonthWindow | null;
   /** "Conduse de X": supplier ids of the person's firms (ONRC reps). */
   adminSupplierIds: string[] | null;
   plafond: Plafond;
@@ -89,7 +91,7 @@ export function predicateContext(
   sql: DbSql,
   spec: AskSpec,
   grounding: Grounding,
-  window: { dataset: Dataset; yearFrom: number | null; yearTo: number | null },
+  window: { dataset: Dataset; yearFrom: number | null; yearTo: number | null; trendMonths?: MonthWindow | null },
 ): PredicateCtx {
   const f = spec.filters;
   const authorityId = f.authorityName || f.authorityId ? grounding.authority?.entityId ?? null : null;
@@ -114,6 +116,7 @@ export function predicateContext(
     yearTo: window.yearTo,
     monthFrom: f.monthFrom ?? null,
     monthTo: f.monthTo ?? null,
+    trendMonths: spec.block === "trend" ? window.trendMonths ?? null : null,
     adminSupplierIds: grounding.admin ? grounding.admin.supplierIds : null,
     plafond: plafondFor(window.dataset),
     comparison: spec.block === "compare"
@@ -239,9 +242,66 @@ function periodRange(sql: DbSql, ctx: PredicateCtx): Fragment[] {
   return parts;
 }
 
-/** A trend counts only its two years: the answer's two sums and its sources (the period's place in rowPredicates). */
-export const trendYearsPredicate = (sql: DbSql, yearA: number, yearB: number): Fragment =>
-  sql`substr(d.finalization_date,1,4) in (${String(yearA)}, ${String(yearB)})`;
+/**
+ * A trend counts only its two years: the answer's two sums and its sources
+ * (the period's place in rowPredicates), and with `months` (PredicateCtx.trendMonths)
+ * the same months of each.
+ */
+export function trendYearsPredicate(sql: DbSql, yearA: number, yearB: number, months: MonthWindow | null = null): Fragment {
+  const years: Fragment = sql`substr(d.finalization_date,1,4) in (${String(yearA)}, ${String(yearB)})`;
+  if (!months) return years;
+  const mm = (m: number) => String(m).padStart(2, "0");
+  return sql`${years} and substr(d.finalization_date,6,2) between ${mm(months[0])} and ${mm(months[1])}`;
+}
+
+/** A trend's options as the engine applies them (plan §3; trend final §3.1, §3.8, §3.9). */
+export interface TrendGroup {
+  /** "all" when absent: today's answer, every change by its size in lei. */
+  change: TrendChange;
+  order: "lei" | "percent";
+  /** The order in percent ranks only the growths from at least this much in year A. */
+  minBase: number | null;
+  /** Of the new ones, only those whose first record in the archive is in year B. */
+  firstOnly: boolean;
+}
+export function trendGroupOf(spec: Pick<AskSpec, "trend">): TrendGroup {
+  const t = spec.trend ?? {};
+  const order = t.order ?? "lei";
+  return { change: t.change ?? "all", order, minBase: order === "percent" ? t.minBase ?? DEFAULT_TREND_MIN_BASE : null, firstOnly: t.firstOnly === true };
+}
+/** Today's list: no group, no other order. */
+export const isEveryChange = (group: TrendGroup): boolean => group.change === "all" && group.order === "lei" && !group.firstOnly;
+
+/**
+ * The group a trend lists, over the two sums of each entity or county (`va`,
+ * `vb`, aggregates of the grouped rows; trend final §3.1), as a HAVING, and
+ * the order of its list. Every entity has records in one of the two years, so
+ * growths (vA > 0, vB > vA), new (vA = 0, vB > 0), decreases (vB > 0, vB < vA),
+ * gone (vA > 0, vB = 0) and the equal ones partition it. `id` and `role` name
+ * the grouped entity for `firstOnly` (marts.entity_profile.first_activity in year B).
+ * The live query (runSpec), the rollups (rollupTrend) and the sources (runRows) share it.
+ */
+export function trendGroupSql(sql: DbSql, va: Fragment, vb: Fragment, group: TrendGroup,
+  first?: { id: Fragment; role: "authority" | "supplier"; yearB: number }): { having: Fragment | null; order: Fragment } {
+  const parts: Fragment[] = [];
+  let order: Fragment;
+  switch (group.change) {
+    case "up":
+      parts.push(sql`${va} > 0`, sql`${vb} > ${va}`);
+      if (group.order === "percent") parts.push(sql`${va} >= ${group.minBase ?? DEFAULT_TREND_MIN_BASE}`);
+      order = group.order === "percent" ? sql`${vb} / ${va}` : sql`${vb} - ${va}`;
+      break;
+    case "new": parts.push(sql`${va} = 0`, sql`${vb} > 0`); order = vb; break;
+    case "down": parts.push(sql`${vb} > 0`, sql`${vb} < ${va}`); order = sql`${va} - ${vb}`; break;
+    case "gone": parts.push(sql`${va} > 0`, sql`${vb} = 0`); order = va; break;
+    case "all": order = sql`abs(${vb} - ${va})`; break;
+  }
+  if (group.firstOnly && first) parts.push(sql`${first.id} in (
+    select ep.entity_id from marts.entity_profile ep
+    where ep.role = ${first.role} and substr(ep.first_activity, 1, 4) = ${String(first.yearB)}
+  )`);
+  return { having: parts.length ? andAll(sql, parts) : null, order };
+}
 
 /** Lei per inhabitant: only the administrations with a strict RPL 2021 population (per-capita.ts), in the ranking and its sources. */
 export const perCapitaPredicate = (sql: DbSql, ids: readonly string[]): Fragment =>
@@ -334,6 +394,10 @@ export function displayPredicates(ctx: PredicateCtx, table: string): string[] {
     if (ctx.monthTo !== null)
       conds.push(`luna <= '${ctx.yearTo}-${String(ctx.monthTo).padStart(2, "0")}'`);
     else conds.push(`an <= ${ctx.yearTo}`);
+  }
+  if (ctx.trendMonths) {
+    const mm = (m: number) => `'${String(m).padStart(2, "0")}'`;
+    conds.push(`luna between ${mm(ctx.trendMonths[0])} and ${mm(ctx.trendMonths[1])}  -- aceleași luni în ambii ani`);
   }
   if (ctx.minimumRecords) {
     const id = ctx.minimumRecords.role === "authority" ? "authority_id" : "supplier_id";
