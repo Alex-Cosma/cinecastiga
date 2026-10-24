@@ -5,7 +5,6 @@ import Link from "next/link";
 import ClipButton from "@/components/ClipButton";
 import FollowButton from "@/components/FollowButton";
 import { formatRon, formatRonFull, formatInt, cleanName } from "@/lib/format";
-import { countyMap, foldCounty } from "@/lib/map";
 import { encodeSpec, decodeSpec } from "@/lib/ask/permalink";
 import { isHistoricalProfile } from "@/lib/ask/population";
 import { validateSpec, type AskSpec } from "@/lib/ask/spec";
@@ -33,6 +32,8 @@ import EntityTypeahead from "./EntityTypeahead";
 import EvidenceDrawer from "./EvidenceDrawer";
 import { AnswerEvidence, useAnswerEvidence } from "./AnswerEvidence";
 import { CompareBlock } from "./CompareBlock";
+import MapBlock from "./MapBlock";
+import { ProfileNotice } from "./ProfileNotes";
 import "./question-results.css";
 import DiscoveryIcon from "../DiscoveryIcon";
 import AnswerExports from "./AnswerExports";
@@ -701,14 +702,7 @@ export default function AskPanel({
                 />
               </div>
             </div>
-            {isProfile && (
-              <p className="cq-profile-notice">
-                <strong>
-                  Valori din profil, inclusiv oferte neacceptate; nu plăți.
-                </strong>{" "}
-                <Term tip title="Profil istoric" text="Profilurile folosesc istoricul achizițiilor directe. Stările și calculul sunt în lista surselor." />
-              </p>
-            )}
+            {isProfile && <ProfileNotice />}
             {["table", "timeseries", "map"].includes(data.block) && (
               <div className="cq-display">
                 <div>
@@ -1375,163 +1369,6 @@ function SeriesBlock({
           {shownPartial.map((x) => `${x.year} (${x.note})`).join(", ")}.
         </p>
       )}
-    </div>
-  );
-}
-
-const MAP_COLORS = ["#e4ead8", "#c7d5b2", "#9cb786", "#6e9365", "#285b45"];
-const MAP_NO_DATA = "#e8eade";
-
-function MapBlock({
-  counties,
-  unknown,
-  spec,
-}: {
-  counties: CountyValue[];
-  unknown: MapUnknown;
-  spec: unknown;
-}) {
-  const asCount = (spec as AskSpec).measure === "count";
-  const display = (v: number) =>
-    asCount ? formatInt(v) + " înreg." : formatRon(v);
-  // county click → same filters, scoped to that county, drill rows opened
-  const countyUrl = (label: string): string =>
-    `/intreaba?spec=${encodeURIComponent(encodeSpec(spec))}&drill=1&evidence=${encodeURIComponent(JSON.stringify({ county:label }))}`;
-
-  const byKey = new Map<string, number>();
-  const cntByKey = new Map<string, number>();
-  for (const c of counties) {
-    const k = foldCounty(c.county);
-    byKey.set(k, (byKey.get(k) ?? 0) + (asCount ? c.count : c.value));
-    cntByKey.set(k, (cntByKey.get(k) ?? 0) + c.count);
-  }
-  // Shares are of the whole selection, including records whose authority has
-  // no known county and so are not on the map (audit F13).
-  const unknownMeasure = asCount ? unknown.count : unknown.value;
-  const national =
-    counties.reduce((s, c) => s + (asCount ? c.count : c.value), 0) +
-    unknownMeasure;
-  const [tip, setTip] = useState<{
-    label: string;
-    value: number;
-    count: number;
-    x: number;
-    y: number;
-  } | null>(null);
-  const values = countyMap.shapes
-    .map((s) => byKey.get(s.key) ?? 0)
-    .filter((v) => v > 0)
-    .sort((a, b) => a - b);
-  const th: number[] = [];
-  for (let i = 1; i < MAP_COLORS.length; i++) {
-    th.push(
-      values[
-        Math.min(
-          Math.floor((i / MAP_COLORS.length) * values.length),
-          values.length - 1,
-        )
-      ] ?? 0,
-    );
-  }
-  const bucket = (v: number) => {
-    let b = 0;
-    while (b < th.length && v > th[b]!) b++;
-    return b;
-  };
-  const ranked = countyMap.shapes
-    .map((s) => ({ label: s.label, key: s.key, value: byKey.get(s.key) ?? 0 }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 10);
-
-  return (
-    <div className="ask-maplayout">
-      <div className="ask-mapwrap">
-        <svg
-          viewBox={`0 0 ${countyMap.width} ${countyMap.height}`}
-          className="ask-choropleth"
-          role="img"
-          aria-label="Hartă pe județe"
-        >
-          {countyMap.shapes.map((s) => {
-            const v = byKey.get(s.key) ?? 0;
-            const move = (e: React.MouseEvent) =>
-              setTip({
-                label: s.label,
-                value: v,
-                count: cntByKey.get(s.key) ?? 0,
-                x: e.clientX,
-                y: e.clientY,
-              });
-            return (
-              <a
-                key={s.key}
-                href={countyUrl(s.label)}
-              >
-                <path
-                  d={s.d}
-                  fill={v > 0 ? MAP_COLORS[bucket(v)] : MAP_NO_DATA}
-                  stroke="#fff"
-                  strokeWidth={0.8}
-                  className={tip?.label === s.label ? "hovered" : undefined}
-                  onMouseEnter={move}
-                  onMouseMove={move}
-                  onMouseLeave={() => setTip(null)}
-                />
-              </a>
-            );
-          })}
-        </svg>
-        <div className="ask-legend">
-          <span>mai puțin</span>
-          {MAP_COLORS.map((c) => (
-            <span key={c} className="sw" style={{ background: c }} />
-          ))}
-          <span>mai mult</span>
-        </div>
-        {unknown.count > 0 && national > 0 && (
-          <p className="ask-fine">
-            {display(unknownMeasure)} ({formatShare(unknownMeasure / national)} din
-            selecție, {formatInt(unknown.count)} înregistrări) au instituția fără județ
-            cunoscut și nu apar pe hartă · procentele sunt din totalul selecției
-          </p>
-        )}
-        {tip && (
-          <div
-            className="ask-maptip"
-            style={{ left: tip.x + 14, top: tip.y + 14 }}
-          >
-            <div className="t">{tip.label}</div>
-            {tip.value > 0 ? (
-              <>
-                <div className="v">{display(tip.value)}</div>
-                <div className="s">
-                  {formatInt(tip.count)} achiziții
-                  {national > 0 &&
-                    ` · ${formatShare(tip.value / national)} din total`}
-                </div>
-                <div className="s">click → deschide achizițiile județului</div>
-              </>
-            ) : (
-              <div className="s">fără date pentru aceste filtre</div>
-            )}
-          </div>
-        )}
-      </div>
-      <table className="ask-table ask-mapside">
-        <tbody>
-          {ranked.map((r, i) => (
-            <tr key={r.key}>
-              <td className="pos">{i + 1}</td>
-              <td>
-                <a href={countyUrl(r.label)}>
-                  {r.label} →
-                </a>
-              </td>
-              <td className="num">{display(r.value)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
     </div>
   );
 }

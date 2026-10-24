@@ -5,7 +5,7 @@ import type { AskSpec, AuthorityKind, Dim } from "./spec";
 import type { Grounding } from "./ground";
 import { EVIDENCE_CSV_LIMIT, PROFILE_BLOCKS, sumDecimalStrings, validateEvidenceScope, type EvidenceScope, type EvidenceStatus, type EvidenceProfile } from "./evidence";
 import { minimumRecordsSql, populationSql } from "./population-sql";
-import { describePopulation, isHistoricalProfile, unsupportedPopulationView } from "./population";
+import { countyIsFirmSeat, describePopulation, isHistoricalProfile, unsupportedPopulationView } from "./population";
 import { PER_CAPITA_SOURCE, perCapitaCaveat, POPULATION_CARD_NOTE, readPerCapitaPopulations, type PerCapitaPopulations } from "./per-capita";
 import { sectorUnit } from "../peer-population";
 
@@ -237,6 +237,18 @@ export function uatScopeCaveat(label: string, n: number, siruta?: number): strin
 export function uatUnmappedError(label: string): string {
   return `Nu am putut asocia sigur nicio autoritate contractantă cu localitatea „${label}”. ${UAT_SCOPE_METHOD} ` +
     "Asta nu înseamnă că localitatea nu are achiziții: căutați primăria după nume.";
+}
+
+/** The county caveat says whose county it is (countyIsFirmSeat), where it comes from and who is left out. */
+export function countyCaveat(spec: AskSpec, focal: "authority" | "supplier"): string {
+  return countyIsFirmSeat(spec, focal)
+    ? "Județul = sediul firmei (din adresă, cod NUTS sau ONRC), nu al instituțiilor care cumpără. Firmele fără județ cunoscut nu intră."
+    : "Județul = sediul instituției care cumpără, nu al firmei (din adresă, cod NUTS, ONRC sau UAT verificat). Instituțiile fără județ cunoscut nu intră.";
+}
+
+/** A relationship view with no partner rows: on every stream, not only direct acquisitions. */
+export function emptyRelationError(focalName: string): string {
+  return `„${focalName}” nu are înregistrări în selecția aleasă.`;
 }
 
 interface WhereParts {
@@ -657,7 +669,7 @@ export async function runSpec(
     // Audit F13: a county comes from the source address or NUTS-3 code, the ONRC
     // registered office of a supplier, or a strict UAT link (normalize step).
     // One caveat for every dimension: whose county it is, where it comes from, who is left out.
-    caveats.push("Județul = sediul instituției care cumpără, nu al firmei (din adresă, cod NUTS, ONRC sau UAT verificat). Instituțiile fără județ cunoscut nu intră.");
+    caveats.push(countyCaveat(spec, authorityId ? "authority" : "supplier"));
   }
   let uatSiruta: number | null = null;
   let uatAuthorityIds: string[] = [];
@@ -1514,7 +1526,7 @@ export async function runSpec(
             order by v desc
           `) as unknown as { pid: string; pnm: string; stem: string; v: string }[];
           if (r.length === 0) {
-            return { error: `„${focalName}” nu are achiziții directe în datele filtrate.` };
+            return { error: emptyRelationError(focalName) };
           }
           // keep top 6 partners / top 5 categories, roll the rest up
           const byPartner = new Map<string, number>();
@@ -1574,7 +1586,7 @@ export async function runSpec(
             limit 14
           `) as unknown as { pid: string; pnm: string; v: string; n: string }[];
           if (r.length === 0) {
-            return { error: `„${focalName}” nu are achiziții directe în datele filtrate.` };
+            return { error: emptyRelationError(focalName) };
           }
           return {
             block: "network",

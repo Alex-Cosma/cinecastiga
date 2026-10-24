@@ -14,6 +14,7 @@ import FollowButton from "@/components/FollowButton";
 import { encodeSpec } from "@/lib/ask/permalink";
 import "./evidence-drawer.css";
 import {requestSourceCsv,downloadSourceCsv} from "@/lib/ask/source-csv";
+import { ProfileSourceNote } from "./ProfileNotes";
 
 export interface EvidenceDrawerProps {
   spec: AskSpec;
@@ -157,12 +158,7 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
         <div><span>{result?.profile ? "Valoare înregistrată în profil" : "Valoare înregistrată"}</span><strong className="ev-money">{result ? formatEvidenceAmount(result.sourceValue) : "—"}</strong></div>
         <p>{result?.dateFrom ? `${date(result.dateFrom)} — ${date(result.dateTo)}` : result ? "Nicio dată de finalizare disponibilă în selecție." : "Acoperirea înregistrărilor se afișează după încărcare."}</p>
       </div>
-      {result?.profile && <div className="ev-profile-note">
-        <strong>Profilul include și oferte neacceptate.</strong>
-        <p>Doar ofertele acceptate: <b>{count(result.accepted.count)}</b> înregistrări, <b>{formatEvidenceAmount(result.accepted.value)}</b>. Poți selecta starea mai jos.</p>
-        {result.profileReconciled === true && <p className="ev-reconciled">✓ Numărul și suma surselor coincid cu agregatele celor {count(result.profileCount)} profiluri selectate.</p>}
-        {result.profileReconciled === false && <p className="ev-mismatch">Agregatul profilului și sursele actuale diferă. Lista arată datele disponibile acum; verifică explicația de mai jos.</p>}
-      </div>}
+      {result?.profile && <ProfileSourceNote reconciled={result.profileReconciled} profileCount={result.profileCount} />}
       {result && <details className="ev-calculation">
         <summary>Cum ajungem la acest rezultat <span aria-hidden="true">+</span></summary>
         <p>Numărul reprezintă rândurile incluse. Totalul însumează valorile înregistrate ale acelor rânduri, înainte de rotunjirea pentru afișare. Căutarea, starea și pagina din această listă nu schimbă întrebarea aplicată.</p>

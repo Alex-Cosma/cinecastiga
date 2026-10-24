@@ -1,6 +1,7 @@
 import type { AskSpec } from "./spec";
 import type { Grounding } from "./ground";
 import { isHistoricalProfile } from "./population";
+import { COUNT_MEASURE_BLOCKS, leaderAxis } from "./question-ui";
 import { countyDisplay } from "./resolved-spec";
 
 /** The "am înțeles" pills — the spec, restated in plain Romanian. */
@@ -12,8 +13,9 @@ const BLOCK_LABEL: Record<AskSpec["block"], string> = {
   map: "pe județe (hartă)",
   compare: "comparație",
   distribution: "poziție în distribuția de risc",
-  breakdown: "pe ce s-au dus banii",
-  scatter: "risc vs volum (outlieri)",
+  // Values are recorded, not paid; the cloud plots risk against recorded value.
+  breakdown: "pe domenii",
+  scatter: "risc și valoare",
   sankey: "fluxul banilor",
   network: "rețea de parteneri",
   entity_card: "entitate-superlativ",
@@ -35,8 +37,17 @@ const KIND_LABEL = {
   scoala: "doar școli/licee",
 } as const;
 
-/** Blocks whose subject is risk (CRI), not money — skip the measure pill. */
-const RISK_BLOCKS: AskSpec["block"][] = ["distribution", "scatter", "compare"];
+/**
+ * Historical risk profiles: the archive of accepted direct acquisitions
+ * (entity_flags, runRows). Never "toate sursele", whatever the link's stream.
+ */
+export const PROFILE_SOURCE_PILL = "profil istoric: achiziții directe acceptate, toată arhiva";
+
+/** What the answer measures: elsewhere the engine ignores `measure` and answers in lei. */
+function shownMeasure(spec: AskSpec): AskSpec["measure"] {
+  if (!COUNT_MEASURE_BLOCKS.includes(spec.block)) return "value";
+  return spec.measure === "value_per_capita" && spec.block !== "table" ? "value" : spec.measure;
+}
 
 export function buildPills(spec: AskSpec, grounding: Grounding): string[] {
   const pills: string[] = [];
@@ -46,15 +57,16 @@ export function buildPills(spec: AskSpec, grounding: Grounding): string[] {
   }
   if (spec.block === "entity_card") {
     pills.push(
-      (spec.rankBy ?? "risk") === "risk" ? "cea mai riscantă (CRI)" : "cea mai mare valoare",
+      leaderAxis(spec) === "risk" ? "cea mai riscantă (CRI)" : "cea mai mare valoare",
     );
     pills.push(DIM_LABEL[spec.dim ?? "authority"]);
   }
   if (!isHistoricalProfile(spec) && spec.block !== "fact_check") {
+    const measure = shownMeasure(spec);
     pills.push(
-      spec.measure === "count"
+      measure === "count"
         ? "număr de achiziții"
-        : spec.measure === "value_per_capita"
+        : measure === "value_per_capita"
           ? "lei / cap de locuitor"
           : "Total (lei)",
     );
@@ -104,11 +116,13 @@ export function buildPills(spec: AskSpec, grounding: Grounding): string[] {
   }
   const ds = spec.dataset ?? "all";
   pills.push(
-    ds === "contracts"
-      ? "doar contracte prin proceduri"
-      : ds === "da"
-        ? "doar achiziții directe"
-        : "toate sursele: achiziții directe + contracte prin proceduri",
+    isHistoricalProfile(spec)
+      ? PROFILE_SOURCE_PILL
+      : ds === "contracts"
+        ? "doar contracte prin proceduri"
+        : ds === "da"
+          ? "doar achiziții directe"
+          : "toate sursele: achiziții directe + contracte prin proceduri",
   );
   if (spec.population) pills.push(`Selecție precisă · ${spec.population.groups.reduce((n, group) => n + group.conditions.length, 0)} condiții în ${spec.population.groups.length} grupuri`);
   if (spec.minimumRecords) pills.push(`${spec.minimumRecords.role === "authority" ? "instituții" : "firme"} cu ≥ ${spec.minimumRecords.count} înregistrări în selecție`);
