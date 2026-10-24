@@ -1,0 +1,27 @@
+import HelpTip from "../builder/HelpTip";
+import type { KitTip } from "../builder/kit-types";
+
+/*
+ * P8, the facts on an answer row: not filters, at most three. Neutral = a
+ * fact ("în asociere", "prima dată aici: 02.10.2024"); accent = what the
+ * question picked out ("client principal"); amber = read with care
+ * ("1 contract: 58%", "bilanț 2021"); orange only for the official signals
+ * ("posibilă fracționare", FLAG_META.label in lower case). Colour is never
+ * the only sign: the words say it.
+ */
+
+export type FactTone = "neutral" | "accent" | "caveat" | "signal";
+
+export interface RowFact { text: string; tone?: FactTone; tip?: KitTip }
+
+export const MAX_FACTS = 3;
+
+export function FactTag({ fact }: { fact: RowFact }) {
+  const tone = fact.tone && fact.tone !== "neutral" ? ` fk-tag--${fact.tone}` : "";
+  return <span className={`fk-tag${tone}`}>{fact.text}{fact.tip && <HelpTip tip={fact.tip} />}</span>;
+}
+
+export default function RowFacts({ facts }: { facts: readonly RowFact[] }) {
+  if (!facts.length) return null;
+  return <div className="fk-tags">{facts.slice(0, MAX_FACTS).map((fact, index) => <FactTag key={`${index}:${fact.text}`} fact={fact} />)}</div>;
+}
