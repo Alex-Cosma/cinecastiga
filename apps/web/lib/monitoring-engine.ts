@@ -7,7 +7,7 @@ import { isHistoricalProfile } from "./ask/population";
 import { captureTransaction, CAPTURE_METHODOLOGY } from "./evidence-captures";
 import { MonitoringError,monitoringHasLocalSelection,monitoringNewerError,MONITORING_LOCAL_SCOPE_NOTE } from "./monitoring-input";
 import { MONITORING_MAX_ROWS, methodologiesDiffer, type MonitoringPreferences } from "./monitoring-shared";
-import { answerVersion, sameAnswerCore } from "./ask/answer-core";
+import { answerVersion, isFirstAnswerVersion, sameAnswerCore } from "./ask/answer-core";
 import { assertMonitoringBindings } from "./monitoring-identity";
 
 const globalDb=globalThis as unknown as {__monitoringSql?:DbSql};
@@ -95,7 +95,9 @@ export async function evaluateMonitoringWatch(watchId:string,expectedCheckpointI
     const database=useSnapshotCoverage(captureTransaction(q)),answer=await runSpec(database,spec,grounding);
     if("error"in answer)throw new MonitoringError(answer.error,422);
     // answer: the version of this question's answer (lib/ask/answer-core.ts), so a release that changes one block or key alerts only its watches.
-    const runId=randomUUID(),methodology={...MONITORING_METHODOLOGY,refresh:checkpoint.methodology,answer:answerVersion(spec)};
+    // Stored only once a release bumped it: absent reads the same, and code from before F0 (jsonb equality) then sees no false change after a revert.
+    const version=answerVersion(spec);
+    const runId=randomUUID(),methodology={...MONITORING_METHODOLOGY,refresh:checkpoint.methodology,...(isFirstAnswerVersion(version,spec.block)?{}:{answer:version})};
     const [time]=await q`select to_char(transaction_timestamp() at time zone 'Europe/Bucharest','YYYY-MM-DD"T"HH24:MI:SS') observed_at`;
     const observedAt=String(time!.observed_at);
     await q`insert into app.monitoring_runs(id,watch_id,checkpoint_id,previous_run_id,kind,row_count,known_value_exact,counts,relevant_counts,preferences,result,methodology,checkpoint,notes)
@@ -122,9 +124,11 @@ export async function evaluateMonitoringWatch(watchId:string,expectedCheckpointI
     const sourceChanges=all.added+all.removed+all.changed;
     // Ordinary aggregates naturally change with their rows. Historical profile
     // recalculations remain an independent event even when records also change.
-    // A changed methodology explains a changed result: one alert, not a second "recalculated".
-    const recalculated=resultChanged&&!methodologyChanged&&(isHistoricalProfile(spec)||sourceChanges===0);
-    const hasAlert=!!previous&&(relevant.added+relevant.removed+relevant.changed>0||recalculated&&prefs.types.includes("recalculated")||methodologyChanged&&prefs.types.includes("methodology"));
+    // A methodology alert explains a changed result: one alert, not a second "recalculated".
+    // A watch that does not follow methodology changes still hears of the new result.
+    const methodologyAlert=methodologyChanged&&prefs.types.includes("methodology");
+    const recalculated=resultChanged&&!methodologyAlert&&(isHistoricalProfile(spec)||sourceChanges===0);
+    const hasAlert=!!previous&&(relevant.added+relevant.removed+relevant.changed>0||recalculated&&prefs.types.includes("recalculated")||methodologyAlert);
     const notes=[...answer.caveats,...sources.scopeNotes,...(localSelection?[MONITORING_LOCAL_SCOPE_NOTE]:[]),"Primele observații istorice nu sunt confirmări ale datei importului.",...(previous?[]:["Acesta este punctul de plecare. Înregistrările existente nu generează alerte."]),...(resultChanged?["Rezultatul calculat s-a schimbat; sursele și metodologia pot fi verificate separat."]:[])];
     // A pause/preference edit committed during the read aborts this RR
     // publication; it cannot publish under an outdated owner decision.
