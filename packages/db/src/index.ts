@@ -1,5 +1,6 @@
 export * from "./client.js";
 export * from "./signal-lookup.js";
+export * from "./transaction-mart-indexes.js";
 export * from "./schema/index.js";
 export * from "./monitoring.js";
 

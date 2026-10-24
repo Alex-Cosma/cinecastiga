@@ -1,0 +1,35 @@
+import { readFileSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
+import { TRANSACTION_MART_INDEXES } from './transaction-mart-indexes.js';
+
+const migrations = new URL('../migrations/', import.meta.url);
+const statements = (file: string) => readFileSync(new URL(file, migrations), 'utf8')
+  .split('--> statement-breakpoint')
+  .map(part => part.split('\n').filter(line => !line.startsWith('--')).join('\n').trim())
+  .filter(Boolean);
+
+describe('covering indexes of the transaction marts (marts audit, 24 October 2026)', () => {
+  it('keeps the eight production names, one table each', () => {
+    // pg_stat_user_indexes on production, 24 October 2026 (scratchpad marts-audit q04).
+    expect(TRANSACTION_MART_INDEXES.map(index => index.name)).toEqual([
+      'da_tx_county_date_idx', 'da_tx_county_ent_idx', 'da_tx_cpv_idx', 'da_tx_cpv_val_idx',
+      'ctx_county_idx', 'ctx_county_ent_idx', 'ctx_cpv_idx', 'ctx_cpv_val_idx',
+    ]);
+    for (const index of TRANSACTION_MART_INDEXES)
+      expect(index.definition.startsWith(`CREATE INDEX ${index.name} ON marts.${index.table} USING btree (`)).toBe(true);
+  });
+
+  it('creates in migration 0084 exactly what the builds recreate', () => {
+    expect(statements('0084_transaction_mart_covering_indexes.sql')).toEqual(
+      TRANSACTION_MART_INDEXES.map(index => `${index.definition.replace(/^CREATE INDEX /, 'CREATE INDEX IF NOT EXISTS ')};`));
+  });
+
+  it('runs 0084 after every applied migration', () => {
+    const journal = JSON.parse(readFileSync(new URL('meta/_journal.json', migrations), 'utf8')) as
+      { entries: { idx: number; tag: string; when: number }[] };
+    const at = journal.entries.findIndex(entry => entry.tag === '0084_transaction_mart_covering_indexes');
+    expect(journal.entries[at]?.idx).toBe(84);
+    // The migrator skips a migration older than the newest applied one.
+    expect(journal.entries[at]!.when).toBeGreaterThan(journal.entries[at - 1]!.when);
+  });
+});

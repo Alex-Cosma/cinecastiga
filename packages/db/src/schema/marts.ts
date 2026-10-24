@@ -353,6 +353,8 @@ export const daTransactions = martsSchema.table(
     index("da_tx_authority_idx").on(t.authorityId, t.finalizationDate),
     index("da_tx_supplier_idx").on(t.supplierId, t.finalizationDate),
     index("da_tx_authority_value_idx").on(t.authorityId, t.closingValue),
+    // + 4 county/CPV indexes in TRANSACTION_MART_INDEXES (migration 0084):
+    // Drizzle cannot declare INCLUDE.
   ],
 );
 
@@ -505,5 +507,7 @@ export const contractTransactions = martsSchema.table(
     index("ctx_authority_idx").on(t.authorityId, t.finalizationDate),
     index("ctx_supplier_idx").on(t.supplierId, t.finalizationDate),
     index("ctx_single_idx").on(t.isSingleBidder),
+    // + 4 county/CPV indexes in TRANSACTION_MART_INDEXES (migration 0084):
+    // Drizzle cannot declare INCLUDE.
   ],
 );

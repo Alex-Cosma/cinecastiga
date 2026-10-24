@@ -180,6 +180,8 @@ Rezultatul apare ca „Am înțeles”, cu cipuri: Subiect (alt subiect sau „c
 
 Schema curentă include obiecte `auth`, `app`, `reference` bootstrapate istoric și apoi reflectate în snapshot-uri Drizzle. Migrarea de la o bază complet goală **nu este procedura verificată de onboarding**. Folosește dump-ul care include structura și istoricul exact; nu sintetiza manual baseline-uri.
 
+Cele 8 indexuri acoperitoare județ/CPV ale `marts.da_transactions`/`contract_transactions` au `INCLUDE`, pe care Drizzle nu-l poate declara. Nu sunt în schema Drizzle, ci în migrația 0084 și în `TRANSACTION_MART_INDEXES`, iar build-ul le recreează dacă lipsesc ([operare](05-operations.md#procesarepublicare)). `drizzle-kit generate` nu le vede, deci nu le șterge. `push` le-ar șterge.
+
 `0005` are un checksum istoric compatibil tratat explicit după verificarea structurii `national_stats`. Nu rescrie istoria migrațiilor ca să elimini avertismentul. Migrațiile noi trebuie să păstreze compatibilitatea cu worker-ul încă pornit pe vechea versiune. Proiecțiile `SELECT *` în prepared statements au produs deja un incident la adăugarea coloanelor; folosește coloane explicite în controlul de lungă durată.
 
 ## Registrul semnalelor și Radiografie
