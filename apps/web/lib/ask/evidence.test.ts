@@ -241,7 +241,8 @@ describe("source query regression", () => {
     const db = database();
     await runRows(db.sql, { ...stat, block: "trend", dim: "authority", filters: { authorityId: 123, yearFrom: 2020, yearTo: 2026, monthFrom: 8 } }, grounding, 0);
     const query = db.statements.find((s) => s.includes("group by d.state"))!;
-    expect(query).toMatch(/substr\(d.finalization_date, 1, 4\) in/);
+    // The answer's own condition (trendYearsPredicate), not the period's.
+    expect(query).toMatch(/substr\(d.finalization_date,1,4\) in/);
     expect(query).not.toContain("substr(d.finalization_date, 1, 7)");
   });
   it("per-capita, category and partner exclusions match the aggregate's eligible population", async () => {
