@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { KeyboardEvent } from "react";
-import { popoverPlacement, rovingKeyDown, rovingStop, rovingTarget } from "./keyboard";
+import { comboboxKey, debounce, gridTarget, menuButtonKey, menuKey, popoverPlacement, rovingGridKeyDown, rovingKeyDown, rovingStop, rovingTarget, toggleBand } from "./keyboard";
 
 // Kit §8: one Tab stop per group, arrows move and choose, disabled options are skipped.
 describe("roving tabindex", () => {
@@ -104,5 +104,163 @@ describe("window placement", () => {
   });
   it("never starts above the top gutter, even when taller than both sides", () => {
     expect(popoverPlacement(anchor(10, 300), { width: 340, height: 900 }, { width: 1280, height: 800 }).top).toBeGreaterThanOrEqual(16);
+  });
+});
+
+// Kit §8, part 2: the year grid is walked in two dimensions (5 columns).
+describe("the year grid", () => {
+  const ten = Array.from({ length: 10 }, () => false); // 2018 … 2026 and the range cell
+  it("steps through the cells in reading order with ←/→, wrapping round", () => {
+    expect(gridTarget(ten, 4, "ArrowRight", 5)).toBe(5); // end of the first row → start of the second
+    expect(gridTarget(ten, 5, "ArrowLeft", 5)).toBe(4);
+    expect(gridTarget(ten, 9, "ArrowRight", 5)).toBe(0);
+  });
+  it("keeps the column with ↑/↓ and does not move past the first or last row", () => {
+    expect(gridTarget(ten, 1, "ArrowDown", 5)).toBe(6);
+    expect(gridTarget(ten, 6, "ArrowUp", 5)).toBe(1);
+    expect(gridTarget(ten, 7, "ArrowDown", 5)).toBeNull();
+    expect(gridTarget(ten, 2, "ArrowUp", 5)).toBeNull();
+    expect(gridTarget(Array.from({ length: 9 }, () => false), 4, "ArrowDown", 5)).toBeNull(); // the short last row
+  });
+  it("skips a disabled cell in the column, and Home/End go to the first and last enabled cell", () => {
+    const disabled = [...ten]; disabled[6] = true;
+    const fifteen = Array.from({ length: 15 }, (_, index) => index === 6);
+    expect(gridTarget(fifteen, 1, "ArrowDown", 5)).toBe(11);
+    expect(gridTarget(disabled, 1, "ArrowDown", 5)).toBeNull();
+    expect(gridTarget([true, false, false, false, false, false, true], 3, "Home", 5)).toBe(1);
+    expect(gridTarget([true, false, false, false, false, false, true], 3, "End", 5)).toBe(5);
+  });
+  it("starts from either end when nothing has focus, and ignores other keys", () => {
+    expect(gridTarget(ten, -1, "ArrowDown", 5)).toBe(0);
+    expect(gridTarget(ten, -1, "ArrowUp", 5)).toBe(9);
+    expect(gridTarget(ten, 3, "Enter", 5)).toBeNull();
+    expect(gridTarget([true, true], 0, "ArrowDown", 5)).toBeNull();
+  });
+  it("moves focus and the choice from the container", () => {
+    const container: { querySelectorAll?: () => unknown } = {};
+    const items = ten.map(() => {
+      const entry = { getAttribute: () => null, focus: vi.fn(), closest: (_selector: string): unknown => null };
+      entry.closest = selector => selector === "[data-roving]" ? container : entry;
+      return entry;
+    });
+    container.querySelectorAll = () => items;
+    const onMove = vi.fn(), preventDefault = vi.fn();
+    rovingGridKeyDown({ currentTarget: container, target: items[2], key: "ArrowDown", preventDefault } as unknown as KeyboardEvent<HTMLElement>, '[role="radio"]', 5, onMove);
+    expect(items[7]!.focus).toHaveBeenCalledOnce();
+    expect(onMove).toHaveBeenCalledWith(7);
+    expect(preventDefault).toHaveBeenCalledOnce();
+  });
+});
+
+// Kit §3 component 15 and §8: the "⋯" menu button and its menu (WAI menu button).
+describe("the row menu", () => {
+  const labels = ["Vezi înregistrările", "Scoate din calcul", "Fișa firmei"];
+  it("opens on the first item with ↓ and on the last with ↑; Enter and Space stay the button's click", () => {
+    expect(menuButtonKey("ArrowDown")).toBe("first");
+    expect(menuButtonKey("ArrowUp")).toBe("last");
+    expect(menuButtonKey("Enter")).toBeNull();
+    expect(menuButtonKey(" ")).toBeNull();
+  });
+  it("wraps round with ↓/↑ and goes to the ends with Home/End", () => {
+    expect(menuKey("ArrowDown", 2, labels)).toEqual({ focus: 0 });
+    expect(menuKey("ArrowUp", 0, labels)).toEqual({ focus: 2 });
+    expect(menuKey("ArrowDown", 0, labels)).toEqual({ focus: 1 });
+    expect(menuKey("Home", 2, labels)).toEqual({ focus: 0 });
+    expect(menuKey("End", 0, labels)).toEqual({ focus: 2 });
+  });
+  it("closes with Escape back to the button, and with Tab moving on", () => {
+    expect(menuKey("Escape", 1, labels)).toEqual({ close: "button" });
+    expect(menuKey("Tab", 1, labels)).toEqual({ close: "away" });
+  });
+  it("jumps to the next item starting with a typed letter, ignoring case and other keys", () => {
+    expect(menuKey("f", 0, labels)).toEqual({ focus: 2 });
+    expect(menuKey("S", 2, labels)).toEqual({ focus: 1 });
+    expect(menuKey("z", 0, labels)).toBeNull();
+    expect(menuKey("Enter", 0, labels)).toBeNull();
+    expect(menuKey(" ", 0, labels)).toBeNull();
+  });
+});
+
+// Kit §3 components 13 and 20: the combobox field (WAI editable combobox with a listbox).
+describe("the combobox", () => {
+  const closed = { active: -1, expanded: false }, open = { active: -1, expanded: true };
+  it("opens on ↓ at the first result and on ↑ at the last, and wraps round", () => {
+    expect(comboboxKey("ArrowDown", closed, 3, true)).toEqual({ state: { active: 0, expanded: true } });
+    expect(comboboxKey("ArrowUp", closed, 3, true)).toEqual({ state: { active: 2, expanded: true } });
+    expect(comboboxKey("ArrowDown", { active: 2, expanded: true }, 3, true)).toEqual({ state: { active: 0, expanded: true } });
+    expect(comboboxKey("ArrowUp", { active: 0, expanded: true }, 3, true)).toEqual({ state: { active: 2, expanded: true } });
+    expect(comboboxKey("ArrowDown", closed, 0, true)).toBeNull();
+  });
+  it("picks the active result on Enter, else the first, as the site's search does", () => {
+    expect(comboboxKey("Enter", { active: 1, expanded: true }, 3, true)).toEqual({ pick: 1 });
+    expect(comboboxKey("Enter", open, 3, true)).toEqual({ pick: 0 });
+    expect(comboboxKey("Enter", closed, 3, true)).toBeNull(); // a collapsed list picks nothing
+    expect(comboboxKey("Enter", closed, 3, true, true)).toEqual({ pick: 0 }); // the list in a window is always drawn
+    expect(comboboxKey("Enter", open, 0, true)).toBeNull();
+  });
+  it("uses Escape in steps: leave the list, empty the field, then let the window close", () => {
+    expect(comboboxKey("Escape", { active: 1, expanded: true }, 3, true)).toEqual({ state: { active: -1, expanded: false } });
+    expect(comboboxKey("Escape", closed, 3, true)).toEqual({ clear: true });
+    expect(comboboxKey("Escape", closed, 3, false)).toBeNull();
+    // In a window the list stays drawn: Escape first drops the active result.
+    expect(comboboxKey("Escape", { active: 1, expanded: true }, 3, true, true)).toEqual({ state: { active: -1, expanded: true } });
+    expect(comboboxKey("Escape", open, 3, true, true)).toEqual({ clear: true });
+    expect(comboboxKey("Escape", open, 3, false, true)).toBeNull();
+  });
+  it("leaves Home, End, Tab and letters to the field", () => {
+    for (const key of ["Home", "End", "Tab", "a", " "]) expect(comboboxKey(key, { active: 1, expanded: true }, 3, true)).toBeNull();
+  });
+});
+
+describe("the debounced search callback", () => {
+  afterEach(() => { vi.useRealTimers(); });
+  it("sends only the last text of a burst, after the pause", () => {
+    vi.useFakeTimers();
+    const fn = vi.fn();
+    const search = debounce(fn, 200);
+    search.call("v"); search.call("vâ"); search.call("vân");
+    vi.advanceTimersByTime(199);
+    expect(fn).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(fn).toHaveBeenCalledOnce();
+    expect(fn).toHaveBeenCalledWith("vân");
+    search.call("cluj");
+    search.cancel();
+    vi.advanceTimersByTime(500);
+    expect(fn).toHaveBeenCalledOnce();
+  });
+});
+
+// Kit §3 component 10: adjoining bands are always one run.
+describe("the adjoining bands", () => {
+  const none = [false, false, false, false, false];
+  const run = (pressed: boolean[]) => pressed.map((on, index) => on ? index : -1).filter(index => index >= 0);
+  it("chooses one band, then extends the run and says which bands came with it", () => {
+    const one = toggleBand(none, 1);
+    expect(run(one.pressed)).toEqual([1]);
+    const far = toggleBand(one.pressed, 3);
+    expect(run(far.pressed)).toEqual([1, 2, 3]);
+    expect(far.added).toEqual([2]);
+    expect(toggleBand(far.pressed, 0).added).toEqual([]);
+  });
+  it("drops an end of the run, or the whole run when it is one band", () => {
+    const three = [false, true, true, true, false];
+    expect(run(toggleBand(three, 1).pressed)).toEqual([2, 3]);
+    expect(run(toggleBand(three, 3).pressed)).toEqual([1, 2]);
+    expect(run(toggleBand([false, true, false, false, false], 1).pressed)).toEqual([]);
+  });
+  it("drops a band inside the run with the bands toward the nearer end (the upper side on a tie)", () => {
+    const all = [true, true, true, true, true];
+    const inner = toggleBand(all, 1);
+    expect(run(inner.pressed)).toEqual([2, 3, 4]);
+    expect(inner.removed).toEqual([0]);
+    const tie = toggleBand(all, 2);
+    expect(run(tie.pressed)).toEqual([0, 1]);
+    expect(tie.removed).toEqual([3, 4]);
+  });
+  it("joins a broken run from an old link into one, and ignores an index out of range", () => {
+    const broken = [true, false, false, true, false];
+    expect(run(toggleBand(broken, 4).pressed)).toEqual([0, 1, 2, 3, 4]);
+    expect(toggleBand(broken, 9).pressed).toEqual(broken);
   });
 });

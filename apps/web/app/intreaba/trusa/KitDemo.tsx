@@ -17,26 +17,16 @@ import UnderChips, { type UnderChipItem } from "../builder/UnderChips";
 import OptionList from "../builder/pickers/OptionList";
 import Popover, { StaticPopover } from "../builder/pickers/Popover";
 import type { KitOption, SentenceToken } from "../builder/kit-types";
+import { Cap, Cell, Live, Section, slot, text } from "./frame";
+import { AnswerSections, BandsSection, EntitySection, PeriodSection } from "./KitDemoRest";
 
 /*
- * The dev demo of the filter kit (kit/components.html, F1a part 1): each
- * component in its states, then a live strip where it works. The static
+ * The dev demo of the filter kit (kit/components.html, F1a): each of the 21
+ * components in its states, then a live strip where it works. The static
  * frames draw hover and focus with the kit's .is-hover / .is-focus. The
- * numbers are sample values from the kit's mockups, not answers.
+ * numbers are sample values from the kit's mockups, not answers. Sections 7
+ * and 9–14 (part 2) are in KitDemoRest.tsx.
  */
-
-const text = (value: string): SentenceToken => ({ kind: "text", text: value });
-const slot = (id: string, name: string, value: string, className?: string): SentenceToken => ({ kind: "slot", id, slot: name, value, ...(className ? { className } : {}) });
-
-function Section({ n, title, classes, note, children }: { n: number; title: string; classes: string; note: string; children: ReactNode }) {
-  return <section className="kd-sec" aria-labelledby={`kd-sec-${n}`}>
-    <div className="kd-sec-head"><h2 id={`kd-sec-${n}`}>{n}. {title}</h2><code>{classes}</code><p>{note}</p></div>
-    <div className="kd-panel fk">{children}</div>
-  </section>;
-}
-const Cap = ({ children }: { children: ReactNode }) => <span className="kd-cap">{children}</span>;
-const Cell = ({ cap, wide = false, children }: { cap: string; wide?: boolean; children: ReactNode }) => <div className={`kd-cell${wide ? " kd-cell-wide" : ""}`}><Cap>{cap}</Cap>{children}</div>;
-const Live = ({ children }: { children: ReactNode }) => <div className="kd-live"><Cap>funcționează: mouse, tastatură, atingere</Cap>{children}</div>;
 
 const SEAT: KitOption[] = [
   { value: "any", label: "Oriunde", count: "282" },
@@ -128,7 +118,7 @@ export default function KitDemo() {
     <header className="kd-head">
       <p className="kd-eyebrow">Doar în dezvoltare · Întreabă · F1a</p>
       <h1>Trusa de filtre</h1>
-      <p>Componentele comune ale filtrelor, în stările lor: prima jumătate a trusei (propoziția, rândurile, cipurile, alegerile, fereastra). Tema urmează comutatorul site-ului. Numerele sunt de probă.</p>
+      <p>Cele 21 de componente comune ale filtrelor, în stările lor: propoziția, condițiile, alegerile, răspunsul și ajutorul. Tema urmează comutatorul site-ului. Numerele sunt de probă.</p>
     </header>
 
     <Section n={1} title="Propoziția, frazele, invitațiile și linia de profil" classes=".fk-sentence · .fk-phrase (--fixed) · .fk-invite · .fk-scopeline · .fk-present" note="Propoziția spune ce se numără. Fragmentele nesetate devin invitații numite, cel mult 4. Fără × în propoziție.">
@@ -156,7 +146,7 @@ export default function KitDemo() {
       <Cap>rând de grup: activ cu număr · activ · comutator oprit · invitație în focus</Cap>
       <ConditionRow label="Câștigătorii" kind="group">
         <Chip id="new" label="Furnizori noi · din 2024" name="Furnizori noi" active count="177 · 38,6%" onRemove={() => undefined} />
-        <Chip id="emp" label="1–49 angajați" name="Angajați" active count="192" onRemove={() => undefined} />
+        <Chip id="emp" label="1–49 de angajați" name="Angajați" active count="192" onRemove={() => undefined} />
         <Toggle id="main" label="Clientul lor principal" count="21 · 7,3%" pressed={false} />
         <Invite id="admin" label="Administrator" className="is-focus" />
       </ConditionRow>
@@ -260,6 +250,8 @@ export default function KitDemo() {
       </Live>
     </Section>
 
+    <BandsSection />
+
     <Section n={8} title="Pastile: plaje, ani, semnale" classes=".fk-pills · .fk-pill (+ .fk-n, .fk-dot--signal) · .fk-field" note="Alegere scurtă dintr-un set mic. Plajele nu sunt praguri legale. Pastilele cu numere (Semnal) sunt o alegere unică, pe loc; punctul portocaliu leagă cipul de punctele din grafic.">
       <div className="kd-cells kd-cells-top">
         <Cell cap="plaje + interval: aleasă · hover">
@@ -281,6 +273,10 @@ export default function KitDemo() {
       <Pills label="Semnal" value="split" options={SIGNALS.map(option => option.value === "december" ? { ...option, className: "is-hover" } : option.value === "fast" ? { ...option, className: "is-focus" } : option)} />
       <Live><Pills label="Semnal" value={signal} onChange={value => setSignal(value)} options={SIGNALS} /></Live>
     </Section>
+
+    <PeriodSection />
+    <EntitySection />
+    <AnswerSections />
 
     <Popover open={!!current} anchor={win?.anchor ?? null} onClose={close} title={win ? TITLES[win.id] : ""} wide={!!current?.wide} {...(current?.tip ? { tip: current.tip } : {})} foot={current?.foot}>
       {current?.body}

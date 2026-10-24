@@ -53,6 +53,19 @@ export interface KitOption {
 export interface KitRestRow { label: string; count?: string }
 
 /**
+ * A link of the answer, by where it leads (R8): "→" opens the records, "›"
+ * another answer in Întreabă, "↗" another page of the site. A page is an
+ * href; the records drawer and another answer are the caller's onClick.
+ */
+export interface KitLink {
+  label: string;
+  glyph?: "→" | "›" | "↗";
+  href?: string;
+  onClick?: () => void;
+  className?: string;
+}
+
+/**
  * Why a choice changed: "move" is an arrow key inside a radiogroup (the WAI
  * radio pattern checks while moving), "activate" a click, Enter or Space. A
  * window that closes on a choice closes only on "activate".

@@ -46,19 +46,147 @@ export function rovingStop(checked: number, disabled: readonly boolean[]): numbe
 }
 
 /**
+ * A roving move in a grid of `columns` (the year grid of the period, kit §8):
+ * ←/→ step through the cells in reading order and wrap round, ↑/↓ keep the
+ * column and skip disabled cells in it (no move past the first or last row),
+ * Home and End go to the first and last enabled cell.
+ */
+export function gridTarget(disabled: readonly boolean[], current: number, key: string, columns: number): number | null {
+  if (key !== "ArrowUp" && key !== "ArrowDown") return rovingTarget(disabled, current, key, "horizontal");
+  if (columns < 1 || !disabled.length || disabled.every(Boolean)) return null;
+  if (current < 0) return rovingTarget(disabled, -1, key === "ArrowDown" ? "ArrowRight" : "ArrowLeft", "horizontal");
+  const step = key === "ArrowDown" ? columns : -columns;
+  for (let index = current + step; index >= 0 && index < disabled.length; index += step) if (!disabled[index]) return index;
+  return null;
+}
+
+type Target = (disabled: readonly boolean[], current: number, key: string) => number | null;
+
+function moveWithin(event: KeyboardEvent<HTMLElement>, selector: string, target: Target, onMove: (index: number) => void): void {
+  const container = event.currentTarget;
+  const items = Array.from(container.querySelectorAll<HTMLElement>(selector)).filter(item => item.closest("[data-roving]") === container);
+  const from = (event.target as HTMLElement).closest<HTMLElement>(selector);
+  const next = target(items.map(item => item.getAttribute("aria-disabled") === "true"), from ? items.indexOf(from) : -1, event.key);
+  if (next === null) return;
+  event.preventDefault();
+  items[next]?.focus();
+  onMove(next);
+}
+
+/**
  * The container's keydown for a roving group (marked `data-roving`): moves
  * focus between its own items (`selector`), never into a nested group, and
  * reports the new index. Items marked aria-disabled are skipped.
  */
 export function rovingKeyDown(event: KeyboardEvent<HTMLElement>, selector: string, orientation: Orientation, onMove: (index: number) => void): void {
-  const container = event.currentTarget;
-  const items = Array.from(container.querySelectorAll<HTMLElement>(selector)).filter(item => item.closest("[data-roving]") === container);
-  const from = (event.target as HTMLElement).closest<HTMLElement>(selector);
-  const next = rovingTarget(items.map(item => item.getAttribute("aria-disabled") === "true"), from ? items.indexOf(from) : -1, event.key, orientation);
-  if (next === null) return;
-  event.preventDefault();
-  items[next]?.focus();
-  onMove(next);
+  moveWithin(event, selector, (disabled, current, key) => rovingTarget(disabled, current, key, orientation), onMove);
+}
+
+/** rovingKeyDown for a grid laid out in `columns` (gridTarget). */
+export function rovingGridKeyDown(event: KeyboardEvent<HTMLElement>, selector: string, columns: number, onMove: (index: number) => void): void {
+  moveWithin(event, selector, (disabled, current, key) => gridTarget(disabled, current, key, columns), onMove);
+}
+
+/**
+ * The menu button of an answer row ("⋯", kit §3 component 15): ↓ opens the
+ * menu on its first item and ↑ on its last. Enter and Space are the button's
+ * own click, which opens on the first item.
+ */
+export function menuButtonKey(key: string): "first" | "last" | null {
+  return key === "ArrowDown" ? "first" : key === "ArrowUp" ? "last" : null;
+}
+
+export type MenuKey = { focus: number } | { close: "button" | "away" } | null;
+
+/**
+ * A key inside an open menu (WAI menu pattern): ↓/↑ wrap round, Home/End,
+ * a letter jumps to the next item starting with it; Escape closes and focus
+ * returns to the button; Tab closes and lets focus move on. Disabled items
+ * stay reachable, so their reason can be read.
+ */
+export function menuKey(key: string, current: number, labels: readonly string[]): MenuKey {
+  const count = labels.length;
+  if (key === "Escape") return { close: "button" };
+  if (key === "Tab") return { close: "away" };
+  if (!count) return null;
+  if (key === "ArrowDown") return { focus: current < 0 ? 0 : (current + 1) % count };
+  if (key === "ArrowUp") return { focus: current <= 0 ? count - 1 : current - 1 };
+  if (key === "Home") return { focus: 0 };
+  if (key === "End") return { focus: count - 1 };
+  if (key.length === 1 && key.trim()) {
+    const letter = key.toLocaleLowerCase("ro");
+    for (let step = 1; step <= count; step++) {
+      const index = (Math.max(current, 0) + step) % count;
+      if (labels[index]?.trim().toLocaleLowerCase("ro").startsWith(letter)) return { focus: index };
+    }
+  }
+  return null;
+}
+
+export interface ComboState { active: number; expanded: boolean }
+export type ComboKey = { state: ComboState } | { pick: number } | { clear: true } | null;
+
+/**
+ * A key in the field of a combobox (entity search, "Unde e …?"; WAI
+ * combobox with a listbox): ↓/↑ move the active option and wrap round,
+ * Enter picks it (or the first result, as the site's search does), Escape
+ * first leaves the list, then empties the field, and only then is left to the
+ * window (null), which closes. `inline` lists stay drawn under the field;
+ * the others collapse. Home/End stay the field's own.
+ */
+export function comboboxKey(key: string, state: ComboState, count: number, hasText: boolean, inline = false): ComboKey {
+  const { active, expanded } = state;
+  if (key === "ArrowDown" && count) return { state: { active: expanded && active >= 0 ? (active + 1) % count : 0, expanded: true } };
+  if (key === "ArrowUp" && count) return { state: { active: expanded && active > 0 ? active - 1 : count - 1, expanded: true } };
+  if (key === "Enter" && count && (expanded || inline)) return { pick: active >= 0 && active < count ? active : 0 };
+  if (key === "Escape") {
+    if (inline ? active >= 0 : expanded && count > 0) return { state: { active: -1, expanded: inline } };
+    if (hasText) return { clear: true };
+  }
+  return null;
+}
+
+/**
+ * A trailing debounce (the search callback of EntitySearch and Locate): only
+ * the last value of a burst arrives, `ms` after the last call.
+ */
+export function debounce<T>(fn: (value: T) => void, ms: number): { call: (value: T) => void; cancel: () => void } {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  return {
+    call(value) { if (timer) clearTimeout(timer); timer = setTimeout(() => { timer = null; fn(value); }, ms); },
+    cancel() { if (timer) clearTimeout(timer); timer = null; },
+  };
+}
+
+/**
+ * The adjoining bands (Angajați, kit §3 component 10): the chosen bands are
+ * always one run. Pressing a band outside the run extends it and chooses the
+ * bands between (`added`); pressing an end of the run drops it; pressing one
+ * inside drops it and the bands between it and the nearer end (the upper
+ * side on a tie) (`removed`). `added` and `removed` leave out the pressed band.
+ */
+export function toggleBand(pressed: readonly boolean[], index: number): { pressed: boolean[]; added: number[]; removed: number[] } {
+  const on = pressed.map((value, at) => value ? at : -1).filter(at => at >= 0);
+  const next = pressed.map(() => false), added: number[] = [], removed: number[] = [];
+  const range = (from: number, to: number) => { for (let at = from; at <= to; at++) next[at] = true; };
+  if (index < 0 || index >= pressed.length) return { pressed: [...pressed], added, removed };
+  if (!on.length) { next[index] = true; return { pressed: next, added, removed }; }
+  const lo = on[0]!, hi = on[on.length - 1]!;
+  if (!pressed[index]) {
+    const from = Math.min(lo, index), to = Math.max(hi, index);
+    range(from, to);
+    for (let at = from; at <= to; at++) if (at !== index && !pressed[at]) added.push(at);
+    return { pressed: next, added, removed };
+  }
+  if (lo === hi) return { pressed: next, added, removed };
+  let keepFrom = lo, keepTo = hi;
+  if (index === lo) keepFrom = lo + 1;
+  else if (index === hi) keepTo = hi - 1;
+  else if (index - lo < hi - index) keepFrom = index + 1;
+  else keepTo = index - 1;
+  range(keepFrom, keepTo);
+  for (let at = lo; at <= hi; at++) if (at !== index && !next[at]) removed.push(at);
+  return { pressed: next, added, removed };
 }
 
 export interface Box { top: number; bottom: number; left: number; right: number }
