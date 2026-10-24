@@ -277,6 +277,7 @@ describe("links into Întreabă from the rest of the site (plan §2.6)", () => {
 describe("the builder it describes", () => {
   // BLOCK_FILTERS, the defs and today.ts describe this code; the walk above checks them against the
   // engine. A change to the builder's offers changes this hash: describe it there, then update the hash.
+  // F0-describe: the chips take their words from describeConditions; the offers are the same.
   it("is the QuestionBuilder of F0", () => {
     const source = readFileSync(new URL("../../../app/intreaba/QuestionBuilder.tsx", import.meta.url), "utf8");
     const between = (from: string, to: string) => {
@@ -292,6 +293,6 @@ describe("the builder it describes", () => {
       between("function submitBounds", "const navigation"),
       ...source.split("\n").filter((line) => line.includes("cq-more-filters") || line.includes("qb-presentation")),
     ].join("\n");
-    expect(createHash("sha256").update(offers).digest("hex")).toBe("25dcbe1ca3589261a43cb98f282dff18cf83a1aa294982985ff08ddd2d93e0bb");
+    expect(createHash("sha256").update(offers).digest("hex")).toBe("d54bf559ca023d5d9d38c8300953ce53bbfcb5b7257d8f6b3f0893654bcf8219");
   });
 });

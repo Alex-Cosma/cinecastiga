@@ -9,7 +9,9 @@ import {
   profileMinDas, profilePredicates, RISK_MIN_DAS, rowPredicates, trendYearsPredicate, type PredicateCtx,
 } from "./predicates";
 import { KIND_LABEL } from "./authority-kind";
-import { countyIsFirmSeat, describePopulation, isHistoricalProfile, unsupportedPopulationView } from "./population";
+import { countyIsFirmSeat, isHistoricalProfile, unsupportedPopulationView } from "./population";
+import { describeConditions } from "./filters/describe";
+import type { OriginHint } from "./filters/origin";
 import { PER_CAPITA_SOURCE, perCapitaCaveat, POPULATION_CARD_NOTE, readPerCapitaPopulations, type PerCapitaPopulations } from "./per-capita";
 import { sectorUnit } from "../peer-population";
 
@@ -734,8 +736,8 @@ export async function runSpec(
   const efWhere = (role: "authority" | "supplier", minDas: number) => andAll(sql, profilePredicates(w, role, minDas));
 
   const displaySql = buildDisplaySql(spec, w);
-  if (spec.population) caveats.push(`Selecție precisă aplicată: ${describePopulation(spec.population)}. Datele și limitele sunt inclusive; valorile se referă la cota alocată fiecărui furnizor.`);
-  if (spec.minimumRecords) caveats.push(`Păstrăm ${spec.minimumRecords.role === "authority" ? "instituțiile" : "firmele"} cu cel puțin ${spec.minimumRecords.count} înregistrări în selecția filtrată. O atribuire pe câștigător este o înregistrare; pragul nu numără contracte distincte.`);
+  // The precise selection (or the page it comes from) and the record threshold, in the words of describeConditions.
+  caveats.push(...describeConditions(spec, { grounding }).caveats);
 
   // The county caveat above already says the filter is the buyer's county, not
   // the firm's; the firm's own county column is explained next to its header.
@@ -1717,6 +1719,8 @@ export interface DrillOpts {
    * of a DRILL_PAGE_SIZE page. Always capped at CSV_MAX_ROWS.
    */
   limit?: number;
+  /** Server-internal: the comparison group a peer drawer bound (peerEvidenceOptions), for the note's label. */
+  origin?: OriginHint;
 }
 
 export const DRILL_PAGE_SIZE = 10;
@@ -1913,7 +1917,9 @@ export async function runRows(
     notes.push("Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.");
     notes.push("Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.");
   } else {
-    if (spec.population) notes.push(`Selecție precisă aplicată: ${describePopulation(spec.population)}.`);
+    // The precise selection and the record threshold, in the words of describeConditions.
+    const conditions = describeConditions(spec, { grounding, origin: opts.origin }).byId;
+    if (conditions.population?.note) notes.push(conditions.population.note);
     const isRelationship = spec.block === "network" || spec.block === "sankey";
     if (isRelationship) {
       if (!focalId) return { error: "Lipsește entitatea centrală." };
@@ -1926,7 +1932,7 @@ export async function runRows(
     }
     if (spec.minimumRecords) {
       parts.push(...groupPredicates(ctx, txt as unknown as ReturnType<DbSql>, andAll(sql, parts)));
-      notes.push(`Pragul de ${spec.minimumRecords.count} înregistrări pentru ${spec.minimumRecords.role === "authority" ? "instituții" : "firme"} se calculează înainte de selecția unui grup și filtrele locale ale surselor.`);
+      if (conditions.minimumRecords?.note) notes.push(conditions.minimumRecords.note);
     }
     if (valueWinner) {
       parts.push(spec.dim === "supplier" ? sql`d.supplier_id = ${valueWinner}` : sql`d.authority_id = ${valueWinner}`);

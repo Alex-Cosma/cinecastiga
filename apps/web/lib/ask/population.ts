@@ -5,13 +5,7 @@ export type PopulationCondition =
 export interface PopulationGroup { operator: "and" | "or"; conditions: PopulationCondition[] }
 export interface QueryPopulation { operator: "and" | "or"; groups: PopulationGroup[] }
 export interface MinimumRecords { role:"authority" | "supplier"; count:number }
-
-export function describePopulation(population: QueryPopulation): string {
-  const names = { date:"data", value:"lei pe înregistrare", authority:"instituții", supplier:"firme", cpv:"CPV", county:"județe" };
-  return population.groups.map(group => `(${group.conditions.map(c => "value" in c
-    ? `${names[c.field]} ${c.op === "gte" ? "≥" : "≤"} ${c.value}`
-    : `${names[c.field]} ${c.op === "not_in" ? "exclud" : "includ"} ${(c.labels ?? c.values).join(", ")}`).join(group.operator === "and" ? " ȘI " : " SAU ")})`).join(population.operator === "and" ? " ȘI " : " SAU ");
-}
+// Its words (pills, caveats, notes, the saved summary, a watch's receipt) are describeConditions' (filters/describe.ts).
 
 const record = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
 const exactKeys = (o: Record<string, unknown>, keys: string[]) => Object.keys(o).every(k => keys.includes(k));

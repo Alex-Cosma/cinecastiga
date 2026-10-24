@@ -1,6 +1,7 @@
 import { validateSpec, type AskSpec, type Block } from "./spec";
 import { isHistoricalProfile, type MinimumRecords, type QueryPopulation } from "./population";
 import { cpvTermParts } from "./cpv-terms";
+import { titleTail } from "./filters/words";
 
 /** The builder uses exactly the public /api/ask spec; it owns no query engine. */
 export interface QuestionSpec {
@@ -253,7 +254,7 @@ export function focalRole(spec: QuestionSpec): "authority" | "supplier" {
 }
 
 /** Plural nouns for the authority kinds, as a person says them in a question. */
-const KIND_WORDS: Record<string, { the: string; bare: string }> = {
+export const KIND_WORDS: Record<string, { the: string; bare: string }> = {
   comuna: { the: "primăriile de comună", bare: "primării de comună" },
   oras_municipiu: { the: "primăriile de oraș și municipiu", bare: "primării de oraș și municipiu" },
   consiliu_judetean: { the: "consiliile județene", bare: "consilii județene" },
@@ -269,12 +270,12 @@ const KIND_ONE: Record<string, string> = {
   scoala: "școală",
 };
 
-function countyWords(county: string): string {
+export function countyWords(county: string): string {
   return /^bucure[sș]ti$/i.test(county) ? "din București" : `din județul ${county}`;
 }
 
 /** "Municipiul Vaslui (Vaslui)" → "Municipiului Vaslui (Vaslui)"; the county stays only when it adds information. */
-function localityGenitive(label: string): string {
+export function localityGenitive(label: string): string {
   const m = /^(.*?) \(([^)]+)\)$/.exec(label);
   const name = m ? m[1]! : label;
   const county = m ? m[2]! : null;
@@ -321,7 +322,7 @@ function rankingPlace(spec: QuestionSpec): string {
   return "";
 }
 
-function periodWords(spec: QuestionSpec): string {
+export function periodWords(spec: QuestionSpec): string {
   const f = spec.filters;
   if (f.monthFrom || f.monthTo) return `în perioada ${periodLabel(spec)}`;
   if (f.yearFrom && f.yearTo) return f.yearFrom === f.yearTo ? `în ${f.yearFrom}` : `între ${f.yearFrom} și ${f.yearTo}`;
@@ -330,7 +331,7 @@ function periodWords(spec: QuestionSpec): string {
   return "în toți anii";
 }
 
-function subjectWords(spec: QuestionSpec): string | null {
+export function subjectWords(spec: QuestionSpec): string | null {
   const term = spec.filters.cpvTerm;
   if (term === undefined || term === "") return null;
   // Several subjects ("parcuri + spatii verzi") are counted as their union: name each one.
@@ -339,27 +340,8 @@ function subjectWords(spec: QuestionSpec): string | null {
   return words.length > 1 ? `${words.slice(0, -1).join(", ")} și ${words[words.length - 1]}` : words[0]!;
 }
 
-/** Romanian numerals take "de" from 20 on: "5 angajați", "49 de angajați". */
-function countOfWords(n: number, noun: string): string {
-  const lastTwo = n % 100;
-  return `${n}${n !== 0 && (lastTwo === 0 || lastTwo >= 20) ? " de" : ""} ${noun}`;
-}
-
-/** Channel and the other conditions that narrow the records, after the period. */
-function conditionsTail(spec: QuestionSpec, channelSaid = false): string {
-  const f = spec.filters;
-  const parts: string[] = [];
-  if (f.singleBidder) parts.push("doar contracte cu un singur ofertant");
-  else if (spec.dataset === "da" && !channelSaid) parts.push("doar achiziții directe");
-  else if (spec.dataset === "contracts") parts.push("doar contracte din proceduri");
-  const min = f.minEmployees === undefined ? undefined : Number(f.minEmployees);
-  const max = f.maxEmployees === undefined ? undefined : Number(f.maxEmployees);
-  if (max === 0) parts.push("firme fără angajați");
-  else if (min !== undefined && max !== undefined) parts.push(`firme cu ${min}–${countOfWords(max, "angajați")}`);
-  else if (max !== undefined) parts.push(`firme cu cel mult ${countOfWords(max, "angajați")}`);
-  else if (min !== undefined) parts.push(`firme cu cel puțin ${countOfWords(min, "angajați")}`);
-  return parts.length ? `, ${parts.join(", ")}` : "";
-}
+/** Channel, employees and exclusions after the period: one writer, shared with describeConditions (filters/words.ts). */
+const conditionsTail = titleTail;
 
 /**
  * The title of a money answer: exactly what was asked, with every active

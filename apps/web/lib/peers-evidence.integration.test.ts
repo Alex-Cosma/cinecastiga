@@ -97,6 +97,8 @@ describe.skipIf(!url)("peer sources and immutable captures (isolated PostgreSQL)
     const body={spec:{block:"stat",measure:"value",filters:{yearFrom:2024,county:"Buzau"}},peer:selection};
     const rows=await rowsRoute(new Request("http://localhost/api/ask/rows",{method:"POST",body:JSON.stringify(body)}));
     const data=await rows.json();expect(rows.status).toBe(200);expect(data.total).toBe(8);expect(data.value).toBe("121.0106");
+    // The spec carries only the group's division; the bound group names its note (describeConditions, origin hint).
+    expect(data.scopeNotes.filter((note:string)=>/Selecție precisă|Grupul de comparație/.test(note))).toEqual([expect.stringMatching(/^Grupul de comparație: \d+ (de )?(instituții|firme) · CPV \d{2}\.$/)]);
     const csv=await csvRoute(new Request("http://localhost/api/ask/rows/csv",{method:"POST",body:JSON.stringify(body)}));
     expect(csv.headers.get("x-total-rows")).toBe("8");expect(await csv.text()).toContain("12345-2025");
     const scoped=await rowsRoute(new Request("http://localhost/api/ask/rows",{method:"POST",body:JSON.stringify({...body,scope:{entityIds:["887791007"],role:"supplier"}})}));expect(scoped.status).toBe(400);

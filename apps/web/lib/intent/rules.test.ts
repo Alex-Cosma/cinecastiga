@@ -5,7 +5,8 @@ import { buildPlaces, catalogUatSource, countyDisplay, placeKey } from "./places
 import { RulesInterpreter, strongNameMatch } from "./rules";
 import { FIXTURE } from "./rules.fixture";
 import { stems, tokenize, wordMatches } from "./text";
-import { countOf, resultFor, sentenceFor } from "./to-spec";
+import { resultFor, sentenceFor } from "./to-spec";
+import { employeesCount } from "../ask/filters/words";
 import { sentenceScopeProblems } from "./scope-check";
 import type { AskSpec } from "../ask/spec";
 
@@ -33,9 +34,11 @@ describe("text helpers", () => {
     expect(wordMatches("cluj", "gorj")).toBe(false);
   });
   it("writes Romanian counts with «de» from 20 on", () => {
-    expect(countOf(4, "angajați")).toBe("4 angajați");
-    expect(countOf(49, "angajați")).toBe("49 de angajați");
-    expect(countOf(101, "angajați")).toBe("101 angajați");
+    expect(employeesCount(4)).toBe("4 angajați");
+    expect(employeesCount(49)).toBe("49 de angajați");
+    expect(employeesCount(101)).toBe("101 angajați");
+    expect(employeesCount(1)).toBe("1 angajat");
+    expect(employeesCount(1000)).toBe("1.000 de angajați");
   });
   it("matches registry names strongly only when the typed words carry the name", () => {
     expect(strongNameMatch(["spitalul", "judetean", "buzau"], "SPITALUL JUDETEAN DE URGENTA BUZAU")).toBe(true);
