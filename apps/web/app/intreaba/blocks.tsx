@@ -11,7 +11,7 @@ import { encodeSpec } from "@/lib/ask/permalink";
 import type { QuestionSpec } from "@/lib/ask/question-ui";
 import { askLink, leaderAlone, leaderAloneSpecs } from "@/lib/ask/source-spec";
 import { deeperThread, threadHref, type Thread } from "./answer-state";
-import KitLink from "./answer/KitLink";
+import KitLink, { recordsWords } from "./answer/KitLink";
 
 /**
  * House rule (docs/PRINCIPLES.md): every graph element answers on hover with an
@@ -133,7 +133,7 @@ export function DistributionBlock({
         {d.buckets.map((b, i) => {
           const bind = t.bind(
             `CRI ${formatDecimal(b.from, 1)}–${formatDecimal(b.to, 1)}`,
-            `${formatInt(b.n)} entități`,
+            countWords(b.n, "entitate", "entități"),
             (i === focalBucket ? `aici e ${cleanName(d.focal.name)} · ` : "") +
               (b.n > 0 ? "click → înregistrările profilurilor" : ""),
           );
@@ -207,8 +207,7 @@ export function DistributionBlock({
               <>
                 {" "}
                 — peste <b>{d.focal.percentile}%</b> din grupul de comparație:
-                cele <b>{formatInt(d.totalEntities)}</b>{" "}
-                {d.role === "authority" ? "autorități" : "firme"} cu cel puțin
+                cele <b>{d.role === "authority" ? countWords(d.totalEntities, "instituție", "instituții") : countWords(d.totalEntities, "firmă", "firme")}</b> cu cel puțin
                 10 achiziții directe (filtrele de județ/tip se aplică grupului)
               </>
             )}
@@ -227,7 +226,7 @@ export function DistributionBlock({
 /* ── breakdown ────────────────────────────────────────────────────────── */
 
 // Categorical: fixed order, never cycled; hues spaced for CVD, mid lightness
-// so they read on both grounds. Slot 9+ folds into "alte categorii".
+// so they read on both grounds. Slot 9+ folds into "alte domenii" (kit §4).
 const SEG_COLORS = [
   "#285b45",
   "#708e59",
@@ -275,7 +274,7 @@ export function BreakdownBlock({
     ...(other.value > 0
       ? [
           {
-            name: "alte categorii",
+            name: "alte domenii",
             code: null as string | null,
             value: other.value,
             count: other.count,
@@ -349,7 +348,7 @@ export function BreakdownBlock({
                     )
                   }
                 >
-                  Surse →
+                  {recordsWords(s.count)} →
                 </button>
               )}
             </span>
@@ -654,7 +653,7 @@ export function ScatterBlock({
         tipRef.current.show(
           `${cleanName(h.p.name)}${h.p.county ? ` (${h.p.county})` : ""}`,
           `CRI ${formatDecimal(h.p.cri, 2)} · ${formatRon(h.p.value)}`,
-          `${h.p.nFlags} semnale de risc · click → pagina entității`,
+          `${countWords(h.p.nFlags, "semnal", "semnale")} de risc · click → pagina entității`,
           ev.clientX,
           ev.clientY,
         );
@@ -736,7 +735,7 @@ export function ScatterBlock({
       </div>
       <details className="cq-calculation">
         <summary>
-          Valorile exacte și sursele · {points.length} profiluri reprezentate
+          Valorile exacte și sursele · {countWords(points.length, "profil reprezentat", "profiluri reprezentate")}
           prin puncte
         </summary>
         <table className="cq-group-table">
@@ -782,7 +781,7 @@ export function ScatterBlock({
       </details>
       <p className="ask-fine">
         {density
-          ? `Norul gri = toate cele ${formatInt(density.total)} de entități cu min. 10 achiziții; punctele = cele notabile, click deschide înregistrările profilului.`
+          ? `Norul gri = toate cele ${countWords(density.total, "entitate", "entități")} cu min. 10 achiziții; punctele = cele notabile, click deschide înregistrările profilului.`
           : "Fiecare punct = o entitate (min. 10 achiziții) — click deschide înregistrările profilului."}{" "}
         Scroll = zoom · trage = pan · dublu-click = reset.
       </p>
@@ -1192,7 +1191,7 @@ export function NetworkBlock({
                     sources(n);
                   }
                 }}
-                aria-label={`${cleanName(n.name)} · ${n.count} înregistrări`}
+                aria-label={`${cleanName(n.name)} · ${recordsWords(n.count)}`}
               >
                 <circle
                   cx={nx}
@@ -1240,14 +1239,14 @@ export function NetworkBlock({
           <div className="t">{tip.name}</div>
           <div className="v">{formatRon(tip.value)}</div>
           <div className="s">
-            {formatInt(tip.count)} achiziții
+            {countWords(tip.count, "achiziție", "achiziții")}
             {totalV > 0 &&
               ` · ${formatShare(tip.value / totalV)} din top-parteneri`}
           </div>
         </div>
       )}
       <p className="ask-fine">
-        Top {nodes.length} parteneri ai{" "}
+        Primii {countWords(nodes.length, "partener", "parteneri")} ai{" "}
         <Link href={`/entitati/${focal.entityId}`}>
           {cleanName(focal.name)}
         </Link>{" "}
@@ -1277,7 +1276,7 @@ export function NetworkBlock({
                   className="cq-record-link"
                   onClick={() => sources(n)}
                 >
-                  {formatInt(n.count)} înregistrări →
+                  {recordsWords(n.count)} →
                 </button>
               </td>
             </tr>
@@ -1322,7 +1321,7 @@ export function EntityCardBlock({ card, historical = true, spec }: { card: Entit
         </span>
         {card.county && <span className="badge">{card.county}</span>}
         {card.population !== null && card.population > 0 && (
-          <span className="badge">{formatInt(card.population)} locuitori</span>
+          <span className="badge">{countWords(card.population, "locuitor", "locuitori")}</span>
         )}
       </div>
       <div className="kpis">
@@ -1360,7 +1359,7 @@ export function EntityCardBlock({ card, historical = true, spec }: { card: Entit
             )
           }
         >
-          Verifică cele {formatInt(card.count)} înregistrări →
+          {card.count === 1 ? "Vezi înregistrarea →" : `Vezi cele ${recordsWords(card.count)} →`}
         </button>
       )}
       {card.flags.length > 0 && (
@@ -1402,7 +1401,7 @@ export function FactCheckBlock({ fact }: { fact: FactCheckData }) {
               <Link href={`/entitati/${fact.supplier.entityId}`}>
                 {cleanName(fact.supplier.name)}
               </Link>
-              : <b>{formatInt(fact.count)}</b> înregistrări, în total{" "}
+              : <b>{recordsWords(fact.count)}</b>, în total{" "}
               <b>{formatRonFull(fact.value)}</b>
               {fact.yearFirst && (
                 <>

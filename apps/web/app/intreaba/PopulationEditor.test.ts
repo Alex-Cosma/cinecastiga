@@ -6,6 +6,7 @@ import type { QueryPopulation } from "../../lib/ask/population";
 vi.mock("@/lib/ask/population", () => import("../../lib/ask/population"));
 vi.mock("@/lib/counties", () => import("../../lib/counties"));
 vi.mock("@/components/Term", () => import("../../components/Term"));
+vi.mock("@/lib/ask/answer-text", () => import("../../lib/ask/answer-text"));
 
 const { default: PopulationEditor } = await import("./PopulationEditor");
 

@@ -157,7 +157,7 @@ export const QUESTION_TYPES: {
 export const KIND_OPTIONS = [
   ["", "instituțiile publice", "instituțiilor publice"],
   ["comuna", "primăriile de comună", "primăriilor de comună"],
-  ["oras_municipiu", "primăriile de oraș", "primăriilor de oraș"],
+  ["oras_municipiu", "primăriile de oraș și municipiu", "primăriilor de oraș și municipiu"],
   ["consiliu_judetean", "consiliile județene", "consiliilor județene"],
   ["spital", "spitalele", "spitalelor"],
   ["scoala", "școlile", "școlilor"],
@@ -253,7 +253,7 @@ export function periodLabel(spec: QuestionSpec): string {
   }
   if (f.yearFrom) return `din ${bound("yearFrom", "monthFrom")}`;
   if (f.yearTo) return `până în ${bound("yearTo", "monthTo")}`;
-  return "toți anii disponibili";
+  return "toți anii";
 }
 
 export function entityLabel(
@@ -415,7 +415,7 @@ export function transitionQuestion(
   if (spec.filters.singleBidder === true && spec.dataset !== "contracts") {
     spec.dataset = "contracts";
     changes.push(
-      "Filtrul cu un singur ofertant folosește contractele din proceduri.",
+      "Condiția „o singură ofertă” folosește contractele din proceduri.",
     );
   }
   return { spec, changes };

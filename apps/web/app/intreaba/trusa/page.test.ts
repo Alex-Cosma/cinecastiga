@@ -25,7 +25,8 @@ describe("/intreaba/trusa", () => {
     // Part 2: bands, period, entity search, strip, row and menu, total, longer list, card, locate, empty state.
     for (const name of ["fk-bands", "fk-band", "fk-years", "fk-year is-partial", "fk-year is-zero", "fk-range-open", "fk-form-error", "fk-search is-focus", "fk-listbox", "fk-res is-hover", "fk-strip fk-strip--rows", "fk-strip-label--sm-hide", "fk-suggest", "fk-crumbs", "fk-strip-end", "fk-arow", "fk-tag--signal", "fk-tag--caveat", "fk-tag--accent", "fk-more is-focus", "fk-menu fk-menu--pop", "fk-total", "fk-listfoot", "fk-rest", "fk-card", "fk-find", "fk-find-res", "fk-empty", "fk-relax", "fk-bottom", "fk-primary is-hover"]) expect(markup, name).toContain(name);
     for (let n = 1; n <= 14; n++) expect(markup, `section ${n}`).toContain(`id="kd-sec-${n}"`);
-    expect(markup).not.toMatch(/Ascunde din|Încă \d|#\d+ din|toți anii disponibili|Toată perioada/); // kit §4 vocabulary
+    expect(markup).not.toMatch(/Ascunde din|Încă \d|#\d+ din|toți anii disponibili|Toată perioada|La prima apariție|un singur ofertant/); // kit §4 vocabulary
+    expect(markup).toContain("prima înregistrare în datele noastre"); // trusa 6: the first record is «Prima dată»
     expect(markup).not.toMatch(/style="[^"]*#[0-9a-f]{3,8}/i);
     expect(markup).not.toMatch(/[şţŞŢ]/);
   });

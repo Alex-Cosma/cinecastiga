@@ -33,7 +33,7 @@ export function CompareBlock({ data, partial = [], dataset = "all" }: { data: Co
       <Domains a={a} b={b} firms={firms} />
       {data.joint && data.joint.total > 0 && (
         <section className="cmp-section">
-          <h3>Câștigate împreună · {countWords(data.joint.total, "contract", "contracte")} <Term tip title="Câștigate împreună" text="Contracte în care ambele firme sunt printre câștigători: consorții sau acorduri-cadru cu mai mulți furnizori. Suma este cota celor două, nu valoarea întregului contract." /></h3>
+          <h3>Câștigate împreună · {countWords(data.joint.total, "contract", "contracte")} <Term tip title="Câștigate împreună" text="Contracte în care ambele firme sunt printre câștigători: în asociere sau acorduri-cadru cu mai mulți furnizori. Suma este cota celor două, nu valoarea întregului contract." /></h3>
           <ul className="cmp-joint">
             {data.joint.rows.map((row) => (
               <li key={row.nid}>
@@ -58,7 +58,7 @@ function CompareCard({ entity: e, side, dataset }: { entity: CompareEntity; side
   return (
     <article className={`cmp-card cmp-${side}`}>
       <h3><Link href={`/entitati/${e.entityId}`}>{cleanName(e.name)}</Link></h3>
-      <p className="cmp-sub">{e.county ?? "județ necunoscut"} · {firms ? "furnizor" : "autoritate"}{active}</p>
+      <p className="cmp-sub">{e.county ?? (firms ? "sediu necunoscut" : "județ necunoscut")} · {firms ? "furnizor" : "autoritate"}{active}</p>
       <p className="cmp-big">{formatRon(e.value)} <small>{countWords(e.count, "înregistrare", "înregistrări")}</small></p>
       {e.streams && dataset === "all" && total > 0 && (
         <>
@@ -90,12 +90,12 @@ function CompareCard({ entity: e, side, dataset }: { entity: CompareEntity; side
         {e.firm && (
           <div>
             <dt>Firmă (bilanț MF)</dt>
-            <dd>{[e.firm.employees !== null ? `${formatInt(e.firm.employees)} angajați` : null, e.firm.turnover !== null ? `CA ${formatRon(e.firm.turnover)}` : null].filter(Boolean).join(" · ")}{e.firm.year ? ` (${e.firm.year})` : ""}</dd>
+            <dd>{[e.firm.employees !== null ? countWords(e.firm.employees, "angajat", "angajați") : null, e.firm.turnover !== null ? `CA ${formatRon(e.firm.turnover)}` : null].filter(Boolean).join(" · ")}{e.firm.year ? ` (${e.firm.year})` : ""}</dd>
           </div>
         )}
         {e.population !== null && e.population > 0 && (
           <div>
-            <dt>Lei / locuitor</dt>
+            <dt>Pe locuitor (lei)</dt>
             <dd>{formatInt(Math.round(e.value / e.population))}</dd>
           </div>
         )}

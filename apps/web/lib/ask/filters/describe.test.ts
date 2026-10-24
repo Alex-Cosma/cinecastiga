@@ -26,7 +26,8 @@ import { DA_PLAFOND_RON } from "../predicates";
  * on every spec of the legacy corpus and on edge cases; the only differences
  * allowed are the ones the plan fixes, applied by `fixed` below and listed in
  * the stage notes: numerals through countWords (G10), the labels of selections
- * produced by other pages (§2.6) and exclusions read "Fără X" (§2.8).
+ * produced by other pages (§2.6), exclusions read "Fără X" (§2.8) and the
+ * kit's vocabulary (§4, plan G3: `kit*` below, F1b-polish).
  */
 
 /** G10 on a text of the old grammars: every count with its noun through countWords. */
@@ -42,6 +43,31 @@ function fixed(text: string): string {
     .replace(/fără (\d+) subclase/g, (_, n) => `fără ${countWords(Number(n), "subclasă", "subclase")}`)
     .replace(/\+(\d+) CPV/g, (_, n) => `+${countWords(Number(n), "CPV", "CPV")}`);
 }
+
+/** Kit §4, place by place: the words of the old grammars the kit retires (plan G3, F1b-polish). */
+const KIT_PILLS: Readonly<Record<string, string>> = {
+  "toți anii disponibili": "toți anii",
+  "toate sursele: achiziții directe + contracte prin proceduri": "toate achizițiile: directe și din proceduri",
+  "doar contracte prin proceduri": "doar contractele din proceduri", "doar achiziții directe": "doar achizițiile directe",
+  "doar comune": "doar primării de comună", "doar orașe/municipii": "doar primării de oraș și municipiu", "doar școli/licee": "doar școli",
+  "un singur ofertant": "o singură ofertă",
+};
+const kitPill = (text: string) => KIT_PILLS[text] ?? text.replace(/^conduse de /, "conduse azi de ");
+/** The list pill of a ranking: institutions, never "autorități" (pills.ts). */
+const kitTop = (text: string) => text.replace(/autorități/, "instituții").replace(/autoritate\b/, "instituție").replace("toate instituțiile", "toate instituțiile publice");
+const KIT_SCOPE_LABELS: Readonly<Record<string, string>> = { "Sursele întrebării": "Ce fel de achiziții", "Tip instituție": "Tipul instituției" };
+const KIT_SCOPE_VALUES: Readonly<Record<string, string>> = {
+  "Achiziții directe și contracte prin proceduri": "Toate achizițiile: directe și din proceduri", "Achiziții directe": "Achizițiile directe", "Contracte prin proceduri": "Contractele din proceduri",
+  "Comune": "Primării de comună", "Orașe și municipii": "Primării de oraș și municipiu", "Școli și licee": "Școli",
+  "Doar proceduri cu un singur ofertant confirmat": "Doar contractele cu o singură ofertă confirmată",
+};
+const kitScope = (row: { label: string; value: string }) => ({
+  label: KIT_SCOPE_LABELS[row.label] ?? row.label,
+  value: (KIT_SCOPE_VALUES[row.value] ?? row.value).replace(/^Profiluri istorice:/, "Profil istoric:"),
+});
+const KIT_CHIPS: Readonly<Record<string, string>> = { "toți anii disponibili": "toți anii", "primăriile de oraș": "primăriile de oraș și municipiu", "Un singur ofertant": "O singură ofertă" };
+const kitChip = (text: string) => KIT_CHIPS[text] ?? text.replace(/^Conduse de /, "Conduse azi de ");
+const kitTail = (text: string) => text === "doar contracte cu un singur ofertant" ? "doar contractele cu o singură ofertă" : text;
 
 /** A grounding as the engine would resolve the spec's names (the pills read names only from it). */
 function groundingOf(spec: AskSpec, cpv?: Grounding["cpv"]): Grounding {
@@ -93,10 +119,10 @@ describe("describeConditions says what the six grammars said (plan §2.2)", () =
       for (const cpv of cpvGroundings) {
         if (relabelled(spec)) continue;
         const grounding = groundingOf(spec, cpv);
-        expect(describeConditions(spec, { grounding }).pills, JSON.stringify(spec)).toEqual(conditionPillsBefore(spec, grounding).map(fixed));
+        expect(describeConditions(spec, { grounding }).pills, JSON.stringify(spec)).toEqual(conditionPillsBefore(spec, grounding).map((p) => kitPill(fixed(p))));
         // A ranking without topN is the complete one, in pages: its pill no longer says "top 10" (pills.ts, after the S1 review).
-        if (spec.block === "table" && spec.topN == null) expect(buildPills(spec, grounding)[1]).toMatch(/^(toate autoritățile|toți furnizorii|toate județele)$/);
-        else if (spec.block === "table" || spec.block === "trend") expect(buildPills(spec, grounding)).toContain(fixed(topPillBefore(spec)));
+        if (spec.block === "table" && spec.topN == null) expect(buildPills(spec, grounding)[1]).toMatch(/^(toate instituțiile publice|toți furnizorii|toate județele)$/);
+        else if (spec.block === "table" || spec.block === "trend") expect(buildPills(spec, grounding)).toContain(kitTop(fixed(topPillBefore(spec))));
       }
   });
 
@@ -106,7 +132,7 @@ describe("describeConditions says what the six grammars said (plan §2.2)", () =
       const described = describeConditions(spec);
       expect(described.summary, JSON.stringify(spec)).toEqual(summaryBefore(spec).map(fixed));
       const before = scopeBefore(spec);
-      expect(described.scope).toEqual(before.items.map((row) => ({ ...row, value: fixed(row.value) })));
+      expect(described.scope).toEqual(before.items.map((row) => kitScope({ ...row, value: fixed(row.value) })));
       expect(described.receipt).toEqual(before.receipt);
       expect(described.caveats).toEqual(caveatsBefore(spec).map(fixed));
       const notes = notesBefore(spec);
@@ -122,9 +148,9 @@ describe("describeConditions says what the six grammars said (plan §2.2)", () =
       for (const cpvName of [undefined, "Lucrări de construcții"]) {
         const { byId } = describeConditions(draft, { cpvName });
         const chips = Object.fromEntries(Object.entries(byId).filter(([, w]) => w.chip !== undefined).map(([id, w]) => [id, w.chip!]));
-        expect(chips, JSON.stringify(draft)).toEqual(Object.fromEntries(Object.entries(chipsBefore(draft, cpvName)).map(([id, text]) => [id, fixed(text)])));
+        expect(chips, JSON.stringify(draft)).toEqual(Object.fromEntries(Object.entries(chipsBefore(draft, cpvName)).map(([id, text]) => [id, kitChip(fixed(text))])));
       }
-      for (const channelSaid of [false, true]) expect(titleTail(spec, channelSaid)).toBe(tailBefore(spec, channelSaid).map((p) => `, ${fixed(p)}`).join(""));
+      for (const channelSaid of [false, true]) expect(titleTail(spec, channelSaid)).toBe(tailBefore(spec, channelSaid).map((p) => `, ${kitTail(fixed(p))}`).join(""));
     }
   });
 });
@@ -152,6 +178,26 @@ describe("the changes the plan fixes", () => {
     expect(describeConditions(edge({ filters: { minEmployees: 1 } })).pills).toContain("cel puțin 1 angajat");
     expect(describeConditions(edge({ population: { operator: "and", groups: [{ operator: "and", conditions: [{ field: "cpv", op: "not_in", values: ["45"] }] }] } })).pills).toContain("Selecție precisă · 1 condiție în 1 grup");
     expect(sourceCsvMessage(100_000, 200_000)).toContain("primele 100.000 din 200.000 de înregistrări");
+  });
+
+  it("speaks the kit's vocabulary in every place, never the words it retires (kit §4, plan G3, §6.1)", () => {
+    const retired = [
+      "toți anii disponibili", "toate sursele", "un singur ofertant", "ofertanți", "consorți", "Doar înainte", "La prima apariție", "debut în arhivă", "Ascunde din",
+      "Fără acest cumpărător", "De unde sunt firmele?", "Ce achiziții?", "Ce perioadă?", "banii rămân", "prin proceduri", "Orașe și municipii", "Școli și licee",
+      "orașe/municipii", "școli/licee", "Tip instituție", "Sursele întrebării", "Profiluri istorice", "toată România", "Toată perioada", "Firme străine", "Mărimea firmelor",
+    ];
+    const texts: string[] = [];
+    for (const spec of [...corpus.map((c) => c.spec), ...edges]) {
+      const grounding = groundingOf(spec);
+      const d = describeConditions(spec, { grounding });
+      texts.push(...buildPills(spec, grounding), ...d.summary, ...d.caveats, ...d.scope.flatMap((r) => [r.label, r.value]), d.tail, d.totalLine ?? "",
+        ...Object.values(d.byId).flatMap((w) => [w.chip ?? "", w.note ?? "", w.words ?? ""]), savedQuestionSummary(spec), questionTitle(spec), titleTail(spec));
+    }
+    const all = texts.join("\n");
+    for (const word of retired) expect(all, word).not.toContain(word);
+    expect(all).not.toMatch(/(?<!azi )[Cc]onduse de/);
+    expect(all).not.toMatch(/\bComune\b|\bÎncă \d|\bautorități/);
+    expect(describeConditions({ block: "stat", measure: "value", dataset: "contracts", filters: { singleBidder: true } }).byId.singleBidder?.words).toBe("doar contractele cu o singură ofertă");
   });
 
   it("labels the selections other pages produce (plan §2.6, kit §5.42)", () => {

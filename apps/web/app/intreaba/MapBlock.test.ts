@@ -20,7 +20,7 @@ describe("Ask county map", () => {
     expect(tip(1)).toContain("1 înregistrare");
     expect(tip(124)).toContain("click → înregistrările județului");
     expect(tip(124)).not.toMatch(/achiziți/);
-    expect(text(renderToStaticMarkup(createElement(CountyTip, { label: "Olt", value: 0, count: 0, national: 1, asCount: false })))).toBe("Olt fără date pentru aceste filtre");
+    expect(text(renderToStaticMarkup(createElement(CountyTip, { label: "Olt", value: 0, count: 0, national: 1, asCount: false })))).toBe("Olt nicio înregistrare pentru aceste filtre");
   });
 
   it("says a count once, in words, in the tip and in the note on records without a county", () => {

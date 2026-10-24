@@ -75,7 +75,7 @@ describe("«Rezultatul afișat · CSV» with the strip's state", () => {
     const lines = text.replace(/^﻿/, "").split("\r\n");
     expect(lines[0]).toBe("categorie,cod,valoare_lei,achizitii,canal,fir");
     expect(lines[1]).toBe('"Echipamente medicale",33,10,2,"directe","toate › Echipamente medicale"');
-    expect(lines[2]).toBe('"alte categorii",,1,1,"directe","toate › Echipamente medicale"');
+    expect(lines[2]).toBe('"alte domenii",,1,1,"directe","toate › Echipamente medicale"');
     expect(filename).toBe("ce-cumpara-spitalele-directe-toate-echipamente-medicale.csv");
   });
 

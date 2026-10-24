@@ -129,7 +129,7 @@ describe("a window's choice", () => {
 
   it("notes what a window removes outside itself: the single bidder of another stream, the second entity of another role", () => {
     const link = q({ block: "table", dim: "supplier", dataset: "contracts", filters: { singleBidder: true } });
-    expect(choose(link, "dataset", { filter: "dataset", value: "da" }).notes).toEqual(["Am scos „doar contracte cu un singur ofertant”: nu se potrivește cu alegerea nouă."]);
+    expect(choose(link, "dataset", { filter: "dataset", value: "da" }).notes).toEqual(["Am scos „doar contractele cu o singură ofertă”: nu se potrivește cu alegerea nouă."]);
     const pair = q({ block: "compare", filters: { authorityName: "A", authorityId: 1, compareWith: "B", compareWithId: 2 } });
     const firm = choose(pair, "authority", { filter: "supplier", value: { name: "PORR", id: 22 } });
     expect([firm.spec.filters.compareWith, firm.notes]).toEqual([undefined, ["Am scos „comparat cu „B””: nu se potrivește cu alegerea nouă."]]);

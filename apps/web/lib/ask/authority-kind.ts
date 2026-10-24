@@ -27,11 +27,11 @@ export const KIND_PATTERNS: Record<AuthorityKind, string[]> = {
 
 /** The kind in the "avansat" SQL text and in its comments. */
 export const KIND_LABEL: Record<AuthorityKind, string> = {
-  comuna: "comune",
-  oras_municipiu: "orașe/municipii",
+  comuna: "primării de comună",
+  oras_municipiu: "primării de oraș și municipiu",
   consiliu_judetean: "consilii județene / județe",
   spital: "spitale",
-  scoala: "școli/licee/grădinițe",
+  scoala: "școli (și licee, colegii, grădinițe)",
 };
 
 /** Lower case without diacritics, as unaccent() and lower() fold the name. */

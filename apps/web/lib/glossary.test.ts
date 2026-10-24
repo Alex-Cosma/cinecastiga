@@ -51,6 +51,16 @@ describe("beginner glossary", () => {
 
   it("states the consortium rule exactly as the methodology does", () => {
     expect(GLOSSARY.consortiu.text).toContain("În lipsa cotelor reale, valoarea unui consorțiu este împărțită egal între membri. Cotele însumate refac valoarea contractului; nu dovedesc venitul încasat de fiecare firmă.");
+    // Întreabă says the same rule in the kit's words (kit §4 "Asocieri").
+    expect(GLOSSARY["in-asociere"].title).toBe("În asociere");
+    expect(GLOSSARY["in-asociere"].text).toContain("În lipsa cotelor reale, valoarea contractului este împărțită egal între ele. Cotele însumate refac valoarea contractului; nu dovedesc venitul încasat de fiecare firmă.");
+    expect(GLOSSARY["in-asociere"].text).not.toMatch(/consorți/);
+  });
+
+  it("names a firm's first record «Prima dată», never its first appearance or a start date (kit §4, trusa 6)", () => {
+    expect(GLOSSARY["prima-data"].title).toBe("Prima dată");
+    expect(GLOSSARY["prima-data"].text).toContain("Prima înregistrare a firmei în datele noastre");
+    expect(GLOSSARY["prima-data"].text).not.toMatch(/apariți|aprilie 2018|debut|în arhivă/);
   });
 });
 

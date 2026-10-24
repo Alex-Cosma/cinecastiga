@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { memoryVocabulary, type MemoryFixture } from "./memory-vocabulary";
 import { ENTITY_HINT, PERSON_HINT, RulesInterpreter } from "./rules";
 import { FIXTURE } from "./rules.fixture";
-import { resultFor } from "./to-spec";
+import { SINGLE_OFFER_NOTE, resultFor } from "./to-spec";
 import { applyInterpretation } from "../topic-search/interpretation";
 import { parseTopicScope } from "../topic-search/shared";
 
@@ -115,12 +115,14 @@ describe("vocabulary from the first-visitor test (migration 0082 and the rules a
     expect(unknown.i.notes.join(" ")).toMatch(/Nu am găsit o firmă sau o instituție cu codul fiscal „RO999999”/);
   });
 
-  it("SEAP jargon: a single offer is the single-bidder filter, never mugs", async () => {
+  it("SEAP jargon: a single offer is read (never mugs) and said, not filtered (plan §2.7)", async () => {
     for (const q of ["oferta unica drumuri bacau", "ofertă unică drumuri bacau", "un singur ofertant drumuri bacau", "o singura oferta drumuri bacau"]) {
       const { i, r } = await ask(q);
       expect(i.singleBidder, q).toBe(true);
       expect(i.subjects.map((s) => s.term), q).toEqual(["drumuri"]);
-      expect(r.spec?.filters.singleBidder, q).toBe(true);
+      expect(r.spec?.filters.singleBidder, q).toBeUndefined();
+      expect(r.spec?.dataset, q).toBe("contracts");
+      expect(r.interpretation.notes, q).toContain(SINGLE_OFFER_NOTE);
       expect(i.leftover, q).toEqual([]);
     }
   });

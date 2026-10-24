@@ -1,5 +1,6 @@
 import { canonicalAskIdentities } from "./canonical-identities";
 import { retiredChoicesText } from "./retired-terms";
+import { countWords } from "./answer-text";
 import { FORCE_CUSTOM_PLANS } from "../plan-cache";
 import type { DbSql } from "@seap/db";
 import { NEWER_VERSION_LINK, unimplementedSpecKeys, type AskSpec, type Dim } from "./spec";
@@ -226,10 +227,10 @@ const BUCURESTI_SIRUTA = 179132;
 export function uatScopeCaveat(label: string, n: number, siruta?: number): string {
   const sector = siruta !== undefined && sectorUnit(siruta) !== undefined;
   const who = sector
-    ? n === 1 ? "doar primăria sectorului" : `cele ${n} identități înregistrate ale primăriei sectorului`
+    ? n === 1 ? "doar primăria sectorului" : `cele ${countWords(n, "identitate înregistrată", "identități înregistrate")} ale primăriei sectorului`
     : n === 1
     ? "doar administrația locală a UAT-ului (primăria / consiliul local)"
-    : `cele ${n} identități înregistrate ale administrației locale a UAT-ului (primăria / consiliul local)`;
+    : `cele ${countWords(n, "identitate înregistrată", "identități înregistrate")} ale administrației locale a UAT-ului (primăria / consiliul local)`;
   const sectors = siruta === BUCURESTI_SIRUTA ? " Primăriile celor șase sectoare sunt autorități separate și nu sunt incluse."
     : sector ? " Primăria Municipiului București și instituțiile subordonate sectorului (direcții, poliție locală, administrații, companii) sunt autorități separate și nu sunt incluse." : "";
   return `Localitatea „${label}”: includ ${who}, nu și școlile, spitalele sau alte instituții din localitate.${sectors} ${UAT_SCOPE_METHOD}`;
@@ -548,7 +549,7 @@ export async function runSpec(
   const codeCol = dataset === "contracts" ? sql`d.contract_no` : sql`d.da_code`;
   if (dataset === "contracts") {
     caveats.push(
-      "Sursă: DOAR contracte atribuite prin proceduri. Valoarea consorțiilor e împărțită egal între câștigători. " +
+      "Sursă: DOAR contractele din proceduri. Valoarea unui contract câștigat în asociere e împărțită egal între firme. " +
         "Plafoanele acordurilor-cadru și publicațiile cu identitate incertă sunt excluse din totaluri. Lipsa comenzilor identificate înseamnă acoperire incompletă.",
       CONTRACT_CAP_CAVEAT,
     );
@@ -562,7 +563,7 @@ export async function runSpec(
   }
   if (spec.filters.singleBidder) {
     caveats.push(
-      "„Un singur ofertant”: numărul de ofertanți e cunoscut doar pentru contractele regăsite și în TED (confirmate). Contractele fără date de competiție NU apar aici — necunoscut nu înseamnă competitiv.",
+      "„O singură ofertă”: numărul de oferte e cunoscut doar pentru contractele regăsite și în TED (confirmate). Contractele fără date de competiție NU apar aici — necunoscut nu înseamnă competitiv.",
     );
   }
 
@@ -691,7 +692,7 @@ export async function runSpec(
   if (w.minEmployees !== null || w.maxEmployees !== null) {
     caveats.push(
       "Filtrul pe angajați folosește ultimul bilanț depus la Ministerul Finanțelor. " +
-        "Furnizorii fără bilanț (PFA-uri, firme străine, firme radiate) sunt excluși din rezultat.",
+        "Furnizorii fără bilanț (PFA-uri, firme din străinătate, firme radiate) sunt excluși din rezultat.",
     );
   }
   if (spec.filters.adminPersonKey || spec.filters.adminName) {
@@ -705,18 +706,18 @@ export async function runSpec(
     }
     if (grounding.admin.supplierIds.length === 0) {
       return {
-        error: `${grounding.admin.display ?? "Persoana"} reprezintă ${grounding.admin.nFirms} firme, dar niciuna nu apare ca furnizor în datele noastre.`,
+        error: `${grounding.admin.display ?? "Persoana"} reprezintă ${countWords(grounding.admin.nFirms, "firmă", "firme")}, dar niciuna nu apare ca furnizor în datele noastre.`,
         caveats,
       };
     }
     caveats.push(
-      "Filtrul «conduse de» folosește reprezentanții legali din Registrul Comerțului (instantaneu lunar): " +
+      "Filtrul «conduse azi de» folosește reprezentanții legali din Registrul Comerțului (instantaneu lunar): " +
         "administratorul de AZI, nu neapărat cel de la momentul achiziției; administratorii nu sunt neapărat asociații/proprietarii.",
     );
     if (grounding.admin.nFirms > grounding.admin.supplierIds.length) {
       const n = grounding.admin.supplierIds.length;
       caveats.push(
-        `${grounding.admin.display ?? "Persoana"} reprezintă ${grounding.admin.nFirms} firme la Registrul Comerțului; ` +
+        `${grounding.admin.display ?? "Persoana"} reprezintă ${countWords(grounding.admin.nFirms, "firmă", "firme")} la Registrul Comerțului; ` +
           (n === 1
             ? "doar una apare cu bani publici în datele noastre — restul nu au achiziții publice."
             : `doar ${n} apar cu bani publici în datele noastre — restul nu au achiziții publice.`),
@@ -2059,7 +2060,7 @@ export async function runRows(
     const total = totals.reduce((n, r) => n + Number(r.fn), 0);
     const value = sumDecimalStrings(totals.map((r) => r.fv));
     if (opts.capture?.maxRows !== undefined && total > opts.capture.maxRows) {
-      return { error:`Selecția are ${total.toLocaleString("ro-RO")} de înregistrări; limita acestei verificări este ${opts.capture.maxRows.toLocaleString("ro-RO")}. Restrânge perioada, instituția sau domeniul. Nu am salvat un eșantion.` };
+      return { error:`Selecția are ${countWords(total, "înregistrare", "înregistrări")}; limita acestei verificări este ${opts.capture.maxRows.toLocaleString("ro-RO")}. Restrânge perioada, instituția sau domeniul. Nu am salvat un eșantion.` };
     }
     const p = Math.min(requestedPage, Math.max(0, Math.ceil(total / pageSize) - 1));
     const acceptedRows = totals.filter((r) => r.state === "Oferta acceptata");

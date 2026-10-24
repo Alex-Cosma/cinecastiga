@@ -28,8 +28,9 @@ const BLOCK_LABEL: Record<AskSpec["block"], string> = {
   trend: "schimbare între ani",
 };
 
+// Kit §4: "instituții" and "instituțiile publice", the words of the sentence.
 const DIM_LABEL = {
-  authority: ["autoritate", "autorități", "toate autoritățile"],
+  authority: ["instituție", "instituții", "toate instituțiile publice"],
   supplier: ["furnizor", "furnizori", "toți furnizorii"],
   county: ["județ", "județe", "toate județele"],
 } as const;
@@ -56,12 +57,13 @@ export function buildPills(spec: AskSpec, grounding: Grounding, labels: Pick<Con
   }
   if (!isHistoricalProfile(spec) && spec.block !== "fact_check") {
     const measure = shownMeasure(spec);
+    // Kit §4 "Măsura": the measure in the words of the presentation line.
     pills.push(
       measure === "count"
         ? "numărul de înregistrări"
         : measure === "value_per_capita"
-          ? "lei / cap de locuitor"
-          : "Total (lei)",
+          ? "valoarea pe locuitor"
+          : "valoarea înregistrată",
     );
   }
   pills.push(...describeConditions(spec, { grounding, entities: labels.entities }).pills);

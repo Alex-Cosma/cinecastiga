@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { EntityHit } from "@/lib/search";
 import { formatRon } from "@/lib/format";
+import { countWords } from "@/lib/ask/answer-text";
 
 const ROLE_RO: Record<string, string> = { authority: "autoritate", supplier: "furnizor" };
 
@@ -162,7 +163,7 @@ export default function EntityTypeahead({
                 goAll();
               }}
             >
-              Vezi toate cele {total} rezultate →
+              {total === 1 ? "Vezi rezultatul →" : `Vezi toate cele ${countWords(total, "rezultat", "rezultate")} →`}
             </li>
           )}
         </ul>

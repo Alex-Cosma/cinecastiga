@@ -57,7 +57,7 @@ function rowsOf(data: BlockData, spec: AskSpec): string[] {
     case "distribution":
       return ["cri_de,cri_pana,entitati", ...data.distribution.buckets.map((b) => `${b.from},${b.to},${b.n}`)];
     case "breakdown":
-      return ["categorie,cod,valoare_lei,achizitii", ...data.slices.map((s) => `${csvQ(s.name)},${s.code},${s.value},${s.count}`), `"alte categorii",,${data.other.value},${data.other.count}`];
+      return ["categorie,cod,valoare_lei,achizitii", ...data.slices.map((s) => `${csvQ(s.name)},${s.code},${s.value},${s.count}`), `"alte domenii",,${data.other.value},${data.other.count}`];
     case "scatter":
       return ["nume,judet,valoare_lei,cri,semnale", ...data.points.map((p) => `${csvQ(p.name)},${csvQ(p.county)},${p.value},${p.cri},${p.nFlags}`)];
     case "sankey":

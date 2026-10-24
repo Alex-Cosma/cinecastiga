@@ -5,7 +5,7 @@ export default function ScopeConditions({ scope }: { scope: MonitoringScope }) {
   // The question's conditions in the words of describeConditions; the receipt keeps a precise selection group by group.
   const { scope: items, receipt } = describeConditions(spec);
   const selection: { label: string; value: string }[] = [];
-  if (options.stream) selection.push({ label: "Tip de achiziție", value: options.stream === "da" ? "Doar achiziții directe" : "Doar contracte prin proceduri" });
+  if (options.stream) selection.push({ label: "Ce fel de achiziții", value: options.stream === "da" ? "Doar achizițiile directe" : "Doar contractele din proceduri" });
   if (options.search) selection.push({ label: "Căutare în surse", value: options.search });
   if (options.state) selection.push({ label: "Stare", value: options.state });
   if (subgroup?.entityIds) selection.push({ label: `Doar ${subgroup.role === "supplier" ? "firmele" : "instituțiile"}`, value: subgroup.entityIds.join(", ") });
