@@ -156,6 +156,14 @@ export const PROFILE_QUESTIONS = new Set([
 ]);
 export const isProfileQuestion = (spec: QuestionSpec) =>
   isHistoricalProfile(spec);
+/** The answers that show the number of records instead of the value (compile.ts). Elsewhere `measure` is ignored. */
+export const COUNT_MEASURE_BLOCKS: readonly string[] = ["table", "stat", "timeseries", "map"];
+/**
+ * The axis of "Cine conduce?". A spec without rankBy runs as the risk index
+ * (compile.ts `rankBy ?? "risk"`, isHistoricalProfile), so it reads as one.
+ */
+export const leaderAxis = (spec: { rankBy?: string }): "value" | "risk" =>
+  spec.rankBy === "value" ? "value" : "risk";
 export const foldQuestion = (value: string) =>
   value
     .normalize("NFD")
@@ -442,7 +450,7 @@ export function describeQuestion(input: QuestionSpec | AskSpec): string {
       return `Ce ${spec.dim !== "supplier" && f.authorityKind ? KIND_WORDS[String(f.authorityKind)]?.bare ?? dims : dims}${f.county ? ` ${countyWords(String(f.county))}` : ""} ies din tipar după risc și valoarea achizițiilor?`;
     case "entity_card": {
       const one = spec.dim === "supplier" ? "firmă" : f.authorityKind ? KIND_ONE[String(f.authorityKind)] ?? "instituție" : "instituție";
-      return `Care ${one}${f.county ? ` ${countyWords(String(f.county))}` : ""} are ${spec.rankBy === "risk" ? "cel mai ridicat indice de risc" : "cea mai mare valoare a achizițiilor"}?`;
+      return `Care ${one}${f.county ? ` ${countyWords(String(f.county))}` : ""} are ${leaderAxis(spec) === "risk" ? "cel mai ridicat indice de risc" : "cea mai mare valoare a achizițiilor"}?`;
     }
     default:
       return "Întrebarea ta";
@@ -453,6 +461,12 @@ export function describeQuestion(input: QuestionSpec | AskSpec): string {
  * Match compile.ts's actual scope, before the user applies a template. Filters
  * that the profile SQL ignores must never appear to constrain its answer.
  * Transaction filters and grounded IDs survive every compatible transition.
+ *
+ * The same call restores a link or a saved question and follows every edit.
+ * Defaults and renderer rules (axis, row count, measure, dimension) apply only
+ * when the question type changes; on the same type a spec the engine accepts
+ * comes back as it was, so it opens unchanged and runs as asked. The repairs
+ * that stay on every call fire only on drafts validateSpec refuses or rewrites.
  */
 export function transitionQuestion(
   input: QuestionSpec,
@@ -460,8 +474,9 @@ export function transitionQuestion(
 ): { spec: QuestionSpec; changes: string[] } {
   const spec = cloneQuestion(input);
   const changes: string[] = [];
+  const entering = block !== input.block;
   spec.block = block;
-  if (block === "compare" && input.block !== "compare") spec.comparisonMode = "transactions";
+  if (block === "compare" && entering) spec.comparisonMode = "transactions";
   for (const role of ["authority", "supplier"] as const) {
     if (spec.filters[`${role}Id`] && !spec.filters[`${role}Name`])
       spec.filters[`${role}Name`] = `Entitatea #${spec.filters[`${role}Id`]}`;
@@ -470,11 +485,13 @@ export function transitionQuestion(
     spec.filters.compareWith = `Entitatea #${spec.filters.compareWithId}`;
   // A view changes presentation, never the selected population. Unsupported
   // combinations remain editable and questionErrors explains how to resolve them.
-  if (block === "entity_card") {
+  if (entering && block === "entity_card") {
+    // A new leader question says its axis. Without rankBy it is the risk
+    // index (leaderAxis), so a restored or edited one keeps that meaning.
     spec.rankBy = spec.rankBy ?? "value";
     spec.dim = spec.dim === "supplier" ? "supplier" : "authority";
   }
-  if (isProfileQuestion(spec)) {
+  if (entering && isProfileQuestion(spec)) {
     if (["distribution", "compare"].includes(block)) spec.dim = focalRole(spec);
     else spec.dim = spec.dim === "supplier" ? "supplier" : "authority";
   }
@@ -499,28 +516,34 @@ export function transitionQuestion(
         "Clasamentul arată instituțiile care cumpără de la firma selectată.",
       );
     }
-    // An omitted topN is the API's complete, paginated ranking. Preserve it
-    // when reopening or editing that question; new ranking templates start
-    // with ten rows, as does defaultQuestion().
+    // An omitted topN is the API's complete, paginated ranking on a table and
+    // ten rows on a trend (compile.ts `topN ?? 10`). Preserve it when reopening
+    // or editing; new ranking templates start with ten rows, as does
+    // defaultQuestion().
     if (spec.topN !== undefined) {
       spec.topN = Math.min(50, Math.max(1, spec.topN));
-    } else if (block !== "table" || input.block !== "table") {
+    } else if (entering) {
       spec.topN = 10;
     }
     // Annual comparisons require explicit endpoints; keep incomplete or equal
     // years as a draft instead of expanding its population automatically.
   }
 
+  // Elsewhere the engine ignores the measure and answers in lei; an old link
+  // with another measure still opens as it was asked.
   if (
-    !["table", "stat", "timeseries", "map"].includes(block) &&
+    entering &&
+    !COUNT_MEASURE_BLOCKS.includes(block) &&
     spec.measure !== "value"
   ) {
     spec.measure = "value";
     changes.push("Această întrebare folosește valoarea în lei.");
   }
+  // On a ranking an edit to firms or counties is a draft validateSpec refuses.
   if (
     spec.measure === "value_per_capita" &&
-    (block !== "table" || spec.dim !== "authority")
+    (block !== "table" || spec.dim !== "authority") &&
+    (entering || block === "table")
   ) {
     spec.measure = "value";
     changes.push(

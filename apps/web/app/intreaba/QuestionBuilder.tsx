@@ -8,7 +8,7 @@ import type { EntityHit } from "@/lib/search";
 import type { AskSpec } from "@/lib/ask/spec";
 import {
   QUESTION_GROUPS, QUESTION_TYPES, KIND_OPTIONS, cloneQuestion, defaultQuestion,
-  entityLabel, focalRole, foldQuestion, isProfileQuestion, localityScopeSupport, periodLabel,
+  entityLabel, focalRole, foldQuestion, isProfileQuestion, leaderAxis, localityScopeSupport, periodLabel,
   questionErrors, questionKey, reconcileQuestionDraft, transitionQuestion, type QuestionSpec,
 } from "@/lib/ask/question-ui";
 import "./question-builder.css";
@@ -382,7 +382,7 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
       case "fact_check": return <>A cumpărat {phrase("authority", entityLabel(draft, "authority"))}<br className="qb-desktop-break" /> de la {phrase("supplier", entityLabel(draft, "supplier"))}?</>;
       case "distribution": return <>Unde se situează {focal}<br className="qb-desktop-break" /> după indicele de risc?</>;
       case "scatter": return <>Ce {what} ies din tipar<br className="qb-desktop-break" /> după risc și valoarea achizițiilor?</>;
-      case "entity_card": return <>Care {phrase("dim", draft.dim === "supplier" ? "firmă" : "instituție")} are<br className="qb-desktop-break" /> {phrase("rankBy", draft.rankBy === "risk" ? "cel mai ridicat indice de risc" : "cea mai mare valoare a achizițiilor")}?</>;
+      case "entity_card": return <>Care {phrase("dim", draft.dim === "supplier" ? "firmă" : "instituție")} are<br className="qb-desktop-break" /> {phrase("rankBy", leaderAxis(draft) === "risk" ? "cel mai ridicat indice de risc" : "cea mai mare valoare a achizițiilor")}?</>;
       default: return null;
     }
   }
@@ -440,7 +440,7 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
   }
   function optionList(choices: Choice[], showEmpty = true) {
     const visible = choices.filter((choice) => foldQuestion(`${choice.label} ${choice.detail ?? ""}`).includes(foldQuestion(search)));
-    const current = field === "singleBidder" ? draft.filters.singleBidder ? "yes" : "no" : field && ["dim", "measure", "rankBy", "topN", "dataset"].includes(field) ? String((draft as unknown as Record<string, unknown>)[field] ?? (field === "dataset" || field === "topN" && draft.block === "table" ? "all" : "")) : String(draft.filters[field ?? ""] ?? "");
+    const current = field === "singleBidder" ? draft.filters.singleBidder ? "yes" : "no" : field === "rankBy" ? leaderAxis(draft) : field && ["dim", "measure", "topN", "dataset"].includes(field) ? String((draft as unknown as Record<string, unknown>)[field] ?? (field === "dataset" || field === "topN" && draft.block === "table" ? "all" : "")) : String(draft.filters[field ?? ""] ?? "");
     return <div className="qb-options">{visible.map((choice) => <button type="button" className={`qb-option${choice.value === current ? " is-selected" : ""}`} key={choice.value} onClick={() => chooseValue(choice.value)}><span><strong>{choice.label}</strong>{choice.detail && <small>{choice.detail}</small>}</span><Glyph name={choice.value === current ? "check" : "arrow"} /></button>)}{!visible.length && showEmpty && <p className="qb-empty">Nicio opțiune pentru „{search}”. Încearcă un termen mai scurt.</p>}</div>;
   }
   function numberInput(key: string, label: string, min: number, max: number, placeholder = "Oricare") {
