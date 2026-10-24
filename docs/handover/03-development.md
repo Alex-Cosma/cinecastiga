@@ -173,6 +173,8 @@ Un link nou spre „Întreabă” intră în `lib/ask/site-links.ts` (sau în co
 
 Tipul instituției (D1) e o listă de id-uri citită o dată pe construirea marts (`lib/ask/authority-kind.ts`, `readAuthorityKinds`): un test de integrare care inserează sau șterge rânduri în `marts.entity_profile` fără `truncate` cheamă `forgetAuthorityKinds()` înainte de prima întrebare, altfel citește clasificarea veche a procesului.
 
+O livrare care mărește o versiune de răspuns (`ANSWER_VERSIONS`, `KEY_VERSIONS`) se testează pe urmăriri ca în `lib/monitoring-kind.integration.test.ts`: verificarea de referință rulează cu livrarea dinainte (versiunea scoasă din tabel și, dacă se schimbă și calculul, codul vechi prin `vi.mock`), apoi verificarea de după livrare și încă una. Se cere o singură alertă, doar pe urmăririle care au cheia sau blocul, și nicio alertă pe celelalte.
+
 O condiție nouă a unei întrebări se scrie o singură dată, în `lib/ask/predicates.ts`, în funcția nivelului pe care îl declară registrul (`rowPredicates`, `groupPredicates`, `profilePredicates`), cu textul ei în `displayPredicates`; răspunsul, sursele, CSV-ul și capturile o iau de acolo. `predicates.test.ts` pică dacă o cheie schimbă alt nivel decât cel declarat sau dacă SQL-ul afișat o omite. Tipul instituției se schimbă doar în `lib/ask/authority-kind.ts`.
 
 Cuvintele ei se scriu tot o singură dată, în `lib/ask/filters/describe.ts` (`DESCRIBE`): cipul, pastila, rezumatul salvatei, rândul urmăririi, caveat-ul, nota surselor și cuvintele pentru „Din link” și linia de total. Orice număr cu substantiv trece prin `countWords` (`lib/ask/answer-text.ts`). `filters/describe.test.ts` pică dacă o cheie a motorului nu are cuvinte sau dacă un număr de la 20 în sus nu are „de”.

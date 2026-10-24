@@ -86,6 +86,8 @@ Identificarea autorității trebuie să fie sigură (nume, județ, CUI, rol); nu
 
 Pentru alte instituții/furnizori există metoda explicată prin activitatea observată. Linkurile și capturile vechi păstrează semantica veche; nu reinterpretăm retrospectiv o comparație salvată. Bugetul ca filtru suplimentar a fost discutat, nu livrat.
 
+Tipul instituției (D1, local pe `feat/ask-par-d1`, nepublicat): comparația după activitate folosește același tip ca „Întreabă”, deci „spitalele” sunt aceleași instituții pe clasament și în comparație. Primăriile vin din registrul localităților, spitalele includ institutele clinice, restul se clasează după nume; un nume cu două tipuri nu are tip. Versiunea metodei devine `peers-2`. Comparația după populație și grupul ales manual nu depind de tip. O captură făcută rămâne neschimbată; o captură sau o recaptură legată de grupul de dinainte de D1 este refuzată, nu salvată cu alt grup. Urmăririle cu tip de instituție primesc o singură alertă de metodologie; cele fără tip, niciuna. Detalii: [arhitectură](02-architecture.md), paragraful „Tipul instituției”.
+
 ## Documente și acces
 
 - Vizitatorii pot vedea originalele/PDF-urile/OCR-ul deja arhivate.
