@@ -9,7 +9,7 @@ export const ANSWER_FORMS: readonly AnswerForm[] = [
 ];
 /** The historical profiles: distribution, scatter and "Cine conduce?" on the risk index. */
 export const PROFILE_FORMS: readonly AnswerForm[] = ["distribution", "scatter", "entity_card:risk"];
-/** Everything answered over the transaction records (whereFrag). */
+/** Everything answered over the transaction records (rowPredicates, lib/ask/predicates.ts). */
 export const TRANSACTION_FORMS: readonly AnswerForm[] = ANSWER_FORMS.filter((form) => !PROFILE_FORMS.includes(form));
 
 export const formOf = (spec: { block: string; rankBy?: string }): AnswerForm =>

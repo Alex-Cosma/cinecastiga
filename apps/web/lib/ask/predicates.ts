@@ -1,0 +1,310 @@
+import type { DbSql } from "@seap/db";
+import type { Grounding } from "./ground";
+import type { MinimumRecords, PopulationCondition, QueryPopulation } from "./population";
+import { namedKind, type AskSpec, type AuthorityKind, type Dataset } from "./spec";
+import { authorityKindCond, KIND_LABEL } from "./authority-kind";
+
+/*
+ * One description of the conditions of a question (plan §2.5). The answer
+ * (runSpec), its sources, the CSV export and the frozen captures (runRows) and
+ * the "avansat" SQL text (buildDisplaySql) take every condition from here, so
+ * a filter is written once and the figures always have their sources. Each
+ * function is one engine level of the filter registry (filters/types.ts
+ * EngineLevel): rowPredicates for `row` and `entityAttr` (a condition on the
+ * record d.*, or a semi-join on the firm), groupPredicates for `group`
+ * (computed over the rows grouped by entity), profilePredicates for
+ * `profile` (marts.entity_flags), displayPredicates for the text.
+ * predicates.test.ts checks the registry against them.
+ */
+
+type Fragment = ReturnType<DbSql>;
+
+/** DA rows above this are treated as data-entry errors (legal DA thresholds are far lower). */
+export const DA_PLAFOND_RON = 2_000_000;
+/** Minimum DA count before an entity participates in risk-based blocks. */
+export const RISK_MIN_DAS = 10;
+/** "Cine conduce?" on the risk index ranks profiles with at least this many direct acquisitions. */
+export const ENTITY_CARD_MIN_DAS = 20;
+export const profileMinDas = (block: string): number => block === "entity_card" ? ENTITY_CARD_MIN_DAS : RISK_MIN_DAS;
+
+/**
+ * DA plausibility bound: "strict" filters every row (dataset da),
+ * "da-branch" filters only the DA rows of the union (dataset all),
+ * "none" for contracts. It applies to every measure: a count question shows
+ * the same population (and the same RON total) as the value question.
+ */
+export type Plafond = "none" | "strict" | "da-branch";
+export const plafondFor = (dataset: Dataset): Plafond =>
+  dataset === "contracts" ? "none" : dataset === "da" ? "strict" : "da-branch";
+
+export function fold(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+/** What runSpec resolved before its first query: the grounded anchors and the window of a question. */
+export interface PredicateCtx {
+  sql: DbSql;
+  population: QueryPopulation | null;
+  minimumRecords: MinimumRecords | null;
+  cpvPrefixes: string[];
+  /** Sub-trees of the subject left out (synonym exclusions): `and not (cpv_code like …)`. */
+  cpvExclude: string[];
+  county: string | null;
+  kind: AuthorityKind | null;
+  authorityId: string | null;
+  supplierId: string | null;
+  /** Locality scope: the UAT's own local administration (grounding.uat). */
+  uatSiruta: number | null;
+  /** Strictly associated authority ids of that UAT (audit F15). */
+  uatAuthorityIds: string[];
+  /** dataset "contracts" only: keep rows with is_single_bidder = true. */
+  singleBidder: boolean;
+  /** Supplier size bounds (MF bilanț employees via marts.entity_profile). */
+  minEmployees: number | null;
+  maxEmployees: number | null;
+  /** Clamped to the archive by the caller. */
+  yearFrom: number | null;
+  yearTo: number | null;
+  /** 1–12; only applied together with the corresponding year bound. */
+  monthFrom: number | null;
+  monthTo: number | null;
+  /** "Conduse de X": supplier ids of the person's firms (ONRC reps). */
+  adminSupplierIds: string[] | null;
+  plafond: Plafond;
+  /** compare: both entities, of the role of the first (the second replaces its own id condition). */
+  comparison: { role: "authority" | "supplier"; focalId: string | null; compareId: string | null } | null;
+}
+
+/**
+ * The conditions of `spec` once grounded. A filter counts when the spec has it
+ * and the grounding resolved it (runSpec and runRows refuse an unresolved one
+ * first); the CPV prefixes and the administrator's firms come from the
+ * grounding alone (a peer group's sources carry a CPV division without a term).
+ */
+export function predicateContext(
+  sql: DbSql,
+  spec: AskSpec,
+  grounding: Grounding,
+  window: { dataset: Dataset; yearFrom: number | null; yearTo: number | null },
+): PredicateCtx {
+  const f = spec.filters;
+  const authorityId = f.authorityName || f.authorityId ? grounding.authority?.entityId ?? null : null;
+  const supplierId = f.supplierName || f.supplierId ? grounding.supplier?.entityId ?? null : null;
+  const uat = f.uatSiruta && grounding.uat?.authorityIds?.length ? grounding.uat : null;
+  return {
+    sql,
+    population: spec.population ?? null,
+    minimumRecords: spec.minimumRecords ?? null,
+    cpvPrefixes: grounding.cpv?.prefixes ?? [],
+    cpvExclude: grounding.cpv?.excludePrefixes ?? [],
+    county: f.county ? grounding.county?.canonical ?? null : null,
+    kind: namedKind(f.authorityKind) ?? null,
+    authorityId,
+    supplierId,
+    uatSiruta: uat?.siruta ?? null,
+    uatAuthorityIds: uat?.authorityIds ?? [],
+    singleBidder: window.dataset === "contracts" && f.singleBidder === true,
+    minEmployees: f.minEmployees ?? null,
+    maxEmployees: f.maxEmployees ?? null,
+    yearFrom: window.yearFrom,
+    yearTo: window.yearTo,
+    monthFrom: f.monthFrom ?? null,
+    monthTo: f.monthTo ?? null,
+    adminSupplierIds: grounding.admin ? grounding.admin.supplierIds : null,
+    plafond: plafondFor(window.dataset),
+    comparison: spec.block === "compare"
+      ? { role: authorityId ? "authority" : "supplier", focalId: authorityId ?? supplierId, compareId: grounding.compare?.entityId ?? null }
+      : null,
+  };
+}
+
+/** `a and b and …` (the parts are never empty: rowPredicates starts with closing_value > 0). */
+export const andAll = (sql: DbSql, parts: readonly Fragment[]): Fragment => parts.reduce((a, b) => sql`${a} and ${b}`);
+
+/** Same alias and predicates for result, evidence, CSV and frozen captures. */
+export function populationSql(sql: DbSql, population?: QueryPopulation | null): Fragment {
+  if (!population) return sql`true`;
+  const combine = (parts: Fragment[], operator: "and" | "or") => parts.reduce((a, b) => operator === "and" ? sql`(${a} and ${b})` : sql`(${a} or ${b})`);
+  const condition = (c: PopulationCondition): Fragment => {
+    if (c.field === "date") {
+      return c.op === "gte" ? sql`substr(d.finalization_date, 1, 10) >= ${c.value}` : sql`substr(d.finalization_date, 1, 10) <= ${c.value}`;
+    }
+    if (c.field === "value") return c.op === "gte" ? sql`d.closing_value >= ${c.value}::numeric` : sql`d.closing_value <= ${c.value}::numeric`;
+    // Explicit exclusion retains unknowns: missing is not a match to an excluded identity.
+    if ("values" in c) {
+      let matches: Fragment;
+      if (c.field === "cpv") matches = sql`coalesce(d.cpv_code like any(${sql.array(c.values.map(v => v + "%"))}::text[]), false)`;
+      else if (c.field === "county") matches = sql`coalesce(lower(unaccent(d.county)) = any(${sql.array(c.values.map(v => v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()))}::text[]), false)`;
+      else {
+        const column = c.field === "authority" ? sql`d.authority_id` : sql`d.supplier_id`;
+        matches = sql`coalesce(${column} = any(${sql.array(c.values)}::bigint[]), false)`;
+      }
+      return c.op === "not_in" ? sql`not (${matches})` : matches;
+    }
+    throw new Error("Unsupported population condition");
+  };
+  return combine(population.groups.map(g => combine(g.conditions.map(condition), g.operator)), population.operator);
+}
+
+/** Supplier size bound → semi-join on the entity_profile employee snapshot. */
+function employeesCond(sql: DbSql, min: number | null, max: number | null): Fragment {
+  const bounds =
+    min !== null && max !== null
+      ? sql`ep.employees between ${min} and ${max}`
+      : min !== null
+        ? sql`ep.employees >= ${min}`
+        : sql`ep.employees <= ${max!}`;
+  return sql`d.supplier_id in (
+    select ep.entity_id from marts.entity_profile ep
+    where ep.role = 'supplier' and ep.employees is not null and ${bounds}
+  )`;
+}
+
+const cpvLike = (sql: DbSql, prefixes: readonly string[]) =>
+  prefixes.map((p) => sql`d.cpv_code like ${p + "%"}`).reduce((a, b) => sql`${a} or ${b}`);
+
+/**
+ * The conditions on the record (d.* of a transaction mart, or of their union
+ * with a `src` column), in a fixed order. `years: false` leaves the period out
+ * (a trend adds its two years itself). The comparison replaces the condition
+ * on its own role by both entities.
+ */
+export function rowPredicates(ctx: PredicateCtx, opts: { years?: boolean } = {}): Fragment[] {
+  const { sql } = ctx;
+  const parts: Fragment[] = [sql`d.closing_value > 0`];
+  if (ctx.population) parts.push(populationSql(sql, ctx.population));
+  if (ctx.plafond === "strict") parts.push(sql`d.closing_value <= ${DA_PLAFOND_RON}`);
+  if (ctx.plafond === "da-branch") parts.push(sql`(d.src = 'contracts' or d.closing_value <= ${DA_PLAFOND_RON})`);
+  if (ctx.cpvPrefixes.length > 0) parts.push(sql`(${cpvLike(sql, ctx.cpvPrefixes)})`);
+  if (ctx.cpvExclude.length > 0) parts.push(sql`not (${cpvLike(sql, ctx.cpvExclude)})`);
+  if (ctx.county) parts.push(sql`d.county = ${ctx.county}`);
+  if (ctx.kind) parts.push(authorityKindCond(sql, ctx.kind, sql`d.authority_name`));
+  const compare = ctx.comparison;
+  if (ctx.authorityId && compare?.role !== "authority") parts.push(sql`d.authority_id = ${ctx.authorityId}`);
+  if (ctx.supplierId && compare?.role !== "supplier") parts.push(sql`d.supplier_id = ${ctx.supplierId}`);
+  if (compare) parts.push(compare.role === "authority"
+    ? sql`d.authority_id in (${compare.focalId}, ${compare.compareId})`
+    : sql`d.supplier_id in (${compare.focalId}, ${compare.compareId})`);
+  if (ctx.uatSiruta !== null) parts.push(sql`d.authority_id = any(${sql.array(ctx.uatAuthorityIds)}::bigint[])`);
+  if (ctx.singleBidder) parts.push(sql`d.is_single_bidder = true`);
+  if (ctx.adminSupplierIds !== null) parts.push(sql`d.supplier_id = any(${sql.array(ctx.adminSupplierIds)}::bigint[])`);
+  if (ctx.minEmployees !== null || ctx.maxEmployees !== null) parts.push(employeesCond(sql, ctx.minEmployees, ctx.maxEmployees));
+  if (opts.years ?? true) {
+    if (ctx.yearFrom !== null)
+      parts.push(ctx.monthFrom !== null
+        ? sql`substr(d.finalization_date, 1, 7) >= ${`${ctx.yearFrom}-${String(ctx.monthFrom).padStart(2, "0")}`}`
+        : sql`substr(d.finalization_date, 1, 4) >= ${String(ctx.yearFrom)}`);
+    if (ctx.yearTo !== null)
+      parts.push(ctx.monthTo !== null
+        ? sql`substr(d.finalization_date, 1, 7) <= ${`${ctx.yearTo}-${String(ctx.monthTo).padStart(2, "0")}`}`
+        : sql`substr(d.finalization_date, 1, 4) <= ${String(ctx.yearTo)}`);
+  }
+  return parts;
+}
+
+/** A trend counts only its two years: the answer's two sums and its sources (the period's place in rowPredicates). */
+export const trendYearsPredicate = (sql: DbSql, yearA: number, yearB: number): Fragment =>
+  sql`substr(d.finalization_date,1,4) in (${String(yearA)}, ${String(yearB)})`;
+
+/** Lei per inhabitant: only the administrations with a strict RPL 2021 population (per-capita.ts), in the ranking and its sources. */
+export const perCapitaPredicate = (sql: DbSql, ids: readonly string[]): Fragment =>
+  sql`d.authority_id = any(${sql.array([...ids])}::bigint[])`;
+
+/**
+ * Conditions computed over the selection grouped by entity, applied to its
+ * records: today the record threshold (minimumRecords), the institutions (or
+ * firms) with at least N records among `source` rows matching `where`.
+ */
+export function groupPredicates(ctx: PredicateCtx, source: Fragment, where: Fragment): Fragment[] {
+  const minimum = ctx.minimumRecords;
+  if (!minimum) return [];
+  const { sql } = ctx;
+  const party = minimum.role === "authority" ? sql`d.authority_id` : sql`d.supplier_id`;
+  return [sql`${party} in (select ${party} from ${source} d where ${where} and ${party} is not null group by ${party} having count(*) >= ${minimum.count})`];
+}
+
+/**
+ * The population of historical risk profiles (marts.entity_flags ef): the
+ * role, the profiles with enough direct acquisitions, the entity's own county
+ * (a firm's seat on firm profiles) and, for institutions, the locality and the kind.
+ */
+export function profilePredicates(ctx: PredicateCtx, role: "authority" | "supplier", minDas: number): Fragment[] {
+  const { sql } = ctx;
+  const parts: Fragment[] = [sql`ef.role = ${role}`, sql`ef.n_das >= ${minDas}`];
+  if (ctx.county) parts.push(sql`lower(unaccent(ef.county)) = ${fold(ctx.county)}`);
+  if (ctx.uatSiruta !== null && role === "authority") parts.push(sql`ef.entity_id = any(${sql.array(ctx.uatAuthorityIds)}::bigint[])`);
+  if (ctx.kind && role === "authority") parts.push(authorityKindCond(sql, ctx.kind, sql`ef.name_display`));
+  return parts;
+}
+
+/**
+ * The same conditions as rowPredicates and groupPredicates, as text for the
+ * "vezi interogarea (avansat)" toggle. Display only: execution always goes
+ * through the parameterized fragments. `table` is the FROM of the text, which
+ * the record threshold repeats.
+ */
+export function displayPredicates(ctx: PredicateCtx, table: string): string[] {
+  const conds: string[] = ["closing_value > 0"];
+  if (ctx.population) {
+    const quote = (value: string) => `'${value.replaceAll("'", "''")}'`;
+    conds.push(ctx.population.groups.map(group => "(" + group.conditions.map(c => {
+      if ("value" in c) return `${c.field === "date" ? "substr(finalization_date, 1, 10)" : "closing_value"} ${c.op === "gte" ? ">=" : "<="} ${quote(c.value)}${c.field === "value" ? "::numeric" : ""}`;
+      const column = c.field === "authority" ? "authority_id" : c.field === "supplier" ? "supplier_id" : c.field === "cpv" ? "cpv_code" : "lower(unaccent(county))";
+      const match = c.field === "cpv" ? `(${c.values.map(v => `${column} like ${quote(v + "%")}`).join(" or ")})` : `${column} in (${c.values.map(v => quote(c.field === "county" ? fold(v) : v)).join(", ")})`;
+      return `${c.op === "not_in" ? "not " : ""}coalesce(${match}, false)`;
+    }).join(group.operator === "and" ? " and " : " or ") + ")").join(ctx.population.operator === "and" ? " and " : " or ").replace(/^(.+)$/s, "($1)"));
+  }
+  if (ctx.plafond === "strict")
+    conds.push(`closing_value <= ${DA_PLAFOND_RON}  -- plafon plauzibilitate`);
+  if (ctx.plafond === "da-branch")
+    conds.push(
+      `(src = 'contracts' or closing_value <= ${DA_PLAFOND_RON})  -- plafon doar pe achizițiile directe`,
+    );
+  if (ctx.cpvPrefixes.length > 0)
+    conds.push("(" + ctx.cpvPrefixes.map((p) => `cpv_code like '${p}%'`).join(" or ") + ")");
+  if (ctx.cpvExclude.length > 0)
+    conds.push("not (" + ctx.cpvExclude.map((p) => `cpv_code like '${p}%'`).join(" or ") + ")  -- excluse din subiect");
+  if (ctx.county) conds.push(`unaccent(county) ilike '${fold(ctx.county)}'`);
+  if (ctx.kind) conds.push(`-- doar ${KIND_LABEL[ctx.kind]} (filtru pe nume)`);
+  const compare = ctx.comparison;
+  if (ctx.authorityId) conds.push(compare ? `authority_id in (${ctx.authorityId}, ${compare.compareId})` : `authority_id = ${ctx.authorityId}`);
+  if (ctx.supplierId) conds.push(compare && !ctx.authorityId ? `supplier_id in (${ctx.supplierId}, ${compare.compareId})` : `supplier_id = ${ctx.supplierId}`);
+  if (ctx.uatSiruta !== null)
+    conds.push(
+      `authority_id in (${ctx.uatAuthorityIds.join(", ")})  -- administrația locală a UAT ${ctx.uatSiruta} (asociere strictă)`,
+    );
+  if (ctx.singleBidder) conds.push("is_single_bidder = true  -- un singur ofertant (din TED)");
+  if (ctx.minEmployees !== null || ctx.maxEmployees !== null) {
+    const b =
+      ctx.minEmployees !== null && ctx.maxEmployees !== null
+        ? `between ${ctx.minEmployees} and ${ctx.maxEmployees}`
+        : ctx.minEmployees !== null
+          ? `>= ${ctx.minEmployees}`
+          : `<= ${ctx.maxEmployees}`;
+    conds.push(
+      `supplier_id in (select entity_id from marts.entity_profile\n` +
+        `                where role = 'supplier' and employees ${b})  -- bilanț MF, ultimul depus`,
+    );
+  }
+  if (ctx.adminSupplierIds !== null)
+    conds.push(`supplier_id in (firmele reprezentate de persoana aleasă)  -- ONRC`);
+  if (ctx.yearFrom !== null) {
+    if (ctx.monthFrom !== null)
+      conds.push(`luna >= '${ctx.yearFrom}-${String(ctx.monthFrom).padStart(2, "0")}'`);
+    else conds.push(`an >= ${ctx.yearFrom}`);
+  }
+  if (ctx.yearTo !== null) {
+    if (ctx.monthTo !== null)
+      conds.push(`luna <= '${ctx.yearTo}-${String(ctx.monthTo).padStart(2, "0")}'`);
+    else conds.push(`an <= ${ctx.yearTo}`);
+  }
+  if (ctx.minimumRecords) {
+    const id = ctx.minimumRecords.role === "authority" ? "authority_id" : "supplier_id";
+    conds.push(`${id} in (select ${id} from ${table}\n  where ${conds.join("\n  and ")}\n  group by ${id} having count(*) >= ${ctx.minimumRecords.count})`);
+  }
+  return conds;
+}

@@ -67,7 +67,7 @@ export function isHistoricalProfile(spec: { block:string; comparisonMode?:string
 }
 /**
  * Whose county a county filter selects. Transactions carry the buyer's county;
- * firm profiles (efWhere on entity_flags.county) carry the firm's own: its
+ * firm profiles (profilePredicates on entity_flags.county) carry the firm's own: its
  * registered office from the source address, NUTS-3 code or ONRC (audit F13).
  * `focal` is the role of a distribution's entity (a named authority wins).
  */
