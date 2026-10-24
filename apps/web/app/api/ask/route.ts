@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createDb, type DbSql } from "@seap/db";
-import { validateSpec, type AskSpec } from "@/lib/ask/spec";
+import { NEWER_VERSION_LINK, validateSpec, type AskSpec } from "@/lib/ask/spec";
 import { localityScopeError } from "@/lib/ask/question-ui";
 import { ground } from "@/lib/ask/ground";
 import {
@@ -69,9 +69,10 @@ export async function POST(req: Request) {
     spec = it.spec;
     model = it.model;
   } else if (body.spec !== undefined) {
-    const v = validateSpec(body.spec);
+    // A key this release reads but does not apply is refused before grounding (plan F0a).
+    const v = validateSpec(body.spec, { refuseNewer: NEWER_VERSION_LINK });
     if ("error" in v) {
-      return NextResponse.json({ ok: false, error: v.error }, { status: 400 });
+      return NextResponse.json({ ok: false, error: v.error }, { status: v.newer ? 422 : 400 });
     }
     spec = v;
   } else {

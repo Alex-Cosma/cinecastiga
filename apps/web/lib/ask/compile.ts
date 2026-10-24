@@ -1,7 +1,7 @@
 import { canonicalAskIdentities } from "./canonical-identities";
 import { retiredChoicesText } from "./retired-terms";
 import type { DbSql } from "@seap/db";
-import type { AskSpec, AuthorityKind, Dim } from "./spec";
+import { NEWER_VERSION_LINK, namedKind, unimplementedSpecKeys, type AskSpec, type AuthorityKind, type Dim } from "./spec";
 import type { Grounding } from "./ground";
 import { EVIDENCE_CSV_LIMIT, PROFILE_BLOCKS, sumDecimalStrings, validateEvidenceScope, type EvidenceScope, type EvidenceStatus, type EvidenceProfile } from "./evidence";
 import { minimumRecordsSql, populationSql } from "./population-sql";
@@ -549,6 +549,9 @@ export async function runSpec(
   grounding: Grounding,
   tableOpts: TableOpts = {},
 ): Promise<EngineResult | { error: string; caveats: string[] }> {
+  // Read first, write later (plan F0a): a key this release parses but does not
+  // apply is refused before any query, on every path that runs a spec.
+  if (unimplementedSpecKeys(spec).length) return { error: NEWER_VERSION_LINK, caveats: [] };
   ({spec,grounding}=await canonicalAskIdentities(sql,spec,grounding));
   // Value superlatives share the transaction ranking, including both streams,
   // its filters, allocation rules and deterministic tie break. CRI stays historical.
@@ -734,7 +737,7 @@ export async function runSpec(
     cpvPrefixes,
     cpvExclude,
     county,
-    kind: spec.filters.authorityKind ?? null,
+    kind: namedKind(spec.filters.authorityKind) ?? null,
     authorityId,
     supplierId,
     uatSiruta,
@@ -1928,6 +1931,7 @@ export async function runRows(
   opts: DrillOpts = {},
 ): Promise<DrillResult | { error: string }> {
   opts.signal?.throwIfAborted();
+  if (unimplementedSpecKeys(spec).length) return { error: NEWER_VERSION_LINK };
   const canonical=await canonicalAskIdentities(sql,spec,grounding,opts.scope);
   spec=canonical.spec; grounding=canonical.grounding;
   if(canonical.scope)opts={...opts,scope:canonical.scope};
@@ -2020,8 +2024,9 @@ export async function runRows(
   } else {
     profileParts.push(sql`ef.n_das >= ${spec.block === "entity_card" ? 20 : RISK_MIN_DAS}`);
     if (grounding.county?.canonical) profileParts.push(sql`lower(unaccent(ef.county)) = ${fold(grounding.county.canonical)}`);
-    if (spec.filters.authorityKind && role === "authority") {
-      const ors = KIND_PATTERNS[spec.filters.authorityKind].map((pat) => sql`lower(unaccent(ef.name_display)) like ${fold(pat)}`)
+    const kind = namedKind(spec.filters.authorityKind);
+    if (kind && role === "authority") {
+      const ors = KIND_PATTERNS[kind].map((pat) => sql`lower(unaccent(ef.name_display)) like ${fold(pat)}`)
         .reduce((a, b) => sql`${a} or ${b}`);
       profileParts.push(sql`(${ors})`);
     }
@@ -2090,7 +2095,8 @@ export async function runRows(
     const cpvExclude = grounding.cpv?.excludePrefixes ?? [];
     if (cpvExclude.length) parts.push(sql`not (${cpvExclude.map((prefix) => sql`d.cpv_code like ${prefix + "%"}`).reduce((a, b) => sql`${a} or ${b}`)})`);
     if (grounding.county?.canonical) parts.push(sql`d.county = ${grounding.county.canonical}`);
-    if (spec.filters.authorityKind) parts.push(sql`(${KIND_PATTERNS[spec.filters.authorityKind].map((pat) => sql`lower(unaccent(d.authority_name)) like ${fold(pat)}`).reduce((a, b) => sql`${a} or ${b}`)})`);
+    const kind = namedKind(spec.filters.authorityKind);
+    if (kind) parts.push(sql`(${KIND_PATTERNS[kind].map((pat) => sql`lower(unaccent(d.authority_name)) like ${fold(pat)}`).reduce((a, b) => sql`${a} or ${b}`)})`);
     const isRelationship = spec.block === "network" || spec.block === "sankey";
     if (isRelationship) {
       if (!focalId) return { error: "Lipsește entitatea centrală." };

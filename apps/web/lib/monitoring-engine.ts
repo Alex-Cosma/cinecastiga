@@ -5,7 +5,7 @@ import type { AskSpec } from "./ask/spec";
 import type { Grounding } from "./ask/ground";
 import { isHistoricalProfile } from "./ask/population";
 import { captureTransaction, CAPTURE_METHODOLOGY } from "./evidence-captures";
-import { MonitoringError,monitoringHasLocalSelection,MONITORING_LOCAL_SCOPE_NOTE } from "./monitoring-input";
+import { MonitoringError,monitoringHasLocalSelection,monitoringNewerError,MONITORING_LOCAL_SCOPE_NOTE } from "./monitoring-input";
 import { MONITORING_MAX_ROWS, type MonitoringPreferences } from "./monitoring-shared";
 import { assertMonitoringBindings } from "./monitoring-identity";
 
@@ -87,6 +87,9 @@ export async function evaluateMonitoringWatch(watchId:string,expectedCheckpointI
     const previous=watch.last_success_run_id?(await q`select *,to_char(checked_at at time zone 'Europe/Bucharest','YYYY-MM-DD"T"HH24:MI:SS') observed_at from app.monitoring_runs where id=${watch.last_success_run_id} and watch_id=${watchId}`)[0]:null;
     if(previous&&BigInt((previous.checkpoint as MonitoringCheckpoint).version)>=BigInt(checkpoint.version))throw new MonitoringError("Această actualizare a fost deja verificată.",409);
     const spec=watch.spec as AskSpec,grounding=watch.grounding as Grounding,prefs=watch.preferences as MonitoringPreferences;
+    // Stored by a newer release (a key or a fixed group this code does not apply):
+    // refused, so the last good result stays and is never replaced by the whole selection.
+    const newer=monitoringNewerError(watch.spec,watch.options);if(newer)throw new MonitoringError(newer,422);
     await assertMonitoringBindings(q,spec,grounding,watch.options);
     const database=useSnapshotCoverage(captureTransaction(q)),answer=await runSpec(database,spec,grounding);
     if("error"in answer)throw new MonitoringError(answer.error,422);

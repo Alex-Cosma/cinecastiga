@@ -8,7 +8,7 @@ import { ground } from "./ask/ground";
 import { runRows, runSpec } from "./ask/compile";
 import { canonicalAskIdentities } from "./ask/canonical-identities";
 import { buildPills } from "./ask/pills";
-import type { AskSpec } from "./ask/spec";
+import { NEWER_VERSION_QUESTION, unimplementedSpecKeys, type AskSpec } from "./ask/spec";
 import { localityScopeError } from "./ask/question-ui";
 import { readCoverage } from "./coverage";
 import { readSignalEvidence } from "./signal-evidence";
@@ -159,6 +159,8 @@ async function persistQueryRows(q: DbSql, captureId: string, source: ReturnType<
 }
 
 async function queryCapture(q: DbSql, captureId: string, spec: AskSpec, request: CaptureRequest, peerEvidence?: BoundPeerEvidence) {
+  // Queued by a newer release: fail with the reason instead of freezing the selection without that condition.
+  if (unimplementedSpecKeys(spec).length) throw new CaptureError(NEWER_VERSION_QUESTION);
   if (request.peer) return peerCapture(q,captureId,request,peerEvidence);
   const connection = request.connection ? await bindConnectionEvidence(q, request.connection) : null;
   if (connection) spec = connection.spec;

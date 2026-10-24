@@ -1,4 +1,4 @@
-import type { AskSpec } from "./spec";
+import { namedKind, type AskSpec } from "./spec";
 import type { Grounding } from "./ground";
 import { isHistoricalProfile } from "./population";
 import { COUNT_MEASURE_BLOCKS, leaderAxis } from "./question-ui";
@@ -78,7 +78,8 @@ export function buildPills(spec: AskSpec, grounding: Grounding): string[] {
     const excluded = grounding.cpv.excludePrefixes?.length ?? 0;
     if (excluded) pills.push(`fără ${excluded === 1 ? "o subclasă" : `${excluded} subclase`} (vezi limitele)`);
   }
-  if (spec.filters.authorityKind) pills.push(KIND_LABEL[spec.filters.authorityKind]);
+  const kind = namedKind(spec.filters.authorityKind);
+  if (kind) pills.push(KIND_LABEL[kind]);
   if (grounding.authority?.nameDisplay) pills.push(grounding.authority.nameDisplay);
   if (grounding.supplier?.nameDisplay) pills.push(grounding.supplier.nameDisplay);
   if (grounding.compare?.nameDisplay) pills.push(`vs ${grounding.compare.nameDisplay}`);

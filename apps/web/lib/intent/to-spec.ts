@@ -1,6 +1,6 @@
 import { cleanName } from "../format";
 import { joinCpvTerms } from "../ask/cpv-terms";
-import { validateSpec, type AskFilters, type AskSpec, type AuthorityKind } from "../ask/spec";
+import { namedKind, validateSpec, type AskFilters, type AskSpec, type AuthorityKind } from "../ask/spec";
 import { genitive, hasNamedScope } from "./rules";
 import type { EntityMatch, IntentAlternative, IntentKind, IntentResult, Interpretation, PersonMatch, PlaceMatch, SubjectMatch } from "./types";
 
@@ -35,7 +35,7 @@ function baseFilters(i: Interpretation, choice: Choice, notes: string[]): AskFil
   const place = choice.place === undefined ? i.place : choice.place;
   if (place?.kind === "county") f.county = place.county;
   if (place?.kind === "locality" && place.siruta) {
-    if (f.authorityKind && NOT_IN_LOCALITY.includes(f.authorityKind)) {
+    if (i.authorityKind && NOT_IN_LOCALITY.includes(i.authorityKind.kind)) {
       // A locality covers only the town hall; schools and hospitals are separate institutions.
       f.county = place.county;
       notes.push(`Localitatea include doar primăria; pentru ${f.authorityKind === "scoala" ? "școli" : f.authorityKind === "spital" ? "spitale" : "consiliul județean"} am folosit județul ${place.county}.`);
@@ -210,7 +210,8 @@ function uatPhrase(label: string): string {
 function buyers(f: AskFilters): string {
   if (f.authorityName) return `„${f.authorityName}”`;
   if (f.uatSiruta) return `primăria ${uatPhrase(f.uatName ?? `localității ${f.uatSiruta}`)}`;
-  const who = f.authorityKind ? KIND_PLURAL[f.authorityKind][0] : "instituțiile";
+  const kind = namedKind(f.authorityKind);
+  const who = kind ? KIND_PLURAL[kind][0] : "instituțiile";
   return `${who} ${f.county ? countyPhrase(f.county) : "din toată țara"}`;
 }
 
@@ -264,7 +265,8 @@ export function sentenceFor(spec: AskSpec, labels: SentenceLabels = {}): string 
   const when = period(f);
   const tail = suffix(spec);
   const anyInstitution = labels.allInstitutions ? " (toate instituțiile, nu doar primăriile)" : "";
-  const dimNoun = spec.dim === "supplier" ? "firme" : spec.dim === "county" ? "județe" : f.authorityKind ? KIND_PLURAL[f.authorityKind][1] : `instituții${anyInstitution}`;
+  const kind = namedKind(f.authorityKind);
+  const dimNoun = spec.dim === "supplier" ? "firme" : spec.dim === "county" ? "județe" : kind ? KIND_PLURAL[kind][1] : `instituții${anyInstitution}`;
   switch (spec.block) {
     case "table":
       if (spec.dim === "supplier")

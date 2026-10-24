@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import type { RecipeSummary, RecipeVersion } from "@/lib/recipes";
 import { describeQuestion, type QuestionSpec } from "@/lib/ask/question-ui";
 import { describePopulation } from "@/lib/ask/population";
-import { validateSpec } from "@/lib/ask/spec";
+import { NEWER_VERSION_QUESTION, unimplementedSpecKeys, validateSpec } from "@/lib/ask/spec";
 import { encodeSpec } from "@/lib/ask/permalink";
 import { useViewer } from "@/lib/use-viewer";
-import { localQuestionStorage, LOCAL_QUESTIONS_KEY, LOCAL_QUESTIONS_EVENT, readLocalQuestions } from "@/lib/ask/local-questions";
+import { keptLocalQuestionsNote, localQuestionStorage, LOCAL_QUESTIONS_KEY, LOCAL_QUESTIONS_EVENT, readLocalQuestions, readLocalQuestionStore } from "@/lib/ask/local-questions";
 import { foldQuestion } from "@/lib/ask/question-ui";
 
 export type SavedQuestion = { id:string; title:string; version:number; spec:QuestionSpec; storage?:"local"; ownerId?:string | undefined };
@@ -15,6 +15,8 @@ export type SavedQuestion = { id:string; title:string; version:number; spec:Ques
 function summary(raw: unknown) {
   const spec = validateSpec(raw);
   if ("error" in spec) return "Deschide pentru a verifica această întrebare.";
+  // Its sentence here would leave out the condition this release does not read.
+  if (unimplementedSpecKeys(spec).length) return NEWER_VERSION_QUESTION;
   return [describeQuestion(spec), spec.dataset === "contracts" ? "Contracte din proceduri" : spec.dataset === "da" ? "Achiziții directe" : null,
     spec.filters.authorityName || (spec.filters.authorityId ? `Instituția #${spec.filters.authorityId}` : null),
     spec.filters.supplierName || (spec.filters.supplierId ? `Firma #${spec.filters.supplierId}` : null),
@@ -36,6 +38,7 @@ function SavedQuestionsList({ search, current, hasUnsavedChanges, onLoad, userId
   const [error, setError] = useState("");
   const [login, setLogin] = useState(false);
   const [localError, setLocalError] = useState("");
+  const [localKept, setLocalKept] = useState(0);
   const [retry, setRetry] = useState(0);
   const [candidate, setCandidate] = useState<SavedQuestion | null>(null);
   const request = useRef<AbortController | null>(null);
@@ -49,10 +52,14 @@ function SavedQuestionsList({ search, current, hasUnsavedChanges, onLoad, userId
   useEffect(() => {
     request.current?.abort();
     const ctrl = new AbortController(); request.current = ctrl;
-    setLoading(true); setError(""); setLocalError(""); setLogin(false); setItems([]); setCandidate(null); setOpening(null);
+    setLoading(true); setError(""); setLocalError(""); setLocalKept(0); setLogin(false); setItems([]); setCandidate(null); setOpening(null);
     const timer = setTimeout(async () => {
       let localItems:(RecipeSummary & { storage:"local" })[] = [];
-      try { localItems = readLocalQuestions(localQuestionStorage()).filter(item => foldQuestion(item.title).includes(foldQuestion(search.trim()))).map(item => ({ ...item, currentVersion:item.version })); }
+      try {
+        const store = readLocalQuestionStore(localQuestionStorage());
+        localItems = store.questions.filter(item => foldQuestion(item.title).includes(foldQuestion(search.trim()))).map(item => ({ ...item, currentVersion:item.version }));
+        if (!ctrl.signal.aborted) setLocalKept(store.kept.length);
+      }
       catch (e) { if (!ctrl.signal.aborted) setLocalError(e instanceof Error ? e.message : "Browserul nu permite citirea întrebărilor locale."); }
       if (!ctrl.signal.aborted) setItems(localItems);
       try {
@@ -80,6 +87,7 @@ function SavedQuestionsList({ search, current, hasUnsavedChanges, onLoad, userId
       if (item.storage === "local") {
         const question = readLocalQuestions(localQuestionStorage()).find(q => q.id === item.id);
         if (!question) throw new Error("Întrebarea nu mai este disponibilă pe dispozitiv. Reîncarcă lista.");
+        if (unimplementedSpecKeys(question.spec).length) throw new Error(`${NEWER_VERSION_QUESTION} Reîncarcă pagina.`);
         if (hasUnsavedChanges) setCandidate(question); else onLoad(question);
         return;
       }
@@ -87,8 +95,8 @@ function SavedQuestionsList({ search, current, hasUnsavedChanges, onLoad, userId
       if (r.status === 401) { setItems([]); setLogin(true); return; }
       if (!r.ok) throw new Error("Întrebarea nu mai este disponibilă. Reîncarcă lista.");
       const data = await r.json() as { recipe:RecipeVersion };
-      const spec = validateSpec(data.recipe.spec);
-      if ("error" in spec) throw new Error(`Întrebarea nu poate fi încărcată: ${spec.error}`);
+      const spec = validateSpec(data.recipe.spec, { refuseNewer:`${NEWER_VERSION_QUESTION} Reîncarcă pagina.` });
+      if ("error" in spec) throw new Error(spec.newer ? spec.error : `Întrebarea nu poate fi încărcată: ${spec.error}`);
       if (ctrl.signal.aborted) return;
       const next = { id:data.recipe.id, title:data.recipe.title, version:data.recipe.version, spec:spec as QuestionSpec, ownerId:userId };
       if (hasUnsavedChanges) setCandidate(next); else onLoad(next);
@@ -112,6 +120,7 @@ function SavedQuestionsList({ search, current, hasUnsavedChanges, onLoad, userId
       {!items.length && !error && !localError && <p>{search.trim() ? "Nicio întrebare cu acest nume. Încearcă alt termen." : "Nu ai întrebări salvate încă. Construiește una și apasă „Salvează întrebarea”, lângă „Vezi răspunsul”."}</p>}
       {items.filter(item => item.storage !== "local").length === 200 && <p>Primele 200 de întrebări din cont, în ordinea ultimei salvări. Caută după nume pentru a le găsi și pe cele mai vechi.</p>}
     </>}
+    {localKept > 0 && <p className="cq-device-note" role="status">{keptLocalQuestionsNote(localKept)}</p>}
     {localError && <p role="alert">{localError}</p>}
     {error && <div role="alert"><p>{error}</p><button type="button" onClick={() => setRetry(v=>v+1)}>Reîncarcă lista</button></div>}
   </div>;

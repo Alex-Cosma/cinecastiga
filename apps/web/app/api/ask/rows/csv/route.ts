@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createDb, type DbSql } from "@seap/db";
-import { validateSpec } from "../../../../../lib/ask/spec";
+import { NEWER_VERSION_LINK, validateSpec } from "../../../../../lib/ask/spec";
 import { localityScopeError } from "../../../../../lib/ask/question-ui";
 import { ground } from "../../../../../lib/ask/ground";
 import {
@@ -35,8 +35,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Body invalid (JSON)." }, { status: 400 });
   }
   if (body.peer !== undefined && body.connection !== undefined) return NextResponse.json({ok:false,error:"Alege o singură selecție documentată."},{status:400});
-  const v = validateSpec(body.spec);
-  if ("error" in v) return NextResponse.json({ ok: false, error: v.error }, { status: 400 });
+  // Refused here too when a peer or connection selection replaces the spec it was sent with (plan F0a).
+  const v = validateSpec(body.spec, { refuseNewer: NEWER_VERSION_LINK });
+  if ("error" in v) return NextResponse.json({ ok: false, error: v.error }, { status: v.newer ? 422 : 400 });
   const localityError = localityScopeError(v);
   if (localityError) return NextResponse.json({ ok: false, error: localityError }, { status: 400 });
   const opts = evidenceOptions(body);

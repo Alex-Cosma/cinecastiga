@@ -1,4 +1,4 @@
-import { validateSpec } from "./ask/spec";
+import { NEWER_VERSION_QUESTION, validateSpec } from "./ask/spec";
 import { evidenceOptions } from "./ask/evidence-request";
 import { EVIDENCE_KINDS, type CaptureRequest, type EvidenceKind, type FrozenRecord } from "./evidence-captures-shared";
 import { evidenceLinks } from "./ask/evidence";
@@ -33,8 +33,9 @@ export function validateCaptureRequest(kind: unknown, refId: unknown, spec: unkn
       if ("error" in connection) return connection;
       return { kind: k, refId: null, spec: connectionEvidenceSpec(connection), options, connection };
     }
-    const validated = validateSpec(spec);
-    if ("error" in validated) return validated;
+    // A capture runs later, perhaps on other code: a key this release does not apply is refused now.
+    const validated = validateSpec(spec, { refuseNewer: NEWER_VERSION_QUESTION });
+    if ("error" in validated) return { error: validated.error };
     return { kind: k, refId: null, spec: validated, options };
   }
   if (k === "radiografie") {

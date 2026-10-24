@@ -5,7 +5,7 @@ import { createMonitoringWatch,getMonitoringWatch,getMonitoringRun,listMonitorin
 import { evaluateMonitoringWatch } from "./monitoring-engine";
 import { addMonitoringRunToCase } from "./monitoring-case";
 import { getCapturedRows } from "./evidence-captures";
-import type { AskSpec } from "./ask/spec";
+import { NEWER_VERSION_QUESTION, type AskSpec } from "./ask/spec";
 
 const url=process.env.TEST_DATABASE_URL;
 if(url&&!/^seap_test_[a-z0-9_]+$/i.test(new URL(url).pathname.slice(1)))throw new Error("Monitoring fixtures require a dedicated seap_test_* database");
@@ -180,4 +180,19 @@ describe.skipIf(!url)("immutable monitoring (isolated PostgreSQL)",()=>{
     expect((await sql`select count(*)::int n from app.monitoring_runs where watch_id=${watchId} and checkpoint_id=${checkpointId}`)[0]?.n).toBe(0);
     await sql`delete from marts.da_transactions where sicap_da_id between 889800001 and 890000001`;
   },60000);
+  // F0a: a watch a newer release stored (a key or a fixed group this code does not apply) is never run without it.
+  it("keeps the last good result of a watch stored by a newer release and says why",async()=>{
+    const watch=await createMonitoringWatch(uid,{spec:base,title:"Newer release fixture"},sql);
+    const good=(await evaluateMonitoringWatch(watch.id,checkpointId,sql))!;
+    await sql`update app.monitoring_watches set spec=jsonb_set(spec,'{filters,purchaseKind}','"lucrari"') where id=${watch.id}`;
+    await checkpoint();
+    await expect(evaluateMonitoringWatch(watch.id,checkpointId,sql)).rejects.toThrow(NEWER_VERSION_QUESTION);
+    expect(await getMonitoringWatch(uid,watch.id,sql)).toMatchObject({lastSuccessRunId:good,lastError:NEWER_VERSION_QUESTION});
+    const members={kind:"trend-group",role:"supplier",group:"new",ids:[supplier],frozenAt:"2026-10-24T10:00:00Z"};
+    await sql`update app.monitoring_watches set spec=spec #- '{filters,purchaseKind}',options=options||${JSON.stringify({members})}::jsonb where id=${watch.id}`;
+    await expect(evaluateMonitoringWatch(watch.id,checkpointId,sql)).rejects.toThrow(NEWER_VERSION_QUESTION);
+    expect(await getMonitoringWatch(uid,watch.id,sql)).toMatchObject({lastSuccessRunId:good,lastError:NEWER_VERSION_QUESTION});
+    expect((await sql`select count(*)::int n from app.monitoring_runs where watch_id=${watch.id} and checkpoint_id=${checkpointId}`)[0]?.n).toBe(0);
+    await expect(createMonitoringWatch(uid,{spec:{...base,filters:{...base.filters,purchaseKind:"lucrari"}}},sql)).rejects.toThrow(NEWER_VERSION_QUESTION);
+  });
 });
