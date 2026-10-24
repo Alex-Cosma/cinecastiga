@@ -189,6 +189,17 @@ describe("the conditions of a question", () => {
     expect(bound("contracts")).toEqual(["d.closing_value > 0 []"]);
   });
 
+  it("read a selection made only of included institutions and firms from their indexes", () => {
+    const list = (field: "authority" | "supplier" | "cpv", op: "in" | "not_in", values: string[]) => ({ operator: "and" as const, conditions: [{ field, op, values }] });
+    const population = (operator: "and" | "or", ...groups: ReturnType<typeof list>[]) =>
+      render(rowPredicates(ctxFor({ block: "stat", measure: "value", dataset: "da", filters: {}, population: { operator, groups } }))[1]).text;
+    // A capture's entity (buyer or firm): both lists, no coalesce, so a bitmap of the two id indexes serves it.
+    expect(population("or", list("authority", "in", ["1"]), list("supplier", "in", ["1"]))).toBe("(d.authority_id = any($1::bigint[]) or d.supplier_id = any($2::bigint[]))");
+    // Mixed with a condition no index serves, and every exclusion, keep today's form (and plans).
+    expect(population("or", list("authority", "in", ["1"]), list("cpv", "in", ["45"]))).toBe("(coalesce(d.authority_id = any($1::bigint[]), false) or coalesce(d.cpv_code like any($2::text[]), false))");
+    expect(population("and", list("supplier", "not_in", ["2"]))).toBe("not (coalesce(d.supplier_id = any($1::bigint[]), false))");
+  });
+
   it("put both entities of a comparison in place of the condition on their role", () => {
     const compare: AskSpec = { block: "compare", measure: "value", filters: { supplierName: "A", supplierId: 1, compareWith: "B", compareWithId: 2, authorityId: 3, authorityName: "C" } };
     // Focal is the institution when one is named; the comparison is on its role.
