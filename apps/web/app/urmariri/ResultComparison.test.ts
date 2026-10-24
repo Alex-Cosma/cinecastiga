@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { formatResultValue, resultDifferences } from "./ResultComparison";
+import { comparableMethodologies } from "../../lib/monitoring-shared";
 
 describe("human-readable monitoring result comparisons", () => {
   it("matches entity rows by identity even when a ranking changes order", () => {
@@ -50,5 +51,15 @@ describe("human-readable monitoring result comparisons", () => {
   it("makes methodology changes readable without requiring raw JSON", () => {
     const changes = resultDifferences({ refresh: { tedNormalization: 2 }, values: "Veche" }, { refresh: { tedNormalization: 3 }, values: "Nouă" });
     expect(changes.map(row => row.field)).toEqual(["Versiunea prelucrării TED", "Interpretarea valorilor"]);
+  });
+  it("lists a changed answer version, and nothing for a run stored before versions existed", () => {
+    const before = { version: "monitoring-1", refresh: { version: "v1" } };
+    const after = { ...before, answer: { question: "trend-1", conditions: {} } };
+    expect(resultDifferences(...comparableMethodologies(before, after, "trend"))).toEqual([]);
+    const bumped = { ...before, answer: { question: "trend-2", conditions: { kind: "kind-2" } } };
+    expect(resultDifferences(...comparableMethodologies(before, bumped, "trend")).map(row => [row.context, row.field, row.before, row.after])).toEqual([
+      ["Versiunea răspunsului", "Calculul întrebării", "trend-1", "trend-2"],
+      ["Versiunea răspunsului · Condiții cu versiune proprie", "kind", "kind-1", "kind-2"],
+    ]);
   });
 });

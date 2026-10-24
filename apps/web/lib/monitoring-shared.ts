@@ -1,4 +1,5 @@
 import type { AskSpec } from "./ask/spec";
+import { alignAnswerVersions, canonicalJson, readAnswerVersion } from "./ask/answer-core";
 import type { CaptureOptions, FrozenRecord } from "./evidence-captures-shared";
 
 export const MONITORING_MAX_ROWS = 200_000;
@@ -49,6 +50,21 @@ export interface MonitoringRunDetail {
   watch: MonitoringWatch; run: MonitoringRun;
   previousResult: unknown; result: unknown;
   methodology: Record<string, unknown>; previousMethodology: Record<string, unknown> | null;
+}
+/**
+ * Two stored methodologies of a watch as they are compared (plan §2.8): the
+ * answer versions read with the "<id>-1" rule (a run from before F0 has none)
+ * and over the same ids, the rest as stored. The check compares these, and
+ * "Ce s-a schimbat în metodologie" lists their differences.
+ */
+export function comparableMethodologies(before: Record<string, unknown> | null, after: Record<string, unknown>, block: string): [Record<string, unknown> | null, Record<string, unknown>] {
+  if (!before) return [null, after];
+  const [a, b] = alignAnswerVersions(readAnswerVersion(before.answer, block), readAnswerVersion(after.answer, block));
+  return [{ ...before, answer: a }, { ...after, answer: b }];
+}
+export function methodologiesDiffer(before: Record<string, unknown> | null, after: Record<string, unknown>, block: string): boolean {
+  const [a, b] = comparableMethodologies(before, after, block);
+  return canonicalJson(a) !== canonicalJson(b);
 }
 export interface MonitoringCaseResult { investigationId: string; clipId: string; beforeCaptureId: string; afterCaptureId: string; taskId: string | null }
 

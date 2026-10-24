@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
-import type { MonitoringRunDetail } from "@/lib/monitoring-shared";
+import { comparableMethodologies, type MonitoringRunDetail } from "../../lib/monitoring-shared";
+import { answerCore, KEY_VERSIONS } from "../../lib/ask/answer-core";
 import { formatExactDecimal } from "../../lib/format";
 import { FLAG_META } from "../../lib/flags";
 
@@ -26,10 +27,11 @@ const labels: Record<string, string> = {
   risk: "Interpretarea semnalelor", identity: "Identitatea înregistrărilor", discovery: "Momentul observării",
   classification: "Clasificarea schimbărilor", refresh: "Metodologia actualizării datelor", monitoring: "Versiunea monitorizării",
   tedNormalization: "Versiunea prelucrării TED", transactionPopulation: "Definiția selecției de achiziții",
+  answer: "Versiunea răspunsului", question: "Calculul întrebării", conditions: "Condiții cu versiune proprie",
 };
 const ignored = new Set(["block", "tookMs", "displaySql", "page", "pageSize", "entityId", "partnerId", "nx", "ny"]);
 const object = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value);
-const name = (key: string) => labels[key] ?? key.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/_/g, " ");
+const name = (key: string) => labels[key] ?? KEY_VERSIONS[key]?.label ?? key.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/_/g, " ");
 const channels: Record<string, string> = { da: "Achiziții directe", contracts: "Contracte din proceduri", authority: "Autoritate", supplier: "Furnizor" };
 export interface ResultDifference { key: string; context: string; field: string; fieldKey: string; before: unknown; after: unknown }
 
@@ -126,5 +128,8 @@ function ChangedValues({ before, after, label }: { before: unknown; after: unkno
 }
 
 export default function ResultComparison({ detail }: { detail: MonitoringRunDetail }) {
-  return <>{detail.run.resultChanged && <details className="mon-settings" open><summary>Ce s-a schimbat în rezultatul întrebării</summary><p>Comparăm valorile păstrate la cele două verificări. Sumele exacte ale înregistrărilor se verifică în listele de surse.</p><ChangedValues key={`${detail.run.id}-result`} before={detail.previousResult} after={detail.result} label="Rezultatul întrebării, înainte și după" /></details>}{detail.run.methodologyChanged && <details className="mon-settings" open><summary>Ce s-a schimbat în metodologie</summary><p>Aceste diferențe descriu modul de calcul. Ele nu reprezintă, în sine, modificări ale contractelor.</p><ChangedValues key={`${detail.run.id}-methodology`} before={detail.previousMethodology} after={detail.methodology} label="Metodologia, înainte și după" /></details>}</>;
+  // What the check compared (plan §2.8): the core of each answer, and the methodologies with their answer versions read alike.
+  const block = detail.watch.spec.block;
+  const [previousMethodology, methodology] = useMemo(() => comparableMethodologies(detail.previousMethodology, detail.methodology, block), [detail, block]);
+  return <>{detail.run.resultChanged && <details className="mon-settings" open><summary>Ce s-a schimbat în rezultatul întrebării</summary><p>Comparăm valorile păstrate la cele două verificări. Sumele exacte ale înregistrărilor se verifică în listele de surse.</p><ChangedValues key={`${detail.run.id}-result`} before={answerCore(block, detail.previousResult)} after={answerCore(block, detail.result)} label="Rezultatul întrebării, înainte și după" /></details>}{detail.run.methodologyChanged && <details className="mon-settings" open><summary>Ce s-a schimbat în metodologie</summary><p>Aceste diferențe descriu modul de calcul. Ele nu reprezintă, în sine, modificări ale contractelor.</p><ChangedValues key={`${detail.run.id}-methodology`} before={previousMethodology} after={methodology} label="Metodologia, înainte și după" /></details>}</>;
 }

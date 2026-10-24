@@ -6,6 +6,7 @@ import { evaluateMonitoringWatch } from "./monitoring-engine";
 import { addMonitoringRunToCase } from "./monitoring-case";
 import { getCapturedRows } from "./evidence-captures";
 import { NEWER_VERSION_QUESTION, type AskSpec } from "./ask/spec";
+import { ANSWER_VERSIONS, KEY_VERSIONS } from "./ask/answer-core";
 
 const url=process.env.TEST_DATABASE_URL;
 if(url&&!/^seap_test_[a-z0-9_]+$/i.test(new URL(url).pathname.slice(1)))throw new Error("Monitoring fixtures require a dedicated seap_test_* database");
@@ -194,5 +195,77 @@ describe.skipIf(!url)("immutable monitoring (isolated PostgreSQL)",()=>{
     expect(await getMonitoringWatch(uid,watch.id,sql)).toMatchObject({lastSuccessRunId:good,lastError:NEWER_VERSION_QUESTION});
     expect((await sql`select count(*)::int n from app.monitoring_runs where watch_id=${watch.id} and checkpoint_id=${checkpointId}`)[0]?.n).toBe(0);
     await expect(createMonitoringWatch(uid,{spec:{...base,filters:{...base.filters,purchaseKind:"lucrari"}}},sql)).rejects.toThrow(NEWER_VERSION_QUESTION);
+  });
+  // F0 (plan §2.8, §6.2): answer versions per block and per key, compared in TypeScript.
+  const run=async(watchId:string)=>{const id=(await evaluateMonitoringWatch(watchId,checkpointId,sql))!;return (await getMonitoringRun(uid,watchId,id,sql))!;};
+  it("stores the version of the answer, and reads a run stored before versions as the first one: no alert",async()=>{
+    const watch=await createMonitoringWatch(uid,{spec:base,title:"Before answer versions"},sql);
+    const first=await run(watch.id);
+    expect(first.methodology.answer).toEqual({question:"stat-1",conditions:{}});
+    await sql`update app.monitoring_runs set methodology=methodology-'answer' where id=${first.run.id}`;
+    await checkpoint();
+    expect((await run(watch.id)).run).toMatchObject({kind:"unchanged",methodologyChanged:false,resultChanged:false,hasAlert:false});
+  });
+  it("alerts once on a new answer version, only the watches of that block, and never also as recalculated",async()=>{
+    const trend:AskSpec={...base,block:"trend",dim:"supplier",filters:{...base.filters,yearFrom:2024,yearTo:2025}};
+    const watches=[];
+    for(const spec of [trend,base,{...base,block:"map"} as AskSpec]){const watch=await createMonitoringWatch(uid,{spec,title:"Answer version "+spec.block},sql);await run(watch.id);watches.push(watch);}
+    // Alerts on "recalculated" only. Its last result is the one the old version gave: different, on the same sources.
+    const quiet=await createMonitoringWatch(uid,{spec:trend,title:"Recalculated only",preferences:{types:["recalculated"],minimumValueExact:"0",digest:false}},sql);
+    const old=await run(quiet.id);
+    await sql`update app.monitoring_runs set result=result||'{"fixture":"computed by trend-1"}'::jsonb where id=${old.run.id}`;
+    ANSWER_VERSIONS.trend="trend-2";
+    try{
+      await checkpoint();
+      const [trendRun,statRun,mapRun]=[await run(watches[0]!.id),await run(watches[1]!.id),await run(watches[2]!.id)];
+      expect(trendRun.run).toMatchObject({kind:"update",methodologyChanged:true,resultChanged:false,hasAlert:true,counts:{added:0,removed:0,changed:0}});
+      expect(trendRun.methodology.answer).toEqual({question:"trend-2",conditions:{}});
+      for(const other of [statRun,mapRun])expect(other.run).toMatchObject({kind:"unchanged",methodologyChanged:false,hasAlert:false});
+      // The changed result is explained by the methodology: no second, "recalculated" alert.
+      expect((await run(quiet.id)).run).toMatchObject({resultChanged:true,methodologyChanged:true,hasAlert:false});
+      await checkpoint();
+      expect((await run(watches[0]!.id)).run).toMatchObject({kind:"unchanged",methodologyChanged:false,hasAlert:false});
+    }finally{delete ANSWER_VERSIONS.trend;}
+  });
+  it("alerts on a key's new version only the watches whose question carries the key",async()=>{
+    const kind:AskSpec={...base,filters:{...base.filters,authorityKind:"comuna"}};
+    const [withKind,without]=[await createMonitoringWatch(uid,{spec:kind,title:"With a kind"},sql),await createMonitoringWatch(uid,{spec:base,title:"Without a kind"},sql)];
+    await run(withKind.id);await run(without.id);
+    KEY_VERSIONS.kind={version:"kind-2",label:"Tipul instituției",paths:["filters.authorityKind"]};
+    try{
+      await checkpoint();
+      const changed=await run(withKind.id);
+      expect(changed.run).toMatchObject({methodologyChanged:true,hasAlert:true});
+      expect(changed.methodology.answer).toEqual({question:"stat-1",conditions:{kind:"kind-2"}});
+      expect((await run(without.id)).run).toMatchObject({methodologyChanged:false,hasAlert:false});
+    }finally{delete KEY_VERSIONS.kind;}
+  });
+  it("freezes the answer version with a captured answer and with both sides of an update copied to a case",async()=>{
+    const watch=await createMonitoringWatch(uid,{spec:base,title:"Case versions"},sql);
+    await run(watch.id);
+    await sql`update marts.da_transactions set closing_value=12 where sicap_da_id=889771003`;
+    await checkpoint();const update=await run(watch.id);
+    await sql`update marts.da_transactions set closing_value=10 where sicap_da_id=889771003`;
+    expect(update.run.kind).toBe("update");
+    const saved=(await addMonitoringRunToCase(uid,watch.id,update.run.id,inv,false,sql))!;
+    const [after]=await sql`select result from app.evidence_captures where id=${saved.afterCaptureId}`;
+    const version={question:"stat-1",conditions:{}};
+    expect(after!.result.answerVersions).toEqual({original:version,previous:version,current:version});
+  });
+  it("watches a recipe saved with another block's options: the recipe is compared as parseSpec reads it",async()=>{
+    const [recipe]=await sql`insert into app.query_recipes(owner_user_id,title) values(${uid},'Rețetă cu opțiunile altei întrebări') returning id`;
+    const recipeId=String(recipe!.id);
+    const homePopulation={operator:"and",groups:[{operator:"and",conditions:[{field:"value",op:"lte",value:"2000000"}]}]};
+    const stored={...base,population:homePopulation,trend:{change:"up"}};
+    await sql`insert into app.query_recipe_versions(recipe_id,version,title,note,spec) values(${recipeId},1,'v1',null,${JSON.stringify(stored)}::jsonb),
+      (${recipeId},2,'v2',null,${JSON.stringify({...base,filters:{...base.filters,yearFrom:2025}})}::jsonb)`;
+    try{
+      const watch=await createMonitoringWatch(uid,{spec:{...base,population:homePopulation},recipeId,recipeVersion:1},sql);
+      expect(watch).toMatchObject({recipeId,recipeVersion:1});
+      expect(watch.spec.population).toEqual(homePopulation);
+      await expect(createMonitoringWatch(uid,{spec:base,recipeId,recipeVersion:2},sql)).rejects.toThrow("diferă de versiunea rețetei");
+      // The recipe itself is not rewritten.
+      expect((await sql`select spec from app.query_recipe_versions where recipe_id=${recipeId} and version=1`)[0]?.spec).toEqual(stored);
+    }finally{await sql`delete from app.query_recipes where id=${recipeId}`;}
   });
 });

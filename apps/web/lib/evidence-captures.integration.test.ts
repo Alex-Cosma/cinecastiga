@@ -87,6 +87,8 @@ describe.skipIf(!url)("server evidence captures (dedicated PostgreSQL database)"
     await processCapture(uid,inv,capture.id,sql);const saved=await getCapturedRows(uid,inv,capture.id,0,sql);
     expect(saved?.capture.status,saved?.capture.error??undefined).toBe("complete");expect(saved?.capture.totalExact).toBe("50.005");expect(saved?.rows).toHaveLength(1);expect(saved?.rows[0]?.supplierId).toBe(supplier2);expect(saved?.rows[0]?.refId).toBe(natural);
     const {dataset:_defaultDataset,...normalized}=spec;expect(saved?.capture.scope.spec).toEqual(normalized);
+    // result.json says which meaning of the question the frozen answer has (F0, lib/ask/answer-core.ts).
+    expect((await sql`select result from app.evidence_captures where id=${capture.id}`)[0]?.result.answerVersion).toEqual({question:"stat-1",conditions:{}});
   });
   it("enforces roles and case boundaries and rolls back a capture when the editor is revoked before publication",async()=>{
     expect(await withInvestigationAccess(viewer,inv,"edit",async()=>true,sql)).toBeNull();
