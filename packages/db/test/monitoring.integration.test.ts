@@ -28,8 +28,9 @@ suite("monitoring publication gate", () => {
     const cp = await publish();
     expect(cp.status).toBe("ready"); expect(cp.kind).toBe("baseline"); expect(cp.sourceCoverage["procurementDateTo"]).toBe("2020-12-31");
     expect(await withMonitoringSnapshot(sql, async (q, checkpoint) => {
-      const [mode] = await q`select current_setting('transaction_isolation') isolation`;
-      expect(mode?.["isolation"]).toBe("repeatable read"); return checkpoint.id;
+      const [mode] = await q`select current_setting('transaction_isolation') isolation, current_setting('plan_cache_mode') plans`;
+      expect(mode?.["isolation"]).toBe("repeatable read");
+      expect(mode?.["plans"]).toBe("force_custom_plan"); return checkpoint.id;
     }, cp.id)).toBe(cp.id);
   });
   it("does not expose the previous ready version during an active rebuild", async () => {
