@@ -121,6 +121,14 @@ export function perfCases(): PerfCase[] {
     perfCase("national:entity-card-risk-authorities", "national", "Instituția cu cel mai ridicat indice de risc", "entity_card", top({ dim: "authority", rankBy: "risk" }), { barMs: 1000, ref: "„Cine conduce?”: indice" }),
     perfCase("national:table-hospitals-2024-2025", "national", "Firmele care câștigă de la spitale, 2024–2025", "table", all(set({ authorityKind: "spital" }), years(2024, 2025)), { barMs: 2000 }),
     perfCase("national:stat-works-cpv-45", "national", "Cât valorează lucrările (CPV 45)", "stat", set({ cpvTerm: "45" }), { barMs: 2000 }),
+    // The kind of institution (D1: town halls from the locality registry, hospitals with the
+    // clinical institutes), on the rollups and on the live paths the rollups refuse (months, CPV).
+    perfCase("national:table-communes", "national", "Primăriile de comună care cumpără cel mai mult", "table", all(top({ dim: "authority" }), set({ authorityKind: "comuna" })), { barMs: 2000 }),
+    perfCase("national:table-towns-2025", "national", "Primăriile de oraș și municipiu care cumpără cel mai mult, 2025", "table", all(top({ dim: "authority" }), set({ authorityKind: "oras_municipiu" }), years(2025)), { barMs: 2000 }),
+    perfCase("national:stat-hospitals-2025-h1", "national", "Cât valorează achizițiile spitalelor, ianuarie–iunie 2025", "stat", all(set({ authorityKind: "spital", monthFrom: 1, monthTo: 6 }), years(2025)), { barMs: 2000 }),
+    perfCase("national:breakdown-communes-2025", "national", "Ce cumpără primăriile de comună, 2025", "breakdown", all(set({ authorityKind: "comuna" }), years(2025)), { barMs: 2000 }),
+    perfCase("national:scatter-towns", "national", "Primăriile de oraș și municipiu care ies din tipar", "scatter", all(top({ dim: "authority" }), set({ authorityKind: "oras_municipiu" })), { barMs: 1000 }),
+    perfCase("national:entity-card-value-hospitals-2025", "national", "Spitalul care cumpără cel mai mult, 2025", "entity_card", all(top({ dim: "authority", rankBy: "value" }), set({ authorityKind: "spital" }), years(2025)), { barMs: 2000 }),
     // Narrow selections: county, locality, CPV, authority, supplier, year and month ranges.
     perfCase("filtered:table-cluj", "filtered", "Cine câștigă în județul Cluj", "table", set({ county: "Cluj" })),
     perfCase("filtered:table-cluj-2025", "filtered", "Cine câștigă în județul Cluj, 2025", "table", all(set({ county: "Cluj" }), years(2025))),
@@ -148,6 +156,9 @@ export function perfCases(): PerfCase[] {
     perfCase("sources:compare-selgros-dedeman-2025", "sources", "Sursele comparației SELGROS cu DEDEMAN, 2025", "compare", all(CATALOG_CHOICES.compare!.edit, years(2025)), { path: "rows" }),
     perfCase("sources:entity-card-risk-hospitals", "sources", "Sursele spitalului cu cel mai ridicat indice de risc", "entity_card",
       all(top({ dim: "authority", rankBy: "risk" }), set({ authorityKind: "spital" })), { path: "rows" }),
+    perfCase("sources:table-hospitals-2024-2025", "sources", "Sursele clasamentului firmelor care câștigă de la spitale, 2024–2025", "table",
+      all(set({ authorityKind: "spital" }), years(2024, 2025)), { path: "rows", barMs: 2000 }),
+    perfCase("sources:stat-communes-2025", "sources", "Sursele achizițiilor primăriilor de comună, 2025", "stat", all(set({ authorityKind: "comuna" }), years(2025)), { path: "rows", barMs: 2000 }),
     perfCase("csv:table-cluj-2025", "csv", "CSV: clasamentul din Cluj, 2025", "table", all(set({ county: "Cluj" }), years(2025)), { path: "csv", barMs: 2000 }),
     perfCase("csv:trend-2025-2026-selgros-row", "csv", "CSV: rândul SELGROS al trendului 2025 → 2026", "trend", years(2025, 2026), { path: "csv", scope: SELGROS_ROW, barMs: 2000 }),
     perfCase("csv:table-national", "csv", "CSV: clasamentul național implicit (primele 100.000)", "table", () => {}, { path: "csv", barMs: 2000 }),
