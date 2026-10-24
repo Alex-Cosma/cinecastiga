@@ -1,4 +1,5 @@
 import {buildAskRollups,createTransactionMartBuildIndexes,dropTransactionMartBuildIndexes,ensureTransactionMartIndexes,type DbSql} from '@seap/db';
+import {buildAggMapCounty} from './agg-map-county.js';
 type TransactionSql=Parameters<Parameters<DbSql['begin']>[1]>[0];
 
 /** Daily procurement read models; uses the retained flags without recomputing CRI. */
@@ -75,19 +76,8 @@ export async function buildTransactionMarts(q:TransactionSql){
       drop table if exists marts.agg_map_county, marts.agg_top_entities,
                           marts.agg_national, marts.agg_years
     `;
-    await q`
-      create table marts.agg_map_county as
-      select county,
-             coalesce(sum(cv) filter (where plaf), 0) v_plaf, count(*) filter (where plaf) n_plaf,
-             coalesce(sum(cv), 0) v_all, count(*) n_all
-      from (
-        select county, closing_value cv, (closing_value <= 2000000) plaf
-        from marts.da_transactions where closing_value > 0
-        union all
-        select county, closing_value, true from marts.contract_transactions where closing_value > 0
-      ) x where county is not null group by county
-    `;
-    await q`alter table marts.agg_map_county add primary key (county)`;
+    // Per buyer county, with the split by the winning firm's seat.
+    await buildAggMapCounty(q);
     await q`
       create table marts.agg_national as
       select src,
