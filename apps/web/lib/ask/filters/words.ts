@@ -21,6 +21,21 @@ type Spec = {
 /** "4 angajați", "49 de angajați", "1 angajat". */
 export const employeesCount = (n: number): string => countWords(n, "angajat", "angajați");
 
+/** The kit's employee bands (§4): 0 · 1–9 · 10–49 · 50–249 · 250+, by their ends. */
+export const EMPLOYEE_BAND_FROM: readonly number[] = [0, 1, 10, 50, 250];
+export const EMPLOYEE_BAND_TO: readonly number[] = [0, 9, 49, 249];
+/**
+ * A range the bands can show: one band or a run of adjacent ones (none is no
+ * condition). Anything else is an old link's interval ("Din link: 0–4
+ * angajați", kit §5.5), which the bands window cannot show.
+ */
+export function employeesOnBands(minRaw: unknown, maxRaw: unknown): boolean {
+  if (minRaw === undefined && maxRaw === undefined) return true;
+  const min = minRaw === undefined ? 0 : Number(minRaw);
+  const max = maxRaw === undefined ? null : Number(maxRaw);
+  return EMPLOYEE_BAND_FROM.includes(min) && (max === null || EMPLOYEE_BAND_TO.includes(max) && max >= min);
+}
+
 /** The employees after the firms they describe: "cu 1–49 de angajați", "fără angajați" (the sentence glues it to "firme"). */
 export function employeesWords(minRaw: unknown, maxRaw: unknown): string | null {
   const min = minRaw === undefined ? undefined : Number(minRaw);

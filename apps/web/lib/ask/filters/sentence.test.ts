@@ -328,7 +328,8 @@ describe("the sentences of the legacy corpus (plan §2.6, §6.2)", () => {
       "legacy:single-bidder-stat": "Cât valorează contractele din proceduri încheiate de instituțiile publice din toată țara, în toți anii? · sub propoziție: singleBidder",
       "legacy:single-bidder-table": "Ce firme câștigă contractele din proceduri încheiate de instituțiile publice din toată țara, în toți anii? · sub propoziție: singleBidder",
       "legacy:comparison-mode-transactions": "Compară Fixture Construct SRL cu Fixture Partener SRL la toate achizițiile, în 2025.",
-      "legacy:employees-under-5": "Ce firme cu cel mult 4 angajați câștigă achizițiile făcute de instituțiile publice din toată țara, în toți anii?",
+      // Off the kit's bands (0 · 1–9 · …): the old range is the link's chip, not a phrase whose window could not show it (kit §5.5).
+      "legacy:employees-under-5": "Ce firme câștigă achizițiile făcute de instituțiile publice din toată țara, în toți anii? · sub propoziție: employees",
       "legacy:employees-250-plus": "Cât valorează achizițiile făcute de instituțiile publice din toată țara de la firme cu cel puțin 250 de angajați, în toți anii?",
       "legacy:employees-on-authorities": "Ce instituții publice din toată țara cumpără cel mai mult de la firme cu 1–49 de angajați, prin toate achizițiile, în toți anii?",
       "legacy:contracts-distribution-refused": "Unde se situează Entitatea #9100000004 după indicele de risc, față de toate instituțiile publice? · sub propoziție: dataset",
@@ -423,7 +424,8 @@ describe("the sentences of the legacy corpus (plan §2.6, §6.2)", () => {
 });
 
 describe("one vocabulary (kit §4, plan G3, G10)", () => {
-  const specs = [...corpus.map((c) => c.spec), ...corpus.map((c) => ({ ...c.spec, filters: { ...c.spec.filters, minEmployees: 20, maxEmployees: 120 } }))];
+  // A run of the kit's bands with numbers past 20 (G10); an old link's range off the bands stays under the sentence (kit §5.5).
+  const specs = [...corpus.map((c) => c.spec), ...corpus.map((c) => ({ ...c.spec, filters: { ...c.spec.filters, minEmployees: 50, maxEmployees: 249 } }))];
 
   it("uses the words describeConditions gives the same conditions", () => {
     let checked = 0;
@@ -462,7 +464,8 @@ describe("one vocabulary (kit §4, plan G3, G10)", () => {
       return n !== 0 && (lastTwo === 0 || lastTwo >= 20);
     }).map((m) => m[0]));
     expect(offending).toEqual([]);
-    expect(sentenceText(sentenceTokens(q({ block: "stat", filters: { minEmployees: 20, maxEmployees: 120 } })))).toContain("de la firme cu 20–120 de angajați");
+    expect(sentenceText(sentenceTokens(q({ block: "stat", filters: { minEmployees: 50, maxEmployees: 249 } })))).toContain("de la firme cu 50–249 de angajați");
+    expect(sentenceText(sentenceTokens(q({ block: "stat", filters: { minEmployees: 20, maxEmployees: 120 } })))).not.toContain("angajați");
   });
 
   it("says the firm's seat «cu sediul în …», never «din …» (R9)", () => {
@@ -479,9 +482,9 @@ describe("one vocabulary (kit §4, plan G3, G10)", () => {
 describe("the sentence as BLOCK_FILTERS places it", () => {
   it("lists each phrase's filter and what its window writes", () => {
     expect(sentenceSlots(sentenceTokens(q({ block: "table", dim: "supplier", topN: 10 })))).toEqual([
-      { id: "dim", writes: ["authorityKind"] },
+      { id: "dim", picker: "subject", writes: ["authorityKind"] },
       { id: "dataset" },
-      { id: "authorityKind", writes: ["authority", "locality"] },
+      { id: "authorityKind", picker: "buyer", writes: ["authority", "locality"] },
       { id: "county", writes: ["locality"] },
       { id: "period" },
     ]);

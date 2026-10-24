@@ -70,9 +70,10 @@ export type Availability =
   | { state: "disabled"; reason: string; term?: GlossaryId }
   | { state: "hidden" }
   /**
-   * F0 only, the state of today: the builder offers it, then refuses the
-   * question (R1). `refusal` names the TODAY_REFUSALS entry; `partial` when
-   * only some of its values are refused. F1b turns each into hidden or disabled.
+   * Today's builder only (today.ts todayAvailability, on TODAY_BLOCK_FILTERS):
+   * it offers the filter, then refuses the question (R1). `refusal` names the
+   * TODAY_REFUSALS entry; `partial` when only some of its values are refused.
+   * BLOCK_FILTERS (F1b) turns each into hidden, disabled, a note or a park.
    */
   | { state: "refused"; reason: string; refusal: string; partial?: true };
 
@@ -140,48 +141,72 @@ export interface FilterDef<V = unknown> {
   onTransition?(spec: FilterSpec, to: AnswerForm): TransitionResult;
 }
 
+/**
+ * A window that writes several filters as one choice (pickers.ts):
+ * - focal: the entity of a question about one entity, an institution or a firm (it sets the dimension to the role);
+ * - subject: "Ce clasăm?", "Cine?", "Cine concurează?": firms, institutions (with their kind) or counties;
+ * - buyer: "Cine a cumpărat?": every institution, a kind, one institution or a town hall, one of them at a time;
+ * - from: "De la cine?": the tabs O firmă · Administrator · Ce fel de firme, one of them at a time (kit §5.24).
+ */
+export type Picker = "focal" | "subject" | "buyer" | "from";
+
 /** One control in a place: its filter, and the other filters the same picker writes. */
 export interface Slot {
   id: FilterId;
-  /** The builder's picker, when it is not the filter's own: the focal entity (an institution or a firm). */
-  picker?: "focal";
+  /** The builder's picker, when it is not the filter's own (types.ts Picker). */
+  picker?: Picker;
   /** Filters the same picker also writes: the place picker writes a locality, the focal picker the other role. */
   writes?: readonly FilterId[];
   /** The chip has × (today: every chip but the data stream; the period only when set). */
   removable?: boolean;
-  /** Words of this place when they differ from the filter's (the county of a profile's comparison group). */
+  /** Words of this place when they differ from the filter's: an invitation's name ("Ce s-a cumpărat"), a row chip's. */
   label?: string;
   detail?: string;
+  /** The title of the window it opens (R10), where the place has its own. */
+  window?: string;
+  /** The values this place offers when they are fewer than its filter's: a record threshold counts the ranked role only. */
+  choices?: readonly unknown[];
 }
 
 export type RowLabel = "Câștigătorii" | "Instituțiile" | "Furnizorii" | "Clienții";
-export interface ConditionRow { label: RowLabel; kind: "group" | "selection"; chips: readonly FilterId[] }
+/** A row of conditions (component 3): its chips, each with its own name and window. */
+export interface ConditionRow { label: RowLabel; kind: "group" | "selection"; chips: readonly Slot[] }
 export type RowAction = "records" | "exclude" | "deeper" | "entity";
 export type FactId = string;
 
 export interface BlockFilters {
-  /** P1: the phrases of the sentence, in order. */
+  /** P1: the phrases of the sentence, in order (F1b: sentence.ts, one slot per editable phrase). */
   sentence(spec: FilterSpec, ctx: FilterCtx): readonly Slot[];
-  /** Component 18. Today: the badge "Profiluri istorice · achiziții directe" and the note under the sentence. */
+  /** Component 18: "Profil istoric · achiziții directe, toată arhiva (?)" on the three profiles. */
   scopeLine(spec: FilterSpec, ctx: FilterCtx): "historical-da" | null;
   /**
-   * P2. Today: the items of "Adaugă o condiție", the same generic list on most
-   * questions, listed whether set or not (plan §1, R3). F1b: the unset
-   * fragments of the sentence, at most four.
+   * P2. Today's builder: the items of "Adaugă o condiție", the same generic
+   * list on most questions, listed whether set or not (plan §1, R3). F1b: the
+   * unset fragments of the sentence, in its order, at most four.
    */
   invites(spec: FilterSpec, ctx: FilterCtx): readonly Slot[];
-  /** P3a / P3b. None today; a group row comes with its stage and answer version (plan §2.1). */
+  /** P3a / P3b. F1b: the partners' selection rows of the network and the flow; a group row comes with its stage and answer version (plan §2.1). */
   rows(spec: FilterSpec, ctx: FilterCtx): readonly ConditionRow[];
-  /** P4. Today: the chips row under the sentence (the data stream always, the rest when set). */
+  /**
+   * P4, the chips the question owns. Today's builder: its chips row (the data
+   * stream always, the rest when set). F1b: none with today's keys; a link's
+   * conditions (legacyConditions), the precise selection (advancedConditions)
+   * and the parked row (transition.ts) sit there too, outside this table.
+   */
   under(spec: FilterSpec, ctx: FilterCtx): readonly Slot[];
   /** P5: the line at the bottom of the builder ("Arată primele 10 firme, după …"). */
   presentation(spec: FilterSpec, ctx: FilterCtx): readonly Slot[];
-  /** P9. Today: "Mai multe filtre" (record threshold and precise selection) under every question but compare. */
-  advanced(spec: FilterSpec, ctx: FilterCtx): readonly FilterId[];
   /**
-   * P6–P8. No filter is applied beside the answer today: its links (a row's
-   * records, one CPV level down, the entity page) are derived links, listed in
-   * fixtures/site-links-inventory.ts; F1b draws them as the strip and row menu.
+   * P9. Today's builder: "Mai multe filtre" (record threshold and precise
+   * selection) under every question but compare. F1b (variant A): "⋯ ›
+   * Selecție avansată", only on the questions that apply it.
+   */
+  advanced(spec: FilterSpec, ctx: FilterCtx): readonly Slot[];
+  /**
+   * P6: the controls beside the answer that write a key (the data stream of the
+   * network, the map's lens). Today none: the answer's links (a row's records,
+   * one CPV level down, the entity page) are derived links, listed in
+   * fixtures/site-links-inventory.ts.
    */
   strip: readonly FilterId[];
   rowMenu: readonly RowAction[];

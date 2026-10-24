@@ -1,30 +1,34 @@
-import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it } from "vitest";
-import { defaultQuestion, questionKey, transitionQuestion } from "../question-ui";
-import { IMPLEMENTED_KEYS, NEWER_VERSION_LINK, parseSpec, READ_AHEAD_KEYS, unimplementedSpecKeys, validateSpec, type Block } from "../spec";
+import { defaultQuestion, questionErrors, questionKey, transitionQuestion } from "../question-ui";
+import { IMPLEMENTED_KEYS, NEWER_VERSION_LINK, parseSpec, READ_AHEAD_KEYS, runnableError, unimplementedSpecKeys, validateSpec, type AskSpec, type Block } from "../spec";
 import { legacyCorpus } from "../fixtures/legacy-corpus";
 import { FIXTURE_IDENTITIES } from "../fixtures/golden-fixture";
 import { BLOCK_FILTERS } from "./blocks";
 import { filterContext, formOf } from "./context";
-import { baseQuestions, builderErrors, engineError, offersOn, refusalKind } from "./probe";
-import { availability, FILTER_DEFS, FILTERS, offeredFilters, placedSlots, SPEC_PATH_OWNERS, unofferedPaths } from "./registry";
-import { refusalOf, SCOPE_CHANGES, TODAY_IGNORED_OFFERS, TODAY_REFUSALS, TODAY_SCOPE } from "./today";
+import { legacyConditions, presentConditions } from "./legacy-conditions";
+import { selectionOrigin } from "./origin";
+import { windowFilters, writeChoice, type Choice } from "./pickers";
+import { baseQuestions, builderErrors, choicesOn, engineError, REQUIRED_INPUTS, type PlacedChoice } from "./probe";
+import { availability, conditionSet, FILTER_DEFS, FILTERS, offeredFilters, placedSlots, SPEC_PATH_OWNERS, visibleFilters } from "./registry";
+import { sentenceTokens } from "./sentence";
+import { SCOPE_CHANGES, TODAY_REFUSALS, TODAY_SCOPE } from "./today";
+import { chooseValue, type Transition } from "./transition";
 import type { FilterId, FilterSpec } from "./types";
 
-// The filter registry's contract (plan §2.1, §2.2, §6.1), on the builder of today.
+// The filter registry's contract (plan §2.1, §2.2, §6.1), on F1b's offers (BLOCK_FILTERS).
 
 const YEAR = 2026;
 const ctxOf = (spec: FilterSpec) => filterContext(spec, { year: YEAR });
 const isImplemented = (id: FilterId) => FILTERS[id].keys.length > 0 && FILTERS[id].keys.every((key) => IMPLEMENTED_KEYS.has(key));
 const bases = baseQuestions(YEAR);
-/** Questions as old links, saved questions and other pages open them, where the builder can run them as they are. */
+/** Links, saved questions and other pages' questions, as the builder opens them (restore.ts: parseSpec, then transitionQuestion). */
 const restored = legacyCorpus(FIXTURE_IDENTITIES).flatMap((entry) => {
-  const parsed = validateSpec(entry.spec, { refuseNewer: NEWER_VERSION_LINK });
-  if ("error" in parsed) return [];
-  const spec = transitionQuestion(parsed as unknown as FilterSpec).spec as FilterSpec;
-  return builderErrors(spec).length ? [] : [{ id: entry.id, origin: entry.origin, spec }];
+  const parsed = parseSpec(entry.spec);
+  if ("error" in parsed || unimplementedSpecKeys(parsed).length) return [];
+  return [{ id: entry.id, origin: entry.origin, spec: transitionQuestion(parsed as unknown as FilterSpec).spec as FilterSpec }];
 });
+/** The ones the engine runs as they are. */
+const runnable = restored.filter((entry) => engineError(entry.spec) === null);
 
 describe("one owner for every key (R2)", () => {
   it("gives each path of AskSpec to exactly one filter", () => {
@@ -115,152 +119,239 @@ describe("today's scope of each key (TODAY_SCOPE, plan §2.2)", () => {
   });
 });
 
-/** Every choice from each catalogue question and, one more, from each of its results; one choice from each restored question. */
+/** The conditions of a spec the question shows neither as its own nor as a chip it carried in. */
+const isOrigin = (spec: FilterSpec, id: FilterId) => id === "population" && selectionOrigin(spec.population) !== null;
+
+/**
+ * R1 on F1b's offers (plan §2.1, §6.1 "matricea pe perechi"): every row of every window on each catalogue
+ * question and, one more, on each of its results (the pairs); one row on each question the corpus opens. A
+ * row is offered, disabled with its reason or hidden; each offered one is applied as the builder applies it
+ * (the window's write, then transition.ts).
+ */
 function walk() {
   const problems: string[] = [];
-  const hits = new Map<string, number>();
   const visited = new Set<string>();
-  let singles = 0, pairs = 0, accepted = 0;
-  const visit = (from: FilterSpec, deeper: boolean) => {
-    const ctx = ctxOf(from);
-    for (const offer of offersOn(from, ctx)) {
-      deeper ? singles++ : pairs++;
-      const errors = builderErrors(offer.to);
-      const declared = refusalOf(offer.filter, offer.value, from, ctx);
-      const where = `${ctx.form} ${offer.filter}${offer.picker ? " (focal)" : ""} = ${JSON.stringify(offer.value)} on ${questionKey(from)}`;
-      if (!errors.length) {
-        accepted++;
-        if (declared) problems.push(`declared ${declared.id}, accepted: ${where}`);
-        // What the builder runs, /api/ask runs too.
-        const engine = engineError(offer.to);
-        if (engine) problems.push(`builder accepts, engine refuses (${engine}): ${where}`);
-        const key = questionKey(offer.to);
-        if (deeper && !visited.has(key)) { visited.add(key); visit(offer.to, false); }
+  const disabled = new Map<string, number>();
+  let singles = 0, pairs = 0;
+  /** What the walk reads of the draft before a choice, once per draft. */
+  interface From { spec: FilterSpec; present: Map<FilterId, unknown>; visible: Set<FilterId>; refused: Set<FilterId> | null }
+  const check = (from: From, placed: PlacedChoice, to: Transition, where: string) => {
+    const errors = questionErrors(to.spec);
+    // What the builder accepts, the engine runs (validateSpec = parseSpec + runnableError, then the locality rule);
+    // a window that empties a required input (the second entity, a focal one) asks for it again.
+    const engine = engineError(to.spec);
+    if (errors.length && !errors.every((error) => REQUIRED_INPUTS.includes(error))) problems.push(`refused (${errors.join(" / ")}): ${where}`);
+    else if (!errors.length && engine) problems.push(`builder accepts, engine refuses (${engine}): ${where}`);
+    // No condition hidden: the question shows it, or it is a link's chip it carried in (still a chip).
+    const visible = visibleFilters(to.spec), present = presentConditions(to.spec);
+    for (const id of present.keys())
+      if (!visible.has(id) && !(from.present.has(id) && (!from.visible.has(id) || isOrigin(from.spec, id)))) problems.push(`hidden ${id}: ${where}`);
+    // Never a silent drop: what left outside the chosen window has a note or waits in the parked row.
+    const window = new Set(windowFilters(placed.slot));
+    const kept = new Set([...present.keys(), ...to.dropped, ...(to.parked?.items.map((item) => item.id) ?? [])]);
+    for (const id of from.present.keys()) if (!kept.has(id) && !window.has(id)) problems.push(`dropped ${id} silently: ${where}`);
+    if (to.notes.length < to.dropped.length) problems.push(`${to.dropped.length} dropped, ${to.notes.length} notes: ${where}`);
+    // A new refused chip would be offered, then refused (a chip is refused only on a question the engine refuses).
+    if (engine) {
+      from.refused ??= new Set(legacyConditions(from.spec).filter((c) => c.status === "refused").map((c) => c.key));
+      for (const c of legacyConditions(to.spec)) if (c.status === "refused" && !from.refused.has(c.key)) problems.push(`refused chip ${c.key}: ${where}`);
+    }
+  };
+  const visit = (spec: FilterSpec, deeper: boolean, sample = false) => {
+    const from: From = { spec, present: presentConditions(spec), visible: visibleFilters(spec), refused: null };
+    const ctx = ctxOf(spec);
+    const seen = new Set<string>();
+    for (const placed of choicesOn(spec, ctx)) {
+      const where = `${ctx.form} ${placed.placement} ${placed.slot.id}${placed.slot.picker ? ` (${placed.slot.picker})` : ""} = ${JSON.stringify(placed.choice.value)} on ${questionKey(spec)}`;
+      if (placed.state.state === "hidden") continue;
+      if (placed.state.state === "disabled") {
+        // Disabled says why, and is honest: the engine would refuse the choice (a ranking pinned to one row).
+        if (!placed.state.reason) problems.push(`disabled without a reason: ${where}`);
+        if (!runnableError(writeChoice(spec, placed.slot, placed.choice) as unknown as AskSpec)) problems.push(`disabled, engine accepts: ${where}`);
+        disabled.set(placed.state.reason, (disabled.get(placed.state.reason) ?? 0) + 1);
         continue;
       }
-      if (!declared) { problems.push(`refused, not declared (${errors[0]}): ${where}`); continue; }
-      if (declared.kind !== refusalKind(errors)) problems.push(`${declared.id} is ${declared.kind}, the builder says ${errors.join(" / ")}: ${where}`);
-      if (!errors.some((error) => error.startsWith(declared.reason))) problems.push(`${declared.id}: "${declared.reason}" not in ${errors.join(" / ")}: ${where}`);
-      hits.set(declared.id, (hits.get(declared.id) ?? 0) + 1);
+      const to = chooseValue(spec, placed.slot, placed.choice);
+      const key = `${placed.choice.filter}|${questionKey(to.spec)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      deeper || sample ? singles++ : pairs++;
+      check(from, placed, to, where);
+      const result = questionKey(to.spec);
+      if (deeper && !visited.has(result) && !questionErrors(to.spec).length) { visited.add(result); visit(to.spec, false); }
     }
   };
   for (const base of bases) {
     expect(builderErrors(base.spec), base.name).toEqual([]);
     visit(base.spec, true);
   }
-  for (const entry of restored) {
-    const ctx = ctxOf(entry.spec);
-    for (const offer of offersOn(entry.spec, ctx)) {
-      singles++;
-      const errors = builderErrors(offer.to);
-      const declared = refusalOf(offer.filter, offer.value, entry.spec, ctx);
-      if (Boolean(errors.length) !== Boolean(declared)) problems.push(`${entry.id}: ${offer.filter} = ${JSON.stringify(offer.value)} ${errors.length ? `refused (${errors[0]}), not declared` : `accepted, declared ${declared!.id}`}`);
-      else if (declared) hits.set(declared.id, (hits.get(declared.id) ?? 0) + 1);
-    }
-  }
-  return { problems, hits, singles, pairs, accepted };
+  for (const entry of restored) visit(entry.spec, false, true);
+  return { problems, disabled, singles, pairs };
 }
 
 describe("R1: what a question offers, the engine accepts (plan §2.1)", () => {
   let result: ReturnType<typeof walk>;
-  beforeAll(() => { result = walk(); });
+  // A few seconds alone; the whole suite runs its files in parallel.
+  beforeAll(() => { result = walk(); }, 60_000);
 
   it("walks every offered choice and every pair of choices", () => {
-    expect(result.singles).toBeGreaterThan(5_000);
-    expect(result.pairs).toBeGreaterThan(100_000);
+    expect(result.singles).toBeGreaterThan(15_000);
+    expect(result.pairs).toBeGreaterThan(90_000);
   });
 
-  it("finds a refusal exactly where TODAY_REFUSALS marks one, with its message", () => {
+  it("never offers a choice the engine refuses, hides a condition or drops one silently", () => {
     expect(result.problems.slice(0, 20)).toEqual([]);
   });
 
-  it("finds each marked refusal at least once", () => {
-    expect(TODAY_REFUSALS.filter((r) => !result.hits.has(r.id)).map((r) => r.id)).toEqual([]);
-  });
-
-  // The list F1b removes (stage notes, F0-registry.md); a new entry is a new R1 violation of today's builder.
-  it("marks these offers as refused by the engine", () => {
-    expect(TODAY_REFUSALS.filter((r) => r.kind === "engine").map((r) => `${r.id}: ${r.filter}`)).toEqual([
-      "trend-threshold: minimumRecords", "profile-threshold: minimumRecords", "profile-population: population", "profile-contracts: dataset",
-      "risk-records: rankBy", "risk-named: rankBy", "risk-firm-buyer: rankBy", "risk-locality: rankBy",
-      "firm-profile-buyer: dim", "firm-focal-buyer: supplier", "county-ranking: dim", "ranking-pair: authority", "ranking-pair-firm: supplier",
+  it("disables only rankings pinned to one row, each with its reason", () => {
+    expect([...result.disabled.keys()].sort()).toEqual([
+      "Scoate firma aleasă ca să clasezi firmele.", "Scoate instituția aleasă ca să clasezi instituțiile.",
+      "Scoate județul ca să clasezi județele.", "Scoate localitatea ca să clasezi județele.",
     ]);
+  });
+});
+
+describe("what F1b does about each refusal of today's builder (TODAY_REFUSALS)", () => {
+  const base = (name: string) => structuredClone(bases.find((b) => b.name === name)!.spec);
+  const sentenceSlot = (spec: FilterSpec, id: FilterId) => BLOCK_FILTERS[spec.block as Block].sentence(spec, ctxOf(spec)).find((s) => s.id === id)!;
+  const axis = (spec: FilterSpec, value: "value" | "risk") => chooseValue(spec, sentenceSlot(spec, "rankBy"), { filter: "rankBy", value });
+  const subject = (spec: FilterSpec, value: Choice["value"]) => chooseValue(spec, sentenceSlot(spec, "dim"), { filter: "dim", value });
+  const fixes: Record<string, () => void> = {
+    // No threshold, precise selection or contracts stream offered where the engine refuses them.
+    "trend-threshold": () => expect(placedSlots(base("trend firms"), ctxOf(base("trend firms"))).some((p) => p.slot.id === "minimumRecords")).toBe(false),
+    "profile-threshold": () => { for (const name of ["scatter firms", "distribution institution", "leader risk firms"]) expect(availability("minimumRecords", base(name))).toEqual({ state: "hidden" }); },
+    "profile-population": () => { for (const name of ["scatter firms", "distribution institution", "leader risk firms"]) expect(availability("population", base(name))).toEqual({ state: "hidden" }); },
+    "profile-contracts": () => { for (const name of ["scatter firms", "distribution firm", "leader risk institutions"]) expect(availability("dataset", base(name))).toEqual({ state: "hidden" }); },
+    // The axis parks what the index cannot apply, and the value axis brings it back.
+    "risk-records": () => {
+      const spec = { ...base("leader value institutions"), filters: { cpvTerm: "medicamente", yearFrom: 2025, yearTo: 2025 } };
+      const risk = axis(spec, "risk");
+      expect(engineError(risk.spec)).toBeNull();
+      expect(risk.parked?.items.map((item) => item.label)).toEqual(["„medicamente”", "2025"]);
+    },
+    "risk-named": () => expect(axis({ ...base("leader value firms"), filters: { authorityName: "Comuna Exemplu", authorityId: 101 } }, "risk").parked?.items.map((i) => i.id)).toEqual(["authority"]),
+    "risk-firm-buyer": () => expect(axis({ ...base("leader value firms"), filters: { authorityKind: "comuna" } }, "risk").parked?.items.map((i) => i.id)).toEqual(["authorityKind"]),
+    "risk-locality": () => expect(axis({ ...base("leader value institutions"), filters: { uatSiruta: 54975, uatName: "Municipiul Cluj-Napoca (Cluj)", county: "Cluj" } }, "risk").parked?.items.map((i) => i.id)).toEqual(["locality"]),
+    // A firm subject or focal entity drops the kind of institution, with its note.
+    "firm-profile-buyer": () => {
+      const to = subject({ ...base("scatter institutions"), filters: { authorityKind: "spital" } }, { dim: "supplier" });
+      expect([to.spec.filters.authorityKind, to.dropped, engineError(to.spec)]).toEqual([undefined, ["authorityKind"], null]);
+      expect(to.notes).toEqual(["Am scos „doar spitale”: nu se potrivește cu alegerea nouă."]);
+    },
+    "firm-focal-buyer": () => {
+      const spec = { ...base("distribution institution"), filters: { ...base("distribution institution").filters, authorityKind: "comuna" } };
+      const to = chooseValue(spec, sentenceSlot(spec, "authority"), { filter: "supplier", value: { name: "Firma Exemplu SRL", id: 202 } });
+      expect([to.spec.filters.authorityKind, to.dropped, engineError(to.spec)]).toEqual([undefined, ["authorityKind"], null]);
+    },
+    // A ranking pinned to one row is disabled in "Ce clasăm?", with the reason (the walk checks each one).
+    "county-ranking": () => {
+      const spec = { ...base("table firms"), filters: { county: "Cluj" } };
+      expect(choicesOn(spec).find((p) => p.slot.picker === "subject" && (p.choice.value as { dim: string }).dim === "county")?.state).toEqual({ state: "disabled", reason: "Scoate județul ca să clasezi județele." });
+    },
+    "ranking-pair": () => {
+      const spec = { ...base("table firms"), filters: { authorityName: "Comuna Exemplu", authorityId: 101 } };
+      expect(choicesOn(spec).filter((p) => p.slot.picker === "subject" && (p.choice.value as { dim: string }).dim === "authority").map((p) => p.state.state)).toEqual(Array(6).fill("disabled"));
+    },
+    "ranking-pair-firm": () => {
+      const spec = { ...base("table institutions"), filters: { supplierName: "Firma Exemplu SRL", supplierId: 202 } };
+      expect(choicesOn(spec).find((p) => p.slot.picker === "subject" && (p.choice.value as { dim: string }).dim === "supplier")?.state.state).toBe("disabled");
+    },
+  };
+
+  it.each(TODAY_REFUSALS.filter((r) => r.kind === "engine").map((r) => [r.id] as const))("%s", (id) => {
+    expect(fixes[id], `no check for ${id}`).toBeDefined();
+    fixes[id]!();
   });
 });
 
 describe("availability (plan §2.2)", () => {
   const base = (name: string) => bases.find((b) => b.name === name)!.spec;
-  const withFilters = (spec: FilterSpec, filters: FilterSpec["filters"]) => ({ ...spec, filters: { ...spec.filters, ...filters } });
 
-  it("says offered, refused or hidden, as the builder offers today", () => {
+  it("is offered where a control writes the filter, else hidden", () => {
     expect(availability("cpvTerm", base("table firms"))).toEqual({ state: "offered" });
     expect(availability("cpvTerm", base("scatter institutions"))).toEqual({ state: "hidden" });
     expect(availability("county", base("scatter institutions"))).toEqual({ state: "offered" });
-    expect(availability("minimumRecords", base("trend firms"))).toEqual({ state: "refused", reason: TODAY_REFUSALS[0]!.reason, refusal: "trend-threshold", partial: true });
-    expect(availability("population", base("trend firms"))).toEqual({ state: "offered" });
-    expect(availability("dataset", base("scatter firms"))).toMatchObject({ state: "refused", refusal: "profile-contracts", partial: true });
-    expect(availability("rankBy", withFilters(base("leader value institutions"), { cpvTerm: "medicamente" }))).toMatchObject({ state: "refused", refusal: "risk-records", partial: true });
-    expect(availability("rankBy", base("leader value institutions"))).toEqual({ state: "offered" });
-    expect(availability("dim", withFilters(base("table firms"), { county: "Cluj" }))).toMatchObject({ state: "refused", refusal: "county-ranking", partial: true });
-    expect(availability("minimumRecords", base("compare institutions"))).toEqual({ state: "hidden" });
     expect(availability("locality", base("map"))).toEqual({ state: "hidden" });
-    // The focal picker offers both roles; changing the role empties the second entity (an input, not a refusal).
-    expect(availability("supplier", base("compare institutions"))).toEqual({ state: "offered" });
-  });
-
-  it("is hidden exactly when no control of the question writes the filter", () => {
+    expect(availability("employees", base("table firms"))).toEqual({ state: "offered" });
+    expect(availability("employees", base("timeseries"))).toEqual({ state: "hidden" });
+    expect(availability("employees", base("network institution"))).toEqual({ state: "offered" });
+    expect(availability("employees", base("network firm"))).toEqual({ state: "hidden" });
     for (const { spec } of [...bases, ...restored.slice(0, 60)]) {
       const ctx = ctxOf(spec), offered = offeredFilters(spec, ctx);
       for (const def of FILTER_DEFS) expect(availability(def.id, spec, ctx).state === "hidden", `${def.id} on ${questionKey(spec)}`).toBe(!offered.has(def.id));
     }
   });
 
-  it("offers no control whose key the engine ignores there, except those listed", () => {
-    const ignored = new Set<string>();
+  // Nothing generic under any question any more (R3, G1): the threshold and the precise selection live in
+  // "⋯ › Selecție avansată" only (variant A), the single bidder and the comparison mode nowhere.
+  it("offers no generic control, and no control whose key the engine ignores there", () => {
     const problems: string[] = [];
     for (const { spec } of [...bases, ...restored]) {
       const ctx = ctxOf(spec);
-      for (const id of offeredFilters(spec, ctx)) {
-        if (FILTERS[id].engine[ctx.form] !== undefined) continue;
-        if (TODAY_IGNORED_OFFERS.some((o) => o.filter === id && o.forms.includes(ctx.form))) { ignored.add(`${id} ${ctx.form}`); continue; }
-        // Otherwise every value its control offers is refused (TODAY_REFUSALS) or removes it.
-        const unrefused = FILTERS[id].choices(spec, ctx).filter((value) => value !== undefined && !refusalOf(id, value, spec, ctx));
-        if (unrefused.length) problems.push(`${id} on ${ctx.form}: ${JSON.stringify(unrefused)}`);
+      for (const { placement, slot } of placedSlots(spec, ctx)) {
+        if (["singleBidder", "comparisonMode"].includes(slot.id) || ["population", "minimumRecords"].includes(slot.id) && placement !== "advanced") problems.push(`${slot.id} in ${placement} on ${ctx.form}`);
       }
+      for (const id of offeredFilters(spec, ctx)) if (FILTERS[id].engine[ctx.form] === undefined) problems.push(`${id} ignored on ${ctx.form}`);
     }
     expect(problems).toEqual([]);
-    expect([...ignored].sort()).toEqual(["dataset distribution", "dataset entity_card:risk", "dataset scatter"]);
   });
 });
 
 describe("places (BLOCK_FILTERS)", () => {
   const states = [...bases, ...restored];
+  /** R10's window titles (kit §2), with the windows the plan keeps from today (F1b-s-windows). */
+  const WINDOWS = ["Ce fel de achiziții?", "Ce s-a cumpărat?", "Cine a cumpărat?", "Unde?", "De la cine?", "Unde au sediul firmele?", "În ce perioadă?", "Când?",
+    "Câți angajați au firmele?", "Cine conduce firmele?", "Selecție avansată"];
 
   it("has one entry for each of the 13 questions", () => {
     expect(Object.keys(BLOCK_FILTERS).sort()).toEqual(([...new Set(bases.map((b) => b.spec.block))] as Block[]).sort());
   });
 
-  it("names only registered filters, in the places the builder has today", () => {
+  it("names only registered filters; invitations, rows and P9 with their names and windows", () => {
     for (const { spec } of states)
       for (const { placement, slot } of placedSlots(spec, ctxOf(spec))) {
         expect(FILTERS[slot.id], slot.id).toBeDefined();
         for (const id of slot.writes ?? []) expect(FILTERS[id], id).toBeDefined();
-        expect(["sentence", "invite", "under", "presentation", "advanced"]).toContain(placement);
+        expect(["sentence", "invite", "row", "presentation", "strip", "advanced"]).toContain(placement);
+        if (["invite", "row", "advanced"].includes(placement)) {
+          expect(slot.label, `${placement} ${slot.id}`).toBeTruthy();
+          expect(WINDOWS, `${placement} ${slot.id}`).toContain(slot.window);
+        }
       }
   });
 
+  // P2: the unset fragments of the sentence, named, in its order, at most four; set, each becomes its phrase.
+  it("invites only unset fragments the sentence does not show, and each becomes its phrase", () => {
+    const problems: string[] = [];
+    for (const { spec } of states) {
+      const ctx = ctxOf(spec);
+      const invites = BLOCK_FILTERS[ctx.block].invites(spec, ctx);
+      if (invites.length > 4) problems.push(`${invites.length} invitations on ${questionKey(spec)}`);
+      const said = new Set(sentenceTokens(spec, ctx).flatMap((t) => t.kind === "slot" ? [t.filter, ...t.says] : []));
+      for (const invite of invites) {
+        const own = [invite.id, ...(invite.writes ?? [])];
+        if (own.some((id) => said.has(id) || conditionSet(spec, id))) problems.push(`${invite.id} already there on ${questionKey(spec)}`);
+        // Each of its rows that sets a condition (not the first row, the default) makes the sentence say it.
+        const rows = choicesOn(spec, ctx).filter((p) => p.placement === "invite" && p.slot.id === invite.id && p.state.state === "offered");
+        const set = rows.map((p) => ({ p, to: chooseValue(spec, p.slot, p.choice) })).filter(({ p, to }) => conditionSet(to.spec, p.choice.filter));
+        if (!set.length) problems.push(`${invite.id} sets nothing on ${questionKey(spec)}`);
+        for (const { p, to } of set) if (!visibleFilters(to.spec).has(p.choice.filter)) problems.push(`${invite.id} = ${JSON.stringify(p.choice.value)} is not said on ${questionKey(spec)}`);
+      }
+    }
+    expect(problems).toEqual([]);
+  });
+
   // Plan §2.1 P3a/P3b: a group row narrows the list and keeps the total; a selection row changes it.
-  it("draws condition rows only with keys of their kind; today there are none", () => {
+  it("draws the partners' selection rows on the network and the flow only; no group row in F1b", () => {
     for (const { spec } of states) {
       const ctx = ctxOf(spec);
       const rows = BLOCK_FILTERS[ctx.block].rows(spec, ctx);
-      for (const row of rows)
-        for (const id of row.chips) {
-          expect(FILTERS[id].scope(ctx.form), `${row.label} ${id}`).toBe(row.kind);
-          if (row.kind === "group") expect(["firmSeat", "seatCounty", "admin"]).not.toContain(id);
-        }
-      // F3 brings the first group row (CÂȘTIGĂTORII, with table:employees-2).
-      expect(rows).toEqual([]);
+      for (const row of rows) {
+        expect(row.kind, row.label).toBe("selection");
+        for (const chip of row.chips) expect(FILTERS[chip.id].scope(ctx.form), `${row.label} ${chip.id}`).toBe("selection");
+      }
+      expect(rows.length > 0, questionKey(spec)).toBe(["network", "sankey"].includes(ctx.block));
+      expect(BLOCK_FILTERS[ctx.block].under(spec, ctx)).toEqual([]);
     }
   });
 
@@ -270,37 +361,14 @@ describe("places (BLOCK_FILTERS)", () => {
       expect(BLOCK_FILTERS[ctx.block].scopeLine(spec, ctx), questionKey(spec)).toBe(["distribution", "scatter", "entity_card:risk"].includes(formOf(spec)) ? "historical-da" : null);
     }
   });
-});
 
-describe("links into Întreabă from the rest of the site (plan §2.6)", () => {
-  // Today a phrase, a chip or "Mai multe filtre" offers every condition a link applies, so none needs
-  // an origin label yet. From F1b the registry offers less: this list becomes what legacyConditions labels.
-  it("carries no applied condition its question does not offer", () => {
-    const unoffered = restored.flatMap((entry) => unofferedPaths(entry.spec, ctxOf(entry.spec)).filter((u) => u.applied).map((u) => `${entry.id}: ${u.path}`));
-    expect(unoffered).toEqual([]);
-    expect(restored.filter((entry) => entry.origin === "site").length).toBeGreaterThan(30);
-  });
-});
-
-describe("the builder it describes", () => {
-  // BLOCK_FILTERS, the defs and today.ts describe this code; the walk above checks them against the
-  // engine. A change to the builder's offers changes this hash: describe it there, then update the hash.
-  // F0-describe: the chips take their words from describeConditions; the offers are the same.
-  it("is the QuestionBuilder of F0", () => {
-    const source = readFileSync(new URL("../../../app/intreaba/QuestionBuilder.tsx", import.meta.url), "utf8");
-    const between = (from: string, to: string) => {
-      const start = source.indexOf(from), end = source.indexOf(to, start);
-      expect(start >= 0 && end > start, `${from} … ${to}`).toBe(true);
-      return source.slice(start, end);
-    };
-    const offers = [
-      between("const FIELDS", "function Glyph"),
-      between("function updateFilter", "async function apply"),
-      between("const namedAuthority =", "const catalogResults"),
-      between("function pickLocality", "function optionList"),
-      between("function submitBounds", "const navigation"),
-      ...source.split("\n").filter((line) => line.includes("cq-more-filters") || line.includes("qb-presentation")),
-    ].join("\n");
-    expect(createHash("sha256").update(offers).digest("hex")).toBe("d54bf559ca023d5d9d38c8300953ce53bbfcb5b7257d8f6b3f0893654bcf8219");
+  it("runs every link the engine runs, with its conditions shown or as chips", () => {
+    expect(runnable.length).toBeGreaterThan(150);
+    for (const entry of runnable) {
+      const visible = visibleFilters(entry.spec);
+      const chips = new Set(legacyConditions(entry.spec).map((c) => c.key));
+      for (const id of presentConditions(entry.spec).keys())
+        expect(visible.has(id) || chips.has(id) || id === "population", `${entry.id}: ${id}`).toBe(true);
+    }
   });
 });

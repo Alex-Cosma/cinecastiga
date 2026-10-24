@@ -212,12 +212,17 @@ describe("the words of every condition", () => {
     expect(new Set(DESCRIBED_FILTERS)).toEqual(new Set([...owners].filter((id) => !["dim", "measure", "topN", "rankBy"].includes(id))));
   });
 
-  it("give a total line for every selection outside the sentence (G8)", () => {
-    expect(describeConditions({ block: "network", measure: "value", filters: { supplierId: 1, supplierName: "X", yearFrom: 2024, yearTo: 2024, cpvTerm: "asfaltare" } }).totalLine)
-      .toBe("pentru „asfaltare”, în 2024");
-    expect(describeConditions({ block: "stat", measure: "value", dataset: "da", filters: { minEmployees: 1, maxEmployees: 9 } }).totalLine).toBe("firme cu 1–9 angajați, doar achiziții directe");
+  it("give a total line for every selection outside the basic sentence (G8)", () => {
+    // What the sentence says is its own: the network's period and domain, a stat's stream and firms.
+    expect(describeConditions({ block: "network", measure: "value", filters: { supplierId: 1, supplierName: "X", yearFrom: 2024, yearTo: 2024, cpvTerm: "asfaltare" } }).totalLine).toBeNull();
+    expect(describeConditions({ block: "stat", measure: "value", dataset: "da", filters: { minEmployees: 1, maxEmployees: 9 } }).totalLine).toBeNull();
     expect(describeConditions({ block: "stat", measure: "value", filters: {} }).totalLine).toBeNull();
-    // On a firm profile the county is the firm's seat.
+    // A partners' row (P3b) and a link's chip change the total outside it.
+    expect(describeConditions({ block: "network", measure: "value", filters: { authorityId: 1, authorityName: "X", minEmployees: 1, maxEmployees: 9 } }).totalLine).toBe("firme cu 1–9 angajați");
+    expect(describeConditions({ block: "stat", measure: "value", filters: { supplierId: 2, supplierName: "PORR", adminPersonKey: "k", adminName: "ION" } }).totalLine).toBe("firmele conduse azi de ION");
+    // The selections glued to the ranked firms are said again: their size, administrator, seat (on a firm profile, the county).
+    expect(describeConditions({ block: "table", measure: "value", dim: "supplier", filters: { minEmployees: 1, maxEmployees: 9, adminPersonKey: "k", adminName: "ION" } }).totalLine)
+      .toBe("firmele conduse azi de ION, firme cu 1–9 angajați");
     expect(describeConditions({ block: "scatter", measure: "value", dim: "supplier", filters: { county: "Cluj" } }).totalLine).toBe("cu sediul în județul Cluj");
   });
 

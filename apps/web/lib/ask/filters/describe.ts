@@ -10,10 +10,10 @@ import {
   NEWER_VERSION_QUESTION, namedKind, unimplementedSpecKeys, validateSpec, type AskSpec, type AuthorityKind, type ParsedAuthorityKind,
 } from "../spec";
 import { formatExactDecimal, formatInt } from "../../format";
-import { BLOCK_FILTERS } from "./blocks";
 import { filterContext } from "./context";
 import { selectionOrigin, splitExcluded, exclusionWords, type OriginHint, type OriginWords } from "./origin";
 import { FILTERS, SPEC_PATH_OWNERS, presentPaths } from "./registry";
+import { sentenceTokens } from "./sentence";
 import type { FilterId, FilterSpec } from "./types";
 import { adminPhrase, employeesCount, employeesPhrase, localityName, periodWordsWith, streamPhrase, titleTailParts } from "./words";
 
@@ -311,17 +311,18 @@ const SUMMARY_ORDER: readonly FilterId[] = ["dataset", "authority", "supplier", 
 const CAVEAT_ORDER: readonly FilterId[] = ["population", "minimumRecords"];
 
 /**
- * The conditions a question applies outside its sentence and that change the
- * total (G8): selections the engine applies on this answer, which the
- * sentence of BLOCK_FILTERS does not say.
+ * The conditions a question applies outside its basic sentence and that change
+ * the total (G8): selections the engine applies on this answer that the
+ * sentence does not say (a partners' row, a link's chip), and the selections
+ * glued to the ranked firms (their size, administrator or seat). A town hall
+ * says its county.
  */
 function outsideSentence(spec: Spec): FilterId[] {
   const ctx = filterContext(spec);
   const said = new Set<FilterId>();
-  for (const slot of BLOCK_FILTERS[ctx.block]?.sentence(spec, ctx) ?? []) {
-    said.add(slot.id);
-    for (const id of slot.writes ?? []) said.add(id);
-  }
+  for (const token of sentenceTokens(spec, ctx))
+    if (token.kind === "fixed" || token.kind === "slot" && !token.glued) for (const id of token.says) said.add(id);
+  if (said.has("locality")) said.add("county");
   const ids = new Set<FilterId>();
   for (const path of presentPaths(spec)) {
     const owner = SPEC_PATH_OWNERS[path];

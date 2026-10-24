@@ -1,26 +1,16 @@
 import { BLOCK_FILTERS } from "./blocks";
 import { filterContext } from "./context";
-import { COMPARE_DEFS } from "./defs/compare";
-import { EXCLUDE_DEFS } from "./defs/exclude";
-import { FROM_WHOM_DEFS } from "./defs/from-whom";
-import { LEGACY_DEFS } from "./defs/legacy";
-import { NETWORK_DEFS } from "./defs/network";
-import { PROFILE_DEFS } from "./defs/profile";
-import { RANKING_DEFS } from "./defs/ranking";
-import { SANKEY_DEFS } from "./defs/sankey";
-import { SEAT_DEFS } from "./defs/seat";
-import { SELECTION_DEFS, type Party } from "./defs/selection";
+import { FILTERS } from "./defs";
+import type { Party } from "./defs/selection";
 import { edited } from "./defs/shared";
-import { TIMESERIES_DEFS } from "./defs/timeseries";
-import { TREND_DEFS } from "./defs/trend";
-import { refusalOf } from "./today";
-import type { Availability, FilterCtx, FilterDef, FilterId, FilterSpec, Placement, Slot, SpecPath } from "./types";
+import { isDaBoundPopulation } from "./origin";
+import { presentationTokens, sentenceTokens } from "./sentence";
+import { employeesOnBands } from "./words";
+import type { Availability, BlockFilters, FilterCtx, FilterId, FilterSpec, Placement, Slot, SpecPath } from "./types";
 
-export const FILTER_DEFS: readonly FilterDef[] = [
-  ...SELECTION_DEFS, ...FROM_WHOM_DEFS, ...SEAT_DEFS, ...RANKING_DEFS, ...PROFILE_DEFS, ...TREND_DEFS,
-  ...TIMESERIES_DEFS, ...NETWORK_DEFS, ...SANKEY_DEFS, ...COMPARE_DEFS, ...EXCLUDE_DEFS, ...LEGACY_DEFS,
-];
-export const FILTERS = Object.fromEntries(FILTER_DEFS.map((def) => [def.id, def])) as Record<FilterId, FilterDef>;
+export { FILTER_DEFS, FILTERS } from "./defs";
+/** A table of offers: BLOCK_FILTERS (F1b), or today's builder (today-blocks.ts) for the walk that describes it. */
+export type OfferTable = Record<string, BlockFilters | undefined>;
 
 /**
  * The owner of every path of AskSpec (R2: one key, one control). Listed
@@ -55,27 +45,64 @@ export const SPEC_PATH_OWNERS: { readonly [P in SpecPath]: FilterId | "question"
 };
 
 /** Every control of a question on this spec, with its place. */
-export function placedSlots(spec: FilterSpec, ctx: FilterCtx = filterContext(spec)): { placement: Placement; slot: Slot }[] {
-  const entry = BLOCK_FILTERS[ctx.block];
+export function placedSlots(spec: FilterSpec, ctx: FilterCtx = filterContext(spec), table: OfferTable = BLOCK_FILTERS): { placement: Placement; slot: Slot }[] {
+  const entry = table[ctx.block];
   if (!entry) return [];
   return [
     ...entry.sentence(spec, ctx).map((slot) => ({ placement: "sentence" as const, slot })),
     ...entry.invites(spec, ctx).map((slot) => ({ placement: "invite" as const, slot })),
+    ...entry.rows(spec, ctx).flatMap((row) => row.chips.map((slot) => ({ placement: "row" as const, slot }))),
     ...entry.under(spec, ctx).map((slot) => ({ placement: "under" as const, slot })),
     ...entry.presentation(spec, ctx).map((slot) => ({ placement: "presentation" as const, slot })),
-    ...entry.advanced(spec, ctx).map((id) => ({ placement: "advanced" as const, slot: { id } })),
+    ...entry.strip.map((id) => ({ placement: "strip" as const, slot: { id } })),
+    ...entry.advanced(spec, ctx).map((slot) => ({ placement: "advanced" as const, slot })),
   ];
 }
 
 /** The filters a reader can set on this spec, through any control. */
-export function offeredFilters(spec: FilterSpec, ctx: FilterCtx = filterContext(spec)): Set<FilterId> {
+export function offeredFilters(spec: FilterSpec, ctx: FilterCtx = filterContext(spec), table: OfferTable = BLOCK_FILTERS): Set<FilterId> {
   const ids = new Set<FilterId>();
-  for (const { slot } of placedSlots(spec, ctx)) {
+  for (const { slot } of placedSlots(spec, ctx, table)) {
     ids.add(slot.id);
     for (const id of slot.writes ?? []) ids.add(id);
   }
   return ids;
 }
+
+/** The value a condition holds, or nothing: the default stream is no condition. */
+export const conditionSet = (spec: FilterSpec, id: FilterId): boolean =>
+  id === "dataset" ? spec.dataset !== undefined && spec.dataset !== "all" : FILTERS[id].read(spec) !== undefined;
+
+/**
+ * The conditions this question shows as its own (BLOCK_FILTERS): what its
+ * sentence and presentation line say, the set chips of its rows and strip,
+ * and a precise selection or record threshold its "Selecție avansată" offers
+ * (P9 with the counted role). A town hall implies its county. A profile reads
+ * every stream as its archive and the home page's direct-acquisition ceiling
+ * is the engine's own, so both are shown by the question itself (the profile
+ * line, the answer). Anything else a spec carries is a chip under the
+ * sentence (legacyConditions).
+ */
+export function visibleFilters(spec: FilterSpec, ctx: FilterCtx = filterContext(spec)): Set<FilterId> {
+  const entry = BLOCK_FILTERS[ctx.block];
+  const ids = new Set<FilterId>();
+  if (!entry) return ids;
+  for (const token of [...sentenceTokens(spec, ctx), ...presentationTokens(spec)])
+    if (token.kind === "slot") for (const id of token.says) ids.add(id);
+  // A chip of employees shows the kit's bands only; an old link's range stays its own chip (kit §5.5).
+  for (const row of entry.rows(spec, ctx)) for (const chip of row.chips)
+    if (conditionSet(spec, chip.id) && (chip.id !== "employees" || employeesOnBands(spec.filters.minEmployees, spec.filters.maxEmployees))) ids.add(chip.id);
+  for (const id of entry.strip) if (conditionSet(spec, id)) ids.add(id);
+  for (const slot of entry.advanced(spec, ctx))
+    if (conditionSet(spec, slot.id) && (!slot.choices || slot.choices.some((value) => sameValue(value, FILTERS[slot.id].read(spec), slot.id)))) ids.add(slot.id);
+  if (ids.has("locality")) ids.add("county");
+  if (ctx.profile && spec.dataset !== "contracts") ids.add("dataset");
+  if (isDaBoundPopulation(spec)) ids.add("population");
+  return ids;
+}
+/** A place's values against the spec's: a record threshold by its role (P9 counts one role, any number). */
+const sameValue = (choice: unknown, value: unknown, id: FilterId) =>
+  id === "minimumRecords" ? (choice as { role?: string } | undefined)?.role === (value as { role?: string } | undefined)?.role : choice === value;
 
 /**
  * The focal picker (pickEntity on `focal`): the entity of either role; it
@@ -97,18 +124,14 @@ export function writeFocal(spec: FilterSpec, role: "authority" | "supplier", par
 }
 
 /**
- * Whether a question offers a filter (plan §2.2 Availability). Today a filter
- * is offered when any control writes it; it is "refused" when one of the
- * values its control offers makes the engine refuse the question
- * (TODAY_REFUSALS of kind "engine"), which F1b removes.
+ * Whether a question offers a filter (plan §2.2 Availability): offered when a
+ * control of BLOCK_FILTERS writes it, else hidden (R1: what cannot apply is
+ * not drawn). A value its window shows unusable is per choice
+ * (pickers.ts choiceState); today's builder, which offered and then refused,
+ * is today.ts todayAvailability.
  */
 export function availability(id: FilterId, spec: FilterSpec, ctx: FilterCtx = filterContext(spec)): Availability {
-  if (!offeredFilters(spec, ctx).has(id)) return { state: "hidden" };
-  const def = FILTERS[id];
-  const values = def.choices(spec, ctx);
-  const refused = values.map((value) => refusalOf(id, value, spec, ctx)).filter((r) => r !== null && r.kind === "engine");
-  if (!refused.length) return { state: "offered" };
-  return { state: "refused", reason: refused[0]!.reason, refusal: refused[0]!.id, ...(refused.length < values.length ? { partial: true as const } : {}) };
+  return offeredFilters(spec, ctx).has(id) ? { state: "offered" } : { state: "hidden" };
 }
 
 const BLOCK_OPTIONS = ["trend", "timeseries", "network", "sankey", "scatter", "peers"] as const;
@@ -131,8 +154,8 @@ export function presentPaths(spec: FilterSpec): SpecPath[] {
  * `applied` when the engine applies them there (the "Din link" chip or an
  * origin label of legacyConditions), else accepted and ignored.
  */
-export function unofferedPaths(spec: FilterSpec, ctx: FilterCtx = filterContext(spec)): { path: SpecPath; owner: FilterId; applied: boolean }[] {
-  const offered = offeredFilters(spec, ctx);
+export function unofferedPaths(spec: FilterSpec, ctx: FilterCtx = filterContext(spec), table: OfferTable = BLOCK_FILTERS): { path: SpecPath; owner: FilterId; applied: boolean }[] {
+  const offered = offeredFilters(spec, ctx, table);
   const out: { path: SpecPath; owner: FilterId; applied: boolean }[] = [];
   for (const path of presentPaths(spec)) {
     const owner = SPEC_PATH_OWNERS[path];

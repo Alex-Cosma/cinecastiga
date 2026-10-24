@@ -4,8 +4,10 @@ import {
 } from "../question-ui";
 import type { AskSpec, AuthorityKind, Block } from "../spec";
 import { filterContext } from "./context";
-import type { FilterCtx, FilterId, FilterSpec, Slot } from "./types";
-import { adminLead, adminPhrase, employeesPhrase, employeesWords, localityName, periodPhrase, periodWordsWith, streamWords } from "./words";
+import type { FilterCtx, FilterId, FilterSpec, Picker, Slot } from "./types";
+import {
+  adminLead, adminPhrase, employeesOnBands, employeesPhrase, employeesWords, localityName, periodPhrase, periodWordsWith, streamWords,
+} from "./words";
 
 /*
  * The sentence of each question (plan §2.2 sentence.ts, §2.3, §4.1–§4.13;
@@ -23,7 +25,9 @@ import { adminLead, adminPhrase, employeesPhrase, employeesWords, localityName, 
  * - The employees and the administrator are selection phrases (plan §9 F1):
  *   glued to the ranked firms ("Ce [firme] cu [1–9 angajați] câștigă…"), else
  *   "de la [firme cu 1–9 angajați]". No group row says a key the engine still
- *   applies on the records.
+ *   applies on the records. A range off the kit's bands (0 · 1–9 · 10–49 ·
+ *   50–249 · 250+) is an old link's: its window cannot show it, so it stays
+ *   under the sentence (kit §5.5).
  * - A condition the sentence does not say stays a condition under it ("Din
  *   link", legacyConditions): saidFilters tells which ones it says.
  *
@@ -41,8 +45,13 @@ export interface SentenceSlot {
   says: readonly FilterId[];
   /** Other filters the same window writes (the buyer's window: an institution, a kind or a town hall). */
   writes?: readonly FilterId[];
-  /** The focal entity: an institution or a firm (it rewrites the dimension to the role). */
-  picker?: "focal";
+  /** A window that writes several filters as one choice (types.ts Picker): the focal entity, the subject, the buyer, "De la cine?". */
+  picker?: Picker;
+  /**
+   * A selection glued to the ranked firms (their size, administrator or seat):
+   * part of the subject, so the total line repeats it (G8).
+   */
+  glued?: true;
   /** Spoken with the value: "Perioada: 2025" (kit component 1). */
   slot: string;
   value: string;
@@ -102,7 +111,9 @@ const ALL_BUYERS_BARE = "instituții publice";
 type Spec = FilterSpec;
 const has = (v: unknown) => v !== undefined && v !== null && v !== "";
 const hasPeriod = (spec: Spec) => ["yearFrom", "yearTo", "monthFrom", "monthTo"].some((key) => has(spec.filters[key]));
-const hasEmployees = (spec: Spec) => has(spec.filters.minEmployees) || has(spec.filters.maxEmployees);
+/** Employees the sentence says: on the kit's bands (an old link's range stays under it, kit §5.5). */
+const hasEmployees = (spec: Spec) =>
+  (has(spec.filters.minEmployees) || has(spec.filters.maxEmployees)) && employeesOnBands(spec.filters.minEmployees, spec.filters.maxEmployees);
 const hasLocality = (spec: Spec) => has(spec.filters.uatSiruta) || has(spec.filters.uatName);
 const lowerFirst = (text: string) => text.charAt(0).toLocaleLowerCase("ro-RO") + text.slice(1);
 
@@ -116,13 +127,13 @@ class Tokens {
     else if (text) this.list.push({ kind: "text", text });
     return this;
   }
-  slot(filter: FilterId, name: Name, value: string, extra: { says?: readonly FilterId[]; writes?: readonly FilterId[]; picker?: "focal"; id?: string } = {}): this {
+  slot(filter: FilterId, name: Name, value: string, extra: { says?: readonly FilterId[]; writes?: readonly FilterId[]; picker?: Picker; glued?: true; id?: string } = {}): this {
     const seen = this.ids.get(filter) ?? 0;
     this.ids.set(filter, seen + 1);
     const writes = extra.writes?.filter((id) => id !== filter);
     this.list.push({
       kind: "slot", id: extra.id ?? (seen ? `${filter}.${seen + 1}` : filter), filter, says: extra.says ?? [filter],
-      ...(writes?.length ? { writes } : {}), ...(extra.picker ? { picker: extra.picker } : {}),
+      ...(writes?.length ? { writes } : {}), ...(extra.picker ? { picker: extra.picker } : {}), ...(extra.glued ? { glued: true as const } : {}),
       slot: NAMES[name][0], value, window: NAMES[name][1],
     });
     return this;
@@ -150,7 +161,7 @@ function place(out: Tokens, spec: Spec, ctx: FilterCtx): void {
 
 /** On firm profiles the county is the firm's own seat (countyIsFirmSeat): "cu sediul [în județul Cluj]" (kit §4, R9). */
 function seat(out: Tokens, spec: Spec): void {
-  out.text(" cu sediul ").slot("county", "seat", countyWords(String(spec.filters.county)).replace(/^din /, "în "));
+  out.text(" cu sediul ").slot("county", "seat", countyWords(String(spec.filters.county)).replace(/^din /, "în "), { glued: true });
 }
 
 /**
@@ -162,15 +173,15 @@ function buyer(out: Tokens, spec: Spec, ctx: FilterCtx, opts: { place: "always" 
   const locality = opts.locality !== false && ctx.locality.ok;
   const writes: FilterId[] = [...(opts.authority !== false ? ["authority" as const] : []), "authorityKind", ...(locality ? ["locality" as const] : [])];
   if (opts.authority !== false && ctx.named.authority) {
-    out.slot("authority", "buyer", entityLabel(spec, "authority"), { writes });
+    out.slot("authority", "buyer", entityLabel(spec, "authority"), { writes, picker: "buyer" });
     return;
   }
   if (locality && hasLocality(spec)) {
-    out.text("primăria ").slot("locality", "buyer", spec.filters.uatName ? localityName(String(spec.filters.uatName)) : `SIRUTA ${spec.filters.uatSiruta}`, { writes });
+    out.text("primăria ").slot("locality", "buyer", spec.filters.uatName ? localityName(String(spec.filters.uatName)) : `SIRUTA ${spec.filters.uatSiruta}`, { writes, picker: "buyer" });
     return;
   }
   const kind = kindOf(spec);
-  out.slot("authorityKind", "buyer", kind ? KIND_WORDS[kind]!.the : ALL_BUYERS, { says: kind ? ["authorityKind"] : [], writes });
+  out.slot("authorityKind", "buyer", kind ? KIND_WORDS[kind]!.the : ALL_BUYERS, { says: kind ? ["authorityKind"] : [], writes, picker: "buyer" });
   if (opts.place === "always" || opts.place === "set" && has(spec.filters.county)) place(out, spec, ctx);
 }
 
@@ -193,13 +204,13 @@ function fromWhom(out: Tokens, spec: Spec, ctx: FilterCtx, offered: readonly Fro
   const value = id === "supplier" ? entityLabel(spec, "supplier")
     : id === "admin" ? adminPhrase(spec.filters.adminName)
       : employeesPhrase(spec.filters.minEmployees, spec.filters.maxEmployees)!;
-  out.text(` ${verb} `).slot(id, "from", value, { writes: offered });
+  out.text(` ${verb} `).slot(id, "from", value, { writes: offered, picker: "from" });
 }
 
 /** The ranked firms' own selection phrases (plan §9 F1): "cu [1–9 angajați]", "conduse azi de [Ion Popescu]". */
 function firmsPhrases(out: Tokens, spec: Spec, ctx: FilterCtx, one: boolean): void {
-  if (hasEmployees(spec)) out.text(" ").slot("employees", "employees", employeesWords(spec.filters.minEmployees, spec.filters.maxEmployees)!);
-  if (ctx.named.admin) out.text(` ${adminLead(one)} `).slot("admin", "admin", spec.filters.adminName ? String(spec.filters.adminName) : "persoana aleasă");
+  if (hasEmployees(spec)) out.text(" ").slot("employees", "employees", employeesWords(spec.filters.minEmployees, spec.filters.maxEmployees)!, { glued: true });
+  if (ctx.named.admin) out.text(` ${adminLead(one)} `).slot("admin", "admin", spec.filters.adminName ? String(spec.filters.adminName) : "persoana aleasă", { glued: true });
 }
 
 /** What was bought: "pentru [„asfaltare”]" (or "în domeniul […]"); a CPV code by its name when the caller knows it. */
@@ -259,21 +270,22 @@ const stat: Write = (out, spec, ctx, labels) => {
 const table: Write = (out, spec, ctx, labels) => {
   const dim = spec.dim ?? "supplier";
   if (dim === "supplier") {
-    out.text("Ce ").slot("dim", "ranked", "firme", { writes: ["authorityKind"] });
+    out.text("Ce ").slot("dim", "ranked", "firme", { writes: ["authorityKind"], picker: "subject" });
     firmsPhrases(out, spec, ctx, false);
     noun(out.text(" câștigă "), spec, "the");
     domain(out, spec, labels);
     out.text(` ${streamWords(spec.dataset).made} `);
     buyer(out, spec, ctx, { place: "always" });
   } else if (dim === "county") {
-    out.text("În ce ").slot("dim", "ranked", "județe", { writes: ["authorityKind"] });
+    out.text("În ce ").slot("dim", "ranked", "județe", { writes: ["authorityKind"], picker: "subject" });
     out.text(" cumpără cel mai mult ");
-    buyer(out, spec, ctx, { place: "never", locality: false });
+    // One institution would be one county: the buyers of a county ranking are kinds (plan §4.2).
+    buyer(out, spec, ctx, { place: "never", locality: false, authority: false });
     domain(out, spec, labels);
     fromWhom(out, spec, ctx, ["supplier", "admin", "employees"], "de la");
     noun(out.text(", prin "), spec, "via");
   } else {
-    out.text("Ce ").slot("dim", "ranked", kindBare(spec), { says: subjectSays(spec), writes: ["authorityKind"] });
+    out.text("Ce ").slot("dim", "ranked", kindBare(spec), { says: subjectSays(spec), writes: ["authorityKind"], picker: "subject" });
     if (ctx.locality.ok && hasLocality(spec)) out.text(" ale primăriei ").slot("locality", "place", localityName(String(spec.filters.uatName ?? `SIRUTA ${spec.filters.uatSiruta}`)), { writes: ["county"] });
     else place(out, spec, ctx);
     out.text(" cumpără cel mai mult");
@@ -367,7 +379,7 @@ const compare: Write = (out, spec, ctx, labels) => {
 const trend: Write = (out, spec, ctx, labels) => {
   const dim = spec.dim ?? "supplier", f = spec.filters;
   out.text("Ce ").slot("dim", "ranked", dim === "supplier" ? "firme" : dim === "county" ? "județe" : kindBare(spec), {
-    says: dim === "authority" ? subjectSays(spec) : ["dim"], writes: ["authorityKind"],
+    says: dim === "authority" ? subjectSays(spec) : ["dim"], writes: ["authorityKind"], picker: "subject",
   });
   if (dim === "authority") {
     if (ctx.locality.ok && hasLocality(spec)) out.text(" ale primăriei ").slot("locality", "place", localityName(String(f.uatName ?? `SIRUTA ${f.uatSiruta}`)), { writes: ["county"] });
@@ -375,14 +387,14 @@ const trend: Write = (out, spec, ctx, labels) => {
   }
   out.text(" au cea mai mare schimbare");
   const buyerSet = dim === "supplier" ? ctx.named.authority || hasLocality(spec) || Boolean(kindOf(spec)) || has(f.county)
-    : dim === "county" && (ctx.named.authority || Boolean(kindOf(spec)));
+    : dim === "county" && Boolean(kindOf(spec));
   const seller = dim !== "supplier" && ctx.named.supplier;
   if (has(f.cpvTerm) || buyerSet || seller) {
     out.text(" a achizițiilor");
     domain(out, spec, labels);
     if (buyerSet) {
       out.text(" făcute de ");
-      buyer(out, spec, ctx, dim === "supplier" ? { place: "set" } : { place: "never", locality: false });
+      buyer(out, spec, ctx, dim === "supplier" ? { place: "set" } : { place: "never", locality: false, authority: false });
     }
     fromWhom(out, spec, ctx, dim === "supplier" ? [] : ["supplier"], "de la");
   }
@@ -426,9 +438,9 @@ const sankey: Write = (out, spec, ctx, labels) => {
  * carries its preposition ("Când?", R10): "în toți anii" would mean "every year".
  */
 const factCheck: Write = (out, spec, ctx, labels) => {
-  out.text("A cumpărat ").slot("authority", "buyer", entityLabel(spec, "authority"));
+  out.text("A cumpărat ").slot("authority", "buyer", entityLabel(spec, "authority"), { picker: "buyer" });
   domain(out, spec, labels, " ");
-  out.text(" de la ").slot("supplier", "from", entityLabel(spec, "supplier"));
+  out.text(" de la ").slot("supplier", "from", entityLabel(spec, "supplier"), { picker: "from" });
   channel(out, spec);
   // The same words as the condition's ("în 2024", "din 2023 încoace"), "până acum" without one.
   out.text(" ").slot("period", "when", periodWordsWith(spec.filters, "până acum"), { says: hasPeriod(spec) ? ["period"] : [] });
@@ -461,7 +473,7 @@ const distribution: Write = (out, spec, ctx) => {
  */
 const scatter: Write = (out, spec, ctx) => {
   const firms = spec.dim === "supplier", county = has(spec.filters.county);
-  out.text("Ce ").slot("dim", "who", firms ? "firme" : kindBare(spec), { says: firms ? ["dim"] : subjectSays(spec), writes: ["authorityKind"] });
+  out.text("Ce ").slot("dim", "who", firms ? "firme" : kindBare(spec), { says: firms ? ["dim"] : subjectSays(spec), writes: ["authorityKind"], picker: "subject" });
   if (firms) {
     if (county) seat(out, spec);
     else out.text(" din ").slot("county", "seat", "toată țara", { says: [] });
@@ -480,7 +492,7 @@ const entityCard: Write = (out, spec, ctx, labels) => {
   const firms = spec.dim === "supplier", risk = leaderAxis(spec) === "risk";
   const kind = kindOf(spec);
   out.text("Care ").slot("dim", "rivals", firms ? "firmă" : kind ? KIND_ONE[kind] ?? "instituție" : "instituție", {
-    says: firms ? ["dim"] : subjectSays(spec), writes: ["authorityKind"],
+    says: firms ? ["dim"] : subjectSays(spec), writes: ["authorityKind"], picker: "subject",
   });
   if (firms) {
     if (risk) { if (has(spec.filters.county)) seat(out, spec); }
