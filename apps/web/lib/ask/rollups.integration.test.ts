@@ -7,6 +7,7 @@ import {
   rollupMinimumCond, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrend, scatterDensity, type RollupCtx, type RollupNeed,
 } from "./rollups";
 import { namedKind, type AskSpec } from "./spec";
+import { forgetAuthorityKinds, readAuthorityKinds, type AuthorityKinds } from "./authority-kind";
 import type { Grounding } from "./ground";
 import type { QueryPopulation } from "./population";
 
@@ -81,15 +82,18 @@ async function load(q: DbSql) {
     (16,'supplier','Furnizor G','Cluj',30,0.5,null,0,'[]'),(1,'authority','Spitalul Judetean Cluj','Cluj',20,4000,0.4,2,'[]')`;
 }
 
+/** The fixture's institutions by kind (authority-kind.ts, D1), read once it is loaded. */
+let fixtureKinds: AuthorityKinds | null = null;
 /** predicateContext of the registry stage (lib/ask/predicates.ts), without sql, for these cases. */
 const ctxOf = (spec: AskSpec, g: Grounding): RollupCtx => {
+  const kind = namedKind(spec.filters.authorityKind) ?? null;
   if (spec.filters.authorityKind === "local_admin") throw new Error("local_admin is refused before the rollups");
   const dataset = spec.dataset ?? "all";
   return {
     plafond: dataset === "contracts" ? "none" : dataset === "da" ? "strict" : "da-branch",
     population: spec.population ?? null, minimumRecords: spec.minimumRecords ?? null,
     cpvPrefixes: g.cpv?.prefixes ?? [], cpvExclude: g.cpv?.excludePrefixes ?? [], county: g.county?.canonical ?? null,
-    kind: namedKind(spec.filters.authorityKind) ?? null, authorityId: g.authority?.entityId ?? null, supplierId: g.supplier?.entityId ?? null,
+    kind, kindIds: kind ? fixtureKinds!.ids[kind] : null, authorityId: g.authority?.entityId ?? null, supplierId: g.supplier?.entityId ?? null,
     uatSiruta: null, uatAuthorityIds: [], singleBidder: false,
     minEmployees: spec.filters.minEmployees ?? null, maxEmployees: spec.filters.maxEmployees ?? null,
     yearFrom: spec.filters.yearFrom ?? null, yearTo: spec.filters.yearTo ?? null,
@@ -230,6 +234,9 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
         await tx.unsafe(`create table ${prefix}.entity_flags (like marts.entity_flags including all)`);
         const q = scoped(tx as unknown as DbSql, prefix);
         await load(q);
+        forgetAuthorityKinds();
+        fixtureKinds = await readAuthorityKinds(q);
+        expect(fixtureKinds.ids).toMatchObject({ spital: ["1", "4"], comuna: ["2"], oras_municipiu: ["3"] });
         forgetRollupsReady();
         expect(await rollupsReady(q)).toBe(false);
         // The live answers first: without the rollups runSpec and runRows run their live queries.

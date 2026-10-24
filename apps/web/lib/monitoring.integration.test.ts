@@ -236,15 +236,17 @@ describe.skipIf(!url)("immutable monitoring (isolated PostgreSQL)",()=>{
   it("alerts on a key's new version only the watches whose question carries the key",async()=>{
     const kind:AskSpec={...base,filters:{...base.filters,authorityKind:"comuna"}};
     const [withKind,without]=[await createMonitoringWatch(uid,{spec:kind,title:"With a kind"},sql),await createMonitoringWatch(uid,{spec:base,title:"Without a kind"},sql)];
-    await run(withKind.id);await run(without.id);
-    KEY_VERSIONS.kind={version:"kind-2",label:"Tipul instituției",paths:["filters.authorityKind"]};
+    // D1 declares kind-2 (answer-core.ts): the baselines are checked by the release before it.
+    const declared=KEY_VERSIONS.kind!;delete KEY_VERSIONS.kind;
     try{
+      await run(withKind.id);await run(without.id);
+      KEY_VERSIONS.kind=declared;
       await checkpoint();
       const changed=await run(withKind.id);
       expect(changed.run).toMatchObject({methodologyChanged:true,hasAlert:true});
       expect(changed.methodology.answer).toEqual({question:"stat-1",conditions:{kind:"kind-2"}});
       expect((await run(without.id)).run).toMatchObject({methodologyChanged:false,hasAlert:false});
-    }finally{delete KEY_VERSIONS.kind;}
+    }finally{KEY_VERSIONS.kind=declared;}
   });
   it("freezes the answer version with a captured answer and with both sides of an update copied to a case",async()=>{
     const watch=await createMonitoringWatch(uid,{spec:base,title:"Case versions"},sql);

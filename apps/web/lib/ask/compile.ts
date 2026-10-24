@@ -2,14 +2,14 @@ import { canonicalAskIdentities } from "./canonical-identities";
 import { retiredChoicesText } from "./retired-terms";
 import { FORCE_CUSTOM_PLANS } from "../plan-cache";
 import type { DbSql } from "@seap/db";
-import { NEWER_VERSION_LINK, unimplementedSpecKeys, type AskSpec, type Dim } from "./spec";
+import { namedKind, NEWER_VERSION_LINK, unimplementedSpecKeys, type AskSpec, type Dim } from "./spec";
 import type { Grounding } from "./ground";
 import { EVIDENCE_CSV_LIMIT, PROFILE_BLOCKS, sumDecimalStrings, validateEvidenceScope, type EvidenceScope, type EvidenceStatus, type EvidenceProfile } from "./evidence";
 import {
   andAll, DA_PLAFOND_RON, displayPredicates, ENTITY_CARD_MIN_DAS, fold, groupPredicates, perCapitaPredicate, plafondFor, predicateContext,
   profileMinDas, profilePredicates, RISK_MIN_DAS, rowPredicates, trendYearsPredicate, type PredicateCtx,
 } from "./predicates";
-import { KIND_LABEL } from "./authority-kind";
+import { authorityKindIds, KIND_LABEL } from "./authority-kind";
 import { countyIsFirmSeat, isHistoricalProfile, unsupportedPopulationView } from "./population";
 import { describeConditions, type ConditionLabels } from "./filters/describe";
 import { retarget } from "./filters/retarget";
@@ -680,7 +680,9 @@ export async function runSpec(
 
   // Every condition of the question, written by lib/ask/predicates.ts for the
   // answer, its sources, the CSV, the captures and the displayed SQL alike.
-  const w: PredicateCtx = predicateContext(sql, spec, grounding, { dataset, yearFrom, yearTo });
+  // The kind of institution is a list of ids, read once per marts build (authority-kind.ts, D1).
+  const kindIds = await authorityKindIds(sql, namedKind(spec.filters.authorityKind));
+  const w: PredicateCtx = predicateContext(sql, spec, grounding, { dataset, yearFrom, yearTo, kindIds });
   const { authorityId, supplierId } = w;
   const compareId = w.comparison?.compareId ?? null;
   if (w.minEmployees !== null || w.maxEmployees !== null) {
@@ -734,13 +736,13 @@ export async function runSpec(
   // the record conditions, then the record threshold counted over the same rows.
   const whereFrag = (opts?: { years?: boolean }): ReturnType<DbSql> => {
     const base = andAll(sql, rowPredicates(w, opts));
-    return andAll(sql, [base, ...groupPredicates(w, txAggFragment(sql, dataset, Boolean(w.kind)) as unknown as ReturnType<DbSql>, base)]);
+    return andAll(sql, [base, ...groupPredicates(w, txAggFragment(sql, dataset, false) as unknown as ReturnType<DbSql>, base)]);
   };
 
-  // aggregate fragments (see txAggFragment): slim unless a kind filter needs
-  // authority_name; the named variant serves entity-grouped blocks
+  // aggregate fragments (see txAggFragment): slim (the kind is a list of
+  // authority ids, D1); the named variant serves entity-grouped blocks
   const txtAggNames = txAggFragment(sql, dataset, true);
-  const txtAgg = w.kind ? txtAggNames : txAggFragment(sql, dataset, false);
+  const txtAgg = txAggFragment(sql, dataset, false);
   // The homepage states the DA bound explicitly in its population: reuse the
   // matching mart only for this exact predicate, never discard a more specific
   // selection.
@@ -1882,7 +1884,8 @@ export async function runRows(
     }
   }
   // The question's conditions, written for the sources as for the answer (predicates.ts).
-  const ctx = predicateContext(sql, spec, grounding, { dataset, yearFrom, yearTo });
+  const kindIds = await authorityKindIds(sql, namedKind(spec.filters.authorityKind));
+  const ctx = predicateContext(sql, spec, grounding, { dataset, yearFrom, yearTo, kindIds });
   // The rollups give the record threshold's party list and, without a local
   // filter, the totals of a selection without entity conditions (rollups.ts).
   const rollup = profile || valueWinner ? null : await rollupPlanFor(sql, spec, ctx);
