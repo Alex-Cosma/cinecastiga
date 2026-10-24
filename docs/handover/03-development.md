@@ -154,6 +154,8 @@ Cazurile (`scripts/ask-perf-cases.ts`) sunt implicitele celor 13 întrebări din
 
 Din 24 octombrie `runSpec`, `runRows` și `withMonitoringSnapshot` încep fiecare tranzacție cu `set local plan_cache_mode = force_custom_plan` ([arhitectura](02-architecture.md#scheme-postgresql)), care bate setarea sesiunii. Cu `?plan_cache_mode=force_generic_plan` cazurile rămân deci la timpii planurilor personalizate; un caz mult mai lent în sondă decât în bază înseamnă o interogare cu parametri în afara acestor tranzacții. Prima rulare și cele 3 calde implicite sunt execuțiile 1–4, deci tot planuri personalizate, iar `--compare` nu vede ce face pool-ul după a 5-a execuție; pentru asta rulează cazul cu `--warm-runs=8` pe codul vechi și pe cel nou.
 
+Baza locală din Docker nu are setările producției (`infra/prod/docker-compose.yml`). Cu `random_page_cost=4` local, după un `vacuum (analyze)` proaspăt, rețeaua și traseul banilor pentru o firmă mare (SELGROS, ~466k înregistrări) citesc tot `da_transactions` în loc de indexul firmei: 1,1 s în loc de 0,4 s (24 octombrie). Cu `?random_page_cost=1.1` în URL-ul `--db`, ca în producție, aceleași cazuri iau 0,21–0,25 s; compară cu baza tot cu această setare înainte să tratezi o astfel de diferență ca regresie. `/dev/shm` al containerului local are 64 MB, deci `vacuum` cu `maintenance_work_mem='2GB'` cade cu „could not resize shared memory segment”; local rulează `vacuum (analyze, parallel 0) marts.da_transactions` (producția are `shm_size: 2g`).
+
 Linkurile vechi spre „Întreabă” au rezultate „de aur” (plan filtre §6.2). Pe fixture (bază `seap_test_*`, rollback, date fictive), testul trebuie să rămână verde după orice schimbare a motorului; o schimbare intenționată regenerează fișierul și se explică în commit:
 
 ```sh
