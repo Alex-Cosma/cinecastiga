@@ -588,6 +588,14 @@ th .ask-partial-note { display: block; font-weight: 400; font-size: 11.5px; }
 .ask-choropleth { width: 100%; height: auto; }
 .ask-legend { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); margin-top: 8px; }
 .ask-legend .sw { width: 18px; height: 10px; border-radius: 2px; display: inline-block; }
+/* Map ramp and outline from the theme tokens (approved.css): readable in both themes. */
+.ask-county { stroke: var(--surface); stroke-width: 0.8; }
+.ask-county-none { fill: var(--sunk); }
+.ask-county-0 { fill: var(--map-0); background: var(--map-0); }
+.ask-county-1 { fill: var(--map-1); background: var(--map-1); }
+.ask-county-2 { fill: var(--map-2); background: var(--map-2); }
+.ask-county-3 { fill: var(--map-3); background: var(--map-3); }
+.ask-county-4 { fill: var(--map-4); background: var(--map-4); }
 @media (max-width: 720px) { .ask-maplayout { grid-template-columns: 1fr; } }
 
 .ask-r-actions { display: flex; gap: 10px; background: var(--bar-track); align-items: center; }
