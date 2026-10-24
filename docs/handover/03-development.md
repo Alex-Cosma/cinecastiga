@@ -167,6 +167,8 @@ pnpm --filter web exec tsx scripts/ask-golden.ts --code=<commit> --out=<dir>/gol
 
 Un link nou spre „Întreabă” intră în `lib/ask/site-links.ts` (sau în constructorul comun al paginii), în `lib/ask/fixtures/site-links-inventory.ts` și în corpus (`lib/ask/fixtures/legacy-corpus.ts`); `site-links.test.ts` pică altfel.
 
+O condiție nouă a unei întrebări se scrie o singură dată, în `lib/ask/predicates.ts`, în funcția nivelului pe care îl declară registrul (`rowPredicates`, `groupPredicates`, `profilePredicates`), cu textul ei în `displayPredicates`; răspunsul, sursele, CSV-ul și capturile o iau de acolo. `predicates.test.ts` pică dacă o cheie schimbă alt nivel decât cel declarat sau dacă SQL-ul afișat o omite. Tipul instituției se schimbă doar în `lib/ask/authority-kind.ts`.
+
 `check-navigation.mjs` folosește strict baza sintetică `seap_test_admin_navigation`, preview separat și date fictive. Nu îl îndrepta spre baza colaboratorului. Scripturile de browser pot cere Playwright și o instalare locală de Chromium; citește precondițiile lor.
 
 Nu rula build și typecheck web concurent când regenerează aceleași `.next/types`. Un build cu `NEXT_DIST_DIR` temporar poate modifica automat include-urile din `tsconfig.json`; curăță doar căile generate ale acelui preview. Nu opri serverele celuilalt dezvoltator cu `pkill node`.
