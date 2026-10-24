@@ -3,7 +3,7 @@ import type { MinimumRecords, QueryPopulation } from "./population";
 import type { ScatterDensity, TableSort } from "./compile";
 import type { AuthorityKind } from "./spec";
 import { authorityKindCond, KIND_PATTERNS } from "./authority-kind";
-import { employeesCond } from "./predicates";
+import { employeesCond, trendGroupOf, trendGroupSql, type TrendGroup } from "./predicates";
 
 /**
  * Answers from the rollups of the nightly build (packages/db/src/ask-rollups.ts)
@@ -69,6 +69,8 @@ export interface RollupCtx {
   yearTo: number | null;
   monthFrom: number | null;
   monthTo: number | null;
+  /** trend: the same months of both years, null for whole years. */
+  trendMonths: readonly [number, number] | null;
   adminSupplierIds: readonly string[] | null;
   comparison: { role: Role; focalId: string | null; compareId: string | null } | null;
 }
@@ -81,7 +83,7 @@ export interface RollupCtx {
 export const ROLLUP_CTX_KEYS = [
   "sql", "plafond", "population", "minimumRecords", "cpvPrefixes", "cpvExclude", "county", "kind",
   "authorityId", "supplierId", "uatSiruta", "uatAuthorityIds", "singleBidder", "minEmployees", "maxEmployees",
-  "yearFrom", "yearTo", "monthFrom", "monthTo", "adminSupplierIds", "comparison",
+  "yearFrom", "yearTo", "monthFrom", "monthTo", "trendMonths", "adminSupplierIds", "comparison",
 ] as const satisfies readonly ("sql" | keyof RollupCtx)[];
 const KNOWN_KEYS = new Set<string>(ROLLUP_CTX_KEYS);
 
@@ -145,7 +147,7 @@ export function planRollup(ctx: RollupCtx, need: RollupNeed): RollupPlan {
   for (const [key, value] of Object.entries(ctx))
     if (!KNOWN_KEYS.has(key) && holdsCondition(value)) return { reason: `${key}: a condition the rollups do not know` };
   if (ctx.comparison) return { reason: "comparison: its own queries (compareParties …)" };
-  if (ctx.monthFrom !== null || ctx.monthTo !== null) return { reason: "months: the rollups keep whole years" };
+  if (ctx.monthFrom !== null || ctx.monthTo !== null || ctx.trendMonths) return { reason: "months: the rollups keep whole years" };
   if (ctx.singleBidder) return { reason: "single bidder: not in the rollups" };
   if (ctx.authorityId || ctx.supplierId || ctx.uatSiruta !== null || ctx.uatAuthorityIds.length > 0 || ctx.adminSupplierIds)
     return { reason: "named entity: its transaction index answers directly" };
@@ -402,19 +404,22 @@ export async function rollupCountyTable(sql: DbSql, plan: { source: RollupSource
  * attached to the shown rows from agg_entity_year (the same transaction names).
  */
 export async function rollupTrend(sql: DbSql, plan: { source: RollupSource; filters: RollupFilters },
-  o: { dim: Role | "county"; yearA: number; yearB: number; topN: number }):
+  o: { dim: Role | "county"; yearA: number; yearB: number; topN: number; group?: TrendGroup }):
   Promise<{ rows: { id: string | null; nm: string; co: string | null; va: string; vb: string }[] } | { reason: string }> {
   const { source, filters } = plan;
   const where = rollupWhere(sql, source, filters, "p", { years: false });
   const a = String(o.yearA), b = String(o.yearB);
-  const va = sql`coalesce(sum(p.v) filter (where p.y = ${a}), 0)`, vb = sql`coalesce(sum(p.v) filter (where p.y = ${b}), 0)`;
+  const va: Fragment = sql`coalesce(sum(p.v) filter (where p.y = ${a}), 0)`, vb: Fragment = sql`coalesce(sum(p.v) filter (where p.y = ${b}), 0)`;
   if (o.dim === "county") {
+    // The live query's group and order (trendGroupSql); a county has no first year.
+    const { having, order } = trendGroupSql(sql, va, vb, o.group ?? trendGroupOf({}));
     const rows = (await sql`
       select null::text id, p.county nm, null::text co, ${va} va, ${vb} vb
       from ${fromSource(sql, source, "p")}
       where ${where} and p.county is not null and p.y in (${a}, ${b})
       group by p.county
-      order by abs(${vb} - ${va}) desc, p.county
+      ${having ? sql`having ${having}` : sql``}
+      order by ${order} desc, p.county
       limit ${o.topN}
     `) as unknown as { id: null; nm: string; co: null; va: string; vb: string }[];
     return { rows };
@@ -422,12 +427,14 @@ export async function rollupTrend(sql: DbSql, plan: { source: RollupSource; filt
   const id = idColumn(sql, source, o.dim, "p");
   if (!id) return { reason: `the ${source.table} rollup has no ${o.dim} id` };
   const name = source.table === "entity" ? sql`max(p.nm)` : sql`null::text`;
+  const { having, order } = trendGroupSql(sql, va, vb, o.group ?? trendGroupOf({}), { id, role: o.dim, yearB: o.yearB });
   const rows = (await sql`
     select ${id}::text id, ${name} nm, max(p.county) co, ${va} va, ${vb} vb
     from ${fromSource(sql, source, "p")}
     where ${where} and ${id} is not null and p.y in (${a}, ${b})
     group by ${id}
-    order by abs(${vb} - ${va}) desc, ${id}
+    ${having ? sql`having ${having}` : sql``}
+    order by ${order} desc, ${id}
     limit ${o.topN}
   `) as unknown as { id: string; nm: string | null; co: string | null; va: string; vb: string }[];
   if (source.table !== "entity" && rows.length) {
@@ -439,6 +446,29 @@ export async function rollupTrend(sql: DbSql, plan: { source: RollupSource; filt
     for (const r of rows) r.nm = byId.get(r.id) ?? null;
   }
   return { rows: rows as { id: string; nm: string; co: string | null; va: string; vb: string }[] };
+}
+
+/**
+ * The members of a trend's group (entity ids, or county names), for its
+ * sources: the ids rollupTrend lists, without the limit, as the live members
+ * query of runRows (trendMembers in compile.ts).
+ */
+export async function rollupTrendMembers(sql: DbSql, plan: { source: RollupSource; filters: RollupFilters },
+  o: { dim: Role | "county"; yearA: number; yearB: number; group: TrendGroup }): Promise<{ members: string[] } | { reason: string }> {
+  const { source, filters } = plan;
+  const where = rollupWhere(sql, source, filters, "p", { years: false });
+  const a = String(o.yearA), b = String(o.yearB);
+  const va: Fragment = sql`coalesce(sum(p.v) filter (where p.y = ${a}), 0)`, vb: Fragment = sql`coalesce(sum(p.v) filter (where p.y = ${b}), 0)`;
+  const key: Fragment | null = o.dim === "county" ? sql`p.county` : idColumn(sql, source, o.dim, "p");
+  if (!key) return { reason: `the ${source.table} rollup has no ${o.dim} id` };
+  const { having } = trendGroupSql(sql, va, vb, o.group, o.dim === "county" ? undefined : { id: key, role: o.dim, yearB: o.yearB });
+  const rows = (await sql`
+    select ${key}::text m from ${fromSource(sql, source, "p")}
+    where ${where} and ${key} is not null and p.y in (${a}, ${b})
+    group by ${key}
+    ${having ? sql`having ${having}` : sql``}
+  `) as unknown as { m: string }[];
+  return { members: rows.map((r) => r.m) };
 }
 
 /**

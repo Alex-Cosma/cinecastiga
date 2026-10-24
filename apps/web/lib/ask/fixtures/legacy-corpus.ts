@@ -252,7 +252,7 @@ export function legacyCorpus(ids: CorpusIdentities): CorpusEntry[] {
   legacy("locality-ranking", "localitate pe clasamentul firmelor", { block: "table", dim: "supplier", measure: "value", topN: 10, filters: { uatSiruta: ids.uat.siruta, uatName: ids.uat.name } });
   legacy("unknown-key-refused", "o cheie necunoscută", { block: "stat", measure: "value", filters: {}, future: 1 });
   legacy("unknown-filter-refused", "un filtru necunoscut", { block: "stat", measure: "value", filters: { color: "verde" } });
-  legacy("newer-key-refused", "o cheie din versiunea următoare (F0a)", { block: "trend", dim: "supplier", measure: "value", topN: 10, filters: { yearFrom: a, yearTo: b }, trend: { change: "up" } });
+  legacy("newer-key-refused", "o cheie din versiunea următoare (F0a)", { block: "timeseries", measure: "value", filters: { yearFrom: a, yearTo: b }, timeseries: { grain: "month" } });
   legacy("other-block-options", "opțiunile altei întrebări (scoase la parsare)", { block: "table", dim: "supplier", measure: "value", topN: 10, filters: {}, trend: { change: "up" } });
   legacy("cpv-retired", "un cuvânt retras („lucrări”)", { block: "stat", measure: "value", filters: { cpvTerm: cpv.retired } });
   legacy("cpv-unknown", "un domeniu negăsit", { block: "stat", measure: "value", filters: { cpvTerm: cpv.unknown } });

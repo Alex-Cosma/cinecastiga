@@ -13969,16 +13969,14 @@
    "source": "o cheie din versiunea următoare (F0a)",
    "request": {
     "spec": {
-     "block": "trend",
-     "dim": "supplier",
+     "block": "timeseries",
      "measure": "value",
-     "topN": 10,
      "filters": {
       "yearFrom": 2024,
       "yearTo": 2025
      },
-     "trend": {
-      "change": "up"
+     "timeseries": {
+      "grain": "month"
      }
     }
    },

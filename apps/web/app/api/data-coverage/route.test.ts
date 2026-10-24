@@ -1,17 +1,19 @@
 import { beforeEach, expect, it, vi } from "vitest";
 vi.mock("@/lib/coverage", () => ({ getCoverage: vi.fn() }));
 vi.mock("@/lib/processing-freshness", () => ({ getProcessingFreshness: vi.fn() }));
+vi.mock("@/lib/ask/compile", () => ({ coveragePeriods: vi.fn() }));
 import { getCoverage } from "@/lib/coverage";
+import { coveragePeriods } from "@/lib/ask/compile";
 import { getProcessingFreshness } from "@/lib/processing-freshness";
 import { GET } from "./route";
 
-beforeEach(() => vi.resetAllMocks());
+beforeEach(() => { vi.resetAllMocks(); vi.mocked(coveragePeriods).mockResolvedValue(null); });
 it("exposes only public periods, not collector diagnostics or raw inventory payloads", async () => {
   vi.mocked(getCoverage).mockResolvedValue({ observations: [{ dataset: "da", calculated_at: "2026-09-30T12:00:00Z", observation: { available: "12", date_from: "2020-01-01", date_to: "2026-07-31", missing_date: "0", missing_cpv: "0" } }], collector: { batch: { id: "internal-batch", endDay: "2026-09-25", status: "collecting", followLatest: false }, streams: [] }, collections: [{ source: "internal-diagnostic" }] as never, years: [], normalized: [] });
   vi.mocked(getProcessingFreshness).mockResolvedValue({ dataAt: "2026-09-30T12:00:00Z", riskAt: "2026-09-27T12:00:00Z" });
   const response = await GET();
   expect(response.status).toBe(200);
-  expect(await response.json()).toEqual({ sources: [{ dataset: "da", from: "2020-01-01", to: "2026-07-31", inventoriedAt: "2026-09-30T12:00:00Z" }], dataAt: "2026-09-30T12:00:00Z", riskAt: "2026-09-27T12:00:00Z" });
+  expect(await response.json()).toEqual({ sources: [{ dataset: "da", from: "2020-01-01", to: "2026-07-31", inventoriedAt: "2026-09-30T12:00:00Z" }], dataAt: "2026-09-30T12:00:00Z", riskAt: "2026-09-27T12:00:00Z", periods: null });
 });
 // Audit F10: the public panel shows per stream the day the data is considered complete.
 it("exposes each stream's complete-until day, null when it is not established", async () => {
@@ -28,7 +30,15 @@ it("exposes each stream's complete-until day, null when it is not established", 
 it("keeps an unconfirmed inventory distinct from a failed read", async () => {
   vi.mocked(getCoverage).mockResolvedValue(null);
   vi.mocked(getProcessingFreshness).mockResolvedValue(null);
-  expect(await (await GET()).json()).toEqual({ sources: [], dataAt: null, riskAt: null });
+  expect(await (await GET()).json()).toEqual({ sources: [], dataAt: null, riskAt: null, periods: null });
+});
+// Plan §2.8: one coverage source. The builder's default years and a trend's same months read the engine's own periods.
+it("exposes the engine's periods of both channels, with the data checkpoint", async () => {
+  vi.mocked(getCoverage).mockResolvedValue(null);
+  vi.mocked(getProcessingFreshness).mockResolvedValue(null);
+  const periods = { da: { from: "2018-04-02", to: "2026-10-20", completeUntil: "2026-05-31" }, contracts: { from: "2018-01-03", to: "2026-10-20", completeUntil: null }, checkpoint: "1b733c25-8418-4131-890c-eda3dcaaf476" };
+  vi.mocked(coveragePeriods).mockResolvedValue(periods);
+  expect((await (await GET()).json()).periods).toEqual(periods);
 });
 it("returns a retryable failure without leaking database details", async () => {
   vi.mocked(getCoverage).mockRejectedValue(new Error("private database diagnostic"));

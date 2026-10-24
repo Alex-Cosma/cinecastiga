@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { buildAskRollups, createDb, type DbSql } from "@seap/db";
-import { DA_PLAFOND_RON, runRows, runSpec, TABLE_PAGE_SIZE, type BlockData } from "./compile";
+import { DA_PLAFOND_RON, DATA_CHANGED, runRows, runSpec, TABLE_PAGE_SIZE, type BlockData } from "./compile";
+import { trendGroupOf } from "./predicates";
 import { sumDecimalStrings } from "./evidence";
 import {
   compareParties, compareSharedPartners, compareTopPartners, forgetRollupsReady, planRollup, rollupBreakdown, rollupCountyTable, rollupMap,
@@ -39,6 +40,8 @@ async function load(q: DbSql) {
     (5,'authority','Autoritate fara judet',null,null,0,0),
     (10,'supplier','Furnizor A','Bucuresti',5,4,1),(11,'supplier','Furnizor B','Cluj',50,2,2),(12,'supplier','Furnizor C','Iasi',3,2,1),
     (13,'supplier','Furnizor D',null,null,2,1),(14,'supplier','Furnizor E','Ilfov',1,2,1)`;
+  // F2's "Prima dată": the first record of firm 13 (new in 2025) is in 2025.
+  await q`update marts.entity_profile set first_activity = case entity_id when 13 then '2025-02-01' else '2024-02-01' end where role = 'supplier'`;
   // The transaction marts take their names from core.entities, and so does agg_entity_year.
   await q`insert into core.entities (id, name_display, name_normalized) select entity_id, name_display, lower(name_display) from marts.entity_profile`;
   const names = `(select entity_id, name_display from marts.entity_profile)`;
@@ -93,7 +96,7 @@ const ctxOf = (spec: AskSpec, g: Grounding): RollupCtx => {
     uatSiruta: null, uatAuthorityIds: [], singleBidder: false,
     minEmployees: spec.filters.minEmployees ?? null, maxEmployees: spec.filters.maxEmployees ?? null,
     yearFrom: spec.filters.yearFrom ?? null, yearTo: spec.filters.yearTo ?? null,
-    monthFrom: spec.filters.monthFrom ?? null, monthTo: spec.filters.monthTo ?? null, adminSupplierIds: null, comparison: null,
+    monthFrom: spec.filters.monthFrom ?? null, monthTo: spec.filters.monthTo ?? null, trendMonths: null, adminSupplierIds: null, comparison: null,
   };
 };
 const needOf = (spec: AskSpec): RollupNeed => spec.block === "table" || spec.block === "trend"
@@ -122,10 +125,13 @@ async function fromRollups(q: DbSql, spec: AskSpec, g: Grounding, sort?: "name" 
         ...meta(r.total), ...(first?.tv !== undefined ? { totals: { value: Number(first.tv), count: Number(first.tn), entities: Number(first.te) } } : {}) } };
     }
     case "trend": {
-      const r = await rollupTrend(q, plan, { dim: spec.dim === "county" ? "county" : spec.dim ?? "authority", yearA: spec.filters.yearFrom!, yearB: spec.filters.yearTo!, topN: spec.topN ?? 10 });
+      const group = trendGroupOf(spec);
+      const r = await rollupTrend(q, plan, { dim: spec.dim === "county" ? "county" : spec.dim ?? "authority", yearA: spec.filters.yearFrom!, yearB: spec.filters.yearTo!, topN: spec.topN ?? 10, group });
       if ("reason" in r) throw new Error(r.reason);
+      // F2: the lenses travel with the answer; the rollups keep whole years.
+      const lens = spec.trend ? { change: group.change, months: { from: 1, to: 12, mode: "whole" as const } } : {};
       return { source, data: { block: "trend", yearA: spec.filters.yearFrom!, yearB: spec.filters.yearTo!,
-        rowsTrend: r.rows.map((p) => ({ entityId: p.id, name: p.nm, county: p.co, valueA: Number(p.va), valueB: Number(p.vb) })) } };
+        rowsTrend: r.rows.map((p) => ({ entityId: p.id, name: p.nm, county: p.co, valueA: Number(p.va), valueB: Number(p.vb) })), ...lens } };
     }
     case "breakdown": {
       const plen = (g.cpv?.prefixes ?? []).reduce((a, p) => Math.max(a, p.length), 0);
@@ -161,6 +167,19 @@ const canonical = (data: BlockData) => data.block === "stat" && data.stat.byStre
 const without = (role: "authority" | "supplier", id: string): QueryPopulation => ({ operator: "and", groups: [{ operator: "and", conditions: [{ field: role, op: "not_in", values: [id] }] }] });
 const base = (block: AskSpec["block"], extra: Partial<AskSpec> = {}, filters: AskSpec["filters"] = {}): AskSpec => ({ block, measure: "value", dim: "supplier", ...extra, filters });
 const CLUJ: Grounding = { county: { query: "Cluj", canonical: "Cluj" } };
+const Y = { yearFrom: 2024, yearTo: 2025 };
+/** A trend's groups on the fixture: firms 10 and 11 grow, 13 is new (first record in 2025), 12 and 14 decrease; on direct acquisitions alone 14 is gone. */
+const TREND_GROUPS: { name: string; spec: AskSpec; g?: Grounding; source: string }[] = [
+  { name: "trend of firms, growths", spec: base("trend", { trend: { change: "up" } }, Y), source: "entity:supplier" },
+  { name: "trend of firms, new", spec: base("trend", { trend: { change: "new" } }, Y), source: "entity:supplier" },
+  { name: "trend of firms, new, first year", spec: base("trend", { trend: { change: "new", firstOnly: true } }, Y), source: "entity:supplier" },
+  { name: "trend of firms, decreases", spec: base("trend", { trend: { change: "down" } }, Y), source: "entity:supplier" },
+  { name: "trend of firms, gone, direct acquisitions", spec: base("trend", { dataset: "da", trend: { change: "gone" } }, Y), source: "entity:supplier" },
+  { name: "trend of firms, growths in percent from 2.500 lei", spec: base("trend", { trend: { change: "up", order: "percent", minBase: 2_500 } }, Y), source: "entity:supplier" },
+  { name: "trend of firms, every change, whole years", spec: base("trend", { trend: { change: "all", months: "whole" } }, Y), source: "entity:supplier" },
+  { name: "trend of institutions buying from small firms, growths", spec: base("trend", { dim: "authority", trend: { change: "up" } }, { ...Y, minEmployees: 1, maxEmployees: 9 }), source: "pair" },
+  { name: "trend of counties, growths in percent", spec: base("trend", { dim: "county", trend: { change: "up", order: "percent", minBase: 1_000 } }, Y), source: "cpv" },
+];
 // Bare national stat, timeseries and map (all channels) are agg_national / agg_years /
 // agg_map_county today; every case here takes the live scan.
 const CASES: { name: string; spec: AskSpec; g?: Grounding; source: string; sort?: "name" | "county" }[] = [
@@ -186,6 +205,8 @@ const CASES: { name: string; spec: AskSpec; g?: Grounding; source: string; sort?
   { name: "trend of institutions buying from small firms", spec: base("trend", { topN: 10, dim: "authority" }, { minEmployees: 1, maxEmployees: 9, yearFrom: 2024, yearTo: 2025 }), source: "pair" },
   { name: "trend of firms selling to hospitals", spec: base("trend", { topN: 10 }, { authorityKind: "spital", yearFrom: 2024, yearTo: 2025 }), source: "pair" },
   { name: "trend of counties", spec: base("trend", { topN: 10, dim: "county" }, { yearFrom: 2024, yearTo: 2025 }), source: "cpv" },
+  // F2: each group of the trend (trendGroupSql), its order, on every rollup source.
+  ...TREND_GROUPS.map((c) => ({ ...c, spec: { ...c.spec, topN: 10 } })),
   { name: "breakdown", spec: base("breakdown"), source: "cpv" },
   { name: "breakdown, 2025", spec: base("breakdown", {}, { yearFrom: 2025, yearTo: 2025 }), source: "cpv" },
   { name: "breakdown, Cluj, contracts", spec: base("breakdown", { dataset: "contracts" }, { county: "Cluj" }), g: CLUJ, source: "cpv" },
@@ -240,10 +261,25 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
           liveAnswers.set(c.name, live.data);
         }
         const liveSources = new Map<string, Exclude<Awaited<ReturnType<typeof runRows>>, { error: string }>>();
-        for (const c of [...SOURCE_CASES, ...THRESHOLD_SPECS]) {
+        for (const c of [...SOURCE_CASES, ...THRESHOLD_SPECS, ...TREND_GROUPS]) {
           const live = await runRows(q, c.spec, c.g ?? {}, 0);
           if ("error" in live) throw new Error(`${c.name}: ${live.error}`);
           liveSources.set(c.name, live);
+        }
+        // F2: the groups partition the firms (trend final §3.1), each in its own order.
+        const members = (name: string) => { const d = liveAnswers.get(name)!; return d.block === "trend" ? d.rowsTrend.map((r) => r.entityId) : null; };
+        expect(Object.fromEntries(TREND_GROUPS.slice(0, 7).map((c) => [c.name, members(c.name)]))).toEqual({
+          "trend of firms, growths": ["10", "11"], "trend of firms, new": ["13"], "trend of firms, new, first year": ["13"],
+          "trend of firms, decreases": ["12", "14"], "trend of firms, gone, direct acquisitions": ["14"],
+          "trend of firms, growths in percent from 2.500 lei": ["11"],
+          "trend of firms, every change, whole years": members("trend of firms"),
+        });
+        // F2: every member of a group, with the two sums the answer gives it (the whole fixture fits in 50 rows).
+        const groupAnswers = new Map<string, BlockData>();
+        for (const c of TREND_GROUPS) {
+          const all = await runSpec(q, { ...c.spec, topN: 50 }, c.g ?? {});
+          if ("error" in all) throw new Error(`${c.name}: ${all.error}`);
+          groupAnswers.set(c.name, all.data);
         }
         const drawer = (r: Exclude<Awaited<ReturnType<typeof runRows>>, { error: string }>) => ({
           total: r.total, value: r.value, sourceTotal: r.sourceTotal, sourceValue: r.sourceValue, dateFrom: r.dateFrom, dateTo: r.dateTo,
@@ -303,6 +339,40 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
           expect([c.name, rolled]).toEqual([c.name, { sourceTotal: live.sourceTotal, sourceValue: live.sourceValue, statuses: byState(live.statuses), dateFrom: live.dateFrom, dateTo: live.dateTo }]);
           expect([c.name, live.sourceTotal > 0]).toEqual([c.name, true]);
         }
+
+        // F2: the sources of a trend's group are its members' records of the two years: the members
+        // read from the rollups (rollupTrendMembers) give the live list, and they add up to the answer.
+        for (const c of TREND_GROUPS) {
+          const live = liveSources.get(c.name)!;
+          const wired = await runRows(q, c.spec, c.g ?? {}, 0);
+          if ("error" in wired) throw new Error(`${c.name}: ${wired.error}`);
+          expect([c.name, drawer(wired)]).toEqual([c.name, drawer(live)]);
+          const answer = groupAnswers.get(c.name)!;
+          if (answer.block !== "trend") throw new Error("trend expected");
+          const sum = answer.rowsTrend.reduce((n, r) => n + r.valueA + r.valueB, 0);
+          expect([c.name, Number(live.sourceValue).toFixed(2)]).toEqual([c.name, sum.toFixed(2)]);
+          expect([c.name, answer.rowsTrend.length > 0, live.sourceTotal > 0]).toEqual([c.name, true, true]);
+          expect(live.scopeNotes.some((note) => note.startsWith("Sursele grupului") || c.spec.trend?.change === "all")).toBe(true);
+        }
+        // A row's own records: only that member, and nothing when it is not in the group.
+        const growth = TREND_GROUPS[0]!.spec;
+        const own = await runRows(q, growth, {}, 0, { scope: { entityIds: ["10"], role: "supplier" } });
+        const outside = await runRows(q, growth, {}, 0, { scope: { entityIds: ["12"], role: "supplier" } });
+        if ("error" in own || "error" in outside) throw new Error("rows expected");
+        expect(own.rows.every((r) => r.supplierId === "10") && own.total > 0).toBe(true);
+        expect(outside.total).toBe(0);
+        // The same months of both years (live: the rollups keep whole years), and a window the data no longer gives.
+        const months: AskSpec = base("trend", { topN: 50, trend: { months: [2, 5] } }, Y);
+        const window = await runSpec(q, months, {});
+        if ("error" in window || window.data.block !== "trend") throw new Error("trend expected");
+        expect(window.executed).toEqual({ months: [2, 5], mode: "chosen", checkpoint: null });
+        const listed = await runRows(q, months, {}, 0, { months: [2, 5] });
+        if ("error" in listed) throw new Error(listed.error);
+        expect(Number(listed.sourceValue).toFixed(2)).toBe(window.data.rowsTrend.reduce((n, r) => n + r.valueA + r.valueB, 0).toFixed(2));
+        expect(listed.dateFrom! >= "2024-02-01" && listed.dateTo! <= "2025-05-31").toBe(true);
+        // Firm 10's DA of 1 March 2024 and 1 March 2025 are in February–May; its September ones are not.
+        expect(window.data.rowsTrend.find((r) => r.entityId === "10")).toMatchObject({ valueA: 1000.1, valueB: 2000.25 });
+        expect(await runRows(q, months, {}, 0, { months: [1, 6] })).toEqual({ error: DATA_CHANGED, conflict: true });
 
         // The sources of a thresholded question: the live rows with the party list from the rollups
         // (rollupMinimumCond) instead of minimumRecordsSql give runRows' totals.

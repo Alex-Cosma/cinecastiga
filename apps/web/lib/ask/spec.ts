@@ -74,12 +74,13 @@ export const PROCEDURES = ["deschisa", "simplificata", "negociere_fara_publicare
 export const FIRM_SEATS = ["same", "other", "abroad"] as const;
 export const NEW_SCOPES = ["buyer", "archive", "registry"] as const;
 export const TREND_CHANGES = ["all", "up", "down", "new", "gone"] as const;
+export type TrendChange = (typeof TREND_CHANGES)[number];
 export const NETWORK_PARTNERS = ["new", "continuing", "gone"] as const;
 export const SCATTER_FLAGS = ["da_split", "da_year_end", "da_rapid", "da_round", "da_concentration", "da_dependence"] as const;
 /** First and last month (1–12) of a window repeated in each year. */
 export type MonthWindow = readonly [number, number];
 export interface TrendOptions {
-  change?: (typeof TREND_CHANGES)[number];
+  change?: TrendChange;
   months?: "auto" | "whole" | MonthWindow;
   order?: "lei" | "percent";
   minBase?: number;
@@ -319,6 +320,8 @@ export const IMPLEMENTED_KEYS: ReadonlySet<string> = new Set([
   ...["cpvTerm", "county", "authorityKind", "authorityName", "supplierName", "authorityId", "supplierId", "monthFrom", "monthTo",
     "adminPersonKey", "adminName", "compareWith", "compareWithId", "uatSiruta", "uatName", "singleBidder", "minEmployees",
     "maxEmployees", "yearFrom", "yearTo"].map(key => `filters.${key}`),
+  // F2: the trend's group, its months, its order (TREND_RULES below; compile.ts case "trend").
+  ...["change", "months", "order", "minBase", "firstOnly"].map(key => `trend.${key}`),
 ]);
 /**
  * Paths parseSpec reads ahead of the engine (plan §3), with the stage that
@@ -326,7 +329,6 @@ export const IMPLEMENTED_KEYS: ReadonlySet<string> = new Set([
  * existing key; "options.members" belongs to a watch, not to the spec.
  */
 export const READ_AHEAD_KEYS = {
-  "trend.change": "F2", "trend.months": "F2", "trend.order": "F2", "trend.minBase": "F2", "trend.firstOnly": "F2",
   "options.members": "F2",
   "timeseries.grain": "F3", "timeseries.split": "F3", "timeseries.months": "F3",
   "filters.purchaseKind": "F3", "filters.procedure": "F3", "filters.purchaseValueMin": "F3", "filters.purchaseValueMax": "F3",
@@ -612,6 +614,23 @@ export function parseSpec(raw: unknown): AskSpec | SpecError {
   return Object.assign(spec, options);
 }
 
+/** The base of the order in percent when the spec names none (trend final §3.9: from 1 mil. lei in year A). */
+export const DEFAULT_TREND_MIN_BASE = 1_000_000;
+/**
+ * The rules of the trend's options (plan §3, trend final §6.1): the order and
+ * its base only on growths, the base only for the order in percent, the first
+ * year only on the new ones of a ranking of entities. FilterDef.validate of
+ * lib/ask/filters/defs/trend.ts; runnableError runs every one.
+ */
+export const TREND_RULES: Readonly<Record<"order" | "minBase" | "firstOnly", (spec: AskSpec) => string | null>> = {
+  order: (spec) => spec.trend?.order !== undefined && spec.trend.change !== "up"
+    ? "Ordonarea se alege doar la creșteri. Alege «Creșteri» sau scoate ordonarea." : null,
+  minBase: (spec) => spec.trend?.minBase !== undefined && spec.trend.order !== "percent"
+    ? "Pragul „cel puțin … lei” se aplică doar ordonării în procente." : null,
+  firstOnly: (spec) => spec.trend?.firstOnly && (spec.trend.change !== "new" || spec.dim === "county")
+    ? "„Prima dată” se aplică doar firmelor sau instituțiilor noi." : null,
+};
+
 /** What this release can answer, on a parsed spec. Null when it can run. */
 export function runnableError(spec: AskSpec): string | null {
   const { block, dim, measure, filters } = spec;
@@ -648,6 +667,10 @@ export function runnableError(spec: AskSpec): string | null {
   }
   if (block === "trend" && (filters.monthFrom !== undefined || filters.monthTo !== undefined))
     return "Schimbarea compară doi ani întregi. Elimină explicit lunile sau alege evoluția în timp; filtrele nu au fost eliminate.";
+  for (const rule of Object.values(TREND_RULES)) {
+    const error = rule(spec);
+    if (error) return error;
+  }
   // Degenerate rankings: the row dimension pinned to a single value by a filter
   // would produce a one-row "clasament". (dim defaults to authority downstream.)
   if (block === "table" || block === "trend" || block === "scatter") {

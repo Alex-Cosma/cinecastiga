@@ -2,13 +2,16 @@ import { canonicalAskIdentities } from "./canonical-identities";
 import { retiredChoicesText } from "./retired-terms";
 import { FORCE_CUSTOM_PLANS } from "../plan-cache";
 import type { DbSql } from "@seap/db";
-import { NEWER_VERSION_LINK, unimplementedSpecKeys, type AskSpec, type Dim } from "./spec";
+import { NEWER_VERSION_LINK, unimplementedSpecKeys, type AskSpec, type Dim, type MonthWindow, type TrendChange } from "./spec";
 import type { Grounding } from "./ground";
 import { EVIDENCE_CSV_LIMIT, PROFILE_BLOCKS, sumDecimalStrings, validateEvidenceScope, type EvidenceScope, type EvidenceStatus, type EvidenceProfile } from "./evidence";
 import {
-  andAll, DA_PLAFOND_RON, displayPredicates, ENTITY_CARD_MIN_DAS, fold, groupPredicates, perCapitaPredicate, plafondFor, predicateContext,
-  profileMinDas, profilePredicates, RISK_MIN_DAS, rowPredicates, trendYearsPredicate, type PredicateCtx,
+  andAll, DA_PLAFOND_RON, displayPredicates, ENTITY_CARD_MIN_DAS, fold, groupPredicates, isEveryChange, perCapitaPredicate, plafondFor, predicateContext,
+  profileMinDas, profilePredicates, RISK_MIN_DAS, rowPredicates, trendGroupOf, trendGroupSql, trendYearsPredicate, type PredicateCtx, type TrendGroup,
 } from "./predicates";
+import { monthsLabel, partialMonths, sameMonthsWindow, WHOLE_YEAR, type CoveragePeriods, type MonthsMode, type MonthsWindow } from "./months-window";
+import { countWords } from "./answer-text";
+import { TREND_CHANGE_LABELS } from "./filters/defs/trend";
 import { KIND_LABEL } from "./authority-kind";
 import { countyIsFirmSeat, isHistoricalProfile, unsupportedPopulationView } from "./population";
 import { describeConditions, type ConditionLabels } from "./filters/describe";
@@ -18,7 +21,8 @@ import { PER_CAPITA_SOURCE, perCapitaCaveat, POPULATION_CARD_NOTE, readPerCapita
 import { martColumns } from "./mart-columns";
 import {
   compareParties, compareSharedPartners, compareTopPartners, planRollup, rollupBreakdown, rollupCountyTable, rollupMap, rollupMinimumCond,
-  rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrend, scatterDensity, type RollupFilters, type RollupNeed, type RollupSource,
+  rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrend, rollupTrendMembers, scatterDensity,
+  type RollupFilters, type RollupNeed, type RollupSource,
 } from "./rollups";
 import { sectorUnit } from "../peer-population";
 
@@ -202,7 +206,14 @@ export type BlockData =
   | { block: "network"; nodes: NetworkNode[]; focal: { entityId: string; name: string; role: string } }
   | { block: "entity_card"; card: EntityCardData }
   | { block: "fact_check"; fact: FactCheckData }
-  | { block: "trend"; rowsTrend: TrendRow[]; yearA: number; yearB: number };
+  // change and months only when the spec has trend options (F2): a trend without them keeps today's shape.
+  | { block: "trend"; rowsTrend: TrendRow[]; yearA: number; yearB: number; change?: TrendChange; months?: MonthsWindow };
+
+/** The months a trend's answer counted and the data checkpoint it read them at; its sources send them back (runRows `months`). */
+export interface ExecutedWindow { months: MonthWindow; mode: MonthsMode; checkpoint: string | null }
+const monthsOf = (window: MonthsWindow | null): MonthsWindow => window ? { from: window.from, to: window.to, mode: window.mode } : WHOLE_YEAR;
+/** The answer's window is no longer the one the data gives (a new checkpoint moved `auto`): its sources would list other records. */
+export const DATA_CHANGED = "Datele s-au actualizat; reîncarcă răspunsul.";
 
 export interface EngineResult {
   data: BlockData;
@@ -211,6 +222,8 @@ export interface EngineResult {
   tookMs: number;
   /** timeseries/trend: years the archive covers only in part (audit F19). */
   partialYears?: PartialYear[];
+  /** trend with `trend.months`: the window `auto` resolved to (plan §2.8); the spec keeps `auto`. */
+  executed?: ExecutedWindow;
 }
 
 // Audit F15: the locality filter is the UAT's own administration, strictly
@@ -266,20 +279,29 @@ export async function daCoverageYears(sql: DbSql, kind: "da" | "award" = "da"): 
   return years;
 }
 
-/** First and last dated record of a channel (marts.data_coverage, Bucharest calendar days),
- * and the last day considered complete (audit F10; null or absent when not established). */
-export interface ChannelPeriod { from: string | null; to: string | null; completeUntil?: string | null }
-export type CoveragePeriods = Record<"da" | "contracts", ChannelPeriod>;
+export type { ChannelPeriod, CoveragePeriods } from "./months-window";
 /** A year (or the selected months of it) that the archive covers only in part,
  * or whose contracts are provisional (audit F10). */
 export interface PartialYear { year: number; note: string; provisional?: true }
-let periodCache: { periods: CoveragePeriods | null; at: number } | undefined;
-/** Archive period per channel, or null when the inventory has not been calculated. */
+let periodCache: { periods: CoveragePeriods | null; checkpoint: string | null; at: number } | undefined;
+/**
+ * Archive period per channel, or null when the inventory has not been
+ * calculated: the one coverage source of the engine, the trend's window and
+ * default years (months-window.ts) and /api/data-coverage (plan §2.8). The
+ * cache (10 minutes per process) is keyed on the data checkpoint, so a
+ * published refresh is read at once by every process.
+ */
 export async function coveragePeriods(sql: DbSql): Promise<CoveragePeriods | null> {
   const fresh = snapshotCoverageConnections.has(sql);
-  if (!fresh && periodCache && Date.now() - periodCache.at < 600_000) return periodCache.periods;
   // Additive deployment: probe first, so a missing table cannot abort a caller's transaction.
-  const [table] = (await sql`select to_regclass('marts.data_coverage') is not null ok`) as unknown as { ok: boolean }[];
+  const [table] = (await sql`
+    select to_regclass('marts.data_coverage') is not null ok, to_regclass('app.monitoring_refreshes') is not null refreshes
+  `) as unknown as { ok: boolean; refreshes?: boolean }[];
+  const [ready] = table?.refreshes
+    ? (await sql`select id::text id from app.monitoring_refreshes where status = 'ready' order by version desc limit 1`) as unknown as { id: string }[]
+    : [];
+  const checkpoint = ready?.id ?? null;
+  if (!fresh && periodCache && periodCache.checkpoint === checkpoint && Date.now() - periodCache.at < 600_000) return periodCache.periods;
   let periods: CoveragePeriods | null = null;
   if (table?.ok) {
     const rows = (await sql`
@@ -288,12 +310,14 @@ export async function coveragePeriods(sql: DbSql): Promise<CoveragePeriods | nul
       from marts.data_coverage where dataset in ('da', 'contracts')
     `) as unknown as { dataset: "da" | "contracts"; date_from: string | null; date_to: string | null; complete_until?: string | null }[];
     const da = rows.find((r) => r.dataset === "da"), contracts = rows.find((r) => r.dataset === "contracts");
+    // Both channels' "complet până la" day: the trend's same months need the earlier one (sameMonthsWindow).
     if (da && contracts) periods = {
-      da: { from: da.date_from, to: da.date_to },
+      da: { from: da.date_from, to: da.date_to, completeUntil: da.complete_until ?? null },
       contracts: { from: contracts.date_from, to: contracts.date_to, completeUntil: contracts.complete_until ?? null },
+      checkpoint,
     };
   }
-  if (!fresh) periodCache = { periods, at: Date.now() };
+  if (!fresh) periodCache = { periods, checkpoint, at: Date.now() };
   return periods;
 }
 
@@ -678,9 +702,21 @@ export async function runSpec(
     caveats.push(DA_PLAFOND_CAVEAT, DA_ACCEPTED_CAVEAT);
   }
 
+  // trend: the months both years count (months-window.ts), resolved at this
+  // checkpoint before the first query. The spec keeps `auto`; the answer
+  // returns the window it executed (`executed`), which its sources send back.
+  let trendWindow: (MonthsWindow & { checkpoint: string | null }) | null = null;
+  if (spec.block === "trend" && spec.trend?.months !== undefined) {
+    const periods = await coveragePeriods(sql);
+    const window = sameMonthsWindow(periods, dataset, yearTo ?? maxY, spec.trend.months);
+    if ("error" in window) return { error: window.error, caveats };
+    trendWindow = { ...window, checkpoint: periods?.checkpoint ?? null };
+    if (partialMonths(window)) caveats.push(`Ambii ani se compară pe aceleași luni: ${monthsLabel(window)}.`);
+  }
+
   // Every condition of the question, written by lib/ask/predicates.ts for the
   // answer, its sources, the CSV, the captures and the displayed SQL alike.
-  const w: PredicateCtx = predicateContext(sql, spec, grounding, { dataset, yearFrom, yearTo });
+  const w: PredicateCtx = predicateContext(sql, spec, grounding, { dataset, yearFrom, yearTo, trendMonths: partialMonths(trendWindow) });
   const { authorityId, supplierId } = w;
   const compareId = w.comparison?.compareId ?? null;
   if (w.minEmployees !== null || w.maxEmployees !== null) {
@@ -1570,21 +1606,23 @@ export async function runSpec(
           }
           const topN = spec.topN ?? 10;
           const dim = spec.dim ?? "authority";
-          const rolledTrend = rollup ? await rollupTrend(s, rollup, { dim, yearA: yA, yearB: yB, topN }) : null;
+          // The group, its order (trendGroupSql) and the months; without trend options, today's answer and shape.
+          const group = trendGroupOf(spec);
+          const lens = spec.trend && Object.keys(spec.trend).length ? { change: group.change, months: monthsOf(trendWindow) } : {};
+          const rolledTrend = rollup ? await rollupTrend(s, rollup, { dim, yearA: yA, yearB: yB, topN, group }) : null;
+          const va: ReturnType<DbSql> = s`coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yA)}), 0)`;
+          const vb: ReturnType<DbSql> = s`coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yB)}), 0)`;
           if (dim === "county") {
+            const { having, order } = trendGroupSql(s, va, vb, group);
             // Equal changes come out by county, as from the rollup.
             const r = rolledTrend && "rows" in rolledTrend ? rolledTrend.rows.map((p) => ({ c: p.nm, va: p.va, vb: p.vb })) : (await s`
-              select d.county c,
-                     coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yA)}), 0) va,
-                     coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yB)}), 0) vb
+              select d.county c, ${va} va, ${vb} vb
               from ${txtAggNames} d
               where ${whereFrag({ years: false })} and d.county is not null
-                and ${trendYearsPredicate(s, yA, yB)}
+                and ${trendYearsPredicate(s, yA, yB, w.trendMonths)}
               group by 1
-              order by abs(
-                coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yB)}), 0)
-                - coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yA)}), 0)
-              ) desc, c
+              ${having ? s`having ${having}` : s``}
+              order by ${order} desc, c
               limit ${topN}
             `) as unknown as { c: string; va: string; vb: string }[];
             return {
@@ -1598,23 +1636,21 @@ export async function runSpec(
                 valueA: Number(p.va),
                 valueB: Number(p.vb),
               })),
+              ...lens,
             };
           }
-          const idCol = dim === "authority" ? s`d.authority_id` : s`d.supplier_id`;
+          const idCol: ReturnType<DbSql> = dim === "authority" ? s`d.authority_id` : s`d.supplier_id`;
           const nameCol = dim === "authority" ? s`d.authority_name` : s`d.supplier_name`;
+          const { having, order } = trendGroupSql(s, va, vb, group, { id: idCol, role: dim, yearB: yB });
           // Equal changes come out by id, as from the rollup (consortium partners share a value).
           const r = rolledTrend && "rows" in rolledTrend ? rolledTrend.rows : (await s`
-            select ${idCol} id, max(${nameCol}) nm, max(d.county) co,
-                   coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yA)}), 0) va,
-                   coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yB)}), 0) vb
+            select ${idCol} id, max(${nameCol}) nm, max(d.county) co, ${va} va, ${vb} vb
             from ${txtAggNames} d
             where ${whereFrag({ years: false })} and ${idCol} is not null
-              and ${trendYearsPredicate(s, yA, yB)}
+              and ${trendYearsPredicate(s, yA, yB, w.trendMonths)}
             group by ${idCol}
-            order by abs(
-              coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yB)}), 0)
-              - coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yA)}), 0)
-            ) desc, ${idCol}
+            ${having ? s`having ${having}` : s``}
+            order by ${order} desc, ${idCol}
             limit ${topN}
           `) as unknown as { id: string; nm: string; co: string | null; va: string; vb: string }[];
           return {
@@ -1628,6 +1664,7 @@ export async function runSpec(
               valueA: Number(p.va),
               valueB: Number(p.vb),
             })),
+            ...lens,
           };
         }
       }
@@ -1656,7 +1693,11 @@ export async function runSpec(
       const note = partialYearsCaveat(partial, "series");
       if (note) caveats.push(note);
     } else if (data.block === "trend") {
-      partial = partialYears(periods, dataset, [data.yearA, data.yearB]);
+      // The same months of each year are judged as such, not the whole calendar year.
+      const months = w.trendMonths;
+      partial = months
+        ? [data.yearA, data.yearB].flatMap((year) => partialYears(periods, dataset, [year], { yearFrom: year, yearTo: year, monthFrom: months[0], monthTo: months[1] }))
+        : partialYears(periods, dataset, [data.yearA, data.yearB]);
       const note = partialYearsCaveat(partial, "comparison");
       if (note) caveats.push(note);
     } else {
@@ -1666,7 +1707,9 @@ export async function runSpec(
       if (note) caveats.push(note);
     }
   }
-  return { data, displaySql, caveats, tookMs: Date.now() - started, ...(partial ? { partialYears: partial } : {}) };
+  const executed: ExecutedWindow | null = trendWindow
+    ? { months: [trendWindow.from, trendWindow.to], mode: trendWindow.mode, checkpoint: trendWindow.checkpoint } : null;
+  return { data, displaySql, caveats, tookMs: Date.now() - started, ...(partial ? { partialYears: partial } : {}), ...(executed ? { executed } : {}) };
 }
 
 export interface DrillRow {
@@ -1755,6 +1798,13 @@ export interface DrillOpts {
   origin?: OriginHint;
   /** Server-internal: names of the ids a population lists, where the caller knows them (an entity capture). */
   entities?: Readonly<Record<string, string>>;
+  /**
+   * trend: the months the answer counted (its `executed.months`), sent by its
+   * drawer and CSV. Another window at this checkpoint is a conflict (409), never
+   * another list; without it the sources take the window of this checkpoint.
+   * Never part of `scope`, which saved links and watches keep.
+   */
+  months?: MonthWindow;
 }
 
 export const DRILL_PAGE_SIZE = 10;
@@ -1796,7 +1846,7 @@ export async function runRows(
   grounding: Grounding,
   page: number,
   opts: DrillOpts = {},
-): Promise<DrillResult | { error: string }> {
+): Promise<DrillResult | { error: string; conflict?: true }> {
   opts.signal?.throwIfAborted();
   if (unimplementedSpecKeys(spec).length) return { error: NEWER_VERSION_LINK };
   const canonical=await canonicalAskIdentities(sql,spec,grounding,opts.scope);
@@ -1881,8 +1931,18 @@ export async function runRows(
       if (yearFrom !== from || yearTo !== to) notes.push(`Perioada efectivă: ${yearFrom}–${yearTo}, conform acoperirii datelor.`);
     }
   }
+  // trend: the answer's months, by the same function at this checkpoint (sameMonthsWindow).
+  let trendWindow: MonthsWindow = WHOLE_YEAR;
+  if (spec.block === "trend") {
+    if (spec.trend?.months !== undefined) {
+      const window = sameMonthsWindow(await coveragePeriods(sql), dataset, yearTo ?? maxY, spec.trend.months);
+      if ("error" in window) return { error: window.error };
+      trendWindow = window;
+    }
+    if (opts.months && (opts.months[0] !== trendWindow.from || opts.months[1] !== trendWindow.to)) return { error: DATA_CHANGED, conflict: true };
+  } else if (opts.months) return { error: "Lunile comparate se aplică doar schimbării între doi ani." };
   // The question's conditions, written for the sources as for the answer (predicates.ts).
-  const ctx = predicateContext(sql, spec, grounding, { dataset, yearFrom, yearTo });
+  const ctx = predicateContext(sql, spec, grounding, { dataset, yearFrom, yearTo, trendMonths: partialMonths(trendWindow) });
   // The rollups give the record threshold's party list and, without a local
   // filter, the totals of a selection without entity conditions (rollups.ts).
   const rollup = profile || valueWinner ? null : await rollupPlanFor(sql, spec, ctx);
@@ -1964,8 +2024,9 @@ export async function runRows(
       parts.push(focalRole === "authority" ? sql`d.authority_id = ${focalId}` : sql`d.supplier_id = ${focalId}`);
     }
     if (spec.block === "trend") {
-      parts.push(trendYearsPredicate(sql, yearFrom ?? minY, yearTo ?? maxY));
+      parts.push(trendYearsPredicate(sql, yearFrom ?? minY, yearTo ?? maxY, ctx.trendMonths));
       notes.push(`Schimbare între ${yearFrom ?? minY} și ${yearTo ?? maxY}: sursele includ numai cei doi ani; diferența este totalul final minus totalul inițial.`);
+      if (ctx.trendMonths) notes.push(`Ambii ani se compară pe aceleași luni: ${monthsLabel(trendWindow)}; sursele includ numai aceste luni.`);
     }
     if (spec.minimumRecords) {
       // Counted over the selection itself (rowPredicates): the rollups hold the same party list.
@@ -2007,7 +2068,32 @@ export async function runRows(
     if (dataset !== "da") notes.push("Un contract cu mai mulți câștigători apare pe câte un rând pentru fiecare furnizor, cu valoarea împărțită egal. Suma folosește aceste cote; numărul de rânduri nu este numărul de contracte distincte. Detaliile și exportul păstrează valoarea integrală și numărul câștigătorilor.");
     if (spec.block === "table" || spec.block === "network" || spec.block === "trend") notes.push("Lista surselor acoperă întregul rezultat filtrat; limita de poziții din clasament sau diagramă nu limitează sursele.");
   }
-  const sourceWhere = parts.reduce((a, b) => sql`${a} and ${b}`);
+  const baseWhere = parts.reduce((a, b) => sql`${a} and ${b}`);
+  // trend: the sources of the group the answer lists (trendGroupSql). Its members are read over
+  // the answer's selection, not the drawer's scope (from the rollups when they answer it); a
+  // row's own records ("Înregistrări →") check only that row's ids. Then the rows are theirs.
+  const trendGroup = spec.block === "trend" && !profile ? trendGroupOf(spec) : null;
+  const groupDim = spec.dim ?? "authority";
+  const readMembers = trendGroup && !isEveryChange(trendGroup) ? async (s: DbSql): Promise<string[]> => {
+    const yearA = yearFrom ?? minY, yearB = yearTo ?? maxY;
+    const own = groupDim !== "county" && scope.entityIds && scope.role === groupDim ? scope.entityIds : null;
+    if (rollup && !own) {
+      const rolled = await rollupTrendMembers(s, rollup, { dim: groupDim, yearA, yearB, group: trendGroup });
+      if ("members" in rolled) return rolled.members;
+    }
+    const key: ReturnType<DbSql> = groupDim === "county" ? sql`d.county` : groupDim === "supplier" ? sql`d.supplier_id` : sql`d.authority_id`;
+    const va: ReturnType<DbSql> = sql`coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yearA)}), 0)`;
+    const vb: ReturnType<DbSql> = sql`coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yearB)}), 0)`;
+    const { having } = trendGroupSql(sql, va, vb, trendGroup, groupDim === "county" ? undefined : { id: key, role: groupDim, yearB });
+    const answerParts: ReturnType<DbSql>[] = [...rowPredicates(ctx, { years: false }), trendYearsPredicate(sql, yearA, yearB, ctx.trendMonths), sql`${key} is not null`];
+    if (own) answerParts.push(sql`${key} = any(${sql.array([...own])}::bigint[])`);
+    const where = andAll(sql, answerParts);
+    const rows = (await readEvidenceQuery(s`
+      select ${key}::text m from ${txAggFragment(sql, dataset, Boolean(ctx.kind))} d
+      where ${where} group by ${key} ${having ? sql`having ${having}` : sql``}
+    `, opts.signal)) as unknown as { m: string }[];
+    return rows.map((r) => r.m);
+  } : null;
   const localParts: ReturnType<DbSql>[] = [sql`true`];
   if (opts.stream) localParts.push(sql`d.src = ${opts.stream}`);
   if (opts.state === "__unknown") localParts.push(sql`d.state is null`);
@@ -2036,6 +2122,14 @@ export async function runRows(
     // choices in local source verification without changing database settings.
     await tx.unsafe("set local random_page_cost = 1.1");
     const s = tx as unknown as DbSql;
+    const members = readMembers ? await readMembers(s) : null;
+    if (members && trendGroup) {
+      const [one, many] = groupDim === "county" ? ["județ", "județe"] : groupDim === "supplier" ? ["firmă", "firme"] : ["instituție", "instituții"];
+      notes.push(`Sursele grupului „${TREND_CHANGE_LABELS[trendGroup.change]}”${trendGroup.firstOnly ? ` (prima dată în ${yearTo ?? maxY})` : ""}: ${countWords(members.length, one!, many!)}, cu înregistrările lor din cei doi ani, nu doar cele afișate.`);
+    }
+    const sourceWhere = !members ? baseWhere : groupDim === "county"
+      ? sql`${baseWhere} and d.county = any(${sql.array(members)}::text[])`
+      : sql`${baseWhere} and ${groupDim === "supplier" ? sql`d.supplier_id` : sql`d.authority_id`} = any(${sql.array(members)}::bigint[])`;
     const rolledTotals = rollup && totalsBlock && localParts.length === 1 && Object.keys(scope).every((key) => key === "role")
       ? await rollupSourceTotals(s, rollup, totalsBlock) : null;
     const totals = rolledTotals && "rows" in rolledTotals ? rolledTotals.rows : (await readEvidenceQuery(s`
@@ -2148,6 +2242,21 @@ export async function runRows(
   });
 }
 
+/** trendGroupSql as text for the shown SQL; every change (no options) keeps today's text. */
+function trendGroupText(group: TrendGroup, yearB: number | string): { having: string | null; order: string } {
+  const label = `  -- ${TREND_CHANGE_LABELS[group.change]}`;
+  const first = group.firstOnly ? ` and prima_inregistrare = ${yearB}  -- prima dată în ${yearB}` : "";
+  switch (group.change) {
+    case "up": return group.order === "percent"
+      ? { having: `inainte >= ${group.minBase} and dupa > inainte${label}, în procente`, order: "dupa / inainte" }
+      : { having: `inainte > 0 and dupa > inainte${label}`, order: "dupa - inainte" };
+    case "new": return { having: `inainte = 0 and dupa > 0${first}${first ? "" : label}`, order: "dupa" };
+    case "down": return { having: `dupa > 0 and dupa < inainte${label}`, order: "inainte - dupa" };
+    case "gone": return { having: `inainte > 0 and dupa = 0${label}`, order: "inainte" };
+    case "all": return { having: null, order: "abs(dupa - inainte)" };
+  }
+}
+
 /**
  * Human-readable SQL for the "vezi interogarea (avansat)" toggle. Display-only —
  * execution always goes through the parameterized builder above.
@@ -2200,11 +2309,13 @@ function buildDisplaySql(spec: AskSpec, w: PredicateCtx): string {
       return `select *\nfrom marts.entity_flags\nwhere n_das >= ${ENTITY_CARD_MIN_DAS} ${w.kind ? `-- doar ${KIND_LABEL[w.kind]}` : ""}\norder by ${(spec.rankBy ?? "risk") === "risk" ? "cri" : "total_ron"} desc\nlimit 1;`;
     case "fact_check":
       return `select count(*), sum(closing_value)\nfrom ${dtable}\nwhere ${where};`;
-    case "trend":
+    case "trend": {
+      const { having, order } = trendGroupText(trendGroupOf(spec), w.yearTo ?? "ultimul_an");
       return (
         `select ${dimCol},\n  sum(closing_value) filter (where an = ${w.yearFrom ?? "primul_an"}) inainte,\n` +
         `  sum(closing_value) filter (where an = ${w.yearTo ?? "ultimul_an"}) dupa\n` +
-        `from ${dtable}\nwhere ${where}\ngroup by ${dimCol}\norder by abs(dupa - inainte) desc\nlimit ${spec.topN ?? 10};`
+        `from ${dtable}\nwhere ${where}\ngroup by ${dimCol}\n${having ? `having ${having}\n` : ""}order by ${order} desc\nlimit ${spec.topN ?? 10};`
       );
+    }
   }
 }
