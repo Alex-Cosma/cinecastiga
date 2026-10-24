@@ -108,7 +108,18 @@ export async function withAskFixture<T>(
       await t.unsafe(`create schema ${prefix}`);
       for (const table of marts) {
         const [present] = await t`select to_regclass(${`marts.${table}`}) is not null ok` as unknown as { ok: boolean }[];
-        if (present?.ok) await t.unsafe(`create table ${prefix}.${table} as table marts.${table} with no data`);
+        if (present?.ok) {
+          await t.unsafe(`create table ${prefix}.${table} as table marts.${table} with no data`);
+          // A copy loses the generation of a stored column (entity_flags.log_total_ron, 0085), which
+          // the engine reads as filled once it exists (mart-columns.ts): keep it generated.
+          const generated = await t`
+            select a.attname col, format_type(a.atttypid, a.atttypmod) type, pg_get_expr(d.adbin, d.adrelid) expr
+            from pg_attribute a join pg_attrdef d on d.adrelid = a.attrelid and d.adnum = a.attnum
+            where a.attrelid = ${`marts.${table}`}::regclass and a.attgenerated = 's'
+          ` as unknown as { col: string; type: string; expr: string }[];
+          for (const g of generated)
+            await t.unsafe(`alter table ${prefix}.${table} drop column "${g.col}", add column "${g.col}" ${g.type} generated always as (${g.expr}) stored`);
+        }
         else if (MISSING_MARTS_DDL[table]) await t.unsafe(`create table ${prefix}.${table} (${MISSING_MARTS_DDL[table]})`);
         else throw new Error(`marts.${table} is missing from the test database`);
       }

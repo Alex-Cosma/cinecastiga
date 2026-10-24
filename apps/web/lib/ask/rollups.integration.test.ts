@@ -210,8 +210,14 @@ const SOURCE_CASES: { name: string; spec: AskSpec; g?: Grounding; block: "stat" 
   { name: "sources of the counties", spec: base("table", { dim: "county" }), block: "county" },
 ];
 
+const THRESHOLD_SPECS: { name: string; spec: AskSpec; g?: Grounding }[] = [
+  { name: "institutions, firms with at least 4 records", spec: base("table", { topN: 10, dim: "authority", minimumRecords: { role: "supplier", count: 4 } }) },
+  { name: "total, institutions with at least 3 records", spec: base("stat", { minimumRecords: { role: "authority", count: 3 } }) },
+  { name: "firms with at least 2 records in 2025", spec: base("table", { topN: 10, minimumRecords: { role: "supplier", count: 2 } }, { yearFrom: 2025, yearTo: 2025 }) },
+];
+
 describe.runIf(Boolean(connection))("rollups give the live answers (dedicated rollback fixture)", () => {
-  it("answers every rollup case exactly as runSpec, and compare and scatter as their live queries", async () => {
+  it("answers every rollup case exactly as the live queries, through runSpec and runRows too, and compare and scatter as theirs", async () => {
     expect(DA_PLAFOND_RON).toBe(2_000_000);
     const sql = connection!.sql, prefix = `rollup_fixture_${process.pid}_${Date.now()}`;
     const rollback = new Error("rollback rollup fixture");
@@ -226,6 +232,23 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
         await load(q);
         forgetRollupsReady();
         expect(await rollupsReady(q)).toBe(false);
+        // The live answers first: without the rollups runSpec and runRows run their live queries.
+        const liveAnswers = new Map<string, BlockData>();
+        for (const c of CASES) {
+          const live = await runSpec(q, c.spec, c.g ?? {}, c.sort ? { sort: c.sort, dir: "asc" } : {});
+          if ("error" in live) throw new Error(`${c.name}: ${live.error}`);
+          liveAnswers.set(c.name, live.data);
+        }
+        const liveSources = new Map<string, Exclude<Awaited<ReturnType<typeof runRows>>, { error: string }>>();
+        for (const c of [...SOURCE_CASES, ...THRESHOLD_SPECS]) {
+          const live = await runRows(q, c.spec, c.g ?? {}, 0);
+          if ("error" in live) throw new Error(`${c.name}: ${live.error}`);
+          liveSources.set(c.name, live);
+        }
+        const drawer = (r: Exclude<Awaited<ReturnType<typeof runRows>>, { error: string }>) => ({
+          total: r.total, value: r.value, sourceTotal: r.sourceTotal, sourceValue: r.sourceValue, dateFrom: r.dateFrom, dateTo: r.dateTo,
+          statuses: [...r.statuses].sort((a, b) => String(a.state).localeCompare(String(b.state))), rows: r.rows,
+        });
         const report = await buildAskRollups(q);
         expect(report.rows).toEqual({ agg_entity_year: 29, agg_pair_year: 19, agg_cpv_year: 15 });
         expect(await rollupsReady(q)).toBe(false); // the process cache, 10 minutes
@@ -237,22 +260,35 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
 
         for (const c of CASES) {
           const g = c.g ?? {};
-          const live = await runSpec(q, c.spec, g, c.sort ? { sort: c.sort, dir: "asc" } : {});
-          if ("error" in live) throw new Error(`${c.name}: ${live.error}`);
+          const live = liveAnswers.get(c.name)!;
           const rolled = await fromRollups(q, c.spec, g, c.sort);
           expect([c.name, rolled.source]).toEqual([c.name, c.source]);
-          expect([c.name, canonical(rolled.data)]).toEqual([c.name, canonical(live.data)]);
-          const d = live.data;
+          expect([c.name, canonical(rolled.data)]).toEqual([c.name, canonical(live)]);
+          const d = live;
           const size = d.block === "table" ? d.rows.length : d.block === "trend" ? d.rowsTrend.length : d.block === "breakdown" ? d.slices.length
             : d.block === "map" ? d.counties.length : d.block === "timeseries" ? d.series.length : d.block === "stat" ? d.stat.count : 0;
           expect([c.name, size > 0]).toEqual([c.name, true]);
         }
 
+        // runSpec reads the rollups now (rollupsReady), with its own mapping: emptied
+        // transaction marts change none of these answers.
+        await q.unsafe("savepoint emptied_marts");
+        await q`delete from marts.da_transactions`;
+        await q`delete from marts.contract_transactions`;
+        for (const c of CASES) {
+          const wired = await runSpec(q, c.spec, c.g ?? {}, c.sort ? { sort: c.sort, dir: "asc" } : {});
+          if ("error" in wired) throw new Error(`${c.name}: ${wired.error}`);
+          expect([c.name, canonical(wired.data)]).toEqual([c.name, canonical(liveAnswers.get(c.name)!)]);
+        }
+        await q.unsafe("rollback to savepoint emptied_marts");
+
         // The source drawer's totals (no local filter) of selections without entity conditions.
         for (const c of SOURCE_CASES) {
           const g = c.g ?? {};
-          const live = await runRows(q, c.spec, g, 0);
-          if ("error" in live) throw new Error(`${c.name}: ${live.error}`);
+          const live = liveSources.get(c.name)!;
+          const wired = await runRows(q, c.spec, g, 0);
+          if ("error" in wired) throw new Error(`${c.name}: ${wired.error}`);
+          expect([c.name, drawer(wired)]).toEqual([c.name, drawer(live)]);
           const plan = planRollup(ctxOf(c.spec, g), needOf(c.spec));
           if ("reason" in plan) throw new Error(`${c.name}: ${plan.reason}`);
           const r = await rollupSourceTotals(q, plan, c.block);
@@ -273,15 +309,16 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
         const union = q`(
           select authority_id, supplier_id, closing_value, finalization_date, 'da'::text src from marts.da_transactions
           union all select authority_id, supplier_id, closing_value, finalization_date, 'contracts' from marts.contract_transactions)`;
-        const THRESHOLDS: { name: string; spec: AskSpec; extra: ReturnType<DbSql> }[] = [
-          { name: "institutions, firms with at least 4 records", spec: base("table", { topN: 10, dim: "authority", minimumRecords: { role: "supplier", count: 4 } }), extra: q`d.authority_id is not null` },
-          { name: "total, institutions with at least 3 records", spec: base("stat", { minimumRecords: { role: "authority", count: 3 } }), extra: q`true` },
-          { name: "firms with at least 2 records in 2025", spec: base("table", { topN: 10, minimumRecords: { role: "supplier", count: 2 } }, { yearFrom: 2025, yearTo: 2025 }),
-            extra: q`d.supplier_id is not null and substr(d.finalization_date, 1, 4) >= '2025' and substr(d.finalization_date, 1, 4) <= '2025'` },
-        ];
+        const THRESHOLDS: { name: string; spec: AskSpec; extra: ReturnType<DbSql> }[] = THRESHOLD_SPECS.map((c, i) => ({ ...c, extra: [
+          q`d.authority_id is not null`, q`true`,
+          q`d.supplier_id is not null and substr(d.finalization_date, 1, 4) >= '2025' and substr(d.finalization_date, 1, 4) <= '2025'`,
+        ][i] as unknown as ReturnType<DbSql> }));
         for (const c of THRESHOLDS) {
-          const live = await runRows(q, c.spec, {}, 0);
-          if ("error" in live) throw new Error(`${c.name}: ${live.error}`);
+          const live = liveSources.get(c.name)!;
+          // runRows now takes the party list from the rollups (rollupMinimumCond).
+          const wired = await runRows(q, c.spec, {}, 0);
+          if ("error" in wired) throw new Error(`${c.name}: ${wired.error}`);
+          expect([c.name, drawer(wired)]).toEqual([c.name, drawer(live)]);
           const plan = planRollup(ctxOf(c.spec, {}), needOf(c.spec));
           if ("reason" in plan) throw new Error(`${c.name}: ${plan.reason}`);
           const party = (c.spec.minimumRecords!.role === "authority" ? q`d.authority_id` : q`d.supplier_id`) as unknown as ReturnType<DbSql>;
@@ -311,6 +348,35 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
         // Fragments as compile.ts passes them (txAggFragment, whereFrag).
         const parts = { source: slim as unknown as ReturnType<DbSql>, where: where as unknown as ReturnType<DbSql>, focalRole: "supplier" as const, focalId: "10", compareId: "11" };
         const top = await compareTopPartners(q, parts), shared = await compareSharedPartners(q, parts), parties = await compareParties(q, parts);
+        // The three queries the engine ran before (count(distinct), the named union), as the reference.
+        const named = q`(
+          select authority_id, authority_name, supplier_id, supplier_name, county, cpv_code, closing_value,
+                 finalization_date, null::boolean as is_single_bidder, 'da'::text as src
+          from marts.da_transactions
+          union all
+          select authority_id, authority_name, supplier_id, supplier_name, county, cpv_code, closing_value,
+                 finalization_date, is_single_bidder, 'contracts'::text
+          from marts.contract_transactions
+        )`;
+        const before = {
+          parties: await q`select d.supplier_id::text id, count(distinct d.authority_id)::int n from ${slim} d where ${where} and d.authority_id is not null group by 1`,
+          top: await q`select id, other_id, name, value, n from (
+              select d.supplier_id::text id, d.authority_id::text other_id, max(d.authority_name) name, sum(d.closing_value)::text value, count(*)::int n,
+                     row_number() over (partition by d.supplier_id order by sum(d.closing_value) desc, d.authority_id) r
+              from ${named} d where ${where} and d.authority_id is not null group by d.supplier_id, d.authority_id) x
+            where r <= 4 order by id, r`,
+          shared: await q`select d.authority_id::text other_id, max(d.authority_name) name,
+                   coalesce(sum(d.closing_value) filter (where d.supplier_id = ${"10"}), 0)::text value_a, count(*) filter (where d.supplier_id = ${"10"})::int n_a,
+                   coalesce(sum(d.closing_value) filter (where d.supplier_id = ${"11"}), 0)::text value_b, count(*) filter (where d.supplier_id = ${"11"})::int n_b,
+                   count(*) over ()::int total
+            from ${named} d where ${where} and d.authority_id is not null
+            group by d.authority_id having count(distinct d.supplier_id) = 2
+            order by sum(d.closing_value) desc, d.authority_id limit 30`,
+        };
+        const byId = (rows: readonly { id: string }[]) => [...rows].sort((a, b) => a.id.localeCompare(b.id));
+        expect(byId(parties)).toEqual(byId([...before.parties] as unknown as { id: string; n: number }[]));
+        expect(top).toEqual([...before.top]);
+        expect(shared).toEqual([...before.shared]);
         expect(liveCompare.data.entities.map((e) => e.partners)).toEqual(liveCompare.data.entities.map((e) => parties.find((p) => p.id === e.entityId)?.n ?? 0));
         expect(liveCompare.data.entities.map((e) => e.partners)).toEqual([4, 3]);
         for (const entity of liveCompare.data.entities)
