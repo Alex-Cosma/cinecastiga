@@ -3,7 +3,7 @@ import { defaultQuestion, localityScopeError, QUESTION_TYPES, questionErrors, tr
 import { validateSpec } from "../lib/ask/spec";
 import { validateEvidenceScope } from "../lib/ask/evidence";
 import { perfCases } from "./ask-perf-cases";
-import { answerFingerprint, answerRows, assertLoopback, medianRun, perfOptions, regressions, renderMarkdown, seconds, summarizeExplain, summarizePlanNotice, type CaseResult, type PerfReport, type StatementPlan } from "./ask-perf";
+import { answerFingerprint, answerRows, assertLoopback, medianRun, perfOptions, regressions, renderMarkdown, seconds, specChanges, summarizeExplain, summarizePlanNotice, type CaseResult, type PerfReport, type StatementPlan } from "./ask-perf";
 
 const cases = perfCases();
 
@@ -30,6 +30,12 @@ describe("ask-perf cases", () => {
     // the national defaults the fast path serves carry no condition at all
     for (const id of ["catalog:table", "catalog:stat", "catalog:timeseries", "catalog:map"])
       expect(cases.find((c) => c.id === id)!.spec.filters).toEqual({});
+  });
+  it("pick the focal entity as the builder's picker does, with the answer's role", () => {
+    // pickEntity / writeFocal: a buyer picked as the focal entity makes the profile an institution's.
+    for (const id of ["catalog:distribution", "sources:distribution-cluj-napoca"])
+      expect(cases.find((c) => c.id === id)!.spec, id).toMatchObject({ block: "distribution", dim: "authority", filters: { authorityId: 2146445 } });
+    expect(cases.find((c) => c.id === "catalog:network")!.spec).toMatchObject({ dim: "supplier", filters: { supplierId: 2115381 } });
   });
   it("measure the owner's trend example as the builder asks it", () => {
     const trend = cases.find((c) => c.id === "catalog:trend")!;
@@ -112,6 +118,20 @@ describe("ask-perf report", () => {
     const now = report([result("a", 1200), result("b", 140), result("c", 900), result("new", 5000),
       { ...result("e", 0), warm: { ms: 0, groundMs: 0, error: "timeout (20 s)" } }]);
     expect(regressions(base, now, 0.25)).toEqual([{ id: "c", baseMs: 400, ms: 900 }, { id: "e", baseMs: 300, ms: Number.POSITIVE_INFINITY }]);
+  });
+  it("compare a case only with the same question, and list the others apart", () => {
+    const table = { block: "table", dim: "authority", measure: "value", filters: { yearFrom: 2025 } } as const;
+    const base = report([result("same", 100, { spec: { ...table } }), result("other", 100, { spec: { ...table } }), result("scope", 100, { spec: { ...table } }),
+      result("broken", 100, { warm: { ms: 0, groundMs: 0, error: "timeout (20 s)" } })]);
+    // Key order is not a different question (questionKey); another dim or another drawer selection is.
+    const now = report([result("same", 900, { spec: { filters: { yearFrom: 2025 }, measure: "value", dim: "authority", block: "table" } }),
+      result("other", 900, { spec: { ...table, dim: "supplier" } }), result("scope", 900, { spec: { ...table }, scope: { entityIds: ["1"], role: "authority" } }),
+      result("broken", 50)]);
+    expect(specChanges(base, now)).toEqual(["other", "scope"]);
+    expect(regressions(base, now, 0.25).map((r) => r.id)).toEqual(["same"]);
+    const md = renderMarkdown(now, base);
+    expect(md).toContain("**Altă întrebare decât în bază (necomparate): `other`, `scope`.**");
+    expect(md).toContain("Eroare în bază (necomparate): `broken` (acum 50 ms).");
   });
   it("mark cases over the bar, compare with the baseline and note changed answers", () => {
     const base = report([result("fast", 20), result("slow", 900)]);

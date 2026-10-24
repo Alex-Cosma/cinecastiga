@@ -29,6 +29,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import type { DbSql } from "@seap/db";
 import type { BlockData } from "../lib/ask/compile";
 import { perfCases, type PerfCase } from "./ask-perf-cases";
+import { questionKey } from "../lib/ask/question-ui";
 
 export interface PerfOptions {
   out: string | null;
@@ -386,13 +387,22 @@ const setting = (value: string, unit: string | null) => {
 };
 export const overBar = (c: CaseResult) => !c.warm.error && c.warm.ms > c.barMs;
 
+/** The question a case asks: its spec as questionKey reads it, and the drawer's selection. */
+const asked = (c: Pick<CaseResult, "spec" | "scope">) => `${questionKey(c.spec)}|${JSON.stringify(c.scope ?? null)}`;
+/** Cases whose id is in the baseline but whose question is not the baseline's: their timings do not compare. */
+export function specChanges(base: PerfReport, current: PerfReport): string[] {
+  const byId = new Map(base.cases.map((c) => [c.id, c]));
+  return current.cases.filter((c) => { const b = byId.get(c.id); return b && asked(b) !== asked(c); }).map((c) => c.id);
+}
+
 export interface Regression { id: string; baseMs: number; ms: number }
-/** Warm runs slower than the baseline by more than the tolerance and by more than 100 ms (noise). */
+/** Warm runs slower than the baseline by more than the tolerance and by more than 100 ms (noise); the same question only. */
 export function regressions(base: PerfReport, current: PerfReport, tolerance: number): Regression[] {
   const byId = new Map(base.cases.map((c) => [c.id, c]));
+  const changed = new Set(specChanges(base, current));
   return current.cases.flatMap((c) => {
     const b = byId.get(c.id);
-    if (!b || b.warm.error) return [];
+    if (!b || b.warm.error || changed.has(c.id)) return [];
     if (c.warm.error) return [{ id: c.id, baseMs: b.warm.ms, ms: Number.POSITIVE_INFINITY }];
     return c.warm.ms > b.warm.ms * (1 + tolerance) && c.warm.ms - b.warm.ms > 100 ? [{ id: c.id, baseMs: b.warm.ms, ms: c.warm.ms }] : [];
   });
@@ -442,6 +452,10 @@ export function renderMarkdown(report: PerfReport, base?: PerfReport, tolerance 
       : `Niciun caz mai lent decât baza (toleranță ${Math.round(tolerance * 100)}% și 100 ms).`);
     const changed = report.cases.filter((c) => { const b = byId.get(c.id); return b?.warm.hash && c.warm.hash && b.warm.hash !== c.warm.hash; });
     if (changed.length) lines.push("", `Rezultat diferit față de bază: ${changed.map((c) => `\`${c.id}\``).join(", ")}.`);
+    const other = specChanges(base, report);
+    if (other.length) lines.push("", `**Altă întrebare decât în bază (necomparate): ${other.map((id) => `\`${id}\``).join(", ")}.**`);
+    const baseFailed = report.cases.filter((c) => byId.get(c.id)?.warm.error);
+    if (baseFailed.length) lines.push("", `Eroare în bază (necomparate): ${baseFailed.map((c) => `\`${c.id}\` (acum ${c.warm.error ? "tot eroare" : seconds(c.warm.ms)})`).join(", ")}.`);
   }
   return lines.join("\n") + "\n";
 }
@@ -476,7 +490,7 @@ async function main() {
   }
   if (options.out) await writeFile(options.out, JSON.stringify(report, null, 2) + "\n");
   if (options.md) await writeFile(options.md, renderMarkdown(report, base, options.tolerance));
-  if (base && regressions(base, report, options.tolerance).length) process.exitCode = 1;
+  if (base && (regressions(base, report, options.tolerance).length || specChanges(base, report).length)) process.exitCode = 1;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
