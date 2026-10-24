@@ -68,14 +68,7 @@ export type EngineLevel = "row" | "entityAttr" | "group" | "profile" | "display"
 export type Availability =
   | { state: "offered" }
   | { state: "disabled"; reason: string; term?: GlossaryId }
-  | { state: "hidden" }
-  /**
-   * Today's builder only (today.ts todayAvailability, on TODAY_BLOCK_FILTERS):
-   * it offers the filter, then refuses the question (R1). `refusal` names the
-   * TODAY_REFUSALS entry; `partial` when only some of its values are refused.
-   * BLOCK_FILTERS (F1b) turns each into hidden, disabled, a note or a park.
-   */
-  | { state: "refused"; reason: string; refusal: string; partial?: true };
+  | { state: "hidden" };
 
 export type TransitionResult =
   | { kind: "keep" }

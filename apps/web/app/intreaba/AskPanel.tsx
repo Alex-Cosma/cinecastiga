@@ -8,8 +8,12 @@ import { formatRon, formatRonFull, formatInt, cleanName } from "@/lib/format";
 import { encodeSpec, decodeSpec } from "@/lib/ask/permalink";
 import { isHistoricalProfile } from "@/lib/ask/population";
 import { NEWER_VERSION_LINK, validateSpec, type AskSpec } from "@/lib/ask/spec";
+import { BLOCK_FILTERS } from "@/lib/ask/filters/blocks";
+import { describeConditions } from "@/lib/ask/filters/describe";
+import { restoreLink } from "@/lib/ask/filters/restore";
+import { questionTitle } from "@/lib/ask/filters/title";
 import { entitySourceLink, entitySourceScope, yearSourceLink } from "@/lib/ask/source-spec";
-import { describeQuestion, localityScopeError, questionKey, type QuestionSpec } from "@/lib/ask/question-ui";
+import { questionKey, type QuestionSpec } from "@/lib/ask/question-ui";
 import { ANSWER_ERROR, breakdownLead, countWords, entityNoun, fileSlug, formatShare, isHumanError, rankingRest, rankingShare, shouldAutoRun, type RankingTotals } from "@/lib/ask/answer-text";
 import type { IntentResult } from "@/lib/intent/types";
 import { NATURAL_LANGUAGE_ENABLED, NATURAL_LANGUAGE_UNAVAILABLE } from "@/lib/ask/features";
@@ -26,7 +30,15 @@ import {
   TrendBlock,
   useTip,
 } from "./blocks";
-import QuestionBuilder from "./QuestionBuilder";
+import QuestionBuilder, { type StripPatch } from "./QuestionBuilder";
+import SaveQuestionButton from "./SaveQuestionButton";
+import type { SavedQuestion } from "./SavedQuestions";
+import AnswerStrip, { Crumbs, StripEnd, StripLabelled } from "./answer/AnswerStrip";
+import TotalLine from "./answer/TotalLine";
+import Segmented from "./builder/Segmented";
+import "./builder/filters-kit.css";
+import { answerCsv, type BandState } from "./answer-csv";
+import { STRIP_QUERY_KEYS, appliedAfterStrip, readThread, shownWords, threadCrumbs, threadWords, type AnswerVariants, type Thread } from "./answer-state";
 import EntityTypeahead from "./EntityTypeahead";
 import EvidenceDrawer from "./EvidenceDrawer";
 import { AnswerEvidence, useAnswerEvidence } from "./AnswerEvidence";
@@ -60,10 +72,33 @@ interface AskResponse {
   /** timeseries/trend: years the archive covers only in part (audit F19). */
   partialYears?: PartialYear[];
   displaySql?: string;
+  /** The words of each display state of the strip, computed on the server (plan §2.3): the map's lens. */
+  variants?: AnswerVariants;
   tookMs?: number;
   executedAt?: string;
 }
 export type PanelMode = "search" | "ask" | "build";
+/** The strip's data stream (kit §4: "Toate · Directe · Proceduri", the charts' channel colours as a legend). */
+const STREAM_OPTIONS = [
+  { value: "all", label: "Toate" },
+  { value: "da", label: "Directe", swatch: "da" as const },
+  { value: "contracts", label: "Proceduri", swatch: "proc" as const },
+];
+/**
+ * The lead of the total line (G8): the answer's total where it has one,
+ * "Selecția" where its rows are not one sum (a comparison, a trend, relations).
+ */
+function totalLead(data: BlockData): ReactNode {
+  const sum = (rows: readonly { value: number; count: number }[]) => rows.reduce((t, r) => ({ value: t.value + r.value, count: t.count + r.count }), { value: 0, count: 0 });
+  const total = data.block === "stat" ? data.stat
+    : data.block === "timeseries" ? sum(data.series)
+      : data.block === "map" ? sum([...data.counties, data.unknown])
+        : data.block === "breakdown" ? sum([...data.slices, data.other])
+          : data.block === "table" && data.totals && (data.page ?? 0) === 0 ? data.totals
+            : null;
+  if (!total) return "Selecția";
+  return <>Total: <span className="fk-num">{formatRonFull(total.value)}</span> · {countWords(total.count, "înregistrare", "înregistrări")}</>;
+}
 const EXAMPLES = [
   "Ce valoare au achizițiile de medicamente din Cluj, în 2026?",
   "Cine furnizează cel mai mult pentru spitale?",
@@ -114,6 +149,21 @@ export default function AskPanel({
   const [builderCollapsed, setBuilderCollapsed] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [layout, setLayout] = useState<"visual" | "table">("visual");
+  /**
+   * The question the answer on screen answers (plan §2.3): the server's resolved
+   * spec, then what the strip changed on it. Sources, Salvează, Trimite,
+   * Urmărește, captures and both exports read it, never resp.spec.
+   */
+  const [appliedSpec, setAppliedSpec] = useState<AskSpec | null>(null);
+  /** The key the strip last wrote, for the builder (no remount: its draft survives). */
+  const [stripPatch, setStripPatch] = useState<StripPatch | null>(null);
+  /** The breakdown's thread ("fir" in the URL): the levels above the one on screen. Gone at any new run. */
+  const [thread, setThread] = useState<Thread | null>(null);
+  /** A link the builder opens without running it (a refused condition): "Vezi răspunsul" stays. */
+  const [linkRuns, setLinkRuns] = useState(true);
+  const [answerSaved, setAnswerSaved] = useState<SavedQuestion | null>(null);
+  /** The stream chosen in the strip while its answer is on its way (the radio moves at once). */
+  const [streamShown, setStreamShown] = useState<string | null>(null);
   const [evidence, setEvidence] = useState<{
     spec: AskSpec;
     scope?: EvidenceScope;
@@ -163,6 +213,13 @@ export default function AskPanel({
       savedFilters?: EvidenceFilters,
       /** False when the page opens from a link: keep the question and heading in view. */
       scroll = true,
+      /**
+       * `strip`: the strip beside the answer changed one key of the applied question (a new
+       * query): the builder hears of it through StripPatch, not as a run of its draft.
+       * `thread`: the breakdown's thread this run keeps (a level opened from the answer);
+       * any other run drops it (plan §2.3).
+       */
+      opts: { strip?: { path: StripPatch["path"]; value: string }; thread?: Thread | null } = {},
     ) => {
       if (!NATURAL_LANGUAGE_ENABLED && typeof body.question === "string") {
         setError(NATURAL_LANGUAGE_UNAVAILABLE);
@@ -195,21 +252,30 @@ export default function AskPanel({
           return false;
         }
         setResp(answer);
-        if (body.spec && !("tablePage" in body)) {
+        // The executed identities, plus an explicit data stream the link asked for.
+        const submitted = body.spec as AskSpec | undefined;
+        const executed = submitted?.dataset && !answer.spec.dataset ? { ...answer.spec, dataset: submitted.dataset } : answer.spec;
+        setAppliedSpec(executed);
+        if (!("tablePage" in body)) setThread(opts.thread ?? null);
+        if (opts.strip) setStripPatch((current) => ({ seq: (current?.seq ?? 0) + 1, ...opts.strip! }));
+        else if (body.spec && !("tablePage" in body)) {
           setBuilderResolution({ submitted: body.spec as QuestionSpec, resolved: answer.spec });
         }
         // The composer owns draft/applied comparison, including edits made
         // during this request and normalized drafts restored from old links.
         if (typeof body.question === "string") {
           setBuilderInit(answer.spec);
+          setLinkRuns(true);
           setBuilderFromAi(true);
         }
         if (!("tablePage" in body)) setTableOpts({ page: 0 });
         const url = new URL(window.location.href);
         url.searchParams.delete("q");
-        // The executed identities, plus an explicit data stream the link asked for.
-        const submitted = body.spec as AskSpec | undefined;
-        url.searchParams.set("spec", encodeSpec(submitted?.dataset && !answer.spec.dataset ? { ...answer.spec, dataset: submitted.dataset } : answer.spec));
+        url.searchParams.set("spec", encodeSpec(executed));
+        if (!("tablePage" in body)) {
+          if (opts.thread?.steps.length) url.searchParams.set("fir", JSON.stringify(opts.thread));
+          else url.searchParams.delete("fir");
+        }
         url.searchParams.delete("drill");
         url.searchParams.delete("evidence");
         url.searchParams.delete("sourceFilters");
@@ -221,7 +287,7 @@ export default function AskPanel({
             ...(savedFilters ? { filters: savedFilters } : {}),
             title:
               answer.question ||
-              describeQuestion(answer.spec),
+              questionTitle(answer.spec),
           });
         if (!drill && scroll)
           // Two frames: the answer is rendered before it is brought under the sticky header.
@@ -269,6 +335,7 @@ export default function AskPanel({
   const adopt = useCallback((choice: IntentChoice) => {
     setChosen(choice);
     setBuilderInit(choice.spec);
+    setLinkRuns(true);
     setBuilderResolution(null);
     setBuilderFromAi(false);
     setBuilderOpen(true);
@@ -348,21 +415,20 @@ export default function AskPanel({
         setMode("ask");
         void execute({ question });
       } else if (encoded) {
-        const decoded = decodeSpec(encoded);
-        // A key this release reads but does not apply: say so, without a builder
-        // that would show the question without that condition (plan F0a).
-        const parsed = validateSpec(decoded, { refuseNewer: NEWER_VERSION_LINK });
-        if ("error" in parsed) {
-          setError(
-            parsed.newer ? parsed.error : "Legătura conține o întrebare invalidă. Poți construi una nouă mai jos.",
-          );
+        // The link opens in the builder with its conditions as chips; it runs only what /api/ask runs
+        // as it is. A key this release reads but does not apply keeps F0a's message, without a builder
+        // that would show the question without that condition (plan §2.4, F1b restore.ts).
+        const restored = restoreLink(decodeSpec(encoded));
+        if (restored.kind === "error") {
+          setError(restored.error);
           // Below the examples on a phone: bring the reason into view.
           revealError();
           return;
         }
-        setBuilderInit(parsed);
+        setBuilderInit(restored.spec);
+        setLinkRuns(restored.run);
         setBuilderOpen(true);
-        setBuilderCollapsed(params.get("drill") !== "1");
+        setBuilderCollapsed(restored.run && params.get("drill") !== "1");
         setMode("build");
         let scope: EvidenceScope | undefined;
         let sourceFilters: EvidenceFilters | undefined;
@@ -383,13 +449,11 @@ export default function AskPanel({
           setError("Selecția de surse din această legătură este invalidă.");
           return;
         }
-        // validateSpec omits the default stream; a link that names it keeps it.
-        const linkDataset = decoded && typeof decoded === "object" && "dataset" in decoded ? (decoded as { dataset?: unknown }).dataset : undefined;
-        const asGiven = typeof linkDataset === "string" && !parsed.dataset ? { ...parsed, dataset: linkDataset as AskSpec["dataset"] } : parsed;
-        // An old link with a locality its view cannot honour opens in the builder, which explains the
-        // condition to remove; it is not run (the API would refuse it too).
-        if (localityScopeError(asGiven as AskSpec)) { setBuilderCollapsed(false); return; }
-        void execute({ spec: asGiven }, params.get("drill") === "1", scope, sourceFilters);
+        // A refused condition (or a locality its view cannot honour) waits in the builder, which says
+        // why on its chip; the answer of another question does not stay under it.
+        if (!restored.run) { setResp(null); setAppliedSpec(null); return; }
+        const link = restored.link as unknown as AskSpec;
+        void execute({ spec: link }, params.get("drill") === "1", scope, sourceFilters, true, { thread: readThread(params.get("fir"), link) });
       }
     };
     restore();
@@ -400,14 +464,47 @@ export default function AskPanel({
       if (toastTimer.current) clearTimeout(toastTimer.current);
     };
   }, [execute, interpret, revealError]);
-  const applied = resp?.spec;
-  // One title per answered spec: the same words whether the answer came from
-  // typed text, a builder edit or a shared link, in every view, the drawer and the export.
+  const applied = appliedSpec ?? undefined;
+  // One title per answered spec, the builder's sentence and the conditions under it (G7): the same
+  // words whether the answer came from typed text, a builder edit or a shared link, in every view,
+  // the drawer and the export.
   const title =
     resp?.question ||
     (applied
-      ? describeQuestion(applied)
+      ? questionTitle(applied)
       : "Răspunsul tău");
+  // The strip beside the answer (P6): the keys BLOCK_FILTERS puts there, on the applied question.
+  const stripKeys = applied ? BLOCK_FILTERS[applied.block]?.strip ?? [] : [];
+  const shown = resp && applied ? shownWords(resp, applied) : { pills: [] as string[] };
+  const crumbs = thread && applied ? threadCrumbs(thread, applied) : null;
+  const band: BandState = applied ? {
+    ...(stripKeys.includes("dataset") ? { stream: (applied.dataset ?? "all") as NonNullable<BandState["stream"]> } : {}),
+    ...(stripKeys.includes("measure") ? { lens: applied.measure === "count" ? "count" as const : "value" as const } : {}),
+    ...(thread ? { thread: threadWords(thread) } : {}),
+  } : {};
+  const appliedKey = applied ? questionKey(applied) : "";
+  useEffect(() => { setStreamShown(null); setAnswerSaved(null); }, [appliedKey]);
+  /**
+   * The strip changed one key of the applied question (plan §2.3): the data
+   * stream is a new query (sources, caveats and SQL change); the map's lens
+   * switches on the data already fetched, with the server's words for it
+   * (variants). Either way the builder gets the key and keeps its draft.
+   */
+  const applyStripChange = (path: StripPatch["path"], value: string) => {
+    if (!applied) return;
+    const next = appliedAfterStrip(applied, path, value);
+    if (STRIP_QUERY_KEYS.has(path)) {
+      // A failed or refused query puts the radio back on the answer on screen (a newer click keeps its own).
+      void execute({ spec: next }, false, undefined, undefined, false, { strip: { path, value }, thread })
+        .then((ok) => { if (!ok) setStreamShown((shown) => shown === value ? null : shown); });
+      return;
+    }
+    setAppliedSpec(next);
+    setStripPatch((current) => ({ seq: (current?.seq ?? 0) + 1, path, value }));
+    const url = new URL(window.location.href);
+    url.searchParams.set("spec", encodeSpec(next));
+    window.history.replaceState(null, "", url);
+  };
   const openEvidence = useCallback(
     (spec?: AskSpec, scope?: EvidenceScope, label?: string) => {
       const selected = spec ?? applied;
@@ -492,6 +589,8 @@ export default function AskPanel({
   const data = resp?.data,
     count = data ? sourceCount(data) : null;
   const isProfile = !!applied && isHistoricalProfile(applied);
+  // What changes the total outside the sentence (G8), on the applied question.
+  const totalWords = applied ? describeConditions(applied).totalWords : [];
   return (
     <div
       className={`ask cq-app${centered ? " ask-centered" : ""}`}
@@ -614,7 +713,8 @@ export default function AskPanel({
             running={loading}
             onDraftChange={setDirty}
             onRun={(spec) => execute({ spec })}
-            initialApplied={!chosen}
+            initialApplied={!chosen && linkRuns}
+            stripPatch={stripPatch}
             {...(chosen && intent ? {
               intro: <IntentIntro />,
               outro: <IntentOutro result={intent} chosen={chosen} onAdopt={adopt} />,
@@ -657,7 +757,7 @@ export default function AskPanel({
               <div>
                 <h2 id="raspuns-titlu" tabIndex={-1}>{title}</h2>
                 <div className="cq-scope">
-                  {(resp.pills ?? []).map((p) => (
+                  {shown.pills.map((p) => (
                     <span key={p}>{p}</span>
                   ))}
                 </div>
@@ -686,13 +786,14 @@ export default function AskPanel({
                   <ShareIcon />
                   Trimite
                 </button>
+                <SaveQuestionButton spec={applied} active={answerSaved} onSaved={setAnswerSaved} disabled={loading} />
                 <FollowButton key={JSON.stringify(applied)} spec={applied} title={title} />
                 <ClipButton
                   kind="query"
                   spec={applied}
                   snapshot={{
                     title,
-                    pills: resp.pills ?? [],
+                    pills: shown.pills,
                     headline:
                       count === null
                         ? title
@@ -700,32 +801,52 @@ export default function AskPanel({
                     result: data,
                     executedAt: resp.executedAt,
                     caveats: resp.caveats ?? [],
-                    displaySql: resp.displaySql,
+                    displaySql: shown.displaySql,
+                    // The strip as it was seen: the breakdown's thread is in the URL, not in the spec.
+                    ...(thread ? { thread: threadWords(thread) } : {}),
                   }}
                   label={title}
                 />
               </div>
             </div>
             {isProfile && <ProfileNotice />}
-            {["table", "timeseries", "map"].includes(data.block) && (
-              <div className="cq-display">
-                <div>
-                  <button
-                    type="button"
-                    aria-pressed={layout === "visual"}
-                    onClick={() => setLayout("visual")}
-                  >
-                    Vizual
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={layout === "table"}
-                    onClick={() => setLayout("table")}
-                  >
-                    Tabel
-                  </button>
-                </div>
-              </div>
+            {(stripKeys.length > 0 || crumbs || ["table", "timeseries", "map"].includes(data.block)) && (
+              <div className="fk cq-strip"><AnswerStrip>
+                {stripKeys.includes("dataset") && (
+                  <Segmented
+                    label="Ce fel de achiziții"
+                    value={streamShown ?? applied.dataset ?? "all"}
+                    options={STREAM_OPTIONS}
+                    onChange={(value) => {
+                      if (value === (streamShown ?? applied.dataset ?? "all")) return;
+                      setStreamShown(value);
+                      applyStripChange("dataset", value);
+                    }}
+                  />
+                )}
+                {stripKeys.includes("measure") && data.block === "map" && (
+                  <StripLabelled before="Harta arată">
+                    <Segmented
+                      label="Harta arată"
+                      value={applied.measure === "count" ? "count" : "value"}
+                      options={[{ value: "value", label: "Valoare" }, { value: "count", label: "Înregistrări" }]}
+                      onChange={(value) => { if (value !== (applied.measure === "count" ? "count" : "value")) applyStripChange("measure", value); }}
+                    />
+                  </StripLabelled>
+                )}
+                {crumbs && <Crumbs label="Domenii" items={crumbs.items} current={crumbs.current} />}
+                {["table", "timeseries", "map"].includes(data.block) && (
+                  <StripEnd>
+                    <Segmented
+                      label="Cum arată răspunsul"
+                      size="sm"
+                      value={layout}
+                      options={[{ value: "visual", label: "Vizual" }, { value: "table", label: "Tabel" }]}
+                      onChange={(value) => setLayout(value as "visual" | "table")}
+                    />
+                  </StripEnd>
+                )}
+              </AnswerStrip></div>
             )}
             {data.block === "breakdown" && breakdownLead(data.slices, data.other) && (
               <p className="cq-lead">{breakdownLead(data.slices, data.other)}</p>
@@ -739,6 +860,7 @@ export default function AskPanel({
                   <RankingBars
                     rows={data.rows}
                     spec={applied}
+                    conditions={totalWords}
                     totals={(data.page ?? 0) === 0 && !tableOpts.sort ? data.totals : undefined}
                     onSources={openEvidence}
                   />
@@ -810,6 +932,7 @@ export default function AskPanel({
                   slices={data.slices}
                   other={data.other}
                   spec={applied}
+                  thread={thread}
                 />
               )}
               {data.block === "scatter" && (
@@ -841,6 +964,10 @@ export default function AskPanel({
                 />
               )}
             </div>
+            {/* G8: what changed the total outside the sentence; the ranking says it in its own total line. */}
+            {totalWords.length > 0 && !(data.block === "table" && layout === "visual") && (
+              <div className="fk cq-total"><TotalLine conditions={totalWords}>{totalLead(data)}</TotalLine></div>
+            )}
             {/* How the number was built reads after the answer, not before it. */}
             {(resp.caveats?.length ?? 0) > 0 && (
               <details
@@ -862,7 +989,7 @@ export default function AskPanel({
                 <details>
                   <summary>Interogarea SQL · avansat</summary>
                   <pre>
-                    <code>{resp.displaySql}</code>
+                    <code>{shown.displaySql ?? resp.displaySql}</code>
                   </pre>
                 </details>
               )}
@@ -878,12 +1005,13 @@ export default function AskPanel({
                 <CopyIcon />
                 Copiază linkul
               </button>
-              <AnswerExports key={encodeSpec(applied)} spec={applied} disabled={loading} onResult={()=>exportCsv(data,applied,title)}/>
+              <AnswerExports key={encodeSpec(applied)} spec={applied} disabled={loading} onResult={()=>downloadCsv(answerCsv(data,applied,title,band))}/>
               {mode === "ask" && (
                 <button
                   type="button"
                   onClick={() => {
                     setBuilderInit(applied);
+                    setLinkRuns(true);
                     setBuilderFromAi(true);
                     setMode("build");
                     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -916,11 +1044,14 @@ function RankingBars({
   rows,
   spec,
   totals,
+  conditions = [],
   onSources,
 }: {
   rows: TableRow[];
   spec: AskSpec;
   totals?: RankingTotals | undefined;
+  /** What changed the total outside the sentence (G8): the total line says it. */
+  conditions?: readonly string[];
   onSources: (spec: AskSpec, scope?: EvidenceScope, title?: string) => void;
 }) {
   // Shares are of money: a per-capita ranking has no meaningful "% din total".
@@ -1003,7 +1134,10 @@ function RankingBars({
         )}
       </div>
       {/* A consortium's value is split equally among its winners, so some firms show the same amount. */}
-      {(hasTotal || spec.dim === "supplier") && (
+      {conditions.length > 0 ? <>
+        <div className="fk cq-total"><TotalLine conditions={conditions}>{hasTotal ? <>Total: <span className="fk-num">{formatRonFull(shareTotals.value)}</span> la {entityNoun(spec.dim, shareTotals.entities)}</> : "Selecția"}</TotalLine></div>
+        {spec.dim === "supplier" && <p className="ask-fine cq-total-line">consorții: cote egale <Term id="consortiu" tip /></p>}
+      </> : (hasTotal || spec.dim === "supplier") && (
         <p className="ask-fine cq-total-line">
           {hasTotal && <>Total: {formatRonFull(shareTotals.value)} la {entityNoun(spec.dim, shareTotals.entities)} · valoare înregistrată, nu plăți</>}
           {hasTotal && spec.dim === "supplier" && " · "}
@@ -1403,12 +1537,6 @@ function Loader({ label }: { label: string }) {
   );
 }
 
-function csvQ(s: string | null | undefined): string {
-  const text = s ?? "";
-  const safe = /^[\s\uFEFF]*[=+@-]/.test(text) ? "'" + text : text;
-  return `"${safe.replaceAll('"', '""')}"`;
-}
-
 /** The link that reopens this answer (the page runs it on arrival). */
 function answerLink(spec: AskSpec): string {
   return `${window.location.origin}/intreaba?spec=${encodeURIComponent(encodeSpec(spec))}`;
@@ -1443,120 +1571,12 @@ function PencilIcon() {
   );
 }
 
-function exportCsv(data: BlockData, spec: AskSpec, title: string) {
-  let lines: string[];
-  switch (data.block) {
-    case "table":
-      lines = [
-        "nume,judet,valoare_lei,achizitii,populatie",
-        ...data.rows.map(
-          (r) =>
-            `${csvQ(r.name)},${csvQ(r.county)},${r.value},${r.count},${r.population ?? ""}`,
-        ),
-      ];
-      break;
-    case "timeseries":
-      lines = [
-        "an,valoare_lei,achizitii",
-        ...data.series.map((p) => `${p.year},${p.value},${p.count}`),
-      ];
-      break;
-    case "map":
-      lines = [
-        "judet,valoare_lei,achizitii",
-        ...data.counties.map((c) => `${csvQ(c.county)},${c.value},${c.count}`),
-        ...(data.unknown.count > 0
-          ? [`${csvQ("Județ necunoscut")},${data.unknown.value},${data.unknown.count}`]
-          : []),
-      ];
-      break;
-    case "stat":
-      lines = [
-        "valoare_lei,achizitii",
-        `${data.stat.value},${data.stat.count}`,
-      ];
-      break;
-    case "compare":
-      // Selection totals by stream; the risk columns are the historical profile.
-      lines = [
-        "nume,judet,valoare_lei,inregistrari,valoare_proceduri_lei,contracte_proceduri,o_singura_oferta,oferte_cunoscute,valoare_directe_lei,achizitii_directe,parteneri,cri_istoric,semnale_istorice,flags",
-        ...data.entities.map(
-          (e) =>
-            [csvQ(e.name), csvQ(e.county), e.value, e.count, e.streams?.contracts.value ?? "", e.streams?.contracts.count ?? "",
-              e.streams?.contracts.singleBid ?? "", e.streams?.contracts.bidsKnown ?? "", e.streams?.da.value ?? "", e.streams?.da.count ?? "",
-              e.partners ?? "", e.cri ?? "", e.hasProfile === false ? "" : e.nFlags, csvQ(e.flags.join("|"))].join(","),
-        ),
-      ];
-      break;
-    case "distribution":
-      lines = [
-        "cri_de,cri_pana,entitati",
-        ...data.distribution.buckets.map((b) => `${b.from},${b.to},${b.n}`),
-      ];
-      break;
-    case "breakdown":
-      lines = [
-        "categorie,cod,valoare_lei,achizitii",
-        ...data.slices.map(
-          (s2) => `${csvQ(s2.name)},${s2.code},${s2.value},${s2.count}`,
-        ),
-        `"alte categorii",,${data.other.value},${data.other.count}`,
-      ];
-      break;
-    case "scatter":
-      lines = [
-        "nume,judet,valoare_lei,cri,semnale",
-        ...data.points.map(
-          (p) =>
-            `${csvQ(p.name)},${csvQ(p.county)},${p.value},${p.cri},${p.nFlags}`,
-        ),
-      ];
-      break;
-    case "sankey":
-      lines = [
-        "partener,categorie,valoare_lei",
-        ...data.flows.map(
-          (f) => `${csvQ(f.partner)},${csvQ(f.category)},${f.value}`,
-        ),
-      ];
-      break;
-    case "network":
-      lines = [
-        "partener,valoare_lei,achizitii",
-        ...data.nodes.map((n) => `${csvQ(n.name)},${n.value},${n.count}`),
-      ];
-      break;
-    case "entity_card": {
-      const c = data.card;
-      lines = [
-        isHistoricalProfile(spec) ? "nume,judet,valoare_lei,achizitii,cri,semnale,flags" : "nume,judet,valoare_lei,inregistrari",
-        `${csvQ(c.name)},${csvQ(c.county)},${c.value},${c.count}${isHistoricalProfile(spec) ? `,${c.cri ?? ""},${c.nFlags},${csvQ(c.flags.join("|"))}` : ""}`,
-      ];
-      break;
-    }
-    case "fact_check":
-      lines = [
-        "cod,data,ce,valoare_lei",
-        ...data.fact.samples.map(
-          (s2) =>
-            `${csvQ(s2.daCode)},${csvQ(s2.date)},${csvQ(s2.cpvName)},${s2.value}`,
-        ),
-      ];
-      break;
-    case "trend":
-      lines = [
-        `nume,judet,${data.yearA},${data.yearB}`,
-        ...data.rowsTrend.map(
-          (r) => `${csvQ(r.name)},${csvQ(r.county)},${r.valueA},${r.valueB}`,
-        ),
-      ];
-      break;
-  }
-  // Same file conventions as the source export: UTF-8 BOM (Excel keeps the diacritics) and CRLF.
-  const blob = new Blob(["﻿" + lines.join("\r\n") + "\r\n"], { type: "text/csv;charset=utf-8" });
+/** The shown result as a file (answer-csv.ts): the browser saves it under its name. */
+function downloadCsv(file: { text: string; filename: string }) {
+  const blob = new Blob([file.text], { type: "text/csv;charset=utf-8" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `${fileSlug(title)}.csv`;
+  a.download = file.filename;
   a.click();
   URL.revokeObjectURL(a.href);
 }

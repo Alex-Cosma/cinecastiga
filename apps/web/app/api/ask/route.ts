@@ -115,6 +115,12 @@ export async function POST(req: Request) {
       );
     }
     devlog("ask", { question, spec, ok: true, tookMs: result.tookMs });
+    // The words of each display state of the strip, with the same functions (plan §2.3): the map's lens.
+    const variants = result.displaySqlByMeasure ? {
+      measure: Object.fromEntries((["value", "count"] as const).map((measure) => [measure, {
+        pills: buildPills({ ...spec, measure }, grounding), displaySql: result.displaySqlByMeasure![measure],
+      }])),
+    } : undefined;
     return NextResponse.json({
       ok: true,
       question,
@@ -126,6 +132,7 @@ export async function POST(req: Request) {
       data: result.data,
       ...(result.partialYears ? { partialYears: result.partialYears } : {}),
       displaySql: result.displaySql,
+      ...(variants ? { variants } : {}),
       tookMs: result.tookMs,
     });
   } catch (e) {

@@ -2,7 +2,8 @@ import { randomUUID } from "node:crypto";
 import { getMonitoringRefreshStatus, withMonitoringSnapshot, type DbSql } from "@seap/db";
 import { ground } from "./ask/ground";
 import { resolvedSpec } from "./ask/resolved-spec";
-import { describeQuestion, localityScopeError, questionKey } from "./ask/question-ui";
+import { localityScopeError, questionKey } from "./ask/question-ui";
+import { questionTitle } from "./ask/filters/title";
 import { parseSpec } from "./ask/spec";
 import { runRows, runSpec, useSnapshotCoverage } from "./ask/compile";
 import { captureTransaction } from "./evidence-captures";
@@ -61,7 +62,7 @@ export async function createMonitoringWatch(userId:string,input:unknown,sql=moni
     const answer=await runSpec(database,spec,grounding);if("error"in answer)throw new MonitoringError(answer.error,422);
     const rows=await runRows(database,spec,grounding,0,{...scope.options,capture:{maxRows:MONITORING_MAX_ROWS,persist:async()=>{}}});if("error"in rows)throw new MonitoringError(rows.error,422);
     if(rows.total>MONITORING_MAX_ROWS)throw new MonitoringError(`Selecția are ${rows.total.toLocaleString("ro-RO")} de înregistrări. Restrânge perioada, instituția sau domeniul la cel mult 200.000 înainte de activare. Nicio selecție nu este trunchiată.`,422);
-    const title=monitoringTitle(body.title,describeQuestion(spec).slice(0,200));
+    const title=monitoringTitle(body.title,questionTitle(spec).slice(0,200));
     const [watch]=await q`insert into app.monitoring_watches(id,owner_user_id,title,spec,options,grounding,scope_notes,preferences,recipe_id,recipe_version)
       values(${randomUUID()},${userId},${title},${json(spec)}::jsonb,${json(scope.options)}::jsonb,${json(boundGrounding)}::jsonb,${json([...pinnedNotes,...answer.caveats,...rows.scopeNotes])}::jsonb,${json(prefs)}::jsonb,${recipe.recipeId},${recipe.recipeVersion}) returning *`;
     return watchSummary(watch!);

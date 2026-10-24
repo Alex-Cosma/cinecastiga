@@ -1,21 +1,27 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { cloneQuestion, describeQuestion, questionKey, type QuestionSpec } from "@/lib/ask/question-ui";
+import { cloneQuestion, questionKey, type QuestionSpec } from "@/lib/ask/question-ui";
+import { questionTitle } from "@/lib/ask/filters/title";
 import { encodeSpec } from "@/lib/ask/permalink";
 import { validateSpec } from "@/lib/ask/spec";
 import { useViewer } from "@/lib/use-viewer";
 import { localQuestionStorage, LocalQuestionError, saveLocalQuestion, suggestLocalCopyTitle } from "@/lib/ask/local-questions";
+import Term from "@/components/Term";
 import type { SavedQuestion } from "./SavedQuestions";
 
-type Props = { spec: QuestionSpec; disabled: boolean; active: SavedQuestion | null; onSaved: (question: SavedQuestion) => void };
+/**
+ * `unapplied`: the builder's draft differs from the answer on screen; the button saves the draft and says so
+ * ("Salvează · neaplicată", plan §2.3). The answer's own button saves the applied question.
+ */
+type Props = { spec: QuestionSpec; disabled: boolean; active: SavedQuestion | null; onSaved: (question: SavedQuestion) => void; unapplied?: boolean };
 export default function SaveQuestionButton(props:Props) {
   const viewer = useViewer();
   const local = !viewer.userId;
   const active = props.active && (local ? props.active.storage === "local" : props.active.ownerId === viewer.userId) ? props.active : null;
   return <SaveQuestionForm key={viewer.userId ?? "device"} {...props} active={active} userId={viewer.userId} disabled={props.disabled || !viewer.ready || !!viewer.error} />;
 }
-function SaveQuestionForm({ spec, disabled, active, onSaved, userId }: Props & { userId:string | undefined }) {
+function SaveQuestionForm({ spec, disabled, active, onSaved, userId, unapplied = false }: Props & { userId:string | undefined }) {
   const local = !userId;
   const dialog = useRef<HTMLDialogElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -39,7 +45,7 @@ function SaveQuestionForm({ spec, disabled, active, onSaved, userId }: Props & {
     setSnapshot(cloneQuestion(spec));
     setSnapshotActive(active);
     setCopyMode(false); setTitleTaken(false);
-    setTitle(active?.title ?? describeQuestion(spec).slice(0, 160));
+    setTitle(active?.title ?? questionTitle(spec).slice(0, 160));
     setError("");
     setLogin(false);
     dialog.current?.showModal();
@@ -116,12 +122,15 @@ function SaveQuestionForm({ spec, disabled, active, onSaved, userId }: Props & {
 
   const next = `/intreaba?spec=${encodeURIComponent(encodeSpec(snapshot))}&mode=builder`;
   return <>
+    <span className="cq-save-wrap">
     <button ref={trigger} type="button" className="cq-save-question" disabled={disabled} aria-disabled={saved || undefined} aria-haspopup="dialog" onClick={() => { if (!saved) open(); }}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         {saved ? <path d="m5 12 4 4L19 6" /> : <path d="M6 4h12v16l-6-4-6 4V4Z" />}
       </svg>
-      <span aria-live="polite">{saved ? "Întrebare salvată" : active ? "Salvează modificările" : "Salvează întrebarea"}</span>
+      <span aria-live="polite">{saved ? "Întrebare salvată" : active ? "Salvează modificările" : unapplied ? "Salvează · neaplicată" : "Salvează întrebarea"}</span>
     </button>
+    {unapplied && !saved && <Term tip title="Salvează · neaplicată" text="Salvezi întrebarea din propoziție, nu răspunsul afișat." />}
+    </span>
     <dialog ref={dialog} className="cq-save-dialog" aria-labelledby={headingId} aria-describedby={descriptionId} onCancel={event => { event.preventDefault(); close(); }} onClick={event => {
       if (event.target !== event.currentTarget) return;
       const rect = event.currentTarget.getBoundingClientRect();

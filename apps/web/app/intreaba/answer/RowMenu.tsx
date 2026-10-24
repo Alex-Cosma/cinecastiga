@@ -17,8 +17,8 @@ import { menuButtonKey, menuKey } from "../builder/keyboard";
 export interface RowAction {
   id: string;
   label: string;
-  /** R8: → records, − leaves the calculation, › another answer, ↗ another page. */
-  glyph: "→" | "−" | "›" | "↗";
+  /** R8: → records, − leaves the calculation, › another answer, ↗ another page, ▾ a window (the builder's "⋯ › Selecție avansată"). */
+  glyph: "→" | "−" | "›" | "↗" | "▾";
   /** A page of the site (↗); otherwise onSelect. */
   href?: string;
   onSelect?: () => void;

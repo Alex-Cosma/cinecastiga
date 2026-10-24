@@ -2,20 +2,20 @@ import { countWords } from "../answer-text";
 import type { Grounding } from "../ground";
 import { countyIsFirmSeat, isHistoricalProfile, type PopulationCondition, type QueryPopulation } from "../population";
 import {
-  KIND_OPTIONS, KIND_WORDS, countyWords, describeQuestion, entityLabel, focalRole, periodLabel, subjectWords,
+  KIND_OPTIONS, KIND_WORDS, countyWords, entityLabel, focalRole, periodLabel, subjectWords,
   type QuestionSpec,
 } from "../question-ui";
 import { countyDisplay } from "../resolved-spec";
 import {
-  NEWER_VERSION_QUESTION, namedKind, unimplementedSpecKeys, validateSpec, type AskSpec, type AuthorityKind, type ParsedAuthorityKind,
+  namedKind, type AskSpec, type AuthorityKind, type ParsedAuthorityKind,
 } from "../spec";
 import { formatExactDecimal, formatInt } from "../../format";
 import { filterContext } from "./context";
-import { selectionOrigin, splitExcluded, exclusionWords, type OriginHint, type OriginWords } from "./origin";
+import { exclusionWords, isDaBoundPopulation, selectionOrigin, splitExcluded, type OriginHint, type OriginWords } from "./origin";
 import { FILTERS, SPEC_PATH_OWNERS, presentPaths } from "./registry";
 import { sentenceTokens } from "./sentence";
 import type { FilterId, FilterSpec } from "./types";
-import { adminPhrase, employeesCount, employeesPhrase, localityName, periodWordsWith, streamPhrase, titleTailParts } from "./words";
+import { adminPhrase, employeesCount, employeesPhrase, localityName, periodWordsWith, streamPhrase } from "./words";
 
 /*
  * describeConditions (plan §2.2 describe.ts, §0.4): every condition of a
@@ -78,10 +78,12 @@ export interface DescribedConditions {
   receipt: PopulationReceipt | null;
   summary: string[];
   caveats: string[];
-  /** The title's tail after the period, without the leading comma (G7). */
+  /** The title's tail: the conditions under the sentence, without the leading comma (G7, R11; title.ts). */
   tail: string;
   /** What changes the total outside the sentence, or null (G8, component 21). */
   totalLine: string | null;
+  /** The same, one condition each: the total line draws them apart ("· fără SYSTRA · firme cu 1–9 angajați"). */
+  totalWords: string[];
 }
 
 /** Historical risk profiles: the archive of accepted direct acquisitions (entity_flags, runRows), whatever the link's stream. */
@@ -333,13 +335,41 @@ function outsideSentence(spec: Spec): FilterId[] {
   return PILL_ORDER.filter((id) => ids.has(id));
 }
 
-/** A saved question in the list (SavedQuestions): its title, then the conditions a title does not repeat. */
-export function savedQuestionSummary(raw: unknown): string {
-  const spec = validateSpec(raw);
-  if ("error" in spec) return "Deschide pentru a verifica această întrebare.";
-  // Its sentence here would leave out the condition this release does not read.
-  if (unimplementedSpecKeys(spec).length) return NEWER_VERSION_QUESTION;
-  return [describeQuestion(spec), ...describeConditions(spec).summary].join(" · ");
+/** The shape of the answer, not a condition (the sentence's subject, its axis, the presentation line). */
+const SHAPE: ReadonlySet<FilterId> = new Set(["dim", "measure", "topN", "rankBy", "comparisonMode"]);
+
+/**
+ * The title's tail (G7, R11): the conditions under the sentence (P4), in the
+ * kit's order: the exclusions ("fără SYSTRA"), then what the engine applies
+ * and the sentence does not say, a link's chip, another page's selection, a
+ * partners' row, "Selecție avansată". What only the profile line or the
+ * engine's own ceiling says has no words here (legacyConditions' noChip).
+ */
+function titleTailWords(spec: Spec, byId: Partial<Record<FilterId, ConditionWords>>, labels: ConditionLabels): string[] {
+  const ctx = filterContext(spec);
+  const said = new Set<FilterId>();
+  for (const token of sentenceTokens(spec, ctx, { cpvName: labels.cpvName })) if (token.kind !== "text") for (const id of token.says) said.add(id);
+  if (said.has("locality")) said.add("county");
+  const owners = new Set<FilterId>();
+  for (const path of presentPaths(spec)) {
+    const owner = SPEC_PATH_OWNERS[path];
+    if (!owner || owner === "question" || SHAPE.has(owner) || said.has(owner) || FILTERS[owner].engine[ctx.form] === undefined) continue;
+    if (owner === "dataset" && (spec.dataset === "all" || ctx.profile && spec.dataset !== "contracts")) continue;
+    if (owner === "population" && isDaBoundPopulation(spec)) continue;
+    owners.add(owner);
+  }
+  const words: string[] = [];
+  const origin = byId.population?.origin;
+  if (owners.has("population")) {
+    if (origin) words.push(`${origin.label.charAt(0).toLocaleLowerCase("ro-RO")}${origin.label.slice(1)}: ${origin.words}`);
+    else {
+      const { excluded, rest } = splitExcluded(spec.population);
+      words.push(...exclusionWords(excluded));
+      if (rest) words.push(`selecție precisă, ${countWords(conditionsOf(rest), "condiție", "condiții")}`);
+    }
+  }
+  for (const id of PILL_ORDER) if (id !== "population" && owners.has(id) && byId[id]?.words) words.push(byId[id]!.words!);
+  return words;
 }
 
 /** Every condition of a spec, in the words of each place (plan §2.2). */
@@ -361,7 +391,8 @@ export function describeConditions(input: QuestionSpec | AskSpec, labels: Condit
     receipt: receiptPopulation ? receiptOf(receiptPopulation) : null,
     summary: pick(SUMMARY_ORDER, "summary"),
     caveats: pick(CAVEAT_ORDER, "caveat"),
-    tail: titleTailParts(spec).join(", "),
+    tail: titleTailWords(spec, byId, labels).join(", "),
     totalLine: total.length ? total.join(", ") : null,
+    totalWords: total,
   };
 }
