@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { formatRon, formatRonFull, formatInt, cleanName } from "@/lib/format";
 import { countWords, formatChange, formatDecimal, formatShare } from "@/lib/ask/answer-text";
 import { encodeSpec } from "@/lib/ask/permalink";
-import { breakdownDeeperSpec } from "@/lib/ask/source-spec";
+import { deeperThread, threadHref, type Thread } from "./answer-state";
 
 /**
  * House rule (docs/PRINCIPLES.md): every graph element answers on hover with an
@@ -241,19 +241,22 @@ export function BreakdownBlock({
   slices,
   other,
   spec,
+  thread = null,
 }: {
   slices: BreakdownSlice[];
   other: { value: number; count: number };
   spec: AskSpec;
+  /** The levels above this one ("fir"): a deeper level carries them, so the strip can lead back. */
+  thread?: Thread | null;
 }) {
   const t = useTip();
   const evidence = useAnswerEvidence();
   // slice click: while the stem can go deeper, open the same breakdown one
   // CPV level down; at a full 8-digit code, open the transactions instead.
   const canDeepen = (code: string): boolean => code.length < 8;
-  const sliceUrl = (code: string): string => {
+  const sliceUrl = (code: string, name: string): string => {
     if (!canDeepen(code)) return `/intreaba?spec=${encodeURIComponent(encodeSpec(spec))}&drill=1&evidence=${encodeURIComponent(JSON.stringify({ cpvPrefixes:[code] }))}`;
-    return `/intreaba?spec=${encodeURIComponent(encodeSpec(breakdownDeeperSpec(spec, code)))}`;
+    return threadHref(spec, code, deeperThread(thread, spec, code, name));
   };
 
   const total = slices.reduce((a, s) => a + s.value, 0) + other.value;
@@ -292,7 +295,7 @@ export function BreakdownBlock({
             <a
               key={s.name}
               className="seg"
-              href={sliceUrl(s.code)}
+              href={sliceUrl(s.code, s.name)}
               style={{
                 width: `${(s.value / total) * 100}%`,
                 background: s.color,
@@ -318,7 +321,7 @@ export function BreakdownBlock({
             <span className="sw" style={{ background: s.color }} />
             <span className="nm">
               {s.code ? (
-                <a href={sliceUrl(s.code)}>
+                <a href={sliceUrl(s.code, s.name)}>
                   {s.name}
                 </a>
               ) : (

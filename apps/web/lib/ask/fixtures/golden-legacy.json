@@ -601,7 +601,19 @@
       "count": 3
      }
     },
-    "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by county;"
+    "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by county;",
+    "variants": {
+     "measure": {
+      "value": {
+       "pills": ["pe județe (hartă)","Total (lei)","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
+       "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by county;"
+      },
+      "count": {
+       "pills": ["pe județe (hartă)","numărul de înregistrări","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
+       "displaySql": "select county, count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by county;"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -3026,7 +3038,19 @@
       "count": 3
      }
     },
-    "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by county;"
+    "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by county;",
+    "variants": {
+     "measure": {
+      "value": {
+       "pills": ["pe județe (hartă)","Total (lei)","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
+       "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by county;"
+      },
+      "count": {
+       "pills": ["pe județe (hartă)","numărul de înregistrări","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
+       "displaySql": "select county, count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by county;"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -7259,7 +7283,19 @@
       "count": 3
      }
     },
-    "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by county;"
+    "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by county;",
+    "variants": {
+     "measure": {
+      "value": {
+       "pills": ["pe județe (hartă)","Total (lei)","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
+       "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by county;"
+      },
+      "count": {
+       "pills": ["pe județe (hartă)","numărul de înregistrări","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
+       "displaySql": "select county, count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by county;"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -8828,7 +8864,31 @@
       "count": 0
      }
     },
-    "displaySql": "select county, count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id in (select authority_id from (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\n  where closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  group by authority_id having count(*) >= 4)\ngroup by county;"
+    "displaySql": "select county, count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id in (select authority_id from (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\n  where closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  group by authority_id having count(*) >= 4)\ngroup by county;",
+    "variants": {
+     "measure": {
+      "value": {
+       "pills": [
+        "pe județe (hartă)",
+        "Total (lei)",
+        "toți anii disponibili",
+        "toate sursele: achiziții directe + contracte prin proceduri",
+        "instituții cu ≥ 4 înregistrări în selecție"
+       ],
+       "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id in (select authority_id from (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\n  where closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  group by authority_id having count(*) >= 4)\ngroup by county;"
+      },
+      "count": {
+       "pills": [
+        "pe județe (hartă)",
+        "numărul de înregistrări",
+        "toți anii disponibili",
+        "toate sursele: achiziții directe + contracte prin proceduri",
+        "instituții cu ≥ 4 înregistrări în selecție"
+       ],
+       "displaySql": "select county, count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id in (select authority_id from (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\n  where closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  group by authority_id having count(*) >= 4)\ngroup by county;"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -11888,7 +11948,31 @@
       "count": 0
      }
     },
-    "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and ((coalesce(lower(unaccent(county)) in ('cluj', 'buzau'), false)))\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by county;"
+    "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and ((coalesce(lower(unaccent(county)) in ('cluj', 'buzau'), false)))\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by county;",
+    "variants": {
+     "measure": {
+      "value": {
+       "pills": [
+        "pe județe (hartă)",
+        "Total (lei)",
+        "toți anii disponibili",
+        "toate sursele: achiziții directe + contracte prin proceduri",
+        "Selecție precisă · 1 condiție în 1 grup"
+       ],
+       "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and ((coalesce(lower(unaccent(county)) in ('cluj', 'buzau'), false)))\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by county;"
+      },
+      "count": {
+       "pills": [
+        "pe județe (hartă)",
+        "numărul de înregistrări",
+        "toți anii disponibili",
+        "toate sursele: achiziții directe + contracte prin proceduri",
+        "Selecție precisă · 1 condiție în 1 grup"
+       ],
+       "displaySql": "select county, count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and ((coalesce(lower(unaccent(county)) in ('cluj', 'buzau'), false)))\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by county;"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -21897,7 +21981,19 @@
       "count": 3
      }
     },
-    "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by county;"
+    "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by county;",
+    "variants": {
+     "measure": {
+      "value": {
+       "pills": ["pe județe (hartă)","Total (lei)","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
+       "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by county;"
+      },
+      "count": {
+       "pills": ["pe județe (hartă)","numărul de înregistrări","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
+       "displaySql": "select county, count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by county;"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -22018,7 +22114,19 @@
       "count": 2
      }
     },
-    "displaySql": "select county, sum(closing_value)\nfrom marts.da_transactions\nwhere closing_value > 0\n  and closing_value <= 2000000  -- plafon plauzibilitate\ngroup by county;"
+    "displaySql": "select county, sum(closing_value)\nfrom marts.da_transactions\nwhere closing_value > 0\n  and closing_value <= 2000000  -- plafon plauzibilitate\ngroup by county;",
+    "variants": {
+     "measure": {
+      "value": {
+       "pills": ["pe județe (hartă)","Total (lei)","toți anii disponibili","doar achiziții directe"],
+       "displaySql": "select county, sum(closing_value)\nfrom marts.da_transactions\nwhere closing_value > 0\n  and closing_value <= 2000000  -- plafon plauzibilitate\ngroup by county;"
+      },
+      "count": {
+       "pills": ["pe județe (hartă)","numărul de înregistrări","toți anii disponibili","doar achiziții directe"],
+       "displaySql": "select county, count(*)\nfrom marts.da_transactions\nwhere closing_value > 0\n  and closing_value <= 2000000  -- plafon plauzibilitate\ngroup by county;"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -22131,7 +22239,19 @@
       "count": 3
      }
     },
-    "displaySql": "select county, count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by county;"
+    "displaySql": "select county, count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by county;",
+    "variants": {
+     "measure": {
+      "value": {
+       "pills": ["pe județe (hartă)","Total (lei)","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
+       "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by county;"
+      },
+      "count": {
+       "pills": ["pe județe (hartă)","numărul de înregistrări","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
+       "displaySql": "select county, count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by county;"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -22250,7 +22370,25 @@
       "count": 0
      }
     },
-    "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '336%')\ngroup by county;"
+    "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '336%')\ngroup by county;",
+    "variants": {
+     "measure": {
+      "value": {
+       "pills": ["pe județe (hartă)","Total (lei)","Produse farmaceutice (33600000-6)","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
+       "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '336%')\ngroup by county;"
+      },
+      "count": {
+       "pills": [
+        "pe județe (hartă)",
+        "numărul de înregistrări",
+        "Produse farmaceutice (33600000-6)",
+        "toți anii disponibili",
+        "toate sursele: achiziții directe + contracte prin proceduri"
+       ],
+       "displaySql": "select county, count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '336%')\ngroup by county;"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -22364,7 +22502,19 @@
       "count": 0
      }
     },
-    "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and -- doar consilii județene / județe (filtru pe nume)\ngroup by county;"
+    "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and -- doar consilii județene / județe (filtru pe nume)\ngroup by county;",
+    "variants": {
+     "measure": {
+      "value": {
+       "pills": ["pe județe (hartă)","Total (lei)","doar consilii județene","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
+       "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and -- doar consilii județene / județe (filtru pe nume)\ngroup by county;"
+      },
+      "count": {
+       "pills": ["pe județe (hartă)","numărul de înregistrări","doar consilii județene","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
+       "displaySql": "select county, count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and -- doar consilii județene / județe (filtru pe nume)\ngroup by county;"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -22480,7 +22630,19 @@
       "count": 0
      }
     },
-    "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000002\ngroup by county;"
+    "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000002\ngroup by county;",
+    "variants": {
+     "measure": {
+      "value": {
+       "pills": ["pe județe (hartă)","Total (lei)","Municipiul Fixture Nord","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
+       "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000002\ngroup by county;"
+      },
+      "count": {
+       "pills": ["pe județe (hartă)","numărul de înregistrări","Municipiul Fixture Nord","toți anii disponibili","toate sursele: achiziții directe + contracte prin proceduri"],
+       "displaySql": "select county, count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000002\ngroup by county;"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -22606,7 +22768,19 @@
       "count": 2
      }
     },
-    "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and supplier_id in (select entity_id from marts.entity_profile\n                where role = 'supplier' and employees >= 1)  -- bilanț MF, ultimul depus\n  and an >= 2025\n  and an <= 2025\ngroup by county;"
+    "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and supplier_id in (select entity_id from marts.entity_profile\n                where role = 'supplier' and employees >= 1)  -- bilanț MF, ultimul depus\n  and an >= 2025\n  and an <= 2025\ngroup by county;",
+    "variants": {
+     "measure": {
+      "value": {
+       "pills": ["pe județe (hartă)","Total (lei)","2025","cel puțin 1 angajat","toate sursele: achiziții directe + contracte prin proceduri"],
+       "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and supplier_id in (select entity_id from marts.entity_profile\n                where role = 'supplier' and employees >= 1)  -- bilanț MF, ultimul depus\n  and an >= 2025\n  and an <= 2025\ngroup by county;"
+      },
+      "count": {
+       "pills": ["pe județe (hartă)","numărul de înregistrări","2025","cel puțin 1 angajat","toate sursele: achiziții directe + contracte prin proceduri"],
+       "displaySql": "select county, count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and supplier_id in (select entity_id from marts.entity_profile\n                where role = 'supplier' and employees >= 1)  -- bilanț MF, ultimul depus\n  and an >= 2025\n  and an <= 2025\ngroup by county;"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,

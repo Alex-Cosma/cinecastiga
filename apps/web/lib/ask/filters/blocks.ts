@@ -6,9 +6,8 @@ import type { BlockFilters, ConditionRow, FilterCtx, FilterId, FilterSpec, Picke
 /*
  * BLOCK_FILTERS (plan §2.2, §4, §5 F1b): what each of the 13 questions offers,
  * in which place, with today's keys only. The builder renders from it
- * (QuestionBuilder still draws today's offers, described in today-blocks.ts,
- * until it does). registry.test.ts walks every offer and every pair of offers
- * against the engine (R1).
+ * (app/intreaba/builder/view.ts). registry.test.ts walks every offer and
+ * every pair of offers against the engine (R1).
  *
  * - P1 is the sentence (sentence.ts): one slot per editable phrase.
  * - P2 are the fragments the sentence does not show yet, named (kit §4), in

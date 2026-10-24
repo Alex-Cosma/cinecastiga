@@ -1,8 +1,5 @@
-import { filterContext, PROFILE_FORMS, TRANSACTION_FORMS } from "./context";
-import { FILTERS } from "./defs";
-import { offeredFilters } from "./registry";
-import { TODAY_BLOCK_FILTERS } from "./today-blocks";
-import type { AnswerForm, Availability, FilterCtx, FilterId, FilterSpec, Scope } from "./types";
+import { PROFILE_FORMS, TRANSACTION_FORMS } from "./context";
+import type { AnswerForm, FilterCtx, FilterId, FilterSpec, Scope } from "./types";
 
 /*
  * The state of today, fixed at F0 (plan §2.2): what each key does to the
@@ -128,31 +125,3 @@ export const TODAY_REFUSALS: readonly TodayRefusal[] = [
     reason: "Alege și a doua instituție sau firmă pentru comparație.",
     fix: "Kept: a comparison is of two entities of one role; changing the role empties the second one (pickEntity)." },
 ];
-
-/**
- * A control today's builder shows on a question whose engine does not apply
- * its key there, besides the refusals above: the data stream chip on the
- * profiles (all and da give the same profile of direct acquisitions).
- */
-export const TODAY_IGNORED_OFFERS: readonly { filter: FilterId; forms: readonly AnswerForm[]; why: string; fix: string }[] = [
-  { filter: "dataset", forms: PROFILE_FORMS, why: "Profiles are direct acquisitions only: «Toate achizițiile» and «Achiziții directe» give the same profile.",
-    fix: "F1b: the profile line (component 18) says it; no data stream control on profiles." },
-];
-
-/** The first refusal that follows choosing `value` for `filter` on `spec`, or null. */
-export function refusalOf(filter: FilterId, value: unknown, spec: FilterSpec, ctx: FilterCtx): TodayRefusal | null {
-  return TODAY_REFUSALS.find((r) => r.filter === filter && (!r.values || r.values(value)) && r.when(spec, ctx)) ?? null;
-}
-
-/**
- * Whether today's builder offers a filter: offered when any of its controls
- * writes it; "refused" when one of the values its control offers makes the
- * engine refuse the question (TODAY_REFUSALS of kind "engine").
- */
-export function todayAvailability(id: FilterId, spec: FilterSpec, ctx: FilterCtx = filterContext(spec)): Availability {
-  if (!offeredFilters(spec, ctx, TODAY_BLOCK_FILTERS).has(id)) return { state: "hidden" };
-  const values = FILTERS[id].choices(spec, ctx);
-  const refused = values.map((value) => refusalOf(id, value, spec, ctx)).filter((r) => r !== null && r.kind === "engine");
-  if (!refused.length) return { state: "offered" };
-  return { state: "refused", reason: refused[0]!.reason, refusal: refused[0]!.id, ...(refused.length < values.length ? { partial: true as const } : {}) };
-}

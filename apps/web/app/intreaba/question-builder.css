@@ -15,7 +15,7 @@
 .question-builder button, .question-builder input { font-family: inherit; }
 .question-builder button { cursor: pointer; }
 .question-builder button:disabled { cursor: wait; opacity: .52; }
-.question-builder button:focus-visible, .question-builder input:focus-visible { outline: 2px solid var(--qb-green); outline-offset: 4px; }
+.question-builder :focus-visible { outline: 3px solid var(--orange); outline-offset: 3px; }
 .question-builder .qb-icon { display: inline-block; width: 19px; height: 19px; flex-shrink: 0; vertical-align: middle; }
 .qb-navigation { display: flex; justify-content: space-between; gap: 14px; align-items: center; margin: 0 0 17px; }
 .qb-shortcuts { display: flex; gap: 4px; padding: 4px; border: 1px solid var(--qb-line); border-radius: 11px; background: #f0f2e7; }
@@ -246,3 +246,49 @@
   .qb-dialog-search .qb-picker-search { padding-block: 8px; margin-bottom: 12px; }
 }
 @media (prefers-reduced-motion: reduce) { .question-builder *, .question-builder *::before { animation: none!important; transition: none!important; } }
+
+/* ---------- F1b: the builder drawn from the registry with the kit (.fk-, builder/filters-kit.css) ----------
+   Only tokens, so both themes follow; the places keep the kit's order: sentence, profile line, rows,
+   invitations, chips under the sentence, parked row, then the notes and the bottom line. */
+.qb-editor-kit { display: flex; flex-direction: column; gap: 14px; transition: border-color 180ms; }
+.qb-editor-kit.is-pending { border-color: var(--fk-phrase-line); }
+.qb-editor-kit > .fk-sentence, .qb-editor-kit > .fk-scopeline, .qb-editor-kit > .fk-under, .qb-editor-kit > .fk-parked { margin: 0; }
+.qb-editor-kit > .fk-row + .fk-row { margin-top: 0; }
+.qb-editor-kit .qb-ai-note, .qb-editor-kit .cq-loaded-question { margin: 0; color: var(--muted); font-size: 13px; }
+.qb-refused { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 12px 14px; border: 1px dashed var(--fk-warm-line); border-radius: 10px; background: var(--fk-warm-bg); color: var(--fk-warm-ink); font-size: 13px; line-height: 1.5; }
+.qb-refused p { margin: 0; flex: 1 1 240px; overflow-wrap: anywhere; }
+.qb-notes { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1px solid var(--fk-warm-line); border-radius: 10px; background: var(--fk-warm-bg); color: var(--fk-warm-ink); font-size: 13px; line-height: 1.6; }
+.question-builder .qb-notes > .qb-icon { width: 16px; height: 16px; margin-top: 3px; flex: none; }
+.qb-notes strong { font-weight: 600; }
+.qb-notes p { margin: 2px 0 0; overflow-wrap: anywhere; }
+.qb-bottom { margin-top: 4px; }
+.qb-bottom-start { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; min-width: 0; flex: 1 1 280px; }
+.qb-more-wrap { position: relative; display: inline-flex; }
+.qb-actions { align-items: center; justify-content: flex-end; }
+.qb-actions .qb-discard { min-height: 44px; padding: 0 4px; border: 0; background: none; color: var(--muted); font-size: 13px; text-decoration: underline; text-decoration-color: var(--line2); text-underline-offset: 4px; }
+.qb-actions .qb-ready { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+.question-builder .qb-actions .qb-ready > .qb-icon { width: 14px; height: 14px; }
+.question-builder .qb-apply > .qb-icon { width: 17px; height: 17px; }
+.cq-save-wrap { position: relative; display: inline-flex; align-items: center; gap: 2px; min-width: 0; }
+.qb-editor-kit .qb-validation { margin: 0; color: var(--fk-warm-ink); font-size: 13px; }
+.qb-editor-kit .qb-pending-line { margin: 0 !important; padding-top: 12px; border-top: 1px solid var(--fk-editor-line); color: var(--fk-warm-ink); font-size: 12.5px !important; }
+.qb-editor-kit .qb-pending-line > span:first-child { background: var(--fk-warm-ink); }
+/* Inside the windows: a tab's panel, the buyer's place, the exclusions of a collapsed chip, the threshold. */
+.fk-pop .fk-seg { margin: 10px 0; }
+.qb-tabpanel { min-width: 0; }
+.qb-place-field { margin-top: 12px; }
+.fk-pop .fk-combo { margin-top: 8px; }
+.qb-minimum { border: 0; margin: 16px 0 0; padding: 0; min-width: 0; }
+.qb-minimum legend { margin: 0 0 8px; padding: 0; font-weight: 600; font-size: 13.5px; color: var(--ink); }
+.qb-minimum .qp-minimum-fields { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
+.qb-minimum label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--muted); }
+.qb-minimum input { min-height: 40px; width: 140px; padding: 8px 10px; border: 1px solid var(--line2); border-radius: 7px; background: var(--fk-editor); color: var(--ink); }
+.qb-minimum button { min-height: 40px; padding: 8px 12px; border: 1px solid var(--line2); border-radius: 8px; background: var(--surface); color: var(--ink2); }
+@media (max-width: 600px) {
+  .qb-editor-kit { gap: 12px; }
+  .qb-actions > .qb-discard, .qb-actions > .qb-ready { grid-column: 1 / -1; justify-self: start; }
+  .qb-actions .cq-save-wrap, .qb-actions .cq-save-question { width: 100%; }
+  .qb-actions .cq-save-question { min-width: 0; padding: 10px 8px; font-size: 13px; gap: 6px; }
+  .qb-actions .qb-apply { padding: 10px 8px; gap: 6px; font-size: 13px; }
+  .qb-minimum input, .qb-minimum button { min-height: 44px; }
+}

@@ -8,7 +8,7 @@ import type { MonitoringCheckpoint } from "@seap/db";
 import type { MonitoringPreferences, MonitoringRun, MonitoringScope } from "@/lib/monitoring-shared";
 import { MONITORING_CHANGE_TYPES } from "@/lib/monitoring-shared";
 import { encodeSpec } from "@/lib/ask/permalink";
-import { describeQuestion, periodLabel, type QuestionSpec } from "@/lib/ask/question-ui";
+import { questionTitle } from "@/lib/ask/filters/title";
 import { formatExactDecimal, formatInt } from "@/lib/format";
 export const moment = (value: string | null | undefined) => value ? new Date(value).toLocaleString("ro-RO", { timeZone: "Europe/Bucharest", dateStyle: "medium", timeStyle: "short" }) : "Încă neverificată";
 export const money = (value: string | null | undefined) => value == null ? "Valoare necunoscută" : `${formatExactDecimal(value)} lei`;
@@ -29,9 +29,9 @@ export function RefreshNotice({ refresh }: { refresh?: RefreshState | undefined 
 }
 export function selectionHref({ spec, options }: MonitoringScope) { return `/intreaba?spec=${encodeURIComponent(encodeSpec(spec))}&drill=1${options.scope ? `&evidence=${encodeURIComponent(JSON.stringify(options.scope))}` : ""}&sourceFilters=${encodeURIComponent(JSON.stringify(options))}`; }
 export function ScopeSummary({ scope, notes = [] }: { scope: MonitoringScope; notes?: string[] }) {
-  // The receipt below states the base period and every additional rule separately.
+  // The question's own sentence (its period included); the receipt below states every rule separately.
   // Do not turn grouped OR date predicates into a single inferred date range.
-  const question = describeQuestion(scope.spec as QuestionSpec).replace(` · ${periodLabel(scope.spec as QuestionSpec)}`, "");
+  const question = questionTitle(scope.spec);
   return <div className="mon-scope"><p><strong>Întrebarea de pornire: </strong>{question}</p><ScopeConditions scope={scope} />{notes.map((note, i) => <p className="mon-muted" key={i}>{note}</p>)}<Link href={selectionHref(scope)}>Deschide întrebarea și sursele →</Link><details><summary>Detalii tehnice ale selecției</summary><pre>{JSON.stringify(scope, null, 2)}</pre></details></div>;
 }
 export const changeNames = { added: "Înregistrări intrate în selecție", changed: "Corecții în datele sursă", removed: "Înregistrări ieșite din selecție", recalculated: "Rezultate recalculate", methodology: "Metodologie modificată" };

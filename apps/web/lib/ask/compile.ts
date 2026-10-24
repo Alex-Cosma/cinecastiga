@@ -211,6 +211,11 @@ export interface EngineResult {
   tookMs: number;
   /** timeseries/trend: years the archive covers only in part (audit F19). */
   partialYears?: PartialYear[];
+  /**
+   * The SQL shown for each display state the strip switches on the data
+   * already fetched (plan §2.3 variants): the map's lens, value or records.
+   */
+  displaySqlByMeasure?: Partial<Record<"value" | "count", string>>;
 }
 
 // Audit F15: the locality filter is the UAT's own administration, strictly
@@ -771,6 +776,10 @@ export async function runSpec(
   const efWhere = (role: "authority" | "supplier", minDas: number) => andAll(sql, profilePredicates(w, role, minDas));
 
   const displaySql = buildDisplaySql(spec, w);
+  // The map answers both lenses from the same rows (value and records per county): the strip switches without a query.
+  const displaySqlByMeasure = spec.block === "map"
+    ? { value: buildDisplaySql({ ...spec, measure: "value" }, w), count: buildDisplaySql({ ...spec, measure: "count" }, w) }
+    : undefined;
   // The precise selection (or the page it comes from) and the record threshold, in the words of describeConditions.
   caveats.push(...describeConditions(spec, { grounding, entities: labels.entities }).caveats);
 
@@ -1666,7 +1675,7 @@ export async function runSpec(
       if (note) caveats.push(note);
     }
   }
-  return { data, displaySql, caveats, tookMs: Date.now() - started, ...(partial ? { partialYears: partial } : {}) };
+  return { data, displaySql, caveats, tookMs: Date.now() - started, ...(partial ? { partialYears: partial } : {}), ...(displaySqlByMeasure ? { displaySqlByMeasure } : {}) };
 }
 
 export interface DrillRow {

@@ -9,7 +9,7 @@ import { employeesOnBands } from "./words";
 import type { Availability, BlockFilters, FilterCtx, FilterId, FilterSpec, Placement, Slot, SpecPath } from "./types";
 
 export { FILTER_DEFS, FILTERS } from "./defs";
-/** A table of offers: BLOCK_FILTERS (F1b), or today's builder (today-blocks.ts) for the walk that describes it. */
+/** A table of offers: BLOCK_FILTERS (F1b), or another table a test walks. */
 export type OfferTable = Record<string, BlockFilters | undefined>;
 
 /**
@@ -127,8 +127,7 @@ export function writeFocal(spec: FilterSpec, role: "authority" | "supplier", par
  * Whether a question offers a filter (plan §2.2 Availability): offered when a
  * control of BLOCK_FILTERS writes it, else hidden (R1: what cannot apply is
  * not drawn). A value its window shows unusable is per choice
- * (pickers.ts choiceState); today's builder, which offered and then refused,
- * is today.ts todayAvailability.
+ * (pickers.ts choiceState).
  */
 export function availability(id: FilterId, spec: FilterSpec, ctx: FilterCtx = filterContext(spec)): Availability {
   return offeredFilters(spec, ctx).has(id) ? { state: "offered" } : { state: "hidden" };

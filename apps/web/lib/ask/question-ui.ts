@@ -4,7 +4,6 @@ import {
 } from "./spec";
 import { isHistoricalProfile, type MinimumRecords, type QueryPopulation } from "./population";
 import { cpvTermParts } from "./cpv-terms";
-import { titleTail } from "./filters/words";
 
 /**
  * The builder uses exactly the public /api/ask spec; it owns no query engine.
@@ -309,63 +308,6 @@ export function countyWords(county: string): string {
   return /^bucure[sș]ti$/i.test(county) ? "din București" : `din județul ${county}`;
 }
 
-/** "Municipiul Vaslui (Vaslui)" → "Municipiului Vaslui (Vaslui)"; the county stays only when it adds information. */
-export function localityGenitive(label: string): string {
-  const m = /^(.*?) \(([^)]+)\)$/.exec(label);
-  const name = m ? m[1]! : label;
-  const county = m ? m[2]! : null;
-  const genitive = name
-    .replace(/^Municipiul /, "Municipiului ")
-    .replace(/^Orașul /, "Orașului ")
-    .replace(/^Comuna /, "Comunei ")
-    .replace(/^Sectorul /, "Sectorului ");
-  const bare = name.replace(/^(Municipiul|Orașul|Comuna|Sectorul) /, "");
-  return county && county !== bare ? `${genitive} (${county})` : genitive;
-}
-
-function named(spec: QuestionSpec, role: "authority" | "supplier"): string | null {
-  const f = spec.filters;
-  if (f[`${role}Name`]) return `„${String(f[`${role}Name`])}”`;
-  if (f[`${role}Id`]) return `„Entitatea #${String(f[`${role}Id`])}”`;
-  return null;
-}
-
-/**
- * Who bought: a named institution, the town hall of a locality (the engine
- * scopes a locality to its own administration), or a kind of institution with
- * its place. Never "instituțiile publice" for a town hall.
- */
-function buyersPhrase(spec: QuestionSpec): string {
-  const f = spec.filters;
-  const authority = named(spec, "authority");
-  if (authority) return authority;
-  const kind = f.authorityKind ? KIND_WORDS[String(f.authorityKind)] : undefined;
-  if (f.uatSiruta || f.uatName) {
-    const place = localityGenitive(String(f.uatName ?? `localității ${f.uatSiruta}`));
-    return kind ? `${kind.the} din ${String(f.uatName ?? place)}` : `primăria ${place}`;
-  }
-  // With a named firm the scope is the firm: no "din toată țara" that reads like a national answer.
-  const place = f.county ? ` ${countyWords(String(f.county))}` : named(spec, "supplier") ? "" : " din toată țara";
-  return `${kind?.the ?? "instituțiile"}${place}`;
-}
-
-/** The place of a ranking of institutions: a county, a town hall, or nothing. */
-function rankingPlace(spec: QuestionSpec): string {
-  const f = spec.filters;
-  if (f.uatSiruta || f.uatName) return ` ale primăriei ${localityGenitive(String(f.uatName ?? `localității ${f.uatSiruta}`))}`;
-  if (f.county) return ` ${countyWords(String(f.county))}`;
-  return "";
-}
-
-export function periodWords(spec: QuestionSpec): string {
-  const f = spec.filters;
-  if (f.monthFrom || f.monthTo) return `în perioada ${periodLabel(spec)}`;
-  if (f.yearFrom && f.yearTo) return f.yearFrom === f.yearTo ? `în ${f.yearFrom}` : `între ${f.yearFrom} și ${f.yearTo}`;
-  if (f.yearFrom) return `din ${f.yearFrom} încoace`;
-  if (f.yearTo) return `până în ${f.yearTo}`;
-  return "în toți anii";
-}
-
 export function subjectWords(spec: QuestionSpec): string | null {
   const term = spec.filters.cpvTerm;
   if (term === undefined || term === "") return null;
@@ -373,105 +315,6 @@ export function subjectWords(spec: QuestionSpec): string | null {
   const words = cpvTermParts(String(term).trim()).map((text) =>
     /^\d[\d\s-]*$/.test(text) ? `CPV ${text.replace(/\s+/g, "")}` : `„${text}”`);
   return words.length > 1 ? `${words.slice(0, -1).join(", ")} și ${words[words.length - 1]}` : words[0]!;
-}
-
-/** Channel, employees and exclusions after the period: one writer, shared with describeConditions (filters/words.ts). */
-const conditionsTail = titleTail;
-
-/**
- * The title of a money answer: exactly what was asked, with every active
- * condition (institution or town hall, firm, subject, place, period, channel).
- * Shared by the answer heading, the evidence drawer, saved questions and exports.
- */
-function moneyTitle(spec: QuestionSpec): string | null {
-  const f = spec.filters;
-  const subject = subjectWords(spec);
-  const subj = subject ? ` pentru ${subject}` : "";
-  const supplier = named(spec, "supplier");
-  const fromSupplier = supplier ? ` de la ${supplier}` : "";
-  const admin = f.adminName ? ` de la firmele conduse de ${String(f.adminName)}` : f.adminPersonKey ? " de la firmele conduse de persoana aleasă" : "";
-  const when = periodWords(spec);
-  const tail = conditionsTail(spec);
-  const kind = f.authorityKind ? KIND_WORDS[String(f.authorityKind)] : undefined;
-  const institutions = kind?.bare ?? "instituții";
-  const channelNoun = spec.dataset === "da" ? "achizițiile directe" : "contractele";
-  switch (spec.block) {
-    case "table":
-      if (spec.dim === "supplier")
-        return `Cine câștigă ${spec.measure === "count" ? spec.dataset === "da" ? "cele mai multe achiziții directe" : "cele mai multe contracte" : channelNoun}${subj} de la ${buyersPhrase(spec)}${fromSupplier}${admin}, ${when}${conditionsTail(spec, spec.dataset === "da")}?`;
-      if (spec.dim === "county")
-        return `Ce județe cumpără cel mai mult${spec.measure === "count" ? " (număr de achiziții)" : ""}${subj}${named(spec, "authority") ? ` prin ${named(spec, "authority")}` : ""}${fromSupplier}${admin}, ${when}${tail}?`;
-      return `Ce ${institutions}${rankingPlace(spec)} cumpără cel mai mult${spec.measure === "value_per_capita" ? " pe locuitor" : spec.measure === "count" ? " (număr de achiziții)" : ""}${subj}${fromSupplier}${admin}, ${when}${tail}?`;
-    case "stat":
-      return spec.measure === "count"
-        ? `Câte achiziții${subj} au fost făcute de ${buyersPhrase(spec)}${fromSupplier}${admin}, ${when}${tail}?`
-        : `Cât valorează achizițiile${subj} făcute de ${buyersPhrase(spec)}${fromSupplier}${admin}, ${when}${tail}?`;
-    case "breakdown":
-      return `Ce cumpără ${buyersPhrase(spec)}${subject ? ` în domeniul ${subject}` : ""}${fromSupplier}${admin}, ${when}${tail}?`;
-    case "timeseries":
-      return `Cum au evoluat de la an la an achizițiile${subj} făcute de ${buyersPhrase(spec)}${fromSupplier}${admin}, ${when}${tail}?`;
-    case "map": {
-      const buyers = named(spec, "authority") || kind ? ` făcute de ${buyersPhrase(spec)}` : "";
-      return `Cum se împart pe județe achizițiile${subj}${buyers}${fromSupplier}${admin}, ${when}${tail}?`;
-    }
-    case "trend": {
-      const from = f.yearFrom ?? "…", to = f.yearTo ?? "…";
-      const filtered = Boolean(f.authorityName || f.authorityId || f.uatSiruta || f.county || f.authorityKind);
-      return spec.dim === "supplier"
-        ? `Ce firme au cea mai mare schimbare a valorii contractelor${subj}${filtered ? ` de la ${buyersPhrase(spec)}` : ""} între ${from} și ${to}${tail}?`
-        : spec.dim === "county"
-          ? `Ce județe au cea mai mare schimbare a achizițiilor${subj}${fromSupplier} între ${from} și ${to}${tail}?`
-          : `Ce ${institutions}${rankingPlace(spec)} au cea mai mare schimbare a achizițiilor${subj}${fromSupplier} între ${from} și ${to}${tail}?`;
-    }
-    case "entity_card": {
-      if (spec.dim === "supplier")
-        return `Care firmă are cea mai mare valoare a achizițiilor${subj} de la ${buyersPhrase(spec)}${admin}, ${when}${tail}?`;
-      const one = f.authorityKind ? KIND_ONE[String(f.authorityKind)] ?? "instituție" : "instituție";
-      return `Care ${one}${rankingPlace(spec)} are cea mai mare valoare a achizițiilor${subj}${fromSupplier}${admin}, ${when}${tail}?`;
-    }
-    default:
-      return null;
-  }
-}
-
-/** A readable, deterministic title suitable for the applied answer and a saved investigation. */
-export function describeQuestion(input: QuestionSpec | AskSpec): string {
-  const spec = input as QuestionSpec;
-  const f = spec.filters;
-  if (!isHistoricalProfile(spec)) {
-    const money = moneyTitle(spec);
-    if (money) return money;
-  }
-  const period = periodLabel(spec);
-  const dims =
-    spec.dim === "county"
-      ? "județe"
-      : spec.dim === "authority"
-        ? "instituții"
-        : "firme";
-  const focal = `„${entityLabel(spec, focalRole(spec))}”`;
-  switch (spec.block) {
-    case "compare":
-      return `${focal} și „${compareWithLabel(spec)}” · ${period}`;
-    case "trend":
-      return `Ce ${dims} au cea mai mare schimbare între ${f.yearFrom ?? "…"} și ${f.yearTo ?? "…"}?`;
-    case "network":
-      return `Cu cine lucrează ${focal}?`;
-    case "sankey":
-      return `Cum se împart achizițiile ${focal} între parteneri și domenii?`;
-    case "fact_check":
-      return `A cumpărat „${entityLabel(spec, "authority")}” de la „${entityLabel(spec, "supplier")}”?`;
-    case "distribution":
-      return `Unde se situează ${focal} după indicele de risc${f.county ? `, față de cele ${countyWords(String(f.county))}` : ""}?`;
-    case "scatter":
-      return `Ce ${spec.dim !== "supplier" && f.authorityKind ? KIND_WORDS[String(f.authorityKind)]?.bare ?? dims : dims}${f.county ? ` ${countyWords(String(f.county))}` : ""} ies din tipar după risc și valoarea achizițiilor?`;
-    case "entity_card": {
-      const one = spec.dim === "supplier" ? "firmă" : f.authorityKind ? KIND_ONE[String(f.authorityKind)] ?? "instituție" : "instituție";
-      return `Care ${one}${f.county ? ` ${countyWords(String(f.county))}` : ""} are ${leaderAxis(spec) === "risk" ? "cel mai ridicat indice de risc" : "cea mai mare valoare a achizițiilor"}?`;
-    }
-    default:
-      return "Întrebarea ta";
-  }
 }
 
 /**

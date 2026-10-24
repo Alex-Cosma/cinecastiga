@@ -22,6 +22,8 @@ export type RestoredLink =
   | {
     kind: "draft";
     spec: FilterSpec;
+    /** The link's question as it came (its named stream kept): what runs when `run`, exactly as /api/ask runs it today. */
+    link: FilterSpec;
     /** What the builder changed while opening it (transitionQuestion on the same block). */
     notes: string[];
     /** The link's chips under the sentence, applied or refused. */
@@ -46,7 +48,7 @@ export function restoreLink(raw: unknown, labels: ConditionLabels = {}): Restore
   const errorOf = (s: QuestionSpec) => runnableError(s as unknown as AskSpec) ?? localityScopeError(s);
   const reason = errorOf(spec);
   return {
-    kind: "draft", spec: spec as FilterSpec, notes: changes,
+    kind: "draft", spec: spec as FilterSpec, link: given as unknown as FilterSpec, notes: changes,
     conditions: legacyConditions(spec, labels), advanced: advancedConditions(spec, labels),
     run: reason === null && errorOf(given) === null, reason,
   };

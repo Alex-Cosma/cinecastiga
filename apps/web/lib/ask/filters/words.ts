@@ -4,12 +4,12 @@ import type { QueryPopulation } from "../population";
 import { exclusionWords, splitExcluded } from "./origin";
 
 /*
- * Word fragments shared by the answer title (question-ui.ts describeQuestion),
- * the interpreter's sentence (lib/intent/to-spec.ts sentenceFor), the
- * conditions of describe.ts and the builder's sentence (sentence.ts), in the
- * kit's vocabulary (kit §4). Kept apart from describe.ts because question-ui
- * imports them and the registry imports question-ui. Every number with a noun
- * goes through countWords (plan G10).
+ * Word fragments shared by the builder's sentence (sentence.ts), which is
+ * also the answer's title (title.ts), the interpreter's sentence
+ * (lib/intent/to-spec.ts sentenceFor) and the conditions of describe.ts, in
+ * the kit's vocabulary (kit §4). Kept apart from describe.ts so that a module
+ * without the registry can read them. Every number with a noun goes through
+ * countWords (plan G10).
  */
 
 type Spec = {
@@ -126,9 +126,11 @@ export function streamPhrase(spec: Spec, channelSaid = false): string | null {
 }
 
 /**
- * The tail of a title, after the period (plan G7): the stream, the employees
- * and what was left out of the calculation ("…, fără SYSTRA"). `channelSaid`:
- * the sentence already names direct acquisitions.
+ * The tail of the interpreter's sentence, after the period: the stream, the
+ * employees and what was left out of the calculation ("…, fără SYSTRA").
+ * `channelSaid`: the sentence already names direct acquisitions. The answer's
+ * title says the stream and the employees in its sentence; its tail is
+ * describeConditions' (title.ts, G7).
  */
 export function titleTailParts(spec: Spec, channelSaid = false): string[] {
   const parts: string[] = [];

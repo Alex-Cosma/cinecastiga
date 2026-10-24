@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { countWords } from "../answer-text";
 import type { Grounding } from "../ground";
 import { buildPills } from "../pills";
-import { describeQuestion, transitionQuestion, type QuestionSpec } from "../question-ui";
+import { transitionQuestion, type QuestionSpec } from "../question-ui";
 import { sourceCsvMessage } from "../source-csv";
 import { parseSpec, type AskSpec } from "../spec";
 import { FIXTURE_IDENTITIES } from "../fixtures/golden-fixture";
@@ -12,7 +12,8 @@ import {
 } from "../fixtures/grammars-before-describe";
 import { connectionEvidenceSpec } from "../../connection-evidence-shared";
 import { formatInt } from "../../format";
-import { DESCRIBED_FILTERS, describeConditions, savedQuestionSummary } from "./describe";
+import { DESCRIBED_FILTERS, describeConditions } from "./describe";
+import { questionTitle, savedQuestionSummary } from "./title";
 import { DA_BOUND_VALUE, selectionOrigin, splitExcluded } from "./origin";
 import { FILTER_DEFS, SPEC_PATH_OWNERS } from "./registry";
 import { titleTail } from "./words";
@@ -143,7 +144,7 @@ describe("the changes the plan fixes", () => {
         const grounding = groundingOf(spec, cpv);
         const d = describeConditions(spec, { grounding });
         texts.push(...buildPills(spec, grounding), ...d.summary, ...d.caveats, ...d.scope.map((r) => r.value), d.tail, d.totalLine ?? "",
-          ...Object.values(d.byId).flatMap((w) => [w.chip ?? "", w.note ?? "", w.words ?? ""]), savedQuestionSummary(spec), describeQuestion(spec));
+          ...Object.values(d.byId).flatMap((w) => [w.chip ?? "", w.note ?? "", w.words ?? ""]), savedQuestionSummary(spec), questionTitle(spec));
       }
     for (const [exported, total] of [[1, 1], [20, 20], [100_000, 200_000], [100_000, 120_001], [0, 0]] as const) texts.push(sourceCsvMessage(exported, total));
     expect(texts.flatMap(offending)).toEqual([]);
@@ -192,16 +193,17 @@ describe("the changes the plan fixes", () => {
     const d = describeConditions(spec);
     expect(d.scope).toContainEqual({ label: "Scoase din calcul", value: "Fără SYSTRA SA (202)" });
     expect(d.receipt?.groups).toEqual([{ title: "Grupul 1 · toate condițiile", items: ["Valoare de cel puțin 1.000 lei"] }]);
-    expect(d.tail).toBe("fără SYSTRA SA");
+    // The tail is every condition under the sentence (G7, R11): here "Selecție avansată" holds the rest of the precise selection.
+    expect(d.tail).toBe("fără SYSTRA SA, selecție precisă, 1 condiție");
     expect(d.totalLine).toBe("fără SYSTRA SA, selecție precisă, 1 condiție");
-    expect(describeQuestion(spec)).toBe("Cine câștigă contractele de la instituțiile din toată țara, în toți anii, fără SYSTRA SA?");
+    expect(questionTitle(spec)).toBe("Ce firme câștigă achizițiile făcute de instituțiile publice din toată țara, în toți anii, fără SYSTRA SA, selecție precisă, 1 condiție?");
     // Kept as today: the pills, the caveat and the note describe the whole precise selection.
     expect(d.pills).toContain("Selecție precisă · 2 condiții în 2 grupuri");
     expect(d.byId.population?.note).toBe("Selecție precisă aplicată: (firme exclud SYSTRA SA) ȘI (lei pe înregistrare ≥ 1000).");
     const three = { ...spec, population: { operator: "and" as const, groups: [{ operator: "and" as const, conditions: [{ field: "supplier" as const, op: "not_in" as const, values: ["1", "2", "3"], labels: ["A", "B", "C"] }] }] } };
     expect(describeConditions(three).tail).toBe("fără 3 firme");
     // Unlabelled lists stay a precise selection: their chip could only show a number.
-    expect(describeConditions({ ...spec, population: { operator: "and", groups: [{ operator: "and", conditions: [{ field: "supplier", op: "not_in", values: ["202"] }] }] } }).tail).toBe("");
+    expect(describeConditions({ ...spec, population: { operator: "and", groups: [{ operator: "and", conditions: [{ field: "supplier", op: "not_in", values: ["202"] }] }] } }).tail).toBe("selecție precisă, 1 condiție");
   });
 });
 

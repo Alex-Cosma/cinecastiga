@@ -1,24 +1,46 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
-import { countyIsFirmSeat } from "@/lib/ask/population";
-import { describeConditions } from "@/lib/ask/filters/describe";
-import { COUNTIES } from "@/lib/counties";
-import { IMPLAUSIBLE_BIRTH_DATE_LABEL } from "@/lib/format";
-import type { EntityHit } from "@/lib/search";
 import type { AskSpec } from "@/lib/ask/spec";
+import { withoutLinkConditions } from "@/lib/ask/filters/restore";
+import { chooseQuestion, chooseValue, restoreParked, type Transition } from "@/lib/ask/filters/transition";
+import type { Parked } from "@/lib/ask/filters/parked";
+import type { Choice } from "@/lib/ask/filters/pickers";
+import { splitExcluded, type Excluded } from "@/lib/ask/filters/origin";
 import {
-  QUESTION_GROUPS, QUESTION_TYPES, KIND_OPTIONS, cloneQuestion, defaultQuestion,
-  entityLabel, focalRole, foldQuestion, isProfileQuestion, leaderAxis, localityScopeSupport, periodLabel,
+  QUESTION_GROUPS, QUESTION_TYPES, cloneQuestion, defaultQuestion, foldQuestion,
   questionErrors, questionKey, reconcileQuestionDraft, transitionQuestion, type QuestionSpec,
 } from "@/lib/ask/question-ui";
 import "./question-builder.css";
-import PopulationEditor from "./PopulationEditor";
+import "./builder/filters-kit.css";
+import BuilderWindow from "./builder/BuilderWindow";
+import Chip from "./builder/Chip";
+import ConditionRow from "./builder/ConditionRow";
+import Invitations from "./builder/Invitations";
+import ParkedRow from "./builder/ParkedRow";
+import ScopeLine from "./builder/ScopeLine";
+import Sentence, { Presentation } from "./builder/Sentence";
+import UnderChips from "./builder/UnderChips";
+import RowMenu from "./answer/RowMenu";
+import { builderView, onlyExclusions, patchDraft, withoutExclusions, type BuilderWindowSpec, type StripPatch } from "./builder/view";
 import SaveQuestionButton from "./SaveQuestionButton";
 import SavedQuestions, { type SavedQuestion } from "./SavedQuestions";
 
+/*
+ * The question builder (plan §2.3): the orchestrator of the draft, the
+ * applied question, the run, saving and the catalogue. What it draws comes
+ * from the registry (builder/view.ts: BLOCK_FILTERS, sentence.ts,
+ * legacyConditions) through the kit's components: the sentence (P1), the
+ * profile line, the partners' rows (P3b), the invitations (P2), the chips
+ * under the sentence and the parked row (P4), the presentation line (P5) and
+ * "⋯ › Selecție avansată" (P9). Every edit goes through transition.ts, so a
+ * condition either stays, leaves with a note or waits in the parked row,
+ * which is a draft state and never enters the link.
+ */
+
 export type QuestionBuilderSpec = QuestionSpec;
 type RunOutcome = boolean | QuestionSpec | AskSpec | void;
+export type { StripPatch } from "./builder/view";
 export interface QuestionBuilderProps {
   initial?: QuestionSpec | null;
   resolution?: { submitted: QuestionSpec; resolved: QuestionSpec } | null;
@@ -30,55 +52,11 @@ export interface QuestionBuilderProps {
   intro?: ReactNode;
   /** Shown under the run button (alternatives, words not understood). */
   outro?: ReactNode;
-  /** False when `initial` is a proposal (an interpreted question) that has not been run yet. */
+  /** False when `initial` is a proposal (an interpreted question or a link that waits) that has not been run yet. */
   initialApplied?: boolean;
+  /** A key the strip beside the answer changed (plan §2.3): the builder writes it into its applied question and its draft. */
+  stripPatch?: StripPatch | null;
 }
-
-type Field = "catalogue" | "add" | "dim" | "measure" | "rankBy" | "topN" | "dataset" | "county" | "authorityKind" | "period" | "cpvTerm" | "authority" | "supplier" | "focal" | "compareWith" | "uat" | "employees" | "admin" | "singleBidder";
-interface SuggestionData {
-  authority?: { name: string; county: string | null; entityId?: number }[];
-  supplier?: { name: string; county: string | null; entityId?: number }[];
-  cpv?: { term: string; cpvName: string | null }[];
-  division?: { code: string; name: string }[];
-  uat?: { siruta: number; name: string; tip: string; county: string; population: number | null }[];
-  person?: { key: string; name: string; birthYear: number | null; birthDateImplausible?: boolean; birthLocality: string | null; nFirms: number }[];
-}
-interface Choice { value: string; label: string; detail?: string; }
-type UatSuggestion = NonNullable<SuggestionData["uat"]>[number];
-
-const TIP_PREFIX: Record<string, string> = { municipiu: "Municipiul", "oraș": "Orașul", "comună": "Comuna" };
-/** "Municipiul Buzau (Buzău)" from a /api/suggest locality. */
-function localityLabel(item: UatSuggestion): string {
-  const county = COUNTIES.find((name) => foldQuestion(name).replace(/[^a-z]+/g, " ") === foldQuestion(item.county).replace(/[^a-z]+/g, " ")) ?? item.county;
-  const prefix = TIP_PREFIX[item.tip];
-  return `${prefix ? `${prefix} ` : ""}${item.name} (${county})`;
-}
-function countyName(folded: string): string {
-  return COUNTIES.find((name) => foldQuestion(name).replace(/[^a-z]+/g, " ") === foldQuestion(folded).replace(/[^a-z]+/g, " ")) ?? folded;
-}
-
-const SOURCES: Record<string, string> = { all: "Toate achizițiile", da: "Achiziții directe", contracts: "Contracte din proceduri" };
-const FIELDS: Record<Field, { title: string; note?: string }> = {
-  catalogue: { title: "Ce ai vrea să afli?", note: "13 feluri de a privi datele. Alege întrebarea, apoi fă-o a ta." },
-  add: { title: "Fă întrebarea mai precisă" },
-  dim: { title: "Pe cine vrei să vezi?", note: "Alege ce reprezintă fiecare rând din rezultat." },
-  measure: { title: "Cum comparăm?" },
-  rankBy: { title: "Ce vrei să descoperi?", note: "Un indice ridicat este un punct de plecare pentru verificări." },
-  topN: { title: "Cât de lung să fie clasamentul?", note: "Lista de surse păstrează întreaga bază a întrebării, indiferent câte rânduri afișăm." },
-  dataset: { title: "Ce achiziții includem?", note: "Contractele din proceduri și achizițiile directe sunt surse distincte." },
-  county: { title: "Unde?", note: "Contează sediul instituției care cumpără. Alege un județ sau, unde se poate, o localitate." },
-  authorityKind: { title: "Ce instituții te interesează?", note: "Poți privi toate instituțiile sau un singur tip." },
-  period: { title: "În ce perioadă?", note: "Poți alege și lunile, pentru o verificare mai precisă." },
-  cpvTerm: { title: "Ce fel de achiziții?", note: "Scrie un domeniu, un produs sau un cod CPV: medicamente, asfaltare, mobilier…" },
-  authority: { title: "Care instituție?", note: "Caută numele instituției cumpărătoare." },
-  supplier: { title: "Care firmă?", note: "Caută numele firmei furnizoare sau codul fiscal." },
-  focal: { title: "Despre cine vrei să afli?", note: "Alege o instituție sau o firmă ca punct de plecare." },
-  compareWith: { title: "Cu cine comparăm?", note: "Comparăm două instituții sau două firme în aceeași selecție." },
-  uat: { title: "Ce localitate te interesează?", note: "Include doar primăria și consiliul local ale localității. Școlile, spitalele și alte instituții din localitate sunt separate." },
-  employees: { title: "Ce mărime au firmele?", note: "Numărul de angajați provine din ultimul bilanț disponibil. Firmele fără bilanț sunt excluse." },
-  admin: { title: "Cine conduce firmele?", note: "Reprezentanți legali din Registrul Comerțului. Situația curentă poate diferi de cea de la data achiziției." },
-  singleBidder: { title: "Vrei să urmărești competiția?", note: "Datele despre ofertanți sunt disponibile pentru o parte a contractelor din proceduri." },
-};
 
 function Glyph({ name, className = "" }: { name: string; className?: string }) {
   const paths: Record<string, ReactNode> = {
@@ -96,61 +74,51 @@ function Glyph({ name, className = "" }: { name: string; className?: string }) {
     scatter: <><path d="M4 4v16h16" /><circle cx="8" cy="14" r="1" /><circle cx="12" cy="11" r="1" /><circle cx="17" cy="13" r="1" /><circle cx="18" cy="5" r="2" /></>,
     entity_card: <><path d="m12 3 2.8 5.8 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.7l6.2-.9z" /></>,
     arrow: <path d="M4 12h16m-6-6 6 6-6 6" />,
-    chevron: <path d="m7 10 5 5 5-5" />,
     close: <path d="m6 6 12 12M6 18 18 6" />,
     plus: <path d="M12 5v14M5 12h14" />,
     check: <path d="m5 12 4 4L19 6" />,
     search: <><circle cx="10" cy="10" r="6" /><path d="m15 15 5 5" /></>,
     info: <><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7h.01" /></>,
-    calendar: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M7 3v4M17 3v4M7 14h3m4 0h3m-10 3h3" /></>,
   };
   return <svg viewBox="0 0 24 24" className={`qb-icon ${className}`} aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">{paths[name] ?? paths.table}</svg>;
 }
 
-export default function QuestionBuilder({ initial, resolution, fromAi = false, onRun, running, onDraftChange, intro, outro, initialApplied = true }: QuestionBuilderProps) {
+const unique = (notes: readonly string[]) => [...new Set(notes)];
+const isCode = (term: string) => /^(?:\d{2,8}|\d{8}-\d)$/.test(term.replace(/\s+/g, ""));
+
+export default function QuestionBuilder({ initial, resolution, fromAi = false, onRun, running, onDraftChange, intro, outro, initialApplied = true, stripPatch = null }: QuestionBuilderProps) {
   const [seed] = useState(() => transitionQuestion(initial ?? defaultQuestion()));
-  const [filtersOpen, setFiltersOpen] = useState(Boolean(seed.spec.population || seed.spec.minimumRecords));
   const [draft, setDraft] = useState<QuestionSpec>(seed.spec);
   const [applied, setApplied] = useState<QuestionSpec | null>(initial && initialApplied ? cloneQuestion(initial) : null);
   const draftRef = useRef(draft);
   draftRef.current = draft;
   const [changes, setChanges] = useState<string[]>(seed.changes);
+  const [parked, setParked] = useState<Parked | null>(null);
   const initialKey = initial ? questionKey(initial) : "";
   const previousInitial = useRef(initialKey);
-  const [field, setField] = useState<Field | null>(null);
-  const [search, setSearch] = useState("");
+  const [open, setOpen] = useState<{ key: string; anchor: HTMLElement } | null>(null);
+  const [catalogue, setCatalogue] = useState(false);
   const [catalogueTab, setCatalogueTab] = useState<"models" | "saved">("models");
+  const [search, setSearch] = useState("");
   const [savedQuestion, setSavedQuestion] = useState<SavedQuestion | null>(null);
   const [savedNotice, setSavedNotice] = useState("");
-  const catalogueId = useId();
-  const [remote, setRemote] = useState<SuggestionData>({});
   const [cpvNames, setCpvNames] = useState<Record<string, string>>({});
-  const cpvTerm = String(draft.filters.cpvTerm ?? "");
-  const cpvIsCode = /^(?:\d{2,8}|\d{8}-\d)$/.test(cpvTerm.replace(/\s+/g, ""));
-  const cpvName = cpvNames[cpvTerm];
-  const conditionWords = useMemo(() => describeConditions(draft, { cpvName }), [draft, cpvName]);
-  const [hits, setHits] = useState<EntityHit[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState(false);
-  const [pickRole, setPickRole] = useState<"authority" | "supplier">("authority");
-  const [formValues, setFormValues] = useState<Record<string, string>>({});
-  const [formError, setFormError] = useState("");
+  const catalogueId = useId();
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const triggerRef = useRef<HTMLElement | null>(null);
+  const catalogueTrigger = useRef<HTMLElement | null>(null);
+  const moreRef = useRef<HTMLSpanElement>(null);
   const dialogTitleId = useId();
   const searchId = useId();
+
+  const cpvTerm = String(draft.filters.cpvTerm ?? "");
+  const cpvName = cpvNames[cpvTerm];
+  const view = useMemo(() => builderView(draft, { cpvName }), [draft, cpvName]);
   const dirty = questionKey(draft) !== questionKey(applied ?? seed.spec);
-  const errors = questionErrors(draft);
-  const advancedKey = JSON.stringify([draft.population, draft.minimumRecords]);
-  const advancedError = Boolean(draft.population || draft.minimumRecords) && errors.length > 0;
-  useEffect(() => {
-    if (draft.population || draft.minimumRecords || advancedError) setFiltersOpen(true);
-  }, [advancedKey, advancedError]);
-  const profile = isProfileQuestion(draft);
-  const type = QUESTION_TYPES.find((item) => item.id === draft.block) ?? QUESTION_TYPES[0]!;
-  const baseKind = KIND_OPTIONS.find(([id]) => id === (draft.filters.authorityKind ?? "")) ?? KIND_OPTIONS[0];
-  // A locality scope is the town hall itself (compile.ts uatScopeCaveat), so say so in the sentence.
-  const kind: readonly [string, string, string] = draft.filters.uatSiruta && !draft.filters.authorityKind ? ["", "primăria", "primăriei"] : baseKind;
+  // A refused link condition says its reason on its chip: the list under the buttons keeps the rest.
+  const reasons = new Set(view.refused.map((c) => c.reason));
+  const errors = questionErrors(draft).filter((error) => !reasons.has(error));
+  const blocked = errors.length > 0 || view.refused.length > 0;
+  const win: BuilderWindowSpec | null = open ? view.windows[open.key] ?? null : null;
 
   useEffect(() => {
     if (previousInitial.current === initialKey) return;
@@ -159,6 +127,7 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
     setDraft(next.spec);
     setApplied(initial && initialApplied ? cloneQuestion(initial) : null);
     setChanges(next.changes);
+    setParked(null);
     setSavedQuestion(null); setSavedNotice("");
   }, [initial, initialKey, initialApplied]);
 
@@ -169,170 +138,124 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
     if (questionKey(draftRef.current) === questionKey(resolution.submitted)) setChanges([]);
   }, [resolution]);
 
+  // The strip wrote one key of the applied question: the draft gets that key, its other edits wait.
+  const lastPatch = useRef(stripPatch?.seq ?? 0);
+  useEffect(() => {
+    if (!stripPatch || stripPatch.seq === lastPatch.current) return;
+    lastPatch.current = stripPatch.seq;
+    setApplied(current => current ? patchDraft(current, stripPatch) : current);
+    setDraft(current => patchDraft(current, stripPatch));
+  }, [stripPatch]);
+
   useEffect(() => { onDraftChange?.(dirty); }, [dirty, applied, onDraftChange]);
 
   // Links and saved questions contain the code, not presentation labels.
-  // Resolve independently of the answer, so even a slow query has clear filters.
+  // Resolve independently of the answer, so even a slow query has clear phrases.
   useEffect(() => {
-    if (!cpvIsCode || cpvName) return;
+    if (!isCode(cpvTerm) || cpvName) return;
     const ctrl = new AbortController();
     fetch(`/api/cpv/label?code=${encodeURIComponent(cpvTerm)}`, { signal: ctrl.signal })
       .then(async (response) => {
         if (!response.ok) return;
         const data: { name?: string | null } = await response.json();
-        if (!ctrl.signal.aborted && data.name) {
-          setCpvNames(current => ({ ...current, [cpvTerm]: data.name! }));
-        }
+        if (!ctrl.signal.aborted && data.name) setCpvNames(current => ({ ...current, [cpvTerm]: data.name! }));
       })
       .catch(() => { /* Keep the explicit CPV code usable if lookup fails. */ });
     return () => ctrl.abort();
-  }, [cpvTerm, cpvIsCode, cpvName]);
+  }, [cpvTerm, cpvName]);
 
   useEffect(() => {
     const dialog = dialogRef.current;
-    if (!field || !dialog) return;
+    if (!catalogue || !dialog) return;
     if (!dialog.open) dialog.showModal();
-    const frame = requestAnimationFrame(() => {
-      const input = dialog.querySelector<HTMLInputElement>("input[type=search], input[type=number]");
-      (input ?? dialog.querySelector<HTMLButtonElement>("button"))?.focus();
-    });
+    const frame = requestAnimationFrame(() => dialog.querySelector<HTMLInputElement>("input[type=search]")?.focus());
     return () => cancelAnimationFrame(frame);
-  }, [field]);
+  }, [catalogue]);
 
-  // Suggestions use the existing API; an exact search hit carries its ID all
-  // the way through the deterministic spec. Abort prevents stale picker data.
-  useEffect(() => {
-    const needsRemote = field && ["authority", "supplier", "focal", "compareWith", "cpvTerm", "uat", "admin", "county"].includes(field);
-    setRemote({});
-    setHits([]);
-    setLoadError(false);
-    if (!needsRemote) { setLoading(false); return; }
-    const term = search.trim();
-    const isEntity = ["authority", "supplier", "focal", "compareWith"].includes(field!);
-    if (term.length < 2 && ["uat", "admin", "county"].includes(field!)) { setLoading(false); return; }
-    const ctrl = new AbortController();
-    setLoading(true);
-    const timer = setTimeout(async () => {
-      const params = new URLSearchParams(term.length >= 2 ? { q: term } : { top: "1" });
-      // The place picker searches localities everywhere; the locality condition stays within the chosen county.
-      if (draft.filters.county && field !== "county") params.set("county", foldQuestion(String(draft.filters.county)));
-      const results = await Promise.allSettled([
-        fetch(`/api/suggest?${params}`, { signal: ctrl.signal }).then(async (r) => { if (!r.ok) throw new Error("suggest"); return r.json() as Promise<SuggestionData>; }),
-        isEntity && term.length >= 2 ? fetch(`/api/search?q=${encodeURIComponent(term)}`, { signal: ctrl.signal }).then(async (r) => { if (!r.ok) throw new Error("search"); return r.json() as Promise<{ hits: EntityHit[] }>; }) : Promise.resolve({ hits: [] as EntityHit[] }),
-      ]);
-      if (ctrl.signal.aborted) return;
-      if (results[0].status === "fulfilled") setRemote(results[0].value);
-      if (results[1].status === "fulfilled") setHits(results[1].value.hits ?? []);
-      setLoadError(results[0].status === "rejected" && (results[1].status === "rejected" || !isEntity));
-      setLoading(false);
-    }, 180);
-    return () => { clearTimeout(timer); ctrl.abort(); };
-  }, [search, field, draft.filters.county]);
-
-  function loadSavedQuestion(question: SavedQuestion) {
-    const next = transitionQuestion(question.spec);
+  /** The draft after an edit, with its notes and the parked row (transition.ts). */
+  function settle(next: Pick<Transition, "spec" | "notes" | "parked">, replaceNotes = false) {
     setDraft(next.spec);
-    setChanges(next.changes);
-    setSavedQuestion(question);
-    setSavedNotice(`Întrebare încărcată: „${question.title}”. Apasă „Vezi răspunsul” pentru a o rula.`);
-    closePicker();
+    setChanges(previous => unique([...(replaceNotes ? [] : previous), ...next.notes]));
+    setParked(next.parked);
   }
-  function closePicker() {
-    dialogRef.current?.close();
-    setField(null);
-    triggerRef.current?.focus({ preventScroll: true });
+  function openWindow(key: string, anchor: HTMLElement) {
+    setOpen(current => current?.key === key ? null : { key, anchor });
   }
-  function openPicker(next: Field, trigger?: HTMLElement) {
-    if (!field) triggerRef.current = trigger ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
-    setSearch("");
-    setFormError("");
-    setRemote({});
-    setHits([]);
-    setPickRole(next === "supplier" ? "supplier" : next === "authority" ? "authority" : focalRole(draft));
-    setFormValues({ ...Object.fromEntries(Object.entries(draft.filters).map(([key, value]) => [key, String(value)])), topN: String(draft.topN ?? 10) });
-    setField(next);
+  const closeWindow = () => setOpen(null);
+  /** The choices of a window, in order, each through chooseValue. */
+  function choose(target: BuilderWindowSpec, choices: readonly Choice[]) {
+    let spec: QuestionSpec = draft, current = parked;
+    const notes: string[] = [];
+    for (const choice of choices) {
+      const next = chooseValue(spec, target.slot, choice, current);
+      spec = next.spec; current = next.parked; notes.push(...next.notes);
+    }
+    settle({ spec, notes, parked: current });
+    closeWindow();
   }
-  function replaceDraft(next: QuestionSpec, notes: string[] = []) {
+  /** "⋯ › Selecție avansată" and its editors write the draft as they are edited (same question, normalized). */
+  function replace(next: QuestionSpec) {
     const normalized = transitionQuestion(next);
-    setDraft(normalized.spec);
-    setChanges((previous) => [...new Set([...previous, ...notes, ...normalized.changes])]);
+    settle({ spec: normalized.spec, notes: normalized.changes, parked });
+  }
+  function removeUnder(id: string) {
+    const removal = view.removals[id];
+    if (!removal) return;
+    if (removal.kind === "exclusion") return removeExclusions(removal.excluded);
+    if (removal.kind === "advanced") {
+      const next = cloneQuestion(draft);
+      // The exclusions keep their own chips: "Selecție avansată" holds the rest.
+      if (removal.key === "population") { const kept = onlyExclusions(next.population); if (kept) next.population = kept; else delete next.population; }
+      else delete next.minimumRecords;
+      return replace(next);
+    }
+    const { condition } = removal;
+    if (condition.key === "population" && condition.origin === "link" && splitExcluded(draft.population).excluded.length) {
+      const next = cloneQuestion(draft);
+      const kept = onlyExclusions(next.population);
+      if (kept) next.population = kept; else delete next.population;
+      return replace(next);
+    }
+    const next = withoutLinkConditions(draft, [condition]);
+    settle({ spec: next.spec, notes: next.notes, parked });
+  }
+  function removeExclusions(excluded: Excluded[]) {
+    const next = cloneQuestion(draft);
+    const population = withoutExclusions(next.population, excluded);
+    if (population) next.population = population; else delete next.population;
+    replace(next);
+    if (open?.key.startsWith("x:")) closeWindow();
+  }
+  function removeRefused() {
+    const next = withoutLinkConditions(draft, view.refused);
+    settle({ spec: next.spec, notes: next.notes, parked });
+  }
+  function bringBackParked() {
+    if (parked) settle(restoreParked(draft, parked));
   }
   function chooseType(block: string) {
-    const next = transitionQuestion(draft, block);
-    setDraft(next.spec);
-    setChanges(next.changes);
-    closePicker();
+    settle(chooseQuestion(draft, block, parked), true);
+    closeCatalogue();
   }
-  function updateFilter(key: string, value: string | number | boolean | undefined) {
-    const next = cloneQuestion(draft);
-    const notes: string[] = [];
-    if (key === "county" && value !== next.filters.county && next.filters.uatSiruta) {
-      delete next.filters.uatSiruta;
-      delete next.filters.uatName;
-      notes.push("Localitatea a fost eliminată odată cu schimbarea județului.");
-    }
-    if (value === undefined || value === "") delete next.filters[key];
-    else next.filters[key] = value;
-    replaceDraft(next, notes);
-    closePicker();
+  function loadSavedQuestion(question: SavedQuestion) {
+    const next = transitionQuestion(question.spec);
+    settle({ spec: next.spec, notes: next.changes, parked: null }, true);
+    setSavedQuestion(question);
+    setSavedNotice(`Întrebare încărcată: „${question.title}”. Apasă „Vezi răspunsul” pentru a o rula.`);
+    closeCatalogue();
   }
-  function removeFilter(target: Field) {
-    const next = cloneQuestion(draft);
-    const keys: Partial<Record<Field, string[]>> = {
-      authority: ["authorityName", "authorityId"], supplier: ["supplierName", "supplierId"],
-      compareWith: ["compareWith", "compareWithId"], uat: ["uatSiruta", "uatName"],
-      employees: ["minEmployees", "maxEmployees"], admin: ["adminPersonKey", "adminName"],
-      period: ["yearFrom", "yearTo", "monthFrom", "monthTo"],
-    };
-    for (const key of keys[target] ?? [target]) delete next.filters[key];
-    replaceDraft(next);
+  function openCatalogue(trigger: HTMLElement) {
+    catalogueTrigger.current = trigger;
+    setSearch("");
+    setCatalogue(true);
   }
-  function pickEntity(name: string, id?: number) {
-    const next = cloneQuestion(draft);
-    const key = field === "compareWith" ? "compareWith" : `${pickRole}Name`;
-    const idKey = field === "compareWith" ? "compareWithId" : `${pickRole}Id`;
-    next.filters[key] = name;
-    delete next.filters[idKey];
-    if (id) next.filters[idKey] = id;
-    if (field === "focal") {
-      const other = pickRole === "authority" ? "supplier" : "authority";
-      delete next.filters[`${other}Name`];
-      delete next.filters[`${other}Id`];
-      next.dim = pickRole;
-      if (pickRole !== focalRole(draft)) {
-        delete next.filters.compareWith;
-        delete next.filters.compareWithId;
-      }
-    }
-    replaceDraft(next);
-    closePicker();
-  }
-  function chooseValue(value: string) {
-    if (!field) return;
-    if (["dim", "measure", "rankBy", "topN", "dataset"].includes(field)) {
-      const next = cloneQuestion(draft);
-      const notes: string[] = [];
-      if (field === "topN") {
-        if (value === "all") delete next.topN;
-        else next.topN = Number(value);
-      }
-      else if (field === "dim") next.dim = value;
-      else if (field === "measure") next.measure = value;
-      else if (field === "rankBy") next.rankBy = value;
-      else {
-        next.dataset = value;
-        if (value !== "contracts" && next.filters.singleBidder) {
-          delete next.filters.singleBidder;
-          notes.push("Filtrul «un singur ofertant» a fost eliminat; se aplică doar contractelor din proceduri.");
-        }
-      }
-      replaceDraft(next, notes);
-      closePicker();
-    } else if (field === "singleBidder") updateFilter("singleBidder", value === "yes" ? true : undefined);
-    else updateFilter(field, value || undefined);
+  function closeCatalogue() {
+    dialogRef.current?.close();
+    setCatalogue(false);
+    catalogueTrigger.current?.focus({ preventScroll: true });
   }
   async function apply() {
-    if (errors.length || running) return;
+    if (blocked || running) return;
     const next = cloneQuestion(draft);
     const submittedKey = questionKey(next);
     try {
@@ -349,200 +272,69 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
   }
   function discard() {
     const next = transitionQuestion(applied ?? seed.spec);
-    setDraft(next.spec);
-    setChanges(next.changes);
+    settle({ spec: next.spec, notes: next.changes, parked: null }, true);
   }
-
-  function phrase(key: Field, label: ReactNode) {
-    return <button type="button" className="qb-phrase" aria-haspopup="dialog" onClick={(event) => openPicker(key, event.currentTarget)}><span>{label}</span><Glyph name="chevron" /></button>;
-  }
-  function chip(key: Field, label: string, removable = false, icon = "table", detail?: string) {
-    return <span className={`qb-chip${key === "cpvTerm" ? " qb-chip-domain" : ""}`} key={key}><button type="button" aria-haspopup="dialog" onClick={(event) => openPicker(key, event.currentTarget)}><Glyph name={icon} /><span>{label}{detail && <span className="qb-chip-detail"> · {detail}</span>}</span><Glyph name="chevron" /></button>{removable && <button type="button" className="qb-chip-remove" onClick={() => removeFilter(key)} aria-label={`Elimină condiția ${label}`}><Glyph name="close" /></button>}</span>;
-  }
-  const namedAuthority = Boolean(draft.filters.authorityName || draft.filters.authorityId);
-  const who = namedAuthority ? phrase("authority", entityLabel(draft, "authority")) : phrase("authorityKind", kind[2]);
-  const where = phrase("county", String(draft.filters.uatName || draft.filters.county || "toată România"));
-  const when = phrase("period", periodLabel(draft));
-  const focal = phrase("focal", entityLabel(draft, focalRole(draft)));
-  const namedSupplier = Boolean(draft.filters.supplierName || draft.filters.supplierId);
-  const buyer = namedAuthority ? phrase("authority", entityLabel(draft, "authority")) : phrase("authorityKind", kind[1]);
-  // A named firm or institution is the scope: "din toată România" would misstate it.
-  const fromSupplier = namedSupplier ? <> de la {phrase("supplier", entityLabel(draft, "supplier"))}</> : null;
-  const inPlace = (namedAuthority || namedSupplier) && !draft.filters.county && !draft.filters.uatName ? null : <> din {where}</>;
-  const what = phrase("dim", draft.dim === "authority" ? "instituții" : draft.dim === "county" ? "județe" : "firme");
-  function sentence() {
-    switch (draft.block) {
-      case "table": return draft.dim === "supplier" ? <>Cine câștigă contractele de la {buyer}{fromSupplier}<br className="qb-desktop-break" />{inPlace}, în {when}?</> : <>Ce {phrase("dim", draft.dim === "county" ? "județe" : "instituții")} cumpără cel mai mult{fromSupplier}<br className="qb-desktop-break" />{draft.dim === "county" ? null : inPlace}, în {when}?</>;
-      case "stat": return <>{draft.measure === "count" ? namedAuthority ? "Câte achiziții are " : "Câte achiziții au " : "Cât valorează achizițiile "}{draft.measure === "count" && !namedAuthority ? phrase("authorityKind", kind[1]) : who}{fromSupplier}<br className="qb-desktop-break" />{inPlace}, în {when}?</>;
-      case "timeseries": return <>Cum evoluează achizițiile {who}{fromSupplier}<br className="qb-desktop-break" />{inPlace}, în {when}?</>;
-      case "map": return <>Cum se împart achizițiile {who}{fromSupplier}<br className="qb-desktop-break" /> pe județe, în {when}?</>;
-      case "breakdown": return <>Ce cumpără {buyer}{fromSupplier}<br className="qb-desktop-break" />{inPlace}, în {when}?</>;
-      case "compare": return <>Compară {focal}<br className="qb-desktop-break" /> cu {phrase("compareWith", String(draft.filters.compareWith || "alege a doua entitate"))}.</>;
-      case "trend": return <>Ce {what} au cea mai mare schimbare<br className="qb-desktop-break" /> între {phrase("period", String(draft.filters.yearFrom || "primul an"))} și {phrase("period", String(draft.filters.yearTo || "al doilea an"))}?</>;
-      case "network": return <>Cu cine lucrează<br className="qb-desktop-break" /> {focal}?</>;
-      case "sankey": return <>Cum se împart achizițiile {focal}<br className="qb-desktop-break" /> între parteneri și domenii?</>;
-      case "fact_check": return <>A cumpărat {phrase("authority", entityLabel(draft, "authority"))}<br className="qb-desktop-break" /> de la {phrase("supplier", entityLabel(draft, "supplier"))}?</>;
-      case "distribution": return <>Unde se situează {focal}<br className="qb-desktop-break" /> după indicele de risc?</>;
-      case "scatter": return <>Ce {what} ies din tipar<br className="qb-desktop-break" /> după risc și valoarea achizițiilor?</>;
-      case "entity_card": return <>Care {phrase("dim", draft.dim === "supplier" ? "firmă" : "instituție")} are<br className="qb-desktop-break" /> {phrase("rankBy", leaderAxis(draft) === "risk" ? "cel mai ridicat indice de risc" : "cea mai mare valoare a achizițiilor")}?</>;
-      default: return null;
-    }
-  }
-  function activeConditions() {
-    const f = draft.filters;
-    const focalBlock = ["network", "sankey", "distribution", "compare"].includes(draft.block);
-    const scopeInSentence = ["table", "stat", "timeseries", "breakdown"].includes(draft.block);
-    const conditions: ReactNode[] = [];
-    // The chip words are describeConditions' (lib/ask/filters/describe.ts); which chips show is this builder's.
-    const words = conditionWords.byId;
-    const label = (id: keyof typeof words) => words[id]?.chip ?? "";
-    if (profile) conditions.push(<span className="qb-profile-scope" key="profile"><Glyph name="stat" />Profiluri istorice · achiziții directe</span>);
-    conditions.push(chip("dataset", label("dataset"), false, "stat"));
-    if (f.authorityKind && (!scopeInSentence || namedAuthority || draft.block === "table" && draft.dim !== "supplier")) conditions.push(chip("authorityKind", label("authorityKind"), true));
-    if (f.county && (!scopeInSentence || f.uatSiruta)) conditions.push(chip("county", label("county"), true, "map"));
-    if (f.uatSiruta && !scopeInSentence) conditions.push(chip("uat", label("locality"), true, "map"));
-    if ((profile && (f.yearFrom || f.yearTo)) || !profile && !scopeInSentence && !["trend", "map"].includes(draft.block)) conditions.push(chip("period", label("period"), Boolean(f.yearFrom || f.yearTo), "calendar"));
-    if (f.cpvTerm) conditions.push(chip("cpvTerm", label("cpvTerm"), true, "breakdown", words.cpvTerm?.chipDetail));
-    if (namedAuthority && !scopeInSentence && !["map", "fact_check"].includes(draft.block) && !(focalBlock && focalRole(draft) === "authority")) conditions.push(chip("authority", label("authority"), true));
-    if ((f.supplierName || f.supplierId) && draft.block !== "fact_check" && !(focalBlock && focalRole(draft) === "supplier")) conditions.push(chip("supplier", label("supplier"), true));
-    if (f.minEmployees !== undefined || f.maxEmployees !== undefined) conditions.push(chip("employees", label("employees"), true));
-    if (f.adminName || f.adminPersonKey) conditions.push(chip("admin", label("admin"), true));
-    if (f.singleBidder) conditions.push(chip("singleBidder", label("singleBidder"), true));
-    return conditions;
-  }
-
-  const options = useMemo((): Choice[] => {
-    switch (field) {
-      case "dim": return [{ value: "supplier", label: "Firme", detail: "Cine furnizează bunurile și serviciile." }, { value: "authority", label: "Instituții", detail: "Cine face achizițiile." }, ...(!["scatter", "entity_card"].includes(draft.block) ? [{ value: "county", label: "Județe", detail: "Unde se află instituțiile cumpărătoare." }] : [])];
-      case "measure": return [{ value: "value", label: "Valoarea în lei", detail: "Suma valorilor înregistrate." }, { value: "count", label: "Numărul de achiziții", detail: "Câte înregistrări există în date." }, ...(draft.block === "table" && draft.dim === "authority" ? [{ value: "value_per_capita", label: "Valoarea pe locuitor", detail: "Pentru autorități-UAT cu populație cunoscută." }] : [])];
-      case "rankBy": return [{ value: "value", label: "Cea mai mare valoare a achizițiilor", detail: "Achiziții directe și contracte prin proceduri, în selecția aleasă." }, { value: "risk", label: "Cel mai ridicat indice de risc", detail: "Un semnal statistic, de verificat în surse." }];
-      case "topN": return [...[5, 10, 25, 50].map((n) => ({ value: String(n), label: `Primele ${n}` })), ...(draft.block === "table" ? [{ value: "all", label: "Toate rezultatele", detail: "Clasamentul complet, împărțit în pagini." }] : [])];
-      case "dataset": return [{ value: "all", label: SOURCES.all!, detail: "Achiziții directe și contracte din proceduri, împreună." }, { value: "contracts", label: SOURCES.contracts!, detail: "Contracte atribuite prin licitații și alte proceduri." }, { value: "da", label: SOURCES.da!, detail: "Achizițiile directe, înregistrate separat." }];
-      case "authorityKind": return KIND_OPTIONS.map(([value, label]) => ({ value, label: label.charAt(0).toUpperCase() + label.slice(1) }));
-      case "county": return [{ value: "", label: "Toată România" }, ...COUNTIES.map((county) => ({ value: county, label: county }))];
-      case "singleBidder": return [{ value: "yes", label: "Doar contracte cu un singur ofertant", detail: "Contracte cu informație cunoscută despre competiție." }, { value: "no", label: "Fără acest filtru", detail: "Păstrează toate contractele din sursa aleasă." }];
-      default: return [];
-    }
-  }, [field, draft.block, draft.dim]);
 
   const catalogResults = QUESTION_TYPES.filter((item) => foldQuestion(`${item.label} ${item.description} ${item.keywords}`).includes(foldQuestion(search.trim())));
-  const isEntityPicker = field && ["authority", "supplier", "focal", "compareWith"].includes(field);
-  const selectedRole = field === "compareWith" ? focalRole(draft) : pickRole;
-  const entityChoices = useMemo(() => {
-    const exact = hits.filter((hit) => hit.roles.includes(selectedRole)).map((hit) => ({ name: hit.name, county: hit.county, id: hit.id, detail: [hit.county, hit.cui ? `CUI ${hit.cui}` : null].filter(Boolean).join(" · ") }));
-    const names = new Set(exact.map((hit) => `${foldQuestion(hit.name)}|${foldQuestion(hit.county ?? "")}`));
-    return [...exact, ...(remote[selectedRole] ?? []).filter((item) => !names.has(`${foldQuestion(item.name)}|${foldQuestion(item.county ?? "")}`)).map((item) => ({ name: item.name, county: item.county, id: item.entityId, detail: item.county ?? "Numele va fi verificat în date" }))];
-  }, [hits, remote, selectedRole]);
+  const navigation = <div className={`qb-navigation${intro ? " qb-navigation-after" : ""}`}><div className="qb-shortcuts" aria-label="Aceleași date, altă perspectivă">{[{ id: "table", label: "Cine câștigă?" }, { id: "timeseries", label: "Cum se schimbă?" }, { id: "compare", label: "Compară" }].map((item) => <button type="button" aria-pressed={draft.block === item.id} key={item.id} onClick={() => chooseType(item.id)}><Glyph name={item.id} />{item.label}</button>)}</div><button type="button" className="qb-catalogue-trigger" aria-haspopup="dialog" onClick={(event) => openCatalogue(event.currentTarget)}><Glyph name="plus" />Toate întrebările<span>13</span></button></div>;
+  const removal = open ? view.removals[open.key] : undefined;
 
-  function pickLocality(item: UatSuggestion) {
-    const next = cloneQuestion(draft);
-    next.filters.uatSiruta = item.siruta;
-    next.filters.uatName = localityLabel(item);
-    // The locality is the narrower scope; a county beside it would only hide rows without a county.
-    delete next.filters.county;
-    replaceDraft(next);
-    closePicker();
-  }
-  function optionList(choices: Choice[], showEmpty = true) {
-    const visible = choices.filter((choice) => foldQuestion(`${choice.label} ${choice.detail ?? ""}`).includes(foldQuestion(search)));
-    const current = field === "singleBidder" ? draft.filters.singleBidder ? "yes" : "no" : field === "rankBy" ? leaderAxis(draft) : field && ["dim", "measure", "topN", "dataset"].includes(field) ? String((draft as unknown as Record<string, unknown>)[field] ?? (field === "dataset" || field === "topN" && draft.block === "table" ? "all" : "")) : String(draft.filters[field ?? ""] ?? "");
-    return <div className="qb-options">{visible.map((choice) => <button type="button" className={`qb-option${choice.value === current ? " is-selected" : ""}`} key={choice.value} onClick={() => chooseValue(choice.value)}><span><strong>{choice.label}</strong>{choice.detail && <small>{choice.detail}</small>}</span><Glyph name={choice.value === current ? "check" : "arrow"} /></button>)}{!visible.length && showEmpty && <p className="qb-empty">Nicio opțiune pentru „{search}”. Încearcă un termen mai scurt.</p>}</div>;
-  }
-  function numberInput(key: string, label: string, min: number, max: number, placeholder = "Oricare") {
-    return <label className="qb-form-field"><span>{label}</span><input type="number" inputMode="numeric" min={min} max={max} step="1" value={formValues[key] ?? ""} onChange={(event) => setFormValues((previous) => ({ ...previous, [key]: event.target.value }))} placeholder={placeholder} /></label>;
-  }
-  function submitBounds() {
-    const next = cloneQuestion(draft);
-    const keys = field === "employees" ? ["minEmployees", "maxEmployees"] : ["yearFrom", "yearTo", "monthFrom", "monthTo"];
-    for (const key of keys) {
-      if (!formValues[key]) delete next.filters[key];
-      else next.filters[key] = Number(formValues[key]);
-    }
-    if (field === "period") {
-      if (next.filters.monthFrom && !next.filters.yearFrom || next.filters.monthTo && !next.filters.yearTo) { setFormError("Alege și anul pentru fiecare lună selectată."); return; }
-      if (next.filters.yearFrom && next.filters.yearTo && Number(next.filters.yearFrom) > Number(next.filters.yearTo)) { setFormError("Perioada trebuie să înceapă înainte să se încheie."); return; }
-      if (next.filters.yearFrom === next.filters.yearTo && next.filters.monthFrom && next.filters.monthTo && Number(next.filters.monthFrom) > Number(next.filters.monthTo)) { setFormError("Luna de început trebuie să fie înaintea lunii de sfârșit."); return; }
-      if (draft.block === "trend" && (!next.filters.yearFrom || !next.filters.yearTo || next.filters.yearFrom === next.filters.yearTo)) { setFormError("Alege doi ani diferiți pentru comparație."); return; }
-    } else if (next.filters.minEmployees !== undefined && next.filters.maxEmployees !== undefined && Number(next.filters.minEmployees) > Number(next.filters.maxEmployees)) { setFormError("Minimul trebuie să fie mai mic sau egal cu maximul."); return; }
-    replaceDraft(next);
-    closePicker();
-  }
-  function pickerBody() {
-    if (field === "catalogue" && catalogueTab === "saved") return <SavedQuestions search={search} current={draft} hasUnsavedChanges={questionKey(draft) !== questionKey(savedQuestion?.spec ?? seed.spec)} onLoad={loadSavedQuestion} />;
-    if (field === "catalogue") return <div className="qb-catalogue-grid">{QUESTION_GROUPS.map((group) => {
-      const items = catalogResults.filter((item) => item.group === group.id);
-      return items.length ? <section className="qb-catalogue-group" key={group.id}><h3>{group.label}</h3>{items.map((item) => <button key={item.id} type="button" className={`qb-catalogue-item${draft.block === item.id ? " is-selected" : ""}`} onClick={() => chooseType(item.id)}><span className="qb-catalogue-glyph"><Glyph name={item.id} /></span><span><strong>{item.label}</strong><small>{item.description}</small></span><Glyph name={draft.block === item.id ? "check" : "arrow"} /></button>)}</section> : null;
-    })}{!catalogResults.length && <p className="qb-empty">Nicio întrebare pentru „{search}”. Încearcă „bani”, „relații” sau „risc”.</p>}</div>;
-    if (field === "add") {
-      const fields: { field: Field; label: string; detail: string }[] = profile ? draft.block === "compare" ? [] : [{ field: "county", label: "Județul grupului de comparație", detail: "Restrânge profilurile comparate." }, ...(draft.dim !== "supplier" ? [{ field: "authorityKind" as const, label: "Tipul instituției", detail: "Comune, spitale, școli și altele." }] : [])] : [
-        { field: "cpvTerm", label: "Domeniul achiziției", detail: "Medicamente, asfaltare, mobilier…" },
-        ...(!["network", "sankey"].includes(draft.block) ? [{ field: "authority" as const, label: "O anumită instituție", detail: "Cine cumpără." }, { field: "supplier" as const, label: "O anumită firmă", detail: "Cine furnizează." }] : []),
-        ...((draft.block !== "map" && draft.dim !== "county") ? [{ field: "county" as const, label: "Județul", detail: "Unde se află instituția cumpărătoare." }, ...(localityScopeSupport(draft).ok ? [{ field: "uat" as const, label: "Localitatea", detail: "Primăria și consiliul local ale unei localități." }] : [])] : []),
-        { field: "authorityKind", label: "Tipul instituției", detail: "Comune, spitale, școli și altele." },
-        { field: "employees", label: "Mărimea firmelor", detail: "Numărul de angajați din bilanț." },
-        { field: "admin", label: "Administratorul firmelor", detail: "Reprezentanți legali din Registrul Comerțului." },
-        { field: "singleBidder", label: "Un singur ofertant", detail: "Contracte cu informații despre competiție." },
-      ];
-      return <div className="qb-options">{fields.map((item) => <button type="button" className="qb-option" key={item.field} onClick={() => openPicker(item.field)}><span><strong>{item.label}</strong><small>{item.detail}</small></span><Glyph name="plus" /></button>)}{!fields.length && <p className="qb-empty">Comparația folosește profilurile istorice complete ale celor două entități.</p>}</div>;
-    }
-    if (field === "period" || field === "employees") return <form onSubmit={(event) => { event.preventDefault(); submitBounds(); }} className="qb-picker-form">
-      {field === "period" ? <><div className="qb-presets">{[new Date().getFullYear(), new Date().getFullYear() - 1, new Date().getFullYear() - 2].map((year) => <button type="button" key={year} onClick={() => setFormValues((previous) => ({ ...previous, yearFrom: String(draft.block === "trend" ? year - 1 : year), yearTo: String(year), monthFrom: "", monthTo: "" }))}>{draft.block === "trend" ? `${year - 1}–${year}` : year}</button>)}{draft.block !== "trend" && <button type="button" onClick={() => setFormValues((previous) => ({ ...previous, yearFrom: "", yearTo: "", monthFrom: "", monthTo: "" }))}>Toată perioada</button>}</div><div className="qb-form-grid">{numberInput("yearFrom", draft.block === "trend" ? "Primul an" : "Din anul", 2000, 2100)}{numberInput("yearTo", draft.block === "trend" ? "Al doilea an" : "Până în anul", 2000, 2100)}{draft.block !== "trend" && <>{numberInput("monthFrom", "Din luna (opțional)", 1, 12)}{numberInput("monthTo", "Până în luna (opțional)", 1, 12)}</>}</div></> : <><div className="qb-presets">{[["", "0", "Fără angajați"], ["", "4", "Sub 5"], ["", "49", "Sub 50"], ["250", "", "250 sau mai mulți"]].map(([min, max, label]) => <button type="button" key={label} onClick={() => setFormValues((previous) => ({ ...previous, minEmployees: min!, maxEmployees: max! }))}>{label}</button>)}</div><div className="qb-form-grid">{numberInput("minEmployees", "Cel puțin", 0, 1000000)}{numberInput("maxEmployees", "Cel mult", 0, 1000000)}</div></>}
-      {formError && <p role="alert" className="qb-form-error">{formError}</p>}<button className="qb-primary qb-picker-confirm" type="submit">Folosește această {field === "period" ? "perioadă" : "condiție"}<Glyph name="check" /></button>
-    </form>;
-    if (isEntityPicker) return <><div className="qb-options">{entityChoices.map((item, index) => <button type="button" className="qb-option" key={`${item.id ?? item.name}-${index}`} onClick={() => pickEntity(item.name, item.id)}><span><strong>{item.name}</strong><small>{item.detail}{item.id ? ` · ID ${item.id}` : ""}</small></span><Glyph name="arrow" /></button>)}{!loading && !entityChoices.length && <p className="qb-empty">{search.trim().length < 2 ? "Scrie cel puțin două litere pentru a căuta." : "Nicio potrivire. Încearcă un nume mai scurt sau codul fiscal."}</p>}{search.trim().length >= 2 && <button type="button" className="qb-text-choice" onClick={() => pickEntity(search.trim())}>Caută numele exact „{search.trim()}”<small>Vei vedea identitatea găsită și eventualele ambiguități lângă răspuns.</small></button>}</div></>;
-    if (field === "county") {
-      const support = localityScopeSupport(draft);
-      const term = search.trim();
-      const localities = remote.uat ?? [];
-      const counties = options.filter((choice) => foldQuestion(`${choice.label} ${choice.detail ?? ""}`).includes(foldQuestion(search)));
-      return <>{optionList(options, !support.ok || term.length < 2)}
-        {support.ok && term.length >= 2 && <div className="qb-options qb-place-localities"><p className="qb-group-label">Localități · doar primăria și consiliul local</p>{localities.map((item) => <button key={item.siruta} type="button" className={`qb-option${draft.filters.uatSiruta === item.siruta ? " is-selected" : ""}`} onClick={() => pickLocality(item)}><span><strong>{localityLabel(item)}</strong><small>{item.tip}{item.population ? ` · ${item.population.toLocaleString("ro-RO")} locuitori (RPL 2021)` : ""}</small></span><Glyph name={draft.filters.uatSiruta === item.siruta ? "check" : "arrow"} /></button>)}{!loading && !localities.length && !counties.length && <p className="qb-empty">Niciun județ sau localitate pentru „{term}”. Verifică numele.</p>}</div>}
-        {!support.ok && <p className="qb-place-note"><Glyph name="info" />{support.reason}</p>}
-        {support.ok && term.length < 2 && <p className="qb-place-note"><Glyph name="info" />Scrie numele unui oraș sau al unei comune pentru a alege o localitate.</p>}</>;
-    }
-    if (field === "uat") return <div className="qb-options">{(remote.uat ?? []).map((item) => <button key={item.siruta} type="button" className="qb-option" onClick={() => { const next = cloneQuestion(draft); next.filters.uatSiruta = item.siruta; next.filters.uatName = localityLabel(item); if (item.county) next.filters.county = countyName(item.county); replaceDraft(next); closePicker(); }}><span><strong>{item.name}</strong><small>{item.tip} · {item.county}{item.population ? ` · ${item.population.toLocaleString("ro-RO")} locuitori (RPL 2021)` : ""}</small></span><Glyph name="arrow" /></button>)}{!loading && !(remote.uat ?? []).length && <p className="qb-empty">{search.length < 2 ? "Scrie numele localității." : "Nicio localitate găsită. Încearcă și județul."}</p>}</div>;
-    if (field === "admin") return <div className="qb-options">{(remote.person ?? []).map((person) => <button type="button" className="qb-option" key={person.key} onClick={() => { const next = cloneQuestion(draft); next.filters.adminPersonKey = person.key; next.filters.adminName = `${person.name}${person.birthYear ? ` (n. ${person.birthYear}${person.birthLocality ? `, ${person.birthLocality}` : ""})` : ""}`; replaceDraft(next); closePicker(); }}><span><strong>{person.name}</strong><small>{[person.birthYear ? `n. ${person.birthYear}` : person.birthDateImplausible ? IMPLAUSIBLE_BIRTH_DATE_LABEL : null, person.birthLocality, `${person.nFirms} firme`].filter(Boolean).join(" · ")}</small></span><Glyph name="arrow" /></button>)}{!loading && !(remote.person ?? []).length && <p className="qb-empty">{search.length < 2 ? "Scrie numele reprezentantului legal." : "Nicio persoană găsită. Încearcă numele complet."}</p>}</div>;
-    if (field === "cpvTerm") return <div className="qb-options">{(remote.cpv ?? []).map((item) => {
-      const isCode = /^(?:\d{2,8}|\d{8}-\d)$/.test(item.term);
-      return <button type="button" className="qb-option" key={item.term} onClick={() => {
-        if (isCode && item.cpvName) setCpvNames(current => ({ ...current, [item.term]: item.cpvName! }));
-        updateFilter("cpvTerm", item.term);
-      }}><span><strong>{isCode ? item.cpvName ?? `CPV ${item.term}` : item.term}</strong>{isCode ? <small>CPV {item.term}</small> : item.cpvName && <small>{item.cpvName}</small>}</span><Glyph name="arrow" /></button>;
-    })}{(remote.division ?? []).map((item) => <button type="button" className="qb-option" key={item.code} onClick={() => {
-      setCpvNames(current => ({ ...current, [item.code]: item.name }));
-      updateFilter("cpvTerm", item.code);
-    }}><span><strong>{item.name}</strong><small>CPV {item.code}</small></span><Glyph name="arrow" /></button>)}{search.trim() && <button className="qb-text-choice" type="button" onClick={() => updateFilter("cpvTerm", search.trim())}>Folosește domeniul „{search.trim()}”<small>Corespondența cu clasificarea CPV va fi afișată lângă răspuns.</small></button>}</div>;
-    return <>{optionList(options)}{field === "topN" && <form className="qb-custom-top" onSubmit={(event) => { event.preventDefault(); chooseValue(formValues.topN ?? "10"); }}><label className="qb-form-field"><span>Sau alege un număr între 1 și 50</span><input type="number" inputMode="numeric" required min={1} max={50} step={1} value={formValues.topN ?? "10"} onChange={(event) => setFormValues((previous) => ({ ...previous, topN: event.target.value }))} /></label><button type="submit" className="qb-primary">Folosește<Glyph name="check" /></button></form>}</>;
-  }
-
-  const navigation = <div className={`qb-navigation${intro ? " qb-navigation-after" : ""}`}><div className="qb-shortcuts" aria-label="Aceleași date, altă perspectivă">{[{ id: "table", label: "Cine câștigă?" }, { id: "timeseries", label: "Cum se schimbă?" }, { id: "compare", label: "Compară" }].map((item) => <button type="button" aria-pressed={draft.block === item.id} key={item.id} onClick={() => chooseType(item.id)}><Glyph name={item.id} />{item.label}</button>)}</div><button type="button" className="qb-catalogue-trigger" aria-haspopup="dialog" onClick={(event) => openPicker("catalogue", event.currentTarget)}><Glyph name="plus" />Toate întrebările<span>13</span></button></div>;
-  const showsSearch = field && !["add", "period", "employees", "dim", "measure", "rankBy", "topN", "dataset", "authorityKind", "singleBidder"].includes(field);
-  return <div className="question-builder">
+  return <div className="question-builder fk">
     {!intro && navigation}
-    <section className={`qb-editor${dirty ? " qb-editor-pending" : ""}`} aria-label="Construiește întrebarea">
-
+    <section className={`fk-editor qb-editor-kit${dirty ? " is-pending" : ""}`} aria-label="Construiește întrebarea">
       {intro}
       {savedNotice && <p className="cq-loaded-question" role="status">{savedNotice}</p>}
       {fromAi && <p className="qb-ai-note">Am transformat întrebarea în condiții pe care le poți verifica și modifica.</p>}
-      <h2 className={`qb-sentence qb-sentence-${draft.block}`}>{sentence()}</h2>
-      <div className="qb-conditions">{activeConditions()}{draft.block !== "compare" && <button type="button" className="qb-add" aria-haspopup="dialog" onClick={(event) => openPicker("add", event.currentTarget)}><Glyph name="plus" />Adaugă o condiție</button>}</div>
-      {/* Two named entities: a record threshold or a precise population adds nothing.
-          A link that already carries one keeps the section, so it can be removed. */}
-      {(draft.block !== "compare" || draft.population || draft.minimumRecords) && <details className="cq-more-filters" open={filtersOpen} onToggle={event => setFiltersOpen(event.currentTarget.open)}><summary>Mai multe filtre</summary>
-      <fieldset className="qp-minimum" disabled={running}><legend>Număr minim de înregistrări</legend>{draft.minimumRecords ? <div className="qp-minimum-fields"><label>Cine?<select value={draft.minimumRecords.role} onChange={event => replaceDraft({ ...cloneQuestion(draft), minimumRecords:{ ...draft.minimumRecords!, role:event.target.value as "authority" | "supplier" } })}><option value="supplier">Firmele</option><option value="authority">Instituțiile</option></select></label><label>Cel puțin<input type="number" min={1} max={1000000} step={1} value={draft.minimumRecords.count} onChange={event => replaceDraft({ ...cloneQuestion(draft), minimumRecords:{ ...draft.minimumRecords!, count:Number(event.target.value) } })} /></label><button type="button" onClick={() => { const next = cloneQuestion(draft); delete next.minimumRecords; replaceDraft(next); }}>Elimină pragul</button></div> : <button type="button" onClick={() => replaceDraft({ ...cloneQuestion(draft), minimumRecords:{ role:"supplier", count:5 } })}>Adaugă un prag de înregistrări</button>}</fieldset>
-      <PopulationEditor embedded value={draft.population} disabled={running} onChange={population => { const next = cloneQuestion(draft); if (population) next.population = population; else delete next.population; replaceDraft(next); }} />
-      </details>}
-      {!filtersOpen && (draft.population || draft.minimumRecords) && <div className="cq-active-filters" aria-label="Filtre suplimentare active">{draft.population && <p>{conditionWords.byId.population?.chip}</p>}{draft.minimumRecords && <p>{conditionWords.byId.minimumRecords?.chip}</p>}</div>}
-      {changes.length > 0 && <div className="qb-scope-change" role="status"><Glyph name="info" /><div><strong>Ce se schimbă odată cu întrebarea</strong>{changes.map((note) => <p key={note}>{note}</p>)}</div></div>}
-      {profile && <p className="qb-profile-note">Profiluri: achiziții directe, toată perioada. Indicele de risc e un semnal, nu o dovadă.{draft.dim === "supplier" && draft.filters.county ? " Județul grupului este cel înregistrat în profilul firmei." : ""}</p>}
-      <div className="qb-editor-bottom"><div className="qb-presentation">{draft.block === "table" ? <>Arată {phrase("topN", draft.topN === undefined ? "toate" : `primele ${draft.topN}`)} {phrase("dim", draft.topN === undefined ? draft.dim === "supplier" ? "firmele" : draft.dim === "county" ? "județele" : "instituțiile" : draft.dim === "supplier" ? "firme" : draft.dim === "county" ? "județe" : "instituții")}, după {phrase("measure", draft.measure === "count" ? "numărul de achiziții" : draft.measure === "value_per_capita" ? "valoarea pe locuitor" : "valoarea înregistrată")}.</> : draft.block === "trend" ? <>Arată {phrase("topN", `primele ${draft.topN ?? 10}`)}, după diferența în lei dintre cei doi ani.</> : ["stat", "timeseries", "map"].includes(draft.block) ? <>Măsoară {phrase("measure", draft.measure === "count" ? "numărul de achiziții" : "valoarea înregistrată")}.</> : <><Glyph name={type.id} />{type.description}</>}</div><div className="qb-apply-area">{dirty ? <button type="button" className="qb-discard" onClick={discard}>Renunță la modificări</button> : applied && <span className="qb-ready"><Glyph name="check" />Întrebare aplicată</span>}<SaveQuestionButton spec={draft} active={savedQuestion} onSaved={question => { setSavedQuestion(question); setSavedNotice(`Salvată ${question.storage === "local" ? "pe acest dispozitiv" : "în cont"}: „${question.title}” · Toate întrebările → Salvate`); }} disabled={running || errors.length > 0} /><button type="button" className="qb-primary qb-apply" disabled={running || errors.length > 0} onClick={apply}>{running ? "Caut în date…" : dirty && applied ? "Actualizează răspunsul" : "Vezi răspunsul"}<Glyph name="arrow" /></button></div></div>
+      <Sentence tokens={view.sentence} openId={open?.key ?? null} onOpen={openWindow} className={`qb-kit-sentence qb-kit-sentence--${draft.block}`} />
+      {view.scopeLine && <ScopeLine />}
+      {view.rows.map((row) => <ConditionRow key={row.label} label={row.label} kind={row.kind}>
+        {row.chips.map((chip) => <Chip key={chip.key} id={chip.key} label={chip.label} name={chip.name} active={chip.active} open={open?.key === chip.key} onOpen={openWindow}
+          onRemove={() => { const target = view.windows[chip.key]; if (target) choose(target, [{ filter: chip.id, value: undefined }]); }} />)}
+      </ConditionRow>)}
+      <Invitations items={view.invites} openId={open?.key ?? null} onOpen={openWindow} />
+      <UnderChips items={view.under} openId={open?.key ?? null} onOpen={openWindow} onRemove={removeUnder} />
+      <ParkedRow label={parked?.label ?? ""} {...(parked ? { tip: { title: parked.label, text: parked.tip } } : {})} items={parked?.items.map((item) => ({ id: item.id, label: item.label })) ?? []} onRestore={bringBackParked} />
+      {view.refused.length > 0 && <div className="qb-refused" role="alert">
+        <p>{view.refused[0]!.reason}</p>
+        <button type="button" className="fk-secondary" onClick={removeRefused}>Scoate condițiile din link</button>
+      </div>}
+      {changes.length > 0 && <div className="qb-notes" role="status"><Glyph name="info" /><div><strong>Ce se schimbă odată cu întrebarea</strong>{changes.map((note) => <p key={note}>{note}</p>)}</div></div>}
+      <div className="fk-bottom qb-bottom">
+        <div className="qb-bottom-start">
+          {view.presentation.length > 0 && <Presentation tokens={view.presentation} openId={open?.key ?? null} onOpen={openWindow} />}
+          {view.advanced.length > 0 && <span className="qb-more-wrap" ref={moreRef}>
+            <RowMenu name="Întrebarea" actions={[{ id: "advanced", label: "Selecție avansată", glyph: "▾", onSelect: () => {
+              const button = moreRef.current?.querySelector<HTMLElement>(".fk-more");
+              if (button) openWindow("advanced", button);
+            } }]} />
+          </span>}
+        </div>
+        <div className="fk-actions qb-actions">
+          {dirty ? <button type="button" className="qb-discard" onClick={discard}>Renunță la modificări</button> : applied && <span className="qb-ready"><Glyph name="check" />Întrebare aplicată</span>}
+          <SaveQuestionButton spec={draft} unapplied={dirty && Boolean(applied)} active={savedQuestion} onSaved={question => { setSavedQuestion(question); setSavedNotice(`Salvată ${question.storage === "local" ? "pe acest dispozitiv" : "în cont"}: „${question.title}” · Toate întrebările → Salvate`); }} disabled={running || blocked} />
+          <button type="button" className="fk-primary qb-apply" disabled={running || blocked} onClick={apply}>{running ? "Caut în date…" : dirty && applied ? "Actualizează răspunsul" : "Vezi răspunsul"}<Glyph name="arrow" /></button>
+        </div>
+      </div>
       {outro}
       {errors.length > 0 && <div className="qb-validation" aria-live="polite">{errors.map((error) => <p key={error}>{error}</p>)}</div>}
       {dirty && <p className="qb-pending-line" role="status"><span />Modificări neaplicate</p>}
     </section>
     {intro && navigation}
-    <dialog ref={dialogRef} className={`qb-dialog${showsSearch ? " qb-dialog-search" : ""}${field === "catalogue" ? " qb-dialog-catalogue" : ""}`} aria-labelledby={dialogTitleId} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); closePicker(); } }} onCancel={(event) => { event.preventDefault(); closePicker(); }} onClick={(event) => { if (event.target === event.currentTarget) { const bounds = event.currentTarget.getBoundingClientRect(); if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) closePicker(); } }}>
-      {field && <><div className="qb-picker-head"><h2 id={dialogTitleId}>{FIELDS[field].title}</h2><button className="qb-dialog-close" type="button" onClick={closePicker} aria-label="Închide"><Glyph name="close" /></button></div>{(field === "catalogue" && catalogueTab === "saved" || FIELDS[field].note) && <p className="qb-picker-note">{field === "catalogue" && catalogueTab === "saved" ? "Întrebările tale, cu filtrele păstrate. Cele mai recent salvate apar primele." : field === "county" && countyIsFirmSeat(draft, focalRole(draft)) ? "Contează sediul firmei. Alege un județ." : FIELDS[field].note}</p>}{field === "catalogue" && <div className="cq-catalogue-tabs" role="tablist" aria-label="Alege o întrebare">{(["models", "saved"] as const).map(tab => <button key={tab} type="button" role="tab" id={`${catalogueId}-${tab}`} aria-selected={catalogueTab === tab} aria-controls={`${catalogueId}-panel`} tabIndex={catalogueTab === tab ? 0 : -1} onClick={() => { setCatalogueTab(tab); setSearch(""); }} onKeyDown={event => { if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) { event.preventDefault(); const next = event.key === "Home" ? "models" : event.key === "End" ? "saved" : tab === "models" ? "saved" : "models"; setCatalogueTab(next); setSearch(""); document.getElementById(`${catalogueId}-${next}`)?.focus(); } }}>{tab === "models" ? "Modele de întrebări" : "Salvate"}</button>)}</div>}{showsSearch && <label className="qb-picker-search" htmlFor={searchId}><Glyph name="search" /><input id={searchId} type="search" autoComplete="off" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={field === "catalogue" ? catalogueTab === "saved" ? "Caută în întrebările salvate…" : "Caută o întrebare, de exemplu: relații, risc, evoluție…" : field === "county" ? localityScopeSupport(draft).ok ? "Un județ, un oraș sau o comună" : "Caută județul" : "Scrie pentru a căuta…"} aria-label={field === "catalogue" ? catalogueTab === "saved" ? "Caută în întrebările salvate" : "Caută în cele 13 întrebări" : FIELDS[field].title} /></label>}{field === "focal" && <div className="qb-role-switch" aria-label="Tipul entității"><button type="button" aria-pressed={pickRole === "authority"} onClick={() => setPickRole("authority")}>Instituție</button><button type="button" aria-pressed={pickRole === "supplier"} onClick={() => setPickRole("supplier")}>Firmă</button></div>}<span className="qb-search-status" role="status">{showsSearch && loading ? "Caut în date…" : ""}</span><div className="qb-picker-content" role={field === "catalogue" ? "tabpanel" : undefined} id={field === "catalogue" ? `${catalogueId}-panel` : undefined} aria-labelledby={field === "catalogue" ? `${catalogueId}-${catalogueTab}` : undefined} aria-busy={!!showsSearch && loading}>{showsSearch && loading ? <><p className="qb-loading" aria-hidden="true">Caut în date…</p><div className="qb-search-skeleton" aria-hidden="true">{[0, 1, 2, 3].map((row) => <div key={row}><span /><span /></div>)}</div></> : <>{loadError && <p className="qb-load-error" role="status">Sugestiile nu sunt disponibile acum. Poți încerca din nou sau folosi un nume complet.</p>}{pickerBody()}</>}</div></>}
+    <BuilderWindow win={win} anchor={open?.anchor ?? null} draft={draft} excluded={removal?.kind === "exclusion" ? removal.excluded : []}
+      onClose={closeWindow} onChoose={(choices) => { if (win) choose(win, choices); }} onReplace={replace} onRemoveExclusions={removeExclusions}
+      onCpvName={(code, name) => setCpvNames(current => ({ ...current, [code]: name }))} />
+    <dialog ref={dialogRef} className="qb-dialog qb-dialog-search qb-dialog-catalogue" aria-labelledby={dialogTitleId} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); closeCatalogue(); } }} onCancel={(event) => { event.preventDefault(); closeCatalogue(); }} onClick={(event) => { if (event.target === event.currentTarget) { const bounds = event.currentTarget.getBoundingClientRect(); if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) closeCatalogue(); } }}>
+      {catalogue && <><div className="qb-picker-head"><h2 id={dialogTitleId}>Ce ai vrea să afli?</h2><button className="qb-dialog-close" type="button" onClick={closeCatalogue} aria-label="Închide"><Glyph name="close" /></button></div>
+        <p className="qb-picker-note">{catalogueTab === "saved" ? "Întrebările tale, cu filtrele păstrate. Cele mai recent salvate apar primele." : "13 feluri de a privi datele. Alege întrebarea, apoi fă-o a ta."}</p>
+        <div className="cq-catalogue-tabs" role="tablist" aria-label="Alege o întrebare">{(["models", "saved"] as const).map(tab => <button key={tab} type="button" role="tab" id={`${catalogueId}-${tab}`} aria-selected={catalogueTab === tab} aria-controls={`${catalogueId}-panel`} tabIndex={catalogueTab === tab ? 0 : -1} onClick={() => { setCatalogueTab(tab); setSearch(""); }} onKeyDown={event => { if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) { event.preventDefault(); const next = event.key === "Home" ? "models" : event.key === "End" ? "saved" : tab === "models" ? "saved" : "models"; setCatalogueTab(next); setSearch(""); document.getElementById(`${catalogueId}-${next}`)?.focus(); } }}>{tab === "models" ? "Modele de întrebări" : "Salvate"}</button>)}</div>
+        <label className="qb-picker-search" htmlFor={searchId}><Glyph name="search" /><input id={searchId} type="search" autoComplete="off" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={catalogueTab === "saved" ? "Caută în întrebările salvate…" : "Caută o întrebare, de exemplu: relații, risc, evoluție…"} aria-label={catalogueTab === "saved" ? "Caută în întrebările salvate" : "Caută în cele 13 întrebări"} /></label>
+        <div className="qb-picker-content" role="tabpanel" id={`${catalogueId}-panel`} aria-labelledby={`${catalogueId}-${catalogueTab}`}>
+          {catalogueTab === "saved" ? <SavedQuestions search={search} current={draft} hasUnsavedChanges={questionKey(draft) !== questionKey(savedQuestion?.spec ?? seed.spec)} onLoad={loadSavedQuestion} />
+            : <div className="qb-catalogue-grid">{QUESTION_GROUPS.map((group) => {
+              const items = catalogResults.filter((item) => item.group === group.id);
+              return items.length ? <section className="qb-catalogue-group" key={group.id}><h3>{group.label}</h3>{items.map((item) => <button key={item.id} type="button" className={`qb-catalogue-item${draft.block === item.id ? " is-selected" : ""}`} onClick={() => chooseType(item.id)}><span className="qb-catalogue-glyph"><Glyph name={item.id} /></span><span><strong>{item.label}</strong><small>{item.description}</small></span><Glyph name={draft.block === item.id ? "check" : "arrow"} /></button>)}</section> : null;
+            })}{!catalogResults.length && <p className="qb-empty">Nicio întrebare pentru „{search}”. Încearcă „bani”, „relații” sau „risc”.</p>}</div>}
+        </div></>}
     </dialog>
   </div>;
 }

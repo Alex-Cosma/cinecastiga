@@ -4,12 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { MonitoringCreateInput, MonitoringWatch } from "@/lib/monitoring-shared";
 import { DEFAULT_MONITORING_PREFERENCES } from "@/lib/monitoring-shared";
-import { describeQuestion, type QuestionSpec } from "@/lib/ask/question-ui";
+import { questionTitle } from "@/lib/ask/filters/title";
 import Term from "@/components/Term";
 import { api, ErrorNotice, Preferences, ScopeSummary } from "./shared";
 export default function FollowSetup(input: MonitoringCreateInput) {
   const router = useRouter();
-  const [title, setTitle] = useState(input.title ?? describeQuestion(input.spec as QuestionSpec).slice(0, 200));
+  const [title, setTitle] = useState(input.title ?? questionTitle(input.spec).slice(0, 200));
   const [preferences, setPreferences] = useState(DEFAULT_MONITORING_PREFERENCES);
   const [busy, setBusy] = useState(false), [error, setError] = useState("");
   async function save(event: React.FormEvent) {

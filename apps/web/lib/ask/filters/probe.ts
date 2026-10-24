@@ -1,54 +1,17 @@
 import { defaultQuestion, localityScopeError, questionErrors, questionKey, transitionQuestion } from "../question-ui";
 import { validateSpec, type Block } from "../spec";
 import { filterContext } from "./context";
-import { FILTERS, placedSlots, writeFocal, type OfferTable } from "./registry";
+import { FILTERS, placedSlots, writeFocal } from "./registry";
 import type { Party } from "./defs/selection";
 import { choicesOf, choiceState, type Choice } from "./pickers";
-import { TODAY_BLOCK_FILTERS } from "./today-blocks";
-import type { Availability, FilterCtx, FilterId, FilterSpec, Placement, Slot } from "./types";
+import type { Availability, FilterCtx, FilterSpec, Placement, Slot } from "./types";
 
 /*
- * The walk of today's builder (today.test.ts, plan §6.1): every choice its
- * controls offer on a spec, applied as it applies them (the picker's write,
- * then transitionQuestion, as replaceDraft does), and what it says about the
- * result. F1b's offers have their own walk, through the pickers and
- * transition.ts (registry.test.ts).
+ * The walk of F1b's builder (registry.test.ts, plan §6.1): every row of every
+ * window BLOCK_FILTERS draws on a draft, and what the builder and the engine
+ * say about the result. Today's builder (F0) and its walk left when
+ * QuestionBuilder began to render from BLOCK_FILTERS (F1b-builder-a).
  */
-
-export interface Offer {
-  filter: FilterId;
-  placement: Placement;
-  picker?: "focal";
-  value: unknown;
-  to: FilterSpec;
-}
-
-/** Every distinct choice offered on `spec`: its controls' values, × on a removable chip, both roles of the focal picker. */
-export function offersOn(spec: FilterSpec, ctx: FilterCtx = filterContext(spec), table: OfferTable = TODAY_BLOCK_FILTERS): Offer[] {
-  const seen = new Set<string>();
-  const out: Offer[] = [];
-  const add = (offer: Omit<Offer, "to">, to: FilterSpec) => {
-    const normalized = transitionQuestion(to).spec as FilterSpec;
-    const key = `${offer.filter}|${offer.picker ?? ""}|${questionKey(normalized)}`;
-    if (seen.has(key)) return;
-    seen.add(key);
-    out.push({ ...offer, to: normalized });
-  };
-  for (const { placement, slot } of placedSlots(spec, ctx, table)) {
-    if (slot.picker === "focal") {
-      for (const role of ["authority", "supplier"] as const)
-        for (const party of FILTERS[role].choices(spec, ctx) as Party[])
-          add({ filter: role, placement, picker: "focal", value: party }, writeFocal(spec, role, party));
-      continue;
-    }
-    for (const id of [slot.id, ...(slot.writes ?? [])]) {
-      const def = FILTERS[id];
-      const values = [...def.choices(spec, ctx), ...(slot.removable && id === slot.id ? [undefined] : [])];
-      for (const value of values) add({ filter: id, placement, value }, def.write(spec, value));
-    }
-  }
-  return out;
-}
 
 /** One row of one window of BLOCK_FILTERS on a draft, with its state (pickers.ts). */
 export interface PlacedChoice { placement: Placement; slot: Slot; choice: Choice; state: Availability }
@@ -71,10 +34,6 @@ export const REQUIRED_INPUTS = [
   "Alege instituția sau firma despre care vrei să afli mai multe.", "Alege și a doua instituție sau firmă pentru comparație.",
   "Alege instituția cumpărătoare.", "Alege firma furnizoare.", "Alege doi ani diferiți pentru a vedea schimbarea.",
 ];
-/** "input" when the builder only asks for an input the question needs; "engine" when the question is refused. */
-export const refusalKind = (errors: readonly string[]): "engine" | "input" =>
-  errors.every((error) => REQUIRED_INPUTS.includes(error)) ? "input" : "engine";
-
 /** One question of each kind, ready to run: the catalogue choice, with the inputs it needs (corpus builderQuestion). */
 export function baseQuestions(year: number): { name: string; spec: FilterSpec }[] {
   const choose = (block: Block, edit: (q: FilterSpec) => FilterSpec = (q) => q) =>

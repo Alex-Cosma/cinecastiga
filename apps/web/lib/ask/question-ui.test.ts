@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { BLOCKS, validateSpec } from "./spec";
 import { isHistoricalProfile } from "./population";
-import { QUESTION_GROUPS, QUESTION_TYPES, cloneQuestion, defaultQuestion, describeQuestion, leaderAxis, localityScopeError, localityScopeSupport, periodLabel, questionErrors, questionKey, reconcileQuestionDraft, transitionQuestion, type QuestionSpec } from "./question-ui";
+import { questionTitle } from "./filters/title";
+import { QUESTION_GROUPS, QUESTION_TYPES, cloneQuestion, defaultQuestion, leaderAxis, localityScopeError, localityScopeSupport, periodLabel, questionErrors, questionKey, reconcileQuestionDraft, transitionQuestion, type QuestionSpec } from "./question-ui";
 
 const authority: QuestionSpec = {
   block: "table", dim: "supplier", dataset: "contracts", measure: "value", topN: 7,
@@ -32,7 +33,7 @@ describe("the editable question contract", () => {
     expect(spec.dataset ?? "all").toBe("all");
     expect(questionErrors(spec)).toEqual([]);
     expect(validateSpec(spec)).not.toHaveProperty("error");
-    expect(describeQuestion(spec)).toContain("valoare a achizițiilor");
+    expect(questionTitle(spec)).toContain("cumpără cel mai mult");
     expect(questionErrors({ ...spec, rankBy:"risk" }).join(" ")).toContain("profiluri istorice");
   });
 
@@ -102,8 +103,8 @@ describe("the editable question contract", () => {
   });
   it("titles every comparison by its two entities and period, legacy links included", () => {
     const legacy:QuestionSpec = { block:"compare", measure:"value", filters:{ authorityId:811, authorityName:"Comuna Dumbrăvița", compareWithId:922, compareWith:"Comuna Giroc" } };
-    expect(describeQuestion(legacy)).toBe("„Comuna Dumbrăvița” și „Comuna Giroc” · toți anii disponibili");
-    expect(describeQuestion({ ...legacy, comparisonMode:"profiles" })).toBe(describeQuestion(legacy));
+    expect(questionTitle(legacy)).toBe("Compară Comuna Dumbrăvița cu Comuna Giroc la toate achizițiile, în toți anii.");
+    expect(questionTitle({ ...legacy, comparisonMode:"profiles" })).toBe(questionTitle(legacy));
     expect(transitionQuestion(authority, "compare").spec.comparisonMode).toBe("transactions");
   });
 
@@ -178,7 +179,7 @@ describe("the editable question contract", () => {
     expect(defaultQuestion()).toEqual({ block: "table", dim: "supplier", measure: "value", topN: 10, filters: {} });
     const validated = validateSpec(defaultQuestion());
     expect(validated).not.toHaveProperty("error");
-    if (!("error" in validated)) expect(describeQuestion(validated)).toBe("Cine câștigă contractele de la instituțiile din toată țara, în toți anii?");
+    if (!("error" in validated)) expect(questionTitle(validated)).toBe("Ce firme câștigă achizițiile făcute de instituțiile publice din toată țara, în toți anii?");
   });
 
   it("restores a full paginated ranking without turning it into a dirty top-ten draft", () => {
@@ -231,8 +232,8 @@ describe("a restored or edited question keeps what it asked", () => {
     expect(edited.rankBy).toBeUndefined();
     expect(leaderAxis(edited)).toBe("risk");
     expect(isHistoricalProfile(edited)).toBe(true);
-    expect(describeQuestion(edited)).toBe("Care firmă din județul Cluj are cel mai ridicat indice de risc?");
-    expect(describeQuestion({ ...edited, rankBy: "risk" })).toBe(describeQuestion(edited));
+    expect(questionTitle(edited)).toBe("Care firmă cu sediul în județul Cluj are cel mai ridicat indice de risc?");
+    expect(questionTitle({ ...edited, rankBy: "risk" })).toBe(questionTitle(edited));
   });
 
   it("a new question still starts from its type's defaults, with the note where the measure changes", () => {

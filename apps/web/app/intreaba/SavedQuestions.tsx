@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { RecipeSummary, RecipeVersion } from "@/lib/recipes";
 import type { QuestionSpec } from "@/lib/ask/question-ui";
-import { savedQuestionSummary } from "@/lib/ask/filters/describe";
+import { savedQuestionSummary } from "@/lib/ask/filters/title";
 import { NEWER_VERSION_QUESTION, parseSpec, validateSpec } from "@/lib/ask/spec";
 import { encodeSpec } from "@/lib/ask/permalink";
 import { useViewer } from "@/lib/use-viewer";
