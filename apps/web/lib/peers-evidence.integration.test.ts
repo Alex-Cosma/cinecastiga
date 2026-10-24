@@ -154,7 +154,7 @@ describe.skipIf(!url)("peer sources and immutable captures (isolated PostgreSQL)
     const newCapture=await recaptureClip(uid,inv,clipId,sql);expect(newCapture?.scope.peer).toEqual(marker);
     const md=await (await investigationExport(uid,inv,"https://example.invalid","md",sql))?.text();
     expect(md).toContain("Grup ales manual");expect(md).toContain("Fără date eligibile");expect(md).toContain("Lipsa datelor nu înseamnă cheltuieli zero");
-    expect(md).toContain(POPULATION_VERSION);
+    expect(md).toContain(POPULATION_VERSION);expect(md).toContain("Versiunea comparației: peers-2.");
   });
   it("preserves all-year sources, CSV, frozen capture and recapture without browser year narrowing",async()=>{
     const marker:CurrentPeerEvidenceSelection={...await manual(["887791007"]),year:"all"};
