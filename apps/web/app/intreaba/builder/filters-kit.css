@@ -1,0 +1,413 @@
+/* The filter kit of Întreabă (F1a): the 21 shared components, presentational.
+   The spec is the kit v2 (filters-proposal/kit/README.md, filters-kit.css,
+   components.html); class names keep its .fk- prefix one-to-one, because the
+   .qb-chip, .qb-phrase, .qb-sentence, .qb-editor, .qb-primary and .qb-empty of
+   today's builder (question-builder.css) would collide until F1b retires them.
+   Colours: only tokens. The site's (approved.css, globals.css) are reused;
+   the builder's own palette is defined once below for both themes, so no
+   component rule carries a fixed colour. (?) is components/Term (tip). */
+
+/* ---------- Tokens: light, dark by preference, dark by choice ---------- */
+:root {
+  --fk-green:#426835; --fk-green-hover:#345527; --fk-on-green:#fffef5;
+  --fk-editor:#fffef8; --fk-editor-line:#dce2cf; --fk-editor-shadow:0 4px 24px #33432b05;
+  --fk-phrase-bg:#edf3e3; --fk-phrase-hover:#dfeaca; --fk-phrase-line:#a5b889;
+  --fk-chip-bg:#f4f7ec; --fk-chip-hover:#eaf0dc; --fk-chip-line:#dde4cf; --fk-add-line:#c8d4b7;
+  --fk-well:#f0f2e7; --fk-seg-on:#fffef8;
+  --fk-sel:#e4eed8; --fk-sel-line:#426835;
+  --fk-warm-bg:#f5eddf; --fk-warm-line:#e5d7ba; --fk-warm-ink:#6e5427;
+  --fk-new:#86ad6a; --fk-down:#a3aa9c;
+  --fk-muted-strong:#5c655b; --fk-signal-ink:#b4441f; /* small text on green and on --sunk: ≥ 5:1 */
+  --fk-shadow:0 1px 4px #2b3d2512; --fk-pop-shadow:0 18px 60px #29381e26;
+  --fk-proc:var(--map-4); --fk-da:var(--map-2); /* the channels on every chart; never blue */
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) {
+  --fk-green:var(--accent); --fk-green-hover:var(--ink); --fk-on-green:var(--surface);
+  --fk-editor:var(--surface); --fk-editor-line:var(--line); --fk-editor-shadow:none;
+  --fk-phrase-bg:var(--accent-soft); --fk-phrase-hover:#304d35; --fk-phrase-line:var(--accent-line);
+  --fk-chip-bg:var(--sunk); --fk-chip-hover:#273d2f; --fk-chip-line:var(--line); --fk-add-line:var(--line2);
+  --fk-well:var(--sunk); --fk-seg-on:#2d4a33;
+  --fk-sel:#2b4630; --fk-sel-line:var(--accent);
+  --fk-warm-bg:var(--amber-soft); --fk-warm-line:var(--amber-line); --fk-warm-ink:#f0cf8c;
+  --fk-new:#7fa866; --fk-down:#6e7d68;
+  --fk-muted-strong:var(--muted); --fk-signal-ink:var(--orange);
+  --fk-shadow:0 1px 4px #0004; --fk-pop-shadow:0 18px 60px #0007;
+}}
+:root[data-theme="dark"] {
+  --fk-green:var(--accent); --fk-green-hover:var(--ink); --fk-on-green:var(--surface);
+  --fk-editor:var(--surface); --fk-editor-line:var(--line); --fk-editor-shadow:none;
+  --fk-phrase-bg:var(--accent-soft); --fk-phrase-hover:#304d35; --fk-phrase-line:var(--accent-line);
+  --fk-chip-bg:var(--sunk); --fk-chip-hover:#273d2f; --fk-chip-line:var(--line); --fk-add-line:var(--line2);
+  --fk-well:var(--sunk); --fk-seg-on:#2d4a33;
+  --fk-sel:#2b4630; --fk-sel-line:var(--accent);
+  --fk-warm-bg:var(--amber-soft); --fk-warm-line:var(--amber-line); --fk-warm-ink:#f0cf8c;
+  --fk-new:#7fa866; --fk-down:#6e7d68;
+  --fk-muted-strong:var(--muted); --fk-signal-ink:var(--orange);
+  --fk-shadow:0 1px 4px #0004; --fk-pop-shadow:0 18px 60px #0007;
+}
+
+/* ---------- Base ---------- */
+.fk,.fk *,.fk *::before,.fk *::after{box-sizing:border-box}
+.fk{color:var(--ink);font:400 14px/1.55 var(--body);min-width:0}
+/* Zero specificity (:where), so any component class can override the reset. */
+:where(.fk) :where(button,input){font:inherit;color:inherit}
+:where(.fk) :where(button){cursor:pointer;background:none;border:0;padding:0;text-align:left}
+.fk [aria-disabled="true"],.fk button:disabled{cursor:not-allowed}
+/* The site's focus ring (approved.css): 3 px orange. .is-focus shows it statically in the dev demo. */
+.fk :focus-visible,.fk .is-focus{outline:3px solid var(--orange);outline-offset:3px}
+.fk-num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.fk-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.fk-nowrap{white-space:nowrap}
+/* (?) is a Term tip: it opens above the row that holds it (.fk-tipwrap), on the row's width. */
+.fk-tipwrap{position:relative}
+.fk .term-tip{vertical-align:middle}
+
+/* Glyphs drawn in CSS (no font dependency) */
+.fk-chev{display:inline-block;width:.42em;height:.42em;border-right:1.6px solid currentColor;border-bottom:1.6px solid currentColor;transform:translateY(-.12em) rotate(45deg);margin-left:.32em;opacity:.65;flex:none}
+.fk-ck{display:inline-block;width:.62em;height:.34em;border-left:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-.18em) rotate(-45deg);margin-right:.38em;flex:none}
+.fk-plus{display:inline-grid;place-items:center;color:var(--fk-green);font-weight:600;line-height:1;flex:none}
+.fk-half{display:inline-block;width:12px;height:12px;border-radius:50%;border:1.5px solid currentColor;background:linear-gradient(90deg,currentColor 50%,transparent 50%);flex:none}
+.fk-hatch{background-image:repeating-linear-gradient(135deg,var(--line2) 0 2px,transparent 2px 6px)}
+
+/* ---------- The builder card (.qb-editor) ---------- */
+.fk-editor{background:var(--fk-editor);border:1px solid var(--fk-editor-line);border-radius:17px;padding:28px 30px 22px;box-shadow:var(--fk-editor-shadow);min-width:0}
+
+/* ---------- 1. The sentence and its phrases; 1b. the fixed phrase; P5 presentation ---------- */
+.fk-sentence{margin:0 0 18px;font-family:var(--display);font-weight:500;font-size:clamp(24px,2.5vw,34px);line-height:1.75;letter-spacing:-.9px;color:var(--ink);text-wrap:pretty;overflow-wrap:anywhere}
+.fk-phrase{position:relative;display:inline-flex;align-items:baseline;max-width:100%;border:0;border-bottom:1px dashed var(--fk-phrase-line);border-radius:4px 4px 0 0;background:var(--fk-phrase-bg);color:var(--fk-green);font:inherit;letter-spacing:inherit;line-height:1.35;padding:.06em .15em .04em;transition:background 140ms}
+.fk-phrase>span{min-width:0;overflow-wrap:anywhere}
+.fk-phrase:hover,.fk-phrase.is-hover{background:var(--fk-phrase-hover);border-bottom-color:var(--fk-green)}
+.fk-phrase[aria-expanded="true"]{background:var(--fk-phrase-hover);border-bottom:2px solid var(--fk-green)}
+.fk-phrase--fixed,.fk-phrase--fixed:hover{background:none;border-bottom:1px dotted var(--line2);color:var(--ink2);cursor:default}
+.fk-present{color:var(--muted);font-size:13px;line-height:2.1;margin:0}
+.fk-present .fk-phrase{font-size:13.5px;line-height:1.5;padding:2px 5px;font-family:var(--body);letter-spacing:0}
+
+/* ---------- 2. The invitation (+ an unset fragment) ---------- */
+.fk-invite{display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:7px 12px;border:1px dashed var(--fk-add-line);border-radius:7px;background:transparent;color:var(--muted);font-size:13px;line-height:1.4}
+.fk-invite:hover,.fk-invite.is-hover{background:var(--fk-phrase-bg);color:var(--fk-green);border-color:var(--fk-phrase-line)}
+.fk-invite[aria-disabled="true"]{opacity:.5}
+.fk-invite[aria-disabled="true"]:hover{background:transparent;color:var(--muted);border-color:var(--fk-add-line)}
+.fk-invites{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0}
+.fk-pair{display:inline-flex;align-items:center;gap:2px;max-width:100%;min-width:0}
+
+/* ---------- 18. The profile line (not pressable) ---------- */
+.fk-scopeline{display:flex;flex-wrap:wrap;align-items:center;gap:2px 6px;margin:0 0 16px;color:var(--muted);font-size:13px;line-height:1.5}
+.fk-scopeline b{color:var(--ink2);font-weight:600}
+.fk-scope-sep{color:var(--faint)}
+
+/* ---------- 3. The condition row (role label + chips): group, or selection ---------- */
+.fk-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0}
+.fk-row+.fk-row{margin-top:10px}
+.fk-row-label{display:inline-flex;align-items:center;gap:2px;margin-right:4px;color:var(--muted);font-size:10px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;white-space:nowrap}
+.fk-row--select .fk-row-label{color:var(--ink2)}
+
+/* ---------- 4. The condition chip (opens a short window) ---------- */
+.fk-chip{display:inline-flex;align-items:stretch;max-width:100%;min-width:0;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--ink2);overflow:hidden}
+.fk-chip-main{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:7px 11px;font-size:13px;line-height:1.4;min-width:0}
+.fk-chip-main>span{min-width:0;overflow-wrap:anywhere}
+.fk-chip-main>.fk-n{flex-shrink:0} /* the label wraps; the count never shrinks under its glyphs */
+.fk-chip-main:hover,.fk-chip-main.is-hover{background:var(--fk-chip-hover)}
+span.fk-chip-main:hover{background:none}
+.fk-chip-x{display:grid;place-items:center;min-width:34px;padding:0 10px;border-left:1px solid var(--line2);color:var(--muted);font-size:15px;line-height:1}
+.fk-chip-x:hover{background:var(--fk-chip-hover);color:var(--ink)}
+.fk-chip.is-active{background:var(--fk-sel);border-color:var(--fk-sel-line);color:var(--ink)}
+.fk-chip.is-active .fk-chip-main{font-weight:500}
+.fk-chip.is-active .fk-chip-x{border-left-color:var(--fk-sel-line)}
+.fk-chip:has(>[aria-expanded="true"]),.fk-chip.is-open{box-shadow:0 0 0 1.5px var(--fk-green)}
+.fk-chip.is-dim{opacity:.55;border-style:dashed}
+.fk-chip.is-dim .fk-chip-main{cursor:not-allowed}
+.fk-chip.is-dim .fk-chip-main:hover{background:none}
+.fk-n{font-family:var(--mono);font-size:11.5px;color:var(--fk-muted-strong);font-weight:400;white-space:nowrap}
+.fk-chip.is-active .fk-n{color:var(--ink2)}
+.fk-n+.fk-chev{margin-left:7px}
+
+/* ---------- 5. The switch (aria-pressed): a condition without values ---------- */
+.fk-toggle{display:inline-flex;align-items:center;gap:6px;min-height:36px;max-width:100%;padding:7px 11px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--ink2);font-size:13px;line-height:1.4}
+.fk-toggle:hover,.fk-toggle.is-hover{background:var(--fk-chip-hover)}
+.fk-toggle[aria-pressed="true"]{background:var(--fk-sel);border-color:var(--fk-sel-line);color:var(--ink);font-weight:500}
+.fk-toggle[aria-disabled="true"]{opacity:.55;border-style:dashed}
+.fk-toggle[aria-disabled="true"]:hover{background:var(--surface)}
+
+/* ---------- 6. Chips under the sentence: only, exclude, auto, from a link, from another page, parked ---------- */
+.fk-under{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0;margin:0 0 16px}
+.fk-toggle.is-auto,.fk-chip--auto{background:var(--fk-warm-bg);border-color:var(--fk-warm-line);color:var(--fk-warm-ink)}
+.fk-chip--auto .fk-chip-main{font-weight:500}
+.fk-chip--auto .fk-chip-x{border-left-color:var(--fk-warm-line);color:var(--fk-warm-ink)}
+.fk-chip--legacy{background:var(--fk-warm-bg);border:1px dashed var(--fk-warm-line);color:var(--fk-warm-ink)}
+.fk-chip--legacy .fk-chip-main{cursor:default}
+.fk-chip--legacy .fk-chip-main b,.fk-chip--origin .fk-chip-main b{font-weight:600}
+.fk-chip--legacy .fk-chip-x{border-left:1px dashed var(--fk-warm-line);color:var(--fk-warm-ink)}
+.fk-chip--origin{background:var(--fk-warm-bg);border-color:var(--fk-warm-line);color:var(--fk-warm-ink)}
+.fk-chip--origin .fk-chip-main{cursor:default}
+.fk-chip--origin .fk-chip-x{border-left-color:var(--fk-warm-line);color:var(--fk-warm-ink)}
+.fk-chip--legacy .term-tip,.fk-chip--origin .term-tip{align-self:center}
+.fk-chip--exclude{background:var(--sunk);border-color:var(--line2);color:var(--ink2)}
+.fk-chip--exclude .fk-chip-main::before{content:"−";font-weight:600;color:var(--muted);margin-right:2px}
+.fk-chip--only{background:var(--fk-sel);border-color:var(--fk-sel-line);color:var(--ink)}
+.fk-chip--only .fk-chip-x{border-left-color:var(--fk-sel-line)}
+.fk-parked{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 16px;color:var(--muted);font-size:12.5px}
+.fk-parked-label{display:inline-flex;align-items:center;gap:2px;white-space:nowrap}
+.fk-chip--parked{display:inline-flex;align-items:center;gap:6px;min-height:36px;max-width:100%;padding:6px 11px;border:1px dashed var(--line2);border-radius:8px;background:transparent;color:var(--ink2);font-size:12.5px;line-height:1.35}
+.fk-chip--parked:hover,.fk-chip--parked.is-hover{background:var(--fk-chip-hover);border-color:var(--fk-phrase-line)}
+.fk-redo{width:14px;height:14px;flex:none;color:var(--slate)}
+
+/* ---------- 7. Segmented (radiogroup, or tablist with the same drawing) ---------- */
+.fk-seg{display:inline-flex;align-items:stretch;gap:3px;max-width:100%;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--fk-well)}
+.fk-seg-opt{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:34px;padding:6px 12px;border-radius:7px;color:var(--fk-muted-strong);font-size:13px;line-height:1.3;font-weight:500;white-space:nowrap;transition:background 140ms,color 140ms}
+.fk-seg-opt:hover,.fk-seg-opt.is-hover{color:var(--fk-green);background:color-mix(in srgb,var(--fk-seg-on) 55%,transparent)}
+.fk-seg-opt[aria-checked="true"],.fk-seg-opt[aria-selected="true"]{background:var(--fk-seg-on);color:var(--fk-green);box-shadow:var(--fk-shadow)}
+.fk-seg-opt[aria-disabled="true"]{opacity:.45}
+.fk-seg-opt[aria-disabled="true"]:hover{background:none;color:var(--fk-muted-strong)}
+.fk-seg-opt.is-inferred{outline:1px dashed var(--fk-phrase-line);outline-offset:-3px;color:var(--fk-green)}
+.fk-seg-l{display:inline-flex;align-items:center;gap:6px;min-width:0}
+.fk-seg-n{font-family:var(--mono);font-size:11px;font-weight:400;color:var(--fk-muted-strong)}
+.fk-seg-opt[aria-checked="true"] .fk-seg-n{color:var(--muted)}
+.fk-seg--sm .fk-seg-opt{min-height:30px;padding:4px 10px;font-size:12px}
+.fk-seg--full{display:flex;width:100%}
+.fk-seg--full .fk-seg-opt{flex:1 1 0}
+.fk-sw{width:10px;height:10px;border-radius:2px;flex:none;background:var(--line2)}
+.fk-seg-opt .fk-sw{width:9px;height:9px}
+.fk-sw--up{background:var(--accent)}
+.fk-sw--new{background:var(--fk-new)}
+.fk-sw--down{background:var(--fk-down)}
+.fk-sw--gone{background:transparent;border:1.5px solid var(--fk-down)}
+.fk-sw--all{background:linear-gradient(90deg,var(--accent) 0 33%,var(--fk-new) 33% 66%,var(--fk-down) 66%)}
+.fk-sw--proc{background:var(--fk-proc)}
+.fk-sw--da{background:var(--fk-da)}
+
+/* ---------- 8. Count groups (kind of change, which partners) ---------- */
+.fk-groups-head{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 10px;color:var(--muted);font-size:13px}
+.fk-groups-head b{font-family:var(--mono);font-weight:500;color:var(--ink);font-size:14px}
+.fk-groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:8px}
+.fk-group{display:flex;flex-direction:column;justify-content:center;gap:3px;min-height:58px;min-width:0;padding:9px 12px;border:1px solid var(--line2);border-radius:10px;background:var(--surface);color:var(--ink)}
+.fk-group-name{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;line-height:1.3}
+.fk-group-n{font-family:var(--mono);font-size:12px;color:var(--fk-muted-strong);overflow-wrap:anywhere}
+.fk-group:hover,.fk-group.is-hover{background:var(--fk-chip-hover)}
+.fk-group[aria-checked="true"]{background:var(--fk-sel);border:2px solid var(--fk-sel-line);padding:8px 11px}
+.fk-group[aria-disabled="true"]{opacity:.5;border-style:dashed}
+.fk-group[aria-disabled="true"]:hover{background:var(--surface)}
+
+/* ---------- 9. The short window: popover beside the trigger on desktop, bottom sheet ≤ 600 px ---------- */
+.fk-pop{position:relative;width:340px;max-width:100%;padding:16px 16px 14px;border:1px solid var(--line2);border-radius:14px;background:var(--surface);color:var(--ink);box-shadow:var(--fk-pop-shadow)}
+.fk-pop--wide{width:420px}
+dialog.fk-pop{position:fixed;inset:auto;margin:0;z-index:60;max-width:calc(100vw - 32px);max-height:min(560px,calc(100dvh - 32px));overflow:auto;overscroll-behavior:contain}
+dialog.fk-pop:not([open]){display:none}
+dialog.fk-pop::backdrop{background:color-mix(in srgb,var(--ink) 35%,transparent)}
+.fk-pop-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px}
+.fk-pop-title{display:flex;align-items:center;gap:4px;min-width:0}
+.fk-pop-head h3{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0;font:500 19px/1.3 var(--display);letter-spacing:-.3px;color:var(--ink);text-wrap:pretty}
+.fk-close{display:grid;place-items:center;width:33px;height:33px;border:1px solid var(--line);border-radius:50%;background:var(--sunk);color:var(--muted);font-size:16px;line-height:1;flex:none}
+.fk-pop-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px}
+.fk-pop-foot b{color:var(--ink);font-weight:600}
+.fk-link{color:var(--fk-green);text-decoration:underline;text-decoration-color:var(--fk-phrase-line);text-underline-offset:3px;font-size:13px}
+.fk-sheet-grip{display:none}
+
+/* The option list (radios or checkboxes) + the link row */
+.fk-opts{display:flex;flex-direction:column;gap:3px}
+.fk-opt{display:grid;grid-template-columns:18px minmax(0,1fr) auto;align-items:center;gap:10px;width:100%;min-height:48px;padding:8px 10px;border:1px solid transparent;border-radius:8px;color:var(--ink)}
+.fk-opt-mark{position:relative;width:16px;height:16px;border:1.5px solid var(--line2);border-radius:50%;background:var(--surface);justify-self:center}
+.fk-opts--check .fk-opt-mark{border-radius:4px}
+.fk-opt[aria-checked="true"] .fk-opt-mark{border-color:var(--fk-green);background:radial-gradient(circle,var(--fk-green) 0 4px,var(--surface) 4.5px)}
+.fk-opts--check .fk-opt[aria-checked="true"] .fk-opt-mark{background:var(--fk-green)}
+.fk-opts--check .fk-opt[aria-checked="true"] .fk-opt-mark::after{content:"";position:absolute;left:3px;top:3px;width:8px;height:4.5px;border-left:2px solid var(--fk-on-green);border-bottom:2px solid var(--fk-on-green);transform:rotate(-45deg)}
+.fk-opt-t{display:flex;flex-direction:column;min-width:0}
+.fk-opt-t strong{font-size:13.5px;font-weight:500;line-height:1.45;overflow-wrap:anywhere}
+.fk-opt-t small{font-size:11.5px;color:var(--fk-muted-strong);line-height:1.5;overflow-wrap:anywhere}
+.fk-opt-n{font-family:var(--mono);font-size:12px;color:var(--fk-muted-strong);text-align:right;white-space:nowrap}
+.fk-opt-bar{display:block;height:3px;margin-top:4px;border-radius:2px;background:linear-gradient(90deg,var(--slate) var(--w,0%),var(--line) var(--w,0%))}
+.fk-opt:hover,.fk-opt.is-hover{background:var(--fk-chip-hover)}
+.fk-opt[aria-checked="true"]{background:var(--fk-sel);border-color:color-mix(in srgb,var(--fk-sel-line) 35%,transparent)}
+.fk-opt[aria-disabled="true"]{opacity:.55}
+.fk-opt[aria-disabled="true"]:hover{background:none}
+/* The rest row ("Sediu necunoscut"): text, not a choice; full contrast, marked by the hatch. */
+.fk-opt--rest{cursor:default;color:var(--muted)}
+.fk-opt--rest:hover{background:none}
+.fk-opt--rest .fk-opt-mark{width:14px;height:10px;border:0;border-radius:3px;background:repeating-linear-gradient(135deg,var(--line2) 0 2px,transparent 2px 5px)}
+.fk-opt-swap{display:block;color:var(--fk-warm-ink);font-size:11.5px}
+.fk-opt-group{margin:10px 0 2px 10px;color:var(--muted);font-size:10px;font-weight:600;letter-spacing:1.3px;text-transform:uppercase}
+.fk-opt--link{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:44px;padding:8px 10px;border-top:1px solid var(--line);border-radius:0 0 8px 8px;color:var(--fk-green);font-size:13px;font-weight:500}
+.fk-opt--link:hover,.fk-opt--link.is-hover{background:var(--fk-chip-hover)}
+
+/* ---------- 10. Adjoining bands (Angajați) ---------- */
+.fk-bands{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border:1px solid var(--line2);border-radius:9px;overflow:hidden;background:var(--surface)}
+.fk-band{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-height:52px;padding:6px 4px;border-left:1px solid var(--line);color:var(--ink2);font-size:12.5px;font-weight:500;line-height:1.3;text-align:center}
+.fk-band:first-child{border-left:0}
+.fk-band small{font-family:var(--mono);font-size:11px;font-weight:400;color:var(--muted)}
+.fk-band:hover,.fk-band.is-hover{background:var(--fk-chip-hover)}
+.fk-band[aria-pressed="true"]{background:var(--fk-sel);color:var(--ink);box-shadow:inset 0 -3px 0 var(--fk-green)}
+.fk-band[aria-pressed="true"]+.fk-band[aria-pressed="true"]{border-left-color:transparent}
+.fk-band.is-focus,.fk-band:focus-visible{outline-offset:-3px}
+.fk-bands-sum{margin:8px 0 0;font-size:13px;color:var(--ink2)}
+
+/* ---------- 11. Pills: ranges with an interval, years, pills with counts (Semnal) ---------- */
+.fk-pills{display:flex;flex-wrap:wrap;gap:6px}
+.fk-pill{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:6px 11px;border:1px solid var(--fk-chip-line);border-radius:7px;background:var(--fk-chip-bg);color:var(--ink2);font-size:12.5px;line-height:1.3}
+.fk-pill:hover,.fk-pill.is-hover{background:var(--fk-phrase-hover)}
+.fk-pill[aria-pressed="true"],.fk-pill[aria-checked="true"]{background:var(--fk-sel);border-color:var(--fk-sel-line);color:var(--ink);font-weight:500}
+.fk-pill[aria-disabled="true"]{opacity:.45;text-decoration:line-through;text-decoration-color:var(--faint)}
+.fk-pill .fk-n{margin-left:2px}
+.fk-pill[aria-checked="true"] .fk-n{color:var(--ink2)}
+.fk-dot{display:inline-block;width:8px;height:8px;border-radius:50%;flex:none;background:var(--line2)}
+.fk-dot--signal{background:transparent;border:2px solid var(--orange)}
+.fk-dot--group{background:var(--faint)}
+.fk-inputs{display:flex;align-items:flex-end;flex-wrap:wrap;gap:8px 10px;margin-top:12px;font-size:12.5px;color:var(--muted)}
+.fk-field{display:flex;flex-direction:column;gap:5px;min-width:0;flex:1 1 110px}
+.fk-field>span{font-size:11.5px;color:var(--muted)}
+.fk-field input{width:100%;min-width:0;min-height:40px;padding:8px 10px;border:1px solid var(--line2);border-radius:7px;background:var(--fk-editor);color:var(--ink);font:400 15px/1.4 var(--mono)}
+.fk-field input::placeholder{color:var(--faint);font-family:var(--body);font-size:12.5px}
+
+/* ---------- 12. The period: the year grid ---------- */
+.fk-years{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.fk-year{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50px;padding:5px 2px;border:1px solid var(--fk-chip-line);border-radius:8px;background:var(--fk-chip-bg);color:var(--ink);font:500 14px/1.25 var(--mono)}
+.fk-year small{font-size:10.5px;font-weight:400;color:var(--muted)}
+.fk-year:hover,.fk-year.is-hover{background:var(--fk-phrase-hover)}
+.fk-year[aria-checked="true"]{background:var(--fk-sel);border:2px solid var(--fk-sel-line)}
+.fk-year.is-partial{background-image:repeating-linear-gradient(135deg,var(--line) 0 2px,transparent 2px 6px)}
+.fk-year.is-zero{color:var(--faint)}
+.fk-year[aria-disabled="true"]{opacity:.4}
+
+/* ---------- 13. Entity search (combobox + results) ---------- */
+.fk-search{display:flex;align-items:center;gap:9px;min-height:44px;padding:8px 12px;border:1px solid var(--line2);border-radius:8px;background:var(--sunk);margin:0 0 10px}
+.fk-search::before{content:"";width:13px;height:13px;border:2px solid var(--faint);border-radius:50%;flex:none;box-shadow:5px 5px 0 -3.5px var(--faint)}
+.fk-search input{flex:1;min-width:0;border:0;background:transparent;outline:0;color:var(--ink);font:400 15px/1.4 var(--body)}
+.fk-search input::placeholder{color:var(--muted);font-size:13px}
+.fk-search.is-focus,.fk-search:focus-within{outline:3px solid var(--orange);outline-offset:2px}
+.fk-search input:focus-visible{outline:0}
+.fk-res{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:48px;padding:8px 10px;border-radius:8px;color:var(--ink)}
+.fk-res:hover,.fk-res.is-hover,.fk-res[aria-selected="true"]{background:var(--fk-chip-hover)}
+.fk-res-t{display:flex;flex-direction:column;min-width:0}
+.fk-res-t strong{font-size:13.5px;font-weight:500;overflow-wrap:anywhere}
+.fk-res-t small{font-size:11.5px;color:var(--muted)}
+.fk-res-side{font-size:12px;color:var(--muted);white-space:nowrap;text-align:right}
+
+/* ---------- 14. The strip beside the answer (+ labelled rows) ---------- */
+.fk-strip{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:8px;border:1px solid var(--line);border-radius:12px;background:var(--sunk)}
+.fk-strip .fk-seg{background:var(--fk-well)}
+.fk-strip-end{margin-left:auto}
+.fk-strip-label{color:var(--fk-muted-strong);font-size:12.5px;white-space:nowrap}
+.fk-suggest{display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:6px 11px;border:1px dashed var(--accent-line);border-radius:8px;background:var(--surface);color:var(--ink2);font-size:12.5px}
+.fk-suggest b{color:var(--fk-green);font-weight:600}
+.fk-crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:4px;font-size:12.5px;color:var(--muted)}
+.fk-crumbs a{color:var(--fk-green);text-decoration:none;border-bottom:1px solid var(--fk-phrase-line)}
+.fk-crumbs b{color:var(--ink);font-weight:600}
+.fk-strip--rows{display:flex;flex-direction:column;align-items:stretch;gap:10px;padding:10px 12px}
+.fk-strip-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;min-width:0}
+.fk-strip-row>.fk-strip-label{display:inline-flex;align-items:center;min-width:104px}
+
+/* ---------- 15. The answer row: facts and the "⋯" menu ---------- */
+.fk-arow{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:4px 14px;padding:12px 0;border-bottom:1px solid var(--line)}
+.fk-arow-name{font-weight:600;font-size:14px;overflow-wrap:anywhere}
+.fk-arow-name small{font-weight:400;color:var(--muted);margin-left:6px;font-size:12.5px}
+.fk-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
+.fk-tag{display:inline-flex;align-items:center;gap:4px;padding:1px 7px;border:1px solid var(--line);border-radius:5px;background:var(--sunk);color:var(--ink2);font-size:11.5px;line-height:1.6;white-space:nowrap}
+.fk-tag--accent{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent-ink)}
+.fk-tag--caveat{background:var(--fk-warm-bg);border-color:var(--fk-warm-line);color:var(--fk-warm-ink)}
+.fk-tag--signal{background:transparent;border-color:color-mix(in srgb,var(--orange) 55%,transparent);color:var(--fk-signal-ink);font-weight:500}
+.fk-arow-val{text-align:right}
+.fk-arow-val .fk-num{display:block;font-size:14px;font-weight:500}
+.fk-arow-val small{color:var(--muted);font-size:11.5px}
+.fk-rec{color:var(--fk-green);font-size:12.5px;white-space:nowrap;text-decoration:underline;text-decoration-color:var(--fk-phrase-line);text-underline-offset:3px}
+.fk-more{display:grid;place-items:center;width:34px;height:34px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--ink2);font-size:16px;letter-spacing:1px;line-height:1}
+.fk-more[aria-expanded="true"]{box-shadow:0 0 0 1.5px var(--fk-green)}
+.fk-menu{width:240px;max-width:100%;padding:6px;border:1px solid var(--line2);border-radius:10px;background:var(--surface);box-shadow:var(--fk-pop-shadow)}
+.fk-menu-item{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:42px;padding:8px 10px;border-radius:7px;color:var(--ink);font-size:13px}
+.fk-menu-item:hover,.fk-menu-item.is-hover{background:var(--fk-chip-hover)}
+.fk-menu-item span:last-child{color:var(--muted)}
+
+/* ---------- 21. The total line and the longer list ---------- */
+.fk-total{display:flex;flex-wrap:wrap;align-items:center;gap:2px 6px;margin:12px 0 0;color:var(--muted);font-size:12.5px;line-height:1.55}
+.fk-total b{color:var(--ink2);font-weight:600}
+.fk-total .fk-num{color:var(--ink);font-size:12.5px}
+.fk-total-cond{color:var(--ink2);font-weight:500}
+.fk-total-sep{color:var(--faint)}
+.fk-listfoot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 14px;margin:12px 0 0}
+.fk-more-btn{display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:7px 12px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--ink2);font-size:13px;font-weight:500}
+.fk-more-btn:hover,.fk-more-btn.is-hover{background:var(--fk-chip-hover)}
+.fk-rest{color:var(--muted);font-size:12.5px;padding:6px 10px;border:1px dashed var(--line2);border-radius:7px}
+
+/* ---------- 19. The card (point, county, bar) ---------- */
+.fk-card{position:relative;min-width:0;padding:14px 16px 14px 18px;border:1px solid var(--line2);border-radius:12px;background:var(--surface);box-shadow:inset 4px 0 0 var(--fk-green)}
+.fk-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.fk-card h4{margin:0;font:600 16px/1.35 var(--body);color:var(--ink);overflow-wrap:anywhere}
+.fk-card-meta{margin:2px 0 10px;color:var(--fk-muted-strong);font-size:12.5px}
+.fk-card-facts{display:flex;flex-wrap:wrap;gap:4px 20px;margin:0 0 10px;font-size:13px;color:var(--ink2)}
+.fk-card-facts .fk-num{color:var(--ink);font-weight:500;font-size:13px}
+.fk-card-lines{list-style:none;margin:0 0 12px;padding:0;border-top:1px solid var(--line)}
+.fk-card-lines li{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 12px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px}
+.fk-card-lines li>span:first-child{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px 8px;min-width:0}
+.fk-card-lines li>a{margin-left:auto}
+.fk-card .fk-actions{gap:8px}
+
+/* ---------- 20. "Unde e …?" (finds in the answer; does not filter) ---------- */
+.fk-find{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;min-width:0}
+.fk-find .fk-search{width:min(300px,100%);min-height:38px;margin:0;background:var(--surface)}
+.fk-find .fk-search input{font-size:14px}
+.fk-find-res{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px 10px;color:var(--ink2);font-size:13px}
+.fk-find-res b{font-weight:600;color:var(--ink)}
+
+/* ---------- 17. Empty state: relaxing buttons; the bottom buttons (.qb-primary) ---------- */
+.fk-empty{padding:16px;border:1px dashed var(--line2);border-radius:12px;background:var(--surface)}
+.fk-empty p{margin:0 0 10px;font-size:14px;color:var(--ink)}
+.fk-relax{display:flex;flex-wrap:wrap;gap:8px}
+.fk-relax button{min-height:36px;padding:7px 12px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--fk-green);font-size:13px;font-weight:500}
+.fk-relax button:hover{background:var(--fk-phrase-bg)}
+.fk-bottom{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px 20px;padding-top:16px;border-top:1px solid var(--fk-editor-line)}
+.fk-actions{display:flex;flex-wrap:wrap;gap:10px}
+.fk-primary{display:inline-flex;align-items:center;justify-content:center;gap:12px;min-height:44px;padding:11px 18px;border:1px solid var(--fk-green);border-radius:8px;background:var(--fk-green);color:var(--fk-on-green);font-size:14px;font-weight:500}
+.fk-primary:hover,.fk-primary.is-hover{background:var(--fk-green-hover);border-color:var(--fk-green-hover)}
+.fk-primary:disabled{opacity:.52;cursor:wait}
+.fk-secondary{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:11px 16px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font-size:14px;font-weight:500}
+
+/* ---------- Phone (≤ 600 px): 44 px targets, bottom sheets, nothing wider than the screen ---------- */
+@media (max-width:600px){
+  .fk-editor{padding:20px 16px 18px;border-radius:12px}
+  .fk-sentence{font-size:26px;line-height:1.85;letter-spacing:-.6px}
+  .fk-phrase{padding-block:.18em}
+  .fk-invite,.fk-chip-main,.fk-toggle,.fk-seg-opt,.fk-pill,.fk-suggest,.fk-relax button,.fk-chip--parked,.fk-more-btn{min-height:44px}
+  .fk-chip-x{min-width:44px}
+  .fk .term-tip>.term-trigger{min-width:44px;min-height:44px;margin-block:-10px}
+  .fk-more{width:44px;height:44px}
+  .fk-menu-item,.fk-opt--link{min-height:48px}
+  .fk-close{width:44px;height:44px}
+  .fk-row-label{flex-basis:100%;margin:2px 0 0}
+  /* Equal columns while the words fit; a narrower screen (320 px) wraps whole options to a second line, never a word. */
+  .fk-seg{display:flex;flex-wrap:wrap;width:100%}
+  .fk-seg-opt{flex:1 1 0;min-width:min-content;padding:6px;white-space:normal;text-align:center;flex-direction:column;gap:0}
+  .fk-seg--sm .fk-seg-opt{min-height:44px}
+  .fk-seg-l{display:inline;overflow-wrap:break-word}
+  .fk-seg-l>.fk-sw{display:inline-block;margin-right:4px;vertical-align:.05em}
+  .fk-groups{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .fk-group--all{grid-column:1/-1}
+  .fk-pop,.fk-pop--wide{width:100%;border-radius:17px 17px 0 0;border-bottom:0;padding:10px 16px 16px}
+  dialog.fk-pop{inset:auto 0 0 0;max-width:100%;max-height:88dvh;padding-bottom:max(16px,env(safe-area-inset-bottom))}
+  .fk-sheet-grip{display:block;width:40px;height:4px;margin:0 auto 10px;border-radius:2px;background:var(--line2)}
+  .fk-strip{flex-direction:column;align-items:stretch}
+  .fk-strip-end{margin-left:0}
+  .fk-strip .fk-row{flex-wrap:nowrap;width:100%}
+  .fk-strip .fk-row>.fk-seg{flex:1 1 auto;width:auto}
+  .fk-strip-row{flex-direction:column;align-items:stretch;gap:6px}
+  .fk-strip-row>.fk-strip-label{min-width:0}
+  .fk-strip-row .fk-pill{flex:1 1 auto}
+  .fk-strip-label--sm-hide{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+  .fk-arow{grid-template-columns:minmax(0,1fr) auto}
+  .fk-arow-val{grid-column:1/2;text-align:left;display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+  .fk-arow-val .fk-num{display:inline}
+  .fk-arow-val small{display:inline-flex;flex-wrap:wrap;align-items:center;gap:0 6px}
+  .fk-arow .fk-more{grid-row:1;grid-column:2}
+  .fk-bottom .fk-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}
+  .fk-present{line-height:2.6}
+  .fk-present .fk-phrase{min-height:44px;align-items:center;vertical-align:middle}
+  .fk-link,.fk-crumbs a,.fk-rec{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px}
+  .fk-field input{min-height:44px}
+  .fk-pill{min-width:44px;justify-content:center}
+  .fk-search{padding:0 12px}
+  .fk-search input{min-height:44px}
+  .fk-card{padding:12px 12px 12px 16px}
+  .fk-card .fk-actions{display:grid;grid-template-columns:minmax(0,1fr);width:100%}
+  .fk-card .fk-actions>*{width:100%}
+  .fk-find{flex-direction:column;align-items:stretch}
+  .fk-find .fk-search{width:100%;min-height:44px}
+  .fk-listfoot{flex-direction:column;align-items:stretch}
+  .fk-listfoot>*{width:100%;justify-content:center}
+}
+@media (prefers-reduced-motion:reduce){.fk *{transition:none!important;animation:none!important}}
