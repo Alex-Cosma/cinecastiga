@@ -10,7 +10,7 @@ import {
 } from "./predicates";
 import { KIND_LABEL } from "./authority-kind";
 import { countyIsFirmSeat, isHistoricalProfile, unsupportedPopulationView } from "./population";
-import { describeConditions } from "./filters/describe";
+import { describeConditions, type ConditionLabels } from "./filters/describe";
 import { retarget } from "./filters/retarget";
 import type { OriginHint } from "./filters/origin";
 import { PER_CAPITA_SOURCE, perCapitaCaveat, POPULATION_CARD_NOTE, readPerCapitaPopulations, type PerCapitaPopulations } from "./per-capita";
@@ -479,6 +479,8 @@ export async function runSpec(
   spec: AskSpec,
   grounding: Grounding,
   tableOpts: TableOpts = {},
+  /** Server-only: names of the ids a population lists, where the caller knows them (an entity capture). */
+  labels: Pick<ConditionLabels, "entities"> = {},
 ): Promise<EngineResult | { error: string; caveats: string[] }> {
   // Read first, write later (plan F0a): a key this release parses but does not
   // apply is refused before any query, on every path that runs a spec.
@@ -738,13 +740,14 @@ export async function runSpec(
 
   const displaySql = buildDisplaySql(spec, w);
   // The precise selection (or the page it comes from) and the record threshold, in the words of describeConditions.
-  caveats.push(...describeConditions(spec, { grounding }).caveats);
+  caveats.push(...describeConditions(spec, { grounding, entities: labels.entities }).caveats);
 
   // The county caveat above already says the filter is the buyer's county, not
   // the firm's; the firm's own county column is explained next to its header.
   // Strict RPL 2021 denominators, never the legacy entity_profile population.
+  // Only the ranking divides by population; elsewhere a per-inhabitant link answers in lei (pills.ts) and says nothing of it.
   const perCapita: PerCapitaPopulations | null =
-    spec.measure === "value_per_capita" ? await readPerCapitaPopulations(sql) : null;
+    spec.measure === "value_per_capita" && spec.block === "table" ? await readPerCapitaPopulations(sql) : null;
   if (perCapita) caveats.push(perCapitaCaveat(perCapita));
   if (isHistoricalProfile(spec)) {
     // These blocks use entity_flags, whose historical source population is
@@ -1722,6 +1725,8 @@ export interface DrillOpts {
   limit?: number;
   /** Server-internal: the comparison group a peer drawer bound (peerEvidenceOptions), for the note's label. */
   origin?: OriginHint;
+  /** Server-internal: names of the ids a population lists, where the caller knows them (an entity capture). */
+  entities?: Readonly<Record<string, string>>;
 }
 
 export const DRILL_PAGE_SIZE = 10;
@@ -1919,7 +1924,7 @@ export async function runRows(
     notes.push("Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.");
   } else {
     // The precise selection and the record threshold, in the words of describeConditions.
-    const conditions = describeConditions(spec, { grounding, origin: opts.origin }).byId;
+    const conditions = describeConditions(spec, { grounding, origin: opts.origin, entities: opts.entities }).byId;
     if (conditions.population?.note) notes.push(conditions.population.note);
     const isRelationship = spec.block === "network" || spec.block === "sankey";
     if (isRelationship) {

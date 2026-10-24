@@ -23,6 +23,16 @@ describe("Ask county map", () => {
     expect(text(renderToStaticMarkup(createElement(CountyTip, { label: "Olt", value: 0, count: 0, national: 1, asCount: false })))).toBe("Olt fără date pentru aceste filtre");
   });
 
+  it("says a count once, in words, in the tip and in the note on records without a county", () => {
+    const tip = text(renderToStaticMarkup(createElement(CountyTip, { label: "Tulcea", value: 27_953, count: 27_953, national: 2_400_000, asCount: true })));
+    expect(tip).toBe("Tulcea 27.953 de înregistrări 1,2% din total click → înregistrările județului");
+    const count = { block: "map", measure: "count", filters: {} } as const;
+    const note = (n: number) => text(renderToStaticMarkup(createElement(MapBlock, { counties, unknown: { value: 5, count: n }, spec: count })));
+    expect(note(36_138)).toMatch(/36\.138 de înregistrări \([^)]*din selecție\) au instituția fără județ cunoscut și nu apar pe hartă/);
+    expect(note(36_138).match(/36\.138/g)).toHaveLength(1);
+    expect(note(1)).toMatch(/1 înregistrare \([^)]*din selecție\) are instituția fără județ cunoscut și nu apare pe hartă/);
+  });
+
   it("paints counties, the empty ones and the legend with theme tokens, never fixed colours", () => {
     const html = renderToStaticMarkup(createElement(MapBlock, { counties, unknown: { value: 0, count: 0 }, spec: { block: "map", measure: "value", filters: {} } }));
     expect(html).not.toMatch(/#[0-9a-f]{3,8}\b|fill="|stroke="/i);

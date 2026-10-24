@@ -160,7 +160,8 @@ async function persistQueryRows(q: DbSql, captureId: string, source: ReturnType<
     ),r.closing_value::numeric from (${source}) r left join core.contracts c on r.src='contracts' and c.id=r.ref_id`;
 }
 
-async function queryCapture(q: DbSql, captureId: string, spec: AskSpec, request: CaptureRequest, peerEvidence?: BoundPeerEvidence) {
+/** `entities`: names of the ids the spec's population lists (an entity capture), for its pills and notes. */
+async function queryCapture(q: DbSql, captureId: string, spec: AskSpec, request: CaptureRequest, peerEvidence?: BoundPeerEvidence, entities?: Record<string, string>) {
   // Queued by a newer release: fail with the reason instead of freezing the selection without that condition.
   if (unimplementedSpecKeys(spec).length) throw new CaptureError(NEWER_VERSION_QUESTION);
   if (request.peer) return peerCapture(q,captureId,request,peerEvidence);
@@ -171,9 +172,9 @@ async function queryCapture(q: DbSql, captureId: string, spec: AskSpec, request:
   const canonical=await canonicalAskIdentities(database,spec,grounding,request.options.scope);
   spec=canonical.spec;grounding=canonical.grounding;
   const options={...request.options,...(canonical.scope?{scope:canonical.scope}:{})};
-  const answer = await runSpec(database, spec, grounding);
+  const answer = await runSpec(database, spec, grounding, {}, { entities });
   if ("error" in answer) throw new CaptureError(answer.error);
-  const sources = await runRows(database, spec, grounding, 0, { ...options,
+  const sources = await runRows(database, spec, grounding, 0, { ...options, ...(entities ? { entities } : {}),
     capture: { persist: (database, query) => persistQueryRows(database, captureId, query) } });
   if ("error" in sources) throw new CaptureError(sources.error);
   const connectionSourceCounts = connection ? await q`select record->>'authorityId' "authorityId",record->>'supplierId' "supplierId",
@@ -186,7 +187,7 @@ async function queryCapture(q: DbSql, captureId: string, spec: AskSpec, request:
   });
   if (connectionSources?.some(pair => pair.rowCount === 0)) throw new CaptureError("Filtrele nu păstrează surse pentru fiecare legătură a traseului. Elimină filtrele listei sau salvează separat legătura care are surse. Nu am păstrat un traseu incomplet ca legătură documentată.");
   const { rows: _rows, ...sourceMetadata } = sources;
-  const pills = buildPills(spec, grounding);
+  const pills = buildPills(spec, grounding, { entities });
   return { summary: { title: connection?.context.title ?? pills.join(" · "), pills, ...(connection ? { connection: connection.selection, connectionContext: {...connection.context,sourcePairs:connectionSources} } : {}), evidenceScope: options.scope ?? {},
     evidenceOptions: { search: request.options.search, state: request.options.state, stream: request.options.stream },
     grounding, effectiveSpec: spec, sources: sourceMetadata, warnings: [...answer.caveats, ...sources.scopeNotes] },
@@ -300,7 +301,8 @@ async function entityOrPerson(q: DbSql, captureId: string, request: CaptureReque
   if (!entity) throw new CaptureError("Entitatea nu mai este disponibilă.");
   const profiles = await q`select role,n_das,n_contracts,total_ron_full::text value from marts.entity_profile where entity_id=${id}`;
   const flags = await q`select role,cri::text,n_flags,to_jsonb(flags) flags from marts.entity_flags where entity_id=${id}`;
-  const result = await queryCapture(q,captureId,entityCaptureSpec(id),request);
+  // The name is known here: "Activitatea entității: <nume>", not the id.
+  const result = await queryCapture(q,captureId,entityCaptureSpec(id),request,undefined,{ [String(id)]: String(entity.name) });
   result.summary = { ...result.summary, ...{ entityId:id,requestedEntityId:request.refId,title: entity.name, name: entity.name, county: entity.county, cui: entity.cui,
     roles: Object.fromEntries(profiles.map(r => [r.role,{ nDas:r.n_das,nContracts:r.n_contracts,totalRon:r.value }])),
     riskProfiles: flags, cri: flags[0]?.cri ?? null, nFlags: flags[0]?.n_flags ?? 0 } };

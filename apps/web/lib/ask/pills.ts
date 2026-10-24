@@ -3,7 +3,7 @@ import type { Grounding } from "./ground";
 import { isHistoricalProfile } from "./population";
 import { COUNT_MEASURE_BLOCKS, leaderAxis } from "./question-ui";
 import { countWords } from "./answer-text";
-import { describeConditions, PROFILE_SOURCE_PILL } from "./filters/describe";
+import { describeConditions, PROFILE_SOURCE_PILL, type ConditionLabels } from "./filters/describe";
 
 /**
  * The "am înțeles" pills — the spec, restated in plain Romanian: the shape of
@@ -29,9 +29,9 @@ const BLOCK_LABEL: Record<AskSpec["block"], string> = {
 };
 
 const DIM_LABEL = {
-  authority: ["autoritate", "autorități"],
-  supplier: ["furnizor", "furnizori"],
-  county: ["județ", "județe"],
+  authority: ["autoritate", "autorități", "toate autoritățile"],
+  supplier: ["furnizor", "furnizori", "toți furnizorii"],
+  county: ["județ", "județe", "toate județele"],
 } as const;
 
 /** What the answer measures: elsewhere the engine ignores `measure` and answers in lei. */
@@ -40,11 +40,14 @@ function shownMeasure(spec: AskSpec): AskSpec["measure"] {
   return spec.measure === "value_per_capita" && spec.block !== "table" ? "value" : spec.measure;
 }
 
-export function buildPills(spec: AskSpec, grounding: Grounding): string[] {
+/** `labels.entities`: names of the ids a population lists, where the caller knows them (an entity capture). */
+export function buildPills(spec: AskSpec, grounding: Grounding, labels: Pick<ConditionLabels, "entities"> = {}): string[] {
   const pills: string[] = [];
   pills.push(BLOCK_LABEL[spec.block]);
   const dim = DIM_LABEL[spec.dim ?? "authority"];
-  if (spec.block === "table" || spec.block === "trend") pills.push(`top ${countWords(spec.topN ?? 10, dim[0], dim[1])}`);
+  // A ranking without topN is the complete one, in pages (compile.ts); a trend shows its first 10.
+  if (spec.block === "table" && spec.topN == null) pills.push(dim[2]);
+  else if (spec.block === "table" || spec.block === "trend") pills.push(`top ${countWords(spec.topN ?? 10, dim[0], dim[1])}`);
   if (spec.block === "entity_card") {
     pills.push(
       leaderAxis(spec) === "risk" ? "cea mai riscantă (CRI)" : "cea mai mare valoare",
@@ -55,12 +58,12 @@ export function buildPills(spec: AskSpec, grounding: Grounding): string[] {
     const measure = shownMeasure(spec);
     pills.push(
       measure === "count"
-        ? "număr de achiziții"
+        ? "numărul de înregistrări"
         : measure === "value_per_capita"
           ? "lei / cap de locuitor"
           : "Total (lei)",
     );
   }
-  pills.push(...describeConditions(spec, { grounding }).pills);
+  pills.push(...describeConditions(spec, { grounding, entities: labels.entities }).pills);
   return pills;
 }

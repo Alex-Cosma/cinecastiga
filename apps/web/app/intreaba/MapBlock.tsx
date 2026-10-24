@@ -22,17 +22,20 @@ export function CountyTip({ label, value, count, national, asCount }: {
   national: number;
   asCount: boolean;
 }) {
-  const display = (v: number) => (asCount ? formatInt(v) + " înreg." : formatRon(v));
+  // On a count the value is the number of records: said once, in words.
+  const share = national > 0 ? `${formatShare(value / national)} din total` : null;
   return (
     <>
       <div className="t">{label}</div>
       {value > 0 ? (
         <>
-          <div className="v">{display(value)}</div>
-          <div className="s">
-            {countWords(count, "înregistrare", "înregistrări")}
-            {national > 0 && ` · ${formatShare(value / national)} din total`}
-          </div>
+          <div className="v">{asCount ? countWords(value, "înregistrare", "înregistrări") : formatRon(value)}</div>
+          {asCount ? share && <div className="s">{share}</div> : (
+            <div className="s">
+              {countWords(count, "înregistrare", "înregistrări")}
+              {share && ` · ${share}`}
+            </div>
+          )}
           <div className="s">click → înregistrările județului</div>
         </>
       ) : (
@@ -148,9 +151,10 @@ export default function MapBlock({
         </div>
         {unknown.count > 0 && national > 0 && (
           <p className="ask-fine">
-            {display(unknownMeasure)} ({formatShare(unknownMeasure / national)} din
-            selecție, {formatInt(unknown.count)} înregistrări) au instituția fără județ
-            cunoscut și nu apar pe hartă · procentele sunt din totalul selecției
+            {asCount
+              ? `${countWords(unknown.count, "înregistrare", "înregistrări")} (${formatShare(unknownMeasure / national)} din selecție)`
+              : `${formatRon(unknown.value)} (${formatShare(unknownMeasure / national)} din selecție, ${countWords(unknown.count, "înregistrare", "înregistrări")})`}{" "}
+            {asCount && unknown.count === 1 ? "are instituția fără județ cunoscut și nu apare" : "au instituția fără județ cunoscut și nu apar"} pe hartă · procentele sunt din totalul selecției
           </p>
         )}
         {tip && (
