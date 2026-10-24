@@ -1,5 +1,6 @@
 import { canonicalAskIdentities } from "./canonical-identities";
 import { retiredChoicesText } from "./retired-terms";
+import { FORCE_CUSTOM_PLANS } from "../plan-cache";
 import type { DbSql } from "@seap/db";
 import { NEWER_VERSION_LINK, unimplementedSpecKeys, type AskSpec, type Dim } from "./spec";
 import type { Grounding } from "./ground";
@@ -768,6 +769,7 @@ export async function runSpec(
   // --- execute under guardrails
   const exec = async (): Promise<BlockData | { error: string }> => {
     return await sql.begin("read only", async (tx) => {
+      await tx.unsafe(FORCE_CUSTOM_PLANS);
       await tx.unsafe(`set local statement_timeout = '${STATEMENT_TIMEOUT}'`);
       const s = tx as unknown as DbSql;
 
@@ -893,8 +895,15 @@ export async function runSpec(
             : s`limit ${topN}`;
           const dir = tableOpts.dir === "asc" ? s`asc nulls first` : s`desc nulls last`;
           const dim = spec.dim ?? "authority";
-          const pagedMeta = (total: number) =>
-            paged ? { total, page, pageSize: TABLE_PAGE_SIZE } : {};
+          // The paged total is the number of ranked groups, `count(*) over ()`
+          // on the grouped rows before LIMIT/OFFSET in the ranking statement
+          // itself. A separate count(distinct) read the whole selection again:
+          // 5–8 s on the national supplier ranking. Only a page past the end
+          // has no row to carry it; that page counts on its own.
+          const pagedMeta = async (r: { te: string }[], count: () => Promise<{ t: string }[]>) =>
+            paged
+              ? { total: r[0] ? Number(r[0].te) : page > 0 ? Number((await count())[0]?.t ?? 0) : 0, page, pageSize: TABLE_PAGE_SIZE }
+              : {};
           if (bare && !paged && spec.measure !== "value_per_capita") {
             const ord =
               spec.measure === "count" ? s`${aggN} desc, eid` : s`${aggV} desc, eid`;
@@ -925,20 +934,18 @@ export async function runSpec(
               count: s`n`,
               percap: s`v`,
             }[tableOpts.sort ?? (spec.measure === "count" ? "count" : "value")];
-            const cnt = paged
-              ? ((await s`
-                  select count(distinct d.county) t from ${txtAgg} d
-                  where ${whereFrag()} and d.county is not null
-                `) as unknown as { t: string }[])
-              : null;
+            const count = () => s`
+              select count(distinct d.county) t from ${txtAgg} d
+              where ${whereFrag()} and d.county is not null
+            ` as unknown as Promise<{ t: string }[]>;
             const r = (await s`
-              select d.county c, coalesce(sum(d.closing_value), 0) v, count(*) n
+              select d.county c, coalesce(sum(d.closing_value), 0) v, count(*) n, count(*) over () te
               from ${txtAgg} d
               where ${whereFrag()} and d.county is not null
               group by 1
               order by ${sortFrag} ${tableOpts.sort ? dir : s`desc`}, c
               ${limitFrag}
-            `) as unknown as { c: string; v: string; n: string }[];
+            `) as unknown as { c: string; v: string; n: string; te: string }[];
             return {
               block: "table",
               rows: r.map((p) => ({
@@ -949,7 +956,7 @@ export async function runSpec(
                 count: Number(p.n),
                 population: null,
               })),
-              ...pagedMeta(Number(cnt?.[0]?.t ?? 0)),
+              ...(await pagedMeta(r, count)),
             };
           }
           const idCol = dim === "authority" ? s`d.authority_id` : s`d.supplier_id`;
@@ -965,24 +972,23 @@ export async function runSpec(
             const populations = s`unnest(${s.array(perCapita!.ids)}::bigint[], ${s.array(perCapita!.populations)}::integer[]) rpl(entity_id, population)`;
             // Repeating the id list as a predicate lets it reach the authority indexes of both streams.
             const eligible = perCapitaPredicate(s, perCapita!.ids);
-            const cnt = paged
-              ? ((await s`
-                  select count(distinct d.authority_id) t
-                  from ${txtAggNames} d
-                  join ${populations} on rpl.entity_id = d.authority_id
-                  where ${whereFrag()} and ${eligible}
-                `) as unknown as { t: string }[])
-              : null;
+            const count = () => s`
+              select count(distinct d.authority_id) t
+              from ${txtAggNames} d
+              join ${populations} on rpl.entity_id = d.authority_id
+              where ${whereFrag()} and ${eligible}
+            ` as unknown as Promise<{ t: string }[]>;
             const r = (await s`
               select d.authority_id id, max(d.authority_name) nm, max(d.county) co,
-                     coalesce(sum(d.closing_value), 0) v, count(*) n, max(rpl.population) pop
+                     coalesce(sum(d.closing_value), 0) v, count(*) n, max(rpl.population) pop,
+                     count(*) over () te
               from ${txtAggNames} d
               join ${populations} on rpl.entity_id = d.authority_id
               where ${whereFrag()} and ${eligible}
               group by d.authority_id
               order by ${sortFrag} ${tableOpts.sort ? dir : s`desc`}, d.authority_id
               ${limitFrag}
-            `) as unknown as { id: string; nm: string; co: string | null; v: string; n: string; pop: string }[];
+            `) as unknown as { id: string; nm: string; co: string | null; v: string; n: string; pop: string; te: string }[];
             return {
               block: "table",
               rows: r.map((p) => ({
@@ -993,16 +999,14 @@ export async function runSpec(
                 count: Number(p.n),
                 population: Number(p.pop),
               })),
-              ...pagedMeta(Number(cnt?.[0]?.t ?? 0)),
+              ...(await pagedMeta(r, count)),
             };
           }
           const sortKey = tableOpts.sort ?? (spec.measure === "count" ? "count" : "value");
-          const cnt = paged
-            ? ((await s`
-                select count(distinct ${idCol}) t from ${txtAgg} d
-                where ${whereFrag()} and ${idCol} is not null
-              `) as unknown as { t: string }[])
-            : null;
+          const count = () => s`
+            select count(distinct ${idCol}) t from ${txtAgg} d
+            where ${whereFrag()} and ${idCol} is not null
+          ` as unknown as Promise<{ t: string }[]>;
           if (sortKey === "value" || sortKey === "count" || sortKey === "percap") {
             // Aggregate WITHOUT names (index-only over the slim union — names
             // would force a heap fetch per row, a full seq scan on big
@@ -1041,7 +1045,7 @@ export async function runSpec(
                 count: Number(p.n),
                 population: null,
               })),
-              ...pagedMeta(Number(cnt?.[0]?.t ?? 0)),
+              ...(await pagedMeta(r, count)),
               ...(first ? { totals: { value: Number(first.tv), count: Number(first.tn), entities: Number(first.te) } } : {}),
             };
           }
@@ -1059,17 +1063,17 @@ export async function runSpec(
           const r = (await s`
             with g as (
               select ${idCol} id, max(${nameCol}) nm,
-                     coalesce(sum(d.closing_value), 0) v, count(*) n
+                     coalesce(sum(d.closing_value), 0) v, count(*) n, count(*) over () te
               from ${txtAggNames} d
               where ${whereFrag()} and ${idCol} is not null
               group by ${idCol}
             )
-            select g.id, g.nm, ep.county co, g.v, g.n
+            select g.id, g.nm, ep.county co, g.v, g.n, g.te
             from g
             left join marts.entity_profile ep on ep.entity_id = g.id and ep.role = ${dim}
             order by ${sortFrag} ${tableOpts.sort ? dir : s`desc`}, g.id
             ${limitFrag}
-          `) as unknown as { id: string; nm: string; co: string | null; v: string; n: string }[];
+          `) as unknown as { id: string; nm: string; co: string | null; v: string; n: string; te: string }[];
           return {
             block: "table",
             rows: r.map((p) => ({
@@ -1080,7 +1084,7 @@ export async function runSpec(
               count: Number(p.n),
               population: null,
             })),
-            ...pagedMeta(Number(cnt?.[0]?.t ?? 0)),
+            ...(await pagedMeta(r, count)),
           };
         }
 
@@ -1988,6 +1992,7 @@ export async function runRows(
   const pageSize = opts.limit && opts.limit > 0 ? Math.min(Math.floor(opts.limit), CSV_MAX_ROWS) : DRILL_PAGE_SIZE;
 
   return await sql.begin("isolation level repeatable read read only", async (tx) => {
+    await tx.unsafe(FORCE_CUSTOM_PLANS);
     await tx.unsafe(`set local statement_timeout = '${opts.capture ? '15min' : STATEMENT_TIMEOUT}'`);
     // The production database uses SSD costs. Keep the same covering-index
     // choices in local source verification without changing database settings.
