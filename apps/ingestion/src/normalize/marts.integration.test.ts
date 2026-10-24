@@ -1,7 +1,7 @@
 import {seedVerifiedIdentity} from '../test/contract-identity-fixture.js';
 import {approveContractIdentities} from './approve-contract-identities.js';
 import { afterAll, describe, expect, it } from "vitest";
-import { contractKindFromTitle, contractWinnerIsAuthority, createDb, cuiCorroborated, readContractIdentityQuality, TRANSACTION_MART_INDEXES, type DbSql } from "@seap/db";
+import { contractKindFromTitle, contractWinnerIsAuthority, createDb, cuiCorroborated, readContractIdentityQuality, TRANSACTION_MART_BUILD_INDEXES, TRANSACTION_MART_INDEXES, type DbSql } from "@seap/db";
 import { DA_CEILING_SEED_ROWS } from "@seap/domain";
 import { runMarts } from "./marts.js";
 import { runFlags } from "../flags/build.js";
@@ -104,7 +104,8 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
       expect((await runMarts(q)).createdIndexes).toEqual(["ctx_county_idx", "ctx_county_ent_idx", "ctx_cpv_idx", "ctx_cpv_val_idx"]);
       const built = await buildTransactionMarts(q as unknown as Parameters<typeof buildTransactionMarts>[0]);
       expect(built.createdIndexes).toEqual(["da_tx_county_date_idx", "da_tx_county_ent_idx", "da_tx_cpv_idx", "da_tx_cpv_val_idx"]);
-      expect((await indexes()).map(r => [r.indexname, r.indexdef])).toEqual(TRANSACTION_MART_INDEXES
+      // With the covering twins, which the DA build always drops and builds again.
+      expect((await indexes()).map(r => [r.indexname, r.indexdef])).toEqual([...TRANSACTION_MART_INDEXES, ...TRANSACTION_MART_BUILD_INDEXES]
         .map(index => [index.name, index.definition.replace(" ON marts.", ` ON ${prefix}_marts.`)])
         .sort(([a], [b]) => a! < b! ? -1 : 1));
       // The next nightly build finds them and creates nothing.

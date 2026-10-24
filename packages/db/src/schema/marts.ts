@@ -276,6 +276,10 @@ export const entityFlags = martsSchema.table(
     county: text("county"),
     nDas: integer("n_das").notNull().default(0),
     totalRon: numeric("total_ron"),
+    /** Ask's risk scatter x axis (compile.ts, case "scatter"): the very
+     * expression it binned at read time, ~0.8 s a pass on numeric. Stored by
+     * PostgreSQL on every insert, so it cannot drift from total_ron (0085). */
+    logTotalRon: numeric("log_total_ron").generatedAlwaysAs(sql`log(greatest(coalesce(total_ron, 0), 1))`),
     /** 0–1 binary CRI. */
     cri: numeric("cri"),
     /** Distinct flag types triggered. */
