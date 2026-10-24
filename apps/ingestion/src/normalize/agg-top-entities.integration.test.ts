@@ -26,7 +26,7 @@ it.skipIf(!connection)('gives each ranked entity its own county, never a buyer c
    (${capital},'authority','Bucuresti'),(${vrancea},'authority','Vrancea'),
    (${supplier},'supplier','Ilfov'),(${unknown},'supplier',null)`;
   await buildTransactionMarts(q);
-  const rows=await q`select role,eid::text,county,v_plaf::text from marts.agg_top_entities order by role,eid`;
+  const rows=await q`select role,eid::text,county,v_plaf::text from marts.agg_top_entities order by role,eid::bigint`;
   expect(rows.map(r=>({...r}))).toEqual([
    {role:'authority',eid:capital,county:'Bucuresti',v_plaf:'900'},
    {role:'authority',eid:vrancea,county:'Vrancea',v_plaf:'150'},
