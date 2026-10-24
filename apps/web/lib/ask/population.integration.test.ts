@@ -4,24 +4,12 @@ import { runRows, runSpec } from "./compile";
 import { evidenceCsv, sumDecimalStrings } from "./evidence";
 import type { AskSpec } from "./spec";
 import type { Grounding } from "./ground";
+import { scoped } from "./test-fixture";
 
 const testUrl = process.env["TEST_DATABASE_URL"];
 if (testUrl && !/^seap_test_[a-z0-9_]+$/.test(new URL(testUrl).pathname.slice(1))) throw new Error("Population fixtures require a dedicated seap_test_* database");
 const connection = testUrl ? createDb(testUrl) : null;
 afterAll(async () => { await connection?.sql.end(); });
-
-/** Qualified marts are rewritten into unique fixture tables; everything rolls back. */
-function scoped(connection:DbSql, prefix:string): DbSql {
-  const rewrite = (text:string) => text.replace(/\bmarts\./g, `${prefix}.`);
-  const tag = ((chunks:TemplateStringsArray, ...values:unknown[]) => {
-    // Helper calls (sql(list), sql("identifier")) are not queries: pass them through.
-    if (!Array.isArray(chunks) || !("raw" in chunks)) return (connection as unknown as (...args:unknown[]) => unknown)(chunks, ...values);
-    const mapped = chunks.map(rewrite); Object.defineProperty(mapped,"raw",{ value:chunks.raw.map(rewrite) });
-    return connection(mapped as unknown as TemplateStringsArray, ...values as never[]);
-  }) as unknown as DbSql;
-  Object.assign(tag, { array:connection.array.bind(connection), unsafe:(text:string) => connection.unsafe(rewrite(text)), begin:(first:unknown, second?:unknown) => (typeof first === "function" ? first : second as (db:DbSql)=>unknown)(tag) });
-  return tag;
-}
 
 describe.runIf(Boolean(connection))("investigative population SQL (dedicated rollback fixture)", () => {
   it("reconciles nested conditions, exact fractions, >=N cohorts and scoped comparisons with source/export rows", async () => {
