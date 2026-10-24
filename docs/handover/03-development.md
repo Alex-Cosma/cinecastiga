@@ -152,6 +152,21 @@ pnpm --filter web exec tsx scripts/ask-perf.ts --code=<commit> --out=<dir>/perf.
 
 Cazurile (`scripts/ask-perf-cases.ts`) sunt implicitele celor 13 întrebări din catalog, cele mai grele cazuri naționale exprimabile azi, selecții restrânse, surse și CSV, construite ca în constructor. Fiecare caz rulează în procesul lui: prima rulare cu cache-urile procesului goale, apoi la cald (mediana a `--warm-runs`, implicit 3), apoi sub `auto_explain` (ANALYZE, BUFFERS; cere drept de superuser local, altfel planul lipsește cu motivul scris). „Prima” înseamnă proces rece, nu disc rece. Pragul la cald: 1 s pentru un răspuns, 2 s pentru cazurile naționale grele, surse și CSV. Cu `--compare`, un caz mai lent decât baza cu peste 25% și peste 100 ms face comanda să iasă cu cod 1; amprenta rezultatului arată și răspunsurile schimbate. `--from=<json> --md=<md>` doar redă un raport existent. Parametrii din URL-ul `--db` devin setări de sesiune: `?plan_cache_mode=force_generic_plan` arată cum răspunde fiecare caz cu planurile generice la care ajunge o conexiune din pool după cinci execuții ale aceleiași instrucțiuni. Rezultatele stau în afara repository-ului. Nu rula măsurătoarea în paralel cu build-uri, teste sau alte interogări grele: timpii ies umflați (raportul notează backend-urile active și load-ul la pornirea fiecărui caz).
 
+Linkurile vechi spre „Întreabă” au rezultate „de aur” (plan filtre §6.2). Pe fixture (bază `seap_test_*`, rollback, date fictive), testul trebuie să rămână verde după orice schimbare a motorului; o schimbare intenționată regenerează fișierul și se explică în commit:
+
+```sh
+TEST_DATABASE_URL=postgres://…/seap_test_<nume> pnpm --filter web exec vitest run lib/ask/golden-legacy.integration.test.ts
+GOLDEN_UPDATE=1 TEST_DATABASE_URL=postgres://…/seap_test_<nume> pnpm --filter web exec vitest run lib/ask/golden-legacy.integration.test.ts
+```
+
+Pe copia locală (loopback, sesiuni read-only, fiecare cerere în tranzacția ei, `plan_cache_mode=force_custom_plan`; CSV-ul doar sub `--csv-max` înregistrări), rezultatele rămân în afara repository-ului:
+
+```sh
+pnpm --filter web exec tsx scripts/ask-golden.ts --code=<commit> --out=<dir>/golden-local.json [--compare=<dir>/golden-before.json] [--only=catalog:stat,...]
+```
+
+Un link nou spre „Întreabă” intră în `lib/ask/site-links.ts` (sau în constructorul comun al paginii), în `lib/ask/fixtures/site-links-inventory.ts` și în corpus (`lib/ask/fixtures/legacy-corpus.ts`); `site-links.test.ts` pică altfel.
+
 `check-navigation.mjs` folosește strict baza sintetică `seap_test_admin_navigation`, preview separat și date fictive. Nu îl îndrepta spre baza colaboratorului. Scripturile de browser pot cere Playwright și o instalare locală de Chromium; citește precondițiile lor.
 
 Nu rula build și typecheck web concurent când regenerează aceleași `.next/types`. Un build cu `NEXT_DIST_DIR` temporar poate modifica automat include-urile din `tsconfig.json`; curăță doar căile generate ale acelui preview. Nu opri serverele celuilalt dezvoltator cu `pkill node`.

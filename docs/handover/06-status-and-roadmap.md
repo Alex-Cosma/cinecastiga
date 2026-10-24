@@ -63,6 +63,7 @@ Verificările navigării admin din 28 septembrie: 252 teste unitare web, 2 integ
 11. **Documentație:** vechile README-uri includ instrucțiuni pre-shared-gate. Sunt arhivate ca istoric și trebuie interpretate după acest dosar.
 12. **Programare:** un scheduler heartbeat arată că se verifică programul; nu înseamnă că fiecare etapă de publicare a trecut. Site-ul rămâne în mentenanță la eroare.
 13. **CUI-ul altei firme pe înregistrări istorice (F27):** 54 de perechi pe 49 de entități au fost atașate până pe 7 octombrie după ID SICAP, deși codul fiscal din sursă era CUI-ul altei firme. Atribuirea pe înregistrare nu se poate reface (raw-ul de dinainte de 26 septembrie 2026 nu a fost păstrat). Expunerea pe clase, cele 9 perechi acceptate și rezultatul re-preluării farma din 21 octombrie (23 de conflicte, 112.850,90 lei, lăsate la distribuitor din decizia proprietarului) sunt în [date și calcule](20261011/data-and-calculations.md).
+14. **„Ce județe cumpără cel mai mult?” pe toată țara, toți anii, cu primele N (24 octombrie 2026):** răspunde fără niciun rând. Calea rapidă a clasamentului (`runSpec`, `case "table"`, `bare && !paged`) citește `marts.agg_top_entities` cu `role = 'county'`, dar rollup-ul are doar `authority` și `supplier`. Clasamentul paginat („Toate rezultatele”), orice filtru și trendul pe județe răspund corect. Găsit de corpusul „de aur” (`combo:table:counties`), încă nereparat; reparația schimbă un răspuns și cere versiune.
 
 ## Direcții discutate, fără autorizație implicită de implementare
 
