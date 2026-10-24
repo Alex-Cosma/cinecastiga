@@ -3,16 +3,18 @@ import type { MinimumRecords, QueryPopulation } from "./population";
 import type { ScatterDensity, TableSort } from "./compile";
 import type { AuthorityKind } from "./spec";
 import { authorityKindCond, KIND_PATTERNS } from "./authority-kind";
+import { employeesCond } from "./predicates";
 
 /**
  * Answers from the rollups of the nightly build (packages/db/src/ask-rollups.ts)
  * for the questions that otherwise group the 20M-row transaction marts:
  * national and county trends, rankings with a kind, size, exclusion or
  * minimum-records condition, the paged national ranking, breakdowns, and
- * totals, years and counties of those selections. Not wired into runSpec yet
- * (the registry stage restructures compile.ts): each function returns the rows
- * of the live query it replaces, in the same order and with the same types,
- * and rollups.integration.test.ts proves equality with runSpec on a fixture.
+ * totals, years and counties of those selections. runSpec and runRows call
+ * them once rollupsReady() finds the tables (planRollup decides which, or why
+ * none): each function returns the rows of the live query it replaces, in the
+ * same order and with the same types, and rollups.integration.test.ts proves
+ * equality with the live queries on a fixture.
  *
  * Exactness rests on two properties of the marts, checked on the local copy
  * on 24 October 2026 (rollups.integration.test.ts keeps both on a fixture):
@@ -217,16 +219,8 @@ function rollupWhere(sql: DbSql, source: RollupSource, f: RollupFilters, alias: 
       where ep.role = 'authority' and ${authorityKindCond(sql, f.kind, sql`ep.name_display`)}
     )`);
   }
-  if (f.employees) {
-    // The semi-join of the live employees condition (employeesCond of predicates.ts) on the rollup's firm id.
-    const { min, max } = f.employees;
-    const bounds = min !== null && max !== null ? sql`ep.employees between ${min} and ${max}`
-      : min !== null ? sql`ep.employees >= ${min}` : sql`ep.employees <= ${max!}`;
-    parts.push(sql`${supplier!} in (
-      select ep.entity_id from marts.entity_profile ep
-      where ep.role = 'supplier' and ep.employees is not null and ${bounds}
-    )`);
-  }
+  // The live employees condition, on the rollup's firm id.
+  if (f.employees) parts.push(employeesCond(sql, f.employees.min, f.employees.max, supplier!));
   if (f.excludeAuthorities.length)
     parts.push(sql`not (coalesce(${authority!} = any(${sql.array([...f.excludeAuthorities])}::bigint[]), false))`);
   if (f.excludeSuppliers.length)
@@ -276,10 +270,16 @@ export function rollupMinimumCond(sql: DbSql, plan: { source: RollupSource; filt
 }
 
 /**
- * Rollups present (they appear with the first nightly build of this code).
- * Cached for 10 minutes in the process (one database per process), not per
- * DbSql: postgres.js makes a new one for every transaction, so a cache keyed
- * on the transaction never hit. Call it with the pool, before sql.begin.
+ * Rollups present. No migration creates them: buildAskRollups drops and
+ * creates them in the transaction that rebuilds marts.da_transactions (the
+ * transactions stage), from that table and the contract mart, so once they
+ * exist they hold the current transaction marts. They are behind only where
+ * agg_national and the other agg_* are too: the contracts of a marts stage run
+ * alone, until the next transactions stage (the site is closed in between on
+ * the nightly run). Cached for 10 minutes in the process (one database per
+ * process), not per DbSql: postgres.js makes a new one for every transaction,
+ * so a cache keyed on the transaction never hit. Call it with the pool, before
+ * sql.begin.
  */
 let ready: { ok: boolean; at: number } | null = null;
 export async function rollupsReady(sql: DbSql): Promise<boolean> {
@@ -397,9 +397,8 @@ export async function rollupCountyTable(sql: DbSql, plan: { source: RollupSource
 
 /**
  * case "trend": per entity (or county) the values of year A and year B, the
- * largest absolute changes first. The live query orders by the change alone;
- * this adds the id (or county) as tie-break, so equal changes come out in a
- * fixed order. Names: the rollup's own on agg_entity_year; on the pair rollup,
+ * largest absolute changes first, then the id (or county), as the live query:
+ * equal changes (consortium partners) come out in one order on both. Names: the rollup's own on agg_entity_year; on the pair rollup,
  * attached to the shown rows from agg_entity_year (the same transaction names).
  */
 export async function rollupTrend(sql: DbSql, plan: { source: RollupSource; filters: RollupFilters },
@@ -444,7 +443,7 @@ export async function rollupTrend(sql: DbSql, plan: { source: RollupSource; filt
 
 /**
  * case "breakdown": CPV stems of `stemLen` digits (the live stem rule), value
- * first; the live query orders by value alone, this adds the stem as tie-break.
+ * first, then the stem, as the live query.
  * Slicing into the top 8 and "other" stays in the engine.
  */
 export async function rollupBreakdown(sql: DbSql, plan: { source: RollupSource; filters: RollupFilters }, stemLen: number):

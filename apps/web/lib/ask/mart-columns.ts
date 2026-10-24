@@ -2,7 +2,8 @@ import { AGG_MAP_COUNTY_SEAT_COLUMNS, type DbSql } from "@seap/db";
 
 /**
  * Which columns and tables of the marts (plan F5 and F6a phase 2,
- * migrations 0085–0086) the engine may read. Not wired into runSpec yet.
+ * migrations 0085–0086) the engine may read. runSpec reads logTotal (the
+ * scatter's density layer); the others wait for the filters that need them.
  *
  * The web is published before the marts are rebuilt, and the deploy migration
  * adds the entity_profile/entity_flags columns empty: they fill at the next

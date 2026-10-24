@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { ASK_ROLLUP_DA_CEILING } from "@seap/db";
 import { DA_PLAFOND_RON } from "./compile";
+import { predicateContext } from "./predicates";
 import { planRollup, ROLLUP_CTX_KEYS, type RollupCtx } from "./rollups";
+import type { DbSql } from "@seap/db";
 
 /** PredicateCtx of a national question over both channels and every year, without sql. */
 const national: RollupCtx = {
@@ -86,6 +88,14 @@ describe("which rollup answers a selection (24 Oct 2026 slow cases)", () => {
     // …and ignored when they hold none.
     for (const value of [null, undefined, false, []])
       expect(source({ seatCounty: value }, { by: "supplier" })).toEqual({ table: "entity", role: "supplier" });
+  });
+
+  it("reads the engine's own context: predicateContext writes exactly the keys it knows", () => {
+    // runSpec and runRows pass predicateContext(…) as it is: a key added there is refused
+    // by planRollup (it fails closed) until it is mapped and named in ROLLUP_CTX_KEYS.
+    const ctx = predicateContext({} as DbSql, { block: "stat", measure: "value", filters: {} }, {}, { dataset: "all", yearFrom: null, yearTo: null });
+    expect(Object.keys(ctx).sort()).toEqual([...ROLLUP_CTX_KEYS].sort());
+    expect(planRollup(ctx, { by: "total" })).toEqual({ source: { table: "cpv" }, filters: expect.objectContaining({ dataset: "all" }) });
   });
 
   it("knows every key of the context, and each one either reaches the plan or refuses it", () => {
