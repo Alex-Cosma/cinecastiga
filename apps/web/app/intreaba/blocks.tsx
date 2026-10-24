@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { formatRon, formatRonFull, formatInt, cleanName } from "@/lib/format";
 import { countWords, formatChange, formatDecimal, formatShare } from "@/lib/ask/answer-text";
 import { encodeSpec } from "@/lib/ask/permalink";
+import { breakdownDeeperSpec } from "@/lib/ask/source-spec";
 
 /**
  * House rule (docs/PRINCIPLES.md): every graph element answers on hover with an
@@ -243,7 +244,7 @@ export function BreakdownBlock({
 }: {
   slices: BreakdownSlice[];
   other: { value: number; count: number };
-  spec?: unknown;
+  spec: AskSpec;
 }) {
   const t = useTip();
   const evidence = useAnswerEvidence();
@@ -251,10 +252,8 @@ export function BreakdownBlock({
   // CPV level down; at a full 8-digit code, open the transactions instead.
   const canDeepen = (code: string): boolean => code.length < 8;
   const sliceUrl = (code: string): string => {
-    const sp = (spec ?? {}) as { filters?:Record<string, unknown> };
     if (!canDeepen(code)) return `/intreaba?spec=${encodeURIComponent(encodeSpec(spec))}&drill=1&evidence=${encodeURIComponent(JSON.stringify({ cpvPrefixes:[code] }))}`;
-    const next = { ...sp, block:"breakdown", measure:"value", filters:{ ...(sp.filters ?? {}), cpvTerm:code } };
-    return `/intreaba?spec=${encodeURIComponent(encodeSpec(next))}`;
+    return `/intreaba?spec=${encodeURIComponent(encodeSpec(breakdownDeeperSpec(spec, code)))}`;
   };
 
   const total = slices.reduce((a, s) => a + s.value, 0) + other.value;

@@ -3,7 +3,7 @@ import type { Block } from "../spec";
 import type { EvidenceScope } from "../evidence";
 import type { DrillSort, TableSort } from "../compile";
 import { countyBreakdownSpec } from "../../discovery-links";
-import { entitySourceScope, entitySourceSpec } from "../source-spec";
+import { breakdownDeeperSpec, entitySourceScope, entitySourceSpec } from "../source-spec";
 import { domainSourceQuery, type DomainNode } from "../../domains-shared";
 import { connectionPairSpec } from "../../connections-shared";
 import { connectionEvidenceSpec } from "../../connection-evidence-shared";
@@ -169,7 +169,7 @@ export function legacyCorpus(ids: CorpusIdentities): CorpusEntry[] {
   site("source-entity-spec", "source-spec.ts entitySourceSpec (clasament row → its own total)", entitySourceSpec(ranking as never, { entityId: String(supplier.id), name: supplier.name }));
   site("source-year", "source-spec.ts yearSourceLink (evolution bar → that year's records)", builderQuestion("timeseries"), { rows: { scope: { years: [b] } } });
   const slices = builderQuestion("breakdown", set({ cpvTerm: cpv.division }));
-  site("slice-deeper", "app/intreaba/blocks.tsx sliceUrl (a slice one CPV level down)", { ...slices, block: "breakdown", measure: "value", filters: { ...slices.filters, cpvTerm: cpv.group } });
+  site("slice-deeper", "app/intreaba/blocks.tsx sliceUrl (a slice one CPV level down)", breakdownDeeperSpec(slices, cpv.group));
   site("slice-records", "app/intreaba/blocks.tsx sliceUrl (an 8-digit slice → its records)", slices, { rows: { scope: { cpvPrefixes: [cpv.code] } } });
   site("node-records", "app/intreaba/blocks.tsx drillUrl (network node → the pair's records)", builderQuestion("network", focalBuyer()),
     { rows: { scope: { role: "supplier", entityIds: [String(supplier.id)] } } });
