@@ -14,11 +14,18 @@ import { RO_NUTS3_COUNTY } from "./nuts-county.js";
  *   the new county under that year, so the oldest year is the registration
  *   and the newest one the current seat (5,959 suppliers on the local copy).
  * - `seat_county` / `seat_source` (rule in packages/db/src/firm-seat.ts): the
- *   ONRC seat is the county of the latest registration (newest year, then the
- *   highest sequence number, then the number as text, so the choice never
- *   depends on row order). Counties are written in the spelling of
- *   `core.entities.county`, which the transaction rows carry as buyer county.
- *   When that latest registration names no county, the SEAP county applies.
+ *   ONRC seat is the county of the latest registration: the newest year, then
+ *   a new-format number before an old one (the new format replaced the old
+ *   one, so it was issued later; the snapshot has no old number after 2024),
+ *   then the highest sequence, then the number as text, so the choice never
+ *   depends on row order. Sequences are counted by each county office (new
+ *   numbers too, before 2025), so when the newest year has only old numbers,
+ *   from several counties, they do not say which is later: the SEAP county is
+ *   taken if it is one of them, else the ONRC seat is undecided (133 suppliers
+ *   on the local copy of 24 October 2026; 58 left undecided).
+ *   Counties are written in the spelling of `core.entities.county`, which the
+ *   transaction rows carry as buyer county. When the ONRC seat is undecided,
+ *   or its registration names no county, the SEAP county applies.
  *
  * Only a corroborated CUI is joined to ONRC (cuiCorroborated, audit F03). A
  * foreign seat has no registered_year: a foreign firm is not "registered in
@@ -82,10 +89,19 @@ export async function applyFirmRegistry(q: TransactionSql): Promise<FirmRegistry
         from onrc o) r
       where r.y between ${ONRC_FIRST_YEAR}::int and r.snapshot_year),
     first_reg as (select cui, min(y) y from reg group by cui),
+    newest as (
+      select r.cui, ko.county, r.seq, r.j_number, r.j_number ~ ${ONRC_NUMBER_NEW} is_new
+      from reg r
+      join (select cui, max(y) y from reg group by cui) t on t.cui = r.cui and t.y = r.y
+      left join k ko on lower(ko.county) = lower(unaccent(trim(r.county)))),
+    spread as (select cui, bool_or(is_new) has_new, count(distinct county) counties from newest group by cui),
     last_reg as (
-      select distinct on (r.cui) r.cui, ko.county
-      from reg r left join k ko on lower(ko.county) = lower(unaccent(trim(r.county)))
-      order by r.cui, r.y desc, r.seq desc, r.j_number desc),
+      select distinct on (n.cui) n.cui,
+        case when sp.has_new or sp.counties <= 1 or n.county = s.seap_county then n.county end county
+      from newest n
+      join spread sp on sp.cui = n.cui
+      join sup s on s.cui = n.cui
+      order by n.cui, n.is_new desc, (n.county = s.seap_county) desc nulls last, n.seq desc, n.j_number desc),
     seat as (
       select s.entity_id, f.y registered_year,
         case when not s.is_foreign then coalesce(l.county, s.seap_county) end seat_county,
