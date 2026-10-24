@@ -55,7 +55,9 @@ export async function goldenRecord(entry: CorpusEntry, send: SendRoute, opts: { 
 
   let csv: Record<string, unknown>;
   const total = typeof sources["total"] === "number" ? sources["total"] : null;
-  if (total !== null && opts.csvMaxTotal !== undefined && total > opts.csvMaxTotal) csv = { skipped: `${total} records > ${opts.csvMaxTotal}` };
+  // On real data (csvMaxTotal set) a failed source list would only repeat its timeout in the export.
+  if (opts.csvMaxTotal !== undefined && (total === null || total > opts.csvMaxTotal))
+    csv = { skipped: total === null ? "the source list failed" : `${total} records > ${opts.csvMaxTotal}` };
   else {
     const exported = await send("csv", { spec: entry.spec, ...drawer });
     const isCsv = exported.headers.get("content-type")?.includes("text/csv");
