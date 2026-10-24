@@ -165,5 +165,11 @@ export function perfCases(): PerfCase[] {
     perfCase("sources:trend-2024-2025-up-selgros-row", "sources", "„Înregistrări →” pe rândul SELGROS al creșterilor 2024 → 2025", "trend", all(years(2024, 2025), lens({ change: "up", months: "auto" })), { path: "rows", scope: SELGROS_ROW, ref: "„Înregistrări →” pe un singur rând al unei grupe" }),
     perfCase("sources:trend-2025-2026-jan-may", "sources", "Sursele creșterilor, ian.–mai 2025 → 2026", "trend", all(years(2025, 2026), lens({ change: "up", months: [1, 5] })), { path: "rows", barMs: 2000 }),
     perfCase("csv:trend-2024-2025-gone-cluj", "csv", "CSV: firmele din Cluj care nu mai apar în 2025", "trend", all(set({ county: "Cluj" }), years(2024, 2025), lens({ change: "gone", months: "auto" })), { path: "csv", barMs: 2000 }),
+    // F2 (track trend, T2): the partition on the other subjects, a live grouping and an old link with 2018.
+    perfCase("national:trend-authorities-2024-2025-up", "national", "Instituții cu cea mai mare creștere, 2024 → 2025", "trend", all(top({ dim: "authority" }), years(2024, 2025), lens({ change: "up", months: "auto" })), { barMs: 2000 }),
+    perfCase("national:trend-counties-2024-2025-down", "national", "Județe cu cea mai mare scădere, 2024 → 2025", "trend", all(top({ dim: "county" }), years(2024, 2025), lens({ change: "down", months: "auto" })), { barMs: 2000 }),
+    perfCase("national:trend-medicamente-2024-2025-new", "national", "Firme noi la medicamente, 2024 → 2025 (grupare live)", "trend", all(set({ cpvTerm: "medicamente" }), years(2024, 2025), lens({ change: "new", months: "auto" })), { barMs: 2000 }),
+    perfCase("filtered:trend-cluj-napoca-suppliers-2024-2025-new", "filtered", "Furnizori noi ai Municipiului Cluj-Napoca, 2024 → 2025", "trend", all(buyer(), years(2024, 2025), lens({ change: "new", months: "auto" }))),
+    perfCase("national:trend-suppliers-2018-2019", "national", "Firme cu cea mai mare schimbare, 2018 → 2019 (link vechi)", "trend", years(2018, 2019), { barMs: 2000 }),
   ];
 }

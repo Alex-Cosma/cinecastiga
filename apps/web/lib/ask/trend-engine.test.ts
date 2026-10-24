@@ -10,7 +10,9 @@ import { validateSpec, type AskSpec } from "./spec";
 // statement with its parameters; the rows of the answer are not the point here.
 
 type Coverage = { dataset: string; date_from: string; date_to: string; complete_until?: string | null }[];
-function database(coverage: Coverage, opts: { rollups?: boolean; members?: string[] } = {}) {
+/** Rows the harness answers: the partition statement, the row facts and the profiles of the shown entities (trend-partition.ts). */
+interface Answers { partition?: Record<string, unknown>[]; facts?: Record<string, unknown>[]; profiles?: Record<string, unknown>[] }
+function database(coverage: Coverage, opts: { rollups?: boolean; members?: string[] } & Answers = {}) {
   const statements: { text: string; values: unknown[] }[] = [];
   class Fragment {
     constructor(public text: string, public values: unknown[]) {}
@@ -21,8 +23,11 @@ function database(coverage: Coverage, opts: { rollups?: boolean; members?: strin
       if (text.includes("to_regclass('marts.data_coverage')")) return Promise.resolve(resolve([{ ok: true, refreshes: true }]));
       if (text.includes("from app.monitoring_refreshes")) return Promise.resolve(resolve([{ id: "checkpoint-12" }]));
       if (text.includes("from marts.data_coverage")) return Promise.resolve(resolve(coverage));
-      if (text.includes("marts.national_stats")) return Promise.resolve(resolve([2019, 2024, 2025, 2026].map((year) => ({ year }))));
+      if (text.includes("marts.national_stats")) return Promise.resolve(resolve([2018, 2019, 2024, 2025, 2026].map((year) => ({ year }))));
       if (/select \S+::text m from/.test(text)) return Promise.resolve(resolve((opts.members ?? []).map((m) => ({ m }))));
+      if (text.includes("with k as materialized")) return Promise.resolve(resolve(opts.partition ?? []));
+      if (text.includes("with x as materialized")) return Promise.resolve(resolve(opts.facts ?? []));
+      if (text.includes("from marts.entity_profile ep left join core.entities e")) return Promise.resolve(resolve(opts.profiles ?? []));
       return Promise.resolve(resolve([]));
     }
   }
@@ -61,22 +66,32 @@ const trend = (options?: AskSpec["trend"], filters: AskSpec["filters"] = { yearF
   return spec;
 };
 const grouped = (statements: { text: string; values: unknown[] }[]) => statements.filter((s) => s.text.includes("group by d.supplier_id"));
+/** The lists of a partition with no rows, as the engine returns them. */
+const NO_LISTS = { all: [], up: [], new: [], first: [], down: [], gone: [] };
 
 beforeEach(() => forgetRollupsReady());
 
 describe("the trend's answer with its lenses", () => {
-  it("keeps today's answer, shape and query without trend options", async () => {
+  it("lists every change without trend options, as before, beside the partition of trend-2", async () => {
     const db = database(PROD);
     const result = await runSpec(db.sql, trend(), {});
     if ("error" in result) throw new Error(result.error);
-    expect(result.data).toEqual({ block: "trend", yearA: 2025, yearB: 2026, rowsTrend: [] });
+    expect(result.data).toEqual({
+      block: "trend", yearA: 2025, yearB: 2026, rowsTrend: [], list: "all", change: "all", months: { from: 1, to: 12, mode: "whole" },
+      groups: NO_LISTS, composition: {}, noun: "firme", rowFacts: {},
+    });
     expect(result.executed).toBeUndefined();
-    const [query] = grouped(db.statements);
+    // One statement: grouped once (the slim union: names come from the profiles), then every list and total.
+    const [query, ...others] = grouped(db.statements);
+    expect(others).toEqual([]);
+    expect(query!.text).toMatch(/^ ?with k as materialized \( select d\.supplier_id id, coalesce/);
+    expect(query!.text).not.toContain("supplier_name");
     expect(query!.text).not.toContain("having");
-    expect(query!.text).toContain("order by abs(");
+    expect(query!.text).toContain("from k order by abs(k.vb - k.va) desc, k.id limit ?");
     expect(query!.text).not.toContain("substr(d.finalization_date,6,2)");
+    expect(query!.values.filter((v) => typeof v === "string" && v.startsWith("sum:"))).toEqual(["sum:all", "sum:up", "sum:new", "sum:first", "sum:down", "sum:gone", "sum:equal"]);
     expect(result.displaySql).toContain("order by abs(dupa - inainte) desc");
-    // Empty options (accepted since F0a as today's answer) keep today's shape too.
+    // Empty options (accepted since F0a as today's answer) answer the same.
     const empty = await runSpec(database(PROD).sql, trend({}), {});
     if ("error" in empty) throw new Error(empty.error);
     expect(empty.data).toEqual(result.data);
@@ -94,7 +109,7 @@ describe("the trend's answer with its lenses", () => {
     const [query] = grouped(db.statements);
     expect(query!.text).toContain("substr(d.finalization_date,6,2) between ? and ?");
     expect(query!.values).toEqual(expect.arrayContaining(["01", "05"]));
-    expect(query!.text).toMatch(/having .* > 0 and .* > /);
+    expect(query!.text).toContain("from k where k.va > 0 and k.vb > k.va order by k.vb - k.va desc, k.id limit ?");
     expect(result.displaySql).toContain("luna between '01' and '05'");
     expect(result.displaySql).toContain("having inainte > 0 and dupa > inainte  -- Creșteri");
   });
@@ -116,20 +131,98 @@ describe("the trend's answer with its lenses", () => {
     expect(chosen.executed).toEqual({ months: [1, 6], mode: "chosen", checkpoint: "checkpoint-12" });
   });
 
-  it("lists each group in its own order, the percent from its base, the new ones of their first year", async () => {
-    const order = async (options: AskSpec["trend"]) => {
+  it("lists each group in its own order, the growths in percent from their base, the new ones of their first year", async () => {
+    const statement = async (options: AskSpec["trend"]) => {
       const db = database(PROD);
       const result = await runSpec(db.sql, trend(options, { yearFrom: 2024, yearTo: 2025 }), {});
       if ("error" in result) throw new Error(result.error);
       return grouped(db.statements)[0]!;
     };
-    expect((await order({ change: "new" })).text).toMatch(/having coalesce\(.*\) = 0 and coalesce\(.*\) > 0 order by coalesce/);
-    const percent = await order({ change: "up", order: "percent", minBase: 100_000 });
-    expect(percent.text).toMatch(/ \/ coalesce\(.*\) desc, d\.supplier_id/);
+    // Every list, whatever the chosen group: the buttons switch without a query.
+    const lists = await statement({ change: "new" });
+    for (const list of [
+      "from k where k.va > 0 and k.vb > k.va order by k.vb - k.va desc, k.id",
+      "from k where k.va = 0 and k.vb > 0 order by k.vb desc, k.id",
+      "from k where k.vb > 0 and k.vb < k.va order by k.va - k.vb desc, k.id",
+      "from k where k.va > 0 and k.vb = 0 order by k.va desc, k.id",
+    ]) expect(lists.text).toContain(list);
+    expect(lists.text).toContain("k.va = 0 and k.vb > 0 and k.id in ( select ep.entity_id from marts.entity_profile ep where ep.role = ? and substr(ep.first_activity, 1, 4) = ? )");
+    expect(lists.values).toContain("2025");
+    expect(lists.values).not.toContain("sum:eligible");
+    // The order in percent ranks the growths from the base; the composition counts every growth, and the eligible ones apart.
+    const percent = await statement({ change: "up", order: "percent", minBase: 100_000 });
+    expect(percent.text).toContain("from k where k.va > 0 and k.vb > k.va and k.va >= ? order by k.vb / k.va desc, k.id");
     expect(percent.values).toContain(100_000);
-    const first = await order({ change: "new", firstOnly: true });
-    expect(first.text).toContain("substr(ep.first_activity, 1, 4) = ?");
-    expect(first.values).toContain("2025");
+    expect(percent.values).toContain("sum:eligible");
+  });
+
+  it("answers the chosen list with the entity's own name and county, every list, the composition and the facts of every shown row", async () => {
+    const db = database(PROD, {
+      partition: [
+        { part: "all", id: "11", va: "100", vb: "400", n: null }, { part: "all", id: "12", va: "300", vb: "0", n: null },
+        { part: "up", id: "11", va: "100", vb: "400", n: null }, { part: "gone", id: "12", va: "300", vb: "0", n: null },
+        { part: "sum:all", id: null, va: "400", vb: "400", n: "2" }, { part: "sum:up", id: null, va: "100", vb: "400", n: "1" },
+        { part: "sum:gone", id: null, va: "300", vb: "0", n: "1" }, { part: "sum:equal", id: null, va: "0", vb: "0", n: "0" },
+      ],
+      facts: [
+        { id: "11", y: "2025", v: "400", joint: "250", largest: "300", largest_src: "contracts", partner: "7", partner_v: "360" },
+        { id: "11", y: "2024", v: "100", joint: "0", largest: "100", largest_src: "da", partner: "8", partner_v: "100" },
+        { id: "12", y: "2024", v: "300", joint: "0", largest: "300", largest_src: "da", partner: "7", partner_v: "300" },
+      ],
+      profiles: [
+        { role: "supplier", id: "11", name_display: "Firma Unu", county: "Cluj", country_code: "RO", is_foreign: false, first_activity: "2019-03-01 10:00", last_activity: "2026-02-01 09:00", cui_valid: true },
+        { role: "supplier", id: "12", name_display: "Firma Doi", county: "Ilfov", country_code: "FR", is_foreign: true, first_activity: "2018-05-01", last_activity: "2024-12-01", cui_valid: false },
+        { role: "authority", id: "7", name_display: "Primăria X", county: "Cluj", country_code: "RO", is_foreign: false, first_activity: null, last_activity: null, cui_valid: true },
+      ],
+    });
+    const result = await runSpec(db.sql, trend({ change: "up" }, { yearFrom: 2024, yearTo: 2025 }), {});
+    if ("error" in result || result.data.block !== "trend") throw new Error("trend expected");
+    const unu = { entityId: "11", name: "Firma Unu", county: "Cluj", valueA: 100, valueB: 400 };
+    const doi = { entityId: "12", name: "Firma Doi", county: null, valueA: 300, valueB: 0 };
+    expect(result.data).toMatchObject({
+      list: "up", change: "up", rowsTrend: [unu],
+      groups: { all: [unu, doi], up: [unu], new: [], first: [], down: [], gone: [doi] },
+      composition: { all: { count: 2, valueA: 400, valueB: 400 }, up: { count: 1, valueA: 100, valueB: 400 }, gone: { count: 1, valueA: 300, valueB: 0 }, equal: { count: 0, valueA: 0, valueB: 0 } },
+      noun: "firme",
+    });
+    // The year that makes each change: 2025 for the growth, 2024 for the one that is gone (a foreign firm: its country).
+    expect(result.data.rowFacts).toEqual({
+      "11": { year: 2025, value: 400, largest: { value: 300, src: "contracts" }, joint: 250, partner: { entityId: "7", name: "Primăria X", value: 360 },
+        firstActivity: "2019-03-01", lastActivity: "2026-02-01", cuiValid: true, country: null },
+      "12": { year: 2024, value: 300, largest: { value: 300, src: "da" }, joint: 0, partner: { entityId: "7", name: "Primăria X", value: 300 },
+        firstActivity: "2018-05-01", lastActivity: "2024-12-01", cuiValid: false, country: "FR" },
+    });
+    // The facts read only the shown ids, on their index, in the answer's two years; the profiles both roles at once.
+    const facts = db.statements.find((s) => s.text.includes("with x as materialized"))!;
+    expect(facts.text).toContain("d.supplier_id = any(?array::bigint[]) and d.finalization_date >= ? and d.finalization_date < ?");
+    expect(facts.text).toContain("filter (where d.n_winners > 1)");
+    expect(facts.values).toEqual(expect.arrayContaining([["11", "12"], "2024", "2026"]));
+    const profiles = db.statements.find((s) => s.text.includes("from marts.entity_profile ep left join core.entities e"))!;
+    expect(profiles.values).toEqual(["supplier", ["11", "12"], "authority", ["7", "8"]]);
+  });
+
+  it("partitions counties without facts or profiles, and names a group after the selection", async () => {
+    const db = database(PROD, { partition: [{ part: "all", id: "Cluj", va: "5", vb: "9", n: null }, { part: "up", id: "Cluj", va: "5", vb: "9", n: null }] });
+    const counties = await runSpec(db.sql, { ...trend({ change: "up" }, { yearFrom: 2024, yearTo: 2025 }), dim: "county" }, {});
+    if ("error" in counties || counties.data.block !== "trend") throw new Error("trend expected");
+    expect(counties.data.rowsTrend).toEqual([{ entityId: null, name: "Cluj", county: null, valueA: 5, valueB: 9 }]);
+    expect(counties.data.groups).toEqual({ all: counties.data.rowsTrend, up: counties.data.rowsTrend, new: [], down: [], gone: [] });
+    expect(counties.data).toMatchObject({ noun: "județe" });
+    expect(counties.data.rowFacts).toBeUndefined();
+    expect(db.statements.some((s) => s.text.includes("with x as materialized") || s.text.includes("core.entities e"))).toBe(false);
+    expect(db.statements.find((s) => s.text.includes("with k as materialized"))!.text).toContain("group by d.county");
+  });
+
+  it("says 2018 is incomplete on an old link that compares it", async () => {
+    const all = await runSpec(database(PROD).sql, trend({}, { yearFrom: 2018, yearTo: 2019 }), {});
+    if ("error" in all) throw new Error(all.error);
+    expect(all.caveats).toContain("2018 e incomplet: achizițiile directe încep pe 2 aprilie, iar contractele din 2018 sunt jumătate din cele din 2019.");
+    const contracts = await runSpec(database(PROD).sql, { ...trend(undefined, { yearFrom: 2018, yearTo: 2024 }), dataset: "contracts" }, {});
+    if ("error" in contracts) throw new Error(contracts.error);
+    expect(contracts.caveats).toContain("2018 e incomplet: contractele din 2018 sunt jumătate din cele din 2019.");
+    const later = await runSpec(database(PROD).sql, trend(undefined, { yearFrom: 2019, yearTo: 2024 }), {});
+    if ("error" in later) throw new Error(later.error);
+    expect(later.caveats.join(" ")).not.toContain("2018 e incomplet");
   });
 });
 

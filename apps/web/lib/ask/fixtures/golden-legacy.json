@@ -1203,7 +1203,7 @@
       {
        "entityId": "9100000104",
        "name": "Fixture Foreign GmbH",
-       "county": "Buzau",
+       "county": null,
        "valueA": 31500,
        "valueB": 0
       },
@@ -1214,7 +1214,258 @@
        "valueA": 7480.85,
        "valueB": 0
       }
-     ]
+     ],
+     "list": "all",
+     "change": "all",
+     "months": {
+      "from": 1,
+      "to": 12,
+      "mode": "whole"
+     },
+     "groups": {
+      "all": [
+       {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "county": "Buzau",
+        "valueA": 43055.78,
+        "valueB": 3237310.85
+       },
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 459569.95,
+        "valueB": 56000.75
+       },
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "valueA": 160762.37,
+        "valueB": 7377.12
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "valueA": 45000.01,
+        "valueB": 2100
+       },
+       {
+        "entityId": "9100000104",
+        "name": "Fixture Foreign GmbH",
+        "county": null,
+        "valueA": 31500,
+        "valueB": 0
+       },
+       {
+        "entityId": "9100000105",
+        "name": "Fixture Mic SRL",
+        "county": "Cluj",
+        "valueA": 7480.85,
+        "valueB": 0
+       }
+      ],
+      "up": [
+       {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "county": "Buzau",
+        "valueA": 43055.78,
+        "valueB": 3237310.85
+       }
+      ],
+      "new": [],
+      "first": [],
+      "down": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 459569.95,
+        "valueB": 56000.75
+       },
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "valueA": 160762.37,
+        "valueB": 7377.12
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "valueA": 45000.01,
+        "valueB": 2100
+       }
+      ],
+      "gone": [
+       {
+        "entityId": "9100000104",
+        "name": "Fixture Foreign GmbH",
+        "county": null,
+        "valueA": 31500,
+        "valueB": 0
+       },
+       {
+        "entityId": "9100000105",
+        "name": "Fixture Mic SRL",
+        "county": "Cluj",
+        "valueA": 7480.85,
+        "valueB": 0
+       }
+      ]
+     },
+     "composition": {
+      "all": {
+       "count": 6,
+       "valueA": 747368.96,
+       "valueB": 3302788.72
+      },
+      "up": {
+       "count": 1,
+       "valueA": 43055.78,
+       "valueB": 3237310.85
+      },
+      "new": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      },
+      "first": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      },
+      "down": {
+       "count": 3,
+       "valueA": 665332.33,
+       "valueB": 65477.87
+      },
+      "gone": {
+       "count": 2,
+       "valueA": 38980.85,
+       "valueB": 0
+      },
+      "equal": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      }
+     },
+     "noun": "firme",
+     "rowFacts": {
+      "9100000102": {
+       "year": 2026,
+       "value": 3237310.85,
+       "largest": {
+        "value": 3200000,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000003",
+        "name": "Spitalul Judetean Fixture",
+        "value": 3222400.15
+       },
+       "firstActivity": "2024-01-12",
+       "lastActivity": "2026-06-20",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000101": {
+       "year": 2025,
+       "value": 459569.95,
+       "largest": {
+        "value": 340000,
+        "src": "contracts"
+       },
+       "joint": 45000.01,
+       "partner": {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "value": 360800.35
+       },
+       "firstActivity": "2025-03-01",
+       "lastActivity": "2026-05-05",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000103": {
+       "year": 2025,
+       "value": 160762.37,
+       "largest": {
+        "value": 87000,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000004",
+        "name": "Consiliul Judetean Alba",
+        "value": 92688.56
+       },
+       "firstActivity": "2024-04-13",
+       "lastActivity": "2026-02-15",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000106": {
+       "year": 2025,
+       "value": 45000.01,
+       "largest": {
+        "value": 45000.01,
+        "src": "contracts"
+       },
+       "joint": 45000.01,
+       "partner": {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "value": 45000.01
+       },
+       "firstActivity": "2025-09-01",
+       "lastActivity": "2026-01-15",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000104": {
+       "year": 2025,
+       "value": 31500,
+       "largest": {
+        "value": 31500,
+        "src": "da"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000003",
+        "name": "Spitalul Judetean Fixture",
+        "value": 31500
+       },
+       "firstActivity": "2024-12-12",
+       "lastActivity": "2025-10-01",
+       "cuiValid": false,
+       "country": "DE"
+      },
+      "9100000105": {
+       "year": 2025,
+       "value": 7480.85,
+       "largest": {
+        "value": 6100.35,
+        "src": "da"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "value": 6100.35
+       },
+       "firstActivity": "2024-04-18",
+       "lastActivity": "2025-09-15",
+       "cuiValid": true,
+       "country": null
+      }
+     }
     },
     "partialYears": [
      {
@@ -1223,7 +1474,7 @@
       "provisional": true
      }
     ],
-    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;"
+    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
    },
    "sources": {
     "status": 200,
@@ -10578,14 +10829,14 @@
       {
        "entityId": "9100000101",
        "name": "Fixture Construct SRL",
-       "county": "Alba",
+       "county": "Cluj",
        "valueA": 0,
        "valueB": 56000.75
       },
       {
        "entityId": "9100000103",
        "name": "Fixture Servicii SA",
-       "county": "Cluj",
+       "county": "Alba",
        "valueA": 51632.84,
        "valueB": 7377.12
       },
@@ -10603,7 +10854,259 @@
        "valueA": 0,
        "valueB": 2100
       }
-     ]
+     ],
+     "list": "all",
+     "change": "all",
+     "months": {
+      "from": 1,
+      "to": 12,
+      "mode": "whole"
+     },
+     "groups": {
+      "all": [
+       {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "county": "Buzau",
+        "valueA": 142700.66,
+        "valueB": 3237310.85
+       },
+       {
+        "entityId": "9100000104",
+        "name": "Fixture Foreign GmbH",
+        "county": null,
+        "valueA": 64000,
+        "valueB": 0
+       },
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 56000.75
+       },
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "valueA": 51632.84,
+        "valueB": 7377.12
+       },
+       {
+        "entityId": "9100000105",
+        "name": "Fixture Mic SRL",
+        "county": "Cluj",
+        "valueA": 5600,
+        "valueB": 0
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 2100
+       }
+      ],
+      "up": [
+       {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "county": "Buzau",
+        "valueA": 142700.66,
+        "valueB": 3237310.85
+       }
+      ],
+      "new": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 56000.75
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 2100
+       }
+      ],
+      "first": [],
+      "down": [
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "valueA": 51632.84,
+        "valueB": 7377.12
+       }
+      ],
+      "gone": [
+       {
+        "entityId": "9100000104",
+        "name": "Fixture Foreign GmbH",
+        "county": null,
+        "valueA": 64000,
+        "valueB": 0
+       },
+       {
+        "entityId": "9100000105",
+        "name": "Fixture Mic SRL",
+        "county": "Cluj",
+        "valueA": 5600,
+        "valueB": 0
+       }
+      ]
+     },
+     "composition": {
+      "all": {
+       "count": 6,
+       "valueA": 263933.5,
+       "valueB": 3302788.72
+      },
+      "up": {
+       "count": 1,
+       "valueA": 142700.66,
+       "valueB": 3237310.85
+      },
+      "new": {
+       "count": 2,
+       "valueA": 0,
+       "valueB": 58100.75
+      },
+      "first": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      },
+      "down": {
+       "count": 1,
+       "valueA": 51632.84,
+       "valueB": 7377.12
+      },
+      "gone": {
+       "count": 2,
+       "valueA": 69600,
+       "valueB": 0
+      },
+      "equal": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      }
+     },
+     "noun": "firme",
+     "rowFacts": {
+      "9100000102": {
+       "year": 2026,
+       "value": 3237310.85,
+       "largest": {
+        "value": 3200000,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000003",
+        "name": "Spitalul Judetean Fixture",
+        "value": 3222400.15
+       },
+       "firstActivity": "2024-01-12",
+       "lastActivity": "2026-06-20",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000104": {
+       "year": 2024,
+       "value": 64000,
+       "largest": {
+        "value": 64000,
+        "src": "da"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000007",
+        "name": "Agentia Fixture Nationala",
+        "value": 64000
+       },
+       "firstActivity": "2024-12-12",
+       "lastActivity": "2025-10-01",
+       "cuiValid": false,
+       "country": "DE"
+      },
+      "9100000101": {
+       "year": 2026,
+       "value": 56000.75,
+       "largest": {
+        "value": 56000.75,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000006",
+        "name": "Municipiul Aiud",
+        "value": 56000.75
+       },
+       "firstActivity": "2025-03-01",
+       "lastActivity": "2026-05-05",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000103": {
+       "year": 2024,
+       "value": 51632.84,
+       "largest": {
+        "value": 23100,
+        "src": "da"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "value": 45100
+       },
+       "firstActivity": "2024-04-13",
+       "lastActivity": "2026-02-15",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000105": {
+       "year": 2024,
+       "value": 5600,
+       "largest": {
+        "value": 5600,
+        "src": "da"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "value": 5600
+       },
+       "firstActivity": "2024-04-18",
+       "lastActivity": "2025-09-15",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000106": {
+       "year": 2026,
+       "value": 2100,
+       "largest": {
+        "value": 2100,
+        "src": "da"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "value": 2100
+       },
+       "firstActivity": "2025-09-01",
+       "lastActivity": "2026-01-15",
+       "cuiValid": true,
+       "country": null
+      }
+     }
     },
     "partialYears": [
      {
@@ -10616,7 +11119,7 @@
       "provisional": true
      }
     ],
-    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = primul_an) inainte,\n  sum(closing_value) filter (where an = ultimul_an) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;"
+    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = primul_an) inainte,\n  sum(closing_value) filter (where an = ultimul_an) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
    },
    "sources": {
     "status": 200,
@@ -10734,7 +11237,7 @@
       {
        "entityId": "9100000103",
        "name": "Fixture Servicii SA",
-       "county": "Cluj",
+       "county": "Alba",
        "valueA": 51632.84,
        "valueB": 160762.37
       },
@@ -10755,7 +11258,7 @@
       {
        "entityId": "9100000104",
        "name": "Fixture Foreign GmbH",
-       "county": "Buzau",
+       "county": null,
        "valueA": 64000,
        "valueB": 31500
       },
@@ -10766,7 +11269,273 @@
        "valueA": 5600,
        "valueB": 7480.85
       }
-     ]
+     ],
+     "list": "all",
+     "change": "all",
+     "months": {
+      "from": 1,
+      "to": 12,
+      "mode": "whole"
+     },
+     "groups": {
+      "all": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 459569.95
+       },
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "valueA": 51632.84,
+        "valueB": 160762.37
+       },
+       {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "county": "Buzau",
+        "valueA": 142700.66,
+        "valueB": 43055.78
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 45000.01
+       },
+       {
+        "entityId": "9100000104",
+        "name": "Fixture Foreign GmbH",
+        "county": null,
+        "valueA": 64000,
+        "valueB": 31500
+       },
+       {
+        "entityId": "9100000105",
+        "name": "Fixture Mic SRL",
+        "county": "Cluj",
+        "valueA": 5600,
+        "valueB": 7480.85
+       }
+      ],
+      "up": [
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "valueA": 51632.84,
+        "valueB": 160762.37
+       },
+       {
+        "entityId": "9100000105",
+        "name": "Fixture Mic SRL",
+        "county": "Cluj",
+        "valueA": 5600,
+        "valueB": 7480.85
+       }
+      ],
+      "new": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 459569.95
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 45000.01
+       }
+      ],
+      "first": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 459569.95
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 45000.01
+       }
+      ],
+      "down": [
+       {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "county": "Buzau",
+        "valueA": 142700.66,
+        "valueB": 43055.78
+       },
+       {
+        "entityId": "9100000104",
+        "name": "Fixture Foreign GmbH",
+        "county": null,
+        "valueA": 64000,
+        "valueB": 31500
+       }
+      ],
+      "gone": []
+     },
+     "composition": {
+      "all": {
+       "count": 6,
+       "valueA": 263933.5,
+       "valueB": 747368.96
+      },
+      "up": {
+       "count": 2,
+       "valueA": 57232.84,
+       "valueB": 168243.22
+      },
+      "new": {
+       "count": 2,
+       "valueA": 0,
+       "valueB": 504569.96
+      },
+      "first": {
+       "count": 2,
+       "valueA": 0,
+       "valueB": 504569.96
+      },
+      "down": {
+       "count": 2,
+       "valueA": 206700.66,
+       "valueB": 74555.78
+      },
+      "gone": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      },
+      "equal": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      }
+     },
+     "noun": "firme",
+     "rowFacts": {
+      "9100000101": {
+       "year": 2025,
+       "value": 459569.95,
+       "largest": {
+        "value": 340000,
+        "src": "contracts"
+       },
+       "joint": 45000.01,
+       "partner": {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "value": 360800.35
+       },
+       "firstActivity": "2025-03-01",
+       "lastActivity": "2026-05-05",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000103": {
+       "year": 2025,
+       "value": 160762.37,
+       "largest": {
+        "value": 87000,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000004",
+        "name": "Consiliul Judetean Alba",
+        "value": 92688.56
+       },
+       "firstActivity": "2024-04-13",
+       "lastActivity": "2026-02-15",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000102": {
+       "year": 2024,
+       "value": 142700.66,
+       "largest": {
+        "value": 125000.5,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000003",
+        "name": "Spitalul Judetean Fixture",
+        "value": 134901.4
+       },
+       "firstActivity": "2024-01-12",
+       "lastActivity": "2026-06-20",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000106": {
+       "year": 2025,
+       "value": 45000.01,
+       "largest": {
+        "value": 45000.01,
+        "src": "contracts"
+       },
+       "joint": 45000.01,
+       "partner": {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "value": 45000.01
+       },
+       "firstActivity": "2025-09-01",
+       "lastActivity": "2026-01-15",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000104": {
+       "year": 2024,
+       "value": 64000,
+       "largest": {
+        "value": 64000,
+        "src": "da"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000007",
+        "name": "Agentia Fixture Nationala",
+        "value": 64000
+       },
+       "firstActivity": "2024-12-12",
+       "lastActivity": "2025-10-01",
+       "cuiValid": false,
+       "country": "DE"
+      },
+      "9100000105": {
+       "year": 2025,
+       "value": 7480.85,
+       "largest": {
+        "value": 6100.35,
+        "src": "da"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "value": 6100.35
+       },
+       "firstActivity": "2024-04-18",
+       "lastActivity": "2025-09-15",
+       "cuiValid": true,
+       "country": null
+      }
+     }
     },
     "partialYears": [
      {
@@ -10774,7 +11543,7 @@
       "note": "achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei"
      }
     ],
-    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;"
+    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
    },
    "sources": {
     "status": 200,
@@ -11055,7 +11824,276 @@
        "valueA": 56000,
        "valueB": 0
       }
-     ]
+     ],
+     "list": "all",
+     "change": "all",
+     "months": {
+      "from": 1,
+      "to": 12,
+      "mode": "whole"
+     },
+     "groups": {
+      "all": [
+       {
+        "entityId": "9100000003",
+        "name": "Spitalul Judetean Fixture",
+        "county": "Buzau",
+        "valueA": 64300.8,
+        "valueB": 3222400.15
+       },
+       {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "county": "Cluj",
+        "valueA": 361750.75,
+        "valueB": 2100
+       },
+       {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "county": "Cluj",
+        "valueA": 145601.62,
+        "valueB": 0
+       },
+       {
+        "entityId": "9100000004",
+        "name": "Consiliul Judetean Alba",
+        "county": "Alba",
+        "valueA": 99643.54,
+        "valueB": 13487.82
+       },
+       {
+        "entityId": "9100000007",
+        "name": "Agentia Fixture Nationala",
+        "county": null,
+        "valueA": 56000,
+        "valueB": 0
+       }
+      ],
+      "up": [
+       {
+        "entityId": "9100000003",
+        "name": "Spitalul Judetean Fixture",
+        "county": "Buzau",
+        "valueA": 64300.8,
+        "valueB": 3222400.15
+       },
+       {
+        "entityId": "9100000006",
+        "name": "Municipiul Aiud",
+        "county": "Alba",
+        "valueA": 17542.15,
+        "valueB": 56000.75
+       },
+       {
+        "entityId": "9100000005",
+        "name": "Scoala Gimnaziala Fixture",
+        "county": "Buzau",
+        "valueA": 3730.1,
+        "valueB": 8800
+       }
+      ],
+      "new": [],
+      "first": [],
+      "down": [
+       {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "county": "Cluj",
+        "valueA": 361750.75,
+        "valueB": 2100
+       },
+       {
+        "entityId": "9100000004",
+        "name": "Consiliul Judetean Alba",
+        "county": "Alba",
+        "valueA": 99643.54,
+        "valueB": 13487.82
+       }
+      ],
+      "gone": [
+       {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "county": "Cluj",
+        "valueA": 145601.62,
+        "valueB": 0
+       },
+       {
+        "entityId": "9100000007",
+        "name": "Agentia Fixture Nationala",
+        "county": null,
+        "valueA": 56000,
+        "valueB": 0
+       }
+      ]
+     },
+     "composition": {
+      "all": {
+       "count": 7,
+       "valueA": 748568.96,
+       "valueB": 3302788.72
+      },
+      "up": {
+       "count": 3,
+       "valueA": 85573.05,
+       "valueB": 3287200.9
+      },
+      "new": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      },
+      "first": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      },
+      "down": {
+       "count": 2,
+       "valueA": 461394.29,
+       "valueB": 15587.82
+      },
+      "gone": {
+       "count": 2,
+       "valueA": 201601.62,
+       "valueB": 0
+      },
+      "equal": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      }
+     },
+     "noun": "instituții",
+     "rowFacts": {
+      "9100000003": {
+       "year": 2026,
+       "value": 3222400.15,
+       "largest": {
+        "value": 3200000,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "value": 3222400.15
+       },
+       "firstActivity": "2024-03-15",
+       "lastActivity": "2026-03-20",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000002": {
+       "year": 2025,
+       "value": 361750.75,
+       "largest": {
+        "value": 340000,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "value": 360800.35
+       },
+       "firstActivity": "2024-10-10",
+       "lastActivity": "2026-01-15",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000001": {
+       "year": 2025,
+       "value": 145601.62,
+       "largest": {
+        "value": 45000.01,
+        "src": "contracts"
+       },
+       "joint": 90000.02,
+       "partner": {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "value": 93301.26
+       },
+       "firstActivity": "2024-04-18",
+       "lastActivity": "2025-09-01",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000004": {
+       "year": 2025,
+       "value": 99643.54,
+       "largest": {
+        "value": 87000,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "value": 92688.56
+       },
+       "firstActivity": "2024-01-12",
+       "lastActivity": "2026-05-18",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000007": {
+       "year": 2025,
+       "value": 56000,
+       "largest": {
+        "value": 41000,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "value": 56000
+       },
+       "firstActivity": "2024-12-12",
+       "lastActivity": "2025-07-07",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000006": {
+       "year": 2026,
+       "value": 56000.75,
+       "largest": {
+        "value": 56000.75,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "value": 56000.75
+       },
+       "firstActivity": "2025-01-02",
+       "lastActivity": "2026-05-05",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000005": {
+       "year": 2026,
+       "value": 8800,
+       "largest": {
+        "value": 8800,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "value": 8800
+       },
+       "firstActivity": "2025-03-01",
+       "lastActivity": "2026-06-20",
+       "cuiValid": true,
+       "country": null
+      }
+     }
     },
     "partialYears": [
      {
@@ -11064,7 +12102,7 @@
       "provisional": true
      }
     ],
-    "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\ngroup by authority_name\norder by abs(dupa - inainte) desc\nlimit 5;"
+    "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\ngroup by authority_name\norder by abs(dupa - inainte) desc\nlimit 5;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 5 din fiecare grupă"
    },
    "sources": {
     "status": 200,
@@ -12414,7 +13452,143 @@
        "valueA": 0,
        "valueB": 45000.01
       }
-     ]
+     ],
+     "list": "all",
+     "change": "all",
+     "months": {
+      "from": 1,
+      "to": 12,
+      "mode": "whole"
+     },
+     "groups": {
+      "all": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 459569.95
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 45000.01
+       }
+      ],
+      "up": [],
+      "new": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 459569.95
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 45000.01
+       }
+      ],
+      "first": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 459569.95
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 45000.01
+       }
+      ],
+      "down": [],
+      "gone": []
+     },
+     "composition": {
+      "all": {
+       "count": 2,
+       "valueA": 0,
+       "valueB": 504569.96
+      },
+      "up": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      },
+      "new": {
+       "count": 2,
+       "valueA": 0,
+       "valueB": 504569.96
+      },
+      "first": {
+       "count": 2,
+       "valueA": 0,
+       "valueB": 504569.96
+      },
+      "down": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      },
+      "gone": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      },
+      "equal": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      }
+     },
+     "noun": "firme",
+     "rowFacts": {
+      "9100000101": {
+       "year": 2025,
+       "value": 459569.95,
+       "largest": {
+        "value": 340000,
+        "src": "contracts"
+       },
+       "joint": 45000.01,
+       "partner": {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "value": 360800.35
+       },
+       "firstActivity": "2025-03-01",
+       "lastActivity": "2026-05-05",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000106": {
+       "year": 2025,
+       "value": 45000.01,
+       "largest": {
+        "value": 45000.01,
+        "src": "contracts"
+       },
+       "joint": 45000.01,
+       "partner": {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "value": 45000.01
+       },
+       "firstActivity": "2025-09-01",
+       "lastActivity": "2026-01-15",
+       "cuiValid": true,
+       "country": null
+      }
+     }
     },
     "partialYears": [
      {
@@ -12422,7 +13596,7 @@
       "note": "achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei"
      }
     ],
-    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and ((coalesce((cpv_code like '45%'), false)))\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;"
+    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and ((coalesce((cpv_code like '45%'), false)))\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
    },
    "sources": {
     "status": 200,
@@ -12573,7 +13747,208 @@
        "valueA": 0,
        "valueB": 430.1
       }
-     ]
+     ],
+     "list": "all",
+     "change": "all",
+     "months": {
+      "from": 1,
+      "to": 12,
+      "mode": "whole"
+     },
+     "groups": {
+      "all": [
+       {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 361750.75
+       },
+       {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "county": "Cluj",
+        "valueA": 5600,
+        "valueB": 99401.61
+       },
+       {
+        "entityId": "9100000006",
+        "name": "Municipiul Aiud",
+        "county": "Alba",
+        "valueA": 0,
+        "valueB": 5468.34
+       },
+       {
+        "entityId": "9100000005",
+        "name": "Scoala Gimnaziala Fixture",
+        "county": "Buzau",
+        "valueA": 0,
+        "valueB": 430.1
+       }
+      ],
+      "up": [
+       {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "county": "Cluj",
+        "valueA": 5600,
+        "valueB": 99401.61
+       }
+      ],
+      "new": [
+       {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 361750.75
+       },
+       {
+        "entityId": "9100000006",
+        "name": "Municipiul Aiud",
+        "county": "Alba",
+        "valueA": 0,
+        "valueB": 5468.34
+       },
+       {
+        "entityId": "9100000005",
+        "name": "Scoala Gimnaziala Fixture",
+        "county": "Buzau",
+        "valueA": 0,
+        "valueB": 430.1
+       }
+      ],
+      "first": [
+       {
+        "entityId": "9100000006",
+        "name": "Municipiul Aiud",
+        "county": "Alba",
+        "valueA": 0,
+        "valueB": 5468.34
+       },
+       {
+        "entityId": "9100000005",
+        "name": "Scoala Gimnaziala Fixture",
+        "county": "Buzau",
+        "valueA": 0,
+        "valueB": 430.1
+       }
+      ],
+      "down": [],
+      "gone": []
+     },
+     "composition": {
+      "all": {
+       "count": 4,
+       "valueA": 5600,
+       "valueB": 467050.8
+      },
+      "up": {
+       "count": 1,
+       "valueA": 5600,
+       "valueB": 99401.61
+      },
+      "new": {
+       "count": 3,
+       "valueA": 0,
+       "valueB": 367649.19
+      },
+      "first": {
+       "count": 2,
+       "valueA": 0,
+       "valueB": 5898.44
+      },
+      "down": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      },
+      "gone": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      },
+      "equal": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      }
+     },
+     "noun": "instituții",
+     "rowFacts": {
+      "9100000002": {
+       "year": 2025,
+       "value": 361750.75,
+       "largest": {
+        "value": 340000,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "value": 360800.35
+       },
+       "firstActivity": "2024-10-10",
+       "lastActivity": "2026-01-15",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000001": {
+       "year": 2025,
+       "value": 99401.61,
+       "largest": {
+        "value": 45000.01,
+        "src": "contracts"
+       },
+       "joint": 45000.01,
+       "partner": {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "value": 93301.26
+       },
+       "firstActivity": "2024-04-18",
+       "lastActivity": "2025-09-01",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000006": {
+       "year": 2025,
+       "value": 5468.34,
+       "largest": {
+        "value": 2234.17,
+        "src": "da"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "value": 5468.34
+       },
+       "firstActivity": "2025-01-02",
+       "lastActivity": "2026-05-05",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000005": {
+       "year": 2025,
+       "value": 430.1,
+       "largest": {
+        "value": 430.1,
+        "src": "da"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000105",
+        "name": "Fixture Mic SRL",
+        "value": 430.1
+       },
+       "firstActivity": "2025-03-01",
+       "lastActivity": "2026-06-20",
+       "cuiValid": true,
+       "country": null
+      }
+     }
     },
     "partialYears": [
      {
@@ -12581,7 +13956,7 @@
       "note": "achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei"
      }
     ],
-    "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and supplier_id in (firmele reprezentate de persoana aleasă)  -- ONRC\n  and an >= 2024\n  and an <= 2025\ngroup by authority_name\norder by abs(dupa - inainte) desc\nlimit 10;"
+    "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and supplier_id in (firmele reprezentate de persoana aleasă)  -- ONRC\n  and an >= 2024\n  and an <= 2025\ngroup by authority_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
    },
    "sources": {
     "status": 200,
@@ -25039,7 +26414,7 @@
       {
        "entityId": "9100000103",
        "name": "Fixture Servicii SA",
-       "county": "Cluj",
+       "county": "Alba",
        "valueA": 51632.84,
        "valueB": 160762.37
       },
@@ -25060,7 +26435,7 @@
       {
        "entityId": "9100000104",
        "name": "Fixture Foreign GmbH",
-       "county": "Buzau",
+       "county": null,
        "valueA": 64000,
        "valueB": 31500
       },
@@ -25071,7 +26446,273 @@
        "valueA": 5600,
        "valueB": 7480.85
       }
-     ]
+     ],
+     "list": "all",
+     "change": "all",
+     "months": {
+      "from": 1,
+      "to": 12,
+      "mode": "whole"
+     },
+     "groups": {
+      "all": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 459569.95
+       },
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "valueA": 51632.84,
+        "valueB": 160762.37
+       },
+       {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "county": "Buzau",
+        "valueA": 142700.66,
+        "valueB": 43055.78
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 45000.01
+       },
+       {
+        "entityId": "9100000104",
+        "name": "Fixture Foreign GmbH",
+        "county": null,
+        "valueA": 64000,
+        "valueB": 31500
+       },
+       {
+        "entityId": "9100000105",
+        "name": "Fixture Mic SRL",
+        "county": "Cluj",
+        "valueA": 5600,
+        "valueB": 7480.85
+       }
+      ],
+      "up": [
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "valueA": 51632.84,
+        "valueB": 160762.37
+       },
+       {
+        "entityId": "9100000105",
+        "name": "Fixture Mic SRL",
+        "county": "Cluj",
+        "valueA": 5600,
+        "valueB": 7480.85
+       }
+      ],
+      "new": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 459569.95
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 45000.01
+       }
+      ],
+      "first": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 459569.95
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 45000.01
+       }
+      ],
+      "down": [
+       {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "county": "Buzau",
+        "valueA": 142700.66,
+        "valueB": 43055.78
+       },
+       {
+        "entityId": "9100000104",
+        "name": "Fixture Foreign GmbH",
+        "county": null,
+        "valueA": 64000,
+        "valueB": 31500
+       }
+      ],
+      "gone": []
+     },
+     "composition": {
+      "all": {
+       "count": 6,
+       "valueA": 263933.5,
+       "valueB": 747368.96
+      },
+      "up": {
+       "count": 2,
+       "valueA": 57232.84,
+       "valueB": 168243.22
+      },
+      "new": {
+       "count": 2,
+       "valueA": 0,
+       "valueB": 504569.96
+      },
+      "first": {
+       "count": 2,
+       "valueA": 0,
+       "valueB": 504569.96
+      },
+      "down": {
+       "count": 2,
+       "valueA": 206700.66,
+       "valueB": 74555.78
+      },
+      "gone": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      },
+      "equal": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      }
+     },
+     "noun": "firme",
+     "rowFacts": {
+      "9100000101": {
+       "year": 2025,
+       "value": 459569.95,
+       "largest": {
+        "value": 340000,
+        "src": "contracts"
+       },
+       "joint": 45000.01,
+       "partner": {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "value": 360800.35
+       },
+       "firstActivity": "2025-03-01",
+       "lastActivity": "2026-05-05",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000103": {
+       "year": 2025,
+       "value": 160762.37,
+       "largest": {
+        "value": 87000,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000004",
+        "name": "Consiliul Judetean Alba",
+        "value": 92688.56
+       },
+       "firstActivity": "2024-04-13",
+       "lastActivity": "2026-02-15",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000102": {
+       "year": 2024,
+       "value": 142700.66,
+       "largest": {
+        "value": 125000.5,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000003",
+        "name": "Spitalul Judetean Fixture",
+        "value": 134901.4
+       },
+       "firstActivity": "2024-01-12",
+       "lastActivity": "2026-06-20",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000106": {
+       "year": 2025,
+       "value": 45000.01,
+       "largest": {
+        "value": 45000.01,
+        "src": "contracts"
+       },
+       "joint": 45000.01,
+       "partner": {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "value": 45000.01
+       },
+       "firstActivity": "2025-09-01",
+       "lastActivity": "2026-01-15",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000104": {
+       "year": 2024,
+       "value": 64000,
+       "largest": {
+        "value": 64000,
+        "src": "da"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000007",
+        "name": "Agentia Fixture Nationala",
+        "value": 64000
+       },
+       "firstActivity": "2024-12-12",
+       "lastActivity": "2025-10-01",
+       "cuiValid": false,
+       "country": "DE"
+      },
+      "9100000105": {
+       "year": 2025,
+       "value": 7480.85,
+       "largest": {
+        "value": 6100.35,
+        "src": "da"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "value": 6100.35
+       },
+       "firstActivity": "2024-04-18",
+       "lastActivity": "2025-09-15",
+       "cuiValid": true,
+       "country": null
+      }
+     }
     },
     "partialYears": [
      {
@@ -25079,7 +26720,7 @@
       "note": "achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei"
      }
     ],
-    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;"
+    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
    },
    "sources": {
     "status": 200,
@@ -25238,7 +26879,290 @@
        "valueA": 3730.1,
        "valueB": 8800
       }
-     ]
+     ],
+     "list": "all",
+     "change": "all",
+     "months": {
+      "from": 1,
+      "to": 12,
+      "mode": "whole"
+     },
+     "groups": {
+      "all": [
+       {
+        "entityId": "9100000003",
+        "name": "Spitalul Judetean Fixture",
+        "county": "Buzau",
+        "valueA": 64300.8,
+        "valueB": 3222400.15
+       },
+       {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "county": "Cluj",
+        "valueA": 361750.75,
+        "valueB": 2100
+       },
+       {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "county": "Cluj",
+        "valueA": 145601.62,
+        "valueB": 0
+       },
+       {
+        "entityId": "9100000004",
+        "name": "Consiliul Judetean Alba",
+        "county": "Alba",
+        "valueA": 99643.54,
+        "valueB": 13487.82
+       },
+       {
+        "entityId": "9100000007",
+        "name": "Agentia Fixture Nationala",
+        "county": null,
+        "valueA": 56000,
+        "valueB": 0
+       },
+       {
+        "entityId": "9100000006",
+        "name": "Municipiul Aiud",
+        "county": "Alba",
+        "valueA": 17542.15,
+        "valueB": 56000.75
+       },
+       {
+        "entityId": "9100000005",
+        "name": "Scoala Gimnaziala Fixture",
+        "county": "Buzau",
+        "valueA": 3730.1,
+        "valueB": 8800
+       }
+      ],
+      "up": [
+       {
+        "entityId": "9100000003",
+        "name": "Spitalul Judetean Fixture",
+        "county": "Buzau",
+        "valueA": 64300.8,
+        "valueB": 3222400.15
+       },
+       {
+        "entityId": "9100000006",
+        "name": "Municipiul Aiud",
+        "county": "Alba",
+        "valueA": 17542.15,
+        "valueB": 56000.75
+       },
+       {
+        "entityId": "9100000005",
+        "name": "Scoala Gimnaziala Fixture",
+        "county": "Buzau",
+        "valueA": 3730.1,
+        "valueB": 8800
+       }
+      ],
+      "new": [],
+      "first": [],
+      "down": [
+       {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "county": "Cluj",
+        "valueA": 361750.75,
+        "valueB": 2100
+       },
+       {
+        "entityId": "9100000004",
+        "name": "Consiliul Judetean Alba",
+        "county": "Alba",
+        "valueA": 99643.54,
+        "valueB": 13487.82
+       }
+      ],
+      "gone": [
+       {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "county": "Cluj",
+        "valueA": 145601.62,
+        "valueB": 0
+       },
+       {
+        "entityId": "9100000007",
+        "name": "Agentia Fixture Nationala",
+        "county": null,
+        "valueA": 56000,
+        "valueB": 0
+       }
+      ]
+     },
+     "composition": {
+      "all": {
+       "count": 7,
+       "valueA": 748568.96,
+       "valueB": 3302788.72
+      },
+      "up": {
+       "count": 3,
+       "valueA": 85573.05,
+       "valueB": 3287200.9
+      },
+      "new": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      },
+      "first": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      },
+      "down": {
+       "count": 2,
+       "valueA": 461394.29,
+       "valueB": 15587.82
+      },
+      "gone": {
+       "count": 2,
+       "valueA": 201601.62,
+       "valueB": 0
+      },
+      "equal": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      }
+     },
+     "noun": "instituții",
+     "rowFacts": {
+      "9100000003": {
+       "year": 2026,
+       "value": 3222400.15,
+       "largest": {
+        "value": 3200000,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "value": 3222400.15
+       },
+       "firstActivity": "2024-03-15",
+       "lastActivity": "2026-03-20",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000002": {
+       "year": 2025,
+       "value": 361750.75,
+       "largest": {
+        "value": 340000,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "value": 360800.35
+       },
+       "firstActivity": "2024-10-10",
+       "lastActivity": "2026-01-15",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000001": {
+       "year": 2025,
+       "value": 145601.62,
+       "largest": {
+        "value": 45000.01,
+        "src": "contracts"
+       },
+       "joint": 90000.02,
+       "partner": {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "value": 93301.26
+       },
+       "firstActivity": "2024-04-18",
+       "lastActivity": "2025-09-01",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000004": {
+       "year": 2025,
+       "value": 99643.54,
+       "largest": {
+        "value": 87000,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "value": 92688.56
+       },
+       "firstActivity": "2024-01-12",
+       "lastActivity": "2026-05-18",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000007": {
+       "year": 2025,
+       "value": 56000,
+       "largest": {
+        "value": 41000,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "value": 56000
+       },
+       "firstActivity": "2024-12-12",
+       "lastActivity": "2025-07-07",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000006": {
+       "year": 2026,
+       "value": 56000.75,
+       "largest": {
+        "value": 56000.75,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "value": 56000.75
+       },
+       "firstActivity": "2025-01-02",
+       "lastActivity": "2026-05-05",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000005": {
+       "year": 2026,
+       "value": 8800,
+       "largest": {
+        "value": 8800,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "value": 8800
+       },
+       "firstActivity": "2025-03-01",
+       "lastActivity": "2026-06-20",
+       "cuiValid": true,
+       "country": null
+      }
+     }
     },
     "partialYears": [
      {
@@ -25247,7 +27171,7 @@
       "provisional": true
      }
     ],
-    "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\ngroup by authority_name\norder by abs(dupa - inainte) desc\nlimit 10;"
+    "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\ngroup by authority_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
    },
    "sources": {
     "status": 200,
@@ -25378,7 +27302,99 @@
        "valueA": 50700,
        "valueB": 2100
       }
-     ]
+     ],
+     "list": "all",
+     "change": "all",
+     "months": {
+      "from": 1,
+      "to": 12,
+      "mode": "whole"
+     },
+     "groups": {
+      "all": [
+       {
+        "entityId": null,
+        "name": "Buzau",
+        "county": null,
+        "valueA": 134901.4,
+        "valueB": 3231200.15
+       },
+       {
+        "entityId": null,
+        "name": "Alba",
+        "county": null,
+        "valueA": 14332.1,
+        "valueB": 69488.57
+       },
+       {
+        "entityId": null,
+        "name": "Cluj",
+        "county": null,
+        "valueA": 50700,
+        "valueB": 2100
+       }
+      ],
+      "up": [
+       {
+        "entityId": null,
+        "name": "Buzau",
+        "county": null,
+        "valueA": 134901.4,
+        "valueB": 3231200.15
+       },
+       {
+        "entityId": null,
+        "name": "Alba",
+        "county": null,
+        "valueA": 14332.1,
+        "valueB": 69488.57
+       }
+      ],
+      "new": [],
+      "down": [
+       {
+        "entityId": null,
+        "name": "Cluj",
+        "county": null,
+        "valueA": 50700,
+        "valueB": 2100
+       }
+      ],
+      "gone": []
+     },
+     "composition": {
+      "all": {
+       "count": 3,
+       "valueA": 199933.5,
+       "valueB": 3302788.72
+      },
+      "up": {
+       "count": 2,
+       "valueA": 149233.5,
+       "valueB": 3300688.72
+      },
+      "new": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      },
+      "down": {
+       "count": 1,
+       "valueA": 50700,
+       "valueB": 2100
+      },
+      "gone": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      },
+      "equal": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      }
+     },
+     "noun": "județe"
     },
     "partialYears": [
      {
@@ -25391,7 +27407,7 @@
       "provisional": true
      }
     ],
-    "displaySql": "select county,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2026\ngroup by county\norder by abs(dupa - inainte) desc\nlimit 10;"
+    "displaySql": "select county,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2026\ngroup by county\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
    },
    "sources": {
     "status": 200,
@@ -25512,7 +27528,7 @@
       {
        "entityId": "9100000104",
        "name": "Fixture Foreign GmbH",
-       "county": "Buzau",
+       "county": null,
        "valueA": 64000,
        "valueB": 31500
       },
@@ -25526,7 +27542,7 @@
       {
        "entityId": "9100000103",
        "name": "Fixture Servicii SA",
-       "county": "Cluj",
+       "county": "Alba",
        "valueA": 29632.84,
        "valueB": 32762.37
       },
@@ -25537,7 +27553,234 @@
        "valueA": 5600,
        "valueB": 7480.85
       }
-     ]
+     ],
+     "list": "all",
+     "change": "all",
+     "months": {
+      "from": 1,
+      "to": 12,
+      "mode": "whole"
+     },
+     "groups": {
+      "all": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 74569.94
+       },
+       {
+        "entityId": "9100000104",
+        "name": "Fixture Foreign GmbH",
+        "county": null,
+        "valueA": 64000,
+        "valueB": 31500
+       },
+       {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "county": "Buzau",
+        "valueA": 17700.16,
+        "valueB": 43055.78
+       },
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "valueA": 29632.84,
+        "valueB": 32762.37
+       },
+       {
+        "entityId": "9100000105",
+        "name": "Fixture Mic SRL",
+        "county": "Cluj",
+        "valueA": 5600,
+        "valueB": 7480.85
+       }
+      ],
+      "up": [
+       {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "county": "Buzau",
+        "valueA": 17700.16,
+        "valueB": 43055.78
+       },
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "valueA": 29632.84,
+        "valueB": 32762.37
+       },
+       {
+        "entityId": "9100000105",
+        "name": "Fixture Mic SRL",
+        "county": "Cluj",
+        "valueA": 5600,
+        "valueB": 7480.85
+       }
+      ],
+      "new": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 74569.94
+       }
+      ],
+      "first": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 74569.94
+       }
+      ],
+      "down": [
+       {
+        "entityId": "9100000104",
+        "name": "Fixture Foreign GmbH",
+        "county": null,
+        "valueA": 64000,
+        "valueB": 31500
+       }
+      ],
+      "gone": []
+     },
+     "composition": {
+      "all": {
+       "count": 5,
+       "valueA": 116933,
+       "valueB": 189368.94
+      },
+      "up": {
+       "count": 3,
+       "valueA": 52933,
+       "valueB": 83299
+      },
+      "new": {
+       "count": 1,
+       "valueA": 0,
+       "valueB": 74569.94
+      },
+      "first": {
+       "count": 1,
+       "valueA": 0,
+       "valueB": 74569.94
+      },
+      "down": {
+       "count": 1,
+       "valueA": 64000,
+       "valueB": 31500
+      },
+      "gone": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      },
+      "equal": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      }
+     },
+     "noun": "firme",
+     "rowFacts": {
+      "9100000101": {
+       "year": 2025,
+       "value": 74569.94,
+       "largest": {
+        "value": 41000.55,
+        "src": "da"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "value": 48301.25
+       },
+       "firstActivity": "2025-03-01",
+       "lastActivity": "2026-05-05",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000104": {
+       "year": 2024,
+       "value": 64000,
+       "largest": {
+        "value": 64000,
+        "src": "da"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000007",
+        "name": "Agentia Fixture Nationala",
+        "value": 64000
+       },
+       "firstActivity": "2024-12-12",
+       "lastActivity": "2025-10-01",
+       "cuiValid": false,
+       "country": "DE"
+      },
+      "9100000102": {
+       "year": 2025,
+       "value": 43055.78,
+       "largest": {
+        "value": 18700.8,
+        "src": "da"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000003",
+        "name": "Spitalul Judetean Fixture",
+        "value": 32800.8
+       },
+       "firstActivity": "2024-01-12",
+       "lastActivity": "2026-06-20",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000103": {
+       "year": 2025,
+       "value": 32762.37,
+       "largest": {
+        "value": 15000,
+        "src": "da"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000007",
+        "name": "Agentia Fixture Nationala",
+        "value": 15000
+       },
+       "firstActivity": "2024-04-13",
+       "lastActivity": "2026-02-15",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000105": {
+       "year": 2025,
+       "value": 7480.85,
+       "largest": {
+        "value": 6100.35,
+        "src": "da"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "value": 6100.35
+       },
+       "firstActivity": "2024-04-18",
+       "lastActivity": "2025-09-15",
+       "cuiValid": true,
+       "country": null
+      }
+     }
     },
     "partialYears": [
      {
@@ -25545,7 +27788,7 @@
       "note": "date de la 08.01.2024, începutul arhivei"
      }
     ],
-    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom marts.da_transactions\nwhere closing_value > 0\n  and closing_value <= 2000000  -- plafon plauzibilitate\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 5;"
+    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom marts.da_transactions\nwhere closing_value > 0\n  and closing_value <= 2000000  -- plafon plauzibilitate\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 5;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 5 din fiecare grupă"
    },
    "sources": {
     "status": 200,
@@ -25674,7 +27917,129 @@
        "valueA": 45000.01,
        "valueB": 0
       }
-     ]
+     ],
+     "list": "all",
+     "change": "all",
+     "months": {
+      "from": 1,
+      "to": 12,
+      "mode": "whole"
+     },
+     "groups": {
+      "all": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 452269.25,
+        "valueB": 56000.75
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "valueA": 45000.01,
+        "valueB": 0
+       }
+      ],
+      "up": [],
+      "new": [],
+      "first": [],
+      "down": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 452269.25,
+        "valueB": 56000.75
+       }
+      ],
+      "gone": [
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "valueA": 45000.01,
+        "valueB": 0
+       }
+      ]
+     },
+     "composition": {
+      "all": {
+       "count": 2,
+       "valueA": 497269.26,
+       "valueB": 56000.75
+      },
+      "up": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      },
+      "new": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      },
+      "first": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      },
+      "down": {
+       "count": 1,
+       "valueA": 452269.25,
+       "valueB": 56000.75
+      },
+      "gone": {
+       "count": 1,
+       "valueA": 45000.01,
+       "valueB": 0
+      },
+      "equal": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      }
+     },
+     "noun": "firme",
+     "rowFacts": {
+      "9100000101": {
+       "year": 2025,
+       "value": 452269.25,
+       "largest": {
+        "value": 340000,
+        "src": "contracts"
+       },
+       "joint": 45000.01,
+       "partner": {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "value": 360800.35
+       },
+       "firstActivity": "2025-03-01",
+       "lastActivity": "2026-05-05",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000106": {
+       "year": 2025,
+       "value": 45000.01,
+       "largest": {
+        "value": 45000.01,
+        "src": "contracts"
+       },
+       "joint": 45000.01,
+       "partner": {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "value": 45000.01
+       },
+       "firstActivity": "2025-09-01",
+       "lastActivity": "2026-01-15",
+       "cuiValid": true,
+       "country": null
+      }
+     }
     },
     "partialYears": [
      {
@@ -25683,7 +28048,7 @@
       "provisional": true
      }
     ],
-    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '45233%')\n  and not (cpv_code like '452332%')  -- excluse din subiect\n  and an >= 2025\n  and an <= 2026\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;"
+    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '45233%')\n  and not (cpv_code like '452332%')  -- excluse din subiect\n  and an >= 2025\n  and an <= 2026\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
    },
    "sources": {
     "status": 200,
@@ -25806,7 +28171,7 @@
       {
        "entityId": "9100000103",
        "name": "Fixture Servicii SA",
-       "county": "Cluj",
+       "county": "Alba",
        "valueA": 45100,
        "valueB": 0
       },
@@ -25824,7 +28189,209 @@
        "valueA": 5600,
        "valueB": 7050.75
       }
-     ]
+     ],
+     "list": "all",
+     "change": "all",
+     "months": {
+      "from": 1,
+      "to": 12,
+      "mode": "whole"
+     },
+     "groups": {
+      "all": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 454101.61
+       },
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "valueA": 45100,
+        "valueB": 0
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 45000.01
+       },
+       {
+        "entityId": "9100000105",
+        "name": "Fixture Mic SRL",
+        "county": "Cluj",
+        "valueA": 5600,
+        "valueB": 7050.75
+       }
+      ],
+      "up": [
+       {
+        "entityId": "9100000105",
+        "name": "Fixture Mic SRL",
+        "county": "Cluj",
+        "valueA": 5600,
+        "valueB": 7050.75
+       }
+      ],
+      "new": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 454101.61
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 45000.01
+       }
+      ],
+      "first": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 454101.61
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 45000.01
+       }
+      ],
+      "down": [],
+      "gone": [
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "valueA": 45100,
+        "valueB": 0
+       }
+      ]
+     },
+     "composition": {
+      "all": {
+       "count": 4,
+       "valueA": 50700,
+       "valueB": 506152.37
+      },
+      "up": {
+       "count": 1,
+       "valueA": 5600,
+       "valueB": 7050.75
+      },
+      "new": {
+       "count": 2,
+       "valueA": 0,
+       "valueB": 499101.62
+      },
+      "first": {
+       "count": 2,
+       "valueA": 0,
+       "valueB": 499101.62
+      },
+      "down": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      },
+      "gone": {
+       "count": 1,
+       "valueA": 45100,
+       "valueB": 0
+      },
+      "equal": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      }
+     },
+     "noun": "firme",
+     "rowFacts": {
+      "9100000101": {
+       "year": 2025,
+       "value": 454101.61,
+       "largest": {
+        "value": 340000,
+        "src": "contracts"
+       },
+       "joint": 45000.01,
+       "partner": {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "value": 360800.35
+       },
+       "firstActivity": "2025-03-01",
+       "lastActivity": "2026-05-05",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000103": {
+       "year": 2024,
+       "value": 45100,
+       "largest": {
+        "value": 23100,
+        "src": "da"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "value": 45100
+       },
+       "firstActivity": "2024-04-13",
+       "lastActivity": "2026-02-15",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000106": {
+       "year": 2025,
+       "value": 45000.01,
+       "largest": {
+        "value": 45000.01,
+        "src": "contracts"
+       },
+       "joint": 45000.01,
+       "partner": {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "value": 45000.01
+       },
+       "firstActivity": "2025-09-01",
+       "lastActivity": "2026-01-15",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000105": {
+       "year": 2025,
+       "value": 7050.75,
+       "largest": {
+        "value": 6100.35,
+        "src": "da"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "value": 6100.35
+       },
+       "firstActivity": "2024-04-18",
+       "lastActivity": "2025-09-15",
+       "cuiValid": true,
+       "country": null
+      }
+     }
     },
     "partialYears": [
      {
@@ -25832,7 +28399,7 @@
       "note": "achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei"
      }
     ],
-    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'cluj'\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;"
+    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'cluj'\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
    },
    "sources": {
     "status": 200,

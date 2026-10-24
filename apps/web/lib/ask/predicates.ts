@@ -279,7 +279,7 @@ export const isEveryChange = (group: TrendGroup): boolean => group.change === "a
  * growths (vA > 0, vB > vA), new (vA = 0, vB > 0), decreases (vB > 0, vB < vA),
  * gone (vA > 0, vB = 0) and the equal ones partition it. `id` and `role` name
  * the grouped entity for `firstOnly` (marts.entity_profile.first_activity in year B).
- * The live query (runSpec), the rollups (rollupTrend) and the sources (runRows) share it.
+ * The partition of the answer (trendPartition, live or over a rollup) and the sources (runRows) share it.
  */
 export function trendGroupSql(sql: DbSql, va: Fragment, vb: Fragment, group: TrendGroup,
   first?: { id: Fragment; role: "authority" | "supplier"; yearB: number }): { having: Fragment | null; order: Fragment } {
