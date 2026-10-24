@@ -21,7 +21,7 @@ import { PER_CAPITA_SOURCE, perCapitaCaveat, POPULATION_CARD_NOTE, readPerCapita
 import { martColumns } from "./mart-columns";
 import {
   compareParties, compareSharedPartners, compareTopPartners, planRollup, rollupBreakdown, rollupCountyTable, rollupMap, rollupMinimumCond,
-  rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrend, rollupTrendMembers, scatterDensity,
+  monthRollupReady, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrend, rollupTrendMembers, scatterDensity,
   type RollupFilters, type RollupNeed, type RollupSource,
 } from "./rollups";
 import { sectorUnit } from "../peer-population";
@@ -526,7 +526,8 @@ function rollupNeed(spec: AskSpec): RollupNeed | null {
 async function rollupPlanFor(sql: DbSql, spec: AskSpec, ctx: PredicateCtx): Promise<{ source: RollupSource; filters: RollupFilters } | null> {
   const need = rollupNeed(spec);
   if (!need || spec.measure === "value_per_capita" || !(await rollupsReady(sql))) return null;
-  const plan = planRollup(ctx, need);
+  // A trend's same months read agg_entity_month once a build has made it.
+  const plan = planRollup(ctx, need, { months: ctx.trendMonths ? await monthRollupReady(sql) : false });
   return "source" in plan ? plan : null;
 }
 

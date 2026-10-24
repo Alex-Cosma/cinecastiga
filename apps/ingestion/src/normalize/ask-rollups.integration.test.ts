@@ -38,6 +38,17 @@ it.skipIf(!connection)('builds the Ask rollups and the covering indexes with eve
    {role:'supplier',eid:a,y:'2025',src:'da',county:'Cluj',nm:'Furnizor A',v:'1000.50',n:2},
    {role:'supplier',eid:b,y:'2024',src:'da',county:'Cluj',nm:'Furnizor B',v:'2000000',n:1},
   ]);
+  // The month grain of the same rows (F2, the trend's same months); the years above are grouped from it.
+  expect(own(await q`select role,eid::text,y,m,v::text,n::int from marts.agg_entity_month order by role,eid::bigint,y,m`,'eid')).toEqual([
+   {role:'authority',eid:cluj,y:'2024',m:'09',v:'2000000',n:1},
+   {role:'authority',eid:cluj,y:'2025',m:'03',v:'900.50',n:1},
+   {role:'authority',eid:cluj,y:'2025',m:'09',v:'100',n:1},
+   {role:'authority',eid:iasi,y:'2024',m:'09',v:'30',n:1},
+   {role:'supplier',eid:a,y:'2025',m:'03',v:'900.50',n:1},
+   {role:'supplier',eid:a,y:'2025',m:'09',v:'100',n:1},
+   {role:'supplier',eid:b,y:'2024',m:'09',v:'2000000',n:1},
+  ]);
+  expect(first.rollups.agg_entity_month).toBeGreaterThanOrEqual(first.rollups.agg_entity_year);
   expect(own(await q`select authority_id::text,supplier_id::text,y,v::text,n::int from marts.agg_pair_year order by authority_id::bigint,supplier_id::bigint nulls last,y`,'authority_id')).toEqual([
    {authority_id:cluj,supplier_id:a,y:'2025',v:'1000.50',n:2},
    {authority_id:cluj,supplier_id:b,y:'2024',v:'2000000',n:1},
