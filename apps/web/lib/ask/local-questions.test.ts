@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LOCAL_QUESTIONS_KEY, readLocalQuestions, suggestLocalCopyTitle, writeLocalQuestion } from "./local-questions";
+import { keptLocalQuestionsNote, LOCAL_QUESTIONS_KEY, readLocalQuestions, readLocalQuestionStore, suggestLocalCopyTitle, writeLocalQuestion } from "./local-questions";
 
 const spec = { block:"table", dim:"supplier", measure:"value", topN:10, filters:{ yearFrom:2022, yearTo:2024, county:"BZ", cpvTerm:"45" } };
 function fixture() {
@@ -34,10 +34,36 @@ describe("device saved questions", () => {
     expect(() => writeLocalQuestion(storage, { title:q.title, spec, expectedVersion:1 }, q.id)).toThrow(/alt tab/);
     expect(readLocalQuestions(storage)[0]?.spec.topN).toBe(20);
   });
-  it.each(["not-json", '{"version":2,"questions":[]}', '{"version":1,"questions":[{}]}'])("preserves corrupt/unsupported storage %s", raw => {
+  it.each(["not-json", '{"version":2,"questions":[]}', '{"version":1,"questions":{}}', "null"])("preserves corrupt/unsupported storage %s", raw => {
     const storage = fixture(); storage.setItem(LOCAL_QUESTIONS_KEY,raw);
     expect(() => writeLocalQuestion(storage, { title:"Lucrări", spec })).toThrow(/păstrate/);
     expect(storage.getItem(LOCAL_QUESTIONS_KEY)).toBe(raw);
+  });
+  // F0a: one item this release cannot read (a newer tab wrote it) never makes the list unreadable or disappears.
+  it("skips unreadable items one by one and keeps them exactly when it rewrites the list", () => {
+    const storage = fixture(); const ok = writeLocalQuestion(storage, { title:"Lucrări", spec });
+    const future = { id:"local:future", title:"Creșteri Buzău", version:3, updatedAt:"2026-11-02T10:00:00Z", spec:{ ...spec, block:"trend", lens:{ x:1 } }, extra:{ kept:true } };
+    const broken = { id:"local:broken", title:"", version:0 };
+    storage.setItem(LOCAL_QUESTIONS_KEY, JSON.stringify({ version:1, questions:[future, ...JSON.parse(storage.getItem(LOCAL_QUESTIONS_KEY)!).questions, broken] }));
+    expect(readLocalQuestionStore(storage)).toEqual({ questions:[ok], kept:[future, broken] });
+    expect(readLocalQuestions(storage)).toEqual([ok]);
+    writeLocalQuestion(storage, { title:"Nouă", spec });
+    expect(JSON.parse(storage.getItem(LOCAL_QUESTIONS_KEY)!).questions.slice(-2)).toEqual([future, broken]);
+    // A kept item still holds its name and its place under the limit.
+    expect(() => writeLocalQuestion(storage, { title:"CREȘTERI BUZĂU", spec })).toThrow(/acest nume/);
+    expect(suggestLocalCopyTitle(storage, "Creșteri Buzău")).toBe("Creșteri Buzău — copie");
+  });
+  it("lists a question with a key read ahead of the engine, with that key", () => {
+    const storage = fixture();
+    const saved = writeLocalQuestion(storage, { title:"Lucrări", spec:{ ...spec, filters:{ ...spec.filters, purchaseKind:"lucrari" } } });
+    expect(readLocalQuestionStore(storage)).toEqual({ questions:[saved], kept:[] });
+    expect(saved.spec.filters.purchaseKind).toBe("lucrari");
+  });
+  it("says how many items it kept, with the numeral rule", () => {
+    expect(keptLocalQuestionsNote(0)).toBeNull();
+    expect(keptLocalQuestionsNote(1)).toBe("1 întrebare salvată nu se poate deschide în această versiune a site-ului; am păstrat-o. Reîncarcă pagina.");
+    expect(keptLocalQuestionsNote(3)).toBe("3 întrebări salvate nu se pot deschide în această versiune a site-ului; le-am păstrat. Reîncarcă pagina.");
+    expect(keptLocalQuestionsNote(20)).toMatch(/^20 de întrebări salvate nu se pot deschide/);
   });
   it("rejects invalid questions before touching storage", () => {
     const storage = fixture();

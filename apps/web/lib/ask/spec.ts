@@ -56,13 +56,55 @@ export const AUTHORITY_KINDS = [
 ] as const;
 export type AuthorityKind = (typeof AUTHORITY_KINDS)[number];
 
+/*
+ * Keys a later stage of the per-question filters writes (plan §3). parseSpec
+ * already reads their shape, so a rollback or an older tab never turns a newer
+ * link, saved question or watch into an "invalid" one, and never runs it
+ * without the condition: the engine refuses every key outside IMPLEMENTED_KEYS.
+ */
+/** The strict list of local administrations (F5), not a name pattern. */
+export const LOCAL_ADMIN_KIND = "local_admin";
+export type ParsedAuthorityKind = AuthorityKind | typeof LOCAL_ADMIN_KIND;
+/** The kind matched by name patterns. local_admin has none; the engine refuses it before it reads a kind. */
+export const namedKind = (kind: ParsedAuthorityKind | undefined): AuthorityKind | undefined =>
+  kind === LOCAL_ADMIN_KIND ? undefined : kind;
+export const PURCHASE_KINDS = ["produse", "servicii", "lucrari"] as const;
+export const PROCEDURES = ["deschisa", "simplificata", "negociere_fara_publicare", "altele"] as const;
+/** The firm's seat against the buyer's county on each row (same, other) or abroad. */
+export const FIRM_SEATS = ["same", "other", "abroad"] as const;
+export const NEW_SCOPES = ["buyer", "archive", "registry"] as const;
+export const TREND_CHANGES = ["all", "up", "down", "new", "gone"] as const;
+export const NETWORK_PARTNERS = ["new", "continuing", "gone"] as const;
+export const SCATTER_FLAGS = ["da_split", "da_year_end", "da_rapid", "da_round", "da_concentration", "da_dependence"] as const;
+/** First and last month (1–12) of a window repeated in each year. */
+export type MonthWindow = readonly [number, number];
+export interface TrendOptions {
+  change?: (typeof TREND_CHANGES)[number];
+  months?: "auto" | "whole" | MonthWindow;
+  order?: "lei" | "percent";
+  minBase?: number;
+  firstOnly?: true;
+}
+export interface TimeseriesOptions { grain?: "month"; split?: "channel" | "domain"; months?: "auto" | MonthWindow }
+export interface NetworkOptions {
+  partners?: (typeof NETWORK_PARTNERS)[number];
+  since?: number;
+  order?: "value" | "count" | "years";
+  show?: 10 | 15 | 25 | 50;
+  signals?: true;
+}
+export interface SankeyOptions { shown?: 6 | 10 | 15 }
+/** rankBy here, not the top-level one: old scatter links carry rankBy from "Cine conduce?" and ignore it. */
+export interface ScatterOptions { flag?: (typeof SCATTER_FLAGS)[number]; rankBy?: RankBy }
+export interface PeersOptions { similar?: true; activity?: true; domain?: true }
+
 export interface AskFilters {
   /** Free-text subject ("lemne", "medicamente") — grounded to CPV server-side. */
   cpvTerm?: string;
   /** County name, Romanian, diacritics optional ("Botoșani", "cluj"). */
   county?: string;
-  /** Restrict authorities by kind (name-pattern heuristic). */
-  authorityKind?: AuthorityKind;
+  /** Restrict authorities by kind (name-pattern heuristic; local_admin is read ahead). */
+  authorityKind?: ParsedAuthorityKind;
   /** Scope to a single named authority (resolved server-side). */
   authorityName?: string;
   /** Scope to a single named supplier (resolved server-side). */
@@ -116,6 +158,20 @@ export interface AskFilters {
   maxEmployees?: number;
   yearFrom?: number;
   yearTo?: number;
+  // Read ahead of the engine (plan §3, stages F3–F5).
+  purchaseKind?: (typeof PURCHASE_KINDS)[number];
+  procedure?: (typeof PROCEDURES)[number];
+  /** Lei, on the value of the whole purchase. */
+  purchaseValueMin?: number;
+  purchaseValueMax?: number;
+  firmSeat?: (typeof FIRM_SEATS)[number];
+  /** The firm's own county, absolute. */
+  seatCounty?: string;
+  sharedPartners?: true;
+  newSince?: number;
+  newScope?: (typeof NEW_SCOPES)[number];
+  mainClient?: true;
+  dominantSupplier?: true;
 }
 
 export interface AskSpec {
@@ -135,6 +191,14 @@ export interface AskSpec {
   /** Accepted from older links and ignored: a comparison is always on the selection (24 Oct 2026). */
   comparisonMode?: "transactions" | "profiles";
   minimumRecords?: MinimumRecords;
+  // Block options, read ahead of the engine (plan §3); each only on its own block.
+  trend?: TrendOptions;
+  timeseries?: TimeseriesOptions;
+  network?: NetworkOptions;
+  sankey?: SankeyOptions;
+  scatter?: ScatterOptions;
+  /** distribution (then scatter, entity_card): the comparison group of a profile. */
+  peers?: PeersOptions;
 }
 
 export const MAX_TOP_N = 50;
@@ -236,17 +300,106 @@ export const SPEC_JSON_SCHEMA = {
 
 export interface SpecError {
   error: string;
+  /** The spec is well formed but carries a key this release does not apply. */
+  newer?: true;
 }
 
 /** Blocks that require a focal entity (authorityName or supplierName). */
 export const FOCAL_BLOCKS: Block[] = ["distribution", "sankey", "network"];
 
-/** Validate + normalize an untrusted spec (from LLM or a direct API caller). */
-export function validateSpec(raw: unknown): AskSpec | SpecError {
+/** Shown where a link, a saved question or an API body is read by a page. */
+export const NEWER_VERSION_LINK = "Legătura vine dintr-o versiune mai nouă a site-ului. Reîncarcă pagina.";
+/** Watches and captures, which run later on whatever code is deployed. */
+export const NEWER_VERSION_QUESTION = "Întrebarea vine dintr-o versiune mai nouă a site-ului.";
+
+/** Paths applied by the engine of 4e90b00. A stage adds the paths it implements, in the release that implements them. */
+export const IMPLEMENTED_KEYS: ReadonlySet<string> = new Set([
+  "block", "dataset", "dim", "measure", "topN", "rankBy", "population", "comparisonMode", "minimumRecords",
+  ...["cpvTerm", "county", "authorityKind", "authorityName", "supplierName", "authorityId", "supplierId", "monthFrom", "monthTo",
+    "adminPersonKey", "adminName", "compareWith", "compareWithId", "uatSiruta", "uatName", "singleBidder", "minEmployees",
+    "maxEmployees", "yearFrom", "yearTo"].map(key => `filters.${key}`),
+]);
+/**
+ * Paths parseSpec reads ahead of the engine (plan §3), with the stage that
+ * implements each. "filters.authorityKind=local_admin" is a value of an
+ * existing key; "options.members" belongs to a watch, not to the spec.
+ */
+export const READ_AHEAD_KEYS = {
+  "trend.change": "F2", "trend.months": "F2", "trend.order": "F2", "trend.minBase": "F2", "trend.firstOnly": "F2",
+  "options.members": "F2",
+  "timeseries.grain": "F3", "timeseries.split": "F3", "timeseries.months": "F3",
+  "filters.purchaseKind": "F3", "filters.procedure": "F3", "filters.purchaseValueMin": "F3", "filters.purchaseValueMax": "F3",
+  "filters.firmSeat": "F4", "filters.seatCounty": "F4", "filters.sharedPartners": "F4", "sankey.shown": "F4",
+  "network.partners": "F4", "network.since": "F4", "network.order": "F4", "network.show": "F4", "network.signals": "F4",
+  "filters.newSince": "F5", "filters.newScope": "F5", "filters.mainClient": "F5", "filters.dominantSupplier": "F5",
+  "filters.authorityKind=local_admin": "F5",
+  "peers.similar": "F6a", "peers.activity": "F6a", "peers.domain": "F6a",
+  "scatter.flag": "F6b", "scatter.rankBy": "F6b",
+} as const satisfies Record<string, string>;
+
+/** Options that belong to one block. On another block they cannot change the answer and are dropped. */
+const BLOCK_OPTION_KEYS = ["trend", "timeseries", "network", "sankey", "scatter"] as const;
+const PEERS_BLOCKS: readonly Block[] = ["distribution", "scatter", "entity_card"];
+type OptionKey = (typeof BLOCK_OPTION_KEYS)[number] | "peers";
+const among = (values: readonly unknown[]) => (v: unknown) => values.includes(v);
+const between = (min: number, max: number) => (v: unknown) => Number.isSafeInteger(v) && (v as number) >= min && (v as number) <= max;
+const isTrue = (v: unknown) => v === true;
+const isMonthWindow = (v: unknown) =>
+  Array.isArray(v) && v.length === 2 && v.every(between(1, 12)) && v[0] <= v[1];
+/** The shape of each option; which options combine is the rule of the stage that implements them. */
+const OPTION_SHAPES: Record<OptionKey, Record<string, (v: unknown) => boolean>> = {
+  trend: { change: among(TREND_CHANGES), months: v => v === "auto" || v === "whole" || isMonthWindow(v),
+    order: among(["lei", "percent"]), minBase: between(1_000, 1_000_000_000), firstOnly: isTrue },
+  timeseries: { grain: among(["month"]), split: among(["channel", "domain"]), months: v => v === "auto" || isMonthWindow(v) },
+  network: { partners: among(NETWORK_PARTNERS), since: between(2021, 2100), order: among(["value", "count", "years"]),
+    show: among([10, 15, 25, 50]), signals: isTrue },
+  sankey: { shown: among([6, 10, 15]) },
+  scatter: { flag: among(SCATTER_FLAGS), rankBy: among(RANK_BYS) },
+  peers: { similar: isTrue, activity: isTrue, domain: isTrue },
+};
+
+/** The spec paths present (block options and peers by sub-key), for the engine's refusal. Works on stored, unparsed specs. */
+function specKeyPaths(spec: object): string[] {
+  const paths: string[] = [];
+  for (const [key, value] of Object.entries(spec)) {
+    if (value === undefined) continue;
+    const nested = key === "filters" || (OPTION_SHAPES as Record<string, unknown>)[key] !== undefined;
+    if (!nested || !value || typeof value !== "object" || Array.isArray(value)) { paths.push(key); continue; }
+    for (const [sub, v] of Object.entries(value)) {
+      if (v === undefined || v === null || key === "filters" && v === "") continue;
+      paths.push(`${key}.${sub}`);
+      if (key === "filters" && sub === "authorityKind" && v === LOCAL_ADMIN_KIND) paths.push(`filters.authorityKind=${LOCAL_ADMIN_KIND}`);
+    }
+  }
+  return paths;
+}
+/** Present paths this release does not apply: parsed-ahead keys, and anything unknown in a stored spec. */
+export function unimplementedSpecKeys(spec: unknown): string[] {
+  if (!spec || typeof spec !== "object") return [];
+  return specKeyPaths(spec).filter(path => !IMPLEMENTED_KEYS.has(path));
+}
+
+/**
+ * Validate + normalize an untrusted spec (from LLM or a direct API caller):
+ * the shape (parseSpec), then the rules of what this release can answer
+ * (runnableError). A spec with keys read ahead of the engine passes; a reader
+ * that is about to run it passes `refuseNewer` and gets that message instead
+ * (before the rules, which a newer release may have changed).
+ */
+export function validateSpec(raw: unknown, opts: { refuseNewer?: string } = {}): AskSpec | SpecError {
+  const spec = parseSpec(raw);
+  if ("error" in spec) return spec;
+  if (opts.refuseNewer && unimplementedSpecKeys(spec).length) return { error: opts.refuseNewer, newer: true };
+  const error = runnableError(spec);
+  return error ? { error } : spec;
+}
+
+/** The shape of a spec: lists, types, bounds. Includes the keys read ahead of the engine (plan §3). */
+export function parseSpec(raw: unknown): AskSpec | SpecError {
   if (typeof raw !== "object" || raw === null)
     return { error: "spec must be an object" };
   const o = raw as Record<string, unknown>;
-  if (Object.keys(o).some(key => !["block", "dataset", "dim", "measure", "topN", "rankBy", "filters", "population", "comparisonMode", "minimumRecords"].includes(key)))
+  if (Object.keys(o).some(key => !["block", "dataset", "dim", "measure", "topN", "rankBy", "filters", "population", "comparisonMode", "minimumRecords", ...BLOCK_OPTION_KEYS, "peers"].includes(key)))
     return { error: "Câmp necunoscut în întrebare; condiția nu a fost ignorată." };
   const population = o["population"] === undefined ? undefined : validatePopulation(o["population"]);
   if (population && "error" in population) return population;
@@ -309,16 +462,20 @@ export function validateSpec(raw: unknown): AskSpec | SpecError {
   const fRaw = (o["filters"] ?? {}) as Record<string, unknown>;
   if (typeof fRaw !== "object" || fRaw === null || Array.isArray(fRaw))
     return { error: "filters must be an object" };
-  const stringFields = ["cpvTerm", "county", "authorityName", "supplierName", "compareWith", "uatName", "adminName", "adminPersonKey"];
-  const numberBounds:Record<string, [number, number]> = { authorityId:[1,Number.MAX_SAFE_INTEGER], supplierId:[1,Number.MAX_SAFE_INTEGER], compareWithId:[1,Number.MAX_SAFE_INTEGER], uatSiruta:[1,Number.MAX_SAFE_INTEGER], monthFrom:[1,12], monthTo:[1,12], yearFrom:[2000,2100], yearTo:[2000,2100], minEmployees:[0,1000000], maxEmployees:[0,1000000] };
+  const stringFields = ["cpvTerm", "county", "authorityName", "supplierName", "compareWith", "uatName", "adminName", "adminPersonKey", "seatCounty"];
+  const numberBounds:Record<string, [number, number]> = { authorityId:[1,Number.MAX_SAFE_INTEGER], supplierId:[1,Number.MAX_SAFE_INTEGER], compareWithId:[1,Number.MAX_SAFE_INTEGER], uatSiruta:[1,Number.MAX_SAFE_INTEGER], monthFrom:[1,12], monthTo:[1,12], yearFrom:[2000,2100], yearTo:[2000,2100], minEmployees:[0,1000000], maxEmployees:[0,1000000],
+    purchaseValueMin:[0,Number.MAX_SAFE_INTEGER], purchaseValueMax:[0,Number.MAX_SAFE_INTEGER], newSince:[1990,2100] };
+  const enumFields:Record<string, readonly string[]> = { purchaseKind:PURCHASE_KINDS, procedure:PROCEDURES, firmSeat:FIRM_SEATS, newScope:NEW_SCOPES };
+  const trueFields = ["sharedPartners", "mainClient", "dominantSupplier"];
   for (const [key, value] of Object.entries(fRaw)) {
-    if (![...stringFields, ...Object.keys(numberBounds), "singleBidder", "authorityKind"].includes(key)) return { error:`Filtru necunoscut: ${key}. Condiția nu a fost ignorată.` };
+    if (![...stringFields, ...Object.keys(numberBounds), ...Object.keys(enumFields), ...trueFields, "singleBidder", "authorityKind"].includes(key)) return { error:`Filtru necunoscut: ${key}. Condiția nu a fost ignorată.` };
     if (value === undefined || value === null || value === "") continue;
     if (stringFields.includes(key) && (typeof value !== "string" || value.length > (key === "adminPersonKey" ? 300 : 200))) return { error:`Valoare invalidă pentru ${key}.` };
     const bounds = numberBounds[key];
     if (bounds && (!Number.isSafeInteger(Number(value)) || Number(value) < bounds[0] || Number(value) > bounds[1])) return { error:`Limită sau identificator invalid: ${key}.` };
-    if (key === "authorityKind" && !AUTHORITY_KINDS.includes(value as AuthorityKind)) return { error:"Tip de instituție necunoscut." };
+    if (key === "authorityKind" && !AUTHORITY_KINDS.includes(value as AuthorityKind) && value !== LOCAL_ADMIN_KIND) return { error:"Tip de instituție necunoscut." };
     if (key === "singleBidder" && typeof value !== "boolean") return { error:"Filtrul de competiție trebuie să fie adevărat sau fals." };
+    if (enumFields[key] && !enumFields[key].includes(value as string) || trueFields.includes(key) && value !== true) return { error:`Valoare invalidă pentru ${key}.` };
   }
   const filters: AskFilters = {};
   const str = (k: keyof AskFilters & string): string | undefined => {
@@ -371,10 +528,22 @@ export function validateSpec(raw: unknown): AskSpec | SpecError {
   if (
     fRaw["authorityKind"] !== undefined &&
     fRaw["authorityKind"] !== null &&
-    AUTHORITY_KINDS.includes(fRaw["authorityKind"] as AuthorityKind)
+    (AUTHORITY_KINDS.includes(fRaw["authorityKind"] as AuthorityKind) || fRaw["authorityKind"] === LOCAL_ADMIN_KIND)
   ) {
-    filters.authorityKind = fRaw["authorityKind"] as AuthorityKind;
+    filters.authorityKind = fRaw["authorityKind"] as ParsedAuthorityKind;
   }
+  // Read ahead of the engine (plan §3); the loop above checked each value.
+  const seatCounty = str("seatCounty");
+  if (seatCounty) filters.seatCounty = seatCounty;
+  if (typeof fRaw["purchaseKind"] === "string" && fRaw["purchaseKind"]) filters.purchaseKind = fRaw["purchaseKind"] as (typeof PURCHASE_KINDS)[number];
+  if (typeof fRaw["procedure"] === "string" && fRaw["procedure"]) filters.procedure = fRaw["procedure"] as (typeof PROCEDURES)[number];
+  if (typeof fRaw["firmSeat"] === "string" && fRaw["firmSeat"]) filters.firmSeat = fRaw["firmSeat"] as (typeof FIRM_SEATS)[number];
+  if (typeof fRaw["newScope"] === "string" && fRaw["newScope"]) filters.newScope = fRaw["newScope"] as (typeof NEW_SCOPES)[number];
+  for (const k of ["purchaseValueMin", "purchaseValueMax", "newSince"] as const)
+    if (fRaw[k] !== undefined && fRaw[k] !== null && fRaw[k] !== "") filters[k] = Number(fRaw[k]);
+  for (const k of ["sharedPartners", "mainClient", "dominantSupplier"] as const) if (fRaw[k] === true) filters[k] = true;
+  if (filters.purchaseValueMin !== undefined && filters.purchaseValueMax !== undefined && filters.purchaseValueMin > filters.purchaseValueMax)
+    return { error:"Valoarea minimă depășește maximul; corectează limitele." };
   for (const k of ["yearFrom", "yearTo"] as const) {
     const v = fRaw[k];
     if (v === undefined || v === null) continue;
@@ -400,71 +569,24 @@ export function validateSpec(raw: unknown): AskSpec | SpecError {
     return { error:"Anul de început depășește anul de sfârșit; corectează perioada." };
   }
 
-  // per-capita only makes sense ranked/scoped over authorities
-  if (
-    measure === "value_per_capita" &&
-    block === "table" &&
-    dim !== "authority"
-  ) {
-    return { error: "value_per_capita requires dim=authority" };
-  }
-
-  // block-specific requirements
-  const focal =
-    filters.authorityId ??
-    filters.authorityName ??
-    filters.supplierId ??
-    filters.supplierName;
-  if (FOCAL_BLOCKS.includes(block as Block) && !focal) {
-    return {
-      error: `block=${String(block)} requires filters.authorityName or filters.supplierName`,
-    };
-  }
-  if (
-    block === "compare" &&
-    (!focal || !(filters.compareWithId || filters.compareWith))
-  ) {
-    return {
-      error:
-        "block=compare requires a focal entity (authorityName/supplierName) and compareWith",
-    };
-  }
-  if (
-    block === "fact_check" &&
-    (!(filters.authorityName || filters.authorityId) ||
-      !(filters.supplierName || filters.supplierId))
-  ) {
-    return {
-      error: "block=fact_check requires both authorityName and supplierName",
-    };
-  }
-  if (block === "trend" && (filters.monthFrom !== undefined || filters.monthTo !== undefined))
-    return { error: "Schimbarea compară doi ani întregi. Elimină explicit lunile sau alege evoluția în timp; filtrele nu au fost eliminate." };
-  // Degenerate rankings: the row dimension pinned to a single value by a filter
-  // would produce a one-row "clasament". (dim defaults to authority downstream.)
-  if (block === "table" || block === "trend" || block === "scatter") {
-    const effDim = dim ?? "authority";
-    if (effDim === "county" && (filters.county || filters.uatSiruta)) {
-      return {
-        error:
-          "Clasamentul e deja pe județe — scoate județul/localitatea sau alege altă dimensiune.",
-      };
+  const options: Pick<AskSpec, OptionKey> = {};
+  for (const key of [...BLOCK_OPTION_KEYS, "peers"] as const) {
+    const value = o[key];
+    if (value === undefined || value === null) continue;
+    // A derived link built by spread keeps working: another block's options
+    // cannot change this answer, so dropping them hides no condition.
+    if (key !== "peers" && key !== block) continue;
+    if (key === "peers" && !PEERS_BLOCKS.includes(block as Block)) return { error:"Grupul de comparație nu se aplică acestei întrebări." };
+    if (typeof value !== "object" || Array.isArray(value)) return { error:`Valoare invalidă pentru ${key}.` };
+    const kept: Record<string, unknown> = {};
+    for (const [sub, v] of Object.entries(value)) {
+      if (v === undefined) continue;
+      const valid = OPTION_SHAPES[key][sub];
+      if (!valid) return { error:"Câmp necunoscut în întrebare; condiția nu a fost ignorată." };
+      if (!valid(v)) return { error:`Valoare invalidă pentru ${key}.${sub}.` };
+      kept[sub] = Array.isArray(v) ? [...v] : v;
     }
-    if (
-      effDim === "authority" &&
-      (filters.authorityName || filters.authorityId)
-    ) {
-      return {
-        error:
-          "Ai filtrat pe o singură autoritate — pentru un clasament alege dimensiunea furnizori/județe, sau folosește «un total» / «fișă entitate».",
-      };
-    }
-    if (effDim === "supplier" && (filters.supplierName || filters.supplierId)) {
-      return {
-        error:
-          "Ai filtrat pe o singură firmă — pentru un clasament alege dimensiunea autorități/județe, sau folosește «un total» / «fișă entitate».",
-      };
-    }
+    (options as Record<string, unknown>)[key] = kept;
   }
 
   const spec: AskSpec = {
@@ -479,7 +601,62 @@ export function validateSpec(raw: unknown): AskSpec | SpecError {
   if (population) spec.population = population;
   if (minimumRecords) spec.minimumRecords = minimumRecords;
   if (o["comparisonMode"] !== undefined) spec.comparisonMode = o["comparisonMode"] as "transactions" | "profiles";
-  const unsupported = unsupportedPopulationView(spec);
-  if (unsupported) return { error: unsupported };
-  return spec;
+  return Object.assign(spec, options);
+}
+
+/** What this release can answer, on a parsed spec. Null when it can run. */
+export function runnableError(spec: AskSpec): string | null {
+  const { block, dim, measure, filters } = spec;
+  // per-capita only makes sense ranked/scoped over authorities
+  if (
+    measure === "value_per_capita" &&
+    block === "table" &&
+    dim !== "authority"
+  ) {
+    return "value_per_capita requires dim=authority";
+  }
+
+  // block-specific requirements
+  const focal =
+    filters.authorityId ??
+    filters.authorityName ??
+    filters.supplierId ??
+    filters.supplierName;
+  if (FOCAL_BLOCKS.includes(block as Block) && !focal) {
+    return `block=${String(block)} requires filters.authorityName or filters.supplierName`;
+  }
+  if (
+    block === "compare" &&
+    (!focal || !(filters.compareWithId || filters.compareWith))
+  ) {
+    return "block=compare requires a focal entity (authorityName/supplierName) and compareWith";
+  }
+  if (
+    block === "fact_check" &&
+    (!(filters.authorityName || filters.authorityId) ||
+      !(filters.supplierName || filters.supplierId))
+  ) {
+    return "block=fact_check requires both authorityName and supplierName";
+  }
+  if (block === "trend" && (filters.monthFrom !== undefined || filters.monthTo !== undefined))
+    return "Schimbarea compară doi ani întregi. Elimină explicit lunile sau alege evoluția în timp; filtrele nu au fost eliminate.";
+  // Degenerate rankings: the row dimension pinned to a single value by a filter
+  // would produce a one-row "clasament". (dim defaults to authority downstream.)
+  if (block === "table" || block === "trend" || block === "scatter") {
+    const effDim = dim ?? "authority";
+    if (effDim === "county" && (filters.county || filters.uatSiruta)) {
+      return "Clasamentul e deja pe județe — scoate județul/localitatea sau alege altă dimensiune.";
+    }
+    if (
+      effDim === "authority" &&
+      (filters.authorityName || filters.authorityId)
+    ) {
+      return "Ai filtrat pe o singură autoritate — pentru un clasament alege dimensiunea furnizori/județe, sau folosește «un total» / «fișă entitate».";
+    }
+    if (effDim === "supplier" && (filters.supplierName || filters.supplierId)) {
+      return "Ai filtrat pe o singură firmă — pentru un clasament alege dimensiunea autorități/județe, sau folosește «un total» / «fișă entitate».";
+    }
+  }
+
+  return unsupportedPopulationView(spec);
 }

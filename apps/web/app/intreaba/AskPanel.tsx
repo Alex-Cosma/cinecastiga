@@ -7,7 +7,7 @@ import FollowButton from "@/components/FollowButton";
 import { formatRon, formatRonFull, formatInt, cleanName } from "@/lib/format";
 import { encodeSpec, decodeSpec } from "@/lib/ask/permalink";
 import { isHistoricalProfile } from "@/lib/ask/population";
-import { validateSpec, type AskSpec } from "@/lib/ask/spec";
+import { NEWER_VERSION_LINK, validateSpec, type AskSpec } from "@/lib/ask/spec";
 import { entitySourceLink, entitySourceScope, yearSourceLink } from "@/lib/ask/source-spec";
 import { describeQuestion, localityScopeError, questionKey } from "@/lib/ask/question-ui";
 import { ANSWER_ERROR, breakdownLead, countWords, entityNoun, fileSlug, formatShare, isHumanError, rankingRest, rankingShare, shouldAutoRun, type RankingTotals } from "@/lib/ask/answer-text";
@@ -350,11 +350,15 @@ export default function AskPanel({
         void execute({ question });
       } else if (encoded) {
         const decoded = decodeSpec(encoded);
-        const parsed = validateSpec(decoded);
+        // A key this release reads but does not apply: say so, without a builder
+        // that would show the question without that condition (plan F0a).
+        const parsed = validateSpec(decoded, { refuseNewer: NEWER_VERSION_LINK });
         if ("error" in parsed) {
           setError(
-            "Legătura conține o întrebare invalidă. Poți construi una nouă mai jos.",
+            parsed.newer ? parsed.error : "Legătura conține o întrebare invalidă. Poți construi una nouă mai jos.",
           );
+          // Below the examples on a phone: bring the reason into view.
+          revealError();
           return;
         }
         setBuilderInit(parsed as unknown as BuilderSpec);
@@ -396,7 +400,7 @@ export default function AskPanel({
       request.current.controller?.abort();
       if (toastTimer.current) clearTimeout(toastTimer.current);
     };
-  }, [execute, interpret]);
+  }, [execute, interpret, revealError]);
   const applied = resp?.spec;
   // One title per answered spec: the same words whether the answer came from
   // typed text, a builder edit or a shared link, in every view, the drawer and the export.
@@ -471,7 +475,8 @@ export default function AskPanel({
       url.searchParams.get("drill") !== "1"
     )
       return;
-    const spec = validateSpec(decodeSpec(url.searchParams.get("spec") ?? ""));
+    // A newer link is not opened in place; the page then says why.
+    const spec = validateSpec(decodeSpec(url.searchParams.get("spec") ?? ""), { refuseNewer: NEWER_VERSION_LINK });
     if ("error" in spec) return;
     let scope: EvidenceScope | undefined;
     const encodedScope = url.searchParams.get("evidence");

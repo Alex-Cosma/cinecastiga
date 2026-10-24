@@ -1,6 +1,7 @@
 import { recipeInput } from "./recipe-input";
 import { copyRecipeTitle, normalizeRecipeTitle } from "./recipe-title";
 import { validateSpec } from "./spec";
+import { countWords } from "./answer-text";
 import type { QuestionSpec } from "./question-ui";
 
 export const LOCAL_QUESTIONS_KEY = "cinecastiga.saved-questions.v1";
@@ -17,30 +18,51 @@ export function localQuestionStorage():Storage {
   try { return window.localStorage; } catch { throw unavailable(); }
 }
 
-export function readLocalQuestions(storage:StorageAccess):LocalQuestion[] {
+/**
+ * The device list. An item this release cannot read (a newer tab wrote it, or
+ * an older rule no longer accepts it) is skipped one by one and kept exactly as
+ * stored: it never makes the whole list unreadable and a rewrite never drops it.
+ */
+export type LocalQuestionStore = { questions:LocalQuestion[]; kept:unknown[] };
+const titleKey = (title:string) => normalizeRecipeTitle(title).toLocaleLowerCase("ro-RO");
+export function readLocalQuestionStore(storage:StorageAccess):LocalQuestionStore {
   let raw:string | null;
   try { raw = storage.getItem(LOCAL_QUESTIONS_KEY); } catch { throw unavailable(); }
-  if (raw === null) return [];
-  try {
-    const data = JSON.parse(raw);
-    if (data.version !== 1 || !Array.isArray(data.questions) || data.questions.length > 200) throw damaged();
-    const ids = new Set<string>(); const titles = new Set<string>();
-    return data.questions.map((item:LocalQuestion) => {
-      if (!item || typeof item.id !== "string" || !item.id.startsWith("local:") || ids.has(item.id) || typeof item.title !== "string" ||
-        !item.title.trim() || item.title.length > 160 || !Number.isSafeInteger(item.version) || item.version < 1 ||
-        typeof item.updatedAt !== "string" || !Number.isFinite(Date.parse(item.updatedAt))) throw damaged();
-      const title = normalizeRecipeTitle(item.title); const key = title.toLocaleLowerCase("ro-RO");
-      const spec = validateSpec(item.spec);
-      if ("error" in spec || titles.has(key)) throw damaged();
-      ids.add(item.id); titles.add(key);
-      // Whitelist fields: never retain results, account data, or arbitrary payloads.
-      return { id:item.id, title, version:item.version, spec:spec as QuestionSpec, updatedAt:item.updatedAt, storage:"local" as const };
-    }).sort((a:LocalQuestion,b:LocalQuestion) => b.updatedAt.localeCompare(a.updatedAt));
-  } catch { throw damaged(); }
+  if (raw === null) return { questions:[], kept:[] };
+  let data:{ version?:unknown; questions?:unknown };
+  try { data = JSON.parse(raw); } catch { throw damaged(); }
+  if (!data || data.version !== 1 || !Array.isArray(data.questions) || data.questions.length > 200) throw damaged();
+  const ids = new Set<string>(); const titles = new Set<string>();
+  const questions:LocalQuestion[] = []; const kept:unknown[] = [];
+  for (const item of data.questions as LocalQuestion[]) {
+    const valid = !!item && typeof item.id === "string" && item.id.startsWith("local:") && !ids.has(item.id) && typeof item.title === "string" &&
+      !!item.title.trim() && item.title.length <= 160 && Number.isSafeInteger(item.version) && item.version >= 1 &&
+      typeof item.updatedAt === "string" && Number.isFinite(Date.parse(item.updatedAt)) && !titles.has(titleKey(item.title));
+    const spec = valid ? validateSpec(item.spec) : null;
+    if (!spec || "error" in spec) { kept.push(item); continue; }
+    ids.add(item.id); titles.add(titleKey(item.title));
+    // Whitelist fields: never retain results, account data, or arbitrary payloads.
+    questions.push({ id:item.id, title:normalizeRecipeTitle(item.title), version:item.version, spec:spec as QuestionSpec, updatedAt:item.updatedAt, storage:"local" });
+  }
+  return { questions:questions.sort((a,b) => b.updatedAt.localeCompare(a.updatedAt)), kept };
 }
+export function readLocalQuestions(storage:StorageAccess):LocalQuestion[] {
+  return readLocalQuestionStore(storage).questions;
+}
+/** Under the list: kept items cannot be opened here, and a reload may bring the release that wrote them. */
+export function keptLocalQuestionsNote(n:number):string | null {
+  if (!n) return null;
+  return `${countWords(n, "întrebare salvată", "întrebări salvate")} ${n === 1 ? "nu se poate deschide" : "nu se pot deschide"} în această versiune a site-ului; ${n === 1 ? "am păstrat-o" : "le-am păstrat"}. Reîncarcă pagina.`;
+}
+/** Titles held by kept items stay taken, so a rewrite cannot create a duplicate the newer release would refuse. */
+const keptTitles = (kept:unknown[]) => kept.flatMap(item => {
+  const title = (item as { title?:unknown } | null)?.title;
+  return typeof title === "string" && title.trim() ? [titleKey(title)] : [];
+});
 
 export function suggestLocalCopyTitle(storage:StorageAccess, title:string):string {
-  const titles = new Set(readLocalQuestions(storage).map(item => item.title.toLocaleLowerCase("ro-RO")));
+  const store = readLocalQuestionStore(storage);
+  const titles = new Set([...store.questions.map(item => item.title.toLocaleLowerCase("ro-RO")), ...keptTitles(store.kept)]);
   for (let n=1; ; n++) { const candidate = copyRecipeTitle(title,n); if (!titles.has(candidate.toLocaleLowerCase("ro-RO"))) return candidate; }
 }
 
@@ -48,15 +70,17 @@ export function suggestLocalCopyTitle(storage:StorageAccess, title:string):strin
 export function writeLocalQuestion(storage:StorageAccess, raw:unknown, id?:string):LocalQuestion {
   const input = recipeInput(raw, !!id);
   if ("error" in input) throw new LocalQuestionError(input.error);
-  const items = readLocalQuestions(storage);
+  const { questions:items, kept } = readLocalQuestionStore(storage);
   const previous = id ? items.find(item => item.id === id) : undefined;
   if (id && (!previous || previous.version !== input.expectedVersion)) throw new LocalQuestionError("Întrebarea a fost modificată în alt tab. Redeschide-o din „Salvate” sau salvează o copie.", "conflict");
-  if (items.some(item => item.id !== id && item.title.toLocaleLowerCase("ro-RO") === input.title.toLocaleLowerCase("ro-RO")))
+  if (items.some(item => item.id !== id && item.title.toLocaleLowerCase("ro-RO") === input.title.toLocaleLowerCase("ro-RO")) ||
+    keptTitles(kept).includes(input.title.toLocaleLowerCase("ro-RO")))
     throw new LocalQuestionError("Ai deja o întrebare cu acest nume pe dispozitiv. Alege un nume diferit.", "title_taken");
-  if (!id && items.length >= 200) throw new LocalQuestionError("Ai atins limita de 200 de întrebări pe dispozitiv. Poți actualiza una existentă sau salva într-un cont.");
+  if (!id && items.length + kept.length >= 200) throw new LocalQuestionError("Ai atins limita de 200 de întrebări pe dispozitiv. Poți actualiza una existentă sau salva într-un cont.");
   const question:LocalQuestion = { id:id ?? `local:${crypto.randomUUID()}`, title:input.title, version:(previous?.version ?? 0)+1,
     spec:input.spec as QuestionSpec, updatedAt:new Date().toISOString(), storage:"local" };
-  try { storage.setItem(LOCAL_QUESTIONS_KEY, JSON.stringify({ version:1, questions:[question, ...items.filter(item => item.id !== id)] })); }
+  // Kept items go back exactly as they were read.
+  try { storage.setItem(LOCAL_QUESTIONS_KEY, JSON.stringify({ version:1, questions:[question, ...items.filter(item => item.id !== id), ...kept] })); }
   catch { throw unavailable(); }
   return question;
 }

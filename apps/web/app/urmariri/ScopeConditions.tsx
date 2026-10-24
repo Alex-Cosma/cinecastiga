@@ -1,5 +1,6 @@
 import type { MonitoringScope } from "@/lib/monitoring-shared";
 import { isHistoricalProfile } from "@/lib/ask/population";
+import { namedKind } from "@/lib/ask/spec";
 import type { PopulationCondition } from "@/lib/ask/population";
 import { formatExactDecimal } from "@/lib/format";
 const kind = { comuna: "Comune", oras_municipiu: "Orașe și municipii", consiliu_judetean: "Consilii județene", spital: "Spitale", scoala: "Școli și licee" };
@@ -17,7 +18,8 @@ export default function ScopeConditions({ scope }: { scope: MonitoringScope }) {
   if (f.cpvTerm) items.push({ label: "Domeniu / CPV", value: f.cpvTerm });
   if (f.county) items.push({ label: "Județ", value: f.county });
   if (f.uatSiruta || f.uatName) items.push({ label: "Localitate", value: `${f.uatName ?? "Localitate"} · SIRUTA ${f.uatSiruta ?? "nespecificat"}` });
-  if (f.authorityKind) items.push({ label: "Tip instituție", value: kind[f.authorityKind] });
+  // A kind read ahead (local_admin) belongs to a newer release; its watch is refused, not shown as another kind.
+  if (f.authorityKind) { const named = namedKind(f.authorityKind); items.push({ label: "Tip instituție", value: named ? kind[named] : "dintr-o versiune mai nouă a site-ului" }); }
   if (f.adminName || f.adminPersonKey) items.push({ label: "Reprezentant legal", value: f.adminName ?? f.adminPersonKey! });
   items.push({ label: "Perioada întrebării", value: f.yearFrom || f.yearTo ? `${f.yearFrom ? `${f.yearFrom}${f.monthFrom ? `-${String(f.monthFrom).padStart(2, "0")}` : ""}` : "De la începutul datelor"} — ${f.yearTo ? `${f.yearTo}${f.monthTo ? `-${String(f.monthTo).padStart(2, "0")}` : ""}` : "fără limită finală"}` : "Fără limite de an în filtrele de pornire" });
   items.push({ label: "Sursele întrebării", value: isHistoricalProfile(spec) ? "Profiluri istorice: achiziții directe acceptate, cu valoare pozitivă de cel mult 2.000.000 lei" : spec.dataset === "da" ? "Achiziții directe" : spec.dataset === "contracts" ? "Contracte prin proceduri" : "Achiziții directe și contracte prin proceduri" });

@@ -1,4 +1,4 @@
-import type { AskSpec, AuthorityKind } from "../ask/spec";
+import { namedKind, type AskSpec, type AuthorityKind } from "../ask/spec";
 
 /**
  * Does a sentence say the scope its spec runs? Used by the tests and the
@@ -29,7 +29,8 @@ export function sentenceScopeProblems(spec: AskSpec, sentence: string): string[]
   } else if (!named) {
     if (/județul|primăria |primăriei /.test(sentence)) out.push("national spec, place in sentence");
   }
-  if (f.authorityKind && !KIND_WORDS[f.authorityKind].test(sentence)) out.push(`kind ${f.authorityKind} not in sentence`);
+  const kind = namedKind(f.authorityKind);
+  if (kind && !KIND_WORDS[kind].test(sentence)) out.push(`kind ${kind} not in sentence`);
   if (f.singleBidder) {
     if (!/un singur ofertant/.test(sentence)) out.push("single bidder not in sentence");
   } else if (spec.dataset === "da") {
