@@ -1,4 +1,4 @@
-import type { AskSpec, Block } from "./spec";
+import { namedKind, type AskSpec, type Block } from "./spec";
 
 /*
  * What a watch compares between two checks (plan §2.8), and what a frozen
@@ -29,10 +29,19 @@ export interface KeyVersion {
   when?(spec: AskSpec): boolean;
 }
 /**
- * Keyed by id. None in F0. D1: kind ("Tipul instituției", filters.authorityKind);
- * F3: "table:employees" (the employees of a firm ranking become a group, plan §2.6).
+ * Keyed by id. D1: kind (town halls from the locality registry, hospitals with
+ * the clinical institutes, lib/ask/authority-kind.ts); F3: "table:employees"
+ * (the employees of a firm ranking become a group, plan §2.6).
  */
-export const KEY_VERSIONS: Record<string, KeyVersion> = {};
+export const KEY_VERSIONS: Record<string, KeyVersion> = {
+  // A named kind only: a newer value (local_admin, F5) is refused before it runs.
+  kind: { version: "kind-2", label: "Tipul instituției", paths: ["filters.authorityKind"], when: (spec) => namedKind(spec.filters.authorityKind) !== undefined },
+};
+
+/** What changed in the methodology with each key version, for "Ce s-a schimbat" (plan §2.6). */
+export const KEY_VERSION_NOTES: Record<string, string> = {
+  "kind-2": "Tipul instituției a fost corectat (primăriile din registrul localităților, spitalele cu institutele clinice).",
+};
 
 /** The version of a question's answer: its block's, and those of the keys it carries. */
 export interface AnswerVersion {

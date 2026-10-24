@@ -2,7 +2,7 @@ import type { DbSql } from "@seap/db";
 import type { Grounding } from "./ground";
 import type { MinimumRecords, PopulationCondition, QueryPopulation } from "./population";
 import { namedKind, type AskSpec, type AuthorityKind, type Dataset } from "./spec";
-import { authorityKindCond, KIND_LABEL } from "./authority-kind";
+import { authorityKindCond, KIND_LABEL, KIND_SOURCE } from "./authority-kind";
 
 /*
  * One description of the conditions of a question (plan §2.5). The answer
@@ -55,6 +55,8 @@ export interface PredicateCtx {
   cpvExclude: string[];
   county: string | null;
   kind: AuthorityKind | null;
+  /** The institutions of that kind (authorityKindIds, D1), resolved by the caller before the first query. */
+  kindIds: readonly string[] | null;
   authorityId: string | null;
   supplierId: string | null;
   /** Locality scope: the UAT's own local administration (grounding.uat). */
@@ -89,9 +91,12 @@ export function predicateContext(
   sql: DbSql,
   spec: AskSpec,
   grounding: Grounding,
-  window: { dataset: Dataset; yearFrom: number | null; yearTo: number | null },
+  window: { dataset: Dataset; yearFrom: number | null; yearTo: number | null; kindIds?: readonly string[] | null },
 ): PredicateCtx {
   const f = spec.filters;
+  const kind = namedKind(f.authorityKind) ?? null;
+  // The kind is a list of institution ids (authority-kind.ts): a caller that did not read it would drop the condition.
+  if (kind && !window.kindIds) throw new Error(`predicateContext: the institutions of kind ${kind} were not read (authorityKindIds)`);
   const authorityId = f.authorityName || f.authorityId ? grounding.authority?.entityId ?? null : null;
   const supplierId = f.supplierName || f.supplierId ? grounding.supplier?.entityId ?? null : null;
   const uat = f.uatSiruta && grounding.uat?.authorityIds?.length ? grounding.uat : null;
@@ -102,7 +107,8 @@ export function predicateContext(
     cpvPrefixes: grounding.cpv?.prefixes ?? [],
     cpvExclude: grounding.cpv?.excludePrefixes ?? [],
     county: f.county ? grounding.county?.canonical ?? null : null,
-    kind: namedKind(f.authorityKind) ?? null,
+    kind,
+    kindIds: kind ? window.kindIds! : null,
     authorityId,
     supplierId,
     uatSiruta: uat?.siruta ?? null,
@@ -189,7 +195,7 @@ export function rowPredicates(ctx: PredicateCtx, opts: { years?: boolean } = {})
   if (ctx.cpvPrefixes.length > 0) parts.push(sql`(${cpvLike(sql, ctx.cpvPrefixes)})`);
   if (ctx.cpvExclude.length > 0) parts.push(sql`not (${cpvLike(sql, ctx.cpvExclude)})`);
   if (ctx.county) parts.push(sql`d.county = ${ctx.county}`);
-  if (ctx.kind) parts.push(authorityKindCond(sql, ctx.kind, sql`d.authority_name`));
+  if (ctx.kind) parts.push(authorityKindCond(sql, ctx.kindIds!, sql`d.authority_id`));
   const compare = ctx.comparison;
   if (ctx.authorityId && compare?.role !== "authority") parts.push(sql`d.authority_id = ${ctx.authorityId}`);
   if (ctx.supplierId && compare?.role !== "supplier") parts.push(sql`d.supplier_id = ${ctx.supplierId}`);
@@ -270,7 +276,7 @@ export function profilePredicates(ctx: PredicateCtx, role: "authority" | "suppli
   const parts: Fragment[] = [sql`ef.role = ${role}`, sql`ef.n_das >= ${minDas}`];
   if (ctx.county) parts.push(sql`lower(unaccent(ef.county)) = ${fold(ctx.county)}`);
   if (ctx.uatSiruta !== null && role === "authority") parts.push(sql`ef.entity_id = any(${sql.array(ctx.uatAuthorityIds)}::bigint[])`);
-  if (ctx.kind && role === "authority") parts.push(authorityKindCond(sql, ctx.kind, sql`ef.name_display`));
+  if (ctx.kind && role === "authority") parts.push(authorityKindCond(sql, ctx.kindIds!, sql`ef.entity_id`));
   return parts;
 }
 
@@ -302,7 +308,7 @@ export function displayPredicates(ctx: PredicateCtx, table: string): string[] {
   if (ctx.cpvExclude.length > 0)
     conds.push("not (" + ctx.cpvExclude.map((p) => `cpv_code like '${p}%'`).join(" or ") + ")  -- excluse din subiect");
   if (ctx.county) conds.push(`unaccent(county) ilike '${fold(ctx.county)}'`);
-  if (ctx.kind) conds.push(`-- doar ${KIND_LABEL[ctx.kind]} (filtru pe nume)`);
+  if (ctx.kind) conds.push(`authority_id in (…)  -- doar ${KIND_LABEL[ctx.kind]}: ${ctx.kindIds!.length.toLocaleString("ro-RO")} instituții (${KIND_SOURCE[ctx.kind]})`);
   const compare = ctx.comparison;
   if (ctx.authorityId) conds.push(compare ? `authority_id in (${ctx.authorityId}, ${compare.compareId})` : `authority_id = ${ctx.authorityId}`);
   if (ctx.supplierId) conds.push(compare && !ctx.authorityId ? `supplier_id in (${ctx.supplierId}, ${compare.compareId})` : `supplier_id = ${ctx.supplierId}`);

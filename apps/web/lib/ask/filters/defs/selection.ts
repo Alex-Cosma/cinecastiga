@@ -59,7 +59,9 @@ export const authorityKind: FilterDef<AuthorityKind> = {
   id: "authorityKind", keys: ["filters.authorityKind"], placement: "sentence", control: "list",
   label: "Tipul instituției", detail: "Comune, spitale, școli și altele.",
   windowTitle: "Ce instituții te interesează?", windowNote: "Poți privi toate instituțiile sau un singur tip.",
-  // A name pattern on the buyer (authorityKindCond, authority-kind.ts); on profiles, on an authority's own name only.
+  // The buyer's kind (authority-kind.ts, D1: town halls from the locality registry, hospitals with the clinical
+  // institutes, the rest by name) as a list of institution ids; on profiles, the authority's own id. One
+  // classification everywhere, so every kind is offered on every question, the profiles (scatter, entity_card) included.
   engine: { ...levels(TRANSACTION_FORMS, "row"), ...levels(PROFILE_FORMS, "profile") }, scope: alwaysScope("selection"),
   read: (spec) => spec.filters.authorityKind as AuthorityKind | undefined,
   write: (spec, value) => setFilters(spec, { authorityKind: value }),

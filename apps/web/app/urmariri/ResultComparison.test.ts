@@ -59,7 +59,8 @@ describe("human-readable monitoring result comparisons", () => {
     const bumped = { ...before, answer: { question: "trend-2", conditions: { kind: "kind-2" } } };
     expect(resultDifferences(...comparableMethodologies(before, bumped, "trend")).map(row => [row.context, row.field, row.before, row.after])).toEqual([
       ["Versiunea răspunsului", "Calculul întrebării", "trend-1", "trend-2"],
-      ["Versiunea răspunsului · Condiții cu versiune proprie", "kind", "kind-1", "kind-2"],
+      // D1 declares the kind (answer-core.ts KEY_VERSIONS): the condition is named by its label.
+      ["Versiunea răspunsului · Condiții cu versiune proprie", "Tipul instituției", "kind-1", "kind-2"],
     ]);
   });
 });

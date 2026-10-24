@@ -1,8 +1,8 @@
 import type { DbSql } from "@seap/db";
 import type { MinimumRecords, QueryPopulation } from "./population";
 import type { ScatterDensity, TableSort } from "./compile";
-import type { AuthorityKind } from "./spec";
-import { authorityKindCond, KIND_PATTERNS } from "./authority-kind";
+import { AUTHORITY_KINDS, type AuthorityKind } from "./spec";
+import { authorityKindCond } from "./authority-kind";
 import { employeesCond } from "./predicates";
 
 /**
@@ -22,9 +22,9 @@ import { employeesCond } from "./predicates";
  *   (closing_value > 0; DAs up to the 2M lei analysis ceiling, which binds
  *   every DA aggregate; contracts after their 1 bn ceiling), with exact sums;
  * - an id has one name in the marts and it equals entity_profile.name_display
- *   (182,687 ids, 0 differences), so the authority kind (authority-kind.ts,
- *   the one module of the live filter) is applied to entity_profile names and
- *   partner names are attached after aggregation.
+ *   (182,687 ids, 0 differences), so partner names are attached after
+ *   aggregation; the authority kind is the live filter's own list of ids
+ *   (authority-kind.ts, D1), applied to the rollup's authority id.
  *
  * What the rollups cannot answer (the planner returns the reason and the
  * engine runs its live query): months, CPV together with an entity condition
@@ -56,6 +56,8 @@ export interface RollupCtx {
   /** Canonical buyer county (d.county). */
   county: string | null;
   kind: AuthorityKind | null;
+  /** The institutions of that kind (authorityKindIds). */
+  kindIds: readonly string[] | null;
   authorityId: string | null;
   supplierId: string | null;
   /** Locality scope (grounding.uat), null when absent; its authority ids. */
@@ -79,7 +81,7 @@ export interface RollupCtx {
  * a condition refuses the rollups. The test walks this list.
  */
 export const ROLLUP_CTX_KEYS = [
-  "sql", "plafond", "population", "minimumRecords", "cpvPrefixes", "cpvExclude", "county", "kind",
+  "sql", "plafond", "population", "minimumRecords", "cpvPrefixes", "cpvExclude", "county", "kind", "kindIds",
   "authorityId", "supplierId", "uatSiruta", "uatAuthorityIds", "singleBidder", "minEmployees", "maxEmployees",
   "yearFrom", "yearTo", "monthFrom", "monthTo", "adminSupplierIds", "comparison",
 ] as const satisfies readonly ("sql" | keyof RollupCtx)[];
@@ -104,8 +106,9 @@ export interface RollupFilters {
   county: string | null;
   cpvPrefixes: readonly string[];
   cpvExclude: readonly string[];
-  /** The buyer's kind, applied to its entity_profile name (authorityKindCond). */
+  /** The buyer's kind and its institutions (authorityKindCond on the rollup's authority id). */
   kind: AuthorityKind | null;
+  kindIds: readonly string[] | null;
   employees: { min: number | null; max: number | null } | null;
   /** Explicit exclusions (population not_in); unknown ids are kept, as in populationSql. */
   excludeAuthorities: readonly string[];
@@ -151,13 +154,14 @@ export function planRollup(ctx: RollupCtx, need: RollupNeed): RollupPlan {
     return { reason: "named entity: its transaction index answers directly" };
   const dataset = DATASET[ctx.plafond];
   if (!dataset) return { reason: `plafond ${String(ctx.plafond)}: not in the rollups` };
-  if (ctx.kind && !(ctx.kind in KIND_PATTERNS)) return { reason: `kind ${ctx.kind}: no name rule` };
+  if (ctx.kind && (!(AUTHORITY_KINDS as readonly string[]).includes(ctx.kind) || !ctx.kindIds))
+    return { reason: `kind ${ctx.kind}: no list of institutions` };
   const excluded = populationExclusions(ctx.population);
   if (!excluded) return { reason: "population: only exclusions of institutions or firms are in the rollups" };
   const employees = ctx.minEmployees !== null || ctx.maxEmployees !== null ? { min: ctx.minEmployees, max: ctx.maxEmployees } : null;
   const filters: RollupFilters = {
     dataset, yearFrom: ctx.yearFrom, yearTo: ctx.yearTo, county: ctx.county,
-    cpvPrefixes: ctx.cpvPrefixes, cpvExclude: ctx.cpvExclude, kind: ctx.kind,
+    cpvPrefixes: ctx.cpvPrefixes, cpvExclude: ctx.cpvExclude, kind: ctx.kind, kindIds: ctx.kind ? ctx.kindIds : null,
     employees, excludeAuthorities: excluded.authority, excludeSuppliers: excluded.supplier,
     minimum: ctx.minimumRecords,
   };
@@ -212,13 +216,8 @@ function rollupWhere(sql: DbSql, source: RollupSource, f: RollupFilters, alias: 
   if (f.cpvExclude.length > 0)
     parts.push(sql`not (${f.cpvExclude.map((x) => sql`${p("cpv_code")} like ${x + "%"}`).reduce((a, b) => sql`${a} or ${b}`)})`);
   const authority = idColumn(sql, source, "authority", alias), supplier = idColumn(sql, source, "supplier", alias);
-  if (f.kind) {
-    // The live filter matches the transaction's authority_name; one name per id, equal to the profile's.
-    parts.push(sql`${authority!} in (
-      select ep.entity_id from marts.entity_profile ep
-      where ep.role = 'authority' and ${authorityKindCond(sql, f.kind, sql`ep.name_display`)}
-    )`);
-  }
+  // The live filter's list of institutions, on the rollup's authority id.
+  if (f.kind) parts.push(authorityKindCond(sql, f.kindIds!, authority!));
   // The live employees condition, on the rollup's firm id.
   if (f.employees) parts.push(employeesCond(sql, f.employees.min, f.employees.max, supplier!));
   if (f.excludeAuthorities.length)

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { DbSql } from "@seap/db";
 import type { Grounding } from "./ground";
 import { localityScopeError, transitionQuestion } from "./question-ui";
-import { NEWER_VERSION_LINK, validateSpec, type AskSpec } from "./spec";
+import { namedKind, NEWER_VERSION_LINK, validateSpec, type AskSpec } from "./spec";
 import { legacyCorpus } from "./fixtures/legacy-corpus";
 import { FIXTURE_IDENTITIES } from "./fixtures/golden-fixture";
 import { filterContext, formOf, PROFILE_FORMS } from "./filters/context";
@@ -52,8 +52,11 @@ function fakeGrounding(spec: AskSpec): Grounding {
   if (f.adminPersonKey || f.adminName) g.admin = { query: "q", personKey: "k", display: "P", supplierIds: ["9505"], nFirms: 1, alternatives: [] };
   return g;
 }
+/** The institutions of a kind, as authorityKindIds would read them (D1). */
+const KIND_IDS = ["9606", "9607"];
 const ctxFor = (spec: AskSpec): PredicateCtx =>
-  predicateContext(fake, spec, fakeGrounding(spec), { dataset: spec.dataset ?? "all", yearFrom: spec.filters.yearFrom ?? null, yearTo: spec.filters.yearTo ?? null });
+  predicateContext(fake, spec, fakeGrounding(spec), { dataset: spec.dataset ?? "all", yearFrom: spec.filters.yearFrom ?? null, yearTo: spec.filters.yearTo ?? null,
+    kindIds: namedKind(spec.filters.authorityKind) ? KIND_IDS : null });
 
 /** Each level's output on a spec, as the engine calls it (runSpec; runRows calls the same functions). */
 function levelsOf(spec: AskSpec): Record<"row" | "group" | "profile" | "display", string[]> {
@@ -156,7 +159,7 @@ describe("the conditions of a question", () => {
       "(d.cpv_code like $1)",
       "not (d.cpv_code like $1)",
       "d.county = $1",
-      "(lower(unaccent(d.authority_name)) like $1)",
+      "d.authority_id = any($1::bigint[])",
       "d.authority_id = $1",
       "d.supplier_id = $1",
       "d.authority_id = any($1::bigint[])",
@@ -171,8 +174,13 @@ describe("the conditions of a question", () => {
     expect(texts(rowPredicates(ctx)).slice(-2)).toEqual(['d.finalization_date >= $1 ["2024-03"]', 'd.finalization_date < $1 ["2025-07"]']);
     expect(texts(profilePredicates(ctx, "authority", 10))).toEqual([
       'ef.role = $1 ["authority"]', "ef.n_das >= $1 [10]", 'lower(unaccent(ef.county)) = $1 ["cluj"]',
-      'ef.entity_id = any($1::bigint[]) [["9404"]]', '(lower(unaccent(ef.name_display)) like $1) ["spital%"]',
+      'ef.entity_id = any($1::bigint[]) [["9404"]]', 'ef.entity_id = any($1::bigint[]) [["9606","9607"]]',
     ]);
+    // The kind is the list of its institutions (D1): the buyer's id on a record, as on a profile.
+    expect(texts(rowPredicates(ctx))[6]).toBe('d.authority_id = any($1::bigint[]) [["9606","9607"]]');
+    expect(displayPredicates(ctx, "T")).toContain("authority_id in (…)  -- doar spitale: 2 instituții (după nume, cu institutele clinice)");
+    // A kind is never dropped: a caller that did not read its institutions fails.
+    expect(() => predicateContext(fake, all, fakeGrounding(all), { dataset: "all", yearFrom: null, yearTo: null })).toThrow(/were not read/);
     // Firm profiles: the firm's own county, never the buyer's kind or locality.
     expect(texts(profilePredicates(ctx, "supplier", 20))).toEqual(['ef.role = $1 ["supplier"]', "ef.n_das >= $1 [20]", 'lower(unaccent(ef.county)) = $1 ["cluj"]']);
   });

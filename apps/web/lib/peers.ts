@@ -85,7 +85,7 @@ export async function getPeersInSnapshot(q:DbSql,raw:PeerInput,checkpoint:Connec
   if(method==="population"&&input.role!=="authority")throw new PeerError("Comparația după populație este disponibilă pentru administrațiile locale și județene.");
   await assertRoles(q,[input.entityId,...(input.members??[]).map(item=>item.id)],input.role);
   const populationIndex=input.role==="authority"?await readPopulationMappings(q):new Map<string,PeerPopulation>();
-  const focalPopulation=populationIndex.get(input.entityId);
+  const focalPopulation=populationIndex.get(input.entityId),focalKind=input.role==="authority"?await authorityPeerKind(q,entity.id):null;
   const selectedIds=method==="manual"?(input.members??[]).map(item=>item.id):nearestPopulationMembers(populationIndex,input.entityId,input.county).map(([id])=>id);
   const selectedEntities=await readConnectionEntities(q,selectedIds,input.role);
   for(const selected of input.members??[]){const item=selectedEntities.find(item=>item.id===selected.id);if(!item)throw new PeerError("O entitate aleasă nu mai este disponibilă.",409);assertConnectionIdentity(item,selected.identity);}
@@ -105,7 +105,7 @@ export async function getPeersInSnapshot(q:DbSql,raw:PeerInput,checkpoint:Connec
   if(method==="manual")descriptions[0]="Grup personalizat: membrii sunt aleși explicit de utilizator, fără un criteriu automat de populație, tip sau județ. Populația se afișează numai pentru administrațiile identificate sigur. Maximum 50 de alte entități.";
   const result:PeersResult={entity,focal:null,filters,suggested:{year:input.year===undefined,cpv:input.cpv===undefined},options:{years,divisions:divisions.map(row=>({code:String(row.code),label:String(row.label),rowCount:Number(row.row_count),totalExact:String(row.total_exact)})),
     counties:[...new Set([...populationIndex.values()].filter(item=>item.level===focalPopulation?.level).map(item=>item.county))].sort((a,b)=>a.localeCompare(b,"ro"))},
-    cohort:{count:selectedIds.length,minimumRecords:0,maximumRecords:0,authorityKind:input.role==="authority"?authorityPeerKind(entity.name):null,medianTotalExact:null,medianMeanRounded:null,enoughPeers:false,
+    cohort:{count:selectedIds.length,minimumRecords:0,maximumRecords:0,authorityKind:focalKind,medianTotalExact:null,medianMeanRounded:null,enoughPeers:false,
       status:method==="population"&&!focalPopulation?"unknown_population":selectedIds.length?"small_sample":"no_selection",excludedUnknownType:0,excludedUnknownCounty:0,observedMemberCount:0,missingPopulationCount:selectedIds.filter(id=>!populationIndex.has(id)).length},
     coverage:{focalUndatedRows:Number(coverage?.undated??0),focalYearMissingCpvRows:Number(coverage?.missing_cpv??0),unresolvedEntityRows:0},members:[],
     pagination:method==="manual"?{page:1,pageSize:PEER_MANUAL_LIMIT,totalPages:selectedIds.length?1:0,hasNext:false}:{page:input.page,pageSize:PEER_PAGE_SIZE,totalPages:Math.ceil(selectedIds.length/PEER_PAGE_SIZE),hasNext:input.page*PEER_PAGE_SIZE<selectedIds.length},checkpoint,

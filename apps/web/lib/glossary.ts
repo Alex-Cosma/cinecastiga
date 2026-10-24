@@ -181,6 +181,10 @@ export const GLOSSARY = {
     title: "Grup după activitate",
     text: "Grupul reunește entități cu un număr asemănător de înregistrări în selecție. Asta nu presupune firme egale ca mărime sau număr de angajați, nici bugete sau populații egale.",
   },
+  "tip-institutie": {
+    title: "Tipul instituției",
+    text: "Primăriile: după registrul localităților, în județul instituției. Spitalele (cu institutele clinice), școlile și consiliile județene: după nume, aproximativ; școlile includ școli de aviație, poliție sau pompieri. Un nume care se potrivește la două tipuri nu are tip.",
+  },
   mediana: {
     title: "Mediana",
     text: "Valoarea din mijloc după ordonare (sau media celor două din mijloc). Exclude entitatea analizată și membrii fără înregistrări.",

@@ -76,7 +76,8 @@ describe.skipIf(!url)("peer sources and immutable captures (isolated PostgreSQL)
   }
   it("freezes every cohort member and all exact allocation sources with readable export context",async()=>{
     const legacy=await withPeerEvidence(sql,selection,async(_,bound)=>bound);
-    expect(legacy.comparison.methodology.version).toBe("peers-1");
+    // D1: the activity method reads the kind of Întreabă (peers-2); the receipt keeps its shape.
+    expect(legacy.comparison.methodology.version).toBe("peers-2");
     expect(legacy.comparison.cohort).not.toHaveProperty("observedMemberCount");
     expect(legacy.comparison.filters).not.toHaveProperty("method");
     expect(legacy.comparison.focal).not.toHaveProperty("population");
