@@ -2136,7 +2136,8 @@ function buildDisplaySql(spec: AskSpec, w: PredicateCtx): string {
     case "distribution":
       return `select width_bucket(cri, 0, 1, 10) interval_risc, count(*)\nfrom marts.entity_flags\nwhere n_das >= ${RISK_MIN_DAS}\ngroup by 1;\n-- + poziția entității tale în distribuție`;
     case "breakdown":
-      return `select categoria_cpv, ${measure}\nfrom ${dtable}\nwhere ${where}\ngroup by categoria_cpv\norder by 2 desc;`;
+      // The slices are always ordered by value: a count measure from another question is not applied here.
+      return `select categoria_cpv, sum(closing_value)\nfrom ${dtable}\nwhere ${where}\ngroup by categoria_cpv\norder by 2 desc;`;
     case "scatter":
       return `select name_display, total_ron, cri, n_flags\nfrom marts.entity_flags\nwhere n_das >= ${RISK_MIN_DAS} and cri is not null;`;
     case "sankey":

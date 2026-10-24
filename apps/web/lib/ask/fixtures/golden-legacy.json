@@ -10920,7 +10920,7 @@
       "count": 0
      }
     },
-    "displaySql": "select categoria_cpv, count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'cluj'\ngroup by categoria_cpv\norder by 2 desc;"
+    "displaySql": "select categoria_cpv, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'cluj'\ngroup by categoria_cpv\norder by 2 desc;"
    },
    "sources": {
     "status": 200,
