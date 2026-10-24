@@ -129,6 +129,12 @@ export const andAll = (sql: DbSql, parts: readonly Fragment[]): Fragment => part
 export function populationSql(sql: DbSql, population?: QueryPopulation | null): Fragment {
   if (!population) return sql`true`;
   const combine = (parts: Fragment[], operator: "and" | "or") => parts.reduce((a, b) => operator === "and" ? sql`(${a} and ${b})` : sql`(${a} or ${b})`);
+  // Only included institutions and firms (a capture's entity, a relationship's pairs, chosen
+  // buyers): the whole selection can be read from the id indexes. An included list is never
+  // under a negation, so a missing id (null) leaves the row out as false does. Mixed with a
+  // condition no index serves, the selection is scanned anyway and keeps the coalesce form
+  // and its plans (measured: an OR with a county list got a slower page plan).
+  const idLists = population.groups.every((g) => g.conditions.every((c) => (c.field === "authority" || c.field === "supplier") && c.op === "in"));
   const condition = (c: PopulationCondition): Fragment => {
     if (c.field === "date") {
       return c.op === "gte" ? sql`substr(d.finalization_date, 1, 10) >= ${c.value}` : sql`substr(d.finalization_date, 1, 10) <= ${c.value}`;
@@ -141,6 +147,7 @@ export function populationSql(sql: DbSql, population?: QueryPopulation | null): 
       else if (c.field === "county") matches = sql`coalesce(lower(unaccent(d.county)) = any(${sql.array(c.values.map(v => v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()))}::text[]), false)`;
       else {
         const column = c.field === "authority" ? sql`d.authority_id` : sql`d.supplier_id`;
+        if (idLists) return sql`${column} = any(${sql.array(c.values)}::bigint[])`;
         matches = sql`coalesce(${column} = any(${sql.array(c.values)}::bigint[]), false)`;
       }
       return c.op === "not_in" ? sql`not (${matches})` : matches;
