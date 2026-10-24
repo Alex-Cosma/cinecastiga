@@ -1,11 +1,12 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { buildAskRollups, createDb, type DbSql } from "@seap/db";
-import { DA_PLAFOND_RON, KIND_PATTERNS, runSpec, TABLE_PAGE_SIZE, type BlockData } from "./compile";
+import { DA_PLAFOND_RON, runRows, runSpec, TABLE_PAGE_SIZE, type BlockData } from "./compile";
+import { sumDecimalStrings } from "./evidence";
 import {
-  compareParties, compareSharedPartners, compareTopPartners, planRollup, rollupBreakdown, rollupCountyTable, rollupMap, rollupStat,
-  rollupsReady, rollupTable, rollupTimeseries, rollupTrend, scatterDensity, type RollupNeed, type RollupParts,
+  compareParties, compareSharedPartners, compareTopPartners, forgetRollupsReady, planRollup, rollupBreakdown, rollupCountyTable, rollupMap,
+  rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrend, scatterDensity, type RollupCtx, type RollupNeed,
 } from "./rollups";
-import type { AskSpec } from "./spec";
+import { namedKind, type AskSpec } from "./spec";
 import type { Grounding } from "./ground";
 import type { QueryPopulation } from "./population";
 
@@ -31,12 +32,15 @@ function scoped(connection: DbSql, prefix: string): DbSql {
 // one without firm or CPV; contracts with a consortium split, an undated one, one without CPV.
 async function load(q: DbSql) {
   await q`insert into marts.national_stats (kind,year) values ('da',2024),('da',2025),('award',2024),('award',2025)`;
-  await q`insert into marts.entity_profile (entity_id,role,name_display,county,employees) values
-    (1,'authority','Spitalul Judetean Cluj','Cluj',null),(2,'authority','Comuna Feleacu','Cluj',null),
-    (3,'authority','Municipiul Iasi','Iasi',null),(4,'authority','Spitalul Clinic Iasi','Iasi',null),
-    (5,'authority','Autoritate fara judet',null,null),
-    (10,'supplier','Furnizor A','Bucuresti',5),(11,'supplier','Furnizor B','Cluj',50),(12,'supplier','Furnizor C','Iasi',3),
-    (13,'supplier','Furnizor D',null,null),(14,'supplier','Furnizor E','Ilfov',1)`;
+  // A firm's n_das + n_contracts are its records in every Ask aggregate (DAs up to the ceiling).
+  await q`insert into marts.entity_profile (entity_id,role,name_display,county,employees,n_das,n_contracts) values
+    (1,'authority','Spitalul Judetean Cluj','Cluj',null,0,0),(2,'authority','Comuna Feleacu','Cluj',null,0,0),
+    (3,'authority','Municipiul Iasi','Iasi',null,0,0),(4,'authority','Spitalul Clinic Iasi','Iasi',null,0,0),
+    (5,'authority','Autoritate fara judet',null,null,0,0),
+    (10,'supplier','Furnizor A','Bucuresti',5,4,1),(11,'supplier','Furnizor B','Cluj',50,2,2),(12,'supplier','Furnizor C','Iasi',3,2,1),
+    (13,'supplier','Furnizor D',null,null,2,1),(14,'supplier','Furnizor E','Ilfov',1,2,1)`;
+  // The transaction marts take their names from core.entities, and so does agg_entity_year.
+  await q`insert into core.entities (id, name_display, name_normalized) select entity_id, name_display, lower(name_display) from marts.entity_profile`;
   const names = `(select entity_id, name_display from marts.entity_profile)`;
   await q.unsafe(`insert into marts.da_transactions (sicap_da_id,da_code,authority_id,authority_name,supplier_id,supplier_name,county,cpv_code,closing_value,finalization_date)
     select v.id, 'DA'||v.id, v.a, an.name_display, v.s, sn.name_display, v.county, v.cpv, v.cv, v.dt
@@ -77,22 +81,28 @@ async function load(q: DbSql) {
     (16,'supplier','Furnizor G','Cluj',30,0.5,null,0,'[]'),(1,'authority','Spitalul Judetean Cluj','Cluj',20,4000,0.4,2,'[]')`;
 }
 
-const parts = (spec: AskSpec, g: Grounding): RollupParts => ({
-  dataset: spec.dataset ?? "all", yearFrom: spec.filters.yearFrom ?? null, yearTo: spec.filters.yearTo ?? null,
-  monthFrom: spec.filters.monthFrom ?? null, monthTo: spec.filters.monthTo ?? null, county: g.county?.canonical ?? null,
-  cpvPrefixes: g.cpv?.prefixes ?? [], cpvExclude: g.cpv?.excludePrefixes ?? [],
-  kindPatterns: spec.filters.authorityKind && spec.filters.authorityKind !== "local_admin" ? KIND_PATTERNS[spec.filters.authorityKind] : null,
-  authorityId: g.authority?.entityId ?? null, supplierId: g.supplier?.entityId ?? null, uatSiruta: null, adminSupplierIds: null,
-  minEmployees: spec.filters.minEmployees ?? null, maxEmployees: spec.filters.maxEmployees ?? null, singleBidder: false,
-  population: spec.population, minimumRecords: spec.minimumRecords,
-});
+/** predicateContext of the registry stage (lib/ask/predicates.ts), without sql, for these cases. */
+const ctxOf = (spec: AskSpec, g: Grounding): RollupCtx => {
+  if (spec.filters.authorityKind === "local_admin") throw new Error("local_admin is refused before the rollups");
+  const dataset = spec.dataset ?? "all";
+  return {
+    plafond: dataset === "contracts" ? "none" : dataset === "da" ? "strict" : "da-branch",
+    population: spec.population ?? null, minimumRecords: spec.minimumRecords ?? null,
+    cpvPrefixes: g.cpv?.prefixes ?? [], cpvExclude: g.cpv?.excludePrefixes ?? [], county: g.county?.canonical ?? null,
+    kind: namedKind(spec.filters.authorityKind) ?? null, authorityId: g.authority?.entityId ?? null, supplierId: g.supplier?.entityId ?? null,
+    uatSiruta: null, uatAuthorityIds: [], singleBidder: false,
+    minEmployees: spec.filters.minEmployees ?? null, maxEmployees: spec.filters.maxEmployees ?? null,
+    yearFrom: spec.filters.yearFrom ?? null, yearTo: spec.filters.yearTo ?? null,
+    monthFrom: spec.filters.monthFrom ?? null, monthTo: spec.filters.monthTo ?? null, adminSupplierIds: null, comparison: null,
+  };
+};
 const needOf = (spec: AskSpec): RollupNeed => spec.block === "table" || spec.block === "trend"
   ? (spec.dim === "county" ? { by: "county" } : { by: spec.dim ?? "authority" })
   : spec.block === "breakdown" ? { by: "cpv" } : { by: "total" };
 
 /** The engine's mapping of each live query result (compile.ts), applied to the rollup rows. */
 async function fromRollups(q: DbSql, spec: AskSpec, g: Grounding, sort?: "name" | "county"): Promise<{ source: string; data: BlockData }> {
-  const plan = planRollup(parts(spec, g), needOf(spec));
+  const plan = planRollup(ctxOf(spec, g), needOf(spec));
   if ("reason" in plan) throw new Error(plan.reason);
   const source = plan.source.table === "entity" ? `entity:${plan.source.role}` : plan.source.table;
   const num = (rows: { v: string; n: string }[]) => rows.map((r) => ({ value: Number(r.v), count: Number(r.n) }));
@@ -163,6 +173,10 @@ const CASES: { name: string; spec: AskSpec; g?: Grounding; source: string; sort?
   { name: "institutions buying from firms with 1–9 employees", spec: base("table", { topN: 10, dim: "authority" }, { minEmployees: 1, maxEmployees: 9 }), source: "pair" },
   { name: "firms selling to hospitals, 2024–2025", spec: base("table", { topN: 10 }, { authorityKind: "spital", yearFrom: 2024, yearTo: 2025 }), source: "pair" },
   { name: "institutions, firms with at least 2 records", spec: base("table", { topN: 10, dim: "authority", minimumRecords: { role: "supplier", count: 2 } }), source: "pair" },
+  // Every year and channel: the threshold list from the firms' profiles (10 and 11 have 4 or more).
+  { name: "institutions, firms with at least 4 records", spec: base("table", { topN: 10, dim: "authority", minimumRecords: { role: "supplier", count: 4 } }), source: "pair" },
+  { name: "total of firms with at least 4 records", spec: base("stat", { minimumRecords: { role: "supplier", count: 4 } }), source: "entity:supplier" },
+  { name: "firms with at least 2 records in 2025", spec: base("table", { topN: 10, minimumRecords: { role: "supplier", count: 2 } }, { yearFrom: 2025, yearTo: 2025 }), source: "entity:supplier" },
   { name: "firms, institutions with at least 3 records", spec: base("table", { topN: 10, minimumRecords: { role: "authority", count: 3 } }), source: "pair" },
   { name: "institutions with at least 3 records", spec: base("table", { topN: 10, dim: "authority", minimumRecords: { role: "authority", count: 3 } }), source: "entity:authority" },
   { name: "counties", spec: base("table", { dim: "county" }), source: "cpv" },
@@ -187,6 +201,15 @@ const CASES: { name: string; spec: AskSpec; g?: Grounding; source: string; sort?
   { name: "map of contracts, 2025", spec: base("map", { dataset: "contracts" }, { yearFrom: 2025, yearTo: 2025 }), source: "cpv" },
 ];
 
+const SOURCE_CASES: { name: string; spec: AskSpec; g?: Grounding; block: "stat" | "map" | "breakdown" | "timeseries" | "county" }[] = [
+  { name: "sources of the DAs of 2025", spec: base("stat", { dataset: "da" }, { yearFrom: 2025, yearTo: 2025 }), block: "stat" },
+  { name: "sources of everything", spec: base("stat"), block: "stat" },
+  { name: "sources of the map of contracts, 2025", spec: base("map", { dataset: "contracts" }, { yearFrom: 2025, yearTo: 2025 }), block: "map" },
+  { name: "sources of the breakdown in Cluj", spec: base("breakdown", {}, { county: "Cluj" }), g: CLUJ, block: "breakdown" },
+  { name: "sources of the years of contracts (one undated)", spec: base("timeseries", { dataset: "contracts" }), block: "timeseries" },
+  { name: "sources of the counties", spec: base("table", { dim: "county" }), block: "county" },
+];
+
 describe.runIf(Boolean(connection))("rollups give the live answers (dedicated rollback fixture)", () => {
   it("answers every rollup case exactly as runSpec, and compare and scatter as their live queries", async () => {
     expect(DA_PLAFOND_RON).toBe(2_000_000);
@@ -201,10 +224,13 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
         await tx.unsafe(`create table ${prefix}.entity_flags (like marts.entity_flags including all)`);
         const q = scoped(tx as unknown as DbSql, prefix);
         await load(q);
+        forgetRollupsReady();
         expect(await rollupsReady(q)).toBe(false);
         const report = await buildAskRollups(q);
         expect(report.rows).toEqual({ agg_entity_year: 29, agg_pair_year: 19, agg_cpv_year: 15 });
-        expect(await rollupsReady(scoped(tx as unknown as DbSql, prefix))).toBe(true);
+        expect(await rollupsReady(q)).toBe(false); // the process cache, 10 minutes
+        forgetRollupsReady();
+        expect(await rollupsReady(q)).toBe(true);
         // The ceiling: 2,000,000.00 counts, 2,000,000.01 does not, a zero never.
         const [ceiling] = await q`select count(*)::int n, sum(v)::text v from marts.agg_pair_year where authority_id in (2, 4) and supplier_id = 10`;
         expect(ceiling).toMatchObject({ n: 2, v: "3999999.99" });
@@ -220,6 +246,26 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
           const size = d.block === "table" ? d.rows.length : d.block === "trend" ? d.rowsTrend.length : d.block === "breakdown" ? d.slices.length
             : d.block === "map" ? d.counties.length : d.block === "timeseries" ? d.series.length : d.block === "stat" ? d.stat.count : 0;
           expect([c.name, size > 0]).toEqual([c.name, true]);
+        }
+
+        // The source drawer's totals (no local filter) of selections without entity conditions.
+        for (const c of SOURCE_CASES) {
+          const g = c.g ?? {};
+          const live = await runRows(q, c.spec, g, 0);
+          if ("error" in live) throw new Error(`${c.name}: ${live.error}`);
+          const plan = planRollup(ctxOf(c.spec, g), needOf(c.spec));
+          if ("reason" in plan) throw new Error(`${c.name}: ${plan.reason}`);
+          const r = await rollupSourceTotals(q, plan, c.block);
+          if ("reason" in r) throw new Error(`${c.name}: ${r.reason}`);
+          const byState = (rows: { state: string | null; count: number; value: string }[]) => [...rows].sort((a, b) => String(a.state).localeCompare(String(b.state)));
+          const rolled = {
+            sourceTotal: r.rows.reduce((n, x) => n + Number(x.n), 0), sourceValue: sumDecimalStrings(r.rows.map((x) => x.v)),
+            statuses: byState(r.rows.map((x) => ({ state: x.state, count: Number(x.n), value: x.v }))),
+            dateFrom: r.rows.map((x) => x.date_from).filter((d): d is string => d !== null).sort()[0]?.slice(0, 10) ?? null,
+            dateTo: r.rows.map((x) => x.date_to).filter((d): d is string => d !== null).sort().at(-1)?.slice(0, 10) ?? null,
+          };
+          expect([c.name, rolled]).toEqual([c.name, { sourceTotal: live.sourceTotal, sourceValue: live.sourceValue, statuses: byState(live.statuses), dateFrom: live.dateFrom, dateTo: live.dateTo }]);
+          expect([c.name, live.sourceTotal > 0]).toEqual([c.name, true]);
         }
 
         // compare: the two partner queries on the slim union, names attached after.
@@ -253,10 +299,12 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
         const scatter: AskSpec = { block: "scatter", measure: "value", dim: "supplier", filters: {} };
         const liveScatter = await runSpec(q, scatter, {});
         if ("error" in liveScatter || liveScatter.data.block !== "scatter") throw new Error("scatter expected");
-        const density = await scatterDensity(q, q`ef.role = ${"supplier"} and ef.n_das >= ${10}`);
+        const density = await scatterDensity(q, q`ef.role = ${"supplier"} and ef.n_das >= ${10}`, true);
         expect(density).toBeDefined();
         const cells = (d: typeof density) => d && { ...d, cells: [...d.cells].sort((a, b) => a[0] - b[0] || a[1] - b[1]) };
         expect(cells(density)).toEqual(cells(liveScatter.data.density));
+        const live = await scatterDensity(q, q`ef.role = ${"supplier"} and ef.n_das >= ${10}`, false);
+        expect(cells(live)).toEqual(cells(liveScatter.data.density));
         const [stored] = await q`select count(*)::int n from marts.entity_flags where log_total_ron is distinct from log(greatest(coalesce(total_ron, 0), 1))`;
         expect(stored!.n).toBe(0);
         throw rollback;

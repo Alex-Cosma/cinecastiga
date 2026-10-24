@@ -1,6 +1,8 @@
 import type { DbSql } from "@seap/db";
 import type { MinimumRecords, QueryPopulation } from "./population";
 import type { ScatterDensity, TableSort } from "./compile";
+import type { AuthorityKind } from "./spec";
+import { authorityKindCond, KIND_PATTERNS } from "./authority-kind";
 
 /**
  * Answers from the rollups of the nightly build (packages/db/src/ask-rollups.ts)
@@ -18,44 +20,74 @@ import type { ScatterDensity, TableSort } from "./compile";
  *   (closing_value > 0; DAs up to the 2M lei analysis ceiling, which binds
  *   every DA aggregate; contracts after their 1 bn ceiling), with exact sums;
  * - an id has one name in the marts and it equals entity_profile.name_display
- *   (182,687 ids, 0 differences), so the authority kind is applied to
- *   entity_profile names and partner names are attached after aggregation.
+ *   (182,687 ids, 0 differences), so the authority kind (authority-kind.ts,
+ *   the one module of the live filter) is applied to entity_profile names and
+ *   partner names are attached after aggregation.
  *
  * What the rollups cannot answer (the planner returns the reason and the
  * engine runs its live query): months, CPV together with an entity condition
  * or an entity ranking, a single bidder, a named authority, firm, locality or
  * administrator (their indexes already answer in milliseconds), population
  * conditions other than excluding authorities or firms, per-capita rankings,
- * and name or county sorts on a cross-role selection.
+ * name or county sorts on a cross-role selection, and any condition the
+ * planner does not know (it fails closed).
  */
 
 type Fragment = ReturnType<DbSql>;
 type Role = "authority" | "supplier";
 
-/** The resolved selection of runSpec (WhereParts + spec), reduced to plain values. */
-export interface RollupParts {
-  dataset: "all" | "da" | "contracts";
+/**
+ * The conditions of a question, as the planner reads them: the fields of
+ * PredicateCtx (lib/ask/predicates.ts of the registry stage) without `sql`,
+ * so the wiring passes predicateContext(…) unchanged. A key the planner does
+ * not know refuses the rollups when it holds a condition (planRollup), so a
+ * filter added to the context later falls back to the live query instead of
+ * being dropped.
+ */
+export interface RollupCtx {
+  /** "da-branch" = both channels, "strict" = direct acquisitions, "none" = contracts. */
+  plafond: "none" | "strict" | "da-branch";
+  population: QueryPopulation | null;
+  minimumRecords: MinimumRecords | null;
+  cpvPrefixes: readonly string[];
+  cpvExclude: readonly string[];
+  /** Canonical buyer county (d.county). */
+  county: string | null;
+  kind: AuthorityKind | null;
+  authorityId: string | null;
+  supplierId: string | null;
+  /** Locality scope (grounding.uat), null when absent; its authority ids. */
+  uatSiruta: number | null;
+  uatAuthorityIds: readonly string[];
+  singleBidder: boolean;
+  minEmployees: number | null;
+  maxEmployees: number | null;
+  /** After the clamp to the archive (null = every year). */
   yearFrom: number | null;
   yearTo: number | null;
   monthFrom: number | null;
   monthTo: number | null;
-  /** Canonical buyer county (d.county). */
-  county: string | null;
-  cpvPrefixes: readonly string[];
-  cpvExclude: readonly string[];
-  /** KIND_PATTERNS[kind] of the authority kind, unfolded, or null. */
-  kindPatterns: readonly string[] | null;
-  authorityId: string | null;
-  supplierId: string | null;
-  /** Locality scope (grounding.uat), null when absent. */
-  uatSiruta: number | null;
   adminSupplierIds: readonly string[] | null;
-  minEmployees: number | null;
-  maxEmployees: number | null;
-  singleBidder: boolean;
-  population?: QueryPopulation | undefined;
-  minimumRecords?: MinimumRecords | undefined;
+  comparison: { role: Role; focalId: string | null; compareId: string | null } | null;
 }
+
+/**
+ * Every key of RollupCtx (and `sql` of PredicateCtx, which is no condition).
+ * planRollup translates or refuses each of these by name; any other key holding
+ * a condition refuses the rollups. The test walks this list.
+ */
+export const ROLLUP_CTX_KEYS = [
+  "sql", "plafond", "population", "minimumRecords", "cpvPrefixes", "cpvExclude", "county", "kind",
+  "authorityId", "supplierId", "uatSiruta", "uatAuthorityIds", "singleBidder", "minEmployees", "maxEmployees",
+  "yearFrom", "yearTo", "monthFrom", "monthTo", "adminSupplierIds", "comparison",
+] as const satisfies readonly ("sql" | keyof RollupCtx)[];
+const KNOWN_KEYS = new Set<string>(ROLLUP_CTX_KEYS);
+
+/** A context value that restricts the selection: not null, undefined, false or an empty list. */
+const holdsCondition = (value: unknown) =>
+  value !== null && value !== undefined && value !== false && !(Array.isArray(value) && value.length === 0);
+
+const DATASET = { "da-branch": "all", strict: "da", none: "contracts" } as const;
 
 /** What the block groups by: an entity role (table/trend), county, the channel/year/county of a total, or CPV stems. */
 export type RollupNeed = { by: Role } | { by: "county" } | { by: "total" } | { by: "cpv" };
@@ -70,8 +102,8 @@ export interface RollupFilters {
   county: string | null;
   cpvPrefixes: readonly string[];
   cpvExclude: readonly string[];
-  /** Folded LIKE patterns on the buyer's entity_profile name. */
-  kind: readonly string[] | null;
+  /** The buyer's kind, applied to its entity_profile name (authorityKindCond). */
+  kind: AuthorityKind | null;
   employees: { min: number | null; max: number | null } | null;
   /** Explicit exclusions (population not_in); unknown ids are kept, as in populationSql. */
   excludeAuthorities: readonly string[];
@@ -81,13 +113,8 @@ export interface RollupFilters {
 
 export type RollupPlan = { source: RollupSource; filters: RollupFilters } | { reason: string };
 
-/** Same folding as compile.ts fold(): KIND_PATTERNS are compared with lower(unaccent(name)). */
-function fold(s: string): string {
-  return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
-}
-
 /** Excluded ids per role, when the population is only "and" groups of authority/firm exclusions. */
-function populationExclusions(population: QueryPopulation | undefined): { authority: string[]; supplier: string[] } | null {
+function populationExclusions(population: QueryPopulation | null): { authority: string[]; supplier: string[] } | null {
   const out = { authority: [] as string[], supplier: [] as string[] };
   if (!population) return out;
   // A one-condition group reads the same under either operator.
@@ -109,21 +136,28 @@ function populationExclusions(population: QueryPopulation | undefined): { author
  * agg_entity_year; any condition or threshold on the other role on
  * agg_pair_year; totals without entity conditions on agg_cpv_year. A total
  * with an exclusion keeps rows whose id is unknown, so it needs the pair rows.
+ * Fails closed: a context key outside ROLLUP_CTX_KEYS that holds a condition
+ * (a filter of a later stage) returns its name as the reason.
  */
-export function planRollup(parts: RollupParts, need: RollupNeed): RollupPlan {
-  if (parts.monthFrom !== null || parts.monthTo !== null) return { reason: "months: the rollups keep whole years" };
-  if (parts.singleBidder) return { reason: "single bidder: not in the rollups" };
-  if (parts.authorityId || parts.supplierId || parts.uatSiruta !== null || parts.adminSupplierIds)
+export function planRollup(ctx: RollupCtx, need: RollupNeed): RollupPlan {
+  for (const [key, value] of Object.entries(ctx))
+    if (!KNOWN_KEYS.has(key) && holdsCondition(value)) return { reason: `${key}: a condition the rollups do not know` };
+  if (ctx.comparison) return { reason: "comparison: its own queries (compareParties …)" };
+  if (ctx.monthFrom !== null || ctx.monthTo !== null) return { reason: "months: the rollups keep whole years" };
+  if (ctx.singleBidder) return { reason: "single bidder: not in the rollups" };
+  if (ctx.authorityId || ctx.supplierId || ctx.uatSiruta !== null || ctx.uatAuthorityIds.length > 0 || ctx.adminSupplierIds)
     return { reason: "named entity: its transaction index answers directly" };
-  const excluded = populationExclusions(parts.population);
+  const dataset = DATASET[ctx.plafond];
+  if (!dataset) return { reason: `plafond ${String(ctx.plafond)}: not in the rollups` };
+  if (ctx.kind && !(ctx.kind in KIND_PATTERNS)) return { reason: `kind ${ctx.kind}: no name rule` };
+  const excluded = populationExclusions(ctx.population);
   if (!excluded) return { reason: "population: only exclusions of institutions or firms are in the rollups" };
-  const employees = parts.minEmployees !== null || parts.maxEmployees !== null ? { min: parts.minEmployees, max: parts.maxEmployees } : null;
+  const employees = ctx.minEmployees !== null || ctx.maxEmployees !== null ? { min: ctx.minEmployees, max: ctx.maxEmployees } : null;
   const filters: RollupFilters = {
-    dataset: parts.dataset, yearFrom: parts.yearFrom, yearTo: parts.yearTo, county: parts.county,
-    cpvPrefixes: parts.cpvPrefixes, cpvExclude: parts.cpvExclude,
-    kind: parts.kindPatterns ? parts.kindPatterns.map(fold) : null,
+    dataset, yearFrom: ctx.yearFrom, yearTo: ctx.yearTo, county: ctx.county,
+    cpvPrefixes: ctx.cpvPrefixes, cpvExclude: ctx.cpvExclude, kind: ctx.kind,
     employees, excludeAuthorities: excluded.authority, excludeSuppliers: excluded.supplier,
-    minimum: parts.minimumRecords ?? null,
+    minimum: ctx.minimumRecords,
   };
   const sides = new Set<Role>();
   if (filters.kind || filters.excludeAuthorities.length) sides.add("authority");
@@ -178,10 +212,13 @@ function rollupWhere(sql: DbSql, source: RollupSource, f: RollupFilters, alias: 
   const authority = idColumn(sql, source, "authority", alias), supplier = idColumn(sql, source, "supplier", alias);
   if (f.kind) {
     // The live filter matches the transaction's authority_name; one name per id, equal to the profile's.
-    const ors = f.kind.map((x) => sql`lower(unaccent(ep.name_display)) like ${x}`).reduce((a, b) => sql`${a} or ${b}`);
-    parts.push(sql`${authority!} in (select ep.entity_id from marts.entity_profile ep where ep.role = 'authority' and (${ors}))`);
+    parts.push(sql`${authority!} in (
+      select ep.entity_id from marts.entity_profile ep
+      where ep.role = 'authority' and ${authorityKindCond(sql, f.kind, sql`ep.name_display`)}
+    )`);
   }
   if (f.employees) {
+    // The semi-join of the live employees condition (employeesCond of predicates.ts) on the rollup's firm id.
     const { min, max } = f.employees;
     const bounds = min !== null && max !== null ? sql`ep.employees between ${min} and ${max}`
       : min !== null ? sql`ep.employees >= ${min}` : sql`ep.employees <= ${max!}`;
@@ -197,34 +234,53 @@ function rollupWhere(sql: DbSql, source: RollupSource, f: RollupFilters, alias: 
   if (f.minimum) {
     // minimumRecordsSql: the parties with at least N records in the same selection.
     const role = f.minimum.role;
-    const inner: RollupSource = [f.kind || f.excludeAuthorities.length ? "authority" : null, f.employees || f.excludeSuppliers.length ? "supplier" : null]
-      .every((side) => side === null || side === role) ? { table: "entity", role } : { table: "pair" };
-    const innerAlias = `${alias}m`;
-    const party = idColumn(sql, inner, role, innerAlias)!;
-    const innerWhere = rollupWhere(sql, inner, { ...f, minimum: null }, innerAlias, opts);
-    parts.push(sql`${idColumn(sql, source, role, alias)!} in (
-      select ${party} from ${fromSource(sql, inner, innerAlias)}
-      where ${innerWhere} and ${party} is not null
-      group by ${party} having sum(${sql(innerAlias)}.n) >= ${f.minimum.count}
-    )`);
+    const target = idColumn(sql, source, role, alias)!;
+    const everything = f.dataset === "all" && (opts.years === false || (f.yearFrom === null && f.yearTo === null)) && !f.county
+      && !f.cpvPrefixes.length && !f.cpvExclude.length && !f.kind && !f.employees && !f.excludeAuthorities.length && !f.excludeSuppliers.length;
+    if (everything && role === "supplier") {
+      // Over every year and channel a firm's records are n_das + n_contracts of its profile
+      // (equal for all 163,158 firms on 24 Oct 2026; not for institutions, whose profile
+      // counts a contract once): the threshold list without grouping 1.7M rollup rows in
+      // every parallel worker (3.6 s at 4 MB work_mem, 0.96 s at 64 MB).
+      parts.push(sql`${target} in (
+        select ep.entity_id from marts.entity_profile ep
+        where ep.role = 'supplier' and ep.n_das + ep.n_contracts >= ${f.minimum.count}
+      )`);
+    } else {
+      const inner: RollupSource = [f.kind || f.excludeAuthorities.length ? "authority" : null, f.employees || f.excludeSuppliers.length ? "supplier" : null]
+        .every((side) => side === null || side === role) ? { table: "entity", role } : { table: "pair" };
+      const innerAlias = `${alias}m`;
+      const party = idColumn(sql, inner, role, innerAlias)!;
+      const innerWhere = rollupWhere(sql, inner, { ...f, minimum: null }, innerAlias, opts);
+      parts.push(sql`${target} in (
+        select ${party} from ${fromSource(sql, inner, innerAlias)}
+        where ${innerWhere} and ${party} is not null
+        group by ${party} having sum(${sql(innerAlias)}.n) >= ${f.minimum.count}
+      )`);
+    }
   }
   return parts.length ? parts.reduce((a, b) => sql`${a} and ${b}`) : sql`true`;
 }
 
-/** Rollups present (they appear with the first nightly build of this code). Cached per connection for 10 minutes. */
-const readyCache = new WeakMap<DbSql, { ok: boolean; at: number }>();
+/**
+ * Rollups present (they appear with the first nightly build of this code).
+ * Cached for 10 minutes in the process (one database per process), not per
+ * DbSql: postgres.js makes a new one for every transaction, so a cache keyed
+ * on the transaction never hit. Call it with the pool, before sql.begin.
+ */
+let ready: { ok: boolean; at: number } | null = null;
 export async function rollupsReady(sql: DbSql): Promise<boolean> {
-  const hit = readyCache.get(sql);
-  if (hit && Date.now() - hit.at < 600_000) return hit.ok;
+  if (ready && Date.now() - ready.at < 600_000) return ready.ok;
   const [row] = (await sql`
     select to_regclass('marts.agg_entity_year') is not null
        and to_regclass('marts.agg_pair_year') is not null
        and to_regclass('marts.agg_cpv_year') is not null ok
   `) as unknown as { ok: boolean }[];
-  const ok = Boolean(row?.ok);
-  readyCache.set(sql, { ok, at: Date.now() });
-  return ok;
+  ready = { ok: Boolean(row?.ok), at: Date.now() };
+  return ready.ok;
 }
+/** Tests only: forget the probe, so the next call reads the database. */
+export function forgetRollupsReady(): void { ready = null; }
 
 export interface RollupTableOpts {
   dim: Role;
@@ -242,8 +298,10 @@ export interface RollupTableRow { id: string; nm: string; co: string | null; v: 
 /**
  * case "table", dim authority/supplier, value or count measure: the live
  * ranking (topg + entity_profile names) on a rollup. `total` is the paged
- * count (count(distinct id)), null when not paged. Name and county sorts read
- * the rollup's own names, so they need agg_entity_year.
+ * count (count(distinct id) live), null when not paged: on the value/count
+ * path it is `te` of the first row (the ranked ids, counted by the same
+ * query), read separately only for a page past the end. Name and county
+ * sorts read the rollup's own names, so they need agg_entity_year.
  */
 export async function rollupTable(sql: DbSql, plan: { source: RollupSource; filters: RollupFilters }, o: RollupTableOpts):
   Promise<{ rows: RollupTableRow[]; total: number | null } | { reason: string }> {
@@ -255,10 +313,9 @@ export async function rollupTable(sql: DbSql, plan: { source: RollupSource; filt
   const dir = o.dir === "asc" ? sql`asc nulls first` : sql`desc nulls last`;
   const order = o.sort ? dir : sql`desc`;
   const sortKey = o.sort ?? (o.measure === "count" ? "count" : "value");
-  const cnt = o.paged
-    ? ((await sql`select count(distinct ${id}) t from ${fromSource(sql, source, "p")} where ${where} and ${id} is not null`) as unknown as { t: string }[])
-    : null;
-  const total = cnt ? Number(cnt[0]?.t ?? 0) : null;
+  const count = async () => Number(((await sql`
+    select count(distinct ${id}) t from ${fromSource(sql, source, "p")} where ${where} and ${id} is not null
+  `) as unknown as { t: string }[])[0]?.t ?? 0);
   if (sortKey === "value" || sortKey === "count" || sortKey === "percap") {
     const aggSort = sortKey === "count" ? sql`n` : sql`v`;
     const rows = (await sql`
@@ -280,9 +337,11 @@ export async function rollupTable(sql: DbSql, plan: { source: RollupSource; filt
       group by t.id, t.v, t.n, t.tv, t.tn, t.te
       order by ${sortKey === "count" ? sql`t.n` : sql`t.v`} ${order}, t.id
     `) as unknown as RollupTableRow[];
-    return { rows, total };
+    if (!o.paged) return { rows, total: null };
+    return { rows, total: rows[0]?.te !== undefined ? Number(rows[0].te) : await count() };
   }
   if (source.table !== "entity") return { reason: "name and county sorts need the rollup's names (agg_entity_year)" };
+  const total = o.paged ? await count() : null;
   const sortFrag = sortKey === "name" ? sql`g.nm` : sql`ep.county`;
   const rows = (await sql`
     with g as (
@@ -424,6 +483,51 @@ export async function rollupMap(sql: DbSql, plan: { source: RollupSource; filter
 }
 
 /**
+ * The source drawer's totals (runRows `totals`: per state, records, value and
+ * the first and last finalization date) of a selection without entity
+ * conditions, from agg_cpv_year's d0/d1, when the drawer has no local filter
+ * (search, channel, state): then fn/fv equal n/v. The state of a DA row is
+ * 'Oferta acceptata' and of a contract null, as in the drawer's union, so the
+ * groups are the channels. `block` adds the condition the drawer adds for its
+ * block (map: a county; breakdown: a CPV code; timeseries: a dated row; a
+ * county ranking: a county). Other blocks (rankings of entities, network,
+ * profiles) are not served. sources:stat-da-2025: 1.57–2.19 s live, 0.05 s here.
+ */
+export async function rollupSourceTotals(sql: DbSql, plan: { source: RollupSource; filters: RollupFilters },
+  block: "stat" | "map" | "breakdown" | "timeseries" | "county"):
+  Promise<{ rows: { state: string | null; n: string; v: string; fn: string; fv: string; date_from: string | null; date_to: string | null }[] } | { reason: string }> {
+  if (plan.source.table !== "cpv") return { reason: "source totals read agg_cpv_year only" };
+  const where = rollupWhere(sql, plan.source, plan.filters, "p");
+  const own = block === "map" || block === "county" ? sql`p.county is not null`
+    : block === "breakdown" ? sql`p.cpv_code is not null`
+    : block === "timeseries" ? sql`p.y ~ '^[0-9]{4}$'` : sql`true`;
+  const rows = (await sql`
+    select case when p.src = 'da' then 'Oferta acceptata' end state,
+           sum(p.n)::bigint::text n, coalesce(sum(p.v), 0)::text v, sum(p.n)::bigint::text fn, coalesce(sum(p.v), 0)::text fv,
+           min(p.d0) date_from, max(p.d1) date_to
+    from marts.agg_cpv_year p where ${where} and ${own}
+    group by p.src
+  `) as unknown as { state: string | null; n: string; v: string; fn: string; fv: string; date_from: string | null; date_to: string | null }[];
+  return { rows };
+}
+
+/**
+ * The map's county card on the unfiltered maps (agg_map_county_top, built with
+ * agg_map_county): per county, its total and the largest buyer and record of
+ * one scope ('plaf' = the 2M DA ceiling, as every Ask aggregate) and channel.
+ * Filtered maps compute the card live (or the buyer from agg_entity_year).
+ */
+export async function mapCountyTop(sql: DbSql, o: { scope: "plaf" | "all"; channel: "all" | "da" | "contracts" }):
+  Promise<{ county: string; v: string; n: string; top_buyer_id: string | null; top_buyer_name: string | null; top_buyer_v: string | null;
+    top_buyer_n: string | null; top_record_src: "da" | "contracts" | null; top_record_id: string | null; top_record_v: string | null }[]> {
+  return (await sql`
+    select county, v::text, n::text, top_buyer_id::text, top_buyer_name, top_buyer_v::text, top_buyer_n::text,
+           top_record_src, top_record_id::text, top_record_v::text
+    from marts.agg_map_county_top where scope = ${o.scope} and channel = ${o.channel} order by v desc, county
+  `) as unknown as Awaited<ReturnType<typeof mapCountyTop>>;
+}
+
+/**
  * case "compare", three of its nine queries. The other four transaction
  * queries (streams, years, domains, joint) stay as they are: with
  * da_tx_supplier_cover_idx / da_tx_authority_cover_idx they read the index
@@ -494,26 +598,16 @@ export async function compareSharedPartners(sql: DbSql, c: CompareQueryParts):
   `) as unknown as { other_id: string; name: string | null; value_a: string; n_a: number; value_b: string; n_b: number; total: number }[];
 }
 
-/** marts.entity_flags.log_total_ron exists (migration 0085). Cached per connection once true. */
-const logColumn = new WeakMap<DbSql, boolean>();
-async function hasLogTotal(sql: DbSql): Promise<boolean> {
-  if (logColumn.get(sql)) return true;
-  const [row] = (await sql`
-    select exists (select 1 from pg_attribute
-      where attrelid = to_regclass('marts.entity_flags') and attname = 'log_total_ron' and not attisdropped) ok
-  `) as unknown as { ok: boolean }[];
-  if (row?.ok) logColumn.set(sql, true);
-  return Boolean(row?.ok);
-}
-
 /**
  * case "scatter", the density layer: the live extent and cells queries with the
  * stored log_total_ron (the same expression, computed by PostgreSQL at insert)
  * instead of log() on every read; the live expression until 0085 is applied.
- * `where` is efWhere(role, RISK_MIN_DAS) of compile.ts; the cri condition is added here, as live.
+ * `where` is efWhere(role, RISK_MIN_DAS) of compile.ts; the cri condition is
+ * added here, as live. `logTotal` is martColumns(pool).logTotal, read before
+ * the answer's transaction.
  */
-export async function scatterDensity(sql: DbSql, where: Fragment, nx = 80, ny = 46): Promise<ScatterDensity | undefined> {
-  const x = (await hasLogTotal(sql)) ? sql`ef.log_total_ron` : sql`log(greatest(coalesce(ef.total_ron, 0), 1))`;
+export async function scatterDensity(sql: DbSql, where: Fragment, logTotal: boolean, nx = 80, ny = 46): Promise<ScatterDensity | undefined> {
+  const x = logTotal ? sql`ef.log_total_ron` : sql`log(greatest(coalesce(ef.total_ron, 0), 1))`;
   const ext = (await sql`
     select min(${x}) mn, max(${x}) mx, count(*) n
     from marts.entity_flags ef
