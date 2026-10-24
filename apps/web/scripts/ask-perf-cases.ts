@@ -8,6 +8,7 @@
  */
 import { defaultQuestion, QUESTION_TYPES, transitionQuestion, type QuestionSpec } from "../lib/ask/question-ui";
 import { validateSpec, type AskSpec, type Block } from "../lib/ask/spec";
+import { writeFocal } from "../lib/ask/filters/registry";
 import type { EvidenceScope } from "../lib/ask/evidence";
 
 export type PerfPath = "answer" | "rows" | "csv";
@@ -41,6 +42,12 @@ export const PERF_ENTITIES = {
 type Edit = (q: QuestionSpec) => void;
 const firm = (e: { id: number; name: string } = PERF_ENTITIES.selgros): Edit => (q) => { q.filters.supplierName = e.name; q.filters.supplierId = e.id; };
 const buyer = (e: { id: number; name: string } = PERF_ENTITIES.clujNapoca): Edit => (q) => { q.filters.authorityName = e.name; q.filters.authorityId = e.id; };
+/** The builder's focal picker (pickEntity, registry writeFocal): the entity, and the answer's role with it. */
+const focal = (role: "authority" | "supplier", e: { id: number; name: string } = role === "authority" ? PERF_ENTITIES.clujNapoca : PERF_ENTITIES.selgros): Edit => (q) => {
+  const next = writeFocal(q, role, { name: e.name, id: e.id });
+  q.filters = next.filters;
+  if (next.dim) q.dim = next.dim;
+};
 const years = (from: number, to: number = from): Edit => (q) => { q.filters.yearFrom = from; q.filters.yearTo = to; };
 const set = (filters: QuestionSpec["filters"]): Edit => (q) => { Object.assign(q.filters, filters); };
 const top = (spec: Partial<Omit<QuestionSpec, "filters">>): Edit => (q) => { Object.assign(q, spec); };
@@ -74,12 +81,12 @@ function perfCase(
  * years of the trend (the owner's 2025 → 2026 example).
  */
 const CATALOG_CHOICES: Partial<Record<Block, { note: string; edit: Edit }>> = {
-  compare: { note: "SELGROS cu DEDEMAN", edit: all(firm(), set({ compareWith: PERF_ENTITIES.dedeman.name, compareWithId: PERF_ENTITIES.dedeman.id })) },
+  compare: { note: "SELGROS cu DEDEMAN", edit: all(focal("supplier"), set({ compareWith: PERF_ENTITIES.dedeman.name, compareWithId: PERF_ENTITIES.dedeman.id })) },
   trend: { note: "firme, 2025 → 2026", edit: years(2025, 2026) },
-  network: { note: "SELGROS", edit: firm() },
-  sankey: { note: "SELGROS", edit: firm() },
+  network: { note: "SELGROS", edit: focal("supplier") },
+  sankey: { note: "SELGROS", edit: focal("supplier") },
   fact_check: { note: "Cluj-Napoca × SELGROS", edit: all(buyer(), firm()) },
-  distribution: { note: "Municipiul Cluj-Napoca", edit: buyer() },
+  distribution: { note: "Municipiul Cluj-Napoca", edit: focal("authority") },
 };
 
 const SELGROS_ROW: EvidenceScope = { entityIds: [String(PERF_ENTITIES.selgros.id)], role: "supplier" };
@@ -132,8 +139,8 @@ export function perfCases(): PerfCase[] {
     perfCase("sources:trend-2025-2026", "sources", "Sursele trendului 2025 → 2026", "trend", years(2025, 2026), { path: "rows", barMs: 2000, ref: "Surse trend (ambii ani)" }),
     perfCase("sources:trend-2025-2026-selgros-row", "sources", "„Înregistrări →” pe rândul SELGROS al trendului 2025 → 2026", "trend", years(2025, 2026), { path: "rows", scope: SELGROS_ROW, ref: "„Înregistrări →” pe un singur rând" }),
     perfCase("sources:table-cluj", "sources", "Sursele clasamentului din Cluj", "table", set({ county: "Cluj" }), { path: "rows" }),
-    perfCase("sources:network-selgros", "sources", "Sursele rețelei SELGROS", "network", firm(), { path: "rows" }),
-    perfCase("sources:distribution-cluj-napoca", "sources", "Sursele profilului Municipiului Cluj-Napoca", "distribution", buyer(),
+    perfCase("sources:network-selgros", "sources", "Sursele rețelei SELGROS", "network", focal("supplier"), { path: "rows" }),
+    perfCase("sources:distribution-cluj-napoca", "sources", "Sursele profilului Municipiului Cluj-Napoca", "distribution", focal("authority"),
       { path: "rows", scope: { entityIds: [String(PERF_ENTITIES.clujNapoca.id)], role: "authority" } }),
     // The source paths whose conditions F0 moved into lib/ask/predicates.ts: the DA bound
     // on direct acquisitions only, a comparison, and a profile population chosen by kind.
