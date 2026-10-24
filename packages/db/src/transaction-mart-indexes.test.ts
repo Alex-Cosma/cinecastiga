@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { TRANSACTION_MART_INDEXES } from './transaction-mart-indexes.js';
+import { readdirSync } from 'node:fs';
+import { TRANSACTION_MART_BUILD_INDEXES, TRANSACTION_MART_INDEXES } from './transaction-mart-indexes.js';
 
 const migrations = new URL('../migrations/', import.meta.url);
 const statements = (file: string) => readFileSync(new URL(file, migrations), 'utf8')
@@ -30,6 +31,27 @@ describe('covering indexes of the transaction marts (marts audit, 24 October 202
     const at = journal.entries.findIndex(entry => entry.tag === '0084_transaction_mart_covering_indexes');
     expect(journal.entries[at]?.idx).toBe(84);
     // The migrator skips a migration older than the newest applied one.
+    expect(journal.entries[at]!.when).toBeGreaterThan(journal.entries[at - 1]!.when);
+  });
+
+  it('keeps the covering twins out of the migrations: the DA build drops and builds them', () => {
+    expect(TRANSACTION_MART_BUILD_INDEXES.map(index => index.name)).toEqual(['da_tx_supplier_cover_idx', 'da_tx_authority_cover_idx']);
+    for (const index of TRANSACTION_MART_BUILD_INDEXES)
+      expect(index.definition.startsWith(`CREATE INDEX ${index.name} ON marts.${index.table} USING btree (`)).toBe(true);
+    const names = [...TRANSACTION_MART_INDEXES, ...TRANSACTION_MART_BUILD_INDEXES].map(index => index.name);
+    expect(new Set(names).size).toBe(names.length);
+    for (const file of readdirSync(migrations).filter(name => name.endsWith('.sql')))
+      for (const index of TRANSACTION_MART_BUILD_INDEXES)
+        expect(readFileSync(new URL(file, migrations), 'utf8')).not.toContain(index.name);
+  });
+
+  it('adds log_total_ron in 0085, after 0084', () => {
+    expect(statements('0085_entity_flags_log_total_ron.sql')).toEqual([
+      'ALTER TABLE "marts"."entity_flags" ADD COLUMN "log_total_ron" numeric GENERATED ALWAYS AS (log(greatest(coalesce(total_ron, 0), 1))) STORED;']);
+    const journal = JSON.parse(readFileSync(new URL('meta/_journal.json', migrations), 'utf8')) as
+      { entries: { idx: number; tag: string; when: number }[] };
+    const at = journal.entries.findIndex(entry => entry.tag === '0085_entity_flags_log_total_ron');
+    expect(journal.entries[at]?.idx).toBe(85);
     expect(journal.entries[at]!.when).toBeGreaterThan(journal.entries[at - 1]!.when);
   });
 });
