@@ -641,7 +641,7 @@ export function questionErrors(spec: QuestionSpec): string[] {
  */
 export function localityScopeSupport(spec: QuestionSpec): { ok: true } | { ok: false; reason: string } {
   if (isHistoricalProfile(spec))
-    return { ok: false, reason: "Indicele de risc compară instituții între ele, deci aici poți alege doar județul." };
+    return { ok: false, reason: "Indicele de risc compară profiluri între ele, deci aici poți alege doar județul." };
   if (["map", "compare", "network", "sankey", "fact_check"].includes(spec.block))
     return { ok: false, reason: spec.block === "map" ? "Harta arată județele, deci aici poți alege doar județul." : "Această întrebare pornește de la instituții sau firme anume, deci aici poți alege doar județul." };
   if ((spec.block === "table" || spec.block === "trend") && spec.dim === "county")
