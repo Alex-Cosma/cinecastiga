@@ -144,6 +144,14 @@ pnpm turbo typecheck lint test build
 
 Pentru teste PostgreSQL, citește testul înainte. Folosește o bază izolată `seap_test_*` și variabila cerută de acel test (`TEST_DATABASE_URL` sau altă configurație explicită). Multe integrări sunt sărite fără DB de test: „unit passed” nu înseamnă că integrările au rulat. Nu rula seed-uri/truncate-uri de fixtures pe `seap`, `seap_collab` cu lucru personal sau producție.
 
+Viteza „Întreabă” se măsoară cu `apps/web/scripts/ask-perf.ts` (plan filtre §6.4), doar pe o bază locală (loopback), cu sesiuni `default_transaction_read_only=on`; nu scrie nimic și nu atinge serverul de dezvoltare:
+
+```sh
+pnpm --filter web exec tsx scripts/ask-perf.ts --code=<commit> --out=<dir>/perf.json --md=<dir>/perf.md [--compare=<dir>/baseline.json] [--only=catalog:trend,...]
+```
+
+Cazurile (`scripts/ask-perf-cases.ts`) sunt implicitele celor 13 întrebări din catalog, cele mai grele cazuri naționale exprimabile azi, selecții restrânse, surse și CSV, construite ca în constructor. Fiecare caz rulează în procesul lui: prima rulare cu cache-urile procesului goale, apoi la cald (mediana a `--warm-runs`, implicit 3), apoi sub `auto_explain` (ANALYZE, BUFFERS; cere drept de superuser local, altfel planul lipsește cu motivul scris). „Prima” înseamnă proces rece, nu disc rece. Pragul la cald: 1 s pentru un răspuns, 2 s pentru cazurile naționale grele, surse și CSV. Cu `--compare`, un caz mai lent decât baza cu peste 25% și peste 100 ms face comanda să iasă cu cod 1; amprenta rezultatului arată și răspunsurile schimbate. `--from=<json> --md=<md>` doar redă un raport existent. Parametrii din URL-ul `--db` devin setări de sesiune: `?plan_cache_mode=force_generic_plan` arată cum răspunde fiecare caz cu planurile generice la care ajunge o conexiune din pool după cinci execuții ale aceleiași instrucțiuni. Rezultatele stau în afara repository-ului. Nu rula măsurătoarea în paralel cu build-uri, teste sau alte interogări grele: timpii ies umflați (raportul notează backend-urile active și load-ul la pornirea fiecărui caz).
+
 `check-navigation.mjs` folosește strict baza sintetică `seap_test_admin_navigation`, preview separat și date fictive. Nu îl îndrepta spre baza colaboratorului. Scripturile de browser pot cere Playwright și o instalare locală de Chromium; citește precondițiile lor.
 
 Nu rula build și typecheck web concurent când regenerează aceleași `.next/types`. Un build cu `NEXT_DIST_DIR` temporar poate modifica automat include-urile din `tsconfig.json`; curăță doar căile generate ale acelui preview. Nu opri serverele celuilalt dezvoltator cu `pkill node`.
