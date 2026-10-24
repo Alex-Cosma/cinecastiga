@@ -98,7 +98,8 @@ export interface SankeyOptions { shown?: 6 | 10 | 15 }
 export interface ScatterOptions { flag?: (typeof SCATTER_FLAGS)[number]; rankBy?: RankBy }
 export interface PeersOptions { similar?: true; activity?: true; domain?: true }
 
-export interface AskFilters {
+/** A type, not an interface: an AskSpec is then also a QuestionSpec (question-ui.ts), whose filters are a plain record. */
+export type AskFilters = {
   /** Free-text subject ("lemne", "medicamente") — grounded to CPV server-side. */
   cpvTerm?: string;
   /** County name, Romanian, diacritics optional ("Botoșani", "cluj"). */
@@ -172,7 +173,7 @@ export interface AskFilters {
   newScope?: (typeof NEW_SCOPES)[number];
   mainClient?: true;
   dominantSupplier?: true;
-}
+};
 
 export interface AskSpec {
   block: Block;
@@ -338,9 +339,13 @@ export const READ_AHEAD_KEYS = {
 } as const satisfies Record<string, string>;
 
 /** Options that belong to one block. On another block they cannot change the answer and are dropped. */
-const BLOCK_OPTION_KEYS = ["trend", "timeseries", "network", "sankey", "scatter"] as const;
-const PEERS_BLOCKS: readonly Block[] = ["distribution", "scatter", "entity_card"];
-type OptionKey = (typeof BLOCK_OPTION_KEYS)[number] | "peers";
+export const BLOCK_OPTION_KEYS = ["trend", "timeseries", "network", "sankey", "scatter"] as const;
+/** The profiles a comparison group (`peers`) can belong to; elsewhere it is refused. */
+export const PEERS_BLOCKS: readonly Block[] = ["distribution", "scatter", "entity_card"];
+export type OptionKey = (typeof BLOCK_OPTION_KEYS)[number] | "peers";
+/** Whether a block's options or the comparison group can stay on a question of `block`. */
+export const optionBelongs = (key: OptionKey, block: string): boolean =>
+  key === "peers" ? PEERS_BLOCKS.includes(block as Block) : key === block;
 const among = (values: readonly unknown[]) => (v: unknown) => values.includes(v);
 const between = (min: number, max: number) => (v: unknown) => Number.isSafeInteger(v) && (v as number) >= min && (v as number) <= max;
 const isTrue = (v: unknown) => v === true;
@@ -573,10 +578,12 @@ export function parseSpec(raw: unknown): AskSpec | SpecError {
   for (const key of [...BLOCK_OPTION_KEYS, "peers"] as const) {
     const value = o[key];
     if (value === undefined || value === null) continue;
-    // A derived link built by spread keeps working: another block's options
-    // cannot change this answer, so dropping them hides no condition.
-    if (key !== "peers" && key !== block) continue;
-    if (key === "peers" && !PEERS_BLOCKS.includes(block as Block)) return { error:"Grupul de comparație nu se aplică acestei întrebări." };
+    // A link built before retarget (filters/retarget.ts) keeps working: another
+    // block's options cannot change this answer, so dropping them hides no condition.
+    if (!optionBelongs(key, block as string)) {
+      if (key === "peers") return { error:"Grupul de comparație nu se aplică acestei întrebări." };
+      continue;
+    }
     if (typeof value !== "object" || Array.isArray(value)) return { error:`Valoare invalidă pentru ${key}.` };
     const kept: Record<string, unknown> = {};
     for (const [sub, v] of Object.entries(value)) {

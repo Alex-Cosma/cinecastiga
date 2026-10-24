@@ -9,7 +9,7 @@ import { encodeSpec, decodeSpec } from "@/lib/ask/permalink";
 import { isHistoricalProfile } from "@/lib/ask/population";
 import { NEWER_VERSION_LINK, validateSpec, type AskSpec } from "@/lib/ask/spec";
 import { entitySourceLink, entitySourceScope, yearSourceLink } from "@/lib/ask/source-spec";
-import { describeQuestion, localityScopeError, questionKey } from "@/lib/ask/question-ui";
+import { describeQuestion, localityScopeError, questionKey, type QuestionSpec } from "@/lib/ask/question-ui";
 import { ANSWER_ERROR, breakdownLead, countWords, entityNoun, fileSlug, formatShare, isHumanError, rankingRest, rankingShare, shouldAutoRun, type RankingTotals } from "@/lib/ask/answer-text";
 import type { IntentResult } from "@/lib/intent/types";
 import { NATURAL_LANGUAGE_ENABLED, NATURAL_LANGUAGE_UNAVAILABLE } from "@/lib/ask/features";
@@ -27,7 +27,6 @@ import {
   useTip,
 } from "./blocks";
 import QuestionBuilder from "./QuestionBuilder";
-import type { BuilderSpec } from "./Builder";
 import EntityTypeahead from "./EntityTypeahead";
 import EvidenceDrawer from "./EvidenceDrawer";
 import { AnswerEvidence, useAnswerEvidence } from "./AnswerEvidence";
@@ -100,8 +99,8 @@ export default function AskPanel({
     initialMode === "ask" && !NATURAL_LANGUAGE_ENABLED ? "build" : initialMode,
   );
   const [aiLinkNotice, setAiLinkNotice] = useState(false);
-  const [builderInit, setBuilderInit] = useState<BuilderSpec | null>(null);
-  const [builderResolution, setBuilderResolution] = useState<{ submitted: BuilderSpec; resolved: BuilderSpec } | null>(null);
+  const [builderInit, setBuilderInit] = useState<QuestionSpec | null>(null);
+  const [builderResolution, setBuilderResolution] = useState<{ submitted: QuestionSpec; resolved: QuestionSpec } | null>(null);
   const [builderFromAi, setBuilderFromAi] = useState(false);
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
@@ -197,12 +196,12 @@ export default function AskPanel({
         }
         setResp(answer);
         if (body.spec && !("tablePage" in body)) {
-          setBuilderResolution({ submitted: body.spec as BuilderSpec, resolved: answer.spec as unknown as BuilderSpec });
+          setBuilderResolution({ submitted: body.spec as QuestionSpec, resolved: answer.spec });
         }
         // The composer owns draft/applied comparison, including edits made
         // during this request and normalized drafts restored from old links.
         if (typeof body.question === "string") {
-          setBuilderInit(answer.spec as unknown as BuilderSpec);
+          setBuilderInit(answer.spec);
           setBuilderFromAi(true);
         }
         if (!("tablePage" in body)) setTableOpts({ page: 0 });
@@ -222,7 +221,7 @@ export default function AskPanel({
             ...(savedFilters ? { filters: savedFilters } : {}),
             title:
               answer.question ||
-              describeQuestion(answer.spec as unknown as BuilderSpec),
+              describeQuestion(answer.spec),
           });
         if (!drill && scroll)
           // Two frames: the answer is rendered before it is brought under the sticky header.
@@ -269,7 +268,7 @@ export default function AskPanel({
    */
   const adopt = useCallback((choice: IntentChoice) => {
     setChosen(choice);
-    setBuilderInit(choice.spec as unknown as BuilderSpec);
+    setBuilderInit(choice.spec);
     setBuilderResolution(null);
     setBuilderFromAi(false);
     setBuilderOpen(true);
@@ -361,7 +360,7 @@ export default function AskPanel({
           revealError();
           return;
         }
-        setBuilderInit(parsed as unknown as BuilderSpec);
+        setBuilderInit(parsed);
         setBuilderOpen(true);
         setBuilderCollapsed(params.get("drill") !== "1");
         setMode("build");
@@ -407,7 +406,7 @@ export default function AskPanel({
   const title =
     resp?.question ||
     (applied
-      ? describeQuestion(applied as unknown as BuilderSpec)
+      ? describeQuestion(applied)
       : "Răspunsul tău");
   const openEvidence = useCallback(
     (spec?: AskSpec, scope?: EvidenceScope, label?: string) => {
@@ -884,7 +883,7 @@ export default function AskPanel({
                 <button
                   type="button"
                   onClick={() => {
-                    setBuilderInit(applied as unknown as BuilderSpec);
+                    setBuilderInit(applied);
                     setBuilderFromAi(true);
                     setMode("build");
                     window.scrollTo({ top: 0, behavior: "smooth" });

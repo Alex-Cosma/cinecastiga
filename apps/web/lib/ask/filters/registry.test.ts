@@ -42,6 +42,14 @@ describe("one owner for every key (R2)", () => {
   });
 });
 
+describe("the rules of a key (plan §2.4)", () => {
+  // runnableError (spec.ts) does not call FilterDef.validate yet: spec.ts cannot import the registry,
+  // whose definitions read spec.ts. The first stage with a rule composes validateSpec above both.
+  it("are in runnableError today; no filter declares a rule it would not run", () => {
+    expect(FILTER_DEFS.filter((def) => def.validate).map((def) => def.id)).toEqual([]);
+  });
+});
+
 describe("keys read ahead of the engine (F0a)", () => {
   const ahead = FILTER_DEFS.filter((def) => def.stage !== undefined);
 

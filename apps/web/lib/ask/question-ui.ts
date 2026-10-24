@@ -1,9 +1,16 @@
-import { validateSpec, type AskSpec, type Block } from "./spec";
+import {
+  BLOCK_OPTION_KEYS, optionBelongs, validateSpec, type AskSpec, type Block, type NetworkOptions, type OptionKey,
+  type PeersOptions, type SankeyOptions, type ScatterOptions, type TimeseriesOptions, type TrendOptions,
+} from "./spec";
 import { isHistoricalProfile, type MinimumRecords, type QueryPopulation } from "./population";
 import { cpvTermParts } from "./cpv-terms";
 import { titleTail } from "./filters/words";
 
-/** The builder uses exactly the public /api/ask spec; it owns no query engine. */
+/**
+ * The builder uses exactly the public /api/ask spec; it owns no query engine.
+ * Every AskSpec is a QuestionSpec (the applied answer, a saved question, a
+ * watch); the builder writes its filters by name.
+ */
 export interface QuestionSpec {
   block: string;
   dataset?: string;
@@ -15,7 +22,15 @@ export interface QuestionSpec {
   population?: QueryPopulation;
   comparisonMode?: "transactions" | "profiles";
   minimumRecords?: MinimumRecords;
+  // Block options (plan §3), read ahead of the engine (F0a); each only on its own block.
+  trend?: TrendOptions;
+  timeseries?: TimeseriesOptions;
+  network?: NetworkOptions;
+  sankey?: SankeyOptions;
+  scatter?: ScatterOptions;
+  peers?: PeersOptions;
 }
+const OPTION_KEYS: readonly OptionKey[] = [...BLOCK_OPTION_KEYS, "peers"];
 
 export const QUESTION_GROUPS = [
   {
@@ -170,12 +185,18 @@ export const foldQuestion = (value: string) =>
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
-export const cloneQuestion = (spec: QuestionSpec): QuestionSpec => ({
-  ...spec,
-  filters: { ...spec.filters },
-  ...(spec.population ? { population: structuredClone(spec.population) } : {}),
-  ...(spec.minimumRecords ? { minimumRecords:{ ...spec.minimumRecords } } : {}),
-});
+/** A copy that shares nothing with `spec`: an edit of the draft never reaches the applied question. */
+export function cloneQuestion(spec: QuestionSpec): QuestionSpec {
+  const next: QuestionSpec = {
+    ...spec,
+    filters: { ...spec.filters },
+    ...(spec.population ? { population: structuredClone(spec.population) } : {}),
+    ...(spec.minimumRecords ? { minimumRecords:{ ...spec.minimumRecords } } : {}),
+  };
+  // Block options hold arrays (a trend's month window): copied whole.
+  for (const key of OPTION_KEYS) if (spec[key]) (next as Record<OptionKey, unknown>)[key] = structuredClone(spec[key]);
+  return next;
+}
 
 export function defaultQuestion(): QuestionSpec {
   return {
@@ -188,7 +209,25 @@ export function defaultQuestion(): QuestionSpec {
   };
 }
 
-/** Labels describe exact identities; they do not change the selected records. */
+/** Objects with their keys sorted at every depth; arrays keep their order. */
+function canonical(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([, v]) => v !== undefined)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([k, v]) => [k, canonical(v)]),
+  );
+}
+
+/**
+ * Equal for two questions that select and answer the same, whatever the order
+ * of their keys at any depth (a trend's `{ months, change }` is its
+ * `{ change, months }`). Labels describe exact identities; they do not change
+ * the selected records. Compared, never stored: the draft's "modified" state,
+ * the saved question in use, a watched recipe (lib/monitoring.ts).
+ */
 export function questionKey(spec: QuestionSpec): string {
   const filters = { ...spec.filters };
   for (const [id, label] of [
@@ -196,18 +235,7 @@ export function questionKey(spec: QuestionSpec): string {
     ["compareWithId", "compareWith"], ["uatSiruta", "uatName"],
     ["adminPersonKey", "adminName"],
   ]) if (filters[id!]) delete filters[label!];
-  const s = {
-    ...spec,
-    dataset: spec.dataset ?? "all",
-    filters: Object.fromEntries(
-      Object.entries(filters).sort(([a], [b]) => a.localeCompare(b)),
-    ),
-  };
-  return JSON.stringify(
-    Object.fromEntries(
-      Object.entries(s).sort(([a], [b]) => a.localeCompare(b)),
-    ),
-  );
+  return JSON.stringify(canonical({ ...spec, dataset: spec.dataset ?? "all", filters }));
 }
 
 /** Grounding may enrich an untouched draft, but cannot replace later edits. */
@@ -458,6 +486,8 @@ export function transitionQuestion(
   const changes: string[] = [];
   const entering = block !== input.block;
   spec.block = block;
+  // A question's options leave with it (parseSpec drops them, or refuses a comparison group).
+  if (entering) for (const key of OPTION_KEYS) if (!optionBelongs(key, block)) delete spec[key];
   if (block === "compare" && entering) spec.comparisonMode = "transactions";
   for (const role of ["authority", "supplier"] as const) {
     if (spec.filters[`${role}Id`] && !spec.filters[`${role}Name`])

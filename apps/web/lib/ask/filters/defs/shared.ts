@@ -2,14 +2,12 @@ import { cloneQuestion } from "../../question-ui";
 import { READ_AHEAD_KEYS } from "../../spec";
 import type { AnswerForm, EngineLevel, FilterDef, FilterSpec, Scope, SpecPath } from "../types";
 
-const BLOCK_OPTIONS = ["trend", "timeseries", "network", "sankey", "scatter", "peers"] as const;
 /** The spec as a plain object, for the block options addressed by name. */
 const loose = (spec: FilterSpec) => spec as unknown as Record<string, unknown>;
 
-/** The spec after `change`, with nothing shared with `spec` (cloneQuestion copies block options by reference). */
+/** The spec after `change`, with nothing shared with `spec` (cloneQuestion copies at every depth). */
 export function edited(spec: FilterSpec, change: (next: FilterSpec) => void): FilterSpec {
-  const next = cloneQuestion(spec) as FilterSpec;
-  for (const key of BLOCK_OPTIONS) if (spec[key]) loose(next)[key] = structuredClone(spec[key]);
+  const next = cloneQuestion(spec);
   change(next);
   return next;
 }

@@ -26,7 +26,7 @@ const errorOf = (spec: AskSpec) => runnableError(spec) ?? localityScopeError(spe
 
 describe("legacy conditions of old links (plan §2.6)", () => {
   it("pins what each link of the corpus carries from an older builder", () => {
-    const shown = Object.fromEntries(corpus.map((entry) => [entry.id, conditionsOf(entry).map((c) => `${c.status} · ${c.label}`)]).filter(([, list]) => list.length));
+    const shown = Object.fromEntries(corpus.map((entry): [string, string[]] => [entry.id, conditionsOf(entry).map((c) => `${c.status} · ${c.label}`)]).filter(([, list]) => list.length));
     expect(shown).toEqual({
       "site:capture-entity": ["applied · Activitatea entității: entitatea #9100000002 (ca instituție sau ca firmă)"],
       "site:connection-evidence": ["applied · Selecția relației: 2 instituții"],

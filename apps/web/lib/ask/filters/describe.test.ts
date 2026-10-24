@@ -51,7 +51,7 @@ function groundingOf(spec: AskSpec, cpv?: Grounding["cpv"]): Grounding {
     ...(f.compareWith || f.compareWithId ? { compare: entity(f.compareWith, f.compareWithId) } : {}),
     ...(f.county ? { county: { query: String(f.county), canonical: String(f.county).normalize("NFD").replace(/[̀-ͯ]/g, "") } } : {}),
     ...(f.uatSiruta ? { uat: { siruta: Number(f.uatSiruta), name: null, county: null, authorityIds: [], nAuthorities: 0 } } : {}),
-    ...(f.adminPersonKey ? { admin: { query: "", personKey: String(f.adminPersonKey), display: f.adminName ?? "POPESCU ION (n. 1970)", supplierIds: [], nFirms: 2, alternatives: [] } as unknown as Grounding["admin"] } : {}),
+    ...(f.adminPersonKey ? { admin: { query: "", personKey: String(f.adminPersonKey), display: f.adminName ?? "POPESCU ION (n. 1970)", supplierIds: [], nFirms: 2, alternatives: [] } as unknown as NonNullable<Grounding["admin"]> } : {}),
     ...(cpv ? { cpv } : f.cpvTerm ? { cpv: { term: String(f.cpvTerm), prefixes: ["45"], matchedNames: ["Lucrări de construcții"], method: "synonym" as const } } : {}),
   };
 }
