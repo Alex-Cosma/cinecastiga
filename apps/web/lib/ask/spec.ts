@@ -368,7 +368,7 @@ function specKeyPaths(spec: object): string[] {
   const paths: string[] = [];
   for (const [key, value] of Object.entries(spec)) {
     if (value === undefined) continue;
-    const nested = key === "filters" || (OPTION_SHAPES as Record<string, unknown>)[key] !== undefined;
+    const nested = key === "filters" || Object.hasOwn(OPTION_SHAPES, key);
     if (!nested || !value || typeof value !== "object" || Array.isArray(value)) { paths.push(key); continue; }
     for (const [sub, v] of Object.entries(value)) {
       if (v === undefined || v === null || key === "filters" && v === "") continue;
@@ -588,7 +588,8 @@ export function parseSpec(raw: unknown): AskSpec | SpecError {
     const kept: Record<string, unknown> = {};
     for (const [sub, v] of Object.entries(value)) {
       if (v === undefined) continue;
-      const valid = OPTION_SHAPES[key][sub];
+      // Own keys only: "toString" or "__proto__" in a link must not resolve to Object.prototype.
+      const valid = Object.hasOwn(OPTION_SHAPES[key], sub) ? OPTION_SHAPES[key][sub] : undefined;
       if (!valid) return { error:"Câmp necunoscut în întrebare; condiția nu a fost ignorată." };
       if (!valid(v)) return { error:`Valoare invalidă pentru ${key}.${sub}.` };
       kept[sub] = Array.isArray(v) ? [...v] : v;

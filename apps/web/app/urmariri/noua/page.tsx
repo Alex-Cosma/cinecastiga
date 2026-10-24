@@ -15,7 +15,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   try { optionsInput = JSON.parse(values.options ?? "{}"); } catch { optionsInput = null; }
   const options = optionsInput && typeof optionsInput === "object" && !Array.isArray(optionsInput) && Object.keys(optionsInput).every(key => ["scope", "search", "state", "stream"].includes(key)) ? evidenceOptions(optionsInput as Record<string, unknown>) : { error: "Selecția surselor nu este validă." };
   // The setup would describe the question without the condition this release does not read.
-  if ("error" in spec && spec.newer) return <section className="mon-empty"><h1>Urmărire indisponibilă</h1><p>{spec.error}</p></section>;
+  if ("error" in spec && spec.newer) return <section className="mon-empty"><h1>Urmărire indisponibilă</h1><p>{spec.error}</p><Link className="mon-primary" href="/intreaba?mode=builder">Construiește întrebarea →</Link></section>;
   if ("error" in spec || "error" in options) return <section className="mon-empty"><h1>De unde vrei să pornești?</h1><p>Deschide o entitate sau aplică o întrebare, apoi alege „Urmărește modificările”. Condițiile aplicate vor fi păstrate exact.</p><Link className="mon-primary" href="/intreaba?mode=builder">Construiește întrebarea →</Link></section>;
   return <FollowSetup spec={spec} options={options} {...(values.title ? { title: values.title } : {})} {...(values.recipeId ? { recipeId: values.recipeId } : {})} {...(values.recipeVersion ? { recipeVersion: Number(values.recipeVersion) } : {})} />;
 }
