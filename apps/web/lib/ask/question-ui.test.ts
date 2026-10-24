@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BLOCKS, validateSpec } from "./spec";
-import { QUESTION_GROUPS, QUESTION_TYPES, defaultQuestion, describeQuestion, localityScopeError, localityScopeSupport, periodLabel, questionErrors, questionKey, reconcileQuestionDraft, transitionQuestion, type QuestionSpec } from "./question-ui";
+import { isHistoricalProfile } from "./population";
+import { QUESTION_GROUPS, QUESTION_TYPES, defaultQuestion, describeQuestion, leaderAxis, localityScopeError, localityScopeSupport, periodLabel, questionErrors, questionKey, reconcileQuestionDraft, transitionQuestion, type QuestionSpec } from "./question-ui";
 
 const authority: QuestionSpec = {
   block: "table", dim: "supplier", dataset: "contracts", measure: "value", topN: 7,
@@ -196,6 +197,61 @@ describe("the editable question contract", () => {
     const newRanking = transitionQuestion({ block: "stat", measure: "value", filters: {} }, "table");
     expect(newRanking.spec.topN).toBe(10);
     expect(defaultQuestion().topN).toBe(10);
+  });
+});
+
+// R0: transitionQuestion also restores links and follows every edit. The
+// builder's "dirty" is questionKey(transitionQuestion(initial)) against the
+// restored spec (QuestionBuilder), and the restored spec is what runs.
+describe("a restored or edited question keeps what it asked", () => {
+  const restore = (raw: unknown): QuestionSpec => {
+    const spec = validateSpec(raw);
+    if ("error" in spec) throw new Error(spec.error);
+    return spec as unknown as QuestionSpec;
+  };
+  it.each([
+    ["a trend without a row count", { block: "trend", dim: "supplier", measure: "value", filters: { yearFrom: 2024, yearTo: 2025 } }],
+    ["a risk leader without an axis", { block: "entity_card", dim: "supplier", measure: "value", filters: { county: "Cluj" } }],
+    ["a risk leader counted by records", { block: "entity_card", measure: "count", filters: {} }],
+    ["a breakdown counted by records", { block: "breakdown", measure: "count", filters: { county: "Cluj" } }],
+    ["a network counted by records", { block: "network", measure: "count", filters: { authorityId: 811 } }],
+    ["a distribution without a dimension", { block: "distribution", measure: "value", filters: { authorityId: 811 } }],
+    ["a total per inhabitant", { block: "stat", measure: "value_per_capita", filters: {} }],
+    ["a full paginated ranking", { block: "table", dim: "supplier", measure: "count", filters: { county: "Cluj" } }],
+  ])("%s opens unchanged, so the answer is not marked as an earlier question", (_, raw) => {
+    const link = restore(raw);
+    const { spec, changes } = transitionQuestion(link);
+    expect(questionKey(spec)).toBe(questionKey(link));
+    expect(changes).toEqual([]);
+  });
+
+  it("a leader link without rankBy stays the risk index through an edit, in its title and in the engine", () => {
+    const link = restore({ block: "entity_card", dim: "supplier", measure: "value", filters: {} });
+    const edited = transitionQuestion({ ...transitionQuestion(link).spec, filters: { county: "Cluj" } }).spec;
+    expect(edited.rankBy).toBeUndefined();
+    expect(leaderAxis(edited)).toBe("risk");
+    expect(isHistoricalProfile(edited)).toBe(true);
+    expect(describeQuestion(edited)).toBe("Care firmă din județul Cluj are cel mai ridicat indice de risc?");
+    expect(describeQuestion({ ...edited, rankBy: "risk" })).toBe(describeQuestion(edited));
+  });
+
+  it("a new question still starts from its type's defaults, with the note where the measure changes", () => {
+    const counted = transitionQuestion({ block: "stat", measure: "count", filters: {} }, "breakdown");
+    expect(counted.spec.measure).toBe("value");
+    expect(counted.changes).toEqual(["Această întrebare folosește valoarea în lei."]);
+    expect(transitionQuestion({ block: "stat", measure: "value", filters: {} }, "entity_card").spec.rankBy).toBe("value");
+    expect(transitionQuestion({ block: "table", dim: "supplier", measure: "value", filters: {} }, "trend").spec.topN).toBe(10);
+    expect(transitionQuestion({ block: "stat", measure: "value", filters: { supplierId: 733 } }, "distribution").spec.dim).toBe("supplier");
+    const perCapita = transitionQuestion({ block: "table", dim: "authority", measure: "value_per_capita", filters: {} }, "map");
+    expect(perCapita.spec.measure).toBe("value");
+  });
+
+  it("still repairs an edit the engine would refuse, and says so", () => {
+    const toFirms = transitionQuestion({ block: "table", dim: "supplier", measure: "value_per_capita", topN: 10, filters: {} });
+    expect(toFirms.spec.measure).toBe("value");
+    expect(toFirms.changes.join(" ")).toContain("pe locuitor");
+    const singleBidder = transitionQuestion({ block: "stat", measure: "value", filters: { singleBidder: true } });
+    expect(singleBidder.spec.dataset).toBe("contracts");
   });
 });
 
