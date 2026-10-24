@@ -748,10 +748,14 @@ describe("registration year, seat and main CPV division of the firms", () => {
         (17,'Esempio Costruzioni SpA',null,false,null,'IT',false),
         (18,'PFA Popescu Ion','18',true,null,null,false),
         (19,'Firma Fara Judet Nou SRL','19',true,'Timis',null,false),
-        (20,'Firma Mare SRL','20',true,'Cluj',null,false)`;
-      // 12: a seat move (Bucharest 2010, Ilfov 2023); 13: two 2015 numbers, where the
-      // higher sequence (100) is lower as text than 99; 16: a foreign firm whose name
-      // ONRC corroborates; 18: a PFA (F); 19: the latest number names no county.
+        (20,'Firma Mare SRL','20',true,'Cluj',null,false),
+        (21,'Firma Nehotarata SRL','21',true,'Cluj',null,false),
+        (22,'Firma Renumerotata SRL','22',true,'Bucuresti',null,false)`;
+      // 12: a seat move (Bucharest 2010, Ilfov 2023); 13: two old 2015 numbers from two
+      // county offices, one of them the SEAP county (the higher sequence, 100, is lower
+      // as text than 99); 16: a foreign firm whose name ONRC corroborates; 18: a PFA (F);
+      // 19: the latest number names no county; 21: two old 2015 numbers, neither in the
+      // SEAP county (undecided); 22: an old and a new 2024 number (the new one is later).
       const registry = [
         ["J12/345/2004", "10", "FIRMA VECHE SRL", "Cluj"],
         ["J2024000123408", "11", "FIRMA NOUA SRL", "Bucureşti"],
@@ -764,6 +768,10 @@ describe("registration year, seat and main CPV division of the firms", () => {
         ["J35/5/2001", "19", "FIRMA FARA JUDET NOU SRL", "Timiş"],
         ["J2025000001001", "19", "FIRMA FARA JUDET NOU SRL", ""],
         ["J12/7/2019", "20", "FIRMA MARE SRL", "Cluj"],
+        ["J05/7/2015", "21", "FIRMA NEHOTARATA SRL", "Bihor"],
+        ["J02/8/2015", "21", "FIRMA NEHOTARATA SRL", "Arad"],
+        ["J40/50000/2024", "22", "FIRMA RENUMEROTATA SRL", "Bucureşti"],
+        ["J2024000001123", "22", "FIRMA RENUMEROTATA SRL", "Ilfov"],
       ] as const;
       const loadRegistry = async (rows: readonly (readonly [string, string, string, string])[]) => {
         await q`delete from reference.onrc_firm`;
@@ -786,7 +794,8 @@ describe("registration year, seat and main CPV division of the firms", () => {
         (14,9014,1,16,'Oferta acceptata',70,'2025-03-01','45000000-7'),(15,9015,1,17,'Oferta acceptata',80,'2025-03-01','45000000-7'),
         (16,9016,1,18,'Oferta acceptata',90,'2025-03-01','45000000-7'),(17,9017,1,19,'Oferta acceptata',10,'2025-03-01','45000000-7'),
         (18,9018,1,null,'Oferta acceptata',7,'2025-03-01','45000000-7'),(19,9019,1,20,'Oferta acceptata',3000000,'2025-03-01','45000000-7'),
-        (20,9020,1,10,'Oferta refuzata',1000,'2025-03-01','09100000-0')`;
+        (20,9020,1,10,'Oferta refuzata',1000,'2025-03-01','09100000-0'),
+        (21,9021,2,21,'Oferta acceptata',4,'2025-03-01','45000000-7'),(22,9022,2,22,'Oferta acceptata',6,'2025-03-01','45000000-7')`;
       // A consortium contract in Cluj: Firma Veche (Cluj) and Firma Mutata (now Ilfov).
       await q`insert into core.awards (id,ca_notice_id,notice_no,authority_entity_id,cpv_code,acquisition_type,ron_contract_value,state_date)
         values (1,1000,'CAN-SEAT',1,'45000000-7','Lucrari',100,'2025-01-10')`;
@@ -800,15 +809,16 @@ describe("registration year, seat and main CPV division of the firms", () => {
       const expected = [
         [1, "authority", null, null, null], [2, "authority", null, null, null],
         [10, "supplier", 2004, "Cluj", "onrc"], [11, "supplier", 2024, "Bucuresti", "onrc"],
-        [12, "supplier", 2010, "Ilfov", "onrc"], [13, "supplier", 2015, "Bihor", "onrc"],
+        [12, "supplier", 2010, "Ilfov", "onrc"], [13, "supplier", 2015, "Cluj", "onrc"],
         [14, "supplier", null, "Sibiu", "seap"], [15, "supplier", null, null, null],
         [16, "supplier", null, null, "foreign"], [17, "supplier", null, null, "foreign"],
         [18, "supplier", 2014, "Cluj", "onrc"], [19, "supplier", 2001, "Timis", "seap"],
+        [21, "supplier", 2015, "Cluj", "seap"], [22, "supplier", 2024, "Ilfov", "onrc"],
       ];
       expect(await seats()).toEqual(expected);
-      expect(report.firmRegistry).toEqual({ registeredYear: 6, seat: { onrc: 5, seap: 2, foreign: 2, unknown: 1 } });
+      expect(report.firmRegistry).toEqual({ registeredYear: 8, seat: { onrc: 6, seap: 3, foreign: 2, unknown: 1 } });
       // The SQL reads each number as onrcRegistration does.
-      expect(registry.map(([j]) => onrcRegistration(j)?.year)).toEqual([2004, 2024, 2010, 2023, 2015, 2015, 2016, 2014, 2001, 2025, 2019]);
+      expect(registry.map(([j]) => onrcRegistration(j)?.year)).toEqual([2004, 2024, 2010, 2023, 2015, 2015, 2016, 2014, 2001, 2025, 2019, 2015, 2015, 2024, 2024]);
       // Deterministic: the register loaded in reverse order gives the same seats.
       await loadRegistry([...registry].reverse());
       await q`update marts.entity_profile set registered_year = null, seat_county = null, seat_source = null`;
@@ -821,18 +831,18 @@ describe("registration year, seat and main CPV division of the firms", () => {
       expect(columns).toEqual(["county", "v_plaf", "n_plaf", "v_all", "n_all", ...AGG_MAP_COUNTY_SEAT_COLUMNS]);
       const map = Object.fromEntries((await q`select * from marts.agg_map_county`).map(r => [String(r["county"]),
         Object.fromEntries(Object.entries(r).filter(([k]) => k !== "county").map(([k, v]) => [k, Number(v)]))]));
-      // Cluj: same = 10 (100 + its 50 of the contract) and 18 (90); other = 11 (30, in
-      // București), 12 (100 + 50, now Ilfov), 13 (100, Bihor), 14 (100, Sibiu), 19 (10);
+      // Cluj: same = 10 (100 + its 50 of the contract), 13 (100) and 18 (90); other = 11
+      // (30, in București), 12 (100 + 50, now Ilfov), 14 (100, Sibiu), 19 (10);
       // foreign = 16, 17; unknown = 15 (5) and the DA without supplier (7). Above the
       // ceiling (v_all only): 15's 2.5M, and 20's 3M, unknown because 20 has no profile.
       expect(map["Cluj"]).toMatchObject({
         v_plaf: 792, n_plaf: 18, v_all: 5500792, n_all: 20,
-        v_plaf_same: 240, n_plaf_same: 4, v_plaf_other: 390, n_plaf_other: 10, v_plaf_bucuresti: 30, n_plaf_bucuresti: 1,
+        v_plaf_same: 340, n_plaf_same: 7, v_plaf_other: 290, n_plaf_other: 7, v_plaf_bucuresti: 30, n_plaf_bucuresti: 1,
         v_plaf_foreign: 150, n_plaf_foreign: 2, v_plaf_unknown: 12, n_plaf_unknown: 2,
-        v_all_same: 240, n_all_same: 4, v_all_unknown: 5500012, n_all_unknown: 4,
+        v_all_same: 340, n_all_same: 7, v_all_unknown: 5500012, n_all_unknown: 4,
       });
-      // In București a București firm is 'same', never 'bucuresti'.
-      expect(map["Bucuresti"]).toMatchObject({ v_plaf: 20, v_plaf_same: 20, v_plaf_other: 0, v_plaf_bucuresti: 0 });
+      // In București a București firm is 'same', never 'bucuresti'; 21 (Cluj) and 22 (Ilfov) are other.
+      expect(map["Bucuresti"]).toMatchObject({ v_plaf: 30, v_plaf_same: 20, v_plaf_other: 10, v_plaf_bucuresti: 0 });
       for (const county of Object.values(map))
         for (const scope of ["plaf", "all"])
           expect(["same", "other", "foreign", "unknown"].reduce((sum, seat) => sum + county[`v_${scope}_${seat}`]!, 0)).toBe(county[`v_${scope}`]);
@@ -841,7 +851,7 @@ describe("registration year, seat and main CPV division of the firms", () => {
       expect((await q`select entity_id::int id, role, main_cpv_div from marts.entity_flags order by entity_id, role`).map(r => [r["id"], r["role"], r["main_cpv_div"]]))
         .toEqual([[1, "authority", null], [2, "authority", null], [10, "supplier", "45"], [11, "supplier", "33"], [12, "supplier", null],
           [13, "supplier", null], [14, "supplier", "45"], [15, "supplier", "09"], [16, "supplier", "45"], [17, "supplier", "45"],
-          [18, "supplier", "45"], [19, "supplier", "45"]]);
+          [18, "supplier", "45"], [19, "supplier", "45"], [21, "supplier", "45"], [22, "supplier", "45"]]);
       throw rollback;
     })).rejects.toBe(rollback);
     expect(await sql`select nspname from pg_namespace where nspname like ${`${prefix}_%`}`).toHaveLength(0);
