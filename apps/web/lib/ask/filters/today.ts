@@ -1,11 +1,15 @@
-import { PROFILE_FORMS, TRANSACTION_FORMS } from "./context";
-import type { AnswerForm, FilterCtx, FilterId, FilterSpec, Scope } from "./types";
+import { filterContext, PROFILE_FORMS, TRANSACTION_FORMS } from "./context";
+import { FILTERS } from "./defs";
+import { offeredFilters } from "./registry";
+import { TODAY_BLOCK_FILTERS } from "./today-blocks";
+import type { AnswerForm, Availability, FilterCtx, FilterId, FilterSpec, Scope } from "./types";
 
 /*
  * The state of today, fixed at F0 (plan §2.2): what each key does to the
  * total on each question, and the choices today's builder offers and then
  * refuses. Neither table follows later stages: a stage that changes a scope
- * lists the change with its answer version, and F1b removes the refusals.
+ * lists the change with its answer version, and F1b's offers (blocks.ts)
+ * remove the refusals; registry.test.ts checks each one is gone.
  */
 
 const on = (forms: readonly AnswerForm[], scope: Scope): Partial<Record<AnswerForm, Scope>> =>
@@ -138,4 +142,17 @@ export const TODAY_IGNORED_OFFERS: readonly { filter: FilterId; forms: readonly 
 /** The first refusal that follows choosing `value` for `filter` on `spec`, or null. */
 export function refusalOf(filter: FilterId, value: unknown, spec: FilterSpec, ctx: FilterCtx): TodayRefusal | null {
   return TODAY_REFUSALS.find((r) => r.filter === filter && (!r.values || r.values(value)) && r.when(spec, ctx)) ?? null;
+}
+
+/**
+ * Whether today's builder offers a filter: offered when any of its controls
+ * writes it; "refused" when one of the values its control offers makes the
+ * engine refuse the question (TODAY_REFUSALS of kind "engine").
+ */
+export function todayAvailability(id: FilterId, spec: FilterSpec, ctx: FilterCtx = filterContext(spec)): Availability {
+  if (!offeredFilters(spec, ctx, TODAY_BLOCK_FILTERS).has(id)) return { state: "hidden" };
+  const values = FILTERS[id].choices(spec, ctx);
+  const refused = values.map((value) => refusalOf(id, value, spec, ctx)).filter((r) => r !== null && r.kind === "engine");
+  if (!refused.length) return { state: "offered" };
+  return { state: "refused", reason: refused[0]!.reason, refusal: refused[0]!.id, ...(refused.length < values.length ? { partial: true as const } : {}) };
 }
