@@ -589,6 +589,13 @@
       "when": 1792750187637,
       "tag": "0083_contract_identity_source_state",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1792841905744,
+      "tag": "0084_transaction_mart_covering_indexes",
+      "breakpoints": true
     }
   ]
 }

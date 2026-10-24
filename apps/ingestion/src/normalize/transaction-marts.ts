@@ -1,4 +1,4 @@
-import type {DbSql} from '@seap/db';
+import {ensureTransactionMartIndexes,type DbSql} from '@seap/db';
 type TransactionSql=Parameters<Parameters<DbSql['begin']>[1]>[0];
 
 /** Daily procurement read models; uses the retained flags without recomputing CRI. */
@@ -58,6 +58,8 @@ export async function buildTransactionMarts(q:TransactionSql){
         and f.evidence->'source_ids' ? dt.sicap_da_id::text
         and not ('da_split' = any(coalesce(dt.da_flags, '{}')))
     `;
+    // Ask's county/CPV answers read these index-only; recreated here if lost.
+    const createdIndexes=await ensureTransactionMartIndexes(q,'da_transactions');
 
     // ── agg_* (bare-query shortcuts for the ask engine) ─────────────────────
     // Precomputed answers for completely unfiltered national questions (map,
@@ -150,10 +152,11 @@ export async function buildTransactionMarts(q:TransactionSql){
     await q`refresh materialized view marts.signal_lookup`;
     await q`analyze marts.signal_lookup`;
     const [row]=await q`select count(*)::int n from marts.da_transactions`;
-    return {daTransactions:Number(row!.n)};
+    return {daTransactions:Number(row!.n),createdIndexes};
 }
 export async function runTransactionMarts(sql:DbSql,opts:{log?:(message:string)=>void}={}){
  const report=await sql.begin(q=>buildTransactionMarts(q));
  opts.log?.(`transaction marts: da_transactions=${report.daTransactions}`);
+ if(report.createdIndexes.length)opts.log?.(`transaction marts: recreated missing indexes ${report.createdIndexes.join(', ')}`);
  return report;
 }

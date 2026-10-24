@@ -1,7 +1,7 @@
 import {seedVerifiedIdentity} from '../test/contract-identity-fixture.js';
 import {approveContractIdentities} from './approve-contract-identities.js';
 import { afterAll, describe, expect, it } from "vitest";
-import { contractKindFromTitle, contractWinnerIsAuthority, createDb, cuiCorroborated, readContractIdentityQuality, type DbSql } from "@seap/db";
+import { contractKindFromTitle, contractWinnerIsAuthority, createDb, cuiCorroborated, readContractIdentityQuality, TRANSACTION_MART_INDEXES, type DbSql } from "@seap/db";
 import { DA_CEILING_SEED_ROWS } from "@seap/domain";
 import { runMarts } from "./marts.js";
 import { runFlags } from "../flags/build.js";
@@ -76,6 +76,39 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
         .toMatchObject({ publication_date: "2025-12-31 23:55", finalization_date: "2026-01-01 00:15", gap_minutes: 20 });
       expect((await q`select y,v_plaf::text value from marts.agg_years order by y`).map(r => [r.y,r.value]))
         .toEqual([["2025","200.00"],["2026","112.34"]]);
+      throw rollback;
+    })).rejects.toBe(rollback);
+  });
+  // Marts audit, 24 October 2026: the county/CPV covering indexes existed only
+  // because the builds TRUNCATE; a table rebuilt without them made Ask 8–17 s.
+  it("creates the covering county/CPV indexes on transaction tables that lack them", async () => {
+    const prefix = `index_fixture_${process.pid}_${Date.now()}`;
+    const rollback = Error("rollback index fixture");
+    await expect(sql.begin(async tx => {
+      for (const [schema, names] of Object.entries(tables)) {
+        await tx.unsafe(`create schema ${prefix}_${schema}`);
+        for (const table of names) await tx.unsafe(`create table ${prefix}_${schema}.${table} as table ${schema}.${table} with no data`);
+      }
+      const [view] = await tx`select pg_get_viewdef('marts.signal_lookup'::regclass, true) definition`;
+      await tx.unsafe(`create materialized view ${prefix}_marts.signal_lookup as ${String(view!.definition).replace(/;\s*$/, "").replace(/\b(core|marts|reference|raw)\./g, `${prefix}_$1.`)} with no data`);
+      const q = isolatedSql(tx as unknown as DbSql, prefix);
+      const indexes = () => tx`select indexname, indexdef from pg_indexes where schemaname = ${prefix + "_marts"}
+        and tablename in ('da_transactions', 'contract_transactions') order by indexname collate "C"`;
+      expect((await indexes()).length).toBe(0);
+      await q`insert into core.entities(id,name_display) values(1,'Autoritate'),(2,'Furnizor')`;
+      await q`insert into core.awards(id,ca_notice_id,authority_entity_id) values(1,100,1)`;
+      await q`insert into core.contracts(id,ca_notice_id,contract_date,contract_value,currency,title) values(1,100,'2025-07-15T09:00:00Z',100,'RON','Contract')`;
+      await q`insert into core.contract_winners(contract_id,entity_id) values(1,2)`;
+      await q`insert into core.direct_acquisitions(id,sicap_da_id,authority_entity_id,supplier_entity_id,state,closing_value,finalization_date)
+        values(1,99001,1,2,'Oferta acceptata',12.34,'2025-07-15T09:00:00Z')`;
+      expect((await runMarts(q)).createdIndexes).toEqual(["ctx_county_idx", "ctx_county_ent_idx", "ctx_cpv_idx", "ctx_cpv_val_idx"]);
+      const built = await buildTransactionMarts(q as unknown as Parameters<typeof buildTransactionMarts>[0]);
+      expect(built.createdIndexes).toEqual(["da_tx_county_date_idx", "da_tx_county_ent_idx", "da_tx_cpv_idx", "da_tx_cpv_val_idx"]);
+      expect((await indexes()).map(r => [r.indexname, r.indexdef])).toEqual(TRANSACTION_MART_INDEXES
+        .map(index => [index.name, index.definition.replace(" ON marts.", ` ON ${prefix}_marts.`)])
+        .sort(([a], [b]) => a! < b! ? -1 : 1));
+      // The next nightly build finds them and creates nothing.
+      expect((await buildTransactionMarts(q as unknown as Parameters<typeof buildTransactionMarts>[0])).createdIndexes).toEqual([]);
       throw rollback;
     })).rejects.toBe(rollback);
   });
