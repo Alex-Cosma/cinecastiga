@@ -271,6 +271,12 @@ export function entityLabel(
   );
 }
 
+/** The second entity of a comparison, as the title and the sentence name it. */
+export function compareWithLabel(spec: QuestionSpec): string {
+  const f = spec.filters;
+  return String(f.compareWith || (f.compareWithId ? `Entitatea #${f.compareWithId}` : "alege a doua entitate"));
+}
+
 export function focalRole(spec: QuestionSpec): "authority" | "supplier" {
   return spec.filters.authorityName || spec.filters.authorityId
     ? "authority"
@@ -290,9 +296,10 @@ export const KIND_WORDS: Record<string, { the: string; bare: string }> = {
   scoala: { the: "școlile", bare: "școli" },
 };
 
-const KIND_ONE: Record<string, string> = {
+/** One institution of a kind, after "Care" (kit §4 Tipurile, §5.41). */
+export const KIND_ONE: Record<string, string> = {
   comuna: "primărie de comună",
-  oras_municipiu: "primărie de oraș",
+  oras_municipiu: "primărie de oraș sau municipiu",
   consiliu_judetean: "consiliu județean",
   spital: "spital",
   scoala: "școală",
@@ -445,7 +452,7 @@ export function describeQuestion(input: QuestionSpec | AskSpec): string {
   const focal = `„${entityLabel(spec, focalRole(spec))}”`;
   switch (spec.block) {
     case "compare":
-      return `${focal} și „${f.compareWith || (f.compareWithId ? `Entitatea #${f.compareWithId}` : "alege a doua entitate")}” · ${period}`;
+      return `${focal} și „${compareWithLabel(spec)}” · ${period}`;
     case "trend":
       return `Ce ${dims} au cea mai mare schimbare între ${f.yearFrom ?? "…"} și ${f.yearTo ?? "…"}?`;
     case "network":
