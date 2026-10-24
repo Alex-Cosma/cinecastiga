@@ -157,15 +157,15 @@ export function populationSql(sql: DbSql, population?: QueryPopulation | null): 
   return combine(population.groups.map(g => combine(g.conditions.map(condition), g.operator)), population.operator);
 }
 
-/** Supplier size bound → semi-join on the entity_profile employee snapshot. */
-function employeesCond(sql: DbSql, min: number | null, max: number | null): Fragment {
+/** Supplier size bound → semi-join on the entity_profile employee snapshot (`column`: the firm id of the rows, or of a rollup). */
+export function employeesCond(sql: DbSql, min: number | null, max: number | null, column: Fragment = sql`d.supplier_id`): Fragment {
   const bounds =
     min !== null && max !== null
       ? sql`ep.employees between ${min} and ${max}`
       : min !== null
         ? sql`ep.employees >= ${min}`
         : sql`ep.employees <= ${max!}`;
-  return sql`d.supplier_id in (
+  return sql`${column} in (
     select ep.entity_id from marts.entity_profile ep
     where ep.role = 'supplier' and ep.employees is not null and ${bounds}
   )`;
@@ -209,7 +209,33 @@ export function rowPredicates(ctx: PredicateCtx, opts: { years?: boolean } = {})
       parts.push(ctx.monthTo !== null
         ? sql`substr(d.finalization_date, 1, 7) <= ${`${ctx.yearTo}-${String(ctx.monthTo).padStart(2, "0")}`}`
         : sql`substr(d.finalization_date, 1, 4) <= ${String(ctx.yearTo)}`);
+    if (idAnchored(ctx)) parts.push(...periodRange(sql, ctx));
   }
+  return parts;
+}
+
+/** A selection read from an (id, finalization_date) index: a named or compared entity, a locality, a person's firms. */
+const idAnchored = (ctx: PredicateCtx) =>
+  ctx.authorityId !== null || ctx.supplierId !== null || ctx.comparison !== null || ctx.uatSiruta !== null || ctx.adminSupplierIds !== null;
+
+/**
+ * The period again, as a range on the column itself, so the id indexes
+ * (authority_id or supplier_id, finalization_date) bound the scan: substr()
+ * hides the column from them, and a one-year comparison of two large firms
+ * read all their 927k entries to keep 105k. Added beside substr(), not in its
+ * place: on the column's `YYYY-MM-DD[ HH24:MI]` strings (and nulls) both select
+ * the same rows, and substr() still decides any other shape. Only on
+ * id-anchored selections: elsewhere no index leads with the date, and the
+ * planner would only count the period twice in its estimates.
+ */
+function periodRange(sql: DbSql, ctx: PredicateCtx): Fragment[] {
+  const parts: Fragment[] = [];
+  const month = (year: number, m: number) => `${year}-${String(m).padStart(2, "0")}`;
+  if (ctx.yearFrom !== null)
+    parts.push(sql`d.finalization_date >= ${ctx.monthFrom !== null ? month(ctx.yearFrom, ctx.monthFrom) : String(ctx.yearFrom)}`);
+  if (ctx.yearTo !== null)
+    parts.push(sql`d.finalization_date < ${ctx.monthTo === null ? String(ctx.yearTo + 1)
+      : ctx.monthTo === 12 ? month(ctx.yearTo + 1, 1) : month(ctx.yearTo, ctx.monthTo + 1)}`);
   return parts;
 }
 
