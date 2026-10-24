@@ -186,6 +186,19 @@ export const entityProfile = martsSchema.table(
     employees: integer("employees"),
     employeesYear: integer("employees_year"),
     netTurnover: numeric("net_turnover"),
+    /** Suppliers only (F5, 0086): the oldest year among the ONRC registration
+     *  numbers of a corroborated CUI, both formats (Jcc/n/yyyy and Jyyyy…).
+     *  A seat move gives a new number, hence the oldest. Null = no ONRC
+     *  number (foreign, not corroborated, no CUI) or a foreign seat. */
+    registeredYear: integer("registered_year"),
+    /** Suppliers only (F5, 0086): the firm's seat, in the county spelling of
+     *  `county` (the buyer county of the transaction rows). The latest ONRC
+     *  registration of a corroborated CUI first, else the SEAP county; null
+     *  for a foreign or unknown seat. Authority rows keep it null: an
+     *  authority's county is `county`. */
+    seatCounty: text("seat_county"),
+    /** 'onrc' | 'seap' | 'foreign'; null = seat unknown. */
+    seatSource: text("seat_source"),
   },
   (t) => [
     primaryKey({ columns: [t.entityId, t.role] }),
@@ -286,6 +299,10 @@ export const entityFlags = martsSchema.table(
     nFlags: integer("n_flags").notNull().default(0),
     /** [{ code, severity, evidence }] for the triggered flags. */
     flags: jsonb("flags"),
+    /** Suppliers only (F6a phase 2, 0086): the CPV division (two digits) with
+     *  at least half of `total_ron`, the same DA population. Null when no
+     *  division has half, at an exact 50/50 tie, and for authorities. */
+    mainCpvDiv: text("main_cpv_div"),
   },
   (t) => [
     primaryKey({ columns: [t.entityId, t.role] }),

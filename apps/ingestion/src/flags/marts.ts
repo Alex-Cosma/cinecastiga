@@ -14,6 +14,8 @@ export interface FlagMartsReport {
   authorityConcentration: number;
   entityTopPartners: number;
   entityFlags: number;
+  /** Supplier profiles with a main CPV division. */
+  mainCpvDivisions: number;
   flagInstances: number;
   daTransactions: number;
 }
@@ -24,6 +26,37 @@ async function bound(sql: DbSql): Promise<number> {
     order by valid_from desc limit 1
   `) as unknown as { value_num: string }[];
   return r[0] ? Number(r[0].value_num) : 2_000_000;
+}
+
+type TransactionSql = Parameters<Parameters<DbSql["begin"]>[1]>[0];
+
+/**
+ * entity_flags.main_cpv_div (F6a phase 2, migration 0086): the CPV division
+ * (first two digits) holding at least half of a supplier profile's value, over
+ * the profile's own population (accepted DAs, 0 < value <= ceiling, the recorded
+ * supplier not the authority). A DA without CPV stays in the denominator. An
+ * exact 50/50 tie names no division, nor do authority profiles. Ask's "același
+ * domeniu principal" compares firms on it; a scan at question time took 4.5 s.
+ */
+export async function applyMainCpvDivisions(q: TransactionSql, ceiling: number): Promise<number> {
+  const updated = await q`
+    update marts.entity_flags ef set main_cpv_div = d.division
+    from (
+      select eid, division, v,
+        row_number() over (partition by eid order by v desc, division) rank,
+        lead(v) over (partition by eid order by v desc, division) next_v
+      from (
+        select supplier_entity_id eid, left(cpv_code, 2) division, sum(closing_value) v
+        from core.direct_acquisitions
+        where supplier_entity_id is not null and supplier_entity_id <> authority_entity_id and state = 'Oferta acceptata'
+          and closing_value > 0 and closing_value <= ${ceiling} and cpv_code ~ '^[0-9]{2}'
+        group by 1, 2
+      ) per_division
+    ) d
+    where d.rank = 1 and ef.entity_id = d.eid and ef.role = 'supplier'
+      and d.v * 2 >= ef.total_ron and (d.next_v is null or d.next_v < d.v)
+  `;
+  return updated.count;
 }
 
 export async function runFlagMarts(
@@ -109,6 +142,7 @@ export async function runFlagMarts(
         to_jsonb(f.codes)
       from final f join core.entities e on e.id = f.eid
     `;
+    const mainCpvDivisions = await applyMainCpvDivisions(q, b);
 
     // ── flag_instances (browsable): entity/pair flags + top per-DA examples ─
     await q`truncate marts.flag_instances`;
@@ -175,12 +209,13 @@ export async function runFlagMarts(
     const [dt] = await q`select count(*)::int c from marts.da_transactions`;
     log(
       `flag marts: authority_concentration=${ac!.c} entity_top_partners=${tp!.c} ` +
-        `entity_flags=${ef!.c} flag_instances=${fi!.c} da_transactions=${dt!.c}`,
+        `entity_flags=${ef!.c} main_cpv_div=${mainCpvDivisions} flag_instances=${fi!.c} da_transactions=${dt!.c}`,
     );
     return {
       authorityConcentration: ac!.c as number,
       entityTopPartners: tp!.c as number,
       entityFlags: ef!.c as number,
+      mainCpvDivisions,
       flagInstances: fi!.c as number,
       daTransactions: dt!.c as number,
     };

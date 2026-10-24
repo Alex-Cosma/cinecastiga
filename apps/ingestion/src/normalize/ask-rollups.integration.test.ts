@@ -31,14 +31,14 @@ it.skipIf(!connection)('builds the Ask rollups and the covering indexes with eve
   const ids=new Set([cluj,iasi,a,b]);
   const own=<T extends Record<string,unknown>>(rows:T[],key:keyof T)=>rows.filter(r=>ids.has(String(r[key]))).map(r=>({...r}));
   // Only accepted, positive DAs up to the 2M ceiling; the authority as its own supplier has no supplier.
-  expect(own(await q`select role,eid::text,y,src,county,nm,v::text,n::int from marts.agg_entity_year order by role,eid,y`,'eid')).toEqual([
+  expect(own(await q`select role,eid::text,y,src,county,nm,v::text,n::int from marts.agg_entity_year order by role,eid::bigint,y`,'eid')).toEqual([
    {role:'authority',eid:cluj,y:'2024',src:'da',county:'Cluj',nm:'Spital Cluj',v:'2000000',n:1},
    {role:'authority',eid:cluj,y:'2025',src:'da',county:'Cluj',nm:'Spital Cluj',v:'1000.50',n:2},
    {role:'authority',eid:iasi,y:'2024',src:'da',county:'Iasi',nm:'Primaria Iasi',v:'30',n:1},
    {role:'supplier',eid:a,y:'2025',src:'da',county:'Cluj',nm:'Furnizor A',v:'1000.50',n:2},
    {role:'supplier',eid:b,y:'2024',src:'da',county:'Cluj',nm:'Furnizor B',v:'2000000',n:1},
   ]);
-  expect(own(await q`select authority_id::text,supplier_id::text,y,v::text,n::int from marts.agg_pair_year order by authority_id,supplier_id nulls last,y`,'authority_id')).toEqual([
+  expect(own(await q`select authority_id::text,supplier_id::text,y,v::text,n::int from marts.agg_pair_year order by authority_id::bigint,supplier_id::bigint nulls last,y`,'authority_id')).toEqual([
    {authority_id:cluj,supplier_id:a,y:'2025',v:'1000.50',n:2},
    {authority_id:cluj,supplier_id:b,y:'2024',v:'2000000',n:1},
    {authority_id:iasi,supplier_id:null,y:'2024',v:'30',n:1},
