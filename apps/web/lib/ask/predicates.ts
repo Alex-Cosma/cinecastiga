@@ -220,9 +220,9 @@ export function rowPredicates(ctx: PredicateCtx, opts: { years?: boolean } = {})
   return parts;
 }
 
-/** A selection read from an (id, finalization_date) index: a named or compared entity, a locality, a person's firms. */
+/** A selection read from an (id, finalization_date) index: a named or compared entity, a locality, a person's firms, the institutions of a kind (D1). */
 const idAnchored = (ctx: PredicateCtx) =>
-  ctx.authorityId !== null || ctx.supplierId !== null || ctx.comparison !== null || ctx.uatSiruta !== null || ctx.adminSupplierIds !== null;
+  ctx.authorityId !== null || ctx.supplierId !== null || ctx.comparison !== null || ctx.uatSiruta !== null || ctx.adminSupplierIds !== null || ctx.kind !== null;
 
 /**
  * The period again, as a range on the column itself, so the id indexes

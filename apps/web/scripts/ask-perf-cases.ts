@@ -140,6 +140,8 @@ export function perfCases(): PerfCase[] {
     perfCase("filtered:stat-iasi-2025-h1", "filtered", "Achizițiile din Iași, ianuarie–iunie 2025", "stat", all(set({ county: "Iași", monthFrom: 1, monthTo: 6 }), years(2025))),
     perfCase("filtered:table-cluj-medicines-2024-2026", "filtered", "Cine vinde medicamente în Cluj, 2024–2026", "table", all(set({ county: "Cluj", cpvTerm: "medicamente" }), years(2024, 2026))),
     perfCase("filtered:trend-cluj-2024-2025", "filtered", "Firmele din Cluj cu cea mai mare schimbare, 2024 → 2025", "trend", all(set({ county: "Cluj" }), years(2024, 2025))),
+    perfCase("filtered:stat-cluj-hospitals-2025-h1", "filtered", "Achizițiile spitalelor din Cluj, ianuarie–iunie 2025", "stat", all(set({ county: "Cluj", authorityKind: "spital", monthFrom: 1, monthTo: 6 }), years(2025))),
+    perfCase("filtered:breakdown-cluj-communes-2024", "filtered", "Ce cumpără primăriile de comună din Cluj, 2024", "breakdown", all(set({ county: "Cluj", authorityKind: "comuna" }), years(2024))),
     perfCase("filtered:compare-selgros-dedeman-2025", "filtered", "SELGROS cu DEDEMAN, 2025", "compare", all(CATALOG_CHOICES.compare!.edit, years(2025)), { ref: "Pre-pasul P la comparație (SELGROS/DEDEMAN)" }),
     // Sources (the drawer's first page) and CSV exports through the real runRows.
     perfCase("sources:table-national", "sources", "Sursele clasamentului național implicit", "table", () => {}, { path: "rows", barMs: 2000 }),
