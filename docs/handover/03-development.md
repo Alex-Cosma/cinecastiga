@@ -169,6 +169,8 @@ Un link nou spre „Întreabă” intră în `lib/ask/site-links.ts` (sau în co
 
 O condiție nouă a unei întrebări se scrie o singură dată, în `lib/ask/predicates.ts`, în funcția nivelului pe care îl declară registrul (`rowPredicates`, `groupPredicates`, `profilePredicates`), cu textul ei în `displayPredicates`; răspunsul, sursele, CSV-ul și capturile o iau de acolo. `predicates.test.ts` pică dacă o cheie schimbă alt nivel decât cel declarat sau dacă SQL-ul afișat o omite. Tipul instituției se schimbă doar în `lib/ask/authority-kind.ts`.
 
+Cuvintele ei se scriu tot o singură dată, în `lib/ask/filters/describe.ts` (`DESCRIBE`): cipul, pastila, rezumatul salvatei, rândul urmăririi, caveat-ul, nota surselor și cuvintele pentru „Din link” și linia de total. Orice număr cu substantiv trece prin `countWords` (`lib/ask/answer-text.ts`). `filters/describe.test.ts` pică dacă o cheie a motorului nu are cuvinte sau dacă un număr de la 20 în sus nu are „de”.
+
 `check-navigation.mjs` folosește strict baza sintetică `seap_test_admin_navigation`, preview separat și date fictive. Nu îl îndrepta spre baza colaboratorului. Scripturile de browser pot cere Playwright și o instalare locală de Chromium; citește precondițiile lor.
 
 Nu rula build și typecheck web concurent când regenerează aceleași `.next/types`. Un build cu `NEXT_DIST_DIR` temporar poate modifica automat include-urile din `tsconfig.json`; curăță doar căile generate ale acelui preview. Nu opri serverele celuilalt dezvoltator cu `pkill node`.
