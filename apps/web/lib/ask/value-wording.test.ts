@@ -6,13 +6,13 @@ import { readFileSync } from "node:fs";
  * Audit F36: contract amounts are recorded/contracted values, not payments.
  * Visible labels on /harta and in Întreabă called them "cheltuieli" / "s-a
  * cheltuit" (the /harta h1 read "Harta cheltuielilor pe județe" while its own
- * subtitle said "Valoarea contractată"). Builder `kw` strings are search
+ * subtitle said "Valoarea contractată"). `kw` strings are search
  * synonyms for what a visitor may type, not labels, so they are ignored.
  */
 const files = [
   "../../app/harta/page.tsx",
   "../../app/intreaba/AskPanel.tsx",
-  "../../app/intreaba/Builder.tsx",
+  "../../app/intreaba/QuestionBuilder.tsx",
   "../../app/intreaba/blocks.tsx",
   "./compile.ts",
   "./pills.ts",

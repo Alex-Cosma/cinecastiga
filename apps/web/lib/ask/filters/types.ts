@@ -11,8 +11,8 @@ import type { GlossaryId } from "../../glossary";
  * F0 describes the builder of today (QuestionBuilder.tsx); F1b renders from it.
  */
 
-/** The question the registry reads and writes: the builder's spec plus the block options read ahead (F0a). */
-export type FilterSpec = QuestionSpec & Pick<AskSpec, "trend" | "timeseries" | "network" | "sankey" | "scatter" | "peers">;
+/** The question the registry reads and writes: the builder's spec, with the block options read ahead (F0a). */
+export type FilterSpec = QuestionSpec;
 
 type Sub<K extends string, T> = `${K}.${Extract<keyof T, string>}`;
 /** Every path of AskSpec: top-level keys, `filters.*` and the sub-keys of each block option. */

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BLOCKS, validateSpec } from "./spec";
 import { isHistoricalProfile } from "./population";
-import { QUESTION_GROUPS, QUESTION_TYPES, defaultQuestion, describeQuestion, leaderAxis, localityScopeError, localityScopeSupport, periodLabel, questionErrors, questionKey, reconcileQuestionDraft, transitionQuestion, type QuestionSpec } from "./question-ui";
+import { QUESTION_GROUPS, QUESTION_TYPES, cloneQuestion, defaultQuestion, describeQuestion, leaderAxis, localityScopeError, localityScopeSupport, periodLabel, questionErrors, questionKey, reconcileQuestionDraft, transitionQuestion, type QuestionSpec } from "./question-ui";
 
 const authority: QuestionSpec = {
   block: "table", dim: "supplier", dataset: "contracts", measure: "value", topN: 7,
@@ -285,5 +285,47 @@ describe("locality scope in the place picker", () => {
     expect(localityScopeError({ block: "scatter", dim: "authority", measure: "value", filters: { ...locality } })).toMatch(/Indicele de risc/);
     expect(localityScopeError({ block: "stat", measure: "value", filters: { ...locality } })).toBeNull();
     expect(localityScopeError({ block: "map", measure: "value", filters: {} })).toBeNull();
+  });
+});
+
+// F0 (plan §2.8): the question as one value, at every depth.
+describe("a question's copy and key at every depth", () => {
+  const trend: QuestionSpec = {
+    block: "trend", dim: "supplier", measure: "value", topN: 10, filters: { yearFrom: 2024, yearTo: 2025 },
+    trend: { change: "up", months: [1, 5] },
+    population: { operator: "and", groups: [{ operator: "and", conditions: [{ field: "county", op: "in", values: ["Cluj"] }] }] },
+  };
+
+  it("copies block options, the population and the record threshold, so an edit of the copy never reaches the original", () => {
+    const copy = cloneQuestion({ ...trend, minimumRecords: { role: "supplier", count: 3 } });
+    (copy.trend!.months as unknown as number[])[1] = 12;
+    copy.trend!.change = "down";
+    copy.population!.groups[0]!.conditions.push({ field: "county", op: "in", values: ["Alba"] });
+    copy.minimumRecords!.count = 9;
+    expect(trend.trend).toEqual({ change: "up", months: [1, 5] });
+    expect(trend.population!.groups[0]!.conditions).toHaveLength(1);
+    expect(cloneQuestion(trend)).toEqual(trend);
+    expect(Object.keys(cloneQuestion(trend))).toEqual(Object.keys(trend));
+    expect(cloneQuestion({ block: "stat", measure: "value", filters: {} })).toEqual({ block: "stat", measure: "value", filters: {} });
+  });
+
+  it("gives equal keys to equal questions whatever the order of keys at any depth, and keeps arrays in order", () => {
+    const reordered: QuestionSpec = {
+      ...trend, trend: { months: [1, 5], change: "up" },
+      population: { groups: [{ conditions: [{ values: ["Cluj"], op: "in", field: "county" }], operator: "and" }], operator: "and" },
+    };
+    expect(questionKey(reordered)).toBe(questionKey(trend));
+    expect(questionKey({ ...trend, trend: { change: "up", months: [5, 5] } })).not.toBe(questionKey(trend));
+    expect(questionKey({ ...trend, trend: { change: "down", months: [1, 5] } })).not.toBe(questionKey(trend));
+    const two = (values: string[]): QuestionSpec => ({ ...trend, population: { operator: "and", groups: [{ operator: "and", conditions: [{ field: "county", op: "in", values }] }] } });
+    expect(questionKey(two(["Cluj", "Alba"]))).not.toBe(questionKey(two(["Alba", "Cluj"])));
+  });
+
+  it("leaves a question's options with it, and keeps them on the same question", () => {
+    expect(transitionQuestion(trend).spec.trend).toEqual(trend.trend);
+    expect(transitionQuestion(trend, "table").spec).not.toHaveProperty("trend");
+    const profile: QuestionSpec = { block: "distribution", dim: "authority", measure: "value", filters: { authorityId: 811 }, peers: { similar: true } };
+    expect(transitionQuestion(profile, "scatter").spec.peers).toEqual({ similar: true });
+    expect(transitionQuestion(profile, "stat").spec).not.toHaveProperty("peers");
   });
 });
