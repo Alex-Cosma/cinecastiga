@@ -65,7 +65,7 @@ export const SITE_LINK_INVENTORY: SiteLinkFile[] = [
   { file: "app/intreaba/SavedQuestions.tsx", occurrences: 2, kind: "relay", what: "Reopening a saved question in the builder" },
   { file: "app/urmariri/shared.tsx", occurrences: 2, kind: "relay", what: "A watch opens its question, scope and source filters" },
   { file: "components/FollowButton.tsx", occurrences: 1, kind: "relay", what: "Hands a question to /urmariri/noua" },
-  { file: "app/urmariri/noua/page.tsx", occurrences: 1, kind: "plain", what: "Without a question: a link to the builder" },
+  { file: "app/urmariri/noua/page.tsx", occurrences: 2, kind: "plain", what: "Without a question, or with one from a newer release: a link to the builder" },
   { file: "app/urmariri/MonitoringInbox.tsx", occurrences: 2, kind: "plain", what: "\"Urmărește o întrebare\" opens the builder" },
   { file: "lib/search-suggestions.ts", occurrences: 5, kind: "question-text", what: "Search suggestions open `/intreaba?q=` (the interpreter)" },
   { file: "lib/ask/permalink.ts", occurrences: 1, kind: "definition", what: "encodeSpec" },

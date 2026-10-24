@@ -114,6 +114,14 @@ describe("keys read ahead of the engine", () => {
     expect(validateSpec(raw)).toEqual({ error });
   });
 
+  it.each(["hasOwnProperty", "__proto__", "toString", "constructor"])("refuses the option %s as unknown, not as an Object.prototype member", (sub) => {
+    // JSON.parse, as a link or a body is read: "__proto__" becomes an own key there.
+    const raw = JSON.parse(`{"block":"trend","dim":"supplier","measure":"value","filters":{"yearFrom":2024,"yearTo":2025},"trend":{"${sub}":1}}`);
+    expect(validateSpec(raw)).toEqual({ error: "Câmp necunoscut în întrebare; condiția nu a fost ignorată." });
+    expect(unimplementedSpecKeys(raw)).toEqual([`trend.${sub}`]);
+    expect(unimplementedSpecKeys(JSON.parse(`{"block":"stat","measure":"value","filters":{},"${sub}":{"x":1}}`))).toEqual([sub]);
+  });
+
   it("drops another block's options, which cannot change this answer (a derived link built by spread)", () => {
     expect(validateSpec({ ...table, trend: { change: "up" }, network: "anything" })).toEqual(table);
     expect(validateSpec({ ...stat, scatter: { flag: "da_split" } })).toEqual(stat);
@@ -156,5 +164,20 @@ describe("today's questions", () => {
     const top = Object.keys(SPEC_JSON_SCHEMA.properties).filter(key => key !== "filters");
     const filters = Object.keys(SPEC_JSON_SCHEMA.properties.filters.properties).map(key => `filters.${key}`);
     for (const path of [...top, ...filters]) expect(IMPLEMENTED_KEYS.has(path), path).toBe(true);
+  });
+
+  // Plan §2.4, §6.1: every key parseSpec reads is either in the model's schema or left out by name,
+  // so a new key cannot reach (or miss) the model without a decision about it.
+  it("leaves out of the model's schema exactly the keys named here, and every key read ahead", () => {
+    const NOT_FOR_THE_MODEL = [
+      // Ids come from grounding the names the model writes; a locality and a person from their pickers.
+      "filters.authorityId", "filters.supplierId", "filters.compareWithId", "filters.uatSiruta", "filters.uatName", "filters.adminPersonKey",
+      // Months, the precise selection, the record threshold and the comparison mode: builder and link only.
+      "filters.monthFrom", "filters.monthTo", "population", "minimumRecords", "comparisonMode",
+    ];
+    const schema = new Set([...Object.keys(SPEC_JSON_SCHEMA.properties).filter(key => key !== "filters"),
+      ...Object.keys(SPEC_JSON_SCHEMA.properties.filters.properties).map(key => `filters.${key}`)]);
+    const outside = [...IMPLEMENTED_KEYS, ...Object.keys(READ_AHEAD_KEYS)].filter(path => !schema.has(path));
+    expect(outside.sort()).toEqual([...NOT_FOR_THE_MODEL, ...Object.keys(READ_AHEAD_KEYS)].sort());
   });
 });

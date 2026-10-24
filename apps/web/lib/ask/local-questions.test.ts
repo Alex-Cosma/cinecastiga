@@ -45,7 +45,7 @@ describe("device saved questions", () => {
     const future = { id:"local:future", title:"Creșteri Buzău", version:3, updatedAt:"2026-11-02T10:00:00Z", spec:{ ...spec, block:"trend", lens:{ x:1 } }, extra:{ kept:true } };
     const broken = { id:"local:broken", title:"", version:0 };
     storage.setItem(LOCAL_QUESTIONS_KEY, JSON.stringify({ version:1, questions:[future, ...JSON.parse(storage.getItem(LOCAL_QUESTIONS_KEY)!).questions, broken] }));
-    expect(readLocalQuestionStore(storage)).toEqual({ questions:[ok], kept:[future, broken] });
+    expect(readLocalQuestionStore(storage)).toEqual({ questions:[ok], kept:[future, broken], newer:1, unreadable:1 });
     expect(readLocalQuestions(storage)).toEqual([ok]);
     writeLocalQuestion(storage, { title:"Nouă", spec });
     expect(JSON.parse(storage.getItem(LOCAL_QUESTIONS_KEY)!).questions.slice(-2)).toEqual([future, broken]);
@@ -56,14 +56,22 @@ describe("device saved questions", () => {
   it("lists a question with a key read ahead of the engine, with that key", () => {
     const storage = fixture();
     const saved = writeLocalQuestion(storage, { title:"Lucrări", spec:{ ...spec, filters:{ ...spec.filters, purchaseKind:"lucrari" } } });
-    expect(readLocalQuestionStore(storage)).toEqual({ questions:[saved], kept:[] });
+    // Listed, and counted as a newer release's item: it cannot open here.
+    expect(readLocalQuestionStore(storage)).toEqual({ questions:[saved], kept:[], newer:1, unreadable:0 });
     expect(saved.spec.filters.purchaseKind).toBe("lucrari");
   });
-  it("says how many items it kept, with the numeral rule", () => {
-    expect(keptLocalQuestionsNote(0)).toBeNull();
-    expect(keptLocalQuestionsNote(1)).toBe("1 întrebare salvată nu se poate deschide în această versiune a site-ului; am păstrat-o. Reîncarcă pagina.");
-    expect(keptLocalQuestionsNote(3)).toBe("3 întrebări salvate nu se pot deschide în această versiune a site-ului; le-am păstrat. Reîncarcă pagina.");
-    expect(keptLocalQuestionsNote(20)).toMatch(/^20 de întrebări salvate nu se pot deschide/);
+  it("keeps an item whose option is named like an Object.prototype member, alone", () => {
+    const storage = fixture(); const ok = writeLocalQuestion(storage, { title:"Lucrări", spec });
+    const odd = JSON.parse('{"id":"local:odd","title":"Ciudată","version":1,"updatedAt":"2026-10-02T10:00:00Z","spec":{"block":"trend","dim":"supplier","measure":"value","filters":{"yearFrom":2024,"yearTo":2025},"trend":{"hasOwnProperty":1}}}');
+    storage.setItem(LOCAL_QUESTIONS_KEY, JSON.stringify({ version:1, questions:[...JSON.parse(storage.getItem(LOCAL_QUESTIONS_KEY)!).questions, odd] }));
+    expect(readLocalQuestionStore(storage)).toEqual({ questions:[ok], kept:[odd], newer:1, unreadable:0 });
+  });
+  it("says what it kept, with the numeral rule; only a newer release's items ask for a reload", () => {
+    expect(keptLocalQuestionsNote({ newer:0, unreadable:0 })).toBeNull();
+    expect(keptLocalQuestionsNote({ newer:1, unreadable:0 })).toBe("1 întrebare salvată vine dintr-o versiune mai nouă a site-ului; am păstrat-o. Reîncarcă pagina.");
+    expect(keptLocalQuestionsNote({ newer:3, unreadable:0 })).toBe("3 întrebări salvate vin dintr-o versiune mai nouă a site-ului; le-am păstrat. Reîncarcă pagina.");
+    expect(keptLocalQuestionsNote({ newer:0, unreadable:1 })).toBe("1 întrebare salvată nu poate fi citită; am păstrat-o neschimbată.");
+    expect(keptLocalQuestionsNote({ newer:20, unreadable:2 })).toBe("20 de întrebări salvate vin dintr-o versiune mai nouă a site-ului; le-am păstrat. Reîncarcă pagina. 2 întrebări salvate nu pot fi citite; le-am păstrat neschimbate.");
   });
   it("rejects invalid questions before touching storage", () => {
     const storage = fixture();

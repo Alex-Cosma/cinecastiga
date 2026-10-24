@@ -4,15 +4,21 @@ import { useEffect, useRef, useState } from "react";
 import type { RecipeSummary, RecipeVersion } from "@/lib/recipes";
 import type { QuestionSpec } from "@/lib/ask/question-ui";
 import { savedQuestionSummary } from "@/lib/ask/filters/describe";
-import { NEWER_VERSION_QUESTION, unimplementedSpecKeys, validateSpec } from "@/lib/ask/spec";
+import { NEWER_VERSION_QUESTION, parseSpec, validateSpec } from "@/lib/ask/spec";
 import { encodeSpec } from "@/lib/ask/permalink";
 import { useViewer } from "@/lib/use-viewer";
-import { keptLocalQuestionsNote, localQuestionStorage, LOCAL_QUESTIONS_KEY, LOCAL_QUESTIONS_EVENT, readLocalQuestions, readLocalQuestionStore } from "@/lib/ask/local-questions";
+import { keptLocalQuestionsNote, localQuestionStorage, LOCAL_QUESTIONS_KEY, LOCAL_QUESTIONS_EVENT, newerQuestion, readLocalQuestions, readLocalQuestionStore } from "@/lib/ask/local-questions";
 import { foldQuestion } from "@/lib/ask/question-ui";
 
 export type SavedQuestion = { id:string; title:string; version:number; spec:QuestionSpec; storage?:"local"; ownerId?:string | undefined };
 
 const summary = savedQuestionSummary;
+/** A device item is already parsed; an account summary carries the stored spec, read as opening reads it. */
+function newerItem(item:RecipeSummary & { storage?:"local" }):boolean {
+  if (item.storage === "local") return newerQuestion(item.spec);
+  const parsed = parseSpec(item.spec);
+  return newerQuestion("error" in parsed ? item.spec : parsed);
+}
 
 type Props = { search:string; current:QuestionSpec; hasUnsavedChanges:boolean; onLoad:(question:SavedQuestion)=>void };
 export default function SavedQuestions(props:Props) {
@@ -27,7 +33,7 @@ function SavedQuestionsList({ search, current, hasUnsavedChanges, onLoad, userId
   const [error, setError] = useState("");
   const [login, setLogin] = useState(false);
   const [localError, setLocalError] = useState("");
-  const [localKept, setLocalKept] = useState(0);
+  const [localBlocked, setLocalBlocked] = useState({ newer:0, unreadable:0 });
   const [retry, setRetry] = useState(0);
   const [candidate, setCandidate] = useState<SavedQuestion | null>(null);
   const request = useRef<AbortController | null>(null);
@@ -41,13 +47,13 @@ function SavedQuestionsList({ search, current, hasUnsavedChanges, onLoad, userId
   useEffect(() => {
     request.current?.abort();
     const ctrl = new AbortController(); request.current = ctrl;
-    setLoading(true); setError(""); setLocalError(""); setLocalKept(0); setLogin(false); setItems([]); setCandidate(null); setOpening(null);
+    setLoading(true); setError(""); setLocalError(""); setLocalBlocked({ newer:0, unreadable:0 }); setLogin(false); setItems([]); setCandidate(null); setOpening(null);
     const timer = setTimeout(async () => {
       let localItems:(RecipeSummary & { storage:"local" })[] = [];
       try {
         const store = readLocalQuestionStore(localQuestionStorage());
         localItems = store.questions.filter(item => foldQuestion(item.title).includes(foldQuestion(search.trim()))).map(item => ({ ...item, currentVersion:item.version }));
-        if (!ctrl.signal.aborted) setLocalKept(store.kept.length);
+        if (!ctrl.signal.aborted) setLocalBlocked({ newer:store.newer, unreadable:store.unreadable });
       }
       catch (e) { if (!ctrl.signal.aborted) setLocalError(e instanceof Error ? e.message : "Browserul nu permite citirea întrebărilor locale."); }
       if (!ctrl.signal.aborted) setItems(localItems);
@@ -76,7 +82,7 @@ function SavedQuestionsList({ search, current, hasUnsavedChanges, onLoad, userId
       if (item.storage === "local") {
         const question = readLocalQuestions(localQuestionStorage()).find(q => q.id === item.id);
         if (!question) throw new Error("Întrebarea nu mai este disponibilă pe dispozitiv. Reîncarcă lista.");
-        if (unimplementedSpecKeys(question.spec).length) throw new Error(`${NEWER_VERSION_QUESTION} Reîncarcă pagina.`);
+        if (newerQuestion(question.spec)) throw new Error(`${NEWER_VERSION_QUESTION} Reîncarcă pagina.`);
         if (hasUnsavedChanges) setCandidate(question); else onLoad(question);
         return;
       }
@@ -102,15 +108,23 @@ function SavedQuestionsList({ search, current, hasUnsavedChanges, onLoad, userId
         <h3>Înlocuiești întrebarea curentă?</h3><p>Ai modificări nesalvate. Dacă încarci „{candidate.title}”, acestea se pierd.</p>
         <div><button type="button" onClick={() => { setCandidate(null); requestAnimationFrame(() => selectedRow.current?.focus()); }}>Păstrează întrebarea curentă</button><button type="button" onClick={() => onLoad(candidate)}>Înlocuiește și încarcă</button></div>
       </div>}
-      {items.map(item => <button type="button" hidden={!!candidate} className="cq-saved-row" key={item.id} disabled={!!opening} onClick={event => void open(item,event.currentTarget)}>
-        <span><strong>{item.title}</strong><span className="cq-saved-summary">{summary(item.spec)}</span><small>{opening === item.id ? "Se încarcă…" : `${item.storage === "local" ? "Pe acest dispozitiv" : "În cont"} · ${new Date(item.updatedAt).toLocaleDateString("ro-RO")}`}</small></span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6" /></svg>
-      </button>)}
+      {items.map(item => {
+        const where = `${item.storage === "local" ? "Pe acest dispozitiv" : "În cont"} · ${new Date(item.updatedAt).toLocaleDateString("ro-RO")}`;
+        // A newer release wrote it (its summary says so): listed so it is not lost, but it cannot open here.
+        if (newerItem(item)) return <div hidden={!!candidate} className="cq-saved-row" key={item.id} aria-disabled="true">
+          <span><strong>{item.title}</strong><span className="cq-saved-summary">{summary(item.spec)}</span><small>{where}</small></span>
+        </div>;
+        return <button type="button" hidden={!!candidate} className="cq-saved-row" key={item.id} disabled={!!opening} onClick={event => void open(item,event.currentTarget)}>
+          <span><strong>{item.title}</strong><span className="cq-saved-summary">{summary(item.spec)}</span><small>{opening === item.id ? "Se încarcă…" : where}</small></span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6" /></svg>
+        </button>;
+      })}
       {!items.length && !error && !localError && <p>{search.trim() ? "Nicio întrebare cu acest nume. Încearcă alt termen." : "Nu ai întrebări salvate încă. Construiește una și apasă „Salvează întrebarea”, lângă „Vezi răspunsul”."}</p>}
       {items.filter(item => item.storage !== "local").length === 200 && <p>Primele 200 de întrebări din cont, în ordinea ultimei salvări. Caută după nume pentru a le găsi și pe cele mai vechi.</p>}
     </>}
-    {localKept > 0 && <p className="cq-device-note" role="status">{keptLocalQuestionsNote(localKept)}</p>}
+    {keptLocalQuestionsNote(localBlocked) && <p className="cq-device-note" role="status">{keptLocalQuestionsNote(localBlocked)}</p>}
     {localError && <p role="alert">{localError}</p>}
-    {error && <div role="alert"><p>{error}</p><button type="button" onClick={() => setRetry(v=>v+1)}>Reîncarcă lista</button></div>}
+    {/* Reloading the list cannot open a newer release's question; the message asks for a page reload. */}
+    {error && <div role="alert"><p>{error}</p>{!error.startsWith(NEWER_VERSION_QUESTION) && <button type="button" onClick={() => setRetry(v=>v+1)}>Reîncarcă lista</button>}</div>}
   </div>;
 }
