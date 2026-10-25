@@ -352,8 +352,27 @@ export async function rollupDaysReady(sql: DbSql): Promise<boolean> {
   daysReady = { ok: Boolean(row?.ok), at: Date.now() };
   return daysReady.ok;
 }
+/**
+ * The covering id indexes of da_transactions carry sicap_da_id (F2 review,
+ * TRANSACTION_MART_BUILD_INDEXES): a trend group's source page then takes its
+ * rows' keys from the index, in any order and for any group size. Probed
+ * apart: the nightly build makes them, so until the first build with this
+ * code the page keeps its plans of before.
+ */
+let refReady: { ok: boolean; at: number } | null = null;
+export async function coverRefReady(sql: DbSql): Promise<boolean> {
+  if (refReady && Date.now() - refReady.at < 600_000) return refReady.ok;
+  const [row] = (await sql`
+    select count(*) = 2 ok
+    from pg_index i
+    join pg_attribute a on a.attrelid = i.indrelid and a.attnum = any(i.indkey) and a.attname = 'sicap_da_id'
+    where i.indexrelid in (to_regclass('marts.da_tx_supplier_cover_idx'), to_regclass('marts.da_tx_authority_cover_idx'))
+  `) as unknown as { ok: boolean }[];
+  refReady = { ok: Boolean(row?.ok), at: Date.now() };
+  return refReady.ok;
+}
 /** Tests only: forget the probes, so the next call reads the database. */
-export function forgetRollupsReady(): void { ready = null; monthReady = null; daysReady = null; }
+export function forgetRollupsReady(): void { ready = null; monthReady = null; daysReady = null; refReady = null; }
 
 export interface RollupTableOpts {
   dim: Role;

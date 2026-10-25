@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from "vitest";
-import { buildAskRollups, createDb, type DbSql } from "@seap/db";
+import { buildAskRollups, createDb, TRANSACTION_MART_BUILD_INDEXES, type DbSql } from "@seap/db";
 import { CSV_MAX_ROWS, DA_PLAFOND_RON, DATA_CHANGED, runRows, runSpec, TABLE_PAGE_SIZE, type BlockData } from "./compile";
 import { trendGroupOf } from "./predicates";
 import { trendGroupOfRow, trendListOf, trendNoun, trendPartition, trendProfiles, trendRowLabels, type TrendList } from "./trend-partition";
@@ -7,7 +7,7 @@ import { evidenceCsv, sumDecimalStrings } from "./evidence";
 import { forgetTrendGroups, trendGroupStats } from "./group-ids";
 import {
   compareParties, compareSharedPartners, compareTopPartners, forgetRollupsReady, planRollup, rollupBreakdown, rollupCountyTable, rollupMap,
-  monthRollupReady, rollupDaysReady, rollupMinimumCond, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, scatterDensity, type RollupCtx, type RollupNeed,
+  coverRefReady, monthRollupReady, rollupDaysReady, rollupMinimumCond, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, scatterDensity, type RollupCtx, type RollupNeed,
 } from "./rollups";
 import { namedKind, type AskSpec } from "./spec";
 import type { Grounding } from "./ground";
@@ -485,6 +485,16 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
           }
         };
         await groupDrawers("rollups with days", true);
+        // The covering id indexes with sicap_da_id (built nightly, F2 review): every group's page takes its direct
+        // acquisitions' first keys from them; the same drawers, CSVs and 14 orders.
+        await q.unsafe("savepoint keyed_indexes");
+        for (const index of TRANSACTION_MART_BUILD_INDEXES) await q.unsafe(index.definition);
+        forgetRollupsReady();
+        expect(await coverRefReady(q)).toBe(true);
+        await groupDrawers("rollups with days, keys from the covering index", true);
+        await q.unsafe("rollback to savepoint keyed_indexes");
+        forgetRollupsReady();
+        expect(await coverRefReady(q)).toBe(false);
         // A rollup built before the days: the drawer counts the group's records, with the same result.
         await q.unsafe("savepoint undated_rollups");
         for (const table of ["agg_entity_year", "agg_pair_year", "agg_entity_month"]) await q.unsafe(`alter table marts.${table} drop column d0, drop column d1`);
