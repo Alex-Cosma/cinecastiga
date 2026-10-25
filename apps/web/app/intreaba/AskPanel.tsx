@@ -30,7 +30,7 @@ import {
 } from "./blocks";
 import TrendBlock from "./TrendAnswer";
 import { TREND_LIST_CSV, retimeScopeLabel, trendWatch } from "./trend-answer";
-import { specTrendList, type TrendList } from "@/lib/ask/trend-shared";
+import { specTrendList, specTrendPartLabel, type TrendList } from "@/lib/ask/trend-shared";
 import { isWholeYear, monthsLabel } from "@/lib/ask/months-window";
 import QuestionBuilder, { type StripPatch } from "./QuestionBuilder";
 import { patchDraft } from "./builder/view";
@@ -501,7 +501,11 @@ export default function AskPanel({
     ...(stripKeys.includes("measure") ? { lens: applied.measure === "count" ? "count" as const : "value" as const } : {}),
     ...(thread ? { thread: threadWords(thread) } : {}),
     // A trend's group buttons and its months (plan §4.7 Export): in the header and the file name.
-    ...(resp?.data?.block === "trend" && resp.data.composition ? { group: TREND_LIST_CSV[specTrendList(applied)] } : {}),
+    // `grupa` names the part as its drawer and its watch do (with the answer's years when the link has none).
+    ...(resp?.data?.block === "trend" && resp.data.composition ? {
+      group: specTrendPartLabel({ ...applied, filters: { ...applied.filters, yearFrom: applied.filters.yearFrom ?? resp.data.yearA, yearTo: applied.filters.yearTo ?? resp.data.yearB } }),
+      groupFile: TREND_LIST_CSV[specTrendList(applied)],
+    } : {}),
     ...(resp?.data?.block === "trend" && resp.data.months && !isWholeYear(resp.data.months) ? { months: monthsLabel(resp.data.months) } : {}),
   } : {};
   const appliedKey = applied ? questionKey(applied) : "";

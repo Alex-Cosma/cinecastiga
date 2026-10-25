@@ -5,6 +5,11 @@ import {
   retimeScopeLabel, shownTrendList, signedRon, trendButtons, trendEmpty, trendGroupHeader, trendRest, trendRowView, trendTotal, trendWatch, trendWatchNote,
   withoutFilingWords,
 } from "./trend-answer";
+import { answerCsv } from "./answer-csv";
+import { TREND_LIST_LABELS } from "../../lib/ask/filters/defs/trend";
+import { questionTitle } from "../../lib/ask/filters/title";
+import { TREND_LISTS, specTrendPartLabel, trendListSpec, type TrendList } from "../../lib/ask/trend-shared";
+import { watchedGroupLabel } from "../../lib/monitoring-input";
 
 /*
  * TB-screen (plan §4.7 P6, P8; trend final §3.1, §3.4, §4.4): the words of the
@@ -300,5 +305,34 @@ describe("the watch on a group and its sources", () => {
 
   it("names the group in the shown CSV and its file", () => {
     expect(TREND_LIST_CSV).toEqual({ all: "toate", up: "cresteri", new: "noi", first: "prima-data", down: "scaderi", gone: "nu-mai-apar" });
+  });
+
+  it("says each group in one vocabulary: buttons, title, drawer header, watch and the CSV's grupa (F2-merge-fixes)", () => {
+    // The title's word for each list: the sentence's phrase (defs/trend.ts TREND_CHANGE_PHRASE and the buttons' words).
+    const titleWord: Record<TrendList, string> = { all: "schimbare", up: "creștere", new: "noi", first: "noi apar prima dată", down: "scădere", gone: "nu mai apar" };
+    const buttons = new Map(trendButtons(data, firms)!.map((b) => [b.value, b.name]));
+    for (const list of TREND_LISTS) {
+      const spec = trendListSpec(firms, list);
+      const part = specTrendPartLabel(spec);
+      // The short name on its button (or under Noi) starts the part's name everywhere else.
+      const short = list === "first" ? firstOptions(data, "first", spec)!.find((o) => o.value === "first")!.label : buttons.get(list)!;
+      expect(short).toBe(list === "first" ? `${TREND_LIST_LABELS.first} în 2025` : TREND_LIST_LABELS[list]);
+      expect(part.startsWith(list === "first" ? TREND_LIST_LABELS.new : TREND_LIST_LABELS[list])).toBe(true);
+      if (list === "first") expect(part).toContain(short.toLocaleLowerCase("ro-RO"));
+      expect(questionTitle(spec)).toContain(titleWord[list]);
+      if (list !== "all") {
+        expect(trendGroupHeader(spec, { part: list as Exclude<TrendList, "all">, members: 3, selection: null }, "5")).toBe(`Grupa „${part}”: 3 firme · 5 lei`);
+        expect(watchedGroupLabel(spec as never)).toBe(`„${part}”`);
+        expect(trendWatchNote(spec)).toContain(`„${part}”`);
+      }
+      const { text, filename } = answerCsv(data, spec, "T", { group: part, groupFile: TREND_LIST_CSV[list] });
+      expect(text.split("\r\n")[1]).toContain(`"${part}"`);
+      expect(filename).toBe(`t-${TREND_LIST_CSV[list]}.csv`);
+    }
+    // In percent the growths are those from the base, by that name in every place but the button.
+    const percent = trendSpec({ change: "up", months: "auto", order: "percent", minBase: 1_000_000 });
+    expect(specTrendPartLabel(percent)).toBe("Creșteri de la cel puțin 1 mil. lei în 2024");
+    expect(watchedGroupLabel(percent as never)).toBe("„Creșteri de la cel puțin 1 mil. lei în 2024”");
+    expect(buttons.get("up")).toBe("Creșteri");
   });
 });

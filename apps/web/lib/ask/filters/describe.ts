@@ -11,7 +11,7 @@ import {
 } from "../spec";
 import { formatExactDecimal, formatInt, formatRon } from "../../format";
 import { monthsLabel } from "../months-window";
-import { trendGroupLabel } from "./defs/trend";
+import { TREND_ALL_CHANGES, TREND_FIRST_LABEL, firstTimeWords, trendGroupLabel } from "./defs/trend";
 import { filterContext } from "./context";
 import { exclusionWords, isDaBoundPopulation, selectionOrigin, splitExcluded, type OriginHint, type OriginWords } from "./origin";
 import { FILTERS, SPEC_PATH_OWNERS, presentPaths } from "./registry";
@@ -381,8 +381,8 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
     if (!change) return null;
     const { yearFrom: a, yearTo: b } = spec.filters;
     const label = trendGroupLabel(change, a, b);
-    const words = change === "all" ? "toate schimbările" : label.toLowerCase();
-    return { words, chip: label, pills: [words], scope: [{ label: "Grupul", value: change === "all" ? "Toate schimbările" : label }], summary: label };
+    const words = (change === "all" ? TREND_ALL_CHANGES : label).toLocaleLowerCase("ro-RO");
+    return { words, chip: label, pills: [words], scope: [{ label: "Grupul", value: change === "all" ? TREND_ALL_CHANGES : label }], summary: label };
   },
   trendMonths: (spec, labels) => {
     const months = spec.trend?.months;
@@ -424,9 +424,10 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
   trendFirstOnly: (spec) => {
     if (!spec.trend?.firstOnly) return null;
     const year = spec.filters.yearTo ? ` în ${spec.filters.yearTo}` : "";
+    const words = firstTimeWords(spec.filters.yearTo);
     return {
-      words: `prima dată${year}`, chip: `Prima dată${year}`, pills: [`prima dată${year}`],
-      scope: [{ label: "Prima dată", value: `Prima înregistrare în datele noastre${year}` }],
+      words, chip: capitalFirst(words), pills: [words],
+      scope: [{ label: TREND_FIRST_LABEL, value: `Prima înregistrare în datele noastre${year}` }],
     };
   },
 };

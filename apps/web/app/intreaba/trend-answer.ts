@@ -1,12 +1,15 @@
 import type { BlockData, PartialYear, TrendRow } from "../../lib/ask/compile";
 import type { EvidenceScope } from "../../lib/ask/evidence";
-import { countWords, formatChange } from "../../lib/ask/answer-text";
-import { TREND_CHANGE_LABELS, trendGroupLabel } from "../../lib/ask/filters/defs/trend";
+import { countWords, fileSlug, formatChange } from "../../lib/ask/answer-text";
+import {
+  TREND_ALL_CHANGES, TREND_CHANGE_LABELS, TREND_CHANGE_PHRASE, TREND_EQUAL_LABEL, TREND_FIRST_LABEL, TREND_LIST_LABELS, TREND_NOUN_WORDS,
+  firstTimeWords, trendBaseWords, trendGroupLabel, type TrendNounWords,
+} from "../../lib/ask/filters/defs/trend";
 import { isWholeYear, monthsLabel } from "../../lib/ask/months-window";
 import { DEFAULT_TREND_MIN_BASE, type AskSpec, type TrendChange } from "../../lib/ask/spec";
-import type { TrendMemberPart, TrendNoun, TrendPartTotals } from "../../lib/ask/trend-partition";
+import type { TrendMemberPart, TrendPartTotals } from "../../lib/ask/trend-partition";
 import {
-  foreignCountry, specTrendList, specTrendPart, trendGroupOfRow, trendPartLabel, trendRowLabels, type TrendList, type TrendRowFacts, type TrendRowLabel,
+  TREND_LISTS, foreignCountry, specTrendList, specTrendPart, trendGroupOfRow, trendPartLabel, trendRowLabels, type TrendList, type TrendRowFacts, type TrendRowLabel,
 } from "../../lib/ask/trend-shared";
 import { cleanName, formatInt, formatRon } from "../../lib/format";
 import { MONITORING_MEMBERS_MAX, membersTooManyWords, type MonitoringMembers } from "../../lib/monitoring-shared";
@@ -24,19 +27,11 @@ import type { KitTip } from "./builder/kit-types";
  */
 
 export type TrendData = Extract<BlockData, { block: "trend" }>;
-type Gender = "f" | "m" | "n";
-/** The rows' noun (trend final §1): one, many, many with the article, and its gender ("Nicio firmă nouă", "Niciun furnizor nou"). */
-export interface TrendNounWords { one: string; many: string; the: string; gender: Gender }
-const NOUNS: Record<TrendNoun, TrendNounWords> = {
-  firme: { one: "firmă", many: "firme", the: "firmele", gender: "f" },
-  furnizori: { one: "furnizor", many: "furnizori", the: "furnizorii", gender: "m" },
-  instituții: { one: "instituție", many: "instituții", the: "instituțiile", gender: "f" },
-  clienți: { one: "client", many: "clienți", the: "clienții", gender: "m" },
-  județe: { one: "județ", many: "județe", the: "județele", gender: "n" },
-};
-/** The answer's noun; an answer stored before trend-2 has none: its dimension's. */
+type Gender = TrendNounWords["gender"];
+export type { TrendNounWords };
+/** The rows' noun (trend final §1, defs/trend.ts); an answer stored before trend-2 has none: its dimension's. */
 export function trendNounWords(data: Pick<TrendData, "noun">, spec: Pick<AskSpec, "dim">): TrendNounWords {
-  return NOUNS[data.noun ?? (spec.dim === "county" ? "județe" : spec.dim === "supplier" ? "firme" : "instituții")];
+  return TREND_NOUN_WORDS[data.noun ?? (spec.dim === "county" ? "județe" : spec.dim === "supplier" ? "firme" : "instituții")];
 }
 const cap = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 const none = (g: Gender) => g === "f" ? "Nicio" : "Niciun";
@@ -121,8 +116,8 @@ export function firstOptions(data: TrendData, list: TrendList, spec: Pick<AskSpe
   const c = data.composition;
   if ((list !== "new" && list !== "first") || !c?.new || !c.first || !data.groups?.first) return null;
   return [
-    { value: "new", label: "Toate", count: formatInt(c.new.count) },
-    { value: "first", label: `Prima dată în ${data.yearB}`, count: formatInt(c.first.count),
+    { value: "new", label: TREND_CHANGE_LABELS.all, count: formatInt(c.new.count) },
+    { value: "first", label: `${TREND_FIRST_LABEL} în ${data.yearB}`, count: formatInt(c.first.count),
       ...(c.first.count === 0 ? { disabled: emptyTitle("first", trendNounWords(data, spec), data) } : {}) },
   ];
 }
@@ -185,7 +180,7 @@ export interface TrendEmpty { message: string; to?: { label: string; list: Trend
 const BASES = [100_000, 1_000_000, 10_000_000] as const;
 export function trendEmpty(data: TrendData, list: TrendList, spec: Pick<AskSpec, "dim" | "trend">): TrendEmpty {
   const noun = trendNounWords(data, spec);
-  const all = { label: "Vezi toate schimbările", list: "all" as const };
+  const all = { label: `Vezi ${TREND_ALL_CHANGES.toLocaleLowerCase("ro-RO")}`, list: "all" as const };
   const minBase = spec.trend?.order === "percent" ? spec.trend.minBase ?? DEFAULT_TREND_MIN_BASE : null;
   if (list === "up" && minBase !== null) {
     const lower = [...BASES].reverse().find((base) => base < minBase);
@@ -206,7 +201,7 @@ export function trendEmpty(data: TrendData, list: TrendList, spec: Pick<AskSpec,
 export function labelFact(label: TrendRowLabel): RowFact {
   switch (label.kind) {
     case "noValidCui": return { text: "fără CUI valid", tone: "caveat" };
-    case "firstYear": return { text: `prima dată în ${label.year}` };
+    case "firstYear": return { text: firstTimeWords(label.year) };
     case "activeSince": return { text: `activă din ${label.year}` };
     case "activeIn": return { text: `activă în ${label.year}` };
     case "oneRecord": return { text: `${label.src === "da" ? "1 achiziție directă" : "1 contract"}: ${Math.round(label.share * 100)}%`, tone: "caveat" };
@@ -220,7 +215,7 @@ export function labelLegend(kinds: ReadonlySet<TrendRowLabel["kind"]>, data: Pic
   const legend: [TrendRowLabel["kind"], RowFact, KitTip][] = [
     ["noValidCui", { text: "fără CUI valid", tone: "caveat" }, { title: "Fără CUI valid",
       text: "Sursa nu dă un cod fiscal valid. Aceeași firmă poate avea mai multe intrări, deci „nouă” sau „nu mai apare” poate fi doar o altă intrare a ei." }],
-    ["firstYear", { text: `prima dată în ${data.yearB}` }, { title: "Prima dată",
+    ["firstYear", { text: firstTimeWords(data.yearB) }, { title: TREND_FIRST_LABEL,
       text: `Prima înregistrare din datele noastre e în ${data.yearB}. Nu e data înființării.` }],
     ["activeSince", { text: "activă din …" }, { title: "Activă din …",
       text: `Prima înregistrare din datele noastre e mai veche; în ${a} nu are niciuna, în această selecție.` }],
@@ -290,7 +285,10 @@ export interface TrendRowView {
   scopeLabel: string;
 }
 
-const GROUP_WORDS: Record<ReturnType<typeof trendGroupOfRow>, string> = { up: "creștere", new: "nouă", down: "scădere", gone: "nu mai apare", equal: "aceeași valoare" };
+/** A row's group for a screen reader, in the singular of the vocabulary's words. */
+const GROUP_WORDS: Record<ReturnType<typeof trendGroupOfRow>, string> = {
+  up: TREND_CHANGE_PHRASE.up, new: "nouă", down: TREND_CHANGE_PHRASE.down, gone: "nu mai apare", equal: TREND_EQUAL_LABEL.toLocaleLowerCase("ro-RO"),
+};
 export const rowGroupWords = (group: ReturnType<typeof trendGroupOfRow>) => GROUP_WORDS[group];
 
 /** A change in percent: rounded to the unit, but a fall that leaves money is never „−100%” (−99,998% rounds to it). */
@@ -361,8 +359,9 @@ export function trendTotal(data: TrendData, list: TrendList, spec: Pick<AskSpec,
   const a = `${periodWords(data, data.yearA)}${starA}`, b = `${periodWords(data, data.yearB)}${starB}`;
   const change: TrendChange = list === "first" ? "new" : list;
   const minBase = spec.trend?.order === "percent" ? spec.trend.minBase ?? DEFAULT_TREND_MIN_BASE : null;
-  const base = list === "up" && c?.eligible && minBase ? ` de la cel puțin ${formatRon(minBase)} în ${a}` : "";
-  const label = `${trendGroupLabel(change, `${data.yearA}${starA}`, `${data.yearB}${starB}`)}${list === "first" ? ` · prima dată în ${data.yearB}` : ""}${base}`;
+  // trendPartLabel's words, with the answer's months and stars.
+  const base = list === "up" && c?.eligible && minBase ? ` ${trendBaseWords(minBase, a)}` : "";
+  const label = `${trendGroupLabel(change, `${data.yearA}${starA}`, `${data.yearB}${starB}`)}${list === "first" ? ` · ${firstTimeWords(data.yearB)}` : ""}${base}`;
   const of = base && c?.up ? `, din ${formatInt(c.up.count)}` : "";
   const values = list === "new" || list === "first" ? [{ label: null, value: `${formatRon(t.valueB)} în ${b}` }]
     : list === "gone" ? [{ label: null, value: `${formatRon(t.valueA)} în ${a}` }]
@@ -430,5 +429,5 @@ export function trendGroupHeader(spec: Pick<AskSpec, "dim" | "filters" | "trend"
   return `Grupa „${trendPartLabel(group.part, spec)}”: ${countWords(group.members, one!, many!)} · ${formatRon(Number(value))}${of}`;
 }
 
-/** The group in words for the shown result's CSV and its file name: „noi”, „prima-data”, „nu-mai-apar”. */
-export const TREND_LIST_CSV: Record<TrendList, string> = { all: "toate", up: "cresteri", new: "noi", first: "prima-data", down: "scaderi", gone: "nu-mai-apar" };
+/** A list's short name in the shown result's file name: „noi”, „prima-data”, „nu-mai-apar” (its `grupa` column says the part's name). */
+export const TREND_LIST_CSV = Object.fromEntries(TREND_LISTS.map((list) => [list, fileSlug(TREND_LIST_LABELS[list])])) as Record<TrendList, string>;

@@ -9,7 +9,7 @@ import { TREND_ORDER_WORDS, adminPhrase, employeesOnBands, employeesPhrase, loca
 import { KIND_ONE, KIND_WORDS, entityLabel, leaderAxis, type QuestionSpec } from "../../../lib/ask/question-ui";
 import { DEFAULT_TREND_MIN_BASE, type AskSpec } from "../../../lib/ask/spec";
 import { MIN_TREND_YEAR } from "../../../lib/ask/months-window";
-import { trendNoun } from "../../../lib/ask/filters/defs/trend";
+import { TREND_ALL_CHANGES, TREND_CHANGE_LABELS, TREND_CHANGE_PHRASE, TREND_NOUN_WORDS, trendNoun } from "../../../lib/ask/filters/defs/trend";
 import { formatRon } from "../../../lib/format";
 import { EMPLOYEE_BANDS, bandRange } from "./Bands";
 import type { KitOption, KitRestRow, KitTip } from "./kit-types";
@@ -89,18 +89,19 @@ const AXIS_DETAIL = {
   risk: "Tot istoricul, doar achiziții directe. Perioada, domeniul și cumpărătorul nu se aplică.",
 } as const;
 
-/** The groups' noun after the selection (trend final §1): suppliers of a chosen buyer, clients of a chosen firm. */
-const TREND_NOUNS: Record<ReturnType<typeof trendNoun>, string> = { firme: "Firme", furnizori: "Furnizori", "instituții": "Instituții", "clienți": "Clienți", "județe": "Județe" };
-
-/** "Ce fel de schimbare?" (trend final §3.1): each change with its one-line rule, in the question's years. */
+/**
+ * "Ce fel de schimbare?" (trend final §3.1): each change with its one-line rule, in the question's
+ * years, in the vocabulary's long form (kit §4): the sentence's word ("Creștere"), the groups' noun
+ * after the selection ("Furnizori noi" of a chosen buyer, "Clienți noi" of a chosen firm).
+ */
 function trendChangeWords(change: string, spec: QuestionSpec): { label: string; detail: string } {
   const a = spec.filters.yearFrom ?? "primul an", b = spec.filters.yearTo ?? "ultimul an";
   switch (change) {
-    case "up": return { label: "Creștere", detail: `În ambii ani, mai mult în ${b}.` };
-    case "new": return { label: `${TREND_NOUNS[trendNoun(spec as unknown as AskSpec)]} noi`, detail: `Nicio înregistrare în ${a}, cel puțin una în ${b}.` };
-    case "down": return { label: "Scădere", detail: `În ambii ani, mai puțin în ${b}.` };
-    case "gone": return { label: "Nu mai apar", detail: `Înregistrări în ${a}, niciuna în ${b}.` };
-    default: return { label: "Toate schimbările", detail: "Toate grupurile, după diferența în lei." };
+    case "up": return { label: capital(TREND_CHANGE_PHRASE.up), detail: `În ambii ani, mai mult în ${b}.` };
+    case "new": return { label: `${capital(TREND_NOUN_WORDS[trendNoun(spec as unknown as AskSpec)].many)} ${TREND_CHANGE_LABELS.new.toLocaleLowerCase("ro-RO")}`, detail: `Nicio înregistrare în ${a}, cel puțin una în ${b}.` };
+    case "down": return { label: capital(TREND_CHANGE_PHRASE.down), detail: `În ambii ani, mai puțin în ${b}.` };
+    case "gone": return { label: TREND_CHANGE_LABELS.gone, detail: `Înregistrări în ${a}, niciuna în ${b}.` };
+    default: return { label: TREND_ALL_CHANGES, detail: "Toate grupurile, după diferența în lei." };
   }
 }
 

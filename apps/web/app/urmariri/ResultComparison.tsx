@@ -5,6 +5,7 @@ import { answerCore, KEY_VERSION_NOTES, KEY_VERSIONS } from "../../lib/ask/answe
 import { formatExactDecimal } from "../../lib/format";
 import { countWords } from "../../lib/ask/answer-text";
 import { FLAG_META } from "../../lib/flags";
+import { TREND_EQUAL_LABEL, TREND_LIST_LABELS } from "../../lib/ask/filters/defs/trend";
 
 const labels: Record<string, string> = {
   stat: "Totalul selecției", rows: "Clasament", series: "Evoluția în timp", counties: "Distribuția pe județe",
@@ -32,7 +33,8 @@ const labels: Record<string, string> = {
   // trend-2 (F2): the chosen group, its months and its totals; a group watch's fixed members.
   list: "Grupa afișată", change: "Felul schimbării", months: "Lunile comparate", mode: "Cum s-au ales lunile",
   composition: "Totalurile grupei", groups: "Grupele", members: "Grupa fixată", frozen: "Membri fixați", frozenAt: "Fixată la",
-  all: "Toate", up: "Creșteri", new: "Noi", first: "Prima dată", down: "Scăderi", gone: "Nu mai apar", equal: "Fără schimbare", eligible: "Creșteri de la pragul ales",
+  // The groups in the trend's vocabulary (defs/trend.ts), as on the answer's buttons.
+  ...TREND_LIST_LABELS, equal: TREND_EQUAL_LABEL, eligible: `${TREND_LIST_LABELS.up} de la pragul ales`,
 };
 /** A group's count is of its entities or counties, not of records (TrendPartTotals.count). */
 const fieldName = (key: string, path: readonly string[]) => key === "count" && path.includes("composition") ? "Număr în grupă" : name(key);

@@ -3,7 +3,7 @@
 import { Fragment } from "react";
 import Link from "next/link";
 import type { PartialYear } from "@/lib/ask/compile";
-import { BLOCK_FILTERS } from "@/lib/ask/filters/blocks";
+import { BLOCK_FILTERS } from "../../lib/ask/filters/blocks";
 import type { FilterId } from "@/lib/ask/filters/types";
 import type { AskSpec } from "@/lib/ask/spec";
 import type { TrendList } from "@/lib/ask/trend-shared";

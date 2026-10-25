@@ -1,6 +1,7 @@
 import { autoMonthsUnresolved, defaultTrendYears, MIN_TREND_YEAR, monthsLabel, sameMonthsWindow, trendYearsFrom, type CoveragePeriods, type MonthsWindow } from "../months-window";
 import type { Dataset, MonthWindow, TrendOptions } from "../spec";
 import { FILTERS } from "./defs";
+import { TREND_ALL_CHANGES } from "./defs/trend";
 import { describeConditions } from "./describe";
 import { pathValues, type ParkedItem } from "./parked";
 import type { FilterCtx, FilterId, FilterSpec } from "./types";
@@ -91,7 +92,7 @@ export function leavingTrend(spec: FilterSpec): ParkedItem[] {
     const value = FILTERS[id].read(spec);
     return value !== undefined && !(id === "trendChange" && value === NEW_TREND.change || id === "trendMonths" && value === NEW_TREND.months);
   }).map((id) => ({
-    id, label: id === "trendChange" && spec.trend?.change === "all" ? "Toate schimbările" : words[id]?.chip ?? FILTERS[id].label,
+    id, label: id === "trendChange" && spec.trend?.change === "all" ? TREND_ALL_CHANGES : words[id]?.chip ?? FILTERS[id].label,
     values: pathValues(spec, FILTERS[id].keys),
   }));
 }
