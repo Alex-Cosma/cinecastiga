@@ -46,11 +46,13 @@ describe("the trend's answer", () => {
     expect(radios).toHaveLength(5);
     expect(markup).toContain('role="radiogroup" aria-label="Felul schimbării"');
     expect(radios.filter((r) => r.includes('aria-checked="true"'))).toHaveLength(1);
-    expect(text(markup)).toContain("Noi 2 · +1.200");
+    expect(text(markup)).toContain("Noi 2 · +1.200 lei");
     expect(radios.filter((r) => r.includes('aria-disabled="true"'))).toHaveLength(1);
     expect(text(markup)).toContain("Nicio firmă care să nu mai apară.");
-    // On the new ones: „Toate · Prima dată în 2025”.
-    expect(text(markup)).toMatch(/Toate 2 Prima dată în 2025 1/);
+    // Its reason is visible too: a line under the buttons, the reason in its (?).
+    expect(markup).toMatch(/<p class="fk-trend-off fk-tipwrap">Grup gol: Nu mai apar/);
+    // On the new ones: „Toate · Prima dată în 2025”, beside „Noi” with its year.
+    expect(text(markup)).toMatch(/Firme noi față de 2024: .*Toate 2 Prima dată în 2025 1/);
   });
 
   it("shows on a row its labels, partner and change, „Înregistrări →”, and no county beside a firm", () => {
@@ -62,7 +64,7 @@ describe("the trend's answer", () => {
     expect(markup).toContain('aria-label="Înregistrări: ALFA CONSTRUCT SRL"');
     expect(markup).toContain('href="/entitati/1"');
     expect(shown).not.toContain("București");
-    expect(shown).toContain("Creșteri: 1 firmă · 2024 100 → 2025 1.500 lei");
+    expect(shown).toContain("Creșteri: 1 firmă · 2024 100 lei → 2025 1.500 lei");
   });
 
   it("puts an institution's county beside it, and a swatch with its group on every row of „Toate”", () => {
@@ -95,7 +97,33 @@ describe("the trend's answer", () => {
   it("marks the partly covered years", () => {
     const shown = text(render({ spec: trendSpec({ change: "up" }), partial: [{ year: 2025, note: "date până la 25.09.2025", provisional: true }] }));
     expect(shown).toContain("2025 (date până la 25.09.2025)");
-    expect(shown).toContain("2024 100 → 2025* 1.500");
+    expect(shown).toContain("2024 100 lei → 2025* 1.500 lei");
     expect(shown).not.toContain("2024*");
+  });
+
+  it("marks the partly covered year on the one-year lists too, so the note always points at something (`whole` keeps it)", () => {
+    const partial = [{ year: 2025, note: "date până la 25.09.2025" }];
+    const gone = text(render({ spec: trendSpec({ change: "gone", months: "whole" }), partial }));
+    expect(gone).toContain("Nu mai apar în 2025*: 1 firmă · 50 lei în 2024 · ");
+    expect(gone).not.toContain("în 2024 lei");
+    const fresh = text(render({ spec: trendSpec({ change: "new", months: "whole" }), partial }));
+    expect(fresh).toContain("900 lei în 2025*");
+    expect(fresh).toContain("1.200 lei în 2025*");
+  });
+
+  it("lets the two-year total break between its years, each year whole with its sum", () => {
+    const markup = render({ spec: trendSpec({ change: "up" }) });
+    expect(markup).toContain('<span class="fk-nowrap"><i class="fk-trend-y">2024</i> <span class="fk-num">100 lei</span></span> <span class="fk-nowrap"><i class="fk-trend-y">→ 2025</i>');
+  });
+
+  it("ranks the growths in percent with the percent as the main figure and its caveat under the list (trend final §3.9)", () => {
+    const data = trendFixture({ composition: { ...trendFixture().composition, eligible: { count: 1, valueA: 100, valueB: 1500 } } });
+    const markup = render({ data, spec: trendSpec({ change: "up", order: "percent", minBase: 100 }) });
+    expect(markup).toMatch(/<span class="fk-num fk-trow-delta up"><span aria-hidden="true">×15<\/span>/);
+    expect(markup).toContain('<span class="fk-trow-pct">+1.400 lei</span>');
+    expect(text(markup)).toContain("Creșterea în procente");
+    expect(markup).toContain("e un indiciu de verificat în surse, nu o concluzie.");
+    // The buttons keep the partition: every growth.
+    expect(text(markup)).toContain("Creșteri 1 · +1.400 lei");
   });
 });

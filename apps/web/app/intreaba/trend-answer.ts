@@ -1,13 +1,15 @@
-import type { BlockData, TrendRow } from "../../lib/ask/compile";
+import type { BlockData, PartialYear, TrendRow } from "../../lib/ask/compile";
 import type { EvidenceScope } from "../../lib/ask/evidence";
 import { countWords, formatChange } from "../../lib/ask/answer-text";
 import { TREND_CHANGE_LABELS, trendGroupLabel } from "../../lib/ask/filters/defs/trend";
 import { isWholeYear, monthsLabel } from "../../lib/ask/months-window";
 import { DEFAULT_TREND_MIN_BASE, type AskSpec, type TrendChange } from "../../lib/ask/spec";
 import type { TrendMemberPart, TrendNoun, TrendPartTotals } from "../../lib/ask/trend-partition";
-import { specTrendList, trendGroupOfRow, trendRowLabels, type TrendList, type TrendRowFacts, type TrendRowLabel } from "../../lib/ask/trend-shared";
+import {
+  foreignCountry, specTrendList, specTrendPart, trendGroupOfRow, trendPartLabel, trendRowLabels, type TrendList, type TrendRowFacts, type TrendRowLabel,
+} from "../../lib/ask/trend-shared";
 import { cleanName, formatInt, formatRon } from "../../lib/format";
-import { MONITORING_MEMBERS_MAX, membersTooManyWords } from "../../lib/monitoring-shared";
+import { MONITORING_MEMBERS_MAX, membersTooManyWords, type MonitoringMembers } from "../../lib/monitoring-shared";
 import type { RowFact } from "./answer/RowFacts";
 import type { CountGroup } from "./builder/CountGroups";
 import type { KitTip } from "./builder/kit-types";
@@ -47,8 +49,21 @@ export function periodWords(data: Pick<TrendData, "months">, year: number): stri
   return months && !isWholeYear(months) ? `${monthsLabel(months)} ${year}` : String(year);
 }
 
-/** An amount without its unit, for the rows' columns ("481,7 mil.", "1,1 mld."); the total line says "lei". */
-export const bareRon = (value: number): string => formatRon(value).replace(/ lei$/, "");
+/**
+ * An amount for the rows' columns: "481,7 mil.", "1,1 mld." without "lei"
+ * (the total line says it once); under a million with its unit ("4.180 lei"),
+ * so it never reads as millions beside "170,5 mil.".
+ */
+export const bareRon = (value: number): string => value >= 1e6 ? formatRon(value).replace(/ lei$/, "") : formatRon(value);
+
+/** The partial-year mark of year A and of year B ("*" or ""): the note under the list says why. */
+export type TrendStars = readonly [string, string];
+const NO_STARS: TrendStars = ["", ""];
+/** A partly covered endpoint year carries its "*" wherever it labels a sum (audit F19, trend final §4.3: also after `whole`). */
+export function partialStars(data: Pick<TrendData, "yearA" | "yearB">, partial: readonly Pick<PartialYear, "year">[]): TrendStars {
+  const star = (year: number) => partial.some((p) => p.year === year) ? "*" : "";
+  return [star(data.yearA), star(data.yearB)];
+}
 /** A change: "+652,8 mil.", "−1,1 mld.", "0". */
 export function signedRon(delta: number): string {
   if (delta === 0) return "0";
@@ -66,10 +81,19 @@ export function shownTrendList(data: TrendData, spec: Pick<AskSpec, "trend">): {
 /** The buttons, in the kit's order: „Toate” first (a whole row on phones). */
 const BUTTONS: readonly (TrendChange & TrendList)[] = ["all", "up", "new", "down", "gone"];
 
-/** A group's totals as a button counts them: with the order in percent, the growths are those from the base (composition.eligible). */
+/**
+ * A group's totals as a button counts them: the partition, in every order
+ * (trend final §3.9 „Compoziția nu se schimbă”), so the five add up to
+ * „Toate”. In percent the list holds the growths from the base; the total line
+ * says how many of all the growths they are (trendTotal).
+ */
 function buttonTotals(data: TrendData, list: TrendList): TrendPartTotals | null {
-  const c = data.composition ?? {};
-  return (list === "up" ? c.eligible ?? c.up : c[list]) ?? null;
+  return data.composition?.[list] ?? null;
+}
+/** The totals of the part the list shows: in percent the growths from the base (composition.eligible). */
+function listTotals(data: TrendData, list: TrendList): TrendPartTotals | undefined {
+  const c = data.composition;
+  return list === "up" ? c?.eligible ?? c?.up : c?.[list];
 }
 
 /**
@@ -101,6 +125,26 @@ export function firstOptions(data: TrendData, list: TrendList, spec: Pick<AskSpe
     { value: "first", label: `Prima dată în ${data.yearB}`, count: formatInt(c.first.count),
       ...(c.first.count === 0 ? { disabled: emptyTitle("first", trendNounWords(data, spec), data) } : {}) },
   ];
+}
+
+/** „Firme noi față de 2024:” beside „Toate · Prima dată în 2025” (kit §4: „Noi” always with its year, but on the short buttons). */
+export function newSubLabel(data: Pick<TrendData, "noun" | "yearA">, spec: Pick<AskSpec, "dim">): string {
+  return `${cap(trendNounWords(data, spec).many)} noi față de ${data.yearA}:`;
+}
+
+/**
+ * The groups shown but empty, in one visible line under the buttons, their
+ * reasons in its (?) (kit R1 „dezactivat, cu motivul în (?)”, trend final
+ * §3.1): „Grupuri goale: Noi, Nu mai apar (?)”. A screen reader also hears each
+ * reason with its button (aria-describedby).
+ */
+export function emptyGroupsLine(groups: readonly { name: string; disabled?: boolean | string }[]): { text: string; tip: KitTip } | null {
+  const empty = groups.filter((g): g is { name: string; disabled: string } => typeof g.disabled === "string");
+  if (!empty.length) return null;
+  return {
+    text: `${empty.length === 1 ? "Grup gol" : "Grupuri goale"}: ${empty.map((g) => g.name).join(", ")}`,
+    tip: { title: empty.length === 1 ? "Grup gol" : "Grupuri goale", text: empty.map((g) => g.disabled).join(" ") },
+  };
 }
 
 /** "Firme în 2024 sau 2025: 96.929 (?)" above the buttons, with what the groups mean. */
@@ -190,6 +234,20 @@ export function labelLegend(kinds: ReadonlySet<TrendRowLabel["kind"]>, data: Pic
   return legend.filter(([kind]) => kinds.has(kind)).map(([, fact, tip]) => ({ fact, tip }));
 }
 
+/**
+ * The growths in percent, under their list (trend final §3.9): who the
+ * percent is counted for, and that a jump of tens of times is a lead to check
+ * in the sources, not a conclusion. Null on any other list or order.
+ */
+export function percentTerm(data: TrendData, list: TrendList, spec: Pick<AskSpec, "dim" | "trend">): { text: string; tip: KitTip } | null {
+  if (list !== "up" || spec.trend?.order !== "percent" || !data.composition?.eligible) return null;
+  const noun = trendNounWords(data, spec);
+  const base = formatRon(spec.trend.minBase ?? DEFAULT_TREND_MIN_BASE);
+  return { text: "Creșterea în procente", tip: { title: "Creșterea în procente", text:
+    `Procentul se calculează doar pentru ${noun.the} ${noun.gender === "m" ? "prezenți" : "prezente"} în ambii ani, de la pragul ales (${base} în ${periodWords(data, data.yearA)}). `
+    + "Un salt de zeci de ori vine de obicei dintr-un singur contract sau dintr-o asociere: e un indiciu de verificat în surse, nu o concluzie." } };
+}
+
 /** What „Noi” and „Nu mai apar” mean (the glossary's words), beside the labels under their list: new to the selection, not founded; gone, not closed. */
 export function groupTerm(list: TrendList, data: Pick<TrendData, "yearA" | "yearB">): { text: string; tip: KitTip } | null {
   if (list === "new") return { text: trendGroupLabel("new", data.yearA, data.yearB), tip: { id: "firma-noua" } };
@@ -223,8 +281,10 @@ export interface TrendRowView {
   years: { label: string; value: string }[];
   single: { value: string; when: string } | null;
   delta: string;
-  /** "+136%", "×67" (from ten times), "nouă", "nu mai apare"; with its words for a screen reader. */
+  /** "+136%", "×67" (from ten times), "<−99%" (a fall that leaves money), "nouă", "nu mai apare"; with its words for a screen reader. */
   pct: { text: string; words: string } | null;
+  /** The growths ordered in percent: the percent is the main figure, the change in lei under it (trend final §3.9 Afișare). */
+  pctFirst: boolean;
   up: boolean;
   scope: EvidenceScope;
   scopeLabel: string;
@@ -233,59 +293,86 @@ export interface TrendRowView {
 const GROUP_WORDS: Record<ReturnType<typeof trendGroupOfRow>, string> = { up: "creștere", new: "nouă", down: "scădere", gone: "nu mai apare", equal: "aceeași valoare" };
 export const rowGroupWords = (group: ReturnType<typeof trendGroupOfRow>) => GROUP_WORDS[group];
 
-export function trendRowView(row: TrendRow, list: TrendList, data: TrendData, spec: Pick<AskSpec, "dim">): TrendRowView {
+/** A change in percent: rounded to the unit, but a fall that leaves money is never „−100%” (−99,998% rounds to it). */
+function percentChange(row: Pick<TrendRow, "valueA" | "valueB">, ratio: number): { text: string; words: string } {
+  const change = (ratio - 1) * 100;
+  if (row.valueB > 0 && Math.round(change) <= -100) return { text: "<−99%", words: "scădere de peste 99%" };
+  return { text: formatChange(change), words: formatChange(change) };
+}
+
+/** The part of a row's drawer label that names the answer's years: „ALFA · ian.–mai 2025 și ian.–mai 2026”. */
+const scopeYears = (data: Pick<TrendData, "yearA" | "yearB" | "months">) => ` · ${periodWords(data, data.yearA)} și ${periodWords(data, data.yearB)}`;
+/**
+ * A row's drawer label after its answer was reloaded on other months (409):
+ * the years in the new answer's words, so the drawer never names the months it
+ * no longer lists. Any other label stays as it was.
+ */
+export function retimeScopeLabel(label: string, before: Pick<TrendData, "yearA" | "yearB" | "months">, after: Pick<TrendData, "yearA" | "yearB" | "months">): string {
+  const old = scopeYears(before);
+  return label.endsWith(old) ? `${label.slice(0, -old.length)}${scopeYears(after)}` : label;
+}
+
+export function trendRowView(row: TrendRow, list: TrendList, data: TrendData, spec: Pick<AskSpec, "dim" | "trend">, stars: TrendStars = NO_STARS): TrendRowView {
   const facts: TrendRowFacts | undefined = row.entityId ? data.rowFacts?.[row.entityId] : undefined;
   const noun = trendNounWords(data, spec);
   const labels = facts ? trendRowLabels(row, facts, data) : [];
   const delta = row.valueB - row.valueA;
   const group = trendGroupOfRow(row);
   const a = periodWords(data, data.yearA), b = periodWords(data, data.yearB);
+  const [starA, starB] = stars;
   const ratio = row.valueA > 0 ? row.valueB / row.valueA : null;
   const pct: TrendRowView["pct"] = group === "new" ? { text: novel(noun.gender), words: novel(noun.gender) }
     : group === "gone" ? { text: "nu mai apare", words: "nu mai apare" }
       : ratio !== null && ratio >= 10 ? { text: `×${formatInt(Math.floor(ratio))}`, words: `de ${countWords(Math.floor(ratio), "dată", "ori")} mai mult` }
-        : ratio !== null ? { text: formatChange((ratio - 1) * 100), words: formatChange((ratio - 1) * 100) } : null;
+        : ratio !== null ? percentChange(row, ratio) : null;
   // The partner of the year that makes the change; its year is said where it is not the one the list is about.
   const partnerYear = facts ? (facts.year === data.yearB ? b : a) : null;
   const sayYear = list === "all" || (facts !== undefined && facts.year !== data.yearB);
   const partner = facts?.partner && facts.value > 0
     ? `${sayYear ? `în ${partnerYear}: ` : ""}${Math.round((facts.partner.value / facts.value) * 100)}% de la ${cleanName(facts.partner.name)}` : null;
-  const single = (list === "new" || list === "first") && group === "new" ? { value: bareRon(row.valueB), when: `în ${b}` }
-    : list === "gone" && group === "gone" ? { value: bareRon(row.valueA), when: `în ${a}` } : null;
-  const place = spec.dim === "county" ? null : facts?.country ? countryWords(facts.country) : spec.dim === "supplier" ? null : row.county;
+  const single = (list === "new" || list === "first") && group === "new" ? { value: bareRon(row.valueB), when: `în ${b}${starB}` }
+    : list === "gone" && group === "gone" ? { value: bareRon(row.valueA), when: `în ${a}${starA}` } : null;
+  const country = facts ? foreignCountry(facts) : null;
+  const place = spec.dim === "county" ? null : country ? countryWords(country) : spec.dim === "supplier" ? null : row.county;
   const name = row.entityId ? cleanName(row.name) : row.name;
   return {
     key: row.entityId ?? row.name, name, href: row.entityId ? `/entitati/${row.entityId}` : null, place, group,
     facts: labels.map(labelFact), kinds: labels.map((l) => l.kind), partner,
-    years: single ? [] : [{ label: a, value: bareRon(row.valueA) }, { label: b, value: bareRon(row.valueB) }],
-    single, delta: single ? single.value : signedRon(delta), pct: single ? null : pct, up: delta >= 0,
+    years: single ? [] : [{ label: `${a}${starA}`, value: bareRon(row.valueA) }, { label: `${b}${starB}`, value: bareRon(row.valueB) }],
+    single, delta: single ? single.value : signedRon(delta), pct: single ? null : pct,
+    pctFirst: !single && list === "up" && spec.trend?.order === "percent", up: delta >= 0,
     scope: spec.dim === "county" || !row.entityId ? { county: row.name } : { entityIds: [row.entityId], role: spec.dim === "supplier" ? "supplier" : "authority" },
-    scopeLabel: `${name} · ${a} și ${b}`,
+    scopeLabel: `${name}${scopeYears(data)}`,
   };
 }
 
-/** The group's total line (G8): who is in it and their sums, in the answer's months. */
-export interface TrendTotal { lead: string; values: { label: string | null; value: string }[] }
-export function trendTotal(data: TrendData, list: TrendList, spec: Pick<AskSpec, "dim" | "trend">): TrendTotal | null {
+/**
+ * The group's total line (G8): who is in it and their sums, in the answer's
+ * months; a partly covered year with its "*". `unit` closes a line of two
+ * values ("lei"), unless its last value already says it.
+ */
+export interface TrendTotal { lead: string; values: { label: string | null; value: string }[]; unit: string }
+export function trendTotal(data: TrendData, list: TrendList, spec: Pick<AskSpec, "dim" | "trend">, stars: TrendStars = NO_STARS): TrendTotal | null {
   const c = data.composition;
-  const t = c ? (list === "up" ? c.eligible ?? c.up : c[list]) : undefined;
+  const t = listTotals(data, list);
   if (!t) return null;
   const noun = trendNounWords(data, spec);
-  const a = periodWords(data, data.yearA), b = periodWords(data, data.yearB);
+  const [starA, starB] = stars;
+  const a = `${periodWords(data, data.yearA)}${starA}`, b = `${periodWords(data, data.yearB)}${starB}`;
   const change: TrendChange = list === "first" ? "new" : list;
   const minBase = spec.trend?.order === "percent" ? spec.trend.minBase ?? DEFAULT_TREND_MIN_BASE : null;
   const base = list === "up" && c?.eligible && minBase ? ` de la cel puțin ${formatRon(minBase)} în ${a}` : "";
-  const label = `${trendGroupLabel(change, data.yearA, data.yearB)}${list === "first" ? ` · prima dată în ${data.yearB}` : ""}${base}`;
+  const label = `${trendGroupLabel(change, `${data.yearA}${starA}`, `${data.yearB}${starB}`)}${list === "first" ? ` · prima dată în ${data.yearB}` : ""}${base}`;
   const of = base && c?.up ? `, din ${formatInt(c.up.count)}` : "";
   const values = list === "new" || list === "first" ? [{ label: null, value: `${formatRon(t.valueB)} în ${b}` }]
     : list === "gone" ? [{ label: null, value: `${formatRon(t.valueA)} în ${a}` }]
       : [{ label: a, value: bareRon(t.valueA) }, { label: `→ ${b}`, value: bareRon(t.valueB) }];
-  return { lead: `${label}: ${countWords(t.count, noun.one, noun.many)}${of}`, values };
+  return { lead: `${label}: ${countWords(t.count, noun.one, noun.many)}${of}`, values, unit: values.length === 2 && !values[1]!.value.endsWith(" lei") ? " lei" : "" };
 }
 
 /** The rows left out of the shown list: "alte 96.919 de firme". */
 export function trendRest(data: TrendData, list: TrendList, shown: number, spec: Pick<AskSpec, "dim">): string | null {
-  const total = (list === "up" ? data.composition?.eligible ?? data.composition?.up : data.composition?.[list])?.count;
+  const total = listTotals(data, list)?.count;
   if (total === undefined || total <= shown) return null;
   const noun = trendNounWords(data, spec);
   const rest = total - shown;
@@ -307,23 +394,28 @@ export function withoutFilingWords(data: TrendData, list: TrendList): string | n
  * which stays a live answer.
  */
 export function trendWatch(data: TrendData, spec: Pick<AskSpec, "dim" | "trend">): { label: string; blocked: string | null } | null {
-  const list = specTrendList(spec);
-  if (list === "all" || !data.composition) return null;
-  const count = (list === "up" && spec.trend?.order === "percent" ? data.composition.eligible : data.composition[list])?.count;
-  const role = spec.dim === "county" ? "county" : spec.dim === "supplier" ? "supplier" : "authority";
-  const blocked = count === undefined ? null : count > MONITORING_MEMBERS_MAX ? membersTooManyWords(role, count)
-    : count === 0 ? "Grupa nu are niciun membru în această selecție." : null;
-  return { label: "Urmărește grupa", blocked };
+  const part = specTrendPart(spec);
+  if (part === "all" || !data.composition) return null;
+  const count = data.composition[part]?.count;
+  return { label: "Urmărește grupa", blocked: count === undefined ? null : groupWatchBlocked(watchRole(spec), count) };
+}
+
+const watchRole = (spec: Pick<AskSpec, "dim">): MonitoringMembers["role"] => spec.dim === "county" ? "county" : spec.dim === "supplier" ? "supplier" : "authority";
+/** Why a group of this size cannot be followed (before the setup page, which would answer 422): over MONITORING_MEMBERS_MAX, or empty. */
+export function groupWatchBlocked(role: MonitoringMembers["role"], members: number): string | null {
+  return members > MONITORING_MEMBERS_MAX ? membersTooManyWords(role, members) : members === 0 ? "Grupa nu are niciun membru în această selecție." : null;
+}
+/** The drawer's „Urmărește această selecție” on a group's own records (DrillResult.group): the same limit as „Urmărește grupa”. */
+export function drawerWatchBlocked(spec: Pick<AskSpec, "dim">, group: { members: number } | undefined): string | null {
+  return group ? groupWatchBlocked(watchRole(spec), group.members) : null;
 }
 
 /** The setup of a watch on a group (plan §2.8): what activation fixes, before it does. Null on any other question. */
 export function trendWatchNote(spec: Pick<AskSpec, "block" | "dim" | "filters" | "trend">): string | null {
-  const list = spec.block === "trend" ? specTrendList(spec) : "all";
-  if (list === "all") return null;
+  const part = spec.block === "trend" ? specTrendPart(spec) : "all";
+  if (part === "all") return null;
   const who = spec.dim === "county" ? "Județele" : spec.dim === "supplier" ? "Firmele" : "Instituțiile";
-  const { yearFrom: a, yearTo: b } = spec.filters;
-  const label = `${trendGroupLabel(list === "first" ? "new" : list, a, b)}${list === "first" && b ? ` · prima dată în ${b}` : ""}`;
-  return `${who} grupei „${label}” se fixează la activare; cele care intră sau ies din grupă apar doar ca notă.`;
+  return `${who} grupei „${trendPartLabel(part, spec)}” se fixează la activare; cele care intră sau ies din grupă apar doar ca notă.`;
 }
 
 /**
@@ -334,12 +426,8 @@ export function trendWatchNote(spec: Pick<AskSpec, "block" | "dim" | "filters" |
 export function trendGroupHeader(spec: Pick<AskSpec, "dim" | "filters" | "trend">,
   group: { part: TrendMemberPart; members: number; selection: { value: string } | null }, value: string): string {
   const [one, many] = spec.dim === "county" ? ["județ", "județe"] : spec.dim === "supplier" ? ["firmă", "firme"] : ["instituție", "instituții"];
-  const { yearFrom: a, yearTo: b } = spec.filters;
-  const label = group.part === "eligible"
-    ? `${TREND_CHANGE_LABELS.up} de la cel puțin ${formatRon(spec.trend?.minBase ?? DEFAULT_TREND_MIN_BASE)}${a ? ` în ${a}` : ""}`
-    : group.part === "first" ? `${trendGroupLabel("new", a, b)} · prima dată${b ? ` în ${b}` : ""}` : trendGroupLabel(group.part, a, b);
   const of = group.selection ? ` din ${formatRon(Number(group.selection.value))}` : "";
-  return `Grupa „${label}”: ${countWords(group.members, one!, many!)} · ${formatRon(Number(value))}${of}`;
+  return `Grupa „${trendPartLabel(group.part, spec)}”: ${countWords(group.members, one!, many!)} · ${formatRon(Number(value))}${of}`;
 }
 
 /** The group in words for the shown result's CSV and its file name: „noi”, „prima-data”, „nu-mai-apar”. */

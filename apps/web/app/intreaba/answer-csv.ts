@@ -36,6 +36,9 @@ function csvQ(s: string | null | undefined): string {
   return `"${safe.replaceAll('"', '""')}"`;
 }
 
+/** B − A of two amounts in lei, to the ban: a float subtraction leaves noise (1130000000.12 − 481712345.67 = 648287654.4499998). */
+export const leiDifference = (a: number, b: number): number => Math.round((b - a) * 100) / 100;
+
 /** The rows of the shown result, as before F1b. */
 function rowsOf(data: BlockData, spec: AskSpec): string[] {
   switch (data.block) {
@@ -79,14 +82,15 @@ function rowsOf(data: BlockData, spec: AskSpec): string[] {
     case "fact_check":
       return ["cod,data,ce,valoare_lei", ...data.fact.samples.map((s) => `${csvQ(s.daCode)},${csvQ(s.date)},${csvQ(s.cpvName)},${s.value}`)];
     case "trend": {
-      // The list on screen with its columns: no county beside a firm (owner-seat-switch), its labels and partner line.
+      // The list on screen with its columns: the name as shown, the place beside it (an institution's county, a foreign
+      // firm's country; no county beside a firm, owner-seat-switch; none on a county), its labels and partner line.
       const { list, rows } = shownTrendList(data, spec);
-      const county = spec.dim !== "supplier";
+      const place = spec.dim === "county" ? null : spec.dim === "supplier" ? "tara" : "judet";
       return [
-        `nume,${county ? "judet," : ""}${data.yearA},${data.yearB},diferenta_lei,etichete,partener`,
+        `nume,${place ? `${place},` : ""}${data.yearA},${data.yearB},diferenta_lei,etichete,partener`,
         ...rows.map((r) => {
           const view = trendRowView(r, list, data, spec);
-          return [csvQ(r.name), ...(county ? [csvQ(r.county)] : []), r.valueA, r.valueB, r.valueB - r.valueA,
+          return [csvQ(view.name), ...(place ? [csvQ(view.place)] : []), r.valueA, r.valueB, leiDifference(r.valueA, r.valueB),
             csvQ(view.facts.map((f) => f.text).join("; ")), csvQ(view.partner)].join(",");
         }),
       ];

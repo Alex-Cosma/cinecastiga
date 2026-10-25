@@ -9,7 +9,6 @@ import { encodeSpec, decodeSpec } from "@/lib/ask/permalink";
 import { isHistoricalProfile } from "@/lib/ask/population";
 import { NEWER_VERSION_LINK, validateSpec, type AskSpec } from "@/lib/ask/spec";
 import { BLOCK_FILTERS } from "@/lib/ask/filters/blocks";
-import { describeConditions } from "@/lib/ask/filters/describe";
 import { restoreLink } from "@/lib/ask/filters/restore";
 import { questionTitle } from "@/lib/ask/filters/title";
 import { askLink, entitySourceLink, entitySourceScope, yearSourceLink } from "@/lib/ask/source-spec";
@@ -30,7 +29,7 @@ import {
   useTip,
 } from "./blocks";
 import TrendBlock from "./TrendAnswer";
-import { TREND_LIST_CSV, trendWatch } from "./trend-answer";
+import { TREND_LIST_CSV, retimeScopeLabel, trendWatch } from "./trend-answer";
 import { specTrendList, type TrendList } from "@/lib/ask/trend-shared";
 import { isWholeYear, monthsLabel } from "@/lib/ask/months-window";
 import QuestionBuilder, { type StripPatch } from "./QuestionBuilder";
@@ -47,7 +46,7 @@ import Segmented from "./builder/Segmented";
 import "./builder/filters-kit.css";
 import { answerCsv, type BandState } from "./answer-csv";
 import { useCpvName } from "./cpv-name";
-import { DATA_RELOADED, STRIP_QUERY_KEYS, appliedAfterStrip, appliedAfterTrendList, readThread, shownWords, streamOptions, threadCrumbs, threadWords, type AnswerVariants, type Thread } from "./answer-state";
+import { DATA_RELOADED, STRIP_QUERY_KEYS, appliedAfterStrip, appliedAfterTrendList, readThread, shownWords, streamOptions, threadCrumbs, threadWords, totalConditionWords, type AnswerVariants, type Thread } from "./answer-state";
 import EntityTypeahead from "./EntityTypeahead";
 import EvidenceDrawer from "./EvidenceDrawer";
 import { AnswerEvidence, useAnswerEvidence } from "./AnswerEvidence";
@@ -227,7 +226,7 @@ export default function AskPanel({
        * `thread`: the breakdown's thread this run keeps (a level opened from the answer);
        * any other run drops it (plan §2.3).
        */
-      opts: { strip?: { path: StripPatch["path"]; value: string }; thread?: Thread | null; drillLabel?: string } = {},
+      opts: { strip?: { path: StripPatch["path"]; value: string }; thread?: Thread | null; drillLabel?: string | ((answer: AskResponse) => string) } = {},
     ) => {
       if (!NATURAL_LANGUAGE_ENABLED && typeof body.question === "string") {
         setError(NATURAL_LANGUAGE_UNAVAILABLE);
@@ -297,7 +296,7 @@ export default function AskPanel({
             title:
               answer.question ||
               questionTitle(answer.spec),
-            ...(opts.drillLabel ? { scopeLabel: opts.drillLabel } : {}),
+            ...(opts.drillLabel ? { scopeLabel: typeof opts.drillLabel === "function" ? opts.drillLabel(answer) : opts.drillLabel } : {}),
             // A trend's sources list the months this answer counted (plan §2.8).
             ...(answer.executed ? { months: answer.executed.months } : {}),
           });
@@ -567,16 +566,21 @@ export default function AskPanel({
   /**
    * A trend's sources answered 409 (plan §2.8): the data moved the months its
    * answer counted. The applied question runs again (`auto` resolved anew), the
-   * page says so, and a drawer that was open reopens on the new months; the old
-   * answer never gets another list under it.
+   * page says so once it has the new answer, and a drawer that was open reopens
+   * on the new months, its row's label in their words; the old answer never
+   * gets another list under it.
    */
   const reloadOutdated = useCallback((reopen: boolean) => {
     if (!applied) return;
     const drawer = reopen ? evidence : null;
+    const label = drawer?.scopeLabel, before = resp?.data;
     setEvidence(null);
-    showToast(DATA_RELOADED);
-    void execute({ spec: applied }, !!drawer, drawer?.scope, drawer?.filters, false, drawer?.scopeLabel ? { drillLabel: drawer.scopeLabel } : {});
-  }, [applied, evidence, execute, showToast]);
+    const drillLabel = label && before?.block === "trend"
+      ? (answer: AskResponse) => answer.data?.block === "trend" ? retimeScopeLabel(label, before, answer.data) : label
+      : label;
+    void execute({ spec: applied }, !!drawer, drawer?.scope, drawer?.filters, false, drillLabel ? { drillLabel } : {})
+      .then((ran) => { if (ran) showToast(DATA_RELOADED); });
+  }, [applied, evidence, execute, resp?.data, showToast]);
   const copy = async (text: string, message: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -638,8 +642,8 @@ export default function AskPanel({
     count = data ? sourceCount(data) : null;
   const watchedGroup = data?.block === "trend" && applied ? trendWatch(data, applied) : null;
   const isProfile = !!applied && isHistoricalProfile(applied);
-  // What changes the total outside the sentence (G8), on the applied question.
-  const totalWords = applied ? describeConditions(applied).totalWords : [];
+  // What changes the total outside the sentence (G8), on the applied question as it ran (a trend's months).
+  const totalWords = applied ? totalConditionWords(applied, resp?.executed?.months) : [];
   const empty = Boolean(data && emptyAnswer(data));
   /** A wider question from the empty answer (G2): the builder takes it as its draft, then it runs. */
   const runWider = (next: AskSpec) => {

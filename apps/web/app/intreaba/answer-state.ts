@@ -1,6 +1,7 @@
+import { describeConditions } from "../../lib/ask/filters/describe";
 import { encodeSpec } from "../../lib/ask/permalink";
 import { breakdownDeeperSpec } from "../../lib/ask/source-spec";
-import type { AskSpec } from "../../lib/ask/spec";
+import type { AskSpec, MonthWindow } from "../../lib/ask/spec";
 import { specTrendList, trendListSpec, type TrendList } from "../../lib/ask/trend-shared";
 import type { SegmentOption } from "./builder/Segmented";
 import type { StripPatch } from "./builder/view";
@@ -18,6 +19,18 @@ export interface AnswerVariants { measure?: Partial<Record<string, VariantWords>
 
 /** What the page says after a trend's sources found the data newer than its answer (409, plan §2.8) and reloaded it. */
 export const DATA_RELOADED = "Datele s-au actualizat; am reîncărcat răspunsul.";
+
+/**
+ * What changed the total outside the sentence (G8), in the words of the
+ * answer as it ran, like its pills: a trend's `auto` months as they resolved
+ * („pe aceleași luni: ian.–mai”), and no months on whole years (trend final
+ * §3.3), where the pills have none either.
+ */
+export function totalConditionWords(applied: AskSpec, executedMonths?: MonthWindow | null): string[] {
+  const described = describeConditions(applied, { executedMonths });
+  const months = described.byId.trendMonths;
+  return months && months.pills?.length === 0 ? described.totalWords.filter((words) => words !== months.words) : described.totalWords;
+}
 
 /** The keys the strip writes in F1b: the data stream (a new query) and the map's lens (the data already fetched). */
 export const STRIP_QUERY_KEYS = new Set<StripPatch["path"]>(["dataset"]);

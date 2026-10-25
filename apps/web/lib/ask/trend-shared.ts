@@ -1,4 +1,6 @@
-import type { AskSpec, TrendChange, TrendOptions } from "./spec";
+import { formatRon } from "../format";
+import { TREND_CHANGE_LABELS, trendGroupLabel } from "./filters/defs/trend";
+import { DEFAULT_TREND_MIN_BASE, type AskSpec, type TrendChange, type TrendOptions } from "./spec";
 
 /*
  * The trend's answer as the screen reads it (plan §4.7, trend final §3.1,
@@ -15,6 +17,25 @@ export type TrendList = (typeof TREND_LISTS)[number];
 export function specTrendList(spec: Pick<AskSpec, "trend">): TrendList {
   const t = spec.trend ?? {};
   return t.change === "new" && t.firstOnly ? "first" : t.change ?? "all";
+}
+
+/** The part of the answer a spec's list fixes and its drawer lists: with the order in percent, the growths from the base. */
+export function specTrendPart(spec: Pick<AskSpec, "trend">): TrendList | "eligible" {
+  const list = specTrendList(spec);
+  return list === "up" && spec.trend?.order === "percent" ? "eligible" : list;
+}
+
+/**
+ * A part's name with its years, for the notes of a watch and the header of a
+ * group's drawer: „Noi față de 2024”, „Noi față de 2024 · prima dată în 2025”,
+ * „Creșteri de la cel puțin 1 mil. lei în 2024” (in percent the base decides
+ * who is in it, so the name says it).
+ */
+export function trendPartLabel(part: TrendList | "eligible", spec: Pick<AskSpec, "filters" | "trend">): string {
+  const { yearFrom: a, yearTo: b } = spec.filters;
+  if (part === "eligible") return `${TREND_CHANGE_LABELS.up} de la cel puțin ${formatRon(spec.trend?.minBase ?? DEFAULT_TREND_MIN_BASE)}${a ? ` în ${a}` : ""}`;
+  if (part === "first") return `${trendGroupLabel("new", a, b)} · prima dată${b ? ` în ${b}` : ""}`;
+  return trendGroupLabel(part, a, b);
 }
 
 /**
@@ -58,8 +79,19 @@ export interface TrendRowFacts {
   lastActivity: string | null;
   /** core.entities.cui_valid; null when the identity has no record of it. */
   cuiValid: boolean | null;
-  /** A foreign firm's country code (its row shows the country, not a county). */
+  /** A foreign firm's country code (its row shows the country, not a county); read it through foreignCountry. */
   country: string | null;
+}
+
+/**
+ * The country a row shows instead of a county: a foreign identity's, except
+ * "RO". Some identities flagged foreign carry RO (FCC CONSTRUCCION S.A.,
+ * SYNEVO ROMANIA; none with a valid CUI): they are domestic entries without a
+ * valid CUI, and say so.
+ */
+export function foreignCountry(facts: Pick<TrendRowFacts, "country">): string | null {
+  const code = facts.country?.trim().toUpperCase();
+  return code && code !== "RO" ? facts.country : null;
 }
 
 /** The year whose records make a row's change: B when it grew (or is new, or equal), A when it fell (or is gone). */
@@ -86,7 +118,7 @@ export type TrendRowLabel =
 export function trendRowLabels(row: { valueA: number; valueB: number }, facts: TrendRowFacts, years: { yearA: number; yearB: number }): TrendRowLabel[] {
   const out: TrendRowLabel[] = [];
   // Only an identity known to lack a valid CUI: an unknown status (null) claims nothing.
-  if (facts.cuiValid === false && facts.country === null) out.push({ kind: "noValidCui" });
+  if (facts.cuiValid === false && foreignCountry(facts) === null) out.push({ kind: "noValidCui" });
   const first = facts.firstActivity ? Number(facts.firstActivity.slice(0, 4)) : null;
   const last = facts.lastActivity ? Number(facts.lastActivity.slice(0, 4)) : null;
   if (row.valueA === 0 && row.valueB > 0 && first !== null)

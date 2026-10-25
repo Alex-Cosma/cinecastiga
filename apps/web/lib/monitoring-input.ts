@@ -3,7 +3,7 @@ import { countWords } from "./ask/answer-text";
 import { evidenceOptions } from "./ask/evidence-request";
 import { trendGroupOf } from "./ask/predicates";
 import { trendMemberPart } from "./ask/group-ids";
-import { trendGroupLabel } from "./ask/filters/defs/trend";
+import { specTrendPart, trendPartLabel } from "./ask/trend-shared";
 import { isWholeYear, monthsLabel } from "./ask/months-window";
 import { DEFAULT_MONITORING_PREFERENCES, MONITORING_CHANGE_TYPES, MONITORING_MEMBERS_MAX, membersTooManyWords, type MonitoringMembers, type MonitoringOptions, type MonitoringPreferences, type MonitoringScope } from "./monitoring-shared";
 import { isWorkspaceId } from "./investigation-access";
@@ -82,10 +82,12 @@ function fixedMembers(role:MonitoringMembers["role"],n:number):string {
   const [one,many]=memberNouns(role);
   return `${countWords(n,one,many)} ${n!==1?"fixate":role==="county"?"fixat":"fixată"}`;
 }
-/** The group's name in the notes, with its year: „Noi față de 2024”, „Noi față de 2024 · prima dată în 2025”. */
+/**
+ * The group's name in the notes, with its year: „Noi față de 2024”, „Noi față de 2024 · prima dată în 2025”;
+ * the growths in percent with the base that decides who is in them: „Creșteri de la cel puțin 1 mil. lei în 2024”.
+ */
 export function watchedGroupLabel(spec:AskSpec):string {
-  const t=spec.trend??{};
-  return `„${trendGroupLabel(t.change??"all",spec.filters.yearFrom,spec.filters.yearTo)}${t.firstOnly&&spec.filters.yearTo?` · prima dată în ${spec.filters.yearTo}`:""}”`;
+  return `„${trendPartLabel(specTrendPart(spec),spec)}”`;
 }
 /** Pinned at activation (scope_notes): what the watch fixed, and that the live group is only a note. */
 export function groupPinnedNote(spec:AskSpec,members:MonitoringMembers,day:string):string {
