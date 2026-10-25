@@ -64,7 +64,7 @@ describe.skipIf(!url)("a watch on a trend's group (isolated PostgreSQL)",()=>{
   it("fixes the group's members at activation, and answers and lists sources on them",async()=>{
     const watch=await createMonitoringWatch(uid,{spec:spec({change:"new"}),title:"New suppliers"},sql);newWatch=watch.id;
     expect(watch.options.members).toMatchObject({kind:"trend-group",role:"supplier",group:"new",ids:[S(2),S(3)]});
-    expect(watch.scopeNotes.some(note=>note.startsWith("Grupa „Noi”: 2 firme fixate la activare"))).toBe(true);
+    expect(watch.scopeNotes.some(note=>note.startsWith("Grupa „Noi față de 2024”: 2 firme fixate la activare"))).toBe(true);
     const baseline=await run(newWatch);
     expect(baseline.run).toMatchObject({kind:"baseline",hasAlert:false,rowCount:2,totalExact:"120"});
     expect(baseline.result).toMatchObject({list:"new",composition:{new:{count:2,valueA:0,valueB:120}},members:{list:"new",frozen:2}});

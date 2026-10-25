@@ -218,7 +218,8 @@ function walk() {
 
 describe("R1: what a question offers, the engine accepts (plan §2.1)", () => {
   let result: ReturnType<typeof walk>;
-  beforeAll(() => { result = walk(); });
+  // ~3 s alone; the whole suite on a shared machine (load ~30) took it past the default 10 s hook timeout.
+  beforeAll(() => { result = walk(); }, 120_000);
 
   it("walks every offered choice and every pair of choices", () => {
     expect(result.singles).toBeGreaterThan(5_000);

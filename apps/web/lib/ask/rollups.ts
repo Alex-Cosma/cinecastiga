@@ -312,15 +312,21 @@ export async function rollupsReady(sql: DbSql): Promise<boolean> {
   return ready.ok;
 }
 /**
- * agg_entity_month present (F2). Built with the three above by the same build, it
- * is probed apart: a deploy before the first build with it keeps the yearly
- * rollups, and a trend on the same months runs live until that build.
+ * agg_entity_month present (F2) and of the same build as the yearly rollups.
+ * Built with the three above by the same build, it is probed apart: a deploy
+ * before the first build with it keeps the yearly rollups, and a trend on the
+ * same months runs live until that build. The table alone proves nothing: a
+ * build of the code before F2 (a revert) rebuilds the yearly rollups and
+ * leaves the last F2 build's agg_entity_month behind. Only an F2 build writes
+ * the days (d0) on agg_entity_year and agg_pair_year, in the same transaction
+ * as agg_entity_month, so rollupDaysReady (d0 on all three) is the proof that
+ * the four tables are of one build; without it the same months run live.
  */
 let monthReady: { ok: boolean; at: number } | null = null;
 export async function monthRollupReady(sql: DbSql): Promise<boolean> {
   if (monthReady && Date.now() - monthReady.at < 600_000) return monthReady.ok;
   const [row] = (await sql`select to_regclass('marts.agg_entity_month') is not null ok`) as unknown as { ok: boolean }[];
-  monthReady = { ok: Boolean(row?.ok), at: Date.now() };
+  monthReady = { ok: Boolean(row?.ok) && await rollupDaysReady(sql), at: Date.now() };
   return monthReady.ok;
 }
 /**

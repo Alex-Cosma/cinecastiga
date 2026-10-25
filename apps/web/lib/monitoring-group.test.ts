@@ -32,9 +32,11 @@ describe("the group a trend watch fixes", () => {
     expect(monitoringHasLocalSelection({ members: members(3), search: "x" })).toBe(true);
   });
   it("is named with its year when it keeps the first-time ones", () => {
-    expect(watchedGroupLabel(trend({ change: "new", firstOnly: true }))).toBe("„Noi · prima dată în 2025”");
+    // Kit §4: „Noi” always with its year outside the short buttons.
+    expect(watchedGroupLabel(trend({ change: "new", firstOnly: true }))).toBe("„Noi față de 2024 · prima dată în 2025”");
+    expect(watchedGroupLabel(trend({ change: "gone" }))).toBe("„Nu mai apar în 2025”");
     expect(groupPinnedNote(trend({ change: "new" }), members(412), "24.10.2026"))
-      .toBe("Grupa „Noi”: 412 firme fixate la activare (24.10.2026). Răspunsul și sursele urmăresc aceste firme; cele care intră sau ies din grupă apar doar ca notă.");
+      .toBe("Grupa „Noi față de 2024”: 412 firme fixate la activare (24.10.2026). Răspunsul și sursele urmăresc aceste firme; cele care intră sau ies din grupă apar doar ca notă.");
   });
 });
 

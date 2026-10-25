@@ -285,21 +285,37 @@ export interface TrendProfile {
   name: string | null; county: string | null; country: string | null; foreign: boolean;
   firstActivity: string | null; lastActivity: string | null; cuiValid: boolean | null;
 }
+/**
+ * The profile of each asked id, from marts.entity_profile and core.entities
+ * by id: the identity's own `cui_valid` (and name, county and country, when
+ * the profile lacks them), so an entity whose profile a later marts stage
+ * has not written yet is never labelled without a valid CUI. A seat county
+ * kept as "NA" or "Necunoscut" is unknown, as elsewhere (to-spec, the
+ * alternatives' labels).
+ */
 export async function trendProfiles(sql: DbSql, wanted: { role: "authority" | "supplier"; ids: readonly string[] }[]): Promise<Map<string, TrendProfile>> {
   const asked = wanted.filter((w) => w.ids.length > 0);
   if (asked.length === 0) return new Map();
+  const ids: Fragment = asked.map((w): Fragment => sql`select ${w.role}::text role, unnest(${sql.array([...new Set(w.ids)])}::bigint[]) id`)
+    .reduce((a, b): Fragment => sql`${a} union ${b}`);
   const rows = (await sql`
-    select ep.role, ep.entity_id::text id, ep.name_display, ep.county, ep.country_code, coalesce(ep.is_foreign, false) is_foreign,
+    select x.role, x.id::text id, coalesce(ep.name_display, e.name_display) name_display, coalesce(ep.county, e.county) county,
+           coalesce(ep.country_code, e.country_code) country_code, coalesce(ep.is_foreign, e.is_foreign, false) is_foreign,
            ep.first_activity, ep.last_activity, e.cui_valid
-    from marts.entity_profile ep left join core.entities e on e.id = ep.entity_id
-    where ${asked.map((w): Fragment => sql`(ep.role = ${w.role} and ep.entity_id = any(${sql.array([...new Set(w.ids)])}::bigint[]))`).reduce((a, b): Fragment => sql`${a} or ${b}`)}
+    from (${ids}) x
+    left join marts.entity_profile ep on ep.role = x.role and ep.entity_id = x.id
+    left join core.entities e on e.id = x.id
+    where ep.entity_id is not null or e.id is not null
   `) as unknown as { role: string; id: string; name_display: string | null; county: string | null; country_code: string | null; is_foreign: boolean;
     first_activity: string | null; last_activity: string | null; cui_valid: boolean | null }[];
   return new Map(rows.map((r) => [`${r.role}:${r.id}`, {
-    name: r.name_display, county: r.is_foreign ? null : r.county, country: r.is_foreign ? r.country_code : null, foreign: r.is_foreign,
+    name: r.name_display, county: r.is_foreign || !r.county || UNKNOWN_COUNTY.test(r.county) ? null : r.county,
+    country: r.is_foreign ? r.country_code : null, foreign: r.is_foreign,
     firstActivity: r.first_activity?.slice(0, 10) ?? null, lastActivity: r.last_activity?.slice(0, 10) ?? null, cuiValid: r.cui_valid,
   }]));
 }
+/** Seat counties the marts keep as text for "no county". */
+const UNKNOWN_COUNTY = /^(na|necunoscut)$/i;
 
 /** A row's facts from its rows of factsRows and its profiles (`role:id` keys of trendProfiles). */
 export function factsOfRow(row: { entityId: string; valueA: number; valueB: number }, years: { yearA: number; yearB: number },
@@ -340,7 +356,8 @@ export type TrendRowLabel =
  */
 export function trendRowLabels(row: { valueA: number; valueB: number }, facts: TrendRowFacts, years: { yearA: number; yearB: number }): TrendRowLabel[] {
   const out: TrendRowLabel[] = [];
-  if (facts.cuiValid !== true && facts.country === null) out.push({ kind: "noValidCui" });
+  // Only an identity known to lack a valid CUI: an unknown status (null) claims nothing.
+  if (facts.cuiValid === false && facts.country === null) out.push({ kind: "noValidCui" });
   const first = facts.firstActivity ? Number(facts.firstActivity.slice(0, 4)) : null;
   const last = facts.lastActivity ? Number(facts.lastActivity.slice(0, 4)) : null;
   if (row.valueA === 0 && row.valueB > 0 && first !== null)

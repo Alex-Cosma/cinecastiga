@@ -1,15 +1,17 @@
 import type { MonitoringScope } from "@/lib/monitoring-shared";
 import { describeConditions } from "@/lib/ask/filters/describe";
-import { TREND_CHANGE_LABELS } from "@/lib/ask/filters/defs/trend";
+import { TREND_CHANGE_LABELS, trendGroupLabel } from "@/lib/ask/filters/defs/trend";
 import { countWords } from "@/lib/ask/answer-text";
 import { formatBucharestDay } from "@/lib/format";
 export default function ScopeConditions({ scope }: { scope: MonitoringScope }) {
   const { spec, options } = scope, subgroup = options.scope, members = options.members;
   // The question's conditions in the words of describeConditions; the receipt keeps a precise selection group by group.
   const { scope: conditions, receipt } = describeConditions(spec);
-  // A group watch follows the members fixed at activation (plan §2.8): "Grupa: Noi · 412 firme fixate la 24.10.2026".
+  // A group watch follows the members fixed at activation (plan §2.8): "Grupa: Noi față de 2024 · 412 firme fixate la 24.10.2026".
   const [one, many] = members?.role === "county" ? ["județ", "județe"] : members?.role === "authority" ? ["instituție", "instituții"] : ["firmă", "firme"];
-  const items = members ? [...conditions, { label: "Grupa", value: `${TREND_CHANGE_LABELS[members.group as keyof typeof TREND_CHANGE_LABELS] ?? members.group}${spec.trend?.firstOnly && spec.filters.yearTo ? ` · prima dată în ${spec.filters.yearTo}` : ""} · ${countWords(members.ids.length, one!, many!)} ${members.ids.length === 1 ? members.role === "county" ? "fixat" : "fixată" : "fixate"} la ${formatBucharestDay(members.frozenAt)}` }] : conditions;
+  const group = members && Object.hasOwn(TREND_CHANGE_LABELS, members.group)
+    ? trendGroupLabel(members.group as keyof typeof TREND_CHANGE_LABELS, spec.filters.yearFrom, spec.filters.yearTo) : members?.group;
+  const items = members ? [...conditions, { label: "Grupa", value: `${group}${spec.trend?.firstOnly && spec.filters.yearTo ? ` · prima dată în ${spec.filters.yearTo}` : ""} · ${countWords(members.ids.length, one!, many!)} ${members.ids.length === 1 ? members.role === "county" ? "fixat" : "fixată" : "fixate"} la ${formatBucharestDay(members.frozenAt)}` }] : conditions;
   const selection: { label: string; value: string }[] = [];
   if (options.stream) selection.push({ label: "Tip de achiziție", value: options.stream === "da" ? "Doar achiziții directe" : "Doar contracte prin proceduri" });
   if (options.search) selection.push({ label: "Căutare în surse", value: options.search });
