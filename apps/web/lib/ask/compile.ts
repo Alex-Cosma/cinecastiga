@@ -22,7 +22,7 @@ import { PER_CAPITA_SOURCE, perCapitaCaveat, POPULATION_CARD_NOTE, readPerCapita
 import { martColumns } from "./mart-columns";
 import {
   compareParties, compareSharedPartners, compareTopPartners, planRollup, rollupBreakdown, rollupCountyTable, rollupMap, rollupMinimumCond,
-  monthRollupReady, rollupDaysReady, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, scatterDensity,
+  coverRefReady, monthRollupReady, rollupDaysReady, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, scatterDensity,
   type RollupFilters, type RollupNeed, type RollupSource,
 } from "./rollups";
 import {
@@ -2205,6 +2205,8 @@ export async function runRows(
   // The two years as a range on the column, so the id indexes (id, finalization_date) bound the members' rows.
   const memberRange: ReturnType<DbSql> = sql`d.finalization_date >= ${String(Math.min(yearA, yearB))} and d.finalization_date < ${String(Math.max(yearA, yearB) + 1)}`;
   const trendDays = listed && rollup ? await rollupDaysReady(sql) : false;
+  // The covering id indexes carry sicap_da_id (built nightly): a group's page then reads its keys index-only.
+  const keyed = listed && groupDim !== "county" && dataset !== "contracts" ? await coverRefReady(sql) : false;
   const groupMembers = listed ? async (s: DbSql): Promise<{ members: Float64Array | readonly string[]; sources: TrendPartSources | null; selection: TrendPartSources | null }> => {
     // A watch's fixed members (a row's own ids among them): their records, counted, never the live group's.
     if (fixed) {
@@ -2303,11 +2305,18 @@ export async function runRows(
     // average entity: 3.9 s instead of 0.26 s for the 17,633 new firms of 2025), or walk the primary
     // key back through the newer years; so sequential scans are off for this transaction's remaining
     // reads (the record lookups of the page keep their indexes) and the order by reference hides the
-    // key (`+ 0`, as the annual scan). Larger groups keep the planner's plans: their newest records
-    // come first on the primary key.
+    // key (`+ 0`, as the annual scan). Once the covering id indexes carry sicap_da_id (`keyed`), every
+    // group reads that way, of any size: its direct acquisitions' first keys come from the index alone
+    // (below). Before that build, a larger group keeps the planner's plans only for the default order of
+    // the latest years, whose newest records come first on the primary key (~1–3 s for 2.45M records);
+    // an older pair or another order would walk the key through millions of other records (37 s for
+    // 2021 → 2022, 101 s ascending, 9.7 s by value, measured), so those read the members' index too.
     // A watch's fixed group (at most MONITORING_MEMBERS_MAX ids, its sources at most 200,000 records) reads the same way.
     const groupRecords = group?.sources ? group.sources.da.n + group.sources.contracts.n : null;
-    const idIndex = groupRecords !== null && groupRecords <= GROUP_ID_INDEX_RECORDS || Boolean(fixed && members);
+    const groupPage = Boolean(members && !own);
+    const plannerPlans = groupPage && !keyed && (groupRecords === null || groupRecords > GROUP_ID_INDEX_RECORDS)
+      && sortKey === "source" && opts.dir !== "asc" && yearB >= maxY - 1;
+    const idIndex = groupPage && !plannerPlans || Boolean(fixed && members);
     if (idIndex) await tx.unsafe("set local enable_seqscan = off");
     // Without a search or another selection, a group's totals are its records in the answer's grouping.
     const groupTotals = group?.sources && !search && Object.keys(scope).every((key) => key === "role")
@@ -2359,9 +2368,15 @@ export async function runRows(
     )` : null;
     const branchOrder = sortKey !== "source" ? sql`${sortFrag} ${dirFrag}, d.ref_id, d.supplier_id nulls first`
       : idIndex ? sql`(d.ref_id + 0) ${dirFrag}, d.supplier_id nulls first` : sql`d.ref_id ${dirFrag}, d.supplier_id nulls first`;
-    const pageTxt = groupBranches ? sql`(${groupBranches.map((branch) => sql`(
-      select * from ${branch} d where ${sourceWhere} and ${localWhere} order by ${branchOrder} limit ${branchLimit})`)
-      .reduce((a, b) => sql`${a} union all ${b}`)})` : annualKeys ? sql`(
+    // With the keys in the covering index, the direct acquisitions' first keys in the drawer's order come
+    // from it alone (every condition and order of a group but a search or a name is on its columns), and only
+    // those rows are read: 0.8 s for 2.18M records sorted by value, against 9.7 s (F2 review).
+    // groupBranches: [direct acquisitions, contracts] on "all", the one channel otherwise (keyed is never on contracts).
+    const branchRows = (branch: typeof txt, i: number): typeof txt => keyed && idIndex && i === 0 ? sql`(
+      select * from ${branch} d where d.ref_id in (
+        select d.ref_id from ${branch} d where ${sourceWhere} and ${localWhere} order by ${branchOrder} limit ${branchLimit}))`
+      : sql`(select * from ${branch} d where ${sourceWhere} and ${localWhere} order by ${branchOrder} limit ${branchLimit})`;
+    const pageTxt = groupBranches ? sql`(${groupBranches.map(branchRows).reduce((a, b) => sql`${a} union all ${b}`)})` : annualKeys ? sql`(
       select selected_row.* from ${annualKeys} selected_key
       cross join lateral (
         select d.* from ${daTx} d

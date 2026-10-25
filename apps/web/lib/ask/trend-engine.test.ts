@@ -20,7 +20,7 @@ interface Answers { partition?: Record<string, unknown>[]; facts?: Record<string
  * `stamp`: the file nodes of the marts build (group-ids.ts), so the partition's members are kept;
  * without it nothing is kept or reused. `days`: the rollups have the first and last day.
  */
-function database(coverage: Coverage, opts: { rollups?: boolean; days?: boolean; members?: string[]; stamp?: string } & Answers = {}) {
+function database(coverage: Coverage, opts: { rollups?: boolean; days?: boolean; keyed?: boolean; members?: string[]; stamp?: string } & Answers = {}) {
   const statements: { text: string; values: unknown[] }[] = [];
   class Fragment {
     constructor(public text: string, public values: unknown[]) {}
@@ -29,6 +29,7 @@ function database(coverage: Coverage, opts: { rollups?: boolean; days?: boolean;
       statements.push({ text, values: this.values });
       if (text.includes("pg_relation_filenode")) return Promise.resolve(resolve(opts.stamp ? [{ db: "harness", da: opts.stamp, ct: "2", ep: "3" }] : []));
       if (text.includes("a.attname = 'd0'")) return Promise.resolve(resolve([{ ok: opts.days ?? false }]));
+      if (text.includes("a.attname = 'sicap_da_id'")) return Promise.resolve(resolve([{ ok: opts.keyed ?? false }]));
       if (text.includes("to_regclass('marts.agg_entity_year')")) return Promise.resolve(resolve([{ ok: opts.rollups ?? false }]));
       if (text.includes("to_regclass('marts.data_coverage')")) return Promise.resolve(resolve([{ ok: true, refreshes: true }]));
       if (text.includes("from app.monitoring_refreshes")) return Promise.resolve(resolve([{ id: "checkpoint-12" }]));
@@ -365,6 +366,32 @@ describe("the trend's sources", () => {
     expect(many.statuses).toEqual([{ state: "Oferta acceptata", count: 300_000, value: "1" }]);
     expect(big.statements.some((s) => s.text.includes("enable_"))).toBe(false);
     expect(big.statements.find((s) => s.text.includes("limit ? offset ?"))!.text).toContain("order by d.ref_id desc, d.supplier_id nulls first limit ?");
+    // Another order, or an older pair, would walk the key through millions of other records: the members' index.
+    for (const [spec, opts] of [[gone, { sort: "source", dir: "asc" }], [gone, { sort: "value" }],
+      [trend({ change: "gone" }, { yearFrom: 2021, yearTo: 2022 }), {}]] as const) {
+      const other = database(PROD, { partition: large });
+      await runRows(other.sql, spec, {}, 0, opts);
+      expect(other.statements.some((s) => s.text === "set local enable_seqscan = off"), JSON.stringify(opts)).toBe(true);
+    }
+  });
+
+  it("take a group's first keys from the covering index once it carries sicap_da_id, for any group size and order", async () => {
+    const large = GONE().map((r) => r.part === "sum:gone" ? { ...r, x: { da: { n: 2_000_000, v: "1", first: "2024-01-01", last: "2024-12-31" }, contracts: { n: 0, v: "0", first: null, last: null } } } : r);
+    for (const sort of ["source", "value"] as const) {
+      const db = database(PROD, { partition: large, keyed: true });
+      const result = await runRows(db.sql, gone, {}, 0, { sort });
+      if ("error" in result) throw new Error(result.error);
+      expect(db.statements.some((s) => s.text === "set local enable_seqscan = off")).toBe(true);
+      const page = db.statements.find((s) => s.text.includes("limit ? offset ?"))!.text;
+      // The direct acquisitions: keys first, then only those rows; the contracts as before.
+      expect(page).toContain("where d.ref_id in ( select d.ref_id from");
+      expect(page.match(/where d\.ref_id in \(/g)).toHaveLength(1);
+    }
+    // Before the build that adds the column: no keys from the index.
+    forgetRollupsReady();
+    const plain = database(PROD, { partition: large });
+    await runRows(plain.sql, gone, {}, 0);
+    expect(plain.statements.find((s) => s.text.includes("limit ? offset ?"))!.text).not.toContain("where d.ref_id in (");
   });
 
   it("check only a row's own ids for its records (Înregistrări →), on their index of the two years, and read no members for every change", async () => {
