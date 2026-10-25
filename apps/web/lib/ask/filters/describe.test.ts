@@ -8,11 +8,11 @@ import { parseSpec, type AskSpec } from "../spec";
 import { FIXTURE_IDENTITIES } from "../fixtures/golden-fixture";
 import { legacyCorpus } from "../fixtures/legacy-corpus";
 import {
-  caveatsBefore, chipsBefore, conditionPillsBefore, notesBefore, scopeBefore, summaryBefore, topPillBefore,
+  caveatsBefore, chipsBefore, conditionPillsBefore, describePopulationBefore, notesBefore, scopeBefore, summaryBefore, topPillBefore,
 } from "../fixtures/grammars-before-describe";
 import { connectionEvidenceSpec } from "../../connection-evidence-shared";
 import { formatInt } from "../../format";
-import { DESCRIBED_FILTERS, describeConditions } from "./describe";
+import { DESCRIBED_FILTERS, describeConditions, populationDetail, unnamedEntityIds } from "./describe";
 import { questionTitle, savedQuestionSummary } from "./title";
 import { DA_BOUND_VALUE, selectionOrigin, splitExcluded } from "./origin";
 import { FILTER_DEFS, SPEC_PATH_OWNERS } from "./registry";
@@ -64,6 +64,12 @@ const kitScope = (row: { label: string; value: string }) => ({
   label: KIT_SCOPE_LABELS[row.label] ?? row.label,
   value: (KIT_SCOPE_VALUES[row.value] ?? row.value).replace(/^Profiluri istorice:/, "Profil istoric:"),
 });
+/**
+ * S3 F2-merge-fixes (MF-bare-ids): a precise selection in the chip's words, naming every entity it
+ * knows and counting the others, where the old grammar wrote the ids ("instituții includ 2146445").
+ */
+const kitPopulation = (spec: { population?: AskSpec["population"] }, text: string) =>
+  spec.population ? text.replace(describePopulationBefore(spec.population), populationDetail(spec.population, {}, true)) : text;
 const KIT_CHIPS: Readonly<Record<string, string>> = { "toți anii disponibili": "toți anii", "primăriile de oraș": "primăriile de oraș și municipiu", "Un singur ofertant": "O singură ofertă" };
 const kitChip = (text: string) => KIT_CHIPS[text] ?? text.replace(/^Conduse de /, "Conduse azi de ");
 
@@ -128,13 +134,13 @@ describe("describeConditions says what the six grammars said (plan §2.2)", () =
     for (const spec of all) {
       if (relabelled(spec)) continue;
       const described = describeConditions(spec);
-      expect(described.summary, JSON.stringify(spec)).toEqual(summaryBefore(spec).map(fixed));
+      expect(described.summary, JSON.stringify(spec)).toEqual(summaryBefore(spec).map((text) => fixed(kitPopulation(spec, text))));
       const before = scopeBefore(spec);
       expect(described.scope).toEqual(before.items.map((row) => kitScope({ ...row, value: fixed(row.value) })));
       expect(described.receipt).toEqual(before.receipt);
-      expect(described.caveats).toEqual(caveatsBefore(spec).map(fixed));
+      expect(described.caveats).toEqual(caveatsBefore(spec).map((text) => fixed(kitPopulation(spec, text))));
       const notes = notesBefore(spec);
-      expect(described.byId.population?.note ?? null).toEqual(notes.population);
+      expect(described.byId.population?.note ?? null).toEqual(notes.population && kitPopulation(spec, notes.population));
       expect(described.byId.minimumRecords?.note ?? null).toEqual(notes.minimumRecords && fixed(notes.minimumRecords));
     }
   });
@@ -147,7 +153,7 @@ describe("describeConditions says what the six grammars said (plan §2.2)", () =
       for (const cpvName of [undefined, "Lucrări de construcții"]) {
         const { byId } = describeConditions(draft, { cpvName });
         const chips = Object.fromEntries(Object.entries(byId).filter(([, w]) => w.chip !== undefined).map(([id, w]) => [id, w.chip!]));
-        expect(chips, JSON.stringify(draft)).toEqual(Object.fromEntries(Object.entries(chipsBefore(draft, cpvName)).map(([id, text]) => [id, kitChip(fixed(text))])));
+        expect(chips, JSON.stringify(draft)).toEqual(Object.fromEntries(Object.entries(chipsBefore(draft, cpvName)).map(([id, text]) => [id, kitChip(fixed(kitPopulation(draft, text)))])));
       }
     }
   });
@@ -215,11 +221,13 @@ describe("the changes the plan fixes", () => {
 
     const entity = describeConditions(entityCaptureSpec("77"), { entities: { "77": "Comuna X" } });
     expect(entity.pills).toContain("Activitatea entității: Comuna X (ca instituție sau ca firmă)");
-    expect(describeConditions(entityCaptureSpec("77")).byId.population?.note).toBe("Activitatea entității: entitatea #77 (ca instituție sau ca firmă).");
+    // Before its name is known: never the bare id (F2-merge-fixes); the server's grounding names it.
+    expect(describeConditions(entityCaptureSpec("77")).byId.population?.note).toBe("Activitatea entității: o entitate (ca instituție sau ca firmă).");
+    expect(describeConditions(entityCaptureSpec("77"), { grounding: { entities: { "77": "Comuna X" } } }).byId.population?.note).toBe("Activitatea entității: Comuna X (ca instituție sau ca firmă).");
 
     // A comparison group's spec is one CPV division: labelled only by the page that binds the group.
     const peer: AskSpec = { block: "stat", measure: "value", dataset: "all", filters: {}, population: { operator: "and", groups: [{ operator: "and", conditions: [{ field: "cpv", op: "in", values: ["45"] }] }] } };
-    expect(describeConditions(peer).byId.population?.note).toBe("Selecție precisă aplicată: (CPV includ 45).");
+    expect(describeConditions(peer).byId.population?.note).toBe("Selecție precisă aplicată: doar CPV 45.");
     // Counted as the comparison page counts them: the analysed entity and the other members.
     expect(describeConditions(peer, { origin: { origin: "peers", members: 29, focal: "Comuna X" } }).byId.population?.note).toBe("Grupul de comparație: Comuna X și 29 de alți membri · CPV 45.");
     expect(describeConditions(peer, { origin: { origin: "peers", members: 1 } }).byId.population?.note).toBe("Grupul de comparație: entitatea analizată și 1 alt membru · CPV 45.");
@@ -227,6 +235,22 @@ describe("the changes the plan fixes", () => {
     // A precise selection a person built names its entities: never read as another page's.
     const named: AskSpec = { ...peer, population: { operator: "or", groups: [{ operator: "or", conditions: [{ field: "authority", op: "in", values: ["77"], labels: ["Comuna X"] }, { field: "supplier", op: "in", values: ["77"], labels: ["Comuna X"] }] }] } };
     expect(describeConditions(named).byId.population?.origin).toBeUndefined();
+  });
+
+  it("never writes a bare id of an old link's selection: named from the grounding, else counted (F2-merge-fixes, TB-l-answer-caveat)", () => {
+    const old: AskSpec = { block: "stat", measure: "value", dataset: "all", filters: {}, population: { operator: "or", groups: [
+      { operator: "and", conditions: [{ field: "authority", op: "in", values: ["2146445"] }, { field: "cpv", op: "in", values: ["45", "71", "33"] }] },
+      { operator: "or", conditions: [{ field: "supplier", op: "in", values: ["2124387", "2115381", "9"] }, { field: "county", op: "in", values: ["Buzău"] }] },
+    ] } };
+    const counted = describeConditions(old);
+    for (const text of [...counted.caveats, counted.byId.population!.note!, ...counted.pills, ...counted.summary]) expect(text).not.toMatch(/\d{4,}/);
+    expect(counted.byId.population?.note).toBe("Selecție precisă aplicată: (doar 1 instituție ȘI doar CPV 45, 71, 33) SAU (doar 3 firme SAU doar județul Buzău).");
+    // The server looks the names up with the other groundings (ground.ts): every one it knows, not only two as a chip.
+    const grounding: Grounding = { entities: { "2146445": "Municipiul Cluj-Napoca", "2124387": "DEDEMAN S.R.L.", "2115381": "SELGROS CASH&CARRY SRL", "9": "ALFA SRL" } };
+    expect(describeConditions(old, { grounding }).caveats[0]).toBe("Selecție precisă aplicată: (doar instituția Municipiul Cluj-Napoca ȘI doar CPV 45, 71, 33) SAU (doar firmele DEDEMAN S.R.L., SELGROS CASH&CARRY SRL, ALFA SRL SAU doar județul Buzău). Datele și limitele sunt inclusive; valorile se referă la cota alocată fiecărui furnizor.");
+    // The chip's (?) names at most two, the builder's lookup asks only for those; the server's, for every list.
+    expect(unnamedEntityIds(old.population)).toEqual(["2146445"]);
+    expect(unnamedEntityIds(old.population, true)).toEqual(["2146445", "2124387", "2115381", "9"]);
   });
 
   it("reads exclusions as «Fără X» in the receipt, the title's tail and the total line (plan §2.8, G7, G8)", () => {
@@ -243,7 +267,7 @@ describe("the changes the plan fixes", () => {
     expect(questionTitle(spec)).toBe("Ce firme câștigă achizițiile făcute de instituțiile publice din toată țara, în toți anii, fără SYSTRA SA, valoarea pe câștigător ≥ 1.000 lei?");
     // Kept as today: the pills, the caveat and the note describe the whole precise selection.
     expect(d.pills).toContain("Selecție precisă · 2 condiții în 2 grupuri");
-    expect(d.byId.population?.note).toBe("Selecție precisă aplicată: (firme exclud SYSTRA SA) ȘI (lei pe înregistrare ≥ 1000).");
+    expect(d.byId.population?.note).toBe("Selecție precisă aplicată: (fără firma SYSTRA SA) ȘI (valoarea pe câștigător ≥ 1.000 lei).");
     const three = { ...spec, population: { operator: "and" as const, groups: [{ operator: "and" as const, conditions: [{ field: "supplier" as const, op: "not_in" as const, values: ["1", "2", "3"], labels: ["A", "B", "C"] }] }] } };
     expect(describeConditions(three).tail).toBe("fără 3 firme");
     // Unlabelled lists stay a precise selection: their chip could only show a number.
