@@ -5,8 +5,11 @@ import type { EmployeesChoice } from "../../../lib/ask/filters/defs/from-whom";
 import type { PeriodChoice } from "../../../lib/ask/filters/defs/selection";
 import { choicesOf, choiceState, type Choice, type SubjectChoice } from "../../../lib/ask/filters/pickers";
 import type { FilterCtx, FilterSpec } from "../../../lib/ask/filters/types";
-import { adminPhrase, employeesOnBands, employeesPhrase, localityName, MONTH_SHORT } from "../../../lib/ask/filters/words";
+import { TREND_ORDER_WORDS, adminPhrase, employeesOnBands, employeesPhrase, localityName, MONTH_SHORT } from "../../../lib/ask/filters/words";
 import { KIND_ONE, KIND_WORDS, entityLabel, leaderAxis, type QuestionSpec } from "../../../lib/ask/question-ui";
+import { DEFAULT_TREND_MIN_BASE, type AskSpec } from "../../../lib/ask/spec";
+import { trendNoun } from "../../../lib/ask/filters/defs/trend";
+import { formatRon } from "../../../lib/format";
 import { EMPLOYEE_BANDS, bandRange } from "./Bands";
 import type { KitOption, KitRestRow, KitTip } from "./kit-types";
 import type { BuilderWindowSpec } from "./view";
@@ -84,6 +87,21 @@ const AXIS_DETAIL = {
   risk: "Tot istoricul, doar achiziții directe. Perioada, domeniul și cumpărătorul nu se aplică.",
 } as const;
 
+/** The groups' noun after the selection (trend final §1): suppliers of a chosen buyer, clients of a chosen firm. */
+const TREND_NOUNS: Record<ReturnType<typeof trendNoun>, string> = { firme: "Firme", furnizori: "Furnizori", "instituții": "Instituții", "clienți": "Clienți", "județe": "Județe" };
+
+/** "Ce fel de schimbare?" (trend final §3.1): each change with its one-line rule, in the question's years. */
+function trendChangeWords(change: string, spec: QuestionSpec): { label: string; detail: string } {
+  const a = spec.filters.yearFrom ?? "primul an", b = spec.filters.yearTo ?? "ultimul an";
+  switch (change) {
+    case "up": return { label: "Creștere", detail: `În ambii ani, mai mult în ${b}.` };
+    case "new": return { label: `${TREND_NOUNS[trendNoun(spec as unknown as AskSpec)]} noi`, detail: `Nicio înregistrare în ${a}, cel puțin una în ${b}.` };
+    case "down": return { label: "Scădere", detail: `În ambii ani, mai puțin în ${b}.` };
+    case "gone": return { label: "Nu mai apar", detail: `Înregistrări în ${a}, niciuna în ${b}.` };
+    default: return { label: "Toate schimbările", detail: "Toate grupurile, după diferența în lei." };
+  }
+}
+
 /** The words of one choice in a list window (kit §4: the long form in windows). */
 export function choiceWords(choice: Choice, spec: QuestionSpec): { label: string; detail?: string; group?: string } {
   const { filter, value } = choice;
@@ -102,6 +120,11 @@ export function choiceWords(choice: Choice, spec: QuestionSpec): { label: string
       const { dim, kind } = (typeof value === "object" && value ? value : { dim: value }) as SubjectChoice;
       return subjectWords(dim, kind, spec.block);
     }
+    case "trendChange": return trendChangeWords(String(value), spec);
+    case "trendOrder": return value === "percent"
+      ? { label: capital(TREND_ORDER_WORDS.percent), detail: "Doar cele prezente în ambii ani, de la un prag." }
+      : { label: capital(TREND_ORDER_WORDS.lei) };
+    case "trendMinBase": return { label: formatRon(Number(value)) };
     default: return { label: value === undefined ? "Oricare" : String(value) };
   }
 }
@@ -131,6 +154,10 @@ function currentOf(filter: Choice["filter"], spec: QuestionSpec): unknown {
     case "rankBy": return leaderAxis(spec);
     case "authorityKind": return spec.filters.authorityKind;
     case "dim": return spec.dim === "authority" ? { dim: "authority", ...(spec.filters.authorityKind ? { kind: spec.filters.authorityKind } : {}) } : { dim: spec.dim };
+    // A trend without the key is every change (an old link); an order in percent without its base ranks from 1 mil. lei.
+    case "trendChange": return spec.trend?.change ?? "all";
+    case "trendOrder": return spec.trend?.order ?? "lei";
+    case "trendMinBase": return spec.trend?.minBase ?? DEFAULT_TREND_MIN_BASE;
     default: return undefined;
   }
 }

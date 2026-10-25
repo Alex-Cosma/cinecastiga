@@ -7,7 +7,7 @@ import {
 } from "../question-ui";
 import { countyDisplay } from "../resolved-spec";
 import {
-  namedKind, type AskSpec, type AuthorityKind, type MonthWindow, type ParsedAuthorityKind,
+  DEFAULT_TREND_MIN_BASE, namedKind, type AskSpec, type AuthorityKind, type MonthWindow, type ParsedAuthorityKind,
 } from "../spec";
 import { formatExactDecimal, formatInt, formatRon } from "../../format";
 import { monthsLabel } from "../months-window";
@@ -15,9 +15,11 @@ import { trendGroupLabel } from "./defs/trend";
 import { filterContext } from "./context";
 import { exclusionWords, isDaBoundPopulation, selectionOrigin, splitExcluded, type OriginHint, type OriginWords } from "./origin";
 import { FILTERS, SPEC_PATH_OWNERS, presentPaths } from "./registry";
-import { sentenceTokens } from "./sentence";
+import { presentationTokens, sentenceTokens } from "./sentence";
 import type { FilterId, FilterSpec } from "./types";
-import { SINGLE_OFFER_WORDS, adminPhrase, employeesCount, employeesPhrase, employeesWords, localityName, periodWordsWith, streamPhrase } from "./words";
+import {
+  SINGLE_OFFER_WORDS, TREND_ORDER_WORDS, adminPhrase, employeesCount, employeesPhrase, employeesWords, localityName, periodWordsWith, streamPhrase, trendBaseWho,
+} from "./words";
 
 /*
  * describeConditions (plan §2.2 describe.ts, §0.4): every condition of a
@@ -43,6 +45,13 @@ export interface ConditionLabels {
   entities?: Readonly<Record<string, string>> | undefined;
   /** The months a trend's answer counted (its `executed.months`): what `months: "auto"` resolved to. */
   executedMonths?: MonthWindow | null | undefined;
+  /**
+   * `auto` the caller cannot resolve, or the reader's own "pe aceleași luni" on whole years: the title
+   * says the rule, without months (the interpreter, lib/intent/to-spec.ts sentenceFor).
+   */
+  sameMonthsRule?: boolean | undefined;
+  /** The years a trend's answer compared (its data.yearA/yearB): what a spec without years resolved to. */
+  trendYears?: { yearA: number; yearB: number } | null | undefined;
 }
 
 export interface ScopeRow { label: string; value: string }
@@ -52,6 +61,8 @@ export interface ConditionWords {
   id: FilterId;
   /** The condition in words, lowercase, for a list: the "Din link" chip, the total line. */
   words?: string;
+  /** The title's tail, where it says less than `words` (null: nothing): a trend's months, only those it knows. */
+  tail?: string | null;
   /** The chip (or the line) under today's builder sentence, with its detail. */
   chip?: string;
   chipDetail?: string;
@@ -103,6 +114,7 @@ const KIND_SCOPE: Record<AuthorityKind, string> = {
 };
 
 const records = (n: number) => countWords(n, "înregistrare", "înregistrări");
+const capitalFirst = (text: string) => text.charAt(0).toLocaleUpperCase("ro-RO") + text.slice(1);
 const conditionsOf = (p: QueryPopulation) => p.groups.reduce((n, group) => n + group.conditions.length, 0);
 
 /** A precise selection in one line: "(instituții includ X ȘI CPV includ 45) SAU (…)". */
@@ -350,30 +362,36 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
     const months = spec.trend?.months;
     if (months === undefined) return null;
     // `auto` as the answer ran it (labels.executedMonths, the pills): its months, and no pill on whole years (trend final §3.3).
+    const whole = (w: MonthWindow) => w[0] === 1 && w[1] === 12;
     const ran = months === "auto" ? labels.executedMonths ?? null : null;
-    const window = Array.isArray(months) ? months : ran && !(ran[0] === 1 && ran[1] === 12) ? ran : null;
+    const window: MonthWindow | null = Array.isArray(months) ? months as MonthWindow : ran && !whole(ran) ? ran : null;
     const chosen = window ? monthsLabel({ from: window[0], to: window[1] }) : null;
     const chip = months === "whole" ? "Ani întregi" : chosen ? `Aceleași luni: ${chosen}` : "Aceleași luni";
     const rule = Array.isArray(months) ? chosen : null;
+    // The title says the months only where they are known and part of a year (trend final §1): chosen
+    // ones, or those the answer counted; `auto` before its answer is the rule, which the summary says.
+    const tail = window && !whole(window) ? `pe aceleași luni: ${chosen}` : months === "auto" && labels.sameMonthsRule ? "pe aceleași luni" : null;
     return {
-      words: months === "whole" ? "pe ani întregi" : chosen ? `pe aceleași luni: ${chosen}` : "pe aceleași luni",
-      chip, pills: ran && !window ? [] : [chip.toLowerCase()], summary: chip,
+      words: months === "whole" ? "pe ani întregi" : chosen ? `pe aceleași luni: ${chosen}` : "pe aceleași luni", tail,
+      chip, pills: ran && !window ? [] : [chip.toLowerCase()],
+      ...(tail ? {} : { summary: chip }),
       scope: [{ label: "Luni comparate", value: months === "whole" ? "Ani întregi" : rule ? `${rule}, în ambii ani` : "Aceleași luni în ambii ani, până la ultima lună completă" }],
     };
   },
+  // Kit §6 trend 4: "după [diferența în lei | creșterea în procente]", the presentation line's words (P5).
   trendOrder: (spec) => {
     const order = spec.trend?.order;
     if (!order) return null;
-    const words = order === "percent" ? "ordonate după creșterea în procente" : "ordonate după diferența în lei";
-    return { words, chip: order === "percent" ? "Creșterea în procente" : "Diferența în lei", pills: [words], scope: [{ label: "Ordine", value: order === "percent" ? "Creșterea în procente" : "Diferența în lei" }] };
+    const words = `după ${TREND_ORDER_WORDS[order]}`, chip = capitalFirst(TREND_ORDER_WORDS[order]);
+    return { words, chip, pills: [words], scope: [{ label: "Ordine", value: chip }] };
   },
   trendMinBase: (spec) => {
-    const base = spec.trend?.minBase;
+    // A percent order without its base ranks from 1 mil. lei (TREND_RULES): said as applied.
+    const base = spec.trend?.minBase ?? (spec.trend?.order === "percent" ? DEFAULT_TREND_MIN_BASE : undefined);
     if (base === undefined) return null;
-    const who = spec.dim === "supplier" ? "firmele" : spec.dim === "county" ? "județele" : "instituțiile";
     const when = spec.filters.yearFrom ? ` în ${spec.filters.yearFrom}` : "";
     return {
-      words: `dintre ${who} cu cel puțin ${formatRon(base)}${when}`, chip: `Cel puțin ${formatRon(base)}${when}`, pills: [`cel puțin ${formatRon(base)}${when}`],
+      words: `dintre ${trendBaseWho(spec.dim)} cu cel puțin ${formatRon(base)}${when}`, chip: `Cel puțin ${formatRon(base)}${when}`, pills: [`cel puțin ${formatRon(base)}${when}`],
       scope: [{ label: "Baza creșterii", value: `Cel puțin ${formatRon(base)}${when}` }],
     };
   },
@@ -394,7 +412,8 @@ export const DESCRIBED_FILTERS = Object.keys(DESCRIBE) as FilterId[];
 const TREND_ORDER: readonly FilterId[] = ["trendChange", "trendFirstOnly", "trendMonths", "trendOrder", "trendMinBase"];
 const PILL_ORDER: readonly FilterId[] = ["cpvTerm", "authorityKind", "authority", "supplier", "compareWith", "locality", "county", "admin", "period", ...TREND_ORDER, "singleBidder", "employees", "dataset", "population", "minimumRecords"];
 const SCOPE_ORDER: readonly FilterId[] = ["authority", "supplier", "compareWith", "cpvTerm", "county", "locality", "authorityKind", "admin", "period", ...TREND_ORDER, "dataset", "singleBidder", "employees", "minimumRecords", "population"];
-const SUMMARY_ORDER: readonly FilterId[] = ["dataset", "authority", "supplier", "cpvTerm", "trendChange", "trendMonths", "population", "minimumRecords"];
+// A trend's group is its title's own word (sentence.ts); its months, when the title does not say them.
+const SUMMARY_ORDER: readonly FilterId[] = ["dataset", "authority", "supplier", "cpvTerm", "trendMonths", "population", "minimumRecords"];
 const CAVEAT_ORDER: readonly FilterId[] = ["population", "minimumRecords"];
 
 /**
@@ -452,12 +471,14 @@ const SHAPE: ReadonlySet<FilterId> = new Set(["dim", "measure", "topN", "rankBy"
  * kit's order: the exclusions ("fără SYSTRA"), then what the engine applies
  * and the sentence does not say, a link's chip, another page's selection, a
  * partners' row, "Selecție avansată". What only the profile line or the
- * engine's own ceiling says has no words here (legacyConditions' noChip).
+ * engine's own ceiling says has no words here (legacyConditions' noChip),
+ * nor what the presentation line says (title.ts names a non-default order).
  */
 function titleTailWords(spec: Spec, byId: Partial<Record<FilterId, ConditionWords>>, labels: ConditionLabels): string[] {
   const ctx = filterContext(spec);
   const said = new Set<FilterId>();
-  for (const token of sentenceTokens(spec, ctx, { cpvName: labels.cpvName })) if (token.kind !== "text") for (const id of token.says) said.add(id);
+  for (const token of [...sentenceTokens(spec, ctx, { cpvName: labels.cpvName }), ...presentationTokens(spec)])
+    if (token.kind !== "text") for (const id of token.says) said.add(id);
   if (said.has("locality")) said.add("county");
   const owners = new Set<FilterId>();
   for (const path of presentPaths(spec)) {
@@ -480,7 +501,8 @@ function titleTailWords(spec: Spec, byId: Partial<Record<FilterId, ConditionWord
   const row = partnerWords(spec);
   for (const id of PILL_ORDER) {
     if (id === "population" || !owners.has(id)) continue;
-    const said = row[id] ?? byId[id]?.words;
+    const own = byId[id];
+    const said = row[id] ?? (own?.tail !== undefined ? own.tail : own?.words);
     if (said) words.push(said);
   }
   return words;

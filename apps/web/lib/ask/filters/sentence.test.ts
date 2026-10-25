@@ -93,6 +93,19 @@ describe("the sentence of each question (plan §4)", () => {
     expect(line(q({ block: "table", dim: "supplier", measure: "count" }))).toBe("Arată [tot clasamentul], după [numărul de înregistrări].");
     expect(line(q({ block: "table", dim: "authority", topN: 1, measure: "value_per_capita" }))).toBe("Arată [primul], după [valoarea pe locuitor].");
     expect(line(q({ block: "trend", dim: "supplier" }))).toBe("Arată [primele 10], după diferența în lei.");
+    // F2 (kit §6 trend 4): the order is a phrase on the growths only, the percent with its base in year A.
+    const years = { yearFrom: 2024, yearTo: 2025 };
+    const trend = (dim: string, options: Record<string, unknown>) => q({ block: "trend", dim, filters: years, trend: options } as Parameters<typeof q>[0]);
+    expect(line(trend("supplier", { change: "up" }))).toBe("Arată [primele 10], după [diferența în lei].");
+    expect(line(trend("supplier", { change: "up", order: "percent", minBase: 1_000_000 }))).toBe("Arată [primele 10], după [creșterea în procente], dintre firmele cu cel puțin [1 mil. lei] în 2024.");
+    expect(line(trend("authority", { change: "up", order: "percent", minBase: 100_000 }))).toBe("Arată [primele 10], după [creșterea în procente], dintre instituțiile cu cel puțin [100.000 lei] în 2024.");
+    for (const change of ["down", "new", "gone", "all"]) expect(line(trend("supplier", { change })), change).toBe("Arată [primele 10], după diferența în lei.");
+    const percent = presentationTokens(trend("county", { change: "up", order: "percent" }));
+    expect(percent.filter((t): t is SentenceSlot => t.kind === "slot").map((t) => [t.filter, t.says])).toEqual([["topN", []], ["trendOrder", ["trendOrder"]], ["trendMinBase", []]]);
+    // A percent order without its base ranks from 1 mil. lei; the words are describeConditions' (one vocabulary).
+    expect(sentenceText(percent)).toBe("Arată primele 10, după creșterea în procente, dintre județele cu cel puțin 1 mil. lei în 2024.");
+    const words = describeConditions(trend("county", { change: "up", order: "percent" })).byId;
+    for (const id of ["trendOrder", "trendMinBase"] as const) expect(sentenceText(percent), id).toContain(words[id]!.words!);
     for (const block of ["stat", "timeseries", "map", "breakdown", "compare", "network", "sankey", "fact_check", "distribution", "scatter", "entity_card"])
       expect(presentationTokens(q({ block })), block).toEqual([]);
   });
@@ -157,23 +170,89 @@ describe("the sentence of each question (plan §4)", () => {
 
   it("trend: the subject first, the change between two years, fragments only when set (§4.7)", () => {
     const years = { yearFrom: 2024, yearTo: 2025 };
-    expect(marked(q({ block: "trend", dim: "supplier", topN: 10, filters: years }))).toBe("Ce [firme] au cea mai mare schimbare între [2024] și [2025]?");
+    // An old link without `trend` keeps its words: every change ("Toate"), its phrase saying no key.
+    expect(marked(q({ block: "trend", dim: "supplier", topN: 10, filters: years }))).toBe("Ce [firme] au cea mai mare [schimbare] între [2024] și [2025]?");
+    expect(slotOf(q({ block: "trend", dim: "supplier", filters: years }), "trendChange")).toMatchObject({ says: [], window: "Ce fel de schimbare?", slot: "Felul schimbării" });
     expect(marked(q({ block: "trend", dim: "supplier", filters: { ...years, authorityName: "Municipiul Cluj-Napoca" } })))
-      .toBe("Ce [firme] au cea mai mare schimbare a achizițiilor făcute de [Municipiul Cluj-Napoca] între [2024] și [2025]?");
+      .toBe("Ce [firme] au cea mai mare [schimbare] a achizițiilor făcute de [Municipiul Cluj-Napoca] între [2024] și [2025]?");
     expect(marked(q({ block: "trend", dim: "supplier", dataset: "da", filters: { ...years, cpvTerm: "asfaltare", county: "Cluj" } })))
-      .toBe("Ce [firme] au cea mai mare schimbare a achizițiilor pentru [„asfaltare”] făcute de [instituțiile publice] din [județul Cluj] prin [achiziții directe] între [2024] și [2025]?");
+      .toBe("Ce [firme] au cea mai mare [schimbare] a achizițiilor pentru [„asfaltare”] făcute de [instituțiile publice] din [județul Cluj] prin [achiziții directe] între [2024] și [2025]?");
     // On institutions the kind is the subject (plan §4.7).
     expect(marked(q({ block: "trend", dim: "authority", filters: { ...years, authorityKind: "spital", supplierName: "DR.MAX" } })))
-      .toBe("Ce [spitale] au cea mai mare schimbare a achizițiilor de la [DR.MAX] între [2024] și [2025]?");
-    expect(marked(q({ block: "trend", dim: "authority", filters: { ...years, county: "Cluj" } }))).toBe("Ce [instituții publice] din [județul Cluj] au cea mai mare schimbare între [2024] și [2025]?");
+      .toBe("Ce [spitale] au cea mai mare [schimbare] a achizițiilor de la [DR.MAX] între [2024] și [2025]?");
+    expect(marked(q({ block: "trend", dim: "authority", filters: { ...years, county: "Cluj" } }))).toBe("Ce [instituții publice] din [județul Cluj] au cea mai mare [schimbare] între [2024] și [2025]?");
     expect(marked(q({ block: "trend", dim: "county", filters: { ...years, authorityKind: "comuna" } })))
-      .toBe("Ce [județe] au cea mai mare schimbare a achizițiilor făcute de [primăriile de comună] între [2024] și [2025]?");
-    // Without years the engine compares the archive's first and last years.
-    expect(marked(q({ block: "trend", dim: "supplier" }))).toBe("Ce [firme] au cea mai mare schimbare între [primul an] și [ultimul an]?");
-    expect(marked(q({ block: "trend", dim: "supplier", filters: { yearFrom: 2020 } }))).toBe("Ce [firme] au cea mai mare schimbare între [2020] și [ultimul an]?");
-    expect(slots(q({ block: "trend", dim: "supplier", filters: years })).map((t) => t.id)).toEqual(["dim", "period", "period.2"]);
+      .toBe("Ce [județe] au cea mai mare [schimbare] a achizițiilor făcute de [primăriile de comună] între [2024] și [2025]?");
+    // Without years the engine compares the archive's first and last years; the title says the ones its answer compared.
+    expect(marked(q({ block: "trend", dim: "supplier" }))).toBe("Ce [firme] au cea mai mare [schimbare] între [primul an] și [ultimul an]?");
+    expect(marked(q({ block: "trend", dim: "supplier", filters: { yearFrom: 2020 } }))).toBe("Ce [firme] au cea mai mare [schimbare] între [2020] și [ultimul an]?");
+    expect(marked(q({ block: "trend", dim: "supplier" }), { trendYears: { yearA: 2018, yearB: 2026 } })).toBe("Ce [firme] au cea mai mare [schimbare] între [2018] și [2026]?");
+    expect(marked(q({ block: "trend", dim: "supplier", filters: { yearFrom: 2020 } }), { trendYears: { yearA: 2020, yearB: 2026 } })).toBe("Ce [firme] au cea mai mare [schimbare] între [2020] și [2026]?");
+    expect(slots(q({ block: "trend", dim: "supplier", filters: years })).map((t) => t.id)).toEqual(["dim", "trendChange", "period", "period.2"]);
     // An old link's employees, administrator, and a firm on a ranking of firms stay under the sentence (plan §4.7).
     expect(under(q({ block: "trend", dim: "supplier", filters: { ...years, minEmployees: 1, ...ADMIN, ...PORR } }))).toEqual(["admin", "employees", "supplier"]);
+  });
+
+  // F2 (trend final §1, §3.1, §3.8; kit §4 „Noi” with its year, „Nu mai apar” / „nu mai cumpără”, „Prima dată”).
+  it("trend: says the kind of change, on firms, institutions and counties", () => {
+    const years = { yearFrom: 2024, yearTo: 2025 };
+    const t = (dim: string, change: string, filters: QuestionSpec["filters"] = {}, extra: Partial<QuestionSpec> = {}) =>
+      marked(q({ block: "trend", dim, topN: 10, filters: { ...years, ...filters }, trend: { change, months: "auto" }, ...extra } as Parameters<typeof q>[0]));
+    const CLUJ = { authorityName: "Municipiul Cluj-Napoca", authorityId: 7 }, DRMAX = { supplierName: "DR.MAX", supplierId: 8 };
+    const firms: Record<string, string[]> = {
+      up: ["Ce [firme] au cea mai mare [creștere] între [2024] și [2025]?", "Ce [firme] au cea mai mare [creștere] a achizițiilor făcute de [Municipiul Cluj-Napoca] între [2024] și [2025]?"],
+      down: ["Ce [firme] au cea mai mare [scădere] între [2024] și [2025]?", "Ce [firme] au cea mai mare [scădere] a achizițiilor făcute de [Municipiul Cluj-Napoca] între [2024] și [2025]?"],
+      all: ["Ce [firme] au cea mai mare [schimbare] între [2024] și [2025]?", "Ce [firme] au cea mai mare [schimbare] a achizițiilor făcute de [Municipiul Cluj-Napoca] între [2024] și [2025]?"],
+      new: ["Ce [firme] [noi] apar în [2025], față de [2024]?", "Ce [firme] [noi] apar în achizițiile făcute de [Municipiul Cluj-Napoca] în [2025], față de [2024]?"],
+      gone: ["Ce [firme] din [2024] [nu mai apar] în [2025]?", "Ce [firme] din [2024] [nu mai apar] în achizițiile făcute de [Municipiul Cluj-Napoca] în [2025]?"],
+    };
+    for (const [change, [plain, buyer]] of Object.entries(firms)) {
+      expect(t("supplier", change), change).toBe(plain);
+      expect(t("supplier", change, CLUJ), change).toBe(buyer);
+      expect(slotOf(q({ block: "trend", dim: "supplier", filters: years, trend: { change } } as Parameters<typeof q>[0]), "trendChange")?.says, change).toEqual(["trendChange"]);
+    }
+    // Institutions buy from a chosen firm: "cumpără", "nu mai cumpără" (trend final §1).
+    expect(t("authority", "up", DRMAX)).toBe("Ce [instituții publice] au cea mai mare [creștere] a achizițiilor de la [DR.MAX] între [2024] și [2025]?");
+    expect(t("authority", "new", { ...DRMAX, authorityKind: "spital" })).toBe("Ce [spitale] [noi] cumpără de la [DR.MAX] în [2025], față de [2024]?");
+    expect(t("authority", "gone", { ...DRMAX, authorityKind: "spital" })).toBe("Ce [spitale] din [2024] [nu mai cumpără] de la [DR.MAX] în [2025]?");
+    expect(t("authority", "gone", { cpvTerm: "medicamente" })).toBe("Ce [instituții publice] din [2024] [nu mai cumpără] pentru [„medicamente”] în [2025]?");
+    expect(t("authority", "new")).toBe("Ce [instituții publice] [noi] apar în [2025], față de [2024]?");
+    expect(t("authority", "gone")).toBe("Ce [instituții publice] din [2024] [nu mai apar] în [2025]?");
+    // Their place keeps one "din" (R9): "noi" before it, the gone ones "față de" the earlier year.
+    expect(t("authority", "new", { county: "Cluj" })).toBe("Ce [instituții publice] [noi] din [județul Cluj] apar în [2025], față de [2024]?");
+    expect(t("authority", "gone", { county: "Cluj" })).toBe("Ce [instituții publice] din [județul Cluj] [nu mai apar] în [2025], față de [2024]?");
+    expect(t("authority", "gone", { uatSiruta: 54975, uatName: "Municipiul Cluj-Napoca (Cluj)" })).toBe("Ce [instituții publice] ale primăriei [Cluj-Napoca] [nu mai apar] în [2025], față de [2024]?");
+    // Counties: of a firm or of a kind of buyer.
+    expect(t("county", "new", DRMAX)).toBe("Ce [județe] [noi] apar în achizițiile de la [DR.MAX] în [2025], față de [2024]?");
+    expect(t("county", "gone", { authorityKind: "comuna", ...DRMAX })).toBe("Ce [județe] din [2024] [nu mai apar] în achizițiile făcute de [primăriile de comună] de la [DR.MAX] în [2025]?");
+    expect(t("county", "down", { cpvTerm: "asfaltare" })).toBe("Ce [județe] au cea mai mare [scădere] a achizițiilor pentru [„asfaltare”] între [2024] și [2025]?");
+    // The stream and the domain keep their fragments on every change.
+    expect(t("supplier", "new", { cpvTerm: "asfaltare" }, { dataset: "da" })).toBe("Ce [firme] [noi] apar în achizițiile pentru [„asfaltare”] prin [achiziții directe] în [2025], față de [2024]?");
+    expect(t("supplier", "gone", {}, { dataset: "contracts" })).toBe("Ce [firme] din [2024] [nu mai apar] prin [contracte din proceduri] în [2025]?");
+  });
+
+  it("trend: «prima dată» on the new ones is a fixed phrase with its year, set beside the answer", () => {
+    const fresh = (dim: string, filters: QuestionSpec["filters"] = {}) =>
+      q({ block: "trend", dim, filters: { yearFrom: 2024, yearTo: 2025, ...filters }, trend: { change: "new", firstOnly: true } } as Parameters<typeof q>[0]);
+    expect(marked(fresh("supplier"))).toBe("Ce [firme] [noi] apar {prima dată} în [2025], față de [2024]?");
+    expect(marked(fresh("authority", { supplierName: "DR.MAX", supplierId: 8 }))).toBe("Ce [instituții publice] [noi] cumpără de la [DR.MAX] {prima dată} în [2025], față de [2024]?");
+    const fixed = sentenceTokens(fresh("supplier")).find((t) => t.kind === "fixed");
+    expect(fixed).toEqual({ kind: "fixed", text: "prima dată", says: ["trendFirstOnly"], tip: "Prima înregistrare a firmei în datele noastre e în 2025. Nu e data înființării." });
+    // A narrowed selection: the first record is still the archive's, not the selection's (trend final §3.8).
+    expect(sentenceTokens(fresh("supplier", { cpvTerm: "asfaltare" })).find((t) => t.kind === "fixed")).toMatchObject({ tip: expect.stringMatching(/Privește toate datele, nu doar această selecție\.$/) });
+    expect(saidFilters(sentenceTokens(fresh("supplier")))).toContain("trendFirstOnly");
+    expect(under(fresh("supplier"))).toEqual([]);
+  });
+
+  it("trend: says that a question about town halls counts every institution, where the interpreter knows it", () => {
+    expect(marked(q({ block: "trend", dim: "authority", filters: { yearFrom: 2024, yearTo: 2025 }, trend: { change: "up" } } as Parameters<typeof q>[0]), { allInstitutions: true }))
+      .toBe("Ce [instituții publice] (toate, nu doar primăriile) au cea mai mare [creștere] între [2024] și [2025]?");
+    expect(marked(q({ block: "table", dim: "supplier", filters: { county: "Buzău" } }), { allInstitutions: true }))
+      .toBe("Ce [firme] câștigă [achizițiile] făcute de [instituțiile publice] (toate, nu doar primăriile) din [județul Buzău], în [toți anii]?");
+    expect(marked(q({ block: "entity_card", dim: "authority", rankBy: "risk", filters: { county: "Buzău" } }), { allInstitutions: true }))
+      .toBe("Care [instituție] (oricare, nu doar primăriile) din [județul Buzău] [are cel mai ridicat indice de risc]?");
+    // A kind is said: nothing to add.
+    expect(marked(q({ block: "stat", filters: { authorityKind: "spital" } }), { allInstitutions: true })).not.toContain("nu doar");
   });
 
   it("network: the partners' conditions are a row, not the sentence (§4.8)", () => {

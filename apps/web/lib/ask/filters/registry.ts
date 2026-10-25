@@ -87,8 +87,9 @@ export function visibleFilters(spec: FilterSpec, ctx: FilterCtx = filterContext(
   const entry = BLOCK_FILTERS[ctx.block];
   const ids = new Set<FilterId>();
   if (!entry) return ids;
+  // A fixed phrase says its condition too ("prima dată" on a trend's new ones, set beside the answer).
   for (const token of [...sentenceTokens(spec, ctx), ...presentationTokens(spec)])
-    if (token.kind === "slot") for (const id of token.says) ids.add(id);
+    if (token.kind !== "text") for (const id of token.says) ids.add(id);
   // A chip of employees shows the kit's bands only; an old link's range stays its own chip (kit §5.5).
   for (const row of entry.rows(spec, ctx)) for (const chip of row.chips)
     if (conditionSet(spec, chip.id) && (chip.id !== "employees" || employeesOnBands(spec.filters.minEmployees, spec.filters.maxEmployees))) ids.add(chip.id);

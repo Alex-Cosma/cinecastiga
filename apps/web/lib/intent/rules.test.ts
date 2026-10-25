@@ -7,6 +7,7 @@ import { FIXTURE } from "./rules.fixture";
 import { stems, tokenize, wordMatches } from "./text";
 import { SINGLE_OFFER_NOTE, resultFor, sentenceFor } from "./to-spec";
 import { employeesCount } from "../ask/filters/words";
+import { questionTitle } from "../ask/filters/title";
 import { sentenceScopeProblems } from "./scope-check";
 import type { AskSpec } from "../ask/spec";
 
@@ -74,7 +75,7 @@ describe("beginner phrasings → interpretation", () => {
     expect(i.leftover).toEqual([]);
     expect(i.placeNote).toBe("„Buzău”: am ales tot județul.");
     expect(r.spec).toEqual({ block: "table", dim: "supplier", measure: "value", topN: 10, filters: { cpvTerm: "iluminat", county: "Buzău" } });
-    expect(r.sentence).toBe("Cine câștigă contractele pentru „iluminat” de la instituțiile din județul Buzău, în toți anii?");
+    expect(r.sentence).toBe("Ce firme câștigă achizițiile pentru „iluminat” făcute de instituțiile publice din județul Buzău, în toți anii?");
     expect(r.alternatives.map((a) => a.label)).toEqual(["Doar primăria Municipiului Buzău", "Cât valorează în total", "Cum s-a schimbat de la an la an"]);
     expect(r.alternatives[0]!.spec.filters).toMatchObject({ uatSiruta: 44818, cpvTerm: "iluminat" });
     expect(r.alternatives[0]!.spec.filters.county).toBeUndefined();
@@ -85,7 +86,7 @@ describe("beginner phrasings → interpretation", () => {
     expect(i.intent).toBe("breakdown");
     expect(i.place).toMatchObject({ kind: "locality", siruta: 44845, tip: "municipiu" });
     expect(r.spec).toEqual({ block: "breakdown", measure: "value", filters: { uatSiruta: 44845, uatName: "Municipiul Râmnicu Sărat (Buzău)" } });
-    expect(r.sentence).toBe("Ce cumpără primăria Municipiului Râmnicu Sărat (Buzău), în toți anii?");
+    expect(r.sentence).toBe("Ce cumpără primăria Râmnicu Sărat (Buzău), în toți anii?");
   });
 
   it("3. «laptopuri pentru școli»: subject + kind, no place", async () => {
@@ -94,7 +95,7 @@ describe("beginner phrasings → interpretation", () => {
     expect(i.authorityKind?.kind).toBe("scoala");
     expect(i.intentSource).toBe("default");
     expect(r.spec?.filters).toEqual({ cpvTerm: "laptopuri", authorityKind: "scoala" });
-    expect(r.sentence).toContain("de la școlile din toată țara");
+    expect(r.sentence).toContain("făcute de școlile din toată țara");
   });
 
   it("4. «firme de asfalt din buzău»: the curated synonym wins over the bitumen label", async () => {
@@ -159,7 +160,7 @@ describe("beginner phrasings → interpretation", () => {
     expect(i.intent).toBe("total");
     expect(i.period).toMatchObject({ yearFrom: 2021, yearTo: 2023 });
     expect(r.spec).toEqual({ block: "stat", measure: "value", filters: { cpvTerm: "medicamente", county: "Cluj", authorityKind: "spital", yearFrom: 2021, yearTo: 2023 } });
-    expect(r.sentence).toBe("Cât valorează achizițiile pentru „medicamente” făcute de spitalele din județul Cluj, între 2021 și 2023?");
+    expect(r.sentence).toBe("Cât valorează achizițiile pentru „medicamente” făcute de spitalele din județul Cluj, în 2021–2023?");
   });
 
   it("13. «în 2024» single year", async () => {
@@ -304,7 +305,7 @@ describe("beginner phrasings → interpretation", () => {
   it("31. compare two firms with a year", async () => {
     const { r } = await ask("compara constructii erbasu cu elbi energy projects in 2024");
     expect(r.spec).toMatchObject({ block: "compare", filters: { supplierId: 9000001, compareWithId: 9000003, yearFrom: 2024, yearTo: 2024 } });
-    expect(r.sentence).toBe("Cum se compară contractele câștigate de „CONSTRUCTII ERBASU S.A.” cu cele câștigate de „ELBI ENERGY PROJECTS SRL”, în 2024?");
+    expect(r.sentence).toBe("Compară CONSTRUCTII ERBASU S.A. cu ELBI ENERGY PROJECTS SRL la toate achizițiile, în 2024.");
   });
 
   it("32. compare without a second name explains what is needed", async () => {
@@ -329,7 +330,7 @@ describe("beginner phrasings → interpretation", () => {
   it("35. «care spital are cel mai ridicat indice de risc» → one superlative profile", async () => {
     const { r } = await ask("care spital are cel mai ridicat indice de risc");
     expect(r.spec).toEqual({ block: "entity_card", dim: "authority", rankBy: "risk", measure: "value", filters: { authorityKind: "spital" } });
-    expect(r.sentence).toBe("Care spital are cel mai ridicat indice de risc?");
+    expect(r.sentence).toBe("Care spital din toată țara are cel mai ridicat indice de risc?");
   });
 
   it("36. «e ceva suspect la Spitalul…» → where the hospital sits on the risk index", async () => {
@@ -379,7 +380,7 @@ describe("beginner phrasings → interpretation", () => {
     const { i, r } = await ask("cat a cheltuit primaria sectorului 3 pe curățenie");
     expect(i.place).toMatchObject({ tip: "sector", county: "București" });
     expect(i.leftover).toEqual([]);
-    expect(r.sentence).toBe("Cât valorează achizițiile pentru „curățenie” făcute de primăria Sectorului 3 (București), în toți anii?");
+    expect(r.sentence).toBe("Cât valorează achizițiile pentru „curățenie” făcute de primăria Sectorului 3, în toți anii?");
   });
 
   it("44. «București» → the whole city, town hall as an alternative", async () => {
@@ -467,16 +468,22 @@ describe("spec mapping", () => {
     }
   });
 
-  it("writes sentences for every block it can produce", () => {
-    expect(sentenceFor({ block: "timeseries", measure: "value", filters: { county: "Cluj", yearFrom: 2020 } })).toBe("Cum au evoluat de la an la an achizițiile făcute de instituțiile din județul Cluj, din 2020 încoace?");
-    expect(sentenceFor({ block: "stat", measure: "count", dataset: "da", filters: { uatSiruta: 1, uatName: "Comuna Apa (Satu Mare)", yearTo: 2020 } })).toBe("Câte achiziții au fost făcute de primăria Comunei Apa (Satu Mare), până în 2020, doar achiziții directe?");
-    expect(sentenceFor({ block: "scatter", dim: "supplier", measure: "value", filters: {} })).toBe("Ce firme ies din tipar după indicele de risc și valoarea achizițiilor?");
+  // F1b-r-interpreter-sentence: the builder's sentence and its conditions, as the answer's title says them.
+  it("writes sentences for every block it can produce, as the builder and the answer's title say them", () => {
+    expect(sentenceFor({ block: "timeseries", measure: "value", filters: { county: "Cluj", yearFrom: 2020 } })).toBe("Cum evoluează valoarea tuturor achizițiilor făcute de instituțiile publice din județul Cluj, an de an, din 2020 încoace?");
+    expect(sentenceFor({ block: "stat", measure: "count", dataset: "da", filters: { uatSiruta: 1, uatName: "Comuna Apa (Satu Mare)", yearTo: 2020 } })).toBe("Câte achiziții directe au fost făcute de primăria Apa (Satu Mare), până în 2020?");
+    expect(sentenceFor({ block: "scatter", dim: "supplier", measure: "value", filters: {} })).toBe("Ce firme din toată țara ies din tipar după risc și valoarea achizițiilor directe?");
+    for (const spec of [
+      { block: "table", dim: "supplier", measure: "count", topN: 5, dataset: "contracts", filters: { cpvTerm: "45", county: "Cluj", yearFrom: 2024, yearTo: 2025 } },
+      { block: "trend", dim: "authority", measure: "value", topN: 10, filters: { supplierName: "DR.MAX", authorityKind: "spital", yearFrom: 2024, yearTo: 2025 }, trend: { change: "gone" } },
+      { block: "entity_card", dim: "supplier", rankBy: "value", measure: "value", filters: { minEmployees: 1, maxEmployees: 9 } },
+    ] as AskSpec[]) expect(sentenceFor(spec)).toBe(questionTitle(spec));
   });
 
   it("says today's administrator and one institution of a kind in the builder's words (kit §4)", () => {
-    expect(sentenceFor({ block: "stat", measure: "value", filters: { adminName: "ION POPESCU", adminPersonKey: "k" } })).toBe("Cât valorează achizițiile făcute de instituțiile din toată țara de la firmele conduse azi de ION POPESCU, în toți anii?");
-    expect(sentenceFor({ block: "table", dim: "supplier", measure: "value", filters: { adminName: "ION POPESCU", adminPersonKey: "k" } })).toMatch(/, dintre firmele conduse azi de ION POPESCU, în toți anii\?$/);
-    expect(sentenceFor({ block: "entity_card", dim: "authority", rankBy: "value", measure: "value", filters: { authorityKind: "oras_municipiu" } })).toBe("Care primărie de oraș sau municipiu cumpără cel mai mult, în toți anii?");
+    expect(sentenceFor({ block: "stat", measure: "value", filters: { adminName: "ION POPESCU", adminPersonKey: "k" } })).toBe("Cât valorează achizițiile de la firmele conduse azi de ION POPESCU, în toți anii?");
+    expect(sentenceFor({ block: "table", dim: "supplier", measure: "value", filters: { adminName: "ION POPESCU", adminPersonKey: "k" } })).toBe("Ce firme conduse azi de ION POPESCU câștigă achizițiile făcute de instituțiile publice din toată țara, în toți anii?");
+    expect(sentenceFor({ block: "entity_card", dim: "authority", rankBy: "value", measure: "value", filters: { authorityKind: "oras_municipiu" } })).toBe("Care primărie de oraș sau municipiu din toată țara cumpără cel mai mult, prin toate achizițiile, în toți anii?");
   });
 });
 

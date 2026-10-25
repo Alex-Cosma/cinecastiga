@@ -1,9 +1,8 @@
 import { cleanName } from "../format";
 import { joinCpvTerms } from "../ask/cpv-terms";
 import { countWords } from "../ask/answer-text";
-import { adminPhrase, titleTail } from "../ask/filters/words";
-import { KIND_ONE } from "../ask/question-ui";
-import { IMPLEMENTED_KEYS, namedKind, validateSpec, type AskFilters, type AskSpec, type AuthorityKind, type Block, type Dataset } from "../ask/spec";
+import { questionTitle, type TitleLabels } from "../ask/filters/title";
+import { IMPLEMENTED_KEYS, validateSpec, type AskFilters, type AskSpec, type AuthorityKind, type Block, type Dataset } from "../ask/spec";
 import { defaultTrendYears, isWholeYear, monthsLabel, sameMonthsWindow, trendYearsFrom, type CoveragePeriods } from "../ask/months-window";
 import { FILTERS, SPEC_PATH_OWNERS } from "../ask/filters/registry";
 import { filterContext } from "../ask/filters/context";
@@ -324,55 +323,6 @@ const EVERY_CHANGE = /\b(?:schimb\w*|evolu\w*|tendint\w*|dinamic\w*|diferent\w*)
 
 // ------------------------------------------------------------- sentence
 
-const KIND_PLURAL: Record<AuthorityKind, [string, string]> = {
-  // [with article, without]
-  comuna: ["primăriile de comună", "primării de comună"],
-  oras_municipiu: ["primăriile de oraș și municipiu", "primării de oraș și municipiu"],
-  consiliu_judetean: ["consiliile județene", "consilii județene"],
-  spital: ["spitalele", "spitale"],
-  scoala: ["școlile", "școli"],
-};
-
-function countyPhrase(county: string): string {
-  return county === "București" ? "din București" : `din județul ${county}`;
-}
-
-function uatPhrase(label: string): string {
-  // "Municipiul Buzău (Buzău)" → "Municipiului Buzău"; keeps the county for comune
-  const m = /^(.*?) \(([^)]+)\)$/.exec(label);
-  const name = m ? m[1]! : label;
-  const county = m ? m[2]! : null;
-  const bare = name.replace(/^(Municipiul|Orașul|Comuna|Sectorul) /, "");
-  const g = genitive({ name });
-  return county && county !== bare ? `${g} (${county})` : g;
-}
-
-/** "instituțiile din județul Buzău", "primăria Municipiului Buzău", "„SPITALUL …”". */
-function buyers(f: AskFilters): string {
-  if (f.authorityName) return `„${f.authorityName}”`;
-  if (f.uatSiruta) return `primăria ${uatPhrase(f.uatName ?? `localității ${f.uatSiruta}`)}`;
-  const kind = namedKind(f.authorityKind);
-  const who = kind ? KIND_PLURAL[kind][0] : "instituțiile";
-  return `${who} ${f.county ? countyPhrase(f.county) : "din toată țara"}`;
-}
-
-function wherePlain(f: AskFilters): string {
-  // the engine scopes a locality to its town hall (compile.ts), so the sentence says so
-  if (f.uatSiruta) return ` ale primăriei ${uatPhrase(f.uatName ?? `localității ${f.uatSiruta}`)}`;
-  if (f.county) return ` ${countyPhrase(f.county)}`;
-  return "";
-}
-
-function period(f: AskFilters): string {
-  if (f.yearFrom && f.yearTo) return f.yearFrom === f.yearTo ? `în ${f.yearFrom}` : `între ${f.yearFrom} și ${f.yearTo}`;
-  if (f.yearFrom) return `din ${f.yearFrom} încoace`;
-  if (f.yearTo) return `până în ${f.yearTo}`;
-  return "în toți anii";
-}
-
-/** The stream and the employees after the period: the title's tail (filters/words.ts), one writer for both. */
-const suffix = (spec: AskSpec): string => titleTail(spec);
-
 export interface SentenceLabels {
   /** The person asked about town halls; the ranking covers every institution, and the sentence says so. */
   allInstitutions?: boolean;
@@ -394,82 +344,32 @@ export function saysSameMonths(spec: AskSpec, labels: Pick<SentenceLabels, "peri
   return "error" in window || !isWholeYear(window);
 }
 
-/** One plain Romanian sentence for a spec, as a person would ask it. */
+/**
+ * A trend's `auto` months as the title says them (trend final §1, §3.3): the months the archive's
+ * periods resolve to when they are part of a year ("pe aceleași luni: ian.–mai"), the rule when they
+ * cannot be resolved or the words asked for them, nothing on whole years.
+ */
+function sameMonthsLabels(spec: AskSpec, labels: SentenceLabels): Pick<TitleLabels, "executedMonths" | "sameMonthsRule"> {
+  if (spec.block !== "trend" || spec.trend?.months !== "auto") return {};
+  const window = labels.periods !== undefined && spec.filters.yearTo !== undefined
+    ? sameMonthsWindow(labels.periods, spec.dataset ?? "all", spec.filters.yearTo, "auto") : null;
+  if (window && !("error" in window) && !isWholeYear(window)) return { executedMonths: [window.from, window.to] };
+  return saysSameMonths(spec, labels) ? { sameMonthsRule: true } : { executedMonths: [1, 12] };
+}
+
+/**
+ * One plain Romanian sentence for a spec (plan §2.7, F1b-r-interpreter-sentence): the builder's
+ * sentence and the conditions under it, as the answer's title says them (filters/title.ts), so "Am
+ * înțeles așa:" and the builder say the same question. The interpreter adds what it knows: the reader's
+ * own words for the domain, that a question about town halls counts every institution, and the months
+ * `auto` resolves to.
+ */
 export function sentenceFor(spec: AskSpec, labels: SentenceLabels = {}): string {
-  const f = spec.filters;
-  const subjectLabel = f.cpvTerm ? labels.subject ?? f.cpvTerm : null;
-  const subj = subjectLabel ? ` pentru „${subjectLabel}”` : "";
-  const fromSupplier = f.supplierName ? ` de la „${f.supplierName}”` : "";
-  // Today's administrator (kit §4 "Administratorul"): "firmele conduse azi de X", as the builder says it.
-  const admin = f.adminName ? ` de la ${adminPhrase(f.adminName)}` : "";
-  const when = period(f);
-  const tail = suffix(spec);
-  const anyInstitution = labels.allInstitutions ? " (toate instituțiile, nu doar primăriile)" : "";
-  const kind = namedKind(f.authorityKind);
-  const dimNoun = spec.dim === "supplier" ? "firme" : spec.dim === "county" ? "județe" : kind ? KIND_PLURAL[kind][1] : `instituții${anyInstitution}`;
-  switch (spec.block) {
-    case "table":
-      if (spec.dim === "supplier")
-        return `Cine câștigă ${spec.measure === "count" ? "cele mai multe contracte" : "contractele"}${subj} de la ${buyers(f)}${admin ? `, dintre ${adminPhrase(f.adminName)}` : ""}, ${when}${tail}?`;
-      return `Ce ${dimNoun}${spec.dim === "county" ? "" : wherePlain(f)} cumpără cel mai mult${spec.measure === "value_per_capita" ? " pe locuitor" : spec.measure === "count" ? " (număr de achiziții)" : ""}${subj}${fromSupplier}${admin}, ${when}${tail}?`;
-    case "stat":
-      return spec.measure === "count"
-        ? `Câte achiziții${subj} au fost făcute de ${buyers(f)}${fromSupplier}${admin}, ${when}${tail}?`
-        : `Cât valorează achizițiile${subj} făcute de ${buyers(f)}${fromSupplier}${admin}, ${when}${tail}?`;
-    case "breakdown":
-      return `Ce cumpără ${buyers(f)}${subjectLabel ? ` în domeniul „${subjectLabel}”` : ""}${fromSupplier}${admin}, ${when}${tail}?`;
-    case "timeseries":
-      return `Cum au evoluat de la an la an achizițiile${subj} făcute de ${buyers(f)}${fromSupplier}${admin}, ${when}${tail}?`;
-    case "trend": {
-      const filtered = Boolean(f.authorityName || f.uatSiruta || f.county || f.authorityKind);
-      const t = spec.trend ?? {}, a = f.yearFrom ?? "…", b = f.yearTo ?? "…";
-      // The group and the months in words (trend final §1): "Ce firme noi apar …, față de 2024?", "… pe aceleași luni".
-      const months = t.months === "auto" ? saysSameMonths(spec, labels) ? ", pe aceleași luni" : "" : Array.isArray(t.months) ? `, pe ${monthsLabel({ from: t.months[0], to: t.months[1] })}` : "";
-      const from = spec.dim === "supplier" ? `${subj}${filtered ? ` de la ${buyers(f)}` : ""}` : `${subj}${fromSupplier}`;
-      const who = spec.dim === "supplier" ? "firme" : `${dimNoun}${spec.dim === "county" ? "" : wherePlain(f)}`;
-      if (t.change === "new")
-        return t.firstOnly
-          ? `Ce ${who} apar pentru prima dată în achizițiile${from} din ${b}, față de ${a}${months}${tail}?`
-          : `Ce ${who.replace(/^(firme|instituții|județe)/, "$1 noi")} apar în achizițiile${from} din ${b}, față de ${a}${months}${tail}?`;
-      if (t.change === "gone") return `Ce ${who} din ${a} nu mai apar în achizițiile${from} din ${b}${months}${tail}?`;
-      if (t.change === "up" || t.change === "down") {
-        const change = `${t.change === "up" ? "creștere" : "scădere"}${t.order === "percent" ? " în procente" : ""}`;
-        return spec.dim === "supplier"
-          ? `Ce firme au cea mai mare ${change} a valorii câștigate${from} între ${a} și ${b}${months}${tail}?`
-          : `Ce ${who} au cea mai mare ${change} a achizițiilor${from} între ${a} și ${b}${months}${tail}?`;
-      }
-      return spec.dim === "supplier"
-        ? `Ce firme au cea mai mare schimbare a valorii contractelor${from} între ${a} și ${b}${months}${tail}?`
-        : `Ce ${who} au cea mai mare schimbare a achizițiilor${from} între ${a} și ${b}${months}${tail}?`;
-    }
-    case "compare":
-      return f.supplierName
-        ? `Cum se compară contractele${subj} câștigate de „${f.supplierName}” cu cele câștigate de „${f.compareWith ?? "?"}”, ${when}${tail}?`
-        : `Cum se compară achizițiile${subj} făcute de „${f.authorityName ?? "?"}” cu cele făcute de „${f.compareWith ?? "?"}”, ${when}${tail}?`;
-    case "scatter":
-      return `Ce ${dimNoun}${wherePlain(f)} ies din tipar după indicele de risc și valoarea achizițiilor?`;
-    case "entity_card": {
-      // One institution of a kind in the builder's words (KIND_ONE: "primărie de oraș sau municipiu").
-      const one = (kind && KIND_ONE[kind]) ?? `instituție${labels.allInstitutions ? " (oricare, nu doar primăriile)" : ""}`;
-      if (spec.rankBy === "risk")
-        return `Care ${spec.dim === "supplier" ? "firmă" : one}${wherePlain(f)} are cel mai ridicat indice de risc?`;
-      return spec.dim === "supplier"
-        ? `Care firmă are contractele de cea mai mare valoare${subj} de la ${buyers(f)}, ${when}${tail}?`
-        : `Care ${one}${wherePlain(f)} cumpără cel mai mult${subj}${fromSupplier}, ${when}${tail}?`;
-    }
-    case "distribution":
-      return `Unde se situează „${f.authorityName ?? f.supplierName ?? "?"}” după indicele de risc, față de ${f.supplierName ? "alte firme" : "alte instituții"}${f.county && !f.supplierName ? ` ${countyPhrase(f.county)}` : ""}?`;
-    case "network":
-      return `Cu cine lucrează „${f.authorityName ?? f.supplierName ?? "?"}”?`;
-    case "sankey":
-      return `Cum se împart achizițiile „${f.authorityName ?? f.supplierName ?? "?"}” între parteneri și domenii?`;
-    case "fact_check":
-      return `A cumpărat „${f.authorityName ?? "?"}” de la „${f.supplierName ?? "?"}”?`;
-    case "map":
-      return `Cum se împart pe județe achizițiile${subj}, ${when}${tail}?`;
-    default:
-      return "Întrebarea ta";
-  }
+  return questionTitle(spec, {
+    ...(labels.subject && spec.filters.cpvTerm ? { subject: labels.subject } : {}),
+    ...(labels.allInstitutions ? { allInstitutions: true } : {}),
+    ...sameMonthsLabels(spec, labels),
+  });
 }
 
 // ---------------------------------------------------------- the result

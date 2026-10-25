@@ -189,6 +189,24 @@ describe("the windows (component 9 and the composed pickers)", () => {
     expect(fromTabs(builderView(SEVEN.stat!).windows[builderView(SEVEN.stat!).invites[0]!.id]!)).toEqual(["supplier", "admin", "employees"]);
   });
 
+  // F2-sentence: the phrase of the change opens "Ce fel de schimbare?" (trend final §3.1); the window's other words are the builder part's.
+  it("list a trend's changes with their rules, the group noun after the selection, the current one checked", () => {
+    const changes = (spec: QuestionSpec) => listOptions(win(spec, "Felul schimbării"), spec);
+    const legacy = changes(SEVEN.trend!);
+    expect(win(SEVEN.trend!, "Felul schimbării").title).toBe("Ce fel de schimbare?");
+    expect(legacy.options.map((o) => [o.label, o.detail])).toEqual([
+      ["Creștere", "În ambii ani, mai mult în 2025."], ["Firme noi", "Nicio înregistrare în 2024, cel puțin una în 2025."],
+      ["Scădere", "În ambii ani, mai puțin în 2025."], ["Nu mai apar", "Înregistrări în 2024, niciuna în 2025."], ["Toate schimbările", "Toate grupurile, după diferența în lei."],
+    ]);
+    // An old link without the key is every change.
+    expect(legacy.value).toBe('"all"');
+    const clients = changes(q({ ...SEVEN.trend!, dim: "authority", filters: { yearFrom: 2024, yearTo: 2025, supplierName: "DR.MAX", supplierId: 8 }, trend: { change: "new" } }));
+    expect(clients.options.find((o) => o.value === '"new"')?.label).toBe("Clienți noi");
+    expect(clients.value).toBe('"new"');
+    // The counties' new and gone are sure to be empty without a firm or a domain: not offered (trend final §3.1).
+    expect(changes(q({ ...SEVEN.trend!, dim: "county" })).options.map((o) => o.label)).toEqual(["Creștere", "Scădere", "Toate schimbările"]);
+  });
+
   it("list the stream as the kit names it, the current one checked", () => {
     const { options, value } = listOptions(win(SEVEN.stat!, "Achizițiile"), SEVEN.stat!);
     expect(options.map((o) => [o.label, o.detail])).toEqual([["Toate achizițiile", "Directe și din proceduri"], ["Achizițiile directe", "Fără licitație"], ["Contractele din proceduri", "Licitații și alte proceduri"]]);

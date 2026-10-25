@@ -1,22 +1,16 @@
 import { countWords } from "../answer-text";
 import { formatInt } from "../../format";
-import type { QueryPopulation } from "../population";
-import { exclusionWords, splitExcluded } from "./origin";
 
 /*
  * Word fragments shared by the builder's sentence (sentence.ts), which is
- * also the answer's title (title.ts), the interpreter's sentence
- * (lib/intent/to-spec.ts sentenceFor) and the conditions of describe.ts, in
+ * also the answer's title (title.ts) and the interpreter's sentence
+ * (lib/intent/to-spec.ts sentenceFor), and the conditions of describe.ts, in
  * the kit's vocabulary (kit §4). Kept apart from describe.ts so that a module
  * without the registry can read them. Every number with a noun goes through
  * countWords (plan G10).
  */
 
-type Spec = {
-  dataset?: string | undefined;
-  filters: { singleBidder?: unknown; minEmployees?: unknown; maxEmployees?: unknown };
-  population?: QueryPopulation | undefined;
-};
+type Spec = { dataset?: string | undefined; filters: { singleBidder?: unknown } };
 
 /** "4 angajați", "49 de angajați", "1 angajat". */
 export const employeesCount = (n: number): string => countWords(n, "angajat", "angajați");
@@ -117,6 +111,13 @@ export function periodWordsWith(f: Parameters<typeof periodPhrase>[0], all = "î
   return lead ? `${lead} ${value}` : value;
 }
 
+/**
+ * A trend's order in the presentation line (kit §6 trend 4: "după [diferența în lei ▾]", the percent
+ * on growths only) and who its base counts ("dintre firmele cu cel puțin [1 mil. lei] în 2024").
+ */
+export const TREND_ORDER_WORDS = { lei: "diferența în lei", percent: "creșterea în procente" } as const;
+export const trendBaseWho = (dim: unknown): string => dim === "supplier" ? "firmele" : dim === "county" ? "județele" : "instituțiile";
+
 /** An old link's single-bidder condition (kit §4 "Oferte": "o singură ofertă", never "un singur ofertant"). */
 export const SINGLE_OFFER_WORDS = "doar contractele cu o singură ofertă";
 
@@ -127,26 +128,3 @@ export function streamPhrase(spec: Spec, channelSaid = false): string | null {
   if (spec.dataset === "contracts") return "doar contracte din proceduri";
   return null;
 }
-
-/**
- * The tail of the interpreter's sentence, after the period: the stream, the
- * employees and what was left out of the calculation ("…, fără SYSTRA").
- * `channelSaid`: the sentence already names direct acquisitions. The answer's
- * title says the stream and the employees in its sentence; its tail is
- * describeConditions' (title.ts, G7).
- */
-export function titleTailParts(spec: Spec, channelSaid = false): string[] {
-  const parts: string[] = [];
-  const stream = streamPhrase(spec, channelSaid);
-  if (stream) parts.push(stream);
-  const employees = employeesPhrase(spec.filters.minEmployees, spec.filters.maxEmployees);
-  if (employees) parts.push(employees);
-  parts.push(...exclusionWords(splitExcluded(spec.population).excluded));
-  return parts;
-}
-
-/** The tail as the title appends it: ", doar achiziții directe, fără SYSTRA" or nothing. */
-export const titleTail = (spec: Spec, channelSaid = false): string => {
-  const parts = titleTailParts(spec, channelSaid);
-  return parts.length ? `, ${parts.join(", ")}` : "";
-};
