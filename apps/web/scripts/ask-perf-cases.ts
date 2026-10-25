@@ -133,6 +133,14 @@ export function perfCases(): PerfCase[] {
     perfCase("filtered:table-cluj-medicines-2024-2026", "filtered", "Cine vinde medicamente în Cluj, 2024–2026", "table", all(set({ county: "Cluj", cpvTerm: "medicamente" }), years(2024, 2026))),
     perfCase("filtered:trend-cluj-2024-2025", "filtered", "Firmele din Cluj cu cea mai mare schimbare, 2024 → 2025", "trend", all(set({ county: "Cluj" }), years(2024, 2025))),
     perfCase("filtered:compare-selgros-dedeman-2025", "filtered", "SELGROS cu DEDEMAN, 2025", "compare", all(CATALOG_CHOICES.compare!.edit, years(2025)), { ref: "Pre-pasul P la comparație (SELGROS/DEDEMAN)" }),
+    // The strip beside the answer (F1b): the stream is a one-click toggle on an answer already on screen
+    // (appliedAfterStrip: only `dataset` changes), so each question with it is measured on both streams.
+    ...(["compare", "network", "sankey", "breakdown"] as const).flatMap((block) => (["da", "contracts"] as const).map((dataset) =>
+      perfCase(`strip:${block}-${dataset}`, "filtered", `Banda: ${CATALOG_CHOICES[block]?.note ?? "pe domenii"}, ${dataset === "da" ? "Directe" : "Proceduri"}`, block,
+        all(CATALOG_CHOICES[block]?.edit ?? years(2025), top({ dataset })), { ref: "Comutatorul de canal din bandă (F1b)" }))),
+    // "+ Ce s-a cumpărat" is a first-row invitation of the rankings (F1b): national, all years, a domain.
+    perfCase("national:table-suppliers-medicines", "national", "Cine câștigă la medicamente, național, toți anii", "table", set({ cpvTerm: "medicamente" }), { barMs: 2000, ref: "Invitația „+ Ce s-a cumpărat” pe clasament" }),
+    perfCase("national:table-authorities-medicines", "national", "Instituțiile care cumpără cele mai multe medicamente, național", "table", all(top({ dim: "authority" }), set({ cpvTerm: "medicamente" })), { barMs: 2000 }),
     // Sources (the drawer's first page) and CSV exports through the real runRows.
     perfCase("sources:table-national", "sources", "Sursele clasamentului național implicit", "table", () => {}, { path: "rows", barMs: 2000 }),
     perfCase("sources:table-national-selgros-row", "sources", "„Înregistrări →” pe rândul SELGROS al clasamentului național", "table", () => {}, { path: "rows", scope: SELGROS_ROW, ref: "„Înregistrări →” pe un singur rând" }),
