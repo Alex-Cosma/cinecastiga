@@ -461,7 +461,9 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
             const { minEmployees: _min, maxEmployees: _max, ...everyFirm } = every.filters;
             const selection = await runRows(q, dim === "supplier" ? { ...every, filters: everyFirm } : every, g, 0);
             if ("error" in cold || "error" in warm || "error" in apart || "error" in selection) throw new Error(`${name}: rows expected`);
-            expect([name, trendGroupStats().hits]).toEqual([name, hits + 1]);
+            // The selection's drawer („Toate”) totals from the same kept partition when its selection is the answer's (S3 F2-merge-fixes).
+            const sameSelection = dim !== "supplier" || JSON.stringify(everyFirm) === JSON.stringify(every.filters);
+            expect([name, trendGroupStats().hits]).toEqual([name, hits + 1 + (sameSelection ? 1 : 0)]);
             expect([name, drawer(cold)]).toEqual([name, drawer(apart)]);
             expect([name, drawer(warm)]).toEqual([name, drawer(apart)]);
             const part = answer.composition[group.change === "up" && group.order === "percent" ? "eligible" : group.firstOnly ? "first" : group.change]!;
