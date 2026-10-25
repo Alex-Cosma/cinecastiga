@@ -1,5 +1,5 @@
 import type { DbSql } from "@seap/db";
-import { countyFold, localAdministrationName, populationForMapping, sectorTownHallUnit, type PopulationMappingRow } from "../peer-population";
+import { countyFold, localAdministrationName, populationFold, populationForMapping, sectorTownHallUnit, type PopulationMappingRow } from "../peer-population";
 import { AUTHORITY_KINDS, type AuthorityKind } from "./spec";
 
 /*
@@ -11,9 +11,10 @@ import { AUTHORITY_KINDS, type AuthorityKind } from "./spec";
  *   reference.authority_uat → reference.uat.tip (3 = comună; 1, 2, 4, 9 =
  *   municipiu, oraș, București), with the rule of the locality scope (F15,
  *   localAuthorityIdsForUnit): a legacy code counts only in the institution's
- *   own county and for a name with a local-administration legal form. Without
- *   a code, the strict name + county match of the population join (one
- *   candidate); the six București sector town halls (owner decision F05) are
+ *   own county, for a valid CUI and for a name with a local-administration
+ *   legal form. Without a code, the strict name + county match of the
+ *   population join (one candidate, valid CUI), also once without a trailing
+ *   bare county name; the six București sector town halls (owner decision F05) are
  *   town halls. A legacy code that does not corroborate is not used.
  * - Every other institution, and a town hall the registry does not place, by
  *   strict name rules. Hospitals include the clinical institutes
@@ -87,17 +88,31 @@ export type AuthorityKindRow = PopulationMappingRow;
 const unitKind = (tip: string | undefined): "comuna" | "oras_municipiu" | null =>
   tip === "3" ? "comuna" : tip === "1" || tip === "2" || tip === "4" || tip === "9" ? "oras_municipiu" : null;
 
+/**
+ * The name without a trailing bare county ("Primaria Ghimpati Giurgiu" in
+ * Giurgiu), or null when it has none. The population join strips only
+ * "judetul/judet/jud X"; the kind retries once without the bare form.
+ */
+function withoutCountySuffix(row: AuthorityKindRow): string | null {
+  if (!row.county) return null;
+  const name = populationFold(row.name), county = populationFold(row.county);
+  return county && name.endsWith(` ${county}`) ? name.slice(0, -county.length - 1) : null;
+}
+
 /** The kind of a town hall from the locality registry, or null when the registry does not place it. */
 export function townHallKind(row: AuthorityKindRow, registry: LocalityRegistry): "comuna" | "oras_municipiu" | null {
   // Owner decision F05: a București sector's own town hall (sectorTownHallUnit checks its code).
   if (sectorTownHallUnit(row)) return "oras_municipiu";
   if (row.siruta !== null && row.siruta > 0) {
+    // A valid CUI, as the locality scope reads only those (readPopulationMappingRows).
     const unit = registry.get(row.siruta);
-    const corroborated = unit && row.county && unit.county && countyFold(row.county) === countyFold(unit.county) && localAdministrationName(row.name);
+    const corroborated = row.cui && unit && row.county && unit.county && countyFold(row.county) === countyFold(unit.county) && localAdministrationName(row.name);
     return corroborated ? unitKind(unit.tip) : null;
   }
-  // No positive legacy code: the exact name + county match of the population join, one candidate.
-  const population = populationForMapping({ ...row, siruta: null });
+  // No positive legacy code: the exact name + county match of the population join, one candidate;
+  // once more without a trailing bare county name, which that join keeps.
+  const bare = withoutCountySuffix(row);
+  const population = populationForMapping({ ...row, siruta: null }) ?? (bare ? populationForMapping({ ...row, name: bare, siruta: null }) : undefined);
   return population?.level === "local" && population.siruta !== undefined ? unitKind(registry.get(population.siruta)?.tip) : null;
 }
 
