@@ -40,8 +40,11 @@ function shownMeasure(spec: AskSpec): AskSpec["measure"] {
   return spec.measure === "value_per_capita" && spec.block !== "table" ? "value" : spec.measure;
 }
 
-/** `labels.entities`: names of the ids a population lists, where the caller knows them (an entity capture). */
-export function buildPills(spec: AskSpec, grounding: Grounding, labels: Pick<ConditionLabels, "entities"> = {}): string[] {
+/**
+ * `labels.entities`: names of the ids a population lists, where the caller knows them (an entity capture);
+ * `labels.executedMonths`: the months a trend's answer counted.
+ */
+export function buildPills(spec: AskSpec, grounding: Grounding, labels: Pick<ConditionLabels, "entities" | "executedMonths"> = {}): string[] {
   const pills: string[] = [];
   pills.push(BLOCK_LABEL[spec.block]);
   const dim = DIM_LABEL[spec.dim ?? "authority"];
@@ -64,6 +67,6 @@ export function buildPills(spec: AskSpec, grounding: Grounding, labels: Pick<Con
           : "Total (lei)",
     );
   }
-  pills.push(...describeConditions(spec, { grounding, entities: labels.entities }).pills);
+  pills.push(...describeConditions(spec, { grounding, entities: labels.entities, executedMonths: labels.executedMonths }).pills);
   return pills;
 }

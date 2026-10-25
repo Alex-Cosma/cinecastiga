@@ -26,7 +26,7 @@ import {
   type RollupFilters, type RollupNeed, type RollupSource,
 } from "./rollups";
 import {
-  factsOfRow, factsSource, liveTrendChannels, trendFactsRows, trendListOf, trendMembersFigures, trendNoun, trendPartition, trendProfiles,
+  factsOfRow, factsSource, factsYears, liveTrendChannels, trendFactsRows, trendListOf, trendMembersFigures, trendNoun, trendPartition, trendProfiles,
   type TrendAttribute, type TrendComposition, type TrendList, type TrendMemberPart, type TrendNoun, type TrendPartitionRow, type TrendPartSources, type TrendRowFacts,
 } from "./trend-partition";
 import {
@@ -242,6 +242,15 @@ export const TREND_2018_NOTE: Record<"all" | "da" | "contracts", string | null> 
   contracts: "2018 e incomplet: contractele din 2018 sunt jumătate din cele din 2019.",
   da: null,
 };
+
+/**
+ * A trend's statements (its answer and its sources) run without JIT: the cost
+ * of a live national grouping (a CPV, the same months) passes the JIT
+ * thresholds, and compiling it took 1–1.4 s of 3.3–3.6 s, more than it saved
+ * (local, production settings: medicines 2024 → 2025 3.6 → 2.5 s, growths
+ * Jan–May 3.6 → 2.4 s, a group's sources 1.0 → 0.4 s; the rollup answers unchanged).
+ */
+export const TREND_NO_JIT = "set local jit = off";
 
 /** The months a trend's answer counted and the data checkpoint it read them at; its sources send them back (runRows `months`). */
 export interface ExecutedWindow { months: MonthWindow; mode: MonthsMode; checkpoint: string | null }
@@ -1730,6 +1739,7 @@ export async function runSpec(
           }
           const topN = spec.topN ?? 10;
           const dim = spec.dim ?? "authority";
+          await s.unsafe(TREND_NO_JIT);
           // trend-2 (plan §4.7): the partition of the selection, grouped once by entity or county
           // (from a rollup when one answers it), with the first N of every group and the composition;
           // the chosen group is rowsTrend (every change without trend options, as before trend-2).
@@ -1756,12 +1766,12 @@ export async function runSpec(
             trendGroupedInput(s, { rollup: null, days: false, ctx: w, dataset, dim, yearA: yA, yearB: yB, members: fixed.ids }), { group, topN, first }) : null;
           if (own) movement = { part: part!, members: fixed!.ids.length, stayed: own.stayed, live: partition.composition[part!]?.count ?? 0 };
           const lists: [TrendList, TrendPartitionRow[]][] = own ? [[trendListOf(group), own.rows]] : Object.entries(partition.lists) as [TrendList, TrendPartitionRow[]][];
-          // The facts and the profile of the shown entities only (≤ 6 × N ids), on the id indexes.
+          // The facts and the profile of the shown entities only (≤ 6 × N ids), on the id indexes, each in its change year.
           const shown = dim === "county" ? [] : [...new Set(lists.flatMap(([, rows]) => rows.map((r) => r.id)))];
           const partnerRole = dim === "supplier" ? "authority" : "supplier";
           const facts = dim === "county" ? [] : await trendFactsRows(s, {
             source: factsSource(s, dataset, false), where: selection, id: key,
-            partner: dim === "supplier" ? s`d.authority_id` : s`d.supplier_id`, ids: shown, yearA: yA, yearB: yB,
+            partner: dim === "supplier" ? s`d.authority_id` : s`d.supplier_id`, byYear: factsYears(lists.flatMap(([, rows]) => rows), yA, yB),
           });
           const profiles = dim === "county" ? new Map() : await trendProfiles(s, [
             { role: dim, ids: shown }, { role: partnerRole, ids: facts.flatMap((f) => f.partner ? [f.partner] : []) },
@@ -2316,6 +2326,7 @@ export async function runRows(
     // The production database uses SSD costs. Keep the same covering-index
     // choices in local source verification without changing database settings.
     await tx.unsafe("set local random_page_cost = 1.1");
+    if (spec.block === "trend") await tx.unsafe(TREND_NO_JIT);
     const s = tx as unknown as DbSql;
     const group = groupMembers ? await groupMembers(s) : null;
     const members = group ? memberList(group.members) : null;
