@@ -463,6 +463,12 @@
 .cq-result .ask-trend .tr {
   gap: 12px;
 }
+/* A long name wraps: on one line it hid its own end and the row's records button (F1b-tests). */
+.cq-result .ask-trend .nm {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+}
 .cq-result .ask-ecard .kpis {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
