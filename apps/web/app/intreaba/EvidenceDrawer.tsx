@@ -14,7 +14,8 @@ import ClipButton from "@/components/ClipButton";
 import FollowButton from "@/components/FollowButton";
 import { encodeSpec } from "@/lib/ask/permalink";
 import "./evidence-drawer.css";
-import {requestSourceCsv,downloadSourceCsv} from "@/lib/ask/source-csv";
+import {answerOutdated,requestSourceCsv,downloadSourceCsv,SourceRequestError} from "@/lib/ask/source-csv";
+import { drawerWatchBlocked, trendGroupHeader } from "./trend-answer";
 import { ProfileSourceNote } from "./ProfileNotes";
 
 export interface EvidenceDrawerProps {
@@ -31,6 +32,8 @@ export interface EvidenceDrawerProps {
   peer?: PeerEvidenceSelection | undefined;
   /** A trend's executed months, sent with every request; not part of the scope saved links and watches keep. */
   months?: readonly [number, number] | undefined;
+  /** The data moved those months since the answer (409): the caller reloads the answer, the drawer lists nothing. */
+  onStale?: (() => void) | undefined;
 }
 
 type Response = ({ ok: true } & DrillResult) | { ok: false; error: string };
@@ -38,12 +41,14 @@ const count = (n: number) => n.toLocaleString("ro-RO");
 const records = (n: number) => countWords(n, "înregistrare", "înregistrări");
 const date = (value: string | null) => value ? value.split("-").reverse().join(".") : "Dată neprecizată";
 
-export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel, scope, onClose, onSave, initialFilters, connection, peer, months }: EvidenceDrawerProps) {
+export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel, scope, onClose, onSave, initialFilters, connection, peer, months, onStale }: EvidenceDrawerProps) {
   // Saved and followed selections keep both the question and the part opened.
   const title = scopeLabel ? `${questionTitle} · ${scopeLabel}` : questionTitle;
   const dialog = useRef<HTMLDialogElement>(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
+  const staleRef = useRef(onStale);
+  staleRef.current = onStale;
   const [responseData, setResult] = useState<DrillResult | null>(null);
   const [loadedKey, setLoadedKey] = useState("");
   const [busy, setBusy] = useState(true);
@@ -64,6 +69,10 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
   const activeQuery = useRef(queryKey);
   activeQuery.current = queryKey;
   const filtered = !!(search.trim() || state || stream);
+  // The drawer of a trend's group names it, with its share of the selection (DrillResult.group).
+  const group = result?.group ? trendGroupHeader(spec, result.group, result.sourceValue) : null;
+  // Following a group's own records fixes all its members, as „Urmărește grupa” does: the same limit, said before the setup page.
+  const watchBlocked = drawerWatchBlocked(spec, result?.group);
 
   useEffect(() => {
     const node = dialog.current;
@@ -98,10 +107,13 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
         });
         const data = await response.json() as Response;
         if (controller.signal.aborted || activeQuery.current !== queryKey) return;
-        if (!data.ok) throw new Error(data.error);
+        if (!data.ok) throw new SourceRequestError(data.error, response.status);
         setResult(data); setLoadedKey(queryKey);
       } catch (e) {
-        if (!controller.signal.aborted) setError(e instanceof Error ? e.message : "Sursele nu au putut fi încărcate.");
+        if (controller.signal.aborted) return;
+        // A trend's months moved with the data (plan §2.8): the answer is reloaded, never another list shown.
+        if (answerOutdated(e) && staleRef.current) { staleRef.current(); return; }
+        setError(e instanceof Error ? e.message : "Sursele nu au putut fi încărcate.");
       } finally {
         clearTimeout(slowTimer);
         if (!controller.signal.aborted) setBusy(false);
@@ -124,7 +136,8 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
       downloadSourceCsv(file);
       setExportMessage(file.message);
     } catch (e) {
-      if (!controller.signal.aborted) setExportMessage(e instanceof Error ? e.message : "Export nereușit.");
+      if (!controller.signal.aborted && answerOutdated(e) && staleRef.current) staleRef.current();
+      else if (!controller.signal.aborted) setExportMessage(e instanceof Error ? e.message : "Export nereușit.");
     } finally {
       if (!controller.signal.aborted) setExporting(null);
     }
@@ -138,7 +151,7 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
       if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) closeRef.current();
     }}>
     <header className="ev-header">
-      <div><p className="ev-eyebrow">Înregistrările din spatele răspunsului</p><h2 id="evidence-title">{questionTitle}</h2>{scopeLabel && <p className="ev-scope-label">{scopeLabel}</p>}</div>
+      <div><p className="ev-eyebrow">Înregistrările din spatele răspunsului</p><h2 id="evidence-title">{questionTitle}</h2>{scopeLabel && <p className="ev-scope-label">{scopeLabel}</p>}{group && <p className="ev-scope-label ev-group-label">{group}</p>}</div>
       <button type="button" className="ev-close" onClick={onClose} aria-label="Închide lista surselor" autoFocus>×</button>
     </header>
     <div className={`ev-load-status${busy ? " is-active" : ""}`} role="status" aria-live="polite" aria-atomic="true">
@@ -158,7 +171,7 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
       </div>}
       {result && <>
       <div className="ev-source-summary" aria-live="polite">
-        <div><span>Înregistrări în această selecție</span><strong>{result ? count(result.sourceTotal) : "—"}</strong></div>
+        <div><span>{result?.group ? "Înregistrările grupei" : "Înregistrări în această selecție"}</span><strong>{result ? count(result.sourceTotal) : "—"}</strong></div>
         <div><span>{result?.profile ? "Valoare înregistrată în profil" : "Valoare înregistrată"}</span><strong className="ev-money">{result ? formatEvidenceAmount(result.sourceValue) : "—"}</strong></div>
         <p>{result?.dateFrom ? `${date(result.dateFrom)} — ${date(result.dateTo)}` : result ? "Nicio dată de finalizare disponibilă în selecție." : "Acoperirea înregistrărilor se afișează după încărcare."}</p>
       </div>
@@ -216,7 +229,7 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
       {result && result.sourceTotal > EVIDENCE_CSV_LIMIT && <p className="ev-export-limit">Export: max. 100.000 de rânduri; fișierul spune dacă e parțial.</p>}
       {exportMessage && <p className="ev-export-message" role="status">{exportMessage}</p>}
     </div>
-    <footer className="ev-footer"><div>{result && !busy && !connection && !peer && <FollowButton spec={spec} options={{ ...(scope ? { scope } : {}), search, state, ...(stream === "da" || stream === "contracts" ? { stream } : {}) }} title={title} label="Urmărește această selecție" />}<button type="button" className="ev-export-main" disabled={!result || busy || !!exporting} onClick={() => void exportCsv("all")}>{exporting === "all" ? "Se exportă…" : result && result.sourceTotal > EVIDENCE_CSV_LIMIT ? "Exportă primele 100.000 · CSV" : "Exportă toate · CSV"}</button><button type="button" disabled={!result || busy || !!exporting || !filtered} onClick={() => void exportCsv("filtered")}>{exporting === "filtered" ? "Se exportă…" : result && result.total > EVIDENCE_CSV_LIMIT ? "Lista filtrată · primele 100.000" : "Exportă lista filtrată"}</button></div>{onSave ? <button type="button" className="ev-save" onClick={onSave}>+ Salvează în Anchete</button> : result && !busy && <ClipButton key={JSON.stringify({ queryKey, search, state, stream })} kind="query" spec={spec} label={title} snapshot={{
+    <footer className="ev-footer"><div>{result && !busy && !connection && !peer && <FollowButton spec={spec} options={{ ...(scope ? { scope } : {}), search, state, ...(stream === "da" || stream === "contracts" ? { stream } : {}) }} title={title} label="Urmărește această selecție" blocked={watchBlocked} />}<button type="button" className="ev-export-main" disabled={!result || busy || !!exporting} onClick={() => void exportCsv("all")}>{exporting === "all" ? "Se exportă…" : result && result.sourceTotal > EVIDENCE_CSV_LIMIT ? "Exportă primele 100.000 · CSV" : "Exportă toate · CSV"}</button><button type="button" disabled={!result || busy || !!exporting || !filtered} onClick={() => void exportCsv("filtered")}>{exporting === "filtered" ? "Se exportă…" : result && result.total > EVIDENCE_CSV_LIMIT ? "Lista filtrată · primele 100.000" : "Exportă lista filtrată"}</button></div>{onSave ? <button type="button" className="ev-save" onClick={onSave}>+ Salvează în Anchete</button> : result && !busy && <ClipButton key={JSON.stringify({ queryKey, search, state, stream })} kind="query" spec={spec} label={title} snapshot={{
       title, headline: `${records(result.sourceTotal)} · ${formatEvidenceAmount(result.sourceValue)}`,
       pills: [], evidenceScope: scope ?? null, evidenceOptions: peer?.selection.kind === "comparison" ? {} : { search, state, stream }, sourceTotal: result.sourceTotal, sourceValue: result.sourceValue,
       dateFrom: result.dateFrom, dateTo: result.dateTo, profile: result.profile, scopeNotes: result.scopeNotes,

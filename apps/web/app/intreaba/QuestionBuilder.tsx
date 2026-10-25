@@ -7,7 +7,8 @@ import { readableCpvName } from "@/lib/entity-summary";
 import { withoutLinkConditions } from "@/lib/ask/filters/restore";
 import { filterContext } from "@/lib/ask/filters/context";
 import type { FilterSpec } from "@/lib/ask/filters/types";
-import { chooseQuestion, chooseValue, restoreParked, type Transition } from "@/lib/ask/filters/transition";
+import { chooseQuestion, chooseValue, restoreParked, type NoteLink, type Transition } from "@/lib/ask/filters/transition";
+import { askLink } from "@/lib/ask/source-spec";
 import type { Parked } from "@/lib/ask/filters/parked";
 import type { Choice } from "@/lib/ask/filters/pickers";
 import { splitExcluded, type Excluded } from "@/lib/ask/filters/origin";
@@ -26,6 +27,8 @@ import ParkedRow from "./builder/ParkedRow";
 import ScopeLine from "./builder/ScopeLine";
 import Sentence, { Presentation } from "./builder/Sentence";
 import UnderChips from "./builder/UnderChips";
+import { useEntityNames } from "./builder/use-entity-names";
+import KitLink from "./answer/KitLink";
 import RowMenu from "./answer/RowMenu";
 import { builderView, onlyExclusions, patchDraft, withoutExclusions, type BuilderWindowSpec, type StripPatch } from "./builder/view";
 import SaveQuestionButton from "./SaveQuestionButton";
@@ -103,6 +106,8 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
   draftRef.current = draft;
   const [changes, setChanges] = useState<string[]>(() => unique([...(initialNotes ?? []), ...seed.changes, ...(initial ? keyVersionNotes(initial as unknown as AskSpec) : [])]));
   const [parked, setParked] = useState<Parked | null>(null);
+  // A note's link ("Cât câștigă X ›" for a tautology the change dropped), by the note's text.
+  const [noteLinks, setNoteLinks] = useState<Record<string, NoteLink>>({});
   const initialKey = initial ? questionKey(initial) : "";
   const previousInitial = useRef(initialKey);
   const [open, setOpen] = useState<{ key: string; anchor: HTMLElement } | null>(null);
@@ -124,7 +129,12 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
   // The archive's periods, read at mount (plan §2.6): a new trend's years and the months "Aceleași luni" counts.
   const coverage = useCoverage()?.periods ?? null;
   const transition = useMemo(() => ({ coverage }), [coverage]);
-  const view = useMemo(() => builderView(draft, { cpvName }, filterContext(draft as FilterSpec, coverage ? { coverage } : {})), [draft, cpvName, coverage]);
+  // An old link's selection names its institutions and firms in the (?) once they are looked up (the answer does not wait).
+  const entities = useEntityNames(draft.population);
+  const view = useMemo(
+    () => builderView(draft, { cpvName, entities }, filterContext(draft as FilterSpec, coverage ? { coverage } : {})),
+    [draft, cpvName, entities, coverage],
+  );
   const dirty = questionKey(draft) !== questionKey(applied ?? seed.spec);
   // A refused link condition says its reason on its chip: the list under the buttons keeps the rest.
   const reasons = new Set(view.refused.map((c) => c.reason));
@@ -186,9 +196,10 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
   }, [catalogue]);
 
   /** The draft after an edit, with its notes and the parked row (transition.ts). */
-  function settle(next: Pick<Transition, "spec" | "notes" | "parked">, replaceNotes = false) {
+  function settle(next: Pick<Transition, "spec" | "notes" | "parked" | "links">, replaceNotes = false) {
     setDraft(next.spec);
     setChanges(previous => unique([...(replaceNotes ? [] : previous), ...next.notes]));
+    setNoteLinks(previous => ({ ...(replaceNotes ? {} : previous), ...next.links }));
     setParked(next.parked);
   }
   function openWindow(key: string, anchor: HTMLElement) {
@@ -198,12 +209,12 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
   /** The choices of a window, in order, each through chooseValue. */
   function choose(target: BuilderWindowSpec, choices: readonly Choice[]) {
     let spec: QuestionSpec = draft, current = parked;
-    const notes: string[] = [];
+    const notes: string[] = [], links: Record<string, NoteLink> = {};
     for (const choice of choices) {
       const next = chooseValue(spec, target.slot, choice, current, transition);
-      spec = next.spec; current = next.parked; notes.push(...next.notes);
+      spec = next.spec; current = next.parked; notes.push(...next.notes); Object.assign(links, next.links);
     }
-    settle({ spec, notes, parked: current });
+    settle({ spec, notes, parked: current, links });
     closeWindow();
   }
   /** "⋯ › Selecție avansată" and its editors write the draft as they are edited (same question, normalized). */
@@ -313,7 +324,7 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
         <p>{view.refused[0]!.why ?? view.refused[0]!.reason}</p>
         <button type="button" className="fk-secondary" onClick={removeRefused}>Scoate condițiile din link</button>
       </div>}
-      {changes.length > 0 && <div className="qb-notes" role="status"><Glyph name="info" /><div><strong>Ce se schimbă odată cu întrebarea</strong>{changes.map((note) => <p key={note}>{note}</p>)}</div></div>}
+      {changes.length > 0 && <div className="qb-notes" role="status"><Glyph name="info" /><div><strong>Ce se schimbă odată cu întrebarea</strong>{changes.map((note) => <p key={note}>{note}{noteLinks[note] && <KitLink className="fk-relax-link" link={{ label: noteLinks[note]!.label, glyph: "›", href: askLink(noteLinks[note]!.spec as QuestionSpec) }} />}</p>)}</div></div>}
       <div className="fk-bottom qb-bottom">
         <div className="qb-bottom-start">
           {view.presentation.length > 0 && <Presentation tokens={view.presentation} openId={open?.key ?? null} onOpen={openWindow} />}

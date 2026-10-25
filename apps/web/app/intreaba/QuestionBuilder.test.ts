@@ -17,6 +17,7 @@ vi.mock("@/lib/ask/filters/pickers", () => import("../../lib/ask/filters/pickers
 vi.mock("@/lib/ask/filters/trend-rules", () => import("../../lib/ask/filters/trend-rules"));
 vi.mock("@/lib/ask/months-window", () => import("../../lib/ask/months-window"));
 vi.mock("@/lib/ask/permalink", () => import("../../lib/ask/permalink"));
+vi.mock("@/lib/ask/source-spec", () => import("../../lib/ask/source-spec"));
 vi.mock("@/lib/ask/population", () => import("../../lib/ask/population"));
 vi.mock("@/lib/ask/local-questions", () => import("../../lib/ask/local-questions"));
 vi.mock("@/lib/counties", () => import("../../lib/counties"));

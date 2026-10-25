@@ -2,14 +2,15 @@ import { fileSlug } from "../../lib/ask/answer-text";
 import type { BlockData } from "../../lib/ask/compile";
 import { isHistoricalProfile } from "../../lib/ask/population";
 import type { AskSpec } from "../../lib/ask/spec";
+import { shownTrendList, trendRowView } from "./trend-answer";
 
 /*
  * "Rezultatul afișat · CSV" (plan §2.3, §2.8): exactly the rows and columns
  * the answer shows, with the state of the strip beside it in the header and
  * in the file name, so "Doar ce vezi acum" stays true after a switch. F1b's
  * strip: the data stream (breakdown, compare, network, sankey), the map's
- * lens and the breakdown's thread ("fir"). Later stages add their own
- * (`grupa`, `luni`, `semnal`).
+ * lens and the breakdown's thread ("fir"); F2's trend its group and months
+ * (`grupa`, `luni`). Later stages add their own (`semnal`).
  */
 
 /** What the strip beside the answer shows now. */
@@ -20,6 +21,10 @@ export interface BandState {
   lens?: "value" | "count";
   /** The breakdown's thread, root to the current level ("toate › Construcții"). */
   thread?: string;
+  /** A trend's group chosen in the answer ("noi", "nu-mai-apar"). */
+  group?: string;
+  /** A trend's months, when both years count only some ("ian.–mai"). */
+  months?: string;
 }
 
 const STREAM_WORD: Record<NonNullable<BandState["stream"]>, string> = { all: "toate", da: "directe", contracts: "proceduri" };
@@ -30,6 +35,9 @@ function csvQ(s: string | null | undefined): string {
   const safe = /^[\s﻿]*[=+@-]/.test(text) ? "'" + text : text;
   return `"${safe.replaceAll('"', '""')}"`;
 }
+
+/** B − A of two amounts in lei, to the ban: a float subtraction leaves noise (1130000000.12 − 481712345.67 = 648287654.4499998). */
+export const leiDifference = (a: number, b: number): number => Math.round((b - a) * 100) / 100;
 
 /** The rows of the shown result, as before F1b. */
 function rowsOf(data: BlockData, spec: AskSpec): string[] {
@@ -73,8 +81,20 @@ function rowsOf(data: BlockData, spec: AskSpec): string[] {
     }
     case "fact_check":
       return ["cod,data,ce,valoare_lei", ...data.fact.samples.map((s) => `${csvQ(s.daCode)},${csvQ(s.date)},${csvQ(s.cpvName)},${s.value}`)];
-    case "trend":
-      return [`nume,judet,${data.yearA},${data.yearB}`, ...data.rowsTrend.map((r) => `${csvQ(r.name)},${csvQ(r.county)},${r.valueA},${r.valueB}`)];
+    case "trend": {
+      // The list on screen with its columns: the name as shown, the place beside it (an institution's county, a foreign
+      // firm's country; no county beside a firm, owner-seat-switch; none on a county), its labels and partner line.
+      const { list, rows } = shownTrendList(data, spec);
+      const place = spec.dim === "county" ? null : spec.dim === "supplier" ? "tara" : "judet";
+      return [
+        `nume,${place ? `${place},` : ""}${data.yearA},${data.yearB},diferenta_lei,etichete,partener`,
+        ...rows.map((r) => {
+          const view = trendRowView(r, list, data, spec);
+          return [csvQ(view.name), ...(place ? [csvQ(view.place)] : []), r.valueA, r.valueB, leiDifference(r.valueA, r.valueB),
+            csvQ(view.facts.map((f) => f.text).join("; ")), csvQ(view.partner)].join(",");
+        }),
+      ];
+    }
   }
 }
 
@@ -84,6 +104,8 @@ function bandColumns(band: BandState): [string, string][] {
     ...(band.stream ? [["canal", STREAM_WORD[band.stream]] as [string, string]] : []),
     ...(band.lens ? [["harta_arata", LENS_WORD[band.lens]] as [string, string]] : []),
     ...(band.thread ? [["fir", band.thread] as [string, string]] : []),
+    ...(band.group ? [["grupa", band.group] as [string, string]] : []),
+    ...(band.months ? [["luni", band.months] as [string, string]] : []),
   ];
 }
 
@@ -97,6 +119,6 @@ export function answerCsv(data: BlockData, spec: AskSpec, title: string, band: B
   const lines = columns.length
     ? [`${header},${columns.map(([name]) => name).join(",")}`, ...rows.map((row) => `${row},${columns.map(([, value]) => csvQ(value)).join(",")}`)]
     : [header!, ...rows];
-  const suffix = columns.map(([name, value]) => name === "fir" ? fileSlug(value, "") : value).filter(Boolean).join("-");
+  const suffix = columns.map(([name, value]) => name === "fir" || name === "luni" ? fileSlug(value, "") : value).filter(Boolean).join("-");
   return { text: "﻿" + lines.join("\r\n") + "\r\n", filename: `${fileSlug(title)}${suffix ? `-${suffix}` : ""}.csv` };
 }

@@ -24,7 +24,8 @@ export function emptyAnswer(data: BlockData): boolean {
     case "timeseries": return data.series.length === 0;
     case "map": return data.counties.every((c) => c.count === 0) && data.unknown.count === 0;
     case "breakdown": return data.slices.length === 0 && data.other.count === 0;
-    case "trend": return data.rowsTrend.length === 0;
+    // trend-2: empty when the selection is; an empty group of a full selection says so in its own list (TrendAnswer).
+    case "trend": return data.composition?.all ? data.composition.all.count === 0 : data.rowsTrend.length === 0;
     case "network": return data.nodes.length === 0;
     case "sankey": return data.flows.length === 0;
     case "scatter": return data.points.length === 0;

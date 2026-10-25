@@ -331,7 +331,8 @@ describe("the words of every condition", () => {
     ] }] } };
     const d = describeConditions(three);
     expect(d.tail).toBe("selecție avansată, 3 condiții");
-    expect(d.byId.population?.detail).toBe("(CPV includ 45 SAU CPV includ 33 SAU firme includ 1, 2, 3)");
+    // The (?) in the chip's words: firms an old link lists without labels are counted, never bare ids.
+    expect(d.byId.population?.detail).toBe("doar CPV 45 SAU doar CPV 33 SAU doar 3 firme");
     // "Selecție precisă" is not the 13 questions' name for it any more (plan R3, §6.3).
     for (const spec of [value, two, three]) expect(`${questionTitle(spec)} ${d.totalLine}`).not.toMatch(/selecție precisă/i);
   });

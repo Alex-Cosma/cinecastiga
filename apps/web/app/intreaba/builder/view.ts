@@ -12,6 +12,7 @@ import type { Choice } from "../../../lib/ask/filters/pickers";
 import { monthsLabel } from "../../../lib/ask/months-window";
 import { askLink } from "../../../lib/ask/source-spec";
 import type { QueryPopulation } from "../../../lib/ask/population";
+import type { TrendOptions } from "../../../lib/ask/spec";
 import { KIND_WORDS, cloneQuestion, countyWords, type QuestionSpec } from "../../../lib/ask/question-ui";
 import type { SentenceToken as KitToken } from "./kit-types";
 import type { UnderChipItem } from "./UnderChips";
@@ -73,13 +74,20 @@ export interface BuilderView {
  * applied question and the draft, the rest of the draft left as it is. A new
  * `seq` is a new change; the builder is not remounted, so a draft survives.
  */
-export interface StripPatch { seq: number; path: "dataset" | "measure"; value: string }
+export interface StripPatch {
+  seq: number; path: "dataset" | "measure" | "trend"; value: string;
+  /** "trend": the list chosen in the answer (`value`) and the applied question's trend options after it (null: no key). */
+  trend?: TrendOptions | null;
+}
 
 /** The draft after a strip change: only that key, as the applied question got it. */
-export function patchDraft(draft: QuestionSpec, patch: Pick<StripPatch, "path" | "value">): QuestionSpec {
+export function patchDraft(draft: QuestionSpec, patch: Pick<StripPatch, "path" | "value" | "trend">): QuestionSpec {
   const next = cloneQuestion(draft);
   if (patch.path === "dataset") next.dataset = patch.value;
-  else next.measure = patch.value;
+  else if (patch.path === "trend") {
+    if (patch.trend) next.trend = structuredClone(patch.trend) as TrendOptions;
+    else delete next.trend;
+  } else next.measure = patch.value;
   return next;
 }
 

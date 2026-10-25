@@ -119,11 +119,11 @@
    builder (its .75 is under 3:1). */
 .cq-answer .term-tip .term-mark { opacity:1; }
 @media(max-width:600px) {
-  .cq-answer .cq-answer-tools .cq-copy, .cq-answer .cq-export summary, .cq-answer .cq-answer-tools .cq-export-options button,
+  .cq-answer .cq-answer-tools .cq-copy, .cq-answer .cq-export summary, .cq-answer .follow-action, .cq-answer .cq-answer-tools .cq-export-options button,
   .cq-answer details > summary, .cq-answer .cmp-more { min-height:44px; }
   .cq-answer details > summary { align-content:center; }
   .cq-answer .cq-record-link { display:inline-flex; align-items:center; min-width:44px; min-height:44px; }
-  .cq-answer td a, .cq-answer .ask-complegend .nm a, .cq-answer .ask-trend .nm a, .cq-answer .cmp-card h3 a, .cq-answer .ask-ecard h3 a,
+  .cq-answer td a, .cq-answer .ask-complegend .nm a, .cq-answer .fk-trow-name a, .cq-answer .cmp-card h3 a, .cq-answer .ask-ecard h3 a,
   .cq-answer .coverage-disclosure-body > a { display:inline-flex; align-items:center; min-width:44px; min-height:44px; }
   .cq-answer .cmp-mirror-name { display:flex; align-items:center; min-height:44px; }
   .cq-answer .term-tip > .term-trigger { min-width:44px; min-height:44px; margin-block:-10px; }
