@@ -1967,7 +1967,7 @@ export async function runRows(
       parts.push(focalRole === "authority" ? sql`d.authority_id = ${focalId}` : sql`d.supplier_id = ${focalId}`);
     }
     if (spec.block === "trend") {
-      parts.push(trendYearsPredicate(sql, yearFrom ?? minY, yearTo ?? maxY));
+      parts.push(trendYearsPredicate(sql, yearFrom ?? minY, yearTo ?? maxY, ctx));
       notes.push(`Schimbare între ${yearFrom ?? minY} și ${yearTo ?? maxY}: sursele includ numai cei doi ani; diferența este totalul final minus totalul inițial.`);
     }
     if (spec.minimumRecords) {
@@ -2038,6 +2038,10 @@ export async function runRows(
     // The production database uses SSD costs. Keep the same covering-index
     // choices in local source verification without changing database settings.
     await tx.unsafe("set local random_page_cost = 1.1");
+    // A kind's ids (2,878–6,303 in `= any()`, D1) raise the cost estimates past
+    // the JIT thresholds: compiling cost 0.4–0.6 s warm, and seconds on a new
+    // connection, for a page of ten (communes 2019: 0.84 s with JIT, 0.39 s without).
+    if (ctx.kind) await tx.unsafe("set local jit = off");
     const s = tx as unknown as DbSql;
     const rolledTotals = rollup && totalsBlock && localParts.length === 1 && Object.keys(scope).every((key) => key === "role")
       ? await rollupSourceTotals(s, rollup, totalsBlock) : null;
@@ -2069,17 +2073,27 @@ export async function runRows(
     // while avoiding that misleading early-stop index plan. Fetch wide rows
     // only for the selected IDs, inside this same repeatable-read snapshot.
     const latestSelectedYear = scope.years?.length ? Math.max(...scope.years) : yearTo;
-    const annualScan = !profile && dataset === "all" && sortKey === "source"
+    // A kind of institution (D1) is a list of ids whose period the authority
+    // indexes bound (periodRange, trendYearsPredicate): its narrow candidates
+    // are read the same way, for one year or a span ending at least two years
+    // before the archive's last (communes, 2019: 17 s by the key, 0.4 s so). A
+    // longer span ending last year meets its newest records first by the key
+    // (schools 2022–2025: 2.3 s by the key, 10 s by the authority index).
+    const oneYear = scope.years?.length ? scope.years.length === 1 : yearFrom === yearTo;
+    const kindScan = ctx.kind !== null && (oneYear || latestSelectedYear !== null && latestSelectedYear <= maxY - 2);
+    // A kind on one channel ("achiziții directe" or contracts) reads only its
+    // own stream (communes' direct acquisitions, 2019: 12.2 s by the key, 0.25 s
+    // so). Without a kind or an id, one channel keeps the key: a recent year is
+    // near its top (direct acquisitions, 2025: 0.76 s).
+    const annualScan = !profile && sortKey === "source" && (dataset === "all" || ctx.kind !== null)
       && latestSelectedYear !== null && latestSelectedYear < maxY
-      && Object.keys(spec.filters).every((key) => ["yearFrom", "yearTo", "monthFrom", "monthTo"].includes(key))
+      && Object.keys(spec.filters).every((key) => ["yearFrom", "yearTo", "monthFrom", "monthTo"].includes(key) || key === "authorityKind" && kindScan)
       && Object.keys(scope).every((key) => ["years", "excludeCpvPrefixes"].includes(key));
-    const annualKeys = annualScan ? sql`(
-      (select d.ref_id, d.src, d.supplier_id from ${daTx} d where ${sourceWhere} and ${localWhere}
-       order by (d.ref_id + 0) ${dirFrag}, d.supplier_id nulls first limit ${branchLimit})
-      union all
-      (select d.ref_id, d.src, d.supplier_id from ${contractTx} d where ${sourceWhere} and ${localWhere}
-       order by (d.ref_id + 0) ${dirFrag}, d.supplier_id nulls first limit ${branchLimit})
-    )` : null;
+    const keysOf = (stream: typeof daTx) => sql`(select d.ref_id, d.src, d.supplier_id from ${stream} d where ${sourceWhere} and ${localWhere}
+       order by (d.ref_id + 0) ${dirFrag}, d.supplier_id nulls first limit ${branchLimit})`;
+    const annualKeys = !annualScan ? null
+      : dataset === "da" ? sql`(${keysOf(daTx)})` : dataset === "contracts" ? sql`(${keysOf(contractTx)})`
+      : sql`(${keysOf(daTx)} union all ${keysOf(contractTx)})`;
     const pageTxt = annualKeys ? sql`(
       select selected_row.* from ${annualKeys} selected_key
       cross join lateral (
