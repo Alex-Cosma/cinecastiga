@@ -8,7 +8,7 @@ import { parseSpec, type AskSpec } from "../spec";
 import { FIXTURE_IDENTITIES } from "../fixtures/golden-fixture";
 import { legacyCorpus } from "../fixtures/legacy-corpus";
 import {
-  caveatsBefore, chipsBefore, conditionPillsBefore, notesBefore, scopeBefore, summaryBefore, tailBefore, topPillBefore,
+  caveatsBefore, chipsBefore, conditionPillsBefore, notesBefore, scopeBefore, summaryBefore, topPillBefore,
 } from "../fixtures/grammars-before-describe";
 import { connectionEvidenceSpec } from "../../connection-evidence-shared";
 import { formatInt } from "../../format";
@@ -16,7 +16,6 @@ import { DESCRIBED_FILTERS, describeConditions } from "./describe";
 import { questionTitle, savedQuestionSummary } from "./title";
 import { DA_BOUND_VALUE, selectionOrigin, splitExcluded } from "./origin";
 import { FILTER_DEFS, SPEC_PATH_OWNERS } from "./registry";
-import { titleTail } from "./words";
 import { entityCaptureSpec, NATIONAL_DA_COUNT_SPEC } from "../site-links";
 import { DA_PLAFOND_RON } from "../predicates";
 
@@ -67,7 +66,6 @@ const kitScope = (row: { label: string; value: string }) => ({
 });
 const KIT_CHIPS: Readonly<Record<string, string>> = { "toți anii disponibili": "toți anii", "primăriile de oraș": "primăriile de oraș și municipiu", "Un singur ofertant": "O singură ofertă" };
 const kitChip = (text: string) => KIT_CHIPS[text] ?? text.replace(/^Conduse de /, "Conduse azi de ");
-const kitTail = (text: string) => text === "doar contracte cu un singur ofertant" ? "doar contractele cu o singură ofertă" : text;
 
 /** A grounding as the engine would resolve the spec's names (the pills read names only from it). */
 function groundingOf(spec: AskSpec, cpv?: Grounding["cpv"]): Grounding {
@@ -141,7 +139,8 @@ describe("describeConditions says what the six grammars said (plan §2.2)", () =
     }
   });
 
-  it("gives the builder's chips, and the title and the interpreter the same tail", () => {
+  // The interpreter's tail is the title's since F2 (lib/intent/to-spec.ts sentenceFor = questionTitle; rules.test.ts).
+  it("gives the builder's chips", () => {
     for (const spec of all) {
       if (relabelled(spec)) continue;
       const draft = transitionQuestion(spec as unknown as QuestionSpec).spec;
@@ -150,7 +149,6 @@ describe("describeConditions says what the six grammars said (plan §2.2)", () =
         const chips = Object.fromEntries(Object.entries(byId).filter(([, w]) => w.chip !== undefined).map(([id, w]) => [id, w.chip!]));
         expect(chips, JSON.stringify(draft)).toEqual(Object.fromEntries(Object.entries(chipsBefore(draft, cpvName)).map(([id, text]) => [id, kitChip(fixed(text))])));
       }
-      for (const channelSaid of [false, true]) expect(titleTail(spec, channelSaid)).toBe(tailBefore(spec, channelSaid).map((p) => `, ${kitTail(fixed(p))}`).join(""));
     }
   });
 });
@@ -191,7 +189,7 @@ describe("the changes the plan fixes", () => {
       const grounding = groundingOf(spec);
       const d = describeConditions(spec, { grounding });
       texts.push(...buildPills(spec, grounding), ...d.summary, ...d.caveats, ...d.scope.flatMap((r) => [r.label, r.value]), d.tail, d.totalLine ?? "",
-        ...Object.values(d.byId).flatMap((w) => [w.chip ?? "", w.note ?? "", w.words ?? ""]), savedQuestionSummary(spec), questionTitle(spec), titleTail(spec));
+        ...Object.values(d.byId).flatMap((w) => [w.chip ?? "", w.note ?? "", w.words ?? ""]), savedQuestionSummary(spec), questionTitle(spec));
     }
     const all = texts.join("\n");
     for (const word of retired) expect(all, word).not.toContain(word);
@@ -283,7 +281,7 @@ describe("the words of every condition", () => {
   it("say a trend's group, months and order in every place, and only on a trend that has them", () => {
     const base = { block: "trend", dim: "supplier", measure: "value", topN: 10, filters: { yearFrom: 2024, yearTo: 2025 } } as const;
     const growth = describeConditions({ ...base, trend: { change: "up", months: "auto", order: "percent", minBase: 1_000_000 } });
-    expect(growth.pills).toEqual(["2024 → 2025", "creșteri", "aceleași luni", "ordonate după creșterea în procente", "cel puțin 1 mil. lei în 2024", "toate achizițiile: directe și din proceduri"]);
+    expect(growth.pills).toEqual(["2024 → 2025", "creșteri", "aceleași luni", "după creșterea în procente", "cel puțin 1 mil. lei în 2024", "toate achizițiile: directe și din proceduri"]);
     expect(growth.scope.filter((row) => ["Grupul", "Luni comparate", "Ordine", "Baza creșterii"].includes(row.label))).toEqual([
       { label: "Grupul", value: "Creșteri" },
       { label: "Luni comparate", value: "Aceleași luni în ambii ani, până la ultima lună completă" },
@@ -297,7 +295,11 @@ describe("the words of every condition", () => {
     expect(fresh.byId.trendChange).toMatchObject({ chip: "Noi față de 2024", words: "noi față de 2024", summary: "Noi față de 2024" });
     expect(fresh.byId.trendFirstOnly).toMatchObject({ chip: "Prima dată în 2025", words: "prima dată în 2025" });
     expect(fresh.byId.trendMonths).toMatchObject({ chip: "Aceleași luni: ian.–mai", words: "pe aceleași luni: ian.–mai", scope: [{ label: "Luni comparate", value: "ian.–mai, în ambii ani" }] });
-    expect(fresh.summary).toEqual(["Noi față de 2024", "Aceleași luni: ian.–mai"]);
+    // The title says the group and chosen months (title.ts): the saved summary does not repeat them.
+    expect(fresh.summary).toEqual([]);
+    expect(describeConditions({ ...base, trend: { change: "up", months: "auto" } }).summary).toEqual(["Aceleași luni"]);
+    // A percent order without its base ranks from 1 mil. lei, and says it.
+    expect(describeConditions({ ...base, trend: { change: "up", order: "percent" } }).byId.trendMinBase?.words).toBe("dintre firmele cu cel puțin 1 mil. lei în 2024");
     expect(describeConditions({ ...base, trend: { change: "gone", months: "whole" } }).byId).toMatchObject({
       trendChange: { chip: "Nu mai apar în 2025" }, trendMonths: { chip: "Ani întregi", words: "pe ani întregi" },
     });

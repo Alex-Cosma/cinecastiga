@@ -1,17 +1,19 @@
+import type { BlockData, ExecutedWindow } from "../compile";
 import type { QuestionSpec } from "../question-ui";
 import { NEWER_VERSION_QUESTION, unimplementedSpecKeys, validateSpec, type AskSpec } from "../spec";
 import { filterContext } from "./context";
-import { describeConditions, type ConditionLabels } from "./describe";
-import { sentenceText, sentenceTokens } from "./sentence";
+import { describeConditions, type ConditionLabels, type DescribedConditions } from "./describe";
+import { sentenceText, sentenceTokens, type SentenceLabels } from "./sentence";
 import type { FilterSpec } from "./types";
 
 /*
  * The title of a question (plan G7, R11): its sentence as the builder says
  * it (sentence.ts), then the conditions under it (describeConditions' tail:
  * "…, în 2025, fără SYSTRA?"). One grammar for the answer's heading, a saved
- * question, a watch, the records drawer and the CSV file name. The map's
- * lens does not change it with today's keys (value or records: the same
- * question); the lenses with their own words come with F5 (plan §4.4).
+ * question, a watch, the records drawer, the CSV file name and the
+ * interpreter's "Am înțeles așa:" (lib/intent/to-spec.ts sentenceFor). The
+ * map's lens does not change it with today's keys (value or records: the
+ * same question); the lenses with their own words come with F5 (plan §4.4).
  */
 
 /**
@@ -21,14 +23,39 @@ import type { FilterSpec } from "./types";
  */
 const ORDER_WORDS: Partial<Record<string, string>> = { count: "după numărul de înregistrări", value_per_capita: "după valoarea pe locuitor" };
 
-/** The title of a question; `labels` names a CPV code ("pentru [lucrări de construcții]"). */
-export function questionTitle(input: QuestionSpec | AskSpec, labels: ConditionLabels = {}): string {
+/** The presentation line's order when it is not the default: a ranking's measure, a trend's growths in percent with their base. */
+function orderWords(spec: FilterSpec, described: DescribedConditions): string | undefined {
+  if (spec.block === "table") return ORDER_WORDS[String(spec.measure)];
+  if (spec.block !== "trend" || spec.trend?.change !== "up" || spec.trend.order !== "percent") return undefined;
+  return [described.byId.trendOrder?.words, described.byId.trendMinBase?.words].filter(Boolean).join(", ");
+}
+
+/** What the caller knows besides the spec: names (a CPV code, the reader's subject) and what the answer ran (a trend's years and months). */
+export type TitleLabels = ConditionLabels & Pick<SentenceLabels, "subject" | "allInstitutions">;
+
+/** The title of a question; `labels` names a CPV code ("pentru [lucrări de construcții]") and says what its answer ran. */
+export function questionTitle(input: QuestionSpec | AskSpec, labels: TitleLabels = {}): string {
   const spec = input as FilterSpec;
-  const text = sentenceText(sentenceTokens(spec, filterContext(spec), { cpvName: labels.cpvName }));
+  const text = sentenceText(sentenceTokens(spec, filterContext(spec), {
+    cpvName: labels.cpvName, subject: labels.subject, trendYears: labels.trendYears, allInstitutions: labels.allInstitutions,
+  }));
   if (!text) return "Întrebarea ta";
-  const order = spec.block === "table" ? ORDER_WORDS[String(spec.measure)] : undefined;
-  const tail = [order, describeConditions(spec, labels).tail].filter(Boolean).join(", ");
+  const described = describeConditions(spec, labels);
+  const tail = [orderWords(spec, described), described.tail].filter(Boolean).join(", ");
   return tail ? text.replace(/([?.])$/, `, ${tail}$1`) : text;
+}
+
+/**
+ * What an answer adds to its question's title (F1b-r-trend-years): a trend's
+ * years when the spec has none (the archive's first and last, data.yearA/yearB)
+ * and the months `auto` counted (executed.months, plan §2.8).
+ */
+export function answerLabels(answer: { data?: BlockData | undefined; executed?: ExecutedWindow | undefined } | null | undefined): Pick<ConditionLabels, "executedMonths" | "trendYears"> {
+  const data = answer?.data;
+  return {
+    ...(answer?.executed ? { executedMonths: answer.executed.months } : {}),
+    ...(data?.block === "trend" ? { trendYears: { yearA: data.yearA, yearB: data.yearB } } : {}),
+  };
 }
 
 /** A saved question in the list (SavedQuestions): its title, then the conditions a title does not repeat. */

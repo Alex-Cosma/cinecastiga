@@ -31,7 +31,7 @@ describe('interpretation → /cauta selection', () => {
     const t = applyInterpretation(scope, result);
     expect(t.answer?.total.spec).toMatchObject({ block: 'stat', measure: 'value', filters: { cpvTerm: 'iluminat', county: 'Buzău' } });
     expect(t.answer?.top.spec).toMatchObject({ block: 'table', dim: 'supplier', topN: 3, filters: { cpvTerm: 'iluminat', county: 'Buzău' } });
-    expect(t.answer?.total.sentence).toBe('Cât valorează achizițiile pentru „iluminat” făcute de instituțiile din județul Buzău, în toți anii?');
+    expect(t.answer?.total.sentence).toBe('Cât valorează achizițiile pentru „iluminat” făcute de instituțiile publice din județul Buzău, în toți anii?');
     expect(t.answer?.href).toBe('/intreaba?q=iluminat%20buzau');
   });
 
@@ -164,7 +164,7 @@ describe('interpretation → /cauta selection', () => {
   it('offers the same buyers by domain as the alternative to an empty subject', async () => {
     const { scope, result } = await read('iluminat in municipiul buzau');
     const t = applyInterpretation(scope, result);
-    expect(t.answer?.domains?.label).toBe('Vezi la ce domenii sunt încadrate achizițiile făcute de primăria Municipiului Buzău, în toți anii');
+    expect(t.answer?.domains?.label).toBe('Vezi la ce domenii sunt încadrate achizițiile făcute de primăria Buzău, în toți anii');
     expect(t.answer?.domains?.href).toMatch(/^\/intreaba\?spec=/);
     // no buyer named: nothing narrower than the whole country to offer
     const national = await read('iluminat');
@@ -172,10 +172,10 @@ describe('interpretation → /cauta selection', () => {
   });
 
   it('says what was not found instead of a zero total', () => {
-    expect(emptyAnswerText('Cât valorează achizițiile pentru „Pod” făcute de primăria Municipiului Oradea (Bihor), în toți anii?', 'Pod'))
-      .toBe('Niciun contract încadrat la „Pod” la primăria Municipiului Oradea (Bihor), în toți anii.');
-    expect(emptyAnswerText('Cât valorează achizițiile făcute de instituțiile din județul Buzău, în 2023?', null))
-      .toBe('Nicio achiziție înregistrată la instituțiile din județul Buzău, în 2023.');
+    expect(emptyAnswerText('Cât valorează achizițiile pentru „Pod” făcute de primăria Oradea (Bihor), în toți anii?', 'Pod'))
+      .toBe('Niciun contract încadrat la „Pod” la primăria Oradea (Bihor), în toți anii.');
+    expect(emptyAnswerText('Cât valorează achizițiile făcute de instituțiile publice din județul Buzău, în 2023?', null))
+      .toBe('Nicio achiziție înregistrată la instituțiile publice din județul Buzău, în 2023.');
     expect(emptyAnswerText('Altă formulare', 'parcuri')).toBe('Niciun contract încadrat la „parcuri” în această selecție.');
   });
 

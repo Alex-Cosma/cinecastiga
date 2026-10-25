@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { questionTitle } from "./filters/title";
+import { answerLabels, questionTitle } from "./filters/title";
 import type { QuestionSpec } from "./question-ui";
 
 /**
@@ -80,6 +80,44 @@ describe("answer titles", () => {
     // A comparison's sentence ends with a full stop; the tail goes before it.
     expect(questionTitle({ block: "compare", measure: "value", dim: "authority", filters: { authorityName: "A", compareWith: "B", minEmployees: 0, maxEmployees: 4 } }))
       .toBe("Compară A cu B la toate achizițiile, în toți anii, firme cu 0–4 angajați.");
+  });
+
+  // F2 (trend final §1, §3.3, §3.8, §3.9; DECISIONS F1b-r-trend-years flip, par-trend R2-title-left).
+  it("says a trend's kind of change, «prima dată», the months it counted and its order in percent", () => {
+    const base = { block: "trend", dim: "supplier", measure: "value", topN: 10, filters: { yearFrom: 2024, yearTo: 2025 } } as const;
+    const trend = (options: Record<string, unknown>, extra: Partial<QuestionSpec> = {}) => ({ ...base, trend: options, ...extra }) as QuestionSpec;
+    expect(questionTitle(trend({ change: "up", months: "auto" }))).toBe("Ce firme au cea mai mare creștere între 2024 și 2025?");
+    expect(questionTitle(trend({ change: "down", months: "auto" }))).toBe("Ce firme au cea mai mare scădere între 2024 și 2025?");
+    expect(questionTitle(trend({ change: "new", months: "auto" }))).toBe("Ce firme noi apar în 2025, față de 2024?");
+    expect(questionTitle(trend({ change: "gone", months: "auto" }))).toBe("Ce firme din 2024 nu mai apar în 2025?");
+    expect(questionTitle(trend({ change: "all", months: "auto" }))).toBe("Ce firme au cea mai mare schimbare între 2024 și 2025?");
+    expect(questionTitle(trend({ change: "new", firstOnly: true }))).toBe("Ce firme noi apar prima dată în 2025, față de 2024?");
+    // A buyer makes the firms its suppliers; institutions of a firm are its clients (trend final §1).
+    expect(questionTitle(trend({ change: "new" }, { filters: { ...base.filters, authorityName: "Municipiul Cluj-Napoca" } })))
+      .toBe("Ce firme noi apar în achizițiile făcute de Municipiul Cluj-Napoca în 2025, față de 2024?");
+    expect(questionTitle(trend({ change: "gone" }, { dim: "authority", filters: { ...base.filters, supplierName: "DR.MAX" } })))
+      .toBe("Ce instituții publice din 2024 nu mai cumpără de la DR.MAX în 2025?");
+    expect(questionTitle(trend({ change: "up" }, { dim: "county", dataset: "da" }))).toBe("Ce județe au cea mai mare creștere prin achiziții directe între 2024 și 2025?");
+    // The months only where a year is counted in part and they are known: chosen, or as the answer counted them.
+    const open = trend({ change: "up", months: "auto" }, { filters: { yearFrom: 2025, yearTo: 2026 } });
+    expect(questionTitle(open)).toBe("Ce firme au cea mai mare creștere între 2025 și 2026?");
+    expect(questionTitle(open, { executedMonths: [1, 5] })).toBe("Ce firme au cea mai mare creștere între 2025 și 2026, pe aceleași luni: ian.–mai?");
+    expect(questionTitle(open, { executedMonths: [1, 12] })).toBe("Ce firme au cea mai mare creștere între 2025 și 2026?");
+    expect(questionTitle(open, { sameMonthsRule: true })).toBe("Ce firme au cea mai mare creștere între 2025 și 2026, pe aceleași luni?");
+    expect(questionTitle(trend({ change: "gone", months: [1, 5] }))).toBe("Ce firme din 2024 nu mai apar în 2025, pe aceleași luni: ian.–mai?");
+    expect(questionTitle(trend({ change: "up", months: "whole" }))).toBe("Ce firme au cea mai mare creștere între 2024 și 2025?");
+    // The growths in percent, with their base (P5's words, after the period, as a ranking's order).
+    expect(questionTitle(trend({ change: "up", order: "percent", minBase: 10_000_000 })))
+      .toBe("Ce firme au cea mai mare creștere între 2024 și 2025, după creșterea în procente, dintre firmele cu cel puțin 10 mil. lei în 2024?");
+    expect(questionTitle(trend({ change: "up", order: "lei" }))).toBe("Ce firme au cea mai mare creștere între 2024 și 2025?");
+    // An old link without `trend` keeps its title; without years it says the years its answer compared.
+    expect(questionTitle(base)).toBe("Ce firme au cea mai mare schimbare între 2024 și 2025?");
+    const legacy = { ...base, filters: {} } as QuestionSpec;
+    expect(questionTitle(legacy)).toBe("Ce firme au cea mai mare schimbare între primul an și ultimul an?");
+    const answer = { data: { block: "trend", rowsTrend: [], yearA: 2018, yearB: 2026 }, executed: { months: [1, 5], mode: "auto", checkpoint: null } } as const;
+    expect(answerLabels(answer as unknown as Parameters<typeof answerLabels>[0])).toEqual({ executedMonths: [1, 5], trendYears: { yearA: 2018, yearB: 2026 } });
+    expect(questionTitle(legacy, answerLabels({ data: answer.data } as unknown as Parameters<typeof answerLabels>[0]))).toBe("Ce firme au cea mai mare schimbare între 2018 și 2026?");
+    expect(answerLabels(null)).toEqual({});
   });
 
   it("says a ranking's order when it is not the value: watches, saved questions and file names read only the title", () => {

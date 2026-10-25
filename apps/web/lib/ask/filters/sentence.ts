@@ -2,11 +2,13 @@ import { countyIsFirmSeat } from "../population";
 import {
   KIND_ONE, KIND_OPTIONS, KIND_WORDS, compareWithLabel, countyWords, entityLabel, leaderAxis, subjectWords, type QuestionSpec,
 } from "../question-ui";
-import type { AskSpec, AuthorityKind, Block } from "../spec";
+import { DEFAULT_TREND_MIN_BASE, type AskSpec, type AuthorityKind, type Block } from "../spec";
+import { formatRon } from "../../format";
 import { filterContext } from "./context";
 import type { FilterCtx, FilterId, FilterSpec, Picker, Slot } from "./types";
 import {
-  adminLead, adminPhrase, employeesOnBands, employeesPhrase, employeesWords, localityName, periodPhrase, periodWordsWith, streamWords,
+  TREND_ORDER_WORDS, adminLead, adminPhrase, employeesOnBands, employeesPhrase, employeesWords, localityName, periodPhrase, periodWordsWith,
+  streamWords, trendBaseWho,
 } from "./words";
 
 /*
@@ -15,7 +17,7 @@ import {
  * editable phrase (a slot, which opens its filter's window) or a fixed phrase
  * (text that cannot change here). The builder draws them (builder/Sentence.tsx)
  * and the answer's title reads them as text (sentenceText, R11). Today's keys
- * only (F1b): a key read ahead has no phrase until its stage.
+ * and the trend's (F2): a key read ahead has no phrase until its stage.
  *
  * - The subject is the first phrase of a ranking ("Ce [firme]", "În ce
  *   [județe]"), of the trend, the risk cloud ("Ce [instituții publice] din
@@ -64,8 +66,17 @@ export interface SentenceSlot {
 export interface SentenceFixed { kind: "fixed"; text: string; says: readonly FilterId[]; tip?: string }
 export type SentenceToken = { kind: "text"; text: string } | SentenceSlot | SentenceFixed;
 
-/** What the caller knows besides the spec: the name of a CPV code ("Lucrări de construcții"). */
-export interface SentenceLabels { cpvName?: string | null | undefined }
+/** What the caller knows besides the spec. */
+export interface SentenceLabels {
+  /** The name of a CPV code ("Lucrări de construcții"). */
+  cpvName?: string | null | undefined;
+  /** The reader's own words for the domain, said quoted ("pentru [„iluminat”]"): the interpreter's subject. */
+  subject?: string | null | undefined;
+  /** The years a trend's answer compared (its data.yearA/yearB): said where the spec has none (the archive's first and last). */
+  trendYears?: { yearA: number; yearB: number } | null | undefined;
+  /** The reader asked about town halls and the question counts every institution: the default institutions say so. */
+  allInstitutions?: boolean | undefined;
+}
 
 /**
  * Kinds the profiles' subject could say only after D1 (plan §9 F1, §4.12,
@@ -108,6 +119,8 @@ const NAMES = {
   admin: ["Administrator", "Cine conduce firmele?"],
   topN: ["Câte rânduri", "Cât de lung să fie clasamentul?"],
   order: ["Ordinea", "Cum comparăm?"],
+  change: ["Felul schimbării", "Ce fel de schimbare?"],
+  minBase: ["Pragul", "De la ce valoare?"],
 } as const satisfies Record<string, readonly [string, string]>;
 type Name = keyof typeof NAMES;
 
@@ -228,12 +241,15 @@ function firmsPhrases(out: Tokens, spec: Spec, ctx: FilterCtx, one: boolean): vo
   if (ctx.named.admin) out.text(` ${adminLead(one)} `).slot("admin", "admin", spec.filters.adminName ? String(spec.filters.adminName) : "persoana aleasă", { glued: true });
 }
 
-/** What was bought: "pentru [„asfaltare”]" (or "în domeniul […]"); a CPV code by its name when the caller knows it. */
+/**
+ * What was bought: "pentru [„asfaltare”]" (or "în domeniul […]"); a CPV code by its name when the
+ * caller knows it, the reader's own words when the interpreter does.
+ */
 function domain(out: Tokens, spec: Spec, labels: SentenceLabels, lead = " pentru "): void {
   const term = spec.filters.cpvTerm;
   if (!has(term)) return;
   const isCode = /^(?:\d{2,8}|\d{8}-\d)$/.test(String(term).replace(/\s+/g, ""));
-  const words = isCode && labels.cpvName ? lowerFirst(labels.cpvName) : subjectWords(spec);
+  const words = labels.subject ? `„${labels.subject}”` : isCode && labels.cpvName ? lowerFirst(labels.cpvName) : subjectWords(spec);
   if (words) out.text(lead).slot("cpvTerm", "cpvTerm", words);
 }
 
@@ -386,37 +402,84 @@ const compare: Write = (out, spec, ctx, labels) => {
   out.text(".");
 };
 
+/** The kind of change after "cea mai mare" (trend final §1); "schimbare" is every change, as an old link without the key. */
+const CHANGE_WORDS = { up: "creștere", down: "scădere", all: "schimbare" } as const;
+
 /**
- * §4.7 "Ce [firme] au cea mai mare schimbare {a achizițiilor {pentru […]} {făcute de [cumpărător] din
- * [loc]}} {prin [achiziții directe]} între [2024] și [2025]?"; on institutions the kind is the subject and
- * the firm follows ("Ce [spitale] … a achizițiilor de la [DR.MAX]"). The kind of change is F2's phrase.
+ * "Prima dată" on the new ones (trend final §3.8, kit §4): the first record of the entity anywhere in
+ * the archive is in year B. A fixed phrase: the answer's strip sets it, the sentence only says it.
+ */
+function firstTime(out: Tokens, spec: Spec, year: string, narrowed: boolean): void {
+  const whose = spec.dim === "supplier" ? "firmei" : "instituției";
+  out.text(" ").fixed("prima dată", ["trendFirstOnly"],
+    `Prima înregistrare a ${whose} în datele noastre e în ${year}. Nu e data înființării.${narrowed ? " Privește toate datele, nu doar această selecție." : ""}`);
+}
+
+/**
+ * §4.7, by the kind of change (trend final §1; kit §4 „Noi” always with its year):
+ * - "Ce [firme] au cea mai mare [creștere] {a achizițiilor {pentru […]} {făcute de [cumpărător] din [loc]}}
+ *   {prin [achiziții directe]} între [2024] și [2025]?", also [scădere], and [schimbare] on every change
+ *   and on an old link without the key (its words of today);
+ * - "Ce [firme] [noi] apar {în achizițiile …} {prima dată} în [2025], față de [2024]?";
+ * - "Ce [firme] din [2024] [nu mai apar] {în achizițiile …} în [2025]?".
+ * On institutions the kind is the subject and the firm follows: "Ce [spitale] [noi] cumpără de la
+ * [DR.MAX] în [2025], față de [2024]?", "Ce [spitale] din [2024] [nu mai cumpără] de la [DR.MAX] în
+ * [2025]?". With their place ("din [județul Cluj]") the gone ones say "în [2025], față de [2024]": one
+ * "din" for the place (R9). The order and its base are the presentation line's.
  */
 const trend: Write = (out, spec, ctx, labels) => {
-  const dim = spec.dim ?? "supplier", f = spec.filters;
+  const dim = spec.dim ?? "supplier", f = spec.filters, t = spec.trend ?? {}, change = t.change ?? "all";
+  const changeSays: FilterId[] = t.change !== undefined ? ["trendChange"] : [];
   out.text("Ce ").slot("dim", "ranked", dim === "supplier" ? "firme" : dim === "county" ? "județe" : kindBare(spec), {
     says: dim === "authority" ? subjectSays(spec) : ["dim"], writes: ["authorityKind"], picker: "subject",
   });
-  if (dim === "authority") {
-    if (ctx.locality.ok && hasLocality(spec)) out.text(" ale primăriei ").slot("locality", "place", localityName(String(f.uatName ?? `SIRUTA ${f.uatSiruta}`)), { writes: ["county"] });
-    else if (has(f.county)) place(out, spec, ctx);
-  }
-  out.text(" au cea mai mare schimbare");
+  if (change === "new") out.text(" ").slot("trendChange", "change", "noi", { says: changeSays });
+  const town = dim === "authority" && ctx.locality.ok && hasLocality(spec), placed = town || dim === "authority" && has(f.county);
+  if (town) out.text(" ale primăriei ").slot("locality", "place", localityName(String(f.uatName ?? `SIRUTA ${f.uatSiruta}`)), { writes: ["county"] });
+  else if (placed) place(out, spec, ctx);
   const buyerSet = dim === "supplier" ? ctx.named.authority || hasLocality(spec) || Boolean(kindOf(spec)) || has(f.county)
     : dim === "county" && Boolean(kindOf(spec));
   const seller = dim !== "supplier" && ctx.named.supplier;
-  if (has(f.cpvTerm) || buyerSet || seller) {
-    out.text(" a achizițiilor");
+  // Institutions buy: with a domain or a firm, "cumpără …" / "nu mai cumpără …" (kit §4 Plecați).
+  const buys = dim === "authority" && (has(f.cpvTerm) || seller);
+  /** What the change is of: its noun ("a achizițiilor", "în achizițiile"; none after "cumpără"), the domain, the buyer, the firm. */
+  const fragments = (noun: string | null) => {
+    if (!(has(f.cpvTerm) || buyerSet || seller)) return;
+    if (noun) out.text(noun);
     domain(out, spec, labels);
     if (buyerSet) {
       out.text(" făcute de ");
       buyer(out, spec, ctx, dim === "supplier" ? { place: "set" } : { place: "never", locality: false, authority: false });
     }
     fromWhom(out, spec, ctx, dim === "supplier" ? [] : ["supplier"], "de la");
+  };
+  // Without years the engine compares the archive's first and last years (compile.ts trend: minY, maxY);
+  // the title says the ones its answer compared (labels.trendYears).
+  const periodSays: FilterId[] = hasPeriod(spec) ? ["period"] : [];
+  const yearWord = (year: unknown, ran: number | undefined, none: string) => has(year) ? String(year) : ran !== undefined ? String(ran) : none;
+  const a = yearWord(f.yearFrom, labels.trendYears?.yearA, "primul an"), b = yearWord(f.yearTo, labels.trendYears?.yearB, "ultimul an");
+  const year = (lead: string, value: string) => out.text(lead).slot("period", "period", value, { says: periodSays });
+  if (change === "new") {
+    out.text(buys ? " cumpără" : " apar");
+    fragments(buys ? null : " în achizițiile");
+    channel(out, spec);
+    if (t.firstOnly) firstTime(out, spec, b, has(f.cpvTerm) || buyerSet || seller);
+    year(" în ", b);
+    year(", față de ", a);
+  } else if (change === "gone") {
+    if (!placed) year(" din ", a);
+    out.text(" ").slot("trendChange", "change", buys ? "nu mai cumpără" : "nu mai apar", { says: changeSays });
+    fragments(buys ? null : " în achizițiile");
+    channel(out, spec);
+    year(" în ", b);
+    if (placed) year(", față de ", a);
+  } else {
+    out.text(" au cea mai mare ").slot("trendChange", "change", CHANGE_WORDS[change], { says: changeSays });
+    fragments(" a achizițiilor");
+    channel(out, spec);
+    year(" între ", a);
+    year(" și ", b);
   }
-  channel(out, spec);
-  // Without years the engine compares the archive's first and last years (compile.ts trend: minY, maxY).
-  out.text(" între ").slot("period", "period", f.yearFrom ? String(f.yearFrom) : "primul an", { says: hasPeriod(spec) ? ["period"] : [] });
-  out.text(" și ").slot("period", "period", f.yearTo ? String(f.yearTo) : "ultimul an", { says: hasPeriod(spec) ? ["period"] : [] });
   out.text("?");
 };
 
@@ -540,6 +603,21 @@ const SENTENCES: Record<Block, Write> = {
   fact_check: factCheck, distribution, scatter, entity_card: entityCard,
 };
 
+/** The default institutions, as each sentence names them: the buyer, the ranked ones, one of them. */
+const EVERY_INSTITUTION: Readonly<Record<string, string>> = {
+  [ALL_BUYERS]: " (toate, nu doar primăriile)", [ALL_BUYERS_BARE]: " (toate, nu doar primăriile)", instituție: " (oricare, nu doar primăriile)",
+};
+
+/** The reader asked about town halls (SentenceLabels.allInstitutions): the first default institutions say they are every one. */
+function everyInstitution(list: SentenceToken[]): void {
+  const at = list.findIndex((t) => t.kind === "slot" && t.says.every((id) => id !== "authorityKind" && id !== "authority" && id !== "locality")
+    && EVERY_INSTITUTION[t.value] !== undefined);
+  if (at < 0) return;
+  const words = EVERY_INSTITUTION[(list[at] as SentenceSlot).value]!, next = list[at + 1];
+  if (next?.kind === "text") next.text = words + next.text;
+  else list.splice(at + 1, 0, { kind: "text", text: words });
+}
+
 /** The sentence of a question as tokens (P1). Unknown questions have none. */
 export function sentenceTokens(input: QuestionSpec | AskSpec, ctx?: FilterCtx, labels: SentenceLabels = {}): SentenceToken[] {
   const spec = input as Spec;
@@ -547,14 +625,17 @@ export function sentenceTokens(input: QuestionSpec | AskSpec, ctx?: FilterCtx, l
   if (!write) return [];
   const out = new Tokens();
   write(out, spec, ctx ?? filterContext(spec), labels);
+  if (labels.allInstitutions) everyInstitution(out.list);
   return out.list;
 }
 
 /**
- * P5, the presentation line, where it changes the query today: "Arată [primele 10], după [valoarea
- * înregistrată]." on a ranking, "Arată [primele 10], după diferența în lei." on a trend (the order is
- * F2's phrase). Elsewhere the measure is the sentence's ("Câte…", "Cum evoluează [valoarea]") or the
- * answer's lens (the map).
+ * P5, the presentation line, where it changes the query: "Arată [primele 10], după [valoarea
+ * înregistrată]." on a ranking. On a trend the order is a phrase on the growths only (kit §6 trend 4,
+ * TREND_RULES): "Arată [primele 10], după [diferența în lei | creșterea în procente]", the percent
+ * with its base ", dintre firmele cu cel puțin [1 mil. lei] în 2024."; the other changes keep
+ * "…, după diferența în lei." Elsewhere the measure is the sentence's ("Câte…", "Cum evoluează
+ * [valoarea]") or the answer's lens (the map).
  */
 export function presentationTokens(input: QuestionSpec | AskSpec): SentenceToken[] {
   const spec = input as Spec, out = new Tokens();
@@ -563,7 +644,18 @@ export function presentationTokens(input: QuestionSpec | AskSpec): SentenceToken
     out.text("Arată ").slot("topN", "topN", top(spec.topN), { says: spec.topN === undefined ? [] : ["topN"] });
     out.text(", după ").slot("measure", "order", MEASURE_WORDS[spec.measure] ?? MEASURE_WORDS.value!).text(".");
   } else if (spec.block === "trend") {
-    out.text("Arată ").slot("topN", "topN", top(spec.topN ?? 10), { says: spec.topN === undefined ? [] : ["topN"] }).text(", după diferența în lei.");
+    const t = spec.trend ?? {};
+    out.text("Arată ").slot("topN", "topN", top(spec.topN ?? 10), { says: spec.topN === undefined ? [] : ["topN"] });
+    if (t.change !== "up") return out.text(", după diferența în lei.").list;
+    const percent = t.order === "percent";
+    out.text(", după ").slot("trendOrder", "order", TREND_ORDER_WORDS[percent ? "percent" : "lei"], { says: t.order ? ["trendOrder"] : [] });
+    if (percent) {
+      // A percent order without its base ranks from 1 mil. lei (TREND_RULES, DEFAULT_TREND_MIN_BASE).
+      out.text(`, dintre ${trendBaseWho(spec.dim)} cu cel puțin `)
+        .slot("trendMinBase", "minBase", formatRon(t.minBase ?? DEFAULT_TREND_MIN_BASE), { says: t.minBase !== undefined ? ["trendMinBase"] : [] });
+      if (has(spec.filters.yearFrom)) out.text(` în ${spec.filters.yearFrom}`);
+    }
+    out.text(".");
   }
   return out.list;
 }

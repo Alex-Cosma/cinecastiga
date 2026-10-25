@@ -1,4 +1,4 @@
-import { DEFAULT_TREND_MIN_BASE, TREND_RULES, type MonthWindow, type TrendChange, type TrendOptions } from "../../spec";
+import { DEFAULT_TREND_MIN_BASE, TREND_RULES, type AskSpec, type MonthWindow, type TrendChange, type TrendOptions } from "../../spec";
 import type { FilterDef, FilterSpec } from "../types";
 import { alwaysScope, edited } from "./shared";
 
@@ -24,6 +24,15 @@ export function trendGroupLabel(change: TrendChange, yearA?: unknown, yearB?: un
   if (change === "new" && year(yearA)) return `Noi față de ${yearA}`;
   if (change === "gone" && year(yearB)) return `Nu mai apar în ${yearB}`;
   return TREND_CHANGE_LABELS[change];
+}
+
+/** What the trend's groups are called after the selection (trend final §1): firms of a chosen buyer are its suppliers, institutions of a chosen firm its clients. */
+export type TrendNoun = "firme" | "furnizori" | "instituții" | "clienți" | "județe";
+export function trendNoun(spec: Pick<AskSpec, "dim" | "filters">): TrendNoun {
+  const f = spec.filters;
+  if (spec.dim === "county") return "județe";
+  if (spec.dim === "supplier") return f.authorityId || f.authorityName || f.uatSiruta ? "furnizori" : "firme";
+  return f.supplierId || f.supplierName ? "clienți" : "instituții";
 }
 
 const optionsOf = (spec: FilterSpec): TrendOptions => spec.trend ?? {};

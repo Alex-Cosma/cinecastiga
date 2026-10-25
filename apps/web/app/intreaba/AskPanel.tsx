@@ -11,7 +11,7 @@ import { NEWER_VERSION_LINK, validateSpec, type AskSpec } from "@/lib/ask/spec";
 import { BLOCK_FILTERS } from "@/lib/ask/filters/blocks";
 import { describeConditions } from "@/lib/ask/filters/describe";
 import { restoreLink } from "@/lib/ask/filters/restore";
-import { questionTitle } from "@/lib/ask/filters/title";
+import { answerLabels, questionTitle } from "@/lib/ask/filters/title";
 import { askLink, entitySourceLink, entitySourceScope, yearSourceLink } from "@/lib/ask/source-spec";
 import { questionKey, type QuestionSpec } from "@/lib/ask/question-ui";
 import { ANSWER_ERROR, breakdownLead, countWords, entityNoun, fileSlug, formatShare, isHumanError, rankingRest, rankingShare, shouldAutoRun, type RankingTotals } from "@/lib/ask/answer-text";
@@ -293,7 +293,7 @@ export default function AskPanel({
             ...(savedFilters ? { filters: savedFilters } : {}),
             title:
               answer.question ||
-              questionTitle(answer.spec),
+              questionTitle(answer.spec, answerLabels(answer)),
           });
         if (!drill && scroll)
           // Two frames: the answer is rendered before it is brought under the sticky header.
@@ -476,11 +476,11 @@ export default function AskPanel({
   const cpvName = useCpvName(applied?.filters.cpvTerm === undefined ? undefined : String(applied.filters.cpvTerm));
   // One title per answered spec, the builder's sentence and the conditions under it (G7): the same
   // words whether the answer came from typed text, a builder edit or a shared link, in every view,
-  // the drawer and the export.
+  // the drawer and the export. A trend's title says the years and months its answer ran (answerLabels).
   const title =
     resp?.question ||
     (applied
-      ? questionTitle(applied, { cpvName })
+      ? questionTitle(applied, { cpvName, ...answerLabels(resp) })
       : "Răspunsul tău");
   // The strip beside the answer (P6): the keys BLOCK_FILTERS puts there, on the applied question.
   const stripKeys = applied ? BLOCK_FILTERS[applied.block]?.strip ?? [] : [];

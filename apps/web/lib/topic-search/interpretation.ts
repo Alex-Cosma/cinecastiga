@@ -222,7 +222,7 @@ export function isCleanQuestion(result: IntentResult): boolean {
     && !i.placeAmbiguous && !i.subjectChoices && !(i.entityAlternatives.length && !i.authority && !i.supplier) && !(i.personAlternatives.length && !i.person);
 }
 
-/** "Niciun contract încadrat la „Pod” la primăria Municipiului Oradea (Bihor), în toți anii." */
+/** "Niciun contract încadrat la „Pod” la primăria Oradea (Bihor), în toți anii." */
 export function emptyAnswerText(totalSentence: string, subject: string | null): string {
   const where = /făcute de (.+)\?$/.exec(totalSentence)?.[1];
   if (subject) return where ? `Niciun contract încadrat la „${subject}” la ${where}.` : `Niciun contract încadrat la „${subject}” în această selecție.`;

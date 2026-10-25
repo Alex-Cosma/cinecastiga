@@ -21,8 +21,11 @@ export interface Choice { filter: FilterId; value: unknown }
 /** The subject window's rows: firms, institutions with their kind, or counties. */
 export interface SubjectChoice { dim: "supplier" | "authority" | "county"; kind?: AuthorityKind }
 
-/** The answer's shape: its window has no empty row, the first row is a value ("Toate achizițiile", "valoarea înregistrată"). */
-const NO_EMPTY_ROW: ReadonlySet<FilterId> = new Set(["dim", "measure", "topN", "rankBy", "dataset"]);
+/**
+ * The answer's shape: its window has no empty row, the first row is a value ("Toate achizițiile", "valoarea
+ * înregistrată"); so are a trend's change, order and base, whose every value is a row ("Toate schimbările", "Diferența în lei").
+ */
+const NO_EMPTY_ROW: ReadonlySet<FilterId> = new Set(["dim", "measure", "topN", "rankBy", "dataset", "trendChange", "trendOrder", "trendMinBase"]);
 
 /** Kinds a question cannot say before D1 (sentence.ts KINDS_AFTER_D1): its windows do not offer them. */
 const laterKind = (block: Block, kind: unknown) => (KINDS_AFTER_D1[block] ?? []).includes(kind as AuthorityKind);

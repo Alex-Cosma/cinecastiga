@@ -1,6 +1,6 @@
 import type { DbSql } from "@seap/db";
 import { trendGroupSql, type TrendGroup } from "./predicates";
-import type { AskSpec, TrendChange } from "./spec";
+import type { TrendChange } from "./spec";
 
 /*
  * The trend's partition (plan §4.7; trend final §3.1, §3.4): every entity or
@@ -225,14 +225,8 @@ export function liveTrendChannels(sql: DbSql, dataset: "all" | "da" | "contracts
   });
 }
 
-/** What the trend's groups are called after the selection (trend final §1): firms of a chosen buyer are its suppliers, institutions of a chosen firm its clients. */
-export type TrendNoun = "firme" | "furnizori" | "instituții" | "clienți" | "județe";
-export function trendNoun(spec: Pick<AskSpec, "dim" | "filters">): TrendNoun {
-  const f = spec.filters;
-  if (spec.dim === "county") return "județe";
-  if (spec.dim === "supplier") return f.authorityId || f.authorityName || f.uatSiruta ? "furnizori" : "firme";
-  return f.supplierId || f.supplierName ? "clienți" : "instituții";
-}
+// The groups' noun is the builder's too ("Furnizori noi" in "Ce fel de schimbare?"): kept beside the trend's filters, without SQL.
+export { trendNoun, type TrendNoun } from "./filters/defs/trend";
 
 /**
  * The facts of a shown row (trend final §3.4), read for the shown entities
