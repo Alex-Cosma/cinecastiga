@@ -65,6 +65,14 @@ describe("filter kit styles", () => {
     expect(css).toMatch(/\.qb-sw-l\{[^}]*white-space:nowrap/); // a channel's swatch never wraps away from its word
   });
 
+  it("keeps a notice's (?) tap area inside its chip (F2-tests: the chip clips, the (?) is its last child)", () => {
+    // guide.css widens a (?)'s tap area 4 px on each side; the notice chip leaves those 4 px inside its clip.
+    const guide = readFileSync(new URL("../../guide.css", import.meta.url), "utf8");
+    expect(guide).toContain(".term-trigger:after{content:\"\";position:absolute;left:-4px;right:-4px;");
+    expect(css).toMatch(/\.qb-chip\{[^}]*overflow:hidden/);
+    expect(css).toContain(".qb-chip--notice .term-tip{margin-right:4px}");
+  });
+
   it("lets a phrase glued to its punctuation wrap inside, leaving room for the mark (F1b-tests: a long name at 320 px)", () => {
     // white-space inherits: without this a name in .qb-nowrap ran past the sentence and the page clipped it.
     expect(css).toContain(".qb-nowrap>.qb-phrase{white-space:normal;max-width:calc(100% - .6em)}");

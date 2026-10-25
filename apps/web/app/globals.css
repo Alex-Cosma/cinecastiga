@@ -1422,6 +1422,14 @@ tr:hover .cri-pill { transform: scale(1.06); }
 .clipbtn { border-radius: var(--r); border: 1px solid var(--line2); background: var(--surface); color: var(--ink2); padding: 7px 12px; font-size: 14px; font-weight: 500; transition: transform var(--fast) var(--ease), background var(--fast), box-shadow var(--fast); }
 .clipbtn:hover { background: var(--sunk); transform: translateY(-1px); box-shadow: var(--shadow); }
 .clipbtn-pop { border-radius: 12px; box-shadow: var(--shadow2); animation: drop var(--med) var(--ease) both; }
+/* Open, no hover lift: a transform made .clipbtn the containing block of the phone's fixed sheet (drawn over the
+   header) and a stacking context under a list's positioned rows (the trend's .qb-arow), which took the clicks meant
+   for the popover (F2-tests). */
+.clipbtn:has(> .clipbtn-pop) { transform: none; }
+/* In an answer's actions the popover stays inside the page: leftward from the right-hand column on a wide screen; on a
+   tablet, where the actions wrap and the button may sit anywhere, in the bottom corner (the phone's sheet under 600 px). */
+@media (min-width: 851px) { .cq-answer-actions .clipbtn-pop { left: auto; right: 0; } }
+@media (min-width: 601px) and (max-width: 850px) { .cq-answer-actions .clipbtn-pop { position: fixed; top: auto; bottom: 16px; left: auto; right: 16px; width: min(340px, calc(100vw - 32px)); max-height: 80dvh; overflow: auto; } }
 .ext-links .rx-link { font-weight: 600; }
 @media (max-width: 860px) { .ehead { grid-template-columns: 1fr; } .ehead-acts { justify-content: flex-start; padding-top: 0; } .subnav { top: 58px; } }
 
