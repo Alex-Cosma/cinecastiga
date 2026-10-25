@@ -1,4 +1,5 @@
 import type { AskSpec, AuthorityKind } from "../ask/spec";
+import type { LensMatch } from "./lens-phrases";
 
 /**
  * Free-text question → typed interpretation. The rules interpreter
@@ -127,6 +128,11 @@ export interface Interpretation {
   /** "cel mai / cea mai" + singular: one superlative entity. */
   superlative: boolean;
   employees: { min?: number; max?: number } | null;
+  /**
+   * Phrases that set an option once the block is chosen (lens-phrases.ts, plan
+   * §2.7): every block's table is read; to-spec applies the chosen block's.
+   */
+  lenses: LensMatch[];
   /** Words that carried meaning for the person but not for the rules. */
   leftover: string[];
   confidence: number;

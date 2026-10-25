@@ -41,8 +41,17 @@ export function sentenceScopeProblems(spec: AskSpec, sentence: string): string[]
   if (!profile) {
     const { yearFrom: a, yearTo: b } = f;
     const want = a && b ? (a === b ? `în ${a}` : `între ${a} și ${b}`) : a ? `din ${a}` : b ? `până în ${b}` : "toți anii";
-    if (spec.block === "trend" ? !(a && b && sentence.includes(`între ${a} și ${b}`)) : !sentence.includes(want)) out.push(`period "${want}" not in sentence`);
+    // A trend says both years: "între 2024 și 2025", "din 2025, față de 2024" (new ones), "din 2024 … din 2025" (gone ones).
+    const trendYears = a && b && (sentence.includes(`între ${a} și ${b}`) || sentence.includes(`din ${b}, față de ${a}`) || sentence.includes(`din ${a} `) && sentence.includes(`din ${b}`));
+    if (spec.block === "trend" ? !trendYears : !sentence.includes(want)) out.push(`period "${want}" not in sentence`);
   } else if (f.yearFrom || f.yearTo || f.cpvTerm) out.push("risk profile carries a transaction filter");
+  if (spec.block === "trend") {
+    const t = spec.trend ?? {};
+    const group = { up: /cea mai mare creștere/, down: /cea mai mare scădere/, new: t.firstOnly ? /prima dată/ : / noi /, gone: /nu mai apar/, all: /schimbare/ }[t.change ?? "all"];
+    if (!group.test(sentence)) out.push(`trend group ${t.change ?? "all"} not in sentence`);
+    if (t.order === "percent" && !/în procente/.test(sentence)) out.push("percent order not in sentence");
+    if (t.months === "auto" && !/aceleași luni/.test(sentence)) out.push("same months not in sentence");
+  }
   if (profile && f.uatSiruta) out.push("risk profile scoped to one town hall");
   return out;
 }

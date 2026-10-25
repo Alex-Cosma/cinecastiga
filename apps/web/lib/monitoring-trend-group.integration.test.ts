@@ -22,7 +22,7 @@ describe.skipIf(!url)("a watch on a trend's group (isolated PostgreSQL)",()=>{
   const uid=`trend-group-${randomUUID()}`,checkpoints:string[]=[];
   // One buyer; its suppliers 2024 → 2025: S1 grows, S2 is new (first record in 2025), S3 is new (active since 2023), S4 falls, S5 is gone.
   const A="889790001",B="889790002",S=(n:number)=>String(889790010+n);
-  const spec=(trend:AskSpec["trend"],authority=A):AskSpec=>({block:"trend",measure:"value",dim:"supplier",topN:10,filters:{authorityId:Number(authority),yearFrom:2024,yearTo:2025},trend});
+  const spec=(trend:AskSpec["trend"],authority=A):AskSpec=>({block:"trend",measure:"value",dim:"supplier",topN:10,filters:{authorityId:Number(authority),yearFrom:2024,yearTo:2025},...(trend?{trend}:{})});
   async function rebuild(){await sql.begin(async tx=>{await buildAskRollups(tx as unknown as DbSql);});forgetRollupsReady();forgetTrendGroups();}
   async function checkpoint(){
     const id=randomUUID();checkpoints.push(id);
