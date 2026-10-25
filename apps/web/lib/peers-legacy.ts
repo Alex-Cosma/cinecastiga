@@ -1,6 +1,6 @@
 import { createDb, withMonitoringSnapshot, MonitoringRefreshUnavailableError, type DbSql } from "@seap/db";
 import { DA_PLAFOND_RON } from "./ask/compile";
-import { authorityKindExpression, authorityPeerKind } from "./ask/authority-kind";
+import { authorityKindExpression, authorityPeerKind, readAuthorityKinds } from "./ask/authority-kind";
 import { ConnectionError, readConnectionEntity, readConnectionEntities, assertConnectionIdentity } from "./connections";
 import { peerSourceSpec, peerScopeDescriptions, type PeerInput, type PeerFilters, type PeersResult, type PeerMember, type PeerYear } from "./peers-shared";
 import type { ConnectionEntity, ConnectionsResult } from "./connections-shared";
@@ -12,7 +12,7 @@ export const PEER_CAPTURE_LIMIT = 499;
 const database = globalThis as typeof globalThis & { __peerSql?: DbSql };
 const peerDatabase = () => database.__peerSql ??= createDb().sql;
 const fold = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-// The kind of an institution has one home (lib/ask/authority-kind.ts), shared with Întreabă.
+// The kind of an institution has one home (lib/ask/authority-kind.ts, D1), shared with Întreabă: the same id has the same kind.
 export { authorityPeerKind };
 export function parsePeerInput(params: URLSearchParams): PeerInput {
   const allowed = new Set(["entityId", "role", "dataset", "year", "cpv", "county", "page", "identity", "checkpointId"]);
@@ -46,9 +46,9 @@ function member(row: Record<string, unknown>, entity: ConnectionEntity, filters:
     daRows: Number(row.da_rows), contractRows: Number(row.contract_rows), distinctContracts: Number(row.distinct_contracts),
     firstDate: row.first_date == null ? null : String(row.first_date).slice(0,10), lastDate: row.last_date == null ? null : String(row.last_date).slice(0,10), spec: peerSourceSpec(entity,filters) };
 }
-const methodology: PeersResult["methodology"] = { version: "peers-1", descriptions: [
+const methodology: PeersResult["methodology"] = { version: "peers-2", descriptions: [
   "Același an calendaristic, canal de achiziții și diviziune CPV. Grupul include între jumătate și dublul numărului de înregistrări eligibile al entității analizate.",
-  "Numărul de înregistrări este un reper de activitate observată, nu de populație, buget, angajați sau capacitate. Tipul instituției este estimat din nume folosind regulile existente; clasificările necunoscute sau ambigue sunt excluse.",
+  "Numărul de înregistrări este un reper de activitate observată, nu de populație, buget, angajați sau capacitate. Tipul instituției este cel din Întreabă: primăriile după registrul localităților, spitalele împreună cu institutele clinice, celelalte după nume. Instituțiile fără tip sau cu un nume care se potrivește la două tipuri sunt excluse.",
   "Județul restrânge sediul înregistrat al celorlalți membri, nu locul lucrărilor ori al livrării. Entitatea analizată rămâne reperul chiar dacă are sediul în alt județ.",
   "Mediana folosește toți ceilalți membri, indiferent de pagina afișată. Entitatea analizată este exclusă. Sub cinci alți membri, grupul este prea mic pentru interpretare comparativă.",
   "Valorile reprezintă valori înregistrate, nu plăți. Contractele cu mai mulți câștigători sunt alocări pe furnizor; numărul de înregistrări nu este numărul de contracte distincte. Media pe înregistrare este rotunjită la două zecimale și nu este un preț unitar comparabil.",
@@ -74,7 +74,8 @@ export async function getLegacyPeersInSnapshot(q: DbSql, input: PeerInput, check
   const filters: PeerFilters = { dataset: input.dataset,year,cpv,page:input.page,...(input.county ? {county:input.county} : {}) };
   const [coverageRow] = await q`with s as (${focalSource}) select count(*) filter(where finalization_date is null or finalization_date !~ '^20[0-9]{2}-')::int undated,
     count(*) filter(where ${year === null ? q`false` : year === "all" ? q`true` : q`finalization_date>=${`${year}-01-01`} and finalization_date<${`${year + 1}-01-01`}`} and (cpv_code is null or cpv_code !~ '^[0-9]{2}'))::int missing_cpv from s`;
-  const kind = input.role === "authority" ? authorityPeerKind(entity.name) : null;
+  const kinds = input.role === "authority" ? await readAuthorityKinds(q) : null;
+  const kind = kinds ? kinds.byId.get(entity.id) ?? null : null;
   const base: PeersResult = { entity,focal:null,filters,suggested:{year:input.year===undefined,cpv:input.cpv===undefined},
     options:{years,divisions:divisions.map(row => ({code:String(row.code),label:String(row.label),rowCount:Number(row.row_count),totalExact:String(row.total_exact)})),counties:[]},
     cohort:{count:0,minimumRecords:0,maximumRecords:0,authorityKind:kind,medianTotalExact:null,medianMeanRounded:null,enoughPeers:false,status:"no_focal_records",excludedUnknownType:0,excludedUnknownCounty:0},
@@ -95,7 +96,7 @@ export async function getLegacyPeersInSnapshot(q: DbSql, input: PeerInput, check
   const population = q`with sources as (${selected}), stats as (
     select entity_id,${aggregate},sum(closing_value) total_numeric,avg(closing_value) mean_numeric from sources group by entity_id
   ), classified as (
-    select s.*,e.county,${input.role === "authority" ? authorityKindExpression(q, q`e.name_display`) : q`null::text`} authority_kind
+    select s.*,e.county,${kinds ? authorityKindExpression(q, kinds, q`s.entity_id`) : q`null::text`} authority_kind
     from stats s join core.entities e on e.id=s.entity_id and e.id<=9007199254740991 where e.id<>${input.entityId}
       and s.record_count between ${minimum} and ${maximum}
   ), type_eligible as (select * from classified where ${kind ? q`authority_kind=${kind}` : q`true`}),

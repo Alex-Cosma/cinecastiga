@@ -61,6 +61,17 @@ describe.runIf(Boolean(connection))("durable opt-in monitoring email delivery", 
     expect(status.latest!.sentAt).toBeTruthy();
   });
 
+  it("says a check with a changed methodology (D1's kind-2) is one, not records to verify", async () => {
+    const sql = connection!.sql; const f = await fixture(), plain = await fixture();
+    await sql`update app.monitoring_runs set methodology_changed=true where id=${f.runId}`;
+    const messages: DigestMessage[] = [];
+    await runMonitoringDigests({ period,database:sql,send:true,deliver:deliver(messages) });
+    const mine = (owner: string) => messages.find((message) => message.to === `${owner}@example.invalid`)!;
+    expect(mine(f.owner).text).toContain("— Metodologie modificată, vezi ce s-a schimbat");
+    expect(mine(f.owner).text).not.toContain("de verificat");
+    expect(mine(plain.owner).text).toContain("— 2 înregistrări de verificat");
+  });
+
   it("excludes default opt-out, paused, unverified, reviewed and baseline records", async () => {
     const fixtures = await Promise.all([{ digest:false },{ paused:true },{ verified:false },{ reviewed:true },{ baseline:true }].map(options => fixture(options)));
     const messages: DigestMessage[] = [];

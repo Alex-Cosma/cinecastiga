@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { comparableMethodologies, type MonitoringRunDetail } from "../../lib/monitoring-shared";
-import { answerCore, KEY_VERSIONS } from "../../lib/ask/answer-core";
+import { answerCore, KEY_VERSION_NOTES, KEY_VERSIONS } from "../../lib/ask/answer-core";
 import { formatExactDecimal } from "../../lib/format";
 import { countWords } from "../../lib/ask/answer-text";
 import { FLAG_META } from "../../lib/flags";
@@ -132,5 +132,11 @@ export default function ResultComparison({ detail }: { detail: MonitoringRunDeta
   // What the check compared (plan §2.8): the core of each answer, and the methodologies with their answer versions read alike.
   const block = detail.watch.spec.block;
   const [previousMethodology, methodology] = useMemo(() => comparableMethodologies(detail.previousMethodology, detail.methodology, block), [detail, block]);
-  return <>{detail.run.resultChanged && <details className="mon-settings" open><summary>Ce s-a schimbat în rezultatul întrebării</summary><p>Comparăm valorile păstrate la cele două verificări. Sumele exacte ale înregistrărilor se verifică în listele de surse.</p><ChangedValues key={`${detail.run.id}-result`} before={answerCore(block, detail.previousResult)} after={answerCore(block, detail.result)} label="Rezultatul întrebării, înainte și după" /></details>}{detail.run.methodologyChanged && <details className="mon-settings" open><summary>Ce s-a schimbat în metodologie</summary><p>Aceste diferențe descriu modul de calcul. Ele nu reprezintă, în sine, modificări ale contractelor.</p><ChangedValues key={`${detail.run.id}-methodology`} before={previousMethodology} after={methodology} label="Metodologia, înainte și după" /></details>}</>;
+  // What a key version bumped between the two checks changed, in words (KEY_VERSION_NOTES).
+  const notes = useMemo(() => {
+    const conditions = (m: Record<string, unknown> | null) => ((m?.answer as { conditions?: Record<string, string> } | undefined)?.conditions ?? {});
+    const before = conditions(previousMethodology), after = conditions(methodology);
+    return Object.entries(after).filter(([id, version]) => before[id] !== version).map(([, version]) => KEY_VERSION_NOTES[version]).filter((note): note is string => Boolean(note));
+  }, [previousMethodology, methodology]);
+  return <>{detail.run.resultChanged && <details className="mon-settings" open><summary>Ce s-a schimbat în rezultatul întrebării</summary><p>Comparăm valorile păstrate la cele două verificări. Sumele exacte ale înregistrărilor se verifică în listele de surse.</p><ChangedValues key={`${detail.run.id}-result`} before={answerCore(block, detail.previousResult)} after={answerCore(block, detail.result)} label="Rezultatul întrebării, înainte și după" /></details>}{detail.run.methodologyChanged && <details className="mon-settings" open><summary>Ce s-a schimbat în metodologie</summary><p>Aceste diferențe descriu modul de calcul. Ele nu reprezintă, în sine, modificări ale contractelor.</p>{notes.map(note => <p key={note}>{note}</p>)}<ChangedValues key={`${detail.run.id}-methodology`} before={previousMethodology} after={methodology} label="Metodologia, înainte și după" /></details>}</>;
 }

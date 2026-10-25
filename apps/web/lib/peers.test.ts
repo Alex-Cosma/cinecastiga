@@ -1,5 +1,6 @@
 import { describe,expect,it } from "vitest";
 import { authorityPeerKind,parsePeerInput } from "./peers";
+import { authorityPeerKind as askKind,nameKind } from "./ask/authority-kind";
 import { peerSourceSpec } from "./peers-shared";
 const parse=(extra="")=>parsePeerInput(new URLSearchParams(`entityId=123&role=authority${extra}`));
 describe("peer comparison scope",()=>{
@@ -25,10 +26,12 @@ describe("peer comparison scope",()=>{
     for(const extra of ["&year=2024&year=2025","&cpv=450","&cpv=%25","&county=","&dataset=ted","&page=0","&identity=wrong","&checkpointId=x","&year=1999","&search=abc"])
       expect(()=>parse(extra)).toThrow();
   });
-  it("reuses name-pattern categories and refuses unknown or ambiguous authority names",()=>{
-    expect(authorityPeerKind("COMUNA Măgura")).toBe("comuna");expect(authorityPeerKind("Primăria Buzău")).toBe("oras_municipiu");
-    expect(authorityPeerKind("Spitalul Județean")).toBe("spital");expect(authorityPeerKind("Școala Generală")).toBe("scoala");
-    expect(authorityPeerKind("Ministerul Educației")).toBeNull();expect(authorityPeerKind("Comuna Școala Nouă")).toBeNull();
+  it("reads the kind of Întreabă (D1) and refuses unknown or ambiguous authority names",()=>{
+    // One classification for both pages: the same function, by institution id.
+    expect(authorityPeerKind).toBe(askKind);
+    expect(nameKind("COMUNA Măgura")).toBe("comuna");expect(nameKind("Primăria Buzău")).toBe("oras_municipiu");
+    expect(nameKind("Spitalul Județean")).toBe("spital");expect(nameKind("Școala Generală")).toBe("scoala");
+    expect(nameKind("Ministerul Educației")).toBeNull();expect(nameKind("Comuna Școala Nouă")).toBeNull();
   });
   it("keeps registered county out of source geography and carries CPV prefix/year/role exactly",()=>{
     const spec=peerSourceSpec({id:"42",name:"Company",role:"supplier"},{dataset:"contracts",year:2024,cpv:"45",county:"Cluj",page:1});

@@ -66,6 +66,19 @@ export function methodologiesDiffer(before: Record<string, unknown> | null, afte
   const [a, b] = comparableMethodologies(before, after, block);
   return canonicalJson(a) !== canonicalJson(b);
 }
+/** A check whose methodology changed (a version bump such as D1's kind-2): its records may differ because of it. */
+export const MONITORING_METHODOLOGY_CHANGED_NOTE = "Metodologia s-a schimbat la această verificare: o parte din diferențe pot veni din noul calcul, nu din date noi.";
+/**
+ * The headline of a check in the lists. A changed methodology comes first: the
+ * records that entered or left at that check may have done so because of it
+ * (D1: a clinical institute enters "spitale"), not because the data changed.
+ */
+export function monitoringRunTag(run: Pick<MonitoringRun, "kind" | "counts" | "methodologyChanged">): string {
+  if (run.kind === "baseline") return "Situația de referință";
+  if (run.kind === "unchanged") return "Fără modificări";
+  if (run.methodologyChanged) return "Metodologie modificată";
+  return run.counts.changed ? "Date modificate" : run.counts.added || run.counts.removed ? "Selecție modificată" : "Rezultat recalculat";
+}
 export interface MonitoringCaseResult { investigationId: string; clipId: string; beforeCaptureId: string; afterCaptureId: string; taskId: string | null }
 
 /** API contract (every endpoint requires the owner's authenticated session):

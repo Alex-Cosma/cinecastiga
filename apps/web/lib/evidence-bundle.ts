@@ -72,7 +72,9 @@ export function bundleMarkdown(data:BundleData,base:string):string{
             lines.push(`- ${md(population.unitName)}: ${md(population.value)} locuitori; referință ${md(population.referenceDate)}; SIRUTA ${md(population.siruta??"neprecizat")}; rând ${md(population.sourceRow)}; catalog ${md(population.catalogVersion)}. Sursa: ${String(population.sourceUrl??"")}${population.sourceSha256?` (SHA-256: ${md(population.sourceSha256)})`:""}`);}
           lines.push("");
         }
-        const methodology=peer.methodology as {descriptions?:unknown[]}|undefined;
+        // The comparison's own version (peers-2 from D1: the kind of Întreabă in the activity groups), as the population's above.
+        const methodology=peer.methodology as {version?:unknown;descriptions?:unknown[]}|undefined;
+        if(methodology?.version)lines.push(`Versiunea comparației: ${md(methodology.version)}.`,"");
         for(const description of methodology?.descriptions??[])lines.push(`- ${md(description)}`);
         lines.push("");
       }

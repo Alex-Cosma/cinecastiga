@@ -10,7 +10,8 @@ export interface MonitoringDigestStatus {
 }
 export interface DigestMessage { to: string; from: string; subject: string; text: string; html: string; messageId: string }
 export type DigestDeliverer = (message: DigestMessage) => Promise<{ accepted: unknown[] }>;
-interface DigestUpdate { id: string; watchId: string; title: string; count: number }
+/** A check of one watch; `methodologyChanged`: a version bump (D1's kind-2), whose records are not new data to verify. */
+interface DigestUpdate { id: string; watchId: string; title: string; count: number; methodologyChanged?: boolean }
 interface DigestConfig { origin: string | null; from: string; available: boolean; reason: string | null }
 interface ClaimedDigest { id: string; email: string; ownerId: string; period: string; updates: DigestUpdate[] }
 const UNCERTAIN_MESSAGE = "Trimiterea nu poate fi confirmată. Nu retrimitem automat, pentru a evita un e-mail duplicat. Actualizările sunt disponibile în aplicație.";
@@ -82,8 +83,9 @@ export function renderMonitoringDigest(digest: ClaimedDigest, config: Pick<Diges
   const rows = shown.map(update => {
     const title = update.title.replace(/[\r\n\u0000-\u001f]/g," ").slice(0,200);
     const href = `${config.origin}/urmariri/${encodeURIComponent(update.watchId)}/actualizari/${encodeURIComponent(update.id)}`;
-    const count = update.count > 0
-      ? `${update.count} ${update.count === 1 ? "înregistrare de verificat" : "înregistrări de verificat"}`
+    // As the in-app tag (monitoringRunTag): a changed methodology comes before the records it moved.
+    const count = update.methodologyChanged ? "Metodologie modificată, vezi ce s-a schimbat"
+      : update.count > 0 ? `${update.count} ${update.count === 1 ? "înregistrare de verificat" : "înregistrări de verificat"}`
       : "Vezi ce s-a schimbat";
     return { title,href,count };
   });
@@ -113,7 +115,7 @@ async function claimDigest(sql: DbSql, id: string, origin: string): Promise<Clai
     const [user] = await q`select email,email_verified,banned from auth.users where id=${delivery.owner_user_id}`;
     const ids = Array.isArray(delivery.run_ids) ? delivery.run_ids.map(String) : [];
     const updates = user?.email_verified && !user.banned && user.email === delivery.recipient_email && ids.length
-      ? await q`select r.id,r.watch_id,w.title,r.relevant_counts from app.monitoring_runs r join app.monitoring_watches w on w.id=r.watch_id
+      ? await q`select r.id,r.watch_id,w.title,r.relevant_counts,r.methodology_changed from app.monitoring_runs r join app.monitoring_watches w on w.id=r.watch_id
           left join app.monitoring_reviews review on review.run_id=r.id
           where r.id in ${q(ids)} and w.owner_user_id=${delivery.owner_user_id} and not w.paused and w.preferences->>'digest'='true'
           and r.has_alert and review.run_id is null order by r.checked_at,r.id`
@@ -124,7 +126,8 @@ async function claimDigest(sql: DbSql, id: string, origin: string): Promise<Clai
     }
     const result: ClaimedDigest = { id,email:String(user!.email),ownerId:String(delivery.owner_user_id),period:day(delivery.period),
       updates:updates.map(row => { const counts = row.relevant_counts as Record<string,unknown>;
-        return { id:String(row.id),watchId:String(row.watch_id),title:String(row.title),count:["added","changed","removed"].reduce((sum,key) => sum + Math.max(0,Number(counts?.[key]) || 0),0) }; }) };
+        return { id:String(row.id),watchId:String(row.watch_id),title:String(row.title),count:["added","changed","removed"].reduce((sum,key) => sum + Math.max(0,Number(counts?.[key]) || 0),0),
+          methodologyChanged:row.methodology_changed === true }; }) };
     const messageId = `<monitoring-${id}@${new URL(origin).hostname}>`;
     await q`update app.monitoring_digest_deliveries set status='sending',started_at=now(),updated_at=now(),error=null,message_id=${messageId},update_count=${result.updates.length},run_ids=${JSON.stringify(result.updates.map(row => row.id))}::jsonb where id=${id}`;
     return result;

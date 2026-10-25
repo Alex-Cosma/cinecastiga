@@ -2,6 +2,7 @@ import { describe,expect,it } from "vitest";
 import { monitoringPreferences,monitoringScope,monitoringCursor,monitoringHasLocalSelection } from "./monitoring-input";
 import { monitoredEntityIds,sameMonitoringEntity,type MonitoringEntityBinding } from "./monitoring-identity";
 import { daCoverageYears,useSnapshotCoverage } from "./ask/compile";
+import { monitoringRunTag } from "./monitoring-shared";
 import type { DbSql } from "@seap/db";
 
 describe("private monitoring input and identity",()=>{
@@ -43,5 +44,15 @@ describe("private monitoring input and identity",()=>{
     expect(await daCoverageYears(current,"award")).toEqual([2025,2026]);
     years=[2025,2026,2027];
     expect(await daCoverageYears(current,"award")).toEqual([2025,2026,2027]);
+  });
+  it("heads a check whose methodology changed as such, before the records it moved (D1: an institute enters the hospitals)",()=>{
+    const counts=(added:number,removed=0,changed=0)=>({added,removed,changed});
+    expect(monitoringRunTag({kind:"baseline",counts:counts(0),methodologyChanged:false})).toBe("Situația de referință");
+    expect(monitoringRunTag({kind:"unchanged",counts:counts(0),methodologyChanged:false})).toBe("Fără modificări");
+    expect(monitoringRunTag({kind:"update",counts:counts(3),methodologyChanged:true})).toBe("Metodologie modificată");
+    expect(monitoringRunTag({kind:"update",counts:counts(0,0,2),methodologyChanged:true})).toBe("Metodologie modificată");
+    expect(monitoringRunTag({kind:"update",counts:counts(0,0,2),methodologyChanged:false})).toBe("Date modificate");
+    expect(monitoringRunTag({kind:"update",counts:counts(0,1),methodologyChanged:false})).toBe("Selecție modificată");
+    expect(monitoringRunTag({kind:"update",counts:counts(0),methodologyChanged:false})).toBe("Rezultat recalculat");
   });
 });

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { DbSql } from "@seap/db";
 import type { Grounding } from "./ground";
 import { localityScopeError, transitionQuestion } from "./question-ui";
-import { NEWER_VERSION_LINK, validateSpec, type AskSpec } from "./spec";
+import { namedKind, NEWER_VERSION_LINK, validateSpec, type AskSpec } from "./spec";
 import { legacyCorpus } from "./fixtures/legacy-corpus";
 import { FIXTURE_IDENTITIES } from "./fixtures/golden-fixture";
 import { filterContext, formOf, PROFILE_FORMS } from "./filters/context";
@@ -52,8 +52,11 @@ function fakeGrounding(spec: AskSpec): Grounding {
   if (f.adminPersonKey || f.adminName) g.admin = { query: "q", personKey: "k", display: "P", supplierIds: ["9505"], nFirms: 1, alternatives: [] };
   return g;
 }
+/** The institutions of a kind, as authorityKindIds would read them (D1). */
+const KIND_IDS = ["9606", "9607"];
 const ctxFor = (spec: AskSpec): PredicateCtx =>
-  predicateContext(fake, spec, fakeGrounding(spec), { dataset: spec.dataset ?? "all", yearFrom: spec.filters.yearFrom ?? null, yearTo: spec.filters.yearTo ?? null });
+  predicateContext(fake, spec, fakeGrounding(spec), { dataset: spec.dataset ?? "all", yearFrom: spec.filters.yearFrom ?? null, yearTo: spec.filters.yearTo ?? null,
+    kindIds: namedKind(spec.filters.authorityKind) ? KIND_IDS : null });
 
 /** Each level's output on a spec, as the engine calls it (runSpec; runRows calls the same functions). */
 function levelsOf(spec: AskSpec): Record<"row" | "group" | "profile" | "display", string[]> {
@@ -156,7 +159,7 @@ describe("the conditions of a question", () => {
       "(d.cpv_code like $1)",
       "not (d.cpv_code like $1)",
       "d.county = $1",
-      "(lower(unaccent(d.authority_name)) like $1)",
+      "d.authority_id = any($1::bigint[])",
       "d.authority_id = $1",
       "d.supplier_id = $1",
       "d.authority_id = any($1::bigint[])",
@@ -171,8 +174,17 @@ describe("the conditions of a question", () => {
     expect(texts(rowPredicates(ctx)).slice(-2)).toEqual(['d.finalization_date >= $1 ["2024-03"]', 'd.finalization_date < $1 ["2025-07"]']);
     expect(texts(profilePredicates(ctx, "authority", 10))).toEqual([
       'ef.role = $1 ["authority"]', "ef.n_das >= $1 [10]", 'lower(unaccent(ef.county)) = $1 ["cluj"]',
-      'ef.entity_id = any($1::bigint[]) [["9404"]]', '(lower(unaccent(ef.name_display)) like $1) ["spital%"]',
+      'ef.entity_id = any($1::bigint[]) [["9404"]]', 'ef.entity_id = any($1::bigint[]) [["9606","9607"]]',
     ]);
+    // The kind is the list of its institutions (D1): the buyer's id on a record, as on a profile.
+    expect(texts(rowPredicates(ctx))[6]).toBe('d.authority_id = any($1::bigint[]) [["9606","9607"]]');
+    expect(displayPredicates(ctx, "T")).toContain("authority_id in (…)  -- doar spitale: 2 instituții (după nume, cu institutele clinice)");
+    // The count follows the numeral rule (G10, countWords).
+    const kindCount = (ids: string[]) => displayPredicates({ ...ctx, kindIds: ids }, "T").find((c) => c.startsWith("authority_id in (…)"));
+    expect(kindCount(["9606"])).toBe("authority_id in (…)  -- doar spitale: 1 instituție (după nume, cu institutele clinice)");
+    expect(kindCount(Array.from({ length: 351 }, (_, i) => String(i)))).toBe("authority_id in (…)  -- doar spitale: 351 de instituții (după nume, cu institutele clinice)");
+    // A kind is never dropped: a caller that did not read its institutions fails.
+    expect(() => predicateContext(fake, all, fakeGrounding(all), { dataset: "all", yearFrom: null, yearTo: null })).toThrow(/were not read/);
     // Firm profiles: the firm's own county, never the buyer's kind or locality.
     expect(texts(profilePredicates(ctx, "supplier", 20))).toEqual(['ef.role = $1 ["supplier"]', "ef.n_das >= $1 [20]", 'lower(unaccent(ef.county)) = $1 ["cluj"]']);
   });
@@ -185,6 +197,15 @@ describe("the conditions of a question", () => {
     expect(range({ authorityId: 11, yearFrom: 2024, yearTo: 2025, monthFrom: 1, monthTo: 12 }))
       .toEqual(['d.finalization_date >= $1 ["2024-01"]', 'd.finalization_date < $1 ["2026-01"]']);
     expect(range({ supplierId: 22, yearTo: 2023 })).toEqual(['d.finalization_date < $1 ["2024"]']);
+    // A kind of institution is its list of ids (D1), read from the same (authority_id, finalization_date) indexes.
+    expect(range({ authorityKind: "spital", yearFrom: 2025, yearTo: 2025 })).toEqual(['d.finalization_date >= $1 ["2025"]', 'd.finalization_date < $1 ["2026"]']);
+    // A trend's two years: the sources add the span as a range on id-anchored selections; the answer and other selections keep substr() alone.
+    const trend = (filters: AskSpec["filters"], withCtx = true) =>
+      render(trendYearsPredicate(fake, 2019, 2024, withCtx ? ctxFor({ block: "trend", dim: "supplier", measure: "value", filters }) : undefined));
+    expect(trend({ authorityKind: "comuna", yearFrom: 2019, yearTo: 2024 })).toEqual({
+      text: "substr(d.finalization_date,1,4) in ($1, $2) and d.finalization_date >= $3 and d.finalization_date < $4", params: ["2019", "2024", "2019", "2025"] });
+    expect(trend({ county: "Cluj", yearFrom: 2019, yearTo: 2024 }).text).toBe("substr(d.finalization_date,1,4) in ($1, $2)");
+    expect(trend({ authorityKind: "comuna" }, false).text).toBe("substr(d.finalization_date,1,4) in ($1, $2)");
   });
 
   it("count the record threshold over the rows of the same selection", () => {

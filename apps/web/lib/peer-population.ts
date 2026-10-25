@@ -15,7 +15,7 @@ export function populationSearchVariants(value:string):string[]{
   return [...new Set([modern,modern.replace(/\btargu\b/g,"tirgu"),modern.replace(/\bramnicu\b/g,"rimnicu"),modern.replace(/\btargu\b/g,"tirgu").replace(/\bramnicu\b/g,"rimnicu")])];
 }
 const cleanUnit = (name: string) => spelling(populationFold(name).replace(/^(municipiul|municipiu|orasul|oras) /, ""));
-const countyFold=(name:string)=>populationFold(name).replace(/^municipiul bucuresti$/,"bucuresti");
+export const countyFold=(name:string)=>populationFold(name).replace(/^municipiul bucuresti$/,"bucuresti");
 /**
  * Owner decision F05/F15 (21 October 2026): a SICAP name matches a catalog UAT
  * when it differs only by diacritics (populationFold drops them, so ș/ş, ț/ţ, ă,
@@ -186,6 +186,9 @@ export function peerRolePredicate(q:DbSql,role:ConnectionRole) {
 // governmentLevel prefixes ("UAT X", "Unitatea administrativ-teritorială X",
 // "Consiliul local X", "X (Consiliul local X)").
 const administrationForm = /^(?:uat|unitatea? administrativ teritoriala|consiliul local) | consiliul local /;
+/** A name with a legal form of a UAT's own administration (F15): the locality scope's rule, and the town halls' kind (lib/ask/authority-kind.ts). */
+export const localAdministrationName = (name: string): boolean =>
+  governmentLevel(name) === "local" || administrationForm.test(populationFold(name));
 /**
  * Locality scope of Întreabă (finding F15): the valid-CUI authorities that are
  * the local administration of one UAT. The legacy `reference.authority_uat`
@@ -217,7 +220,7 @@ export function localAuthorityIdsForUnit(rows: PopulationMappingRow[], siruta: n
   for (const row of rows) {
     if (row.siruta !== null && row.siruta > 0) {
       if (row.siruta === siruta && row.county && countyFold(row.county) === countyFold(unit.county)
-        && (governmentLevel(row.name) === "local" || administrationForm.test(populationFold(row.name)))) legacy.add(row.id);
+        && localAdministrationName(row.name)) legacy.add(row.id);
       continue;
     }
     const population = populationForMapping(row);
