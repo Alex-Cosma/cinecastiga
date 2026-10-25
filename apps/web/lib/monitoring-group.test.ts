@@ -38,6 +38,12 @@ describe("the group a trend watch fixes", () => {
     expect(groupPinnedNote(trend({ change: "new" }), members(412), "24.10.2026"))
       .toBe("Grupa „Noi față de 2024”: 412 firme fixate la activare (24.10.2026). Răspunsul și sursele urmăresc aceste firme; cele care intră sau ies din grupă apar doar ca notă.");
   });
+  it("is named with the base when the growths are in percent: the base decides who is fixed (the „eligible” part)", () => {
+    expect(watchedGroupLabel(trend({ change: "up", order: "percent" }))).toBe("„Creșteri de la cel puțin 1 mil. lei în 2024”");
+    expect(groupPinnedNote(trend({ change: "up", order: "percent", minBase: 10_000_000 }), members(184), "24.10.2026"))
+      .toMatch(/^Grupa „Creșteri de la cel puțin 10 mil\. lei în 2024”: 184 de firme fixate la activare/);
+    expect(watchedGroupLabel(trend({ change: "up" }))).toBe("„Creșteri”");
+  });
 });
 
 describe("the notes of a group's check", () => {

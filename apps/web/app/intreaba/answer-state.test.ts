@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 import { decodeSpec } from "../../lib/ask/permalink";
 import type { BlockData } from "../../lib/ask/compile";
 import type { AskSpec } from "../../lib/ask/spec";
-import { answerCsv } from "./answer-csv";
-import { SINGLE_OFFER_STREAM, STRIP_QUERY_KEYS, appliedAfterStrip, appliedAfterTrendList, deeperThread, readThread, shownWords, streamOptions, threadCrumbs, threadHref, threadWords } from "./answer-state";
+import { answerCsv, leiDifference } from "./answer-csv";
+import {
+  SINGLE_OFFER_STREAM, STRIP_QUERY_KEYS, appliedAfterStrip, appliedAfterTrendList, deeperThread, readThread, shownWords, streamOptions, threadCrumbs, threadHref, threadWords,
+  totalConditionWords,
+} from "./answer-state";
 import { patchDraft } from "./builder/view";
-import { trendFixture, trendSpec } from "../../lib/ask/fixtures/trend-screen";
+import { trendFixture, trendGroups, trendSpec } from "../../lib/ask/fixtures/trend-screen";
 
 /*
  * F1b-builder-a, the answer's side of the strip (plan §2.3): the applied
@@ -138,19 +141,40 @@ describe("«Rezultatul afișat · CSV» of a trend", () => {
   it("exports the list on screen with its columns, the group and the months beside it", () => {
     const { text, filename } = answerCsv(data, trendSpec({ change: "new", months: "auto" }), "Ce firme noi apar în 2025?", { group: "noi", months: "ian.–mai" });
     const lines = text.replace(/^﻿/, "").split("\r\n");
-    // No county beside a firm (owner-seat-switch), as on screen.
-    expect(lines[0]).toBe("nume,2024,2025,diferenta_lei,etichete,partener,grupa,luni");
-    expect(lines[1]).toBe('"BETA SERV SRL",0,900,900,"fără CUI valid; prima dată în 2025; 1 achiziție directă: 100%","100% de la PRIMARIA EXEMPLU","noi","ian.–mai"');
-    expect(lines[2]).toBe('"GAMMA GMBH",0,300,300,"activă din 2019","","noi","ian.–mai"');
+    // No county beside a firm (owner-seat-switch), as on screen; a foreign firm's country, as on screen.
+    expect(lines[0]).toBe("nume,tara,2024,2025,diferenta_lei,etichete,partener,grupa,luni");
+    expect(lines[1]).toBe('"BETA SERV SRL","",0,900,900,"fără CUI valid; prima dată în 2025; 1 achiziție directă: 100%","100% de la PRIMARIA EXEMPLU","noi","ian.–mai"');
+    expect(lines[2]).toBe('"GAMMA GMBH","Germania",0,300,300,"activă din 2019","","noi","ian.–mai"');
     expect(lines).toHaveLength(4);
     expect(filename).toBe("ce-firme-noi-apar-in-2025-noi-ian-mai.csv");
   });
 
-  it("keeps the county of an institution, a county's name, and an old answer's one list", () => {
+  it("keeps the county of an institution, no county column on counties, and an old answer's one list", () => {
     const institutions = answerCsv(trendFixture({ noun: "instituții" }), trendSpec({ change: "down" }, { dim: "authority" }), "T", { group: "scaderi" });
     expect(institutions.text.split("\r\n")[0]).toBe("﻿nume,judet,2024,2025,diferenta_lei,etichete,partener,grupa");
     expect(institutions.text.split("\r\n")[1]).toBe('"DELTA SA","București",800,200,-600,"în asociere","în 2024: 50% de la SPITALUL EXEMPLU","scaderi"');
+    const counties = answerCsv(trendFixture({ noun: "județe", rowFacts: undefined, groups: trendGroups({ up: [{ entityId: null, name: "Cluj", county: null, valueA: 10, valueB: 20 }] }) }),
+      trendSpec({ change: "up" }, { dim: "county" }), "T");
+    expect(counties.text.split("\r\n").slice(0, 2)).toEqual(["﻿nume,2024,2025,diferenta_lei,etichete,partener", '"Cluj",10,20,10,"",""']);
     const old = answerCsv(trendFixture({ groups: undefined, composition: undefined, list: undefined, rowFacts: undefined }), trendSpec(), "T");
-    expect(old.text.split("\r\n").slice(0, 2)).toEqual(["﻿nume,2024,2025,diferenta_lei,etichete,partener", '"ALFA CONSTRUCT SRL",100,1500,1400,"",""']);
+    expect(old.text.split("\r\n").slice(0, 2)).toEqual(["﻿nume,tara,2024,2025,diferenta_lei,etichete,partener", '"ALFA CONSTRUCT SRL","",100,1500,1400,"",""']);
+  });
+
+  it("writes the names as shown and the difference to the ban, without a float's noise", () => {
+    const row = { entityId: "1", name: "RO123456 ALFA CONSTRUCT SRL", county: null, valueA: 481_712_345.67, valueB: 1_130_000_000.12 };
+    const csv = answerCsv(trendFixture({ groups: trendGroups({ up: [row] }) }), trendSpec({ change: "up" }), "T");
+    expect(csv.text.split("\r\n")[1]).toMatch(/^"ALFA CONSTRUCT SRL","",481712345.67,1130000000.12,648287654.45,/);
+    expect([leiDifference(2_323_775_461.47, 0), leiDifference(0.1, 0.3)]).toEqual([-2_323_775_461.47, 0.2]);
+  });
+});
+
+describe("the total line's conditions (G8) as the answer ran", () => {
+  it("say a trend's `auto` months as they resolved, and none on whole years, like the pills", () => {
+    const spec = trendSpec({ change: "up", months: "auto" });
+    expect(totalConditionWords(spec, [1, 5])).toContain("pe aceleași luni: ian.–mai");
+    expect(totalConditionWords(spec, [1, 12]).some((w) => w.includes("aceleași luni"))).toBe(false);
+    // An answer that does not say what it ran keeps the words of the question.
+    expect(totalConditionWords(spec)).toContain("pe aceleași luni");
+    expect(totalConditionWords(trendSpec({ change: "up", months: "whole" }), [1, 12])).toContain("pe ani întregi");
   });
 });

@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { DOWN, FOREIGN, GONE, NEW, UP, trendFixture, trendGroups, trendSpec } from "../../lib/ask/fixtures/trend-screen";
 import {
-  TREND_LIST_CSV, compositionHead, firstOptions, groupTerm, labelLegend, shownTrendList, signedRon, trendButtons, trendEmpty, trendGroupHeader, trendRest,
-  trendRowView, trendTotal, trendWatch, trendWatchNote, withoutFilingWords,
+  TREND_LIST_CSV, compositionHead, drawerWatchBlocked, emptyGroupsLine, firstOptions, groupTerm, labelLegend, newSubLabel, partialStars, percentTerm,
+  retimeScopeLabel, shownTrendList, signedRon, trendButtons, trendEmpty, trendGroupHeader, trendRest, trendRowView, trendTotal, trendWatch, trendWatchNote,
+  withoutFilingWords,
 } from "./trend-answer";
 
 /*
@@ -33,10 +34,11 @@ describe("the group buttons", () => {
   it("are „Toate” first, then the four groups, each with its count and change in lei", () => {
     const buttons = trendButtons(data, firms)!;
     expect(buttons.map((b) => [b.value, b.name, b.count, b.all ?? false])).toEqual([
-      ["all", "Toate", "6 · +1.950", true], ["up", "Creșteri", "1 · +1.400", false], ["new", "Noi", "2 · +1.200", false],
-      ["down", "Scăderi", "1 · −600", false], ["gone", "Nu mai apar", "1 · −50", false],
+      ["all", "Toate", "6 · +1.950 lei", true], ["up", "Creșteri", "1 · +1.400 lei", false], ["new", "Noi", "2 · +1.200 lei", false],
+      ["down", "Scăderi", "1 · −600 lei", false], ["gone", "Nu mai apar", "1 · −50 lei", false],
     ]);
     expect(buttons.every((b) => !b.disabled)).toBe(true);
+    expect(emptyGroupsLine(buttons)).toBeNull();
   });
 
   it("disable a group of 0 with why, in the selection's noun", () => {
@@ -45,11 +47,20 @@ describe("the group buttons", () => {
     expect(buttons.find((b) => b.value === "new")?.disabled).toBe("Niciun județ nou în această selecție.");
     expect(buttons.find((b) => b.value === "gone")?.disabled).toBe("Niciun județ care să nu mai apară.");
     expect(buttons.find((b) => b.value === "up")?.disabled).toBeUndefined();
+    // Visibly too, in one line under the buttons, the reasons in its (?) (kit R1).
+    const line = emptyGroupsLine(buttons)!;
+    expect(line.text).toBe("Grupuri goale: Noi, Nu mai apar");
+    expect("text" in line.tip && line.tip.text).toBe("Niciun județ nou în această selecție. Niciun județ care să nu mai apară.");
+    expect(emptyGroupsLine([{ name: "Prima dată în 2025", disabled: "Nicio firmă aflată prima dată în date în 2025." }])?.text).toBe("Grup gol: Prima dată în 2025");
   });
 
-  it("count the growths from the base when the answer ordered them in percent (composition.eligible)", () => {
+  it("keep the partition in percent (trend final §3.9: the composition does not change): the growths are all of them, and add up to „Toate”", () => {
     const percent = trendFixture({ composition: { ...data.composition, eligible: { count: 3, valueA: 3_000_000, valueB: 9_000_000 } } });
-    expect(trendButtons(percent, firms)!.find((b) => b.value === "up")?.count).toBe("3 · +6 mil.");
+    const buttons = trendButtons(percent, trendSpec({ change: "up", order: "percent", minBase: 1_000_000 }))!;
+    expect(buttons.find((b) => b.value === "up")?.count).toBe("1 · +1.400 lei");
+    // No growth from the base, some growths: Creșteri stays a choice; its list says why it is empty (trendEmpty).
+    const none = trendFixture({ composition: { ...data.composition, eligible: { count: 0, valueA: 0, valueB: 0 } } });
+    expect(trendButtons(none, trendSpec({ change: "up", order: "percent", minBase: 1e9 }))!.find((b) => b.value === "up")?.disabled).toBeUndefined();
   });
 
   it("are not drawn without a composition (an old answer, a watch's fixed members)", () => {
@@ -57,8 +68,8 @@ describe("the group buttons", () => {
     expect(trendButtons(trendFixture({ composition: { up: { count: 1, valueA: 1, valueB: 2 } } }), firms)).toBeNull();
   });
 
-  it("say the change with its sign", () => {
-    expect([signedRon(0), signedRon(652_800_000), signedRon(-1_130_000_000)]).toEqual(["0", "+652,8 mil.", "−1,1 mld."]);
+  it("say the change with its sign, an amount under a million with its unit", () => {
+    expect([signedRon(0), signedRon(652_800_000), signedRon(-1_130_000_000), signedRon(-60_650)]).toEqual(["0", "+652,8 mil.", "−1,1 mld.", "−60.650 lei"]);
   });
 });
 
@@ -80,6 +91,9 @@ describe("the head and „Prima dată”", () => {
     expect(firstOptions(data, "first", firms)?.length).toBe(2);
     expect(firstOptions(data, "up", firms)).toBeNull();
     expect(firstOptions(trendFixture({ groups: trendGroups({ first: undefined }) }), "new", firms)).toBeNull();
+    // „Noi” with its year (kit §4), beside the two segments.
+    expect(newSubLabel(data, firms)).toBe("Firme noi față de 2024:");
+    expect(newSubLabel(trendFixture({ noun: "clienți" }), firms)).toBe("Clienți noi față de 2024:");
   });
 });
 
@@ -111,10 +125,21 @@ describe("a row (trend final §3.4, §4.8)", () => {
     const view = trendRowView(UP, "up", data, firms);
     expect(view.facts).toEqual([{ text: "1 contract: 86%", tone: "caveat" }]);
     expect(view.partner).toBe("40% de la PRIMARIA EXEMPLU");
-    expect(view.years).toEqual([{ label: "2024", value: "100" }, { label: "2025", value: "1.500" }]);
-    expect([view.delta, view.pct, view.up]).toEqual(["+1.400", { text: "×15", words: "de 15 ori mai mult" }, true]);
+    expect(view.years).toEqual([{ label: "2024", value: "100 lei" }, { label: "2025", value: "1.500 lei" }]);
+    expect([view.delta, view.pct, view.pctFirst, view.up]).toEqual(["+1.400 lei", { text: "×15", words: "de 15 ori mai mult" }, false, true]);
     expect(view.scope).toEqual({ entityIds: ["1"], role: "supplier" });
     expect(view.scopeLabel).toBe("ALFA CONSTRUCT SRL · 2024 și 2025");
+  });
+
+  it("makes the percent the main figure when the growths are ordered in percent (trend final §3.9 Afișare)", () => {
+    expect(trendRowView(UP, "up", data, trendSpec({ change: "up", order: "percent", minBase: 100_000 })).pctFirst).toBe(true);
+    expect(trendRowView(UP, "all", data, trendSpec({ change: "all" })).pctFirst).toBe(false);
+  });
+
+  it("never says −100% of a fall that leaves money", () => {
+    const fell = trendRowView({ ...DOWN, valueA: 170_500_000, valueB: 4_180 }, "down", data, firms);
+    expect([fell.pct, fell.years[1]?.value, fell.delta]).toEqual([{ text: "<−99%", words: "scădere de peste 99%" }, "4.180 lei", "−170,5 mil."]);
+    expect(trendRowView({ ...DOWN, valueA: 1_000, valueB: 6 }, "down", data, firms).pct?.text).toBe("−99%");
   });
 
   it("puts no county beside a firm (owner-seat-switch, until F4), an institution's county, a foreign firm's country", () => {
@@ -126,19 +151,44 @@ describe("a row (trend final §3.4, §4.8)", () => {
     expect(foreign.facts.map((f) => f.text)).toEqual(["activă din 2019"]);
   });
 
+  it("treats an identity flagged foreign with country RO as domestic: no „România”, and „fără CUI valid” (FCC CONSTRUCCION S.A.)", () => {
+    const flagged = trendFixture({ rowFacts: { ...data.rowFacts, "5": { ...data.rowFacts!["5"]!, country: "RO" } } });
+    const view = trendRowView(FOREIGN, "new", flagged, firms);
+    expect(view.place).toBeNull();
+    expect(view.facts.map((f) => f.text)).toEqual(["fără CUI valid", "activă din 2019"]);
+  });
+
+  it("stars a partly covered year on every list: the two years, and the one year of a new or gone row", () => {
+    const stars = partialStars(data, [{ year: 2025 }]);
+    expect(stars).toEqual(["", "*"]);
+    expect(trendRowView(UP, "up", data, firms, stars).years.map((y) => y.label)).toEqual(["2024", "2025*"]);
+    expect(trendRowView(NEW, "new", data, firms, stars).single?.when).toBe("în 2025*");
+    expect(trendRowView(GONE, "gone", data, firms, partialStars(data, [{ year: 2024 }])).single?.when).toBe("în 2024*");
+    expect(trendRowView(GONE, "gone", data, firms, stars).single?.when).toBe("în 2024");
+  });
+
+  it("names the reloaded answer's months in a row's drawer label after a 409", () => {
+    const before = trendFixture({ months: { from: 1, to: 5, mode: "auto" } }), after = trendFixture({ months: { from: 1, to: 6, mode: "auto" } });
+    const label = trendRowView(UP, "up", before, firms).scopeLabel;
+    expect(label).toBe("ALFA CONSTRUCT SRL · ian.–mai 2024 și ian.–mai 2025");
+    expect(retimeScopeLabel(label, before, after)).toBe("ALFA CONSTRUCT SRL · ian.–iun. 2024 și ian.–iun. 2025");
+    expect(retimeScopeLabel(label, before, data)).toBe("ALFA CONSTRUCT SRL · 2024 și 2025");
+    expect(retimeScopeLabel("selecția aleasă", before, after)).toBe("selecția aleasă");
+  });
+
   it("says the year of the partner where the list is not about it: on „Toate” and on the decreases", () => {
     expect(trendRowView(UP, "all", data, firms).partner).toBe("în 2025: 40% de la PRIMARIA EXEMPLU");
     const down = trendRowView(DOWN, "down", data, firms);
-    expect([down.partner, down.facts.map((f) => f.text), down.pct?.text, down.delta, down.up]).toEqual(["în 2024: 50% de la SPITALUL EXEMPLU", ["în asociere"], "−75%", "−600", false]);
+    expect([down.partner, down.facts.map((f) => f.text), down.pct?.text, down.delta, down.up]).toEqual(["în 2024: 50% de la SPITALUL EXEMPLU", ["în asociere"], "−75%", "−600 lei", false]);
   });
 
   it("shows a new or gone row's one value in its own list, and „nouă” among all the changes", () => {
     const fresh = trendRowView(NEW, "new", data, firms);
     expect(fresh.facts.map((f) => f.text)).toEqual(["fără CUI valid", "prima dată în 2025", "1 achiziție directă: 100%"]);
-    expect([fresh.single, fresh.years, fresh.pct]).toEqual([{ value: "900", when: "în 2025" }, [], null]);
+    expect([fresh.single, fresh.years, fresh.pct]).toEqual([{ value: "900 lei", when: "în 2025" }, [], null]);
     expect(trendRowView(NEW, "all", data, firms).pct).toEqual({ text: "nouă", words: "nouă" });
     const gone = trendRowView(GONE, "gone", data, firms);
-    expect([gone.single, gone.facts.map((f) => f.text)]).toEqual([{ value: "50", when: "în 2024" }, ["activă în 2026"]]);
+    expect([gone.single, gone.facts.map((f) => f.text)]).toEqual([{ value: "50 lei", when: "în 2024" }, ["activă în 2026"]]);
     expect(trendRowView(GONE, "all", data, firms).pct?.text).toBe("nu mai apare");
   });
 
@@ -146,7 +196,7 @@ describe("a row (trend final §3.4, §4.8)", () => {
     const counties = trendFixture({ noun: "județe", rowFacts: undefined, months: { from: 1, to: 5, mode: "auto" } });
     const view = trendRowView({ entityId: null, name: "Cluj", county: null, valueA: 10, valueB: 20 }, "up", counties, trendSpec({}, { dim: "county" }));
     expect([view.scope, view.place, view.href, view.scopeLabel]).toEqual([{ county: "Cluj" }, null, null, "Cluj · ian.–mai 2024 și ian.–mai 2025"]);
-    expect(view.years[0]).toEqual({ label: "ian.–mai 2024", value: "10" });
+    expect(view.years[0]).toEqual({ label: "ian.–mai 2024", value: "10 lei" });
   });
 
   it("explains „Noi” and „Nu mai apar” under their lists, with the glossary's words", () => {
@@ -164,12 +214,34 @@ describe("a row (trend final §3.4, §4.8)", () => {
 
 describe("the group's total line and the rest", () => {
   it("says who is in the group and their sums, in the answer's months", () => {
-    expect(trendTotal(data, "up", firms)).toEqual({ lead: "Creșteri: 1 firmă", values: [{ label: "2024", value: "100" }, { label: "→ 2025", value: "1.500" }] });
-    expect(trendTotal(data, "new", firms)).toEqual({ lead: "Noi față de 2024: 2 firme", values: [{ label: null, value: "1.200 lei în 2025" }] });
+    expect(trendTotal(data, "up", firms)).toEqual({ lead: "Creșteri: 1 firmă", values: [{ label: "2024", value: "100 lei" }, { label: "→ 2025", value: "1.500 lei" }], unit: "" });
+    expect(trendTotal(data, "new", firms)).toEqual({ lead: "Noi față de 2024: 2 firme", values: [{ label: null, value: "1.200 lei în 2025" }], unit: "" });
     expect(trendTotal(data, "first", firms)?.lead).toBe("Noi față de 2024 · prima dată în 2025: 1 firmă");
-    expect(trendTotal(data, "gone", firms)).toEqual({ lead: "Nu mai apar în 2025: 1 firmă", values: [{ label: null, value: "50 lei în 2024" }] });
+    expect(trendTotal(data, "gone", firms)).toEqual({ lead: "Nu mai apar în 2025: 1 firmă", values: [{ label: null, value: "50 lei în 2024" }], unit: "" });
     const percent = trendFixture({ composition: { ...data.composition, eligible: { count: 3, valueA: 3, valueB: 9 } } });
     expect(trendTotal(percent, "up", trendSpec({ change: "up", order: "percent", minBase: 1_000_000 }))?.lead).toBe("Creșteri de la cel puțin 1 mil. lei în 2024: 3 firme, din 1");
+    const millions = trendFixture({ composition: { ...data.composition, up: { count: 1, valueA: 486_800_000, valueB: 1_600_000_000 } } });
+    expect(trendTotal(millions, "up", firms)).toMatchObject({ values: [{ value: "486,8 mil." }, { value: "1,6 mld." }], unit: " lei" });
+  });
+
+  it("stars a partly covered year in every group's line, the one-year lines too (trend final §4.3, also on `whole`)", () => {
+    const stars = partialStars(data, [{ year: 2025 }]);
+    expect(trendTotal(data, "gone", firms, stars)).toMatchObject({ lead: "Nu mai apar în 2025*: 1 firmă", values: [{ value: "50 lei în 2024" }] });
+    expect(trendTotal(data, "new", firms, stars)).toMatchObject({ lead: "Noi față de 2024: 2 firme", values: [{ value: "1.200 lei în 2025*" }] });
+    expect(trendTotal(data, "up", firms, stars)?.values.map((v) => v.label)).toEqual(["2024", "→ 2025*"]);
+    expect(trendTotal(data, "new", firms, partialStars(data, [{ year: 2024 }]))?.lead).toBe("Noi față de 2024*: 2 firme");
+  });
+
+  it("explains the growths in percent under their list, as a lead to check (trend final §3.9)", () => {
+    const percent = trendFixture({ composition: { ...data.composition, eligible: { count: 3, valueA: 3, valueB: 9 } } });
+    const term = percentTerm(percent, "up", trendSpec({ change: "up", order: "percent", minBase: 1_000_000 }))!;
+    expect(term.text).toBe("Creșterea în procente");
+    expect("text" in term.tip && term.tip.text).toBe("Procentul se calculează doar pentru firmele prezente în ambii ani, de la pragul ales (1 mil. lei în 2024). "
+      + "Un salt de zeci de ori vine de obicei dintr-un singur contract sau dintr-o asociere: e un indiciu de verificat în surse, nu o concluzie.");
+    const suppliers = percentTerm(trendFixture({ ...percent, noun: "furnizori" }), "up", trendSpec({ change: "up", order: "percent" }))!;
+    expect("text" in suppliers.tip && suppliers.tip.text).toContain("furnizorii prezenți");
+    expect(percentTerm(percent, "up", firms)).toBeNull();
+    expect(percentTerm(data, "up", trendSpec({ change: "up", order: "percent" }))).toBeNull();
   });
 
   it("counts the rows the list leaves out", () => {
@@ -200,9 +272,19 @@ describe("the watch on a group and its sources", () => {
     expect(trendWatch(percent, trendSpec({ change: "up", order: "percent", minBase: 1_000_000 }))?.blocked).toBeNull();
   });
 
+  it("blocks the drawer's „Urmărește această selecție” on a group's records over the same limit (DrillResult.group)", () => {
+    expect(drawerWatchBlocked(trendSpec({ change: "new" }), { members: 17_633 })).toBe("Grupa are 17.633 de firme; restrânge perioada sau locul.");
+    expect(drawerWatchBlocked(trendSpec({ change: "new" }, { dim: "county" }), { members: 0 })).toBe("Grupa nu are niciun membru în această selecție.");
+    expect(drawerWatchBlocked(trendSpec({ change: "new" }), { members: 5_000 })).toBeNull();
+    // A row's drawer, or any other question's: no group, nothing to block.
+    expect(drawerWatchBlocked(trendSpec({ change: "new" }), undefined)).toBeNull();
+  });
+
   it("says before activation what the watch fixes", () => {
     expect(trendWatchNote(trendSpec({ change: "new", firstOnly: true }))).toBe("Firmele grupei „Noi față de 2024 · prima dată în 2025” se fixează la activare; cele care intră sau ies din grupă apar doar ca notă.");
     expect(trendWatchNote(trendSpec({ change: "gone" }, { dim: "county" }))).toBe("Județele grupei „Nu mai apar în 2025” se fixează la activare; cele care intră sau ies din grupă apar doar ca notă.");
+    // In percent the watch fixes the growths from the base: its name says the base (the server's „eligible”).
+    expect(trendWatchNote(trendSpec({ change: "up", order: "percent" }))).toBe("Firmele grupei „Creșteri de la cel puțin 1 mil. lei în 2024” se fixează la activare; cele care intră sau ies din grupă apar doar ca notă.");
     expect(trendWatchNote(trendSpec())).toBeNull();
     expect(trendWatchNote({ ...trendSpec({ change: "up" }), block: "table" })).toBeNull();
   });

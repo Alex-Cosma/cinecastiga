@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment } from "react";
 import Link from "next/link";
 import type { PartialYear } from "@/lib/ask/compile";
 import type { AskSpec } from "@/lib/ask/spec";
@@ -12,8 +13,8 @@ import EmptyState from "./answer/EmptyState";
 import RowFacts, { FactTag } from "./answer/RowFacts";
 import TotalLine from "./answer/TotalLine";
 import {
-  compositionHead, firstOptions, groupTerm, labelLegend, rowGroupWords, shownTrendList, trendButtons, trendEmpty, trendNounWords, trendRest, trendRowView,
-  trendTotal, withoutFilingWords, type TrendData, type TrendRowView,
+  compositionHead, emptyGroupsLine, firstOptions, groupTerm, labelLegend, newSubLabel, partialStars, percentTerm, rowGroupWords, shownTrendList, trendButtons,
+  trendEmpty, trendNounWords, trendRest, trendRowView, trendTotal, withoutFilingWords, type TrendData, type TrendRowView,
 } from "./trend-answer";
 
 /*
@@ -48,25 +49,28 @@ export default function TrendBlock({ data, spec, partial = [], conditions = [], 
   const head = compositionHead(data, spec);
   const first = firstOptions(data, list, spec);
   const noun = trendNounWords(data, spec);
-  const views = rows.map((row) => trendRowView(row, list, data, spec));
+  const shownPartial = partial.filter((p) => p.year === data.yearA || p.year === data.yearB);
+  // A partly covered year carries its "*" wherever it labels a sum, in every list (the note under the list says why).
+  const stars = partialStars(data, shownPartial);
+  const views = rows.map((row) => trendRowView(row, list, data, spec, stars));
   const legend = labelLegend(new Set(views.flatMap((v) => v.kinds)), data);
   const term = groupTerm(list, data);
-  const total = trendTotal(data, list, spec);
+  const percent = percentTerm(data, list, spec);
+  const total = trendTotal(data, list, spec, stars);
   const rest = trendRest(data, list, rows.length, spec);
   const unfiled = withoutFilingWords(data, list);
-  const shownPartial = partial.filter((p) => p.year === data.yearA || p.year === data.yearB);
-  // A partly covered year carries its "*" wherever it labels a sum (the note under the list says why).
-  const stars: [string, string] = [data.yearA, data.yearB].map((y) => shownPartial.some((p) => p.year === y) ? "*" : "") as [string, string];
+  const emptyGroups = buttons ? emptyGroupsLine([...buttons, ...(first ?? []).map((o) => ({ name: o.label, ...(o.disabled ? { disabled: o.disabled } : {}) }))]) : null;
   const empty = rows.length === 0 ? trendEmpty(data, list, spec) : null;
   const pick = (next: string) => { if (next !== list) onList?.(next as TrendList); };
   return <div className="fk fk-trend">
     {buttons && <div className="fk-strip fk-trend-strip" role="group" aria-label="Felul schimbării">
       <CountGroups label="Felul schimbării" groups={buttons} value={list === "first" ? "new" : list} {...(head ? { head } : {})} onChange={pick} />
       {first && <div className="fk-row fk-tipwrap fk-trend-sub">
-        <span className="fk-strip-label fk-trend-sub-label" aria-hidden="true"><i className="fk-sw fk-sw--new" />{`${noun.many.charAt(0).toUpperCase()}${noun.many.slice(1)} noi:`}</span>
+        <span className="fk-strip-label fk-trend-sub-label" aria-hidden="true"><i className="fk-sw fk-sw--new" />{newSubLabel(data, spec)}</span>
         <HelpTip tip={{ id: "trend-prima-data" }} />
         <Segmented label={`Care ${noun.many} noi`} value={list} options={first} onChange={pick} />
       </div>}
+      {emptyGroups && <p className="fk-trend-off fk-tipwrap">{emptyGroups.text}<HelpTip tip={emptyGroups.tip} /></p>}
       {unfiled && <p className="fk-trend-unfiled fk-tipwrap">{unfiled} <HelpTip tip={{ title: "Fără bilanț",
         text: "Angajații vin din ultimul bilanț depus (de azi, nu din anul atribuirii). Firmele fără bilanț (străine, PFA, înființate recent) nu intră în nicio clasă." }} /></p>}
     </div>}
@@ -75,11 +79,12 @@ export default function TrendBlock({ data, spec, partial = [], conditions = [], 
       ...(empty.base && onWider ? [{ id: "base", label: empty.base.label, onClick: () => onWider({ ...spec, trend: { ...spec.trend, minBase: empty.base!.minBase } }) }] : []),
     ]} /> : <div className={`fk-alist fk-trend-rows${list === "all" ? " fk-trend-rows--sw" : ""}${views.some((v) => v.single) ? " fk-trend-rows--single" : ""}`}
       role="list" aria-label={total?.lead ?? "Schimbările"}>
-      {views.map((view) => <TrendRowItem key={view.key} view={view} swatch={list === "all"} stars={stars}
+      {views.map((view) => <TrendRowItem key={view.key} view={view} swatch={list === "all"}
         {...(evidence ? { onRecords: () => evidence.open(undefined, view.scope, view.scopeLabel) } : {})} />)}
     </div>}
-    {(legend.length > 0 || term) && rows.length > 0 && <p className="fk-trend-legend fk-tipwrap">
+    {(legend.length > 0 || term || percent) && rows.length > 0 && <p className="fk-trend-legend fk-tipwrap">
       {term && <span>{term.text}<HelpTip tip={term.tip} /></span>}
+      {percent && <span>{percent.text}<HelpTip tip={percent.tip} /></span>}
       {legend.map(({ fact, tip }) => <span key={fact.text}><FactTag fact={fact} /><HelpTip tip={tip} /></span>)}
     </p>}
     {(rest || evidence) && rows.length > 0 && <div className="fk-listfoot">
@@ -90,8 +95,8 @@ export default function TrendBlock({ data, spec, partial = [], conditions = [], 
     </div>}
     {total && !empty && <TotalLine conditions={conditions}>
       {total.lead}{" · "}
-      {total.values.map((v, i) => <span key={i} className="fk-nowrap">{i > 0 ? " " : ""}{v.label && <i className="fk-trend-y">{v.label}{total.values.length === 2 ? stars[i] : ""}</i>}{v.label ? " " : ""}<span className="fk-num">{v.value}</span></span>)}
-      {total.values.length === 2 ? " lei" : ""}
+      {/* Each year with its sum stays whole; the line may break between them, before „→ 2026”. */}
+      {total.values.map((v, i) => <Fragment key={i}>{i > 0 ? " " : ""}<span className="fk-nowrap">{v.label && <i className="fk-trend-y">{v.label}</i>}{v.label ? " " : ""}<span className="fk-num">{v.value}</span>{i === total.values.length - 1 ? total.unit : ""}</span></Fragment>)}
     </TotalLine>}
     {shownPartial.length > 0 && <p className="ask-fine ask-partial-note">
       {shownPartial.some((p) => p.provisional)
@@ -103,7 +108,8 @@ export default function TrendBlock({ data, spec, partial = [], conditions = [], 
 }
 
 /** One row (trend final §4.8): name and place, labels, partner, the two years and the change, „Înregistrări →”. */
-function TrendRowItem({ view, swatch, stars, onRecords }: { view: TrendRowView; swatch: boolean; stars: [string, string]; onRecords?: () => void }) {
+function TrendRowItem({ view, swatch, onRecords }: { view: TrendRowView; swatch: boolean; onRecords?: () => void }) {
+  const pct = view.pct && <><span aria-hidden="true">{view.pct.text}</span><span className="fk-sr">{view.pct.words}</span></>;
   return <div className="fk-arow fk-trow" role="listitem" tabIndex={-1} data-fk-arow="">
     <div className="fk-trow-main">
       <div className="fk-arow-name fk-trow-name">
@@ -115,14 +121,18 @@ function TrendRowItem({ view, swatch, stars, onRecords }: { view: TrendRowView; 
       {view.partner && <p className="fk-trow-partner"><span>{view.partner}</span></p>}
     </div>
     <div className="fk-arow-val fk-trow-val">
-      <span className="fk-trow-dline">
+      {/* Ordered in percent, the percent is the main figure and the change in lei goes under it (trend final §3.9). */}
+      {view.pctFirst && pct ? <span className="fk-trow-dline">
+        <span className={`fk-num fk-trow-delta${view.up ? " up" : ""}`}>{pct}</span>
+        <span className="fk-trow-pct">{view.delta}</span>
+      </span> : <span className="fk-trow-dline">
         <span className={`fk-num fk-trow-delta${view.up ? " up" : ""}`}>{view.delta}</span>
         {view.single && <span className="fk-trow-pct">{view.single.when}</span>}
-        {view.pct && <span className="fk-trow-pct"><span aria-hidden="true">{view.pct.text}</span><span className="fk-sr">{view.pct.words}</span></span>}
-      </span>
+        {pct && <span className="fk-trow-pct">{pct}</span>}
+      </span>}
       {view.years.length > 0 && <span className="fk-trow-years">
-        <span><i>{view.years[0]!.label}{stars[0]}</i> {view.years[0]!.value}</span>{" "}
-        <span>→ <i>{view.years[1]!.label}{stars[1]}</i> {view.years[1]!.value}</span>
+        <span><i>{view.years[0]!.label}</i> {view.years[0]!.value}</span>{" "}
+        <span>→ <i>{view.years[1]!.label}</i> {view.years[1]!.value}</span>
       </span>}
       {onRecords && <button type="button" className="fk-rec" aria-label={`Înregistrări: ${view.name}`} onClick={onRecords}>
         Înregistrări<span className="fk-glyph" aria-hidden="true">→</span>

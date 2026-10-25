@@ -561,10 +561,12 @@
 .fk-trend { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 /* One column that does not wrap: a wrapping column stretches the groups' grid to the strip's height. */
 .fk-trend-strip { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 10px; }
-.fk-trend-strip > .fk-groups-head { margin: 0; padding: 2px 4px 0; }
+/* On the strip's --sunk, small text takes --fk-muted-strong (5,3:1 light); --muted is 4,2:1 there. */
+.fk-trend-strip > .fk-groups-head { margin: 0; padding: 2px 4px 0; color: var(--fk-muted-strong); }
+.fk-trend-strip .term-mark { opacity: 1; }
 .fk-trend-sub { align-items: center; }
 .fk-trend-sub-label { display: inline-flex; align-items: center; gap: 7px; padding-left: 4px; }
-.fk-trend-unfiled { margin: 0; padding: 0 4px; color: var(--fk-muted-strong); font-size: 12.5px; }
+.fk-trend-unfiled, .fk-trend-off { margin: 0; padding: 0 4px; color: var(--fk-muted-strong); font-size: 12.5px; }
 .fk-trend-rows .fk-arow { grid-template-columns: minmax(0, 1fr) minmax(190px, auto); align-items: start; }
 .fk-trend-rows--sw .fk-arow { padding-left: 19px; }
 .fk-trow-main { min-width: 0; }

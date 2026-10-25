@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AskSpec } from "./spec";
-import { specTrendList, trendListSpec } from "./trend-shared";
+import { foreignCountry, specTrendList, specTrendPart, trendListSpec, trendPartLabel, trendRowLabels, type TrendRowFacts } from "./trend-shared";
 import * as partition from "./trend-partition";
 import * as shared from "./trend-shared";
 
@@ -48,10 +48,31 @@ describe("the spec of another list of the same answer", () => {
     expect(trendListSpec(answered({ change: "new" }), "up").trend).toEqual({ change: "up" });
   });
 
+  it("names its part with its years, the growths in percent with their base", () => {
+    expect(specTrendPart(answered({ change: "up", order: "percent" }))).toBe("eligible");
+    expect(specTrendPart(answered({ change: "up" }))).toBe("up");
+    expect(trendPartLabel("eligible", answered({ change: "up", order: "percent", minBase: 100_000 }))).toBe("Creșteri de la cel puțin 100.000 lei în 2024");
+    expect(trendPartLabel("first", answered())).toBe("Noi față de 2024 · prima dată în 2025");
+    expect(trendPartLabel("gone", answered())).toBe("Nu mai apar în 2025");
+    expect(trendPartLabel("all", answered())).toBe("Toate");
+  });
+
   it("is what the engine re-exports (one definition of the lists, the facts and their labels)", () => {
     expect(partition.TREND_LISTS).toBe(shared.TREND_LISTS);
     expect(partition.trendRowLabels).toBe(shared.trendRowLabels);
     expect(partition.trendGroupOfRow).toBe(shared.trendGroupOfRow);
     expect(partition.changeYear).toBe(shared.changeYear);
+  });
+});
+
+describe("a foreign identity's country", () => {
+  const facts = (o: Partial<TrendRowFacts>): TrendRowFacts =>
+    ({ year: 2025, value: 10, largest: null, joint: 0, partner: null, firstActivity: "2019-01-01", lastActivity: "2025-01-01", cuiValid: false, country: null, ...o });
+  it("is shown for a foreign country, never for RO: a domestic entry without a valid CUI says so (FCC CONSTRUCCION S.A.)", () => {
+    expect(foreignCountry({ country: "DE" })).toBe("DE");
+    expect([foreignCountry({ country: "RO" }), foreignCountry({ country: "ro" }), foreignCountry({ country: null })]).toEqual([null, null, null]);
+    const row = { valueA: 0, valueB: 10 };
+    expect(trendRowLabels(row, facts({ country: "RO" }), { yearA: 2024, yearB: 2025 })[0]).toEqual({ kind: "noValidCui" });
+    expect(trendRowLabels(row, facts({ country: "FR" }), { yearA: 2024, yearB: 2025 }).map((l) => l.kind)).not.toContain("noValidCui");
   });
 });
