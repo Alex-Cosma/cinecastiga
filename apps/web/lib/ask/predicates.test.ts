@@ -199,6 +199,13 @@ describe("the conditions of a question", () => {
     expect(range({ supplierId: 22, yearTo: 2023 })).toEqual(['d.finalization_date < $1 ["2024"]']);
     // A kind of institution is its list of ids (D1), read from the same (authority_id, finalization_date) indexes.
     expect(range({ authorityKind: "spital", yearFrom: 2025, yearTo: 2025 })).toEqual(['d.finalization_date >= $1 ["2025"]', 'd.finalization_date < $1 ["2026"]']);
+    // A trend's two years: the sources add the span as a range on id-anchored selections; the answer and other selections keep substr() alone.
+    const trend = (filters: AskSpec["filters"], withCtx = true) =>
+      render(trendYearsPredicate(fake, 2019, 2024, withCtx ? ctxFor({ block: "trend", dim: "supplier", measure: "value", filters }) : undefined));
+    expect(trend({ authorityKind: "comuna", yearFrom: 2019, yearTo: 2024 })).toEqual({
+      text: "substr(d.finalization_date,1,4) in ($1, $2) and d.finalization_date >= $3 and d.finalization_date < $4", params: ["2019", "2024", "2019", "2025"] });
+    expect(trend({ county: "Cluj", yearFrom: 2019, yearTo: 2024 }).text).toBe("substr(d.finalization_date,1,4) in ($1, $2)");
+    expect(trend({ authorityKind: "comuna" }, false).text).toBe("substr(d.finalization_date,1,4) in ($1, $2)");
   });
 
   it("count the record threshold over the rows of the same selection", () => {

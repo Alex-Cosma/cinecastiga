@@ -161,6 +161,11 @@ export function perfCases(): PerfCase[] {
     perfCase("sources:table-hospitals-2024-2025", "sources", "Sursele clasamentului firmelor care câștigă de la spitale, 2024–2025", "table",
       all(set({ authorityKind: "spital" }), years(2024, 2025)), { path: "rows", barMs: 2000 }),
     perfCase("sources:stat-communes-2025", "sources", "Sursele achizițiilor primăriilor de comună, 2025", "stat", all(set({ authorityKind: "comuna" }), years(2025)), { path: "rows", barMs: 2000 }),
+    // A kind in a past year: the key walk read every newer record (communes, 2019: 17 s).
+    perfCase("sources:stat-communes-2019", "sources", "Sursele achizițiilor primăriilor de comună, 2019", "stat", all(set({ authorityKind: "comuna" }), years(2019)), { path: "rows", barMs: 2000 }),
+    perfCase("sources:trend-communes-2018-2019", "sources", "Sursele schimbării la primăriile de comună, 2018 → 2019", "trend", all(set({ authorityKind: "comuna" }), years(2018, 2019)), { path: "rows", barMs: 2000 }),
+    perfCase("sources:stat-communes-2019-da", "sources", "Sursele achizițiilor directe ale primăriilor de comună, 2019", "stat",
+      all(top({ dataset: "da" }), set({ authorityKind: "comuna" }), years(2019)), { path: "rows", barMs: 2000 }),
     perfCase("csv:table-cluj-2025", "csv", "CSV: clasamentul din Cluj, 2025", "table", all(set({ county: "Cluj" }), years(2025)), { path: "csv", barMs: 2000 }),
     perfCase("csv:trend-2025-2026-selgros-row", "csv", "CSV: rândul SELGROS al trendului 2025 → 2026", "trend", years(2025, 2026), { path: "csv", scope: SELGROS_ROW, barMs: 2000 }),
     perfCase("csv:table-national", "csv", "CSV: clasamentul național implicit (primele 100.000)", "table", () => {}, { path: "csv", barMs: 2000 }),

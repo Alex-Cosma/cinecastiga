@@ -246,9 +246,18 @@ function periodRange(sql: DbSql, ctx: PredicateCtx): Fragment[] {
   return parts;
 }
 
-/** A trend counts only its two years: the answer's two sums and its sources (the period's place in rowPredicates). */
-export const trendYearsPredicate = (sql: DbSql, yearA: number, yearB: number): Fragment =>
-  sql`substr(d.finalization_date,1,4) in (${String(yearA)}, ${String(yearB)})`;
+/**
+ * A trend counts only its two years: the answer's two sums and its sources (the period's place in rowPredicates).
+ * Given the context of an id-anchored selection (the sources pass it), also the span of the two years as a
+ * range on the column, as periodRange: the (id, finalization_date) indexes bound the read, and the rows are
+ * the same (a date of year A or B lies in [min, max + 1)). Without it a kind's trend sources read the table.
+ */
+export const trendYearsPredicate = (sql: DbSql, yearA: number, yearB: number, ctx?: PredicateCtx): Fragment => {
+  const years: Fragment = sql`substr(d.finalization_date,1,4) in (${String(yearA)}, ${String(yearB)})`;
+  return ctx && idAnchored(ctx)
+    ? sql`${years} and d.finalization_date >= ${String(Math.min(yearA, yearB))} and d.finalization_date < ${String(Math.max(yearA, yearB) + 1)}`
+    : years;
+};
 
 /** Lei per inhabitant: only the administrations with a strict RPL 2021 population (per-capita.ts), in the ranking and its sources. */
 export const perCapitaPredicate = (sql: DbSql, ids: readonly string[]): Fragment =>
