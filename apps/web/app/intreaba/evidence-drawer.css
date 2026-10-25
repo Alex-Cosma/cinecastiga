@@ -26,3 +26,16 @@
 @media(max-width:760px){.ev-load-status.is-active{padding:15px 20px;gap:12px}.ev-load-status strong{font-size:13px}.ev-load-status p{font-size:11px}.ev-skeleton-summary{padding:22px 18px;gap:20px}.ev-skeleton-row{grid-template-columns:1fr 1fr;gap:23px;padding:22px 16px;border:1px solid var(--ev-line);border-radius:12px;margin-bottom:12px}.ev-skeleton-row>div:first-child{grid-column:1/-1}}
 @media(prefers-reduced-motion:reduce){.ev-load-spinner{animation:none}}
 .ev-scope-label{margin:8px 0 0;font-size:14px;color:var(--ink2);overflow-wrap:anywhere}
+/* F1b-polish (kit §8, §9): small text ≥ 4.5:1 in both themes (the summary on its green, the warm notes), and every
+   control of the records list ≥ 44 × 44 px under 600 px; a link inside a sentence stays text. */
+.ev-source-summary span,.ev-source-summary p{color:var(--ink2)}
+.ev-export-limit,.ev-state{color:var(--amber-ink)}
+.ev-party-arrow{color:var(--muted)}
+@media(max-width:600px){
+  .ev-close{min-width:44px;min-height:44px}
+  .ev-calculation>summary,.ev-record-details>summary{min-height:44px;align-content:center}
+  .ev-filters select,.ev-filters input,.ev-sort select,.ev-pagination button,.ev-footer button{min-height:44px}
+  .ev-contract-title,.ev-seap,.ev-ted{display:flex;align-items:center;min-height:44px}
+  .ev-party>a{display:inline-flex;align-items:center;min-width:44px;min-height:44px}
+  .ev-formula-profile>a{display:flex;align-items:center;min-height:44px}
+}

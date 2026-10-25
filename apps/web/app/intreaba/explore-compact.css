@@ -111,6 +111,23 @@
 .cq-replace-question button:last-child { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
 .cq-save-dialog-actions { flex-wrap:wrap; }
 @media(max-width:700px) { .cq-saved-row { padding:16px 4px; gap:10px; } .cq-catalogue-tabs { gap:20px; } }
+
+/* The answer's own controls reach 44 × 44 px under 600 px too (kit §9, G4; F1b-polish): its tools and
+   disclosures, the record links, the links of tables, legends and cards. A (?) keeps 44 px with a
+   negative margin, so its line does not grow. A link inside a sentence is text (WCAG 2.5.8 inline);
+   a chart's bars and points have their list or table beside them. The (?) mark is opaque, as in the
+   builder (its .75 is under 3:1). */
+.cq-answer .term-tip .term-mark { opacity:1; }
+@media(max-width:600px) {
+  .cq-answer .cq-answer-tools .cq-copy, .cq-answer .cq-export summary, .cq-answer .cq-answer-tools .cq-export-options button,
+  .cq-answer details > summary, .cq-answer .cmp-more { min-height:44px; }
+  .cq-answer details > summary { align-content:center; }
+  .cq-answer .cq-record-link { display:inline-flex; align-items:center; min-width:44px; min-height:44px; }
+  .cq-answer td a, .cq-answer .ask-complegend .nm a, .cq-answer .ask-trend .nm a, .cq-answer .cmp-card h3 a, .cq-answer .ask-ecard h3 a,
+  .cq-answer .coverage-disclosure-body > a { display:inline-flex; align-items:center; min-width:44px; min-height:44px; }
+  .cq-answer .cmp-mirror-name { display:flex; align-items:center; min-height:44px; }
+  .cq-answer .term-tip > .term-trigger { min-width:44px; min-height:44px; margin-block:-10px; }
+}
 /* Dialog input colors follow the theme; the external catalogue button is unchanged. */
 .explore-compact .qb-dialog .qb-picker-search { background:var(--sunk); border-color:var(--line); }
 .explore-compact .qb-dialog .qb-picker-search input { color:var(--ink); }

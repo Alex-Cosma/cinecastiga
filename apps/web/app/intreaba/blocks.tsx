@@ -126,6 +126,9 @@ export function DistributionBlock({
     if (county) q.set("jud", county);
     return `/semnale?${q.toString()}`;
   };
+  const bucketLabel = (b: { from: number; to: number }) => `${formatDecimal(b.from, 1)}–${formatDecimal(b.to, 1)}`;
+  const openBucket = (b: { from: number; to: number }) =>
+    evidence?.open(undefined, { riskBucket: { from: b.from, to: b.to } }, `Indice ${bucketLabel(b)} · înregistrările profilurilor`);
   return (
     <div>
       {t.el}
@@ -155,11 +158,7 @@ export function DistributionBlock({
               onClick={(event) => {
                 if (evidence) {
                   event.preventDefault();
-                  evidence.open(
-                    undefined,
-                    { riskBucket: { from: b.from, to: b.to } },
-                    `Indice ${formatDecimal(b.from, 1)}–${formatDecimal(b.to, 1)} · înregistrările profilurilor`,
-                  );
+                  openBucket(b);
                 }
               }}
               {...bind}
@@ -195,6 +194,36 @@ export function DistributionBlock({
           Verifică profilul ales →
         </button>
       )}
+      {/* The bars as a list: ten bars are 23–30 px wide on a phone, under the kit's 44 px (WCAG 2.5.8: an equivalent control). */}
+      <details className="cq-calculation">
+        <summary>Intervalele indicelui, ca listă</summary>
+        <table className="cq-group-table">
+          <thead>
+            <tr>
+              <th>Indice</th>
+              <th>Entități</th>
+              <th>Surse</th>
+            </tr>
+          </thead>
+          <tbody>
+            {d.buckets.map((b, i) => b.n > 0 && (
+              <tr key={b.from}>
+                <td>{bucketLabel(b)}{i === focalBucket ? ` · aici e ${cleanName(d.focal.name)}` : ""}</td>
+                <td>{formatInt(b.n)}</td>
+                <td>
+                  {evidence ? (
+                    <button className="cq-record-link" type="button" onClick={() => openBucket(b)}>
+                      Înregistrări →
+                    </button>
+                  ) : (
+                    <Link href={bucketUrl(b.from, b.to)}>Lista →</Link>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </details>
       <p className="ask-distcap">
         <Link href={`/entitati/${d.focal.entityId}`}>
           {cleanName(d.focal.name)}
@@ -1530,7 +1559,7 @@ export function TrendBlock({
                       )
                     }
                   >
-                    Sursele celor doi ani →
+                    Înregistrările celor doi ani →
                   </button>
                 )}
               </span>
