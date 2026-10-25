@@ -68,15 +68,13 @@ export type SentenceToken = { kind: "text"; text: string } | SentenceSlot | Sent
 export interface SentenceLabels { cpvName?: string | null | undefined }
 
 /**
- * Kinds the profiles' subject says only after D1 (plan §9 F1, §4.12, §4.13):
- * by name, "primării de oraș și municipiu" holds 19% communes and "spital"
- * misses the clinical institutes, so the window does not offer them yet. A
- * link that carries one keeps it as a condition under the sentence.
+ * Kinds the profiles' subject could say only after D1 (plan §9 F1, §4.12,
+ * §4.13): by name, "primării de oraș și municipiu" held 19% communes and
+ * "spital" missed the clinical institutes. D1 classifies them from the
+ * locality registry and the clinical-institute list (authority-kind.ts), so
+ * none waits any more; the hook stays for a kind that will.
  */
-export const KINDS_AFTER_D1: Partial<Record<Block, readonly AuthorityKind[]>> = {
-  scatter: ["oras_municipiu"],
-  entity_card: ["oras_municipiu", "spital"],
-};
+export const KINDS_AFTER_D1: Partial<Record<Block, readonly AuthorityKind[]>> = {};
 
 /**
  * Whether a kind waits for D1 on this question: only as the profiles'

@@ -259,20 +259,21 @@ describe("the sentence of each question (plan §4)", () => {
     expect(under(q({ block: "entity_card", dim: "supplier", rankBy: "risk", filters: { minEmployees: 1, ...ADMIN, cpvTerm: "x" } }))).toEqual(["admin", "cpvTerm", "employees"]);
   });
 
-  it("waits for D1 before saying the kinds the names misclassify (plan §9 F1)", () => {
-    expect(KINDS_AFTER_D1).toEqual({ scatter: ["oras_municipiu"], entity_card: ["oras_municipiu", "spital"] });
+  it("says the kinds D1 classifies from the registries as the subject (plan §9 F1)", () => {
+    expect(KINDS_AFTER_D1).toEqual({});
     const towns = q({ block: "scatter", dim: "authority", filters: { authorityKind: "oras_municipiu" } });
-    expect(marked(towns)).toBe("Ce [instituții publice] din [toată țara] ies din tipar după risc și valoarea achizițiilor directe?");
-    expect(under(towns)).toEqual(["authorityKind"]);
+    expect(marked(towns)).toBe("Ce [primării de oraș și municipiu] din [toată țara] ies din tipar după risc și valoarea achizițiilor directe?");
+    expect(under(towns)).toEqual([]);
     const hospitals = q({ block: "entity_card", dim: "authority", rankBy: "value", filters: { authorityKind: "spital", county: "Cluj" } });
-    expect(marked(hospitals)).toBe("Care [instituție] din [județul Cluj] [cumpără cel mai mult], prin [toate achizițiile], în [toți anii]?");
-    expect(under(hospitals)).toEqual(["authorityKind"]);
-    // Only the subject waits: the buyers of a ranking of firms keep every kind, as on "Cine câștigă?" (review S2-F1b).
+    expect(marked(hospitals)).toBe("Care [spital] din [județul Cluj] [cumpără cel mai mult], prin [toate achizițiile], în [toți anii]?");
+    expect(under(hospitals)).toEqual([]);
+    expect(marked(q({ block: "entity_card", dim: "authority", rankBy: "risk", filters: { authorityKind: "spital" } }))).toBe("Care [spital] din [toată țara] [are cel mai ridicat indice de risc]?");
+    // The buyers of a ranking of firms keep every kind, as on "Cine câștigă?" (review S2-F1b).
     const toHospitals = q({ block: "entity_card", dim: "supplier", rankBy: "value", filters: { authorityKind: "spital", yearFrom: 2025, yearTo: 2025 } });
     expect(marked(toHospitals)).toBe("Care [firmă] [câștigă cel mai mult] din [achizițiile] făcute de [spitalele] din [toată țara], în [2025]?");
     expect(under(toHospitals)).toEqual([]);
     expect(kindAfterD1(toHospitals, "spital")).toBe(false);
-    expect(kindAfterD1(hospitals, "spital")).toBe(true);
+    expect(kindAfterD1(hospitals, "spital")).toBe(false);
     // Elsewhere the kinds are said as today.
     expect(marked(q({ block: "table", dim: "authority", filters: { authorityKind: "oras_municipiu" } }))).toMatch(/^Ce \[primării de oraș și municipiu\] din/);
     expect(marked(q({ block: "entity_card", dim: "authority", rankBy: "risk", filters: { authorityKind: "scoala" } }))).toBe("Care [școală] din [toată țara] [are cel mai ridicat indice de risc]?");

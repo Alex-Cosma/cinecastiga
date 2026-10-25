@@ -5,6 +5,7 @@ import type { QuestionSpec } from "../../lib/ask/question-ui";
 
 // The app's "@/" paths are Next's; the unit tests resolve them to the same modules.
 vi.mock("@/lib/ask/spec", () => import("../../lib/ask/spec"));
+vi.mock("@/lib/ask/answer-core", () => import("../../lib/ask/answer-core"));
 vi.mock("@/lib/ask/question-ui", () => import("../../lib/ask/question-ui"));
 vi.mock("@/lib/ask/filters/restore", () => import("../../lib/ask/filters/restore"));
 vi.mock("@/lib/ask/filters/transition", () => import("../../lib/ask/filters/transition"));

@@ -1,4 +1,5 @@
 import { localityScopeError, transitionQuestion, type QuestionSpec } from "../question-ui";
+import { keyVersionNotes } from "../answer-core";
 import { NEWER_VERSION_LINK, parseSpec, runnableError, unimplementedSpecKeys, type AskSpec } from "../spec";
 import type { ConditionLabels } from "./describe";
 import { advancedConditions, legacyConditions, withoutConditions, type AdvancedCondition, type LegacyCondition } from "./legacy-conditions";
@@ -48,7 +49,7 @@ export function restoreLink(raw: unknown, labels: ConditionLabels = {}): Restore
   const errorOf = (s: QuestionSpec) => runnableError(s as unknown as AskSpec) ?? localityScopeError(s);
   const reason = errorOf(spec);
   return {
-    kind: "draft", spec: spec as FilterSpec, link: given as unknown as FilterSpec, notes: changes,
+    kind: "draft", spec: spec as FilterSpec, link: given as unknown as FilterSpec, notes: [...new Set([...changes, ...keyVersionNotes(given as unknown as AskSpec)])],
     conditions: legacyConditions(spec, labels), advanced: advancedConditions(spec, labels),
     run: reason === null && errorOf(given) === null, reason,
   };

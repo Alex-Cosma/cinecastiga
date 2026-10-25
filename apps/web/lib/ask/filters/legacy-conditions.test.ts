@@ -59,8 +59,7 @@ describe("legacy conditions of old links (plan §2.6)", () => {
       // The map's buyers are kinds (plan §4.4), and it offers no firm size.
       "combo:map:buyer": ["applied · Din link: instituția „Municipiul Fixture Nord”"],
       "combo:map:employees-year": ["applied · Din link: firme cu cel puțin 1 angajat"],
-      // "Spitale" waits for D1 on "Cine conduce?" (sentence.ts KINDS_AFTER_D1).
-      "combo:entity_card:risk-kind": ["applied · Din link: doar spitale"],
+      // "Spitale" is said in the sentence of "Cine conduce?" since D1 (combo:entity_card:risk-kind has no chip).
     });
   });
 
