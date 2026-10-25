@@ -13,23 +13,12 @@ import { namedKind, type AskSpec } from "./spec";
 import { forgetAuthorityKinds, readAuthorityKinds, type AuthorityKinds } from "./authority-kind";
 import type { Grounding } from "./ground";
 import type { QueryPopulation } from "./population";
+import { ENGINE_GLOBAL_TABLES, scoped } from "./test-fixture";
 
 const testUrl = process.env["TEST_DATABASE_URL"];
 if (testUrl && !/^seap_test_[a-z0-9_]+$/.test(new URL(testUrl).pathname.slice(1))) throw new Error("Rollup fixtures require a dedicated seap_test_* database");
 const connection = testUrl ? createDb(testUrl) : null;
 afterAll(async () => { await connection?.sql.end(); });
-
-/** Qualified marts are rewritten into unique fixture tables; everything rolls back (population.integration.test.ts). */
-function scoped(connection: DbSql, prefix: string): DbSql {
-  const rewrite = (text: string) => text.replace(/\bmarts\./g, `${prefix}.`);
-  const tag = ((chunks: TemplateStringsArray, ...values: unknown[]) => {
-    if (!Array.isArray(chunks) || !("raw" in chunks)) return (connection as unknown as (...args: unknown[]) => unknown)(chunks, ...values);
-    const mapped = chunks.map(rewrite); Object.defineProperty(mapped, "raw", { value: chunks.raw.map(rewrite) });
-    return connection(mapped as unknown as TemplateStringsArray, ...values as never[]);
-  }) as unknown as DbSql;
-  Object.assign(tag, { array: connection.array.bind(connection), unsafe: (text: string) => connection.unsafe(rewrite(text)), begin: (first: unknown, second?: unknown) => (typeof first === "function" ? first : second as (db: DbSql) => unknown)(tag) });
-  return tag;
-}
 
 // Spitals in Cluj and Iași, a commune, a municipality, an authority without county;
 // firms with 1–9, 50 and unknown employees; DAs at and above the 2M ceiling, a zero,
@@ -279,7 +268,10 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
           await tx.unsafe(`create table ${prefix}.${table} as table marts.${table} with no data`);
         // With its generated log_total_ron (migration 0085).
         await tx.unsafe(`create table ${prefix}.entity_flags (like marts.entity_flags including all)`);
-        const q = scoped(tx as unknown as DbSql, prefix);
+        // The tables outside marts the engine reads, empty too: what another fixture committed to a test database
+        // (the golden fixture's CPV catalogue names the live breakdown's slices, never the rollups') never reaches here.
+        for (const table of ENGINE_GLOBAL_TABLES) await tx.unsafe(`create table ${prefix}.${table.replace(".", "_")} as table ${table} with no data`);
+        const q = scoped(tx as unknown as DbSql, prefix, ENGINE_GLOBAL_TABLES);
         await load(q);
         forgetAuthorityKinds();
         fixtureKinds = await readAuthorityKinds(q);

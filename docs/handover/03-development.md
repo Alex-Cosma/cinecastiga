@@ -144,6 +144,8 @@ pnpm turbo typecheck lint test build
 
 Pentru teste PostgreSQL, citește testul înainte. Folosește o bază izolată `seap_test_*` și variabila cerută de acel test (`TEST_DATABASE_URL` sau altă configurație explicită). Multe integrări sunt sărite fără DB de test: „unit passed” nu înseamnă că integrările au rulat. Nu rula seed-uri/truncate-uri de fixtures pe `seap`, `seap_collab` cu lucru personal sau producție.
 
+Fixture-urile motorului „Întreabă” (`lib/ask/test-fixture.ts`, și `rollups.integration.test.ts` din 25 octombrie) citesc și tabelele din afara `marts` (`core.entities`, `core.cpv_codes`, `reference.*`, lista `ENGINE_GLOBAL_TABLES`) din copii goale, în tranzacția lor anulată. Trec deci la fel pe o copie doar cu schema și pe o bază `seap_test_*` în care alt test a lăsat date (de exemplu catalogul CPV al fixture-ului „de aur”, care altfel numea feliile defalcării live, nu și pe cele din rollup-uri).
+
 Viteza „Întreabă” se măsoară cu `apps/web/scripts/ask-perf.ts` (plan filtre §6.4), doar pe o bază locală (loopback), cu sesiuni `default_transaction_read_only=on`; nu scrie nimic și nu atinge serverul de dezvoltare:
 
 ```sh
