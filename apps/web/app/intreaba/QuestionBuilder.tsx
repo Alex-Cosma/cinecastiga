@@ -24,6 +24,7 @@ import ParkedRow from "./builder/ParkedRow";
 import ScopeLine from "./builder/ScopeLine";
 import Sentence, { Presentation } from "./builder/Sentence";
 import UnderChips from "./builder/UnderChips";
+import { useEntityNames } from "./builder/use-entity-names";
 import KitLink from "./answer/KitLink";
 import RowMenu from "./answer/RowMenu";
 import { builderView, onlyExclusions, patchDraft, withoutExclusions, type BuilderWindowSpec, type StripPatch } from "./builder/view";
@@ -120,7 +121,9 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
 
   const cpvTerm = String(draft.filters.cpvTerm ?? "");
   const cpvName = cpvNames[cpvTerm];
-  const view = useMemo(() => builderView(draft, { cpvName }), [draft, cpvName]);
+  // An old link's selection names its institutions and firms in the (?) once they are looked up (the answer does not wait).
+  const entities = useEntityNames(draft.population);
+  const view = useMemo(() => builderView(draft, { cpvName, entities }), [draft, cpvName, entities]);
   const dirty = questionKey(draft) !== questionKey(applied ?? seed.spec);
   // A refused link condition says its reason on its chip: the list under the buttons keeps the rest.
   const reasons = new Set(view.refused.map((c) => c.reason));

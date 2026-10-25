@@ -119,13 +119,19 @@ const LIST_NOUNS = {
   cpv: ["CPV", "CPV", "cod CPV", "coduri CPV"], county: ["județul", "județele", "județ", "județe"],
 } as const;
 const dayOf = (iso: string) => /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso.split("-").reverse().join(".") : iso;
-/** One condition of a precise selection in a chip's few words ("valoarea pe câștigător ≥ 100.000 lei", "fără CPV 45"). */
-function conditionWords(c: PopulationCondition): string {
+/**
+ * One condition of a precise selection in a chip's few words ("valoarea pe
+ * câștigător ≥ 100.000 lei", "fără CPV 45"). Institutions and firms are named
+ * from the link's labels or `known` (names the caller looked up), else
+ * counted: never a bare id.
+ */
+function conditionWords(c: PopulationCondition, known: Readonly<Record<string, string>> = {}): string {
   if ("value" in c) return c.field === "value"
     ? `valoarea pe câștigător ${c.op === "gte" ? "≥" : "≤"} ${formatExactDecimal(c.value)} lei`
     : `data ${c.op === "gte" ? "≥" : "≤"} ${dayOf(c.value)}`;
   const [theOne, theMany, one, many] = LIST_NOUNS[c.field];
-  const names = c.labels?.length === c.values.length ? c.labels : c.field === "cpv" || c.field === "county" ? c.values : null;
+  const looked = c.values.every((v) => known[v]) ? c.values.map((v) => known[v]!) : null;
+  const names = c.labels?.length === c.values.length ? c.labels : c.field === "cpv" || c.field === "county" ? c.values : looked;
   const what = names && names.length <= 2 ? `${names.length === 1 ? theOne : theMany} ${names.join(", ")}` : countWords(c.values.length, one, many);
   return `${c.op === "not_in" ? "fără" : "doar"} ${what}`;
 }
@@ -140,7 +146,27 @@ export function preciseWords(population: QueryPopulation, named = true): string 
   const all = population.groups.flatMap((group) => group.conditions);
   if (all.length > 2) return `${named ? "selecție avansată, " : ""}${countWords(all.length, "condiție", "condiții")}`;
   const operator = population.groups.length > 1 ? population.operator : population.groups[0]?.operator ?? "and";
-  return all.map(conditionWords).join(operator === "and" ? " și " : " sau ");
+  return all.map((c) => conditionWords(c)).join(operator === "and" ? " și " : " sau ");
+}
+
+/** The names an old link's precise selection lacks: ids of institutions and firms without labels, where a chip would name them (a list of one or two), at most 20. */
+export function unnamedEntityIds(population: QueryPopulation | undefined): string[] {
+  const ids = new Set<string>();
+  for (const c of population?.groups.flatMap((group) => group.conditions) ?? [])
+    if ("values" in c && (c.field === "authority" || c.field === "supplier") && c.labels?.length !== c.values.length && c.values.length <= 2)
+      for (const id of c.values) ids.add(id);
+  return ids.size <= 20 ? [...ids] : [];
+}
+
+/**
+ * A precise selection's (?) (kit P9): every group, each condition in its
+ * chip's words, institutions and firms named where `known` names them, else
+ * counted (an old link without labels; the builder looks the names up, the
+ * answer never waits for them).
+ */
+export function populationDetail(population: QueryPopulation, known: Readonly<Record<string, string>> = {}): string {
+  const group = (g: QueryPopulation["groups"][number]) => g.conditions.map((c) => conditionWords(c, known)).join(g.operator === "and" ? " ȘI " : " SAU ");
+  return population.groups.length === 1 ? group(population.groups[0]!) : population.groups.map((g) => `(${group(g)})`).join(population.operator === "and" ? " ȘI " : " SAU ");
 }
 
 const RECEIPT_NAMES = { authority: "Instituția", supplier: "Firma", cpv: "Codul CPV", county: "Județul" };
@@ -320,7 +346,7 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
     if (origin) {
       const text = `${origin.label}: ${origin.words}`;
       return {
-        origin, words: origin.words, chip: text, pills: [text], summary: text, detail: precise,
+        origin, words: origin.words, chip: text, pills: [text], summary: text, detail: populationDetail(p, entities),
         scope: [{ label: origin.label, value: origin.words }],
         caveat: `${text}. Valorile se referă la cota alocată fiecărui furnizor.`, note: `${text}.`,
       };
@@ -329,7 +355,7 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
     const restWords = rest ? preciseWords(rest) : null;
     return {
       words: [...exclusionWords(excluded), ...(restWords ? [restWords] : [])].join(", "),
-      chip: precise, detail: precise,
+      chip: precise, detail: populationDetail(p, entities),
       pills: [`Selecție precisă · ${countWords(conditionsOf(p), "condiție", "condiții")} în ${countWords(p.groups.length, "grup", "grupuri")}`],
       ...(excluded.length ? { scope: [{ label: "Scoase din calcul", value: excluded.map((e) => `Fără ${e.label}${e.label !== e.value ? ` (${e.value})` : ""}`).join(", ") }] } : {}),
       summary: precise,
