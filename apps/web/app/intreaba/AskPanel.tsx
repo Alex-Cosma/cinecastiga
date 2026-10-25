@@ -27,9 +27,12 @@ import {
   NetworkBlock,
   EntityCardBlock,
   FactCheckBlock,
-  TrendBlock,
   useTip,
 } from "./blocks";
+import TrendBlock from "./TrendAnswer";
+import { TREND_LIST_CSV, trendWatch } from "./trend-answer";
+import { specTrendList, type TrendList } from "@/lib/ask/trend-shared";
+import { isWholeYear, monthsLabel } from "@/lib/ask/months-window";
 import QuestionBuilder, { type StripPatch } from "./QuestionBuilder";
 import SaveQuestionButton from "./SaveQuestionButton";
 import type { SavedQuestion } from "./SavedQuestions";
@@ -44,7 +47,7 @@ import Segmented from "./builder/Segmented";
 import "./builder/filters-kit.css";
 import { answerCsv, type BandState } from "./answer-csv";
 import { useCpvName } from "./cpv-name";
-import { STRIP_QUERY_KEYS, appliedAfterStrip, readThread, shownWords, streamOptions, threadCrumbs, threadWords, type AnswerVariants, type Thread } from "./answer-state";
+import { DATA_RELOADED, STRIP_QUERY_KEYS, appliedAfterStrip, appliedAfterTrendList, readThread, shownWords, streamOptions, threadCrumbs, threadWords, type AnswerVariants, type Thread } from "./answer-state";
 import EntityTypeahead from "./EntityTypeahead";
 import EvidenceDrawer from "./EvidenceDrawer";
 import { AnswerEvidence, useAnswerEvidence } from "./AnswerEvidence";
@@ -224,7 +227,7 @@ export default function AskPanel({
        * `thread`: the breakdown's thread this run keeps (a level opened from the answer);
        * any other run drops it (plan §2.3).
        */
-      opts: { strip?: { path: StripPatch["path"]; value: string }; thread?: Thread | null } = {},
+      opts: { strip?: { path: StripPatch["path"]; value: string }; thread?: Thread | null; drillLabel?: string } = {},
     ) => {
       if (!NATURAL_LANGUAGE_ENABLED && typeof body.question === "string") {
         setError(NATURAL_LANGUAGE_UNAVAILABLE);
@@ -294,6 +297,9 @@ export default function AskPanel({
             title:
               answer.question ||
               questionTitle(answer.spec),
+            ...(opts.drillLabel ? { scopeLabel: opts.drillLabel } : {}),
+            // A trend's sources list the months this answer counted (plan §2.8).
+            ...(answer.executed ? { months: answer.executed.months } : {}),
           });
         if (!drill && scroll)
           // Two frames: the answer is rendered before it is brought under the sticky header.
@@ -490,6 +496,9 @@ export default function AskPanel({
     ...(stripKeys.includes("dataset") ? { stream: (applied.dataset ?? "all") as NonNullable<BandState["stream"]> } : {}),
     ...(stripKeys.includes("measure") ? { lens: applied.measure === "count" ? "count" as const : "value" as const } : {}),
     ...(thread ? { thread: threadWords(thread) } : {}),
+    // A trend's group buttons and its months (plan §4.7 Export): in the header and the file name.
+    ...(resp?.data?.block === "trend" && resp.data.composition ? { group: TREND_LIST_CSV[specTrendList(applied)] } : {}),
+    ...(resp?.data?.block === "trend" && resp.data.months && !isWholeYear(resp.data.months) ? { months: monthsLabel(resp.data.months) } : {}),
   } : {};
   const appliedKey = applied ? questionKey(applied) : "";
   useEffect(() => { setStreamShown(null); setAnswerSaved(null); }, [appliedKey]);
@@ -510,6 +519,20 @@ export default function AskPanel({
     }
     setAppliedSpec(next);
     setStripPatch((current) => ({ seq: (current?.seq ?? 0) + 1, path, value }));
+    const url = new URL(window.location.href);
+    url.searchParams.set("spec", encodeSpec(next));
+    window.history.replaceState(null, "", url);
+  };
+  /**
+   * A trend's group button (plan §4.7 P6, owner-R-facts-all-lists): the answer
+   * holds every list, so only the applied question's `trend` changes, in the
+   * URL and the builder (no "modificat"), with no request.
+   */
+  const applyTrendList = (list: TrendList) => {
+    if (!applied || !resp?.spec) return;
+    const next = appliedAfterTrendList(applied, resp.spec, list);
+    setAppliedSpec(next);
+    setStripPatch((current) => ({ seq: (current?.seq ?? 0) + 1, path: "trend", value: list, trend: next.trend ?? null }));
     const url = new URL(window.location.href);
     url.searchParams.set("spec", encodeSpec(next));
     window.history.replaceState(null, "", url);
@@ -541,6 +564,19 @@ export default function AskPanel({
     },
     [applied, title, resp?.executed?.months],
   );
+  /**
+   * A trend's sources answered 409 (plan §2.8): the data moved the months its
+   * answer counted. The applied question runs again (`auto` resolved anew), the
+   * page says so, and a drawer that was open reopens on the new months; the old
+   * answer never gets another list under it.
+   */
+  const reloadOutdated = useCallback((reopen: boolean) => {
+    if (!applied) return;
+    const drawer = reopen ? evidence : null;
+    setEvidence(null);
+    showToast(DATA_RELOADED);
+    void execute({ spec: applied }, !!drawer, drawer?.scope, drawer?.filters, false, drawer?.scopeLabel ? { drillLabel: drawer.scopeLabel } : {});
+  }, [applied, evidence, execute, showToast]);
   const copy = async (text: string, message: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -600,6 +636,7 @@ export default function AskPanel({
   };
   const data = resp?.data,
     count = data ? sourceCount(data) : null;
+  const watchedGroup = data?.block === "trend" && applied ? trendWatch(data, applied) : null;
   const isProfile = !!applied && isHistoricalProfile(applied);
   // What changes the total outside the sentence (G8), on the applied question.
   const totalWords = applied ? describeConditions(applied).totalWords : [];
@@ -807,7 +844,9 @@ export default function AskPanel({
                   Trimite
                 </button>
                 <SaveQuestionButton spec={applied} active={answerSaved} onSaved={setAnswerSaved} disabled={loading} />
-                <FollowButton key={JSON.stringify(applied)} spec={applied} title={title} />
+                {/* A trend's group: the watch fixes its members (plan §2.8); too large a group says how to narrow it. */}
+                <FollowButton key={JSON.stringify(applied)} spec={applied} title={title}
+                  {...(watchedGroup ? { label: watchedGroup.label, blocked: watchedGroup.blocked } : {})} />
                 <ClipButton
                   kind="query"
                   spec={applied}
@@ -985,17 +1024,18 @@ export default function AskPanel({
               )}
               {data.block === "trend" && (
                 <TrendBlock
-                  rows={data.rowsTrend}
-                  yearA={data.yearA}
-                  yearB={data.yearB}
-                  partial={resp.partialYears ?? []}
+                  data={data}
                   spec={applied}
+                  partial={resp.partialYears ?? []}
+                  conditions={totalWords}
+                  onList={applyTrendList}
+                  onWider={runWider}
                 />
               )}
             </div>}
             {/* G8: what changed the total outside the sentence; the ranking says it in its own total line. A risk
                 profile has no total in lei: its seat is the sentence's, and «nu plăți» would speak of sums it does not show. */}
-            {totalWords.length > 0 && !empty && !isProfile && !(data.block === "table" && layout === "visual") && (
+            {totalWords.length > 0 && !empty && !isProfile && !(data.block === "table" && layout === "visual") && !(data.block === "trend" && data.composition) && (
               <div className="fk cq-total"><TotalLine conditions={totalWords}>{totalLead(data)}</TotalLine></div>
             )}
             {/* How the number was built reads after the answer, not before it. */}
@@ -1035,7 +1075,8 @@ export default function AskPanel({
                 <CopyIcon />
                 Copiază linkul
               </button>
-              <AnswerExports key={encodeSpec(applied)} spec={applied} disabled={loading} onResult={()=>downloadCsv(answerCsv(data,applied,title,band))}/>
+              <AnswerExports key={encodeSpec(applied)} spec={applied} disabled={loading} onResult={()=>downloadCsv(answerCsv(data,applied,title,band))}
+                months={resp.executed?.months} onStale={() => reloadOutdated(false)}/>
               {mode === "ask" && (
                 <button
                   type="button"
@@ -1063,7 +1104,7 @@ export default function AskPanel({
           scopeLabel={evidence.scopeLabel}
           {...(evidence.scope ? { scope: evidence.scope } : {})}
           {...(evidence.filters ? { initialFilters: evidence.filters } : {})}
-          {...(evidence.months ? { months: evidence.months } : {})}
+          {...(evidence.months ? { months: evidence.months, onStale: () => reloadOutdated(true) } : {})}
           onClose={() => setEvidence(null)}
         />
       )}

@@ -13,6 +13,7 @@ vi.mock("@/lib/ask/question-ui", () => import("../../../lib/ask/question-ui"));
 vi.mock("@/lib/ask/ground", () => import("../../../lib/ask/ground"));
 vi.mock("@/lib/ask/compile", () => import("../../../lib/ask/compile"));
 vi.mock("@/lib/ask/pills", () => import("../../../lib/ask/pills"));
+vi.mock("@/lib/ask/trend-shared", () => import("../../../lib/ask/trend-shared"));
 vi.mock("@/lib/ask/llm", () => import("../../../lib/ask/llm"));
 vi.mock("@/lib/ask/resolved-spec", () => import("../../../lib/ask/resolved-spec"));
 vi.mock("@/lib/devlog", () => import("../../../lib/devlog"));

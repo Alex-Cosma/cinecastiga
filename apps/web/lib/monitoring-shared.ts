@@ -2,6 +2,7 @@ import type { AskSpec } from "./ask/spec";
 import { alignAnswerVersions, canonicalJson, readAnswerVersion } from "./ask/answer-core";
 import type { CaptureOptions, FrozenRecord } from "./evidence-captures-shared";
 import { encodeSpec } from "./ask/permalink";
+import { countWords } from "./ask/answer-text";
 
 export const MONITORING_MAX_ROWS = 200_000;
 export const MONITORING_CHANGE_TYPES = ["added", "removed", "changed", "recalculated", "methodology"] as const;
@@ -21,6 +22,11 @@ export const DEFAULT_MONITORING_PREFERENCES: MonitoringPreferences = {
  * same entities (or counties) at every check; the live group is only a note.
  */
 export interface MonitoringMembers { kind: "trend-group" | "network-group"; role: "supplier" | "authority" | "county"; group: string; ids: string[]; frozenAt: string }
+/** The largest group a watch fixes (plan §9 F2): the national "Noi" (17,633 firms) asks for a place or a shorter period. */
+export const MONITORING_MEMBERS_MAX = 5_000;
+/** A group above MONITORING_MEMBERS_MAX: "Grupa are 17.633 de firme; restrânge perioada sau locul." (the answer says it before the setup does). */
+export const membersTooManyWords = (role: MonitoringMembers["role"], n: number): string =>
+  `Grupa are ${role === "county" ? countWords(n, "județ", "județe") : role === "authority" ? countWords(n, "instituție", "instituții") : countWords(n, "firmă", "firme")}; restrânge perioada sau locul.`;
 /** A watch's sources: the drawer's selection (CaptureOptions) and, on a group, its fixed members. */
 export type MonitoringOptions = CaptureOptions & { members?: MonitoringMembers };
 export interface MonitoringScope { spec: AskSpec; options: MonitoringOptions }

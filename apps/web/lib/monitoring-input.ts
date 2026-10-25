@@ -5,7 +5,7 @@ import { trendGroupOf } from "./ask/predicates";
 import { trendMemberPart } from "./ask/group-ids";
 import { trendGroupLabel } from "./ask/filters/defs/trend";
 import { isWholeYear, monthsLabel } from "./ask/months-window";
-import { DEFAULT_MONITORING_PREFERENCES, MONITORING_CHANGE_TYPES, type MonitoringMembers, type MonitoringOptions, type MonitoringPreferences, type MonitoringScope } from "./monitoring-shared";
+import { DEFAULT_MONITORING_PREFERENCES, MONITORING_CHANGE_TYPES, MONITORING_MEMBERS_MAX, membersTooManyWords, type MonitoringMembers, type MonitoringOptions, type MonitoringPreferences, type MonitoringScope } from "./monitoring-shared";
 import { isWorkspaceId } from "./investigation-access";
 
 /**
@@ -40,8 +40,7 @@ export function monitoringTitle(value:unknown,fallback?:string):string {
   return title.trim();
 }
 export type { MonitoringMembers } from "./monitoring-shared";
-/** The largest group a watch fixes (plan §9 F2): the national "Noi" (17,633 firms) asks for a place or a shorter period. */
-export const MONITORING_MEMBERS_MAX=5_000;
+export { MONITORING_MEMBERS_MAX };
 export function monitoringMembers(value:unknown):MonitoringMembers {
   const o=monitoringObject(value);
   if(Object.keys(o).some(k=>!["kind","role","group","ids","frozenAt"].includes(k)))throw new MonitoringError("Grupa urmărită conține un câmp necunoscut.");
@@ -54,7 +53,7 @@ export function monitoringMembers(value:unknown):MonitoringMembers {
   return {kind:o.kind as MonitoringMembers["kind"],role:o.role as MonitoringMembers["role"],group:o.group as string,ids:ids as string[],frozenAt:o.frozenAt};
 }
 /** A group above MONITORING_MEMBERS_MAX: "Grupa are 17.633 de firme; restrânge perioada sau locul." */
-export const membersTooMany=(role:MonitoringMembers["role"],n:number)=>new MonitoringError(`Grupa are ${role==="county"?countWords(n,"județ","județe"):role==="authority"?countWords(n,"instituție","instituții"):countWords(n,"firmă","firme")}; restrânge perioada sau locul.`,422);
+export const membersTooMany=(role:MonitoringMembers["role"],n:number)=>new MonitoringError(membersTooManyWords(role,n),422);
 /** The kinds of fixed group this release applies: a trend's (F2); a network's comes with F4 (read ahead, refused). */
 export const IMPLEMENTED_MEMBER_KINDS:readonly MonitoringMembers["kind"][]=["trend-group"];
 /** Read first, write later (plan F0a): what a newer release stored, this one refuses instead of running it without the condition. */
