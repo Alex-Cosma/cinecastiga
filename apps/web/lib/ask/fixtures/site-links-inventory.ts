@@ -62,7 +62,7 @@ export const SITE_LINK_INVENTORY: SiteLinkFile[] = [
   { file: "app/intreaba/answer-state.ts", occurrences: 2, kind: "derived", what: "A breakdown slice one CPV level down, and the thread's crumbs back up (fir)",
     corpus: ["site:slice-deeper"] },
   { file: "app/intreaba/MapBlock.tsx", occurrences: 2, kind: "derived", what: "A county's records", corpus: ["site:map-county-records"] },
-  { file: "app/intreaba/AskPanel.tsx", occurrences: 7, kind: "relay", what: "The applied answer's permalink (also after a strip change), builder key, export key and drawer" },
+  { file: "app/intreaba/AskPanel.tsx", occurrences: 8, kind: "relay", what: "The applied answer's permalink (also after a strip change or a trend's group button), builder key, export key and drawer" },
   { file: "app/intreaba/EvidenceDrawer.tsx", occurrences: 2, kind: "relay", what: "The drawer's own source link (sourceUrl) for captures" },
   { file: "app/intreaba/SaveQuestionButton.tsx", occurrences: 2, kind: "relay", what: "A saved question's link" },
   { file: "app/intreaba/SavedQuestions.tsx", occurrences: 2, kind: "relay", what: "Reopening a saved question in the builder" },

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { questionKey, transitionQuestion, type QuestionSpec } from "../question-ui";
+import { parseSpec } from "../spec";
 import { BLOCK_FILTERS } from "./blocks";
 import { filterContext } from "./context";
 import { legacyConditions, presentConditions } from "./legacy-conditions";
@@ -136,5 +137,24 @@ describe("a window's choice", () => {
     const pair = q({ block: "compare", filters: { authorityName: "A", authorityId: 1, compareWith: "B", compareWithId: 2 } });
     const firm = choose(pair, "authority", { filter: "supplier", value: { name: "PORR", id: 22 } });
     expect([firm.spec.filters.compareWith, firm.notes]).toEqual([undefined, ["Am scos „comparat cu „B””: nu se potrivește cu alegerea nouă."]]);
+  });
+
+  it("drops the named entity a change of subject makes the answer of «Cine conduce?», and offers its total (final entity_card §4)", () => {
+    const institutions = q({ block: "entity_card", dim: "authority", rankBy: "value", filters: { supplierName: "ALLIANCE", supplierId: 7, yearFrom: 2025, yearTo: 2025 } });
+    const firms = choose(institutions, "dim", { filter: "dim", value: { dim: "supplier" } });
+    const note = "Am scos „firma „ALLIANCE””: cu o singură firmă aleasă, răspunsul e chiar ea.";
+    expect([firms.spec.dim, firms.spec.filters.supplierId, firms.dropped, firms.notes]).toEqual(["supplier", undefined, ["supplier"], [note]]);
+    // The link is the firm's total in the same selection (retarget → stat), as an old link's chip offers it.
+    expect(firms.links).toEqual({ [note]: { label: "Cât câștigă ALLIANCE", spec: expect.objectContaining({ block: "stat", filters: { supplierName: "ALLIANCE", supplierId: 7, yearFrom: 2025, yearTo: 2025 } }) } });
+    expect(parseSpec(firms.links![note]!.spec)).not.toHaveProperty("error");
+    const back = choose(q({ block: "entity_card", dim: "supplier", rankBy: "value", filters: { authorityName: "MUNICIPIUL BUZAU", authorityId: 9 } }), "dim", { filter: "dim", value: { dim: "authority" } });
+    expect([back.notes, Object.values(back.links ?? {}).map((link) => link.label)])
+      .toEqual([["Am scos „instituția „MUNICIPIUL BUZAU””: cu o singură instituție aleasă, răspunsul e chiar ea."], ["Cât cumpără MUNICIPIUL BUZAU"]]);
+    // The buyer stays the firms' condition there: only the firm leaves.
+    const buyer = choose(q({ block: "entity_card", dim: "authority", rankBy: "value", filters: { authorityName: "MUNICIPIUL BUZAU", authorityId: 9, supplierName: "ALLIANCE", supplierId: 7 } }), "dim", { filter: "dim", value: { dim: "supplier" } });
+    expect([buyer.spec.filters.authorityId, buyer.dropped, Object.keys(buyer.links ?? {})]).toEqual([9, ["supplier"], [note]]);
+    // A lens sets it aside instead: no note, no link.
+    const risk = choose(institutions, "rankBy", { filter: "rankBy", value: "risk" });
+    expect([risk.notes, risk.links, risk.parked?.items.some((item) => item.id === "supplier")]).toEqual([[], undefined, true]);
   });
 });

@@ -20,6 +20,15 @@ describe("the empty answer (G2)", () => {
     expect(emptyAnswer({ block: "fact_check", fact: { count: 0 } } as unknown as BlockData)).toBe(false);
   });
 
+  it("is a trend whose selection is empty; an empty group of a full selection says so in its list (TB-screen)", () => {
+    const trend = (all: number, rows: number) => ({ block: "trend", yearA: 2024, yearB: 2025, rowsTrend: Array(rows).fill({}),
+      composition: { all: { count: all, valueA: 0, valueB: 0 }, gone: { count: 0, valueA: 0, valueB: 0 } } }) as unknown as BlockData;
+    expect(emptyAnswer(trend(0, 0))).toBe(true);
+    expect(emptyAnswer(trend(42, 0))).toBe(false);
+    // An answer stored before trend-2: its one list.
+    expect(emptyAnswer({ block: "trend", yearA: 2024, yearB: 2025, rowsTrend: [] } as unknown as BlockData)).toBe(true);
+  });
+
   it("widens the last conditions first, by the first row of their windows, at most three", () => {
     const stat = spec({ block: "stat", dataset: "da", filters: { cpvTerm: "asfaltare", county: "Cluj", authorityKind: "spital", yearFrom: 2025, yearTo: 2025 } });
     const relax = relaxations(stat);

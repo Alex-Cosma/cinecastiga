@@ -45,18 +45,23 @@ export interface LegacyCondition {
   retarget?: { label: string; spec: FilterSpec };
 }
 
+/** Why a tautology answers itself, in a note's words ("Am scos „firma „PORR””: …"). */
+const TAUTOLOGY_WHY = { supplier: "cu o singură firmă aleasă, răspunsul e chiar ea", authority: "cu o singură instituție aleasă, răspunsul e chiar ea" } as const;
+
 /**
  * "Cine conduce?" on value with the ranked role's own entity named (plan
- * §4.13, final entity_card §7): an old link's tautology. It runs as before
- * and the answer is that entity; the chip says why and offers its total.
+ * §4.13, final entity_card §4 and §7): an old link's tautology. It runs as
+ * before and the answer is that entity; the chip says why and offers its
+ * total. A change of subject that would make one drops the entity instead,
+ * with the same reason and link in its note (transition.ts).
  */
-function tautology(spec: FilterSpec, id: FilterId): Pick<LegacyCondition, "tip" | "retarget"> | null {
+export function tautology(spec: FilterSpec, id: FilterId): { why: string; tip: string; retarget: NonNullable<LegacyCondition["retarget"]> } | null {
   if (spec.block !== "entity_card" || leaderAxis(spec) === "risk") return null;
   const firms = spec.dim === "supplier";
   if (id !== (firms ? "supplier" : "authority")) return null;
-  const name = entityLabel(spec, id);
+  const name = entityLabel(spec, id), why = TAUTOLOGY_WHY[id];
   return {
-    tip: firms ? "Cu o singură firmă aleasă, răspunsul e chiar ea." : "Cu o singură instituție aleasă, răspunsul e chiar ea.",
+    why, tip: `${why.charAt(0).toUpperCase()}${why.slice(1)}.`,
     retarget: { label: `${firms ? "Cât câștigă" : "Cât cumpără"} ${name}`, spec: retarget(spec, "stat") },
   };
 }
@@ -164,6 +169,7 @@ export function legacyConditions(input: QuestionSpec | AskSpec, labels: Conditio
       if (!rest && !reason) continue;
       if (rest && excluded.length && !reason) text = preciseWords(rest);
     }
+    const self = reason ? null : tautology(spec, id);
     out.push({
       key: id, paths, words: origin?.words ?? text,
       origin: origin?.origin ?? "link",
@@ -173,7 +179,7 @@ export function legacyConditions(input: QuestionSpec | AskSpec, labels: Conditio
       ...(reason ? { reason } : {}),
       ...(reason && ctx.profile && !applied ? { why: PROFILE_REFUSAL } : {}),
       ...(reason && ctx.block === "trend" && TREND_REFUSALS[id] ? { why: TREND_REFUSALS[id] } : {}),
-      ...(!reason ? tautology(spec, id) ?? {} : {}),
+      ...(self ? { tip: self.tip, retarget: self.retarget } : {}),
     });
   }
   return out;

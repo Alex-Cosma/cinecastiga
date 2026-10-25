@@ -165,3 +165,5 @@
   :root:not([data-theme="light"]) .qb-catalogue-trigger{border-color:var(--line2)}
   :root:not([data-theme="light"]) .qb-catalogue-trigger>span{background:var(--accent-soft);color:var(--accent)}
 }
+/* A selection that cannot be followed as it is (a trend's group over the members limit): disabled, its reason in (?). */
+.follow-blocked{position:relative;display:inline-flex;align-items:center;gap:2px}.follow-blocked .follow-action{opacity:.55;cursor:not-allowed}.follow-blocked .follow-action:hover{background:var(--surface);border-color:var(--line2)}.follow-blocked-reason{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}

@@ -1,6 +1,8 @@
+import { describeConditions } from "../../lib/ask/filters/describe";
 import { encodeSpec } from "../../lib/ask/permalink";
 import { breakdownDeeperSpec } from "../../lib/ask/source-spec";
-import type { AskSpec } from "../../lib/ask/spec";
+import type { AskSpec, MonthWindow } from "../../lib/ask/spec";
+import { specTrendList, trendListSpec, type TrendList } from "../../lib/ask/trend-shared";
 import type { SegmentOption } from "./builder/Segmented";
 import type { StripPatch } from "./builder/view";
 
@@ -11,9 +13,24 @@ import type { StripPatch } from "./builder/view";
  * keeps them; the builder hears of a strip change through StripPatch.
  */
 
-/** A display state's words, from the server: its pills and the SQL shown (the map's lens: value, records). */
+/** A display state's words, from the server: its pills and the SQL shown (the map's lens: value, records; a trend's list). */
 export interface VariantWords { pills: string[]; displaySql: string }
-export interface AnswerVariants { measure?: Partial<Record<string, VariantWords>> }
+export interface AnswerVariants { measure?: Partial<Record<string, VariantWords>>; trend?: Partial<Record<TrendList, VariantWords>> }
+
+/** What the page says after a trend's sources found the data newer than its answer (409, plan §2.8) and reloaded it. */
+export const DATA_RELOADED = "Datele s-au actualizat; am reîncărcat răspunsul.";
+
+/**
+ * What changed the total outside the sentence (G8), in the words of the
+ * answer as it ran, like its pills: a trend's `auto` months as they resolved
+ * („pe aceleași luni: ian.–mai”), and no months on whole years (trend final
+ * §3.3), where the pills have none either.
+ */
+export function totalConditionWords(applied: AskSpec, executedMonths?: MonthWindow | null): string[] {
+  const described = describeConditions(applied, { executedMonths });
+  const months = described.byId.trendMonths;
+  return months && months.pills?.length === 0 ? described.totalWords.filter((words) => words !== months.words) : described.totalWords;
+}
 
 /** The keys the strip writes in F1b: the data stream (a new query) and the map's lens (the data already fetched). */
 export const STRIP_QUERY_KEYS = new Set<StripPatch["path"]>(["dataset"]);
@@ -42,9 +59,22 @@ export function appliedAfterStrip(applied: AskSpec, path: StripPatch["path"], va
   return path === "dataset" ? { ...applied, dataset: value as NonNullable<AskSpec["dataset"]> } : { ...applied, measure: value as AskSpec["measure"] };
 }
 
-/** The pills and the SQL of the state on screen: the variant of the applied lens, else the answer's own. */
+/**
+ * The applied question after a trend's group button (or „Toate · Prima dată”):
+ * only its `trend` key, the one of that list of the answered question
+ * (trendListSpec), so the growths keep the order their list was computed in.
+ */
+export function appliedAfterTrendList(applied: AskSpec, answered: AskSpec, list: TrendList): AskSpec {
+  const { trend } = trendListSpec(answered, list);
+  const next: AskSpec = { ...applied };
+  if (trend) next.trend = trend;
+  else delete next.trend;
+  return next;
+}
+
+/** The pills and the SQL of the state on screen: the variant of the applied lens or trend list, else the answer's own. */
 export function shownWords(answer: { pills?: string[]; displaySql?: string; variants?: AnswerVariants }, applied: AskSpec): { pills: string[]; displaySql?: string } {
-  const variant = answer.variants?.measure?.[applied.measure];
+  const variant = applied.block === "trend" ? answer.variants?.trend?.[specTrendList(applied)] : answer.variants?.measure?.[applied.measure];
   if (variant) return { pills: variant.pills, displaySql: variant.displaySql };
   return { pills: answer.pills ?? [], ...(answer.displaySql ? { displaySql: answer.displaySql } : {}) };
 }

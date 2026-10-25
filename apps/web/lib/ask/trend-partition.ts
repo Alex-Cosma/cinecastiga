@@ -1,6 +1,9 @@
 import type { DbSql } from "@seap/db";
 import { trendGroupSql, type TrendGroup } from "./predicates";
-import type { TrendChange } from "./spec";
+import { changeYear, type TrendList, type TrendRowFacts } from "./trend-shared";
+
+// The lists, the row facts and their labels are the screen's too: trend-shared.ts, without SQL.
+export { TREND_LISTS, changeYear, trendGroupOfRow, trendRowLabels, type TrendList, type TrendRowFacts, type TrendRowLabel } from "./trend-shared";
 
 /*
  * The trend's partition (plan §4.7; trend final §3.1, §3.4): every entity or
@@ -18,9 +21,6 @@ import type { TrendChange } from "./spec";
 
 type Fragment = ReturnType<DbSql>;
 
-/** The lists of the answer: every change, each group, and the new ones whose first record is in year B (entities only). */
-export const TREND_LISTS = ["all", "up", "new", "first", "down", "gone"] as const;
-export type TrendList = (typeof TREND_LISTS)[number];
 /** What the composition counts: the lists, the equal ones, and with the order in percent the growths from the base. */
 export type TrendPart = TrendList | "equal" | "eligible";
 /** A part of the composition: how many entities (or counties), with the totals of both years. */
@@ -228,36 +228,6 @@ export function liveTrendChannels(sql: DbSql, dataset: "all" | "da" | "contracts
 // The groups' noun is the builder's too ("Furnizori noi" in "Ce fel de schimbare?"): kept beside the trend's filters, without SQL.
 export { trendNoun, type TrendNoun } from "./filters/defs/trend";
 
-/**
- * The facts of a shown row (trend final §3.4), read for the shown entities
- * only, in the answer's selection and months: they explain a row, they do not
- * filter it. `year` is the year that makes the change (B for a growth or a new
- * one, A for a decrease or a gone one); the record, the joint share and the
- * partner are of that year.
- */
-export interface TrendRowFacts {
-  year: number;
-  /** The entity's value in that year (the row's valueA or valueB). */
-  value: number;
-  /** Its largest record that year, and the channel ("1 contract" / "1 achiziție directă"). */
-  largest: { value: number; src: "da" | "contracts" } | null;
-  /** Of that year's value, the contract shares with more than one winner (n_winners > 1, divided equally). */
-  joint: number;
-  /** The main partner that year: the buyer of a firm, the firm of an institution. */
-  partner: { entityId: string; name: string; value: number } | null;
-  /** First and last record of the entity anywhere in the archive (marts.entity_profile), not only in this selection. */
-  firstActivity: string | null;
-  lastActivity: string | null;
-  /** core.entities.cui_valid; null when the identity has no record of it. */
-  cuiValid: boolean | null;
-  /** A foreign firm's country code (its row shows the country, not a county). */
-  country: string | null;
-}
-
-/** The year whose records make a row's change: B when it grew (or is new, or equal), A when it fell (or is gone). */
-export const changeYear = (row: { valueA: number; valueB: number }, yearA: number, yearB: number): number =>
-  row.valueB >= row.valueA ? yearB : yearA;
-
 /** Per entity and year: the value, the joint share, the largest record and the main partner (factsRows). */
 export interface TrendFactsRow {
   id: string; y: string; v: string; joint: string;
@@ -377,47 +347,4 @@ export function factsOfRow(row: { entityId: string; valueA: number; valueB: numb
     cuiValid: own ? own.cuiValid : null,
     country: own?.country ?? null,
   };
-}
-
-/** A label of a shown row (trend final §3.4), at most three, in this order. */
-export type TrendRowLabel =
-  | { kind: "noValidCui" }
-  | { kind: "firstYear"; year: number }
-  | { kind: "activeSince"; year: number }
-  | { kind: "activeIn"; year: number }
-  | { kind: "oneRecord"; share: number; src: "da" | "contracts" }
-  | { kind: "joint"; share: number };
-
-/**
- * The labels of a row from its facts: "fără CUI valid" (a domestic identity
- * without a valid CUI), "prima dată în B" / "activă din …" on the new ones,
- * "activă în …" on the gone ones that have records after B, "o înregistrare:
- * N%" when the largest record of the change year is at least half of the
- * change (the share capped at 100%), "în asociere" when at least half of
- * that year's value is in contracts with several winners. At most three.
- */
-export function trendRowLabels(row: { valueA: number; valueB: number }, facts: TrendRowFacts, years: { yearA: number; yearB: number }): TrendRowLabel[] {
-  const out: TrendRowLabel[] = [];
-  // Only an identity known to lack a valid CUI: an unknown status (null) claims nothing.
-  if (facts.cuiValid === false && facts.country === null) out.push({ kind: "noValidCui" });
-  const first = facts.firstActivity ? Number(facts.firstActivity.slice(0, 4)) : null;
-  const last = facts.lastActivity ? Number(facts.lastActivity.slice(0, 4)) : null;
-  if (row.valueA === 0 && row.valueB > 0 && first !== null)
-    out.push(first === years.yearB ? { kind: "firstYear", year: first } : { kind: "activeSince", year: first });
-  if (row.valueB === 0 && row.valueA > 0 && last !== null && last > years.yearB) out.push({ kind: "activeIn", year: last });
-  const change = Math.abs(row.valueB - row.valueA);
-  if (facts.largest && change > 0 && facts.largest.value >= change / 2)
-    out.push({ kind: "oneRecord", share: Math.min(1, facts.largest.value / change), src: facts.largest.src });
-  if (facts.value > 0 && facts.joint >= facts.value / 2) out.push({ kind: "joint", share: facts.joint / facts.value });
-  return out.slice(0, 3);
-}
-
-/** The group a row is in by its two values, as trendGroupSql's HAVINGs select it (the group of each row of „Toate”). */
-export function trendGroupOfRow(row: { valueA: number; valueB: number }): Exclude<TrendChange, "all"> | "equal" {
-  const { valueA: a, valueB: b } = row;
-  if (a > 0 && b > a) return "up";
-  if (a === 0 && b > 0) return "new";
-  if (b > 0 && b < a) return "down";
-  if (a > 0 && b === 0) return "gone";
-  return "equal";
 }

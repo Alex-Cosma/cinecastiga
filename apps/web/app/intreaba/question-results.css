@@ -488,15 +488,6 @@
   background: var(--accent-soft);
   border-radius: 14px;
 }
-.cq-result .ask-trend .tr {
-  gap: 12px;
-}
-/* A long name wraps: on one line it hid its own end and the row's records button (F1b-tests). */
-.cq-result .ask-trend .nm {
-  white-space: normal;
-  overflow: visible;
-  overflow-wrap: anywhere;
-}
 .cq-result .ask-ecard .kpis {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -564,6 +555,58 @@
     max-width: 100%;
     height: auto;
   }
+}
+/* F2: the trend's answer (TrendAnswer.tsx; kit mock trend.html, trend final §4.8), drawn with the kit's
+   groups, rows and tags. Names wrap; a partner line ends in "…"; the sums never break. */
+.fk-trend { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+/* One column that does not wrap: a wrapping column stretches the groups' grid to the strip's height. */
+.fk-trend-strip { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 10px; }
+/* On the strip's --sunk, small text takes --fk-muted-strong (5,3:1 light); --muted is 4,2:1 there. */
+.fk-trend-strip > .fk-groups-head { margin: 0; padding: 2px 4px 0; color: var(--fk-muted-strong); }
+.fk-trend-strip .term-mark { opacity: 1; }
+.fk-trend-sub { align-items: center; }
+.fk-trend-sub-label { display: inline-flex; align-items: center; gap: 7px; padding-left: 4px; }
+.fk-trend-unfiled, .fk-trend-off { margin: 0; padding: 0 4px; color: var(--fk-muted-strong); font-size: 12.5px; }
+.fk-trend-rows .fk-arow { grid-template-columns: minmax(0, 1fr) minmax(190px, auto); align-items: start; }
+.fk-trend-rows--sw .fk-arow { padding-left: 19px; }
+.fk-trow-main { min-width: 0; }
+.fk-trow-name { position: relative; }
+.fk-trow-name a { color: inherit; text-decoration: none; }
+.fk-trow-name a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.fk-trow-sw { position: absolute; left: -19px; top: .42em; }
+.fk-trow-partner { display: flex; min-width: 0; margin: 6px 0 0; color: var(--muted); font-size: 12.5px; }
+.fk-trow-partner > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fk-trow-val { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: right; }
+.fk-trow-dline { display: flex; align-items: baseline; gap: 6px; }
+.fk-trow-delta { font-size: 14.5px; font-weight: 500; color: var(--ink2); }
+.fk-trow-delta.up { color: var(--fk-green); }
+.fk-trow-pct { font: 400 12px var(--mono); color: var(--fk-muted-strong); white-space: nowrap; }
+.fk-trow-years { display: block; font-family: var(--mono); font-size: 11.5px; color: var(--ink2); white-space: nowrap; }
+.fk-trow-years i, .fk-trend-y { font-style: normal; color: var(--muted); }
+.fk-trow-val .fk-rec { margin-top: 3px; }
+.fk-trend-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 16px; margin: 0; color: var(--muted); font-size: 12.5px; }
+.fk-trend-legend > span { display: inline-flex; align-items: center; gap: 2px; }
+.fk-trend .fk-listfoot, .fk-trend .fk-total { margin: 0; }
+@media (max-width: 600px) {
+  /* Three levels (§4.8): name and labels · the partner on the whole width · the years | Δ, then
+     "Înregistrări →" | the percent. A sum never breaks: the years' line breaks at the arrow. */
+  .fk-trend-rows .fk-arow { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name name" "tags tags" "part part" "yrs dlt" "rec pct"; column-gap: 10px; row-gap: 0; }
+  .fk-trend-rows .fk-arow > .fk-trow-main, .fk-trend-rows .fk-trow-val, .fk-trend-rows .fk-trow-dline { display: contents; }
+  .fk-trend-rows .fk-trow-name { grid-area: name; }
+  .fk-trend-rows .fk-tags { grid-area: tags; }
+  .fk-trend-rows .fk-trow-partner { grid-area: part; margin-top: 7px; }
+  .fk-trend-rows .fk-trow-years { grid-area: yrs; align-self: baseline; margin-top: 8px; white-space: normal; line-height: 1.5; text-align: left; }
+  .fk-trend-rows .fk-trow-years > span { white-space: nowrap; }
+  .fk-trend-rows .fk-trow-delta { grid-area: dlt; align-self: baseline; justify-self: end; margin-top: 8px; text-align: right; }
+  .fk-trend-rows .fk-trow-pct { grid-area: pct; align-self: center; justify-self: end; }
+  .fk-trend-rows .fk-rec { grid-area: rec; justify-self: start; align-self: center; justify-content: flex-start; margin: 0; }
+  /* A new or gone row in its own list has one value (its year beside it): "Înregistrări →" goes up beside it. */
+  .fk-trend-rows--single .fk-arow { grid-template-areas: "name name" "tags tags" "part part" "rec dlt" "rec pct"; }
+  .fk-trend-rows--single .fk-trow-delta { margin-top: 4px; }
+  /* „Firme noi: (?)” on its line, „Toate · Prima dată în 2025” on the whole width under it. */
+  .fk-trend-strip .fk-trend-sub { flex-wrap: wrap; row-gap: 6px; }
+  .fk-trend-strip .fk-trend-sub > .fk-seg { flex: 1 1 100%; }
+  .fk-trend-sub-label { padding-left: 2px; }
 }
 @media (max-width: 600px) {
   .cq-page-intro {
@@ -703,20 +746,6 @@
   .cq-group-table .cq-record-link {
     font-size: 10px;
     padding: 7px;
-  }
-  .cq-result .ask-trend .tr {
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 8px;
-  }
-  .cq-result .ask-trend .nm {
-    grid-column: 1/-1;
-  }
-  .cq-result .ask-trend .arrow {
-    display: none;
-  }
-  .cq-result .ask-trend .yv,
-  .cq-result .ask-trend .delta {
-    font-size: 11px;
   }
   .cq-result .ask-dist {
     gap: 6px;
