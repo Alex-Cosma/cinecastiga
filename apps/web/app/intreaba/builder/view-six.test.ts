@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { PROFILE_REFUSAL } from "../../../lib/ask/filters/legacy-conditions";
+import { PROFILE_REFUSAL, TREND_REFUSALS } from "../../../lib/ask/filters/legacy-conditions";
 import { choicesOf } from "../../../lib/ask/filters/pickers";
 import { chooseValue } from "../../../lib/ask/filters/transition";
 import type { FilterSpec } from "../../../lib/ask/filters/types";
@@ -155,9 +155,11 @@ describe("the six questions from the registry (F1b-builder-b)", () => {
     const view = builderView(q({ block: "scatter", dim: "authority", rankBy: "risk", filters: { yearFrom: 2024, yearTo: 2024 } }));
     expect(view.refused.map((c) => [c.key, c.why])).toEqual([["period", PROFILE_REFUSAL]]);
     expect(view.under).toEqual([expect.objectContaining({ kind: "legacy", words: "în 2024", tip: { title: "Din link", text: PROFILE_REFUSAL } })]);
-    // Elsewhere the engine's words stay (a trend's threshold).
+    // A trend's threshold too (S3 F2-builder: the S2 review's problem 4); elsewhere the engine's words stay.
     const trend = builderView(q({ block: "trend", dim: "supplier", topN: 10, minimumRecords: { role: "supplier", count: 5 }, filters: { yearFrom: 2024, yearTo: 2025 } }));
-    expect(trend.refused[0]!.why).toBeUndefined();
+    expect(trend.refused.map((c) => [c.key, c.why])).toEqual([["minimumRecords", TREND_REFUSALS.minimumRecords]]);
+    const table = builderView(q({ block: "table", dim: "county", topN: 10, filters: { county: "Cluj" } }));
+    expect(table.refused.map((c) => c.why)).toEqual([undefined]);
   });
 
   it("offer «⋯ › Selecție avansată» on the relations and the verification, never on a profile", () => {

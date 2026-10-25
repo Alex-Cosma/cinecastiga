@@ -6,6 +6,7 @@ import { edited } from "./defs/shared";
 import type { Party } from "./defs/selection";
 import { writeFocal } from "./registry";
 import { KINDS_AFTER_D1, kindAfterD1 } from "./sentence";
+import { trendMonthsWaiting } from "./trend-rules";
 import type { Availability, FilterCtx, FilterId, FilterSpec, Slot } from "./types";
 
 /*
@@ -151,5 +152,10 @@ export function choiceState(slot: Slot, choice: Choice, spec: FilterSpec, ctx: F
   }
   // A kind of the profiles' subject waits; the buyers of a ranking of firms keep every kind (kindAfterD1).
   if (choice.filter === "authorityKind" && kindAfterD1(spec, choice.value)) return { state: "hidden" };
+  // The automatic months of a year whose complete months are not confirmed: the run would refuse it (trend final §3.3).
+  if (choice.filter === "trendMonths" && choice.value === "auto") {
+    const waiting = trendMonthsWaiting(FILTERS.trendMonths.write(spec, "auto"), ctx);
+    if (waiting) return { state: "disabled", reason: waiting };
+  }
   return { state: "offered" };
 }

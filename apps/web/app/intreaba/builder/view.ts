@@ -7,6 +7,9 @@ import { conditionSet, FILTERS } from "../../../lib/ask/filters/registry";
 import { presentationTokens, sentenceTokens, type SentenceSlot, type SentenceToken } from "../../../lib/ask/filters/sentence";
 import type { FilterCtx, FilterId, FilterSpec, Slot } from "../../../lib/ask/filters/types";
 import { employeesOnBands } from "../../../lib/ask/filters/words";
+import { trendMonthsState, trendMonthsWaiting, type TrendMonthsState } from "../../../lib/ask/filters/trend-rules";
+import type { Choice } from "../../../lib/ask/filters/pickers";
+import { monthsLabel } from "../../../lib/ask/months-window";
 import { askLink } from "../../../lib/ask/source-spec";
 import type { QueryPopulation } from "../../../lib/ask/population";
 import { KIND_WORDS, cloneQuestion, countyWords, type QuestionSpec } from "../../../lib/ask/question-ui";
@@ -19,7 +22,8 @@ import type { UnderChipItem } from "./UnderChips";
  * one place, as MAPPING.md lists them. Pure: QuestionBuilder renders it and
  * the windows (BuilderWindow) open what `windows` names. Every control opens a
  * window keyed here: "s:" a phrase of the sentence, "p:" of the presentation
- * line, "i:" an invitation, "r:" a chip of a condition row, "x:" a collapsed
+ * line, "i:" an invitation, "r:" a chip of a condition row, "u:" a chip the
+ * question owns under the sentence (the trend's "Aceleași luni"), "x:" a collapsed
  * exclusion, "advanced" the "⋯ › Selecție avansată" window (P9), which an
  * "a:" chip ("Selecție avansată: …") opens too.
  */
@@ -33,11 +37,15 @@ export interface BuilderWindowSpec {
   name: string;
 }
 
-/** What × under the sentence removes: a link's condition, some exclusions, or a "Selecție avansată" key. */
+/**
+ * What × under the sentence removes: a link's condition, some exclusions, or a "Selecție avansată" key;
+ * or, on the question's own chip (the trend's "Aceleași luni"), the choice its × or its switch makes.
+ */
 export type UnderRemoval =
   | { kind: "link"; condition: LegacyCondition }
   | { kind: "exclusion"; excluded: Excluded[] }
-  | { kind: "advanced"; key: "population" | "minimumRecords" };
+  | { kind: "advanced"; key: "population" | "minimumRecords" }
+  | { kind: "choice"; slot: Slot; choice: Choice };
 
 export interface RowChipView { key: string; id: FilterId; label: string; name: string; active: boolean }
 export interface RowView { label: string; kind: "group" | "selection"; chips: RowChipView[] }
@@ -52,6 +60,8 @@ export interface BuilderView {
   removals: Record<string, UnderRemoval>;
   /** A link's conditions the engine refuses: "Vezi răspunsul" waits until they are removed. */
   refused: LegacyCondition[];
+  /** Why the run waits for a choice under the sentence (a trend's months not confirmed in the data), or null. */
+  waiting: string | null;
   /** P9 offered on this question ("⋯ › Selecție avansată"). */
   advanced: readonly Slot[];
   /** Component 18 on the three profiles. */
@@ -109,6 +119,42 @@ function kitTokens(tokens: readonly SentenceToken[], prefix: string, windows: Re
   });
 }
 
+const MONTH_NAMES = ["ianuarie", "februarie", "martie", "aprilie", "mai", "iunie", "iulie", "august", "septembrie", "octombrie", "noiembrie", "decembrie"] as const;
+/** "31 mai": the day a channel is complete until. */
+const dayWords = (iso: string) => `${Number(iso.slice(8, 10))} ${MONTH_NAMES[Number(iso.slice(5, 7)) - 1] ?? ""}`;
+const CHANNEL_WORDS = { da: "achizițiile directe", contracts: "contractele" } as const;
+
+/**
+ * "Aceleași luni" under a trend's sentence (trend final §3.3, kit P4), by the
+ * compared year's state (trend-rules.ts): the amber chip with the months the
+ * answer will count (× compares whole years), the warning when the data do not
+ * confirm them (its button opens the window; the run waits), the chosen months
+ * (× back to automatic) or the switch that turns them on again.
+ */
+function sameMonthsChip(slot: Slot, state: NonNullable<TrendMonthsState>): { item: UnderChipItem; removal?: UnderRemoval } {
+  const id = `u:${slot.id}`, name = slot.label ?? "Aceleași luni";
+  const choice = (value: unknown): UnderRemoval => ({ kind: "choice", slot, choice: { filter: "trendMonths", value } });
+  switch (state.kind) {
+    case "auto": {
+      const months = state.window ? monthsLabel(state.window) : null;
+      const text = state.through && months
+        ? `Datele din ${state.year} sunt complete până la ${dayWords(state.through)}. Ambii ani se compară pe ${months}, ca diferența să nu vină din lunile lipsă. Se recalculează la fiecare actualizare.`
+        : `Ambii ani se compară pe lunile complete din ${state.year}. Se recalculează la fiecare actualizare.`;
+      return { item: { kind: "auto", id, label: months ? `${name}: ${months}` : name, name, tip: { title: name, text } }, removal: choice("whole") };
+    }
+    case "unconfirmed": {
+      const which = state.channels.length === 1 ? CHANNEL_WORDS[state.channels[0]!] : "datele";
+      return { item: { kind: "notice", id, label: `${state.year}: luni neconfirmate`, action: "Compară pe aceleași luni…",
+        tip: { title: "Luni neconfirmate", text: `Nu știm până când sunt complete ${which} din ${state.year}. Alege lunile comparate sau ani încheiați.` } } };
+    }
+    case "chosen":
+      return { item: { kind: "only", id, label: `${name}: ${monthsLabel({ from: state.window[0], to: state.window[1] })}`, name }, removal: choice("auto") };
+    case "off":
+      // The kit's switch for "Aceleași luni" keeps its half disc (component 5, glyph "half").
+      return state.unconfirmed ? { item: { kind: "toggle", id, label: name, glyph: "half", opens: true } } : { item: { kind: "toggle", id, label: name, glyph: "half" }, removal: choice("auto") };
+  }
+}
+
 /** The builder's view of a draft. `labels` names a CPV code; `ctx` comes from the caller when it has more than the spec. */
 export function builderView(input: QuestionSpec, labels: ConditionLabels = {}, ctx: FilterCtx = filterContext(input as FilterSpec)): BuilderView {
   const spec = input as FilterSpec;
@@ -145,6 +191,15 @@ export function builderView(input: QuestionSpec, labels: ConditionLabels = {}, c
   const removals: Record<string, UnderRemoval> = {};
   const conditions = legacyConditions(spec, labels);
   const refused = conditions.filter((c) => c.status === "refused");
+  // The question's own chips (BLOCK_FILTERS.under): the trend's "Aceleași luni", drawn by its year's state.
+  for (const slot of entry?.under(spec, ctx) ?? []) {
+    const state = slot.id === "trendMonths" ? trendMonthsState(spec, ctx) : null;
+    if (!state) continue;
+    const { item, removal } = sameMonthsChip(slot, state);
+    under.push(item);
+    if (removal) removals[item.id] = removal;
+    windows[item.id] = { key: item.id, slot, title: slot.window ?? FILTERS[slot.id].windowTitle ?? FILTERS[slot.id].label, name: slot.label ?? FILTERS[slot.id].label };
+  }
   for (const condition of advancedConditions(spec, labels)) {
     const id = `a:${condition.key}`;
     under.push({ kind: "only", id, label: condition.label, name: condition.label });
@@ -188,6 +243,7 @@ export function builderView(input: QuestionSpec, labels: ConditionLabels = {}, c
 
   return {
     sentence, presentation, windows, invites, rows, under, removals, refused, advanced,
+    waiting: trendMonthsWaiting(spec, ctx),
     scopeLine: entry?.scopeLine(spec, ctx) === "historical-da",
   };
 }

@@ -75,7 +75,7 @@ export const conditionSet = (spec: FilterSpec, id: FilterId): boolean =>
 
 /**
  * The conditions this question shows as its own (BLOCK_FILTERS): what its
- * sentence and presentation line say, the set chips of its rows and strip,
+ * sentence and presentation line say, the set chips of its rows, strip and P4,
  * and a precise selection or record threshold its "Selecție avansată" offers
  * (P9 with the counted role and the question's fields). A town hall implies its county. A profile reads
  * every stream as its archive and the home page's direct-acquisition ceiling
@@ -94,6 +94,8 @@ export function visibleFilters(spec: FilterSpec, ctx: FilterCtx = filterContext(
   for (const row of entry.rows(spec, ctx)) for (const chip of row.chips)
     if (conditionSet(spec, chip.id) && (chip.id !== "employees" || employeesOnBands(spec.filters.minEmployees, spec.filters.maxEmployees))) ids.add(chip.id);
   for (const id of entry.strip) if (conditionSet(spec, id)) ids.add(id);
+  // The question's own chips under the sentence (the trend's "Aceleași luni"), drawn or not by the year's state.
+  for (const slot of entry.under(spec, ctx)) if (conditionSet(spec, slot.id)) ids.add(slot.id);
   for (const slot of entry.advanced(spec, ctx))
     if (conditionSet(spec, slot.id) && (!slot.choices || slot.choices.some((value) => sameValue(value, FILTERS[slot.id].read(spec), slot.id)))
       && (slot.id !== "population" || populationFits(spec.population, entry.advancedFields(spec, ctx)))) ids.add(slot.id);

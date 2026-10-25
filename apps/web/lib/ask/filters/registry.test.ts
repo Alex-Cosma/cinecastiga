@@ -356,7 +356,7 @@ describe("places (BLOCK_FILTERS)", () => {
   const states = [...bases, ...restored];
   /** R10's window titles (kit §2), with the windows the plan keeps from today (F1b-s-windows). */
   const WINDOWS = ["Ce fel de achiziții?", "Ce s-a cumpărat?", "Cine a cumpărat?", "Unde?", "De la cine?", "Unde au sediul firmele?", "În ce perioadă?", "Când?",
-    "Câți angajați au firmele?", "Cine conduce firmele?", "Selecție avansată"];
+    "Câți angajați au firmele?", "Cine conduce firmele?", "Selecție avansată", "Ce luni compari?"];
 
   it("has one entry for each of the 13 questions", () => {
     expect(Object.keys(BLOCK_FILTERS).sort()).toEqual(([...new Set(bases.map((b) => b.spec.block))] as Block[]).sort());
@@ -367,8 +367,8 @@ describe("places (BLOCK_FILTERS)", () => {
       for (const { placement, slot } of placedSlots(spec, ctxOf(spec))) {
         expect(FILTERS[slot.id], slot.id).toBeDefined();
         for (const id of slot.writes ?? []) expect(FILTERS[id], id).toBeDefined();
-        expect(["sentence", "invite", "row", "presentation", "strip", "advanced"]).toContain(placement);
-        if (["invite", "row", "advanced"].includes(placement)) {
+        expect(["sentence", "invite", "row", "under", "presentation", "strip", "advanced"]).toContain(placement);
+        if (["invite", "row", "under", "advanced"].includes(placement)) {
           expect(slot.label, `${placement} ${slot.id}`).toBeTruthy();
           expect(WINDOWS, `${placement} ${slot.id}`).toContain(slot.window);
         }
@@ -397,17 +397,33 @@ describe("places (BLOCK_FILTERS)", () => {
   });
 
   // Plan §2.1 P3a/P3b: a group row narrows the list and keeps the total; a selection row changes it.
-  it("draws the partners' selection rows on the network and the flow only; no group row in F1b", () => {
+  // The one group row is the trend's firms' size, moved to the group under trend-2 (SCOPE_CHANGES).
+  it("draws the partners' selection rows on the network and the flow, and the trend's winners as a group", () => {
     for (const { spec } of states) {
       const ctx = ctxOf(spec);
       const rows = BLOCK_FILTERS[ctx.block].rows(spec, ctx);
       for (const row of rows) {
-        expect(row.kind, row.label).toBe("selection");
-        for (const chip of row.chips) expect(FILTERS[chip.id].scope(ctx.form), `${row.label} ${chip.id}`).toBe("selection");
+        expect(row.kind, row.label).toBe(ctx.block === "trend" ? "group" : "selection");
+        for (const chip of row.chips) expect(FILTERS[chip.id].scope(ctx.form), `${row.label} ${chip.id}`).toBe(row.kind);
+        if (row.kind === "group") for (const chip of row.chips) expect(SCOPE_CHANGES.some((c) => c.filter === chip.id && c.form === ctx.form), chip.id).toBe(true);
       }
-      expect(rows.length > 0, questionKey(spec)).toBe(["network", "sankey"].includes(ctx.block));
-      expect(BLOCK_FILTERS[ctx.block].under(spec, ctx)).toEqual([]);
+      expect(rows.length > 0, questionKey(spec)).toBe(["network", "sankey"].includes(ctx.block) || ctx.block === "trend" && spec.dim === "supplier");
+      // P4 the question owns: the trend's "Aceleași luni" only.
+      expect(BLOCK_FILTERS[ctx.block].under(spec, ctx).map((slot) => slot.id)).toEqual(ctx.block === "trend" ? ["trendMonths"] : []);
     }
+  });
+
+  it("puts the trend's keys in its places: the change in the sentence and the strip, the months under it, order and base in P5, «Prima dată» in the strip", () => {
+    const trend = bases.find((b) => b.name === "trend firms")!.spec;
+    expect(trend.trend).toEqual({ change: "up", months: "auto" });
+    const percent = FILTERS.trendOrder.write(trend, "percent");
+    const at = (spec: FilterSpec) => placedSlots(spec, ctxOf(spec)).filter((p) => p.slot.id.startsWith("trend")).map((p) => `${p.placement} ${p.slot.id}`);
+    expect(at(percent)).toEqual(["sentence trendChange", "under trendMonths", "presentation trendOrder", "presentation trendMinBase", "strip trendChange", "strip trendFirstOnly"]);
+    for (const id of ["trendChange", "trendMonths", "trendOrder", "trendMinBase", "trendFirstOnly"] as const) expect(offeredFilters(percent, ctxOf(percent)).has(id), id).toBe(true);
+    // Every trend option a spec carries is the question's own: no "Din link" chip for it.
+    const all = { ...trend, trend: { change: "new", months: [1, 5], firstOnly: true } } as FilterSpec;
+    expect(legacyConditions(all)).toEqual([]);
+    expect(legacyConditions(percent)).toEqual([]);
   });
 
   it("shows the profile line on the three profiles only", () => {

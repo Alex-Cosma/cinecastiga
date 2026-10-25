@@ -12,17 +12,21 @@ import type { Excluded } from "@/lib/ask/filters/origin";
 import type { FilterSpec } from "@/lib/ask/filters/types";
 import { cloneQuestion, foldQuestion, type QuestionSpec } from "@/lib/ask/question-ui";
 import type { EntityHit } from "@/lib/search";
+import { MIN_TREND_YEAR, type CoveragePeriods } from "@/lib/ask/months-window";
+import { choiceState } from "@/lib/ask/filters/pickers";
+import { trendMonthsState } from "@/lib/ask/filters/trend-rules";
 import PopulationEditor from "../PopulationEditor";
 import Bands, { EMPLOYEE_BANDS, bandRange, bandsWords } from "./Bands";
+import { useCoverage } from "./coverage";
 import EntitySearch, { type SearchResult } from "./EntitySearch";
-import PeriodPicker, { EMPTY_RANGE, PeriodRange, periodRangeError, type PeriodRangeValue } from "./PeriodPicker";
+import PeriodPicker, { EMPTY_RANGE, MONTHS, PeriodRange, periodRangeError, type PeriodRangeValue } from "./PeriodPicker";
 import Segmented from "./Segmented";
 import OptionList from "./pickers/OptionList";
 import Popover from "./pickers/Popover";
 import type { ChangeSource, KitRestRow } from "./kit-types";
 import type { BuilderWindowSpec } from "./view";
 import {
-  CURRENT_ROW, SERIES_FIRST_YEAR, UNKNOWN_SEAT, bandValues, bandsChoice, currentRow, fromTab, fromTabs, listOptions, periodPresets, windowKind, windowTip, type ChoiceOption, type CoverageSpan,
+  CURRENT_ROW, SERIES_FIRST_YEAR, UNKNOWN_SEAT, bandValues, bandsChoice, choiceWords, currentRow, fromTab, fromTabs, listOptions, optionValue, periodPresets, windowKind, windowTip, type ChoiceOption, type CoverageSpan,
 } from "./window-model";
 
 /*
@@ -49,6 +53,8 @@ export interface BuilderWindowProps {
   onRemoveExclusions: (excluded: Excluded[]) => void;
   /** The name of a CPV code the reader chose, for the sentence. */
   onCpvName: (code: string, name: string) => void;
+  /** The archive's periods per channel (/api/data-coverage), when read: a trend's months. */
+  coverage?: CoveragePeriods | null;
 }
 
 interface SuggestionData {
@@ -166,7 +172,7 @@ export default function BuilderWindow(props: BuilderWindowProps) {
 /** Windows whose first choice is a list above a search: they open on the chosen row, not the field (on a phone its keyboard would cover the list). */
 const LIST_FIRST = new Set(["buyer", "place", "locality", "from", "peers"]);
 
-function WindowBody({ win, draft, excluded = [], onChoose, onReplace, onRemoveExclusions, onCpvName, onClose }: BuilderWindowProps & { win: BuilderWindowSpec }) {
+function WindowBody({ win, draft, excluded = [], onChoose, onReplace, onRemoveExclusions, onCpvName, onClose, coverage }: BuilderWindowProps & { win: BuilderWindowSpec }) {
   const kind = windowKind(win);
   const body = useRef<HTMLSpanElement>(null);
   useEffect(() => {
@@ -175,7 +181,7 @@ function WindowBody({ win, draft, excluded = [], onChoose, onReplace, onRemoveEx
     const frame = requestAnimationFrame(() => body.current?.closest("dialog")?.querySelector<HTMLElement>('[role="radio"][tabindex="0"]')?.focus());
     return () => cancelAnimationFrame(frame);
   }, [kind]);
-  const ctx = useMemo(() => filterContext(draft as FilterSpec), [draft]);
+  const ctx = useMemo(() => filterContext(draft as FilterSpec, coverage ? { coverage } : {}), [draft, coverage]);
   const own = windowOf(win.slot);
   const pick = (choices: Choice[]) => onChoose(choices);
   const marker = <span ref={body} hidden />;
@@ -233,6 +239,7 @@ function WindowBody({ win, draft, excluded = [], onChoose, onReplace, onRemoveEx
     </>;
     case "cpv": return <CpvSearch draft={draft} onPick={pick} onCpvName={onCpvName} />;
     case "period": return <PeriodWindow draft={draft} year={ctx.year} onPick={pick} />;
+    case "months": return <MonthsWindow win={win} draft={draft} ctx={ctx} onPick={pick} />;
     case "advanced": return <AdvancedWindow win={win} draft={draft} onReplace={onReplace} onClose={onClose} />;
     case "exclusions": return <div className="fk-opts">
       {excluded.map((e) => <div className="fk-opt qb-excluded" key={`${e.field}:${e.value}`}>
@@ -377,23 +384,9 @@ function BandsWindow({ draft, onPick }: { draft: QuestionSpec; onPick: (choices:
 /** The years of the free range, oldest first, up to the last year of data. */
 const rangeYears = (from: number, to: number) => Array.from({ length: Math.max(0, to - from + 1) }, (_, i) => String(from + i));
 
-let coverageRequest: Promise<CoverageSpan | null> | null = null;
-/** The archive's span (/api/data-coverage), asked once per page: the window opens without it and fills in. */
-function readCoverage(): Promise<CoverageSpan | null> {
-  coverageRequest ??= fetch("/api/data-coverage").then(async (r) => {
-    if (!r.ok) return null;
-    const body = await r.json() as { sources?: { dataset: string; from: string; to: string }[] };
-    const da = body.sources?.find((s) => s.dataset === "da"), ctr = body.sources?.find((s) => s.dataset === "contracts");
-    const to = [da?.to, ctr?.to].filter((d): d is string => Boolean(d)).sort()[0];
-    const first = [da?.from, ctr?.from].filter((d): d is string => Boolean(d)).sort()[0];
-    return { ...(da?.from ? { from: da.from } : {}), ...(to ? { to } : {}), ...(first ? { first } : {}) };
-  }).catch(() => { coverageRequest = null; return null; });
-  return coverageRequest;
-}
-
 function PeriodWindow({ draft, year, onPick }: { draft: QuestionSpec; year: number; onPick: (choices: Choice[]) => void }) {
-  const [span, setSpan] = useState<CoverageSpan | null>(null);
-  useEffect(() => { let live = true; void readCoverage().then((value) => { if (live) setSpan(value); }); return () => { live = false; }; }, []);
+  // The archive's span (/api/data-coverage, once per page): the window opens without it and fills in.
+  const span: CoverageSpan | null = useCoverage()?.span ?? null;
   const trend = draft.block === "trend";
   // The year chart draws from 2018 and its custom range is years ("Alege anii…", plan §4.3); months by month are F3's.
   const series = draft.block === "timeseries";
@@ -418,10 +411,50 @@ function PeriodWindow({ draft, year, onPick }: { draft: QuestionSpec; year: numb
     }} custom={{
       open, onOpen: () => setOpen((current) => !current), label: trend ? "Alege cei doi ani…" : series ? "Alege anii…" : "Alege anii sau lunile…",
       value: range, onChange: (next) => { setRange(next); setError(null); },
-      years: rangeYears(trend || series ? SERIES_FIRST_YEAR : span?.first ? Number(span.first.slice(0, 4)) : SERIES_FIRST_YEAR, last), months: !trend && !series,
+      // 2018 leaves the trend only (trend final §3.2): its direct acquisitions start in April.
+      years: rangeYears(trend ? MIN_TREND_YEAR : series ? SERIES_FIRST_YEAR : span?.first ? Number(span.first.slice(0, 4)) : SERIES_FIRST_YEAR, last), months: !trend && !series,
       ...(trend ? { labels: ["Primul an", "Al doilea an"] as const } : {}), error,
     }} />
     {open && <div className="fk-pop-foot"><span /><button type="button" className="fk-primary" onClick={use}>Folosește</button></div>}
+  </>;
+}
+
+/**
+ * "Ce luni compari?" (trend final §3.3): the automatic months (disabled with
+ * the reason where the data do not confirm them), whole years, or the months
+ * a reader chooses for both years, from the ones the archive reaches.
+ */
+function MonthsWindow({ win, draft, ctx, onPick }: { win: BuilderWindowSpec; draft: QuestionSpec; ctx: ReturnType<typeof filterContext>; onPick: (choices: Choice[]) => void }) {
+  const months = draft.trend?.months;
+  const state = trendMonthsState(draft as FilterSpec, ctx);
+  const options: ChoiceOption[] = (["auto", "whole"] as const).map((value) => {
+    const choice: Choice = { filter: "trendMonths", value };
+    const st = choiceState(win.slot, choice, draft as FilterSpec, ctx);
+    return { value: optionValue(value), ...choiceWords(choice, draft), ...(st.state === "disabled" ? { disabled: st.reason } : {}), choice };
+  });
+  const prefill = Array.isArray(months) ? months : state?.kind === "unconfirmed" || state?.kind === "off" ? state.prefill
+    : state?.kind === "auto" && state.window ? [state.window.from, state.window.to] as const : [1, 6] as const;
+  const [range, setRange] = useState({ from: String(prefill[0]), to: String(prefill[1]) });
+  const [error, setError] = useState<string | null>(null);
+  const use = () => {
+    const from = Number(range.from), to = Number(range.to);
+    if (from > to) { setError("Luna de început trebuie să fie înaintea lunii de sfârșit."); return; }
+    // January to December is whole years.
+    onPick([{ filter: "trendMonths", value: from === 1 && to === 12 ? "whole" : [from, to] }]);
+  };
+  const field = (key: "from" | "to", text: string) => <label className="fk-field">
+    <span>{text}</span>
+    <select value={range[key]} onChange={(event) => { setRange((current) => ({ ...current, [key]: event.target.value })); setError(null); }}>
+      {MONTHS.map((month, index) => <option key={month} value={String(index + 1)}>{month}</option>)}
+    </select>
+  </label>;
+  return <>
+    {/* The automatic months the data do not confirm are disabled, never drawn checked. */}
+    <ChoiceList label={win.name} options={options} value={typeof months === "string" && !options.find((o) => o.value === optionValue(months))?.disabled ? optionValue(months) : null} onPick={(option) => onPick([option.choice])} />
+    <p className="fk-opt-group">Sau alege lunile</p>
+    <div className="fk-range"><div className="fk-inputs">{field("from", "Din luna")}{field("to", "Până în luna")}</div>
+      {error && <p className="fk-form-error" role="alert">{error}</p>}</div>
+    <div className="fk-pop-foot"><span /><button type="button" className="fk-primary" onClick={use}>Folosește</button></div>
   </>;
 }
 

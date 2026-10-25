@@ -69,6 +69,8 @@ describe("a link opened in the builder", () => {
     const trend = restoreLink(corpus.find((entry) => entry.id === "legacy:minimum-trend-refused")!.spec);
     expect(trend.kind === "draft" && [trend.run, trend.conditions.map((c) => [c.label, c.status])]).toEqual([false, [["Din link: firme cu cel puțin 2 înregistrări în selecție", "refused"]]]);
     expect(trend.kind === "draft" && trend.reason).toMatch(/^Filtrul «cel puțin N înregistrări»/);
+    // The chip says it short, like a profile's (S2 review, problem 4).
+    expect(trend.kind === "draft" && trend.conditions[0]!.why).toBe("Un prag de înregistrări nu se aplică diferenței dintre doi ani.");
     const profile = restoreLink(corpus.find((entry) => entry.id === "legacy:profile-years-refused")!.spec);
     expect(profile.kind === "draft" && profile.conditions.map((c) => c.label)).toEqual(["Din link: în 2025"]);
     // A precise selection a question's "Selecție avansată" offers is that place's chip, not the link's.

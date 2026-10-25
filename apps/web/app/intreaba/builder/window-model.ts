@@ -8,6 +8,7 @@ import type { FilterCtx, FilterSpec } from "../../../lib/ask/filters/types";
 import { TREND_ORDER_WORDS, adminPhrase, employeesOnBands, employeesPhrase, localityName, MONTH_SHORT } from "../../../lib/ask/filters/words";
 import { KIND_ONE, KIND_WORDS, entityLabel, leaderAxis, type QuestionSpec } from "../../../lib/ask/question-ui";
 import { DEFAULT_TREND_MIN_BASE, type AskSpec } from "../../../lib/ask/spec";
+import { MIN_TREND_YEAR } from "../../../lib/ask/months-window";
 import { trendNoun } from "../../../lib/ask/filters/defs/trend";
 import { formatRon } from "../../../lib/format";
 import { EMPLOYEE_BANDS, bandRange } from "./Bands";
@@ -24,7 +25,7 @@ import type { BuilderWindowSpec } from "./view";
 
 export type WindowKind =
   | "subject" | "focal" | "buyer" | "from" | "peers" | "period" | "cpv" | "place" | "locality" | "employees" | "admin" | "compareWith"
-  | "list" | "advanced" | "exclusions";
+  | "months" | "list" | "advanced" | "exclusions";
 
 /** The control a window holds, from its place: a composed picker first, then the filter's own. */
 export function windowKind(win: BuilderWindowSpec): WindowKind {
@@ -40,6 +41,7 @@ export function windowKind(win: BuilderWindowSpec): WindowKind {
     case "employees": return "employees";
     case "admin": return "admin";
     case "compareWith": return "compareWith";
+    case "trendMonths": return "months";
     case "authority": case "supplier": return "focal";
     default: return "list";
   }
@@ -125,6 +127,10 @@ export function choiceWords(choice: Choice, spec: QuestionSpec): { label: string
       ? { label: capital(TREND_ORDER_WORDS.percent), detail: "Doar cele prezente în ambii ani, de la un prag." }
       : { label: capital(TREND_ORDER_WORDS.lei) };
     case "trendMinBase": return { label: formatRon(Number(value)) };
+    // "Ce luni compari?" (trend final §3.3): the automatic months, or whole years; chosen months are its fields.
+    case "trendMonths": return value === "whole"
+      ? { label: "Ani întregi", detail: "Toate lunile, în ambii ani." }
+      : { label: "Aceleași luni, automat", detail: "Până la ultima lună completă. Se recalculează la fiecare actualizare." };
     default: return { label: value === undefined ? "Oricare" : String(value) };
   }
 }
@@ -142,6 +148,10 @@ export function windowTip(win: BuilderWindowSpec, spec: QuestionSpec): KitTip | 
   if (win.slot.id === "rankBy") return { title: "Indicele de risc", text: "Un semnal statistic, nu o dovadă." };
   if (win.slot.picker === "peers")
     return { title: "Grupul de comparație", text: `Profilurile cu cel puțin 10 achiziții directe. ${GLOSSARY["tip-institutie"].text}` };
+  // The trend's years start in 2019 (trend final §3.2); its months are the same in both years (§3.3).
+  if (win.slot.id === "period" && block === "trend") return { title: "Ce ani compari?", text: `Din ${MIN_TREND_YEAR}: 2018 e incomplet în date.` };
+  if (win.slot.id === "trendMonths")
+    return { title: "Aceleași luni", text: "Ambii ani se compară pe aceleași luni, ca diferența să nu vină din lunile lipsă." };
   return undefined;
 }
 
@@ -293,7 +303,8 @@ export const SERIES_FIRST_YEAR = 2018;
  * the current year says how far its data go ("2026 · până la 25 sept.").
  * "Compleți" leaves out only a year still running: data up to 31 Dec make the
  * last year complete. A trend compares two years: consecutive pairs, the
- * complete one first. The year chart has intervals only (plan §4.3): one year
+ * complete one first, the one with the running year on the same months; its
+ * free range starts in 2019 (MIN_TREND_YEAR). The year chart has intervals only (plan §4.3): one year
  * is one bar, so "Toți anii · Ultimii 5 ani compleți · Ultimii 3 ani compleți".
  */
 export function periodPresets(spec: QuestionSpec, span: CoverageSpan | null, year: number): { presets: PeriodPreset[]; value: string | null } {
@@ -309,7 +320,8 @@ export function periodPresets(spec: QuestionSpec, span: CoverageSpan | null, yea
   const presets: PeriodPreset[] = spec.block === "trend"
     ? [
       { value: "pair-1", label: `${complete - 1} și ${complete}`, detail: "ultimii doi ani compleți", period: { yearFrom: complete - 1, yearTo: complete } },
-      ...(partial ? [{ value: "pair-0", label: `${last - 1} și ${last}`, detail: `${last}: până la ${until}`, period: { yearFrom: last - 1, yearTo: last } }] : []),
+      // A year still running is compared on the same months (trend-rules.ts trendFollows puts "Aceleași luni" back).
+      ...(partial ? [{ value: "pair-0", label: `${last - 1} și ${last}`, detail: `pe aceleași luni · ${last}: până la ${until}`, period: { yearFrom: last - 1, yearTo: last } }] : []),
       { value: "pair-2", label: `${complete - 2} și ${complete - 1}`, period: { yearFrom: complete - 2, yearTo: complete - 1 } },
     ]
     : spec.block === "timeseries"

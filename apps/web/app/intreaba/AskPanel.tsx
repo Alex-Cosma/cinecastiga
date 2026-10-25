@@ -832,7 +832,8 @@ export default function AskPanel({
             </div>
             {/* The profile line under the sentence and the pill say the basis; the banner stays where the answer shows lei (not payments). */}
             {isProfile && applied.block !== "distribution" && <ProfileNotice />}
-            {(stripKeys.length > 0 || crumbs || ["table", "timeseries", "map"].includes(data.block)) && (
+            {/* The trend's groups (its strip keys) are drawn by its block, above its rows: no empty strip here. */}
+            {(stripKeys.some((key) => key === "dataset" || key === "measure") || crumbs || ["table", "timeseries", "map"].includes(data.block)) && (
               <div className="fk cq-strip"><AnswerStrip>
                 {stripKeys.includes("dataset") && (
                   <Segmented
