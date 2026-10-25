@@ -183,6 +183,8 @@ export default function AskPanel({
     sort?: string;
     dir?: "asc" | "desc";
   }>({ page: 0 });
+  /** The answer on screen is the reload of a 409 (reloadOutdated): its sources' next 409 is said, not reloaded. */
+  const reloadedFor409 = useRef(false);
   const request = useRef<{ seq: number; controller: AbortController | null }>({
     seq: 0,
     controller: null,
@@ -226,7 +228,7 @@ export default function AskPanel({
        * `thread`: the breakdown's thread this run keeps (a level opened from the answer);
        * any other run drops it (plan §2.3).
        */
-      opts: { strip?: { path: StripPatch["path"]; value: string }; thread?: Thread | null; drillLabel?: string | ((answer: AskResponse) => string) } = {},
+      opts: { strip?: { path: StripPatch["path"]; value: string }; thread?: Thread | null; drillLabel?: string | ((answer: AskResponse) => string); reloaded?: true } = {},
     ) => {
       if (!NATURAL_LANGUAGE_ENABLED && typeof body.question === "string") {
         setError(NATURAL_LANGUAGE_UNAVAILABLE);
@@ -259,6 +261,8 @@ export default function AskPanel({
           return false;
         }
         setResp(answer);
+        // An answer reloaded for a 409 is not reloaded again for one (reloadOutdated); a new page of it stays that answer.
+        if (!("tablePage" in body)) reloadedFor409.current = Boolean(opts.reloaded);
         // The executed identities, plus an explicit data stream the link asked for.
         const submitted = body.spec as AskSpec | undefined;
         const executed = submitted?.dataset && !answer.spec.dataset ? { ...answer.spec, dataset: submitted.dataset } : answer.spec;
@@ -568,18 +572,21 @@ export default function AskPanel({
    * answer counted. The applied question runs again (`auto` resolved anew), the
    * page says so once it has the new answer, and a drawer that was open reopens
    * on the new months, its row's label in their words; the old answer never
-   * gets another list under it.
+   * gets another list under it. At most one reload per reader action: on the
+   * answer that reload brought, another 409 returns false and the drawer (or
+   * the export's line) says DATA_STILL_CHANGING, never a loop of reloads.
    */
-  const reloadOutdated = useCallback((reopen: boolean) => {
-    if (!applied) return;
+  const reloadOutdated = useCallback((reopen: boolean): boolean => {
+    if (!applied || reloadedFor409.current) return false;
     const drawer = reopen ? evidence : null;
     const label = drawer?.scopeLabel, before = resp?.data;
     setEvidence(null);
     const drillLabel = label && before?.block === "trend"
       ? (answer: AskResponse) => answer.data?.block === "trend" ? retimeScopeLabel(label, before, answer.data) : label
       : label;
-    void execute({ spec: applied }, !!drawer, drawer?.scope, drawer?.filters, false, drillLabel ? { drillLabel } : {})
+    void execute({ spec: applied }, !!drawer, drawer?.scope, drawer?.filters, false, { reloaded: true, ...(drillLabel ? { drillLabel } : {}) })
       .then((ran) => { if (ran) showToast(DATA_RELOADED); });
+    return true;
   }, [applied, evidence, execute, resp?.data, showToast]);
   const copy = async (text: string, message: string) => {
     try {
