@@ -50,52 +50,52 @@ interface Handlers {
 }
 
 export function UnderChip({ item, openId, onOpen, onRemove, onToggle }: { item: UnderChipItem } & Handlers) {
-  const remove = (name: string) => onRemove && <button type="button" className="fk-chip-x" aria-label={`Scoate «${name}»`} onClick={event => removeAndRefocus(event, () => onRemove(item.id))}>×</button>;
+  const remove = (name: string) => onRemove && <button type="button" className="qb-chip-x" aria-label={`Scoate «${name}»`} onClick={event => removeAndRefocus(event, () => onRemove(item.id))}>×</button>;
   const open = openId === item.id;
   const opener = (children: ReactNode) => <button
     type="button"
-    className="fk-chip-main"
+    className="qb-chip-main"
     aria-haspopup="dialog"
     aria-expanded={open}
     onClick={event => onOpen?.(item.id, event.currentTarget)}
-  >{children}<i className="fk-chev" aria-hidden="true" /></button>;
+  >{children}<i className="qb-chev" aria-hidden="true" /></button>;
   switch (item.kind) {
     case "only":
-      return <span className="fk-chip fk-chip--only">{opener(item.label)}{remove(item.name)}</span>;
+      return <span className="qb-chip qb-chip--only">{opener(item.label)}{remove(item.name)}</span>;
     case "exclude":
-      return <span className="fk-chip fk-chip--exclude">
-        {item.collapsed ? opener(item.label) : <span className="fk-chip-main">{item.label}</span>}
+      return <span className="qb-chip qb-chip--exclude">
+        {item.collapsed ? opener(item.label) : <span className="qb-chip-main">{item.label}</span>}
         {remove(item.name ?? item.label)}
       </span>;
     case "auto": {
-      const chip = <span className="fk-chip fk-chip--auto">{opener(<><i className="fk-half" aria-hidden="true" /><span>{item.label}</span></>)}{item.tip && <HelpTip tip={item.tip} />}{remove(item.name)}</span>;
-      return item.tip ? <span className="fk-tipwrap-sm">{chip}</span> : chip;
+      const chip = <span className="qb-chip qb-chip--auto">{opener(<><i className="qb-half" aria-hidden="true" /><span>{item.label}</span></>)}{item.tip && <HelpTip tip={item.tip} />}{remove(item.name)}</span>;
+      return item.tip ? <span className="qb-tipwrap-sm">{chip}</span> : chip;
     }
     case "notice":
       return <>
-        <span className="fk-tipwrap-sm"><span className="fk-chip fk-chip--auto fk-chip--notice">
-          <span className="fk-chip-main"><i className="fk-half" aria-hidden="true" /><span>{item.label}</span></span>
+        <span className="qb-tipwrap-sm"><span className="qb-chip qb-chip--auto qb-chip--notice">
+          <span className="qb-chip-main"><i className="qb-half" aria-hidden="true" /><span>{item.label}</span></span>
           <HelpTip tip={item.tip} />
         </span></span>
-        <button type="button" className="fk-invite" aria-haspopup="dialog" aria-expanded={open} onClick={event => onOpen?.(item.id, event.currentTarget)}>{item.action}</button>
+        <button type="button" className="qb-invite" aria-haspopup="dialog" aria-expanded={open} onClick={event => onOpen?.(item.id, event.currentTarget)}>{item.action}</button>
       </>;
     case "toggle":
-      return <button type="button" className="fk-toggle" {...(item.opens ? { "aria-haspopup": "dialog" as const, "aria-expanded": open } : { "aria-pressed": false })}
+      return <button type="button" className="qb-toggle" {...(item.opens ? { "aria-haspopup": "dialog" as const, "aria-expanded": open } : { "aria-pressed": false })}
         onClick={event => { if (item.opens) onOpen?.(item.id, event.currentTarget); else onToggle?.(item.id); }}>
-        {item.glyph === "half" ? <i className="fk-half" aria-hidden="true" /> : <span className="fk-plus" aria-hidden="true">+</span>}{item.label}
+        {item.glyph === "half" ? <i className="qb-half" aria-hidden="true" /> : <span className="qb-plus" aria-hidden="true">+</span>}{item.label}
       </button>;
-    // The two with a (?): on a phone the tip opens over its own chip (.fk-tipwrap-sm), outside the chip's clip.
+    // The two with a (?): on a phone the tip opens over its own chip (.qb-tipwrap-sm), outside the chip's clip.
     case "legacy": {
-      const chip = <span className="fk-tipwrap-sm"><span className="fk-chip fk-chip--legacy">
-        <span className="fk-chip-main"><span><b>Din link:</b> {item.words}</span></span>
+      const chip = <span className="qb-tipwrap-sm"><span className="qb-chip qb-chip--legacy">
+        <span className="qb-chip-main"><span><b>Din link:</b> {item.words}</span></span>
         <HelpTip tip={item.tip} />
         {remove(`Din link: ${item.words}`)}
       </span></span>;
-      return item.link ? <>{chip}<KitLink link={item.link} className="fk-relax-link" /></> : chip;
+      return item.link ? <>{chip}<KitLink link={item.link} className="qb-relax-link" /></> : chip;
     }
     case "origin":
-      return <span className="fk-tipwrap-sm"><span className="fk-chip fk-chip--origin">
-        <span className="fk-chip-main"><span><b>{item.prefix}:</b> {item.words}</span></span>
+      return <span className="qb-tipwrap-sm"><span className="qb-chip qb-chip--origin">
+        <span className="qb-chip-main"><span><b>{item.prefix}:</b> {item.words}</span></span>
         <HelpTip tip={item.tip} />
         {remove(item.prefix)}
       </span></span>;
@@ -104,7 +104,7 @@ export function UnderChip({ item, openId, onOpen, onRemove, onToggle }: { item: 
 
 export default function UnderChips({ items, label = "Alte condiții", ...handlers }: { items: readonly UnderChipItem[]; label?: string } & Handlers) {
   if (!items.length) return null;
-  return <div className="fk-under fk-tipwrap" role="group" aria-label={label} data-fk-row="">
+  return <div className="qb-under qb-tipwrap" role="group" aria-label={label} data-qb-row="">
     {orderUnderChips(items).map(item => <UnderChip key={`${item.kind}:${item.id}`} item={item} {...handlers} />)}
   </div>;
 }

@@ -180,7 +180,7 @@ describe("«Aceleași luni» under the sentence (trend final §3.3, kit P4)", ()
     expect(view(running(undefined), LOCAL).under).toEqual([{ kind: "toggle", id: "u:trendMonths", label: "Aceleași luni", glyph: "half", opens: true }]);
     const markup = renderToStaticMarkup(createElement(UnderChips, { items: view(running("whole"), COMPLETE_MAY).under }));
     expect(markup).toContain('aria-pressed="false"');
-    expect(markup).toContain("fk-half");
+    expect(markup).toContain("qb-half");
     for (const months of ["auto", "whole", undefined]) expect(view(trendOf(months ? { trend: { change: "up", months } as NonNullable<FilterSpec["trend"]> } : {}), LOCAL).under).toEqual([]);
     // Without the periods (before /api/data-coverage answers), only a running calendar year shows the rule.
     expect(view(running("auto")).under).toEqual([expect.objectContaining({ kind: "auto", label: "Aceleași luni" })]);

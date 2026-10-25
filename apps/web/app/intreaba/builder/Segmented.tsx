@@ -35,7 +35,7 @@ export interface SegmentOption {
  * <SwatchLabel swatch="proc">proceduri</SwatchLabel>` ("Împarte").
  */
 export function SwatchLabel({ swatch, children }: { swatch: NonNullable<SegmentOption["swatch"]>; children: ReactNode }) {
-  return <span className="fk-sw-l"><i className={`fk-sw fk-sw--${swatch}`} aria-hidden="true" />{children}</span>;
+  return <span className="qb-sw-l"><i className={`qb-sw qb-sw--${swatch}`} aria-hidden="true" />{children}</span>;
 }
 
 export interface SegmentedProps {
@@ -58,7 +58,7 @@ export default function Segmented({ label, options, value, onChange, size, full 
   const stop = rovingStop(checked, options.map(option => !!option.disabled));
   const role = tabs ? "tab" : "radio";
   return <div
-    className={`fk-seg${size === "sm" ? " fk-seg--sm" : ""}${full ? " fk-seg--full" : ""}${className ? ` ${className}` : ""}`}
+    className={`qb-seg${size === "sm" ? " qb-seg--sm" : ""}${full ? " qb-seg--full" : ""}${className ? ` ${className}` : ""}`}
     role={tabs ? "tablist" : "radiogroup"}
     aria-label={label}
     data-roving=""
@@ -71,7 +71,7 @@ export default function Segmented({ label, options, value, onChange, size, full 
         key={option.value}
         type="button"
         id={tabs ? `${base}-t${index}` : undefined}
-        className={`fk-seg-opt${option.inferred ? " is-inferred" : ""}${option.className ? ` ${option.className}` : ""}`}
+        className={`qb-seg-opt${option.inferred ? " is-inferred" : ""}${option.className ? ` ${option.className}` : ""}`}
         role={role}
         aria-checked={tabs ? undefined : on}
         aria-selected={tabs ? on : undefined}
@@ -81,8 +81,8 @@ export default function Segmented({ label, options, value, onChange, size, full 
         tabIndex={index === stop ? 0 : -1}
         onClick={() => { if (!option.disabled) onChange?.(option.value, "activate"); }}
       >
-        <span className="fk-seg-l">{option.swatch ? <SwatchLabel swatch={option.swatch}>{option.label}</SwatchLabel> : option.label}</span>
-        {option.count && <span className="fk-seg-n">{option.count}</span>}
+        <span className="qb-seg-l">{option.swatch ? <SwatchLabel swatch={option.swatch}>{option.label}</SwatchLabel> : option.label}</span>
+        {option.count && <span className="qb-seg-n">{option.count}</span>}
       </button>;
     })}
     {options.map((option, index) => typeof option.disabled === "string" && <DisabledReason key={`r${index}`} id={`${base}-r${index}`} reason={option.disabled} />)}

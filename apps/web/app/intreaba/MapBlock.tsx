@@ -169,18 +169,18 @@ export default function MapBlock({
             );
           })}
         </svg>
-        <div className="ask-legend fk-tipwrap">
+        <div className="ask-legend qb-tipwrap">
           <span>mai puțin</span>
           {Array.from({ length: MAP_STEPS }, (_, i) => (
             <span key={i} className={`sw ask-county-${i}`} />
           ))}
           <span>mai mult</span>
-          <span className="fk"><HelpTip tip={LEGEND_TIP} /></span>
+          <span className="qb"><HelpTip tip={LEGEND_TIP} /></span>
         </div>
         {card && (() => {
           const c = cardOf(card.label, card.key);
           return (
-            <div className="fk ask-mapcard">
+            <div className="qb ask-mapcard">
               <DetailCard
                 title={c.label}
                 {...(c.value > 0 ? {} : { meta: "Nicio înregistrare pentru această întrebare." })}

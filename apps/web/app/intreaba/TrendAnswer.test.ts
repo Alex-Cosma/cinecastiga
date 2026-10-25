@@ -42,7 +42,7 @@ describe("the trend's answer", () => {
   it("has five group buttons as a radiogroup, the chosen one checked, a group of 0 disabled", () => {
     const data = trendFixture({ composition: { ...trendFixture().composition, gone: { count: 0, valueA: 0, valueB: 0 } } });
     const markup = render({ data, spec: trendSpec({ change: "new" }) });
-    const radios = tags(markup, /<button[^>]*class="fk-group[^"]*"[^>]*>/g);
+    const radios = tags(markup, /<button[^>]*class="qb-group[^"]*"[^>]*>/g);
     expect(radios).toHaveLength(5);
     expect(markup).toContain('role="radiogroup" aria-label="Felul schimbării"');
     expect(radios.filter((r) => r.includes('aria-checked="true"'))).toHaveLength(1);
@@ -50,7 +50,7 @@ describe("the trend's answer", () => {
     expect(radios.filter((r) => r.includes('aria-disabled="true"'))).toHaveLength(1);
     expect(text(markup)).toContain("Nicio firmă care să nu mai apară.");
     // Its reason is visible too: a line under the buttons, the reason in its (?).
-    expect(markup).toMatch(/<p class="fk-trend-off fk-tipwrap">Grup gol: Nu mai apar/);
+    expect(markup).toMatch(/<p class="qb-trend-off qb-tipwrap">Grup gol: Nu mai apar/);
     // On the new ones: „Toate · Prima dată în 2025”, beside „Noi” with its year.
     expect(text(markup)).toMatch(/Firme noi față de 2024: .*Toate 2 Prima dată în 2025 1/);
   });
@@ -70,7 +70,7 @@ describe("the trend's answer", () => {
   it("puts an institution's county beside it, and a swatch with its group on every row of „Toate”", () => {
     const markup = render({ data: trendFixture({ noun: "instituții" }), spec: trendSpec({ change: "all" }, { dim: "authority" }) });
     expect(text(markup)).toContain("ALFA CONSTRUCT SRL București");
-    expect(tags(markup, /class="fk-sw fk-sw--(up|new|down|gone|all) fk-trow-sw"/g)).toHaveLength(5);
+    expect(tags(markup, /class="qb-sw qb-sw--(up|new|down|gone|all) qb-trow-sw"/g)).toHaveLength(5);
     expect(text(markup)).toContain("scădere: DELTA SA");
   });
 
@@ -85,13 +85,13 @@ describe("the trend's answer", () => {
   it("still draws an answer stored before trend-2: its one list, no buttons", () => {
     const old = trendFixture({ groups: undefined, composition: undefined, list: undefined, change: undefined, rowFacts: undefined, noun: undefined, months: undefined });
     const markup = render({ data: old, spec: trendSpec() });
-    expect(markup).not.toContain("fk-group");
+    expect(markup).not.toContain("qb-group");
     expect(text(markup)).toContain("ALFA CONSTRUCT SRL");
     expect(text(markup)).toContain("+1.400");
   });
 
   it("has no records buttons outside an answer with sources", () => {
-    expect(render({ spec: trendSpec({ change: "up" }) }, false)).not.toContain("fk-rec");
+    expect(render({ spec: trendSpec({ change: "up" }) }, false)).not.toContain("qb-rec");
   });
 
   it("marks the partly covered years", () => {
@@ -113,14 +113,14 @@ describe("the trend's answer", () => {
 
   it("lets the two-year total break between its years, each year whole with its sum", () => {
     const markup = render({ spec: trendSpec({ change: "up" }) });
-    expect(markup).toContain('<span class="fk-nowrap"><i class="fk-trend-y">2024</i> <span class="fk-num">100 lei</span></span> <span class="fk-nowrap"><i class="fk-trend-y">→ 2025</i>');
+    expect(markup).toContain('<span class="qb-nowrap"><i class="qb-trend-y">2024</i> <span class="qb-num">100 lei</span></span> <span class="qb-nowrap"><i class="qb-trend-y">→ 2025</i>');
   });
 
   it("ranks the growths in percent with the percent as the main figure and its caveat under the list (trend final §3.9)", () => {
     const data = trendFixture({ composition: { ...trendFixture().composition, eligible: { count: 1, valueA: 100, valueB: 1500 } } });
     const markup = render({ data, spec: trendSpec({ change: "up", order: "percent", minBase: 100 }) });
-    expect(markup).toMatch(/<span class="fk-num fk-trow-delta up"><span aria-hidden="true">×15<\/span>/);
-    expect(markup).toContain('<span class="fk-trow-pct">+1.400 lei</span>');
+    expect(markup).toMatch(/<span class="qb-num qb-trow-delta up"><span aria-hidden="true">×15<\/span>/);
+    expect(markup).toContain('<span class="qb-trow-pct">+1.400 lei</span>');
     expect(text(markup)).toContain("Creșterea în procente");
     expect(markup).toContain("e un indiciu de verificat în surse, nu o concluzie.");
     // The buttons keep the partition: every growth.

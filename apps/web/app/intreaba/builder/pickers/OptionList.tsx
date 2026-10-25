@@ -32,10 +32,10 @@ const pct = (share: number) => `${Math.round(Math.max(0, Math.min(1, share)) * 1
 
 /** A rest row: text, out of the radiogroup's roving order. */
 function RestRow({ row }: { row: KitRestRow }) {
-  return <div className="fk-opt fk-opt--rest">
-    <span className="fk-opt-mark" aria-hidden="true" />
-    <span className="fk-opt-t"><strong>{row.label}</strong></span>
-    <span className="fk-opt-n">{row.count}</span>
+  return <div className="qb-opt qb-opt--rest">
+    <span className="qb-opt-mark" aria-hidden="true" />
+    <span className="qb-opt-t"><strong>{row.label}</strong></span>
+    <span className="qb-opt-n">{row.count}</span>
   </div>;
 }
 
@@ -44,7 +44,7 @@ export default function OptionList({ label, options, multiple = false, value = n
   const stop = multiple ? -1 : rovingStop(options.findIndex(isOn), options.map(option => !!option.disabled));
   return <>
     <div
-      className={`fk-opts${multiple ? " fk-opts--check" : ""}`}
+      className={`qb-opts${multiple ? " qb-opts--check" : ""}`}
       role={multiple ? "group" : "radiogroup"}
       aria-label={label}
       data-roving=""
@@ -53,31 +53,31 @@ export default function OptionList({ label, options, multiple = false, value = n
       {options.map((option, index) => {
         const on = isOn(option), heading = option.group && option.group !== options[index - 1]?.group ? option.group : null;
         return <Fragment key={option.value}>
-          {heading && <p className="fk-opt-group">{heading}</p>}
+          {heading && <p className="qb-opt-group">{heading}</p>}
           <button
             type="button"
-            className={`fk-opt${option.className ? ` ${option.className}` : ""}`}
+            className={`qb-opt${option.className ? ` ${option.className}` : ""}`}
             role={multiple ? "checkbox" : "radio"}
             aria-checked={on}
             aria-disabled={option.disabled ? true : undefined}
             tabIndex={multiple ? undefined : index === stop ? 0 : -1}
             onClick={() => { if (!option.disabled) onChange?.(option.value, "activate"); }}
           >
-            <span className="fk-opt-mark" aria-hidden="true" />
-            <span className="fk-opt-t">
+            <span className="qb-opt-mark" aria-hidden="true" />
+            <span className="qb-opt-t">
               <strong>{option.label}</strong>
               {option.detail && <small>{option.detail}</small>}
               {option.disabled && <small>{option.disabled}</small>}
-              {option.swap && <span className="fk-opt-swap">{option.swap}</span>}
-              {option.share !== undefined && <span className="fk-opt-bar" aria-hidden="true" style={{ "--w": pct(option.share) } as CSSProperties} />}
+              {option.swap && <span className="qb-opt-swap">{option.swap}</span>}
+              {option.share !== undefined && <span className="qb-opt-bar" aria-hidden="true" style={{ "--w": pct(option.share) } as CSSProperties} />}
             </span>
-            <span className="fk-opt-n">{option.count}</span>
+            <span className="qb-opt-n">{option.count}</span>
           </button>
           {rest.filter(row => row.after === option.value).map(row => <RestRow key={`rest:${row.label}`} row={row} />)}
         </Fragment>;
       })}
       {rest.filter(row => row.after === undefined || !options.some(option => option.value === row.after)).map(row => <RestRow key={`rest:${row.label}`} row={row} />)}
     </div>
-    {link && <button type="button" className={`fk-opt--link${link.className ? ` ${link.className}` : ""}`} onClick={link.onClick}>{link.label}<span aria-hidden="true">›</span></button>}
+    {link && <button type="button" className={`qb-opt--link${link.className ? ` ${link.className}` : ""}`} onClick={link.onClick}>{link.label}<span aria-hidden="true">›</span></button>}
   </>;
 }

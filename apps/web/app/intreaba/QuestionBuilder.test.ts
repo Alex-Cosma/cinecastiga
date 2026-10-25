@@ -44,7 +44,7 @@ const text = (markup: string) => markup.replace(/<[^>]+>/g, " ").replace(/\s+/g,
 describe("QuestionBuilder from the registry", () => {
   it("draws the sentence as phrases, the invitations, the presentation line and «⋯», nothing generic (R3)", () => {
     const markup = html({ block: "table", dim: "supplier", measure: "value", topN: 10, filters: { yearFrom: 2025, yearTo: 2025 } });
-    expect(markup).toMatch(/<h2 class="fk-sentence qb-kit-sentence qb-kit-sentence--table">/);
+    expect(markup).toMatch(/<h2 class="qb-sentence qb-kit-sentence qb-kit-sentence--table">/);
     expect(markup).toContain('aria-label="Ce clasăm: firme"');
     expect(markup).toContain('aria-label="Perioada: 2025"');
     expect(text(markup)).toContain("+ Angajați");
@@ -62,7 +62,7 @@ describe("QuestionBuilder from the registry", () => {
     expect(text(markup)).toContain("Din link: firme cu cel puțin 5 înregistrări în selecție");
     expect(markup).toContain('class="qb-refused" role="alert"');
     expect(text(markup)).toContain("Scoate condițiile din link");
-    expect(markup).toMatch(/<button type="button" class="fk-primary qb-apply" disabled="">Vezi răspunsul/);
+    expect(markup).toMatch(/<button type="button" class="qb-primary qb-apply" disabled="">Vezi răspunsul/);
     expect(text(markup)).not.toContain("Întrebare aplicată");
   });
 
@@ -80,7 +80,7 @@ describe("QuestionBuilder from the registry", () => {
   });
 
   it("draws the profile line on a profile and the partners' row on a network", () => {
-    expect(html({ block: "scatter", dim: "authority", measure: "value", rankBy: "risk", filters: {} })).toContain('class="fk-scopeline');
+    expect(html({ block: "scatter", dim: "authority", measure: "value", rankBy: "risk", filters: {} })).toContain('class="qb-scopeline');
     const network = html({ block: "network", dim: "authority", measure: "value", filters: { authorityId: 1, authorityName: "Spitalul X" } });
     expect(network).toContain('aria-label="Furnizorii"');
     expect(text(network)).toContain("+ Angajați");
@@ -98,7 +98,7 @@ describe("QuestionBuilder from the registry", () => {
 
   it("keeps the parked row's live region mounted, empty until a lens parks something", () => {
     const markup = html({ block: "entity_card", dim: "supplier", measure: "value", rankBy: "value", filters: {} });
-    expect(markup).toContain('<span class="fk-sr" role="status" aria-live="polite"></span>');
-    expect(markup).not.toContain("fk-parked");
+    expect(markup).toContain('<span class="qb-sr" role="status" aria-live="polite"></span>');
+    expect(markup).not.toContain("qb-parked");
   });
 });

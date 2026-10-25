@@ -106,22 +106,22 @@ export default function KitDemo() {
   const sentence: SentenceToken[] = [text("Ce "), slot("subject", "Ce clasăm", subjectLabel), text(" cu sediul "), slot("seat", "Sediul firmei", SEAT_WORDS[seat] ?? seat), text(" câștigă achizițiile de "), slot("what", "Ce s-a cumpărat", KIND_WORDS[kind] ?? kind), text(", în "), slot("period", "Perioada", PERIOD_WORDS[period] ?? period), text("?")];
   const windowBody: Record<Window, { body: ReactNode; foot?: ReactNode; wide?: boolean; tip?: typeof SEAT_TIP }> = {
     subject: { body: <OptionList label="Ce clasăm" options={SUBJECTS} value={subject} onChange={choose(setSubject)} /> },
-    seat: { tip: SEAT_TIP, body: <OptionList label="Sediul firmei" options={SEAT} value={seat} onChange={choose(setSeat)} rest={[{ label: "Sediu necunoscut", count: "0,3% · 19" }]} />, foot: <><span /><button type="button" className="fk-link" onClick={() => { setSeat("any"); close(); }}>Oriunde</button></> },
+    seat: { tip: SEAT_TIP, body: <OptionList label="Sediul firmei" options={SEAT} value={seat} onChange={choose(setSeat)} rest={[{ label: "Sediu necunoscut", count: "0,3% · 19" }]} />, foot: <><span /><button type="button" className="qb-link" onClick={() => { setSeat("any"); close(); }}>Oriunde</button></> },
     what: { body: <Segmented label="Tipul achiziției" options={KIND} value={kind} onChange={choose(setKind)} full /> },
     period: { body: <OptionList label="Perioada" options={PERIODS} value={period} onChange={choose(setPeriod)} link={{ label: "Alege anii sau lunile…", onClick: close }} /> },
-    size: { wide: true, body: <><Pills label="Plaje" options={SIZES} value={size} onChange={value => setSize(value)} /><RangeFields from={range[0]} to={range[1]} onChange={(from, to) => setRange([from, to])} /></>, foot: <><button type="button" className="fk-link" onClick={() => { setSize(null); setRange(["", ""]); close(); }}>Scoate condiția</button><button type="button" className="fk-primary" onClick={close}>Folosește</button></> },
-    new: { body: <><OptionList label="Sensul" options={[{ value: "registered", label: "Înmatriculate", detail: "anul din Registrul Comerțului" }, { value: "first", label: "Prima dată", detail: "prima înregistrare în datele noastre" }]} value="first" /><p className="fk-opt-group">Din</p><Pills label="Din anul" options={["2022", "2023", "2024", "2025"].map(year => ({ value: year, label: year })).concat({ value: "2026", label: "2026", disabled: "După sfârșitul perioadei." } as PillOption)} value={newSince} onChange={choose(setNewSince)} /></> },
+    size: { wide: true, body: <><Pills label="Plaje" options={SIZES} value={size} onChange={value => setSize(value)} /><RangeFields from={range[0]} to={range[1]} onChange={(from, to) => setRange([from, to])} /></>, foot: <><button type="button" className="qb-link" onClick={() => { setSize(null); setRange(["", ""]); close(); }}>Scoate condiția</button><button type="button" className="qb-primary" onClick={close}>Folosește</button></> },
+    new: { body: <><OptionList label="Sensul" options={[{ value: "registered", label: "Înmatriculate", detail: "anul din Registrul Comerțului" }, { value: "first", label: "Prima dată", detail: "prima înregistrare în datele noastre" }]} value="first" /><p className="qb-opt-group">Din</p><Pills label="Din anul" options={["2022", "2023", "2024", "2025"].map(year => ({ value: year, label: year })).concat({ value: "2026", label: "2026", disabled: "După sfârșitul perioadei." } as PillOption)} value={newSince} onChange={choose(setNewSince)} /></> },
   };
   const current = win ? windowBody[win.id] : null;
 
-  return <div className="kd fk">
+  return <div className="kd qb">
     <header className="kd-head">
       <p className="kd-eyebrow">Doar în dezvoltare · Întreabă · F1a</p>
       <h1>Trusa de filtre</h1>
       <p>Cele 21 de componente comune ale filtrelor, în stările lor: propoziția, condițiile, alegerile, răspunsul și ajutorul. Tema urmează comutatorul site-ului. Numerele sunt de probă.</p>
     </header>
 
-    <Section n={1} title="Propoziția, frazele, invitațiile și linia de profil" classes=".fk-sentence · .fk-phrase (--fixed) · .fk-invite · .fk-scopeline · .fk-present" note="Propoziția spune ce se numără. Fragmentele nesetate devin invitații numite, cel mult 4. Fără × în propoziție.">
+    <Section n={1} title="Propoziția, frazele, invitațiile și linia de profil" classes=".qb-sentence · .qb-phrase (--fixed) · .qb-invite · .qb-scopeline · .qb-present" note="Propoziția spune ce se numără. Fragmentele nesetate devin invitații numite, cel mult 4. Fără × în propoziție.">
       <Cap>fraze: implicit · hover · deschisă · focus</Cap>
       <Sentence as="h3" openId="y1" tokens={[text("Ce "), slot("s", "Ce clasăm", "firme"), text(" au cea mai mare "), slot("c", "Felul schimbării", "creștere", "is-hover"), text(" între "), slot("y1", "Primul an", "2024"), text(" și "), slot("y2", "Al doilea an", "2025", "is-focus"), text("?")]} />
       <Cap>invitații: implicit · hover · focus · dezactivată, cu (?)</Cap>
@@ -135,14 +135,14 @@ export default function KitDemo() {
       <Cap>profil istoric: frază fixă + linia de profil (nu se apasă) · rândul de prezentare</Cap>
       <Sentence as="h3" tokens={[text("Ce "), slot("k", "Ce clasăm", "consilii județene"), text(" "), { kind: "fixed", text: "din toată țara", tip: { title: "Din toată țara", text: "Un consiliu pe județ." } }, text(" ies din tipar după risc și valoarea achizițiilor directe?")]} />
       <ScopeLine />
-      <div className="fk-bottom"><Presentation tokens={[text("Arată "), slot("top", "Câte rânduri", "primele 10"), text(", după "), slot("by", "Ordinea", "valoarea înregistrată"), text(".")]} /></div>
+      <div className="qb-bottom"><Presentation tokens={[text("Arată "), slot("top", "Câte rânduri", "primele 10"), text(", după "), slot("by", "Ordinea", "valoarea înregistrată"), text(".")]} /></div>
       <Live>
         <Sentence as="h3" tokens={sentence} openId={win?.id ?? null} onOpen={open} />
         <Invitations items={[{ id: "size", label: "Mărimea achiziției" }]} openId={win?.id ?? null} onOpen={open} />
       </Live>
     </Section>
 
-    <Section n={2} title="Rândul de condiții: de grup și de selecție" classes=".fk-row · .fk-row--select · .fk-row-label · .fk-chip · .fk-toggle" note="Rândul de grup restrânge lista; totalul rămâne al propoziției. Rândul de selecție alege partenerii; totalul se schimbă. Cel mult 5 cipuri pe rând.">
+    <Section n={2} title="Rândul de condiții: de grup și de selecție" classes=".qb-row · .qb-row--select · .qb-row-label · .qb-chip · .qb-toggle" note="Rândul de grup restrânge lista; totalul rămâne al propoziției. Rândul de selecție alege partenerii; totalul se schimbă. Cel mult 5 cipuri pe rând.">
       <Cap>rând de grup: activ cu număr · activ · comutator oprit · invitație în focus</Cap>
       <ConditionRow label="Câștigătorii" kind="group">
         <Chip id="new" label="Furnizori noi · din 2024" name="Furnizori noi" active count="177 · 38,6%" onRemove={() => undefined} />
@@ -175,13 +175,13 @@ export default function KitDemo() {
       </Live>
     </Section>
 
-    <Section n={3} title="Cipuri sub propoziție: „Doar”, „Fără”, automat, din link, din altă pagină, puse deoparte" classes=".fk-chip--only · --exclude · --auto · --legacy · --origin · .fk-parked" note="Ordinea: restricții, excluderi, ajustări automate, apoi „Din link” și selecțiile din altă pagină. Chihlimbarul = pus de aplicație sau venit din afară. Cele puse deoparte nu intră în link.">
+    <Section n={3} title="Cipuri sub propoziție: „Doar”, „Fără”, automat, din link, din altă pagină, puse deoparte" classes=".qb-chip--only · --exclude · --auto · --legacy · --origin · .qb-parked" note="Ordinea: restricții, excluderi, ajustări automate, apoi „Din link” și selecțiile din altă pagină. Chihlimbarul = pus de aplicație sau venit din afară. Cele puse deoparte nu intră în link.">
       <div className="kd-cells">
         <Cell cap="restricție"><UnderChips items={[UNDER[1]!]} onRemove={() => undefined} onOpen={() => undefined} /></Cell>
         <Cell cap="excludere (Scoate din calcul)"><UnderChips items={[UNDER[3]!]} onRemove={() => undefined} /></Cell>
         <Cell cap="excluderi strânse (de la 3)"><UnderChips items={[{ kind: "exclude", id: "three", label: "Fără 3 firme", name: "cele 3 excluderi", collapsed: true }]} onRemove={() => undefined} onOpen={() => undefined} /></Cell>
         <Cell cap="ajustare pusă automat"><UnderChips items={[UNDER[4]!]} onRemove={() => undefined} onOpen={() => undefined} /></Cell>
-        <Cell cap="comutator oprit / pornit (evoluție)"><div className="fk-row"><Toggle id="m1" label="Aceleași luni: ian.–iun." glyph="half" pressed={false} /><Toggle id="m2" label="Aceleași luni: ian.–iun." glyph="half" pressed /></div></Cell>
+        <Cell cap="comutator oprit / pornit (evoluție)"><div className="qb-row"><Toggle id="m1" label="Aceleași luni: ian.–iun." glyph="half" pressed={false} /><Toggle id="m2" label="Aceleași luni: ian.–iun." glyph="half" pressed /></div></Cell>
         <Cell cap="din altă pagină a site-ului (aplicată, nu veche)"><UnderChips items={[UNDER[2]!]} onRemove={() => undefined} /></Cell>
         <Cell cap="din link" wide><UnderChips items={[UNDER[0]!]} onRemove={() => undefined} /></Cell>
         <Cell cap="puse deoparte (axa „indice”): implicit · hover · focus" wide><ParkedRow label="Nu se aplică indicelui" tip={PARKED_TIP} items={PARKED} itemClassName={id => id === "cpv" ? "is-hover" : id === "kind" ? "is-focus" : undefined} /></Cell>
@@ -189,11 +189,11 @@ export default function KitDemo() {
       <Live>
         <UnderChips items={under} openId={win?.id ?? null} onOpen={(id, anchor) => id === "size" && open("size", anchor)} onRemove={id => setUnder(items => items.filter(item => item.id !== id))} />
         <ParkedRow label="Nu se aplică indicelui" tip={PARKED_TIP} items={parked} onRestore={id => setParked(items => items.filter(item => item.id !== id))} />
-        {(under.length < UNDER.length || parked.length < PARKED.length) && <button type="button" className="fk-secondary" onClick={() => { setUnder(UNDER); setParked(PARKED); }}>Pune-le la loc</button>}
+        {(under.length < UNDER.length || parked.length < PARKED.length) && <button type="button" className="qb-secondary" onClick={() => { setUnder(UNDER); setParked(PARKED); }}>Pune-le la loc</button>}
       </Live>
     </Section>
 
-    <Section n={4} title="Segmentatul" classes=".fk-seg · .fk-seg-opt (role=radiogroup / radio · tablist / tab)" note="O alegere din 2–4, aplicată pe loc. Numerele sunt ponderi din răspuns. Pe telefon ocupă toată lățimea. ←/→ mută și aleg; opțiunile dezactivate se sar.">
+    <Section n={4} title="Segmentatul" classes=".qb-seg · .qb-seg-opt (role=radiogroup / radio · tablist / tab)" note="O alegere din 2–4, aplicată pe loc. Numerele sunt ponderi din răspuns. Pe telefon ocupă toată lățimea. ←/→ mută și aleg; opțiunile dezactivate se sar.">
       <div className="kd-cells">
         <Cell cap="ales · cu ponderi"><Segmented label="Ce fel de achiziții" value="all" options={[{ value: "all", label: "Toate" }, { value: "da", label: "Directe", count: "5%" }, { value: "proc", label: "Proceduri", count: "95%" }]} /></Cell>
         <Cell cap="focus · dezactivat (0)"><Segmented label="Ce fel de achiziții" value="da" options={[{ value: "all", label: "Toate" }, { value: "da", label: "Directe", count: "100%", className: "is-focus" }, { value: "proc", label: "Proceduri", count: "—", disabled: "Nicio înregistrare din proceduri în selecție." }]} /></Cell>
@@ -210,7 +210,7 @@ export default function KitDemo() {
       </Live>
     </Section>
 
-    <Section n={5} title="Grupuri cu numere" classes=".fk-groups · .fk-group (role=radiogroup / radio)" note="Cuvântul-lentilă al întrebării, în răspuns: fiecare grup cu număr și sumă. Un clic schimbă lista fără o căutare nouă. Un grup gol rămâne vizibil, dezactivat.">
+    <Section n={5} title="Grupuri cu numere" classes=".qb-groups · .qb-group (role=radiogroup / radio)" note="Cuvântul-lentilă al întrebării, în răspuns: fiecare grup cu număr și sumă. Un clic schimbă lista fără o căutare nouă. Un grup gol rămâne vizibil, dezactivat.">
       <CountGroups label="Felul schimbării" value="up" head={{ text: "Firme în 2024 sau 2025:", total: "96.929", tip: { title: "Grupuri", text: "782 au aceeași valoare în ambii ani; apar doar la „Toate”." } }} groups={TREND.map(item => item.value === "new" ? { ...item, className: "is-hover" } : item.value === "down" ? { ...item, className: "is-focus" } : item)} />
       <div className="kd-gap" />
       <Cap>ales · gol, dezactivat (pe județe)</Cap>
@@ -222,21 +222,21 @@ export default function KitDemo() {
       <Live><CountGroups label="Felul schimbării" value={group} onChange={value => setGroup(value)} groups={TREND} /></Live>
     </Section>
 
-    <Section n={6} title="Fereastra scurtă și lista de opțiuni" classes=".fk-pop · .fk-opts · .fk-opt · .fk-opt--rest · .fk-opt--link" note="Lângă frază sau cip pe desktop, foaie de jos pe telefon. Opțiunile arată ponderea și numărul. Ce nu se poate clasa e un rând neselectabil, ca totalul să dea 100%.">
+    <Section n={6} title="Fereastra scurtă și lista de opțiuni" classes=".qb-pop · .qb-opts · .qb-opt · .qb-opt--rest · .qb-opt--link" note="Lângă frază sau cip pe desktop, foaie de jos pe telefon. Opțiunile arată ponderea și numărul. Ce nu se poate clasa e un rând neselectabil, ca totalul să dea 100%.">
       <div className="kd-cells kd-cells-top">
         <Cell cap="radio · ales · hover · rest neselectabil">
-          <StaticPopover title="Unde au sediul firmele?" tip={SEAT_TIP} foot={<><span /><button type="button" className="fk-link">Scoate condiția</button></>}>
+          <StaticPopover title="Unde au sediul firmele?" tip={SEAT_TIP} foot={<><span /><button type="button" className="qb-link">Scoate condiția</button></>}>
             <OptionList label="Sediul firmei" value="same" options={SEAT.map(option => option.value === "abroad" ? { ...option, className: "is-hover" } : option)} rest={[{ label: "Sediu necunoscut", count: "0,3% · 19" }]} />
           </StaticPopover>
         </Cell>
         <Cell cap="căutare + rânduri · rând-legătură">
           <StaticPopover title="Unde?">
-            <label className="fk-search"><span className="fk-sr">Caută un județ</span><input placeholder="Caută un județ" /></label>
+            <label className="qb-search"><span className="qb-sr">Caută un județ</span><input placeholder="Caută un județ" /></label>
             <OptionList label="Locul instituției" value="all" options={[{ value: "all", label: "Toată țara", count: "15.729" }, { value: "bz", label: "Județul Buzău", count: "337" }, { value: "cj", label: "Județul Cluj", count: "412", className: "is-hover" }]} rest={[{ label: "Județ necunoscut", count: "889" }]} link={{ label: "Firme cu sediul în…", onClick: () => undefined }} />
           </StaticPopover>
         </Cell>
         <Cell cap="bife · „→ N” · înlocuire · dezactivat">
-          <StaticPopover title="Față de cine?" foot={<><span>Grup: <b>29</b> de primării</span><button type="button" className="fk-link">Șterge</button></>}>
+          <StaticPopover title="Față de cine?" foot={<><span>Grup: <b>29</b> de primării</span><button type="button" className="qb-link">Șterge</button></>}>
             <OptionList label="Grupul de comparație" multiple values={["pop"]} options={[
               { value: "pop", label: "Primării cu 52–207 mii de locuitori", detail: "populație apropiată" },
               { value: "county", label: "Județul Buzău", detail: "același județ", swap: "în locul populației apropiate", count: "→ 336" },
@@ -252,10 +252,10 @@ export default function KitDemo() {
 
     <BandsSection />
 
-    <Section n={8} title="Pastile: plaje, ani, semnale" classes=".fk-pills · .fk-pill (+ .fk-n, .fk-dot--signal) · .fk-field" note="Alegere scurtă dintr-un set mic. Plajele nu sunt praguri legale. Pastilele cu numere (Semnal) sunt o alegere unică, pe loc; punctul portocaliu leagă cipul de punctele din grafic.">
+    <Section n={8} title="Pastile: plaje, ani, semnale" classes=".qb-pills · .qb-pill (+ .qb-n, .qb-dot--signal) · .qb-field" note="Alegere scurtă dintr-un set mic. Plajele nu sunt praguri legale. Pastilele cu numere (Semnal) sunt o alegere unică, pe loc; punctul portocaliu leagă cipul de punctele din grafic.">
       <div className="kd-cells kd-cells-top">
         <Cell cap="plaje + interval: aleasă · hover">
-          <StaticPopover wide title="Cât de mare e fiecare achiziție?" tip={{ title: "Mărimea achiziției", text: "Valoarea întregului contract sau a achiziției directe, nu cota fiecărui câștigător. Plajele nu sunt praguri legale." }} foot={<><button type="button" className="fk-link">Scoate condiția</button><button type="button" className="fk-primary">Folosește</button></>}>
+          <StaticPopover wide title="Cât de mare e fiecare achiziție?" tip={{ title: "Mărimea achiziției", text: "Valoarea întregului contract sau a achiziției directe, nu cota fiecărui câștigător. Plajele nu sunt praguri legale." }} foot={<><button type="button" className="qb-link">Scoate condiția</button><button type="button" className="qb-primary">Folosește</button></>}>
             <Pills label="Plaje" value="gt1m" options={SIZES.map(option => option.value === "10k" ? { ...option, className: "is-hover" } : option)} />
             <RangeFields from="250.000" to="" />
           </StaticPopover>
@@ -263,7 +263,7 @@ export default function KitDemo() {
         <Cell cap="ani (Firme noi · Din): ales · dezactivat după perioadă">
           <StaticPopover title="Firme noi">
             <OptionList label="Sensul" value="registered" options={[{ value: "registered", label: "Înmatriculate", detail: "anul din Registrul Comerțului" }, { value: "first", label: "Prima dată", detail: "prima înregistrare în datele noastre" }, { value: "buyer", label: "Furnizori noi", detail: "prima înregistrare cu această instituție", disabled: "doar cu o instituție numită" }]} />
-            <p className="fk-opt-group">Din</p>
+            <p className="qb-opt-group">Din</p>
             <Pills label="Din anul" value="2025" options={[{ value: "2022", label: "2022" }, { value: "2023", label: "2023" }, { value: "2024", label: "2024" }, { value: "2025", label: "2025" }, { value: "2026", label: "2026", disabled: "După sfârșitul perioadei." }]} />
           </StaticPopover>
         </Cell>

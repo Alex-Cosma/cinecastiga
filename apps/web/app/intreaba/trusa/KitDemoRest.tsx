@@ -48,10 +48,10 @@ export function BandsSection() {
   const [applied, setApplied] = useState<string[]>([]);
   const range = bandRange(EMPLOYEE_BANDS, draft);
   const close = () => setOpen(null);
-  return <Section n={7} title="Benzi alăturate (Angajați)" classes=".fk-bands · .fk-band (aria-pressed)" note="Clase de mărime; se pot alege doar benzi vecine, deci „1–49” e două benzi. Fără câmpuri libere. Firmele fără bilanț sunt un rând neselectabil. Butonul de jos spune ce se aplică.">
+  return <Section n={7} title="Benzi alăturate (Angajați)" classes=".qb-bands · .qb-band (aria-pressed)" note="Clase de mărime; se pot alege doar benzi vecine, deci „1–49” e două benzi. Fără câmpuri libere. Firmele fără bilanț sunt un rând neselectabil. Butonul de jos spune ce se aplică.">
     <div className="kd-cells kd-cells-top">
       <Cell cap="două benzi alese · hover · focus">
-        <StaticPopover wide title="Câți angajați au firmele?" tip={EMPLOYEES_TIP} foot={<><button type="button" className="fk-link">Scoate condiția</button><button type="button" className="fk-primary">{bandsWords({ min: 1, max: 49 })}</button></>}>
+        <StaticPopover wide title="Câți angajați au firmele?" tip={EMPLOYEES_TIP} foot={<><button type="button" className="qb-link">Scoate condiția</button><button type="button" className="qb-primary">{bandsWords({ min: 1, max: 49 })}</button></>}>
           <Bands label="Benzi de angajați" bands={bandsWithCounts({ "0": "is-hover", "50-249": "is-focus" })} value={["1-9", "10-49"]} rest={[{ label: "Fără bilanț", count: "4,1% · 34" }]} />
         </StaticPopover>
       </Cell>
@@ -62,8 +62,8 @@ export function BandsSection() {
         <Chip id="emp" label={bandsChip(applied)} name="Angajați" active={applied.length > 0} {...(applied.length ? { count: "192" } : {})} open={!!open} onOpen={(_, anchor) => { setDraft(applied); setOpen(current => current ? null : anchor); }} onRemove={() => setApplied([])} />
       </ConditionRow>
       <Popover open={!!open} anchor={open} onClose={close} wide title="Câți angajați au firmele?" tip={EMPLOYEES_TIP} foot={<>
-        <button type="button" className="fk-link" onClick={() => { setApplied([]); close(); }}>Scoate condiția</button>
-        <button type="button" className="fk-primary" disabled={!range} onClick={() => { setApplied(draft); close(); }}>{range ? bandsWords(range) : "Alege o bandă"}</button>
+        <button type="button" className="qb-link" onClick={() => { setApplied([]); close(); }}>Scoate condiția</button>
+        <button type="button" className="qb-primary" disabled={!range} onClick={() => { setApplied(draft); close(); }}>{range ? bandsWords(range) : "Alege o bandă"}</button>
       </>}>
         <Bands label="Benzi de angajați" bands={bandsWithCounts()} value={draft} onChange={setDraft} rest={[{ label: "Fără bilanț", count: "4,1% · 34" }]} />
       </Popover>
@@ -102,7 +102,7 @@ export function PeriodSection() {
   const error = tried ? periodRangeError(range) : null;
   const open = (id: string, anchor: HTMLElement) => { setTried(false); setWin(current => current?.id === id ? null : { id: id as "period" | "when", anchor }); };
   const periodWords = preset ? PRESET_WORDS[preset]! : rangeWords(range);
-  return <Section n={9} title="Perioada" classes=".fk-opts (preseturi) · .fk-years · .fk-pills (un an) · .fk-range" note="Aceleași preseturi peste tot, cu anii spuși; anul în curs spune până când are date. Fereastra se cheamă „În ce perioadă?”; „Când?” doar unde fraza își are prepoziția (evoluție, verificare).">
+  return <Section n={9} title="Perioada" classes=".qb-opts (preseturi) · .qb-years · .qb-pills (un an) · .qb-range" note="Aceleași preseturi peste tot, cu anii spuși; anul în curs spune până când are date. Fereastra se cheamă „În ce perioadă?”; „Când?” doar unde fraza își are prepoziția (evoluție, verificare).">
     <div className="kd-cells kd-cells-top">
       <Cell cap="preseturi · ales">
         <StaticPopover title="În ce perioadă?">
@@ -110,7 +110,7 @@ export function PeriodSection() {
         </StaticPopover>
       </Cell>
       <Cell cap="„Alege anii sau lunile…” deschis · eroare">
-        <StaticPopover title="În ce perioadă?" foot={<><span /><button type="button" className="fk-primary">Folosește</button></>}>
+        <StaticPopover title="În ce perioadă?" foot={<><span /><button type="button" className="qb-primary">Folosește</button></>}>
           <PeriodPicker presets={PRESETS} value={null} custom={{ open: true, value: { yearFrom: "2025", yearTo: "2023", monthFrom: "", monthTo: "" }, years: YEARS, error: periodRangeError({ yearFrom: "2025", yearTo: "2023", monthFrom: "", monthTo: "" }) }} />
         </StaticPopover>
       </Cell>
@@ -126,10 +126,10 @@ export function PeriodSection() {
     <Live>
       <Sentence as="h3" openId={win?.id ?? null} onOpen={open} tokens={[text("Cât valorează achizițiile, în "), slot("period", "Perioada", periodWords), text("?")]} />
       <Sentence as="h3" openId={win?.id ?? null} onOpen={open} tokens={[text("A cumpărat instituția de la firmă "), slot("when", "Când", year ? `în ${year === "range" ? "interval" : year}` : "până acum"), text("?")]} />
-      <Popover open={win?.id === "period"} anchor={win?.id === "period" ? win.anchor : null} onClose={close} title="În ce perioadă?" foot={customOpen ? <><button type="button" className="fk-link" onClick={() => { setCustomOpen(false); setPreset("all"); setRange(EMPTY_RANGE); close(); }}>Toți anii</button><button type="button" className="fk-primary" onClick={() => { setTried(true); if (!periodRangeError(range)) { setPreset(null); close(); } }}>Folosește</button></> : undefined}>
+      <Popover open={win?.id === "period"} anchor={win?.id === "period" ? win.anchor : null} onClose={close} title="În ce perioadă?" foot={customOpen ? <><button type="button" className="qb-link" onClick={() => { setCustomOpen(false); setPreset("all"); setRange(EMPTY_RANGE); close(); }}>Toți anii</button><button type="button" className="qb-primary" onClick={() => { setTried(true); if (!periodRangeError(range)) { setPreset(null); close(); } }}>Folosește</button></> : undefined}>
         <PeriodPicker presets={PRESETS} value={preset} onPreset={(value, source) => { setPreset(value); setCustomOpen(false); setRange(EMPTY_RANGE); if (source === "activate") close(); }} custom={{ open: customOpen, onOpen: () => setCustomOpen(value => !value), value: range, onChange: next => { setRange(next); setTried(false); }, years: YEARS, error }} />
       </Popover>
-      <Popover open={win?.id === "when"} anchor={win?.id === "when" ? win.anchor : null} onClose={close} title="Când?" foot={<><button type="button" className="fk-link" onClick={() => { setYear(null); close(); }}>Până acum</button><span /></>}>
+      <Popover open={win?.id === "when"} anchor={win?.id === "when" ? win.anchor : null} onClose={close} title="Când?" foot={<><button type="button" className="qb-link" onClick={() => { setYear(null); close(); }}>Până acum</button><span /></>}>
         <YearGrid label="Anul" years={yearCells()} value={year} onChange={(value, source) => { setYear(value); if (source === "activate") close(); }} />
       </Popover>
     </Live>
@@ -177,22 +177,22 @@ export function EntitySection() {
   const sample = useSampleSearch(SAMPLE_BUYERS);
   const close = () => { setAnchor(null); sample.search(""); }; // a window opens on an empty search
   const kind = (value: string) => ({ value, words: BUYER_WORDS[value] ?? value });
-  return <Section n={10} title="Alegerea entității" classes=".fk-search · .fk-res (role=combobox / listbox / option) · .fk-pills (tipuri) · .fk-seg (file)" note="Primul rând e mereu valoarea implicită. Localitățile au județul la dreapta (Vânători e în mai multe județe). „De la cine?” are aceleași file peste tot; filele fără sens lipsesc.">
+  return <Section n={10} title="Alegerea entității" classes=".qb-search · .qb-res (role=combobox / listbox / option) · .qb-pills (tipuri) · .qb-seg (file)" note="Primul rând e mereu valoarea implicită. Localitățile au județul la dreapta (Vânători e în mai multe județe). „De la cine?” are aceleași file peste tot; filele fără sens lipsesc.">
     <div className="kd-cells kd-cells-top">
       <Cell cap="cumpărătorul · căutare în focus · rezultat activ">
         <StaticPopover wide title="Cine a cumpărat?">
           <OptionList label="Cumpărătorul" value="all" options={[{ value: "all", label: "Toate instituțiile publice", detail: "inclusiv companii de stat și utilități" }]} />
-          <p className="fk-opt-group fk-tipwrap">Un tip <HelpTip tip={KIND_TIP} /></p>
+          <p className="qb-opt-group qb-tipwrap">Un tip <HelpTip tip={KIND_TIP} /></p>
           <Pills label="Tipul instituției" value={null} options={BUYER_TYPES.map(label => ({ value: label, label }))} />
-          <p className="fk-opt-group">Sau una anume</p>
+          <p className="qb-opt-group">Sau una anume</p>
           <EntitySearch label="Instituție sau localitate" className="is-focus" defaultQuery="vânători" results={VANATORI.map(item => item.id === "v-is" ? { ...item, className: "is-hover" } : item)} activeIndex={1} />
         </StaticPopover>
       </Cell>
       <Cell cap="„De la cine?” · fila „Ce fel de firme”">
-        <StaticPopover title="De la cine?" foot={<><span>de la <b>firme fără angajați</b></span><button type="button" className="fk-primary">Folosește</button></>}>
+        <StaticPopover title="De la cine?" foot={<><span>de la <b>firme fără angajați</b></span><button type="button" className="qb-primary">Folosește</button></>}>
           <Segmented label="De la cine" mode="tabs" full value="kind" options={[{ value: "firm", label: "O firmă" }, { value: "admin", label: "Administrator" }, { value: "kind", label: "Ce fel de firme" }]} />
           <div className="kd-gap" />
-          <div className="fk-row" data-fk-row="">
+          <div className="qb-row" data-qb-row="">
             <Chip id="emp" label="Fără angajați" name="Angajați" active count="23" onRemove={() => undefined} />
             <Chip id="seat" label="Sediul firmei" />
             <Chip id="new" label="Firme noi" />
@@ -200,7 +200,7 @@ export function EntitySection() {
         </StaticPopover>
       </Cell>
       <Cell cap="căutare fără rezultat · se caută">
-        <div className="fk-pop" role="group" aria-label="Căutare: stări">
+        <div className="qb-pop" role="group" aria-label="Căutare: stări">
           <EntitySearch label="Instituție sau localitate (fără rezultat)" defaultQuery="xyzw" results={[]} />
           <EntitySearch label="Instituție sau localitate (se caută)" defaultQuery="buz" results={[]} loading />
         </div>
@@ -211,9 +211,9 @@ export function EntitySection() {
       <p className="kd-text">Caută „vân”, „cluj” sau „buz”: ↓/↑ mută rezultatul activ, Enter îl alege, Escape iese din listă, apoi golește câmpul, apoi închide fereastra.</p>
       <Popover open={!!anchor} anchor={anchor} onClose={close} wide title="Cine a cumpărat?">
         <OptionList label="Cumpărătorul" value={buyer.value === "all" ? "all" : null} options={[{ value: "all", label: "Toate instituțiile publice", detail: "inclusiv companii de stat și utilități" }]} onChange={(_, source) => { setBuyer({ value: "all", words: "instituțiile publice" }); if (source === "activate") close(); }} />
-        <p className="fk-opt-group fk-tipwrap">Un tip <HelpTip tip={KIND_TIP} /></p>
+        <p className="qb-opt-group qb-tipwrap">Un tip <HelpTip tip={KIND_TIP} /></p>
         <Pills label="Tipul instituției" value={BUYER_TYPES.includes(buyer.value) ? buyer.value : null} options={BUYER_TYPES.map(label => ({ value: label, label }))} onChange={(value, source) => { setBuyer(kind(value)); if (source === "activate") close(); }} />
-        <p className="fk-opt-group">Sau una anume</p>
+        <p className="qb-opt-group">Sau una anume</p>
         <EntitySearch label="Instituție sau localitate" placeholder="Instituție sau localitate" results={sample.results} loading={sample.loading} onSearch={sample.search} onPick={result => { setBuyer({ value: result.id, words: `${result.name.replace(/^Primăria /, "primăria ")}${result.side && result.name.startsWith("Primăria Vânători") ? ` (${result.side})` : ""}` }); close(); }} />
       </Popover>
     </Live>
@@ -281,18 +281,18 @@ export function AnswerSections() {
   const finder = useSampleSearch(SAMPLE_FIRMS.map(firm => ({ id: firm.id, name: firm.name })));
   const foundRank = query ? firms.findIndex(firm => firm.id === query.id) : -1;
   return <>
-    <Section n={11} title="Banda de lângă răspuns" classes=".fk-strip (role=group) · .fk-strip--rows · .fk-suggest · .fk-crumbs" note="Ce se aplică pe loc și are numere din răspuns, sau schimbă doar afișarea. Aceeași cheie ca în propoziție; cât timp constructorul e deschis, dublura din bandă se ascunde. „Vizual | Tabel” e mereu ultimul.">
+    <Section n={11} title="Banda de lângă răspuns" classes=".qb-strip (role=group) · .qb-strip--rows · .qb-suggest · .qb-crumbs" note="Ce se aplică pe loc și are numere din răspuns, sau schimbă doar afișarea. Aceeași cheie ca în propoziție; cât timp constructorul e deschis, dublura din bandă se ascunde. „Vizual | Tabel” e mereu ultimul.">
       <StripsBlock />
     </Section>
 
-    <Section n={12} title="Rândul din răspuns, meniul „⋯”, linia de total, lista mai lungă" classes=".fk-arow · .fk-tag · .fk-more / .fk-menu (menu button) · .fk-total · .fk-listfoot" note="Faptele nu sunt filtre: cel mult trei pe rând. Neutru = fapt; chihlimbar = citește cu grijă; portocaliu = doar semnal oficial. „Scoate din calcul” scoate entitatea din selecție: totalul se schimbă, iar linia de total spune „fără X”.">
+    <Section n={12} title="Rândul din răspuns, meniul „⋯”, linia de total, lista mai lungă" classes=".qb-arow · .qb-tag · .qb-more / .qb-menu (menu button) · .qb-total · .qb-listfoot" note="Faptele nu sunt filtre: cel mult trei pe rând. Neutru = fapt; chihlimbar = citește cu grijă; portocaliu = doar semnal oficial. „Scoate din calcul” scoate entitatea din selecție: totalul se schimbă, iar linia de total spune „fără X”.">
       <Cap>rând cu semnal și chihlimbar · „⋯” în focus · rând cu meniul deschis</Cap>
       <AnswerList label="Firmele (cadru static)">
         <AnswerRow name="URBAN SCOPE" place="București" value="51.111.529 lei" share="14%" records={{ label: recordsWords(58) }} facts={[{ text: "posibilă fracționare", tone: "signal" }, { text: "1 contract: 58%", tone: "caveat" }, { text: "bilanț 2021", tone: "caveat" }]} actions={SYSTRA_ACTIONS} menuClassName="is-focus" />
         <AnswerRow name="SYSTRA" place="din străinătate" value="100.011.056 lei" share="6,5%" records={{ label: recordsWords(1) }} facts={[{ text: "prima dată aici: 02.10.2024" }, { text: "în asociere" }, { text: "client principal", tone: "accent" }]} actions={SYSTRA_ACTIONS} menuOpen />
       </AnswerList>
       <div className="kd-menu-room" />
-      <TotalLine conditions={["fără SYSTRA", "doar firmele cu sediul în alt județ"]}>Din <span className="fk-num">1.550.554.366 lei</span>, câștigați de 412 firme</TotalLine>
+      <TotalLine conditions={["fără SYSTRA", "doar firmele cu sediul în alt județ"]}>Din <span className="qb-num">1.550.554.366 lei</span>, câștigați de 412 firme</TotalLine>
       <ListFoot shown={20} total={412} noun={["firmă", "firme", "f"]} records={{ label: `Vezi cele ${recordsWords(124)}` }} />
       <Live>
         <p className="kd-text">„⋯ › Scoate din calcul” scoate firma: totalul se schimbă și se anunță; de la 5 excluderi, acțiunea rămâne vizibilă, dezactivată. „Arată încă 10” duce focusul pe primul rând nou.</p>
@@ -303,14 +303,14 @@ export function AnswerSections() {
               { id: "page", label: "Fișa firmei", glyph: "↗", href: "#kd-sec-12" },
             ]} />)}
         </AnswerList>
-        <TotalLine conditions={exclusion ? [exclusion] : []}>Din <span className="fk-num">{formatRon(total)}</span>, câștigați de {countWords(firms.length, "firmă", "firme")}</TotalLine>
+        <TotalLine conditions={exclusion ? [exclusion] : []}>Din <span className="qb-num">{formatRon(total)}</span>, câștigați de {countWords(firms.length, "firmă", "firme")}</TotalLine>
         <ListFoot shown={Math.min(shown, firms.length)} total={firms.length} noun={["firmă", "firme", "f"]} list={list} onMore={() => setShown(value => value + 10)} records={{ label: `Vezi cele ${recordsWords(firms.slice(0, shown).reduce((sum, firm) => sum + firm.records, 0))}`, onClick: () => setSaid("Sursele listei s-ar deschide în sertar.") }} />
         <p className="kd-text" role="status">{said}</p>
-        {excluded.length > 0 && <button type="button" className="fk-secondary" onClick={() => { setExcluded([]); setShown(10); }}>Pune firmele la loc</button>}
+        {excluded.length > 0 && <button type="button" className="qb-secondary" onClick={() => { setExcluded([]); setShown(10); }}>Pune firmele la loc</button>}
       </Live>
     </Section>
 
-    <Section n={13} title="Fișa și „Unde e …?”" classes=".fk-card (region) · .fk-find (combobox + status)" note="Fișa arată ce ai ales în răspuns (un punct, un județ, o bară), cu faptele și legăturile lui. „Unde e …?” găsește o entitate în răspuns fără să filtreze: „locul 20 din 46”.">
+    <Section n={13} title="Fișa și „Unde e …?”" classes=".qb-card (region) · .qb-find (combobox + status)" note="Fișa arată ce ai ales în răspuns (un punct, un județ, o bară), cu faptele și legăturile lui. „Unde e …?” găsește o entitate în răspuns fără să filtreze: „locul 20 din 46”.">
       <Cap>căutare în răspuns: în focus · rezultat</Cap>
       <Locate label="Unde e o instituție?" className="is-focus" defaultQuery="sageata" results={[{ id: "sg", name: "Comuna Sageata" }]} found={{ name: "Comuna Sageata", place: placeWords(20, 82, "semnale") }} />
       <div className="kd-gap" />
@@ -322,29 +322,29 @@ export function AnswerSections() {
       <Live>
         <p className="kd-text">Caută o firmă din lista de la §12 („probă 07”): locul ei nu filtrează lista. „Arată fișa” mută focusul pe titlul fișei; Escape sau × o închide și întoarce focusul.</p>
         <Locate label="Unde e o firmă?" results={finder.results} loading={finder.loading} onSearch={finder.search} onPick={result => { setQuery({ id: result.id, name: result.name }); setCard(false); }} found={query ? { name: query.name, place: foundRank >= 0 ? placeWords(foundRank + 1, firms.length, "valoare") : "nu intră în listă: e scoasă din calcul" } : null} />
-        {query && foundRank >= 0 && <button type="button" className="fk-secondary" aria-expanded={card} onClick={() => setCard(value => !value)}>Arată fișa</button>}
+        {query && foundRank >= 0 && <button type="button" className="qb-secondary" aria-expanded={card} onClick={() => setCard(value => !value)}>Arată fișa</button>}
         {query && card && <DetailCard title={query.name} meta={placeWords(foundRank + 1, firms.length, "valoare")} facts={[{ label: "Valoare înregistrată", value: formatRon(firms[foundRank]?.value ?? 0) }]} actions={[{ label: "Tot clasamentul", glyph: "›" }]} onClose={() => setCard(false)} />}
       </Live>
     </Section>
 
-    <Section n={14} title="Stare goală, (?) și butoanele de jos" classes=".fk-empty · .fk-relax · .fk-q (Term) · .fk-primary / .fk-secondary" note="Un răspuns gol spune ce lipsește și oferă cel mult trei relaxări, numite ca primul rând al ferestrei lor. „Fără …” e rezervat excluderilor.">
+    <Section n={14} title="Stare goală, (?) și butoanele de jos" classes=".qb-empty · .qb-relax · .qb-q (Term) · .qb-primary / .qb-secondary" note="Un răspuns gol spune ce lipsește și oferă cel mult trei relaxări, numite ca primul rând al ferestrei lor. „Fără …” e rezervat excluderilor.">
       <EmptyState message="Niciun furnizor nou din 2025 cu sediul în străinătate." relax={[{ id: "y", label: "Toți anii" }, { id: "seat", label: "Oriunde" }, { id: "new", label: removeWords("Furnizori noi") }]} />
       <div className="kd-gap" />
       <Cap>(?) închis · deschis</Cap>
-      <p className="kd-text fk-tipwrap">Valoare înregistrată, nu plăți <HelpTip tip={{ id: "valoare-inregistrata" }} /></p>
-      <p className="kd-text fk-tipwrap kd-tip-open">Valoare înregistrată, nu plăți <OpenTip tip={{ id: "valoare-inregistrata" }} /></p>
+      <p className="kd-text qb-tipwrap">Valoare înregistrată, nu plăți <HelpTip tip={{ id: "valoare-inregistrata" }} /></p>
+      <p className="kd-text qb-tipwrap kd-tip-open">Valoare înregistrată, nu plăți <OpenTip tip={{ id: "valoare-inregistrata" }} /></p>
       <div className="kd-gap" />
-      <div className="fk-bottom">
+      <div className="qb-bottom">
         <Presentation tokens={[text("Arată "), slot("top", "Câți parteneri", "primii 15"), text(" parteneri, după "), slot("by", "Ordinea", "valoarea înregistrată"), text(".")]} />
-        <div className="fk-actions"><button type="button" className="fk-secondary">Salvează</button><button type="button" className="fk-primary is-focus">Vezi răspunsul →</button></div>
+        <div className="qb-actions"><button type="button" className="qb-secondary">Salvează</button><button type="button" className="qb-primary is-focus">Vezi răspunsul →</button></div>
       </div>
       <div className="kd-gap" />
       <Cap>hover · dezactivat (caută)</Cap>
-      <div className="fk-actions"><button type="button" className="fk-primary is-hover">Vezi răspunsul →</button><button type="button" className="fk-primary" disabled>Caut în date…</button></div>
+      <div className="qb-actions"><button type="button" className="qb-primary is-hover">Vezi răspunsul →</button><button type="button" className="qb-primary" disabled>Caut în date…</button></div>
       <Live>
         {empty
           ? <EmptyState message="Niciun furnizor nou din 2025 cu sediul în străinătate." titleId="kd-answer-title" relax={[{ id: "y", label: "Toți anii", onClick: () => setEmpty(false) }, { id: "seat", label: "Oriunde", onClick: () => setEmpty(false) }, { id: "new", label: removeWords("Furnizori noi"), onClick: () => setEmpty(false) }]} />
-          : <><h3 id="kd-answer-title" className="kd-answer-title" tabIndex={-1}>Ce furnizori noi din 2025 câștigă, oriunde?</h3><button type="button" className="fk-secondary" onClick={() => setEmpty(true)}>Golește din nou</button></>}
+          : <><h3 id="kd-answer-title" className="kd-answer-title" tabIndex={-1}>Ce furnizori noi din 2025 câștigă, oriunde?</h3><button type="button" className="qb-secondary" onClick={() => setEmpty(true)}>Golește din nou</button></>}
       </Live>
     </Section>
   </>;

@@ -17,11 +17,11 @@ export interface RowFact { text: string; tone?: FactTone; tip?: KitTip }
 export const MAX_FACTS = 3;
 
 export function FactTag({ fact }: { fact: RowFact }) {
-  const tone = fact.tone && fact.tone !== "neutral" ? ` fk-tag--${fact.tone}` : "";
-  return <span className={`fk-tag${tone}`}>{fact.text}{fact.tip && <HelpTip tip={fact.tip} />}</span>;
+  const tone = fact.tone && fact.tone !== "neutral" ? ` qb-tag--${fact.tone}` : "";
+  return <span className={`qb-tag${tone}`}>{fact.text}{fact.tip && <HelpTip tip={fact.tip} />}</span>;
 }
 
 export default function RowFacts({ facts }: { facts: readonly RowFact[] }) {
   if (!facts.length) return null;
-  return <div className="fk-tags">{facts.slice(0, MAX_FACTS).map((fact, index) => <FactTag key={`${index}:${fact.text}`} fact={fact} />)}</div>;
+  return <div className="qb-tags">{facts.slice(0, MAX_FACTS).map((fact, index) => <FactTag key={`${index}:${fact.text}`} fact={fact} />)}</div>;
 }

@@ -30,21 +30,21 @@ export function Invite({ id, label, availability, open = false, onOpen, classNam
   const disabled = availability?.state === "disabled" ? availability : null;
   const button = <button
     type="button"
-    className={`fk-invite${className ? ` ${className}` : ""}`}
+    className={`qb-invite${className ? ` ${className}` : ""}`}
     aria-haspopup="dialog"
     aria-expanded={disabled ? undefined : open}
     aria-disabled={disabled ? true : undefined}
     aria-describedby={disabled ? reasonId : undefined}
     onClick={event => { if (!disabled) onOpen?.(id, event.currentTarget); }}
-  ><span className="fk-plus" aria-hidden="true">+</span>{label}</button>;
+  ><span className="qb-plus" aria-hidden="true">+</span>{label}</button>;
   if (!disabled) return button;
-  return <span className="fk-pair fk-tipwrap-sm">{button}<DisabledReason id={reasonId} reason={disabled.reason} />{disabled.tip && <HelpTip tip={disabled.tip} />}</span>;
+  return <span className="qb-pair qb-tipwrap-sm">{button}<DisabledReason id={reasonId} reason={disabled.reason} />{disabled.tip && <HelpTip tip={disabled.tip} />}</span>;
 }
 
 /** The invitations under the sentence; the kit's limit of four is kept here too. */
 export default function Invitations({ items, openId, onOpen, label = "Adaugă la întrebare" }: { items: readonly InviteItem[]; openId?: string | null; onOpen?: InviteProps["onOpen"]; label?: string }) {
   if (!items.length) return null;
-  return <div className="fk-invites fk-tipwrap" role="group" aria-label={label}>
+  return <div className="qb-invites qb-tipwrap" role="group" aria-label={label}>
     {items.slice(0, MAX_INVITES).map(item => <Invite key={item.id} {...item} open={openId === item.id} {...(onOpen ? { onOpen } : {})} />)}
   </div>;
 }

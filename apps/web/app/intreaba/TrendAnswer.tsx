@@ -69,41 +69,41 @@ export default function TrendBlock({ data, spec, partial = [], conditions = [], 
   const emptyGroups = buttons ? emptyGroupsLine([...buttons, ...(first ?? []).map((o) => ({ name: o.label, ...(o.disabled ? { disabled: o.disabled } : {}) }))]) : null;
   const empty = rows.length === 0 ? trendEmpty(data, list, spec) : null;
   const pick = (next: string) => { if (next !== list) onList?.(next as TrendList); };
-  return <div className="fk fk-trend">
-    {buttons && <div className="fk-strip fk-trend-strip" role="group" aria-label="Felul schimbării">
+  return <div className="qb qb-trend">
+    {buttons && <div className="qb-strip qb-trend-strip" role="group" aria-label="Felul schimbării">
       <CountGroups label="Felul schimbării" groups={buttons} value={list === "first" ? "new" : list} {...(head ? { head } : {})} onChange={pick} />
-      {first && <div className="fk-row fk-tipwrap fk-trend-sub">
-        <span className="fk-strip-label fk-trend-sub-label" aria-hidden="true"><i className="fk-sw fk-sw--new" />{newSubLabel(data, spec)}</span>
+      {first && <div className="qb-row qb-tipwrap qb-trend-sub">
+        <span className="qb-strip-label qb-trend-sub-label" aria-hidden="true"><i className="qb-sw qb-sw--new" />{newSubLabel(data, spec)}</span>
         <HelpTip tip={{ id: "trend-prima-data" }} />
         <Segmented label={`Care ${noun.many} noi`} value={list} options={first} onChange={pick} />
       </div>}
-      {emptyGroups && <p className="fk-trend-off fk-tipwrap">{emptyGroups.text}<HelpTip tip={emptyGroups.tip} /></p>}
-      {unfiled && <p className="fk-trend-unfiled fk-tipwrap">{unfiled} <HelpTip tip={{ title: "Fără bilanț",
+      {emptyGroups && <p className="qb-trend-off qb-tipwrap">{emptyGroups.text}<HelpTip tip={emptyGroups.tip} /></p>}
+      {unfiled && <p className="qb-trend-unfiled qb-tipwrap">{unfiled} <HelpTip tip={{ title: "Fără bilanț",
         text: "Angajații vin din ultimul bilanț depus (de azi, nu din anul atribuirii). Firmele fără bilanț (străine, PFA, înființate recent) nu intră în nicio clasă." }} /></p>}
     </div>}
     {empty ? <EmptyState message={empty.message} titleId="raspuns-titlu" relax={[
       ...(empty.to ? [{ id: `to:${empty.to.list}`, label: empty.to.label, onClick: () => onList?.(empty.to!.list) }] : []),
       ...(empty.base && onWider ? [{ id: "base", label: empty.base.label, onClick: () => onWider({ ...spec, trend: { ...spec.trend, minBase: empty.base!.minBase } }) }] : []),
-    ]} /> : <div className={`fk-alist fk-trend-rows${list === "all" ? " fk-trend-rows--sw" : ""}${views.some((v) => v.single) ? " fk-trend-rows--single" : ""}`}
+    ]} /> : <div className={`qb-alist qb-trend-rows${list === "all" ? " qb-trend-rows--sw" : ""}${views.some((v) => v.single) ? " qb-trend-rows--single" : ""}`}
       role="list" aria-label={total?.lead ?? "Schimbările"}>
       {views.map((view) => <TrendRowItem key={view.key} view={view} swatch={list === "all"}
         {...(evidence ? { onRecords: () => evidence.open(undefined, view.scope, view.scopeLabel) } : {})} />)}
     </div>}
-    {(legend.length > 0 || term || percent) && rows.length > 0 && <p className="fk-trend-legend fk-tipwrap">
+    {(legend.length > 0 || term || percent) && rows.length > 0 && <p className="qb-trend-legend qb-tipwrap">
       {term && <span>{term.text}<HelpTip tip={term.tip} /></span>}
       {percent && <span>{percent.text}<HelpTip tip={percent.tip} /></span>}
       {legend.map(({ fact, tip }) => <span key={fact.text}><FactTag fact={fact} /><HelpTip tip={tip} /></span>)}
     </p>}
-    {(rest || evidence) && rows.length > 0 && <div className="fk-listfoot">
-      {rest && <span className="fk-rest">{rest}</span>}
-      {evidence && <button type="button" className="fk-secondary" onClick={() => evidence.open()}>
-        {list === "all" ? "Înregistrările celor doi ani" : "Înregistrările grupei"}<span className="fk-glyph" aria-hidden="true">→</span>
+    {(rest || evidence) && rows.length > 0 && <div className="qb-listfoot">
+      {rest && <span className="qb-rest">{rest}</span>}
+      {evidence && <button type="button" className="qb-secondary" onClick={() => evidence.open()}>
+        {list === "all" ? "Înregistrările celor doi ani" : "Înregistrările grupei"}<span className="qb-glyph" aria-hidden="true">→</span>
       </button>}
     </div>}
     {total && !empty && <TotalLine conditions={conditions}>
       {total.lead}{" · "}
       {/* Each year with its sum stays whole; the line may break between them, before „→ 2026”. */}
-      {total.values.map((v, i) => <Fragment key={i}>{i > 0 ? " " : ""}<span className="fk-nowrap">{v.label && <i className="fk-trend-y">{v.label}</i>}{v.label ? " " : ""}<span className="fk-num">{v.value}</span>{i === total.values.length - 1 ? total.unit : ""}</span></Fragment>)}
+      {total.values.map((v, i) => <Fragment key={i}>{i > 0 ? " " : ""}<span className="qb-nowrap">{v.label && <i className="qb-trend-y">{v.label}</i>}{v.label ? " " : ""}<span className="qb-num">{v.value}</span>{i === total.values.length - 1 ? total.unit : ""}</span></Fragment>)}
     </TotalLine>}
     {shownPartial.length > 0 && <p className="ask-fine ask-partial-note">
       {shownPartial.some((p) => p.provisional)
@@ -116,33 +116,33 @@ export default function TrendBlock({ data, spec, partial = [], conditions = [], 
 
 /** One row (trend final §4.8): name and place, labels, partner, the two years and the change, „Înregistrări →”. */
 function TrendRowItem({ view, swatch, onRecords }: { view: TrendRowView; swatch: boolean; onRecords?: () => void }) {
-  const pct = view.pct && <><span aria-hidden="true">{view.pct.text}</span><span className="fk-sr">{view.pct.words}</span></>;
-  return <div className="fk-arow fk-trow" role="listitem" tabIndex={-1} data-fk-arow="">
-    <div className="fk-trow-main">
-      <div className="fk-arow-name fk-trow-name">
-        {swatch && <><i className={`fk-sw fk-sw--${view.group === "equal" ? "all" : view.group} fk-trow-sw`} aria-hidden="true" /><span className="fk-sr">{rowGroupWords(view.group)}: </span></>}
+  const pct = view.pct && <><span aria-hidden="true">{view.pct.text}</span><span className="qb-sr">{view.pct.words}</span></>;
+  return <div className="qb-arow qb-trow" role="listitem" tabIndex={-1} data-qb-arow="">
+    <div className="qb-trow-main">
+      <div className="qb-arow-name qb-trow-name">
+        {swatch && <><i className={`qb-sw qb-sw--${view.group === "equal" ? "all" : view.group} qb-trow-sw`} aria-hidden="true" /><span className="qb-sr">{rowGroupWords(view.group)}: </span></>}
         {view.href ? <Link href={view.href}>{view.name}</Link> : view.name}
         {view.place && <small>{view.place}</small>}
       </div>
       <RowFacts facts={view.facts} />
-      {view.partner && <p className="fk-trow-partner"><span>{view.partner}</span></p>}
+      {view.partner && <p className="qb-trow-partner"><span>{view.partner}</span></p>}
     </div>
-    <div className="fk-arow-val fk-trow-val">
+    <div className="qb-arow-val qb-trow-val">
       {/* Ordered in percent, the percent is the main figure and the change in lei goes under it (trend final §3.9). */}
-      {view.pctFirst && pct ? <span className="fk-trow-dline">
-        <span className={`fk-num fk-trow-delta${view.up ? " up" : ""}`}>{pct}</span>
-        <span className="fk-trow-pct">{view.delta}</span>
-      </span> : <span className="fk-trow-dline">
-        <span className={`fk-num fk-trow-delta${view.up ? " up" : ""}`}>{view.delta}</span>
-        {view.single && <span className="fk-trow-pct">{view.single.when}</span>}
-        {pct && <span className="fk-trow-pct">{pct}</span>}
+      {view.pctFirst && pct ? <span className="qb-trow-dline">
+        <span className={`qb-num qb-trow-delta${view.up ? " up" : ""}`}>{pct}</span>
+        <span className="qb-trow-pct">{view.delta}</span>
+      </span> : <span className="qb-trow-dline">
+        <span className={`qb-num qb-trow-delta${view.up ? " up" : ""}`}>{view.delta}</span>
+        {view.single && <span className="qb-trow-pct">{view.single.when}</span>}
+        {pct && <span className="qb-trow-pct">{pct}</span>}
       </span>}
-      {view.years.length > 0 && <span className="fk-trow-years">
+      {view.years.length > 0 && <span className="qb-trow-years">
         <span><i>{view.years[0]!.label}</i> {view.years[0]!.value}</span>{" "}
         <span>→ <i>{view.years[1]!.label}</i> {view.years[1]!.value}</span>
       </span>}
-      {onRecords && <button type="button" className="fk-rec" aria-label={`Înregistrări: ${view.name}`} onClick={onRecords}>
-        Înregistrări<span className="fk-glyph" aria-hidden="true">→</span>
+      {onRecords && <button type="button" className="qb-rec" aria-label={`Înregistrări: ${view.name}`} onClick={onRecords}>
+        Înregistrări<span className="qb-glyph" aria-hidden="true">→</span>
       </button>}
     </div>
   </div>;

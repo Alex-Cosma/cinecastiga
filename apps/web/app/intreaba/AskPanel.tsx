@@ -102,7 +102,7 @@ function totalLead(data: BlockData): ReactNode {
           : data.block === "table" && data.totals && (data.page ?? 0) === 0 ? data.totals
             : null;
   if (!total) return "Selecția";
-  return <>Total: <span className="fk-num">{formatRonFull(total.value)}</span> · {countWords(total.count, "înregistrare", "înregistrări")}</>;
+  return <>Total: <span className="qb-num">{formatRonFull(total.value)}</span> · {countWords(total.count, "înregistrare", "înregistrări")}</>;
 }
 const EXAMPLES = [
   "Ce valoare au achizițiile de medicamente din Cluj, în 2026?",
@@ -902,7 +902,7 @@ export default function AskPanel({
             {isProfile && applied.block !== "distribution" && <ProfileNotice />}
             {/* The trend's groups (its strip keys) are drawn by its block, above its rows: no empty strip here. */}
             {(stripKeys.some((key) => key === "dataset" || key === "measure") || crumbs || ["table", "timeseries", "map"].includes(data.block)) && (
-              <div className="fk cq-strip"><AnswerStrip>
+              <div className="qb cq-strip"><AnswerStrip>
                 {stripKeys.includes("dataset") && (
                   <Segmented
                     label="Ce fel de achiziții"
@@ -943,7 +943,7 @@ export default function AskPanel({
               <p className="cq-lead">{breakdownLead(data.slices, data.other)}</p>
             )}
             {/* G2: an answer with no record offers at most three wider questions (kit component 17). */}
-            {empty ? <div className="fk cq-result cq-result-empty">
+            {empty ? <div className="qb cq-result cq-result-empty">
               <EmptyState
                 message="Nicio înregistrare pentru această întrebare."
                 relax={relaxations(applied).map((r) => ({ id: r.id, label: r.label, onClick: () => runWider(r.spec) }))}
@@ -1067,7 +1067,7 @@ export default function AskPanel({
             {/* G8: what changed the total outside the sentence; the ranking says it in its own total line. A risk
                 profile has no total in lei: its seat is the sentence's, and «nu plăți» would speak of sums it does not show. */}
             {totalWords.length > 0 && !empty && !isProfile && !(data.block === "table" && layout === "visual") && !(data.block === "trend" && data.composition) && (
-              <div className="fk cq-total"><TotalLine conditions={totalWords}>{totalLead(data)}</TotalLine></div>
+              <div className="qb cq-total"><TotalLine conditions={totalWords}>{totalLead(data)}</TotalLine></div>
             )}
             {/* How the number was built reads after the answer, not before it. */}
             {(resp.caveats?.length ?? 0) > 0 && (
@@ -1238,7 +1238,7 @@ function RankingBars({
       </div>
       {/* A consortium's value is split equally among its winners, so some firms show the same amount. */}
       {conditions.length > 0 ? <>
-        <div className="fk cq-total"><TotalLine conditions={conditions}>{hasTotal ? <>Total: <span className="fk-num">{formatRonFull(shareTotals.value)}</span> la {entityNoun(spec.dim, shareTotals.entities)}</> : "Selecția"}</TotalLine></div>
+        <div className="qb cq-total"><TotalLine conditions={conditions}>{hasTotal ? <>Total: <span className="qb-num">{formatRonFull(shareTotals.value)}</span> la {entityNoun(spec.dim, shareTotals.entities)}</> : "Selecția"}</TotalLine></div>
         {spec.dim === "supplier" && <p className="ask-fine cq-total-line">în asociere: cote egale <Term id="in-asociere" tip /></p>}
       </> : (hasTotal || spec.dim === "supplier") && (
         <p className="ask-fine cq-total-line">
@@ -1572,8 +1572,8 @@ function SeriesBlock({
         <div className="v">{display(only)}</div>
         <div className="d">{only.year} · {formatRonFull(only.value)} · {countWords(only.count, "înregistrare", "înregistrări")}</div>
         {(f.yearFrom || f.yearTo) && (
-          <div className="fk fk-relax">
-            <KitLink className="fk-relax-link" link={{ label: "Toți anii", glyph: "›", href: askLink(withoutPeriod(spec as AskSpec)) }} />
+          <div className="qb qb-relax">
+            <KitLink className="qb-relax-link" link={{ label: "Toți anii", glyph: "›", href: askLink(withoutPeriod(spec as AskSpec)) }} />
           </div>
         )}
       </div>
@@ -1635,18 +1635,18 @@ function SeriesBlock({
         })}
       </div>
       {/* One-line notes, the details in their (?) (final timeseries §4; owner: terse copy). */}
-      <div className="fk ask-ts-notes">
+      <div className="qb ask-ts-notes">
         {before && (
           <p className="ask-fine">
             {countWords(before.count, "înregistrare", "înregistrări")} datate {before.from === before.to ? before.from : `${before.from}–${before.to}`} ({formatRon(before.value)}) nu apar pe axă.{" "}
             <KitLink
-              className="fk-rec"
+              className="qb-rec"
               link={{ label: "Vezi-le", glyph: "→", onClick: () => evidence?.open(spec as AskSpec, { years: before.years }, `${before.from}–${before.to} · înregistrările dinainte de ${CHART_FIRST_YEAR}`) }}
             />
           </p>
         )}
         {shownPartial.length > 0 && (
-          <p className="ask-fine ask-partial-note fk-tipwrap">
+          <p className="ask-fine ask-partial-note qb-tipwrap">
             * {shownPartial.map((x) => x.year).join(", ").replace(/, (\d+)$/, " și $1")} {shownPartial.length === 1 ? "e incomplet" : "sunt incomplete"}{" "}
             <HelpTip tip={{
               title: shownPartial.length === 1 ? "An incomplet" : "Ani incompleți",
@@ -1654,7 +1654,7 @@ function SeriesBlock({
             }} />
           </p>
         )}
-        <p className="ask-fine fk-tipwrap">{RECORDED_VALUE.text} <HelpTip tip={RECORDED_VALUE.tip} /></p>
+        <p className="ask-fine qb-tipwrap">{RECORDED_VALUE.text} <HelpTip tip={RECORDED_VALUE.tip} /></p>
       </div>
     </div>
   );

@@ -37,9 +37,9 @@ export function listFootWords({ shown, total, noun, step = 10, all = false, rest
   return { more, rest };
 }
 
-/** After more rows arrive, focus the first new one (rows marked data-fk-arow, or .fk-arow). */
+/** After more rows arrive, focus the first new one (rows marked data-qb-arow, or .qb-arow). */
 export function focusFirstNew(list: HTMLElement | null, shown: number): void {
-  const rows = list ? Array.from(list.querySelectorAll<HTMLElement>("[data-fk-arow]")) : [];
+  const rows = list ? Array.from(list.querySelectorAll<HTMLElement>("[data-qb-arow]")) : [];
   rows[shown]?.focus();
 }
 
@@ -59,11 +59,11 @@ export interface ListFootProps {
 export default function ListFoot({ shown, total, noun, step = 10, all = false, restDetail, onMore, list, records }: ListFootProps) {
   const words = listFootWords({ shown, total, noun, step, all, ...(restDetail ? { restDetail } : {}) });
   if (!words.more && !records) return null;
-  return <div className="fk-listfoot">
-    {words.more && <span className="fk-row">
-      <button type="button" className="fk-more-btn" onClick={() => { onMore?.(); requestAnimationFrame(() => focusFirstNew(list?.current ?? null, shown)); }}>{words.more}</button>
-      <span className="fk-rest">{words.rest}</span>
+  return <div className="qb-listfoot">
+    {words.more && <span className="qb-row">
+      <button type="button" className="qb-more-btn" onClick={() => { onMore?.(); requestAnimationFrame(() => focusFirstNew(list?.current ?? null, shown)); }}>{words.more}</button>
+      <span className="qb-rest">{words.rest}</span>
     </span>}
-    {records && <KitLink link={{ glyph: "→", ...records }} className="fk-secondary" />}
+    {records && <KitLink link={{ glyph: "→", ...records }} className="qb-secondary" />}
   </div>;
 }

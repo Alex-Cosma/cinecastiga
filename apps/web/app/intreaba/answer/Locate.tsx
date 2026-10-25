@@ -23,8 +23,8 @@ export interface LocateProps extends Omit<EntitySearchProps, "inline" | "placeho
 }
 
 export default function Locate({ found, ...search }: LocateProps) {
-  return <div className="fk-find">
+  return <div className="qb-find">
     <EntitySearch {...search} placeholder={search.label} inline={false} />
-    <span className="fk-find-res" role="status">{found && <><b>{found.name}</b> {found.place}</>}</span>
+    <span className="qb-find-res" role="status">{found && <><b>{found.name}</b> {found.place}</>}</span>
   </div>;
 }

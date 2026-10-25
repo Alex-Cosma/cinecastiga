@@ -687,10 +687,6 @@ th .ask-partial-note { display: block; font-weight: 400; font-size: 11.5px; }
 .ask-modes button.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 .ask-aibadge { font-size: 9.5px; border: 1px solid currentColor; border-radius: 4px; padding: 0 4px; opacity: .8; }
 
-.qb-fromai {
-  background: var(--amber-soft); border: 1px solid var(--amber-line); border-radius: 8px; padding: 8px 12px;
-  font-size: 12.5px; color: var(--amber); margin-bottom: 14px;
-}
 /* Construiește — single-input continuous typeahead */
 .cb-card { max-width: 760px; }
 .cb-wrap { position: relative; }

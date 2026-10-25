@@ -1331,12 +1331,12 @@ export function EntityCardBlock({ card, historical = true, spec }: { card: Entit
   if (alone && spec) {
     const { peers, total } = leaderAloneSpecs(spec, card);
     return (
-      <div className="fk fk-empty ask-alone">
+      <div className="qb qb-empty ask-alone">
         <p>{alone}</p>
         <h3><Link href={`/entitati/${card.entityId}`}>{cleanName(card.name)}</Link></h3>
-        <div className="fk-relax">
-          <KitLink className="fk-relax-link" link={{ label: "Unde se situează față de celelalte", glyph: "›", href: askLink(peers) }} />
-          <KitLink className="fk-relax-link" link={{ label: "Cât cumpără", glyph: "›", href: askLink(total) }} />
+        <div className="qb-relax">
+          <KitLink className="qb-relax-link" link={{ label: "Unde se situează față de celelalte", glyph: "›", href: askLink(peers) }} />
+          <KitLink className="qb-relax-link" link={{ label: "Cât cumpără", glyph: "›", href: askLink(total) }} />
         </div>
       </div>
     );

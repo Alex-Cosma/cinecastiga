@@ -17,7 +17,7 @@ import type { KitTip } from "../builder/kit-types";
 export const RECORDED_VALUE = { text: "valoare înregistrată, nu plăți", tip: { id: "valoare-inregistrata" } } as const satisfies { text: string; tip: KitTip };
 
 export interface TotalLineProps {
-  /** The lead with the total: "Din <span className="fk-num">…</span>, câștigați de 412 firme". */
+  /** The lead with the total: "Din <span className="qb-num">…</span>, câștigați de 412 firme". */
   children: ReactNode;
   conditions?: readonly string[];
   /** The closing caveat; contract amounts are not payments. */
@@ -26,18 +26,18 @@ export interface TotalLineProps {
 
 export default function TotalLine({ children, conditions = [], note = RECORDED_VALUE }: TotalLineProps) {
   // One flow of text: a line breaks before a "·", never after it, so the dot goes with its condition.
-  const sep = <>{" "}<span className="fk-total-sep" aria-hidden="true">·</span>{" "}</>;
+  const sep = <>{" "}<span className="qb-total-sep" aria-hidden="true">·</span>{" "}</>;
   // The (?) stays on the line of the note's last two words ("nu plăți (?)"): both in one unbreakable
   // span after the live words, which say those two words for screen readers, so the caveat is announced too.
   const split = note ? /^(.*?)(\S+\s+\S+|\S+)$/s.exec(note.text) : null;
   const last = split?.[2] ?? (note ? note.text : "");
   const tip = note && note.tip ? note.tip : null;
-  return <p className="fk-total fk-tipwrap">
+  return <p className="qb-total qb-tipwrap">
     <span aria-live="polite" aria-atomic="true">
       {children}
-      {conditions.map(condition => <Fragment key={condition}>{sep}<span className="fk-total-cond">{condition}</span></Fragment>)}
-      {note && <>{sep}{split?.[1]}<span className={tip ? "fk-sr" : "fk-nowrap"}>{last}</span></>}
+      {conditions.map(condition => <Fragment key={condition}>{sep}<span className="qb-total-cond">{condition}</span></Fragment>)}
+      {note && <>{sep}{split?.[1]}<span className={tip ? "qb-sr" : "qb-nowrap"}>{last}</span></>}
     </span>
-    {tip && <span className="fk-nowrap"><span aria-hidden="true">{last}</span> <HelpTip tip={tip} /></span>}
+    {tip && <span className="qb-nowrap"><span aria-hidden="true">{last}</span> <HelpTip tip={tip} /></span>}
   </p>;
 }

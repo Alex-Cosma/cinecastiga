@@ -47,6 +47,6 @@ describe("the precise selection's editor", () => {
   it("gives its controls 44 px on a phone in «Selecție avansată» (F1b-tests: they were 40–42 px)", () => {
     const css = readFileSync(new URL("./question-builder.css", import.meta.url), "utf8");
     const phone = css.slice(css.lastIndexOf("@media (max-width: 600px) {"));
-    expect(phone).toContain(".fk-pop .qp-body :is(button, input, select), .fk-pop .qb-minimum :is(input, button) { min-height: 44px; }");
+    expect(phone).toContain(".qb-pop .qp-body :is(button, input, select), .qb-pop .qb-minimum :is(input, button) { min-height: 44px; }");
   });
 });

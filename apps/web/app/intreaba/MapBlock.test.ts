@@ -37,7 +37,7 @@ describe("Ask county map", () => {
     const html = renderToStaticMarkup(createElement(MapBlock, { counties, unknown: { value: 0, count: 0 }, spec: { block: "map", measure: "value", filters: {} } }));
     expect(html).toContain('aria-label="Cluj: 9 mil. lei"');
     expect(html).toMatch(/aria-label="Olt: nicio înregistrare"/);
-    expect(html).toMatch(/class="ask-legend fk-tipwrap"[\s\S]*Cinci trepte egale ca număr de județe/);
+    expect(html).toMatch(/class="ask-legend qb-tipwrap"[\s\S]*Cinci trepte egale ca număr de județe/);
   });
 
   it("paints counties, the empty ones and the legend with theme tokens, never fixed colours", () => {

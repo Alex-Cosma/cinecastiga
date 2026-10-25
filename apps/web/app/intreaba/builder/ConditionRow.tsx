@@ -26,8 +26,8 @@ export function selectionTip(label: string): KitTip {
 
 export default function ConditionRow({ label, kind, tip, children }: { label: string; kind: "group" | "selection"; tip?: KitTip; children: ReactNode }) {
   const help = tip ?? (kind === "selection" ? selectionTip(label) : undefined);
-  return <div className={`fk-row${kind === "selection" ? " fk-row--select" : ""} fk-tipwrap`} role="group" aria-label={label} data-fk-row="">
-    <span className="fk-row-label" aria-hidden={help ? undefined : true}>{label}{help && <HelpTip tip={help} />}</span>
+  return <div className={`qb-row${kind === "selection" ? " qb-row--select" : ""} qb-tipwrap`} role="group" aria-label={label} data-qb-row="">
+    <span className="qb-row-label" aria-hidden={help ? undefined : true}>{label}{help && <HelpTip tip={help} />}</span>
     {children}
   </div>;
 }

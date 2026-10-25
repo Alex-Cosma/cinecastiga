@@ -27,20 +27,20 @@ export interface PanelProps {
 /** The inside of a window: grip, title with its (?), ×, body, foot. */
 export function PopoverPanel({ title, titleId, tip, onClose, foot, children }: PanelProps) {
   return <>
-    <span className="fk-sheet-grip" aria-hidden="true" />
-    <div className="fk-pop-head">
-      <div className="fk-pop-title"><h3 id={titleId}>{title}</h3>{tip && <HelpTip tip={tip} />}</div>
-      <button type="button" className="fk-close" aria-label="Închide" onClick={onClose}>×</button>
+    <span className="qb-sheet-grip" aria-hidden="true" />
+    <div className="qb-pop-head">
+      <div className="qb-pop-title"><h3 id={titleId}>{title}</h3>{tip && <HelpTip tip={tip} />}</div>
+      <button type="button" className="qb-close" aria-label="Închide" onClick={onClose}>×</button>
     </div>
     {children}
-    {foot && <div className="fk-pop-foot">{foot}</div>}
+    {foot && <div className="qb-pop-foot">{foot}</div>}
   </>;
 }
 
 /** A window drawn open in the page flow, for the dev demo's frames (kit components.html §6). */
 export function StaticPopover({ wide = false, ...panel }: Omit<PanelProps, "titleId"> & { wide?: boolean }) {
   const titleId = useId();
-  return <div className={`fk-pop${wide ? " fk-pop--wide" : ""}`} role="dialog" aria-labelledby={titleId}>
+  return <div className={`qb-pop${wide ? " qb-pop--wide" : ""}`} role="dialog" aria-labelledby={titleId}>
     <PopoverPanel titleId={titleId} {...panel} />
   </div>;
 }
@@ -66,7 +66,7 @@ function initialFocus(dialog: HTMLElement): HTMLElement | null {
   const chosen = dialog.querySelector<HTMLElement>('[aria-checked="true"][tabindex="0"], [aria-selected="true"][tabindex="0"]');
   if (chosen) return chosen;
   const all = focusables(dialog);
-  return all.find(element => !element.classList.contains("fk-close") && !element.classList.contains("term-trigger")) ?? all[0] ?? null;
+  return all.find(element => !element.classList.contains("qb-close") && !element.classList.contains("term-trigger")) ?? all[0] ?? null;
 }
 
 export default function Popover({ open, anchor, onClose, wide = false, ...panel }: PopoverProps) {
@@ -131,7 +131,7 @@ export default function Popover({ open, anchor, onClose, wide = false, ...panel 
 
   return <dialog
     ref={ref}
-    className={`fk fk-pop${wide ? " fk-pop--wide" : ""}`}
+    className={`qb qb-pop${wide ? " qb-pop--wide" : ""}`}
     aria-labelledby={titleId}
     onKeyDown={event => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); onClose(); } }}
     onCancel={event => { event.preventDefault(); onClose(); }}

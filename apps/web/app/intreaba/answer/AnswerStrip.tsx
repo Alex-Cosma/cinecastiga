@@ -13,13 +13,13 @@ import type { KitTip } from "../builder/kit-types";
  */
 
 export default function AnswerStrip({ label = "Ajustează răspunsul", rows = false, children }: { label?: string; rows?: boolean; children: ReactNode }) {
-  return <div className={`fk-strip${rows ? " fk-strip--rows fk-tipwrap" : ""}`} role="group" aria-label={label}>{children}</div>;
+  return <div className={`qb-strip${rows ? " qb-strip--rows qb-tipwrap" : ""}`} role="group" aria-label={label}>{children}</div>;
 }
 
 /** A labelled line of the rows strip: the label (with its (?)) above the control on phones. */
 export function StripRow({ label, tip, children }: { label: string; tip?: KitTip; children: ReactNode }) {
-  return <div className="fk-strip-row">
-    <span className="fk-strip-label">{label}{tip && <HelpTip tip={tip} />}</span>
+  return <div className="qb-strip-row">
+    <span className="qb-strip-label">{label}{tip && <HelpTip tip={tip} />}</span>
     {children}
   </div>;
 }
@@ -30,28 +30,28 @@ export function StripRow({ label, tip, children }: { label: string; tip?: KitTip
  * readers only there (`smHide`).
  */
 export function StripLabelled({ before, after, smHide = false, children }: { before?: string; after?: string; smHide?: boolean; children: ReactNode }) {
-  return <span className="fk-row">
-    {before && <span className={`fk-strip-label${smHide ? " fk-strip-label--sm-hide" : ""}`}>{before}</span>}
+  return <span className="qb-row">
+    {before && <span className={`qb-strip-label${smHide ? " qb-strip-label--sm-hide" : ""}`}>{before}</span>}
     {children}
-    {after && <span className="fk-strip-label">{after}</span>}
+    {after && <span className="qb-strip-label">{after}</span>}
   </span>;
 }
 
 /** The end of the strip: "Vizual | Tabel". */
 export function StripEnd({ children }: { children: ReactNode }) {
-  return <span className="fk-strip-end">{children}</span>;
+  return <span className="qb-strip-end">{children}</span>;
 }
 
 /** The suggestion to go down a level: "99,9% e Construcții · Detaliază ›" (R8: › is another answer). */
 export function Suggest({ text, action = "Detaliază", onClick }: { text: string; action?: string; onClick?: () => void }) {
-  return <button type="button" className="fk-suggest" onClick={onClick}>{text}<span aria-hidden="true">·</span><b>{action}<span className="fk-glyph" aria-hidden="true">›</span></b></button>;
+  return <button type="button" className="qb-suggest" onClick={onClick}>{text}<span aria-hidden="true">·</span><b>{action}<span className="qb-glyph" aria-hidden="true">›</span></b></button>;
 }
 
 /** The thread of a drill-down ("Domenii: toate › Construcții"): each step goes back; the current one is text. */
 export function Crumbs({ label, items, current }: { label: string; items: readonly { label: string; onClick?: () => void; href?: string }[]; current: string }) {
-  return <nav className="fk-crumbs" aria-label={label}>
+  return <nav className="qb-crumbs" aria-label={label}>
     <span>{label}:</span>
-    {items.map((item, index) => <span className="fk-crumb" key={`${index}:${item.label}`}>
+    {items.map((item, index) => <span className="qb-crumb" key={`${index}:${item.label}`}>
       {item.href ? <a href={item.href}>{item.label}</a> : <button type="button" onClick={item.onClick}>{item.label}</button>}
       <span aria-hidden="true">›</span>
     </span>)}

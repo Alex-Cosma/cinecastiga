@@ -17,7 +17,7 @@
 .kd-cells-top{align-items:flex-start}
 .kd-cell{display:flex;flex-direction:column;min-width:0;max-width:100%}
 .kd-cell-wide{flex-basis:100%}
-.kd-cell .fk-under,.kd-cell .fk-parked{margin:0}
+.kd-cell .qb-under,.kd-cell .qb-parked{margin:0}
 .kd-gap{height:18px}
 .kd-live{margin:22px -24px -22px;padding:18px 24px 20px;border-top:1px dashed var(--fk-add-line);border-radius:0 0 17px 17px;background:var(--paper)}
 .kd-live>*+*{margin-top:12px}
@@ -31,7 +31,7 @@
   .kd-live{margin:18px -16px -16px;padding:14px 16px 16px}
   .kd-cell{width:100%}
   /* A window drawn in the page is as wide as a real bottom sheet's content (5 bands or years of ≥ 44 px at 320). */
-  .kd-cell>.fk-pop{margin-inline:-16px;width:calc(100% + 32px);max-width:none}
+  .kd-cell>.qb-pop{margin-inline:-16px;width:calc(100% + 32px);max-width:none}
 }
 /* Part 2 frames: room for a menu drawn open, the open (?) and the live answer's title. */
 .kd-menu-room{height:150px}

@@ -36,7 +36,7 @@ export default function Pills({ label, options, value, onChange }: PillsProps) {
   const checked = options.findIndex(option => option.value === value);
   const stop = rovingStop(checked, options.map(option => !!option.disabled));
   return <div
-    className="fk-pills"
+    className="qb-pills"
     role="radiogroup"
     aria-label={label}
     data-roving=""
@@ -47,7 +47,7 @@ export default function Pills({ label, options, value, onChange }: PillsProps) {
       return <button
         key={option.value}
         type="button"
-        className={`fk-pill${option.className ? ` ${option.className}` : ""}`}
+        className={`qb-pill${option.className ? ` ${option.className}` : ""}`}
         role="radio"
         aria-checked={on}
         aria-disabled={option.disabled ? true : undefined}
@@ -56,9 +56,9 @@ export default function Pills({ label, options, value, onChange }: PillsProps) {
         tabIndex={index === stop ? 0 : -1}
         onClick={() => { if (!option.disabled) onChange?.(option.value, "activate"); }}
       >
-        {option.signal && <i className="fk-dot fk-dot--signal" aria-hidden="true" />}
+        {option.signal && <i className="qb-dot qb-dot--signal" aria-hidden="true" />}
         {option.label}
-        {option.count && <span className="fk-n">{option.count}</span>}
+        {option.count && <span className="qb-n">{option.count}</span>}
       </button>;
     })}
     {options.map((option, index) => typeof option.disabled === "string" && <DisabledReason key={`r${index}`} id={`${base}-r${index}`} reason={option.disabled} />)}
@@ -70,8 +70,8 @@ export default function Pills({ label, options, value, onChange }: PillsProps) {
  * "și"). The values stay text, as typed; the caller parses and validates.
  */
 export function RangeFields({ from, to, onChange, labels = ["Între", "și"], unit = "lei" }: { from: string; to: string; onChange?: (from: string, to: string) => void; labels?: readonly [string, string]; unit?: string }) {
-  return <div className="fk-inputs">
-    <label className="fk-field"><span>{labels[0]}</span><input inputMode="numeric" autoComplete="off" placeholder={unit} value={from} onChange={event => onChange?.(event.target.value, to)} /></label>
-    <label className="fk-field"><span>{labels[1]}</span><input inputMode="numeric" autoComplete="off" placeholder={unit} value={to} onChange={event => onChange?.(from, event.target.value)} /></label>
+  return <div className="qb-inputs">
+    <label className="qb-field"><span>{labels[0]}</span><input inputMode="numeric" autoComplete="off" placeholder={unit} value={from} onChange={event => onChange?.(event.target.value, to)} /></label>
+    <label className="qb-field"><span>{labels[1]}</span><input inputMode="numeric" autoComplete="off" placeholder={unit} value={to} onChange={event => onChange?.(from, event.target.value)} /></label>
   </div>;
 }

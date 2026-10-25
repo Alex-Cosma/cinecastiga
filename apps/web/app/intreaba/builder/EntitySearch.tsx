@@ -102,9 +102,9 @@ export default function EntitySearch({ label, placeholder, results, loading = fa
   const status = busy ? "Caut…" : typed && !results.length ? emptyText : typed ? countWords(results.length, "rezultat", "rezultate") : "";
   const quiet = !busy && results.length > 0;
 
-  return <div className={`fk-combo${inline ? "" : " fk-combo--pop"}`}>
-    <label className={`fk-search${className ? ` ${className}` : ""}`}>
-      <span className="fk-sr">{label}</span>
+  return <div className={`qb-combo${inline ? "" : " qb-combo--pop"}`}>
+    <label className={`qb-search${className ? ` ${className}` : ""}`}>
+      <span className="qb-sr">{label}</span>
       <input
         type="text"
         role="combobox"
@@ -132,31 +132,31 @@ export default function EntitySearch({ label, placeholder, results, loading = fa
         }}
       />
     </label>
-    <div ref={listRef} className="fk-listbox" role="listbox" id={listId} aria-label={label} aria-busy={busy || undefined} hidden={!expanded}>
+    <div ref={listRef} className="qb-listbox" role="listbox" id={listId} aria-label={label} aria-busy={busy || undefined} hidden={!expanded}>
       {resultGroups(results).map(({ group, start, items }) => {
         const options = items.map((result, offset) => {
           const index = start + offset;
           return <div
             key={result.id}
             id={optionId(index)}
-            className={`fk-res${result.className ? ` ${result.className}` : ""}`}
+            className={`qb-res${result.className ? ` ${result.className}` : ""}`}
             role="option"
             aria-selected={index === active}
             onMouseDown={event => event.preventDefault()} // focus stays in the field
             onClick={() => pick(index)}
           >
-            <span className="fk-res-t"><strong>{result.name}</strong>{result.detail && <small>{result.detail}</small>}</span>
-            {result.side && <span className="fk-res-side">{result.side}</span>}
+            <span className="qb-res-t"><strong>{result.name}</strong>{result.detail && <small>{result.detail}</small>}</span>
+            {result.side && <span className="qb-res-side">{result.side}</span>}
           </div>;
         });
         if (!group) return <Fragment key={`g${start}`}>{options}</Fragment>;
         return <div key={`g${start}`} role="group" aria-labelledby={`${base}-g${start}`}>
-          <div className="fk-opt-group" id={`${base}-g${start}`} role="presentation">{group}</div>
+          <div className="qb-opt-group" id={`${base}-g${start}`} role="presentation">{group}</div>
           {options}
         </div>;
       })}
     </div>
-    <p className={`fk-search-status${quiet || !status ? " fk-sr" : ""}`} role="status" aria-live="polite">{status}</p>
+    <p className={`qb-search-status${quiet || !status ? " qb-sr" : ""}`} role="status" aria-live="polite">{status}</p>
   </div>;
 }
 

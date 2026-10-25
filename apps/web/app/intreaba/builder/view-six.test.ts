@@ -70,7 +70,7 @@ describe("the six questions from the registry (F1b-builder-b)", () => {
     // A county council has one per county: "din toată țara" is a fixed phrase, text and not a button (component 1b).
     const councils = renderToStaticMarkup(createElement(Sentence, { tokens: builderView(SIX.scatter!).sentence }));
     expect(text(councils.replace(/<span class="term[\s\S]*?<\/span><\/span>(?=<\/span>)/, ""))).toBe("Ce consilii județene din toată țara ies din tipar după risc și valoarea achizițiilor directe?");
-    expect(councils).toContain('<span class="fk-phrase fk-phrase--fixed"><span>din toată țara</span></span>');
+    expect(councils).toContain('<span class="qb-phrase qb-phrase--fixed"><span>din toată țara</span></span>');
     // Its (?) says why it cannot change (plan §4.12, final scatter).
     expect(builderView(SIX.scatter!).sentence.find((t) => t.kind === "fixed")).toEqual({ kind: "fixed", text: "din toată țara", tip: "Un consiliu pe județ." });
     expect(councils).toContain("Un consiliu pe județ.");
@@ -126,7 +126,7 @@ describe("the six questions from the registry (F1b-builder-b)", () => {
     // The rest row sits under the last kind, before the firms, and takes no focus.
     const markup = renderToStaticMarkup(createElement(OptionList, { label: "Cine", options: who.options, value: who.value, rest: who.rest! }));
     expect(text(markup).indexOf(OTHER_INSTITUTIONS)).toBeLessThan(text(markup).lastIndexOf("Firme"));
-    expect(markup).toMatch(/<div class="fk-opt fk-opt--rest">/);
+    expect(markup).toMatch(/<div class="qb-opt qb-opt--rest">/);
   });
 
   it("speak «Cine conduce?» in the singular, and say what each axis changes", () => {

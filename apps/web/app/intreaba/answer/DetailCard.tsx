@@ -62,21 +62,21 @@ export default function DetailCard({ title, meta, facts = [], lines = [], action
   const Title = level === 3 ? "h3" : "h4";
   return <section
     ref={card}
-    className="fk-card"
+    className="qb-card"
     aria-label={title}
     onKeyDown={event => { if (event.key === "Escape" && onClose) { event.preventDefault(); event.stopPropagation(); onClose(); } }}
   >
-    <div className="fk-card-head">
+    <div className="qb-card-head">
       <Title ref={heading} tabIndex={-1}>{title}</Title>
-      {onClose && <button type="button" className="fk-close" aria-label="Închide fișa" onClick={onClose}>×</button>}
+      {onClose && <button type="button" className="qb-close" aria-label="Închide fișa" onClick={onClose}>×</button>}
     </div>
-    {meta && <p className="fk-card-meta">{meta}</p>}
-    {facts.length > 0 && <div className="fk-card-facts">{facts.map(fact => <span key={fact.label}>{fact.label} <span className="fk-num">{fact.value}</span></span>)}</div>}
-    {lines.length > 0 && <ul className="fk-card-lines">{lines.map((line, index) => <li key={index}>
+    {meta && <p className="qb-card-meta">{meta}</p>}
+    {facts.length > 0 && <div className="qb-card-facts">{facts.map(fact => <span key={fact.label}>{fact.label} <span className="qb-num">{fact.value}</span></span>)}</div>}
+    {lines.length > 0 && <ul className="qb-card-lines">{lines.map((line, index) => <li key={index}>
       <span>{line.tag && <FactTag fact={line.tag} />}{line.text}</span>
-      {line.records && <KitLink link={{ glyph: "→", ...line.records }} className="fk-rec" />}
+      {line.records && <KitLink link={{ glyph: "→", ...line.records }} className="qb-rec" />}
     </li>)}</ul>}
     {children}
-    {actions.length > 0 && <div className="fk-actions">{actions.map(action => <KitLink key={action.label} link={action} className="fk-secondary" />)}</div>}
+    {actions.length > 0 && <div className="qb-actions">{actions.map(action => <KitLink key={action.label} link={action} className="qb-secondary" />)}</div>}
   </section>;
 }

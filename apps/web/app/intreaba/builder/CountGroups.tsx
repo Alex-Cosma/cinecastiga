@@ -43,9 +43,9 @@ export default function CountGroups({ label, groups, value, onChange, head }: Co
   const checked = groups.findIndex(group => group.value === value);
   const stop = rovingStop(checked, groups.map(group => !!group.disabled));
   return <>
-    {head && <p className="fk-groups-head fk-tipwrap">{head.text} <b>{head.total}</b>{head.tip && <HelpTip tip={head.tip} />}</p>}
+    {head && <p className="qb-groups-head qb-tipwrap">{head.text} <b>{head.total}</b>{head.tip && <HelpTip tip={head.tip} />}</p>}
     <div
-      className="fk-groups"
+      className="qb-groups"
       role="radiogroup"
       aria-label={label}
       data-roving=""
@@ -56,7 +56,7 @@ export default function CountGroups({ label, groups, value, onChange, head }: Co
         return <button
           key={group.value}
           type="button"
-          className={`fk-group${group.all ? " fk-group--all" : ""}${group.className ? ` ${group.className}` : ""}`}
+          className={`qb-group${group.all ? " qb-group--all" : ""}${group.className ? ` ${group.className}` : ""}`}
           role="radio"
           aria-checked={on}
           aria-disabled={group.disabled ? true : undefined}
@@ -64,8 +64,8 @@ export default function CountGroups({ label, groups, value, onChange, head }: Co
           tabIndex={index === stop ? 0 : -1}
           onClick={() => { if (!group.disabled) onChange?.(group.value, "activate"); }}
         >
-          <span className="fk-group-name">{group.swatch && <i className={`fk-sw fk-sw--${group.swatch}`} aria-hidden="true" />}{group.name}</span>
-          <span className="fk-group-n">{group.count}</span>
+          <span className="qb-group-name">{group.swatch && <i className={`qb-sw qb-sw--${group.swatch}`} aria-hidden="true" />}{group.name}</span>
+          <span className="qb-group-n">{group.count}</span>
         </button>;
       })}
       {groups.map((group, index) => typeof group.disabled === "string" && <DisabledReason key={`r${index}`} id={`${base}-r${index}`} reason={group.disabled} />)}
