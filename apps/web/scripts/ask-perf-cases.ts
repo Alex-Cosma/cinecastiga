@@ -225,5 +225,10 @@ export function perfCases(): PerfCase[] {
       all(buyer(), years(2024, 2025), lens({ change: "new", months: "auto" })), { path: "rows" }),
     perfCase("csv:trend-2024-2025-new-after-answer", "csv", "CSV: firmele noi, 2024 → 2025 (național), după răspuns", "trend", all(years(2024, 2025), lens({ change: "new", months: "auto" })),
       { path: "csv", afterAnswer: true, barMs: 2000 }),
+    // S3 F2-merge-fixes: „Toate” of the national trend, „Înregistrările celor doi ani” (4.9M records; track verify problem 3).
+    perfCase("sources:trend-2024-2025-all", "sources", "Înregistrările celor doi ani, „Toate”, 2024 → 2025 (național), la rece", "trend", all(years(2024, 2025), lens({ change: "all", months: "auto" })),
+      { path: "rows", barMs: 2000, ref: "Surse trend „Toate” (ambii ani, național)" }),
+    perfCase("sources:trend-2024-2025-all-after-answer", "sources", "Înregistrările celor doi ani, „Toate”, 2024 → 2025, după răspuns", "trend", all(years(2024, 2025), lens({ change: "all", months: "auto" })),
+      { path: "rows", afterAnswer: true, barMs: 2000 }),
   ];
 }

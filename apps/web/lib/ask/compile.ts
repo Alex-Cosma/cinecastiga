@@ -2266,7 +2266,9 @@ export async function runRows(
     : scope.counties ?? (scope.county ? [scope.county] : null);
   // The two years as a range on the column, so the id indexes (id, finalization_date) bound the members' rows.
   const memberRange: ReturnType<DbSql> = sql`d.finalization_date >= ${String(Math.min(yearA, yearB))} and d.finalization_date < ${String(Math.max(yearA, yearB) + 1)}`;
-  const trendDays = listed && rollup ? await rollupDaysReady(sql) : false;
+  // „Toate” (every change, not a watch's group): the drawer lists the whole selection of the two years.
+  const everyChange = trendGroup !== null && !listed && !fixed;
+  const trendDays = (listed || everyChange) && rollup ? await rollupDaysReady(sql) : false;
   // The covering id indexes carry sicap_da_id (built nightly): a group's page then reads its keys index-only.
   const keyed = listed && groupDim !== "county" && dataset !== "contracts" ? await coverRefReady(sql) : false;
   const groupMembers = listed ? async (s: DbSql): Promise<{ members: Float64Array | readonly string[]; sources: TrendPartSources | null; selection: TrendPartSources | null }> => {
@@ -2320,6 +2322,22 @@ export async function runRows(
       kept = entryMembers(entry, listed) ?? [];
     }
     return { members: kept, sources: entry.sources[trendMemberPart(listed)!] ?? null, selection: entry.sources.all ?? null };
+  } : null;
+  // „Toate”: the selection's records per channel are those of the answer's partition (`sources.all`), kept with its
+  // groups, so its totals need no count over the union of the two years (4.9M records, ~1.9 s nationally). Not kept
+  // (another process, an entry dropped), the same grouping on the rollups gives them (~0.6 s) and is kept for the
+  // next drawer; a live grouping would cost what the count does, so then the count stays.
+  const selectionSources = everyChange ? async (s: DbSql): Promise<TrendPartSources | null> => {
+    const stamp = await trendCacheStamp(s);
+    const key = stamp ? trendGroupKey(ctx, { stamp, dim: groupDim, yearA, yearB }) : null;
+    let entry = key ? trendGroupsFor(key) : null;
+    if (!entry && rollup && trendDays) {
+      const { grouped, attribute } = trendGrouping(s, { rollup, days: trendDays, ctx, dataset, dim: groupDim, yearA, yearB });
+      const partition = await trendPartition(s, grouped, { group: trendGroup!, topN: 0, first: groupDim === "county" ? null : { role: groupDim, yearB }, attribute });
+      entry = trendGroupEntry(partition, { dim: groupDim, group: trendGroup! });
+      if (key) rememberTrendGroups(key, entry);
+    }
+    return entry?.sources.all ?? null;
   } : null;
   const localParts: ReturnType<DbSql>[] = [sql`true`];
   if (opts.stream) localParts.push(sql`d.src = ${opts.stream}`);
@@ -2386,9 +2404,11 @@ export async function runRows(
       && sortKey === "source" && opts.dir !== "asc" && yearB >= maxY - 1;
     const idIndex = groupPage && !plannerPlans || Boolean(fixed && members);
     if (idIndex) await tx.unsafe("set local enable_seqscan = off");
-    // Without a search or another selection, a group's totals are its records in the answer's grouping.
-    const groupTotals = group?.sources && !search && Object.keys(scope).every((key) => key === "role")
-      ? groupSourceTotals(group.sources, { ...(opts.stream ? { stream: opts.stream } : {}), ...(opts.state ? { state: opts.state } : {}) }) : null;
+    // Without a search or another selection, a group's totals are its records in the answer's grouping; „Toate”'s, the selection's.
+    const unscoped = !search && Object.keys(scope).every((key) => key === "role");
+    const groupSources = group?.sources ?? (unscoped && selectionSources ? await selectionSources(s) : null);
+    const groupTotals = groupSources && unscoped
+      ? groupSourceTotals(groupSources, { ...(opts.stream ? { stream: opts.stream } : {}), ...(opts.state ? { state: opts.state } : {}) }) : null;
     const rolledTotals = !groupTotals && rollup && totalsBlock && localParts.length === 1 && Object.keys(scope).every((key) => key === "role")
       ? await rollupSourceTotals(s, rollup, totalsBlock) : null;
     const totals: SourceTotalsRow[] = groupTotals ?? (rolledTotals && "rows" in rolledTotals ? rolledTotals.rows : (await readEvidenceQuery(s`
