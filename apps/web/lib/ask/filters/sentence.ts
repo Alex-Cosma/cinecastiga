@@ -106,6 +106,8 @@ const NAMES = {
   seat: ["Sediul firmei", "Unde au sediul firmele?"],
   from: ["De la cine", "De la cine?"],
   period: ["Perioada", "În ce perioadă?"],
+  // The trend's two years open the same period window, titled by what it compares (trend final §3.2).
+  years: ["Perioada", "Ce ani compari?"],
   when: ["Perioada", "Când?"],
   ranked: ["Ce clasăm", "Ce clasăm?"],
   who: ["Cine", "Cine?"],
@@ -458,7 +460,7 @@ const trend: Write = (out, spec, ctx, labels) => {
   const periodSays: FilterId[] = hasPeriod(spec) ? ["period"] : [];
   const yearWord = (year: unknown, ran: number | undefined, none: string) => has(year) ? String(year) : ran !== undefined ? String(ran) : none;
   const a = yearWord(f.yearFrom, labels.trendYears?.yearA, "primul an"), b = yearWord(f.yearTo, labels.trendYears?.yearB, "ultimul an");
-  const year = (lead: string, value: string) => out.text(lead).slot("period", "period", value, { says: periodSays });
+  const year = (lead: string, value: string) => out.text(lead).slot("period", "years", value, { says: periodSays });
   if (change === "new") {
     out.text(buys ? " cumpără" : " apar");
     fragments(buys ? null : " în achizițiile");

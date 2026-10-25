@@ -147,7 +147,8 @@ span.fk-chip-main:hover{background:none}
 .fk-chip--origin{background:var(--fk-warm-bg);border-color:var(--fk-warm-line);color:var(--fk-warm-ink)}
 .fk-chip--origin .fk-chip-main{cursor:default}
 .fk-chip--origin .fk-chip-x{border-left-color:var(--fk-warm-line);color:var(--fk-warm-ink)}
-.fk-chip--legacy .term-tip,.fk-chip--origin .term-tip{align-self:center}
+.fk-chip--legacy .term-tip,.fk-chip--origin .term-tip,.fk-chip--auto .term-tip{align-self:center}
+.fk-chip--notice .fk-chip-main{cursor:default}
 .fk-chip--exclude{background:var(--sunk);border-color:var(--line2);color:var(--ink2)}
 .fk-chip--exclude .fk-chip-main::before{content:"−";font-weight:600;color:var(--muted);margin-right:2px}
 .fk-chip--only{background:var(--fk-sel);border-color:var(--fk-sel-line);color:var(--ink)}

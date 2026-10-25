@@ -4,7 +4,7 @@ import { countWords } from "../ask/answer-text";
 import { questionTitle, type TitleLabels } from "../ask/filters/title";
 import { IMPLEMENTED_KEYS, validateSpec, type AskFilters, type AskSpec, type AuthorityKind, type Block, type Dataset } from "../ask/spec";
 import { defaultTrendYears, isWholeYear, monthsLabel, sameMonthsWindow, trendYearsFrom, type CoveragePeriods } from "../ask/months-window";
-import { FILTERS, SPEC_PATH_OWNERS } from "../ask/filters/registry";
+import { FILTERS, offeredFilters, SPEC_PATH_OWNERS } from "../ask/filters/registry";
 import { filterContext } from "../ask/filters/context";
 import type { FilterSpec, SpecPath } from "../ask/filters/types";
 import { TREND_CHANGE_LABELS } from "../ask/filters/defs/trend";
@@ -58,11 +58,10 @@ const readPath = (raw: Record<string, unknown>, path: SpecPath): unknown => {
 
 /**
  * The lenses of the chosen block, written by their filters (plan §2.7): a key
- * this release applies on this question (IMPLEMENTED_KEYS, the filter's
- * engine level on the answer's form) among the values its control offers
- * here, with what the filter's write implies. BLOCK_FILTERS does not place
- * the trend's keys yet (the builder of F1b/F2 does), so the engine level
- * stands for "offered". A lens the question does not offer, two that
+ * this release applies (IMPLEMENTED_KEYS) that the question offers
+ * (BLOCK_FILTERS: its sentence, P4, presentation line or strip), among the
+ * values its control offers here, with what the filter's write implies. A
+ * lens the question does not offer, two that
  * contradict each other, or a phrase of another question's table is said,
  * never applied silently; the words of a cue or a modifier this question
  * already used (`quiet`) need no note.
@@ -79,8 +78,8 @@ export function applyLenses(raw: Record<string, unknown>, lenses: readonly LensM
   const offered = (path: SpecPath, value: unknown, at: FilterSpec): boolean => {
     const owner = SPEC_PATH_OWNERS[path];
     if (owner === "question" || !IMPLEMENTED_KEYS.has(path)) return false;
-    const def = FILTERS[owner], ctx = filterContext(at);
-    return def.engine[ctx.form] !== undefined && def.choices(at, ctx).some((choice) => JSON.stringify(choice) === JSON.stringify(value));
+    const ctx = filterContext(at);
+    return offeredFilters(at, ctx).has(owner) && FILTERS[owner].choices(at, ctx).some((choice) => JSON.stringify(choice) === JSON.stringify(value));
   };
   const write = (path: SpecPath, value: unknown) => {
     const owner = SPEC_PATH_OWNERS[path];

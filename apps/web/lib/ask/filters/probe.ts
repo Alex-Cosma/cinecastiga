@@ -4,6 +4,7 @@ import { filterContext } from "./context";
 import { FILTERS, placedSlots, writeFocal } from "./registry";
 import type { Party } from "./defs/selection";
 import { choicesOf, choiceState, type Choice } from "./pickers";
+import { chooseQuestion } from "./transition";
 import type { Availability, FilterCtx, FilterSpec, Placement, Slot } from "./types";
 
 /*
@@ -36,8 +37,9 @@ export const REQUIRED_INPUTS = [
 ];
 /** One question of each kind, ready to run: the catalogue choice, with the inputs it needs (corpus builderQuestion). */
 export function baseQuestions(year: number): { name: string; spec: FilterSpec }[] {
+  // A trend chosen from the catalogue writes a new trend's options (chooseQuestion → trend-rules.ts enterTrend).
   const choose = (block: Block, edit: (q: FilterSpec) => FilterSpec = (q) => q) =>
-    transitionQuestion(edit(transitionQuestion(defaultQuestion(), block).spec as FilterSpec)).spec as FilterSpec;
+    transitionQuestion(edit((block === "trend" ? chooseQuestion(defaultQuestion(), block) : transitionQuestion(defaultQuestion(), block)).spec as FilterSpec)).spec as FilterSpec;
   const buyer: Party = { name: "Comuna Exemplu", id: 101 }, firm: Party = { name: "Firma Exemplu SRL", id: 202 };
   const set = (patch: Partial<FilterSpec>) => (q: FilterSpec): FilterSpec => ({ ...q, ...patch, filters: { ...q.filters, ...patch.filters } });
   const years = { filters: { yearFrom: year - 1, yearTo: year } };

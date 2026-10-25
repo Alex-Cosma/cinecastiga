@@ -1,3 +1,4 @@
+import type { CoveragePeriods } from "../months-window";
 import { countyIsFirmSeat } from "../population";
 import { focalRole, leaderAxis, localityScopeError, transitionQuestion, type QuestionSpec } from "../question-ui";
 import { runnableError, type AskSpec } from "../spec";
@@ -9,6 +10,7 @@ import { parkedRow, pathValues, unpark, type Parked, type ParkedItem } from "./p
 import { windowFilters, writeChoice, type Choice } from "./pickers";
 import { FILTERS, visibleFilters } from "./registry";
 import { sentenceTokens } from "./sentence";
+import { enterTrend, leavingTrend, TREND_FILTERS, trendFollows } from "./trend-rules";
 import type { FilterId, FilterSpec, Slot } from "./types";
 
 /*
@@ -100,40 +102,62 @@ function settle(
 const unique = (notes: readonly string[]) => [...new Set(notes)];
 const errorOf = (spec: FilterSpec) => runnableError(spec as unknown as AskSpec) ?? localityScopeError(spec);
 
+/** What the builder knows besides the draft: the archive's periods (/api/data-coverage), for a trend's years and months. */
+export interface TransitionContext { coverage?: CoveragePeriods | null | undefined }
+
 /**
  * A choice in a window of the question (pickers.ts): the window writes it, the
  * question normalizes (transitionQuestion, same block), then every other
  * condition is accounted for. Changing the axis of "Cine conduce?" is a lens:
  * what the new axis cannot apply is parked ("Nu se aplică indicelui"), and
- * going back to the axis it came from brings it back.
+ * going back to the axis it came from brings it back. On a trend, what follows
+ * the choice comes before (trend-rules.ts trendFollows: counties back to the
+ * growths, an incomplete year's same months).
  */
-export function chooseValue(draft: QuestionSpec, slot: Slot, choice: Choice, parked: Parked | null = null): Transition {
+export function chooseValue(draft: QuestionSpec, slot: Slot, choice: Choice, parked: Parked | null = null, context: TransitionContext = {}): Transition {
   const lens = choice.filter === "rankBy" && draft.block === "entity_card" && choice.value !== leaderAxis(draft);
   const start = lens && parked?.lens === choice.value ? unpark(draft as FilterSpec, parked) : draft as FilterSpec;
   const written = writeChoice(start, slot, choice);
   // What the choice replaced in its own window needs no note; what it left there (a buyer's kind on a firm subject) is settled too.
   const touched = windowFilters(slot).filter((id) => JSON.stringify(pathValues(start, FILTERS[id].keys)) !== JSON.stringify(pathValues(written, FILTERS[id].keys)));
-  const { spec, changes } = transitionQuestion(written);
-  const settled = settle(start, spec as FilterSpec, { lens, touched, why: "nu se potrivește cu alegerea nouă" });
+  const normalized = transitionQuestion(written);
+  const follows = trendFollows(start, normalized.spec as FilterSpec, context.coverage);
+  const settled = settle(start, follows.spec, { lens, touched, why: "nu se potrivește cu alegerea nouă" });
+  // A trend's options set aside wait for the trend, whatever the axis of "Cine conduce?" does (one row: the axis's wins).
+  const waiting = parked?.lens === "trend" ? parked : null;
   return {
-    spec: settled.spec, notes: unique([...changes, ...settled.notes]), dropped: settled.dropped,
-    parked: !lens ? parked : settled.parked.length ? parkedRow(leaderAxis(start), settled.parked) : null,
+    spec: settled.spec, notes: unique([...normalized.changes, ...follows.notes, ...settled.notes]), dropped: settled.dropped,
+    parked: !lens ? parked : settled.parked.length ? parkedRow(leaderAxis(start), settled.parked) : waiting,
   };
 }
 
 /**
  * Another question from the catalogue. The parked conditions come back first:
- * a question that applies them keeps them; the rest leave with a note.
+ * a question that applies them keeps them; the rest leave with a note. A
+ * trend's own options never apply elsewhere: leaving the trend sets them
+ * aside ("Doar la schimbare"), and they wait there until the trend comes back.
+ * Entering the trend writes a new trend's options and years (trend-rules.ts
+ * enterTrend), under what comes back from the row.
  */
-export function chooseQuestion(draft: QuestionSpec, block: string, parked: Parked | null = null): Transition {
-  const start = unpark(draft as FilterSpec, parked);
-  const { spec, changes } = transitionQuestion(start, block);
+export function chooseQuestion(draft: QuestionSpec, block: string, parked: Parked | null = null, context: TransitionContext = {}): Transition {
+  const waits = parked?.lens === "trend" && block !== "trend";
+  const start = waits ? draft as FilterSpec : unpark(draft as FilterSpec, parked);
+  const leaves = start.block === "trend" && block !== "trend";
+  const leaving = leaves ? leavingTrend(start) : [];
+  // The defaults a new trend writes again leave with the rest of its key, without a chip or a note.
+  const base = leaves ? withoutConditions(start, TREND_FILTERS) : start;
+  const moved = transitionQuestion(base, block);
+  const entered = block === "trend" && base.block !== "trend" ? enterTrend(base, moved.spec as FilterSpec, context.coverage) : { spec: moved.spec as FilterSpec, notes: [] };
   // The reason by cause: a condition the engine applies here but the builder does not offer yet is not "inapplicable".
-  const settled = settle(start, spec as FilterSpec, { lens: false, touched: [], why: "nu se aplică la această întrebare", whyApplied: "nu se poate alege aici încă" });
-  return { spec: settled.spec, notes: unique([...changes, ...settled.notes]), dropped: settled.dropped, parked: null };
+  const settled = settle(base, entered.spec, { lens: false, touched: [], why: "nu se aplică la această întrebare", whyApplied: "nu se poate alege aici încă" });
+  return {
+    spec: settled.spec, notes: unique([...moved.changes, ...entered.notes, ...settled.notes]), dropped: settled.dropped,
+    parked: leaving.length ? parkedRow("trend", leaving) : waits ? parked : null,
+  };
 }
 
-/** Touching a parked chip: back to the lens it came from, with everything that waited there (kit §5.43). */
-export function restoreParked(draft: QuestionSpec, parked: Parked): Transition {
-  return chooseValue(draft, { id: "rankBy" }, { filter: "rankBy", value: parked.lens }, parked);
+/** Touching a parked chip: back to the lens it came from, with everything that waited there (kit §5.43); a trend's, back to the trend. */
+export function restoreParked(draft: QuestionSpec, parked: Parked, context: TransitionContext = {}): Transition {
+  if (parked.lens === "trend") return chooseQuestion(draft, "trend", parked, context);
+  return chooseValue(draft, { id: "rankBy" }, { filter: "rankBy", value: parked.lens }, parked, context);
 }

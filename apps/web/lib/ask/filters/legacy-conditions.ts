@@ -68,6 +68,16 @@ function tautology(spec: FilterSpec, id: FilterId): Pick<LegacyCondition, "tip" 
  */
 export const PROFILE_REFUSAL = "Profilul folosește toată arhiva de achiziții directe; condiția nu se aplică aici.";
 
+/**
+ * A trend's refusals where the engine's message is a paragraph (S2 review,
+ * problem 4): the chip says why in a few words, like a profile's. The engine's
+ * words stay its answer to /api/ask.
+ */
+export const TREND_REFUSALS: Partial<Record<FilterId, string>> = {
+  minimumRecords: "Un prag de înregistrări nu se aplică diferenței dintre doi ani.",
+  period: "Aici lunile se aleg din „Aceleași luni”, pentru ambii ani.",
+};
+
 /** The shape of the answer, not a condition: the question shows it in its sentence or ignores it. */
 const SHAPE: ReadonlySet<FilterId> = new Set(["dim", "measure", "topN", "rankBy", "comparisonMode"]);
 
@@ -162,6 +172,7 @@ export function legacyConditions(input: QuestionSpec | AskSpec, labels: Conditio
       status: reason ? "refused" : "applied",
       ...(reason ? { reason } : {}),
       ...(reason && ctx.profile && !applied ? { why: PROFILE_REFUSAL } : {}),
+      ...(reason && ctx.block === "trend" && TREND_REFUSALS[id] ? { why: TREND_REFUSALS[id] } : {}),
       ...(!reason ? tautology(spec, id) ?? {} : {}),
     });
   }

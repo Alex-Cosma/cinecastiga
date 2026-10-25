@@ -14,10 +14,14 @@ import type { AdvancedField, BlockFilters, ConditionRow, FilterCtx, FilterId, Fi
  * - P2 are the fragments the sentence does not show yet, named (kit §4), in
  *   its order, at most four: an invitation becomes its phrase once set.
  * - P3b, the partners of the network and the flow ("Furnizorii",
- *   "Clienții"): a selection, the total changes. No group row (P3a) in F1b:
- *   the engine still applies every key on the records (plan §2.1, §12.14).
+ *   "Clienții"): a selection, the total changes. P3a, a group row, only where
+ *   the answer's version moved its key to the group: the employees of a trend
+ *   of firms ("Câștigătorii", trend-2); elsewhere the engine still applies
+ *   every key on the records (plan §2.1, §12.14).
+ * - P4 the chips the question owns: the trend's "Aceleași luni" (F2).
  * - P5 the presentation line (table, trend); P6 the controls beside the answer
- *   that write a key; P9 "⋯ › Selecție avansată" (plan §1.1 variant A).
+ *   that write a key (the trend's groups and "Prima dată", F2); P9 "⋯ ›
+ *   Selecție avansată" (plan §1.1 variant A).
  *
  * Nothing generic is under a question any more (R3, G1): no "Adaugă o
  * condiție", no "Mai multe filtre", no record threshold or single bidder. A
@@ -40,6 +44,7 @@ const PLACES = {
   clientCounty: ["Județul instituției", "Unde?"],
   clientKind: ["Tipul instituției", "Cine a cumpărat?"],
   advanced: ["Selecție avansată", "Selecție avansată"],
+  months: ["Aceleași luni", "Ce luni compari?"],
 } as const satisfies Record<string, readonly [string, string]>;
 type Place = keyof typeof PLACES;
 
@@ -182,11 +187,27 @@ export function populationFits(population: FilterSpec["population"], fields: rea
 const sentence: BlockFilters["sentence"] = (spec, ctx) => sentenceSlots(sentenceTokens(spec, ctx));
 const presentation: BlockFilters["presentation"] = (spec) => sentenceSlots(presentationTokens(spec));
 
-function entry(extra: Partial<Pick<BlockFilters, "rows" | "strip">> = {}): BlockFilters {
+/**
+ * P3a on a trend of firms (plan §4.7, trend final §3.10): the firms' size is
+ * an attribute of the grouped firm under trend-2 (the groups keep the band,
+ * the total stays the selection's), with the bands of "Cine câștigă?".
+ */
+function winners(spec: FilterSpec): ConditionRow[] {
+  return spec.dim === "supplier" ? [{ label: "Câștigătorii", kind: "group", chips: [employeesInvite] }] : [];
+}
+
+/**
+ * P4 on a trend (trend final §3.3): "Aceleași luni" on every trend, drawn by
+ * the state of the compared year (trend-rules.ts trendMonthsState): the
+ * automatic chip, the chosen months, the switch, or nothing on complete years.
+ */
+const sameMonths = placed("trendMonths", "months");
+
+function entry(extra: Partial<Pick<BlockFilters, "rows" | "strip" | "under">> = {}): BlockFilters {
   return {
     sentence, presentation, invites, advanced, advancedFields,
     scopeLine: (_spec, ctx) => ctx.profile ? "historical-da" : null,
-    rows: extra.rows ?? (() => []), under: () => [], strip: extra.strip ?? [],
+    rows: extra.rows ?? (() => []), under: extra.under ?? (() => []), strip: extra.strip ?? [],
     // P7–P8 are the answer's (its row menu and facts), drawn with the strip.
     rowMenu: [], facts: [],
   };
@@ -201,7 +222,8 @@ export const BLOCK_FILTERS: Record<Block, BlockFilters> = {
   // The data stream is the strip's segmented "Toate · Directe · Proceduri"; the sentence says it once set ("prin […]").
   breakdown: entry({ strip: ["dataset"] }),
   compare: entry({ strip: ["dataset"] }),
-  trend: entry(),
+  // The groups beside the answer switch on the data already fetched (owner-R-facts-all-lists); "Prima dată" on the new ones.
+  trend: entry({ rows: winners, under: () => [sameMonths], strip: ["trendChange", "trendFirstOnly"] }),
   network: entry({ rows: partners, strip: ["dataset"] }),
   sankey: entry({ rows: partners, strip: ["dataset"] }),
   fact_check: entry(),

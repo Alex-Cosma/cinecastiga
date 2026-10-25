@@ -8,7 +8,10 @@ import { alwaysScope, edited } from "./shared";
  * the new ones. F2 applies them (compile.ts case "trend", trendGroupSql and
  * trendYearsPredicate in predicates.ts; the months by sameMonthsWindow). A trend
  * without them is today's answer: every change, ordered by its size in lei, on
- * whole years. The places of the builder (BLOCK_FILTERS) come with F1b/F2's builder.
+ * whole years. The builder places them (BLOCK_FILTERS.trend): the change in
+ * the sentence and the strip, the months under the sentence (P4), the order
+ * and its base in the presentation line, "Prima dată" in the strip; what a new
+ * trend writes and what follows a choice on it are trend-rules.ts'.
  */
 
 /** The groups in the kit's words (§4): the answer's buttons, the chips, the pills, the sources' note. */
@@ -69,7 +72,7 @@ export const trendChange: FilterDef<TrendChange> = {
 
 export const trendMonths: FilterDef<"auto" | "whole" | MonthWindow> = {
   id: "trendMonths", keys: ["trend.months"], placement: "under", control: "toggle",
-  label: "Aceleași luni",
+  label: "Aceleași luni", windowTitle: "Ce luni compari?",
   // trendYearsPredicate: the same months of both years, on the record; `auto` resolved at each run (sameMonthsWindow).
   engine: { trend: "row" }, scope: alwaysScope("selection"), since: "F2",
   read: (spec) => optionsOf(spec).months,

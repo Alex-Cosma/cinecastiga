@@ -5,6 +5,8 @@ import type { AskSpec } from "@/lib/ask/spec";
 import { keyVersionNotes } from "@/lib/ask/answer-core";
 import { readableCpvName } from "@/lib/entity-summary";
 import { withoutLinkConditions } from "@/lib/ask/filters/restore";
+import { filterContext } from "@/lib/ask/filters/context";
+import type { FilterSpec } from "@/lib/ask/filters/types";
 import { chooseQuestion, chooseValue, restoreParked, type Transition } from "@/lib/ask/filters/transition";
 import type { Parked } from "@/lib/ask/filters/parked";
 import type { Choice } from "@/lib/ask/filters/pickers";
@@ -16,6 +18,7 @@ import {
 import "./question-builder.css";
 import "./builder/filters-kit.css";
 import BuilderWindow from "./builder/BuilderWindow";
+import { useCoverage } from "./builder/coverage";
 import Chip from "./builder/Chip";
 import ConditionRow from "./builder/ConditionRow";
 import Invitations from "./builder/Invitations";
@@ -37,7 +40,9 @@ import SavedQuestions, { type SavedQuestion } from "./SavedQuestions";
  * under the sentence and the parked row (P4), the presentation line (P5) and
  * "⋯ › Selecție avansată" (P9). Every edit goes through transition.ts, so a
  * condition either stays, leaves with a note or waits in the parked row,
- * which is a draft state and never enters the link.
+ * which is a draft state and never enters the link. The archive's periods
+ * (/api/data-coverage, read at mount) give a new trend its years and its
+ * "Aceleași luni" (trend-rules.ts).
  */
 
 export type QuestionBuilderSpec = QuestionSpec;
@@ -116,12 +121,16 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
 
   const cpvTerm = String(draft.filters.cpvTerm ?? "");
   const cpvName = cpvNames[cpvTerm];
-  const view = useMemo(() => builderView(draft, { cpvName }), [draft, cpvName]);
+  // The archive's periods, read at mount (plan §2.6): a new trend's years and the months "Aceleași luni" counts.
+  const coverage = useCoverage()?.periods ?? null;
+  const transition = useMemo(() => ({ coverage }), [coverage]);
+  const view = useMemo(() => builderView(draft, { cpvName }, filterContext(draft as FilterSpec, coverage ? { coverage } : {})), [draft, cpvName, coverage]);
   const dirty = questionKey(draft) !== questionKey(applied ?? seed.spec);
   // A refused link condition says its reason on its chip: the list under the buttons keeps the rest.
   const reasons = new Set(view.refused.map((c) => c.reason));
   const errors = questionErrors(draft).filter((error) => !reasons.has(error));
-  const blocked = errors.length > 0 || view.refused.length > 0;
+  // A trend's months the data do not confirm wait for a choice under the sentence (its chip says so).
+  const blocked = errors.length > 0 || view.refused.length > 0 || view.waiting !== null;
   const win: BuilderWindowSpec | null = open ? view.windows[open.key] ?? null : null;
 
   useEffect(() => {
@@ -191,7 +200,7 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
     let spec: QuestionSpec = draft, current = parked;
     const notes: string[] = [];
     for (const choice of choices) {
-      const next = chooseValue(spec, target.slot, choice, current);
+      const next = chooseValue(spec, target.slot, choice, current, transition);
       spec = next.spec; current = next.parked; notes.push(...next.notes);
     }
     settle({ spec, notes, parked: current });
@@ -206,6 +215,8 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
     const removal = view.removals[id];
     if (!removal) return;
     if (removal.kind === "exclusion") return removeExclusions(removal.excluded);
+    // The question's own chip (the trend's "Aceleași luni"): its × or its switch is a choice of its window.
+    if (removal.kind === "choice") return choose(view.windows[id] ?? { key: id, slot: removal.slot, title: "", name: "" }, [removal.choice]);
     if (removal.kind === "advanced") {
       const next = cloneQuestion(draft);
       // The exclusions keep their own chips: "Selecție avansată" holds the rest.
@@ -235,10 +246,10 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
     settle({ spec: next.spec, notes: next.notes, parked });
   }
   function bringBackParked() {
-    if (parked) settle(restoreParked(draft, parked));
+    if (parked) settle(restoreParked(draft, parked, transition));
   }
   function chooseType(block: string) {
-    settle(chooseQuestion(draft, block, parked), true);
+    settle(chooseQuestion(draft, block, parked, transition), true);
     closeCatalogue();
   }
   function loadSavedQuestion(question: SavedQuestion) {
@@ -296,7 +307,7 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
           onRemove={() => { const target = view.windows[chip.key]; if (target) choose(target, [{ filter: chip.id, value: undefined }]); }} />)}
       </ConditionRow>)}
       <Invitations items={view.invites} openId={open?.key ?? null} onOpen={openWindow} />
-      <UnderChips items={view.under} openId={open?.key ?? null} onOpen={openWindow} onRemove={removeUnder} />
+      <UnderChips items={view.under} openId={open?.key ?? null} onOpen={openWindow} onRemove={removeUnder} onToggle={removeUnder} />
       <ParkedRow label={parked?.label ?? ""} {...(parked ? { tip: { title: parked.label, text: parked.tip } } : {})} items={parked?.items.map((item) => ({ id: item.id, label: item.label })) ?? []} onRestore={bringBackParked} />
       {view.refused.length > 0 && <div className="qb-refused" role="alert">
         <p>{view.refused[0]!.why ?? view.refused[0]!.reason}</p>
@@ -326,7 +337,7 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
     {intro && navigation}
     <BuilderWindow win={win} anchor={open?.anchor ?? null} draft={draft} excluded={removal?.kind === "exclusion" ? removal.excluded : []}
       onClose={closeWindow} onChoose={(choices) => { if (win) choose(win, choices); }} onReplace={replace} onRemoveExclusions={removeExclusions}
-      onCpvName={(code, name) => setCpvNames(current => ({ ...current, [code]: name }))} />
+      onCpvName={(code, name) => setCpvNames(current => ({ ...current, [code]: name }))} coverage={coverage} />
     <dialog ref={dialogRef} className="qb-dialog qb-dialog-search qb-dialog-catalogue" aria-labelledby={dialogTitleId} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); closeCatalogue(); } }} onCancel={(event) => { event.preventDefault(); closeCatalogue(); }} onClick={(event) => { if (event.target === event.currentTarget) { const bounds = event.currentTarget.getBoundingClientRect(); if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) closeCatalogue(); } }}>
       {catalogue && <><div className="qb-picker-head"><h2 id={dialogTitleId}>Ce ai vrea să afli?</h2><button className="qb-dialog-close" type="button" onClick={closeCatalogue} aria-label="Închide"><Glyph name="close" /></button></div>
         <p className="qb-picker-note">{catalogueTab === "saved" ? "Întrebările tale, cu filtrele păstrate. Cele mai recent salvate apar primele." : "13 feluri de a privi datele. Alege întrebarea, apoi fă-o a ta."}</p>

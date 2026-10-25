@@ -2,6 +2,7 @@ import type {
   AskFilters, AskSpec, Block, NetworkOptions, PeersOptions, SankeyOptions, ScatterOptions, TimeseriesOptions, TrendOptions,
 } from "../spec";
 import type { QuestionSpec } from "../question-ui";
+import type { CoveragePeriods } from "../months-window";
 import type { GlossaryId } from "../../glossary";
 
 /*
@@ -89,8 +90,11 @@ export interface FilterCtx {
   locality: { ok: true } | { ok: false; reason: string };
   /** The year the builder's period presets start from (today: the calendar year). */
   year: number;
-  /** The archive's years, when the caller has read /api/data-coverage (F2's default years). */
-  coverage?: { firstYear: number; lastYear: number; completeUntil?: string };
+  /**
+   * The archive's periods per channel, when the caller has read /api/data-coverage (the engine's
+   * coveragePeriods): a new trend's default years and the months "Aceleași luni" counts (trend-rules.ts).
+   */
+  coverage?: CoveragePeriods;
   /** Optional mart columns the server probed (seat_county, registered_year; F4, F5). */
   columns?: ReadonlySet<string>;
   /** Counts of the windows, from POST /api/ask/facets (F3). */
@@ -198,9 +202,11 @@ export interface BlockFilters {
   rows(spec: FilterSpec, ctx: FilterCtx): readonly ConditionRow[];
   /**
    * P4, the chips the question owns. Today's builder: its chips row (the data
-   * stream always, the rest when set). F1b: none with today's keys; a link's
-   * conditions (legacyConditions), the precise selection (advancedConditions)
-   * and the parked row (transition.ts) sit there too, outside this table.
+   * stream always, the rest when set). F1b: none with today's keys; F2: the
+   * trend's "Aceleași luni", whose chip the builder draws by the state of the
+   * compared year (trend-rules.ts trendMonthsState). A link's conditions
+   * (legacyConditions), the precise selection (advancedConditions) and the
+   * parked row (transition.ts) sit there too, outside this table.
    */
   under(spec: FilterSpec, ctx: FilterCtx): readonly Slot[];
   /** P5: the line at the bottom of the builder ("Arată primele 10 firme, după …"). */
@@ -215,7 +221,8 @@ export interface BlockFilters {
   advancedFields(spec: FilterSpec, ctx: FilterCtx): readonly AdvancedField[];
   /**
    * P6: the controls beside the answer that write a key (the data stream of the
-   * network, the map's lens). Today none: the answer's links (a row's records,
+   * network, the map's lens, the trend's groups and "Toate · Prima dată", which
+   * switch on the answer already fetched). Today none: the answer's links (a row's records,
    * one CPV level down, the entity page) are derived links, listed in
    * fixtures/site-links-inventory.ts.
    */

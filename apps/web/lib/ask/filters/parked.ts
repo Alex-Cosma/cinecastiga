@@ -6,13 +6,19 @@ import type { FilterId, FilterSpec } from "./types";
  * leaves the spec, so the link, a saved question and a watch never carry it,
  * and waits in the builder's draft state: "Nu se aplică indicelui: ↺ 2025 ·
  * ↺ „medicamente”". Touching one goes back to the lens it came from and brings
- * every one of them back. A reload loses them: a draft, not a question.
+ * every one of them back. Leaving a trend sets its own options aside the same
+ * way ("Doar la schimbare: ↺ Noi față de 2024"). A reload loses them: a draft,
+ * not a question.
  */
 
 /** One condition set aside: the words of its chip and the values of its keys, to restore as they were. */
 export interface ParkedItem { id: FilterId; label: string; values: Readonly<Record<string, unknown>> }
-/** The row: its label and (?), the lens to go back to, and what waits there. */
-export interface Parked { label: string; tip: string; lens: "value" | "risk"; items: readonly ParkedItem[] }
+/**
+ * The row: its label and (?), the lens to go back to, and what waits there: an
+ * axis of "Cine conduce?", or the trend itself, whose options another question
+ * cannot apply (trend-rules.ts leavingTrend).
+ */
+export interface Parked { label: string; tip: string; lens: "value" | "risk" | "trend"; items: readonly ParkedItem[] }
 
 /** The value of every key of a spec path list ("filters.cpvTerm", "dataset"), absent ones left out. */
 export function pathValues(spec: FilterSpec, paths: readonly string[]): Record<string, unknown> {
@@ -43,6 +49,10 @@ export const unpark = (spec: FilterSpec, parked: Parked | null): FilterSpec =>
 
 /** The row's words: where the conditions do not apply, and how to get them back (kit §4 "Puse deoparte"). */
 export function parkedRow(lens: Parked["lens"], items: readonly ParkedItem[]): Parked {
+  if (lens === "trend") return {
+    label: "Doar la schimbare", lens, items,
+    tip: "Țin de întrebarea „Cine are cea mai mare schimbare?”. Atinge una ca să revii la ea.",
+  };
   if (lens === "value") return {
     label: "Nu se aplică indicelui", lens, items,
     tip: "Indicele de risc se calculează pe profilurile istorice, fără aceste condiții. Atinge una ca să revii la valoare.",

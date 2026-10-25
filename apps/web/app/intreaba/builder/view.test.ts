@@ -84,7 +84,9 @@ describe("the builder's view of a draft (P1, P2, P4, P5, P9)", () => {
 
     const refused = builderView(q({ block: "trend", dim: "supplier", topN: 10, minimumRecords: { role: "supplier", count: 5 }, filters: { yearFrom: 2024, yearTo: 2025 } }));
     expect(refused.refused.map((c) => c.key)).toEqual(["minimumRecords"]);
-    expect(refused.under).toEqual([expect.objectContaining({ kind: "legacy", tip: { title: "Din link", text: refused.refused[0]!.reason } })]);
+    // The chip says why in a few words (S2 review, problem 4); the engine's paragraph stays its answer.
+    expect(refused.refused[0]!.reason).toMatch(/^Filtrul «cel puțin N înregistrări»/);
+    expect(refused.under).toEqual([expect.objectContaining({ kind: "legacy", tip: { title: "Din link", text: "Un prag de înregistrări nu se aplică diferenței dintre doi ani." } })]);
   });
 
   it("keeps another page's selection under its own label, not «Din link»", () => {
