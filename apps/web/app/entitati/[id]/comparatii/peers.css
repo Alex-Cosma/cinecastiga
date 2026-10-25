@@ -23,3 +23,5 @@
 .px-tip{position:relative}
 .px-tip .term-tip>.term-def{top:calc(100% + 6px);bottom:auto;right:auto;width:max-content;max-width:min(46ch,100%)}
 .px-label-row{display:flex;align-items:center;gap:2px}
+/* A (?) is a 44 px target on phones (G4), without growing its line */
+@media(max-width:600px){.px-shell .term-tip>.term-trigger{min-width:44px;min-height:44px;margin-block:-10px}}

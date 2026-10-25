@@ -181,9 +181,10 @@ export const GLOSSARY = {
     title: "Grup după activitate",
     text: "Grupul reunește entități cu un număr asemănător de înregistrări în selecție. Asta nu presupune firme egale ca mărime sau număr de angajați, nici bugete sau populații egale.",
   },
+  // Kit G9: the one (?) text of the kind, in Întreabă and in the comparisons; /metodologie#tip-institutie has the rules.
   "tip-institutie": {
     title: "Tipul instituției",
-    text: "Primăriile: după registrul localităților, în județul instituției. Spitalele (cu institutele clinice), școlile și consiliile județene: după nume, aproximativ; școlile includ școli de aviație, poliție sau pompieri. Un nume care se potrivește la două tipuri nu are tip.",
+    text: "Primăriile: după registrul localităților, apoi după nume. Spitale (cu institutele clinice), școli și consilii județene: după nume, aproximativ.",
   },
   mediana: {
     title: "Mediana",
