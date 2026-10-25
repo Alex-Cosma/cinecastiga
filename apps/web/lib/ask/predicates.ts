@@ -3,6 +3,7 @@ import type { Grounding } from "./ground";
 import type { MinimumRecords, PopulationCondition, QueryPopulation } from "./population";
 import { namedKind, type AskSpec, type AuthorityKind, type Dataset } from "./spec";
 import { authorityKindCond, KIND_LABEL, KIND_SOURCE } from "./authority-kind";
+import { countWords } from "./answer-text";
 
 /*
  * One description of the conditions of a question (plan §2.5). The answer
@@ -308,7 +309,7 @@ export function displayPredicates(ctx: PredicateCtx, table: string): string[] {
   if (ctx.cpvExclude.length > 0)
     conds.push("not (" + ctx.cpvExclude.map((p) => `cpv_code like '${p}%'`).join(" or ") + ")  -- excluse din subiect");
   if (ctx.county) conds.push(`unaccent(county) ilike '${fold(ctx.county)}'`);
-  if (ctx.kind) conds.push(`authority_id in (…)  -- doar ${KIND_LABEL[ctx.kind]}: ${ctx.kindIds!.length.toLocaleString("ro-RO")} instituții (${KIND_SOURCE[ctx.kind]})`);
+  if (ctx.kind) conds.push(`authority_id in (…)  -- doar ${KIND_LABEL[ctx.kind]}: ${countWords(ctx.kindIds!.length, "instituție", "instituții")} (${KIND_SOURCE[ctx.kind]})`);
   const compare = ctx.comparison;
   if (ctx.authorityId) conds.push(compare ? `authority_id in (${ctx.authorityId}, ${compare.compareId})` : `authority_id = ${ctx.authorityId}`);
   if (ctx.supplierId) conds.push(compare && !ctx.authorityId ? `supplier_id in (${ctx.supplierId}, ${compare.compareId})` : `supplier_id = ${ctx.supplierId}`);
