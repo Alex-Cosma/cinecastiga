@@ -19,22 +19,29 @@ vi.mock("@seap/db", async (original) => ({ ...await original<typeof import("@sea
   withMonitoringSnapshot: async (_sql: unknown, work: (q: unknown, checkpoint: unknown) => unknown) =>
     work(db, { id: "checkpoint-2", version: "2", methodology: {} }) }));
 import { evaluateMonitoringWatch } from "./monitoring-engine";
-import { MONITORING_MEMBERS_MAX, monitoringMembers, monitoringScope } from "./monitoring-input";
+import { MEMBERS_MISMATCH, MONITORING_MEMBERS_MAX, monitoringMembers, monitoringScope } from "./monitoring-input";
 import { validateCaptureRequest } from "./evidence-capture-input";
 import { NEWER_VERSION_QUESTION } from "./ask/spec";
 
 const stat = { block: "stat", measure: "value", filters: { authorityId: 12 } };
 const newer = { ...stat, filters: { ...stat.filters, purchaseKind: "lucrari" } };
 const members = { kind: "trend-group", role: "supplier", group: "new", ids: ["13", "14"], frozenAt: "2026-10-24T10:00:00Z" };
+// A network's fixed group comes with F4 (read ahead); a trend's is applied since F2.
+const network = { ...members, kind: "network-group", role: "authority", group: "continuing" };
+const trendNew = { block: "trend", measure: "value", dim: "supplier", filters: { yearFrom: 2024, yearTo: 2025 }, trend: { change: "new" } };
 const thrown = (run: () => unknown) => { try { run(); } catch (error) { return error as Error & { status?: number }; } throw new Error("did not throw"); };
 
 describe("watches", () => {
   beforeEach(() => { calls.length = 0; });
 
-  it("refuses to create a watch on a newer question or on a fixed group", () => {
+  it("refuses to create a watch on a newer question, on a network's group, or on a group its question does not list", () => {
     expect(thrown(() => monitoringScope({ spec: newer }))).toMatchObject({ message: NEWER_VERSION_QUESTION, status: 422 });
-    expect(thrown(() => monitoringScope({ spec: stat, options: { members } }))).toMatchObject({ message: NEWER_VERSION_QUESTION, status: 422 });
+    expect(thrown(() => monitoringScope({ spec: stat, options: { members: network } }))).toMatchObject({ message: NEWER_VERSION_QUESTION, status: 422 });
+    expect(thrown(() => monitoringScope({ spec: stat, options: { members } }))).toMatchObject({ message: MEMBERS_MISMATCH, status: 422 });
+    expect(thrown(() => monitoringScope({ spec: { ...trendNew, trend: { change: "up" } }, options: { members } }))).toMatchObject({ message: MEMBERS_MISMATCH, status: 422 });
+    expect(thrown(() => monitoringScope({ spec: { ...trendNew, dim: "authority" }, options: { members } }))).toMatchObject({ message: MEMBERS_MISMATCH, status: 422 });
     expect(monitoringScope({ spec: stat })).toEqual({ spec: stat, options: {} });
+    expect(monitoringScope({ spec: trendNew, options: { members } })).toEqual({ spec: trendNew, options: { members } });
   });
 
   it.each([
@@ -58,7 +65,7 @@ describe("watches", () => {
 
   it.each([
     ["a key this release does not apply", { spec: newer, options: {} }],
-    ["a fixed group", { spec: stat, options: { members } }],
+    ["a network's fixed group", { spec: stat, options: { members: network } }],
   ])("keeps the last good result of a stored watch with %s and says why", async (_case, stored) => {
     state.watch = { id: "watch-1", paused: false, last_success_run_id: null, grounding: {}, preferences: { types: ["added"], minimumValueExact: "0", digest: false }, ...stored };
     await expect(evaluateMonitoringWatch("watch-1", undefined, db as unknown as DbSql)).rejects.toMatchObject({ message: NEWER_VERSION_QUESTION, status: 422 });

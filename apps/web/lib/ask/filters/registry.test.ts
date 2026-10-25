@@ -36,7 +36,7 @@ describe("one owner for every key (R2)", () => {
 
   it("owns every path parseSpec reads: the engine's and those read ahead", () => {
     const read = [...IMPLEMENTED_KEYS, ...Object.keys(READ_AHEAD_KEYS)]
-      .filter((path) => path !== "options.members") // a watch's, not the spec's
+      .filter((path) => !path.startsWith("options.members")) // a watch's, not the spec's
       .map((path) => path === "filters.authorityKind=local_admin" ? "filters.authorityKind" : path);
     expect([...new Set(read)].sort()).toEqual(Object.keys(SPEC_PATH_OWNERS).sort());
   });

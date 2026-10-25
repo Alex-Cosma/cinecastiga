@@ -14,7 +14,15 @@ export interface MonitoringPreferences {
 export const DEFAULT_MONITORING_PREFERENCES: MonitoringPreferences = {
   types: [...MONITORING_CHANGE_TYPES], minimumValueExact: "0", digest: false,
 };
-export interface MonitoringScope { spec: AskSpec; options: CaptureOptions }
+/**
+ * The fixed members of a trend or network group (plan §2.8, F2): fixed when
+ * the watch is activated, separate from `scope`, so the watch follows the
+ * same entities (or counties) at every check; the live group is only a note.
+ */
+export interface MonitoringMembers { kind: "trend-group" | "network-group"; role: "supplier" | "authority" | "county"; group: string; ids: string[]; frozenAt: string }
+/** A watch's sources: the drawer's selection (CaptureOptions) and, on a group, its fixed members. */
+export type MonitoringOptions = CaptureOptions & { members?: MonitoringMembers };
+export interface MonitoringScope { spec: AskSpec; options: MonitoringOptions }
 export interface MonitoringCreateInput extends MonitoringScope { title?: string; preferences?: MonitoringPreferences; recipeId?: string; recipeVersion?: number }
 export interface MonitoringWatch extends MonitoringScope {
   id: string; title: string; paused: boolean; preferences: MonitoringPreferences;

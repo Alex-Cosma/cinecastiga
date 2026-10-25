@@ -41,6 +41,11 @@ function href(c: ClipRow): string | null {
     default: return null;
   }
 }
+/** An update of a watch on a trend's group (its options carry the fixed members): the total is the group's. */
+const groupWatch = (snapshot: Record<string, unknown>): boolean => {
+  const monitoring = snapshot.monitoring as { options?: { members?: unknown } } | undefined;
+  return Boolean(monitoring?.options?.members);
+};
 export default function DossierEvidence({ id, clips, canEdit }: { id: string; clips: ClipRow[]; canEdit: boolean }) {
   if (!clips.length) return <div className="iw-empty"><h3>Păstrează prima dovadă</h3><p>Folosește „Salvează în anchetă” de lângă o întrebare, un contract sau o entitate. Vei regăsi aici selecția, sursele și momentul salvării.</p><Link href="/intreaba">Deschide o întrebare →</Link></div>;
   return <div className="iw-evidence-list">{clips.map(clip => {
@@ -49,7 +54,7 @@ export default function DossierEvidence({ id, clips, canEdit }: { id: string; cl
     return <article id={`clip-${clip.id}`} className="iw-evidence" tabIndex={-1} key={clip.id}>
       <div className="iw-entry-meta"><span>{s.peer ? s.peerContext&&typeof s.peerContext==="object"&&"selectionKind"in s.peerContext&&s.peerContext.selectionKind==="member"?"Sursele unui membru":"Comparație documentată" : s.connection ? "Legătură documentată" : clipKindLabel[clip.kind] ?? clip.kind}{clip.pinned ? " · Fixată" : ""}</span><time dateTime={clip.createdAt}>{new Date(clip.createdAt).toLocaleDateString("ro-RO")}</time></div>
       <h3>{link ? <Link href={link}>{clipTitle(clip)}</Link> : clipTitle(clip)}</h3>
-      {clip.kind === "monitoring" && <div className="iw-evidence-summary"><p>Variația totalului selecției: <strong>{typeof s.totalDifferenceExact === "string" ? `${formatExactDecimal(s.totalDifferenceExact)} lei` : "necunoscută"}</strong>.</p><p className="iw-muted">Sursele de mai jos conțin înregistrările afectate de actualizare. Suma unei singure versiuni nu este valoarea modificării și nu dovedește o plată.</p></div>}
+      {clip.kind === "monitoring" && <div className="iw-evidence-summary"><p>Variația totalului {groupWatch(s) ? "grupei" : "selecției"}: <strong>{typeof s.totalDifferenceExact === "string" ? `${formatExactDecimal(s.totalDifferenceExact)} lei` : "necunoscută"}</strong>.</p><p className="iw-muted">Sursele de mai jos conțin înregistrările afectate de actualizare. Suma unei singure versiuni nu este valoarea modificării și nu dovedește o plată.</p></div>}
       {clip.kind !== "note" && clip.kind !== "monitoring" && !s.peer && <div className="iw-evidence-summary">{typeof s.headline === "string" ? s.headline : s.valueRon != null ? formatRon(String(s.valueRon)) : s.totalRon != null ? formatRon(String(s.totalRon)) : ""}</div>}
       {s.connectionContext != null && typeof s.connectionContext === "object" && "description" in s.connectionContext && typeof s.connectionContext.description === "string" && <p className="iw-muted">{s.connectionContext.description}</p>}
       <PeerEvidenceSummary context={s.peerContext}/>

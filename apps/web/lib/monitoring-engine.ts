@@ -5,10 +5,11 @@ import type { AskSpec } from "./ask/spec";
 import type { Grounding } from "./ask/ground";
 import { isHistoricalProfile } from "./ask/population";
 import { captureTransaction, CAPTURE_METHODOLOGY } from "./evidence-captures";
-import { MonitoringError,monitoringHasLocalSelection,monitoringNewerError,MONITORING_LOCAL_SCOPE_NOTE } from "./monitoring-input";
-import { MONITORING_MAX_ROWS, methodologiesDiffer, type MonitoringPreferences } from "./monitoring-shared";
+import { groupCheckNotes,membersOfQuestion,MonitoringError,monitoringHasLocalSelection,monitoringMembers,monitoringNewerError,movedWindowNote,MONITORING_LOCAL_SCOPE_NOTE } from "./monitoring-input";
+import { MONITORING_MAX_ROWS, methodologiesDiffer, type MonitoringOptions, type MonitoringPreferences } from "./monitoring-shared";
 import { answerVersion, isFirstAnswerVersion, sameAnswerCore } from "./ask/answer-core";
-import { assertMonitoringBindings } from "./monitoring-identity";
+import { assertMonitoringBindings, resolveWatchMembers } from "./monitoring-identity";
+import { formatBucharestDay } from "./format";
 
 const globalDb=globalThis as unknown as {__monitoringSql?:DbSql};
 export const monitoringDatabase=()=>globalDb.__monitoringSql??=createDb().sql;
@@ -92,7 +93,13 @@ export async function evaluateMonitoringWatch(watchId:string,expectedCheckpointI
     // refused, so the last good result stays and is never replaced by the whole selection.
     const newer=monitoringNewerError(watch.spec,watch.options);if(newer)throw new MonitoringError(newer,422);
     await assertMonitoringBindings(q,spec,grounding,watch.options);
-    const database=useSnapshotCoverage(captureTransaction(q)),answer=await runSpec(database,spec,grounding);
+    // A group's fixed members (plan §2.8): followed through redirects, outside the strict bindings; the answer and the sources are theirs.
+    const {members:storedMembers,...selection}=(watch.options??{}) as MonitoringOptions;
+    const members=storedMembers===undefined?null:monitoringMembers(storedMembers);
+    const mismatch=members?membersOfQuestion(spec,members):null;if(mismatch)throw mismatch;
+    const resolved=members?await resolveWatchMembers(q,members):null;
+    const fixed=members&&resolved?{role:members.role,ids:resolved.ids,frozen:members.ids.length,frozenAt:members.frozenAt}:undefined;
+    const database=useSnapshotCoverage(captureTransaction(q)),answer=await runSpec(database,spec,grounding,fixed?{fixedMembers:fixed}:{});
     if("error"in answer)throw new MonitoringError(answer.error,422);
     // answer: the version of this question's answer (lib/ask/answer-core.ts), so a release that changes one block or key alerts only its watches.
     // Stored only once a release bumped it: absent reads the same, and code from before F0 (jsonb equality) then sees no false change after a revert.
@@ -102,7 +109,7 @@ export async function evaluateMonitoringWatch(watchId:string,expectedCheckpointI
     const observedAt=String(time!.observed_at);
     await q`insert into app.monitoring_runs(id,watch_id,checkpoint_id,previous_run_id,kind,row_count,known_value_exact,counts,relevant_counts,preferences,result,methodology,checkpoint,notes)
       values(${runId},${watchId},${checkpoint.id},${previous?.id??null},'baseline',0,0,'{}','{}',${json(prefs)}::jsonb,${json(answer.data)}::jsonb,${json(methodology)}::jsonb,${json(checkpoint)}::jsonb,'[]')`;
-    const sources=await runRows(database,spec,grounding,0,{...watch.options,capture:{maxRows:MONITORING_MAX_ROWS,persist:(database,query)=>persistPopulation(database,runId,query)}});
+    const sources=await runRows(database,spec,grounding,0,{...selection,...(fixed?{fixedMembers:fixed}:{}),capture:{maxRows:MONITORING_MAX_ROWS,persist:(database,query)=>persistPopulation(database,runId,query)}});
     if("error"in sources)throw new MonitoringError(sources.error,422);
     if(sources.total>MONITORING_MAX_ROWS)throw new MonitoringError(`Selecția are ${sources.total.toLocaleString("ro-RO")} de înregistrări; o urmărire poate include cel mult 200.000. Restrânge perioada, instituția sau domeniul. Nu am salvat un eșantion.`,422);
     const [totals]=await q`select count(*)::int n,trim_scale(coalesce(sum(value_exact),0))::text known,count(*) filter(where value_exact is null)::int unknown,
@@ -117,7 +124,7 @@ export async function evaluateMonitoringWatch(watchId:string,expectedCheckpointI
     // Retain it as context, but it cannot alert on changes outside that list.
     // Both sides are compared as stored JSON: the core of the answer, and the
     // methodology with the answer versions read the same way (a run from before F0 has none).
-    const localSelection=monitoringHasLocalSelection(watch.options);
+    const localSelection=monitoringHasLocalSelection(selection);
     const resultChanged=!localSelection&&!!previous&&!sameAnswerCore(spec.block,previous.result,answer.data);
     const methodologyChanged=!!previous&&methodologiesDiffer(previous.methodology as Record<string,unknown>|null,methodology,spec.block);
     const all={added:counts!.added,removed:counts!.removed,changed:counts!.changed},relevant={added:counts!.relevant_added,removed:counts!.relevant_removed,changed:counts!.relevant_changed};
@@ -129,7 +136,10 @@ export async function evaluateMonitoringWatch(watchId:string,expectedCheckpointI
     const methodologyAlert=methodologyChanged&&prefs.types.includes("methodology");
     const recalculated=resultChanged&&!methodologyAlert&&(isHistoricalProfile(spec)||sourceChanges===0);
     const hasAlert=!!previous&&(relevant.added+relevant.removed+relevant.changed>0||recalculated&&prefs.types.includes("recalculated")||methodologyAlert);
-    const notes=[...answer.caveats,...sources.scopeNotes,...(localSelection?[MONITORING_LOCAL_SCOPE_NOTE]:[]),"Primele observații istorice nu sunt confirmări ale datei importului.",...(previous?[]:["Acesta este punctul de plecare. Înregistrările existente nu generează alerte."]),...(resultChanged?["Rezultatul calculat s-a schimbat; sursele și metodologia pot fi verificate separat."]:[])];
+    // A trend's group and window (plan §2.8): where the fixed members stand in the live group, and a moved `auto` window.
+    const groupNotes=members&&resolved?groupCheckNotes(members,{day:formatBucharestDay(members.frozenAt),missing:resolved.missing,redirected:resolved.redirected,movement:answer.movement??null}):[];
+    const windowNote=spec.block==="trend"?movedWindowNote(previous?.result,answer.data):null;
+    const notes=[...answer.caveats,...sources.scopeNotes,...groupNotes,...(windowNote?[windowNote]:[]),...(localSelection?[MONITORING_LOCAL_SCOPE_NOTE]:[]),"Primele observații istorice nu sunt confirmări ale datei importului.",...(previous?[]:["Acesta este punctul de plecare. Înregistrările existente nu generează alerte."]),...(resultChanged?["Rezultatul calculat s-a schimbat; sursele și metodologia pot fi verificate separat."]:[])];
     // A pause/preference edit committed during the read aborts this RR
     // publication; it cannot publish under an outdated owner decision.
     await q`select id from app.monitoring_watches where id=${watchId} for update`;
