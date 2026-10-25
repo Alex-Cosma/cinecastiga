@@ -22364,7 +22364,7 @@
       "count": 0
      }
     },
-    "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id in (…)  -- doar consilii județene / județe: 1 instituții (după nume)\ngroup by county;"
+    "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id in (…)  -- doar consilii județene / județe: 1 instituție (după nume)\ngroup by county;"
    },
    "sources": {
     "status": 200,

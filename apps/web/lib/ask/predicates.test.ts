@@ -179,6 +179,10 @@ describe("the conditions of a question", () => {
     // The kind is the list of its institutions (D1): the buyer's id on a record, as on a profile.
     expect(texts(rowPredicates(ctx))[6]).toBe('d.authority_id = any($1::bigint[]) [["9606","9607"]]');
     expect(displayPredicates(ctx, "T")).toContain("authority_id in (…)  -- doar spitale: 2 instituții (după nume, cu institutele clinice)");
+    // The count follows the numeral rule (G10, countWords).
+    const kindCount = (ids: string[]) => displayPredicates({ ...ctx, kindIds: ids }, "T").find((c) => c.startsWith("authority_id in (…)"));
+    expect(kindCount(["9606"])).toBe("authority_id in (…)  -- doar spitale: 1 instituție (după nume, cu institutele clinice)");
+    expect(kindCount(Array.from({ length: 351 }, (_, i) => String(i)))).toBe("authority_id in (…)  -- doar spitale: 351 de instituții (după nume, cu institutele clinice)");
     // A kind is never dropped: a caller that did not read its institutions fails.
     expect(() => predicateContext(fake, all, fakeGrounding(all), { dataset: "all", yearFrom: null, yearTo: null })).toThrow(/were not read/);
     // Firm profiles: the firm's own county, never the buyer's kind or locality.
