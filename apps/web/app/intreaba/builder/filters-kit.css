@@ -97,7 +97,7 @@
 /* ---------- 18. The profile line (not pressable) ---------- */
 .fk-scopeline{display:flex;flex-wrap:wrap;align-items:center;gap:2px 6px;margin:0 0 16px;color:var(--muted);font-size:13px;line-height:1.5}
 .fk-scopeline b{color:var(--ink2);font-weight:600}
-.fk-scope-sep{color:var(--faint)}
+.fk-scope-sep{color:var(--muted)} /* --faint is 2.8:1 on the paper (F1b-polish) */
 
 /* ---------- 3. The condition row (role label + chips): group, or selection ---------- */
 .fk-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0}
@@ -352,7 +352,7 @@ a.fk-menu-item{text-decoration:none}
 .fk-total b{color:var(--ink2);font-weight:600}
 .fk-total .fk-num{color:var(--ink);font-size:12.5px}
 .fk-total-cond{color:var(--ink2);font-weight:500}
-.fk-total-sep{color:var(--faint)}
+.fk-total-sep{color:var(--muted)}
 .fk-total-cond{overflow-wrap:anywhere}
 .fk-listfoot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 14px;margin:12px 0 0}
 .fk-more-btn{display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:7px 12px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--ink2);font-size:13px;font-weight:500}
