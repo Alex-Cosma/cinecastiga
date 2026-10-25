@@ -15,6 +15,16 @@ import { alwaysScope, edited } from "./shared";
 export const TREND_CHANGE_LABELS: Readonly<Record<TrendChange, string>> = {
   all: "Toate", up: "Creșteri", new: "Noi", down: "Scăderi", gone: "Nu mai apar",
 };
+/**
+ * A group's name in a sentence, a chip or a note (kit §4: bare „Noi” only on the short buttons):
+ * „Noi față de 2024”, „Nu mai apar în 2025”; the others as on the buttons.
+ */
+export function trendGroupLabel(change: TrendChange, yearA?: unknown, yearB?: unknown): string {
+  const year = (y: unknown) => typeof y === "number" || (typeof y === "string" && y !== "");
+  if (change === "new" && year(yearA)) return `Noi față de ${yearA}`;
+  if (change === "gone" && year(yearB)) return `Nu mai apar în ${yearB}`;
+  return TREND_CHANGE_LABELS[change];
+}
 
 const optionsOf = (spec: FilterSpec): TrendOptions => spec.trend ?? {};
 /** The spec with one trend option set (undefined: removed), and what that change implies for the others. */

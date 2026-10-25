@@ -12,7 +12,7 @@ import {
 import { monthsLabel, partialMonths, sameMonthsWindow, WHOLE_YEAR, type CoveragePeriods, type MonthsMode, type MonthsWindow } from "./months-window";
 import { countWords } from "./answer-text";
 import { formatBucharestDay as frozenDay } from "../format";
-import { TREND_CHANGE_LABELS } from "./filters/defs/trend";
+import { TREND_CHANGE_LABELS, trendGroupLabel } from "./filters/defs/trend";
 import { KIND_LABEL } from "./authority-kind";
 import { countyIsFirmSeat, isHistoricalProfile, unsupportedPopulationView } from "./population";
 import { describeConditions, type ConditionLabels } from "./filters/describe";
@@ -232,11 +232,11 @@ export type BlockData =
  * 2018 on a trend (trend final §3.2, decision F2 "2018 scos doar din trend"):
  * partialYears marks the direct acquisitions from 2 April, not the contracts,
  * whose archive is dated from 2000 but holds half the contracts of 2019
- * (59,967 against 129,947 on the local copy). The direct acquisitions alone
- * have partialYears' own note.
+ * (59,967 against 129,947 on the local copy). The direct acquisitions have
+ * partialYears' own note (on "all" too, beside this one), never repeated here.
  */
 export const TREND_2018_NOTE: Record<"all" | "da" | "contracts", string | null> = {
-  all: "2018 e incomplet: achizițiile directe încep pe 2 aprilie, iar contractele din 2018 sunt jumătate din cele din 2019.",
+  all: "Și contractele din 2018 sunt jumătate din cele din 2019.",
   contracts: "2018 e incomplet: contractele din 2018 sunt jumătate din cele din 2019.",
   da: null,
 };
@@ -2195,20 +2195,39 @@ export async function runRows(
   const fixed = opts.fixedMembers ?? null;
   if (fixed && (!listed || fixed.role !== groupDim)) return { error: FIXED_GROUP_MISMATCH };
   const yearA = yearFrom ?? minY, yearB = yearTo ?? maxY;
-  const own = listed && groupDim !== "county" && scope.entityIds && scope.role === groupDim ? scope.entityIds : null;
+  // A row's own members ("Înregistrări →"): its entity ids, or on counties the county (or counties) the drawer
+  // names; the drawer then lists that row, with no group header and no group note.
+  const own = !listed ? null : groupDim !== "county" ? (scope.entityIds && scope.role === groupDim ? scope.entityIds : null)
+    : scope.counties ?? (scope.county ? [scope.county] : null);
   // The two years as a range on the column, so the id indexes (id, finalization_date) bound the members' rows.
   const memberRange: ReturnType<DbSql> = sql`d.finalization_date >= ${String(Math.min(yearA, yearB))} and d.finalization_date < ${String(Math.max(yearA, yearB) + 1)}`;
   const trendDays = listed && rollup ? await rollupDaysReady(sql) : false;
   const groupMembers = listed ? async (s: DbSql): Promise<{ members: Float64Array | readonly string[]; sources: TrendPartSources | null; selection: TrendPartSources | null }> => {
     // A watch's fixed members (a row's own ids among them): their records, counted, never the live group's.
     if (fixed) {
-      const ids = new Set(fixed.ids);
-      return { members: own ? own.filter((id) => ids.has(id)) : fixed.ids, sources: null, selection: null };
+      if (!own) return { members: fixed.ids, sources: null, selection: null };
+      const named = new Set(groupDim === "county" ? own.map(fold) : own);
+      return { members: fixed.ids.filter((id) => named.has(groupDim === "county" ? fold(id) : id)), sources: null, selection: null };
     }
     const stamp = await trendCacheStamp(s);
     const key = stamp ? trendGroupKey(ctx, { stamp, dim: groupDim, yearA, yearB }) : null;
     let entry = key ? trendGroupsFor(key) : null;
     let kept = entry ? entryMembers(entry, listed) : null;
+    if (own && groupDim === "county") {
+      // A county row: the counties named that the group holds (names as the grouping writes them).
+      const named = new Set(own.map(fold));
+      if (kept) return { members: memberList(kept).filter((county) => named.has(fold(county))), sources: null, selection: null };
+      const va: ReturnType<DbSql> = sql`coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yearA)}), 0)`;
+      const vb: ReturnType<DbSql> = sql`coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yearB)}), 0)`;
+      const { having } = trendGroupSql(sql, va, vb, listed);
+      const where = andAll(sql, [...rowPredicates(ctx, { years: false }), trendYearsPredicate(sql, yearA, yearB, ctx.trendMonths),
+        sql`lower(unaccent(d.county)) = any(${sql.array([...named])}::text[])`]);
+      const rows = (await readEvidenceQuery(s`
+        select d.county::text m from ${txAggFragment(sql, dataset, Boolean(ctx.kind))} d
+        where ${where} group by d.county ${having ? sql`having ${having}` : sql``}
+      `, opts.signal)) as unknown as { m: string }[];
+      return { members: rows.map((r) => r.m), sources: null, selection: null };
+    }
     if (own) {
       if (kept) return { members: own.filter((id) => hasMember(kept!, id)), sources: null, selection: null };
       // Only these ids, with the answer's conditions, on the id index of their two years.
@@ -2265,9 +2284,10 @@ export async function runRows(
     const s = tx as unknown as DbSql;
     const group = groupMembers ? await groupMembers(s) : null;
     const members = group ? memberList(group.members) : null;
-    if (members && listed) {
+    // A row's own records ("Înregistrări →") are that row's: no group note (a watch says its fixed group).
+    if (members && listed && (fixed || !own)) {
       const [one, many] = groupDim === "county" ? ["județ", "județe"] : groupDim === "supplier" ? ["firmă", "firme"] : ["instituție", "instituții"];
-      const label = `„${TREND_CHANGE_LABELS[listed.change]}”${listed.firstOnly ? ` (prima dată în ${yearB})` : ""}`;
+      const label = `„${trendGroupLabel(listed.change, yearA, yearB)}”${listed.firstOnly ? ` (prima dată în ${yearB})` : ""}`;
       notes.push(fixed
         ? `Sursele grupei fixate ${label}: ${countWords(members.length, one!, many!)} fixate la ${frozenDay(fixed.frozenAt)}, cu înregistrările lor din cei doi ani. Cele intrate în grupă după activare nu sunt urmărite.`
         : `Sursele grupului ${label}: ${countWords(members.length, one!, many!)}, cu înregistrările lor din cei doi ani, nu doar cele afișate.`);

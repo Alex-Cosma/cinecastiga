@@ -83,7 +83,7 @@ describe("the labels of a row (at most three, in order)", () => {
     // A foreign firm shows its country, not "fără CUI valid"; a joint share of half is "în asociere".
     expect(trendRowLabels({ valueA: 100, valueB: 1100 }, facts({ value: 1100, cuiValid: null, country: "FR", joint: 550 }), years))
       .toEqual([{ kind: "joint", share: 0.5 }]);
-    // Unknown identity (no profile): no valid CUI is known.
-    expect(trendRowLabels({ valueA: 100, valueB: 1100 }, facts({ value: 1100, cuiValid: null }), years)).toEqual([{ kind: "noValidCui" }]);
+    // An unknown CUI status (null) claims nothing: only a known invalid one is labelled.
+    expect(trendRowLabels({ valueA: 100, valueB: 1100 }, facts({ value: 1100, cuiValid: null }), years)).toEqual([]);
   });
 });

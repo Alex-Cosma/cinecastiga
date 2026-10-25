@@ -4,6 +4,7 @@ import { DATA_CHANGED, runRows, runSpec, useSnapshotCoverage } from "./compile";
 import { forgetRollupsReady } from "./rollups";
 import { forgetTrendGroups, trendGroupStats } from "./group-ids";
 import { autoMonthsUnresolved } from "./months-window";
+import { trendProfiles } from "./trend-partition";
 import { validateSpec, type AskSpec } from "./spec";
 
 // F2 (plan §2.8, §4.7): the trend's lenses in the engine, without a database. A
@@ -11,6 +12,8 @@ import { validateSpec, type AskSpec } from "./spec";
 // statement with its parameters; the rows of the answer are not the point here.
 
 type Coverage = { dataset: string; date_from: string; date_to: string; complete_until?: string | null }[];
+/** The profiles statement of the shown entities (trendProfiles), by its join. */
+const PROFILES = "left join marts.entity_profile ep on ep.role = x.role";
 /** Rows the harness answers: the partition statement, the row facts and the profiles of the shown entities (trend-partition.ts). */
 interface Answers { partition?: Record<string, unknown>[]; facts?: Record<string, unknown>[]; profiles?: Record<string, unknown>[] }
 /**
@@ -34,7 +37,7 @@ function database(coverage: Coverage, opts: { rollups?: boolean; days?: boolean;
       if (/select \S+::text m from/.test(text)) return Promise.resolve(resolve((opts.members ?? []).map((m) => ({ m }))));
       if (text.includes("with k as materialized")) return Promise.resolve(resolve(opts.partition ?? []));
       if (text.includes("with x as materialized")) return Promise.resolve(resolve(opts.facts ?? []));
-      if (text.includes("from marts.entity_profile ep left join core.entities e")) return Promise.resolve(resolve(opts.profiles ?? []));
+      if (text.includes(PROFILES)) return Promise.resolve(resolve(opts.profiles ?? []));
       return Promise.resolve(resolve([]));
     }
   }
@@ -204,8 +207,20 @@ describe("the trend's answer with its lenses", () => {
     expect(facts.text).toContain("d.supplier_id = any(?array::bigint[]) and d.finalization_date >= ? and d.finalization_date < ?");
     expect(facts.text).toContain("filter (where d.n_winners > 1)");
     expect(facts.values).toEqual(expect.arrayContaining([["11", "12"], "2024", "2026"]));
-    const profiles = db.statements.find((s) => s.text.includes("from marts.entity_profile ep left join core.entities e"))!;
+    // The profiles by id: the identity's own CUI status even where the profile is not written yet.
+    const profiles = db.statements.find((s) => s.text.includes(PROFILES))!;
     expect(profiles.values).toEqual(["supplier", ["11", "12"], "authority", ["7", "8"]]);
+    expect(profiles.text).toContain("left join core.entities e on e.id = x.id");
+  });
+
+  it("shows a seat county kept as „NA” as unknown, and an identity without a profile with its own CUI status", async () => {
+    const db = database(PROD, { profiles: [
+      { role: "supplier", id: "11", name_display: "Firma Unu", county: "NA", country_code: "RO", is_foreign: false, first_activity: null, last_activity: null, cui_valid: true },
+      { role: "supplier", id: "12", name_display: "Firma Doi", county: "Necunoscut", country_code: "RO", is_foreign: false, first_activity: null, last_activity: null, cui_valid: null },
+    ] });
+    const profiles = await trendProfiles(db.sql, [{ role: "supplier", ids: ["11", "12"] }]);
+    expect(profiles.get("supplier:11")).toMatchObject({ county: null, cuiValid: true });
+    expect(profiles.get("supplier:12")).toMatchObject({ county: null, cuiValid: null });
   });
 
   it("partitions counties without facts or profiles, and names a group after the selection", async () => {
@@ -223,7 +238,10 @@ describe("the trend's answer with its lenses", () => {
   it("says 2018 is incomplete on an old link that compares it", async () => {
     const all = await runSpec(database(PROD).sql, trend({}, { yearFrom: 2018, yearTo: 2019 }), {});
     if ("error" in all) throw new Error(all.error);
-    expect(all.caveats).toContain("2018 e incomplet: achizițiile directe încep pe 2 aprilie, iar contractele din 2018 sunt jumătate din cele din 2019.");
+    // On „Toate” partialYears already says the direct acquisitions start on 2 April 2018: only the contracts are added.
+    expect(all.caveats).toContain("Și contractele din 2018 sunt jumătate din cele din 2019.");
+    expect(all.caveats.filter((c) => c.includes("02.04.2018"))).toHaveLength(1);
+    expect(all.caveats.join(" ")).not.toContain("2 aprilie");
     const contracts = await runSpec(database(PROD).sql, { ...trend(undefined, { yearFrom: 2018, yearTo: 2024 }), dataset: "contracts" }, {});
     if ("error" in contracts) throw new Error(contracts.error);
     expect(contracts.caveats).toContain("2018 e incomplet: contractele din 2018 sunt jumătate din cele din 2019.");
@@ -291,7 +309,7 @@ describe("the trend's sources", () => {
     const settings = db.statements.map((s) => s.text).filter((t) => t.includes("enable_"));
     expect(settings).toEqual(["set local enable_seqscan = off", "set local enable_seqscan to default"]);
     expect(db.statements.findIndex((s) => s.text === "set local enable_seqscan = off")).toBeLessThan(db.statements.indexOf(page));
-    expect(result.scopeNotes).toContain("Sursele grupului „Nu mai apar”: 2 firme, cu înregistrările lor din cei doi ani, nu doar cele afișate.");
+    expect(result.scopeNotes).toContain("Sursele grupului „Nu mai apar în 2025”: 2 firme, cu înregistrările lor din cei doi ani, nu doar cele afișate.");
     // The drawer's channel and state are channels of these totals; a search counts the records.
     const da = await runRows(database(PROD, { partition: GONE() }).sql, gone, {}, 0, { stream: "da" });
     if ("error" in da) throw new Error(da.error);
@@ -374,5 +392,29 @@ describe("the trend's sources", () => {
     const totals = scoped.statements.find((s) => s.text.includes("group by d.state"))!;
     expect(totals.text).toContain("lower(unaccent(d.county)) = any(?array::text[])");
     expect(totals.values).toContainEqual(["cluj", "bistrita-nasaud"]);
+  });
+
+  it("list a county row's own records (Înregistrări →), without the group's header or note, kept or not", async () => {
+    const down = { ...trend({ change: "down" }, { yearFrom: 2024, yearTo: 2025 }), dim: "county" as const };
+    // Nothing kept: only that county is checked against the group, never the whole grouping.
+    const db = database(PROD, { members: ["Cluj"] });
+    const result = await runRows(db.sql, down, {}, 0, { scope: { county: "cluj" } });
+    if ("error" in result) throw new Error(result.error);
+    expect(result.group).toBeUndefined();
+    expect(result.scopeNotes.some((note) => note.startsWith("Sursele grupului"))).toBe(false);
+    const members = db.statements.find((s) => /::text m from/.test(s.text))!;
+    expect(members.text).toContain("lower(unaccent(d.county)) = any(?array::text[])");
+    expect(members.values).toContainEqual(["cluj"]);
+    expect(db.statements.some((s) => s.text.includes("with k as materialized"))).toBe(false);
+    expect(db.statements.find((s) => s.text.includes("group by d.state"))!.values).toContainEqual(["Cluj"]);
+    // Kept by the answer: the row's county among the group's names.
+    const partition = [{ part: "sum:down", id: null, va: "9", vb: "5", n: "2", x: { da: { n: 2, v: "3", first: "2024-02-02", last: "2025-02-02" }, contracts: { n: 0, v: "0", first: null, last: null } }, ids: "Cluj\u001fIasi" }];
+    await runSpec(database(PROD, { stamp: "51", partition }).sql, down, {});
+    const row = database(PROD, { stamp: "51" });
+    const kept = await runRows(row.sql, down, {}, 0, { scope: { county: "Iasi" } });
+    if ("error" in kept) throw new Error(kept.error);
+    expect(kept.group).toBeUndefined();
+    expect(row.statements.some((s) => /::text m from/.test(s.text) || s.text.includes("with k as materialized"))).toBe(false);
+    expect(row.statements.find((s) => s.text.includes("group by d.state"))!.values).toContainEqual(["Iasi"]);
   });
 });

@@ -12,7 +12,7 @@ import {
 import { formatExactDecimal, formatInt, formatRon } from "../../format";
 import { monthsLabel } from "../months-window";
 import { BLOCK_FILTERS } from "./blocks";
-import { TREND_CHANGE_LABELS } from "./defs/trend";
+import { trendGroupLabel } from "./defs/trend";
 import { filterContext } from "./context";
 import { selectionOrigin, splitExcluded, exclusionWords, type OriginHint, type OriginWords } from "./origin";
 import { FILTERS, SPEC_PATH_OWNERS, presentPaths } from "./registry";
@@ -306,7 +306,7 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
     const change = spec.trend?.change;
     if (!change) return null;
     const { yearFrom: a, yearTo: b } = spec.filters;
-    const label = change === "new" && a ? `Noi față de ${a}` : change === "gone" && b ? `Nu mai apar în ${b}` : TREND_CHANGE_LABELS[change];
+    const label = trendGroupLabel(change, a, b);
     const words = change === "all" ? "toate schimbările" : label.toLowerCase();
     return { words, chip: label, pills: [words], scope: [{ label: "Grupul", value: change === "all" ? "Toate schimbările" : label }], summary: label };
   },

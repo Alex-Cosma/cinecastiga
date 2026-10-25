@@ -1,6 +1,7 @@
 import type { AskSpec } from "./ask/spec";
 import { alignAnswerVersions, canonicalJson, readAnswerVersion } from "./ask/answer-core";
 import type { CaptureOptions, FrozenRecord } from "./evidence-captures-shared";
+import { encodeSpec } from "./ask/permalink";
 
 export const MONITORING_MAX_ROWS = 200_000;
 export const MONITORING_CHANGE_TYPES = ["added", "removed", "changed", "recalculated", "methodology"] as const;
@@ -23,6 +24,15 @@ export interface MonitoringMembers { kind: "trend-group" | "network-group"; role
 /** A watch's sources: the drawer's selection (CaptureOptions) and, on a group, its fixed members. */
 export type MonitoringOptions = CaptureOptions & { members?: MonitoringMembers };
 export interface MonitoringScope { spec: AskSpec; options: MonitoringOptions }
+/**
+ * A watch's question and sources in Întreabă: the scope travels as `evidence`, the drawer's filters as
+ * `sourceFilters` (only those validateEvidenceFilters reads). A group's fixed members never travel: the
+ * link opens the group of today (the watch's summary says it keeps the fixed ones).
+ */
+export function selectionHref({ spec, options }: MonitoringScope): string {
+  const filters = Object.fromEntries((["search", "state", "stream"] as const).flatMap((key) => options[key] ? [[key, options[key]]] : []));
+  return `/intreaba?spec=${encodeURIComponent(encodeSpec(spec))}&drill=1${options.scope ? `&evidence=${encodeURIComponent(JSON.stringify(options.scope))}` : ""}${Object.keys(filters).length ? `&sourceFilters=${encodeURIComponent(JSON.stringify(filters))}` : ""}`;
+}
 export interface MonitoringCreateInput extends MonitoringScope { title?: string; preferences?: MonitoringPreferences; recipeId?: string; recipeVersion?: number }
 export interface MonitoringWatch extends MonitoringScope {
   id: string; title: string; paused: boolean; preferences: MonitoringPreferences;

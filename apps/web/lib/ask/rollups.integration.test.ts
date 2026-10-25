@@ -7,7 +7,7 @@ import { evidenceCsv, sumDecimalStrings } from "./evidence";
 import { forgetTrendGroups, trendGroupStats } from "./group-ids";
 import {
   compareParties, compareSharedPartners, compareTopPartners, forgetRollupsReady, planRollup, rollupBreakdown, rollupCountyTable, rollupMap,
-  rollupDaysReady, rollupMinimumCond, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, scatterDensity, type RollupCtx, type RollupNeed,
+  monthRollupReady, rollupDaysReady, rollupMinimumCond, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, scatterDensity, type RollupCtx, type RollupNeed,
 } from "./rollups";
 import { namedKind, type AskSpec } from "./spec";
 import type { Grounding } from "./ground";
@@ -488,6 +488,15 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
         forgetRollupsReady();
         await groupDrawers("rollups without days", false);
         await q.unsafe("rollback to savepoint undated_rollups");
+        forgetRollupsReady();
+        // A revert's build (the code before F2) rebuilds the yearly rollups without the days and leaves the last
+        // F2 build's agg_entity_month behind: not of the same build, so a trend on the same months runs live.
+        expect(await monthRollupReady(q)).toBe(true);
+        await q.unsafe("savepoint reverted_build");
+        for (const table of ["agg_entity_year", "agg_pair_year"]) await q.unsafe(`alter table marts.${table} drop column d0, drop column d1`);
+        forgetRollupsReady();
+        expect(await monthRollupReady(q)).toBe(false);
+        await q.unsafe("rollback to savepoint reverted_build");
         forgetRollupsReady();
         // A row's own records: only that member, and nothing when it is not in the group, with the members kept or not.
         const growth = TREND_GROUPS[0]!.spec;
