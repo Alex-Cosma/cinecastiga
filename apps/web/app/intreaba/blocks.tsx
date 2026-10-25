@@ -1538,7 +1538,8 @@ export function TrendBlock({
                 ) : (
                   r.name
                 )}
-                {/* The county is the buyers' (R9: "(județ)" is an institution's place): never beside a firm, where it would read as its seat. */}
+                {/* trend-2: the row's own county (entity_profile.county). R9: "(județ)" is an institution's place; beside a firm it would be
+                    its SEAP address read as its seat, so it waits for the firm seat of F4 (owner-seat-switch). */}
                 {r.county && spec?.dim !== "supplier" ? ` (${r.county})` : ""}
                 {evidence && (
                   <button
