@@ -2326,8 +2326,8 @@ export async function runRows(
     // The production database uses SSD costs. Keep the same covering-index
     // choices in local source verification without changing database settings.
     await tx.unsafe("set local random_page_cost = 1.1");
-    if (spec.block === "trend") await tx.unsafe(TREND_NO_JIT);
     const s = tx as unknown as DbSql;
+    if (spec.block === "trend") await s.unsafe(TREND_NO_JIT);
     const group = groupMembers ? await groupMembers(s) : null;
     const members = group ? memberList(group.members) : null;
     // A row's own records ("Înregistrări →") are that row's: no group note (a watch says its fixed group).
