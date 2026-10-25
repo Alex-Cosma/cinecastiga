@@ -4,13 +4,27 @@ import { formatInt } from '../format';
 /**
  * A refused source request, with its HTTP status. A trend's sources and CSV
  * answer 409 when the data moved the answer's months since it was computed
- * (plan §2.8): the screen reloads the answer instead of listing other records.
+ * (plan §2.8): the screen reloads the answer (once) instead of listing other records.
  */
 export class SourceRequestError extends Error {
   constructor(message: string, readonly status: number) { super(message); }
 }
 /** The answer on screen is older than the data its sources would list (409). */
 export const answerOutdated = (error: unknown): boolean => error instanceof SourceRequestError && error.status === 409;
+
+/** A 409 again on an answer already reloaded for one: the data are moving now; the page says so instead of reloading again. */
+export const DATA_STILL_CHANGING = 'Datele se actualizează chiar acum. Încearcă din nou peste câteva minute.';
+
+/**
+ * What a refused source request says (the drawer, the sources' CSV): nothing
+ * when it was a 409 and `onStale` reloads the answer (the caller lists
+ * nothing), DATA_STILL_CHANGING when `onStale` declines (the answer on screen
+ * is that reload: at most one per reader action, never a loop), else its error.
+ */
+export function sourceRefusal(error: unknown, onStale: (() => boolean) | undefined, fallback: string): string | null {
+  if (answerOutdated(error) && onStale) return onStale() ? null : DATA_STILL_CHANGING;
+  return error instanceof Error ? error.message : fallback;
+}
 
 /** Shared by answer exports and the source drawer. Server totals, not the
  * currently displayed page, determine whether a download is partial. */

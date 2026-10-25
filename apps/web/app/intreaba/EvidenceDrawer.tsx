@@ -14,7 +14,7 @@ import ClipButton from "@/components/ClipButton";
 import FollowButton from "@/components/FollowButton";
 import { encodeSpec } from "@/lib/ask/permalink";
 import "./evidence-drawer.css";
-import {answerOutdated,requestSourceCsv,downloadSourceCsv,SourceRequestError} from "@/lib/ask/source-csv";
+import {requestSourceCsv,downloadSourceCsv,sourceRefusal,SourceRequestError} from "@/lib/ask/source-csv";
 import { drawerWatchBlocked, trendGroupHeader } from "./trend-answer";
 import { ProfileSourceNote } from "./ProfileNotes";
 
@@ -32,8 +32,11 @@ export interface EvidenceDrawerProps {
   peer?: PeerEvidenceSelection | undefined;
   /** A trend's executed months, sent with every request; not part of the scope saved links and watches keep. */
   months?: readonly [number, number] | undefined;
-  /** The data moved those months since the answer (409): the caller reloads the answer, the drawer lists nothing. */
-  onStale?: (() => void) | undefined;
+  /**
+   * The data moved those months since the answer (409): true when the caller reloads the answer (the
+   * drawer lists nothing), false when the answer on screen is already that reload (the drawer says so).
+   */
+  onStale?: (() => boolean) | undefined;
 }
 
 type Response = ({ ok: true } & DrillResult) | { ok: false; error: string };
@@ -111,9 +114,9 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
         setResult(data); setLoadedKey(queryKey);
       } catch (e) {
         if (controller.signal.aborted) return;
-        // A trend's months moved with the data (plan §2.8): the answer is reloaded, never another list shown.
-        if (answerOutdated(e) && staleRef.current) { staleRef.current(); return; }
-        setError(e instanceof Error ? e.message : "Sursele nu au putut fi încărcate.");
+        // A trend's months moved with the data (plan §2.8): the answer is reloaded once, never another list shown.
+        const refusal = sourceRefusal(e, staleRef.current, "Sursele nu au putut fi încărcate.");
+        if (refusal !== null) setError(refusal);
       } finally {
         clearTimeout(slowTimer);
         if (!controller.signal.aborted) setBusy(false);
@@ -136,8 +139,8 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
       downloadSourceCsv(file);
       setExportMessage(file.message);
     } catch (e) {
-      if (!controller.signal.aborted && answerOutdated(e) && staleRef.current) staleRef.current();
-      else if (!controller.signal.aborted) setExportMessage(e instanceof Error ? e.message : "Export nereușit.");
+      const refusal = controller.signal.aborted ? null : sourceRefusal(e, staleRef.current, "Export nereușit.");
+      if (refusal !== null) setExportMessage(refusal);
     } finally {
       if (!controller.signal.aborted) setExporting(null);
     }

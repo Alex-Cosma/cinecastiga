@@ -1,5 +1,5 @@
 import {afterEach,describe,expect,it,vi} from 'vitest';
-import {answerOutdated,requestSourceCsv,SourceRequestError} from './source-csv';
+import {answerOutdated,DATA_STILL_CHANGING,requestSourceCsv,sourceRefusal,SourceRequestError} from './source-csv';
 afterEach(()=>vi.unstubAllGlobals());
 const signal=()=>new AbortController().signal;
 function csv(headers:Record<string,string>={}){return new Response('suma,sursa\n123.456789,https://example.test/source\n',{headers:{'content-type':'text/csv','x-total-rows':'1','x-exported-rows':'1','content-disposition':'attachment; filename="randuri-1.csv"',...headers}});}
@@ -27,6 +27,20 @@ describe('source CSV download contract',()=>{
   expect(answerOutdated(refused)).toBe(true);
   expect(answerOutdated(new SourceRequestError('Restrânge întrebarea.',200))).toBe(false);
   expect(answerOutdated(new Error('x'))).toBe(false);
+ });
+ it('reloads the answer once per reader action: a 409 on the reloaded answer is said, never reloaded again',()=>{
+  const outdated=new SourceRequestError('Datele s-au actualizat; reîncarcă răspunsul.',409);
+  // AskPanel.reloadOutdated: true the first time (it reloads), false on the answer that reload brought.
+  let reloads=0,reloaded=false;
+  const onStale=()=>{if(reloaded)return false;reloads++;reloaded=true;return true;};
+  expect(sourceRefusal(outdated,onStale,'x')).toBeNull();
+  for(let i=0;i<5;i++)expect(sourceRefusal(outdated,onStale,'x')).toBe(DATA_STILL_CHANGING);
+  expect(reloads).toBe(1);
+  // Without a reload to ask for (another page than the answer), the server's words; any other refusal keeps its own.
+  expect(sourceRefusal(outdated,undefined,'x')).toBe('Datele s-au actualizat; reîncarcă răspunsul.');
+  expect(sourceRefusal(new SourceRequestError('Restrânge întrebarea.',200),onStale,'x')).toBe('Restrânge întrebarea.');
+  expect(sourceRefusal('?',onStale,'Export nereușit.')).toBe('Export nereușit.');
+  expect(reloads).toBe(1);
  });
  it('rejects missing totals rather than claiming a complete empty export',async()=>{
   vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response('',{headers:{'content-type':'text/csv'}})));
