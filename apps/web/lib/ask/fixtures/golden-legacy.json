@@ -2993,7 +2993,7 @@
      "Sursă: DOAR achiziții directe.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
-     "Selecție precisă aplicată: (lei pe înregistrare ≤ 2000000). Datele și limitele sunt inclusive; valorile se referă la cota alocată fiecărui furnizor."
+     "Selecție precisă aplicată: valoarea pe câștigător ≤ 2.000.000 lei. Datele și limitele sunt inclusive; valorile se referă la cota alocată fiecărui furnizor."
     ],
     "data": {
      "block": "stat",
@@ -3024,7 +3024,7 @@
     "profileCount": 0,
     "profileReconciled": null,
     "scopeNotes": [
-     "Selecție precisă aplicată: (lei pe înregistrare ≤ 2000000).",
+     "Selecție precisă aplicată: valoarea pe câștigător ≤ 2.000.000 lei.",
      "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
      "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns."
     ],
@@ -5467,14 +5467,14 @@
      "valoarea înregistrată",
      "toți anii",
      "toate achizițiile: directe și din proceduri",
-     "Activitatea entității: entitatea #9100000002 (ca instituție sau ca firmă)"
+     "Activitatea entității: Municipiul Fixture Nord (ca instituție sau ca firmă)"
     ],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
-     "Activitatea entității: entitatea #9100000002 (ca instituție sau ca firmă). Valorile se referă la cota alocată fiecărui furnizor."
+     "Activitatea entității: Municipiul Fixture Nord (ca instituție sau ca firmă). Valorile se referă la cota alocată fiecărui furnizor."
     ],
     "data": {
      "block": "stat",
@@ -5517,7 +5517,7 @@
     "profileCount": 0,
     "profileReconciled": null,
     "scopeNotes": [
-     "Activitatea entității: entitatea #9100000002 (ca instituție sau ca firmă).",
+     "Activitatea entității: Municipiul Fixture Nord (ca instituție sau ca firmă).",
      "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
      "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -5935,7 +5935,7 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
-     "Selecție precisă aplicată: (CPV includ 45). Datele și limitele sunt inclusive; valorile se referă la cota alocată fiecărui furnizor."
+     "Selecție precisă aplicată: doar CPV 45. Datele și limitele sunt inclusive; valorile se referă la cota alocată fiecărui furnizor."
     ],
     "data": {
      "block": "stat",
@@ -5978,7 +5978,7 @@
     "profileCount": 0,
     "profileReconciled": null,
     "scopeNotes": [
-     "Selecție precisă aplicată: (CPV includ 45).",
+     "Selecție precisă aplicată: doar CPV 45.",
      "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
      "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -6084,7 +6084,7 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
-     "Selecție precisă aplicată: (CPV includ 45). Datele și limitele sunt inclusive; valorile se referă la cota alocată fiecărui furnizor."
+     "Selecție precisă aplicată: doar CPV 45. Datele și limitele sunt inclusive; valorile se referă la cota alocată fiecărui furnizor."
     ],
     "data": {
      "block": "stat",
@@ -6127,7 +6127,7 @@
     "profileCount": 0,
     "profileReconciled": null,
     "scopeNotes": [
-     "Selecție precisă aplicată: (CPV includ 45).",
+     "Selecție precisă aplicată: doar CPV 45.",
      "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
      "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -12807,7 +12807,7 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
-     "Selecție precisă aplicată: (CPV exclud 45). Datele și limitele sunt inclusive; valorile se referă la cota alocată fiecărui furnizor."
+     "Selecție precisă aplicată: fără CPV 45. Datele și limitele sunt inclusive; valorile se referă la cota alocată fiecărui furnizor."
     ],
     "data": {
      "block": "stat",
@@ -12850,7 +12850,7 @@
     "profileCount": 0,
     "profileReconciled": null,
     "scopeNotes": [
-     "Selecție precisă aplicată: (CPV exclud 45).",
+     "Selecție precisă aplicată: fără CPV 45.",
      "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
      "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -12954,7 +12954,7 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
-     "Selecție precisă aplicată: (firme exclud 9100000101). Datele și limitele sunt inclusive; valorile se referă la cota alocată fiecărui furnizor."
+     "Selecție precisă aplicată: fără firma Fixture Construct SRL. Datele și limitele sunt inclusive; valorile se referă la cota alocată fiecărui furnizor."
     ],
     "data": {
      "block": "table",
@@ -13028,7 +13028,7 @@
     "profileCount": 0,
     "profileReconciled": null,
     "scopeNotes": [
-     "Selecție precisă aplicată: (firme exclud 9100000101).",
+     "Selecție precisă aplicată: fără firma Fixture Construct SRL.",
      "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
      "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -13133,7 +13133,7 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
-     "Selecție precisă aplicată: (instituții includ 9100000002, 9100000003). Datele și limitele sunt inclusive; valorile se referă la cota alocată fiecărui furnizor."
+     "Selecție precisă aplicată: doar instituțiile Municipiul Fixture Nord, Spitalul Judetean Fixture. Datele și limitele sunt inclusive; valorile se referă la cota alocată fiecărui furnizor."
     ],
     "data": {
      "block": "table",
@@ -13215,7 +13215,7 @@
     "profileCount": 0,
     "profileReconciled": null,
     "scopeNotes": [
-     "Selecție precisă aplicată: (instituții includ 9100000002, 9100000003).",
+     "Selecție precisă aplicată: doar instituțiile Municipiul Fixture Nord, Spitalul Judetean Fixture.",
      "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
      "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -13316,7 +13316,7 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
-     "Selecție precisă aplicată: (județe includ Cluj, Buzău). Datele și limitele sunt inclusive; valorile se referă la cota alocată fiecărui furnizor."
+     "Selecție precisă aplicată: doar județele Cluj, Buzău. Datele și limitele sunt inclusive; valorile se referă la cota alocată fiecărui furnizor."
     ],
     "data": {
      "block": "map",
@@ -13371,7 +13371,7 @@
     "profileCount": 0,
     "profileReconciled": null,
     "scopeNotes": [
-     "Selecție precisă aplicată: (județe includ Cluj, Buzău).",
+     "Selecție precisă aplicată: doar județele Cluj, Buzău.",
      "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
      "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -13491,7 +13491,7 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
-     "Selecție precisă aplicată: (data ≥ 2025-03-01 ȘI data ≤ 2025-09-30 ȘI lei pe înregistrare ≥ 5000). Datele și limitele sunt inclusive; valorile se referă la cota alocată fiecărui furnizor."
+     "Selecție precisă aplicată: data ≥ 01.03.2025 ȘI data ≤ 30.09.2025 ȘI valoarea pe câștigător ≥ 5.000 lei. Datele și limitele sunt inclusive; valorile se referă la cota alocată fiecărui furnizor."
     ],
     "data": {
      "block": "stat",
@@ -13534,7 +13534,7 @@
     "profileCount": 0,
     "profileReconciled": null,
     "scopeNotes": [
-     "Selecție precisă aplicată: (data ≥ 2025-03-01 ȘI data ≤ 2025-09-30 ȘI lei pe înregistrare ≥ 5000).",
+     "Selecție precisă aplicată: data ≥ 01.03.2025 ȘI data ≤ 30.09.2025 ȘI valoarea pe câștigător ≥ 5.000 lei.",
      "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
      "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -13674,7 +13674,7 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
-     "Selecție precisă aplicată: (instituții includ 9100000002 ȘI CPV includ 45) SAU (firme includ 9100000106 SAU județe includ Buzău). Datele și limitele sunt inclusive; valorile se referă la cota alocată fiecărui furnizor.",
+     "Selecție precisă aplicată: (doar instituția Municipiul Fixture Nord ȘI doar CPV 45) SAU (doar firma Fixture Partener SRL SAU doar județul Buzău). Datele și limitele sunt inclusive; valorile se referă la cota alocată fiecărui furnizor.",
      "Ani cu date parțiale sau provizorii: 2024 (achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei), 2026 (achizițiile directe până la 20.06.2026; contractele până la 25.06.2026; contractele datate după 31.05.2026 sunt provizorii). Totalurile lor nu sunt complete; nu le compara direct cu ceilalți ani din grafic. SEAP publică multe contracte la câteva săptămâni sau luni după semnare: cifrele provizorii pot crește la actualizările următoare."
     ],
     "data": {
@@ -13730,7 +13730,7 @@
     "profileCount": 0,
     "profileReconciled": null,
     "scopeNotes": [
-     "Selecție precisă aplicată: (instituții includ 9100000002 ȘI CPV includ 45) SAU (firme includ 9100000106 SAU județe includ Buzău).",
+     "Selecție precisă aplicată: (doar instituția Municipiul Fixture Nord ȘI doar CPV 45) SAU (doar firma Fixture Partener SRL SAU doar județul Buzău).",
      "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
      "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -13847,7 +13847,7 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
-     "Selecție precisă aplicată: (CPV includ 45). Datele și limitele sunt inclusive; valorile se referă la cota alocată fiecărui furnizor.",
+     "Selecție precisă aplicată: doar CPV 45. Datele și limitele sunt inclusive; valorile se referă la cota alocată fiecărui furnizor.",
      "An acoperit parțial de date: 2024 (achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei). Diferența dintre cei doi ani reflectă și perioada neacoperită, nu doar o schimbare reală."
     ],
     "data": {
@@ -14111,7 +14111,7 @@
     "profileCount": 0,
     "profileReconciled": null,
     "scopeNotes": [
-     "Selecție precisă aplicată: (CPV includ 45).",
+     "Selecție precisă aplicată: doar CPV 45.",
      "Schimbare între 2024 și 2025: sursele includ numai cei doi ani; diferența este totalul final minus totalul inițial.",
      "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
      "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
