@@ -240,16 +240,16 @@ describe("the changes the plan fixes", () => {
     expect(d.scope).toContainEqual({ label: "Scoase din calcul", value: "Fără SYSTRA SA (202)" });
     expect(d.receipt?.groups).toEqual([{ title: "Grupul 1 · toate condițiile", items: ["Valoare de cel puțin 1.000 lei"] }]);
     // The tail is every condition under the sentence (G7, R11): here "Selecție avansată" holds the rest of the precise selection.
-    expect(d.tail).toBe("fără SYSTRA SA, selecție precisă, 1 condiție");
-    expect(d.totalLine).toBe("fără SYSTRA SA, selecție precisă, 1 condiție");
-    expect(questionTitle(spec)).toBe("Ce firme câștigă achizițiile făcute de instituțiile publice din toată țara, în toți anii, fără SYSTRA SA, selecție precisă, 1 condiție?");
+    expect(d.tail).toBe("fără SYSTRA SA, valoarea pe câștigător ≥ 1.000 lei");
+    expect(d.totalLine).toBe("fără SYSTRA SA, valoarea pe câștigător ≥ 1.000 lei");
+    expect(questionTitle(spec)).toBe("Ce firme câștigă achizițiile făcute de instituțiile publice din toată țara, în toți anii, fără SYSTRA SA, valoarea pe câștigător ≥ 1.000 lei?");
     // Kept as today: the pills, the caveat and the note describe the whole precise selection.
     expect(d.pills).toContain("Selecție precisă · 2 condiții în 2 grupuri");
     expect(d.byId.population?.note).toBe("Selecție precisă aplicată: (firme exclud SYSTRA SA) ȘI (lei pe înregistrare ≥ 1000).");
     const three = { ...spec, population: { operator: "and" as const, groups: [{ operator: "and" as const, conditions: [{ field: "supplier" as const, op: "not_in" as const, values: ["1", "2", "3"], labels: ["A", "B", "C"] }] }] } };
     expect(describeConditions(three).tail).toBe("fără 3 firme");
     // Unlabelled lists stay a precise selection: their chip could only show a number.
-    expect(describeConditions({ ...spec, population: { operator: "and", groups: [{ operator: "and", conditions: [{ field: "supplier", op: "not_in", values: ["202"] }] }] } }).tail).toBe("selecție precisă, 1 condiție");
+    expect(describeConditions({ ...spec, population: { operator: "and", groups: [{ operator: "and", conditions: [{ field: "supplier", op: "not_in", values: ["202"] }] }] } }).tail).toBe("fără 1 firmă");
   });
 });
 
@@ -282,5 +282,27 @@ describe("the words of every condition", () => {
   it("keep the home page's direct-acquisition bound the engine's ceiling", () => {
     expect(DA_BOUND_VALUE).toBe(String(DA_PLAFOND_RON));
     expect(NATIONAL_DA_COUNT_SPEC.population?.groups[0]?.conditions[0]).toMatchObject({ value: DA_BOUND_VALUE });
+    // It narrows nothing: no title words, no total line ("site:home-da-count").
+    const home = describeConditions(NATIONAL_DA_COUNT_SPEC);
+    expect([home.tail, home.totalWords, home.totalLine]).toEqual(["", [], null]);
+  });
+
+  it("say a precise selection's one or two conditions, else how many, with every group in the detail (kit P9)", () => {
+    const value: AskSpec = { block: "stat", measure: "value", filters: { yearFrom: 2025, yearTo: 2025 }, population: { operator: "and", groups: [{ operator: "and", conditions: [{ field: "value", op: "gte", value: "100000" }] }] } };
+    expect(describeConditions(value).tail).toBe("valoarea pe câștigător ≥ 100.000 lei");
+    expect(questionTitle(value)).toBe("Cât valorează achizițiile făcute de instituțiile publice din toată țara, în 2025, valoarea pe câștigător ≥ 100.000 lei?");
+    const two: AskSpec = { ...value, population: { operator: "or", groups: [
+      { operator: "and", conditions: [{ field: "county", op: "in", values: ["Cluj"] }] },
+      { operator: "and", conditions: [{ field: "date", op: "lte", value: "2025-06-30" }] },
+    ] } };
+    expect(describeConditions(two).tail).toBe("doar județul Cluj sau data ≤ 30.06.2025");
+    const three: AskSpec = { ...value, population: { operator: "and", groups: [{ operator: "or", conditions: [
+      { field: "cpv", op: "in", values: ["45"] }, { field: "cpv", op: "in", values: ["33"] }, { field: "supplier", op: "in", values: ["1", "2", "3"] },
+    ] }] } };
+    const d = describeConditions(three);
+    expect(d.tail).toBe("selecție avansată, 3 condiții");
+    expect(d.byId.population?.detail).toBe("(CPV includ 45 SAU CPV includ 33 SAU firme includ 1, 2, 3)");
+    // "Selecție precisă" is not the 13 questions' name for it any more (plan R3, §6.3).
+    for (const spec of [value, two, three]) expect(`${questionTitle(spec)} ${d.totalLine}`).not.toMatch(/selecție precisă/i);
   });
 });

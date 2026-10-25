@@ -44,10 +44,10 @@ describe("the fields of «Selecție avansată»", () => {
     expect(populationFits(buyers, BLOCK_FILTERS.network.advancedFields(network, filterContext(network)))).toBe(false);
     expect(visibleFilters(network).has("population")).toBe(false);
     expect(advancedConditions(network)).toEqual([]);
-    expect(legacyConditions(network).map((c) => c.label)).toEqual(["Din link: selecție precisă, 1 condiție"]);
+    expect(legacyConditions(network).map((c) => c.label)).toEqual(["Din link: doar 2 instituții"]);
     // The same selection on a ranking is "Selecție avansată"'s own.
     const table = q({ block: "table", dim: "supplier", population: buyers });
-    expect(advancedConditions(table).map((c) => c.label)).toEqual(["Selecție avansată: selecție precisă, 1 condiție"]);
+    expect(advancedConditions(table).map((c) => c.label)).toEqual(["Selecție avansată: doar 2 instituții"]);
     // Labelled exclusions are "Fără X" chips anywhere: they never make a selection a link's.
     expect(populationFits(one({ field: "authority", op: "not_in", values: ["1"], labels: ["Comuna X"] }), [])).toBe(true);
     expect(populationFits(one({ field: "cpv", op: "in", values: ["45"] }), BLOCK_FILTERS.table.advancedFields(table, filterContext(table)))).toBe(false);

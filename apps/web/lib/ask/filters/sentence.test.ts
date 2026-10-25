@@ -168,7 +168,9 @@ describe("the sentence of each question (plan §4)", () => {
     expect(marked(q({ block: "trend", dim: "authority", filters: { ...years, county: "Cluj" } }))).toBe("Ce [instituții publice] din [județul Cluj] au cea mai mare schimbare între [2024] și [2025]?");
     expect(marked(q({ block: "trend", dim: "county", filters: { ...years, authorityKind: "comuna" } })))
       .toBe("Ce [județe] au cea mai mare schimbare a achizițiilor făcute de [primăriile de comună] între [2024] și [2025]?");
-    expect(marked(q({ block: "trend", dim: "supplier" }))).toBe("Ce [firme] au cea mai mare schimbare între [primul an] și [al doilea an]?");
+    // Without years the engine compares the archive's first and last years.
+    expect(marked(q({ block: "trend", dim: "supplier" }))).toBe("Ce [firme] au cea mai mare schimbare între [primul an] și [ultimul an]?");
+    expect(marked(q({ block: "trend", dim: "supplier", filters: { yearFrom: 2020 } }))).toBe("Ce [firme] au cea mai mare schimbare între [2020] și [ultimul an]?");
     expect(slots(q({ block: "trend", dim: "supplier", filters: years })).map((t) => t.id)).toEqual(["dim", "period", "period.2"]);
     // An old link's employees, administrator, and a firm on a ranking of firms stay under the sentence (plan §4.7).
     expect(under(q({ block: "trend", dim: "supplier", filters: { ...years, minEmployees: 1, ...ADMIN, ...PORR } }))).toEqual(["admin", "employees", "supplier"]);
@@ -339,7 +341,7 @@ describe("the sentences of the legacy corpus (plan §2.6, §6.2)", () => {
       "legacy:da-scatter": "Ce instituții publice din toată țara ies din tipar după risc și valoarea achizițiilor directe? · sub propoziție: dataset",
       "legacy:county-scatter-firms": "Ce firme cu sediul în județul Cluj ies din tipar după risc și valoarea achizițiilor directe?",
       "legacy:leader-without-rankBy": "Care instituție din toată țara are cel mai ridicat indice de risc?",
-      "legacy:trend-without-years": "Ce firme au cea mai mare schimbare între primul an și al doilea an?",
+      "legacy:trend-without-years": "Ce firme au cea mai mare schimbare între primul an și ultimul an?",
       "legacy:trend-without-topN": "Ce firme au cea mai mare schimbare între 2024 și 2025?",
       "legacy:count-on-breakdown": "Ce cumpără instituțiile publice din județul Cluj, în toți anii?",
       "legacy:count-on-trend": "Ce instituții publice au cea mai mare schimbare între 2025 și 2026?",

@@ -8,6 +8,7 @@ import { captureTransaction, CAPTURE_METHODOLOGY } from "./evidence-captures";
 import { MonitoringError,monitoringHasLocalSelection,monitoringNewerError,MONITORING_LOCAL_SCOPE_NOTE } from "./monitoring-input";
 import { MONITORING_MAX_ROWS, methodologiesDiffer, type MonitoringPreferences } from "./monitoring-shared";
 import { answerVersion, isFirstAnswerVersion, sameAnswerCore } from "./ask/answer-core";
+import { countWords } from "./ask/answer-text";
 import { assertMonitoringBindings } from "./monitoring-identity";
 
 const globalDb=globalThis as unknown as {__monitoringSql?:DbSql};
@@ -104,7 +105,7 @@ export async function evaluateMonitoringWatch(watchId:string,expectedCheckpointI
       values(${runId},${watchId},${checkpoint.id},${previous?.id??null},'baseline',0,0,'{}','{}',${json(prefs)}::jsonb,${json(answer.data)}::jsonb,${json(methodology)}::jsonb,${json(checkpoint)}::jsonb,'[]')`;
     const sources=await runRows(database,spec,grounding,0,{...watch.options,capture:{maxRows:MONITORING_MAX_ROWS,persist:(database,query)=>persistPopulation(database,runId,query)}});
     if("error"in sources)throw new MonitoringError(sources.error,422);
-    if(sources.total>MONITORING_MAX_ROWS)throw new MonitoringError(`Selecția are ${sources.total.toLocaleString("ro-RO")} de înregistrări; o urmărire poate include cel mult 200.000. Restrânge perioada, instituția sau domeniul. Nu am salvat un eșantion.`,422);
+    if(sources.total>MONITORING_MAX_ROWS)throw new MonitoringError(`Selecția are ${countWords(sources.total,"înregistrare","înregistrări")}; o urmărire poate include cel mult 200.000. Restrânge perioada, instituția sau domeniul. Nu am salvat un eșantion.`,422);
     const [totals]=await q`select count(*)::int n,trim_scale(coalesce(sum(value_exact),0))::text known,count(*) filter(where value_exact is null)::int unknown,
       coalesce(sum(value_exact),0)=${sources.value}::numeric reconciled from app.monitoring_run_rows where run_id=${runId}`;
     if(totals!.n!==sources.total||!totals!.reconciled)throw new MonitoringError("Lista surselor nu se reconciliază cu selecția. Verificarea nu a fost publicată.",422);

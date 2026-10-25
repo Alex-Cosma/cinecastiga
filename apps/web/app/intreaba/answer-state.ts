@@ -1,6 +1,7 @@
 import { encodeSpec } from "../../lib/ask/permalink";
 import { breakdownDeeperSpec } from "../../lib/ask/source-spec";
 import type { AskSpec } from "../../lib/ask/spec";
+import type { SegmentOption } from "./builder/Segmented";
 import type { StripPatch } from "./builder/view";
 
 /*
@@ -17,6 +18,25 @@ export interface AnswerVariants { measure?: Partial<Record<string, VariantWords>
 /** The keys the strip writes in F1b: the data stream (a new query) and the map's lens (the data already fetched). */
 export const STRIP_QUERY_KEYS = new Set<StripPatch["path"]>(["dataset"]);
 
+/** The strip's data stream (kit §4: "Toate · Directe · Proceduri", the charts' channel colours as a legend). */
+const STREAM_OPTIONS: readonly SegmentOption[] = [
+  { value: "all", label: "Toate" },
+  { value: "da", label: "Directe", swatch: "da" },
+  { value: "contracts", label: "Proceduri", swatch: "proc" },
+];
+/** Why an old link's "o singură ofertă" keeps the strip on procedures: the engine counts offers on contracts only (spec.ts). */
+export const SINGLE_OFFER_STREAM = "Linkul cere contractele cu o singură ofertă: doar din proceduri.";
+
+/**
+ * The strip's streams on the applied question. An old link's single offer
+ * leaves only procedures choosable: validateSpec would put any other stream
+ * back on contracts, so the radio, the builder and the answer would disagree.
+ */
+export function streamOptions(spec: Pick<AskSpec, "filters">): readonly SegmentOption[] {
+  if (!spec.filters.singleBidder) return STREAM_OPTIONS;
+  return STREAM_OPTIONS.map((option) => option.value === "contracts" ? option : { ...option, disabled: SINGLE_OFFER_STREAM });
+}
+
 /** The applied question after a strip change: only that key (plan §2.3). */
 export function appliedAfterStrip(applied: AskSpec, path: StripPatch["path"], value: string): AskSpec {
   return path === "dataset" ? { ...applied, dataset: value as NonNullable<AskSpec["dataset"]> } : { ...applied, measure: value as AskSpec["measure"] };
@@ -32,8 +52,9 @@ export function shownWords(answer: { pills?: string[]; displaySql?: string; vari
 /**
  * The thread of a breakdown (kit component 14, Crumbs): where the domains
  * started (the question's own domain, or none) and each level opened since,
- * with its name. It lives in the URL, never in the spec; a capture keeps it in
- * its snapshot so what was seen stays readable.
+ * with its name. It lives in the URL, never in the spec. The shown result's CSV
+ * names it; a capture does not (its server-built snapshot reads the spec, whose
+ * domain is the thread's last level).
  */
 export interface Thread { root: string | null; steps: { code: string; name: string }[] }
 
@@ -70,6 +91,6 @@ export function threadCrumbs(thread: Thread, spec: AskSpec): { items: { label: s
   return { items, current: thread.steps[thread.steps.length - 1]!.name };
 }
 
-/** The thread in words, for the CSV and a capture: "toate › Construcții › Lucrări de drumuri". */
+/** The thread in words, for the shown result's CSV: "toate › Construcții › Lucrări de drumuri". */
 export const threadWords = (thread: Thread): string =>
   [thread.root ? `„${thread.root}”` : "toate", ...thread.steps.map((s) => s.name)].join(" › ");

@@ -69,8 +69,11 @@ describe("the six questions from the registry (F1b-builder-b)", () => {
     expect(sentence(SIX.distribution!)).toBe("Unde se situează MUNICIPIUL BUZAU după indicele de risc, față de toate instituțiile publice?");
     // A county council has one per county: "din toată țara" is a fixed phrase, text and not a button (component 1b).
     const councils = renderToStaticMarkup(createElement(Sentence, { tokens: builderView(SIX.scatter!).sentence }));
-    expect(text(councils)).toBe("Ce consilii județene din toată țara ies din tipar după risc și valoarea achizițiilor directe?");
+    expect(text(councils.replace(/<span class="term[\s\S]*?<\/span><\/span>(?=<\/span>)/, ""))).toBe("Ce consilii județene din toată țara ies din tipar după risc și valoarea achizițiilor directe?");
     expect(councils).toContain('<span class="fk-phrase fk-phrase--fixed"><span>din toată țara</span></span>');
+    // Its (?) says why it cannot change (plan §4.12, final scatter).
+    expect(builderView(SIX.scatter!).sentence.find((t) => t.kind === "fixed")).toEqual({ kind: "fixed", text: "din toată țara", tip: "Un consiliu pe județ." });
+    expect(councils).toContain("Un consiliu pe județ.");
     expect(sentence(q({ block: "scatter", dim: "supplier", rankBy: "risk", filters: { county: "Buzău" } }))).toBe("Ce firme cu sediul în județul Buzău ies din tipar după risc și valoarea achizițiilor directe?");
     expect(sentence(SIX.entity_card!)).toBe("Care firmă câștigă cel mai mult din achizițiile pentru „medicamente” făcute de instituțiile publice din toată țara, în 2025?");
     expect(sentence(q({ block: "entity_card", dim: "supplier", rankBy: "risk", filters: { county: "Cluj" } }))).toBe("Care firmă cu sediul în județul Cluj are cel mai ridicat indice de risc?");

@@ -1,8 +1,7 @@
-import { countWords } from "../answer-text";
 import { localityScopeError, type QuestionSpec } from "../question-ui";
 import { runnableError, type AskSpec } from "../spec";
 import { filterContext } from "./context";
-import { describeConditions, type ConditionLabels } from "./describe";
+import { describeConditions, preciseWords, type ConditionLabels } from "./describe";
 import { isDaBoundPopulation, splitExcluded, type SelectionOrigin } from "./origin";
 import { FILTER_DEFS, FILTERS, SPEC_PATH_OWNERS, presentPaths, visibleFilters } from "./registry";
 import type { FilterId, FilterSpec, SpecPath } from "./types";
@@ -147,9 +146,6 @@ export function legacyConditions(input: QuestionSpec | AskSpec, labels: Conditio
   return out;
 }
 
-const preciseWords = (p: NonNullable<FilterSpec["population"]>) =>
-  `selecție precisă, ${countWords(p.groups.reduce((n, g) => n + g.conditions.length, 0), "condiție", "condiții")}`;
-
 /** A chip of "Selecție avansată" (P9): what the place holds, which opens it again. */
 export interface AdvancedCondition { key: "population" | "minimumRecords"; words: string; label: string; detail?: string }
 
@@ -169,7 +165,7 @@ export function advancedConditions(input: QuestionSpec | AskSpec, labels: Condit
     out.push({ key: "minimumRecords", words: described.minimumRecords.words, label: `Selecție avansată: ${described.minimumRecords.words}` });
   if (spec.population && visible.has("population") && !described.population?.origin && !isDaBoundPopulation(spec)) {
     const { rest } = splitExcluded(spec.population);
-    if (rest) out.push({ key: "population", words: preciseWords(rest), label: `Selecție avansată: ${preciseWords(rest)}`, ...(described.population?.detail ? { detail: described.population.detail } : {}) });
+    if (rest) out.push({ key: "population", words: preciseWords(rest), label: `Selecție avansată: ${preciseWords(rest, false)}`, ...(described.population?.detail ? { detail: described.population.detail } : {}) });
   }
   return out;
 }
