@@ -61,6 +61,19 @@ describe("QuestionBuilder from the registry", () => {
     expect(text(markup)).not.toContain("Întrebare aplicată");
   });
 
+  it("says what opening a link changed while it waits: a repaired link is not run without its note (F1b-tests)", async () => {
+    const { restoreLink } = await import("../../lib/ask/filters/restore");
+    // An old link of a firms' ranking per inhabitant: the builder shows lei, and the note says why the link did not run.
+    const restored = restoreLink({ block: "table", dim: "supplier", measure: "value_per_capita", topN: 10, filters: {} });
+    if (restored.kind !== "draft") throw new Error("a draft");
+    expect(restored.run).toBe(false);
+    expect(restored.notes.length).toBeGreaterThan(0);
+    const markup = text(html(restored.spec, { initialApplied: false, initialNotes: restored.notes }));
+    expect(markup).toContain("Ce se schimbă odată cu întrebarea");
+    for (const note of restored.notes) expect(markup).toContain(note);
+    expect(markup).not.toContain("Întrebare aplicată");
+  });
+
   it("draws the profile line on a profile and the partners' row on a network", () => {
     expect(html({ block: "scatter", dim: "authority", measure: "value", rankBy: "risk", filters: {} })).toContain('class="fk-scopeline');
     const network = html({ block: "network", dim: "authority", measure: "value", filters: { authorityId: 1, authorityName: "Spitalul X" } });

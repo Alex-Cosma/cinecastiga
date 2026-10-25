@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pickContainedSynonyms, type SynonymRow } from "./ground";
+import { catalogName, pickContainedSynonyms, type SynonymRow } from "./ground";
 
 const rows = (spec: string): SynonymRow[] => spec.split(",").map((pair) => {
   const [term, cpv_prefix] = pair.split("=");
@@ -30,5 +30,14 @@ describe("synonyms for a query that is not a curated term", () => {
   it("completes a fragment with the shortest terms that contain it", () => {
     expect(pick("ilum")).toEqual(["iluminat=31500000", "iluminat=34928500", "iluminat=34993000", "iluminat=45316000", "iluminat=50232000"]);
     expect(pick("laptop")).toEqual(["laptopuri=30213100"]);
+  });
+});
+
+describe("CPV catalogue names in answers", () => {
+  it("are written with ș/ț (comma below), as the sentence and the windows write them (F1b-tests)", () => {
+    // The catalogue stores the cedilla letters; a pill read «Lucrări de construcţii (45000000-7)».
+    expect(catalogName({ code: "45000000-7", name_ro: "Lucrări de construcţii" })).toBe("Lucrări de construcții (45000000-7)");
+    expect(catalogName({ code: "09000000-3", name_ro: "Produse petroliere, combustibil, electricitate şi alte surse de energie" })).toBe("Produse petroliere, combustibil, electricitate și alte surse de energie (09000000-3)");
+    expect(catalogName({ code: "1", name_ro: null })).toBe("? (1)");
   });
 });

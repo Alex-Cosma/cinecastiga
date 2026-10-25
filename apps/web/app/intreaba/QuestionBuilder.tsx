@@ -55,6 +55,8 @@ export interface QuestionBuilderProps {
   outro?: ReactNode;
   /** False when `initial` is a proposal (an interpreted question or a link that waits) that has not been run yet. */
   initialApplied?: boolean;
+  /** What opening a link changed (restoreLink's notes, e.g. a measure only rankings of institutions have): said with the builder's own notes. */
+  initialNotes?: readonly string[];
   /** A key the strip beside the answer changed (plan §2.3): the builder writes it into its applied question and its draft. */
   stripPatch?: StripPatch | null;
 }
@@ -87,13 +89,13 @@ function Glyph({ name, className = "" }: { name: string; className?: string }) {
 const unique = (notes: readonly string[]) => [...new Set(notes)];
 const isCode = (term: string) => /^(?:\d{2,8}|\d{8}-\d)$/.test(term.replace(/\s+/g, ""));
 
-export default function QuestionBuilder({ initial, resolution, fromAi = false, onRun, running, onDraftChange, intro, outro, initialApplied = true, stripPatch = null }: QuestionBuilderProps) {
+export default function QuestionBuilder({ initial, resolution, fromAi = false, onRun, running, onDraftChange, intro, outro, initialApplied = true, initialNotes, stripPatch = null }: QuestionBuilderProps) {
   const [seed] = useState(() => transitionQuestion(initial ?? defaultQuestion()));
   const [draft, setDraft] = useState<QuestionSpec>(seed.spec);
   const [applied, setApplied] = useState<QuestionSpec | null>(initial && initialApplied ? cloneQuestion(initial) : null);
   const draftRef = useRef(draft);
   draftRef.current = draft;
-  const [changes, setChanges] = useState<string[]>(seed.changes);
+  const [changes, setChanges] = useState<string[]>(() => unique([...(initialNotes ?? []), ...seed.changes]));
   const [parked, setParked] = useState<Parked | null>(null);
   const initialKey = initial ? questionKey(initial) : "";
   const previousInitial = useRef(initialKey);
@@ -127,10 +129,10 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
     const next = transitionQuestion(initial ?? defaultQuestion());
     setDraft(next.spec);
     setApplied(initial && initialApplied ? cloneQuestion(initial) : null);
-    setChanges(next.changes);
+    setChanges(unique([...(initialNotes ?? []), ...next.changes]));
     setParked(null);
     setSavedQuestion(null); setSavedNotice("");
-  }, [initial, initialKey, initialApplied]);
+  }, [initial, initialKey, initialApplied, initialNotes]);
 
   useEffect(() => {
     if (!resolution) return;

@@ -1,5 +1,6 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import type { QueryPopulation } from "../../lib/ask/population";
 
@@ -41,5 +42,11 @@ describe("the precise selection's editor", () => {
     const markup = render({ operator: "and", groups: [{ operator: "and", conditions: [{ field: "authority", op: "in", values: ["1"], labels: ["Comuna X"] }] }] }, network);
     expect(options(markup, 2)).toEqual(["date", "value", "authority", "supplier", "cpv"]);
     expect(markup).toContain("Comuna X");
+  });
+
+  it("gives its controls 44 px on a phone in «Selecție avansată» (F1b-tests: they were 40–42 px)", () => {
+    const css = readFileSync(new URL("./question-builder.css", import.meta.url), "utf8");
+    const phone = css.slice(css.lastIndexOf("@media (max-width: 600px) {"));
+    expect(phone).toContain(".fk-pop .qp-body :is(button, input, select), .fk-pop .qb-minimum :is(input, button) { min-height: 44px; }");
   });
 });

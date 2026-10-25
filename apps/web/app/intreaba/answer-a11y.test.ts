@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { DistributionData } from "../../lib/ask/compile";
 
 vi.mock("@/lib/format", () => import("../../lib/format"));
+vi.mock("@/lib/entity-summary", () => import("../../lib/entity-summary"));
 vi.mock("@/lib/ask/answer-text", () => import("../../lib/ask/answer-text"));
 vi.mock("@/lib/ask/permalink", () => import("../../lib/ask/permalink"));
 vi.mock("@/lib/ask/source-spec", () => import("../../lib/ask/source-spec"));

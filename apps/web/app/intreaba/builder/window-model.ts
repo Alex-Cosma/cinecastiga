@@ -24,7 +24,7 @@ export type WindowKind =
 
 /** The control a window holds, from its place: a composed picker first, then the filter's own. */
 export function windowKind(win: BuilderWindowSpec): WindowKind {
-  if (win.key === "advanced") return "advanced";
+  if (win.key === "advanced" || win.key.startsWith("a:")) return "advanced";
   if (win.key.startsWith("x:")) return "exclusions";
   const { slot } = win;
   if (slot.picker) return slot.picker;

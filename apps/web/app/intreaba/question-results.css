@@ -393,6 +393,21 @@
 .cq-result .ask-ts .cv {
   font-size: 12px;
 }
+/* Selective labels (series-labels.ts): a label not drawn keeps its line (every bar measures from the same
+   space; overflow would let it shrink, hence flex-shrink) and is still read with its bar, cut to its column. The first and the last value keep to their bar's
+   outer edge, so they never run past the chart. */
+.ask-ts .ts-off {
+  color: transparent;
+  max-width: 100%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.ask-ts .col:first-child .cv {
+  align-self: flex-start;
+}
+.ask-ts .col:last-child .cv {
+  align-self: flex-end;
+}
 .cq-result .ask-cmp {
   gap: 22px;
 }
@@ -462,6 +477,12 @@
 }
 .cq-result .ask-trend .tr {
   gap: 12px;
+}
+/* A long name wraps: on one line it hid its own end and the row's records button (F1b-tests). */
+.cq-result .ask-trend .nm {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
 }
 .cq-result .ask-ecard .kpis {
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -633,6 +654,12 @@
   }
   .cq-result .ask-ts .cv {
     font-size: 10px;
+  }
+  .ask-ts .ts-off-sm {
+    color: transparent;
+    max-width: 100%;
+    overflow: hidden;
+    flex-shrink: 0;
   }
   .cq-result .ask-table th,
   .cq-result .ask-table td {
