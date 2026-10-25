@@ -12,7 +12,7 @@ import EmptyState from "./answer/EmptyState";
 import RowFacts, { FactTag } from "./answer/RowFacts";
 import TotalLine from "./answer/TotalLine";
 import {
-  compositionHead, firstOptions, labelLegend, rowGroupWords, shownTrendList, trendButtons, trendEmpty, trendNounWords, trendRest, trendRowView,
+  compositionHead, firstOptions, groupTerm, labelLegend, rowGroupWords, shownTrendList, trendButtons, trendEmpty, trendNounWords, trendRest, trendRowView,
   trendTotal, withoutFilingWords, type TrendData, type TrendRowView,
 } from "./trend-answer";
 
@@ -50,6 +50,7 @@ export default function TrendBlock({ data, spec, partial = [], conditions = [], 
   const noun = trendNounWords(data, spec);
   const views = rows.map((row) => trendRowView(row, list, data, spec));
   const legend = labelLegend(new Set(views.flatMap((v) => v.kinds)), data);
+  const term = groupTerm(list, data);
   const total = trendTotal(data, list, spec);
   const rest = trendRest(data, list, rows.length, spec);
   const unfiled = withoutFilingWords(data, list);
@@ -77,7 +78,8 @@ export default function TrendBlock({ data, spec, partial = [], conditions = [], 
       {views.map((view) => <TrendRowItem key={view.key} view={view} swatch={list === "all"} stars={stars}
         {...(evidence ? { onRecords: () => evidence.open(undefined, view.scope, view.scopeLabel) } : {})} />)}
     </div>}
-    {legend.length > 0 && <p className="fk-trend-legend fk-tipwrap">
+    {(legend.length > 0 || term) && rows.length > 0 && <p className="fk-trend-legend fk-tipwrap">
+      {term && <span>{term.text}<HelpTip tip={term.tip} /></span>}
       {legend.map(({ fact, tip }) => <span key={fact.text}><FactTag fact={fact} /><HelpTip tip={tip} /></span>)}
     </p>}
     {(rest || evidence) && rows.length > 0 && <div className="fk-listfoot">

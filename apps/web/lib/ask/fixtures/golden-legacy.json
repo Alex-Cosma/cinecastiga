@@ -1479,7 +1479,43 @@
       "provisional": true
      }
     ],
-    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă",
+    "variants": {
+     "trend": {
+      "all": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2025 → 2026","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "up": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2025 → 2026","creșteri","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\ngroup by supplier_name\nhaving inainte > 0 and dupa > inainte  -- Creșteri\norder by dupa - inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "new": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2025 → 2026","noi față de 2025","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\ngroup by supplier_name\nhaving inainte = 0 and dupa > 0  -- Noi\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "first": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 furnizori",
+        "valoarea înregistrată",
+        "2025 → 2026",
+        "noi față de 2025",
+        "prima dată în 2026",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\ngroup by supplier_name\nhaving inainte = 0 and dupa > 0 and prima_inregistrare = 2026  -- prima dată în 2026\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "down": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2025 → 2026","scăderi","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\ngroup by supplier_name\nhaving dupa > 0 and dupa < inainte  -- Scăderi\norder by inainte - dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "gone": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2025 → 2026","nu mai apar în 2026","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\ngroup by supplier_name\nhaving inainte > 0 and dupa = 0  -- Nu mai apar\norder by inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -11414,7 +11450,35 @@
       "provisional": true
      }
     ],
-    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = primul_an) inainte,\n  sum(closing_value) filter (where an = ultimul_an) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = primul_an) inainte,\n  sum(closing_value) filter (where an = ultimul_an) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă",
+    "variants": {
+     "trend": {
+      "all": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","toți anii","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = primul_an) inainte,\n  sum(closing_value) filter (where an = ultimul_an) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "up": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","toți anii","creșteri","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = primul_an) inainte,\n  sum(closing_value) filter (where an = ultimul_an) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by supplier_name\nhaving inainte > 0 and dupa > inainte  -- Creșteri\norder by dupa - inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "new": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","toți anii","noi","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = primul_an) inainte,\n  sum(closing_value) filter (where an = ultimul_an) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by supplier_name\nhaving inainte = 0 and dupa > 0  -- Noi\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "first": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","toți anii","noi","prima dată","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = primul_an) inainte,\n  sum(closing_value) filter (where an = ultimul_an) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by supplier_name\nhaving inainte = 0 and dupa > 0 and prima_inregistrare = ultimul_an  -- prima dată în ultimul_an\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "down": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","toți anii","scăderi","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = primul_an) inainte,\n  sum(closing_value) filter (where an = ultimul_an) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by supplier_name\nhaving dupa > 0 and dupa < inainte  -- Scăderi\norder by inainte - dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "gone": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","toți anii","nu mai apar","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = primul_an) inainte,\n  sum(closing_value) filter (where an = ultimul_an) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by supplier_name\nhaving inainte > 0 and dupa = 0  -- Nu mai apar\norder by inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -11838,7 +11902,43 @@
       "note": "achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei"
      }
     ],
-    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă",
+    "variants": {
+     "trend": {
+      "all": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2024 → 2025","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "up": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2024 → 2025","creșteri","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte > 0 and dupa > inainte  -- Creșteri\norder by dupa - inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "new": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2024 → 2025","noi față de 2024","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte = 0 and dupa > 0  -- Noi\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "first": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 furnizori",
+        "valoarea înregistrată",
+        "2024 → 2025",
+        "noi față de 2024",
+        "prima dată în 2025",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte = 0 and dupa > 0 and prima_inregistrare = 2025  -- prima dată în 2025\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "down": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2024 → 2025","scăderi","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving dupa > 0 and dupa < inainte  -- Scăderi\norder by inainte - dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "gone": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2024 → 2025","nu mai apar în 2025","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte > 0 and dupa = 0  -- Nu mai apar\norder by inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -12397,7 +12497,43 @@
       "provisional": true
      }
     ],
-    "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\ngroup by authority_name\norder by abs(dupa - inainte) desc\nlimit 5;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 5 din fiecare grupă"
+    "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\ngroup by authority_name\norder by abs(dupa - inainte) desc\nlimit 5;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 5 din fiecare grupă",
+    "variants": {
+     "trend": {
+      "all": {
+       "pills": ["schimbare între ani","top 5 instituții","valoarea înregistrată","2025 → 2026","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\ngroup by authority_name\norder by abs(dupa - inainte) desc\nlimit 5;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 5 din fiecare grupă"
+      },
+      "up": {
+       "pills": ["schimbare între ani","top 5 instituții","valoarea înregistrată","2025 → 2026","creșteri","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\ngroup by authority_name\nhaving inainte > 0 and dupa > inainte  -- Creșteri\norder by dupa - inainte desc\nlimit 5;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 5 din fiecare grupă"
+      },
+      "new": {
+       "pills": ["schimbare între ani","top 5 instituții","valoarea înregistrată","2025 → 2026","noi față de 2025","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\ngroup by authority_name\nhaving inainte = 0 and dupa > 0  -- Noi\norder by dupa desc\nlimit 5;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 5 din fiecare grupă"
+      },
+      "first": {
+       "pills": [
+        "schimbare între ani",
+        "top 5 instituții",
+        "valoarea înregistrată",
+        "2025 → 2026",
+        "noi față de 2025",
+        "prima dată în 2026",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\ngroup by authority_name\nhaving inainte = 0 and dupa > 0 and prima_inregistrare = 2026  -- prima dată în 2026\norder by dupa desc\nlimit 5;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 5 din fiecare grupă"
+      },
+      "down": {
+       "pills": ["schimbare între ani","top 5 instituții","valoarea înregistrată","2025 → 2026","scăderi","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\ngroup by authority_name\nhaving dupa > 0 and dupa < inainte  -- Scăderi\norder by inainte - dupa desc\nlimit 5;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 5 din fiecare grupă"
+      },
+      "gone": {
+       "pills": ["schimbare între ani","top 5 instituții","valoarea înregistrată","2025 → 2026","nu mai apar în 2026","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\ngroup by authority_name\nhaving inainte > 0 and dupa = 0  -- Nu mai apar\norder by inainte desc\nlimit 5;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 5 din fiecare grupă"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -13877,7 +14013,83 @@
       "note": "achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei"
      }
     ],
-    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and ((coalesce((cpv_code like '45%'), false)))\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and ((coalesce((cpv_code like '45%'), false)))\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă",
+    "variants": {
+     "trend": {
+      "all": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 furnizori",
+        "valoarea înregistrată",
+        "2024 → 2025",
+        "toate achizițiile: directe și din proceduri",
+        "Selecție precisă · 1 condiție în 1 grup"
+       ],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and ((coalesce((cpv_code like '45%'), false)))\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "up": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 furnizori",
+        "valoarea înregistrată",
+        "2024 → 2025",
+        "creșteri",
+        "toate achizițiile: directe și din proceduri",
+        "Selecție precisă · 1 condiție în 1 grup"
+       ],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and ((coalesce((cpv_code like '45%'), false)))\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte > 0 and dupa > inainte  -- Creșteri\norder by dupa - inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "new": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 furnizori",
+        "valoarea înregistrată",
+        "2024 → 2025",
+        "noi față de 2024",
+        "toate achizițiile: directe și din proceduri",
+        "Selecție precisă · 1 condiție în 1 grup"
+       ],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and ((coalesce((cpv_code like '45%'), false)))\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte = 0 and dupa > 0  -- Noi\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "first": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 furnizori",
+        "valoarea înregistrată",
+        "2024 → 2025",
+        "noi față de 2024",
+        "prima dată în 2025",
+        "toate achizițiile: directe și din proceduri",
+        "Selecție precisă · 1 condiție în 1 grup"
+       ],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and ((coalesce((cpv_code like '45%'), false)))\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte = 0 and dupa > 0 and prima_inregistrare = 2025  -- prima dată în 2025\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "down": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 furnizori",
+        "valoarea înregistrată",
+        "2024 → 2025",
+        "scăderi",
+        "toate achizițiile: directe și din proceduri",
+        "Selecție precisă · 1 condiție în 1 grup"
+       ],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and ((coalesce((cpv_code like '45%'), false)))\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving dupa > 0 and dupa < inainte  -- Scăderi\norder by inainte - dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "gone": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 furnizori",
+        "valoarea înregistrată",
+        "2024 → 2025",
+        "nu mai apar în 2025",
+        "toate achizițiile: directe și din proceduri",
+        "Selecție precisă · 1 condiție în 1 grup"
+       ],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and ((coalesce((cpv_code like '45%'), false)))\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte > 0 and dupa = 0  -- Nu mai apar\norder by inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -14237,7 +14449,83 @@
       "note": "achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei"
      }
     ],
-    "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and supplier_id in (firmele reprezentate de persoana aleasă)  -- ONRC\n  and an >= 2024\n  and an <= 2025\ngroup by authority_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+    "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and supplier_id in (firmele reprezentate de persoana aleasă)  -- ONRC\n  and an >= 2024\n  and an <= 2025\ngroup by authority_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă",
+    "variants": {
+     "trend": {
+      "all": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 instituții",
+        "valoarea înregistrată",
+        "conduse azi de POPESCU FIXTURE ION (n. 1970, Cluj-Napoca)",
+        "2024 → 2025",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and supplier_id in (firmele reprezentate de persoana aleasă)  -- ONRC\n  and an >= 2024\n  and an <= 2025\ngroup by authority_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "up": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 instituții",
+        "valoarea înregistrată",
+        "conduse azi de POPESCU FIXTURE ION (n. 1970, Cluj-Napoca)",
+        "2024 → 2025",
+        "creșteri",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and supplier_id in (firmele reprezentate de persoana aleasă)  -- ONRC\n  and an >= 2024\n  and an <= 2025\ngroup by authority_name\nhaving inainte > 0 and dupa > inainte  -- Creșteri\norder by dupa - inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "new": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 instituții",
+        "valoarea înregistrată",
+        "conduse azi de POPESCU FIXTURE ION (n. 1970, Cluj-Napoca)",
+        "2024 → 2025",
+        "noi față de 2024",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and supplier_id in (firmele reprezentate de persoana aleasă)  -- ONRC\n  and an >= 2024\n  and an <= 2025\ngroup by authority_name\nhaving inainte = 0 and dupa > 0  -- Noi\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "first": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 instituții",
+        "valoarea înregistrată",
+        "conduse azi de POPESCU FIXTURE ION (n. 1970, Cluj-Napoca)",
+        "2024 → 2025",
+        "noi față de 2024",
+        "prima dată în 2025",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and supplier_id in (firmele reprezentate de persoana aleasă)  -- ONRC\n  and an >= 2024\n  and an <= 2025\ngroup by authority_name\nhaving inainte = 0 and dupa > 0 and prima_inregistrare = 2025  -- prima dată în 2025\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "down": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 instituții",
+        "valoarea înregistrată",
+        "conduse azi de POPESCU FIXTURE ION (n. 1970, Cluj-Napoca)",
+        "2024 → 2025",
+        "scăderi",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and supplier_id in (firmele reprezentate de persoana aleasă)  -- ONRC\n  and an >= 2024\n  and an <= 2025\ngroup by authority_name\nhaving dupa > 0 and dupa < inainte  -- Scăderi\norder by inainte - dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "gone": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 instituții",
+        "valoarea înregistrată",
+        "conduse azi de POPESCU FIXTURE ION (n. 1970, Cluj-Napoca)",
+        "2024 → 2025",
+        "nu mai apar în 2025",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and supplier_id in (firmele reprezentate de persoana aleasă)  -- ONRC\n  and an >= 2024\n  and an <= 2025\ngroup by authority_name\nhaving inainte > 0 and dupa = 0  -- Nu mai apar\norder by inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -27028,7 +27316,43 @@
       "note": "achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei"
      }
     ],
-    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă",
+    "variants": {
+     "trend": {
+      "all": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2024 → 2025","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "up": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2024 → 2025","creșteri","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte > 0 and dupa > inainte  -- Creșteri\norder by dupa - inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "new": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2024 → 2025","noi față de 2024","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte = 0 and dupa > 0  -- Noi\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "first": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 furnizori",
+        "valoarea înregistrată",
+        "2024 → 2025",
+        "noi față de 2024",
+        "prima dată în 2025",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte = 0 and dupa > 0 and prima_inregistrare = 2025  -- prima dată în 2025\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "down": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2024 → 2025","scăderi","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving dupa > 0 and dupa < inainte  -- Scăderi\norder by inainte - dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "gone": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2024 → 2025","nu mai apar în 2025","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte > 0 and dupa = 0  -- Nu mai apar\norder by inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -27479,7 +27803,43 @@
       "provisional": true
      }
     ],
-    "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\ngroup by authority_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+    "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\ngroup by authority_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă",
+    "variants": {
+     "trend": {
+      "all": {
+       "pills": ["schimbare între ani","top 10 instituții","valoarea înregistrată","2025 → 2026","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\ngroup by authority_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "up": {
+       "pills": ["schimbare între ani","top 10 instituții","valoarea înregistrată","2025 → 2026","creșteri","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\ngroup by authority_name\nhaving inainte > 0 and dupa > inainte  -- Creșteri\norder by dupa - inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "new": {
+       "pills": ["schimbare între ani","top 10 instituții","valoarea înregistrată","2025 → 2026","noi față de 2025","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\ngroup by authority_name\nhaving inainte = 0 and dupa > 0  -- Noi\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "first": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 instituții",
+        "valoarea înregistrată",
+        "2025 → 2026",
+        "noi față de 2025",
+        "prima dată în 2026",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\ngroup by authority_name\nhaving inainte = 0 and dupa > 0 and prima_inregistrare = 2026  -- prima dată în 2026\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "down": {
+       "pills": ["schimbare între ani","top 10 instituții","valoarea înregistrată","2025 → 2026","scăderi","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\ngroup by authority_name\nhaving dupa > 0 and dupa < inainte  -- Scăderi\norder by inainte - dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "gone": {
+       "pills": ["schimbare între ani","top 10 instituții","valoarea înregistrată","2025 → 2026","nu mai apar în 2026","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\ngroup by authority_name\nhaving inainte > 0 and dupa = 0  -- Nu mai apar\norder by inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -27715,7 +28075,31 @@
       "provisional": true
      }
     ],
-    "displaySql": "select county,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2026\ngroup by county\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+    "displaySql": "select county,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2026\ngroup by county\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă",
+    "variants": {
+     "trend": {
+      "all": {
+       "pills": ["schimbare între ani","top 10 județe","valoarea înregistrată","2024 → 2026","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select county,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2026\ngroup by county\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "up": {
+       "pills": ["schimbare între ani","top 10 județe","valoarea înregistrată","2024 → 2026","creșteri","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select county,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2026\ngroup by county\nhaving inainte > 0 and dupa > inainte  -- Creșteri\norder by dupa - inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "new": {
+       "pills": ["schimbare între ani","top 10 județe","valoarea înregistrată","2024 → 2026","noi față de 2024","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select county,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2026\ngroup by county\nhaving inainte = 0 and dupa > 0  -- Noi\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "down": {
+       "pills": ["schimbare între ani","top 10 județe","valoarea înregistrată","2024 → 2026","scăderi","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select county,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2026\ngroup by county\nhaving dupa > 0 and dupa < inainte  -- Scăderi\norder by inainte - dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "gone": {
+       "pills": ["schimbare între ani","top 10 județe","valoarea înregistrată","2024 → 2026","nu mai apar în 2026","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select county,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2026\ngroup by county\nhaving inainte > 0 and dupa = 0  -- Nu mai apar\norder by inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -28096,7 +28480,35 @@
       "note": "date de la 08.01.2024, începutul arhivei"
      }
     ],
-    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom marts.da_transactions\nwhere closing_value > 0\n  and closing_value <= 2000000  -- plafon plauzibilitate\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 5;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 5 din fiecare grupă"
+    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom marts.da_transactions\nwhere closing_value > 0\n  and closing_value <= 2000000  -- plafon plauzibilitate\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 5;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 5 din fiecare grupă",
+    "variants": {
+     "trend": {
+      "all": {
+       "pills": ["schimbare între ani","top 5 furnizori","valoarea înregistrată","2024 → 2025","doar achizițiile directe"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom marts.da_transactions\nwhere closing_value > 0\n  and closing_value <= 2000000  -- plafon plauzibilitate\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 5;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 5 din fiecare grupă"
+      },
+      "up": {
+       "pills": ["schimbare între ani","top 5 furnizori","valoarea înregistrată","2024 → 2025","creșteri","doar achizițiile directe"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom marts.da_transactions\nwhere closing_value > 0\n  and closing_value <= 2000000  -- plafon plauzibilitate\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte > 0 and dupa > inainte  -- Creșteri\norder by dupa - inainte desc\nlimit 5;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 5 din fiecare grupă"
+      },
+      "new": {
+       "pills": ["schimbare între ani","top 5 furnizori","valoarea înregistrată","2024 → 2025","noi față de 2024","doar achizițiile directe"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom marts.da_transactions\nwhere closing_value > 0\n  and closing_value <= 2000000  -- plafon plauzibilitate\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte = 0 and dupa > 0  -- Noi\norder by dupa desc\nlimit 5;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 5 din fiecare grupă"
+      },
+      "first": {
+       "pills": ["schimbare între ani","top 5 furnizori","valoarea înregistrată","2024 → 2025","noi față de 2024","prima dată în 2025","doar achizițiile directe"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom marts.da_transactions\nwhere closing_value > 0\n  and closing_value <= 2000000  -- plafon plauzibilitate\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte = 0 and dupa > 0 and prima_inregistrare = 2025  -- prima dată în 2025\norder by dupa desc\nlimit 5;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 5 din fiecare grupă"
+      },
+      "down": {
+       "pills": ["schimbare între ani","top 5 furnizori","valoarea înregistrată","2024 → 2025","scăderi","doar achizițiile directe"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom marts.da_transactions\nwhere closing_value > 0\n  and closing_value <= 2000000  -- plafon plauzibilitate\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving dupa > 0 and dupa < inainte  -- Scăderi\norder by inainte - dupa desc\nlimit 5;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 5 din fiecare grupă"
+      },
+      "gone": {
+       "pills": ["schimbare între ani","top 5 furnizori","valoarea înregistrată","2024 → 2025","nu mai apar în 2025","doar achizițiile directe"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom marts.da_transactions\nwhere closing_value > 0\n  and closing_value <= 2000000  -- plafon plauzibilitate\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte > 0 and dupa = 0  -- Nu mai apar\norder by inainte desc\nlimit 5;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 5 din fiecare grupă"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -28356,7 +28768,89 @@
       "provisional": true
      }
     ],
-    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '45233%')\n  and not (cpv_code like '452332%')  -- excluse din subiect\n  and an >= 2025\n  and an <= 2026\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '45233%')\n  and not (cpv_code like '452332%')  -- excluse din subiect\n  and an >= 2025\n  and an <= 2026\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă",
+    "variants": {
+     "trend": {
+      "all": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 furnizori",
+        "valoarea înregistrată",
+        "Lucrări de construcții, de fundații și de îmbrăcăminte pentru autostrăzi și drumuri (45233000-9)",
+        "fără o subclasă (vezi limitele)",
+        "2025 → 2026",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '45233%')\n  and not (cpv_code like '452332%')  -- excluse din subiect\n  and an >= 2025\n  and an <= 2026\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "up": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 furnizori",
+        "valoarea înregistrată",
+        "Lucrări de construcții, de fundații și de îmbrăcăminte pentru autostrăzi și drumuri (45233000-9)",
+        "fără o subclasă (vezi limitele)",
+        "2025 → 2026",
+        "creșteri",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '45233%')\n  and not (cpv_code like '452332%')  -- excluse din subiect\n  and an >= 2025\n  and an <= 2026\ngroup by supplier_name\nhaving inainte > 0 and dupa > inainte  -- Creșteri\norder by dupa - inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "new": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 furnizori",
+        "valoarea înregistrată",
+        "Lucrări de construcții, de fundații și de îmbrăcăminte pentru autostrăzi și drumuri (45233000-9)",
+        "fără o subclasă (vezi limitele)",
+        "2025 → 2026",
+        "noi față de 2025",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '45233%')\n  and not (cpv_code like '452332%')  -- excluse din subiect\n  and an >= 2025\n  and an <= 2026\ngroup by supplier_name\nhaving inainte = 0 and dupa > 0  -- Noi\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "first": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 furnizori",
+        "valoarea înregistrată",
+        "Lucrări de construcții, de fundații și de îmbrăcăminte pentru autostrăzi și drumuri (45233000-9)",
+        "fără o subclasă (vezi limitele)",
+        "2025 → 2026",
+        "noi față de 2025",
+        "prima dată în 2026",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '45233%')\n  and not (cpv_code like '452332%')  -- excluse din subiect\n  and an >= 2025\n  and an <= 2026\ngroup by supplier_name\nhaving inainte = 0 and dupa > 0 and prima_inregistrare = 2026  -- prima dată în 2026\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "down": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 furnizori",
+        "valoarea înregistrată",
+        "Lucrări de construcții, de fundații și de îmbrăcăminte pentru autostrăzi și drumuri (45233000-9)",
+        "fără o subclasă (vezi limitele)",
+        "2025 → 2026",
+        "scăderi",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '45233%')\n  and not (cpv_code like '452332%')  -- excluse din subiect\n  and an >= 2025\n  and an <= 2026\ngroup by supplier_name\nhaving dupa > 0 and dupa < inainte  -- Scăderi\norder by inainte - dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "gone": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 furnizori",
+        "valoarea înregistrată",
+        "Lucrări de construcții, de fundații și de îmbrăcăminte pentru autostrăzi și drumuri (45233000-9)",
+        "fără o subclasă (vezi limitele)",
+        "2025 → 2026",
+        "nu mai apar în 2026",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '45233%')\n  and not (cpv_code like '452332%')  -- excluse din subiect\n  and an >= 2025\n  and an <= 2026\ngroup by supplier_name\nhaving inainte > 0 and dupa = 0  -- Nu mai apar\norder by inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -28707,7 +29201,52 @@
       "note": "achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei"
      }
     ],
-    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'cluj'\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'cluj'\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă",
+    "variants": {
+     "trend": {
+      "all": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","județul Cluj","2024 → 2025","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'cluj'\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "up": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","județul Cluj","2024 → 2025","creșteri","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'cluj'\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte > 0 and dupa > inainte  -- Creșteri\norder by dupa - inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "new": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","județul Cluj","2024 → 2025","noi față de 2024","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'cluj'\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte = 0 and dupa > 0  -- Noi\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "first": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 furnizori",
+        "valoarea înregistrată",
+        "județul Cluj",
+        "2024 → 2025",
+        "noi față de 2024",
+        "prima dată în 2025",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'cluj'\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte = 0 and dupa > 0 and prima_inregistrare = 2025  -- prima dată în 2025\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "down": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","județul Cluj","2024 → 2025","scăderi","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'cluj'\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving dupa > 0 and dupa < inainte  -- Scăderi\norder by inainte - dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "gone": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 furnizori",
+        "valoarea înregistrată",
+        "județul Cluj",
+        "2024 → 2025",
+        "nu mai apar în 2025",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'cluj'\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte > 0 and dupa = 0  -- Nu mai apar\norder by inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,

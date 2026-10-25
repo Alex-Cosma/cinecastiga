@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { DOWN, FOREIGN, GONE, NEW, UP, trendFixture, trendSpec } from "../../lib/ask/fixtures/trend-screen";
+import { DOWN, FOREIGN, GONE, NEW, UP, trendFixture, trendGroups, trendSpec } from "../../lib/ask/fixtures/trend-screen";
 import {
-  TREND_LIST_CSV, compositionHead, firstOptions, labelLegend, shownTrendList, signedRon, trendButtons, trendEmpty, trendGroupHeader, trendRest,
+  TREND_LIST_CSV, compositionHead, firstOptions, groupTerm, labelLegend, shownTrendList, signedRon, trendButtons, trendEmpty, trendGroupHeader, trendRest,
   trendRowView, trendTotal, trendWatch, trendWatchNote, withoutFilingWords,
 } from "./trend-answer";
 
@@ -79,7 +79,7 @@ describe("the head and „Prima dată”", () => {
     ]);
     expect(firstOptions(data, "first", firms)?.length).toBe(2);
     expect(firstOptions(data, "up", firms)).toBeNull();
-    expect(firstOptions(trendFixture({ groups: { ...data.groups, first: undefined } }), "new", firms)).toBeNull();
+    expect(firstOptions(trendFixture({ groups: trendGroups({ first: undefined }) }), "new", firms)).toBeNull();
   });
 });
 
@@ -147,6 +147,12 @@ describe("a row (trend final §3.4, §4.8)", () => {
     const view = trendRowView({ entityId: null, name: "Cluj", county: null, valueA: 10, valueB: 20 }, "up", counties, trendSpec({}, { dim: "county" }));
     expect([view.scope, view.place, view.href, view.scopeLabel]).toEqual([{ county: "Cluj" }, null, null, "Cluj · ian.–mai 2024 și ian.–mai 2025"]);
     expect(view.years[0]).toEqual({ label: "ian.–mai 2024", value: "10" });
+  });
+
+  it("explains „Noi” and „Nu mai apar” under their lists, with the glossary's words", () => {
+    expect(groupTerm("new", data)).toEqual({ text: "Noi față de 2024", tip: { id: "firma-noua" } });
+    expect(groupTerm("gone", data)).toEqual({ text: "Nu mai apar în 2025", tip: { id: "nu-mai-apare" } });
+    expect(groupTerm("up", data)).toBeNull();
   });
 
   it("explains each label kind once, under the list", () => {
