@@ -263,7 +263,7 @@ async function runCase(sql: DbSql, c: PerfCase): Promise<RunResult> {
   const started = performance.now();
   let groundMs = 0;
   try {
-    const grounding = await ground(sql, c.spec.filters);
+    const grounding = await ground(sql, c.spec.filters, c.spec.population);
     groundMs = performance.now() - started;
     if (c.path === "answer") {
       const result = await runSpec(sql, c.spec, grounding);

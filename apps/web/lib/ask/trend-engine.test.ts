@@ -432,6 +432,39 @@ describe("the trend's sources", () => {
     expect(plain.statements.find((s) => s.text.includes("limit ? offset ?"))!.text).not.toContain("where d.ref_id in (");
   });
 
+  it("total „Toate” from the answer's partition (sources.all), kept or grouped once on the rollups, instead of counting the two years (F2-merge-fixes)", async () => {
+    const all = trend({ change: "all", months: "whole" }, { yearFrom: 2024, yearTo: 2025 });
+    const counted = (db: ReturnType<typeof database>) => db.statements.some((s) => s.text.includes("group by d.state"));
+    const grouping = (db: ReturnType<typeof database>) => db.statements.some((s) => s.text.includes("with k as materialized"));
+    // Kept by the answer: no grouping and no totals query (4.9M records nationally, ~1.9 s); the selection's own totals.
+    const answer = database(PROD, { stamp: "51", partition: GONE() });
+    await runSpec(answer.sql, all, {});
+    const drawer = database(PROD, { stamp: "51" });
+    const kept = await runRows(drawer.sql, all, {}, 0);
+    if ("error" in kept) throw new Error(kept.error);
+    expect([counted(drawer), grouping(drawer)]).toEqual([false, false]);
+    expect(kept).toMatchObject({ sourceTotal: 6, sourceValue: "1400.00", total: 6, dateFrom: "2024-01-05", dateTo: "2025-11-30" });
+    // „Toate” lists every record of the two years: no member list, no group header or note.
+    expect(kept.group).toBeUndefined();
+    expect(drawer.statements.find((s) => s.text.includes("limit ? offset ?"))!.text).not.toContain("any(?array::bigint[])");
+    expect(kept.scopeNotes.some((note) => note.startsWith("Sursele grupei"))).toBe(false);
+    // Not kept, on rollups with days: grouped once (no count), and kept for the next drawer.
+    forgetRollupsReady();
+    const cold = database(PROD, { stamp: "52", rollups: true, days: true, partition: GONE() });
+    await runRows(cold.sql, all, {}, 0);
+    expect([counted(cold), grouping(cold)]).toEqual([false, true]);
+    const next = database(PROD, { stamp: "52", rollups: true, days: true });
+    await runRows(next.sql, all, {}, 0);
+    expect([counted(next), grouping(next)]).toEqual([false, false]);
+    // A live grouping would cost what the count does; a search or a row's scope needs the count.
+    forgetRollupsReady();
+    for (const [db, opts] of [[database(PROD, { partition: GONE() }), {}], [database(PROD, { stamp: "51" }), { search: "spital" }],
+      [database(PROD, { stamp: "51" }), { scope: { county: "Cluj" } }]] as const) {
+      await runRows(db.sql, all, {}, 0, opts);
+      expect(counted(db), JSON.stringify(opts)).toBe(true);
+    }
+  });
+
   it("check only a row's own ids for its records (Înregistrări →), on their index of the two years, and read no members for every change", async () => {
     const db = database(PROD, { members: ["11"] });
     await runRows(db.sql, trend({ change: "up" }, { yearFrom: 2024, yearTo: 2025 }), {}, 0, { scope: { entityIds: ["11"], role: "supplier" } });
