@@ -35,6 +35,8 @@ import SaveQuestionButton from "./SaveQuestionButton";
 import type { SavedQuestion } from "./SavedQuestions";
 import AnswerStrip, { Crumbs, StripEnd, StripLabelled } from "./answer/AnswerStrip";
 import TotalLine, { RECORDED_VALUE } from "./answer/TotalLine";
+import EmptyState from "./answer/EmptyState";
+import { emptyAnswer, relaxations } from "./answer-empty";
 import KitLink from "./answer/KitLink";
 import HelpTip from "./builder/HelpTip";
 import { CHART_FIRST_YEAR, seriesAxis, seriesLabels } from "./series-labels";
@@ -595,6 +597,13 @@ export default function AskPanel({
   const isProfile = !!applied && isHistoricalProfile(applied);
   // What changes the total outside the sentence (G8), on the applied question.
   const totalWords = applied ? describeConditions(applied).totalWords : [];
+  const empty = Boolean(data && emptyAnswer(data));
+  /** A wider question from the empty answer (G2): the builder takes it as its draft, then it runs. */
+  const runWider = (next: AskSpec) => {
+    setBuilderInit(next as unknown as QuestionSpec);
+    setLinkRuns(true);
+    void execute({ spec: next });
+  };
   return (
     <div
       className={`ask cq-app${centered ? " ask-centered" : ""}`}
@@ -858,7 +867,14 @@ export default function AskPanel({
             {data.block === "breakdown" && breakdownLead(data.slices, data.other) && (
               <p className="cq-lead">{breakdownLead(data.slices, data.other)}</p>
             )}
-            <div className={`cq-result cq-result-${data.block}`}>
+            {/* G2: an answer with no record offers at most three wider questions (kit component 17). */}
+            {empty ? <div className="fk cq-result cq-result-empty">
+              <EmptyState
+                message="Nicio înregistrare pentru această întrebare."
+                relax={relaxations(applied).map((r) => ({ id: r.id, label: r.label, onClick: () => runWider(r.spec) }))}
+                titleId="raspuns-titlu"
+              />
+            </div> : <div className={`cq-result cq-result-${data.block}`}>
               {data.block === "stat" && (
                 <StatBlock stat={data.stat} measure={applied.measure} />
               )}
@@ -970,10 +986,10 @@ export default function AskPanel({
                   spec={applied}
                 />
               )}
-            </div>
+            </div>}
             {/* G8: what changed the total outside the sentence; the ranking says it in its own total line. A risk
                 profile has no total in lei: its seat is the sentence's, and «nu plăți» would speak of sums it does not show. */}
-            {totalWords.length > 0 && !isProfile && !(data.block === "table" && layout === "visual") && (
+            {totalWords.length > 0 && !empty && !isProfile && !(data.block === "table" && layout === "visual") && (
               <div className="fk cq-total"><TotalLine conditions={totalWords}>{totalLead(data)}</TotalLine></div>
             )}
             {/* How the number was built reads after the answer, not before it. */}

@@ -7,12 +7,18 @@ import { encodeSpec } from "../../lib/ask/permalink";
 import { countWords, formatShare } from "../../lib/ask/answer-text";
 import type { AskSpec } from "../../lib/ask/spec";
 import type { BlockData } from "../../lib/ask/compile";
+import { useAnswerEvidence } from "./AnswerEvidence";
+import DetailCard from "./answer/DetailCard";
+import { recordsWords } from "./answer/KitLink";
+import HelpTip from "./builder/HelpTip";
 
 type CountyValue = Extract<BlockData, { block: "map" }>["counties"][number];
 type MapUnknown = Extract<BlockData, { block: "map" }>["unknown"];
 
 /** Five steps of the theme's map ramp (--map-0 … --map-4, light and dark in approved.css). */
 const MAP_STEPS = 5;
+/** The legend's (?) (final map §6 Etapa 1). */
+const LEGEND_TIP = { title: "Culorile hărții", text: "Cinci trepte egale ca număr de județe, de la cele mai mici valori ale selecției la cele mai mari. Gri: nicio înregistrare." };
 
 /** The county under the pointer: what the map shows there, in the answer's words. */
 export function CountyTip({ label, value, count, national, asCount }: {
@@ -36,7 +42,7 @@ export function CountyTip({ label, value, count, national, asCount }: {
               {share && ` · ${share}`}
             </div>
           )}
-          <div className="s">click → înregistrările județului</div>
+          <div className="s">click → fișa județului</div>
         </>
       ) : (
         <div className="s">nicio înregistrare pentru aceste filtre</div>
@@ -81,6 +87,19 @@ export default function MapBlock({
     x: number;
     y: number;
   } | null>(null);
+  // Component 19, the county's card (plan §4.4 F1b, final map §6): a tap, a click or Enter opens it
+  // with today's data; the records are its link, not the tap itself (a phone has no hover).
+  const evidence = useAnswerEvidence();
+  const [card, setCard] = useState<{ label: string; key: string } | null>(null);
+  const cardOf = (label: string, key: string) => {
+    const value = byKey.get(key) ?? 0, count = cntByKey.get(key) ?? 0;
+    const facts = value > 0 ? [
+      ...(asCount ? [] : [{ label: "Valoare", value: formatRon(value) }]),
+      { label: "Înregistrări", value: formatInt(count) },
+      ...(national > 0 ? [{ label: "Din selecție", value: formatShare(value / national) }] : []),
+    ] : [];
+    return { label, value, count, facts };
+  };
   const values = countyMap.shapes
     .map((s) => byKey.get(s.key) ?? 0)
     .filter((v) => v > 0)
@@ -130,10 +149,18 @@ export default function MapBlock({
               <a
                 key={s.key}
                 href={countyUrl(s.label)}
+                aria-label={`${s.label}: ${v > 0 ? display(v) : "nicio înregistrare"}`}
+                onClick={(event) => {
+                  // A new tab keeps the link; otherwise the card (Enter on the focused county too).
+                  if (event.ctrlKey || event.metaKey || event.shiftKey) return;
+                  event.preventDefault();
+                  setTip(null);
+                  setCard({ label: s.label, key: s.key });
+                }}
               >
                 <path
                   d={s.d}
-                  className={`ask-county ${v > 0 ? `ask-county-${bucket(v)}` : "ask-county-none"}${tip?.label === s.label ? " hovered" : ""}`}
+                  className={`ask-county ${v > 0 ? `ask-county-${bucket(v)}` : "ask-county-none"}${tip?.label === s.label || card?.key === s.key ? " hovered" : ""}`}
                   onMouseEnter={move}
                   onMouseMove={move}
                   onMouseLeave={() => setTip(null)}
@@ -142,13 +169,31 @@ export default function MapBlock({
             );
           })}
         </svg>
-        <div className="ask-legend">
+        <div className="ask-legend fk-tipwrap">
           <span>mai puțin</span>
           {Array.from({ length: MAP_STEPS }, (_, i) => (
             <span key={i} className={`sw ask-county-${i}`} />
           ))}
           <span>mai mult</span>
+          <span className="fk"><HelpTip tip={LEGEND_TIP} /></span>
         </div>
+        {card && (() => {
+          const c = cardOf(card.label, card.key);
+          return (
+            <div className="fk ask-mapcard">
+              <DetailCard
+                title={c.label}
+                {...(c.value > 0 ? {} : { meta: "Nicio înregistrare pentru această întrebare." })}
+                facts={c.facts}
+                actions={c.count > 0 ? [{
+                  label: c.count === 1 ? "Vezi înregistrarea" : `Vezi cele ${recordsWords(c.count)}`, glyph: "→",
+                  ...(evidence ? { onClick: () => evidence.open(spec as AskSpec, { county: c.label }, `${c.label} · înregistrările județului`) } : { href: countyUrl(c.label) }),
+                }] : []}
+                onClose={() => setCard(null)}
+              />
+            </div>
+          );
+        })()}
         {unknown.count > 0 && national > 0 && (
           <p className="ask-fine">
             {asCount
