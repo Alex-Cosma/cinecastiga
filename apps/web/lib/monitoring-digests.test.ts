@@ -35,6 +35,14 @@ describe("quiet, private monitoring digest content", () => {
     expect(() => renderMonitoringDigest({ id:"id",email:"e",ownerId:"u",period:"2026-09-18",updates:[] },{ origin:"http://localhost:3110",from:"a" })).toThrow();
   });
 
+  it("says a changed methodology before the records it moved, as the in-app tag", () => {
+    const result = renderMonitoringDigest({ id:"id",email:"e",ownerId:"u",period:"2026-09-18",updates:[
+      { id:"r1",watchId:"w",title:"Spitale",count:3,methodologyChanged:true }, { id:"r2",watchId:"w",title:"Comune",count:1 } ] },{ origin:"https://cinecastiga.example",from:"a" });
+    expect(result.text).toContain("Spitale — Metodologie modificată, vezi ce s-a schimbat");
+    expect(result.text).toContain("Comune — 1 înregistrare de verificat");
+    expect(result.html).toContain("Metodologie modificată, vezi ce s-a schimbat");
+  });
+
   it("keeps long digests short while linking all remaining updates from the inbox", () => {
     const result = renderMonitoringDigest({ id:"id",email:"e",ownerId:"u",period:"2026-09-18",updates:Array.from({ length:25 },(_,i) => ({ id:`r${i}`,watchId:"w",title:"Urmărire",count:0 })) },{ origin:"https://cinecastiga.example",from:"a" });
     expect(result.html.match(/<li>/g)).toHaveLength(20);
