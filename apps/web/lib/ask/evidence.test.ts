@@ -93,6 +93,11 @@ describe("source selection validation", () => {
     expect(validateEvidenceScope(scope)).toEqual(scope);
     expect(validateEvidenceScope({ riskBucket: { from: 0.2, to: 0.3 } })).not.toHaveProperty("error");
   });
+  it("accepts several counties (a county trend's group), at most 42, trimmed once each", () => {
+    expect(validateEvidenceScope({ counties: [" Cluj", "Iași", "Cluj"] })).toEqual({ counties: ["Cluj", "Iași"] });
+    for (const counties of [[], [""], ["x".repeat(101)], [7], "Cluj", Array.from({ length: 43 }, (_, i) => `J${i}`)])
+      expect(validateEvidenceScope({ counties })).toEqual({ error: "Județe invalide în selecție." });
+  });
 });
 
 describe("source query regression", () => {

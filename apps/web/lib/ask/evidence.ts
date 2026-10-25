@@ -7,6 +7,8 @@ export interface EvidenceScope {
   excludeEntityIds?: readonly string[];
   role?: "authority" | "supplier";
   county?: string;
+  /** Several buyer counties at once: a group of a county trend (at most 42, plan §2.5). */
+  counties?: readonly string[];
   riskBucket?: { from: number; to: number };
   cpvPrefixes?: readonly string[];
   excludeCpvPrefixes?: readonly string[];
@@ -76,12 +78,18 @@ export function validateEvidenceScope(raw: unknown): EvidenceScope | { error: st
   if (raw === undefined || raw === null) return {};
   if (typeof raw !== "object" || Array.isArray(raw)) return { error: "Selecție de surse invalidă." };
   const o = raw as Record<string, unknown>;
-  const allowed = ["entityIds", "excludeEntityIds", "role", "county", "riskBucket", "cpvPrefixes", "excludeCpvPrefixes", "years"];
+  const allowed = ["entityIds", "excludeEntityIds", "role", "county", "counties", "riskBucket", "cpvPrefixes", "excludeCpvPrefixes", "years"];
   if (Object.keys(o).some((k) => !allowed.includes(k))) return { error: "Filtru de surse necunoscut." };
   const scope: EvidenceScope = {};
   if (o["county"] !== undefined) {
     if (typeof o["county"] !== "string" || !o["county"].trim() || o["county"].length > 100) return { error: "Județ invalid în selecție." };
     scope.county = o["county"].trim();
+  }
+  if (o["counties"] !== undefined) {
+    const value = o["counties"];
+    if (!Array.isArray(value) || value.length === 0 || value.length > 42 || value.some((c) => typeof c !== "string" || !c.trim() || c.length > 100))
+      return { error: "Județe invalide în selecție." };
+    scope.counties = [...new Set((value as string[]).map((c) => c.trim()))];
   }
   for (const key of ["entityIds", "excludeEntityIds"] as const) {
     const value = o[key];

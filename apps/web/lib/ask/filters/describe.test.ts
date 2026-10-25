@@ -279,6 +279,34 @@ describe("the words of every condition", () => {
     expect(describeConditions({ block: "scatter", measure: "value", dim: "supplier", filters: { county: "Cluj" } }).totalLine).toBe("cu sediul în județul Cluj");
   });
 
+  // F2, kit §4: „Noi” always with its year, „Nu mai apar”, „Aceleași luni: ian.–mai”, „Prima dată”.
+  it("say a trend's group, months and order in every place, and only on a trend that has them", () => {
+    const base = { block: "trend", dim: "supplier", measure: "value", topN: 10, filters: { yearFrom: 2024, yearTo: 2025 } } as const;
+    const growth = describeConditions({ ...base, trend: { change: "up", months: "auto", order: "percent", minBase: 1_000_000 } });
+    expect(growth.pills).toEqual(["2024 → 2025", "creșteri", "aceleași luni", "ordonate după creșterea în procente", "cel puțin 1 mil. lei în 2024", "toate achizițiile: directe și din proceduri"]);
+    expect(growth.scope.filter((row) => ["Grupul", "Luni comparate", "Ordine", "Baza creșterii"].includes(row.label))).toEqual([
+      { label: "Grupul", value: "Creșteri" },
+      { label: "Luni comparate", value: "Aceleași luni în ambii ani, până la ultima lună completă" },
+      { label: "Ordine", value: "Creșterea în procente" },
+      { label: "Baza creșterii", value: "Cel puțin 1 mil. lei în 2024" },
+    ]);
+    // The months change both totals (a selection): the total line says them; the group narrows the list only.
+    expect(growth.totalLine).toBe("pe aceleași luni");
+    expect(growth.byId.trendMinBase?.words).toBe("dintre firmele cu cel puțin 1 mil. lei în 2024");
+    const fresh = describeConditions({ ...base, trend: { change: "new", firstOnly: true, months: [1, 5] } });
+    expect(fresh.byId.trendChange).toMatchObject({ chip: "Noi față de 2024", words: "noi față de 2024", summary: "Noi față de 2024" });
+    expect(fresh.byId.trendFirstOnly).toMatchObject({ chip: "Prima dată în 2025", words: "prima dată în 2025" });
+    expect(fresh.byId.trendMonths).toMatchObject({ chip: "Aceleași luni: ian.–mai", words: "pe aceleași luni: ian.–mai", scope: [{ label: "Luni comparate", value: "ian.–mai, în ambii ani" }] });
+    expect(fresh.summary).toEqual(["Noi față de 2024", "Aceleași luni: ian.–mai"]);
+    expect(describeConditions({ ...base, trend: { change: "gone", months: "whole" } }).byId).toMatchObject({
+      trendChange: { chip: "Nu mai apar în 2025" }, trendMonths: { chip: "Ani întregi", words: "pe ani întregi" },
+    });
+    expect(describeConditions({ ...base, trend: { change: "all" } }).byId.trendChange).toMatchObject({ chip: "Toate", words: "toate schimbările" });
+    // A trend without options reads as today.
+    const today = describeConditions(base);
+    for (const id of ["trendChange", "trendMonths", "trendOrder", "trendMinBase", "trendFirstOnly"] as const) expect(today.byId[id]).toBeUndefined();
+  });
+
   it("keep the home page's direct-acquisition bound the engine's ceiling", () => {
     expect(DA_BOUND_VALUE).toBe(String(DA_PLAFOND_RON));
     expect(NATIONAL_DA_COUNT_SPEC.population?.groups[0]?.conditions[0]).toMatchObject({ value: DA_BOUND_VALUE });

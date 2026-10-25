@@ -11,8 +11,9 @@ import { FILTER_DEFS } from "./filters/registry";
 import type { EngineLevel, FilterDef, FilterSpec } from "./filters/types";
 import {
   andAll, DA_PLAFOND_RON, displayPredicates, groupPredicates, plafondFor, predicateContext, profileMinDas, profilePredicates,
-  rowPredicates, trendYearsPredicate, type PredicateCtx,
+  rowPredicates, trendGroupOf, trendGroupSql, trendYearsPredicate, type PredicateCtx,
 } from "./predicates";
+import { partialMonths, sameMonthsWindow, type CoveragePeriods } from "./months-window";
 
 /*
  * Plan §2.5: one function writes each condition, for the answer, its sources,
@@ -54,9 +55,20 @@ function fakeGrounding(spec: AskSpec): Grounding {
 }
 /** The institutions of a kind, as authorityKindIds would read them (D1). */
 const KIND_IDS = ["9606", "9607"];
+/** Both channels complete until 31 May 2026: a trend's `auto` months on 2025 → 2026 are January–May. */
+const PERIODS: CoveragePeriods = {
+  da: { from: "2018-04-02", to: "2026-09-25", completeUntil: "2026-05-31" },
+  contracts: { from: "2018-01-03", to: "2026-09-25", completeUntil: "2026-05-31" },
+};
+/** What runSpec resolves before its context: the trend's same months (sameMonthsWindow). */
+function trendMonthsOf(spec: AskSpec) {
+  if (spec.block !== "trend") return null;
+  const window = sameMonthsWindow(PERIODS, spec.dataset ?? "all", spec.filters.yearTo ?? 2026, spec.trend?.months);
+  return "error" in window ? null : partialMonths(window);
+}
 const ctxFor = (spec: AskSpec): PredicateCtx =>
   predicateContext(fake, spec, fakeGrounding(spec), { dataset: spec.dataset ?? "all", yearFrom: spec.filters.yearFrom ?? null, yearTo: spec.filters.yearTo ?? null,
-    kindIds: namedKind(spec.filters.authorityKind) ? KIND_IDS : null });
+    kindIds: namedKind(spec.filters.authorityKind) ? KIND_IDS : null, trendMonths: trendMonthsOf(spec) });
 
 /** Each level's output on a spec, as the engine calls it (runSpec; runRows calls the same functions). */
 function levelsOf(spec: AskSpec): Record<"row" | "group" | "profile" | "display", string[]> {
@@ -68,7 +80,7 @@ function levelsOf(spec: AskSpec): Record<"row" | "group" | "profile" | "display"
     return { row: [], group: [], profile: texts(profilePredicates(ctx, role, profileMinDas(spec.block))), display: [] };
   }
   const trend = spec.block === "trend";
-  const rows = [...rowPredicates(ctx, { years: !trend }), ...(trend ? [trendYearsPredicate(fake, ctx.yearFrom ?? 2018, ctx.yearTo ?? 2026)] : [])];
+  const rows = [...rowPredicates(ctx, { years: !trend }), ...(trend ? [trendYearsPredicate(fake, ctx.yearFrom ?? 2018, ctx.yearTo ?? 2026, ctx.trendMonths)] : [])];
   return {
     row: texts(rows),
     // The threshold is counted over the rows of the same conditions: `WHERE` stands for them.
@@ -201,7 +213,7 @@ describe("the conditions of a question", () => {
     expect(range({ authorityKind: "spital", yearFrom: 2025, yearTo: 2025 })).toEqual(['d.finalization_date >= $1 ["2025"]', 'd.finalization_date < $1 ["2026"]']);
     // A trend's two years: the sources add the span as a range on id-anchored selections; the answer and other selections keep substr() alone.
     const trend = (filters: AskSpec["filters"], withCtx = true) =>
-      render(trendYearsPredicate(fake, 2019, 2024, withCtx ? ctxFor({ block: "trend", dim: "supplier", measure: "value", filters }) : undefined));
+      render(trendYearsPredicate(fake, 2019, 2024, null, withCtx ? ctxFor({ block: "trend", dim: "supplier", measure: "value", filters }) : undefined));
     expect(trend({ authorityKind: "comuna", yearFrom: 2019, yearTo: 2024 })).toEqual({
       text: "substr(d.finalization_date,1,4) in ($1, $2) and d.finalization_date >= $3 and d.finalization_date < $4", params: ["2019", "2024", "2019", "2025"] });
     expect(trend({ county: "Cluj", yearFrom: 2019, yearTo: 2024 }).text).toBe("substr(d.finalization_date,1,4) in ($1, $2)");
@@ -233,6 +245,37 @@ describe("the conditions of a question", () => {
     // Mixed with a condition no index serves, and every exclusion, keep today's form (and plans).
     expect(population("or", list("authority", "in", ["1"]), list("cpv", "in", ["45"]))).toBe("(coalesce(d.authority_id = any($1::bigint[]), false) or coalesce(d.cpv_code like any($2::text[]), false))");
     expect(population("and", list("supplier", "not_in", ["2"]))).toBe("not (coalesce(d.supplier_id = any($1::bigint[]), false))");
+  });
+
+  it("count the same months of a trend's two years, and show them", () => {
+    const trend = (months?: NonNullable<AskSpec["trend"]>["months"]): AskSpec =>
+      ({ block: "trend", dim: "supplier", measure: "value", filters: { yearFrom: 2025, yearTo: 2026 }, ...(months ? { trend: { months } } : {}) });
+    expect(render(trendYearsPredicate(fake, 2025, 2026)).text).toBe("substr(d.finalization_date,1,4) in ($1, $2)");
+    expect(render(trendYearsPredicate(fake, 2025, 2026, ctxFor(trend("auto")).trendMonths)))
+      .toEqual({ text: "substr(d.finalization_date,1,4) in ($1, $2) and substr(d.finalization_date,6,2) between $3 and $4", params: ["2025", "2026", "01", "05"] });
+    expect(ctxFor(trend([3, 4])).trendMonths).toEqual([3, 4]);
+    expect(ctxFor(trend("whole")).trendMonths).toBeNull();
+    expect(ctxFor(trend()).trendMonths).toBeNull();
+    expect(displayPredicates(ctxFor(trend("auto")), "T").at(-1)).toBe("luna between '01' and '05'  -- aceleași luni în ambii ani");
+    // Only a trend has two years to align.
+    expect(predicateContext(fake, { block: "stat", measure: "value", filters: {} }, {}, { dataset: "all", yearFrom: null, yearTo: null, trendMonths: [1, 5] }).trendMonths).toBeNull();
+  });
+
+  it("write a trend's group as a HAVING over its two sums, and its order (trend final §3.1)", () => {
+    const of = (trend: NonNullable<AskSpec["trend"]>) => {
+      const { having, order } = trendGroupSql(fake, fake`VA`, fake`VB`, trendGroupOf({ trend }), { id: fake`ID`, role: "supplier", yearB: 2025 });
+      return [having ? render(having).text : null, render(order).text];
+    };
+    expect(of({})).toEqual([null, "abs(VB - VA)"]);
+    expect(of({ change: "all" })).toEqual([null, "abs(VB - VA)"]);
+    expect(of({ change: "up" })).toEqual(["VA > 0 and VB > VA", "VB - VA"]);
+    expect(of({ change: "up", order: "percent" })).toEqual(["VA > 0 and VB > VA and VA >= $1", "VB / VA"]);
+    expect(render(trendGroupSql(fake, fake`VA`, fake`VB`, trendGroupOf({ trend: { change: "up", order: "percent", minBase: 100_000 } })).having!).params).toEqual([100_000]);
+    expect(render(trendGroupSql(fake, fake`VA`, fake`VB`, trendGroupOf({ trend: { change: "up", order: "percent" } })).having!).params).toEqual([1_000_000]);
+    expect(of({ change: "new" })).toEqual(["VA = 0 and VB > 0", "VB"]);
+    expect(of({ change: "down" })).toEqual(["VB > 0 and VB < VA", "VA - VB"]);
+    expect(of({ change: "gone" })).toEqual(["VA > 0 and VB = 0", "VA"]);
+    expect(of({ change: "new", firstOnly: true })[0]).toBe("VA = 0 and VB > 0 and ID in ( select ep.entity_id from marts.entity_profile ep where ep.role = $1 and substr(ep.first_activity, 1, 4) = $2 )");
   });
 
   it("put both entities of a comparison in place of the condition on their role", () => {

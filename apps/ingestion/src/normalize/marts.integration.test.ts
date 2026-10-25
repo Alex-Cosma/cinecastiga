@@ -1,7 +1,7 @@
 import {seedVerifiedIdentity} from '../test/contract-identity-fixture.js';
 import {approveContractIdentities} from './approve-contract-identities.js';
 import { afterAll, describe, expect, it } from "vitest";
-import { AGG_MAP_COUNTY_SEAT_COLUMNS, contractKindFromTitle, contractWinnerIsAuthority, createDb, cuiCorroborated, readContractIdentityQuality, TRANSACTION_MART_BUILD_INDEXES, TRANSACTION_MART_INDEXES, type DbSql } from "@seap/db";
+import { AGG_MAP_COUNTY_SEAT_COLUMNS, buildAskRollups, contractKindFromTitle, contractWinnerIsAuthority, createDb, cuiCorroborated, readContractIdentityQuality, TRANSACTION_MART_BUILD_INDEXES, TRANSACTION_MART_INDEXES, type DbSql } from "@seap/db";
 import { DA_CEILING_SEED_ROWS } from "@seap/domain";
 import { runMarts } from "./marts.js";
 import { applyFirmRegistry, onrcRegistration } from "./firm-registry.js";
@@ -323,6 +323,44 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
       expect(coverage?.observation).toMatchObject({ title_classified: "6", title_classified_valued: "4",
         title_classified_value: "6340.25", title_classified_without_ron_value: "2",
         title_classified_included: "2", title_classified_included_value: "1300.25" });
+      throw rollback;
+    })).rejects.toBe(rollback);
+    expect(await sql`select nspname from pg_namespace where nspname like ${`${prefix}_%`}`).toHaveLength(0);
+  }, 30_000);
+  // F2's launch condition (plan §4.7, trend final §6 step 0): no framework ceiling enters a trend. A trend
+  // reads marts.contract_transactions (live) or the Ask rollups grouped from it, never core.contracts:
+  // a ceiling, typed by SEAP or by its title, is in neither; a call-off and a contract of the same firm are.
+  it("keeps framework ceilings out of the contract mart and of every Ask rollup a trend reads", async () => {
+    const prefix = `trend_ceiling_fixture_${process.pid}_${Date.now()}`;
+    const rollback = Error("rollback trend ceiling fixture");
+    await expect(sql.begin(async tx => {
+      for (const [schema, names] of Object.entries(tables)) {
+        await tx.unsafe(`create schema ${prefix}_${schema}`);
+        for (const table of names) await tx.unsafe(`create table ${prefix}_${schema}.${table} as table ${schema}.${table} with no data`);
+      }
+      const [view] = await tx`select pg_get_viewdef('marts.signal_lookup'::regclass, true) definition`;
+      await tx.unsafe(`create materialized view ${prefix}_marts.signal_lookup as ${String(view!.definition).replace(/;\s*$/, "").replace(/\b(core|marts|reference|raw)\./g, `${prefix}_$1.`)} with no data`);
+      const q = isolatedSql(tx as unknown as DbSql, prefix);
+      await q`insert into core.entities(id,name_display) values(1,'Autoritate'),(2,'Furnizor')`;
+      await q`insert into core.awards(id,ca_notice_id,notice_no,authority_entity_id,state_date) values(1,100,'CAN-CEILING',1,'2024-01-10')`;
+      await q`insert into core.contracts(id,raw_id,ca_notice_contract_id,ca_notice_id,contract_no,contract_date,contract_value,currency,title,source_contract_type,contract_type_raw_id) values
+        (1,11,108116001,100,'1','2024-02-01T10:00:00Z',1000.25,'RON','Furnizare motorină','1',11),
+        (2,12,108116002,100,'2','2025-02-01T10:00:00Z',900000,'RON','Furnizare carburant','2',12),
+        (3,13,108116003,100,'3','2025-03-01T10:00:00Z',300,'RON','Carburant pentru motoare diesel','3',13),
+        (4,14,108116004,100,'4','2025-04-01T10:00:00Z',700000,'RON','Acord-cadru lucrări',null,null),
+        (5,15,108116005,100,'5','2025-05-01T10:00:00Z',200,'RON','Contract subsecvent nr. 5',null,null)`;
+      await q`insert into core.contract_winners(contract_id,entity_id) select id,2 from core.contracts`;
+      await runMarts(q);
+      expect((await q`select contract_id::int c from marts.contract_transactions order by 1`).map(r => r.c)).toEqual([1, 3, 5]);
+      await buildAskRollups(q);
+      // Each rollup a trend groups (by entity and year, by month, by pair) holds the contract and the two call-offs only.
+      const years = async (table: string, where: string) => (await q.unsafe(`select y, sum(v)::text v, sum(n)::int n from marts.${table}
+        where src = 'contracts' and ${where} group by y order by y`)).map(r => ({ y: r.y, v: Number(r.v), n: r.n }));
+      const expected = [{ y: "2024", v: 1000.25, n: 1 }, { y: "2025", v: 500, n: 2 }];
+      expect(await years("agg_entity_year", "role = 'supplier' and eid = 2")).toEqual(expected);
+      expect(await years("agg_entity_month", "role = 'supplier' and eid = 2")).toEqual(expected);
+      expect(await years("agg_pair_year", "supplier_id = 2")).toEqual(expected);
+      expect(await years("agg_cpv_year", "true")).toEqual(expected);
       throw rollback;
     })).rejects.toBe(rollback);
     expect(await sql`select nspname from pg_namespace where nspname like ${`${prefix}_%`}`).toHaveLength(0);

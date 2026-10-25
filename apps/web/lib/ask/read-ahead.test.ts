@@ -14,12 +14,7 @@ const trend = { block: "trend", dim: "supplier", measure: "value", filters: { ye
 const stat = { block: "stat", measure: "value", filters: {} };
 const table = { block: "table", dim: "supplier", measure: "value", filters: {} };
 /** One well-formed sample per key read ahead, on a question that otherwise runs today. */
-const SAMPLES: Record<Exclude<keyof typeof READ_AHEAD_KEYS, "options.members">, Record<string, unknown>> = {
-  "trend.change": { ...trend, trend: { change: "up" } },
-  "trend.months": { ...trend, trend: { months: [1, 6] } },
-  "trend.order": { ...trend, trend: { order: "percent" } },
-  "trend.minBase": { ...trend, trend: { minBase: 100_000 } },
-  "trend.firstOnly": { ...trend, trend: { firstOnly: true } },
+const SAMPLES: Record<Exclude<keyof typeof READ_AHEAD_KEYS, "options.members=network-group">, Record<string, unknown>> = {
   "timeseries.grain": { block: "timeseries", measure: "value", filters: { yearFrom: 2024, yearTo: 2025 }, timeseries: { grain: "month" } },
   "timeseries.split": { block: "timeseries", measure: "value", filters: {}, timeseries: { split: "channel" } },
   "timeseries.months": { block: "timeseries", measure: "value", filters: {}, timeseries: { months: "auto" } },
@@ -56,7 +51,7 @@ const untouched = new Proxy(() => undefined, {
 
 describe("keys read ahead of the engine", () => {
   it("has one sample per key of plan §3 and none of them is implemented yet", () => {
-    expect(Object.keys(SAMPLES).sort()).toEqual(Object.keys(READ_AHEAD_KEYS).filter(key => key !== "options.members").sort());
+    expect(Object.keys(SAMPLES).sort()).toEqual(Object.keys(READ_AHEAD_KEYS).filter(key => key !== "options.members=network-group").sort());
     for (const key of Object.keys(READ_AHEAD_KEYS)) expect(IMPLEMENTED_KEYS.has(key), key).toBe(false);
   });
 
@@ -135,9 +130,9 @@ describe("keys read ahead of the engine", () => {
   });
 
   it("refuses the newer key before the rules a newer release may have changed", () => {
-    // Today a trend refuses months; with trend.months a newer link is "newer", not "invalid".
-    const raw = { ...trend, filters: { ...trend.filters, monthFrom: 1 }, trend: { months: [1, 6] } };
-    expect(validateSpec(raw)).toHaveProperty("error", expect.stringContaining("Schimbarea compară doi ani întregi"));
+    // Today a network needs its entity; a newer link with the network's groups is "newer", not "invalid".
+    const raw = { block: "network", measure: "value", filters: {}, network: { partners: "new" } };
+    expect(validateSpec(raw)).toHaveProperty("error", expect.stringContaining("requires filters.authorityName"));
     expect(validateSpec(raw, { refuseNewer: NEWER_VERSION_LINK })).toEqual({ error: NEWER_VERSION_LINK, newer: true });
   });
 
@@ -174,6 +169,8 @@ describe("today's questions", () => {
       "filters.authorityId", "filters.supplierId", "filters.compareWithId", "filters.uatSiruta", "filters.uatName", "filters.adminPersonKey",
       // Months, the precise selection, the record threshold and the comparison mode: builder and link only.
       "filters.monthFrom", "filters.monthTo", "population", "minimumRecords", "comparisonMode",
+      // F2: the trend's lenses come from the builder and the rules interpreter (plan §2.7); the model path is off.
+      "trend.change", "trend.months", "trend.order", "trend.minBase", "trend.firstOnly",
     ];
     const schema = new Set([...Object.keys(SPEC_JSON_SCHEMA.properties).filter(key => key !== "filters"),
       ...Object.keys(SPEC_JSON_SCHEMA.properties.filters.properties).map(key => `filters.${key}`)]);

@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { defaultQuestion, questionErrors, questionKey, transitionQuestion } from "../question-ui";
-import { IMPLEMENTED_KEYS, NEWER_VERSION_LINK, parseSpec, READ_AHEAD_KEYS, runnableError, unimplementedSpecKeys, validateSpec, type AskSpec, type Block } from "../spec";
+import { IMPLEMENTED_KEYS, NEWER_VERSION_LINK, parseSpec, READ_AHEAD_KEYS, runnableError, TREND_RULES, unimplementedSpecKeys, validateSpec, type AskSpec, type Block } from "../spec";
 import { legacyCorpus } from "../fixtures/legacy-corpus";
 import { FIXTURE_IDENTITIES } from "../fixtures/golden-fixture";
 import { BLOCK_FILTERS } from "./blocks";
@@ -40,17 +40,71 @@ describe("one owner for every key (R2)", () => {
 
   it("owns every path parseSpec reads: the engine's and those read ahead", () => {
     const read = [...IMPLEMENTED_KEYS, ...Object.keys(READ_AHEAD_KEYS)]
-      .filter((path) => path !== "options.members") // a watch's, not the spec's
+      .filter((path) => !path.startsWith("options.members")) // a watch's, not the spec's
       .map((path) => path === "filters.authorityKind=local_admin" ? "filters.authorityKind" : path);
     expect([...new Set(read)].sort()).toEqual(Object.keys(SPEC_PATH_OWNERS).sort());
   });
 });
 
 describe("the rules of a key (plan §2.4)", () => {
-  // runnableError (spec.ts) does not call FilterDef.validate yet: spec.ts cannot import the registry,
-  // whose definitions read spec.ts. The first stage with a rule composes validateSpec above both.
-  it("are in runnableError today; no filter declares a rule it would not run", () => {
-    expect(FILTER_DEFS.filter((def) => def.validate).map((def) => def.id)).toEqual([]);
+  // spec.ts cannot import the registry, whose definitions read spec.ts: a rule lives in spec.ts
+  // (TREND_RULES, F2) and the filter declares that same function, which runnableError runs.
+  it("are those runnableError runs; no filter declares a rule it would not run", () => {
+    const ruled = FILTER_DEFS.filter((def) => def.validate);
+    expect(ruled.map((def) => def.id)).toEqual(["trendOrder", "trendMinBase", "trendFirstOnly"]);
+    expect(ruled.map((def) => def.validate)).toEqual([TREND_RULES.order, TREND_RULES.minBase, TREND_RULES.firstOnly]);
+    const trend = { block: "trend", dim: "supplier", measure: "value", filters: { yearFrom: 2024, yearTo: 2025 } } as const;
+    for (const [raw, rule] of [
+      [{ ...trend, trend: { change: "down", order: "lei" } }, TREND_RULES.order],
+      [{ ...trend, trend: { change: "up", minBase: 100_000 } }, TREND_RULES.minBase],
+      [{ ...trend, trend: { change: "up", order: "lei", minBase: 100_000 } }, TREND_RULES.minBase],
+      [{ ...trend, trend: { change: "up", firstOnly: true } }, TREND_RULES.firstOnly],
+      [{ ...trend, dim: "county", trend: { change: "new", firstOnly: true } }, TREND_RULES.firstOnly],
+    ] as const) {
+      const parsed = parseSpec(raw);
+      if ("error" in parsed) throw new Error(parsed.error);
+      expect(rule(parsed), JSON.stringify(raw)).not.toBeNull();
+      expect(validateSpec(raw)).toEqual({ error: rule(parsed) });
+    }
+    expect(validateSpec({ ...trend, trend: { change: "up", order: "percent", minBase: 100_000 } })).not.toHaveProperty("error");
+    expect(validateSpec({ ...trend, trend: { change: "new", firstOnly: true, months: "auto" } })).not.toHaveProperty("error");
+  });
+});
+
+describe("keys a later stage implements (F2: the trend's)", () => {
+  const later = FILTER_DEFS.filter((def) => def.since);
+
+  it("are the trend's five lenses, applied on the trend only, with the plan's level and scope", () => {
+    expect(later.map((def) => [def.id, def.since, def.engine, def.scope("trend")])).toEqual([
+      ["trendChange", "F2", { trend: "group" }, "group"],
+      ["trendMonths", "F2", { trend: "row" }, "selection"],
+      ["trendOrder", "F2", { trend: "display" }, "display"],
+      ["trendMinBase", "F2", { trend: "group" }, "group"],
+      ["trendFirstOnly", "F2", { trend: "group" }, "group"],
+    ]);
+    for (const def of later) for (const key of def.keys) expect(IMPLEMENTED_KEYS.has(key), key).toBe(true);
+  });
+
+  it("keep a group's own options when the group changes (trend final §4.3)", () => {
+    const base = { block: "trend", dim: "supplier", measure: "value", filters: { yearFrom: 2024, yearTo: 2025 } } as FilterSpec;
+    const percent = FILTERS.trendOrder.write(FILTERS.trendChange.write(base, "up"), "percent");
+    expect(percent.trend).toEqual({ change: "up", order: "percent", minBase: 1_000_000 });
+    expect(FILTERS.trendChange.write(percent, "down").trend).toEqual({ change: "down" });
+    expect(FILTERS.trendOrder.write(percent, "lei").trend).toEqual({ change: "up", order: "lei" });
+    const first = FILTERS.trendFirstOnly.write(FILTERS.trendChange.write(base, "new"), true);
+    expect(FILTERS.trendChange.write(first, "gone").trend).toEqual({ change: "gone" });
+    expect(FILTERS.trendMonths.write(FILTERS.trendMonths.write(base, "auto"), undefined)).not.toHaveProperty("trend");
+    // Every value a control writes passes validateSpec on the question it offers it on.
+    for (const def of later) {
+      let spec = base;
+      if (def.id === "trendOrder" || def.id === "trendMinBase") spec = FILTERS.trendOrder.write(FILTERS.trendChange.write(base, "up"), "percent");
+      if (def.id === "trendFirstOnly") spec = FILTERS.trendChange.write(base, "new");
+      const values = def.choices(spec, ctxOf(spec));
+      expect(values.length, def.id).toBeGreaterThan(0);
+      for (const value of values) expect(validateSpec(def.write(spec, value)), `${def.id} = ${JSON.stringify(value)}`).not.toHaveProperty("error");
+    }
+    // Counties without a firm or a domain: all 42 buy in both years, so new and gone are not offered.
+    expect(FILTERS.trendChange.choices({ ...base, dim: "county" }, ctxOf({ ...base, dim: "county" }))).toEqual(["up", "down", "all"]);
   });
 });
 
@@ -97,7 +151,8 @@ function presentKey(spec: FilterSpec, key: string): boolean {
 
 describe("today's scope of each key (TODAY_SCOPE, plan §2.2)", () => {
   it("is fixed for every key the engine applies, on each question it applies it to", () => {
-    const applied = FILTER_DEFS.filter((def) => Object.keys(def.engine).length > 0);
+    // A key of a later stage (`since`) had no scope in the engine of 4e90b00.
+    const applied = FILTER_DEFS.filter((def) => Object.keys(def.engine).length > 0 && !def.since);
     expect(Object.keys(TODAY_SCOPE).sort()).toEqual(applied.map((def) => def.id).sort());
     const changed: string[] = [];
     for (const def of applied) {
@@ -191,8 +246,8 @@ function walk() {
 
 describe("R1: what a question offers, the engine accepts (plan §2.1)", () => {
   let result: ReturnType<typeof walk>;
-  // A few seconds alone; the whole suite runs its files in parallel.
-  beforeAll(() => { result = walk(); }, 60_000);
+  // ~3 s alone; the whole suite on a shared machine (load ~30) took it past the default 10 s hook timeout.
+  beforeAll(() => { result = walk(); }, 120_000);
 
   it("walks every offered choice and every pair of choices", () => {
     expect(result.singles).toBeGreaterThan(15_000);

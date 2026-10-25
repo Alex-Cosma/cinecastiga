@@ -3,14 +3,17 @@ import { retiredChoicesText } from "./retired-terms";
 import { countWords } from "./answer-text";
 import { FORCE_CUSTOM_PLANS } from "../plan-cache";
 import type { DbSql } from "@seap/db";
-import { namedKind, NEWER_VERSION_LINK, unimplementedSpecKeys, type AskSpec, type Dim } from "./spec";
+import { namedKind, NEWER_VERSION_LINK, unimplementedSpecKeys, type AskSpec, type Dim, type MonthWindow, type TrendChange } from "./spec";
 import type { Grounding } from "./ground";
 import { EVIDENCE_CSV_LIMIT, PROFILE_BLOCKS, sumDecimalStrings, validateEvidenceScope, type EvidenceScope, type EvidenceStatus, type EvidenceProfile } from "./evidence";
 import {
-  andAll, DA_PLAFOND_RON, displayPredicates, ENTITY_CARD_MIN_DAS, fold, groupPredicates, perCapitaPredicate, plafondFor, predicateContext,
-  profileMinDas, profilePredicates, RISK_MIN_DAS, rowPredicates, trendYearsPredicate, type PredicateCtx,
+  andAll, DA_PLAFOND_RON, displayPredicates, employeesCond, ENTITY_CARD_MIN_DAS, fold, groupPredicates, isEveryChange, perCapitaPredicate, plafondFor, predicateContext,
+  profileMinDas, profilePredicates, RISK_MIN_DAS, rowPredicates, trendGroupOf, trendGroupSql, trendYearsPredicate, type PredicateCtx, type TrendGroup,
 } from "./predicates";
 import { authorityKindIds, KIND_LABEL } from "./authority-kind";
+import { monthsLabel, partialMonths, sameMonthsWindow, WHOLE_YEAR, type CoveragePeriods, type MonthsMode, type MonthsWindow } from "./months-window";
+import { formatBucharestDay as frozenDay } from "../format";
+import { TREND_CHANGE_LABELS, trendGroupLabel } from "./filters/defs/trend";
 import { countyIsFirmSeat, isHistoricalProfile, unsupportedPopulationView } from "./population";
 import { describeConditions, type ConditionLabels } from "./filters/describe";
 import { retarget } from "./filters/retarget";
@@ -19,8 +22,17 @@ import { PER_CAPITA_SOURCE, perCapitaCaveat, POPULATION_CARD_NOTE, readPerCapita
 import { martColumns } from "./mart-columns";
 import {
   compareParties, compareSharedPartners, compareTopPartners, planRollup, rollupBreakdown, rollupCountyTable, rollupMap, rollupMinimumCond,
-  rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrend, scatterDensity, type RollupFilters, type RollupNeed, type RollupSource,
+  coverRefReady, monthRollupReady, rollupDaysReady, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, scatterDensity,
+  type RollupFilters, type RollupNeed, type RollupSource,
 } from "./rollups";
+import {
+  factsOfRow, factsSource, factsYears, liveTrendChannels, trendFactsRows, trendListOf, trendMembersFigures, trendNoun, trendPartition, trendProfiles,
+  type TrendAttribute, type TrendComposition, type TrendList, type TrendMemberPart, type TrendNoun, type TrendPartitionRow, type TrendPartSources, type TrendRowFacts,
+} from "./trend-partition";
+import {
+  entryMembers, groupSourceTotals, hasMember, memberList, rememberTrendGroups, trendCacheStamp, trendGroupEntry, trendGroupKey, trendGroupsFor, trendMemberPart,
+  type SourceTotalsRow,
+} from "./group-ids";
 import { sectorUnit } from "../peer-population";
 
 /**
@@ -203,7 +215,67 @@ export type BlockData =
   | { block: "network"; nodes: NetworkNode[]; focal: { entityId: string; name: string; role: string } }
   | { block: "entity_card"; card: EntityCardData }
   | { block: "fact_check"; fact: FactCheckData }
-  | { block: "trend"; rowsTrend: TrendRow[]; yearA: number; yearB: number };
+  // trend-2 (F2, plan §4.7): rowsTrend is the chosen group (today's shape; every change without trend options), beside
+  // the first N of every group, the composition, the group noun and the facts of the shown rows (trend-partition.ts).
+  // The optional fields are absent from answers stored before trend-2 (captures, watch runs).
+  | {
+    block: "trend"; rowsTrend: TrendRow[]; yearA: number; yearB: number; change?: TrendChange; months?: MonthsWindow;
+    /** The list rowsTrend is (the change, or "first" with firstOnly). */
+    list?: TrendList; groups?: Partial<Record<TrendList, TrendRow[]>>; composition?: TrendComposition; noun?: TrendNoun;
+    /** By entity id, for the rows of every list; none on counties. Not compared by a watch (answerCore). */
+    rowFacts?: Record<string, TrendRowFacts>;
+    /** A watch on a group (TableOpts.fixedMembers): the answer is its fixed members', not the live group's. */
+    members?: TrendFrozenGroup;
+    /** A trend of firms with an employees band: per list, the firms left out without a filing. Not compared by a watch. */
+    withoutFiling?: Partial<Record<TrendList, number>>;
+  };
+
+/**
+ * 2018 on a trend (trend final §3.2, decision F2 "2018 scos doar din trend"):
+ * partialYears marks the direct acquisitions from 2 April, not the contracts,
+ * whose archive is dated from 2000 but holds half the contracts of 2019
+ * (59,967 against 129,947 on the local copy). The direct acquisitions have
+ * partialYears' own note (on "all" too, beside this one), never repeated here.
+ */
+export const TREND_2018_NOTE: Record<"all" | "da" | "contracts", string | null> = {
+  all: "Și contractele din 2018 sunt jumătate din cele din 2019.",
+  contracts: "2018 e incomplet: contractele din 2018 sunt jumătate din cele din 2019.",
+  da: null,
+};
+
+/**
+ * A trend's statements (its answer and its sources) run without JIT: the cost
+ * of a live national grouping (a CPV, the same months) passes the JIT
+ * thresholds, and compiling it took 1–1.4 s of 3.3–3.6 s, more than it saved
+ * (local, production settings: medicines 2024 → 2025 3.6 → 2.5 s, growths
+ * Jan–May 3.6 → 2.4 s, a group's sources 1.0 → 0.4 s; the rollup answers unchanged).
+ */
+export const TREND_NO_JIT = "set local jit = off";
+
+/** The months a trend's answer counted and the data checkpoint it read them at; its sources send them back (runRows `months`). */
+export interface ExecutedWindow { months: MonthWindow; mode: MonthsMode; checkpoint: string | null }
+const monthsOf = (window: MonthsWindow | null): MonthsWindow => window ? { from: window.from, to: window.to, mode: window.mode } : { ...WHOLE_YEAR };
+/** The answer's window is no longer the one the data gives (a new checkpoint moved `auto`): its sources would list other records. */
+export const DATA_CHANGED = "Datele s-au actualizat; reîncarcă răspunsul.";
+
+/**
+ * A watch on a trend's group (plan §2.8, F2): the members fixed when it was
+ * activated (entity ids already followed through core.entity_redirects, or
+ * county names). Its answer and its sources are those of the same members at
+ * every check, never of the live group. Server-only (TableOpts.fixedMembers,
+ * DrillOpts.fixedMembers): no request carries it.
+ */
+export interface TrendFixedMembers { role: "supplier" | "authority" | "county"; ids: readonly string[]; frozen: number; frozenAt: string }
+/** What an answer computed on fixed members says it is: the list, how many were fixed and when. The same at every check. */
+export interface TrendFrozenGroup { list: TrendList; frozen: number; frozenAt: string }
+/**
+ * Where the fixed members stand in the live group, for the watch's note only
+ * ("3 firme au intrat în grupă, 1 a ieșit"): never in `data`, so the movement
+ * of other entities never changes the watched result.
+ */
+export interface TrendGroupMovement { part: TrendMemberPart; members: number; stayed: number; live: number }
+/** A group watch whose question no longer lists that group (another role or change): never run on another group. */
+export const FIXED_GROUP_MISMATCH = "Grupa fixată nu corespunde întrebării. Creează o urmărire nouă pentru această grupă.";
 
 export interface EngineResult {
   data: BlockData;
@@ -217,6 +289,12 @@ export interface EngineResult {
    * already fetched (plan §2.3 variants): the map's lens, value or records.
    */
   displaySqlByMeasure?: Partial<Record<"value" | "count", string>>;
+  /** trend with `trend.months`: the window `auto` resolved to (plan §2.8); the spec keeps `auto`. */
+  executed?: ExecutedWindow;
+  /** trend with TableOpts.freezeGroup: every member of the chosen group (ids ascending, or county names), for a watch to fix. */
+  groupMembers?: string[];
+  /** trend with TableOpts.fixedMembers: where the fixed members stand in the live group (the watch's note). */
+  movement?: TrendGroupMovement;
 }
 
 // Audit F15: the locality filter is the UAT's own administration, strictly
@@ -272,20 +350,29 @@ export async function daCoverageYears(sql: DbSql, kind: "da" | "award" = "da"): 
   return years;
 }
 
-/** First and last dated record of a channel (marts.data_coverage, Bucharest calendar days),
- * and the last day considered complete (audit F10; null or absent when not established). */
-export interface ChannelPeriod { from: string | null; to: string | null; completeUntil?: string | null }
-export type CoveragePeriods = Record<"da" | "contracts", ChannelPeriod>;
+export type { ChannelPeriod, CoveragePeriods } from "./months-window";
 /** A year (or the selected months of it) that the archive covers only in part,
  * or whose contracts are provisional (audit F10). */
 export interface PartialYear { year: number; note: string; provisional?: true }
-let periodCache: { periods: CoveragePeriods | null; at: number } | undefined;
-/** Archive period per channel, or null when the inventory has not been calculated. */
+let periodCache: { periods: CoveragePeriods | null; checkpoint: string | null; at: number } | undefined;
+/**
+ * Archive period per channel, or null when the inventory has not been
+ * calculated: the one coverage source of the engine, the trend's window and
+ * default years (months-window.ts) and /api/data-coverage (plan §2.8). The
+ * cache (10 minutes per process) is keyed on the data checkpoint, so a
+ * published refresh is read at once by every process.
+ */
 export async function coveragePeriods(sql: DbSql): Promise<CoveragePeriods | null> {
   const fresh = snapshotCoverageConnections.has(sql);
-  if (!fresh && periodCache && Date.now() - periodCache.at < 600_000) return periodCache.periods;
   // Additive deployment: probe first, so a missing table cannot abort a caller's transaction.
-  const [table] = (await sql`select to_regclass('marts.data_coverage') is not null ok`) as unknown as { ok: boolean }[];
+  const [table] = (await sql`
+    select to_regclass('marts.data_coverage') is not null ok, to_regclass('app.monitoring_refreshes') is not null refreshes
+  `) as unknown as { ok: boolean; refreshes?: boolean }[];
+  const [ready] = table?.refreshes
+    ? (await sql`select id::text id from app.monitoring_refreshes where status = 'ready' order by version desc limit 1`) as unknown as { id: string }[]
+    : [];
+  const checkpoint = ready?.id ?? null;
+  if (!fresh && periodCache && periodCache.checkpoint === checkpoint && Date.now() - periodCache.at < 600_000) return periodCache.periods;
   let periods: CoveragePeriods | null = null;
   if (table?.ok) {
     const rows = (await sql`
@@ -294,12 +381,14 @@ export async function coveragePeriods(sql: DbSql): Promise<CoveragePeriods | nul
       from marts.data_coverage where dataset in ('da', 'contracts')
     `) as unknown as { dataset: "da" | "contracts"; date_from: string | null; date_to: string | null; complete_until?: string | null }[];
     const da = rows.find((r) => r.dataset === "da"), contracts = rows.find((r) => r.dataset === "contracts");
+    // Both channels' "complet până la" day: the trend's same months need the earlier one (sameMonthsWindow).
     if (da && contracts) periods = {
-      da: { from: da.date_from, to: da.date_to },
+      da: { from: da.date_from, to: da.date_to, completeUntil: da.complete_until ?? null },
       contracts: { from: contracts.date_from, to: contracts.date_to, completeUntil: contracts.complete_until ?? null },
+      checkpoint,
     };
   }
-  if (!fresh) periodCache = { periods, at: Date.now() };
+  if (!fresh) periodCache = { periods, checkpoint, at: Date.now() };
   return periods;
 }
 
@@ -484,6 +573,10 @@ export interface TableOpts {
   page?: number;
   sort?: TableSort;
   dir?: "asc" | "desc";
+  /** Server-only, a watch on a trend's group: the answer is computed on these members (TrendFixedMembers). */
+  fixedMembers?: TrendFixedMembers;
+  /** Server-only, a watch being activated on a trend's group: return its members (EngineResult.groupMembers). */
+  freezeGroup?: boolean;
 }
 
 /**
@@ -508,8 +601,66 @@ function rollupNeed(spec: AskSpec): RollupNeed | null {
 async function rollupPlanFor(sql: DbSql, spec: AskSpec, ctx: PredicateCtx): Promise<{ source: RollupSource; filters: RollupFilters } | null> {
   const need = rollupNeed(spec);
   if (!need || spec.measure === "value_per_capita" || !(await rollupsReady(sql))) return null;
-  const plan = planRollup(ctx, need);
+  // A trend's same months read agg_entity_month once a build has made it.
+  const plan = planRollup(ctx, need, { months: ctx.trendMonths ? await monthRollupReady(sql) : false });
   return "source" in plan ? plan : null;
+}
+
+/**
+ * A trend's grouped input for trendPartition: per entity (or county) the sums
+ * of the two years and each channel's records, value and days, from the
+ * rollup the planner picked or from the live grouping of the slim union
+ * (names and counties come from the profiles after). The answer and its
+ * sources' drawer (a group missing from group-ids.ts) group the same way.
+ * `members` (a watch's fixed group) groups only those, live on the id index
+ * of their two years: a few thousand ids, never a pass over the rollups.
+ */
+function trendGroupedInput(s: DbSql, o: {
+  rollup: { source: RollupSource; filters: RollupFilters } | null; days: boolean; ctx: PredicateCtx;
+  dataset: "all" | "da" | "contracts"; dim: Dim; yearA: number; yearB: number; members?: readonly string[];
+}): ReturnType<DbSql> {
+  const rolled = o.rollup && !o.members ? rollupTrendGrouped(s, o.rollup, { dim: o.dim, yearA: o.yearA, yearB: o.yearB, days: o.days }) : null;
+  if (rolled && "grouped" in rolled) return rolled.grouped;
+  const key: ReturnType<DbSql> = o.dim === "county" ? s`d.county` : o.dim === "authority" ? s`d.authority_id` : s`d.supplier_id`;
+  const va: ReturnType<DbSql> = s`coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(o.yearA)}), 0)`;
+  const vb: ReturnType<DbSql> = s`coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(o.yearB)}), 0)`;
+  const fixed: ReturnType<DbSql>[] = !o.members ? [] : o.dim === "county" ? [s`d.county = any(${s.array([...o.members])}::text[])`] : [
+    s`${key} = any(${s.array([...o.members])}::bigint[])`,
+    s`d.finalization_date >= ${String(Math.min(o.yearA, o.yearB))} and d.finalization_date < ${String(Math.max(o.yearA, o.yearB) + 1)}`,
+  ];
+  // The buyer's kind on its ids (D1, authority_id): the slim union, no names, on the id indexes.
+  const selection = andAll(s, [...rowPredicates(o.ctx, { years: false }), trendYearsPredicate(s, o.yearA, o.yearB, o.ctx.trendMonths), ...fixed]);
+  return s`
+    select ${key} id, ${va} va, ${vb} vb, ${liveTrendChannels(s, o.dataset)}
+    from ${txAggFragment(s, o.dataset, false)} d
+    where ${selection} and ${key} is not null
+    group by ${key}
+  `;
+}
+
+/**
+ * A trend's grouping with the firms' employees as an attribute of the grouped
+ * firm, not a selection of its records (plan §4.7 P3a, under trend-2; trend
+ * final §3.10): on a trend of firms the grouping counts every firm of the
+ * selection, and the partition keeps the firms of the band (the same lists
+ * and composition as the selection gave) and counts per group those left out
+ * without a filing, and the selection they are part of. Elsewhere (the firms
+ * of a trend of institutions or counties are the other side) and on a watch's
+ * fixed members, the employees stay a selection of the records.
+ */
+function trendGrouping(s: DbSql, o: Parameters<typeof trendGroupedInput>[1]): { grouped: ReturnType<DbSql>; attribute: TrendAttribute | null } {
+  const { ctx } = o;
+  if (o.dim !== "supplier" || o.members || (ctx.minEmployees === null && ctx.maxEmployees === null))
+    return { grouped: trendGroupedInput(s, o), attribute: null };
+  const every: PredicateCtx = { ...ctx, minEmployees: null, maxEmployees: null };
+  const rollup = o.rollup ? { ...o.rollup, filters: { ...o.rollup.filters, employees: null } } : null;
+  return {
+    grouped: trendGroupedInput(s, { ...o, ctx: every, rollup }),
+    attribute: {
+      keep: employeesCond(s, ctx.minEmployees, ctx.maxEmployees, s`k.id`),
+      filed: s`k.id in (select ep.entity_id from marts.entity_profile ep where ep.role = 'supplier' and ep.employees is not null)`,
+    },
+  };
 }
 
 export async function runSpec(
@@ -684,11 +835,23 @@ export async function runSpec(
     caveats.push(DA_PLAFOND_CAVEAT, DA_ACCEPTED_CAVEAT);
   }
 
+  // trend: the months both years count (months-window.ts), resolved at this
+  // checkpoint before the first query. The spec keeps `auto`; the answer
+  // returns the window it executed (`executed`), which its sources send back.
+  let trendWindow: (MonthsWindow & { checkpoint: string | null }) | null = null;
+  if (spec.block === "trend" && spec.trend?.months !== undefined) {
+    const periods = await coveragePeriods(sql);
+    const window = sameMonthsWindow(periods, dataset, yearTo ?? maxY, spec.trend.months);
+    if ("error" in window) return { error: window.error, caveats };
+    trendWindow = { ...window, checkpoint: periods?.checkpoint ?? null };
+    if (partialMonths(window)) caveats.push(`Ambii ani se compară pe aceleași luni: ${monthsLabel(window)}.`);
+  }
+
   // Every condition of the question, written by lib/ask/predicates.ts for the
   // answer, its sources, the CSV, the captures and the displayed SQL alike.
   // The kind of institution is a list of ids, read once per marts build (authority-kind.ts, D1).
   const kindIds = await authorityKindIds(sql, namedKind(spec.filters.authorityKind));
-  const w: PredicateCtx = predicateContext(sql, spec, grounding, { dataset, yearFrom, yearTo, kindIds });
+  const w: PredicateCtx = predicateContext(sql, spec, grounding, { dataset, yearFrom, yearTo, kindIds, trendMonths: partialMonths(trendWindow) });
   const { authorityId, supplierId } = w;
   const compareId = w.comparison?.compareId ?? null;
   if (w.minEmployees !== null || w.maxEmployees !== null) {
@@ -814,9 +977,14 @@ export async function runSpec(
 
   // The nightly rollups answer the selections that otherwise group the transaction marts.
   const rollup = isHistoricalProfile(spec) ? null : await rollupPlanFor(sql, spec, w);
+  // A trend's group sources read their days from the rollup once a build has them (rollupDaysReady).
+  const trendDays = spec.block === "trend" && rollup ? await rollupDaysReady(sql) : false;
   const columns = spec.block === "scatter" ? await martColumns(sql) : null;
 
   // --- execute under guardrails
+  // trend: a watch's group (TableOpts.freezeGroup, TableOpts.fixedMembers), set by its case.
+  let frozenMembers: string[] | undefined;
+  let movement: TrendGroupMovement | undefined;
   const exec = async (): Promise<BlockData | { error: string }> => {
     return await sql.begin("read only", async (tx) => {
       await tx.unsafe(FORCE_CUSTOM_PLANS);
@@ -1582,64 +1750,71 @@ export async function runSpec(
           }
           const topN = spec.topN ?? 10;
           const dim = spec.dim ?? "authority";
-          const rolledTrend = rollup ? await rollupTrend(s, rollup, { dim, yearA: yA, yearB: yB, topN }) : null;
-          if (dim === "county") {
-            // Equal changes come out by county, as from the rollup.
-            const r = rolledTrend && "rows" in rolledTrend ? rolledTrend.rows.map((p) => ({ c: p.nm, va: p.va, vb: p.vb })) : (await s`
-              select d.county c,
-                     coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yA)}), 0) va,
-                     coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yB)}), 0) vb
-              from ${txtAggNames} d
-              where ${whereFrag({ years: false })} and d.county is not null
-                and ${trendYearsPredicate(s, yA, yB)}
-              group by 1
-              order by abs(
-                coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yB)}), 0)
-                - coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yA)}), 0)
-              ) desc, c
-              limit ${topN}
-            `) as unknown as { c: string; va: string; vb: string }[];
-            return {
-              block: "trend",
-              yearA: yA,
-              yearB: yB,
-              rowsTrend: r.map((p) => ({
-                entityId: null,
-                name: p.c,
-                county: null,
-                valueA: Number(p.va),
-                valueB: Number(p.vb),
-              })),
-            };
-          }
-          const idCol = dim === "authority" ? s`d.authority_id` : s`d.supplier_id`;
-          const nameCol = dim === "authority" ? s`d.authority_name` : s`d.supplier_name`;
-          // Equal changes come out by id, as from the rollup (consortium partners share a value).
-          const r = rolledTrend && "rows" in rolledTrend ? rolledTrend.rows : (await s`
-            select ${idCol} id, max(${nameCol}) nm, max(d.county) co,
-                   coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yA)}), 0) va,
-                   coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yB)}), 0) vb
-            from ${txtAggNames} d
-            where ${whereFrag({ years: false })} and ${idCol} is not null
-              and ${trendYearsPredicate(s, yA, yB)}
-            group by ${idCol}
-            order by abs(
-              coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yB)}), 0)
-              - coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yA)}), 0)
-            ) desc, ${idCol}
-            limit ${topN}
-          `) as unknown as { id: string; nm: string; co: string | null; va: string; vb: string }[];
+          await s.unsafe(TREND_NO_JIT);
+          // trend-2 (plan §4.7): the partition of the selection, grouped once by entity or county
+          // (from a rollup when one answers it), with the first N of every group and the composition;
+          // the chosen group is rowsTrend (every change without trend options, as before trend-2).
+          const group = trendGroupOf(spec);
+          const key: ReturnType<DbSql> = dim === "county" ? s`d.county` : dim === "authority" ? s`d.authority_id` : s`d.supplier_id`;
+          // A record threshold is refused on a trend (population.ts), so the selection is the record conditions,
+          // the buyer's kind on its ids (D1, authority_id): the facts then read no names.
+          const selection = andAll(s, [...rowPredicates(w, { years: false }), trendYearsPredicate(s, yA, yB, w.trendMonths)]);
+          // Names and counties come from entity_profile after the grouping, so the live query groups the slim union;
+          // a trend of firms groups every firm and keeps those of its employees band (trendGrouping).
+          const { grouped, attribute } = trendGrouping(s, { rollup, days: trendDays, ctx: w, dataset, dim, yearA: yA, yearB: yB });
+          const first = dim === "county" ? null : { role: dim, yearB: yB };
+          const fixed = tableOpts.fixedMembers;
+          const part = trendMemberPart(group);
+          if (fixed && (!part || fixed.role !== dim)) return { error: FIXED_GROUP_MISMATCH };
+          // A watch on a group (plan §2.8): the live partition only counts the group for the note (no lists);
+          // the answer is its fixed members' figures, grouped on their id index, in the group's order.
+          const partition = await trendPartition(s, grouped, { group, topN: fixed ? 0 : topN, first, attribute });
+          // The members of every group and their records per channel, kept for the source drawers (group-ids.ts).
+          const stamp = fixed ? null : await trendCacheStamp(s);
+          if (stamp) rememberTrendGroups(trendGroupKey(w, { stamp, dim, yearA: yA, yearB: yB }), trendGroupEntry(partition, { dim, group }));
+          if (tableOpts.freezeGroup && part) frozenMembers = partition.members[part] ?? [];
+          const own = fixed ? await trendMembersFigures(s,
+            trendGroupedInput(s, { rollup: null, days: false, ctx: w, dataset, dim, yearA: yA, yearB: yB, members: fixed.ids }), { group, topN, first }) : null;
+          if (own) movement = { part: part!, members: fixed!.ids.length, stayed: own.stayed, live: partition.composition[part!]?.count ?? 0 };
+          const lists: [TrendList, TrendPartitionRow[]][] = own ? [[trendListOf(group), own.rows]] : Object.entries(partition.lists) as [TrendList, TrendPartitionRow[]][];
+          // The facts and the profile of the shown entities only (≤ 6 × N ids), on the id indexes, each in its change year.
+          const shown = dim === "county" ? [] : [...new Set(lists.flatMap(([, rows]) => rows.map((r) => r.id)))];
+          const partnerRole = dim === "supplier" ? "authority" : "supplier";
+          const facts = dim === "county" ? [] : await trendFactsRows(s, {
+            source: factsSource(s, dataset, false), where: selection, id: key,
+            partner: dim === "supplier" ? s`d.authority_id` : s`d.supplier_id`, byYear: factsYears(lists.flatMap(([, rows]) => rows), yA, yB),
+          });
+          const profiles = dim === "county" ? new Map() : await trendProfiles(s, [
+            { role: dim, ids: shown }, { role: partnerRole, ids: facts.flatMap((f) => f.partner ? [f.partner] : []) },
+          ]);
+          // trend-2: the county of an entity's row is its own (entity_profile, as on the rankings), not a buyer's.
+          const toRow = (r: TrendPartitionRow): TrendRow => {
+            if (dim === "county") return { entityId: null, name: r.id, county: null, valueA: Number(r.va), valueB: Number(r.vb) };
+            const profile = profiles.get(`${dim}:${r.id}`);
+            return { entityId: r.id, name: profile?.name ?? "(fără nume)", county: profile?.county ?? null, valueA: Number(r.va), valueB: Number(r.vb) };
+          };
+          const groups = Object.fromEntries(lists.map(([list, rows]) => [list, rows.map(toRow)])) as Partial<Record<TrendList, TrendRow[]>>;
+          const rowFacts: Record<string, TrendRowFacts> = {};
+          for (const row of Object.values(groups).flat())
+            if (row.entityId && !rowFacts[row.entityId])
+              rowFacts[row.entityId] = factsOfRow({ entityId: row.entityId, valueA: row.valueA, valueB: row.valueB }, { yearA: yA, yearB: yB },
+                facts, profiles, { own: dim as "authority" | "supplier", partner: partnerRole });
           return {
             block: "trend",
             yearA: yA,
             yearB: yB,
-            rowsTrend: r.map((p) => ({
-              entityId: String(p.id),
-              name: p.nm,
-              county: p.co,
-              valueA: Number(p.va),
-              valueB: Number(p.vb),
-            })),
+            rowsTrend: groups[trendListOf(group)] ?? [],
+            list: trendListOf(group),
+            change: group.change,
+            months: monthsOf(trendWindow),
+            groups,
+            // Fixed members: the group is every member identified now, with what they have in the two years.
+            composition: own ? { [trendListOf(group)]: { count: fixed!.ids.length, valueA: own.totals.valueA, valueB: own.totals.valueB } } : partition.composition,
+            noun: trendNoun(spec),
+            ...(dim === "county" ? {} : { rowFacts }),
+            ...(fixed ? { members: { list: trendListOf(group), frozen: fixed.frozen, frozenAt: fixed.frozenAt } } : {}),
+            // The firms an employees band leaves out for want of a filing, per list ("Fără bilanț: N firme noi, nu intră").
+            ...(partition.withoutFiling && !fixed ? { withoutFiling: partition.withoutFiling } : {}),
           };
         }
       }
@@ -1668,7 +1843,11 @@ export async function runSpec(
       const note = partialYearsCaveat(partial, "series");
       if (note) caveats.push(note);
     } else if (data.block === "trend") {
-      partial = partialYears(periods, dataset, [data.yearA, data.yearB]);
+      // The same months of each year are judged as such, not the whole calendar year.
+      const months = w.trendMonths;
+      partial = months
+        ? [data.yearA, data.yearB].flatMap((year) => partialYears(periods, dataset, [year], { yearFrom: year, yearTo: year, monthFrom: months[0], monthTo: months[1] }))
+        : partialYears(periods, dataset, [data.yearA, data.yearB]);
       const note = partialYearsCaveat(partial, "comparison");
       if (note) caveats.push(note);
     } else {
@@ -1678,7 +1857,13 @@ export async function runSpec(
       if (note) caveats.push(note);
     }
   }
-  return { data, displaySql, caveats, tookMs: Date.now() - started, ...(partial ? { partialYears: partial } : {}), ...(displaySqlByMeasure ? { displaySqlByMeasure } : {}) };
+  // trend-2: an old link with 2018 still runs, with the note (trend final §3.2); the year picker starts at 2019.
+  const note2018 = data.block === "trend" && (data.yearA === 2018 || data.yearB === 2018) ? TREND_2018_NOTE[dataset] : null;
+  if (note2018) caveats.push(note2018);
+  const executed: ExecutedWindow | null = trendWindow
+    ? { months: [trendWindow.from, trendWindow.to], mode: trendWindow.mode, checkpoint: trendWindow.checkpoint } : null;
+  return { data, displaySql, caveats, tookMs: Date.now() - started, ...(partial ? { partialYears: partial } : {}), ...(executed ? { executed } : {}),
+    ...(frozenMembers ? { groupMembers: frozenMembers } : {}), ...(movement ? { movement } : {}), ...(displaySqlByMeasure ? { displaySqlByMeasure } : {}) };
 }
 
 export interface DrillRow {
@@ -1730,6 +1915,12 @@ export interface DrillResult {
   total: number;
   page: number;
   pageSize: number;
+  /**
+   * The drawer of a trend's group: its part, its members, and the selection it
+   * is part of (records and value of both years, every group with the equal
+   * ones); the group's own figures are sourceTotal and sourceValue.
+   */
+  group?: { part: TrendMemberPart; members: number; selection: { count: number; value: string } | null };
 }
 
 /** Whitelisted sort keys → columns (everything else falls back to value). */
@@ -1767,9 +1958,23 @@ export interface DrillOpts {
   origin?: OriginHint;
   /** Server-internal: names of the ids a population lists, where the caller knows them (an entity capture). */
   entities?: Readonly<Record<string, string>>;
+  /**
+   * trend: the months the answer counted (its `executed.months`), sent by its
+   * drawer and CSV. Another window at this checkpoint is a conflict (409), never
+   * another list; without it the sources take the window of this checkpoint.
+   * Never part of `scope`, which saved links and watches keep.
+   */
+  months?: MonthWindow;
+  /**
+   * Server-only, a watch on a trend's group: the sources are its fixed members'
+   * records of the two years, never the live group's. Never accepted by evidenceOptions.
+   */
+  fixedMembers?: TrendFixedMembers;
 }
 
 export const DRILL_PAGE_SIZE = 10;
+/** A trend group of at most this many records is listed from its members' id index, never a scan of the mart (runRows). */
+export const GROUP_ID_INDEX_RECORDS = 250_000;
 /** Hard cap for full-result CSV exports (~15MB of CSV). */
 export const CSV_MAX_ROWS = EVIDENCE_CSV_LIMIT;
 /** Blocks whose result is an aggregate over da_transactions — drillable to rows. */
@@ -1808,7 +2013,7 @@ export async function runRows(
   grounding: Grounding,
   page: number,
   opts: DrillOpts = {},
-): Promise<DrillResult | { error: string }> {
+): Promise<DrillResult | { error: string; conflict?: true }> {
   opts.signal?.throwIfAborted();
   if (unimplementedSpecKeys(spec).length) return { error: NEWER_VERSION_LINK };
   const canonical=await canonicalAskIdentities(sql,spec,grounding,opts.scope);
@@ -1893,9 +2098,19 @@ export async function runRows(
       if (yearFrom !== from || yearTo !== to) notes.push(`Perioada efectivă: ${yearFrom}–${yearTo}, conform acoperirii datelor.`);
     }
   }
+  // trend: the answer's months, by the same function at this checkpoint (sameMonthsWindow).
+  let trendWindow: MonthsWindow = WHOLE_YEAR;
+  if (spec.block === "trend") {
+    if (spec.trend?.months !== undefined) {
+      const window = sameMonthsWindow(await coveragePeriods(sql), dataset, yearTo ?? maxY, spec.trend.months);
+      if ("error" in window) return { error: window.error };
+      trendWindow = window;
+    }
+    if (opts.months && (opts.months[0] !== trendWindow.from || opts.months[1] !== trendWindow.to)) return { error: DATA_CHANGED, conflict: true };
+  } else if (opts.months) return { error: "Lunile comparate se aplică doar schimbării între doi ani." };
   // The question's conditions, written for the sources as for the answer (predicates.ts).
   const kindIds = await authorityKindIds(sql, namedKind(spec.filters.authorityKind));
-  const ctx = predicateContext(sql, spec, grounding, { dataset, yearFrom, yearTo, kindIds });
+  const ctx = predicateContext(sql, spec, grounding, { dataset, yearFrom, yearTo, kindIds, trendMonths: partialMonths(trendWindow) });
   // The rollups give the record threshold's party list and, without a local
   // filter, the totals of a selection without entity conditions (rollups.ts).
   const rollup = profile || valueWinner ? null : await rollupPlanFor(sql, spec, ctx);
@@ -1921,6 +2136,7 @@ export async function runRows(
     : sql`(select ef.* from marts.entity_flags ef where ${baseProfileWhere})`;
   const selectionParts: ReturnType<DbSql>[] = [sql`true`];
   if (scope.county) selectionParts.push(sql`lower(unaccent(ef.county)) = ${fold(scope.county)}`);
+  if (scope.counties) selectionParts.push(sql`lower(unaccent(ef.county)) = any(${sql.array(scope.counties.map(fold))}::text[])`);
   if (scope.entityIds) selectionParts.push(sql`ef.entity_id = any(${sql.array([...scope.entityIds])}::bigint[])`);
   if (scope.excludeEntityIds) selectionParts.push(sql`not (ef.entity_id = any(${sql.array([...scope.excludeEntityIds])}::bigint[]))`);
   if (scope.riskBucket) selectionParts.push(sql`width_bucket(coalesce(ef.cri, 0), 0, 1.0000001, 10) = ${Math.round(scope.riskBucket.from * 10) + 1}`);
@@ -1977,8 +2193,9 @@ export async function runRows(
       parts.push(focalRole === "authority" ? sql`d.authority_id = ${focalId}` : sql`d.supplier_id = ${focalId}`);
     }
     if (spec.block === "trend") {
-      parts.push(trendYearsPredicate(sql, yearFrom ?? minY, yearTo ?? maxY, ctx));
+      parts.push(trendYearsPredicate(sql, yearFrom ?? minY, yearTo ?? maxY, ctx.trendMonths, ctx));
       notes.push(`Schimbare între ${yearFrom ?? minY} și ${yearTo ?? maxY}: sursele includ numai cei doi ani; diferența este totalul final minus totalul inițial.`);
+      if (ctx.trendMonths) notes.push(`Ambii ani se compară pe aceleași luni: ${monthsLabel(trendWindow)}; sursele includ numai aceste luni.`);
     }
     if (spec.minimumRecords) {
       // Counted over the selection itself (rowPredicates): the rollups hold the same party list.
@@ -1992,6 +2209,8 @@ export async function runRows(
       notes.push("Sursele sunt limitate la entitatea cu cea mai mare valoare în selecția întrebării; filtrele din listă nu schimbă câștigătorul.");
     }
     if (scope.county) parts.push(sql`lower(unaccent(d.county)) = ${fold(scope.county)}`);
+    // Several counties: a group of a county trend (at most 42), in the drawer's words.
+    if (scope.counties) parts.push(sql`lower(unaccent(d.county)) = any(${sql.array(scope.counties.map(fold))}::text[])`);
     if (isRelationship) parts.push(focalRole === "authority" ? sql`d.supplier_id is not null` : sql`d.authority_id is not null`);
     if (spec.block === "table" || spec.block === "trend") {
       if (spec.dim === "county") parts.push(sql`d.county is not null`);
@@ -2020,7 +2239,78 @@ export async function runRows(
     if (dataset !== "da") notes.push("Un contract cu mai mulți câștigători apare pe câte un rând pentru fiecare furnizor, cu valoarea împărțită egal. Suma folosește aceste cote; numărul de rânduri nu este numărul de contracte distincte. Detaliile și exportul păstrează valoarea integrală și numărul câștigătorilor.");
     if (spec.block === "table" || spec.block === "network" || spec.block === "trend") notes.push("Lista surselor acoperă întregul rezultat filtrat; limita de poziții din clasament sau diagramă nu limitează sursele.");
   }
-  const sourceWhere = parts.reduce((a, b) => sql`${a} and ${b}`);
+  const baseWhere = parts.reduce((a, b) => sql`${a} and ${b}`);
+  // trend: the sources of the group the answer lists (trendGroupSql): its members' records of the
+  // two years. The members belong to the answer's selection, not to the drawer's scope: they come
+  // from the answer's partition (group-ids.ts) or, when none is kept, from the same grouping, which
+  // is kept for the next drawer. A row's own records ("Înregistrări →") check only that row's ids.
+  const trendGroup = spec.block === "trend" && !profile ? trendGroupOf(spec) : null;
+  const listed = trendGroup && !isEveryChange(trendGroup) ? trendGroup : null;
+  const groupDim = spec.dim ?? "authority";
+  const fixed = opts.fixedMembers ?? null;
+  if (fixed && (!listed || fixed.role !== groupDim)) return { error: FIXED_GROUP_MISMATCH };
+  const yearA = yearFrom ?? minY, yearB = yearTo ?? maxY;
+  // A row's own members ("Înregistrări →"): its entity ids, or on counties the county (or counties) the drawer
+  // names; the drawer then lists that row, with no group header and no group note.
+  const own = !listed ? null : groupDim !== "county" ? (scope.entityIds && scope.role === groupDim ? scope.entityIds : null)
+    : scope.counties ?? (scope.county ? [scope.county] : null);
+  // The two years as a range on the column, so the id indexes (id, finalization_date) bound the members' rows.
+  const memberRange: ReturnType<DbSql> = sql`d.finalization_date >= ${String(Math.min(yearA, yearB))} and d.finalization_date < ${String(Math.max(yearA, yearB) + 1)}`;
+  const trendDays = listed && rollup ? await rollupDaysReady(sql) : false;
+  // The covering id indexes carry sicap_da_id (built nightly): a group's page then reads its keys index-only.
+  const keyed = listed && groupDim !== "county" && dataset !== "contracts" ? await coverRefReady(sql) : false;
+  const groupMembers = listed ? async (s: DbSql): Promise<{ members: Float64Array | readonly string[]; sources: TrendPartSources | null; selection: TrendPartSources | null }> => {
+    // A watch's fixed members (a row's own ids among them): their records, counted, never the live group's.
+    if (fixed) {
+      if (!own) return { members: fixed.ids, sources: null, selection: null };
+      const named = new Set(groupDim === "county" ? own.map(fold) : own);
+      return { members: fixed.ids.filter((id) => named.has(groupDim === "county" ? fold(id) : id)), sources: null, selection: null };
+    }
+    const stamp = await trendCacheStamp(s);
+    const key = stamp ? trendGroupKey(ctx, { stamp, dim: groupDim, yearA, yearB }) : null;
+    let entry = key ? trendGroupsFor(key) : null;
+    let kept = entry ? entryMembers(entry, listed) : null;
+    if (own && groupDim === "county") {
+      // A county row: the counties named that the group holds (names as the grouping writes them).
+      const named = new Set(own.map(fold));
+      if (kept) return { members: memberList(kept).filter((county) => named.has(fold(county))), sources: null, selection: null };
+      const va: ReturnType<DbSql> = sql`coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yearA)}), 0)`;
+      const vb: ReturnType<DbSql> = sql`coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yearB)}), 0)`;
+      const { having } = trendGroupSql(sql, va, vb, listed);
+      const where = andAll(sql, [...rowPredicates(ctx, { years: false }), trendYearsPredicate(sql, yearA, yearB, ctx.trendMonths),
+        sql`lower(unaccent(d.county)) = any(${sql.array([...named])}::text[])`]);
+      const rows = (await readEvidenceQuery(s`
+        select d.county::text m from ${txAggFragment(sql, dataset, false)} d
+        where ${where} group by d.county ${having ? sql`having ${having}` : sql``}
+      `, opts.signal)) as unknown as { m: string }[];
+      return { members: rows.map((r) => r.m), sources: null, selection: null };
+    }
+    if (own) {
+      if (kept) return { members: own.filter((id) => hasMember(kept!, id)), sources: null, selection: null };
+      // Only these ids, with the answer's conditions, on the id index of their two years.
+      const role = groupDim as "authority" | "supplier";
+      const id: ReturnType<DbSql> = role === "supplier" ? sql`d.supplier_id` : sql`d.authority_id`;
+      const va: ReturnType<DbSql> = sql`coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yearA)}), 0)`;
+      const vb: ReturnType<DbSql> = sql`coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yearB)}), 0)`;
+      const { having } = trendGroupSql(sql, va, vb, listed, { id, role, yearB });
+      const where = andAll(sql, [...rowPredicates(ctx, { years: false }), trendYearsPredicate(sql, yearA, yearB, ctx.trendMonths),
+        sql`${id} = any(${sql.array([...own])}::bigint[])`, memberRange]);
+      const rows = (await readEvidenceQuery(s`
+        select ${id}::text m from ${txAggFragment(sql, dataset, false)} d
+        where ${where} group by ${id} ${having ? sql`having ${having}` : sql``}
+      `, opts.signal)) as unknown as { m: string }[];
+      return { members: rows.map((r) => r.m), sources: null, selection: null };
+    }
+    if (!entry || !kept) {
+      // Not kept (another process, an entry dropped, the marts rebuilt): the answer's grouping again, kept for the next drawer.
+      const { grouped, attribute } = trendGrouping(s, { rollup, days: trendDays, ctx, dataset, dim: groupDim, yearA, yearB });
+      const partition = await trendPartition(s, grouped, { group: listed, topN: 0, first: groupDim === "county" ? null : { role: groupDim, yearB }, attribute });
+      entry = trendGroupEntry(partition, { dim: groupDim, group: listed });
+      if (key) rememberTrendGroups(key, entry);
+      kept = entryMembers(entry, listed) ?? [];
+    }
+    return { members: kept, sources: entry.sources[trendMemberPart(listed)!] ?? null, selection: entry.sources.all ?? null };
+  } : null;
   const localParts: ReturnType<DbSql>[] = [sql`true`];
   if (opts.stream) localParts.push(sql`d.src = ${opts.stream}`);
   if (opts.state === "__unknown") localParts.push(sql`d.state is null`);
@@ -2053,15 +2343,50 @@ export async function runRows(
     // connection, for a page of ten (communes 2019: 0.84 s with JIT, 0.39 s without).
     if (ctx.kind) await tx.unsafe("set local jit = off");
     const s = tx as unknown as DbSql;
-    const rolledTotals = rollup && totalsBlock && localParts.length === 1 && Object.keys(scope).every((key) => key === "role")
+    if (spec.block === "trend") await s.unsafe(TREND_NO_JIT);
+    const group = groupMembers ? await groupMembers(s) : null;
+    const members = group ? memberList(group.members) : null;
+    // A row's own records ("Înregistrări →") are that row's: no group note (a watch says its fixed group).
+    if (members && listed && (fixed || !own)) {
+      const [one, many] = groupDim === "county" ? ["județ", "județe"] : groupDim === "supplier" ? ["firmă", "firme"] : ["instituție", "instituții"];
+      const label = `„${trendGroupLabel(listed.change, yearA, yearB)}”${listed.firstOnly ? ` (prima dată în ${yearB})` : ""}`;
+      notes.push(fixed
+        ? `Sursele grupei fixate ${label}: ${countWords(members.length, one!, many!)} fixate la ${frozenDay(fixed.frozenAt)}, cu înregistrările lor din cei doi ani. Cele intrate în grupă după activare nu sunt urmărite.`
+        : `Sursele grupului ${label}: ${countWords(members.length, one!, many!)}, cu înregistrările lor din cei doi ani, nu doar cele afișate.`);
+    }
+    const sourceWhere = !members ? baseWhere : groupDim === "county"
+      ? sql`${baseWhere} and d.county = any(${sql.array(members)}::text[])`
+      : sql`${baseWhere} and ${groupDim === "supplier" ? sql`d.supplier_id` : sql`d.authority_id`} = any(${sql.array(members)}::bigint[]) and ${memberRange}`;
+    // A group's page reads its members' rows on the id index. For a group of at most a few hundred
+    // thousand records the planner would scan the whole mart instead (it counts each member as an
+    // average entity: 3.9 s instead of 0.26 s for the 17,633 new firms of 2025), or walk the primary
+    // key back through the newer years; so sequential scans are off for this transaction's remaining
+    // reads (the record lookups of the page keep their indexes) and the order by reference hides the
+    // key (`+ 0`, as the annual scan). Once the covering id indexes carry sicap_da_id (`keyed`), every
+    // group reads that way, of any size: its direct acquisitions' first keys come from the index alone
+    // (below). Before that build, a larger group keeps the planner's plans only for the default order of
+    // the latest years, whose newest records come first on the primary key (~1–3 s for 2.45M records);
+    // an older pair or another order would walk the key through millions of other records (37 s for
+    // 2021 → 2022, 101 s ascending, 9.7 s by value, measured), so those read the members' index too.
+    // A watch's fixed group (at most MONITORING_MEMBERS_MAX ids, its sources at most 200,000 records) reads the same way.
+    const groupRecords = group?.sources ? group.sources.da.n + group.sources.contracts.n : null;
+    const groupPage = Boolean(members && !own);
+    const plannerPlans = groupPage && !keyed && (groupRecords === null || groupRecords > GROUP_ID_INDEX_RECORDS)
+      && sortKey === "source" && opts.dir !== "asc" && yearB >= maxY - 1;
+    const idIndex = groupPage && !plannerPlans || Boolean(fixed && members);
+    if (idIndex) await tx.unsafe("set local enable_seqscan = off");
+    // Without a search or another selection, a group's totals are its records in the answer's grouping.
+    const groupTotals = group?.sources && !search && Object.keys(scope).every((key) => key === "role")
+      ? groupSourceTotals(group.sources, { ...(opts.stream ? { stream: opts.stream } : {}), ...(opts.state ? { state: opts.state } : {}) }) : null;
+    const rolledTotals = !groupTotals && rollup && totalsBlock && localParts.length === 1 && Object.keys(scope).every((key) => key === "role")
       ? await rollupSourceTotals(s, rollup, totalsBlock) : null;
-    const totals = rolledTotals && "rows" in rolledTotals ? rolledTotals.rows : (await readEvidenceQuery(s`
+    const totals: SourceTotalsRow[] = groupTotals ?? (rolledTotals && "rows" in rolledTotals ? rolledTotals.rows : (await readEvidenceQuery(s`
       select d.state, count(*) n, coalesce(sum(d.closing_value), 0)::text v,
              count(*) filter (where ${localWhere}) fn,
              coalesce(sum(d.closing_value) filter (where ${localWhere}), 0)::text fv,
              min(d.finalization_date) date_from, max(d.finalization_date) date_to
       from ${txt} d where ${sourceWhere} group by d.state
-    `, opts.signal)) as unknown as { state: string | null; n: string; v: string; fn: string; fv: string; date_from: string | null; date_to: string | null }[];
+    `, opts.signal)) as unknown as SourceTotalsRow[]);
     const sourceTotal = totals.reduce((n, r) => n + Number(r.n), 0);
     const sourceValue = sumDecimalStrings(totals.map((r) => r.v));
     const total = totals.reduce((n, r) => n + Number(r.fn), 0);
@@ -2082,6 +2407,10 @@ export async function runRows(
     // sort the bounded result. Adding zero preserves bigint reference order
     // while avoiding that misleading early-stop index plan. Fetch wide rows
     // only for the selected IDs, inside this same repeatable-read snapshot.
+    // A trend group's members (not a row's own ids) bound each channel on their id index and the two
+    // years instead (the annual scan extended to a group): each channel's first rows in the drawer's
+    // order, then the same order over both, in any sort.
+    const groupBranches = members && !own ? (dataset === "all" ? [daTx, contractTx] : [txt]) : null;
     const latestSelectedYear = scope.years?.length ? Math.max(...scope.years) : yearTo;
     // A kind of institution (D1) is a list of ids whose period the authority
     // indexes bound (periodRange, trendYearsPredicate): its narrow candidates
@@ -2095,7 +2424,7 @@ export async function runRows(
     // own stream (communes' direct acquisitions, 2019: 12.2 s by the key, 0.25 s
     // so). Without a kind or an id, one channel keeps the key: a recent year is
     // near its top (direct acquisitions, 2025: 0.76 s).
-    const annualScan = !profile && sortKey === "source" && (dataset === "all" || ctx.kind !== null)
+    const annualScan = !profile && !groupBranches && sortKey === "source" && (dataset === "all" || ctx.kind !== null)
       && latestSelectedYear !== null && latestSelectedYear < maxY
       && Object.keys(spec.filters).every((key) => ["yearFrom", "yearTo", "monthFrom", "monthTo"].includes(key) || key === "authorityKind" && kindScan)
       && Object.keys(scope).every((key) => ["years", "excludeCpvPrefixes"].includes(key));
@@ -2104,7 +2433,17 @@ export async function runRows(
     const annualKeys = !annualScan ? null
       : dataset === "da" ? sql`(${keysOf(daTx)})` : dataset === "contracts" ? sql`(${keysOf(contractTx)})`
       : sql`(${keysOf(daTx)} union all ${keysOf(contractTx)})`;
-    const pageTxt = annualKeys ? sql`(
+    const branchOrder = sortKey !== "source" ? sql`${sortFrag} ${dirFrag}, d.ref_id, d.supplier_id nulls first`
+      : idIndex ? sql`(d.ref_id + 0) ${dirFrag}, d.supplier_id nulls first` : sql`d.ref_id ${dirFrag}, d.supplier_id nulls first`;
+    // With the keys in the covering index, the direct acquisitions' first keys in the drawer's order come
+    // from it alone (every condition and order of a group but a search or a name is on its columns), and only
+    // those rows are read: 0.8 s for 2.18M records sorted by value, against 9.7 s (F2 review).
+    // groupBranches: [direct acquisitions, contracts] on "all", the one channel otherwise (keyed is never on contracts).
+    const branchRows = (branch: typeof txt, i: number): typeof txt => keyed && idIndex && i === 0 ? sql`(
+      select * from ${branch} d where d.ref_id in (
+        select d.ref_id from ${branch} d where ${sourceWhere} and ${localWhere} order by ${branchOrder} limit ${branchLimit}))`
+      : sql`(select * from ${branch} d where ${sourceWhere} and ${localWhere} order by ${branchOrder} limit ${branchLimit})`;
+    const pageTxt = groupBranches ? sql`(${groupBranches.map(branchRows).reduce((a, b) => sql`${a} union all ${b}`)})` : annualKeys ? sql`(
       select selected_row.* from ${annualKeys} selected_key
       cross join lateral (
         select d.* from ${daTx} d
@@ -2143,6 +2482,7 @@ export async function runRows(
       closing_value: string; src: "da" | "contracts"; ref_id: string | null; ca_notice_id: string | null; ted_pubnum: string | null;
       estimated_value_ron: string | null; value_suspect: boolean | null; state: string | null; n_winners: number | null; contract_value_full: string | null;
     }[];
+    if (idIndex) await tx.unsafe("set local enable_seqscan to default");
     let profiles: EvidenceProfile[] = [];
     let profileCount = 0;
     let profileReconciled: boolean | null = null;
@@ -2171,8 +2511,28 @@ export async function runRows(
       dateFrom: totals.map((r) => r.date_from).filter((d): d is string => d !== null).sort()[0]?.slice(0, 10) ?? null,
       dateTo: totals.map((r) => r.date_to).filter((d): d is string => d !== null).sort().at(-1)?.slice(0, 10) ?? null,
       profile, profiles, profileCount, profileReconciled, scopeNotes: notes,
+      // A group's drawer says both figures: the group's and the selection's (plan §2.5, §6.2).
+      ...(group && listed && !own && members ? { group: {
+        part: trendMemberPart(listed)!, members: members.length,
+        selection: group.selection ? { count: group.selection.da.n + group.selection.contracts.n, value: sumDecimalStrings([group.selection.da.v, group.selection.contracts.v]) } : null,
+      } } : {}),
     };
   });
+}
+
+/** trendGroupSql as text for the shown SQL; every change (no options) keeps today's text. */
+function trendGroupText(group: TrendGroup, yearB: number | string): { having: string | null; order: string } {
+  const label = `  -- ${TREND_CHANGE_LABELS[group.change]}`;
+  const first = group.firstOnly ? ` and prima_inregistrare = ${yearB}  -- prima dată în ${yearB}` : "";
+  switch (group.change) {
+    case "up": return group.order === "percent"
+      ? { having: `inainte >= ${group.minBase} and dupa > inainte${label}, în procente`, order: "dupa / inainte" }
+      : { having: `inainte > 0 and dupa > inainte${label}`, order: "dupa - inainte" };
+    case "new": return { having: `inainte = 0 and dupa > 0${first}${first ? "" : label}`, order: "dupa" };
+    case "down": return { having: `dupa > 0 and dupa < inainte${label}`, order: "inainte - dupa" };
+    case "gone": return { having: `inainte > 0 and dupa = 0${label}`, order: "inainte" };
+    case "all": return { having: null, order: "abs(dupa - inainte)" };
+  }
 }
 
 /**
@@ -2227,11 +2587,14 @@ function buildDisplaySql(spec: AskSpec, w: PredicateCtx): string {
       return `select *\nfrom marts.entity_flags\nwhere n_das >= ${ENTITY_CARD_MIN_DAS} ${w.kind ? `-- doar ${KIND_LABEL[w.kind]}` : ""}\norder by ${(spec.rankBy ?? "risk") === "risk" ? "cri" : "total_ron"} desc\nlimit 1;`;
     case "fact_check":
       return `select count(*), sum(closing_value)\nfrom ${dtable}\nwhere ${where};`;
-    case "trend":
+    case "trend": {
+      const { having, order } = trendGroupText(trendGroupOf(spec), w.yearTo ?? "ultimul_an");
       return (
         `select ${dimCol},\n  sum(closing_value) filter (where an = ${w.yearFrom ?? "primul_an"}) inainte,\n` +
         `  sum(closing_value) filter (where an = ${w.yearTo ?? "ultimul_an"}) dupa\n` +
-        `from ${dtable}\nwhere ${where}\ngroup by ${dimCol}\norder by abs(dupa - inainte) desc\nlimit ${spec.topN ?? 10};`
+        `from ${dtable}\nwhere ${where}\ngroup by ${dimCol}\n${having ? `having ${having}\n` : ""}order by ${order} desc\nlimit ${spec.topN ?? 10};` +
+        `\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele ${spec.topN ?? 10} din fiecare grupă`
       );
+    }
   }
 }

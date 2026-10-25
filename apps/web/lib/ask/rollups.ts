@@ -4,6 +4,7 @@ import type { ScatterDensity, TableSort } from "./compile";
 import { AUTHORITY_KINDS, type AuthorityKind } from "./spec";
 import { authorityKindCond } from "./authority-kind";
 import { employeesCond } from "./predicates";
+import { trendChannelColumns } from "./trend-partition";
 
 /**
  * Answers from the rollups of the nightly build (packages/db/src/ask-rollups.ts)
@@ -71,6 +72,8 @@ export interface RollupCtx {
   yearTo: number | null;
   monthFrom: number | null;
   monthTo: number | null;
+  /** trend: the same months of both years, null for whole years. */
+  trendMonths: readonly [number, number] | null;
   adminSupplierIds: readonly string[] | null;
   comparison: { role: Role; focalId: string | null; compareId: string | null } | null;
 }
@@ -83,7 +86,7 @@ export interface RollupCtx {
 export const ROLLUP_CTX_KEYS = [
   "sql", "plafond", "population", "minimumRecords", "cpvPrefixes", "cpvExclude", "county", "kind", "kindIds",
   "authorityId", "supplierId", "uatSiruta", "uatAuthorityIds", "singleBidder", "minEmployees", "maxEmployees",
-  "yearFrom", "yearTo", "monthFrom", "monthTo", "adminSupplierIds", "comparison",
+  "yearFrom", "yearTo", "monthFrom", "monthTo", "trendMonths", "adminSupplierIds", "comparison",
 ] as const satisfies readonly ("sql" | keyof RollupCtx)[];
 const KNOWN_KEYS = new Set<string>(ROLLUP_CTX_KEYS);
 
@@ -96,7 +99,11 @@ const DATASET = { "da-branch": "all", strict: "da", none: "contracts" } as const
 /** What the block groups by: an entity role (table/trend), county, the channel/year/county of a total, or CPV stems. */
 export type RollupNeed = { by: Role } | { by: "county" } | { by: "total" } | { by: "cpv" };
 
-export type RollupSource = { table: "entity"; role: Role } | { table: "pair" } | { table: "cpv" };
+/**
+ * entityMonth: agg_entity_month, the entity rollup with the month, for a trend's same months (F2);
+ * countyMonth: agg_county_month, every row by county and month, for the county trend on the same months.
+ */
+export type RollupSource = { table: "entity"; role: Role } | { table: "entityMonth"; role: Role } | { table: "countyMonth" } | { table: "pair" } | { table: "cpv" };
 
 /** The selection, in the terms of the rollup columns. */
 export interface RollupFilters {
@@ -114,6 +121,8 @@ export interface RollupFilters {
   excludeAuthorities: readonly string[];
   excludeSuppliers: readonly string[];
   minimum: MinimumRecords | null;
+  /** A trend's same months of both years (entityMonth and countyMonth only). */
+  months: readonly [number, number] | null;
 }
 
 export type RollupPlan = { source: RollupSource; filters: RollupFilters } | { reason: string };
@@ -141,14 +150,18 @@ function populationExclusions(population: QueryPopulation | null): { authority: 
  * agg_entity_year; any condition or threshold on the other role on
  * agg_pair_year; totals without entity conditions on agg_cpv_year. A total
  * with an exclusion keeps rows whose id is unknown, so it needs the pair rows.
+ * A trend's same months (trendMonths) only on agg_entity_month, when it is
+ * built (`months`: monthRollupReady), for one role with conditions on that role
+ * only and no CPV or threshold; any other month window stays live.
  * Fails closed: a context key outside ROLLUP_CTX_KEYS that holds a condition
  * (a filter of a later stage) returns its name as the reason.
  */
-export function planRollup(ctx: RollupCtx, need: RollupNeed): RollupPlan {
+export function planRollup(ctx: RollupCtx, need: RollupNeed, opts: { months?: boolean } = {}): RollupPlan {
   for (const [key, value] of Object.entries(ctx))
     if (!KNOWN_KEYS.has(key) && holdsCondition(value)) return { reason: `${key}: a condition the rollups do not know` };
   if (ctx.comparison) return { reason: "comparison: its own queries (compareParties …)" };
   if (ctx.monthFrom !== null || ctx.monthTo !== null) return { reason: "months: the rollups keep whole years" };
+  if (ctx.trendMonths && !opts.months) return { reason: "months: agg_entity_month is not built" };
   if (ctx.singleBidder) return { reason: "single bidder: not in the rollups" };
   if (ctx.authorityId || ctx.supplierId || ctx.uatSiruta !== null || ctx.uatAuthorityIds.length > 0 || ctx.adminSupplierIds)
     return { reason: "named entity: its transaction index answers directly" };
@@ -163,13 +176,21 @@ export function planRollup(ctx: RollupCtx, need: RollupNeed): RollupPlan {
     dataset, yearFrom: ctx.yearFrom, yearTo: ctx.yearTo, county: ctx.county,
     cpvPrefixes: ctx.cpvPrefixes, cpvExclude: ctx.cpvExclude, kind: ctx.kind, kindIds: ctx.kind ? ctx.kindIds : null,
     employees, excludeAuthorities: excluded.authority, excludeSuppliers: excluded.supplier,
-    minimum: ctx.minimumRecords,
+    minimum: ctx.minimumRecords, months: ctx.trendMonths,
   };
   const sides = new Set<Role>();
   if (filters.kind || filters.excludeAuthorities.length) sides.add("authority");
   if (filters.employees || filters.excludeSuppliers.length) sides.add("supplier");
   if (filters.minimum) sides.add(filters.minimum.role);
   const cpv = filters.cpvPrefixes.length > 0 || filters.cpvExclude.length > 0;
+  if (filters.months) {
+    // Counties without an entity condition: agg_county_month; one role with conditions on that role: agg_entity_month.
+    if (need.by === "county" && !cpv && !filters.minimum && sides.size === 0) return { source: { table: "countyMonth" }, filters };
+    const role = need.by === "authority" || need.by === "supplier" ? need.by : null;
+    if (!role || cpv || filters.minimum || [...sides].some((side) => side !== role))
+      return { reason: "months: agg_entity_month holds one role and agg_county_month none, without CPV or a threshold" };
+    return { source: { table: "entityMonth", role }, filters };
+  }
   if (need.by === "cpv" || cpv) {
     if (need.by === "authority" || need.by === "supplier") return { reason: "CPV with an entity ranking: not in the rollups" };
     if (sides.size) return { reason: "CPV with an entity condition: not in the rollups" };
@@ -188,13 +209,14 @@ export function planRollup(ctx: RollupCtx, need: RollupNeed): RollupPlan {
 
 /** Column of one role on a rollup source, or null when the source has none. */
 function idColumn(sql: DbSql, source: RollupSource, role: Role, alias: string): Fragment | null {
-  if (source.table === "cpv") return null;
-  if (source.table === "entity") return source.role === role ? sql`${sql(alias)}.eid` : null;
+  if (source.table === "cpv" || source.table === "countyMonth") return null;
+  if (source.table === "entity" || source.table === "entityMonth") return source.role === role ? sql`${sql(alias)}.eid` : null;
   return role === "authority" ? sql`${sql(alias)}.authority_id` : sql`${sql(alias)}.supplier_id`;
 }
 
 function fromSource(sql: DbSql, source: RollupSource, alias: string): Fragment {
-  const name = source.table === "entity" ? sql`marts.agg_entity_year` : source.table === "pair" ? sql`marts.agg_pair_year` : sql`marts.agg_cpv_year`;
+  const name = source.table === "entity" ? sql`marts.agg_entity_year` : source.table === "entityMonth" ? sql`marts.agg_entity_month`
+    : source.table === "countyMonth" ? sql`marts.agg_county_month` : source.table === "pair" ? sql`marts.agg_pair_year` : sql`marts.agg_cpv_year`;
   return sql`${name} ${sql(alias)}`;
 }
 
@@ -206,7 +228,9 @@ function fromSource(sql: DbSql, source: RollupSource, alias: string): Fragment {
 function rollupWhere(sql: DbSql, source: RollupSource, f: RollupFilters, alias: string, opts: { years?: boolean } = {}): Fragment {
   const p = (column: string) => sql`${sql(alias)}.${sql(column)}`;
   const parts: Fragment[] = [];
-  if (source.table === "entity") parts.push(sql`${p("role")} = ${source.role}`);
+  if (source.table === "entity" || source.table === "entityMonth") parts.push(sql`${p("role")} = ${source.role}`);
+  // The same months of both years: trendYearsPredicate on the rows.
+  if (f.months) parts.push(sql`${p("m")} between ${String(f.months[0]).padStart(2, "0")} and ${String(f.months[1]).padStart(2, "0")}`);
   if (f.dataset !== "all") parts.push(sql`${p("src")} = ${f.dataset}`);
   if (opts.years !== false && f.yearFrom !== null) parts.push(sql`${p("y")} >= ${String(f.yearFrom)}`);
   if (opts.years !== false && f.yearTo !== null) parts.push(sql`${p("y")} <= ${String(f.yearTo)}`);
@@ -291,8 +315,63 @@ export async function rollupsReady(sql: DbSql): Promise<boolean> {
   ready = { ok: Boolean(row?.ok), at: Date.now() };
   return ready.ok;
 }
-/** Tests only: forget the probe, so the next call reads the database. */
-export function forgetRollupsReady(): void { ready = null; }
+/**
+ * agg_entity_month and agg_county_month present (F2) and of the same build as the yearly rollups.
+ * Built with the three above by the same build, it is probed apart: a deploy
+ * before the first build with it keeps the yearly rollups, and a trend on the
+ * same months runs live until that build. The table alone proves nothing: a
+ * build of the code before F2 (a revert) rebuilds the yearly rollups and
+ * leaves the last F2 build's agg_entity_month behind. Only an F2 build writes
+ * the days (d0) on agg_entity_year and agg_pair_year, in the same transaction
+ * as agg_entity_month, so rollupDaysReady (d0 on all three) is the proof that
+ * the four tables are of one build; without it the same months run live.
+ */
+let monthReady: { ok: boolean; at: number } | null = null;
+export async function monthRollupReady(sql: DbSql): Promise<boolean> {
+  if (monthReady && Date.now() - monthReady.at < 600_000) return monthReady.ok;
+  const [row] = (await sql`select to_regclass('marts.agg_entity_month') is not null and to_regclass('marts.agg_county_month') is not null ok`) as unknown as { ok: boolean }[];
+  monthReady = { ok: Boolean(row?.ok) && await rollupDaysReady(sql), at: Date.now() };
+  return monthReady.ok;
+}
+/**
+ * The first and last day (d0, d1) on the pair and entity rollups (F2): a trend
+ * group's source drawer then totals its records from the answer's grouping.
+ * Probed apart, as agg_entity_month: until the first build with them, the
+ * drawer counts a group's records live.
+ */
+let daysReady: { ok: boolean; at: number } | null = null;
+export async function rollupDaysReady(sql: DbSql): Promise<boolean> {
+  if (daysReady && Date.now() - daysReady.at < 600_000) return daysReady.ok;
+  const [row] = (await sql`
+    select count(*) = 2 + (to_regclass('marts.agg_entity_month') is not null)::int ok
+    from pg_attribute a
+    where a.attname = 'd0' and not a.attisdropped
+      and a.attrelid in (to_regclass('marts.agg_entity_year'), to_regclass('marts.agg_pair_year'), to_regclass('marts.agg_entity_month'))
+  `) as unknown as { ok: boolean }[];
+  daysReady = { ok: Boolean(row?.ok), at: Date.now() };
+  return daysReady.ok;
+}
+/**
+ * The covering id indexes of da_transactions carry sicap_da_id (F2 review,
+ * TRANSACTION_MART_BUILD_INDEXES): a trend group's source page then takes its
+ * rows' keys from the index, in any order and for any group size. Probed
+ * apart: the nightly build makes them, so until the first build with this
+ * code the page keeps its plans of before.
+ */
+let refReady: { ok: boolean; at: number } | null = null;
+export async function coverRefReady(sql: DbSql): Promise<boolean> {
+  if (refReady && Date.now() - refReady.at < 600_000) return refReady.ok;
+  const [row] = (await sql`
+    select count(*) = 2 ok
+    from pg_index i
+    join pg_attribute a on a.attrelid = i.indrelid and a.attnum = any(i.indkey) and a.attname = 'sicap_da_id'
+    where i.indexrelid in (to_regclass('marts.da_tx_supplier_cover_idx'), to_regclass('marts.da_tx_authority_cover_idx'))
+  `) as unknown as { ok: boolean }[];
+  refReady = { ok: Boolean(row?.ok), at: Date.now() };
+  return refReady.ok;
+}
+/** Tests only: forget the probes, so the next call reads the database. */
+export function forgetRollupsReady(): void { ready = null; monthReady = null; daysReady = null; refReady = null; }
 
 export interface RollupTableOpts {
   dim: Role;
@@ -395,49 +474,39 @@ export async function rollupCountyTable(sql: DbSql, plan: { source: RollupSource
 }
 
 /**
- * case "trend": per entity (or county) the values of year A and year B, the
- * largest absolute changes first, then the id (or county), as the live query:
- * equal changes (consortium partners) come out in one order on both. Names: the rollup's own on agg_entity_year; on the pair rollup,
- * attached to the shown rows from agg_entity_year (the same transaction names).
+ * case "trend": per entity (or county) the values of year A and year B, as the
+ * grouped query trendPartition (trend-partition.ts) partitions: `select id, va,
+ * vb … group by id`, the live query's groups once grouped, with each
+ * channel's records, value and first and last day (trendChannelColumns): a
+ * group's source drawer totals them instead of scanning its members' rows.
+ * The days are null where the rollup has none yet (`days`: rollupDaysReady);
+ * the drawer then counts the group live. Names and counties come after, from
+ * entity_profile, for the shown rows only (as live).
  */
-export async function rollupTrend(sql: DbSql, plan: { source: RollupSource; filters: RollupFilters },
-  o: { dim: Role | "county"; yearA: number; yearB: number; topN: number }):
-  Promise<{ rows: { id: string | null; nm: string; co: string | null; va: string; vb: string }[] } | { reason: string }> {
+export function rollupTrendGrouped(sql: DbSql, plan: { source: RollupSource; filters: RollupFilters },
+  o: { dim: Role | "county"; yearA: number; yearB: number; days?: boolean }): { grouped: Fragment } | { reason: string } {
   const { source, filters } = plan;
   const where = rollupWhere(sql, source, filters, "p", { years: false });
   const a = String(o.yearA), b = String(o.yearB);
-  const va = sql`coalesce(sum(p.v) filter (where p.y = ${a}), 0)`, vb = sql`coalesce(sum(p.v) filter (where p.y = ${b}), 0)`;
-  if (o.dim === "county") {
-    const rows = (await sql`
-      select null::text id, p.county nm, null::text co, ${va} va, ${vb} vb
-      from ${fromSource(sql, source, "p")}
-      where ${where} and p.county is not null and p.y in (${a}, ${b})
-      group by p.county
-      order by abs(${vb} - ${va}) desc, p.county
-      limit ${o.topN}
-    `) as unknown as { id: null; nm: string; co: null; va: string; vb: string }[];
-    return { rows };
-  }
-  const id = idColumn(sql, source, o.dim, "p");
-  if (!id) return { reason: `the ${source.table} rollup has no ${o.dim} id` };
-  const name = source.table === "entity" ? sql`max(p.nm)` : sql`null::text`;
-  const rows = (await sql`
-    select ${id}::text id, ${name} nm, max(p.county) co, ${va} va, ${vb} vb
+  const va: Fragment = sql`coalesce(sum(p.v) filter (where p.y = ${a}), 0)`, vb: Fragment = sql`coalesce(sum(p.v) filter (where p.y = ${b}), 0)`;
+  const key: Fragment | null = o.dim === "county" ? sql`p.county` : idColumn(sql, source, o.dim, "p");
+  if (!key) return { reason: `the ${source.table} rollup has no ${o.dim} id` };
+  // agg_cpv_year keeps the whole first and last date (d0, d1); the pair and entity rollups the day.
+  // agg_county_month is only built with its days, by the build that also writes them on the others.
+  const day = (column: "d0" | "d1"): Fragment | null => source.table === "cpv" ? sql`left(p.${sql(column)}, 10) collate "C"`
+    : o.days || source.table === "countyMonth" ? sql`p.${sql(column)}` : null;
+  const first = day("d0"), last = day("d1");
+  const channels = trendChannelColumns(sql, filters.dataset, (src) => ({
+    n: sql`sum(p.n) filter (where p.src = ${src})`, v: sql`sum(p.v) filter (where p.src = ${src})`,
+    first: first ? sql`min(${first}) filter (where p.src = ${src})` : null,
+    last: last ? sql`max(${last}) filter (where p.src = ${src})` : null,
+  }));
+  return { grouped: sql`
+    select ${key} id, ${va} va, ${vb} vb, ${channels}
     from ${fromSource(sql, source, "p")}
-    where ${where} and ${id} is not null and p.y in (${a}, ${b})
-    group by ${id}
-    order by abs(${vb} - ${va}) desc, ${id}
-    limit ${o.topN}
-  `) as unknown as { id: string; nm: string | null; co: string | null; va: string; vb: string }[];
-  if (source.table !== "entity" && rows.length) {
-    const names = (await sql`
-      select eid::text id, max(nm) nm from marts.agg_entity_year
-      where role = ${o.dim} and eid = any(${sql.array(rows.map((r) => r.id))}::bigint[]) group by eid
-    `) as unknown as { id: string; nm: string | null }[];
-    const byId = new Map(names.map((r) => [r.id, r.nm]));
-    for (const r of rows) r.nm = byId.get(r.id) ?? null;
-  }
-  return { rows: rows as { id: string; nm: string; co: string | null; va: string; vb: string }[] };
+    where ${where} and ${key} is not null and p.y in (${a}, ${b})
+    group by ${key}
+  ` };
 }
 
 /**

@@ -24,7 +24,7 @@ import { NEWER_VERSION_LINK } from "../../../lib/ask/spec";
 
 beforeEach(() => { sql.mockClear(); sql.begin.mockClear(); });
 const post = (body: unknown) => new Request("http://localhost/api/ask", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-const newer = { block: "trend", dim: "supplier", measure: "value", filters: { yearFrom: 2024, yearTo: 2025 }, trend: { change: "up" } };
+const newer = { block: "timeseries", measure: "value", filters: { yearFrom: 2024, yearTo: 2025 }, timeseries: { grain: "month" } };
 // The bound selections replace the spec they were sent with; the refusal comes first.
 const peer = { version: "peer-evidence-2", checkpointId: "00000000-0000-0000-0000-000000000000" };
 const connection = { version: "connection-evidence-1", checkpointId: "00000000-0000-0000-0000-000000000000", pairs: [] };
@@ -47,7 +47,7 @@ describe("routes that run a spec", () => {
   });
 
   it("keeps an unknown key an invalid question, as before", async () => {
-    const response = await ask(post({ spec: { ...newer, trend: undefined, future: 1 } }));
+    const response = await ask(post({ spec: { ...newer, timeseries: undefined, future: 1 } }));
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({ ok: false, error: "Câmp necunoscut în întrebare; condiția nu a fost ignorată." });
   });

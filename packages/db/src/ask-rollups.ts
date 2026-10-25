@@ -29,7 +29,31 @@ type Query = DbSql | Parameters<Parameters<DbSql['begin']>[1]>[0];
  *   the first and last finalization date (d0, d1). Breakdowns at any depth,
  *   and totals, years, counties and the source drawer's totals and period
  *   without an entity filter.
- * So the build reads the union twice (pair, CPV), not once per rollup.
+ * - agg_entity_month (role, eid, y, m, src, county): agg_entity_year with the
+ *   month (m = substr(finalization_date, 6, 2)), for the trend's same months
+ *   of two years (plan F2, owner-D2-rollups: the live national query was over
+ *   the speed bar). agg_pair_year and agg_entity_year are grouped from the
+ *   month grain (a temporary pair-month table), equal to grouping the union:
+ *   0 differences on the local copy of 25 October 2026 (4,966,873 and
+ *   1,907,017 rows), for about 40 s more per build and 713 MB.
+ * - The pair and entity rollups also keep the first and last day of their
+ *   rows (d0, d1: left(finalization_date, 10), byte order, which is the
+ *   calendar order of that one format): the source drawer of a trend's group
+ *   reads its records, value and period from the answer's grouping instead of
+ *   a scan of its members' rows (national growths: 13 s live; plan F2, T3).
+ *   About +17 s per build and +314 MB on the local copy of 25 October 2026.
+ * - agg_county_month (src, y, m, county): every row by the buyer's county
+ *   and month, with d0/d1, grouped from agg_entity_month's authorities and
+ *   the pair months without an authority (8,985 rows, ~1 MB, 2.8 s on the
+ *   local copy of 25 October 2026; 15–17 s from the temporary table alone,
+ *   which parallel workers cannot read): the county trend on the same months,
+ *   whose live query was over the speed bar (3–6 s nationally; F2 review,
+ *   under owner-D2-rollups). Rows without an authority are in it, as in the
+ *   union; 0 differences with the live grouping.
+ * So the build reads the union twice (pair month, CPV), not once per rollup.
+ * The whole build, measured on the same copy: 115 s (127–132 s with the
+ * county months from the temporary table; 43 s before F2), so F2 adds ~70 s
+ * a night.
  *
  * Rebuilt with the agg_* shortcuts (DROP + CREATE AS) in the transaction that
  * loads da_transactions, so they always agree with it. contract_transactions
@@ -42,7 +66,7 @@ type Query = DbSql | Parameters<Parameters<DbSql['begin']>[1]>[0];
  * migration-owned: readers probe for them (apps/web/lib/ask/rollups.ts) and
  * fall back to the live query until the first build with this code.
  */
-export const ASK_ROLLUP_TABLES = ['agg_entity_year', 'agg_pair_year', 'agg_cpv_year'] as const;
+export const ASK_ROLLUP_TABLES = ['agg_entity_year', 'agg_pair_year', 'agg_cpv_year', 'agg_entity_month', 'agg_county_month'] as const;
 export type AskRollupTable = (typeof ASK_ROLLUP_TABLES)[number];
 
 /** The DA ceiling written (as a literal, like the agg_* builds) into the three
@@ -58,11 +82,16 @@ export interface AskRollupsReport {
 /** Build the three rollups from the loaded transaction marts. Call inside the
  * build transaction, after da_transactions is final (da_split stamped). */
 export async function buildAskRollups(q: Query): Promise<AskRollupsReport> {
-  await q`drop table if exists marts.agg_entity_year, marts.agg_pair_year, marts.agg_cpv_year`;
-  const pair = await q`
-    create table marts.agg_pair_year as
-    select x.authority_id, x.supplier_id, substr(x.finalization_date, 1, 4) y, x.src, x.county,
-           sum(x.closing_value) v, count(*) n
+  await q`drop table if exists marts.agg_entity_year, marts.agg_pair_year, marts.agg_cpv_year, marts.agg_entity_month, marts.agg_county_month`;
+  // One pass over the union at the month grain (9,965,281 groups on the local copy of
+  // 25 October 2026, 21 s; 26 s plain and 32 s with d0/d1 measured side by side at load 7);
+  // the yearly pairs and both entity rollups are grouped from it.
+  await q`drop table if exists pg_temp.ask_pair_month`;
+  await q`
+    create temp table ask_pair_month on commit drop as
+    select x.authority_id, x.supplier_id, substr(x.finalization_date, 1, 4) y, substr(x.finalization_date, 6, 2) m, x.src, x.county,
+           sum(x.closing_value) v, count(*) n,
+           min(left(x.finalization_date, 10) collate "C") d0, max(left(x.finalization_date, 10) collate "C") d1
     from (
       select authority_id, supplier_id, county, finalization_date, closing_value, 'da'::text src
       from marts.da_transactions where closing_value > 0 and closing_value <= 2000000
@@ -70,24 +99,49 @@ export async function buildAskRollups(q: Query): Promise<AskRollupsReport> {
       select authority_id, supplier_id, county, finalization_date, closing_value, 'contracts'
       from marts.contract_transactions where closing_value > 0
     ) x
-    group by x.authority_id, x.supplier_id, substr(x.finalization_date, 1, 4), x.src, x.county
+    group by x.authority_id, x.supplier_id, substr(x.finalization_date, 1, 4), substr(x.finalization_date, 6, 2), x.src, x.county
+  `;
+  const pair = await q`
+    create table marts.agg_pair_year as
+    select authority_id, supplier_id, y, src, county, sum(v) v, sum(n)::bigint n, min(d0) d0, max(d1) d1
+    from pg_temp.ask_pair_month
+    group by authority_id, supplier_id, y, src, county
   `;
   // Each pair row once as its authority and once as its supplier: the same groups,
-  // names and types as grouping the union (1,907,017 rows, sum(n) 41,437,684 on
-  // the local copy of 24 October 2026), in 10.5 s instead of 31 s for a third
-  // pass over the 20.7M rows.
-  const entity = await q`
-    create table marts.agg_entity_year as
-    select g.role, g.eid, g.y, g.src, g.county, e.name_display nm, g.v, g.n
+  // names and types as grouping the union (6,574,205 months, then 1,907,017 years,
+  // sum(n) 41,437,684 on the local copy), without another pass over the 20.7M rows.
+  const month = await q`
+    create table marts.agg_entity_month as
+    select g.role, g.eid, g.y, g.m, g.src, g.county, e.name_display nm, g.v, g.n, g.d0, g.d1
     from (
-      select r.role, r.eid, p.y, p.src, p.county, sum(p.v) v, sum(p.n)::bigint n
-      from marts.agg_pair_year p
+      select r.role, r.eid, p.y, p.m, p.src, p.county, sum(p.v) v, sum(p.n)::bigint n, min(p.d0) d0, max(p.d1) d1
+      from pg_temp.ask_pair_month p
       cross join lateral (values ('authority'::text, p.authority_id), ('supplier'::text, p.supplier_id)) r(role, eid)
       where r.eid is not null
-      group by r.role, r.eid, p.y, p.src, p.county
+      group by r.role, r.eid, p.y, p.m, p.src, p.county
     ) g
     left join core.entities e on e.id = g.eid
   `;
+  const entity = await q`
+    create table marts.agg_entity_year as
+    select role, eid, y, src, county, nm, sum(v) v, sum(n)::bigint n, min(d0) d0, max(d1) d1
+    from marts.agg_entity_month
+    group by role, eid, y, src, county, nm
+  `;
+  // From the authorities' months, which parallel workers can scan (the temporary pair months are
+  // read by one process: 15–17 s, against 2.8 s), and the rows without an authority, which no
+  // entity month holds: the same sums, counts and days as grouping every pair month.
+  const county = await q`
+    create table marts.agg_county_month as
+    select src, y, m, county, sum(v) v, sum(n)::bigint n, min(d0) d0, max(d1) d1
+    from (
+      select src, y, m, county, v, n, d0, d1 from marts.agg_entity_month where role = 'authority'
+      union all
+      select src, y, m, county, v, n, d0, d1 from pg_temp.ask_pair_month where authority_id is null
+    ) x
+    group by src, y, m, county
+  `;
+  await q`drop table pg_temp.ask_pair_month`;
   const cpv = await q`
     create table marts.agg_cpv_year as
     select x.src, substr(x.finalization_date, 1, 4) y, x.county, x.cpv_code,
@@ -107,5 +161,7 @@ export async function buildAskRollups(q: Query): Promise<AskRollupsReport> {
   await q`analyze marts.agg_entity_year`;
   await q`analyze marts.agg_pair_year`;
   await q`analyze marts.agg_cpv_year`;
-  return { rows: { agg_entity_year: entity.count, agg_pair_year: pair.count, agg_cpv_year: cpv.count } };
+  await q`analyze marts.agg_entity_month`;
+  await q`analyze marts.agg_county_month`;
+  return { rows: { agg_entity_year: entity.count, agg_pair_year: pair.count, agg_cpv_year: cpv.count, agg_entity_month: month.count, agg_county_month: county.count } };
 }

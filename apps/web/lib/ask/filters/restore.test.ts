@@ -25,7 +25,8 @@ describe("a link opened in the builder", () => {
       else expect(restored.kind, entry.id).toBe("draft");
     }
     expect(restoreLink({ block: "table", measure: "value", filters: {}, colour: "red" })).toEqual({ kind: "error", error: INVALID_LINK });
-    expect(restoreLink({ block: "trend", measure: "value", filters: {}, trend: { change: "up" } })).toEqual({ kind: "error", error: NEWER_VERSION_LINK, newer: true });
+    expect(restoreLink({ block: "timeseries", measure: "value", filters: {}, timeseries: { grain: "month" } })).toEqual({ kind: "error", error: NEWER_VERSION_LINK, newer: true });
+    expect(restoreLink({ block: "trend", measure: "value", filters: {}, trend: { change: "up" } }).kind).toBe("draft");
   });
 
   it("runs exactly what /api/ask runs today, keeping the stream the link names", () => {

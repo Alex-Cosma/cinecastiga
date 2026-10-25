@@ -7,9 +7,11 @@ import {
 } from "../question-ui";
 import { countyDisplay } from "../resolved-spec";
 import {
-  namedKind, type AskSpec, type AuthorityKind, type ParsedAuthorityKind,
+  namedKind, type AskSpec, type AuthorityKind, type MonthWindow, type ParsedAuthorityKind,
 } from "../spec";
-import { formatExactDecimal, formatInt } from "../../format";
+import { formatExactDecimal, formatInt, formatRon } from "../../format";
+import { monthsLabel } from "../months-window";
+import { trendGroupLabel } from "./defs/trend";
 import { filterContext } from "./context";
 import { exclusionWords, isDaBoundPopulation, selectionOrigin, splitExcluded, type OriginHint, type OriginWords } from "./origin";
 import { FILTERS, SPEC_PATH_OWNERS, presentPaths } from "./registry";
@@ -39,6 +41,8 @@ export interface ConditionLabels {
   origin?: OriginHint | undefined;
   /** Names of the ids a population lists, where the caller knows them. */
   entities?: Readonly<Record<string, string>> | undefined;
+  /** The months a trend's answer counted (its `executed.months`): what `months: "auto"` resolved to. */
+  executedMonths?: MonthWindow | null | undefined;
 }
 
 export interface ScopeRow { label: string; value: string }
@@ -333,15 +337,64 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
       note: `Selecție precisă aplicată: ${precise}.`,
     };
   },
+  // F2, the trend's lenses (kit §4: „Noi” always with its year, „Nu mai apar”, „Aceleași luni: ian.–mai”, „Prima dată”).
+  trendChange: (spec) => {
+    const change = spec.trend?.change;
+    if (!change) return null;
+    const { yearFrom: a, yearTo: b } = spec.filters;
+    const label = trendGroupLabel(change, a, b);
+    const words = change === "all" ? "toate schimbările" : label.toLowerCase();
+    return { words, chip: label, pills: [words], scope: [{ label: "Grupul", value: change === "all" ? "Toate schimbările" : label }], summary: label };
+  },
+  trendMonths: (spec, labels) => {
+    const months = spec.trend?.months;
+    if (months === undefined) return null;
+    // `auto` as the answer ran it (labels.executedMonths, the pills): its months, and no pill on whole years (trend final §3.3).
+    const ran = months === "auto" ? labels.executedMonths ?? null : null;
+    const window = Array.isArray(months) ? months : ran && !(ran[0] === 1 && ran[1] === 12) ? ran : null;
+    const chosen = window ? monthsLabel({ from: window[0], to: window[1] }) : null;
+    const chip = months === "whole" ? "Ani întregi" : chosen ? `Aceleași luni: ${chosen}` : "Aceleași luni";
+    const rule = Array.isArray(months) ? chosen : null;
+    return {
+      words: months === "whole" ? "pe ani întregi" : chosen ? `pe aceleași luni: ${chosen}` : "pe aceleași luni",
+      chip, pills: ran && !window ? [] : [chip.toLowerCase()], summary: chip,
+      scope: [{ label: "Luni comparate", value: months === "whole" ? "Ani întregi" : rule ? `${rule}, în ambii ani` : "Aceleași luni în ambii ani, până la ultima lună completă" }],
+    };
+  },
+  trendOrder: (spec) => {
+    const order = spec.trend?.order;
+    if (!order) return null;
+    const words = order === "percent" ? "ordonate după creșterea în procente" : "ordonate după diferența în lei";
+    return { words, chip: order === "percent" ? "Creșterea în procente" : "Diferența în lei", pills: [words], scope: [{ label: "Ordine", value: order === "percent" ? "Creșterea în procente" : "Diferența în lei" }] };
+  },
+  trendMinBase: (spec) => {
+    const base = spec.trend?.minBase;
+    if (base === undefined) return null;
+    const who = spec.dim === "supplier" ? "firmele" : spec.dim === "county" ? "județele" : "instituțiile";
+    const when = spec.filters.yearFrom ? ` în ${spec.filters.yearFrom}` : "";
+    return {
+      words: `dintre ${who} cu cel puțin ${formatRon(base)}${when}`, chip: `Cel puțin ${formatRon(base)}${when}`, pills: [`cel puțin ${formatRon(base)}${when}`],
+      scope: [{ label: "Baza creșterii", value: `Cel puțin ${formatRon(base)}${when}` }],
+    };
+  },
+  trendFirstOnly: (spec) => {
+    if (!spec.trend?.firstOnly) return null;
+    const year = spec.filters.yearTo ? ` în ${spec.filters.yearTo}` : "";
+    return {
+      words: `prima dată${year}`, chip: `Prima dată${year}`, pills: [`prima dată${year}`],
+      scope: [{ label: "Prima dată", value: `Prima înregistrare în datele noastre${year}` }],
+    };
+  },
 };
 
 /** The filters that have words: every key of today's engine but the shape of the answer (pills.ts) and the ignored comparison mode. */
 export const DESCRIBED_FILTERS = Object.keys(DESCRIBE) as FilterId[];
 
 /** The order of each place, today's. */
-const PILL_ORDER: readonly FilterId[] = ["cpvTerm", "authorityKind", "authority", "supplier", "compareWith", "locality", "county", "admin", "period", "singleBidder", "employees", "dataset", "population", "minimumRecords"];
-const SCOPE_ORDER: readonly FilterId[] = ["authority", "supplier", "compareWith", "cpvTerm", "county", "locality", "authorityKind", "admin", "period", "dataset", "singleBidder", "employees", "minimumRecords", "population"];
-const SUMMARY_ORDER: readonly FilterId[] = ["dataset", "authority", "supplier", "cpvTerm", "population", "minimumRecords"];
+const TREND_ORDER: readonly FilterId[] = ["trendChange", "trendFirstOnly", "trendMonths", "trendOrder", "trendMinBase"];
+const PILL_ORDER: readonly FilterId[] = ["cpvTerm", "authorityKind", "authority", "supplier", "compareWith", "locality", "county", "admin", "period", ...TREND_ORDER, "singleBidder", "employees", "dataset", "population", "minimumRecords"];
+const SCOPE_ORDER: readonly FilterId[] = ["authority", "supplier", "compareWith", "cpvTerm", "county", "locality", "authorityKind", "admin", "period", ...TREND_ORDER, "dataset", "singleBidder", "employees", "minimumRecords", "population"];
+const SUMMARY_ORDER: readonly FilterId[] = ["dataset", "authority", "supplier", "cpvTerm", "trendChange", "trendMonths", "population", "minimumRecords"];
 const CAVEAT_ORDER: readonly FilterId[] = ["population", "minimumRecords"];
 
 /**

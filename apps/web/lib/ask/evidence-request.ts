@@ -24,5 +24,12 @@ export function evidenceOptions(body: Record<string, unknown>): DrillOpts | { er
   const scope = validateEvidenceScope(body["scope"]);
   if ("error" in scope) return scope;
   if (Object.keys(scope).length) opts.scope = scope;
+  // A trend's executed months (plan §2.8): checked against this checkpoint's window by runRows.
+  const months = body["months"];
+  if (months !== undefined) {
+    if (!Array.isArray(months) || months.length !== 2 || months.some((m) => !Number.isInteger(m) || m < 1 || m > 12) || months[0] > months[1])
+      return { error: "Lunile comparate sunt invalide." };
+    opts.months = [months[0], months[1]];
+  }
   return opts;
 }

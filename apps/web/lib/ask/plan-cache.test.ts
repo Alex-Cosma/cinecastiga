@@ -20,6 +20,8 @@ function database() {
     then(resolve: (value: unknown[]) => unknown) {
       log.push(this.text);
       if (this.text.includes("marts.national_stats")) return Promise.resolve(resolve([{ year: 2025 }, { year: 2026 }]));
+      // A trend's partition (trend-partition.ts) reads entity_profile inside its statement: no rows.
+      if (this.text.includes("with k as materialized")) return Promise.resolve(resolve([]));
       if (this.text.includes("from marts.entity_profile")) {
         const id = this.values.find((v) => typeof v === "number");
         return Promise.resolve(resolve([{ entity_id: String(id ?? 1), name_display: `Entitatea ${id ?? 1}`, county: "Cluj", total_ron_full: "1" }]));

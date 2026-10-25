@@ -17,8 +17,9 @@ it.skipIf(!connection)('builds the Ask rollups and the covering indexes with eve
   await q`insert into core.cpv_codes(code,name_ro,revision,division) values
    ('33600000-6','Produse farmaceutice','2008','33'),('45000000-7','Lucrari de constructii','2008','45') on conflict (code) do nothing`;
   const cluj=await entity('Spital Cluj','Cluj'),iasi=await entity('Primaria Iasi','Iasi');
-  const a=await entity('Furnizor A','Ilfov'),b=await entity('Furnizor B',null);
+  const a=await entity('Furnizor A','Ilfov'),b=await entity('Furnizor B',null),c=await entity('Furnizor C',null);
   await q`insert into core.direct_acquisitions(sicap_da_id,authority_entity_id,supplier_entity_id,closing_value,state,finalization_date,cpv_code) values
+   (17008,null,${c},40,'Oferta acceptata','2025-03-22','33600000-6'),
    (17001,${cluj},${a},900.50,'Oferta acceptata','2025-03-20','33600000-6'),
    (17002,${cluj},${a},100,'Oferta acceptata','2025-09-21','33600000-6'),
    (17003,${cluj},${b},2000000,'Oferta acceptata','2024-09-22','45000000-7'),
@@ -38,11 +39,66 @@ it.skipIf(!connection)('builds the Ask rollups and the covering indexes with eve
    {role:'supplier',eid:a,y:'2025',src:'da',county:'Cluj',nm:'Furnizor A',v:'1000.50',n:2},
    {role:'supplier',eid:b,y:'2024',src:'da',county:'Cluj',nm:'Furnizor B',v:'2000000',n:1},
   ]);
+  // The month grain of the same rows (F2, the trend's same months); the years above are grouped from it.
+  expect(own(await q`select role,eid::text,y,m,v::text,n::int from marts.agg_entity_month order by role,eid::bigint,y,m`,'eid')).toEqual([
+   {role:'authority',eid:cluj,y:'2024',m:'09',v:'2000000',n:1},
+   {role:'authority',eid:cluj,y:'2025',m:'03',v:'900.50',n:1},
+   {role:'authority',eid:cluj,y:'2025',m:'09',v:'100',n:1},
+   {role:'authority',eid:iasi,y:'2024',m:'09',v:'30',n:1},
+   {role:'supplier',eid:a,y:'2025',m:'03',v:'900.50',n:1},
+   {role:'supplier',eid:a,y:'2025',m:'09',v:'100',n:1},
+   {role:'supplier',eid:b,y:'2024',m:'09',v:'2000000',n:1},
+  ]);
+  expect(first.rollups.agg_entity_month).toBeGreaterThanOrEqual(first.rollups.agg_entity_year);
+  // The first and last day of each group (F2, a trend group's source drawer), equal to the live min/max of its rows.
+  expect(own(await q`select role,eid::text,y,d0,d1 from marts.agg_entity_year order by role,eid::bigint,y`,'eid')).toEqual([
+   {role:'authority',eid:cluj,y:'2024',d0:'2024-09-22',d1:'2024-09-22'},
+   {role:'authority',eid:cluj,y:'2025',d0:'2025-03-20',d1:'2025-09-21'},
+   {role:'authority',eid:iasi,y:'2024',d0:'2024-09-26',d1:'2024-09-26'},
+   {role:'supplier',eid:a,y:'2025',d0:'2025-03-20',d1:'2025-09-21'},
+   {role:'supplier',eid:b,y:'2024',d0:'2024-09-22',d1:'2024-09-22'},
+  ]);
+  const [days]=await q`select count(*)::int differ from (
+    select r.role, r.eid, left(d.finalization_date,4) y, d.src, min(left(d.finalization_date,10)) d0, max(left(d.finalization_date,10)) d1
+    from (select authority_id, supplier_id, finalization_date, 'da'::text src from marts.da_transactions where closing_value > 0 and closing_value <= 2000000
+          union all select authority_id, supplier_id, finalization_date, 'contracts' from marts.contract_transactions where closing_value > 0) d
+    cross join lateral (values ('authority'::text, d.authority_id), ('supplier'::text, d.supplier_id)) r(role, eid)
+    where r.eid is not null group by 1, 2, 3, 4) live
+    full join (select role, eid, y, src, min(d0) d0, max(d1) d1 from marts.agg_entity_year group by 1, 2, 3, 4) rolled using (role, eid, y, src)
+    where live.d0 is distinct from rolled.d0 or live.d1 is distinct from rolled.d1`;
+  expect(days!.differ).toBe(0);
+  expect((await q`select left(min(d0),7) m0, left(max(d1),7) m1 from marts.agg_entity_month where eid=${cluj}::bigint and role='authority' and y='2025'`).map(r=>({...r}))).toEqual([{m0:'2025-03',m1:'2025-09'}]);
+  expect(own(await q`select authority_id::text,supplier_id::text,y,d0,d1 from marts.agg_pair_year order by authority_id::bigint,supplier_id::bigint nulls last,y`,'authority_id')).toEqual([
+   {authority_id:cluj,supplier_id:a,y:'2025',d0:'2025-03-20',d1:'2025-09-21'},
+   {authority_id:cluj,supplier_id:b,y:'2024',d0:'2024-09-22',d1:'2024-09-22'},
+   {authority_id:iasi,supplier_id:null,y:'2024',d0:'2024-09-26',d1:'2024-09-26'},
+  ]);
   expect(own(await q`select authority_id::text,supplier_id::text,y,v::text,n::int from marts.agg_pair_year order by authority_id::bigint,supplier_id::bigint nulls last,y`,'authority_id')).toEqual([
    {authority_id:cluj,supplier_id:a,y:'2025',v:'1000.50',n:2},
    {authority_id:cluj,supplier_id:b,y:'2024',v:'2000000',n:1},
    {authority_id:iasi,supplier_id:null,y:'2024',v:'30',n:1},
   ]);
+  // The county-month grain (F2 review: the county trend on the same months) = the live grouping of every row,
+  // with its first and last day; 17007, whose supplier is its own authority, counts in Iasi, and 17008, without
+  // an authority (so in no entity month, and without a county), counts too.
+  const [countyMonths]=await q`select count(*)::int differ from (
+    select d.src, left(d.finalization_date,4) y, substr(d.finalization_date,6,2) m, d.county, sum(d.closing_value) v, count(*)::bigint n,
+           min(left(d.finalization_date,10)) d0, max(left(d.finalization_date,10)) d1
+    from (select county, finalization_date, closing_value, 'da'::text src from marts.da_transactions where closing_value > 0 and closing_value <= 2000000
+          union all select county, finalization_date, closing_value, 'contracts' from marts.contract_transactions where closing_value > 0) d
+    group by 1, 2, 3, 4) live
+    full join marts.agg_county_month rolled on live.src = rolled.src and live.y is not distinct from rolled.y
+      and live.m is not distinct from rolled.m and live.county is not distinct from rolled.county
+    where (live.v, live.n, live.d0, live.d1) is distinct from (rolled.v, rolled.n, rolled.d0, rolled.d1)`;
+  expect(countyMonths!.differ).toBe(0);
+  expect((await q`select src,y,m,county,v::text,n::int from marts.agg_county_month where county in ('Cluj','Iasi') order by y,m,county`).map(r=>({...r}))).toEqual([
+   {src:'da',y:'2024',m:'09',county:'Cluj',v:'2000000',n:1},
+   {src:'da',y:'2024',m:'09',county:'Iasi',v:'30',n:1},
+   {src:'da',y:'2025',m:'03',county:'Cluj',v:'900.50',n:1},
+   {src:'da',y:'2025',m:'09',county:'Cluj',v:'100',n:1},
+  ]);
+  expect((await q`select src,y,m,v::text,n::int,d0,d1 from marts.agg_county_month where county is null`).map(r=>({...r})))
+   .toEqual([{src:'da',y:'2025',m:'03',v:'40',n:1,d0:'2025-03-22',d1:'2025-03-22'}]);
   const [cpv]=await q`select coalesce(sum(v),0)::text v, coalesce(sum(n),0)::int n from marts.agg_cpv_year`;
   const [national]=await q`select coalesce(sum(v_plaf),0)::text v, coalesce(sum(n_plaf),0)::int n from marts.agg_national`;
   expect(cpv).toEqual(national);

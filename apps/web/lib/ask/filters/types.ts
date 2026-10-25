@@ -117,6 +117,8 @@ export interface FilterDef<V = unknown> {
   scope(form: AnswerForm): Scope;
   /** Read ahead (F0a): the stage that implements it (READ_AHEAD_KEYS). */
   stage?: string;
+  /** A key the engine of 4e90b00 did not have, applied from this stage on (F2: the trend's): it has no scope of today (TODAY_SCOPE). */
+  since?: string;
   /** A spec carries it. */
   read(spec: FilterSpec): V | undefined;
   /** The spec after its own picker writes `value` (undefined: removed), with the picker's side effects. */
