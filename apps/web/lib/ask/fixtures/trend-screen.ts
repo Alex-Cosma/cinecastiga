@@ -22,8 +22,10 @@ export const GONE = row("4", "EPSILON SRL", 50, 0);
 export const trendSpec = (trend?: AskSpec["trend"], o: Partial<AskSpec> = {}): AskSpec =>
   ({ block: "trend", dim: "supplier", measure: "value", topN: 10, filters: { yearFrom: 2024, yearTo: 2025 }, ...(trend ? { trend } : {}), ...o });
 
-export function trendFixture(o: Partial<TrendData> = {}): TrendData {
-  return {
+/** An override set to undefined removes that field (an answer stored before trend-2 has none of them). */
+type Overrides = { [K in keyof TrendData]?: TrendData[K] | undefined };
+export function trendFixture(o: Overrides = {}): TrendData {
+  const data: Record<string, unknown> = {
     block: "trend", yearA: 2024, yearB: 2025, change: "up", list: "up", noun: "firme",
     months: { from: 1, to: 12, mode: "auto" },
     rowsTrend: [UP],
@@ -42,4 +44,13 @@ export function trendFixture(o: Partial<TrendData> = {}): TrendData {
     },
     ...o,
   };
+  for (const key of Object.keys(data)) if (data[key] === undefined) delete data[key];
+  return data as unknown as TrendData;
 }
+
+/** The groups of the fixture, with some lists replaced or removed (undefined). */
+export const trendGroups = (o: { [K in keyof NonNullable<TrendData["groups"]>]?: TrendRow[] | undefined }): TrendData["groups"] => {
+  const groups: Record<string, TrendRow[] | undefined> = { ...trendFixture().groups, ...o };
+  for (const key of Object.keys(groups)) if (groups[key] === undefined) delete groups[key];
+  return groups as TrendData["groups"];
+};

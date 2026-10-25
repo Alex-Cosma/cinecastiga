@@ -190,6 +190,13 @@ export function labelLegend(kinds: ReadonlySet<TrendRowLabel["kind"]>, data: Pic
   return legend.filter(([kind]) => kinds.has(kind)).map(([, fact, tip]) => ({ fact, tip }));
 }
 
+/** What „Noi” and „Nu mai apar” mean (the glossary's words), beside the labels under their list: new to the selection, not founded; gone, not closed. */
+export function groupTerm(list: TrendList, data: Pick<TrendData, "yearA" | "yearB">): { text: string; tip: KitTip } | null {
+  if (list === "new") return { text: trendGroupLabel("new", data.yearA, data.yearB), tip: { id: "firma-noua" } };
+  if (list === "gone") return { text: trendGroupLabel("gone", data.yearA, data.yearB), tip: { id: "nu-mai-apare" } };
+  return null;
+}
+
 let regions: Intl.DisplayNames | null | undefined;
 /** A foreign firm's country in Romanian ("Franța"), else its code. */
 function countryWords(code: string): string {
