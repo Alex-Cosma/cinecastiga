@@ -70,7 +70,7 @@ describe.skipIf(!url)("a watch on a trend's group (isolated PostgreSQL)",()=>{
     expect(baseline.result).toMatchObject({list:"new",composition:{new:{count:2,valueA:0,valueB:120}},members:{list:"new",frozen:2}});
     expect((baseline.result as {rowsTrend:{entityId:string}[]}).rowsTrend.map(r=>r.entityId)).toEqual([S(3),S(2)]);
     expect((await monitoringSourceRows(uid,newWatch,baseline.run.id,0,sql))?.items.map(r=>r.record.supplierId).sort()).toEqual([S(2),S(3)]);
-    expect(baseline.run.notes.some(note=>note.includes("grupei fixate „Noi”"))).toBe(true);
+    expect(baseline.run.notes.some(note=>note.includes("grupei fixate „Noi față de 2024”"))).toBe(true);
   });
   it("does not let a firm entering the live group change the result or the sources: the movement is a note",async()=>{
     await entity(S(6),"Trend Supplier 6","2025-08-01");await da(889791008,S(6),40,"2025-08-01");
