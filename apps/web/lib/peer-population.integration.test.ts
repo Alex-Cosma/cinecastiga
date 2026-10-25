@@ -109,7 +109,8 @@ describe.skipIf(!url)("population and personally chosen peers (isolated PostgreS
   it("retains the legacy activity meaning of old pinned links and exact legacy receipt shape",async()=>{
     const result=await getPeers(input({checkpointId:checkpoint}),sql);expect(result.filters.method).toBe("activity");expect(result.methodology.defaultMethod).toBe("population");
     const legacy=await sql.begin("isolation level repeatable read read only",q=>getLegacyPeersInSnapshot(q as unknown as DbSql,input({checkpointId:checkpoint}),result.checkpoint));
-    expect(legacy.methodology.version).toBe("peers-1");expect(legacy.methodology.method).toBeUndefined();expect(legacy.filters.method).toBeUndefined();expect(legacy.cohort.observedMemberCount).toBeUndefined();
+    // D1: the activity method reads the kind of Întreabă (peers-2); the receipt keeps its shape.
+    expect(legacy.methodology.version).toBe("peers-2");expect(legacy.methodology.method).toBeUndefined();expect(legacy.filters.method).toBeUndefined();expect(legacy.cohort.observedMemberCount).toBeUndefined();
     expect(legacy.focal?.population).toBeUndefined();
   });
 });

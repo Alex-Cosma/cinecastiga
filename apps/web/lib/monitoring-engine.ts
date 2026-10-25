@@ -6,7 +6,7 @@ import type { Grounding } from "./ask/ground";
 import { isHistoricalProfile } from "./ask/population";
 import { captureTransaction, CAPTURE_METHODOLOGY } from "./evidence-captures";
 import { MonitoringError,monitoringHasLocalSelection,monitoringNewerError,MONITORING_LOCAL_SCOPE_NOTE } from "./monitoring-input";
-import { MONITORING_MAX_ROWS, methodologiesDiffer, type MonitoringPreferences } from "./monitoring-shared";
+import { MONITORING_MAX_ROWS, MONITORING_METHODOLOGY_CHANGED_NOTE, methodologiesDiffer, type MonitoringPreferences } from "./monitoring-shared";
 import { answerVersion, isFirstAnswerVersion, sameAnswerCore } from "./ask/answer-core";
 import { countWords } from "./ask/answer-text";
 import { assertMonitoringBindings } from "./monitoring-identity";
@@ -130,7 +130,7 @@ export async function evaluateMonitoringWatch(watchId:string,expectedCheckpointI
     const methodologyAlert=methodologyChanged&&prefs.types.includes("methodology");
     const recalculated=resultChanged&&!methodologyAlert&&(isHistoricalProfile(spec)||sourceChanges===0);
     const hasAlert=!!previous&&(relevant.added+relevant.removed+relevant.changed>0||recalculated&&prefs.types.includes("recalculated")||methodologyAlert);
-    const notes=[...answer.caveats,...sources.scopeNotes,...(localSelection?[MONITORING_LOCAL_SCOPE_NOTE]:[]),"Primele observații istorice nu sunt confirmări ale datei importului.",...(previous?[]:["Acesta este punctul de plecare. Înregistrările existente nu generează alerte."]),...(resultChanged?["Rezultatul calculat s-a schimbat; sursele și metodologia pot fi verificate separat."]:[])];
+    const notes=[...answer.caveats,...sources.scopeNotes,...(localSelection?[MONITORING_LOCAL_SCOPE_NOTE]:[]),"Primele observații istorice nu sunt confirmări ale datei importului.",...(previous?[]:["Acesta este punctul de plecare. Înregistrările existente nu generează alerte."]),...(resultChanged?["Rezultatul calculat s-a schimbat; sursele și metodologia pot fi verificate separat."]:[]),...(methodologyChanged?[MONITORING_METHODOLOGY_CHANGED_NOTE]:[])];
     // A pause/preference edit committed during the read aborts this RR
     // publication; it cannot publish under an outdated owner decision.
     await q`select id from app.monitoring_watches where id=${watchId} for update`;

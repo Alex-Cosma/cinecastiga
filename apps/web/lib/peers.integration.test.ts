@@ -5,6 +5,7 @@ import { getPeers,getPeersInSnapshot,parsePeerInput } from "./peers";
 import { readConnectionEntity } from "./connections";
 import { runRows } from "./ask/compile";
 import { sumDecimalStrings } from "./ask/evidence";
+import { forgetAuthorityKinds } from "./ask/authority-kind";
 const url=process.env.TEST_DATABASE_URL;
 if(url&&!/^seap_test_[a-z0-9_]+$/i.test(new URL(url).pathname.slice(1)))throw new Error("Peer fixtures require seap_test_* database");
 describe.skipIf(!url)("peer comparisons (isolated PostgreSQL)",()=>{
@@ -33,12 +34,16 @@ describe.skipIf(!url)("peer comparisons (isolated PostgreSQL)",()=>{
     await sql`insert into marts.contract_transactions(contract_id,supplier_id,authority_id,closing_value,contract_value_full,n_winners,finalization_date,cpv_code)
       values(887756001,887751001,${a},0.0033,0.0067,2,'2024-07-01','45000000-7'),(887756001,887751002,${a},0.0034,0.0067,2,'2024-07-01','45000000-7')`;
     await sql`insert into app.monitoring_refreshes(id,kind,status,completed_at,source_coverage,validation)values(${checkpoint},'baseline','ready',now(),'{}','{"fixture":true}')`;
+    // An institution's kind is that of its profile (lib/ask/authority-kind.ts, D1): every buyer with records has one.
+    await sql`insert into marts.entity_profile(entity_id,role,name_display,county) select id,'authority',name_display,county from core.entities where id between 887750000 and 887750030`;
+    forgetAuthorityKinds();
   });
   afterAll(async()=>{
     if(!sql)return;
     await sql`delete from app.monitoring_refreshes where id=${checkpoint}`;
     await sql`delete from marts.contract_transactions where contract_id=887756001`;
     await sql`delete from marts.da_transactions where sicap_da_id between 887752000 and 887755999`;
+    await sql`delete from marts.entity_profile where entity_id between 887750000 and 887750030 and role='authority'`;
     await sql`delete from core.entities where id between 887750000 and 887751007`;await sql.end();
   });
   it("uses every other matching member for exact median; excludes focal,wrong type,year,CPV and activity band",async()=>{
@@ -114,6 +119,8 @@ describe.skipIf(!url)("peer comparisons (isolated PostgreSQL)",()=>{
       select 887750000+n,'Comuna extra '||n,'extra '||n,(88776000+n)::text,true,'Cluj','RO' from generate_series(31,530)n`;
     await sql`insert into marts.da_transactions(sicap_da_id,authority_id,supplier_id,closing_value,finalization_date,cpv_code)
       select 887760000+n*10+r,887750000+n,${shared}::bigint,n,'2024-06-01','45000000-7' from generate_series(31,530)n cross join generate_series(1,4)r`;
+    await sql`insert into marts.entity_profile(entity_id,role,name_display,county) select id,'authority',name_display,county from core.entities where id between 887750031 and 887750530`;
+    forgetAuthorityKinds();
     try{
       const result=await getPeers(input(),sql);expect(result.cohort.count).toBe(524);
       await expect(sql.begin("isolation level repeatable read read only",q=>getPeersInSnapshot(q as unknown as DbSql,input(),result.checkpoint,{allMembers:true}))).rejects.toMatchObject({status:413});
@@ -121,7 +128,9 @@ describe.skipIf(!url)("peer comparisons (isolated PostgreSQL)",()=>{
       expect(exact.members).toHaveLength(1);expect(exact.members[0]?.entity.id).toBe("887750031");expect(exact.cohort).toEqual(result.cohort);
     }finally{
       await sql`delete from marts.da_transactions where authority_id between 887750031 and 887750530`;
+      await sql`delete from marts.entity_profile where entity_id between 887750031 and 887750530 and role='authority'`;
       await sql`delete from core.entities where id between 887750031 and 887750530`;
+      forgetAuthorityKinds();
     }
   });
   it("fails closed for reused identities and checkpoints",async()=>{

@@ -139,7 +139,8 @@ export function PeriodSection() {
 const BUYER_TYPES = ["Primării de comună", "Primării de oraș și municipiu", "Consilii județene", "Spitale", "Școli"];
 /** After "făcute de", the type is articled (kit §4 Tipurile). */
 const BUYER_WORDS: Record<string, string> = { "Primării de comună": "primăriile de comună", "Primării de oraș și municipiu": "primăriile de oraș și municipiu", "Consilii județene": "consiliile județene", Spitale: "spitalele", Școli: "școlile" };
-const KIND_TIP: KitTip = { title: "Tipul instituției", text: "Primăriile: după registrul localităților. Spitale (cu institutele clinice), școli și consilii județene: după nume, aproximativ." };
+/** G9: one (?) text for the kind, the glossary's, wherever the kind is chosen or shown. */
+const KIND_TIP: KitTip = { id: "tip-institutie" };
 const VANATORI: SearchResult[] = [
   { id: "v-gl", name: "Primăria Vânători", detail: "primăria și consiliul local", side: "Galați", group: "Primăria localității" },
   { id: "v-is", name: "Primăria Vânători", detail: "primăria și consiliul local", side: "Iași", group: "Primăria localității" },

@@ -155,6 +155,16 @@ export default function MetodologiePage() {
             surselor declară această selecție. Analizele CRI folosesc istoricul achizițiilor directe acceptate și explică filtrele
             pe care le pot aplica. CRI este proporția unor criterii declanșate, nu probabilitatea unei ilegalități.</p>
         </details>
+        <details className="method-fold" id="tip-institutie">
+          <summary>Tipul instituției</summary>
+          <p>Întrebările și comparațiile folosesc aceeași clasificare. Primăriile de comună, oraș și municipiu vin din registrul localităților,
+            doar când codul localității este din județul instituției și numele este al administrației locale (primărie, consiliu local, UAT).
+            Fără cod, căutăm o singură localitate cu același nume în același județ; altfel decide numele („Primăria comunei …” este o comună).
+            Primăriile celor șase sectoare ale Bucureștiului sunt numărate cu orașele și municipiile.
+            Spitalele sunt numele care încep cu „Spital” și institutele clinice, de exemplu Fundeni sau institutele oncologice;
+            institutele de medicină legală și de cercetare nu intră. Școlile (cu liceele, colegiile și grădinițele, dar și școli de aviație, poliție sau pompieri) și consiliile județene
+            sunt după nume, aproximativ. Un nume care se potrivește la două tipuri nu are tip, iar o instituție cu nume neobișnuit poate rămâne fără tip.</p>
+        </details>
         <details className="method-fold">
           <summary>TED</summary>
           <p>Pentru TED păstrăm moneda și sensul sumei: valoare de ofertă/rezultat, interval, plafon de acord-cadru sau necunoscut.
