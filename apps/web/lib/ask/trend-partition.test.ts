@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { trendGroupOf } from "./predicates";
-import { changeYear, factsOfRow, trendGroupOfRow, trendListOf, trendNoun, trendRowLabels, type TrendRowFacts } from "./trend-partition";
+import { changeYear, factsOfRow, factsYears, trendGroupOfRow, trendListOf, trendNoun, trendRowLabels, type TrendRowFacts } from "./trend-partition";
 
 // The pure parts of the trend's partition (plan §4.7; trend final §1, §3.4): the list
 // a spec shows, the group noun, the year that makes a change and the row labels.
@@ -44,6 +44,13 @@ describe("the facts of a shown row", () => {
     expect(changeYear({ valueA: 3, valueB: 2 }, 2024, 2025)).toBe(2024);
     expect(changeYear({ valueA: 3, valueB: 0 }, 2024, 2025)).toBe(2024);
     expect(changeYear({ valueA: 3, valueB: 3 }, 2024, 2025)).toBe(2025);
+  });
+
+  it("are read for each shown id in its change year only, once whatever the lists it is in", () => {
+    const rows = [{ id: "1", va: "1", vb: "2" }, { id: "2", va: "0", vb: "5" }, { id: "3", va: "3", vb: "2" }, { id: "4", va: "3", vb: "0" },
+      { id: "5", va: "4", vb: "4" }, { id: "1", va: "1", vb: "2" }, { id: "3", va: "3", vb: "2" }];
+    expect(factsYears(rows, 2024, 2025)).toEqual([{ year: 2025, ids: ["1", "2", "5"] }, { year: 2024, ids: ["3", "4"] }]);
+    expect(factsYears([], 2024, 2025)).toEqual([{ year: 2025, ids: [] }, { year: 2024, ids: [] }]);
   });
 
   it("are empty, not invented, when the records of that year or the profile are missing", () => {

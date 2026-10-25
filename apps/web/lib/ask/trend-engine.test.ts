@@ -4,6 +4,7 @@ import { DATA_CHANGED, runRows, runSpec, useSnapshotCoverage } from "./compile";
 import { forgetRollupsReady } from "./rollups";
 import { forgetTrendGroups, trendGroupStats } from "./group-ids";
 import { autoMonthsUnresolved } from "./months-window";
+import { buildPills } from "./pills";
 import { trendProfiles } from "./trend-partition";
 import { validateSpec, type AskSpec } from "./spec";
 
@@ -96,6 +97,8 @@ describe("the trend's answer with its lenses", () => {
     // One statement: grouped once (the slim union: names come from the profiles), then every list and total.
     const [query, ...others] = grouped(db.statements);
     expect(others).toEqual([]);
+    // Without JIT, whose compiling cost more than it saved on these groupings.
+    expect(db.statements.map((s) => s.text)).toContain("set local jit = off");
     expect(query!.text).toMatch(/^ ?with k as materialized \( select d\.supplier_id id, coalesce/);
     expect(query!.text).not.toContain("supplier_name");
     expect(query!.text).not.toContain("having");
@@ -124,13 +127,19 @@ describe("the trend's answer with its lenses", () => {
     expect(query!.text).toContain("from k where k.va > 0 and k.vb > k.va order by k.vb - k.va desc, k.id limit ?");
     expect(result.displaySql).toContain("luna between '01' and '05'");
     expect(result.displaySql).toContain("having inainte > 0 and dupa > inainte  -- Creșteri");
+    // The pills say the months the answer counted (/api/ask passes them), the spec keeps `auto`.
+    expect(buildPills(spec, {}, { executedMonths: result.executed!.months })).toContain("aceleași luni: ian.–mai");
   });
 
   it("compares whole years when the later year is complete, and says nothing of months", async () => {
-    const result = await runSpec(database(PROD).sql, trend({ change: "down", months: "auto" }, { yearFrom: 2024, yearTo: 2025 }), {});
+    const spec = trend({ change: "down", months: "auto" }, { yearFrom: 2024, yearTo: 2025 });
+    const result = await runSpec(database(PROD).sql, spec, {});
     if ("error" in result) throw new Error(result.error);
     expect(result.executed).toEqual({ months: [1, 12], mode: "auto", checkpoint: "checkpoint-12" });
     expect(result.caveats.join(" ")).not.toContain("aceleași luni");
+    // Nor do the pills (trend final §3.3: `auto` on whole years shows no chip); without the answer they say the rule.
+    expect(buildPills(spec, {}, { executedMonths: result.executed!.months }).join(" · ")).not.toContain("luni");
+    expect(buildPills(spec, {})).toContain("aceleași luni");
   });
 
   it("refuses `auto` on a current year whose complete months are not established, before any marts read", async () => {
@@ -204,11 +213,12 @@ describe("the trend's answer with its lenses", () => {
       "12": { year: 2024, value: 300, largest: { value: 300, src: "da" }, joint: 0, partner: { entityId: "7", name: "Primăria X", value: 300 },
         firstActivity: "2018-05-01", lastActivity: "2024-12-01", cuiValid: false, country: "FR" },
     });
-    // The facts read only the shown ids, on their index, in the answer's two years; the profiles both roles at once.
+    // The facts read only the shown ids, on their index, each in its change year; the profiles both roles at once.
     const facts = db.statements.find((s) => s.text.includes("with x as materialized"))!;
-    expect(facts.text).toContain("d.supplier_id = any(?array::bigint[]) and d.finalization_date >= ? and d.finalization_date < ?");
+    expect(facts.text).toContain("and ((d.supplier_id = any(?array::bigint[]) and d.finalization_date >= ? and d.finalization_date < ?)"
+      + " or (d.supplier_id = any(?array::bigint[]) and d.finalization_date >= ? and d.finalization_date < ?))");
     expect(facts.text).toContain("filter (where d.n_winners > 1)");
-    expect(facts.values).toEqual(expect.arrayContaining([["11", "12"], "2024", "2026"]));
+    expect(facts.values.slice(-6)).toEqual([["11"], "2025", "2026", ["12"], "2024", "2025"]);
     // The profiles by id: the identity's own CUI status even where the profile is not written yet.
     const profiles = db.statements.find((s) => s.text.includes(PROFILES))!;
     expect(profiles.values).toEqual(["supplier", ["11", "12"], "authority", ["7", "8"]]);
@@ -295,7 +305,12 @@ describe("the trend's sources", () => {
       expect(result.scopeNotes).toContain("Ambii ani se compară pe aceleași luni: ian.–mai; sursele includ numai aceste luni.");
       const totals = db.statements.find((s) => s.text.includes("group by d.state"))!;
       expect(totals.text).toContain("substr(d.finalization_date,6,2) between ? and ?");
+      // A trend's sources run without JIT, as its answer; another block's keep the server's setting.
+      expect(db.statements.map((s) => s.text)).toContain("set local jit = off");
     }
+    const stat = database(PROD);
+    await runRows(stat.sql, { block: "stat", measure: "value", filters: { yearFrom: 2025, yearTo: 2025 } }, {}, 0);
+    expect(stat.statements.map((s) => s.text)).not.toContain("set local jit = off");
   });
 
   /** The partition of 2024 → 2025: firms 11 and 12 are gone (records of 2024 on both channels), 14 grows. */

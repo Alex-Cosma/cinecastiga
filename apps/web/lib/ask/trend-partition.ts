@@ -272,25 +272,39 @@ export interface TrendFactsRow {
 }
 
 /**
- * The row facts of `ids` in both years, from the transaction marts on the id
- * indexes ((supplier_id | authority_id, finalization_date)): `source` is a
- * union with src and n_winners (factsSource), `where` the answer's selection
- * with its two years and months, `id` and `partner` the columns of the ranked
- * role and of the other one. The finalization_date range bounds the index scan
- * (substr() in `where` hides the column from it).
+ * The ids of each year whose facts a row reads: its change year only
+ * (changeYear; factsOfRow reads no other), so a growth reads year B and a
+ * decrease year A, never both (catalog:trend: 63k records instead of 98k).
  */
-export async function trendFactsRows(sql: DbSql, o: { source: Fragment; where: Fragment; id: Fragment; partner: Fragment; ids: readonly string[]; yearA: number; yearB: number }):
+export function factsYears(rows: readonly TrendPartitionRow[], yearA: number, yearB: number): { year: number; ids: string[] }[] {
+  const ids = new Map<number, Set<string>>([[yearB, new Set()], [yearA, new Set()]]);
+  for (const r of rows) ids.get(changeYear({ valueA: Number(r.va), valueB: Number(r.vb) }, yearA, yearB))!.add(r.id);
+  return [...ids].map(([year, set]) => ({ year, ids: [...set] }));
+}
+
+/**
+ * The row facts of the ids of `byYear` (factsYears), each in its own year,
+ * from the transaction marts on the id indexes ((supplier_id | authority_id,
+ * finalization_date)): `source` is a union with src and n_winners
+ * (factsSource), `where` the answer's selection with its two years and
+ * months, `id` and `partner` the columns of the ranked role and of the other
+ * one. Each year's finalization_date range bounds its index scan (substr() in
+ * `where` hides the column from it); the groups key on the ids and byte-order
+ * text, not on collated text.
+ */
+export async function trendFactsRows(sql: DbSql, o: { source: Fragment; where: Fragment; id: Fragment; partner: Fragment; byYear: readonly { year: number; ids: readonly string[] }[] }):
   Promise<TrendFactsRow[]> {
-  if (o.ids.length === 0) return [];
-  const from = String(Math.min(o.yearA, o.yearB)), to = String(Math.max(o.yearA, o.yearB) + 1);
+  const wanted = o.byYear.filter((b) => b.ids.length > 0);
+  if (wanted.length === 0) return [];
+  const ofYear = wanted.map(({ year, ids }): Fragment => sql`(${o.id} = any(${sql.array([...ids])}::bigint[])
+    and d.finalization_date >= ${String(year)} and d.finalization_date < ${String(year + 1)})`);
   return (await sql`
     with x as materialized (
-      select ${o.id}::text id, substr(d.finalization_date, 1, 4) y, d.src, ${o.partner} partner,
+      select ${o.id} id, substr(d.finalization_date, 1, 4) collate "C" y, d.src collate "C" src, ${o.partner} partner,
              sum(d.closing_value) v, max(d.closing_value) mx,
              coalesce(sum(d.closing_value) filter (where d.n_winners > 1), 0) joint
       from ${o.source} d
-      where ${o.where} and ${o.id} = any(${sql.array([...o.ids])}::bigint[])
-        and d.finalization_date >= ${from} and d.finalization_date < ${to}
+      where ${o.where} and (${ofYear.reduce((a, b): Fragment => sql`${a} or ${b}`)})
       group by 1, 2, 3, 4
     ), t as (select id, y, sum(v) v, sum(joint) joint from x group by 1, 2),
     l as (select distinct on (id, y) id, y, src, mx from x order by id, y, mx desc, src),
@@ -299,7 +313,7 @@ export async function trendFactsRows(sql: DbSql, o: { source: Fragment; where: F
       from (select id, y, partner, sum(v) v from x where partner is not null group by 1, 2, 3) z
       order by id, y, v desc, partner
     )
-    select t.id, t.y, t.v::text v, t.joint::text joint, l.mx::text largest, l.src largest_src, p.partner::text partner, p.v::text partner_v
+    select t.id::text id, t.y, t.v::text v, t.joint::text joint, l.mx::text largest, l.src largest_src, p.partner::text partner, p.v::text partner_v
     from t left join l on l.id = t.id and l.y = t.y left join p on p.id = t.id and p.y = t.y
   `) as unknown as TrendFactsRow[];
 }

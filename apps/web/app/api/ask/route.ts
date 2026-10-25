@@ -121,7 +121,7 @@ export async function POST(req: Request) {
       model,
       spec: resolvedSpec(spec, grounding),
       executedAt: new Date().toISOString(),
-      pills: buildPills(spec, grounding),
+      pills: buildPills(spec, grounding, { executedMonths: result.executed?.months }),
       caveats: result.caveats,
       data: result.data,
       ...(result.partialYears ? { partialYears: result.partialYears } : {}),

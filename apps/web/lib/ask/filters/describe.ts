@@ -7,7 +7,7 @@ import {
 } from "../question-ui";
 import { countyDisplay } from "../resolved-spec";
 import {
-  NEWER_VERSION_QUESTION, namedKind, unimplementedSpecKeys, validateSpec, type AskSpec, type AuthorityKind, type ParsedAuthorityKind,
+  NEWER_VERSION_QUESTION, namedKind, unimplementedSpecKeys, validateSpec, type AskSpec, type AuthorityKind, type MonthWindow, type ParsedAuthorityKind,
 } from "../spec";
 import { formatExactDecimal, formatInt, formatRon } from "../../format";
 import { monthsLabel } from "../months-window";
@@ -41,6 +41,8 @@ export interface ConditionLabels {
   origin?: OriginHint | undefined;
   /** Names of the ids a population lists, where the caller knows them. */
   entities?: Readonly<Record<string, string>> | undefined;
+  /** The months a trend's answer counted (its `executed.months`): what `months: "auto"` resolved to. */
+  executedMonths?: MonthWindow | null | undefined;
 }
 
 export interface ScopeRow { label: string; value: string }
@@ -310,15 +312,19 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
     const words = change === "all" ? "toate schimbările" : label.toLowerCase();
     return { words, chip: label, pills: [words], scope: [{ label: "Grupul", value: change === "all" ? "Toate schimbările" : label }], summary: label };
   },
-  trendMonths: (spec) => {
+  trendMonths: (spec, labels) => {
     const months = spec.trend?.months;
     if (months === undefined) return null;
-    const chosen = Array.isArray(months) ? monthsLabel({ from: months[0], to: months[1] }) : null;
+    // `auto` as the answer ran it (labels.executedMonths, the pills): its months, and no pill on whole years (trend final §3.3).
+    const ran = months === "auto" ? labels.executedMonths ?? null : null;
+    const window = Array.isArray(months) ? months : ran && !(ran[0] === 1 && ran[1] === 12) ? ran : null;
+    const chosen = window ? monthsLabel({ from: window[0], to: window[1] }) : null;
     const chip = months === "whole" ? "Ani întregi" : chosen ? `Aceleași luni: ${chosen}` : "Aceleași luni";
+    const rule = Array.isArray(months) ? chosen : null;
     return {
       words: months === "whole" ? "pe ani întregi" : chosen ? `pe aceleași luni: ${chosen}` : "pe aceleași luni",
-      chip, pills: [chip.toLowerCase()], summary: chip,
-      scope: [{ label: "Luni comparate", value: months === "whole" ? "Ani întregi" : chosen ? `${chosen}, în ambii ani` : "Aceleași luni în ambii ani, până la ultima lună completă" }],
+      chip, pills: ran && !window ? [] : [chip.toLowerCase()], summary: chip,
+      scope: [{ label: "Luni comparate", value: months === "whole" ? "Ani întregi" : rule ? `${rule}, în ambii ani` : "Aceleași luni în ambii ani, până la ultima lună completă" }],
     };
   },
   trendOrder: (spec) => {
