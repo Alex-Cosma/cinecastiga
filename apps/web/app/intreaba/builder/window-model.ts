@@ -4,8 +4,8 @@ import type { EmployeesChoice } from "../../../lib/ask/filters/defs/from-whom";
 import type { PeriodChoice } from "../../../lib/ask/filters/defs/selection";
 import { choicesOf, choiceState, type Choice, type SubjectChoice } from "../../../lib/ask/filters/pickers";
 import type { FilterCtx, FilterSpec } from "../../../lib/ask/filters/types";
-import { employeesOnBands, MONTH_SHORT } from "../../../lib/ask/filters/words";
-import { KIND_ONE, KIND_WORDS, leaderAxis, type QuestionSpec } from "../../../lib/ask/question-ui";
+import { adminPhrase, employeesOnBands, employeesPhrase, localityName, MONTH_SHORT } from "../../../lib/ask/filters/words";
+import { KIND_ONE, KIND_WORDS, entityLabel, leaderAxis, type QuestionSpec } from "../../../lib/ask/question-ui";
 import { EMPLOYEE_BANDS, bandRange } from "./Bands";
 import type { KitOption, KitRestRow, KitTip } from "./kit-types";
 import type { BuilderWindowSpec } from "./view";
@@ -174,6 +174,42 @@ export function listOptions(win: BuilderWindowSpec, spec: QuestionSpec, only?: C
 
 /** The institutions no kind names (kit §4): a rest row, never a choice. */
 export const OTHER_INSTITUTIONS = "Alte instituții";
+/** The firms whose seat is not known (kit §4 Sediul firmei, R5): a rest row of the seat windows, never a choice. */
+export const UNKNOWN_SEAT = "Sediu necunoscut";
+
+/** The value of the row that is the window's current choice: choosing it again changes nothing. */
+export const CURRENT_ROW = "current";
+
+/**
+ * The current choice of a window whose values are searched (a county, a town
+ * hall, an institution, a domain, a firm or a person): drawn checked at the
+ * top, above the first row, so the window says what the phrase holds (a
+ * radiogroup with nothing checked reads as "nothing chosen"). None when the
+ * window is on its first row.
+ */
+export function currentRow(kind: "place" | "locality" | "buyer" | "cpv" | "from" | "peers", spec: QuestionSpec, tabs: readonly ("supplier" | "admin" | "employees")[] = []): ChoiceOption | null {
+  const f = spec.filters;
+  const row = (label: string, detail?: string): ChoiceOption => ({ value: CURRENT_ROW, label, ...(detail ? { detail } : {}), choice: { filter: "county", value: f.county } });
+  const county = f.county ? String(f.county) : null;
+  const countyName = county && (/^bucure/i.test(county) ? "București" : `Județul ${county}`);
+  const town = f.uatSiruta || f.uatName ? `Primăria ${f.uatName ? localityName(String(f.uatName)) : `SIRUTA ${f.uatSiruta}`}` : null;
+  switch (kind) {
+    case "place": return town ? row(town) : countyName ? row(countyName) : null;
+    case "locality": return town ? row(town) : null;
+    case "peers": return countyName ? row(countyName) : null;
+    case "buyer": return f.authorityName || f.authorityId ? row(entityLabel(spec, "authority")) : town ? row(town) : null;
+    case "cpv": {
+      if (f.cpvTerm === undefined || f.cpvTerm === "") return null;
+      const term = String(f.cpvTerm);
+      return row(/^(?:\d{2,8}|\d{8}-\d)$/.test(term.replace(/\s+/g, "")) ? `CPV ${term}` : `„${term}”`);
+    }
+    case "from": {
+      const tab = tabs.find((t) => t === "supplier" ? f.supplierName || f.supplierId : t === "admin" ? f.adminName || f.adminPersonKey : f.minEmployees !== undefined || f.maxEmployees !== undefined);
+      if (!tab) return null;
+      return row(capital(tab === "supplier" ? entityLabel(spec, "supplier") : tab === "admin" ? adminPhrase(f.adminName) : employeesPhrase(f.minEmployees, f.maxEmployees) ?? "Firmele alese"));
+    }
+  }
+}
 
 /** The tabs of "De la cine?" this window offers, in the order of its place (kit §5.24). */
 export function fromTabs(win: BuilderWindowSpec): ("supplier" | "admin" | "employees")[] {
@@ -222,26 +258,41 @@ const monthWords = (iso: string) => {
 /** A period preset of "În ce perioadă?": its words and the period it writes (undefined: every year). */
 export interface PeriodPreset extends KitOption { period: PeriodChoice | undefined }
 
+/** The first year the year chart draws and the free range of "Când?" offers (final timeseries §3.7, §4): older contracts are its footer row. */
+export const SERIES_FIRST_YEAR = 2018;
+
 /**
  * The presets of the period window (kit §4 Perioada): each says its years and
- * the current year says how far its data go ("2026 · până la 25 sept."). A
- * trend compares two years: consecutive pairs, the complete one first.
+ * the current year says how far its data go ("2026 · până la 25 sept.").
+ * "Compleți" leaves out only a year still running: data up to 31 Dec make the
+ * last year complete. A trend compares two years: consecutive pairs, the
+ * complete one first. The year chart has intervals only (plan §4.3): one year
+ * is one bar, so "Toți anii · Ultimii 5 ani compleți · Ultimii 3 ani compleți".
  */
 export function periodPresets(spec: QuestionSpec, span: CoverageSpan | null, year: number): { presets: PeriodPreset[]; value: string | null } {
   const last = span?.to ? Number(span.to.slice(0, 4)) : year;
   const partial = span?.to && !span.to.endsWith("-12-31") ? span.to : null;
+  const complete = partial ? last - 1 : last;
+  const until = partial ? dayWords(partial).replace(/ \d{4}$/, "") : null;
+  const all: PeriodPreset = { value: "all", label: "Toți anii", ...(span?.from && span.to ? { detail: `${monthWords(span.from)} – ${dayWords(span.to)}` } : {}), period: undefined };
+  const years = (value: string, label: string, n: number): PeriodPreset => {
+    const from = Math.max(SERIES_FIRST_YEAR, complete - n + 1);
+    return { value, label, detail: `${from}–${complete}`, period: { yearFrom: from, yearTo: complete } };
+  };
   const presets: PeriodPreset[] = spec.block === "trend"
     ? [
-      { value: "pair-1", label: `${last - 2} și ${last - 1}`, detail: "ultimii doi ani compleți", period: { yearFrom: last - 2, yearTo: last - 1 } },
-      { value: "pair-0", label: `${last - 1} și ${last}`, ...(partial ? { detail: `${last}: până la ${dayWords(partial).replace(/ \d{4}$/, "")}` } : {}), period: { yearFrom: last - 1, yearTo: last } },
-      { value: "pair-2", label: `${last - 3} și ${last - 2}`, period: { yearFrom: last - 3, yearTo: last - 2 } },
+      { value: "pair-1", label: `${complete - 1} și ${complete}`, detail: "ultimii doi ani compleți", period: { yearFrom: complete - 1, yearTo: complete } },
+      ...(partial ? [{ value: "pair-0", label: `${last - 1} și ${last}`, detail: `${last}: până la ${until}`, period: { yearFrom: last - 1, yearTo: last } }] : []),
+      { value: "pair-2", label: `${complete - 2} și ${complete - 1}`, period: { yearFrom: complete - 2, yearTo: complete - 1 } },
     ]
-    : [
-      { value: "current", label: String(last), ...(partial ? { detail: `până la ${dayWords(partial).replace(/ \d{4}$/, "")}` } : {}), period: { yearFrom: last, yearTo: last } },
-      { value: "previous", label: String(last - 1), period: { yearFrom: last - 1, yearTo: last - 1 } },
-      { value: "three", label: "Ultimii 3 ani compleți", detail: `${last - 3}–${last - 1}`, period: { yearFrom: last - 3, yearTo: last - 1 } },
-      { value: "all", label: "Toți anii", ...(span?.from && span.to ? { detail: `${monthWords(span.from)} – ${dayWords(span.to)}` } : {}), period: undefined },
-    ];
+    : spec.block === "timeseries"
+      ? [all, years("five", "Ultimii 5 ani compleți", 5), years("three", "Ultimii 3 ani compleți", 3)]
+      : [
+        { value: "current", label: String(last), ...(until ? { detail: `până la ${until}` } : {}), period: { yearFrom: last, yearTo: last } },
+        { value: "previous", label: String(last - 1), period: { yearFrom: last - 1, yearTo: last - 1 } },
+        years("three", "Ultimii 3 ani compleți", 3),
+        all,
+      ];
   const f = spec.filters;
   const same = (p: PeriodChoice | undefined) => p === undefined
     ? !f.yearFrom && !f.yearTo && !f.monthFrom && !f.monthTo

@@ -408,6 +408,19 @@
 .ask-ts .col:last-child .cv {
   align-self: flex-end;
 }
+/* An empty year of the continuous axis (from 2018): a baseline, not a link. The short year ('18) is the phone's. */
+.ask-ts .col.empty .bar {
+  background: var(--line2);
+}
+.ask-ts .ts-y-short {
+  display: none;
+}
+.cq-result .ask-ts-notes .ask-fine {
+  margin: 6px 0;
+}
+.cq-result .ask-ts-one .d {
+  color: var(--muted);
+}
 .cq-result .ask-cmp {
   gap: 22px;
 }
@@ -660,6 +673,18 @@
     max-width: 100%;
     overflow: hidden;
     flex-shrink: 0;
+  }
+  /* '18 … '26 where 2018 does not fit; the full year stays for screen readers. */
+  .ask-ts .ts-y {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .ask-ts .ts-y-short {
+    display: inline;
   }
   .cq-result .ask-table th,
   .cq-result .ask-table td {

@@ -9,7 +9,7 @@ import Invitations from "./Invitations";
 import Sentence from "./Sentence";
 import UnderChips from "./UnderChips";
 import { builderView, onlyExclusions, patchDraft, withoutExclusions } from "./view";
-import { bandValues, bandsChoice, fromTabs, listOptions, periodPresets, windowKind } from "./window-model";
+import { CURRENT_ROW, bandValues, bandsChoice, currentRow, fromTabs, listOptions, periodPresets, windowKind } from "./window-model";
 
 /*
  * F1b-builder-a: the builder drawn from the registry (view.ts, window-model.ts)
@@ -220,6 +220,37 @@ describe("the windows (component 9 and the composed pickers)", () => {
     const trend = periodPresets(SEVEN.trend!, span, 2026);
     expect(trend.presets[0]).toMatchObject({ label: "2024 și 2025", period: { yearFrom: 2024, yearTo: 2025 } });
     expect(trend.value).toBe("pair-1");
+  });
+
+  it("lead a searched window with its current choice, checked, so it is never «nothing chosen»", () => {
+    expect(currentRow("place", SEVEN.stat!)).toMatchObject({ value: CURRENT_ROW, label: "Județul Cluj" });
+    expect(currentRow("place", q({ block: "stat", filters: { county: "București" } }))?.label).toBe("București");
+    expect(currentRow("place", q({ block: "stat", filters: {} }))).toBeNull();
+    expect(currentRow("buyer", q({ block: "stat", filters: { authorityName: "MUNICIPIUL BUZAU", authorityId: 7 } }))?.label).toBe("MUNICIPIUL BUZAU");
+    expect(currentRow("buyer", q({ block: "stat", filters: { uatSiruta: 54975, uatName: "Municipiul Cluj-Napoca (Cluj)" } }))?.label).toBe("Primăria Cluj-Napoca");
+    expect(currentRow("cpv", SEVEN.stat!)?.label).toBe("„medicamente”");
+    expect(currentRow("cpv", q({ block: "stat", filters: { cpvTerm: "45" } }))?.label).toBe("CPV 45");
+    const from = q({ block: "stat", filters: { supplierName: "URBAN SCOPE", supplierId: 3 } });
+    expect(currentRow("from", from, ["supplier", "admin", "employees"])?.label).toBe("URBAN SCOPE");
+    expect(currentRow("from", SEVEN.table!, ["supplier", "admin", "employees"])?.label).toBe("Firme cu 1–9 angajați");
+    expect(currentRow("from", q({ block: "stat", filters: { adminName: "ION", adminPersonKey: "k" } }), ["supplier", "admin"])?.label).toBe("Firmele conduse azi de ION");
+  });
+
+  it("count a year whose data reach 31 Dec as complete («compleți»: without a year still running)", () => {
+    const span = { from: "2018-04-02", to: "2025-12-31" };
+    const stat = periodPresets(SEVEN.stat!, span, 2026).presets;
+    expect(stat.map((p) => [p.label, p.detail ?? ""])).toEqual([["2025", ""], ["2024", ""], ["Ultimii 3 ani compleți", "2023–2025"], ["Toți anii", "apr. 2018 – 31 dec. 2025"]]);
+    const trend = periodPresets(SEVEN.trend!, span, 2026).presets;
+    expect(trend.map((p) => [p.label, p.detail ?? ""])).toEqual([["2024 și 2025", "ultimii doi ani compleți"], ["2023 și 2024", ""]]);
+  });
+
+  it("give the year chart intervals only, none before 2018 (plan §4.3, final timeseries §3.7)", () => {
+    const span = { from: "2018-04-02", to: "2026-09-25", first: "2000-01-06" };
+    const { presets, value } = periodPresets(SEVEN.timeseries!, span, 2026);
+    expect(presets.map((p) => [p.label, p.detail ?? ""])).toEqual([["Toți anii", "apr. 2018 – 25 sept. 2026"], ["Ultimii 5 ani compleți", "2021–2025"], ["Ultimii 3 ani compleți", "2023–2025"]]);
+    expect(presets[1]!.period).toEqual({ yearFrom: 2021, yearTo: 2025 });
+    expect(value).toBe("all");
+    expect(periodPresets(SEVEN.timeseries!, { from: "2018-04-02", to: "2020-05-01" }, 2020).presets[1]).toMatchObject({ detail: "2018–2019" });
   });
 
   it("choose employees on the kit's bands, an old link's range on none", () => {

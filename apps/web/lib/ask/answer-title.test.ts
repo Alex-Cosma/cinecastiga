@@ -15,10 +15,10 @@ describe("answer titles", () => {
     expect(title).not.toMatch(/România|toată țara/);
   });
 
-  it("keeps the channel for contracts; the count is the presentation line's", () => {
+  it("keeps the channel for contracts and says the count after the period", () => {
     const base: QuestionSpec = { block: "table", dim: "supplier", dataset: "contracts", measure: "count", topN: 10, filters: { authorityName: "SPITALUL JUDETEAN SATU MARE" } };
-    expect(questionTitle(base)).toBe("Ce firme câștigă contractele din proceduri încheiate de SPITALUL JUDETEAN SATU MARE, în toți anii?");
-    expect(questionTitle({ ...base, dataset: "da" })).toBe("Ce firme câștigă achizițiile directe făcute de SPITALUL JUDETEAN SATU MARE, în toți anii?");
+    expect(questionTitle(base)).toBe("Ce firme câștigă contractele din proceduri încheiate de SPITALUL JUDETEAN SATU MARE, în toți anii, după numărul de înregistrări?");
+    expect(questionTitle({ ...base, dataset: "da" })).toBe("Ce firme câștigă achizițiile directe făcute de SPITALUL JUDETEAN SATU MARE, în toți anii, după numărul de înregistrări?");
   });
 
   it("calls a locality's own administration the town hall, not 'instituțiile publice'", () => {
@@ -80,5 +80,15 @@ describe("answer titles", () => {
     // A comparison's sentence ends with a full stop; the tail goes before it.
     expect(questionTitle({ block: "compare", measure: "value", dim: "authority", filters: { authorityName: "A", compareWith: "B", minEmployees: 0, maxEmployees: 4 } }))
       .toBe("Compară A cu B la toate achizițiile, în toți anii, firme cu 0–4 angajați.");
+  });
+
+  it("says a ranking's order when it is not the value: watches, saved questions and file names read only the title", () => {
+    const ranking = { block: "table" as const, dim: "authority" as const, filters: { yearFrom: 2025, yearTo: 2025 } };
+    expect(questionTitle({ ...ranking, measure: "value" })).toBe("Ce instituții publice din toată țara cumpără cel mai mult, prin toate achizițiile, în 2025?");
+    expect(questionTitle({ ...ranking, measure: "value_per_capita" })).toBe("Ce instituții publice din toată țara cumpără cel mai mult, prin toate achizițiile, în 2025, după valoarea pe locuitor?");
+    expect(questionTitle({ ...ranking, measure: "count", dim: "supplier", filters: { ...ranking.filters, supplierName: "X" } }))
+      .toBe("Ce firme câștigă achizițiile făcute de instituțiile publice din toată țara, în 2025, după numărul de înregistrări, firma „X”?");
+    // A count elsewhere is the sentence's own ("Câte…", "Cum evoluează [numărul de înregistrări]").
+    expect(questionTitle({ block: "stat", measure: "count", filters: {} })).toBe("Câte achiziții au fost făcute de instituțiile publice din toată țara, în toți anii?");
   });
 });

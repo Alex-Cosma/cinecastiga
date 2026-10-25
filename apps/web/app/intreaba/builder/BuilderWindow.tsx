@@ -22,7 +22,7 @@ import Popover from "./pickers/Popover";
 import type { ChangeSource, KitRestRow } from "./kit-types";
 import type { BuilderWindowSpec } from "./view";
 import {
-  bandValues, bandsChoice, fromTab, fromTabs, listOptions, periodPresets, windowKind, windowTip, type ChoiceOption, type CoverageSpan,
+  CURRENT_ROW, SERIES_FIRST_YEAR, UNKNOWN_SEAT, bandValues, bandsChoice, currentRow, fromTab, fromTabs, listOptions, periodPresets, windowKind, windowTip, type ChoiceOption, type CoverageSpan,
 } from "./window-model";
 
 /*
@@ -139,12 +139,16 @@ function countyResults(query: string, group?: string): Found[] {
   }));
 }
 
-/** A radio list that chooses on a click, Enter or Space; the arrows only move (the window stays open). */
-function ChoiceList({ label, options, value, onPick, rest }: { label: string; options: readonly ChoiceOption[]; value: string | null; onPick: (option: ChoiceOption) => void; rest?: readonly KitRestRow[] }) {
-  const [checked, setChecked] = useState(value);
-  return <OptionList label={label} options={options} value={checked} {...(rest ? { rest } : {})} onChange={(next: string, source: ChangeSource) => {
+/**
+ * A radio list that chooses on a click, Enter or Space; the arrows only move (the window stays open).
+ * `current` leads it, checked: the window's current choice (currentRow), which closes it unchanged.
+ */
+function ChoiceList({ label, options, value, onPick, rest, current }: { label: string; options: readonly ChoiceOption[]; value: string | null; onPick: (option: ChoiceOption) => void; rest?: readonly KitRestRow[]; current?: ChoiceOption | null }) {
+  const all = current ? [current, ...options] : options;
+  const [checked, setChecked] = useState(current ? CURRENT_ROW : value);
+  return <OptionList label={label} options={all} value={checked} {...(rest ? { rest } : {})} onChange={(next: string, source: ChangeSource) => {
     setChecked(next);
-    const option = options.find((o) => o.value === next);
+    const option = all.find((o) => o.value === next);
     if (option && source === "activate") onPick(option);
   }} />;
 }
@@ -187,9 +191,12 @@ function WindowBody({ win, draft, excluded = [], onChoose, onReplace, onRemoveEx
       const kinds = own.includes("authorityKind") ? listOf("authorityKind") : null;
       const named = Boolean(draft.filters.authorityName || draft.filters.authorityId || draft.filters.uatSiruta);
       const searches = own.includes("authority") || own.includes("locality") && ctx.locality.ok;
+      // A named institution or town hall leads the kinds, checked (it is no kind).
+      const current = named ? currentRow("buyer", draft) : null;
       return <>
         {marker}
-        {kinds && <ChoiceList label="Tipul instituției" options={kinds.options} value={named ? null : kinds.value} {...(kinds.rest ? { rest: kinds.rest } : {})} onPick={(option) => pick([option.choice])} />}
+        {kinds && <ChoiceList label="Tipul instituției" options={kinds.options} value={named ? null : kinds.value} current={current} {...(kinds.rest ? { rest: kinds.rest } : {})} onPick={(option) => pick(option.value === CURRENT_ROW ? [] : [option.choice])} />}
+        {!kinds && current && <ChoiceList label={win.name} options={[]} value={null} current={current} onPick={() => pick([])} />}
         {searches && <InstitutionSearch draft={draft} authority={own.includes("authority")} locality={own.includes("locality") && ctx.locality.ok} onPick={pick} />}
         {own.includes("county") && <CountySelect draft={draft} onPick={pick} />}
       </>;
@@ -201,7 +208,10 @@ function WindowBody({ win, draft, excluded = [], onChoose, onReplace, onRemoveEx
       const set = Boolean(draft.filters.county || draft.filters.uatSiruta);
       return <>
         {marker}
-        <ChoiceList label={win.name} options={[first]} value={set ? null : "none"} onPick={() => pick([...(draft.filters.uatSiruta ? [{ filter: "locality" as const, value: undefined }] : []), first.choice])} />
+        <ChoiceList label={win.name} options={[first]} value={set ? null : "none"} current={set ? currentRow("place", draft) : null}
+          // The firms without a known seat are left out of a seat's answer (kit §4 Sediul firmei, R5); counted from F3.
+          {...(seat ? { rest: [{ label: UNKNOWN_SEAT }] } : {})}
+          onPick={(option) => pick(option.value === CURRENT_ROW ? [] : [...(draft.filters.uatSiruta ? [{ filter: "locality" as const, value: undefined }] : []), first.choice])} />
         {kinds && <><p className="fk-opt-group">Ce fel de instituții</p><ChoiceList label="Tipul instituției" options={kinds.options} value={kinds.value} {...(kinds.rest ? { rest: kinds.rest } : {})} onPick={(option) => pick([option.choice])} /></>}
         <PlaceSearch draft={draft} locality={own.includes("locality") && ctx.locality.ok} onPick={pick} />
       </>;
@@ -209,7 +219,8 @@ function WindowBody({ win, draft, excluded = [], onChoose, onReplace, onRemoveEx
     case "locality":
       return <>
         {marker}
-        <ChoiceList label={win.name} options={[{ value: "none", label: "Toată țara", choice: { filter: "locality", value: undefined } }]} value={draft.filters.uatSiruta ? null : "none"} onPick={() => pick([{ filter: "locality", value: undefined }])} />
+        <ChoiceList label={win.name} options={[{ value: "none", label: "Toată țara", choice: { filter: "locality", value: undefined } }]} value={draft.filters.uatSiruta ? null : "none"} current={currentRow("locality", draft)}
+          onPick={(option) => pick(option.value === CURRENT_ROW ? [] : [{ filter: "locality", value: undefined }])} />
         <PlaceSearch draft={draft} locality counties={false} onPick={pick} />
       </>;
     case "focal": return <FocalSearch draft={draft} roles={win.slot.picker === "focal" ? ["authority", "supplier"] : [win.slot.id as Role]} onPick={pick} />;
@@ -272,7 +283,9 @@ function PeersWindow({ win, draft, onPick }: { win: BuilderWindowSpec; draft: Qu
   return <>
     {kinds && <><p className="fk-opt-group">Ce fel de instituții</p><ChoiceList label="Tipul instituției" options={kinds.options} value={kinds.value} {...(kinds.rest ? { rest: kinds.rest } : {})} onPick={(option) => onPick([option.choice])} /></>}
     <p className="fk-opt-group">{institutions ? "Unde" : "Unde au sediul firmele"}</p>
-    <ChoiceList label={institutions ? "Unde" : "Sediul firmei"} options={[anywhere]} value={draft.filters.county ? null : "none"} onPick={() => onPick([anywhere.choice])} />
+    <ChoiceList label={institutions ? "Unde" : "Sediul firmei"} options={[anywhere]} value={draft.filters.county ? null : "none"} current={currentRow("peers", draft)}
+      {...(institutions ? {} : { rest: [{ label: UNKNOWN_SEAT }] })}
+      onPick={(option) => onPick(option.value === CURRENT_ROW ? [] : [anywhere.choice])} />
     <PlaceSearch draft={draft} locality={false} onPick={onPick} />
   </>;
 }
@@ -325,7 +338,8 @@ function CpvSearch({ draft, onPick, onCpvName }: { draft: QuestionSpec; onPick: 
     ...(s.query.length >= 2 ? [{ id: "cpv:typed", name: `Folosește „${s.query}”`, detail: "Corespondența cu codurile CPV apare lângă răspuns.", choices: [{ filter: "cpvTerm" as const, value: s.query }] }] : []),
   ], [s.data, s.query]);
   return <>
-    {draft.filters.cpvTerm && <ChoiceList label="Ce s-a cumpărat" options={[{ value: "none", label: "Orice domeniu", choice: { filter: "cpvTerm", value: undefined } }]} value={null} onPick={(option) => onPick([option.choice])} />}
+    {draft.filters.cpvTerm && <ChoiceList label="Ce s-a cumpărat" options={[{ value: "none", label: "Orice domeniu", choice: { filter: "cpvTerm", value: undefined } }]} value={null} current={currentRow("cpv", draft)}
+      onPick={(option) => onPick(option.value === CURRENT_ROW ? [] : [option.choice])} />}
     <EntitySearch label="Domeniu, produs sau cod CPV" placeholder="medicamente, asfaltare, 45…" results={results} loading={s.loading}
       onSearch={(q) => s.search(q)} onPick={(r) => { const found = r as Found; if (found.cpvName) onCpvName(String(found.choices[0]!.value), found.cpvName); onPick(found.choices); }} />
   </>;
@@ -337,7 +351,8 @@ function FromWindow({ win, draft, onPick }: { win: BuilderWindowSpec; draft: Que
   const names = { supplier: "O firmă", admin: "Administrator", employees: "Ce fel de firme" } as const;
   const set = tabs.some((t) => t === "supplier" ? draft.filters.supplierName || draft.filters.supplierId : t === "admin" ? draft.filters.adminName || draft.filters.adminPersonKey : draft.filters.minEmployees !== undefined || draft.filters.maxEmployees !== undefined);
   return <>
-    <ChoiceList label="De la cine" options={[{ value: "any", label: "Orice firmă", choice: { filter: tabs[0]!, value: undefined } }]} value={set ? null : "any"} onPick={(option) => onPick([option.choice])} />
+    <ChoiceList label="De la cine" options={[{ value: "any", label: "Orice firmă", choice: { filter: tabs[0]!, value: undefined } }]} value={set ? null : "any"} current={set ? currentRow("from", draft, tabs) : null}
+      onPick={(option) => onPick(option.value === CURRENT_ROW ? [] : [option.choice])} />
     {tabs.length > 1 && <Segmented label="De la cine" mode="tabs" full value={tab} options={tabs.map((t) => ({ value: t, label: names[t] }))} onChange={(value) => setTab(value as typeof tab)} />}
     <div className="qb-tabpanel">
       {tab === "supplier" && <FocalSearch draft={draft} roles={["supplier"]} onPick={onPick} />}
@@ -380,6 +395,8 @@ function PeriodWindow({ draft, year, onPick }: { draft: QuestionSpec; year: numb
   const [span, setSpan] = useState<CoverageSpan | null>(null);
   useEffect(() => { let live = true; void readCoverage().then((value) => { if (live) setSpan(value); }); return () => { live = false; }; }, []);
   const trend = draft.block === "trend";
+  // The year chart draws from 2018 and its custom range is years ("Alege anii…", plan §4.3); months by month are F3's.
+  const series = draft.block === "timeseries";
   const { presets, value } = periodPresets(draft, span, year);
   const f = draft.filters;
   const [open, setOpen] = useState(value === null && Boolean(f.yearFrom || f.yearTo));
@@ -390,7 +407,8 @@ function PeriodWindow({ draft, year, onPick }: { draft: QuestionSpec; year: numb
     const problem = periodRangeError(range, { twoYears: trend });
     if (problem) { setError(problem); return; }
     const num = (v: string) => v ? Number(v) : undefined;
-    onPick([{ filter: "period", value: { ...(range.yearFrom ? { yearFrom: num(range.yearFrom) } : {}), ...(range.yearTo ? { yearTo: num(range.yearTo) } : {}), ...(!trend && range.monthFrom ? { monthFrom: num(range.monthFrom) } : {}), ...(!trend && range.monthTo ? { monthTo: num(range.monthTo) } : {}) } }]);
+    const months = !trend && !series;
+    onPick([{ filter: "period", value: { ...(range.yearFrom ? { yearFrom: num(range.yearFrom) } : {}), ...(range.yearTo ? { yearTo: num(range.yearTo) } : {}), ...(months && range.monthFrom ? { monthFrom: num(range.monthFrom) } : {}), ...(months && range.monthTo ? { monthTo: num(range.monthTo) } : {}) } }]);
   };
   return <>
     <PeriodPicker label="Perioada" presets={presets} value={value} onPreset={(next, source) => {
@@ -398,8 +416,9 @@ function PeriodWindow({ draft, year, onPick }: { draft: QuestionSpec; year: numb
       const preset = presets.find((p) => p.value === next);
       if (preset) onPick([{ filter: "period", value: preset.period }]);
     }} custom={{
-      open, onOpen: () => setOpen((current) => !current), label: trend ? "Alege cei doi ani…" : "Alege anii sau lunile…",
-      value: range, onChange: (next) => { setRange(next); setError(null); }, years: rangeYears(trend ? 2018 : span?.first ? Number(span.first.slice(0, 4)) : 2018, last), months: !trend,
+      open, onOpen: () => setOpen((current) => !current), label: trend ? "Alege cei doi ani…" : series ? "Alege anii…" : "Alege anii sau lunile…",
+      value: range, onChange: (next) => { setRange(next); setError(null); },
+      years: rangeYears(trend || series ? SERIES_FIRST_YEAR : span?.first ? Number(span.first.slice(0, 4)) : SERIES_FIRST_YEAR, last), months: !trend && !series,
       ...(trend ? { labels: ["Primul an", "Al doilea an"] as const } : {}), error,
     }} />
     {open && <div className="fk-pop-foot"><span /><button type="button" className="fk-primary" onClick={use}>Folosește</button></div>}
