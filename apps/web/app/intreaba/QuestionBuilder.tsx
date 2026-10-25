@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import type { AskSpec } from "@/lib/ask/spec";
+import { keyVersionNotes } from "@/lib/ask/answer-core";
 import { readableCpvName } from "@/lib/entity-summary";
 import { withoutLinkConditions } from "@/lib/ask/filters/restore";
 import { chooseQuestion, chooseValue, restoreParked, type Transition } from "@/lib/ask/filters/transition";
@@ -95,7 +96,7 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
   const [applied, setApplied] = useState<QuestionSpec | null>(initial && initialApplied ? cloneQuestion(initial) : null);
   const draftRef = useRef(draft);
   draftRef.current = draft;
-  const [changes, setChanges] = useState<string[]>(() => unique([...(initialNotes ?? []), ...seed.changes]));
+  const [changes, setChanges] = useState<string[]>(() => unique([...(initialNotes ?? []), ...seed.changes, ...(initial ? keyVersionNotes(initial as unknown as AskSpec) : [])]));
   const [parked, setParked] = useState<Parked | null>(null);
   const initialKey = initial ? questionKey(initial) : "";
   const previousInitial = useRef(initialKey);

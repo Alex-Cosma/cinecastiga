@@ -54,11 +54,11 @@ describe("answer titles", () => {
       .toBe("Ce firme câștigă achizițiile pentru „parcuri” și „spatii verzi” făcute de primăria Timișoara, în toți anii?");
   });
 
-  it("keeps the county and kind in leader and risk-profile titles; a kind waiting for D1 is said after the sentence", () => {
+  it("keeps the county and kind in leader and risk-profile titles; the kind is the subject after D1", () => {
     expect(questionTitle({ block: "entity_card", dim: "authority", rankBy: "risk", measure: "value", filters: { county: "Bihor" } }))
       .toBe("Care instituție din județul Bihor are cel mai ridicat indice de risc?");
     expect(questionTitle({ block: "entity_card", dim: "authority", rankBy: "value", measure: "value", filters: { authorityKind: "spital", county: "Cluj", yearFrom: 2025, yearTo: 2025 } }))
-      .toBe("Care instituție din județul Cluj cumpără cel mai mult, prin toate achizițiile, în 2025, doar spitale?");
+      .toBe("Care spital din județul Cluj cumpără cel mai mult, prin toate achizițiile, în 2025?");
     expect(questionTitle({ block: "scatter", dim: "authority", measure: "value", filters: { county: "București" } }))
       .toBe("Ce instituții publice din București ies din tipar după risc și valoarea achizițiilor directe?");
   });

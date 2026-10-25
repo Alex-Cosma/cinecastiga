@@ -1,3 +1,4 @@
+import { GLOSSARY } from "../../../lib/glossary";
 import { PICKER_FAMILY, windowOf } from "../../../lib/ask/filters/blocks";
 import { filterContext } from "../../../lib/ask/filters/context";
 import type { EmployeesChoice } from "../../../lib/ask/filters/defs/from-whom";
@@ -113,12 +114,11 @@ export function choiceWords(choice: Choice, spec: QuestionSpec): { label: string
 export function windowTip(win: BuilderWindowSpec, spec: QuestionSpec): KitTip | undefined {
   const { block } = spec;
   if (win.slot.picker === "subject" && block === "scatter")
-    return { title: "Tipul instituției", text: "După denumire, aproximativ. „Alte instituții” nu se poate alege: e restul grupului. Primăriile de oraș și municipiu apar după ce tipul se stabilește din registrul localităților." };
-  if (win.slot.picker === "subject" && block === "entity_card")
-    return { title: "Tipul instituției", text: "După denumire, aproximativ. Spitalele și primăriile de oraș și municipiu apar după ce tipul se stabilește din registre." };
+    return { title: "Tipul instituției", text: `${GLOSSARY["tip-institutie"].text} „Alte instituții” nu se poate alege: e restul grupului.` };
+  if (win.slot.picker === "subject" && block === "entity_card") return { id: "tip-institutie" };
   if (win.slot.id === "rankBy") return { title: "Indicele de risc", text: "Un semnal statistic, nu o dovadă." };
   if (win.slot.picker === "peers")
-    return { title: "Grupul de comparație", text: "Profilurile cu cel puțin 10 achiziții directe. Tipul instituției: după denumire, aproximativ." };
+    return { title: "Grupul de comparație", text: `Profilurile cu cel puțin 10 achiziții directe. ${GLOSSARY["tip-institutie"].text}` };
   return undefined;
 }
 

@@ -115,13 +115,13 @@ describe("the six questions from the registry (F1b-builder-b)", () => {
     expect(windowTip(group, SIX.distribution!)).toMatchObject({ title: "Grupul de comparație" });
   });
 
-  it("list the risk cloud's institutions first, with the rest that cannot be chosen, the kinds waiting for D1 hidden", () => {
+  it("list the risk cloud's institutions first, with the rest that cannot be chosen, every kind offered after D1", () => {
     const who = listOptions(win(SIX.scatter!, "Cine"), SIX.scatter!);
     expect(who.options.map((o) => [o.group, o.label])).toEqual([
-      ["Instituții publice", "Toate instituțiile publice"], ["Instituții publice", "Primării de comună"], ["Instituții publice", "Consilii județene"],
-      ["Instituții publice", "Spitale"], ["Instituții publice", "Școli"], ["Firme", "Firme"],
+      ["Instituții publice", "Toate instituțiile publice"], ["Instituții publice", "Primării de comună"], ["Instituții publice", "Primării de oraș și municipiu"],
+      ["Instituții publice", "Consilii județene"], ["Instituții publice", "Spitale"], ["Instituții publice", "Școli"], ["Firme", "Firme"],
     ]);
-    expect(who.rest).toEqual([{ label: OTHER_INSTITUTIONS, after: who.options[4]!.value }]);
+    expect(who.rest).toEqual([{ label: OTHER_INSTITUTIONS, after: who.options[5]!.value }]);
     expect(windowTip(win(SIX.scatter!, "Cine"), SIX.scatter!)).toMatchObject({ title: "Tipul instituției" });
     // The rest row sits under the last kind, before the firms, and takes no focus.
     const markup = renderToStaticMarkup(createElement(OptionList, { label: "Cine", options: who.options, value: who.value, rest: who.rest! }));
@@ -131,7 +131,7 @@ describe("the six questions from the registry (F1b-builder-b)", () => {
 
   it("speak «Cine conduce?» in the singular, and say what each axis changes", () => {
     const rivals = listOptions(win(SIX.entity_card!, "Cine concurează"), SIX.entity_card!);
-    expect(rivals.options.map((o) => o.label)).toEqual(["Firmă", "Orice instituție publică", "Primărie de comună", "Consiliu județean", "Școală"]);
+    expect(rivals.options.map((o) => o.label)).toEqual(["Firmă", "Orice instituție publică", "Primărie de comună", "Primărie de oraș sau municipiu", "Consiliu județean", "Spital", "Școală"]);
     expect(rivals.rest).toBeUndefined();
     const axis = win(SIX.entity_card!, "Ce cauți");
     expect(listOptions(axis, SIX.entity_card!).options.map((o) => [o.label, o.detail])).toEqual([
