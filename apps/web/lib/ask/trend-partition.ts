@@ -46,7 +46,21 @@ export interface TrendPartition {
   sources: Partial<Record<TrendPart, TrendPartSources>>;
   /** Per part a drawer can list, every member (entity ids in id order, or county names). */
   members: Partial<Record<TrendMemberPart, string[]>>;
+  /**
+   * With an entity attribute (the firms' employees, TrendAttribute): per list, the firms of that group
+   * the attribute leaves out for want of a filing ("Fără bilanț: N firme noi, nu intră"), and the
+   * selection the groups are part of, every firm of the two years with its records per channel.
+   */
+  withoutFiling?: Partial<Record<TrendList, number>>;
+  selection?: { totals: TrendPartTotals; sources: TrendPartSources };
 }
+
+/**
+ * An attribute of the grouped entities (trend final §3.10; plan §4.7 P3a, trend-2): the firms' employees
+ * of their latest filing. The groups, their lists and composition keep the firms it selects (`keep`, a
+ * condition on k.id); `filed` says which firms have a filing at all, to count those left out without one.
+ */
+export interface TrendAttribute { keep: Fragment; filed: Fragment }
 
 /** The list a spec shows (data.rowsTrend): its change, the first-year new ones with `firstOnly`. */
 export const trendListOf = (group: TrendGroup): TrendList => group.change === "new" && group.firstOnly ? "first" : group.change;
@@ -64,7 +78,7 @@ export const trendListOf = (group: TrendGroup): TrendList => group.change === "n
  * them): a group's sources need no second grouping.
  */
 export async function trendPartition(sql: DbSql, grouped: Fragment,
-  o: { group: TrendGroup; topN: number; first: { role: "authority" | "supplier"; yearB: number } | null }): Promise<TrendPartition> {
+  o: { group: TrendGroup; topN: number; first: { role: "authority" | "supplier"; yearB: number } | null; attribute?: TrendAttribute | null }): Promise<TrendPartition> {
   const va: Fragment = sql`k.va`, vb: Fragment = sql`k.vb`;
   const kid: Fragment = sql`k.id`;
   const at = (group: Partial<TrendGroup> & Pick<TrendGroup, "change">) =>
@@ -92,7 +106,18 @@ export async function trendPartition(sql: DbSql, grouped: Fragment,
   const memberParts = new Set<TrendPart>(TREND_MEMBER_PARTS);
   const channel = (n: string, v: string, f: string, l: string): Fragment => sql`json_build_object(
     'n', coalesce(sum(k.${sql(n)}), 0), 'v', coalesce(sum(k.${sql(v)}), 0)::text, 'first', min(k.${sql(f)}), 'last', max(k.${sql(l)}))`;
-  // Each list numbers its rows after its own top-N sort (`r`), so the union's order does not matter.
+  // An attribute: the groups are of the entities it keeps (k); every entity of the selection is g, for the
+  // selection's totals and, per list, the entities without a filing it leaves out (same pass, same HAVINGs on k.*).
+  const attribute = o.attribute ?? null;
+  const unfiled: Fragment[] = !attribute ? [] : [
+    sql`(select 'selection'::text, null::text, coalesce(sum(k.va), 0)::text, coalesce(sum(k.vb), 0)::text, count(*), null::bigint,
+      json_build_object('da', ${channel("n_da", "v_da", "f_da", "l_da")}, 'contracts', ${channel("n_ct", "v_ct", "f_ct", "l_ct")}), null::text from g k)`,
+    ...lists.map(([list, { having }]): Fragment => sql`(
+      select ${`none:${list}`}::text, null::text, null::text, null::text, count(*), null::bigint, null::json, null::text
+      from g k where not (${attribute.filed})${having ? sql` and ${having}` : sql``})`),
+  ];
+  // Each list numbers its rows after its own top-N sort (`r`), so the union's order does not matter
+  // (the first branch, a list, names the columns).
   const selects: Fragment[] = [
     ...lists.map(([list, { having, order }]): Fragment => sql`(
       select ${list}::text part, x.id, x.va, x.vb, null::bigint n, row_number() over () r, null::json x, null::text ids from (
@@ -102,15 +127,24 @@ export async function trendPartition(sql: DbSql, grouped: Fragment,
         json_build_object('da', ${channel("n_da", "v_da", "f_da", "l_da")}, 'contracts', ${channel("n_ct", "v_ct", "f_ct", "l_ct")}),
         ${memberParts.has(part) ? sql`string_agg(k.id::text, chr(31) order by k.id)` : sql`null::text`}
       from k ${where(having)})`),
+    ...unfiled,
   ];
+  const inputs: Fragment = attribute
+    ? sql`with g as materialized (${grouped}), k as materialized (select * from g k where ${attribute.keep})`
+    : sql`with k as materialized (${grouped})`;
   const rows = (await sql`
-    with k as materialized (${grouped})
+    ${inputs}
     ${selects.reduce((a, b): Fragment => sql`${a} union all ${b}`)}
   `) as unknown as { part: string; id: string | null; va: string; vb: string; n: string | null; r: string | null; x: TrendPartSources | null; ids: string | null }[];
   const out: TrendPartition = { lists: {}, composition: {}, sources: {}, members: {} };
   for (const [list] of lists) out.lists[list] = [];
   for (const r of [...rows].sort((a, b) => Number(a.r ?? 0) - Number(b.r ?? 0))) {
-    if (r.part.startsWith("sum:")) {
+    if (r.part === "selection") {
+      out.selection = { totals: { count: Number(r.n), valueA: Number(r.va), valueB: Number(r.vb) },
+        sources: { da: channelSources(r.x!.da), contracts: channelSources(r.x!.contracts) } };
+    } else if (r.part.startsWith("none:")) {
+      (out.withoutFiling ??= {})[r.part.slice(5) as TrendList] = Number(r.n);
+    } else if (r.part.startsWith("sum:")) {
       const part = r.part.slice(4) as TrendPart;
       out.composition[part] = { count: Number(r.n), valueA: Number(r.va), valueB: Number(r.vb) };
       if (r.x) out.sources[part] = { da: channelSources(r.x.da), contracts: channelSources(r.x.contracts) };

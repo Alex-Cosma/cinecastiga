@@ -57,7 +57,10 @@ export function trendGroupEntry(partition: TrendPartition, o: { dim: TrendGroupE
     members[part] = o.dim === "county" ? ids : Float64Array.from(ids, Number);
     size += ids.length;
   }
-  return { dim: o.dim, members, sources: partition.sources, eligibleBase: o.group.order === "percent" ? o.group.minBase : null, size };
+  // `all` is the selection a group's drawer says it is part of: with an attribute (the firms' employees),
+  // every firm of the selection, not only those of the band the groups keep.
+  const sources = partition.selection ? { ...partition.sources, all: partition.selection.sources } : partition.sources;
+  return { dim: o.dim, members, sources, eligibleBase: o.group.order === "percent" ? o.group.minBase : null, size };
 }
 
 /** The entry's members of a group, or null when it does not hold them (the growths in percent from another base). */

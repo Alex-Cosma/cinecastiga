@@ -6,7 +6,7 @@ import { NEWER_VERSION_LINK, unimplementedSpecKeys, type AskSpec, type Dim, type
 import type { Grounding } from "./ground";
 import { EVIDENCE_CSV_LIMIT, PROFILE_BLOCKS, sumDecimalStrings, validateEvidenceScope, type EvidenceScope, type EvidenceStatus, type EvidenceProfile } from "./evidence";
 import {
-  andAll, DA_PLAFOND_RON, displayPredicates, ENTITY_CARD_MIN_DAS, fold, groupPredicates, isEveryChange, perCapitaPredicate, plafondFor, predicateContext,
+  andAll, DA_PLAFOND_RON, displayPredicates, employeesCond, ENTITY_CARD_MIN_DAS, fold, groupPredicates, isEveryChange, perCapitaPredicate, plafondFor, predicateContext,
   profileMinDas, profilePredicates, RISK_MIN_DAS, rowPredicates, trendGroupOf, trendGroupSql, trendYearsPredicate, type PredicateCtx, type TrendGroup,
 } from "./predicates";
 import { monthsLabel, partialMonths, sameMonthsWindow, WHOLE_YEAR, type CoveragePeriods, type MonthsMode, type MonthsWindow } from "./months-window";
@@ -27,7 +27,7 @@ import {
 } from "./rollups";
 import {
   factsOfRow, factsSource, liveTrendChannels, trendFactsRows, trendListOf, trendMembersFigures, trendNoun, trendPartition, trendProfiles,
-  type TrendComposition, type TrendList, type TrendMemberPart, type TrendNoun, type TrendPartitionRow, type TrendPartSources, type TrendRowFacts,
+  type TrendAttribute, type TrendComposition, type TrendList, type TrendMemberPart, type TrendNoun, type TrendPartitionRow, type TrendPartSources, type TrendRowFacts,
 } from "./trend-partition";
 import {
   entryMembers, groupSourceTotals, hasMember, memberList, rememberTrendGroups, trendCacheStamp, trendGroupEntry, trendGroupKey, trendGroupsFor, trendMemberPart,
@@ -226,6 +226,8 @@ export type BlockData =
     rowFacts?: Record<string, TrendRowFacts>;
     /** A watch on a group (TableOpts.fixedMembers): the answer is its fixed members', not the live group's. */
     members?: TrendFrozenGroup;
+    /** A trend of firms with an employees band: per list, the firms left out without a filing. Not compared by a watch. */
+    withoutFiling?: Partial<Record<TrendList, number>>;
   };
 
 /**
@@ -620,6 +622,31 @@ function trendGroupedInput(s: DbSql, o: {
     where ${selection} and ${key} is not null
     group by ${key}
   `;
+}
+
+/**
+ * A trend's grouping with the firms' employees as an attribute of the grouped
+ * firm, not a selection of its records (plan §4.7 P3a, under trend-2; trend
+ * final §3.10): on a trend of firms the grouping counts every firm of the
+ * selection, and the partition keeps the firms of the band (the same lists
+ * and composition as the selection gave) and counts per group those left out
+ * without a filing, and the selection they are part of. Elsewhere (the firms
+ * of a trend of institutions or counties are the other side) and on a watch's
+ * fixed members, the employees stay a selection of the records.
+ */
+function trendGrouping(s: DbSql, o: Parameters<typeof trendGroupedInput>[1]): { grouped: ReturnType<DbSql>; attribute: TrendAttribute | null } {
+  const { ctx } = o;
+  if (o.dim !== "supplier" || o.members || (ctx.minEmployees === null && ctx.maxEmployees === null))
+    return { grouped: trendGroupedInput(s, o), attribute: null };
+  const every: PredicateCtx = { ...ctx, minEmployees: null, maxEmployees: null };
+  const rollup = o.rollup ? { ...o.rollup, filters: { ...o.rollup.filters, employees: null } } : null;
+  return {
+    grouped: trendGroupedInput(s, { ...o, ctx: every, rollup }),
+    attribute: {
+      keep: employeesCond(s, ctx.minEmployees, ctx.maxEmployees, s`k.id`),
+      filed: s`k.id in (select ep.entity_id from marts.entity_profile ep where ep.role = 'supplier' and ep.employees is not null)`,
+    },
+  };
 }
 
 export async function runSpec(
@@ -1711,15 +1738,16 @@ export async function runSpec(
           // A record threshold is refused on a trend (population.ts), so the selection is the record conditions,
           // the buyer's kind on its ids (authorityKindIds): the facts then read no names.
           const selection = andAll(s, [...rowPredicates(w, { years: false, kindById: true }), trendYearsPredicate(s, yA, yB, w.trendMonths)]);
-          // Names and counties come from entity_profile after the grouping, so the live query groups the slim union.
-          const grouped = trendGroupedInput(s, { rollup, days: trendDays, ctx: w, dataset, dim, yearA: yA, yearB: yB });
+          // Names and counties come from entity_profile after the grouping, so the live query groups the slim union;
+          // a trend of firms groups every firm and keeps those of its employees band (trendGrouping).
+          const { grouped, attribute } = trendGrouping(s, { rollup, days: trendDays, ctx: w, dataset, dim, yearA: yA, yearB: yB });
           const first = dim === "county" ? null : { role: dim, yearB: yB };
           const fixed = tableOpts.fixedMembers;
           const part = trendMemberPart(group);
           if (fixed && (!part || fixed.role !== dim)) return { error: FIXED_GROUP_MISMATCH };
           // A watch on a group (plan §2.8): the live partition only counts the group for the note (no lists);
           // the answer is its fixed members' figures, grouped on their id index, in the group's order.
-          const partition = await trendPartition(s, grouped, { group, topN: fixed ? 0 : topN, first });
+          const partition = await trendPartition(s, grouped, { group, topN: fixed ? 0 : topN, first, attribute });
           // The members of every group and their records per channel, kept for the source drawers (group-ids.ts).
           const stamp = fixed ? null : await trendCacheStamp(s);
           if (stamp) rememberTrendGroups(trendGroupKey(w, { stamp, dim, yearA: yA, yearB: yB }), trendGroupEntry(partition, { dim, group }));
@@ -1764,6 +1792,8 @@ export async function runSpec(
             noun: trendNoun(spec),
             ...(dim === "county" ? {} : { rowFacts }),
             ...(fixed ? { members: { list: trendListOf(group), frozen: fixed.frozen, frozenAt: fixed.frozenAt } } : {}),
+            // The firms an employees band leaves out for want of a filing, per list ("Fără bilanț: N firme noi, nu intră").
+            ...(partition.withoutFiling && !fixed ? { withoutFiling: partition.withoutFiling } : {}),
           };
         }
       }
@@ -2251,8 +2281,8 @@ export async function runRows(
     }
     if (!entry || !kept) {
       // Not kept (another process, an entry dropped, the marts rebuilt): the answer's grouping again, kept for the next drawer.
-      const partition = await trendPartition(s, trendGroupedInput(s, { rollup, days: trendDays, ctx, dataset, dim: groupDim, yearA, yearB }),
-        { group: listed, topN: 0, first: groupDim === "county" ? null : { role: groupDim, yearB } });
+      const { grouped, attribute } = trendGrouping(s, { rollup, days: trendDays, ctx, dataset, dim: groupDim, yearA, yearB });
+      const partition = await trendPartition(s, grouped, { group: listed, topN: 0, first: groupDim === "county" ? null : { role: groupDim, yearB }, attribute });
       entry = trendGroupEntry(partition, { dim: groupDim, group: listed });
       if (key) rememberTrendGroups(key, entry);
       kept = entryMembers(entry, listed) ?? [];

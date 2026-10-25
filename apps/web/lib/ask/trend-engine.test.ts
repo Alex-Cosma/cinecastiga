@@ -36,7 +36,8 @@ function database(coverage: Coverage, opts: { rollups?: boolean; days?: boolean;
       if (text.includes("from marts.data_coverage")) return Promise.resolve(resolve(coverage));
       if (text.includes("marts.national_stats")) return Promise.resolve(resolve([2018, 2019, 2024, 2025, 2026].map((year) => ({ year }))));
       if (/select \S+::text m from/.test(text)) return Promise.resolve(resolve((opts.members ?? []).map((m) => ({ m }))));
-      if (text.includes("with k as materialized")) return Promise.resolve(resolve(opts.partition ?? []));
+      // The partition: `with k as materialized`, or with an attribute `with g as materialized (…), k as materialized`.
+      if (text.includes("with k as materialized") || text.includes("with g as materialized")) return Promise.resolve(resolve(opts.partition ?? []));
       if (text.includes("with x as materialized")) return Promise.resolve(resolve(opts.facts ?? []));
       if (text.includes(PROFILES)) return Promise.resolve(resolve(opts.profiles ?? []));
       return Promise.resolve(resolve([]));
@@ -212,6 +213,28 @@ describe("the trend's answer with its lenses", () => {
     const profiles = db.statements.find((s) => s.text.includes(PROFILES))!;
     expect(profiles.values).toEqual(["supplier", ["11", "12"], "authority", ["7", "8"]]);
     expect(profiles.text).toContain("left join core.entities e on e.id = x.id");
+  });
+
+  it("groups every firm and keeps the employees band as the group's attribute, counting those without a filing (trend-2)", async () => {
+    const db = database(PROD, { partition: [
+      { part: "sum:all", id: null, va: "400", vb: "400", n: "2" },
+      { part: "selection", id: null, va: "900", vb: "800", n: "7", x: { da: { n: 9, v: "1700", first: "2024-01-02", last: "2025-12-30" }, contracts: { n: 0, v: "0", first: null, last: null } } },
+      { part: "none:new", id: null, va: null, vb: null, n: "5" }, { part: "none:all", id: null, va: null, vb: null, n: "6" },
+    ] });
+    const result = await runSpec(db.sql, trend({ change: "new" }, { yearFrom: 2024, yearTo: 2025, minEmployees: 1, maxEmployees: 9 }), {});
+    if ("error" in result || result.data.block !== "trend") throw new Error("trend expected");
+    expect(result.data.withoutFiling).toEqual({ new: 5, all: 6 });
+    const partition = db.statements.find((s) => s.text.includes("with g as materialized"))!.text;
+    // The grouping reads every firm; the band and the filing are on the grouped firm (k.id), not on the records.
+    expect(partition).toContain("k as materialized (select * from g k where k.id in ( select ep.entity_id from marts.entity_profile ep where ep.role = 'supplier' and ep.employees is not null and ep.employees between ? and ? ))");
+    expect(partition.slice(0, partition.indexOf("k as materialized"))).not.toContain("ep.employees");
+    expect(partition).toContain("from g k where not (k.id in (select ep.entity_id from marts.entity_profile ep where ep.role = 'supplier' and ep.employees is not null))");
+    // A trend of institutions keeps the employees of their firms as a selection of the records.
+    const institutions = database(PROD);
+    await runSpec(institutions.sql, { ...trend({ change: "up" }, { yearFrom: 2024, yearTo: 2025, minEmployees: 1, maxEmployees: 9 }), dim: "authority" }, {});
+    const grouped = institutions.statements.find((s) => s.text.includes("with k as materialized"))!.text;
+    expect(grouped).not.toContain("with g as materialized");
+    expect(grouped).toContain("d.supplier_id in ( select ep.entity_id from marts.entity_profile ep where ep.role = 'supplier' and ep.employees is not null");
   });
 
   it("shows a seat county kept as „NA” as unknown, and an identity without a profile with its own CUI status", async () => {

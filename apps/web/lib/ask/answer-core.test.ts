@@ -163,6 +163,8 @@ describe("what a watch compares between two checks", () => {
     const gone = { ...answer, groups: { ...answer.groups, gone: [row("4", 70, 0)] }, composition: { ...answer.composition, gone: { count: 1, valueA: 70, valueB: 0 }, all: { count: 3, valueA: 85, valueB: 39 } } };
     expect(sameAnswerCore("trend", answer, gone)).toBe(true);
     expect(sameAnswerCore("trend", answer, { ...answer, rowFacts: {}, noun: "furnizori" })).toBe(true);
+    // The firms an employees band leaves out without a filing are not the group either.
+    expect(sameAnswerCore("trend", answer, { ...answer, withoutFiling: { up: 3, new: 1 } })).toBe(true);
     // Its own rows and totals are.
     expect(sameAnswerCore("trend", answer, { ...answer, rowsTrend: [growths[1], growths[0]] })).toBe(false);
     expect(sameAnswerCore("trend", answer, { ...answer, composition: { ...answer.composition, up: { count: 3, valueA: 15, valueB: 40 } } })).toBe(false);

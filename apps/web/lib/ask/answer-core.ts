@@ -98,13 +98,14 @@ export function sameAnswerVersion(before: AnswerVersion, after: AnswerVersion): 
  * §2.8): the whole answer, except on a trend (trend-2), where it is the chosen
  * group: its rows, years, change and months, and the totals of its own list
  * (`list`: the change, or "Prima dată") and, with the order in percent, of the
- * growths from the base. The other groups' rows and totals, the group noun and
- * the row facts stay out, so a change only in "Nu mai apar" or only in a fact
- * does not change a watch on "Creșteri". An answer stored before trend-2 is whole.
+ * growths from the base. The other groups' rows and totals, the group noun,
+ * the row facts and the firms an employees band leaves out without a filing
+ * stay out, so a change only in "Nu mai apar" or only in a fact does not
+ * change a watch on "Creșteri". An answer stored before trend-2 is whole.
  */
 export function answerCore(block: string, data: unknown): unknown {
   if (block !== "trend" || !object(data) || !object(data.groups)) return data;
-  const { groups: _groups, composition, noun: _noun, rowFacts: _facts, ...core } = data;
+  const { groups: _groups, composition, noun: _noun, rowFacts: _facts, withoutFiling: _unfiled, ...core } = data;
   const parts = object(composition) ? composition : {};
   const own = [typeof core.list === "string" ? core.list : "all", "eligible"].filter((part) => part in parts);
   return { ...core, composition: Object.fromEntries(own.map((part) => [part, parts[part]])) };
