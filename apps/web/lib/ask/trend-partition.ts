@@ -122,6 +122,37 @@ export async function trendPartition(sql: DbSql, grouped: Fragment,
 const channelSources = (c: { n: number | string; v: string; first: string | null; last: string | null }): TrendChannelSources =>
   ({ n: Number(c.n), v: c.v, first: c.first, last: c.last });
 
+/** A watch's fixed members (plan §2.8): the first N in the group's order, their totals, and how many are still in the group. */
+export interface TrendMembersFigures { rows: TrendPartitionRow[]; totals: Pick<TrendPartTotals, "valueA" | "valueB">; withRecords: number; stayed: number }
+/**
+ * The figures of a watch's fixed members, over `grouped` restricted to them
+ * (same columns as trendPartition's input). Every member is listed in the
+ * order of the group, whether or not its values still put it there (a growth
+ * in percent without a base value goes last), so a member that leaves the
+ * live group changes nothing unless its own records do. `stayed` counts those
+ * the group's condition still selects, for the watch's note only.
+ */
+export async function trendMembersFigures(sql: DbSql, grouped: Fragment,
+  o: { group: TrendGroup; topN: number; first: { role: "authority" | "supplier"; yearB: number } | null }): Promise<TrendMembersFigures> {
+  const va: Fragment = sql`k.va`, vb: Fragment = sql`k.vb`;
+  const { having, order } = trendGroupSql(sql, va, vb, o.group, o.first ? { id: sql`k.id`, role: o.first.role, yearB: o.first.yearB } : undefined);
+  const ranked: Fragment = o.group.order === "percent" ? sql`case when k.va > 0 then ${order} end` : order;
+  const rows = (await sql`
+    with k as materialized (${grouped})
+    (select 'row'::text part, x.id, x.va, x.vb, null::bigint n, row_number() over () r from (
+      select k.id::text id, k.va::text va, k.vb::text vb from k order by ${ranked} desc nulls last, k.id limit ${o.topN}) x)
+    union all (select 'sum', null, coalesce(sum(k.va), 0)::text, coalesce(sum(k.vb), 0)::text, count(*), null from k)
+    union all (select 'stayed', null, null, null, count(*), null from k ${having ? sql`where ${having}` : sql``})
+  `) as unknown as { part: string; id: string | null; va: string | null; vb: string | null; n: string | null; r: string | null }[];
+  const sum = rows.find((r) => r.part === "sum");
+  return {
+    rows: rows.filter((r) => r.part === "row").sort((a, b) => Number(a.r) - Number(b.r)).map((r) => ({ id: r.id!, va: r.va!, vb: r.vb! })),
+    totals: { valueA: Number(sum?.va ?? 0), valueB: Number(sum?.vb ?? 0) },
+    withRecords: Number(sum?.n ?? 0),
+    stayed: Number(rows.find((r) => r.part === "stayed")?.n ?? 0),
+  };
+}
+
 /**
  * The channel columns of a trend's grouped input, per entity or county: the
  * records, value and first and last day of each channel (n_da, v_da, f_da,

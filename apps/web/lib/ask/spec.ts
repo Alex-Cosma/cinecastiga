@@ -326,10 +326,12 @@ export const IMPLEMENTED_KEYS: ReadonlySet<string> = new Set([
 /**
  * Paths parseSpec reads ahead of the engine (plan §3), with the stage that
  * implements each. "filters.authorityKind=local_admin" is a value of an
- * existing key; "options.members" belongs to a watch, not to the spec.
+ * existing key; "options.members=network-group" is a watch's fixed group of a
+ * network, not a spec path (a trend's, "trend-group", is applied since F2:
+ * lib/monitoring-input.ts IMPLEMENTED_MEMBER_KINDS).
  */
 export const READ_AHEAD_KEYS = {
-  "options.members": "F2",
+  "options.members=network-group": "F4",
   "timeseries.grain": "F3", "timeseries.split": "F3", "timeseries.months": "F3",
   "filters.purchaseKind": "F3", "filters.procedure": "F3", "filters.purchaseValueMin": "F3", "filters.purchaseValueMax": "F3",
   "filters.firmSeat": "F4", "filters.seatCounty": "F4", "filters.sharedPartners": "F4", "sankey.shown": "F4",

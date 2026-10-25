@@ -189,7 +189,8 @@ describe.skipIf(!url)("immutable monitoring (isolated PostgreSQL)",()=>{
     await checkpoint();
     await expect(evaluateMonitoringWatch(watch.id,checkpointId,sql)).rejects.toThrow(NEWER_VERSION_QUESTION);
     expect(await getMonitoringWatch(uid,watch.id,sql)).toMatchObject({lastSuccessRunId:good,lastError:NEWER_VERSION_QUESTION});
-    const members={kind:"trend-group",role:"supplier",group:"new",ids:[supplier],frozenAt:"2026-10-24T10:00:00Z"};
+    // A network's fixed group comes with F4: read ahead, refused; a trend's is applied (monitoring-trend-group.integration.test.ts).
+    const members={kind:"network-group",role:"authority",group:"continuing",ids:[supplier],frozenAt:"2026-10-24T10:00:00Z"};
     await sql`update app.monitoring_watches set spec=spec #- '{filters,purchaseKind}',options=options||${JSON.stringify({members})}::jsonb where id=${watch.id}`;
     await expect(evaluateMonitoringWatch(watch.id,checkpointId,sql)).rejects.toThrow(NEWER_VERSION_QUESTION);
     expect(await getMonitoringWatch(uid,watch.id,sql)).toMatchObject({lastSuccessRunId:good,lastError:NEWER_VERSION_QUESTION});
