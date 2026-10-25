@@ -178,12 +178,29 @@ const cpvLike = (sql: DbSql, prefixes: readonly string[]) =>
   prefixes.map((p) => sql`d.cpv_code like ${p + "%"}`).reduce((a, b) => sql`${a} or ${b}`);
 
 /**
+ * The buyer's kind as its ids: the authorities whose entity_profile name the
+ * kind matches. The same rows as the kind on the record's authority_name (an
+ * id has one name in the marts, equal to the profile's; rollups.ts rests on
+ * the same property), but on authority_id, which the id indexes cover
+ * (da_tx_supplier_cover_idx), so a trend reads a group's records without their
+ * heap rows and without names (the slim union).
+ */
+export function authorityKindIds(sql: DbSql, kind: AuthorityKind, column: Fragment = sql`d.authority_id`): Fragment {
+  return sql`${column} in (
+    select ep.entity_id from marts.entity_profile ep
+    where ep.role = 'authority' and ${authorityKindCond(sql, kind, sql`ep.name_display`)}
+  )`;
+}
+
+/**
  * The conditions on the record (d.* of a transaction mart, or of their union
  * with a `src` column), in a fixed order. `years: false` leaves the period out
- * (a trend adds its two years itself). The comparison replaces the condition
- * on its own role by both entities.
+ * (a trend adds its two years itself). `kindById`: the buyer's kind on its id
+ * (authorityKindIds), for the trend's grouping, facts and sources, which then
+ * read no names. The comparison replaces the condition on its own role by both
+ * entities.
  */
-export function rowPredicates(ctx: PredicateCtx, opts: { years?: boolean } = {}): Fragment[] {
+export function rowPredicates(ctx: PredicateCtx, opts: { years?: boolean; kindById?: boolean } = {}): Fragment[] {
   const { sql } = ctx;
   const parts: Fragment[] = [sql`d.closing_value > 0`];
   if (ctx.population) parts.push(populationSql(sql, ctx.population));
@@ -192,7 +209,7 @@ export function rowPredicates(ctx: PredicateCtx, opts: { years?: boolean } = {})
   if (ctx.cpvPrefixes.length > 0) parts.push(sql`(${cpvLike(sql, ctx.cpvPrefixes)})`);
   if (ctx.cpvExclude.length > 0) parts.push(sql`not (${cpvLike(sql, ctx.cpvExclude)})`);
   if (ctx.county) parts.push(sql`d.county = ${ctx.county}`);
-  if (ctx.kind) parts.push(authorityKindCond(sql, ctx.kind, sql`d.authority_name`));
+  if (ctx.kind) parts.push(opts.kindById ? authorityKindIds(sql, ctx.kind) : authorityKindCond(sql, ctx.kind, sql`d.authority_name`));
   const compare = ctx.comparison;
   if (ctx.authorityId && compare?.role !== "authority") parts.push(sql`d.authority_id = ${ctx.authorityId}`);
   if (ctx.supplierId && compare?.role !== "supplier") parts.push(sql`d.supplier_id = ${ctx.supplierId}`);

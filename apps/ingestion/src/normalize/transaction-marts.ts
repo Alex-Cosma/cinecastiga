@@ -153,7 +153,7 @@ export async function buildTransactionMarts(q:TransactionSql){
 }
 export async function runTransactionMarts(sql:DbSql,opts:{log?:(message:string)=>void}={}){
  const report=await sql.begin(q=>buildTransactionMarts(q));
- opts.log?.(`transaction marts: da_transactions=${report.daTransactions} agg_entity_year=${report.rollups.agg_entity_year} agg_pair_year=${report.rollups.agg_pair_year} agg_cpv_year=${report.rollups.agg_cpv_year} agg_entity_month=${report.rollups.agg_entity_month} agg_map_county_top=${report.mapCountyTop}`);
+ opts.log?.(`transaction marts: da_transactions=${report.daTransactions} agg_entity_year=${report.rollups.agg_entity_year} agg_pair_year=${report.rollups.agg_pair_year} agg_cpv_year=${report.rollups.agg_cpv_year} agg_entity_month=${report.rollups.agg_entity_month} agg_county_month=${report.rollups.agg_county_month} agg_map_county_top=${report.mapCountyTop}`);
  if(report.createdIndexes.length)opts.log?.(`transaction marts: recreated missing indexes ${report.createdIndexes.join(', ')}`);
  // After the commit (VACUUM cannot run in a transaction), before the site
  // reopens: the reload leaves no page all-visible, so until autovacuum (cost

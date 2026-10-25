@@ -77,6 +77,24 @@ it.skipIf(!connection)('builds the Ask rollups and the covering indexes with eve
    {authority_id:cluj,supplier_id:b,y:'2024',v:'2000000',n:1},
    {authority_id:iasi,supplier_id:null,y:'2024',v:'30',n:1},
   ]);
+  // The county-month grain (F2 review: the county trend on the same months) = the live grouping of every row,
+  // with its first and last day; 17007, whose supplier is its own authority, counts in Iasi.
+  const [countyMonths]=await q`select count(*)::int differ from (
+    select d.src, left(d.finalization_date,4) y, substr(d.finalization_date,6,2) m, d.county, sum(d.closing_value) v, count(*)::bigint n,
+           min(left(d.finalization_date,10)) d0, max(left(d.finalization_date,10)) d1
+    from (select county, finalization_date, closing_value, 'da'::text src from marts.da_transactions where closing_value > 0 and closing_value <= 2000000
+          union all select county, finalization_date, closing_value, 'contracts' from marts.contract_transactions where closing_value > 0) d
+    group by 1, 2, 3, 4) live
+    full join marts.agg_county_month rolled on live.src = rolled.src and live.y is not distinct from rolled.y
+      and live.m is not distinct from rolled.m and live.county is not distinct from rolled.county
+    where (live.v, live.n, live.d0, live.d1) is distinct from (rolled.v, rolled.n, rolled.d0, rolled.d1)`;
+  expect(countyMonths!.differ).toBe(0);
+  expect((await q`select src,y,m,county,v::text,n::int from marts.agg_county_month where county in ('Cluj','Iasi') order by y,m,county`).map(r=>({...r}))).toEqual([
+   {src:'da',y:'2024',m:'09',county:'Cluj',v:'2000000',n:1},
+   {src:'da',y:'2024',m:'09',county:'Iasi',v:'30',n:1},
+   {src:'da',y:'2025',m:'03',county:'Cluj',v:'900.50',n:1},
+   {src:'da',y:'2025',m:'09',county:'Cluj',v:'100',n:1},
+  ]);
   const [cpv]=await q`select coalesce(sum(v),0)::text v, coalesce(sum(n),0)::int n from marts.agg_cpv_year`;
   const [national]=await q`select coalesce(sum(v_plaf),0)::text v, coalesce(sum(n_plaf),0)::int n from marts.agg_national`;
   expect(cpv).toEqual(national);

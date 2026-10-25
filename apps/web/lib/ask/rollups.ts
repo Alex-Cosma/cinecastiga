@@ -97,8 +97,11 @@ const DATASET = { "da-branch": "all", strict: "da", none: "contracts" } as const
 /** What the block groups by: an entity role (table/trend), county, the channel/year/county of a total, or CPV stems. */
 export type RollupNeed = { by: Role } | { by: "county" } | { by: "total" } | { by: "cpv" };
 
-/** entityMonth: agg_entity_month, the entity rollup with the month, for a trend's same months (F2). */
-export type RollupSource = { table: "entity"; role: Role } | { table: "entityMonth"; role: Role } | { table: "pair" } | { table: "cpv" };
+/**
+ * entityMonth: agg_entity_month, the entity rollup with the month, for a trend's same months (F2);
+ * countyMonth: agg_county_month, every row by county and month, for the county trend on the same months.
+ */
+export type RollupSource = { table: "entity"; role: Role } | { table: "entityMonth"; role: Role } | { table: "countyMonth" } | { table: "pair" } | { table: "cpv" };
 
 /** The selection, in the terms of the rollup columns. */
 export interface RollupFilters {
@@ -115,7 +118,7 @@ export interface RollupFilters {
   excludeAuthorities: readonly string[];
   excludeSuppliers: readonly string[];
   minimum: MinimumRecords | null;
-  /** A trend's same months of both years (entityMonth only). */
+  /** A trend's same months of both years (entityMonth and countyMonth only). */
   months: readonly [number, number] | null;
 }
 
@@ -177,9 +180,11 @@ export function planRollup(ctx: RollupCtx, need: RollupNeed, opts: { months?: bo
   if (filters.minimum) sides.add(filters.minimum.role);
   const cpv = filters.cpvPrefixes.length > 0 || filters.cpvExclude.length > 0;
   if (filters.months) {
+    // Counties without an entity condition: agg_county_month; one role with conditions on that role: agg_entity_month.
+    if (need.by === "county" && !cpv && !filters.minimum && sides.size === 0) return { source: { table: "countyMonth" }, filters };
     const role = need.by === "authority" || need.by === "supplier" ? need.by : null;
     if (!role || cpv || filters.minimum || [...sides].some((side) => side !== role))
-      return { reason: "months: agg_entity_month holds one role, without CPV or a threshold" };
+      return { reason: "months: agg_entity_month holds one role and agg_county_month none, without CPV or a threshold" };
     return { source: { table: "entityMonth", role }, filters };
   }
   if (need.by === "cpv" || cpv) {
@@ -200,14 +205,14 @@ export function planRollup(ctx: RollupCtx, need: RollupNeed, opts: { months?: bo
 
 /** Column of one role on a rollup source, or null when the source has none. */
 function idColumn(sql: DbSql, source: RollupSource, role: Role, alias: string): Fragment | null {
-  if (source.table === "cpv") return null;
+  if (source.table === "cpv" || source.table === "countyMonth") return null;
   if (source.table === "entity" || source.table === "entityMonth") return source.role === role ? sql`${sql(alias)}.eid` : null;
   return role === "authority" ? sql`${sql(alias)}.authority_id` : sql`${sql(alias)}.supplier_id`;
 }
 
 function fromSource(sql: DbSql, source: RollupSource, alias: string): Fragment {
   const name = source.table === "entity" ? sql`marts.agg_entity_year` : source.table === "entityMonth" ? sql`marts.agg_entity_month`
-    : source.table === "pair" ? sql`marts.agg_pair_year` : sql`marts.agg_cpv_year`;
+    : source.table === "countyMonth" ? sql`marts.agg_county_month` : source.table === "pair" ? sql`marts.agg_pair_year` : sql`marts.agg_cpv_year`;
   return sql`${name} ${sql(alias)}`;
 }
 
@@ -312,7 +317,7 @@ export async function rollupsReady(sql: DbSql): Promise<boolean> {
   return ready.ok;
 }
 /**
- * agg_entity_month present (F2) and of the same build as the yearly rollups.
+ * agg_entity_month and agg_county_month present (F2) and of the same build as the yearly rollups.
  * Built with the three above by the same build, it is probed apart: a deploy
  * before the first build with it keeps the yearly rollups, and a trend on the
  * same months runs live until that build. The table alone proves nothing: a
@@ -325,7 +330,7 @@ export async function rollupsReady(sql: DbSql): Promise<boolean> {
 let monthReady: { ok: boolean; at: number } | null = null;
 export async function monthRollupReady(sql: DbSql): Promise<boolean> {
   if (monthReady && Date.now() - monthReady.at < 600_000) return monthReady.ok;
-  const [row] = (await sql`select to_regclass('marts.agg_entity_month') is not null ok`) as unknown as { ok: boolean }[];
+  const [row] = (await sql`select to_regclass('marts.agg_entity_month') is not null and to_regclass('marts.agg_county_month') is not null ok`) as unknown as { ok: boolean }[];
   monthReady = { ok: Boolean(row?.ok) && await rollupDaysReady(sql), at: Date.now() };
   return monthReady.ok;
 }
@@ -469,8 +474,9 @@ export function rollupTrendGrouped(sql: DbSql, plan: { source: RollupSource; fil
   const key: Fragment | null = o.dim === "county" ? sql`p.county` : idColumn(sql, source, o.dim, "p");
   if (!key) return { reason: `the ${source.table} rollup has no ${o.dim} id` };
   // agg_cpv_year keeps the whole first and last date (d0, d1); the pair and entity rollups the day.
+  // agg_county_month is only built with its days, by the build that also writes them on the others.
   const day = (column: "d0" | "d1"): Fragment | null => source.table === "cpv" ? sql`left(p.${sql(column)}, 10) collate "C"`
-    : o.days ? sql`p.${sql(column)}` : null;
+    : o.days || source.table === "countyMonth" ? sql`p.${sql(column)}` : null;
   const first = day("d0"), last = day("d1");
   const channels = trendChannelColumns(sql, filters.dataset, (src) => ({
     n: sql`sum(p.n) filter (where p.src = ${src})`, v: sql`sum(p.v) filter (where p.src = ${src})`,

@@ -612,10 +612,11 @@ function trendGroupedInput(s: DbSql, o: {
     s`${key} = any(${s.array([...o.members])}::bigint[])`,
     s`d.finalization_date >= ${String(Math.min(o.yearA, o.yearB))} and d.finalization_date < ${String(Math.max(o.yearA, o.yearB) + 1)}`,
   ];
-  const selection = andAll(s, [...rowPredicates(o.ctx, { years: false }), trendYearsPredicate(s, o.yearA, o.yearB, o.ctx.trendMonths), ...fixed]);
+  // The buyer's kind on its ids (authorityKindIds): the slim union, no names, on the id indexes.
+  const selection = andAll(s, [...rowPredicates(o.ctx, { years: false, kindById: true }), trendYearsPredicate(s, o.yearA, o.yearB, o.ctx.trendMonths), ...fixed]);
   return s`
     select ${key} id, ${va} va, ${vb} vb, ${liveTrendChannels(s, o.dataset)}
-    from ${txAggFragment(s, o.dataset, Boolean(o.ctx.kind))} d
+    from ${txAggFragment(s, o.dataset, false)} d
     where ${selection} and ${key} is not null
     group by ${key}
   `;
@@ -1707,7 +1708,9 @@ export async function runSpec(
           // the chosen group is rowsTrend (every change without trend options, as before trend-2).
           const group = trendGroupOf(spec);
           const key: ReturnType<DbSql> = dim === "county" ? s`d.county` : dim === "authority" ? s`d.authority_id` : s`d.supplier_id`;
-          const selection = andAll(s, [whereFrag({ years: false }), trendYearsPredicate(s, yA, yB, w.trendMonths)]);
+          // A record threshold is refused on a trend (population.ts), so the selection is the record conditions,
+          // the buyer's kind on its ids (authorityKindIds): the facts then read no names.
+          const selection = andAll(s, [...rowPredicates(w, { years: false, kindById: true }), trendYearsPredicate(s, yA, yB, w.trendMonths)]);
           // Names and counties come from entity_profile after the grouping, so the live query groups the slim union.
           const grouped = trendGroupedInput(s, { rollup, days: trendDays, ctx: w, dataset, dim, yearA: yA, yearB: yB });
           const first = dim === "county" ? null : { role: dim, yearB: yB };
@@ -1729,7 +1732,7 @@ export async function runSpec(
           const shown = dim === "county" ? [] : [...new Set(lists.flatMap(([, rows]) => rows.map((r) => r.id)))];
           const partnerRole = dim === "supplier" ? "authority" : "supplier";
           const facts = dim === "county" ? [] : await trendFactsRows(s, {
-            source: factsSource(s, dataset, Boolean(w.kind)), where: selection, id: key,
+            source: factsSource(s, dataset, false), where: selection, id: key,
             partner: dim === "supplier" ? s`d.authority_id` : s`d.supplier_id`, ids: shown, yearA: yA, yearB: yB,
           });
           const profiles = dim === "county" ? new Map() : await trendProfiles(s, [
@@ -2123,7 +2126,7 @@ export async function runRows(
 
   // Only what is proper to the sources is added below: the relationship's focal entity,
   // the two years of a trend, the value winner, the drawer's scope and its exclusions.
-  const parts: ReturnType<DbSql>[] = profile ? [sql`true`] : rowPredicates(ctx, { years: spec.block !== "trend" });
+  const parts: ReturnType<DbSql>[] = profile ? [sql`true`] : rowPredicates(ctx, { years: spec.block !== "trend", kindById: spec.block === "trend" });
   if (profile) {
     notes.push("Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.");
     notes.push("Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.");
@@ -2220,10 +2223,10 @@ export async function runRows(
       const va: ReturnType<DbSql> = sql`coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yearA)}), 0)`;
       const vb: ReturnType<DbSql> = sql`coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yearB)}), 0)`;
       const { having } = trendGroupSql(sql, va, vb, listed);
-      const where = andAll(sql, [...rowPredicates(ctx, { years: false }), trendYearsPredicate(sql, yearA, yearB, ctx.trendMonths),
+      const where = andAll(sql, [...rowPredicates(ctx, { years: false, kindById: true }), trendYearsPredicate(sql, yearA, yearB, ctx.trendMonths),
         sql`lower(unaccent(d.county)) = any(${sql.array([...named])}::text[])`]);
       const rows = (await readEvidenceQuery(s`
-        select d.county::text m from ${txAggFragment(sql, dataset, Boolean(ctx.kind))} d
+        select d.county::text m from ${txAggFragment(sql, dataset, false)} d
         where ${where} group by d.county ${having ? sql`having ${having}` : sql``}
       `, opts.signal)) as unknown as { m: string }[];
       return { members: rows.map((r) => r.m), sources: null, selection: null };
@@ -2236,10 +2239,10 @@ export async function runRows(
       const va: ReturnType<DbSql> = sql`coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yearA)}), 0)`;
       const vb: ReturnType<DbSql> = sql`coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yearB)}), 0)`;
       const { having } = trendGroupSql(sql, va, vb, listed, { id, role, yearB });
-      const where = andAll(sql, [...rowPredicates(ctx, { years: false }), trendYearsPredicate(sql, yearA, yearB, ctx.trendMonths),
+      const where = andAll(sql, [...rowPredicates(ctx, { years: false, kindById: true }), trendYearsPredicate(sql, yearA, yearB, ctx.trendMonths),
         sql`${id} = any(${sql.array([...own])}::bigint[])`, memberRange]);
       const rows = (await readEvidenceQuery(s`
-        select ${id}::text m from ${txAggFragment(sql, dataset, Boolean(ctx.kind))} d
+        select ${id}::text m from ${txAggFragment(sql, dataset, false)} d
         where ${where} group by ${id} ${having ? sql`having ${having}` : sql``}
       `, opts.signal)) as unknown as { m: string }[];
       return { members: rows.map((r) => r.m), sources: null, selection: null };

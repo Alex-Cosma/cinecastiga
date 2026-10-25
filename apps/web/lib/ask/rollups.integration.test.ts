@@ -199,6 +199,9 @@ const TREND_GROUPS: { name: string; spec: AskSpec; g?: Grounding; source: string
   { name: "trend of firms, growths, February–May", spec: base("trend", { trend: { change: "up", months: [2, 5] } }, Y), source: "entityMonth:supplier" },
   { name: "trend of firms in Cluj, new, February–September", spec: base("trend", { trend: { change: "new", months: [2, 9] } }, { ...Y, county: "Cluj" }), g: CLUJ, source: "entityMonth:supplier" },
   { name: "trend of hospitals, January–June", spec: base("trend", { dim: "authority", trend: { months: [1, 6] } }, { ...Y, authorityKind: "spital" }), source: "entityMonth:authority" },
+  // Counties on the same months, from agg_county_month (F2 review: 3–6 s live nationally).
+  { name: "trend of counties, February–May", spec: base("trend", { dim: "county", trend: { months: [2, 5] } }, Y), source: "countyMonth" },
+  { name: "trend of counties, decreases, March–September, direct acquisitions", spec: base("trend", { dim: "county", dataset: "da", trend: { change: "down", months: [3, 9] } }, Y), source: "countyMonth" },
 ];
 // Bare national stat, timeseries and map (all channels) are agg_national / agg_years /
 // agg_map_county today; every case here takes the live scan.
@@ -356,7 +359,7 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
           statuses: [...r.statuses].sort((a, b) => String(a.state).localeCompare(String(b.state))), rows: r.rows,
         });
         const report = await buildAskRollups(q);
-        expect(report.rows).toEqual({ agg_entity_year: 29, agg_pair_year: 19, agg_cpv_year: 15, agg_entity_month: 36 });
+        expect(report.rows).toEqual({ agg_entity_year: 29, agg_pair_year: 19, agg_cpv_year: 15, agg_entity_month: 36, agg_county_month: 18 });
         expect(await rollupsReady(q)).toBe(false); // the process cache, 10 minutes
         forgetRollupsReady();
         expect(await rollupsReady(q)).toBe(true);
