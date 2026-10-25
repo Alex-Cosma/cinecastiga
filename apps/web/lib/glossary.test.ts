@@ -49,6 +49,13 @@ describe("beginner glossary", () => {
     expect(GLOSSARY.semnal.text).toContain("cel puțin 3 achiziții directe ale aceleiași instituții de la aceeași firmă, în același an, cu aceeași clasă CPV și același tip, fiecare sub plafonul ei de achiziție directă, dar care împreună depășesc cel mai mare plafon aplicabil grupului");
   });
 
+  it("defines the change between two years' terms for the trend's tips (plan §4.7, §8)", () => {
+    expect(GLOSSARY["firma-noua"].text).toContain("primul an comparat");
+    expect(GLOSSARY["nu-mai-apare"].text).toContain("intră întreg în anul atribuirii");
+    expect(GLOSSARY["prima-data"].text).toContain("toată arhiva");
+    expect(GLOSSARY["aceleasi-luni"].text).toContain("ultima lună completă");
+  });
+
   it("states the consortium rule exactly as the methodology does", () => {
     expect(GLOSSARY.consortiu.text).toContain("În lipsa cotelor reale, valoarea unui consorțiu este împărțită egal între membri. Cotele însumate refac valoarea contractului; nu dovedesc venitul încasat de fiecare firmă.");
   });
