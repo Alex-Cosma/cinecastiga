@@ -502,6 +502,8 @@
   .cq-answer-actions {
     align-items: flex-start;
     flex-direction: row;
+    /* A signed-in reader's five actions (Urmărește, Salvează în anchetă) wrap instead of squashing (F2-tests, 601–850 px). */
+    flex-wrap: wrap;
     padding-top: 22px;
   }
 
@@ -549,7 +551,8 @@
 .qb-trow-name a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .qb-trow-sw { position: absolute; left: -19px; top: .42em; }
 .qb-trow-partner { display: flex; min-width: 0; margin: 6px 0 0; color: var(--muted); font-size: 12.5px; }
-.qb-trow-partner > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The partner's whole name, wrapped (F2-tests: nothing clipped; the final's one line with "…" hid it on phones). */
+.qb-trow-partner > span { min-width: 0; overflow-wrap: break-word; }
 .qb-trow-val { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: right; }
 .qb-trow-dline { display: flex; align-items: baseline; gap: 6px; }
 .qb-trow-delta { font-size: 14.5px; font-weight: 500; color: var(--ink2); }
