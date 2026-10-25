@@ -2201,7 +2201,10 @@ export async function runRows(
   const trendDays = listed && rollup ? await rollupDaysReady(sql) : false;
   const groupMembers = listed ? async (s: DbSql): Promise<{ members: Float64Array | readonly string[]; sources: TrendPartSources | null; selection: TrendPartSources | null }> => {
     // A watch's fixed members (a row's own ids among them): their records, counted, never the live group's.
-    if (fixed) return { members: own ? own.filter((id) => fixed.ids.includes(id)) : fixed.ids, sources: null, selection: null };
+    if (fixed) {
+      const ids = new Set(fixed.ids);
+      return { members: own ? own.filter((id) => ids.has(id)) : fixed.ids, sources: null, selection: null };
+    }
     const stamp = await trendCacheStamp(s);
     const key = stamp ? trendGroupKey(ctx, { stamp, dim: groupDim, yearA, yearB }) : null;
     let entry = key ? trendGroupsFor(key) : null;

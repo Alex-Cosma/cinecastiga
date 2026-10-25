@@ -71,7 +71,8 @@ export async function createMonitoringWatch(userId:string,input:unknown,sql=moni
       if(!ids.length)throw new MonitoringError(`Grupa ${watchedGroupLabel(spec)} nu are niciun membru în această selecție; nu avem ce urmări.`,422);
       if(ids.length>MONITORING_MEMBERS_MAX)throw membersTooMany(watched.role,ids.length);
       // Ids a caller sent are those of the group now, or the group moved since the answer it saw.
-      if(sent&&(sent.ids.length!==ids.length||!sent.ids.every(id=>ids.includes(id))))throw new MonitoringError(MEMBERS_CHANGED,409);
+      const now=new Set(ids);
+      if(sent&&(sent.ids.length!==ids.length||!sent.ids.every(id=>now.has(id))))throw new MonitoringError(MEMBERS_CHANGED,409);
       members={kind:"trend-group",role:watched.role,group:watched.change,ids,frozenAt:new Date().toISOString()};
       pinnedNotes.push(groupPinnedNote(spec,members,formatBucharestDay(members.frozenAt)));
     }else if(sent)throw new MonitoringError(MEMBERS_MISMATCH,422);
