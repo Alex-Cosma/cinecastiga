@@ -43,12 +43,17 @@ type Query = DbSql | Parameters<Parameters<DbSql['begin']>[1]>[0];
  *   a scan of its members' rows (national growths: 13 s live; plan F2, T3).
  *   About +17 s per build and +314 MB on the local copy of 25 October 2026.
  * - agg_county_month (src, y, m, county): every row by the buyer's county
- *   and month, with d0/d1, grouped from the same pair-month table (8,985
- *   rows, ~1 MB, ~3 s on the local copy of 25 October 2026): the county trend
- *   on the same months, whose live query was over the speed bar (3–6 s
- *   nationally; F2 review, under owner-D2-rollups). Rows without an authority
- *   are in it, as in the union; 0 differences with the live grouping.
+ *   and month, with d0/d1, grouped from agg_entity_month's authorities and
+ *   the pair months without an authority (8,985 rows, ~1 MB, 2.8 s on the
+ *   local copy of 25 October 2026; 15–17 s from the temporary table alone,
+ *   which parallel workers cannot read): the county trend on the same months,
+ *   whose live query was over the speed bar (3–6 s nationally; F2 review,
+ *   under owner-D2-rollups). Rows without an authority are in it, as in the
+ *   union; 0 differences with the live grouping.
  * So the build reads the union twice (pair month, CPV), not once per rollup.
+ * The whole build, measured on the same copy: 115 s (127–132 s with the
+ * county months from the temporary table; 43 s before F2), so F2 adds ~70 s
+ * a night.
  *
  * Rebuilt with the agg_* shortcuts (DROP + CREATE AS) in the transaction that
  * loads da_transactions, so they always agree with it. contract_transactions
@@ -123,10 +128,17 @@ export async function buildAskRollups(q: Query): Promise<AskRollupsReport> {
     from marts.agg_entity_month
     group by role, eid, y, src, county, nm
   `;
+  // From the authorities' months, which parallel workers can scan (the temporary pair months are
+  // read by one process: 15–17 s, against 2.8 s), and the rows without an authority, which no
+  // entity month holds: the same sums, counts and days as grouping every pair month.
   const county = await q`
     create table marts.agg_county_month as
     select src, y, m, county, sum(v) v, sum(n)::bigint n, min(d0) d0, max(d1) d1
-    from pg_temp.ask_pair_month
+    from (
+      select src, y, m, county, v, n, d0, d1 from marts.agg_entity_month where role = 'authority'
+      union all
+      select src, y, m, county, v, n, d0, d1 from pg_temp.ask_pair_month where authority_id is null
+    ) x
     group by src, y, m, county
   `;
   await q`drop table pg_temp.ask_pair_month`;

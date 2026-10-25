@@ -17,8 +17,9 @@ it.skipIf(!connection)('builds the Ask rollups and the covering indexes with eve
   await q`insert into core.cpv_codes(code,name_ro,revision,division) values
    ('33600000-6','Produse farmaceutice','2008','33'),('45000000-7','Lucrari de constructii','2008','45') on conflict (code) do nothing`;
   const cluj=await entity('Spital Cluj','Cluj'),iasi=await entity('Primaria Iasi','Iasi');
-  const a=await entity('Furnizor A','Ilfov'),b=await entity('Furnizor B',null);
+  const a=await entity('Furnizor A','Ilfov'),b=await entity('Furnizor B',null),c=await entity('Furnizor C',null);
   await q`insert into core.direct_acquisitions(sicap_da_id,authority_entity_id,supplier_entity_id,closing_value,state,finalization_date,cpv_code) values
+   (17008,null,${c},40,'Oferta acceptata','2025-03-22','33600000-6'),
    (17001,${cluj},${a},900.50,'Oferta acceptata','2025-03-20','33600000-6'),
    (17002,${cluj},${a},100,'Oferta acceptata','2025-09-21','33600000-6'),
    (17003,${cluj},${b},2000000,'Oferta acceptata','2024-09-22','45000000-7'),
@@ -78,7 +79,8 @@ it.skipIf(!connection)('builds the Ask rollups and the covering indexes with eve
    {authority_id:iasi,supplier_id:null,y:'2024',v:'30',n:1},
   ]);
   // The county-month grain (F2 review: the county trend on the same months) = the live grouping of every row,
-  // with its first and last day; 17007, whose supplier is its own authority, counts in Iasi.
+  // with its first and last day; 17007, whose supplier is its own authority, counts in Iasi, and 17008, without
+  // an authority (so in no entity month, and without a county), counts too.
   const [countyMonths]=await q`select count(*)::int differ from (
     select d.src, left(d.finalization_date,4) y, substr(d.finalization_date,6,2) m, d.county, sum(d.closing_value) v, count(*)::bigint n,
            min(left(d.finalization_date,10)) d0, max(left(d.finalization_date,10)) d1
@@ -95,6 +97,8 @@ it.skipIf(!connection)('builds the Ask rollups and the covering indexes with eve
    {src:'da',y:'2025',m:'03',county:'Cluj',v:'900.50',n:1},
    {src:'da',y:'2025',m:'09',county:'Cluj',v:'100',n:1},
   ]);
+  expect((await q`select src,y,m,v::text,n::int,d0,d1 from marts.agg_county_month where county is null`).map(r=>({...r})))
+   .toEqual([{src:'da',y:'2025',m:'03',v:'40',n:1,d0:'2025-03-22',d1:'2025-03-22'}]);
   const [cpv]=await q`select coalesce(sum(v),0)::text v, coalesce(sum(n),0)::int n from marts.agg_cpv_year`;
   const [national]=await q`select coalesce(sum(v_plaf),0)::text v, coalesce(sum(n_plaf),0)::int n from marts.agg_national`;
   expect(cpv).toEqual(national);
