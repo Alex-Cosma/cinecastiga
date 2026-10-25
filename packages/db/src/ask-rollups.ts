@@ -42,6 +42,12 @@ type Query = DbSql | Parameters<Parameters<DbSql['begin']>[1]>[0];
  *   reads its records, value and period from the answer's grouping instead of
  *   a scan of its members' rows (national growths: 13 s live; plan F2, T3).
  *   About +17 s per build and +314 MB on the local copy of 25 October 2026.
+ * - agg_county_month (src, y, m, county): every row by the buyer's county
+ *   and month, with d0/d1, grouped from the same pair-month table (8,985
+ *   rows, ~1 MB, ~3 s on the local copy of 25 October 2026): the county trend
+ *   on the same months, whose live query was over the speed bar (3–6 s
+ *   nationally; F2 review, under owner-D2-rollups). Rows without an authority
+ *   are in it, as in the union; 0 differences with the live grouping.
  * So the build reads the union twice (pair month, CPV), not once per rollup.
  *
  * Rebuilt with the agg_* shortcuts (DROP + CREATE AS) in the transaction that
@@ -55,7 +61,7 @@ type Query = DbSql | Parameters<Parameters<DbSql['begin']>[1]>[0];
  * migration-owned: readers probe for them (apps/web/lib/ask/rollups.ts) and
  * fall back to the live query until the first build with this code.
  */
-export const ASK_ROLLUP_TABLES = ['agg_entity_year', 'agg_pair_year', 'agg_cpv_year', 'agg_entity_month'] as const;
+export const ASK_ROLLUP_TABLES = ['agg_entity_year', 'agg_pair_year', 'agg_cpv_year', 'agg_entity_month', 'agg_county_month'] as const;
 export type AskRollupTable = (typeof ASK_ROLLUP_TABLES)[number];
 
 /** The DA ceiling written (as a literal, like the agg_* builds) into the three
@@ -71,7 +77,7 @@ export interface AskRollupsReport {
 /** Build the three rollups from the loaded transaction marts. Call inside the
  * build transaction, after da_transactions is final (da_split stamped). */
 export async function buildAskRollups(q: Query): Promise<AskRollupsReport> {
-  await q`drop table if exists marts.agg_entity_year, marts.agg_pair_year, marts.agg_cpv_year, marts.agg_entity_month`;
+  await q`drop table if exists marts.agg_entity_year, marts.agg_pair_year, marts.agg_cpv_year, marts.agg_entity_month, marts.agg_county_month`;
   // One pass over the union at the month grain (9,965,281 groups on the local copy of
   // 25 October 2026, 21 s; 26 s plain and 32 s with d0/d1 measured side by side at load 7);
   // the yearly pairs and both entity rollups are grouped from it.
@@ -117,6 +123,12 @@ export async function buildAskRollups(q: Query): Promise<AskRollupsReport> {
     from marts.agg_entity_month
     group by role, eid, y, src, county, nm
   `;
+  const county = await q`
+    create table marts.agg_county_month as
+    select src, y, m, county, sum(v) v, sum(n)::bigint n, min(d0) d0, max(d1) d1
+    from pg_temp.ask_pair_month
+    group by src, y, m, county
+  `;
   await q`drop table pg_temp.ask_pair_month`;
   const cpv = await q`
     create table marts.agg_cpv_year as
@@ -138,5 +150,6 @@ export async function buildAskRollups(q: Query): Promise<AskRollupsReport> {
   await q`analyze marts.agg_pair_year`;
   await q`analyze marts.agg_cpv_year`;
   await q`analyze marts.agg_entity_month`;
-  return { rows: { agg_entity_year: entity.count, agg_pair_year: pair.count, agg_cpv_year: cpv.count, agg_entity_month: month.count } };
+  await q`analyze marts.agg_county_month`;
+  return { rows: { agg_entity_year: entity.count, agg_pair_year: pair.count, agg_cpv_year: cpv.count, agg_entity_month: month.count, agg_county_month: county.count } };
 }

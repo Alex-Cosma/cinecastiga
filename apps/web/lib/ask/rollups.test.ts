@@ -92,10 +92,14 @@ describe("which rollup answers a selection (24 Oct 2026 slow cases)", () => {
     expect(months({ kind: "spital" }, { by: "authority" })).toEqual({ table: "entityMonth", role: "authority", months: [1, 5] });
     // Before the first build with it, and wherever the month table cannot answer: the live query.
     expect(months({}, { by: "supplier" }, false)).toBe("months: agg_entity_month is not built");
+    // Counties without an entity condition: agg_county_month (the live county query was 3–6 s nationally).
+    expect(months({}, { by: "county" })).toEqual({ table: "countyMonth", months: [1, 5] });
+    expect(months({ county: "Cluj" }, { by: "county" })).toEqual({ table: "countyMonth", months: [1, 5] });
     for (const [ctx, need] of [
-      [{}, { by: "county" }], [{ kind: "spital" }, { by: "supplier" }], [{ cpvPrefixes: ["45"] }, { by: "supplier" }],
+      [{ kind: "spital" }, { by: "county" }], [{ cpvPrefixes: ["45"] }, { by: "county" }],
+      [{ kind: "spital" }, { by: "supplier" }], [{ cpvPrefixes: ["45"] }, { by: "supplier" }],
       [{ minimumRecords: { role: "supplier", count: 2 } }, { by: "supplier" }], [{}, { by: "total" }],
-    ] as const) expect(months(ctx, need)).toBe("months: agg_entity_month holds one role, without CPV or a threshold");
+    ] as const) expect(months(ctx, need)).toBe("months: agg_entity_month holds one role and agg_county_month none, without CPV or a threshold");
     // Whole years (no window) keep the yearly rollups.
     expect(planRollup({ ...national, yearFrom: 2025, yearTo: 2026 }, { by: "supplier" }, { months: true })).toMatchObject({ source: { table: "entity", role: "supplier" }, filters: { months: null } });
   });
