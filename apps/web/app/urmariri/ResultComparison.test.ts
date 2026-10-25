@@ -43,6 +43,13 @@ describe("human-readable monitoring result comparisons", () => {
       ["Fără județ cunoscut", "Valoare înregistrată"], ["Fără județ cunoscut", "Număr de înregistrări"],
     ]);
   });
+  it("names a trend's groups in Romanian and counts their members, not records", () => {
+    const before = { block: "trend", composition: { all: { count: 5, valueA: 1, valueB: 500 } } };
+    const after = { block: "trend", composition: { all: { count: 6, valueA: 1, valueB: 565 } } };
+    expect(resultDifferences(before, after).map(row => [row.context, row.field])).toEqual([
+      ["Totalurile grupei · Toate", "Număr în grupă"], ["Totalurile grupei · Toate", "Valoare în al doilea an"],
+    ]);
+  });
   it("compares histogram cells by coordinates and explains flag codes", () => {
     const changes = resultDifferences({ density: { cells: [[1, 2, 5], [2, 3, 8]] } }, { density: { cells: [[2, 3, 8], [1, 2, 6]] } });
     expect(changes).toHaveLength(1); expect(changes[0]?.context).toContain("Grupa valorii 1 · grupa de risc 2");

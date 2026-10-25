@@ -189,7 +189,8 @@ describe.skipIf(!url)("immutable monitoring (isolated PostgreSQL)",()=>{
     await checkpoint();
     await expect(evaluateMonitoringWatch(watch.id,checkpointId,sql)).rejects.toThrow(NEWER_VERSION_QUESTION);
     expect(await getMonitoringWatch(uid,watch.id,sql)).toMatchObject({lastSuccessRunId:good,lastError:NEWER_VERSION_QUESTION});
-    const members={kind:"trend-group",role:"supplier",group:"new",ids:[supplier],frozenAt:"2026-10-24T10:00:00Z"};
+    // A network's fixed group comes with F4: read ahead, refused; a trend's is applied (monitoring-trend-group.integration.test.ts).
+    const members={kind:"network-group",role:"authority",group:"continuing",ids:[supplier],frozenAt:"2026-10-24T10:00:00Z"};
     await sql`update app.monitoring_watches set spec=spec #- '{filters,purchaseKind}',options=options||${JSON.stringify({members})}::jsonb where id=${watch.id}`;
     await expect(evaluateMonitoringWatch(watch.id,checkpointId,sql)).rejects.toThrow(NEWER_VERSION_QUESTION);
     expect(await getMonitoringWatch(uid,watch.id,sql)).toMatchObject({lastSuccessRunId:good,lastError:NEWER_VERSION_QUESTION});
@@ -214,14 +215,16 @@ describe.skipIf(!url)("immutable monitoring (isolated PostgreSQL)",()=>{
   });
   it("alerts once on a new answer version, only the watches of that block; a watch without methodology alerts hears the new result",async()=>{
     const trend:AskSpec={...base,block:"trend",dim:"supplier",filters:{...base.filters,yearFrom:2024,yearTo:2025}};
+    // The watches start as before F2 (trend-1); the release of trend-2 then reaches them.
+    const released=ANSWER_VERSIONS.trend!;expect(released).toBe("trend-2");delete ANSWER_VERSIONS.trend;
+    try{
     const watches=[];
     for(const spec of [trend,base,{...base,block:"map"} as AskSpec]){const watch=await createMonitoringWatch(uid,{spec,title:"Answer version "+spec.block},sql);await run(watch.id);watches.push(watch);}
     // Alerts on "recalculated" only. Its last result is the one the old version gave: different, on the same sources.
     const quiet=await createMonitoringWatch(uid,{spec:trend,title:"Recalculated only",preferences:{types:["recalculated"],minimumValueExact:"0",digest:false}},sql);
     const old=await run(quiet.id);
     await sql`update app.monitoring_runs set result=result||'{"fixture":"computed by trend-1"}'::jsonb where id=${old.run.id}`;
-    ANSWER_VERSIONS.trend="trend-2";
-    try{
+    ANSWER_VERSIONS.trend=released;
       await checkpoint();
       const [trendRun,statRun,mapRun]=[await run(watches[0]!.id),await run(watches[1]!.id),await run(watches[2]!.id)];
       expect(trendRun.run).toMatchObject({kind:"update",methodologyChanged:true,resultChanged:false,hasAlert:true,counts:{added:0,removed:0,changed:0}});
@@ -231,7 +234,7 @@ describe.skipIf(!url)("immutable monitoring (isolated PostgreSQL)",()=>{
       expect((await run(quiet.id)).run).toMatchObject({resultChanged:true,methodologyChanged:true,hasAlert:true});
       await checkpoint();
       expect((await run(watches[0]!.id)).run).toMatchObject({kind:"unchanged",methodologyChanged:false,hasAlert:false});
-    }finally{delete ANSWER_VERSIONS.trend;}
+    }finally{ANSWER_VERSIONS.trend=released;}
   });
   it("alerts on a key's new version only the watches whose question carries the key",async()=>{
     const kind:AskSpec={...base,filters:{...base.filters,authorityKind:"comuna"}};

@@ -42,9 +42,13 @@ export const TODAY_SCOPE: Readonly<Partial<Record<FilterId, Partial<Record<Answe
 /**
  * A key whose scope on a question differs from TODAY_SCOPE gives the same rows
  * and another "% din total": each change carries the answer version that says
- * so (plan §2.6; table:employees-2 in F3, trend-2 in F2). None in F0.
+ * so (plan §2.6; table:employees-2 in F3, trend-2 in F2). None in F0. F2: the
+ * firms' employees on a trend of firms are an attribute of the grouped firm
+ * (the same rows and values; the selection keeps every firm), under trend-2.
  */
-export const SCOPE_CHANGES: readonly { filter: FilterId; form: AnswerForm; version: string }[] = [];
+export const SCOPE_CHANGES: readonly { filter: FilterId; form: AnswerForm; version: string }[] = [
+  { filter: "employees", form: "trend", version: "trend-2" },
+];
 
 /** A choice today's builder offers on a question, and what follows it. */
 export interface TodayRefusal {

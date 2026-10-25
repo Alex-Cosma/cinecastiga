@@ -10,8 +10,10 @@ import { runRows, runSpec, useSnapshotCoverage } from "./ask/compile";
 import { captureTransaction } from "./evidence-captures";
 import { isWorkspaceId } from "./investigation-access";
 import { monitoringDatabase, refreshError } from "./monitoring-engine";
-import { MonitoringError, monitoringObject, monitoringPreferences, monitoringTitle, monitoringScope, monitoringRecipe, monitoringCursor, monitoringHasLocalSelection, MONITORING_LOCAL_SCOPE_NOTE } from "./monitoring-input";
-import { MONITORING_MAX_ROWS, type MonitoringWatch, type MonitoringRun, type MonitoringDelta, type MonitoringRunDetail, type MonitoringPage } from "./monitoring-shared";
+import { MonitoringError, monitoringObject, monitoringPreferences, monitoringTitle, monitoringScope, monitoringRecipe, monitoringCursor, monitoringHasLocalSelection, MONITORING_LOCAL_SCOPE_NOTE,
+  groupPinnedNote, MEMBERS_CHANGED, MEMBERS_MISMATCH, MONITORING_MEMBERS_MAX, membersTooMany, watchedGroupLabel, watchedTrendGroup } from "./monitoring-input";
+import { MONITORING_MAX_ROWS, type MonitoringMembers, type MonitoringWatch, type MonitoringRun, type MonitoringDelta, type MonitoringRunDetail, type MonitoringPage } from "./monitoring-shared";
+import { formatBucharestDay } from "./format";
 import { monitoredEntityIds,readMonitoringBindings } from "./monitoring-identity";
 
 const json=(v:unknown)=>JSON.stringify(v??null);
@@ -60,12 +62,29 @@ export async function createMonitoringWatch(userId:string,input:unknown,sql=moni
     }
     if(grounding.cpv)pinnedNotes.push(`Domenii CPV fixate la activare: ${grounding.cpv.prefixes.join(", ")}${grounding.cpv.excludePrefixes?.length?`, fără ${(grounding.cpv.excludedNames?.length?grounding.cpv.excludedNames:grounding.cpv.excludePrefixes).join("; ")}`:""}. Denumiri identificate: ${grounding.cpv.matchedNames.join("; ")}. Schimbarea ulterioară a sinonimelor nu modifică această urmărire.`);
     if(grounding.admin)pinnedNotes.push(`Reprezentant fixat: ${grounding.admin.display??grounding.admin.query}. Grupul de firme rămâne cel de la activare: ${countWords(grounding.admin.supplierIds.length,"entitate","entități")} (ID-uri: ${grounding.admin.supplierIds.join(", ")||"niciuna"}). Modificările ulterioare ale relațiilor din registru nu adaugă automat firme în această selecție.`);
-    const answer=await runSpec(database,spec,grounding);if("error"in answer)throw new MonitoringError(answer.error,422);
-    const rows=await runRows(database,spec,grounding,0,{...scope.options,capture:{maxRows:MONITORING_MAX_ROWS,persist:async()=>{}}});if("error"in rows)throw new MonitoringError(rows.error,422);
+    // A trend that lists one group fixes its members now (plan §2.8): the watch follows them, not the live group.
+    const watched=watchedTrendGroup(spec);
+    const answer=await runSpec(database,spec,grounding,watched?{freezeGroup:true}:{});if("error"in answer)throw new MonitoringError(answer.error,422);
+    const {members:sent,...selection}=scope.options;
+    let members:MonitoringMembers|undefined;
+    if(watched){
+      const own=selection.scope?.entityIds&&selection.scope.role===watched.role?new Set(selection.scope.entityIds):null;
+      const ids=(answer.groupMembers??[]).filter(id=>!own||own.has(id));
+      if(!ids.length)throw new MonitoringError(`Grupa ${watchedGroupLabel(spec)} nu are niciun membru în această selecție; nu avem ce urmări.`,422);
+      if(ids.length>MONITORING_MEMBERS_MAX)throw membersTooMany(watched.role,ids.length);
+      // Ids a caller sent are those of the group now, or the group moved since the answer it saw.
+      const now=new Set(ids);
+      if(sent&&(sent.ids.length!==ids.length||!sent.ids.every(id=>now.has(id))))throw new MonitoringError(MEMBERS_CHANGED,409);
+      members={kind:"trend-group",role:watched.role,group:watched.change,ids,frozenAt:new Date().toISOString()};
+      pinnedNotes.push(groupPinnedNote(spec,members,formatBucharestDay(members.frozenAt)));
+    }else if(sent)throw new MonitoringError(MEMBERS_MISMATCH,422);
+    const fixed=members?{role:members.role,ids:members.ids,frozen:members.ids.length,frozenAt:members.frozenAt}:undefined;
+    const rows=await runRows(database,spec,grounding,0,{...selection,...(fixed?{fixedMembers:fixed}:{}),capture:{maxRows:MONITORING_MAX_ROWS,persist:async()=>{}}});if("error"in rows)throw new MonitoringError(rows.error,422);
+    const options=members?{...selection,members}:selection;
     if(rows.total>MONITORING_MAX_ROWS)throw new MonitoringError(`Selecția are ${countWords(rows.total,"înregistrare","înregistrări")}. Restrânge perioada, instituția sau domeniul la cel mult 200.000 înainte de activare. Nicio selecție nu este trunchiată.`,422);
     const title=monitoringTitle(body.title,questionTitle(spec).slice(0,200));
     const [watch]=await q`insert into app.monitoring_watches(id,owner_user_id,title,spec,options,grounding,scope_notes,preferences,recipe_id,recipe_version)
-      values(${randomUUID()},${userId},${title},${json(spec)}::jsonb,${json(scope.options)}::jsonb,${json(boundGrounding)}::jsonb,${json([...pinnedNotes,...answer.caveats,...rows.scopeNotes])}::jsonb,${json(prefs)}::jsonb,${recipe.recipeId},${recipe.recipeVersion}) returning *`;
+      values(${randomUUID()},${userId},${title},${json(spec)}::jsonb,${json(options)}::jsonb,${json(boundGrounding)}::jsonb,${json([...pinnedNotes,...answer.caveats,...rows.scopeNotes])}::jsonb,${json(prefs)}::jsonb,${recipe.recipeId},${recipe.recipeVersion}) returning *`;
     return watchSummary(watch!);
   });}catch(error){throw refreshError(error);}
 }

@@ -18,7 +18,7 @@ import { ANSWER_ERROR, breakdownLead, countWords, entityNoun, fileSlug, formatSh
 import type { IntentResult } from "@/lib/intent/types";
 import { NATURAL_LANGUAGE_ENABLED, NATURAL_LANGUAGE_UNAVAILABLE } from "@/lib/ask/features";
 import { validateEvidenceScope, validateEvidenceFilters, type EvidenceScope, type EvidenceFilters } from "@/lib/ask/evidence";
-import type { BlockData, PartialYear } from "@/lib/ask/compile";
+import type { BlockData, ExecutedWindow, PartialYear } from "@/lib/ask/compile";
 import {
   DistributionBlock,
   BreakdownBlock,
@@ -77,6 +77,8 @@ interface AskResponse {
   data?: BlockData;
   /** timeseries/trend: years the archive covers only in part (audit F19). */
   partialYears?: PartialYear[];
+  /** trend: the months it counted; its drawer sends them back (409 when the data moved them). */
+  executed?: ExecutedWindow;
   displaySql?: string;
   /** The words of each display state of the strip, computed on the server (plan §2.3): the map's lens. */
   variants?: AnswerVariants;
@@ -172,6 +174,7 @@ export default function AskPanel({
     filters?: EvidenceFilters;
     title: string;
     scopeLabel?: string;
+    months?: ExecutedWindow["months"];
   } | null>(null);
   const [tableOpts, setTableOpts] = useState<{
     page: number;
@@ -525,15 +528,18 @@ export default function AskPanel({
                     : ("authority" as const),
               }
             : scope;
+        // The applied trend's sources list the months its answer counted (plan §2.8).
+        const months = selected === applied ? resp?.executed?.months : undefined;
         setEvidence({
           spec: selected,
           ...(effectiveScope ? { scope: effectiveScope } : {}),
           title,
           ...(label ? { scopeLabel: label } : {}),
+          ...(months ? { months } : {}),
         });
       }
     },
-    [applied, title],
+    [applied, title, resp?.executed?.months],
   );
   const copy = async (text: string, message: string) => {
     try {
@@ -1057,6 +1063,7 @@ export default function AskPanel({
           scopeLabel={evidence.scopeLabel}
           {...(evidence.scope ? { scope: evidence.scope } : {})}
           {...(evidence.filters ? { initialFilters: evidence.filters } : {})}
+          {...(evidence.months ? { months: evidence.months } : {})}
           onClose={() => setEvidence(null)}
         />
       )}

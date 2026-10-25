@@ -1,4 +1,6 @@
 import type { DbSql } from "@seap/db";
+import { coveragePeriods } from "../ask/compile";
+import type { CoveragePeriods } from "../ask/months-window";
 import { RulesInterpreter } from "./rules";
 import { resultFor } from "./to-spec";
 import { loadSharedLists, sqlVocabulary } from "./vocabulary-sql";
@@ -7,10 +9,34 @@ import type { IntentResult, QuestionInterpreter, Vocabulary } from "./types";
 /** Per-statement bound for the vocabulary lookups of one question. */
 export const INTENT_STATEMENT_TIMEOUT = "2000ms";
 
+const bucharestYear = (now: Date): number =>
+  Number(new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Bucharest", year: "numeric" }).format(now));
+
+/** The archive's periods per channel (coveragePeriods: one source, cached per data checkpoint); null when unknown. */
+export async function intentPeriods(sql: DbSql): Promise<CoveragePeriods | null> {
+  try { return await coveragePeriods(sql); } catch { return null; }
+}
+
+/**
+ * The key of a cached interpretation (plan §2.7): the question, the Romanian
+ * calendar day (relative periods, "anul trecut") and the archive it read: the
+ * data checkpoint, and each channel's "complet până la" and last day, from
+ * which a trend's default years and same months come. A refresh that closes a
+ * year changes the key at once, not at midnight.
+ */
+export function intentCacheKey(q: string, day: string, periods: CoveragePeriods | null): string {
+  const archive = periods
+    ? [periods.checkpoint ?? "", periods.da.completeUntil ?? "", periods.da.to ?? "", periods.contracts.completeUntil ?? "", periods.contracts.to ?? ""].join(",")
+    : "no-coverage";
+  return `${day}|${archive}|${q.toLowerCase()}`;
+}
+
 /**
  * Server entry point: free text → interpretation → AskSpec + sentence +
  * alternatives. The interpreter is injectable so an LLM-backed implementation
  * can replace or complement the rules later without changing callers.
+ * `periods` (read when not given) gives a trend its default years and its
+ * same months.
  *
  * Connection use: the cached reference lists are loaded first, on the pool;
  * only then one read-only transaction (one connection) serves every lookup of
@@ -19,11 +45,12 @@ export const INTENT_STATEMENT_TIMEOUT = "2000ms";
 export async function interpretQuestion(
   sql: DbSql,
   text: string,
-  opts: { now?: Date; signal?: AbortSignal; interpreter?: (vocab: Vocabulary) => QuestionInterpreter } = {},
+  opts: { now?: Date; signal?: AbortSignal; interpreter?: (vocab: Vocabulary) => QuestionInterpreter; periods?: CoveragePeriods | null } = {},
 ): Promise<IntentResult> {
   const now = opts.now ?? new Date();
   const make = opts.interpreter ?? ((vocab: Vocabulary) => new RulesInterpreter(vocab));
   const shared = await loadSharedLists(sql);
+  const periods = opts.periods !== undefined ? opts.periods : await intentPeriods(sql);
   if (opts.signal?.aborted) throw new Error("intent-aborted");
   const interpretation = await sql.begin("read only", async (tx) => {
     await tx.unsafe(`set local statement_timeout = '${INTENT_STATEMENT_TIMEOUT}'`);
@@ -32,5 +59,5 @@ export async function interpretQuestion(
     // An aborted caller stops further lookups, so the transaction ends and frees its connection.
     return make(sqlVocabulary(tx as unknown as DbSql, shared, opts.signal ? { signal: opts.signal } : {})).interpret(text, { now });
   });
-  return resultFor(interpretation);
+  return resultFor(interpretation, { periods, year: bucharestYear(now) });
 }

@@ -30,8 +30,13 @@ const bumpEmployees = () => {
 };
 
 beforeEach(() => { for (const id of Object.keys(KEY_VERSIONS)) delete KEY_VERSIONS[id]; });
+/** The versions of this release (F2: trend-2), restored after every test. */
+const RELEASED = { ...ANSWER_VERSIONS };
+/** As a run stored before F2 computed it: no block bumped. */
+const beforeF2 = () => { delete ANSWER_VERSIONS.trend; };
 afterEach(() => {
   for (const block of Object.keys(ANSWER_VERSIONS)) delete ANSWER_VERSIONS[block as keyof typeof ANSWER_VERSIONS];
+  Object.assign(ANSWER_VERSIONS, RELEASED);
   for (const id of Object.keys(KEY_VERSIONS)) delete KEY_VERSIONS[id];
   Object.assign(KEY_VERSIONS, DECLARED);
 });
@@ -66,11 +71,12 @@ describe("the key versions of this release", () => {
 });
 
 describe("the version of an answer", () => {
-  it("is the block's, then each key's the question carries; none changed in F0", () => {
-    expect(ANSWER_VERSIONS).toEqual({});
+  it("is the block's, then each key's the question carries; F2 changed the trend's only", () => {
+    expect(ANSWER_VERSIONS).toEqual({ trend: "trend-2" });
     expect(KEY_VERSIONS).toEqual({});
-    for (const block of BLOCKS) expect(answerVersion({ block, measure: "value", filters: {} })).toEqual({ question: `${block}-1`, conditions: {} });
-    bumpKind(); bumpEmployees(); ANSWER_VERSIONS.trend = "trend-2";
+    for (const block of BLOCKS)
+      expect(answerVersion({ block, measure: "value", filters: {} })).toEqual({ question: block === "trend" ? "trend-2" : `${block}-1`, conditions: {} });
+    bumpKind(); bumpEmployees();
     expect(answerVersion(hospitals)).toEqual({ question: "stat-1", conditions: { kind: "kind-2" } });
     expect(answerVersion(stat)).toEqual({ question: "stat-1", conditions: {} });
     expect(answerVersion(smallFirms)).toEqual({ question: "table-1", conditions: { "table:employees": "table:employees-2" } });
@@ -90,15 +96,18 @@ describe("the version of an answer", () => {
   });
 
   it("is the first one, which a watch does not store, until a release bumps it (a revert below F0 then compares equal)", () => {
-    for (const block of BLOCKS) expect(isFirstAnswerVersion(answerVersion({ block, measure: "value", filters: {} }), block), block).toBe(true);
-    bumpKind(); ANSWER_VERSIONS.trend = "trend-2";
+    for (const block of BLOCKS) expect(isFirstAnswerVersion(answerVersion({ block, measure: "value", filters: {} }), block), block).toBe(block !== "trend");
+    beforeF2();
+    expect(isFirstAnswerVersion(answerVersion(trend), "trend")).toBe(true);
+    Object.assign(ANSWER_VERSIONS, RELEASED);
+    bumpKind();
     expect(isFirstAnswerVersion(answerVersion(stat), "stat")).toBe(true);
     expect(isFirstAnswerVersion(answerVersion(hospitals), "stat")).toBe(false);
     expect(isFirstAnswerVersion(answerVersion(trend), "trend")).toBe(false);
   });
 
   it("is well formed, and covers every key that leaves the records for a group (plan §2.2)", () => {
-    bumpKind(); bumpEmployees(); ANSWER_VERSIONS.trend = "trend-2";
+    bumpKind(); bumpEmployees();
     for (const [block, version] of Object.entries(ANSWER_VERSIONS)) expect(version).toMatch(new RegExp(`^${block}-([2-9]|[1-9]\\d+)$`));
     for (const [id, key] of Object.entries(KEY_VERSIONS)) {
       expect(key.version.startsWith(`${id}-`) && Number(key.version.slice(id.length + 1)) >= 2, id).toBe(true);
@@ -117,14 +126,16 @@ describe("the version of an answer", () => {
 });
 
 describe("what a watch compares between two checks", () => {
-  it("a run from before F0 against one of today: no change", () => {
-    for (const spec of [stat, trend, map, hospitals, smallFirms, person])
+  it("a run from before F0 against one of today: no change, but on a trend (trend-2, once)", () => {
+    for (const spec of [stat, map, hospitals, smallFirms, person])
       expect(methodologiesDiffer(run(spec, false), run(spec), spec.block), spec.block).toBe(false);
+    expect(methodologiesDiffer(run(trend, false), run(trend), "trend")).toBe(true);
   });
 
-  it("a new trend version changes the methodology of trend watches only, once", () => {
+  it("the trend's new version (F2) changes the methodology of trend watches only, once", () => {
+    beforeF2();
     const before = Object.fromEntries([stat, trend, map].map((spec) => [spec.block, run(spec)]));
-    ANSWER_VERSIONS.trend = "trend-2";
+    Object.assign(ANSWER_VERSIONS, RELEASED);
     const after = Object.fromEntries([stat, trend, map].map((spec) => [spec.block, run(spec)]));
     expect(methodologiesDiffer(before.trend!, after.trend!, "trend")).toBe(true);
     expect(methodologiesDiffer(before.stat!, after.stat!, "stat")).toBe(false);
@@ -166,5 +177,37 @@ describe("what a watch compares between two checks", () => {
     expect(sameAnswerCore("stat", { stat: { value: 1, note: undefined } }, { stat: { value: 1 } })).toBe(true);
     expect(canonicalJson({ b: [2, { d: 1, c: NaN }], a: null })).toBe('{"a":null,"b":[2,{"c":null,"d":1}]}');
     expect(canonicalJson(undefined)).toBe("null");
+  });
+
+  it("on a trend (trend-2), compares only the chosen group: its rows and its own totals, never the other groups or the row facts", () => {
+    const row = (entityId: string, valueA: number, valueB: number) => ({ entityId, name: `Firma ${entityId}`, county: "Cluj", valueA, valueB });
+    const growths = [row("1", 10, 30), row("2", 5, 9)];
+    const answer = {
+      block: "trend", yearA: 2024, yearB: 2025, change: "up", months: { from: 1, to: 12, mode: "auto" }, list: "up", rowsTrend: growths,
+      groups: { all: [row("3", 50, 0), ...growths], up: growths, new: [], first: [], down: [], gone: [row("3", 50, 0)] },
+      composition: { all: { count: 3, valueA: 65, valueB: 39 }, up: { count: 2, valueA: 15, valueB: 39 }, gone: { count: 1, valueA: 50, valueB: 0 }, equal: { count: 0, valueA: 0, valueB: 0 } },
+      noun: "firme", rowFacts: { "1": { year: 2025, value: 30, joint: 0 } },
+    };
+    expect(answerCore("trend", answer)).toEqual({
+      block: "trend", yearA: 2024, yearB: 2025, change: "up", months: { from: 1, to: 12, mode: "auto" }, list: "up", rowsTrend: growths,
+      composition: { up: { count: 2, valueA: 15, valueB: 39 } },
+    });
+    // A change only in "Nu mai apar", in the facts or in the noun is no change of a watch on the growths.
+    const gone = { ...answer, groups: { ...answer.groups, gone: [row("4", 70, 0)] }, composition: { ...answer.composition, gone: { count: 1, valueA: 70, valueB: 0 }, all: { count: 3, valueA: 85, valueB: 39 } } };
+    expect(sameAnswerCore("trend", answer, gone)).toBe(true);
+    expect(sameAnswerCore("trend", answer, { ...answer, rowFacts: {}, noun: "furnizori" })).toBe(true);
+    // The firms an employees band leaves out without a filing are not the group either.
+    expect(sameAnswerCore("trend", answer, { ...answer, withoutFiling: { up: 3, new: 1 } })).toBe(true);
+    // Its own rows and totals are.
+    expect(sameAnswerCore("trend", answer, { ...answer, rowsTrend: [growths[1], growths[0]] })).toBe(false);
+    expect(sameAnswerCore("trend", answer, { ...answer, composition: { ...answer.composition, up: { count: 3, valueA: 15, valueB: 40 } } })).toBe(false);
+    // "Prima dată" compares its own list's totals; the order in percent adds the growths from the base.
+    const first = { ...answer, change: "new", list: "first", composition: { new: { count: 9, valueA: 0, valueB: 90 }, first: { count: 4, valueA: 0, valueB: 40 } } };
+    expect((answerCore("trend", first) as { composition: unknown }).composition).toEqual({ first: { count: 4, valueA: 0, valueB: 40 } });
+    const percent = { ...answer, composition: { ...answer.composition, eligible: { count: 1, valueA: 10, valueB: 30 } } };
+    expect((answerCore("trend", percent) as { composition: unknown }).composition).toEqual({ up: { count: 2, valueA: 15, valueB: 39 }, eligible: { count: 1, valueA: 10, valueB: 30 } });
+    // An answer stored before trend-2 (no groups) is compared whole, as before.
+    const old = { block: "trend", yearA: 2024, yearB: 2025, rowsTrend: growths };
+    expect(answerCore("trend", old)).toBe(old);
   });
 });

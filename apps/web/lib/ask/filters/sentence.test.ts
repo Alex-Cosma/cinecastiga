@@ -374,7 +374,7 @@ describe("the sentences of the legacy corpus (plan §2.6, §6.2)", () => {
       "legacy:locality-map-refused": "Cum se împart achizițiile făcute de instituțiile publice pe județe, în toți anii? · sub propoziție: locality",
       "legacy:locality-stat": "Cât valorează achizițiile făcute de primăria Aiud (Alba), în toți anii?",
       "legacy:locality-ranking": "Ce firme câștigă achizițiile făcute de primăria Aiud (Alba), în toți anii?",
-      "legacy:newer-key-refused": "Ce firme au cea mai mare schimbare între 2024 și 2025? · sub propoziție: trendChange",
+      "legacy:newer-key-refused": "Cum evoluează valoarea tuturor achizițiilor făcute de instituțiile publice din toată țara, an de an, 2024–2025? · sub propoziție: timeseriesGrain",
       "legacy:other-block-options": "Ce firme câștigă achizițiile făcute de instituțiile publice din toată țara, în toți anii?",
       "legacy:cpv-retired": "Cât valorează achizițiile pentru „lucrări” făcute de instituțiile publice din toată țara, în toți anii?",
       "legacy:cpv-unknown": "Cât valorează achizițiile pentru „zzzz necunoscut” făcute de instituțiile publice din toată țara, în toți anii?",

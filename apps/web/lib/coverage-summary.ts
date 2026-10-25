@@ -1,5 +1,6 @@
 import type { AskSpec } from "./ask/spec";
 import { isHistoricalProfile } from "./ask/population";
+import type { CoveragePeriods } from "./ask/months-window";
 
 export const COVERAGE_LABELS = {
   da: "Achiziții directe",
@@ -13,6 +14,8 @@ export interface PublicCoverage {
   sources: { dataset: CoverageSource; from: string | null; to: string | null; completeUntil?: string | null; inventoriedAt: string }[];
   dataAt: string | null;
   riskAt: string | null;
+  /** The Ask engine's periods of both channels at the data checkpoint (coveragePeriods): defaultTrendYears and sameMonthsWindow read them. */
+  periods?: CoveragePeriods | null;
 }
 
 /** Source dates are calendar days, publication timestamps use Romania's time zone. */

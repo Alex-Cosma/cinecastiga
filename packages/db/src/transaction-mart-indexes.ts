@@ -50,12 +50,20 @@ export type TransactionMartTable = (typeof TRANSACTION_MART_INDEXES)[number]["ta
  * 10.6 s and left them 45% larger; loading without them and building after,
  * 4.5 s), so no migration creates them and none is needed to remove them:
  * delete them here and drop them once. About 1.7 GB each on 19.6M rows.
+ *
+ * They also carry sicap_da_id (F2 review): the source page of a trend group
+ * (thousands of members, up to 2.5M records) takes its first rows' keys from
+ * the index in any order and reads only those rows, instead of every member
+ * record's heap row (a 2.18M-record group sorted by value: 0.8 s index-only
+ * against 9.7 s; 56k records: 45 ms against 120 ms; +10% size, measured on a
+ * copy of 2024–2025, 25 October 2026). The web probes for the column
+ * (coverRefReady) and keeps its plans until the first build with it.
  */
 export const TRANSACTION_MART_BUILD_INDEXES = [
   { table: "da_transactions", name: "da_tx_supplier_cover_idx",
-    definition: "CREATE INDEX da_tx_supplier_cover_idx ON marts.da_transactions USING btree (supplier_id, finalization_date) INCLUDE (authority_id, closing_value, cpv_code, county)" },
+    definition: "CREATE INDEX da_tx_supplier_cover_idx ON marts.da_transactions USING btree (supplier_id, finalization_date) INCLUDE (authority_id, closing_value, cpv_code, county, sicap_da_id)" },
   { table: "da_transactions", name: "da_tx_authority_cover_idx",
-    definition: "CREATE INDEX da_tx_authority_cover_idx ON marts.da_transactions USING btree (authority_id, finalization_date) INCLUDE (supplier_id, closing_value, cpv_code, county)" },
+    definition: "CREATE INDEX da_tx_authority_cover_idx ON marts.da_transactions USING btree (authority_id, finalization_date) INCLUDE (supplier_id, closing_value, cpv_code, county, sicap_da_id)" },
 ] as const;
 
 /** Before loading da_transactions (inside the build transaction, which holds the table). */

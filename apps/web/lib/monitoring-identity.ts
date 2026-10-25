@@ -1,7 +1,8 @@
-import type { DbSql } from "@seap/db";
+import { entityRedirectMap, type DbSql } from "@seap/db";
 import type { AskSpec } from "./ask/spec";
 import type { Grounding } from "./ask/ground";
 import type { CaptureOptions } from "./evidence-captures-shared";
+import type { MonitoringMembers } from "./monitoring-shared";
 import { MonitoringError } from "./monitoring-input";
 
 export interface MonitoringEntityBinding {id:string;cui:string|null;foreign:string|null;sicap:string[];fallback:string}
@@ -46,4 +47,29 @@ export async function assertMonitoringBindings(q:DbSql,spec:AskSpec,grounding:Gr
       && canonical.some(after=>after.id===String(alias.canonical_id)&&sameMonitoringEntity(proof.canonicalIdentity!,after));
   };
   if(expected.some(before=>!valid(before)))throw new MonitoringError("Identitatea unei entități s-a schimbat după reconstruirea datelor. Ultima verificare este păstrată; verifică instituția sau firma și creează o urmărire nouă.",422);
+}
+
+/**
+ * A group's fixed members as they are identified now (plan §2.8): outside the
+ * strict bindings above, since one entity merged among thousands would
+ * otherwise fail the watch at every check. A member followed through
+ * core.entity_redirects is watched under its canonical id; one that no longer
+ * exists leaves the calculation. Both are said in the notes, never an error.
+ * Counties are names and stay as fixed.
+ */
+export interface WatchMembers { ids: string[]; missing: string[]; redirected: { from: string; to: string }[] }
+export async function resolveWatchMembers(q:DbSql,members:MonitoringMembers):Promise<WatchMembers>{
+  if(members.role==="county")return {ids:[...members.ids],missing:[],redirected:[]};
+  const redirects=await entityRedirectMap(q,members.ids);
+  const followed=members.ids.map(id=>redirects.get(id)??id);
+  const rows=await q`select id::text from core.entities where id=any(${[...new Set(followed)]}::bigint[])`;
+  const known=new Set(rows.map(row=>String(row.id)));
+  const ids=new Set<string>(),missing:string[]=[],redirected:WatchMembers["redirected"]=[];
+  members.ids.forEach((id,i)=>{
+    const to=followed[i]!;
+    if(!known.has(to)){missing.push(id);return;}
+    if(to!==id)redirected.push({from:id,to});
+    ids.add(to);
+  });
+  return {ids:[...ids].sort((a,b)=>Number(a)-Number(b)),missing,redirected};
 }

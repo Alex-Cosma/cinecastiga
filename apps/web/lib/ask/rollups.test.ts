@@ -11,7 +11,7 @@ const HOSPITALS = ["7", "8"];
 const national: RollupCtx = {
   plafond: "da-branch", population: null, minimumRecords: null, cpvPrefixes: [], cpvExclude: [], county: null, kind: null, kindIds: null,
   authorityId: null, supplierId: null, uatSiruta: null, uatAuthorityIds: [], singleBidder: false,
-  minEmployees: null, maxEmployees: null, yearFrom: null, yearTo: null, monthFrom: null, monthTo: null,
+  minEmployees: null, maxEmployees: null, yearFrom: null, yearTo: null, monthFrom: null, monthTo: null, trendMonths: null,
   adminSupplierIds: null, comparison: null,
 };
 const source = (ctx: Partial<RollupCtx> & Record<string, unknown>, need: Parameters<typeof planRollup>[1]) => {
@@ -84,6 +84,29 @@ describe("which rollup answers a selection (24 Oct 2026 slow cases)", () => {
     expect(source({ kind: "spital" }, { by: "authority" })).toMatch(/^kind spital: no list of institutions/);
   });
 
+  // F2: the trend's same months (owner-D2-rollups: the live national query is over the bar).
+  it("reads a trend's same months from agg_entity_month, once it is built, for one role", () => {
+    const months = (ctx: Partial<RollupCtx>, need: Parameters<typeof planRollup>[1], built = true) => {
+      const plan = planRollup({ ...national, yearFrom: 2025, yearTo: 2026, trendMonths: [1, 5], ...ctx }, need, { months: built });
+      return "reason" in plan ? plan.reason : { ...plan.source, months: plan.filters.months };
+    };
+    expect(months({}, { by: "supplier" })).toEqual({ table: "entityMonth", role: "supplier", months: [1, 5] });
+    expect(months({ county: "Cluj", minEmployees: 1, maxEmployees: 9 }, { by: "supplier" })).toEqual({ table: "entityMonth", role: "supplier", months: [1, 5] });
+    expect(months({ kind: "spital", kindIds: HOSPITALS }, { by: "authority" })).toEqual({ table: "entityMonth", role: "authority", months: [1, 5] });
+    // Before the first build with it, and wherever the month table cannot answer: the live query.
+    expect(months({}, { by: "supplier" }, false)).toBe("months: agg_entity_month is not built");
+    // Counties without an entity condition: agg_county_month (the live county query was 3–6 s nationally).
+    expect(months({}, { by: "county" })).toEqual({ table: "countyMonth", months: [1, 5] });
+    expect(months({ county: "Cluj" }, { by: "county" })).toEqual({ table: "countyMonth", months: [1, 5] });
+    for (const [ctx, need] of [
+      [{ kind: "spital", kindIds: HOSPITALS }, { by: "county" }], [{ cpvPrefixes: ["45"] }, { by: "county" }],
+      [{ kind: "spital", kindIds: HOSPITALS }, { by: "supplier" }], [{ cpvPrefixes: ["45"] }, { by: "supplier" }],
+      [{ minimumRecords: { role: "supplier", count: 2 } }, { by: "supplier" }], [{}, { by: "total" }],
+    ] as const) expect(months(ctx, need)).toBe("months: agg_entity_month holds one role and agg_county_month none, without CPV or a threshold");
+    // Whole years (no window) keep the yearly rollups.
+    expect(planRollup({ ...national, yearFrom: 2025, yearTo: 2026 }, { by: "supplier" }, { months: true })).toMatchObject({ source: { table: "entity", role: "supplier" }, filters: { months: null } });
+  });
+
   it("fails closed on a condition it does not know (a key of a later stage)", () => {
     // Keys of the filter registry that are not in the rollups: refused while they hold a value…
     for (const [key, value] of Object.entries({ seatCounty: "Cluj", firmSeat: "other", registeredFrom: 2024, mainClient: true, procedure: ["open"], localAdminIds: ["1"] }))
@@ -107,7 +130,7 @@ describe("which rollup answers a selection (24 Oct 2026 slow cases)", () => {
     const active: { [K in keyof RollupCtx]: RollupCtx[K] } = {
       plafond: "strict", population: without("supplier", "9"), minimumRecords: { role: "supplier", count: 2 }, cpvPrefixes: ["33"],
       cpvExclude: ["3361"], county: "Cluj", kind: "spital", kindIds: HOSPITALS, authorityId: "1", supplierId: "2", uatSiruta: 1, uatAuthorityIds: ["3"],
-      singleBidder: true, minEmployees: 1, maxEmployees: 9, yearFrom: 2024, yearTo: 2025, monthFrom: 1, monthTo: 6,
+      singleBidder: true, minEmployees: 1, maxEmployees: 9, yearFrom: 2024, yearTo: 2025, monthFrom: 1, monthTo: 6, trendMonths: [1, 5],
       adminSupplierIds: ["4"], comparison: { role: "supplier", focalId: "2", compareId: "5" },
     };
     for (const key of Object.keys(active) as (keyof RollupCtx)[]) {

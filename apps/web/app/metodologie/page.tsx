@@ -116,6 +116,15 @@ export default function MetodologiePage() {
             Încadrarea după descriere poate greși, de exemplu un acord-cadru al cărui titlu nu spune asta;{" "}
             <a href="#acoperire">inventarul</a> arată câte contracte și ce valoare depind de ea.</p>
         </details>
+        <details className="method-fold" id="diferente-ani">
+          <summary>Diferențe între ani</summary>
+          <p>În „Întreabă”, schimbarea între doi ani împarte firmele (sau instituțiile, ori județele) selecției în Creșteri, Noi, Scăderi și Nu mai apar;
+            cele cu aceeași valoare în ambii ani se numără separat, iar grupele adună totalul selecției.
+            Noi înseamnă fără nicio înregistrare în primul an, în selecție; Nu mai apar, fără niciuna în al doilea; Prima dată, dintre cele noi,
+            cele a căror primă înregistrare din toată arhiva este în al doilea an.
+            Un contract intră întreg în anul atribuirii, nu în anii în care se execută. Când al doilea an nu e încheiat în date,
+            ambii ani se compară pe aceleași luni, din ianuarie până la ultima lună completă. Valorile sunt înregistrate, nu plăți.</p>
+        </details>
         <details className="method-fold">
           <summary>Republicări</summary>
           <p>Când SEAP republică același contract (același anunț, număr, dată, lot și autoritate), îl numărăm o singură dată, la ultima versiune verificată.

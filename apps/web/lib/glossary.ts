@@ -214,6 +214,24 @@ export const GLOSSARY = {
     title: "O singură ofertă",
     text: "Numărul de oferte este publicat doar pentru o parte din contracte, mai ales pentru cele din TED. Procentul se calculează numai pe acestea.",
   },
+  // Ask's change between two years (trend, F2): the groups' tips.
+  "firma-noua": {
+    title: "Noi",
+    text: "Fără nicio înregistrare în primul an comparat și cu înregistrări în al doilea, în selecția aleasă. Poate avea înregistrări mai vechi sau în afara selecției.",
+  },
+  "nu-mai-apare": {
+    title: "Nu mai apar",
+    text: "Cu înregistrări în primul an comparat și fără niciuna în al doilea, în aceeași selecție. Un contract intră întreg în anul atribuirii, deci firma poate executa încă unul atribuit înainte.",
+  },
+  // The trend's group (trend final §3.9); "prima-data" above is the firm's first record on its profile line.
+  "trend-prima-data": {
+    title: "Prima dată",
+    text: "Dintre cele noi, cele a căror primă înregistrare din toată arhiva site-ului este în al doilea an comparat.",
+  },
+  "aceleasi-luni": {
+    title: "Aceleași luni",
+    text: "Când al doilea an nu e încheiat în date, ambii ani se compară pe aceleași luni: din ianuarie până la ultima lună completă. Altfel un an parțial ar părea o scădere.",
+  },
 } as const satisfies Record<string, GlossaryEntry>;
 
 export type GlossaryId = keyof typeof GLOSSARY;

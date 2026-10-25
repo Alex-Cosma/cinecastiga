@@ -1,4 +1,5 @@
 import type { AskSpec, AuthorityKind } from "../ask/spec";
+import type { LensMatch } from "./lens-phrases";
 
 /**
  * Free-text question → typed interpretation. The rules interpreter
@@ -73,6 +74,12 @@ export interface PersonMatch {
 export interface PeriodMatch {
   yearFrom?: number;
   yearTo?: number;
+  /**
+   * "în 2025 față de 2024": the year asked about (main) and the one it is set
+   * against (other). Both years stand only where each is its own figure (a
+   * trend, an evolution); elsewhere the main year, with a note (to-spec).
+   */
+  versus?: { main: number; other: number };
   matched: Span;
 }
 
@@ -127,6 +134,11 @@ export interface Interpretation {
   /** "cel mai / cea mai" + singular: one superlative entity. */
   superlative: boolean;
   employees: { min?: number; max?: number } | null;
+  /**
+   * Phrases that set an option once the block is chosen (lens-phrases.ts, plan
+   * §2.7): every block's table is read; to-spec applies the chosen block's.
+   */
+  lenses: LensMatch[];
   /** Words that carried meaning for the person but not for the rules. */
   leftover: string[];
   confidence: number;

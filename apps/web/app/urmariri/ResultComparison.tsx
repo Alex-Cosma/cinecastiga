@@ -29,8 +29,14 @@ const labels: Record<string, string> = {
   classification: "Clasificarea schimbărilor", refresh: "Metodologia actualizării datelor", monitoring: "Versiunea monitorizării",
   tedNormalization: "Versiunea prelucrării TED", transactionPopulation: "Definiția selecției de achiziții",
   answer: "Versiunea răspunsului", question: "Calculul întrebării", conditions: "Condiții cu versiune proprie",
+  // trend-2 (F2): the chosen group, its months and its totals; a group watch's fixed members.
+  list: "Grupa afișată", change: "Felul schimbării", months: "Lunile comparate", mode: "Cum s-au ales lunile",
+  composition: "Totalurile grupei", groups: "Grupele", members: "Grupa fixată", frozen: "Membri fixați", frozenAt: "Fixată la",
+  all: "Toate", up: "Creșteri", new: "Noi", first: "Prima dată", down: "Scăderi", gone: "Nu mai apar", equal: "Fără schimbare", eligible: "Creșteri de la pragul ales",
 };
-const ignored = new Set(["block", "tookMs", "displaySql", "page", "pageSize", "entityId", "partnerId", "nx", "ny"]);
+/** A group's count is of its entities or counties, not of records (TrendPartTotals.count). */
+const fieldName = (key: string, path: readonly string[]) => key === "count" && path.includes("composition") ? "Număr în grupă" : name(key);
+const ignored = new Set(["block", "tookMs", "displaySql", "page", "pageSize", "entityId", "partnerId", "nx", "ny", "rowFacts", "noun"]);
 const object = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value);
 const name = (key: string) => labels[key] ?? KEY_VERSIONS[key]?.label ?? key.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/_/g, " ");
 const channels: Record<string, string> = { da: "Achiziții directe", contracts: "Contracte din proceduri", authority: "Autoritate", supplier: "Furnizor" };
@@ -94,7 +100,7 @@ export function resultDifferences(before: unknown, after: unknown): ResultDiffer
       for (const field of new Set([...Object.keys(left), ...Object.keys(right)])) visit(left[field], right[field], [...path, field], nextContext);
       return;
     }
-    differences.push({ key: path.join("/"), context: context.join(" · ") || "Rezultatul întrebării", field: name(key), fieldKey: key, before: a, after: b });
+    differences.push({ key: path.join("/"), context: context.join(" · ") || "Rezultatul întrebării", field: fieldName(key, path), fieldKey: key, before: a, after: b });
   }
   visit(before, after, [], []);
   return differences;

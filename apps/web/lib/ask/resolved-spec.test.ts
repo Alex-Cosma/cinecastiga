@@ -58,4 +58,12 @@ describe("saved question identity", () => {
     expect(applied.filters.county).toBe("Buzău");
     expect(resolvedSpec({ block: "stat", measure: "value", filters: { county: "x" } }, { county: { query: "x", canonical: "Caras-Severin" } }).filters.county).toBe("Caraș-Severin");
   });
+  // Plan §2.8: the answered spec goes into the URL, the draft, Save and Follow; "auto" must stay "auto"
+  // there, or "aceleași luni" would freeze at the first run. The executed window travels beside it.
+  it("keeps a trend's lenses as asked, `auto` months included", () => {
+    const spec = { block: "trend", dim: "authority", measure: "value", filters: { yearFrom: 2025, yearTo: 2026, supplierName: "x" }, trend: { change: "up", months: "auto" } } as const;
+    const applied = resolvedSpec(spec, { supplier: { query: "x", entityId: "7", nameDisplay: "X SRL", county: null, alternatives: [] } });
+    expect(applied.trend).toEqual({ change: "up", months: "auto" });
+    expect(validateSpec(applied)).toMatchObject({ trend: { change: "up", months: "auto" } });
+  });
 });

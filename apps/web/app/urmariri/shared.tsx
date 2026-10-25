@@ -6,8 +6,7 @@ import { useEffect, useId, useState } from "react";
 import Term from "@/components/Term";
 import type { MonitoringCheckpoint } from "@seap/db";
 import type { MonitoringPreferences, MonitoringRun, MonitoringScope } from "@/lib/monitoring-shared";
-import { MONITORING_CHANGE_TYPES, monitoringRunTag } from "@/lib/monitoring-shared";
-import { encodeSpec } from "@/lib/ask/permalink";
+import { MONITORING_CHANGE_TYPES, monitoringRunTag, selectionHref } from "@/lib/monitoring-shared";
 import { questionTitle } from "@/lib/ask/filters/title";
 import { formatExactDecimal, formatInt } from "@/lib/format";
 import { countWords } from "@/lib/ask/answer-text";
@@ -28,12 +27,17 @@ export function RefreshNotice({ refresh }: { refresh?: RefreshState | undefined 
   if (!refresh) return null;
   return <div className={`mon-freshness ${refresh.available ? "" : "mon-caution"}`}>{refresh.available ? <p className="mon-tip-line">Date validate la {moment(refresh.current?.completedAt)} <Term id="data-validarii" tip /></p> : <><strong>{refresh.current?.status === "running" ? "Actualizarea datelor este în curs" : refresh.current?.status === "failed" ? "Ultima actualizare a datelor nu s-a încheiat" : "Așteptăm prima actualizare validată"}</strong><p>Urmăririle și versiunile păstrate rămân disponibile. O verificare nereușită nu înseamnă că nu există modificări.</p></>}{refresh.lastReady && !refresh.available && <p>Ultima validare reușită: {moment(refresh.lastReady.completedAt)}.</p>}{refresh.lastReady && <details className="mon-small-details"><summary>Cât de recente sunt sursele?</summary><RefreshCoverage checkpoint={{ ...refresh.lastReady }} /></details>}</div>;
 }
-export function selectionHref({ spec, options }: MonitoringScope) { return `/intreaba?spec=${encodeURIComponent(encodeSpec(spec))}&drill=1${options.scope ? `&evidence=${encodeURIComponent(JSON.stringify(options.scope))}` : ""}&sourceFilters=${encodeURIComponent(JSON.stringify(options))}`; }
+export { selectionHref };
+/** A group's fixed ids (up to 5,000) are counted in the technical details, with the first ones shown. */
+const technical = (scope: MonitoringScope): unknown => {
+  const members = scope.options.members;
+  return members && members.ids.length > 20 ? { ...scope, options: { ...scope.options, members: { ...members, ids: [...members.ids.slice(0, 20), `… încă ${members.ids.length - 20}`] } } } : scope;
+};
 export function ScopeSummary({ scope, notes = [] }: { scope: MonitoringScope; notes?: string[] }) {
   // The question's own sentence (its period included); the receipt below states every rule separately.
   // Do not turn grouped OR date predicates into a single inferred date range.
   const question = questionTitle(scope.spec);
-  return <div className="mon-scope"><p><strong>Întrebarea de pornire: </strong>{question}</p><ScopeConditions scope={scope} />{notes.map((note, i) => <p className="mon-muted" key={i}>{note}</p>)}<Link href={selectionHref(scope)}>Deschide întrebarea și sursele →</Link><details><summary>Detalii tehnice ale selecției</summary><pre>{JSON.stringify(scope, null, 2)}</pre></details></div>;
+  return <div className="mon-scope"><p><strong>Întrebarea de pornire: </strong>{question}</p><ScopeConditions scope={scope} />{notes.map((note, i) => <p className="mon-muted" key={i}>{note}</p>)}<Link href={selectionHref(scope)}>Deschide întrebarea și sursele →</Link>{scope.options.members && <p className="mon-muted">Legătura arată grupa de azi; urmărirea păstrează membrii fixați.</p>}<details><summary>Detalii tehnice ale selecției</summary><pre>{JSON.stringify(technical(scope), null, 2)}</pre></details></div>;
 }
 export const changeNames = { added: "Înregistrări intrate în selecție", changed: "Corecții în datele sursă", removed: "Înregistrări ieșite din selecție", recalculated: "Rezultate recalculate", methodology: "Metodologie modificată" };
 export interface DigestStatus { available: boolean; reason: string | null; optedInWatches: number; latest: { period: string; status: string; updateCount: number; sentAt: string | null; error: string | null } | null }

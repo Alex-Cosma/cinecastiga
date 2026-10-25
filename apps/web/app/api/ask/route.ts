@@ -118,7 +118,7 @@ export async function POST(req: Request) {
     // The words of each display state of the strip, with the same functions (plan §2.3): the map's lens.
     const variants = result.displaySqlByMeasure ? {
       measure: Object.fromEntries((["value", "count"] as const).map((measure) => [measure, {
-        pills: buildPills({ ...spec, measure }, grounding), displaySql: result.displaySqlByMeasure![measure],
+        pills: buildPills({ ...spec, measure }, grounding, { executedMonths: result.executed?.months }), displaySql: result.displaySqlByMeasure![measure],
       }])),
     } : undefined;
     return NextResponse.json({
@@ -127,10 +127,12 @@ export async function POST(req: Request) {
       model,
       spec: resolvedSpec(spec, grounding),
       executedAt: new Date().toISOString(),
-      pills: buildPills(spec, grounding),
+      pills: buildPills(spec, grounding, { executedMonths: result.executed?.months }),
       caveats: result.caveats,
       data: result.data,
       ...(result.partialYears ? { partialYears: result.partialYears } : {}),
+      // A trend's months as executed; `spec` keeps `auto` (plan §2.8).
+      ...(result.executed ? { executed: result.executed } : {}),
       displaySql: result.displaySql,
       ...(variants ? { variants } : {}),
       tookMs: result.tookMs,

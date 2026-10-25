@@ -10,6 +10,13 @@ export function formatCalendarDate(value: string | null | undefined, withTime = 
   return `${day}.${month}.${year}${withTime && hour ? `, ${hour}:${minute}` : ""}`;
 }
 
+/** An instant (ISO timestamp) as its calendar day in București: "24.10.2026". */
+export function formatBucharestDay(instant: string): string {
+  const at = new Date(instant);
+  if (!Number.isFinite(at.getTime())) return "Dată neprecizată";
+  return new Intl.DateTimeFormat("ro-RO", { timeZone: "Europe/Bucharest", day: "2-digit", month: "2-digit", year: "numeric" }).format(at);
+}
+
 /** Romanian money formatting, compacted for headline figures (mld./mil. lei). */
 export function formatRon(v: number | string | null | undefined): string {
   if (v == null) return "—";

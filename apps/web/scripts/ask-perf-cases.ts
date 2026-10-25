@@ -2,7 +2,8 @@
  * Cases for scripts/ask-perf.ts (plan §6.4). Every spec is built the way the
  * builder builds it: defaultQuestion() → chooseType(block) → the reader's edits
  * → transitionQuestion → validateSpec, so the baseline measures questions a
- * reader can ask today, with today's keys only. Entity ids are those of the
+ * reader can ask, with the keys the engine implements (today's, then F2's
+ * trend lenses, as the builder will write them). Entity ids are those of the
  * local snapshot; a case whose identity no longer grounds reports the error
  * instead of a timing.
  */
@@ -25,6 +26,15 @@ export interface PerfCase {
   spec: AskSpec;
   /** rows/csv only: the drawer's exact selection inside the answer. */
   scope?: EvidenceScope;
+  /** rows only: the page of the list (0 = the first). */
+  page?: number;
+  /**
+   * rows/csv only: the answer runs first in the same process, untimed, as the
+   * drawer opens after it (a trend group's members kept by the answer,
+   * lib/ask/group-ids.ts). Without it the first run is the drawer of another
+   * process (nothing kept) and the warm runs reuse what it kept.
+   */
+  afterAnswer?: true;
   /** Warm budget: 1 s for an answer, 2 s for the heaviest national filtered cases (owner, 24 Oct 2026). */
   barMs: 1000 | 2000;
   /** The matching row of plan §6.4, when there is one. */
@@ -52,6 +62,8 @@ const years = (from: number, to: number = from): Edit => (q) => { q.filters.year
 const set = (filters: QuestionSpec["filters"]): Edit => (q) => { Object.assign(q.filters, filters); };
 const top = (spec: Partial<Omit<QuestionSpec, "filters">>): Edit => (q) => { Object.assign(q, spec); };
 const all = (...edits: Edit[]): Edit => (q) => { for (const edit of edits) edit(q); };
+/** The trend's options (F2). */
+const lens = (trend: NonNullable<AskSpec["trend"]>): Edit => (q) => { q.trend = { ...trend }; };
 
 /** One builder question: the catalogue choice, the edits, then the builder's own normalization. */
 export function builderQuestion(block: Block, edit: Edit = () => {}): QuestionSpec {
@@ -62,7 +74,7 @@ export function builderQuestion(block: Block, edit: Edit = () => {}): QuestionSp
 
 function perfCase(
   id: string, group: PerfGroup, label: string, block: Block, edit: Edit,
-  extra: { path?: PerfPath; scope?: EvidenceScope; barMs?: 1000 | 2000; ref?: string } = {},
+  extra: { path?: PerfPath; scope?: EvidenceScope; page?: number; afterAnswer?: true; barMs?: 1000 | 2000; ref?: string } = {},
 ): PerfCase {
   const question = builderQuestion(block, edit);
   const spec = validateSpec(question);
@@ -70,6 +82,8 @@ function perfCase(
   return {
     id, group, label, path: extra.path ?? "answer", question, spec,
     ...(extra.scope ? { scope: extra.scope } : {}),
+    ...(extra.page ? { page: extra.page } : {}),
+    ...(extra.afterAnswer ? { afterAnswer: true as const } : {}),
     barMs: extra.barMs ?? 1000,
     ...(extra.ref ? { ref: extra.ref } : {}),
   };
@@ -177,5 +191,39 @@ export function perfCases(): PerfCase[] {
     perfCase("csv:table-cluj-2025", "csv", "CSV: clasamentul din Cluj, 2025", "table", all(set({ county: "Cluj" }), years(2025)), { path: "csv", barMs: 2000 }),
     perfCase("csv:trend-2025-2026-selgros-row", "csv", "CSV: rândul SELGROS al trendului 2025 → 2026", "trend", years(2025, 2026), { path: "csv", scope: SELGROS_ROW, barMs: 2000 }),
     perfCase("csv:table-national", "csv", "CSV: clasamentul național implicit (primele 100.000)", "table", () => {}, { path: "csv", barMs: 2000 }),
+    // F2 (track trend, T1): the trend's lenses, written as the builder will write them (plan §2.6).
+    perfCase("national:trend-suppliers-2024-2025-up", "national", "Firme cu cea mai mare creștere, 2024 → 2025", "trend", all(years(2024, 2025), lens({ change: "up", months: "auto" })), { barMs: 2000 }),
+    perfCase("national:trend-suppliers-2024-2025-new-first", "national", "Firme noi, prima dată în 2025", "trend", all(years(2024, 2025), lens({ change: "new", firstOnly: true, months: "auto" })), { barMs: 2000 }),
+    perfCase("national:trend-suppliers-2024-2025-percent", "national", "Firme cu cea mai mare creștere în procente, de la 1 mil. lei", "trend",
+      all(years(2024, 2025), lens({ change: "up", order: "percent", minBase: 1_000_000, months: "auto" })), { barMs: 2000 }),
+    perfCase("national:trend-suppliers-2025-2026-jan-may", "national", "Firme cu cea mai mare creștere, ian.–mai 2025 → 2026", "trend", all(years(2025, 2026), lens({ change: "up", months: [1, 5] })), { barMs: 2000, ref: "exemplul proprietarului, aceleași luni" }),
+    perfCase("filtered:trend-cluj-2024-2025-gone", "filtered", "Firmele din Cluj care nu mai apar în 2025", "trend", all(set({ county: "Cluj" }), years(2024, 2025), lens({ change: "gone", months: "auto" }))),
+    perfCase("sources:trend-2024-2025-new", "sources", "Sursele firmelor noi, 2024 → 2025 (național)", "trend", all(years(2024, 2025), lens({ change: "new", months: "auto" })), { path: "rows", barMs: 2000, ref: "Surse trend pe un grup („Noi”, național)" }),
+    perfCase("sources:trend-2024-2025-up-selgros-row", "sources", "„Înregistrări →” pe rândul SELGROS al creșterilor 2024 → 2025", "trend", all(years(2024, 2025), lens({ change: "up", months: "auto" })), { path: "rows", scope: SELGROS_ROW, ref: "„Înregistrări →” pe un singur rând al unei grupe" }),
+    perfCase("sources:trend-2025-2026-jan-may", "sources", "Sursele creșterilor, ian.–mai 2025 → 2026", "trend", all(years(2025, 2026), lens({ change: "up", months: [1, 5] })), { path: "rows", barMs: 2000 }),
+    perfCase("csv:trend-2024-2025-gone-cluj", "csv", "CSV: firmele din Cluj care nu mai apar în 2025", "trend", all(set({ county: "Cluj" }), years(2024, 2025), lens({ change: "gone", months: "auto" })), { path: "csv", barMs: 2000 }),
+    // F2 (track trend, T2): the partition on the other subjects, a live grouping and an old link with 2018.
+    perfCase("national:trend-authorities-2024-2025-up", "national", "Instituții cu cea mai mare creștere, 2024 → 2025", "trend", all(top({ dim: "authority" }), years(2024, 2025), lens({ change: "up", months: "auto" })), { barMs: 2000 }),
+    perfCase("national:trend-counties-2024-2025-down", "national", "Județe cu cea mai mare scădere, 2024 → 2025", "trend", all(top({ dim: "county" }), years(2024, 2025), lens({ change: "down", months: "auto" })), { barMs: 2000 }),
+    perfCase("national:trend-medicamente-2024-2025-new", "national", "Firme noi la medicamente, 2024 → 2025 (grupare live)", "trend", all(set({ cpvTerm: "medicamente" }), years(2024, 2025), lens({ change: "new", months: "auto" })), { barMs: 2000 }),
+    perfCase("filtered:trend-cluj-napoca-suppliers-2024-2025-new", "filtered", "Furnizori noi ai Municipiului Cluj-Napoca, 2024 → 2025", "trend", all(buyer(), years(2024, 2025), lens({ change: "new", months: "auto" }))),
+    perfCase("national:trend-suppliers-2018-2019", "national", "Firme cu cea mai mare schimbare, 2018 → 2019 (link vechi)", "trend", years(2018, 2019), { barMs: 2000 }),
+    // F2 (track trend, T3): a group's sources from the members the answer keeps (group-ids.ts), cold and after the answer.
+    perfCase("sources:trend-2024-2025-new-after-answer", "sources", "Sursele firmelor noi, 2024 → 2025, după răspuns", "trend", all(years(2024, 2025), lens({ change: "new", months: "auto" })),
+      { path: "rows", afterAnswer: true, barMs: 2000, ref: "Surse trend pe un grup („Noi”, național), după răspuns (cache umplut)" }),
+    perfCase("sources:trend-2024-2025-new-page-2", "sources", "Sursele firmelor noi, 2024 → 2025, pagina a doua", "trend", all(years(2024, 2025), lens({ change: "new", months: "auto" })),
+      { path: "rows", page: 1, afterAnswer: true, barMs: 2000, ref: "Surse trend pe un grup, paginile următoare" }),
+    perfCase("sources:trend-2024-2025-up", "sources", "Sursele creșterilor, 2024 → 2025 (național)", "trend", all(years(2024, 2025), lens({ change: "up", months: "auto" })),
+      { path: "rows", barMs: 2000, ref: "Surse trend pe un grup („Creșteri”, național), la rece" }),
+    perfCase("sources:trend-2024-2025-up-after-answer", "sources", "Sursele creșterilor, 2024 → 2025, după răspuns", "trend", all(years(2024, 2025), lens({ change: "up", months: "auto" })),
+      { path: "rows", afterAnswer: true, barMs: 2000 }),
+    perfCase("sources:trend-2024-2025-up-selgros-row-after-answer", "sources", "„Înregistrări →” pe rândul SELGROS al creșterilor, după răspuns", "trend", all(years(2024, 2025), lens({ change: "up", months: "auto" })),
+      { path: "rows", scope: SELGROS_ROW, afterAnswer: true, ref: "„Înregistrări →” pe un singur rând al unei grupe, după răspuns" }),
+    perfCase("sources:trend-counties-2024-2025-down", "sources", "Sursele județelor în scădere, 2024 → 2025", "trend", all(top({ dim: "county" }), years(2024, 2025), lens({ change: "down", months: "auto" })),
+      { path: "rows", barMs: 2000 }),
+    perfCase("sources:trend-cluj-napoca-suppliers-2024-2025-new", "sources", "Sursele furnizorilor noi ai Municipiului Cluj-Napoca, 2024 → 2025", "trend",
+      all(buyer(), years(2024, 2025), lens({ change: "new", months: "auto" })), { path: "rows" }),
+    perfCase("csv:trend-2024-2025-new-after-answer", "csv", "CSV: firmele noi, 2024 → 2025 (național), după răspuns", "trend", all(years(2024, 2025), lens({ change: "new", months: "auto" })),
+      { path: "csv", afterAnswer: true, barMs: 2000 }),
   ];
 }
