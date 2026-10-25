@@ -14,6 +14,7 @@ vi.mock("@/lib/ask/filters/blocks", () => import("../../lib/ask/filters/blocks")
 vi.mock("@/lib/ask/filters/context", () => import("../../lib/ask/filters/context"));
 vi.mock("@/lib/ask/filters/title", () => import("../../lib/ask/filters/title"));
 vi.mock("@/lib/ask/permalink", () => import("../../lib/ask/permalink"));
+vi.mock("@/lib/ask/source-spec", () => import("../../lib/ask/source-spec"));
 vi.mock("@/lib/ask/population", () => import("../../lib/ask/population"));
 vi.mock("@/lib/ask/local-questions", () => import("../../lib/ask/local-questions"));
 vi.mock("@/lib/counties", () => import("../../lib/counties"));

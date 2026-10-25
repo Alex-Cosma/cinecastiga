@@ -5,7 +5,8 @@ import type { AskSpec } from "@/lib/ask/spec";
 import { keyVersionNotes } from "@/lib/ask/answer-core";
 import { readableCpvName } from "@/lib/entity-summary";
 import { withoutLinkConditions } from "@/lib/ask/filters/restore";
-import { chooseQuestion, chooseValue, restoreParked, type Transition } from "@/lib/ask/filters/transition";
+import { chooseQuestion, chooseValue, restoreParked, type NoteLink, type Transition } from "@/lib/ask/filters/transition";
+import { askLink } from "@/lib/ask/source-spec";
 import type { Parked } from "@/lib/ask/filters/parked";
 import type { Choice } from "@/lib/ask/filters/pickers";
 import { splitExcluded, type Excluded } from "@/lib/ask/filters/origin";
@@ -23,6 +24,7 @@ import ParkedRow from "./builder/ParkedRow";
 import ScopeLine from "./builder/ScopeLine";
 import Sentence, { Presentation } from "./builder/Sentence";
 import UnderChips from "./builder/UnderChips";
+import KitLink from "./answer/KitLink";
 import RowMenu from "./answer/RowMenu";
 import { builderView, onlyExclusions, patchDraft, withoutExclusions, type BuilderWindowSpec, type StripPatch } from "./builder/view";
 import SaveQuestionButton from "./SaveQuestionButton";
@@ -98,6 +100,8 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
   draftRef.current = draft;
   const [changes, setChanges] = useState<string[]>(() => unique([...(initialNotes ?? []), ...seed.changes, ...(initial ? keyVersionNotes(initial as unknown as AskSpec) : [])]));
   const [parked, setParked] = useState<Parked | null>(null);
+  // A note's link ("Cât câștigă X ›" for a tautology the change dropped), by the note's text.
+  const [noteLinks, setNoteLinks] = useState<Record<string, NoteLink>>({});
   const initialKey = initial ? questionKey(initial) : "";
   const previousInitial = useRef(initialKey);
   const [open, setOpen] = useState<{ key: string; anchor: HTMLElement } | null>(null);
@@ -177,9 +181,10 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
   }, [catalogue]);
 
   /** The draft after an edit, with its notes and the parked row (transition.ts). */
-  function settle(next: Pick<Transition, "spec" | "notes" | "parked">, replaceNotes = false) {
+  function settle(next: Pick<Transition, "spec" | "notes" | "parked" | "links">, replaceNotes = false) {
     setDraft(next.spec);
     setChanges(previous => unique([...(replaceNotes ? [] : previous), ...next.notes]));
+    setNoteLinks(previous => ({ ...(replaceNotes ? {} : previous), ...next.links }));
     setParked(next.parked);
   }
   function openWindow(key: string, anchor: HTMLElement) {
@@ -189,12 +194,12 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
   /** The choices of a window, in order, each through chooseValue. */
   function choose(target: BuilderWindowSpec, choices: readonly Choice[]) {
     let spec: QuestionSpec = draft, current = parked;
-    const notes: string[] = [];
+    const notes: string[] = [], links: Record<string, NoteLink> = {};
     for (const choice of choices) {
       const next = chooseValue(spec, target.slot, choice, current);
-      spec = next.spec; current = next.parked; notes.push(...next.notes);
+      spec = next.spec; current = next.parked; notes.push(...next.notes); Object.assign(links, next.links);
     }
-    settle({ spec, notes, parked: current });
+    settle({ spec, notes, parked: current, links });
     closeWindow();
   }
   /** "⋯ › Selecție avansată" and its editors write the draft as they are edited (same question, normalized). */
@@ -302,7 +307,7 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
         <p>{view.refused[0]!.why ?? view.refused[0]!.reason}</p>
         <button type="button" className="fk-secondary" onClick={removeRefused}>Scoate condițiile din link</button>
       </div>}
-      {changes.length > 0 && <div className="qb-notes" role="status"><Glyph name="info" /><div><strong>Ce se schimbă odată cu întrebarea</strong>{changes.map((note) => <p key={note}>{note}</p>)}</div></div>}
+      {changes.length > 0 && <div className="qb-notes" role="status"><Glyph name="info" /><div><strong>Ce se schimbă odată cu întrebarea</strong>{changes.map((note) => <p key={note}>{note}{noteLinks[note] && <KitLink className="fk-relax-link" link={{ label: noteLinks[note]!.label, glyph: "›", href: askLink(noteLinks[note]!.spec as QuestionSpec) }} />}</p>)}</div></div>}
       <div className="fk-bottom qb-bottom">
         <div className="qb-bottom-start">
           {view.presentation.length > 0 && <Presentation tokens={view.presentation} openId={open?.key ?? null} onOpen={openWindow} />}
