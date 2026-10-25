@@ -7,7 +7,7 @@ import type { EvidenceScope } from "@/lib/ask/evidence";
 import { useEffect, useRef, useState } from "react";
 import { formatRon, formatRonFull, formatInt, cleanName } from "@/lib/format";
 import { readableCpvName } from "@/lib/entity-summary";
-import { countWords, formatChange, formatDecimal, formatShare } from "@/lib/ask/answer-text";
+import { countWords, formatDecimal, formatShare } from "@/lib/ask/answer-text";
 import { encodeSpec } from "@/lib/ask/permalink";
 import type { QuestionSpec } from "@/lib/ask/question-ui";
 import { askLink, leaderAlone, leaderAloneSpecs } from "@/lib/ask/source-spec";
@@ -87,8 +87,6 @@ import type {
   NetworkNode,
   EntityCardData,
   FactCheckData,
-  TrendRow,
-  PartialYear,
 } from "@/lib/ask/compile";
 
 /** Renderers for the risk/relationship result blocks (mockup blocks 5–13). */
@@ -1489,109 +1487,6 @@ export function FactCheckBlock({ fact }: { fact: FactCheckData }) {
             ))}
           </tbody>
         </table>
-      )}
-    </div>
-  );
-}
-
-/* ── trend ────────────────────────────────────────────────────────────── */
-
-export function TrendBlock({
-  rows,
-  yearA,
-  yearB,
-  spec,
-  partial = [],
-}: {
-  rows: TrendRow[];
-  yearA: number;
-  yearB: number;
-  spec?: AskSpec;
-  /** Audit F19: endpoint years the archive covers only in part. */
-  partial?: PartialYear[];
-}) {
-  const evidence = useAnswerEvidence();
-  if (rows.length === 0) return <p className="ask-empty">Niciun rezultat.</p>;
-  const shownPartial = partial.filter((p) => p.year === yearA || p.year === yearB);
-  const yearLabel = (year: number) => shownPartial.some((p) => p.year === year) ? `${year}*` : year;
-  return (
-    <div>
-      <div className="ask-trend">
-        <div className="tr head">
-          <span />
-          <span className="yv">{yearLabel(yearA)}</span>
-          <span className="arrow" />
-          <span className="yv">{yearLabel(yearB)}</span>
-          <span className="delta">Δ</span>
-        </div>
-        {rows.map((r) => {
-          const delta = r.valueB - r.valueA;
-          const pct = r.valueA > 0 ? (delta / r.valueA) * 100 : null;
-          const up = delta > 0;
-          return (
-            <div key={r.entityId ?? r.name} className="tr">
-              <span className="nm">
-                {r.entityId ? (
-                  <Link href={`/entitati/${r.entityId}`}>
-                    {cleanName(r.name)}
-                  </Link>
-                ) : (
-                  r.name
-                )}
-                {/* trend-2: the row's own county (entity_profile.county). R9: "(județ)" is an institution's place; beside a firm it would be
-                    its SEAP address read as its seat, so it waits for the firm seat of F4 (owner-seat-switch). */}
-                {r.county && spec?.dim !== "supplier" ? ` (${r.county})` : ""}
-                {evidence && (
-                  <button
-                    type="button"
-                    className="cq-record-link"
-                    onClick={() =>
-                      evidence.open(
-                        undefined,
-                        {
-                          ...(spec?.dim === "county" ? { county: r.name } : {}),
-                          ...(r.entityId
-                            ? {
-                                entityIds: [r.entityId],
-                                role:
-                                  spec?.dim === "supplier"
-                                    ? "supplier"
-                                    : "authority",
-                              }
-                            : {}),
-                          years: [yearA, yearB],
-                        },
-                        `${cleanName(r.name)} · ${yearA} și ${yearB}`,
-                      )
-                    }
-                  >
-                    Înregistrările celor doi ani →
-                  </button>
-                )}
-              </span>
-              <span className="yv num">{formatRon(r.valueA)}</span>
-              <span className="arrow">→</span>
-              <span className="yv num">{formatRon(r.valueB)}</span>
-              <span className={up ? "delta num up" : "delta num down"}>
-                {pct === null
-                  ? "nou"
-                  : formatChange(pct)}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-      <p className="ask-fine">
-        Ordonate după schimbarea absolută (creșteri și scăderi). „nou” = fără
-        înregistrări în selecție pentru {yearA}.
-      </p>
-      {shownPartial.length > 0 && (
-        <p className="ask-fine ask-partial-note">
-          {shownPartial.some((p) => p.provisional)
-            ? "* an cu date parțiale sau provizorii, diferența reflectă și perioada neacoperită sau încă nepublicată: "
-            : "* an acoperit parțial, diferența reflectă și perioada neacoperită: "}
-          {shownPartial.map((p) => `${p.year} (${p.note})`).join(", ")}.
-        </p>
       )}
     </div>
   );

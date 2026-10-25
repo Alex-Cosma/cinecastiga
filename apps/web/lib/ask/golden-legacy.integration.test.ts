@@ -8,6 +8,7 @@ vi.mock("@/lib/ask/question-ui", () => import("./question-ui"));
 vi.mock("@/lib/ask/ground", () => import("./ground"));
 vi.mock("@/lib/ask/compile", () => import("./compile"));
 vi.mock("@/lib/ask/pills", () => import("./pills"));
+vi.mock("@/lib/ask/trend-shared", () => import("./trend-shared"));
 vi.mock("@/lib/ask/llm", () => import("./llm"));
 vi.mock("@/lib/ask/resolved-spec", () => import("./resolved-spec"));
 vi.mock("@/lib/devlog", () => import("../devlog"));

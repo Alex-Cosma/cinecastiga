@@ -1,5 +1,5 @@
 import {afterEach,describe,expect,it,vi} from 'vitest';
-import {requestSourceCsv} from './source-csv';
+import {answerOutdated,requestSourceCsv,SourceRequestError} from './source-csv';
 afterEach(()=>vi.unstubAllGlobals());
 const signal=()=>new AbortController().signal;
 function csv(headers:Record<string,string>={}){return new Response('suma,sursa\n123.456789,https://example.test/source\n',{headers:{'content-type':'text/csv','x-total-rows':'1','x-exported-rows':'1','content-disposition':'attachment; filename="randuri-1.csv"',...headers}});}
@@ -18,6 +18,15 @@ describe('source CSV download contract',()=>{
  it('does not treat an HTTP 200 JSON timeout as a downloaded CSV',async()=>{
   vi.stubGlobal('fetch',vi.fn().mockResolvedValue(Response.json({error:'Restrânge întrebarea.'})));
   await expect(requestSourceCsv({},signal())).rejects.toThrow('Restrânge întrebarea.');
+ });
+ it('keeps the status of a refusal: a trend whose months moved answers 409 and the answer is reloaded (plan §2.8)',async()=>{
+  vi.stubGlobal('fetch',vi.fn().mockResolvedValue(Response.json({ok:false,error:'Datele s-au actualizat; reîncarcă răspunsul.'},{status:409})));
+  const refused=await requestSourceCsv({spec:{block:'trend'},months:[1,5]},signal()).catch((e:unknown)=>e);
+  expect(refused).toBeInstanceOf(SourceRequestError);
+  expect((refused as SourceRequestError).status).toBe(409);
+  expect(answerOutdated(refused)).toBe(true);
+  expect(answerOutdated(new SourceRequestError('Restrânge întrebarea.',200))).toBe(false);
+  expect(answerOutdated(new Error('x'))).toBe(false);
  });
  it('rejects missing totals rather than claiming a complete empty export',async()=>{
   vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response('',{headers:{'content-type':'text/csv'}})));

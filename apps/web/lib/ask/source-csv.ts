@@ -1,6 +1,17 @@
 import { countWords } from './answer-text';
 import { formatInt } from '../format';
 
+/**
+ * A refused source request, with its HTTP status. A trend's sources and CSV
+ * answer 409 when the data moved the answer's months since it was computed
+ * (plan §2.8): the screen reloads the answer instead of listing other records.
+ */
+export class SourceRequestError extends Error {
+  constructor(message: string, readonly status: number) { super(message); }
+}
+/** The answer on screen is older than the data its sources would list (409). */
+export const answerOutdated = (error: unknown): boolean => error instanceof SourceRequestError && error.status === 409;
+
 /** Shared by answer exports and the source drawer. Server totals, not the
  * currently displayed page, determine whether a download is partial. */
 export async function requestSourceCsv(body: Record<string, unknown>, signal: AbortSignal) {
@@ -10,7 +21,7 @@ export async function requestSourceCsv(body: Record<string, unknown>, signal: Ab
   });
   if (!response.ok || !response.headers.get('content-type')?.includes('text/csv')) {
     const data = await response.json() as {error?:string};
-    throw Error(data.error ?? 'Exportul nu a putut fi generat.');
+    throw new SourceRequestError(data.error ?? 'Exportul nu a putut fi generat.', response.status);
   }
   const totalHeader=response.headers.get('x-total-rows'), exportedHeader=response.headers.get('x-exported-rows');
   const total=Number(totalHeader), exported=Number(exportedHeader);

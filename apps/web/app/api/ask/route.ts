@@ -10,6 +10,7 @@ import {
   type TableSort,
 } from "@/lib/ask/compile";
 import { buildPills } from "@/lib/ask/pills";
+import { trendListSpec, type TrendList } from "@/lib/ask/trend-shared";
 import { interpret } from "@/lib/ask/llm";
 import { resolvedSpec } from "@/lib/ask/resolved-spec";
 import { devlog } from "@/lib/devlog";
@@ -115,11 +116,17 @@ export async function POST(req: Request) {
       );
     }
     devlog("ask", { question, spec, ok: true, tookMs: result.tookMs });
-    // The words of each display state of the strip, with the same functions (plan §2.3): the map's lens.
-    const variants = result.displaySqlByMeasure ? {
-      measure: Object.fromEntries((["value", "count"] as const).map((measure) => [measure, {
-        pills: buildPills({ ...spec, measure }, grounding, { executedMonths: result.executed?.months }), displaySql: result.displaySqlByMeasure![measure],
-      }])),
+    // The words of each display state of the strip, with the same functions (plan §2.3): the map's lens,
+    // and each list of a trend (its group buttons switch on the lists already fetched).
+    const executedMonths = result.executed?.months;
+    const byList = result.displaySqlByList;
+    const variants = result.displaySqlByMeasure || byList ? {
+      ...(result.displaySqlByMeasure ? { measure: Object.fromEntries((["value", "count"] as const).map((measure) => [measure, {
+        pills: buildPills({ ...spec, measure }, grounding, { executedMonths }), displaySql: result.displaySqlByMeasure![measure],
+      }])) } : {}),
+      ...(byList ? { trend: Object.fromEntries((Object.keys(byList) as TrendList[]).map((list) => [list, {
+        pills: buildPills(trendListSpec(spec, list), grounding, { executedMonths }), displaySql: byList[list]!,
+      }])) } : {}),
     } : undefined;
     return NextResponse.json({
       ok: true,

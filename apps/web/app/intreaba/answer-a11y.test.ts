@@ -39,7 +39,7 @@ function phoneRules(text: string, after: string): string {
 describe("the answer's targets and contrast", () => {
   it("gives the answer's tools, disclosures, record links and table links 44 px under 600 px, the (?) without growing its line", () => {
     const rules = phoneRules(css("./explore-compact.css"), ".cq-answer .term-tip .term-mark");
-    for (const selector of [".cq-answer .cq-record-link", ".cq-answer td a", ".cq-answer details > summary", ".cq-answer .cq-answer-tools .cq-copy", ".cq-answer .cq-export summary", ".cq-answer .ask-trend .nm a"])
+    for (const selector of [".cq-answer .cq-record-link", ".cq-answer td a", ".cq-answer details > summary", ".cq-answer .cq-answer-tools .cq-copy", ".cq-answer .cq-export summary", ".cq-answer .fk-trow-name a"])
       expect(rules, selector).toContain(selector);
     expect(rules).toMatch(/\.cq-answer \.term-tip > \.term-trigger \{ min-width:44px; min-height:44px; margin-block:-10px; \}/);
     expect(css("./explore-compact.css")).toContain(".cq-answer .term-tip .term-mark { opacity:1; }");

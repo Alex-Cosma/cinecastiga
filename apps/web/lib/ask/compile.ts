@@ -29,6 +29,7 @@ import {
   factsOfRow, factsSource, factsYears, liveTrendChannels, trendFactsRows, trendListOf, trendMembersFigures, trendNoun, trendPartition, trendProfiles,
   type TrendAttribute, type TrendComposition, type TrendList, type TrendMemberPart, type TrendNoun, type TrendPartitionRow, type TrendPartSources, type TrendRowFacts,
 } from "./trend-partition";
+import { TREND_LISTS, trendListSpec } from "./trend-shared";
 import {
   entryMembers, groupSourceTotals, hasMember, memberList, rememberTrendGroups, trendCacheStamp, trendGroupEntry, trendGroupKey, trendGroupsFor, trendMemberPart,
   type SourceTotalsRow,
@@ -289,6 +290,8 @@ export interface EngineResult {
    * already fetched (plan §2.3 variants): the map's lens, value or records.
    */
   displaySqlByMeasure?: Partial<Record<"value" | "count", string>>;
+  /** trend: the SQL shown for each list of the answer (the group buttons switch on the data already fetched). */
+  displaySqlByList?: Partial<Record<TrendList, string>>;
   /** trend with `trend.months`: the window `auto` resolved to (plan §2.8); the spec keeps `auto`. */
   executed?: ExecutedWindow;
   /** trend with TableOpts.freezeGroup: every member of the chosen group (ids ascending, or county names), for a watch to fix. */
@@ -945,6 +948,12 @@ export async function runSpec(
   // The map answers both lenses from the same rows (value and records per county): the strip switches without a query.
   const displaySqlByMeasure = spec.block === "map"
     ? { value: buildDisplaySql({ ...spec, measure: "value" }, w), count: buildDisplaySql({ ...spec, measure: "count" }, w) }
+    : undefined;
+  // A trend answers every list in one statement (the group buttons switch without a query): the SQL of each list.
+  // A watch on fixed members lists only its own.
+  const displaySqlByList = spec.block === "trend" && !tableOpts.fixedMembers
+    ? Object.fromEntries(TREND_LISTS.filter((list) => list !== "first" || spec.dim !== "county")
+      .map((list) => [list, buildDisplaySql(trendListSpec(spec, list), w)])) as Partial<Record<TrendList, string>>
     : undefined;
   // The precise selection (or the page it comes from) and the record threshold, in the words of describeConditions.
   caveats.push(...describeConditions(spec, { grounding, entities: labels.entities }).caveats);
@@ -1863,7 +1872,8 @@ export async function runSpec(
   const executed: ExecutedWindow | null = trendWindow
     ? { months: [trendWindow.from, trendWindow.to], mode: trendWindow.mode, checkpoint: trendWindow.checkpoint } : null;
   return { data, displaySql, caveats, tookMs: Date.now() - started, ...(partial ? { partialYears: partial } : {}), ...(executed ? { executed } : {}),
-    ...(frozenMembers ? { groupMembers: frozenMembers } : {}), ...(movement ? { movement } : {}), ...(displaySqlByMeasure ? { displaySqlByMeasure } : {}) };
+    ...(frozenMembers ? { groupMembers: frozenMembers } : {}), ...(movement ? { movement } : {}), ...(displaySqlByMeasure ? { displaySqlByMeasure } : {}),
+    ...(displaySqlByList ? { displaySqlByList } : {}) };
 }
 
 export interface DrillRow {

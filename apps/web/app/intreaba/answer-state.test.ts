@@ -3,7 +3,9 @@ import { decodeSpec } from "../../lib/ask/permalink";
 import type { BlockData } from "../../lib/ask/compile";
 import type { AskSpec } from "../../lib/ask/spec";
 import { answerCsv } from "./answer-csv";
-import { SINGLE_OFFER_STREAM, STRIP_QUERY_KEYS, appliedAfterStrip, deeperThread, readThread, shownWords, streamOptions, threadCrumbs, threadHref, threadWords } from "./answer-state";
+import { SINGLE_OFFER_STREAM, STRIP_QUERY_KEYS, appliedAfterStrip, appliedAfterTrendList, deeperThread, readThread, shownWords, streamOptions, threadCrumbs, threadHref, threadWords } from "./answer-state";
+import { patchDraft } from "./builder/view";
+import { trendFixture, trendSpec } from "../../lib/ask/fixtures/trend-screen";
 
 /*
  * F1b-builder-a, the answer's side of the strip (plan §2.3): the applied
@@ -93,5 +95,62 @@ describe("«Rezultatul afișat · CSV» with the strip's state", () => {
     const plain = answerCsv(map, { block: "map", measure: "value", filters: {} }, "Hartă");
     expect(plain.text).toBe('﻿judet,valoare_lei,achizitii\r\n"Cluj",5,3\r\n');
     expect(plain.filename).toBe("harta.csv");
+  });
+});
+
+describe("a trend's group buttons (TB-screen, owner-R-facts-all-lists)", () => {
+  const answered = trendSpec({ change: "up", months: "auto", order: "percent", minBase: 1_000_000 }, { dataset: "da" });
+
+  it("change only the applied question's `trend`, as the answered question lists that group", () => {
+    // The applied question may differ from the answered one elsewhere (here a later topN): only `trend` changes.
+    const applied = { ...answered, topN: 25 };
+    expect(appliedAfterTrendList(applied, answered, "new")).toEqual({ ...applied, trend: { change: "new", months: "auto" } });
+    expect(appliedAfterTrendList(applied, answered, "first").trend).toEqual({ change: "new", months: "auto", firstOnly: true });
+    // Back to the growths: the order and the base their list was computed with.
+    expect(appliedAfterTrendList({ ...applied, trend: { change: "gone", months: "auto" } }, answered, "up").trend).toEqual(answered.trend);
+    // An old link without the key: back on „Toate” it has no key again.
+    const old = trendSpec();
+    expect(appliedAfterTrendList({ ...old, trend: { change: "new" } }, old, "all")).toEqual(old);
+  });
+
+  it("tell the builder the same `trend`: its draft and applied question follow, without „modificat”", () => {
+    const draft = { ...answered, filters: { ...answered.filters, county: "Cluj" } };
+    const next = patchDraft(draft as never, { path: "trend", value: "new", trend: { change: "new", months: "auto" } });
+    expect(next.trend).toEqual({ change: "new", months: "auto" });
+    expect(next.filters).toEqual(draft.filters);
+    expect(patchDraft(draft as never, { path: "trend", value: "all", trend: null }).trend).toBeUndefined();
+    expect(draft.trend).toEqual(answered.trend);
+  });
+
+  it("show the server's pills and SQL of the list on screen (variants.trend)", () => {
+    const answer = { pills: ["creșteri"], displaySql: "having up", variants: { trend: {
+      up: { pills: ["creșteri"], displaySql: "having up" }, new: { pills: ["noi față de 2024"], displaySql: "having new" },
+    } } };
+    expect(shownWords(answer, trendSpec({ change: "new" }))).toEqual({ pills: ["noi față de 2024"], displaySql: "having new" });
+    // A list the server did not describe (an old answer): the answer's own words.
+    expect(shownWords({ pills: ["a"], displaySql: "s" }, trendSpec({ change: "gone" }))).toEqual({ pills: ["a"], displaySql: "s" });
+  });
+});
+
+describe("«Rezultatul afișat · CSV» of a trend", () => {
+  const data = trendFixture();
+
+  it("exports the list on screen with its columns, the group and the months beside it", () => {
+    const { text, filename } = answerCsv(data, trendSpec({ change: "new", months: "auto" }), "Ce firme noi apar în 2025?", { group: "noi", months: "ian.–mai" });
+    const lines = text.replace(/^﻿/, "").split("\r\n");
+    // No county beside a firm (owner-seat-switch), as on screen.
+    expect(lines[0]).toBe("nume,2024,2025,diferenta_lei,etichete,partener,grupa,luni");
+    expect(lines[1]).toBe('"BETA SERV SRL",0,900,900,"fără CUI valid; prima dată în 2025; 1 achiziție directă: 100%","100% de la PRIMARIA EXEMPLU","noi","ian.–mai"');
+    expect(lines[2]).toBe('"GAMMA GMBH",0,300,300,"activă din 2019","","noi","ian.–mai"');
+    expect(lines).toHaveLength(4);
+    expect(filename).toBe("ce-firme-noi-apar-in-2025-noi-ian-mai.csv");
+  });
+
+  it("keeps the county of an institution, a county's name, and an old answer's one list", () => {
+    const institutions = answerCsv(trendFixture({ noun: "instituții" }), trendSpec({ change: "down" }, { dim: "authority" }), "T", { group: "scaderi" });
+    expect(institutions.text.split("\r\n")[0]).toBe("﻿nume,judet,2024,2025,diferenta_lei,etichete,partener,grupa");
+    expect(institutions.text.split("\r\n")[1]).toBe('"DELTA SA","București",800,200,-600,"în asociere","în 2024: 50% de la SPITALUL EXEMPLU","scaderi"');
+    const old = answerCsv(trendFixture({ groups: undefined, composition: undefined, list: undefined, rowFacts: undefined }), trendSpec(), "T");
+    expect(old.text.split("\r\n").slice(0, 2)).toEqual(["﻿nume,2024,2025,diferenta_lei,etichete,partener", '"ALFA CONSTRUCT SRL",100,1500,1400,"",""']);
   });
 });
