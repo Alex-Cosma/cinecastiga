@@ -109,6 +109,36 @@ export function describePopulation(population: QueryPopulation): string {
     : `${names[c.field]} ${c.op === "not_in" ? "exclud" : "includ"} ${(c.labels ?? c.values).join(", ")}`).join(group.operator === "and" ? " ȘI " : " SAU ")})`).join(population.operator === "and" ? " ȘI " : " SAU ");
 }
 
+/** A list's nouns: named one, named many, counted one, counted many. */
+const LIST_NOUNS = {
+  authority: ["instituția", "instituțiile", "instituție", "instituții"], supplier: ["firma", "firmele", "firmă", "firme"],
+  cpv: ["CPV", "CPV", "cod CPV", "coduri CPV"], county: ["județul", "județele", "județ", "județe"],
+} as const;
+const dayOf = (iso: string) => /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso.split("-").reverse().join(".") : iso;
+/** One condition of a precise selection in a chip's few words ("valoarea pe câștigător ≥ 100.000 lei", "fără CPV 45"). */
+function conditionWords(c: PopulationCondition): string {
+  if ("value" in c) return c.field === "value"
+    ? `valoarea pe câștigător ${c.op === "gte" ? "≥" : "≤"} ${formatExactDecimal(c.value)} lei`
+    : `data ${c.op === "gte" ? "≥" : "≤"} ${dayOf(c.value)}`;
+  const [theOne, theMany, one, many] = LIST_NOUNS[c.field];
+  const names = c.labels?.length === c.values.length ? c.labels : c.field === "cpv" || c.field === "county" ? c.values : null;
+  const what = names && names.length <= 2 ? `${names.length === 1 ? theOne : theMany} ${names.join(", ")}` : countWords(c.values.length, one, many);
+  return `${c.op === "not_in" ? "fără" : "doar"} ${what}`;
+}
+
+/**
+ * A precise selection in the words of its chip, the title's tail and the total
+ * line (kit P9 "Selecție avansată"): its conditions when there are one or two,
+ * else how many there are; the (?) holds every group (describePopulation).
+ * `named` false: the place's own chip, which already says "Selecție avansată:".
+ */
+export function preciseWords(population: QueryPopulation, named = true): string {
+  const all = population.groups.flatMap((group) => group.conditions);
+  if (all.length > 2) return `${named ? "selecție avansată, " : ""}${countWords(all.length, "condiție", "condiții")}`;
+  const operator = population.groups.length > 1 ? population.operator : population.groups[0]?.operator ?? "and";
+  return all.map(conditionWords).join(operator === "and" ? " și " : " sau ");
+}
+
 const RECEIPT_NAMES = { authority: "Instituția", supplier: "Firma", cpv: "Codul CPV", county: "Județul" };
 function receiptCondition(c: PopulationCondition): string {
   if ("value" in c) return c.field === "value" ? `Valoare ${c.op === "gte" ? "de cel puțin" : "de cel mult"} ${formatExactDecimal(c.value)} lei` : `Data achiziției ${c.op === "gte" ? "începând cu" : "până la"} ${c.value}`;
@@ -292,7 +322,7 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
       };
     }
     const { excluded, rest } = splitExcluded(p);
-    const restWords = rest ? `selecție precisă, ${countWords(conditionsOf(rest), "condiție", "condiții")}` : null;
+    const restWords = rest ? preciseWords(rest) : null;
     return {
       words: [...exclusionWords(excluded), ...(restWords ? [restWords] : [])].join(", "),
       chip: precise, detail: precise,
@@ -331,6 +361,8 @@ function outsideSentence(spec: Spec): FilterId[] {
   for (const path of presentPaths(spec)) {
     const owner = SPEC_PATH_OWNERS[path];
     if (!owner || owner === "question" || said.has(owner)) continue;
+    // The home page's direct-acquisition ceiling is the engine's own: it narrows nothing (no chip, no title words).
+    if (owner === "population" && isDaBoundPopulation(spec)) continue;
     const def = FILTERS[owner];
     if (def.engine[ctx.form] !== undefined && def.scope(ctx.form) === "selection") ids.add(owner);
   }
@@ -389,7 +421,7 @@ function titleTailWords(spec: Spec, byId: Partial<Record<FilterId, ConditionWord
     else {
       const { excluded, rest } = splitExcluded(spec.population);
       words.push(...exclusionWords(excluded));
-      if (rest) words.push(`selecție precisă, ${countWords(conditionsOf(rest), "condiție", "condiții")}`);
+      if (rest) words.push(preciseWords(rest));
     }
   }
   const row = partnerWords(spec);

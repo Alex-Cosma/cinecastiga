@@ -40,7 +40,7 @@ import Segmented from "./builder/Segmented";
 import "./builder/filters-kit.css";
 import { answerCsv, type BandState } from "./answer-csv";
 import { useCpvName } from "./cpv-name";
-import { STRIP_QUERY_KEYS, appliedAfterStrip, readThread, shownWords, threadCrumbs, threadWords, type AnswerVariants, type Thread } from "./answer-state";
+import { STRIP_QUERY_KEYS, appliedAfterStrip, readThread, shownWords, streamOptions, threadCrumbs, threadWords, type AnswerVariants, type Thread } from "./answer-state";
 import EntityTypeahead from "./EntityTypeahead";
 import EvidenceDrawer from "./EvidenceDrawer";
 import { AnswerEvidence, useAnswerEvidence } from "./AnswerEvidence";
@@ -80,12 +80,6 @@ interface AskResponse {
   executedAt?: string;
 }
 export type PanelMode = "search" | "ask" | "build";
-/** The strip's data stream (kit §4: "Toate · Directe · Proceduri", the charts' channel colours as a legend). */
-const STREAM_OPTIONS = [
-  { value: "all", label: "Toate" },
-  { value: "da", label: "Directe", swatch: "da" as const },
-  { value: "contracts", label: "Proceduri", swatch: "proc" as const },
-];
 /**
  * The lead of the total line (G8): the answer's total where it has one,
  * "Selecția" where its rows are not one sum (a comparison, a trend, relations).
@@ -261,7 +255,8 @@ export default function AskPanel({
         const executed = submitted?.dataset && !answer.spec.dataset ? { ...answer.spec, dataset: submitted.dataset } : answer.spec;
         setAppliedSpec(executed);
         if (!("tablePage" in body)) setThread(opts.thread ?? null);
-        if (opts.strip) setStripPatch((current) => ({ seq: (current?.seq ?? 0) + 1, ...opts.strip! }));
+        // The builder gets the stream the engine resolved, not the one asked (validateSpec can put it back).
+        if (opts.strip) setStripPatch((current) => ({ seq: (current?.seq ?? 0) + 1, ...opts.strip!, ...(opts.strip!.path === "dataset" ? { value: executed.dataset ?? "all" } : {}) }));
         else if (body.spec && !("tablePage" in body)) {
           setBuilderResolution({ submitted: body.spec as QuestionSpec, resolved: answer.spec });
         }
@@ -810,8 +805,9 @@ export default function AskPanel({
                     executedAt: resp.executedAt,
                     caveats: resp.caveats ?? [],
                     displaySql: shown.displaySql,
-                    // The strip as it was seen: the breakdown's thread is in the URL, not in the spec.
-                    ...(thread ? { thread: threadWords(thread) } : {}),
+                    // The server builds a query capture from the spec and keeps only evidenceOptions of this
+                    // snapshot (validateCaptureRequest): the spec already carries the thread's domain and the
+                    // lens, so the numbers are the ones on screen; the thread's crumbs are not kept.
                   }}
                   label={title}
                 />
@@ -825,7 +821,7 @@ export default function AskPanel({
                   <Segmented
                     label="Ce fel de achiziții"
                     value={streamShown ?? applied.dataset ?? "all"}
-                    options={STREAM_OPTIONS}
+                    options={streamOptions(applied)}
                     onChange={(value) => {
                       if (value === (streamShown ?? applied.dataset ?? "all")) return;
                       setStreamShown(value);

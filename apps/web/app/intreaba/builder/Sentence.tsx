@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import HelpTip from "./HelpTip";
 import type { SentenceToken } from "./kit-types";
 
 /*
@@ -59,14 +60,20 @@ export function sentenceNodes({ tokens, onOpen, openId }: TokenProps): ReactNode
       else if (text) nodes.push(text);
       return;
     }
-    if (token.kind === "fixed") nodes.push(<span className="fk-phrase fk-phrase--fixed" key={key}><span>{token.text}</span></span>);
+    if (token.kind === "fixed") {
+      const fixed = <span className="fk-phrase fk-phrase--fixed" key={key}><span>{token.text}</span></span>;
+      // Its (?) stays on the phrase's line (kit §9) and opens on the sentence's width (.fk-tipwrap).
+      const tip = typeof token.tip === "string" ? { title: token.text.charAt(0).toLocaleUpperCase("ro-RO") + token.text.slice(1), text: token.tip } : token.tip;
+      nodes.push(tip ? <span className="fk-nowrap" key={key}>{fixed}<HelpTip tip={tip} /></span> : fixed);
+    }
     else nodes.push(<Phrase key={key} token={token} open={openId === token.id} {...(onOpen ? { onOpen } : {})} />);
   });
   return nodes;
 }
 
 export default function Sentence({ as: Tag = "h2", className, ...tokens }: SentenceProps) {
-  return <Tag className={`fk-sentence${className ? ` ${className}` : ""}`}>{sentenceNodes(tokens)}</Tag>;
+  const tip = tokens.tokens.some(token => token.kind === "fixed" && token.tip);
+  return <Tag className={`fk-sentence${tip ? " fk-tipwrap" : ""}${className ? ` ${className}` : ""}`}>{sentenceNodes(tokens)}</Tag>;
 }
 
 /** P5: how many rows and in what order, when that changes the query. */

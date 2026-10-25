@@ -99,7 +99,8 @@ function rowChipLabel(spec: FilterSpec, slot: Slot, described: ReturnType<typeof
 function kitTokens(tokens: readonly SentenceToken[], prefix: string, windows: Record<string, BuilderWindowSpec>): KitToken[] {
   return tokens.map((token): KitToken => {
     if (token.kind === "text") return token;
-    if (token.kind === "fixed") return { kind: "fixed", text: token.text };
+    // A fixed phrase says why it cannot change in its (?) ("Un consiliu pe județ.").
+    if (token.kind === "fixed") return { kind: "fixed", text: token.text, ...(token.tip ? { tip: token.tip } : {}) };
     const key = `${prefix}${token.id}`;
     windows[key] = { key, slot: phraseSlot(token), title: token.window, name: token.slot };
     return { kind: "slot", id: key, slot: token.slot, value: token.value };

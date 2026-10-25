@@ -49,8 +49,8 @@ describe("legacy conditions of old links (plan §2.6)", () => {
       "legacy:admin-trend": ["applied · Din link: firmele conduse azi de POPESCU FIXTURE ION"],
       "legacy:months-trend-refused": ["refused · Din link: în ian. 2024 – iun. 2025"],
       // CPV codes included are the sentence's domain: "Selecție avansată" only leaves codes out (blocks.ts advancedFields).
-      "legacy:population-or-groups": ["applied · Din link: selecție precisă, 4 condiții"],
-      "legacy:population-on-trend": ["applied · Din link: selecție precisă, 1 condiție"],
+      "legacy:population-or-groups": ["applied · Din link: selecție avansată, 4 condiții"],
+      "legacy:population-on-trend": ["applied · Din link: doar CPV 45"],
       "legacy:locality-map-refused": ["refused · Din link: primăria Aiud (Alba)"],
       "legacy:profile-years-refused": ["refused · Din link: în 2025"],
       "legacy:profile-firm-kind-refused": ["refused · Din link: doar spitale"],
@@ -97,11 +97,11 @@ describe("the chips of «Selecție avansată» (plan §1.1 variant A, P9)", () =
     expect(shown).toEqual({
       "legacy:minimum-table-authority-role": ["Selecție avansată: instituții cu cel puțin 3 înregistrări în selecție"],
       "legacy:minimum-leader-value": ["Selecție avansată: firme cu cel puțin 5 înregistrări în selecție"],
-      "legacy:population-exclude-cpv": ["Selecție avansată: selecție precisă, 1 condiție"],
-      "legacy:population-exclude-firm": ["Selecție avansată: selecție precisă, 1 condiție"],
-      "legacy:population-include-buyers": ["Selecție avansată: selecție precisă, 1 condiție"],
-      "legacy:population-counties": ["Selecție avansată: selecție precisă, 1 condiție"],
-      "legacy:population-date-value": ["Selecție avansată: selecție precisă, 3 condiții"],
+      "legacy:population-exclude-cpv": ["Selecție avansată: fără CPV 45"],
+      "legacy:population-exclude-firm": ["Selecție avansată: fără 1 firmă"],
+      "legacy:population-include-buyers": ["Selecție avansată: doar 2 instituții"],
+      "legacy:population-counties": ["Selecție avansată: doar județele Cluj, Buzău"],
+      "legacy:population-date-value": ["Selecție avansată: 3 condiții"],
     });
   });
 

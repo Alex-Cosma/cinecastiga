@@ -23,8 +23,8 @@ export type SentenceToken =
   | { kind: "text"; text: string }
   /** An editable phrase. `slot` names it for screen readers: "Perioada: 2025". */
   | { kind: "slot"; id: string; slot: string; value: string; className?: string }
-  /** A word that cannot change here ("din toată țara" for county councils). Text, not a button. */
-  | { kind: "fixed"; text: string };
+  /** A word that cannot change here ("din toată țara" for county councils). Text, not a button; its (?) says why (words: titled by the phrase). */
+  | { kind: "fixed"; text: string; tip?: string | KitTip };
 
 /**
  * One row of a window's list (component 9), with its count computed on the

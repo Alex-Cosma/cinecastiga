@@ -406,8 +406,9 @@ const trend: Write = (out, spec, ctx, labels) => {
     fromWhom(out, spec, ctx, dim === "supplier" ? [] : ["supplier"], "de la");
   }
   channel(out, spec);
+  // Without years the engine compares the archive's first and last years (compile.ts trend: minY, maxY).
   out.text(" între ").slot("period", "period", f.yearFrom ? String(f.yearFrom) : "primul an", { says: hasPeriod(spec) ? ["period"] : [] });
-  out.text(" și ").slot("period", "period", f.yearTo ? String(f.yearTo) : "al doilea an", { says: hasPeriod(spec) ? ["period"] : [] });
+  out.text(" și ").slot("period", "period", f.yearTo ? String(f.yearTo) : "ultimul an", { says: hasPeriod(spec) ? ["period"] : [] });
   out.text("?");
 };
 

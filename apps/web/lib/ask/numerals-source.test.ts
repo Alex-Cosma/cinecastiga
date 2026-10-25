@@ -16,6 +16,8 @@ import { describe, expect, it } from "vitest";
 
 const WEB = fileURLToPath(new URL("../../", import.meta.url));
 const DIRS = ["app/intreaba", "lib/ask", "lib/intent", "app/urmariri"];
+/** The watches' engine, whose errors reach Întreabă ("Urmărește") and /urmariri. */
+const WATCH_FILES = /^monitoring[\w-]*\.ts$/;
 /** Generated or frozen texts: fixtures keep the old grammars on purpose. */
 const SKIP = /(?:\.test\.|\/fixtures\/|\.css$)/;
 
@@ -68,7 +70,10 @@ describe("numerals in the sources (G10)", () => {
   });
 
   it("routes every count with its noun through countWords in Întreabă, the interpreter and the watches", () => {
-    const found = DIRS.flatMap((dir) => sources(join(WEB, dir)).flatMap((path) => handWrittenCounts(readFileSync(path, "utf8"), relative(WEB, path))));
+    const watches = readdirSync(join(WEB, "lib")).filter((name) => WATCH_FILES.test(name) && !SKIP.test(name)).map((name) => join(WEB, "lib", name));
+    expect(watches.length).toBeGreaterThan(3);
+    const found = [...DIRS.flatMap((dir) => sources(join(WEB, dir))), ...watches]
+      .flatMap((path) => handWrittenCounts(readFileSync(path, "utf8"), relative(WEB, path)));
     expect(found).toEqual([]);
   });
 });

@@ -72,6 +72,6 @@ describe("a link opened in the builder", () => {
     expect(profile.kind === "draft" && profile.conditions.map((c) => c.label)).toEqual(["Din link: în 2025"]);
     // A precise selection a question's "Selecție avansată" offers is that place's chip, not the link's.
     const population = restoreLink(corpus.find((entry) => entry.id === "legacy:population-counties")!.spec);
-    expect(population.kind === "draft" && [population.conditions, population.advanced.map((c) => c.label)]).toEqual([[], ["Selecție avansată: selecție precisă, 1 condiție"]]);
+    expect(population.kind === "draft" && [population.conditions, population.advanced.map((c) => c.label)]).toEqual([[], ["Selecție avansată: doar județele Cluj, Buzău"]]);
   });
 });

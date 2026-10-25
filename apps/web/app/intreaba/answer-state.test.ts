@@ -3,7 +3,7 @@ import { decodeSpec } from "../../lib/ask/permalink";
 import type { BlockData } from "../../lib/ask/compile";
 import type { AskSpec } from "../../lib/ask/spec";
 import { answerCsv } from "./answer-csv";
-import { STRIP_QUERY_KEYS, appliedAfterStrip, deeperThread, readThread, shownWords, threadCrumbs, threadHref, threadWords } from "./answer-state";
+import { SINGLE_OFFER_STREAM, STRIP_QUERY_KEYS, appliedAfterStrip, deeperThread, readThread, shownWords, streamOptions, threadCrumbs, threadHref, threadWords } from "./answer-state";
 
 /*
  * F1b-builder-a, the answer's side of the strip (plan §2.3): the applied
@@ -21,6 +21,12 @@ describe("the applied question and the strip", () => {
     expect(appliedAfterStrip({ ...breakdown, block: "map" }, "measure", "count").measure).toBe("count");
     expect(STRIP_QUERY_KEYS.has("dataset")).toBe(true);
     expect(STRIP_QUERY_KEYS.has("measure")).toBe(false);
+  });
+
+  it("keeps an old link's «o singură ofertă» on procedures: the other streams are shown with the reason, not chosen", () => {
+    expect(streamOptions(breakdown).map((o) => o.disabled ?? null)).toEqual([null, null, null]);
+    const single = streamOptions({ filters: { ...breakdown.filters, singleBidder: true } });
+    expect(single.map((o) => [o.value, o.disabled ?? null])).toEqual([["all", SINGLE_OFFER_STREAM], ["da", SINGLE_OFFER_STREAM], ["contracts", null]]);
   });
 
   it("shows the server's pills and SQL of the lens on screen, without a new request (variants)", () => {

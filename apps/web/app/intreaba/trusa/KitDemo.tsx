@@ -133,7 +133,7 @@ export default function KitDemo() {
       ]} />
       <div className="kd-gap" />
       <Cap>profil istoric: frază fixă + linia de profil (nu se apasă) · rândul de prezentare</Cap>
-      <Sentence as="h3" tokens={[text("Ce "), slot("k", "Ce clasăm", "consilii județene"), text(" "), { kind: "fixed", text: "din toată țara" }, text(" ies din tipar după risc și valoarea achizițiilor directe?")]} />
+      <Sentence as="h3" tokens={[text("Ce "), slot("k", "Ce clasăm", "consilii județene"), text(" "), { kind: "fixed", text: "din toată țara", tip: { title: "Din toată țara", text: "Un consiliu pe județ." } }, text(" ies din tipar după risc și valoarea achizițiilor directe?")]} />
       <ScopeLine />
       <div className="fk-bottom"><Presentation tokens={[text("Arată "), slot("top", "Câte rânduri", "primele 10"), text(", după "), slot("by", "Ordinea", "valoarea înregistrată"), text(".")]} /></div>
       <Live>
