@@ -21,8 +21,10 @@ export interface BandState {
   lens?: "value" | "count";
   /** The breakdown's thread, root to the current level ("toate › Construcții"). */
   thread?: string;
-  /** A trend's group chosen in the answer ("noi", "nu-mai-apar"). */
+  /** A trend's group chosen in the answer, by its part's name as the drawer and the watch say it ("Noi față de 2024"). */
   group?: string;
+  /** Its short name in the file name ("noi", "nu-mai-apar"; TREND_LIST_CSV). */
+  groupFile?: string;
   /** A trend's months, when both years count only some ("ian.–mai"). */
   months?: string;
 }
@@ -119,6 +121,6 @@ export function answerCsv(data: BlockData, spec: AskSpec, title: string, band: B
   const lines = columns.length
     ? [`${header},${columns.map(([name]) => name).join(",")}`, ...rows.map((row) => `${row},${columns.map(([, value]) => csvQ(value)).join(",")}`)]
     : [header!, ...rows];
-  const suffix = columns.map(([name, value]) => name === "fir" || name === "luni" ? fileSlug(value, "") : value).filter(Boolean).join("-");
+  const suffix = columns.map(([name, value]) => name === "grupa" ? band.groupFile ?? fileSlug(value, "") : name === "fir" || name === "luni" ? fileSlug(value, "") : value).filter(Boolean).join("-");
   return { text: "﻿" + lines.join("\r\n") + "\r\n", filename: `${fileSlug(title)}${suffix ? `-${suffix}` : ""}.csv` };
 }

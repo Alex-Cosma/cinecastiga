@@ -428,7 +428,7 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
           const sum = answer.rowsTrend.reduce((n, r) => n + r.valueA + r.valueB, 0);
           expect([c.name, Number(live.sourceValue).toFixed(2)]).toEqual([c.name, sum.toFixed(2)]);
           expect([c.name, answer.rowsTrend.length > 0, live.sourceTotal > 0]).toEqual([c.name, true, true]);
-          expect(live.scopeNotes.some((note) => note.startsWith("Sursele grupului") || (c.spec.trend?.change ?? "all") === "all")).toBe(true);
+          expect(live.scopeNotes.some((note) => note.startsWith("Sursele grupei") || (c.spec.trend?.change ?? "all") === "all")).toBe(true);
         }
         // F2 (sources): a group's drawer with the members the answer kept (no grouping, the totals from its
         // grouping), with the same grouping on the rollups when nothing is kept (with and without their

@@ -1,5 +1,4 @@
-import { formatRon } from "../format";
-import { TREND_CHANGE_LABELS, trendGroupLabel } from "./filters/defs/trend";
+import { TREND_CHANGE_LABELS, firstTimeWords, trendBaseWords, trendGroupLabel } from "./filters/defs/trend";
 import { DEFAULT_TREND_MIN_BASE, type AskSpec, type TrendChange, type TrendOptions } from "./spec";
 
 /*
@@ -33,10 +32,13 @@ export function specTrendPart(spec: Pick<AskSpec, "trend">): TrendList | "eligib
  */
 export function trendPartLabel(part: TrendList | "eligible", spec: Pick<AskSpec, "filters" | "trend">): string {
   const { yearFrom: a, yearTo: b } = spec.filters;
-  if (part === "eligible") return `${TREND_CHANGE_LABELS.up} de la cel puțin ${formatRon(spec.trend?.minBase ?? DEFAULT_TREND_MIN_BASE)}${a ? ` în ${a}` : ""}`;
-  if (part === "first") return `${trendGroupLabel("new", a, b)} · prima dată${b ? ` în ${b}` : ""}`;
+  if (part === "eligible") return `${TREND_CHANGE_LABELS.up} ${trendBaseWords(spec.trend?.minBase ?? DEFAULT_TREND_MIN_BASE, a)}`;
+  if (part === "first") return `${trendGroupLabel("new", a, b)} · ${firstTimeWords(b)}`;
   return trendGroupLabel(part, a, b);
 }
+
+/** The part a spec's list fixes, by its name (trendPartLabel): the drawer header, the watch, the shown CSV's `grupa`. */
+export const specTrendPartLabel = (spec: Pick<AskSpec, "filters" | "trend">): string => trendPartLabel(specTrendPart(spec), spec);
 
 /**
  * The spec of another list of the same answer (the group buttons and „Toate ·

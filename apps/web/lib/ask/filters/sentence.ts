@@ -5,6 +5,7 @@ import {
 import { DEFAULT_TREND_MIN_BASE, type AskSpec, type AuthorityKind, type Block } from "../spec";
 import { formatRon } from "../../format";
 import { filterContext } from "./context";
+import { TREND_CHANGE_LABELS, TREND_CHANGE_PHRASE, firstTimeWords } from "./defs/trend";
 import type { FilterCtx, FilterId, FilterSpec, Picker, Slot } from "./types";
 import {
   TREND_ORDER_WORDS, adminLead, adminPhrase, employeesOnBands, employeesPhrase, employeesWords, localityName, periodPhrase, periodWordsWith,
@@ -405,7 +406,9 @@ const compare: Write = (out, spec, ctx, labels) => {
 };
 
 /** The kind of change after "cea mai mare" (trend final §1); "schimbare" is every change, as an old link without the key. */
-const CHANGE_WORDS = { up: "creștere", down: "scădere", all: "schimbare" } as const;
+const CHANGE_WORDS = TREND_CHANGE_PHRASE;
+/** The new ones' and the gone ones' phrases: the buttons' words in the sentence („noi”, „nu mai apar”). */
+const NEW_WORD = TREND_CHANGE_LABELS.new.toLocaleLowerCase("ro-RO"), GONE_WORDS = TREND_CHANGE_LABELS.gone.toLocaleLowerCase("ro-RO");
 
 /**
  * "Prima dată" on the new ones (trend final §3.8, kit §4): the first record of the entity anywhere in
@@ -413,7 +416,7 @@ const CHANGE_WORDS = { up: "creștere", down: "scădere", all: "schimbare" } as 
  */
 function firstTime(out: Tokens, spec: Spec, year: string, narrowed: boolean): void {
   const whose = spec.dim === "supplier" ? "firmei" : "instituției";
-  out.text(" ").fixed("prima dată", ["trendFirstOnly"],
+  out.text(" ").fixed(firstTimeWords(), ["trendFirstOnly"],
     `Prima înregistrare a ${whose} în datele noastre e în ${year}. Nu e data înființării.${narrowed ? " Privește toate datele, nu doar această selecție." : ""}`);
 }
 
@@ -435,7 +438,7 @@ const trend: Write = (out, spec, ctx, labels) => {
   out.text("Ce ").slot("dim", "ranked", dim === "supplier" ? "firme" : dim === "county" ? "județe" : kindBare(spec), {
     says: dim === "authority" ? subjectSays(spec) : ["dim"], writes: ["authorityKind"], picker: "subject",
   });
-  if (change === "new") out.text(" ").slot("trendChange", "change", "noi", { says: changeSays });
+  if (change === "new") out.text(" ").slot("trendChange", "change", NEW_WORD, { says: changeSays });
   const town = dim === "authority" && ctx.locality.ok && hasLocality(spec), placed = town || dim === "authority" && has(f.county);
   if (town) out.text(" ale primăriei ").slot("locality", "place", localityName(String(f.uatName ?? `SIRUTA ${f.uatSiruta}`)), { writes: ["county"] });
   else if (placed) place(out, spec, ctx);
@@ -470,7 +473,7 @@ const trend: Write = (out, spec, ctx, labels) => {
     year(", față de ", a);
   } else if (change === "gone") {
     if (!placed) year(" din ", a);
-    out.text(" ").slot("trendChange", "change", buys ? "nu mai cumpără" : "nu mai apar", { says: changeSays });
+    out.text(" ").slot("trendChange", "change", buys ? "nu mai cumpără" : GONE_WORDS, { says: changeSays });
     fragments(buys ? null : " în achizițiile");
     channel(out, spec);
     year(" în ", b);

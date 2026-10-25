@@ -348,7 +348,7 @@ describe("the trend's sources", () => {
     const settings = db.statements.map((s) => s.text).filter((t) => t.includes("enable_"));
     expect(settings).toEqual(["set local enable_seqscan = off", "set local enable_seqscan to default"]);
     expect(db.statements.findIndex((s) => s.text === "set local enable_seqscan = off")).toBeLessThan(db.statements.indexOf(page));
-    expect(result.scopeNotes).toContain("Sursele grupului „Nu mai apar în 2025”: 2 firme, cu înregistrările lor din cei doi ani, nu doar cele afișate.");
+    expect(result.scopeNotes).toContain("Sursele grupei „Nu mai apar în 2025”: 2 firme, cu înregistrările lor din cei doi ani, nu doar cele afișate.");
     // The drawer's channel and state are channels of these totals; a search counts the records.
     const da = await runRows(database(PROD, { partition: GONE() }).sql, gone, {}, 0, { stream: "da" });
     if ("error" in da) throw new Error(da.error);
@@ -451,7 +451,7 @@ describe("the trend's sources", () => {
     if ("error" in result) throw new Error(result.error);
     expect(db.statements.find((s) => s.text.includes("with k as materialized"))!.text).toContain("group by d.county");
     expect(db.statements.find((s) => s.text.includes("limit ? offset ?"))!.values).toContainEqual(["Cluj", "Iasi"]);
-    expect(result.scopeNotes).toContain("Sursele grupului „Creșteri”: 2 județe, cu înregistrările lor din cei doi ani, nu doar cele afișate.");
+    expect(result.scopeNotes).toContain("Sursele grupei „Creșteri”: 2 județe, cu înregistrările lor din cei doi ani, nu doar cele afișate.");
     const scoped = database(PROD);
     await runRows(scoped.sql, { ...trend(undefined, { yearFrom: 2024, yearTo: 2025 }), dim: "county" }, {}, 0, { scope: { counties: ["Cluj", "Bistrița-Năsăud"] } });
     const totals = scoped.statements.find((s) => s.text.includes("group by d.state"))!;
@@ -466,7 +466,7 @@ describe("the trend's sources", () => {
     const result = await runRows(db.sql, down, {}, 0, { scope: { county: "cluj" } });
     if ("error" in result) throw new Error(result.error);
     expect(result.group).toBeUndefined();
-    expect(result.scopeNotes.some((note) => note.startsWith("Sursele grupului"))).toBe(false);
+    expect(result.scopeNotes.some((note) => note.startsWith("Sursele grupei"))).toBe(false);
     const members = db.statements.find((s) => /::text m from/.test(s.text))!;
     expect(members.text).toContain("lower(unaccent(d.county)) = any(?array::text[])");
     expect(members.values).toContainEqual(["cluj"]);

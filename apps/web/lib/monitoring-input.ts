@@ -3,7 +3,7 @@ import { countWords } from "./ask/answer-text";
 import { evidenceOptions } from "./ask/evidence-request";
 import { trendGroupOf } from "./ask/predicates";
 import { trendMemberPart } from "./ask/group-ids";
-import { specTrendPart, trendPartLabel } from "./ask/trend-shared";
+import { specTrendPartLabel } from "./ask/trend-shared";
 import { isWholeYear, monthsLabel } from "./ask/months-window";
 import { DEFAULT_MONITORING_PREFERENCES, MONITORING_CHANGE_TYPES, MONITORING_MEMBERS_MAX, membersTooManyWords, type MonitoringMembers, type MonitoringOptions, type MonitoringPreferences, type MonitoringScope } from "./monitoring-shared";
 import { isWorkspaceId } from "./investigation-access";
@@ -87,7 +87,7 @@ function fixedMembers(role:MonitoringMembers["role"],n:number):string {
  * the growths in percent with the base that decides who is in them: „Creșteri de la cel puțin 1 mil. lei în 2024”.
  */
 export function watchedGroupLabel(spec:AskSpec):string {
-  return `„${trendPartLabel(specTrendPart(spec),spec)}”`;
+  return `„${specTrendPartLabel(spec)}”`;
 }
 /** Pinned at activation (scope_notes): what the watch fixed, and that the live group is only a note. */
 export function groupPinnedNote(spec:AskSpec,members:MonitoringMembers,day:string):string {

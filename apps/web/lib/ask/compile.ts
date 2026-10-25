@@ -13,7 +13,7 @@ import {
 import { authorityKindIds, KIND_LABEL } from "./authority-kind";
 import { monthsLabel, partialMonths, sameMonthsWindow, WHOLE_YEAR, type CoveragePeriods, type MonthsMode, type MonthsWindow } from "./months-window";
 import { formatBucharestDay as frozenDay } from "../format";
-import { TREND_CHANGE_LABELS, trendGroupLabel } from "./filters/defs/trend";
+import { TREND_CHANGE_LABELS } from "./filters/defs/trend";
 import { countyIsFirmSeat, isHistoricalProfile, unsupportedPopulationView } from "./population";
 import { describeConditions, type ConditionLabels } from "./filters/describe";
 import { retarget } from "./filters/retarget";
@@ -29,7 +29,7 @@ import {
   factsOfRow, factsSource, factsYears, liveTrendChannels, trendFactsRows, trendListOf, trendMembersFigures, trendNoun, trendPartition, trendProfiles,
   type TrendAttribute, type TrendComposition, type TrendList, type TrendMemberPart, type TrendNoun, type TrendPartitionRow, type TrendPartSources, type TrendRowFacts,
 } from "./trend-partition";
-import { TREND_LISTS, trendListSpec } from "./trend-shared";
+import { TREND_LISTS, trendListSpec, trendPartLabel } from "./trend-shared";
 import {
   entryMembers, groupSourceTotals, hasMember, memberList, rememberTrendGroups, trendCacheStamp, trendGroupEntry, trendGroupKey, trendGroupsFor, trendMemberPart,
   type SourceTotalsRow,
@@ -2359,10 +2359,11 @@ export async function runRows(
     // A row's own records ("Înregistrări →") are that row's: no group note (a watch says its fixed group).
     if (members && listed && (fixed || !own)) {
       const [one, many] = groupDim === "county" ? ["județ", "județe"] : groupDim === "supplier" ? ["firmă", "firme"] : ["instituție", "instituții"];
-      const label = `„${trendGroupLabel(listed.change, yearA, yearB)}”${listed.firstOnly ? ` (prima dată în ${yearB})` : ""}`;
+      // The part by its name, as the drawer's header and the watch say it (trendPartLabel, with the years compared).
+      const label = `„${trendPartLabel(trendMemberPart(listed)!, { filters: { yearFrom: yearA, yearTo: yearB }, ...(spec.trend ? { trend: spec.trend } : {}) })}”`;
       notes.push(fixed
         ? `Sursele grupei fixate ${label}: ${countWords(members.length, one!, many!)} fixate la ${frozenDay(fixed.frozenAt)}, cu înregistrările lor din cei doi ani. Cele intrate în grupă după activare nu sunt urmărite.`
-        : `Sursele grupului ${label}: ${countWords(members.length, one!, many!)}, cu înregistrările lor din cei doi ani, nu doar cele afișate.`);
+        : `Sursele grupei ${label}: ${countWords(members.length, one!, many!)}, cu înregistrările lor din cei doi ani, nu doar cele afișate.`);
     }
     const sourceWhere = !members ? baseWhere : groupDim === "county"
       ? sql`${baseWhere} and d.county = any(${sql.array(members)}::text[])`

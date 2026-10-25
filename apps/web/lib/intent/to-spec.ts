@@ -7,7 +7,7 @@ import { defaultTrendYears, isWholeYear, monthsLabel, sameMonthsWindow, trendYea
 import { FILTERS, offeredFilters, SPEC_PATH_OWNERS } from "../ask/filters/registry";
 import { filterContext } from "../ask/filters/context";
 import type { FilterSpec, SpecPath } from "../ask/filters/types";
-import { TREND_CHANGE_LABELS } from "../ask/filters/defs/trend";
+import { TREND_CHANGE_LABELS, TREND_FIRST_LABEL } from "../ask/filters/defs/trend";
 import { genitive, hasNamedScope } from "./rules";
 import { fold } from "./text";
 import type { LensMatch } from "./lens-phrases";
@@ -47,7 +47,7 @@ export const lensNotApplied = (words: string) => `„${words}” nu se aplică l
 /** The option a lens writes, and the one it needs first: the order in percent ranks growths, the first-time ones are new. */
 const LENS_NEEDS: Partial<Record<SpecPath, { path: SpecPath; value: unknown; note: string }>> = {
   "trend.order": { path: "trend.change", value: "up", note: "Ordinea în procente există doar la creșteri; am arătat creșterile." },
-  "trend.firstOnly": { path: "trend.change", value: "new", note: "„Prima dată” se referă la firmele noi; am arătat firmele noi." },
+  "trend.firstOnly": { path: "trend.change", value: "new", note: `„${TREND_FIRST_LABEL}” se referă la firmele noi; am arătat firmele noi.` },
 };
 const optionsOf = (raw: Record<string, unknown>, block: string): Record<string, unknown> =>
   (raw[block] && typeof raw[block] === "object" ? raw[block] : {}) as Record<string, unknown>;
