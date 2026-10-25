@@ -36,6 +36,12 @@ type Query = DbSql | Parameters<Parameters<DbSql['begin']>[1]>[0];
  *   month grain (a temporary pair-month table), equal to grouping the union:
  *   0 differences on the local copy of 25 October 2026 (4,966,873 and
  *   1,907,017 rows), for about 40 s more per build and 713 MB.
+ * - The pair and entity rollups also keep the first and last day of their
+ *   rows (d0, d1: left(finalization_date, 10), byte order, which is the
+ *   calendar order of that one format): the source drawer of a trend's group
+ *   reads its records, value and period from the answer's grouping instead of
+ *   a scan of its members' rows (national growths: 13 s live; plan F2, T3).
+ *   About +17 s per build and +314 MB on the local copy of 25 October 2026.
  * So the build reads the union twice (pair month, CPV), not once per rollup.
  *
  * Rebuilt with the agg_* shortcuts (DROP + CREATE AS) in the transaction that
@@ -67,12 +73,14 @@ export interface AskRollupsReport {
 export async function buildAskRollups(q: Query): Promise<AskRollupsReport> {
   await q`drop table if exists marts.agg_entity_year, marts.agg_pair_year, marts.agg_cpv_year, marts.agg_entity_month`;
   // One pass over the union at the month grain (9,965,281 groups on the local copy of
-  // 25 October 2026, 21 s); the yearly pairs and both entity rollups are grouped from it.
+  // 25 October 2026, 21 s; 26 s plain and 32 s with d0/d1 measured side by side at load 7);
+  // the yearly pairs and both entity rollups are grouped from it.
   await q`drop table if exists pg_temp.ask_pair_month`;
   await q`
     create temp table ask_pair_month on commit drop as
     select x.authority_id, x.supplier_id, substr(x.finalization_date, 1, 4) y, substr(x.finalization_date, 6, 2) m, x.src, x.county,
-           sum(x.closing_value) v, count(*) n
+           sum(x.closing_value) v, count(*) n,
+           min(left(x.finalization_date, 10) collate "C") d0, max(left(x.finalization_date, 10) collate "C") d1
     from (
       select authority_id, supplier_id, county, finalization_date, closing_value, 'da'::text src
       from marts.da_transactions where closing_value > 0 and closing_value <= 2000000
@@ -84,7 +92,7 @@ export async function buildAskRollups(q: Query): Promise<AskRollupsReport> {
   `;
   const pair = await q`
     create table marts.agg_pair_year as
-    select authority_id, supplier_id, y, src, county, sum(v) v, sum(n)::bigint n
+    select authority_id, supplier_id, y, src, county, sum(v) v, sum(n)::bigint n, min(d0) d0, max(d1) d1
     from pg_temp.ask_pair_month
     group by authority_id, supplier_id, y, src, county
   `;
@@ -93,9 +101,9 @@ export async function buildAskRollups(q: Query): Promise<AskRollupsReport> {
   // sum(n) 41,437,684 on the local copy), without another pass over the 20.7M rows.
   const month = await q`
     create table marts.agg_entity_month as
-    select g.role, g.eid, g.y, g.m, g.src, g.county, e.name_display nm, g.v, g.n
+    select g.role, g.eid, g.y, g.m, g.src, g.county, e.name_display nm, g.v, g.n, g.d0, g.d1
     from (
-      select r.role, r.eid, p.y, p.m, p.src, p.county, sum(p.v) v, sum(p.n)::bigint n
+      select r.role, r.eid, p.y, p.m, p.src, p.county, sum(p.v) v, sum(p.n)::bigint n, min(p.d0) d0, max(p.d1) d1
       from pg_temp.ask_pair_month p
       cross join lateral (values ('authority'::text, p.authority_id), ('supplier'::text, p.supplier_id)) r(role, eid)
       where r.eid is not null
@@ -105,7 +113,7 @@ export async function buildAskRollups(q: Query): Promise<AskRollupsReport> {
   `;
   const entity = await q`
     create table marts.agg_entity_year as
-    select role, eid, y, src, county, nm, sum(v) v, sum(n)::bigint n
+    select role, eid, y, src, county, nm, sum(v) v, sum(n)::bigint n, min(d0) d0, max(d1) d1
     from marts.agg_entity_month
     group by role, eid, y, src, county, nm
   `;

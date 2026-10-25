@@ -49,6 +49,29 @@ it.skipIf(!connection)('builds the Ask rollups and the covering indexes with eve
    {role:'supplier',eid:b,y:'2024',m:'09',v:'2000000',n:1},
   ]);
   expect(first.rollups.agg_entity_month).toBeGreaterThanOrEqual(first.rollups.agg_entity_year);
+  // The first and last day of each group (F2, a trend group's source drawer), equal to the live min/max of its rows.
+  expect(own(await q`select role,eid::text,y,d0,d1 from marts.agg_entity_year order by role,eid::bigint,y`,'eid')).toEqual([
+   {role:'authority',eid:cluj,y:'2024',d0:'2024-09-22',d1:'2024-09-22'},
+   {role:'authority',eid:cluj,y:'2025',d0:'2025-03-20',d1:'2025-09-21'},
+   {role:'authority',eid:iasi,y:'2024',d0:'2024-09-26',d1:'2024-09-26'},
+   {role:'supplier',eid:a,y:'2025',d0:'2025-03-20',d1:'2025-09-21'},
+   {role:'supplier',eid:b,y:'2024',d0:'2024-09-22',d1:'2024-09-22'},
+  ]);
+  const [days]=await q`select count(*)::int differ from (
+    select r.role, r.eid, left(d.finalization_date,4) y, d.src, min(left(d.finalization_date,10)) d0, max(left(d.finalization_date,10)) d1
+    from (select authority_id, supplier_id, finalization_date, 'da'::text src from marts.da_transactions where closing_value > 0 and closing_value <= 2000000
+          union all select authority_id, supplier_id, finalization_date, 'contracts' from marts.contract_transactions where closing_value > 0) d
+    cross join lateral (values ('authority'::text, d.authority_id), ('supplier'::text, d.supplier_id)) r(role, eid)
+    where r.eid is not null group by 1, 2, 3, 4) live
+    full join (select role, eid, y, src, min(d0) d0, max(d1) d1 from marts.agg_entity_year group by 1, 2, 3, 4) rolled using (role, eid, y, src)
+    where live.d0 is distinct from rolled.d0 or live.d1 is distinct from rolled.d1`;
+  expect(days!.differ).toBe(0);
+  expect((await q`select left(min(d0),7) m0, left(max(d1),7) m1 from marts.agg_entity_month where eid=${cluj}::bigint and role='authority' and y='2025'`).map(r=>({...r}))).toEqual([{m0:'2025-03',m1:'2025-09'}]);
+  expect(own(await q`select authority_id::text,supplier_id::text,y,d0,d1 from marts.agg_pair_year order by authority_id::bigint,supplier_id::bigint nulls last,y`,'authority_id')).toEqual([
+   {authority_id:cluj,supplier_id:a,y:'2025',d0:'2025-03-20',d1:'2025-09-21'},
+   {authority_id:cluj,supplier_id:b,y:'2024',d0:'2024-09-22',d1:'2024-09-22'},
+   {authority_id:iasi,supplier_id:null,y:'2024',d0:'2024-09-26',d1:'2024-09-26'},
+  ]);
   expect(own(await q`select authority_id::text,supplier_id::text,y,v::text,n::int from marts.agg_pair_year order by authority_id::bigint,supplier_id::bigint nulls last,y`,'authority_id')).toEqual([
    {authority_id:cluj,supplier_id:a,y:'2025',v:'1000.50',n:2},
    {authority_id:cluj,supplier_id:b,y:'2024',v:'2000000',n:1},

@@ -1,12 +1,13 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { buildAskRollups, createDb, type DbSql } from "@seap/db";
-import { DA_PLAFOND_RON, DATA_CHANGED, runRows, runSpec, TABLE_PAGE_SIZE, type BlockData } from "./compile";
+import { CSV_MAX_ROWS, DA_PLAFOND_RON, DATA_CHANGED, runRows, runSpec, TABLE_PAGE_SIZE, type BlockData } from "./compile";
 import { trendGroupOf } from "./predicates";
 import { trendGroupOfRow, trendListOf, trendNoun, trendPartition, trendProfiles, trendRowLabels, type TrendList } from "./trend-partition";
-import { sumDecimalStrings } from "./evidence";
+import { evidenceCsv, sumDecimalStrings } from "./evidence";
+import { forgetTrendGroups, trendGroupStats } from "./group-ids";
 import {
   compareParties, compareSharedPartners, compareTopPartners, forgetRollupsReady, planRollup, rollupBreakdown, rollupCountyTable, rollupMap,
-  rollupMinimumCond, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, scatterDensity, type RollupCtx, type RollupNeed,
+  rollupDaysReady, rollupMinimumCond, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, scatterDensity, type RollupCtx, type RollupNeed,
 } from "./rollups";
 import { namedKind, type AskSpec } from "./spec";
 import type { Grounding } from "./ground";
@@ -410,7 +411,8 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
         }
 
         // F2: the sources of a trend's group are its members' records of the two years: the members
-        // read from the rollups (rollupTrendMembers) give the live list, and they add up to the answer.
+        // grouped on the rollups give the live list, and they add up to the answer.
+        forgetTrendGroups();
         for (const c of TREND_GROUPS) {
           const live = liveSources.get(c.name)!;
           const wired = await runRows(q, c.spec, c.g ?? {}, 0);
@@ -423,13 +425,81 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
           expect([c.name, answer.rowsTrend.length > 0, live.sourceTotal > 0]).toEqual([c.name, true, true]);
           expect(live.scopeNotes.some((note) => note.startsWith("Sursele grupului") || (c.spec.trend?.change ?? "all") === "all")).toBe(true);
         }
-        // A row's own records: only that member, and nothing when it is not in the group.
+        // F2 (sources): a group's drawer with the members the answer kept (no grouping, the totals from its
+        // grouping), with the same grouping on the rollups when nothing is kept (with and without their
+        // days), and the records of the same members listed apart: the same drawer and CSV (and, on three
+        // groups, the same rows in every order), and the group's figures and the selection's are the answer's (plan §6.2).
+        const ORDERED = ["trend of firms, decreases", "trend of institutions buying from small firms, growths", "trend of counties, growths in percent"];
+        const groupDrawers = async (label: string, full: boolean) => {
+          expect([label, await rollupDaysReady(q)]).toEqual([label, full]);
+          for (const c of TREND_GROUPS) {
+            const group = trendGroupOf(c.spec);
+            if (group.change === "all") continue;
+            const answer = groupAnswers.get(c.name)!;
+            if (answer.block !== "trend" || !answer.composition) throw new Error("trend expected");
+            const dim = c.spec.dim ?? "authority";
+            const ids = answer.rowsTrend.map((r) => dim === "county" ? r.name : r.entityId!);
+            const months = c.spec.trend?.months;
+            const every: AskSpec = { ...c.spec, trend: months ? { months } : {} };
+            const scope = dim === "county" ? { counties: ids } : { entityIds: ids, role: dim as "authority" | "supplier" };
+            const g = c.g ?? {};
+            const name = `${label}: ${c.name}`;
+            forgetTrendGroups();
+            const cold = await runRows(q, c.spec, g, 0);
+            const answered = await runSpec(q, c.spec, g);
+            if ("error" in answered) throw new Error(`${name}: ${answered.error}`);
+            const hits = trendGroupStats().hits;
+            const warm = await runRows(q, c.spec, g, 0);
+            const apart = await runRows(q, every, g, 0, { scope });
+            const selection = await runRows(q, every, g, 0);
+            if ("error" in cold || "error" in warm || "error" in apart || "error" in selection) throw new Error(`${name}: rows expected`);
+            expect([name, trendGroupStats().hits]).toEqual([name, hits + 1]);
+            expect([name, drawer(cold)]).toEqual([name, drawer(apart)]);
+            expect([name, drawer(warm)]).toEqual([name, drawer(apart)]);
+            const part = answer.composition[group.change === "up" && group.order === "percent" ? "eligible" : group.firstOnly ? "first" : group.change]!;
+            expect([name, warm.group?.members, ids.length, Number(warm.sourceValue).toFixed(2)]).toEqual([name, part.count, part.count, (part.valueA + part.valueB).toFixed(2)]);
+            expect([name, warm.group?.selection]).toEqual([name, { count: selection.sourceTotal, value: selection.sourceValue }]);
+            if (!full) continue;
+            // The totals and the period are the grouping's: without the records the drawer lists none, with the same totals.
+            await q.unsafe("savepoint emptied_records");
+            await q`delete from marts.da_transactions`;
+            await q`delete from marts.contract_transactions`;
+            const kept = await runRows(q, c.spec, g, 0);
+            await q.unsafe("rollback to savepoint emptied_records");
+            if ("error" in kept) throw new Error(`${name}: ${kept.error}`);
+            expect([name, { ...drawer(kept), rows: [] }, kept.rows]).toEqual([name, { ...drawer(warm), rows: [] }, []]);
+            // Every order on a group of firms, of institutions over the pair rollup and of counties; the CSV of every group.
+            if (ORDERED.includes(c.name)) for (const sort of ["source", "value", "date", "authority", "supplier", "county", "cpv"] as const) for (const dir of ["asc", "desc"] as const) {
+              const [mine, theirs] = [await runRows(q, c.spec, g, 0, { sort, dir }), await runRows(q, every, g, 0, { sort, dir, scope })];
+              if ("error" in mine || "error" in theirs) throw new Error(`${name}: rows expected`);
+              expect([name, sort, dir, mine.rows]).toEqual([name, sort, dir, theirs.rows]);
+            }
+            const csv = await runRows(q, c.spec, g, 0, { limit: CSV_MAX_ROWS });
+            if ("error" in csv) throw new Error(`${name}: rows expected`);
+            expect([name, csv.rows.length, sumDecimalStrings(csv.rows.map((r) => r.valueExact))]).toEqual([name, warm.sourceTotal, warm.sourceValue]);
+            // The header, a line per record, and the closing line break.
+            expect([name, evidenceCsv(csv.rows).split("\r\n").length - 2]).toEqual([name, warm.sourceTotal]);
+          }
+        };
+        await groupDrawers("rollups with days", true);
+        // A rollup built before the days: the drawer counts the group's records, with the same result.
+        await q.unsafe("savepoint undated_rollups");
+        for (const table of ["agg_entity_year", "agg_pair_year", "agg_entity_month"]) await q.unsafe(`alter table marts.${table} drop column d0, drop column d1`);
+        forgetRollupsReady();
+        await groupDrawers("rollups without days", false);
+        await q.unsafe("rollback to savepoint undated_rollups");
+        forgetRollupsReady();
+        // A row's own records: only that member, and nothing when it is not in the group, with the members kept or not.
         const growth = TREND_GROUPS[0]!.spec;
-        const own = await runRows(q, growth, {}, 0, { scope: { entityIds: ["10"], role: "supplier" } });
-        const outside = await runRows(q, growth, {}, 0, { scope: { entityIds: ["12"], role: "supplier" } });
-        if ("error" in own || "error" in outside) throw new Error("rows expected");
-        expect(own.rows.every((r) => r.supplierId === "10") && own.total > 0).toBe(true);
-        expect(outside.total).toBe(0);
+        for (const kept of [false, true]) {
+          forgetTrendGroups();
+          if (kept) await runSpec(q, growth, {});
+          const own = await runRows(q, growth, {}, 0, { scope: { entityIds: ["10"], role: "supplier" } });
+          const outside = await runRows(q, growth, {}, 0, { scope: { entityIds: ["12"], role: "supplier" } });
+          if ("error" in own || "error" in outside) throw new Error("rows expected");
+          expect([kept, own.rows.every((r) => r.supplierId === "10") && own.total > 0]).toEqual([kept, true]);
+          expect([kept, outside.total, own.group]).toEqual([kept, 0, undefined]);
+        }
         // The same months of both years (live: the rollups keep whole years), and a window the data no longer gives.
         const months: AskSpec = base("trend", { topN: 50, trend: { months: [2, 5] } }, Y);
         const window = await runSpec(q, months, {});
@@ -540,5 +610,5 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
       });
     } catch (error) { if (error !== rollback) throw error; }
     expect(await sql`select nspname from pg_namespace where nspname=${prefix}`).toHaveLength(0);
-  }, 60000);
+  }, 180_000);
 });

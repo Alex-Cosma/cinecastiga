@@ -3,7 +3,8 @@ import type { MinimumRecords, QueryPopulation } from "./population";
 import type { ScatterDensity, TableSort } from "./compile";
 import type { AuthorityKind } from "./spec";
 import { authorityKindCond, KIND_PATTERNS } from "./authority-kind";
-import { employeesCond, trendGroupSql, type TrendGroup } from "./predicates";
+import { employeesCond } from "./predicates";
+import { trendChannelColumns } from "./trend-partition";
 
 /**
  * Answers from the rollups of the nightly build (packages/db/src/ask-rollups.ts)
@@ -322,8 +323,26 @@ export async function monthRollupReady(sql: DbSql): Promise<boolean> {
   monthReady = { ok: Boolean(row?.ok), at: Date.now() };
   return monthReady.ok;
 }
+/**
+ * The first and last day (d0, d1) on the pair and entity rollups (F2): a trend
+ * group's source drawer then totals its records from the answer's grouping.
+ * Probed apart, as agg_entity_month: until the first build with them, the
+ * drawer counts a group's records live.
+ */
+let daysReady: { ok: boolean; at: number } | null = null;
+export async function rollupDaysReady(sql: DbSql): Promise<boolean> {
+  if (daysReady && Date.now() - daysReady.at < 600_000) return daysReady.ok;
+  const [row] = (await sql`
+    select count(*) = 2 + (to_regclass('marts.agg_entity_month') is not null)::int ok
+    from pg_attribute a
+    where a.attname = 'd0' and not a.attisdropped
+      and a.attrelid in (to_regclass('marts.agg_entity_year'), to_regclass('marts.agg_pair_year'), to_regclass('marts.agg_entity_month'))
+  `) as unknown as { ok: boolean }[];
+  daysReady = { ok: Boolean(row?.ok), at: Date.now() };
+  return daysReady.ok;
+}
 /** Tests only: forget the probes, so the next call reads the database. */
-export function forgetRollupsReady(): void { ready = null; monthReady = null; }
+export function forgetRollupsReady(): void { ready = null; monthReady = null; daysReady = null; }
 
 export interface RollupTableOpts {
   dim: Role;
@@ -428,46 +447,36 @@ export async function rollupCountyTable(sql: DbSql, plan: { source: RollupSource
 /**
  * case "trend": per entity (or county) the values of year A and year B, as the
  * grouped query trendPartition (trend-partition.ts) partitions: `select id, va,
- * vb … group by id`, the live query's groups once grouped. Names and counties
- * come after, from entity_profile, for the shown rows only (as live).
+ * vb … group by id`, the live query's groups once grouped, with each
+ * channel's records, value and first and last day (trendChannelColumns): a
+ * group's source drawer totals them instead of scanning its members' rows.
+ * The days are null where the rollup has none yet (`days`: rollupDaysReady);
+ * the drawer then counts the group live. Names and counties come after, from
+ * entity_profile, for the shown rows only (as live).
  */
 export function rollupTrendGrouped(sql: DbSql, plan: { source: RollupSource; filters: RollupFilters },
-  o: { dim: Role | "county"; yearA: number; yearB: number }): { grouped: Fragment } | { reason: string } {
+  o: { dim: Role | "county"; yearA: number; yearB: number; days?: boolean }): { grouped: Fragment } | { reason: string } {
   const { source, filters } = plan;
   const where = rollupWhere(sql, source, filters, "p", { years: false });
   const a = String(o.yearA), b = String(o.yearB);
   const va: Fragment = sql`coalesce(sum(p.v) filter (where p.y = ${a}), 0)`, vb: Fragment = sql`coalesce(sum(p.v) filter (where p.y = ${b}), 0)`;
   const key: Fragment | null = o.dim === "county" ? sql`p.county` : idColumn(sql, source, o.dim, "p");
   if (!key) return { reason: `the ${source.table} rollup has no ${o.dim} id` };
+  // agg_cpv_year keeps the whole first and last date (d0, d1); the pair and entity rollups the day.
+  const day = (column: "d0" | "d1"): Fragment | null => source.table === "cpv" ? sql`left(p.${sql(column)}, 10) collate "C"`
+    : o.days ? sql`p.${sql(column)}` : null;
+  const first = day("d0"), last = day("d1");
+  const channels = trendChannelColumns(sql, filters.dataset, (src) => ({
+    n: sql`sum(p.n) filter (where p.src = ${src})`, v: sql`sum(p.v) filter (where p.src = ${src})`,
+    first: first ? sql`min(${first}) filter (where p.src = ${src})` : null,
+    last: last ? sql`max(${last}) filter (where p.src = ${src})` : null,
+  }));
   return { grouped: sql`
-    select ${key} id, ${va} va, ${vb} vb
+    select ${key} id, ${va} va, ${vb} vb, ${channels}
     from ${fromSource(sql, source, "p")}
     where ${where} and ${key} is not null and p.y in (${a}, ${b})
     group by ${key}
   ` };
-}
-
-/**
- * The members of a trend's group (entity ids, or county names), for its
- * sources: the ids of the group's list of trendPartition over
- * rollupTrendGrouped, without the limit, as the live members query of runRows.
- */
-export async function rollupTrendMembers(sql: DbSql, plan: { source: RollupSource; filters: RollupFilters },
-  o: { dim: Role | "county"; yearA: number; yearB: number; group: TrendGroup }): Promise<{ members: string[] } | { reason: string }> {
-  const { source, filters } = plan;
-  const where = rollupWhere(sql, source, filters, "p", { years: false });
-  const a = String(o.yearA), b = String(o.yearB);
-  const va: Fragment = sql`coalesce(sum(p.v) filter (where p.y = ${a}), 0)`, vb: Fragment = sql`coalesce(sum(p.v) filter (where p.y = ${b}), 0)`;
-  const key: Fragment | null = o.dim === "county" ? sql`p.county` : idColumn(sql, source, o.dim, "p");
-  if (!key) return { reason: `the ${source.table} rollup has no ${o.dim} id` };
-  const { having } = trendGroupSql(sql, va, vb, o.group, o.dim === "county" ? undefined : { id: key, role: o.dim, yearB: o.yearB });
-  const rows = (await sql`
-    select ${key}::text m from ${fromSource(sql, source, "p")}
-    where ${where} and ${key} is not null and p.y in (${a}, ${b})
-    group by ${key}
-    ${having ? sql`having ${having}` : sql``}
-  `) as unknown as { m: string }[];
-  return { members: rows.map((r) => r.m) };
 }
 
 /**
