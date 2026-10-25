@@ -41,6 +41,14 @@ export interface LensMatch {
   dim?: "supplier" | "authority";
 }
 
+/**
+ * "au apărut cel mai des" counts how often a firm appears (a ranking by number of records, rules.ts modifiers),
+ * not the new ones: the trend cue and the lens of "au apărut" stop before these words.
+ */
+export const NOT_MOST_OFTEN = String.raw`(?!\s+(?:cel mai (?:des|frecvent|mult)|de cele mai multe ori|cele mai multe|mai des|des|frecvent|mereu)\b)`;
+/** "au ieșit câștigătoare", "a ieșit pe primul loc", "au ieșit la licitație": the winners, never the gone ones. */
+const NOT_WON = String.raw`(?!\s+(?:din tipar|castigat\w*|invingat\w*|pe primul loc|primul|primii|primele|prima|in top|in frunte|la)\b)`;
+
 const ROWS_SUPPLIER = "firme|firmele|furnizori|furnizorii|companii|companiile|societati|societatile";
 const ROWS_AUTHORITY = "institutii|institutiile|clienti|clientii|cumparatori|cumparatorii|autoritati|autoritatile";
 
@@ -51,9 +59,9 @@ export const LENS_PHRASES: Partial<Record<Block, readonly LensPhrase[]>> = {
     { re: /\b(?:(?:a|au|s a|s au) scazut|scaderea?|scaderile|scaderi|scad)\b/, path: "trend.change", value: "down", quiet: true },
     { re: new RegExp(`\\b(?:${ROWS_SUPPLIER}) noi\\b`), path: "trend.change", value: "new", dim: "supplier" },
     { re: new RegExp(`\\b(?:${ROWS_AUTHORITY}) noi\\b`), path: "trend.change", value: "new", dim: "authority" },
-    { re: /\b(?:(?:a|au) aparut|(?:a|au) intrat)\b/, path: "trend.change", value: "new" },
+    { re: new RegExp(String.raw`\b(?:(?:a|au) aparut${NOT_MOST_OFTEN}|(?:a|au) intrat)\b`), path: "trend.change", value: "new" },
     { re: /\b(?:pentru )?prima (?:data|oara)\b/, path: "trend.firstOnly", value: true },
-    { re: /\b(?:nu mai (?:apar|apare|castiga|cumpara|lucreaza)|(?:a|au) disparut|(?:a|au) iesit(?! din tipar))\b/, path: "trend.change", value: "gone" },
+    { re: new RegExp(String.raw`\b(?:nu mai (?:apar|apare|castiga|cumpara|lucreaza)|(?:a|au) disparut|(?:a|au) iesit${NOT_WON})\b`), path: "trend.change", value: "gone" },
     { re: /\b(?:procentual\w*|in procente)\b/, path: "trend.order", value: "percent" },
     // Elsewhere "de câte ori" asks for the number of records (rules.ts modifiers): on a trend, for the order in percent.
     { re: /\bde cate ori\b/, path: "trend.order", value: "percent", quiet: true },

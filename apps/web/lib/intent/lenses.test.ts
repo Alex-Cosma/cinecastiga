@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { validateSpec } from "../ask/spec";
-import type { CoveragePeriods } from "../ask/months-window";
+import { autoMonthsUnresolved, sameMonthsWindow, type CoveragePeriods } from "../ask/months-window";
 import { memoryVocabulary } from "./memory-vocabulary";
 import { RulesInterpreter } from "./rules";
 import { FIXTURE } from "./rules.fixture";
@@ -85,8 +85,7 @@ describe("trend lenses: the group, the order, the months", () => {
   });
   it("two groups that exclude each other are said, and every change is shown", async () => {
     const { r } = await ask("Ce firme au crescut sau au scăzut între 2024 și 2025?");
-    expect(r.spec).toMatchObject({ block: "trend" });
-    expect(r.spec?.trend?.change).toBeUndefined();
+    expect(r.spec).toMatchObject({ block: "trend", trend: { change: "all" } });
     expect(r.interpretation.notes).toContain("„au crescut” și „au scăzut” nu merg împreună; nu le-am aplicat.");
   });
   it("«prima dată» keeps the new ones whose first record is in the later year", async () => {
@@ -101,9 +100,21 @@ describe("trend lenses: the group, the order, the months", () => {
     const open = await ask("Ce firme au crescut între 2025 și 2026?");
     expect(open.r.spec).toMatchObject({ trend: { change: "up", months: "auto" }, filters: { yearFrom: 2025, yearTo: 2026 } });
     expect(open.r.interpretation.notes).toContain("2026 nu e încă încheiat: am comparat aceleași luni din ambii ani (ian.–mai).");
-    // Without the "complet până la" days the window is unknown: whole years, with the engine's partial-year caveat.
-    const unknown = await ask("Ce firme au crescut între 2025 și 2026?", { periods: { ...PERIODS, da: { ...PERIODS.da, completeUntil: null } }, year: 2026 });
-    expect(unknown.r.spec?.trend).not.toHaveProperty("months");
+    // Without the "complet până la" days the window is unknown: still `auto`, which the run refuses
+    // (autoMonthsUnresolved) instead of comparing a part of 2026 with the whole of 2025 (plan §2.6).
+    const periods = { ...PERIODS, da: { ...PERIODS.da, completeUntil: null } };
+    const unknown = await ask("Ce firme au crescut între 2025 și 2026?", { periods, year: 2026 });
+    expect(unknown.r.spec?.trend).toEqual({ change: "up", months: "auto" });
+    expect(unknown.r.sentence).toBe("Ce firme au cea mai mare creștere a valorii câștigate între 2025 și 2026, pe aceleași luni?");
+    expect(sameMonthsWindow(periods, "all", 2026, "auto")).toEqual({ error: autoMonthsUnresolved(2026) });
+  });
+  it("a new trend writes the plan's defaults (plan §2.6): the growths and `auto`; a complete year needs no months in words", async () => {
+    const { r } = await ask("Ce firme au câștigat cel mai mult între 2024 și 2025 pe ani?");
+    expect(r.spec).toMatchObject({ block: "trend", trend: { change: "up", months: "auto" }, filters: { yearFrom: 2024, yearTo: 2025 } });
+    expect(r.sentence).toBe("Ce firme au cea mai mare creștere a valorii câștigate între 2024 și 2025?");
+    expect(r.interpretation.notes.join(" ")).not.toMatch(/aceleași luni/);
+    // Words of every change keep „Toate”.
+    expect((await ask("cum s-au schimbat achizițiile firmelor între 2022 și 2024")).r.spec?.trend).toEqual({ change: "all", months: "auto" });
   });
   it("a lens of another question is said, never applied silently", async () => {
     const table = await ask("Ce firme noi câștigă contracte în județul Cluj în 2025?");
@@ -127,6 +138,49 @@ describe("trend lenses: the group, the order, the months", () => {
   });
 });
 
+describe("winners are never a trend group (precedence, plan §2.7)", () => {
+  it.each([
+    "Ce firme au ieșit câștigătoare în 2025?",
+    "Cine a ieșit câștigător la licitațiile din județul Cluj în 2025?",
+    "Ce firme au ieșit pe primul loc în județul Cluj în 2025?",
+  ])("%s", async (q) => {
+    const { i, r } = await ask(q);
+    expect(i.lenses.filter((l) => l.path === "trend.change")).toEqual([]);
+    expect(r.spec?.block).toBe("table");
+    expect(r.spec?.filters).toMatchObject({ yearFrom: 2025, yearTo: 2025 });
+  });
+  it("«au ieșit câștigătoare între 2024 și 2025» stays the winners of both years, not the gone ones", async () => {
+    expect((await ask("Ce firme au ieșit câștigătoare între 2024 și 2025?")).r.spec?.block).toBe("table");
+  });
+  it("«au apărut cel mai des» counts the records: a ranking, not the new ones", async () => {
+    const { i, r } = await ask("Ce firme au apărut cel mai des în contractele din județul Cluj în 2025?");
+    expect(i.lenses.filter((l) => l.path === "trend.change")).toEqual([]);
+    expect(r.spec).toMatchObject({ block: "table", dim: "supplier", measure: "count" });
+  });
+  it("«au ieșit din piață» is still the gone ones", async () => {
+    const { r } = await ask("Ce firme au ieșit din piață în 2025?");
+    expect(r.spec).toMatchObject({ block: "trend", trend: { change: "gone" }, filters: { yearFrom: 2024, yearTo: 2025 } });
+  });
+});
+
+describe("«în Y față de X» is two years only where each year is its own figure", () => {
+  it("a total keeps the year asked about, with the note, never both years summed", async () => {
+    const { r } = await ask("Cât s-a cheltuit în județul Cluj în 2025 față de 2024?");
+    expect(r.spec).toMatchObject({ block: "stat", filters: { county: "Cluj", yearFrom: 2025, yearTo: 2025 } });
+    expect(r.interpretation.notes).toContain("Am folosit prima perioadă din întrebare; „2024” nu a fost aplicată.");
+  });
+  it("a ranking keeps the year asked about", async () => {
+    const { r } = await ask("Ce firme au câștigat în județul Cluj în 2025 față de 2024?");
+    expect(r.spec).toMatchObject({ block: "table", filters: { yearFrom: 2025, yearTo: 2025 } });
+    expect(r.interpretation.notes).toContain("Am folosit prima perioadă din întrebare; „2024” nu a fost aplicată.");
+  });
+  it("a trend and an evolution keep both years", async () => {
+    expect((await ask("Ce firme noi apar în 2025 față de 2024?")).r.spec?.filters).toMatchObject({ yearFrom: 2024, yearTo: 2025 });
+    expect((await ask("Cum au evoluat achizițiile din județul Cluj în 2025 față de 2024?")).r.spec)
+      .toMatchObject({ block: "timeseries", filters: { yearFrom: 2024, yearTo: 2025 } });
+  });
+});
+
 describe("every trend spec says its own scope", () => {
   it.each([
     "Ce firme au crescut cel mai mult între 2024 și 2025?", "Ce firme au crescut în 2025?", "ce firme noi au apărut în 2025",
@@ -139,7 +193,7 @@ describe("every trend spec says its own scope", () => {
     expect(emitted.length).toBeGreaterThan(0);
     for (const { spec, sentence } of emitted) {
       expect(validateSpec(spec), sentence).not.toHaveProperty("error");
-      expect(sentenceScopeProblems(spec, sentence), sentence).toEqual([]);
+      expect(sentenceScopeProblems(spec, sentence, { periods: PERIODS }), sentence).toEqual([]);
     }
   });
   it("finds a sentence that does not say the group or the months", () => {

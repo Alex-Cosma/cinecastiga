@@ -74,6 +74,12 @@ export interface PersonMatch {
 export interface PeriodMatch {
   yearFrom?: number;
   yearTo?: number;
+  /**
+   * "în 2025 față de 2024": the year asked about (main) and the one it is set
+   * against (other). Both years stand only where each is its own figure (a
+   * trend, an evolution); elsewhere the main year, with a note (to-spec).
+   */
+  versus?: { main: number; other: number };
   matched: Span;
 }
 

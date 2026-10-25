@@ -2,12 +2,13 @@ import { cleanName } from "../format";
 import { joinCpvTerms } from "../ask/cpv-terms";
 import { titleTail } from "../ask/filters/words";
 import { IMPLEMENTED_KEYS, namedKind, validateSpec, type AskFilters, type AskSpec, type AuthorityKind, type Block, type Dataset } from "../ask/spec";
-import { defaultTrendYears, monthsLabel, sameMonthsWindow, trendYearsFrom, type CoveragePeriods } from "../ask/months-window";
+import { defaultTrendYears, isWholeYear, monthsLabel, sameMonthsWindow, trendYearsFrom, type CoveragePeriods } from "../ask/months-window";
 import { FILTERS, SPEC_PATH_OWNERS } from "../ask/filters/registry";
 import { filterContext } from "../ask/filters/context";
 import type { FilterSpec, SpecPath } from "../ask/filters/types";
 import { TREND_CHANGE_LABELS } from "../ask/filters/defs/trend";
 import { genitive, hasNamedScope } from "./rules";
+import { fold } from "./text";
 import type { LensMatch } from "./lens-phrases";
 import type { EntityMatch, IntentAlternative, IntentKind, IntentResult, Interpretation, PersonMatch, PlaceMatch, SubjectMatch } from "./types";
 
@@ -243,12 +244,13 @@ export function specFor(input: Interpretation, asked: IntentKind, choice: Choice
           notes.push(year === undefined ? `Am comparat ${years.yearTo} cu ${years.yearFrom}: ultimul an încheiat cu cel dinainte.`
             : year === years.yearTo ? `Am comparat ${year} cu anul dinainte.` : `Am comparat ${years.yearTo} cu ${years.yearFrom}: ${year} nu are un an complet înainte în date.`);
         }
-        // A later year the data does not hold whole: its complete months in both years (trend final §3.3).
+        // A new trend's months are `auto` (plan §2.6): whole years while the later year is complete, else its
+        // complete months in both years (trend final §3.3); a year whose complete months are unknown is refused
+        // by the run (autoMonthsUnresolved), never a part of a year against a whole one.
+        raw.trend = { ...optionsOf(raw, "trend"), months: "auto" };
         const window = context.periods && f.yearTo !== undefined ? sameMonthsWindow(context.periods, (raw.dataset ?? "all") as Dataset, f.yearTo, "auto") : null;
-        if (window && !("error" in window) && (window.from !== 1 || window.to !== 12)) {
-          raw.trend = { ...optionsOf(raw, "trend"), months: "auto" };
+        if (window && !("error" in window) && !isWholeYear(window))
           notes.push(`${f.yearTo} nu e încă încheiat: am comparat aceleași luni din ambii ani (${monthsLabel(window)}).`);
-        }
       } else {
         raw.block = "timeseries";
         if (raw.measure === "value_per_capita") raw.measure = "value";
@@ -287,10 +289,27 @@ export function specFor(input: Interpretation, asked: IntentKind, choice: Choice
       break;
     }
   }
-  const valid = validateSpec(applyLenses(raw, i.lenses, notes));
+  // "în 2025 față de 2024" on a total or a ranking would sum both years: the year asked about, as before the rule.
+  const versus = i.period?.versus;
+  if (versus && raw.block !== "trend" && raw.block !== "timeseries" && f.yearFrom !== undefined) {
+    f.yearFrom = versus.main; f.yearTo = versus.main;
+    notes.push(`Am folosit prima perioadă din întrebare; „${versus.other}” nu a fost aplicată.`);
+  }
+  let lensed = applyLenses(raw, i.lenses, notes);
+  // A new trend says its group (plan §2.6, trend final §4.2): the growths, unless the words name one or ask
+  // for every change ("cum s-au schimbat", "evoluția"); two groups that exclude each other were said: every change.
+  if (lensed.block === "trend" && optionsOf(lensed, "trend").change === undefined) {
+    const said = i.lenses.some((l) => l.block === "trend" && l.path === "trend.change");
+    const change = said || EVERY_CHANGE.test(fold(i.text)) ? "all" : "up";
+    lensed = FILTERS.trendChange.write(lensed as unknown as FilterSpec, change) as unknown as Record<string, unknown>;
+  }
+  const valid = validateSpec(lensed);
   if ("error" in valid) return { spec: null, error: valid.error, notes };
   return { spec: valid, error: null, notes };
 }
+
+/** The words of a change without a direction: a trend of every change, not the default growths. */
+const EVERY_CHANGE = /\b(?:schimb\w*|evolu\w*|tendint\w*|dinamic\w*|diferent\w*)\b/;
 
 // ------------------------------------------------------------- sentence
 
@@ -348,6 +367,20 @@ export interface SentenceLabels {
   allInstitutions?: boolean;
   /** Readable subject for the spec's cpvTerm ("iluminat", "Servicii de deszăpezire"). */
   subject?: string | null;
+  /**
+   * A trend's `months: "auto"`: the archive's periods say whether it means the same months or whole years
+   * (sameMonthsWindow); without them, or when the words asked for the same months, the sentence says them.
+   */
+  periods?: CoveragePeriods | null;
+  sameMonthsSaid?: boolean;
+}
+
+/** Whether a trend's sentence says "pe aceleași luni": `auto` that the periods resolve to whole years needs no words. */
+export function saysSameMonths(spec: AskSpec, labels: Pick<SentenceLabels, "periods" | "sameMonthsSaid"> = {}): boolean {
+  if (spec.trend?.months !== "auto") return false;
+  if (labels.sameMonthsSaid || labels.periods === undefined || spec.filters.yearTo === undefined) return true;
+  const window = sameMonthsWindow(labels.periods, spec.dataset ?? "all", spec.filters.yearTo, "auto");
+  return "error" in window || !isWholeYear(window);
 }
 
 /** One plain Romanian sentence for a spec, as a person would ask it. */
@@ -379,7 +412,7 @@ export function sentenceFor(spec: AskSpec, labels: SentenceLabels = {}): string 
       const filtered = Boolean(f.authorityName || f.uatSiruta || f.county || f.authorityKind);
       const t = spec.trend ?? {}, a = f.yearFrom ?? "…", b = f.yearTo ?? "…";
       // The group and the months in words (trend final §1): "Ce firme noi apar …, față de 2024?", "… pe aceleași luni".
-      const months = t.months === "auto" ? ", pe aceleași luni" : Array.isArray(t.months) ? `, pe ${monthsLabel({ from: t.months[0], to: t.months[1] })}` : "";
+      const months = t.months === "auto" ? saysSameMonths(spec, labels) ? ", pe aceleași luni" : "" : Array.isArray(t.months) ? `, pe ${monthsLabel({ from: t.months[0], to: t.months[1] })}` : "";
       const from = spec.dim === "supplier" ? `${subj}${filtered ? ` de la ${buyers(f)}` : ""}` : `${subj}${fromSupplier}`;
       const who = spec.dim === "supplier" ? "firme" : `${dimNoun}${spec.dim === "county" ? "" : wherePlain(f)}`;
       if (t.change === "new")
@@ -452,7 +485,9 @@ function specKey(spec: AskSpec): string {
 
 /** Assemble the API answer: spec, sentence and ready alternatives. `context`: the archive's periods, for a trend's years and months. */
 export function resultFor(i: Interpretation, context: SpecContext = {}): IntentResult {
-  const labels: SentenceLabels = { subject: subjectsLabel(i.subjects), ...(i.askedTownHalls && !i.authorityKind && i.measure !== "value_per_capita" ? { allInstitutions: true } : {}) };
+  const labels: SentenceLabels = { subject: subjectsLabel(i.subjects), ...(i.askedTownHalls && !i.authorityKind && i.measure !== "value_per_capita" ? { allInstitutions: true } : {}),
+    ...(context.periods !== undefined ? { periods: context.periods } : {}),
+    ...(i.lenses.some((l) => l.block === "trend" && l.path === "trend.months") ? { sameMonthsSaid: true } : {}) };
   const notes = [...i.notes];
   let spec: AskSpec | null = null;
   let problem: string | null = null;
