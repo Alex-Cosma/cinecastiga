@@ -6,6 +6,7 @@ import type { AskSpec } from "@/lib/ask/spec";
 import type { EvidenceScope } from "@/lib/ask/evidence";
 import { useEffect, useRef, useState } from "react";
 import { formatRon, formatRonFull, formatInt, cleanName } from "@/lib/format";
+import { readableCpvName } from "@/lib/entity-summary";
 import { countWords, formatChange, formatDecimal, formatShare } from "@/lib/ask/answer-text";
 import { encodeSpec } from "@/lib/ask/permalink";
 import type { QuestionSpec } from "@/lib/ask/question-ui";
@@ -294,7 +295,8 @@ export function BreakdownBlock({
   if (total <= 0) return <p className="ask-empty">Niciun rezultat.</p>;
   const items = [
     ...slices.map((s, i) => ({
-      name: s.name ?? `CPV ${s.code}`,
+      // The catalogue writes ş/ţ; the answer says ș/ț, as the sentence does (data and CSV keep the catalogue's).
+      name: s.name ? readableCpvName(s.name) : `CPV ${s.code}`,
       code: s.code as string | null,
       value: s.value,
       count: s.count,
@@ -821,7 +823,7 @@ export function ScatterBlock({
 /* ── sankey ───────────────────────────────────────────────────────────── */
 
 export function SankeyBlock({
-  flows,
+  flows: given,
   focal,
   spec,
 }: {
@@ -829,6 +831,8 @@ export function SankeyBlock({
   focal: { entityId: string; name: string; role: string };
   spec?: unknown;
 }) {
+  // A category's catalogue name with ș/ț, as in the breakdown and the sentence.
+  const flows = given.map((f) => (f.category ? { ...f, category: readableCpvName(f.category) } : f));
   const t = useTip();
   const evidence = useAnswerEvidence();
   const selectedScope = (

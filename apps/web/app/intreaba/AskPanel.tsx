@@ -35,6 +35,7 @@ import SaveQuestionButton from "./SaveQuestionButton";
 import type { SavedQuestion } from "./SavedQuestions";
 import AnswerStrip, { Crumbs, StripEnd, StripLabelled } from "./answer/AnswerStrip";
 import TotalLine from "./answer/TotalLine";
+import { seriesLabels } from "./series-labels";
 import Segmented from "./builder/Segmented";
 import "./builder/filters-kit.css";
 import { answerCsv, type BandState } from "./answer-csv";
@@ -162,6 +163,8 @@ export default function AskPanel({
   const [thread, setThread] = useState<Thread | null>(null);
   /** A link the builder opens without running it (a refused condition): "Vezi răspunsul" stays. */
   const [linkRuns, setLinkRuns] = useState(true);
+  /** What opening that link changed (restoreLink's notes): the builder says it while the link waits. */
+  const [linkNotes, setLinkNotes] = useState<string[]>([]);
   const [answerSaved, setAnswerSaved] = useState<SavedQuestion | null>(null);
   /** The stream chosen in the strip while its answer is on its way (the radio moves at once). */
   const [streamShown, setStreamShown] = useState<string | null>(null);
@@ -428,6 +431,7 @@ export default function AskPanel({
         }
         setBuilderInit(restored.spec);
         setLinkRuns(restored.run);
+        setLinkNotes(restored.notes);
         setBuilderOpen(true);
         setBuilderCollapsed(restored.run && params.get("drill") !== "1");
         setMode("build");
@@ -717,6 +721,7 @@ export default function AskPanel({
             onDraftChange={setDirty}
             onRun={(spec) => execute({ spec })}
             initialApplied={!chosen && linkRuns}
+            {...(!chosen && !linkRuns ? { initialNotes: linkNotes } : {})}
             stripPatch={stripPatch}
             {...(chosen && intent ? {
               intro: <IntentIntro />,
@@ -1465,11 +1470,13 @@ function SeriesBlock({
   const max = Math.max(...series.map(metric), 1);
   const peak = series.reduce((a, b) => (metric(b) > metric(a) ? b : a));
   const shownPartial = partial.filter((x) => series.some((p) => p.year === x.year));
+  const labels = seriesLabels(series.length, series.indexOf(peak));
+  const off = (on: boolean, className: string) => (on ? "" : ` ${className}`);
   return (
     <div>
       {t.el}
       <div className="ask-ts">
-        {series.map((p) => {
+        {series.map((p, i) => {
           const part = partial.find((x) => x.year === p.year);
           return (
           <a
@@ -1494,12 +1501,12 @@ function SeriesBlock({
               `${countWords(p.count, "achiziție", "achiziții")}${p.year === peak.year ? " · vârful seriei" : ""}${part ? ` · ${part.provisional ? "date parțiale sau provizorii" : "an acoperit parțial"}: ${part.note}` : ""} · click → achizițiile anului`,
             )}
           >
-            <div className="cv">{display(p)}</div>
+            <div className={`cv${off(labels.value.has(i), "ts-off")}${off(labels.valuePhone.has(i), "ts-off-sm")}`}>{display(p)}</div>
             <div
               className={p.year === peak.year ? "bar peak" : "bar"}
               style={{ height: `${Math.max(2, (metric(p) / max) * 100)}%` }}
             />
-            <div className="cl">{part ? `${p.year}*` : p.year}</div>
+            <div className={`cl${off(labels.yearPhone.has(i), "ts-off-sm")}`}>{part ? `${p.year}*` : p.year}</div>
           </a>
           );
         })}

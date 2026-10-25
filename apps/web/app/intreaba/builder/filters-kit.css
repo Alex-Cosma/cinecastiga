@@ -80,6 +80,9 @@
 .fk-sentence{margin:0 0 18px;font-family:var(--display);font-weight:500;font-size:clamp(24px,2.5vw,34px);line-height:1.75;letter-spacing:-.9px;color:var(--ink);text-wrap:pretty;overflow-wrap:anywhere}
 .fk-phrase{position:relative;display:inline-flex;align-items:baseline;max-width:100%;border:0;border-bottom:1px dashed var(--fk-phrase-line);border-radius:4px 4px 0 0;background:var(--fk-phrase-bg);color:var(--fk-green);font:inherit;letter-spacing:inherit;line-height:1.35;padding:.06em .15em .04em;transition:background 140ms}
 .fk-phrase>span{min-width:0;overflow-wrap:anywhere}
+/* A phrase glued to the punctuation after it (Sentence.tsx, .fk-nowrap) still wraps inside: a long name
+   ("SELGROS CASH&CARRY SRL" at 320 px) breaks within the phrase and leaves room for its "?" or ",". */
+.fk-nowrap>.fk-phrase{white-space:normal;max-width:calc(100% - .6em)}
 .fk-phrase:hover,.fk-phrase.is-hover{background:var(--fk-phrase-hover);border-bottom-color:var(--fk-green)}
 .fk-phrase[aria-expanded="true"]{background:var(--fk-phrase-hover);border-bottom:2px solid var(--fk-green)}
 .fk-phrase--fixed,.fk-phrase--fixed:hover{background:none;border-bottom:1px dotted var(--line2);color:var(--ink2);cursor:default}

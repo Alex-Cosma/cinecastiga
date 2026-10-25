@@ -32,3 +32,6 @@ next-env.d.ts
 
 # Isolated contract-reporting verification build
 /.next-reporting-review/
+
+# Isolated preview of the Ask filters' browser checks (plan filtre §6.3)
+/.next-preview/

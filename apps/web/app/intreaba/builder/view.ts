@@ -19,7 +19,8 @@ import type { UnderChipItem } from "./UnderChips";
  * the windows (BuilderWindow) open what `windows` names. Every control opens a
  * window keyed here: "s:" a phrase of the sentence, "p:" of the presentation
  * line, "i:" an invitation, "r:" a chip of a condition row, "x:" a collapsed
- * exclusion, "advanced" the "⋯ › Selecție avansată" window (P9).
+ * exclusion, "advanced" the "⋯ › Selecție avansată" window (P9), which an
+ * "a:" chip ("Selecție avansată: …") opens too.
  */
 
 /** A window the builder can open: the registry's place (its filter, picker and what it also writes), its title (R10) and name. */
@@ -145,6 +146,8 @@ export function builderView(input: QuestionSpec, labels: ConditionLabels = {}, c
     const id = `a:${condition.key}`;
     under.push({ kind: "only", id, label: condition.label, name: condition.label });
     removals[id] = { kind: "advanced", key: condition.key };
+    // The chip opens "Selecție avansată", where its condition is edited (it read as a window and opened nothing).
+    if (advanced.length) windows[id] = { key: id, slot: advanced[0]!, title: "Selecție avansată", name: condition.label };
   }
   const origin = described.population?.origin;
   if (spec.population && !origin && !refused.some((c) => c.key === "population")) {

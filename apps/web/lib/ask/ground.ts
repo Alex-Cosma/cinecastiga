@@ -5,6 +5,7 @@ import { readLocalAuthorityIds, sectorUnit } from "../peer-population";
 import { onrcBirthYear } from "../format";
 import { retiredText, type RetiredTerm } from "./retired-terms";
 import { cpvTermParts } from "./cpv-terms";
+import { readableCpvName } from "../entity-summary";
 
 /**
  * Grounding: turn the spec's free-text fields (cpvTerm, authorityName,
@@ -196,6 +197,9 @@ export function pickContainedSynonyms(folded: string, candidates: SynonymRow[]):
     .sort((a, b) => a.term.localeCompare(b.term) || a.cpv_prefix.localeCompare(b.cpv_prefix));
 }
 
+/** A catalogue entry as the answer names it: "Lucrări de construcții (45000000-7)", with ș/ț (the catalogue stores ş/ţ). */
+export const catalogName = (row: { code: string; name_ro: string | null }) => `${readableCpvName(row.name_ro ?? "?")} (${row.code})`;
+
 /** Catalogue names of CPV prefixes, the shortest code under each ("Lucrări de drumuri (45233140-2)"). */
 async function prefixNames(sql: DbSql, prefixes: string[]): Promise<string[]> {
   if (!prefixes.length) return [];
@@ -205,7 +209,7 @@ async function prefixNames(sql: DbSql, prefixes: string[]): Promise<string[]> {
     join core.cpv_codes c on c.code like p.pref || '%'
     order by p.pref, length(c.code), c.code
   `) as unknown as { code: string; name_ro: string | null }[];
-  return rows.map((n) => `${n.name_ro ?? "?"} (${n.code})`);
+  return rows.map(catalogName);
 }
 
 /**
@@ -251,7 +255,7 @@ async function groundCpv(sql: DbSql, term: string): Promise<CpvGrounding> {
         prefixes: [pref],
         matchedNames: names
           .slice(0, 1)
-          .map((n) => `${n.name_ro ?? "?"} (${n.code})`),
+          .map(catalogName),
         method: "code",
       };
     }
@@ -300,10 +304,10 @@ async function groundCpv(sql: DbSql, term: string): Promise<CpvGrounding> {
     return {
       term,
       prefixes,
-      matchedNames: names.map((n) => `${n.name_ro ?? "?"} (${n.code})`),
+      matchedNames: names.map(catalogName),
       method: "synonym",
       notes,
-      ...(excludePrefixes.length ? { excludePrefixes, excludedNames: excluded.map((n) => `${n.name_ro ?? "?"} (${n.code})`) } : {}),
+      ...(excludePrefixes.length ? { excludePrefixes, excludedNames: excluded.map(catalogName) } : {}),
     };
   }
 
@@ -324,7 +328,7 @@ async function groundCpv(sql: DbSql, term: string): Promise<CpvGrounding> {
       term,
       // subtree match: strip check digit + trailing zeros (CPV hierarchy stem)
       prefixes: [...new Set(kept.map((f) => cpvSubtreePrefix(f.code)))],
-      matchedNames: kept.map((f) => `${f.name_ro ?? "?"} (${f.code})`),
+      matchedNames: kept.map(catalogName),
       method: "fuzzy",
     };
   }

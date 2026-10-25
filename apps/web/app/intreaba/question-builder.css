@@ -291,4 +291,6 @@
   .qb-actions .cq-save-question { min-width: 0; padding: 10px 8px; font-size: 13px; gap: 6px; }
   .qb-actions .qb-apply { padding: 10px 8px; gap: 6px; font-size: 13px; }
   .qb-minimum input, .qb-minimum button { min-height: 44px; }
+  /* «Selecție avansată»: the precise-selection editor draws its controls at 40–42 px (query-recipes.css, loaded later). */
+  .fk-pop .qp-body :is(button, input, select), .fk-pop .qb-minimum :is(input, button) { min-height: 44px; }
 }

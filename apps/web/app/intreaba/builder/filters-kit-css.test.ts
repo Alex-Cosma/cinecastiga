@@ -61,6 +61,12 @@ describe("filter kit styles", () => {
     expect(css).toMatch(/\.fk-sw-l\{[^}]*white-space:nowrap/); // a channel's swatch never wraps away from its word
   });
 
+  it("lets a phrase glued to its punctuation wrap inside, leaving room for the mark (F1b-tests: a long name at 320 px)", () => {
+    // white-space inherits: without this a name in .fk-nowrap ran past the sentence and the page clipped it.
+    expect(css).toContain(".fk-nowrap>.fk-phrase{white-space:normal;max-width:calc(100% - .6em)}");
+    expect(css).toMatch(/\.fk-phrase>span\{[^}]*overflow-wrap:anywhere/);
+  });
+
   it("keeps clear of today's builder classes and honours reduced motion", () => {
     expect(uncommented).not.toMatch(/\.qb-/);
     expect(css).toContain("@media (prefers-reduced-motion:reduce){.fk *{transition:none!important;animation:none!important}}");

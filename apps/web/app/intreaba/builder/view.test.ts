@@ -134,6 +134,31 @@ describe("the builder's view of a draft (P1, P2, P4, P5, P9)", () => {
     expect(builderView(SEVEN.table!).windows.advanced?.title).toBe("Selecție avansată");
   });
 
+  it("opens a window from every chip under the sentence drawn as an opener, «Selecție avansată: …» included (F1b-tests)", async () => {
+    // The browser check found «Selecție avansată: firme cu cel puțin 5 înregistrări în selecție» drawn with ▾ and opening nothing.
+    const { legacyCorpus } = await import("../../../lib/ask/fixtures/legacy-corpus");
+    const { FIXTURE_IDENTITIES } = await import("../../../lib/ask/fixtures/golden-fixture");
+    const { restoreLink } = await import("../../../lib/ask/filters/restore");
+    let openers = 0;
+    for (const entry of legacyCorpus(FIXTURE_IDENTITIES)) {
+      const restored = restoreLink(entry.spec);
+      if (restored.kind !== "draft") continue;
+      const view = builderView(restored.spec);
+      for (const item of view.under) {
+        const opener = item.kind === "only" || item.kind === "auto" || (item.kind === "exclude" && item.collapsed);
+        if (!opener) continue;
+        openers++;
+        const win = view.windows[item.id];
+        expect(win, `${entry.id} ${item.id}`).toBeDefined();
+        if (item.id.startsWith("a:")) expect(windowKind(win!), entry.id).toBe("advanced");
+      }
+    }
+    expect(openers).toBeGreaterThan(0);
+    const leader = builderView({ block: "entity_card", dim: "supplier", measure: "value", rankBy: "value", minimumRecords: { role: "supplier", count: 5 }, filters: {} } as QuestionSpec);
+    expect(leader.under.map((u) => u.id)).toContain("a:minimumRecords");
+    expect(leader.windows["a:minimumRecords"]?.title).toBe("Selecție avansată");
+  });
+
   it("writes a strip change into the draft alone (stripPatch)", () => {
     const draft = q({ block: "breakdown", filters: { yearFrom: 2023, yearTo: 2025 } });
     expect(patchDraft(draft, { path: "dataset", value: "da" })).toEqual({ ...draft, dataset: "da", filters: draft.filters });
