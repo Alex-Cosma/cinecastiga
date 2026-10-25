@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
-  alignAnswerVersions, ANSWER_VERSIONS, answerCore, answerVersion, canonicalJson, isFirstAnswerVersion, KEY_VERSION_NOTES, KEY_VERSIONS, readAnswerVersion,
-  sameAnswerCore, sameAnswerVersion,
+  alignAnswerVersions, ANSWER_VERSIONS, answerCore, answerVersion, canonicalJson, isFirstAnswerVersion, KEY_VERSION_NOTES, KEY_VERSIONS, keyVersionNotes,
+  readAnswerVersion, sameAnswerCore, sameAnswerVersion,
 } from "./answer-core";
 import { FILTERS } from "./filters/registry";
 import { SCOPE_CHANGES } from "./filters/today";
@@ -45,7 +45,23 @@ describe("the key versions of this release", () => {
     expect(answerVersion(stat)).toEqual({ question: "stat-1", conditions: {} });
     // A newer value of the key (F5's local_admin) is refused before it runs: no D1 version.
     expect(answerVersion({ ...hospitals, filters: { authorityKind: "local_admin" } })).toEqual({ question: "stat-1", conditions: {} });
+    // Only the kinds D1 corrected: schools and county councils keep their institutions and records.
+    for (const kind of ["comuna", "oras_municipiu", "spital"] as const)
+      expect([kind, answerVersion({ ...hospitals, filters: { authorityKind: kind } }).conditions]).toEqual([kind, { kind: "kind-2" }]);
+    for (const kind of ["scoala", "consiliu_judetean"] as const)
+      expect([kind, answerVersion({ ...hospitals, filters: { authorityKind: kind } }).conditions]).toEqual([kind, {}]);
     expect(KEY_VERSION_NOTES["kind-2"]).toBe("Tipul instituției a fost corectat (primăriile din registrul localităților, spitalele cu institutele clinice).");
+  });
+
+  it("give a restored question the note of each key version it carries («Ce se schimbă»)", () => {
+    Object.assign(KEY_VERSIONS, DECLARED);
+    expect(keyVersionNotes(hospitals)).toEqual([KEY_VERSION_NOTES["kind-2"]]);
+    expect(keyVersionNotes({ block: "table", dim: "authority", measure: "value", topN: 10, filters: { authorityKind: "comuna", county: "Ilfov" } })).toEqual([KEY_VERSION_NOTES["kind-2"]]);
+    expect(keyVersionNotes({ ...hospitals, filters: { authorityKind: "scoala" } })).toEqual([]);
+    expect(keyVersionNotes(stat)).toEqual([]);
+    // A version without a note says nothing.
+    bumpEmployees();
+    expect(keyVersionNotes(smallFirms)).toEqual([]);
   });
 });
 
