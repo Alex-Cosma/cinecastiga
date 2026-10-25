@@ -1,7 +1,8 @@
-import type { AuthorityKind } from "../ask/spec";
+import type { AuthorityKind, Block } from "../ask/spec";
 import { retiredTerm } from "../ask/retired-terms";
 import { lev } from "../ask/intent";
 import { placeKey } from "./places";
+import { LENS_PHRASES } from "./lens-phrases";
 import { NUMBER_WORDS, STOPWORDS, fold, personPatterns, rawSpan, stems, tokenize, wordMatches, type Token } from "./text";
 import type {
   CpvHit, EntityHit, EntityMatch, IntentKind, InterpretContext, Interpretation, PersonHit, PersonMatch,
@@ -61,6 +62,21 @@ class Cursor {
   first(re: RegExp): Hit | null {
     return this.all(re)[0] ?? null;
   }
+  /** Every match of `re` whose tokens are free or already read with one of `tags` (a lens over the cues, plan §2.7). */
+  over(re: RegExp, tags: readonly Tag[]): Hit[] {
+    const g = new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
+    const out: Hit[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = g.exec(this.s))) {
+      if (m[0].length === 0) { g.lastIndex++; continue; }
+      const i = this.tokenAt(m.index);
+      const j = this.tokenAt(m.index + m[0].length - 1) + 1;
+      let ok = i < j;
+      for (let k = i; ok && k < j; k++) ok = this.used[k] === null || tags.includes(this.used[k]!);
+      if (ok) out.push({ i, j, m });
+    }
+    return out;
+  }
   isFree(i: number, j: number): boolean {
     for (let k = i; k < j; k++) if (this.used[k]) return false;
     return i < j;
@@ -83,9 +99,10 @@ const KIND_NOUNS = "spitale|spitalele|scoli|scolile|licee|liceele|comune|comunel
 
 /** Ordered: the more specific phrase first, so it consumes the shared words. */
 const INTENT_CUES: [IntentKind, RegExp][] = [
-  ["compare", /\b(?:compara\w*|comparati[ea]|comparat\w*|fata de|versus|vs)\b/],
+  // "față de" before a year is the period of a change ("în 2025 față de 2024"), not a comparison of two entities.
+  ["compare", /\b(?:compara\w*|comparati[ea]|comparat\w*|fata de(?!\s+(?:anul\s+)?20[0-3]\d)|versus|vs)\b/],
   ["signals", /\b(?:ce merita verificat\w*|merita verificat\w*|ce merita|de verificat|semnal(?:e|ele|ul)?|suspect\w*|risc(?:ul|uri|ului)?|riscant\w*|neregul\w*|dubio\w*|coruptie|corupt\w*|frauda|fraude|ciudat\w*|anomali\w*|ies din tipar|iese din tipar|indice(?:le|lui)? de risc)\b/],
-  ["trend", /\b(?:cum (?:a|au|s a|s au) (?:evoluat|crescut|scazut|schimbat)|evolut\w*|evolueaza|in timp|pe ani|an de an|de la an la an|an cu an|(?:a|au) crescut|(?:a|au) scazut|crestere\w*|scadere\w*|tendint\w*|cum se schimba|istoricul|dinamica)\b/],
+  ["trend", /\b(?:cum (?:a|au|s a|s au) (?:evoluat|crescut|scazut|schimbat)|evolut\w*|evolueaza|in timp|pe ani|an de an|de la an la an|an cu an|(?:a|au) crescut|(?:a|au) scazut|crestere\w*|scadere\w*|tendint\w*|cum se schimba|istoricul|dinamica|cresc|scad|(?:a|au) aparut|(?:a|au) disparut|(?:a|au) iesit(?! din tipar)|nu mai (?:apar|apare|castiga|cumpara|lucreaza))\b/],
   ["ranking_suppliers", /\b(?:de la cine(?: (?:cumpara\w*|a cumparat|au cumparat|ia|iau|achizitioneaza))?|cine (?:castiga|a castigat|au castigat|castigat|face|a facut|fac|au facut|livreaza|a livrat|furnizeaza|vinde|vand|ia|primeste|a primit|executa|a executat|lucreaza|repara|construieste|a construit|asfalteaza|presteaza|asigura|se ocupa)|(?:ce|care) (?:firm\w*|companii\w*|societati\w*|furnizori\w*)|firm(?:e|ele|elor)|furnizor(?:i|ii|ilor)|castigator(?:i|ii|ilor)|antreprenor(?:i|ii)|constructor(?:i|ii)|companii(?:le)?|societati(?:le)?)\b/],
   ["ranking_authorities", new RegExp(`\\b(?:cine (?:cumpara|cheltuie\\w*|plateste|comanda|a cumparat|au cumparat|achizitioneaza|a cheltuit|au cheltuit|da (?:bani|contracte))|(?:ce|care) (?:institutii|autoritati|cumparatori)|(?:ce|care)(?= (?:${KIND_NOUNS})\\b)|institutii(?:le|lor)?|autoritati(?:le|lor)?|autoritatile contractante|cumparator(?:i|ii|ilor))\\b`)],
   ["breakdown", /\b(?:pe ce(?: (?:se )?(?:cheltuie\w*|duc banii|merg banii|dau banii|da banii|au cheltuit|a cheltuit))?|la ce(?: (?:se )?(?:cheltuie\w*|folosesc|duc banii))?|unde se duc banii|unde merg banii|ce (?:cumpara|a cumparat|au cumparat|achizitioneaza|a achizitionat|cheltuie\w*)|pe ce domenii|categorii(?:le)?|domenii(?:le)?|structura)\b/],
@@ -259,7 +276,7 @@ function emptyInterpretation(text: string, id: string): Interpretation {
     subjects: [], place: null, placeAlternatives: [], placeAmbiguous: false, authorityKind: null,
     authority: null, supplier: null, entityAlternatives: [], choicesPartial: null, compareWith: null, person: null, personAlternatives: [],
     period: null, dataset: null, singleBidder: false, measure: null, topN: null, superlative: false,
-    employees: null, leftover: [], confidence: 0, confidenceLabel: "none", notes: [], placeNote: null,
+    employees: null, lenses: [], leftover: [], confidence: 0, confidenceLabel: "none", notes: [], placeNote: null,
     compareChoices: [], askedTownHalls: false,
   };
 }
@@ -285,6 +302,7 @@ export class RulesInterpreter implements QuestionInterpreter {
     await this.fiscalCodes(c, out);
     await this.people(c, out);
     const cues = this.cues(c, out);
+    this.lenses(c, out);
     this.kinds(c, out);
     const compareCue = cues.find((x) => x.intent === "compare")?.at ?? null;
     await this.institutions(c, out, compareCue !== null);
@@ -327,6 +345,8 @@ export class RulesInterpreter implements QuestionInterpreter {
     const rules: [RegExp, (m: RegExpExecArray) => [number | undefined, number | undefined]][] = [
       [new RegExp(`\\b(?:(?:intre|din|de la|in perioada)\\s+)?(?:anii\\s+|anul\\s+)?${YR}\\s+(?:si|pana in|pana la|pina in|pina la|la|spre)\\s+(?:anul\\s+)?${YR}\\b`), (m) => [Number(m[1]), Number(m[2])]],
       [new RegExp(`\\b(?:(?:in|pe|din)\\s+)?(?:anii\\s+)?${YR}\\s+${YR}\\b`), (m) => [Number(m[1]), Number(m[2])]],
+      // "în 2025 față de 2024": the two years of a change, the earlier first.
+      [new RegExp(`\\b(?:(?:in|pe|din)\\s+)?(?:anul\\s+)?${YR}\\s+fata\\s+de\\s+(?:anul\\s+)?${YR}\\b`), (m) => [Number(m[1]), Number(m[2])]],
       [new RegExp(`\\b(?:pana|pina)(?:\\s+(?:in|la))?\\s+(?:anul\\s+)?${YR}(?:\\s+inclusiv)?\\b`), (m) => [undefined, Number(m[1])]],
       [new RegExp(`\\binainte de\\s+(?:anul\\s+)?${YR}\\b`), (m) => [undefined, Number(m[1]) - 1]],
       [new RegExp(`\\bdupa\\s+(?:anul\\s+)?${YR}\\b`), (m) => [Number(m[1]) + 1, undefined]],
@@ -424,6 +444,22 @@ export class RulesInterpreter implements QuestionInterpreter {
         out.notes.push("Nu putem restrânge clasamentul doar la primării (primăriile de comună și de oraș sunt tipuri separate); arătăm toate instituțiile. Valoarea pe locuitor se calculează doar pentru primării.");
     }
     return found;
+  }
+
+  /**
+   * The lens phrases of every block (lens-phrases.ts), read after the cues so
+   * they never take a cue's words ("au crescut" stays the trend cue). Their
+   * free words are understood, so they are never a subject, a name or a
+   * leftover; to-spec applies the chosen block's lenses (plan §2.7).
+   */
+  private lenses(c: Cursor, out: Interpretation) {
+    for (const [block, phrases] of Object.entries(LENS_PHRASES) as [Block, NonNullable<(typeof LENS_PHRASES)[Block]>][])
+      for (const phrase of phrases)
+        for (const h of c.over(phrase.re, ["cue", "modifier"])) {
+          for (let k = h.i; k < h.j; k++) if (!c.used[k]) c.used[k] = "modifier";
+          out.lenses.push({ block, path: phrase.path, value: phrase.value, matched: c.span(h.i, h.j),
+            ...(phrase.quiet ? { quiet: true as const } : {}), ...(phrase.dim ? { dim: phrase.dim } : {}) });
+        }
   }
 
   private kinds(c: Cursor, out: Interpretation) {

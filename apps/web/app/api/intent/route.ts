@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createDb, type DbSql } from "@seap/db";
 import { devlog } from "@/lib/devlog";
 import { MAX_QUESTION_LENGTH, RULES_INTERPRETER_ID } from "@/lib/intent/rules";
-import { interpretQuestion } from "@/lib/intent/server";
+import { intentCacheKey, intentPeriods, interpretQuestion } from "@/lib/intent/server";
 import type { IntentResult } from "@/lib/intent/types";
 
 /**
@@ -13,7 +13,9 @@ import type { IntentResult } from "@/lib/intent/types";
  * is sent to an external service. Bounded: 300 characters, read-only
  * transaction with a statement timeout, a time budget that stops further
  * lookups, small in-process cache keyed on the Romanian calendar date
- * ("anul trecut" changes at midnight in București, not on the server's zone).
+ * ("anul trecut" changes at midnight in București, not on the server's zone)
+ * and on the archive's checkpoint and "complet până la" days, from which a
+ * trend's default years and same months come (intentCacheKey).
  */
 
 const g = globalThis as unknown as { __seapIntentSql?: DbSql; __seapIntentCache?: Map<string, { at: number; body: IntentResult }> };
@@ -43,7 +45,9 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Scrie o întrebare." }, { status: 400 });
   }
   const now = new Date();
-  const key = `${bucharestDate(now)}|${q.toLowerCase()}`;
+  // The archive first (cached per data checkpoint in the process): the key and the interpretation read the same one.
+  const periods = await intentPeriods(db());
+  const key = intentCacheKey(q, bucharestDate(now), periods);
   const cache = (g.__seapIntentCache ??= new Map());
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < CACHE_MS) return respond(hit.body, 0, true);
@@ -52,7 +56,7 @@ export async function GET(req: Request) {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     const body = await Promise.race([
-      interpretQuestion(db(), q, { now, signal: controller.signal }),
+      interpretQuestion(db(), q, { now, signal: controller.signal, periods }),
       new Promise<never>((_, reject) => {
         timer = setTimeout(() => {
           controller.abort();

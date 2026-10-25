@@ -1,7 +1,7 @@
 import {createDb,type DbSql} from '@seap/db';
 import {devlog} from '@/lib/devlog';
 import {ground} from '@/lib/ask/ground';
-import {interpretQuestion} from '@/lib/intent/server';
+import {intentCacheKey,intentPeriods,interpretQuestion} from '@/lib/intent/server';
 import type {IntentResult} from '@/lib/intent/types';
 import {applyInterpretation} from '@/lib/topic-search/interpretation';
 import {resolvePlace} from '@/lib/topic-search/server';
@@ -22,11 +22,13 @@ const CACHE_MAX=300,CACHE_MS=10*60*1000,TIME_BUDGET_MS=3000;
 const bucharestDate=(now:Date)=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Bucharest',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
 
 async function interpret(q:string,now:Date):Promise<IntentResult>{
- const key=`${bucharestDate(now)}|${q.toLowerCase()}`,cache=(g.__seapTopicIntentCache??=new Map()),hit=cache.get(key);
+ // The archive's checkpoint and complete days are in the key, as in /api/intent (a trend's years follow them).
+ const periods=await intentPeriods(db());
+ const key=intentCacheKey(q,bucharestDate(now),periods),cache=(g.__seapTopicIntentCache??=new Map()),hit=cache.get(key);
  if(hit&&Date.now()-hit.at<CACHE_MS)return hit.body;
  const controller=new AbortController();let timer:ReturnType<typeof setTimeout>|undefined;
  try{
-  const body=await Promise.race([interpretQuestion(db(),q,{now,signal:controller.signal}),new Promise<never>((_,reject)=>{timer=setTimeout(()=>{controller.abort();reject(Error('intent-timeout'));},TIME_BUDGET_MS);})]);
+  const body=await Promise.race([interpretQuestion(db(),q,{now,signal:controller.signal,periods}),new Promise<never>((_,reject)=>{timer=setTimeout(()=>{controller.abort();reject(Error('intent-timeout'));},TIME_BUDGET_MS);})]);
   if(cache.size>=CACHE_MAX)cache.delete(cache.keys().next().value!);
   cache.set(key,{at:Date.now(),body});
   return body;

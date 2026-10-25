@@ -1,8 +1,14 @@
 import { cleanName } from "../format";
 import { joinCpvTerms } from "../ask/cpv-terms";
 import { titleTail } from "../ask/filters/words";
-import { namedKind, validateSpec, type AskFilters, type AskSpec, type AuthorityKind } from "../ask/spec";
+import { IMPLEMENTED_KEYS, namedKind, validateSpec, type AskFilters, type AskSpec, type AuthorityKind, type Block, type Dataset } from "../ask/spec";
+import { defaultTrendYears, monthsLabel, sameMonthsWindow, trendYearsFrom, type CoveragePeriods } from "../ask/months-window";
+import { FILTERS, SPEC_PATH_OWNERS } from "../ask/filters/registry";
+import { filterContext } from "../ask/filters/context";
+import type { FilterSpec, SpecPath } from "../ask/filters/types";
+import { TREND_CHANGE_LABELS } from "../ask/filters/defs/trend";
 import { genitive, hasNamedScope } from "./rules";
+import type { LensMatch } from "./lens-phrases";
 import type { EntityMatch, IntentAlternative, IntentKind, IntentResult, Interpretation, PersonMatch, PlaceMatch, SubjectMatch } from "./types";
 
 /**
@@ -16,6 +22,85 @@ const NOT_IN_LOCALITY: AuthorityKind[] = ["scoala", "spital", "consiliu_judetean
 const PROFILE_DROPPED: (keyof AskFilters)[] = ["cpvTerm", "yearFrom", "yearTo", "monthFrom", "monthTo", "singleBidder", "minEmployees", "maxEmployees", "adminName", "adminPersonKey"];
 
 interface Choice { place?: PlaceMatch | null; person?: PersonMatch | null; entity?: EntityMatch; pair?: { focal: EntityMatch; other: EntityMatch } }
+
+/**
+ * What the server knows besides the words (lib/intent/server.ts): the
+ * archive's periods per channel (coveragePeriods), for a trend's default years
+ * and its same months; and the current year, for the fallback without them.
+ */
+export interface SpecContext { periods?: CoveragePeriods | null; year?: number }
+
+/** "„nu mai apar” nu se aplică la această întrebare; am păstrat restul." (plan §2.7: never silently). */
+export const lensNotApplied = (words: string) => `„${words}” nu se aplică la această întrebare; am păstrat restul.`;
+
+/** The option a lens writes, and the one it needs first: the order in percent ranks growths, the first-time ones are new. */
+const LENS_NEEDS: Partial<Record<SpecPath, { path: SpecPath; value: unknown; note: string }>> = {
+  "trend.order": { path: "trend.change", value: "up", note: "Ordinea în procente există doar la creșteri; am arătat creșterile." },
+  "trend.firstOnly": { path: "trend.change", value: "new", note: "„Prima dată” se referă la firmele noi; am arătat firmele noi." },
+};
+const optionsOf = (raw: Record<string, unknown>, block: string): Record<string, unknown> =>
+  (raw[block] && typeof raw[block] === "object" ? raw[block] : {}) as Record<string, unknown>;
+const readPath = (raw: Record<string, unknown>, path: SpecPath): unknown => {
+  const [head, sub] = path.split(".") as [string, string | undefined];
+  return sub === undefined ? raw[head] : head === "filters" ? (raw.filters as Record<string, unknown>)[sub] : optionsOf(raw, head)[sub];
+};
+
+/**
+ * The lenses of the chosen block, written by their filters (plan §2.7): a key
+ * this release applies on this question (IMPLEMENTED_KEYS, the filter's
+ * engine level on the answer's form) among the values its control offers
+ * here, with what the filter's write implies. BLOCK_FILTERS does not place
+ * the trend's keys yet (the builder of F1b/F2 does), so the engine level
+ * stands for "offered". A lens the question does not offer, two that
+ * contradict each other, or a phrase of another question's table is said,
+ * never applied silently; the words of a cue or a modifier this question
+ * already used (`quiet`) need no note.
+ */
+export function applyLenses(raw: Record<string, unknown>, lenses: readonly LensMatch[], notes: string[]): Record<string, unknown> {
+  const block = raw.block as Block;
+  const own = lenses.filter((l) => l.block === block);
+  const overlaps = (a: LensMatch["matched"], b: LensMatch["matched"]) => a.from < b.to && b.from < a.to;
+  for (const l of lenses)
+    if (l.block !== block && !l.quiet && !own.some((o) => overlaps(o.matched, l.matched))) notes.push(lensNotApplied(l.matched.text));
+  const byPath = new Map<SpecPath, LensMatch[]>();
+  for (const l of own) byPath.set(l.path, [...(byPath.get(l.path) ?? []), l]);
+  let spec = raw as unknown as FilterSpec;
+  const offered = (path: SpecPath, value: unknown, at: FilterSpec): boolean => {
+    const owner = SPEC_PATH_OWNERS[path];
+    if (owner === "question" || !IMPLEMENTED_KEYS.has(path)) return false;
+    const def = FILTERS[owner], ctx = filterContext(at);
+    return def.engine[ctx.form] !== undefined && def.choices(at, ctx).some((choice) => JSON.stringify(choice) === JSON.stringify(value));
+  };
+  const write = (path: SpecPath, value: unknown) => {
+    const owner = SPEC_PATH_OWNERS[path];
+    if (owner !== "question") spec = FILTERS[owner].write(spec, value);
+  };
+  // The keys a lens needs are written first ("procentual" after "au crescut").
+  const paths = [...byPath.keys()].sort((a, b) => Number(Boolean(LENS_NEEDS[a])) - Number(Boolean(LENS_NEEDS[b])));
+  for (const path of paths) {
+    const found = byPath.get(path)!;
+    const words = [...new Set(found.map((l) => l.matched.text))];
+    const values = [...new Set(found.map((l) => JSON.stringify(l.value)))];
+    if (values.length > 1) { notes.push(`„${words.join("” și „")}” nu merg împreună; nu le-am aplicat.`); continue; }
+    const value = found[0]!.value, need = LENS_NEEDS[path];
+    if (need) {
+      const current = readPath(spec as unknown as Record<string, unknown>, need.path);
+      if (current === undefined && offered(need.path, need.value, spec)) { write(need.path, need.value); notes.push(need.note); }
+      else if (current !== need.value) { notes.push(lensNotApplied(words.join("”, „"))); continue; }
+    }
+    if (!offered(path, value, spec)) { if (!found.every((l) => l.quiet)) notes.push(lensNotApplied(words.join("”, „"))); continue; }
+    write(path, value);
+  }
+  return spec as unknown as Record<string, unknown>;
+}
+
+/** The rows a question names: the words ("firme", "instituții"), or a lens that names them ("clienți noi"), or a ranking cue. */
+function trendRows(i: Interpretation): "supplier" | "authority" | null {
+  if (i.dimHint) return i.dimHint;
+  const named = i.lenses.find((l) => l.block === "trend" && l.dim)?.dim;
+  if (named) return named;
+  return i.otherIntents.includes("ranking_suppliers") ? "supplier" : i.otherIntents.includes("ranking_authorities") ? "authority" : null;
+}
 
 /** "parcuri și spații verzi": the labels of every recognised subject, for the sentence. */
 export function subjectsLabel(subjects: Pick<SubjectMatch, "label">[]): string | null {
@@ -71,9 +156,13 @@ function baseFilters(i: Interpretation, choice: Choice, notes: string[]): AskFil
 }
 
 /** Build the spec of one intent. Returns the engine's validation message when impossible. */
-export function specFor(input: Interpretation, intent: IntentKind, choice: Choice = {}): { spec: AskSpec | null; error: string | null; notes: string[] } {
+export function specFor(input: Interpretation, asked: IntentKind, choice: Choice = {}, context: SpecContext = {}): { spec: AskSpec | null; error: string | null; notes: string[] } {
   const i = choice.pair ? { ...input, authority: choice.pair.focal, compareWith: choice.pair.other, place: null }
     : choice.entity ? { ...input, [choice.entity.role]: choice.entity } : input;
+  // "Ce firme noi apar în 2025, față de 2024?": a ranking with two years and a trend's group in words is a trend.
+  const years = i.period?.yearFrom !== undefined && i.period.yearTo !== undefined && i.period.yearFrom !== i.period.yearTo;
+  const intent: IntentKind = (asked === "ranking_suppliers" || asked === "ranking_authorities") && years
+    && i.lenses.some((l) => l.block === "trend" && l.path === "trend.change" && !l.quiet) ? "trend" : asked;
   const notes: string[] = [];
   const f = baseFilters(i, choice, notes);
   const raw: Record<string, unknown> = { block: "table", measure: i.measure === "count" ? "count" : "value", filters: f };
@@ -133,12 +222,33 @@ export function specFor(input: Interpretation, intent: IntentKind, choice: Choic
       break;
     case "trend": {
       const twoYears = f.yearFrom !== undefined && f.yearTo !== undefined && f.yearFrom !== f.yearTo;
-      if (twoYears && i.dimHint) {
+      // The block on the years as written (two years and the rows), or a group named in words ("au crescut",
+      // "firme noi", "nu mai apar"): "Cum au evoluat … în 2025?" stays an evolution (plan §2.7).
+      const rows = trendRows(i);
+      const group = i.lenses.some((l) => l.block === "trend" && l.path === "trend.change");
+      if (rows && (twoYears && i.dimHint || group)) {
         raw.block = "trend";
-        raw.dim = i.dimHint === "supplier" && !(f.supplierName || f.supplierId) ? "supplier" : "authority";
+        raw.dim = rows === "supplier" && !(f.supplierName || f.supplierId) ? "supplier" : "authority";
         if (raw.dim === "authority") localityToCounty(townHallOnly("schimbarea pe instituții"));
         raw.topN = i.topN ?? 10;
         raw.measure = "value";
+        if (!twoYears) {
+          // Only once the question is a trend: one year Y is Y − 1 → Y; none, the default years of the archive.
+          const dataset = (raw.dataset ?? "all") as Dataset;
+          const year = f.yearTo ?? f.yearFrom;
+          const fallback = context.year ? { yearFrom: context.year - 2, yearTo: context.year - 1 } : null;
+          const years = trendYearsFrom({ yearFrom: f.yearFrom, yearTo: f.yearTo }, defaultTrendYears(context.periods ?? null, dataset) ?? fallback);
+          if (!years) return { spec: null, error: "Spune ce ani compari, de exemplu „între 2024 și 2025”.", notes };
+          f.yearFrom = years.yearFrom; f.yearTo = years.yearTo;
+          notes.push(year === undefined ? `Am comparat ${years.yearTo} cu ${years.yearFrom}: ultimul an încheiat cu cel dinainte.`
+            : year === years.yearTo ? `Am comparat ${year} cu anul dinainte.` : `Am comparat ${years.yearTo} cu ${years.yearFrom}: ${year} nu are un an complet înainte în date.`);
+        }
+        // A later year the data does not hold whole: its complete months in both years (trend final §3.3).
+        const window = context.periods && f.yearTo !== undefined ? sameMonthsWindow(context.periods, (raw.dataset ?? "all") as Dataset, f.yearTo, "auto") : null;
+        if (window && !("error" in window) && (window.from !== 1 || window.to !== 12)) {
+          raw.trend = { ...optionsOf(raw, "trend"), months: "auto" };
+          notes.push(`${f.yearTo} nu e încă încheiat: am comparat aceleași luni din ambii ani (${monthsLabel(window)}).`);
+        }
       } else {
         raw.block = "timeseries";
         if (raw.measure === "value_per_capita") raw.measure = "value";
@@ -177,7 +287,7 @@ export function specFor(input: Interpretation, intent: IntentKind, choice: Choic
       break;
     }
   }
-  const valid = validateSpec(raw);
+  const valid = validateSpec(applyLenses(raw, i.lenses, notes));
   if ("error" in valid) return { spec: null, error: valid.error, notes };
   return { spec: valid, error: null, notes };
 }
@@ -267,9 +377,25 @@ export function sentenceFor(spec: AskSpec, labels: SentenceLabels = {}): string 
       return `Cum au evoluat de la an la an achizițiile${subj} făcute de ${buyers(f)}${fromSupplier}${admin}, ${when}${tail}?`;
     case "trend": {
       const filtered = Boolean(f.authorityName || f.uatSiruta || f.county || f.authorityKind);
+      const t = spec.trend ?? {}, a = f.yearFrom ?? "…", b = f.yearTo ?? "…";
+      // The group and the months in words (trend final §1): "Ce firme noi apar …, față de 2024?", "… pe aceleași luni".
+      const months = t.months === "auto" ? ", pe aceleași luni" : Array.isArray(t.months) ? `, pe ${monthsLabel({ from: t.months[0], to: t.months[1] })}` : "";
+      const from = spec.dim === "supplier" ? `${subj}${filtered ? ` de la ${buyers(f)}` : ""}` : `${subj}${fromSupplier}`;
+      const who = spec.dim === "supplier" ? "firme" : `${dimNoun}${spec.dim === "county" ? "" : wherePlain(f)}`;
+      if (t.change === "new")
+        return t.firstOnly
+          ? `Ce ${who} apar pentru prima dată în achizițiile${from} din ${b}, față de ${a}${months}${tail}?`
+          : `Ce ${who.replace(/^(firme|instituții|județe)/, "$1 noi")} apar în achizițiile${from} din ${b}, față de ${a}${months}${tail}?`;
+      if (t.change === "gone") return `Ce ${who} din ${a} nu mai apar în achizițiile${from} din ${b}${months}${tail}?`;
+      if (t.change === "up" || t.change === "down") {
+        const change = `${t.change === "up" ? "creștere" : "scădere"}${t.order === "percent" ? " în procente" : ""}`;
+        return spec.dim === "supplier"
+          ? `Ce firme au cea mai mare ${change} a valorii câștigate${from} între ${a} și ${b}${months}${tail}?`
+          : `Ce ${who} au cea mai mare ${change} a achizițiilor${from} între ${a} și ${b}${months}${tail}?`;
+      }
       return spec.dim === "supplier"
-        ? `Ce firme au cea mai mare schimbare a valorii contractelor${subj}${filtered ? ` de la ${buyers(f)}` : ""} între ${f.yearFrom ?? "…"} și ${f.yearTo ?? "…"}${tail}?`
-        : `Ce ${dimNoun}${spec.dim === "county" ? "" : wherePlain(f)} au cea mai mare schimbare a achizițiilor${subj}${fromSupplier} între ${f.yearFrom ?? "…"} și ${f.yearTo ?? "…"}${tail}?`;
+        ? `Ce firme au cea mai mare schimbare a valorii contractelor${from} între ${a} și ${b}${months}${tail}?`
+        : `Ce ${who} au cea mai mare schimbare a achizițiilor${from} între ${a} și ${b}${months}${tail}?`;
     }
     case "compare":
       return f.supplierName
@@ -324,8 +450,8 @@ function specKey(spec: AskSpec): string {
   return JSON.stringify(spec);
 }
 
-/** Assemble the API answer: spec, sentence and ready alternatives. */
-export function resultFor(i: Interpretation): IntentResult {
+/** Assemble the API answer: spec, sentence and ready alternatives. `context`: the archive's periods, for a trend's years and months. */
+export function resultFor(i: Interpretation, context: SpecContext = {}): IntentResult {
   const labels: SentenceLabels = { subject: subjectsLabel(i.subjects), ...(i.askedTownHalls && !i.authorityKind && i.measure !== "value_per_capita" ? { allInstitutions: true } : {}) };
   const notes = [...i.notes];
   let spec: AskSpec | null = null;
@@ -352,7 +478,7 @@ export function resultFor(i: Interpretation): IntentResult {
         ? "Confirmă persoana: am căutat numele așa cum l-ai scris."
         : "Alege persoana la care te gândești; în Registrul Comerțului sunt mai multe cu același nume.";
   } else if (i.intent) {
-    const built = specFor(i, i.intent);
+    const built = specFor(i, i.intent, {}, context);
     spec = built.spec;
     notes.push(...built.notes);
     if (!spec) problem = built.error;
@@ -379,7 +505,7 @@ export function resultFor(i: Interpretation): IntentResult {
     const label = p.kind === "locality" && i.place?.kind === "county" ? `Doar primăria ${genitive(p)}`
       : p.kind === "county" && i.place?.kind === "locality" ? (p.county === "București" ? "Tot Bucureștiul" : `Tot județul ${p.county}`)
       : p.label;
-    const alt = specFor(i, intent, { place: p }).spec;
+    const alt = specFor(i, intent, { place: p }, context).spec;
     // an alternative must keep the scope its label promises (never a silent nationwide answer)
     if (alt && p.kind === "locality" && !alt.filters.uatSiruta) continue;
     if (alt && p.kind === "county" && alt.filters.county !== p.county) continue;
@@ -389,19 +515,19 @@ export function resultFor(i: Interpretation): IntentResult {
     const { matched } = i.subjectChoices;
     for (const o of i.subjectChoices.options) {
       const chosen: Interpretation = { ...i, subjectChoices: null, subjects: [{ term: o.term, label: o.label, cpvName: null, source: /^\d/.test(o.term) ? "catalog" : "synonym", matched }, ...i.subjects] };
-      const alt = specFor(chosen, intent).spec;
+      const alt = specFor(chosen, intent, {}, context).spec;
       if (alt) { alternatives.push({ label: o.label, kind: "subject", spec: alt, sentence: sentenceFor(alt, { ...labels, subject: o.label }) }); seen.add(specKey(alt)); }
     }
   }
-  if (choosing === "pair") for (const pair of i.compareChoices) add(pair.label, "entity", specFor(i, "compare", { pair }).spec);
-  if (choosing === "person") for (const p of i.personAlternatives) add(personDisplay(p), "person", specFor(i, intent, { person: p }).spec);
+  if (choosing === "pair") for (const pair of i.compareChoices) add(pair.label, "entity", specFor(i, "compare", { pair }, context).spec);
+  if (choosing === "person") for (const p of i.personAlternatives) add(personDisplay(p), "person", specFor(i, intent, { person: p }, context).spec);
   // a number that is both a fiscal code and a CPV code: the firm or institution is a choice too
   if (choosing === "entity" || (choosing === "subject" && i.entityAlternatives.length && !i.supplier && !i.authority)) {
     const base = (e: EntityMatch) => `${cleanName(e.name)}${e.county && !/^(na|necunoscut)$/i.test(e.county) ? ` (${e.county})` : ""}`;
     const counts = new Map<string, number>();
     for (const e of i.entityAlternatives) counts.set(base(e), (counts.get(base(e)) ?? 0) + 1);
     // same name and county: the registry id is the only honest difference
-    for (const e of i.entityAlternatives) add(`${base(e)}${(counts.get(base(e)) ?? 0) > 1 && e.id ? ` · ID ${e.id}` : ""}`, "entity", specFor(i, intent, { entity: e }).spec);
+    for (const e of i.entityAlternatives) add(`${base(e)}${(counts.get(base(e)) ?? 0) > 1 && e.id ? ` · ID ${e.id}` : ""}`, "entity", specFor(i, intent, { entity: e }, context).spec);
   }
   if (spec && i.intent) {
     const follow = [...i.otherIntents, ...FOLLOW_UPS[i.intent]].filter((k) => k !== i.intent && k !== "compare");
@@ -409,7 +535,7 @@ export function resultFor(i: Interpretation): IntentResult {
     for (const k of [...new Set(follow)]) {
       if (n >= 3) break;
       const before = alternatives.length;
-      add(INTENT_LABEL[k], "intent", specFor(i, k).spec);
+      add(INTENT_LABEL[k], "intent", specFor(i, k, {}, context).spec);
       if (alternatives.length > before) n++;
     }
   }
