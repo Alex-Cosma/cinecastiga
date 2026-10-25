@@ -119,6 +119,9 @@ describe("the kind of a town hall from the locality registry", () => {
     expect(classifyAuthority(row("Spitalul Orasenesc Baneasa", "Constanta", 61069), REGISTRY)).toBe("spital");
     // Without a county, no code corroborates.
     expect(townHallKind(row("MUNICIPIUL CLUJ-NAPOCA", null, 54975), REGISTRY)).toBeNull();
+    // Without a valid CUI neither (the locality scope reads only valid CUIs): the name rules decide.
+    expect(townHallKind(row("PRIMARIA   ARSURA", "Vaslui", 162149, null), REGISTRY)).toBeNull();
+    expect(classifyAuthority(row("PRIMARIA   ARSURA", "Vaslui", 162149, null), REGISTRY)).toBe("oras_municipiu");
   });
 
   it("matches a town hall without a code by its exact name and county, and the six sector town halls", () => {
@@ -127,6 +130,13 @@ describe("the kind of a town hall from the locality registry", () => {
     expect(classifyAuthority(row("Primaria Municipiului Bucuresti", "Bucuresti"), REGISTRY)).toBe("oras_municipiu");
     // The strict join needs a valid CUI; without one the name rules decide.
     expect(townHallKind(row("Primăria Ghimpați", "Giurgiu", null, null), REGISTRY)).toBeNull();
+    // A trailing bare county name, which the population join keeps, is tried once without it (3 communes locally).
+    expect(classifyAuthority(row("Primaria Ghimpati Giurgiu", "Giurgiu"), REGISTRY)).toBe("comuna");
+    expect(classifyAuthority(row("PRIMARIA GHIMPATI GIURGIU", "Giurgiu"), REGISTRY)).toBe("comuna");
+    // Only the institution's own county, and only when the full name finds nothing.
+    expect(townHallKind(row("Primaria Ghimpati Giurgiu", "Teleorman"), REGISTRY)).toBeNull();
+    expect(townHallKind(row("Primaria Ghimpati Teleorman", "Giurgiu"), REGISTRY)).toBeNull();
+    expect(townHallKind(row("Primaria Municipiului Cluj-Napoca Cluj", "Cluj"), REGISTRY)).toBe("oras_municipiu");
     expect(classifyAuthority(row("Sectorul 2 al Municipiului Bucuresti", "Bucuresti", -2), REGISTRY)).toBe("oras_municipiu");
     expect(classifyAuthority(row("SECTOR 4 (PRIMARIA SECTORULUI 4 BUCURESTI)", "Bucuresti"), REGISTRY)).toBe("oras_municipiu");
     // A sector's institutions are not its town hall.
