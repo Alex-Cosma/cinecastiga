@@ -1,4 +1,5 @@
 import { namedKind, type AskSpec, type AuthorityKind } from "../ask/spec";
+import { saysSameMonths, type SentenceLabels } from "./to-spec";
 
 /**
  * Does a sentence say the scope its spec runs? Used by the tests and the
@@ -14,7 +15,7 @@ const KIND_WORDS: Record<AuthorityKind, RegExp> = {
   consiliu_judetean: /consili/,
 };
 
-export function sentenceScopeProblems(spec: AskSpec, sentence: string): string[] {
+export function sentenceScopeProblems(spec: AskSpec, sentence: string, labels: Pick<SentenceLabels, "periods" | "sameMonthsSaid"> = {}): string[] {
   const out: string[] = [];
   const f = spec.filters;
   const profile = spec.block === "scatter" || spec.block === "distribution" || (spec.block === "entity_card" && spec.rankBy === "risk");
@@ -50,7 +51,8 @@ export function sentenceScopeProblems(spec: AskSpec, sentence: string): string[]
     const group = { up: /cea mai mare creștere/, down: /cea mai mare scădere/, new: t.firstOnly ? /prima dată/ : / noi /, gone: /nu mai apar/, all: /schimbare/ }[t.change ?? "all"];
     if (!group.test(sentence)) out.push(`trend group ${t.change ?? "all"} not in sentence`);
     if (t.order === "percent" && !/în procente/.test(sentence)) out.push("percent order not in sentence");
-    if (t.months === "auto" && !/aceleași luni/.test(sentence)) out.push("same months not in sentence");
+    // `auto` the archive resolves to whole years is whole years: the sentence needs no months.
+    if (saysSameMonths(spec, labels) && !/aceleași luni/.test(sentence)) out.push("same months not in sentence");
   }
   if (profile && f.uatSiruta) out.push("risk profile scoped to one town hall");
   return out;
