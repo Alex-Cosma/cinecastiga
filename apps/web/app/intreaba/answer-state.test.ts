@@ -4,10 +4,12 @@ import type { BlockData } from "../../lib/ask/compile";
 import type { AskSpec } from "../../lib/ask/spec";
 import { answerCsv, leiDifference } from "./answer-csv";
 import {
-  SINGLE_OFFER_STREAM, STRIP_QUERY_KEYS, appliedAfterStrip, appliedAfterTrendList, deeperThread, readThread, shownWords, streamOptions, threadCrumbs, threadHref, threadWords,
+  SINGLE_OFFER_STREAM, STRIP_QUERY_KEYS, answerHoldsList, appliedAfterStrip, appliedAfterTrendList, deeperThread, readThread, shownWords, streamOptions, threadCrumbs, threadHref, threadWords,
   totalConditionWords,
 } from "./answer-state";
-import { patchDraft } from "./builder/view";
+import { patchDraft, trendListSwitch } from "./builder/view";
+import { chooseValue } from "../../lib/ask/filters/transition";
+import { questionKey, type QuestionSpec } from "../../lib/ask/question-ui";
 import { trendFixture, trendGroups, trendSpec } from "../../lib/ask/fixtures/trend-screen";
 
 /*
@@ -123,6 +125,33 @@ describe("a trend's group buttons (TB-screen, owner-R-facts-all-lists)", () => {
     expect(next.filters).toEqual(draft.filters);
     expect(patchDraft(draft as never, { path: "trend", value: "all", trend: null }).trend).toBeUndefined();
     expect(draft.trend).toEqual(answered.trend);
+  });
+
+  it("are one control with the sentence's group: a group the answer holds is switched to, with no request (F2-merge-fixes)", () => {
+    // The builder's window writes the change as the sentence does (chooseValue), on the applied question.
+    const applied = answered as unknown as QuestionSpec;
+    const choose = (draft: QuestionSpec, value: string) => chooseValue(draft, { id: "trendChange" }, { filter: "trendChange", value }).spec;
+    const toNew = choose(applied, "new");
+    expect(trendListSwitch(toNew, applied)).toBe("new");
+    expect(answerHoldsList(trendFixture(), "new")).toBe(true);
+    // AskPanel applies it like the button; the StripPatch then gives the draft the applied `trend`: no „modificat”.
+    const shown = appliedAfterTrendList(answered, answered, "new");
+    const patched = patchDraft(toNew, { path: "trend", value: "new", trend: shown.trend ?? null });
+    expect(questionKey(patched)).toBe(questionKey(shown as unknown as QuestionSpec));
+    // Back to the growths from the sentence: the answered order and base come back with the list.
+    const back = appliedAfterTrendList(shown, answered, trendListSwitch(choose(patched, "up"), patched)!);
+    expect(back.trend).toEqual(answered.trend);
+    // The same group, another key edited too (here the months), or no answer to switch: the draft waits for a run.
+    expect(trendListSwitch(choose(applied, "up"), applied)).toBeNull();
+    const months = { ...applied, trend: { ...answered.trend, months: [1, 5] } } as QuestionSpec;
+    expect(trendListSwitch(choose(months, "new"), applied)).toBeNull();
+    expect(trendListSwitch(toNew, null)).toBeNull();
+    expect(answerHoldsList(trendFixture({ groups: undefined, composition: undefined }), "new")).toBe(false);
+    expect(answerHoldsList(trendFixture({ groups: trendGroups({ gone: undefined }) }), "gone")).toBe(false);
+    // An old link without the key: Creșteri from the sentence is a list the answer holds; Toate gives back the bare link.
+    const old = trendSpec() as unknown as QuestionSpec;
+    expect(trendListSwitch(choose(old, "up"), old)).toBe("up");
+    expect(appliedAfterTrendList(trendSpec({ change: "up" }), trendSpec(), "all")).toEqual(trendSpec());
   });
 
   it("show the server's pills and SQL of the list on screen (variants.trend)", () => {

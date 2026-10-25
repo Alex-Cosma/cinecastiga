@@ -13,7 +13,8 @@ import { monthsLabel } from "../../../lib/ask/months-window";
 import { askLink } from "../../../lib/ask/source-spec";
 import type { QueryPopulation } from "../../../lib/ask/population";
 import type { TrendOptions } from "../../../lib/ask/spec";
-import { KIND_WORDS, cloneQuestion, countyWords, type QuestionSpec } from "../../../lib/ask/question-ui";
+import { specTrendList, type TrendList } from "../../../lib/ask/trend-shared";
+import { KIND_WORDS, cloneQuestion, countyWords, questionKey, type QuestionSpec } from "../../../lib/ask/question-ui";
 import type { SentenceToken as KitToken } from "./kit-types";
 import type { UnderChipItem } from "./UnderChips";
 
@@ -89,6 +90,25 @@ export function patchDraft(draft: QuestionSpec, patch: Pick<StripPatch, "path" |
     else delete next.trend;
   } else next.measure = patch.value;
   return next;
+}
+
+/**
+ * The answer's list a draft asks for when it differs from the applied question
+ * only by its trend's group (the sentence's "Ce fel de schimbare?" chose
+ * another one): the screen switches to it like its button, with no request,
+ * when the answer holds it (AskPanel). The order and its base belong to the
+ * growths' list (trendListSpec) and do not count; the months and every other
+ * key do. Null otherwise: the draft waits for "Actualizează răspunsul".
+ */
+export function trendListSwitch(draft: QuestionSpec, applied: QuestionSpec | null): TrendList | null {
+  if (!applied || draft.block !== "trend" || applied.block !== "trend") return null;
+  const list = specTrendList(draft as { trend?: TrendOptions });
+  if (list === specTrendList(applied as { trend?: TrendOptions })) return null;
+  const rest = (q: QuestionSpec) => {
+    const { change: _change, firstOnly: _first, order: _order, minBase: _base, ...trend } = (q.trend ?? {}) as TrendOptions;
+    return questionKey({ ...q, trend });
+  };
+  return rest(draft) === rest(applied) ? list : null;
 }
 
 /** The registry's slot of a phrase: its filter, picker and what its window also writes (sentence.ts sentenceSlots). */

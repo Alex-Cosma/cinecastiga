@@ -3,6 +3,8 @@
 import { Fragment } from "react";
 import Link from "next/link";
 import type { PartialYear } from "@/lib/ask/compile";
+import { BLOCK_FILTERS } from "@/lib/ask/filters/blocks";
+import type { FilterId } from "@/lib/ask/filters/types";
 import type { AskSpec } from "@/lib/ask/spec";
 import type { TrendList } from "@/lib/ask/trend-shared";
 import { useAnswerEvidence } from "./AnswerEvidence";
@@ -38,16 +40,21 @@ export interface TrendBlockProps {
   conditions?: readonly string[];
   /** Another list of the same answer (no request). */
   onList?: (list: TrendList) => void;
+  /**
+   * The keys BLOCK_FILTERS.trend puts in the strip: the group buttons (trendChange) and „Toate · Prima
+   * dată” (trendFirstOnly), the sentence's group in the answer; without them the answer shows its list.
+   */
+  strip?: readonly FilterId[];
   /** A wider question (a lower base on the growths in percent): a new query. */
   onWider?: (spec: AskSpec) => void;
 }
 
-export default function TrendBlock({ data, spec, partial = [], conditions = [], onList, onWider }: TrendBlockProps) {
+export default function TrendBlock({ data, spec, partial = [], conditions = [], onList, onWider, strip = BLOCK_FILTERS.trend.strip }: TrendBlockProps) {
   const evidence = useAnswerEvidence();
   const { list, rows } = shownTrendList(data, spec);
-  const buttons = trendButtons(data, spec);
+  const buttons = strip.includes("trendChange") ? trendButtons(data, spec) : null;
   const head = compositionHead(data, spec);
-  const first = firstOptions(data, list, spec);
+  const first = strip.includes("trendFirstOnly") ? firstOptions(data, list, spec) : null;
   const noun = trendNounWords(data, spec);
   const shownPartial = partial.filter((p) => p.year === data.yearA || p.year === data.yearB);
   // A partly covered year carries its "*" wherever it labels a sum, in every list (the note under the list says why).

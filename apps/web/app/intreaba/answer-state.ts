@@ -72,6 +72,11 @@ export function appliedAfterTrendList(applied: AskSpec, answered: AskSpec, list:
   return next;
 }
 
+/** A trend answer holds this list with the rest (owner-R-facts-all-lists): its group buttons and the sentence's group switch to it with no request. */
+export function answerHoldsList(data: { block: string; composition?: unknown; groups?: Partial<Record<TrendList, unknown>> } | undefined, list: TrendList): boolean {
+  return data?.block === "trend" && Boolean(data.composition) && data.groups?.[list] !== undefined;
+}
+
 /** The pills and the SQL of the state on screen: the variant of the applied lens or trend list, else the answer's own. */
 export function shownWords(answer: { pills?: string[]; displaySql?: string; variants?: AnswerVariants }, applied: AskSpec): { pills: string[]; displaySql?: string } {
   const variant = applied.block === "trend" ? answer.variants?.trend?.[specTrendList(applied)] : answer.variants?.measure?.[applied.measure];
