@@ -14,12 +14,20 @@ import type { FilterSpec } from "./types";
  * question); the lenses with their own words come with F5 (plan §4.4).
  */
 
+/**
+ * A ranking's order when it is not the value (P5, the presentation line):
+ * a watch, a saved question, the CSV file name and a capture read only the
+ * title, so a per-capita ranking is not named as the value ranking.
+ */
+const ORDER_WORDS: Partial<Record<string, string>> = { count: "după numărul de înregistrări", value_per_capita: "după valoarea pe locuitor" };
+
 /** The title of a question; `labels` names a CPV code ("pentru [lucrări de construcții]"). */
 export function questionTitle(input: QuestionSpec | AskSpec, labels: ConditionLabels = {}): string {
   const spec = input as FilterSpec;
   const text = sentenceText(sentenceTokens(spec, filterContext(spec), { cpvName: labels.cpvName }));
   if (!text) return "Întrebarea ta";
-  const tail = describeConditions(spec, labels).tail;
+  const order = spec.block === "table" ? ORDER_WORDS[String(spec.measure)] : undefined;
+  const tail = [order, describeConditions(spec, labels).tail].filter(Boolean).join(", ");
   return tail ? text.replace(/([?.])$/, `, ${tail}$1`) : text;
 }
 

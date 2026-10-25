@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { seriesLabels } from "./series-labels";
+import { seriesAxis, seriesLabels } from "./series-labels";
 
 /*
  * F1b-tests: the year chart's selective labels (final timeseries §231). The
@@ -42,6 +42,23 @@ describe("the year chart's labels", () => {
       if (count - 1 - peak >= gap) expect(years, `${count}/${peak}`).toContain(count - 1);
       for (let i = 1; i < years.length; i++) expect(years[i]! - years[i - 1]!, `${count}/${peak}`).toBeGreaterThanOrEqual(gap);
     }
+  });
+
+  it("draws the axis from 2018, continuous, with the older years in one row that keeps the total", () => {
+    const p = (year: number, value: number, count = 1) => ({ year, value, count });
+    const series = [p(2000, 5), p(2007, 10, 2), p(2017, 1), p(2018, 100, 10), p(2020, 300, 30), p(2026, 50, 5)];
+    const { bars, before } = seriesAxis(series);
+    expect(bars.map((b) => [b.year, b.value, "empty" in b])).toEqual([
+      [2018, 100, false], [2019, 0, true], [2020, 300, false], [2021, 0, true], [2022, 0, true], [2023, 0, true], [2024, 0, true], [2025, 0, true], [2026, 50, false],
+    ]);
+    expect(before).toEqual({ from: 2000, to: 2017, years: [2000, 2007, 2017], value: 16, count: 4 });
+    // Bars + the row = today's total (plan §4.3 Teste).
+    expect(bars.reduce((n, b) => n + b.value, 0) + before!.value).toBe(series.reduce((n, b) => n + b.value, 0));
+    // An old period entirely before 2018 keeps its own years; one year is one bar.
+    expect(seriesAxis([p(2012, 1), p(2010, 2)]).bars.map((b) => b.year)).toEqual([2010, 2011, 2012]);
+    expect(seriesAxis([p(2012, 1), p(2010, 2)]).before).toBeNull();
+    expect(seriesAxis([p(2025, 7)])).toEqual({ bars: [p(2025, 7)], before: null });
+    expect(seriesAxis([])).toEqual({ bars: [], before: null });
   });
 
   it("hides a label from sight only: it keeps its line and stays in the bar's link text", () => {

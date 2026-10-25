@@ -12,7 +12,7 @@ import { BLOCK_FILTERS } from "@/lib/ask/filters/blocks";
 import { describeConditions } from "@/lib/ask/filters/describe";
 import { restoreLink } from "@/lib/ask/filters/restore";
 import { questionTitle } from "@/lib/ask/filters/title";
-import { entitySourceLink, entitySourceScope, yearSourceLink } from "@/lib/ask/source-spec";
+import { askLink, entitySourceLink, entitySourceScope, yearSourceLink } from "@/lib/ask/source-spec";
 import { questionKey, type QuestionSpec } from "@/lib/ask/question-ui";
 import { ANSWER_ERROR, breakdownLead, countWords, entityNoun, fileSlug, formatShare, isHumanError, rankingRest, rankingShare, shouldAutoRun, type RankingTotals } from "@/lib/ask/answer-text";
 import type { IntentResult } from "@/lib/intent/types";
@@ -34,8 +34,10 @@ import QuestionBuilder, { type StripPatch } from "./QuestionBuilder";
 import SaveQuestionButton from "./SaveQuestionButton";
 import type { SavedQuestion } from "./SavedQuestions";
 import AnswerStrip, { Crumbs, StripEnd, StripLabelled } from "./answer/AnswerStrip";
-import TotalLine from "./answer/TotalLine";
-import { seriesLabels } from "./series-labels";
+import TotalLine, { RECORDED_VALUE } from "./answer/TotalLine";
+import KitLink from "./answer/KitLink";
+import HelpTip from "./builder/HelpTip";
+import { CHART_FIRST_YEAR, seriesAxis, seriesLabels } from "./series-labels";
 import Segmented from "./builder/Segmented";
 import "./builder/filters-kit.css";
 import { answerCsv, type BandState } from "./answer-csv";
@@ -1456,24 +1458,53 @@ function SeriesBlock({
   const t = useTip();
   const evidence = useAnswerEvidence();
   const asCount = (spec as AskSpec).measure === "count";
-  const metric = (p: SeriesPoint) => (asCount ? p.count : p.value);
-  const display = (p: SeriesPoint) =>
+  const metric = (p: { value: number; count: number }) => (asCount ? p.count : p.value);
+  const display = (p: { value: number; count: number }) =>
     asCount ? formatInt(p.count) : formatRon(p.value);
   // year-bar click → same filters, scoped to that year, drill rows opened
   const yearUrl = (year: number | string) =>
     yearSourceLink(spec as AskSpec, Number(year));
   if (series.length === 0) return <p className="ask-empty">Niciun rezultat.</p>;
-  const max = Math.max(...series.map(metric), 1);
-  const peak = series.reduce((a, b) => (metric(b) > metric(a) ? b : a));
-  const shownPartial = partial.filter((x) => series.some((p) => p.year === x.year));
-  const labels = seriesLabels(series.length, series.indexOf(peak));
+  // From 2018, continuous; the older contracts are one row under the chart (display only, final timeseries §4).
+  const { bars, before } = seriesAxis(series);
+  const f = (spec as AskSpec).filters;
+  // One year with data is one number, not a chart of one bar (final timeseries §5.4).
+  if (bars.length === 1 && !before) {
+    const only = bars[0]!;
+    return (
+      <div className="ask-bigstat ask-ts-one">
+        <div className="v">{display(only)}</div>
+        <div className="d">{only.year} · {formatRonFull(only.value)} · {countWords(only.count, "înregistrare", "înregistrări")}</div>
+        {(f.yearFrom || f.yearTo) && (
+          <div className="fk fk-relax">
+            <KitLink className="fk-relax-link" link={{ label: "Toți anii", glyph: "›", href: askLink(withoutPeriod(spec as AskSpec)) }} />
+          </div>
+        )}
+      </div>
+    );
+  }
+  const max = Math.max(...bars.map(metric), 1);
+  const peak = bars.reduce((a, b) => (metric(b) > metric(a) ? b : a));
+  const shownPartial = partial.filter((x) => bars.some((p) => p.year === x.year && !("empty" in p)));
+  const labels = seriesLabels(bars.length, bars.indexOf(peak));
   const off = (on: boolean, className: string) => (on ? "" : ` ${className}`);
+  const yearLabel = (year: number, mark: string) => (
+    <><span className="ts-y">{year}{mark}</span><span className="ts-y-short" aria-hidden="true">’{String(year).slice(2)}{mark}</span></>
+  );
   return (
     <div>
       {t.el}
       <div className="ask-ts">
-        {series.map((p, i) => {
+        {bars.map((p, i) => {
           const part = partial.find((x) => x.year === p.year);
+          if ("empty" in p)
+            return (
+              <div key={p.year} className="col empty" role="img" aria-label={`${p.year}: nicio înregistrare`}>
+                <div className="cv ts-off" aria-hidden="true">0</div>
+                <div className="bar" style={{ height: "0%" }} />
+                <div className={`cl${off(labels.yearPhone.has(i), "ts-off-sm")}`}>{yearLabel(p.year, "")}</div>
+              </div>
+            );
           return (
           <a
             key={p.year}
@@ -1502,20 +1533,42 @@ function SeriesBlock({
               className={p.year === peak.year ? "bar peak" : "bar"}
               style={{ height: `${Math.max(2, (metric(p) / max) * 100)}%` }}
             />
-            <div className={`cl${off(labels.yearPhone.has(i), "ts-off-sm")}`}>{part ? `${p.year}*` : p.year}</div>
+            <div className={`cl${off(labels.yearPhone.has(i), "ts-off-sm")}`}>{yearLabel(p.year, part ? "*" : "")}</div>
           </a>
           );
         })}
       </div>
-      <p className="ask-fine">valori contractate, nu plăți</p>
-      {shownPartial.length > 0 && (
-        <p className="ask-fine ask-partial-note">
-          * {shownPartial.some((x) => x.provisional) ? "an cu date parțiale sau provizorii" : "an acoperit parțial"}, nu se compară direct cu un an întreg:{" "}
-          {shownPartial.map((x) => `${x.year} (${x.note})`).join(", ")}.
-        </p>
-      )}
+      {/* One-line notes, the details in their (?) (final timeseries §4; owner: terse copy). */}
+      <div className="fk ask-ts-notes">
+        {before && (
+          <p className="ask-fine">
+            {countWords(before.count, "înregistrare", "înregistrări")} datate {before.from === before.to ? before.from : `${before.from}–${before.to}`} ({formatRon(before.value)}) nu apar pe axă.{" "}
+            <KitLink
+              className="fk-rec"
+              link={{ label: "Vezi-le", glyph: "→", onClick: () => evidence?.open(spec as AskSpec, { years: before.years }, `${before.from}–${before.to} · înregistrările dinainte de ${CHART_FIRST_YEAR}`) }}
+            />
+          </p>
+        )}
+        {shownPartial.length > 0 && (
+          <p className="ask-fine ask-partial-note fk-tipwrap">
+            * {shownPartial.map((x) => x.year).join(", ").replace(/, (\d+)$/, " și $1")} {shownPartial.length === 1 ? "e incomplet" : "sunt incomplete"}{" "}
+            <HelpTip tip={{
+              title: shownPartial.length === 1 ? "An incomplet" : "Ani incompleți",
+              text: `${shownPartial.map((x) => `${x.year}: ${x.note}`).join("; ")}. Nu se compară direct cu un an întreg.`,
+            }} />
+          </p>
+        )}
+        <p className="ask-fine fk-tipwrap">{RECORDED_VALUE.text} <HelpTip tip={RECORDED_VALUE.tip} /></p>
+      </div>
     </div>
   );
+}
+
+/** The same question without its years ("Toți anii", the first row of "Când?"). */
+function withoutPeriod(spec: AskSpec): AskSpec {
+  const filters = { ...spec.filters };
+  for (const key of ["yearFrom", "yearTo", "monthFrom", "monthTo"] as const) delete filters[key];
+  return { ...spec, filters };
 }
 
 /**
