@@ -72,6 +72,18 @@ describe("legacy conditions of old links (plan §2.6)", () => {
     expect(conditionsOf(corpus.find((entry) => entry.id === "site:home-da-count")!)).toEqual([]);
   });
 
+  it("says why a tautology of «Cine conduce?» answers itself, and offers that entity's total (plan §4.13)", () => {
+    const firm = corpus.find((entry) => entry.id === "legacy:authority-on-supplier-leader")!;
+    const own: AskSpec = { block: "entity_card", dim: "supplier", rankBy: "value", measure: "value", filters: { supplierName: "PORR", supplierId: 7, yearFrom: 2025, yearTo: 2025 } };
+    const [chip] = legacyConditions(own);
+    expect(chip).toMatchObject({ key: "supplier", status: "applied", tip: "Cu o singură firmă aleasă, răspunsul e chiar ea.", retarget: { label: "Cât câștigă PORR" } });
+    expect(chip!.retarget!.spec).toMatchObject({ block: "stat", filters: { supplierName: "PORR", supplierId: 7, yearFrom: 2025, yearTo: 2025 } });
+    const institution = legacyConditions({ ...own, dim: "authority", filters: { authorityName: "MUNICIPIUL BUZAU", authorityId: 9 } })[0];
+    expect([institution?.tip, institution?.retarget?.label]).toEqual(["Cu o singură instituție aleasă, răspunsul e chiar ea.", "Cât cumpără MUNICIPIUL BUZAU"]);
+    // The other role is a condition, not the answer: no tautology there.
+    expect(conditionsOf(firm).every((c) => !c.retarget)).toBe(true);
+  });
+
   it("refuses only what the engine refuses, and applies only what it applies", () => {
     for (const entry of corpus)
       for (const c of conditionsOf(entry)) {

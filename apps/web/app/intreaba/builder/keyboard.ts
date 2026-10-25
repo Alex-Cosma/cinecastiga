@@ -199,20 +199,26 @@ export interface Box { top: number; bottom: number; left: number; right: number 
 /**
  * Where a desktop window opens: under its trigger, or above it when the
  * screen has no room below, and always inside the viewport with a gutter, so
- * it can never cause horizontal scroll. A window that fits on neither side
- * is pulled up until its bottom is inside the screen (it then covers its
- * trigger): a fixed window cannot be scrolled to.
+ * it can never cause horizontal scroll. A tall window that fits on neither
+ * side opens beside the phrase (right of it, else left), so it stays "lângă
+ * frază" (kit R6) without covering it; only where there is no room beside
+ * either is it pulled up until its bottom is inside the screen (it then
+ * covers its trigger): a fixed window cannot be scrolled to.
  */
 export function popoverPlacement(anchor: Box, pop: { width: number; height: number }, viewport: { width: number; height: number }, gutter = 16, gap = 8): { top: number; left: number } {
   const maxLeft = viewport.width - gutter - pop.width;
   const left = Math.max(gutter, Math.min(anchor.left, maxLeft));
   const below = anchor.bottom + gap, above = anchor.top - gap - pop.height;
   const roomBelow = viewport.height - gutter - below;
-  let top: number;
+  // Beside the trigger, as high as its top allows within the screen.
+  const sideTop = Math.min(anchor.top, viewport.height - gutter - pop.height);
+  let top: number, at = left;
   if (pop.height <= roomBelow) top = below;
   else if (above >= gutter) top = above;
+  else if (anchor.right + gap + pop.width <= viewport.width - gutter) { top = sideTop; at = anchor.right + gap; }
+  else if (anchor.left - gap - pop.width >= gutter) { top = sideTop; at = anchor.left - gap - pop.width; }
   else top = Math.min(below, viewport.height - gutter - pop.height);
-  return { top: Math.round(Math.max(gutter, top)), left: Math.round(left) };
+  return { top: Math.round(Math.max(gutter, top)), left: Math.round(at) };
 }
 
 /**

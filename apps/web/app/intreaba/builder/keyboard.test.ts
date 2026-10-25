@@ -105,18 +105,26 @@ describe("window placement", () => {
   it("never starts above the top gutter, even when taller than both sides", () => {
     expect(popoverPlacement(anchor(10, 300), { width: 340, height: 900 }, { width: 1280, height: 800 }).top).toBeGreaterThanOrEqual(16);
   });
-  it("pulls a window that fits on neither side up until its bottom is on screen", () => {
+  it("opens a window that fits on neither side beside its phrase, never over it (kit R6)", () => {
     // 1280×720, the phrase at 30% of the height, the period window with its free range open (537 px).
     const viewport = { width: 1280, height: 720 };
-    for (const trigger of [anchor(200, 216), anchor(200, 420)]) {
-      const { top } = popoverPlacement(trigger, { width: 340, height: 537 }, viewport);
-      expect(top).toBeGreaterThanOrEqual(16);
-      expect(top + 537).toBeLessThanOrEqual(720 - 16);
+    const over = (a: ReturnType<typeof anchor>, p: { top: number; left: number }) => p.left < a.right && p.left + 340 > a.left && p.top < a.bottom && p.top + 537 > a.top;
+    for (const trigger of [anchor(200, 216), anchor(200, 420), anchor(900, 300, 200)]) {
+      const placed = popoverPlacement(trigger, { width: 340, height: 537 }, viewport);
+      expect(placed.top).toBeGreaterThanOrEqual(16);
+      expect(placed.top + 537).toBeLessThanOrEqual(720 - 16);
+      expect(placed.left + 340).toBeLessThanOrEqual(1280 - 16);
+      expect(over(trigger, placed), JSON.stringify(trigger)).toBe(false);
     }
-    expect(popoverPlacement(anchor(200, 216), { width: 340, height: 537 }, viewport).top).toBe(720 - 16 - 537);
+    // Right of the phrase, from its top when that fits; left of it when the right has no room.
+    expect(popoverPlacement(anchor(200, 216), { width: 340, height: 537 }, viewport)).toEqual({ top: 720 - 16 - 537, left: 288 });
+    expect(popoverPlacement(anchor(900, 100 + 60, 200), { width: 340, height: 537 }, viewport).left).toBe(900 - 8 - 340);
     // Still under the trigger when that already fits, above it when that fits.
     expect(popoverPlacement(anchor(200, 100), { width: 340, height: 537 }, viewport).top).toBe(138);
     expect(popoverPlacement(anchor(200, 640), { width: 340, height: 537 }, viewport).top).toBe(640 - 8 - 537);
+    // No room beside either: pulled up until its bottom is on screen (it covers the trigger).
+    const narrow = { width: 700, height: 720 };
+    expect(popoverPlacement(anchor(200, 216, 200), { width: 340, height: 537 }, narrow).top).toBe(720 - 16 - 537);
   });
 });
 

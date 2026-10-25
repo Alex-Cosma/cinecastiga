@@ -18,7 +18,7 @@
   --fk-warm-bg:#f5eddf; --fk-warm-line:#e5d7ba; --fk-warm-ink:#6e5427;
   --fk-new:#86ad6a; --fk-down:#a3aa9c;
   --fk-muted-strong:#5c655b; --fk-signal-ink:#b4441f; /* small text on green and on --sunk: ≥ 5:1 */
-  --fk-shadow:0 1px 4px #2b3d2512; --fk-pop-shadow:0 18px 60px #29381e26;
+  --fk-shadow:0 1px 4px #2b3d2512; --fk-pop-shadow:0 18px 60px #29381e26; --fk-scrim:#1f2b2259;
   --fk-proc:var(--map-4); --fk-da:var(--map-2); /* the channels on every chart; never blue */
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) {
@@ -31,7 +31,7 @@
   --fk-warm-bg:var(--amber-soft); --fk-warm-line:var(--amber-line); --fk-warm-ink:#f0cf8c;
   --fk-new:#7fa866; --fk-down:#6e7d68;
   --fk-muted-strong:#b8c5b1; --fk-signal-ink:var(--orange); /* between --muted and --ink2: ≥ 4.5:1 on the hover and chosen greens */
-  --fk-shadow:0 1px 4px #0004; --fk-pop-shadow:0 18px 60px #0007;
+  --fk-shadow:0 1px 4px #0004; --fk-pop-shadow:0 18px 60px #0007; --fk-scrim:#00000073;
 }}
 :root[data-theme="dark"] {
   --fk-green:var(--accent); --fk-green-hover:var(--ink); --fk-on-green:var(--surface);
@@ -43,7 +43,7 @@
   --fk-warm-bg:var(--amber-soft); --fk-warm-line:var(--amber-line); --fk-warm-ink:#f0cf8c;
   --fk-new:#7fa866; --fk-down:#6e7d68;
   --fk-muted-strong:#b8c5b1; --fk-signal-ink:var(--orange); /* between --muted and --ink2: ≥ 4.5:1 on the hover and chosen greens */
-  --fk-shadow:0 1px 4px #0004; --fk-pop-shadow:0 18px 60px #0007;
+  --fk-shadow:0 1px 4px #0004; --fk-pop-shadow:0 18px 60px #0007; --fk-scrim:#00000073;
 }
 
 /* ---------- Base ---------- */
@@ -202,7 +202,8 @@ span.fk-chip-main:hover{background:none}
 .fk-pop--wide{width:420px}
 dialog.fk-pop{position:fixed;inset:auto;margin:0;z-index:60;max-width:calc(100vw - 32px);max-height:min(560px,calc(100dvh - 32px));overflow:auto;overscroll-behavior:contain}
 dialog.fk-pop:not([open]){display:none}
-dialog.fk-pop::backdrop{background:color-mix(in srgb,var(--ink) 35%,transparent)}
+/* The sheet's scrim dims the page in both themes (a mix with --ink lit the dark page up). */
+dialog.fk-pop::backdrop{background:var(--fk-scrim)}
 .fk-pop-head{position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px}
 /* In a window a (?) opens downward, inside its scroll area: above, the window's overflow would hide it. The title's opens under the title, on the head's width. */
 .fk-pop .term-tip>.term-def{top:calc(100% + 6px);bottom:auto}
@@ -347,6 +348,10 @@ a.fk-menu-item{text-decoration:none}
 .fk-menu-item[aria-disabled="true"]:hover{background:none}
 /* The open menu hangs under its row, on the right, inside the row's width. */
 .fk-menu--pop{position:absolute;right:0;top:calc(100% - 6px);z-index:30}
+/* No room under it in the viewport: it opens above (RowMenu measures). */
+.fk-menu--up{top:auto;bottom:calc(100% + 4px)}
+/* Anchored at its button's right edge again where a left-anchored menu (the builder's) would leave the page. */
+.fk-menu--end{left:auto;right:0}
 .fk-glyph{margin-left:.35em}
 
 /* ---------- 21. The total line and the longer list ---------- */

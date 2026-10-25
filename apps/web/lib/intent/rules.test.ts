@@ -358,7 +358,7 @@ describe("beginner phrasings → interpretation", () => {
     expect(r.spec).toMatchObject({ block: "trend", dim: "supplier", filters: { yearFrom: 2022, yearTo: 2024 } });
   });
 
-  it("41. a single bidder means procedures, never the filter: the offers are known for ~2% of the contracts", async () => {
+  it("41. a single bidder means procedures, never the filter: the offers are known for part of the contracts only", async () => {
     const { r } = await ask("contracte cu un singur ofertant in judetul vaslui");
     expect(r.spec).toMatchObject({ dataset: "contracts", filters: { county: "Vaslui" } });
     expect(r.spec?.filters.singleBidder).toBeUndefined();
@@ -471,6 +471,12 @@ describe("spec mapping", () => {
     expect(sentenceFor({ block: "timeseries", measure: "value", filters: { county: "Cluj", yearFrom: 2020 } })).toBe("Cum au evoluat de la an la an achizițiile făcute de instituțiile din județul Cluj, din 2020 încoace?");
     expect(sentenceFor({ block: "stat", measure: "count", dataset: "da", filters: { uatSiruta: 1, uatName: "Comuna Apa (Satu Mare)", yearTo: 2020 } })).toBe("Câte achiziții au fost făcute de primăria Comunei Apa (Satu Mare), până în 2020, doar achiziții directe?");
     expect(sentenceFor({ block: "scatter", dim: "supplier", measure: "value", filters: {} })).toBe("Ce firme ies din tipar după indicele de risc și valoarea achizițiilor?");
+  });
+
+  it("says today's administrator and one institution of a kind in the builder's words (kit §4)", () => {
+    expect(sentenceFor({ block: "stat", measure: "value", filters: { adminName: "ION POPESCU", adminPersonKey: "k" } })).toBe("Cât valorează achizițiile făcute de instituțiile din toată țara de la firmele conduse azi de ION POPESCU, în toți anii?");
+    expect(sentenceFor({ block: "table", dim: "supplier", measure: "value", filters: { adminName: "ION POPESCU", adminPersonKey: "k" } })).toMatch(/, dintre firmele conduse azi de ION POPESCU, în toți anii\?$/);
+    expect(sentenceFor({ block: "entity_card", dim: "authority", rankBy: "value", measure: "value", filters: { authorityKind: "oras_municipiu" } })).toBe("Care primărie de oraș sau municipiu cumpără cel mai mult, în toți anii?");
   });
 });
 

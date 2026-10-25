@@ -1,7 +1,8 @@
 import { cleanName } from "../format";
 import { joinCpvTerms } from "../ask/cpv-terms";
 import { countWords } from "../ask/answer-text";
-import { titleTail } from "../ask/filters/words";
+import { adminPhrase, titleTail } from "../ask/filters/words";
+import { KIND_ONE } from "../ask/question-ui";
 import { namedKind, validateSpec, type AskFilters, type AskSpec, type AuthorityKind } from "../ask/spec";
 import { genitive, hasNamedScope } from "./rules";
 import type { EntityMatch, IntentAlternative, IntentKind, IntentResult, Interpretation, PersonMatch, PlaceMatch, SubjectMatch } from "./types";
@@ -17,11 +18,12 @@ const NOT_IN_LOCALITY: AuthorityKind[] = ["scoala", "spital", "consiliu_judetean
 const PROFILE_DROPPED: (keyof AskFilters)[] = ["cpvTerm", "yearFrom", "yearTo", "monthFrom", "monthTo", "minEmployees", "maxEmployees", "adminName", "adminPersonKey"];
 /**
  * "Un singur ofertant" written in words (plan §2.7, §9 F1): the number of
- * offers is known for ~2% of the contracts of 2024–2026 (1,85% of the records
- * on the local copy, 25.10.2026), so the interpreter never writes the filter;
- * it says why. A link that carries the filter still applies it ("Din link").
+ * offers is known for part of the contract records only, by year of the
+ * record (local copy, 25.10.2026: 9,7% in 2018, 17,8–25,6% in 2019–2023,
+ * 1,7–2,0% from 2024), so the interpreter never writes the filter; it says
+ * why, on any period. A link that carries the filter still applies it ("Din link").
  */
-export const SINGLE_OFFER_NOTE = "Numărul de oferte îl știm doar pentru ~2% din contractele din 2024–2026, deci nu îl folosim ca filtru.";
+export const SINGLE_OFFER_NOTE = "Numărul de oferte îl știm doar pentru o parte din înregistrările contractelor (18–26% în 2019–2023, ~2% din 2024), deci nu îl folosim ca filtru.";
 const SINGLE_OFFER_DA_NOTE = "Achizițiile directe nu au oferte de numărat, deci nu folosim acest filtru.";
 
 interface Choice { place?: PlaceMatch | null; person?: PersonMatch | null; entity?: EntityMatch; pair?: { focal: EntityMatch; other: EntityMatch } }
@@ -255,7 +257,8 @@ export function sentenceFor(spec: AskSpec, labels: SentenceLabels = {}): string 
   const subjectLabel = f.cpvTerm ? labels.subject ?? f.cpvTerm : null;
   const subj = subjectLabel ? ` pentru „${subjectLabel}”` : "";
   const fromSupplier = f.supplierName ? ` de la „${f.supplierName}”` : "";
-  const admin = f.adminName ? ` de la firmele conduse de ${f.adminName}` : "";
+  // Today's administrator (kit §4 "Administratorul"): "firmele conduse azi de X", as the builder says it.
+  const admin = f.adminName ? ` de la ${adminPhrase(f.adminName)}` : "";
   const when = period(f);
   const tail = suffix(spec);
   const anyInstitution = labels.allInstitutions ? " (toate instituțiile, nu doar primăriile)" : "";
@@ -264,7 +267,7 @@ export function sentenceFor(spec: AskSpec, labels: SentenceLabels = {}): string 
   switch (spec.block) {
     case "table":
       if (spec.dim === "supplier")
-        return `Cine câștigă ${spec.measure === "count" ? "cele mai multe contracte" : "contractele"}${subj} de la ${buyers(f)}${admin ? `, dintre firmele conduse de ${f.adminName}` : ""}, ${when}${tail}?`;
+        return `Cine câștigă ${spec.measure === "count" ? "cele mai multe contracte" : "contractele"}${subj} de la ${buyers(f)}${admin ? `, dintre ${adminPhrase(f.adminName)}` : ""}, ${when}${tail}?`;
       return `Ce ${dimNoun}${spec.dim === "county" ? "" : wherePlain(f)} cumpără cel mai mult${spec.measure === "value_per_capita" ? " pe locuitor" : spec.measure === "count" ? " (număr de achiziții)" : ""}${subj}${fromSupplier}${admin}, ${when}${tail}?`;
     case "stat":
       return spec.measure === "count"
@@ -286,12 +289,15 @@ export function sentenceFor(spec: AskSpec, labels: SentenceLabels = {}): string 
         : `Cum se compară achizițiile${subj} făcute de „${f.authorityName ?? "?"}” cu cele făcute de „${f.compareWith ?? "?"}”, ${when}${tail}?`;
     case "scatter":
       return `Ce ${dimNoun}${wherePlain(f)} ies din tipar după indicele de risc și valoarea achizițiilor?`;
-    case "entity_card":
+    case "entity_card": {
+      // One institution of a kind in the builder's words (KIND_ONE: "primărie de oraș sau municipiu").
+      const one = (kind && KIND_ONE[kind]) ?? `instituție${labels.allInstitutions ? " (oricare, nu doar primăriile)" : ""}`;
       if (spec.rankBy === "risk")
-        return `Care ${spec.dim === "supplier" ? "firmă" : f.authorityKind === "spital" ? "spital" : f.authorityKind === "scoala" ? "școală" : f.authorityKind === "comuna" ? "primărie de comună" : f.authorityKind === "oras_municipiu" ? "primărie de oraș" : f.authorityKind === "consiliu_judetean" ? "consiliu județean" : `instituție${labels.allInstitutions ? " (oricare, nu doar primăriile)" : ""}`}${wherePlain(f)} are cel mai ridicat indice de risc?`;
+        return `Care ${spec.dim === "supplier" ? "firmă" : one}${wherePlain(f)} are cel mai ridicat indice de risc?`;
       return spec.dim === "supplier"
         ? `Care firmă are contractele de cea mai mare valoare${subj} de la ${buyers(f)}, ${when}${tail}?`
-        : `Care ${f.authorityKind === "spital" ? "spital" : f.authorityKind === "scoala" ? "școală" : f.authorityKind === "comuna" ? "primărie de comună" : f.authorityKind === "oras_municipiu" ? "primărie de oraș" : f.authorityKind === "consiliu_judetean" ? "consiliu județean" : `instituție${labels.allInstitutions ? " (oricare, nu doar primăriile)" : ""}`}${wherePlain(f)} cumpără cel mai mult${subj}${fromSupplier}, ${when}${tail}?`;
+        : `Care ${one}${wherePlain(f)} cumpără cel mai mult${subj}${fromSupplier}, ${when}${tail}?`;
+    }
     case "distribution":
       return `Unde se situează „${f.authorityName ?? f.supplierName ?? "?"}” după indicele de risc, față de ${f.supplierName ? "alte firme" : "alte instituții"}${f.county && !f.supplierName ? ` ${countyPhrase(f.county)}` : ""}?`;
     case "network":

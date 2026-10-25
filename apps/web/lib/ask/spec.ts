@@ -284,7 +284,7 @@ export const SPEC_JSON_SCHEMA = {
         adminName: {
           type: "string",
           description:
-            "Doar firmele conduse de această persoană (reprezentant legal/administrator la Registrul Comerțului). Ex: 'firmele lui Ion Popescu' → 'Ion Popescu'.",
+            "Doar firmele conduse azi de această persoană (reprezentant legal/administrator la Registrul Comerțului). Ex: 'firmele lui Ion Popescu' → 'Ion Popescu'.",
         },
         maxEmployees: {
           type: "integer",

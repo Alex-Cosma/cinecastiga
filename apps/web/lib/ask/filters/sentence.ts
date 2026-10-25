@@ -78,6 +78,16 @@ export const KINDS_AFTER_D1: Partial<Record<Block, readonly AuthorityKind[]>> = 
   entity_card: ["oras_municipiu", "spital"],
 };
 
+/**
+ * Whether a kind waits for D1 on this question: only as the profiles'
+ * subject (institutions). As the buyers of a ranking of firms ("Care firmă
+ * câștigă cel mai mult din achizițiile făcute de [spitalele]…") it is a
+ * buyer's kind like on "Cine câștigă?", and the engine applies it.
+ */
+export function kindAfterD1(spec: { block: string; dim?: string | undefined }, kind: unknown): boolean {
+  return spec.dim !== "supplier" && (KINDS_AFTER_D1[spec.block as Block] ?? []).includes(kind as AuthorityKind);
+}
+
 /** Each phrase's spoken name and window title (R10; kit §4, §5.46). */
 const NAMES = {
   dataset: ["Achizițiile", "Ce fel de achiziții?"],
@@ -151,7 +161,7 @@ class Tokens {
 function kindOf(spec: Spec): string | undefined {
   const kind = spec.filters.authorityKind;
   if (typeof kind !== "string" || !KIND_WORDS[kind]) return undefined;
-  return KINDS_AFTER_D1[spec.block as Block]?.includes(kind as AuthorityKind) ? undefined : kind;
+  return kindAfterD1(spec, kind) ? undefined : kind;
 }
 
 /**

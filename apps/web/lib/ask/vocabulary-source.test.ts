@@ -15,8 +15,10 @@ const WEB = fileURLToPath(new URL("../../", import.meta.url));
 const DIRS = ["app/intreaba", "lib/ask", "lib/intent", "app/urmariri"];
 /** Frozen grammars, the kit's demo (which shows the words it replaces in its notes) and the tests. */
 const SKIP = /(?:\.test\.|\/fixtures\/|\/trusa\/)/;
-/** Sources that match a person's own words, never write them: the typed input of the old parser and the model's prompt. */
-const READS_INPUT = new Set(["lib/ask/intent.ts", "lib/ask/llm.ts"]);
+/** Sources that match a person's own words, never write them: the typed input of the old parser, the interpreter's rules and the model's prompt. */
+const READS_INPUT = new Set(["lib/ask/intent.ts", "lib/ask/llm.ts", "lib/intent/rules.ts"]);
+/** The register names today's administrator (kit §4 "Administratorul"): "conduse azi de", never "conduse de" alone. */
+const ADMIN_WITHOUT_TODAY = /(?<!azi )[Cc]onduse de/;
 
 export const RETIRED_WORDS = [
   "toți anii disponibili", "toate sursele", "Toată perioada", "un singur ofertant", "Un singur ofertant", "La prima apariție", "debut în arhivă",
@@ -55,6 +57,7 @@ describe("the kit's vocabulary in the sources (kit §4)", () => {
         if (READS_INPUT.has(file)) continue;
         const code = withoutComments(readFileSync(path, "utf8"));
         for (const word of RETIRED_WORDS) if (code.includes(word)) found.push(`${file}: «${word}»`);
+        if (ADMIN_WITHOUT_TODAY.test(code)) found.push(`${file}: «conduse de» without «azi»`);
       }
     expect(found).toEqual([]);
   });

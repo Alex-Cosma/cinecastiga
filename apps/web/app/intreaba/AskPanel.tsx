@@ -971,8 +971,9 @@ export default function AskPanel({
                 />
               )}
             </div>
-            {/* G8: what changed the total outside the sentence; the ranking says it in its own total line. */}
-            {totalWords.length > 0 && !(data.block === "table" && layout === "visual") && (
+            {/* G8: what changed the total outside the sentence; the ranking says it in its own total line. A risk
+                profile has no total in lei: its seat is the sentence's, and «nu plăți» would speak of sums it does not show. */}
+            {totalWords.length > 0 && !isProfile && !(data.block === "table" && layout === "visual") && (
               <div className="fk cq-total"><TotalLine conditions={totalWords}>{totalLead(data)}</TotalLine></div>
             )}
             {/* How the number was built reads after the answer, not before it. */}
