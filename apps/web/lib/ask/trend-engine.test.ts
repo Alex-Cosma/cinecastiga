@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { DbSql } from "@seap/db";
 import { DATA_CHANGED, runRows, runSpec, useSnapshotCoverage } from "./compile";
 import { forgetRollupsReady } from "./rollups";
+import { forgetTrendGroups, trendGroupStats } from "./group-ids";
 import { autoMonthsUnresolved } from "./months-window";
 import { validateSpec, type AskSpec } from "./spec";
 
@@ -12,13 +13,19 @@ import { validateSpec, type AskSpec } from "./spec";
 type Coverage = { dataset: string; date_from: string; date_to: string; complete_until?: string | null }[];
 /** Rows the harness answers: the partition statement, the row facts and the profiles of the shown entities (trend-partition.ts). */
 interface Answers { partition?: Record<string, unknown>[]; facts?: Record<string, unknown>[]; profiles?: Record<string, unknown>[] }
-function database(coverage: Coverage, opts: { rollups?: boolean; members?: string[] } & Answers = {}) {
+/**
+ * `stamp`: the file nodes of the marts build (group-ids.ts), so the partition's members are kept;
+ * without it nothing is kept or reused. `days`: the rollups have the first and last day.
+ */
+function database(coverage: Coverage, opts: { rollups?: boolean; days?: boolean; members?: string[]; stamp?: string } & Answers = {}) {
   const statements: { text: string; values: unknown[] }[] = [];
   class Fragment {
     constructor(public text: string, public values: unknown[]) {}
     then(resolve: (value: unknown[]) => unknown) {
       const text = this.text;
       statements.push({ text, values: this.values });
+      if (text.includes("pg_relation_filenode")) return Promise.resolve(resolve(opts.stamp ? [{ db: "harness", da: opts.stamp, ct: "2", ep: "3" }] : []));
+      if (text.includes("a.attname = 'd0'")) return Promise.resolve(resolve([{ ok: opts.days ?? false }]));
       if (text.includes("to_regclass('marts.agg_entity_year')")) return Promise.resolve(resolve([{ ok: opts.rollups ?? false }]));
       if (text.includes("to_regclass('marts.data_coverage')")) return Promise.resolve(resolve([{ ok: true, refreshes: true }]));
       if (text.includes("from app.monitoring_refreshes")) return Promise.resolve(resolve([{ id: "checkpoint-12" }]));
@@ -46,7 +53,7 @@ function database(coverage: Coverage, opts: { rollups?: boolean; members?: strin
   Object.assign(tag, {
     array: (items: unknown[]) => new Fragment("?array", [items]),
     begin: async (_options: string, fn: (tx: DbSql) => Promise<unknown>) => fn(tag),
-    unsafe: async () => [],
+    unsafe: async (text: string) => { statements.push({ text, values: [] }); return []; },
   });
   return { sql: useSnapshotCoverage(tag), statements };
 }
@@ -69,7 +76,7 @@ const grouped = (statements: { text: string; values: unknown[] }[]) => statement
 /** The lists of a partition with no rows, as the engine returns them. */
 const NO_LISTS = { all: [], up: [], new: [], first: [], down: [], gone: [] };
 
-beforeEach(() => forgetRollupsReady());
+beforeEach(() => { forgetRollupsReady(); forgetTrendGroups(); });
 
 describe("the trend's answer with its lenses", () => {
   it("lists every change without trend options, as before, beside the partition of trend-2", async () => {
@@ -249,26 +256,123 @@ describe("the trend's sources", () => {
     }
   });
 
-  it("read a group's members over the answer's selection, then list their records", async () => {
-    const db = database(PROD, { members: ["11", "12", "13"] });
-    const result = await runRows(db.sql, trend({ change: "gone" }, { yearFrom: 2024, yearTo: 2025 }), {}, 0);
+  /** The partition of 2024 → 2025: firms 11 and 12 are gone (records of 2024 on both channels), 14 grows. */
+  const GONE = (days = true): Record<string, unknown>[] => [
+    { part: "sum:all", id: null, va: "900", vb: "500", n: "3", x: { da: { n: 5, v: "1300.50", first: days ? "2024-01-05" : null, last: days ? "2025-11-30" : null },
+      contracts: { n: 1, v: "99.5", first: days ? "2024-03-01" : null, last: days ? "2024-03-01" : null } } },
+    { part: "sum:gone", id: null, va: "500", vb: "0", n: "2", x: { da: { n: 3, v: "400.50", first: days ? "2024-01-05" : null, last: days ? "2024-12-20" : null },
+      contracts: { n: 1, v: "99.5", first: days ? "2024-03-01" : null, last: days ? "2024-03-01" : null } }, ids: "11\u001f12" },
+    { part: "sum:up", id: null, va: "400", vb: "500", n: "1", x: { da: { n: 2, v: "900", first: days ? "2024-06-01" : null, last: days ? "2025-11-30" : null },
+      contracts: { n: 0, v: "0", first: null, last: null } }, ids: "14" },
+  ];
+  const gone = trend({ change: "gone" }, { yearFrom: 2024, yearTo: 2025 });
+  const records = (db: ReturnType<typeof database>) => db.statements.filter((s) => s.text.includes("from marts.da_transactions"));
+
+  it("group a group's members over the answer's selection when none is kept, then total them from that grouping", async () => {
+    const db = database(PROD, { partition: GONE() });
+    const result = await runRows(db.sql, gone, {}, 0);
     if ("error" in result) throw new Error(result.error);
-    const members = db.statements.find((s) => /select d\.supplier_id::text m from/.test(s.text))!;
-    expect(members.text).toMatch(/group by d\.supplier_id having .* > 0 and .* = 0/);
-    const totals = db.statements.find((s) => s.text.includes("group by d.state"))!;
-    expect(totals.text).toContain("d.supplier_id = any(?array::bigint[])");
-    expect(totals.values).toContainEqual(["11", "12", "13"]);
-    expect(result.scopeNotes).toContain("Sursele grupului „Nu mai apar”: 3 firme, cu înregistrările lor din cei doi ani, nu doar cele afișate.");
+    // The answer's partition statement, without lists (limit 0): the members and their records per channel.
+    const partition = db.statements.find((s) => s.text.includes("with k as materialized"))!;
+    expect(partition.text).toContain("group by d.supplier_id");
+    expect(partition.text).toContain("string_agg(k.id::text, chr(31) order by k.id) from k where k.va > 0 and k.vb = 0");
+    expect(partition.values).toContain("sum:gone");
+    // The totals and the period come from it: no totals query of the records.
+    expect(db.statements.some((s) => s.text.includes("group by d.state"))).toBe(false);
+    expect(result).toMatchObject({ sourceTotal: 4, sourceValue: "500.00", total: 4, value: "500.00", dateFrom: "2024-01-05", dateTo: "2024-12-20",
+      accepted: { count: 3, value: "400.50" }, group: { part: "gone", members: 2, selection: { count: 6, value: "1400.00" } } });
+    expect(result.statuses).toEqual([{ state: "Oferta acceptata", count: 3, value: "400.50" }, { state: null, count: 1, value: "99.5" }]);
+    // The page: each channel's members on their id index and the two years, never a scan of the mart or a walk
+    // back along the primary key (a small group: no sequential scan, the reference order behind `+ 0`).
+    const page = db.statements.find((s) => s.text.includes("limit ? offset ?"))!;
+    expect(page.text).toContain("d.supplier_id = any(?array::bigint[]) and d.finalization_date >= ? and d.finalization_date < ?");
+    expect(page.values).toEqual(expect.arrayContaining([["11", "12"], "2024", "2026"]));
+    expect(page.text).toContain("order by (d.ref_id + 0) desc, d.supplier_id nulls first limit ?");
+    const settings = db.statements.map((s) => s.text).filter((t) => t.includes("enable_"));
+    expect(settings).toEqual(["set local enable_seqscan = off", "set local enable_seqscan to default"]);
+    expect(db.statements.findIndex((s) => s.text === "set local enable_seqscan = off")).toBeLessThan(db.statements.indexOf(page));
+    expect(result.scopeNotes).toContain("Sursele grupului „Nu mai apar”: 2 firme, cu înregistrările lor din cei doi ani, nu doar cele afișate.");
+    // The drawer's channel and state are channels of these totals; a search counts the records.
+    const da = await runRows(database(PROD, { partition: GONE() }).sql, gone, {}, 0, { stream: "da" });
+    if ("error" in da) throw new Error(da.error);
+    expect([da.sourceTotal, da.total, da.value]).toEqual([4, 3, "400.50"]);
+    const search = database(PROD, { partition: GONE() });
+    await runRows(search.sql, gone, {}, 0, { search: "spital" });
+    expect(search.statements.find((s) => s.text.includes("group by d.state"))!.text).toContain("d.supplier_id = any(?array::bigint[])");
   });
 
-  it("check only a row's own ids for its records (Înregistrări →), and read no members for every change", async () => {
+  it("keep the answer's members: its drawers group nothing again, until the marts are rebuilt", async () => {
+    const answer = database(PROD, { stamp: "41", partition: GONE() });
+    const result = await runSpec(answer.sql, gone, {});
+    if ("error" in result) throw new Error(result.error);
+    expect(trendGroupStats()).toMatchObject({ kept: 1, entries: 1, held: 3 });
+    // The drawer of another group of the same selection (the growths) and of the chosen one: no grouping, no totals query.
+    for (const spec of [gone, trend({ change: "up" }, { yearFrom: 2024, yearTo: 2025 })]) {
+      const drawer = database(PROD, { stamp: "41" });
+      const rows = await runRows(drawer.sql, spec, {}, 0);
+      if ("error" in rows) throw new Error(rows.error);
+      expect(drawer.statements.some((s) => s.text.includes("with k as materialized") || s.text.includes("group by d.state"))).toBe(false);
+      expect(records(drawer).length).toBe(1);
+    }
+    // A row of the group: its membership in memory, its own records then (a firm outside the group has none to list).
+    const row = database(PROD, { stamp: "41" });
+    const own = await runRows(row.sql, gone, {}, 0, { scope: { entityIds: ["12", "14"], role: "supplier" } });
+    if ("error" in own) throw new Error(own.error);
+    expect(row.statements.some((s) => /::text m from/.test(s.text) || s.text.includes("with k as materialized"))).toBe(false);
+    expect(row.statements.find((s) => s.text.includes("group by d.state"))!.values).toContainEqual(["12"]);
+    expect(own.group).toBeUndefined();
+    // Another build (other file nodes): grouped again.
+    const rebuilt = database(PROD, { stamp: "42", partition: GONE() });
+    await runRows(rebuilt.sql, gone, {}, 0);
+    expect(rebuilt.statements.some((s) => s.text.includes("with k as materialized"))).toBe(true);
+    // The growths in percent from another base than the answer's: grouped again with that base.
+    const percent = (minBase: number) => trend({ change: "up", order: "percent", minBase }, { yearFrom: 2024, yearTo: 2025 });
+    await runSpec(database(PROD, { stamp: "43", partition: [...GONE(), { part: "sum:eligible", id: null, va: "400", vb: "500", n: "1", x: { da: { n: 2, v: "900", first: "2024-06-01", last: "2025-11-30" }, contracts: { n: 0, v: "0", first: null, last: null } }, ids: "14" }] }).sql, percent(10_000), {});
+    const same = database(PROD, { stamp: "43" }), other = database(PROD, { stamp: "43", partition: GONE() });
+    await runRows(same.sql, percent(10_000), {}, 0);
+    await runRows(other.sql, percent(20_000), {}, 0);
+    expect([same, other].map((db) => db.statements.some((s) => s.text.includes("with k as materialized")))).toEqual([false, true]);
+  });
+
+  it("count a group's records when its grouping has no days (a rollup built before them), and keep the planner's plans for a large group", async () => {
+    const undated = database(PROD, { partition: GONE(false) });
+    const result = await runRows(undated.sql, gone, {}, 0);
+    if ("error" in result) throw new Error(result.error);
+    const totals = undated.statements.find((s) => s.text.includes("group by d.state"))!;
+    expect(totals.text).toContain("d.supplier_id = any(?array::bigint[]) and d.finalization_date >= ?");
+    const large = GONE().map((r) => r.part === "sum:gone" ? { ...r, x: { da: { n: 300_000, v: "1", first: "2024-01-01", last: "2024-12-31" }, contracts: { n: 0, v: "0", first: null, last: null } } } : r);
+    const big = database(PROD, { partition: large });
+    const many = await runRows(big.sql, gone, {}, 0);
+    if ("error" in many) throw new Error(many.error);
+    expect(many.statuses).toEqual([{ state: "Oferta acceptata", count: 300_000, value: "1" }]);
+    expect(big.statements.some((s) => s.text.includes("enable_"))).toBe(false);
+    expect(big.statements.find((s) => s.text.includes("limit ? offset ?"))!.text).toContain("order by d.ref_id desc, d.supplier_id nulls first limit ?");
+  });
+
+  it("check only a row's own ids for its records (Înregistrări →), on their index of the two years, and read no members for every change", async () => {
     const db = database(PROD, { members: ["11"] });
     await runRows(db.sql, trend({ change: "up" }, { yearFrom: 2024, yearTo: 2025 }), {}, 0, { scope: { entityIds: ["11"], role: "supplier" } });
     const members = db.statements.find((s) => /::text m from/.test(s.text))!;
-    expect(members.text).toContain("d.supplier_id = any(?array::bigint[])");
-    expect(members.values).toContainEqual(["11"]);
+    expect(members.text).toContain("d.supplier_id = any(?array::bigint[]) and d.finalization_date >= ? and d.finalization_date < ?");
+    expect(members.values).toEqual(expect.arrayContaining([["11"], "2024", "2026"]));
+    expect(db.statements.some((s) => s.text.includes("with k as materialized"))).toBe(false);
     const every = database(PROD);
     await runRows(every.sql, trend({ change: "all", months: "whole" }, { yearFrom: 2024, yearTo: 2025 }), {}, 0);
-    expect(every.statements.some((s) => /::text m from/.test(s.text))).toBe(false);
+    expect(every.statements.some((s) => /::text m from/.test(s.text) || s.text.includes("with k as materialized"))).toBe(false);
+  });
+
+  it("list a county group by its names, and several counties as one selection", async () => {
+    const counties = { ...trend({ change: "up" }, { yearFrom: 2024, yearTo: 2025 }), dim: "county" as const };
+    const db = database(PROD, { partition: [{ part: "sum:up", id: null, va: "1", vb: "2", n: "2", x: { da: { n: 2, v: "3", first: "2024-02-02", last: "2025-02-02" }, contracts: { n: 0, v: "0", first: null, last: null } }, ids: "Cluj\u001fIasi" }] });
+    const result = await runRows(db.sql, counties, {}, 0);
+    if ("error" in result) throw new Error(result.error);
+    expect(db.statements.find((s) => s.text.includes("with k as materialized"))!.text).toContain("group by d.county");
+    expect(db.statements.find((s) => s.text.includes("limit ? offset ?"))!.values).toContainEqual(["Cluj", "Iasi"]);
+    expect(result.scopeNotes).toContain("Sursele grupului „Creșteri”: 2 județe, cu înregistrările lor din cei doi ani, nu doar cele afișate.");
+    const scoped = database(PROD);
+    await runRows(scoped.sql, { ...trend(undefined, { yearFrom: 2024, yearTo: 2025 }), dim: "county" }, {}, 0, { scope: { counties: ["Cluj", "Bistrița-Năsăud"] } });
+    const totals = scoped.statements.find((s) => s.text.includes("group by d.state"))!;
+    expect(totals.text).toContain("lower(unaccent(d.county)) = any(?array::text[])");
+    expect(totals.values).toContainEqual(["cluj", "bistrita-nasaud"]);
   });
 });

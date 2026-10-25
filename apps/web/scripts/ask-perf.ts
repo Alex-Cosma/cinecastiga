@@ -14,7 +14,9 @@
  * of load on a shared machine does not set the baseline), then once more under
  * auto_explain (ANALYZE, BUFFERS) for the plans. The explain pass is never timed. "First" is
  * a cold process, not a cold disk: PostgreSQL and OS caches keep what earlier
- * work read. Loopback databases only; every session starts with
+ * work read. A case marked afterAnswer runs its answer first, untimed, so
+ * "first" is the drawer opened after it (a trend group's members kept by the
+ * answer). Loopback databases only; every session starts with
  * default_transaction_read_only=on and statement_timeout=60s (runSpec and
  * runRows still set their own 20 s inside their transactions).
  */
@@ -269,7 +271,7 @@ async function runCase(sql: DbSql, c: PerfCase): Promise<RunResult> {
       buildPills(c.spec, grounding);
       return { ms: round(performance.now() - started), groundMs: round(groundMs), engineMs: result.tookMs, rows: answerRows(result.data), hash: answerFingerprint(result.data) };
     }
-    const result = await runRows(sql, c.spec, grounding, 0, {
+    const result = await runRows(sql, c.spec, grounding, c.page ?? 0, {
       ...(c.scope ? { scope: c.scope } : {}), ...(c.path === "csv" ? { limit: CSV_MAX_ROWS } : {}),
     });
     if ("error" in result) return { ms: round(performance.now() - started), groundMs: round(groundMs), error: result.error };
@@ -294,6 +296,11 @@ async function worker(options: PerfOptions, url: string) {
   const timed = await (async () => {
     try {
       const before = await active();
+      // A drawer opened after its answer (afterAnswer): the answer runs first, untimed, in this process.
+      if (c.afterAnswer) {
+        const answer = await runCase(sql, { ...c, path: "answer" });
+        if (answer.error) throw new Error(`the answer before ${c.id}: ${answer.error}`);
+      }
       await sleep(options.pauseMs);
       const load = round(loadavg()[0] ?? 0, 2);
       const first = await runCase(sql, c);

@@ -7,7 +7,9 @@ import type { AskSpec, TrendChange } from "./spec";
  * county of the two years is a growth, a new one, a decrease, a gone one or
  * equal. One statement over the grouped result (the live union or a rollup)
  * gives the composition (number and sums of each group) and the first N of
- * every group, so the answer's five buttons switch without a query. A second
+ * every group, so the answer's five buttons switch without a query, and each
+ * group's members and records per channel, which group-ids.ts keeps for the
+ * group's source drawer (plan §2.5). A second
  * one reads the row facts of the shown entities only (the largest record, the
  * share of contracts with several winners, the main partner), and a third
  * their profile (name, county, first and last record, valid CUI). The group
@@ -27,19 +29,39 @@ export type TrendComposition = Partial<Record<TrendPart, TrendPartTotals>>;
 
 /** One grouped row: the id (an entity id, or a county), with the sums of year A and year B (exact numeric text). */
 export interface TrendPartitionRow { id: string; va: string; vb: string }
-export interface TrendPartition { lists: Partial<Record<TrendList, TrendPartitionRow[]>>; composition: TrendComposition }
+/**
+ * The records of one channel of a part, as its source drawer totals them: the
+ * number of records, their exact value, the first and last day ('YYYY-MM-DD';
+ * null without records, or when the grouped input does not know the days).
+ */
+export interface TrendChannelSources { n: number; v: string; first: string | null; last: string | null }
+export interface TrendPartSources { da: TrendChannelSources; contracts: TrendChannelSources }
+/** The parts a source drawer can list: the groups, the first-year new ones, and with the order in percent the growths from the base. */
+export const TREND_MEMBER_PARTS = ["up", "new", "first", "down", "gone", "eligible"] as const;
+export type TrendMemberPart = (typeof TREND_MEMBER_PARTS)[number];
+export interface TrendPartition {
+  lists: Partial<Record<TrendList, TrendPartitionRow[]>>;
+  composition: TrendComposition;
+  /** Per part, the records of each channel (the sources of a group, the selection with `all`). */
+  sources: Partial<Record<TrendPart, TrendPartSources>>;
+  /** Per part a drawer can list, every member (entity ids in id order, or county names). */
+  members: Partial<Record<TrendMemberPart, string[]>>;
+}
 
 /** The list a spec shows (data.rowsTrend): its change, the first-year new ones with `firstOnly`. */
 export const trendListOf = (group: TrendGroup): TrendList => group.change === "new" && group.firstOnly ? "first" : group.change;
 
 /**
- * The partition of `grouped` (`select <id> id, <va> va, <vb> vb … group by
- * <id>`, no HAVING, no ORDER BY): the composition and the first `topN` of
- * every list, each in its own order, then the id (or county) on equal values,
- * as the single-group queries order them. `group` gives the order of the
- * growths (in lei, or in percent from its base); `first` (entities only) the
- * role and year B of "Prima dată". The growths, the new, the decreases, the
- * gone and the equal ones add up to `all`.
+ * The partition of `grouped` (`select <id> id, <va> va, <vb> vb, <the channel
+ * columns of trendChannelColumns> … group by <id>`, no HAVING, no ORDER
+ * BY): the composition and the first `topN` of every list, each in its
+ * own order, then the id (or county) on equal values, as the single-group
+ * queries order them. `group` gives the order of the growths (in lei, or in
+ * percent from its base); `first` (entities only) the role and year B of
+ * "Prima dată". The growths, the new, the decreases, the gone and the equal
+ * ones add up to `all`. The same statement gives each part's records per
+ * channel and the members of each part a drawer lists (group-ids.ts keeps
+ * them): a group's sources need no second grouping.
  */
 export async function trendPartition(sql: DbSql, grouped: Fragment,
   o: { group: TrendGroup; topN: number; first: { role: "authority" | "supplier"; yearB: number } | null }): Promise<TrendPartition> {
@@ -65,26 +87,77 @@ export async function trendPartition(sql: DbSql, grouped: Fragment,
     ...(percent ? [["eligible", at({ change: "up", order: "percent", minBase: o.group.minBase }).having] as [TrendPart, Fragment | null]] : []),
   ];
   const where = (having: Fragment | null): Fragment => having ? sql`where ${having}` : sql``;
+  // The members a drawer lists (each group, the first-year new ones, the growths from the base), in the
+  // same pass as their totals: one text of ids in id order (or county names), separated by U+001F.
+  const memberParts = new Set<TrendPart>(TREND_MEMBER_PARTS);
+  const channel = (n: string, v: string, f: string, l: string): Fragment => sql`json_build_object(
+    'n', coalesce(sum(k.${sql(n)}), 0), 'v', coalesce(sum(k.${sql(v)}), 0)::text, 'first', min(k.${sql(f)}), 'last', max(k.${sql(l)}))`;
   // Each list numbers its rows after its own top-N sort (`r`), so the union's order does not matter.
   const selects: Fragment[] = [
     ...lists.map(([list, { having, order }]): Fragment => sql`(
-      select ${list}::text part, x.id, x.va, x.vb, null::bigint n, row_number() over () r from (
+      select ${list}::text part, x.id, x.va, x.vb, null::bigint n, row_number() over () r, null::json x, null::text ids from (
         select k.id::text id, k.va::text va, k.vb::text vb from k ${where(having)} order by ${order} desc, k.id limit ${o.topN}) x)`),
     ...parts.map(([part, having]): Fragment => sql`(
-      select ${`sum:${part}`}::text, null::text, coalesce(sum(k.va), 0)::text, coalesce(sum(k.vb), 0)::text, count(*), null::bigint
+      select ${`sum:${part}`}::text, null::text, coalesce(sum(k.va), 0)::text, coalesce(sum(k.vb), 0)::text, count(*), null::bigint,
+        json_build_object('da', ${channel("n_da", "v_da", "f_da", "l_da")}, 'contracts', ${channel("n_ct", "v_ct", "f_ct", "l_ct")}),
+        ${memberParts.has(part) ? sql`string_agg(k.id::text, chr(31) order by k.id)` : sql`null::text`}
       from k ${where(having)})`),
   ];
   const rows = (await sql`
     with k as materialized (${grouped})
     ${selects.reduce((a, b): Fragment => sql`${a} union all ${b}`)}
-  `) as unknown as { part: string; id: string | null; va: string; vb: string; n: string | null; r: string | null }[];
-  const out: TrendPartition = { lists: {}, composition: {} };
+  `) as unknown as { part: string; id: string | null; va: string; vb: string; n: string | null; r: string | null; x: TrendPartSources | null; ids: string | null }[];
+  const out: TrendPartition = { lists: {}, composition: {}, sources: {}, members: {} };
   for (const [list] of lists) out.lists[list] = [];
   for (const r of [...rows].sort((a, b) => Number(a.r ?? 0) - Number(b.r ?? 0))) {
-    if (r.part.startsWith("sum:")) out.composition[r.part.slice(4) as TrendPart] = { count: Number(r.n), valueA: Number(r.va), valueB: Number(r.vb) };
-    else out.lists[r.part as TrendList]!.push({ id: r.id!, va: r.va, vb: r.vb });
+    if (r.part.startsWith("sum:")) {
+      const part = r.part.slice(4) as TrendPart;
+      out.composition[part] = { count: Number(r.n), valueA: Number(r.va), valueB: Number(r.vb) };
+      if (r.x) out.sources[part] = { da: channelSources(r.x.da), contracts: channelSources(r.x.contracts) };
+      if (memberParts.has(part)) out.members[part as TrendMemberPart] = r.ids ? r.ids.split("\u001f") : [];
+    } else out.lists[r.part as TrendList]!.push({ id: r.id!, va: r.va, vb: r.vb });
   }
   return out;
+}
+const channelSources = (c: { n: number | string; v: string; first: string | null; last: string | null }): TrendChannelSources =>
+  ({ n: Number(c.n), v: c.v, first: c.first, last: c.last });
+
+/**
+ * The channel columns of a trend's grouped input, per entity or county: the
+ * records, value and first and last day of each channel (n_da, v_da, f_da,
+ * l_da; n_ct, v_ct, f_ct, l_ct), the source drawer's totals (the state of a
+ * direct acquisition is 'Oferta acceptata' and of a contract null, so there a
+ * channel is a state). A dataset of one channel gives zeros and nulls for the
+ * other; `of(src)` gives the aggregates of one channel, with null days when
+ * the input does not know them.
+ */
+export function trendChannelColumns(sql: DbSql, dataset: "all" | "da" | "contracts",
+  of: (src: "da" | "contracts") => { n: Fragment; v: Fragment; first: Fragment | null; last: Fragment | null }): Fragment {
+  const columns = (src: "da" | "contracts", suffix: "da" | "ct"): Fragment => {
+    const name = (column: string) => sql(`${column}_${suffix}`);
+    if (dataset !== "all" && dataset !== src)
+      return sql`0::bigint ${name("n")}, 0::numeric ${name("v")}, null::text ${name("f")}, null::text ${name("l")}`;
+    const c = of(src);
+    return sql`coalesce(${c.n}, 0)::bigint ${name("n")}, coalesce(${c.v}, 0) ${name("v")},
+      (${c.first ?? sql`null`})::text ${name("f")}, (${c.last ?? sql`null`})::text ${name("l")}`;
+  };
+  return sql`${columns("da", "da")}, ${columns("contracts", "ct")}`;
+}
+
+/**
+ * The channel columns of the live grouping (the slim union `d`, with `src` on
+ * both channels): each channel's rows, value and first and last day, in byte
+ * order as the rollups keep them.
+ */
+export function liveTrendChannels(sql: DbSql, dataset: "all" | "da" | "contracts"): Fragment {
+  return trendChannelColumns(sql, dataset, (src) => {
+    // A one-channel dataset reads its mart directly, without `src`.
+    const only: Fragment = dataset === "all" ? sql` filter (where d.src = ${src})` : sql``;
+    return {
+      n: sql`count(*)${only}`, v: sql`sum(d.closing_value)${only}`,
+      first: sql`min(left(d.finalization_date, 10) collate "C")${only}`, last: sql`max(left(d.finalization_date, 10) collate "C")${only}`,
+    };
+  });
 }
 
 /** What the trend's groups are called after the selection (trend final §1): firms of a chosen buyer are its suppliers, institutions of a chosen firm its clients. */

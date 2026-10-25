@@ -21,13 +21,17 @@ import { PER_CAPITA_SOURCE, perCapitaCaveat, POPULATION_CARD_NOTE, readPerCapita
 import { martColumns } from "./mart-columns";
 import {
   compareParties, compareSharedPartners, compareTopPartners, planRollup, rollupBreakdown, rollupCountyTable, rollupMap, rollupMinimumCond,
-  monthRollupReady, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, rollupTrendMembers, scatterDensity,
+  monthRollupReady, rollupDaysReady, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, scatterDensity,
   type RollupFilters, type RollupNeed, type RollupSource,
 } from "./rollups";
 import {
-  factsOfRow, factsSource, trendFactsRows, trendListOf, trendNoun, trendPartition, trendProfiles,
-  type TrendComposition, type TrendList, type TrendNoun, type TrendPartitionRow, type TrendRowFacts,
+  factsOfRow, factsSource, liveTrendChannels, trendFactsRows, trendListOf, trendNoun, trendPartition, trendProfiles,
+  type TrendComposition, type TrendList, type TrendMemberPart, type TrendNoun, type TrendPartitionRow, type TrendPartSources, type TrendRowFacts,
 } from "./trend-partition";
+import {
+  entryMembers, groupSourceTotals, hasMember, memberList, rememberTrendGroups, trendCacheStamp, trendGroupEntry, trendGroupKey, trendGroupsFor, trendMemberPart,
+  type SourceTotalsRow,
+} from "./group-ids";
 import { sectorUnit } from "../peer-population";
 
 /**
@@ -556,6 +560,31 @@ async function rollupPlanFor(sql: DbSql, spec: AskSpec, ctx: PredicateCtx): Prom
   return "source" in plan ? plan : null;
 }
 
+/**
+ * A trend's grouped input for trendPartition: per entity (or county) the sums
+ * of the two years and each channel's records, value and days, from the
+ * rollup the planner picked or from the live grouping of the slim union
+ * (names and counties come from the profiles after). The answer and its
+ * sources' drawer (a group missing from group-ids.ts) group the same way.
+ */
+function trendGroupedInput(s: DbSql, o: {
+  rollup: { source: RollupSource; filters: RollupFilters } | null; days: boolean; ctx: PredicateCtx;
+  dataset: "all" | "da" | "contracts"; dim: Dim; yearA: number; yearB: number;
+}): ReturnType<DbSql> {
+  const rolled = o.rollup ? rollupTrendGrouped(s, o.rollup, { dim: o.dim, yearA: o.yearA, yearB: o.yearB, days: o.days }) : null;
+  if (rolled && "grouped" in rolled) return rolled.grouped;
+  const key: ReturnType<DbSql> = o.dim === "county" ? s`d.county` : o.dim === "authority" ? s`d.authority_id` : s`d.supplier_id`;
+  const va: ReturnType<DbSql> = s`coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(o.yearA)}), 0)`;
+  const vb: ReturnType<DbSql> = s`coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(o.yearB)}), 0)`;
+  const selection = andAll(s, [...rowPredicates(o.ctx, { years: false }), trendYearsPredicate(s, o.yearA, o.yearB, o.ctx.trendMonths)]);
+  return s`
+    select ${key} id, ${va} va, ${vb} vb, ${liveTrendChannels(s, o.dataset)}
+    from ${txAggFragment(s, o.dataset, Boolean(o.ctx.kind))} d
+    where ${selection} and ${key} is not null
+    group by ${key}
+  `;
+}
+
 export async function runSpec(
   sql: DbSql,
   spec: AskSpec,
@@ -864,6 +893,8 @@ export async function runSpec(
 
   // The nightly rollups answer the selections that otherwise group the transaction marts.
   const rollup = isHistoricalProfile(spec) ? null : await rollupPlanFor(sql, spec, w);
+  // A trend's group sources read their days from the rollup once a build has them (rollupDaysReady).
+  const trendDays = spec.block === "trend" && rollup ? await rollupDaysReady(sql) : false;
   const columns = spec.block === "scatter" ? await martColumns(sql) : null;
 
   // --- execute under guardrails
@@ -1637,18 +1668,13 @@ export async function runSpec(
           // the chosen group is rowsTrend (every change without trend options, as before trend-2).
           const group = trendGroupOf(spec);
           const key: ReturnType<DbSql> = dim === "county" ? s`d.county` : dim === "authority" ? s`d.authority_id` : s`d.supplier_id`;
-          const va: ReturnType<DbSql> = s`coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yA)}), 0)`;
-          const vb: ReturnType<DbSql> = s`coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yB)}), 0)`;
           const selection = andAll(s, [whereFrag({ years: false }), trendYearsPredicate(s, yA, yB, w.trendMonths)]);
-          const rolledTrend = rollup ? rollupTrendGrouped(s, rollup, { dim, yearA: yA, yearB: yB }) : null;
           // Names and counties come from entity_profile after the grouping, so the live query groups the slim union.
-          const grouped: ReturnType<DbSql> = rolledTrend && "grouped" in rolledTrend ? rolledTrend.grouped : s`
-            select ${key} id, ${va} va, ${vb} vb
-            from ${txtAgg} d
-            where ${selection} and ${key} is not null
-            group by ${key}
-          `;
+          const grouped = trendGroupedInput(s, { rollup, days: trendDays, ctx: w, dataset, dim, yearA: yA, yearB: yB });
           const partition = await trendPartition(s, grouped, { group, topN, first: dim === "county" ? null : { role: dim, yearB: yB } });
+          // The members of every group and their records per channel, kept for the source drawers (group-ids.ts).
+          const stamp = await trendCacheStamp(s);
+          if (stamp) rememberTrendGroups(trendGroupKey(w, { stamp, dim, yearA: yA, yearB: yB }), trendGroupEntry(partition, { dim, group }));
           const lists = Object.entries(partition.lists) as [TrendList, TrendPartitionRow[]][];
           // The facts and the profile of the shown entities only (≤ 6 × N ids), on the id indexes.
           const shown = dim === "county" ? [] : [...new Set(lists.flatMap(([, rows]) => rows.map((r) => r.id)))];
@@ -1783,6 +1809,12 @@ export interface DrillResult {
   total: number;
   page: number;
   pageSize: number;
+  /**
+   * The drawer of a trend's group: its part, its members, and the selection it
+   * is part of (records and value of both years, every group with the equal
+   * ones); the group's own figures are sourceTotal and sourceValue.
+   */
+  group?: { part: TrendMemberPart; members: number; selection: { count: number; value: string } | null };
 }
 
 /** Whitelisted sort keys → columns (everything else falls back to value). */
@@ -1830,6 +1862,8 @@ export interface DrillOpts {
 }
 
 export const DRILL_PAGE_SIZE = 10;
+/** A trend group of at most this many records is listed from its members' id index, never a scan of the mart (runRows). */
+export const GROUP_ID_INDEX_RECORDS = 250_000;
 /** Hard cap for full-result CSV exports (~15MB of CSV). */
 export const CSV_MAX_ROWS = EVIDENCE_CSV_LIMIT;
 /** Blocks whose result is an aggregate over da_transactions — drillable to rows. */
@@ -1990,6 +2024,7 @@ export async function runRows(
     : sql`(select ef.* from marts.entity_flags ef where ${baseProfileWhere})`;
   const selectionParts: ReturnType<DbSql>[] = [sql`true`];
   if (scope.county) selectionParts.push(sql`lower(unaccent(ef.county)) = ${fold(scope.county)}`);
+  if (scope.counties) selectionParts.push(sql`lower(unaccent(ef.county)) = any(${sql.array(scope.counties.map(fold))}::text[])`);
   if (scope.entityIds) selectionParts.push(sql`ef.entity_id = any(${sql.array([...scope.entityIds])}::bigint[])`);
   if (scope.excludeEntityIds) selectionParts.push(sql`not (ef.entity_id = any(${sql.array([...scope.excludeEntityIds])}::bigint[]))`);
   if (scope.riskBucket) selectionParts.push(sql`width_bucket(coalesce(ef.cri, 0), 0, 1.0000001, 10) = ${Math.round(scope.riskBucket.from * 10) + 1}`);
@@ -2062,6 +2097,8 @@ export async function runRows(
       notes.push("Sursele sunt limitate la entitatea cu cea mai mare valoare în selecția întrebării; filtrele din listă nu schimbă câștigătorul.");
     }
     if (scope.county) parts.push(sql`lower(unaccent(d.county)) = ${fold(scope.county)}`);
+    // Several counties: a group of a county trend (at most 42), in the drawer's words.
+    if (scope.counties) parts.push(sql`lower(unaccent(d.county)) = any(${sql.array(scope.counties.map(fold))}::text[])`);
     if (isRelationship) parts.push(focalRole === "authority" ? sql`d.supplier_id is not null` : sql`d.authority_id is not null`);
     if (spec.block === "table" || spec.block === "trend") {
       if (spec.dim === "county") parts.push(sql`d.county is not null`);
@@ -2091,30 +2128,48 @@ export async function runRows(
     if (spec.block === "table" || spec.block === "network" || spec.block === "trend") notes.push("Lista surselor acoperă întregul rezultat filtrat; limita de poziții din clasament sau diagramă nu limitează sursele.");
   }
   const baseWhere = parts.reduce((a, b) => sql`${a} and ${b}`);
-  // trend: the sources of the group the answer lists (trendGroupSql). Its members are read over
-  // the answer's selection, not the drawer's scope (from the rollups when they answer it); a
-  // row's own records ("Înregistrări →") check only that row's ids. Then the rows are theirs.
+  // trend: the sources of the group the answer lists (trendGroupSql): its members' records of the
+  // two years. The members belong to the answer's selection, not to the drawer's scope: they come
+  // from the answer's partition (group-ids.ts) or, when none is kept, from the same grouping, which
+  // is kept for the next drawer. A row's own records ("Înregistrări →") check only that row's ids.
   const trendGroup = spec.block === "trend" && !profile ? trendGroupOf(spec) : null;
+  const listed = trendGroup && !isEveryChange(trendGroup) ? trendGroup : null;
   const groupDim = spec.dim ?? "authority";
-  const readMembers = trendGroup && !isEveryChange(trendGroup) ? async (s: DbSql): Promise<string[]> => {
-    const yearA = yearFrom ?? minY, yearB = yearTo ?? maxY;
-    const own = groupDim !== "county" && scope.entityIds && scope.role === groupDim ? scope.entityIds : null;
-    if (rollup && !own) {
-      const rolled = await rollupTrendMembers(s, rollup, { dim: groupDim, yearA, yearB, group: trendGroup });
-      if ("members" in rolled) return rolled.members;
+  const yearA = yearFrom ?? minY, yearB = yearTo ?? maxY;
+  const own = listed && groupDim !== "county" && scope.entityIds && scope.role === groupDim ? scope.entityIds : null;
+  // The two years as a range on the column, so the id indexes (id, finalization_date) bound the members' rows.
+  const memberRange: ReturnType<DbSql> = sql`d.finalization_date >= ${String(Math.min(yearA, yearB))} and d.finalization_date < ${String(Math.max(yearA, yearB) + 1)}`;
+  const trendDays = listed && rollup ? await rollupDaysReady(sql) : false;
+  const groupMembers = listed ? async (s: DbSql): Promise<{ members: Float64Array | readonly string[]; sources: TrendPartSources | null; selection: TrendPartSources | null }> => {
+    const stamp = await trendCacheStamp(s);
+    const key = stamp ? trendGroupKey(ctx, { stamp, dim: groupDim, yearA, yearB }) : null;
+    let entry = key ? trendGroupsFor(key) : null;
+    let kept = entry ? entryMembers(entry, listed) : null;
+    if (own) {
+      if (kept) return { members: own.filter((id) => hasMember(kept!, id)), sources: null, selection: null };
+      // Only these ids, with the answer's conditions, on the id index of their two years.
+      const role = groupDim as "authority" | "supplier";
+      const id: ReturnType<DbSql> = role === "supplier" ? sql`d.supplier_id` : sql`d.authority_id`;
+      const va: ReturnType<DbSql> = sql`coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yearA)}), 0)`;
+      const vb: ReturnType<DbSql> = sql`coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yearB)}), 0)`;
+      const { having } = trendGroupSql(sql, va, vb, listed, { id, role, yearB });
+      const where = andAll(sql, [...rowPredicates(ctx, { years: false }), trendYearsPredicate(sql, yearA, yearB, ctx.trendMonths),
+        sql`${id} = any(${sql.array([...own])}::bigint[])`, memberRange]);
+      const rows = (await readEvidenceQuery(s`
+        select ${id}::text m from ${txAggFragment(sql, dataset, Boolean(ctx.kind))} d
+        where ${where} group by ${id} ${having ? sql`having ${having}` : sql``}
+      `, opts.signal)) as unknown as { m: string }[];
+      return { members: rows.map((r) => r.m), sources: null, selection: null };
     }
-    const key: ReturnType<DbSql> = groupDim === "county" ? sql`d.county` : groupDim === "supplier" ? sql`d.supplier_id` : sql`d.authority_id`;
-    const va: ReturnType<DbSql> = sql`coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yearA)}), 0)`;
-    const vb: ReturnType<DbSql> = sql`coalesce(sum(d.closing_value) filter (where substr(d.finalization_date,1,4) = ${String(yearB)}), 0)`;
-    const { having } = trendGroupSql(sql, va, vb, trendGroup, groupDim === "county" ? undefined : { id: key, role: groupDim, yearB });
-    const answerParts: ReturnType<DbSql>[] = [...rowPredicates(ctx, { years: false }), trendYearsPredicate(sql, yearA, yearB, ctx.trendMonths), sql`${key} is not null`];
-    if (own) answerParts.push(sql`${key} = any(${sql.array([...own])}::bigint[])`);
-    const where = andAll(sql, answerParts);
-    const rows = (await readEvidenceQuery(s`
-      select ${key}::text m from ${txAggFragment(sql, dataset, Boolean(ctx.kind))} d
-      where ${where} group by ${key} ${having ? sql`having ${having}` : sql``}
-    `, opts.signal)) as unknown as { m: string }[];
-    return rows.map((r) => r.m);
+    if (!entry || !kept) {
+      // Not kept (another process, an entry dropped, the marts rebuilt): the answer's grouping again, kept for the next drawer.
+      const partition = await trendPartition(s, trendGroupedInput(s, { rollup, days: trendDays, ctx, dataset, dim: groupDim, yearA, yearB }),
+        { group: listed, topN: 0, first: groupDim === "county" ? null : { role: groupDim, yearB } });
+      entry = trendGroupEntry(partition, { dim: groupDim, group: listed });
+      if (key) rememberTrendGroups(key, entry);
+      kept = entryMembers(entry, listed) ?? [];
+    }
+    return { members: kept, sources: entry.sources[trendMemberPart(listed)!] ?? null, selection: entry.sources.all ?? null };
   } : null;
   const localParts: ReturnType<DbSql>[] = [sql`true`];
   if (opts.stream) localParts.push(sql`d.src = ${opts.stream}`);
@@ -2144,23 +2199,37 @@ export async function runRows(
     // choices in local source verification without changing database settings.
     await tx.unsafe("set local random_page_cost = 1.1");
     const s = tx as unknown as DbSql;
-    const members = readMembers ? await readMembers(s) : null;
-    if (members && trendGroup) {
+    const group = groupMembers ? await groupMembers(s) : null;
+    const members = group ? memberList(group.members) : null;
+    if (members && listed) {
       const [one, many] = groupDim === "county" ? ["județ", "județe"] : groupDim === "supplier" ? ["firmă", "firme"] : ["instituție", "instituții"];
-      notes.push(`Sursele grupului „${TREND_CHANGE_LABELS[trendGroup.change]}”${trendGroup.firstOnly ? ` (prima dată în ${yearTo ?? maxY})` : ""}: ${countWords(members.length, one!, many!)}, cu înregistrările lor din cei doi ani, nu doar cele afișate.`);
+      notes.push(`Sursele grupului „${TREND_CHANGE_LABELS[listed.change]}”${listed.firstOnly ? ` (prima dată în ${yearB})` : ""}: ${countWords(members.length, one!, many!)}, cu înregistrările lor din cei doi ani, nu doar cele afișate.`);
     }
     const sourceWhere = !members ? baseWhere : groupDim === "county"
       ? sql`${baseWhere} and d.county = any(${sql.array(members)}::text[])`
-      : sql`${baseWhere} and ${groupDim === "supplier" ? sql`d.supplier_id` : sql`d.authority_id`} = any(${sql.array(members)}::bigint[])`;
-    const rolledTotals = rollup && totalsBlock && localParts.length === 1 && Object.keys(scope).every((key) => key === "role")
+      : sql`${baseWhere} and ${groupDim === "supplier" ? sql`d.supplier_id` : sql`d.authority_id`} = any(${sql.array(members)}::bigint[]) and ${memberRange}`;
+    // A group's page reads its members' rows on the id index. For a group of at most a few hundred
+    // thousand records the planner would scan the whole mart instead (it counts each member as an
+    // average entity: 3.9 s instead of 0.26 s for the 17,633 new firms of 2025), or walk the primary
+    // key back through the newer years; so sequential scans are off for this transaction's remaining
+    // reads (the record lookups of the page keep their indexes) and the order by reference hides the
+    // key (`+ 0`, as the annual scan). Larger groups keep the planner's plans: their newest records
+    // come first on the primary key.
+    const groupRecords = group?.sources ? group.sources.da.n + group.sources.contracts.n : null;
+    const idIndex = groupRecords !== null && groupRecords <= GROUP_ID_INDEX_RECORDS;
+    if (idIndex) await tx.unsafe("set local enable_seqscan = off");
+    // Without a search or another selection, a group's totals are its records in the answer's grouping.
+    const groupTotals = group?.sources && !search && Object.keys(scope).every((key) => key === "role")
+      ? groupSourceTotals(group.sources, { ...(opts.stream ? { stream: opts.stream } : {}), ...(opts.state ? { state: opts.state } : {}) }) : null;
+    const rolledTotals = !groupTotals && rollup && totalsBlock && localParts.length === 1 && Object.keys(scope).every((key) => key === "role")
       ? await rollupSourceTotals(s, rollup, totalsBlock) : null;
-    const totals = rolledTotals && "rows" in rolledTotals ? rolledTotals.rows : (await readEvidenceQuery(s`
+    const totals: SourceTotalsRow[] = groupTotals ?? (rolledTotals && "rows" in rolledTotals ? rolledTotals.rows : (await readEvidenceQuery(s`
       select d.state, count(*) n, coalesce(sum(d.closing_value), 0)::text v,
              count(*) filter (where ${localWhere}) fn,
              coalesce(sum(d.closing_value) filter (where ${localWhere}), 0)::text fv,
              min(d.finalization_date) date_from, max(d.finalization_date) date_to
       from ${txt} d where ${sourceWhere} group by d.state
-    `, opts.signal)) as unknown as { state: string | null; n: string; v: string; fn: string; fv: string; date_from: string | null; date_to: string | null }[];
+    `, opts.signal)) as unknown as SourceTotalsRow[]);
     const sourceTotal = totals.reduce((n, r) => n + Number(r.n), 0);
     const sourceValue = sumDecimalStrings(totals.map((r) => r.v));
     const total = totals.reduce((n, r) => n + Number(r.fn), 0);
@@ -2181,8 +2250,12 @@ export async function runRows(
     // sort the bounded result. Adding zero preserves bigint reference order
     // while avoiding that misleading early-stop index plan. Fetch wide rows
     // only for the selected IDs, inside this same repeatable-read snapshot.
+    // A trend group's members (not a row's own ids) bound each channel on their id index and the two
+    // years instead (the annual scan extended to a group): each channel's first rows in the drawer's
+    // order, then the same order over both, in any sort.
+    const groupBranches = members && !own ? (dataset === "all" ? [daTx, contractTx] : [txt]) : null;
     const latestSelectedYear = scope.years?.length ? Math.max(...scope.years) : yearTo;
-    const annualScan = !profile && dataset === "all" && sortKey === "source"
+    const annualScan = !profile && !groupBranches && dataset === "all" && sortKey === "source"
       && latestSelectedYear !== null && latestSelectedYear < maxY
       && Object.keys(spec.filters).every((key) => ["yearFrom", "yearTo", "monthFrom", "monthTo"].includes(key))
       && Object.keys(scope).every((key) => ["years", "excludeCpvPrefixes"].includes(key));
@@ -2193,7 +2266,11 @@ export async function runRows(
       (select d.ref_id, d.src, d.supplier_id from ${contractTx} d where ${sourceWhere} and ${localWhere}
        order by (d.ref_id + 0) ${dirFrag}, d.supplier_id nulls first limit ${branchLimit})
     )` : null;
-    const pageTxt = annualKeys ? sql`(
+    const branchOrder = sortKey !== "source" ? sql`${sortFrag} ${dirFrag}, d.ref_id, d.supplier_id nulls first`
+      : idIndex ? sql`(d.ref_id + 0) ${dirFrag}, d.supplier_id nulls first` : sql`d.ref_id ${dirFrag}, d.supplier_id nulls first`;
+    const pageTxt = groupBranches ? sql`(${groupBranches.map((branch) => sql`(
+      select * from ${branch} d where ${sourceWhere} and ${localWhere} order by ${branchOrder} limit ${branchLimit})`)
+      .reduce((a, b) => sql`${a} union all ${b}`)})` : annualKeys ? sql`(
       select selected_row.* from ${annualKeys} selected_key
       cross join lateral (
         select d.* from ${daTx} d
@@ -2232,6 +2309,7 @@ export async function runRows(
       closing_value: string; src: "da" | "contracts"; ref_id: string | null; ca_notice_id: string | null; ted_pubnum: string | null;
       estimated_value_ron: string | null; value_suspect: boolean | null; state: string | null; n_winners: number | null; contract_value_full: string | null;
     }[];
+    if (idIndex) await tx.unsafe("set local enable_seqscan to default");
     let profiles: EvidenceProfile[] = [];
     let profileCount = 0;
     let profileReconciled: boolean | null = null;
@@ -2260,6 +2338,11 @@ export async function runRows(
       dateFrom: totals.map((r) => r.date_from).filter((d): d is string => d !== null).sort()[0]?.slice(0, 10) ?? null,
       dateTo: totals.map((r) => r.date_to).filter((d): d is string => d !== null).sort().at(-1)?.slice(0, 10) ?? null,
       profile, profiles, profileCount, profileReconciled, scopeNotes: notes,
+      // A group's drawer says both figures: the group's and the selection's (plan §2.5, §6.2).
+      ...(group && listed && !own && members ? { group: {
+        part: trendMemberPart(listed)!, members: members.length,
+        selection: group.selection ? { count: group.selection.da.n + group.selection.contracts.n, value: sumDecimalStrings([group.selection.da.v, group.selection.contracts.v]) } : null,
+      } } : {}),
     };
   });
 }
