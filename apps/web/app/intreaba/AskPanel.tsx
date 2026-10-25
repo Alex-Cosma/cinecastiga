@@ -33,6 +33,7 @@ import { TREND_LIST_CSV, retimeScopeLabel, trendWatch } from "./trend-answer";
 import { specTrendList, type TrendList } from "@/lib/ask/trend-shared";
 import { isWholeYear, monthsLabel } from "@/lib/ask/months-window";
 import QuestionBuilder, { type StripPatch } from "./QuestionBuilder";
+import { patchDraft } from "./builder/view";
 import SaveQuestionButton from "./SaveQuestionButton";
 import type { SavedQuestion } from "./SavedQuestions";
 import AnswerStrip, { Crumbs, StripEnd, StripLabelled } from "./answer/AnswerStrip";
@@ -46,7 +47,7 @@ import Segmented from "./builder/Segmented";
 import "./builder/filters-kit.css";
 import { answerCsv, type BandState } from "./answer-csv";
 import { useCpvName } from "./cpv-name";
-import { DATA_RELOADED, STRIP_QUERY_KEYS, appliedAfterStrip, appliedAfterTrendList, readThread, shownWords, streamOptions, threadCrumbs, threadWords, totalConditionWords, type AnswerVariants, type Thread } from "./answer-state";
+import { DATA_RELOADED, STRIP_QUERY_KEYS, answerHoldsList, appliedAfterStrip, appliedAfterTrendList, readThread, shownWords, streamOptions, threadCrumbs, threadWords, totalConditionWords, type AnswerVariants, type Thread } from "./answer-state";
 import EntityTypeahead from "./EntityTypeahead";
 import EvidenceDrawer from "./EvidenceDrawer";
 import { AnswerEvidence, useAnswerEvidence } from "./AnswerEvidence";
@@ -534,11 +535,23 @@ export default function AskPanel({
   const applyTrendList = (list: TrendList) => {
     if (!applied || !resp?.spec) return;
     const next = appliedAfterTrendList(applied, resp.spec, list);
+    const patch = { path: "trend" as const, value: list, trend: next.trend ?? null };
     setAppliedSpec(next);
-    setStripPatch((current) => ({ seq: (current?.seq ?? 0) + 1, path: "trend", value: list, trend: next.trend ?? null }));
+    setStripPatch((current) => ({ seq: (current?.seq ?? 0) + 1, ...patch }));
+    // A builder folded under "Schimbă întrebarea" is not mounted: it opens on the group shown, not the link's.
+    if (builderCollapsed) {
+      setBuilderInit((current) => current ? patchDraft(current, patch) : current);
+      setBuilderResolution((current) => current ? { submitted: patchDraft(current.submitted, patch), resolved: patchDraft(current.resolved, patch) } : current);
+    }
     const url = new URL(window.location.href);
     url.searchParams.set("spec", encodeSpec(next));
     window.history.replaceState(null, "", url);
+  };
+  /** The sentence's "Ce fel de schimbare?" chose a group the answer holds: the same switch as its button (no request). */
+  const trendListFromBuilder = (list: TrendList): boolean => {
+    if (loading || !answerHoldsList(resp?.data, list)) return false;
+    applyTrendList(list);
+    return true;
   };
   const openEvidence = useCallback(
     (spec?: AskSpec, scope?: EvidenceScope, label?: string) => {
@@ -783,6 +796,7 @@ export default function AskPanel({
             initialApplied={!chosen && linkRuns}
             {...(!chosen && !linkRuns ? { initialNotes: linkNotes } : {})}
             stripPatch={stripPatch}
+            onTrendList={trendListFromBuilder}
             {...(chosen && intent ? {
               intro: <IntentIntro />,
               outro: <IntentOutro result={intent} chosen={chosen} onAdopt={adopt} />,
@@ -1041,6 +1055,7 @@ export default function AskPanel({
                   partial={resp.partialYears ?? []}
                   conditions={totalWords}
                   onList={applyTrendList}
+                  strip={stripKeys}
                   onWider={runWider}
                 />
               )}

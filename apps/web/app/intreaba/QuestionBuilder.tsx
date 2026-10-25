@@ -30,7 +30,8 @@ import UnderChips from "./builder/UnderChips";
 import { useEntityNames } from "./builder/use-entity-names";
 import KitLink from "./answer/KitLink";
 import RowMenu from "./answer/RowMenu";
-import { builderView, onlyExclusions, patchDraft, withoutExclusions, type BuilderWindowSpec, type StripPatch } from "./builder/view";
+import { builderView, onlyExclusions, patchDraft, trendListSwitch, withoutExclusions, type BuilderWindowSpec, type StripPatch } from "./builder/view";
+import type { TrendList } from "@/lib/ask/trend-shared";
 import SaveQuestionButton from "./SaveQuestionButton";
 import SavedQuestions, { type SavedQuestion } from "./SavedQuestions";
 
@@ -68,6 +69,11 @@ export interface QuestionBuilderProps {
   initialNotes?: readonly string[];
   /** A key the strip beside the answer changed (plan §2.3): the builder writes it into its applied question and its draft. */
   stripPatch?: StripPatch | null;
+  /**
+   * The sentence chose another of the trend's groups, the rest of the question as applied: true when the
+   * answer on screen holds that list and switched to it (no request; its StripPatch follows), as its button does.
+   */
+  onTrendList?: (list: TrendList) => boolean;
 }
 
 function Glyph({ name, className = "" }: { name: string; className?: string }) {
@@ -98,7 +104,7 @@ function Glyph({ name, className = "" }: { name: string; className?: string }) {
 const unique = (notes: readonly string[]) => [...new Set(notes)];
 const isCode = (term: string) => /^(?:\d{2,8}|\d{8}-\d)$/.test(term.replace(/\s+/g, ""));
 
-export default function QuestionBuilder({ initial, resolution, fromAi = false, onRun, running, onDraftChange, intro, outro, initialApplied = true, initialNotes, stripPatch = null }: QuestionBuilderProps) {
+export default function QuestionBuilder({ initial, resolution, fromAi = false, onRun, running, onDraftChange, intro, outro, initialApplied = true, initialNotes, stripPatch = null, onTrendList }: QuestionBuilderProps) {
   const [seed] = useState(() => transitionQuestion(initial ?? defaultQuestion()));
   const [draft, setDraft] = useState<QuestionSpec>(seed.spec);
   const [applied, setApplied] = useState<QuestionSpec | null>(initial && initialApplied ? cloneQuestion(initial) : null);
@@ -216,6 +222,10 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
     }
     settle({ spec, notes, parked: current, links });
     closeWindow();
+    // The trend's group in the sentence and the answer's group buttons are one control (plan §4.7 P1, P6):
+    // a group the answer already holds is shown at once, the draft applied by the StripPatch that follows.
+    const list = target.slot.id === "trendChange" && !running ? trendListSwitch(spec, applied) : null;
+    if (list) onTrendList?.(list);
   }
   /** "⋯ › Selecție avansată" and its editors write the draft as they are edited (same question, normalized). */
   function replace(next: QuestionSpec) {
