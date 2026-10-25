@@ -64,13 +64,13 @@ export default function RowMenu({ name, actions, className, defaultOpen = false 
    * (the next, else the previous), never to the page's start.
    */
   const select = (action: RowAction) => {
-    const row = button.current?.closest("[data-fk-arow]");
+    const row = button.current?.closest("[data-qb-arow]");
     const neighbour = row?.nextElementSibling ?? row?.previousElementSibling ?? null;
     close(true);
     action.onSelect?.();
     requestAnimationFrame(() => {
       if (button.current?.isConnected) return;
-      const target = neighbour?.isConnected ? neighbour.querySelector<HTMLElement>(".fk-more") ?? (neighbour as HTMLElement) : null;
+      const target = neighbour?.isConnected ? neighbour.querySelector<HTMLElement>(".qb-more") ?? (neighbour as HTMLElement) : null;
       target?.focus();
     });
   };
@@ -79,7 +79,7 @@ export default function RowMenu({ name, actions, className, defaultOpen = false 
     <button
       ref={button}
       type="button"
-      className={`fk-more${className ? ` ${className}` : ""}`}
+      className={`qb-more${className ? ` ${className}` : ""}`}
       aria-haspopup="menu"
       aria-expanded={!!open}
       aria-controls={open ? menuId : undefined}
@@ -90,7 +90,7 @@ export default function RowMenu({ name, actions, className, defaultOpen = false 
     {open && <div
       ref={menu}
       id={menuId}
-      className={`fk-menu fk-menu--pop${place.up ? " fk-menu--up" : ""}${place.end ? " fk-menu--end" : ""}`}
+      className={`qb-menu qb-menu--pop${place.up ? " qb-menu--up" : ""}${place.end ? " qb-menu--end" : ""}`}
       role="menu"
       aria-label={name}
       onKeyDown={event => {
@@ -104,8 +104,8 @@ export default function RowMenu({ name, actions, className, defaultOpen = false 
       }}
     >
       {actions.map(action => {
-        const body = <><span className="fk-menu-t">{action.label}{action.disabled && <small>{action.disabled}</small>}</span><span aria-hidden="true">{action.glyph}</span></>;
-        const common = { role: "menuitem", tabIndex: -1, "data-label": action.label, className: `fk-menu-item${action.className ? ` ${action.className}` : ""}`, "aria-disabled": action.disabled ? true : undefined } as const;
+        const body = <><span className="qb-menu-t">{action.label}{action.disabled && <small>{action.disabled}</small>}</span><span aria-hidden="true">{action.glyph}</span></>;
+        const common = { role: "menuitem", tabIndex: -1, "data-label": action.label, className: `qb-menu-item${action.className ? ` ${action.className}` : ""}`, "aria-disabled": action.disabled ? true : undefined } as const;
         if (action.href && !action.disabled) return <a key={action.id} {...common} href={action.href} onClick={() => close(false)}>{body}</a>;
         return <button key={action.id} type="button" {...common} onClick={() => { if (!action.disabled) select(action); }}>{body}</button>;
       })}

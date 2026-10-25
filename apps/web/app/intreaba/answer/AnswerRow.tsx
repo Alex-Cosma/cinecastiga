@@ -29,14 +29,14 @@ export interface AnswerRowProps {
 }
 
 export default function AnswerRow({ name, place, facts = [], value, share, records, actions = [], menuClassName, menuOpen }: AnswerRowProps) {
-  return <div className="fk-arow" role="listitem" tabIndex={-1} data-fk-arow="">
+  return <div className="qb-arow" role="listitem" tabIndex={-1} data-qb-arow="">
     <div>
-      <div className="fk-arow-name">{name}{place && <small>{place}</small>}</div>
+      <div className="qb-arow-name">{name}{place && <small>{place}</small>}</div>
       <RowFacts facts={facts} />
     </div>
-    <div className="fk-arow-val">
-      <span className="fk-num">{value}</span>
-      {(share || records) && <small>{share}{share && records && " · "}{records && <KitLink link={{ glyph: "→", ...records }} className="fk-rec" />}</small>}
+    <div className="qb-arow-val">
+      <span className="qb-num">{value}</span>
+      {(share || records) && <small>{share}{share && records && " · "}{records && <KitLink link={{ glyph: "→", ...records }} className="qb-rec" />}</small>}
     </div>
     {actions.length > 0 && <RowMenu name={name} actions={actions} {...(menuClassName ? { className: menuClassName } : {})} defaultOpen={!!menuOpen} />}
   </div>;
@@ -44,5 +44,5 @@ export default function AnswerRow({ name, place, facts = [], value, share, recor
 
 /** The rows of an answer, as a list; `listRef` lets ListFoot focus the first new row. */
 export function AnswerList({ label, listRef, children }: { label: string; listRef?: Ref<HTMLDivElement>; children: ReactNode }) {
-  return <div ref={listRef} className="fk-alist" role="list" aria-label={label}>{children}</div>;
+  return <div ref={listRef} className="qb-alist" role="list" aria-label={label}>{children}</div>;
 }

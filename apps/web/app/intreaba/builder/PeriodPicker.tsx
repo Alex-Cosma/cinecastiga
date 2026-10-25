@@ -19,7 +19,7 @@ import type { ChangeSource, KitOption } from "./kit-types";
  * preposition).
  */
 
-/** The columns of .fk-years in filters-kit.css: ↑/↓ move by this many cells. */
+/** The columns of .qb-years in filters-kit.css: ↑/↓ move by this many cells. */
 export const YEAR_COLUMNS = 5;
 
 export interface YearCell {
@@ -45,7 +45,7 @@ export function YearGrid({ label, years, value, onChange, noun = ["înregistrare
   const checked = years.findIndex(year => year.value === value);
   const stop = rovingStop(checked, years.map(year => !!year.disabled));
   return <div
-    className="fk-years"
+    className="qb-years"
     role="radiogroup"
     aria-label={label}
     data-roving=""
@@ -56,7 +56,7 @@ export function YearGrid({ label, years, value, onChange, noun = ["înregistrare
       return <button
         key={year.value}
         type="button"
-        className={`fk-year${year.partial ? " is-partial" : ""}${year.zero ? " is-zero" : ""}${year.className ? ` ${year.className}` : ""}`}
+        className={`qb-year${year.partial ? " is-partial" : ""}${year.zero ? " is-zero" : ""}${year.className ? ` ${year.className}` : ""}`}
         role="radio"
         aria-checked={on}
         aria-disabled={year.disabled ? true : undefined}
@@ -108,30 +108,30 @@ export function PeriodRange({ value, onChange, years, months = true, labels = ["
   const errorId = useId();
   const set = (key: keyof PeriodRangeValue) => (event: { target: { value: string } }) => onChange?.({ ...value, [key]: event.target.value });
   const described = error ? errorId : undefined;
-  const yearField = (key: "yearFrom" | "yearTo", text: string, open: string) => <label className="fk-field">
+  const yearField = (key: "yearFrom" | "yearTo", text: string, open: string) => <label className="qb-field">
     <span>{text}</span>
     <select value={value[key]} onChange={set(key)} aria-describedby={described}>
       <option value="">{open}</option>
       {years.map(year => <option key={year} value={year}>{year}</option>)}
     </select>
   </label>;
-  const monthField = (key: "monthFrom" | "monthTo", text: string) => <label className="fk-field">
+  const monthField = (key: "monthFrom" | "monthTo", text: string) => <label className="qb-field">
     <span>{text}</span>
     <select value={value[key]} onChange={set(key)} aria-describedby={described}>
       <option value="">oricare</option>
       {MONTHS.map((month, index) => <option key={month} value={String(index + 1)}>{month}</option>)}
     </select>
   </label>;
-  return <div className="fk-range" id={id}>
-    <div className="fk-inputs">
+  return <div className="qb-range" id={id}>
+    <div className="qb-inputs">
       {yearField("yearFrom", labels[0], "de la început")}
       {yearField("yearTo", labels[1], "până acum")}
     </div>
-    {months && <div className="fk-inputs">
+    {months && <div className="qb-inputs">
       {monthField("monthFrom", "Din luna")}
       {monthField("monthTo", "Până în luna")}
     </div>}
-    {error && <p className="fk-form-error" id={errorId} role="alert">{error}</p>}
+    {error && <p className="qb-form-error" id={errorId} role="alert">{error}</p>}
   </div>;
 }
 
@@ -151,7 +151,7 @@ export default function PeriodPicker({ label = "Perioada", presets, value, onPre
   return <>
     <OptionList label={label} options={presets} value={custom?.open ? null : value} {...(onPreset ? { onChange: onPreset } : {})} />
     {custom && <>
-      <button type="button" className="fk-link fk-range-open" aria-expanded={custom.open} aria-controls={custom.open ? rangeId : undefined} onClick={custom.onOpen}>{custom.label ?? "Alege anii sau lunile…"}</button>
+      <button type="button" className="qb-link qb-range-open" aria-expanded={custom.open} aria-controls={custom.open ? rangeId : undefined} onClick={custom.onOpen}>{custom.label ?? "Alege anii sau lunile…"}</button>
       {custom.open && <PeriodRange id={rangeId} value={custom.value} years={custom.years} {...(custom.onChange ? { onChange: custom.onChange } : {})} {...(custom.months !== undefined ? { months: custom.months } : {})} {...(custom.labels ? { labels: custom.labels } : {})} error={custom.error ?? null} />}
     </>}
   </>;

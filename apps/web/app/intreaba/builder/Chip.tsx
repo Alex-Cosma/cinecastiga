@@ -36,13 +36,13 @@ export interface ChipProps {
  * control after the row on the page, else the last one before it. Never a
  * (?), whose definition would open, and never <body>.
  */
-export function removeAndRefocus(event: MouseEvent<HTMLElement>, remove: () => void, holder = ".fk-chip"): void {
+export function removeAndRefocus(event: MouseEvent<HTMLElement>, remove: () => void, holder = ".qb-chip"): void {
   const own = event.currentTarget.closest<HTMLElement>(holder) ?? event.currentTarget;
-  const scope = own.closest<HTMLElement>("[data-fk-row]") ?? own.parentElement ?? own;
+  const scope = own.closest<HTMLElement>("[data-qb-row]") ?? own.parentElement ?? own;
   const after = (element: HTMLElement) => !!(own.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING);
   const usable = (element: HTMLElement) => !own.contains(element) && !element.classList.contains("term-trigger");
   const row = focusables(scope).filter(usable), page = focusables(document.body).filter(element => usable(element) && !scope.contains(element));
-  const main = own.querySelector<HTMLElement>(".fk-chip-main, button");
+  const main = own.querySelector<HTMLElement>(".qb-chip-main, button");
   const order = [...row.filter(after), main, ...row.filter(element => !after(element)).reverse(), ...page.filter(after), ...page.filter(element => !after(element)).reverse()];
   remove();
   requestAnimationFrame(() => order.find(element => element?.isConnected && element.tabIndex >= 0)?.focus());
@@ -51,23 +51,23 @@ export function removeAndRefocus(event: MouseEvent<HTMLElement>, remove: () => v
 export default function Chip({ id, label, name = label, active = false, count, open = false, availability, onOpen, onRemove, className }: ChipProps) {
   const reasonId = useId();
   const disabled = availability?.state === "disabled" ? availability : null;
-  const chip = <span className={`fk-chip${active ? " is-active" : ""}${disabled ? " is-dim" : ""}`}>
+  const chip = <span className={`qb-chip${active ? " is-active" : ""}${disabled ? " is-dim" : ""}`}>
     <button
       type="button"
-      className={`fk-chip-main${className ? ` ${className}` : ""}`}
+      className={`qb-chip-main${className ? ` ${className}` : ""}`}
       aria-haspopup="dialog"
       aria-expanded={disabled ? undefined : open}
       aria-disabled={disabled ? true : undefined}
       aria-describedby={disabled ? reasonId : undefined}
       onClick={event => { if (!disabled) onOpen?.(id, event.currentTarget); }}
     >
-      {active ? <i className="fk-ck" aria-hidden="true" /> : <span className="fk-plus" aria-hidden="true">+</span>}
+      {active ? <i className="qb-ck" aria-hidden="true" /> : <span className="qb-plus" aria-hidden="true">+</span>}
       <span>{label}</span>
-      {count && <span className="fk-n">{count}</span>}
-      <i className="fk-chev" aria-hidden="true" />
+      {count && <span className="qb-n">{count}</span>}
+      <i className="qb-chev" aria-hidden="true" />
     </button>
-    {active && onRemove && <button type="button" className="fk-chip-x" aria-label={`Scoate «${name}»`} onClick={event => removeAndRefocus(event, () => onRemove(id))}>×</button>}
+    {active && onRemove && <button type="button" className="qb-chip-x" aria-label={`Scoate «${name}»`} onClick={event => removeAndRefocus(event, () => onRemove(id))}>×</button>}
   </span>;
   if (!disabled) return chip;
-  return <span className="fk-pair fk-tipwrap-sm">{chip}<DisabledReason id={reasonId} reason={disabled.reason} />{disabled.tip && <HelpTip tip={disabled.tip} />}</span>;
+  return <span className="qb-pair qb-tipwrap-sm">{chip}<DisabledReason id={reasonId} reason={disabled.reason} />{disabled.tip && <HelpTip tip={disabled.tip} />}</span>;
 }

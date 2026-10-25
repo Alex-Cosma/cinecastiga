@@ -218,7 +218,7 @@ function WindowBody({ win, draft, excluded = [], onChoose, onReplace, onRemoveEx
           // The firms without a known seat are left out of a seat's answer (kit §4 Sediul firmei, R5); counted from F3.
           {...(seat ? { rest: [{ label: UNKNOWN_SEAT }] } : {})}
           onPick={(option) => pick(option.value === CURRENT_ROW ? [] : [...(draft.filters.uatSiruta ? [{ filter: "locality" as const, value: undefined }] : []), first.choice])} />
-        {kinds && <><p className="fk-opt-group">Ce fel de instituții</p><ChoiceList label="Tipul instituției" options={kinds.options} value={kinds.value} {...(kinds.rest ? { rest: kinds.rest } : {})} onPick={(option) => pick([option.choice])} /></>}
+        {kinds && <><p className="qb-opt-group">Ce fel de instituții</p><ChoiceList label="Tipul instituției" options={kinds.options} value={kinds.value} {...(kinds.rest ? { rest: kinds.rest } : {})} onPick={(option) => pick([option.choice])} /></>}
         <PlaceSearch draft={draft} locality={own.includes("locality") && ctx.locality.ok} onPick={pick} />
       </>;
     }
@@ -235,17 +235,17 @@ function WindowBody({ win, draft, excluded = [], onChoose, onReplace, onRemoveEx
     case "employees": return <BandsWindow draft={draft} onPick={pick} />;
     case "admin": return <>
       <PersonSearch onPick={pick} />
-      {(draft.filters.adminName || draft.filters.adminPersonKey) && <div className="fk-pop-foot"><button type="button" className="fk-link" onClick={() => pick([{ filter: "admin", value: undefined }])}>Scoate condiția</button></div>}
+      {(draft.filters.adminName || draft.filters.adminPersonKey) && <div className="qb-pop-foot"><button type="button" className="qb-link" onClick={() => pick([{ filter: "admin", value: undefined }])}>Scoate condiția</button></div>}
     </>;
     case "cpv": return <CpvSearch draft={draft} onPick={pick} onCpvName={onCpvName} />;
     case "period": return <PeriodWindow draft={draft} year={ctx.year} onPick={pick} />;
     case "months": return <MonthsWindow win={win} draft={draft} ctx={ctx} onPick={pick} />;
     case "advanced": return <AdvancedWindow win={win} draft={draft} onReplace={onReplace} onClose={onClose} />;
-    case "exclusions": return <div className="fk-opts">
-      {excluded.map((e) => <div className="fk-opt qb-excluded" key={`${e.field}:${e.value}`}>
-        <span className="fk-opt-mark" aria-hidden="true" />
-        <span className="fk-opt-t"><strong>Fără {e.label}</strong></span>
-        <button type="button" className="fk-link" onClick={() => onRemoveExclusions([e])}>Scoate</button>
+    case "exclusions": return <div className="qb-opts">
+      {excluded.map((e) => <div className="qb-opt qb-excluded" key={`${e.field}:${e.value}`}>
+        <span className="qb-opt-mark" aria-hidden="true" />
+        <span className="qb-opt-t"><strong>Fără {e.label}</strong></span>
+        <button type="button" className="qb-link" onClick={() => onRemoveExclusions([e])}>Scoate</button>
       </div>)}
     </div>;
   }
@@ -258,7 +258,7 @@ function InstitutionSearch({ draft, authority, locality, onPick }: { draft: Ques
     ...(authority && s.query.length >= 2 ? entityResults("authority", s.data, s.hits, s.query, "Instituții") : []),
   ], [s.data, s.hits, s.query, authority, locality]);
   return <>
-    <p className="fk-opt-group">Sau una anume</p>
+    <p className="qb-opt-group">Sau una anume</p>
     <EntitySearch label={locality ? "Instituție sau localitate" : "Instituție"} placeholder={locality ? "Numele instituției sau al localității" : "Numele instituției sau CUI"} results={results} loading={s.loading}
       onSearch={(q) => s.search(q, false)} onPick={(r) => onPick((r as Found).choices)} emptyText="Nicio potrivire. Încearcă un nume mai scurt." />
   </>;
@@ -288,8 +288,8 @@ function PeersWindow({ win, draft, onPick }: { win: BuilderWindowSpec; draft: Qu
   const kinds = institutions ? listOptions(win, draft, "authorityKind") : null;
   const anywhere: ChoiceOption = { value: "none", label: institutions ? "Toată țara" : "Oriunde", choice: { filter: "county", value: undefined } };
   return <>
-    {kinds && <><p className="fk-opt-group">Ce fel de instituții</p><ChoiceList label="Tipul instituției" options={kinds.options} value={kinds.value} {...(kinds.rest ? { rest: kinds.rest } : {})} onPick={(option) => onPick([option.choice])} /></>}
-    <p className="fk-opt-group">{institutions ? "Unde" : "Unde au sediul firmele"}</p>
+    {kinds && <><p className="qb-opt-group">Ce fel de instituții</p><ChoiceList label="Tipul instituției" options={kinds.options} value={kinds.value} {...(kinds.rest ? { rest: kinds.rest } : {})} onPick={(option) => onPick([option.choice])} /></>}
+    <p className="qb-opt-group">{institutions ? "Unde" : "Unde au sediul firmele"}</p>
     <ChoiceList label={institutions ? "Unde" : "Sediul firmei"} options={[anywhere]} value={draft.filters.county ? null : "none"} current={currentRow("peers", draft)}
       {...(institutions ? {} : { rest: [{ label: UNKNOWN_SEAT }] })}
       onPick={(option) => onPick(option.value === CURRENT_ROW ? [] : [anywhere.choice])} />
@@ -298,7 +298,7 @@ function PeersWindow({ win, draft, onPick }: { win: BuilderWindowSpec; draft: Qu
 }
 
 function CountySelect({ draft, onPick }: { draft: QuestionSpec; onPick: (choices: Choice[]) => void }) {
-  return <label className="fk-field qb-place-field">
+  return <label className="qb-field qb-place-field">
     <span>Unde?</span>
     <select value={String(draft.filters.county ?? "")} onChange={(event) => onPick([{ filter: "county", value: event.target.value || undefined }])}>
       <option value="">Toată țara</option>
@@ -374,9 +374,9 @@ function BandsWindow({ draft, onPick }: { draft: QuestionSpec; onPick: (choices:
   const range = bandRange(EMPLOYEE_BANDS, values);
   return <>
     <Bands label="Angajați" bands={EMPLOYEE_BANDS} value={values} onChange={setValues} rest={[{ label: "Fără bilanț" }]} />
-    <div className="fk-pop-foot">
-      <button type="button" className="fk-link" onClick={() => onPick([{ filter: "employees", value: undefined }])}>Scoate condiția</button>
-      <button type="button" className="fk-primary" onClick={() => onPick([bandsChoice(values)])}>{range ? bandsWords(range) : "Orice mărime"}</button>
+    <div className="qb-pop-foot">
+      <button type="button" className="qb-link" onClick={() => onPick([{ filter: "employees", value: undefined }])}>Scoate condiția</button>
+      <button type="button" className="qb-primary" onClick={() => onPick([bandsChoice(values)])}>{range ? bandsWords(range) : "Orice mărime"}</button>
     </div>
   </>;
 }
@@ -415,7 +415,7 @@ function PeriodWindow({ draft, year, onPick }: { draft: QuestionSpec; year: numb
       years: rangeYears(trend ? MIN_TREND_YEAR : series ? SERIES_FIRST_YEAR : span?.first ? Number(span.first.slice(0, 4)) : SERIES_FIRST_YEAR, last), months: !trend && !series,
       ...(trend ? { labels: ["Primul an", "Al doilea an"] as const } : {}), error,
     }} />
-    {open && <div className="fk-pop-foot"><span /><button type="button" className="fk-primary" onClick={use}>Folosește</button></div>}
+    {open && <div className="qb-pop-foot"><span /><button type="button" className="qb-primary" onClick={use}>Folosește</button></div>}
   </>;
 }
 
@@ -442,7 +442,7 @@ function MonthsWindow({ win, draft, ctx, onPick }: { win: BuilderWindowSpec; dra
     // January to December is whole years.
     onPick([{ filter: "trendMonths", value: from === 1 && to === 12 ? "whole" : [from, to] }]);
   };
-  const field = (key: "from" | "to", text: string) => <label className="fk-field">
+  const field = (key: "from" | "to", text: string) => <label className="qb-field">
     <span>{text}</span>
     <select value={range[key]} onChange={(event) => { setRange((current) => ({ ...current, [key]: event.target.value })); setError(null); }}>
       {MONTHS.map((month, index) => <option key={month} value={String(index + 1)}>{month}</option>)}
@@ -451,10 +451,10 @@ function MonthsWindow({ win, draft, ctx, onPick }: { win: BuilderWindowSpec; dra
   return <>
     {/* The automatic months the data do not confirm are disabled, never drawn checked. */}
     <ChoiceList label={win.name} options={options} value={typeof months === "string" && !options.find((o) => o.value === optionValue(months))?.disabled ? optionValue(months) : null} onPick={(option) => onPick([option.choice])} />
-    <p className="fk-opt-group">Sau alege lunile</p>
-    <div className="fk-range"><div className="fk-inputs">{field("from", "Din luna")}{field("to", "Până în luna")}</div>
-      {error && <p className="fk-form-error" role="alert">{error}</p>}</div>
-    <div className="fk-pop-foot"><span /><button type="button" className="fk-primary" onClick={use}>Folosește</button></div>
+    <p className="qb-opt-group">Sau alege lunile</p>
+    <div className="qb-range"><div className="qb-inputs">{field("from", "Din luna")}{field("to", "Până în luna")}</div>
+      {error && <p className="qb-form-error" role="alert">{error}</p>}</div>
+    <div className="qb-pop-foot"><span /><button type="button" className="qb-primary" onClick={use}>Folosește</button></div>
   </>;
 }
 
@@ -479,7 +479,7 @@ function AdvancedWindow({ win, draft, onReplace, onClose }: { win: BuilderWindow
         <button type="button" onClick={() => write((next) => { delete next.minimumRecords; })}>Scoate pragul</button>
       </div> : <button type="button" onClick={() => write((next) => { next.minimumRecords = { role, count: 5 }; })}>+ Un prag de înregistrări</button>}
     </fieldset>}
-    <div className="fk-pop-foot"><span>{win.slot.id === "population" ? "Câmpurile pe care propoziția nu le are." : ""}</span><button type="button" className="fk-primary" onClick={onClose}>Gata</button></div>
+    <div className="qb-pop-foot"><span>{win.slot.id === "population" ? "Câmpurile pe care propoziția nu le are." : ""}</span><button type="button" className="qb-primary" onClick={onClose}>Gata</button></div>
   </>;
 }
 

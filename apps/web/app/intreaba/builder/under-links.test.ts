@@ -28,7 +28,7 @@ describe("an old link's tautology of «Cine conduce?»", () => {
     expect(decodeSpec(decodeURIComponent(href.slice("/intreaba?spec=".length)))).toMatchObject({ block: "stat", filters: { supplierName: "PORR", supplierId: 7, yearFrom: 2025, yearTo: 2025 } });
     const markup = renderToStaticMarkup(createElement(UnderChips, { items: builderView(firm).under, onRemove: () => {} }));
     expect(text(markup)).toContain("Din link: firma „PORR”");
-    expect(markup).toMatch(/<a class="fk-relax-link" href="\/intreaba\?spec=[^"]+">Cât câștigă PORR<span class="fk-glyph" aria-hidden="true">›<\/span><\/a>/);
+    expect(markup).toMatch(/<a class="qb-relax-link" href="\/intreaba\?spec=[^"]+">Cât câștigă PORR<span class="qb-glyph" aria-hidden="true">›<\/span><\/a>/);
     const institution = legacy({ ...firm, dim: "authority", filters: { authorityName: "MUNICIPIUL BUZAU", authorityId: 9 } });
     expect(institution.map((c) => ["text" in c.tip ? c.tip.text : null, c.link?.label])).toEqual([["Cu o singură instituție aleasă, răspunsul e chiar ea.", "Cât cumpără MUNICIPIUL BUZAU"]]);
   });

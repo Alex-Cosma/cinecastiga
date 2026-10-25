@@ -17,13 +17,13 @@ describe("the adjoining bands (10)", () => {
   const bands = EMPLOYEE_BANDS.map((band, index) => ({ ...band, count: ["6", "123", "69", "29", "21"][index]! }));
   it("is a group of toggle buttons named with their count, and the rest row is text", () => {
     const markup = html(Bands, { label: "Benzi de angajați", bands, value: ["1-9", "10-49"], rest: [{ label: "Fără bilanț", count: "4,1% · 34" }] });
-    expect(markup).toContain('class="fk-bands" role="group" aria-label="Benzi de angajați"');
+    expect(markup).toContain('class="qb-bands" role="group" aria-label="Benzi de angajați"');
     const buttons = tags(markup, "button");
     expect(buttons.map(button => attr(button, "aria-pressed"))).toEqual(["false", "true", "true", "false", "false"]);
     // Each name starts with what the band shows (WCAG 2.5.3) and says what its number counts.
     expect(buttons.map(button => attr(button, "aria-label"))).toEqual(["0 angajați, 6 firme", "1–9 angajați, 123 de firme", "10–49 de angajați, 69 de firme", "50–249 de angajați, 29 de firme", "250+ angajați, 21 de firme"]);
     for (const band of EMPLOYEE_BANDS) expect(band.name?.startsWith(band.label), band.label).toBe(true);
-    expect(markup).toMatch(/<div class="fk-opt fk-opt--rest">[^]*Fără bilanț[^]*4,1% · 34/);
+    expect(markup).toMatch(/<div class="qb-opt qb-opt--rest">[^]*Fără bilanț[^]*4,1% · 34/);
     expect(markup).toContain('role="status" aria-live="polite"'); // what a press chose besides itself is said
     expect(markup).not.toMatch(/<input/); // no free fields (kit §5.5)
   });
@@ -70,7 +70,7 @@ describe("the period (12)", () => {
     expect(radios.map(radio => attr(radio, "aria-checked"))).toEqual(["false", "false", "false", "true"]);
     expect(radios.map(radio => attr(radio, "tabindex"))).toEqual(["-1", "-1", "-1", "0"]);
     expect(text(markup)).toContain("Ultimii 3 ani compleți 2023–2025");
-    const disclosure = tags(markup, "button").find(button => attr(button, "class") === "fk-link fk-range-open")!;
+    const disclosure = tags(markup, "button").find(button => attr(button, "class") === "qb-link qb-range-open")!;
     expect(attr(disclosure, "aria-expanded")).toBe("false");
     expect(attr(disclosure, "aria-controls")).toBeNull();
     expect(text(markup)).toContain("Alege anii sau lunile…");
@@ -80,7 +80,7 @@ describe("the period (12)", () => {
   it("opens the free range with year and month fields, unchecking the presets", () => {
     const markup = html(PeriodPicker, { presets, value: "all", custom: { open: true, value: { yearFrom: "2024", yearTo: "", monthFrom: "3", monthTo: "" }, years: ["2023", "2024", "2025"] } });
     expect(tags(markup, "button").filter(button => attr(button, "role") === "radio").every(radio => attr(radio, "aria-checked") === "false")).toBe(true);
-    const disclosure = tags(markup, "button").find(button => attr(button, "class") === "fk-link fk-range-open")!;
+    const disclosure = tags(markup, "button").find(button => attr(button, "class") === "qb-link qb-range-open")!;
     expect(attr(disclosure, "aria-expanded")).toBe("true");
     expect(markup).toContain(`id="${attr(disclosure, "aria-controls")}"`);
     expect(tags(markup, "select")).toHaveLength(4);
@@ -97,7 +97,7 @@ describe("the period (12)", () => {
     expect(periodRangeError(EMPTY_RANGE)).toBeNull();
     const markup = html(PeriodRange, { value: { ...EMPTY_RANGE, yearFrom: "2025", yearTo: "2023" }, years: ["2023", "2025"], months: false, error: "Perioada trebuie să înceapă înainte să se încheie." });
     expect(tags(markup, "select")).toHaveLength(2);
-    const error = /<p class="fk-form-error" id="([^"]+)" role="alert">/.exec(markup);
+    const error = /<p class="qb-form-error" id="([^"]+)" role="alert">/.exec(markup);
     expect(error).not.toBeNull();
     expect(tags(markup, "select").every(select => attr(select, "aria-describedby") === error![1])).toBe(true);
   });
@@ -105,13 +105,13 @@ describe("the period (12)", () => {
     const years = ["2024", "2025", "2026"].map(year => ({ value: year, label: year, count: "7", ...(year === "2026" ? { partial: "până la 25 sept." } : {}) }));
     const markup = html(YearGrid, { label: "Anul", years: [...years, { value: "range", label: "…", count: "interval", name: "Interval", zero: true }, { value: "2017", label: "2017", disabled: "Înainte de arhivă." }], value: "2025" });
     expect(YEAR_COLUMNS).toBe(5);
-    expect(markup).toContain('class="fk-years" role="radiogroup" aria-label="Anul" data-roving=""');
+    expect(markup).toContain('class="qb-years" role="radiogroup" aria-label="Anul" data-roving=""');
     const radios = tags(markup, "button");
     expect(radios.map(radio => attr(radio, "tabindex"))).toEqual(["-1", "0", "-1", "-1", "-1"]);
     expect(radios.map(radio => attr(radio, "aria-label"))).toEqual(["2024, 7 înregistrări", "2025, 7 înregistrări", "2026, până la 25 sept., 7 înregistrări", "Interval", "2017"]);
     expect(html(YearGrid, { label: "Anul", years: [{ value: "2024", label: "2024", count: "21" }], value: null, noun: ["contract", "contracte"] })).toContain('aria-label="2024, 21 de contracte"');
-    expect(attr(radios[2]!, "class")).toBe("fk-year is-partial");
-    expect(attr(radios[3]!, "class")).toBe("fk-year is-zero");
+    expect(attr(radios[2]!, "class")).toBe("qb-year is-partial");
+    expect(attr(radios[3]!, "class")).toBe("qb-year is-zero");
     expect(attr(radios[4]!, "aria-disabled")).toBe("true");
     expect(markup).toContain("Înainte de arhivă.");
   });
@@ -130,7 +130,7 @@ describe("the entity search (13)", () => {
     expect(attr(input, "aria-expanded")).toBe("true");
     expect(attr(input, "aria-autocomplete")).toBe("list");
     const list = attr(input, "aria-controls")!;
-    expect(markup).toContain(`<div class="fk-listbox" role="listbox" id="${list}" aria-label="Instituție sau localitate">`);
+    expect(markup).toContain(`<div class="qb-listbox" role="listbox" id="${list}" aria-label="Instituție sau localitate">`);
     const options = tags(markup, "div").filter(div => attr(div, "role") === "option");
     expect(options).toHaveLength(3);
     expect(options.map(option => attr(option, "aria-selected"))).toEqual(["false", "true", "false"]);
@@ -144,16 +144,16 @@ describe("the entity search (13)", () => {
     const groups = tags(markup, "div").filter(div => attr(div, "role") === "group");
     expect(groups).toHaveLength(2);
     for (const group of groups) expect(markup).toContain(`id="${attr(group, "aria-labelledby")}" role="presentation">`);
-    expect(markup).toContain('<span class="fk-res-side">Galați</span>');
+    expect(markup).toContain('<span class="qb-res-side">Galați</span>');
   });
   it("says “Caut…”, the count or that nothing was found in a live region", () => {
     const status = (markup: string) => /<p class="([^"]+)" role="status" aria-live="polite">([^<]*)<\/p>/.exec(markup)!;
     const loading = status(html(EntitySearch, { label: "Firmă", defaultQuery: "porr", results: [], loading: true }));
     expect(loading[2]).toBe("Caut…");
-    expect(loading[1]).toBe("fk-search-status");
+    expect(loading[1]).toBe("qb-search-status");
     const found = status(html(EntitySearch, { label: "Firmă", defaultQuery: "vân", results }));
     expect(found[2]).toBe("3 rezultate");
-    expect(found[1]).toBe("fk-search-status fk-sr"); // the count is for screen readers
+    expect(found[1]).toBe("qb-search-status qb-sr"); // the count is for screen readers
     const none = status(html(EntitySearch, { label: "Firmă", defaultQuery: "xyzw", results: [] }));
     expect(none[2]).toMatch(/^Nicio potrivire/);
     expect(status(html(EntitySearch, { label: "Firmă", defaultQuery: "v", results: [] }))[2]).toBe(""); // under two letters, no search
@@ -162,7 +162,7 @@ describe("the entity search (13)", () => {
   });
   it("collapses the list under the field when it is not in a window", () => {
     const markup = html(EntitySearch, { label: "Unde e o firmă?", defaultQuery: "vân", results, inline: false });
-    expect(markup).toContain('class="fk-combo fk-combo--pop"');
+    expect(markup).toContain('class="qb-combo qb-combo--pop"');
     expect(attr(tags(markup, "input")[0]!, "aria-expanded")).toBe("false");
     expect(markup).toMatch(/role="listbox"[^>]*hidden=""/);
     expect(attr(tags(markup, "input")[0]!, "aria-activedescendant")).toBeNull();

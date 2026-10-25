@@ -126,7 +126,7 @@ describe("the builder's view of a draft (P1, P2, P4, P5, P9)", () => {
     expect(firm.rows[0]!.chips.map((c) => c.label)).toEqual(["Județul instituției", "Spitale"]);
     const markup = renderToStaticMarkup(createElement(ConditionRow, { label: view.rows[0]!.label, kind: view.rows[0]!.kind, children: null }));
     expect(markup).toContain('aria-label="Furnizorii"');
-    expect(markup).toContain("fk-row--select");
+    expect(markup).toContain("qb-row--select");
   });
 
   it("offers «⋯ › Selecție avansată» where P9 applies, never on a comparison", () => {

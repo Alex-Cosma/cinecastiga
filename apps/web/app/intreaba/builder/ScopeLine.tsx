@@ -19,8 +19,8 @@ export default function ScopeLine({ label = HISTORICAL_DA.label, words = HISTORI
   // The (?) stays on the line of the last two words ("toată arhiva (?)").
   const split = /^(.*?)(\S+\s+\S+|\S+)$/s.exec(words);
   const head = split?.[1] ?? "", tail = split?.[2] ?? words;
-  return <p className="fk-scopeline fk-tipwrap">
-    <b>{label}</b><span className="fk-scope-sep" aria-hidden="true">·</span>
-    {head}<span className="fk-nowrap">{tail} <HelpTip tip={tip} /></span>
+  return <p className="qb-scopeline qb-tipwrap">
+    <b>{label}</b><span className="qb-scope-sep" aria-hidden="true">·</span>
+    {head}<span className="qb-nowrap">{tail} <HelpTip tip={tip} /></span>
   </p>;
 }

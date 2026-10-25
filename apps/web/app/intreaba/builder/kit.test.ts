@@ -47,25 +47,25 @@ describe("the sentence (1), the fixed phrase (1b) and the presentation line (P5)
     for (const button of buttons) expect(attr(button, "aria-haspopup")).toBe("dialog");
     expect(buttons.map(button => attr(button, "aria-label"))).toEqual(["Ce clasăm: firme", "Primăria: Cluj-Napoca", "Perioada: 2025"]);
     expect(buttons.map(button => attr(button, "aria-expanded"))).toEqual(["false", "false", "true"]);
-    expect(markup.startsWith('<h2 class="fk-sentence">')).toBe(true);
+    expect(markup.startsWith('<h2 class="qb-sentence">')).toBe(true);
   });
   it("has no × and keeps punctuation on the phrase's line", () => {
     const markup = html(Sentence, { tokens, as: "h3" });
     expect(markup).not.toMatch(/×|Scoate|Elimină/);
-    expect(markup).toContain('<span class="fk-nowrap"><button');
-    expect(markup).toMatch(/Cluj-Napoca<\/span><i class="fk-chev" aria-hidden="true"><\/i><\/button>,<\/span> în /);
-    expect(markup).toMatch(/2025<\/span><i class="fk-chev" aria-hidden="true"><\/i><\/button>\?<\/span><\/h3>$/);
+    expect(markup).toContain('<span class="qb-nowrap"><button');
+    expect(markup).toMatch(/Cluj-Napoca<\/span><i class="qb-chev" aria-hidden="true"><\/i><\/button>,<\/span> în /);
+    expect(markup).toMatch(/2025<\/span><i class="qb-chev" aria-hidden="true"><\/i><\/button>\?<\/span><\/h3>$/);
     expect(text(markup)).toBe("Ce firme câștigă achizițiile făcute de primăria Cluj-Napoca , în 2025 ?");
   });
   it("draws a fixed phrase as text and keeps the closing words together", () => {
     const markup = html(Sentence, { tokens: [t("Ce "), s("kind", "Ce clasăm", "consilii județene"), t(" "), { kind: "fixed", text: "din toată țara" }, t(" ies din tipar după risc și valoarea achizițiilor directe?")] });
-    expect(markup).toContain('<span class="fk-phrase fk-phrase--fixed"><span>din toată țara</span></span>');
+    expect(markup).toContain('<span class="qb-phrase qb-phrase--fixed"><span>din toată țara</span></span>');
     expect(tags(markup, "button")).toHaveLength(1);
-    expect(markup).toContain('<span class="fk-nowrap">achizițiilor directe?</span>');
+    expect(markup).toContain('<span class="qb-nowrap">achizițiilor directe?</span>');
   });
   it("uses the same tokens for the presentation line", () => {
     const markup = html(Presentation, { tokens: [t("Arată "), s("top", "Câte rânduri", "primele 10"), t(", după "), s("by", "Ordinea", "valoarea înregistrată"), t(".")] });
-    expect(markup.startsWith('<p class="fk-present">')).toBe(true);
+    expect(markup.startsWith('<p class="qb-present">')).toBe(true);
     expect(text(markup)).toBe("Arată primele 10 , după valoarea înregistrată .");
   });
 });
@@ -94,7 +94,7 @@ describe("the profile line (18)", () => {
   it("says the same words on every profile, with the (?) on the last words' line", () => {
     const markup = html(ScopeLine, {});
     expect(text(markup)).toMatch(/^Profil istoric · achiziții directe, toată arhiva \? Profil istoric\. Toată arhiva de achiziții directe acceptate, de cel mult 2 mil\. lei fiecare/);
-    expect(markup).toContain('<span class="fk-nowrap">toată arhiva <span class="term term-tip');
+    expect(markup).toContain('<span class="qb-nowrap">toată arhiva <span class="term term-tip');
     expect(tags(markup, "button")).toHaveLength(1); // the (?) only: the line itself is not pressable
     expect(markup).not.toMatch(/neacceptate|toate sursele/);
   });
@@ -103,10 +103,10 @@ describe("the profile line (18)", () => {
 describe("the condition row (3), the chip (4) and the switch (5)", () => {
   it("labels a group row without a (?) and a selection row with one about the total", () => {
     const group = html(ConditionRow, { label: "Câștigătorii", kind: "group", children: null });
-    expect(group).toContain('class="fk-row fk-tipwrap" role="group" aria-label="Câștigătorii"');
+    expect(group).toContain('class="qb-row qb-tipwrap" role="group" aria-label="Câștigătorii"');
     expect(group).not.toContain("term-tip");
     const selection = html(ConditionRow, { label: "Furnizorii", kind: "selection", children: null });
-    expect(selection).toContain('class="fk-row fk-row--select fk-tipwrap" role="group" aria-label="Furnizorii"');
+    expect(selection).toContain('class="qb-row qb-row--select qb-tipwrap" role="group" aria-label="Furnizorii"');
     expect(text(selection)).toContain("Totalul se schimbă");
   });
   it("says the selection row's own noun in its default (?), as the kit does", () => {
@@ -116,17 +116,17 @@ describe("the condition row (3), the chip (4) and the switch (5)", () => {
   });
   it("lets a chip or switch with a (?) anchor its own tip on phones, outside the chip's clip", () => {
     const disabled = html(Chip, { id: "emp", label: "Angajați", availability: { state: "disabled", reason: "Motiv.", tip: { title: "Angajați", text: "Motiv." } } });
-    expect(disabled).toMatch(/^<span class="fk-pair fk-tipwrap-sm"><span class="fk-chip is-dim">/);
+    expect(disabled).toMatch(/^<span class="qb-pair qb-tipwrap-sm"><span class="qb-chip is-dim">/);
     const legacy = html(UnderChips, { items: [{ kind: "legacy", id: "min", words: "doar firmele cu cel puțin 5 înregistrări", tip: { title: "Din link", text: "Text." } }] });
-    expect(legacy).toContain('<span class="fk-tipwrap-sm"><span class="fk-chip fk-chip--legacy">');
+    expect(legacy).toContain('<span class="qb-tipwrap-sm"><span class="qb-chip qb-chip--legacy">');
   });
   it("draws an unset chip as “+ X ▾” without ×, an active one as “✓ value · count ▾ ×”", () => {
     const unset = html(Chip, { id: "emp", label: "Angajați" });
     expect(text(unset)).toBe("+ Angajați");
     expect(tags(unset, "button")).toHaveLength(1);
     const active = html(Chip, { id: "emp", label: "1–49 angajați", name: "Angajați", active: true, count: "192", open: true, onRemove: () => undefined });
-    expect(active).toContain('class="fk-chip is-active"');
-    expect(active).toContain('<i class="fk-ck" aria-hidden="true"></i>');
+    expect(active).toContain('class="qb-chip is-active"');
+    expect(active).toContain('<i class="qb-ck" aria-hidden="true"></i>');
     const [main, x] = tags(active, "button");
     expect(attr(main!, "aria-haspopup")).toBe("dialog");
     expect(attr(main!, "aria-expanded")).toBe("true");
@@ -136,7 +136,7 @@ describe("the condition row (3), the chip (4) and the switch (5)", () => {
   it("dims a chip that cannot apply, with the reason read on the chip", () => {
     const reason = "Nu se poate cu „cu sediul în străinătate”: firmele străine nu au bilanț.";
     const markup = html(Chip, { id: "emp", label: "Angajați", availability: { state: "disabled", reason } });
-    expect(markup).toContain('class="fk-chip is-dim"');
+    expect(markup).toContain('class="qb-chip is-dim"');
     const main = tags(markup, "button")[0]!;
     expect(attr(main, "aria-disabled")).toBe("true");
     expect(attr(main, "aria-expanded")).toBeNull();
@@ -148,14 +148,14 @@ describe("the condition row (3), the chip (4) and the switch (5)", () => {
     expect(text(off)).toBe("+ Clientul lor principal 21 · 7,3%");
     const on = html(Toggle, { id: "main", label: "Clientul lor principal", pressed: true });
     expect(attr(tags(on, "button")[0]!, "aria-pressed")).toBe("true");
-    expect(on).toContain("fk-ck");
+    expect(on).toContain("qb-ck");
     expect(on).not.toContain("×");
     const zero = html(Toggle, { id: "z", label: "Cu semnale", count: "0", pressed: false, availability: { state: "disabled", reason: "Niciun furnizor cu semnale." } });
     expect(describedReason(zero, tags(zero, "button")[0]!)).toBe("Niciun furnizor cu semnale.");
     const months = html(Toggle, { id: "m", label: "Aceleași luni: ian.–mai", pressed: true, glyph: "half", auto: true });
-    expect(months).toContain('class="fk-toggle is-auto"');
-    expect(months).toContain("fk-half");
-    expect(months).not.toContain("fk-ck");
+    expect(months).toContain('class="qb-toggle is-auto"');
+    expect(months).toContain("qb-half");
+    expect(months).not.toContain("qb-ck");
   });
 });
 
@@ -172,28 +172,28 @@ describe("the chips under the sentence (6)", () => {
   it("keeps the kit's order: only, exclusions, automatic, from a link, from another page", () => {
     expect(orderUnderChips(items).map(item => item.id)).toEqual(["size", "b", "a", "months", "min", "rel"]);
     const markup = html(UnderChips, { items, onRemove: () => undefined });
-    expect([...markup.matchAll(/fk-chip fk-chip--(\w+)/g)].map(match => match[1])).toEqual(["only", "exclude", "exclude", "auto", "legacy", "origin"]);
+    expect([...markup.matchAll(/qb-chip qb-chip--(\w+)/g)].map(match => match[1])).toEqual(["only", "exclude", "exclude", "auto", "legacy", "origin"]);
   });
   it("lets a link's or another page's condition only be removed, with a (?)", () => {
     const markup = html(UnderChips, { items: [items[1]!, items[0]!], onRemove: () => undefined });
     expect(text(markup)).toContain("Din link: doar firmele cu cel puțin 5 înregistrări");
     expect(text(markup)).toContain("Selecția relației: 2 firme");
     expect(markup).not.toContain('aria-haspopup="dialog"');
-    expect(tags(markup, "button").filter(button => attr(button, "class") === "fk-chip-x").map(button => attr(button, "aria-label"))).toEqual(["Scoate «Din link: doar firmele cu cel puțin 5 înregistrări»", "Scoate «Selecția relației»"]);
+    expect(tags(markup, "button").filter(button => attr(button, "class") === "qb-chip-x").map(button => attr(button, "aria-label"))).toEqual(["Scoate «Din link: doar firmele cu cel puțin 5 înregistrări»", "Scoate «Selecția relației»"]);
     expect(markup.match(/term-tip/g)?.length).toBeGreaterThanOrEqual(2);
   });
   it("opens collapsed exclusions and restrictions, never a single exclusion", () => {
     const markup = html(UnderChips, { items: [items[3]!, { kind: "exclude", id: "three", label: "Fără 3 firme", name: "cele 3 excluderi", collapsed: true }, items[4]!], onRemove: () => undefined });
-    expect(markup).toContain('<span class="fk-chip-main">Fără SYSTRA</span>');
+    expect(markup).toContain('<span class="qb-chip-main">Fără SYSTRA</span>');
     expect(tags(markup, "button").filter(button => attr(button, "aria-haspopup") === "dialog")).toHaveLength(2);
     expect(markup).toContain('aria-label="Scoate «cele 3 excluderi»"');
   });
   it("brings a parked condition back from a button, announced, and never as an error", () => {
     const markup = html(ParkedRow, { label: "Nu se aplică indicelui", items: [{ id: "y", label: "2025" }, { id: "c", label: "„medicamente”" }] });
-    expect(tags(markup, "button").filter(button => attr(button, "class") === "fk-chip--parked").map(button => attr(button, "aria-label"))).toEqual(["Readu «2025»", "Readu «„medicamente”»"]);
+    expect(tags(markup, "button").filter(button => attr(button, "class") === "qb-chip--parked").map(button => attr(button, "aria-label"))).toEqual(["Readu «2025»", "Readu «„medicamente”»"]);
     expect(markup).toContain('role="status" aria-live="polite"');
     expect(markup).not.toMatch(/<s>|line-through|eroare/i);
-    expect(html(ParkedRow, { label: "Nu se aplică indicelui", items: [] })).toBe('<span class="fk-sr" role="status" aria-live="polite"></span>');
+    expect(html(ParkedRow, { label: "Nu se aplică indicelui", items: [] })).toBe('<span class="qb-sr" role="status" aria-live="polite"></span>');
     expect(restoredMessage("2025")).toBe("«2025» se aplică din nou.");
   });
 });
@@ -230,15 +230,15 @@ describe("the choices: segmented (7), count groups (8), pills (11)", () => {
     expect(text(markup)).toContain("Firme în 2024 sau 2025: 96.929");
     const radios = roving(markup, "radio");
     expect(radios.map(radio => attr(radio, "tabindex"))).toEqual(["-1", "0", "-1"]);
-    expect(attr(radios[0]!, "class")).toBe("fk-group fk-group--all");
+    expect(attr(radios[0]!, "class")).toBe("qb-group qb-group--all");
     expect(attr(radios[2]!, "aria-disabled")).toBe("true");
     expect(text(markup)).toContain("Creșteri 28.670 · +45,3 mld");
-    expect(markup).toMatch(/<i class="fk-sw fk-sw--up" aria-hidden="true">/);
+    expect(markup).toMatch(/<i class="qb-sw qb-sw--up" aria-hidden="true">/);
   });
   it("draws signal pills with the dot as decoration and the count in the name", () => {
     const markup = html(Pills, { label: "Semnal", value: "split", options: [{ value: "all", label: "Tot grupul", count: "82" }, { value: "split", label: "Posibilă fracționare", count: "46", signal: true }, { value: "2026", label: "2026", disabled: "După sfârșitul perioadei." }] });
     expect(markup).toContain('role="radiogroup" aria-label="Semnal"');
-    expect(markup).toContain('<i class="fk-dot fk-dot--signal" aria-hidden="true"></i>Posibilă fracționare<span class="fk-n">46</span>');
+    expect(markup).toContain('<i class="qb-dot qb-dot--signal" aria-hidden="true"></i>Posibilă fracționare<span class="qb-n">46</span>');
     const radios = roving(markup, "radio");
     expect(radios.map(radio => attr(radio, "tabindex"))).toEqual(["-1", "0", "-1"]);
     expect(describedReason(markup, radios[2]!)).toBe("După sfârșitul perioadei.");
@@ -263,13 +263,13 @@ describe("the window (9): popover, sheet and option list", () => {
     expect(radios.map(radio => attr(radio, "role"))).toEqual(["radio", "radio", "radio"]);
     expect(radios.map(radio => attr(radio, "tabindex"))).toEqual(["-1", "0", "-1"]);
     expect(markup).toContain('style="--w:32%"');
-    expect(markup).toMatch(/<div class="fk-opt fk-opt--rest">[^]*Sediu necunoscut[^]*0,3% · 19/);
+    expect(markup).toMatch(/<div class="qb-opt qb-opt--rest">[^]*Sediu necunoscut[^]*0,3% · 19/);
     expect(attr(radios[2]!, "aria-disabled")).toBe("true");
     expect(text(markup)).toContain("În străinătate doar pe valoare 3,8% · 3"); // the reason is read with the option
   });
   it("is a group of checkboxes, each its own Tab stop, with what a choice replaces", () => {
     const markup = html(OptionList, { label: "Grupul de comparație", multiple: true, values: ["pop"], options: [{ value: "pop", label: "Populație apropiată" }, { value: "county", label: "Județul Buzău", swap: "în locul populației apropiate", count: "→ 336" }] });
-    expect(markup).toContain('class="fk-opts fk-opts--check" role="group"');
+    expect(markup).toContain('class="qb-opts qb-opts--check" role="group"');
     const boxes = tags(markup, "button");
     expect(boxes.map(box => attr(box, "role"))).toEqual(["checkbox", "checkbox"]);
     expect(boxes.map(box => attr(box, "aria-checked"))).toEqual(["true", "false"]);
@@ -278,8 +278,8 @@ describe("the window (9): popover, sheet and option list", () => {
   });
   it("writes each group heading once and ends with the link row", () => {
     const markup = html(OptionList, { label: "Ce clasăm", value: "firme", options: [{ value: "firme", label: "Firme", group: "Firme" }, { value: "inst", label: "Instituții publice", group: "Instituții" }, { value: "spitale", label: "Spitale", group: "Instituții" }], link: { label: "Firme cu sediul în…", onClick: () => undefined } });
-    expect(markup.match(/class="fk-opt-group"/g)).toHaveLength(2);
-    expect(markup).toMatch(/<button type="button" class="fk-opt--link">Firme cu sediul în…<span aria-hidden="true">›<\/span><\/button>$/);
+    expect(markup.match(/class="qb-opt-group"/g)).toHaveLength(2);
+    expect(markup).toMatch(/<button type="button" class="qb-opt--link">Firme cu sediul în…<span aria-hidden="true">›<\/span><\/button>$/);
   });
   it("names the window by its title, keeps the (?) out of that name and closes from ×", () => {
     const markup = html(StaticPopover, { title: "Unde au sediul firmele?", tip: { title: "Sediul firmei", text: "Sediul social de azi." }, children: null });
@@ -287,17 +287,17 @@ describe("the window (9): popover, sheet and option list", () => {
     expect(attr(dialog, "role")).toBe("dialog");
     const id = attr(dialog, "aria-labelledby");
     expect(markup).toContain(`<h3 id="${id}">Unde au sediul firmele?</h3>`);
-    expect(markup).toContain('<button type="button" class="fk-close" aria-label="Închide">×</button>');
-    expect(markup).toContain('<span class="fk-sheet-grip" aria-hidden="true"></span>');
+    expect(markup).toContain('<button type="button" class="qb-close" aria-label="Închide">×</button>');
+    expect(markup).toContain('<span class="qb-sheet-grip" aria-hidden="true"></span>');
   });
   it("is a <dialog> labelled by its title, with its content only while open", () => {
     const props = { anchor: null, onClose: () => undefined, title: "În ce perioadă?", children: createElement("p", null, "conținut") } satisfies Omit<ComponentProps<typeof Popover>, "open">;
     const open = html(Popover, { ...props, open: true });
-    // Not a .fk-tipwrap: a (?) in a window anchors inside it (its head or its row) and opens downward (filters-kit.css).
-    expect(open).toMatch(/^<dialog class="fk fk-pop" aria-labelledby="([^"]+)"><span class="fk-sheet-grip"/);
+    // Not a .qb-tipwrap: a (?) in a window anchors inside it (its head or its row) and opens downward (filters-kit.css).
+    expect(open).toMatch(/^<dialog class="qb qb-pop" aria-labelledby="([^"]+)"><span class="qb-sheet-grip"/);
     expect(open).toContain("<p>conținut</p>");
     expect(open).not.toMatch(/<dialog[^>]*\sopen/); // shown by show()/showModal(), never by the attribute
-    expect(html(Popover, { ...props, open: false })).toMatch(/^<dialog class="fk fk-pop" aria-labelledby="[^"]+"><\/dialog>$/);
+    expect(html(Popover, { ...props, open: false })).toMatch(/^<dialog class="qb qb-pop" aria-labelledby="[^"]+"><\/dialog>$/);
   });
   it("reports “activate” for the option already chosen too, so a window can close on it", () => {
     const changes: [string, string][] = [];

@@ -94,11 +94,11 @@ export default function Bands({ label, bands, value, onChange, rest = [], noun =
   const [message, setMessage] = useState("");
   const pressed = bands.map(band => value.includes(band.value));
   return <>
-    <div className="fk-bands" role="group" aria-label={label}>
+    <div className="qb-bands" role="group" aria-label={label}>
       {bands.map((band, index) => <button
         key={band.value}
         type="button"
-        className={`fk-band${band.className ? ` ${band.className}` : ""}`}
+        className={`qb-band${band.className ? ` ${band.className}` : ""}`}
         aria-pressed={pressed[index]}
         aria-label={`${band.name ?? band.label}${band.count ? `, ${spokenCount(band.count, noun)}` : ""}`}
         onClick={() => {
@@ -108,11 +108,11 @@ export default function Bands({ label, bands, value, onChange, rest = [], noun =
         }}
       >{band.label}{band.count && <small>{band.count}</small>}</button>)}
     </div>
-    {rest.length > 0 && <div className="fk-opts">{rest.map(row => <div className="fk-opt fk-opt--rest" key={`rest:${row.label}`}>
-      <span className="fk-opt-mark" aria-hidden="true" />
-      <span className="fk-opt-t"><strong>{row.label}</strong></span>
-      <span className="fk-opt-n">{row.count}</span>
+    {rest.length > 0 && <div className="qb-opts">{rest.map(row => <div className="qb-opt qb-opt--rest" key={`rest:${row.label}`}>
+      <span className="qb-opt-mark" aria-hidden="true" />
+      <span className="qb-opt-t"><strong>{row.label}</strong></span>
+      <span className="qb-opt-n">{row.count}</span>
     </div>)}</div>}
-    <span className="fk-sr" role="status" aria-live="polite">{message}</span>
+    <span className="qb-sr" role="status" aria-live="polite">{message}</span>
   </>;
 }

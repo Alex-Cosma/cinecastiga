@@ -16,9 +16,9 @@ export interface Relaxation { id: string; label: string; onClick?: () => void }
 export const removeWords = (name: string) => `Scoate „${name}”`;
 
 export default function EmptyState({ message, relax = [], titleId }: { message: string; relax?: readonly Relaxation[]; titleId?: string }) {
-  return <div className="fk-empty">
+  return <div className="qb-empty">
     <p>{message}</p>
-    {relax.length > 0 && <div className="fk-relax" role="group" aria-label="Lărgește întrebarea">
+    {relax.length > 0 && <div className="qb-relax" role="group" aria-label="Lărgește întrebarea">
       {relax.slice(0, MAX_RELAX).map(item => <button key={item.id} type="button" onClick={() => {
         item.onClick?.();
         if (titleId) requestAnimationFrame(() => document.getElementById(titleId)?.focus());

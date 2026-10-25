@@ -8,7 +8,7 @@ import type { KitLink as Link } from "../builder/kit-types";
  */
 export default function KitLink({ link, className }: { link: Link; className: string }) {
   const classes = `${className}${link.className ? ` ${link.className}` : ""}`;
-  const glyph = link.glyph && <span className="fk-glyph" aria-hidden="true">{link.glyph}</span>;
+  const glyph = link.glyph && <span className="qb-glyph" aria-hidden="true">{link.glyph}</span>;
   if (link.href) return <a className={classes} href={link.href}>{link.label}{glyph}</a>;
   return <button type="button" className={classes} onClick={link.onClick}>{link.label}{glyph}</button>;
 }

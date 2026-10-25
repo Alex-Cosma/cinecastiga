@@ -315,9 +315,9 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
   const navigation = <div className={`qb-navigation${intro ? " qb-navigation-after" : ""}`}><div className="qb-shortcuts" aria-label="Aceleași date, altă perspectivă">{[{ id: "table", label: "Cine câștigă?" }, { id: "timeseries", label: "Cum se schimbă?" }, { id: "compare", label: "Compară" }].map((item) => <button type="button" aria-pressed={draft.block === item.id} key={item.id} onClick={() => chooseType(item.id)}><Glyph name={item.id} />{item.label}</button>)}</div><button type="button" className="qb-catalogue-trigger" aria-haspopup="dialog" onClick={(event) => openCatalogue(event.currentTarget)}><Glyph name="plus" />Toate întrebările<span>13</span></button></div>;
   const removal = open ? view.removals[open.key] : undefined;
 
-  return <div className="question-builder fk">
+  return <div className="question-builder qb">
     {!intro && navigation}
-    <section className={`fk-editor qb-editor-kit${dirty ? " is-pending" : ""}`} aria-label="Construiește întrebarea">
+    <section className={`qb-editor qb-editor-kit${dirty ? " is-pending" : ""}`} aria-label="Construiește întrebarea">
       {intro}
       {savedNotice && <p className="cq-loaded-question" role="status">{savedNotice}</p>}
       {fromAi && <p className="qb-ai-note">Am transformat întrebarea în condiții pe care le poți verifica și modifica.</p>}
@@ -332,23 +332,23 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
       <ParkedRow label={parked?.label ?? ""} {...(parked ? { tip: { title: parked.label, text: parked.tip } } : {})} items={parked?.items.map((item) => ({ id: item.id, label: item.label })) ?? []} onRestore={bringBackParked} />
       {view.refused.length > 0 && <div className="qb-refused" role="alert">
         <p>{view.refused[0]!.why ?? view.refused[0]!.reason}</p>
-        <button type="button" className="fk-secondary" onClick={removeRefused}>Scoate condițiile din link</button>
+        <button type="button" className="qb-secondary" onClick={removeRefused}>Scoate condițiile din link</button>
       </div>}
-      {changes.length > 0 && <div className="qb-notes" role="status"><Glyph name="info" /><div><strong>Ce se schimbă odată cu întrebarea</strong>{changes.map((note) => <p key={note}>{note}{noteLinks[note] && <KitLink className="fk-relax-link" link={{ label: noteLinks[note]!.label, glyph: "›", href: askLink(noteLinks[note]!.spec as QuestionSpec) }} />}</p>)}</div></div>}
-      <div className="fk-bottom qb-bottom">
+      {changes.length > 0 && <div className="qb-notes" role="status"><Glyph name="info" /><div><strong>Ce se schimbă odată cu întrebarea</strong>{changes.map((note) => <p key={note}>{note}{noteLinks[note] && <KitLink className="qb-relax-link" link={{ label: noteLinks[note]!.label, glyph: "›", href: askLink(noteLinks[note]!.spec as QuestionSpec) }} />}</p>)}</div></div>}
+      <div className="qb-bottom">
         <div className="qb-bottom-start">
           {view.presentation.length > 0 && <Presentation tokens={view.presentation} openId={open?.key ?? null} onOpen={openWindow} />}
           {view.advanced.length > 0 && <span className="qb-more-wrap" ref={moreRef}>
             <RowMenu name="Întrebarea" actions={[{ id: "advanced", label: "Selecție avansată", glyph: "▾", onSelect: () => {
-              const button = moreRef.current?.querySelector<HTMLElement>(".fk-more");
+              const button = moreRef.current?.querySelector<HTMLElement>(".qb-more");
               if (button) openWindow("advanced", button);
             } }]} />
           </span>}
         </div>
-        <div className="fk-actions qb-actions">
+        <div className="qb-actions qb-bottom-end">
           {dirty ? <button type="button" className="qb-discard" onClick={discard}>Renunță la modificări</button> : applied && <span className="qb-ready"><Glyph name="check" />Întrebare aplicată</span>}
           <SaveQuestionButton spec={draft} unapplied={dirty && Boolean(applied)} active={savedQuestion} onSaved={question => { setSavedQuestion(question); setSavedNotice(`Salvată ${question.storage === "local" ? "pe acest dispozitiv" : "în cont"}: „${question.title}” · Toate întrebările → Salvate`); }} disabled={running || blocked} />
-          <button type="button" className="fk-primary qb-apply" disabled={running || blocked} onClick={apply}>{running ? "Caut în date…" : dirty && applied ? "Actualizează răspunsul" : "Vezi răspunsul"}<Glyph name="arrow" /></button>
+          <button type="button" className="qb-primary qb-apply" disabled={running || blocked} onClick={apply}>{running ? "Caut în date…" : dirty && applied ? "Actualizează răspunsul" : "Vezi răspunsul"}<Glyph name="arrow" /></button>
         </div>
       </div>
       {outro}
@@ -369,7 +369,7 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
             : <div className="qb-catalogue-grid">{QUESTION_GROUPS.map((group) => {
               const items = catalogResults.filter((item) => item.group === group.id);
               return items.length ? <section className="qb-catalogue-group" key={group.id}><h3>{group.label}</h3>{items.map((item) => <button key={item.id} type="button" className={`qb-catalogue-item${draft.block === item.id ? " is-selected" : ""}`} onClick={() => chooseType(item.id)}><span className="qb-catalogue-glyph"><Glyph name={item.id} /></span><span><strong>{item.label}</strong><small>{item.description}</small></span><Glyph name={draft.block === item.id ? "check" : "arrow"} /></button>)}</section> : null;
-            })}{!catalogResults.length && <p className="qb-empty">Nicio întrebare pentru „{search}”. Încearcă „bani”, „relații” sau „risc”.</p>}</div>}
+            })}{!catalogResults.length && <p className="qb-catalogue-empty">Nicio întrebare pentru „{search}”. Încearcă „bani”, „relații” sau „risc”.</p>}</div>}
         </div></>}
     </dialog>
   </div>;

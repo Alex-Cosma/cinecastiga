@@ -16,7 +16,7 @@ export const slot = (id: string, name: string, value: string, className?: string
 export function Section({ n, title, classes, note, children }: { n: number; title: string; classes: string; note: string; children: ReactNode }) {
   return <section className="kd-sec" id={`kd-sec-${n}`} aria-labelledby={`kd-sec-${n}-h`}>
     <div className="kd-sec-head"><h2 id={`kd-sec-${n}-h`}>{n}. {title}</h2><code>{classes}</code><p>{note}</p></div>
-    <div className="kd-panel fk">{children}</div>
+    <div className="kd-panel qb">{children}</div>
   </section>;
 }
 export const Cap = ({ children }: { children: ReactNode }) => <span className="kd-cap">{children}</span>;
