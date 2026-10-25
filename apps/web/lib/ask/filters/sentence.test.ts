@@ -8,7 +8,7 @@ import { describeConditions } from "./describe";
 import { filterContext } from "./context";
 import { SPEC_PATH_OWNERS, presentPaths } from "./registry";
 import {
-  KINDS_AFTER_D1, presentationTokens, saidFilters, sentenceSlots, sentenceText, sentenceTokens, type SentenceLabels, type SentenceSlot,
+  KINDS_AFTER_D1, kindAfterD1, presentationTokens, saidFilters, sentenceSlots, sentenceText, sentenceTokens, type SentenceLabels, type SentenceSlot,
 } from "./sentence";
 import type { FilterId } from "./types";
 import type { SentenceToken as KitSentenceToken } from "../../../app/intreaba/builder/kit-types";
@@ -267,6 +267,12 @@ describe("the sentence of each question (plan §4)", () => {
     const hospitals = q({ block: "entity_card", dim: "authority", rankBy: "value", filters: { authorityKind: "spital", county: "Cluj" } });
     expect(marked(hospitals)).toBe("Care [instituție] din [județul Cluj] [cumpără cel mai mult], prin [toate achizițiile], în [toți anii]?");
     expect(under(hospitals)).toEqual(["authorityKind"]);
+    // Only the subject waits: the buyers of a ranking of firms keep every kind, as on "Cine câștigă?" (review S2-F1b).
+    const toHospitals = q({ block: "entity_card", dim: "supplier", rankBy: "value", filters: { authorityKind: "spital", yearFrom: 2025, yearTo: 2025 } });
+    expect(marked(toHospitals)).toBe("Care [firmă] [câștigă cel mai mult] din [achizițiile] făcute de [spitalele] din [toată țara], în [2025]?");
+    expect(under(toHospitals)).toEqual([]);
+    expect(kindAfterD1(toHospitals, "spital")).toBe(false);
+    expect(kindAfterD1(hospitals, "spital")).toBe(true);
     // Elsewhere the kinds are said as today.
     expect(marked(q({ block: "table", dim: "authority", filters: { authorityKind: "oras_municipiu" } }))).toMatch(/^Ce \[primării de oraș și municipiu\] din/);
     expect(marked(q({ block: "entity_card", dim: "authority", rankBy: "risk", filters: { authorityKind: "scoala" } }))).toBe("Care [școală] din [toată țara] [are cel mai ridicat indice de risc]?");

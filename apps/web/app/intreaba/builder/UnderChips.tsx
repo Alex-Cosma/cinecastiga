@@ -1,9 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
+import KitLink from "../answer/KitLink";
 import { removeAndRefocus } from "./Chip";
 import HelpTip from "./HelpTip";
-import type { KitTip } from "./kit-types";
+import type { KitLink as Link, KitTip } from "./kit-types";
 
 /*
  * Component 6, the chips under the sentence (P4): what does not read as a
@@ -22,8 +23,8 @@ export type UnderChipItem =
   | { kind: "exclude"; id: string; label: string; name?: string; collapsed?: boolean }
   /** "Aceleași luni: ian.–mai", set by the application; opens its window. */
   | { kind: "auto"; id: string; label: string; name: string }
-  /** A condition from an old link, applied as before, no longer offered here. */
-  | { kind: "legacy"; id: string; words: string; tip: KitTip }
+  /** A condition from an old link, applied as before, no longer offered here; `link`: another answer about it ("Cât câștigă X ›"). */
+  | { kind: "legacy"; id: string; words: string; tip: KitTip; link?: Link }
   /** A selection another page made ("Selecția relației: 2 firme"). Current, not old. */
   | { kind: "origin"; id: string; prefix: string; words: string; tip: KitTip };
 
@@ -61,12 +62,14 @@ export function UnderChip({ item, openId, onOpen, onRemove }: { item: UnderChipI
     case "auto":
       return <span className="fk-chip fk-chip--auto">{opener(<><i className="fk-half" aria-hidden="true" /><span>{item.label}</span></>)}{remove(item.name)}</span>;
     // The two with a (?): on a phone the tip opens over its own chip (.fk-tipwrap-sm), outside the chip's clip.
-    case "legacy":
-      return <span className="fk-tipwrap-sm"><span className="fk-chip fk-chip--legacy">
+    case "legacy": {
+      const chip = <span className="fk-tipwrap-sm"><span className="fk-chip fk-chip--legacy">
         <span className="fk-chip-main"><span><b>Din link:</b> {item.words}</span></span>
         <HelpTip tip={item.tip} />
         {remove(`Din link: ${item.words}`)}
       </span></span>;
+      return item.link ? <>{chip}<KitLink link={item.link} className="fk-relax-link" /></> : chip;
+    }
     case "origin":
       return <span className="fk-tipwrap-sm"><span className="fk-chip fk-chip--origin">
         <span className="fk-chip-main"><span><b>{item.prefix}:</b> {item.words}</span></span>

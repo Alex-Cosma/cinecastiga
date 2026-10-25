@@ -83,7 +83,10 @@ describe("another question from the catalogue", () => {
   });
 
   it("keeps what it shows, and what an old link carried where the engine still applies it", () => {
-    expect(chooseQuestion(q({ block: "stat", filters: { minEmployees: 1, maxEmployees: 9 } }), "map").dropped).toEqual(["employees"]);
+    const toMap = chooseQuestion(q({ block: "stat", filters: { minEmployees: 1, maxEmployees: 9 } }), "map");
+    expect(toMap.dropped).toEqual(["employees"]);
+    // The engine applies it on the map; the builder does not offer it there yet: the note says so, not "nu se aplică" (review S2-F1b).
+    expect(toMap.notes).toEqual(["Am scos „firme cu 1–9 angajați”: nu se poate alege aici încă."]);
     // A link's threshold stays its chip on the map, and leaves the trend, which refuses it.
     const link = q({ block: "stat", filters: {}, minimumRecords: { role: "supplier", count: 3 } });
     const map = chooseQuestion(link, "map");

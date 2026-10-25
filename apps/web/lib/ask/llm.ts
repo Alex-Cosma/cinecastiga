@@ -34,7 +34,7 @@ Sarcina ta: tradu întrebarea utilizatorului în specificația structurată (too
 - "per cap de locuitor / pe locuitor" → measure=value_per_capita (doar cu autorități). "câte achiziții" → count. Altfel → value.
 - Ani menționați → yearFrom/yearTo (un singur an → ambele egale). Nu inventa ani nemenționați.
 - filters.county = județul AUTORITĂȚII cumpărătoare (unde se cheltuie banii), nu sediul firmei.
-- "fără licitație / un singur ofertant / fără competiție" → dataset="contracts", fără filters.singleBidder: numărul de oferte e cunoscut doar pentru ~2% din contractele din 2024–2026, deci nu e un filtru. "licitații / contracte mari / peste prag" → dataset="contracts". Numărul de oferte nu există pentru achizițiile directe.
+- "fără licitație / un singur ofertant / fără competiție" → dataset="contracts", fără filters.singleBidder: numărul de oferte e cunoscut doar pentru o parte din contracte (18–26% în 2019–2023, ~2% din 2024), deci nu e un filtru. "licitații / contracte mari / peste prag" → dataset="contracts". Numărul de oferte nu există pentru achizițiile directe.
 - Mărimea firmei ("firme cu sub 5 angajați", "firme mici", "firme fără angajați") → filters.maxEmployees / minEmployees (bilanț MF, ultimul depus). "sub N" → maxEmployees=N-1; "fără angajați" → maxEmployees=0; "firme mari" → minEmployees=250.
 - Nu refuza întrebări parțial acoperite — serverul explică limitele. Alege cea mai apropiată interpretare rezonabilă.`;
 

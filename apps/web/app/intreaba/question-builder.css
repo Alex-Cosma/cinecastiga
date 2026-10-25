@@ -18,10 +18,10 @@
 .question-builder :focus-visible { outline: 3px solid var(--orange); outline-offset: 3px; }
 .question-builder .qb-icon { display: inline-block; width: 19px; height: 19px; flex-shrink: 0; vertical-align: middle; }
 .qb-navigation { display: flex; justify-content: space-between; gap: 14px; align-items: center; margin: 0 0 17px; }
-.qb-shortcuts { display: flex; gap: 4px; padding: 4px; border: 1px solid var(--qb-line); border-radius: 11px; background: #f0f2e7; }
-.qb-shortcuts button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 13px; border: 0; border-radius: 7px; color: #78866b; background: transparent; font-size: 12px; line-height: 1.4; font-weight: 500; transition: background 140ms, color 140ms; }
+.qb-shortcuts { display: flex; gap: 4px; padding: 4px; border: 1px solid var(--qb-line); border-radius: 11px; background: var(--fk-well); }
+.qb-shortcuts button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 13px; border: 0; border-radius: 7px; color: var(--fk-muted-strong); background: transparent; font-size: 12px; line-height: 1.4; font-weight: 500; transition: background 140ms, color 140ms; }
 .qb-shortcuts button[aria-pressed=true] { background: var(--qb-surface); color: var(--qb-green); box-shadow: 0 1px 4px #2b3d2510; }
-.qb-shortcuts button:hover { color: var(--qb-green); background: #fafbf3; }
+.qb-shortcuts button:hover { color: var(--qb-green); background: var(--qb-surface); }
 .qb-shortcuts .qb-icon { width: 16px; height: 16px; }
 .qb-catalogue-trigger { display: inline-flex; align-items: center; gap: 9px; border: 1px solid #cdd8bf; border-radius: 8px; background: var(--qb-surface); color: var(--qb-green); padding: 11px 14px; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .qb-catalogue-trigger>span { border-radius: 4px; padding: 3px 5px; background: #eaf0df; font-size: 10px; }
@@ -264,6 +264,9 @@
 .qb-bottom { margin-top: 4px; }
 .qb-bottom-start { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; min-width: 0; flex: 1 1 280px; }
 .qb-more-wrap { position: relative; display: inline-flex; }
+/* The wrap is only "⋯" wide: the menu takes its own width from the button's left edge (its right edge when the page ends first). */
+.qb-more-wrap .fk-menu--pop { left: 0; right: auto; width: max-content; min-width: 12rem; max-width: calc(100vw - 32px); }
+.qb-more-wrap .fk-menu--pop.fk-menu--end { left: auto; right: 0; } /* over the left anchor above */
 .qb-actions { align-items: center; justify-content: flex-end; }
 .qb-actions .qb-discard { min-height: 44px; padding: 0 4px; border: 0; background: none; color: var(--muted); font-size: 13px; text-decoration: underline; text-decoration-color: var(--line2); text-underline-offset: 4px; }
 .qb-actions .qb-ready { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12.5px; white-space: nowrap; }

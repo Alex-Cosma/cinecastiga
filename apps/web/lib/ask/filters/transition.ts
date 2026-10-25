@@ -52,7 +52,7 @@ function phraseLabels(spec: FilterSpec): Map<FilterId, string> {
  * note's reason, the new choice or the new question.
  */
 function settle(
-  before: FilterSpec, after: FilterSpec, opts: { lens: boolean; touched: readonly FilterId[]; why: string },
+  before: FilterSpec, after: FilterSpec, opts: { lens: boolean; touched: readonly FilterId[]; why: string; whyApplied?: string },
 ): { spec: FilterSpec; notes: string[]; dropped: FilterId[]; parked: ParkedItem[] } {
   const touched = new Set(opts.touched);
   const visibleBefore = visibleFilters(before), visibleAfter = visibleFilters(after);
@@ -90,7 +90,7 @@ function settle(
     // A link's chip, or a selection another page made, stays a chip where the engine applies it.
     const chip = !visibleBefore.has(id) || id === "population" && selectionOrigin(before.population) !== null;
     if (chip && FILTERS[id].engine[form] !== undefined) continue;
-    remove(id, opts.why);
+    remove(id, opts.whyApplied && FILTERS[id].engine[form] !== undefined ? opts.whyApplied : opts.why);
   }
   // What the engine still refuses on the new question (a kind on firm profiles), but never the choice itself.
   if (errorOf(spec)) for (const id of refusedConditions(spec, (id) => touched.has(id)).keys()) remove(id, opts.why);
@@ -128,7 +128,8 @@ export function chooseValue(draft: QuestionSpec, slot: Slot, choice: Choice, par
 export function chooseQuestion(draft: QuestionSpec, block: string, parked: Parked | null = null): Transition {
   const start = unpark(draft as FilterSpec, parked);
   const { spec, changes } = transitionQuestion(start, block);
-  const settled = settle(start, spec as FilterSpec, { lens: false, touched: [], why: "nu se aplică la această întrebare" });
+  // The reason by cause: a condition the engine applies here but the builder does not offer yet is not "inapplicable".
+  const settled = settle(start, spec as FilterSpec, { lens: false, touched: [], why: "nu se aplică la această întrebare", whyApplied: "nu se poate alege aici încă" });
   return { spec: settled.spec, notes: unique([...changes, ...settled.notes]), dropped: settled.dropped, parked: null };
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { menuButtonKey, menuKey } from "../builder/keyboard";
 
 /*
@@ -47,6 +47,15 @@ export default function RowMenu({ name, actions, className, defaultOpen = false 
     return () => document.removeEventListener("pointerdown", outside);
   }, [open]);
 
+  // Where the open menu fits (review S2-F1b): above its button when the viewport ends below it, and
+  // against the button's other edge when it would run past the page's (the builder anchors it left).
+  const [place, setPlace] = useState({ up: false, end: false });
+  useLayoutEffect(() => {
+    if (!open || !menu.current || !button.current) { setPlace((p) => p.up || p.end ? { up: false, end: false } : p); return; }
+    const m = menu.current.getBoundingClientRect(), b = button.current.getBoundingClientRect();
+    setPlace({ up: m.bottom > window.innerHeight - 8 && b.top - m.height - 8 > 0, end: m.right > document.documentElement.clientWidth - 8 });
+  }, [open]);
+
   const show = (where: "first" | "last") => { opened.current = true; setOpen(where); };
   const close = (refocus: boolean) => { setOpen(null); if (refocus) button.current?.focus(); };
   /**
@@ -81,7 +90,7 @@ export default function RowMenu({ name, actions, className, defaultOpen = false 
     {open && <div
       ref={menu}
       id={menuId}
-      className="fk-menu fk-menu--pop"
+      className={`fk-menu fk-menu--pop${place.up ? " fk-menu--up" : ""}${place.end ? " fk-menu--end" : ""}`}
       role="menu"
       aria-label={name}
       onKeyDown={event => {

@@ -2181,7 +2181,7 @@
      "topN": 10,
      "rankBy": "value"
     },
-    "pills": ["entitate-superlativ","cea mai mare valoare","furnizori","valoarea înregistrată","toți anii","toate achizițiile: directe și din proceduri"],
+    "pills": ["locul 1","cea mai mare valoare","furnizori","valoarea înregistrată","toți anii","toate achizițiile: directe și din proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -9222,7 +9222,7 @@
      }
     },
     "pills": [
-     "entitate-superlativ",
+     "locul 1",
      "cea mai mare valoare",
      "furnizori",
      "valoarea înregistrată",
@@ -10745,7 +10745,7 @@
      "filters": {},
      "dim": "authority"
     },
-    "pills": ["entitate-superlativ","cea mai riscantă (CRI)","instituții","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["locul 1","cea mai riscantă (CRI)","instituții","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
@@ -12958,7 +12958,7 @@
      "rankBy": "value"
     },
     "pills": [
-     "entitate-superlativ",
+     "locul 1",
      "cea mai mare valoare",
      "furnizori",
      "valoarea înregistrată",
@@ -13088,12 +13088,12 @@
    "sources": {
     "status": 200,
     "ok": false,
-    "error": "Nu am găsit firmele persoanei în date (filtrul «conduse de»)."
+    "error": "Nu am găsit firmele persoanei în date (filtrul «conduse azi de»)."
    },
    "csv": {
     "status": 200,
     "ok": false,
-    "error": "Nu am găsit firmele persoanei în date (filtrul «conduse de»)."
+    "error": "Nu am găsit firmele persoanei în date (filtrul «conduse azi de»)."
    }
   },
   {
@@ -13127,15 +13127,7 @@
      "dim": "authority",
      "rankBy": "value"
     },
-    "pills": [
-     "entitate-superlativ",
-     "cea mai mare valoare",
-     "instituții",
-     "valoarea înregistrată",
-     "Fixture Construct SRL",
-     "toți anii",
-     "toate achizițiile: directe și din proceduri"
-    ],
+    "pills": ["locul 1","cea mai mare valoare","instituții","valoarea înregistrată","Fixture Construct SRL","toți anii","toate achizițiile: directe și din proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -13246,15 +13238,7 @@
      "dim": "supplier",
      "rankBy": "value"
     },
-    "pills": [
-     "entitate-superlativ",
-     "cea mai mare valoare",
-     "furnizori",
-     "valoarea înregistrată",
-     "Municipiul Fixture Nord",
-     "toți anii",
-     "toate achizițiile: directe și din proceduri"
-    ],
+    "pills": ["locul 1","cea mai mare valoare","furnizori","valoarea înregistrată","Municipiul Fixture Nord","toți anii","toate achizițiile: directe și din proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -30007,7 +29991,7 @@
      "topN": 10,
      "rankBy": "risk"
     },
-    "pills": ["entitate-superlativ","cea mai riscantă (CRI)","instituții","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["locul 1","cea mai riscantă (CRI)","instituții","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
@@ -30107,7 +30091,7 @@
      "topN": 10,
      "rankBy": "risk"
     },
-    "pills": ["entitate-superlativ","cea mai riscantă (CRI)","furnizori","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["locul 1","cea mai riscantă (CRI)","furnizori","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
@@ -30211,7 +30195,7 @@
      "topN": 10,
      "rankBy": "risk"
     },
-    "pills": ["entitate-superlativ","cea mai riscantă (CRI)","instituții","județul Buzău","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["locul 1","cea mai riscantă (CRI)","instituții","județul Buzău","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Județul = sediul instituției care cumpără, nu al firmei (din adresă, cod NUTS, ONRC sau UAT verificat). Instituțiile fără județ cunoscut nu intră.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
@@ -30316,7 +30300,7 @@
      "topN": 10,
      "rankBy": "risk"
     },
-    "pills": ["entitate-superlativ","cea mai riscantă (CRI)","instituții","doar spitale","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["locul 1","cea mai riscantă (CRI)","instituții","doar spitale","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
@@ -30416,7 +30400,7 @@
      "topN": 10,
      "rankBy": "value"
     },
-    "pills": ["entitate-superlativ","cea mai mare valoare","instituții","valoarea înregistrată","toți anii","toate achizițiile: directe și din proceduri"],
+    "pills": ["locul 1","cea mai mare valoare","instituții","valoarea înregistrată","toți anii","toate achizițiile: directe și din proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -30530,7 +30514,7 @@
      "topN": 10,
      "rankBy": "value"
     },
-    "pills": ["entitate-superlativ","cea mai mare valoare","furnizori","valoarea înregistrată","toți anii","toate achizițiile: directe și din proceduri"],
+    "pills": ["locul 1","cea mai mare valoare","furnizori","valoarea înregistrată","toți anii","toate achizițiile: directe și din proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -30643,7 +30627,7 @@
      "topN": 10,
      "rankBy": "value"
     },
-    "pills": ["entitate-superlativ","cea mai mare valoare","instituții","valoarea înregistrată","2025","toate achizițiile: directe și din proceduri"],
+    "pills": ["locul 1","cea mai mare valoare","instituții","valoarea înregistrată","2025","toate achizițiile: directe și din proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -30756,7 +30740,7 @@
      "rankBy": "value"
     },
     "pills": [
-     "entitate-superlativ",
+     "locul 1",
      "cea mai mare valoare",
      "furnizori",
      "valoarea înregistrată",
@@ -30881,7 +30865,7 @@
      "topN": 10,
      "rankBy": "value"
     },
-    "pills": ["entitate-superlativ","cea mai mare valoare","instituții","valoarea înregistrată","toți anii","doar contractele din proceduri"],
+    "pills": ["locul 1","cea mai mare valoare","instituții","valoarea înregistrată","toți anii","doar contractele din proceduri"],
     "caveats": [
      "Sursă: DOAR contractele din proceduri. Valoarea unui contract câștigat în asociere e împărțită egal între firme. Plafoanele acordurilor-cadru și publicațiile cu identitate incertă sunt excluse din totaluri. Lipsa comenzilor identificate înseamnă acoperire incompletă.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției."
@@ -30983,7 +30967,7 @@
      "topN": 10,
      "rankBy": "value"
     },
-    "pills": ["entitate-superlativ","cea mai mare valoare","furnizori","valoarea înregistrată","județul Cluj","toți anii","toate achizițiile: directe și din proceduri"],
+    "pills": ["locul 1","cea mai mare valoare","furnizori","valoarea înregistrată","județul Cluj","toți anii","toate achizițiile: directe și din proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",

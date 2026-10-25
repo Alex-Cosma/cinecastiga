@@ -7,6 +7,7 @@ import { conditionSet, FILTERS } from "../../../lib/ask/filters/registry";
 import { presentationTokens, sentenceTokens, type SentenceSlot, type SentenceToken } from "../../../lib/ask/filters/sentence";
 import type { FilterCtx, FilterId, FilterSpec, Slot } from "../../../lib/ask/filters/types";
 import { employeesOnBands } from "../../../lib/ask/filters/words";
+import { askLink } from "../../../lib/ask/source-spec";
 import type { QueryPopulation } from "../../../lib/ask/population";
 import { KIND_WORDS, cloneQuestion, countyWords, type QuestionSpec } from "../../../lib/ask/question-ui";
 import type { SentenceToken as KitToken } from "./kit-types";
@@ -78,7 +79,8 @@ export const phraseSlot = (token: SentenceSlot): Slot => ({
   ...(token.required ? { required: true as const } : {}),
 });
 
-const LINK_TIP = "Condiție dintr-un link mai vechi; se aplică la fel. Nu se mai alege aici.";
+// Neutral about age: a selection saved today on a page whose shape is not recognised (a comparison group's clip) also reads "Din link".
+const LINK_TIP = "Condiție din link; se aplică la fel. Nu se alege aici.";
 const ORIGIN_TIP = "Vine din altă pagină a site-ului; se aplică întocmai.";
 
 const capital = (text: string) => text.charAt(0).toLocaleUpperCase("ro-RO") + text.slice(1);
@@ -176,8 +178,11 @@ export function builderView(input: QuestionSpec, labels: ConditionLabels = {}, c
       const label = condition.label.slice(0, condition.label.indexOf(":"));
       under.push({ kind: "origin", id, prefix: label, words: condition.words, tip: { title: label, text: reason ?? condition.detail ?? ORIGIN_TIP } });
     } else {
-      const tip = reason ?? [LINK_TIP, condition.detail].filter(Boolean).join(" ");
-      under.push({ kind: "legacy", id, words: condition.words, tip: { title: "Din link", text: tip } });
+      const tip = reason ?? [condition.tip ?? LINK_TIP, condition.detail].filter(Boolean).join(" ");
+      under.push({
+        kind: "legacy", id, words: condition.words, tip: { title: "Din link", text: tip },
+        ...(condition.retarget ? { link: { label: condition.retarget.label, glyph: "›" as const, href: askLink(condition.retarget.spec as QuestionSpec) } } : {}),
+      });
     }
   }
 

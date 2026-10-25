@@ -1538,7 +1538,8 @@ export function TrendBlock({
                 ) : (
                   r.name
                 )}
-                {r.county ? ` (${r.county})` : ""}
+                {/* The county is the buyers' (R9: "(județ)" is an institution's place): never beside a firm, where it would read as its seat. */}
+                {r.county && spec?.dim !== "supplier" ? ` (${r.county})` : ""}
                 {evidence && (
                   <button
                     type="button"

@@ -1,9 +1,10 @@
-import { localityScopeError, type QuestionSpec } from "../question-ui";
+import { entityLabel, leaderAxis, localityScopeError, type QuestionSpec } from "../question-ui";
 import { runnableError, type AskSpec } from "../spec";
 import { filterContext } from "./context";
 import { describeConditions, preciseWords, type ConditionLabels } from "./describe";
 import { isDaBoundPopulation, splitExcluded, type SelectionOrigin } from "./origin";
 import { FILTER_DEFS, FILTERS, SPEC_PATH_OWNERS, presentPaths, visibleFilters } from "./registry";
+import { retarget } from "./retarget";
 import type { FilterId, FilterSpec, SpecPath } from "./types";
 
 /*
@@ -38,6 +39,26 @@ export interface LegacyCondition {
   reason?: string;
   /** The reason in the chip's few words, where the engine's message is a paragraph (a profile's archive). */
   why?: string;
+  /** The (?) of an applied condition, where it says more than "from an older link" (a tautology of "Cine conduce?"). */
+  tip?: string;
+  /** Another answer about the same entity ("Cât câștigă X ›"), beside the chip (R8 "›"). */
+  retarget?: { label: string; spec: FilterSpec };
+}
+
+/**
+ * "Cine conduce?" on value with the ranked role's own entity named (plan
+ * §4.13, final entity_card §7): an old link's tautology. It runs as before
+ * and the answer is that entity; the chip says why and offers its total.
+ */
+function tautology(spec: FilterSpec, id: FilterId): Pick<LegacyCondition, "tip" | "retarget"> | null {
+  if (spec.block !== "entity_card" || leaderAxis(spec) === "risk") return null;
+  const firms = spec.dim === "supplier";
+  if (id !== (firms ? "supplier" : "authority")) return null;
+  const name = entityLabel(spec, id);
+  return {
+    tip: firms ? "Cu o singură firmă aleasă, răspunsul e chiar ea." : "Cu o singură instituție aleasă, răspunsul e chiar ea.",
+    retarget: { label: `${firms ? "Cât câștigă" : "Cât cumpără"} ${name}`, spec: retarget(spec, "stat") },
+  };
 }
 
 /**
@@ -141,6 +162,7 @@ export function legacyConditions(input: QuestionSpec | AskSpec, labels: Conditio
       status: reason ? "refused" : "applied",
       ...(reason ? { reason } : {}),
       ...(reason && ctx.profile && !applied ? { why: PROFILE_REFUSAL } : {}),
+      ...(!reason ? tautology(spec, id) ?? {} : {}),
     });
   }
   return out;

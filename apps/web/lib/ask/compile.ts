@@ -1840,7 +1840,7 @@ export async function runRows(
     (spec.filters.adminPersonKey || spec.filters.adminName) &&
     (!grounding.admin?.personKey || grounding.admin.supplierIds.length === 0)
   ) {
-    return { error: "Nu am găsit firmele persoanei în date (filtrul «conduse de»)." };
+    return { error: "Nu am găsit firmele persoanei în date (filtrul «conduse azi de»)." };
   }
   if (spec.filters.uatSiruta && !grounding.uat?.authorityIds?.length) {
     return { error: uatUnmappedError(spec.filters.uatName ?? grounding.uat?.name ?? `UAT ${spec.filters.uatSiruta}`) };

@@ -5,7 +5,7 @@ import { FILTERS } from "./defs";
 import { edited } from "./defs/shared";
 import type { Party } from "./defs/selection";
 import { writeFocal } from "./registry";
-import { KINDS_AFTER_D1 } from "./sentence";
+import { KINDS_AFTER_D1, kindAfterD1 } from "./sentence";
 import type { Availability, FilterCtx, FilterId, FilterSpec, Slot } from "./types";
 
 /*
@@ -146,6 +146,7 @@ export function choiceState(slot: Slot, choice: Choice, spec: FilterSpec, ctx: F
     const pinned = pinnedRow(spec, ctx, dim);
     return pinned ? { state: "disabled", reason: pinned } : { state: "offered" };
   }
-  if (choice.filter === "authorityKind" && laterKind(ctx.block, choice.value)) return { state: "hidden" };
+  // A kind of the profiles' subject waits; the buyers of a ranking of firms keep every kind (kindAfterD1).
+  if (choice.filter === "authorityKind" && kindAfterD1(spec, choice.value)) return { state: "hidden" };
   return { state: "offered" };
 }

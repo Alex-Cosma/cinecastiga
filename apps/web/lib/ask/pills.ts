@@ -23,7 +23,8 @@ const BLOCK_LABEL: Record<AskSpec["block"], string> = {
   scatter: "risc și valoare",
   sankey: "fluxul banilor",
   network: "rețea de parteneri",
-  entity_card: "entitate-superlativ",
+  // "Cine conduce?": its own short name (kit §4), not the engine's slug.
+  entity_card: "locul 1",
   fact_check: "verificare Da/Nu",
   trend: "schimbare între ani",
 };
