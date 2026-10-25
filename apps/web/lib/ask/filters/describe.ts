@@ -117,14 +117,6 @@ const records = (n: number) => countWords(n, "înregistrare", "înregistrări");
 const capitalFirst = (text: string) => text.charAt(0).toLocaleUpperCase("ro-RO") + text.slice(1);
 const conditionsOf = (p: QueryPopulation) => p.groups.reduce((n, group) => n + group.conditions.length, 0);
 
-/** A precise selection in one line: "(instituții includ X ȘI CPV includ 45) SAU (…)". */
-export function describePopulation(population: QueryPopulation): string {
-  const names = { date: "data", value: "lei pe înregistrare", authority: "instituții", supplier: "firme", cpv: "CPV", county: "județe" };
-  return population.groups.map((group) => `(${group.conditions.map((c) => "value" in c
-    ? `${names[c.field]} ${c.op === "gte" ? "≥" : "≤"} ${c.value}`
-    : `${names[c.field]} ${c.op === "not_in" ? "exclud" : "includ"} ${(c.labels ?? c.values).join(", ")}`).join(group.operator === "and" ? " ȘI " : " SAU ")})`).join(population.operator === "and" ? " ȘI " : " SAU ");
-}
-
 /** A list's nouns: named one, named many, counted one, counted many. */
 const LIST_NOUNS = {
   authority: ["instituția", "instituțiile", "instituție", "instituții"], supplier: ["firma", "firmele", "firmă", "firme"],
@@ -135,23 +127,24 @@ const dayOf = (iso: string) => /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso.split("-").
  * One condition of a precise selection in a chip's few words ("valoarea pe
  * câștigător ≥ 100.000 lei", "fără CPV 45"). Institutions and firms are named
  * from the link's labels or `known` (names the caller looked up), else
- * counted: never a bare id.
+ * counted: never a bare id. A chip names at most two; `full` (the answer's
+ * caveat and the sources' note) names every one it knows.
  */
-function conditionWords(c: PopulationCondition, known: Readonly<Record<string, string>> = {}): string {
+function conditionWords(c: PopulationCondition, known: Readonly<Record<string, string>> = {}, full = false): string {
   if ("value" in c) return c.field === "value"
     ? `valoarea pe câștigător ${c.op === "gte" ? "≥" : "≤"} ${formatExactDecimal(c.value)} lei`
     : `data ${c.op === "gte" ? "≥" : "≤"} ${dayOf(c.value)}`;
   const [theOne, theMany, one, many] = LIST_NOUNS[c.field];
   const looked = c.values.every((v) => known[v]) ? c.values.map((v) => known[v]!) : null;
   const names = c.labels?.length === c.values.length ? c.labels : c.field === "cpv" || c.field === "county" ? c.values : looked;
-  const what = names && names.length <= 2 ? `${names.length === 1 ? theOne : theMany} ${names.join(", ")}` : countWords(c.values.length, one, many);
+  const what = names && (full || names.length <= 2) ? `${names.length === 1 ? theOne : theMany} ${names.join(", ")}` : countWords(c.values.length, one, many);
   return `${c.op === "not_in" ? "fără" : "doar"} ${what}`;
 }
 
 /**
  * A precise selection in the words of its chip, the title's tail and the total
  * line (kit P9 "Selecție avansată"): its conditions when there are one or two,
- * else how many there are; the (?) holds every group (describePopulation).
+ * else how many there are; the (?) holds every group (populationDetail).
  * `named` false: the place's own chip, which already says "Selecție avansată:".
  */
 export function preciseWords(population: QueryPopulation, named = true): string {
@@ -161,11 +154,14 @@ export function preciseWords(population: QueryPopulation, named = true): string 
   return all.map((c) => conditionWords(c)).join(operator === "and" ? " și " : " sau ");
 }
 
-/** The names an old link's precise selection lacks: ids of institutions and firms without labels, where a chip would name them (a list of one or two), at most 20. */
-export function unnamedEntityIds(population: QueryPopulation | undefined): string[] {
+/**
+ * The names an old link's precise selection lacks: ids of institutions and firms without labels, at most 20 (else none:
+ * they are counted). Where a chip would name them (a list of one or two); `all`, every list (the server's caveat and note).
+ */
+export function unnamedEntityIds(population: QueryPopulation | undefined, all = false): string[] {
   const ids = new Set<string>();
   for (const c of population?.groups.flatMap((group) => group.conditions) ?? [])
-    if ("values" in c && (c.field === "authority" || c.field === "supplier") && c.labels?.length !== c.values.length && c.values.length <= 2)
+    if ("values" in c && (c.field === "authority" || c.field === "supplier") && c.labels?.length !== c.values.length && (all || c.values.length <= 2))
       for (const id of c.values) ids.add(id);
   return ids.size <= 20 ? [...ids] : [];
 }
@@ -173,11 +169,12 @@ export function unnamedEntityIds(population: QueryPopulation | undefined): strin
 /**
  * A precise selection's (?) (kit P9): every group, each condition in its
  * chip's words, institutions and firms named where `known` names them, else
- * counted (an old link without labels; the builder looks the names up, the
- * answer never waits for them).
+ * counted (an old link without labels; the builder looks the names up after
+ * the answer, the server with its grounding). `full`: every name known, not
+ * only one or two (the answer's caveat, the sources' note).
  */
-export function populationDetail(population: QueryPopulation, known: Readonly<Record<string, string>> = {}): string {
-  const group = (g: QueryPopulation["groups"][number]) => g.conditions.map((c) => conditionWords(c, known)).join(g.operator === "and" ? " ȘI " : " SAU ");
+export function populationDetail(population: QueryPopulation, known: Readonly<Record<string, string>> = {}, full = false): string {
+  const group = (g: QueryPopulation["groups"][number]) => g.conditions.map((c) => conditionWords(c, known, full)).join(g.operator === "and" ? " ȘI " : " SAU ");
   return population.groups.length === 1 ? group(population.groups[0]!) : population.groups.map((g) => `(${group(g)})`).join(population.operator === "and" ? " ȘI " : " SAU ");
 }
 
@@ -350,10 +347,12 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
       note: `Pragul de ${n} pentru ${authority ? "instituții" : "firme"} se calculează înainte de selecția unui grup și filtrele locale ale surselor.`,
     };
   },
-  population: (spec, { origin: hint, entities }) => {
+  population: (spec, { origin: hint, entities: named, grounding }) => {
     const p = spec.population;
     if (!p) return null;
-    const precise = describePopulation(p);
+    // An old link's entities without labels by their names: the caller's, or the server's grounding (looked up with it); else counted.
+    const entities = { ...grounding?.entities, ...named };
+    const precise = populationDetail(p, entities, true);
     const origin = selectionOrigin(p, hint, entities);
     if (origin) {
       const text = `${origin.label}: ${origin.words}`;

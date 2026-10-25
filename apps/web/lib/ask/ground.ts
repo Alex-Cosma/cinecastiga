@@ -6,6 +6,9 @@ import { onrcBirthYear } from "../format";
 import { retiredText, type RetiredTerm } from "./retired-terms";
 import { cpvTermParts } from "./cpv-terms";
 import { readableCpvName } from "../entity-summary";
+import { entityNames } from "../entity-names";
+import { unnamedEntityIds } from "./filters/describe";
+import type { QueryPopulation } from "./population";
 
 /**
  * Grounding: turn the spec's free-text fields (cpvTerm, authorityName,
@@ -83,6 +86,12 @@ export interface Grounding {
   county?: { query: string; canonical: string | null };
   uat?: UatGrounding;
   admin?: AdminGrounding;
+  /**
+   * An old link's precise selection: the names of the institutions and firms it lists by id without
+   * labels (at most 20, by primary key, beside the other groundings): its caveat, sources' note and
+   * pills name them (describeConditions), never a bare id.
+   */
+  entities?: Record<string, string>;
 }
 
 /** Diacritic-fold + lowercase, same convention as lib/map.ts foldCounty. */
@@ -556,9 +565,19 @@ async function groundUat(sql: DbSql, siruta: number): Promise<UatGrounding> {
   };
 }
 
+/** The names of a precise selection's unlabelled entities (unnamedEntityIds); a failed lookup leaves them counted. */
+async function groundEntityNames(sql: DbSql, population: QueryPopulation): Promise<Record<string, string> | undefined> {
+  const ids = unnamedEntityIds(population, true);
+  if (!ids.length) return undefined;
+  const names = await entityNames(sql, ids).catch(() => ({}));
+  return Object.keys(names).length ? names : undefined;
+}
+
 export async function ground(
   sql: DbSql,
   filters: AskFilters,
+  /** The spec's precise selection, when it has one: its unlabelled entities are named with the rest. */
+  population?: QueryPopulation,
 ): Promise<Grounding> {
   const g: Grounding = {};
   // compareWith takes the same role as the focal entity (authority unless the
@@ -568,7 +587,7 @@ export async function ground(
     (filters.supplierName || filters.supplierId)
       ? "supplier"
       : "authority";
-  const [cpv, authority, supplier, compare, county, uat, admin] =
+  const [cpv, authority, supplier, compare, county, uat, admin, entities] =
     await Promise.all([
       filters.cpvTerm
         ? groundCpv(sql, filters.cpvTerm)
@@ -600,6 +619,7 @@ export async function ground(
             name: filters.adminName,
           })
         : Promise.resolve(undefined),
+      population ? groundEntityNames(sql, population) : Promise.resolve(undefined),
     ]);
   if (cpv) g.cpv = cpv;
   if (authority) g.authority = authority;
@@ -608,5 +628,6 @@ export async function ground(
   if (county) g.county = county;
   if (uat) g.uat = uat;
   if (admin) g.admin = admin;
+  if (entities) g.entities = entities;
   return g;
 }

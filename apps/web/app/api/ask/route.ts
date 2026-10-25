@@ -100,7 +100,7 @@ export async function POST(req: Request) {
 
   const sql = db();
   try {
-    const grounding = await ground(sql, spec.filters);
+    const grounding = await ground(sql, spec.filters, spec.population);
     const result = await runSpec(sql, spec, grounding, tableOpts);
     if ("error" in result) {
       devlog("ask", { question, spec, ok: false, error: result.error });

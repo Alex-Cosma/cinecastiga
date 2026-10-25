@@ -85,7 +85,8 @@ function divisionOf(population: QueryPopulation): string | null {
 export function selectionOrigin(population: QueryPopulation | undefined, hint?: OriginHint, names: Readonly<Record<string, string>> = {}): OriginWords | null {
   if (!population) return null;
   const entity = entityOf(population);
-  if (entity) return { origin: "entity", label: ORIGIN_LABEL.entity, words: `${names[entity] ?? `entitatea #${entity}`} (ca instituție sau ca firmă)` };
+  // Named once looked up (the builder's lookup, the server's grounding); never a bare id before.
+  if (entity) return { origin: "entity", label: ORIGIN_LABEL.entity, words: `${names[entity] ?? "o entitate"} (ca instituție sau ca firmă)` };
   const pairs = pairsOf(population);
   if (pairs) {
     const authorities = new Set(pairs.map((p) => p.authority)), suppliers = new Set(pairs.map((p) => p.supplier));

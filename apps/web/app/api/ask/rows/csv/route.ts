@@ -52,7 +52,7 @@ export async function POST(req: Request) {
       ? await withPeerEvidence(sql, body.peer, async (q,bound)=>runRows(q,bound.spec,bound.grounding,0,peerEvidenceOptions(bound,opts)))
       : body.connection !== undefined
       ? await withConnectionEvidence(sql, body.connection, async (q, bound) => runRows(q, bound.spec, bound.grounding, 0, opts))
-      : await runRows(sql, v, await ground(sql, v.filters), 0, opts);
+      : await runRows(sql, v, await ground(sql, v.filters, v.population), 0, opts);
     if ("error" in result) {
       // A trend's months moved with the data since its answer (plan §2.8): reload, never another list.
       return NextResponse.json({ ok: false, error: result.error }, { status: "conflict" in result ? 409 : 200 });
