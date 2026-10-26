@@ -267,15 +267,21 @@ async function runCase(sql: DbSql, c: PerfCase): Promise<RunResult> {
     // "Unde e …?" keeps its rank vector (its warm runs are the next searches).
     if (c.path === "facet" && c.facet) {
       const { facetCounts, locate, forgetFacets } = await import("../lib/ask/facets");
-      if (c.facet.part !== "locate") forgetFacets();
-      const result = c.facet.part === "locate" ? await locate(sql, c.spec, c.facet.q ?? "") : await facetCounts(sql, c.spec, c.facet.part);
+      // An answer's facts (F3: „Din care”, the bars of an evolution) are asked as a part too, counted afresh each run.
+      const { barFacts, forgetAnswerFacts, mixFacts } = await import("../lib/ask/answer-facts");
+      if (c.facet.part !== "locate") { forgetFacets(); forgetAnswerFacts(); }
+      const part = c.facet.part;
+      const result = part === "locate" ? await locate(sql, c.spec, c.facet.q ?? "") : part === "mix" ? await mixFacts(sql, c.spec)
+        : part === "bars" ? await barFacts(sql, c.spec) : await facetCounts(sql, c.spec, part);
       const ms = round(performance.now() - started);
       if ("timeout" in result) return { ms, groundMs: 0, error: "timeout (8 s)" };
       if ("error" in result) return { ms, groundMs: 0, error: result.error };
       // Refused up front, without a query: reported as such, with the PRECOMPUTE.md entry it waits on.
       if ("precompute" in result) return { ms, groundMs: 0, rows: 0, hash: `precompute: ${result.precompute}` };
       const { tookMs: _took, ...answer } = result;
-      return { ms, groundMs: 0, rows: "matches" in answer ? answer.matches.length : answer.options.length, hash: fingerprint(answer) };
+      const rows = "matches" in answer ? answer.matches.length : "options" in answer ? answer.options.length
+        : "kind" in answer ? answer.kind.length + answer.procedure.length + answer.size.length : Object.keys(answer.max ?? {}).length;
+      return { ms, groundMs: 0, rows, hash: fingerprint(answer) };
     }
     const grounding = await ground(sql, c.spec.filters, c.spec.population);
     groundMs = performance.now() - started;

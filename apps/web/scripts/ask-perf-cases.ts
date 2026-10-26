@@ -267,6 +267,40 @@ export function perfCases(): PerfCase[] {
       all(years(2024, 2025), lens({ change: "all", months: "auto" })), { path: "rows", drawer: { search: "medicamente" }, afterAnswer: true, barMs: 2000, precompute: DRAWER_SEARCH }),
     ...f3Cases(),
     ...facetCases(),
+    ...f3RowsCases(),
+  ];
+}
+
+/** PRECOMPUTE.md entries the F3-rows facts wait on (answer-facts.ts MIX_LIVE, BARS_LIVE). */
+const MIX_LIVE = "„Din care” pe o selecție națională fără rollup";
+
+/**
+ * F3-rows (S4; plan §4.1–§4.3, §6.4): the evolution's options (agg_months), „Din care” (agg_national_mix
+ * or one grouped pass), a bar's facts, and the ranked firms' employees as a group (CÂȘTIGĂTORII).
+ */
+function f3RowsCases(): PerfCase[] {
+  const series = (options: NonNullable<AskSpec["timeseries"]>): Edit => (q) => { q.timeseries = { ...options }; };
+  const facts = (part: "mix" | "bars", barMs: 1000 | 2000 = 2000) => ({ facet: { part }, barMs });
+  const y2025 = years(2025);
+  return [
+    perfCase("national:timeseries-channel", "national", "Cum evoluează achizițiile, pe directe și proceduri", "timeseries", series({ split: "channel" }), { barMs: 2000 }),
+    perfCase("national:timeseries-domain", "national", "Cum evoluează achizițiile, pe domenii", "timeseries", series({ split: "domain" }), { barMs: 2000, ref: "Evoluție: domenii" }),
+    perfCase("national:timeseries-months-2024-2025", "national", "Cum evoluează achizițiile lună de lună, 2024–2025", "timeseries", all(years(2024, 2025), series({ grain: "month" })), { barMs: 2000 }),
+    perfCase("national:timeseries-same-months-2021-2025", "national", "Cum evoluează achizițiile pe ianuarie–iunie, 2021–2025", "timeseries", all(years(2021, 2025), series({ months: [1, 6] })), { barMs: 2000 }),
+    perfCase("national:timeseries-works-months-2025", "national", "Lucrările lună de lună, 2025", "timeseries", all(set({ purchaseKind: "lucrari" }), y2025, series({ grain: "month" })), { barMs: 2000 }),
+    perfCase("national:timeseries-medicines-channel", "national", "Medicamentele pe directe și proceduri (live)", "timeseries", all(set({ cpvTerm: "medicamente" }), series({ split: "channel" })), { barMs: 2000 }),
+    perfCase("filtered:timeseries-cluj-channel", "filtered", "Cluj pe directe și proceduri", "timeseries", all(set({ county: "Cluj" }), series({ split: "channel" }))),
+    perfCase("filtered:timeseries-cluj-napoca-months-2025", "filtered", "Municipiul Cluj-Napoca lună de lună, 2025", "timeseries", all(buyer(), y2025, series({ grain: "month" }))),
+    perfCase("national:table-suppliers-1-9-employees-2025", "national", "Cine câștigă, firme cu 1–9 angajați, 2025 (CÂȘTIGĂTORII)", "table", all(set({ minEmployees: 1, maxEmployees: 9 }), y2025), { barMs: 2000 }),
+    perfCase("facets:mix-national", "facets", "„Din care”, național, toți anii", "stat", () => {}, facts("mix")),
+    perfCase("facets:mix-national-2025", "facets", "„Din care”, național, 2025", "stat", y2025, { ...facts("mix"), ref: "„Din care” la stat: național 2025 (baza)" }),
+    perfCase("facets:mix-works-2025", "facets", "„Din care”, lucrări, 2025", "stat", all(set({ purchaseKind: "lucrari" }), y2025), facts("mix")),
+    perfCase("facets:mix-cluj-2025", "facets", "„Din care”, Cluj, 2025", "stat", all(set({ county: "Cluj" }), y2025), facts("mix", 1000)),
+    perfCase("facets:mix-medicines-2025", "facets", "„Din care”, „medicamente”, 2025 (fără rollup)", "stat", all(set({ cpvTerm: "medicamente" }), y2025), { ...facts("mix"), precompute: MIX_LIVE }),
+    perfCase("facets:mix-cluj-napoca", "facets", "„Din care”, Municipiul Cluj-Napoca, toți anii", "stat", buyer(), facts("mix", 1000)),
+    perfCase("facets:bars-national", "facets", "Faptele barelor, național, toți anii", "timeseries", () => {}, facts("bars")),
+    perfCase("facets:bars-national-months-2025", "facets", "Faptele barelor, lună de lună, 2025", "timeseries", all(y2025, series({ grain: "month" })), facts("bars")),
+    perfCase("facets:bars-cluj-napoca", "facets", "Faptele barelor, Municipiul Cluj-Napoca", "timeseries", buyer(), facts("bars", 1000)),
   ];
 }
 
