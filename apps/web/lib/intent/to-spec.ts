@@ -21,7 +21,7 @@ import type { EntityMatch, IntentAlternative, IntentKind, IntentResult, Interpre
 
 /** Kinds whose institutions are not part of a locality scope (the UAT's own administration only). */
 const NOT_IN_LOCALITY: AuthorityKind[] = ["scoala", "spital", "consiliu_judetean"];
-const PROFILE_DROPPED: (keyof AskFilters)[] = ["cpvTerm", "yearFrom", "yearTo", "monthFrom", "monthTo", "minEmployees", "maxEmployees", "adminName", "adminPersonKey"];
+const PROFILE_DROPPED: (keyof AskFilters)[] = ["cpvTerm", "yearFrom", "yearTo", "monthFrom", "monthTo", "minEmployees", "maxEmployees", "adminName", "adminPersonKey", "procedure"];
 /**
  * "Un singur ofertant" written in words (plan §2.7, §9 F1): the number of
  * offers is known for part of the contract records only, by year of the
@@ -161,6 +161,8 @@ function baseFilters(i: Interpretation, choice: Choice, notes: string[]): AskFil
   if (i.period?.yearTo !== undefined) f.yearTo = i.period.yearTo;
   if (i.employees?.min !== undefined) f.minEmployees = i.employees.min;
   if (i.employees?.max !== undefined) f.maxEmployees = i.employees.max;
+  // F3: a procedure the engine names, on the contracts (a stream of direct acquisitions has none).
+  if (i.procedure && i.dataset !== "da") f.procedure = i.procedure;
   return f;
 }
 
@@ -191,6 +193,7 @@ export function specFor(input: Interpretation, asked: IntentKind, choice: Choice
         dropped.some((k) => k.startsWith("year") || k.startsWith("month")) ? "perioada" : null,
         dropped.some((k) => k.endsWith("Employees")) ? "mărimea firmelor" : null,
         dropped.some((k) => k.startsWith("admin")) ? "persoana" : null,
+        dropped.includes("procedure") ? "procedura" : null,
       ].filter(Boolean);
       notes.push(`Indicele de risc și semnalele sunt calculate pe toată activitatea din achizițiile directe, deci nu am aplicat ${what.join(", ")}. Semnalele sunt piste de verificat, nu dovezi.`);
     }

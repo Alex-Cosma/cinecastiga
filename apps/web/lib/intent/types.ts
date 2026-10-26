@@ -1,5 +1,6 @@
 import type { AskSpec, AuthorityKind } from "../ask/spec";
 import type { LensMatch } from "./lens-phrases";
+import type { Procedure } from "../ask/purchase";
 
 /**
  * Free-text question → typed interpretation. The rules interpreter
@@ -128,6 +129,8 @@ export interface Interpretation {
   personAlternatives: PersonMatch[];
   period: PeriodMatch | null;
   dataset: "da" | "contracts" | null;
+  /** F3: one of the three procedures the engine names ("licitație deschisă", plan §2.7); the others stay a note. */
+  procedure: Procedure | null;
   singleBidder: boolean;
   measure: "count" | "value_per_capita" | null;
   topN: number | null;

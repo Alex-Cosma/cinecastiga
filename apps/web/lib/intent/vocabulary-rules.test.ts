@@ -127,14 +127,21 @@ describe("vocabulary from the first-visitor test (migration 0082 and the rules a
     }
   });
 
-  it("SEAP jargon: procedure types are procedures, never letter openers, and say what is not filtered", async () => {
-    for (const [q, word] of [["licitatie deschisa drumuri bacau 2024", "deschisa"], ["procedura simplificata drumuri bacau", "simplificata"], ["negociere fara publicare drumuri bacau", "fara"]] as const) {
+  it("SEAP jargon: procedure types are procedures, never letter openers; the three the engine names are the procedure (F3)", async () => {
+    for (const [q, procedure] of [["licitatie deschisa drumuri bacau 2024", "deschisa"], ["procedura simplificata drumuri bacau", "simplificata"], ["negociere fara publicare drumuri bacau", "negociere_fara_publicare"]] as const) {
       const { i, r } = await ask(q);
       expect(i.subjects.map((s) => s.term), q).toEqual(["drumuri"]);
       expect(i.dataset, q).toBe("contracts");
-      expect(r.spec?.dataset, q).toBe("contracts");
+      expect([r.spec?.dataset, r.spec?.filters.procedure], q).toEqual(["contracts", procedure]);
+      expect(i.leftover, q).toEqual([]);
+      expect(i.notes.join(" "), q).not.toMatch(/Nu putem filtra/);
+    }
+    // The others are all contracts, and say what is not filtered.
+    for (const [q, word] of [["licitatie restransa drumuri bacau", "restransa"], ["dialog competitiv drumuri bacau", "competitiv"]] as const) {
+      const { i, r } = await ask(q);
+      expect([i.dataset, r.spec?.filters.procedure], q).toEqual(["contracts", undefined]);
       expect(i.leftover.join(" "), q).toContain(word);
-      expect(i.notes.join(" "), q).toMatch(/Nu putem filtra încă după tipul procedurii/);
+      expect(i.notes.join(" "), q).toMatch(/Nu putem filtra încă după acest tip de procedură/);
     }
   });
 
