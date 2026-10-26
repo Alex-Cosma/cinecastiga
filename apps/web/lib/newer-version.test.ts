@@ -42,6 +42,10 @@ describe("watches", () => {
     expect(thrown(() => monitoringScope({ spec: { ...trendNew, dim: "authority" }, options: { members } }))).toMatchObject({ message: MEMBERS_MISMATCH, status: 422 });
     expect(monitoringScope({ spec: stat })).toEqual({ spec: stat, options: {} });
     expect(monitoringScope({ spec: trendNew, options: { members } })).toEqual({ spec: trendNew, options: { members } });
+    // F3's keys are this release's: a watch keeps them (a procedure brings the contracts, as parseSpec reads it).
+    const f3 = { ...stat, dataset: "contracts", filters: { ...stat.filters, purchaseKind: "lucrari", procedure: "deschisa", purchaseValueMin: 1_000_000 } };
+    expect(monitoringScope({ spec: f3 })).toEqual({ spec: f3, options: {} });
+    expect(validateCaptureRequest("query", null, f3, null)).not.toHaveProperty("error");
   });
 
   it.each([
