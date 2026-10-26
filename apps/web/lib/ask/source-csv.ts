@@ -16,6 +16,21 @@ export const answerOutdated = (error: unknown): boolean => error instanceof Sour
 export const DATA_STILL_CHANGING = 'Datele se actualizează chiar acum. Încearcă din nou peste câteva minute.';
 
 /**
+ * Whether a 409 reloads the answer (plan §2.8, at most one reload per reader
+ * action): yes, unless the answer on screen is the reload of one (`reloaded`,
+ * set when that reload lands). Then this 409 (the reopened drawer's, or the
+ * reader's next try) is said with DATA_STILL_CHANGING and the mark is spent, so
+ * the reader's next try reloads once more: a checkpoint that moved again (a
+ * page kept open across two publications) never leaves "try again" with
+ * nothing that can succeed, and a drawer reopened by the reload never loops.
+ */
+export function reloadsFor409(reloaded: { current: boolean }): boolean {
+  if (!reloaded.current) return true;
+  reloaded.current = false;
+  return false;
+}
+
+/**
  * What a refused source request says (the drawer, the sources' CSV): nothing
  * when it was a 409 and `onStale` reloads the answer (the caller lists
  * nothing), DATA_STILL_CHANGING when `onStale` declines (the answer on screen

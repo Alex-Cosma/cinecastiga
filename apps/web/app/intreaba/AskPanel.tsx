@@ -10,6 +10,8 @@ import { isHistoricalProfile } from "@/lib/ask/population";
 import { NEWER_VERSION_LINK, validateSpec, type AskSpec } from "@/lib/ask/spec";
 import { BLOCK_FILTERS } from "@/lib/ask/filters/blocks";
 import { restoreLink } from "@/lib/ask/filters/restore";
+import { trendMonthsWaiting } from "@/lib/ask/filters/trend-rules";
+import { reloadsFor409 } from "@/lib/ask/source-csv";
 import { answerLabels, questionTitle } from "@/lib/ask/filters/title";
 import { askLink, entitySourceLink, entitySourceScope, yearSourceLink } from "@/lib/ask/source-spec";
 import { questionKey, type QuestionSpec } from "@/lib/ask/question-ui";
@@ -34,6 +36,7 @@ import { specTrendList, specTrendPartLabel, type TrendList } from "@/lib/ask/tre
 import { isWholeYear, monthsLabel } from "@/lib/ask/months-window";
 import QuestionBuilder, { type StripPatch } from "./QuestionBuilder";
 import { patchDraft } from "./builder/view";
+import { readCoverage } from "./builder/coverage";
 import SaveQuestionButton from "./SaveQuestionButton";
 import type { SavedQuestion } from "./SavedQuestions";
 import AnswerStrip, { Crumbs, StripEnd, StripLabelled } from "./answer/AnswerStrip";
@@ -228,8 +231,13 @@ export default function AskPanel({
        * query): the builder hears of it through StripPatch, not as a run of its draft.
        * `thread`: the breakdown's thread this run keeps (a level opened from the answer);
        * any other run drops it (plan §2.3).
+       * `held`: a link the builder holds before its run (a trend's months the data do not
+       * confirm): refused, and `waits` agreeing, `run` opens the builder instead of the error.
        */
-      opts: { strip?: { path: StripPatch["path"]; value: string }; thread?: Thread | null; drillLabel?: string | ((answer: AskResponse) => string); reloaded?: true } = {},
+      opts: {
+        strip?: { path: StripPatch["path"]; value: string }; thread?: Thread | null; drillLabel?: string | ((answer: AskResponse) => string); reloaded?: true;
+        held?: { waits: () => Promise<boolean>; run: () => void };
+      } = {},
     ) => {
       if (!NATURAL_LANGUAGE_ENABLED && typeof body.question === "string") {
         setError(NATURAL_LANGUAGE_UNAVAILABLE);
@@ -254,6 +262,10 @@ export default function AskPanel({
         const answer = (await r.json().catch(() => ({ ok: false, error: `HTTP ${r.status}` }))) as AskResponse;
         if (seq !== request.current.seq) return false;
         if (!answer.ok || !answer.data || !answer.spec) {
+          if (opts.held && await opts.held.waits()) {
+            if (seq === request.current.seq) opts.held.run();
+            return false;
+          }
           // Explanations written for people stay visible; technical text goes under "Detalii tehnice".
           const human = isHumanError(r.status, answer.error);
           setError(human ? answer.error! : ANSWER_ERROR);
@@ -470,7 +482,18 @@ export default function AskPanel({
         // why on its chip; the answer of another question does not stay under it.
         if (!restored.run) { setResp(null); setAppliedSpec(null); return; }
         const link = restored.link as unknown as AskSpec;
-        void execute({ spec: link }, params.get("drill") === "1", scope, sourceFilters, true, { thread: readThread(params.get("fir"), link) });
+        // A trend on `auto` months (every one the builder makes) whose year the data do not confirm: the engine
+        // refuses it, where the builder would have held it (RC-keyed-link-refused). Refused, the link waits in the
+        // builder, on „2026: luni neconfirmate” and „Compară pe aceleași luni…”; the run never waits for the coverage.
+        const coverage = link.block === "trend" && link.trend?.months === "auto" ? readCoverage() : null;
+        const held = coverage ? {
+          waits: async () => {
+            const periods = (await coverage)?.periods;
+            return Boolean(periods && trendMonthsWaiting(restored.spec, { year: new Date().getFullYear(), coverage: periods }));
+          },
+          run: () => { setResp(null); setAppliedSpec(null); setLinkRuns(false); setBuilderCollapsed(false); },
+        } : null;
+        void execute({ spec: link }, params.get("drill") === "1", scope, sourceFilters, true, { thread: readThread(params.get("fir"), link), ...(held ? { held } : {}) });
       }
     };
     restore();
@@ -590,11 +613,12 @@ export default function AskPanel({
    * page says so once it has the new answer, and a drawer that was open reopens
    * on the new months, its row's label in their words; the old answer never
    * gets another list under it. At most one reload per reader action: on the
-   * answer that reload brought, another 409 returns false and the drawer (or
-   * the export's line) says DATA_STILL_CHANGING, never a loop of reloads.
+   * answer that reload brought, the next 409 returns false and the drawer (or
+   * the export's line) says DATA_STILL_CHANGING, never a loop of reloads; the
+   * try after it reloads again (reloadsFor409).
    */
   const reloadOutdated = useCallback((reopen: boolean): boolean => {
-    if (!applied || reloadedFor409.current) return false;
+    if (!applied || !reloadsFor409(reloadedFor409)) return false;
     const drawer = reopen ? evidence : null;
     const label = drawer?.scopeLabel, before = resp?.data;
     setEvidence(null);
