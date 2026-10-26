@@ -12,6 +12,7 @@ import { FILTERS, visibleFilters } from "./registry";
 import { edited } from "./defs/shared";
 import { sentenceTokens } from "./sentence";
 import { enterTrend, leavingTrend, TREND_FILTERS, trendFollows } from "./trend-rules";
+import { exclusionsAfterSubject } from "./exclusions";
 import type { FilterId, FilterSpec, Slot } from "./types";
 
 /*
@@ -176,11 +177,15 @@ export function chooseValue(input: QuestionSpec, slot: Slot, choice: Choice, par
   const normalized = transitionQuestion(written);
   const follows = trendFollows(start, normalized.spec as FilterSpec, context.coverage);
   const settled = settle(start, follows.spec, { lens, touched, why: "nu se potrivește cu alegerea nouă" });
+  // A new subject of another role: the rows "Scoate din calcul" left out were of the old one (F4).
+  const subject = exclusionsAfterSubject(start, settled.spec);
   // A trend's options set aside wait for the trend, whatever the axis of "Cine conduce?" does (one row: the axis's wins).
   const waiting = parked?.lens === "trend" ? parked : null;
   const renamed = { ...first, ...settled.renamed };
   return {
-    spec: settled.spec, notes: unique([...normalized.changes, ...follows.notes, ...settled.notes]), dropped: settled.dropped,
+    spec: subject.spec, notes: unique([...normalized.changes, ...follows.notes, ...settled.notes, ...(subject.note ? [subject.note] : [])]),
+    // The exclusions left with their note: the whole precise selection when nothing else was in it.
+    dropped: subject.note ? [...settled.dropped, subject.spec.population ? "exclude" : "population"] : settled.dropped,
     parked: !lens ? parked : settled.parked.length ? parkedRow(leaderAxis(start), settled.parked) : waiting,
     ...(Object.keys(settled.links).length ? { links: settled.links } : {}),
     ...(Object.keys(renamed).length ? { renamed } : {}),

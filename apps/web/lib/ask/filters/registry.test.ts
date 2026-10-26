@@ -241,7 +241,7 @@ describe("keys read ahead of the engine (F0a)", () => {
   const ahead = FILTER_DEFS.filter((def) => def.stage !== undefined);
 
   it("are the filters with a key outside IMPLEMENTED_KEYS, applied nowhere, each with its stage", () => {
-    expect(ahead.map((def) => def.id).sort()).toEqual(FILTER_DEFS.filter((def) => def.viewOf || def.keys.some((key) => !IMPLEMENTED_KEYS.has(key))).map((def) => def.id).sort());
+    expect(ahead.map((def) => def.id).sort()).toEqual(FILTER_DEFS.filter((def) => def.keys.some((key) => !IMPLEMENTED_KEYS.has(key))).map((def) => def.id).sort());
     for (const def of ahead) {
       expect(def.engine, def.id).toEqual({});
       for (const key of def.keys) expect(READ_AHEAD_KEYS[key as keyof typeof READ_AHEAD_KEYS], `${def.id} ${key}`).toBe(def.stage);

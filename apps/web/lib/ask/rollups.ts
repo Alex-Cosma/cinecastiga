@@ -162,6 +162,19 @@ function populationExclusions(population: QueryPopulation | null): { authority: 
 }
 
 /**
+ * The ids a population leaves out when it only leaves out entities of `role`
+ * ("Scoate din calcul" on a ranking of that role, F4; labelled or not), else
+ * null: any other condition, another role, a list of included ids, "or"
+ * between groups that holds more than one.
+ */
+export function sameRoleExclusions(population: QueryPopulation | undefined | null, role: Role): string[] | null {
+  if (!population) return null;
+  const excluded = populationExclusions(population);
+  if (!excluded || excluded[role === "authority" ? "supplier" : "authority"].length || !excluded[role].length) return null;
+  return [...new Set(excluded[role])];
+}
+
+/**
  * Which rollup answers the selection, or why none does. Rules: CPV only on
  * agg_cpv_year and only without entity conditions; a ranking of one role with
  * conditions on that role only (and the buyer county, years, channel) on
@@ -536,6 +549,59 @@ export async function rollupTable(sql: DbSql, plan: { source: RollupSource; filt
   return { rows: rows.map(({ te: _te, ...row }) => row), total };
 }
 
+/** The precomputed national ranking holds the first 2,000 of each role by value and by records (transaction-marts.ts). */
+const TOP_ENTITIES_KEPT = 2000;
+
+/**
+ * "Scoate din calcul" on the national ranking (plan §2.5, F4): every year, both
+ * streams, some entities of the ranked role left out and nothing else. The
+ * rows and totals rollupTable gives on agg_entity_year (exclusions.integration
+ * .test.ts), without grouping it (0.38 s nationally):
+ * - the rows: agg_top_entities without those ids, in its order;
+ * - each id's own sum and records: its row there; outside it (smaller than the
+ *   first 2,000 on both orders), `live` counts its records on its id index;
+ * - the totals: agg_national less those sums and less the records without an
+ *   id of the role (`live.unassigned`, on the id index: none on the local
+ *   copy); the ranked entities: the role's profiles with a value (every id of
+ *   the role in the records, nightly validate.ts; 19,529 institutions and
+ *   163,158 firms locally), less the ids left out that have records.
+ * Null when the first `topN` rows could lie past the precomputed ones.
+ */
+export async function rankedWithout(sql: DbSql, o: {
+  dim: Role; ids: readonly string[]; measure: "value" | "count"; topN: number; seat: boolean;
+  live: { own: (ids: readonly string[]) => Promise<{ id: string; v: string; n: string }[]>; unassigned: () => Promise<{ v: string; n: string }> };
+}): Promise<RollupTableRow[] | null> {
+  if (o.topN + o.ids.length > TOP_ENTITIES_KEPT) return null;
+  const ids = sql.array([...o.ids]);
+  const kept = (await sql`
+    select eid::text id, v_plaf::text v, n_plaf::text n from marts.agg_top_entities where role = ${o.dim} and eid = any(${ids}::bigint[])
+  `) as unknown as { id: string; v: string; n: string }[];
+  const outside = o.ids.filter((id) => !kept.some((row) => row.id === id));
+  const own = [...kept, ...(outside.length ? await o.live.own(outside) : [])].filter((row) => Number(row.n) > 0);
+  const left = own.length;
+  // The records no entity of the role holds are in agg_national, never in a ranking of that role.
+  const none = await o.live.unassigned();
+  if (Number(none.n) > 0) own.push({ id: "", ...none });
+  const ord = o.measure === "count" ? sql`n_plaf desc, eid` : sql`v_plaf desc, eid`;
+  // Their sums in numeric, as the rollup's window sums (an empty array has no type to bind).
+  const ownRows = own.length
+    ? sql`select * from unnest(${sql.array(own.map((row) => row.v))}::numeric[], ${sql.array(own.map((row) => row.n))}::bigint[])`
+    : sql`select null::numeric, null::bigint where false`;
+  return (await sql`
+    with own(v, n) as (${ownRows}),
+    sel as (
+      select (select coalesce(sum(v_plaf), 0) from marts.agg_national) - (select coalesce(sum(v), 0) from own) tv,
+             (select coalesce(sum(n_plaf), 0) from marts.agg_national) - (select coalesce(sum(n), 0) from own) tn,
+             (select count(*) from marts.entity_profile ep where ep.role = ${o.dim} and ep.total_ron_split > 0) - ${left} te
+    )
+    select t.eid id, coalesce(ep.name_display, '(fără nume)') nm, ${ownCountySql(sql, o.dim, o.seat)} co, t.v_plaf v, t.n_plaf n, sel.tv, sel.tn, sel.te
+    from (select eid, v_plaf, n_plaf from marts.agg_top_entities where role = ${o.dim} and not (eid = any(${ids}::bigint[])) order by ${ord} limit ${o.topN}) t
+    left join marts.entity_profile ep on ep.entity_id = t.eid and ep.role = ${o.dim}
+    cross join sel
+    order by ${o.measure === "count" ? sql`t.n_plaf desc, t.eid` : sql`t.v_plaf desc, t.eid`}
+  `) as unknown as RollupTableRow[];
+}
+
 /** case "table", dim county: the live county ranking on a rollup (every source has the buyer county). */
 export async function rollupCountyTable(sql: DbSql, plan: { source: RollupSource; filters: RollupFilters },
   o: Omit<RollupTableOpts, "dim" | "seat">): Promise<{ rows: { c: string; v: string; n: string }[]; total: number | null }> {
@@ -668,17 +734,22 @@ export async function rollupMap(sql: DbSql, plan: { source: RollupSource; filter
  * block (map: a county; breakdown: a CPV code; timeseries: a dated row; a
  * county ranking: a county). A ranking of firms selected by an attribute of
  * the firm (`firms`: the seat, F4; the employees) reads agg_entity_year: every
- * record of it has its firm. Other blocks (other rankings of entities, network,
+ * record of it has its firm. So does a ranking of firms or institutions
+ * (`authorities`) with some of them left out ("Scoate din calcul", F4): the
+ * rest of its role's rows. Other blocks (other rankings of entities, network,
  * profiles) are not served. sources:stat-da-2025: 1.57–2.19 s live, 0.05 s here.
  */
 export async function rollupSourceTotals(sql: DbSql, plan: { source: RollupSource; filters: RollupFilters },
-  block: "stat" | "map" | "breakdown" | "timeseries" | "county" | "firms"):
+  block: "stat" | "map" | "breakdown" | "timeseries" | "county" | "firms" | "authorities"):
   Promise<{ rows: { state: string | null; n: string; v: string; fn: string; fv: string; date_from: string | null; date_to: string | null }[] } | { reason: string }> {
-  // A ranking of firms selected by an attribute of the firm (F4's seat, the employees): its records are those of the
-  // selected firms, every one with a firm, so agg_entity_year's firm rows (and their d0/d1) are exactly them.
-  if (block === "firms") {
-    if (plan.source.table !== "entity" || plan.source.role !== "supplier" || !(plan.filters.seat || plan.filters.employees))
-      return { reason: "a ranking's source totals read agg_entity_year when an attribute of the firm selects them" };
+  // A ranking of firms selected by an attribute of the firm (F4's seat, the employees), or of either role with some of
+  // them left out: its records are those of the selected entities, every one with its entity, so agg_entity_year's rows
+  // of that role (and their d0/d1) are exactly them.
+  if (block === "firms" || block === "authorities") {
+    const role: Role = block === "firms" ? "supplier" : "authority";
+    const out = role === "supplier" ? plan.filters.excludeSuppliers : plan.filters.excludeAuthorities;
+    if (plan.source.table !== "entity" || plan.source.role !== role || !(out.length || role === "supplier" && (plan.filters.seat || plan.filters.employees)))
+      return { reason: "a ranking's source totals read agg_entity_year when an attribute of the firm or an exclusion selects its entities" };
   } else if (plan.source.table !== "cpv") return { reason: "source totals read agg_cpv_year only" };
   const where = rollupWhere(sql, plan.source, plan.filters, "p");
   const own = block === "map" || block === "county" ? sql`p.county is not null`

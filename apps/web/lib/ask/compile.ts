@@ -23,8 +23,8 @@ import type { OriginHint } from "./filters/origin";
 import { PER_CAPITA_SOURCE, perCapitaCaveat, POPULATION_CARD_NOTE, readPerCapitaPopulations, type PerCapitaPopulations } from "./per-capita";
 import { martColumns } from "./mart-columns";
 import {
-  compareParties, compareSharedPartners, compareTopPartners, planRollup, rollupBreakdown, rollupCountyTable, rollupMap, rollupMinimumCond,
-  coverRefReady, monthRollupReady, rollupDaysReady, rollupRows, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, scatterDensity,
+  compareParties, compareSharedPartners, compareTopPartners, planRollup, rankedWithout, rollupBreakdown, rollupCountyTable, rollupMap, rollupMinimumCond,
+  coverRefReady, monthRollupReady, rollupDaysReady, rollupRows, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, sameRoleExclusions, scatterDensity,
   type RollupFilters, type RollupNeed, type RollupSource,
 } from "./rollups";
 import {
@@ -1026,14 +1026,16 @@ export async function runSpec(
   // serve the precomputed agg_* marts — same union, same plafond semantics,
   // rebuilt with the other marts. Live scans over 20M rows cost 12-17s here.
   // Every condition of the records; the firms' size is an attribute of the firm (entityAttr, plan §2.5), apart.
-  const noRecordCondition =
+  // Every condition of the records but a precise selection (population).
+  const noKeyCondition =
     !w.county && w.cpvPrefixes.length === 0 && !w.kind &&
     !w.authorityId && !w.supplierId && w.uatSiruta === null &&
     !w.singleBidder && w.adminSupplierIds === null &&
     !w.purchaseKind && !w.procedure && w.purchaseValueMin === null && w.purchaseValueMax === null &&
     !w.firmSeat && !w.seatCounty &&
     w.yearFrom === null && w.yearTo === null &&
-    w.monthFrom === null && w.monthTo === null && !w.seriesMonths && (!spec.population || nationalDaBound) && !spec.minimumRecords;
+    w.monthFrom === null && w.monthTo === null && !w.seriesMonths && !spec.minimumRecords;
+  const noRecordCondition = noKeyCondition && (!spec.population || nationalDaBound);
   const unfiltered = noRecordCondition && w.minEmployees === null && w.maxEmployees === null;
   // The other rollups combine both streams; agg_national retains src and can
   // also serve filter-free DA-only and contract-only totals without a scan.
@@ -1043,6 +1045,11 @@ export async function runSpec(
   // firm's sum and count over the same records (0 differences on 163,158 firms, 26 Oct 2026; the
   // nightly validation checks the totals, apps/ingestion monitoring/validate.ts).
   const firmSizeOnly = dataset === "all" && noRecordCondition && !spec.population && !unfiltered;
+  // "Scoate din calcul" on the national ranking (plan §2.5, F4): entities of the ranked role left out and no
+  // other condition, over every year and both streams. The precomputed ranking without their rows, the national
+  // totals less their own sums (rankedWithout): any entity of the role, not only those of agg_top_entities.
+  const rankedOut = spec.block === "table" && (spec.dim === "authority" || spec.dim === "supplier") && dataset === "all"
+    && noKeyCondition && w.minEmployees === null && w.maxEmployees === null ? sameRoleExclusions(spec.population, spec.dim) : null;
   const aggV = w.plafond === "none" && !nationalDaBound ? sql`v_all` : sql`v_plaf`;
   const aggN = w.plafond === "none" && !nationalDaBound ? sql`n_all` : sql`n_plaf`;
 
@@ -1342,6 +1349,32 @@ export async function runSpec(
                 population: null,
               })),
             };
+          }
+          // "Scoate din calcul" on the national ranking (rankedOut): the precomputed one without those rows, with the
+          // totals of the rest; each id's own records counted live only outside the precomputed ranking.
+          if (rankedOut && !paged && (spec.measure === "value" || spec.measure === "count") && (dim === "authority" || dim === "supplier")) {
+            const own = dim === "authority" ? s`d.authority_id` : s`d.supplier_id`;
+            const plain = andAll(sql, rowPredicates({ ...wSel, population: null }));
+            const r = await rankedWithout(s, {
+              dim, ids: rankedOut, measure: spec.measure, topN, seat,
+              live: {
+                own: async (ids) => (await s`
+                  select ${own}::text id, coalesce(sum(d.closing_value), 0)::text v, count(*)::text n
+                  from ${txtAgg} d where ${plain} and ${own} = any(${s.array([...ids])}::bigint[]) group by 1
+                `) as unknown as { id: string; v: string; n: string }[],
+                unassigned: async () => ((await s`
+                  select coalesce(sum(d.closing_value), 0)::text v, count(*)::text n from ${txtAgg} d where ${plain} and ${own} is null
+                `) as unknown as { v: string; n: string }[])[0]!,
+              },
+            });
+            if (r) {
+              const first = r[0];
+              return {
+                block: "table",
+                rows: r.map((p) => ({ entityId: String(p.id), name: p.nm, county: p.co, value: Number(p.v), count: Number(p.n), population: null })),
+                ...(first ? { totals: { value: Number(first.tv), count: Number(first.tn), entities: Number(first.te) } } : {}),
+              };
+            }
           }
           // Firms by their size alone (firmSizeOnly): their profiles, in the order and with the totals of the grouped records.
           const sizeSort = tableOpts.sort ?? (spec.measure === "count" ? "count" : "value");
@@ -2648,7 +2681,8 @@ export async function runRows(
   const localWhere = localParts.reduce((a, b) => sql`${a} and ${b}`);
   // The blocks whose source condition rollupSourceTotals adds itself.
   const totalsBlock = spec.block === "stat" || spec.block === "map" || spec.block === "breakdown" || spec.block === "timeseries" ? spec.block
-    : spec.block === "table" && spec.dim === "county" ? "county" as const : spec.block === "table" && spec.dim === "supplier" ? "firms" as const : null;
+    : spec.block === "table" && spec.dim === "county" ? "county" as const : spec.block === "table" && spec.dim === "supplier" ? "firms" as const
+    : spec.block === "table" && spec.dim === "authority" ? "authorities" as const : null;
   const defaultSort = !profile && !grounding.authority?.entityId && !grounding.supplier?.entityId ? "source" : "value";
   const sortKey: DrillSort = opts.sort && Object.hasOwn(DRILL_SORTS, opts.sort) ? opts.sort : defaultSort;
   const sortFrag = { source: sql`d.ref_id`, value: sql`d.closing_value`, date: sql`d.finalization_date`, authority: sql`d.authority_name`, supplier: sql`d.supplier_name`, county: sql`d.county`, cpv: sql`d.cpv_name` }[sortKey];

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ASK_ROLLUP_DA_CEILING } from "@seap/db";
 import { DA_PLAFOND_RON } from "./compile";
 import { predicateContext } from "./predicates";
-import { planRollup, ROLLUP_CTX_KEYS, type RollupCtx } from "./rollups";
+import { planRollup, ROLLUP_CTX_KEYS, sameRoleExclusions, type RollupCtx } from "./rollups";
 import type { DbSql } from "@seap/db";
 
 /** The institutions of the kind "spital", as authorityKindIds reads them (D1). */
@@ -167,5 +167,24 @@ describe("which rollup answers a selection (24 Oct 2026 slow cases)", () => {
       };
       expect([key, mapped[key]]).toEqual([key, true]);
     }
+  });
+});
+
+describe("«Scoate din calcul» on the national ranking (sameRoleExclusions, F4)", () => {
+  const out = (field: "authority" | "supplier", values: string[], op: "not_in" | "in" = "not_in") => ({ field, op, values });
+  it("reads the ids a population leaves out when it only leaves out entities of the ranked role", () => {
+    expect(sameRoleExclusions({ operator: "and", groups: [{ operator: "and", conditions: [out("supplier", ["1", "2"])] }, { operator: "and", conditions: [out("supplier", ["2", "3"])] }] }, "supplier"))
+      .toEqual(["1", "2", "3"]);
+    // A single group reads the same under either operator.
+    expect(sameRoleExclusions({ operator: "or", groups: [{ operator: "and", conditions: [out("authority", ["7"])] }] }, "authority")).toEqual(["7"]);
+  });
+  it("is null for anything else: the other role, an included list, «SAU» between groups or conditions, no population", () => {
+    expect(sameRoleExclusions(null, "supplier")).toBeNull();
+    expect(sameRoleExclusions({ operator: "and", groups: [{ operator: "and", conditions: [out("supplier", ["1"]), out("authority", ["7"])] }] }, "supplier")).toBeNull();
+    expect(sameRoleExclusions({ operator: "and", groups: [{ operator: "and", conditions: [out("authority", ["7"])] }] }, "supplier")).toBeNull();
+    expect(sameRoleExclusions({ operator: "and", groups: [{ operator: "and", conditions: [out("supplier", ["1"], "in")] }] }, "supplier")).toBeNull();
+    expect(sameRoleExclusions({ operator: "or", groups: [{ operator: "and", conditions: [out("supplier", ["1"])] }, { operator: "and", conditions: [out("supplier", ["2"])] }] }, "supplier")).toBeNull();
+    expect(sameRoleExclusions({ operator: "and", groups: [{ operator: "or", conditions: [out("supplier", ["1"]), out("supplier", ["2"])] }] }, "supplier")).toBeNull();
+    expect(sameRoleExclusions({ operator: "and", groups: [{ operator: "and", conditions: [out("supplier", ["1"]), { field: "value", op: "gte", value: "10" }] }] }, "supplier")).toBeNull();
   });
 });
