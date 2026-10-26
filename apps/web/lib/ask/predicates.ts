@@ -1,7 +1,7 @@
-import type { DbSql } from "@seap/db";
+import { SEAT_ABROAD_LABEL, type DbSql } from "@seap/db";
 import type { Grounding } from "./ground";
 import type { MinimumRecords, PopulationCondition, QueryPopulation } from "./population";
-import { DEFAULT_TREND_MIN_BASE, namedKind, type AskSpec, type AuthorityKind, type Dataset, type MonthWindow, type TrendChange } from "./spec";
+import { DEFAULT_TREND_MIN_BASE, namedKind, type AskSpec, type AuthorityKind, type Dataset, type FirmSeat, type MonthWindow, type TrendChange } from "./spec";
 import { authorityKindCond, KIND_LABEL, KIND_SOURCE } from "./authority-kind";
 import { countWords } from "./answer-text";
 import { kindApplies, NAMED_PROCEDURE_TYPES, PROCEDURE_TYPES, PROCEDURE_WORDS, PURCHASE_KIND_WORDS, valueWords, type Procedure, type PurchaseKind } from "./purchase";
@@ -92,6 +92,16 @@ export interface PredicateCtx {
   /** F3, the value of the whole purchase in lei, [min, max): never a winner's share (purchase.ts VALUE_RANGES). */
   purchaseValueMin: number | null;
   purchaseValueMax: number | null;
+  /** F4, the seat of the record's firm against the record's buyer county (same, other) or abroad (firmSeatCond). */
+  firmSeat: FirmSeat | null;
+  /** F4, the firm's own county, grounded (seatCountyCond); on firm profiles a link's county is the same condition. */
+  seatCounty: string | null;
+  /**
+   * The seat column is filled (mart-columns.ts `seat`, read by the caller): entity_profile.seat_county and
+   * seat_source (ONRC, then SEAP; foreign apart). Before the first marts build that fills it, the SEAP county
+   * (entity_profile.county, is_foreign) stands in, said in the answer's note (plan §2.5).
+   */
+  seatColumn: boolean;
   plafond: Plafond;
   /** compare: both entities, of the role of the first (the second replaces its own id condition). */
   comparison: { role: "authority" | "supplier"; focalId: string | null; compareId: string | null } | null;
@@ -107,7 +117,11 @@ export function predicateContext(
   sql: DbSql,
   spec: AskSpec,
   grounding: Grounding,
-  window: { dataset: Dataset; yearFrom: number | null; yearTo: number | null; kindIds?: readonly string[] | null; trendMonths?: MonthWindow | null; seriesMonths?: MonthWindow | null },
+  window: {
+    dataset: Dataset; yearFrom: number | null; yearTo: number | null; kindIds?: readonly string[] | null; trendMonths?: MonthWindow | null; seriesMonths?: MonthWindow | null;
+    /** The seat column is filled (martColumns(pool).seat, probed before the transaction). */
+    seat: boolean;
+  },
 ): PredicateCtx {
   const f = spec.filters;
   const kind = namedKind(f.authorityKind) ?? null;
@@ -143,6 +157,9 @@ export function predicateContext(
     procedure: f.procedure ?? null,
     purchaseValueMin: f.purchaseValueMin ?? null,
     purchaseValueMax: f.purchaseValueMax ?? null,
+    firmSeat: f.firmSeat ?? null,
+    seatCounty: f.seatCounty ? grounding.seatCounty?.canonical ?? null : null,
+    seatColumn: window.seat,
     plafond: plafondFor(window.dataset),
     comparison: spec.block === "compare"
       ? { role: authorityId ? "authority" : "supplier", focalId: authorityId ?? supplierId, compareId: grounding.compare?.entityId ?? null }
@@ -202,6 +219,61 @@ export function employeesCond(sql: DbSql, min: number | null, max: number | null
     select ep.entity_id from marts.entity_profile ep
     where ep.role = 'supplier' and ${employeesBounds(sql, min, max)}
   )`;
+}
+
+/**
+ * A firm's seat on its profile row (plan §2.5, kit §5.4: one column, two
+ * keys): entity_profile.seat_county once the marts build filled it (`filled`,
+ * the column probe), else the SEAP county; a foreign firm is apart (seat_source
+ * 'foreign', else is_foreign) and has no Romanian county.
+ */
+export function seatOf(sql: DbSql, filled: boolean, alias = "ep"): { county: Fragment; foreign: Fragment; romanian: Fragment } {
+  const a = sql(alias);
+  return filled
+    ? { county: sql`${a}.seat_county`, foreign: sql`${a}.seat_source = 'foreign'`, romanian: sql`${a}.seat_source is distinct from 'foreign'` }
+    : { county: sql`${a}.county`, foreign: sql`coalesce(${a}.is_foreign, false)`, romanian: sql`not coalesce(${a}.is_foreign, false)` };
+}
+
+/**
+ * F4, the seat of a record's firm against the record's buyer county (plan
+ * §2.5): `same` and `other` need a Romanian firm with a known seat and a buyer
+ * with a known county; `abroad` is the firm's own attribute (a semi-join, as
+ * the employees). The rest (a seat or a buyer county nobody knows, a record
+ * without firm) is in no option: the window's "Sediu necunoscut". `row` names
+ * the firm and buyer county columns: the record's, or a rollup's.
+ */
+export function firmSeatCond(sql: DbSql, seat: FirmSeat, filled: boolean,
+  row: { supplier: Fragment; county: Fragment } = { supplier: sql`d.supplier_id`, county: sql`d.county` }): Fragment {
+  const s = seatOf(sql, filled);
+  if (seat === "abroad") return sql`${row.supplier} in (select ep.entity_id from marts.entity_profile ep where ep.role = 'supplier' and ${s.foreign})`;
+  return sql`exists (select 1 from marts.entity_profile ep
+    where ep.entity_id = ${row.supplier} and ep.role = 'supplier' and ${s.romanian}
+      and ${s.county} ${seat === "same" ? sql`=` : sql`<>`} ${row.county})`;
+}
+
+/** The seat is this county (`county`, grounded) on a profile row; the SEAP county matches in any spelling, as a firm profile's county did. */
+function seatIn(sql: DbSql, county: string, filled: boolean, alias = "ep"): Fragment {
+  return filled ? sql`${sql(alias)}.seat_county = ${county}` : sql`lower(unaccent(${sql(alias)}.county)) = ${fold(county)}`;
+}
+
+/** F4, the firm's own county (seatCounty): a semi-join on its profile, as the employees (`column`: the firm id of the rows, or of a rollup). */
+export function seatCountyCond(sql: DbSql, county: string, filled: boolean, column: Fragment = sql`d.supplier_id`): Fragment {
+  return sql`${column} in (select ep.entity_id from marts.entity_profile ep where ep.role = 'supplier' and ${seatIn(sql, county, filled)})`;
+}
+
+/**
+ * The county an answer shows beside an entity, from its profile row `alias`
+ * (owner-seat-switch, F4): an institution's own county; a firm's seat (the
+ * latest ONRC registration, then SEAP), "Străinătate" for a foreign one, null
+ * when nobody knows it; before the seat column is filled, its SEAP county.
+ * `role` is the entity's role, or a column holding it.
+ */
+export function ownCountySql(sql: DbSql, role: "authority" | "supplier" | Fragment, filled: boolean, alias = "ep"): Fragment {
+  const a = sql(alias);
+  const firm: Fragment = sql`(case when ${a}.seat_source = 'foreign' then ${SEAT_ABROAD_LABEL}::text else ${a}.seat_county end)`;
+  if (role === "authority" || !filled) return sql`${a}.county`;
+  if (role === "supplier") return firm;
+  return sql`(case when ${role} = 'supplier' then ${firm} else ${a}.county end)`;
 }
 
 const cpvLike = (sql: DbSql, prefixes: readonly string[]) =>
@@ -275,6 +347,8 @@ export function rowPredicates(ctx: PredicateCtx, opts: { years?: boolean } = {})
   if (ctx.singleBidder) parts.push(sql`d.is_single_bidder = true`);
   if (ctx.adminSupplierIds !== null) parts.push(sql`d.supplier_id = any(${sql.array(ctx.adminSupplierIds)}::bigint[])`);
   if (ctx.minEmployees !== null || ctx.maxEmployees !== null) parts.push(employeesCond(sql, ctx.minEmployees, ctx.maxEmployees));
+  if (ctx.firmSeat) parts.push(firmSeatCond(sql, ctx.firmSeat, ctx.seatColumn));
+  if (ctx.seatCounty) parts.push(seatCountyCond(sql, ctx.seatCounty, ctx.seatColumn));
   if (opts.years ?? true) {
     if (ctx.yearFrom !== null)
       parts.push(ctx.monthFrom !== null
@@ -404,12 +478,19 @@ export function groupPredicates(ctx: PredicateCtx, source: Fragment, where: Frag
 /**
  * The population of historical risk profiles (marts.entity_flags ef): the
  * role, the profiles with enough direct acquisitions, the entity's own county
- * (a firm's seat on firm profiles) and, for institutions, the locality and the kind.
+ * and, for institutions, the locality and the kind. A firm's county is its seat
+ * (F4, owner-seat-switch): seatCounty, or a link's county, on the firm's
+ * profile row once the seat column is filled; before, entity_flags.county (the
+ * SEAP county, as entity_profile.county).
  */
 export function profilePredicates(ctx: PredicateCtx, role: "authority" | "supplier", minDas: number): Fragment[] {
   const { sql } = ctx;
   const parts: Fragment[] = [sql`ef.role = ${role}`, sql`ef.n_das >= ${minDas}`];
-  if (ctx.county) parts.push(sql`lower(unaccent(ef.county)) = ${fold(ctx.county)}`);
+  const seat = role === "supplier" ? ctx.seatCounty ?? ctx.county : null;
+  if (seat && ctx.seatColumn)
+    parts.push(sql`ef.entity_id in (select ep.entity_id from marts.entity_profile ep where ep.role = 'supplier' and ${seatIn(sql, seat, true)})`);
+  else if (seat) parts.push(sql`lower(unaccent(ef.county)) = ${fold(seat)}`);
+  else if (ctx.county) parts.push(sql`lower(unaccent(ef.county)) = ${fold(ctx.county)}`);
   if (ctx.uatSiruta !== null && role === "authority") parts.push(sql`ef.entity_id = any(${sql.array(ctx.uatAuthorityIds)}::bigint[])`);
   if (ctx.kind && role === "authority") parts.push(authorityKindCond(sql, ctx.kindIds!, sql`ef.entity_id`));
   return parts;
@@ -481,6 +562,14 @@ export function displayPredicates(ctx: PredicateCtx, table: string): string[] {
   }
   if (ctx.adminSupplierIds !== null)
     conds.push(`supplier_id in (firmele reprezentate de persoana aleasă)  -- ONRC`);
+  // F4: the firm's seat, on its profile (seatOf): the column of the marts build, or the SEAP county before it.
+  const seatSource = ctx.seatColumn ? "sediul: ultima înmatriculare ONRC, apoi SEAP" : "sediul: județul din SEAP";
+  if (ctx.firmSeat === "abroad")
+    conds.push(`supplier_id in (select entity_id from marts.entity_profile\n                where role = 'supplier' and ${ctx.seatColumn ? "seat_source = 'foreign'" : "is_foreign"})  -- firme cu sediul în străinătate`);
+  else if (ctx.firmSeat)
+    conds.push(`sediul_firmei ${ctx.firmSeat === "same" ? "=" : "<>"} county  -- firme cu sediul ${ctx.firmSeat === "same" ? "în județul instituției" : "în alt județ"} (${seatSource})`);
+  if (ctx.seatCounty)
+    conds.push(`supplier_id in (select entity_id from marts.entity_profile\n                where role = 'supplier' and ${ctx.seatColumn ? `seat_county = '${ctx.seatCounty.replaceAll("'", "''")}'` : `unaccent(county) ilike '${fold(ctx.seatCounty)}'`})  -- ${seatSource}`);
   if (ctx.yearFrom !== null) {
     if (ctx.monthFrom !== null)
       conds.push(`luna >= '${ctx.yearFrom}-${String(ctx.monthFrom).padStart(2, "0")}'`);

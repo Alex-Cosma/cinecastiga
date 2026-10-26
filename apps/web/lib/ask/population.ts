@@ -61,8 +61,9 @@ export function isHistoricalProfile(spec: { block:string; comparisonMode?:string
 }
 /**
  * Whose county a county filter selects. Transactions carry the buyer's county;
- * firm profiles (profilePredicates on entity_flags.county) carry the firm's own: its
- * registered office from the source address, NUTS-3 code or ONRC (audit F13).
+ * firm profiles carry the firm's own: its seat (profilePredicates; since F4
+ * entity_profile.seat_county, the latest ONRC registration, then SEAP, with the
+ * column probe's fallback to the SEAP county), the same as seatCounty.
  * `focal` is the role of a distribution's entity (a named authority wins).
  */
 export function countyIsFirmSeat(spec: { block:string; dim?:string; rankBy?:string }, focal: "authority" | "supplier"): boolean {
@@ -72,9 +73,10 @@ export function unsupportedPopulationView(spec: { block: string; dataset?: strin
   if (spec.block === "trend" && spec.minimumRecords) return "Filtrul «cel puțin N înregistrări» se aplică întregii selecții și nu este disponibil în diferența dintre doi ani. Alege evoluția în timp sau elimină explicit acest filtru.";
   if (!isHistoricalProfile(spec)) return null;
   const f = spec.filters as Record<string, unknown>;
-  // F3's common selection is on the records too: a kind, a procedure, the size of a purchase.
+  // F3's common selection is on the records too: a kind, a procedure, the size of a purchase; F4's seat against
+  // the buyer's county as well (a firm profile's own county is seatCounty, or an old link's county).
   const transaction = ["cpvTerm", "yearFrom", "yearTo", "monthFrom", "monthTo", "singleBidder", "minEmployees", "maxEmployees", "adminName", "adminPersonKey",
-    "purchaseKind", "procedure", "purchaseValueMin", "purchaseValueMax"];
+    "purchaseKind", "procedure", "purchaseValueMin", "purchaseValueMax", "firmSeat"];
   if (spec.population || spec.minimumRecords || transaction.some(k => f[k] !== undefined) || spec.dataset === "contracts")
     return "Acest răspuns folosește profiluri istorice de achiziții directe și nu poate respecta selecția de tranzacții. Condițiile sunt păstrate. Alege un clasament, o evoluție sau un total; pentru profiluri, elimină explicit condițiile de perioadă, domeniu și selecție precisă.";
   if (["scatter", "entity_card"].includes(spec.block) && ["authorityId", "authorityName", "supplierId", "supplierName"].some(k => f[k] !== undefined))

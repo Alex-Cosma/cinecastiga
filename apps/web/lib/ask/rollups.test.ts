@@ -13,6 +13,7 @@ const national: RollupCtx = {
   authorityId: null, supplierId: null, uatSiruta: null, uatAuthorityIds: [], singleBidder: false,
   minEmployees: null, maxEmployees: null, yearFrom: null, yearTo: null, monthFrom: null, monthTo: null, trendMonths: null, seriesMonths: null,
   adminSupplierIds: null, comparison: null, purchaseKind: null, procedure: null, purchaseValueMin: null, purchaseValueMax: null,
+  firmSeat: null, seatCounty: null, seatColumn: true,
 };
 const source = (ctx: Partial<RollupCtx> & Record<string, unknown>, need: Parameters<typeof planRollup>[1]) => {
   const plan = planRollup({ ...national, ...ctx }, need);
@@ -124,17 +125,17 @@ describe("which rollup answers a selection (24 Oct 2026 slow cases)", () => {
 
   it("fails closed on a condition it does not know (a key of a later stage)", () => {
     // Keys of the filter registry that are not in the rollups: refused while they hold a value…
-    for (const [key, value] of Object.entries({ seatCounty: "Cluj", firmSeat: "other", registeredFrom: 2024, mainClient: true, localAdminIds: ["1"] }))
+    for (const [key, value] of Object.entries({ registeredFrom: 2024, mainClient: true, localAdminIds: ["1"] }))
       expect([key, source({ [key]: value }, { by: "supplier" })]).toEqual([key, `${key}: a condition the rollups do not know`]);
     // …and ignored when they hold none.
     for (const value of [null, undefined, false, []])
-      expect(source({ seatCounty: value }, { by: "supplier" })).toEqual({ table: "entity", role: "supplier" });
+      expect(source({ registeredFrom: value }, { by: "supplier" })).toEqual({ table: "entity", role: "supplier" });
   });
 
   it("reads the engine's own context: predicateContext writes exactly the keys it knows", () => {
     // runSpec and runRows pass predicateContext(…) as it is: a key added there is refused
     // by planRollup (it fails closed) until it is mapped and named in ROLLUP_CTX_KEYS.
-    const ctx = predicateContext({} as DbSql, { block: "stat", measure: "value", filters: {} }, {}, { dataset: "all", yearFrom: null, yearTo: null, kindIds: null });
+    const ctx = predicateContext({} as DbSql, { block: "stat", measure: "value", filters: {} }, {}, { dataset: "all", yearFrom: null, yearTo: null, kindIds: null, seat: true });
     expect(Object.keys(ctx).sort()).toEqual([...ROLLUP_CTX_KEYS].sort());
     expect(planRollup(ctx, { by: "total" })).toEqual({ source: { table: "cpv" }, filters: expect.objectContaining({ dataset: "all" }) });
   });
@@ -148,6 +149,7 @@ describe("which rollup answers a selection (24 Oct 2026 slow cases)", () => {
       singleBidder: true, minEmployees: 1, maxEmployees: 9, yearFrom: 2024, yearTo: 2025, monthFrom: 1, monthTo: 6, trendMonths: [1, 5], seriesMonths: [1, 5],
       adminSupplierIds: ["4"], comparison: { role: "supplier", focalId: "2", compareId: "5" },
       purchaseKind: "lucrari", procedure: "deschisa", purchaseValueMin: 1_000_000, purchaseValueMax: 2_000_000,
+      firmSeat: "other", seatCounty: "Cluj", seatColumn: true,
     };
     for (const key of Object.keys(active) as (keyof RollupCtx)[]) {
       // The kind comes with its institutions; their list alone is no condition.
@@ -159,6 +161,9 @@ describe("which rollup answers a selection (24 Oct 2026 slow cases)", () => {
         cpvPrefixes: reached.cpvPrefixes, cpvExclude: reached.cpvExclude, county: reached.county === "Cluj",
         kind: reached.kind === "spital" && reached.kindIds === HOSPITALS, kindIds: reached.kind === null && reached.kindIds === null,
         minEmployees: reached.employees?.min === 1, maxEmployees: reached.employees?.max === 9, yearFrom: reached.yearFrom === 2024, yearTo: reached.yearTo === 2025, purchaseKind: reached.purchaseKind === "lucrari",
+        firmSeat: reached.seat?.firmSeat === "other", seatCounty: reached.seat?.county === "Cluj",
+        // Which column the seat keys read is no condition: alone it plans as a national question.
+        seatColumn: reached.seat === null,
       };
       expect([key, mapped[key]]).toEqual([key, true]);
     }

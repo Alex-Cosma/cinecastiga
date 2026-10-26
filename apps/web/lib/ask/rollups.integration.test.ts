@@ -15,6 +15,7 @@ import type { Grounding } from "./ground";
 import type { QueryPopulation } from "./population";
 import { ENGINE_GLOBAL_TABLES, scoped } from "./test-fixture";
 import { forgetMixRollupReady } from "./series-rollups";
+import { forgetMartColumns } from "./mart-columns";
 
 const testUrl = process.env["TEST_DATABASE_URL"];
 if (testUrl && !/^seap_test_[a-z0-9_]+$/.test(new URL(testUrl).pathname.slice(1))) throw new Error("Rollup fixtures require a dedicated seap_test_* database");
@@ -33,6 +34,9 @@ async function load(q: DbSql) {
     (5,'authority','Autoritate fara judet',null,null,0,0),
     (10,'supplier','Furnizor A','Bucuresti',5,4,1),(11,'supplier','Furnizor B','Cluj',50,2,2),(12,'supplier','Furnizor C','Iasi',3,2,1),
     (13,'supplier','Furnizor D',null,null,2,1),(14,'supplier','Furnizor E','Ilfov',1,2,1)`;
+  // F4: the firms' seat, as applyFirmRegistry writes it: 11's SEAP county is Cluj, its seat Ilfov; 13 has none; 14 is foreign.
+  await q`update marts.entity_profile set seat_county = case entity_id when 11 then 'Ilfov' when 13 then null when 14 then null else county end,
+    seat_source = case entity_id when 13 then null when 14 then 'foreign' else 'onrc' end where role = 'supplier'`;
   // F2's "Prima dată": the first record of firm 13 (new in 2025) is in 2025.
   await q`update marts.entity_profile set first_activity = case entity_id when 13 then '2025-02-01' else '2024-02-01' end where role = 'supplier'`;
   // The transaction marts take their names from core.entities, and so does agg_entity_year.
@@ -103,6 +107,7 @@ const ctxOf = (spec: AskSpec, g: Grounding): RollupCtx => {
     seriesMonths: spec.block === "timeseries" && Array.isArray(spec.timeseries?.months) ? spec.timeseries.months as readonly [number, number] : null,
     purchaseKind: spec.filters.purchaseKind ?? null, procedure: spec.filters.procedure ?? null,
     purchaseValueMin: spec.filters.purchaseValueMin ?? null, purchaseValueMax: spec.filters.purchaseValueMax ?? null,
+    firmSeat: spec.filters.firmSeat ?? null, seatCounty: g.seatCounty?.canonical ?? null, seatColumn: true,
   };
 };
 const needOf = (spec: AskSpec): RollupNeed => spec.block === "table" || spec.block === "trend"
@@ -129,7 +134,7 @@ async function fromRollups(q: DbSql, spec: AskSpec, g: Grounding, sort?: "name" 
         return { source, data: { block: "table", rows: r.rows.map((p, i) => ({ entityId: null, name: p.c, county: null, ...num(r.rows)[i]!, population: null })), ...meta(r.total) } };
       }
       const keep = band ? (id: ReturnType<DbSql>) => employeesCond(q, band.min, band.max, id) : null;
-      const r = await rollupTable(q, plan, { ...o, dim: spec.dim ?? "authority", ...(keep ? { keep } : {}) });
+      const r = await rollupTable(q, plan, { ...o, dim: spec.dim ?? "authority", seat: true, ...(keep ? { keep } : {}) });
       if ("reason" in r) throw new Error(r.reason);
       const first = r.rows[0];
       return { source, data: { block: "table", rows: r.rows.map((p) => ({ entityId: String(p.id), name: p.nm, county: p.co, value: Number(p.v), count: Number(p.n), population: null })),
@@ -145,7 +150,7 @@ async function fromRollups(q: DbSql, spec: AskSpec, g: Grounding, sort?: "name" 
       if ("reason" in grouped) throw new Error(grouped.reason);
       const partition = await trendPartition(q, grouped.grouped, { group, topN: spec.topN ?? 10, first: dim === "county" ? null : { role: dim, yearB } });
       const lists = Object.entries(partition.lists) as [TrendList, { id: string; va: string; vb: string }[]][];
-      const profiles = dim === "county" ? new Map() : await trendProfiles(q, [{ role: dim, ids: lists.flatMap(([, rows]) => rows.map((r) => r.id)) }]);
+      const profiles = dim === "county" ? new Map() : await trendProfiles(q, [{ role: dim, ids: lists.flatMap(([, rows]) => rows.map((r) => r.id)) }], true);
       const toRow = (r: { id: string; va: string; vb: string }) => dim === "county"
         ? { entityId: null, name: r.id, county: null, valueA: Number(r.va), valueB: Number(r.vb) }
         : { entityId: r.id, name: profiles.get(`${dim}:${r.id}`)?.name ?? "(fără nume)", county: profiles.get(`${dim}:${r.id}`)?.county ?? null, valueA: Number(r.va), valueB: Number(r.vb) };
@@ -194,6 +199,8 @@ const withoutLevel = (data: BlockData): BlockData => { if (data.block !== "break
 const without = (role: "authority" | "supplier", id: string): QueryPopulation => ({ operator: "and", groups: [{ operator: "and", conditions: [{ field: role, op: "not_in", values: [id] }] }] });
 const base = (block: AskSpec["block"], extra: Partial<AskSpec> = {}, filters: AskSpec["filters"] = {}): AskSpec => ({ block, measure: "value", dim: "supplier", ...extra, filters });
 const CLUJ: Grounding = { county: { query: "Cluj", canonical: "Cluj" } };
+/** F4: a firm's own county (seatCounty), grounded as the buyers' counties are. */
+const SEATED = (county: string): Grounding => ({ seatCounty: { query: county, canonical: county } });
 const Y = { yearFrom: 2024, yearTo: 2025 };
 /** A trend's groups on the fixture: firms 10 and 11 grow, 13 is new (first record in 2025), 12 and 14 decrease; on direct acquisitions alone 14 is gone. */
 const TREND_GROUPS: { name: string; spec: AskSpec; g?: Grounding; source: string }[] = [
@@ -236,6 +243,14 @@ const CASES: { name: string; spec: AskSpec; g?: Grounding; source: string; sort?
   { name: "firms, institutions with at least 3 records", spec: base("table", { topN: 10, minimumRecords: { role: "authority", count: 3 } }), source: "pair" },
   { name: "institutions with at least 3 records", spec: base("table", { topN: 10, dim: "authority", minimumRecords: { role: "authority", count: 3 } }), source: "entity:authority" },
   { name: "counties", spec: base("table", { dim: "county" }), source: "cpv" },
+  // F4: the firm's seat against each record's buyer county, and a county of its own, on the firm id and county of the rollup.
+  { name: "firms seated in another county than their buyer", spec: base("table", { topN: 10 }, { firmSeat: "other" }), source: "entity:supplier" },
+  { name: "firms seated in their buyer's county, 2024", spec: base("table", { topN: 10 }, { firmSeat: "same", yearFrom: 2024, yearTo: 2024 }), source: "entity:supplier" },
+  { name: "firms seated in Ilfov", spec: base("table", { topN: 10 }, { seatCounty: "Ilfov" }), g: SEATED("Ilfov"), source: "entity:supplier" },
+  { name: "institutions buying from firms seated abroad", spec: base("table", { topN: 10, dim: "authority" }, { firmSeat: "abroad" }), source: "pair" },
+  { name: "total of firms seated in their buyer's county", spec: base("stat", {}, { firmSeat: "same" }), source: "entity:supplier" },
+  { name: "trend of firms seated in București", spec: base("trend", { topN: 10, trend: { change: "up" } }, { ...Y, seatCounty: "Bucuresti" }), g: SEATED("Bucuresti"), source: "entity:supplier" },
+  { name: "map of firms seated in another county", spec: base("map", {}, { firmSeat: "other" }), source: "entity:supplier" },
   { name: "firms in Cluj, DA, 2025", spec: base("table", { topN: 10, dataset: "da" }, { county: "Cluj", yearFrom: 2025, yearTo: 2025 }), g: CLUJ, source: "entity:supplier" },
   { name: "trend of firms", spec: base("trend", { topN: 10 }, { yearFrom: 2024, yearTo: 2025 }), source: "entity:supplier" },
   { name: "trend of firms in Cluj", spec: base("trend", { topN: 10 }, { county: "Cluj", yearFrom: 2024, yearTo: 2025 }), g: CLUJ, source: "entity:supplier" },
@@ -259,7 +274,11 @@ const CASES: { name: string; spec: AskSpec; g?: Grounding; source: string; sort?
   { name: "map of contracts, 2025", spec: base("map", { dataset: "contracts" }, { yearFrom: 2025, yearTo: 2025 }), source: "cpv" },
 ];
 
-const SOURCE_CASES: { name: string; spec: AskSpec; g?: Grounding; block: "stat" | "map" | "breakdown" | "timeseries" | "county" }[] = [
+const SOURCE_CASES: { name: string; spec: AskSpec; g?: Grounding; block: "stat" | "map" | "breakdown" | "timeseries" | "county" | "firms" }[] = [
+  // A ranking of firms selected by an attribute of the firm (F4's seat, the employees): agg_entity_year's firm rows.
+  { name: "sources of the firms seated in another county", spec: base("table", { topN: 10 }, { firmSeat: "other" }), block: "firms" },
+  { name: "sources of the firms seated in Ilfov, 2025", spec: base("table", { topN: 10 }, { seatCounty: "Ilfov", yearFrom: 2025, yearTo: 2025 }), g: SEATED("Ilfov"), block: "firms" },
+  { name: "sources of the firms with 1–9 employees", spec: base("table", { topN: 10 }, { minEmployees: 1, maxEmployees: 9 }), block: "firms" },
   { name: "sources of the DAs of 2025", spec: base("stat", { dataset: "da" }, { yearFrom: 2025, yearTo: 2025 }), block: "stat" },
   { name: "sources of everything", spec: base("stat"), block: "stat" },
   { name: "sources of the map of contracts, 2025", spec: base("map", { dataset: "contracts" }, { yearFrom: 2025, yearTo: 2025 }), block: "map" },
@@ -294,7 +313,7 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
         forgetAuthorityKinds();
         fixtureKinds = await readAuthorityKinds(q);
         expect(fixtureKinds.ids).toMatchObject({ spital: ["1", "4"], comuna: ["2"], oras_municipiu: ["3"] });
-        forgetRollupsReady();
+        forgetRollupsReady(); forgetMartColumns();
         expect(await rollupsReady(q)).toBe(false);
         // The live answers first: without the rollups runSpec and runRows run their live queries.
         const liveAnswers = new Map<string, BlockData>();
@@ -348,7 +367,8 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
           new: { count: 1, valueA: 0, valueB: 6500.5 }, first: { count: 1, valueA: 0, valueB: 6500.5 },
           down: { count: 2, valueA: 3867.83, valueB: 1400.75 }, gone: { count: 0, valueA: 0, valueB: 0 }, equal: { count: 0, valueA: 0, valueB: 0 },
         });
-        expect(firms.rowsTrend.map((r) => [r.entityId, r.county])).toEqual([["10", "Bucuresti"], ["11", "Cluj"], ["13", null], ["12", "Iasi"], ["14", "Ilfov"]]);
+        // A firm's county is its seat (F4): 11 moved to Ilfov, 14 is foreign (its country instead, none in the fixture).
+        expect(firms.rowsTrend.map((r) => [r.entityId, r.county])).toEqual([["10", "Bucuresti"], ["11", "Ilfov"], ["13", null], ["12", "Iasi"], ["14", null]]);
         expect(firms.rowFacts?.["10"]).toEqual({ year: 2025, value: 4002000.24, largest: { value: 2000000, src: "da" }, joint: 0,
           partner: { entityId: "2", name: "Comuna Feleacu", value: 2000000 }, firstActivity: "2024-02-01", lastActivity: null, cuiValid: true, country: null });
         expect(firms.rowFacts?.["11"]).toMatchObject({ year: 2025, largest: { value: 3000000, src: "contracts" }, joint: 0, partner: { entityId: "1", value: 3000500.5 } });

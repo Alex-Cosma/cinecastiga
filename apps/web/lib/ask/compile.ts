@@ -7,7 +7,7 @@ import { namedKind, NEWER_VERSION_LINK, unimplementedSpecKeys, type AskSpec, typ
 import type { Grounding } from "./ground";
 import { EVIDENCE_CSV_LIMIT, PROFILE_BLOCKS, sumDecimalStrings, validateEvidenceScope, type EvidenceScope, type EvidenceStatus, type EvidenceProfile } from "./evidence";
 import {
-  andAll, DA_PLAFOND_RON, displayPredicates, employeesBounds, employeesCond, ENTITY_CARD_MIN_DAS, fold, fullValueUnion, groupPredicates, isEveryChange, perCapitaPredicate, plafondFor, predicateContext,
+  andAll, DA_PLAFOND_RON, displayPredicates, employeesBounds, employeesCond, ENTITY_CARD_MIN_DAS, fold, fullValueUnion, groupPredicates, isEveryChange, ownCountySql, perCapitaPredicate, plafondFor, predicateContext,
   profileMinDas, profilePredicates, RISK_MIN_DAS, rowPredicates, trendGroupOf, trendGroupSql, trendYearsPredicate, type PredicateCtx, type TrendGroup,
 } from "./predicates";
 import { authorityKindIds, KIND_LABEL } from "./authority-kind";
@@ -15,6 +15,7 @@ import { monthsLabel, partialMonths, sameMonthsWindow, WHOLE_YEAR, type Coverage
 import { formatBucharestDay as frozenDay } from "../format";
 import { TREND_CHANGE_LABELS } from "./filters/defs/trend";
 import { countyIsFirmSeat, isHistoricalProfile, unsupportedPopulationView } from "./population";
+import { firmCountyShown } from "./seat";
 import { describeConditions, type ConditionLabels } from "./filters/describe";
 import { employeesWords } from "./filters/words";
 import { retarget } from "./filters/retarget";
@@ -332,8 +333,20 @@ export function uatUnmappedError(label: string): string {
 /** The county caveat says whose county it is (countyIsFirmSeat), where it comes from and who is left out. */
 export function countyCaveat(spec: AskSpec, focal: "authority" | "supplier"): string {
   return countyIsFirmSeat(spec, focal)
-    ? "Județul = sediul firmei (din adresă, cod NUTS sau ONRC), nu al instituțiilor care cumpără. Firmele fără județ cunoscut nu intră."
+    ? "Județul = sediul firmei, nu al instituțiilor care cumpără. Firmele fără sediu cunoscut nu intră."
     : "Județul = sediul instituției care cumpără, nu al firmei (din adresă, cod NUTS, ONRC sau UAT verificat). Instituțiile fără județ cunoscut nu intră.";
+}
+
+/**
+ * Where a firm's county comes from (owner-seat-switch, F4): the methodology
+ * note of every answer that shows a firm's own county or selects firms by
+ * their seat (seat.ts firmCountyShown). `filled`: the seat column of the marts
+ * build (mart-columns.ts); before it, the SEAP county stands in, and says so.
+ */
+export function seatNote(filled: boolean): string {
+  return filled
+    ? "Județul firmei = sediul ei: ultima înmatriculare la Registrul Comerțului, apoi județul din SEAP; firmele străine apar separat. Nu e locul lucrării."
+    : "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.";
 }
 
 /** A relationship view with no partner rows: on every stream, not only direct acquisitions. */
@@ -840,6 +853,8 @@ export async function runSpec(
     // One caveat for every dimension: whose county it is, where it comes from, who is left out.
     caveats.push(countyCaveat(spec, spec.filters.authorityName || spec.filters.authorityId ? "authority" : "supplier"));
   }
+  if (spec.filters.seatCounty && !grounding.seatCounty?.canonical)
+    return { error: `Nu recunosc județul „${spec.filters.seatCounty}”.`, caveats };
   if (spec.filters.uatSiruta) {
     const uat = grounding.uat;
     const uatLabel = spec.filters.uatName ?? uat?.name ?? `UAT ${spec.filters.uatSiruta}`;
@@ -921,8 +936,13 @@ export async function runSpec(
   // answer, its sources, the CSV, the captures and the displayed SQL alike.
   // The kind of institution is a list of ids, read once per marts build (authority-kind.ts, D1).
   const kindIds = await authorityKindIds(sql, namedKind(spec.filters.authorityKind));
+  // The optional mart columns (mart-columns.ts, probed once per process with the pool): the firm's seat (F4) and the
+  // scatter's density layer. Before the seat column is filled, a firm's county is its SEAP county, said in the note.
+  const columns = await martColumns(sql);
+  const seat = columns.seat;
+  if (firmCountyShown(spec)) caveats.push(seatNote(seat));
   const w: PredicateCtx = predicateContext(sql, spec, grounding, {
-    dataset, yearFrom, yearTo, kindIds, trendMonths: partialMonths(trendWindow), seriesMonths: partialMonths(seriesWindow),
+    dataset, yearFrom, yearTo, kindIds, trendMonths: partialMonths(trendWindow), seriesMonths: partialMonths(seriesWindow), seat,
   });
   const { authorityId, supplierId } = w;
   const compareId = w.comparison?.compareId ?? null;
@@ -1011,6 +1031,7 @@ export async function runSpec(
     !w.authorityId && !w.supplierId && w.uatSiruta === null &&
     !w.singleBidder && w.adminSupplierIds === null &&
     !w.purchaseKind && !w.procedure && w.purchaseValueMin === null && w.purchaseValueMax === null &&
+    !w.firmSeat && !w.seatCounty &&
     w.yearFrom === null && w.yearTo === null &&
     w.monthFrom === null && w.monthTo === null && !w.seriesMonths && (!spec.population || nationalDaBound) && !spec.minimumRecords;
   const unfiltered = noRecordCondition && w.minEmployees === null && w.maxEmployees === null;
@@ -1027,6 +1048,10 @@ export async function runSpec(
 
   // --- WHERE fragment over marts.entity_flags (risk-centric blocks)
   const efWhere = (role: "authority" | "supplier", minDas: number) => andAll(sql, profilePredicates(w, role, minDas));
+  // The county beside a profile: an institution's own; a firm's seat, from its profile row (owner-seat-switch).
+  const profileCounty = (s: DbSql, role: string): ReturnType<DbSql> => role === "supplier" && seat
+    ? s`(select ${ownCountySql(s, "supplier", true)} from marts.entity_profile ep where ep.entity_id = ef.entity_id and ep.role = 'supplier')`
+    : s`ef.county`;
 
   /**
    * A breakdown's channels (F3, final breakdown §3.6): each one's value and
@@ -1047,7 +1072,7 @@ export async function runSpec(
     };
     if (dataset === "all" && live) return add(live);
     const every: AskSpec = { ...spec, dataset: "all" };
-    const ctx = predicateContext(sql, every, grounding, { dataset: "all", yearFrom, yearTo, kindIds });
+    const ctx = predicateContext(sql, every, grounding, { dataset: "all", yearFrom, yearTo, kindIds, seat });
     const plan = rollup ? await rollupPlanFor(s, every, ctx) : null;
     if (plan) {
       // A breakdown's plan is agg_cpv_year's (by CPV): its records without a code are left out, as the breakdown's.
@@ -1113,7 +1138,6 @@ export async function runSpec(
   // The evolution's months, split and same months read agg_months once a build has made it (series-rollups.ts); so does
   // the largest record of a breakdown's divisions (its „1 contract: 99%” tag) when the rollups answer the breakdown.
   const seriesRollup = (spec.block === "timeseries" || spec.block === "breakdown") && await mixRollupReady(sql) ? monthsWhere(sql, w, "p") : null;
-  const columns = spec.block === "scatter" ? await martColumns(sql) : null;
 
   // --- execute under guardrails
   // trend: a watch's group (TableOpts.freezeGroup, TableOpts.fixedMembers), set by its case.
@@ -1299,12 +1323,13 @@ export async function runSpec(
           if (bare && !paged && spec.measure !== "value_per_capita") {
             const ord =
               spec.measure === "count" ? s`${aggN} desc, eid` : s`${aggV} desc, eid`;
+            // A firm's county is its seat, read from its profile for the rows shown (owner-seat-switch); an
+            // institution's is the one agg_top_entities keeps.
             const r = (await s`
-              select eid id, nm, county co, ${aggV} v, ${aggN} n
-              from marts.agg_top_entities
-              where role = ${dim}
-              order by ${ord}
-              limit ${topN}
+              select t.eid id, t.nm, ${dim === "supplier" ? ownCountySql(s, "supplier", seat) : s`t.county`} co, t.v, t.n
+              from (select eid, nm, county, ${aggV} v, ${aggN} n from marts.agg_top_entities where role = ${dim} order by ${ord} limit ${topN}) t
+              left join marts.entity_profile ep on ep.entity_id = t.eid and ep.role = ${dim}
+              order by ${spec.measure === "count" ? s`t.n desc, t.eid` : s`t.v desc, t.eid`}
             `) as unknown as { id: string; nm: string; co: string | null; v: string; n: string }[];
             return {
               block: "table",
@@ -1326,7 +1351,7 @@ export async function runSpec(
             const size = s`${every} and ${employeesBounds(s, w.minEmployees, w.maxEmployees)}`;
             const r = (await s`
               with sel as (select sum(ep.total_ron_split) tv, sum(ep.n_das + ep.n_contracts) tn, count(*) te from marts.entity_profile ep where ${every})
-              select ep.entity_id id, coalesce(ep.name_display, '(fără nume)') nm, ep.county co,
+              select ep.entity_id id, coalesce(ep.name_display, '(fără nume)') nm, ${ownCountySql(s, "supplier", seat)} co,
                      ep.total_ron_split v, ep.n_das + ep.n_contracts n, sel.tv, sel.tn, sel.te,
                      sum(ep.total_ron_split) over () gv, sum(ep.n_das + ep.n_contracts) over () gn, count(*) over () ge
               from marts.entity_profile ep cross join sel
@@ -1431,7 +1456,7 @@ export async function runSpec(
           }
           // The band of a ranking of firms keeps its firms after grouping (rankedBand, F3): `keep` on the grouped id.
           const keep = rankedBand ? (id: ReturnType<DbSql>) => employeesCond(s, rankedBand.min, rankedBand.max, id) : null;
-          const rolled = rollup ? await rollupTable(s, rollup, { ...rollupOpts, dim, ...(keep ? { keep } : {}) }) : null;
+          const rolled = rollup ? await rollupTable(s, rollup, { ...rollupOpts, dim, seat, ...(keep ? { keep } : {}) }) : null;
           if (rolled && "rows" in rolled) {
             const first = rolled.rows[0];
             return {
@@ -1471,7 +1496,7 @@ export async function runSpec(
                   order by ${aggSort} ${tableOpts.sort ? dir : s`desc`}, g.id
                   ${limitFrag}
                 )
-                select t.id, coalesce(max(ep.name_display), '(fără nume)') nm, max(ep.county) co, t.v, t.n, t.tv, t.tn, t.te, t.gv, t.gn, t.ge
+                select t.id, coalesce(max(ep.name_display), '(fără nume)') nm, max(${ownCountySql(s, dim, seat)}) co, t.v, t.n, t.tv, t.tn, t.te, t.gv, t.gn, t.ge
                 from topg t
                 left join marts.entity_profile ep on ep.entity_id = t.id and ep.role = ${dim}
                 group by t.id, t.v, t.n, t.tv, t.tn, t.te, t.gv, t.gn, t.ge
@@ -1500,7 +1525,7 @@ export async function runSpec(
                 ${limitFrag}
               )
               select t.id, coalesce(max(ep.name_display), '(fără nume)') nm,
-                     max(ep.county) co, t.v, t.n, t.tv, t.tn, t.te
+                     max(${ownCountySql(s, dim, seat)}) co, t.v, t.n, t.tv, t.tn, t.te
               from topg t
               left join marts.entity_profile ep on ep.entity_id = t.id and ep.role = ${dim}
               group by t.id, t.v, t.n, t.tv, t.tn, t.te
@@ -1527,7 +1552,7 @@ export async function runSpec(
           // aggregation, once per entity.
           const sortFrag = {
             name: s`g.nm`,
-            county: s`ep.county`,
+            county: ownCountySql(s, dim, seat),
             value: s`g.v`,
             count: s`g.n`,
             percap: s`g.v`,
@@ -1541,7 +1566,7 @@ export async function runSpec(
               where ${whereFrag()} and ${idCol} is not null
               group by ${idCol}
             )
-            select g.id, g.nm, ep.county co, g.v, g.n, count(*) over () te
+            select g.id, g.nm, ${ownCountySql(s, dim, seat)} co, g.v, g.n, count(*) over () te
             from g
             left join marts.entity_profile ep on ep.entity_id = g.id and ep.role = ${dim}
             ${keep ? s`where ${keep(s`g.id`)}` : s``}
@@ -1604,8 +1629,9 @@ export async function runSpec(
                   group by k.ca_notice_contract_id having count(distinct d.supplier_id) = 2
                   order by sum(d.closing_value) desc limit 5`
               : Promise.resolve([]),
-            s`select entity_id::text id, first_activity, last_activity, employees, employees_year, net_turnover::text turnover
-              from marts.entity_profile where role = ${focalRole} and entity_id = any(${s.array(ids)}::bigint[])`,
+            s`select ep.entity_id::text id, ep.first_activity, ep.last_activity, ep.employees, ep.employees_year, ep.net_turnover::text turnover,
+                     ${ownCountySql(s, focalRole, seat)} county
+              from marts.entity_profile ep where ep.role = ${focalRole} and ep.entity_id = any(${s.array(ids)}::bigint[])`,
             s`select entity_id::text id, cri, n_flags, flags from marts.entity_flags where role = ${focalRole} and entity_id = any(${s.array(ids)}::bigint[])`,
           ]) as unknown as [
             { id: string; src: string; value: string; n: number; single_bid: string; single_known: string; no_cpv: string }[],
@@ -1615,7 +1641,7 @@ export async function runSpec(
             { id: string; other_id: string; name: string | null; value: string; n: number }[],
             { other_id: string; name: string | null; value_a: string; n_a: number; value_b: string; n_b: number; total: number }[],
             { nid: string; authority: string | null; date: string | null; value: string; total: number }[],
-            { id: string; first_activity: string | null; last_activity: string | null; employees: number | null; employees_year: number | null; turnover: string | null }[],
+            { id: string; first_activity: string | null; last_activity: string | null; employees: number | null; employees_year: number | null; turnover: string | null; county: string | null }[],
             { id: string; cri: string | null; n_flags: number; flags: string[] | null }[],
           ];
           const cpvNames = await cpvNamesFor(s, [...new Set(domains.map((d) => d.g))]);
@@ -1636,7 +1662,8 @@ export async function runSpec(
               const profile = profiles.find((p) => p.id === identity.id);
               const flags = risk.find((r) => r.id === identity.id);
               return {
-                entityId: identity.id, name: identity.name, county: identity.county, role: focalRole,
+                // A firm's county is its seat (owner-seat-switch), read with its profile; an institution keeps its own.
+                entityId: identity.id, name: identity.name, county: focalRole === "supplier" && seat ? profile?.county ?? null : identity.county, role: focalRole,
                 // Exact decimal sum of the streams, so the total equals one SQL sum.
                 value: Number(sumDecimalStrings(mine.map((r) => r.value))),
                 count: mine.reduce((sum, r) => sum + r.n, 0),
@@ -1772,12 +1799,12 @@ export async function runSpec(
         case "scatter": {
           const role: Dim = spec.dim === "supplier" ? "supplier" : "authority";
           const r = (await s`
-            (select ef.entity_id, ef.name_display, ef.county, ef.total_ron, ef.cri, ef.n_flags
+            (select ef.entity_id, ef.name_display, ${profileCounty(s, role)} county, ef.total_ron, ef.cri, ef.n_flags
              from marts.entity_flags ef
              where ${efWhere(role as "authority" | "supplier", RISK_MIN_DAS)} and ef.cri is not null
              order by ef.cri desc, ef.total_ron desc limit 200)
             union
-            (select ef.entity_id, ef.name_display, ef.county, ef.total_ron, ef.cri, ef.n_flags
+            (select ef.entity_id, ef.name_display, ${profileCounty(s, role)} county, ef.total_ron, ef.cri, ef.n_flags
              from marts.entity_flags ef
              where ${efWhere(role as "authority" | "supplier", RISK_MIN_DAS)} and ef.cri is not null
              order by ef.total_ron desc nulls last limit 200)
@@ -1904,7 +1931,7 @@ export async function runSpec(
               ? s`ef.cri desc nulls last, ef.total_ron desc nulls last, ef.entity_id`
               : s`ef.total_ron desc nulls last, ef.entity_id`;
           const r = (await s`
-            select ef.entity_id, ef.name_display, ef.county, ef.role, ef.n_das, ef.total_ron,
+            select ef.entity_id, ef.name_display, ${profileCounty(s, role)} county, ef.role, ef.n_das, ef.total_ron,
                    ef.cri, ef.n_flags, ef.flags
             from marts.entity_flags ef
             where ${efWhere(role, minDas)}
@@ -2039,8 +2066,9 @@ export async function runSpec(
           });
           const profiles = dim === "county" ? new Map() : await trendProfiles(s, [
             { role: dim, ids: shown }, { role: partnerRole, ids: facts.flatMap((f) => f.partner ? [f.partner] : []) },
-          ]);
-          // trend-2: the county of an entity's row is its own (entity_profile, as on the rankings), not a buyer's.
+          ], seat);
+          // trend-2: the county of an entity's row is its own (entity_profile, as on the rankings), not a buyer's;
+          // a firm's is its seat (F4, owner-seat-switch).
           const toRow = (r: TrendPartitionRow): TrendRow => {
             if (dim === "county") return { entityId: null, name: r.id, county: null, valueA: Number(r.va), valueB: Number(r.vb) };
             const profile = profiles.get(`${dim}:${r.id}`);
@@ -2302,6 +2330,9 @@ export async function runRows(
   if (spec.filters.county && !grounding.county?.canonical) {
     return { error: `Nu recunosc județul „${spec.filters.county}”.` };
   }
+  if (spec.filters.seatCounty && !grounding.seatCounty?.canonical) {
+    return { error: `Nu recunosc județul „${spec.filters.seatCounty}”.` };
+  }
   if (
     (spec.filters.adminPersonKey || spec.filters.adminName) &&
     (!grounding.admin?.personKey || grounding.admin.supplierIds.length === 0)
@@ -2373,6 +2404,7 @@ export async function runRows(
   const kindIds = await authorityKindIds(sql, namedKind(spec.filters.authorityKind));
   const ctx = predicateContext(sql, spec, grounding, {
     dataset, yearFrom, yearTo, kindIds, trendMonths: partialMonths(trendWindow), seriesMonths: partialMonths(trendWindow),
+    seat: (await martColumns(sql)).seat,
   });
   // The rollups give the record threshold's party list and, without a local
   // filter, the totals of a selection without entity conditions (rollups.ts).
@@ -2452,6 +2484,8 @@ export async function runRows(
     if (conditions.population?.note) notes.push(conditions.population.note);
     // F3: the size is the whole purchase's, a kind the domain lacks is left out (as in the answer).
     if (conditions.purchaseValue?.note) notes.push(conditions.purchaseValue.note);
+    // F4: the seat a condition selects, and where it comes from (as in the answer).
+    if (spec.filters.firmSeat || spec.filters.seatCounty) notes.push(seatNote(ctx.seatColumn));
     if (spec.filters.purchaseKind && !ctx.purchaseKind) notes.push(kindLeftOutNote(spec.filters.purchaseKind, grounding.cpv?.term ?? spec.filters.cpvTerm));
     const isRelationship = spec.block === "network" || spec.block === "sankey";
     if (isRelationship) {
@@ -2614,7 +2648,7 @@ export async function runRows(
   const localWhere = localParts.reduce((a, b) => sql`${a} and ${b}`);
   // The blocks whose source condition rollupSourceTotals adds itself.
   const totalsBlock = spec.block === "stat" || spec.block === "map" || spec.block === "breakdown" || spec.block === "timeseries" ? spec.block
-    : spec.block === "table" && spec.dim === "county" ? "county" as const : null;
+    : spec.block === "table" && spec.dim === "county" ? "county" as const : spec.block === "table" && spec.dim === "supplier" ? "firms" as const : null;
   const defaultSort = !profile && !grounding.authority?.entityId && !grounding.supplier?.entityId ? "source" : "value";
   const sortKey: DrillSort = opts.sort && Object.hasOwn(DRILL_SORTS, opts.sort) ? opts.sort : defaultSort;
   const sortFrag = { source: sql`d.ref_id`, value: sql`d.closing_value`, date: sql`d.finalization_date`, authority: sql`d.authority_name`, supplier: sql`d.supplier_name`, county: sql`d.county`, cpv: sql`d.cpv_name` }[sortKey];

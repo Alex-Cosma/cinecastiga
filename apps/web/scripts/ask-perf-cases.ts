@@ -268,6 +268,37 @@ export function perfCases(): PerfCase[] {
     ...f3Cases(),
     ...facetCases(),
     ...f3RowsCases(),
+    ...seatCases(),
+  ];
+}
+
+/**
+ * F4-seat (S4; plan §2.5, §4.2, §4.12, §4.13, §6.4): the firm's seat against the buyer's county (firmSeat) and of its
+ * own (seatCounty), as the builder writes them, on rollups where they answer (the entity and pair rollups hold the firm
+ * and the buyer county) and live elsewhere; the seat window's counts; the firms' profiles by their seat.
+ */
+function seatCases(): PerfCase[] {
+  const firms = top({ dim: "supplier" });
+  return [
+    perfCase("national:table-suppliers-seat-other", "national", "Ce firme cu sediul în alt județ câștigă, toți anii", "table", all(firms, set({ firmSeat: "other" })), { barMs: 2000 }),
+    perfCase("national:table-suppliers-seat-other-2025", "national", "Ce firme cu sediul în alt județ câștigă, 2025", "table", all(firms, set({ firmSeat: "other" }), years(2025)), { barMs: 2000 }),
+    perfCase("national:table-suppliers-seat-abroad", "national", "Ce firme cu sediul în străinătate câștigă, toți anii", "table", all(firms, set({ firmSeat: "abroad" })), { barMs: 2000 }),
+    perfCase("national:table-suppliers-seat-cluj", "national", "Ce firme cu sediul în județul Cluj câștigă, toți anii", "table", all(firms, set({ seatCounty: "Cluj" })), { barMs: 2000 }),
+    perfCase("filtered:table-cluj-seat-same-2025", "filtered", "Ce firme cu sediul în județul Cluj câștigă în Cluj, 2025", "table", all(firms, set({ county: "Cluj", firmSeat: "same" }), years(2025))),
+    perfCase("national:stat-seat-other-2025", "national", "Cât câștigă firmele cu sediul în alt județ, 2025", "stat", all(set({ firmSeat: "other" }), years(2025)), { barMs: 2000 }),
+    perfCase("national:entity-card-value-seat-bucuresti", "national", "Care firmă cu sediul în București câștigă cel mai mult", "entity_card",
+      all(top({ dim: "supplier", rankBy: "value" }), set({ seatCounty: "Bucuresti" })), { barMs: 2000 }),
+    perfCase("national:entity-card-value-seat-abroad", "national", "Care firmă cu sediul în străinătate câștigă cel mai mult", "entity_card",
+      all(top({ dim: "supplier", rankBy: "value" }), set({ firmSeat: "abroad" })), { barMs: 2000 }),
+    perfCase("filtered:scatter-suppliers-seat-cluj", "filtered", "Ce firme cu sediul în județul Cluj ies din tipar", "scatter", all(firms, set({ seatCounty: "Cluj" }))),
+    perfCase("filtered:entity-card-risk-seat-cluj", "filtered", "Care firmă cu sediul în județul Cluj are cel mai ridicat indice de risc", "entity_card",
+      all(top({ dim: "supplier", rankBy: "risk" }), set({ seatCounty: "Cluj" }))),
+    perfCase("sources:table-suppliers-seat-other-2025", "sources", "Sursele firmelor cu sediul în alt județ, 2025", "table", all(firms, set({ firmSeat: "other" }), years(2025)), { path: "rows", barMs: 2000 }),
+    perfCase("sources:table-suppliers-seat-cluj", "sources", "Sursele firmelor cu sediul în județul Cluj", "table", all(firms, set({ seatCounty: "Cluj" })), { path: "rows", barMs: 2000 }),
+    // The seat window: the records' classes on a ranking (national: the entity rollup), each county's firms on „Cine conduce?”.
+    perfCase("facets:seat-classes-national", "facets", "„Unde au sediul firmele?” pe clasamentul național", "table", firms, { facet: { part: "seat" }, barMs: 2000 }),
+    perfCase("facets:seat-classes-2025", "facets", "„Unde au sediul firmele?” pe clasamentul din 2025", "table", all(firms, years(2025)), { facet: { part: "seat" }, barMs: 2000 }),
+    perfCase("facets:seat-counties-leader", "facets", "„Unde au sediul firmele?” la „Cine conduce?”", "entity_card", top({ dim: "supplier", rankBy: "value" }), { facet: { part: "seat" }, barMs: 2000 }),
   ];
 }
 

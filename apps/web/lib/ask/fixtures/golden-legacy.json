@@ -32,7 +32,8 @@
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
-     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "table",
@@ -182,7 +183,8 @@
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
-     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "table",
@@ -961,6 +963,7 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "An cu date parțiale sau provizorii: 2026 (achizițiile directe până la 20.06.2026; contractele până la 25.06.2026; contractele datate după 31.05.2026 sunt provizorii). Totalul lui nu este complet; nu îl compara direct cu ceilalți ani din grafic. SEAP publică multe contracte la câteva săptămâni sau luni după semnare: cifrele provizorii pot crește la actualizările următoare."
     ],
     "data": {
@@ -1258,6 +1261,7 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "An cu date parțiale sau provizorii: 2026 (achizițiile directe până la 20.06.2026; contractele până la 25.06.2026; contractele datate după 31.05.2026 sunt provizorii). Diferența dintre cei doi ani reflectă și perioada neacoperită sau încă nepublicată, nu doar o schimbare reală. SEAP publică multe contracte la câteva săptămâni sau luni după semnare: cifrele provizorii pot crește la actualizările următoare."
     ],
     "data": {
@@ -2339,6 +2343,7 @@
     "pills": ["risc și valoare","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
      "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
@@ -2561,7 +2566,8 @@
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
-     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "entity_card",
@@ -2688,7 +2694,8 @@
      "Despre „drumuri”: Include lucrările de îmbrăcăminte ale drumurilor.",
      "Din „drumuri” nu sunt numărate: Diverse lucrări de îmbrăcăminte (45233200-1).",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
-     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "table",
@@ -2952,7 +2959,8 @@
     "pills": ["clasament","top 10 furnizori","valoarea înregistrată","toți anii","doar contractele din proceduri"],
     "caveats": [
      "Sursă: DOAR contractele din proceduri. Valoarea unui contract câștigat în asociere e împărțită egal între firme. Plafoanele acordurilor-cadru și publicațiile cu identitate incertă sunt excluse din totaluri. Lipsa comenzilor identificate înseamnă acoperire incompletă.",
-     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției."
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "table",
@@ -4125,6 +4133,7 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Filtrul «conduse azi de» folosește reprezentanții legali din Registrul Comerțului (instantaneu lunar): administratorul de AZI, nu neapărat cel de la momentul achiziției; administratorii nu sunt neapărat asociații/proprietarii."
     ],
     "data": {
@@ -4570,7 +4579,8 @@
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
-     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "table",
@@ -5436,6 +5446,7 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Filtrul «conduse azi de» folosește reprezentanții legali din Registrul Comerțului (instantaneu lunar): administratorul de AZI, nu neapărat cel de la momentul achiziției; administratorii nu sunt neapărat asociații/proprietarii."
     ],
     "data": {
@@ -6710,7 +6721,8 @@
      "Din „drumuri” nu sunt numărate: Diverse lucrări de îmbrăcăminte (45233200-1).",
      "Județul = sediul instituției care cumpără, nu al firmei (din adresă, cod NUTS, ONRC sau UAT verificat). Instituțiile fără județ cunoscut nu intră.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
-     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "table",
@@ -7010,7 +7022,8 @@
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
-     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "table",
@@ -8453,7 +8466,8 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Județul = sediul instituției care cumpără, nu al firmei (din adresă, cod NUTS, ONRC sau UAT verificat). Instituțiile fără județ cunoscut nu intră.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
-     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "table",
@@ -10014,6 +10028,7 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Păstrăm firmele cu cel puțin 5 înregistrări în selecția filtrată. O atribuire pe câștigător este o înregistrare; pragul nu numără contracte distincte."
     ],
     "data": {
@@ -10291,7 +10306,8 @@
     "caveats": [
      "Sursă: DOAR contractele din proceduri. Valoarea unui contract câștigat în asociere e împărțită egal între firme. Plafoanele acordurilor-cadru și publicațiile cu identitate incertă sunt excluse din totaluri. Lipsa comenzilor identificate înseamnă acoperire incompletă.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
-     "„O singură ofertă”: numărul de oferte e cunoscut doar pentru contractele regăsite și în TED (confirmate). Contractele fără date de competiție NU apar aici — necunoscut nu înseamnă competitiv."
+     "„O singură ofertă”: numărul de oferte e cunoscut doar pentru contractele regăsite și în TED (confirmate). Contractele fără date de competiție NU apar aici — necunoscut nu înseamnă competitiv.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "table",
@@ -10412,7 +10428,8 @@
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
-     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "compare",
@@ -10675,6 +10692,7 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Filtrul pe angajați folosește ultimul bilanț depus la Ministerul Finanțelor. Furnizorii fără bilanț (PFA-uri, firme din străinătate, firme radiate) sunt excluși din rezultat."
     ],
     "data": {
@@ -11377,8 +11395,9 @@
     },
     "pills": ["risc și valoare","județul Cluj","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
-     "Județul = sediul firmei (din adresă, cod NUTS sau ONRC), nu al instituțiilor care cumpără. Firmele fără județ cunoscut nu intră.",
+     "Județul = sediul firmei, nu al instituțiilor care cumpără. Firmele fără sediu cunoscut nu intră.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
      "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
@@ -11633,6 +11652,7 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Ani cu date parțiale sau provizorii: 2024 (achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei), 2026 (achizițiile directe până la 20.06.2026; contractele până la 25.06.2026; contractele datate după 31.05.2026 sunt provizorii). Diferența dintre cei doi ani reflectă și perioada neacoperită sau încă nepublicată, nu doar o schimbare reală. SEAP publică multe contracte la câteva săptămâni sau luni după semnare: cifrele provizorii pot crește la actualizările următoare."
     ],
     "data": {
@@ -12076,6 +12096,7 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "An acoperit parțial de date: 2024 (achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei). Diferența dintre cei doi ani reflectă și perioada neacoperită, nu doar o schimbare reală."
     ],
     "data": {
@@ -13515,6 +13536,7 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Selecție precisă aplicată: fără firma Fixture Construct SRL. Datele și limitele sunt inclusive; valorile se referă la cota alocată fiecărui furnizor."
     ],
     "data": {
@@ -13694,6 +13716,7 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Selecție precisă aplicată: doar instituțiile Municipiul Fixture Nord, Spitalul Judetean Fixture. Datele și limitele sunt inclusive; valorile se referă la cota alocată fiecărui furnizor."
     ],
     "data": {
@@ -14408,6 +14431,7 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Selecție precisă aplicată: doar CPV 45. Datele și limitele sunt inclusive; valorile se referă la cota alocată fiecărui furnizor.",
      "An acoperit parțial de date: 2024 (achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei). Diferența dintre cei doi ani reflectă și perioada neacoperită, nu doar o schimbare reală."
     ],
@@ -15195,6 +15219,7 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Filtrul «conduse azi de» folosește reprezentanții legali din Registrul Comerțului (instantaneu lunar): administratorul de AZI, nu neapărat cel de la momentul achiziției; administratorii nu sunt neapărat asociații/proprietarii."
     ],
     "data": {
@@ -15467,7 +15492,8 @@
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
-     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "entity_card",
@@ -16302,7 +16328,8 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Localitatea „mun. Aiud (Alba)”: includ doar administrația locală a UAT-ului (primăria / consiliul local), nu și școlile, spitalele sau alte instituții din localitate. Asocierea autoritate–UAT este o inferență a aplicației (cod SIRUTA din același județ sau nume și județ identice, CUI valid); asocierile din alt județ sau nesigure sunt excluse.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
-     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "table",
@@ -17247,7 +17274,8 @@
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
-     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "table",
@@ -18403,8 +18431,9 @@
     "ok": false,
     "error": "Niciun rezultat pentru aceste filtre.",
     "caveats": [
-     "Județul = sediul firmei (din adresă, cod NUTS sau ONRC), nu al instituțiilor care cumpără. Firmele fără județ cunoscut nu intră.",
+     "Județul = sediul firmei, nu al instituțiilor care cumpără. Firmele fără sediu cunoscut nu intră.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
      "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
@@ -18481,7 +18510,8 @@
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
-     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "spec": {
      "block": "trend",
@@ -18651,7 +18681,8 @@
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
-     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "table",
@@ -19061,7 +19092,8 @@
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
-     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "table",
@@ -19220,7 +19252,8 @@
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
-     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "table",
@@ -19327,7 +19360,8 @@
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
-     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "table",
@@ -20020,7 +20054,8 @@
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
-     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "table",
@@ -20176,7 +20211,8 @@
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
-     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "table",
@@ -20341,7 +20377,8 @@
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
-     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "table",
@@ -20485,7 +20522,8 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Județul = sediul instituției care cumpără, nu al firmei (din adresă, cod NUTS, ONRC sau UAT verificat). Instituțiile fără județ cunoscut nu intră.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
-     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "table",
@@ -20744,7 +20782,8 @@
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
-     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "table",
@@ -20885,7 +20924,8 @@
      "Despre „drumuri”: Include lucrările de îmbrăcăminte ale drumurilor.",
      "Din „drumuri” nu sunt numărate: Diverse lucrări de îmbrăcăminte (45233200-1).",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
-     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "table",
@@ -21150,7 +21190,8 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Localitatea „mun. Aiud (Alba)”: includ doar administrația locală a UAT-ului (primăria / consiliul local), nu și școlile, spitalele sau alte instituții din localitate. Asocierea autoritate–UAT este o inferență a aplicației (cod SIRUTA din același județ sau nume și județ identice, CUI valid); asocierile din alt județ sau nesigure sunt excluse.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
-     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "table",
@@ -21280,6 +21321,7 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Filtrul pe angajați folosește ultimul bilanț depus la Ministerul Finanțelor. Furnizorii fără bilanț (PFA-uri, firme din străinătate, firme radiate) sunt excluși din rezultat."
     ],
     "data": {
@@ -21430,6 +21472,7 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Filtrul «conduse azi de» folosește reprezentanții legali din Registrul Comerțului (instantaneu lunar): administratorul de AZI, nu neapărat cel de la momentul achiziției; administratorii nu sunt neapărat asociații/proprietarii."
     ],
     "data": {
@@ -21554,7 +21597,8 @@
     "caveats": [
      "Sursă: DOAR achiziții directe.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
-     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "table",
@@ -21702,7 +21746,8 @@
     "pills": ["clasament","top 10 furnizori","valoarea înregistrată","toți anii","doar contractele din proceduri"],
     "caveats": [
      "Sursă: DOAR contractele din proceduri. Valoarea unui contract câștigat în asociere e împărțită egal între firme. Plafoanele acordurilor-cadru și publicațiile cu identitate incertă sunt excluse din totaluri. Lipsa comenzilor identificate înseamnă acoperire incompletă.",
-     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției."
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "table",
@@ -21840,7 +21885,8 @@
     "caveats": [
      "Sursă: DOAR contractele din proceduri. Valoarea unui contract câștigat în asociere e împărțită egal între firme. Plafoanele acordurilor-cadru și publicațiile cu identitate incertă sunt excluse din totaluri. Lipsa comenzilor identificate înseamnă acoperire incompletă.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
-     "„O singură ofertă”: numărul de oferte e cunoscut doar pentru contractele regăsite și în TED (confirmate). Contractele fără date de competiție NU apar aici — necunoscut nu înseamnă competitiv."
+     "„O singură ofertă”: numărul de oferte e cunoscut doar pentru contractele regăsite și în TED (confirmate). Contractele fără date de competiție NU apar aici — necunoscut nu înseamnă competitiv.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "table",
@@ -21955,7 +22001,8 @@
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
-     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "table",
@@ -27729,6 +27776,7 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "An cu date parțiale sau provizorii: 2026 (achizițiile directe până la 20.06.2026; contractele până la 25.06.2026; contractele datate după 31.05.2026 sunt provizorii). Totalul lui nu este complet; nu îl compara direct cu ceilalți ani din grafic. SEAP publică multe contracte la câteva săptămâni sau luni după semnare: cifrele provizorii pot crește la actualizările următoare."
     ],
     "data": {
@@ -28274,6 +28322,7 @@
      "Sursă: DOAR achiziții directe.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "An acoperit parțial de date: 2026 (date până la 20.06.2026). Totalul lui nu acoperă un an întreg; nu îl compara direct cu ceilalți ani din grafic."
     ],
     "data": {
@@ -28732,6 +28781,7 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "An acoperit parțial de date: 2024 (achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei). Diferența dintre cei doi ani reflectă și perioada neacoperită, nu doar o schimbare reală."
     ],
     "data": {
@@ -29942,6 +29992,7 @@
      "Sursă: DOAR achiziții directe.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "An acoperit parțial de date: 2024 (date de la 08.01.2024, începutul arhivei). Diferența dintre cei doi ani reflectă și perioada neacoperită, nu doar o schimbare reală."
     ],
     "data": {
@@ -30355,6 +30406,7 @@
      "Din „drumuri” nu sunt numărate: Diverse lucrări de îmbrăcăminte (45233200-1).",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "An cu date parțiale sau provizorii: 2026 (achizițiile directe până la 20.06.2026; contractele până la 25.06.2026; contractele datate după 31.05.2026 sunt provizorii). Diferența dintre cei doi ani reflectă și perioada neacoperită sau încă nepublicată, nu doar o schimbare reală. SEAP publică multe contracte la câteva săptămâni sau luni după semnare: cifrele provizorii pot crește la actualizările următoare."
     ],
     "data": {
@@ -30695,6 +30747,7 @@
      "Județul = sediul instituției care cumpără, nu al firmei (din adresă, cod NUTS, ONRC sau UAT verificat). Instituțiile fără județ cunoscut nu intră.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "An acoperit parțial de date: 2024 (achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei). Diferența dintre cei doi ani reflectă și perioada neacoperită, nu doar o schimbare reală."
     ],
     "data": {
@@ -31096,6 +31149,7 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "An acoperit parțial de date: 2024 (achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei). Diferența dintre cei doi ani reflectă și perioada neacoperită, nu doar o schimbare reală."
     ],
     "data": {
@@ -32076,6 +32130,7 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "An acoperit parțial de date: 2024 (achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei). Diferența dintre cei doi ani reflectă și perioada neacoperită, nu doar o schimbare reală."
     ],
     "data": {
@@ -32543,6 +32598,7 @@
      "Județul = sediul instituției care cumpără, nu al firmei (din adresă, cod NUTS, ONRC sau UAT verificat). Instituțiile fără județ cunoscut nu intră.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "An acoperit parțial de date: 2024 (achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei). Diferența dintre cei doi ani reflectă și perioada neacoperită, nu doar o schimbare reală."
     ],
     "data": {
@@ -33210,6 +33266,7 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "An acoperit parțial de date: 2024 (achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei). Diferența dintre cei doi ani reflectă și perioada neacoperită, nu doar o schimbare reală."
     ],
     "data": {
@@ -33680,7 +33737,8 @@
     "caveats": [
      "Sursă: DOAR contractele din proceduri. Valoarea unui contract câștigat în asociere e împărțită egal între firme. Plafoanele acordurilor-cadru și publicațiile cu identitate incertă sunt excluse din totaluri. Lipsa comenzilor identificate înseamnă acoperire incompletă.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
-     "Ambii ani se compară pe aceleași luni: ian.–mai."
+     "Ambii ani se compară pe aceleași luni: ian.–mai.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "trend",
@@ -33999,7 +34057,8 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
-     "Ambii ani se compară pe aceleași luni: ian.–mai."
+     "Ambii ani se compară pe aceleași luni: ian.–mai.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "trend",
@@ -34841,6 +34900,7 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Mărimea e valoarea întregului contract sau a achiziției directe, nu cota fiecărui câștigător; sumele rămân pe cote."
     ],
     "data": {
@@ -35307,6 +35367,811 @@
     "x-filtered-value": "553270.01",
     "lines": 11,
     "sha256": "f2e992a305d6b371708e9c78721298eb01c9d02b836997a0d2067edb0388284c"
+   }
+  },
+  {
+   "id": "combo:table:f4-seat-other",
+   "origin": "combo",
+   "source": "builder: defaultQuestion → chooseType → edits → transitionQuestion",
+   "request": {
+    "spec": {
+     "block": "table",
+     "dim": "supplier",
+     "measure": "value",
+     "topN": 10,
+     "filters": {
+      "firmSeat": "other"
+     }
+    }
+   },
+   "answer": {
+    "status": 200,
+    "ok": true,
+    "question": null,
+    "model": null,
+    "spec": {
+     "block": "table",
+     "measure": "value",
+     "filters": {
+      "firmSeat": "other"
+     },
+     "dim": "supplier",
+     "topN": 10
+    },
+    "pills": ["clasament","top 10 furnizori","valoarea înregistrată","cu sediul în alt județ","toți anii","toate achizițiile: directe și din proceduri"],
+    "caveats": [
+     "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
+    ],
+    "data": {
+     "block": "table",
+     "rows": [
+      {
+       "entityId": "9100000101",
+       "name": "Fixture Construct SRL",
+       "county": "Cluj",
+       "value": 61469.09,
+       "count": 4,
+       "population": null
+      },
+      {
+       "entityId": "9100000103",
+       "name": "Fixture Servicii SA",
+       "county": "Alba",
+       "value": 45100,
+       "count": 2,
+       "population": null
+      },
+      {
+       "entityId": "9100000102",
+       "name": "Fixture Medical SRL",
+       "county": "Buzau",
+       "value": 20864.94,
+       "count": 6,
+       "population": null
+      },
+      {
+       "entityId": "9100000105",
+       "name": "Fixture Mic SRL",
+       "county": "Cluj",
+       "value": 430.1,
+       "count": 1,
+       "population": null
+      }
+     ],
+     "totals": {
+      "value": 127864.13,
+      "count": 13,
+      "entities": 4
+     }
+    },
+    "displaySql": "select supplier_name, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and sediul_firmei <> county  -- firme cu sediul în alt județ (sediul: județul din SEAP)\ngroup by supplier_name\norder by 2 desc\nlimit 10;"
+   },
+   "sources": {
+    "status": 200,
+    "ok": true,
+    "total": 13,
+    "value": "127864.13",
+    "sourceTotal": 13,
+    "sourceValue": "127864.13",
+    "page": 0,
+    "pageSize": 10,
+    "accepted": {
+     "count": 11,
+     "value": "49863.38"
+    },
+    "dateFrom": "2024-01-12",
+    "dateTo": "2026-05-18",
+    "profile": false,
+    "profiles": [],
+    "profileCount": 0,
+    "profileReconciled": null,
+    "scopeNotes": [
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
+     "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Un contract cu mai mulți câștigători apare pe câte un rând pentru fiecare furnizor, cu valoarea împărțită egal. Suma folosește aceste cote; numărul de rânduri nu este numărul de contracte distincte. Detaliile și exportul păstrează valoarea integrală și numărul câștigătorilor.",
+     "Lista surselor acoperă întregul rezultat filtrat; limita de poziții din clasament sau diagramă nu limitează sursele."
+    ],
+    "statuses": [
+     {
+      "state": null,
+      "count": 2,
+      "value": "78000.75"
+     },
+     {
+      "state": "Oferta acceptata",
+      "count": 11,
+      "value": "49863.38"
+     }
+    ],
+    "rows": [
+     ["contracts","9100200008","CT-FX-8","2024-10-10","9100000002","9100000103","Cluj","79000000-4","22000.00",null,1,"22000.00",false,"Contract fixture 8"],
+     ["contracts","9100200006","CT-FX-6","2026-05-05","9100000006","9100000101","Alba","45233140-2","56000.75",null,1,"56000.75",false,"Contract fixture 6"],
+     ["da","9100100212","DA-FX-212","2024-01-12","9100000004","9100000102","Alba","33690000-3","4532.84","Oferta acceptata",null,null,false,null],
+     ["da","9100100210","DA-FX-210","2025-03-10","9100000004","9100000102","Alba","33690000-3","4110.70","Oferta acceptata",null,null,false,null],
+     ["da","9100100208","DA-FX-208","2026-05-18","9100000004","9100000102","Alba","33690000-3","3688.56","Oferta acceptata",null,null,false,null],
+     ["da","9100100206","DA-FX-206","2024-01-16","9100000004","9100000102","Alba","33690000-3","3266.42","Oferta acceptata",null,null,false,null],
+     ["da","9100100204","DA-FX-204","2025-03-14","9100000004","9100000102","Alba","33690000-3","2844.28","Oferta acceptata",null,null,false,null],
+     ["da","9100100202","DA-FX-202","2026-05-12","9100000004","9100000102","Alba","33690000-3","2422.14","Oferta acceptata",null,null,false,null],
+     ["da","9100100109","DA-FX-109","2025-09-01","9100000006","9100000101","Alba","45233140-2","2234.17","Oferta acceptata",null,null,false,null],
+     ["da","9100100106","DA-FX-106","2025-06-07","9100000006","9100000101","Alba","45233140-2","1822.78","Oferta acceptata",null,null,false,null]
+    ]
+   },
+   "csv": {
+    "status": 200,
+    "file": "randuri-13.csv",
+    "x-total-rows": "13",
+    "x-exported-rows": "13",
+    "x-source-rows": "13",
+    "x-source-value": "127864.13",
+    "x-filtered-value": "127864.13",
+    "lines": 14,
+    "sha256": "a2f561d2f388abb905f6fc0c991f84e7294daf3679aa2c6aa413b453b8d42fc9"
+   }
+  },
+  {
+   "id": "combo:table:f4-seat-same-county",
+   "origin": "combo",
+   "source": "builder: defaultQuestion → chooseType → edits → transitionQuestion",
+   "request": {
+    "spec": {
+     "block": "table",
+     "dim": "supplier",
+     "measure": "value",
+     "topN": 10,
+     "filters": {
+      "firmSeat": "same",
+      "county": "Cluj"
+     }
+    }
+   },
+   "answer": {
+    "status": 200,
+    "ok": true,
+    "question": null,
+    "model": null,
+    "spec": {
+     "block": "table",
+     "measure": "value",
+     "filters": {
+      "county": "Cluj",
+      "firmSeat": "same"
+     },
+     "dim": "supplier",
+     "topN": 10
+    },
+    "pills": ["clasament","top 10 furnizori","valoarea înregistrată","județul Cluj","cu sediul în județul Cluj","toți anii","toate achizițiile: directe și din proceduri"],
+    "caveats": [
+     "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Județul = sediul instituției care cumpără, nu al firmei (din adresă, cod NUTS, ONRC sau UAT verificat). Instituțiile fără județ cunoscut nu intră.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
+    ],
+    "data": {
+     "block": "table",
+     "rows": [
+      {
+       "entityId": "9100000101",
+       "name": "Fixture Construct SRL",
+       "county": "Cluj",
+       "value": 454101.61,
+       "count": 6,
+       "population": null
+      },
+      {
+       "entityId": "9100000106",
+       "name": "Fixture Partener SRL",
+       "county": "Cluj",
+       "value": 47100.01,
+       "count": 2,
+       "population": null
+      },
+      {
+       "entityId": "9100000105",
+       "name": "Fixture Mic SRL",
+       "county": "Cluj",
+       "value": 12650.75,
+       "count": 3,
+       "population": null
+      }
+     ],
+     "totals": {
+      "value": 513852.37,
+      "count": 11,
+      "entities": 3
+     }
+    },
+    "displaySql": "select supplier_name, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'cluj'\n  and sediul_firmei = county  -- firme cu sediul în județul instituției (sediul: județul din SEAP)\ngroup by supplier_name\norder by 2 desc\nlimit 10;"
+   },
+   "sources": {
+    "status": 200,
+    "ok": true,
+    "total": 11,
+    "value": "513852.37",
+    "sourceTotal": 11,
+    "sourceValue": "513852.37",
+    "page": 0,
+    "pageSize": 10,
+    "accepted": {
+     "count": 8,
+     "value": "83852.35"
+    },
+    "dateFrom": "2024-04-18",
+    "dateTo": "2026-01-15",
+    "profile": false,
+    "profiles": [],
+    "profileCount": 0,
+    "profileReconciled": null,
+    "scopeNotes": [
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
+     "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Un contract cu mai mulți câștigători apare pe câte un rând pentru fiecare furnizor, cu valoarea împărțită egal. Suma folosește aceste cote; numărul de rânduri nu este numărul de contracte distincte. Detaliile și exportul păstrează valoarea integrală și numărul câștigătorilor.",
+     "Lista surselor acoperă întregul rezultat filtrat; limita de poziții din clasament sau diagramă nu limitează sursele."
+    ],
+    "statuses": [
+     {
+      "state": null,
+      "count": 3,
+      "value": "430000.02"
+     },
+     {
+      "state": "Oferta acceptata",
+      "count": 8,
+      "value": "83852.35"
+     }
+    ],
+    "rows": [
+     ["contracts","9100200002","CT-FX-2","2025-09-01","9100000001","9100000101","Cluj","45233140-2","45000.01",null,2,"90000.02",false,"Contract fixture 2"],
+     ["contracts","9100200002","CT-FX-2","2025-09-01","9100000001","9100000106","Cluj","45233140-2","45000.01",null,2,"90000.02",false,"Contract fixture 2"],
+     ["contracts","9100200001","CT-FX-1","2025-06-10","9100000002","9100000101","Cluj","45233140-2","340000.00",null,1,"340000.00",false,"Contract fixture 1"],
+     ["da","9100100020","DA-FX-20","2025-08-19","9100000001","9100000101","Cluj","45233200-1","7300.70","Oferta acceptata",null,null,false,null],
+     ["da","9100100019","DA-FX-19","2026-01-15","9100000002","9100000106","Cluj",null,"2100.00","Oferta acceptata",null,null,false,null],
+     ["da","9100100007","DA-FX-7","2025-04-22","9100000001","9100000105","Cluj","77310000-6","6100.35","Oferta acceptata",null,null,false,null],
+     ["da","9100100006","DA-FX-6","2024-04-18","9100000001","9100000105","Cluj","77310000-6","5600.00","Oferta acceptata",null,null,false,null],
+     ["da","9100100005","DA-FX-5","2025-05-09","9100000001","9100000101","Cluj","45233140-2","41000.55","Oferta acceptata",null,null,false,null],
+     ["da","9100100003","DA-FX-3","2025-01-20","9100000002","9100000105","Cluj","30192000-1","950.40","Oferta acceptata",null,null,false,null],
+     ["da","9100100002","DA-FX-2","2025-07-02","9100000002","9100000101","Cluj","45233140-2","8300.25","Oferta acceptata",null,null,false,null]
+    ]
+   },
+   "csv": {
+    "status": 200,
+    "file": "randuri-11.csv",
+    "x-total-rows": "11",
+    "x-exported-rows": "11",
+    "x-source-rows": "11",
+    "x-source-value": "513852.37",
+    "x-filtered-value": "513852.37",
+    "lines": 12,
+    "sha256": "0f3f602489ef183790663f66cae4aec3c584da6e4f56dbeeab3e39dc7fbd9f80"
+   }
+  },
+  {
+   "id": "combo:table:f4-seat-county",
+   "origin": "combo",
+   "source": "builder: defaultQuestion → chooseType → edits → transitionQuestion",
+   "request": {
+    "spec": {
+     "block": "table",
+     "dim": "supplier",
+     "measure": "value",
+     "topN": 10,
+     "filters": {
+      "seatCounty": "Cluj"
+     }
+    }
+   },
+   "answer": {
+    "status": 200,
+    "ok": true,
+    "question": null,
+    "model": null,
+    "spec": {
+     "block": "table",
+     "measure": "value",
+     "filters": {
+      "seatCounty": "Cluj"
+     },
+     "dim": "supplier",
+     "topN": 10
+    },
+    "pills": ["clasament","top 10 furnizori","valoarea înregistrată","cu sediul în județul Cluj","toți anii","toate achizițiile: directe și din proceduri"],
+    "caveats": [
+     "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
+    ],
+    "data": {
+     "block": "table",
+     "rows": [
+      {
+       "entityId": "9100000101",
+       "name": "Fixture Construct SRL",
+       "county": "Cluj",
+       "value": 515570.7,
+       "count": 10,
+       "population": null
+      },
+      {
+       "entityId": "9100000106",
+       "name": "Fixture Partener SRL",
+       "county": "Cluj",
+       "value": 47100.01,
+       "count": 2,
+       "population": null
+      },
+      {
+       "entityId": "9100000105",
+       "name": "Fixture Mic SRL",
+       "county": "Cluj",
+       "value": 13080.85,
+       "count": 4,
+       "population": null
+      }
+     ],
+     "totals": {
+      "value": 575751.56,
+      "count": 16,
+      "entities": 3
+     }
+    },
+    "displaySql": "select supplier_name, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and supplier_id in (select entity_id from marts.entity_profile\n                where role = 'supplier' and unaccent(county) ilike 'cluj')  -- sediul: județul din SEAP\ngroup by supplier_name\norder by 2 desc\nlimit 10;"
+   },
+   "sources": {
+    "status": 200,
+    "ok": true,
+    "total": 16,
+    "value": "575751.56",
+    "sourceTotal": 16,
+    "sourceValue": "575751.56",
+    "page": 0,
+    "pageSize": 10,
+    "accepted": {
+     "count": 12,
+     "value": "89750.79"
+    },
+    "dateFrom": "2024-04-18",
+    "dateTo": "2026-05-05",
+    "profile": false,
+    "profiles": [],
+    "profileCount": 0,
+    "profileReconciled": null,
+    "scopeNotes": [
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
+     "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Un contract cu mai mulți câștigători apare pe câte un rând pentru fiecare furnizor, cu valoarea împărțită egal. Suma folosește aceste cote; numărul de rânduri nu este numărul de contracte distincte. Detaliile și exportul păstrează valoarea integrală și numărul câștigătorilor.",
+     "Lista surselor acoperă întregul rezultat filtrat; limita de poziții din clasament sau diagramă nu limitează sursele."
+    ],
+    "statuses": [
+     {
+      "state": null,
+      "count": 4,
+      "value": "486000.77"
+     },
+     {
+      "state": "Oferta acceptata",
+      "count": 12,
+      "value": "89750.79"
+     }
+    ],
+    "rows": [
+     ["contracts","9100200006","CT-FX-6","2026-05-05","9100000006","9100000101","Alba","45233140-2","56000.75",null,1,"56000.75",false,"Contract fixture 6"],
+     ["contracts","9100200002","CT-FX-2","2025-09-01","9100000001","9100000101","Cluj","45233140-2","45000.01",null,2,"90000.02",false,"Contract fixture 2"],
+     ["contracts","9100200002","CT-FX-2","2025-09-01","9100000001","9100000106","Cluj","45233140-2","45000.01",null,2,"90000.02",false,"Contract fixture 2"],
+     ["contracts","9100200001","CT-FX-1","2025-06-10","9100000002","9100000101","Cluj","45233140-2","340000.00",null,1,"340000.00",false,"Contract fixture 1"],
+     ["da","9100100109","DA-FX-109","2025-09-01","9100000006","9100000101","Alba","45233140-2","2234.17","Oferta acceptata",null,null,false,null],
+     ["da","9100100106","DA-FX-106","2025-06-07","9100000006","9100000101","Alba","45233140-2","1822.78","Oferta acceptata",null,null,false,null],
+     ["da","9100100103","DA-FX-103","2025-03-04","9100000006","9100000101","Alba","45233140-2","1411.39","Oferta acceptata",null,null,false,null],
+     ["da","9100100020","DA-FX-20","2025-08-19","9100000001","9100000101","Cluj","45233200-1","7300.70","Oferta acceptata",null,null,false,null],
+     ["da","9100100019","DA-FX-19","2026-01-15","9100000002","9100000106","Cluj",null,"2100.00","Oferta acceptata",null,null,false,null],
+     ["da","9100100014","DA-FX-14","2025-09-15","9100000005","9100000105","Buzau","30192000-1","430.10","Oferta acceptata",null,null,false,null]
+    ]
+   },
+   "csv": {
+    "status": 200,
+    "file": "randuri-16.csv",
+    "x-total-rows": "16",
+    "x-exported-rows": "16",
+    "x-source-rows": "16",
+    "x-source-value": "575751.56",
+    "x-filtered-value": "575751.56",
+    "lines": 17,
+    "sha256": "803658f499cedeb0d9318bcda2648d459e1caeb499baccfd4184bbcb8c8c1ca0"
+   }
+  },
+  {
+   "id": "combo:stat:f4-seat-abroad",
+   "origin": "combo",
+   "source": "builder: defaultQuestion → chooseType → edits → transitionQuestion",
+   "request": {
+    "spec": {
+     "block": "stat",
+     "dim": "supplier",
+     "measure": "value",
+     "topN": 10,
+     "filters": {
+      "firmSeat": "abroad"
+     }
+    }
+   },
+   "answer": {
+    "status": 200,
+    "ok": true,
+    "question": null,
+    "model": null,
+    "spec": {
+     "block": "stat",
+     "measure": "value",
+     "filters": {
+      "firmSeat": "abroad"
+     },
+     "dim": "supplier",
+     "topN": 10
+    },
+    "pills": ["total","valoarea înregistrată","cu sediul în străinătate","toți anii","toate achizițiile: directe și din proceduri"],
+    "caveats": [
+     "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
+    ],
+    "data": {
+     "block": "stat",
+     "stat": {
+      "value": 95500,
+      "count": 2,
+      "byStream": [
+       {
+        "src": "da",
+        "value": 95500,
+        "count": 2
+       }
+      ]
+     }
+    },
+    "displaySql": "select sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and supplier_id in (select entity_id from marts.entity_profile\n                where role = 'supplier' and is_foreign)  -- firme cu sediul în străinătate;"
+   },
+   "sources": {
+    "status": 200,
+    "ok": true,
+    "total": 2,
+    "value": "95500.00",
+    "sourceTotal": 2,
+    "sourceValue": "95500.00",
+    "page": 0,
+    "pageSize": 10,
+    "accepted": {
+     "count": 2,
+     "value": "95500.00"
+    },
+    "dateFrom": "2024-12-12",
+    "dateTo": "2025-10-01",
+    "profile": false,
+    "profiles": [],
+    "profileCount": 0,
+    "profileReconciled": null,
+    "scopeNotes": [
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
+     "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Un contract cu mai mulți câștigători apare pe câte un rând pentru fiecare furnizor, cu valoarea împărțită egal. Suma folosește aceste cote; numărul de rânduri nu este numărul de contracte distincte. Detaliile și exportul păstrează valoarea integrală și numărul câștigătorilor."
+    ],
+    "statuses": [
+     {
+      "state": "Oferta acceptata",
+      "count": 2,
+      "value": "95500.00"
+     }
+    ],
+    "rows": [
+     ["da","9100100018","DA-FX-18","2024-12-12","9100000007","9100000104",null,"34100000-8","64000.00","Oferta acceptata",null,null,false,null],
+     ["da","9100100012","DA-FX-12","2025-10-01","9100000003","9100000104","Buzau","33600000-6","31500.00","Oferta acceptata",null,null,false,null]
+    ]
+   },
+   "csv": {
+    "status": 200,
+    "file": "randuri-2.csv",
+    "x-total-rows": "2",
+    "x-exported-rows": "2",
+    "x-source-rows": "2",
+    "x-source-value": "95500.00",
+    "x-filtered-value": "95500.00",
+    "lines": 3,
+    "sha256": "e7e382185a11af7ddb71faaece1f61ba3231f2116e74007b473de0849bfcb340"
+   }
+  },
+  {
+   "id": "combo:entity_card:f4-seat-county",
+   "origin": "combo",
+   "source": "builder: defaultQuestion → chooseType → edits → transitionQuestion",
+   "request": {
+    "spec": {
+     "block": "entity_card",
+     "dim": "supplier",
+     "measure": "value",
+     "topN": 10,
+     "filters": {
+      "seatCounty": "Cluj"
+     },
+     "rankBy": "value"
+    }
+   },
+   "answer": {
+    "status": 200,
+    "ok": true,
+    "question": null,
+    "model": null,
+    "spec": {
+     "block": "entity_card",
+     "measure": "value",
+     "filters": {
+      "seatCounty": "Cluj"
+     },
+     "dim": "supplier",
+     "topN": 10,
+     "rankBy": "value"
+    },
+    "pills": ["locul 1","cea mai mare valoare","furnizori","valoarea înregistrată","cu sediul în județul Cluj","toți anii","toate achizițiile: directe și din proceduri"],
+    "caveats": [
+     "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
+    ],
+    "data": {
+     "block": "entity_card",
+     "card": {
+      "entityId": "9100000101",
+      "name": "Fixture Construct SRL",
+      "county": "Cluj",
+      "value": 515570.7,
+      "count": 10,
+      "population": null,
+      "role": "supplier",
+      "cri": null,
+      "nFlags": 0,
+      "flags": []
+     }
+    },
+    "displaySql": "select supplier_name, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and supplier_id in (select entity_id from marts.entity_profile\n                where role = 'supplier' and unaccent(county) ilike 'cluj')  -- sediul: județul din SEAP\ngroup by supplier_name\norder by 2 desc\nlimit 1;"
+   },
+   "sources": {
+    "status": 200,
+    "ok": true,
+    "total": 10,
+    "value": "515570.70",
+    "sourceTotal": 10,
+    "sourceValue": "515570.70",
+    "page": 0,
+    "pageSize": 10,
+    "accepted": {
+     "count": 7,
+     "value": "74569.94"
+    },
+    "dateFrom": "2025-03-04",
+    "dateTo": "2026-05-05",
+    "profile": false,
+    "profiles": [],
+    "profileCount": 0,
+    "profileReconciled": null,
+    "scopeNotes": [
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
+     "Sursele sunt limitate la entitatea cu cea mai mare valoare în selecția întrebării; filtrele din listă nu schimbă câștigătorul.",
+     "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Un contract cu mai mulți câștigători apare pe câte un rând pentru fiecare furnizor, cu valoarea împărțită egal. Suma folosește aceste cote; numărul de rânduri nu este numărul de contracte distincte. Detaliile și exportul păstrează valoarea integrală și numărul câștigătorilor."
+    ],
+    "statuses": [
+     {
+      "state": null,
+      "count": 3,
+      "value": "441000.76"
+     },
+     {
+      "state": "Oferta acceptata",
+      "count": 7,
+      "value": "74569.94"
+     }
+    ],
+    "rows": [
+     ["contracts","9100200006","CT-FX-6","2026-05-05","9100000006","9100000101","Alba","45233140-2","56000.75",null,1,"56000.75",false,"Contract fixture 6"],
+     ["contracts","9100200002","CT-FX-2","2025-09-01","9100000001","9100000101","Cluj","45233140-2","45000.01",null,2,"90000.02",false,"Contract fixture 2"],
+     ["contracts","9100200001","CT-FX-1","2025-06-10","9100000002","9100000101","Cluj","45233140-2","340000.00",null,1,"340000.00",false,"Contract fixture 1"],
+     ["da","9100100109","DA-FX-109","2025-09-01","9100000006","9100000101","Alba","45233140-2","2234.17","Oferta acceptata",null,null,false,null],
+     ["da","9100100106","DA-FX-106","2025-06-07","9100000006","9100000101","Alba","45233140-2","1822.78","Oferta acceptata",null,null,false,null],
+     ["da","9100100103","DA-FX-103","2025-03-04","9100000006","9100000101","Alba","45233140-2","1411.39","Oferta acceptata",null,null,false,null],
+     ["da","9100100020","DA-FX-20","2025-08-19","9100000001","9100000101","Cluj","45233200-1","7300.70","Oferta acceptata",null,null,false,null],
+     ["da","9100100005","DA-FX-5","2025-05-09","9100000001","9100000101","Cluj","45233140-2","41000.55","Oferta acceptata",null,null,false,null],
+     ["da","9100100002","DA-FX-2","2025-07-02","9100000002","9100000101","Cluj","45233140-2","8300.25","Oferta acceptata",null,null,false,null],
+     ["da","9100100001","DA-FX-1","2025-03-14","9100000002","9100000101","Cluj","45233140-2","12500.10","Oferta acceptata",null,null,false,"Reparații drum comunal"]
+    ]
+   },
+   "csv": {
+    "status": 200,
+    "file": "randuri-10.csv",
+    "x-total-rows": "10",
+    "x-exported-rows": "10",
+    "x-source-rows": "10",
+    "x-source-value": "515570.70",
+    "x-filtered-value": "515570.70",
+    "lines": 11,
+    "sha256": "70b974361958d8b0933aca67e6f7fd12fa54cdc120d41b3aad690dd7c8f1ade8"
+   }
+  },
+  {
+   "id": "combo:scatter:f4-seat-county",
+   "origin": "combo",
+   "source": "builder: defaultQuestion → chooseType → edits → transitionQuestion",
+   "request": {
+    "spec": {
+     "block": "scatter",
+     "dim": "supplier",
+     "measure": "value",
+     "topN": 10,
+     "filters": {
+      "seatCounty": "Cluj"
+     }
+    }
+   },
+   "answer": {
+    "status": 200,
+    "ok": true,
+    "question": null,
+    "model": null,
+    "spec": {
+     "block": "scatter",
+     "measure": "value",
+     "filters": {
+      "seatCounty": "Cluj"
+     },
+     "dim": "supplier",
+     "topN": 10
+    },
+    "pills": ["risc și valoare","cu sediul în județul Cluj","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "caveats": [
+     "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
+     "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
+     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+    ],
+    "data": {
+     "block": "scatter",
+     "points": [
+      {
+       "entityId": "9100000101",
+       "name": "Fixture Construct SRL",
+       "county": "Cluj",
+       "value": 88000,
+       "cri": 0.581,
+       "nFlags": 2
+      },
+      {
+       "entityId": "9100000105",
+       "name": "Fixture Mic SRL",
+       "county": "Cluj",
+       "value": 13000,
+       "cri": 0.124,
+       "nFlags": 0
+      },
+      {
+       "entityId": "9100000112",
+       "name": "Profil Firma Doi SRL",
+       "county": "Cluj",
+       "value": 9000,
+       "cri": 0.473,
+       "nFlags": 1
+      }
+     ],
+     "density": {
+      "minLog": 3.9542425094393248,
+      "maxLog": 4.944482672150169,
+      "nx": 80,
+      "ny": 46,
+      "total": 3,
+      "cells": [
+       [1,22,1],
+       [13,6,1],
+       [80,27,1]
+      ]
+     }
+    },
+    "displaySql": "select name_display, total_ron, cri, n_flags\nfrom marts.entity_flags\nwhere n_das >= 10 and cri is not null;"
+   },
+   "sources": {
+    "status": 200,
+    "ok": true,
+    "total": 4,
+    "value": "17968.44",
+    "sourceTotal": 4,
+    "sourceValue": "17968.44",
+    "page": 0,
+    "pageSize": 10,
+    "accepted": {
+     "count": 4,
+     "value": "17968.44"
+    },
+    "dateFrom": "2025-03-04",
+    "dateTo": "2025-09-01",
+    "profile": true,
+    "profiles": [
+     {
+      "entityId": "9100000101",
+      "name": "Fixture Construct SRL",
+      "role": "supplier",
+      "count": 24,
+      "value": "88000.00",
+      "cri": 0.581,
+      "flags": ["da_concentration","da_dependence"],
+      "applicable": 4
+     },
+     {
+      "entityId": "9100000105",
+      "name": "Fixture Mic SRL",
+      "role": "supplier",
+      "count": 11,
+      "value": "13000.00",
+      "cri": 0.124,
+      "flags": [],
+      "applicable": 4
+     },
+     {
+      "entityId": "9100000112",
+      "name": "Profil Firma Doi SRL",
+      "role": "supplier",
+      "count": 13,
+      "value": "9000.00",
+      "cri": 0.473,
+      "flags": ["da_rapid"],
+      "applicable": 4
+     }
+    ],
+    "profileCount": 3,
+    "profileReconciled": false,
+    "scopeNotes": [
+     "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.",
+     "Sursele disponibile acum nu coincid exact cu instantaneul agregat al profilurilor. Recalcularea agregatelor poate rămâne în urmă față de import; totalul de mai sus este calculat direct din înregistrările disponibile."
+    ],
+    "statuses": [
+     {
+      "state": "Oferta acceptata",
+      "count": 4,
+      "value": "17968.44"
+     }
+    ],
+    "rows": [
+     ["da","9100100001","DA-FX-1","2025-03-14","9100000002","9100000101","Cluj","45233140-2","12500.10","Oferta acceptata",null,null,false,"Reparații drum comunal"],
+     ["da","9100100109","DA-FX-109","2025-09-01","9100000006","9100000101","Alba","45233140-2","2234.17","Oferta acceptata",null,null,false,null],
+     ["da","9100100106","DA-FX-106","2025-06-07","9100000006","9100000101","Alba","45233140-2","1822.78","Oferta acceptata",null,null,false,null],
+     ["da","9100100103","DA-FX-103","2025-03-04","9100000006","9100000101","Alba","45233140-2","1411.39","Oferta acceptata",null,null,false,null]
+    ]
+   },
+   "csv": {
+    "status": 200,
+    "file": "randuri-4.csv",
+    "x-total-rows": "4",
+    "x-exported-rows": "4",
+    "x-source-rows": "4",
+    "x-source-value": "17968.44",
+    "x-filtered-value": "17968.44",
+    "lines": 5,
+    "sha256": "91558f60d8c9233d86c56d4a7f76ab7a452ce5a9a1689a417516e042323c90e5"
    }
   },
   {
@@ -38186,8 +39051,9 @@
     },
     "pills": ["poziție în distribuția de risc","Fixture Medical SRL","județul Buzău","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
-     "Județul = sediul firmei (din adresă, cod NUTS sau ONRC), nu al instituțiilor care cumpără. Firmele fără județ cunoscut nu intră.",
+     "Județul = sediul firmei, nu al instituțiilor care cumpără. Firmele fără sediu cunoscut nu intră.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
      "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
@@ -38596,6 +39462,7 @@
     "pills": ["risc și valoare","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
      "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
@@ -39195,6 +40062,7 @@
     "pills": ["locul 1","cea mai riscantă (CRI)","furnizori","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
      "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
@@ -39620,7 +40488,8 @@
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
-     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "entity_card",
@@ -39856,7 +40725,8 @@
      "Despre „drumuri”: Include lucrările de îmbrăcăminte ale drumurilor.",
      "Din „drumuri” nu sunt numărate: Diverse lucrări de îmbrăcăminte (45233200-1).",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
-     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "entity_card",
@@ -40074,7 +40944,8 @@
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
      "Județul = sediul instituției care cumpără, nu al firmei (din adresă, cod NUTS, ONRC sau UAT verificat). Instituțiile fără județ cunoscut nu intră.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
-     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
     ],
     "data": {
      "block": "entity_card",

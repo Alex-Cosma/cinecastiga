@@ -56,7 +56,12 @@ export async function martColumns(sql: DbSql): Promise<MartColumns> {
         or (table_name = 'agg_map_county' and column_name = any(${sql.array([...AGG_MAP_COUNTY_SEAT_COLUMNS])}::text[]))
         or (table_name = 'agg_map_county_top' and column_name = 'top_record_id'))
   `) as unknown as { table_name: string; column_name: string }[];
-  const has = (table: string, column: string) => rows.some((r) => r.table_name === table && r.column_name === column);
+  // The tables themselves too: a caller may read another copy of the marts than information_schema describes (a test
+  // fixture's, which rewrites marts. in the text), and a missing one has nothing filled.
+  const [tables] = rows.length ? (await sql`select to_regclass('marts.entity_profile') is not null profile,
+    to_regclass('marts.entity_flags') is not null flags, to_regclass('marts.agg_map_county') is not null map`) as unknown as { profile: boolean; flags: boolean; map: boolean }[] : [];
+  const has = (table: string, column: string) => rows.some((r) => r.table_name === table && r.column_name === column)
+    && (table === "entity_profile" ? tables?.profile : table === "entity_flags" ? tables?.flags : table === "agg_map_county" ? tables?.map : true) !== false;
   const filled = async (query: () => Promise<unknown>) => Boolean(((await query()) as { ok: boolean }[])[0]?.ok);
   const columns: MartColumns = {
     // Supplier rows are written first, so a filled table answers on its first pages.

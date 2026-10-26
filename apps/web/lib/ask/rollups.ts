@@ -1,9 +1,9 @@
 import type { DbSql } from "@seap/db";
 import type { MinimumRecords, QueryPopulation } from "./population";
 import type { ScatterDensity, TableSort } from "./compile";
-import { AUTHORITY_KINDS, type AuthorityKind } from "./spec";
+import { AUTHORITY_KINDS, type AuthorityKind, type FirmSeat } from "./spec";
 import { authorityKindCond } from "./authority-kind";
-import { employeesCond, purchaseKindCond } from "./predicates";
+import { employeesCond, firmSeatCond, ownCountySql, purchaseKindCond, seatCountyCond } from "./predicates";
 import type { Procedure, PurchaseKind } from "./purchase";
 import { trendChannelColumns } from "./trend-partition";
 
@@ -84,6 +84,11 @@ export interface RollupCtx {
   procedure: Procedure | null;
   purchaseValueMin: number | null;
   purchaseValueMax: number | null;
+  /** F4: the seat of the rows' firm against their buyer county, and the firm's own county (on the rollup's firm id and county). */
+  firmSeat: FirmSeat | null;
+  seatCounty: string | null;
+  /** The seat column is filled (no condition: which column the two keys read). */
+  seatColumn: boolean;
 }
 
 /**
@@ -95,7 +100,7 @@ export const ROLLUP_CTX_KEYS = [
   "sql", "plafond", "population", "minimumRecords", "cpvPrefixes", "cpvExclude", "county", "kind", "kindIds",
   "authorityId", "supplierId", "uatSiruta", "uatAuthorityIds", "singleBidder", "minEmployees", "maxEmployees",
   "yearFrom", "yearTo", "monthFrom", "monthTo", "trendMonths", "seriesMonths", "adminSupplierIds", "comparison",
-  "purchaseKind", "procedure", "purchaseValueMin", "purchaseValueMax",
+  "purchaseKind", "procedure", "purchaseValueMin", "purchaseValueMax", "firmSeat", "seatCounty", "seatColumn",
 ] as const satisfies readonly ("sql" | keyof RollupCtx)[];
 const KNOWN_KEYS = new Set<string>(ROLLUP_CTX_KEYS);
 
@@ -128,6 +133,8 @@ export interface RollupFilters {
   kind: AuthorityKind | null;
   kindIds: readonly string[] | null;
   employees: { min: number | null; max: number | null } | null;
+  /** F4: the firm's seat (firmSeatCond, seatCountyCond) on the rollup's firm id, against its buyer county. */
+  seat: { firmSeat: FirmSeat | null; county: string | null; filled: boolean } | null;
   /** Explicit exclusions (population not_in); unknown ids are kept, as in populationSql. */
   excludeAuthorities: readonly string[];
   excludeSuppliers: readonly string[];
@@ -187,15 +194,17 @@ export function planRollup(ctx: RollupCtx, need: RollupNeed, opts: { months?: bo
   const excluded = populationExclusions(ctx.population);
   if (!excluded) return { reason: "population: only exclusions of institutions or firms are in the rollups" };
   const employees = ctx.minEmployees !== null || ctx.maxEmployees !== null ? { min: ctx.minEmployees, max: ctx.maxEmployees } : null;
+  // The seat is the firm's (its profile), compared with the row's buyer county: every source with a firm id has both.
+  const seat = ctx.firmSeat || ctx.seatCounty ? { firmSeat: ctx.firmSeat, county: ctx.seatCounty, filled: ctx.seatColumn } : null;
   const filters: RollupFilters = {
     dataset, yearFrom: ctx.yearFrom, yearTo: ctx.yearTo, county: ctx.county,
     cpvPrefixes: ctx.cpvPrefixes, cpvExclude: ctx.cpvExclude, purchaseKind: ctx.purchaseKind, kind: ctx.kind, kindIds: ctx.kind ? ctx.kindIds : null,
-    employees, excludeAuthorities: excluded.authority, excludeSuppliers: excluded.supplier,
+    employees, seat, excludeAuthorities: excluded.authority, excludeSuppliers: excluded.supplier,
     minimum: ctx.minimumRecords, months: ctx.trendMonths,
   };
   const sides = new Set<Role>();
   if (filters.kind || filters.excludeAuthorities.length) sides.add("authority");
-  if (filters.employees || filters.excludeSuppliers.length) sides.add("supplier");
+  if (filters.employees || filters.seat || filters.excludeSuppliers.length) sides.add("supplier");
   if (filters.minimum) sides.add(filters.minimum.role);
   // The purchase kind is a condition on the code, as the domain is: agg_cpv_year only.
   const cpv = filters.cpvPrefixes.length > 0 || filters.cpvExclude.length > 0 || filters.purchaseKind !== null;
@@ -261,6 +270,9 @@ function rollupWhere(sql: DbSql, source: RollupSource, f: RollupFilters, alias: 
   if (f.kind) parts.push(authorityKindCond(sql, f.kindIds!, authority!));
   // The live employees condition, on the rollup's firm id.
   if (f.employees) parts.push(employeesCond(sql, f.employees.min, f.employees.max, supplier!));
+  // The live seat conditions (F4), on the rollup's firm id and its buyer county.
+  if (f.seat?.firmSeat) parts.push(firmSeatCond(sql, f.seat.firmSeat, f.seat.filled, { supplier: supplier!, county: sql`${sql(alias)}.county` }));
+  if (f.seat?.county) parts.push(seatCountyCond(sql, f.seat.county, f.seat.filled, supplier!));
   if (f.excludeAuthorities.length)
     parts.push(sql`not (coalesce(${authority!} = any(${sql.array([...f.excludeAuthorities])}::bigint[]), false))`);
   if (f.excludeSuppliers.length)
@@ -293,7 +305,7 @@ export function rollupRows(sql: DbSql, plan: { source: RollupSource; filters: Ro
 function minimumSemiJoin(sql: DbSql, f: RollupFilters, target: Fragment, innerAlias: string, opts: { years?: boolean } = {}): Fragment {
   const { role, count } = f.minimum!;
   const everything = f.dataset === "all" && (opts.years === false || (f.yearFrom === null && f.yearTo === null)) && !f.county
-    && !f.cpvPrefixes.length && !f.cpvExclude.length && !f.purchaseKind && !f.kind && !f.employees && !f.excludeAuthorities.length && !f.excludeSuppliers.length;
+    && !f.cpvPrefixes.length && !f.cpvExclude.length && !f.purchaseKind && !f.kind && !f.employees && !f.seat && !f.excludeAuthorities.length && !f.excludeSuppliers.length;
   if (everything && role === "supplier") {
     // Over every year and channel a firm's records are n_das + n_contracts of its profile
     // (equal for all 163,158 firms on 24 Oct 2026; not for institutions, whose profile
@@ -304,7 +316,7 @@ function minimumSemiJoin(sql: DbSql, f: RollupFilters, target: Fragment, innerAl
       where ep.role = 'supplier' and ep.n_das + ep.n_contracts >= ${count}
     )`;
   }
-  const inner: RollupSource = [f.kind || f.excludeAuthorities.length ? "authority" : null, f.employees || f.excludeSuppliers.length ? "supplier" : null]
+  const inner: RollupSource = [f.kind || f.excludeAuthorities.length ? "authority" : null, f.employees || f.seat || f.excludeSuppliers.length ? "supplier" : null]
     .every((side) => side === null || side === role) ? { table: "entity", role } : { table: "pair" };
   const party = idColumn(sql, inner, role, innerAlias)!;
   const innerWhere = rollupWhere(sql, inner, { ...f, minimum: null }, innerAlias, opts);
@@ -422,6 +434,8 @@ export interface RollupTableOpts {
    * list keeps those ids, tv/tn/te stay the whole selection's and gv/gn/ge are the kept ones'.
    */
   keep?: (id: Fragment) => Fragment;
+  /** The seat column is filled (mart-columns.ts): a firm's county is its seat (predicates.ts ownCountySql, F4). */
+  seat: boolean;
 }
 export interface RollupTableRow { id: string; nm: string; co: string | null; v: string; n: string; tv?: string; tn?: string; te?: string; gv?: string; gn?: string; ge?: string }
 
@@ -443,6 +457,8 @@ export async function rollupTable(sql: DbSql, plan: { source: RollupSource; filt
   const dir = o.dir === "asc" ? sql`asc nulls first` : sql`desc nulls last`;
   const order = o.sort ? dir : sql`desc`;
   const sortKey = o.sort ?? (o.measure === "count" ? "count" : "value");
+  // The county beside each entity: an institution's own, a firm's seat (owner-seat-switch).
+  const county = ownCountySql(sql, o.dim, o.seat);
   const count = async () => Number(((await sql`
     select count(distinct ${id}) t from ${fromSource(sql, source, "p")} where ${where} and ${id} is not null
   `) as unknown as { t: string }[])[0]?.t ?? 0);
@@ -461,7 +477,7 @@ export async function rollupTable(sql: DbSql, plan: { source: RollupSource; filt
         order by ${aggSort} ${order}, g.id
         ${limit}
       )
-      select t.id, coalesce(max(ep.name_display), '(fără nume)') nm, max(ep.county) co, t.v, t.n, t.tv, t.tn, t.te, t.gv, t.gn, t.ge
+      select t.id, coalesce(max(ep.name_display), '(fără nume)') nm, max(${county}) co, t.v, t.n, t.tv, t.tn, t.te, t.gv, t.gn, t.ge
       from topg t
       left join marts.entity_profile ep on ep.entity_id = t.id and ep.role = ${o.dim}
       group by t.id, t.v, t.n, t.tv, t.tn, t.te, t.gv, t.gn, t.ge
@@ -488,7 +504,7 @@ export async function rollupTable(sql: DbSql, plan: { source: RollupSource; filt
         ${limit}
       )
       select t.id, coalesce(max(ep.name_display), '(fără nume)') nm,
-             max(ep.county) co, t.v, t.n, t.tv, t.tn, t.te
+             max(${county}) co, t.v, t.n, t.tv, t.tn, t.te
       from topg t
       left join marts.entity_profile ep on ep.entity_id = t.id and ep.role = ${o.dim}
       group by t.id, t.v, t.n, t.tv, t.tn, t.te
@@ -498,7 +514,7 @@ export async function rollupTable(sql: DbSql, plan: { source: RollupSource; filt
     return { rows, total: rows[0]?.te !== undefined ? Number(rows[0].te) : await count() };
   }
   if (source.table !== "entity") return { reason: "name and county sorts need the rollup's names (agg_entity_year)" };
-  const sortFrag = sortKey === "name" ? sql`g.nm` : sql`ep.county`;
+  const sortFrag = sortKey === "name" ? sql`g.nm` : county;
   const rows = (await sql`
     with g as (
       select ${id} id, max(p.nm) nm, sum(p.v) v, sum(p.n) n
@@ -506,7 +522,7 @@ export async function rollupTable(sql: DbSql, plan: { source: RollupSource; filt
       where ${where} and ${id} is not null
       group by ${id}
     )
-    select g.id, g.nm, ep.county co, g.v, g.n, count(*) over () te
+    select g.id, g.nm, ${county} co, g.v, g.n, count(*) over () te
     from g
     left join marts.entity_profile ep on ep.entity_id = g.id and ep.role = ${o.dim}
     ${o.keep ? sql`where ${o.keep(sql`g.id`)}` : sql``}
@@ -522,7 +538,7 @@ export async function rollupTable(sql: DbSql, plan: { source: RollupSource; filt
 
 /** case "table", dim county: the live county ranking on a rollup (every source has the buyer county). */
 export async function rollupCountyTable(sql: DbSql, plan: { source: RollupSource; filters: RollupFilters },
-  o: Omit<RollupTableOpts, "dim">): Promise<{ rows: { c: string; v: string; n: string }[]; total: number | null }> {
+  o: Omit<RollupTableOpts, "dim" | "seat">): Promise<{ rows: { c: string; v: string; n: string }[]; total: number | null }> {
   const { source, filters } = plan;
   const where = rollupWhere(sql, source, filters, "p");
   const limit = o.paged ? sql`limit ${o.pageSize} offset ${o.page * o.pageSize}` : sql`limit ${o.topN}`;
@@ -650,13 +666,20 @@ export async function rollupMap(sql: DbSql, plan: { source: RollupSource; filter
  * 'Oferta acceptata' and of a contract null, as in the drawer's union, so the
  * groups are the channels. `block` adds the condition the drawer adds for its
  * block (map: a county; breakdown: a CPV code; timeseries: a dated row; a
- * county ranking: a county). Other blocks (rankings of entities, network,
+ * county ranking: a county). A ranking of firms selected by an attribute of
+ * the firm (`firms`: the seat, F4; the employees) reads agg_entity_year: every
+ * record of it has its firm. Other blocks (other rankings of entities, network,
  * profiles) are not served. sources:stat-da-2025: 1.57–2.19 s live, 0.05 s here.
  */
 export async function rollupSourceTotals(sql: DbSql, plan: { source: RollupSource; filters: RollupFilters },
-  block: "stat" | "map" | "breakdown" | "timeseries" | "county"):
+  block: "stat" | "map" | "breakdown" | "timeseries" | "county" | "firms"):
   Promise<{ rows: { state: string | null; n: string; v: string; fn: string; fv: string; date_from: string | null; date_to: string | null }[] } | { reason: string }> {
-  if (plan.source.table !== "cpv") return { reason: "source totals read agg_cpv_year only" };
+  // A ranking of firms selected by an attribute of the firm (F4's seat, the employees): its records are those of the
+  // selected firms, every one with a firm, so agg_entity_year's firm rows (and their d0/d1) are exactly them.
+  if (block === "firms") {
+    if (plan.source.table !== "entity" || plan.source.role !== "supplier" || !(plan.filters.seat || plan.filters.employees))
+      return { reason: "a ranking's source totals read agg_entity_year when an attribute of the firm selects them" };
+  } else if (plan.source.table !== "cpv") return { reason: "source totals read agg_cpv_year only" };
   const where = rollupWhere(sql, plan.source, plan.filters, "p");
   const own = block === "map" || block === "county" ? sql`p.county is not null`
     : block === "breakdown" ? sql`p.cpv_code is not null`
@@ -665,7 +688,7 @@ export async function rollupSourceTotals(sql: DbSql, plan: { source: RollupSourc
     select case when p.src = 'da' then 'Oferta acceptata' end state,
            sum(p.n)::bigint::text n, coalesce(sum(p.v), 0)::text v, sum(p.n)::bigint::text fn, coalesce(sum(p.v), 0)::text fv,
            min(p.d0) date_from, max(p.d1) date_to
-    from marts.agg_cpv_year p where ${where} and ${own}
+    from ${fromSource(sql, plan.source, "p")} where ${where} and ${own}
     group by p.src
   `) as unknown as { state: string | null; n: string; v: string; fn: string; fv: string; date_from: string | null; date_to: string | null }[];
   return { rows };

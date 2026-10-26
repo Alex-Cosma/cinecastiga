@@ -15,8 +15,6 @@ const stat = { block: "stat", measure: "value", filters: {} };
 const table = { block: "table", dim: "supplier", measure: "value", filters: {} };
 /** One well-formed sample per key read ahead, on a question that otherwise runs today. */
 const SAMPLES: Record<Exclude<keyof typeof READ_AHEAD_KEYS, "options.members=network-group">, Record<string, unknown>> = {
-  "filters.firmSeat": { ...table, filters: { firmSeat: "other" } },
-  "filters.seatCounty": { block: "entity_card", dim: "supplier", rankBy: "value", measure: "value", filters: { seatCounty: "Cluj" } },
   "filters.sharedPartners": { block: "compare", measure: "value", filters: { supplierId: 1, compareWithId: 2, sharedPartners: true } },
   "sankey.shown": { block: "sankey", measure: "value", filters: { supplierId: 1 }, sankey: { shown: 10 } },
   "network.partners": { block: "network", measure: "value", filters: { authorityId: 1 }, network: { partners: "new" } },

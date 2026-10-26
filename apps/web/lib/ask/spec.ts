@@ -74,6 +74,7 @@ export const PURCHASE_KINDS = ["produse", "servicii", "lucrari"] as const;
 export const PROCEDURES = ["deschisa", "simplificata", "negociere_fara_publicare", "altele"] as const;
 /** The firm's seat against the buyer's county on each row (same, other) or abroad. */
 export const FIRM_SEATS = ["same", "other", "abroad"] as const;
+export type FirmSeat = (typeof FIRM_SEATS)[number];
 export const NEW_SCOPES = ["buyer", "archive", "registry"] as const;
 export const TREND_CHANGES = ["all", "up", "down", "new", "gone"] as const;
 export type TrendChange = (typeof TREND_CHANGES)[number];
@@ -310,6 +311,16 @@ export const SPEC_JSON_SCHEMA = {
         },
         purchaseValueMin: { type: "integer", minimum: 0, description: "Lei: doar achizițiile a căror valoare întreagă e cel puțin atât (ex: „peste 1 milion” → 1000000)." },
         purchaseValueMax: { type: "integer", minimum: 1, description: "Lei: doar achizițiile a căror valoare întreagă e sub atât." },
+        // F4 (plan §3): the firm's seat, one column (ONRC, then SEAP; foreign apart), two keys that exclude each other.
+        firmSeat: {
+          type: "string",
+          enum: [...FIRM_SEATS],
+          description: "Sediul firmei față de județul instituției care cumpără, pe fiecare achiziție: same = în același județ („firme locale”), other = în alt județ, abroad = în străinătate. Nu împreună cu seatCounty.",
+        },
+        seatCounty: {
+          type: "string",
+          description: "Județul sediului firmei (nu al instituției), doar când rândurile sunt firme (dim=supplier la table, trend, entity_card, scatter). Ex: „firmele din Cluj care câștigă cel mai mult” → Cluj.",
+        },
       },
     },
   },
@@ -341,6 +352,8 @@ export const IMPLEMENTED_KEYS: ReadonlySet<string> = new Set([
   ...["purchaseKind", "procedure", "purchaseValueMin", "purchaseValueMax"].map(key => `filters.${key}`),
   // F3: the evolution's months, split and same months (TIMESERIES_RULES below; compile.ts case "timeseries").
   ...["grain", "split", "months"].map(key => `timeseries.${key}`),
+  // F4: the firm's seat, against the buyer's county or its own county (SEAT_RULES below; predicates.ts firmSeatCond, seatCountyCond).
+  "filters.firmSeat", "filters.seatCounty",
 ]);
 /**
  * Paths parseSpec reads ahead of the engine (plan §3), with the stage that
@@ -351,7 +364,7 @@ export const IMPLEMENTED_KEYS: ReadonlySet<string> = new Set([
  */
 export const READ_AHEAD_KEYS = {
   "options.members=network-group": "F4",
-  "filters.firmSeat": "F4", "filters.seatCounty": "F4", "filters.sharedPartners": "F4", "sankey.shown": "F4",
+  "filters.sharedPartners": "F4", "sankey.shown": "F4",
   "network.partners": "F4", "network.since": "F4", "network.order": "F4", "network.show": "F4", "network.signals": "F4",
   "filters.newSince": "F5", "filters.newScope": "F5", "filters.mainClient": "F5", "filters.dominantSupplier": "F5",
   "filters.authorityKind=local_admin": "F5",
@@ -703,6 +716,37 @@ export const SELECTION_RULES: Readonly<Record<"purchaseKind" | "procedure" | "pu
     ? "Achizițiile directe se numără până la 2 mil. lei. Alege o limită mai mică sau și contractele." : null,
 };
 
+/** The questions whose subject are firms, where a firm's own county (seatCounty) is offered (plan §3, kit §7). */
+export const SEAT_COUNTY_BLOCKS: readonly Block[] = ["table", "trend", "entity_card", "scatter"];
+/**
+ * The rules of the firm's seat (plan §2.5, §3, F4; kit §5.4, §7): one column,
+ * two keys. firmSeat is the seat against the buyer's county on each record
+ * (same, other) or abroad; seatCounty the firm's own county, where firms are
+ * the subject. They exclude each other. A foreign firm has no MF filing, so
+ * "abroad" excludes a size; a profile has no record to compare (the county of
+ * a firm profile is its seat: seatCounty there). FilterDef.validate of
+ * lib/ask/filters/defs/seat.ts; runnableError runs both.
+ */
+export const SEAT_RULES: Readonly<Record<"firmSeat" | "seatCounty", (spec: AskSpec) => string | null>> = {
+  firmSeat: (spec) => {
+    const seat = spec.filters.firmSeat;
+    if (!seat) return null;
+    if (spec.filters.seatCounty) return "Sediul firmei e ales de două ori. Păstrează un singur sediu.";
+    if (seat === "abroad" && (spec.filters.minEmployees !== undefined || spec.filters.maxEmployees !== undefined || spec.filters.newScope === "registry"))
+      return "Firmele străine nu au bilanț și nici număr la Registrul Comerțului. Scoate angajații sau alege alt sediu.";
+    return null;
+  },
+  seatCounty: (spec) => {
+    if (!spec.filters.seatCounty) return null;
+    if (spec.dim !== "supplier" || !SEAT_COUNTY_BLOCKS.includes(spec.block))
+      return "Județul sediului se alege doar când întrebarea e despre firme. Alege „firme” sau scoate sediul.";
+    // On firm profiles the county is the seat too (countyIsFirmSeat): two of them would be two seats.
+    if (spec.filters.county && (spec.block === "scatter" || spec.block === "entity_card" && spec.rankBy !== "value"))
+      return "Sediul firmei e ales de două ori. Păstrează un singur județ.";
+    return null;
+  },
+};
+
 /** What this release can answer, on a parsed spec. Null when it can run. */
 export function runnableError(spec: AskSpec): string | null {
   const { block, dim, measure, filters } = spec;
@@ -739,7 +783,7 @@ export function runnableError(spec: AskSpec): string | null {
   }
   if (block === "trend" && (filters.monthFrom !== undefined || filters.monthTo !== undefined))
     return "Schimbarea compară doi ani întregi. Elimină explicit lunile sau alege evoluția în timp; filtrele nu au fost eliminate.";
-  for (const rule of [...Object.values(TREND_RULES), ...Object.values(SELECTION_RULES), ...Object.values(TIMESERIES_RULES)]) {
+  for (const rule of [...Object.values(TREND_RULES), ...Object.values(SELECTION_RULES), ...Object.values(TIMESERIES_RULES), ...Object.values(SEAT_RULES)]) {
     const error = rule(spec);
     if (error) return error;
   }

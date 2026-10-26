@@ -228,7 +228,8 @@ describe.skipIf(!url)("immutable monitoring (isolated PostgreSQL)",()=>{
       await checkpoint();
       const [trendRun,statRun,mapRun]=[await run(watches[0]!.id),await run(watches[1]!.id),await run(watches[2]!.id)];
       expect(trendRun.run).toMatchObject({kind:"update",methodologyChanged:true,resultChanged:false,hasAlert:true,counts:{added:0,removed:0,changed:0}});
-      expect(trendRun.methodology.answer).toEqual({question:"trend-2",conditions:{}});
+      // F4: a trend of firms shows their seat (seat-2), in this release as in the one before the trend's bump here.
+      expect(trendRun.methodology.answer).toEqual({question:"trend-2",conditions:{seat:"seat-2"}});
       for(const other of [statRun,mapRun])expect(other.run).toMatchObject({kind:"unchanged",methodologyChanged:false,hasAlert:false});
       // No methodology alert reaches it, so the changed result is not silenced: it alerts as recalculated.
       expect((await run(quiet.id)).run).toMatchObject({resultChanged:true,methodologyChanged:true,hasAlert:true});

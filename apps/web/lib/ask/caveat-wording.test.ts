@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DbSql } from "@seap/db";
-import { countyCaveat, runSpec } from "./compile";
+import { countyCaveat, runSpec, seatNote } from "./compile";
 import type { Grounding } from "./ground";
 import type { AskSpec } from "./spec";
 
@@ -26,7 +26,7 @@ const entity = (entityId: string, nameDisplay: string) => ({ query: nameDisplay,
 // R0: the county note says whose county a filter selects.
 describe("county note", () => {
   const buyer = /^Județul = sediul instituției care cumpără, nu al firmei/;
-  const firm = /^Județul = sediul firmei \(din adresă, cod NUTS sau ONRC\), nu al instituțiilor care cumpără\. Firmele fără județ cunoscut nu intră\.$/;
+  const firm = /^Județul = sediul firmei, nu al instituțiilor care cumpără\. Firmele fără sediu cunoscut nu intră\.$/;
   it.each([
     [{ block: "scatter", dim: "supplier", measure: "value", filters: { county: "Buzău" } }, "supplier"],
     [{ block: "entity_card", dim: "supplier", measure: "value", filters: { county: "Buzău" } }, "supplier"],
@@ -49,6 +49,10 @@ describe("county note", () => {
     const spec: AskSpec = { block: "entity_card", dim: "supplier", measure: "value", filters: { county: "Buzău" } };
     const result = await runSpec(emptyDatabase(), spec, { county: buzau });
     expect(result.caveats.filter((c) => c.startsWith("Județul ="))).toEqual([expect.stringMatching(firm)]);
+    // F4 (owner-seat-switch): where the seat comes from; without the marts' seat column, the SEAP county stands in, said so.
+    expect(result.caveats).toContain(seatNote(false));
+    expect(seatNote(false)).toMatch(/^Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat\./);
+    expect(seatNote(true)).toMatch(/^Județul firmei = sediul ei: ultima înmatriculare la Registrul Comerțului, apoi județul din SEAP; firmele străine apar separat\./);
   });
 });
 

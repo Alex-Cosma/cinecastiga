@@ -49,9 +49,12 @@ export function sizeRanges(min: number | null, max: number | null): number[] | n
   return Array.from({ length: to - from }, (_, i) => from + i);
 }
 
-/** The conditions each rollup reads; any other one holding a value sends the question live (fail closed, as planRollup). */
-const MONTHS_KEYS = new Set(["sql", "plafond", "county", "purchaseKind", "yearFrom", "yearTo", "monthFrom", "monthTo", "seriesMonths"]);
-const MIX_KEYS = new Set(["sql", "plafond", "county", "purchaseKind", "procedure", "purchaseValueMin", "purchaseValueMax", "singleBidder", "yearFrom", "yearTo"]);
+/**
+ * The conditions each rollup reads; any other one holding a value sends the question live (fail closed, as planRollup).
+ * seatColumn is no condition: which column the seat keys read (F4); the seat keys themselves are not kept.
+ */
+const MONTHS_KEYS = new Set(["sql", "plafond", "county", "purchaseKind", "yearFrom", "yearTo", "monthFrom", "monthTo", "seriesMonths", "seatColumn"]);
+const MIX_KEYS = new Set(["sql", "plafond", "county", "purchaseKind", "procedure", "purchaseValueMin", "purchaseValueMax", "singleBidder", "yearFrom", "yearTo", "seatColumn"]);
 const holds = (value: unknown) => value !== null && value !== undefined && value !== false && !(Array.isArray(value) && value.length === 0);
 
 function refusal(ctx: RollupCtx & { sql?: unknown }, known: ReadonlySet<string>, table: string): string | null {

@@ -15,6 +15,7 @@ const national: RollupCtx = {
   authorityId: null, supplierId: null, uatSiruta: null, uatAuthorityIds: [], singleBidder: false,
   minEmployees: null, maxEmployees: null, yearFrom: null, yearTo: null, monthFrom: null, monthTo: null, trendMonths: null, seriesMonths: null,
   adminSupplierIds: null, comparison: null, purchaseKind: null, procedure: null, purchaseValueMin: null, purchaseValueMax: null,
+  firmSeat: null, seatCounty: null, seatColumn: true,
 };
 const ctx = (patch: Partial<RollupCtx>) => ({ ...national, ...patch });
 const answers = (result: { where: unknown } | { reason: string }) => "where" in result ? "rollup" : result.reason;

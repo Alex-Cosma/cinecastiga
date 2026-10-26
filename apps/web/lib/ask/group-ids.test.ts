@@ -66,7 +66,7 @@ describe("the parts a drawer lists", () => {
 describe("the key of a selection", () => {
   const sql = {} as DbSql;
   const ctx = (spec: Partial<AskSpec> & { filters: AskSpec["filters"] }, months: [number, number] | null = null) =>
-    predicateContext(sql, { block: "trend", measure: "value", dim: "supplier", ...spec } as AskSpec, {}, { dataset: spec.dataset ?? "all", yearFrom: 2024, yearTo: 2025, trendMonths: months });
+    predicateContext(sql, { block: "trend", measure: "value", dim: "supplier", ...spec } as AskSpec, {}, { dataset: spec.dataset ?? "all", yearFrom: 2024, yearTo: 2025, trendMonths: months, seat: true });
   const key = (c: ReturnType<typeof ctx>, o: Partial<{ stamp: string; dim: "supplier" | "authority" | "county"; yearA: number; yearB: number }> = {}) =>
     trendGroupKey(c, { stamp: "db:1:2:3", dim: "supplier", yearA: 2024, yearB: 2025, ...o });
 

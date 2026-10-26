@@ -13,6 +13,8 @@ function database(state: { columns: [string, string][]; filled: string[] }) {
     statements.push(text);
     if (text.includes("information_schema.columns"))
       return Promise.resolve(state.columns.map(([table_name, column_name]) => ({ table_name, column_name })));
+    // The tables are there (a fixture's copy may lack one: mart-columns.integration.test.ts).
+    if (text.includes("to_regclass")) return Promise.resolve([{ profile: true, flags: true, map: true }]);
     const probed = text.includes("n_all_unknown < n_all") ? "agg_map_county" : /where (\w+) is not null/.exec(text)?.[1];
     return Promise.resolve([{ ok: probed != null && state.filled.includes(probed) }]);
   }) as unknown as DbSql;

@@ -309,16 +309,21 @@ export interface TrendProfile {
  * the profile lacks them), so an entity whose profile a later marts stage
  * has not written yet is never labelled without a valid CUI. A seat county
  * kept as "NA" or "Necunoscut" is unknown, as elsewhere (to-spec, the
- * alternatives' labels).
+ * alternatives' labels). A firm's county is its seat once the column is
+ * filled (`seat`, mart-columns.ts; owner-seat-switch, F4): the latest ONRC
+ * registration, then SEAP; a foreign seat has no county, its country instead.
  */
-export async function trendProfiles(sql: DbSql, wanted: { role: "authority" | "supplier"; ids: readonly string[] }[]): Promise<Map<string, TrendProfile>> {
+export async function trendProfiles(sql: DbSql, wanted: { role: "authority" | "supplier"; ids: readonly string[] }[], seat = false): Promise<Map<string, TrendProfile>> {
   const asked = wanted.filter((w) => w.ids.length > 0);
   if (asked.length === 0) return new Map();
   const ids: Fragment = asked.map((w): Fragment => sql`select ${w.role}::text role, unnest(${sql.array([...new Set(w.ids)])}::bigint[]) id`)
     .reduce((a, b): Fragment => sql`${a} union ${b}`);
+  const firmSeat: Fragment = seat ? sql`x.role = 'supplier' and ep.entity_id is not null` : sql`false`;
   const rows = (await sql`
-    select x.role, x.id::text id, coalesce(ep.name_display, e.name_display) name_display, coalesce(ep.county, e.county) county,
-           coalesce(ep.country_code, e.country_code) country_code, coalesce(ep.is_foreign, e.is_foreign, false) is_foreign,
+    select x.role, x.id::text id, coalesce(ep.name_display, e.name_display) name_display,
+           case when ${firmSeat} then ep.seat_county else coalesce(ep.county, e.county) end county,
+           coalesce(ep.country_code, e.country_code) country_code,
+           case when ${firmSeat} then ep.seat_source = 'foreign' else coalesce(ep.is_foreign, e.is_foreign, false) end is_foreign,
            ep.first_activity, ep.last_activity, e.cui_valid
     from (${ids}) x
     left join marts.entity_profile ep on ep.role = x.role and ep.entity_id = x.id

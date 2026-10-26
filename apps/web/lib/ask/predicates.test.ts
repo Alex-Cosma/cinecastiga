@@ -49,6 +49,7 @@ function fakeGrounding(spec: AskSpec): Grounding {
   if (f.supplierName || f.supplierId) g.supplier = entity(f.supplierId, "9202");
   if (f.compareWith || f.compareWithId) g.compare = entity(f.compareWithId, "9303");
   if (f.county) g.county = { query: String(f.county), canonical: String(f.county) };
+  if (f.seatCounty) g.seatCounty = { query: String(f.seatCounty), canonical: String(f.seatCounty) };
   if (f.uatSiruta) g.uat = { siruta: Number(f.uatSiruta), name: null, county: null, authorityIds: ["9404"], nAuthorities: 1 };
   if (f.adminPersonKey || f.adminName) g.admin = { query: "q", personKey: "k", display: "P", supplierIds: ["9505"], nFirms: 1, alternatives: [] };
   return g;
@@ -68,7 +69,7 @@ function trendMonthsOf(spec: AskSpec) {
 }
 const ctxFor = (spec: AskSpec): PredicateCtx =>
   predicateContext(fake, spec, fakeGrounding(spec), { dataset: spec.dataset ?? "all", yearFrom: spec.filters.yearFrom ?? null, yearTo: spec.filters.yearTo ?? null,
-    kindIds: namedKind(spec.filters.authorityKind) ? KIND_IDS : null, trendMonths: trendMonthsOf(spec) });
+    kindIds: namedKind(spec.filters.authorityKind) ? KIND_IDS : null, trendMonths: trendMonthsOf(spec), seat: true });
 
 /** Each level's output on a spec, as the engine calls it (runSpec; runRows calls the same functions). */
 function levelsOf(spec: AskSpec): Record<"row" | "group" | "profile" | "display", string[]> {
@@ -196,9 +197,35 @@ describe("the conditions of a question", () => {
     expect(kindCount(["9606"])).toBe("authority_id in (…)  -- doar spitale: 1 instituție (după nume, cu institutele clinice)");
     expect(kindCount(Array.from({ length: 351 }, (_, i) => String(i)))).toBe("authority_id in (…)  -- doar spitale: 351 de instituții (după nume, cu institutele clinice)");
     // A kind is never dropped: a caller that did not read its institutions fails.
-    expect(() => predicateContext(fake, all, fakeGrounding(all), { dataset: "all", yearFrom: null, yearTo: null })).toThrow(/were not read/);
-    // Firm profiles: the firm's own county, never the buyer's kind or locality.
-    expect(texts(profilePredicates(ctx, "supplier", 20))).toEqual(['ef.role = $1 ["supplier"]', "ef.n_das >= $1 [20]", 'lower(unaccent(ef.county)) = $1 ["cluj"]']);
+    expect(() => predicateContext(fake, all, fakeGrounding(all), { dataset: "all", yearFrom: null, yearTo: null, seat: true })).toThrow(/were not read/);
+    // Firm profiles: the firm's own county, never the buyer's kind or locality; its seat since F4 (owner-seat-switch),
+    // and before the marts build fills the column, the SEAP county of entity_flags as before.
+    expect(texts(profilePredicates(ctx, "supplier", 20))).toEqual(['ef.role = $1 ["supplier"]', "ef.n_das >= $1 [20]",
+      `ef.entity_id in (select ep.entity_id from marts.entity_profile ep where ep.role = 'supplier' and ep.seat_county = $1) ["Cluj"]`]);
+    expect(texts(profilePredicates({ ...ctx, seatColumn: false }, "supplier", 20))).toEqual(['ef.role = $1 ["supplier"]', "ef.n_das >= $1 [20]", 'lower(unaccent(ef.county)) = $1 ["cluj"]']);
+    expect(texts(profilePredicates({ ...ctx, county: null, seatCounty: "Iasi" }, "supplier", 20)).at(-1)).toMatch(/ep\.seat_county = \$1\) \["Iasi"\]$/);
+  });
+
+  it("write the firm's seat on the records, from its profile (F4, plan §2.5)", () => {
+    const firms = (filters: AskSpec["filters"], seat = true) => {
+      const spec: AskSpec = { block: "table", dim: "supplier", measure: "value", filters };
+      const ctx = { ...ctxFor(spec), seatColumn: seat };
+      return { rows: texts(rowPredicates(ctx)).slice(1), shown: displayPredicates(ctx, "T").slice(1) };
+    };
+    // Against the record's own buyer county: a Romanian firm with a known seat, a buyer with a known county.
+    expect(firms({ firmSeat: "same" }).rows).toEqual(["(d.src = 'contracts' or d.closing_value <= $1) [2000000]",
+      "exists (select 1 from marts.entity_profile ep where ep.entity_id = d.supplier_id and ep.role = 'supplier' and ep.seat_source is distinct from 'foreign' and ep.seat_county = d.county) []"]);
+    expect(firms({ firmSeat: "other" }).rows.at(-1)).toContain("ep.seat_county <> d.county");
+    expect(firms({ firmSeat: "abroad" }).rows.at(-1)).toBe("d.supplier_id in (select ep.entity_id from marts.entity_profile ep where ep.role = 'supplier' and ep.seat_source = 'foreign') []");
+    // The firm's own county: a semi-join on its profile, as the employees.
+    expect(firms({ seatCounty: "Cluj" }).rows.at(-1)).toBe('d.supplier_id in (select ep.entity_id from marts.entity_profile ep where ep.role = \'supplier\' and ep.seat_county = $1) ["Cluj"]');
+    // Before the seat column is filled: the SEAP county and the foreign mark of the profile (plan §2.5, the fallback).
+    expect(firms({ firmSeat: "same" }, false).rows.at(-1)).toContain("not coalesce(ep.is_foreign, false) and ep.county = d.county");
+    expect(firms({ firmSeat: "abroad" }, false).rows.at(-1)).toContain("coalesce(ep.is_foreign, false)");
+    expect(firms({ seatCounty: "Cluj" }, false).rows.at(-1)).toContain('lower(unaccent(ep.county)) = $1) ["cluj"]');
+    // The shown SQL says it, with where the seat comes from.
+    expect(firms({ firmSeat: "other" }).shown.at(-1)).toBe("sediul_firmei <> county  -- firme cu sediul în alt județ (sediul: ultima înmatriculare ONRC, apoi SEAP)");
+    expect(firms({ seatCounty: "Cluj" }, false).shown.at(-1)).toMatch(/unaccent\(county\) ilike 'cluj'\)  -- sediul: județul din SEAP$/);
   });
 
   it("repeat the period as a range on id-anchored selections only", () => {
@@ -258,7 +285,7 @@ describe("the conditions of a question", () => {
     expect(ctxFor(trend()).trendMonths).toBeNull();
     expect(displayPredicates(ctxFor(trend("auto")), "T").at(-1)).toBe("luna between '01' and '05'  -- aceleași luni în ambii ani");
     // Only a trend has two years to align.
-    expect(predicateContext(fake, { block: "stat", measure: "value", filters: {} }, {}, { dataset: "all", yearFrom: null, yearTo: null, trendMonths: [1, 5] }).trendMonths).toBeNull();
+    expect(predicateContext(fake, { block: "stat", measure: "value", filters: {} }, {}, { dataset: "all", yearFrom: null, yearTo: null, trendMonths: [1, 5], seat: true }).trendMonths).toBeNull();
   });
 
   it("write a trend's group as a HAVING over its two sums, and its order (trend final §3.1)", () => {

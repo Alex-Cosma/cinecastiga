@@ -30,6 +30,9 @@ export function entitySourceSpec(
   else if (spec.dim === "supplier") {
     next.filters.supplierName = row.name;
     if (row.entityId) next.filters.supplierId = Number(row.entityId);
+    // The ranked firm is seated there by construction (seatCounty selects firms, F4): its records need no seat condition,
+    // which a total of one firm would refuse. The seat against the buyer (firmSeat) selects records: it stays.
+    delete next.filters.seatCounty;
   } else {
     next.filters.authorityName = row.name;
     if (row.entityId) next.filters.authorityId = Number(row.entityId);
