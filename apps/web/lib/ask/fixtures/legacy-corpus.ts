@@ -383,6 +383,13 @@ export function legacyCorpus(ids: CorpusIdentities): CorpusEntry[] {
   combo("authorities-year", "compare", all(focalBuyer(), set({ compareWith: authority2.name, compareWithId: authority2.id }), yearsOf(b)));
   combo("suppliers-da", "compare", all(focalFirm(), set({ compareWith: supplier2.name, compareWithId: supplier2.id }), top({ dataset: "da" })));
   combo("authorities-cpv", "compare", all(focalBuyer(), set({ compareWith: authority2.name, compareWithId: authority2.id, cpvTerm: cpv.word })));
+  // F4: „Doar clienții comuni” between two firms, as the strip writes it (the pre-step P), with a card's sources and CSV;
+  // the clients' kind between firms ("+ Cine a cumpărat"); a CPV code with the codes above it.
+  combo("f4-shared", "compare", all(focalFirm(), set({ compareWith: supplier2.name, compareWithId: supplier2.id, sharedPartners: true })),
+    { rows: { scope: { role: "supplier", entityIds: [String(supplier2.id)] } } });
+  combo("f4-shared-da", "compare", all(focalFirm(), set({ compareWith: supplier2.name, compareWithId: supplier2.id, sharedPartners: true }), top({ dataset: "da" })));
+  combo("f4-clients-county", "compare", all(focalFirm(), set({ compareWith: supplier2.name, compareWithId: supplier2.id, county: ids.county })));
+  combo("f4-authorities-code", "compare", all(focalBuyer(), set({ compareWith: authority2.name, compareWithId: authority2.id, cpvTerm: cpv.group })));
   // trend
   combo("suppliers", "trend", yearsOf(a, b));
   combo("authorities", "trend", all(top({ dim: "authority" }), yearsOf(b, c)));

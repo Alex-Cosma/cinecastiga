@@ -15,7 +15,6 @@ const stat = { block: "stat", measure: "value", filters: {} };
 const table = { block: "table", dim: "supplier", measure: "value", filters: {} };
 /** One well-formed sample per key read ahead, on a question that otherwise runs today. */
 const SAMPLES: Record<Exclude<keyof typeof READ_AHEAD_KEYS, "options.members=network-group">, Record<string, unknown>> = {
-  "filters.sharedPartners": { block: "compare", measure: "value", filters: { supplierId: 1, compareWithId: 2, sharedPartners: true } },
   "filters.newSince": { ...table, filters: { newSince: 2024 } },
   "filters.newScope": { ...table, filters: { newScope: "registry" } },
   "filters.mainClient": { ...table, filters: { authorityId: 1, mainClient: true } },

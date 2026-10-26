@@ -24,6 +24,8 @@ export interface PerCapitaPopulations {
   ids: string[];
   populations: number[];
   byEntity: ReadonlyMap<string, number>;
+  /** Each administration's level: a town hall (a București sector's too) or a county council (F4: "Pe locuitor" between two of one level). */
+  levels: ReadonlyMap<string, "local" | "county">;
   local: number;
   /** București sector town halls, each with its own sector's population. */
   sector: number;
@@ -34,15 +36,16 @@ export async function readPerCapitaPopulations(q: DbSql): Promise<PerCapitaPopul
   const rows = await readPopulationMappingRows(q);
   // The two indexes are disjoint: the strict join never maps a sector name.
   const index = new Map([...uniquePopulationMappings(rows), ...sectorTownHallPopulations(rows)]);
-  const ids: string[] = [], populations: number[] = [], byEntity = new Map<string, number>();
+  const ids: string[] = [], populations: number[] = [], byEntity = new Map<string, number>(), levels = new Map<string, "local" | "county">();
   let local = 0, sector = 0, county = 0;
   for (const [id, population] of [...index].sort((a, b) => Number(a[0]) - Number(b[0]))) {
     // A non-positive value is not a denominator.
     if (!(population.value > 0)) continue;
     ids.push(id); populations.push(population.value); byEntity.set(id, population.value);
+    levels.set(id, population.level === "county" ? "county" : "local");
     if (population.level === "county") county++; else if (population.level === "sector") sector++; else local++;
   }
-  return { ids, populations, byEntity, local, sector, county };
+  return { ids, populations, byEntity, levels, local, sector, county };
 }
 
 export const PER_CAPITA_SOURCE =

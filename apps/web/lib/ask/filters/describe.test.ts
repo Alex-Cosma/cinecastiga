@@ -109,12 +109,12 @@ const cpvGroundings: (Grounding["cpv"] | undefined)[] = [
 /** The specs whose population the plan words differently: another page's selection or exclusions. */
 const relabelled = (spec: AskSpec) => Boolean(selectionOrigin(spec.population) || splitExcluded(spec.population).excluded.length);
 /**
- * A trend with its key (F2, the corpus' builderTrend entries), F3's kind, procedure or size, an evolution with its options (F3-rows), F4's seat or the network's
+ * A trend with its key (F2, the corpus' builderTrend entries), F3's kind, procedure or size, an evolution with its options (F3-rows), F4's seat, shared clients or the network's
  * and the flow's options (builderNetwork): the six grammars
  * came before them; their words are tested below.
  */
 const keyed = (spec: AskSpec) => spec.trend !== undefined || spec.timeseries !== undefined || spec.network !== undefined || spec.sankey !== undefined
-  || ["purchaseKind", "procedure", "purchaseValueMin", "purchaseValueMax", "firmSeat", "seatCounty"].some((key) => spec.filters[key as keyof AskSpec["filters"]] !== undefined);
+  || ["purchaseKind", "procedure", "purchaseValueMin", "purchaseValueMax", "firmSeat", "seatCounty", "sharedPartners"].some((key) => spec.filters[key as keyof AskSpec["filters"]] !== undefined);
 
 describe("describeConditions says what the six grammars said (plan §2.2)", () => {
   const all = [...corpus.map((c) => c.spec), ...edges];
@@ -395,6 +395,14 @@ describe("F3's common selection, in every place's words (kit §4)", () => {
     expect(size.caveats).toEqual(["Mărimea e valoarea întregului contract sau a achiziției directe, nu cota fiecărui câștigător; sumele rămân pe cote."]);
     expect(questionTitle({ ...stat, filters: { purchaseValueMin: 1_000_000, purchaseKind: "lucrari" } }))
       .toBe("Cât valorează achizițiile de lucrări făcute de instituțiile publice din toată țara, în toți anii, doar cele de peste 1 mil. lei?");
+  });
+
+  it("says „Doar clienții comuni” in the title's tail, the total line, the chip and the watch's row (F4, final compare §3.4)", () => {
+    const spec: AskSpec = { block: "compare", measure: "value", filters: { supplierName: "PORR CONSTRUCT", supplierId: 1, compareWith: "CONSTRUCȚII ERBAȘU", compareWithId: 2, sharedPartners: true } };
+    const d = describeConditions(spec);
+    expect(questionTitle(spec)).toBe("Compară PORR CONSTRUCT cu CONSTRUCȚII ERBAȘU la toate achizițiile, în toți anii, doar la clienții comuni.");
+    expect([d.byId.sharedPartners?.chip, d.totalLine, d.pills[0]]).toEqual(["Doar clienții comuni", "doar la clienții comuni", "clienții comuni"]);
+    expect(d.scope).toContainEqual({ label: "Clienții", value: "Doar instituțiile care au cumpărat de la ambele firme" });
   });
 
   it("says no kind the engine left out: the domain has no codes of it", () => {

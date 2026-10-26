@@ -105,6 +105,13 @@ export interface PredicateCtx {
   plafond: Plafond;
   /** compare: both entities, of the role of the first (the second replaces its own id condition). */
   comparison: { role: "authority" | "supplier"; focalId: string | null; compareId: string | null } | null;
+  /**
+   * F4, „Doar clienții comuni” (plan §4.6, final compare §3.4): the institutions that bought from both
+   * compared firms in the selection, found by the pre-step P (compare-engine.ts sharedPartnersPrestep) on
+   * these same conditions without it; every record of the answer, its sources and its CSV is then theirs.
+   * Null before the pre-step and on any other question.
+   */
+  shared: readonly string[] | null;
 }
 
 /**
@@ -164,6 +171,7 @@ export function predicateContext(
     comparison: spec.block === "compare"
       ? { role: authorityId ? "authority" : "supplier", focalId: authorityId ?? supplierId, compareId: grounding.compare?.entityId ?? null }
       : null,
+    shared: null,
   };
 }
 
@@ -343,6 +351,8 @@ export function rowPredicates(ctx: PredicateCtx, opts: { years?: boolean } = {})
   if (compare) parts.push(compare.role === "authority"
     ? sql`d.authority_id in (${compare.focalId}, ${compare.compareId})`
     : sql`d.supplier_id in (${compare.focalId}, ${compare.compareId})`);
+  // The shared clients of two compared firms (the pre-step P): an empty list keeps no record.
+  if (ctx.shared) parts.push(sql`d.authority_id = any(${sql.array([...ctx.shared])}::bigint[])`);
   if (ctx.uatSiruta !== null) parts.push(sql`d.authority_id = any(${sql.array(ctx.uatAuthorityIds)}::bigint[])`);
   if (ctx.singleBidder) parts.push(sql`d.is_single_bidder = true`);
   if (ctx.adminSupplierIds !== null) parts.push(sql`d.supplier_id = any(${sql.array(ctx.adminSupplierIds)}::bigint[])`);
@@ -543,6 +553,7 @@ export function displayPredicates(ctx: PredicateCtx, table: string): string[] {
   const compare = ctx.comparison;
   if (ctx.authorityId) conds.push(compare ? `authority_id in (${ctx.authorityId}, ${compare.compareId})` : `authority_id = ${ctx.authorityId}`);
   if (ctx.supplierId) conds.push(compare && !ctx.authorityId ? `supplier_id in (${ctx.supplierId}, ${compare.compareId})` : `supplier_id = ${ctx.supplierId}`);
+  if (ctx.shared) conds.push(`authority_id in (…)  -- doar clienții comuni: ${countWords(ctx.shared.length, "instituție", "instituții")} care au cumpărat de la ambele firme în această selecție`);
   if (ctx.uatSiruta !== null)
     conds.push(
       `authority_id in (${ctx.uatAuthorityIds.join(", ")})  -- administrația locală a UAT ${ctx.uatSiruta} (asociere strictă)`,

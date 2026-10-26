@@ -21,6 +21,7 @@ vi.mock("@/lib/ask/features", () => import("../../../lib/ask/features"));
 vi.mock("@/lib/ask/facets", () => import("../../../lib/ask/facets"));
 vi.mock("@/lib/ask/facet-parts", () => import("../../../lib/ask/facet-parts"));
 vi.mock("@/lib/ask/answer-facts", () => import("../../../lib/ask/answer-facts"));
+vi.mock("@/lib/ask/compare-engine", () => import("../../../lib/ask/compare-engine"));
 import { POST as ask } from "./route";
 import { POST as rows } from "./rows/route";
 import { POST as csv } from "./rows/csv/route";

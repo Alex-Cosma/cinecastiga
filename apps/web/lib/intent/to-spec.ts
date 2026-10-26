@@ -269,12 +269,21 @@ export function specFor(input: Interpretation, asked: IntentKind, choice: Choice
       }
       break;
     }
-    case "compare":
+    case "compare": {
       raw.block = "compare";
       raw.comparisonMode = "transactions";
       raw.measure = "value";
-      delete f.uatSiruta; delete f.uatName; delete f.county; delete f.authorityKind;
+      delete f.uatSiruta; delete f.uatName;
+      // Between two firms the county and the kind are their clients' (plan §2.7, final compare §3.5: „+ Cine a
+      // cumpărat”), and an institution is never written: it would make the question a comparison of institutions.
+      const firms = i.compareWith?.role === "supplier" || !i.compareWith && Boolean(f.supplierName || f.supplierId) && !(f.authorityName || f.authorityId);
+      if (firms && (f.authorityName || f.authorityId)) {
+        notes.push(`Comparația a două firme nu se restrânge la o instituție; am păstrat comparația, fără „${f.authorityName ?? "instituția"}”.`);
+        delete f.authorityName; delete f.authorityId;
+      }
+      if (!firms) { delete f.county; delete f.authorityKind; }
       break;
+    }
     case "signals": {
       raw.measure = "value";
       // risk profiles compare institutions with each other; never a one-town-hall population (localityScopeSupport)

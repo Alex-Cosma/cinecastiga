@@ -13,7 +13,7 @@ const national: RollupCtx = {
   authorityId: null, supplierId: null, uatSiruta: null, uatAuthorityIds: [], singleBidder: false,
   minEmployees: null, maxEmployees: null, yearFrom: null, yearTo: null, monthFrom: null, monthTo: null, trendMonths: null, seriesMonths: null,
   adminSupplierIds: null, comparison: null, purchaseKind: null, procedure: null, purchaseValueMin: null, purchaseValueMax: null,
-  firmSeat: null, seatCounty: null, seatColumn: true,
+  firmSeat: null, seatCounty: null, seatColumn: true, shared: null,
 };
 const source = (ctx: Partial<RollupCtx> & Record<string, unknown>, need: Parameters<typeof planRollup>[1]) => {
   const plan = planRollup({ ...national, ...ctx }, need);
@@ -149,7 +149,7 @@ describe("which rollup answers a selection (24 Oct 2026 slow cases)", () => {
       singleBidder: true, minEmployees: 1, maxEmployees: 9, yearFrom: 2024, yearTo: 2025, monthFrom: 1, monthTo: 6, trendMonths: [1, 5], seriesMonths: [1, 5],
       adminSupplierIds: ["4"], comparison: { role: "supplier", focalId: "2", compareId: "5" },
       purchaseKind: "lucrari", procedure: "deschisa", purchaseValueMin: 1_000_000, purchaseValueMax: 2_000_000,
-      firmSeat: "other", seatCounty: "Cluj", seatColumn: true,
+      firmSeat: "other", seatCounty: "Cluj", seatColumn: true, shared: ["6"],
     };
     for (const key of Object.keys(active) as (keyof RollupCtx)[]) {
       // The kind comes with its institutions; their list alone is no condition.

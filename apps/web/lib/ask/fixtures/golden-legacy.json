@@ -1017,11 +1017,13 @@
        "years": [
         {
          "year": 2025,
-         "value": 459569.95
+         "value": 459569.95,
+         "count": 9
         },
         {
          "year": 2026,
-         "value": 56000.75
+         "value": 56000.75,
+         "count": 1
         }
        ],
        "domains": [
@@ -1085,11 +1087,13 @@
        "years": [
         {
          "year": 2025,
-         "value": 45000.01
+         "value": 45000.01,
+         "count": 1
         },
         {
          "year": 2026,
-         "value": 2100
+         "value": 2100,
+         "count": 1
         }
        ],
        "domains": [
@@ -9504,7 +9508,8 @@
          "value": 362000,
          "count": 2,
          "singleBid": 1,
-         "bidsKnown": 2
+         "bidsKnown": 2,
+         "distinct": 2
         }
        },
        "partners": 4,
@@ -9537,15 +9542,18 @@
        "years": [
         {
          "year": 2024,
-         "value": 45100
+         "value": 45100,
+         "count": 2
         },
         {
          "year": 2025,
-         "value": 361750.75
+         "value": 361750.75,
+         "count": 4
         },
         {
          "year": 2026,
-         "value": 2100
+         "value": 2100,
+         "count": 1
         }
        ],
        "domains": [
@@ -9571,7 +9579,13 @@
         "from": 2024,
         "to": 2026
        },
-       "firm": null
+       "firm": null,
+       "seats": {
+        "same": 363850.75,
+        "other": 45100,
+        "abroad": 0,
+        "unknown": 0
+       }
       },
       {
        "entityId": "9100000003",
@@ -9594,7 +9608,8 @@
          "value": 3325000.5,
          "count": 2,
          "singleBid": 0,
-         "bidsKnown": 1
+         "bidsKnown": 1,
+         "distinct": 2
         }
        },
        "partners": 2,
@@ -9615,15 +9630,18 @@
        "years": [
         {
          "year": 2024,
-         "value": 134901.4
+         "value": 134901.4,
+         "count": 2
         },
         {
          "year": 2025,
-         "value": 64300.8
+         "value": 64300.8,
+         "count": 3
         },
         {
          "year": 2026,
-         "value": 3222400.15
+         "value": 3222400.15,
+         "count": 2
         }
        ],
        "domains": [
@@ -9644,7 +9662,13 @@
         "from": 2024,
         "to": 2026
        },
-       "firm": null
+       "firm": null,
+       "seats": {
+        "same": 3390102.35,
+        "other": 0,
+        "abroad": 31500,
+        "unknown": 0
+       }
       }
      ],
      "shared": {
@@ -10829,7 +10853,8 @@
        "years": [
         {
          "year": 2025,
-         "value": 459569.95
+         "value": 459569.95,
+         "count": 9
         }
        ],
        "domains": [
@@ -10887,7 +10912,8 @@
        "years": [
         {
          "year": 2025,
-         "value": 45000.01
+         "value": 45000.01,
+         "count": 1
         }
        ],
        "domains": [
@@ -27852,7 +27878,8 @@
          "value": 362000,
          "count": 2,
          "singleBid": 1,
-         "bidsKnown": 2
+         "bidsKnown": 2,
+         "distinct": 2
         }
        },
        "partners": 4,
@@ -27885,15 +27912,18 @@
        "years": [
         {
          "year": 2024,
-         "value": 45100
+         "value": 45100,
+         "count": 2
         },
         {
          "year": 2025,
-         "value": 361750.75
+         "value": 361750.75,
+         "count": 4
         },
         {
          "year": 2026,
-         "value": 2100
+         "value": 2100,
+         "count": 1
         }
        ],
        "domains": [
@@ -27919,7 +27949,13 @@
         "from": 2024,
         "to": 2026
        },
-       "firm": null
+       "firm": null,
+       "seats": {
+        "same": 363850.75,
+        "other": 45100,
+        "abroad": 0,
+        "unknown": 0
+       }
       },
       {
        "entityId": "9100000003",
@@ -27942,7 +27978,8 @@
          "value": 3325000.5,
          "count": 2,
          "singleBid": 0,
-         "bidsKnown": 1
+         "bidsKnown": 1,
+         "distinct": 2
         }
        },
        "partners": 2,
@@ -27963,15 +28000,18 @@
        "years": [
         {
          "year": 2024,
-         "value": 134901.4
+         "value": 134901.4,
+         "count": 2
         },
         {
          "year": 2025,
-         "value": 64300.8
+         "value": 64300.8,
+         "count": 3
         },
         {
          "year": 2026,
-         "value": 3222400.15
+         "value": 3222400.15,
+         "count": 2
         }
        ],
        "domains": [
@@ -27992,7 +28032,13 @@
         "from": 2024,
         "to": 2026
        },
-       "firm": null
+       "firm": null,
+       "seats": {
+        "same": 3390102.35,
+        "other": 0,
+        "abroad": 31500,
+        "unknown": 0
+       }
       }
      ],
      "shared": {
@@ -28178,11 +28224,13 @@
        "years": [
         {
          "year": 2025,
-         "value": 459569.95
+         "value": 459569.95,
+         "count": 9
         },
         {
          "year": 2026,
-         "value": 56000.75
+         "value": 56000.75,
+         "count": 1
         }
        ],
        "domains": [
@@ -28246,11 +28294,13 @@
        "years": [
         {
          "year": 2025,
-         "value": 45000.01
+         "value": 45000.01,
+         "count": 1
         },
         {
          "year": 2026,
-         "value": 2100
+         "value": 2100,
+         "count": 1
         }
        ],
        "domains": [
@@ -28449,7 +28499,8 @@
          "value": 340000,
          "count": 1,
          "singleBid": 1,
-         "bidsKnown": 1
+         "bidsKnown": 1,
+         "distinct": 1
         }
        },
        "partners": 2,
@@ -28470,7 +28521,8 @@
        "years": [
         {
          "year": 2025,
-         "value": 361750.75
+         "value": 361750.75,
+         "count": 4
         }
        ],
        "domains": [
@@ -28491,7 +28543,13 @@
         "from": 2024,
         "to": 2026
        },
-       "firm": null
+       "firm": null,
+       "seats": {
+        "same": 361750.75,
+        "other": 0,
+        "abroad": 0,
+        "unknown": 0
+       }
       },
       {
        "entityId": "9100000003",
@@ -28535,7 +28593,8 @@
        "years": [
         {
          "year": 2025,
-         "value": 64300.8
+         "value": 64300.8,
+         "count": 3
         }
        ],
        "domains": [
@@ -28556,7 +28615,13 @@
         "from": 2024,
         "to": 2026
        },
-       "firm": null
+       "firm": null,
+       "seats": {
+        "same": 32800.8,
+        "other": 0,
+        "abroad": 31500,
+        "unknown": 0
+       }
       }
      ],
      "shared": {
@@ -28724,7 +28789,8 @@
        "years": [
         {
          "year": 2025,
-         "value": 74569.94
+         "value": 74569.94,
+         "count": 7
         }
        ],
        "domains": [
@@ -28782,7 +28848,8 @@
        "years": [
         {
          "year": 2026,
-         "value": 2100
+         "value": 2100,
+         "count": 1
         }
        ],
        "domains": [],
@@ -28959,7 +29026,8 @@
          "value": 340000,
          "count": 1,
          "singleBid": 1,
-         "bidsKnown": 1
+         "bidsKnown": 1,
+         "distinct": 1
         }
        },
        "partners": 1,
@@ -28974,7 +29042,8 @@
        "years": [
         {
          "year": 2025,
-         "value": 360800.35
+         "value": 360800.35,
+         "count": 3
         }
        ],
        "domains": [
@@ -28990,7 +29059,14 @@
         "from": 2024,
         "to": 2026
        },
-       "firm": null
+       "firm": null,
+       "general": 0,
+       "seats": {
+        "same": 360800.35,
+        "other": 0,
+        "abroad": 0,
+        "unknown": 0
+       }
       },
       {
        "entityId": "9100000003",
@@ -29026,7 +29102,14 @@
         "from": 2024,
         "to": 2026
        },
-       "firm": null
+       "firm": null,
+       "general": 0,
+       "seats": {
+        "same": 0,
+        "other": 0,
+        "abroad": 0,
+        "unknown": 0
+       }
       }
      ],
      "shared": {
@@ -29036,6 +29119,1117 @@
     },
     "partialYears": [],
     "displaySql": "select authority_id, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '45233%')\n  and not (cpv_code like '452332%')  -- excluse din subiect\n  and authority_id in (9100000002, 9100000003)\ngroup by authority_id;\n-- + ani, domenii, parteneri comuni pe aceeași selecție\n-- + profilul de risc istoric: marts.entity_flags (toate achizițiile directe)"
+   },
+   "sources": {
+    "status": 200,
+    "ok": true,
+    "total": 3,
+    "value": "360800.35",
+    "sourceTotal": 3,
+    "sourceValue": "360800.35",
+    "page": 0,
+    "pageSize": 10,
+    "accepted": {
+     "count": 2,
+     "value": "20800.35"
+    },
+    "dateFrom": "2025-03-14",
+    "dateTo": "2025-07-02",
+    "profile": false,
+    "profiles": [],
+    "profileCount": 0,
+    "profileReconciled": null,
+    "scopeNotes": [
+     "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Un contract cu mai mulți câștigători apare pe câte un rând pentru fiecare furnizor, cu valoarea împărțită egal. Suma folosește aceste cote; numărul de rânduri nu este numărul de contracte distincte. Detaliile și exportul păstrează valoarea integrală și numărul câștigătorilor."
+    ],
+    "statuses": [
+     {
+      "state": null,
+      "count": 1,
+      "value": "340000.00"
+     },
+     {
+      "state": "Oferta acceptata",
+      "count": 2,
+      "value": "20800.35"
+     }
+    ],
+    "rows": [
+     ["contracts","9100200001","CT-FX-1","2025-06-10","9100000002","9100000101","Cluj","45233140-2","340000.00",null,1,"340000.00",false,"Contract fixture 1"],
+     ["da","9100100001","DA-FX-1","2025-03-14","9100000002","9100000101","Cluj","45233140-2","12500.10","Oferta acceptata",null,null,false,"Reparații drum comunal"],
+     ["da","9100100002","DA-FX-2","2025-07-02","9100000002","9100000101","Cluj","45233140-2","8300.25","Oferta acceptata",null,null,false,null]
+    ]
+   },
+   "csv": {
+    "status": 200,
+    "file": "randuri-3.csv",
+    "x-total-rows": "3",
+    "x-exported-rows": "3",
+    "x-source-rows": "3",
+    "x-source-value": "360800.35",
+    "x-filtered-value": "360800.35",
+    "lines": 4,
+    "sha256": "76a3ce068140adb1eaba2571c4eae800730dc3c6c1faeea2e743d97bcceb2d35"
+   }
+  },
+  {
+   "id": "combo:compare:f4-shared",
+   "origin": "combo",
+   "source": "builder: defaultQuestion → chooseType → edits → transitionQuestion",
+   "request": {
+    "spec": {
+     "block": "compare",
+     "dim": "supplier",
+     "measure": "value",
+     "topN": 10,
+     "filters": {
+      "supplierName": "Fixture Construct SRL",
+      "supplierId": 9100000101,
+      "compareWith": "Fixture Partener SRL",
+      "compareWithId": 9100000106,
+      "sharedPartners": true
+     },
+     "comparisonMode": "transactions"
+    },
+    "rows": {
+     "scope": {
+      "role": "supplier",
+      "entityIds": ["9100000106"]
+     }
+    }
+   },
+   "answer": {
+    "status": 200,
+    "ok": true,
+    "question": null,
+    "model": null,
+    "spec": {
+     "block": "compare",
+     "measure": "value",
+     "filters": {
+      "supplierName": "Fixture Construct SRL",
+      "compareWith": "Fixture Partener SRL",
+      "supplierId": 9100000101,
+      "compareWithId": 9100000106,
+      "sharedPartners": true
+     },
+     "dim": "supplier",
+     "topN": 10,
+     "comparisonMode": "transactions"
+    },
+    "pills": [
+     "comparație",
+     "valoarea înregistrată",
+     "Fixture Construct SRL",
+     "vs Fixture Partener SRL",
+     "clienții comuni",
+     "toți anii",
+     "toate achizițiile: directe și din proceduri"
+    ],
+    "caveats": [
+     "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
+     "An cu date parțiale sau provizorii: 2026 (achizițiile directe până la 20.06.2026; contractele până la 25.06.2026; contractele datate după 31.05.2026 sunt provizorii). Totalul lui nu este complet; nu îl compara direct cu ceilalți ani din grafic. SEAP publică multe contracte la câteva săptămâni sau luni după semnare: cifrele provizorii pot crește la actualizările următoare."
+    ],
+    "data": {
+     "block": "compare",
+     "entities": [
+      {
+       "entityId": "9100000101",
+       "name": "Fixture Construct SRL",
+       "county": "Cluj",
+       "role": "supplier",
+       "value": 454101.61,
+       "count": 6,
+       "cri": 0.581,
+       "nFlags": 2,
+       "flags": ["da_concentration","da_dependence"],
+       "population": null,
+       "hasProfile": true,
+       "streams": {
+        "da": {
+         "value": 69101.6,
+         "count": 4
+        },
+        "contracts": {
+         "value": 385000.01,
+         "count": 2,
+         "singleBid": 1,
+         "bidsKnown": 2
+        }
+       },
+       "partners": 2,
+       "topPartners": [
+        {
+         "entityId": "9100000002",
+         "name": "Municipiul Fixture Nord",
+         "value": 360800.35,
+         "count": 3
+        },
+        {
+         "entityId": "9100000001",
+         "name": "Comuna Fixture Vest",
+         "value": 93301.26,
+         "count": 3
+        }
+       ],
+       "years": [
+        {
+         "year": 2025,
+         "value": 454101.61,
+         "count": 6
+        }
+       ],
+       "domains": [
+        {
+         "code": "45233",
+         "name": "Lucrări de construcții, de fundații și de îmbrăcăminte pentru autostrăzi și drumuri",
+         "value": 454101.61
+        }
+       ],
+       "domainCount": 1,
+       "noCpvValue": 0,
+       "active": {
+        "from": 2025,
+        "to": 2026
+       },
+       "firm": {
+        "employees": 3,
+        "year": 2024,
+        "turnover": 410000
+       },
+       "whole": {
+        "value": 515570.7,
+        "count": 10,
+        "partners": 3
+       },
+       "joint": {
+        "value": 45000.01,
+        "contracts": 1
+       }
+      },
+      {
+       "entityId": "9100000106",
+       "name": "Fixture Partener SRL",
+       "county": "Cluj",
+       "role": "supplier",
+       "value": 47100.01,
+       "count": 2,
+       "cri": null,
+       "nFlags": 0,
+       "flags": [],
+       "population": null,
+       "hasProfile": false,
+       "streams": {
+        "da": {
+         "value": 2100,
+         "count": 1
+        },
+        "contracts": {
+         "value": 45000.01,
+         "count": 1,
+         "singleBid": 0,
+         "bidsKnown": 1
+        }
+       },
+       "partners": 2,
+       "topPartners": [
+        {
+         "entityId": "9100000001",
+         "name": "Comuna Fixture Vest",
+         "value": 45000.01,
+         "count": 1
+        },
+        {
+         "entityId": "9100000002",
+         "name": "Municipiul Fixture Nord",
+         "value": 2100,
+         "count": 1
+        }
+       ],
+       "years": [
+        {
+         "year": 2025,
+         "value": 45000.01,
+         "count": 1
+        },
+        {
+         "year": 2026,
+         "value": 2100,
+         "count": 1
+        }
+       ],
+       "domains": [
+        {
+         "code": "45233",
+         "name": "Lucrări de construcții, de fundații și de îmbrăcăminte pentru autostrăzi și drumuri",
+         "value": 45000.01
+        }
+       ],
+       "domainCount": 1,
+       "noCpvValue": 2100,
+       "active": {
+        "from": 2025,
+        "to": 2026
+       },
+       "firm": {
+        "employees": 12,
+        "year": 2024,
+        "turnover": 900000
+       },
+       "whole": {
+        "value": 47100.01,
+        "count": 2,
+        "partners": 2
+       },
+       "joint": {
+        "value": 45000.01,
+        "contracts": 1
+       }
+      }
+     ],
+     "shared": {
+      "total": 2,
+      "rows": [
+       {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "a": {
+         "value": 360800.35,
+         "count": 3,
+         "joint": 0
+        },
+        "b": {
+         "value": 2100,
+         "count": 1,
+         "joint": 0
+        }
+       },
+       {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "a": {
+         "value": 93301.26,
+         "count": 3,
+         "joint": 45000.01
+        },
+        "b": {
+         "value": 45000.01,
+         "count": 1,
+         "joint": 45000.01
+        }
+       }
+      ]
+     },
+     "joint": {
+      "total": 1,
+      "rows": [
+       {
+        "nid": "9100400002",
+        "authority": "Comuna Fixture Vest",
+        "date": "2025-09-01 10:00",
+        "value": 90000.02
+       }
+      ]
+     }
+    },
+    "partialYears": [
+     {
+      "year": 2026,
+      "note": "achizițiile directe până la 20.06.2026; contractele până la 25.06.2026; contractele datate după 31.05.2026 sunt provizorii",
+      "provisional": true
+     }
+    ],
+    "displaySql": "select supplier_id, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and supplier_id in (9100000101, 9100000106)\ngroup by supplier_id;\n-- + ani, domenii, parteneri comuni pe aceeași selecție\n-- + profilul de risc istoric: marts.entity_flags (toate achizițiile directe)\n-- doar clienții comuni: authority_id în instituțiile care au cumpărat de la ambele firme în această selecție (pre-pasul P)"
+   },
+   "sources": {
+    "status": 200,
+    "ok": true,
+    "total": 2,
+    "value": "47100.01",
+    "sourceTotal": 2,
+    "sourceValue": "47100.01",
+    "page": 0,
+    "pageSize": 10,
+    "accepted": {
+     "count": 1,
+     "value": "2100.00"
+    },
+    "dateFrom": "2025-09-01",
+    "dateTo": "2026-01-15",
+    "profile": false,
+    "profiles": [],
+    "profileCount": 0,
+    "profileReconciled": null,
+    "scopeNotes": [
+     "Doar clienții comuni: 2 instituții care au cumpărat de la ambele firme în selecția aleasă; sursele sunt înregistrările lor.",
+     "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Un contract cu mai mulți câștigători apare pe câte un rând pentru fiecare furnizor, cu valoarea împărțită egal. Suma folosește aceste cote; numărul de rânduri nu este numărul de contracte distincte. Detaliile și exportul păstrează valoarea integrală și numărul câștigătorilor."
+    ],
+    "statuses": [
+     {
+      "state": null,
+      "count": 1,
+      "value": "45000.01"
+     },
+     {
+      "state": "Oferta acceptata",
+      "count": 1,
+      "value": "2100.00"
+     }
+    ],
+    "rows": [
+     ["contracts","9100200002","CT-FX-2","2025-09-01","9100000001","9100000106","Cluj","45233140-2","45000.01",null,2,"90000.02",false,"Contract fixture 2"],
+     ["da","9100100019","DA-FX-19","2026-01-15","9100000002","9100000106","Cluj",null,"2100.00","Oferta acceptata",null,null,false,null]
+    ]
+   },
+   "csv": {
+    "status": 200,
+    "file": "randuri-2.csv",
+    "x-total-rows": "2",
+    "x-exported-rows": "2",
+    "x-source-rows": "2",
+    "x-source-value": "47100.01",
+    "x-filtered-value": "47100.01",
+    "lines": 3,
+    "sha256": "6da1431e38f91e2f418fb452fc11aeeed47ab37968ecf45ef1a9c348f58612d1"
+   }
+  },
+  {
+   "id": "combo:compare:f4-shared-da",
+   "origin": "combo",
+   "source": "builder: defaultQuestion → chooseType → edits → transitionQuestion",
+   "request": {
+    "spec": {
+     "block": "compare",
+     "dim": "supplier",
+     "measure": "value",
+     "topN": 10,
+     "filters": {
+      "supplierName": "Fixture Construct SRL",
+      "supplierId": 9100000101,
+      "compareWith": "Fixture Partener SRL",
+      "compareWithId": 9100000106,
+      "sharedPartners": true
+     },
+     "comparisonMode": "transactions",
+     "dataset": "da"
+    }
+   },
+   "answer": {
+    "status": 200,
+    "ok": true,
+    "question": null,
+    "model": null,
+    "spec": {
+     "block": "compare",
+     "measure": "value",
+     "filters": {
+      "supplierName": "Fixture Construct SRL",
+      "compareWith": "Fixture Partener SRL",
+      "supplierId": 9100000101,
+      "compareWithId": 9100000106,
+      "sharedPartners": true
+     },
+     "dataset": "da",
+     "dim": "supplier",
+     "topN": 10,
+     "comparisonMode": "transactions"
+    },
+    "pills": ["comparație","valoarea înregistrată","Fixture Construct SRL","vs Fixture Partener SRL","clienții comuni","toți anii","doar achizițiile directe"],
+    "caveats": [
+     "Sursă: DOAR achiziții directe.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
+     "An acoperit parțial de date: 2026 (date până la 20.06.2026). Totalul lui nu acoperă un an întreg; nu îl compara direct cu ceilalți ani din grafic."
+    ],
+    "data": {
+     "block": "compare",
+     "entities": [
+      {
+       "entityId": "9100000101",
+       "name": "Fixture Construct SRL",
+       "county": "Cluj",
+       "role": "supplier",
+       "value": 20800.35,
+       "count": 2,
+       "cri": 0.581,
+       "nFlags": 2,
+       "flags": ["da_concentration","da_dependence"],
+       "population": null,
+       "hasProfile": true,
+       "streams": {
+        "da": {
+         "value": 20800.35,
+         "count": 2
+        },
+        "contracts": {
+         "value": 0,
+         "count": 0,
+         "singleBid": null,
+         "bidsKnown": 0
+        }
+       },
+       "partners": 1,
+       "topPartners": [
+        {
+         "entityId": "9100000002",
+         "name": "Municipiul Fixture Nord",
+         "value": 20800.35,
+         "count": 2
+        }
+       ],
+       "years": [
+        {
+         "year": 2025,
+         "value": 20800.35,
+         "count": 2
+        }
+       ],
+       "domains": [
+        {
+         "code": "45233",
+         "name": "Lucrări de construcții, de fundații și de îmbrăcăminte pentru autostrăzi și drumuri",
+         "value": 20800.35
+        }
+       ],
+       "domainCount": 1,
+       "noCpvValue": 0,
+       "active": {
+        "from": 2025,
+        "to": 2026
+       },
+       "firm": {
+        "employees": 3,
+        "year": 2024,
+        "turnover": 410000
+       },
+       "whole": {
+        "value": 74569.94,
+        "count": 7,
+        "partners": 3
+       }
+      },
+      {
+       "entityId": "9100000106",
+       "name": "Fixture Partener SRL",
+       "county": "Cluj",
+       "role": "supplier",
+       "value": 2100,
+       "count": 1,
+       "cri": null,
+       "nFlags": 0,
+       "flags": [],
+       "population": null,
+       "hasProfile": false,
+       "streams": {
+        "da": {
+         "value": 2100,
+         "count": 1
+        },
+        "contracts": {
+         "value": 0,
+         "count": 0,
+         "singleBid": null,
+         "bidsKnown": 0
+        }
+       },
+       "partners": 1,
+       "topPartners": [
+        {
+         "entityId": "9100000002",
+         "name": "Municipiul Fixture Nord",
+         "value": 2100,
+         "count": 1
+        }
+       ],
+       "years": [
+        {
+         "year": 2026,
+         "value": 2100,
+         "count": 1
+        }
+       ],
+       "domains": [],
+       "domainCount": 0,
+       "noCpvValue": 2100,
+       "active": {
+        "from": 2025,
+        "to": 2026
+       },
+       "firm": {
+        "employees": 12,
+        "year": 2024,
+        "turnover": 900000
+       },
+       "whole": {
+        "value": 2100,
+        "count": 1,
+        "partners": 1
+       }
+      }
+     ],
+     "shared": {
+      "total": 1,
+      "rows": [
+       {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "a": {
+         "value": 20800.35,
+         "count": 2
+        },
+        "b": {
+         "value": 2100,
+         "count": 1
+        }
+       }
+      ]
+     }
+    },
+    "partialYears": [
+     {
+      "year": 2026,
+      "note": "date până la 20.06.2026"
+     }
+    ],
+    "displaySql": "select supplier_id, sum(closing_value), count(*)\nfrom marts.da_transactions\nwhere closing_value > 0\n  and closing_value <= 2000000  -- plafon plauzibilitate\n  and supplier_id in (9100000101, 9100000106)\ngroup by supplier_id;\n-- + ani, domenii, parteneri comuni pe aceeași selecție\n-- + profilul de risc istoric: marts.entity_flags (toate achizițiile directe)\n-- doar clienții comuni: authority_id în instituțiile care au cumpărat de la ambele firme în această selecție (pre-pasul P)"
+   },
+   "sources": {
+    "status": 200,
+    "ok": true,
+    "total": 3,
+    "value": "22900.35",
+    "sourceTotal": 3,
+    "sourceValue": "22900.35",
+    "page": 0,
+    "pageSize": 10,
+    "accepted": {
+     "count": 3,
+     "value": "22900.35"
+    },
+    "dateFrom": "2025-03-14",
+    "dateTo": "2026-01-15",
+    "profile": false,
+    "profiles": [],
+    "profileCount": 0,
+    "profileReconciled": null,
+    "scopeNotes": [
+     "Doar clienții comuni: 1 instituție care au cumpărat de la ambele firme în selecția aleasă; sursele sunt înregistrările lor.",
+     "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns."
+    ],
+    "statuses": [
+     {
+      "state": "Oferta acceptata",
+      "count": 3,
+      "value": "22900.35"
+     }
+    ],
+    "rows": [
+     ["da","9100100001","DA-FX-1","2025-03-14","9100000002","9100000101","Cluj","45233140-2","12500.10","Oferta acceptata",null,null,false,"Reparații drum comunal"],
+     ["da","9100100002","DA-FX-2","2025-07-02","9100000002","9100000101","Cluj","45233140-2","8300.25","Oferta acceptata",null,null,false,null],
+     ["da","9100100019","DA-FX-19","2026-01-15","9100000002","9100000106","Cluj",null,"2100.00","Oferta acceptata",null,null,false,null]
+    ]
+   },
+   "csv": {
+    "status": 200,
+    "file": "randuri-3.csv",
+    "x-total-rows": "3",
+    "x-exported-rows": "3",
+    "x-source-rows": "3",
+    "x-source-value": "22900.35",
+    "x-filtered-value": "22900.35",
+    "lines": 4,
+    "sha256": "898fbe1059adcd07c73e5187f8686e78e23b0ca755dca75f62982403df109500"
+   }
+  },
+  {
+   "id": "combo:compare:f4-clients-county",
+   "origin": "combo",
+   "source": "builder: defaultQuestion → chooseType → edits → transitionQuestion",
+   "request": {
+    "spec": {
+     "block": "compare",
+     "dim": "supplier",
+     "measure": "value",
+     "topN": 10,
+     "filters": {
+      "supplierName": "Fixture Construct SRL",
+      "supplierId": 9100000101,
+      "compareWith": "Fixture Partener SRL",
+      "compareWithId": 9100000106,
+      "county": "Cluj"
+     },
+     "comparisonMode": "transactions"
+    }
+   },
+   "answer": {
+    "status": 200,
+    "ok": true,
+    "question": null,
+    "model": null,
+    "spec": {
+     "block": "compare",
+     "measure": "value",
+     "filters": {
+      "county": "Cluj",
+      "supplierName": "Fixture Construct SRL",
+      "compareWith": "Fixture Partener SRL",
+      "supplierId": 9100000101,
+      "compareWithId": 9100000106
+     },
+     "dim": "supplier",
+     "topN": 10,
+     "comparisonMode": "transactions"
+    },
+    "pills": [
+     "comparație",
+     "valoarea înregistrată",
+     "Fixture Construct SRL",
+     "vs Fixture Partener SRL",
+     "județul Cluj",
+     "toți anii",
+     "toate achizițiile: directe și din proceduri"
+    ],
+    "caveats": [
+     "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Județul = sediul instituției care cumpără, nu al firmei (din adresă, cod NUTS, ONRC sau UAT verificat). Instituțiile fără județ cunoscut nu intră.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
+     "An cu date parțiale sau provizorii: 2026 (achizițiile directe până la 20.06.2026; contractele până la 25.06.2026; contractele datate după 31.05.2026 sunt provizorii). Totalul lui nu este complet; nu îl compara direct cu ceilalți ani din grafic. SEAP publică multe contracte la câteva săptămâni sau luni după semnare: cifrele provizorii pot crește la actualizările următoare."
+    ],
+    "data": {
+     "block": "compare",
+     "entities": [
+      {
+       "entityId": "9100000101",
+       "name": "Fixture Construct SRL",
+       "county": "Cluj",
+       "role": "supplier",
+       "value": 454101.61,
+       "count": 6,
+       "cri": 0.581,
+       "nFlags": 2,
+       "flags": ["da_concentration","da_dependence"],
+       "population": null,
+       "hasProfile": true,
+       "streams": {
+        "da": {
+         "value": 69101.6,
+         "count": 4
+        },
+        "contracts": {
+         "value": 385000.01,
+         "count": 2,
+         "singleBid": 1,
+         "bidsKnown": 2
+        }
+       },
+       "partners": 2,
+       "topPartners": [
+        {
+         "entityId": "9100000002",
+         "name": "Municipiul Fixture Nord",
+         "value": 360800.35,
+         "count": 3
+        },
+        {
+         "entityId": "9100000001",
+         "name": "Comuna Fixture Vest",
+         "value": 93301.26,
+         "count": 3
+        }
+       ],
+       "years": [
+        {
+         "year": 2025,
+         "value": 454101.61,
+         "count": 6
+        }
+       ],
+       "domains": [
+        {
+         "code": "45233",
+         "name": "Lucrări de construcții, de fundații și de îmbrăcăminte pentru autostrăzi și drumuri",
+         "value": 454101.61
+        }
+       ],
+       "domainCount": 1,
+       "noCpvValue": 0,
+       "active": {
+        "from": 2025,
+        "to": 2026
+       },
+       "firm": {
+        "employees": 3,
+        "year": 2024,
+        "turnover": 410000
+       }
+      },
+      {
+       "entityId": "9100000106",
+       "name": "Fixture Partener SRL",
+       "county": "Cluj",
+       "role": "supplier",
+       "value": 47100.01,
+       "count": 2,
+       "cri": null,
+       "nFlags": 0,
+       "flags": [],
+       "population": null,
+       "hasProfile": false,
+       "streams": {
+        "da": {
+         "value": 2100,
+         "count": 1
+        },
+        "contracts": {
+         "value": 45000.01,
+         "count": 1,
+         "singleBid": 0,
+         "bidsKnown": 1
+        }
+       },
+       "partners": 2,
+       "topPartners": [
+        {
+         "entityId": "9100000001",
+         "name": "Comuna Fixture Vest",
+         "value": 45000.01,
+         "count": 1
+        },
+        {
+         "entityId": "9100000002",
+         "name": "Municipiul Fixture Nord",
+         "value": 2100,
+         "count": 1
+        }
+       ],
+       "years": [
+        {
+         "year": 2025,
+         "value": 45000.01,
+         "count": 1
+        },
+        {
+         "year": 2026,
+         "value": 2100,
+         "count": 1
+        }
+       ],
+       "domains": [
+        {
+         "code": "45233",
+         "name": "Lucrări de construcții, de fundații și de îmbrăcăminte pentru autostrăzi și drumuri",
+         "value": 45000.01
+        }
+       ],
+       "domainCount": 1,
+       "noCpvValue": 2100,
+       "active": {
+        "from": 2025,
+        "to": 2026
+       },
+       "firm": {
+        "employees": 12,
+        "year": 2024,
+        "turnover": 900000
+       }
+      }
+     ],
+     "shared": {
+      "total": 2,
+      "rows": [
+       {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "a": {
+         "value": 360800.35,
+         "count": 3
+        },
+        "b": {
+         "value": 2100,
+         "count": 1
+        }
+       },
+       {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "a": {
+         "value": 93301.26,
+         "count": 3
+        },
+        "b": {
+         "value": 45000.01,
+         "count": 1
+        }
+       }
+      ]
+     },
+     "joint": {
+      "total": 1,
+      "rows": [
+       {
+        "nid": "9100400002",
+        "authority": "Comuna Fixture Vest",
+        "date": "2025-09-01 10:00",
+        "value": 90000.02
+       }
+      ]
+     }
+    },
+    "partialYears": [
+     {
+      "year": 2026,
+      "note": "achizițiile directe până la 20.06.2026; contractele până la 25.06.2026; contractele datate după 31.05.2026 sunt provizorii",
+      "provisional": true
+     }
+    ],
+    "displaySql": "select supplier_id, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'cluj'\n  and supplier_id in (9100000101, 9100000106)\ngroup by supplier_id;\n-- + ani, domenii, parteneri comuni pe aceeași selecție\n-- + profilul de risc istoric: marts.entity_flags (toate achizițiile directe)"
+   },
+   "sources": {
+    "status": 200,
+    "ok": true,
+    "total": 8,
+    "value": "501201.62",
+    "sourceTotal": 8,
+    "sourceValue": "501201.62",
+    "page": 0,
+    "pageSize": 10,
+    "accepted": {
+     "count": 5,
+     "value": "71201.60"
+    },
+    "dateFrom": "2025-03-14",
+    "dateTo": "2026-01-15",
+    "profile": false,
+    "profiles": [],
+    "profileCount": 0,
+    "profileReconciled": null,
+    "scopeNotes": [
+     "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Un contract cu mai mulți câștigători apare pe câte un rând pentru fiecare furnizor, cu valoarea împărțită egal. Suma folosește aceste cote; numărul de rânduri nu este numărul de contracte distincte. Detaliile și exportul păstrează valoarea integrală și numărul câștigătorilor."
+    ],
+    "statuses": [
+     {
+      "state": null,
+      "count": 3,
+      "value": "430000.02"
+     },
+     {
+      "state": "Oferta acceptata",
+      "count": 5,
+      "value": "71201.60"
+     }
+    ],
+    "rows": [
+     ["contracts","9100200001","CT-FX-1","2025-06-10","9100000002","9100000101","Cluj","45233140-2","340000.00",null,1,"340000.00",false,"Contract fixture 1"],
+     ["contracts","9100200002","CT-FX-2","2025-09-01","9100000001","9100000101","Cluj","45233140-2","45000.01",null,2,"90000.02",false,"Contract fixture 2"],
+     ["contracts","9100200002","CT-FX-2","2025-09-01","9100000001","9100000106","Cluj","45233140-2","45000.01",null,2,"90000.02",false,"Contract fixture 2"],
+     ["da","9100100005","DA-FX-5","2025-05-09","9100000001","9100000101","Cluj","45233140-2","41000.55","Oferta acceptata",null,null,false,null],
+     ["da","9100100001","DA-FX-1","2025-03-14","9100000002","9100000101","Cluj","45233140-2","12500.10","Oferta acceptata",null,null,false,"Reparații drum comunal"],
+     ["da","9100100002","DA-FX-2","2025-07-02","9100000002","9100000101","Cluj","45233140-2","8300.25","Oferta acceptata",null,null,false,null],
+     ["da","9100100020","DA-FX-20","2025-08-19","9100000001","9100000101","Cluj","45233200-1","7300.70","Oferta acceptata",null,null,false,null],
+     ["da","9100100019","DA-FX-19","2026-01-15","9100000002","9100000106","Cluj",null,"2100.00","Oferta acceptata",null,null,false,null]
+    ]
+   },
+   "csv": {
+    "status": 200,
+    "file": "randuri-8.csv",
+    "x-total-rows": "8",
+    "x-exported-rows": "8",
+    "x-source-rows": "8",
+    "x-source-value": "501201.62",
+    "x-filtered-value": "501201.62",
+    "lines": 9,
+    "sha256": "2656d99cfbcb0e7bbabc849dc8e737790bfdcdcf461654f88d733dc81356831d"
+   }
+  },
+  {
+   "id": "combo:compare:f4-authorities-code",
+   "origin": "combo",
+   "source": "builder: defaultQuestion → chooseType → edits → transitionQuestion",
+   "request": {
+    "spec": {
+     "block": "compare",
+     "dim": "authority",
+     "measure": "value",
+     "topN": 10,
+     "filters": {
+      "authorityName": "Municipiul Fixture Nord",
+      "authorityId": 9100000002,
+      "compareWith": "Spitalul Judetean Fixture",
+      "compareWithId": 9100000003,
+      "cpvTerm": "4523"
+     },
+     "comparisonMode": "transactions"
+    }
+   },
+   "answer": {
+    "status": 200,
+    "ok": true,
+    "question": null,
+    "model": null,
+    "spec": {
+     "block": "compare",
+     "measure": "value",
+     "filters": {
+      "cpvTerm": "4523",
+      "authorityName": "Municipiul Fixture Nord",
+      "compareWith": "Spitalul Judetean Fixture",
+      "authorityId": 9100000002,
+      "compareWithId": 9100000003
+     },
+     "dim": "authority",
+     "topN": 10,
+     "comparisonMode": "transactions"
+    },
+    "pills": [
+     "comparație",
+     "valoarea înregistrată",
+     "Lucrări de construcții de conducte, de linii de comunicații și electrice, de autostrăzi, de drumuri (45230000-8)",
+     "Municipiul Fixture Nord",
+     "vs Spitalul Judetean Fixture",
+     "toți anii",
+     "toate achizițiile: directe și din proceduri"
+    ],
+    "caveats": [
+     "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
+    ],
+    "data": {
+     "block": "compare",
+     "entities": [
+      {
+       "entityId": "9100000002",
+       "name": "Municipiul Fixture Nord",
+       "county": "Cluj",
+       "role": "authority",
+       "value": 360800.35,
+       "count": 3,
+       "cri": 0.421,
+       "nFlags": 2,
+       "flags": ["da_split","da_year_end"],
+       "population": null,
+       "hasProfile": true,
+       "streams": {
+        "da": {
+         "value": 20800.35,
+         "count": 2
+        },
+        "contracts": {
+         "value": 340000,
+         "count": 1,
+         "singleBid": 1,
+         "bidsKnown": 1,
+         "distinct": 1
+        }
+       },
+       "partners": 1,
+       "topPartners": [
+        {
+         "entityId": "9100000101",
+         "name": "Fixture Construct SRL",
+         "value": 360800.35,
+         "count": 3
+        }
+       ],
+       "years": [
+        {
+         "year": 2025,
+         "value": 360800.35,
+         "count": 3
+        }
+       ],
+       "domains": [
+        {
+         "code": "45233",
+         "name": "Lucrări de construcții, de fundații și de îmbrăcăminte pentru autostrăzi și drumuri",
+         "value": 360800.35
+        }
+       ],
+       "domainCount": 1,
+       "noCpvValue": 0,
+       "active": {
+        "from": 2024,
+        "to": 2026
+       },
+       "firm": null,
+       "general": 0,
+       "seats": {
+        "same": 360800.35,
+        "other": 0,
+        "abroad": 0,
+        "unknown": 0
+       }
+      },
+      {
+       "entityId": "9100000003",
+       "name": "Spitalul Judetean Fixture",
+       "county": "Buzau",
+       "role": "authority",
+       "value": 0,
+       "count": 0,
+       "cri": 0.812,
+       "nFlags": 4,
+       "flags": ["da_split","da_year_end","da_rapid","da_concentration"],
+       "population": null,
+       "hasProfile": true,
+       "streams": {
+        "da": {
+         "value": 0,
+         "count": 0
+        },
+        "contracts": {
+         "value": 0,
+         "count": 0,
+         "singleBid": null,
+         "bidsKnown": 0
+        }
+       },
+       "partners": 0,
+       "topPartners": [],
+       "years": [],
+       "domains": [],
+       "domainCount": 0,
+       "noCpvValue": 0,
+       "active": {
+        "from": 2024,
+        "to": 2026
+       },
+       "firm": null,
+       "general": 0,
+       "seats": {
+        "same": 0,
+        "other": 0,
+        "abroad": 0,
+        "unknown": 0
+       }
+      }
+     ],
+     "shared": {
+      "total": 0,
+      "rows": []
+     }
+    },
+    "partialYears": [],
+    "displaySql": "select authority_id, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '4523%')\n  and authority_id in (9100000002, 9100000003)\ngroup by authority_id;\n-- + ani, domenii, parteneri comuni pe aceeași selecție\n-- + profilul de risc istoric: marts.entity_flags (toate achizițiile directe)"
    },
    "sources": {
     "status": 200,

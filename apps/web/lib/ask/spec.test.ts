@@ -130,3 +130,17 @@ describe("validateSpec", () => {
     expect(bad).toHaveProperty("error");
   });
 });
+
+describe("„Doar clienții comuni” (F4, COMPARE_RULES)", () => {
+  const firms = { block: "compare", measure: "value", filters: { supplierId: 1, compareWithId: 2, sharedPartners: true } };
+  it("runs on a comparison of two firms", () => {
+    expect(validateSpec(firms)).toMatchObject({ filters: { sharedPartners: true } });
+  });
+  it("is refused between two institutions and on any other question", () => {
+    const words = "„Doar clienții comuni” există doar la compararea a două firme.";
+    expect(validateSpec({ ...firms, filters: { authorityId: 1, compareWithId: 2, sharedPartners: true } })).toEqual({ error: words });
+    // A comparison with an institution named is one of institutions (its focal role is the institution's).
+    expect(validateSpec({ ...firms, filters: { authorityId: 3, supplierId: 1, compareWithId: 2, sharedPartners: true } })).toEqual({ error: words });
+    expect(validateSpec({ block: "table", dim: "supplier", measure: "value", filters: { sharedPartners: true } })).toEqual({ error: words });
+  });
+});

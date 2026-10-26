@@ -127,7 +127,7 @@ const ctxOf = (spec: AskSpec, g: Grounding): RollupCtx => {
     seriesMonths: spec.block === "timeseries" && Array.isArray(spec.timeseries?.months) ? spec.timeseries.months as readonly [number, number] : null,
     purchaseKind: spec.filters.purchaseKind ?? null, procedure: spec.filters.procedure ?? null,
     purchaseValueMin: spec.filters.purchaseValueMin ?? null, purchaseValueMax: spec.filters.purchaseValueMax ?? null,
-    firmSeat: spec.filters.firmSeat ?? null, seatCounty: g.seatCounty?.canonical ?? null, seatColumn: true,
+    firmSeat: spec.filters.firmSeat ?? null, seatCounty: g.seatCounty?.canonical ?? null, seatColumn: true, shared: null,
   };
 };
 const needOf = (spec: AskSpec): RollupNeed => spec.block === "table" || spec.block === "trend"

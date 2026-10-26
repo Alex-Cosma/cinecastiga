@@ -167,6 +167,10 @@ export function answerCore(block: string, data: unknown): unknown {
   // F3: what an evolution or a breakdown adds for the screen alone (the marker of the year before, every CPV group,
   // the channels' shares) is not compared: a watch on an older question sees the same core as before.
   if (block === "timeseries" && object(data)) { const { ref: _ref, ...core } = data; return core; }
+  // F4: a comparison's context rows (the codes above a domain, the suppliers' seat, the distinct contracts, the
+  // population's level, a year's records, the selection without the shared clients and the part won together) are
+  // for the screen: a watch on a comparison of before F4 sees the same core.
+  if (block === "compare" && object(data) && Array.isArray(data.entities)) return compareCore(data);
   if (block === "breakdown" && object(data)) { const { base: _base, streams: _streams, ...core } = data; return core; }
   if (block !== "trend" || !object(data) || !object(data.groups)) return data;
   const { groups: _groups, composition, noun: _noun, rowFacts: _facts, withoutFiling: _unfiled, ...core } = data;
@@ -174,6 +178,28 @@ export function answerCore(block: string, data: unknown): unknown {
   const own = [typeof core.list === "string" ? core.list : "all", "eligible"].filter((part) => part in parts);
   return { ...core, composition: Object.fromEntries(own.map((part) => [part, parts[part]])) };
 }
+function compareCore(data: Record<string, unknown>): Record<string, unknown> {
+  const entities = (data.entities as unknown[]).map((entity) => {
+    if (!object(entity)) return entity;
+    const { general: _general, seats: _seats, populationLevel: _level, whole: _whole, joint: _joint, ...core } = entity;
+    if (Array.isArray(core.years)) core.years = core.years.map((y) => { if (!object(y)) return y; const { count: _count, ...year } = y; return year; });
+    if (object(core.streams) && object(core.streams.contracts)) {
+      const { distinct: _distinct, ...contracts } = core.streams.contracts;
+      core.streams = { ...core.streams, contracts };
+    }
+    return core;
+  });
+  const shared = object(data.shared) && Array.isArray(data.shared.rows) ? {
+    ...data.shared,
+    rows: data.shared.rows.map((row) => {
+      if (!object(row)) return row;
+      const side = (s: unknown) => { if (!object(s)) return s; const { joint: _joint, ...rest } = s; return rest; };
+      return { ...row, a: side(row.a), b: side(row.b) };
+    }),
+  } : data.shared;
+  return { ...data, entities, ...(data.shared !== undefined ? { shared } : {}) };
+}
+
 /** The two cores are equal as stored JSON (jsonb: key order does not count, array order does). */
 export function sameAnswerCore(block: string, before: unknown, after: unknown): boolean {
   return canonicalJson(answerCore(block, before)) === canonicalJson(answerCore(block, after));

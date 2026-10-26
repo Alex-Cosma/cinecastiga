@@ -151,7 +151,22 @@ describe("each condition is written by the function of its engine level (plan §
       // F4: the network's „Cu semnale” selects partners by the signals on their whole relation, grouped by
       // relations.ts (networkAnswer, networkMembersCond for the sources), not by a predicate of this module.
       "networkSignals on network",
+      // F4: „Doar clienții comuni” is the institutions the pre-step P finds in the answer's transaction
+      // (compare-prestep.ts); rowPredicates writes them once found (PredicateCtx.shared, tested below).
+      "sharedPartners on compare",
     ].filter((key) => expected.has(key)));
+  });
+});
+
+describe("the shared clients of two compared firms (F4, PredicateCtx.shared)", () => {
+  const spec: AskSpec = { block: "compare", measure: "value", filters: { supplierId: 10, compareWithId: 11, sharedPartners: true } };
+  const grounding = { supplier: { entityId: "10" }, compare: { entityId: "11" } } as unknown as Grounding;
+  const ctx = predicateContext(fake, spec, grounding, { dataset: "all", yearFrom: null, yearTo: null, kindIds: null, seat: true });
+  it("keeps only their records once the pre-step found them, none when there are none", () => {
+    expect(ctx.shared).toBeNull();
+    expect(texts(rowPredicates({ ...ctx, shared: ["1", "2"] })).join(" and ")).toContain("d.authority_id = any($");
+    expect(texts(rowPredicates({ ...ctx, shared: [] })).some((t) => t.includes("d.authority_id = any("))).toBe(true);
+    expect(displayPredicates({ ...ctx, shared: ["1", "2"] }, "T").join("\n")).toContain("doar clienții comuni: 2 instituții");
   });
 });
 
