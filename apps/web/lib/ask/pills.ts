@@ -48,7 +48,8 @@ function shownMeasure(spec: AskSpec): AskSpec["measure"] {
  */
 export function buildPills(spec: AskSpec, grounding: Grounding, labels: Pick<ConditionLabels, "entities" | "executedMonths"> = {}): string[] {
   const pills: string[] = [];
-  pills.push(BLOCK_LABEL[spec.block]);
+  // An evolution month by month says so in its first pill (F3); its other options are conditions (describe.ts).
+  pills.push(spec.block === "timeseries" && spec.timeseries?.grain === "month" ? "evoluție pe luni" : BLOCK_LABEL[spec.block]);
   const dim = DIM_LABEL[spec.dim ?? "authority"];
   // A ranking without topN is the complete one, in pages (compile.ts); a trend shows its first 10.
   if (spec.block === "table" && spec.topN == null) pills.push(dim[2]);

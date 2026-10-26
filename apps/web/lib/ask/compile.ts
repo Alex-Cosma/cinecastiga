@@ -16,13 +16,14 @@ import { formatBucharestDay as frozenDay } from "../format";
 import { TREND_CHANGE_LABELS } from "./filters/defs/trend";
 import { countyIsFirmSeat, isHistoricalProfile, unsupportedPopulationView } from "./population";
 import { describeConditions, type ConditionLabels } from "./filters/describe";
+import { employeesWords } from "./filters/words";
 import { retarget } from "./filters/retarget";
 import type { OriginHint } from "./filters/origin";
 import { PER_CAPITA_SOURCE, perCapitaCaveat, POPULATION_CARD_NOTE, readPerCapitaPopulations, type PerCapitaPopulations } from "./per-capita";
 import { martColumns } from "./mart-columns";
 import {
   compareParties, compareSharedPartners, compareTopPartners, planRollup, rollupBreakdown, rollupCountyTable, rollupMap, rollupMinimumCond,
-  coverRefReady, monthRollupReady, rollupDaysReady, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, scatterDensity,
+  coverRefReady, monthRollupReady, rollupDaysReady, rollupRows, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, scatterDensity,
   type RollupFilters, type RollupNeed, type RollupSource,
 } from "./rollups";
 import {
@@ -36,6 +37,8 @@ import {
 } from "./group-ids";
 import { sectorUnit } from "../peer-population";
 import { kindApplies, kindLeftOutNote } from "./purchase";
+import { assembleSeries, type SeriesPart, type SeriesPoint, type SeriesRef, type SeriesRow } from "./series";
+import { mixRollupReady, monthsWhere } from "./series-rollups";
 
 /**
  * Compile a validated AskSpec + grounding into parameterized SQL and execute it
@@ -71,11 +74,7 @@ export interface TableRow {
   count: number;
   population: number | null;
 }
-export interface SeriesPoint {
-  year: number;
-  value: number;
-  count: number;
-}
+export type { SeriesPart, SeriesPoint, SeriesRef } from "./series";
 export interface CountyValue {
   county: string;
   value: number;
@@ -139,6 +138,8 @@ export interface BreakdownSlice {
   value: number;
   count: number;
 }
+/** A group of a breakdown's level (F3): its code, name, value and records, and its largest record with the channel. */
+export interface BreakdownGroup extends BreakdownSlice { max?: number; maxSrc?: "da" | "contracts" }
 export interface ScatterPoint {
   entityId: string;
   name: string;
@@ -203,15 +204,21 @@ export interface TrendRow {
 export type BlockData =
   // total/page/pageSize present only in paged mode (clasament without topN)
   // totals: the whole ranking (every ranked entity, not only the shown rows), when computed in the same query.
-  | { block: "table"; rows: TableRow[]; total?: number; page?: number; pageSize?: number; totals?: { value: number; count: number; entities: number } }
+  // group (F3, table:employees-2): a ranking of firms narrowed to a band of employees, the band's own totals; `totals`
+  // stay the whole selection's („% din total”). Absent elsewhere, and from older answers.
+  | { block: "table"; rows: TableRow[]; total?: number; page?: number; pageSize?: number; totals?: { value: number; count: number; entities: number }; group?: { value: number; count: number; entities: number } }
   | { block: "stat"; stat: StatValue }
-  | { block: "timeseries"; series: SeriesPoint[] }
+  // F3 (plan §4.3): month by month, the split's parts, the same months it ran on and the marker of the
+  // incomplete last year; absent on answers to questions without the options (older answers too).
+  | { block: "timeseries"; series: SeriesPoint[]; grain?: "month"; parts?: SeriesPart[]; months?: MonthsWindow; ref?: SeriesRef }
   // unknown: records of the same selection whose authority has no county.
   // They are not on the map, but shares are of the whole selection (audit F13).
   | { block: "map"; counties: CountyValue[]; unknown: { value: number; count: number } }
   | CompareData
   | { block: "distribution"; distribution: DistributionData }
-  | { block: "breakdown"; slices: BreakdownSlice[]; other: { value: number; count: number } }
+  // F3: every group of the level (base, with its largest record where known) and each channel's totals in the same
+  // selection with every channel (streams); absent from older answers. Not compared by a watch (answerCore).
+  | { block: "breakdown"; slices: BreakdownSlice[]; other: { value: number; count: number }; base?: BreakdownGroup[]; streams?: Record<"da" | "contracts", { value: number; count: number }> }
   | { block: "scatter"; points: ScatterPoint[]; density?: ScatterDensity | undefined }
   | { block: "sankey"; flows: SankeyFlow[]; focal: { entityId: string; name: string; role: string } }
   | { block: "network"; nodes: NetworkNode[]; focal: { entityId: string; name: string; role: string } }
@@ -575,6 +582,37 @@ async function cpvNamesFor(
   return map;
 }
 
+/** A row of a ranking of firms narrowed to a band (F3): the selection's totals (tv, tn, te) and the band's (gv, gn, ge). */
+interface BandRow { id: string; nm: string; co: string | null; v: string; n: string; tv: string; tn: string; te: string; gv: string; gn: string; ge: string }
+/** The totals of such a ranking: the whole selection's (`totals`: „% din total”) and the band's (`group`: the list). */
+function bandTotals(first: BandRow | undefined): { totals?: RankingTotalsData; group?: RankingTotalsData } {
+  return first ? {
+    totals: { value: Number(first.tv), count: Number(first.tn), entities: Number(first.te) },
+    group: { value: Number(first.gv), count: Number(first.gn), entities: Number(first.ge) },
+  } : {};
+}
+type RankingTotalsData = { value: number; count: number; entities: number };
+
+/** A breakdown answer keeps at most this many groups of its level (`base`, F3): the kinds row, the order by records, the tags. */
+export const BREAKDOWN_BASE = 400;
+
+/** A breakdown's live rows by stem and channel, as the stem rows of the live query (value first, then the stem; exact sums). */
+function breakdownStems(rows: readonly { stem: string; v: string; n: string }[]): { stem: string; v: string; n: string }[] {
+  const by = new Map<string, { v: string[]; n: number }>();
+  for (const row of rows) { const at = by.get(row.stem) ?? { v: [], n: 0 }; at.v.push(row.v); at.n += Number(row.n); by.set(row.stem, at); }
+  return [...by.entries()].map(([stem, at]) => ({ stem, v: sumDecimalStrings(at.v), n: String(at.n) }))
+    .sort((a, b) => Number(b.v) - Number(a.v) || (a.stem < b.stem ? -1 : a.stem > b.stem ? 1 : 0));
+}
+/** The largest record of each group and its channel (the „1 contract: 99%” tag, final breakdown §3.10). */
+function largestOf(rows: readonly { stem: string; src: "da" | "contracts"; mx: string | null }[]): Map<string, { max: number; maxSrc: "da" | "contracts" }> {
+  const out = new Map<string, { max: number; maxSrc: "da" | "contracts" }>();
+  for (const row of rows) {
+    const max = Number(row.mx ?? 0), at = out.get(row.stem);
+    if (!at || max > at.max) out.set(row.stem, { max, maxSrc: row.src });
+  }
+  return out;
+}
+
 /** Paged clasament (table block WITHOUT an explicit topN): 10 rows/page. */
 export const TABLE_PAGE_SIZE = 10;
 export const TABLE_SORTS = ["name", "county", "value", "count", "percap"] as const;
@@ -859,12 +897,33 @@ export async function runSpec(
     trendWindow = { ...window, checkpoint: periods?.checkpoint ?? null };
     if (partialMonths(window)) caveats.push(`Ambii ani se compară pe aceleași luni: ${monthsLabel(window)}.`);
   }
+  // timeseries (F3, final timeseries §3.9): „Aceleași luni” cuts every year to the months complete in the
+  // last one, resolved as the trend's (`auto` stays in the spec, the answer returns the window it ran).
+  // Without it, a last year known incomplete gets the marker: the year before on the same months.
+  let seriesWindow: (MonthsWindow & { checkpoint: string | null }) | null = null;
+  let seriesRef: { year: number; to: number } | null = null;
+  if (spec.block === "timeseries") {
+    const last = yearTo ?? maxY, months = spec.timeseries?.months;
+    const periods = months !== undefined || !spec.timeseries?.grain ? await coveragePeriods(sql) : null;
+    if (months !== undefined) {
+      const window = sameMonthsWindow(periods, dataset, last, months);
+      if ("error" in window) return { error: window.error, caveats };
+      seriesWindow = { ...window, checkpoint: periods?.checkpoint ?? null };
+      if (partialMonths(window)) caveats.push(`Fiecare an e numărat pe aceleași luni: ${monthsLabel(window)}.`);
+    } else if (!spec.timeseries?.grain && periods) {
+      const cut = sameMonthsWindow(periods, dataset, last, "auto");
+      // Two months at least: one month is no comparison (final §3.9); 2018 is no reference (DAs from April).
+      if (!("error" in cut) && cut.to >= 2 && cut.to < 12 && last - 1 > 2018) seriesRef = { year: last, to: cut.to };
+    }
+  }
 
   // Every condition of the question, written by lib/ask/predicates.ts for the
   // answer, its sources, the CSV, the captures and the displayed SQL alike.
   // The kind of institution is a list of ids, read once per marts build (authority-kind.ts, D1).
   const kindIds = await authorityKindIds(sql, namedKind(spec.filters.authorityKind));
-  const w: PredicateCtx = predicateContext(sql, spec, grounding, { dataset, yearFrom, yearTo, kindIds, trendMonths: partialMonths(trendWindow) });
+  const w: PredicateCtx = predicateContext(sql, spec, grounding, {
+    dataset, yearFrom, yearTo, kindIds, trendMonths: partialMonths(trendWindow), seriesMonths: partialMonths(seriesWindow),
+  });
   const { authorityId, supplierId } = w;
   const compareId = w.comparison?.compareId ?? null;
   if (w.minEmployees !== null || w.maxEmployees !== null) {
@@ -914,11 +973,19 @@ export async function runSpec(
   const focalName =
     (authorityId ? grounding.authority?.nameDisplay : grounding.supplier?.nameDisplay) ?? "?";
 
+  // F3 (plan §4.2, table:employees-2): the employees of a ranking of firms are its row CÂȘTIGĂTORII, a
+  // condition on the ranked firm after grouping (rankedBand): the list narrows to the band, the total and
+  // „% din total” stay the whole selection's (wSel: the conditions of the records, without the band).
+  // "Cine conduce?" by value runs this ranking with topN 1: its place 1 is the same firm.
+  const rankedBand = spec.block === "table" && spec.dim === "supplier" && (w.minEmployees !== null || w.maxEmployees !== null)
+    ? { min: w.minEmployees, max: w.maxEmployees } : null;
+  const wSel: PredicateCtx = rankedBand ? { ...w, minEmployees: null, maxEmployees: null } : w;
+
   // --- WHERE fragment over the transaction mart (da_/contract_, all parameterized):
   // the record conditions, then the record threshold counted over the same rows.
   const whereFrag = (opts?: { years?: boolean }): ReturnType<DbSql> => {
-    const base = andAll(sql, rowPredicates(w, opts));
-    return andAll(sql, [base, ...groupPredicates(w, txAggFragment(sql, dataset, false, fullValueUnion(w)) as unknown as ReturnType<DbSql>, base)]);
+    const base = andAll(sql, rowPredicates(wSel, opts));
+    return andAll(sql, [base, ...groupPredicates(wSel, txAggFragment(sql, dataset, false, fullValueUnion(wSel)) as unknown as ReturnType<DbSql>, base)]);
   };
 
   // aggregate fragments (see txAggFragment): slim (the kind is a list of
@@ -945,7 +1012,7 @@ export async function runSpec(
     !w.singleBidder && w.adminSupplierIds === null &&
     !w.purchaseKind && !w.procedure && w.purchaseValueMin === null && w.purchaseValueMax === null &&
     w.yearFrom === null && w.yearTo === null &&
-    w.monthFrom === null && w.monthTo === null && (!spec.population || nationalDaBound) && !spec.minimumRecords;
+    w.monthFrom === null && w.monthTo === null && !w.seriesMonths && (!spec.population || nationalDaBound) && !spec.minimumRecords;
   const unfiltered = noRecordCondition && w.minEmployees === null && w.maxEmployees === null;
   // The other rollups combine both streams; agg_national retains src and can
   // also serve filter-free DA-only and contract-only totals without a scan.
@@ -961,9 +1028,47 @@ export async function runSpec(
   // --- WHERE fragment over marts.entity_flags (risk-centric blocks)
   const efWhere = (role: "authority" | "supplier", minDas: number) => andAll(sql, profilePredicates(w, role, minDas));
 
-  const displaySql = buildDisplaySql(spec, w);
+  /**
+   * A breakdown's channels (F3, final breakdown §3.6): each one's value and
+   * records in the same selection with every channel, for the strip's shares.
+   * On every channel, from the breakdown's own pass (`live`) or a grouping by
+   * channel (a rollup, else live); none where the question keeps one channel
+   * (a procedure, the single bidder: the strip's other options are disabled).
+   */
+  const breakdownStreams = async (s: DbSql, live: readonly { src: "da" | "contracts"; v: string; n: string }[] | null):
+    Promise<Record<"da" | "contracts", { value: number; count: number }> | null> => {
+    if (spec.filters.procedure || spec.filters.singleBidder) return null;
+    const totals = { da: { value: 0, count: 0 }, contracts: { value: 0, count: 0 } };
+    const add = (rows: readonly { src?: string | null; v: string; n: string }[]) => {
+      const by = new Map<string, { v: string[]; n: number }>();
+      for (const row of rows) { const at = by.get(row.src ?? "") ?? { v: [], n: 0 }; at.v.push(row.v); at.n += Number(row.n); by.set(row.src ?? "", at); }
+      for (const src of ["da", "contracts"] as const) { const at = by.get(src); if (at) totals[src] = { value: Number(sumDecimalStrings(at.v)), count: at.n }; }
+      return totals;
+    };
+    if (dataset === "all" && live) return add(live);
+    const every: AskSpec = { ...spec, dataset: "all" };
+    const ctx = predicateContext(sql, every, grounding, { dataset: "all", yearFrom, yearTo, kindIds });
+    const plan = rollup ? await rollupPlanFor(s, every, ctx) : null;
+    if (plan) {
+      // A breakdown's plan is agg_cpv_year's (by CPV): its records without a code are left out, as the breakdown's.
+      const rows = rollupRows(s, plan, "p");
+      return add((await s`select p.src, coalesce(sum(p.v), 0) v, sum(p.n) n from ${rows.from} where ${rows.where} and p.cpv_code is not null group by 1`) as unknown as { src: string; v: string; n: string }[]);
+    }
+    return add((await s`
+      select d.src, coalesce(sum(d.closing_value), 0) v, count(*) n
+      from ${txAggFragment(sql, "all", false, fullValueUnion(ctx))} d
+      where ${andAll(sql, rowPredicates(ctx))} and d.cpv_code is not null
+      group by 1
+    `) as unknown as { src: string; v: string; n: string }[]);
+  };
+
+  // The band of a ranking of firms is applied after grouping (rankedBand): said under the ranking's text.
+  const displaySql = rankedBand
+    ? `${buildDisplaySql(spec, wSel)}\n-- lista: doar firmele ${employeesWords(rankedBand.min ?? undefined, rankedBand.max ?? undefined)} (ultimul bilanț MF); totalul și „% din total” sunt ale întregii selecții`
+    : buildDisplaySql(spec, w);
   // The map answers both lenses from the same rows (value and records per county): the strip switches without a query.
-  const displaySqlByMeasure = spec.block === "map"
+  // So does the breakdown's order by value or by records (F3, final breakdown §3.8).
+  const displaySqlByMeasure = spec.block === "map" || spec.block === "breakdown"
     ? { value: buildDisplaySql({ ...spec, measure: "value" }, w), count: buildDisplaySql({ ...spec, measure: "count" }, w) }
     : undefined;
   // A trend answers every list in one statement (the group buttons switch without a query): the SQL of each list.
@@ -1002,9 +1107,12 @@ export async function runSpec(
   }
 
   // The nightly rollups answer the selections that otherwise group the transaction marts.
-  const rollup = isHistoricalProfile(spec) ? null : await rollupPlanFor(sql, spec, w);
+  const rollup = isHistoricalProfile(spec) ? null : await rollupPlanFor(sql, spec, wSel);
   // A trend's group sources read their days from the rollup once a build has them (rollupDaysReady).
   const trendDays = spec.block === "trend" && rollup ? await rollupDaysReady(sql) : false;
+  // The evolution's months, split and same months read agg_months once a build has made it (series-rollups.ts); so does
+  // the largest record of a breakdown's divisions (its „1 contract: 99%” tag) when the rollups answer the breakdown.
+  const seriesRollup = (spec.block === "timeseries" || spec.block === "breakdown") && await mixRollupReady(sql) ? monthsWhere(sql, w, "p") : null;
   const columns = spec.block === "scatter" ? await martColumns(sql) : null;
 
   // --- execute under guardrails
@@ -1067,30 +1175,70 @@ export async function runSpec(
         }
 
         case "timeseries": {
-          if (bare) {
-            const r = (await s`
+          const t = spec.timeseries ?? {};
+          const grain = t.grain === "month" ? "month" as const : "year" as const, split = t.split ?? null;
+          // The marker's months (January to the last complete month of the last year), per year in the same grouping.
+          const refCut = seriesRef ? String(seriesRef.to).padStart(2, "0") : null;
+          // Today's question (no option of F3): the same paths as before; the marker apart, from agg_months.
+          if (grain === "year" && !split && !t.months && (bare || rollup || !refCut)) {
+            const r = bare ? (await s`
               select y, ${aggV} v, ${aggN} n from marts.agg_years order by y limit 60
-            `) as unknown as { y: string; v: string; n: string }[];
+            `) as unknown as { y: string; v: string; n: string }[] : rollup ? (await rollupTimeseries(s, rollup)).rows : (await s`
+              select substr(d.finalization_date, 1, 4) y,
+                     coalesce(sum(d.closing_value), 0) v, count(*) n
+              from ${txtAgg} d
+              where ${whereFrag()}
+              group by 1 order by 1
+              limit 60
+            `) as unknown as { y: string | null; v: string; n: string }[];
+            const ref = refCut && seriesRollup && "where" in seriesRollup ? assembleSeries((await s`
+              select p.y k, null::text part, 0 v, 0 n, coalesce(sum(p.v), 0) vm, coalesce(sum(p.n), 0) nm
+              from marts.agg_months p
+              where ${seriesRollup.where} and p.y in (${String(seriesRef!.year - 1)}, ${String(seriesRef!.year)}) and p.m <= ${refCut}
+              group by 1
+            `) as unknown as SeriesRow[], { grain, split: null, ref: seriesRef }).ref : undefined;
             return {
               block: "timeseries",
               series: r
-                .filter((p) => /^\d{4}$/.test(p.y))
+                .filter((p) => /^\d{4}$/.test(p.y ?? ""))
                 .map((p) => ({ year: Number(p.y), value: Number(p.v), count: Number(p.n) })),
+              ...(ref ? { ref } : {}),
             };
           }
-          const r = rollup ? (await rollupTimeseries(s, rollup)).rows : (await s`
-            select substr(d.finalization_date, 1, 4) y,
-                   coalesce(sum(d.closing_value), 0) v, count(*) n
-            from ${txtAgg} d
-            where ${whereFrag()}
-            group by 1 order by 1
-            limit 60
-          `) as unknown as { y: string | null; v: string; n: string }[];
+          // F3: by year or month, split by channel or CPV division, on the same months; agg_months where it answers.
+          let rows: SeriesRow[];
+          if (seriesRollup && "where" in seriesRollup) {
+            const key = grain === "month" ? s`p.y || '-' || p.m` : s`p.y`;
+            const part = split === "channel" ? s`p.src` : split === "domain" ? s`p.cpv2` : s`null::text`;
+            const same = refCut ? s`, coalesce(sum(p.v) filter (where p.m <= ${refCut}), 0) vm, coalesce(sum(p.n) filter (where p.m <= ${refCut}), 0) nm` : s``;
+            rows = (await s`
+              select ${key} k, ${part} part, coalesce(sum(p.v), 0) v, sum(p.n) n ${same}
+              from marts.agg_months p where ${seriesRollup.where}
+              group by 1, 2 order by 1, 2 limit 4000
+            `) as unknown as SeriesRow[];
+          } else {
+            const key = s`substr(d.finalization_date, 1, ${grain === "month" ? 7 : 4})`;
+            const part = split === "channel" ? s`d.src` : split === "domain" ? s`substr(d.cpv_code, 1, 2)` : s`null::text`;
+            const same = refCut
+              ? s`, coalesce(sum(d.closing_value) filter (where substr(d.finalization_date, 6, 2) <= ${refCut}), 0) vm, count(*) filter (where substr(d.finalization_date, 6, 2) <= ${refCut}) nm`
+              : s``;
+            rows = (await s`
+              select ${key} k, ${part} part, coalesce(sum(d.closing_value), 0) v, count(*) n ${same}
+              from ${txtAgg} d
+              where ${whereFrag()}
+              group by 1, 2 order by 1, 2 limit 4000
+            `) as unknown as SeriesRow[];
+          }
+          const assembled = assembleSeries(rows, { grain, split, ref: seriesRef });
+          // The divisions' catalogue names, for the legend's (?) (the short name is the label).
+          const names = assembled.parts?.some((p) => p.code) ? await cpvNamesFor(s, assembled.parts.flatMap((p) => p.code ? [p.code] : [])) : null;
           return {
             block: "timeseries",
-            series: r
-              .filter((p) => /^\d{4}$/.test(p.y ?? ""))
-              .map((p) => ({ year: Number(p.y), value: Number(p.v), count: Number(p.n) })),
+            series: assembled.series,
+            ...(grain === "month" ? { grain } : {}),
+            ...(assembled.parts ? { parts: assembled.parts.map((p) => p.code && names?.get(p.code) ? { ...p, name: names.get(p.code)! } : p) } : {}),
+            ...(seriesWindow ? { months: monthsOf(seriesWindow) } : {}),
+            ...(assembled.ref ? { ref: assembled.ref } : {}),
           };
         }
 
@@ -1173,22 +1321,24 @@ export async function runSpec(
           // Firms by their size alone (firmSizeOnly): their profiles, in the order and with the totals of the grouped records.
           const sizeSort = tableOpts.sort ?? (spec.measure === "count" ? "count" : "value");
           if (firmSizeOnly && dim === "supplier" && spec.measure !== "value_per_capita" && (sizeSort === "value" || sizeSort === "count")) {
-            const size = s`ep.role = 'supplier' and ep.total_ron_split > 0 and ${employeesBounds(s, w.minEmployees, w.maxEmployees)}`;
+            // The band narrows the list (rankedBand): the totals are every firm's, the band's apart (F3, table:employees-2).
+            const every = s`ep.role = 'supplier' and ep.total_ron_split > 0`;
+            const size = s`${every} and ${employeesBounds(s, w.minEmployees, w.maxEmployees)}`;
             const r = (await s`
+              with sel as (select sum(ep.total_ron_split) tv, sum(ep.n_das + ep.n_contracts) tn, count(*) te from marts.entity_profile ep where ${every})
               select ep.entity_id id, coalesce(ep.name_display, '(fără nume)') nm, ep.county co,
-                     ep.total_ron_split v, ep.n_das + ep.n_contracts n,
-                     sum(ep.total_ron_split) over () tv, sum(ep.n_das + ep.n_contracts) over () tn, count(*) over () te
-              from marts.entity_profile ep
+                     ep.total_ron_split v, ep.n_das + ep.n_contracts n, sel.tv, sel.tn, sel.te,
+                     sum(ep.total_ron_split) over () gv, sum(ep.n_das + ep.n_contracts) over () gn, count(*) over () ge
+              from marts.entity_profile ep cross join sel
               where ${size}
               order by ${sizeSort === "count" ? s`ep.n_das + ep.n_contracts` : s`ep.total_ron_split`} ${tableOpts.sort ? dir : s`desc`}, ep.entity_id
               ${limitFrag}
-            `) as unknown as { id: string; nm: string; co: string | null; v: string; n: string; tv: string; tn: string; te: string }[];
-            const first = r[0];
+            `) as unknown as BandRow[];
             return {
               block: "table",
               rows: r.map((p) => ({ entityId: String(p.id), name: p.nm, county: p.co, value: Number(p.v), count: Number(p.n), population: null })),
-              ...(await pagedMeta(r, () => s`select count(*) t from marts.entity_profile ep where ${size}` as unknown as Promise<{ t: string }[]>)),
-              ...(first ? { totals: { value: Number(first.tv), count: Number(first.tn), entities: Number(first.te) } } : {}),
+              ...(await pagedMeta(r.map((p) => ({ te: p.ge })), () => s`select count(*) t from marts.entity_profile ep where ${size}` as unknown as Promise<{ t: string }[]>)),
+              ...bandTotals(r[0]),
             };
           }
           const rollupOpts = {
@@ -1279,7 +1429,9 @@ export async function runSpec(
               ...(await pagedMeta(r, count)),
             };
           }
-          const rolled = rollup ? await rollupTable(s, rollup, { ...rollupOpts, dim }) : null;
+          // The band of a ranking of firms keeps its firms after grouping (rankedBand, F3): `keep` on the grouped id.
+          const keep = rankedBand ? (id: ReturnType<DbSql>) => employeesCond(s, rankedBand.min, rankedBand.max, id) : null;
+          const rolled = rollup ? await rollupTable(s, rollup, { ...rollupOpts, dim, ...(keep ? { keep } : {}) }) : null;
           if (rolled && "rows" in rolled) {
             const first = rolled.rows[0];
             return {
@@ -1287,18 +1439,51 @@ export async function runSpec(
               rows: rolled.rows.map((p) => ({ entityId: String(p.id), name: p.nm, county: p.co, value: Number(p.v), count: Number(p.n), population: null })),
               ...(paged ? { total: rolled.total ?? 0, page, pageSize: TABLE_PAGE_SIZE } : {}),
               ...(first?.tv !== undefined ? { totals: { value: Number(first.tv), count: Number(first.tn), entities: Number(first.te) } } : {}),
+              ...(first?.gv !== undefined ? { group: { value: Number(first.gv), count: Number(first.gn), entities: Number(first.ge) } } : {}),
             };
           }
           const sortKey = tableOpts.sort ?? (spec.measure === "count" ? "count" : "value");
-          const count = () => s`
+          const count = () => (keep ? s`
+            select count(*) t from (select ${idCol} id from ${txtAgg} d where ${whereFrag()} and ${idCol} is not null group by 1) g
+            where ${keep(s`g.id`)}
+          ` : s`
             select count(distinct ${idCol}) t from ${txtAgg} d
             where ${whereFrag()} and ${idCol} is not null
-          ` as unknown as Promise<{ t: string }[]>;
+          `) as unknown as Promise<{ t: string }[]>;
           if (sortKey === "value" || sortKey === "count" || sortKey === "percap") {
             // Aggregate WITHOUT names (index-only over the slim union — names
             // would force a heap fetch per row, a full seq scan on big
             // counties), then attach display names for just the winners.
             const aggSort = sortKey === "count" ? s`n` : s`v`;
+            if (keep) {
+              // The selection grouped once: its totals over every firm, the band's over the firms kept.
+              const r = (await s`
+                with g as (
+                  select ${idCol} id, coalesce(sum(d.closing_value), 0) v, count(*) n
+                  from ${txtAgg} d
+                  where ${whereFrag()} and ${idCol} is not null
+                  group by ${idCol}
+                ), topg as (
+                  select g.id, g.v, g.n, sel.tv, sel.tn, sel.te,
+                         sum(g.v) over () gv, sum(g.n) over () gn, count(*) over () ge
+                  from g cross join (select coalesce(sum(v), 0) tv, coalesce(sum(n), 0) tn, count(*) te from g) sel
+                  where ${keep(s`g.id`)}
+                  order by ${aggSort} ${tableOpts.sort ? dir : s`desc`}, g.id
+                  ${limitFrag}
+                )
+                select t.id, coalesce(max(ep.name_display), '(fără nume)') nm, max(ep.county) co, t.v, t.n, t.tv, t.tn, t.te, t.gv, t.gn, t.ge
+                from topg t
+                left join marts.entity_profile ep on ep.entity_id = t.id and ep.role = ${dim}
+                group by t.id, t.v, t.n, t.tv, t.tn, t.te, t.gv, t.gn, t.ge
+                order by ${sortKey === "count" ? s`t.n` : s`t.v`} ${tableOpts.sort ? dir : s`desc`}, t.id
+              `) as unknown as BandRow[];
+              return {
+                block: "table",
+                rows: r.map((p) => ({ entityId: String(p.id), name: p.nm, county: p.co, value: Number(p.v), count: Number(p.n), population: null })),
+                ...(await pagedMeta(r.map((p) => ({ te: p.ge })), count)),
+                ...bandTotals(r[0]),
+              };
+            }
             // Window totals are evaluated after grouping and before the limit:
             // the whole ranking's value, records and entities, at no extra scan,
             // so the answer can say "% din total" and "Alte N firme".
@@ -1347,17 +1532,19 @@ export async function runSpec(
             count: s`g.n`,
             percap: s`g.v`,
           }[sortKey];
+          // A band keeps its firms after grouping (rankedBand): the paged count is theirs.
           const r = (await s`
             with g as (
               select ${idCol} id, max(${nameCol}) nm,
-                     coalesce(sum(d.closing_value), 0) v, count(*) n, count(*) over () te
+                     coalesce(sum(d.closing_value), 0) v, count(*) n
               from ${txtAggNames} d
               where ${whereFrag()} and ${idCol} is not null
               group by ${idCol}
             )
-            select g.id, g.nm, ep.county co, g.v, g.n, g.te
+            select g.id, g.nm, ep.county co, g.v, g.n, count(*) over () te
             from g
             left join marts.entity_profile ep on ep.entity_id = g.id and ep.role = ${dim}
+            ${keep ? s`where ${keep(s`g.id`)}` : s``}
             order by ${sortFrag} ${tableOpts.sort ? dir : s`desc`}, g.id
             ${limitFrag}
           `) as unknown as { id: string; nm: string; co: string | null; v: string; n: string; te: string }[];
@@ -1537,18 +1724,31 @@ export async function runSpec(
           // full 8-digit code). Otherwise: top-level divisions (2-digit).
           const plen = w.cpvPrefixes.reduce((a, p) => Math.max(a, p.length), 0);
           const stemLen = plen === 0 ? 2 : Math.min(plen + 2, 8);
-          const rolled = rollup ? await rollupBreakdown(s, rollup, stemLen) : null;
-          // Equal values come out by stem, as from the rollup.
-          const r = rolled && "rows" in rolled ? rolled.rows : (await s`
-            select substr(d.cpv_code, 1, ${stemLen}) stem,
-                   coalesce(sum(d.closing_value), 0) v, count(*) n
+          // On every channel the rollup groups by stem and channel too (F3): the strip's shares from the same pass.
+          const rolled = !rollup ? null : dataset === "all" ? await rollupBreakdown(s, rollup, stemLen, "src") : await rollupBreakdown(s, rollup, stemLen);
+          const rolledRows = rolled && "rows" in rolled ? rolled.rows : null;
+          // Equal values come out by stem, as from the rollup. Live, by stem and channel (F3): the largest
+          // record of each group and the channels' totals come from the same pass.
+          const live = rolledRows ? null : (await s`
+            select substr(d.cpv_code, 1, ${stemLen}) stem, ${dataset === "all" ? s`d.src` : s`${dataset}::text`} src,
+                   coalesce(sum(d.closing_value), 0) v, count(*) n, max(d.closing_value) mx
             from ${txtAgg} d
             where ${whereFrag()} and d.cpv_code is not null
-            group by 1 order by v desc, stem
-          `) as unknown as { stem: string; v: string; n: string }[];
+            group by 1, 2
+          `) as unknown as { stem: string; src: "da" | "contracts"; v: string; n: string; mx: string }[];
+          const bySrc = rolledRows && dataset === "all" ? rolledRows as { stem: string; src: "da" | "contracts"; v: string; n: string }[] : null;
+          const r = bySrc ? breakdownStems(bySrc) : rolledRows ?? breakdownStems(live!);
           const top = r.slice(0, 8);
           const rest = r.slice(8);
-          const names = await cpvNamesFor(s, top.map((t) => t.stem));
+          // F3 (final breakdown §3.6–§3.10): every group of the level, for the kinds row, the order by records
+          // and the „1 contract: 99%” tag; the largest record from agg_months on the divisions it answers.
+          const base = r.slice(0, BREAKDOWN_BASE);
+          const largest = live ? largestOf(live) : stemLen === 2 && seriesRollup && "where" in seriesRollup ? largestOf((await s`
+            select p.cpv2 stem, p.src, max(p.mx) mx from marts.agg_months p where ${seriesRollup.where} and p.cpv2 is not null group by 1, 2
+          `) as unknown as { stem: string; src: "da" | "contracts"; mx: string }[]) : null;
+          const names = await cpvNamesFor(s, base.map((t) => t.stem));
+          // The strip's shares (final §3.6): each channel in the same selection with every channel.
+          const streams = await breakdownStreams(s, live ?? bySrc);
           return {
             block: "breakdown",
             slices: top.map((t) => ({
@@ -1561,6 +1761,11 @@ export async function runSpec(
               value: rest.reduce((a, b) => a + Number(b.v), 0),
               count: rest.reduce((a, b) => a + Number(b.n), 0),
             },
+            base: base.map((t) => ({
+              code: t.stem, name: names.get(t.stem) ?? null, value: Number(t.v), count: Number(t.n),
+              ...(largest?.get(t.stem) ?? {}),
+            })),
+            ...(streams ? { streams } : {}),
           };
         }
 
@@ -1881,7 +2086,12 @@ export async function runSpec(
     if (!periods) {
       if (annual) caveats.push(PERIOD_UNKNOWN_CAVEAT);
     } else if (data.block === "timeseries") {
-      partial = partialYears(periods, dataset, data.series.map((p) => p.year), w);
+      // The same months of each year are judged as such (F3), as the trend's two years.
+      const months = w.seriesMonths;
+      const years = [...new Set(data.series.map((p) => p.year))];
+      partial = months
+        ? years.flatMap((year) => partialYears(periods, dataset, [year], { yearFrom: year, yearTo: year, monthFrom: months[0], monthTo: months[1] }))
+        : partialYears(periods, dataset, years, w);
       const note = partialYearsCaveat(partial, "series");
       if (note) caveats.push(note);
     } else if (data.block === "compare") {
@@ -1908,8 +2118,8 @@ export async function runSpec(
   // trend-2: an old link with 2018 still runs, with the note (trend final §3.2); the year picker starts at 2019.
   const note2018 = data.block === "trend" && (data.yearA === 2018 || data.yearB === 2018) ? TREND_2018_NOTE[dataset] : null;
   if (note2018) caveats.push(note2018);
-  const executed: ExecutedWindow | null = trendWindow
-    ? { months: [trendWindow.from, trendWindow.to], mode: trendWindow.mode, checkpoint: trendWindow.checkpoint } : null;
+  const ran = trendWindow ?? seriesWindow;
+  const executed: ExecutedWindow | null = ran ? { months: [ran.from, ran.to], mode: ran.mode, checkpoint: ran.checkpoint } : null;
   return { data, displaySql, caveats, tookMs: Date.now() - started, ...(partial ? { partialYears: partial } : {}), ...(executed ? { executed } : {}),
     ...(frozenMembers ? { groupMembers: frozenMembers } : {}), ...(movement ? { movement } : {}), ...(displaySqlByMeasure ? { displaySqlByMeasure } : {}),
     ...(displaySqlByList ? { displaySqlByList } : {}) };
@@ -2148,18 +2358,22 @@ export async function runRows(
     }
   }
   // trend: the answer's months, by the same function at this checkpoint (sameMonthsWindow).
+  // An evolution's same months (F3) are resolved as a trend's, and sent back the same way.
   let trendWindow: MonthsWindow = WHOLE_YEAR;
-  if (spec.block === "trend") {
-    if (spec.trend?.months !== undefined) {
-      const window = sameMonthsWindow(await coveragePeriods(sql), dataset, yearTo ?? maxY, spec.trend.months);
+  if (spec.block === "trend" || spec.block === "timeseries") {
+    const months = spec.block === "trend" ? spec.trend?.months : spec.timeseries?.months;
+    if (months !== undefined) {
+      const window = sameMonthsWindow(await coveragePeriods(sql), dataset, yearTo ?? maxY, months);
       if ("error" in window) return { error: window.error };
       trendWindow = window;
     }
     if (opts.months && (opts.months[0] !== trendWindow.from || opts.months[1] !== trendWindow.to)) return { error: DATA_CHANGED, conflict: true };
-  } else if (opts.months) return { error: "Lunile comparate se aplică doar schimbării între doi ani." };
+  } else if (opts.months) return { error: "Lunile comparate se aplică doar schimbării între doi ani și evoluției." };
   // The question's conditions, written for the sources as for the answer (predicates.ts).
   const kindIds = await authorityKindIds(sql, namedKind(spec.filters.authorityKind));
-  const ctx = predicateContext(sql, spec, grounding, { dataset, yearFrom, yearTo, kindIds, trendMonths: partialMonths(trendWindow) });
+  const ctx = predicateContext(sql, spec, grounding, {
+    dataset, yearFrom, yearTo, kindIds, trendMonths: partialMonths(trendWindow), seriesMonths: partialMonths(trendWindow),
+  });
   // The rollups give the record threshold's party list and, without a local
   // filter, the totals of a selection without entity conditions (rollups.ts).
   const rollup = profile || valueWinner ? null : await rollupPlanFor(sql, spec, ctx);
@@ -2250,6 +2464,8 @@ export async function runRows(
       notes.push(`Schimbare între ${yearFrom ?? minY} și ${yearTo ?? maxY}: sursele includ numai cei doi ani; diferența este totalul final minus totalul inițial.`);
       if (ctx.trendMonths) notes.push(`Ambii ani se compară pe aceleași luni: ${monthsLabel(trendWindow)}; sursele includ numai aceste luni.`);
     }
+    // rowPredicates already cut every year to them (seriesMonths): said as on the answer.
+    if (ctx.seriesMonths) notes.push(`Fiecare an e numărat pe aceleași luni: ${monthsLabel(trendWindow)}; sursele includ numai aceste luni.`);
     if (spec.minimumRecords) {
       // Counted over the selection itself (rowPredicates): the rollups hold the same party list.
       const party = (spec.minimumRecords.role === "authority" ? sql`d.authority_id` : sql`d.supplier_id`) as unknown as ReturnType<DbSql>;
@@ -2635,8 +2851,12 @@ function buildDisplaySql(spec: AskSpec, w: PredicateCtx): string {
   switch (spec.block) {
     case "stat":
       return `select ${measure}\nfrom ${dtable}\nwhere ${where};`;
-    case "timeseries":
-      return `select an, ${measure}\nfrom ${dtable}\nwhere ${where}\ngroup by an order by an;`;
+    case "timeseries": {
+      // F3: month by month, the split's part beside the bar (channel or CPV division).
+      const key = spec.timeseries?.grain === "month" ? "luna" : "an";
+      const part = spec.timeseries?.split === "channel" ? ", canal" : spec.timeseries?.split === "domain" ? ", diviziune_cpv" : "";
+      return `select ${key}${part}, ${measure}\nfrom ${dtable}\nwhere ${where}\ngroup by ${key}${part} order by ${key};`;
+    }
     case "map":
       return `select county, ${measure}\nfrom ${dtable}\nwhere ${where}\ngroup by county;`;
     case "table": {
@@ -2653,8 +2873,8 @@ function buildDisplaySql(spec: AskSpec, w: PredicateCtx): string {
     case "distribution":
       return `select width_bucket(cri, 0, 1, 10) interval_risc, count(*)\nfrom marts.entity_flags\nwhere n_das >= ${RISK_MIN_DAS}\ngroup by 1;\n-- + poziția entității tale în distribuție`;
     case "breakdown":
-      // The slices are always ordered by value: a count measure from another question is not applied here.
-      return `select categoria_cpv, sum(closing_value)\nfrom ${dtable}\nwhere ${where}\ngroup by categoria_cpv\norder by 2 desc;`;
+      // The groups by value or by records (F3: the legend's headers order them); both are on every row.
+      return `select categoria_cpv, sum(closing_value), count(*)\nfrom ${dtable}\nwhere ${where}\ngroup by categoria_cpv\norder by ${spec.measure === "count" ? 3 : 2} desc;`;
     case "scatter":
       return `select name_display, total_ron, cri, n_flags\nfrom marts.entity_flags\nwhere n_das >= ${RISK_MIN_DAS} and cri is not null;`;
     case "sankey":

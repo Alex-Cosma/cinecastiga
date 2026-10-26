@@ -15,9 +15,10 @@ import type { AdvancedField, BlockFilters, ConditionRow, FilterCtx, FilterId, Fi
  *   its order, at most four: an invitation becomes its phrase once set.
  * - P3b, the partners of the network and the flow ("Furnizorii",
  *   "Clienții"): a selection, the total changes. P3a, a group row, only where
- *   the answer's version moved its key to the group: the employees of a trend
- *   of firms ("Câștigătorii", trend-2); elsewhere the engine still applies
- *   every key on the records (plan §2.1, §12.14).
+ *   the answer's version moved its key to the group: the employees of a
+ *   ranking of firms ("Câștigătorii": trend-2, table:employees-2 in F3, and
+ *   "Cine conduce?" by value); elsewhere the engine still applies every key on
+ *   the records (plan §2.1, §12.14).
  * - P4 the chips the question owns: the trend's "Aceleași luni" (F2).
  * - P5 the presentation line (table, trend); P6 the controls beside the answer
  *   that write a key (the trend's groups and "Prima dată", F2); P9 "⋯ ›
@@ -77,7 +78,8 @@ function candidates(spec: FilterSpec, ctx: FilterCtx): Slot[] {
   const cpvInvite = placed("cpvTerm", "cpvTerm", offersKind(spec) ? { writes: ["purchaseKind"] } : {});
   switch (ctx.block) {
     case "stat": return [cpvInvite, buyerInvite(ctx), fromInvite(["supplier", "admin", "employees"]), sizeInvite];
-    case "table": return firms ? [employeesInvite, adminInvite, cpvInvite, sizeInvite] : [cpvInvite, fromInvite(["supplier", "admin", "employees"]), sizeInvite];
+    // The ranked firms' size is the row CÂȘTIGĂTORII (F3), not an invitation.
+    case "table": return firms ? [adminInvite, cpvInvite, sizeInvite] : [cpvInvite, fromInvite(["supplier", "admin", "employees"]), sizeInvite];
     case "timeseries": return [cpvInvite, buyerInvite(ctx), fromInvite(["supplier", "admin"])];
     case "map": return [cpvInvite, buyerInvite(ctx, { authority: false, locality: false, county: false }), fromInvite(["supplier", "admin"])];
     case "breakdown": return [cpvInvite, fromInvite(["supplier"])];
@@ -92,7 +94,7 @@ function candidates(spec: FilterSpec, ctx: FilterCtx): Slot[] {
     case "fact_check": return [cpvInvite, datasetInvite];
     case "entity_card":
       if (ctx.form === "entity_card:risk") return firms ? [placed("county", "seat")] : [];
-      return firms ? [employeesInvite, adminInvite, cpvInvite] : [cpvInvite, fromInvite(["supplier", "admin", "employees"])];
+      return firms ? [adminInvite, cpvInvite] : [cpvInvite, fromInvite(["supplier", "admin", "employees"])];
     default: return [];
   }
 }
@@ -192,12 +194,16 @@ const sentence: BlockFilters["sentence"] = (spec, ctx) => sentenceSlots(sentence
 const presentation: BlockFilters["presentation"] = (spec) => sentenceSlots(presentationTokens(spec));
 
 /**
- * P3a on a trend of firms (plan §4.7, trend final §3.10): the firms' size is
- * an attribute of the grouped firm under trend-2 (the groups keep the band,
- * the total stays the selection's), with the bands of "Cine câștigă?".
+ * P3a, the row CÂȘTIGĂTORII of a ranking of firms (plan §4.2, §4.7, §4.13):
+ * the firms' size is an attribute of the ranked firm, the list narrows to the
+ * band and the total stays the sentence's: on a trend of firms under trend-2,
+ * on "Cine câștigă?" under table:employees-2 (F3), and on "Cine conduce?" by
+ * value, which runs that ranking (its place 1 is the same firm). Not on the
+ * risk index (F6c: the employees on profiles).
  */
-function winners(spec: FilterSpec): ConditionRow[] {
-  return spec.dim === "supplier" ? [{ label: "Câștigătorii", kind: "group", chips: [employeesInvite] }] : [];
+function winners(spec: FilterSpec, ctx: FilterCtx): ConditionRow[] {
+  if (spec.dim !== "supplier" || ctx.form === "entity_card:risk") return [];
+  return [{ label: "Câștigătorii", kind: "group", chips: [employeesInvite] }];
 }
 
 /**
@@ -219,15 +225,19 @@ function entry(extra: Partial<Pick<BlockFilters, "rows" | "strip" | "under">> = 
 
 /** P4 on the total and the ranking (F3, kit §6 stat 3): "Doar cele de peste 1 mil. lei ×", drawn once set. */
 const size = () => [sizeInvite];
+/** P4 on the evolution (F3): the chip "Aceleași luni: ian.–mai ×" once the strip's switch set it. */
+const seriesMonths = placed("timeseriesMonths", "months");
 
 export const BLOCK_FILTERS: Record<Block, BlockFilters> = {
   stat: entry({ under: size }),
-  table: entry({ under: size }),
-  timeseries: entry(),
+  table: entry({ rows: winners, under: size }),
+  // The split and the same months beside the answer (F3, final timeseries §3.8–§3.9); the months' chip once set.
+  timeseries: entry({ strip: ["timeseriesSplit", "timeseriesMonths"], under: () => [seriesMonths] }),
   // The measure is the map's lens, beside the answer (plan §4.4 F1b).
   map: entry({ strip: ["measure"] }),
   // The data stream is the strip's segmented "Toate · Directe · Proceduri"; the sentence says it once set ("prin […]").
-  breakdown: entry({ strip: ["dataset"] }),
+  // The number beside the value: the legend's headers order by it (F3, final breakdown §3.8).
+  breakdown: entry({ strip: ["dataset", "measure"] }),
   compare: entry({ strip: ["dataset"] }),
   // The groups beside the answer switch on the data already fetched (owner-R-facts-all-lists); "Prima dată" on the new ones.
   trend: entry({ rows: winners, under: () => [sameMonths], strip: ["trendChange", "trendFirstOnly"] }),
@@ -236,5 +246,5 @@ export const BLOCK_FILTERS: Record<Block, BlockFilters> = {
   fact_check: entry(),
   distribution: entry(),
   scatter: entry(),
-  entity_card: entry(),
+  entity_card: entry({ rows: winners }),
 };

@@ -72,9 +72,9 @@ describe("the sentence of each question (plan §4)", () => {
       .toBe("Ce [firme] câștigă [contractele din proceduri] încheiate de primăria [Cluj-Napoca], în [2024–2025]?");
     expect(marked(q({ block: "table", dim: "supplier", filters: { authorityName: "Spitalul Clinic Județean de Urgență Cluj", yearFrom: 2025, yearTo: 2025 } })))
       .toBe("Ce [firme] câștigă [achizițiile] făcute de [Spitalul Clinic Județean de Urgență Cluj], în [2025]?");
-    // Employees and the administrator are selection phrases glued to the subject (plan §9 F1), not a group row.
+    // The administrator is a selection phrase glued to the subject (plan §9 F1); F3: the employees are the row CÂȘTIGĂTORII (plan §4.2).
     expect(marked(q({ block: "table", dim: "supplier", filters: { minEmployees: 1, maxEmployees: 9, ...ADMIN } })))
-      .toBe("Ce [firme] [cu 1–9 angajați] conduse azi de [POPESCU ION (n. 1970)] câștigă [achizițiile] făcute de [instituțiile publice] din [toată țara], în [toți anii]?");
+      .toBe("Ce [firme] conduse azi de [POPESCU ION (n. 1970)] câștigă [achizițiile] făcute de [instituțiile publice] din [toată țara], în [toți anii]?");
     expect(marked(q({ block: "table", dim: "authority", filters: { authorityKind: "spital", county: "Cluj", maxEmployees: 0, yearFrom: 2025, yearTo: 2025 } })))
       .toBe("Ce [spitale] din [județul Cluj] cumpără cel mai mult de la [firme fără angajați], prin [toate achizițiile], în [2025]?");
     expect(marked(q({ block: "table", dim: "county", dataset: "da", filters: { authorityKind: "comuna", ...PORR, yearFrom: 2025, yearTo: 2025 } })))
@@ -334,7 +334,7 @@ describe("the sentence of each question (plan §4)", () => {
     expect(marked(q({ block: "entity_card", dim: "supplier", rankBy: "value" })))
       .toBe("Care [firmă] [câștigă cel mai mult] din [achizițiile] făcute de [instituțiile publice] din [toată țara], în [toți anii]?");
     expect(marked(q({ block: "entity_card", dim: "supplier", rankBy: "value", filters: { minEmployees: 1, maxEmployees: 9, ...ADMIN, cpvTerm: "medicamente", yearFrom: 2025, yearTo: 2025 } })))
-      .toBe("Care [firmă] [cu 1–9 angajați] condusă azi de [POPESCU ION (n. 1970)] [câștigă cel mai mult] din [achizițiile] pentru [„medicamente”] făcute de [instituțiile publice] din [toată țara], în [2025]?");
+      .toBe("Care [firmă] condusă azi de [POPESCU ION (n. 1970)] [câștigă cel mai mult] din [achizițiile] pentru [„medicamente”] făcute de [instituțiile publice] din [toată țara], în [2025]?");
     expect(marked(q({ block: "entity_card", dim: "authority", rankBy: "value", filters: { authorityKind: "comuna", county: "Cluj", supplierName: "ALLIANCE HEALTHCARE ROMANIA" } })))
       .toBe("Care [primărie de comună] din [județul Cluj] [cumpără cel mai mult] de la [ALLIANCE HEALTHCARE ROMANIA], prin [toate achizițiile], în [toți anii]?");
     expect(marked(q({ block: "entity_card", dim: "supplier", rankBy: "risk", filters: { county: "Cluj" } }))).toBe("Care [firmă] cu sediul [în județul Cluj] [are cel mai ridicat indice de risc]?");
@@ -466,7 +466,12 @@ describe("the sentences of the legacy corpus (plan §2.6, §6.2)", () => {
       "legacy:locality-map-refused": "Cum se împart achizițiile făcute de instituțiile publice pe județe, în toți anii? · sub propoziție: locality",
       "legacy:locality-stat": "Cât valorează achizițiile făcute de primăria Aiud (Alba), în toți anii?",
       "legacy:locality-ranking": "Ce firme câștigă achizițiile făcute de primăria Aiud (Alba), în toți anii?",
-      "legacy:newer-key-refused": "Cum evoluează valoarea tuturor achizițiilor făcute de instituțiile publice din toată țara, an de an, 2024–2025? · sub propoziție: timeseriesGrain",
+      "legacy:newer-key-refused": "Ce instituții publice din toată țara ies din tipar după risc și valoarea achizițiilor directe? · sub propoziție: scatterFlag",
+      // F3: month by month is said by the sentence; the split and the same months sit beside the answer.
+      "legacy:timeseries-months": "Cum evoluează valoarea tuturor achizițiilor făcute de instituțiile publice din toată țara, lună de lună, 2024–2025?",
+      "legacy:timeseries-channel": "Cum evoluează valoarea tuturor achizițiilor făcute de instituțiile publice din toată țara, an de an? · sub propoziție: timeseriesSplit",
+      "legacy:timeseries-domain": "Cum evoluează numărul de înregistrări din toate achizițiile făcute de instituțiile publice din toată țara, an de an, 2024–2025? · sub propoziție: timeseriesSplit",
+      "legacy:timeseries-same-months": "Cum evoluează valoarea tuturor achizițiilor făcute de instituțiile publice din toată țara, an de an, 2024–2025? · sub propoziție: timeseriesMonths",
       "legacy:other-block-options": "Ce firme câștigă achizițiile făcute de instituțiile publice din toată țara, în toți anii?",
       "legacy:cpv-retired": "Cât valorează achizițiile pentru „lucrări” făcute de instituțiile publice din toată țara, în toți anii?",
       "legacy:cpv-unknown": "Cât valorează achizițiile pentru „zzzz necunoscut” făcute de instituțiile publice din toată țara, în toți anii?",

@@ -75,6 +75,8 @@ export interface RollupCtx {
   monthTo: number | null;
   /** trend: the same months of both years, null for whole years. */
   trendMonths: readonly [number, number] | null;
+  /** timeseries: the same months of every year (F3); agg_months answers it (series-rollups.ts), these rollups do not. */
+  seriesMonths: readonly [number, number] | null;
   adminSupplierIds: readonly string[] | null;
   comparison: { role: Role; focalId: string | null; compareId: string | null } | null;
   /** F3: the kind from the CPV code (a condition on the code, like the domain's); the procedure and the size are not in the rollups. */
@@ -92,7 +94,7 @@ export interface RollupCtx {
 export const ROLLUP_CTX_KEYS = [
   "sql", "plafond", "population", "minimumRecords", "cpvPrefixes", "cpvExclude", "county", "kind", "kindIds",
   "authorityId", "supplierId", "uatSiruta", "uatAuthorityIds", "singleBidder", "minEmployees", "maxEmployees",
-  "yearFrom", "yearTo", "monthFrom", "monthTo", "trendMonths", "adminSupplierIds", "comparison",
+  "yearFrom", "yearTo", "monthFrom", "monthTo", "trendMonths", "seriesMonths", "adminSupplierIds", "comparison",
   "purchaseKind", "procedure", "purchaseValueMin", "purchaseValueMax",
 ] as const satisfies readonly ("sql" | keyof RollupCtx)[];
 const KNOWN_KEYS = new Set<string>(ROLLUP_CTX_KEYS);
@@ -171,6 +173,7 @@ export function planRollup(ctx: RollupCtx, need: RollupNeed, opts: { months?: bo
   if (ctx.comparison) return { reason: "comparison: its own queries (compareParties …)" };
   if (ctx.monthFrom !== null || ctx.monthTo !== null) return { reason: "months: the rollups keep whole years" };
   if (ctx.trendMonths && !opts.months) return { reason: "months: agg_entity_month is not built" };
+  if (ctx.seriesMonths) return { reason: "months: the same months of every year are on agg_months (series-rollups.ts)" };
   if (ctx.singleBidder) return { reason: "single bidder: not in the rollups" };
   // F3: the procedure and the whole value are columns of the contract rows the rollups do not keep.
   if (ctx.procedure) return { reason: "procedure: not in the rollups" };
@@ -414,8 +417,13 @@ export interface RollupTableOpts {
   pageSize: number;
   sort?: TableSort;
   dir?: "asc" | "desc";
+  /**
+   * A condition on the grouped id (F3: the band of employees of a ranking of firms, table:employees-2): the
+   * list keeps those ids, tv/tn/te stay the whole selection's and gv/gn/ge are the kept ones'.
+   */
+  keep?: (id: Fragment) => Fragment;
 }
-export interface RollupTableRow { id: string; nm: string; co: string | null; v: string; n: string; tv?: string; tn?: string; te?: string }
+export interface RollupTableRow { id: string; nm: string; co: string | null; v: string; n: string; tv?: string; tn?: string; te?: string; gv?: string; gn?: string; ge?: string }
 
 /**
  * case "table", dim authority/supplier, value or count measure: the live
@@ -438,6 +446,33 @@ export async function rollupTable(sql: DbSql, plan: { source: RollupSource; filt
   const count = async () => Number(((await sql`
     select count(distinct ${id}) t from ${fromSource(sql, source, "p")} where ${where} and ${id} is not null
   `) as unknown as { t: string }[])[0]?.t ?? 0);
+  if (o.keep && (sortKey === "value" || sortKey === "count" || sortKey === "percap")) {
+    const aggSort = sortKey === "count" ? sql`n` : sql`v`;
+    const rows = (await sql`
+      with g as (
+        select ${id} id, sum(p.v) v, sum(p.n) n
+        from ${fromSource(sql, source, "p")}
+        where ${where} and ${id} is not null
+        group by ${id}
+      ), topg as (
+        select g.id, g.v, g.n, sel.tv, sel.tn, sel.te, sum(g.v) over () gv, sum(g.n) over () gn, count(*) over () ge
+        from g cross join (select coalesce(sum(v), 0) tv, coalesce(sum(n), 0) tn, count(*) te from g) sel
+        where ${o.keep(sql`g.id`)}
+        order by ${aggSort} ${order}, g.id
+        ${limit}
+      )
+      select t.id, coalesce(max(ep.name_display), '(fără nume)') nm, max(ep.county) co, t.v, t.n, t.tv, t.tn, t.te, t.gv, t.gn, t.ge
+      from topg t
+      left join marts.entity_profile ep on ep.entity_id = t.id and ep.role = ${o.dim}
+      group by t.id, t.v, t.n, t.tv, t.tn, t.te, t.gv, t.gn, t.ge
+      order by ${sortKey === "count" ? sql`t.n` : sql`t.v`} ${order}, t.id
+    `) as unknown as RollupTableRow[];
+    if (!o.paged) return { rows, total: null };
+    const kept = async () => Number(((await sql`
+      select count(*) t from (select ${id} id from ${fromSource(sql, source, "p")} where ${where} and ${id} is not null group by 1) g where ${o.keep!(sql`g.id`)}
+    `) as unknown as { t: string }[])[0]?.t ?? 0);
+    return { rows, total: rows[0]?.ge !== undefined ? Number(rows[0].ge) : await kept() };
+  }
   if (sortKey === "value" || sortKey === "count" || sortKey === "percap") {
     const aggSort = sortKey === "count" ? sql`n` : sql`v`;
     const rows = (await sql`
@@ -463,7 +498,6 @@ export async function rollupTable(sql: DbSql, plan: { source: RollupSource; filt
     return { rows, total: rows[0]?.te !== undefined ? Number(rows[0].te) : await count() };
   }
   if (source.table !== "entity") return { reason: "name and county sorts need the rollup's names (agg_entity_year)" };
-  const total = o.paged ? await count() : null;
   const sortFrag = sortKey === "name" ? sql`g.nm` : sql`ep.county`;
   const rows = (await sql`
     with g as (
@@ -472,13 +506,18 @@ export async function rollupTable(sql: DbSql, plan: { source: RollupSource; filt
       where ${where} and ${id} is not null
       group by ${id}
     )
-    select g.id, g.nm, ep.county co, g.v, g.n
+    select g.id, g.nm, ep.county co, g.v, g.n, count(*) over () te
     from g
     left join marts.entity_profile ep on ep.entity_id = g.id and ep.role = ${o.dim}
+    ${o.keep ? sql`where ${o.keep(sql`g.id`)}` : sql``}
     order by ${sortFrag} ${order}, g.id
     ${limit}
   `) as unknown as RollupTableRow[];
-  return { rows, total };
+  // The ranked ids (the kept ones with a band) are counted by the same statement; a page past the end counts apart.
+  const total = !o.paged ? null : rows[0]?.te !== undefined ? Number(rows[0].te) : o.keep ? Number(((await sql`
+    select count(*) t from (select ${id} id from ${fromSource(sql, source, "p")} where ${where} and ${id} is not null group by 1) g where ${o.keep(sql`g.id`)}
+  `) as unknown as { t: string }[])[0]?.t ?? 0) : await count();
+  return { rows: rows.map(({ te: _te, ...row }) => row), total };
 }
 
 /** case "table", dim county: the live county ranking on a rollup (every source has the buyer county). */
@@ -546,15 +585,25 @@ export function rollupTrendGrouped(sql: DbSql, plan: { source: RollupSource; fil
  * Slicing into the top 8 and "other" stays in the engine.
  */
 export async function rollupBreakdown(sql: DbSql, plan: { source: RollupSource; filters: RollupFilters }, stemLen: number):
-  Promise<{ rows: { stem: string; v: string; n: string }[] } | { reason: string }> {
+  Promise<{ rows: { stem: string; v: string; n: string }[] } | { reason: string }>;
+/** By stem and channel (F3): the breakdown's channels come from the same pass (compile.ts breakdownStreams). */
+export async function rollupBreakdown(sql: DbSql, plan: { source: RollupSource; filters: RollupFilters }, stemLen: number, by: "src"):
+  Promise<{ rows: { stem: string; src: "da" | "contracts"; v: string; n: string }[] } | { reason: string }>;
+export async function rollupBreakdown(sql: DbSql, plan: { source: RollupSource; filters: RollupFilters }, stemLen: number, by?: "src"):
+  Promise<{ rows: { stem: string; src?: "da" | "contracts"; v: string; n: string }[] } | { reason: string }> {
   if (plan.source.table !== "cpv") return { reason: "breakdowns read agg_cpv_year only" };
   const where = rollupWhere(sql, plan.source, plan.filters, "p");
-  const rows = (await sql`
+  const rows = (by === "src" ? await sql`
+    select substr(p.cpv_code, 1, ${stemLen}) stem, p.src, coalesce(sum(p.v), 0) v, sum(p.n) n
+    from marts.agg_cpv_year p
+    where ${where} and p.cpv_code is not null
+    group by 1, 2
+  ` : await sql`
     select substr(p.cpv_code, 1, ${stemLen}) stem, coalesce(sum(p.v), 0) v, sum(p.n) n
     from marts.agg_cpv_year p
     where ${where} and p.cpv_code is not null
     group by 1 order by v desc, stem
-  `) as unknown as { stem: string; v: string; n: string }[];
+  `) as unknown as { stem: string; src?: "da" | "contracts"; v: string; n: string }[];
   return { rows };
 }
 

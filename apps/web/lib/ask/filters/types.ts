@@ -117,8 +117,11 @@ export interface FilterDef<V = unknown> {
   windowNote?: string;
   /** Where the engine applies it and how (the support declaration, plan §2.2). An absent form accepts and ignores it, or refuses it. */
   engine: Partial<Record<AnswerForm, EngineLevel>>;
-  /** What it does to the total on a form it applies to (today's in TODAY_SCOPE, lib/ask/filters/today.ts). */
-  scope(form: AnswerForm): Scope;
+  /**
+   * What it does to the total on a form it applies to (today's in TODAY_SCOPE, lib/ask/filters/today.ts);
+   * `spec` where it depends on the question's subject (the employees of a ranking of firms are a group, F3).
+   */
+  scope(form: AnswerForm, spec?: FilterSpec): Scope;
   /** Read ahead (F0a): the stage that implements it (READ_AHEAD_KEYS). */
   stage?: string;
   /** A key the engine of 4e90b00 did not have, applied from this stage on (F2: the trend's): it has no scope of today (TODAY_SCOPE). */

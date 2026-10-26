@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { buildAskRollups, createDb, TRANSACTION_MART_BUILD_INDEXES, type DbSql } from "@seap/db";
 import { CSV_MAX_ROWS, DA_PLAFOND_RON, DATA_CHANGED, runRows, runSpec, TABLE_PAGE_SIZE, type BlockData } from "./compile";
-import { trendGroupOf } from "./predicates";
+import { employeesCond, trendGroupOf } from "./predicates";
 import { trendGroupOfRow, trendListOf, trendNoun, trendPartition, trendProfiles, trendRowLabels, type TrendList } from "./trend-partition";
 import { evidenceCsv, sumDecimalStrings } from "./evidence";
 import { forgetTrendGroups, trendGroupStats } from "./group-ids";
@@ -14,6 +14,7 @@ import { forgetAuthorityKinds, readAuthorityKinds, type AuthorityKinds } from ".
 import type { Grounding } from "./ground";
 import type { QueryPopulation } from "./population";
 import { ENGINE_GLOBAL_TABLES, scoped } from "./test-fixture";
+import { forgetMixRollupReady } from "./series-rollups";
 
 const testUrl = process.env["TEST_DATABASE_URL"];
 if (testUrl && !/^seap_test_[a-z0-9_]+$/.test(new URL(testUrl).pathname.slice(1))) throw new Error("Rollup fixtures require a dedicated seap_test_* database");
@@ -99,6 +100,7 @@ const ctxOf = (spec: AskSpec, g: Grounding): RollupCtx => {
     yearFrom: spec.filters.yearFrom ?? null, yearTo: spec.filters.yearTo ?? null,
     monthFrom: spec.filters.monthFrom ?? null, monthTo: spec.filters.monthTo ?? null, adminSupplierIds: null, comparison: null,
     trendMonths: spec.block === "trend" && Array.isArray(spec.trend?.months) ? spec.trend.months as readonly [number, number] : null,
+    seriesMonths: spec.block === "timeseries" && Array.isArray(spec.timeseries?.months) ? spec.timeseries.months as readonly [number, number] : null,
     purchaseKind: spec.filters.purchaseKind ?? null, procedure: spec.filters.procedure ?? null,
     purchaseValueMin: spec.filters.purchaseValueMin ?? null, purchaseValueMax: spec.filters.purchaseValueMax ?? null,
   };
@@ -109,7 +111,11 @@ const needOf = (spec: AskSpec): RollupNeed => spec.block === "table" || spec.blo
 
 /** The engine's mapping of each live query result (compile.ts), applied to the rollup rows. */
 async function fromRollups(q: DbSql, spec: AskSpec, g: Grounding, sort?: "name" | "county"): Promise<{ source: string; data: BlockData }> {
-  const plan = planRollup(ctxOf(spec, g), needOf(spec), { months: true });
+  // F3 (table:employees-2): a ranking of firms plans on its selection without the band, then keeps the band's firms.
+  const band = spec.block === "table" && spec.dim === "supplier" && (spec.filters.minEmployees !== undefined || spec.filters.maxEmployees !== undefined)
+    ? { min: spec.filters.minEmployees ?? null, max: spec.filters.maxEmployees ?? null } : null;
+  const ctx = ctxOf(spec, g);
+  const plan = planRollup(band ? { ...ctx, minEmployees: null, maxEmployees: null } : ctx, needOf(spec), { months: true });
   if ("reason" in plan) throw new Error(plan.reason);
   const source = plan.source.table === "entity" || plan.source.table === "entityMonth" ? `${plan.source.table}:${plan.source.role}` : plan.source.table;
   const num = (rows: { v: string; n: string }[]) => rows.map((r) => ({ value: Number(r.v), count: Number(r.n) }));
@@ -122,11 +128,13 @@ async function fromRollups(q: DbSql, spec: AskSpec, g: Grounding, sort?: "name" 
         const r = await rollupCountyTable(q, plan, o);
         return { source, data: { block: "table", rows: r.rows.map((p, i) => ({ entityId: null, name: p.c, county: null, ...num(r.rows)[i]!, population: null })), ...meta(r.total) } };
       }
-      const r = await rollupTable(q, plan, { ...o, dim: spec.dim ?? "authority" });
+      const keep = band ? (id: ReturnType<DbSql>) => employeesCond(q, band.min, band.max, id) : null;
+      const r = await rollupTable(q, plan, { ...o, dim: spec.dim ?? "authority", ...(keep ? { keep } : {}) });
       if ("reason" in r) throw new Error(r.reason);
       const first = r.rows[0];
       return { source, data: { block: "table", rows: r.rows.map((p) => ({ entityId: String(p.id), name: p.nm, county: p.co, value: Number(p.v), count: Number(p.n), population: null })),
-        ...meta(r.total), ...(first?.tv !== undefined ? { totals: { value: Number(first.tv), count: Number(first.tn), entities: Number(first.te) } } : {}) } };
+        ...meta(r.total), ...(first?.tv !== undefined ? { totals: { value: Number(first.tv), count: Number(first.tn), entities: Number(first.te) } } : {}),
+        ...(first?.gv !== undefined ? { group: { value: Number(first.gv), count: Number(first.gn), entities: Number(first.ge) } } : {}) } };
     }
     case "trend": {
       // trend-2: the partition over the rollup's grouped rows, names and counties from the profiles (the facts are read live, apart).
@@ -181,6 +189,8 @@ const canonical = (data: BlockData) => data.block === "stat" && data.stat.byStre
   ? { ...data, stat: { ...data.stat, byStream: [...data.stat.byStream].sort((a, b) => a.src.localeCompare(b.src)) } }
   : data.block === "trend" ? { ...data, rowFacts: undefined, withoutFiling: undefined } : data;
 
+/** A breakdown without what F3 adds for the screen (every group of the level, the channels' shares). */
+const withoutLevel = (data: BlockData): BlockData => { if (data.block !== "breakdown") return data; const { base: _b, streams: _s, ...rest } = data; return rest; };
 const without = (role: "authority" | "supplier", id: string): QueryPopulation => ({ operator: "and", groups: [{ operator: "and", conditions: [{ field: role, op: "not_in", values: [id] }] }] });
 const base = (block: AskSpec["block"], extra: Partial<AskSpec> = {}, filters: AskSpec["filters"] = {}): AskSpec => ({ block, measure: "value", dim: "supplier", ...extra, filters });
 const CLUJ: Grounding = { county: { query: "Cluj", canonical: "Cluj" } };
@@ -369,9 +379,11 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
           statuses: [...r.statuses].sort((a, b) => String(a.state).localeCompare(String(b.state))), rows: r.rows,
         });
         const report = await buildAskRollups(q);
-        expect(report.rows).toEqual({ agg_entity_year: 29, agg_pair_year: 19, agg_cpv_year: 15, agg_entity_month: 36, agg_county_month: 18 });
+        // F3-rows adds agg_months and agg_national_mix (their parity: series.integration.test.ts).
+        expect(report.rows).toMatchObject({ agg_entity_year: 29, agg_pair_year: 19, agg_cpv_year: 15, agg_entity_month: 36, agg_county_month: 18 });
+        expect(Object.keys(report.rows).sort()).toEqual(["agg_county_month", "agg_cpv_year", "agg_entity_month", "agg_entity_year", "agg_months", "agg_national_mix", "agg_pair_year"]);
         expect(await rollupsReady(q)).toBe(false); // the process cache, 10 minutes
-        forgetRollupsReady();
+        forgetRollupsReady(); forgetMixRollupReady();
         expect(await rollupsReady(q)).toBe(true);
         // The ceiling: 2,000,000.00 counts, 2,000,000.01 does not, a zero never.
         const [ceiling] = await q`select count(*)::int n, sum(v)::text v from marts.agg_pair_year where authority_id in (2, 4) and supplier_id = 10`;
@@ -382,7 +394,8 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
           const live = liveAnswers.get(c.name)!;
           const rolled = await fromRollups(q, c.spec, g, c.sort);
           expect([c.name, rolled.source]).toEqual([c.name, c.source]);
-          expect([c.name, canonical(rolled.data)]).toEqual([c.name, canonical(live)]);
+          // The mapping above rebuilds the answer's slices; every group of the level and the channels (F3) are checked through runSpec below.
+          expect([c.name, canonical(withoutLevel(rolled.data))]).toEqual([c.name, canonical(withoutLevel(live))]);
           const d = live;
           const size = d.block === "table" ? d.rows.length : d.block === "trend" ? d.rowsTrend.length : d.block === "breakdown" ? d.slices.length
             : d.block === "map" ? d.counties.length : d.block === "timeseries" ? d.series.length : d.block === "stat" ? d.stat.count : 0;
@@ -397,7 +410,12 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
         for (const c of CASES) {
           const wired = await runSpec(q, c.spec, c.g ?? {}, c.sort ? { sort: c.sort, dir: "asc" } : {});
           if ("error" in wired) throw new Error(`${c.name}: ${wired.error}`);
-          expect([c.name, canonical(wired.data)]).toEqual([c.name, canonical(liveAnswers.get(c.name)!)]);
+          // A breakdown below the divisions: agg_months keeps the largest record of a division only, so the rollups'
+          // answer has no „1 contract: 99%” tag there (DECISIONS F3r-breakdown-largest); the rest is the live answer.
+          const deeper = c.name === "breakdown inside a CPV group";
+          if (deeper && wired.data.block === "breakdown") expect(wired.data.base!.every((g) => g.max === undefined)).toBe(true);
+          const tagless = (d: BlockData): BlockData => deeper && d.block === "breakdown" ? { ...d, base: d.base!.map(({ max: _m, maxSrc: _s, ...g }) => g) } : d;
+          expect([c.name, canonical(tagless(wired.data))]).toEqual([c.name, canonical(tagless(liveAnswers.get(c.name)!))]);
         }
         await q.unsafe("rollback to savepoint emptied_marts");
 

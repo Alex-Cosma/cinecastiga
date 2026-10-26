@@ -45,9 +45,14 @@ export const TODAY_SCOPE: Readonly<Partial<Record<FilterId, Partial<Record<Answe
  * so (plan §2.6; table:employees-2 in F3, trend-2 in F2). None in F0. F2: the
  * firms' employees on a trend of firms are an attribute of the grouped firm
  * (the same rows and values; the selection keeps every firm), under trend-2.
+ * F3: the same on a ranking of firms (`dim`: the subject it applies to).
  */
-export const SCOPE_CHANGES: readonly { filter: FilterId; form: AnswerForm; version: string }[] = [
+export const SCOPE_CHANGES: readonly { filter: FilterId; form: AnswerForm; dim?: "supplier"; version: string }[] = [
   { filter: "employees", form: "trend", version: "trend-2" },
+  // F3 (plan §4.2, §2.6): the same rows and values, „% din total” of the whole selection.
+  { filter: "employees", form: "table", dim: "supplier", version: "table:employees-2" },
+  // "Cine conduce?" by value shows place 1 only, the same firm: its answer does not change (no version, F3r-leader-version).
+  { filter: "employees", form: "entity_card:value", dim: "supplier", version: "entity_card-1" },
 ];
 
 /** A choice today's builder offers on a question, and what follows it. */

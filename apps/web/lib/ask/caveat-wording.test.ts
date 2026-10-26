@@ -66,12 +66,12 @@ describe("empty relationship answers", () => {
 
 // F0 (left by R0): the "avansat" SQL shows the measure the engine computes.
 describe("shown SQL", () => {
-  it("sums a breakdown whatever measure a link carries, and counts where the count is shown", async () => {
+  it("sums every breakdown, counts too where it is ordered by records (F3), and counts where the count is shown", async () => {
     const shown = async (block: AskSpec["block"]) => {
       const result = await runSpec(emptyDatabase(), { block, measure: "count", filters: {} } as AskSpec, {});
       return "displaySql" in result ? result.displaySql.split("\n")[0] : result.error;
     };
-    expect(await shown("breakdown")).toBe("select categoria_cpv, sum(closing_value)");
+    expect(await shown("breakdown")).toBe("select categoria_cpv, sum(closing_value), count(*)");
     expect(await shown("stat")).toBe("select count(*)");
   });
 });

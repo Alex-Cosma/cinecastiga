@@ -171,8 +171,11 @@ export const PROFILE_QUESTIONS = new Set([
 ]);
 export const isProfileQuestion = (spec: QuestionSpec) =>
   isHistoricalProfile(spec);
-/** The answers that show the number of records instead of the value (compile.ts). Elsewhere `measure` is ignored. */
-export const COUNT_MEASURE_BLOCKS: readonly string[] = ["table", "stat", "timeseries", "map"];
+/**
+ * The answers that show the number of records instead of the value (compile.ts). Elsewhere `measure` is ignored.
+ * The breakdown orders its groups by it since F3 (final breakdown §3.8: both are on every row).
+ */
+export const COUNT_MEASURE_BLOCKS: readonly string[] = ["table", "stat", "timeseries", "map", "breakdown"];
 /**
  * The axis of "Cine conduce?". A spec without rankBy runs as the risk index
  * (compile.ts `rankBy ?? "risk"`, isHistoricalProfile), so it reads as one.

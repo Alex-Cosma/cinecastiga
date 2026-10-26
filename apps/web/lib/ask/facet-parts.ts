@@ -11,10 +11,13 @@ import { isHistoricalProfile } from "./population";
  * a count ("32,0% · 88"). Plain TypeScript, no SQL: lib/ask/facets.ts counts.
  */
 
-export const FACET_PARTS = ["channel", "procedure", "domain", "size", "kind", "county", "seat", "employees", "years", "locate"] as const;
+export const FACET_PARTS = ["channel", "procedure", "domain", "size", "kind", "county", "seat", "employees", "years", "locate", "mix", "bars"] as const;
 export type FacetPart = (typeof FACET_PARTS)[number];
-/** The parts that count a window's options; `locate` finds an entity's place in an answer ("Unde e o firmă?"). */
-export type CountPart = Exclude<FacetPart, "locate">;
+/**
+ * The parts that count a window's options; `locate` finds an entity's place in an answer ("Unde e o firmă?"),
+ * `mix` is the composition of a total („Din care”, stat) and `bars` the facts of an evolution's bars (F3).
+ */
+export type CountPart = Exclude<FacetPart, "locate" | "mix" | "bars">;
 export const isFacetPart = (value: unknown): value is FacetPart => (FACET_PARTS as readonly unknown[]).includes(value);
 
 /**
@@ -54,6 +57,51 @@ export interface LocateResult {
   checkpoint: string | null;
   tookMs: number;
 }
+
+/**
+ * „Din care” (plan §4.1, final stat §3.7): the composition of a total by the
+ * kind of purchase, the procedure (a direct acquisition is one), the size of
+ * the whole purchase and the offers of its contracts. Each tab's rows are
+ * records and lei of the same selection, so they add up to the total; a tab
+ * the screen hides (one row, a key already chosen) is still answered.
+ */
+export interface MixRow { value: string; n: number; value_ron: number; share: number }
+export interface MixResult {
+  part: "mix";
+  /** The kinds (produse, servicii, lucrari; "none": records without a CPV code), by value. */
+  kind: MixRow[];
+  /** "da" (the direct acquisitions), then the procedures of PROCEDURE_ORDER, as SEAP declares them. */
+  procedure: MixRow[];
+  /** The ranges of VALUE_RANGES by index ("0"–"3"), on the value of the whole purchase. */
+  size: MixRow[];
+  /** The contracts' offers: "one", "several", "unknown" (shares of the contracts' value), and the share known. */
+  offers: { known: number; rows: MixRow[] } | null;
+  total: { n: number; value_ron: number };
+  checkpoint: string | null;
+  tookMs: number;
+}
+/** The offers tab is shown from this share of the contracts' value with a known number of offers (final stat §3.7, question 6). */
+export const OFFERS_KNOWN_MIN = 0.2;
+
+/** A contract above the 1 bn lei cap (final timeseries §3.10): never in a bar, listed apart. */
+export interface AboveCapRow { natId: string; title: string | null; value: number }
+/**
+ * The facts of an evolution's bars (final timeseries §3.10), asked once its
+ * answer is on screen: each bar's largest record and its channel (where the
+ * rollup or an anchored selection gives it), and the contracts above the
+ * analysis cap of each bar's period, counted and the largest listed.
+ */
+export interface BarsResult {
+  part: "bars";
+  /** By the bar's key ("2025", "2025-03"); null where the selection would be read live nationally (PRECOMPUTE.md). */
+  max: Record<string, { value: number; src: "da" | "contracts" }> | null;
+  /** By the bar's key; null where the selection cannot be said on the source contracts (a precise selection, a threshold…). */
+  above: Record<string, { n: number; rows: AboveCapRow[] }> | null;
+  checkpoint: string | null;
+  tookMs: number;
+}
+/** A bar's sheet lists at most this many contracts above the cap. */
+export const ABOVE_CAP_ROWS = 5;
 
 /** At most this many names a search returns (plan §2.5: "cel mult 8 potriviri"). */
 export const LOCATE_MATCHES = 8;
@@ -118,7 +166,7 @@ function ownKeys(spec: { block: string; dim?: string; rankBy?: string }, part: C
  * contracts. `locate` keeps the question: it finds a place in its answer.
  */
 export function facetSpec<T extends { block: string; dataset?: string; dim?: string; rankBy?: string; filters: object }>(spec: T, part: FacetPart): T {
-  if (part === "locate") return spec;
+  if (part === "locate" || part === "mix" || part === "bars") return spec;
   const filters = { ...spec.filters } as Record<string, unknown>;
   for (const key of ownKeys(spec, part)) delete filters[key];
   const out = { ...spec, filters } as T;

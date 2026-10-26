@@ -30,8 +30,8 @@ export const dim: FilterDef<DimValue> = {
 export const measure: FilterDef<MeasureValue> = {
   id: "measure", keys: ["measure"], placement: "presentation", control: "list",
   label: "Măsura", windowTitle: "Cum comparăm?",
-  // COUNT_MEASURE_BLOCKS; elsewhere the answer is in lei whatever the spec says.
-  engine: { table: "display", stat: "display", timeseries: "display", map: "display" },
+  // COUNT_MEASURE_BLOCKS; elsewhere the answer is in lei whatever the spec says. The breakdown's order (F3).
+  engine: { table: "display", stat: "display", timeseries: "display", map: "display", breakdown: "display" },
   scope: alwaysScope("display"),
   read: (spec) => spec.measure as MeasureValue,
   write: (spec, value) => edited(spec, (next) => { next.measure = value ?? "value"; }),

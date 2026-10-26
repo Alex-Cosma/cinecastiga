@@ -72,6 +72,8 @@ export function entityNoun(dim: string | undefined, n: number): string {
 export function rankingRest(
   rows: { value: number; count: number }[],
   totals: RankingTotals | undefined,
+  /** The whole the share is of, when the list is narrower than it (F3: a band of CÂȘTIGĂTORII); `totals` otherwise. */
+  over?: RankingTotals | undefined,
 ): { entities: number; value: number; count: number; share: number } | null {
   if (!totals || totals.value <= 0) return null;
   const shownValue = rows.reduce((sum, r) => sum + r.value, 0);
@@ -82,7 +84,8 @@ export function rankingRest(
   // Rounding in numeric sums may leave a fraction of a leu; anything below
   // that means the totals do not describe these rows.
   if (entities <= 0 || value < -1 || count < 0) return null;
-  return { entities, value: Math.max(0, value), count, share: Math.max(0, value) / totals.value };
+  const whole = over && over.value > 0 ? over.value : totals.value;
+  return { entities, value: Math.max(0, value), count, share: Math.max(0, value) / whole };
 }
 
 /** The share of one ranked row in the whole ranking, or null when unknown. */

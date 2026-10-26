@@ -109,10 +109,10 @@ const cpvGroundings: (Grounding["cpv"] | undefined)[] = [
 /** The specs whose population the plan words differently: another page's selection or exclusions. */
 const relabelled = (spec: AskSpec) => Boolean(selectionOrigin(spec.population) || splitExcluded(spec.population).excluded.length);
 /**
- * A trend with its key (F2, the corpus' builderTrend entries) or F3's kind, procedure or size: the six grammars
+ * A trend with its key (F2, the corpus' builderTrend entries), F3's kind, procedure or size, or an evolution with its options (F3-rows): the six grammars
  * came before them; their words are tested below.
  */
-const keyed = (spec: AskSpec) => spec.trend !== undefined
+const keyed = (spec: AskSpec) => spec.trend !== undefined || spec.timeseries !== undefined
   || ["purchaseKind", "procedure", "purchaseValueMin", "purchaseValueMax"].some((key) => spec.filters[key as keyof AskSpec["filters"]] !== undefined);
 
 describe("describeConditions says what the six grammars said (plan §2.2)", () => {
@@ -301,9 +301,10 @@ describe("the words of every condition", () => {
     // The flow's row has no person (blocks.ts partners): a link's administrator keeps the plain words of its chip.
     expect(describeConditions({ block: "sankey", measure: "value", filters: { authorityId: 1, authorityName: "X", adminPersonKey: "k", adminName: "ION" } }).totalLine).toBe("firmele conduse azi de ION");
     expect(describeConditions({ block: "stat", measure: "value", filters: { supplierId: 2, supplierName: "PORR", adminPersonKey: "k", adminName: "ION" } }).totalLine).toBe("firmele conduse azi de ION");
-    // The selections glued to the ranked firms are said again: their size, administrator, seat (on a firm profile, the county).
+    // The selections glued to the ranked firms are said again: their administrator, seat (on a firm profile, the county).
+    // F3-rows (table:employees-2): the employees are a group of the ranked firms, not of the total, so the total line leaves them out.
     expect(describeConditions({ block: "table", measure: "value", dim: "supplier", filters: { minEmployees: 1, maxEmployees: 9, adminPersonKey: "k", adminName: "ION" } }).totalLine)
-      .toBe("firmele conduse azi de ION, firme cu 1–9 angajați");
+      .toBe("firmele conduse azi de ION");
     expect(describeConditions({ block: "scatter", measure: "value", dim: "supplier", filters: { county: "Cluj" } }).totalLine).toBe("cu sediul în județul Cluj");
   });
 

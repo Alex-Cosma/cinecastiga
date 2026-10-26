@@ -32,8 +32,11 @@ export const employees: FilterDef<EmployeesChoice> = {
   windowTitle: "Câți angajați au firmele?", windowNote: "Numărul de angajați provine din ultimul bilanț disponibil. Firmele fără bilanț sunt excluse.",
   // employeesCond in rowPredicates: the firm's latest MF filing (marts.entity_profile); refused on profiles.
   // On a trend of firms (F2, under trend-2) an attribute of the grouped firm: the groups keep the band and
-  // count those without a filing, the selection keeps every firm (trendGrouping in compile.ts).
-  engine: levels(TRANSACTION_FORMS, "entityAttr"), scope: (form) => form === "trend" ? "group" : "selection",
+  // count those without a filing, the selection keeps every firm (trendGrouping in compile.ts). On a ranking
+  // of firms (F3, table:employees-2) and on "Cine conduce?" by value, which runs it, the same: the row
+  // CÂȘTIGĂTORII narrows the list, the total and „% din total” stay the sentence's (rankedFirmsGroup).
+  engine: levels(TRANSACTION_FORMS, "entityAttr"),
+  scope: (form, spec) => form === "trend" || ((form === "table" || form === "entity_card:value") && spec?.dim === "supplier") ? "group" : "selection",
   read: (spec) => spec.filters.minEmployees !== undefined || spec.filters.maxEmployees !== undefined
     ? {
       ...(spec.filters.minEmployees !== undefined ? { minEmployees: Number(spec.filters.minEmployees) } : {}),

@@ -3,7 +3,8 @@ import { createDb, type DbSql } from "@seap/db";
 import { NEWER_VERSION_LINK, validateSpec } from "@/lib/ask/spec";
 import { localityScopeError } from "@/lib/ask/question-ui";
 import { aborted, FACET_SLOTS, facetCounts, facetRequest, inFacetSlot, locate, type FacetFailure } from "@/lib/ask/facets";
-import type { FacetCounts, LocateResult } from "@/lib/ask/facet-parts";
+import { barFacts, mixFacts } from "@/lib/ask/answer-facts";
+import type { BarsResult, FacetCounts, LocateResult, MixResult } from "@/lib/ask/facet-parts";
 import { devlog } from "@/lib/devlog";
 
 /**
@@ -11,6 +12,8 @@ import { devlog } from "@/lib/devlog";
  * (plan §2.5, kit R5 and component 20).
  *   { spec, part }      → { ok, part, unit, options, rest, total, checkpoint, tookMs }
  *   { spec, part: "locate", q } → { ok, part, total, measure, matches, checkpoint, tookMs }
+ *   { spec, part: "mix" }  → stat's „Din care” (lib/ask/answer-facts.ts): { ok, part, kind, procedure, size, offers, total, … }
+ *   { spec, part: "bars" } → an evolution's bar facts: { ok, part, max, above, checkpoint, tookMs }
  *   over the 8 s limit  → { ok: false, timeout: true }: the window shows its options without numbers.
  * POST, not GET: a precise selection reaches 64 KB, and a person's key (name,
  * birth date and place) stays out of the access logs. Its own pool of
@@ -41,9 +44,11 @@ export async function POST(req: Request) {
   if (localityError) return NextResponse.json({ ok: false, error: localityError }, { status: 400 });
   const signal = req.signal;
   try {
-    const result = await inFacetSlot<FacetCounts | LocateResult | FacetFailure>(signal, () => asked.part === "locate"
+    const result = await inFacetSlot<FacetCounts | LocateResult | MixResult | BarsResult | FacetFailure>(signal, () => asked.part === "locate"
       ? locate(db(), v, asked.q!, { signal })
-      : facetCounts(db(), v, asked.part, { signal }));
+      : asked.part === "mix" ? mixFacts(db(), v, { signal })
+        : asked.part === "bars" ? barFacts(db(), v, { signal })
+          : facetCounts(db(), v, asked.part, { signal }));
     if ("timeout" in result) return NextResponse.json({ ok: false, timeout: true }, { headers: { "cache-control": "no-store" } });
     // A count that waits on the marts stage (PRECOMPUTE.md): the options without numbers, as past the limit.
     if ("precompute" in result) return NextResponse.json({ ok: false, timeout: true, precompute: result.precompute }, { headers: { "cache-control": "no-store" } });

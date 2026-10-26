@@ -432,6 +432,29 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
       scope: [{ label: "Luni comparate", value: months === "whole" ? "Ani întregi" : rule ? `${rule}, în ambii ani` : "Aceleași luni în ambii ani, până la ultima lună completă" }],
     };
   },
+  // F3, the evolution's lenses (final timeseries §5.4: the title says the state, „…, an de an, pe domenii, …”).
+  timeseriesGrain: (spec) => spec.timeseries?.grain === "month"
+    ? { words: "lună de lună", pills: [], scope: [{ label: "Ritmul", value: "Lună de lună" }] } : null,
+  timeseriesSplit: (spec) => {
+    const split = spec.timeseries?.split;
+    if (!split) return null;
+    const words = split === "channel" ? "pe directe și proceduri" : "pe domenii";
+    return { words, chip: capitalFirst(words), pills: [words], scope: [{ label: "Împarte", value: split === "channel" ? "Directe / proceduri" : "Domenii (diviziuni CPV)" }], summary: capitalFirst(words) };
+  },
+  timeseriesMonths: (spec, labels) => {
+    const months = spec.timeseries?.months;
+    if (months === undefined) return null;
+    // `auto` as the answer ran it (labels.executedMonths), as the trend's; whole years say nothing in the title.
+    const ran = months === "auto" ? labels.executedMonths ?? null : null;
+    const window: MonthWindow | null = Array.isArray(months) ? months as MonthWindow : ran && !(ran[0] === 1 && ran[1] === 12) ? ran : null;
+    const chosen = window ? monthsLabel({ from: window[0], to: window[1] }) : null;
+    const chip = chosen ? `Aceleași luni: ${chosen}` : "Aceleași luni";
+    return {
+      words: chosen ? `pe aceleași luni: ${chosen}` : "pe aceleași luni", tail: chosen ? `pe aceleași luni: ${chosen}` : null,
+      chip, pills: ran && !window ? [] : [chip.toLowerCase()], ...(chosen ? {} : { summary: chip }),
+      scope: [{ label: "Luni numărate", value: chosen ? `${chosen}, în fiecare an` : "Aceleași luni în fiecare an, până la ultima lună completă" }],
+    };
+  },
   // Kit §6 trend 4: "după [diferența în lei | creșterea în procente]", the presentation line's words (P5).
   trendOrder: (spec) => {
     const order = spec.trend?.order;
@@ -465,10 +488,11 @@ export const DESCRIBED_FILTERS = Object.keys(DESCRIBE) as FilterId[];
 
 /** The order of each place, today's. */
 const TREND_ORDER: readonly FilterId[] = ["trendChange", "trendFirstOnly", "trendMonths", "trendOrder", "trendMinBase"];
-const PILL_ORDER: readonly FilterId[] = ["purchaseKind", "cpvTerm", "authorityKind", "authority", "supplier", "compareWith", "locality", "county", "admin", "period", ...TREND_ORDER, "singleBidder", "employees", "dataset", "procedure", "purchaseValue", "population", "minimumRecords"];
-const SCOPE_ORDER: readonly FilterId[] = ["authority", "supplier", "compareWith", "purchaseKind", "cpvTerm", "county", "locality", "authorityKind", "admin", "period", ...TREND_ORDER, "dataset", "procedure", "purchaseValue", "singleBidder", "employees", "minimumRecords", "population"];
+const SERIES_ORDER: readonly FilterId[] = ["timeseriesGrain", "timeseriesSplit", "timeseriesMonths"];
+const PILL_ORDER: readonly FilterId[] = ["purchaseKind", "cpvTerm", "authorityKind", "authority", "supplier", "compareWith", "locality", "county", "admin", "period", ...TREND_ORDER, ...SERIES_ORDER, "singleBidder", "employees", "dataset", "procedure", "purchaseValue", "population", "minimumRecords"];
+const SCOPE_ORDER: readonly FilterId[] = ["authority", "supplier", "compareWith", "purchaseKind", "cpvTerm", "county", "locality", "authorityKind", "admin", "period", ...TREND_ORDER, ...SERIES_ORDER, "dataset", "procedure", "purchaseValue", "singleBidder", "employees", "minimumRecords", "population"];
 // A trend's group is its title's own word (sentence.ts); its months, when the title does not say them.
-const SUMMARY_ORDER: readonly FilterId[] = ["dataset", "procedure", "authority", "supplier", "purchaseKind", "cpvTerm", "purchaseValue", "trendMonths", "population", "minimumRecords"];
+const SUMMARY_ORDER: readonly FilterId[] = ["dataset", "procedure", "authority", "supplier", "purchaseKind", "cpvTerm", "purchaseValue", "trendMonths", "timeseriesSplit", "timeseriesMonths", "population", "minimumRecords"];
 const CAVEAT_ORDER: readonly FilterId[] = ["purchaseValue", "population", "minimumRecords"];
 
 /**
@@ -491,7 +515,7 @@ function outsideSentence(spec: Spec): FilterId[] {
     // The home page's direct-acquisition ceiling is the engine's own: it narrows nothing (no chip, no title words).
     if (owner === "population" && isDaBoundPopulation(spec)) continue;
     const def = FILTERS[owner];
-    if (def.engine[ctx.form] !== undefined && def.scope(ctx.form) === "selection") ids.add(owner);
+    if (def.engine[ctx.form] !== undefined && def.scope(ctx.form, spec) === "selection") ids.add(owner);
   }
   return PILL_ORDER.filter((id) => ids.has(id));
 }

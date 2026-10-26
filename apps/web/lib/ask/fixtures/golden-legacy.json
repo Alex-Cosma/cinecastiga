@@ -764,9 +764,97 @@
      "other": {
       "value": 0,
       "count": 0
+     },
+     "base": [
+      {
+       "code": "33",
+       "name": "Echipament medical, produse farmaceutice și produse de îngrijire personală",
+       "value": 3442467.29,
+       "count": 13,
+       "max": 3200000,
+       "maxSrc": "contracts"
+      },
+      {
+       "code": "45",
+       "name": "Lucrări de construcții",
+       "value": 560570.71,
+       "count": 11,
+       "max": 340000,
+       "maxSrc": "contracts"
+      },
+      {
+       "code": "79",
+       "name": "Servicii pentru întreprinderi: juridice, de marketing, de consultanță, de recrutare, de imprimare și de securitate",
+       "value": 219772.33,
+       "count": 18,
+       "max": 87000,
+       "maxSrc": "contracts"
+      },
+      {
+       "code": "34",
+       "name": "Echipament de transport și produse auxiliare pentru transport",
+       "value": 64000,
+       "count": 1,
+       "max": 64000,
+       "maxSrc": "da"
+      },
+      {
+       "code": "15",
+       "name": "Alimente, băuturi, tutun și produse conexe",
+       "value": 12100,
+       "count": 2,
+       "max": 8800,
+       "maxSrc": "contracts"
+      },
+      {
+       "code": "77",
+       "name": "Servicii agricole, forestiere, horticole, de acvacultură și de apicultură",
+       "value": 11700.35,
+       "count": 2,
+       "max": 6100.35,
+       "maxSrc": "da"
+      },
+      {
+       "code": "30",
+       "name": "Mașini, echipamente și consumabile de birou și de calcul",
+       "value": 1380.5,
+       "count": 2,
+       "max": 950.4,
+       "maxSrc": "da"
+      },
+      {
+       "code": "09",
+       "name": "Produse petroliere, combustibil, electricitate și alte surse de energie",
+       "value": 1200,
+       "count": 1,
+       "max": 1200,
+       "maxSrc": "da"
+      }
+     ],
+     "streams": {
+      "da": {
+       "value": 343389.91,
+       "count": 40
+      },
+      "contracts": {
+       "value": 3969801.27,
+       "count": 10
+      }
      }
     },
-    "displaySql": "select categoria_cpv, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by categoria_cpv\norder by 2 desc;"
+    "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by categoria_cpv\norder by 2 desc;",
+    "variants": {
+     "measure": {
+      "value": {
+       "pills": ["pe domenii","valoarea înregistrată","toți anii","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by categoria_cpv\norder by 2 desc;"
+      },
+      "count": {
+       "pills": ["pe domenii","numărul de înregistrări","toți anii","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by categoria_cpv\norder by 3 desc;"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -2739,9 +2827,41 @@
      "other": {
       "value": 0,
       "count": 0
+     },
+     "base": [
+      {
+       "code": "33",
+       "name": "Echipament medical, produse farmaceutice și produse de îngrijire personală",
+       "value": 3421602.35,
+       "count": 7,
+       "max": 3200000,
+       "maxSrc": "contracts"
+      }
+     ],
+     "streams": {
+      "da": {
+       "value": 96601.85,
+       "count": 5
+      },
+      "contracts": {
+       "value": 3325000.5,
+       "count": 2
+      }
      }
     },
-    "displaySql": "select categoria_cpv, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id in (…)  -- doar spitale: 2 instituții (după nume, cu institutele clinice)\ngroup by categoria_cpv\norder by 2 desc;"
+    "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id in (…)  -- doar spitale: 2 instituții (după nume, cu institutele clinice)\ngroup by categoria_cpv\norder by 2 desc;",
+    "variants": {
+     "measure": {
+      "value": {
+       "pills": ["pe domenii","valoarea înregistrată","doar spitale","toți anii","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id in (…)  -- doar spitale: 2 instituții (după nume, cu institutele clinice)\ngroup by categoria_cpv\norder by 2 desc;"
+      },
+      "count": {
+       "pills": ["pe domenii","numărul de înregistrări","doar spitale","toți anii","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id in (…)  -- doar spitale: 2 instituții (după nume, cu institutele clinice)\ngroup by categoria_cpv\norder by 3 desc;"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -3453,9 +3573,57 @@
      "other": {
       "value": 0,
       "count": 0
+     },
+     "base": [
+      {
+       "code": "33",
+       "name": "Echipament medical, produse farmaceutice și produse de îngrijire personală",
+       "value": 3421602.35,
+       "count": 7,
+       "max": 3200000,
+       "maxSrc": "contracts"
+      },
+      {
+       "code": "15",
+       "name": "Alimente, băuturi, tutun și produse conexe",
+       "value": 12100,
+       "count": 2,
+       "max": 8800,
+       "maxSrc": "contracts"
+      },
+      {
+       "code": "30",
+       "name": "Mașini, echipamente și consumabile de birou și de calcul",
+       "value": 430.1,
+       "count": 1,
+       "max": 430.1,
+       "maxSrc": "da"
+      }
+     ],
+     "streams": {
+      "da": {
+       "value": 100331.95,
+       "count": 7
+      },
+      "contracts": {
+       "value": 3333800.5,
+       "count": 3
+      }
      }
     },
-    "displaySql": "select categoria_cpv, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'buzau'\ngroup by categoria_cpv\norder by 2 desc;"
+    "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'buzau'\ngroup by categoria_cpv\norder by 2 desc;",
+    "variants": {
+     "measure": {
+      "value": {
+       "pills": ["pe domenii","valoarea înregistrată","județul Buzău","toți anii","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'buzau'\ngroup by categoria_cpv\norder by 2 desc;"
+      },
+      "count": {
+       "pills": ["pe domenii","numărul de înregistrări","județul Buzău","toți anii","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'buzau'\ngroup by categoria_cpv\norder by 3 desc;"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -4694,9 +4862,89 @@
      "other": {
       "value": 0,
       "count": 0
+     },
+     "base": [
+      {
+       "code": "45",
+       "name": "Lucrări de construcții",
+       "value": 504569.96,
+       "count": 10,
+       "max": 340000,
+       "maxSrc": "contracts"
+      },
+      {
+       "code": "79",
+       "name": "Servicii pentru întreprinderi: juridice, de marketing, de consultanță, de recrutare, de imprimare și de securitate",
+       "value": 160762.37,
+       "count": 12,
+       "max": 87000,
+       "maxSrc": "contracts"
+      },
+      {
+       "code": "33",
+       "name": "Echipament medical, produse farmaceutice și produse de îngrijire personală",
+       "value": 71255.78,
+       "count": 5,
+       "max": 31500,
+       "maxSrc": "da"
+      },
+      {
+       "code": "77",
+       "name": "Servicii agricole, forestiere, horticole, de acvacultură și de apicultură",
+       "value": 6100.35,
+       "count": 1,
+       "max": 6100.35,
+       "maxSrc": "da"
+      },
+      {
+       "code": "15",
+       "name": "Alimente, băuturi, tutun și produse conexe",
+       "value": 3300,
+       "count": 1,
+       "max": 3300,
+       "maxSrc": "da"
+      },
+      {
+       "code": "30",
+       "name": "Mașini, echipamente și consumabile de birou și de calcul",
+       "value": 1380.5,
+       "count": 2,
+       "max": 950.4,
+       "maxSrc": "da"
+      },
+      {
+       "code": "09",
+       "name": "Produse petroliere, combustibil, electricitate și alte surse de energie",
+       "value": 1200,
+       "count": 1,
+       "max": 1200,
+       "maxSrc": "da"
+      }
+     ],
+     "streams": {
+      "da": {
+       "value": 190568.94,
+       "count": 27
+      },
+      "contracts": {
+       "value": 558000.02,
+       "count": 5
+      }
      }
     },
-    "displaySql": "select categoria_cpv, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2025\ngroup by categoria_cpv\norder by 2 desc;"
+    "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2025\ngroup by categoria_cpv\norder by 2 desc;",
+    "variants": {
+     "measure": {
+      "value": {
+       "pills": ["pe domenii","valoarea înregistrată","2025","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2025\ngroup by categoria_cpv\norder by 2 desc;"
+      },
+      "count": {
+       "pills": ["pe domenii","numărul de înregistrări","2025","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2025\ngroup by categoria_cpv\norder by 3 desc;"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -4815,9 +5063,41 @@
      "other": {
       "value": 0,
       "count": 0
+     },
+     "base": [
+      {
+       "code": "4523",
+       "name": "Lucrări de construcții de conducte, de linii de comunicații și electrice, de autostrăzi, de drumuri",
+       "value": 504569.96,
+       "count": 10,
+       "max": 340000,
+       "maxSrc": "contracts"
+      }
+     ],
+     "streams": {
+      "da": {
+       "value": 74569.94,
+       "count": 7
+      },
+      "contracts": {
+       "value": 430000.02,
+       "count": 3
+      }
      }
     },
-    "displaySql": "select categoria_cpv, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '45%')\n  and an >= 2025\n  and an <= 2025\ngroup by categoria_cpv\norder by 2 desc;"
+    "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '45%')\n  and an >= 2025\n  and an <= 2025\ngroup by categoria_cpv\norder by 2 desc;",
+    "variants": {
+     "measure": {
+      "value": {
+       "pills": ["pe domenii","valoarea înregistrată","Lucrări de construcții (45000000-7)","2025","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '45%')\n  and an >= 2025\n  and an <= 2025\ngroup by categoria_cpv\norder by 2 desc;"
+      },
+      "count": {
+       "pills": ["pe domenii","numărul de înregistrări","Lucrări de construcții (45000000-7)","2025","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '45%')\n  and an >= 2025\n  and an <= 2025\ngroup by categoria_cpv\norder by 3 desc;"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -4970,9 +5250,89 @@
      "other": {
       "value": 0,
       "count": 0
+     },
+     "base": [
+      {
+       "code": "45",
+       "name": "Lucrări de construcții",
+       "value": 504569.96,
+       "count": 10,
+       "max": 340000,
+       "maxSrc": "contracts"
+      },
+      {
+       "code": "79",
+       "name": "Servicii pentru întreprinderi: juridice, de marketing, de consultanță, de recrutare, de imprimare și de securitate",
+       "value": 160762.37,
+       "count": 12,
+       "max": 87000,
+       "maxSrc": "contracts"
+      },
+      {
+       "code": "33",
+       "name": "Echipament medical, produse farmaceutice și produse de îngrijire personală",
+       "value": 71255.78,
+       "count": 5,
+       "max": 31500,
+       "maxSrc": "da"
+      },
+      {
+       "code": "77",
+       "name": "Servicii agricole, forestiere, horticole, de acvacultură și de apicultură",
+       "value": 6100.35,
+       "count": 1,
+       "max": 6100.35,
+       "maxSrc": "da"
+      },
+      {
+       "code": "15",
+       "name": "Alimente, băuturi, tutun și produse conexe",
+       "value": 3300,
+       "count": 1,
+       "max": 3300,
+       "maxSrc": "da"
+      },
+      {
+       "code": "30",
+       "name": "Mașini, echipamente și consumabile de birou și de calcul",
+       "value": 1380.5,
+       "count": 2,
+       "max": 950.4,
+       "maxSrc": "da"
+      },
+      {
+       "code": "09",
+       "name": "Produse petroliere, combustibil, electricitate și alte surse de energie",
+       "value": 1200,
+       "count": 1,
+       "max": 1200,
+       "maxSrc": "da"
+      }
+     ],
+     "streams": {
+      "da": {
+       "value": 190568.94,
+       "count": 27
+      },
+      "contracts": {
+       "value": 558000.02,
+       "count": 5
+      }
      }
     },
-    "displaySql": "select categoria_cpv, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2025\ngroup by categoria_cpv\norder by 2 desc;"
+    "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2025\ngroup by categoria_cpv\norder by 2 desc;",
+    "variants": {
+     "measure": {
+      "value": {
+       "pills": ["pe domenii","valoarea înregistrată","2025","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2025\ngroup by categoria_cpv\norder by 2 desc;"
+      },
+      "count": {
+       "pills": ["pe domenii","numărul de înregistrări","2025","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2025\ngroup by categoria_cpv\norder by 3 desc;"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -6498,9 +6858,57 @@
      "other": {
       "value": 0,
       "count": 0
+     },
+     "base": [
+      {
+       "code": "45",
+       "name": "Lucrări de construcții",
+       "value": 360800.35,
+       "count": 3,
+       "max": 340000,
+       "maxSrc": "contracts"
+      },
+      {
+       "code": "79",
+       "name": "Servicii pentru întreprinderi: juridice, de marketing, de consultanță, de recrutare, de imprimare și de securitate",
+       "value": 45100,
+       "count": 2,
+       "max": 23100,
+       "maxSrc": "da"
+      },
+      {
+       "code": "30",
+       "name": "Mașini, echipamente și consumabile de birou și de calcul",
+       "value": 950.4,
+       "count": 1,
+       "max": 950.4,
+       "maxSrc": "da"
+      }
+     ],
+     "streams": {
+      "da": {
+       "value": 44850.75,
+       "count": 4
+      },
+      "contracts": {
+       "value": 362000,
+       "count": 2
+      }
      }
     },
-    "displaySql": "select categoria_cpv, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000002\ngroup by categoria_cpv\norder by 2 desc;"
+    "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000002\ngroup by categoria_cpv\norder by 2 desc;",
+    "variants": {
+     "measure": {
+      "value": {
+       "pills": ["pe domenii","valoarea înregistrată","Municipiul Fixture Nord","toți anii","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000002\ngroup by categoria_cpv\norder by 2 desc;"
+      },
+      "count": {
+       "pills": ["pe domenii","numărul de înregistrări","Municipiul Fixture Nord","toți anii","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000002\ngroup by categoria_cpv\norder by 3 desc;"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -7044,9 +7452,61 @@
      "other": {
       "value": 0,
       "count": 0
+     },
+     "base": [
+      {
+       "code": "452331",
+       "name": "Lucrări de construcții de autostrăzi și drumuri",
+       "value": 553270.01,
+       "count": 10,
+       "max": 340000,
+       "maxSrc": "contracts"
+      },
+      {
+       "code": "452332",
+       "name": "Diverse lucrări de îmbrăcăminte",
+       "value": 7300.7,
+       "count": 1,
+       "max": 7300.7,
+       "maxSrc": "da"
+      }
+     ],
+     "streams": {
+      "da": {
+       "value": 74569.94,
+       "count": 7
+      },
+      "contracts": {
+       "value": 486000.77,
+       "count": 4
+      }
      }
     },
-    "displaySql": "select categoria_cpv, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '4523%')\ngroup by categoria_cpv\norder by 2 desc;"
+    "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '4523%')\ngroup by categoria_cpv\norder by 2 desc;",
+    "variants": {
+     "measure": {
+      "value": {
+       "pills": [
+        "pe domenii",
+        "valoarea înregistrată",
+        "Lucrări de construcții de conducte, de linii de comunicații și electrice, de autostrăzi, de drumuri (45230000-8)",
+        "toți anii",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '4523%')\ngroup by categoria_cpv\norder by 2 desc;"
+      },
+      "count": {
+       "pills": [
+        "pe domenii",
+        "numărul de înregistrări",
+        "Lucrări de construcții de conducte, de linii de comunicații și electrice, de autostrăzi, de drumuri (45230000-8)",
+        "toți anii",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '4523%')\ngroup by categoria_cpv\norder by 3 desc;"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -7164,9 +7624,41 @@
      "other": {
       "value": 0,
       "count": 0
+     },
+     "base": [
+      {
+       "code": "4523",
+       "name": "Lucrări de construcții de conducte, de linii de comunicații și electrice, de autostrăzi, de drumuri",
+       "value": 560570.71,
+       "count": 11,
+       "max": 340000,
+       "maxSrc": "contracts"
+      }
+     ],
+     "streams": {
+      "da": {
+       "value": 74569.94,
+       "count": 7
+      },
+      "contracts": {
+       "value": 486000.77,
+       "count": 4
+      }
      }
     },
-    "displaySql": "select categoria_cpv, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '45%')\ngroup by categoria_cpv\norder by 2 desc;"
+    "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '45%')\ngroup by categoria_cpv\norder by 2 desc;",
+    "variants": {
+     "measure": {
+      "value": {
+       "pills": ["pe domenii","valoarea înregistrată","Lucrări de construcții (45000000-7)","toți anii","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '45%')\ngroup by categoria_cpv\norder by 2 desc;"
+      },
+      "count": {
+       "pills": ["pe domenii","numărul de înregistrări","Lucrări de construcții (45000000-7)","toți anii","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '45%')\ngroup by categoria_cpv\norder by 3 desc;"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -10206,12 +10698,17 @@
       }
      ],
      "totals": {
+      "value": 4314091.18,
+      "count": 50,
+      "entities": 6
+     },
+     "group": {
       "value": 528651.55,
       "count": 14,
       "entities": 2
      }
     },
-    "displaySql": "select supplier_name, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and supplier_id in (select entity_id from marts.entity_profile\n                where role = 'supplier' and employees <= 4)  -- bilanț MF, ultimul depus\ngroup by supplier_name\norder by 2 desc\nlimit 10;"
+    "displaySql": "select supplier_name, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by supplier_name\norder by 2 desc\nlimit 10;\n-- lista: doar firmele cu cel mult 4 angajați (ultimul bilanț MF); totalul și „% din total” sunt ale întregii selecții"
    },
    "sources": {
     "status": 200,
@@ -12029,7 +12526,7 @@
       "county": "Cluj"
      }
     },
-    "pills": ["pe domenii","valoarea înregistrată","județul Cluj","toți anii","toate achizițiile: directe și din proceduri"],
+    "pills": ["pe domenii","numărul de înregistrări","județul Cluj","toți anii","toate achizițiile: directe și din proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -12074,9 +12571,73 @@
      "other": {
       "value": 0,
       "count": 0
+     },
+     "base": [
+      {
+       "code": "45",
+       "name": "Lucrări de construcții",
+       "value": 499101.62,
+       "count": 7,
+       "max": 340000,
+       "maxSrc": "contracts"
+      },
+      {
+       "code": "79",
+       "name": "Servicii pentru întreprinderi: juridice, de marketing, de consultanță, de recrutare, de imprimare și de securitate",
+       "value": 45100,
+       "count": 2,
+       "max": 23100,
+       "maxSrc": "da"
+      },
+      {
+       "code": "77",
+       "name": "Servicii agricole, forestiere, horticole, de acvacultură și de apicultură",
+       "value": 11700.35,
+       "count": 2,
+       "max": 6100.35,
+       "maxSrc": "da"
+      },
+      {
+       "code": "09",
+       "name": "Produse petroliere, combustibil, electricitate și alte surse de energie",
+       "value": 1200,
+       "count": 1,
+       "max": 1200,
+       "maxSrc": "da"
+      },
+      {
+       "code": "30",
+       "name": "Mașini, echipamente și consumabile de birou și de calcul",
+       "value": 950.4,
+       "count": 1,
+       "max": 950.4,
+       "maxSrc": "da"
+      }
+     ],
+     "streams": {
+      "da": {
+       "value": 106052.35,
+       "count": 9
+      },
+      "contracts": {
+       "value": 452000.02,
+       "count": 4
+      }
      }
     },
-    "displaySql": "select categoria_cpv, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'cluj'\ngroup by categoria_cpv\norder by 2 desc;"
+    "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'cluj'\ngroup by categoria_cpv\norder by 3 desc;",
+    "variants": {
+     "measure": {
+      "value": {
+       "pills": ["pe domenii","valoarea înregistrată","județul Cluj","toți anii","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'cluj'\ngroup by categoria_cpv\norder by 2 desc;"
+      },
+      "count": {
+       "pills": ["pe domenii","numărul de înregistrări","județul Cluj","toți anii","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'cluj'\ngroup by categoria_cpv\norder by 3 desc;"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -15897,14 +16458,12 @@
    "source": "o cheie din versiunea următoare (F0a)",
    "request": {
     "spec": {
-     "block": "timeseries",
+     "block": "scatter",
+     "dim": "authority",
      "measure": "value",
-     "filters": {
-      "yearFrom": 2024,
-      "yearTo": 2025
-     },
-     "timeseries": {
-      "grain": "month"
+     "filters": {},
+     "scatter": {
+      "flag": "da_split"
      }
     }
    },
@@ -15922,6 +16481,737 @@
     "status": 422,
     "ok": false,
     "error": "Legătura vine dintr-o versiune mai nouă a site-ului. Reîncarcă pagina."
+   }
+  },
+  {
+   "id": "legacy:timeseries-months",
+   "origin": "legacy",
+   "source": "evoluția lună de lună (F3)",
+   "request": {
+    "spec": {
+     "block": "timeseries",
+     "measure": "value",
+     "filters": {
+      "yearFrom": 2024,
+      "yearTo": 2025
+     },
+     "timeseries": {
+      "grain": "month"
+     }
+    }
+   },
+   "answer": {
+    "status": 200,
+    "ok": true,
+    "question": null,
+    "model": null,
+    "spec": {
+     "block": "timeseries",
+     "measure": "value",
+     "filters": {
+      "yearFrom": 2024,
+      "yearTo": 2025
+     },
+     "timeseries": {
+      "grain": "month"
+     }
+    },
+    "pills": ["evoluție pe luni","valoarea înregistrată","2024–2025","toate achizițiile: directe și din proceduri"],
+    "caveats": [
+     "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "An acoperit parțial de date: 2024 (achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei). Totalul lui nu acoperă un an întreg; nu îl compara direct cu ceilalți ani din grafic."
+    ],
+    "data": {
+     "block": "timeseries",
+     "series": [
+      {
+       "year": 2024,
+       "value": 7799.26,
+       "count": 2,
+       "month": 1
+      },
+      {
+       "year": 2024,
+       "value": 125000.5,
+       "count": 1,
+       "month": 3
+      },
+      {
+       "year": 2024,
+       "value": 12132.84,
+       "count": 3,
+       "month": 4
+      },
+      {
+       "year": 2024,
+       "value": 9900.9,
+       "count": 1,
+       "month": 9
+      },
+      {
+       "year": 2024,
+       "value": 22000,
+       "count": 1,
+       "month": 10
+      },
+      {
+       "year": 2024,
+       "value": 23100,
+       "count": 1,
+       "month": 11
+      },
+      {
+       "year": 2024,
+       "value": 64000,
+       "count": 1,
+       "month": 12
+      },
+      {
+       "year": 2025,
+       "value": 2087.53,
+       "count": 2,
+       "month": 1
+      },
+      {
+       "year": 2025,
+       "value": 89474.26,
+       "count": 3,
+       "month": 2
+      },
+      {
+       "year": 2025,
+       "value": 20866.47,
+       "count": 4,
+       "month": 3
+      },
+      {
+       "year": 2025,
+       "value": 7648.87,
+       "count": 2,
+       "month": 4
+      },
+      {
+       "year": 2025,
+       "value": 57686.2,
+       "count": 3,
+       "month": 5
+      },
+      {
+       "year": 2025,
+       "value": 366212.14,
+       "count": 5,
+       "month": 6
+      },
+      {
+       "year": 2025,
+       "value": 51260.16,
+       "count": 3,
+       "month": 7
+      },
+      {
+       "year": 2025,
+       "value": 9397.74,
+       "count": 2,
+       "month": 8
+      },
+      {
+       "year": 2025,
+       "value": 92664.29,
+       "count": 4,
+       "month": 9
+      },
+      {
+       "year": 2025,
+       "value": 33871.3,
+       "count": 2,
+       "month": 10
+      },
+      {
+       "year": 2025,
+       "value": 3300,
+       "count": 1,
+       "month": 11
+      },
+      {
+       "year": 2025,
+       "value": 14100,
+       "count": 1,
+       "month": 12
+      }
+     ],
+     "grain": "month"
+    },
+    "partialYears": [
+     {
+      "year": 2024,
+      "note": "achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei"
+     }
+    ],
+    "displaySql": "select luna, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by luna order by luna;"
+   },
+   "sources": {
+    "status": 200,
+    "ok": true,
+    "total": 42,
+    "value": "1012502.46",
+    "sourceTotal": 42,
+    "sourceValue": "1012502.46",
+    "page": 0,
+    "pageSize": 10,
+    "accepted": {
+     "count": 35,
+     "value": "307501.94"
+    },
+    "dateFrom": "2024-01-12",
+    "dateTo": "2025-12-17",
+    "profile": false,
+    "profiles": [],
+    "profileCount": 0,
+    "profileReconciled": null,
+    "scopeNotes": [
+     "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Un contract cu mai mulți câștigători apare pe câte un rând pentru fiecare furnizor, cu valoarea împărțită egal. Suma folosește aceste cote; numărul de rânduri nu este numărul de contracte distincte. Detaliile și exportul păstrează valoarea integrală și numărul câștigătorilor."
+    ],
+    "statuses": [
+     {
+      "state": null,
+      "count": 7,
+      "value": "705000.52"
+     },
+     {
+      "state": "Oferta acceptata",
+      "count": 35,
+      "value": "307501.94"
+     }
+    ],
+    "rows": [
+     ["contracts","9100200008","CT-FX-8","2024-10-10","9100000002","9100000103","Cluj","79000000-4","22000.00",null,1,"22000.00",false,"Contract fixture 8"],
+     ["contracts","9100200007","CT-FX-7","2025-07-07","9100000007","9100000103",null,"79000000-4","41000.00",null,1,"41000.00",false,"Contract fixture 7"],
+     ["contracts","9100200005","CT-FX-5","2025-02-25","9100000004","9100000103","Alba","79000000-4","87000.00",null,1,"87000.00",false,"Contract fixture 5"],
+     ["contracts","9100200003","CT-FX-3","2024-03-15","9100000003","9100000102","Buzau","33600000-6","125000.50",null,1,"125000.50",false,"Contract fixture 3"],
+     ["contracts","9100200002","CT-FX-2","2025-09-01","9100000001","9100000101","Cluj","45233140-2","45000.01",null,2,"90000.02",false,"Contract fixture 2"],
+     ["contracts","9100200002","CT-FX-2","2025-09-01","9100000001","9100000106","Cluj","45233140-2","45000.01",null,2,"90000.02",false,"Contract fixture 2"],
+     ["contracts","9100200001","CT-FX-1","2025-06-10","9100000002","9100000101","Cluj","45233140-2","340000.00",null,1,"340000.00",false,"Contract fixture 1"],
+     ["da","9100100212","DA-FX-212","2024-01-12","9100000004","9100000102","Alba","33690000-3","4532.84","Oferta acceptata",null,null,false,null],
+     ["da","9100100210","DA-FX-210","2025-03-10","9100000004","9100000102","Alba","33690000-3","4110.70","Oferta acceptata",null,null,false,null],
+     ["da","9100100209","DA-FX-209","2024-04-19","9100000004","9100000103","Alba","79000000-4","3899.63","Oferta acceptata",null,null,false,null]
+    ]
+   },
+   "csv": {
+    "status": 200,
+    "file": "randuri-42.csv",
+    "x-total-rows": "42",
+    "x-exported-rows": "42",
+    "x-source-rows": "42",
+    "x-source-value": "1012502.46",
+    "x-filtered-value": "1012502.46",
+    "lines": 43,
+    "sha256": "c5b3251ff7f55c77d9867f6da0b351b323f6aedb5859acab74bbe2da92b3587b"
+   }
+  },
+  {
+   "id": "legacy:timeseries-channel",
+   "origin": "legacy",
+   "source": "evoluția pe directe și proceduri (F3)",
+   "request": {
+    "spec": {
+     "block": "timeseries",
+     "measure": "value",
+     "filters": {},
+     "timeseries": {
+      "split": "channel"
+     }
+    }
+   },
+   "answer": {
+    "status": 200,
+    "ok": true,
+    "question": null,
+    "model": null,
+    "spec": {
+     "block": "timeseries",
+     "measure": "value",
+     "filters": {},
+     "timeseries": {
+      "split": "channel"
+     }
+    },
+    "pills": ["evoluție pe ani","valoarea înregistrată","toți anii","pe directe și proceduri","toate achizițiile: directe și din proceduri"],
+    "caveats": [
+     "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Ani cu date parțiale sau provizorii: 2024 (achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei), 2026 (achizițiile directe până la 20.06.2026; contractele până la 25.06.2026; contractele datate după 31.05.2026 sunt provizorii). Totalurile lor nu sunt complete; nu le compara direct cu ceilalți ani din grafic. SEAP publică multe contracte la câteva săptămâni sau luni după semnare: cifrele provizorii pot crește la actualizările următoare."
+    ],
+    "data": {
+     "block": "timeseries",
+     "series": [
+      {
+       "year": 2024,
+       "value": 263933.5,
+       "count": 10,
+       "parts": {
+        "contracts": {
+         "value": 147000.5,
+         "count": 2
+        },
+        "da": {
+         "value": 116933,
+         "count": 8
+        }
+       }
+      },
+      {
+       "year": 2025,
+       "value": 748568.96,
+       "count": 32,
+       "parts": {
+        "contracts": {
+         "value": 558000.02,
+         "count": 5
+        },
+        "da": {
+         "value": 190568.94,
+         "count": 27
+        }
+       }
+      },
+      {
+       "year": 2026,
+       "value": 3302788.72,
+       "count": 9,
+       "parts": {
+        "contracts": {
+         "value": 3264800.75,
+         "count": 3
+        },
+        "da": {
+         "value": 37987.97,
+         "count": 6
+        }
+       }
+      }
+     ],
+     "parts": [
+      {
+       "key": "contracts",
+       "label": "Proceduri"
+      },
+      {
+       "key": "da",
+       "label": "Directe"
+      }
+     ]
+    },
+    "partialYears": [
+     {
+      "year": 2024,
+      "note": "achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei"
+     },
+     {
+      "year": 2026,
+      "note": "achizițiile directe până la 20.06.2026; contractele până la 25.06.2026; contractele datate după 31.05.2026 sunt provizorii",
+      "provisional": true
+     }
+    ],
+    "displaySql": "select an, canal, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by an, canal order by an;"
+   },
+   "sources": {
+    "status": 200,
+    "ok": true,
+    "total": 51,
+    "value": "4315291.18",
+    "sourceTotal": 51,
+    "sourceValue": "4315291.18",
+    "page": 0,
+    "pageSize": 10,
+    "accepted": {
+     "count": 41,
+     "value": "345489.91"
+    },
+    "dateFrom": "2024-01-12",
+    "dateTo": "2026-06-20",
+    "profile": false,
+    "profiles": [],
+    "profileCount": 0,
+    "profileReconciled": null,
+    "scopeNotes": [
+     "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Un contract cu mai mulți câștigători apare pe câte un rând pentru fiecare furnizor, cu valoarea împărțită egal. Suma folosește aceste cote; numărul de rânduri nu este numărul de contracte distincte. Detaliile și exportul păstrează valoarea integrală și numărul câștigătorilor."
+    ],
+    "statuses": [
+     {
+      "state": null,
+      "count": 10,
+      "value": "3969801.27"
+     },
+     {
+      "state": "Oferta acceptata",
+      "count": 41,
+      "value": "345489.91"
+     }
+    ],
+    "rows": [
+     ["contracts","9100200009","CT-FX-9","2026-06-20","9100000005","9100000102","Buzau","15000000-8","8800.00",null,1,"8800.00",false,"Contract fixture 9"],
+     ["contracts","9100200008","CT-FX-8","2024-10-10","9100000002","9100000103","Cluj","79000000-4","22000.00",null,1,"22000.00",false,"Contract fixture 8"],
+     ["contracts","9100200007","CT-FX-7","2025-07-07","9100000007","9100000103",null,"79000000-4","41000.00",null,1,"41000.00",false,"Contract fixture 7"],
+     ["contracts","9100200006","CT-FX-6","2026-05-05","9100000006","9100000101","Alba","45233140-2","56000.75",null,1,"56000.75",false,"Contract fixture 6"],
+     ["contracts","9100200005","CT-FX-5","2025-02-25","9100000004","9100000103","Alba","79000000-4","87000.00",null,1,"87000.00",false,"Contract fixture 5"],
+     ["contracts","9100200004","CT-FX-4","2026-03-20","9100000003","9100000102","Buzau","33690000-3","3200000.00",null,1,"3200000.00",false,"Contract fixture 4"],
+     ["contracts","9100200003","CT-FX-3","2024-03-15","9100000003","9100000102","Buzau","33600000-6","125000.50",null,1,"125000.50",false,"Contract fixture 3"],
+     ["contracts","9100200002","CT-FX-2","2025-09-01","9100000001","9100000101","Cluj","45233140-2","45000.01",null,2,"90000.02",false,"Contract fixture 2"],
+     ["contracts","9100200002","CT-FX-2","2025-09-01","9100000001","9100000106","Cluj","45233140-2","45000.01",null,2,"90000.02",false,"Contract fixture 2"],
+     ["contracts","9100200001","CT-FX-1","2025-06-10","9100000002","9100000101","Cluj","45233140-2","340000.00",null,1,"340000.00",false,"Contract fixture 1"]
+    ]
+   },
+   "csv": {
+    "status": 200,
+    "file": "randuri-51.csv",
+    "x-total-rows": "51",
+    "x-exported-rows": "51",
+    "x-source-rows": "51",
+    "x-source-value": "4315291.18",
+    "x-filtered-value": "4315291.18",
+    "lines": 52,
+    "sha256": "10d16c9b4c6acc9c4a6f69d0db01584e1fea6be2314ecb7c02943ec4ece43417"
+   }
+  },
+  {
+   "id": "legacy:timeseries-domain",
+   "origin": "legacy",
+   "source": "evoluția pe domenii (F3)",
+   "request": {
+    "spec": {
+     "block": "timeseries",
+     "measure": "count",
+     "filters": {
+      "yearFrom": 2024,
+      "yearTo": 2025
+     },
+     "timeseries": {
+      "split": "domain"
+     }
+    }
+   },
+   "answer": {
+    "status": 200,
+    "ok": true,
+    "question": null,
+    "model": null,
+    "spec": {
+     "block": "timeseries",
+     "measure": "count",
+     "filters": {
+      "yearFrom": 2024,
+      "yearTo": 2025
+     },
+     "timeseries": {
+      "split": "domain"
+     }
+    },
+    "pills": ["evoluție pe ani","numărul de înregistrări","2024–2025","pe domenii","toate achizițiile: directe și din proceduri"],
+    "caveats": [
+     "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "An acoperit parțial de date: 2024 (achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei). Totalul lui nu acoperă un an întreg; nu îl compara direct cu ceilalți ani din grafic."
+    ],
+    "data": {
+     "block": "timeseries",
+     "series": [
+      {
+       "year": 2024,
+       "value": 263933.5,
+       "count": 10,
+       "parts": {
+        "33": {
+         "value": 142700.66,
+         "count": 4
+        },
+        "34": {
+         "value": 64000,
+         "count": 1
+        },
+        "79": {
+         "value": 51632.84,
+         "count": 4
+        },
+        "other": {
+         "value": 5600,
+         "count": 1
+        }
+       }
+      },
+      {
+       "year": 2025,
+       "value": 748568.96,
+       "count": 32,
+       "parts": {
+        "33": {
+         "value": 71255.78,
+         "count": 5
+        },
+        "45": {
+         "value": 504569.96,
+         "count": 10
+        },
+        "79": {
+         "value": 160762.37,
+         "count": 12
+        },
+        "other": {
+         "value": 11980.85,
+         "count": 5
+        }
+       }
+      }
+     ],
+     "parts": [
+      {
+       "key": "45",
+       "code": "45",
+       "label": "Construcții",
+       "name": "Lucrări de construcții"
+      },
+      {
+       "key": "33",
+       "code": "33",
+       "label": "Medicale, farmaceutice",
+       "name": "Echipament medical, produse farmaceutice și produse de îngrijire personală"
+      },
+      {
+       "key": "79",
+       "code": "79",
+       "label": "Servicii pentru organizații",
+       "name": "Servicii pentru întreprinderi: juridice, de marketing, de consultanță, de recrutare, de imprimare și de securitate"
+      },
+      {
+       "key": "34",
+       "code": "34",
+       "label": "Echipamente de transport",
+       "name": "Echipament de transport și produse auxiliare pentru transport"
+      },
+      {
+       "key": "other",
+       "label": "Alte domenii"
+      }
+     ]
+    },
+    "partialYears": [
+     {
+      "year": 2024,
+      "note": "achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei"
+     }
+    ],
+    "displaySql": "select an, diviziune_cpv, count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by an, diviziune_cpv order by an;"
+   },
+   "sources": {
+    "status": 200,
+    "ok": true,
+    "total": 42,
+    "value": "1012502.46",
+    "sourceTotal": 42,
+    "sourceValue": "1012502.46",
+    "page": 0,
+    "pageSize": 10,
+    "accepted": {
+     "count": 35,
+     "value": "307501.94"
+    },
+    "dateFrom": "2024-01-12",
+    "dateTo": "2025-12-17",
+    "profile": false,
+    "profiles": [],
+    "profileCount": 0,
+    "profileReconciled": null,
+    "scopeNotes": [
+     "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Un contract cu mai mulți câștigători apare pe câte un rând pentru fiecare furnizor, cu valoarea împărțită egal. Suma folosește aceste cote; numărul de rânduri nu este numărul de contracte distincte. Detaliile și exportul păstrează valoarea integrală și numărul câștigătorilor."
+    ],
+    "statuses": [
+     {
+      "state": null,
+      "count": 7,
+      "value": "705000.52"
+     },
+     {
+      "state": "Oferta acceptata",
+      "count": 35,
+      "value": "307501.94"
+     }
+    ],
+    "rows": [
+     ["contracts","9100200008","CT-FX-8","2024-10-10","9100000002","9100000103","Cluj","79000000-4","22000.00",null,1,"22000.00",false,"Contract fixture 8"],
+     ["contracts","9100200007","CT-FX-7","2025-07-07","9100000007","9100000103",null,"79000000-4","41000.00",null,1,"41000.00",false,"Contract fixture 7"],
+     ["contracts","9100200005","CT-FX-5","2025-02-25","9100000004","9100000103","Alba","79000000-4","87000.00",null,1,"87000.00",false,"Contract fixture 5"],
+     ["contracts","9100200003","CT-FX-3","2024-03-15","9100000003","9100000102","Buzau","33600000-6","125000.50",null,1,"125000.50",false,"Contract fixture 3"],
+     ["contracts","9100200002","CT-FX-2","2025-09-01","9100000001","9100000101","Cluj","45233140-2","45000.01",null,2,"90000.02",false,"Contract fixture 2"],
+     ["contracts","9100200002","CT-FX-2","2025-09-01","9100000001","9100000106","Cluj","45233140-2","45000.01",null,2,"90000.02",false,"Contract fixture 2"],
+     ["contracts","9100200001","CT-FX-1","2025-06-10","9100000002","9100000101","Cluj","45233140-2","340000.00",null,1,"340000.00",false,"Contract fixture 1"],
+     ["da","9100100212","DA-FX-212","2024-01-12","9100000004","9100000102","Alba","33690000-3","4532.84","Oferta acceptata",null,null,false,null],
+     ["da","9100100210","DA-FX-210","2025-03-10","9100000004","9100000102","Alba","33690000-3","4110.70","Oferta acceptata",null,null,false,null],
+     ["da","9100100209","DA-FX-209","2024-04-19","9100000004","9100000103","Alba","79000000-4","3899.63","Oferta acceptata",null,null,false,null]
+    ]
+   },
+   "csv": {
+    "status": 200,
+    "file": "randuri-42.csv",
+    "x-total-rows": "42",
+    "x-exported-rows": "42",
+    "x-source-rows": "42",
+    "x-source-value": "1012502.46",
+    "x-filtered-value": "1012502.46",
+    "lines": 43,
+    "sha256": "c5b3251ff7f55c77d9867f6da0b351b323f6aedb5859acab74bbe2da92b3587b"
+   }
+  },
+  {
+   "id": "legacy:timeseries-same-months",
+   "origin": "legacy",
+   "source": "evoluția pe aceleași luni (F3)",
+   "request": {
+    "spec": {
+     "block": "timeseries",
+     "measure": "value",
+     "filters": {
+      "yearFrom": 2024,
+      "yearTo": 2025
+     },
+     "timeseries": {
+      "months": [1,6]
+     }
+    }
+   },
+   "answer": {
+    "status": 200,
+    "ok": true,
+    "question": null,
+    "model": null,
+    "spec": {
+     "block": "timeseries",
+     "measure": "value",
+     "filters": {
+      "yearFrom": 2024,
+      "yearTo": 2025
+     },
+     "timeseries": {
+      "months": [1,6]
+     }
+    },
+    "pills": ["evoluție pe ani","valoarea înregistrată","2024–2025","aceleași luni: ian.–iun.","toate achizițiile: directe și din proceduri"],
+    "caveats": [
+     "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Fiecare an e numărat pe aceleași luni: ian.–iun..",
+     "An acoperit parțial de date: 2024 (achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei). Totalul lui nu acoperă un an întreg; nu îl compara direct cu ceilalți ani din grafic."
+    ],
+    "data": {
+     "block": "timeseries",
+     "series": [
+      {
+       "year": 2024,
+       "value": 144932.6,
+       "count": 6
+      },
+      {
+       "year": 2025,
+       "value": 543975.47,
+       "count": 19
+      }
+     ],
+     "months": {
+      "from": 1,
+      "to": 6,
+      "mode": "chosen"
+     }
+    },
+    "partialYears": [
+     {
+      "year": 2024,
+      "note": "achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei"
+     }
+    ],
+    "executed": {
+     "months": [1,6],
+     "mode": "chosen",
+     "checkpoint": null
+    },
+    "displaySql": "select an, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\n  and luna between '01' and '06'  -- aceleași luni în fiecare an\ngroup by an order by an;"
+   },
+   "sources": {
+    "status": 200,
+    "ok": true,
+    "total": 25,
+    "value": "688908.07",
+    "sourceTotal": 25,
+    "sourceValue": "688908.07",
+    "page": 0,
+    "pageSize": 10,
+    "accepted": {
+     "count": 22,
+     "value": "136907.57"
+    },
+    "dateFrom": "2024-01-12",
+    "dateTo": "2025-06-30",
+    "profile": false,
+    "profiles": [],
+    "profileCount": 0,
+    "profileReconciled": null,
+    "scopeNotes": [
+     "Fiecare an e numărat pe aceleași luni: ian.–iun.; sursele includ numai aceste luni.",
+     "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Un contract cu mai mulți câștigători apare pe câte un rând pentru fiecare furnizor, cu valoarea împărțită egal. Suma folosește aceste cote; numărul de rânduri nu este numărul de contracte distincte. Detaliile și exportul păstrează valoarea integrală și numărul câștigătorilor."
+    ],
+    "statuses": [
+     {
+      "state": null,
+      "count": 3,
+      "value": "552000.50"
+     },
+     {
+      "state": "Oferta acceptata",
+      "count": 22,
+      "value": "136907.57"
+     }
+    ],
+    "rows": [
+     ["contracts","9100200005","CT-FX-5","2025-02-25","9100000004","9100000103","Alba","79000000-4","87000.00",null,1,"87000.00",false,"Contract fixture 5"],
+     ["contracts","9100200003","CT-FX-3","2024-03-15","9100000003","9100000102","Buzau","33600000-6","125000.50",null,1,"125000.50",false,"Contract fixture 3"],
+     ["contracts","9100200001","CT-FX-1","2025-06-10","9100000002","9100000101","Cluj","45233140-2","340000.00",null,1,"340000.00",false,"Contract fixture 1"],
+     ["da","9100100212","DA-FX-212","2024-01-12","9100000004","9100000102","Alba","33690000-3","4532.84","Oferta acceptata",null,null,false,null],
+     ["da","9100100210","DA-FX-210","2025-03-10","9100000004","9100000102","Alba","33690000-3","4110.70","Oferta acceptata",null,null,false,null],
+     ["da","9100100209","DA-FX-209","2024-04-19","9100000004","9100000103","Alba","79000000-4","3899.63","Oferta acceptata",null,null,false,null],
+     ["da","9100100207","DA-FX-207","2025-06-17","9100000004","9100000103","Alba","79000000-4","3477.49","Oferta acceptata",null,null,false,null],
+     ["da","9100100206","DA-FX-206","2024-01-16","9100000004","9100000102","Alba","33690000-3","3266.42","Oferta acceptata",null,null,false,null],
+     ["da","9100100204","DA-FX-204","2025-03-14","9100000004","9100000102","Alba","33690000-3","2844.28","Oferta acceptata",null,null,false,null],
+     ["da","9100100203","DA-FX-203","2024-04-13","9100000004","9100000103","Alba","79000000-4","2633.21","Oferta acceptata",null,null,false,null]
+    ]
+   },
+   "csv": {
+    "status": 200,
+    "file": "randuri-25.csv",
+    "x-total-rows": "25",
+    "x-exported-rows": "25",
+    "x-source-rows": "25",
+    "x-source-value": "688908.07",
+    "x-filtered-value": "688908.07",
+    "lines": 26,
+    "sha256": "1610857a8ac610134a2f3395e8cba71c749c9fb23134deff533fb5f605b83c0c"
    }
   },
   {
@@ -16322,9 +17612,71 @@
      "other": {
       "value": 0,
       "count": 0
+     },
+     "base": [
+      {
+       "code": "3369000",
+       "name": "Medicamente diverse",
+       "value": 3276065.89,
+       "count": 10,
+       "max": 3200000,
+       "maxSrc": "contracts"
+      },
+      {
+       "code": "4523314",
+       "name": "Lucrări de drumuri",
+       "value": 553270.01,
+       "count": 10,
+       "max": 340000,
+       "maxSrc": "contracts"
+      },
+      {
+       "code": "3360000",
+       "name": "Produse farmaceutice",
+       "value": 166401.4,
+       "count": 3,
+       "max": 125000.5,
+       "maxSrc": "contracts"
+      }
+     ],
+     "streams": {
+      "da": {
+       "value": 184736.03,
+       "count": 17
+      },
+      "contracts": {
+       "value": 3811001.27,
+       "count": 6
+      }
      }
     },
-    "displaySql": "select categoria_cpv, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '45233%' or cpv_code like '336%')\n  and not (cpv_code like '452332%')  -- excluse din subiect\ngroup by categoria_cpv\norder by 2 desc;"
+    "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '45233%' or cpv_code like '336%')\n  and not (cpv_code like '452332%')  -- excluse din subiect\ngroup by categoria_cpv\norder by 2 desc;",
+    "variants": {
+     "measure": {
+      "value": {
+       "pills": [
+        "pe domenii",
+        "valoarea înregistrată",
+        "Lucrări de construcții, de fundații și de îmbrăcăminte pentru autostrăzi și drumuri (45233000-9) + Produse farmaceutice (33600000-6)",
+        "fără o subclasă (vezi limitele)",
+        "toți anii",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '45233%' or cpv_code like '336%')\n  and not (cpv_code like '452332%')  -- excluse din subiect\ngroup by categoria_cpv\norder by 2 desc;"
+      },
+      "count": {
+       "pills": [
+        "pe domenii",
+        "numărul de înregistrări",
+        "Lucrări de construcții, de fundații și de îmbrăcăminte pentru autostrăzi și drumuri (45233000-9) + Produse farmaceutice (33600000-6)",
+        "fără o subclasă (vezi limitele)",
+        "toți anii",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '45233%' or cpv_code like '336%')\n  and not (cpv_code like '452332%')  -- excluse din subiect\ngroup by categoria_cpv\norder by 3 desc;"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -19959,12 +21311,17 @@
       }
      ],
      "totals": {
+      "value": 4314091.18,
+      "count": 50,
+      "entities": 6
+     },
+     "group": {
       "value": 3689939.63,
       "count": 34,
       "entities": 3
      }
     },
-    "displaySql": "select supplier_name, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and supplier_id in (select entity_id from marts.entity_profile\n                where role = 'supplier' and employees between 10 and 500)  -- bilanț MF, ultimul depus\ngroup by supplier_name\norder by 2 desc\nlimit 10;"
+    "displaySql": "select supplier_name, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by supplier_name\norder by 2 desc\nlimit 10;\n-- lista: doar firmele cu 10–500 de angajați (ultimul bilanț MF); totalul și „% din total” sunt ale întregii selecții"
    },
    "sources": {
     "status": 200,
@@ -23021,7 +24378,17 @@
        "value": 3264800.75,
        "count": 3
       }
-     ]
+     ],
+     "ref": {
+      "year": 2025,
+      "months": [1,5],
+      "value": 87000,
+      "count": 1,
+      "current": {
+       "value": 3256000.75,
+       "count": 2
+      }
+     }
     },
     "partialYears": [
      {
@@ -24740,9 +26107,97 @@
      "other": {
       "value": 0,
       "count": 0
+     },
+     "base": [
+      {
+       "code": "33",
+       "name": "Echipament medical, produse farmaceutice și produse de îngrijire personală",
+       "value": 3442467.29,
+       "count": 13,
+       "max": 3200000,
+       "maxSrc": "contracts"
+      },
+      {
+       "code": "45",
+       "name": "Lucrări de construcții",
+       "value": 560570.71,
+       "count": 11,
+       "max": 340000,
+       "maxSrc": "contracts"
+      },
+      {
+       "code": "79",
+       "name": "Servicii pentru întreprinderi: juridice, de marketing, de consultanță, de recrutare, de imprimare și de securitate",
+       "value": 219772.33,
+       "count": 18,
+       "max": 87000,
+       "maxSrc": "contracts"
+      },
+      {
+       "code": "34",
+       "name": "Echipament de transport și produse auxiliare pentru transport",
+       "value": 64000,
+       "count": 1,
+       "max": 64000,
+       "maxSrc": "da"
+      },
+      {
+       "code": "15",
+       "name": "Alimente, băuturi, tutun și produse conexe",
+       "value": 12100,
+       "count": 2,
+       "max": 8800,
+       "maxSrc": "contracts"
+      },
+      {
+       "code": "77",
+       "name": "Servicii agricole, forestiere, horticole, de acvacultură și de apicultură",
+       "value": 11700.35,
+       "count": 2,
+       "max": 6100.35,
+       "maxSrc": "da"
+      },
+      {
+       "code": "30",
+       "name": "Mașini, echipamente și consumabile de birou și de calcul",
+       "value": 1380.5,
+       "count": 2,
+       "max": 950.4,
+       "maxSrc": "da"
+      },
+      {
+       "code": "09",
+       "name": "Produse petroliere, combustibil, electricitate și alte surse de energie",
+       "value": 1200,
+       "count": 1,
+       "max": 1200,
+       "maxSrc": "da"
+      }
+     ],
+     "streams": {
+      "da": {
+       "value": 343389.91,
+       "count": 40
+      },
+      "contracts": {
+       "value": 3969801.27,
+       "count": 10
+      }
      }
     },
-    "displaySql": "select categoria_cpv, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by categoria_cpv\norder by 2 desc;"
+    "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by categoria_cpv\norder by 2 desc;",
+    "variants": {
+     "measure": {
+      "value": {
+       "pills": ["pe domenii","valoarea înregistrată","toți anii","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by categoria_cpv\norder by 2 desc;"
+      },
+      "count": {
+       "pills": ["pe domenii","numărul de înregistrări","toți anii","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by categoria_cpv\norder by 3 desc;"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -24880,9 +26335,73 @@
      "other": {
       "value": 0,
       "count": 0
+     },
+     "base": [
+      {
+       "code": "45",
+       "name": "Lucrări de construcții",
+       "value": 499101.62,
+       "count": 7,
+       "max": 340000,
+       "maxSrc": "contracts"
+      },
+      {
+       "code": "79",
+       "name": "Servicii pentru întreprinderi: juridice, de marketing, de consultanță, de recrutare, de imprimare și de securitate",
+       "value": 45100,
+       "count": 2,
+       "max": 23100,
+       "maxSrc": "da"
+      },
+      {
+       "code": "77",
+       "name": "Servicii agricole, forestiere, horticole, de acvacultură și de apicultură",
+       "value": 11700.35,
+       "count": 2,
+       "max": 6100.35,
+       "maxSrc": "da"
+      },
+      {
+       "code": "09",
+       "name": "Produse petroliere, combustibil, electricitate și alte surse de energie",
+       "value": 1200,
+       "count": 1,
+       "max": 1200,
+       "maxSrc": "da"
+      },
+      {
+       "code": "30",
+       "name": "Mașini, echipamente și consumabile de birou și de calcul",
+       "value": 950.4,
+       "count": 1,
+       "max": 950.4,
+       "maxSrc": "da"
+      }
+     ],
+     "streams": {
+      "da": {
+       "value": 106052.35,
+       "count": 9
+      },
+      "contracts": {
+       "value": 452000.02,
+       "count": 4
+      }
      }
     },
-    "displaySql": "select categoria_cpv, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'cluj'\ngroup by categoria_cpv\norder by 2 desc;"
+    "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'cluj'\ngroup by categoria_cpv\norder by 2 desc;",
+    "variants": {
+     "measure": {
+      "value": {
+       "pills": ["pe domenii","valoarea înregistrată","județul Cluj","toți anii","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'cluj'\ngroup by categoria_cpv\norder by 2 desc;"
+      },
+      "count": {
+       "pills": ["pe domenii","numărul de înregistrări","județul Cluj","toți anii","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'cluj'\ngroup by categoria_cpv\norder by 3 desc;"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -24995,9 +26514,41 @@
      "other": {
       "value": 0,
       "count": 0
+     },
+     "base": [
+      {
+       "code": "4523",
+       "name": "Lucrări de construcții de conducte, de linii de comunicații și electrice, de autostrăzi, de drumuri",
+       "value": 560570.71,
+       "count": 11,
+       "max": 340000,
+       "maxSrc": "contracts"
+      }
+     ],
+     "streams": {
+      "da": {
+       "value": 74569.94,
+       "count": 7
+      },
+      "contracts": {
+       "value": 486000.77,
+       "count": 4
+      }
      }
     },
-    "displaySql": "select categoria_cpv, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '45%')\ngroup by categoria_cpv\norder by 2 desc;"
+    "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '45%')\ngroup by categoria_cpv\norder by 2 desc;",
+    "variants": {
+     "measure": {
+      "value": {
+       "pills": ["pe domenii","valoarea înregistrată","Lucrări de construcții (45000000-7)","toți anii","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '45%')\ngroup by categoria_cpv\norder by 2 desc;"
+      },
+      "count": {
+       "pills": ["pe domenii","numărul de înregistrări","Lucrări de construcții (45000000-7)","toți anii","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '45%')\ngroup by categoria_cpv\norder by 3 desc;"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -25122,9 +26673,61 @@
      "other": {
       "value": 0,
       "count": 0
+     },
+     "base": [
+      {
+       "code": "452331",
+       "name": "Lucrări de construcții de autostrăzi și drumuri",
+       "value": 553270.01,
+       "count": 10,
+       "max": 340000,
+       "maxSrc": "contracts"
+      },
+      {
+       "code": "452332",
+       "name": "Diverse lucrări de îmbrăcăminte",
+       "value": 7300.7,
+       "count": 1,
+       "max": 7300.7,
+       "maxSrc": "da"
+      }
+     ],
+     "streams": {
+      "da": {
+       "value": 74569.94,
+       "count": 7
+      },
+      "contracts": {
+       "value": 486000.77,
+       "count": 4
+      }
      }
     },
-    "displaySql": "select categoria_cpv, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '4523%')\ngroup by categoria_cpv\norder by 2 desc;"
+    "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '4523%')\ngroup by categoria_cpv\norder by 2 desc;",
+    "variants": {
+     "measure": {
+      "value": {
+       "pills": [
+        "pe domenii",
+        "valoarea înregistrată",
+        "Lucrări de construcții de conducte, de linii de comunicații și electrice, de autostrăzi, de drumuri (45230000-8)",
+        "toți anii",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '4523%')\ngroup by categoria_cpv\norder by 2 desc;"
+      },
+      "count": {
+       "pills": [
+        "pe domenii",
+        "numărul de înregistrări",
+        "Lucrări de construcții de conducte, de linii de comunicații și electrice, de autostrăzi, de drumuri (45230000-8)",
+        "toți anii",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '4523%')\ngroup by categoria_cpv\norder by 3 desc;"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -25242,9 +26845,41 @@
      "other": {
       "value": 0,
       "count": 0
+     },
+     "base": [
+      {
+       "code": "45233140",
+       "name": "Lucrări de drumuri",
+       "value": 553270.01,
+       "count": 10,
+       "max": 340000,
+       "maxSrc": "contracts"
+      }
+     ],
+     "streams": {
+      "da": {
+       "value": 67269.24,
+       "count": 6
+      },
+      "contracts": {
+       "value": 486000.77,
+       "count": 4
+      }
      }
     },
-    "displaySql": "select categoria_cpv, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '4523314%')\ngroup by categoria_cpv\norder by 2 desc;"
+    "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '4523314%')\ngroup by categoria_cpv\norder by 2 desc;",
+    "variants": {
+     "measure": {
+      "value": {
+       "pills": ["pe domenii","valoarea înregistrată","Lucrări de drumuri (45233140-2)","toți anii","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '4523314%')\ngroup by categoria_cpv\norder by 2 desc;"
+      },
+      "count": {
+       "pills": ["pe domenii","numărul de înregistrări","Lucrări de drumuri (45233140-2)","toți anii","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '4523314%')\ngroup by categoria_cpv\norder by 3 desc;"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -25357,9 +26992,41 @@
      "other": {
       "value": 0,
       "count": 0
+     },
+     "base": [
+      {
+       "code": "33",
+       "name": "Echipament medical, produse farmaceutice și produse de îngrijire personală",
+       "value": 3421602.35,
+       "count": 7,
+       "max": 3200000,
+       "maxSrc": "contracts"
+      }
+     ],
+     "streams": {
+      "da": {
+       "value": 96601.85,
+       "count": 5
+      },
+      "contracts": {
+       "value": 3325000.5,
+       "count": 2
+      }
      }
     },
-    "displaySql": "select categoria_cpv, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id in (…)  -- doar spitale: 2 instituții (după nume, cu institutele clinice)\ngroup by categoria_cpv\norder by 2 desc;"
+    "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id in (…)  -- doar spitale: 2 instituții (după nume, cu institutele clinice)\ngroup by categoria_cpv\norder by 2 desc;",
+    "variants": {
+     "measure": {
+      "value": {
+       "pills": ["pe domenii","valoarea înregistrată","doar spitale","toți anii","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id in (…)  -- doar spitale: 2 instituții (după nume, cu institutele clinice)\ngroup by categoria_cpv\norder by 2 desc;"
+      },
+      "count": {
+       "pills": ["pe domenii","numărul de înregistrări","doar spitale","toți anii","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id in (…)  -- doar spitale: 2 instituții (după nume, cu institutele clinice)\ngroup by categoria_cpv\norder by 3 desc;"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -25471,9 +27138,41 @@
      "other": {
       "value": 0,
       "count": 0
+     },
+     "base": [
+      {
+       "code": "45",
+       "name": "Lucrări de construcții",
+       "value": 515570.7,
+       "count": 10,
+       "max": 340000,
+       "maxSrc": "contracts"
+      }
+     ],
+     "streams": {
+      "da": {
+       "value": 74569.94,
+       "count": 7
+      },
+      "contracts": {
+       "value": 441000.76,
+       "count": 3
+      }
      }
     },
-    "displaySql": "select categoria_cpv, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and supplier_id = 9100000101\ngroup by categoria_cpv\norder by 2 desc;"
+    "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and supplier_id = 9100000101\ngroup by categoria_cpv\norder by 2 desc;",
+    "variants": {
+     "measure": {
+      "value": {
+       "pills": ["pe domenii","valoarea înregistrată","Fixture Construct SRL","toți anii","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and supplier_id = 9100000101\ngroup by categoria_cpv\norder by 2 desc;"
+      },
+      "count": {
+       "pills": ["pe domenii","numărul de înregistrări","Fixture Construct SRL","toți anii","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and supplier_id = 9100000101\ngroup by categoria_cpv\norder by 3 desc;"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -25594,9 +27293,49 @@
      "other": {
       "value": 0,
       "count": 0
+     },
+     "base": [
+      {
+       "code": "45",
+       "name": "Lucrări de construcții",
+       "value": 430000.02,
+       "count": 3,
+       "max": 340000,
+       "maxSrc": "contracts"
+      },
+      {
+       "code": "79",
+       "name": "Servicii pentru întreprinderi: juridice, de marketing, de consultanță, de recrutare, de imprimare și de securitate",
+       "value": 128000,
+       "count": 2,
+       "max": 87000,
+       "maxSrc": "contracts"
+      }
+     ],
+     "streams": {
+      "da": {
+       "value": 190568.94,
+       "count": 27
+      },
+      "contracts": {
+       "value": 558000.02,
+       "count": 5
+      }
      }
     },
-    "displaySql": "select categoria_cpv, sum(closing_value)\nfrom marts.contract_transactions\nwhere closing_value > 0\n  and an >= 2025\n  and an <= 2025\ngroup by categoria_cpv\norder by 2 desc;"
+    "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom marts.contract_transactions\nwhere closing_value > 0\n  and an >= 2025\n  and an <= 2025\ngroup by categoria_cpv\norder by 2 desc;",
+    "variants": {
+     "measure": {
+      "value": {
+       "pills": ["pe domenii","valoarea înregistrată","2025","doar contractele din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom marts.contract_transactions\nwhere closing_value > 0\n  and an >= 2025\n  and an <= 2025\ngroup by categoria_cpv\norder by 2 desc;"
+      },
+      "count": {
+       "pills": ["pe domenii","numărul de înregistrări","2025","doar contractele din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom marts.contract_transactions\nwhere closing_value > 0\n  and an >= 2025\n  and an <= 2025\ngroup by categoria_cpv\norder by 3 desc;"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,
@@ -33329,9 +35068,49 @@
      "other": {
       "value": 0,
       "count": 0
+     },
+     "base": [
+      {
+       "code": "79",
+       "name": "Servicii pentru întreprinderi: juridice, de marketing, de consultanță, de recrutare, de imprimare și de securitate",
+       "value": 219772.33,
+       "count": 18,
+       "max": 87000,
+       "maxSrc": "contracts"
+      },
+      {
+       "code": "77",
+       "name": "Servicii agricole, forestiere, horticole, de acvacultură și de apicultură",
+       "value": 11700.35,
+       "count": 2,
+       "max": 6100.35,
+       "maxSrc": "da"
+      }
+     ],
+     "streams": {
+      "da": {
+       "value": 81472.68,
+       "count": 17
+      },
+      "contracts": {
+       "value": 150000,
+       "count": 3
+      }
      }
     },
-    "displaySql": "select categoria_cpv, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and cpv_code >= '50'  -- doar servicii (tipul din codul CPV)\ngroup by categoria_cpv\norder by 2 desc;"
+    "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and cpv_code >= '50'  -- doar servicii (tipul din codul CPV)\ngroup by categoria_cpv\norder by 2 desc;",
+    "variants": {
+     "measure": {
+      "value": {
+       "pills": ["pe domenii","valoarea înregistrată","doar servicii","toți anii","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and cpv_code >= '50'  -- doar servicii (tipul din codul CPV)\ngroup by categoria_cpv\norder by 2 desc;"
+      },
+      "count": {
+       "pills": ["pe domenii","numărul de înregistrări","doar servicii","toți anii","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and cpv_code >= '50'  -- doar servicii (tipul din codul CPV)\ngroup by categoria_cpv\norder by 3 desc;"
+      }
+     }
+    }
    },
    "sources": {
     "status": 200,

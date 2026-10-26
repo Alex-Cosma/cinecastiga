@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { defaultQuestion, questionErrors, questionKey, transitionQuestion } from "../question-ui";
-import { IMPLEMENTED_KEYS, NEWER_VERSION_LINK, parseSpec, READ_AHEAD_KEYS, runnableError, SELECTION_RULES, TREND_RULES, unimplementedSpecKeys, validateSpec, type AskSpec, type Block } from "../spec";
+import { IMPLEMENTED_KEYS, NEWER_VERSION_LINK, parseSpec, READ_AHEAD_KEYS, runnableError, SELECTION_RULES, TIMESERIES_RULES, TREND_RULES, unimplementedSpecKeys, validateSpec, type AskSpec, type Block } from "../spec";
 import { legacyCorpus } from "../fixtures/legacy-corpus";
 import { FIXTURE_IDENTITIES } from "../fixtures/golden-fixture";
 import { BLOCK_FILTERS } from "./blocks";
@@ -51,9 +51,10 @@ describe("the rules of a key (plan §2.4)", () => {
   // (TREND_RULES, F2) and the filter declares that same function, which runnableError runs.
   it("are those runnableError runs; no filter declares a rule it would not run", () => {
     const ruled = FILTER_DEFS.filter((def) => def.validate);
-    expect(ruled.map((def) => def.id)).toEqual(["purchaseKind", "procedure", "purchaseValue", "trendOrder", "trendMinBase", "trendFirstOnly"]);
+    expect(ruled.map((def) => def.id)).toEqual(["purchaseKind", "procedure", "purchaseValue", "trendOrder", "trendMinBase", "trendFirstOnly", "timeseriesGrain", "timeseriesSplit", "timeseriesMonths"]);
     expect(ruled.map((def) => def.validate)).toEqual([
       SELECTION_RULES.purchaseKind, SELECTION_RULES.procedure, SELECTION_RULES.purchaseValue, TREND_RULES.order, TREND_RULES.minBase, TREND_RULES.firstOnly,
+      TIMESERIES_RULES.grain, TIMESERIES_RULES.split, TIMESERIES_RULES.months,
     ]);
     // F3 (plan §3): a CPV code without codes of the kind, a procedure off the contracts, a size above the DA ceiling on DAs.
     const stat = { block: "stat", measure: "value", filters: {} } as const;
@@ -92,7 +93,8 @@ describe("the rules of a key (plan §2.4)", () => {
 });
 
 describe("keys a later stage implements (F3: the common selection)", () => {
-  const f3 = FILTER_DEFS.filter((def) => def.since === "F3");
+  // The evolution's options (F3-rows) are tested with their block, below.
+  const f3 = FILTER_DEFS.filter((def) => def.since === "F3" && def.keys.every((key) => key.startsWith("filters.")));
 
   it("are the kind, the procedure and the size, selections on the records of every answer over them", () => {
     expect(f3.map((def) => [def.id, def.keys])).toEqual([
@@ -116,6 +118,67 @@ describe("keys a later stage implements (F3: the common selection)", () => {
     expect(FILTERS.dataset.write(open, "contracts").filters.procedure).toBe("deschisa");
     expect(FILTERS.dataset.write(open, "all").filters).not.toHaveProperty("procedure");
     expect(FILTERS.purchaseValue.read(FILTERS.purchaseValue.write(stat, { purchaseValueMin: 1_000_000 }))).toEqual({ purchaseValueMin: 1_000_000 });
+  });
+});
+
+describe("keys F3-rows implements (the evolution's options, plan §4.3)", () => {
+  const ts = FILTER_DEFS.filter((def) => def.since === "F3" && def.keys.some((key) => key.startsWith("timeseries.")));
+  const base = transitionQuestion(defaultQuestion(), "timeseries").spec as FilterSpec;
+  const years = { ...base, filters: { ...base.filters, yearFrom: 2024, yearTo: 2025 } } as FilterSpec;
+
+  it("are the pace, the split and the same months, applied on the evolution only, with their level and scope", () => {
+    expect(ts.map((def) => [def.id, def.keys, def.engine, def.scope("timeseries")])).toEqual([
+      ["timeseriesGrain", ["timeseries.grain"], { timeseries: "row" }, "display"],
+      ["timeseriesSplit", ["timeseries.split"], { timeseries: "display" }, "display"],
+      ["timeseriesMonths", ["timeseries.months"], { timeseries: "row" }, "selection"],
+    ]);
+    for (const def of ts) for (const key of def.keys) expect(IMPLEMENTED_KEYS.has(key), key).toBe(true);
+  });
+
+  it("write values the engine runs where they are offered", () => {
+    for (const spec of [base, years, { ...years, dataset: "da" } as FilterSpec, { ...years, filters: { ...years.filters, cpvTerm: "45" } } as FilterSpec])
+      for (const def of ts) for (const value of def.choices(spec, ctxOf(spec)))
+        expect(validateSpec(def.write(spec, value)), `${def.id} = ${JSON.stringify(value)} on ${JSON.stringify(spec)}`).not.toHaveProperty("error");
+    // Month by month needs at most 36 months; the channels split every purchase; the domains, more than one domain.
+    expect(FILTERS.timeseriesGrain.choices(base, ctxOf(base))).toEqual([]);
+    expect(FILTERS.timeseriesGrain.choices(years, ctxOf(years))).toEqual(["month"]);
+    expect(FILTERS.timeseriesSplit.choices(years, ctxOf(years))).toEqual([undefined, "channel", "domain"]);
+    const da = { ...years, dataset: "da" } as FilterSpec, works = { ...years, filters: { ...years.filters, purchaseKind: "lucrari" } } as FilterSpec;
+    expect(FILTERS.timeseriesSplit.choices(da, ctxOf(da))).toEqual([undefined, "domain"]);
+    expect(FILTERS.timeseriesSplit.choices(works, ctxOf(works))).toEqual([undefined, "channel"]);
+    // The same months: the answer's switch offers them (data.ref); the control only takes them away.
+    expect(FILTERS.timeseriesMonths.choices(years, ctxOf(years))).toEqual([]);
+    expect(FILTERS.timeseriesMonths.choices(FILTERS.timeseriesMonths.write(years, "auto"), ctxOf(years))).toEqual([undefined]);
+    expect(FILTERS.timeseriesSplit.write(FILTERS.timeseriesSplit.write(years, "channel"), undefined)).not.toHaveProperty("timeseries");
+  });
+
+  it("refuse with their rule's words what the engine cannot run (TIMESERIES_RULES)", () => {
+    const ts0 = { block: "timeseries", measure: "value", filters: {} } as const;
+    for (const [raw, rule] of [
+      [{ ...ts0, timeseries: { grain: "month" } }, TIMESERIES_RULES.grain],
+      [{ ...ts0, filters: { yearFrom: 2018, yearTo: 2025 }, timeseries: { grain: "month" } }, TIMESERIES_RULES.grain],
+      [{ ...ts0, filters: { yearFrom: 2024, yearTo: 2025 }, timeseries: { grain: "month", months: [1, 6] } }, TIMESERIES_RULES.months],
+      [{ ...ts0, filters: { yearFrom: 2024, yearTo: 2025, monthFrom: 1, monthTo: 3 }, timeseries: { months: "auto" } }, TIMESERIES_RULES.months],
+      [{ ...ts0, dataset: "da", timeseries: { split: "channel" } }, TIMESERIES_RULES.split],
+      [{ ...ts0, filters: { cpvTerm: "45" }, timeseries: { split: "domain" } }, TIMESERIES_RULES.split],
+    ] as const) {
+      const parsed = parseSpec(raw);
+      if ("error" in parsed) throw new Error(parsed.error);
+      expect(rule(parsed), JSON.stringify(raw)).not.toBeNull();
+      expect(validateSpec(raw)).toEqual({ error: rule(parsed) });
+    }
+    expect(validateSpec({ ...ts0, filters: { yearFrom: 2023, yearTo: 2025 }, timeseries: { grain: "month", split: "domain" } })).not.toHaveProperty("error");
+    expect(validateSpec({ ...ts0, timeseries: { split: "channel", months: [1, 6] } })).not.toHaveProperty("error");
+  });
+
+  it("never drop silently: month by month takes the same months away with a note", () => {
+    const same = FILTERS.timeseriesMonths.write(years, [1, 6]);
+    const to = chooseValue(same, { id: "timeseriesGrain" }, { filter: "timeseriesGrain", value: "month" });
+    expect(to.spec.timeseries).toEqual({ grain: "month" });
+    expect(to.dropped).toContain("timeseriesMonths");
+    expect(to.notes.length).toBeGreaterThanOrEqual(to.dropped.length);
+    // Another question keeps none of them (BLOCK_OPTION_KEYS): the options belong to the evolution.
+    expect(transitionQuestion(FILTERS.timeseriesSplit.write(years, "domain"), "stat").spec).not.toHaveProperty("timeseries");
   });
 });
 
@@ -213,7 +276,10 @@ describe("today's scope of each key (TODAY_SCOPE, plan §2.2)", () => {
     }
     // A key that moves from the records to a group needs its answer version (plan §2.6).
     expect(changed).toEqual([]);
-    for (const change of SCOPE_CHANGES) expect(FILTERS[change.filter].scope(change.form)).not.toBe(TODAY_SCOPE[change.filter]?.[change.form]);
+    // A change on one subject (F3: the ranked firms) is read on a question of that subject.
+    for (const change of SCOPE_CHANGES)
+      expect(FILTERS[change.filter].scope(change.form, change.dim ? { block: change.form.split(":")[0]!, dim: change.dim, measure: "value", filters: {} } as FilterSpec : undefined))
+        .not.toBe(TODAY_SCOPE[change.filter]?.[change.form]);
   });
 
   it("has no group key today: every condition of the engine is a selection or display", () => {
@@ -449,19 +515,22 @@ describe("places (BLOCK_FILTERS)", () => {
   });
 
   // Plan §2.1 P3a/P3b: a group row narrows the list and keeps the total; a selection row changes it.
-  // The one group row is the trend's firms' size, moved to the group under trend-2 (SCOPE_CHANGES).
-  it("draws the partners' selection rows on the network and the flow, and the trend's winners as a group", () => {
+  // The group row is the ranked firms' size (CÂȘTIGĂTORII), moved to the group under its version (SCOPE_CHANGES):
+  // the trend of firms (trend-2), "Cine câștigă?" (table:employees-2, F3) and "Cine conduce?" by value.
+  it("draws the partners' selection rows on the network and the flow, and the ranked firms' winners as a group", () => {
+    const winners = (spec: FilterSpec, ctx: ReturnType<typeof ctxOf>) => spec.dim === "supplier" && ["trend", "table", "entity_card:value"].includes(ctx.form);
     for (const { spec } of states) {
       const ctx = ctxOf(spec);
       const rows = BLOCK_FILTERS[ctx.block].rows(spec, ctx);
       for (const row of rows) {
-        expect(row.kind, row.label).toBe(ctx.block === "trend" ? "group" : "selection");
-        for (const chip of row.chips) expect(FILTERS[chip.id].scope(ctx.form), `${row.label} ${chip.id}`).toBe(row.kind);
+        expect(row.kind, row.label).toBe(winners(spec, ctx) ? "group" : "selection");
+        for (const chip of row.chips) expect(FILTERS[chip.id].scope(ctx.form, spec), `${row.label} ${chip.id}`).toBe(row.kind);
         if (row.kind === "group") for (const chip of row.chips) expect(SCOPE_CHANGES.some((c) => c.filter === chip.id && c.form === ctx.form), chip.id).toBe(true);
       }
-      expect(rows.length > 0, questionKey(spec)).toBe(["network", "sankey"].includes(ctx.block) || ctx.block === "trend" && spec.dim === "supplier");
+      expect(rows.length > 0, questionKey(spec)).toBe(["network", "sankey"].includes(ctx.block) || winners(spec, ctx));
       // P4 the question owns: the size of a purchase on the total and the ranking (F3), the trend's "Aceleași luni".
-      expect(BLOCK_FILTERS[ctx.block].under(spec, ctx).map((slot) => slot.id)).toEqual(ctx.block === "trend" ? ["trendMonths"] : ["stat", "table"].includes(ctx.block) ? ["purchaseValue"] : []);
+      expect(BLOCK_FILTERS[ctx.block].under(spec, ctx).map((slot) => slot.id)).toEqual(ctx.block === "trend" ? ["trendMonths"]
+        : ctx.block === "timeseries" ? ["timeseriesMonths"] : ["stat", "table"].includes(ctx.block) ? ["purchaseValue"] : []);
     }
   });
 
