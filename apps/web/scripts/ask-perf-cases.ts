@@ -69,6 +69,10 @@ export const PERF_ENTITIES = {
   // F4-network-sankey: the final's institutions (network final §3.1), a county hospital with 1,095 partners.
   buzau: { id: 2144364, name: "MUNICIPIUL BUZAU" },
   bacau: { id: 2146264, name: "SPITALUL JUDETEAN DE URGENTA BACAU" },
+  // F4-compare: the final's pairs (final compare §3.4, §4).
+  erbasu: { id: 2124463, name: "CONSTRUCTII ERBASU S.A." },
+  terraGaz: { id: 2128220, name: "TERRA GAZ CONSTRUCT" },
+  timisoara: { id: 2146647, name: "Municipiul Timisoara" },
 } as const;
 
 type Edit = (q: QuestionSpec) => void;
@@ -279,6 +283,7 @@ export function perfCases(): PerfCase[] {
     ...seatCases(),
     ...excludeCases(),
     ...relationCases(),
+    ...compareCases(),
   ];
 }
 
@@ -287,6 +292,31 @@ export function perfCases(): PerfCase[] {
  * thousand direct acquisitions; a county hospital), „Cu semnale”, a group on one channel, a group's sources (its
  * partners' records, a semi-join on the relation); the flow two CPV digits below a domain and on one channel.
  */
+/**
+ * F4-compare (plan §4.6, §6.4): „Doar clienții comuni” (the pre-step P) on the heaviest pair and on the final's
+ * example, its card's sources, the institutions' context rows (the suppliers' seat, the distinct contracts, the codes
+ * above a domain), and the builder's pair facts and suggestions, asked when a window opens.
+ */
+function compareCases(): PerfCase[] {
+  const pair = (b: { id: number; name: string }) => set({ compareWith: b.name, compareWithId: b.id });
+  const selgrosDedeman = all(focal("supplier"), pair(PERF_ENTITIES.dedeman));
+  const erbasuTerra = all(focal("supplier", PERF_ENTITIES.erbasu), pair(PERF_ENTITIES.terraGaz));
+  const clujTimisoara = all(focal("authority"), pair(PERF_ENTITIES.timisoara));
+  const shared = set({ sharedPartners: true });
+  return [
+    perfCase("filtered:compare-shared-selgros-dedeman", "filtered", "SELGROS cu DEDEMAN, doar clienții comuni (3.050), toți anii", "compare", all(selgrosDedeman, shared)),
+    perfCase("filtered:compare-shared-erbasu-terra", "filtered", "Erbașu cu Terra Gaz, doar clienții comuni", "compare", all(erbasuTerra, shared)),
+    perfCase("filtered:compare-cluj-timisoara", "filtered", "Cluj-Napoca cu Timișoara (sediul furnizorilor, contractele distincte)", "compare", clujTimisoara),
+    perfCase("filtered:compare-cluj-timisoara-roads", "filtered", "Cluj-Napoca cu Timișoara, CPV 45233 (+ coduri mai generale)", "compare", all(clujTimisoara, set({ cpvTerm: "45233" }))),
+    perfCase("sources:compare-shared-selgros", "sources", "Sursele cardului SELGROS, doar clienții comuni", "compare", all(selgrosDedeman, shared),
+      { path: "rows", scope: SELGROS_ROW, barMs: 2000 }),
+    perfCase("facets:pair-selgros-dedeman", "facets", "Indiciile perechii SELGROS / DEDEMAN (ani, domenii, clienți)", "compare", selgrosDedeman, { facet: { part: "pair" }, barMs: 2000 }),
+    perfCase("facets:pair-cluj-timisoara", "facets", "Indiciile perechii Cluj-Napoca / Timișoara", "compare", clujTimisoara, { facet: { part: "pair" }, barMs: 1000 }),
+    perfCase("facets:compare-peers-selgros", "facets", "„Cu cine comparăm?” pentru SELGROS (clienți comuni)", "compare", selgrosDedeman, { facet: { part: "compare-peers" }, barMs: 2000 }),
+    perfCase("facets:compare-peers-cluj", "facets", "„Cu cine comparăm?” pentru Cluj-Napoca (populație)", "compare", clujTimisoara, { facet: { part: "compare-peers" }, barMs: 1000 }),
+  ];
+}
+
 function relationCases(): PerfCase[] {
   const network = (edit: NonNullable<AskSpec["network"]>): Edit => (q) => { q.network = { show: 15, ...edit }; };
   const bacau = focal("authority", PERF_ENTITIES.bacau), buzau = focal("authority", PERF_ENTITIES.buzau), selgros = focal("supplier");
