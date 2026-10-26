@@ -1,10 +1,10 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { defaultQuestion, questionErrors, questionKey, transitionQuestion } from "../question-ui";
-import { IMPLEMENTED_KEYS, NEWER_VERSION_LINK, parseSpec, READ_AHEAD_KEYS, runnableError, TREND_RULES, unimplementedSpecKeys, validateSpec, type AskSpec, type Block } from "../spec";
+import { IMPLEMENTED_KEYS, NEWER_VERSION_LINK, parseSpec, READ_AHEAD_KEYS, runnableError, SELECTION_RULES, TREND_RULES, unimplementedSpecKeys, validateSpec, type AskSpec, type Block } from "../spec";
 import { legacyCorpus } from "../fixtures/legacy-corpus";
 import { FIXTURE_IDENTITIES } from "../fixtures/golden-fixture";
 import { BLOCK_FILTERS } from "./blocks";
-import { filterContext, formOf } from "./context";
+import { filterContext, formOf, PROFILE_FORMS, TRANSACTION_FORMS } from "./context";
 import { legacyConditions, presentConditions } from "./legacy-conditions";
 import { selectionOrigin } from "./origin";
 import { windowFilters, writeChoice, type Choice } from "./pickers";
@@ -51,8 +51,28 @@ describe("the rules of a key (plan §2.4)", () => {
   // (TREND_RULES, F2) and the filter declares that same function, which runnableError runs.
   it("are those runnableError runs; no filter declares a rule it would not run", () => {
     const ruled = FILTER_DEFS.filter((def) => def.validate);
-    expect(ruled.map((def) => def.id)).toEqual(["trendOrder", "trendMinBase", "trendFirstOnly"]);
-    expect(ruled.map((def) => def.validate)).toEqual([TREND_RULES.order, TREND_RULES.minBase, TREND_RULES.firstOnly]);
+    expect(ruled.map((def) => def.id)).toEqual(["purchaseKind", "procedure", "purchaseValue", "trendOrder", "trendMinBase", "trendFirstOnly"]);
+    expect(ruled.map((def) => def.validate)).toEqual([
+      SELECTION_RULES.purchaseKind, SELECTION_RULES.procedure, SELECTION_RULES.purchaseValue, TREND_RULES.order, TREND_RULES.minBase, TREND_RULES.firstOnly,
+    ]);
+    // F3 (plan §3): a CPV code without codes of the kind, a procedure off the contracts, a size above the DA ceiling on DAs.
+    const stat = { block: "stat", measure: "value", filters: {} } as const;
+    for (const [raw, rule] of [
+      [{ ...stat, filters: { cpvTerm: "45", purchaseKind: "produse" } }, SELECTION_RULES.purchaseKind],
+      [{ ...stat, filters: { cpvTerm: "33600000", purchaseKind: "lucrari" } }, SELECTION_RULES.purchaseKind],
+      [{ ...stat, dataset: "da", filters: { procedure: "deschisa" } }, SELECTION_RULES.procedure],
+      [{ ...stat, dataset: "da", filters: { purchaseValueMin: 2_500_000 } }, SELECTION_RULES.purchaseValue],
+    ] as const) {
+      const parsed = parseSpec(raw);
+      if ("error" in parsed) throw new Error(parsed.error);
+      expect(rule(parsed), JSON.stringify(raw)).not.toBeNull();
+      expect(validateSpec(raw)).toEqual({ error: rule(parsed) });
+    }
+    // The kind of a domain in words is matched on the server (predicateContext); a procedure brings the contracts.
+    expect(validateSpec({ ...stat, filters: { cpvTerm: "asfaltare", purchaseKind: "produse" } })).not.toHaveProperty("error");
+    expect(validateSpec({ ...stat, filters: { cpvTerm: "45233140", purchaseKind: "lucrari" } })).not.toHaveProperty("error");
+    expect(validateSpec({ ...stat, filters: { procedure: "altele" } })).toMatchObject({ dataset: "contracts" });
+    expect(validateSpec({ ...stat, dataset: "da", filters: { purchaseValueMin: 2_000_000 } })).not.toHaveProperty("error");
     const trend = { block: "trend", dim: "supplier", measure: "value", filters: { yearFrom: 2024, yearTo: 2025 } } as const;
     for (const [raw, rule] of [
       [{ ...trend, trend: { change: "down", order: "lei" } }, TREND_RULES.order],
@@ -71,8 +91,36 @@ describe("the rules of a key (plan §2.4)", () => {
   });
 });
 
+describe("keys a later stage implements (F3: the common selection)", () => {
+  const f3 = FILTER_DEFS.filter((def) => def.since === "F3");
+
+  it("are the kind, the procedure and the size, selections on the records of every answer over them", () => {
+    expect(f3.map((def) => [def.id, def.keys])).toEqual([
+      ["purchaseKind", ["filters.purchaseKind"]], ["procedure", ["filters.procedure"]],
+      ["purchaseValue", ["filters.purchaseValueMin", "filters.purchaseValueMax"]],
+    ]);
+    for (const def of f3) {
+      for (const key of def.keys) expect(IMPLEMENTED_KEYS.has(key), key).toBe(true);
+      for (const form of TRANSACTION_FORMS) expect([def.id, form, def.engine[form], def.scope(form)]).toEqual([def.id, form, "row", "selection"]);
+      for (const form of PROFILE_FORMS) expect(def.engine[form], `${def.id} on ${form}`).toBeUndefined();
+    }
+  });
+
+  it("write values the engine runs on the questions that offer them", () => {
+    const stat = transitionQuestion(defaultQuestion(), "stat").spec as FilterSpec;
+    for (const def of f3) for (const value of def.choices(stat, ctxOf(stat)))
+      expect(validateSpec(def.write(stat, value)), `${def.id} = ${JSON.stringify(value)}`).not.toHaveProperty("error");
+    // A procedure brings its stream; any other stream takes it away (dataset's write), a size stays.
+    const open = FILTERS.procedure.write(stat, "deschisa");
+    expect([open.dataset, open.filters.procedure]).toEqual(["contracts", "deschisa"]);
+    expect(FILTERS.dataset.write(open, "contracts").filters.procedure).toBe("deschisa");
+    expect(FILTERS.dataset.write(open, "all").filters).not.toHaveProperty("procedure");
+    expect(FILTERS.purchaseValue.read(FILTERS.purchaseValue.write(stat, { purchaseValueMin: 1_000_000 }))).toEqual({ purchaseValueMin: 1_000_000 });
+  });
+});
+
 describe("keys a later stage implements (F2: the trend's)", () => {
-  const later = FILTER_DEFS.filter((def) => def.since);
+  const later = FILTER_DEFS.filter((def) => def.since === "F2");
 
   it("are the trend's five lenses, applied on the trend only, with the plan's level and scope", () => {
     expect(later.map((def) => [def.id, def.since, def.engine, def.scope("trend")])).toEqual([
@@ -258,8 +306,12 @@ describe("R1: what a question offers, the engine accepts (plan §2.1)", () => {
     expect(result.problems.slice(0, 20)).toEqual([]);
   });
 
-  it("disables only rankings pinned to one row, each with its reason", () => {
+  it("disables only rankings pinned to one row and kinds a CPV code has no codes of, each with its reason", () => {
     expect([...result.disabled.keys()].sort()).toEqual([
+      // F3 (kit §5.3): the walk's codes, 33600000 (medicines, goods), 45 and 45233140 (works).
+      "CPV 33600000 nu are coduri de lucrări. Alege alt tip sau „Orice”.", "CPV 33600000 nu are coduri de servicii. Alege alt tip sau „Orice”.",
+      "CPV 45 nu are coduri de produse. Alege alt tip sau „Orice”.", "CPV 45 nu are coduri de servicii. Alege alt tip sau „Orice”.",
+      "CPV 45233140 nu are coduri de produse. Alege alt tip sau „Orice”.", "CPV 45233140 nu are coduri de servicii. Alege alt tip sau „Orice”.",
       "Scoate firma aleasă ca să clasezi firmele.", "Scoate instituția aleasă ca să clasezi instituțiile.",
       "Scoate județul ca să clasezi județele.", "Scoate localitatea ca să clasezi județele.",
     ]);
@@ -356,7 +408,7 @@ describe("places (BLOCK_FILTERS)", () => {
   const states = [...bases, ...restored];
   /** R10's window titles (kit §2), with the windows the plan keeps from today (F1b-s-windows). */
   const WINDOWS = ["Ce fel de achiziții?", "Ce s-a cumpărat?", "Cine a cumpărat?", "Unde?", "De la cine?", "Unde au sediul firmele?", "În ce perioadă?", "Când?",
-    "Câți angajați au firmele?", "Cine conduce firmele?", "Selecție avansată", "Ce luni compari?"];
+    "Câți angajați au firmele?", "Cine conduce firmele?", "Selecție avansată", "Ce luni compari?", "Cât de mare e fiecare achiziție?"];
 
   it("has one entry for each of the 13 questions", () => {
     expect(Object.keys(BLOCK_FILTERS).sort()).toEqual(([...new Set(bases.map((b) => b.spec.block))] as Block[]).sort());
@@ -408,8 +460,8 @@ describe("places (BLOCK_FILTERS)", () => {
         if (row.kind === "group") for (const chip of row.chips) expect(SCOPE_CHANGES.some((c) => c.filter === chip.id && c.form === ctx.form), chip.id).toBe(true);
       }
       expect(rows.length > 0, questionKey(spec)).toBe(["network", "sankey"].includes(ctx.block) || ctx.block === "trend" && spec.dim === "supplier");
-      // P4 the question owns: the trend's "Aceleași luni" only.
-      expect(BLOCK_FILTERS[ctx.block].under(spec, ctx).map((slot) => slot.id)).toEqual(ctx.block === "trend" ? ["trendMonths"] : []);
+      // P4 the question owns: the size of a purchase on the total and the ranking (F3), the trend's "Aceleași luni".
+      expect(BLOCK_FILTERS[ctx.block].under(spec, ctx).map((slot) => slot.id)).toEqual(ctx.block === "trend" ? ["trendMonths"] : ["stat", "table"].includes(ctx.block) ? ["purchaseValue"] : []);
     }
   });
 

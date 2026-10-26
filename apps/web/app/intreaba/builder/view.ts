@@ -219,9 +219,18 @@ export function builderView(input: QuestionSpec, labels: ConditionLabels = {}, c
   const removals: Record<string, UnderRemoval> = {};
   const conditions = legacyConditions(spec, labels);
   const refused = conditions.filter((c) => c.status === "refused");
-  // The question's own chips (BLOCK_FILTERS.under): the trend's "Aceleași luni", drawn by its year's state.
+  // The question's own chips (BLOCK_FILTERS.under): the size of a purchase once set ("Doar cele de peste
+  // 1 mil. lei": opens its window, × removes it), the trend's "Aceleași luni", drawn by its year's state.
   for (const slot of entry?.under(spec, ctx) ?? []) {
-    const state = slot.id === "trendMonths" ? trendMonthsState(spec, ctx) : null;
+    if (slot.id !== "trendMonths") {
+      if (!conditionSet(spec, slot.id)) continue;
+      const id = `u:${slot.id}`, name = slot.label ?? FILTERS[slot.id].label;
+      under.push({ kind: "only", id, label: described[slot.id]?.chip ?? name, name });
+      removals[id] = { kind: "choice", slot, choice: { filter: slot.id, value: undefined } };
+      windows[id] = { key: id, slot, title: slot.window ?? FILTERS[slot.id].windowTitle ?? name, name };
+      continue;
+    }
+    const state = trendMonthsState(spec, ctx);
     if (!state) continue;
     const { item, removal } = sameMonthsChip(slot, state);
     under.push(item);

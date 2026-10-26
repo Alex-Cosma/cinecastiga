@@ -4,6 +4,7 @@ import type { MinimumRecords, PopulationCondition, QueryPopulation } from "./pop
 import { DEFAULT_TREND_MIN_BASE, namedKind, type AskSpec, type AuthorityKind, type Dataset, type MonthWindow, type TrendChange } from "./spec";
 import { authorityKindCond, KIND_LABEL, KIND_SOURCE } from "./authority-kind";
 import { countWords } from "./answer-text";
+import { kindApplies, NAMED_PROCEDURE_TYPES, PROCEDURE_TYPES, PROCEDURE_WORDS, PURCHASE_KIND_WORDS, valueWords, type Procedure, type PurchaseKind } from "./purchase";
 
 /*
  * One description of the conditions of a question (plan §2.5). The answer
@@ -79,6 +80,16 @@ export interface PredicateCtx {
   trendMonths: MonthWindow | null;
   /** "Conduse de X": supplier ids of the person's firms (ONRC reps). */
   adminSupplierIds: string[] | null;
+  /**
+   * F3, the purchase kind from the CPV code (purchase.ts divisionKind); null when absent, or when it
+   * does not meet the domain's codes (kindApplies: left out with a note, never an empty answer).
+   */
+  purchaseKind: PurchaseKind | null;
+  /** F3, the procedure declared in SEAP (contracts only: parseSpec brings their stream). */
+  procedure: Procedure | null;
+  /** F3, the value of the whole purchase in lei, [min, max): never a winner's share (purchase.ts VALUE_RANGES). */
+  purchaseValueMin: number | null;
+  purchaseValueMax: number | null;
   plafond: Plafond;
   /** compare: both entities, of the role of the first (the second replaces its own id condition). */
   comparison: { role: "authority" | "supplier"; focalId: string | null; compareId: string | null } | null;
@@ -125,6 +136,10 @@ export function predicateContext(
     monthTo: f.monthTo ?? null,
     trendMonths: spec.block === "trend" ? window.trendMonths ?? null : null,
     adminSupplierIds: grounding.admin ? grounding.admin.supplierIds : null,
+    purchaseKind: f.purchaseKind && kindApplies(f.purchaseKind, grounding) ? f.purchaseKind : null,
+    procedure: f.procedure ?? null,
+    purchaseValueMin: f.purchaseValueMin ?? null,
+    purchaseValueMax: f.purchaseValueMax ?? null,
     plafond: plafondFor(window.dataset),
     comparison: spec.block === "compare"
       ? { role: authorityId ? "authority" : "supplier", focalId: authorityId ?? supplierId, compareId: grounding.compare?.entityId ?? null }
@@ -167,22 +182,64 @@ export function populationSql(sql: DbSql, population?: QueryPopulation | null): 
   return combine(population.groups.map(g => combine(g.conditions.map(condition), g.operator)), population.operator);
 }
 
-/** Supplier size bound → semi-join on the entity_profile employee snapshot (`column`: the firm id of the rows, or of a rollup). */
-export function employeesCond(sql: DbSql, min: number | null, max: number | null, column: Fragment = sql`d.supplier_id`): Fragment {
+/** A firm's size on its own profile row (`ep`): the latest MF filing, firms without one never in a band. */
+export function employeesBounds(sql: DbSql, min: number | null, max: number | null): Fragment {
   const bounds =
     min !== null && max !== null
       ? sql`ep.employees between ${min} and ${max}`
       : min !== null
         ? sql`ep.employees >= ${min}`
         : sql`ep.employees <= ${max!}`;
+  return sql`ep.employees is not null and ${bounds}`;
+}
+
+/** Supplier size bound → semi-join on the entity_profile employee snapshot (`column`: the firm id of the rows, or of a rollup). */
+export function employeesCond(sql: DbSql, min: number | null, max: number | null, column: Fragment = sql`d.supplier_id`): Fragment {
   return sql`${column} in (
     select ep.entity_id from marts.entity_profile ep
-    where ep.role = 'supplier' and ep.employees is not null and ${bounds}
+    where ep.role = 'supplier' and ${employeesBounds(sql, min, max)}
   )`;
 }
 
 const cpvLike = (sql: DbSql, prefixes: readonly string[]) =>
   prefixes.map((p) => sql`d.cpv_code like ${p + "%"}`).reduce((a, b) => sql`${a} or ${b}`);
+
+/**
+ * The purchase kind on a CPV column (purchase.ts divisionKind, stat final
+ * §3.3): works 45, services from 50, goods below 45 and 48–49. A record
+ * without a code has no kind. `column` is d.cpv_code, or a rollup's.
+ */
+export function purchaseKindCond(sql: DbSql, kind: PurchaseKind, column: Fragment = sql`d.cpv_code`): Fragment {
+  if (kind === "lucrari") return sql`${column} like '45%'`;
+  if (kind === "servicii") return sql`${column} >= '50'`;
+  return sql`(${column} < '45' or (${column} >= '48' and ${column} < '50'))`;
+}
+
+/** The procedure declared in SEAP (purchase.ts PROCEDURE_TYPES); "altele" is every other type, an empty one too. */
+export function procedureCond(sql: DbSql, procedure: Procedure, column: Fragment = sql`d.procedure_type`): Fragment {
+  if (procedure === "altele") return sql`not (coalesce(${column}, '') = any(${sql.array([...NAMED_PROCEDURE_TYPES])}::text[]))`;
+  return sql`${column} = any(${sql.array([...PROCEDURE_TYPES[procedure]])}::text[])`;
+}
+
+/**
+ * The size of the whole purchase (plan §4.1): a contract's whole value
+ * (contract_value_full: never null, never under a share), a direct
+ * acquisition's own. The sums stay on closing_value, the winner's share, so
+ * nothing is counted twice. A union of both streams carries
+ * contract_value_full only when asked (fullValueUnion: the slim union stays
+ * index-only for every other aggregate).
+ */
+export function purchaseValueConds(ctx: Pick<PredicateCtx, "sql" | "plafond" | "purchaseValueMin" | "purchaseValueMax">): Fragment[] {
+  const { sql } = ctx;
+  const value: Fragment = ctx.plafond === "strict" ? sql`d.closing_value` : sql`coalesce(d.contract_value_full, d.closing_value)`;
+  const parts: Fragment[] = [];
+  if (ctx.purchaseValueMin !== null) parts.push(sql`${value} >= ${ctx.purchaseValueMin}::numeric`);
+  if (ctx.purchaseValueMax !== null) parts.push(sql`${value} < ${ctx.purchaseValueMax}::numeric`);
+  return parts;
+}
+/** A union of both streams must carry contract_value_full: the size is asked over the direct acquisitions and the contracts. */
+export const fullValueUnion = (ctx: Pick<PredicateCtx, "plafond" | "purchaseValueMin" | "purchaseValueMax">): boolean =>
+  ctx.plafond === "da-branch" && (ctx.purchaseValueMin !== null || ctx.purchaseValueMax !== null);
 
 /**
  * The conditions on the record (d.* of a transaction mart, or of their union
@@ -199,6 +256,10 @@ export function rowPredicates(ctx: PredicateCtx, opts: { years?: boolean } = {})
   if (ctx.plafond === "da-branch") parts.push(sql`(d.src = 'contracts' or d.closing_value <= ${DA_PLAFOND_RON})`);
   if (ctx.cpvPrefixes.length > 0) parts.push(sql`(${cpvLike(sql, ctx.cpvPrefixes)})`);
   if (ctx.cpvExclude.length > 0) parts.push(sql`not (${cpvLike(sql, ctx.cpvExclude)})`);
+  // The kind and the domain combine (kit §5.3): both conditions on the same code.
+  if (ctx.purchaseKind) parts.push(purchaseKindCond(sql, ctx.purchaseKind));
+  if (ctx.procedure) parts.push(procedureCond(sql, ctx.procedure));
+  parts.push(...purchaseValueConds(ctx));
   if (ctx.county) parts.push(sql`d.county = ${ctx.county}`);
   if (ctx.kind) parts.push(authorityKindCond(sql, ctx.kindIds!, sql`d.authority_id`));
   const compare = ctx.comparison;
@@ -375,6 +436,21 @@ export function displayPredicates(ctx: PredicateCtx, table: string): string[] {
     conds.push("(" + ctx.cpvPrefixes.map((p) => `cpv_code like '${p}%'`).join(" or ") + ")");
   if (ctx.cpvExclude.length > 0)
     conds.push("not (" + ctx.cpvExclude.map((p) => `cpv_code like '${p}%'`).join(" or ") + ")  -- excluse din subiect");
+  if (ctx.purchaseKind) {
+    const kind = ctx.purchaseKind === "lucrari" ? "cpv_code like '45%'" : ctx.purchaseKind === "servicii" ? "cpv_code >= '50'" : "(cpv_code < '45' or (cpv_code >= '48' and cpv_code < '50'))";
+    conds.push(`${kind}  -- doar ${PURCHASE_KIND_WORDS[ctx.purchaseKind].noun} (tipul din codul CPV)`);
+  }
+  if (ctx.procedure) {
+    const quoted = (types: readonly string[]) => types.map((t) => `'${t}'`).join(", ");
+    conds.push(ctx.procedure === "altele"
+      ? `procedure_type not in (${quoted(NAMED_PROCEDURE_TYPES)})  -- ${PROCEDURE_WORDS.altele.via}, procedura declarată în SEAP`
+      : `procedure_type in (${quoted(PROCEDURE_TYPES[ctx.procedure])})  -- procedura declarată în SEAP`);
+  }
+  if (ctx.purchaseValueMin !== null || ctx.purchaseValueMax !== null) {
+    const value = ctx.plafond === "strict" ? "closing_value" : "coalesce(contract_value_full, closing_value)";
+    const bounds = [ctx.purchaseValueMin !== null ? `${value} >= ${ctx.purchaseValueMin}` : null, ctx.purchaseValueMax !== null ? `${value} < ${ctx.purchaseValueMax}` : null];
+    conds.push(`${bounds.filter(Boolean).join(" and ")}  -- ${valueWords({ purchaseValueMin: ctx.purchaseValueMin ?? undefined, purchaseValueMax: ctx.purchaseValueMax ?? undefined })}: valoarea întregii achiziții, nu cota câștigătorului`);
+  }
   if (ctx.county) conds.push(`unaccent(county) ilike '${fold(ctx.county)}'`);
   if (ctx.kind) conds.push(`authority_id in (…)  -- doar ${KIND_LABEL[ctx.kind]}: ${countWords(ctx.kindIds!.length, "instituție", "instituții")} (${KIND_SOURCE[ctx.kind]})`);
   const compare = ctx.comparison;

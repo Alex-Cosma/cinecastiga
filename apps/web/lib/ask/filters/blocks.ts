@@ -1,7 +1,7 @@
 import type { Block } from "../spec";
 import { FILTERS } from "./defs";
 import { splitExcluded } from "./origin";
-import { presentationTokens, sentenceSlots, sentenceTokens, type SentenceSlot } from "./sentence";
+import { offersKind, presentationTokens, sentenceSlots, sentenceTokens, type SentenceSlot } from "./sentence";
 import type { AdvancedField, BlockFilters, ConditionRow, FilterCtx, FilterId, FilterSpec, Picker, Slot } from "./types";
 
 /*
@@ -45,6 +45,7 @@ const PLACES = {
   clientKind: ["Tipul instituției", "Cine a cumpărat?"],
   advanced: ["Selecție avansată", "Selecție avansată"],
   months: ["Aceleași luni", "Ce luni compari?"],
+  size: ["Mărimea achiziției", "Cât de mare e fiecare achiziție?"],
 } as const satisfies Record<string, readonly [string, string]>;
 type Place = keyof typeof PLACES;
 
@@ -63,17 +64,20 @@ const buyerInvite = (ctx: FilterCtx, opts: { authority?: boolean; locality?: boo
 /** "+ De la cine": its tabs on this question (kit §5.24). */
 const fromInvite = (tabs: readonly ("supplier" | "admin" | "employees")[]): Slot =>
   placed(tabs[0]!, "from", { picker: "from", ...(tabs.length > 1 ? { writes: tabs.slice(1) } : {}) });
-const cpvInvite = placed("cpvTerm", "cpvTerm");
 const datasetInvite = placed("dataset", "dataset");
 const employeesInvite = placed("employees", "employees");
 const adminInvite = placed("admin", "admin");
+/** "+ Mărimea achiziției" (plan §4.1–§4.2 P2, F3): set, the chip "Doar cele de peste 1 mil. lei" under the sentence says it. */
+const sizeInvite = placed("purchaseValue", "size");
 
 /** Each question's fragments that can be added, in the order of its sentence (plan §4, kit §6). */
 function candidates(spec: FilterSpec, ctx: FilterCtx): Slot[] {
   const firms = spec.dim === "supplier";
+  // "+ Ce s-a cumpărat": the kind ("Orice · Produse · Servicii · Lucrări") and the domain, where the sentence says the kind (F3).
+  const cpvInvite = placed("cpvTerm", "cpvTerm", offersKind(spec) ? { writes: ["purchaseKind"] } : {});
   switch (ctx.block) {
-    case "stat": return [cpvInvite, buyerInvite(ctx), fromInvite(["supplier", "admin", "employees"])];
-    case "table": return firms ? [employeesInvite, adminInvite, cpvInvite] : [cpvInvite, fromInvite(["supplier", "admin", "employees"])];
+    case "stat": return [cpvInvite, buyerInvite(ctx), fromInvite(["supplier", "admin", "employees"]), sizeInvite];
+    case "table": return firms ? [employeesInvite, adminInvite, cpvInvite, sizeInvite] : [cpvInvite, fromInvite(["supplier", "admin", "employees"]), sizeInvite];
     case "timeseries": return [cpvInvite, buyerInvite(ctx), fromInvite(["supplier", "admin"])];
     case "map": return [cpvInvite, buyerInvite(ctx, { authority: false, locality: false, county: false }), fromInvite(["supplier", "admin"])];
     case "breakdown": return [cpvInvite, fromInvite(["supplier"])];
@@ -213,9 +217,12 @@ function entry(extra: Partial<Pick<BlockFilters, "rows" | "strip" | "under">> = 
   };
 }
 
+/** P4 on the total and the ranking (F3, kit §6 stat 3): "Doar cele de peste 1 mil. lei ×", drawn once set. */
+const size = () => [sizeInvite];
+
 export const BLOCK_FILTERS: Record<Block, BlockFilters> = {
-  stat: entry(),
-  table: entry(),
+  stat: entry({ under: size }),
+  table: entry({ under: size }),
   timeseries: entry(),
   // The measure is the map's lens, beside the answer (plan §4.4 F1b).
   map: entry({ strip: ["measure"] }),

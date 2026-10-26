@@ -11,6 +11,7 @@ import {
 } from "../spec";
 import { formatExactDecimal, formatInt, formatRon } from "../../format";
 import { monthsLabel } from "../months-window";
+import { kindApplies, PROCEDURE_WORDS, PURCHASE_KIND_WORDS, valueWords, type Procedure, type PurchaseKind } from "../purchase";
 import { TREND_ALL_CHANGES, TREND_FIRST_LABEL, TREND_GROUP_ROW, firstTimeWords, trendGroupLabel } from "./defs/trend";
 import { filterContext } from "./context";
 import { exclusionWords, isDaBoundPopulation, selectionOrigin, splitExcluded, type OriginHint, type OriginWords } from "./origin";
@@ -115,6 +116,7 @@ const KIND_SCOPE: Record<AuthorityKind, string> = {
 
 const records = (n: number) => countWords(n, "înregistrare", "înregistrări");
 const capitalFirst = (text: string) => text.charAt(0).toLocaleUpperCase("ro-RO") + text.slice(1);
+const numberOrUndefined = (value: unknown) => value === undefined || value === null || value === "" ? undefined : Number(value);
 const conditionsOf = (p: QueryPopulation) => p.groups.reduce((n, group) => n + group.conditions.length, 0);
 
 /** A list's nouns: named one, named many, counted one, counted many. */
@@ -201,10 +203,12 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
     const ds = spec.dataset ?? "all", profile = isHistoricalProfile(spec);
     // A profile reads every stream as its archive: the engine does not apply these words there (registry engine).
     const words = streamPhrase({ dataset: ds, filters: {} });
+    // A procedure names its contracts itself ("doar contractele din licitații deschise"): one pill.
+    const procedure = ds === "contracts" && spec.filters.procedure !== undefined;
     return {
       ...(words ? { words } : {}),
       chip: STREAM_CHIP[ds] ?? STREAM_CHIP.all!,
-      pills: [profile ? PROFILE_SOURCE_PILL : STREAM_PILL[ds] ?? STREAM_PILL.all!],
+      pills: procedure ? [] : [profile ? PROFILE_SOURCE_PILL : STREAM_PILL[ds] ?? STREAM_PILL.all!],
       scope: [{ label: "Ce fel de achiziții", value: profile ? "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2.000.000 lei" : STREAM_SCOPE[ds] ?? STREAM_SCOPE.all! }],
       ...(spec.dataset === "contracts" ? { summary: "Contracte din proceduri" } : spec.dataset === "da" ? { summary: "Achiziții directe" } : {}),
     };
@@ -313,6 +317,30 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
       ...(f.yearFrom || f.yearTo ? { words: periodWordsWith(f) } : {}),
       chip: periodLabel(spec), pills,
       scope: [{ label: "Perioada întrebării", value: f.yearFrom || f.yearTo ? `${f.yearFrom ? mark(f.yearFrom, f.monthFrom) : "De la începutul datelor"} — ${f.yearTo ? mark(f.yearTo, f.monthTo) : "fără limită finală"}` : "Fără limite de an în filtrele de pornire" }],
+    };
+  },
+  // F3, the common selection (kit §4: "Lucrări", "Licitație deschisă", "Doar cele de peste 1 mil. lei").
+  purchaseKind: (spec, { grounding }) => {
+    const kind = spec.filters.purchaseKind as PurchaseKind | undefined;
+    // Left out by the engine when the domain has no codes of it (kindApplies): its caveat says so, no pill.
+    if (!kind || !PURCHASE_KIND_WORDS[kind] || grounding && !kindApplies(kind, grounding)) return null;
+    const { label, noun } = PURCHASE_KIND_WORDS[kind];
+    return { words: `doar ${noun}`, chip: label, pills: [`doar ${noun}`], scope: [{ label: "Ce s-a cumpărat", value: `${label} (după codul CPV)` }], summary: label };
+  },
+  procedure: (spec) => {
+    const procedure = spec.filters.procedure as Procedure | undefined;
+    if (!procedure || !PROCEDURE_WORDS[procedure]) return null;
+    const { label, the } = PROCEDURE_WORDS[procedure];
+    return { words: `doar ${the}`, chip: label, pills: [`doar ${the}`], scope: [{ label: "Procedura", value: label }], summary: label };
+  },
+  purchaseValue: (spec) => {
+    const range = { purchaseValueMin: numberOrUndefined(spec.filters.purchaseValueMin), purchaseValueMax: numberOrUndefined(spec.filters.purchaseValueMax) };
+    const words = valueWords(range);
+    if (!words) return null;
+    const whole = "Mărimea e valoarea întregului contract sau a achiziției directe, nu cota fiecărui câștigător; sumele rămân pe cote.";
+    return {
+      words: `doar cele ${words}`, chip: `Doar cele ${words}`, pills: [`doar achizițiile ${words}`],
+      scope: [{ label: "Mărimea achiziției", value: capitalFirst(words) }], summary: capitalFirst(words), caveat: whole, note: whole,
     };
   },
   // Kit §4 "Oferte": "o singură ofertă", never "un singur ofertant".
@@ -437,11 +465,11 @@ export const DESCRIBED_FILTERS = Object.keys(DESCRIBE) as FilterId[];
 
 /** The order of each place, today's. */
 const TREND_ORDER: readonly FilterId[] = ["trendChange", "trendFirstOnly", "trendMonths", "trendOrder", "trendMinBase"];
-const PILL_ORDER: readonly FilterId[] = ["cpvTerm", "authorityKind", "authority", "supplier", "compareWith", "locality", "county", "admin", "period", ...TREND_ORDER, "singleBidder", "employees", "dataset", "population", "minimumRecords"];
-const SCOPE_ORDER: readonly FilterId[] = ["authority", "supplier", "compareWith", "cpvTerm", "county", "locality", "authorityKind", "admin", "period", ...TREND_ORDER, "dataset", "singleBidder", "employees", "minimumRecords", "population"];
+const PILL_ORDER: readonly FilterId[] = ["purchaseKind", "cpvTerm", "authorityKind", "authority", "supplier", "compareWith", "locality", "county", "admin", "period", ...TREND_ORDER, "singleBidder", "employees", "dataset", "procedure", "purchaseValue", "population", "minimumRecords"];
+const SCOPE_ORDER: readonly FilterId[] = ["authority", "supplier", "compareWith", "purchaseKind", "cpvTerm", "county", "locality", "authorityKind", "admin", "period", ...TREND_ORDER, "dataset", "procedure", "purchaseValue", "singleBidder", "employees", "minimumRecords", "population"];
 // A trend's group is its title's own word (sentence.ts); its months, when the title does not say them.
-const SUMMARY_ORDER: readonly FilterId[] = ["dataset", "authority", "supplier", "cpvTerm", "trendMonths", "population", "minimumRecords"];
-const CAVEAT_ORDER: readonly FilterId[] = ["population", "minimumRecords"];
+const SUMMARY_ORDER: readonly FilterId[] = ["dataset", "procedure", "authority", "supplier", "purchaseKind", "cpvTerm", "purchaseValue", "trendMonths", "population", "minimumRecords"];
+const CAVEAT_ORDER: readonly FilterId[] = ["purchaseValue", "population", "minimumRecords"];
 
 /**
  * The conditions a question applies outside its basic sentence and that change

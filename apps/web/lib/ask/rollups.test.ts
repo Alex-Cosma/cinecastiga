@@ -12,7 +12,7 @@ const national: RollupCtx = {
   plafond: "da-branch", population: null, minimumRecords: null, cpvPrefixes: [], cpvExclude: [], county: null, kind: null, kindIds: null,
   authorityId: null, supplierId: null, uatSiruta: null, uatAuthorityIds: [], singleBidder: false,
   minEmployees: null, maxEmployees: null, yearFrom: null, yearTo: null, monthFrom: null, monthTo: null, trendMonths: null,
-  adminSupplierIds: null, comparison: null,
+  adminSupplierIds: null, comparison: null, purchaseKind: null, procedure: null, purchaseValueMin: null, purchaseValueMax: null,
 };
 const source = (ctx: Partial<RollupCtx> & Record<string, unknown>, need: Parameters<typeof planRollup>[1]) => {
   const plan = planRollup({ ...national, ...ctx }, need);
@@ -107,9 +107,24 @@ describe("which rollup answers a selection (24 Oct 2026 slow cases)", () => {
     expect(planRollup({ ...national, yearFrom: 2025, yearTo: 2026 }, { by: "supplier" }, { months: true })).toMatchObject({ source: { table: "entity", role: "supplier" }, filters: { months: null } });
   });
 
+  it("answers F3's purchase kind as a condition on the code, and leaves the procedure and the size live", () => {
+    // The kind is a CPV condition: totals, years, counties and breakdowns on agg_cpv_year, with the kind in the plan.
+    expect(planRollup({ ...national, purchaseKind: "lucrari" }, { by: "total" })).toMatchObject({ source: { table: "cpv" }, filters: { purchaseKind: "lucrari" } });
+    expect(source({ purchaseKind: "servicii", cpvPrefixes: ["50"] }, { by: "cpv" })).toEqual({ table: "cpv" });
+    // An entity ranking or a condition on an entity has no code in its rollup.
+    expect(source({ purchaseKind: "lucrari" }, { by: "supplier" })).toBe("CPV with an entity ranking: not in the rollups");
+    expect(source({ purchaseKind: "lucrari", minEmployees: 1, maxEmployees: 9 }, { by: "total" })).toBe("CPV with an entity condition: not in the rollups");
+    expect(planRollup({ ...national, purchaseKind: "lucrari", trendMonths: [1, 5] }, { by: "supplier" }, { months: true }))
+      .toEqual({ reason: "months: agg_entity_month holds one role and agg_county_month none, without CPV or a threshold" });
+    // The procedure and the whole value are columns of the contract rows the rollups do not keep.
+    expect(source({ plafond: "none", procedure: "deschisa" }, { by: "total" })).toBe("procedure: not in the rollups");
+    expect(source({ purchaseValueMin: 1_000_000 }, { by: "total" })).toBe("purchase value: the whole value is not in the rollups");
+    expect(source({ purchaseValueMax: 10_000 }, { by: "supplier" })).toBe("purchase value: the whole value is not in the rollups");
+  });
+
   it("fails closed on a condition it does not know (a key of a later stage)", () => {
     // Keys of the filter registry that are not in the rollups: refused while they hold a value…
-    for (const [key, value] of Object.entries({ seatCounty: "Cluj", firmSeat: "other", registeredFrom: 2024, mainClient: true, procedure: ["open"], localAdminIds: ["1"] }))
+    for (const [key, value] of Object.entries({ seatCounty: "Cluj", firmSeat: "other", registeredFrom: 2024, mainClient: true, localAdminIds: ["1"] }))
       expect([key, source({ [key]: value }, { by: "supplier" })]).toEqual([key, `${key}: a condition the rollups do not know`]);
     // …and ignored when they hold none.
     for (const value of [null, undefined, false, []])
@@ -132,6 +147,7 @@ describe("which rollup answers a selection (24 Oct 2026 slow cases)", () => {
       cpvExclude: ["3361"], county: "Cluj", kind: "spital", kindIds: HOSPITALS, authorityId: "1", supplierId: "2", uatSiruta: 1, uatAuthorityIds: ["3"],
       singleBidder: true, minEmployees: 1, maxEmployees: 9, yearFrom: 2024, yearTo: 2025, monthFrom: 1, monthTo: 6, trendMonths: [1, 5],
       adminSupplierIds: ["4"], comparison: { role: "supplier", focalId: "2", compareId: "5" },
+      purchaseKind: "lucrari", procedure: "deschisa", purchaseValueMin: 1_000_000, purchaseValueMax: 2_000_000,
     };
     for (const key of Object.keys(active) as (keyof RollupCtx)[]) {
       // The kind comes with its institutions; their list alone is no condition.
@@ -142,7 +158,7 @@ describe("which rollup answers a selection (24 Oct 2026 slow cases)", () => {
         plafond: reached.dataset === "da", population: reached.excludeSuppliers.length > 0, minimumRecords: reached.minimum !== null,
         cpvPrefixes: reached.cpvPrefixes, cpvExclude: reached.cpvExclude, county: reached.county === "Cluj",
         kind: reached.kind === "spital" && reached.kindIds === HOSPITALS, kindIds: reached.kind === null && reached.kindIds === null,
-        minEmployees: reached.employees?.min === 1, maxEmployees: reached.employees?.max === 9, yearFrom: reached.yearFrom === 2024, yearTo: reached.yearTo === 2025,
+        minEmployees: reached.employees?.min === 1, maxEmployees: reached.employees?.max === 9, yearFrom: reached.yearFrom === 2024, yearTo: reached.yearTo === 2025, purchaseKind: reached.purchaseKind === "lucrari",
       };
       expect([key, mapped[key]]).toEqual([key, true]);
     }

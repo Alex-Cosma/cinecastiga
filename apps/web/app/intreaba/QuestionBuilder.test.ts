@@ -24,6 +24,7 @@ vi.mock("@/lib/counties", () => import("../../lib/counties"));
 vi.mock("@/lib/format", () => import("../../lib/format"));
 vi.mock("@/lib/ask/answer-text", () => import("../../lib/ask/answer-text"));
 vi.mock("@/lib/entity-summary", () => import("../../lib/entity-summary"));
+vi.mock("@/lib/ask/purchase", () => import("../../lib/ask/purchase"));
 vi.mock("@/components/Term", () => import("../../components/Term"));
 // No session in a unit test: an anonymous reader, who saves on the device.
 vi.mock("@/lib/use-viewer", () => ({ useViewer: () => ({ ready: true, userId: undefined, error: null }) }));

@@ -1,4 +1,4 @@
-import { AUTHORITY_KINDS, type AuthorityKind, type Block } from "../spec";
+import { AUTHORITY_KINDS, SELECTION_RULES, type AskSpec, type AuthorityKind, type Block } from "../spec";
 import { BLOCK_FILTERS, PICKER_FAMILY, populationFits, windowOf } from "./blocks";
 import { filterContext } from "./context";
 import { FILTERS } from "./defs";
@@ -152,6 +152,11 @@ export function choiceState(slot: Slot, choice: Choice, spec: FilterSpec, ctx: F
   }
   // A kind of the profiles' subject waits; the buyers of a ranking of firms keep every kind (kindAfterD1).
   if (choice.filter === "authorityKind" && kindAfterD1(spec, choice.value)) return { state: "hidden" };
+  // A purchase kind a CPV code has no codes of (SELECTION_RULES): shown, with the reason, never chosen (F3, kit §5.3).
+  if (choice.filter === "purchaseKind" && choice.value !== undefined) {
+    const reason = SELECTION_RULES.purchaseKind(FILTERS.purchaseKind.write(spec, choice.value) as unknown as AskSpec);
+    if (reason) return { state: "disabled", reason };
+  }
   // The automatic months of a year whose complete months are not confirmed: the run would refuse it (trend final §3.3).
   if (choice.filter === "trendMonths" && choice.value === "auto") {
     const waiting = trendMonthsWaiting(FILTERS.trendMonths.write(spec, "auto"), ctx);

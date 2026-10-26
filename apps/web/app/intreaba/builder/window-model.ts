@@ -11,6 +11,7 @@ import { DEFAULT_TREND_MIN_BASE, type AskSpec } from "../../../lib/ask/spec";
 import { MIN_TREND_YEAR, defaultTrendYears, type CoveragePeriods } from "../../../lib/ask/months-window";
 import { TREND_ALL_CHANGES, TREND_CHANGE_LABELS, TREND_CHANGE_PHRASE, TREND_NOUN_WORDS, trendGap, trendGroupLabel, trendNoun } from "../../../lib/ask/filters/defs/trend";
 import { formatRon } from "../../../lib/format";
+import { PROCEDURE_WORDS, type Procedure } from "../../../lib/ask/purchase";
 import { EMPLOYEE_BANDS, bandRange } from "./Bands";
 import type { GroupSwatch, KitOption, KitRestRow, KitTip } from "./kit-types";
 import type { BuilderWindowSpec } from "./view";
@@ -25,7 +26,7 @@ import type { BuilderWindowSpec } from "./view";
 
 export type WindowKind =
   | "subject" | "focal" | "buyer" | "from" | "peers" | "period" | "cpv" | "place" | "locality" | "employees" | "admin" | "compareWith"
-  | "months" | "list" | "advanced" | "exclusions";
+  | "months" | "list" | "advanced" | "exclusions" | "size";
 
 /** The control a window holds, from its place: a composed picker first, then the filter's own. */
 export function windowKind(win: BuilderWindowSpec): WindowKind {
@@ -35,7 +36,8 @@ export function windowKind(win: BuilderWindowSpec): WindowKind {
   if (slot.picker) return slot.picker;
   switch (slot.id) {
     case "period": return "period";
-    case "cpvTerm": return "cpv";
+    case "cpvTerm": case "purchaseKind": return "cpv";
+    case "purchaseValue": return "size";
     case "county": return "place";
     case "locality": return "locality";
     case "employees": return "employees";
@@ -57,6 +59,8 @@ export const optionValue = (value: unknown): string => JSON.stringify(value ?? n
 /** The first row of the buyer's window and of a kind (kit §4 Cumpărătorul). */
 export const ALL_INSTITUTIONS = { label: "Toate instituțiile publice", detail: "inclusiv companii de stat și utilități" } as const;
 
+/** The procedures' group in "Ce fel de achiziții?" (kit item 8, stat final §3.1). */
+export const PROCEDURE_GROUP = "O procedură anume";
 const DATASET_ROWS: Record<string, [string, string]> = {
   all: ["Toate achizițiile", "Directe și din proceduri"],
   da: ["Achizițiile directe", "Fără licitație"],
@@ -120,6 +124,11 @@ export function choiceWords(choice: Choice, spec: QuestionSpec): { label: string
   const { filter, value } = choice;
   switch (filter) {
     case "dataset": { const [label, detail] = DATASET_ROWS[String(value ?? "all")] ?? DATASET_ROWS.all!; return { label, detail }; }
+    // Kit item 8: the procedures under "Ce fel de achiziții?", in their own group.
+    case "procedure": {
+      const words = PROCEDURE_WORDS[String(value) as Procedure];
+      return words ? { label: words.label, ...(words.detail ? { detail: words.detail } : {}), group: PROCEDURE_GROUP } : { label: "Orice procedură" };
+    }
     case "measure":
       if (value === "count") return { label: "Numărul de înregistrări" };
       if (value === "value_per_capita") return { label: "Valoarea pe locuitor", detail: "Primăriile și consiliile județene cu populație cunoscută" };
@@ -163,6 +172,11 @@ export function windowTip(win: BuilderWindowSpec, spec: QuestionSpec): KitTip | 
   if (win.slot.id === "period" && block === "trend") return { title: "Ce ani compari?", text: `Din ${MIN_TREND_YEAR}: 2018 e incomplet în date.` };
   if (win.slot.id === "trendMonths")
     return { title: "Aceleași luni", text: "Ambii ani se compară pe aceleași luni, ca diferența să nu vină din lunile lipsă." };
+  // F3 (stat final §3.1, §3.3, §3.6): what the kind, the procedure and the size are made of.
+  if (win.slot.id === "purchaseValue")
+    return { title: "Mărimea achiziției", text: "Valoarea întregului contract sau a achiziției directe, nu cota fiecărui câștigător. Limita de jos intră în plajă, cea de sus nu. Plajele nu sunt praguri legale." };
+  if (windowOf(win.slot).includes("purchaseKind")) return { title: "Tipul", text: "Tipul vine din codul CPV." };
+  if (win.slot.id === "dataset" && windowOf(win.slot).includes("procedure")) return { title: PROCEDURE_GROUP, text: "Procedura declarată în SEAP, doar la contractele din proceduri." };
   return undefined;
 }
 
@@ -170,6 +184,7 @@ export function windowTip(win: BuilderWindowSpec, spec: QuestionSpec): KitTip | 
 function currentOf(filter: Choice["filter"], spec: QuestionSpec): unknown {
   switch (filter) {
     case "dataset": return spec.dataset ?? "all";
+    case "procedure": return spec.filters.procedure;
     case "measure": return spec.measure ?? "value";
     case "topN": return spec.topN;
     case "rankBy": return leaderAxis(spec);

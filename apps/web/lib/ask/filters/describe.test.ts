@@ -367,3 +367,30 @@ describe("the words of every condition", () => {
     for (const spec of [value, two, three]) expect(`${questionTitle(spec)} ${d.totalLine}`).not.toMatch(/selecție precisă/i);
   });
 });
+
+describe("F3's common selection, in every place's words (kit §4)", () => {
+  const stat: AskSpec = { block: "stat", measure: "value", filters: {} };
+  it("says the kind, the procedure and the size in the chip, the pills, a watch's receipt and the summary", () => {
+    const works = describeConditions({ ...stat, filters: { purchaseKind: "lucrari" } }).byId.purchaseKind!;
+    expect([works.chip, works.words, works.pills, works.scope, works.summary]).toEqual(["Lucrări", "doar lucrări", ["doar lucrări"], [{ label: "Ce s-a cumpărat", value: "Lucrări (după codul CPV)" }], "Lucrări"]);
+    const open = describeConditions({ ...stat, dataset: "contracts", filters: { procedure: "deschisa" } });
+    expect(open.byId.procedure?.pills).toEqual(["doar contractele din licitații deschise"]);
+    // One pill for the stream of a procedure: its own.
+    expect(open.pills).toEqual(["toți anii", "doar contractele din licitații deschise"]);
+    expect(open.scope.map((row) => row.label)).toEqual(["Perioada întrebării", "Ce fel de achiziții", "Procedura"]);
+    const size = describeConditions({ ...stat, filters: { purchaseValueMin: 10_000, purchaseValueMax: 100_000 } });
+    expect(size.byId.purchaseValue).toMatchObject({ chip: "Doar cele între 10.000 și 100.000 lei", pills: ["doar achizițiile între 10.000 și 100.000 lei"], summary: "Între 10.000 și 100.000 lei" });
+    // The size is the whole purchase's: the answer's caveat and the sources' note say it.
+    expect(size.caveats).toEqual(["Mărimea e valoarea întregului contract sau a achiziției directe, nu cota fiecărui câștigător; sumele rămân pe cote."]);
+    expect(questionTitle({ ...stat, filters: { purchaseValueMin: 1_000_000, purchaseKind: "lucrari" } }))
+      .toBe("Cât valorează achizițiile de lucrări făcute de instituțiile publice din toată țara, în toți anii, doar cele de peste 1 mil. lei?");
+  });
+
+  it("says no kind the engine left out: the domain has no codes of it", () => {
+    const grounding: Grounding = { cpv: { term: "asfaltare", prefixes: ["45233"], matchedNames: [], method: "synonym" } };
+    const spec: AskSpec = { ...stat, filters: { cpvTerm: "asfaltare", purchaseKind: "produse" } };
+    expect(describeConditions(spec, { grounding }).byId.purchaseKind).toBeUndefined();
+    expect(buildPills(spec, grounding)).not.toContain("doar produse");
+    expect(buildPills({ ...spec, filters: { cpvTerm: "asfaltare", purchaseKind: "lucrari" } }, grounding)).toContain("doar lucrări");
+  });
+});

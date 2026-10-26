@@ -24,7 +24,7 @@ import { validateCaptureRequest } from "./evidence-capture-input";
 import { NEWER_VERSION_QUESTION } from "./ask/spec";
 
 const stat = { block: "stat", measure: "value", filters: { authorityId: 12 } };
-const newer = { ...stat, filters: { ...stat.filters, purchaseKind: "lucrari" } };
+const newer = { ...stat, filters: { ...stat.filters, newSince: 2024 } };
 const members = { kind: "trend-group", role: "supplier", group: "new", ids: ["13", "14"], frozenAt: "2026-10-24T10:00:00Z" };
 // A network's fixed group comes with F4 (read ahead); a trend's is applied since F2.
 const network = { ...members, kind: "network-group", role: "authority", group: "continuing" };

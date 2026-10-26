@@ -61,8 +61,8 @@ describe("the builder's view of a draft (P1, P2, P4, P5, P9)", () => {
   });
 
   it("invites the fragments the sentence does not show, named, in its order (P2)", () => {
-    expect(builderView(SEVEN.stat!).invites.map((i) => i.label)).toEqual(["De la cine"]);
-    expect(builderView(SEVEN.table!).invites.map((i) => i.label)).toEqual(["Administrator", "Ce s-a cumpărat"]);
+    expect(builderView(SEVEN.stat!).invites.map((i) => i.label)).toEqual(["De la cine", "Mărimea achiziției"]);
+    expect(builderView(SEVEN.table!).invites.map((i) => i.label)).toEqual(["Administrator", "Ce s-a cumpărat", "Mărimea achiziției"]);
     expect(builderView(SEVEN.trend!).invites.map((i) => i.label)).toEqual(["Ce s-a cumpărat", "Cine a cumpărat", "Ce fel de achiziții"]);
     const markup = renderToStaticMarkup(createElement(Invitations, { items: builderView(SEVEN.trend!).invites }));
     expect(text(markup)).toBe("+Ce s-a cumpărat+Cine a cumpărat+Ce fel de achiziții");
@@ -307,7 +307,7 @@ describe("the windows (component 9 and the composed pickers)", () => {
   it("cover every place BLOCK_FILTERS offers on the seven questions", () => {
     for (const [name, spec] of Object.entries(SEVEN)) {
       const view = builderView(spec);
-      for (const target of Object.values(view.windows)) expect(windowKind(target), `${name} ${target.key}`).toMatch(/^(subject|focal|buyer|from|period|cpv|place|locality|employees|admin|compareWith|list|advanced|exclusions)$/);
+      for (const target of Object.values(view.windows)) expect(windowKind(target), `${name} ${target.key}`).toMatch(/^(subject|focal|buyer|from|period|cpv|place|locality|employees|admin|compareWith|list|advanced|exclusions|size)$/);
       expect(BLOCK_FILTERS[spec.block as keyof typeof BLOCK_FILTERS]).toBeDefined();
     }
   });
