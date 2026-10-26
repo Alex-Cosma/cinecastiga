@@ -188,6 +188,7 @@ export function perfCases(): PerfCase[] {
     // on direct acquisitions only, a comparison, and a profile population chosen by kind.
     perfCase("sources:stat-da-2025", "sources", "Sursele achizițiilor directe din 2025", "stat", all(top({ dataset: "da" }), years(2025)), { path: "rows", barMs: 2000 }),
     perfCase("sources:compare-selgros-dedeman-2025", "sources", "Sursele comparației SELGROS cu DEDEMAN, 2025", "compare", all(CATALOG_CHOICES.compare!.edit, years(2025)), { path: "rows" }),
+    perfCase("sources:compare-selgros-dedeman", "sources", "Sursele comparației SELGROS cu DEDEMAN, toți anii (catalogul)", "compare", CATALOG_CHOICES.compare!.edit, { path: "rows", barMs: 2000 }),
     perfCase("sources:entity-card-risk-hospitals", "sources", "Sursele spitalului cu cel mai ridicat indice de risc", "entity_card",
       all(top({ dim: "authority", rankBy: "risk" }), set({ authorityKind: "spital" })), { path: "rows" }),
     perfCase("sources:table-hospitals-2024-2025", "sources", "Sursele clasamentului firmelor care câștigă de la spitale, 2024–2025", "table",
@@ -254,5 +255,62 @@ export function perfCases(): PerfCase[] {
       all(years(2024, 2025), lens({ change: "all", months: "auto" })), { path: "rows", drawer: { sort: "source", dir: "asc" }, afterAnswer: true, barMs: 2000, precompute: ALL_DRAWER }),
     perfCase("sources:trend-2024-2025-all-search-after-answer", "sources", "„Toate” la firme, 2024 → 2025, căutare „medicamente”, după răspuns", "trend",
       all(years(2024, 2025), lens({ change: "all", months: "auto" })), { path: "rows", drawer: { search: "medicamente" }, afterAnswer: true, barMs: 2000, precompute: DRAWER_SEARCH }),
+    ...f3Cases(),
+  ];
+}
+
+/** PRECOMPUTE.md entries the F3 cases wait on (S4 F3-keys). */
+const SIZE_LIVE = "Sursele unei mărimi a achiziției pe o selecție națională";
+const SIZE_RANKING = "Clasamentul național pe mărimea achiziției";
+const SIZE_SOURCES_FIRMS = "Totalurile surselor unui clasament național pe angajați";
+
+/**
+ * F3 (S4, F3-keys): the purchase kind, the procedure, the size of a purchase and the employee bands,
+ * written as the builder writes them, on the heaviest national selections and their sources (plan §6.4).
+ */
+function f3Cases(): PerfCase[] {
+  const works = set({ purchaseKind: "lucrari" });
+  const open = all(top({ dataset: "contracts" }), set({ procedure: "deschisa" }));
+  const negotiated = all(top({ dataset: "contracts" }), set({ procedure: "negociere_fara_publicare" }));
+  const overMillion = set({ purchaseValueMin: 1_000_000 });
+  return [
+    // The kind is a condition on the code: totals, years, counties and breakdowns on agg_cpv_year.
+    perfCase("national:stat-works", "national", "Cât valorează lucrările (tipul), toți anii", "stat", works, { barMs: 2000 }),
+    perfCase("national:stat-works-2025", "national", "Cât valorează lucrările (tipul), 2025", "stat", all(works, years(2025)), { barMs: 2000 }),
+    perfCase("national:timeseries-goods", "national", "Cum evoluează achizițiile de produse", "timeseries", set({ purchaseKind: "produse" }), { barMs: 2000 }),
+    perfCase("national:map-services-2025", "national", "Harta serviciilor, 2025", "map", all(set({ purchaseKind: "servicii" }), years(2025)), { barMs: 2000 }),
+    perfCase("national:breakdown-works-2025", "national", "Ce lucrări se cumpără, 2025", "breakdown", all(works, years(2025)), { barMs: 2000 }),
+    // A ranking with a kind has no rollup (the entity rollups hold no code): live, as a domain is.
+    perfCase("national:table-suppliers-works", "national", "Cine câștigă lucrările, național, toți anii", "table", works, { barMs: 2000 }),
+    perfCase("national:table-suppliers-works-2025", "national", "Cine câștigă lucrările, național, 2025", "table", all(works, years(2025)), { barMs: 2000 }),
+    perfCase("national:trend-suppliers-2024-2025-works-up", "national", "Firme cu cea mai mare creștere la lucrări, 2024 → 2025", "trend",
+      all(works, years(2024, 2025), lens({ change: "up", months: "auto" })), { barMs: 2000 }),
+    perfCase("filtered:table-cluj-works-2025", "filtered", "Cine câștigă lucrările în Cluj, 2025", "table", all(works, set({ county: "Cluj" }), years(2025))),
+    // The procedure: the contracts only (1.1M rows), live.
+    perfCase("national:stat-open-tender", "national", "Cât valorează contractele din licitații deschise, toți anii", "stat", open, { barMs: 2000 }),
+    perfCase("national:stat-negotiated-2025", "national", "Cât valorează contractele negociate fără publicare, 2025", "stat", all(negotiated, years(2025)), { barMs: 2000 }),
+    perfCase("national:table-suppliers-negotiated", "national", "Cine câștigă contractele negociate fără publicare, toți anii", "table", negotiated, { barMs: 2000 }),
+    perfCase("national:timeseries-open-tender", "national", "Cum evoluează contractele din licitații deschise", "timeseries", open, { barMs: 2000 }),
+    perfCase("national:map-negotiated-2025", "national", "Harta contractelor negociate fără publicare, 2025", "map", all(negotiated, years(2025)), { barMs: 2000 }),
+    // The size of the whole purchase: live, the union with contract_value_full.
+    perfCase("national:stat-over-1m", "national", "Cât valorează achizițiile de peste 1 mil. lei, toți anii", "stat", overMillion, { barMs: 2000 }),
+    perfCase("national:stat-over-1m-2025", "national", "Cât valorează achizițiile de peste 1 mil. lei, 2025", "stat", all(overMillion, years(2025)), { barMs: 2000 }),
+    perfCase("national:stat-under-10k-2025", "national", "Cât valorează achizițiile sub 10.000 lei, 2025", "stat", all(set({ purchaseValueMax: 10_000 }), years(2025)), { barMs: 2000 }),
+    perfCase("national:table-suppliers-over-1m-2025", "national", "Cine câștigă achizițiile de peste 1 mil. lei, 2025", "table", all(overMillion, years(2025)), { barMs: 2000, precompute: SIZE_RANKING }),
+    perfCase("national:table-suppliers-over-1m", "national", "Cine câștigă achizițiile de peste 1 mil. lei, toți anii", "table", overMillion, { barMs: 2000, precompute: SIZE_RANKING }),
+    perfCase("filtered:stat-cluj-over-1m-2025", "filtered", "Achizițiile de peste 1 mil. lei din Cluj, 2025", "stat", all(overMillion, set({ county: "Cluj" }), years(2025))),
+    // The employee bands (kit §4, band 0 back at stat): the firms' size alone reads entity_profile.
+    perfCase("national:table-suppliers-0-employees", "national", "Cine câștigă, național, firme fără angajați", "table", set({ minEmployees: 0, maxEmployees: 0 }), { barMs: 2000 }),
+    perfCase("national:table-suppliers-250-employees-paged", "national", "Cine câștigă, național, firme cu cel puțin 250 de angajați (tot clasamentul)", "table",
+      all(set({ minEmployees: 250 }), (q) => { delete q.topN; }), { barMs: 2000 }),
+    perfCase("national:stat-0-employees", "national", "Cât valorează achizițiile de la firme fără angajați, toți anii", "stat", set({ minEmployees: 0, maxEmployees: 0 }), { barMs: 2000 }),
+    perfCase("national:entity-card-value-1-9-employees", "national", "Care firmă cu 1–9 angajați câștigă cel mai mult", "entity_card",
+      all(top({ dim: "supplier", rankBy: "value" }), set({ minEmployees: 1, maxEmployees: 9 })), { barMs: 2000 }),
+    // Their sources and CSV, through runRows.
+    perfCase("sources:stat-works-2025", "sources", "Sursele lucrărilor, 2025", "stat", all(works, years(2025)), { path: "rows", barMs: 2000 }),
+    perfCase("sources:stat-negotiated-2025", "sources", "Sursele contractelor negociate fără publicare, 2025", "stat", all(negotiated, years(2025)), { path: "rows", barMs: 2000 }),
+    perfCase("sources:stat-over-1m-2025", "sources", "Sursele achizițiilor de peste 1 mil. lei, 2025", "stat", all(overMillion, years(2025)), { path: "rows", barMs: 2000, precompute: SIZE_LIVE }),
+    perfCase("sources:table-suppliers-1-9-employees", "sources", "Sursele clasamentului firmelor cu 1–9 angajați", "table", set({ minEmployees: 1, maxEmployees: 9 }), { path: "rows", barMs: 2000, precompute: SIZE_SOURCES_FIRMS }),
+    perfCase("csv:stat-negotiated-cluj", "csv", "CSV: contractele negociate fără publicare din Cluj", "stat", all(negotiated, set({ county: "Cluj" })), { path: "csv", barMs: 2000 }),
   ];
 }
