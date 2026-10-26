@@ -10,6 +10,7 @@
 import { defaultQuestion, QUESTION_TYPES, transitionQuestion, type QuestionSpec } from "../lib/ask/question-ui";
 import { validateSpec, type AskSpec, type Block } from "../lib/ask/spec";
 import { writeFocal } from "../lib/ask/filters/registry";
+import { withExclusion } from "../lib/ask/filters/exclusions";
 import type { EvidenceScope } from "../lib/ask/evidence";
 import type { FacetPart } from "../lib/ask/facet-parts";
 
@@ -59,6 +60,10 @@ export interface PerfCase {
 export const PERF_ENTITIES = {
   selgros: { id: 2115381, name: "SELGROS CASH&CARRY SRL" },
   dedeman: { id: 2124387, name: "DEDEMAN S.R.L." },
+  // F4-exclude: the two first firms nationally, and a small one outside agg_top_entities.
+  alliance: { id: 2128212, name: "ALLIANCE HEALTHCARE ROMANIA" },
+  farmexim: { id: 2128622, name: "FARMEXIM S.A." },
+  curelaru: { id: 1967089, name: "CURELARU PROD EXIM SRL" },
   clujNapoca: { id: 2146445, name: "Municipiul Cluj-Napoca" },
   clujNapocaUat: { siruta: 54975, name: "mun. Cluj-Napoca (Cluj)" },
 } as const;
@@ -269,6 +274,43 @@ export function perfCases(): PerfCase[] {
     ...facetCases(),
     ...f3RowsCases(),
     ...seatCases(),
+    ...excludeCases(),
+  ];
+}
+
+/**
+ * F4-exclude (S4; plan §2.5, §4.2, §4.7, §4.13, §6.4): „Scoate din calcul” as the answer's "⋯" writes it
+ * (exclusions.ts withExclusion): the national ranking's fast path (agg_top_entities less the rows, agg_national less
+ * their sums), the rollups elsewhere, the trend, a map and a total with an institution or a firm left out, and their
+ * sources and CSV.
+ */
+const YEAR_RANKING_SOURCES = "Prima pagină a surselor unui clasament național pe un an";
+function excludeCases(): PerfCase[] {
+  const firm = (e: { id: number; name: string }) => ({ field: "supplier" as const, value: String(e.id), label: e.name });
+  const leaveOut = (...entities: { field: "authority" | "supplier"; value: string; label: string }[]): Edit => (q) => {
+    for (const entity of entities) q.population = withExclusion(q.population, entity);
+  };
+  const selgros = leaveOut(firm(PERF_ENTITIES.selgros));
+  const clujNapoca = leaveOut({ field: "authority", value: String(PERF_ENTITIES.clujNapoca.id), label: PERF_ENTITIES.clujNapoca.name });
+  const institutions = top({ dim: "authority" });
+  return [
+    perfCase("national:table-authorities-without-cluj-napoca", "national", "Instituțiile care cumpără cel mai mult, fără Cluj-Napoca", "table", all(institutions, clujNapoca), { barMs: 2000 }),
+    // Four firms, one outside the precomputed ranking (its records counted on its id index).
+    perfCase("national:table-suppliers-without-four", "national", "Cine câștigă, național, fără 4 firme (una mică)", "table",
+      leaveOut(firm(PERF_ENTITIES.alliance), firm(PERF_ENTITIES.farmexim), firm(PERF_ENTITIES.selgros), firm(PERF_ENTITIES.curelaru)), { barMs: 2000 }),
+    perfCase("national:table-suppliers-2025-without-selgros", "national", "Cine câștigă, național, 2025, fără SELGROS", "table", all(years(2025), selgros), { barMs: 2000 }),
+    perfCase("national:entity-card-value-without-leader", "national", "Care firmă câștigă cel mai mult, fără ALLIANCE HEALTHCARE", "entity_card",
+      all(top({ dim: "supplier", rankBy: "value" }), leaveOut(firm(PERF_ENTITIES.alliance))), { barMs: 2000 }),
+    perfCase("national:trend-suppliers-2024-2025-up-without-selgros", "national", "Creșterile firmelor, 2024 → 2025, fără SELGROS", "trend",
+      all(years(2024, 2025), lens({ change: "up", months: "auto" }), selgros), { barMs: 2000 }),
+    perfCase("national:map-without-cluj-napoca", "national", "Harta achizițiilor, fără Cluj-Napoca", "map", clujNapoca, { barMs: 2000 }),
+    perfCase("national:stat-without-selgros", "national", "Cât valorează achizițiile, fără SELGROS", "stat", selgros, { barMs: 2000 }),
+    perfCase("sources:table-national-without-selgros", "sources", "Sursele clasamentului național, fără SELGROS", "table", selgros, { path: "rows", barMs: 2000 }),
+    perfCase("sources:table-authorities-without-cluj-napoca", "sources", "Sursele clasamentului instituțiilor, fără Cluj-Napoca", "table", all(institutions, clujNapoca), { path: "rows", barMs: 2000 }),
+    // A year's national ranking: its sources' first page is the annual scan of both marts, with or without the exclusion.
+    perfCase("sources:table-suppliers-2025", "sources", "Sursele clasamentului firmelor, 2025", "table", years(2025), { path: "rows", barMs: 2000, precompute: YEAR_RANKING_SOURCES }),
+    perfCase("sources:table-suppliers-2025-without-selgros", "sources", "Sursele clasamentului firmelor, 2025, fără SELGROS", "table", all(years(2025), selgros), { path: "rows", barMs: 2000, precompute: YEAR_RANKING_SOURCES }),
+    perfCase("csv:table-national-without-selgros", "csv", "CSV: clasamentul național, fără SELGROS", "table", selgros, { path: "csv", barMs: 2000 }),
   ];
 }
 

@@ -1,5 +1,6 @@
 import { defaultQuestion, transitionQuestion, QUESTION_TYPES, type QuestionSpec } from "../question-ui";
 import { chooseQuestion } from "../filters/transition";
+import { withExclusion } from "../filters/exclusions";
 import type { Block } from "../spec";
 import type { EvidenceScope } from "../evidence";
 import type { DrillSort, TableSort } from "../compile";
@@ -407,6 +408,17 @@ export function legacyCorpus(ids: CorpusIdentities): CorpusEntry[] {
   combo("f4-seat-abroad", "stat", set({ firmSeat: "abroad" }));
   combo("f4-seat-county", "entity_card", all(top({ dim: "supplier", rankBy: "value" }), set({ seatCounty: ids.county })));
   combo("f4-seat-county", "scatter", all(top({ dim: "supplier" }), set({ seatCounty: ids.county })));
+  // F4, „Scoate din calcul” as the answer's "⋯" writes it (exclusions.ts): the national ranking's fast path, two firms,
+  // an institution, a year (rollups), „Cine conduce?” by value, a trend; their sources and CSV
+  const leaveOut = (...parties: [Party, "authority" | "supplier"][]): Edit => (q) => {
+    for (const [p, field] of parties) q.population = withExclusion(q.population, { field, value: String(p.id), label: p.name });
+  };
+  combo("f4-without-firm", "table", leaveOut([supplier, "supplier"]));
+  combo("f4-without-two-firms", "table", leaveOut([supplier, "supplier"], [supplier2, "supplier"]));
+  combo("f4-without-buyer", "table", all(top({ dim: "authority" }), leaveOut([authority, "authority"])));
+  combo("f4-without-firm-year", "table", all(yearsOf(b), leaveOut([supplier, "supplier"])));
+  combo("f4-without-leader", "entity_card", all(top({ dim: "supplier", rankBy: "value" }), leaveOut([supplier, "supplier"])));
+  add("combo:trend:keyed-f4-without-firm", "combo", "builder: chooseQuestion(\"trend\") → enterTrend → edits → transitionQuestion", builderTrend(all(yearsOf(a, b), leaveOut([supplier, "supplier"]))));
   // network
   combo("buyer", "network", focalBuyer());
   combo("firm", "network", focalFirm(), { rows: { scope: { role: "authority", entityIds: [String(pair.authority.id)] } } });
