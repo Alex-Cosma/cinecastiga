@@ -215,10 +215,12 @@ export function networkCsvRows(data: NetworkData, spec: Pick<AskSpec, "network">
   const list = shownList(spec), { rows } = networkPage(data, spec, list);
   const own = data.lists[list];
   const head = "partener,judet,valoare_lei,inregistrari,grupa,primul_an,ultimul_an,ani,procent_din_total,valoare_in_asociere_lei,pondere_in_castigurile_firmei,semnale";
+  // A group is named with its reference year, as the strip and the file name say it („Noi din 2025”).
+  const group = list === "all" ? NETWORK_LIST_LABELS[list] : `${NETWORK_LIST_LABELS[list]} din ${data.since}`;
   return [head, ...rows.map((row) => {
     const p = data.partners[row.entityId];
     return [
-      csvQ(cleanName(p?.name)), csvQ(p?.county ?? ""), row.value, row.count, csvQ(NETWORK_LIST_LABELS[list]), p?.first ?? "", p?.last ?? "", csvQ(p?.years.join(" ") ?? ""),
+      csvQ(cleanName(p?.name)), csvQ(p?.county ?? ""), row.value, row.count, csvQ(group), p?.first ?? "", p?.last ?? "", csvQ(p?.years.join(" ") ?? ""),
       own.value > 0 ? (row.value / own.value * 100).toFixed(2) : "", row.joint, p?.firmShare !== null && p?.firmShare !== undefined ? (p.firmShare * 100).toFixed(1) : "",
       csvQ((p?.signals ?? []).map((code) => RELATION_SIGNAL_LABELS[code] ?? code).join("; ")),
     ].join(",");

@@ -88,10 +88,16 @@ describe("the network's answer (final network §3.1, §3.5, §3.7, §4)", () => 
     const lines = text.trim().split("\r\n");
     expect(lines[0]).toBe("partener,judet,valoare_lei,inregistrari,grupa,primul_an,ultimul_an,ani,procent_din_total,valoare_in_asociere_lei,pondere_in_castigurile_firmei,semnale");
     expect(lines.slice(1)).toEqual([
-      `"RER SUD","Buzau",332540727,14,"Continuă",2019,2025,"2019 2020 2021 2022 2023 2024 2025",86.68,0,65.4,""`,
-      `"URBAN SCOPE","Buzau",51111529,58,"Continuă",2018,2026,"2018 2019 2020 2021 2022 2023 2024 2025 2026",13.32,0,,"posibilă fracționare; reprezentant comun"`,
+      `"RER SUD","Buzau",332540727,14,"Continuă din 2025",2019,2025,"2019 2020 2021 2022 2023 2024 2025",86.68,0,65.4,""`,
+      `"URBAN SCOPE","Buzau",51111529,58,"Continuă din 2025",2018,2026,"2018 2019 2020 2021 2022 2023 2024 2025 2026",13.32,0,,"posibilă fracționare; reprezentant comun"`,
     ]);
     expect(filename).toMatch(/\.csv$/);
+    // With the strip's group (AskPanel's band): one „grupa” column, the file named after the group (S4 tests: it was twice).
+    const banded = answerCsv(NETWORK, { ...spec, network: { partners: "continuing", since: 2025 } }, "Cu cine a continuat?", { stream: "all", group: "Continuă din 2025", groupFile: "continua" });
+    const head = banded.text.trim().split("\r\n")[0]!.split(",");
+    expect(head.filter((name) => name === "grupa")).toHaveLength(1);
+    expect(head.at(-1)).toBe("canal");
+    expect(banded.filename).toBe("cu-cine-a-continuat-toate-continua.csv");
   });
 });
 
