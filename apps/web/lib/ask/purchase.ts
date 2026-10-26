@@ -1,4 +1,3 @@
-import { countWords } from "./answer-text";
 import { formatInt } from "../format";
 import type { PROCEDURES, PURCHASE_KINDS } from "./spec";
 
@@ -164,6 +163,3 @@ export function valueWords(range: ValueRange): string | null {
 export function valueRangeIndex(range: ValueRange): number {
   return VALUE_RANGES.findIndex((r) => r.purchaseValueMin === range.purchaseValueMin && r.purchaseValueMax === range.purchaseValueMax);
 }
-
-/** "57 de achiziții": the records of a size, counted (G10). */
-export const purchases = (n: number) => countWords(n, "achiziție", "achiziții");
