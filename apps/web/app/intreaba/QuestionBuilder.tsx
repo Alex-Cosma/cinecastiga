@@ -232,7 +232,9 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
     let spec: QuestionSpec = draft, current = parked;
     const notes: string[] = opts.note ? [opts.note] : [], links: Record<string, NoteLink> = {};
     // Another entity of a distribution: its county follows and its type is checked once its group is read (final distribution §4.4).
-    if (draft.block === "distribution" && target.slot.picker === "focal")
+    const picked = choices.find((c) => c.filter === "authority" || c.filter === "supplier")?.value as { id?: number } | undefined;
+    if (draft.block === "distribution" && target.slot.picker === "focal" && picked?.id !== undefined
+      && String(picked.id) !== String(draft.filters.authorityId ?? draft.filters.supplierId ?? ""))
       followPeers.current = draft.filters.authorityId || draft.filters.supplierId ? { previousCounty: peerData?.facts.county ?? null } : { fresh: true };
     for (const choice of choices) {
       const next = chooseValue(spec, target.slot, choice, current, transition);
