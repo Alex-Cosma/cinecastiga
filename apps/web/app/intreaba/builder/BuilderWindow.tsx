@@ -24,6 +24,7 @@ import Segmented from "./Segmented";
 import OptionList from "./pickers/OptionList";
 import Popover from "./pickers/Popover";
 import PeersWindow, { peerDataFor } from "./PeersWindow";
+import PersonFirms, { type PersonPick } from "./PersonFirms";
 import type { PeerDialogState } from "./use-peer-dialog";
 import { peerWindowTip } from "../../../lib/ask/peer-groups-shared";
 import type { ChangeSource, KitRestRow } from "./kit-types";
@@ -71,8 +72,8 @@ interface SuggestionData {
   person?: { key: string; name: string; birthYear: number | null; birthDateImplausible?: boolean; birthLocality: string | null; nFirms: number }[];
 }
 type Role = "authority" | "supplier";
-/** A result and the choices picking it writes. */
-interface Found extends SearchResult { choices: Choice[]; cpvName?: string }
+/** A result and the choices picking it writes; a person unfolds into its firms instead (PersonFirms). */
+interface Found extends SearchResult { choices: Choice[]; cpvName?: string; person?: PersonPick }
 
 /** A CPV code (a division to a full code), not words. */
 const isCode = (term: string) => /^(?:\d{2,8}|\d{8}-\d)$/.test(term.replace(/\s+/g, ""));
@@ -312,15 +313,34 @@ function CountySelect({ draft, onPick }: { draft: QuestionSpec; onPick: (choices
 function FocalSearch({ draft, roles, compareWith = false, onPick }: { draft: QuestionSpec; roles: readonly Role[]; compareWith?: boolean; onPick: (choices: Choice[]) => void }) {
   const ctx = filterContext(draft as FilterSpec);
   const [role, setRole] = useState<Role>(roles.includes(ctx.role) ? ctx.role : roles[0]!);
+  // A verification's firm can be found through a person (final fact_check §3.4): the person unfolds into its firms.
+  const persons = draft.block === "fact_check" && role === "supplier" && !compareWith;
+  const [person, setPerson] = useState<PersonPick | null>(null);
   const s = useSuggestions(true);
   useEffect(() => { s.search(""); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- the starters, once
-  const results = useMemo(() => entityResults(role, s.data, s.hits, s.query).map((r) => compareWith
-    ? { ...r, choices: r.choices.map((c) => ({ filter: "compareWith" as const, value: c.value })) } : r), [s.data, s.hits, s.query, role, compareWith]);
+  const results = useMemo(() => [
+    ...entityResults(role, s.data, s.hits, s.query, persons && s.data.person?.length ? "Firme" : undefined).map((r) => compareWith
+      ? { ...r, choices: r.choices.map((c) => ({ filter: "compareWith" as const, value: c.value })) } : r),
+    ...(persons ? personResults(s.data, PERSONS_GROUP) : []),
+  ], [s.data, s.hits, s.query, role, compareWith, persons]);
   return <>
     {roles.length > 1 && <Segmented label="Instituție sau firmă" full value={role} options={[{ value: "authority", label: "Instituție" }, { value: "supplier", label: "Firmă" }]} onChange={(value) => setRole(value as Role)} />}
-    <EntitySearch label={role === "authority" ? "Instituție" : "Firmă"} placeholder={role === "authority" ? "Numele instituției sau CUI" : "Numele firmei sau CUI"} results={results} loading={s.loading}
-      onSearch={(q) => s.search(q)} onPick={(r) => onPick((r as Found).choices)} />
+    <EntitySearch label={role === "authority" ? "Instituție" : persons ? "Firmă sau persoană" : "Firmă"} placeholder={role === "authority" ? "Numele instituției sau CUI" : persons ? "Firmă, CUI sau persoană" : "Numele firmei sau CUI"} results={person ? results.filter((r) => r.person?.key === person.key) : results} loading={s.loading}
+      onSearch={(q) => { setPerson(null); s.search(q); }} onPick={(r) => {
+        const found = r as Found;
+        if (found.person) setPerson(found.person); else onPick(found.choices);
+      }} />
+    {person && <PersonFirms person={person} onPick={(firm) => onPick([{ filter: "supplier", value: { name: firm.name, id: Number(firm.id) } }])} />}
   </>;
+}
+
+/** "Persoane → firmele lor" (final fact_check §3.4): the people found, each to unfold into its firms (PersonFirms). */
+const PERSONS_GROUP = "Persoane → firmele lor";
+function personResults(data: SuggestionData, group: string): Found[] {
+  return (data.person ?? []).map((p): Found => {
+    const detail = [p.birthYear ? `n. ${p.birthYear}` : p.birthDateImplausible ? IMPLAUSIBLE_BIRTH_DATE_LABEL : null, p.birthLocality].filter(Boolean).join(" · ");
+    return { id: `person:${p.key}`, name: p.name, detail: detail ? `${detail} · firmele ›` : "firmele ›", group, choices: [], person: { key: p.key, name: p.name, detail } };
+  });
 }
 
 function PersonSearch({ onPick }: { onPick: (choices: Choice[]) => void }) {
@@ -344,8 +364,10 @@ function CpvSearch({ draft, onPick, onCpvName }: { draft: QuestionSpec; onPick: 
       return { id: `cpv:${item.term}`, name: code ? name ?? `CPV ${item.term}` : item.term, detail: code ? `CPV ${item.term}` : name ?? "", choices: [{ filter: "cpvTerm", value: item.term }], ...(code && name ? { cpvName: name } : {}) };
     }),
     ...(s.data.division ?? []).map((item): Found => ({ id: `div:${item.code}`, name: readableCpvName(item.name), detail: `CPV ${item.code}`, choices: [{ filter: "cpvTerm", value: item.code }], cpvName: readableCpvName(item.name) })),
-    ...(s.query.length >= 2 ? [{ id: "cpv:typed", name: `Folosește „${s.query}”`, detail: "Corespondența cu codurile CPV apare lângă răspuns.", choices: [{ filter: "cpvTerm" as const, value: s.query }] }] : []),
-  ], [s.data, s.query]);
+    // A verification never runs on words the catalogue only matches approximately (final fact_check §3.2): a "Nu"
+    // must not come from a match the reader has not seen, so it chooses among the codes and terms found.
+    ...(s.query.length >= 2 && draft.block !== "fact_check" ? [{ id: "cpv:typed", name: `Folosește „${s.query}”`, detail: "Corespondența cu codurile CPV apare lângă răspuns.", choices: [{ filter: "cpvTerm" as const, value: s.query }] }] : []),
+  ], [s.data, s.query, draft.block]);
   return <>
     {draft.filters.cpvTerm && <ChoiceList label="Ce s-a cumpărat" options={[{ value: "none", label: "Orice domeniu", choice: { filter: "cpvTerm", value: undefined } }]} value={null} current={currentRow("cpv", draft)}
       onPick={(option) => onPick(option.value === CURRENT_ROW ? [] : [option.choice])} />}

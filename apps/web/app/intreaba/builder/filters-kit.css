@@ -466,3 +466,5 @@ a.qb-menu-item{text-decoration:none}
   .qb-listfoot>*{width:100%;justify-content:center}
 }
 @media (prefers-reduced-motion:reduce){.qb *{transition:none!important;animation:none!important}}
+/* "De la cine?" at a verification: a person unfolds into the firms it represents (PersonFirms.tsx, final fact_check §3.4). */
+.qb-person-firms{margin-top:10px;padding-top:8px;border-top:1px solid var(--line)}
