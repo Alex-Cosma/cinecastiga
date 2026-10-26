@@ -52,7 +52,7 @@ describe("watches", () => {
     [{ ...members, frozenAt: "ieri" }, "Grupa urmărită nu este validă."],
     [{ ...members, ids: [] }, "Grupa urmărită nu este validă."],
     [{ ...members, ids: ["13", "1);drop"] }, "Grupa urmărită conține un identificator invalid."],
-    [{ ...members, ids: Array.from({ length: MONITORING_MEMBERS_MAX + 20 }, (_, i) => String(i + 1)) }, "Grupa are 5.020 de firme; restrânge perioada sau locul."],
+    [{ ...members, ids: Array.from({ length: MONITORING_MEMBERS_MAX + 20 }, (_, i) => String(i + 1)) }, "Grupa are 5.020 de firme (cel mult 5.000); restrânge perioada sau locul."],
   ])("parses the shape of a fixed group (%#)", (value, message) => {
     expect(thrown(() => monitoringMembers(value))).toHaveProperty("message", message);
   });

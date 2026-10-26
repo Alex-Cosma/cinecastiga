@@ -28087,7 +28087,7 @@
        "displaySql": "select county,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2026\ngroup by county\nhaving inainte > 0 and dupa > inainte  -- Creșteri\norder by dupa - inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
       },
       "new": {
-       "pills": ["schimbare între ani","top 10 județe","valoarea înregistrată","2024 → 2026","noi față de 2024","toate achizițiile: directe și din proceduri"],
+       "pills": ["schimbare între ani","top 10 județe","valoarea înregistrată","2024 → 2026","fără înregistrări în 2024","toate achizițiile: directe și din proceduri"],
        "displaySql": "select county,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2026\ngroup by county\nhaving inainte = 0 and dupa > 0  -- Noi\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
       },
       "down": {
@@ -28095,7 +28095,7 @@
        "displaySql": "select county,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2026\ngroup by county\nhaving dupa > 0 and dupa < inainte  -- Scăderi\norder by inainte - dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
       },
       "gone": {
-       "pills": ["schimbare între ani","top 10 județe","valoarea înregistrată","2024 → 2026","nu mai apar în 2026","toate achizițiile: directe și din proceduri"],
+       "pills": ["schimbare între ani","top 10 județe","valoarea înregistrată","2024 → 2026","fără înregistrări în 2026","toate achizițiile: directe și din proceduri"],
        "displaySql": "select county,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2026\ngroup by county\nhaving inainte > 0 and dupa = 0  -- Nu mai apar\norder by inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
       }
      }

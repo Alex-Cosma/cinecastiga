@@ -48,12 +48,15 @@ export function sentenceScopeProblems(spec: AskSpec, sentence: string, labels: P
     // The period's words (kit §4): "în [2025]", "în [2021–2023]", "[din 2020 încoace]"; an evolution is "an de an".
     const want = spec.block === "timeseries" && !a && !b ? "an de an" : periodPhrase(f).value;
     // A trend says both years: "între 2024 și 2025", "în 2025, față de 2024" (new ones), "din 2024 … în 2025" (gone ones).
-    const trendYears = a && b && (sentence.includes(`între ${a} și ${b}`) || sentence.includes(`în ${b}, față de ${a}`) || sentence.includes(`din ${a} `) && sentence.includes(`în ${b}`));
+    // Across other years (2023 → 2025) the new ones say "fără înregistrări în 2023 apar … în 2025".
+    const trendYears = a && b && (sentence.includes(`între ${a} și ${b}`) || sentence.includes(`în ${b}, față de ${a}`) || sentence.includes(`din ${a} `) && sentence.includes(`în ${b}`)
+      || sentence.includes(`fără înregistrări în ${a} `) && sentence.includes(`în ${b}`));
     if (spec.block === "trend" ? !trendYears : !sentence.includes(want)) out.push(`period "${want}" not in sentence`);
   } else if (f.yearFrom || f.yearTo || f.cpvTerm) out.push("risk profile carries a transaction filter");
   if (spec.block === "trend") {
     const t = spec.trend ?? {};
-    const group = { up: /cea mai mare creștere/, down: /cea mai mare scădere/, new: t.firstOnly ? / noi .*prima dată/ : / noi /, gone: /nu mai (?:apar|cumpără)/, all: /schimbare/ }[t.change ?? "all"];
+    const group = { up: /cea mai mare creștere/, down: /cea mai mare scădere/, new: t.firstOnly ? /(?: noi | fără înregistrări în ).*prima dată/ : / noi | fără înregistrări în /,
+      gone: /nu mai (?:apar|cumpără)|nu au înregistrări|nu cumpără/, all: /schimbare/ }[t.change ?? "all"];
     if (!group.test(sentence)) out.push(`trend group ${t.change ?? "all"} not in sentence`);
     if (t.order === "percent" && !/în procente/.test(sentence)) out.push("percent order not in sentence");
     // `auto` the archive resolves to whole years is whole years: the sentence needs no months.

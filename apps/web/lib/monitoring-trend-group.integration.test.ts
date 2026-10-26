@@ -128,7 +128,7 @@ describe.skipIf(!url)("a watch on a trend's group (isolated PostgreSQL)",()=>{
     await sql`insert into marts.da_transactions(sicap_da_id,da_code,authority_id,authority_name,supplier_id,supplier_name,county,closing_value,finalization_date)
       select 889793000+n,'Bulk '||n,${B},'Trend Group Authority B',889792000+n,'Bulk '||n,'Cluj',1,'2025-01-02' from generate_series(1,5001) n`;
     await rebuild();await checkpoint();
-    await expect(createMonitoringWatch(uid,{spec:spec({change:"new"},B)},sql)).rejects.toMatchObject({message:"Grupa are 5.001 firme; restrânge perioada sau locul.",status:422});
+    await expect(createMonitoringWatch(uid,{spec:spec({change:"new"},B)},sql)).rejects.toMatchObject({message:"Grupa are 5.001 firme (cel mult 5.000); restrânge perioada sau locul.",status:422});
     const sent={kind:"trend-group",role:"supplier",group:"down",ids:[S(1)],frozenAt:new Date().toISOString()};
     await expect(createMonitoringWatch(uid,{spec:spec({change:"down"}),options:{members:sent}},sql)).rejects.toMatchObject({message:MEMBERS_CHANGED,status:409});
     const down=await createMonitoringWatch(uid,{spec:spec({change:"down"}),options:{members:{...sent,ids:[S(4)]}}},sql);

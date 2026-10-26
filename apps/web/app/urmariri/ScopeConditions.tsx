@@ -1,6 +1,7 @@
 import type { MonitoringScope } from "@/lib/monitoring-shared";
 import { describeConditions } from "@/lib/ask/filters/describe";
 import { specTrendPartLabel } from "@/lib/ask/trend-shared";
+import { TREND_GROUP_ROW } from "@/lib/ask/filters/defs/trend";
 import { countWords } from "@/lib/ask/answer-text";
 import { formatBucharestDay } from "@/lib/format";
 export default function ScopeConditions({ scope }: { scope: MonitoringScope }) {
@@ -9,9 +10,10 @@ export default function ScopeConditions({ scope }: { scope: MonitoringScope }) {
   const { scope: conditions, receipt } = describeConditions(spec);
   // A group watch follows the members fixed at activation (plan §2.8): "Grupa: Noi față de 2024 · 412 firme fixate la 24.10.2026".
   const [one, many] = members?.role === "county" ? ["județ", "județe"] : members?.role === "authority" ? ["instituție", "instituții"] : ["firmă", "firme"];
-  // The group by its part's name, as the answer's drawer, the setup page and the server's notes say it (trendPartLabel).
+  // The group by its part's name, as the answer's drawer, the setup page and the server's notes say it (trendPartLabel);
+  // its row replaces the question's own „Grupa” (describeConditions), so the page names it once.
   const group = members && spec.block === "trend" ? specTrendPartLabel(spec) : members?.group;
-  const items = members ? [...conditions, { label: "Grupa", value: `${group} · ${countWords(members.ids.length, one!, many!)} ${members.ids.length === 1 ? members.role === "county" ? "fixat" : "fixată" : "fixate"} la ${formatBucharestDay(members.frozenAt)}` }] : conditions;
+  const items = members ? [...conditions.filter((row) => row.label !== TREND_GROUP_ROW), { label: TREND_GROUP_ROW, value: `${group} · ${countWords(members.ids.length, one!, many!)} ${members.ids.length === 1 ? members.role === "county" ? "fixat" : "fixată" : "fixate"} la ${formatBucharestDay(members.frozenAt)}` }] : conditions;
   const selection: { label: string; value: string }[] = [];
   if (options.stream) selection.push({ label: "Ce fel de achiziții", value: options.stream === "da" ? "Doar achizițiile directe" : "Doar contractele din proceduri" });
   if (options.search) selection.push({ label: "Căutare în surse", value: options.search });

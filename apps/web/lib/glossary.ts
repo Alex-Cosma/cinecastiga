@@ -223,10 +223,11 @@ export const GLOSSARY = {
     title: "Nu mai apar",
     text: "Cu înregistrări în primul an comparat și fără niciuna în al doilea, în aceeași selecție. Un contract intră întreg în anul atribuirii, deci firma poate executa încă unul atribuit înainte.",
   },
-  // The trend's group (trend final §3.9); "prima-data" above is the firm's first record on its profile line.
+  // The trend's group (trend final §3.8), its one (?) on the strip, in the sentence and under the rows
+  // (defs/trend.ts firstTimeTip adds FIRST_TIME_NARROWED); "prima-data" above is the firm's first record on its profile line.
   "trend-prima-data": {
     title: "Prima dată",
-    text: "Dintre cele noi, cele a căror primă înregistrare din toată arhiva site-ului este în al doilea an comparat.",
+    text: "Dintre cele noi, cele a căror primă înregistrare în datele noastre e în al doilea an comparat. Nu e data înființării.",
   },
   "aceleasi-luni": {
     title: "Aceleași luni",

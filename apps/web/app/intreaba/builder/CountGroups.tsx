@@ -3,7 +3,7 @@
 import { useId } from "react";
 import HelpTip, { DisabledReason } from "./HelpTip";
 import { rovingKeyDown, rovingStop } from "./keyboard";
-import type { ChangeSource, KitTip } from "./kit-types";
+import type { ChangeSource, GroupSwatch, KitTip } from "./kit-types";
 
 /*
  * Component 8, the groups with counts: the question's lens word in the answer
@@ -15,7 +15,7 @@ import type { ChangeSource, KitTip } from "./kit-types";
  * apart, never colour alone.
  */
 
-export type GroupSwatch = "all" | "up" | "new" | "down" | "gone";
+export type { GroupSwatch };
 
 export interface CountGroup {
   value: string;

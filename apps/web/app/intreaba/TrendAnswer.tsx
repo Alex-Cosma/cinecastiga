@@ -15,7 +15,7 @@ import EmptyState from "./answer/EmptyState";
 import RowFacts, { FactTag } from "./answer/RowFacts";
 import TotalLine from "./answer/TotalLine";
 import {
-  compositionHead, emptyGroupsLine, firstOptions, groupTerm, labelLegend, newSubLabel, partialStars, percentTerm, rowGroupWords, shownTrendList, trendButtons,
+  compositionHead, emptyGroupsLine, firstOptions, firstTimeKitTip, groupTerm, labelLegend, newSubLabel, partialStars, percentTerm, shownTrendList, trendButtons,
   trendEmpty, trendNounWords, trendRest, trendRowView, trendTotal, withoutFilingWords, type TrendData, type TrendRowView,
 } from "./trend-answer";
 
@@ -53,15 +53,15 @@ export default function TrendBlock({ data, spec, partial = [], conditions = [], 
   const evidence = useAnswerEvidence();
   const { list, rows } = shownTrendList(data, spec);
   const buttons = strip.includes("trendChange") ? trendButtons(data, spec) : null;
-  const head = compositionHead(data, spec);
   const first = strip.includes("trendFirstOnly") ? firstOptions(data, list, spec) : null;
   const noun = trendNounWords(data, spec);
   const shownPartial = partial.filter((p) => p.year === data.yearA || p.year === data.yearB);
-  // A partly covered year carries its "*" wherever it labels a sum, in every list (the note under the list says why).
+  // A partly covered year carries its "*" wherever it labels a sum or a group, in every list (the note under the list says why).
   const stars = partialStars(data, shownPartial);
+  const head = compositionHead(data, spec, stars);
   const views = rows.map((row) => trendRowView(row, list, data, spec, stars));
-  const legend = labelLegend(new Set(views.flatMap((v) => v.kinds)), data);
-  const term = groupTerm(list, data);
+  const legend = labelLegend(new Set(views.flatMap((v) => v.kinds)), data, spec);
+  const term = groupTerm(list, data, spec, stars);
   const percent = percentTerm(data, list, spec);
   const total = trendTotal(data, list, spec, stars);
   const rest = trendRest(data, list, rows.length, spec);
@@ -74,7 +74,7 @@ export default function TrendBlock({ data, spec, partial = [], conditions = [], 
       <CountGroups label="Felul schimbării" groups={buttons} value={list === "first" ? "new" : list} {...(head ? { head } : {})} onChange={pick} />
       {first && <div className="qb-row qb-tipwrap qb-trend-sub">
         <span className="qb-strip-label qb-trend-sub-label" aria-hidden="true"><i className="qb-sw qb-sw--new" />{newSubLabel(data, spec)}</span>
-        <HelpTip tip={{ id: "trend-prima-data" }} />
+        <HelpTip tip={firstTimeKitTip(spec)} />
         <Segmented label={`Care ${noun.many} noi`} value={list} options={first} onChange={pick} />
       </div>}
       {emptyGroups && <p className="qb-trend-off qb-tipwrap">{emptyGroups.text}<HelpTip tip={emptyGroups.tip} /></p>}
@@ -120,7 +120,7 @@ function TrendRowItem({ view, swatch, onRecords }: { view: TrendRowView; swatch:
   return <div className="qb-arow qb-trow" role="listitem" tabIndex={-1} data-qb-arow="">
     <div className="qb-trow-main">
       <div className="qb-arow-name qb-trow-name">
-        {swatch && <><i className={`qb-sw qb-sw--${view.group === "equal" ? "all" : view.group} qb-trow-sw`} aria-hidden="true" /><span className="qb-sr">{rowGroupWords(view.group)}: </span></>}
+        {swatch && <><i className={`qb-sw qb-sw--${view.group === "equal" ? "all" : view.group} qb-trow-sw`} aria-hidden="true" /><span className="qb-sr">{view.groupWords}: </span></>}
         {view.href ? <Link href={view.href}>{view.name}</Link> : view.name}
         {view.place && <small>{view.place}</small>}
       </div>

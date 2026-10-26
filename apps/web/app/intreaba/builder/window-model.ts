@@ -8,11 +8,11 @@ import type { FilterCtx, FilterSpec } from "../../../lib/ask/filters/types";
 import { TREND_ORDER_WORDS, adminPhrase, employeesOnBands, employeesPhrase, localityName, MONTH_SHORT } from "../../../lib/ask/filters/words";
 import { KIND_ONE, KIND_WORDS, entityLabel, leaderAxis, type QuestionSpec } from "../../../lib/ask/question-ui";
 import { DEFAULT_TREND_MIN_BASE, type AskSpec } from "../../../lib/ask/spec";
-import { MIN_TREND_YEAR } from "../../../lib/ask/months-window";
-import { TREND_ALL_CHANGES, TREND_CHANGE_LABELS, TREND_CHANGE_PHRASE, TREND_NOUN_WORDS, trendNoun } from "../../../lib/ask/filters/defs/trend";
+import { MIN_TREND_YEAR, defaultTrendYears, type CoveragePeriods } from "../../../lib/ask/months-window";
+import { TREND_ALL_CHANGES, TREND_CHANGE_LABELS, TREND_CHANGE_PHRASE, TREND_NOUN_WORDS, trendGap, trendGroupLabel, trendNoun } from "../../../lib/ask/filters/defs/trend";
 import { formatRon } from "../../../lib/format";
 import { EMPLOYEE_BANDS, bandRange } from "./Bands";
-import type { KitOption, KitRestRow, KitTip } from "./kit-types";
+import type { GroupSwatch, KitOption, KitRestRow, KitTip } from "./kit-types";
 import type { BuilderWindowSpec } from "./view";
 
 /*
@@ -89,24 +89,34 @@ const AXIS_DETAIL = {
   risk: "Tot istoricul, doar achiziții directe. Perioada, domeniul și cumpărătorul nu se aplică.",
 } as const;
 
+/** A new institution without a chosen firm is often an old one under another identity (trend final §3.1). */
+export const NEW_INSTITUTIONS_CAVEAT = "Des: reorganizări, asociații, beneficiari privați.";
+
 /**
  * "Ce fel de schimbare?" (trend final §3.1): each change with its one-line rule, in the question's
  * years, in the vocabulary's long form (kit §4): the sentence's word ("Creștere"), the groups' noun
- * after the selection ("Furnizori noi" of a chosen buyer, "Clienți noi" of a chosen firm).
+ * after the selection ("Furnizori noi" of a chosen buyer, "Clienți noi" of a chosen firm), and the
+ * swatch of its button in the answer. Across other years (trendGap) the new and the gone say the year
+ * without records ("Firme fără înregistrări în 2023", "Fără înregistrări în 2025").
  */
-function trendChangeWords(change: string, spec: QuestionSpec): { label: string; detail: string } {
+function trendChangeWords(change: string, spec: QuestionSpec): { label: string; detail: string; swatch: GroupSwatch } {
   const a = spec.filters.yearFrom ?? "primul an", b = spec.filters.yearTo ?? "ultimul an";
+  const gap = trendGap(a, b), noun = trendNoun(spec as unknown as AskSpec);
   switch (change) {
-    case "up": return { label: capital(TREND_CHANGE_PHRASE.up), detail: `În ambii ani, mai mult în ${b}.` };
-    case "new": return { label: `${capital(TREND_NOUN_WORDS[trendNoun(spec as unknown as AskSpec)].many)} ${TREND_CHANGE_LABELS.new.toLocaleLowerCase("ro-RO")}`, detail: `Nicio înregistrare în ${a}, cel puțin una în ${b}.` };
-    case "down": return { label: capital(TREND_CHANGE_PHRASE.down), detail: `În ambii ani, mai puțin în ${b}.` };
-    case "gone": return { label: TREND_CHANGE_LABELS.gone, detail: `Înregistrări în ${a}, niciuna în ${b}.` };
-    default: return { label: TREND_ALL_CHANGES, detail: "Toate grupurile, după diferența în lei." };
+    case "up": return { label: capital(TREND_CHANGE_PHRASE.up), detail: `În ambii ani, mai mult în ${b}.`, swatch: "up" };
+    case "new": {
+      const label = `${capital(TREND_NOUN_WORDS[noun].many)} ${(gap ? trendGroupLabel("new", a, b) : TREND_CHANGE_LABELS.new).toLocaleLowerCase("ro-RO")}`;
+      const caveat = noun === "instituții" ? ` ${NEW_INSTITUTIONS_CAVEAT}` : "";
+      return { label, detail: `Nicio înregistrare în ${a}, cel puțin una în ${b}.${caveat}`, swatch: "new" };
+    }
+    case "down": return { label: capital(TREND_CHANGE_PHRASE.down), detail: `În ambii ani, mai puțin în ${b}.`, swatch: "down" };
+    case "gone": return { label: gap ? trendGroupLabel("gone", a, b) : TREND_CHANGE_LABELS.gone, detail: `Înregistrări în ${a}, niciuna în ${b}.`, swatch: "gone" };
+    default: return { label: TREND_ALL_CHANGES, detail: "Toate grupurile, după diferența în lei.", swatch: "all" };
   }
 }
 
 /** The words of one choice in a list window (kit §4: the long form in windows). */
-export function choiceWords(choice: Choice, spec: QuestionSpec): { label: string; detail?: string; group?: string } {
+export function choiceWords(choice: Choice, spec: QuestionSpec): { label: string; detail?: string; group?: string; swatch?: GroupSwatch } {
   const { filter, value } = choice;
   switch (filter) {
     case "dataset": { const [label, detail] = DATASET_ROWS[String(value ?? "all")] ?? DATASET_ROWS.all!; return { label, detail }; }
@@ -304,14 +314,19 @@ export const SERIES_FIRST_YEAR = 2018;
  * the current year says how far its data go ("2026 · până la 25 sept.").
  * "Compleți" leaves out only a year still running: data up to 31 Dec make the
  * last year complete. A trend compares two years: consecutive pairs, the
- * complete one first, the one with the running year on the same months; its
- * free range starts in 2019 (MIN_TREND_YEAR). The year chart has intervals only (plan §4.3): one year
- * is one bar, so "Toți anii · Ultimii 5 ani compleți · Ultimii 3 ani compleți".
+ * complete one first, the one after it on the same months; its free range
+ * starts in 2019 (MIN_TREND_YEAR). Its complete year is the default years'
+ * (defaultTrendYears, trend final §3.2: every channel's "complet până la" on
+ * or after 31 Dec), when the periods are read: in January–March the year just
+ * ended stays provisional until December's contracts are complete. The year
+ * chart has intervals only (plan §4.3): one year is one bar, so "Toți anii ·
+ * Ultimii 5 ani compleți · Ultimii 3 ani compleți".
  */
-export function periodPresets(spec: QuestionSpec, span: CoverageSpan | null, year: number): { presets: PeriodPreset[]; value: string | null } {
+export function periodPresets(spec: QuestionSpec, span: CoverageSpan | null, year: number, periods: CoveragePeriods | null = null): { presets: PeriodPreset[]; value: string | null } {
   const last = span?.to ? Number(span.to.slice(0, 4)) : year;
   const partial = span?.to && !span.to.endsWith("-12-31") ? span.to : null;
-  const complete = partial ? last - 1 : last;
+  const settled = spec.block === "trend" ? defaultTrendYears(periods, (spec.dataset ?? "all") as "all" | "da" | "contracts")?.yearTo ?? null : null;
+  const complete = settled !== null && settled < last ? settled : partial ? last - 1 : last;
   const until = partial ? dayWords(partial).replace(/ \d{4}$/, "") : null;
   const all: PeriodPreset = { value: "all", label: "Toți anii", ...(span?.from && span.to ? { detail: `${monthWords(span.from)} – ${dayWords(span.to)}` } : {}), period: undefined };
   const years = (value: string, label: string, n: number): PeriodPreset => {
@@ -321,8 +336,10 @@ export function periodPresets(spec: QuestionSpec, span: CoverageSpan | null, yea
   const presets: PeriodPreset[] = spec.block === "trend"
     ? [
       { value: "pair-1", label: `${complete - 1} și ${complete}`, detail: "ultimii doi ani compleți", period: { yearFrom: complete - 1, yearTo: complete } },
-      // A year still running is compared on the same months (trend-rules.ts trendFollows puts "Aceleași luni" back).
-      ...(partial ? [{ value: "pair-0", label: `${last - 1} și ${last}`, detail: `pe aceleași luni · ${last}: până la ${until}`, period: { yearFrom: last - 1, yearTo: last } }] : []),
+      // The year after the complete one (running, or ended but provisional) is compared on the same months
+      // (trend-rules.ts trendFollows puts "Aceleași luni" back); a running year says how far its data go.
+      ...(complete < last ? [{ value: "pair-0", label: `${complete} și ${complete + 1}`,
+        detail: `pe aceleași luni${complete + 1 === last && until ? ` · ${last}: până la ${until}` : ""}`, period: { yearFrom: complete, yearTo: complete + 1 } }] : []),
       { value: "pair-2", label: `${complete - 2} și ${complete - 1}`, period: { yearFrom: complete - 2, yearTo: complete - 1 } },
     ]
     : spec.block === "timeseries"

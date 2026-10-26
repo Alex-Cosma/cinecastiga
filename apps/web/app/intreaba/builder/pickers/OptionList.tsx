@@ -65,7 +65,7 @@ export default function OptionList({ label, options, multiple = false, value = n
           >
             <span className="qb-opt-mark" aria-hidden="true" />
             <span className="qb-opt-t">
-              <strong>{option.label}</strong>
+              <strong>{option.swatch && <i className={`qb-sw qb-sw--${option.swatch} qb-opt-sw`} aria-hidden="true" />}{option.label}</strong>
               {option.detail && <small>{option.detail}</small>}
               {option.disabled && <small>{option.disabled}</small>}
               {option.swap && <span className="qb-opt-swap">{option.swap}</span>}

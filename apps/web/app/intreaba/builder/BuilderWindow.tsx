@@ -386,11 +386,12 @@ const rangeYears = (from: number, to: number) => Array.from({ length: Math.max(0
 
 function PeriodWindow({ draft, year, onPick }: { draft: QuestionSpec; year: number; onPick: (choices: Choice[]) => void }) {
   // The archive's span (/api/data-coverage, once per page): the window opens without it and fills in.
-  const span: CoverageSpan | null = useCoverage()?.span ?? null;
+  const coverage = useCoverage();
+  const span: CoverageSpan | null = coverage?.span ?? null;
   const trend = draft.block === "trend";
   // The year chart draws from 2018 and its custom range is years ("Alege anii…", plan §4.3); months by month are F3's.
   const series = draft.block === "timeseries";
-  const { presets, value } = periodPresets(draft, span, year);
+  const { presets, value } = periodPresets(draft, span, year, coverage?.periods ?? null);
   const f = draft.filters;
   const [open, setOpen] = useState(value === null && Boolean(f.yearFrom || f.yearTo));
   const [range, setRange] = useState<PeriodRangeValue>({ ...EMPTY_RANGE, yearFrom: String(f.yearFrom ?? ""), yearTo: String(f.yearTo ?? ""), monthFrom: String(f.monthFrom ?? ""), monthTo: String(f.monthTo ?? "") });

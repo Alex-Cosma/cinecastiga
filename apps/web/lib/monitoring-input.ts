@@ -52,7 +52,7 @@ export function monitoringMembers(value:unknown):MonitoringMembers {
   if(ids.length>MONITORING_MEMBERS_MAX)throw membersTooMany(o.role as MonitoringMembers["role"],ids.length);
   return {kind:o.kind as MonitoringMembers["kind"],role:o.role as MonitoringMembers["role"],group:o.group as string,ids:ids as string[],frozenAt:o.frozenAt};
 }
-/** A group above MONITORING_MEMBERS_MAX: "Grupa are 17.633 de firme; restrânge perioada sau locul." */
+/** A group above MONITORING_MEMBERS_MAX: "Grupa are 17.633 de firme (cel mult 5.000); restrânge perioada sau locul." */
 export const membersTooMany=(role:MonitoringMembers["role"],n:number)=>new MonitoringError(membersTooManyWords(role,n),422);
 /** The kinds of fixed group this release applies: a trend's (F2); a network's comes with F4 (read ahead, refused). */
 export const IMPLEMENTED_MEMBER_KINDS:readonly MonitoringMembers["kind"][]=["trend-group"];

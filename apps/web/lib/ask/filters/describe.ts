@@ -11,7 +11,7 @@ import {
 } from "../spec";
 import { formatExactDecimal, formatInt, formatRon } from "../../format";
 import { monthsLabel } from "../months-window";
-import { TREND_ALL_CHANGES, TREND_FIRST_LABEL, firstTimeWords, trendGroupLabel } from "./defs/trend";
+import { TREND_ALL_CHANGES, TREND_FIRST_LABEL, TREND_GROUP_ROW, firstTimeWords, trendGroupLabel } from "./defs/trend";
 import { filterContext } from "./context";
 import { exclusionWords, isDaBoundPopulation, selectionOrigin, splitExcluded, type OriginHint, type OriginWords } from "./origin";
 import { FILTERS, SPEC_PATH_OWNERS, presentPaths } from "./registry";
@@ -381,7 +381,8 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
     const { yearFrom: a, yearTo: b } = spec.filters;
     const label = trendGroupLabel(change, a, b);
     const words = (change === "all" ? TREND_ALL_CHANGES : label).toLocaleLowerCase("ro-RO");
-    return { words, chip: label, pills: [words], scope: [{ label: "Grupul", value: change === "all" ? TREND_ALL_CHANGES : label }], summary: label };
+    // „Grupa”, as the drawer's header, „Urmărește grupa” and a watch's fixed group (MF-note-grupei).
+    return { words, chip: label, pills: [words], scope: [{ label: TREND_GROUP_ROW, value: change === "all" ? TREND_ALL_CHANGES : label }], summary: label };
   },
   trendMonths: (spec, labels) => {
     const months = spec.trend?.months;
