@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatResultValue, resultDifferences } from "./ResultComparison";
+import { formatResultValue, reshapedAnswer, resultDifferences } from "./ResultComparison";
 import { comparableMethodologies } from "../../lib/monitoring-shared";
 
 describe("human-readable monitoring result comparisons", () => {
@@ -35,6 +35,16 @@ describe("human-readable monitoring result comparisons", () => {
     expect(formatResultValue("1234567890.123456789012345678", "value")).toBe("1.234.567.890,123456789012345678 lei");
     expect(formatResultValue(1e-7, "value")).toBe("0,0000001 lei");
     expect(formatResultValue(2026, "year")).toBe("2026");
+  });
+  it("lists no false changes when the answer's version moved (distribution-1 → distribution-2): only the methodology says it", () => {
+    const [before, after] = comparableMethodologies({ version: "monitoring-1" }, { version: "monitoring-1", answer: { question: "distribution-2", conditions: {} } }, "distribution");
+    expect(reshapedAnswer(before, after)).toEqual({ from: "distribution-1", to: "distribution-2" });
+    expect(reshapedAnswer(after, after)).toBeNull();
+    // distribution-2 names its fields: the position among the others, the group.
+    const v2 = (more: number) => ({ block: "distribution", distribution: { version: 2, position: { more, same: 0, fewer: 29 - more }, group: { others: 29 } } });
+    expect(resultDifferences(v2(0), v2(1)).map((row) => [row.context, row.field])).toEqual([
+      ["Distribuția riscului · Poziția în grup", "Cu mai multe criterii"], ["Distribuția riscului · Poziția în grup", "Cu mai puține criterii"],
+    ]);
   });
   it("names the map records whose authority has no county in Romanian", () => {
     const before = { block: "map", counties: [{ county: "Buzău", value: 1 }], unknown: { value: 60, count: 2 } };

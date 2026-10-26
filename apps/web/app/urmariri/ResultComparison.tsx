@@ -35,9 +35,15 @@ const labels: Record<string, string> = {
   composition: "Totalurile grupei", groups: "Grupele", members: "Grupa fixată", frozen: "Membri fixați", frozenAt: "Fixată la",
   // The groups in the trend's vocabulary (defs/trend.ts), as on the answer's buttons.
   ...TREND_LIST_LABELS, equal: TREND_EQUAL_LABEL, eligible: `${TREND_LIST_LABELS.up} de la pragul ales`,
+  // distribution-2 (F6a): the group, the criteria and the position among the others.
+  status: "Starea comparației", criteria: "Criteriile", nDas: "Achiziții directe acceptate", inGroup: "Entitatea face parte din grup",
+  ticks: "Grupul ales", legacy: "Condiții din link", others: "Ceilalți membri", memberIds: "Membrii grupului",
+  position: "Poziția în grup", more: "Cu mai multe criterii", same: "Cu tot atâtea criterii", fewer: "Cu mai puține criterii",
+  hist: "Membrii după numărul de criterii", k: "Număr de criterii", perCriterion: "Criteriu cu criteriu",
 };
-/** A group's count is of its entities or counties, not of records (TrendPartTotals.count). */
-const fieldName = (key: string, path: readonly string[]) => key === "count" && path.includes("composition") ? "Număr în grupă" : name(key);
+/** A group's count is of its entities or counties, not of records (TrendPartTotals.count); a distribution's members are its group. */
+const fieldName = (key: string, path: readonly string[]) => key === "count" && path.includes("composition") ? "Număr în grupă"
+  : key === "members" && path.includes("distribution") ? "Membrii grupului" : key === "others" && path.includes("perCriterion") ? "La ceilalți membri" : name(key);
 const ignored = new Set(["block", "tookMs", "displaySql", "page", "pageSize", "entityId", "partnerId", "nx", "ny", "rowFacts", "noun"]);
 const object = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value);
 const name = (key: string) => labels[key] ?? KEY_VERSIONS[key]?.label ?? key.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/_/g, " ");
@@ -136,15 +142,29 @@ function ChangedValues({ before, after, label }: { before: unknown; after: unkno
   return <>{differences.length ? <><div className="mon-table-wrap" role="region" aria-label={label} tabIndex={0}><table className="mon-diff mon-stack mon-stack-pair"><thead><tr><th>Unde în rezultat</th><th>Ce s-a schimbat</th><th>Înainte</th><th>După</th></tr></thead><tbody>{differences.slice(0, visible).map(row => <tr key={row.key}><th scope="row">{row.context}</th><td data-label="Ce s-a schimbat">{row.field}</td><td data-label="Înainte">{formatResultValue(row.before, row.fieldKey)}</td><td data-label="După">{formatResultValue(row.after, row.fieldKey)}</td></tr>)}</tbody></table></div>{visible < differences.length && <><p className="mon-muted" role="status">Sunt afișate {visible} din {countWords(differences.length, "câmp modificat", "câmpuri modificate")}.</p><button type="button" onClick={() => setVisible(count => count + 12)}>Arată încă {countWords(Math.min(12, differences.length - visible), "modificare", "modificări")}</button></>}</> : <p className="mon-muted">Valorile afișate sunt neschimbate. Diferența privește ordinea sau metadatele de prezentare ale rezultatului.</p>}<details className="mon-small-details"><summary>Datele complete ale comparației · detalii tehnice</summary><div className="mon-result-pair"><section><h3>Înainte</h3><pre>{JSON.stringify(before, null, 2)}</pre></section><section><h3>După</h3><pre>{JSON.stringify(after, null, 2)}</pre></section></div></details></>;
 }
 
+/**
+ * The answer's version moved between the two checks (distribution-1 → distribution-2,
+ * trend-1 → trend-2): the two results have another shape, so a field-by-field list
+ * would be a false list of changes (plan §4.11). Null when the version is the same.
+ */
+export function reshapedAnswer(before: Record<string, unknown> | null, after: Record<string, unknown> | null): { from: string; to: string } | null {
+  const question = (m: Record<string, unknown> | null) => (m?.answer as { question?: unknown } | undefined)?.question;
+  const from = question(before), to = question(after);
+  return typeof from === "string" && typeof to === "string" && from !== to ? { from, to } : null;
+}
+
 export default function ResultComparison({ detail }: { detail: MonitoringRunDetail }) {
   // What the check compared (plan §2.8): the core of each answer, and the methodologies with their answer versions read alike.
   const block = detail.watch.spec.block;
   const [previousMethodology, methodology] = useMemo(() => comparableMethodologies(detail.previousMethodology, detail.methodology, block), [detail, block]);
+  const reshaped = reshapedAnswer(previousMethodology, methodology);
   // What a key version bumped between the two checks changed, in words (KEY_VERSION_NOTES).
   const notes = useMemo(() => {
     const conditions = (m: Record<string, unknown> | null) => ((m?.answer as { conditions?: Record<string, string> } | undefined)?.conditions ?? {});
     const before = conditions(previousMethodology), after = conditions(methodology);
     return Object.entries(after).filter(([id, version]) => before[id] !== version).map(([, version]) => KEY_VERSION_NOTES[version]).filter((note): note is string => Boolean(note));
   }, [previousMethodology, methodology]);
-  return <>{detail.run.resultChanged && <details className="mon-settings" open><summary>Ce s-a schimbat în rezultatul întrebării</summary><p>Comparăm valorile păstrate la cele două verificări. Sumele exacte ale înregistrărilor se verifică în listele de surse.</p><ChangedValues key={`${detail.run.id}-result`} before={answerCore(block, detail.previousResult)} after={answerCore(block, detail.result)} label="Rezultatul întrebării, înainte și după" /></details>}{detail.run.methodologyChanged && <details className="mon-settings" open><summary>Ce s-a schimbat în metodologie</summary><p>Aceste diferențe descriu modul de calcul. Ele nu reprezintă, în sine, modificări ale contractelor.</p>{notes.map(note => <p key={note}>{note}</p>)}<ChangedValues key={`${detail.run.id}-methodology`} before={previousMethodology} after={methodology} label="Metodologia, înainte și după" /></details>}</>;
+  return <>{detail.run.resultChanged && <details className="mon-settings" open><summary>Ce s-a schimbat în rezultatul întrebării</summary>{reshaped
+    ? <p>Răspunsul are acum altă formă ({reshaped.from} → {reshaped.to}), deci nu îl comparăm câmp cu câmp. Rezultatul nou e cel de pe pagina întrebării; ce s-a schimbat în calcul e mai jos.</p>
+    : <><p>Comparăm valorile păstrate la cele două verificări. Sumele exacte ale înregistrărilor se verifică în listele de surse.</p><ChangedValues key={`${detail.run.id}-result`} before={answerCore(block, detail.previousResult)} after={answerCore(block, detail.result)} label="Rezultatul întrebării, înainte și după" /></>}</details>}{detail.run.methodologyChanged && <details className="mon-settings" open><summary>Ce s-a schimbat în metodologie</summary><p>Aceste diferențe descriu modul de calcul. Ele nu reprezintă, în sine, modificări ale contractelor.</p>{notes.map(note => <p key={note}>{note}</p>)}<ChangedValues key={`${detail.run.id}-methodology`} before={previousMethodology} after={methodology} label="Metodologia, înainte și după" /></details>}</>;
 }
