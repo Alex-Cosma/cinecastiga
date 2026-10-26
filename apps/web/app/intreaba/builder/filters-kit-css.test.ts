@@ -73,6 +73,15 @@ describe("filter kit styles", () => {
     expect(css).toContain(".qb-chip--notice .term-tip{margin-right:4px}");
   });
 
+  it("draws a chip's (?) focus ring inside the (?): the chip clips, and under 600 px the (?) is as tall as the chip", () => {
+    // Every ring that reaches a (?) in a chip is 3 px (the kit's, the builder's, the answer page's); -3 px keeps it whole.
+    expect(uncommented).toMatch(/\.qb :focus-visible,\.qb \.is-focus\{outline:3px solid /);
+    expect(sheet("question-builder.css")).toMatch(/\.question-builder :focus-visible \{ outline: 3px solid /);
+    expect(sheet("question-results.css")).toMatch(/\.cq-app button:focus-visible,[^{]*\{\s*outline: 3px solid /);
+    expect(uncommented).toMatch(/\.qb-chip\{[^}]*overflow:hidden/);
+    expect(uncommented).toContain(".qb-chip .term-tip>.term-trigger:focus-visible{outline-offset:-3px}");
+  });
+
   it("lets a phrase glued to its punctuation wrap inside, leaving room for the mark (F1b-tests: a long name at 320 px)", () => {
     // white-space inherits: without this a name in .qb-nowrap ran past the sentence and the page clipped it.
     expect(css).toContain(".qb-nowrap>.qb-phrase{white-space:normal;max-width:calc(100% - .6em)}");

@@ -150,6 +150,8 @@ span.qb-chip-main:hover{background:none}
 .qb-chip--origin .qb-chip-main{cursor:default}
 .qb-chip--origin .qb-chip-x{border-left-color:var(--fk-warm-line);color:var(--fk-warm-ink)}
 .qb-chip--legacy .term-tip,.qb-chip--origin .term-tip,.qb-chip--auto .term-tip{align-self:center}
+/* The chip clips, and under 600 px its (?) is as tall as the chip: the (?)'s focus ring is drawn inside the (?). */
+.qb-chip .term-tip>.term-trigger:focus-visible{outline-offset:-3px}
 .qb-chip--notice .qb-chip-main{cursor:default}
 /* The (?) is the notice's last child: its tap area (.term-trigger:after, 4 px past it) stays inside the chip's clip. */
 .qb-chip--notice .term-tip{margin-right:4px}
