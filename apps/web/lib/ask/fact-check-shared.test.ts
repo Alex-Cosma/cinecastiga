@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
-  ceilingWords, COMPETITION_PROCEDURES, coverageEnd, factLegacy, factNoReason, factRestricted, factVerdict, monthSpan, noRecordsWords, procedureWords, relationWords,
-  OUTSIDE_WHY, roDay, sampleBadges, shareWords, shortLei, VERDICT_TIPS, VERDICT_WORDS,
+  ceilingWords, COMPETITION_PROCEDURES, coverageEnd, factConditions, factLegacy, factNoReason, factRestricted, factVerdict, monthSpan, noRecordsWords, procedureWords,
+  relationWords, OUTSIDE_WHY, roDay, sampleBadges, shareWords, shortLei, VERDICT_TIPS, VERDICT_WORDS,
 } from "./fact-check-shared";
+import { legacyConditions } from "./filters/legacy-conditions";
 import { shareLabel } from "../entity-summary";
 
 /*
@@ -47,8 +48,22 @@ describe("the verdict of a verification", () => {
     expect(factLegacy({ filters: { ...pair, yearFrom: 2024, cpvTerm: "45" } })).toBe(false);
     for (const spec of [{ filters: { ...pair, singleBidder: true } }, { filters: { ...pair, county: "Cluj" } }, { filters: { ...pair, minEmployees: 1 } },
       { filters: { ...pair, adminPersonKey: "x" } }, { filters: pair, minimumRecords: { role: "supplier", count: 10 } },
-      { filters: pair, population: { operator: "and", groups: [] } }])
+      { filters: pair, population: { operator: "and", groups: [{ operator: "and", conditions: [{ field: "county", op: "in", values: ["Cluj"] }] }] } }])
       expect(factLegacy(spec), JSON.stringify(spec)).toBe(true);
+  });
+
+  it("reads both from the registry: the verification's „Selecție avansată” is a choice of the question, not a link's", () => {
+    // Days and a winner's share are what "Selecție avansată" offers on a verification (BLOCK_FILTERS advancedFields).
+    const precise = { filters: pair, population: { operator: "and", groups: [{ operator: "and", conditions: [{ field: "date", op: "gte", value: "2024-03-01" }] }] } };
+    expect(factConditions(precise)).toEqual({ own: ["population"], legacy: [] });
+    expect(factRestricted(precise)).toBe(true);
+    expect(factLegacy(precise)).toBe(false);
+    expect(noRecordsWords(precise, "choices")).toBe("Nicio înregistrare cu alegerile făcute.");
+    // A link's county keeps its chip, beside the sentence's own period and stream; the builder draws the same chip.
+    const linked = { dataset: "da", filters: { ...pair, county: "Cluj", yearFrom: 2024, yearTo: 2024 } };
+    expect(factConditions(linked)).toEqual({ own: ["dataset", "period"], legacy: ["county"] });
+    expect(legacyConditions({ block: "fact_check", measure: "value", ...linked }).map((c) => c.label)).toEqual(["Din link: din județul Cluj"]);
+    expect(noRecordsWords({ filters: { ...pair, county: "Cluj" } }, "legacy")).toBe("Nicio înregistrare cu condiția din link.");
   });
 });
 

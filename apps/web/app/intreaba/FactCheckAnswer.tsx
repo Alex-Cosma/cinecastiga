@@ -113,7 +113,7 @@ export default function FactCheckAnswer({ fact: f, spec, onWider }: FactCheckAns
 /** The lines beside the verdict (final §4.1, §5). */
 function VerdictText({ fact: f, spec }: { fact: FactCheckData; spec: AskSpec | undefined }) {
   const state = f.state!;
-  const words = { dataset: spec?.dataset, filters: (spec?.filters ?? {}) as Record<string, unknown> };
+  const words = { dataset: spec?.dataset, filters: (spec?.filters ?? {}) as Record<string, unknown>, population: spec?.population, minimumRecords: spec?.minimumRecords };
   const end = coverageEnd(f.coverage);
   if (state === "yes" && f.count > 0) {
     const onlyUndated = f.undated && f.undated.count === f.count;
