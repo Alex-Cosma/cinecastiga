@@ -18,9 +18,12 @@ vi.mock("@/lib/ask/llm", () => import("../../../lib/ask/llm"));
 vi.mock("@/lib/ask/resolved-spec", () => import("../../../lib/ask/resolved-spec"));
 vi.mock("@/lib/devlog", () => import("../../../lib/devlog"));
 vi.mock("@/lib/ask/features", () => import("../../../lib/ask/features"));
+vi.mock("@/lib/ask/facets", () => import("../../../lib/ask/facets"));
+vi.mock("@/lib/ask/facet-parts", () => import("../../../lib/ask/facet-parts"));
 import { POST as ask } from "./route";
 import { POST as rows } from "./rows/route";
 import { POST as csv } from "./rows/csv/route";
+import { POST as facets } from "./facets/route";
 import { NEWER_VERSION_LINK } from "../../../lib/ask/spec";
 
 beforeEach(() => { sql.mockClear(); sql.begin.mockClear(); });
@@ -39,10 +42,23 @@ describe("routes that run a spec", () => {
     ["/api/ask/rows/csv", csv, {}],
     ["/api/ask/rows/csv with a comparison selection", csv, { peer }],
     ["/api/ask/rows/csv with a relationship selection", csv, { connection }],
+    // A window's counts and "Unde e …?" (F3-facets): the same refusal, before any query.
+    ["/api/ask/facets", facets, { part: "kind" }],
+    ["/api/ask/facets, part=locate", facets, { part: "locate", q: "dedeman" }],
   ] as const)("%s answers 422 with the newer-version message", async (_route, handler, extra) => {
     const response = await handler(post({ spec: newer, ...extra }));
     expect(response.status).toBe(422);
     expect(await response.json()).toEqual({ ok: false, error: NEWER_VERSION_LINK });
+    expect(sql).not.toHaveBeenCalled();
+    expect(sql.begin).not.toHaveBeenCalled();
+  });
+
+  it("refuses a facet request without a known part, or a search under two letters, before any query", async () => {
+    const valid = { block: "stat", measure: "value", filters: {} };
+    for (const body of [{ spec: valid, part: "everything" }, { spec: valid }, { spec: valid, part: "locate", q: "d" }]) {
+      const response = await facets(post(body));
+      expect(response.status, JSON.stringify(body)).toBe(400);
+    }
     expect(sql).not.toHaveBeenCalled();
     expect(sql.begin).not.toHaveBeenCalled();
   });
