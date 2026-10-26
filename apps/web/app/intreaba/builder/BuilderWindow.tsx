@@ -28,8 +28,11 @@ import Popover from "./pickers/Popover";
 import type { ChangeSource, KitRestRow } from "./kit-types";
 import type { BuilderWindowSpec } from "./view";
 import {
-  CURRENT_ROW, SERIES_FIRST_YEAR, UNKNOWN_SEAT, bandValues, bandsChoice, choiceWords, currentRow, fromTab, fromTabs, listOptions, optionValue, periodPresets, windowKind, windowTip, type ChoiceOption, type CoverageSpan,
+  CURRENT_ROW, SERIES_FIRST_YEAR, UNKNOWN_SEAT, bandCount, bandValues, bandsChoice, choiceWords, countedOptions, countedRest, countySide, currentRow, emptyReason, fromTab, fromTabs,
+  listOptions, optionValue, periodPresets, presetCounts, shareText, windowKind, windowTip, type ChoiceOption, type CoverageSpan,
 } from "./window-model";
+import { useFacet } from "./use-facet";
+import type { FacetView } from "@/lib/ask/facet-parts";
 
 /*
  * The windows of the builder (kit components 7–13, plan §2.3): each place
@@ -139,12 +142,16 @@ function localityResults(data: SuggestionData, group?: string, clearCounty = fal
 }
 
 /** The counties whose name holds the text, all of them for an empty one. */
-function countyResults(query: string, group?: string): Found[] {
+function countyResults(query: string, group?: string, counts?: FacetView): Found[] {
   const q = foldQuestion(query.trim());
-  return COUNTIES.filter((county) => !q || foldQuestion(county).includes(q)).map((county): Found => ({
-    id: `county:${county}`, name: /^bucure/i.test(county) ? "București" : `Județul ${county}`, ...(group ? { group } : {}),
-    choices: [{ filter: "county", value: county }],
-  }));
+  return COUNTIES.filter((county) => !q || foldQuestion(county).includes(q)).map((county): Found => {
+    // Each county's count on the right, where a locality says its county (R5).
+    const side = counts ? countySide(counts, county) : undefined;
+    return {
+      id: `county:${county}`, name: /^bucure/i.test(county) ? "București" : `Județul ${county}`, ...(group ? { group } : {}),
+      ...(side ? { side } : {}), choices: [{ filter: "county", value: county }],
+    };
+  });
 }
 
 /**
@@ -159,6 +166,99 @@ function ChoiceList({ label, options, value, onPick, rest, current }: { label: s
     const option = all.find((o) => o.value === next);
     if (option && source === "activate") onPick(option);
   }} />;
+}
+
+type FilterContext = ReturnType<typeof filterContext>;
+
+/**
+ * An option's value among the counts of the institutions' kinds: a kind, the
+ * window's first row (every institution: the total), or no count (firms,
+ * counties, the dimension of a ranking).
+ */
+function kindValue(option: ChoiceOption): string | null | undefined {
+  const { filter, value } = option.choice;
+  if (filter === "authorityKind") return value === undefined ? undefined : String(value);
+  if (filter === "dim" && typeof value === "object" && value) {
+    const subject = value as { dim: string; kind?: string };
+    return subject.dim !== "authority" ? null : subject.kind ?? undefined;
+  }
+  return null;
+}
+
+/**
+ * A list window (kit item 9) with its counts (R5): "Ce fel de achiziții?"
+ * counts its channels and, with the group „O procedură anume”, the
+ * procedures (their shares of every purchase, as the channels'); a list of
+ * institutions' kinds counts the institutions of each. Other lists (the
+ * measure, the length, the trend's group) have no counts.
+ */
+function ListWindow({ win, draft, ctx, onPick }: { win: BuilderWindowSpec; draft: QuestionSpec; ctx: FilterContext; onPick: (choices: Choice[]) => void }) {
+  const own = windowOf(win.slot);
+  const { options, value, rest } = listOptions(win, draft, undefined, ctx);
+  const channel = win.slot.id === "dataset";
+  const procedures = channel && own.includes("procedure") ? listOptions(win, draft, "procedure", ctx).options.filter((option) => option.choice.value !== undefined) : [];
+  const kinds = options.some((option) => kindValue(option) !== null) && (win.slot.picker !== "subject" || draft.dim === "authority");
+  const counts = useFacet(draft, channel ? "channel" : kinds ? "kind" : null);
+  const procedureCounts = useFacet(draft, procedures.length ? "procedure" : null);
+  const counted = countedOptions(options, counts, channel ? (o) => o.choice.value === "all" ? undefined : String(o.choice.value) : kindValue, { checked: value });
+  const restCounted = kinds ? countedRest(rest, counts) : rest;
+  if (procedures.length) {
+    const chosen = procedures.find((option) => option.choice.value === draft.filters.procedure);
+    // The procedures' shares are of every purchase, once the channels are read (the contracts' row holds them).
+    const over = counts.status === "ready" ? counts.counts.total.value_ron : undefined;
+    const procedureView = counts.status === "loading" ? counts : procedureCounts;
+    const countedProcedures = countedOptions(procedures, procedureView, (o) => String(o.choice.value), { checked: chosen?.value ?? null, ...(over ? { over } : {}) });
+    return <ChoiceList label={win.name} options={[...counted, ...countedProcedures]} value={chosen?.value ?? value}
+      onPick={(option) => onPick(option.choice.filter === "dataset" && draft.filters.procedure ? [option.choice, { filter: "procedure", value: undefined }] : [option.choice])} />;
+  }
+  return <ChoiceList label={win.name} options={counted} value={value} {...(restCounted ? { rest: restCounted } : {})} onPick={(option) => onPick([option.choice])} />;
+}
+
+/** "Cine a cumpărat?": every institution, a kind (with the institutions of each, R5), one institution or a town hall. */
+function BuyerWindow({ win, draft, ctx, onPick }: { win: BuilderWindowSpec; draft: QuestionSpec; ctx: FilterContext; onPick: (choices: Choice[]) => void }) {
+  const own = windowOf(win.slot);
+  const kinds = own.includes("authorityKind") ? listOptions(win, draft, "authorityKind", ctx) : null;
+  const counts = useFacet(draft, kinds ? "kind" : null);
+  const named = Boolean(draft.filters.authorityName || draft.filters.authorityId || draft.filters.uatSiruta);
+  const searches = own.includes("authority") || own.includes("locality") && ctx.locality.ok;
+  // A named institution or town hall leads the kinds, checked (it is no kind).
+  const current = named ? currentRow("buyer", draft) : null;
+  const rest = kinds ? countedRest(kinds.rest, counts) : undefined;
+  return <>
+    {/* The first row clears the whole window (pickers.ts): every institution, the total. */}
+    {kinds && <ChoiceList label="Tipul instituției" options={countedOptions(kinds.options, counts, (o) => o.choice.value === undefined ? undefined : kindValue(o), { checked: named ? null : kinds.value })} value={named ? null : kinds.value} current={current}
+      {...(rest ? { rest } : {})} onPick={(option) => onPick(option.value === CURRENT_ROW ? [] : [option.choice])} />}
+    {!kinds && current && <ChoiceList label={win.name} options={[]} value={null} current={current} onPick={() => onPick([])} />}
+    {searches && <InstitutionSearch draft={draft} authority={own.includes("authority")} locality={own.includes("locality") && ctx.locality.ok} onPick={onPick} />}
+    {own.includes("county") && <CountySelect draft={draft} onPick={onPick} />}
+  </>;
+}
+
+/**
+ * "Unde?" (the institution's county) or "Unde au sediul firmele?" (a firm
+ * profile's seat), with their kinds of institution: the first row counts the
+ * whole draft, each county its records (or firms, or profiles) beside its
+ * name, and the rest is "Sediu necunoscut" (R5).
+ */
+function PlaceWindow({ win, draft, ctx, onPick }: { win: BuilderWindowSpec; draft: QuestionSpec; ctx: FilterContext; onPick: (choices: Choice[]) => void }) {
+  const own = windowOf(win.slot);
+  const seat = win.title === "Unde au sediul firmele?";
+  const kinds = own.includes("authorityKind") ? listOptions(win, draft, "authorityKind", ctx) : null;
+  const counts = useFacet(draft, seat ? "seat" : "county");
+  const kindCounts = useFacet(draft, kinds ? "kind" : null);
+  const first: ChoiceOption = { value: "none", label: seat ? "Oriunde" : "Toată țara", choice: { filter: "county", value: undefined } };
+  const set = Boolean(draft.filters.county || draft.filters.uatSiruta);
+  // The firms without a known seat are left out of a seat's answer (kit §4 Sediul firmei, R5).
+  const rest = seat ? countedRest([{ label: UNKNOWN_SEAT }], counts) : undefined;
+  const kindRest = kinds ? countedRest(kinds.rest, kindCounts) : undefined;
+  return <>
+    <ChoiceList label={win.name} options={countedOptions([first], counts, () => undefined)} value={set ? null : "none"} current={set ? currentRow("place", draft) : null}
+      {...(rest ? { rest } : {})}
+      onPick={(option) => onPick(option.value === CURRENT_ROW ? [] : [...(draft.filters.uatSiruta ? [{ filter: "locality" as const, value: undefined }] : []), first.choice])} />
+    {kinds && <><p className="qb-opt-group">Ce fel de instituții</p><ChoiceList label="Tipul instituției" options={countedOptions(kinds.options, kindCounts, kindValue, { checked: kinds.value })} value={kinds.value}
+      {...(kindRest ? { rest: kindRest } : {})} onPick={(option) => onPick([option.choice])} /></>}
+    <PlaceSearch draft={draft} locality={own.includes("locality") && ctx.locality.ok} counts={counts} onPick={onPick} />
+  </>;
 }
 
 export default function BuilderWindow(props: BuilderWindowProps) {
@@ -187,51 +287,13 @@ function WindowBody({ win, draft, excluded = [], onChoose, onReplace, onRemoveEx
   const own = windowOf(win.slot);
   const pick = (choices: Choice[]) => onChoose(choices);
   const marker = <span ref={body} hidden />;
-  const listOf = (only?: Choice["filter"]) => listOptions(win, draft, only, ctx);
 
   switch (kind) {
-    case "list": case "subject": {
-      const { options, value, rest } = listOf();
-      // "Ce fel de achiziții?" with the group „O procedură anume” (F3, kit item 8): a stream row is any procedure of it.
-      if (win.slot.id === "dataset" && own.includes("procedure")) {
-        const procedures = listOf("procedure").options.filter((option) => option.choice.value !== undefined);
-        const chosen = procedures.find((option) => option.choice.value === draft.filters.procedure);
-        return <ChoiceList label={win.name} options={[...options, ...procedures]} value={chosen?.value ?? value}
-          onPick={(option) => pick(option.choice.filter === "dataset" && draft.filters.procedure ? [option.choice, { filter: "procedure", value: undefined }] : [option.choice])} />;
-      }
-      return <ChoiceList label={win.name} options={options} value={value} {...(rest ? { rest } : {})} onPick={(option) => pick([option.choice])} />;
-    }
+    case "list": case "subject": return <ListWindow win={win} draft={draft} ctx={ctx} onPick={pick} />;
     case "size": return <SizeWindow draft={draft} onPick={pick} />;
     case "peers": return <>{marker}<PeersWindow win={win} draft={draft} onPick={pick} /></>;
-    case "buyer": {
-      const kinds = own.includes("authorityKind") ? listOf("authorityKind") : null;
-      const named = Boolean(draft.filters.authorityName || draft.filters.authorityId || draft.filters.uatSiruta);
-      const searches = own.includes("authority") || own.includes("locality") && ctx.locality.ok;
-      // A named institution or town hall leads the kinds, checked (it is no kind).
-      const current = named ? currentRow("buyer", draft) : null;
-      return <>
-        {marker}
-        {kinds && <ChoiceList label="Tipul instituției" options={kinds.options} value={named ? null : kinds.value} current={current} {...(kinds.rest ? { rest: kinds.rest } : {})} onPick={(option) => pick(option.value === CURRENT_ROW ? [] : [option.choice])} />}
-        {!kinds && current && <ChoiceList label={win.name} options={[]} value={null} current={current} onPick={() => pick([])} />}
-        {searches && <InstitutionSearch draft={draft} authority={own.includes("authority")} locality={own.includes("locality") && ctx.locality.ok} onPick={pick} />}
-        {own.includes("county") && <CountySelect draft={draft} onPick={pick} />}
-      </>;
-    }
-    case "place": {
-      const seat = win.title === "Unde au sediul firmele?";
-      const kinds = own.includes("authorityKind") ? listOf("authorityKind") : null;
-      const first: ChoiceOption = { value: "none", label: seat ? "Oriunde" : "Toată țara", choice: { filter: "county", value: undefined } };
-      const set = Boolean(draft.filters.county || draft.filters.uatSiruta);
-      return <>
-        {marker}
-        <ChoiceList label={win.name} options={[first]} value={set ? null : "none"} current={set ? currentRow("place", draft) : null}
-          // The firms without a known seat are left out of a seat's answer (kit §4 Sediul firmei, R5); counted from F3.
-          {...(seat ? { rest: [{ label: UNKNOWN_SEAT }] } : {})}
-          onPick={(option) => pick(option.value === CURRENT_ROW ? [] : [...(draft.filters.uatSiruta ? [{ filter: "locality" as const, value: undefined }] : []), first.choice])} />
-        {kinds && <><p className="qb-opt-group">Ce fel de instituții</p><ChoiceList label="Tipul instituției" options={kinds.options} value={kinds.value} {...(kinds.rest ? { rest: kinds.rest } : {})} onPick={(option) => pick([option.choice])} /></>}
-        <PlaceSearch draft={draft} locality={own.includes("locality") && ctx.locality.ok} onPick={pick} />
-      </>;
-    }
+    case "buyer": return <>{marker}<BuyerWindow win={win} draft={draft} ctx={ctx} onPick={pick} /></>;
+    case "place": return <>{marker}<PlaceWindow win={win} draft={draft} ctx={ctx} onPick={pick} /></>;
     case "locality":
       return <>
         {marker}
@@ -277,13 +339,13 @@ function InstitutionSearch({ draft, authority, locality, onPick }: { draft: Ques
   </>;
 }
 
-function PlaceSearch({ draft, locality, counties = true, onPick }: { draft: QuestionSpec; locality: boolean; counties?: boolean; onPick: (choices: Choice[]) => void }) {
+function PlaceSearch({ draft, locality, counties = true, counts, onPick }: { draft: QuestionSpec; locality: boolean; counties?: boolean; counts?: FacetView; onPick: (choices: Choice[]) => void }) {
   // The counties are listed here; the localities are asked for, within the chosen county when the window keeps it.
   const s = useSuggestions(false, !counties && draft.filters.county ? String(draft.filters.county) : undefined, locality);
   const results = useMemo(() => [
-    ...(counties ? countyResults(s.query, locality ? "Județe" : undefined) : []),
+    ...(counties ? countyResults(s.query, locality ? "Județe" : undefined, counts) : []),
     ...(locality ? localityResults(s.data, "Primăria localității", counties) : []),
-  ], [s.data, s.query, counties, locality]);
+  ], [s.data, s.query, counties, locality, counts]);
   return <EntitySearch label={locality ? counties ? "Județ sau localitate" : "Localitate" : "Județ"} placeholder={locality ? counties ? "Un județ, un oraș sau o comună" : "Un oraș sau o comună" : "Caută județul"}
     results={results} loading={s.loading} minChars={1}
     onSearch={(q) => s.search(q, false)} onPick={(r) => onPick((r as Found).choices)}
@@ -374,13 +436,18 @@ function KindSegmented({ win, draft, ctx, onPick }: { win: BuilderWindowSpec; dr
   const current = (draft.filters.purchaseKind as PurchaseKind | undefined) ?? "any";
   const [value, setValue] = useState<string>(current);
   const implied = codeKinds(draft.filters.cpvTerm);
+  // Each kind's share of the domain's value (R5); a kind with no record in the draft is disabled with the reason.
+  const counts = useFacet(draft, "domain");
   const options = [
     { value: "any", label: "Orice" },
     ...PURCHASE_KIND_ORDER.map((kind) => {
       const state = choiceState(win.slot, { filter: "purchaseKind", value: kind }, draft as FilterSpec, ctx);
+      const empty = kind !== current ? emptyReason(counts, kind) : null;
+      const count = state.state === "disabled" ? undefined : shareText(counts, kind);
       return {
         value: kind, label: PURCHASE_KIND_WORDS[kind].label,
-        ...(state.state === "disabled" ? { disabled: state.reason } : {}),
+        ...(state.state === "disabled" ? { disabled: state.reason } : empty ? { disabled: empty } : {}),
+        ...(count ? { count } : {}),
         ...(current === "any" && implied?.size === 1 && implied.has(kind) ? { inferred: true } : {}),
       };
     }),
@@ -403,6 +470,7 @@ const leiOf = (text: string): number | null => {
  * purchase's: the (?) of the title says so.
  */
 function SizeWindow({ draft, onPick }: { draft: QuestionSpec; onPick: (choices: Choice[]) => void }) {
+  const counts = useFacet(draft, "size");
   const f = draft.filters;
   const range: ValueRange = {
     ...(f.purchaseValueMin !== undefined ? { purchaseValueMin: Number(f.purchaseValueMin) } : {}),
@@ -421,7 +489,11 @@ function SizeWindow({ draft, onPick }: { draft: QuestionSpec; onPick: (choices: 
     onPick([{ filter: "purchaseValue", value: { ...(min !== undefined ? { purchaseValueMin: min } : {}), ...(max !== undefined ? { purchaseValueMax: max } : {}) } }]);
   };
   return <>
-    <Pills label="Mărimea achiziției" options={VALUE_RANGES.map((r, i) => ({ value: String(i), label: r.label }))} value={pill} onChange={(next, source) => {
+    <Pills label="Mărimea achiziției" options={VALUE_RANGES.map((r, i) => {
+      // Each range's share of the value (R5); an empty one is struck through with the reason.
+      const count = shareText(counts, String(i)), empty = String(i) !== pill ? emptyReason(counts, String(i)) : null;
+      return { value: String(i), label: r.label, ...(count ? { count } : {}), ...(empty ? { disabled: empty } : {}) };
+    })} value={pill} onChange={(next, source) => {
       setPill(next);
       if (source !== "activate") return;
       const { label: _label, ...chosen } = VALUE_RANGES[Number(next)]!;
@@ -456,8 +528,11 @@ function FromWindow({ win, draft, onPick }: { win: BuilderWindowSpec; draft: Que
 function BandsWindow({ draft, onPick }: { draft: QuestionSpec; onPick: (choices: Choice[]) => void }) {
   const [values, setValues] = useState(bandValues(draft));
   const range = bandRange(EMPLOYEE_BANDS, values);
+  // The firms of each band under it, and those without a filing in the rest row (kit §3 item 10, R5).
+  const counts = useFacet(draft, "employees");
+  const bands = EMPLOYEE_BANDS.map((band) => { const count = bandCount(counts, band.value); return count ? { ...band, count } : band; });
   return <>
-    <Bands label="Angajați" bands={EMPLOYEE_BANDS} value={values} onChange={setValues} rest={[{ label: "Fără bilanț" }]} />
+    <Bands label="Angajați" bands={bands} value={values} onChange={setValues} rest={countedRest([{ label: "Fără bilanț" }], counts) ?? []} />
     <div className="qb-pop-foot">
       <button type="button" className="qb-link" onClick={() => onPick([{ filter: "employees", value: undefined }])}>Scoate condiția</button>
       <button type="button" className="qb-primary" onClick={() => onPick([bandsChoice(values)])}>{range ? bandsWords(range) : "Orice mărime"}</button>
@@ -475,7 +550,10 @@ function PeriodWindow({ draft, year, onPick }: { draft: QuestionSpec; year: numb
   const trend = draft.block === "trend";
   // The year chart draws from 2018 and its custom range is years ("Alege anii…", plan §4.3); months by month are F3's.
   const series = draft.block === "timeseries";
-  const { presets, value } = periodPresets(draft, span, year, coverage?.periods ?? null);
+  const { presets: plain, value } = periodPresets(draft, span, year, coverage?.periods ?? null);
+  // Each preset's records (the years it holds, R5); a trend's two years are compared, not counted.
+  const counts = useFacet(draft, trend ? null : "years");
+  const presets = presetCounts(plain, counts);
   const f = draft.filters;
   const [open, setOpen] = useState(value === null && Boolean(f.yearFrom || f.yearTo));
   const [range, setRange] = useState<PeriodRangeValue>({ ...EMPTY_RANGE, yearFrom: String(f.yearFrom ?? ""), yearTo: String(f.yearTo ?? ""), monthFrom: String(f.monthFrom ?? ""), monthTo: String(f.monthTo ?? "") });

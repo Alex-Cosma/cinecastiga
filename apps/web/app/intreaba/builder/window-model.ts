@@ -10,7 +10,9 @@ import { KIND_ONE, KIND_WORDS, entityLabel, leaderAxis, type QuestionSpec } from
 import { DEFAULT_TREND_MIN_BASE, type AskSpec } from "../../../lib/ask/spec";
 import { MIN_TREND_YEAR, defaultTrendYears, type CoveragePeriods } from "../../../lib/ask/months-window";
 import { TREND_ALL_CHANGES, TREND_CHANGE_LABELS, TREND_CHANGE_PHRASE, TREND_NOUN_WORDS, trendGap, trendGroupLabel, trendNoun } from "../../../lib/ask/filters/defs/trend";
-import { formatRon } from "../../../lib/format";
+import { formatInt, formatRon } from "../../../lib/format";
+import { formatShare } from "../../../lib/ask/answer-text";
+import { FACET_PENDING, facetCountText, facetTotalText, type FacetCounts, type FacetUnit, type FacetView } from "../../../lib/ask/facet-parts";
 import { PROCEDURE_WORDS, type Procedure } from "../../../lib/ask/purchase";
 import { EMPLOYEE_BANDS, bandRange } from "./Bands";
 import type { GroupSwatch, KitOption, KitRestRow, KitTip } from "./kit-types";
@@ -370,4 +372,103 @@ export function periodPresets(spec: QuestionSpec, span: CoverageSpan | null, yea
     ? !f.yearFrom && !f.yearTo && !f.monthFrom && !f.monthTo
     : Number(f.yearFrom) === p.yearFrom && Number(f.yearTo) === p.yearTo && !f.monthFrom && !f.monthTo;
   return { presets, value: presets.find((p) => same(p.period))?.value ?? null };
+}
+
+// --- The windows' counts (kit R5, plan §2.5; use-facet.ts asks for them)
+
+/** Why an option the counts find empty cannot be chosen (R1: choosing it would answer nothing). */
+const EMPTY_REASON: Record<FacetUnit, string> = {
+  records: "Nicio înregistrare în selecția de acum.",
+  institutions: "Nicio instituție în selecția de acum.",
+  firms: "Nicio firmă în selecția de acum.",
+  profiles: "Niciun profil în selecția de acum.",
+};
+
+/** The count of one value of a part, its share recomputed on `over` (a larger whole: the procedures among every purchase). */
+function countOf(counts: FacetCounts, value: string, over?: number): { n: number; share: number } | null {
+  const found = counts.options.find((o) => o.value === value);
+  if (!found) return counts.part === "county" || counts.part === "seat" || counts.part === "years" ? { n: 0, share: 0 } : null;
+  return over ? { n: found.n, share: over ? found.value_ron / over : 0 } : found;
+}
+
+/**
+ * A window's options with their counts (kit R5): the pending mark while they
+ * load; once read, „32,0% · 88” and the share bar, the first row (`valueOf`
+ * gives undefined: the whole draft) its total alone. An option the counts find
+ * empty is disabled with the reason (R1), unless it is the checked one or
+ * `disable` is false (an empty year stays choosable, kit §3 item 12).
+ * `valueOf` null: an option without a count (another key's row).
+ */
+export function countedOptions<T extends KitOption>(
+  options: readonly T[], view: FacetView, valueOf: (option: T) => string | null | undefined,
+  opts: { checked?: string | null; disable?: boolean; over?: number } = {},
+): T[] {
+  if (view.status === "none") return [...options];
+  return options.map((option) => {
+    const value = valueOf(option);
+    if (value === null) return option;
+    if (view.status === "loading") return { ...option, count: FACET_PENDING };
+    const { counts } = view;
+    if (value === undefined) return { ...option, count: facetTotalText(counts) };
+    const count = countOf(counts, value, opts.over);
+    if (!count) return option;
+    const empty = count.n === 0 && opts.disable !== false && option.value !== opts.checked && !option.disabled;
+    return { ...option, count: facetCountText(count), share: count.share, ...(empty ? { disabled: EMPTY_REASON[counts.unit] } : {}) };
+  });
+}
+
+/** A window's rest row with its count („Alte instituții 4,1% · 34”): the counts' own rest. */
+export function countedRest(rest: readonly KitRestRow[] | undefined, view: FacetView): KitRestRow[] | undefined {
+  if (!rest) return rest;
+  return rest.map((row) => {
+    if (view.status === "loading") return { ...row, count: FACET_PENDING };
+    const counted = view.status === "ready" && view.counts.rest?.label === row.label ? view.counts.rest : null;
+    return counted ? { ...row, count: facetCountText(counted) } : row;
+  });
+}
+
+/** A county's count beside its name in a place window's search („3,2% · 412”; a county the draft has no record in, 0). */
+export function countySide(view: FacetView, county: string): string | undefined {
+  if (view.status === "loading") return FACET_PENDING;
+  if (view.status !== "ready") return undefined;
+  return facetCountText(view.counts.options.find((o) => o.value === county) ?? { n: 0, share: 0 });
+}
+
+/** One value's count as a short share („45,3%”), for the segmented and the pills, pending while it loads. */
+export function shareText(view: FacetView, value: string): string | undefined {
+  if (view.status === "loading") return FACET_PENDING;
+  if (view.status !== "ready") return undefined;
+  const found = view.counts.options.find((o) => o.value === value);
+  return found ? formatShare(found.share) : undefined;
+}
+
+/** Whether a value's count is 0 (R1: disabled with the reason), and that reason. */
+export function emptyReason(view: FacetView, value: string): string | null {
+  if (view.status !== "ready") return null;
+  const found = view.counts.options.find((o) => o.value === value);
+  return found && found.n === 0 ? EMPTY_REASON[view.counts.unit] : null;
+}
+
+/** The firms of each band of employees (kit §3 item 10: the number under each band), pending while they load. */
+export function bandCount(view: FacetView, value: string): string | undefined {
+  if (view.status === "loading") return FACET_PENDING;
+  if (view.status !== "ready") return undefined;
+  const found = view.counts.options.find((o) => o.value === value);
+  return found ? formatInt(found.n) : undefined;
+}
+
+/** The period presets with the records of the years each holds (the whole draft for "Toți anii"). */
+export function presetCounts(presets: readonly PeriodPreset[], view: FacetView): PeriodPreset[] {
+  if (view.status === "loading") return presets.map((preset) => ({ ...preset, count: FACET_PENDING }));
+  if (view.status === "none") return [...presets];
+  const { counts } = view;
+  return presets.map((preset) => {
+    const p = preset.period;
+    if (p === undefined) return { ...preset, count: facetTotalText(counts) };
+    const from = p.yearFrom ?? -Infinity, to = p.yearTo ?? Infinity;
+    const held = counts.options.filter((o) => Number(o.value) >= from && Number(o.value) <= to);
+    const n = held.reduce((a, o) => a + o.n, 0), v = held.reduce((a, o) => a + o.value_ron, 0);
+    const share = counts.total.value_ron ? v / counts.total.value_ron : 0;
+    return { ...preset, count: facetCountText({ n, share }), share };
+  });
 }
