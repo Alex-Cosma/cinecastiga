@@ -6,7 +6,7 @@ import {
   PEER_MEMBERS_PAGE, PEER_MINIMUM, PEER_ROW_ORDER, PROFILE_MIN_DAS, countyDisplay, peerKey, peerRowLabel, peerRowTip, peerTicks, similarRuleName,
   type PeerCoverage, type PeerDialogData, type PeerFacts, type PeerRow, type PeerRowId, type SimilarFacts,
 } from "./peer-groups-shared";
-import { fold } from "./predicates";
+import { profileCounty, profileCountyCond } from "./predicates";
 import type { DistributionMember } from "./compile";
 import { namedKind, type ParsedAuthorityKind, type PeersOptions } from "./spec";
 
@@ -16,7 +16,9 @@ import { namedKind, type ParsedAuthorityKind, type PeersOptions } from "./spec";
  * of each tick over marts.entity_flags, and the size of every combination of
  * ticks for "Față de cine?" (GET /api/ask/peers). runSpec and runRows apply
  * the same conditions (compile.ts case "distribution"), beside the county and
- * an old link's kind, which profilePredicates already writes.
+ * an old link's kind, which profilePredicates already writes. The entity's
+ * county and every county condition here are profilePredicates' own
+ * (profileCounty), so "Același județ" names the county the answer filters.
  *
  * The town halls come from the strict population mapping of /comparatii
  * (lib/peer-population.ts uniquePopulationMappings, level `local`), the county
@@ -35,7 +37,7 @@ export interface PeerFocalRow {
 
 export async function readPeerFocal(q: DbSql, role: "authority" | "supplier", entityId: string): Promise<PeerFocalRow | null> {
   const [row] = await q`
-    select ef.entity_id::text id, ef.name_display, ef.county, ef.n_das, ef.n_flags, ef.cri, ef.flags
+    select ef.entity_id::text id, ef.name_display, ${profileCounty(q)} county, ef.n_das, ef.n_flags, ef.cri, ef.flags
     from marts.entity_flags ef where ef.role = ${role} and ef.entity_id = ${entityId}
   ` as unknown as { id: string; name_display: string | null; county: string | null; n_das: number; n_flags: number; cri: string | null; flags: string[] | null }[];
   if (!row) return null;
@@ -207,7 +209,7 @@ export async function peerDialog(
   const usable = rows.filter((row) => !row.disabled).map((row) => row.id);
   const conds: Partial<Record<PeerRowId, Fragment>> = {
     similar: resolution.similarIds ? q`ef.entity_id = any(${q.array([...resolution.similarIds])}::bigint[])` : q`false`,
-    county: facts.county ? q`lower(unaccent(ef.county)) = ${fold(facts.county)}` : q`false`,
+    county: facts.county ? profileCountyCond(q, facts.county) : q`false`,
     ...(facts.activity ? { activity: q`ef.n_das between ${facts.activity.min} and ${facts.activity.max}` } : {}),
   };
   const kindIds = kind ? (await readAuthorityKinds(q)).ids[kind] : null;
@@ -216,7 +218,7 @@ export async function peerDialog(
   const filterOf = (combo: PeerRowId[]) => {
     const parts = combo.map((id) => conds[id] ?? q`false`);
     // An old link's other county stays until "același județ" replaces it.
-    if (otherCounty && !combo.includes("county")) parts.push(q`lower(unaccent(ef.county)) = ${fold(otherCounty)}`);
+    if (otherCounty && !combo.includes("county")) parts.push(profileCountyCond(q, otherCounty));
     return parts.length ? parts.reduce((a, b) => q`${a} and ${b}`) : q`true`;
   };
   const columns = combos.map((combo, i) => q`count(*) filter (where ${filterOf(combo)})::int ${q(`c${i}`)}`).reduce((a, b) => q`${a}, ${b}`);
@@ -263,12 +265,12 @@ export async function peerMembers(
   const kindIds = kind ? (await readAuthorityKinds(q)).ids[kind] : null;
   const where = [
     q`ef.role = ${role}`, q`ef.n_das >= ${PROFILE_MIN_DAS}`, q`ef.entity_id <> ${entityId}`, q`ef.n_flags = ${criteria}`,
-    ...(county ? [q`lower(unaccent(ef.county)) = ${fold(county)}`] : []),
+    ...(county ? [profileCountyCond(q, county)] : []),
     ...(kindIds ? [q`ef.entity_id = any(${q.array([...kindIds])}::bigint[])`] : []),
     ...peerConditions(q, resolution, spec.peers),
   ].reduce((a, b) => q`${a} and ${b}`);
   const rows = await q`
-    select ef.entity_id::text id, ef.name_display, ef.county, ef.n_flags, ef.flags, ef.n_das, count(*) over ()::int total
+    select ef.entity_id::text id, ef.name_display, ${profileCounty(q)} county, ef.n_flags, ef.flags, ef.n_das, count(*) over ()::int total
     from marts.entity_flags ef where ${where}
     order by ef.n_das desc, ef.entity_id
     limit ${PEER_MEMBERS_PAGE} offset ${offset}

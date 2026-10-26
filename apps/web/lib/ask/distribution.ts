@@ -3,6 +3,7 @@ import { POPULATION_VERSION } from "../peer-population";
 import type { DistributionData, DistributionMember } from "./compile";
 import { legacyCounty, peerConditions, peerTickError, readPeerFocal, resolvePeerFacts, ticksOf, type PeerResolution } from "./peer-groups";
 import { CRITERIA, PEER_LIST_LIMIT, PEER_MINIMUM, PROFILE_MIN_DAS, countyDisplay, peerGroupWords } from "./peer-groups-shared";
+import { profileCounty } from "./predicates";
 import { namedKind, type AskSpec } from "./spec";
 
 /*
@@ -91,7 +92,7 @@ export async function distributionData(s: DbSql, input: DistributionInput): Prom
   };
   if (others <= PEER_LIST_LIMIT) {
     const members = await s`
-      select ef.entity_id::text id, ef.name_display, ef.county, ef.n_flags, ef.flags, ef.n_das
+      select ef.entity_id::text id, ef.name_display, ${profileCounty(s)} county, ef.n_flags, ef.flags, ef.n_das
       from marts.entity_flags ef where ${where}
       order by ef.n_flags desc, ef.n_das desc, ef.entity_id
       limit ${PEER_LIST_LIMIT}

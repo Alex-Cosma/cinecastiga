@@ -338,6 +338,15 @@ export function groupPredicates(ctx: PredicateCtx, source: Fragment, where: Frag
 }
 
 /**
+ * The county of a profile row (marts.entity_flags ef): the one profilePredicates
+ * filters, and the one a distribution's "Același județ" names and counts
+ * (peer-groups.ts, distribution.ts), so the tick says the county the answer
+ * filters. A change of a firm's county (the seat, F4) is made here, for all.
+ */
+export const profileCounty = (sql: DbSql): Fragment => sql`ef.county`;
+export const profileCountyCond = (sql: DbSql, county: string): Fragment => sql`lower(unaccent(${profileCounty(sql)})) = ${fold(county)}`;
+
+/**
  * The population of historical risk profiles (marts.entity_flags ef): the
  * role, the profiles with enough direct acquisitions, the entity's own county
  * (a firm's seat on firm profiles) and, for institutions, the locality and the kind.
@@ -345,7 +354,7 @@ export function groupPredicates(ctx: PredicateCtx, source: Fragment, where: Frag
 export function profilePredicates(ctx: PredicateCtx, role: "authority" | "supplier", minDas: number): Fragment[] {
   const { sql } = ctx;
   const parts: Fragment[] = [sql`ef.role = ${role}`, sql`ef.n_das >= ${minDas}`];
-  if (ctx.county) parts.push(sql`lower(unaccent(ef.county)) = ${fold(ctx.county)}`);
+  if (ctx.county) parts.push(profileCountyCond(sql, ctx.county));
   if (ctx.uatSiruta !== null && role === "authority") parts.push(sql`ef.entity_id = any(${sql.array(ctx.uatAuthorityIds)}::bigint[])`);
   if (ctx.kind && role === "authority") parts.push(authorityKindCond(sql, ctx.kindIds!, sql`ef.entity_id`));
   return parts;

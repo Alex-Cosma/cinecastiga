@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
+import type { DbSql } from "@seap/db";
 import { BUZAU_DIALOG, BUZAU_FACTS, HOSPITAL_DIALOG } from "./fixtures/distribution-screen";
 import { legacyCounty, peerRows, peerTickError, populationCoverage } from "./peer-groups";
+import { profileCounty, profileCountyCond, profilePredicates, type PredicateCtx } from "./predicates";
 import {
-  PEER_MINIMUM, bandWords, countyDisplay, coverageWords, defaultPeerTicks, peerCountWords, peerFollowUp, peerGroupValue, peerGroupWords, peerKey,
+  PEER_MINIMUM, PROFILE_MIN_DAS, bandWords, countyDisplay, coverageWords, defaultPeerTicks, peerCountWords, peerFollowUp, peerGroupValue, peerGroupWords, peerKey,
   peerRowState, peerTicks, peerWindowTip, togglePeerRow, withPeerGroup, writePeerTicks, type PeerDialogData, type PeerFacts,
 } from "./peer-groups-shared";
 import { localityScopeError, transitionQuestion, type QuestionSpec } from "./question-ui";
@@ -155,5 +157,20 @@ describe("the rows of the window (final §3.1 table)", () => {
     // The group's words, the window and "→ N" do not know a locality, so the routes refuse it before runSpec (localityScopeError).
     const spec = { block: "distribution", measure: "value", filters: { authorityId: 2144364, authorityName: "MUNICIPIUL BUZAU", uatSiruta: 44818, uatName: "Buzău" }, peers: { similar: true } } as QuestionSpec;
     expect(localityScopeError(spec)).toMatch(/^Indicele de risc compară profiluri între ele, deci aici poți alege doar județul\. Elimină localitatea „Buzău”/);
+  });
+});
+
+describe("the county of «același județ»", () => {
+  // A fake `sql` that renders a fragment as text and parameters (predicates.test.ts).
+  const fake = Object.assign((strings: TemplateStringsArray, ...values: unknown[]) => ({ strings: [...strings], values }), { array: (v: unknown[]) => ({ array: v }) }) as unknown as DbSql;
+  const render = (fragment: unknown): string => {
+    const f = fragment as { strings?: string[]; values?: unknown[] };
+    return Array.isArray(f?.strings) ? f.strings.reduce((out, s, i) => out + s + (i < f.values!.length ? render(f.values![i]) : ""), "") : JSON.stringify(fragment);
+  };
+  it("is the county the answer filters: profilePredicates' column, which the window's rows and sizes read (a seat switch changes both)", () => {
+    const ctx = { sql: fake, county: "Buzău", uatSiruta: null, kind: null } as unknown as PredicateCtx;
+    const [, , county] = profilePredicates(ctx, "supplier", PROFILE_MIN_DAS);
+    expect(render(county)).toBe(render(profileCountyCond(fake, "Buzău")));
+    expect(render(profileCountyCond(fake, "Buzău"))).toBe(`lower(unaccent(${render(profileCounty(fake))})) = "buzau"`);
   });
 });
