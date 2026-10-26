@@ -29313,6 +29313,3425 @@
    }
   },
   {
+   "id": "combo:trend:keyed-up",
+   "origin": "combo",
+   "source": "builder: chooseQuestion(\"trend\") → enterTrend (the trend's key) → edits → transitionQuestion",
+   "request": {
+    "spec": {
+     "block": "trend",
+     "dim": "supplier",
+     "measure": "value",
+     "topN": 10,
+     "filters": {
+      "yearFrom": 2024,
+      "yearTo": 2025
+     },
+     "trend": {
+      "change": "up",
+      "months": "auto"
+     }
+    }
+   },
+   "answer": {
+    "status": 200,
+    "ok": true,
+    "question": null,
+    "model": null,
+    "spec": {
+     "block": "trend",
+     "measure": "value",
+     "filters": {
+      "yearFrom": 2024,
+      "yearTo": 2025
+     },
+     "dim": "supplier",
+     "topN": 10,
+     "trend": {
+      "change": "up",
+      "months": "auto"
+     }
+    },
+    "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2024 → 2025","creșteri","toate achizițiile: directe și din proceduri"],
+    "caveats": [
+     "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "An acoperit parțial de date: 2024 (achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei). Diferența dintre cei doi ani reflectă și perioada neacoperită, nu doar o schimbare reală."
+    ],
+    "data": {
+     "block": "trend",
+     "yearA": 2024,
+     "yearB": 2025,
+     "rowsTrend": [
+      {
+       "entityId": "9100000103",
+       "name": "Fixture Servicii SA",
+       "county": "Alba",
+       "valueA": 51632.84,
+       "valueB": 160762.37
+      },
+      {
+       "entityId": "9100000105",
+       "name": "Fixture Mic SRL",
+       "county": "Cluj",
+       "valueA": 5600,
+       "valueB": 7480.85
+      }
+     ],
+     "list": "up",
+     "change": "up",
+     "months": {
+      "from": 1,
+      "to": 12,
+      "mode": "auto"
+     },
+     "groups": {
+      "all": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 459569.95
+       },
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "valueA": 51632.84,
+        "valueB": 160762.37
+       },
+       {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "county": "Buzau",
+        "valueA": 142700.66,
+        "valueB": 43055.78
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 45000.01
+       },
+       {
+        "entityId": "9100000104",
+        "name": "Fixture Foreign GmbH",
+        "county": null,
+        "valueA": 64000,
+        "valueB": 31500
+       },
+       {
+        "entityId": "9100000105",
+        "name": "Fixture Mic SRL",
+        "county": "Cluj",
+        "valueA": 5600,
+        "valueB": 7480.85
+       }
+      ],
+      "up": [
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "valueA": 51632.84,
+        "valueB": 160762.37
+       },
+       {
+        "entityId": "9100000105",
+        "name": "Fixture Mic SRL",
+        "county": "Cluj",
+        "valueA": 5600,
+        "valueB": 7480.85
+       }
+      ],
+      "new": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 459569.95
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 45000.01
+       }
+      ],
+      "first": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 459569.95
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 45000.01
+       }
+      ],
+      "down": [
+       {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "county": "Buzau",
+        "valueA": 142700.66,
+        "valueB": 43055.78
+       },
+       {
+        "entityId": "9100000104",
+        "name": "Fixture Foreign GmbH",
+        "county": null,
+        "valueA": 64000,
+        "valueB": 31500
+       }
+      ],
+      "gone": []
+     },
+     "composition": {
+      "all": {
+       "count": 6,
+       "valueA": 263933.5,
+       "valueB": 747368.96
+      },
+      "up": {
+       "count": 2,
+       "valueA": 57232.84,
+       "valueB": 168243.22
+      },
+      "new": {
+       "count": 2,
+       "valueA": 0,
+       "valueB": 504569.96
+      },
+      "first": {
+       "count": 2,
+       "valueA": 0,
+       "valueB": 504569.96
+      },
+      "down": {
+       "count": 2,
+       "valueA": 206700.66,
+       "valueB": 74555.78
+      },
+      "gone": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      },
+      "equal": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      }
+     },
+     "noun": "firme",
+     "rowFacts": {
+      "9100000101": {
+       "year": 2025,
+       "value": 459569.95,
+       "largest": {
+        "value": 340000,
+        "src": "contracts"
+       },
+       "joint": 45000.01,
+       "partner": {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "value": 360800.35
+       },
+       "firstActivity": "2025-03-01",
+       "lastActivity": "2026-05-05",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000103": {
+       "year": 2025,
+       "value": 160762.37,
+       "largest": {
+        "value": 87000,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000004",
+        "name": "Consiliul Judetean Alba",
+        "value": 92688.56
+       },
+       "firstActivity": "2024-04-13",
+       "lastActivity": "2026-02-15",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000102": {
+       "year": 2024,
+       "value": 142700.66,
+       "largest": {
+        "value": 125000.5,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000003",
+        "name": "Spitalul Judetean Fixture",
+        "value": 134901.4
+       },
+       "firstActivity": "2024-01-12",
+       "lastActivity": "2026-06-20",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000106": {
+       "year": 2025,
+       "value": 45000.01,
+       "largest": {
+        "value": 45000.01,
+        "src": "contracts"
+       },
+       "joint": 45000.01,
+       "partner": {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "value": 45000.01
+       },
+       "firstActivity": "2025-09-01",
+       "lastActivity": "2026-01-15",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000104": {
+       "year": 2024,
+       "value": 64000,
+       "largest": {
+        "value": 64000,
+        "src": "da"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000007",
+        "name": "Agentia Fixture Nationala",
+        "value": 64000
+       },
+       "firstActivity": "2024-12-12",
+       "lastActivity": "2025-10-01",
+       "cuiValid": false,
+       "country": "DE"
+      },
+      "9100000105": {
+       "year": 2025,
+       "value": 7480.85,
+       "largest": {
+        "value": 6100.35,
+        "src": "da"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "value": 6100.35
+       },
+       "firstActivity": "2024-04-18",
+       "lastActivity": "2025-09-15",
+       "cuiValid": true,
+       "country": null
+      }
+     }
+    },
+    "partialYears": [
+     {
+      "year": 2024,
+      "note": "achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei"
+     }
+    ],
+    "executed": {
+     "months": [1,12],
+     "mode": "auto",
+     "checkpoint": null
+    },
+    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte > 0 and dupa > inainte  -- Creșteri\norder by dupa - inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă",
+    "variants": {
+     "trend": {
+      "all": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2024 → 2025","toate schimbările","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "up": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2024 → 2025","creșteri","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte > 0 and dupa > inainte  -- Creșteri\norder by dupa - inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "new": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2024 → 2025","noi față de 2024","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte = 0 and dupa > 0  -- Noi\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "first": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 furnizori",
+        "valoarea înregistrată",
+        "2024 → 2025",
+        "noi față de 2024",
+        "prima dată în 2025",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte = 0 and dupa > 0 and prima_inregistrare = 2025  -- prima dată în 2025\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "down": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2024 → 2025","scăderi","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving dupa > 0 and dupa < inainte  -- Scăderi\norder by inainte - dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "gone": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2024 → 2025","nu mai apar în 2025","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte > 0 and dupa = 0  -- Nu mai apar\norder by inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      }
+     }
+    }
+   },
+   "sources": {
+    "status": 200,
+    "ok": true,
+    "total": 20,
+    "value": "225476.06",
+    "sourceTotal": 20,
+    "sourceValue": "225476.06",
+    "page": 0,
+    "pageSize": 10,
+    "accepted": {
+     "count": 17,
+     "value": "75476.06"
+    },
+    "dateFrom": "2024-04-13",
+    "dateTo": "2025-10-02",
+    "profile": false,
+    "profiles": [],
+    "profileCount": 0,
+    "profileReconciled": null,
+    "scopeNotes": [
+     "Schimbare între 2024 și 2025: sursele includ numai cei doi ani; diferența este totalul final minus totalul inițial.",
+     "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Un contract cu mai mulți câștigători apare pe câte un rând pentru fiecare furnizor, cu valoarea împărțită egal. Suma folosește aceste cote; numărul de rânduri nu este numărul de contracte distincte. Detaliile și exportul păstrează valoarea integrală și numărul câștigătorilor.",
+     "Lista surselor acoperă întregul rezultat filtrat; limita de poziții din clasament sau diagramă nu limitează sursele.",
+     "Sursele grupei „Creșteri”: 2 firme, cu înregistrările lor din cei doi ani, nu doar cele afișate."
+    ],
+    "group": {
+     "part": "up",
+     "members": 2,
+     "selection": {
+      "count": 41,
+      "value": "1011302.46"
+     }
+    },
+    "statuses": [
+     {
+      "state": null,
+      "count": 3,
+      "value": "150000.00"
+     },
+     {
+      "state": "Oferta acceptata",
+      "count": 17,
+      "value": "75476.06"
+     }
+    ],
+    "rows": [
+     ["contracts","9100200008","CT-FX-8","2024-10-10","9100000002","9100000103","Cluj","79000000-4","22000.00",null,1,"22000.00",false,"Contract fixture 8"],
+     ["contracts","9100200007","CT-FX-7","2025-07-07","9100000007","9100000103",null,"79000000-4","41000.00",null,1,"41000.00",false,"Contract fixture 7"],
+     ["contracts","9100200005","CT-FX-5","2025-02-25","9100000004","9100000103","Alba","79000000-4","87000.00",null,1,"87000.00",false,"Contract fixture 5"],
+     ["da","9100100209","DA-FX-209","2024-04-19","9100000004","9100000103","Alba","79000000-4","3899.63","Oferta acceptata",null,null,false,null],
+     ["da","9100100207","DA-FX-207","2025-06-17","9100000004","9100000103","Alba","79000000-4","3477.49","Oferta acceptata",null,null,false,null],
+     ["da","9100100203","DA-FX-203","2024-04-13","9100000004","9100000103","Alba","79000000-4","2633.21","Oferta acceptata",null,null,false,null],
+     ["da","9100100201","DA-FX-201","2025-06-11","9100000004","9100000103","Alba","79000000-4","2211.07","Oferta acceptata",null,null,false,null],
+     ["da","9100100110","DA-FX-110","2025-10-02","9100000006","9100000103","Alba","79000000-4","2371.30","Oferta acceptata",null,null,false,null],
+     ["da","9100100108","DA-FX-108","2025-08-09","9100000006","9100000103","Alba","79000000-4","2097.04","Oferta acceptata",null,null,false,null],
+     ["da","9100100107","DA-FX-107","2025-07-08","9100000006","9100000103","Alba","79000000-4","1959.91","Oferta acceptata",null,null,false,null]
+    ]
+   },
+   "csv": {
+    "status": 200,
+    "file": "randuri-20.csv",
+    "x-total-rows": "20",
+    "x-exported-rows": "20",
+    "x-source-rows": "20",
+    "x-source-value": "225476.06",
+    "x-filtered-value": "225476.06",
+    "lines": 21,
+    "sha256": "f37653aafd70d542e104a35bfee5c775c14c084283c5827a0d04da90b0075f91"
+   }
+  },
+  {
+   "id": "combo:trend:keyed-all-authorities",
+   "origin": "combo",
+   "source": "builder: chooseQuestion(\"trend\") → enterTrend (the trend's key) → edits → transitionQuestion",
+   "request": {
+    "spec": {
+     "block": "trend",
+     "dim": "authority",
+     "measure": "value",
+     "topN": 10,
+     "filters": {
+      "yearFrom": 2024,
+      "yearTo": 2025
+     },
+     "trend": {
+      "change": "all",
+      "months": "auto"
+     }
+    }
+   },
+   "answer": {
+    "status": 200,
+    "ok": true,
+    "question": null,
+    "model": null,
+    "spec": {
+     "block": "trend",
+     "measure": "value",
+     "filters": {
+      "yearFrom": 2024,
+      "yearTo": 2025
+     },
+     "dim": "authority",
+     "topN": 10,
+     "trend": {
+      "change": "all",
+      "months": "auto"
+     }
+    },
+    "pills": ["schimbare între ani","top 10 instituții","valoarea înregistrată","2024 → 2025","toate schimbările","toate achizițiile: directe și din proceduri"],
+    "caveats": [
+     "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "An acoperit parțial de date: 2024 (achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei). Diferența dintre cei doi ani reflectă și perioada neacoperită, nu doar o schimbare reală."
+    ],
+    "data": {
+     "block": "trend",
+     "yearA": 2024,
+     "yearB": 2025,
+     "rowsTrend": [
+      {
+       "entityId": "9100000002",
+       "name": "Municipiul Fixture Nord",
+       "county": "Cluj",
+       "valueA": 45100,
+       "valueB": 361750.75
+      },
+      {
+       "entityId": "9100000001",
+       "name": "Comuna Fixture Vest",
+       "county": "Cluj",
+       "valueA": 5600,
+       "valueB": 145601.62
+      },
+      {
+       "entityId": "9100000004",
+       "name": "Consiliul Judetean Alba",
+       "county": "Alba",
+       "valueA": 14332.1,
+       "valueB": 99643.54
+      },
+      {
+       "entityId": "9100000003",
+       "name": "Spitalul Judetean Fixture",
+       "county": "Buzau",
+       "valueA": 134901.4,
+       "valueB": 64300.8
+      },
+      {
+       "entityId": "9100000006",
+       "name": "Municipiul Aiud",
+       "county": "Alba",
+       "valueA": 0,
+       "valueB": 17542.15
+      },
+      {
+       "entityId": "9100000007",
+       "name": "Agentia Fixture Nationala",
+       "county": null,
+       "valueA": 64000,
+       "valueB": 56000
+      },
+      {
+       "entityId": "9100000005",
+       "name": "Scoala Gimnaziala Fixture",
+       "county": "Buzau",
+       "valueA": 0,
+       "valueB": 3730.1
+      }
+     ],
+     "list": "all",
+     "change": "all",
+     "months": {
+      "from": 1,
+      "to": 12,
+      "mode": "auto"
+     },
+     "groups": {
+      "all": [
+       {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "county": "Cluj",
+        "valueA": 45100,
+        "valueB": 361750.75
+       },
+       {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "county": "Cluj",
+        "valueA": 5600,
+        "valueB": 145601.62
+       },
+       {
+        "entityId": "9100000004",
+        "name": "Consiliul Judetean Alba",
+        "county": "Alba",
+        "valueA": 14332.1,
+        "valueB": 99643.54
+       },
+       {
+        "entityId": "9100000003",
+        "name": "Spitalul Judetean Fixture",
+        "county": "Buzau",
+        "valueA": 134901.4,
+        "valueB": 64300.8
+       },
+       {
+        "entityId": "9100000006",
+        "name": "Municipiul Aiud",
+        "county": "Alba",
+        "valueA": 0,
+        "valueB": 17542.15
+       },
+       {
+        "entityId": "9100000007",
+        "name": "Agentia Fixture Nationala",
+        "county": null,
+        "valueA": 64000,
+        "valueB": 56000
+       },
+       {
+        "entityId": "9100000005",
+        "name": "Scoala Gimnaziala Fixture",
+        "county": "Buzau",
+        "valueA": 0,
+        "valueB": 3730.1
+       }
+      ],
+      "up": [
+       {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "county": "Cluj",
+        "valueA": 45100,
+        "valueB": 361750.75
+       },
+       {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "county": "Cluj",
+        "valueA": 5600,
+        "valueB": 145601.62
+       },
+       {
+        "entityId": "9100000004",
+        "name": "Consiliul Judetean Alba",
+        "county": "Alba",
+        "valueA": 14332.1,
+        "valueB": 99643.54
+       }
+      ],
+      "new": [
+       {
+        "entityId": "9100000006",
+        "name": "Municipiul Aiud",
+        "county": "Alba",
+        "valueA": 0,
+        "valueB": 17542.15
+       },
+       {
+        "entityId": "9100000005",
+        "name": "Scoala Gimnaziala Fixture",
+        "county": "Buzau",
+        "valueA": 0,
+        "valueB": 3730.1
+       }
+      ],
+      "first": [
+       {
+        "entityId": "9100000006",
+        "name": "Municipiul Aiud",
+        "county": "Alba",
+        "valueA": 0,
+        "valueB": 17542.15
+       },
+       {
+        "entityId": "9100000005",
+        "name": "Scoala Gimnaziala Fixture",
+        "county": "Buzau",
+        "valueA": 0,
+        "valueB": 3730.1
+       }
+      ],
+      "down": [
+       {
+        "entityId": "9100000003",
+        "name": "Spitalul Judetean Fixture",
+        "county": "Buzau",
+        "valueA": 134901.4,
+        "valueB": 64300.8
+       },
+       {
+        "entityId": "9100000007",
+        "name": "Agentia Fixture Nationala",
+        "county": null,
+        "valueA": 64000,
+        "valueB": 56000
+       }
+      ],
+      "gone": []
+     },
+     "composition": {
+      "all": {
+       "count": 7,
+       "valueA": 263933.5,
+       "valueB": 748568.96
+      },
+      "up": {
+       "count": 3,
+       "valueA": 65032.1,
+       "valueB": 606995.91
+      },
+      "new": {
+       "count": 2,
+       "valueA": 0,
+       "valueB": 21272.25
+      },
+      "first": {
+       "count": 2,
+       "valueA": 0,
+       "valueB": 21272.25
+      },
+      "down": {
+       "count": 2,
+       "valueA": 198901.4,
+       "valueB": 120300.8
+      },
+      "gone": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      },
+      "equal": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      }
+     },
+     "noun": "instituții",
+     "rowFacts": {
+      "9100000002": {
+       "year": 2025,
+       "value": 361750.75,
+       "largest": {
+        "value": 340000,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "value": 360800.35
+       },
+       "firstActivity": "2024-10-10",
+       "lastActivity": "2026-01-15",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000001": {
+       "year": 2025,
+       "value": 145601.62,
+       "largest": {
+        "value": 45000.01,
+        "src": "contracts"
+       },
+       "joint": 90000.02,
+       "partner": {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "value": 93301.26
+       },
+       "firstActivity": "2024-04-18",
+       "lastActivity": "2025-09-01",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000004": {
+       "year": 2025,
+       "value": 99643.54,
+       "largest": {
+        "value": 87000,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "value": 92688.56
+       },
+       "firstActivity": "2024-01-12",
+       "lastActivity": "2026-05-18",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000003": {
+       "year": 2024,
+       "value": 134901.4,
+       "largest": {
+        "value": 125000.5,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "value": 134901.4
+       },
+       "firstActivity": "2024-03-15",
+       "lastActivity": "2026-03-20",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000006": {
+       "year": 2025,
+       "value": 17542.15,
+       "largest": {
+        "value": 2371.3,
+        "src": "da"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "value": 12073.81
+       },
+       "firstActivity": "2025-01-02",
+       "lastActivity": "2026-05-05",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000007": {
+       "year": 2024,
+       "value": 64000,
+       "largest": {
+        "value": 64000,
+        "src": "da"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000104",
+        "name": "Fixture Foreign GmbH",
+        "value": 64000
+       },
+       "firstActivity": "2024-12-12",
+       "lastActivity": "2025-07-07",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000005": {
+       "year": 2025,
+       "value": 3730.1,
+       "largest": {
+        "value": 3300,
+        "src": "da"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "value": 3300
+       },
+       "firstActivity": "2025-03-01",
+       "lastActivity": "2026-06-20",
+       "cuiValid": true,
+       "country": null
+      }
+     }
+    },
+    "partialYears": [
+     {
+      "year": 2024,
+      "note": "achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei"
+     }
+    ],
+    "executed": {
+     "months": [1,12],
+     "mode": "auto",
+     "checkpoint": null
+    },
+    "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by authority_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă",
+    "variants": {
+     "trend": {
+      "all": {
+       "pills": ["schimbare între ani","top 10 instituții","valoarea înregistrată","2024 → 2025","toate schimbările","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by authority_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "up": {
+       "pills": ["schimbare între ani","top 10 instituții","valoarea înregistrată","2024 → 2025","creșteri","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by authority_name\nhaving inainte > 0 and dupa > inainte  -- Creșteri\norder by dupa - inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "new": {
+       "pills": ["schimbare între ani","top 10 instituții","valoarea înregistrată","2024 → 2025","noi față de 2024","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by authority_name\nhaving inainte = 0 and dupa > 0  -- Noi\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "first": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 instituții",
+        "valoarea înregistrată",
+        "2024 → 2025",
+        "noi față de 2024",
+        "prima dată în 2025",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by authority_name\nhaving inainte = 0 and dupa > 0 and prima_inregistrare = 2025  -- prima dată în 2025\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "down": {
+       "pills": ["schimbare între ani","top 10 instituții","valoarea înregistrată","2024 → 2025","scăderi","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by authority_name\nhaving dupa > 0 and dupa < inainte  -- Scăderi\norder by inainte - dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "gone": {
+       "pills": ["schimbare între ani","top 10 instituții","valoarea înregistrată","2024 → 2025","nu mai apar în 2025","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select authority_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by authority_name\nhaving inainte > 0 and dupa = 0  -- Nu mai apar\norder by inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      }
+     }
+    }
+   },
+   "sources": {
+    "status": 200,
+    "ok": true,
+    "total": 42,
+    "value": "1012502.46",
+    "sourceTotal": 42,
+    "sourceValue": "1012502.46",
+    "page": 0,
+    "pageSize": 10,
+    "accepted": {
+     "count": 35,
+     "value": "307501.94"
+    },
+    "dateFrom": "2024-01-12",
+    "dateTo": "2025-12-17",
+    "profile": false,
+    "profiles": [],
+    "profileCount": 0,
+    "profileReconciled": null,
+    "scopeNotes": [
+     "Schimbare între 2024 și 2025: sursele includ numai cei doi ani; diferența este totalul final minus totalul inițial.",
+     "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Un contract cu mai mulți câștigători apare pe câte un rând pentru fiecare furnizor, cu valoarea împărțită egal. Suma folosește aceste cote; numărul de rânduri nu este numărul de contracte distincte. Detaliile și exportul păstrează valoarea integrală și numărul câștigătorilor.",
+     "Lista surselor acoperă întregul rezultat filtrat; limita de poziții din clasament sau diagramă nu limitează sursele."
+    ],
+    "statuses": [
+     {
+      "state": null,
+      "count": 7,
+      "value": "705000.52"
+     },
+     {
+      "state": "Oferta acceptata",
+      "count": 35,
+      "value": "307501.94"
+     }
+    ],
+    "rows": [
+     ["contracts","9100200008","CT-FX-8","2024-10-10","9100000002","9100000103","Cluj","79000000-4","22000.00",null,1,"22000.00",false,"Contract fixture 8"],
+     ["contracts","9100200007","CT-FX-7","2025-07-07","9100000007","9100000103",null,"79000000-4","41000.00",null,1,"41000.00",false,"Contract fixture 7"],
+     ["contracts","9100200005","CT-FX-5","2025-02-25","9100000004","9100000103","Alba","79000000-4","87000.00",null,1,"87000.00",false,"Contract fixture 5"],
+     ["contracts","9100200003","CT-FX-3","2024-03-15","9100000003","9100000102","Buzau","33600000-6","125000.50",null,1,"125000.50",false,"Contract fixture 3"],
+     ["contracts","9100200002","CT-FX-2","2025-09-01","9100000001","9100000101","Cluj","45233140-2","45000.01",null,2,"90000.02",false,"Contract fixture 2"],
+     ["contracts","9100200002","CT-FX-2","2025-09-01","9100000001","9100000106","Cluj","45233140-2","45000.01",null,2,"90000.02",false,"Contract fixture 2"],
+     ["contracts","9100200001","CT-FX-1","2025-06-10","9100000002","9100000101","Cluj","45233140-2","340000.00",null,1,"340000.00",false,"Contract fixture 1"],
+     ["da","9100100212","DA-FX-212","2024-01-12","9100000004","9100000102","Alba","33690000-3","4532.84","Oferta acceptata",null,null,false,null],
+     ["da","9100100210","DA-FX-210","2025-03-10","9100000004","9100000102","Alba","33690000-3","4110.70","Oferta acceptata",null,null,false,null],
+     ["da","9100100209","DA-FX-209","2024-04-19","9100000004","9100000103","Alba","79000000-4","3899.63","Oferta acceptata",null,null,false,null]
+    ]
+   },
+   "csv": {
+    "status": 200,
+    "file": "randuri-42.csv",
+    "x-total-rows": "42",
+    "x-exported-rows": "42",
+    "x-source-rows": "42",
+    "x-source-value": "1012502.46",
+    "x-filtered-value": "1012502.46",
+    "lines": 43,
+    "sha256": "c5b3251ff7f55c77d9867f6da0b351b323f6aedb5859acab74bbe2da92b3587b"
+   }
+  },
+  {
+   "id": "combo:trend:keyed-new-first",
+   "origin": "combo",
+   "source": "builder: chooseQuestion(\"trend\") → enterTrend (the trend's key) → edits → transitionQuestion",
+   "request": {
+    "spec": {
+     "block": "trend",
+     "dim": "supplier",
+     "measure": "value",
+     "topN": 10,
+     "filters": {
+      "yearFrom": 2024,
+      "yearTo": 2025
+     },
+     "trend": {
+      "change": "new",
+      "months": "auto",
+      "firstOnly": true
+     }
+    }
+   },
+   "answer": {
+    "status": 200,
+    "ok": true,
+    "question": null,
+    "model": null,
+    "spec": {
+     "block": "trend",
+     "measure": "value",
+     "filters": {
+      "yearFrom": 2024,
+      "yearTo": 2025
+     },
+     "dim": "supplier",
+     "topN": 10,
+     "trend": {
+      "change": "new",
+      "months": "auto",
+      "firstOnly": true
+     }
+    },
+    "pills": [
+     "schimbare între ani",
+     "top 10 furnizori",
+     "valoarea înregistrată",
+     "2024 → 2025",
+     "noi față de 2024",
+     "prima dată în 2025",
+     "toate achizițiile: directe și din proceduri"
+    ],
+    "caveats": [
+     "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "An acoperit parțial de date: 2024 (achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei). Diferența dintre cei doi ani reflectă și perioada neacoperită, nu doar o schimbare reală."
+    ],
+    "data": {
+     "block": "trend",
+     "yearA": 2024,
+     "yearB": 2025,
+     "rowsTrend": [
+      {
+       "entityId": "9100000101",
+       "name": "Fixture Construct SRL",
+       "county": "Cluj",
+       "valueA": 0,
+       "valueB": 459569.95
+      },
+      {
+       "entityId": "9100000106",
+       "name": "Fixture Partener SRL",
+       "county": "Cluj",
+       "valueA": 0,
+       "valueB": 45000.01
+      }
+     ],
+     "list": "first",
+     "change": "new",
+     "months": {
+      "from": 1,
+      "to": 12,
+      "mode": "auto"
+     },
+     "groups": {
+      "all": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 459569.95
+       },
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "valueA": 51632.84,
+        "valueB": 160762.37
+       },
+       {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "county": "Buzau",
+        "valueA": 142700.66,
+        "valueB": 43055.78
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 45000.01
+       },
+       {
+        "entityId": "9100000104",
+        "name": "Fixture Foreign GmbH",
+        "county": null,
+        "valueA": 64000,
+        "valueB": 31500
+       },
+       {
+        "entityId": "9100000105",
+        "name": "Fixture Mic SRL",
+        "county": "Cluj",
+        "valueA": 5600,
+        "valueB": 7480.85
+       }
+      ],
+      "up": [
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "valueA": 51632.84,
+        "valueB": 160762.37
+       },
+       {
+        "entityId": "9100000105",
+        "name": "Fixture Mic SRL",
+        "county": "Cluj",
+        "valueA": 5600,
+        "valueB": 7480.85
+       }
+      ],
+      "new": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 459569.95
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 45000.01
+       }
+      ],
+      "first": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 459569.95
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 45000.01
+       }
+      ],
+      "down": [
+       {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "county": "Buzau",
+        "valueA": 142700.66,
+        "valueB": 43055.78
+       },
+       {
+        "entityId": "9100000104",
+        "name": "Fixture Foreign GmbH",
+        "county": null,
+        "valueA": 64000,
+        "valueB": 31500
+       }
+      ],
+      "gone": []
+     },
+     "composition": {
+      "all": {
+       "count": 6,
+       "valueA": 263933.5,
+       "valueB": 747368.96
+      },
+      "up": {
+       "count": 2,
+       "valueA": 57232.84,
+       "valueB": 168243.22
+      },
+      "new": {
+       "count": 2,
+       "valueA": 0,
+       "valueB": 504569.96
+      },
+      "first": {
+       "count": 2,
+       "valueA": 0,
+       "valueB": 504569.96
+      },
+      "down": {
+       "count": 2,
+       "valueA": 206700.66,
+       "valueB": 74555.78
+      },
+      "gone": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      },
+      "equal": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      }
+     },
+     "noun": "firme",
+     "rowFacts": {
+      "9100000101": {
+       "year": 2025,
+       "value": 459569.95,
+       "largest": {
+        "value": 340000,
+        "src": "contracts"
+       },
+       "joint": 45000.01,
+       "partner": {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "value": 360800.35
+       },
+       "firstActivity": "2025-03-01",
+       "lastActivity": "2026-05-05",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000103": {
+       "year": 2025,
+       "value": 160762.37,
+       "largest": {
+        "value": 87000,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000004",
+        "name": "Consiliul Judetean Alba",
+        "value": 92688.56
+       },
+       "firstActivity": "2024-04-13",
+       "lastActivity": "2026-02-15",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000102": {
+       "year": 2024,
+       "value": 142700.66,
+       "largest": {
+        "value": 125000.5,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000003",
+        "name": "Spitalul Judetean Fixture",
+        "value": 134901.4
+       },
+       "firstActivity": "2024-01-12",
+       "lastActivity": "2026-06-20",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000106": {
+       "year": 2025,
+       "value": 45000.01,
+       "largest": {
+        "value": 45000.01,
+        "src": "contracts"
+       },
+       "joint": 45000.01,
+       "partner": {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "value": 45000.01
+       },
+       "firstActivity": "2025-09-01",
+       "lastActivity": "2026-01-15",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000104": {
+       "year": 2024,
+       "value": 64000,
+       "largest": {
+        "value": 64000,
+        "src": "da"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000007",
+        "name": "Agentia Fixture Nationala",
+        "value": 64000
+       },
+       "firstActivity": "2024-12-12",
+       "lastActivity": "2025-10-01",
+       "cuiValid": false,
+       "country": "DE"
+      },
+      "9100000105": {
+       "year": 2025,
+       "value": 7480.85,
+       "largest": {
+        "value": 6100.35,
+        "src": "da"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "value": 6100.35
+       },
+       "firstActivity": "2024-04-18",
+       "lastActivity": "2025-09-15",
+       "cuiValid": true,
+       "country": null
+      }
+     }
+    },
+    "partialYears": [
+     {
+      "year": 2024,
+      "note": "achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei"
+     }
+    ],
+    "executed": {
+     "months": [1,12],
+     "mode": "auto",
+     "checkpoint": null
+    },
+    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte = 0 and dupa > 0 and prima_inregistrare = 2025  -- prima dată în 2025\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă",
+    "variants": {
+     "trend": {
+      "all": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2024 → 2025","toate schimbările","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "up": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2024 → 2025","creșteri","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte > 0 and dupa > inainte  -- Creșteri\norder by dupa - inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "new": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2024 → 2025","noi față de 2024","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte = 0 and dupa > 0  -- Noi\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "first": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 furnizori",
+        "valoarea înregistrată",
+        "2024 → 2025",
+        "noi față de 2024",
+        "prima dată în 2025",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte = 0 and dupa > 0 and prima_inregistrare = 2025  -- prima dată în 2025\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "down": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2024 → 2025","scăderi","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving dupa > 0 and dupa < inainte  -- Scăderi\norder by inainte - dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "gone": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2024 → 2025","nu mai apar în 2025","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte > 0 and dupa = 0  -- Nu mai apar\norder by inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      }
+     }
+    }
+   },
+   "sources": {
+    "status": 200,
+    "ok": true,
+    "total": 10,
+    "value": "504569.96",
+    "sourceTotal": 10,
+    "sourceValue": "504569.96",
+    "page": 0,
+    "pageSize": 10,
+    "accepted": {
+     "count": 7,
+     "value": "74569.94"
+    },
+    "dateFrom": "2025-03-04",
+    "dateTo": "2025-09-01",
+    "profile": false,
+    "profiles": [],
+    "profileCount": 0,
+    "profileReconciled": null,
+    "scopeNotes": [
+     "Schimbare între 2024 și 2025: sursele includ numai cei doi ani; diferența este totalul final minus totalul inițial.",
+     "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Un contract cu mai mulți câștigători apare pe câte un rând pentru fiecare furnizor, cu valoarea împărțită egal. Suma folosește aceste cote; numărul de rânduri nu este numărul de contracte distincte. Detaliile și exportul păstrează valoarea integrală și numărul câștigătorilor.",
+     "Lista surselor acoperă întregul rezultat filtrat; limita de poziții din clasament sau diagramă nu limitează sursele.",
+     "Sursele grupei „Noi față de 2024 · prima dată în 2025”: 2 firme, cu înregistrările lor din cei doi ani, nu doar cele afișate."
+    ],
+    "group": {
+     "part": "first",
+     "members": 2,
+     "selection": {
+      "count": 41,
+      "value": "1011302.46"
+     }
+    },
+    "statuses": [
+     {
+      "state": null,
+      "count": 3,
+      "value": "430000.02"
+     },
+     {
+      "state": "Oferta acceptata",
+      "count": 7,
+      "value": "74569.94"
+     }
+    ],
+    "rows": [
+     ["contracts","9100200002","CT-FX-2","2025-09-01","9100000001","9100000101","Cluj","45233140-2","45000.01",null,2,"90000.02",false,"Contract fixture 2"],
+     ["contracts","9100200002","CT-FX-2","2025-09-01","9100000001","9100000106","Cluj","45233140-2","45000.01",null,2,"90000.02",false,"Contract fixture 2"],
+     ["contracts","9100200001","CT-FX-1","2025-06-10","9100000002","9100000101","Cluj","45233140-2","340000.00",null,1,"340000.00",false,"Contract fixture 1"],
+     ["da","9100100109","DA-FX-109","2025-09-01","9100000006","9100000101","Alba","45233140-2","2234.17","Oferta acceptata",null,null,false,null],
+     ["da","9100100106","DA-FX-106","2025-06-07","9100000006","9100000101","Alba","45233140-2","1822.78","Oferta acceptata",null,null,false,null],
+     ["da","9100100103","DA-FX-103","2025-03-04","9100000006","9100000101","Alba","45233140-2","1411.39","Oferta acceptata",null,null,false,null],
+     ["da","9100100020","DA-FX-20","2025-08-19","9100000001","9100000101","Cluj","45233200-1","7300.70","Oferta acceptata",null,null,false,null],
+     ["da","9100100005","DA-FX-5","2025-05-09","9100000001","9100000101","Cluj","45233140-2","41000.55","Oferta acceptata",null,null,false,null],
+     ["da","9100100002","DA-FX-2","2025-07-02","9100000002","9100000101","Cluj","45233140-2","8300.25","Oferta acceptata",null,null,false,null],
+     ["da","9100100001","DA-FX-1","2025-03-14","9100000002","9100000101","Cluj","45233140-2","12500.10","Oferta acceptata",null,null,false,"Reparații drum comunal"]
+    ]
+   },
+   "csv": {
+    "status": 200,
+    "file": "randuri-10.csv",
+    "x-total-rows": "10",
+    "x-exported-rows": "10",
+    "x-source-rows": "10",
+    "x-source-value": "504569.96",
+    "x-filtered-value": "504569.96",
+    "lines": 11,
+    "sha256": "6cf53085fe436eb0d6861d9ddf870491acf2e0fa312de6328d37d767c67223f4"
+   }
+  },
+  {
+   "id": "combo:trend:keyed-gone-county",
+   "origin": "combo",
+   "source": "builder: chooseQuestion(\"trend\") → enterTrend (the trend's key) → edits → transitionQuestion",
+   "request": {
+    "spec": {
+     "block": "trend",
+     "dim": "supplier",
+     "measure": "value",
+     "topN": 10,
+     "filters": {
+      "county": "Cluj",
+      "yearFrom": 2024,
+      "yearTo": 2025
+     },
+     "trend": {
+      "change": "gone",
+      "months": "auto"
+     }
+    }
+   },
+   "answer": {
+    "status": 200,
+    "ok": true,
+    "question": null,
+    "model": null,
+    "spec": {
+     "block": "trend",
+     "measure": "value",
+     "filters": {
+      "county": "Cluj",
+      "yearFrom": 2024,
+      "yearTo": 2025
+     },
+     "dim": "supplier",
+     "topN": 10,
+     "trend": {
+      "change": "gone",
+      "months": "auto"
+     }
+    },
+    "pills": [
+     "schimbare între ani",
+     "top 10 furnizori",
+     "valoarea înregistrată",
+     "județul Cluj",
+     "2024 → 2025",
+     "nu mai apar în 2025",
+     "toate achizițiile: directe și din proceduri"
+    ],
+    "caveats": [
+     "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Județul = sediul instituției care cumpără, nu al firmei (din adresă, cod NUTS, ONRC sau UAT verificat). Instituțiile fără județ cunoscut nu intră.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "An acoperit parțial de date: 2024 (achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei). Diferența dintre cei doi ani reflectă și perioada neacoperită, nu doar o schimbare reală."
+    ],
+    "data": {
+     "block": "trend",
+     "yearA": 2024,
+     "yearB": 2025,
+     "rowsTrend": [
+      {
+       "entityId": "9100000103",
+       "name": "Fixture Servicii SA",
+       "county": "Alba",
+       "valueA": 45100,
+       "valueB": 0
+      }
+     ],
+     "list": "gone",
+     "change": "gone",
+     "months": {
+      "from": 1,
+      "to": 12,
+      "mode": "auto"
+     },
+     "groups": {
+      "all": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 454101.61
+       },
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "valueA": 45100,
+        "valueB": 0
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 45000.01
+       },
+       {
+        "entityId": "9100000105",
+        "name": "Fixture Mic SRL",
+        "county": "Cluj",
+        "valueA": 5600,
+        "valueB": 7050.75
+       }
+      ],
+      "up": [
+       {
+        "entityId": "9100000105",
+        "name": "Fixture Mic SRL",
+        "county": "Cluj",
+        "valueA": 5600,
+        "valueB": 7050.75
+       }
+      ],
+      "new": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 454101.61
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 45000.01
+       }
+      ],
+      "first": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 454101.61
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 45000.01
+       }
+      ],
+      "down": [],
+      "gone": [
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "valueA": 45100,
+        "valueB": 0
+       }
+      ]
+     },
+     "composition": {
+      "all": {
+       "count": 4,
+       "valueA": 50700,
+       "valueB": 506152.37
+      },
+      "up": {
+       "count": 1,
+       "valueA": 5600,
+       "valueB": 7050.75
+      },
+      "new": {
+       "count": 2,
+       "valueA": 0,
+       "valueB": 499101.62
+      },
+      "first": {
+       "count": 2,
+       "valueA": 0,
+       "valueB": 499101.62
+      },
+      "down": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      },
+      "gone": {
+       "count": 1,
+       "valueA": 45100,
+       "valueB": 0
+      },
+      "equal": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      }
+     },
+     "noun": "firme",
+     "rowFacts": {
+      "9100000101": {
+       "year": 2025,
+       "value": 454101.61,
+       "largest": {
+        "value": 340000,
+        "src": "contracts"
+       },
+       "joint": 45000.01,
+       "partner": {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "value": 360800.35
+       },
+       "firstActivity": "2025-03-01",
+       "lastActivity": "2026-05-05",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000103": {
+       "year": 2024,
+       "value": 45100,
+       "largest": {
+        "value": 23100,
+        "src": "da"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "value": 45100
+       },
+       "firstActivity": "2024-04-13",
+       "lastActivity": "2026-02-15",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000106": {
+       "year": 2025,
+       "value": 45000.01,
+       "largest": {
+        "value": 45000.01,
+        "src": "contracts"
+       },
+       "joint": 45000.01,
+       "partner": {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "value": 45000.01
+       },
+       "firstActivity": "2025-09-01",
+       "lastActivity": "2026-01-15",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000105": {
+       "year": 2025,
+       "value": 7050.75,
+       "largest": {
+        "value": 6100.35,
+        "src": "da"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "value": 6100.35
+       },
+       "firstActivity": "2024-04-18",
+       "lastActivity": "2025-09-15",
+       "cuiValid": true,
+       "country": null
+      }
+     }
+    },
+    "partialYears": [
+     {
+      "year": 2024,
+      "note": "achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei"
+     }
+    ],
+    "executed": {
+     "months": [1,12],
+     "mode": "auto",
+     "checkpoint": null
+    },
+    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'cluj'\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte > 0 and dupa = 0  -- Nu mai apar\norder by inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă",
+    "variants": {
+     "trend": {
+      "all": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 furnizori",
+        "valoarea înregistrată",
+        "județul Cluj",
+        "2024 → 2025",
+        "toate schimbările",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'cluj'\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "up": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","județul Cluj","2024 → 2025","creșteri","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'cluj'\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte > 0 and dupa > inainte  -- Creșteri\norder by dupa - inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "new": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","județul Cluj","2024 → 2025","noi față de 2024","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'cluj'\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte = 0 and dupa > 0  -- Noi\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "first": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 furnizori",
+        "valoarea înregistrată",
+        "județul Cluj",
+        "2024 → 2025",
+        "noi față de 2024",
+        "prima dată în 2025",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'cluj'\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte = 0 and dupa > 0 and prima_inregistrare = 2025  -- prima dată în 2025\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "down": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","județul Cluj","2024 → 2025","scăderi","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'cluj'\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving dupa > 0 and dupa < inainte  -- Scăderi\norder by inainte - dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "gone": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 furnizori",
+        "valoarea înregistrată",
+        "județul Cluj",
+        "2024 → 2025",
+        "nu mai apar în 2025",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'cluj'\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte > 0 and dupa = 0  -- Nu mai apar\norder by inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      }
+     }
+    }
+   },
+   "sources": {
+    "status": 200,
+    "ok": true,
+    "total": 2,
+    "value": "45100.00",
+    "sourceTotal": 2,
+    "sourceValue": "45100.00",
+    "page": 0,
+    "pageSize": 10,
+    "accepted": {
+     "count": 1,
+     "value": "23100.00"
+    },
+    "dateFrom": "2024-10-10",
+    "dateTo": "2024-11-05",
+    "profile": false,
+    "profiles": [],
+    "profileCount": 0,
+    "profileReconciled": null,
+    "scopeNotes": [
+     "Schimbare între 2024 și 2025: sursele includ numai cei doi ani; diferența este totalul final minus totalul inițial.",
+     "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Un contract cu mai mulți câștigători apare pe câte un rând pentru fiecare furnizor, cu valoarea împărțită egal. Suma folosește aceste cote; numărul de rânduri nu este numărul de contracte distincte. Detaliile și exportul păstrează valoarea integrală și numărul câștigătorilor.",
+     "Lista surselor acoperă întregul rezultat filtrat; limita de poziții din clasament sau diagramă nu limitează sursele.",
+     "Sursele grupei „Nu mai apar în 2025”: 1 firmă, cu înregistrările lor din cei doi ani, nu doar cele afișate."
+    ],
+    "group": {
+     "part": "gone",
+     "members": 1,
+     "selection": {
+      "count": 12,
+      "value": "556852.37"
+     }
+    },
+    "statuses": [
+     {
+      "state": null,
+      "count": 1,
+      "value": "22000.00"
+     },
+     {
+      "state": "Oferta acceptata",
+      "count": 1,
+      "value": "23100.00"
+     }
+    ],
+    "rows": [
+     ["contracts","9100200008","CT-FX-8","2024-10-10","9100000002","9100000103","Cluj","79000000-4","22000.00",null,1,"22000.00",false,"Contract fixture 8"],
+     ["da","9100100004","DA-FX-4","2024-11-05","9100000002","9100000103","Cluj","79000000-4","23100.00","Oferta acceptata",null,null,false,null]
+    ]
+   },
+   "csv": {
+    "status": 200,
+    "file": "randuri-2.csv",
+    "x-total-rows": "2",
+    "x-exported-rows": "2",
+    "x-source-rows": "2",
+    "x-source-value": "45100.00",
+    "x-filtered-value": "45100.00",
+    "lines": 3,
+    "sha256": "5914e15179fc6893b9d7a361a452fd7bb6c141bdb6ae67d31a0170f470cbd056"
+   }
+  },
+  {
+   "id": "combo:trend:keyed-down-counties",
+   "origin": "combo",
+   "source": "builder: chooseQuestion(\"trend\") → enterTrend (the trend's key) → edits → transitionQuestion",
+   "request": {
+    "spec": {
+     "block": "trend",
+     "dim": "county",
+     "measure": "value",
+     "topN": 10,
+     "filters": {
+      "yearFrom": 2024,
+      "yearTo": 2025
+     },
+     "trend": {
+      "change": "down",
+      "months": "auto"
+     }
+    }
+   },
+   "answer": {
+    "status": 200,
+    "ok": true,
+    "question": null,
+    "model": null,
+    "spec": {
+     "block": "trend",
+     "measure": "value",
+     "filters": {
+      "yearFrom": 2024,
+      "yearTo": 2025
+     },
+     "dim": "county",
+     "topN": 10,
+     "trend": {
+      "change": "down",
+      "months": "auto"
+     }
+    },
+    "pills": ["schimbare între ani","top 10 județe","valoarea înregistrată","2024 → 2025","scăderi","toate achizițiile: directe și din proceduri"],
+    "caveats": [
+     "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "An acoperit parțial de date: 2024 (achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei). Diferența dintre cei doi ani reflectă și perioada neacoperită, nu doar o schimbare reală."
+    ],
+    "data": {
+     "block": "trend",
+     "yearA": 2024,
+     "yearB": 2025,
+     "rowsTrend": [
+      {
+       "entityId": null,
+       "name": "Buzau",
+       "county": null,
+       "valueA": 134901.4,
+       "valueB": 68030.9
+      }
+     ],
+     "list": "down",
+     "change": "down",
+     "months": {
+      "from": 1,
+      "to": 12,
+      "mode": "auto"
+     },
+     "groups": {
+      "all": [
+       {
+        "entityId": null,
+        "name": "Cluj",
+        "county": null,
+        "valueA": 50700,
+        "valueB": 507352.37
+       },
+       {
+        "entityId": null,
+        "name": "Alba",
+        "county": null,
+        "valueA": 14332.1,
+        "valueB": 117185.69
+       },
+       {
+        "entityId": null,
+        "name": "Buzau",
+        "county": null,
+        "valueA": 134901.4,
+        "valueB": 68030.9
+       }
+      ],
+      "up": [
+       {
+        "entityId": null,
+        "name": "Cluj",
+        "county": null,
+        "valueA": 50700,
+        "valueB": 507352.37
+       },
+       {
+        "entityId": null,
+        "name": "Alba",
+        "county": null,
+        "valueA": 14332.1,
+        "valueB": 117185.69
+       }
+      ],
+      "new": [],
+      "down": [
+       {
+        "entityId": null,
+        "name": "Buzau",
+        "county": null,
+        "valueA": 134901.4,
+        "valueB": 68030.9
+       }
+      ],
+      "gone": []
+     },
+     "composition": {
+      "all": {
+       "count": 3,
+       "valueA": 199933.5,
+       "valueB": 692568.96
+      },
+      "up": {
+       "count": 2,
+       "valueA": 65032.1,
+       "valueB": 624538.06
+      },
+      "new": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      },
+      "down": {
+       "count": 1,
+       "valueA": 134901.4,
+       "valueB": 68030.9
+      },
+      "gone": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      },
+      "equal": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      }
+     },
+     "noun": "județe"
+    },
+    "partialYears": [
+     {
+      "year": 2024,
+      "note": "achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei"
+     }
+    ],
+    "executed": {
+     "months": [1,12],
+     "mode": "auto",
+     "checkpoint": null
+    },
+    "displaySql": "select county,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by county\nhaving dupa > 0 and dupa < inainte  -- Scăderi\norder by inainte - dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă",
+    "variants": {
+     "trend": {
+      "all": {
+       "pills": ["schimbare între ani","top 10 județe","valoarea înregistrată","2024 → 2025","toate schimbările","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select county,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by county\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "up": {
+       "pills": ["schimbare între ani","top 10 județe","valoarea înregistrată","2024 → 2025","creșteri","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select county,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by county\nhaving inainte > 0 and dupa > inainte  -- Creșteri\norder by dupa - inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "new": {
+       "pills": ["schimbare între ani","top 10 județe","valoarea înregistrată","2024 → 2025","noi față de 2024","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select county,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by county\nhaving inainte = 0 and dupa > 0  -- Noi\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "down": {
+       "pills": ["schimbare între ani","top 10 județe","valoarea înregistrată","2024 → 2025","scăderi","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select county,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by county\nhaving dupa > 0 and dupa < inainte  -- Scăderi\norder by inainte - dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "gone": {
+       "pills": ["schimbare între ani","top 10 județe","valoarea înregistrată","2024 → 2025","nu mai apar în 2025","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select county,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by county\nhaving inainte > 0 and dupa = 0  -- Nu mai apar\norder by inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      }
+     }
+    }
+   },
+   "sources": {
+    "status": 200,
+    "ok": true,
+    "total": 7,
+    "value": "202932.30",
+    "sourceTotal": 7,
+    "sourceValue": "202932.30",
+    "page": 0,
+    "pageSize": 10,
+    "accepted": {
+     "count": 6,
+     "value": "77931.80"
+    },
+    "dateFrom": "2024-03-15",
+    "dateTo": "2025-12-17",
+    "profile": false,
+    "profiles": [],
+    "profileCount": 0,
+    "profileReconciled": null,
+    "scopeNotes": [
+     "Schimbare între 2024 și 2025: sursele includ numai cei doi ani; diferența este totalul final minus totalul inițial.",
+     "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Un contract cu mai mulți câștigători apare pe câte un rând pentru fiecare furnizor, cu valoarea împărțită egal. Suma folosește aceste cote; numărul de rânduri nu este numărul de contracte distincte. Detaliile și exportul păstrează valoarea integrală și numărul câștigătorilor.",
+     "Lista surselor acoperă întregul rezultat filtrat; limita de poziții din clasament sau diagramă nu limitează sursele.",
+     "Sursele grupei „Scăderi”: 1 județ, cu înregistrările lor din cei doi ani, nu doar cele afișate."
+    ],
+    "group": {
+     "part": "down",
+     "members": 1,
+     "selection": {
+      "count": 39,
+      "value": "892502.46"
+     }
+    },
+    "statuses": [
+     {
+      "state": null,
+      "count": 1,
+      "value": "125000.50"
+     },
+     {
+      "state": "Oferta acceptata",
+      "count": 6,
+      "value": "77931.80"
+     }
+    ],
+    "rows": [
+     ["contracts","9100200003","CT-FX-3","2024-03-15","9100000003","9100000102","Buzau","33600000-6","125000.50",null,1,"125000.50",false,"Contract fixture 3"],
+     ["da","9100100021","DA-FX-21","2025-12-17","9100000003","9100000102","Buzau","33690000-3","14100.00","Oferta acceptata",null,null,true,null],
+     ["da","9100100015","DA-FX-15","2025-11-20","9100000005","9100000102","Buzau","15000000-8","3300.00","Oferta acceptata",null,null,false,null],
+     ["da","9100100014","DA-FX-14","2025-09-15","9100000005","9100000105","Buzau","30192000-1","430.10","Oferta acceptata",null,null,false,null],
+     ["da","9100100012","DA-FX-12","2025-10-01","9100000003","9100000104","Buzau","33600000-6","31500.00","Oferta acceptata",null,null,false,null],
+     ["da","9100100011","DA-FX-11","2024-09-12","9100000003","9100000102","Buzau","33600000-6","9900.90","Oferta acceptata",null,null,false,null],
+     ["da","9100100009","DA-FX-9","2025-06-30","9100000003","9100000102","Buzau","33690000-3","18700.80","Oferta acceptata",null,null,false,null]
+    ]
+   },
+   "csv": {
+    "status": 200,
+    "file": "randuri-7.csv",
+    "x-total-rows": "7",
+    "x-exported-rows": "7",
+    "x-source-rows": "7",
+    "x-source-value": "202932.30",
+    "x-filtered-value": "202932.30",
+    "lines": 8,
+    "sha256": "b0f1a46d5c08c8998cf2369f0e6679b6bbcb8d42c7fe5635362e9b2167e289a3"
+   }
+  },
+  {
+   "id": "combo:trend:keyed-percent",
+   "origin": "combo",
+   "source": "builder: chooseQuestion(\"trend\") → enterTrend (the trend's key) → edits → transitionQuestion",
+   "request": {
+    "spec": {
+     "block": "trend",
+     "dim": "supplier",
+     "measure": "value",
+     "topN": 10,
+     "filters": {
+      "yearFrom": 2024,
+      "yearTo": 2025
+     },
+     "trend": {
+      "change": "up",
+      "months": "auto",
+      "order": "percent",
+      "minBase": 1000
+     }
+    }
+   },
+   "answer": {
+    "status": 200,
+    "ok": true,
+    "question": null,
+    "model": null,
+    "spec": {
+     "block": "trend",
+     "measure": "value",
+     "filters": {
+      "yearFrom": 2024,
+      "yearTo": 2025
+     },
+     "dim": "supplier",
+     "topN": 10,
+     "trend": {
+      "change": "up",
+      "months": "auto",
+      "order": "percent",
+      "minBase": 1000
+     }
+    },
+    "pills": [
+     "schimbare între ani",
+     "top 10 furnizori",
+     "valoarea înregistrată",
+     "2024 → 2025",
+     "creșteri",
+     "după creșterea în procente",
+     "cel puțin 1.000 lei în 2024",
+     "toate achizițiile: directe și din proceduri"
+    ],
+    "caveats": [
+     "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "An acoperit parțial de date: 2024 (achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei). Diferența dintre cei doi ani reflectă și perioada neacoperită, nu doar o schimbare reală."
+    ],
+    "data": {
+     "block": "trend",
+     "yearA": 2024,
+     "yearB": 2025,
+     "rowsTrend": [
+      {
+       "entityId": "9100000103",
+       "name": "Fixture Servicii SA",
+       "county": "Alba",
+       "valueA": 51632.84,
+       "valueB": 160762.37
+      },
+      {
+       "entityId": "9100000105",
+       "name": "Fixture Mic SRL",
+       "county": "Cluj",
+       "valueA": 5600,
+       "valueB": 7480.85
+      }
+     ],
+     "list": "up",
+     "change": "up",
+     "months": {
+      "from": 1,
+      "to": 12,
+      "mode": "auto"
+     },
+     "groups": {
+      "all": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 459569.95
+       },
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "valueA": 51632.84,
+        "valueB": 160762.37
+       },
+       {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "county": "Buzau",
+        "valueA": 142700.66,
+        "valueB": 43055.78
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 45000.01
+       },
+       {
+        "entityId": "9100000104",
+        "name": "Fixture Foreign GmbH",
+        "county": null,
+        "valueA": 64000,
+        "valueB": 31500
+       },
+       {
+        "entityId": "9100000105",
+        "name": "Fixture Mic SRL",
+        "county": "Cluj",
+        "valueA": 5600,
+        "valueB": 7480.85
+       }
+      ],
+      "up": [
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "valueA": 51632.84,
+        "valueB": 160762.37
+       },
+       {
+        "entityId": "9100000105",
+        "name": "Fixture Mic SRL",
+        "county": "Cluj",
+        "valueA": 5600,
+        "valueB": 7480.85
+       }
+      ],
+      "new": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 459569.95
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 45000.01
+       }
+      ],
+      "first": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 459569.95
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 45000.01
+       }
+      ],
+      "down": [
+       {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "county": "Buzau",
+        "valueA": 142700.66,
+        "valueB": 43055.78
+       },
+       {
+        "entityId": "9100000104",
+        "name": "Fixture Foreign GmbH",
+        "county": null,
+        "valueA": 64000,
+        "valueB": 31500
+       }
+      ],
+      "gone": []
+     },
+     "composition": {
+      "all": {
+       "count": 6,
+       "valueA": 263933.5,
+       "valueB": 747368.96
+      },
+      "up": {
+       "count": 2,
+       "valueA": 57232.84,
+       "valueB": 168243.22
+      },
+      "new": {
+       "count": 2,
+       "valueA": 0,
+       "valueB": 504569.96
+      },
+      "first": {
+       "count": 2,
+       "valueA": 0,
+       "valueB": 504569.96
+      },
+      "down": {
+       "count": 2,
+       "valueA": 206700.66,
+       "valueB": 74555.78
+      },
+      "gone": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      },
+      "equal": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      },
+      "eligible": {
+       "count": 2,
+       "valueA": 57232.84,
+       "valueB": 168243.22
+      }
+     },
+     "noun": "firme",
+     "rowFacts": {
+      "9100000101": {
+       "year": 2025,
+       "value": 459569.95,
+       "largest": {
+        "value": 340000,
+        "src": "contracts"
+       },
+       "joint": 45000.01,
+       "partner": {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "value": 360800.35
+       },
+       "firstActivity": "2025-03-01",
+       "lastActivity": "2026-05-05",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000103": {
+       "year": 2025,
+       "value": 160762.37,
+       "largest": {
+        "value": 87000,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000004",
+        "name": "Consiliul Judetean Alba",
+        "value": 92688.56
+       },
+       "firstActivity": "2024-04-13",
+       "lastActivity": "2026-02-15",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000102": {
+       "year": 2024,
+       "value": 142700.66,
+       "largest": {
+        "value": 125000.5,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000003",
+        "name": "Spitalul Judetean Fixture",
+        "value": 134901.4
+       },
+       "firstActivity": "2024-01-12",
+       "lastActivity": "2026-06-20",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000106": {
+       "year": 2025,
+       "value": 45000.01,
+       "largest": {
+        "value": 45000.01,
+        "src": "contracts"
+       },
+       "joint": 45000.01,
+       "partner": {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "value": 45000.01
+       },
+       "firstActivity": "2025-09-01",
+       "lastActivity": "2026-01-15",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000104": {
+       "year": 2024,
+       "value": 64000,
+       "largest": {
+        "value": 64000,
+        "src": "da"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000007",
+        "name": "Agentia Fixture Nationala",
+        "value": 64000
+       },
+       "firstActivity": "2024-12-12",
+       "lastActivity": "2025-10-01",
+       "cuiValid": false,
+       "country": "DE"
+      },
+      "9100000105": {
+       "year": 2025,
+       "value": 7480.85,
+       "largest": {
+        "value": 6100.35,
+        "src": "da"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "value": 6100.35
+       },
+       "firstActivity": "2024-04-18",
+       "lastActivity": "2025-09-15",
+       "cuiValid": true,
+       "country": null
+      }
+     }
+    },
+    "partialYears": [
+     {
+      "year": 2024,
+      "note": "achizițiile directe de la 08.01.2024; contractele de la 01.02.2024, începutul arhivei"
+     }
+    ],
+    "executed": {
+     "months": [1,12],
+     "mode": "auto",
+     "checkpoint": null
+    },
+    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte >= 1000 and dupa > inainte  -- Creșteri, în procente\norder by dupa / inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă",
+    "variants": {
+     "trend": {
+      "all": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2024 → 2025","toate schimbările","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "up": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 furnizori",
+        "valoarea înregistrată",
+        "2024 → 2025",
+        "creșteri",
+        "după creșterea în procente",
+        "cel puțin 1.000 lei în 2024",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte >= 1000 and dupa > inainte  -- Creșteri, în procente\norder by dupa / inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "new": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2024 → 2025","noi față de 2024","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte = 0 and dupa > 0  -- Noi\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "first": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 furnizori",
+        "valoarea înregistrată",
+        "2024 → 2025",
+        "noi față de 2024",
+        "prima dată în 2025",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte = 0 and dupa > 0 and prima_inregistrare = 2025  -- prima dată în 2025\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "down": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2024 → 2025","scăderi","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving dupa > 0 and dupa < inainte  -- Scăderi\norder by inainte - dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "gone": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2024 → 2025","nu mai apar în 2025","toate achizițiile: directe și din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2024) inainte,\n  sum(closing_value) filter (where an = 2025) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2024\n  and an <= 2025\ngroup by supplier_name\nhaving inainte > 0 and dupa = 0  -- Nu mai apar\norder by inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      }
+     }
+    }
+   },
+   "sources": {
+    "status": 200,
+    "ok": true,
+    "total": 20,
+    "value": "225476.06",
+    "sourceTotal": 20,
+    "sourceValue": "225476.06",
+    "page": 0,
+    "pageSize": 10,
+    "accepted": {
+     "count": 17,
+     "value": "75476.06"
+    },
+    "dateFrom": "2024-04-13",
+    "dateTo": "2025-10-02",
+    "profile": false,
+    "profiles": [],
+    "profileCount": 0,
+    "profileReconciled": null,
+    "scopeNotes": [
+     "Schimbare între 2024 și 2025: sursele includ numai cei doi ani; diferența este totalul final minus totalul inițial.",
+     "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Un contract cu mai mulți câștigători apare pe câte un rând pentru fiecare furnizor, cu valoarea împărțită egal. Suma folosește aceste cote; numărul de rânduri nu este numărul de contracte distincte. Detaliile și exportul păstrează valoarea integrală și numărul câștigătorilor.",
+     "Lista surselor acoperă întregul rezultat filtrat; limita de poziții din clasament sau diagramă nu limitează sursele.",
+     "Sursele grupei „Creșteri de la cel puțin 1.000 lei în 2024”: 2 firme, cu înregistrările lor din cei doi ani, nu doar cele afișate."
+    ],
+    "group": {
+     "part": "eligible",
+     "members": 2,
+     "selection": {
+      "count": 41,
+      "value": "1011302.46"
+     }
+    },
+    "statuses": [
+     {
+      "state": null,
+      "count": 3,
+      "value": "150000.00"
+     },
+     {
+      "state": "Oferta acceptata",
+      "count": 17,
+      "value": "75476.06"
+     }
+    ],
+    "rows": [
+     ["contracts","9100200008","CT-FX-8","2024-10-10","9100000002","9100000103","Cluj","79000000-4","22000.00",null,1,"22000.00",false,"Contract fixture 8"],
+     ["contracts","9100200007","CT-FX-7","2025-07-07","9100000007","9100000103",null,"79000000-4","41000.00",null,1,"41000.00",false,"Contract fixture 7"],
+     ["contracts","9100200005","CT-FX-5","2025-02-25","9100000004","9100000103","Alba","79000000-4","87000.00",null,1,"87000.00",false,"Contract fixture 5"],
+     ["da","9100100209","DA-FX-209","2024-04-19","9100000004","9100000103","Alba","79000000-4","3899.63","Oferta acceptata",null,null,false,null],
+     ["da","9100100207","DA-FX-207","2025-06-17","9100000004","9100000103","Alba","79000000-4","3477.49","Oferta acceptata",null,null,false,null],
+     ["da","9100100203","DA-FX-203","2024-04-13","9100000004","9100000103","Alba","79000000-4","2633.21","Oferta acceptata",null,null,false,null],
+     ["da","9100100201","DA-FX-201","2025-06-11","9100000004","9100000103","Alba","79000000-4","2211.07","Oferta acceptata",null,null,false,null],
+     ["da","9100100110","DA-FX-110","2025-10-02","9100000006","9100000103","Alba","79000000-4","2371.30","Oferta acceptata",null,null,false,null],
+     ["da","9100100108","DA-FX-108","2025-08-09","9100000006","9100000103","Alba","79000000-4","2097.04","Oferta acceptata",null,null,false,null],
+     ["da","9100100107","DA-FX-107","2025-07-08","9100000006","9100000103","Alba","79000000-4","1959.91","Oferta acceptata",null,null,false,null]
+    ]
+   },
+   "csv": {
+    "status": 200,
+    "file": "randuri-20.csv",
+    "x-total-rows": "20",
+    "x-exported-rows": "20",
+    "x-source-rows": "20",
+    "x-source-value": "225476.06",
+    "x-filtered-value": "225476.06",
+    "lines": 21,
+    "sha256": "f37653aafd70d542e104a35bfee5c775c14c084283c5827a0d04da90b0075f91"
+   }
+  },
+  {
+   "id": "combo:trend:keyed-contracts-same-months",
+   "origin": "combo",
+   "source": "builder: chooseQuestion(\"trend\") → enterTrend (the trend's key) → edits → transitionQuestion",
+   "request": {
+    "spec": {
+     "block": "trend",
+     "dim": "supplier",
+     "measure": "value",
+     "topN": 10,
+     "filters": {
+      "yearFrom": 2025,
+      "yearTo": 2026
+     },
+     "trend": {
+      "change": "up",
+      "months": "auto"
+     },
+     "dataset": "contracts"
+    }
+   },
+   "answer": {
+    "status": 200,
+    "ok": true,
+    "question": null,
+    "model": null,
+    "spec": {
+     "block": "trend",
+     "measure": "value",
+     "filters": {
+      "yearFrom": 2025,
+      "yearTo": 2026
+     },
+     "dataset": "contracts",
+     "dim": "supplier",
+     "topN": 10,
+     "trend": {
+      "change": "up",
+      "months": "auto"
+     }
+    },
+    "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2025 → 2026","creșteri","aceleași luni: ian.–mai","doar contractele din proceduri"],
+    "caveats": [
+     "Sursă: DOAR contractele din proceduri. Valoarea unui contract câștigat în asociere e împărțită egal între firme. Plafoanele acordurilor-cadru și publicațiile cu identitate incertă sunt excluse din totaluri. Lipsa comenzilor identificate înseamnă acoperire incompletă.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Ambii ani se compară pe aceleași luni: ian.–mai."
+    ],
+    "data": {
+     "block": "trend",
+     "yearA": 2025,
+     "yearB": 2026,
+     "rowsTrend": [],
+     "list": "up",
+     "change": "up",
+     "months": {
+      "from": 1,
+      "to": 5,
+      "mode": "auto"
+     },
+     "groups": {
+      "all": [
+       {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "county": "Buzau",
+        "valueA": 0,
+        "valueB": 3200000
+       },
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "valueA": 87000,
+        "valueB": 0
+       },
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 56000.75
+       }
+      ],
+      "up": [],
+      "new": [
+       {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "county": "Buzau",
+        "valueA": 0,
+        "valueB": 3200000
+       },
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 56000.75
+       }
+      ],
+      "first": [],
+      "down": [],
+      "gone": [
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "valueA": 87000,
+        "valueB": 0
+       }
+      ]
+     },
+     "composition": {
+      "all": {
+       "count": 3,
+       "valueA": 87000,
+       "valueB": 3256000.75
+      },
+      "up": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      },
+      "new": {
+       "count": 2,
+       "valueA": 0,
+       "valueB": 3256000.75
+      },
+      "first": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      },
+      "down": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      },
+      "gone": {
+       "count": 1,
+       "valueA": 87000,
+       "valueB": 0
+      },
+      "equal": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      }
+     },
+     "noun": "firme",
+     "rowFacts": {
+      "9100000102": {
+       "year": 2026,
+       "value": 3200000,
+       "largest": {
+        "value": 3200000,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000003",
+        "name": "Spitalul Judetean Fixture",
+        "value": 3200000
+       },
+       "firstActivity": "2024-01-12",
+       "lastActivity": "2026-06-20",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000103": {
+       "year": 2025,
+       "value": 87000,
+       "largest": {
+        "value": 87000,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000004",
+        "name": "Consiliul Judetean Alba",
+        "value": 87000
+       },
+       "firstActivity": "2024-04-13",
+       "lastActivity": "2026-02-15",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000101": {
+       "year": 2026,
+       "value": 56000.75,
+       "largest": {
+        "value": 56000.75,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000006",
+        "name": "Municipiul Aiud",
+        "value": 56000.75
+       },
+       "firstActivity": "2025-03-01",
+       "lastActivity": "2026-05-05",
+       "cuiValid": true,
+       "country": null
+      }
+     }
+    },
+    "partialYears": [],
+    "executed": {
+     "months": [1,5],
+     "mode": "auto",
+     "checkpoint": null
+    },
+    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom marts.contract_transactions\nwhere closing_value > 0\n  and an >= 2025\n  and an <= 2026\n  and luna between '01' and '05'  -- aceleași luni în ambii ani\ngroup by supplier_name\nhaving inainte > 0 and dupa > inainte  -- Creșteri\norder by dupa - inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă",
+    "variants": {
+     "trend": {
+      "all": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2025 → 2026","toate schimbările","aceleași luni: ian.–mai","doar contractele din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom marts.contract_transactions\nwhere closing_value > 0\n  and an >= 2025\n  and an <= 2026\n  and luna between '01' and '05'  -- aceleași luni în ambii ani\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "up": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2025 → 2026","creșteri","aceleași luni: ian.–mai","doar contractele din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom marts.contract_transactions\nwhere closing_value > 0\n  and an >= 2025\n  and an <= 2026\n  and luna between '01' and '05'  -- aceleași luni în ambii ani\ngroup by supplier_name\nhaving inainte > 0 and dupa > inainte  -- Creșteri\norder by dupa - inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "new": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2025 → 2026","noi față de 2025","aceleași luni: ian.–mai","doar contractele din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom marts.contract_transactions\nwhere closing_value > 0\n  and an >= 2025\n  and an <= 2026\n  and luna between '01' and '05'  -- aceleași luni în ambii ani\ngroup by supplier_name\nhaving inainte = 0 and dupa > 0  -- Noi\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "first": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 furnizori",
+        "valoarea înregistrată",
+        "2025 → 2026",
+        "noi față de 2025",
+        "prima dată în 2026",
+        "aceleași luni: ian.–mai",
+        "doar contractele din proceduri"
+       ],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom marts.contract_transactions\nwhere closing_value > 0\n  and an >= 2025\n  and an <= 2026\n  and luna between '01' and '05'  -- aceleași luni în ambii ani\ngroup by supplier_name\nhaving inainte = 0 and dupa > 0 and prima_inregistrare = 2026  -- prima dată în 2026\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "down": {
+       "pills": ["schimbare între ani","top 10 furnizori","valoarea înregistrată","2025 → 2026","scăderi","aceleași luni: ian.–mai","doar contractele din proceduri"],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom marts.contract_transactions\nwhere closing_value > 0\n  and an >= 2025\n  and an <= 2026\n  and luna between '01' and '05'  -- aceleași luni în ambii ani\ngroup by supplier_name\nhaving dupa > 0 and dupa < inainte  -- Scăderi\norder by inainte - dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "gone": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 furnizori",
+        "valoarea înregistrată",
+        "2025 → 2026",
+        "nu mai apar în 2026",
+        "aceleași luni: ian.–mai",
+        "doar contractele din proceduri"
+       ],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom marts.contract_transactions\nwhere closing_value > 0\n  and an >= 2025\n  and an <= 2026\n  and luna between '01' and '05'  -- aceleași luni în ambii ani\ngroup by supplier_name\nhaving inainte > 0 and dupa = 0  -- Nu mai apar\norder by inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      }
+     }
+    }
+   },
+   "sources": {
+    "status": 200,
+    "ok": true,
+    "total": 0,
+    "value": "0.00",
+    "sourceTotal": 0,
+    "sourceValue": "0.00",
+    "page": 0,
+    "pageSize": 10,
+    "accepted": {
+     "count": 0,
+     "value": "0.00"
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "profile": false,
+    "profiles": [],
+    "profileCount": 0,
+    "profileReconciled": null,
+    "scopeNotes": [
+     "Schimbare între 2025 și 2026: sursele includ numai cei doi ani; diferența este totalul final minus totalul inițial.",
+     "Ambii ani se compară pe aceleași luni: ian.–mai; sursele includ numai aceste luni.",
+     "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Un contract cu mai mulți câștigători apare pe câte un rând pentru fiecare furnizor, cu valoarea împărțită egal. Suma folosește aceste cote; numărul de rânduri nu este numărul de contracte distincte. Detaliile și exportul păstrează valoarea integrală și numărul câștigătorilor.",
+     "Lista surselor acoperă întregul rezultat filtrat; limita de poziții din clasament sau diagramă nu limitează sursele.",
+     "Sursele grupei „Creșteri”: 0 firme, cu înregistrările lor din cei doi ani, nu doar cele afișate."
+    ],
+    "group": {
+     "part": "up",
+     "members": 0,
+     "selection": {
+      "count": 3,
+      "value": "3343000.75"
+     }
+    },
+    "statuses": [],
+    "rows": []
+   },
+   "csv": {
+    "status": 200,
+    "file": "randuri-0.csv",
+    "x-total-rows": "0",
+    "x-exported-rows": "0",
+    "x-source-rows": "0",
+    "x-source-value": "0.00",
+    "x-filtered-value": "0.00",
+    "lines": 1,
+    "sha256": "6cfa432ea55acf009d6f6a29c760ed5eb8d2f4dc9be462798f728262accb7246"
+   }
+  },
+  {
+   "id": "combo:trend:keyed-chosen-months",
+   "origin": "combo",
+   "source": "builder: chooseQuestion(\"trend\") → enterTrend (the trend's key) → edits → transitionQuestion",
+   "request": {
+    "spec": {
+     "block": "trend",
+     "dim": "supplier",
+     "measure": "value",
+     "topN": 10,
+     "filters": {
+      "yearFrom": 2025,
+      "yearTo": 2026
+     },
+     "trend": {
+      "change": "all",
+      "months": [1,5]
+     }
+    }
+   },
+   "answer": {
+    "status": 200,
+    "ok": true,
+    "question": null,
+    "model": null,
+    "spec": {
+     "block": "trend",
+     "measure": "value",
+     "filters": {
+      "yearFrom": 2025,
+      "yearTo": 2026
+     },
+     "dim": "supplier",
+     "topN": 10,
+     "trend": {
+      "change": "all",
+      "months": [1,5]
+     }
+    },
+    "pills": [
+     "schimbare între ani",
+     "top 10 furnizori",
+     "valoarea înregistrată",
+     "2025 → 2026",
+     "toate schimbările",
+     "aceleași luni: ian.–mai",
+     "toate achizițiile: directe și din proceduri"
+    ],
+    "caveats": [
+     "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
+     "Ambii ani se compară pe aceleași luni: ian.–mai."
+    ],
+    "data": {
+     "block": "trend",
+     "yearA": 2025,
+     "yearB": 2026,
+     "rowsTrend": [
+      {
+       "entityId": "9100000102",
+       "name": "Fixture Medical SRL",
+       "county": "Buzau",
+       "valueA": 6954.98,
+       "valueB": 3228510.85
+      },
+      {
+       "entityId": "9100000103",
+       "name": "Fixture Servicii SA",
+       "county": "Alba",
+       "valueA": 107645.56,
+       "valueB": 7377.12
+      },
+      {
+       "entityId": "9100000105",
+       "name": "Fixture Mic SRL",
+       "county": "Cluj",
+       "valueA": 7050.75,
+       "valueB": 0
+      },
+      {
+       "entityId": "9100000106",
+       "name": "Fixture Partener SRL",
+       "county": "Cluj",
+       "valueA": 0,
+       "valueB": 2100
+      },
+      {
+       "entityId": "9100000101",
+       "name": "Fixture Construct SRL",
+       "county": "Cluj",
+       "valueA": 54912.04,
+       "valueB": 56000.75
+      }
+     ],
+     "list": "all",
+     "change": "all",
+     "months": {
+      "from": 1,
+      "to": 5,
+      "mode": "chosen"
+     },
+     "groups": {
+      "all": [
+       {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "county": "Buzau",
+        "valueA": 6954.98,
+        "valueB": 3228510.85
+       },
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "valueA": 107645.56,
+        "valueB": 7377.12
+       },
+       {
+        "entityId": "9100000105",
+        "name": "Fixture Mic SRL",
+        "county": "Cluj",
+        "valueA": 7050.75,
+        "valueB": 0
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 2100
+       },
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 54912.04,
+        "valueB": 56000.75
+       }
+      ],
+      "up": [
+       {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "county": "Buzau",
+        "valueA": 6954.98,
+        "valueB": 3228510.85
+       },
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "valueA": 54912.04,
+        "valueB": 56000.75
+       }
+      ],
+      "new": [
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "valueA": 0,
+        "valueB": 2100
+       }
+      ],
+      "first": [],
+      "down": [
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "valueA": 107645.56,
+        "valueB": 7377.12
+       }
+      ],
+      "gone": [
+       {
+        "entityId": "9100000105",
+        "name": "Fixture Mic SRL",
+        "county": "Cluj",
+        "valueA": 7050.75,
+        "valueB": 0
+       }
+      ]
+     },
+     "composition": {
+      "all": {
+       "count": 5,
+       "valueA": 176563.33,
+       "valueB": 3293988.72
+      },
+      "up": {
+       "count": 2,
+       "valueA": 61867.02,
+       "valueB": 3284511.6
+      },
+      "new": {
+       "count": 1,
+       "valueA": 0,
+       "valueB": 2100
+      },
+      "first": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      },
+      "down": {
+       "count": 1,
+       "valueA": 107645.56,
+       "valueB": 7377.12
+      },
+      "gone": {
+       "count": 1,
+       "valueA": 7050.75,
+       "valueB": 0
+      },
+      "equal": {
+       "count": 0,
+       "valueA": 0,
+       "valueB": 0
+      }
+     },
+     "noun": "firme",
+     "rowFacts": {
+      "9100000102": {
+       "year": 2026,
+       "value": 3228510.85,
+       "largest": {
+        "value": 3200000,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000003",
+        "name": "Spitalul Judetean Fixture",
+        "value": 3222400.15
+       },
+       "firstActivity": "2024-01-12",
+       "lastActivity": "2026-06-20",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000103": {
+       "year": 2025,
+       "value": 107645.56,
+       "largest": {
+        "value": 87000,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000004",
+        "name": "Consiliul Judetean Alba",
+        "value": 87000
+       },
+       "firstActivity": "2024-04-13",
+       "lastActivity": "2026-02-15",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000105": {
+       "year": 2025,
+       "value": 7050.75,
+       "largest": {
+        "value": 6100.35,
+        "src": "da"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "value": 6100.35
+       },
+       "firstActivity": "2024-04-18",
+       "lastActivity": "2025-09-15",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000106": {
+       "year": 2026,
+       "value": 2100,
+       "largest": {
+        "value": 2100,
+        "src": "da"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "value": 2100
+       },
+       "firstActivity": "2025-09-01",
+       "lastActivity": "2026-01-15",
+       "cuiValid": true,
+       "country": null
+      },
+      "9100000101": {
+       "year": 2026,
+       "value": 56000.75,
+       "largest": {
+        "value": 56000.75,
+        "src": "contracts"
+       },
+       "joint": 0,
+       "partner": {
+        "entityId": "9100000006",
+        "name": "Municipiul Aiud",
+        "value": 56000.75
+       },
+       "firstActivity": "2025-03-01",
+       "lastActivity": "2026-05-05",
+       "cuiValid": true,
+       "country": null
+      }
+     }
+    },
+    "partialYears": [],
+    "executed": {
+     "months": [1,5],
+     "mode": "chosen",
+     "checkpoint": null
+    },
+    "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\n  and luna between '01' and '05'  -- aceleași luni în ambii ani\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă",
+    "variants": {
+     "trend": {
+      "all": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 furnizori",
+        "valoarea înregistrată",
+        "2025 → 2026",
+        "toate schimbările",
+        "aceleași luni: ian.–mai",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\n  and luna between '01' and '05'  -- aceleași luni în ambii ani\ngroup by supplier_name\norder by abs(dupa - inainte) desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "up": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 furnizori",
+        "valoarea înregistrată",
+        "2025 → 2026",
+        "creșteri",
+        "aceleași luni: ian.–mai",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\n  and luna between '01' and '05'  -- aceleași luni în ambii ani\ngroup by supplier_name\nhaving inainte > 0 and dupa > inainte  -- Creșteri\norder by dupa - inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "new": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 furnizori",
+        "valoarea înregistrată",
+        "2025 → 2026",
+        "noi față de 2025",
+        "aceleași luni: ian.–mai",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\n  and luna between '01' and '05'  -- aceleași luni în ambii ani\ngroup by supplier_name\nhaving inainte = 0 and dupa > 0  -- Noi\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "first": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 furnizori",
+        "valoarea înregistrată",
+        "2025 → 2026",
+        "noi față de 2025",
+        "prima dată în 2026",
+        "aceleași luni: ian.–mai",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\n  and luna between '01' and '05'  -- aceleași luni în ambii ani\ngroup by supplier_name\nhaving inainte = 0 and dupa > 0 and prima_inregistrare = 2026  -- prima dată în 2026\norder by dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "down": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 furnizori",
+        "valoarea înregistrată",
+        "2025 → 2026",
+        "scăderi",
+        "aceleași luni: ian.–mai",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\n  and luna between '01' and '05'  -- aceleași luni în ambii ani\ngroup by supplier_name\nhaving dupa > 0 and dupa < inainte  -- Scăderi\norder by inainte - dupa desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      },
+      "gone": {
+       "pills": [
+        "schimbare între ani",
+        "top 10 furnizori",
+        "valoarea înregistrată",
+        "2025 → 2026",
+        "nu mai apar în 2026",
+        "aceleași luni: ian.–mai",
+        "toate achizițiile: directe și din proceduri"
+       ],
+       "displaySql": "select supplier_name,\n  sum(closing_value) filter (where an = 2025) inainte,\n  sum(closing_value) filter (where an = 2026) dupa\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2026\n  and luna between '01' and '05'  -- aceleași luni în ambii ani\ngroup by supplier_name\nhaving inainte > 0 and dupa = 0  -- Nu mai apar\norder by inainte desc\nlimit 10;\n-- aceeași grupare dă compoziția (creșteri, noi, scăderi, nu mai apar, egale) și primele 10 din fiecare grupă"
+      }
+     }
+    }
+   },
+   "sources": {
+    "status": 200,
+    "ok": true,
+    "total": 21,
+    "value": "3470552.05",
+    "sourceTotal": 21,
+    "sourceValue": "3470552.05",
+    "page": 0,
+    "pageSize": 10,
+    "accepted": {
+     "count": 18,
+     "value": "127551.30"
+    },
+    "dateFrom": "2025-01-02",
+    "dateTo": "2026-05-18",
+    "profile": false,
+    "profiles": [],
+    "profileCount": 0,
+    "profileReconciled": null,
+    "scopeNotes": [
+     "Schimbare între 2025 și 2026: sursele includ numai cei doi ani; diferența este totalul final minus totalul inițial.",
+     "Ambii ani se compară pe aceleași luni: ian.–mai; sursele includ numai aceste luni.",
+     "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Un contract cu mai mulți câștigători apare pe câte un rând pentru fiecare furnizor, cu valoarea împărțită egal. Suma folosește aceste cote; numărul de rânduri nu este numărul de contracte distincte. Detaliile și exportul păstrează valoarea integrală și numărul câștigătorilor.",
+     "Lista surselor acoperă întregul rezultat filtrat; limita de poziții din clasament sau diagramă nu limitează sursele."
+    ],
+    "statuses": [
+     {
+      "state": null,
+      "count": 3,
+      "value": "3343000.75"
+     },
+     {
+      "state": "Oferta acceptata",
+      "count": 18,
+      "value": "127551.30"
+     }
+    ],
+    "rows": [
+     ["contracts","9100200006","CT-FX-6","2026-05-05","9100000006","9100000101","Alba","45233140-2","56000.75",null,1,"56000.75",false,"Contract fixture 6"],
+     ["contracts","9100200005","CT-FX-5","2025-02-25","9100000004","9100000103","Alba","79000000-4","87000.00",null,1,"87000.00",false,"Contract fixture 5"],
+     ["contracts","9100200004","CT-FX-4","2026-03-20","9100000003","9100000102","Buzau","33690000-3","3200000.00",null,1,"3200000.00",false,"Contract fixture 4"],
+     ["da","9100100211","DA-FX-211","2026-02-11","9100000004","9100000103","Alba","79000000-4","4321.77","Oferta acceptata",null,null,false,null],
+     ["da","9100100210","DA-FX-210","2025-03-10","9100000004","9100000102","Alba","33690000-3","4110.70","Oferta acceptata",null,null,false,null],
+     ["da","9100100208","DA-FX-208","2026-05-18","9100000004","9100000102","Alba","33690000-3","3688.56","Oferta acceptata",null,null,false,null],
+     ["da","9100100205","DA-FX-205","2026-02-15","9100000004","9100000103","Alba","79000000-4","3055.35","Oferta acceptata",null,null,false,null],
+     ["da","9100100204","DA-FX-204","2025-03-14","9100000004","9100000102","Alba","33690000-3","2844.28","Oferta acceptata",null,null,false,null],
+     ["da","9100100202","DA-FX-202","2026-05-12","9100000004","9100000102","Alba","33690000-3","2422.14","Oferta acceptata",null,null,false,null],
+     ["da","9100100105","DA-FX-105","2025-05-06","9100000006","9100000103","Alba","79000000-4","1685.65","Oferta acceptata",null,null,false,null]
+    ]
+   },
+   "csv": {
+    "status": 200,
+    "file": "randuri-21.csv",
+    "x-total-rows": "21",
+    "x-exported-rows": "21",
+    "x-source-rows": "21",
+    "x-source-value": "3470552.05",
+    "x-filtered-value": "3470552.05",
+    "lines": 22,
+    "sha256": "f91ec6e49a89c0a7ca8a54d8694a37db2ea87dd6ff2e18c46f13b2bd3ffb0e51"
+   }
+  },
+  {
+   "id": "combo:trend:keyed-unconfirmed-months",
+   "origin": "combo",
+   "source": "builder: chooseQuestion(\"trend\") → enterTrend (the trend's key) → edits → transitionQuestion",
+   "request": {
+    "spec": {
+     "block": "trend",
+     "dim": "supplier",
+     "measure": "value",
+     "topN": 10,
+     "filters": {
+      "yearFrom": 2025,
+      "yearTo": 2026
+     },
+     "trend": {
+      "change": "up",
+      "months": "auto"
+     }
+    }
+   },
+   "answer": {
+    "status": 200,
+    "ok": false,
+    "error": "Lunile complete din 2026 nu sunt confirmate în date. Alege lunile comparate sau ani încheiați.",
+    "caveats": [
+     "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
+     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
+    ],
+    "spec": {
+     "block": "trend",
+     "measure": "value",
+     "filters": {
+      "yearFrom": 2025,
+      "yearTo": 2026
+     },
+     "dim": "supplier",
+     "topN": 10,
+     "trend": {
+      "change": "up",
+      "months": "auto"
+     }
+    },
+    "question": null
+   },
+   "sources": {
+    "status": 200,
+    "ok": false,
+    "error": "Lunile complete din 2026 nu sunt confirmate în date. Alege lunile comparate sau ani încheiați."
+   },
+   "csv": {
+    "status": 200,
+    "ok": false,
+    "error": "Lunile complete din 2026 nu sunt confirmate în date. Alege lunile comparate sau ani încheiați."
+   }
+  },
+  {
    "id": "combo:network:buyer",
    "origin": "combo",
    "source": "builder: defaultQuestion → chooseType → edits → transitionQuestion",

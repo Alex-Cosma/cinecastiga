@@ -108,6 +108,8 @@ const cpvGroundings: (Grounding["cpv"] | undefined)[] = [
 
 /** The specs whose population the plan words differently: another page's selection or exclusions. */
 const relabelled = (spec: AskSpec) => Boolean(selectionOrigin(spec.population) || splitExcluded(spec.population).excluded.length);
+/** A trend with its key (F2, the corpus' builderTrend entries): the six grammars came before it; its words are tested below. */
+const keyed = (spec: AskSpec) => spec.trend !== undefined;
 
 describe("describeConditions says what the six grammars said (plan §2.2)", () => {
   const all = [...corpus.map((c) => c.spec), ...edges];
@@ -121,7 +123,7 @@ describe("describeConditions says what the six grammars said (plan §2.2)", () =
   it("gives the pills of pills.ts, with G10 numerals", () => {
     for (const spec of all)
       for (const cpv of cpvGroundings) {
-        if (relabelled(spec)) continue;
+        if (relabelled(spec) || keyed(spec)) continue;
         const grounding = groundingOf(spec, cpv);
         expect(describeConditions(spec, { grounding }).pills, JSON.stringify(spec)).toEqual(conditionPillsBefore(spec, grounding).map((p) => kitPill(fixed(p))));
         // A ranking without topN is the complete one, in pages: its pill no longer says "top 10" (pills.ts, after the S1 review).
@@ -132,7 +134,7 @@ describe("describeConditions says what the six grammars said (plan §2.2)", () =
 
   it("gives the saved summary, the watch receipt, the caveats and the notes", () => {
     for (const spec of all) {
-      if (relabelled(spec)) continue;
+      if (relabelled(spec) || keyed(spec)) continue;
       const described = describeConditions(spec);
       expect(described.summary, JSON.stringify(spec)).toEqual(summaryBefore(spec).map((text) => fixed(kitPopulation(spec, text))));
       const before = scopeBefore(spec);
@@ -148,7 +150,7 @@ describe("describeConditions says what the six grammars said (plan §2.2)", () =
   // The interpreter's tail is the title's since F2 (lib/intent/to-spec.ts sentenceFor = questionTitle; rules.test.ts).
   it("gives the builder's chips", () => {
     for (const spec of all) {
-      if (relabelled(spec)) continue;
+      if (relabelled(spec) || keyed(spec)) continue;
       const draft = transitionQuestion(spec as unknown as QuestionSpec).spec;
       for (const cpvName of [undefined, "Lucrări de construcții"]) {
         const { byId } = describeConditions(draft, { cpvName });
