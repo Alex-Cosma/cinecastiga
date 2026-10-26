@@ -5,7 +5,7 @@ import { RulesInterpreter } from "./rules";
 import { FIXTURE } from "./rules.fixture";
 import { resultFor } from "./to-spec";
 import { withPeerGroup } from "./server";
-import { BUZAU_DIALOG } from "../ask/fixtures/distribution-screen";
+import { BUZAU_DIALOG, HOSPITAL_DIALOG } from "../ask/fixtures/distribution-screen";
 import type { PeerDialogData } from "../ask/peer-groups-shared";
 
 /*
@@ -50,5 +50,27 @@ describe("the distribution's group in words", () => {
     // Without the database the question stays as interpreted.
     const failing = { begin: async () => { throw new Error("no database"); } } as unknown as DbSql;
     expect(await withPeerGroup(failing, r)).toBe(r);
+  });
+
+  it("never lets the default replace a group the words name (plan §2.7 precedence)", async () => {
+    // The entity's own county named in words: "față de instituțiile din județul Buzău" is the county's 336, not the population band.
+    const named = await withPeerGroup(sql, await ask("unde se situeaza primaria buzau dupa indicele de risc fata de institutiile din judetul buzau"), dialog(BUZAU_DIALOG));
+    expect([named.spec?.peers, named.spec?.filters.county]).toEqual([undefined, "Buzău"]);
+    expect(named.sentence).toContain("față de instituțiile publice din județul Buzău");
+    // The interpreter wrote the entity's county: it is the "același județ" tick, never dropped by the default.
+    const r = await ask("semnale la primaria buzau");
+    const written = { ...r, spec: { ...r.spec!, filters: { ...r.spec!.filters, county: "Buzău" } } };
+    const kept = await withPeerGroup(sql, written, dialog(BUZAU_DIALOG));
+    expect([kept.spec?.peers, kept.spec?.filters.county]).toEqual([undefined, "Buzău"]);
+    // Another county is the reader's group as interpreted: no default beside it.
+    const other = { ...r, spec: { ...r.spec!, filters: { ...r.spec!.filters, county: "Cluj" } } };
+    expect(await withPeerGroup(sql, other, dialog(BUZAU_DIALOG))).toBe(other);
+    // A noun the rule does not cover ("față de spitalele" for a town hall): the default does not replace it.
+    const hospitals = await withPeerGroup(sql, await ask("semnale la primaria buzau fata de spitalele"), dialog(BUZAU_DIALOG));
+    expect(hospitals.spec?.peers).toBeUndefined();
+    // The rule's own noun is the default's group: "față de alte spitale" for a hospital ticks "același tip".
+    const hospital = { ...r, q: "semnale la spitalul orasenesc corabia fata de alte spitale",
+      spec: { ...r.spec!, filters: { authorityId: 2_150_000, authorityName: "SPITALUL ORASENESC CORABIA" } } };
+    expect((await withPeerGroup(sql, hospital, dialog(HOSPITAL_DIALOG))).spec?.peers).toEqual({ similar: true });
   });
 });
