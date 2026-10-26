@@ -17,7 +17,12 @@ import { namedKind, type AskSpec, type AuthorityKind, type Block } from "./spec"
  * trend-2 (F2, plan §4.7): the partition beside the chosen group, the county of
  * an entity's row from its profile instead of a buyer's, the 2018 note.
  */
-export const ANSWER_VERSIONS: Partial<Record<Block, string>> = { trend: "trend-2" };
+export const ANSWER_VERSIONS: Partial<Record<Block, string>> = {
+  trend: "trend-2",
+  // distribution-2 (F6a, plan §4.11): the criteria against the group the ticks choose, instead of ten
+  // CRI buckets and a percentile over every profile; position more · same · fewer of the others.
+  distribution: "distribution-2",
+};
 
 /** A key whose meaning a release changed, on the questions that carry it. */
 export interface KeyVersion {
@@ -125,12 +130,34 @@ export function sameAnswerVersion(before: AnswerVersion, after: AnswerVersion): 
  * change a watch on "Creșteri". An answer stored before trend-2 is whole.
  */
 export function answerCore(block: string, data: unknown): unknown {
+  if (block === "distribution") return distributionCore(data);
   if (block !== "trend" || !object(data) || !object(data.groups)) return data;
   const { groups: _groups, composition, noun: _noun, rowFacts: _facts, withoutFiling: _unfiled, ...core } = data;
   const parts = object(composition) ? composition : {};
   const own = [typeof core.list === "string" ? core.list : "all", "eligible"].filter((part) => part in parts);
   return { ...core, composition: Object.fromEntries(own.map((part) => [part, parts[part]])) };
 }
+/**
+ * distribution-2 (F6a): the entity's criteria, its group (the ticks, its size
+ * and members) and its position among them. The words, the facts that name
+ * the group, the band's coverage and the country's marks are references, not
+ * the answer: a member added nationally does not change a watch on 29 town
+ * halls. An answer stored before distribution-2 is whole.
+ */
+function distributionCore(data: unknown): unknown {
+  if (!object(data) || !object(data.distribution) || data.distribution.version !== 2) return data;
+  const d = data.distribution;
+  const focal = object(d.focal) ? d.focal : {}, group = object(d.group) ? d.group : {};
+  return { ...data, distribution: {
+    version: 2, role: d.role, status: d.status,
+    focal: { entityId: focal.entityId, nFlags: focal.nFlags, flags: focal.flags, nDas: focal.nDas, inGroup: focal.inGroup },
+    group: { ticks: group.ticks, legacy: group.legacy, others: group.others, memberIds: group.memberIds },
+    position: d.position, hist: d.hist,
+    perCriterion: Array.isArray(d.perCriterion) ? d.perCriterion.map((c) => object(c) ? { code: c.code, others: c.others } : c) : d.perCriterion,
+    members: Array.isArray(d.members) ? d.members.map((m) => object(m) ? { entityId: m.entityId, nFlags: m.nFlags } : m) : d.members,
+  } };
+}
+
 /** The two cores are equal as stored JSON (jsonb: key order does not count, array order does). */
 export function sameAnswerCore(block: string, before: unknown, after: unknown): boolean {
   return canonicalJson(answerCore(block, before)) === canonicalJson(answerCore(block, after));

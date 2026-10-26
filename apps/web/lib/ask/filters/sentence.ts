@@ -4,6 +4,7 @@ import {
 } from "../question-ui";
 import { DEFAULT_TREND_MIN_BASE, type AskSpec, type AuthorityKind, type Block } from "../spec";
 import { formatRon } from "../../format";
+import { peerGroupWords, type PeerFacts } from "../peer-groups-shared";
 import { filterContext } from "./context";
 import { TREND_CHANGE_LABELS, TREND_CHANGE_PHRASE, TREND_NO_RECORDS, firstTimeTip, firstTimeWords, trendGap } from "./defs/trend";
 import type { FilterCtx, FilterId, FilterSpec, Picker, Slot } from "./types";
@@ -77,6 +78,8 @@ export interface SentenceLabels {
   trendYears?: { yearA: number; yearB: number } | null | undefined;
   /** The reader asked about town halls and the question counts every institution: the default institutions say so. */
   allInstitutions?: boolean | undefined;
+  /** A distribution's entity and the facts that bound its group ("cu 52–207 mii de locuitori"): the window's or the answer's. */
+  peerGroup?: PeerFacts | null | undefined;
 }
 
 /**
@@ -540,20 +543,22 @@ const factCheck: Write = (out, spec, _ctx, labels) => {
 };
 
 /**
- * §4.11 "Unde se situează [X] după indicele de risc, față de [toate instituțiile publice]?" Today the
- * group is the role's profiles in a county and, for institutions, of a kind (F6a's peers come later).
+ * §4.11 "Unde se situează [X] după indicele de risc, față de [primăriile cu 52–207 mii de locuitori]?"
+ * (final distribution §1.1): the group in words, from the ticks of "Față de cine?" (`peers` and the
+ * county) and the entity's facts that bound them (labels.peerGroup: the window's or the answer's);
+ * without them, the rules by name ("cu populație apropiată"). An old link's kind is said too. Kit §4:
+ * "instituțiile publice", never "instituțiile" alone; on firms the county is the seat (R9).
  */
-const distribution: Write = (out, spec, ctx) => {
+const distribution: Write = (out, spec, ctx, labels) => {
   const county = has(spec.filters.county) ? String(spec.filters.county) : null;
   const kind = ctx.role === "authority" ? kindOf(spec) : undefined;
-  const where = county ? ` ${countyIsFirmSeat(spec, ctx.role) ? `cu sediul ${countyWords(county).replace(/^din /, "în ")}` : countyWords(county)}` : "";
-  // Kit §4: "instituțiile publice", never "instituțiile" alone (the final's "toate instituțiile din țară").
-  const group = ctx.role === "supplier" ? `${county ? "firmele" : "toate firmele"}${where}`
-    : kind ? `${KIND_WORDS[kind]!.the}${where}` : `${county ? "" : "toate "}${ALL_BUYERS}${where}`;
+  const peers = spec.peers && Object.keys(spec.peers).length ? spec.peers : null;
+  const id = String(spec.filters[ctx.role === "authority" ? "authorityId" : "supplierId"] ?? "");
+  const facts = labels.peerGroup && labels.peerGroup.role === ctx.role && labels.peerGroup.entityId === id ? labels.peerGroup : null;
   focal(out.text("Unde se situează "), spec, ctx);
-  out.text(" după indicele de risc, față de ").slot("county", "peers", group, {
-    says: [...(county ? ["county" as const] : []), ...(kind ? ["authorityKind" as const] : [])],
-    writes: ctx.role === "authority" ? ["authorityKind"] : [], picker: "peers",
+  out.text(" după indicele de risc, față de ").slot("peers", "peers", peerGroupWords(spec, ctx.role, facts), {
+    says: [...(peers ? ["peers" as const] : []), ...(county ? ["county" as const] : []), ...(kind ? ["authorityKind" as const] : [])],
+    writes: ctx.role === "authority" ? ["county", "authorityKind"] : ["county"], picker: "peers",
   });
   out.text("?");
 };

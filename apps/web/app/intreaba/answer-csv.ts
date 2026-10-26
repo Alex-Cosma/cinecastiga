@@ -1,5 +1,5 @@
 import { fileSlug } from "../../lib/ask/answer-text";
-import type { BlockData } from "../../lib/ask/compile";
+import type { BlockData, DistributionDataV1 } from "../../lib/ask/compile";
 import { isHistoricalProfile } from "../../lib/ask/population";
 import type { AskSpec } from "../../lib/ask/spec";
 import { shownTrendList, trendRowView } from "./trend-answer";
@@ -64,8 +64,17 @@ function rowsOf(data: BlockData, spec: AskSpec): string[] {
           e.streams?.contracts.singleBid ?? "", e.streams?.contracts.bidsKnown ?? "", e.streams?.da.value ?? "", e.streams?.da.count ?? "",
           e.partners ?? "", e.cri ?? "", e.hasProfile === false ? "" : e.nFlags, csvQ(e.flags.join("|"))].join(",")),
       ];
-    case "distribution":
-      return ["cri_de,cri_pana,entitati", ...data.distribution.buckets.map((b) => `${b.from},${b.to},${b.n}`)];
+    case "distribution": {
+      // distribution-2: the list on screen (the entity, then its group up to 50), else the chart's bars.
+      const d = data.distribution, f = d.focal;
+      if (d.version !== 2) return ["cri_de,cri_pana,entitati", ...(d as unknown as DistributionDataV1).buckets.map((b) => `${b.from},${b.to},${b.n}`)];
+      if (d.members) return [
+        "rol,nume,judet,populatie,criterii,semnale,achizitii_directe",
+        `"entitatea",${csvQ(f.name)},${csvQ(f.county)},${f.population ?? ""},${f.nFlags},${csvQ(f.flags.join("|"))},${f.nDas}`,
+        ...d.members.map((m) => `"grup",${csvQ(m.name)},${csvQ(m.county)},${m.population ?? ""},${m.nFlags},${csvQ(m.flags.join("|"))},${m.nDas}`),
+      ];
+      return ["criterii,indice_de_risc,entitati_din_grup,aici", ...(d.hist ?? []).map((h) => `${h.k},${h.k / d.criteria.length},${h.n},${h.k === f.nFlags ? "da" : ""}`)];
+    }
     case "breakdown":
       return ["categorie,cod,valoare_lei,achizitii", ...data.slices.map((s) => `${csvQ(s.name)},${s.code},${s.value},${s.count}`), `"alte domenii",,${data.other.value},${data.other.count}`];
     case "scatter":

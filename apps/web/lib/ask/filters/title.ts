@@ -31,13 +31,14 @@ function orderWords(spec: FilterSpec, described: DescribedConditions): string | 
 }
 
 /** What the caller knows besides the spec: names (a CPV code, the reader's subject) and what the answer ran (a trend's years and months). */
-export type TitleLabels = ConditionLabels & Pick<SentenceLabels, "subject" | "allInstitutions">;
+export type TitleLabels = ConditionLabels & Pick<SentenceLabels, "subject" | "allInstitutions" | "peerGroup">;
 
 /** The title of a question; `labels` names a CPV code ("pentru [lucrări de construcții]") and says what its answer ran. */
 export function questionTitle(input: QuestionSpec | AskSpec, labels: TitleLabels = {}): string {
   const spec = input as FilterSpec;
   const text = sentenceText(sentenceTokens(spec, filterContext(spec), {
     cpvName: labels.cpvName, subject: labels.subject, trendYears: labels.trendYears, allInstitutions: labels.allInstitutions,
+    peerGroup: labels.peerGroup,
   }));
   if (!text) return "Întrebarea ta";
   const described = describeConditions(spec, labels);
@@ -50,11 +51,13 @@ export function questionTitle(input: QuestionSpec | AskSpec, labels: TitleLabels
  * years when the spec has none (the archive's first and last, data.yearA/yearB)
  * and the months `auto` counted (executed.months, plan §2.8).
  */
-export function answerLabels(answer: { data?: BlockData | undefined; executed?: ExecutedWindow | undefined } | null | undefined): Pick<ConditionLabels, "executedMonths" | "trendYears"> {
+export function answerLabels(answer: { data?: BlockData | undefined; executed?: ExecutedWindow | undefined } | null | undefined): Pick<TitleLabels, "executedMonths" | "trendYears" | "peerGroup"> {
   const data = answer?.data;
   return {
     ...(answer?.executed ? { executedMonths: answer.executed.months } : {}),
     ...(data?.block === "trend" ? { trendYears: { yearA: data.yearA, yearB: data.yearB } } : {}),
+    // distribution-2: the bounds of the group it compared ("primăriile cu 52–207 mii de locuitori").
+    ...(data?.block === "distribution" && data.distribution.version === 2 ? { peerGroup: data.distribution.group.facts } : {}),
   };
 }
 

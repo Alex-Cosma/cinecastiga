@@ -8,6 +8,7 @@ import { SCOPE_CHANGES } from "./filters/today";
 import { personClipSpec } from "./site-links";
 import { BLOCKS, type AskSpec } from "./spec";
 import { comparableMethodologies, methodologiesDiffer } from "../monitoring-shared";
+import { BUZAU_LIST } from "./fixtures/distribution-screen";
 
 // The answer versions and the core a watch compares (plan §2.8, §6.2).
 
@@ -72,10 +73,10 @@ describe("the key versions of this release", () => {
 
 describe("the version of an answer", () => {
   it("is the block's, then each key's the question carries; F2 changed the trend's only", () => {
-    expect(ANSWER_VERSIONS).toEqual({ trend: "trend-2" });
+    expect(ANSWER_VERSIONS).toEqual({ trend: "trend-2", distribution: "distribution-2" });
     expect(KEY_VERSIONS).toEqual({});
     for (const block of BLOCKS)
-      expect(answerVersion({ block, measure: "value", filters: {} })).toEqual({ question: block === "trend" ? "trend-2" : `${block}-1`, conditions: {} });
+      expect(answerVersion({ block, measure: "value", filters: {} })).toEqual({ question: ANSWER_VERSIONS[block] ?? `${block}-1`, conditions: {} });
     bumpKind(); bumpEmployees();
     expect(answerVersion(hospitals)).toEqual({ question: "stat-1", conditions: { kind: "kind-2" } });
     expect(answerVersion(stat)).toEqual({ question: "stat-1", conditions: {} });
@@ -96,7 +97,7 @@ describe("the version of an answer", () => {
   });
 
   it("is the first one, which a watch does not store, until a release bumps it (a revert below F0 then compares equal)", () => {
-    for (const block of BLOCKS) expect(isFirstAnswerVersion(answerVersion({ block, measure: "value", filters: {} }), block), block).toBe(block !== "trend");
+    for (const block of BLOCKS) expect(isFirstAnswerVersion(answerVersion({ block, measure: "value", filters: {} }), block), block).toBe(block !== "trend" && block !== "distribution");
     beforeF2();
     expect(isFirstAnswerVersion(answerVersion(trend), "trend")).toBe(true);
     Object.assign(ANSWER_VERSIONS, RELEASED);
@@ -165,6 +166,29 @@ describe("what a watch compares between two checks", () => {
     expect(a!.answer).toEqual({ question: "stat-1", conditions: { kind: "kind-1" } });
     expect(b.answer).toEqual({ question: "stat-1", conditions: { kind: "kind-2" } });
     expect(comparableMethodologies(null, run(stat), "stat")).toEqual([null, run(stat)]);
+  });
+
+  it("on a distribution (distribution-2), compares the group and the position, never the words, the facts or the country's marks", () => {
+    const data = { block: "distribution", distribution: BUZAU_LIST };
+    const core = answerCore("distribution", data) as { distribution: Record<string, unknown> };
+    expect(Object.keys(core.distribution).sort()).toEqual(["focal", "group", "hist", "members", "perCriterion", "position", "role", "status", "version"]);
+    // A country's mark, the words or the coverage of the band move: not a change of this watch.
+    const country = { ...BUZAU_LIST, countryTotal: 15_800, perCriterion: BUZAU_LIST.perCriterion!.map((c) => ({ ...c, country: c.country + 1 })) };
+    const words = { ...BUZAU_LIST, group: { ...BUZAU_LIST.group, words: "altfel", coverage: { inBand: 33, identified: 31, missing: [] } } };
+    for (const after of [country, words]) expect(sameAnswerCore("distribution", data, { block: "distribution", distribution: after })).toBe(true);
+    // A member that gains a criterion, or the entity's own criteria, are.
+    const member = { ...BUZAU_LIST, members: BUZAU_LIST.members!.map((m, i) => i === 0 ? { ...m, nFlags: 3 } : m) };
+    const own = { ...BUZAU_LIST, focal: { ...BUZAU_LIST.focal, nFlags: 2 } };
+    for (const after of [member, own]) expect(sameAnswerCore("distribution", data, { block: "distribution", distribution: after })).toBe(false);
+    // An answer of distribution-1 (buckets, a percentile) is compared whole; the alert is the methodology's (distribution-2).
+    const v1 = { block: "distribution", distribution: { buckets: [], focal: { entityId: "1", name: "X", cri: 0.2, percentile: 40 }, role: "authority", totalEntities: 9 } };
+    expect(answerCore("distribution", v1)).toBe(v1);
+    const spec = { block: "distribution", measure: "value", filters: { authorityId: 1 } } as AskSpec;
+    delete ANSWER_VERSIONS.distribution;
+    const before = run(spec);
+    Object.assign(ANSWER_VERSIONS, RELEASED);
+    expect(methodologiesDiffer(before, run(spec), "distribution")).toBe(true);
+    expect(methodologiesDiffer(run(spec), run(spec), "distribution")).toBe(false);
   });
 
   it("compares the core of the answer as jsonb does: key order does not count, array order does", () => {

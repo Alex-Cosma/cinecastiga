@@ -1,6 +1,7 @@
 import { describeConditions } from "../../lib/ask/filters/describe";
 import { encodeSpec } from "../../lib/ask/permalink";
 import { breakdownDeeperSpec } from "../../lib/ask/source-spec";
+import { withPeerGroup } from "../../lib/ask/peer-groups-shared";
 import type { AskSpec, MonthWindow } from "../../lib/ask/spec";
 import { specTrendList, trendListSpec, type TrendList } from "../../lib/ask/trend-shared";
 import type { SegmentOption } from "./builder/Segmented";
@@ -33,7 +34,7 @@ export function totalConditionWords(applied: AskSpec, executedMonths?: MonthWind
 }
 
 /** The keys the strip writes in F1b: the data stream (a new query) and the map's lens (the data already fetched). */
-export const STRIP_QUERY_KEYS = new Set<StripPatch["path"]>(["dataset"]);
+export const STRIP_QUERY_KEYS = new Set<StripPatch["path"]>(["dataset", "peers"]);
 
 /** The strip's data stream (kit §4: "Toate · Directe · Proceduri", the charts' channel colours as a legend). */
 const STREAM_OPTIONS: readonly SegmentOption[] = [
@@ -56,6 +57,8 @@ export function streamOptions(spec: Pick<AskSpec, "filters">): readonly SegmentO
 
 /** The applied question after a strip change: only that key (plan §2.3). */
 export function appliedAfterStrip(applied: AskSpec, path: StripPatch["path"], value: string): AskSpec {
+  // F6a: the distribution's "Schimbă grupul" writes its ticks, the county and an old link's kind (a new query).
+  if (path === "peers") return withPeerGroup(applied as AskSpec & { filters: Record<string, unknown> }, value);
   return path === "dataset" ? { ...applied, dataset: value as NonNullable<AskSpec["dataset"]> } : { ...applied, measure: value as AskSpec["measure"] };
 }
 

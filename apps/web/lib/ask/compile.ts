@@ -35,6 +35,8 @@ import {
   type SourceTotalsRow,
 } from "./group-ids";
 import { sectorUnit } from "../peer-population";
+import { distributionData, distributionGroup } from "./distribution";
+import type { PeerCoverage, PeerFacts, PeerRowId } from "./peer-groups-shared";
 
 /**
  * Compile a validated AskSpec + grounding into parameterized SQL and execute it
@@ -125,12 +127,55 @@ export interface CompareData {
   /** Firms only: public contracts both won (at most 5 rows). */
   joint?: { total: number; rows: { nid: string; authority: string | null; date: string | null; value: number }[] };
 }
-export interface DistributionData {
+/** distribution-1 (before F6a): 10 CRI buckets and a percentile. Only in answers stored before distribution-2. */
+export interface DistributionDataV1 {
   /** 10 CRI buckets [0,0.1) … [0.9,1]. */
   buckets: { from: number; to: number; n: number }[];
   focal: { entityId: string; name: string; cri: number | null; percentile: number | null };
   role: string;
   totalEntities: number;
+}
+/** A member of the group, listed up to PEER_LIST_LIMIT (final distribution §3.8). */
+export interface DistributionMember { entityId: string; name: string; county: string | null; population: number | null; nFlags: number; flags: string[]; nDas: number }
+/**
+ * distribution-2 (F6a, plan §4.11, final distribution §3.6–§3.8): how many
+ * criteria the entity meets against its group. The group is the other
+ * profiles (≥ 10 accepted direct acquisitions) that the ticks select; the
+ * entity is never one of its own others, so more + same + fewer = others.
+ * `status`: "below" the entity has fewer than 10 (no position); "small" the
+ * group has fewer than 5 others (no position, the ticks to remove); "ok".
+ */
+export interface DistributionData {
+  version: 2;
+  role: "authority" | "supplier";
+  status: "ok" | "below" | "small";
+  /** The criteria a role can meet, in their order (5 for institutions, 4 for firms). */
+  criteria: string[];
+  focal: { entityId: string; name: string; nFlags: number; cri: number | null; flags: string[]; nDas: number; county: string | null; population: number | null; inGroup: boolean };
+  group: {
+    /** The words after "față de" and the facts that name them (sentence.ts reads these). */
+    words: string;
+    facts: PeerFacts;
+    ticks: PeerRowId[];
+    /** An old link's conditions, applied (final §5). */
+    legacy: { county?: string; authorityKind?: string };
+    others: number;
+    coverage?: PeerCoverage;
+    populationVersion?: string;
+    /** The members' ids when they are at most 50: a capture freezes the group it compared. */
+    memberIds?: string[];
+  };
+  position?: { more: number; same: number; fewer: number };
+  /** The others by number of criteria, 0…criteria.length. */
+  hist?: { k: number; n: number }[];
+  /** Each criterion: the others that meet it, and every profile of the role (the country's mark). */
+  perCriterion?: { code: string; others: number; country: number }[];
+  /** Profiles of the role with ≥ 10 accepted direct acquisitions, nationally. */
+  countryTotal?: number;
+  /** The others, when they are at most 50, by criteria then direct acquisitions. */
+  members?: DistributionMember[];
+  /** Two members with the same name (SICAP identities): the list says so. */
+  sameNames?: true;
 }
 export interface BreakdownSlice {
   code: string;
@@ -1442,53 +1487,10 @@ export async function runSpec(
         }
 
         case "distribution": {
-          const buckets = (await s`
-            select width_bucket(coalesce(ef.cri, 0), 0, 1.0000001, 10) b, count(*) n
-            from marts.entity_flags ef
-            where ${efWhere(focalRole, RISK_MIN_DAS)}
-            group by 1 order by 1
-          `) as unknown as { b: number; n: string }[];
-          const focal = (await s`
-            select ef.entity_id, ef.name_display, ef.cri
-            from marts.entity_flags ef
-            where ef.role = ${focalRole} and ef.entity_id = ${focalId}
-          `) as unknown as { entity_id: string; name_display: string | null; cri: string | null }[];
-          if (focal.length === 0) {
-            return {
-              error: `„${focalName}” nu are profil de risc (prea puține achiziții directe).`,
-            };
-          }
-          const cri = focal[0]!.cri === null ? null : Number(focal[0]!.cri);
-          let percentile: number | null = null;
-          if (cri !== null) {
-            const pct = (await s`
-              select count(*) filter (where coalesce(ef.cri, 0) <= ${cri}) le, count(*) total
-              from marts.entity_flags ef
-              where ${efWhere(focalRole, RISK_MIN_DAS)}
-            `) as unknown as { le: string; total: string }[];
-            const total = Number(pct[0]?.total ?? 0);
-            if (total > 0) percentile = Math.round((Number(pct[0]!.le) / total) * 100);
-          }
-          const byBucket = new Map(buckets.map((b) => [Number(b.b), Number(b.n)]));
-          const totalEntities = buckets.reduce((sum, b) => sum + Number(b.n), 0);
-          return {
-            block: "distribution",
-            distribution: {
-              buckets: Array.from({ length: 10 }, (_, i) => ({
-                from: i / 10,
-                to: (i + 1) / 10,
-                n: byBucket.get(i + 1) ?? 0,
-              })),
-              focal: {
-                entityId: String(focal[0]!.entity_id),
-                name: focal[0]!.name_display ?? focalName,
-                cri,
-                percentile,
-              },
-              role: focalRole,
-              totalEntities,
-            },
-          };
+          // distribution-2 (F6a): the criteria against the group the ticks choose (lib/ask/distribution.ts).
+          const distribution = await distributionData(s, { spec, role: focalRole, entityId: String(focalId), name: focalName, profileWhere: efWhere(focalRole, RISK_MIN_DAS) });
+          if ("error" in distribution) return distribution;
+          return { block: "distribution", distribution };
         }
 
         case "breakdown": {
@@ -2078,7 +2080,7 @@ export async function runRows(
       return { error: "Rolul selectat nu aparține entității din răspuns." };
   }
 
-  if (scope.riskBucket && spec.block !== "distribution") return { error: "Intervalul de risc se aplică distribuției." };
+  if ((scope.riskBucket || scope.criteria !== undefined) && spec.block !== "distribution") return { error: "Intervalul de risc se aplică distribuției." };
   if (profile && (scope.cpvPrefixes || scope.excludeCpvPrefixes || scope.years))
     return { error: "Profilul istoric nu se restrânge la CPV sau perioadă. Deschide o întrebare despre achiziții pentru aceste filtre." };
   const dataset = profile ? "da" : spec.dataset ?? "all";
@@ -2134,6 +2136,13 @@ export async function runRows(
   } else {
     profileParts = profilePredicates(ctx, role, profileMinDas(spec.block));
     if (spec.block === "scatter") profileParts.push(sql`ef.cri is not null`);
+    // distribution-2: the group's sources are its other members, as the answer counts them (lib/ask/distribution.ts).
+    if (spec.block === "distribution" && focalId) {
+      const group = await distributionGroup(sql, spec, role, String(focalId));
+      if (!group.resolution) return { error: "Entitatea are sub 10 achiziții directe: nu are un grup de comparație." };
+      if (group.error) return { error: group.error };
+      profileParts.push(...group.conditions);
+    }
   }
   const baseProfileWhere = profileParts.reduce((a, b) => sql`${a} and ${b}`);
   const profileOrder = (spec.rankBy ?? "risk") === "risk"
@@ -2150,6 +2159,7 @@ export async function runRows(
   if (scope.entityIds) selectionParts.push(sql`ef.entity_id = any(${sql.array([...scope.entityIds])}::bigint[])`);
   if (scope.excludeEntityIds) selectionParts.push(sql`not (ef.entity_id = any(${sql.array([...scope.excludeEntityIds])}::bigint[]))`);
   if (scope.riskBucket) selectionParts.push(sql`width_bucket(coalesce(ef.cri, 0), 0, 1.0000001, 10) = ${Math.round(scope.riskBucket.from * 10) + 1}`);
+  if (scope.criteria !== undefined) selectionParts.push(sql`ef.n_flags = ${scope.criteria}`);
   const profileSelection = selectionParts.reduce((a, b) => sql`${a} and ${b}`);
   const cohort = sql`(select ef.* from ${profileBase} ef where ${profileSelection})`;
   // Same supplier as marts.da_transactions: one equal to the authority is not a supplier (audit F12).
@@ -2607,8 +2617,17 @@ function buildDisplaySql(spec: AskSpec, w: PredicateCtx): string {
     }
     case "compare":
       return `select ${w.authorityId ? "authority_id" : "supplier_id"}, sum(closing_value), count(*)\nfrom ${dtable}\nwhere ${where}\ngroup by ${w.authorityId ? "authority_id" : "supplier_id"};\n-- + ani, domenii, parteneri comuni pe aceeași selecție\n-- + profilul de risc istoric: marts.entity_flags (toate achizițiile directe)`;
-    case "distribution":
-      return `select width_bucket(cri, 0, 1, 10) interval_risc, count(*)\nfrom marts.entity_flags\nwhere n_das >= ${RISK_MIN_DAS}\ngroup by 1;\n-- + poziția entității tale în distribuție`;
+    case "distribution": {
+      // distribution-2: the others of the group by number of criteria (lib/ask/distribution.ts).
+      const p = spec.peers ?? {};
+      const group = [
+        ...(w.county ? [`unaccent(county) ilike '${fold(w.county)}'`] : []),
+        ...(w.kind ? [`entity_id in (…)  -- doar ${KIND_LABEL[w.kind]}`] : []),
+        ...(p.similar ? ["entity_id in (…)  -- același tip: populație apropiată ½–2× (RPL 2021) sau același tip de instituție"] : []),
+        ...(p.activity ? ["n_das between ⌈n/2⌉ and 2n  -- activitate apropiată"] : []),
+      ];
+      return `select n_flags criterii, count(*)\nfrom marts.entity_flags\nwhere role = '${w.authorityId ? "authority" : "supplier"}' and n_das >= ${RISK_MIN_DAS}\n  and entity_id <> <entitatea>${group.map((c) => `\n  and ${c}`).join("")}\ngroup by 1;\n-- + criteriile entității și ale grupului, una câte una`;
+    }
     case "breakdown":
       // The slices are always ordered by value: a count measure from another question is not applied here.
       return `select categoria_cpv, sum(closing_value)\nfrom ${dtable}\nwhere ${where}\ngroup by categoria_cpv\norder by 2 desc;`;

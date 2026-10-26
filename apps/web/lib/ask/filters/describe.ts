@@ -292,6 +292,15 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
       chip: county, pills, scope: [{ label: "Județ", value: county }],
     };
   },
+  // F6a: the distribution's group by its rules (the sentence says the bounds where it knows the entity: peer-groups-shared.ts).
+  peers: (spec) => {
+    const p = spec.peers;
+    if (!p || !Object.keys(p).length) return null;
+    const rules = [p.similar && "același tip sau populație apropiată", p.domain && "același domeniu principal", p.activity && "activitate apropiată"]
+      .filter((rule): rule is string => Boolean(rule));
+    const words = `grupul de comparație: ${rules.join(", ")}`;
+    return { words, chip: capitalFirst(rules.join(" · ")), pills: [words], scope: [{ label: "Grupul de comparație", value: capitalFirst(rules.join(", ")) }] };
+  },
   admin: (spec, { grounding }) => {
     const f = spec.filters;
     const pills = grounding?.admin?.personKey && grounding.admin.display ? [`conduse azi de ${grounding.admin.display}`] : [];
@@ -437,8 +446,8 @@ export const DESCRIBED_FILTERS = Object.keys(DESCRIBE) as FilterId[];
 
 /** The order of each place, today's. */
 const TREND_ORDER: readonly FilterId[] = ["trendChange", "trendFirstOnly", "trendMonths", "trendOrder", "trendMinBase"];
-const PILL_ORDER: readonly FilterId[] = ["cpvTerm", "authorityKind", "authority", "supplier", "compareWith", "locality", "county", "admin", "period", ...TREND_ORDER, "singleBidder", "employees", "dataset", "population", "minimumRecords"];
-const SCOPE_ORDER: readonly FilterId[] = ["authority", "supplier", "compareWith", "cpvTerm", "county", "locality", "authorityKind", "admin", "period", ...TREND_ORDER, "dataset", "singleBidder", "employees", "minimumRecords", "population"];
+const PILL_ORDER: readonly FilterId[] = ["cpvTerm", "authorityKind", "authority", "supplier", "compareWith", "locality", "county", "peers", "admin", "period", ...TREND_ORDER, "singleBidder", "employees", "dataset", "population", "minimumRecords"];
+const SCOPE_ORDER: readonly FilterId[] = ["authority", "supplier", "compareWith", "cpvTerm", "county", "peers", "locality", "authorityKind", "admin", "period", ...TREND_ORDER, "dataset", "singleBidder", "employees", "minimumRecords", "population"];
 // A trend's group is its title's own word (sentence.ts); its months, when the title does not say them.
 const SUMMARY_ORDER: readonly FilterId[] = ["dataset", "authority", "supplier", "cpvTerm", "trendMonths", "population", "minimumRecords"];
 const CAVEAT_ORDER: readonly FilterId[] = ["population", "minimumRecords"];

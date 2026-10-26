@@ -1047,6 +1047,7 @@ export default function AskPanel({
                 <DistributionBlock
                   distribution={data.distribution}
                   spec={applied}
+                  onChangeGroup={(value) => applyStripChange("peers", value)}
                 />
               )}
               {data.block === "breakdown" && (

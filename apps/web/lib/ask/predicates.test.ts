@@ -147,7 +147,10 @@ describe("each condition is written by the function of its engine level (plan §
     expect([...expected].filter((key) => !applied.has(key)).sort()).toEqual([
       // A distribution's named entity places that profile among its peers; it is not a condition on them.
       "authority on distribution", "supplier on distribution",
-    ].filter((key) => expected.has(key)));
+      // F6a: the group's ticks need the entity's facts (its population band, its kind, its acquisitions):
+      // lib/ask/distribution.ts writes them beside profilePredicates, for the answer and its sources.
+      "peers on distribution",
+    ].filter((key) => expected.has(key)).sort());
   });
 });
 
