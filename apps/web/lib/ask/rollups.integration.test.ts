@@ -496,6 +496,10 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
         // selection of their records gave (the case above); per list the firms left out without a filing (13, new in 2025,
         // has none; 11 has 50 employees: out of the band, not unfiled); the drawer's selection is every firm.
         const small = base("trend", { trend: { change: "new" } }, { ...Y, minEmployees: 1, maxEmployees: 9 });
+        // „Toate” of the band lists the band's records (S3 review): the totals it takes from the kept partition, or from a
+        // grouping on the rollups, are those its own rows count, and the answer's composition, never every firm's.
+        const everyBand: AskSpec = { ...small, trend: {} };
+        const bandDrawers: ReturnType<typeof drawer>[] = [];
         for (const rolled of [true, false]) {
           if (!rolled) await q.unsafe("savepoint without_rollups");
           if (!rolled) { for (const table of ["agg_entity_year", "agg_pair_year", "agg_cpv_year", "agg_entity_month", "agg_county_month"]) await q.unsafe(`drop table marts.${table}`); }
@@ -504,11 +508,23 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
           if ("error" in banded || banded.data.block !== "trend") throw new Error("trend expected");
           expect([rolled, banded.data.withoutFiling]).toEqual([rolled, { all: 1, up: 0, new: 1, first: 1, down: 0, gone: 0 }]);
           expect([rolled, banded.data.groups?.all?.map((r) => r.entityId).sort()]).toEqual([rolled, ["10", "12", "14"]]);
-          const [drawer, everyFirm] = [await runRows(q, small, {}, 0), await runRows(q, { ...small, filters: Y }, {}, 0)];
-          if ("error" in drawer || "error" in everyFirm) throw new Error("rows expected");
-          expect([rolled, drawer.group?.selection]).toEqual([rolled, everyFirm.group?.selection]);
+          const [newDrawer, everyFirm] = [await runRows(q, small, {}, 0), await runRows(q, { ...small, filters: Y }, {}, 0)];
+          if ("error" in newDrawer || "error" in everyFirm) throw new Error("rows expected");
+          expect([rolled, newDrawer.group?.selection]).toEqual([rolled, everyFirm.group?.selection]);
+          // Nothing kept: grouped on the rollups (rolled) or counted (without them); then from the answer's partition.
+          forgetTrendGroups();
+          const cold = await runRows(q, everyBand, {}, 0);
+          const answered = await runSpec(q, everyBand, {});
+          const kept = await runRows(q, everyBand, {}, 0);
+          if ("error" in cold || "error" in kept || "error" in answered || answered.data.block !== "trend") throw new Error("rows expected");
+          const band = answered.data.composition!.all!;
+          expect([rolled, drawer(kept)]).toEqual([rolled, drawer(cold)]);
+          expect([rolled, Number(kept.sourceValue).toFixed(2)]).toEqual([rolled, (band.valueA + band.valueB).toFixed(2)]);
+          expect([rolled, kept.total, kept.rows.every((r) => ["10", "12", "14"].includes(r.supplierId!))]).toEqual([rolled, kept.sourceTotal, true]);
+          bandDrawers.push(drawer(kept));
           if (!rolled) await q.unsafe("rollback to savepoint without_rollups");
         }
+        expect(bandDrawers[0]).toEqual(bandDrawers[1]);
         forgetRollupsReady(); forgetTrendGroups();
         // The covering id indexes with sicap_da_id (built nightly, F2 review): every group's page takes its direct
         // acquisitions' first keys from them; the same drawers, CSVs and 14 orders.

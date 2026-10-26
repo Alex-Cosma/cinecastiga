@@ -456,6 +456,12 @@ describe("the trend's sources", () => {
     const next = database(PROD, { stamp: "52", rollups: true, days: true });
     await runRows(next.sql, all, {}, 0);
     expect([counted(next), grouping(next)]).toEqual([false, false]);
+    // A narrower selection (a county here) not kept counts: its grouping on the rollups costs more than its count.
+    forgetRollupsReady();
+    const cluj = database(PROD, { stamp: "53", rollups: true, days: true, partition: GONE() });
+    const narrow = await runRows(cluj.sql, trend({ change: "all", months: "whole" }, { yearFrom: 2024, yearTo: 2025, county: "Cluj" }), { county: { query: "Cluj", canonical: "Cluj" } }, 0);
+    if ("error" in narrow) throw new Error(narrow.error);
+    expect([counted(cluj), grouping(cluj)]).toEqual([true, false]);
     // A live grouping would cost what the count does; a search or a row's scope needs the count.
     forgetRollupsReady();
     for (const [db, opts] of [[database(PROD, { partition: GONE() }), {}], [database(PROD, { stamp: "51" }), { search: "spital" }],
