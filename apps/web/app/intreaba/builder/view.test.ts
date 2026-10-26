@@ -279,6 +279,12 @@ describe("the windows (component 9 and the composed pickers)", () => {
     expect(trend.map((p) => [p.label, p.detail ?? ""])).toEqual([["2024 și 2025", "ultimii doi ani compleți"], ["2023 și 2024", ""]]);
   });
 
+  it("never count the calendar year as complete before the archive's span is read", () => {
+    const fact = periodPresets(q({ block: "fact_check", filters: { authorityId: 1, supplierId: 2 } }), null, 2026).presets;
+    expect(fact.map((p) => [p.label, p.detail ?? ""])).toEqual([["Până acum", ""], ["Ultimii 3 ani compleți", "2023–2025"], ["2026", ""], ["2025", ""]]);
+    expect(periodPresets(SEVEN.trend!, null, 2026).presets[0]).toMatchObject({ label: "2024 și 2025", detail: "ultimii doi ani compleți" });
+  });
+
   it("give a trend the complete years of its default (every channel's «complet până la», trend final §3.2), not of the data's last day", () => {
     const periods = (until: string | null) => ({ da: { from: "2018-04-02", to: "2027-01-20", completeUntil: "2027-01-15" }, contracts: { from: "2018-01-03", to: "2027-01-20", completeUntil: until } });
     const span = { from: "2018-04-02", to: "2027-01-20" };

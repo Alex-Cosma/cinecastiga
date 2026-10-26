@@ -22,6 +22,9 @@ export const PERSON_FIRMS_TIP = "Reprezentanți legali azi, din Registrul Comer�
 
 export default function PersonFirms({ person, onPick }: { person: PersonPick; onPick: (firm: { id: string; name: string }) => void }) {
   const [state, setState] = useState<{ data: Firms | null; error: string | null }>({ data: null, error: null });
+  // The section opens where the person's row was, under a pointer at rest: its (?) waits for the pointer to move
+  // before it opens on hover (a tap, a click or the keyboard open it at once).
+  const [still, setStill] = useState(true);
   useEffect(() => {
     const ctrl = new AbortController();
     setState({ data: null, error: null });
@@ -33,7 +36,8 @@ export default function PersonFirms({ person, onPick }: { person: PersonPick; on
   }, [person.key]);
   const { data, error } = state;
   const others = data ? data.firms - data.suppliers.length : 0;
-  return <div className="qb-person-firms">
+  const moved = () => { if (still) setStill(false); };
+  return <div className={`qb-person-firms${still ? " qb-still" : ""}`} onPointerMove={moved} onPointerDown={moved}>
     <p className="qb-opt-group qb-tipwrap">Firmele reprezentate azi <HelpTip tip={{ title: "Persoane → firmele lor", text: PERSON_FIRMS_TIP }} /></p>
     {!data && !error && <p className="qb-search-status" role="status">Caut firmele…</p>}
     {error && <p className="qb-form-error" role="alert">{error}</p>}
