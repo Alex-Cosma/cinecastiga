@@ -89,6 +89,12 @@ describe("the answer's targets and contrast", () => {
     expect(css("./builder/filters-kit.css")).toContain(".qb-tipwrap{position:relative}");
   });
 
+  it("lets a line break before a part kept whole: no nowrap starts with its own space (S4 tests: the network's summary)", () => {
+    // „ · 95,3% în asociere (?)” inside .qb-nowrap left no break before it: 56 px past a 390 px screen, its (?) out of reach.
+    for (const file of ["./NetworkAnswer.tsx", "./SankeyAnswer.tsx", "./TrendAnswer.tsx", "./CompareBlock.tsx", "./blocks.tsx", "./AskPanel.tsx", "./SeriesAnswer.tsx"])
+      expect(readFileSync(new URL(file, import.meta.url), "utf8"), file).not.toMatch(/className="qb-nowrap">\s/);
+  });
+
   it("keeps /harta whole: one text per county's title (it did not hydrate), 44 px targets under 600 px (S4 tests)", () => {
     const page = readFileSync(new URL("../harta/page.tsx", import.meta.url), "utf8");
     expect(page).toContain("<title>{`${s.label} — ${formatRon(v)}`}</title>");

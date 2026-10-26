@@ -79,8 +79,9 @@ export default function NetworkAnswer({ data, spec, conditions = [], onList, onO
     {!empty && <div className="qb-net-head">
       <p className="qb-net-summary qb-tipwrap">
         <span>{summary.parts.join(" · ")}</span>
-        {summary.oneOff && <span className="qb-nowrap"> · {summary.oneOff}<HelpTip tip={ONE_OFF_TIP} /></span>}
-        {summary.joint && <span className="qb-nowrap"> · {summary.joint}<HelpTip tip={JOINT_TIP} /></span>}
+        {/* The space before each part stays outside its nowrap: the line may break there (S4 tests: „· 95,3% în asociere (?)” ran 56 px past a 390 px screen, its (?) out of reach). */}
+        {summary.oneOff && <>{" "}<span className="qb-nowrap">· {summary.oneOff}<HelpTip tip={ONE_OFF_TIP} /></span></>}
+        {summary.joint && <>{" "}<span className="qb-nowrap">· {summary.joint}<HelpTip tip={JOINT_TIP} /></span></>}
       </p>
       <span className="qb-row qb-net-order">
         <span className="qb-strip-label">Ordonează</span>
