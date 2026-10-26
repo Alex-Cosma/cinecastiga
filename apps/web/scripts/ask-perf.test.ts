@@ -18,7 +18,9 @@ describe("ask-perf cases", () => {
       expect(localityScopeError(c.spec), c.id).toBeNull();
       expect(validateSpec(c.question), c.id).toEqual(c.spec);
       if (c.scope) expect(validateEvidenceScope(c.scope), c.id).toEqual(c.scope);
-      if (c.path !== "answer") expect(c.spec.block, c.id).not.toBe("scatter");
+      // The risk cloud has no source rows; its windows' counts are its profiles.
+      if (c.path === "rows" || c.path === "csv") expect(c.spec.block, c.id).not.toBe("scatter");
+      expect(Boolean(c.facet), c.id).toBe(c.path === "facet");
     }
   });
   it("keep the catalogue default of every block that needs no choice", () => {
@@ -41,9 +43,11 @@ describe("ask-perf cases", () => {
     const trend = cases.find((c) => c.id === "catalog:trend")!;
     expect(trend.spec).toMatchObject({ block: "trend", dim: "supplier", topN: 10, filters: { yearFrom: 2025, yearTo: 2026 } });
   });
-  it("hold answers to 1 s and only national, source and CSV cases to 2 s", () => {
+  it("hold answers to 1 s and only national, source, CSV and national window cases to 2 s", () => {
     for (const c of cases) if (c.group === "catalog" || c.group === "filtered") expect(c.barMs, c.id).toBe(1000);
-    expect(cases.filter((c) => c.barMs === 2000).every((c) => ["national", "sources", "csv"].includes(c.group))).toBe(true);
+    expect(cases.filter((c) => c.barMs === 2000).every((c) => ["national", "sources", "csv", "facets"].includes(c.group))).toBe(true);
+    // A window's counts on a narrower selection (a county, the profiles) keep the answers' bar.
+    for (const id of ["facets:size-cluj-2025", "facets:kind-scatter"]) expect(cases.find((c) => c.id === id)!.barMs, id).toBe(1000);
   });
 });
 
