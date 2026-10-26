@@ -245,3 +245,22 @@ describe("what a watch compares between two checks", () => {
     expect(answerCore("trend", old)).toBe(old);
   });
 });
+
+describe("a comparison's core (F4)", () => {
+  // Before F4: the cards' sums, years and partners; F4 adds rows for the screen (the context rows, „Doar clienții comuni”).
+  const card = { entityId: "1", value: 10, count: 2, years: [{ year: 2025, value: 10 }], streams: { da: { value: 4, count: 1 }, contracts: { value: 6, count: 1, singleBid: 0, bidsKnown: 1 } } };
+  const before = { block: "compare", entities: [card], shared: { total: 1, rows: [{ entityId: "7", name: "X", a: { value: 3, count: 1 }, b: { value: 2, count: 1 } }] } };
+  const after = {
+    block: "compare",
+    entities: [{ ...card, years: [{ year: 2025, value: 10, count: 2 }], general: 5, seats: { same: 1, other: 2, abroad: 0, unknown: 0 }, populationLevel: "local",
+      whole: { value: 20, count: 4, partners: 3 }, joint: { value: 1, contracts: 1 }, streams: { ...card.streams, contracts: { ...card.streams.contracts, distinct: 1 } } }],
+    shared: { total: 1, rows: [{ entityId: "7", name: "X", a: { value: 3, count: 1, joint: 1 }, b: { value: 2, count: 1, joint: 1 } }] },
+  };
+  it("leaves out what F4 draws for the screen: a watch of before F4 sees the same core", () => {
+    expect(sameAnswerCore("compare", before, after)).toBe(true);
+    expect(sameAnswerCore("compare", before, { ...after, entities: [{ ...after.entities[0]!, value: 11 }] })).toBe(false);
+  });
+  it("needs no answer version: the default comparison's figures are the same", () => {
+    expect(answerVersion({ block: "compare", measure: "value", filters: { authorityId: 1, compareWithId: 2 } })).toEqual({ question: "compare-1", conditions: {} });
+  });
+});

@@ -44,9 +44,9 @@ describe("facetSpec: a window counts without its own key (R5)", () => {
   });
   it("names every part, and nothing else", () => {
     expect(FACET_PARTS.every(isFacetPart)).toBe(true);
-    // F3-rows: the answer's facts after the answer, „Din care” (mix) and a bar's card (bars).
-    expect(FACET_PARTS.slice(-2)).toEqual(["mix", "bars"]);
-    expect(["pair", "rows", "", null, 3].some(isFacetPart)).toBe(false);
+    // F3-rows: the answer's facts after the answer, „Din care” (mix) and a bar's card (bars); F4: a comparison's pair and suggestions.
+    expect(FACET_PARTS.slice(-4)).toEqual(["mix", "bars", "pair", "compare-peers"]);
+    expect(["rows", "peers", "", null, 3].some(isFacetPart)).toBe(false);
   });
 });
 
@@ -148,7 +148,8 @@ describe("a facet request", () => {
     expect(facetRequest({ part: "kind" })).toEqual({ part: "kind", q: null });
     expect(facetRequest({ part: "locate", q: "  ded  " })).toEqual({ part: "locate", q: "ded" });
     expect(facetRequest({ part: "mix" })).toEqual({ part: "mix", q: null });
-    expect(facetRequest({ part: "pair" })).toHaveProperty("error");
+    expect(facetRequest({ part: "pair" })).toEqual({ part: "pair", q: null });
+    expect(facetRequest({ part: "rows" })).toHaveProperty("error");
     expect(facetRequest({ part: "locate", q: "ă" })).toHaveProperty("error");
     expect(facetRequest({ part: "locate" })).toHaveProperty("error");
   });

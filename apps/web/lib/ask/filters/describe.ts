@@ -533,6 +533,11 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
     const words = `după ${NETWORK_ORDER_WORDS[order].phrase}`;
     return { words, chip: capitalFirst(NETWORK_ORDER_WORDS[order].phrase), pills: [words], scope: [{ label: "Ordine", value: NETWORK_ORDER_WORDS[order].short }] };
   },
+  // F4 (final compare §3.4, §5): the title ends "…, doar la clienții comuni."; under the sentence, the chip once set.
+  sharedPartners: (spec) => spec.filters.sharedPartners ? {
+    words: "doar la clienții comuni", chip: "Doar clienții comuni", pills: ["clienții comuni"],
+    scope: [{ label: "Clienții", value: "Doar instituțiile care au cumpărat de la ambele firme" }], summary: "Clienții comuni",
+  } : null,
   networkSignals: (spec) => spec.network?.signals ? {
     words: "doar partenerii cu semnale", chip: "Cu semnale", pills: ["cu semnale"],
     scope: [{ label: "Semnale", value: "Doar partenerii cu un semnal oficial pe relație" }], summary: "Cu semnale",
@@ -560,10 +565,10 @@ export const DESCRIBED_FILTERS = Object.keys(DESCRIBE) as FilterId[];
 const TREND_ORDER: readonly FilterId[] = ["trendChange", "trendFirstOnly", "trendMonths", "trendOrder", "trendMinBase"];
 const SERIES_ORDER: readonly FilterId[] = ["timeseriesGrain", "timeseriesSplit", "timeseriesMonths"];
 const NETWORK_ORDER: readonly FilterId[] = ["networkPartners", "networkSince", "networkSignals", "networkOrder"];
-const PILL_ORDER: readonly FilterId[] = ["purchaseKind", "cpvTerm", "authorityKind", "authority", "supplier", "compareWith", "locality", "county", "firmSeat", "seatCounty", "admin", "period", ...TREND_ORDER, ...SERIES_ORDER, ...NETWORK_ORDER, "singleBidder", "employees", "dataset", "procedure", "purchaseValue", "population", "minimumRecords"];
-const SCOPE_ORDER: readonly FilterId[] = ["authority", "supplier", "compareWith", "purchaseKind", "cpvTerm", "county", "firmSeat", "seatCounty", "locality", "authorityKind", "admin", "period", ...TREND_ORDER, ...SERIES_ORDER, ...NETWORK_ORDER, "dataset", "procedure", "purchaseValue", "singleBidder", "employees", "minimumRecords", "population"];
+const PILL_ORDER: readonly FilterId[] = ["purchaseKind", "cpvTerm", "authorityKind", "authority", "supplier", "compareWith", "sharedPartners", "locality", "county", "firmSeat", "seatCounty", "admin", "period", ...TREND_ORDER, ...SERIES_ORDER, ...NETWORK_ORDER, "singleBidder", "employees", "dataset", "procedure", "purchaseValue", "population", "minimumRecords"];
+const SCOPE_ORDER: readonly FilterId[] = ["authority", "supplier", "compareWith", "sharedPartners", "purchaseKind", "cpvTerm", "county", "firmSeat", "seatCounty", "locality", "authorityKind", "admin", "period", ...TREND_ORDER, ...SERIES_ORDER, ...NETWORK_ORDER, "dataset", "procedure", "purchaseValue", "singleBidder", "employees", "minimumRecords", "population"];
 // A trend's group is its title's own word (sentence.ts); its months, when the title does not say them.
-const SUMMARY_ORDER: readonly FilterId[] = ["dataset", "procedure", "authority", "supplier", "purchaseKind", "cpvTerm", "purchaseValue", "trendMonths", "timeseriesSplit", "timeseriesMonths", "networkSignals", "population", "minimumRecords"];
+const SUMMARY_ORDER: readonly FilterId[] = ["dataset", "procedure", "authority", "supplier", "purchaseKind", "cpvTerm", "purchaseValue", "trendMonths", "timeseriesSplit", "timeseriesMonths", "networkSignals", "sharedPartners", "population", "minimumRecords"];
 const CAVEAT_ORDER: readonly FilterId[] = ["purchaseValue", "population", "minimumRecords"];
 
 /**

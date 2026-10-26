@@ -237,6 +237,31 @@ export const GLOSSARY = {
     title: "Aceleași luni",
     text: "Când al doilea an nu e încheiat în date, ambii ani se compară pe aceleași luni: din ianuarie până la ultima lună completă. Altfel un an parțial ar părea o scădere.",
   },
+  // F4, the comparison (final compare §3–§4, plan §8): the (?) of its switch, presets and context rows.
+  "clienti-comuni": {
+    title: "Doar clienții comuni",
+    text: "Instituțiile care au cumpărat de la amândouă, în selecția aleasă; nu neapărat la aceeași licitație sau în același an. Include contractele câștigate împreună, arătate separat. Nu înseamnă că au concurat.",
+  },
+  "perioada-comuna": {
+    title: "Perioada comună",
+    text: "De la primul la ultimul an în care apar amândouă în arhivă, în selecția aleasă. Nu e vechimea firmei sau a instituției.",
+  },
+  "coduri-generale": {
+    title: "Coduri mai generale",
+    text: "Codul CPV îl alege instituția. Lucrările codate general (de exemplu 45000000 „Lucrări de construcții”) nu intră în domeniul ales; cardul arată cât e pe ele. Înregistrările fără cod CPV ies.",
+  },
+  "doar-primaria": {
+    title: "Doar primăria",
+    text: "Direcțiile, regiile și companiile orașului sunt instituții separate, cu achizițiile lor.",
+  },
+  "sediu-furnizori": {
+    title: "Sediul furnizorilor",
+    text: "Sediul social al firmei, nu locul lucrării: ultima înmatriculare la Registrul Comerțului, apoi județul din SEAP. Firmele cu sediul în București apar „în alt județ”.",
+  },
+  "inregistrari-consortiu": {
+    title: "În asociere",
+    text: "La un contract cu mai mulți câștigători, câte o înregistrare pe câștigător, cu cota lui egală. De aceea înregistrările pot fi mai multe decât contractele.",
+  },
 } as const satisfies Record<string, GlossaryEntry>;
 
 export type GlossaryId = keyof typeof GLOSSARY;

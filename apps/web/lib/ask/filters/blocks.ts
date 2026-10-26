@@ -48,6 +48,7 @@ const PLACES = {
   months: ["Aceleași luni", "Ce luni compari?"],
   size: ["Mărimea achiziției", "Cât de mare e fiecare achiziție?"],
   signals: ["Cu semnale", "Cu semnale"],
+  shared: ["Doar clienții comuni", "Doar clienții comuni"],
 } as const satisfies Record<string, readonly [string, string]>;
 type Place = keyof typeof PLACES;
 
@@ -267,6 +268,8 @@ function entry(extra: Partial<Pick<BlockFilters, "rows" | "strip" | "under">> = 
 const size = () => [sizeInvite];
 /** P4 on the evolution (F3): the chip "Aceleași luni: ian.–mai ×" once the strip's switch set it. */
 const seriesMonths = placed("timeseriesMonths", "months");
+/** P4 on a comparison of firms (F4): the chip "Doar clienții comuni ×" once the strip's switch, a link or the words set it. */
+const sharedChip = placed("sharedPartners", "shared");
 
 export const BLOCK_FILTERS: Record<Block, BlockFilters> = {
   stat: entry({ under: size }),
@@ -278,7 +281,8 @@ export const BLOCK_FILTERS: Record<Block, BlockFilters> = {
   // The data stream is the strip's segmented "Toate · Directe · Proceduri"; the sentence says it once set ("prin […]").
   // The number beside the value: the legend's headers order by it (F3, final breakdown §3.8).
   breakdown: entry({ strip: ["dataset", "measure"] }),
-  compare: entry({ strip: ["dataset"] }),
+  // F4 (final compare §3.4): between firms „Doar clienții comuni” beside the answer; once set (a link, the words), its chip.
+  compare: entry({ strip: ["dataset", "sharedPartners"], under: (_spec, ctx) => ctx.role === "supplier" ? [sharedChip] : [] }),
   // The groups beside the answer switch on the data already fetched (owner-R-facts-all-lists); "Prima dată" on the new ones.
   trend: entry({ rows: winners, under: () => [sameMonths], strip: ["trendChange", "trendFirstOnly"] }),
   // F4: the groups and their year, the order beside the answer (on data already fetched, but the year); the flow's length.

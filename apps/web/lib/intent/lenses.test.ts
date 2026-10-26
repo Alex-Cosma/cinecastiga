@@ -216,3 +216,22 @@ describe("the interpreter's cache key", () => {
     expect(intentCacheKey("Ce firme au crescut?", "2026-10-22", null)).not.toBe(key);
   });
 });
+
+describe("comparison lenses (F4, plan §2.7, final compare §3.4)", () => {
+  it("«clienții comuni» between two firms is „Doar clienții comuni”, said in the sentence", async () => {
+    const { r } = await ask("compara constructii erbasu cu elbi energy projects la clientii comuni");
+    expect(r.spec).toMatchObject({ block: "compare", filters: { supplierId: 9000001, compareWithId: 9000003, sharedPartners: true } });
+    expect(r.sentence).toBe("Compară CONSTRUCTII ERBASU S.A. cu ELBI ENERGY PROJECTS SRL la toate achizițiile, în toți anii, doar la clienții comuni.");
+  });
+  it("between two institutions it does not exist: a note says so, the comparison stays", async () => {
+    const { r } = await ask("compara primaria Buzau cu primaria Braila la clientii comuni");
+    expect(r.spec).toMatchObject({ block: "compare", filters: { authorityId: 2144364, compareWithId: 3000001 } });
+    expect(r.spec?.filters.sharedPartners).toBeUndefined();
+    expect(r.interpretation.notes).toContain(lensNotApplied("clientii comuni"));
+  });
+  it("between two firms a kind of institution is their clients', kept (final compare §3.5)", async () => {
+    const { r } = await ask("compara constructii erbasu cu elbi energy projects la spitale");
+    expect(r.spec).toMatchObject({ block: "compare", filters: { supplierId: 9000001, compareWithId: 9000003, authorityKind: "spital" } });
+    expect(r.sentence).toBe("Compară CONSTRUCTII ERBASU S.A. cu ELBI ENERGY PROJECTS SRL la toate achizițiile făcute de spitalele, în toți anii.");
+  });
+});

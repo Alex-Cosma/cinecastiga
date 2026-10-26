@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { createDb, type DbSql } from "@seap/db";
-import { NEWER_VERSION_LINK, validateSpec } from "@/lib/ask/spec";
+import { NEWER_VERSION_LINK, parseSpec, unimplementedSpecKeys, validateSpec, type AskSpec, type SpecError } from "@/lib/ask/spec";
 import { localityScopeError } from "@/lib/ask/question-ui";
 import { aborted, FACET_SLOTS, facetCounts, facetRequest, inFacetSlot, locate, type FacetFailure } from "@/lib/ask/facets";
 import { barFacts, mixFacts } from "@/lib/ask/answer-facts";
+import { comparePeers, pairFacts } from "@/lib/ask/compare-engine";
+import type { ComparePeersResult, PairResult } from "@/lib/ask/compare-shared";
 import type { BarsResult, FacetCounts, LocateResult, MixResult } from "@/lib/ask/facet-parts";
 import { devlog } from "@/lib/devlog";
 
@@ -14,6 +16,9 @@ import { devlog } from "@/lib/devlog";
  *   { spec, part: "locate", q } → { ok, part, total, measure, matches, checkpoint, tookMs }
  *   { spec, part: "mix" }  → stat's „Din care” (lib/ask/answer-facts.ts): { ok, part, kind, procedure, size, offers, total, … }
  *   { spec, part: "bars" } → an evolution's bar facts: { ok, part, max, above, checkpoint, tookMs }
+ *   { spec, part: "pair" } → a comparison's pair for its windows (lib/ask/compare-engine.ts): { ok, part, years, domains, general, kinds, counties, … }
+ *   { spec, part: "compare-peers" } → the suggestions of "Cu cine comparăm?": { ok, part, label, tip, peers, … };
+ *     the second entity is not chosen yet, so only the shape of the spec and its first entity are checked.
  *   over the 8 s limit  → { ok: false, timeout: true }: the window shows its options without numbers.
  * POST, not GET: a precise selection reaches 64 KB, and a person's key (name,
  * birth date and place) stays out of the access logs. Its own pool of
@@ -38,17 +43,19 @@ export async function POST(req: Request) {
   const asked = facetRequest(body);
   if ("error" in asked) return NextResponse.json({ ok: false, error: asked.error }, { status: 400 });
   // A key this release reads but does not apply is refused here too (plan F0a).
-  const v = validateSpec(body.spec, { refuseNewer: NEWER_VERSION_LINK });
+  const v = asked.part === "compare-peers" ? peersSpec(body.spec) : validateSpec(body.spec, { refuseNewer: NEWER_VERSION_LINK });
   if ("error" in v) return NextResponse.json({ ok: false, error: v.error }, { status: v.newer ? 422 : 400 });
   const localityError = localityScopeError(v);
   if (localityError) return NextResponse.json({ ok: false, error: localityError }, { status: 400 });
   const signal = req.signal;
   try {
-    const result = await inFacetSlot<FacetCounts | LocateResult | MixResult | BarsResult | FacetFailure>(signal, () => asked.part === "locate"
+    const result = await inFacetSlot<FacetCounts | LocateResult | MixResult | BarsResult | PairResult | ComparePeersResult | FacetFailure>(signal, () => asked.part === "locate"
       ? locate(db(), v, asked.q!, { signal })
       : asked.part === "mix" ? mixFacts(db(), v, { signal })
         : asked.part === "bars" ? barFacts(db(), v, { signal })
-          : facetCounts(db(), v, asked.part, { signal }));
+          : asked.part === "pair" ? pairFacts(db(), v, { signal })
+            : asked.part === "compare-peers" ? comparePeers(db(), v, { signal })
+              : facetCounts(db(), v, asked.part, { signal }));
     if ("timeout" in result) return NextResponse.json({ ok: false, timeout: true }, { headers: { "cache-control": "no-store" } });
     // A count that waits on the marts stage (PRECOMPUTE.md): the options without numbers, as past the limit.
     if ("precompute" in result) return NextResponse.json({ ok: false, timeout: true, precompute: result.precompute }, { headers: { "cache-control": "no-store" } });
@@ -62,4 +69,13 @@ export async function POST(req: Request) {
     devlog("facets", { part: asked.part, ok: false, error: msg });
     return NextResponse.json({ ok: false, error: "Numerele nu au putut fi calculate." }, { status: 500 });
   }
+}
+
+/** "Cu cine comparăm?" opens before the second entity exists: the spec's shape, a key this release applies, a first entity. */
+function peersSpec(raw: unknown): AskSpec | (SpecError & { newer?: true }) {
+  const spec = parseSpec(raw);
+  if ("error" in spec) return spec;
+  if (unimplementedSpecKeys(spec).length) return { error: NEWER_VERSION_LINK, newer: true };
+  const f = spec.filters;
+  return f.authorityId || f.authorityName || f.supplierId || f.supplierName ? spec : { error: "Alege întâi prima entitate." };
 }

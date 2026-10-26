@@ -13,7 +13,7 @@ import type { SpecPath } from "../ask/filters/types";
  * question, and keep its words from being read as a subject or a name;
  * to-spec.ts applies those of the chosen block that its question offers
  * and says when one does not apply. Only the keys a stage implements are
- * listed: F2 the trend's (lib/ask/filters/defs/trend.ts).
+ * listed: F2 the trend's (lib/ask/filters/defs/trend.ts), F4 a comparison's shared clients.
  */
 
 export interface LensPhrase {
@@ -66,5 +66,9 @@ export const LENS_PHRASES: Partial<Record<Block, readonly LensPhrase[]>> = {
     // Elsewhere "de câte ori" asks for the number of records (rules.ts modifiers): on a trend, for the order in percent.
     { re: /\bde cate ori\b/, path: "trend.order", value: "percent", quiet: true },
     { re: /\b(?:pe )?aceleasi luni\b/, path: "trend.months", value: "auto" },
+  ],
+  // F4 (plan §2.7, final compare §3.4): between two firms only; between institutions the note says it does not apply.
+  compare: [
+    { re: /\b(?:clienti(?:i|lor)? comuni|aceiasi clienti|acelorasi clienti)\b/, path: "filters.sharedPartners", value: true },
   ],
 };

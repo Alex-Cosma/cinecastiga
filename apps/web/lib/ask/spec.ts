@@ -321,6 +321,11 @@ export const SPEC_JSON_SCHEMA = {
           type: "string",
           description: "Județul sediului firmei (nu al instituției), doar când rândurile sunt firme (dim=supplier la table, trend, entity_card, scatter). Ex: „firmele din Cluj care câștigă cel mai mult” → Cluj.",
         },
+        // F4 (plan §4.6): a comparison of two firms at the institutions both sold to.
+        sharedPartners: {
+          type: "boolean",
+          description: "Doar pentru block=compare cu două firme: true = numai instituțiile care au cumpărat de la amândouă („clienții comuni”, „aceiași clienți”).",
+        },
       },
     },
   },
@@ -356,6 +361,8 @@ export const IMPLEMENTED_KEYS: ReadonlySet<string> = new Set([
   "filters.firmSeat", "filters.seatCounty",
   // F4: the network's groups, reference year, order, length and signals (NETWORK_RULES below; relations.ts), the flow's length.
   ...["partners", "since", "order", "show", "signals"].map(key => `network.${key}`), "sankey.shown",
+  // F4: a comparison of two firms at their shared clients only (COMPARE_RULES below; compare-engine.ts sharedPartnersPrestep).
+  "filters.sharedPartners",
 ]);
 /**
  * Paths parseSpec reads ahead of the engine (plan §3), with the stage that
@@ -366,7 +373,6 @@ export const IMPLEMENTED_KEYS: ReadonlySet<string> = new Set([
  */
 export const READ_AHEAD_KEYS = {
   "options.members=network-group": "F4",
-  "filters.sharedPartners": "F4",
   "filters.newSince": "F5", "filters.newScope": "F5", "filters.mainClient": "F5", "filters.dominantSupplier": "F5",
   "filters.authorityKind=local_admin": "F5",
   "peers.similar": "F6a", "peers.activity": "F6a", "peers.domain": "F6a",
@@ -761,6 +767,19 @@ export const NETWORK_RULES: Readonly<Record<"partners", (spec: AskSpec) => strin
     ? "Grupele privesc toată relația, fără perioadă. Alege „Toți” sau scoate perioada." : null,
 };
 
+/**
+ * The rules of the comparison's options (plan §3, §4.6, F4; final compare
+ * §3.4): „Doar clienții comuni” is a comparison of two firms, where the
+ * institutions both sold to are known; between two institutions the shared
+ * suppliers stay the answer's own section. FilterDef.validate of
+ * lib/ask/filters/defs/compare.ts; runnableError runs it.
+ */
+export const COMPARE_RULES: Readonly<Record<"sharedPartners", (spec: AskSpec) => string | null>> = {
+  sharedPartners: (spec) => spec.filters.sharedPartners
+    && (spec.block !== "compare" || spec.filters.authorityId !== undefined || Boolean(spec.filters.authorityName) || !(spec.filters.supplierId || spec.filters.supplierName))
+    ? "„Doar clienții comuni” există doar la compararea a două firme." : null,
+};
+
 /** What this release can answer, on a parsed spec. Null when it can run. */
 export function runnableError(spec: AskSpec): string | null {
   const { block, dim, measure, filters } = spec;
@@ -797,7 +816,7 @@ export function runnableError(spec: AskSpec): string | null {
   }
   if (block === "trend" && (filters.monthFrom !== undefined || filters.monthTo !== undefined))
     return "Schimbarea compară doi ani întregi. Elimină explicit lunile sau alege evoluția în timp; filtrele nu au fost eliminate.";
-  for (const rule of [...Object.values(TREND_RULES), ...Object.values(SELECTION_RULES), ...Object.values(TIMESERIES_RULES), ...Object.values(SEAT_RULES), ...Object.values(NETWORK_RULES)]) {
+  for (const rule of [...Object.values(TREND_RULES), ...Object.values(SELECTION_RULES), ...Object.values(TIMESERIES_RULES), ...Object.values(SEAT_RULES), ...Object.values(NETWORK_RULES), ...Object.values(COMPARE_RULES)]) {
     const error = rule(spec);
     if (error) return error;
   }

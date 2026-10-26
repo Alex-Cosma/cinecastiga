@@ -66,6 +66,8 @@ export const FACET_ENTRIES = 500;
 export const LOCATE_ID_LIMIT = 1_000_000;
 
 export type FacetFailure = { error: string } | { timeout: true } | { precompute: string };
+/** Why a comparison's windows have no numbers with „Doar clienții comuni” (facetCounts). */
+export const SHARED_PARTNERS_COUNTS = "Cu „Doar clienții comuni”, clienții comuni se schimbă cu fiecare alegere: ferestrele nu au numere.";
 
 /** What a part needs of the question once grounded (runRows' checks, without its notes). */
 export interface Prepared {
@@ -535,6 +537,9 @@ function waitFor(shared: Shared, signal: AbortSignal | undefined): Promise<Facet
  * counted once for every request asking the same thing at the same time.
  */
 export async function facetCounts(sql: DbSql, draft: AskSpec, part: CountPart, opts: { signal?: AbortSignal } = {}): Promise<FacetCounts | FacetFailure> {
+  // F4: the shared clients (P) are found on the whole draft, so every option of a window would have its own P; a count
+  // on the draft's P would not be the answer after choosing it (kit R5). The window shows its options without numbers.
+  if (draft.block === "compare" && draft.filters.sharedPartners) return { error: SHARED_PARTNERS_COUNTS };
   const base = facetSpec(draft, part);
   const stamp = await facetStamp(sql);
   const key = stamp.build ? facetKey(base, part, { build: stamp.build, checkpoint: stamp.checkpoint }) : null;

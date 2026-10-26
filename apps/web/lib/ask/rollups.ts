@@ -89,6 +89,8 @@ export interface RollupCtx {
   seatCounty: string | null;
   /** The seat column is filled (no condition: which column the two keys read). */
   seatColumn: boolean;
+  /** F4: the shared clients of two compared firms (the pre-step P of „Doar clienții comuni”); a comparison has its own queries. */
+  shared: readonly string[] | null;
 }
 
 /**
@@ -100,7 +102,7 @@ export const ROLLUP_CTX_KEYS = [
   "sql", "plafond", "population", "minimumRecords", "cpvPrefixes", "cpvExclude", "county", "kind", "kindIds",
   "authorityId", "supplierId", "uatSiruta", "uatAuthorityIds", "singleBidder", "minEmployees", "maxEmployees",
   "yearFrom", "yearTo", "monthFrom", "monthTo", "trendMonths", "seriesMonths", "adminSupplierIds", "comparison",
-  "purchaseKind", "procedure", "purchaseValueMin", "purchaseValueMax", "firmSeat", "seatCounty", "seatColumn",
+  "purchaseKind", "procedure", "purchaseValueMin", "purchaseValueMax", "firmSeat", "seatCounty", "seatColumn", "shared",
 ] as const satisfies readonly ("sql" | keyof RollupCtx)[];
 const KNOWN_KEYS = new Set<string>(ROLLUP_CTX_KEYS);
 
@@ -191,6 +193,7 @@ export function planRollup(ctx: RollupCtx, need: RollupNeed, opts: { months?: bo
   for (const [key, value] of Object.entries(ctx))
     if (!KNOWN_KEYS.has(key) && holdsCondition(value)) return { reason: `${key}: a condition the rollups do not know` };
   if (ctx.comparison) return { reason: "comparison: its own queries (compareParties …)" };
+  if (ctx.shared) return { reason: "shared clients: the pre-step P of a comparison" };
   if (ctx.monthFrom !== null || ctx.monthTo !== null) return { reason: "months: the rollups keep whole years" };
   if (ctx.trendMonths && !opts.months) return { reason: "months: agg_entity_month is not built" };
   if (ctx.seriesMonths) return { reason: "months: the same months of every year are on agg_months (series-rollups.ts)" };

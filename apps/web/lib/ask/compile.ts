@@ -8,7 +8,7 @@ import type { Grounding } from "./ground";
 import { EVIDENCE_CSV_LIMIT, PROFILE_BLOCKS, sumDecimalStrings, validateEvidenceScope, type EvidenceScope, type EvidenceStatus, type EvidenceProfile } from "./evidence";
 import {
   andAll, DA_PLAFOND_RON, displayPredicates, employeesBounds, employeesCond, ENTITY_CARD_MIN_DAS, fold, fullValueUnion, groupPredicates, isEveryChange, ownCountySql, perCapitaPredicate, plafondFor, predicateContext,
-  profileMinDas, profilePredicates, RISK_MIN_DAS, rowPredicates, trendGroupOf, trendGroupSql, trendYearsPredicate, type PredicateCtx, type TrendGroup,
+  profileMinDas, profilePredicates, RISK_MIN_DAS, rowPredicates, seatOf, trendGroupOf, trendGroupSql, trendYearsPredicate, type PredicateCtx, type TrendGroup,
 } from "./predicates";
 import { authorityKindIds, KIND_LABEL } from "./authority-kind";
 import { monthsLabel, partialMonths, sameMonthsWindow, WHOLE_YEAR, type CoveragePeriods, type MonthsMode, type MonthsWindow } from "./months-window";
@@ -21,6 +21,8 @@ import { employeesWords } from "./filters/words";
 import { retarget } from "./filters/retarget";
 import type { OriginHint } from "./filters/origin";
 import { PER_CAPITA_SOURCE, perCapitaCaveat, POPULATION_CARD_NOTE, readPerCapitaPopulations, type PerCapitaPopulations } from "./per-capita";
+import { asksSharedPartners, sharedPartnersPrestep } from "./compare-prestep";
+import { generalCodes } from "./compare-shared";
 import { martColumns } from "./mart-columns";
 import {
   compareParties, compareSharedPartners, compareTopPartners, planRollup, rankedWithout, rollupBreakdown, rollupCountyTable, rollupMap, rollupMinimumCond,
@@ -105,12 +107,16 @@ export interface CompareEntity {
   population: number | null;
   // Since 24 Oct 2026; older saved answers lack the fields below.
   hasProfile?: boolean;
-  /** singleBid counts contracts with one bid among `bidsKnown`, those whose number of bids is published. */
-  streams?: { da: { value: number; count: number }; contracts: { value: number; count: number; singleBid: number | null; bidsKnown: number } };
+  /**
+   * singleBid counts contracts with one bid among `bidsKnown`, those whose number of bids is published.
+   * F4: `distinct`, an institution's distinct contracts among its records (a consortium has one record per winner).
+   */
+  streams?: { da: { value: number; count: number }; contracts: { value: number; count: number; singleBid: number | null; bidsKnown: number; distinct?: number } };
   /** Distinct counterparties: institutions for a firm, firms for an institution. */
   partners?: number;
   topPartners?: ComparePartner[];
-  years?: { year: number; value: number }[];
+  /** F4: `count`, the records of the year (a year's tap says both). */
+  years?: { year: number; value: number; count?: number }[];
   /** Top 5-digit CPV groups by value (at most COMPARE_DOMAINS), out of `domainCount`. */
   domains?: { code: string; name: string | null; value: number }[];
   domainCount?: number;
@@ -118,15 +124,32 @@ export interface CompareEntity {
   noCpvValue?: number;
   active?: { from: number | null; to: number | null } | null;
   firm?: { employees: number | null; year: number | null; turnover: number | null } | null;
+  // F4 (plan §4.6 P8, final compare §4): the cards' context rows; not compared by a watch (answer-core.ts).
+  /** With a CPV domain: the value coded above it (its division, group, class…), "+ X lei pe coduri mai generale". */
+  general?: number;
+  /** An institution's suppliers by their seat against its county: "Sediul furnizorilor" (by value). */
+  seats?: { same: number; other: number; abroad: number; unknown: number };
+  /** The level of `population`: "Pe locuitor" only between two town halls or two county councils. */
+  populationLevel?: "local" | "county";
+  /** „Doar clienții comuni”: the firm's selection without P (the card's "59% din totalul firmei", "15 din 73"). */
+  whole?: { value: number; count: number; partners: number };
+  /** „Doar clienții comuni”: of this firm's value, what it won together with the other firm (same contracts). */
+  joint?: { value: number; contracts: number };
 }
 /** A comparison lists each entity's CPV groups up to this many; the rest is one line. */
 export const COMPARE_DOMAINS = 30;
+/** A firm's value and contracts won together with the other, from its rows per institution (a contract has one buyer). */
+const jointOf = (rows: readonly { value: string; n: number }[]): { value: number; contracts: number } =>
+  ({ value: Number(sumDecimalStrings(rows.map((r) => r.value))), contracts: rows.reduce((sum, r) => sum + r.n, 0) });
 export interface ComparePartner { entityId: string; name: string; value: number; count: number }
 export interface CompareData {
   block: "compare";
   entities: CompareEntity[];
-  /** Counterparties of both, by combined value (at most 30 rows). */
-  shared?: { total: number; rows: { entityId: string; name: string; a: { value: number; count: number }; b: { value: number; count: number } }[] };
+  /**
+   * Counterparties of both, by combined value (at most 30 rows). F4, „Doar clienții comuni”: `joint`, each
+   * firm's value at the institution from the contracts both won (hatched in its bar).
+   */
+  shared?: { total: number; rows: { entityId: string; name: string; a: { value: number; count: number; joint?: number }; b: { value: number; count: number; joint?: number } }[] };
   /** Firms only: public contracts both won (at most 5 rows). */
   joint?: { total: number; rows: { nid: string; authority: string | null; date: string | null; value: number }[] };
 }
@@ -574,8 +597,8 @@ export function txAggFragment(sql: DbSql, dataset: "all" | "da" | "contracts", w
   )`;
 }
 
-/** Look up CPV names for a set of tree-node codes (2- or 4-digit stems). */
-async function cpvNamesFor(
+/** Look up CPV names for a set of tree-node codes (2- or 4-digit stems; the comparison's 5-digit groups). */
+export async function cpvNamesFor(
   sql: DbSql,
   stems: string[],
 ): Promise<Map<string, string | null>> {
@@ -1106,7 +1129,8 @@ export async function runSpec(
   // The band of a ranking of firms is applied after grouping (rankedBand): said under the ranking's text.
   const displaySql = rankedBand
     ? `${buildDisplaySql(spec, wSel)}\n-- lista: doar firmele ${employeesWords(rankedBand.min ?? undefined, rankedBand.max ?? undefined)} (ultimul bilanț MF); totalul și „% din total” sunt ale întregii selecții`
-    : buildDisplaySql(spec, w);
+    // F4: P is read in the answer's transaction (case "compare"), after this text: its rule in words.
+    : `${buildDisplaySql(spec, w)}${asksSharedPartners(spec, w) ? "\n-- doar clienții comuni: authority_id în instituțiile care au cumpărat de la ambele firme în această selecție (pre-pasul P)" : ""}`;
   // The map answers both lenses from the same rows (value and records per county): the strip switches without a query.
   // So does the breakdown's order by value or by records (F3, final breakdown §3.8).
   const displaySqlByMeasure = spec.block === "map" || spec.block === "breakdown"
@@ -1645,6 +1669,11 @@ export async function runSpec(
           // acquisitions and ignores the filters. The two are labelled apart.
           const ids = [focalId!, compareId!];
           const party = focalRole === "authority" ? s`d.authority_id` : s`d.supplier_id`;
+          // F4, „Doar clienții comuni” (plan §4.6): P first, on the selection without it; then every query of the
+          // answer reads the shared clients' records only (PredicateCtx.shared, whereFrag), and the cards keep the
+          // selection without P beside (`whole`).
+          const pre = asksSharedPartners(spec, w) ? await sharedPartnersPrestep(s, { ...w, shared: null }, txtAgg as unknown as ReturnType<DbSql>) : null;
+          w.shared = pre ? pre.ids : null;
           const where = whereFrag();
           // Partners, top partners and shared partners group the slim union and
           // name the shown partners from entity_profile after (rollups.ts).
@@ -1662,7 +1691,7 @@ export async function runSpec(
                      coalesce(sum(d.closing_value) filter (where d.cpv_code is null), 0)::text no_cpv
               from ${txtAgg} d where ${where} group by 1, 2`,
             compareParties(s, partners),
-            s`select ${party}::text id, substr(d.finalization_date, 1, 4)::int y, sum(d.closing_value)::text value
+            s`select ${party}::text id, substr(d.finalization_date, 1, 4)::int y, sum(d.closing_value)::text value, count(*)::int n
               from ${txtAgg} d where ${where} and d.finalization_date is not null group by 1, 2`,
             s`select id, g, value, groups from (
                 select ${party}::text id, substr(d.cpv_code, 1, 5) g, sum(d.closing_value) value,
@@ -1688,7 +1717,7 @@ export async function runSpec(
           ]) as unknown as [
             { id: string; src: string; value: string; n: number; single_bid: string; single_known: string; no_cpv: string }[],
             { id: string; n: number }[],
-            { id: string; y: number; value: string }[],
+            { id: string; y: number; value: string; n: number }[],
             { id: string; g: string; value: string; groups: number }[],
             { id: string; other_id: string; name: string | null; value: string; n: number }[],
             { other_id: string; name: string | null; value_a: string; n_a: number; value_b: string; n_b: number; total: number }[],
@@ -1696,8 +1725,46 @@ export async function runSpec(
             { id: string; first_activity: string | null; last_activity: string | null; employees: number | null; employees_year: number | null; turnover: string | null; county: string | null }[],
             { id: string; cri: string | null; n_flags: number; flags: string[] | null }[],
           ];
+          // F4 (plan §4.6 Motor, final compare §4): the cards' context rows, each its own small grouping.
+          // - The value coded above a CPV domain (its division, group, class…), on the selection without the domain.
+          const above = w.cpvPrefixes.length ? generalCodes(w.cpvPrefixes) : [];
+          const wAbove: PredicateCtx = { ...w, cpvPrefixes: [], cpvExclude: [] };
+          const aboveBase = andAll(s, rowPredicates(wAbove));
+          const aboveWhere = andAll(s, [aboveBase, ...groupPredicates(wAbove, txtAgg as unknown as ReturnType<DbSql>, aboveBase), s`substr(d.cpv_code, 1, 8) = any(${s.array(above)}::text[])`]);
+          // - An institution's suppliers by their seat against its county (firmSeatCond's classes), and its distinct contracts.
+          const seatCols = seatOf(s, seat);
+          // - Between firms, with P: each one's value from the contracts both won, per institution.
+          const [general, seats, distinct, jointBy] = await Promise.all([
+            above.length
+              ? s`select ${party}::text id, sum(d.closing_value)::text value from ${txtAgg} d where ${aboveWhere} group by 1`
+              : Promise.resolve([]),
+            focalRole === "authority"
+              ? s`select x.id, case when ep.entity_id is null then 'unknown' when ${seatCols.foreign} then 'abroad'
+                                    when ${seatCols.county} is null or x.county is null then 'unknown'
+                                    when ${seatCols.county} = x.county then 'same' else 'other' end cls, sum(x.v)::text value
+                  from (select d.authority_id::text id, d.supplier_id sup, d.county, sum(d.closing_value) v
+                        from ${txtAgg} d where ${where} group by 1, 2, 3) x
+                  left join marts.entity_profile ep on ep.entity_id = x.sup and ep.role = 'supplier'
+                  group by 1, 2`
+              : Promise.resolve([]),
+            focalRole === "authority" && contractRows
+              ? s`select d.authority_id::text id, count(distinct d.contract_id)::int n from ${contractRows} d where ${where} group by 1`
+              : Promise.resolve([]),
+            pre && contractRows
+              ? s`select d.supplier_id::text id, d.authority_id::text other, sum(d.closing_value)::text value, count(distinct d.contract_id)::int n
+                  from ${contractRows} d where ${where} and d.contract_id in (
+                    select d.contract_id from ${contractRows} d where ${where} group by d.contract_id having min(d.supplier_id) <> max(d.supplier_id))
+                  group by 1, 2`
+              : Promise.resolve([]),
+          ]) as unknown as [
+            { id: string; value: string }[],
+            { id: string; cls: "same" | "other" | "abroad" | "unknown"; value: string }[],
+            { id: string; n: number }[],
+            { id: string; other: string; value: string; n: number }[],
+          ];
           const cpvNames = await cpvNamesFor(s, [...new Set(domains.map((d) => d.g))]);
-          const populations = focalRole === "authority" ? (await readPerCapitaPopulations(s)).byEntity : null;
+          const perCapita = focalRole === "authority" ? await readPerCapitaPopulations(s) : null;
+          const populations = perCapita?.byEntity ?? null;
           if (populations && ids.some((id) => populations.get(id))) caveats.push(POPULATION_CARD_NOTE);
           const year = (date: string | null) => (date ? Number(date.slice(0, 4)) : null);
           const identities = [{ id:focalId!, name:focalName, county:grounding.authority?.county ?? grounding.supplier?.county ?? null },
@@ -1727,7 +1794,7 @@ export async function runSpec(
                 streams: { da: stream("da"), contracts: { ...stream("contracts"), singleBid: contracts ? Number(contracts.single_bid) : null, bidsKnown: contracts ? Number(contracts.single_known) : 0 } },
                 partners: parties.find((p) => p.id === identity.id)?.n ?? 0,
                 topPartners: top.filter((t) => t.id === identity.id).map((t) => ({ entityId: t.other_id, name: t.name ?? "?", value: Number(t.value), count: t.n })),
-                years: years.filter((y) => y.id === identity.id).map((y) => ({ year: y.y, value: Number(y.value) })).sort((a, b) => a.year - b.year),
+                years: years.filter((y) => y.id === identity.id).map((y) => ({ year: y.y, value: Number(y.value), count: y.n })).sort((a, b) => a.year - b.year),
                 domains: domains.filter((d) => d.id === identity.id).sort((a, b) => Number(b.value) - Number(a.value))
                   .map((d) => ({ code: d.g, name: cpvNames.get(d.g) ?? null, value: Number(d.value) })),
                 domainCount: domains.find((d) => d.id === identity.id)?.groups ?? 0,
@@ -1736,11 +1803,25 @@ export async function runSpec(
                 firm: focalRole === "supplier" && profile && (profile.employees !== null || profile.turnover !== null)
                   ? { employees: profile.employees, year: profile.employees_year, turnover: profile.turnover === null ? null : Number(profile.turnover) }
                   : null,
+                ...(above.length ? { general: Number(general.find((g) => g.id === identity.id)?.value ?? 0) } : {}),
+                ...(focalRole === "authority" ? { seats: Object.fromEntries((["same", "other", "abroad", "unknown"] as const)
+                  .map((cls) => [cls, Number(sumDecimalStrings(seats.filter((r) => r.id === identity.id && r.cls === cls).map((r) => r.value)))])) as NonNullable<CompareEntity["seats"]> } : {}),
+                ...(perCapita?.levels.get(identity.id) ? { populationLevel: perCapita.levels.get(identity.id)! } : {}),
+                ...(pre ? { whole: pre.whole.get(identity.id) ?? { value: 0, count: 0, partners: 0 } } : {}),
+                ...(pre && contractRows ? { joint: jointOf(jointBy.filter((r) => r.id === identity.id)) } : {}),
               };
+            }).map((entity) => {
+              // An institution's distinct contracts beside its records (final compare §4 "în asociere").
+              const n = distinct.find((r) => r.id === entity.entityId)?.n;
+              return n !== undefined && entity.streams ? { ...entity, streams: { ...entity.streams, contracts: { ...entity.streams.contracts, distinct: n } } } : entity;
             }),
             shared: {
               total: shared[0]?.total ?? 0,
-              rows: shared.map((r) => ({ entityId: r.other_id, name: r.name ?? "?", a: { value: Number(r.value_a), count: r.n_a }, b: { value: Number(r.value_b), count: r.n_b } })),
+              rows: shared.map((r) => {
+                // With P, each firm's part from the contracts both won at this institution (hatched in its bar).
+                const joint = (id: string) => pre && contractRows ? { joint: Number(jointBy.find((j) => j.id === id && j.other === r.other_id)?.value ?? 0) } : {};
+                return { entityId: r.other_id, name: r.name ?? "?", a: { value: Number(r.value_a), count: r.n_a, ...joint(focalId!) }, b: { value: Number(r.value_b), count: r.n_b, ...joint(compareId!) } };
+              }),
             },
             ...(joint.length ? { joint: { total: joint[0]!.total, rows: joint.map((j) => ({ nid: j.nid, authority: j.authority, date: j.date, value: Number(j.value) })) } } : {}),
           };
@@ -2384,6 +2465,11 @@ export async function runRows(
     dataset, yearFrom, yearTo, kindIds, trendMonths: partialMonths(trendWindow), seriesMonths: partialMonths(trendWindow),
     seat: (await martColumns(sql)).seat,
   });
+  // F4, „Doar clienții comuni”: the answer's P, read the same way (compare-prestep.ts), so a card's records are its own.
+  if (!profile && asksSharedPartners(spec, ctx)) {
+    ctx.shared = (await sharedPartnersPrestep(sql, ctx, txAggFragment(sql, dataset, false, fullValueUnion(ctx)) as unknown as ReturnType<DbSql>)).ids;
+    notes.push(`Doar clienții comuni: ${countWords(ctx.shared.length, "instituție", "instituții")} care au cumpărat de la ambele firme în selecția aleasă; sursele sunt înregistrările lor.`);
+  }
   // The rollups give the record threshold's party list and, without a local
   // filter, the totals of a selection without entity conditions (rollups.ts).
   const rollup = profile || valueWinner ? null : await rollupPlanFor(sql, spec, ctx);
