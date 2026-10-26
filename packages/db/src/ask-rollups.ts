@@ -54,6 +54,22 @@ type Query = DbSql | Parameters<Parameters<DbSql['begin']>[1]>[0];
  * The whole build, measured on the same copy: 115 s (127–132 s with the
  * county months from the temporary table; 43 s before F2), so F2 adds ~70 s
  * a night.
+ * - agg_months (src, y, m, county, cpv2): every row by month, buyer county and
+ *   CPV division (the first two digits, null without a code), with the largest
+ *   record (mx). The evolution's months, its split by channel or domain, its
+ *   same months and each bar's largest record (plan §4.3, F3; owner-D2-rollups:
+ *   the live national series by domain on the same months took 6.4 s, the
+ *   largest record of each year 2.2 s). The purchase kind is a function of the
+ *   division (45 works, 50 and above services, the rest goods), so a kind is
+ *   answered here too; a domain term is not (its prefixes are finer).
+ * - agg_national_mix (src, y, county, cpv2, procedure_type, size, offers): the
+ *   composition of a total (stat's „Din care”, plan §4.1, F3): the procedure as
+ *   SEAP writes it (null on a DA), the size range of the whole purchase
+ *   (ASK_MIX_SIZE_BOUNDS on coalesce(contract_value_full, closing_value), a
+ *   DA's own value) and the number of offers (is_single_bidder, null when
+ *   unknown and on a DA). Live, the national composition read every DA (2.2 s,
+ *   3.4 s with the contracts). Both read the union once more (one statement
+ *   each); see buildAskMixRollups.
  *
  * Rebuilt with the agg_* shortcuts (DROP + CREATE AS) in the transaction that
  * loads da_transactions, so they always agree with it. contract_transactions
@@ -66,13 +82,22 @@ type Query = DbSql | Parameters<Parameters<DbSql['begin']>[1]>[0];
  * migration-owned: readers probe for them (apps/web/lib/ask/rollups.ts) and
  * fall back to the live query until the first build with this code.
  */
-export const ASK_ROLLUP_TABLES = ['agg_entity_year', 'agg_pair_year', 'agg_cpv_year', 'agg_entity_month', 'agg_county_month'] as const;
+export const ASK_ROLLUP_TABLES = ['agg_entity_year', 'agg_pair_year', 'agg_cpv_year', 'agg_entity_month', 'agg_county_month', 'agg_months', 'agg_national_mix'] as const;
 export type AskRollupTable = (typeof ASK_ROLLUP_TABLES)[number];
+/** The F3 rollups (plan §4.1, §4.3): built by buildAskMixRollups, probed apart by the web (mixRollupReady). */
+export const ASK_MIX_TABLES = ['agg_months', 'agg_national_mix'] as const satisfies readonly AskRollupTable[];
 
 /** The DA ceiling written (as a literal, like the agg_* builds) into the three
  * statements below; equal to DA_PLAFOND_RON in apps/web/lib/ask/compile.ts,
  * which the parity test checks. */
 export const ASK_ROLLUP_DA_CEILING = 2_000_000;
+
+/**
+ * The lower bounds of the size ranges after the first (lei, [min, max)):
+ * range 0 is under 10.000 lei, range 3 from 1 mil. lei. Equal to the bounds of
+ * VALUE_RANGES in apps/web/lib/ask/purchase.ts (the web's test checks it).
+ */
+export const ASK_MIX_SIZE_BOUNDS = [10_000, 100_000, 1_000_000] as const;
 
 export interface AskRollupsReport {
   /** Rows written per rollup. */
@@ -82,7 +107,7 @@ export interface AskRollupsReport {
 /** Build the three rollups from the loaded transaction marts. Call inside the
  * build transaction, after da_transactions is final (da_split stamped). */
 export async function buildAskRollups(q: Query): Promise<AskRollupsReport> {
-  await q`drop table if exists marts.agg_entity_year, marts.agg_pair_year, marts.agg_cpv_year, marts.agg_entity_month, marts.agg_county_month`;
+  await q`drop table if exists marts.agg_entity_year, marts.agg_pair_year, marts.agg_cpv_year, marts.agg_entity_month, marts.agg_county_month, marts.agg_months, marts.agg_national_mix`;
   // One pass over the union at the month grain (9,965,281 groups on the local copy of
   // 25 October 2026, 21 s; 26 s plain and 32 s with d0/d1 measured side by side at load 7);
   // the yearly pairs and both entity rollups are grouped from it.
@@ -163,5 +188,48 @@ export async function buildAskRollups(q: Query): Promise<AskRollupsReport> {
   await q`analyze marts.agg_cpv_year`;
   await q`analyze marts.agg_entity_month`;
   await q`analyze marts.agg_county_month`;
-  return { rows: { agg_entity_year: entity.count, agg_pair_year: pair.count, agg_cpv_year: cpv.count, agg_entity_month: month.count, agg_county_month: county.count } };
+  const mix = await buildAskMixRollups(q);
+  return { rows: { agg_entity_year: entity.count, agg_pair_year: pair.count, agg_cpv_year: cpv.count, agg_entity_month: month.count, agg_county_month: county.count, ...mix } };
+}
+
+/**
+ * The F3 rollups, agg_months and agg_national_mix (see the header), from the
+ * loaded transaction marts, with the population of every Ask aggregate. Part of
+ * buildAskRollups; callable alone on marts that are not being rebuilt (a
+ * first build of these two). Each one statement over the union.
+ */
+export async function buildAskMixRollups(q: Query): Promise<Record<(typeof ASK_MIX_TABLES)[number], number>> {
+  await q`drop table if exists marts.agg_months, marts.agg_national_mix`;
+  const months = await q`
+    create table marts.agg_months as
+    select x.src, substr(x.finalization_date, 1, 4) y, substr(x.finalization_date, 6, 2) m, x.county, substr(x.cpv_code, 1, 2) cpv2,
+           sum(x.closing_value) v, count(*) n, max(x.closing_value) mx
+    from (
+      select county, cpv_code, finalization_date, closing_value, 'da'::text src
+      from marts.da_transactions where closing_value > 0 and closing_value <= 2000000
+      union all
+      select county, cpv_code, finalization_date, closing_value, 'contracts'
+      from marts.contract_transactions where closing_value > 0
+    ) x
+    group by 1, 2, 3, 4, 5
+  `;
+  const [b0, b1, b2] = ASK_MIX_SIZE_BOUNDS;
+  // The size of the whole purchase: a contract's whole value (never null in the mart), a DA's own.
+  const mix = await q`
+    create table marts.agg_national_mix as
+    select x.src, substr(x.finalization_date, 1, 4) y, x.county, substr(x.cpv_code, 1, 2) cpv2, x.procedure_type,
+           (case when x.full_value < ${b0}::numeric then 0 when x.full_value < ${b1}::numeric then 1 when x.full_value < ${b2}::numeric then 2 else 3 end)::smallint size,
+           x.offers, sum(x.closing_value) v, count(*) n
+    from (
+      select county, cpv_code, finalization_date, closing_value, 'da'::text src, null::text procedure_type, closing_value full_value, null::boolean offers
+      from marts.da_transactions where closing_value > 0 and closing_value <= 2000000
+      union all
+      select county, cpv_code, finalization_date, closing_value, 'contracts', procedure_type, coalesce(contract_value_full, closing_value), is_single_bidder
+      from marts.contract_transactions where closing_value > 0
+    ) x
+    group by 1, 2, 3, 4, 5, 6, 7
+  `;
+  await q`analyze marts.agg_months`;
+  await q`analyze marts.agg_national_mix`;
+  return { agg_months: months.count, agg_national_mix: mix.count };
 }
