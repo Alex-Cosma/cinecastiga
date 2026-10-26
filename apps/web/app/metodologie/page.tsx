@@ -131,6 +131,15 @@ export default function MetodologiePage() {
             Un contract intră întreg în anul atribuirii, nu în anii în care se execută. Când al doilea an nu e încheiat în date,
             ambii ani se compară pe aceleași luni, din ianuarie până la ultima lună completă. Valorile sunt înregistrate, nu plăți.</p>
         </details>
+        <details className="method-fold" id="verificare">
+          <summary>Verificarea unei relații</summary>
+          <p>În „Întreabă”, „A cumpărat X de la Y?” are trei răspunsuri. Da: cel puțin o înregistrare a perechii în selecție, sau un rând
+            pe care totalurile îl lasă afară (o achiziție directă peste filtrul de 2 milioane lei ori fără valoare pozitivă, un contract cu identitate
+            nesigură, peste 1 miliard lei sau de tip neclar); acesta din urmă se spune „nu intră în sume”. Acord-cadru: perechea are doar plafoane
+            de acord-cadru, care nu sunt cumpărări și nu se adună. Nu: nimic din acestea, cu motivul (alegerile întrebării, o condiție dintr-un link
+            vechi sau nicio înregistrare în date). Concurența se numără doar la licitațiile deschise și restrânse cu numărul ofertelor cunoscut din TED.
+            Ponderea relației compară perechea cu ceilalți parteneri ai fiecărei părți, cu aceleași alegeri. Un „Da” nu dovedește livrarea sau plata.</p>
+        </details>
         <details className="method-fold">
           <summary>Republicări</summary>
           <p>Când SEAP republică același contract (același anunț, număr, dată, lot și autoritate), îl numărăm o singură dată, la ultima versiune verificată.

@@ -56,6 +56,12 @@ export const PERF_ENTITIES = {
   buzau: { id: 2144364, name: "MUNICIPIUL BUZAU" },
   rusetu: { id: 2144926, name: "Comuna Rusetu" },
   corabia: { id: 2146373, name: "Spitalul Orasenesc Corabia" },
+  // F6a's verification (final fact_check §4–§5).
+  urbanScope: { id: 2064733, name: "URBAN SCOPE" },
+  bucuresti: { id: 2144903, name: "MUNICIPIUL BUCURESTI" },
+  ceconi: { id: 2122975, name: "CECONI" },
+  abaSomesTisa: { id: 2128873, name: "ADMINISTRATIA BAZINALA DE APA SOMES TISA" },
+  proeuro: { id: 2020594, name: "PROEURO CONSTRUCT SRL" },
 } as const;
 
 type Edit = (q: QuestionSpec) => void;
@@ -202,6 +208,22 @@ export function perfCases(): PerfCase[] {
       all(focal("authority", PERF_ENTITIES.rusetu), top({ peers: { similar: true } })), { path: "rows", scope: { criteria: 2 }, barMs: 2000 }),
     perfCase("csv:distribution-rusetu-group", "csv", "CSV-ul surselor grupului Rusetu (2.034 de profiluri)", "distribution",
       all(focal("authority", PERF_ENTITIES.rusetu), top({ peers: { similar: true } })), { path: "csv", barMs: 2000 }),
+    // F6a: the verification (lib/ask/fact-check.ts): the whole answer, the weight among DEDEMAN's 10.575 clients, a narrower
+    // "Nu" with the relation, "Nu" in the archive (twins, partners), the answer's lines in the drawer and the CSV.
+    perfCase("national:fact-check-buzau-urban", "national", "A cumpărat Buzău de la URBAN SCOPE? (profil, pondere, listă)", "fact_check",
+      all(buyer(PERF_ENTITIES.buzau), firm(PERF_ENTITIES.urbanScope)), { barMs: 1000 }),
+    perfCase("national:fact-check-bucuresti-dedeman", "national", "A cumpărat Municipiul București de la DEDEMAN? (ponderea printre 10.575 de clienți)", "fact_check",
+      all(buyer(PERF_ENTITIES.bucuresti), firm(PERF_ENTITIES.dedeman)), { barMs: 1000 }),
+    perfCase("national:fact-check-cluj-ceconi-2026", "national", "A cumpărat Cluj-Napoca de la CECONI în 2026? (Nu, cu toată relația)", "fact_check",
+      all(buyer(PERF_ENTITIES.clujNapoca), firm(PERF_ENTITIES.ceconi), years(2026)), { barMs: 1000 }),
+    perfCase("national:fact-check-aba-proeuro", "national", "A cumpărat ABA Someș-Tisa de la PROEURO? (Nu în arhivă: același nume, parteneri)", "fact_check",
+      all(buyer(PERF_ENTITIES.abaSomesTisa), firm(PERF_ENTITIES.proeuro)), { barMs: 1000 }),
+    perfCase("sources:fact-check-buzau-urban-consortium", "sources", "Contractele în asociere Buzău × URBAN SCOPE", "fact_check",
+      all(buyer(PERF_ENTITIES.buzau), firm(PERF_ENTITIES.urbanScope)), { path: "rows", scope: { consortium: true } }),
+    perfCase("sources:fact-check-buzau-urban-single", "sources", "Licitațiile cu o singură ofertă Buzău × URBAN SCOPE", "fact_check",
+      all(buyer(PERF_ENTITIES.buzau), firm(PERF_ENTITIES.urbanScope)), { path: "rows", scope: { singleBid: true } }),
+    perfCase("csv:fact-check-bucuresti-dedeman", "csv", "CSV-ul surselor București × DEDEMAN", "fact_check",
+      all(buyer(PERF_ENTITIES.bucuresti), firm(PERF_ENTITIES.dedeman)), { path: "csv", barMs: 2000 }),
     // The source paths whose conditions F0 moved into lib/ask/predicates.ts: the DA bound
     // on direct acquisitions only, a comparison, and a profile population chosen by kind.
     perfCase("sources:stat-da-2025", "sources", "Sursele achizițiilor directe din 2025", "stat", all(top({ dataset: "da" }), years(2025)), { path: "rows", barMs: 2000 }),
