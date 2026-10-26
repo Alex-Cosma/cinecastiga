@@ -1829,7 +1829,7 @@ export async function runSpec(
           const shown = dim === "county" ? [] : [...new Set(lists.flatMap(([, rows]) => rows.map((r) => r.id)))];
           const partnerRole = dim === "supplier" ? "authority" : "supplier";
           const facts = dim === "county" ? [] : await trendFactsRows(s, {
-            source: factsSource(s, dataset, false), where: selection, id: key,
+            source: factsSource(s, dataset, false, w.procedure !== null || w.purchaseValueMin !== null || w.purchaseValueMax !== null), where: selection, id: key,
             partner: dim === "supplier" ? s`d.authority_id` : s`d.supplier_id`, byYear: factsYears(lists.flatMap(([, rows]) => rows), yA, yB),
           });
           const profiles = dim === "county" ? new Map() : await trendProfiles(s, [
