@@ -128,6 +128,9 @@ describe("ask-perf report", () => {
       result("other", 900, { spec: { ...table, dim: "supplier" } }), result("scope", 900, { spec: { ...table }, scope: { entityIds: ["1"], role: "authority" } }),
       result("broken", 50)]);
     expect(specChanges(base, now)).toEqual(["other", "scope"]);
+    // A drawer's order or search is another question too (S3 review cases); none keeps the key of before.
+    const ordered = report([result("same", 100, { spec: { ...table }, drawer: { sort: "value", dir: "desc" } })]);
+    expect(specChanges(report([result("same", 100, { spec: { ...table } })]), ordered)).toEqual(["same"]);
     expect(regressions(base, now, 0.25).map((r) => r.id)).toEqual(["same"]);
     const md = renderMarkdown(now, base);
     expect(md).toContain("**Altă întrebare decât în bază (necomparate): `other`, `scope`.**");

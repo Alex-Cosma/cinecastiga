@@ -13,6 +13,7 @@ import { writeFocal } from "../lib/ask/filters/registry";
 import type { EvidenceScope } from "../lib/ask/evidence";
 
 export type PerfPath = "answer" | "rows" | "csv";
+export interface PerfDrawer { sort?: "source" | "value" | "date"; dir?: "asc" | "desc"; search?: string }
 export type PerfGroup = "catalog" | "national" | "filtered" | "sources" | "csv";
 export interface PerfCase {
   /** Stable key: later runs are compared with the baseline by id. */
@@ -28,6 +29,8 @@ export interface PerfCase {
   scope?: EvidenceScope;
   /** rows only: the page of the list (0 = the first). */
   page?: number;
+  /** rows only: the drawer's order or text search (DrillSort, „Caută în surse”); its default without. */
+  drawer?: PerfDrawer;
   /**
    * rows/csv only: the answer runs first in the same process, untimed, as the
    * drawer opens after it (a trend group's members kept by the answer,
@@ -37,6 +40,8 @@ export interface PerfCase {
   afterAnswer?: true;
   /** Warm budget: 1 s for an answer, 2 s for the heaviest national filtered cases (owner, 24 Oct 2026). */
   barMs: 1000 | 2000;
+  /** Known over the bar, recorded on PRECOMPUTE.md for the marts stage (the entry's title): reported, not a regression. */
+  precompute?: string;
   /** The matching row of plan §6.4, when there is one. */
   ref?: string;
 }
@@ -74,7 +79,7 @@ export function builderQuestion(block: Block, edit: Edit = () => {}): QuestionSp
 
 function perfCase(
   id: string, group: PerfGroup, label: string, block: Block, edit: Edit,
-  extra: { path?: PerfPath; scope?: EvidenceScope; page?: number; afterAnswer?: true; barMs?: 1000 | 2000; ref?: string } = {},
+  extra: { path?: PerfPath; scope?: EvidenceScope; page?: number; drawer?: PerfDrawer; afterAnswer?: true; barMs?: 1000 | 2000; ref?: string; precompute?: string } = {},
 ): PerfCase {
   const question = builderQuestion(block, edit);
   const spec = validateSpec(question);
@@ -83,9 +88,11 @@ function perfCase(
     id, group, label, path: extra.path ?? "answer", question, spec,
     ...(extra.scope ? { scope: extra.scope } : {}),
     ...(extra.page ? { page: extra.page } : {}),
+    ...(extra.drawer ? { drawer: extra.drawer } : {}),
     ...(extra.afterAnswer ? { afterAnswer: true as const } : {}),
     barMs: extra.barMs ?? 1000,
     ...(extra.ref ? { ref: extra.ref } : {}),
+    ...(extra.precompute ? { precompute: extra.precompute } : {}),
   };
 }
 
@@ -104,6 +111,9 @@ const CATALOG_CHOICES: Partial<Record<Block, { note: string; edit: Edit }>> = {
 };
 
 const SELGROS_ROW: EvidenceScope = { entityIds: [String(PERF_ENTITIES.selgros.id)], role: "supplier" };
+/** PRECOMPUTE.md entries these cases wait on (S3 review). */
+const ALL_DRAWER = "Sertarul „Toate” al trendului";
+const DRAWER_SEARCH = "Căutarea în sertarul unui trend național";
 
 export function perfCases(): PerfCase[] {
   const catalog = QUESTION_TYPES.map((type) => {
@@ -227,8 +237,22 @@ export function perfCases(): PerfCase[] {
       { path: "csv", afterAnswer: true, barMs: 2000 }),
     // S3 F2-merge-fixes: „Toate” of the national trend, „Înregistrările celor doi ani” (4.9M records; track verify problem 3).
     perfCase("sources:trend-2024-2025-all", "sources", "Înregistrările celor doi ani, „Toate”, 2024 → 2025 (național), la rece", "trend", all(years(2024, 2025), lens({ change: "all", months: "auto" })),
-      { path: "rows", barMs: 2000, ref: "Surse trend „Toate” (ambii ani, național)" }),
+      { path: "rows", barMs: 2000, ref: "Surse trend „Toate” (ambii ani, național)", precompute: ALL_DRAWER }),
     perfCase("sources:trend-2024-2025-all-after-answer", "sources", "Înregistrările celor doi ani, „Toate”, 2024 → 2025, după răspuns", "trend", all(years(2024, 2025), lens({ change: "all", months: "auto" })),
-      { path: "rows", afterAnswer: true, barMs: 2000 }),
+      { path: "rows", afterAnswer: true, barMs: 2000, precompute: ALL_DRAWER }),
+    // S3 review: „Toate” on every trend screen (old links, institutions, counties), over the bar wherever its page reads the
+    // whole covering index; the marts stage is checked against each dimension, an older pair, the other orders and a search.
+    perfCase("sources:trend-authorities-2024-2025-all-after-answer", "sources", "„Toate” la instituții, 2024 → 2025, după răspuns", "trend",
+      all(top({ dim: "authority" }), years(2024, 2025), lens({ change: "all", months: "auto" })), { path: "rows", afterAnswer: true, barMs: 2000, precompute: ALL_DRAWER }),
+    perfCase("sources:trend-counties-2024-2025-all-after-answer", "sources", "„Toate” la județe, 2024 → 2025, după răspuns", "trend",
+      all(top({ dim: "county" }), years(2024, 2025), lens({ change: "all", months: "auto" })), { path: "rows", afterAnswer: true, barMs: 2000, precompute: ALL_DRAWER }),
+    perfCase("sources:trend-2021-2022-all-after-answer", "sources", "„Toate” la firme, 2021 → 2022, după răspuns", "trend",
+      all(years(2021, 2022), lens({ change: "all", months: "auto" })), { path: "rows", afterAnswer: true, barMs: 2000, precompute: ALL_DRAWER }),
+    perfCase("sources:trend-2024-2025-all-by-value-after-answer", "sources", "„Toate” la firme, 2024 → 2025, după valoare, după răspuns", "trend",
+      all(years(2024, 2025), lens({ change: "all", months: "auto" })), { path: "rows", drawer: { sort: "value", dir: "desc" }, afterAnswer: true, barMs: 2000, precompute: ALL_DRAWER }),
+    perfCase("sources:trend-2024-2025-all-source-asc-after-answer", "sources", "„Toate” la firme, 2024 → 2025, cele mai vechi surse întâi, după răspuns", "trend",
+      all(years(2024, 2025), lens({ change: "all", months: "auto" })), { path: "rows", drawer: { sort: "source", dir: "asc" }, afterAnswer: true, barMs: 2000, precompute: ALL_DRAWER }),
+    perfCase("sources:trend-2024-2025-all-search-after-answer", "sources", "„Toate” la firme, 2024 → 2025, căutare „medicamente”, după răspuns", "trend",
+      all(years(2024, 2025), lens({ change: "all", months: "auto" })), { path: "rows", drawer: { search: "medicamente" }, afterAnswer: true, barMs: 2000, precompute: DRAWER_SEARCH }),
   ];
 }
