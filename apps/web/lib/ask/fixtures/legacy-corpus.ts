@@ -387,6 +387,14 @@ export function legacyCorpus(ids: CorpusIdentities): CorpusEntry[] {
   keyed("contracts-same-months", all(top({ dataset: "contracts" }), yearsOf(b, c)));
   keyed("chosen-months", all(trendKey({ change: "all", months: [1, 5] }), yearsOf(b, c)));
   keyed("unconfirmed-months", yearsOf(b, c));
+  // F3, the common selection as the builder writes it: the kind, a procedure (with its contracts), the size of a purchase
+  combo("f3-kind", "stat", all(set({ purchaseKind: "lucrari" }), yearsOf(b)));
+  combo("f3-procedure", "stat", all(top({ dataset: "contracts" }), set({ procedure: "deschisa" })));
+  combo("f3-size", "stat", set({ purchaseValueMin: 1_000_000 }));
+  combo("f3-kind-size", "table", set({ purchaseKind: "lucrari", purchaseValueMin: 10_000 }));
+  combo("f3-other-procedures", "table", all(top({ dim: "authority", dataset: "contracts" }), set({ procedure: "altele" })));
+  combo("f3-kind", "breakdown", set({ purchaseKind: "servicii" }));
+  combo("f3-kind-domain", "timeseries", set({ purchaseKind: "produse", cpvTerm: cpv.word }));
   // network
   combo("buyer", "network", focalBuyer());
   combo("firm", "network", focalFirm(), { rows: { scope: { role: "authority", entityIds: [String(pair.authority.id)] } } });
