@@ -338,7 +338,7 @@ export function BreakdownBlock({
   return (
     <div>
       {t.el}
-      {kinds && kinds.length > 1 && <div className="qb qb-kinds" role="group" aria-label="Tipul achiziției">
+      {kinds && kinds.length > 1 && <div className="qb qb-kinds qb-tipwrap" role="group" aria-label="Tipul achiziției">
         {kinds.map((kind) => <button type="button" key={kind.kind} className="qb-kind" onClick={() => onKind!(kind.kind)}>
           {PURCHASE_KIND_WORDS[kind.kind].label} <b className="qb-num">{formatShare(kind.share)}</b>
         </button>)}
@@ -376,7 +376,7 @@ export function BreakdownBlock({
         })}
       </div>
       {/* The legend orders by value or by records (final §3.8): both are on every row. */}
-      {base && onMeasure && <div className="qb qb-legend-head" role="group" aria-label="Ordonează domeniile">
+      {base && onMeasure && <div className="qb qb-legend-head qb-tipwrap" role="group" aria-label="Ordonează domeniile">
         <span>{countWords(base.length, "domeniu", "domenii")}</span>
         <button type="button" className="qb-sort" aria-pressed={!byCount} onClick={() => onMeasure("value")}>Valoare{!byCount && <span aria-hidden="true"> ▾</span>}</button>
         <button type="button" className="qb-sort" aria-pressed={byCount} onClick={() => onMeasure("count")}>Înreg.{byCount && <span aria-hidden="true"> ▾</span>}</button>
@@ -384,7 +384,7 @@ export function BreakdownBlock({
       </div>}
       <div className="ask-complegend">
         {items.map((s) => (
-          <div key={s.name} className="li">
+          <div key={s.name} className="li qb-tipwrap">
             <span className="sw" style={{ background: s.color }} />
             <span className="nm">
               {s.code ? (

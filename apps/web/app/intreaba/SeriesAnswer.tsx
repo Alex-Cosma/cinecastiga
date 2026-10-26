@@ -83,7 +83,7 @@ export default function SeriesAnswer({ data, spec, partial, onSources }: { data:
   return (
     <div className={`ask-ts-wrap${card ? " has-card" : ""}`}>
       {t.el}
-      {split && <ul className="ts-legend" aria-label="Părțile barelor">
+      {split && <ul className="ts-legend qb-tipwrap" aria-label="Părțile barelor">
         {[...data.parts!].reverse().map((part) => <li key={part.key}>
           <i className={`ts-sw ts-sw--${partTone(data, part)}`} aria-hidden="true" />{part.label}
           {part.name && <HelpTip tip={{ title: part.label, text: `${readableCpvName(part.name)} (CPV ${part.code}). Diviziunea declarată de cumpărător; un salt poate veni dintr-un singur contract.` }} />}

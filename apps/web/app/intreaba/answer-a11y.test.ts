@@ -74,6 +74,29 @@ describe("the answer's targets and contrast", () => {
     expect(tablet.slice(0, tablet.indexOf("}", tablet.indexOf(".cq-answer-actions {")))).toContain("flex-wrap: wrap;");
   });
 
+  it("opens every (?) of the answer over its own line, never at the page's top (S4 tests)", () => {
+    // guide.css opens a tip above its nearest positioned box; without one inside the page it opened above the page's top,
+    // off screen (the strip's in answer/answer.test.ts). „Din care”, the breakdown's kinds, legend head and rows, the
+    // evolution's legend and the comparison's card lines are their (?)'s anchors.
+    const source = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
+    expect(source("./answer/StatMix.tsx")).toContain('<div className="qb-mix-top qb-tipwrap">');
+    const blocks = source("./blocks.tsx");
+    for (const anchor of ['className="qb qb-kinds qb-tipwrap"', 'className="qb qb-legend-head qb-tipwrap"', 'className="li qb-tipwrap"']) expect(blocks).toContain(anchor);
+    expect(source("./SeriesAnswer.tsx")).toContain('<ul className="ts-legend qb-tipwrap"');
+    const compare = css("./compare.css");
+    expect(compare).toMatch(/\.cmp-sub \{ position: relative;/);
+    expect(compare).toMatch(/\.cmp-big \{ position: relative;/);
+    expect(css("./builder/filters-kit.css")).toContain(".qb-tipwrap{position:relative}");
+  });
+
+  it("keeps /harta whole: one text per county's title (it did not hydrate), 44 px targets under 600 px (S4 tests)", () => {
+    const page = readFileSync(new URL("../harta/page.tsx", import.meta.url), "utf8");
+    expect(page).toContain("<title>{`${s.label} — ${formatRon(v)}`}</title>");
+    const harta = css("../harta/harta.css");
+    expect(harta).toContain(".toggle a{display:inline-flex;align-items:center;min-height:44px}");
+    expect(harta).toContain(".map-note .term-tip>.term-trigger{min-width:44px;min-height:44px;margin-block:-10px}");
+  });
+
   it("draws the kit's separators in --muted, never --faint (2.7:1 on the paper)", () => {
     const kit = css("./builder/filters-kit.css");
     expect(kit).toContain(".qb-total-sep{color:var(--muted)}");
