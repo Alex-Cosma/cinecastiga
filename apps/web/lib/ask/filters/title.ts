@@ -26,18 +26,20 @@ const ORDER_WORDS: Partial<Record<string, string>> = { count: "după numărul de
 /** The presentation line's order when it is not the default: a ranking's measure, a trend's growths in percent with their base. */
 function orderWords(spec: FilterSpec, described: DescribedConditions): string | undefined {
   if (spec.block === "table") return ORDER_WORDS[String(spec.measure)];
+  // The network's partners by their records or years (F4, final network §3.5): the order of the list a watch sees.
+  if (spec.block === "network") return described.byId.networkOrder?.words;
   if (spec.block !== "trend" || spec.trend?.change !== "up" || spec.trend.order !== "percent") return undefined;
   return [described.byId.trendOrder?.words, described.byId.trendMinBase?.words].filter(Boolean).join(", ");
 }
 
 /** What the caller knows besides the spec: names (a CPV code, the reader's subject) and what the answer ran (a trend's years and months). */
-export type TitleLabels = ConditionLabels & Pick<SentenceLabels, "subject" | "allInstitutions">;
+export type TitleLabels = ConditionLabels & Pick<SentenceLabels, "subject" | "allInstitutions" | "networkSince">;
 
 /** The title of a question; `labels` names a CPV code ("pentru [lucrări de construcții]") and says what its answer ran. */
 export function questionTitle(input: QuestionSpec | AskSpec, labels: TitleLabels = {}): string {
   const spec = input as FilterSpec;
   const text = sentenceText(sentenceTokens(spec, filterContext(spec), {
-    cpvName: labels.cpvName, subject: labels.subject, trendYears: labels.trendYears, allInstitutions: labels.allInstitutions,
+    cpvName: labels.cpvName, subject: labels.subject, trendYears: labels.trendYears, allInstitutions: labels.allInstitutions, networkSince: labels.networkSince,
   }));
   if (!text) return "Întrebarea ta";
   const described = describeConditions(spec, labels);
@@ -50,11 +52,13 @@ export function questionTitle(input: QuestionSpec | AskSpec, labels: TitleLabels
  * years when the spec has none (the archive's first and last, data.yearA/yearB)
  * and the months `auto` counted (executed.months, plan §2.8).
  */
-export function answerLabels(answer: { data?: BlockData | undefined; executed?: ExecutedWindow | undefined } | null | undefined): Pick<ConditionLabels, "executedMonths" | "trendYears"> {
+export function answerLabels(answer: { data?: BlockData | undefined; executed?: ExecutedWindow | undefined } | null | undefined): Pick<TitleLabels, "executedMonths" | "trendYears" | "networkSince"> {
   const data = answer?.data;
   return {
     ...(answer?.executed ? { executedMonths: answer.executed.months } : {}),
     ...(data?.block === "trend" ? { trendYears: { yearA: data.yearA, yearB: data.yearB } } : {}),
+    // A network's group counts from the year its answer used (the spec writes it; an old link's „din …” says the answer's).
+    ...(data?.block === "network" ? { networkSince: data.since } : {}),
   };
 }
 

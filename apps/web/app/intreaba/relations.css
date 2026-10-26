@@ -1,0 +1,85 @@
+/* F4: the relations' answers (NetworkAnswer.tsx, SankeyAnswer.tsx; final network §4, final sankey §3.10, §4), drawn
+   with the kit's strip, groups, rows and tags. Colours from tokens only: the accent for partners, slate for domains,
+   dotted rests, never a category palette (final sankey §3.10). */
+
+/* — network: the groups, the summary, the chart, the rows — */
+.qb-net { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.qb-net .qb-net-strip { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 10px; }
+.qb-net .qb-net-since { gap: 8px; }
+.qb-net .qb-net-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.qb-net .qb-net-summary { margin: 0; color: var(--ink2); font-size: 13.5px; min-width: 0; }
+.qb-net .qb-net-order { flex-wrap: nowrap; }
+.qb-net .qb-net-chart { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; }
+.qb-net .qb-net-chart-toggle { display: none; }
+.qb-net .qb-net-svg { width: 100%; max-width: 640px; height: auto; align-self: center; }
+.qb-net .qb-net-spoke { stroke: var(--accent-line); }
+.qb-net .qb-net-node { fill: var(--accent); }
+.qb-net .qb-net-label { fill: currentColor; }
+.qb-net .qb-net-centre { fill: var(--accent); }
+.qb-net .qb-net-centre-label { fill: var(--surface); }
+.qb-net .qb-net-rows .qb-arow { grid-template-columns: minmax(0, 1fr) minmax(150px, auto) minmax(150px, auto) auto auto; align-items: center; }
+.qb-net .qb-nrow-main { min-width: 0; }
+.qb-net .qb-nrow-main .qb-arow-name a { color: inherit; text-decoration: none; }
+.qb-net .qb-nrow-main .qb-arow-name a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.qb-net .qb-nrow-val { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; text-align: right; }
+.qb-net .qb-nrow-val .qb-num { font-size: 14px; font-weight: 500; }
+.qb-net .qb-nrow-val small, .qb-net .qb-nrow-years small { color: var(--muted); font-size: 11.5px; font-family: var(--mono); white-space: nowrap; }
+.qb-net .qb-nrow-years { display: flex; flex-direction: column; gap: 3px; }
+.qb-net .qb-years-band { display: inline-flex; gap: 2px; }
+.qb-net .qb-yc { width: 9px; height: 12px; border-radius: 2px; border: 1px solid var(--line2); background: transparent; }
+.qb-net .qb-yc.is-on { background: var(--accent); border-color: var(--accent); }
+.qb-net .qb-yc.is-gap { margin-left: 5px; }
+/* A year the archive has not completed: hatched (final §3.7). */
+.qb-net .qb-yc.is-partial.is-on { background: repeating-linear-gradient(135deg, var(--accent) 0 2px, transparent 2px 4px); }
+.qb-net .qb-yc.is-partial { border-style: dashed; }
+.qb-net .qb-nrow-rec { justify-self: end; }
+
+/* — sankey: the flow, its labels, the list — */
+.qb-sankey { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.qb-sankey .qb-flow { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(90px, 1.1fr) minmax(0, 1fr); gap: 0 10px; min-width: 0; }
+.qb-sankey .qb-flow-side { position: relative; min-width: 0; }
+.qb-sankey .qb-flow-svg { display: block; width: 100%; overflow: visible; }
+.qb-sankey .qb-flow-band { fill: var(--accent-soft); stroke: none; opacity: .9; }
+.qb-sankey .qb-flow-band:hover { fill: var(--accent-line); }
+.qb-sankey .qb-flow-node--p { fill: var(--accent); }
+.qb-sankey .qb-flow-node--d { fill: var(--slate); }
+.qb-sankey .qb-flow-node.is-rest { fill: var(--faint); }
+.qb-sankey .qb-flow-label { position: absolute; left: 0; right: 0; display: flex; align-items: center; gap: 4px; transform: translateY(-50%); min-width: 0; }
+.qb-sankey .qb-flow-left .qb-flow-label { flex-direction: row-reverse; text-align: right; }
+.qb-sankey .qb-flow-label-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.qb-sankey .qb-flow-name { font-size: 12.5px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qb-sankey .qb-flow-fig, .qb-sankey .qb-flow-facts { font: 400 11px var(--mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qb-sankey .qb-flow-label.is-rest .qb-flow-name { font-style: italic; font-weight: 400; color: var(--muted); }
+.qb-sankey .qb-flow-list { display: none; min-width: 0; }
+.qb-sankey .qb-flow-list.is-table { display: block; }
+.qb-sankey .qb-flow-row .qb-arow-name { font-size: 13.5px; }
+.qb-sankey .qb-flow-row-main { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.qb-sankey .qb-flow-bar { display: block; height: 6px; border-radius: 3px; background: var(--accent); }
+.qb-sankey .qb-flow-bar.is-rest { background: repeating-linear-gradient(135deg, var(--faint) 0 3px, transparent 3px 6px); border: 1px dashed var(--line2); }
+.qb-sankey .qb-flow-row.is-rest .qb-arow-name { font-style: italic; font-weight: 400; }
+.qb-sankey .qb-flow-row-domains, .qb-sankey .qb-flow-row-joint { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+.qb-sankey .qb-flow-note { margin: 0; color: var(--muted); font-size: 12.5px; }
+
+@media (max-width: 560px) {
+  /* The radial chart is unreadable here: under „Arată graficul”, the list first (final network §4 „Telefon”). */
+  .qb-net .qb-net-chart-toggle { display: inline-flex; order: 2; }
+  .qb-net .qb-net-chart:not(.is-open) .qb-net-svg { display: none; }
+  /* The flow becomes a list (final sankey §4 „Mobil”). */
+  .qb-sankey .qb-flow { display: none; }
+  .qb-sankey .qb-flow-list { display: block; }
+}
+@media (max-width: 760px) {
+  /* A partner on a phone (final network §4): name and place; facts; value and share | the years; records and "⋯". */
+  .qb-net .qb-net-rows .qb-arow { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name more" "val val" "yrs yrs" "rec rec"; row-gap: 6px; }
+  .qb-net .qb-net-rows .qb-nrow-main { grid-area: name; }
+  .qb-net .qb-net-rows .qb-nrow-val { grid-area: val; flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; text-align: left; }
+  .qb-net .qb-net-rows .qb-nrow-years { grid-area: yrs; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+  .qb-net .qb-net-rows .qb-nrow-rec { grid-area: rec; justify-self: start; }
+  .qb-net .qb-net-rows .qb-arow > .qb-more { grid-area: more; align-self: start; justify-self: end; }
+}
+@media (max-width: 600px) {
+  .qb-net .qb-net-order { width: 100%; }
+  .qb-net .qb-net-order > .qb-seg { flex: 1 1 auto; }
+  .qb-net .qb-net-since { flex-wrap: wrap; }
+  .qb-sankey .qb-flow-row .qb-arow-val { grid-column: 1 / 2; }
+}

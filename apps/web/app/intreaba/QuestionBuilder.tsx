@@ -22,6 +22,7 @@ import BuilderWindow from "./builder/BuilderWindow";
 import { useCoverage } from "./builder/coverage";
 import Chip from "./builder/Chip";
 import ConditionRow from "./builder/ConditionRow";
+import Toggle from "./builder/Toggle";
 import Invitations from "./builder/Invitations";
 import ParkedRow from "./builder/ParkedRow";
 import ScopeLine from "./builder/ScopeLine";
@@ -324,8 +325,12 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
       <Sentence tokens={view.sentence} openId={open?.key ?? null} onOpen={openWindow} className={`qb-kit-sentence qb-kit-sentence--${draft.block}`} />
       {view.scopeLine && <ScopeLine />}
       {view.rows.map((row) => <ConditionRow key={row.label} label={row.label} kind={row.kind}>
-        {row.chips.map((chip) => <Chip key={chip.key} id={chip.key} label={chip.label} name={chip.name} active={chip.active} open={open?.key === chip.key} onOpen={openWindow}
-          onRemove={() => { const target = view.windows[chip.key]; if (target) choose(target, [{ filter: chip.id, value: undefined }]); }} />)}
+        {row.chips.map((chip) => chip.toggle
+          // A switch (kit component 5): a second press turns it off, so it has no × and no window.
+          ? <Toggle key={chip.key} id={chip.key} label={chip.name} pressed={chip.active}
+            onToggle={(_id, pressed) => { const target = view.windows[chip.key]; if (target) choose(target, [{ filter: chip.id, value: pressed ? true : undefined }]); }} />
+          : <Chip key={chip.key} id={chip.key} label={chip.label} name={chip.name} active={chip.active} open={open?.key === chip.key} onOpen={openWindow}
+            onRemove={() => { const target = view.windows[chip.key]; if (target) choose(target, [{ filter: chip.id, value: undefined }]); }} />)}
       </ConditionRow>)}
       <Invitations items={view.invites} openId={open?.key ?? null} onOpen={openWindow} />
       <UnderChips items={view.under} openId={open?.key ?? null} onOpen={openWindow} onRemove={removeUnder} onToggle={removeUnder} />

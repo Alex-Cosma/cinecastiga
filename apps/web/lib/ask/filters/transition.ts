@@ -13,6 +13,7 @@ import { edited } from "./defs/shared";
 import { sentenceTokens } from "./sentence";
 import { enterTrend, leavingTrend, TREND_FILTERS, trendFollows } from "./trend-rules";
 import { exclusionsAfterSubject } from "./exclusions";
+import { enterNetwork, networkFollows } from "./defs/network";
 import type { FilterId, FilterSpec, Slot } from "./types";
 
 /*
@@ -171,9 +172,13 @@ export function chooseValue(input: QuestionSpec, slot: Slot, choice: Choice, par
   const first: Partial<Record<FilterId, FilterId>> = draft !== input ? { county: "seatCounty" } : {};
   const lens = choice.filter === "rankBy" && draft.block === "entity_card" && choice.value !== leaderAxis(draft);
   const start = lens && parked?.lens === choice.value ? unpark(draft as FilterSpec, parked) : draft as FilterSpec;
-  const written = writeChoice(start, slot, choice);
+  const chosen = writeChoice(start, slot, choice);
+  // A network's group keeps the period's first year as its reference (F4): the period leaves with that note, not as dropped.
+  const network = networkFollows(start, chosen, filterContext(chosen, context.coverage ? { coverage: context.coverage } : {}));
+  const written = network.spec;
   // What the choice replaced in its own window needs no note; what it left there (a buyer's kind on a firm subject) is settled too.
-  const touched = windowFilters(slot).filter((id) => JSON.stringify(pathValues(start, FILTERS[id].keys)) !== JSON.stringify(pathValues(written, FILTERS[id].keys)));
+  const touched = [...windowFilters(slot), ...(choice.filter === "networkPartners" ? ["period" as const, "networkSince" as const] : [])]
+    .filter((id) => JSON.stringify(pathValues(start, FILTERS[id].keys)) !== JSON.stringify(pathValues(written, FILTERS[id].keys)));
   const normalized = transitionQuestion(written);
   const follows = trendFollows(start, normalized.spec as FilterSpec, context.coverage);
   const settled = settle(start, follows.spec, { lens, touched, why: "nu se potrivește cu alegerea nouă" });
@@ -181,9 +186,11 @@ export function chooseValue(input: QuestionSpec, slot: Slot, choice: Choice, par
   const subject = exclusionsAfterSubject(start, settled.spec);
   // A trend's options set aside wait for the trend, whatever the axis of "Cine conduce?" does (one row: the axis's wins).
   const waiting = parked?.lens === "trend" ? parked : null;
-  const renamed = { ...first, ...settled.renamed };
+  // A network's period became the year its group counts from (networkFollows' note says so).
+  const periodMoved = choice.filter === "networkPartners" && presentConditions(start).has("period") && !presentConditions(subject.spec).has("period");
+  const renamed = { ...first, ...settled.renamed, ...(periodMoved ? { period: "networkSince" as const } : {}) };
   return {
-    spec: subject.spec, notes: unique([...normalized.changes, ...follows.notes, ...settled.notes, ...(subject.note ? [subject.note] : [])]),
+    spec: subject.spec, notes: unique([...normalized.changes, ...network.notes, ...follows.notes, ...settled.notes, ...(subject.note ? [subject.note] : [])]),
     // The exclusions left with their note: the whole precise selection when nothing else was in it.
     dropped: subject.note ? [...settled.dropped, subject.spec.population ? "exclude" : "population"] : settled.dropped,
     parked: !lens ? parked : settled.parked.length ? parkedRow(leaderAxis(start), settled.parked) : waiting,
@@ -210,7 +217,9 @@ export function chooseQuestion(input: QuestionSpec, block: string, parked: Parke
   // The defaults a new trend writes again leave with the rest of its key, without a chip or a note.
   const base = leaves ? withoutConditions(start, TREND_FILTERS) : start;
   const moved = transitionQuestion(base, block);
-  const entered = block === "trend" && base.block !== "trend" ? enterTrend(base, moved.spec as FilterSpec, context.coverage) : { spec: moved.spec as FilterSpec, notes: [] };
+  const entered = block === "trend" && base.block !== "trend" ? enterTrend(base, moved.spec as FilterSpec, context.coverage)
+    : block === "network" && base.block !== "network" ? { spec: enterNetwork(moved.spec as FilterSpec), notes: [] as string[] }
+      : { spec: moved.spec as FilterSpec, notes: [] as string[] };
   // The reason by cause: a condition the engine applies here but the builder does not offer yet is not "inapplicable".
   const settled = settle(base, entered.spec, { lens: false, touched: [], why: "nu se aplică la această întrebare", whyApplied: "nu se poate alege aici încă" });
   const renamed = { ...first, ...settled.renamed };

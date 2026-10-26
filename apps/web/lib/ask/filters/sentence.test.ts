@@ -28,7 +28,7 @@ const marked = (spec: QuestionSpec, labels: SentenceLabels = {}) => sentenceToke
   .map((t) => t.kind === "slot" ? `[${t.value}]` : t.kind === "fixed" ? `{${t.text}}` : t.text).join("");
 const slots = (spec: QuestionSpec) => sentenceTokens(spec).filter((t): t is SentenceSlot => t.kind === "slot");
 const slotOf = (spec: QuestionSpec, filter: FilterId) => slots(spec).find((t) => t.filter === filter);
-const SHAPE = new Set<string>(["question", "dim", "measure", "topN", "rankBy", "comparisonMode"]);
+const SHAPE = new Set<string>(["question", "dim", "measure", "topN", "rankBy", "comparisonMode", "networkOrder", "networkShow", "sankeyShown"]);
 /** The conditions a spec carries that its sentence does not say, sorted: they stay under it (P4, legacyConditions). */
 const under = (spec: QuestionSpec) => {
   const said = saidFilters(sentenceTokens(spec));
@@ -107,8 +107,11 @@ describe("the sentence of each question (plan §4)", () => {
     expect(sentenceText(percent)).toBe("Arată primele 10, după creșterea în procente, dintre județele cu cel puțin 1 mil. lei în 2024.");
     const words = describeConditions(trend("county", { change: "up", order: "percent" })).byId;
     for (const id of ["trendOrder", "trendMinBase"] as const) expect(sentenceText(percent), id).toContain(words[id]!.words!);
-    for (const block of ["stat", "timeseries", "map", "breakdown", "compare", "network", "sankey", "fact_check", "distribution", "scatter", "entity_card"])
+    for (const block of ["stat", "timeseries", "map", "breakdown", "compare", "sankey", "fact_check", "distribution", "scatter", "entity_card"])
       expect(presentationTokens(q({ block })), block).toEqual([]);
+    // F4 (final network §1, §3.5): the network's length and order; an old link without the key lists 14.
+    expect(line(q({ block: "network", dim: "authority", filters: BUZAU }))).toBe("Arată primii [14] parteneri, după [valoarea înregistrată].");
+    expect(line(q({ block: "network", dim: "authority", filters: BUZAU, network: { show: 15, order: "years" } }))).toBe("Arată primii [15] parteneri, după [anii cu înregistrări].");
   });
 
   it("timeseries: the measure leads, the noun names its state, the period carries its preposition (§4.3)", () => {
@@ -268,10 +271,19 @@ describe("the sentence of each question (plan §4)", () => {
     expect(marked(q({ block: "stat", filters: { authorityKind: "spital" } }), { allInstitutions: true })).not.toContain("nu doar");
   });
 
-  it("network: the partners' conditions are a row, not the sentence (§4.8)", () => {
-    expect(marked(q({ block: "network", dim: "authority", filters: BUZAU }))).toBe("Cu cine lucrează [MUNICIPIUL BUZAU], în [toți anii]?");
+  it("network: the group is the verb, a group counts from its year, the partners' conditions are a row (§4.8)", () => {
+    expect(marked(q({ block: "network", dim: "authority", filters: BUZAU }))).toBe("Cu cine [lucrează] [MUNICIPIUL BUZAU], în [toți anii]?");
     expect(marked(q({ block: "network", dim: "authority", dataset: "da", filters: { ...BUZAU, cpvTerm: "asfaltare", yearFrom: 2025, yearTo: 2025 } })))
-      .toBe("Cu cine lucrează [MUNICIPIUL BUZAU] pentru [„asfaltare”] prin [achiziții directe], în [2025]?");
+      .toBe("Cu cine [lucrează] [MUNICIPIUL BUZAU] pentru [„asfaltare”] prin [achiziții directe], în [2025]?");
+    // F4 (final network §1, kit §6 network 1): each group its verb, „din [anul]” instead of the period.
+    expect(marked(q({ block: "network", dim: "authority", filters: BUZAU, network: { partners: "new", since: 2025 } }))).toBe("Cu cine [a început să lucreze] [MUNICIPIUL BUZAU] din [2025]?");
+    expect(marked(q({ block: "network", dim: "authority", filters: BUZAU, network: { partners: "continuing", since: 2024 } }))).toBe("Cu cine [a continuat să lucreze] [MUNICIPIUL BUZAU] din [2024]?");
+    expect(marked(q({ block: "network", dim: "supplier", filters: { ...PORR, cpvTerm: "drumuri" }, network: { partners: "gone", since: 2023 } })))
+      .toBe("Cu cine [nu mai lucrează] [PORR CONSTRUCT] pentru [„drumuri”] din [2023]?");
+    // Without its year, the one the answer counted from (its data.since), else the last complete one.
+    expect(marked(q({ block: "network", dim: "authority", filters: BUZAU, network: { partners: "new" } }), { networkSince: 2022 })).toBe("Cu cine [a început să lucreze] [MUNICIPIUL BUZAU] din [2022]?");
+    expect(slotOf(q({ block: "network", dim: "authority", filters: BUZAU, network: { partners: "new", since: 2025 } }), "networkSince")).toMatchObject({ window: "Față de ce an?", says: ["networkSince"] });
+    expect(slotOf(q({ block: "network", dim: "authority", filters: BUZAU }), "networkPartners")).toMatchObject({ window: "Ce parteneri?", says: [] });
     expect(slotOf(q({ block: "network", dim: "supplier", filters: PORR }), "supplier")).toMatchObject({ picker: "focal", window: "Despre cine vrei să afli?", writes: ["authority"] });
     expect(under(q({ block: "network", dim: "authority", filters: { ...BUZAU, minEmployees: 1, ...ADMIN } }))).toEqual(["admin", "employees"]);
     expect(under(q({ block: "network", dim: "supplier", filters: { ...PORR, county: "Cluj", authorityKind: "spital" } }))).toEqual(["authorityKind", "county"]);
@@ -621,7 +633,7 @@ describe("the sentence as BLOCK_FILTERS places it", () => {
       { id: "period" },
     ]);
     expect(sentenceSlots(sentenceTokens(q({ block: "network", dim: "supplier", filters: PORR })))).toEqual([
-      { id: "supplier", picker: "focal", writes: ["authority"] }, { id: "period" },
+      { id: "networkPartners" }, { id: "supplier", picker: "focal", writes: ["authority"] }, { id: "period" },
     ]);
   });
 

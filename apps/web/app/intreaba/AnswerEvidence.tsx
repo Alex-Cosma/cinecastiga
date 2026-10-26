@@ -9,8 +9,9 @@ export const AnswerEvidence = createContext<{
   open: (spec?: AskSpec, scope?: EvidenceScope, title?: string, opts?: EvidenceOpenOpts) => void;
   /**
    * "Scoate din calcul" on a row (F4): the applied question without that entity, a new answer that "Înapoi"
-   * undoes; `index` is the row's place, whose "⋯" takes the focus once the new answer is drawn.
+   * undoes; `index` is the row's place, whose "⋯" takes the focus once the new answer is drawn. `field`: a flow's
+   * domain (a CPV code), else the role of the answer's rows.
    */
-  exclude?: (entity: { id: string; name: string }, index: number) => void;
+  exclude?: (entity: { id: string; name: string; field?: "authority" | "supplier" | "cpv" }, index: number) => void;
 } | null>(null);
 export const useAnswerEvidence = () => useContext(AnswerEvidence);

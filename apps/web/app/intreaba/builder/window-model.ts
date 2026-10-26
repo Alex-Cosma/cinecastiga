@@ -18,6 +18,8 @@ import { formatShare } from "../../../lib/ask/answer-text";
 import { FACET_PENDING, facetCountText, facetTotalText, type FacetCounts, type FacetUnit, type FacetView } from "../../../lib/ask/facet-parts";
 import { PROCEDURE_WORDS, type Procedure } from "../../../lib/ask/purchase";
 import { EMPLOYEE_BANDS, bandRange } from "./Bands";
+import { NETWORK_LIST_LABELS, NETWORK_ORDER_WORDS, NETWORK_SIGNALS_RULE, networkGroupRule, type NetworkGroup, type NetworkOrder } from "../../../lib/ask/network-shared";
+import { lastNetworkYear } from "../../../lib/ask/filters/defs/network";
 import type { GroupSwatch, KitOption, KitRestRow, KitTip } from "./kit-types";
 import type { BuilderWindowSpec } from "./view";
 
@@ -166,6 +168,17 @@ export function choiceWords(choice: Choice, spec: QuestionSpec): { label: string
       : { label: "Aceleași luni, automat", detail: "Fiecare an, până la ultima lună completă din ultimul an." };
     case "timeseriesSplit": return { label: value === "channel" ? "Directe / proceduri" : value === "domain" ? "Domenii" : "Total" };
     case "timeseriesGrain": return { label: value === "month" ? "Lună de lună" : "An de an" };
+    // F4, the network (final network §3.1–§3.5, kit §4): each group with its rule against the year, the year, the order.
+    case "networkPartners": {
+      const since = spec.network?.since ?? lastNetworkYear(filterContext(spec as FilterSpec));
+      return value === undefined ? { label: "Toți partenerii", detail: "În perioada aleasă." }
+        : { label: NETWORK_LIST_LABELS[value as NetworkGroup], detail: networkGroupRule(value as NetworkGroup, since), swatch: value === "new" ? "new" : value === "gone" ? "gone" : "up" };
+    }
+    case "networkSince": return { label: String(value) };
+    case "networkOrder": return { label: capital(NETWORK_ORDER_WORDS[(value ?? "value") as NetworkOrder].phrase) };
+    case "networkShow": return { label: `Primii ${value}` };
+    case "networkSignals": return value ? { label: "Doar cei cu semnale", detail: "Un semnal oficial pe această relație." } : { label: "Toți partenerii" };
+    case "sankeyShown": return { label: `Primii ${value}` };
     default: return { label: value === undefined ? "Oricare" : String(value) };
   }
 }
@@ -194,6 +207,10 @@ export function windowTip(win: BuilderWindowSpec, spec: QuestionSpec): KitTip | 
   if (win.slot.id === "dataset" && windowOf(win.slot).includes("procedure")) return { title: PROCEDURE_GROUP, text: "Procedura declarată în SEAP, doar la contractele din proceduri." };
   // F4: where the seat comes from (owner-seat-switch), one text with the column's (?) and /harta's.
   if (windowKind(win) === "seat") return { id: "sediul-firmei" };
+  // F4, the network: the groups are of the whole relation; the year cannot be one the archive has not completed.
+  if (win.slot.id === "networkPartners") return { title: "Ce parteneri?", text: "Grupele privesc toate achizițiile dintre cei doi, din toată arhiva. Canalul, domeniul și condițiile partenerilor aleg doar cine apare." };
+  if (win.slot.id === "networkSince") return { title: "Anul de referință", text: `${lastNetworkYear(filterContext(spec as FilterSpec)) + 1} nu se poate alege: nu s-a încheiat. Înainte de 2021 arhiva are mai puține contracte, deci „Noi” ar fi umflat.` };
+  if (win.slot.id === "networkSignals") return { title: "Cu semnale", text: NETWORK_SIGNALS_RULE };
   return undefined;
 }
 
@@ -211,6 +228,12 @@ function currentOf(filter: Choice["filter"], spec: QuestionSpec): unknown {
     case "trendChange": return spec.trend?.change ?? "all";
     case "trendOrder": return spec.trend?.order ?? "lei";
     case "trendMinBase": return spec.trend?.minBase ?? DEFAULT_TREND_MIN_BASE;
+    // F4: a network without its keys is every partner, by value, 14 rows (an old link), counted from the last complete year.
+    case "networkPartners": return spec.network?.partners;
+    case "networkSince": return spec.network?.since ?? lastNetworkYear(filterContext(spec as FilterSpec));
+    case "networkOrder": return spec.network?.order ?? "value";
+    case "networkShow": return spec.network?.show ?? 14;
+    case "networkSignals": return spec.network?.signals;
     default: return undefined;
   }
 }

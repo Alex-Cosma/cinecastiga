@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { defaultQuestion, questionErrors, questionKey, transitionQuestion } from "../question-ui";
-import { IMPLEMENTED_KEYS, NEWER_VERSION_LINK, parseSpec, READ_AHEAD_KEYS, runnableError, SEAT_RULES, SELECTION_RULES, TIMESERIES_RULES, TREND_RULES, unimplementedSpecKeys, validateSpec, type AskSpec, type Block } from "../spec";
+import { IMPLEMENTED_KEYS, NETWORK_RULES, NEWER_VERSION_LINK, parseSpec, READ_AHEAD_KEYS, runnableError, SEAT_RULES, SELECTION_RULES, TIMESERIES_RULES, TREND_RULES, unimplementedSpecKeys, validateSpec, type AskSpec, type Block } from "../spec";
 import { legacyCorpus } from "../fixtures/legacy-corpus";
 import { FIXTURE_IDENTITIES } from "../fixtures/golden-fixture";
 import { BLOCK_FILTERS } from "./blocks";
@@ -51,10 +51,10 @@ describe("the rules of a key (plan §2.4)", () => {
   // (TREND_RULES, F2) and the filter declares that same function, which runnableError runs.
   it("are those runnableError runs; no filter declares a rule it would not run", () => {
     const ruled = FILTER_DEFS.filter((def) => def.validate);
-    expect(ruled.map((def) => def.id)).toEqual(["purchaseKind", "procedure", "firmSeat", "seatCounty", "purchaseValue", "trendOrder", "trendMinBase", "trendFirstOnly", "timeseriesGrain", "timeseriesSplit", "timeseriesMonths"]);
+    expect(ruled.map((def) => def.id)).toEqual(["purchaseKind", "procedure", "firmSeat", "seatCounty", "purchaseValue", "trendOrder", "trendMinBase", "trendFirstOnly", "timeseriesGrain", "timeseriesSplit", "timeseriesMonths", "networkPartners"]);
     expect(ruled.map((def) => def.validate)).toEqual([
       SELECTION_RULES.purchaseKind, SELECTION_RULES.procedure, SEAT_RULES.firmSeat, SEAT_RULES.seatCounty, SELECTION_RULES.purchaseValue, TREND_RULES.order, TREND_RULES.minBase, TREND_RULES.firstOnly,
-      TIMESERIES_RULES.grain, TIMESERIES_RULES.split, TIMESERIES_RULES.months,
+      TIMESERIES_RULES.grain, TIMESERIES_RULES.split, TIMESERIES_RULES.months, NETWORK_RULES.partners,
     ]);
     // F4 (plan §3): one seat at a time, abroad without a size, a county of the seat where firms are the subject.
     const firms = { block: "table", dim: "supplier", measure: "value" } as const;
@@ -496,7 +496,9 @@ describe("places (BLOCK_FILTERS)", () => {
   const states = [...bases, ...restored];
   /** R10's window titles (kit §2), with the windows the plan keeps from today (F1b-s-windows). */
   const WINDOWS = ["Ce fel de achiziții?", "Ce s-a cumpărat?", "Cine a cumpărat?", "Unde?", "De la cine?", "Unde au sediul firmele?", "În ce perioadă?", "Când?",
-    "Câți angajați au firmele?", "Cine conduce firmele?", "Selecție avansată", "Ce luni compari?", "Cât de mare e fiecare achiziție?"];
+    "Câți angajați au firmele?", "Cine conduce firmele?", "Selecție avansată", "Ce luni compari?", "Cât de mare e fiecare achiziție?",
+    // F4: the network's „Cu semnale” is a switch (kit component 5); its place keeps a title for its (?) and a screen reader.
+    "Cu semnale"];
 
   it("has one entry for each of the 13 questions", () => {
     expect(Object.keys(BLOCK_FILTERS).sort()).toEqual(([...new Set(bases.map((b) => b.spec.block))] as Block[]).sort());

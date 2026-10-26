@@ -121,9 +121,14 @@ describe("the builder's view of a draft (P1, P2, P4, P5, P9)", () => {
     const network = q({ block: "network", dim: "authority", filters: { authorityId: 1, authorityName: "Spitalul X", minEmployees: 1, maxEmployees: 9 } });
     const view = builderView(network);
     expect(view.rows).toEqual([{ label: "Furnizorii", kind: "selection", chips: [
+      { key: "r:firmSeat", id: "firmSeat", label: "Sediul firmei", name: "Sediul firmei", active: false },
       { key: "r:employees", id: "employees", label: "1–9 angajați", name: "Angajați", active: true },
+      { key: "r:networkSignals", id: "networkSignals", label: "Cu semnale", name: "Cu semnale", active: false, toggle: true },
       { key: "r:admin", id: "admin", label: "Administrator", name: "Administrator", active: false },
     ] }]);
+    // F4: a set seat reads as its chip ("Cu sediul în alt județ"), the switch as pressed.
+    const set = builderView(q({ ...network, filters: { ...network.filters, firmSeat: "other" }, network: { signals: true } }));
+    expect(set.rows[0]!.chips.filter((c) => c.active).map((c) => c.label)).toEqual(["Cu sediul în alt județ", "1–9 angajați", "Cu semnale"]);
     const firm = builderView(q({ block: "sankey", dim: "supplier", filters: { supplierId: 2, supplierName: "PORR", authorityKind: "spital" } }));
     expect(firm.rows[0]!.label).toBe("Clienții");
     expect(firm.rows[0]!.chips.map((c) => c.label)).toEqual(["Județul instituției", "Spitale"]);

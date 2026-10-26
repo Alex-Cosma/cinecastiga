@@ -187,7 +187,7 @@ export interface AdvancedField {
 export type RowLabel = "Câștigătorii" | "Instituțiile" | "Furnizorii" | "Clienții";
 /** A row of conditions (component 3): its chips, each with its own name and window. */
 export interface ConditionRow { label: RowLabel; kind: "group" | "selection"; chips: readonly Slot[] }
-export type RowAction = "records" | "exclude" | "deeper" | "entity";
+export type RowAction = "records" | "exclude" | "deeper" | "entity" | "radiography";
 export type FactId = string;
 
 export interface BlockFilters {

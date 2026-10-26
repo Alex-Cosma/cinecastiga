@@ -244,10 +244,13 @@ export const sizeOf = (sql: DbSql, value: Fragment): Fragment => {
 /**
  * The seat window of a ranking of firms (plan §4.2, F4) offers the seat
  * against the buyer's county of each record (firmSeat): its options are the
- * classes of the records, not the firms' counties. Elsewhere ("Cine conduce?"
- * by value, the profiles) the seat is the firm's own county (seatCounty).
+ * classes of the records, not the firms' counties; so do the network and the
+ * flow around an institution (F4, their row FURNIZORII: the firms against
+ * that institution's county). Elsewhere ("Cine conduce?" by value, the
+ * profiles) the seat is the firm's own county (seatCounty).
  */
-export const relativeSeat = (spec: Pick<AskSpec, "block" | "dim">): boolean => spec.block === "table" && spec.dim === "supplier";
+export const relativeSeat = (spec: Pick<AskSpec, "block" | "dim">): boolean =>
+  spec.block === "table" && spec.dim === "supplier" || (spec.block === "network" || spec.block === "sankey") && spec.dim === "authority";
 
 /** Counts of the transaction parts, grouped as each window lists its options. */
 async function transactionCounts(sql: DbSql, p: Prepared, part: CountPart, ready: Ready, run: Runner, opts: { relative?: boolean } = {}):

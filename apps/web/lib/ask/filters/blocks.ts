@@ -47,6 +47,7 @@ const PLACES = {
   advanced: ["Selecție avansată", "Selecție avansată"],
   months: ["Aceleași luni", "Ce luni compari?"],
   size: ["Mărimea achiziției", "Cât de mare e fiecare achiziție?"],
+  signals: ["Cu semnale", "Cu semnale"],
 } as const satisfies Record<string, readonly [string, string]>;
 type Place = keyof typeof PLACES;
 
@@ -137,16 +138,21 @@ function invites(spec: FilterSpec, ctx: FilterCtx): Slot[] {
 }
 
 /**
- * P3b (plan §4.8, §4.9): who the partners are, a selection with the line of
- * total. An institution in the centre: its firms' size and, on the network,
- * their administrator (the flow's final leaves the person to the network and
- * the verification); a firm: its clients' county and kind. The firms' seat
- * comes with F4. The rest of today's keys would filter the centre itself (all
- * or nothing): a link's chip.
+ * P3b (plan §4.8, §4.9; kit §6 network 4–8, sankey 2): who the partners are,
+ * a selection with the line of total. An institution in the centre: its
+ * firms' seat against its county (F4, "Unde au sediul firmele?") and size and,
+ * on the network, their administrator (the flow's final leaves the person to
+ * the network and the verification); a firm: its clients' county and kind.
+ * The network adds „Cu semnale”, a switch (F4: the official signals on the
+ * relation). The rest of today's keys would filter the centre itself (all or
+ * nothing): a link's chip.
  */
 function partners(_spec: FilterSpec, ctx: FilterCtx): ConditionRow[] {
-  if (ctx.role === "supplier") return [{ label: "Clienții", kind: "selection", chips: [placed("county", "clientCounty"), placed("authorityKind", "clientKind")] }];
-  return [{ label: "Furnizorii", kind: "selection", chips: [placed("employees", "employees"), ...(ctx.block === "network" ? [placed("admin", "admin")] : [])] }];
+  const signals = ctx.block === "network" ? [placed("networkSignals", "signals")] : [];
+  if (ctx.role === "supplier") return [{ label: "Clienții", kind: "selection", chips: [placed("county", "clientCounty"), placed("authorityKind", "clientKind"), ...signals] }];
+  return [{ label: "Furnizorii", kind: "selection", chips: [
+    placed("firmSeat", "seat"), placed("employees", "employees"), ...signals, ...(ctx.block === "network" ? [placed("admin", "admin")] : []),
+  ] }];
 }
 
 /**
@@ -230,15 +236,22 @@ const sameMonths = placed("trendMonths", "months");
  * with their own rows (F5, F4's relations).
  */
 function rowRole(spec: FilterSpec, ctx: FilterCtx): "authority" | "supplier" | null {
-  if (ctx.profile || !["table", "trend", "entity_card"].includes(ctx.block)) return null;
+  if (ctx.profile) return null;
+  // A relation's rows are the centre's partners (F4, plan §4.8 P7, §4.9 P7): firms around an institution, institutions around a firm.
+  if (ctx.block === "network" || ctx.block === "sankey") return ctx.role === "authority" ? "supplier" : "authority";
+  if (!["table", "trend", "entity_card"].includes(ctx.block)) return null;
   return spec.dim === "authority" || spec.dim === "supplier" ? spec.dim : null;
 }
 const excludeRows: BlockFilters["exclude"] = (spec, ctx) => {
   const field = rowRole(spec, ctx);
   return field ? { field, max: 5 } : null;
 };
-/** P7 (kit §2): "Vezi înregistrările →" · "Scoate din calcul" · "Fișa firmei ↗", on every row with an entity of its own. */
-const entityRowMenu: BlockFilters["rowMenu"] = (spec, ctx) => rowRole(spec, ctx) ? ["records", "exclude", "entity"] : [];
+/**
+ * P7 (kit §2): "Vezi înregistrările →" · "Scoate din calcul" · "Fișa firmei ↗", on every row with an entity of its
+ * own; a firm around an institution on the network also "Radiografia instituției ↗" (final network §3.6).
+ */
+const entityRowMenu: BlockFilters["rowMenu"] = (spec, ctx) => !rowRole(spec, ctx) ? []
+  : ctx.block === "network" && ctx.role === "authority" ? ["records", "exclude", "entity", "radiography"] : ["records", "exclude", "entity"];
 
 function entry(extra: Partial<Pick<BlockFilters, "rows" | "strip" | "under">> = {}): BlockFilters {
   return {
@@ -268,8 +281,9 @@ export const BLOCK_FILTERS: Record<Block, BlockFilters> = {
   compare: entry({ strip: ["dataset"] }),
   // The groups beside the answer switch on the data already fetched (owner-R-facts-all-lists); "Prima dată" on the new ones.
   trend: entry({ rows: winners, under: () => [sameMonths], strip: ["trendChange", "trendFirstOnly"] }),
-  network: entry({ rows: partners, strip: ["dataset"] }),
-  sankey: entry({ rows: partners, strip: ["dataset"] }),
+  // F4: the groups and their year, the order beside the answer (on data already fetched, but the year); the flow's length.
+  network: entry({ rows: partners, strip: ["dataset", "networkPartners", "networkSince", "networkOrder"] }),
+  sankey: entry({ rows: partners, strip: ["dataset", "sankeyShown"] }),
   fact_check: entry(),
   distribution: entry(),
   scatter: entry(),

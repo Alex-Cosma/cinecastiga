@@ -17,8 +17,12 @@ import { namedKind, type AskSpec, type AuthorityKind, type Block } from "./spec"
  * A block whose answer a release changed for the same spec. Absent: "<block>-1".
  * trend-2 (F2, plan §4.7): the partition beside the chosen group, the county of
  * an entity's row from its profile instead of a buyer's, the 2018 note.
+ * network-2 (F4, plan §4.8): the four lists of partners against a reference
+ * year, the first 50 of each, the facts of a row; an old link still lists 14.
+ * sankey-2 (F4, plan §4.9): the first 15 partners × 5 domains with their
+ * records and rests, two CPV digits below a chosen domain.
  */
-export const ANSWER_VERSIONS: Partial<Record<Block, string>> = { trend: "trend-2" };
+export const ANSWER_VERSIONS: Partial<Record<Block, string>> = { trend: "trend-2", network: "network-2", sankey: "sankey-2" };
 
 /** A key whose meaning a release changed, on the questions that carry it. */
 export interface KeyVersion {
@@ -142,6 +146,24 @@ export function sameAnswerVersion(before: AnswerVersion, after: AnswerVersion): 
  * change a watch on "Creșteri". An answer stored before trend-2 is whole.
  */
 export function answerCore(block: string, data: unknown): unknown {
+  // network-2: the list the question asks for (its group), its totals and its first 50 partners by value; not the other
+  // lists, the facts of a row, the order or the length shown. The reference year only where a group is counted from it.
+  if (block === "network" && object(data) && object(data.lists)) {
+    const list = typeof data.list === "string" ? data.list : "all";
+    const own = object(data.lists[list]) ? data.lists[list] as Record<string, unknown> : {};
+    const partners = object(data.partners) ? data.partners : {};
+    const rows = Array.isArray(own.rows) ? own.rows as { entityId: string; value: number; count: number }[] : [];
+    return {
+      focal: data.focal, list, ...(list !== "all" ? { since: data.since } : {}),
+      totals: { partners: own.partners, value: own.value, count: own.count },
+      nodes: rows.slice(0, 50).map((row) => ({ entityId: row.entityId, name: (partners[row.entityId] as { name?: string } | undefined)?.name ?? "?", value: row.value, count: row.count })),
+    };
+  }
+  // sankey-2: its flows and totals; not the strip's shares nor the facts of a node (the firms a partner shares contracts with).
+  if (block === "sankey" && object(data) && Array.isArray(data.partners)) {
+    const { streams: _streams, partners: _partners, domains: _domains, ...core } = data;
+    return core;
+  }
   // F3: what an evolution or a breakdown adds for the screen alone (the marker of the year before, every CPV group,
   // the channels' shares) is not compared: a watch on an older question sees the same core as before.
   if (block === "timeseries" && object(data)) { const { ref: _ref, ...core } = data; return core; }

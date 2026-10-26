@@ -218,7 +218,7 @@ export const SPEC_JSON_SCHEMA = {
       type: "string",
       enum: [...BLOCKS],
       description:
-        "table = clasament/top pe o dimensiune; stat = un singur număr total; timeseries = evoluție pe ani; map = valori pe județe (hartă); compare = două entități față în față; distribution = unde se situează o entitate în distribuția indicelui de risc; breakdown = compoziția cheltuielii pe categorii CPV; scatter = risc vs volum, cu outlieri; sankey = fluxul banilor unei entități (parteneri → categorii); network = rețeaua de parteneri a unei entități; entity_card = O SINGURĂ entitate-superlativ (cea mai riscantă / cea mai mare); fact_check = a cumpărat X de la Y? (Da/Nu cu dovezi); trend = schimbarea între doi ani, pe entități",
+        "table = clasament/top pe o dimensiune; stat = un singur număr total; timeseries = evoluție pe ani; map = valori pe județe (hartă); compare = două entități față în față; distribution = unde se situează o entitate în distribuția indicelui de risc; breakdown = compoziția cheltuielii pe categorii CPV; scatter = risc vs volum, cu outlieri; sankey = ce cumpără o entitate și de la cine (parteneri → domenii); network = partenerii unei entități (cu cine lucrează); entity_card = O SINGURĂ entitate-superlativ (cea mai riscantă / cea mai mare); fact_check = a cumpărat X de la Y? (Da/Nu cu dovezi); trend = schimbarea între doi ani, pe entități",
     },
     dataset: {
       type: "string",
@@ -354,6 +354,8 @@ export const IMPLEMENTED_KEYS: ReadonlySet<string> = new Set([
   ...["grain", "split", "months"].map(key => `timeseries.${key}`),
   // F4: the firm's seat, against the buyer's county or its own county (SEAT_RULES below; predicates.ts firmSeatCond, seatCountyCond).
   "filters.firmSeat", "filters.seatCounty",
+  // F4: the network's groups, reference year, order, length and signals (NETWORK_RULES below; relations.ts), the flow's length.
+  ...["partners", "since", "order", "show", "signals"].map(key => `network.${key}`), "sankey.shown",
 ]);
 /**
  * Paths parseSpec reads ahead of the engine (plan §3), with the stage that
@@ -364,8 +366,7 @@ export const IMPLEMENTED_KEYS: ReadonlySet<string> = new Set([
  */
 export const READ_AHEAD_KEYS = {
   "options.members=network-group": "F4",
-  "filters.sharedPartners": "F4", "sankey.shown": "F4",
-  "network.partners": "F4", "network.since": "F4", "network.order": "F4", "network.show": "F4", "network.signals": "F4",
+  "filters.sharedPartners": "F4",
   "filters.newSince": "F5", "filters.newScope": "F5", "filters.mainClient": "F5", "filters.dominantSupplier": "F5",
   "filters.authorityKind=local_admin": "F5",
   "peers.similar": "F6a", "peers.activity": "F6a", "peers.domain": "F6a",
@@ -747,6 +748,19 @@ export const SEAT_RULES: Readonly<Record<"firmSeat" | "seatCounty", (spec: AskSp
   },
 };
 
+/**
+ * The rules of the network's options (plan §3, §4.8, F4; final network §3.2):
+ * a group is of the whole relation against its reference year, so it takes no
+ * period (the builder keeps the period's first year as the reference). The
+ * reference year itself is checked against the archive by the engine (the
+ * last year every channel has complete, network-shared.ts networkLastYear).
+ * FilterDef.validate of lib/ask/filters/defs/network.ts; runnableError runs it.
+ */
+export const NETWORK_RULES: Readonly<Record<"partners", (spec: AskSpec) => string | null>> = {
+  partners: (spec) => spec.network?.partners && [spec.filters.yearFrom, spec.filters.yearTo, spec.filters.monthFrom, spec.filters.monthTo].some((v) => v !== undefined)
+    ? "Grupele privesc toată relația, fără perioadă. Alege „Toți” sau scoate perioada." : null,
+};
+
 /** What this release can answer, on a parsed spec. Null when it can run. */
 export function runnableError(spec: AskSpec): string | null {
   const { block, dim, measure, filters } = spec;
@@ -783,7 +797,7 @@ export function runnableError(spec: AskSpec): string | null {
   }
   if (block === "trend" && (filters.monthFrom !== undefined || filters.monthTo !== undefined))
     return "Schimbarea compară doi ani întregi. Elimină explicit lunile sau alege evoluția în timp; filtrele nu au fost eliminate.";
-  for (const rule of [...Object.values(TREND_RULES), ...Object.values(SELECTION_RULES), ...Object.values(TIMESERIES_RULES), ...Object.values(SEAT_RULES)]) {
+  for (const rule of [...Object.values(TREND_RULES), ...Object.values(SELECTION_RULES), ...Object.values(TIMESERIES_RULES), ...Object.values(SEAT_RULES), ...Object.values(NETWORK_RULES)]) {
     const error = rule(spec);
     if (error) return error;
   }

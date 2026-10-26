@@ -120,9 +120,9 @@ export const QUESTION_TYPES: {
   {
     id: "sankey",
     group: "relations",
-    label: "Ce traseu au banii?",
-    description: "De la parteneri la domeniile achizițiilor.",
-    keywords: "flux bani traseu sankey",
+    label: "Ce cumpără și de la cine?",
+    description: "Partenerii unei instituții sau firme, pe domenii.",
+    keywords: "flux bani traseu sankey parteneri domenii",
   },
   {
     id: "fact_check",

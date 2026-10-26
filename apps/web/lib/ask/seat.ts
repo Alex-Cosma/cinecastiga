@@ -60,5 +60,7 @@ export function seatSwitched(spec: SeatSpec): boolean {
 
 /** The answers that show a firm's own county or select firms by their seat: the note on where the seat comes from. */
 export function firmCountyShown(spec: SeatSpec): boolean {
-  return Boolean(spec.filters.firmSeat || spec.filters.seatCounty) || seatSwitched(spec);
+  // F4: the network around an institution shows each firm's seat beside it (network-2's own version, not seat-2).
+  const firmsAround = spec.block === "network" && Boolean(spec.filters.authorityName || spec.filters.authorityId);
+  return Boolean(spec.filters.firmSeat || spec.filters.seatCounty) || seatSwitched(spec) || firmsAround;
 }

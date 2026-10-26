@@ -148,6 +148,9 @@ describe("each condition is written by the function of its engine level (plan §
     expect([...expected].filter((key) => !applied.has(key)).sort()).toEqual([
       // A distribution's named entity places that profile among its peers; it is not a condition on them.
       "authority on distribution", "supplier on distribution",
+      // F4: the network's „Cu semnale” selects partners by the signals on their whole relation, grouped by
+      // relations.ts (networkAnswer, networkMembersCond for the sources), not by a predicate of this module.
+      "networkSignals on network",
     ].filter((key) => expected.has(key)));
   });
 });
