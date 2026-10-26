@@ -17,7 +17,8 @@ const BLOCK_LABEL: Record<AskSpec["block"], string> = {
   timeseries: "evoluție pe ani",
   map: "pe județe (hartă)",
   compare: "comparație",
-  distribution: "poziție în distribuția de risc",
+  // distribution-2 counts the criteria the entity meets against its group (final distribution §1.1: "spune ce se numără").
+  distribution: "criterii de risc față de grup",
   // Values are recorded, not paid; the cloud plots risk against recorded value.
   breakdown: "pe domenii",
   scatter: "risc și valoare",
