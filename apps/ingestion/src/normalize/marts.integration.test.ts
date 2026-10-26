@@ -361,6 +361,9 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
       expect(await years("agg_entity_month", "role = 'supplier' and eid = 2")).toEqual(expected);
       expect(await years("agg_pair_year", "supplier_id = 2")).toEqual(expected);
       expect(await years("agg_cpv_year", "true")).toEqual(expected);
+      // F3-rows: the evolution's months and the national composition hold the same rows.
+      expect(await years("agg_months", "true")).toEqual(expected);
+      expect(await years("agg_national_mix", "true")).toEqual(expected);
       throw rollback;
     })).rejects.toBe(rollback);
     expect(await sql`select nspname from pg_namespace where nspname like ${`${prefix}_%`}`).toHaveLength(0);
