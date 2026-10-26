@@ -27,6 +27,15 @@ export type SeatClass = (typeof SEAT_CLASSES)[number];
 /** County spelling of București in the marts (core.entities.county, NUTS RO321). */
 export const SEAT_BUCURESTI = 'Bucuresti';
 
+/**
+ * Where a firm sits when it has no Romanian county (owner-seat-switch, 26
+ * October 2026): /harta's suppliers (marts.spend_by_county) and the "Județ"
+ * column of Ask's rankings show a foreign seat apart, never in a county, and
+ * a seat nobody knows as unknown.
+ */
+export const SEAT_ABROAD_LABEL = 'Străinătate';
+export const SEAT_UNKNOWN_LABEL = 'Necunoscut';
+
 /** Value and record columns of marts.agg_map_county per seat class, beside
  * v_plaf/n_plaf (DAs up to the 2M analysis ceiling) and v_all/n_all. */
 export const AGG_MAP_COUNTY_SEAT_COLUMNS: readonly string[] = (['plaf', 'all'] as const)

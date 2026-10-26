@@ -1,5 +1,5 @@
 import { contractReportable, contractDatePlausible, cuiCorroborated, refreshCuiCorroborations } from '@seap/db';
-import { contractRonValue, canonicalContract, assertContractIdentityQuality, assertContractExclusionsQuality, CONTRACT_VALUE_CAP_RON, winnerIsSupplier, ensureTransactionMartIndexes } from "@seap/db";
+import { contractRonValue, canonicalContract, assertContractIdentityQuality, assertContractExclusionsQuality, CONTRACT_VALUE_CAP_RON, winnerIsSupplier, ensureTransactionMartIndexes, SEAT_ABROAD_LABEL, SEAT_UNKNOWN_LABEL } from "@seap/db";
 import type { DbSql, SnapshotHashCache } from "@seap/db";
 import { applyFirmRegistry, type FirmRegistryReport } from "./firm-registry.js";
 
@@ -39,6 +39,35 @@ async function threshold(sql: DbSql, key: string, fallback: number): Promise<num
     order by valid_from desc limit 1
   `) as unknown as { value_num: string }[];
   return r[0] ? Number(r[0].value_num) : fallback;
+}
+
+type TransactionSql = Parameters<Parameters<DbSql["begin"]>[1]>[0];
+
+/**
+ * marts.spend_by_county, the source of /harta: per county and role, the
+ * entities' totals (entity_profile.total_ron_split). An institution sits in
+ * its own county. A firm sits in its seat since 26 October 2026
+ * (owner-seat-switch, packages/db/src/firm-seat.ts): the county of its latest
+ * ONRC registration, else its SEAP county, as applyFirmRegistry wrote it
+ * (it runs first); a foreign seat is "Străinătate", apart from every county,
+ * and a firm without a seat "Necunoscut". Rebuilt whole in the caller's
+ * transaction, so it also runs alone after applyFirmRegistry.
+ */
+export async function buildSpendByCounty(q: TransactionSql): Promise<number> {
+  await q`delete from marts.spend_by_county`;
+  const inserted = await q`
+    insert into marts.spend_by_county (county, role, n, total_ron)
+    select place, role, count(*)::int, sum(total_ron_split)
+    from (
+      select role, total_ron_split,
+             case when role <> 'supplier' then coalesce(nullif(county, ''), ${SEAT_UNKNOWN_LABEL})
+                  when seat_source = 'foreign' then ${SEAT_ABROAD_LABEL}
+                  else coalesce(seat_county, ${SEAT_UNKNOWN_LABEL}) end place
+      from marts.entity_profile
+    ) p
+    group by place, role
+  `;
+  return inserted.count;
 }
 
 export async function runMarts(
@@ -306,12 +335,7 @@ export async function runMarts(
     const firmRegistry = await applyFirmRegistry(q);
 
     // ── spend_by_county (choropleth source, both roles) ─────────────────────
-    await q`
-      insert into marts.spend_by_county (county, role, n, total_ron)
-      select coalesce(nullif(county, ''), 'Necunoscut'), role, count(*)::int, sum(total_ron_split)
-      from marts.entity_profile
-      group by coalesce(nullif(county, ''), 'Necunoscut'), role
-    `;
+    await buildSpendByCounty(q);
 
     // ── top_entities (leaderboards per role) ────────────────────────────────
     await q`
