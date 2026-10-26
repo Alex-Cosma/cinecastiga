@@ -9,11 +9,13 @@ import type { KitTip } from "../builder/kit-types";
  * builder is open). "Vizual | Tabel" is always last (StripEnd). Each control
  * keeps its own Tab stop and arrow keys, so the strip is a named group, not a
  * toolbar with its own arrow navigation. The rows variant (scatter: "Primele
- * după", "Semnal") puts each control on a labelled line.
+ * după", "Semnal") puts each control on a labelled line. The strip is the
+ * anchor of its (?) (.qb-tipwrap): a tip opens above it, on its width (S4
+ * tests: „Ponderile” and „Doar clienții comuni” opened at the page's top).
  */
 
 export default function AnswerStrip({ label = "Ajustează răspunsul", rows = false, children }: { label?: string; rows?: boolean; children: ReactNode }) {
-  return <div className={`qb-strip${rows ? " qb-strip--rows qb-tipwrap" : ""}`} role="group" aria-label={label}>{children}</div>;
+  return <div className={`qb-strip${rows ? " qb-strip--rows" : ""} qb-tipwrap`} role="group" aria-label={label}>{children}</div>;
 }
 
 /** A labelled line of the rows strip: the label (with its (?)) above the control on phones. */

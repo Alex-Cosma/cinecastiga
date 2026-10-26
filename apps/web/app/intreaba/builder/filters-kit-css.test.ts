@@ -88,6 +88,13 @@ describe("filter kit styles", () => {
     expect(css).toMatch(/\.qb-phrase>span\{[^}]*overflow-wrap:anywhere/);
   });
 
+  it("wraps a window's full segmented control whole, never past the window (S4 tests: „Servicii sub 0,1%” on desktop)", () => {
+    // Its options keep one line (white-space:nowrap): one that does not fit goes under the others, as on phones.
+    expect(uncommented).toContain(".qb-seg--full{display:flex;flex-wrap:wrap;width:100%}");
+    expect(uncommented).toContain(".qb-seg--full .qb-seg-opt{flex:1 1 0;min-width:min-content}");
+    expect(uncommented).toMatch(/\.qb-seg-opt\{[^}]*white-space:nowrap/);
+  });
+
   it("shares no class with the rest of the builder and honours reduced motion", () => {
     // The kit's prefix is the builder's (the kit's own .fk- until F2): none is left, none comes back.
     expect(uncommented).not.toMatch(/\.fk(?![\w-])|\.fk-/);

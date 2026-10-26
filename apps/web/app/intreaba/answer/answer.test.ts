@@ -30,7 +30,8 @@ const actions: RowAction[] = [
 describe("the strip beside the answer (14)", () => {
   it("is a named group, with the display choice at its end", () => {
     const markup = html(AnswerStrip, { children: [createElement(Suggest, { key: "s", text: "99,9% e Construcții" }), createElement(StripEnd, { key: "e", children: "Vizual | Tabel" })] });
-    expect(markup.startsWith('<div class="qb-strip" role="group" aria-label="Ajustează răspunsul">')).toBe(true);
+    // The anchor of the strip's (?): without it a tip ("Ponderile", "Doar clienții comuni") opened at the page's top (S4 tests).
+    expect(markup.startsWith('<div class="qb-strip qb-tipwrap" role="group" aria-label="Ajustează răspunsul">')).toBe(true);
     expect(markup).not.toContain('role="toolbar"'); // each control keeps its own keys
     expect(markup).toMatch(/<span class="qb-strip-end">Vizual \| Tabel<\/span><\/div>$/);
     expect(text(markup)).toContain("99,9% e Construcții · Detaliază ›");

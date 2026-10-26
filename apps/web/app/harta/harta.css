@@ -1,3 +1,8 @@
 /* The map note's (?) tips anchor to the note and open above it, over the map. */
 .map-note{position:relative}
 .map-note .term-tip>.term-def{right:auto;width:min(420px,calc(100vw - 32px))}
+/* Phones: the role switch and the note's (?) are 44 px targets (S4 tests). */
+@media (max-width:600px){
+  .toggle a{display:inline-flex;align-items:center;min-height:44px}
+  .map-note .term-tip>.term-trigger{min-width:44px;min-height:44px;margin-block:-10px}
+}

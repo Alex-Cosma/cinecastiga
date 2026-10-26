@@ -87,9 +87,8 @@ export default async function HartaPage({
               const color = v > 0 ? COLORS[bucketOf(v, thresholds)] : NO_DATA;
               return (
                 <path key={s.key} d={s.d} fill={color} stroke="#fff" strokeWidth={0.8}>
-                  <title>
-                    {s.label} — {formatRon(v)}
-                  </title>
+                  {/* One text: a <title> of several children did not hydrate (React #418 on every load, S4 tests). */}
+                  <title>{`${s.label} — ${formatRon(v)}`}</title>
                 </path>
               );
             })}

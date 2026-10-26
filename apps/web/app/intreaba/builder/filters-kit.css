@@ -180,8 +180,9 @@ span.qb-chip-main:hover{background:none}
 .qb-seg-n{font-family:var(--mono);font-size:11px;font-weight:400;color:var(--fk-muted-strong)}
 .qb-seg-opt[aria-checked="true"] .qb-seg-n{color:var(--fk-muted-strong)}
 .qb-seg--sm .qb-seg-opt{min-height:30px;padding:4px 10px;font-size:12px}
-.qb-seg--full{display:flex;width:100%}
-.qb-seg--full .qb-seg-opt{flex:1 1 0}
+/* Options that do not fit the window wrap whole to a second line, never past it (S4 tests: „Servicii sub 0,1%” in a comparison's window), as on phones. */
+.qb-seg--full{display:flex;flex-wrap:wrap;width:100%}
+.qb-seg--full .qb-seg-opt{flex:1 1 0;min-width:min-content}
 .qb-sw{width:10px;height:10px;border-radius:2px;flex:none;background:var(--line2)}
 .qb-seg-opt .qb-sw{width:9px;height:9px}
 .qb-sw--up{background:var(--accent)}

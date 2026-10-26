@@ -99,7 +99,7 @@ export default function StatMix({ spec, onOnly }: { spec: AskSpec; onOnly: (next
   const rows: readonly MixRow[] = tab === "offers" ? mix.offers!.rows : mix[tab];
   const contracts = mix.procedure.filter((r) => r.value !== "da").reduce((t, r) => t + r.value_ron, 0);
   return <section className="qb qb-mix" aria-label="Din care">
-    <div className="qb-mix-top">
+    <div className="qb-mix-top qb-tipwrap">
       <span className="qb-mix-head">Din care</span>
       {tabs.length === 1 && <span className="qb-mix-head">· {TABS[tab]}</span>}
       <HelpTip tip={TIPS[tab]} />
