@@ -31,7 +31,11 @@ afterEach(() => vi.clearAllMocks());
 describe("the verification's answer", () => {
   it("says „Da” with the records, the value, the months and the last day, then the two entities by CUI and county", () => {
     const shown = text(render(BUZAU_URBAN));
-    expect(shown).toMatch(/^Da .*58 de înregistrări · 51,1 mil\. lei valoare înregistrată iul\. 2018 – iun\. 2026 · ultima: 11\.06\.2026 Vezi cele 58 de înregistrări/);
+    expect(shown).toMatch(/^Da .*58 de înregistrări · 51,1 mil\. lei valoare înregistrată iul\. 2018 – iun\. 2026 · ultima: 11\.06\.2026 MUNICIPIUL BUZAU/);
+    // The records open from the answer's own "Vezi cele 58 de înregistrări" (AskPanel): no second button with the same words.
+    expect(shown).not.toContain("Vezi cele");
+    // The verdict's (?) opens over the whole row, not over the 86 px box.
+    expect(render(BUZAU_URBAN)).toContain('class="fc-verdict-row qb-tipwrap"');
     expect(shown).toContain("MUNICIPIUL BUZAU · CUI 4233874 · Buzău");
     expect(shown).toContain("URBAN SCOPE · CUI 35752863 · București");
     expect(shown).toContain("Pentru URBAN SCOPE: al 2-lea client din 70 (14%)");
@@ -51,7 +55,7 @@ describe("the verification's answer", () => {
     expect(shown).toContain("6 contracte în asociere → socotim partea firmei, 32,8 mil. lei din 79,5 mil. lei.");
     // The list: the largest first, the most recent last, with its badge; "ofertă", never "ofertant".
     expect(shown).toMatch(/Cele mai mari 5 și cea mai recentă/);
-    expect(shown).toContain("asociere · 2 firme · contract 33,4 mil.");
+    expect(shown).toContain("în asociere · 2 firme · contract 33,4 mil.");
     expect(shown).toContain("cea mai recentă");
     expect(shown).not.toMatch(/ofertant/);
   });
@@ -110,6 +114,29 @@ describe("the verification's answer", () => {
     expect(shown).toContain("Valoare înregistrată 135.000.000 lei (estimată: 135.000 lei ), peste filtrul de 2 mil. lei");
     expect(markup).toContain('href="https://e-licitatie.ro/pub/direct-acquisition/view/114778035"');
     expect(shown).not.toContain("Vezi cele");
+  });
+
+  it("„Da · nu intră în sume” for a contract without a value in lei: said once, with the source's currency", () => {
+    const fact: FactCheckData = { ...SARAIU_EXCLUDED, excluded: { count: 1, rows: [{ category: "no_ron_value", src: "contracts", refId: "371779", nid: "107824032", code: "C1",
+      date: "2019-04-02", what: "Servicii de transport", value: null, estimated: null, procedure: "Licitatie deschisa", currency: "EUR" }] } };
+    const shown = text(render(fact));
+    expect(shown).toMatch(/^Da .*Un contract, 02\.04\.2019 · Servicii de transport Nu intră în sume\./);
+    expect(shown).toContain("02.04.2019 · fără valoare în lei (EUR)");
+    expect(shown).not.toContain("fără valoare,");
+    // Beside other records: "+1 contract exclus din sume (02.04.2019 · fără valoare în lei (EUR))".
+    const beside = text(render({ ...BUZAU_URBAN, excluded: fact.excluded! }));
+    expect(beside).toContain("+1 contract exclus din sume (02.04.2019 · fără valoare în lei (EUR))");
+  });
+
+  it("„Acord-cadru” without a ceiling in lei says „plafon necunoscut”, never „plafon 0 lei”", () => {
+    const row = { ...ORADEA_FRAMEWORK.frameworks!.rows[0]!, value: null, currency: "EUR" };
+    const fact: FactCheckData = { ...ORADEA_FRAMEWORK, frameworks: { ...ORADEA_FRAMEWORK.frameworks!, ceiling: 0, unknown: 1, rows: [row] } };
+    expect(text(render(fact))).toMatch(/^Acord-cadru .*Un acord-cadru, 01\.08\.2024 · plafon necunoscut Nicio comandă în date\./);
+  });
+
+  it("keeps the unit of a figure under a million beside its label", () => {
+    const fact: FactCheckData = { ...BUZAU_URBAN, channels: { da: { count: 2, value: 18_453 }, contracts: { count: 1, value: 107_500_000 } } };
+    expect(text(render(fact))).toMatch(/Cum 2 achiziții directe 18\.453 lei → un contract din proceduri 107,5 mil\. →|Cum 2 achiziții directe 18\.453 lei → 1 contract din proceduri 107,5 mil\. →/);
   });
 
   it("„Da” for a contract without a plausible date: in the sums, without a year", () => {

@@ -11,8 +11,9 @@ import { GLOSSARY } from "../glossary";
  *
  * Three verdicts: "Da" when the selection has a record, or a row of the pair
  * that the sums leave out (a direct acquisition above the 2 mil. lei filter or
- * without a positive value, a contract of uncertain identity, above 1 mld. lei
- * or of an unclear kind); "Acord-cadru" when it has only framework agreements
+ * without a positive value, a contract of uncertain identity, above 1 mld. lei,
+ * without a positive value in lei or of an unclear kind); "Acord-cadru" when it
+ * has only framework agreements, with or without a value in lei
  * (a ceiling is not a purchase, and its call-offs may be missing from the
  * data); "Nu" otherwise, always with its reason. The answer describes the
  * selection asked (the same period, domain and channel); nothing in it changes
@@ -52,7 +53,7 @@ export interface FactSample {
 }
 
 /** Why a row of the pair is outside the sums (final §4.5). */
-export type FactOutsideCategory = "framework" | "da_above" | "da_nonpositive" | "identity" | "above_cap" | "kind";
+export type FactOutsideCategory = "framework" | "da_above" | "da_nonpositive" | "identity" | "above_cap" | "no_ron_value" | "kind";
 export interface FactOutsideRow {
   category: FactOutsideCategory;
   src: "da" | "contracts";
@@ -67,6 +68,8 @@ export interface FactOutsideRow {
   /** A direct acquisition's estimate, which shows a typed value. */
   estimated: number | null;
   procedure: string | null;
+  /** The source's currency of a contract without a value in lei ("EUR"): a legacy foreign amount is never converted. */
+  currency?: string;
 }
 
 export interface FactShare { rank: number; of: number; share: number }
@@ -106,8 +109,11 @@ export interface FactCheckData {
   competition?: { single: number; multiple: number; unknown: number } | null;
   /** Contracts won in association: the firm's share and the whole contracts. */
   consortium?: { count: number; share: number; full: number } | null;
-  /** Framework agreements of the selection outside the sums; `inSums` those a build from before the rule still sums. */
-  frameworks?: { count: number; ceiling: number; inSums: number; inSumsCeiling: number; rows: FactOutsideRow[] };
+  /**
+   * Framework agreements of the selection outside the sums; `unknown` of them have no value in lei (their ceiling is
+   * not in `ceiling`); `inSums` those a build from before the rule still sums.
+   */
+  frameworks?: { count: number; ceiling: number; unknown?: number; inSums: number; inSumsCeiling: number; rows: FactOutsideRow[] };
   /** Rows of the selection the sums leave out. */
   excluded?: { count: number; rows: FactOutsideRow[] };
   /** The relation's weight, with the same choices: the buyer among the firm's clients, the firm among the buyer's suppliers. */
@@ -178,6 +184,7 @@ export const OUTSIDE_WHY: Record<Exclude<FactOutsideCategory, "framework">, stri
   da_nonpositive: "fără valoare pozitivă",
   identity: "identitate nesigură (publicare repetată în verificare)",
   above_cap: "peste 1 mld. lei",
+  no_ron_value: "fără valoare în lei",
   kind: "tip de contract neclar",
 };
 
@@ -187,6 +194,14 @@ export const contractWords = (n: number) => countWords(n, "contract", "contracte
 export const frameworkWords = (n: number) => countWords(n, "acord-cadru", "acorduri-cadru");
 export const recordWords = (n: number) => countWords(n, "înregistrare", "înregistrări");
 export const lei = (value: number) => formatRon(value);
+/** A figure beside its label: "107,5 mil." from a million (the unit is the label's), else the amount with its unit ("18.453 lei"). */
+export const shortLei = (value: number) => value >= 1_000_000 ? formatRon(value).replace(/ lei$/, "") : formatRon(value);
+/** "plafon 28,2 mil. lei", "plafon necunoscut" (no ceiling in lei), "plafon 9 mil. lei + 1 fără valoare în lei". */
+export function ceilingWords(fw: { count: number; ceiling: number; unknown?: number }): string {
+  const unknown = fw.unknown ?? 0;
+  if (unknown >= fw.count) return "plafon necunoscut";
+  return `plafon ${formatRon(fw.ceiling)}${unknown ? ` + ${unknown} fără valoare în lei` : ""}`;
+}
 
 /** "al 2-lea", "primul"; the place among the partners (final §4.3). */
 export function rankWords(rank: number): string {
@@ -237,7 +252,7 @@ export function sampleBadges(s: FactSample): string[] {
   if (s.src === "da") out.push("achiziție directă");
   else { const p = procedureWords(s.procedure); if (p) out.push(p); }
   if (s.kind === "framework") out.push("plafon acord-cadru");
-  if ((s.nWinners ?? 1) > 1) out.push(`asociere · ${countWords(s.nWinners!, "firmă", "firme")}${s.fullValue ? ` · contract ${formatRon(s.fullValue).replace(/ lei$/, "")}` : ""}`);
+  if ((s.nWinners ?? 1) > 1) out.push(`în asociere · ${countWords(s.nWinners!, "firmă", "firme")}${s.fullValue ? ` · contract ${shortLei(s.fullValue)}` : ""}`);
   if (s.bids !== null && s.bids !== undefined) out.push(s.bids === 1 ? "1 ofertă" : `${countWords(s.bids, "ofertă", "oferte")}`);
   return out;
 }
