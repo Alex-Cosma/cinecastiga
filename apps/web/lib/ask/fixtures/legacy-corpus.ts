@@ -93,6 +93,17 @@ export function builderTrend(edit: Edit = () => {}): QuestionSpec {
   return transitionQuestion(draft).spec;
 }
 
+/**
+ * A network as the builder makes it since F4: the catalogue's choice writes its length (chooseQuestion →
+ * enterNetwork: 15 partners), then the reader's edits and the builder's normalization. builderQuestion keeps
+ * the shape of the links made before it (no key: 14 partners).
+ */
+export function builderNetwork(edit: Edit = () => {}): QuestionSpec {
+  const draft = chooseQuestion(defaultQuestion(), "network").spec as QuestionSpec;
+  edit(draft);
+  return transitionQuestion(draft).spec;
+}
+
 export function legacyCorpus(ids: CorpusIdentities): CorpusEntry[] {
   const { authority, authority2, supplier, supplier2, pair, unrelated, cpv, years: { a, b, c } } = ids;
   const out: CorpusEntry[] = [];
@@ -426,11 +437,28 @@ export function legacyCorpus(ids: CorpusIdentities): CorpusEntry[] {
   combo("firm-cpv", "network", all(focalFirm(), set({ cpvTerm: cpv.word })));
   combo("firm-county", "network", all(focalFirm(), set({ county: ids.county })));
   combo("buyer-contracts", "network", all(focalBuyer(authority2), top({ dataset: "contracts" })));
+  // network, as the builder writes it since F4 (builderNetwork): its groups against the year, „Cu semnale”, the order,
+  // the firms' seat, an exclusion from a row's "⋯"; their sources (a group's partners) and CSV
+  const networkKey = (network: NonNullable<QuestionSpec["network"]>): Edit => (q) => { q.network = { ...q.network, ...network }; };
+  const keyedNetwork = (id: string, edit: Edit, extra: Pick<CorpusEntry, "table" | "rows"> = {}) =>
+    add(`combo:network:keyed-${id}`, "combo", "builder: chooseQuestion(\"network\") → enterNetwork (15 partners) → edits → transitionQuestion", builderNetwork(edit), extra);
+  keyedNetwork("buyer", focalBuyer());
+  keyedNetwork("new", all(focalBuyer(), networkKey({ partners: "new", since: b })));
+  keyedNetwork("continuing-firm", all(focalFirm(), networkKey({ partners: "continuing", since: a })), { rows: { scope: { role: "authority", entityIds: [String(pair.authority.id)] } } });
+  keyedNetwork("gone-da", all(focalBuyer(), top({ dataset: "da" }), networkKey({ partners: "gone", since: b })));
+  keyedNetwork("signals", all(focalBuyer(), networkKey({ signals: true })));
+  keyedNetwork("order-years", all(focalBuyer(authority2), networkKey({ order: "years", show: 25 })));
+  keyedNetwork("seat-other", all(focalBuyer(), set({ firmSeat: "other" })));
+  keyedNetwork("without-firm", all(focalBuyer(), (q) => { q.population = withExclusion(q.population, { field: "supplier", value: String(supplier.id), label: supplier.name }); }));
   // sankey
   combo("buyer", "sankey", focalBuyer());
   combo("firm", "sankey", focalFirm());
   combo("buyer-year", "sankey", all(focalBuyer(authority2), yearsOf(b)));
   combo("firm-da", "sankey", all(focalFirm(), top({ dataset: "da" })));
+  // F4: the flow's length, the firms' seat, a domain left out from a node's "⋯" (sankey-2)
+  combo("shown-15", "sankey", all(focalBuyer(), (q) => { q.sankey = { shown: 15 }; }));
+  combo("seat-same", "sankey", all(focalBuyer(), set({ firmSeat: "same" })));
+  combo("without-domain", "sankey", all(focalBuyer(), (q) => { q.population = withExclusion(q.population, { field: "cpv", value: cpv.division, label: "Construcții" }); }));
   // fact_check
   combo("pair", "fact_check", all(buyer(pair.authority), firm(pair.supplier)));
   combo("pair-year", "fact_check", all(buyer(pair.authority), firm(pair.supplier), yearsOf(b)));
