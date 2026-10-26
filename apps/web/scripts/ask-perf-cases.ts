@@ -11,10 +11,13 @@ import { defaultQuestion, QUESTION_TYPES, transitionQuestion, type QuestionSpec 
 import { validateSpec, type AskSpec, type Block } from "../lib/ask/spec";
 import { writeFocal } from "../lib/ask/filters/registry";
 import type { EvidenceScope } from "../lib/ask/evidence";
+import type { FacetPart } from "../lib/ask/facet-parts";
 
-export type PerfPath = "answer" | "rows" | "csv";
+export type PerfPath = "answer" | "rows" | "csv" | "facet";
 export interface PerfDrawer { sort?: "source" | "value" | "date"; dir?: "asc" | "desc"; search?: string }
-export type PerfGroup = "catalog" | "national" | "filtered" | "sources" | "csv";
+export type PerfGroup = "catalog" | "national" | "filtered" | "sources" | "csv" | "facets";
+/** facet only: the window's part (lib/ask/facets.ts), and the text "Unde e …?" searches. */
+export interface PerfFacet { part: FacetPart; q?: string }
 export interface PerfCase {
   /** Stable key: later runs are compared with the baseline by id. */
   id: string;
@@ -31,6 +34,12 @@ export interface PerfCase {
   page?: number;
   /** rows only: the drawer's order or text search (DrillSort, „Caută în surse”); its default without. */
   drawer?: PerfDrawer;
+  /**
+   * facet only (POST /api/ask/facets): the part counted on the spec as a draft. The counts are
+   * computed on every run (none kept); "Unde e …?" keeps its rank vector, so its warm runs are the
+   * searches after the first (plan §6.4: the first ≤ the answer, the next ≤ 0.3 s).
+   */
+  facet?: PerfFacet;
   /**
    * rows/csv only: the answer runs first in the same process, untimed, as the
    * drawer opens after it (a trend group's members kept by the answer,
@@ -79,13 +88,14 @@ export function builderQuestion(block: Block, edit: Edit = () => {}): QuestionSp
 
 function perfCase(
   id: string, group: PerfGroup, label: string, block: Block, edit: Edit,
-  extra: { path?: PerfPath; scope?: EvidenceScope; page?: number; drawer?: PerfDrawer; afterAnswer?: true; barMs?: 1000 | 2000; ref?: string; precompute?: string } = {},
+  extra: { path?: PerfPath; scope?: EvidenceScope; page?: number; drawer?: PerfDrawer; afterAnswer?: true; barMs?: 1000 | 2000; ref?: string; precompute?: string; facet?: PerfFacet } = {},
 ): PerfCase {
   const question = builderQuestion(block, edit);
   const spec = validateSpec(question);
   if ("error" in spec) throw new Error(`ask-perf case ${id}: ${spec.error}`);
   return {
-    id, group, label, path: extra.path ?? "answer", question, spec,
+    id, group, label, path: extra.facet ? "facet" : extra.path ?? "answer", question, spec,
+    ...(extra.facet ? { facet: extra.facet } : {}),
     ...(extra.scope ? { scope: extra.scope } : {}),
     ...(extra.page ? { page: extra.page } : {}),
     ...(extra.drawer ? { drawer: extra.drawer } : {}),
@@ -256,6 +266,54 @@ export function perfCases(): PerfCase[] {
     perfCase("sources:trend-2024-2025-all-search-after-answer", "sources", "„Toate” la firme, 2024 → 2025, căutare „medicamente”, după răspuns", "trend",
       all(years(2024, 2025), lens({ change: "all", months: "auto" })), { path: "rows", drawer: { search: "medicamente" }, afterAnswer: true, barMs: 2000, precompute: DRAWER_SEARCH }),
     ...f3Cases(),
+    ...facetCases(),
+  ];
+}
+
+/**
+ * The windows' counts and "Unde e …?" (S4, F3-facets; plan §2.5, §6.4): each part on the national draft
+ * the builder opens it on (every year, then one year) and on the heavier selections, counted on every run.
+ */
+function facetCases(): PerfCase[] {
+  const facet = (part: FacetPart, q?: string, barMs: 1000 | 2000 = 2000) => ({ facet: { part, ...(q ? { q } : {}) }, barMs });
+  const y2025 = years(2025);
+  const medicines = set({ cpvTerm: "medicamente" });
+  return [
+    perfCase("facets:channel-national", "facets", "„Ce fel de achiziții?”, național, toți anii", "stat", () => {}, facet("channel")),
+    perfCase("facets:channel-national-2025", "facets", "„Ce fel de achiziții?”, național, 2025", "stat", y2025, facet("channel")),
+    perfCase("facets:procedure-national", "facets", "„O procedură anume”, național, toți anii", "stat", () => {}, facet("procedure")),
+    perfCase("facets:procedure-national-2025", "facets", "„O procedură anume”, național, 2025", "stat", y2025, facet("procedure")),
+    perfCase("facets:domain-national", "facets", "„Ce s-a cumpărat?” (tipul), național, toți anii", "stat", () => {}, facet("domain")),
+    perfCase("facets:domain-medicines-2025", "facets", "Tipul în „medicamente”, 2025", "stat", all(medicines, y2025), facet("domain")),
+    perfCase("facets:size-national-2025", "facets", "„Cât de mare e fiecare achiziție?”, național, 2025", "stat", y2025, facet("size")),
+    perfCase("facets:size-national", "facets", "„Cât de mare e fiecare achiziție?”, național, toți anii", "stat", () => {}, facet("size")),
+    perfCase("facets:size-cluj-2025", "facets", "Mărimea, Cluj, 2025", "stat", all(set({ county: "Cluj" }), y2025), facet("size", undefined, 1000)),
+    perfCase("facets:kind-national", "facets", "Tipul instituției, național, toți anii", "stat", () => {}, { ...facet("kind"), ref: "Fațeta „Cine a cumpărat?” (part=kind), ciorna națională implicită" }),
+    perfCase("facets:kind-national-2025", "facets", "Tipul instituției, național, 2025", "stat", y2025, facet("kind")),
+    perfCase("facets:kind-medicines-2025", "facets", "Tipul instituției, „medicamente”, 2025", "stat", all(medicines, y2025), facet("kind")),
+    perfCase("facets:kind-suppliers-2025", "facets", "Tipul instituției pe clasamentul firmelor, 2025", "table", y2025, facet("kind")),
+    perfCase("facets:county-national", "facets", "„Unde?” (județul instituției), național, toți anii", "stat", () => {}, facet("county")),
+    perfCase("facets:county-works-2025", "facets", "„Unde?”, lucrări, 2025", "stat", all(set({ purchaseKind: "lucrari" }), y2025), facet("county")),
+    perfCase("facets:years-national", "facets", "Anii, național", "stat", () => {}, facet("years")),
+    perfCase("facets:employees-national", "facets", "„Câți angajați au firmele?”, clasamentul firmelor, toți anii", "table", () => {}, facet("employees")),
+    perfCase("facets:employees-national-2025", "facets", "Angajați, clasamentul firmelor, 2025", "table", y2025, facet("employees")),
+    perfCase("facets:employees-medicines-2025", "facets", "Angajați, „medicamente”, 2025", "table", all(medicines, y2025), facet("employees")),
+    perfCase("facets:seat-national-2025", "facets", "Sediul firmelor, clasamentul firmelor, 2025", "table", y2025, facet("seat")),
+    perfCase("facets:kind-trend-2024-2025", "facets", "Tipul instituției pe trendul firmelor, 2024 → 2025", "trend", years(2024, 2025), facet("kind")),
+    perfCase("facets:kind-scatter", "facets", "Tipul instituției pe norul de risc (profiluri)", "scatter", top({ dim: "authority" }), facet("kind", undefined, 1000)),
+    perfCase("facets:kind-medicines-cluj-2025", "facets", "Tipul instituției, „medicamente” în Cluj, 2025", "stat", all(medicines, set({ county: "Cluj" }), y2025), facet("kind", undefined, 1000)),
+    perfCase("facets:size-medicines-2025", "facets", "Mărimea, „medicamente”, 2025", "stat", all(medicines, y2025), facet("size")),
+    perfCase("facets:employees-works-2025", "facets", "Angajați, lucrări, 2025", "table", all(set({ purchaseKind: "lucrari" }), y2025), facet("employees")),
+    perfCase("facets:employees-negotiated-2025", "facets", "Angajați, contracte negociate fără publicare, 2025", "table",
+      all(top({ dataset: "contracts" }), set({ procedure: "negociere_fara_publicare" }), y2025), facet("employees")),
+    perfCase("facets:employees-hospitals-medicines-2025", "facets", "Angajați, „medicamente” la spitale, 2025", "table",
+      all(medicines, set({ authorityKind: "spital" }), y2025), facet("employees")),
+    perfCase("facets:locate-national", "facets", "„Unde e o firmă?”, clasamentul național, toți anii", "table", () => {},
+      { ...facet("locate", "dedeman"), ref: "„Unde e o firmă?” pe clasamentul național implicit" }),
+    perfCase("facets:locate-national-2025", "facets", "„Unde e o firmă?”, clasamentul firmelor, 2025", "table", y2025, facet("locate", "dedeman")),
+    perfCase("facets:locate-works", "facets", "„Unde e o firmă?”, lucrări, toți anii", "table", set({ purchaseKind: "lucrari" }), facet("locate", "porr")),
+    perfCase("facets:locate-authorities-count", "facets", "„Unde e o instituție?”, după înregistrări, toți anii", "table",
+      top({ dim: "authority", measure: "count" }), facet("locate", "cluj")),
   ];
 }
 

@@ -263,6 +263,20 @@ async function runCase(sql: DbSql, c: PerfCase): Promise<RunResult> {
   const started = performance.now();
   let groundMs = 0;
   try {
+    // A window's counts (POST /api/ask/facets): grounding is inside; counts are counted again on every run,
+    // "Unde e …?" keeps its rank vector (its warm runs are the next searches).
+    if (c.path === "facet" && c.facet) {
+      const { facetCounts, locate, forgetFacets } = await import("../lib/ask/facets");
+      if (c.facet.part !== "locate") forgetFacets();
+      const result = c.facet.part === "locate" ? await locate(sql, c.spec, c.facet.q ?? "") : await facetCounts(sql, c.spec, c.facet.part);
+      const ms = round(performance.now() - started);
+      if ("timeout" in result) return { ms, groundMs: 0, error: "timeout (8 s)" };
+      if ("error" in result) return { ms, groundMs: 0, error: result.error };
+      // Refused up front, without a query: reported as such, with the PRECOMPUTE.md entry it waits on.
+      if ("precompute" in result) return { ms, groundMs: 0, rows: 0, hash: `precompute: ${result.precompute}` };
+      const { tookMs: _took, ...answer } = result;
+      return { ms, groundMs: 0, rows: "matches" in answer ? answer.matches.length : answer.options.length, hash: fingerprint(answer) };
+    }
     const grounding = await ground(sql, c.spec.filters, c.spec.population);
     groundMs = performance.now() - started;
     if (c.path === "answer") {
@@ -473,8 +487,9 @@ const method = (warmRuns: number) =>
   `apoi la cald (${warmRuns > 1 ? `mediana a ${warmRuns} rulări, în paranteză cea mai rapidă și cea mai lentă` : "o rulare"}), ` +
   "apoi încă o dată sub auto_explain (ANALYZE, BUFFERS) pentru planuri, fără cronometru. „Prima” înseamnă proces rece, " +
   "nu disc rece: PostgreSQL și sistemul păstrează ce au citit cazurile anterioare. Timpul cuprinde grounding-ul și apelul motorului " +
-  "(runSpec, runRows, runRows + evidenceCsv), fără HTTP și randare. Prag la cald: 1 s pentru un răspuns, 2 s pentru cele mai grele " +
-  "cazuri naționale filtrate, surse naționale și CSV. Plan: agg_* = doar rollup-uri; Seq Scan = citire secvențială a marts de tranzacții sau de profiluri.";
+  "(runSpec, runRows, runRows + evidenceCsv, fațetele: facetCounts numără la fiecare rulare, locate păstrează vectorul de ranguri), fără HTTP și randare. " +
+  "Prag la cald: 1 s pentru un răspuns, 2 s pentru cele mai grele " +
+  "cazuri naționale filtrate, surse naționale, CSV și numerele ferestrelor pe ciorna națională. Plan: agg_* = doar rollup-uri; Seq Scan = citire secvențială a marts de tranzacții sau de profiluri.";
 
 async function main() {
   const options = perfOptions(process.argv.slice(2));
