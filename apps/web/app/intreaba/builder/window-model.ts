@@ -344,6 +344,11 @@ export function periodPresets(spec: QuestionSpec, span: CoverageSpan | null, yea
     ]
     : spec.block === "timeseries"
       ? [all, years("five", "Ultimii 5 ani compleți", 5), years("three", "Ultimii 3 ani compleți", 3)]
+      // A verification's "Când?" (final fact_check §3.1): "Până acum" first, the sentence's default, which writes no year.
+      : spec.block === "fact_check"
+        ? [{ ...all, label: "Până acum" }, years("three", "Ultimii 3 ani compleți", 3),
+          { value: "current", label: String(last), ...(until ? { detail: `până la ${until}` } : {}), period: { yearFrom: last, yearTo: last } },
+          { value: "previous", label: String(last - 1), period: { yearFrom: last - 1, yearTo: last - 1 } }]
       : [
         { value: "current", label: String(last), ...(until ? { detail: `până la ${until}` } : {}), period: { yearFrom: last, yearTo: last } },
         { value: "previous", label: String(last - 1), period: { yearFrom: last - 1, yearTo: last - 1 } },

@@ -250,6 +250,11 @@ describe("the windows (component 9 and the composed pickers)", () => {
     const trend = periodPresets(SEVEN.trend!, span, 2026);
     expect(trend.presets[0]).toMatchObject({ label: "2024 și 2025", period: { yearFrom: 2024, yearTo: 2025 } });
     expect(trend.value).toBe("pair-1");
+    // A verification's "Când?" (final fact_check §3.1): "Până acum" first, the sentence's default, which writes no year.
+    const fact = periodPresets(q({ block: "fact_check", filters: { authorityId: 1, supplierId: 2 } }), span, 2026);
+    expect(fact.presets.map((p) => p.label)).toEqual(["Până acum", "Ultimii 3 ani compleți", "2026", "2025"]);
+    expect(fact.presets[0]!.period).toBeUndefined();
+    expect(fact.value).toBe("all");
   });
 
   it("lead a searched window with its current choice, checked, so it is never «nothing chosen»", () => {
