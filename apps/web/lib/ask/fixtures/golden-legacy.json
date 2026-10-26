@@ -41695,17 +41695,7 @@
       "domains": 1
      },
      "stemLen": 2,
-     "joint": 0,
-     "streams": {
-      "da": {
-       "value": 74569.94,
-       "count": 7
-      },
-      "contracts": {
-       "value": 441000.76,
-       "count": 3
-      }
-     }
+     "joint": 0
     },
     "displaySql": "select partener, categoria_cpv, sum(closing_value)\nfrom marts.da_transactions\nwhere closing_value > 0\n  and closing_value <= 2000000  -- plafon plauzibilitate\n  and supplier_id = 9100000101\ngroup by partener, categoria_cpv;"
    },

@@ -139,13 +139,15 @@ async function partnerRows(s: DbSql, q: RelationQuery): Promise<PartnerRow[]> {
   // The grouping is all in memory, on a few rows per partner: JIT would cost more than it saves (as the trend's).
   await s.unsafe("set local jit = off");
   return (await s`
-    with r as (
-      select ${pid} pid, ${yearOf(s)} y, d.src, d.n_winners > 1 j,
+    with t as (
+      select ${pid} pid, substr(d.finalization_date, 1, 4) yt, d.src, d.n_winners > 1 j,
              coalesce(${sel}, false) sel, coalesce(${per}, false) per, coalesce(${every}, false) ev,
              sum(d.closing_value) v, count(*) n
       from ${relationUnion(s, full)} d
       where ${rel}
       group by 1, 2, 3, 4, 5, 6, 7
+    ), r as (
+      select t.*, case when t.yt ~ '^[0-9]{4}$' then t.yt::int end y from t
     ), p as (
       select pid, min(y) y0, max(y) y1, array_agg(distinct y order by y) filter (where y is not null) yrs,
              sum(v) vr, coalesce(sum(v) filter (where src = 'da'), 0) vrda, coalesce(sum(v) filter (where src = 'contracts'), 0) vrct,
@@ -312,8 +314,13 @@ export async function sankeyAnswer(s: DbSql, q: RelationQuery & { focalName: str
   const pid = partnerOf(s, focalRole), partnerRole = focalRole === "authority" ? "supplier" : "authority";
   const { stem, stemLen } = sankeyStem(s, q.prefixes);
   const sel = selectionCond(s, ctx, dataset, { years: true, ...(q.threshold ? { threshold: q.threshold } : {}) });
-  // Every channel bounds the scan (the strip's shares come from the same pass); without it, the selection itself.
-  const where = andAll(s, [...rowPredicates(q.every ?? ctx), s`${pid} is not null`, s`d.cpv_code is not null`]);
+  // On every channel the scan gives the strip's shares in the same pass. On one channel it reads that channel only (its
+  // constant `src` prunes the other branch of the union): a firm's procedures are not read through its direct
+  // acquisitions; the strip keeps the shares of the answer on every channel (AskPanel).
+  const shares = dataset === "all" ? q.every : null;
+  const scope: Fragment[] = shares ? rowPredicates(shares) : rowPredicates(ctx);
+  if (!shares && dataset !== "all") scope.push(s`d.src = ${dataset}`);
+  const where = andAll(s, [...scope, s`${pid} is not null`, s`d.cpv_code is not null`]);
   const full = ctx.purchaseValueMin !== null || ctx.purchaseValueMax !== null;
   const rows = (await s`
     select x.pid::text pid, x.stem, x.src, coalesce(sum(x.v) filter (where x.sel), 0)::text v, count(*) filter (where x.sel) n,
@@ -382,7 +389,7 @@ export async function sankeyAnswer(s: DbSql, q: RelationQuery & { focalName: str
       partners: partnerSums.size, domains: domainSums.size,
     },
     stemLen, joint: Number(sumDecimalStrings(selected.map((row) => row.c))),
-    ...(q.every ? { streams: {
+    ...(shares ? { streams: {
       da: { value: Number(sumDecimalStrings(rows.filter((r) => r.src === "da").map((r) => r.ev))), count: rows.filter((r) => r.src === "da").reduce((n, r) => n + Number(r.en), 0) },
       contracts: { value: Number(sumDecimalStrings(rows.filter((r) => r.src === "contracts").map((r) => r.ev))), count: rows.filter((r) => r.src === "contracts").reduce((n, r) => n + Number(r.en), 0) },
     } } : {}),

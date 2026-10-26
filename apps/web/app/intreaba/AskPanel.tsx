@@ -20,7 +20,7 @@ import { employeesWords } from "@/lib/ask/filters/words";
 import type { IntentResult } from "@/lib/intent/types";
 import { NATURAL_LANGUAGE_ENABLED, NATURAL_LANGUAGE_UNAVAILABLE } from "@/lib/ask/features";
 import { validateEvidenceScope, validateEvidenceFilters, type EvidenceScope, type EvidenceFilters } from "@/lib/ask/evidence";
-import type { BlockData, ExecutedWindow, PartialYear } from "@/lib/ask/compile";
+import type { BlockData, ExecutedWindow, PartialYear, SankeyData } from "@/lib/ask/compile";
 import {
   DistributionBlock,
   BreakdownBlock,
@@ -577,6 +577,14 @@ export default function AskPanel({
     } : {}),
   } : {};
   const appliedKey = applied ? questionKey(applied) : "";
+  /**
+   * The flow's channel shares (F4): an answer on every channel brings them; on one channel the flow reads that channel
+   * only, so the strip keeps the shares of the same question on every channel, the last one this page answered.
+   */
+  const flowStreamsMemo = useRef<{ key: string; streams: NonNullable<SankeyData["streams"]> } | null>(null);
+  const flowKey = (spec: AskSpec) => questionKey({ ...spec, dataset: undefined, sankey: undefined } as unknown as QuestionSpec);
+  if (resp?.data?.block === "sankey" && resp.data.streams && applied) flowStreamsMemo.current = { key: flowKey(applied), streams: resp.data.streams };
+  const flowStreams = (spec: AskSpec) => flowStreamsMemo.current?.key === flowKey(spec) ? flowStreamsMemo.current.streams : undefined;
   useEffect(() => { setStreamShown(null); setAnswerSaved(null); }, [appliedKey]);
   /**
    * The strip changed one key of the applied question (plan §2.3): the data
@@ -1047,7 +1055,8 @@ export default function AskPanel({
                   // A breakdown's channels say their share of the whole selection (F3, final breakdown §3.6), with the unit beside.
                   // F4: the network's and the flow's from their own `streams` (the selection on every channel).
                   const shares = data.block === "breakdown" ? channelShares(data, applied.measure === "count")
-                    : data.block === "network" || data.block === "sankey" ? channelShares(data, false) : null;
+                    : data.block === "network" ? channelShares(data, false)
+                      : data.block === "sankey" ? (() => { const streams = data.streams ?? flowStreams(applied); return streams ? channelShares({ streams }, false) : null; })() : null;
                   const control = <Segmented
                     label="Ce fel de achiziții"
                     value={streamShown ?? applied.dataset ?? "all"}
