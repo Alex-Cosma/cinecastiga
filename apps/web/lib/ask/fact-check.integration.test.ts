@@ -26,10 +26,11 @@ afterAll(async () => { await connection?.sql.end(); });
 
 const BASE = 9_277_000_000;
 const id = (n: number) => String(BASE + n);
-const A = 1, S = 2, TWIN = 3, S_EXCLUDED = 4, S_FRAMEWORK = 5, S_NONE = 6, S_OTHER = 7, A_OTHER = 8;
+const A = 1, S = 2, TWIN = 3, S_EXCLUDED = 4, S_FRAMEWORK = 5, S_NONE = 6, S_OTHER = 7, A_OTHER = 8, S_FOREIGN = 9;
 const ENTITIES: [number, string, string | null][] = [
   [A, "Comuna Fixture", "Alba"], [S, "ALFA CONSTRUCT SRL", "Cluj"], [TWIN, "Comuna  Fixture", "Alba"], [S_EXCLUDED, "BETA STUDII SRL", null],
   [S_FRAMEWORK, "GAMA PROIECT SRL", "Bihor"], [S_NONE, "DELTA SRL", "Salaj"], [S_OTHER, "EPSILON SRL", "Alba"], [A_OTHER, "Orasul Fixture", "Alba"],
+  [S_FOREIGN, "ZETA TRANSPORT SRL", "Alba"],
 ];
 
 async function seed(q: DbSql): Promise<void> {
@@ -63,18 +64,20 @@ async function seed(q: DbSql): Promise<void> {
            (102, ${id(S)}, 'C102', 1102, ${id(A)}, 'A', 'S', 'Alba', '45200000', 'Lucrări', 'Procedura simplificata', 700000, 700000, 1, null, null, null, false)`;
   // The source contracts of the pair: the two above, a framework ceiling (title rule), one above 1 mld. lei, one of an unclear kind,
   // one of uncertain identity; and a firm with a framework ceiling only.
-  const contract = (n: number, s: number, value: number, date: string, title: string, type: number | null = null) =>
-    ({ id: n, nid: 900_000 + n, notice: 1000 + n, s: id(s), value, date, title, type });
+  const contract = (n: number, s: number, value: number, date: string, title: string, type: number | null = null, currency = "RON") =>
+    ({ id: n, nid: 900_000 + n, notice: 1000 + n, s: id(s), value, date, title, type, currency });
   const contracts = [
     contract(101, S, 2_000_000, "2024-09-01", "Contract lucrari"), contract(102, S, 700_000, "2014-04-30", "Contract reparatii"),
     contract(103, S, 9_000_000, "2023-03-03", "Acord-cadru reparatii curente"), contract(104, S, 1_500_000_000, "2025-01-10", "Contract autostrada"),
     contract(105, S, 400_000, "2024-11-11", "Contract subsecvent nr 1", 2), contract(106, S, 600_000, "2024-12-12", "Contract dotari"),
     contract(107, S_FRAMEWORK, 28_160_000, "2024-08-01", "Acord-cadru proiectare"),
+    // A firm whose only publications are legacy EUR amounts, never converted: a contract and a framework, no mart row.
+    contract(108, S_FOREIGN, 8_785.11, "2019-04-02", "Contract transport", null, "EUR"), contract(109, S_FOREIGN, 21_013_946.58, "2019-04-02", "Acord-cadru transport", null, "EUR"),
   ];
   await q`insert into core.awards (id, ca_notice_id, notice_no, authority_entity_id, cpv_code, procedure_type)
     select (r->>'id')::bigint, (r->>'notice')::bigint, 'N' || (r->>'id'), ${id(A)}::bigint, '45200000-9', 'Licitatie deschisa' from jsonb_array_elements(${JSON.stringify(contracts)}::jsonb) r`;
   await q`insert into core.contracts (id, raw_id, ca_notice_contract_id, ca_notice_id, contract_no, contract_date, contract_value, currency, title, source_contract_type, contract_type_raw_id)
-    select (r->>'id')::bigint, (r->>'id')::bigint, (r->>'nid')::bigint, (r->>'notice')::bigint, 'C' || (r->>'id'), (r->>'date')::timestamptz, (r->>'value')::numeric, 'RON',
+    select (r->>'id')::bigint, (r->>'id')::bigint, (r->>'nid')::bigint, (r->>'notice')::bigint, 'C' || (r->>'id'), (r->>'date')::timestamptz, (r->>'value')::numeric, r->>'currency',
       r->>'title', (r->>'type')::int, case when r->>'type' is not null then (r->>'id')::bigint end
     from jsonb_array_elements(${JSON.stringify(contracts)}::jsonb) r`;
   await q`insert into core.contract_winners (contract_id, entity_id) select (r->>'id')::bigint, (r->>'s')::bigint from jsonb_array_elements(${JSON.stringify(contracts)}::jsonb) r`;
@@ -171,6 +174,14 @@ describe.runIf(Boolean(connection))("the verification (fact_check-2, isolated Po
     // An old link's threshold applies as before (no firm has 100 records), with its reason and the relation.
     expect(out.legacy).toMatchObject({ state: "no", reason: "legacy", legacy: true, count: 0, relation: { count: 5 } });
     expect(out.legacySources).toBe(0);
+  });
+
+  it("never says „Nu” for a pair whose only publications have no value in lei: a contract outside the sums, a ceiling unknown", async () => {
+    const fact = await withAskFixture(connection!.sql, "fact_foreign", seed, async (q) => (await answer(q, { filters: pair(S_FOREIGN) })).fact);
+    expect(fact).toMatchObject({ state: "yes", verdict: true, count: 0, value: 0, excluded: { count: 1 }, frameworks: { count: 1, ceiling: 0, unknown: 1 } });
+    expect(fact.excluded!.rows[0]).toMatchObject({ category: "no_ron_value", nid: "900108", value: null, currency: "EUR", date: "2019-04-02" });
+    expect(fact.frameworks!.rows[0]).toMatchObject({ nid: "900109", value: null, currency: "EUR" });
+    expect(fact.partners).toBeNull();
   });
 
   it("finds a firm through a person: the firms represented today that sell to institutions, never a liquidator's", async () => {

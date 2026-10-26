@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  COMPETITION_PROCEDURES, coverageEnd, factLegacy, factNoReason, factRestricted, factVerdict, monthSpan, noRecordsWords, procedureWords, relationWords,
-  roDay, sampleBadges, shareWords, VERDICT_TIPS, VERDICT_WORDS,
+  ceilingWords, COMPETITION_PROCEDURES, coverageEnd, factLegacy, factNoReason, factRestricted, factVerdict, monthSpan, noRecordsWords, procedureWords, relationWords,
+  OUTSIDE_WHY, roDay, sampleBadges, shareWords, shortLei, VERDICT_TIPS, VERDICT_WORDS,
 } from "./fact-check-shared";
 import { shareLabel } from "../entity-summary";
 
@@ -69,7 +69,9 @@ describe("the words of a verification", () => {
 
   it("badge a record by its procedure, association, offers and a ceiling a build still sums; „ofertă”, never „ofertant”", () => {
     expect(sampleBadges({ daCode: null, date: null, cpvName: null, value: 1, src: "contracts", procedure: "Licitatie deschisa", nWinners: 3, fullValue: 18_379_470, bids: 1 }))
-      .toEqual(["licitație deschisă", "asociere · 3 firme · contract 18,4 mil.", "1 ofertă"]);
+      .toEqual(["licitație deschisă", "în asociere · 3 firme · contract 18,4 mil.", "1 ofertă"]);
+    // Kit §4 „Asocieri”: „în asociere · 3 firme”, never „asociere · …”; a whole contract under a million keeps its unit.
+    expect(sampleBadges({ daCode: null, date: null, cpvName: null, value: 1, src: "contracts", nWinners: 2, fullValue: 850_000 })).toEqual(["în asociere · 2 firme · contract 850.000 lei"]);
     expect(sampleBadges({ daCode: null, date: null, cpvName: null, value: 1, src: "da" })).toEqual(["achiziție directă"]);
     expect(sampleBadges({ daCode: null, date: null, cpvName: null, value: 1, src: "contracts", procedure: "Negociere fara publicare prealabila", kind: "framework", bids: 4 }))
       .toEqual(["negociere fără publicare", "plafon acord-cadru", "4 oferte"]);
@@ -77,6 +79,15 @@ describe("the words of a verification", () => {
     expect(procedureWords(null)).toBeNull();
     // The competition counts the open and restricted tenders only, as the signal award_single_bid.
     expect(COMPETITION_PROCEDURES).toEqual(["Licitatie deschisa", "Licitatie deschisa accelerata", "Licitatie restransa"]);
+  });
+
+  it("say a figure's unit under a million and a ceiling without a value in lei", () => {
+    expect(shortLei(107_500_000)).toBe("107,5 mil.");
+    expect(shortLei(18_453)).toBe("18.453 lei");
+    expect(ceilingWords({ count: 1, ceiling: 28_160_000 })).toBe("plafon 28,2 mil. lei");
+    expect(ceilingWords({ count: 1, ceiling: 0, unknown: 1 })).toBe("plafon necunoscut");
+    expect(ceilingWords({ count: 2, ceiling: 9_000_000, unknown: 1 })).toBe("plafon 9 mil. lei + 1 fără valoare în lei");
+    expect(OUTSIDE_WHY.no_ron_value).toBe("fără valoare în lei");
   });
 
   it("dates a span by month and a day as on the site", () => {

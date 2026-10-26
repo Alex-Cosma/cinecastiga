@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { FactCheckData } from "../../lib/ask/compile";
 import {
-  FACT_TIPS, OUTSIDE_WHY, VERDICT_TIPS, VERDICT_WORDS, contractWords, coverageEnd, daWords, frameworkWords, lei, monthSpan, noRecordsWords,
-  recordWords, relationWords, roDay, sampleBadges, shareWords, type FactOutsideRow, type FactParty, type FactSample,
+  FACT_TIPS, OUTSIDE_WHY, VERDICT_TIPS, VERDICT_WORDS, ceilingWords, contractWords, coverageEnd, daWords, frameworkWords, lei, monthSpan, noRecordsWords,
+  recordWords, relationWords, roDay, sampleBadges, shareWords, shortLei, type FactOutsideRow, type FactParty, type FactSample,
 } from "../../lib/ask/fact-check-shared";
 import { countWords } from "../../lib/ask/answer-text";
 import { askLink } from "../../lib/ask/source-spec";
@@ -45,7 +45,8 @@ const OUTSIDE_SHOWN = 3;
 /** Under 600 px the years wrap in rows of five, so each bar is a 44 px target (owner UI rule; the final drew nine columns of ~37 px). */
 const YEARS_PER_PHONE_ROW = 5;
 
-const mil = (value: number) => lei(value).replace(/ lei$/, "");
+/** A figure beside its label (→): "107,5 mil." from a million, else with its unit ("18.453 lei"), so "2 · 18.453" never reads as two counts. */
+const mil = shortLei;
 const county = (raw: string | null | undefined) => countyDisplay(raw) ?? raw ?? null;
 const partyLine = (p: FactParty) => [cleanName(p.name), p.cui ? `CUI ${p.cui}` : null, county(p.county)].filter(Boolean).join(" · ");
 const shortName = (p: FactParty) => cleanName(p.name);
@@ -68,17 +69,16 @@ export default function FactCheckAnswer({ fact: f, spec, onWider }: FactCheckAns
   const excludedOnly = state === "yes" && !records;
 
   return <div className="fc">
-    <div className="fc-verdict-row">
+    {/* The verdict's (?) opens over the whole row (qb-tipwrap), not over the 86 px box. Its records open from the
+        answer's own "Vezi cele N înregistrări" above: a second button here would open the same drawer. */}
+    <div className="fc-verdict-row qb-tipwrap">
       <div className={`fc-verdict is-${state}`}>
         <span>{VERDICT_WORDS[state]}</span>
-        {state !== "no" && <span className="qb-tipwrap"><HelpTip tip={{ title: VERDICT_WORDS[state], text: VERDICT_TIPS[state] }} /></span>}
+        {state !== "no" && <HelpTip tip={{ title: VERDICT_WORDS[state], text: VERDICT_TIPS[state] }} />}
       </div>
       <div className="fc-verdict-text">
         <VerdictText fact={f} spec={spec} />
       </div>
-      {records && evidence && <button type="button" className="fc-src" onClick={sources(recordWords(f.count))}>
-        {f.count === 1 ? "Vezi înregistrarea" : `Vezi cele ${recordWords(f.count)}`}
-      </button>}
       {state === "framework" && f.frameworks?.rows.length === 1 && f.frameworks.rows[0]!.nid && <Link className="fc-src" href={`/contracte/${f.frameworks.rows[0]!.nid}`}>Vezi acordul-cadru<span className="qb-glyph" aria-hidden="true">↗</span></Link>}
     </div>
 
@@ -118,12 +118,12 @@ function VerdictText({ fact: f, spec }: { fact: FactCheckData; spec: AskSpec | u
   if (state === "yes" && f.count > 0) {
     const onlyUndated = f.undated && f.undated.count === f.count;
     if (onlyUndated) return <>
-      <p>{f.count === 1 ? "Un contract" : contractWords(f.count)} · <b className="fc-num">{mil(f.value)} lei</b></p>
+      <p>{f.count === 1 ? "Un contract" : contractWords(f.count)} · <b className="fc-num">{lei(f.value)}</b></p>
       <p className="fc-meta qb-tipwrap">fără dată plauzibilă <HelpTip tip={{ title: "Fără dată plauzibilă", text: FACT_TIPS.undated }} /></p>
     </>;
     const span = monthSpan(f.dateFirst, f.dateLast);
     return <>
-      <p><b>{recordWords(f.count)}</b> · <b className="fc-num">{mil(f.value)} lei</b> valoare înregistrată</p>
+      <p><b>{recordWords(f.count)}</b> · <b className="fc-num">{lei(f.value)}</b> valoare înregistrată</p>
       <p className="fc-meta">{[span, f.dateLast ? `ultima: ${roDay(f.dateLast)}` : null, f.undated?.count ? `${countWords(f.undated.count, "contract", "contracte")} fără dată plauzibilă` : null].filter(Boolean).join(" · ")}</p>
     </>;
   }
@@ -139,7 +139,7 @@ function VerdictText({ fact: f, spec }: { fact: FactCheckData; spec: AskSpec | u
     const fw = f.frameworks!;
     const one = fw.rows.length === 1 ? fw.rows[0]! : null;
     return <>
-      <p>{one ? `Un acord-cadru${one.date ? `, ${roDay(one.date)}` : ""}` : frameworkWords(fw.count)} · plafon <b className="fc-num">{mil(fw.ceiling)} lei</b></p>
+      <p>{one ? `Un acord-cadru${one.date ? `, ${roDay(one.date)}` : ""}` : frameworkWords(fw.count)} · <b className="fc-num">{ceilingWords(fw)}</b></p>
       <p className="fc-meta">Nicio comandă în date. Plafonul nu se adună.</p>
     </>;
   }
@@ -260,27 +260,27 @@ function Remember({ fact: f, sources, excludedOnly }: { fact: FactCheckData; sou
   const cons = f.consortium;
   if (cons && f.count > 0) items.push(<li key="cons" className="qb-tipwrap">
     <SourceLink onClick={sources(`${contractWords(cons.count)} în asociere`, { consortium: true })}>{contractWords(cons.count)} în asociere</SourceLink>
-    <span> socotim partea firmei, {mil(cons.share)} lei din {mil(cons.full)} lei.</span> <HelpTip tip={{ title: "În asociere", text: FACT_TIPS.consortium }} />
+    <span> socotim partea firmei, {lei(cons.share)} din {lei(cons.full)}.</span> <HelpTip tip={{ title: "În asociere", text: FACT_TIPS.consortium }} />
   </li>);
   const fw = f.frameworks;
-  if (fw && fw.count > 0 && f.state !== "framework") items.push(<li key="fw"><Frameworks rows={fw.rows} count={fw.count} ceiling={fw.ceiling} /></li>);
-  if (fw && f.state === "framework" && fw.rows.length > 1) items.push(<li key="fw"><Frameworks rows={fw.rows} count={fw.count} ceiling={fw.ceiling} /></li>);
+  if (fw && fw.count > 0 && f.state !== "framework") items.push(<li key="fw"><Frameworks rows={fw.rows} frameworks={fw} /></li>);
+  if (fw && f.state === "framework" && fw.rows.length > 1) items.push(<li key="fw"><Frameworks rows={fw.rows} frameworks={fw} /></li>);
   if (fw && fw.inSums > 0) items.push(<li key="fws" className="qb-tipwrap">
-    <span>{frameworkWords(fw.inSums)} {fw.inSums === 1 ? "inclus" : "incluse"} în sume: plafon {mil(fw.inSumsCeiling)} lei, nu comenzi.</span> <HelpTip tip={{ title: "Plafoane în sume", text: FACT_TIPS.frameworksInSums }} />
+    <span>{frameworkWords(fw.inSums)} {fw.inSums === 1 ? "inclus" : "incluse"} în sume: plafon {lei(fw.inSumsCeiling)}, nu comenzi.</span> <HelpTip tip={{ title: "Plafoane în sume", text: FACT_TIPS.frameworksInSums }} />
   </li>);
   if (!excludedOnly && (f.excluded?.count ?? 0) > 0) items.push(<li key="ex"><Outside rows={f.excluded!.rows} total={f.excluded!.count} /></li>);
   if (!items.length) return null;
   return <div className="fc-pl fc-remember"><span className="fc-h">De reținut</span><ul className="fc-notes">{items}</ul></div>;
 }
 
-function Frameworks({ rows, count, ceiling }: { rows: readonly FactOutsideRow[]; count: number; ceiling: number }) {
+function Frameworks({ rows, frameworks }: { rows: readonly FactOutsideRow[]; frameworks: { count: number; ceiling: number; unknown?: number } }) {
   const [open, setOpen] = useState(false);
   return <div className="qb-tipwrap">
-    <span><b>{frameworkWords(count)}</b> · plafon {mil(ceiling)} lei, nu se adună</span> <HelpTip tip={{ title: "Acord-cadru", text: VERDICT_TIPS.framework }} />
+    <span><b>{frameworkWords(frameworks.count)}</b> · {ceilingWords(frameworks)}, nu se adună</span> <HelpTip tip={{ title: "Acord-cadru", text: VERDICT_TIPS.framework }} />
     {rows.length > 0 && <button type="button" className="fc-textlink" aria-expanded={open} onClick={() => setOpen((o) => !o)}>{open ? "Ascunde" : rows.length === 1 ? "Vezi-l" : "Vezi-le"}</button>}
     {open && <ul className="fc-outside">{rows.map((r) => <li key={r.refId}>
       {r.nid ? <Link href={`/contracte/${r.nid}`}>{[roDay(r.date), r.what].filter(Boolean).join(" · ") || "Acord-cadru"}<span className="qb-glyph" aria-hidden="true">↗</span></Link> : [roDay(r.date), r.what].filter(Boolean).join(" · ")}
-      <span className="fc-n">plafon {r.value !== null ? formatRonFull(r.value) : "—"}</span>
+      <span className="fc-n">{r.value !== null && r.value > 0 ? `plafon ${formatRonFull(r.value)}` : `plafon fără valoare în lei${r.currency ? ` (${r.currency})` : ""}`}</span>
     </li>)}</ul>}
   </div>;
 }
@@ -288,21 +288,30 @@ function Frameworks({ rows, count, ceiling }: { rows: readonly FactOutsideRow[];
 /** The rows outside the sums: up to three, then the rest unfolds; each opens its page (final §4.5, §5.5). */
 function Outside({ rows, total, warm = false }: { rows: readonly FactOutsideRow[]; total?: number; warm?: boolean }) {
   const [all, setAll] = useState(false);
+  const list = useRef<HTMLUListElement>(null);
   const shown = all ? rows : rows.slice(0, OUTSIDE_SHOWN);
   const hidden = (total ?? rows.length) - shown.length;
+  // The rows unfold in place: keyboard focus moves to the first one shown, not back to the page's top.
+  const more = () => { setAll(true); requestAnimationFrame(() => list.current?.querySelector<HTMLElement>(`li:nth-child(${OUTSIDE_SHOWN + 1})`)?.focus()); };
   return <div className={warm ? "fc-excl" : undefined}>
-    <ul className="fc-outside">{shown.map((r) => <li key={`${r.src}:${r.refId}`} className="qb-tipwrap">
-      <span>
-        {warm ? "Valoare înregistrată " : `+${r.src === "da" ? "1 achiziție directă exclusă" : "1 contract exclus"} din sume (`}
-        <b className="fc-num">{r.value !== null ? formatRonFull(r.value) : "fără valoare"}</b>
-        {r.estimated !== null && r.src === "da" ? <> (estimată: <b className="fc-num">{formatRonFull(r.estimated)}</b>)</> : null}
-        {`, ${r.category === "framework" ? "plafon" : OUTSIDE_WHY[r.category]}`}{warm ? "" : ")"}
-      </span>{" "}
-      <HelpTip tip={{ title: "În afara sumelor", text: FACT_TIPS.excluded }} />{" "}
-      {r.src === "da" && /^\d+$/.test(r.refId) ? <a className="fc-textlink" href={`https://e-licitatie.ro/pub/direct-acquisition/view/${r.refId}`} target="_blank" rel="noreferrer">Vezi achiziția<span className="qb-glyph" aria-hidden="true">↗</span></a>
-        : r.nid ? <Link className="fc-textlink" href={`/contracte/${r.nid}`}>Vezi contractul<span className="qb-glyph" aria-hidden="true">↗</span></Link> : null}
-    </li>)}</ul>
-    {hidden > 0 && !all && rows.length > shown.length && <button type="button" className="fc-textlink" onClick={() => setAll(true)}>Arată încă {hidden.toLocaleString("ro-RO")}</button>}
+    <ul ref={list} className="fc-outside">{shown.map((r, i) => {
+      const why = r.category === "framework" ? "plafon" : OUTSIDE_WHY[r.category];
+      // An amount without a value in lei says so once, with its day and the source's currency ("02.04.2019 · fără valoare în lei (EUR)"):
+      // without a figure, the day tells the rows apart.
+      const amount = r.value !== null ? <><b className="fc-num">{formatRonFull(r.value)}</b>
+        {r.estimated !== null && r.src === "da" ? <> (estimată: <b className="fc-num">{formatRonFull(r.estimated)}</b>)</> : null}{`, ${why}`}</> : null;
+      const none = [roDay(r.date), `${why}${r.currency ? ` (${r.currency})` : ""}`].filter(Boolean).join(" · ");
+      return <li key={`${r.src}:${r.refId}`} className="qb-tipwrap" tabIndex={i === OUTSIDE_SHOWN ? -1 : undefined}>
+        <span>
+          {warm ? amount ? <>Valoare înregistrată {amount}</> : `${none.charAt(0).toLocaleUpperCase("ro-RO")}${none.slice(1)}`
+            : <>{`+${r.src === "da" ? "1 achiziție directă exclusă" : "1 contract exclus"} din sume (`}{amount ?? none})</>}
+        </span>{" "}
+        <HelpTip tip={{ title: "În afara sumelor", text: FACT_TIPS.excluded }} />{" "}
+        {r.src === "da" && /^\d+$/.test(r.refId) ? <a className="fc-textlink" href={`https://e-licitatie.ro/pub/direct-acquisition/view/${r.refId}`} target="_blank" rel="noreferrer">Vezi achiziția<span className="qb-glyph" aria-hidden="true">↗</span></a>
+          : r.nid ? <Link className="fc-textlink" href={`/contracte/${r.nid}`}>Vezi contractul<span className="qb-glyph" aria-hidden="true">↗</span></Link> : null}
+      </li>;
+    })}</ul>
+    {hidden > 0 && !all && rows.length > shown.length && <button type="button" className="fc-textlink" onClick={more}>Arată încă {hidden.toLocaleString("ro-RO")}</button>}
     {hidden > 0 && (all || rows.length <= shown.length) && <p className="fc-note">și încă {countWords(hidden, "rând", "rânduri")} în afara sumelor</p>}
   </div>;
 }

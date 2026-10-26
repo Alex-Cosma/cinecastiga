@@ -1,5 +1,5 @@
 import {
-  canonicalContract, CONTRACT_VALUE_CAP_RON, contractDatePlausible, contractKind, contractRonValue, contractTemporarilyExcluded, type DbSql,
+  canonicalContract, CONTRACT_VALUE_CAP_RON, contractDatePlausible, contractKind, contractOriginalCurrency, contractRonValue, contractTemporarilyExcluded, type DbSql,
 } from "@seap/db";
 import { andAll, DA_PLAFOND_RON, groupPredicates, rowPredicates, type PredicateCtx } from "./predicates";
 import type { CoveragePeriods } from "./months-window";
@@ -21,8 +21,9 @@ import {
  * - Outside the sums, from the same conditions without their value bounds:
  *   the direct acquisitions above the 2 mil. lei filter or without a positive
  *   value (marts.da_transactions), and from the source tables (core) the
- *   contracts of the pair the contract mart leaves out: framework ceilings,
- *   uncertain identities, above 1 mld. lei, an unclear kind. A contract the
+ *   contracts of the pair the contract mart leaves out: framework ceilings
+ *   (with or without a value in lei), uncertain identities, above 1 mld. lei,
+ *   without a positive value in lei, an unclear kind. A contract the
  *   mart already holds is never listed again (a build from before the framework
  *   rule sums the ceilings: they are counted as such, `frameworks.inSums`).
  * - The weight of the relation, with the same conditions, without the other side.
@@ -66,14 +67,18 @@ function coreContracts(s: DbSql, authorityId: string, supplierId: string): Fragm
   return s`(
     select x.*, case
         when x.kind = 'framework' and x.in_sums then 'framework_in_sums'
-        when x.kind = 'framework' and x.canonical and x.full_value > 0 then 'framework'
-        when x.identity_excluded and x.kind in ('contract', 'calloff') and x.full_value > 0 then 'identity'
+        -- A ceiling without a value in lei (a legacy amount in another currency) is still a framework: "plafon necunoscut".
+        when x.kind = 'framework' and x.canonical then 'framework'
+        when x.identity_excluded and x.kind in ('contract', 'calloff') and not x.in_sums then 'identity'
         when x.canonical and x.kind in ('contract', 'calloff') and x.full_value > ${CONTRACT_VALUE_CAP_RON} and not x.in_sums then 'above_cap'
-        when x.canonical and x.kind = 'review' and x.full_value > 0 and not x.in_sums then 'kind'
+        -- The contract mart keeps only a positive value in lei: a contract without one (a legacy EUR amount, 0) is listed, never a false "Nu".
+        when x.canonical and x.kind in ('contract', 'calloff') and coalesce(x.full_value, 0) <= 0 and not x.in_sums then 'no_ron_value'
+        when x.canonical and x.kind = 'review' and not x.in_sums then 'kind'
       end category
     from (
       select c.id contract_id, c.ca_notice_contract_id nid, cw.entity_id supplier_id, aw.authority_entity_id authority_id,
              ae.county, aw.cpv_code, cpv.name_ro cpv_name, c.contract_no da_code, aw.procedure_type, 'contracts'::text src,
+             ${contractOriginalCurrency(s)} currency,
              case when ${contractDatePlausible(s)} then to_char(c.contract_date at time zone 'Europe/Bucharest', 'YYYY-MM-DD') end finalization_date,
              v.full_value, v.full_value / w.n closing_value, null::boolean is_single_bidder,
              v.kind, v.canonical, v.identity_excluded, v.in_sums
@@ -159,7 +164,7 @@ export async function factCheckData(s: DbSql, input: FactCheckInput): Promise<Fa
   `) as unknown as OutsideRow[];
   const outsideContracts = (await s`
     select coalesce((${selectionWhere(s, ctx, input, false)}), false) sel, d.contract_id::text ref, d.nid::text nid, d.da_code code, d.finalization_date date,
-           d.cpv_name what, d.full_value::text v, null::text est, d.procedure_type procedure, d.category
+           d.cpv_name what, d.full_value::text v, null::text est, d.procedure_type procedure, d.currency, d.category
     from ${coreContracts(s, A, S)} d
     where d.category is not null and ${andAll(s, rowPredicates(bare, { values: false }))}
     order by d.full_value desc nulls last, d.contract_id desc
@@ -174,6 +179,8 @@ export async function factCheckData(s: DbSql, input: FactCheckInput): Promise<Fa
   const excludedRows = selOutside.filter((r) => r.category !== "framework" && r.category !== "framework_in_sums");
   const frameworkRows = selOutside.filter((r) => r.category === "framework");
   const inSumsRows = selOutside.filter((r) => r.category === "framework_in_sums");
+  // Ceilings without a value in lei: counted, never added ("plafon necunoscut").
+  const unknownCeilings = frameworkRows.filter((r) => !(num(r.v) > 0)).length;
   const state = factVerdict({ count, excluded: excludedRows.length, frameworks: frameworkRows.length });
 
   const relationCount = profile.reduce((n, r) => n + r.n, 0);
@@ -239,6 +246,7 @@ export async function factCheckData(s: DbSql, input: FactCheckInput): Promise<Fa
     consortium: consN > 0 ? { count: consN, share: cents(consShare), full: cents(consFull) } : null,
     frameworks: {
       count: frameworkRows.length, ceiling: cents(frameworkRows.reduce((n, r) => n + num(r.v), 0)),
+      ...(unknownCeilings ? { unknown: unknownCeilings } : {}),
       inSums: inSumsRows.length, inSumsCeiling: cents(inSumsRows.reduce((n, r) => n + num(r.v), 0)),
       rows: frameworkRows.slice(0, OUTSIDE_ROWS_LIMIT).map(outsideRow),
     },
@@ -249,11 +257,13 @@ export async function factCheckData(s: DbSql, input: FactCheckInput): Promise<Fa
   };
 }
 
-interface OutsideRow { sel: boolean; ref: string; nid?: string | null; code: string | null; date: string | null; what: string | null; v: string | null; est: string | null; procedure?: string | null; category: FactOutsideCategory | "framework_in_sums" }
+interface OutsideRow { sel: boolean; ref: string; nid?: string | null; code: string | null; date: string | null; what: string | null; v: string | null; est: string | null; procedure?: string | null; currency?: string | null; category: FactOutsideCategory | "framework_in_sums" }
 const outsideRow = (r: OutsideRow): FactOutsideRow => ({
   category: r.category as FactOutsideCategory, src: r.category === "da_above" || r.category === "da_nonpositive" ? "da" : "contracts",
   refId: r.ref, nid: r.nid ?? null, code: r.code, date: r.date, what: r.what, value: r.v === null ? null : Number(r.v),
   estimated: r.est === null ? null : Number(r.est), procedure: r.procedure ?? null,
+  // The source's currency of an amount without a value in lei ("EUR"): legacy foreign amounts are never converted.
+  ...(r.v === null && r.currency && r.currency !== "RON" ? { currency: r.currency } : {}),
 });
 
 /** The five largest records of the selection and the most recent one, when it is not among them (final §4.6). */

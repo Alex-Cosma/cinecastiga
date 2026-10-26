@@ -135,7 +135,7 @@ export default function MetodologiePage() {
           <summary>Verificarea unei relații</summary>
           <p>În „Întreabă”, „A cumpărat X de la Y?” are trei răspunsuri. Da: cel puțin o înregistrare a perechii în selecție, sau un rând
             pe care totalurile îl lasă afară (o achiziție directă peste filtrul de 2 milioane lei ori fără valoare pozitivă, un contract cu identitate
-            nesigură, peste 1 miliard lei sau de tip neclar); acesta din urmă se spune „nu intră în sume”. Acord-cadru: perechea are doar plafoane
+            nesigură, peste 1 miliard lei, fără valoare în lei sau de tip neclar); acesta din urmă se spune „nu intră în sume”. Acord-cadru: perechea are doar plafoane
             de acord-cadru, care nu sunt cumpărări și nu se adună. Nu: nimic din acestea, cu motivul (alegerile întrebării, o condiție dintr-un link
             vechi sau nicio înregistrare în date). Concurența se numără doar la licitațiile deschise și restrânse cu numărul ofertelor cunoscut din TED.
             Ponderea relației compară perechea cu ceilalți parteneri ai fiecărei părți, cu aceleași alegeri. Un „Da” nu dovedește livrarea sau plata.</p>
