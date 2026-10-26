@@ -581,7 +581,7 @@ export default function AskPanel({
     return true;
   };
   const openEvidence = useCallback(
-    (spec?: AskSpec, scope?: EvidenceScope, label?: string) => {
+    (spec?: AskSpec, scope?: EvidenceScope, label?: string, filters?: EvidenceFilters) => {
       const selected = spec ?? applied;
       if (selected) {
         const effectiveScope =
@@ -602,6 +602,7 @@ export default function AskPanel({
           title,
           ...(label ? { scopeLabel: label } : {}),
           ...(months ? { months } : {}),
+          ...(filters ? { filters } : {}),
         });
       }
     },
@@ -1075,7 +1076,7 @@ export default function AskPanel({
                 <EntityCardBlock card={data.card} historical={isProfile} spec={applied} />
               )}
               {data.block === "fact_check" && (
-                <FactCheckBlock fact={data.fact} />
+                <FactCheckBlock fact={data.fact} spec={applied} onWider={runWider} />
               )}
               {data.block === "trend" && (
                 <TrendBlock

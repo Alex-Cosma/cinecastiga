@@ -316,7 +316,7 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
     const from = bound(f.yearFrom, f.monthFrom), to = bound(f.yearTo, f.monthTo);
     const pills = f.yearFrom || f.yearTo
       ? [spec.block === "trend" ? `${from ?? "?"} → ${to ?? "?"}` : from && to && from !== to ? `${from}–${to}` : (from ?? to)!]
-      : isHistoricalProfile(spec) ? [] : ["toți anii"];
+      : isHistoricalProfile(spec) ? [] : [spec.block === "fact_check" ? "până acum" : "toți anii"];
     const mark = (y: unknown, m: unknown) => `${y}${m ? `-${String(m).padStart(2, "0")}` : ""}`;
     return {
       ...(f.yearFrom || f.yearTo ? { words: periodWordsWith(f) } : {}),
