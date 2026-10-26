@@ -42,6 +42,8 @@ export interface FactCheckAnswerProps {
 const DOMAINS_SHOWN = 3;
 /** Rows outside the sums shown before the rest unfolds (final §4.5). */
 const OUTSIDE_SHOWN = 3;
+/** Under 600 px the years wrap in rows of five, so each bar is a 44 px target (owner UI rule; the final drew nine columns of ~37 px). */
+const YEARS_PER_PHONE_ROW = 5;
 
 const mil = (value: number) => lei(value).replace(/ lei$/, "");
 const county = (raw: string | null | undefined) => countyDisplay(raw) ?? raw ?? null;
@@ -104,7 +106,7 @@ export default function FactCheckAnswer({ fact: f, spec, onWider }: FactCheckAns
 
     {records && <Profile fact={f} sources={sources} />}
     <Remember fact={f} sources={sources} excludedOnly={excludedOnly} />
-    {records && f.samples.length > 0 && <Samples samples={f.samples} />}
+    {records && f.samples.length > 0 && <Samples samples={f.samples} count={f.count} />}
   </div>;
 }
 
@@ -204,7 +206,7 @@ function Profile({ fact: f, sources }: { fact: FactCheckData; sources: Sources }
   const c = f.channels;
   const lines: ReactNode[] = [];
   if (years.length >= 2) lines.push(<Line key="y" label="Pe ani">
-    <div className="fc-yrs" style={{ "--n": years.length } as CSSProperties}>
+    <div className="fc-yrs" style={{ "--n": years.length, "--phone": Math.min(years.length, YEARS_PER_PHONE_ROW) } as CSSProperties}>
       {years.map((y) => {
         const partial = y.year === f.partialYear;
         const label = `${y.year}${partial ? "*" : ""}`;
@@ -212,7 +214,7 @@ function Profile({ fact: f, sources }: { fact: FactCheckData; sources: Sources }
         const body = <>
           <em>{y.count.toLocaleString("ro-RO")}</em>
           <i style={{ height: `${Math.max(3, (y.count / peak) * 100)}%` }} />
-          <span><span className="fc-yf">{label}</span><span className="fc-ys">{label.slice(2)}</span></span>
+          <span>{label}</span>
         </>;
         const title = `${recordWords(y.count)} din ${y.year} · ${lei(y.value)}${partial ? " · an incomplet" : ""}`;
         return open ? <button key={y.year} type="button" className={`fc-yb${partial ? " is-partial" : ""}`} title={title} aria-label={`Vezi ${title}`} onClick={open}>{body}</button>
@@ -239,9 +241,9 @@ function Profile({ fact: f, sources }: { fact: FactCheckData; sources: Sources }
   </Line>);
   const comp = f.competition;
   if (comp) lines.push(<Line key="k" label="Concurență">
-    <p className="fc-flow qb-tipwrap">
+    <p className="fc-comp qb-tipwrap">
       {comp.single > 0 ? <SourceLink onClick={sources(`${contractWords(comp.single)} cu o singură ofertă`, { singleBid: true })}>{contractWords(comp.single)} cu o singură ofertă</SourceLink> : <span>niciun contract cu o singură ofertă</span>}
-      <span>{comp.multiple > 0 ? `${comp.multiple.toLocaleString("ro-RO")} cu mai multe` : ""}{" "}(TED){comp.unknown > 0 ? ` · ${comp.unknown.toLocaleString("ro-RO")} nu știm` : ""}</span>
+      <span>{comp.multiple > 0 ? `${comp.multiple.toLocaleString("ro-RO")} cu mai multe ` : ""}(TED){comp.unknown > 0 ? ` · ${comp.unknown.toLocaleString("ro-RO")} nu știm` : ""}</span>
       <HelpTip tip={{ title: "Concurență", text: FACT_TIPS.competition }} />
     </p>
   </Line>);
@@ -306,10 +308,10 @@ function Outside({ rows, total, warm = false }: { rows: readonly FactOutsideRow[
 }
 
 /** "Cele mai mari 5 · și cea mai recentă" (final §4.6): cards on a phone. */
-function Samples({ samples }: { samples: readonly FactSample[] }) {
+function Samples({ samples, count }: { samples: readonly FactSample[]; count: number }) {
   const recent = samples.some((s) => s.recent);
   return <section className="fc-recs" aria-label="Cele mai mari înregistrări">
-    <div className="fc-recs-head"><h4>Cele mai mari {Math.min(5, samples.filter((s) => !s.recent).length)}</h4>{recent && <small>și cea mai recentă</small>}</div>
+    <div className="fc-recs-head"><h4>{count === 1 ? "Înregistrarea" : count <= 5 ? "Înregistrările" : "Cele mai mari 5"}</h4>{recent && <small>și cea mai recentă</small>}</div>
     <ul>{samples.map((s, i) => <li key={`${s.src}:${s.refId ?? i}`}>
       <span className="fc-d">{roDay(s.date) ?? "fără dată"}</span>
       <span className="fc-w">

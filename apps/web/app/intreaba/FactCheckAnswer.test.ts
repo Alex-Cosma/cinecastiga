@@ -50,7 +50,7 @@ describe("the verification's answer", () => {
     expect(shown).toContain("(TED) · 13 nu știm");
     expect(shown).toContain("6 contracte în asociere → socotim partea firmei, 32,8 mil. lei din 79,5 mil. lei.");
     // The list: the largest first, the most recent last, with its badge; "ofertă", never "ofertant".
-    expect(shown).toMatch(/Cele mai mari 2 și cea mai recentă/);
+    expect(shown).toMatch(/Cele mai mari 5 și cea mai recentă/);
     expect(shown).toContain("asociere · 2 firme · contract 33,4 mil.");
     expect(shown).toContain("cea mai recentă");
     expect(shown).not.toMatch(/ofertant/);
