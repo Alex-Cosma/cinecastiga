@@ -141,10 +141,10 @@ function domainNode(d: SankeyDomain, share: (v: number) => string, stemLen: numb
 }
 
 /** „99,9% e Construcții · Detaliază ›” (final §3.3, trusa-5): one domain with at least 90% of the value, a level below it. */
-export function sankeySuggestion(data: SankeyData): { code: string; text: string } | null {
+export function sankeySuggestion(data: SankeyData): { code: string; name: string; text: string } | null {
   const top = data.domains[0];
   if (!top || data.totals.value <= 0 || top.code.length >= 8 || top.value / data.totals.value < SANKEY_SUGGEST_SHARE) return null;
-  return { code: top.code, text: `${formatShare(top.value / data.totals.value)} e ${cut(domainName(top), 42)}` };
+  return { code: top.code, name: domainName(top), text: `${formatShare(top.value / data.totals.value)} e ${cut(domainName(top), 42)}` };
 }
 
 /** „Arată 6 · 10 · 15” (kit §6 sankey 5): the lengths, with no more than the partners the selection has. */

@@ -491,7 +491,7 @@ button.qb-mix-row:hover .qb-mix-only,button.qb-mix-row:focus-visible .qb-mix-onl
   .qb-arow .qb-more{grid-row:1;grid-column:2}
   .qb-bottom .qb-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}
   .qb-present{line-height:2.6}
-  .qb-present .qb-phrase{min-height:44px;align-items:center;vertical-align:middle}
+  .qb-present .qb-phrase{min-height:44px;min-width:44px;justify-content:center;align-items:center;vertical-align:middle}
   .qb-link,.qb-crumbs a,.qb-crumbs button,.qb-rec{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px}
   .qb-field input,.qb-field select{min-height:44px}
   .qb-pill{min-width:44px;justify-content:center}

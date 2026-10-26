@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { formatInt, formatRon, formatRonFull } from "@/lib/format";
 import { countWords, formatShare } from "@/lib/ask/answer-text";
 import { networkSinceChoices, NETWORK_LIST_LABELS, type NetworkData, type NetworkList, type NetworkOrder, type NetworkRow } from "@/lib/ask/network-shared";
@@ -120,7 +119,7 @@ export default function NetworkAnswer({ data, spec, conditions = [], onList, onO
 function NetworkRowItem({ view, actions, onRecords }: { view: NetworkRowView; actions: ReturnType<typeof entityRowActions>; onRecords?: () => void }) {
   return <div className="qb-arow qb-nrow" role="listitem" tabIndex={-1} data-qb-arow="">
     <div className="qb-nrow-main">
-      <div className="qb-arow-name"><Link href={view.href}>{view.name}</Link>{view.place && <small>{view.place}</small>}</div>
+      <div className="qb-arow-name">{view.name}{view.place && <small>{view.place}</small>}</div>
       <RowFacts facts={view.facts} />
     </div>
     <div className="qb-nrow-val">
@@ -165,9 +164,10 @@ function NetworkChart({ rows, data, list, views }: { rows: readonly NetworkRow[]
           onClick={(event) => { if (evidence && view) { event.preventDefault(); evidence.open(undefined, view.scope, view.scopeLabel); } }}>
           <title>{`${name}\n${formatRon(n.value)} · ${total > 0 ? formatShare(n.value / total) : "—"} din total · ${view?.records ?? ""}`}</title>
           <circle cx={x} cy={y} r={on ? r + 2 : r} className="qb-net-node" />
-          <text x={x + (anchor === "start" ? r + 4 : anchor === "end" ? -r - 4 : 0)} y={y + (anchor === "middle" ? (Math.sin(a) > 0 ? r + 12 : -r - 6) : 4)}
-            fontSize={10} textAnchor={anchor} className="qb-net-label" fontWeight={on ? 700 : 400}>{label}</text>
         </a>
+        {/* The disc is the target; its label is words beside it (two neighbours' labels may meet, their targets never). */}
+        <text x={x + (anchor === "start" ? r + 4 : anchor === "end" ? -r - 4 : 0)} y={y + (anchor === "middle" ? (Math.sin(a) > 0 ? r + 12 : -r - 6) : 4)}
+          fontSize={10} textAnchor={anchor} className="qb-net-label" fontWeight={on ? 700 : 400} aria-hidden="true" pointerEvents="none">{label}</text>
       </g>;
     })}
     <circle cx={cx} cy={cy} r={34} className="qb-net-centre" />

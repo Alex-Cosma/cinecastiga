@@ -120,7 +120,6 @@ export interface NetworkRowView {
   key: string;
   entityId: string;
   name: string;
-  href: string;
   /** "Buzău · 388 angajați", "Străinătate", "București". */
   place: string | null;
   facts: RowFact[];
@@ -166,7 +165,7 @@ export function networkRowView(row: NetworkRow, data: NetworkData, list: Network
   const own = data.lists[list];
   const group = list === "all" ? null : list;
   return {
-    key: row.entityId, entityId: row.entityId, name, href: `/entitati/${row.entityId}`, place,
+    key: row.entityId, entityId: row.entityId, name, place,
     facts: rowFacts(row, partner),
     value: formatRonFull(row.value), share: `${own.value > 0 ? formatShare(row.value / own.value) : "—"} din total`,
     count: row.count, records: countWords(row.count, "înregistrare", "înregistrări"),
