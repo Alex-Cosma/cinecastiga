@@ -13,6 +13,8 @@ import Segmented from "./builder/Segmented";
 import HelpTip from "./builder/HelpTip";
 import EmptyState from "./answer/EmptyState";
 import RowFacts, { FactTag } from "./answer/RowFacts";
+import RowMenu, { type RowAction } from "./answer/RowMenu";
+import { entityRowActions } from "./answer/row-actions";
 import TotalLine from "./answer/TotalLine";
 import {
   compositionHead, emptyGroupsLine, firstOptions, firstTimeKitTip, groupTerm, labelLegend, newSubLabel, partialStars, percentTerm, shownTrendList, trendButtons,
@@ -69,6 +71,11 @@ export default function TrendBlock({ data, spec, partial = [], conditions = [], 
   const emptyGroups = buttons ? emptyGroupsLine([...buttons, ...(first ?? []).map((o) => ({ name: o.label, ...(o.disabled ? { disabled: o.disabled } : {}) }))]) : null;
   const empty = rows.length === 0 ? trendEmpty(data, list, spec) : null;
   const pick = (next: string) => { if (next !== list) onList?.(next as TrendList); };
+  // P7 (F4, the trend's optional exclusion, §9 F2): an institution's or a firm's row has its "⋯" (not a county's).
+  const menus = views.map((view, i) => {
+    const id = rows[i]!.entityId, records = evidence ? () => evidence.open(undefined, view.scope, view.scopeLabel) : undefined;
+    return id && evidence?.exclude ? entityRowActions(spec, { id, name: view.name }, { ...(records ? { records } : {}), exclude: () => evidence.exclude!({ id, name: view.name }, i) }) : [];
+  });
   return <div className="qb qb-trend">
     {buttons && <div className="qb-strip qb-trend-strip" role="group" aria-label="Felul schimbării">
       <CountGroups label="Felul schimbării" groups={buttons} value={list === "first" ? "new" : list} {...(head ? { head } : {})} onChange={pick} />
@@ -84,9 +91,9 @@ export default function TrendBlock({ data, spec, partial = [], conditions = [], 
     {empty ? <EmptyState message={empty.message} titleId="raspuns-titlu" relax={[
       ...(empty.to ? [{ id: `to:${empty.to.list}`, label: empty.to.label, onClick: () => onList?.(empty.to!.list) }] : []),
       ...(empty.base && onWider ? [{ id: "base", label: empty.base.label, onClick: () => onWider({ ...spec, trend: { ...spec.trend, minBase: empty.base!.minBase } }) }] : []),
-    ]} /> : <div className={`qb-alist qb-trend-rows${list === "all" ? " qb-trend-rows--sw" : ""}${views.some((v) => v.single) ? " qb-trend-rows--single" : ""}`}
+    ]} /> : <div className={`qb-alist qb-trend-rows${list === "all" ? " qb-trend-rows--sw" : ""}${views.some((v) => v.single) ? " qb-trend-rows--single" : ""}${menus.some((m) => m.length) ? " qb-trend-rows--menu" : ""}`}
       role="list" aria-label={total?.lead ?? "Schimbările"}>
-      {views.map((view) => <TrendRowItem key={view.key} view={view} swatch={list === "all"}
+      {views.map((view, i) => <TrendRowItem key={view.key} view={view} swatch={list === "all"} actions={menus[i]!}
         {...(evidence ? { onRecords: () => evidence.open(undefined, view.scope, view.scopeLabel) } : {})} />)}
     </div>}
     {(legend.length > 0 || term || percent) && rows.length > 0 && <p className="qb-trend-legend qb-tipwrap">
@@ -114,8 +121,8 @@ export default function TrendBlock({ data, spec, partial = [], conditions = [], 
   </div>;
 }
 
-/** One row (trend final §4.8): name and place, labels, partner, the two years and the change, „Înregistrări →”. */
-function TrendRowItem({ view, swatch, onRecords }: { view: TrendRowView; swatch: boolean; onRecords?: () => void }) {
+/** One row (trend final §4.8): name and place, labels, partner, the two years and the change, „Înregistrări →”, its "⋯" (F4). */
+function TrendRowItem({ view, swatch, onRecords, actions = [] }: { view: TrendRowView; swatch: boolean; onRecords?: () => void; actions?: readonly RowAction[] }) {
   const pct = view.pct && <><span aria-hidden="true">{view.pct.text}</span><span className="qb-sr">{view.pct.words}</span></>;
   return <div className="qb-arow qb-trow" role="listitem" tabIndex={-1} data-qb-arow="">
     <div className="qb-trow-main">
@@ -145,5 +152,6 @@ function TrendRowItem({ view, swatch, onRecords }: { view: TrendRowView; swatch:
         Înregistrări<span className="qb-glyph" aria-hidden="true">→</span>
       </button>}
     </div>
+    {actions.length > 0 && <RowMenu name={view.name} actions={actions} />}
   </div>;
 }

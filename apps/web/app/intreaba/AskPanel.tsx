@@ -50,6 +50,9 @@ import TotalLine, { RECORDED_VALUE } from "./answer/TotalLine";
 import EmptyState from "./answer/EmptyState";
 import { emptyAnswer, relaxations } from "./answer-empty";
 import KitLink from "./answer/KitLink";
+import RowMenu from "./answer/RowMenu";
+import { entityRowActions } from "./answer/row-actions";
+import { excludeEntity, excludedRole } from "@/lib/ask/filters/exclusions";
 import HelpTip from "./builder/HelpTip";
 import { CHART_FIRST_YEAR, seriesAxis, seriesLabels } from "./series-labels";
 import Segmented from "./builder/Segmented";
@@ -717,6 +720,34 @@ export default function AskPanel({
     setLinkRuns(true);
     void execute({ spec: next });
   };
+  /**
+   * "Scoate din calcul" (F4, plan §2.3 "restrângere"): the applied question without the row's entity, a new
+   * answer in a new history entry, so "Înapoi" brings the one before back (popstate restores the link). The page
+   * stays where it is; the total line says the new total (aria-live) and the "⋯" of the row that took the place of
+   * the one left out (the next, else the last) takes the focus once it is drawn (kit §5.13).
+   */
+  const refocusRow = useRef<number | null>(null);
+  const excludeRow = useCallback((entity: { id: string; name: string }, index: number) => {
+    const question = applied as unknown as QuestionSpec | undefined;
+    const role = question ? excludedRole(question) : null;
+    const next = question && role ? excludeEntity(question, { field: role, value: entity.id, label: entity.name }) : null;
+    if (!next) return;
+    window.history.pushState(null, "", window.location.href);
+    refocusRow.current = index;
+    setBuilderInit(next);
+    setLinkRuns(true);
+    void execute({ spec: next as unknown as AskSpec }, false, undefined, undefined, false);
+  }, [applied, execute]);
+  useEffect(() => {
+    const index = refocusRow.current;
+    if (index === null || loading) return;
+    refocusRow.current = null;
+    requestAnimationFrame(() => {
+      const rows = document.querySelectorAll<HTMLElement>("#raspuns [data-qb-arow]");
+      const row = rows[Math.min(index, rows.length - 1)];
+      (row?.querySelector<HTMLElement>(".qb-more") ?? document.getElementById("raspuns-titlu"))?.focus();
+    });
+  }, [resp, loading]);
   return (
     <div
       className={`ask cq-app${centered ? " ask-centered" : ""}`}
@@ -874,7 +905,7 @@ export default function AskPanel({
         </div>
       )}
       {resp?.ok && data && applied && (
-        <AnswerEvidence.Provider value={{ open: openEvidence }}>
+        <AnswerEvidence.Provider value={{ open: openEvidence, exclude: excludeRow }}>
           <section
             className="cq-answer"
             id="raspuns"
@@ -1254,6 +1285,8 @@ function RankingBars({
         : r.value;
   const max = Math.max(...rows.map(metric), 1);
   const hasTotal = shareTotals !== undefined && shareTotals.value > 0;
+  // P7 (F4): a row of an institution or a firm has its "⋯": its records, "Scoate din calcul", its page.
+  const answer = useAnswerEvidence();
   if (!rows.length)
     return (
       <p className="ask-empty">
@@ -1264,17 +1297,16 @@ function RankingBars({
   return (
     <>
       <div className="cq-ranking">
-        {rows.map((r, i) => (
+        {rows.map((r, i) => {
+          const records = () => onSources(spec, entitySourceScope(spec, r), `${cleanName(r.name)} · înregistrările din clasament`);
+          const entity = r.entityId ? { id: r.entityId, name: cleanName(r.name) } : null;
+          const actions = entity && answer?.exclude ? entityRowActions(spec, entity, { records, exclude: () => answer.exclude!(entity, i) }) : [];
+          const row = (
           <button
             type="button"
+            className="cq-rank-main"
             key={r.entityId ?? r.name}
-            onClick={() =>
-              onSources(
-                spec,
-                entitySourceScope(spec, r),
-                `${cleanName(r.name)} · înregistrările din clasament`,
-              )
-            }
+            onClick={records}
           >
             <span className="cq-rank-number">
               {String(i + 1).padStart(2, "0")}
@@ -1306,7 +1338,13 @@ function RankingBars({
               </small>
             </span>
           </button>
-        ))}
+          );
+          // The kit's menu in its own .qb box (its reset and focus ring), anchored to the row.
+          return actions.length ? <div className="cq-rank-row" key={r.entityId ?? r.name} data-qb-arow="">
+            {row}
+            <span className="qb cq-rank-menu"><RowMenu name={cleanName(r.name)} actions={actions} /></span>
+          </div> : row;
+        })}
         {rest && (
           <div className="cq-rank-rest">
             <span className="cq-rank-number" aria-hidden="true">…</span>

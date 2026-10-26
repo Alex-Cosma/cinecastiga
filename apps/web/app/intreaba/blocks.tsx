@@ -14,6 +14,8 @@ import { askLink, leaderAlone, leaderAloneSpecs } from "@/lib/ask/source-spec";
 import { deeperThread, threadHref, type Thread } from "./answer-state";
 import KitLink, { recordsWords } from "./answer/KitLink";
 import { FactTag } from "./answer/RowFacts";
+import RowMenu from "./answer/RowMenu";
+import { entityRowActions } from "./answer/row-actions";
 import { breakdownKinds, breakdownShown, largestTag } from "./breakdown-answer";
 import HelpTip from "./builder/HelpTip";
 import { PURCHASE_KIND_WORDS, type PurchaseKind } from "../../lib/ask/purchase";
@@ -1380,11 +1382,20 @@ export function EntityCardBlock({ card, historical = true, spec }: { card: Entit
       </div>
     );
   }
+  // P7 on place 1 by value (F4, plan §4.13): its records, "Scoate din calcul" (the next one is crowned), its page.
+  const records = evidence ? () => evidence.open(undefined, { entityIds: [card.entityId], role: card.role === "supplier" ? "supplier" : "authority" },
+    `${cleanName(card.name)} · ${historical ? "înregistrările profilului" : "achizițiile selectate"}`) : undefined;
+  const entity = { id: card.entityId, name: cleanName(card.name) };
+  const actions = !historical && spec && evidence?.exclude
+    ? entityRowActions(spec as AskSpec, entity, { ...(records ? { records } : {}), exclude: () => evidence.exclude!(entity, 0) }) : [];
   return (
     <div className="ask-ecard">
-      <h3>
+      {actions.length ? <div className="ask-ecard-head" data-qb-arow="">
+        <h3><Link href={`/entitati/${card.entityId}`}>{cleanName(card.name)}</Link></h3>
+        <span className="qb cq-rank-menu"><RowMenu name={entity.name} actions={actions} /></span>
+      </div> : <h3>
         <Link href={`/entitati/${card.entityId}`}>{cleanName(card.name)}</Link>
-      </h3>
+      </h3>}
       <div className="badges">
         <span className="badge">
           {card.role === "authority" ? "Autoritate" : "Furnizor"}

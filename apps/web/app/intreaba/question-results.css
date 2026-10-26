@@ -206,7 +206,8 @@
   max-width: 950px;
   line-height: 1.7;
 }
-.cq-ranking > button {
+.cq-ranking > button,
+.cq-rank-row > .cq-rank-main {
   display: flex;
   align-items: center;
   gap: 20px;
@@ -219,7 +220,8 @@
   text-align: left;
   border-radius: 6px;
 }
-.cq-ranking > button:hover {
+.cq-ranking > button:hover,
+.cq-rank-row > .cq-rank-main:hover {
   background: var(--accent-soft);
 }
 .cq-rank-number {
@@ -676,6 +678,9 @@
 .qb-trend-sub-label { display: inline-flex; align-items: center; gap: 7px; padding-left: 4px; }
 .qb-trend-unfiled, .qb-trend-off { margin: 0; padding: 0 4px; color: var(--fk-muted-strong); font-size: 12.5px; }
 .qb-trend-rows .qb-arow { grid-template-columns: minmax(0, 1fr) minmax(190px, auto); align-items: start; }
+/* A row with its "⋯" (F4): the menu button in a third column, in the middle of the row. */
+.qb-trend-rows--menu .qb-arow { grid-template-columns: minmax(0, 1fr) minmax(190px, auto) auto; }
+.qb-trend-rows--menu .qb-arow > .qb-more { align-self: center; }
 .qb-trend-rows--sw .qb-arow { padding-left: 19px; }
 .qb-trow-main { min-width: 0; }
 .qb-trow-name { position: relative; }
@@ -712,6 +717,10 @@
   /* A new or gone row in its own list has one value (its year beside it): "Înregistrări →" goes up beside it. */
   .qb-trend-rows--single .qb-arow { grid-template-areas: "name name" "tags tags" "part part" "rec dlt"; }
   .qb-trend-rows--single .qb-trow-dline { margin-top: 4px; }
+  /* The "⋯" on the right of the name (kit component 15 on a phone). */
+  .qb-trend-rows--menu .qb-arow { grid-template-areas: "name more" "tags tags" "part part" "yrs dlt" "rec ."; }
+  .qb-trend-rows--menu.qb-trend-rows--single .qb-arow { grid-template-areas: "name more" "tags tags" "part part" "rec dlt"; }
+  .qb-trend-rows--menu .qb-arow > .qb-more { grid-area: more; align-self: start; justify-self: end; }
   /* „Firme noi: (?)” on its line, „Toate · Prima dată în 2025” on the whole width under it. */
   .qb-trend-strip .qb-trend-sub { flex-wrap: wrap; row-gap: 6px; }
   .qb-trend-strip .qb-trend-sub > .qb-seg { flex: 1 1 100%; }
@@ -778,7 +787,8 @@
     align-self: center;
   }
 
-  .cq-ranking > button {
+  .cq-ranking > button,
+  .cq-rank-row > .cq-rank-main {
     display: grid;
     grid-template-columns: 22px 1fr;
     gap: 8px 12px;
@@ -802,6 +812,8 @@
   }
   .cq-rank-value strong {
     font-size: 13px;
+    /* The sum stays whole beside the row's "⋯" (F4); its records and share wrap instead. */
+    white-space: nowrap;
   }
   .cq-rank-value small {
     font-size: 10px;
@@ -943,6 +955,14 @@
 .cq-lead { margin: 6px 0 18px; font-size: 16px; line-height: 1.5; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
 /* The consortium (?) floats above its line. */
 .cq-total-line { position: relative; }
+/* A ranked institution or firm with its "⋯" (F4, kit component 15): the row opens its records, "⋯" its actions; one line under both. */
+.cq-rank-row { position: relative; display: flex; align-items: center; gap: 4px; border-bottom: 1px solid var(--line); }
+.cq-rank-row > .cq-rank-main { flex: 1 1 auto; min-width: 0; border-bottom: 0; }
+.cq-rank-row > .cq-rank-menu { flex: none; margin-right: 6px; }
+/* "Cine conduce?" by value: the "⋯" of place 1 beside its name; the menu hangs under it, on the right. */
+.ask-ecard-head { position: relative; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin: 0 0 6px; }
+.ask-ecard-head > h3 { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.ask-ecard-head > .cq-rank-menu { flex: none; }
 .cq-rank-rest { display: flex; align-items: center; gap: 20px; padding: 18px 12px; border-bottom: 1px solid var(--line); color: var(--ink2, var(--muted)); }
 .cq-rank-rest .cq-rank-name > strong { margin-bottom: 0; font-weight: 600; }
 .cq-share, .cq-answer-tools .cq-copy { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; }
