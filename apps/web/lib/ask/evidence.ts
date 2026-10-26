@@ -15,6 +15,10 @@ export interface EvidenceScope {
   cpvPrefixes?: readonly string[];
   excludeCpvPrefixes?: readonly string[];
   years?: readonly number[];
+  /** fact_check-2: the contracts won in association (more than one winner), whose rows carry the firm's share. */
+  consortium?: true;
+  /** fact_check-2: the open or restricted tenders with one known offer (TED), as the answer's line "Concurență" counts them. */
+  singleBid?: true;
 }
 
 export interface EvidenceFilters { search?: string; state?: string; stream?: "da" | "contracts" }
@@ -80,7 +84,7 @@ export function validateEvidenceScope(raw: unknown): EvidenceScope | { error: st
   if (raw === undefined || raw === null) return {};
   if (typeof raw !== "object" || Array.isArray(raw)) return { error: "Selecție de surse invalidă." };
   const o = raw as Record<string, unknown>;
-  const allowed = ["entityIds", "excludeEntityIds", "role", "county", "counties", "riskBucket", "criteria", "cpvPrefixes", "excludeCpvPrefixes", "years"];
+  const allowed = ["entityIds", "excludeEntityIds", "role", "county", "counties", "riskBucket", "criteria", "cpvPrefixes", "excludeCpvPrefixes", "years", "consortium", "singleBid"];
   if (Object.keys(o).some((k) => !allowed.includes(k))) return { error: "Filtru de surse necunoscut." };
   const scope: EvidenceScope = {};
   if (o["county"] !== undefined) {
@@ -130,6 +134,11 @@ export function validateEvidenceScope(raw: unknown): EvidenceScope | { error: st
     const k = o["criteria"];
     if (typeof k !== "number" || !Number.isInteger(k) || k < 0 || k > 5) return { error: "Număr de criterii invalid." };
     scope.criteria = k;
+  }
+  for (const key of ["consortium", "singleBid"] as const) {
+    if (o[key] === undefined) continue;
+    if (o[key] !== true) return { error: "Selecție de surse invalidă." };
+    scope[key] = true;
   }
   return scope;
 }

@@ -22,6 +22,9 @@ export const ANSWER_VERSIONS: Partial<Record<Block, string>> = {
   // distribution-2 (F6a, plan §4.11): the criteria against the group the ticks choose, instead of ten
   // CRI buckets and a percentile over every profile; position more · same · fewer of the others.
   distribution: "distribution-2",
+  // fact_check-2 (F6a, plan §4.10): three verdicts (Da · Acord-cadru · Nu), the rows outside the sums say "Da"
+  // ("Da · nu intră în sume"), framework ceilings never do; the profile, the weight and the whole relation beside it.
+  fact_check: "fact_check-2",
 };
 
 /** A key whose meaning a release changed, on the questions that carry it. */
@@ -131,6 +134,7 @@ export function sameAnswerVersion(before: AnswerVersion, after: AnswerVersion): 
  */
 export function answerCore(block: string, data: unknown): unknown {
   if (block === "distribution") return distributionCore(data);
+  if (block === "fact_check") return factCheckCore(data);
   if (block !== "trend" || !object(data) || !object(data.groups)) return data;
   const { groups: _groups, composition, noun: _noun, rowFacts: _facts, withoutFiling: _unfiled, ...core } = data;
   const parts = object(composition) ? composition : {};
@@ -155,6 +159,26 @@ function distributionCore(data: unknown): unknown {
     position: d.position, hist: d.hist,
     perCriterion: Array.isArray(d.perCriterion) ? d.perCriterion.map((c) => object(c) ? { code: c.code, others: c.others } : c) : d.perCriterion,
     members: Array.isArray(d.members) ? d.members.map((m) => object(m) ? { entityId: m.entityId, nFlags: m.nFlags } : m) : d.members,
+  } };
+}
+
+/**
+ * fact_check-2 (F6a): the verdict and the selection's figures (records and
+ * value, the undated ones, each channel, the framework agreements and the rows
+ * outside the sums). The profile by year, domain and competition, the list,
+ * the weight among the partners (others' records move it), the whole relation,
+ * the data's last day and the "Nu" context are descriptions, not the answer.
+ * An answer stored before fact_check-2 is whole.
+ */
+function factCheckCore(data: unknown): unknown {
+  if (!object(data) || !object(data.fact) || data.fact.version !== 2) return data;
+  const f = data.fact;
+  const frameworks = object(f.frameworks) ? f.frameworks : {}, excluded = object(f.excluded) ? f.excluded : {};
+  return { ...data, fact: {
+    version: 2, state: f.state, authority: object(f.authority) ? f.authority.entityId : f.authority,
+    supplier: object(f.supplier) ? f.supplier.entityId : f.supplier,
+    count: f.count, value: f.value, undated: f.undated, channels: f.channels,
+    frameworks: { count: frameworks.count, ceiling: frameworks.ceiling }, excluded: { count: excluded.count },
   } };
 }
 

@@ -37,6 +37,8 @@ import {
 import { sectorUnit } from "../peer-population";
 import { distributionData, distributionGroup } from "./distribution";
 import type { PeerCoverage, PeerFacts, PeerRowId } from "./peer-groups-shared";
+import { factCheckData } from "./fact-check";
+import { COMPETITION_PROCEDURES, type FactCheckData } from "./fact-check-shared";
 
 /**
  * Compile a validated AskSpec + grounding into parameterized SQL and execute it
@@ -226,16 +228,8 @@ export interface EntityCardData {
   flags: string[];
   population: number | null;
 }
-export interface FactCheckData {
-  verdict: boolean;
-  authority: { entityId: string; name: string };
-  supplier: { entityId: string; name: string };
-  count: number;
-  value: number;
-  yearFirst: number | null;
-  yearLast: number | null;
-  samples: { daCode: string | null; date: string | null; cpvName: string | null; value: number }[];
-}
+/** fact_check-2 (plan §4.10): the verdict, the profile, the rows outside the sums (fact-check-shared.ts). */
+export type { FactCheckData } from "./fact-check-shared";
 export interface TrendRow {
   entityId: string | null;
   name: string;
@@ -745,7 +739,6 @@ export async function runSpec(
   if (unsupported) return { error: unsupported, caveats: [] };
   const dataset = spec.dataset ?? "all";
   const txt = txFragment(sql, dataset);
-  const codeCol = dataset === "contracts" ? sql`d.contract_no` : sql`d.da_code`;
   if (dataset === "contracts") {
     caveats.push(
       "Sursă: DOAR contractele din proceduri. Valoarea unui contract câștigat în asociere e împărțită egal între firme. " +
@@ -1034,6 +1027,8 @@ export async function runSpec(
   // A trend's group sources read their days from the rollup once a build has them (rollupDaysReady).
   const trendDays = spec.block === "trend" && rollup ? await rollupDaysReady(sql) : false;
   const columns = spec.block === "scatter" ? await martColumns(sql) : null;
+  // A verification says how far the data reach (its "Nu" and the incomplete last year).
+  const factCoverage = spec.block === "fact_check" ? await coveragePeriods(sql) : null;
 
   // --- execute under guardrails
   // trend: a watch's group (TableOpts.freezeGroup, TableOpts.fixedMembers), set by its case.
@@ -1702,53 +1697,13 @@ export async function runSpec(
         }
 
         case "fact_check": {
-          const agg = (await s`
-            select coalesce(sum(d.closing_value), 0) v, count(*) n,
-                   min(substr(d.finalization_date, 1, 4)) y1,
-                   max(substr(d.finalization_date, 1, 4)) y2
-            from ${txt} d
-            where ${whereFrag()}
-          `) as unknown as { v: string; n: string; y1: string | null; y2: string | null }[];
-          const n = Number(agg[0]?.n ?? 0);
-          const samples =
-            n > 0
-              ? ((await s`
-                  select ${codeCol} da_code, d.finalization_date, d.cpv_name, d.closing_value
-                  from ${txt} d
-                  where ${whereFrag()}
-                  order by d.closing_value desc
-                  limit 5
-                `) as unknown as {
-                  da_code: string | null;
-                  finalization_date: string | null;
-                  cpv_name: string | null;
-                  closing_value: string;
-                }[])
-              : [];
-          return {
-            block: "fact_check",
-            fact: {
-              verdict: n > 0,
-              authority: {
-                entityId: String(authorityId),
-                name: grounding.authority?.nameDisplay ?? "?",
-              },
-              supplier: {
-                entityId: String(supplierId),
-                name: grounding.supplier?.nameDisplay ?? "?",
-              },
-              count: n,
-              value: Number(agg[0]?.v ?? 0),
-              yearFirst: agg[0]?.y1 ? Number(agg[0].y1) : null,
-              yearLast: agg[0]?.y2 ? Number(agg[0].y2) : null,
-              samples: samples.map((x) => ({
-                daCode: x.da_code,
-                date: x.finalization_date ? x.finalization_date.slice(0, 10) : null,
-                cpvName: x.cpv_name,
-                value: Number(x.closing_value),
-              })),
-            },
-          };
+          // fact_check-2 (F6a): the three verdicts, the profile and the rows outside the sums (lib/ask/fact-check.ts).
+          const fact = await factCheckData(s, {
+            spec, ctx: w, dataset, agg: txtAgg as unknown as ReturnType<DbSql>, coverage: factCoverage,
+            authority: { entityId: String(authorityId), name: grounding.authority?.nameDisplay ?? "?" },
+            supplier: { entityId: String(supplierId), name: grounding.supplier?.nameDisplay ?? "?" },
+          });
+          return { block: "fact_check", fact };
         }
 
         case "trend": {
@@ -2081,7 +2036,7 @@ export async function runRows(
   }
 
   if ((scope.riskBucket || scope.criteria !== undefined) && spec.block !== "distribution") return { error: "Intervalul de risc se aplică distribuției." };
-  if (profile && (scope.cpvPrefixes || scope.excludeCpvPrefixes || scope.years))
+  if (profile && (scope.cpvPrefixes || scope.excludeCpvPrefixes || scope.years || scope.consortium || scope.singleBid))
     return { error: "Profilul istoric nu se restrânge la CPV sau perioadă. Deschide o întrebare despre achiziții pentru aceste filtre." };
   const dataset = profile ? "da" : spec.dataset ?? "all";
   const focalRole = grounding.authority?.entityId ? "authority" : "supplier";
@@ -2170,14 +2125,14 @@ export async function runRows(
            'da'::text as src, null::bigint as ca_notice_id, null::text as ted_pubnum,
            estimated_value_ron, value_suspect, 'Oferta acceptata'::text as state,
            null::integer as n_winners, null::numeric as contract_value_full,
-           null::boolean as is_single_bidder
+           null::boolean as is_single_bidder, null::text as procedure_type
     from marts.da_transactions
   )`;
   const contractTx = sql`(
     select contract_id as ref_id, contract_no as da_code, finalization_date, authority_id, authority_name,
            supplier_id, supplier_name, county, cpv_code, cpv_name, closing_value,
            'contracts'::text as src, ca_notice_id, ted_pubnum, null::numeric as estimated_value_ron,
-           false as value_suspect, null::text as state, n_winners, contract_value_full, is_single_bidder
+           false as value_suspect, null::text as state, n_winners, contract_value_full, is_single_bidder, procedure_type
     from marts.contract_transactions
   )`;
   const txt = profile ? sql`(
@@ -2187,7 +2142,7 @@ export async function runRows(
            a.county, da.cpv_code, cpv.name_ro as cpv_name, da.closing_value,
            'da'::text as src, null::bigint as ca_notice_id, null::text as ted_pubnum,
            da.estimated_value_ron, false as value_suspect, da.state,
-           null::integer as n_winners, null::numeric as contract_value_full, null::boolean as is_single_bidder
+           null::integer as n_winners, null::numeric as contract_value_full, null::boolean as is_single_bidder, null::text as procedure_type
     from core.direct_acquisitions da
     left join core.entities a on a.id = da.authority_entity_id
     left join core.entities su on su.id = da.supplier_entity_id
@@ -2253,6 +2208,9 @@ export async function runRows(
     if (scope.cpvPrefixes) parts.push(sql`d.cpv_code like any(${sql.array(scope.cpvPrefixes.map((p) => p + "%"))}::text[])`);
     if (scope.excludeCpvPrefixes) parts.push(sql`not (d.cpv_code like any(${sql.array(scope.excludeCpvPrefixes.map((p) => p + "%"))}::text[]))`);
     if (scope.years) parts.push(sql`substr(d.finalization_date, 1, 4) = any(${sql.array(scope.years.map(String))}::text[])`);
+    // fact_check-2: the contracts won in association, the open or restricted tenders with one known offer (the answer's lines).
+    if (scope.consortium) parts.push(sql`d.n_winners > 1`);
+    if (scope.singleBid) parts.push(sql`d.src = 'contracts' and d.is_single_bidder = true and d.procedure_type = any(${sql.array([...COMPETITION_PROCEDURES])}::text[])`);
     notes.push("Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.");
     if (dataset !== "contracts") notes.push("Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.");
     if (dataset !== "da") notes.push(CONTRACT_CAP_CAVEAT);
@@ -2640,7 +2598,11 @@ function buildDisplaySql(spec: AskSpec, w: PredicateCtx): string {
     case "entity_card":
       return `select *\nfrom marts.entity_flags\nwhere n_das >= ${ENTITY_CARD_MIN_DAS} ${w.kind ? `-- doar ${KIND_LABEL[w.kind]}` : ""}\norder by ${(spec.rankBy ?? "risk") === "risk" ? "cri" : "total_ron"} desc\nlimit 1;`;
     case "fact_check":
-      return `select count(*), sum(closing_value)\nfrom ${dtable}\nwhere ${where};`;
+      // fact_check-2: the verdict counts these records, then what the sums leave out of the pair (lib/ask/fact-check.ts).
+      return `select count(*), sum(closing_value)\nfrom ${dtable}\nwhere ${where};` +
+        "\n-- în afara sumelor, aceeași pereche: achizițiile directe peste 2 mil. lei sau fără valoare pozitivă (da_transactions);" +
+        "\n-- din core.contracts ⨝ core.awards ⨝ core.contract_winners: acordurile-cadru (plafoane), identitățile nesigure," +
+        "\n-- contractele peste 1 mld. lei și cele de tip neclar (contractKind, canonicalContract, @seap/db)";
     case "trend": {
       const { having, order } = trendGroupText(trendGroupOf(spec), w.yearTo ?? "ultimul_an");
       return (
