@@ -2117,7 +2117,7 @@
      "dim": "authority",
      "topN": 10
     },
-    "pills": ["poziție în distribuția de risc","Consiliul Judetean Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["criterii de risc față de grup","Consiliul Judetean Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
@@ -7953,7 +7953,7 @@
      },
      "dim": "authority"
     },
-    "pills": ["poziție în distribuția de risc","doar consilii județene","Consiliul Judetean Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["criterii de risc față de grup","doar consilii județene","Consiliul Judetean Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
@@ -17023,7 +17023,7 @@
      },
      "dim": "authority"
     },
-    "pills": ["poziție în distribuția de risc","Agentia Fixture Nationala","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["criterii de risc față de grup","Agentia Fixture Nationala","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
@@ -31511,7 +31511,7 @@
      "dim": "authority",
      "topN": 10
     },
-    "pills": ["poziție în distribuția de risc","Consiliul Judetean Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["criterii de risc față de grup","Consiliul Judetean Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
@@ -31844,7 +31844,7 @@
      "dim": "authority",
      "topN": 10
     },
-    "pills": ["poziție în distribuția de risc","Consiliul Judetean Alba","județul Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["criterii de risc față de grup","Consiliul Judetean Alba","județul Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Județul = sediul instituției care cumpără, nu al firmei (din adresă, cod NUTS, ONRC sau UAT verificat). Instituțiile fără județ cunoscut nu intră.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
@@ -32013,7 +32013,7 @@
      "dim": "authority",
      "topN": 10
     },
-    "pills": ["poziție în distribuția de risc","Consiliul Judetean Alba","județul Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["criterii de risc față de grup","Consiliul Judetean Alba","județul Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Județul = sediul instituției care cumpără, nu al firmei (din adresă, cod NUTS, ONRC sau UAT verificat). Instituțiile fără județ cunoscut nu intră.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
@@ -32167,7 +32167,7 @@
      "dim": "authority",
      "topN": 10
     },
-    "pills": ["poziție în distribuția de risc","Consiliul Judetean Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["criterii de risc față de grup","Consiliul Judetean Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
@@ -32439,7 +32439,7 @@
      "dim": "authority",
      "topN": 10
     },
-    "pills": ["poziție în distribuția de risc","doar primării de oraș și municipiu","Municipiul Fixture Nord","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["criterii de risc față de grup","doar primării de oraș și municipiu","Municipiul Fixture Nord","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
@@ -32600,7 +32600,7 @@
      "dim": "supplier",
      "topN": 10
     },
-    "pills": ["poziție în distribuția de risc","Fixture Medical SRL","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["criterii de risc față de grup","Fixture Medical SRL","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
@@ -32884,7 +32884,7 @@
      "dim": "supplier",
      "topN": 10
     },
-    "pills": ["poziție în distribuția de risc","Fixture Medical SRL","județul Buzău","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["criterii de risc față de grup","Fixture Medical SRL","județul Buzău","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Județul = sediul firmei (din adresă, cod NUTS sau ONRC), nu al instituțiilor care cumpără. Firmele fără județ cunoscut nu intră.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
