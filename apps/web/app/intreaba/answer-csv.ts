@@ -1,5 +1,6 @@
 import { fileSlug } from "../../lib/ask/answer-text";
 import type { BlockData, DistributionDataV1 } from "../../lib/ask/compile";
+import { OUTSIDE_WHY, type FactOutsideRow, type FactSample } from "../../lib/ask/fact-check-shared";
 import { isHistoricalProfile } from "../../lib/ask/population";
 import type { AskSpec } from "../../lib/ask/spec";
 import { shownTrendList, trendRowView } from "./trend-answer";
@@ -90,8 +91,21 @@ function rowsOf(data: BlockData, spec: AskSpec): string[] {
         `${csvQ(c.name)},${csvQ(c.county)},${c.value},${c.count}${profile ? `,${c.cri ?? ""},${c.nFlags},${csvQ(c.flags.join("|"))}` : ""}`,
       ];
     }
-    case "fact_check":
-      return ["cod,data,ce,valoare_lei", ...data.fact.samples.map((s) => `${csvQ(s.daCode)},${csvQ(s.date)},${csvQ(s.cpvName)},${s.value}`)];
+    case "fact_check": {
+      // fact_check-2: the list on screen (the five largest and the most recent), then the rows outside the sums it names
+      // (framework ceilings, excluded rows), each with whether it is in the sums.
+      const f = data.fact;
+      if (f.version !== 2) return ["cod,data,ce,valoare_lei", ...f.samples.map((s) => `${csvQ(s.daCode)},${csvQ(s.date)},${csvQ(s.cpvName)},${s.value}`)];
+      const sample = (s: FactSample) => [csvQ(s.recent ? "cea mai recentă" : "cele mai mari"), csvQ(s.daCode), csvQ(s.date), csvQ(s.cpvName),
+        s.src === "da" ? "achizitie_directa" : "contract", csvQ(s.procedure ?? ""), s.nWinners ?? "", s.fullValue ?? "", s.bids ?? "",
+        s.kind === "framework" ? "da (plafon)" : "da", s.value].join(",");
+      const outside = (r: FactOutsideRow) => [csvQ(r.category === "framework" ? "acord-cadru" : `exclus: ${OUTSIDE_WHY[r.category]}`), csvQ(r.code), csvQ(r.date),
+        csvQ(r.what), r.src === "da" ? "achizitie_directa" : "contract", csvQ(r.procedure ?? ""), "", "", "", "nu", r.value ?? ""].join(",");
+      return [
+        "categorie,cod,data,ce,sursa,procedura,castigatori,valoare_contract_integral,oferte,in_sume,valoare_lei",
+        ...f.samples.map(sample), ...(f.frameworks?.rows ?? []).map(outside), ...(f.excluded?.rows ?? []).map(outside),
+      ];
+    }
     case "trend": {
       // The list on screen with its columns: the name as shown, the place beside it (an institution's county, a foreign
       // firm's country; no county beside a firm, owner-seat-switch; none on a county), its labels and partner line.

@@ -1880,7 +1880,7 @@
      "dim": "supplier",
      "topN": 10
     },
-    "pills": ["verificare Da/Nu","Comuna Fixture Vest","Fixture Construct SRL","toți anii","toate achizițiile: directe și din proceduri"],
+    "pills": ["verificare","Comuna Fixture Vest","Fixture Construct SRL","până acum","toate achizițiile: directe și din proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -1890,42 +1890,146 @@
     "data": {
      "block": "fact_check",
      "fact": {
+      "version": 2,
+      "state": "yes",
+      "restricted": false,
+      "legacy": false,
       "verdict": true,
       "authority": {
        "entityId": "9100000001",
-       "name": "Comuna Fixture Vest"
+       "name": "Comuna Fixture Vest",
+       "cui": "91000001",
+       "county": "Cluj"
       },
       "supplier": {
        "entityId": "9100000101",
-       "name": "Fixture Construct SRL"
+       "name": "Fixture Construct SRL",
+       "cui": "91000101",
+       "county": "Cluj"
       },
       "count": 3,
       "value": 93301.26,
       "yearFirst": 2025,
       "yearLast": 2025,
+      "dateFirst": "2025-05-09",
+      "dateLast": "2025-09-01",
       "samples": [
        {
         "daCode": "CT-FX-2",
         "date": "2025-09-01",
         "cpvName": "Lucrări de drumuri",
-        "value": 45000.01
+        "value": 45000.01,
+        "src": "contracts",
+        "refId": "9100200002",
+        "nid": "9100400002",
+        "procedure": "Licitatie deschisa",
+        "nWinners": 2,
+        "fullValue": 90000.02,
+        "bids": 3,
+        "kind": "contract"
        },
        {
         "daCode": "DA-FX-5",
         "date": "2025-05-09",
         "cpvName": "Lucrări de drumuri",
-        "value": 41000.55
+        "value": 41000.55,
+        "src": "da",
+        "refId": "9100100005",
+        "nid": null,
+        "procedure": null,
+        "nWinners": null,
+        "fullValue": null,
+        "bids": null,
+        "kind": null
        },
        {
         "daCode": "DA-FX-20",
         "date": "2025-08-19",
         "cpvName": "Diverse lucrări de îmbrăcăminte",
-        "value": 7300.7
+        "value": 7300.7,
+        "src": "da",
+        "refId": "9100100020",
+        "nid": null,
+        "procedure": null,
+        "nWinners": null,
+        "fullValue": null,
+        "bids": null,
+        "kind": null
        }
-      ]
+      ],
+      "undated": {
+       "count": 0,
+       "value": 0
+      },
+      "years": [
+       {
+        "year": 2025,
+        "count": 3,
+        "value": 93301.26
+       }
+      ],
+      "partialYear": 2026,
+      "channels": {
+       "da": {
+        "count": 2,
+        "value": 48301.25
+       },
+       "contracts": {
+        "count": 1,
+        "value": 45000.01
+       }
+      },
+      "domains": [
+       {
+        "code": "45",
+        "name": "Lucrări de construcții",
+        "count": 3,
+        "value": 93301.26
+       }
+      ],
+      "competition": {
+       "single": 0,
+       "multiple": 1,
+       "unknown": 0
+      },
+      "consortium": {
+       "count": 1,
+       "share": 45000.01,
+       "full": 90000.02
+      },
+      "frameworks": {
+       "count": 0,
+       "ceiling": 0,
+       "inSums": 0,
+       "inSumsCeiling": 0,
+       "rows": []
+      },
+      "excluded": {
+       "count": 0,
+       "rows": []
+      },
+      "share": {
+       "ofSupplier": {
+        "rank": 2,
+        "of": 3,
+        "share": 0.18096695564740198
+       },
+       "ofAuthority": {
+        "rank": 1,
+        "of": 3,
+        "share": 0.6220016823818303
+       }
+      },
+      "relation": null,
+      "coverage": {
+       "da": "2026-06-20",
+       "contracts": "2026-06-25"
+      },
+      "partners": null,
+      "twins": []
      }
     },
-    "displaySql": "select count(*), sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000001\n  and supplier_id = 9100000101;"
+    "displaySql": "select count(*), sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000001\n  and supplier_id = 9100000101;\n-- în afara sumelor, aceeași pereche: achizițiile directe peste 2 mil. lei sau fără valoare pozitivă (da_transactions);\n-- din core.contracts ⨝ core.awards ⨝ core.contract_winners: acordurile-cadru (plafoane), identitățile nesigure,\n-- contractele peste 1 mld. lei și cele de tip neclar (contractKind, canonicalContract, @seap/db)"
    },
    "sources": {
     "status": 200,
@@ -5293,7 +5397,7 @@
      },
      "dataset": "contracts"
     },
-    "pills": ["verificare Da/Nu","Comuna Fixture Vest","Fixture Construct SRL","toți anii","doar contractele din proceduri"],
+    "pills": ["verificare","Comuna Fixture Vest","Fixture Construct SRL","până acum","doar contractele din proceduri"],
     "caveats": [
      "Sursă: DOAR contractele din proceduri. Valoarea unui contract câștigat în asociere e împărțită egal între firme. Plafoanele acordurilor-cadru și publicațiile cu identitate incertă sunt excluse din totaluri. Lipsa comenzilor identificate înseamnă acoperire incompletă.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției."
@@ -5301,30 +5405,125 @@
     "data": {
      "block": "fact_check",
      "fact": {
+      "version": 2,
+      "state": "yes",
+      "restricted": true,
+      "legacy": false,
       "verdict": true,
       "authority": {
        "entityId": "9100000001",
-       "name": "Comuna Fixture Vest"
+       "name": "Comuna Fixture Vest",
+       "cui": "91000001",
+       "county": "Cluj"
       },
       "supplier": {
        "entityId": "9100000101",
-       "name": "Fixture Construct SRL"
+       "name": "Fixture Construct SRL",
+       "cui": "91000101",
+       "county": "Cluj"
       },
       "count": 1,
       "value": 45000.01,
       "yearFirst": 2025,
       "yearLast": 2025,
+      "dateFirst": "2025-09-01",
+      "dateLast": "2025-09-01",
       "samples": [
        {
         "daCode": "CT-FX-2",
         "date": "2025-09-01",
         "cpvName": "Lucrări de drumuri",
+        "value": 45000.01,
+        "src": "contracts",
+        "refId": "9100200002",
+        "nid": "9100400002",
+        "procedure": "Licitatie deschisa",
+        "nWinners": 2,
+        "fullValue": 90000.02,
+        "bids": 3,
+        "kind": "contract"
+       }
+      ],
+      "undated": {
+       "count": 0,
+       "value": 0
+      },
+      "years": [
+       {
+        "year": 2025,
+        "count": 1,
         "value": 45000.01
        }
-      ]
+      ],
+      "partialYear": 2026,
+      "channels": {
+       "da": {
+        "count": 0,
+        "value": 0
+       },
+       "contracts": {
+        "count": 1,
+        "value": 45000.01
+       }
+      },
+      "domains": [
+       {
+        "code": "45",
+        "name": "Lucrări de construcții",
+        "count": 1,
+        "value": 45000.01
+       }
+      ],
+      "competition": {
+       "single": 0,
+       "multiple": 1,
+       "unknown": 0
+      },
+      "consortium": {
+       "count": 1,
+       "share": 45000.01,
+       "full": 90000.02
+      },
+      "frameworks": {
+       "count": 0,
+       "ceiling": 0,
+       "inSums": 0,
+       "inSumsCeiling": 0,
+       "rows": []
+      },
+      "excluded": {
+       "count": 0,
+       "rows": []
+      },
+      "share": {
+       "ofSupplier": {
+        "rank": 3,
+        "of": 3,
+        "share": 0.10204066314987757
+       },
+       "ofAuthority": {
+        "rank": 1,
+        "of": 2,
+        "share": 0.5
+       }
+      },
+      "relation": {
+       "count": 3,
+       "value": 93301.26,
+       "yearFirst": 2025,
+       "yearLast": 2025,
+       "frameworks": 0,
+       "excluded": 0
+      },
+      "coverage": {
+       "da": "2026-06-20",
+       "contracts": "2026-06-25"
+      },
+      "partners": null,
+      "twins": []
      }
     },
-    "displaySql": "select count(*), sum(closing_value)\nfrom marts.contract_transactions\nwhere closing_value > 0\n  and authority_id = 9100000001\n  and supplier_id = 9100000101;"
+    "displaySql": "select count(*), sum(closing_value)\nfrom marts.contract_transactions\nwhere closing_value > 0\n  and authority_id = 9100000001\n  and supplier_id = 9100000101;\n-- în afara sumelor, aceeași pereche: achizițiile directe peste 2 mil. lei sau fără valoare pozitivă (da_transactions);\n-- din core.contracts ⨝ core.awards ⨝ core.contract_winners: acordurile-cadru (plafoane), identitățile nesigure,\n-- contractele peste 1 mld. lei și cele de tip neclar (contractKind, canonicalContract, @seap/db)"
    },
    "sources": {
     "status": 200,
@@ -16675,7 +16874,7 @@
       "supplierId": 9100000103
      }
     },
-    "pills": ["verificare Da/Nu","Scoala Gimnaziala Fixture","Fixture Servicii SA","toți anii","toate achizițiile: directe și din proceduri"],
+    "pills": ["verificare","Scoala Gimnaziala Fixture","Fixture Servicii SA","până acum","toate achizițiile: directe și din proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -16685,23 +16884,75 @@
     "data": {
      "block": "fact_check",
      "fact": {
+      "version": 2,
+      "state": "no",
+      "reason": "none",
+      "restricted": false,
+      "legacy": false,
       "verdict": false,
       "authority": {
        "entityId": "9100000005",
-       "name": "Scoala Gimnaziala Fixture"
+       "name": "Scoala Gimnaziala Fixture",
+       "cui": "91000005",
+       "county": "Buzau"
       },
       "supplier": {
        "entityId": "9100000103",
-       "name": "Fixture Servicii SA"
+       "name": "Fixture Servicii SA",
+       "cui": "91000103",
+       "county": "Alba"
       },
       "count": 0,
       "value": 0,
       "yearFirst": null,
       "yearLast": null,
-      "samples": []
+      "dateFirst": null,
+      "dateLast": null,
+      "samples": [],
+      "undated": {
+       "count": 0,
+       "value": 0
+      },
+      "years": [],
+      "partialYear": 2026,
+      "channels": {
+       "da": {
+        "count": 0,
+        "value": 0
+       },
+       "contracts": {
+        "count": 0,
+        "value": 0
+       }
+      },
+      "domains": [],
+      "competition": null,
+      "consortium": null,
+      "frameworks": {
+       "count": 0,
+       "ceiling": 0,
+       "inSums": 0,
+       "inSumsCeiling": 0,
+       "rows": []
+      },
+      "excluded": {
+       "count": 0,
+       "rows": []
+      },
+      "share": null,
+      "relation": null,
+      "coverage": {
+       "da": "2026-06-20",
+       "contracts": "2026-06-25"
+      },
+      "partners": {
+       "authoritySuppliers": 2,
+       "supplierAuthorities": 4
+      },
+      "twins": []
      }
     },
-    "displaySql": "select count(*), sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000005\n  and supplier_id = 9100000103;"
+    "displaySql": "select count(*), sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000005\n  and supplier_id = 9100000103;\n-- în afara sumelor, aceeași pereche: achizițiile directe peste 2 mil. lei sau fără valoare pozitivă (da_transactions);\n-- din core.contracts ⨝ core.awards ⨝ core.contract_winners: acordurile-cadru (plafoane), identitățile nesigure,\n-- contractele peste 1 mld. lei și cele de tip neclar (contractKind, canonicalContract, @seap/db)"
    },
    "sources": {
     "status": 200,
@@ -30559,7 +30810,7 @@
      "dim": "supplier",
      "topN": 10
     },
-    "pills": ["verificare Da/Nu","Comuna Fixture Vest","Fixture Construct SRL","toți anii","toate achizițiile: directe și din proceduri"],
+    "pills": ["verificare","Comuna Fixture Vest","Fixture Construct SRL","până acum","toate achizițiile: directe și din proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -30569,42 +30820,146 @@
     "data": {
      "block": "fact_check",
      "fact": {
+      "version": 2,
+      "state": "yes",
+      "restricted": false,
+      "legacy": false,
       "verdict": true,
       "authority": {
        "entityId": "9100000001",
-       "name": "Comuna Fixture Vest"
+       "name": "Comuna Fixture Vest",
+       "cui": "91000001",
+       "county": "Cluj"
       },
       "supplier": {
        "entityId": "9100000101",
-       "name": "Fixture Construct SRL"
+       "name": "Fixture Construct SRL",
+       "cui": "91000101",
+       "county": "Cluj"
       },
       "count": 3,
       "value": 93301.26,
       "yearFirst": 2025,
       "yearLast": 2025,
+      "dateFirst": "2025-05-09",
+      "dateLast": "2025-09-01",
       "samples": [
        {
         "daCode": "CT-FX-2",
         "date": "2025-09-01",
         "cpvName": "Lucrări de drumuri",
-        "value": 45000.01
+        "value": 45000.01,
+        "src": "contracts",
+        "refId": "9100200002",
+        "nid": "9100400002",
+        "procedure": "Licitatie deschisa",
+        "nWinners": 2,
+        "fullValue": 90000.02,
+        "bids": 3,
+        "kind": "contract"
        },
        {
         "daCode": "DA-FX-5",
         "date": "2025-05-09",
         "cpvName": "Lucrări de drumuri",
-        "value": 41000.55
+        "value": 41000.55,
+        "src": "da",
+        "refId": "9100100005",
+        "nid": null,
+        "procedure": null,
+        "nWinners": null,
+        "fullValue": null,
+        "bids": null,
+        "kind": null
        },
        {
         "daCode": "DA-FX-20",
         "date": "2025-08-19",
         "cpvName": "Diverse lucrări de îmbrăcăminte",
-        "value": 7300.7
+        "value": 7300.7,
+        "src": "da",
+        "refId": "9100100020",
+        "nid": null,
+        "procedure": null,
+        "nWinners": null,
+        "fullValue": null,
+        "bids": null,
+        "kind": null
        }
-      ]
+      ],
+      "undated": {
+       "count": 0,
+       "value": 0
+      },
+      "years": [
+       {
+        "year": 2025,
+        "count": 3,
+        "value": 93301.26
+       }
+      ],
+      "partialYear": 2026,
+      "channels": {
+       "da": {
+        "count": 2,
+        "value": 48301.25
+       },
+       "contracts": {
+        "count": 1,
+        "value": 45000.01
+       }
+      },
+      "domains": [
+       {
+        "code": "45",
+        "name": "Lucrări de construcții",
+        "count": 3,
+        "value": 93301.26
+       }
+      ],
+      "competition": {
+       "single": 0,
+       "multiple": 1,
+       "unknown": 0
+      },
+      "consortium": {
+       "count": 1,
+       "share": 45000.01,
+       "full": 90000.02
+      },
+      "frameworks": {
+       "count": 0,
+       "ceiling": 0,
+       "inSums": 0,
+       "inSumsCeiling": 0,
+       "rows": []
+      },
+      "excluded": {
+       "count": 0,
+       "rows": []
+      },
+      "share": {
+       "ofSupplier": {
+        "rank": 2,
+        "of": 3,
+        "share": 0.18096695564740198
+       },
+       "ofAuthority": {
+        "rank": 1,
+        "of": 3,
+        "share": 0.6220016823818303
+       }
+      },
+      "relation": null,
+      "coverage": {
+       "da": "2026-06-20",
+       "contracts": "2026-06-25"
+      },
+      "partners": null,
+      "twins": []
      }
     },
-    "displaySql": "select count(*), sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000001\n  and supplier_id = 9100000101;"
+    "displaySql": "select count(*), sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000001\n  and supplier_id = 9100000101;\n-- în afara sumelor, aceeași pereche: achizițiile directe peste 2 mil. lei sau fără valoare pozitivă (da_transactions);\n-- din core.contracts ⨝ core.awards ⨝ core.contract_winners: acordurile-cadru (plafoane), identitățile nesigure,\n-- contractele peste 1 mld. lei și cele de tip neclar (contractKind, canonicalContract, @seap/db)"
    },
    "sources": {
     "status": 200,
@@ -30700,7 +31055,7 @@
      "dim": "supplier",
      "topN": 10
     },
-    "pills": ["verificare Da/Nu","Comuna Fixture Vest","Fixture Construct SRL","2025","toate achizițiile: directe și din proceduri"],
+    "pills": ["verificare","Comuna Fixture Vest","Fixture Construct SRL","2025","toate achizițiile: directe și din proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -30710,42 +31065,153 @@
     "data": {
      "block": "fact_check",
      "fact": {
+      "version": 2,
+      "state": "yes",
+      "restricted": true,
+      "legacy": false,
       "verdict": true,
       "authority": {
        "entityId": "9100000001",
-       "name": "Comuna Fixture Vest"
+       "name": "Comuna Fixture Vest",
+       "cui": "91000001",
+       "county": "Cluj"
       },
       "supplier": {
        "entityId": "9100000101",
-       "name": "Fixture Construct SRL"
+       "name": "Fixture Construct SRL",
+       "cui": "91000101",
+       "county": "Cluj"
       },
       "count": 3,
       "value": 93301.26,
       "yearFirst": 2025,
       "yearLast": 2025,
+      "dateFirst": "2025-05-09",
+      "dateLast": "2025-09-01",
       "samples": [
        {
         "daCode": "CT-FX-2",
         "date": "2025-09-01",
         "cpvName": "Lucrări de drumuri",
-        "value": 45000.01
+        "value": 45000.01,
+        "src": "contracts",
+        "refId": "9100200002",
+        "nid": "9100400002",
+        "procedure": "Licitatie deschisa",
+        "nWinners": 2,
+        "fullValue": 90000.02,
+        "bids": 3,
+        "kind": "contract"
        },
        {
         "daCode": "DA-FX-5",
         "date": "2025-05-09",
         "cpvName": "Lucrări de drumuri",
-        "value": 41000.55
+        "value": 41000.55,
+        "src": "da",
+        "refId": "9100100005",
+        "nid": null,
+        "procedure": null,
+        "nWinners": null,
+        "fullValue": null,
+        "bids": null,
+        "kind": null
        },
        {
         "daCode": "DA-FX-20",
         "date": "2025-08-19",
         "cpvName": "Diverse lucrări de îmbrăcăminte",
-        "value": 7300.7
+        "value": 7300.7,
+        "src": "da",
+        "refId": "9100100020",
+        "nid": null,
+        "procedure": null,
+        "nWinners": null,
+        "fullValue": null,
+        "bids": null,
+        "kind": null
        }
-      ]
+      ],
+      "undated": {
+       "count": 0,
+       "value": 0
+      },
+      "years": [
+       {
+        "year": 2025,
+        "count": 3,
+        "value": 93301.26
+       }
+      ],
+      "partialYear": 2026,
+      "channels": {
+       "da": {
+        "count": 2,
+        "value": 48301.25
+       },
+       "contracts": {
+        "count": 1,
+        "value": 45000.01
+       }
+      },
+      "domains": [
+       {
+        "code": "45",
+        "name": "Lucrări de construcții",
+        "count": 3,
+        "value": 93301.26
+       }
+      ],
+      "competition": {
+       "single": 0,
+       "multiple": 1,
+       "unknown": 0
+      },
+      "consortium": {
+       "count": 1,
+       "share": 45000.01,
+       "full": 90000.02
+      },
+      "frameworks": {
+       "count": 0,
+       "ceiling": 0,
+       "inSums": 0,
+       "inSumsCeiling": 0,
+       "rows": []
+      },
+      "excluded": {
+       "count": 0,
+       "rows": []
+      },
+      "share": {
+       "ofSupplier": {
+        "rank": 2,
+        "of": 3,
+        "share": 0.20301862643543164
+       },
+       "ofAuthority": {
+        "rank": 1,
+        "of": 3,
+        "share": 0.6461233606658984
+       }
+      },
+      "relation": {
+       "count": 3,
+       "value": 93301.26,
+       "yearFirst": 2025,
+       "yearLast": 2025,
+       "frameworks": 0,
+       "excluded": 0
+      },
+      "coverage": {
+       "da": "2026-06-20",
+       "contracts": "2026-06-25"
+      },
+      "partners": null,
+      "twins": []
      }
     },
-    "displaySql": "select count(*), sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000001\n  and supplier_id = 9100000101\n  and an >= 2025\n  and an <= 2025;"
+    "displaySql": "select count(*), sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000001\n  and supplier_id = 9100000101\n  and an >= 2025\n  and an <= 2025;\n-- în afara sumelor, aceeași pereche: achizițiile directe peste 2 mil. lei sau fără valoare pozitivă (da_transactions);\n-- din core.contracts ⨝ core.awards ⨝ core.contract_winners: acordurile-cadru (plafoane), identitățile nesigure,\n-- contractele peste 1 mld. lei și cele de tip neclar (contractKind, canonicalContract, @seap/db)"
    },
    "sources": {
     "status": 200,
@@ -30839,7 +31305,7 @@
      "dim": "supplier",
      "topN": 10
     },
-    "pills": ["verificare Da/Nu","Comuna Fixture Vest","Fixture Construct SRL","toți anii","doar contractele din proceduri"],
+    "pills": ["verificare","Comuna Fixture Vest","Fixture Construct SRL","până acum","doar contractele din proceduri"],
     "caveats": [
      "Sursă: DOAR contractele din proceduri. Valoarea unui contract câștigat în asociere e împărțită egal între firme. Plafoanele acordurilor-cadru și publicațiile cu identitate incertă sunt excluse din totaluri. Lipsa comenzilor identificate înseamnă acoperire incompletă.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției."
@@ -30847,30 +31313,125 @@
     "data": {
      "block": "fact_check",
      "fact": {
+      "version": 2,
+      "state": "yes",
+      "restricted": true,
+      "legacy": false,
       "verdict": true,
       "authority": {
        "entityId": "9100000001",
-       "name": "Comuna Fixture Vest"
+       "name": "Comuna Fixture Vest",
+       "cui": "91000001",
+       "county": "Cluj"
       },
       "supplier": {
        "entityId": "9100000101",
-       "name": "Fixture Construct SRL"
+       "name": "Fixture Construct SRL",
+       "cui": "91000101",
+       "county": "Cluj"
       },
       "count": 1,
       "value": 45000.01,
       "yearFirst": 2025,
       "yearLast": 2025,
+      "dateFirst": "2025-09-01",
+      "dateLast": "2025-09-01",
       "samples": [
        {
         "daCode": "CT-FX-2",
         "date": "2025-09-01",
         "cpvName": "Lucrări de drumuri",
+        "value": 45000.01,
+        "src": "contracts",
+        "refId": "9100200002",
+        "nid": "9100400002",
+        "procedure": "Licitatie deschisa",
+        "nWinners": 2,
+        "fullValue": 90000.02,
+        "bids": 3,
+        "kind": "contract"
+       }
+      ],
+      "undated": {
+       "count": 0,
+       "value": 0
+      },
+      "years": [
+       {
+        "year": 2025,
+        "count": 1,
         "value": 45000.01
        }
-      ]
+      ],
+      "partialYear": 2026,
+      "channels": {
+       "da": {
+        "count": 0,
+        "value": 0
+       },
+       "contracts": {
+        "count": 1,
+        "value": 45000.01
+       }
+      },
+      "domains": [
+       {
+        "code": "45",
+        "name": "Lucrări de construcții",
+        "count": 1,
+        "value": 45000.01
+       }
+      ],
+      "competition": {
+       "single": 0,
+       "multiple": 1,
+       "unknown": 0
+      },
+      "consortium": {
+       "count": 1,
+       "share": 45000.01,
+       "full": 90000.02
+      },
+      "frameworks": {
+       "count": 0,
+       "ceiling": 0,
+       "inSums": 0,
+       "inSumsCeiling": 0,
+       "rows": []
+      },
+      "excluded": {
+       "count": 0,
+       "rows": []
+      },
+      "share": {
+       "ofSupplier": {
+        "rank": 3,
+        "of": 3,
+        "share": 0.10204066314987757
+       },
+       "ofAuthority": {
+        "rank": 1,
+        "of": 2,
+        "share": 0.5
+       }
+      },
+      "relation": {
+       "count": 3,
+       "value": 93301.26,
+       "yearFirst": 2025,
+       "yearLast": 2025,
+       "frameworks": 0,
+       "excluded": 0
+      },
+      "coverage": {
+       "da": "2026-06-20",
+       "contracts": "2026-06-25"
+      },
+      "partners": null,
+      "twins": []
      }
     },
-    "displaySql": "select count(*), sum(closing_value)\nfrom marts.contract_transactions\nwhere closing_value > 0\n  and authority_id = 9100000001\n  and supplier_id = 9100000101;"
+    "displaySql": "select count(*), sum(closing_value)\nfrom marts.contract_transactions\nwhere closing_value > 0\n  and authority_id = 9100000001\n  and supplier_id = 9100000101;\n-- în afara sumelor, aceeași pereche: achizițiile directe peste 2 mil. lei sau fără valoare pozitivă (da_transactions);\n-- din core.contracts ⨝ core.awards ⨝ core.contract_winners: acordurile-cadru (plafoane), identitățile nesigure,\n-- contractele peste 1 mld. lei și cele de tip neclar (contractKind, canonicalContract, @seap/db)"
    },
    "sources": {
     "status": 200,

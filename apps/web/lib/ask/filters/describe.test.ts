@@ -123,7 +123,9 @@ describe("describeConditions says what the six grammars said (plan §2.2)", () =
       for (const cpv of cpvGroundings) {
         if (relabelled(spec)) continue;
         const grounding = groundingOf(spec, cpv);
-        expect(describeConditions(spec, { grounding }).pills, JSON.stringify(spec)).toEqual(conditionPillsBefore(spec, grounding).map((p) => kitPill(fixed(p))));
+        // F6a: a verification without a period says "până acum" (final fact_check §1), never "toți anii".
+        const kit = (p: string) => spec.block === "fact_check" && p === "toți anii" ? "până acum" : p;
+        expect(describeConditions(spec, { grounding }).pills, JSON.stringify(spec)).toEqual(conditionPillsBefore(spec, grounding).map((p) => kit(kitPill(fixed(p)))));
         // A ranking without topN is the complete one, in pages: its pill no longer says "top 10" (pills.ts, after the S1 review).
         if (spec.block === "table" && spec.topN == null) expect(buildPills(spec, grounding)[1]).toMatch(/^(toate instituțiile publice|toți furnizorii|toate județele)$/);
         else if (spec.block === "table" || spec.block === "trend") expect(buildPills(spec, grounding)).toContain(kitTop(fixed(topPillBefore(spec))));

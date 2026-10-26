@@ -86,7 +86,6 @@ import type {
   SankeyFlow,
   NetworkNode,
   EntityCardData,
-  FactCheckData,
 } from "@/lib/ask/compile";
 
 /** Renderers for the risk/relationship result blocks (mockup blocks 5–13). */
@@ -99,6 +98,8 @@ function flagTitle(code: string): string {
 
 // distribution-2 (F6a): the group, the criteria and the position (DistributionAnswer.tsx).
 export { default as DistributionBlock } from "./DistributionAnswer";
+// fact_check-2 (F6a): the verdict, the profile and the rows outside the sums (FactCheckAnswer.tsx).
+export { default as FactCheckBlock } from "./FactCheckAnswer";
 
 /* ── breakdown ────────────────────────────────────────────────────────── */
 
@@ -1255,88 +1256,6 @@ export function EntityCardBlock({ card, historical = true, spec }: { card: Entit
         Indicele de risc (CRI) e un semnal statistic, nu o dovadă de neregulă —{" "}
         <Link href="/metodologie">cum se calculează</Link>.
       </p>}
-    </div>
-  );
-}
-
-/* ── fact check ───────────────────────────────────────────────────────── */
-
-export function FactCheckBlock({ fact }: { fact: FactCheckData }) {
-  const evidence = useAnswerEvidence();
-  return (
-    <div>
-      <div className="ask-fact">
-        <div className="verdict">
-          {fact.verdict
-            ? "Am găsit înregistrări."
-            : "Nu am găsit în datele selectate."}
-        </div>
-        <div className="sub">
-          {fact.verdict ? (
-            <>
-              <Link href={`/entitati/${fact.authority.entityId}`}>
-                {cleanName(fact.authority.name)}
-              </Link>{" "}
-              a cumpărat de la{" "}
-              <Link href={`/entitati/${fact.supplier.entityId}`}>
-                {cleanName(fact.supplier.name)}
-              </Link>
-              : <b>{recordsWords(fact.count)}</b>, în total{" "}
-              <b>{formatRonFull(fact.value)}</b>
-              {fact.yearFirst && (
-                <>
-                  , între {fact.yearFirst} și {fact.yearLast}
-                </>
-              )}
-              .
-            </>
-          ) : (
-            <>
-              Nu am găsit nicio înregistrare între{" "}
-              <Link href={`/entitati/${fact.authority.entityId}`}>
-                {cleanName(fact.authority.name)}
-              </Link>{" "}
-              și{" "}
-              <Link href={`/entitati/${fact.supplier.entityId}`}>
-                {cleanName(fact.supplier.name)}
-              </Link>{" "}
-              în datele filtrate. Lipsa unui rezultat nu stabilește absența unei
-              relații în afara selecției.
-            </>
-          )}
-        </div>
-      </div>
-      {evidence && (
-        <button
-          type="button"
-          className="cq-record-link"
-          onClick={() => evidence.open()}
-        >
-          Vezi toate înregistrările relației →
-        </button>
-      )}
-      {fact.samples.length > 0 && (
-        <table className="ask-table">
-          <thead>
-            <tr>
-              <th>Cod</th>
-              <th>Dată</th>
-              <th>Ce s-a cumpărat</th>
-              <th className="num">Valoare</th>
-            </tr>
-          </thead>
-          <tbody>
-            {fact.samples.map((s2, i) => (
-              <tr key={i}>
-                <td>{s2.daCode ?? "—"}</td>
-                <td>{s2.date ?? "—"}</td>
-                <td>{s2.cpvName ?? "—"}</td>
-                <td className="num">{formatRonFull(s2.value)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
     </div>
   );
 }

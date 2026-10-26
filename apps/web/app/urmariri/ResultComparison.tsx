@@ -40,6 +40,9 @@ const labels: Record<string, string> = {
   ticks: "Grupul ales", legacy: "Condiții din link", others: "Ceilalți membri", memberIds: "Membrii grupului",
   position: "Poziția în grup", more: "Cu mai multe criterii", same: "Cu tot atâtea criterii", fewer: "Cu mai puține criterii",
   hist: "Membrii după numărul de criterii", k: "Număr de criterii", perCriterion: "Criteriu cu criteriu",
+  // fact_check-2 (F6a): the verdict and what the sums leave out.
+  state: "Verdictul", undated: "Contracte fără dată plauzibilă", channels: "Pe canale", frameworks: "Acorduri-cadru (plafoane)",
+  ceiling: "Plafon", excluded: "Rânduri în afara sumelor",
 };
 /** A group's count is of its entities or counties, not of records (TrendPartTotals.count); a distribution's members are its group. */
 const fieldName = (key: string, path: readonly string[]) => key === "count" && path.includes("composition") ? "Număr în grupă"

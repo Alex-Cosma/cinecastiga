@@ -25,7 +25,7 @@ const BLOCK_LABEL: Record<AskSpec["block"], string> = {
   network: "rețea de parteneri",
   // "Cine conduce?": its own short name (kit §4), not the engine's slug.
   entity_card: "locul 1",
-  fact_check: "verificare Da/Nu",
+  fact_check: "verificare",
   trend: "schimbare între ani",
 };
 
