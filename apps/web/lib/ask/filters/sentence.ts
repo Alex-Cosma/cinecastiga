@@ -1,9 +1,10 @@
 import { countyIsFirmSeat } from "../population";
+import { firmSeatWords, seatCountyWords } from "../seat";
 import { PROCEDURE_WORDS, PURCHASE_KIND_WORDS, type Procedure, type PurchaseKind } from "../purchase";
 import {
   KIND_ONE, KIND_OPTIONS, KIND_WORDS, compareWithLabel, countyWords, entityLabel, leaderAxis, subjectWords, type QuestionSpec,
 } from "../question-ui";
-import { DEFAULT_TREND_MIN_BASE, type AskSpec, type AuthorityKind, type Block } from "../spec";
+import { DEFAULT_TREND_MIN_BASE, type AskSpec, type AuthorityKind, type Block, type FirmSeat } from "../spec";
 import { formatRon } from "../../format";
 import { filterContext, formOf } from "./context";
 import { TREND_CHANGE_LABELS, TREND_CHANGE_PHRASE, TREND_NO_RECORDS, firstTimeTip, firstTimeWords, trendGap } from "./defs/trend";
@@ -24,8 +25,9 @@ import {
  * - The subject is the first phrase of a ranking ("Ce [firme]", "În ce
  *   [județe]"), of the trend, the risk cloud ("Ce [instituții publice] din
  *   [toată țara]") and "Cine conduce?" ("Care [firmă]"), whose axis is the verb.
- * - "din [loc]" is always the buyer's place (R9); on firm profiles the county
- *   is the firm's seat, "cu sediul [în județul Cluj]".
+ * - "din [loc]" is always the buyer's place (R9); the firm's seat is glued to
+ *   the firms that are the subject, "cu sediul [în alt județ]" (F4: firmSeat,
+ *   seatCounty; on firm profiles a link's county is that seat too).
  * - The administrator is a selection phrase (plan §9 F1), glued to the ranked
  *   firms ("Ce [firme] conduse azi de [X] câștigă…"), else "de la [firmele
  *   conduse azi de …]". The employees of the ranked firms are the group row
@@ -192,10 +194,25 @@ function place(out: Tokens, spec: Spec, ctx: FilterCtx, locality = true): void {
   });
 }
 
-/** On firm profiles the county is the firm's own seat (countyIsFirmSeat): "cu sediul [în județul Cluj]" (kit §4, R9). */
+/**
+ * The firm's seat, glued to the firms that are the subject (F4, kit §4, §5.28, R9): "cu sediul [în alt
+ * județ]" (firmSeat, against the buyer's county) or "cu sediul [în județul Cluj]" (seatCounty). On firm
+ * profiles a link's county is the same seat: it says it until the window writes seatCounty in its place.
+ * Nothing when no seat is chosen: the invitation "+ Sediul firmei" adds it.
+ */
 function seat(out: Tokens, spec: Spec): void {
-  out.text(" cu sediul ").slot("county", "seat", countyWords(String(spec.filters.county)).replace(/^din /, "în "), { glued: true });
+  const f = spec.filters;
+  // A profile has no record to compare with the buyer's county: there the window writes only a county.
+  const profile = countyIsFirmSeat(spec, spec.dim === "supplier" ? "supplier" : "authority");
+  const writes: FilterId[] = profile ? ["seatCounty"] : ["firmSeat", "seatCounty"];
+  if (has(f.firmSeat)) out.text(" cu sediul ").slot("firmSeat", "seat", firmSeatWords(f.firmSeat as FirmSeat, has(f.county) ? String(f.county) : null), { glued: true, writes });
+  else if (has(f.seatCounty)) out.text(" cu sediul ").slot("seatCounty", "seat", seatCountyWords(String(f.seatCounty)), { glued: true, writes });
+  else if (has(f.county) && profile)
+    out.text(" cu sediul ").slot("county", "seat", seatCountyWords(String(f.county)), { glued: true, writes });
 }
+/** A seat the sentence says (seat above). */
+const hasSeat = (spec: Spec) => has(spec.filters.firmSeat) || has(spec.filters.seatCounty)
+  || has(spec.filters.county) && countyIsFirmSeat(spec, spec.dim === "supplier" ? "supplier" : "authority");
 
 /**
  * Who bought, after its verb ("făcute de "): a named institution, a town hall
@@ -342,6 +359,7 @@ const table: Write = (out, spec, ctx, labels) => {
   const dim = spec.dim ?? "supplier";
   if (dim === "supplier") {
     out.text("Ce ").slot("dim", "ranked", "firme", { writes: ["authorityKind"], picker: "subject" });
+    seat(out, spec);
     firmsPhrases(out, spec, ctx, false);
     noun(out.text(" câștigă "), spec, "the");
     domain(out, spec, labels);
@@ -616,8 +634,8 @@ const scatter: Write = (out, spec, ctx) => {
   const firms = spec.dim === "supplier", county = has(spec.filters.county);
   out.text("Ce ").slot("dim", "who", firms ? "firme" : kindBare(spec), { says: firms ? ["dim"] : subjectSays(spec), writes: ["authorityKind"], picker: "subject" });
   if (firms) {
-    if (county) seat(out, spec);
-    else out.text(" din ").slot("county", "seat", "toată țara", { says: [] });
+    if (hasSeat(spec)) seat(out, spec);
+    else out.text(" din ").slot("seatCounty", "seat", "toată țara", { says: [] });
   } else if (kindOf(spec) === "consiliu_judetean" && !county) out.text(" ").fixed("din toată țara", [], "Un consiliu pe județ.");
   else place(out, spec, ctx);
   out.text(" ies din tipar după risc și valoarea achizițiilor directe?");
@@ -636,8 +654,8 @@ const entityCard: Write = (out, spec, ctx, labels) => {
     says: firms ? ["dim"] : subjectSays(spec), writes: ["authorityKind"], picker: "subject",
   });
   if (firms) {
-    if (risk) { if (has(spec.filters.county)) seat(out, spec); }
-    else firmsPhrases(out, spec, ctx, true);
+    seat(out, spec);
+    if (!risk) firmsPhrases(out, spec, ctx, true);
   } else if (!risk && ctx.locality.ok && hasLocality(spec)) out.text(" a primăriei ").slot("locality", "place", localityName(String(spec.filters.uatName ?? `SIRUTA ${spec.filters.uatSiruta}`)), { writes: ["county"] });
   // Institutions compete in a county only: a town hall would be the answer itself (final §3.3).
   else place(out, spec, ctx, false);

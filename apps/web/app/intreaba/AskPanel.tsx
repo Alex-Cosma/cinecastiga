@@ -1566,7 +1566,7 @@ function TableBlock({
           <tr>
             <th className="pos">#</th>
             <Th k="name" label="Nume" />
-            <Th k="county" label="Județ" tip={(spec as AskSpec | undefined)?.dim === "supplier" ? <Term tip title="Județ" text="Județul firmei, nu al instituțiilor care au cumpărat de la ea." /> : undefined} />
+            <Th k="county" label="Județ" tip={(spec as AskSpec | undefined)?.dim === "supplier" ? <Term id="sediul-firmei" tip /> : undefined} />
             {perCapita && <th className="num">Populație</th>}
             {perCapita && <Th k="percap" label="Pe locuitor (lei)" num />}
             <Th k="value" label="Valoare" num />

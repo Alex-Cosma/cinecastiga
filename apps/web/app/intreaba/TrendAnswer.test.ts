@@ -55,7 +55,7 @@ describe("the trend's answer", () => {
     expect(text(markup)).toMatch(/Firme noi față de 2024: .*Toate 2 Prima dată în 2025 1/);
   });
 
-  it("shows on a row its labels, partner and change, „Înregistrări →”, and no county beside a firm", () => {
+  it("shows on a row its labels, partner and change, „Înregistrări →”, and the firm's seat beside it (F4)", () => {
     const markup = render({ spec: trendSpec({ change: "up" }) });
     const shown = text(markup);
     expect(shown).toContain("1 contract: 86%");
@@ -63,7 +63,8 @@ describe("the trend's answer", () => {
     expect(shown).toContain("+1.400");
     expect(markup).toContain('aria-label="Înregistrări: ALFA CONSTRUCT SRL"');
     expect(markup).toContain('href="/entitati/1"');
-    expect(shown).not.toContain("București");
+    // A firm's county is its seat since F4 (owner-seat-switch, TB-county-firm flipped).
+    expect(shown).toContain("București");
     expect(shown).toContain("Creșteri: 1 firmă · 2024 100 lei → 2025 1.500 lei");
   });
 

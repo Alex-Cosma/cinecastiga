@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { defaultQuestion, questionErrors, questionKey, transitionQuestion } from "../question-ui";
-import { IMPLEMENTED_KEYS, NEWER_VERSION_LINK, parseSpec, READ_AHEAD_KEYS, runnableError, SELECTION_RULES, TIMESERIES_RULES, TREND_RULES, unimplementedSpecKeys, validateSpec, type AskSpec, type Block } from "../spec";
+import { IMPLEMENTED_KEYS, NEWER_VERSION_LINK, parseSpec, READ_AHEAD_KEYS, runnableError, SEAT_RULES, SELECTION_RULES, TIMESERIES_RULES, TREND_RULES, unimplementedSpecKeys, validateSpec, type AskSpec, type Block } from "../spec";
 import { legacyCorpus } from "../fixtures/legacy-corpus";
 import { FIXTURE_IDENTITIES } from "../fixtures/golden-fixture";
 import { BLOCK_FILTERS } from "./blocks";
@@ -51,11 +51,29 @@ describe("the rules of a key (plan §2.4)", () => {
   // (TREND_RULES, F2) and the filter declares that same function, which runnableError runs.
   it("are those runnableError runs; no filter declares a rule it would not run", () => {
     const ruled = FILTER_DEFS.filter((def) => def.validate);
-    expect(ruled.map((def) => def.id)).toEqual(["purchaseKind", "procedure", "purchaseValue", "trendOrder", "trendMinBase", "trendFirstOnly", "timeseriesGrain", "timeseriesSplit", "timeseriesMonths"]);
+    expect(ruled.map((def) => def.id)).toEqual(["purchaseKind", "procedure", "firmSeat", "seatCounty", "purchaseValue", "trendOrder", "trendMinBase", "trendFirstOnly", "timeseriesGrain", "timeseriesSplit", "timeseriesMonths"]);
     expect(ruled.map((def) => def.validate)).toEqual([
-      SELECTION_RULES.purchaseKind, SELECTION_RULES.procedure, SELECTION_RULES.purchaseValue, TREND_RULES.order, TREND_RULES.minBase, TREND_RULES.firstOnly,
+      SELECTION_RULES.purchaseKind, SELECTION_RULES.procedure, SEAT_RULES.firmSeat, SEAT_RULES.seatCounty, SELECTION_RULES.purchaseValue, TREND_RULES.order, TREND_RULES.minBase, TREND_RULES.firstOnly,
       TIMESERIES_RULES.grain, TIMESERIES_RULES.split, TIMESERIES_RULES.months,
     ]);
+    // F4 (plan §3): one seat at a time, abroad without a size, a county of the seat where firms are the subject.
+    const firms = { block: "table", dim: "supplier", measure: "value" } as const;
+    for (const [raw, rule] of [
+      [{ ...firms, filters: { firmSeat: "other", seatCounty: "Cluj" } }, SEAT_RULES.firmSeat],
+      [{ ...firms, filters: { firmSeat: "abroad", minEmployees: 1, maxEmployees: 9 } }, SEAT_RULES.firmSeat],
+      [{ ...firms, dim: "authority", filters: { seatCounty: "Cluj" } }, SEAT_RULES.seatCounty],
+      [{ block: "stat", measure: "value", filters: { seatCounty: "Cluj" } }, SEAT_RULES.seatCounty],
+      [{ block: "scatter", dim: "supplier", measure: "value", filters: { county: "Cluj", seatCounty: "Iasi" } }, SEAT_RULES.seatCounty],
+    ] as const) {
+      const parsed = parseSpec(raw);
+      if ("error" in parsed) throw new Error(parsed.error);
+      expect(rule(parsed), JSON.stringify(raw)).not.toBeNull();
+      expect(validateSpec(raw)).toEqual({ error: rule(parsed) });
+    }
+    // A buyer's county and the firms' own seat are two places on a ranking; a profile refuses the seat against a buyer.
+    expect(validateSpec({ ...firms, filters: { county: "Cluj", seatCounty: "Iasi" } })).not.toHaveProperty("error");
+    expect(validateSpec({ ...firms, filters: { county: "Cluj", firmSeat: "other", minEmployees: 1, maxEmployees: 9 } })).not.toHaveProperty("error");
+    expect(validateSpec({ block: "scatter", dim: "supplier", measure: "value", filters: { firmSeat: "same" } })).toHaveProperty("error");
     // F3 (plan §3): a CPV code without codes of the kind, a procedure off the contracts, a size above the DA ceiling on DAs.
     const stat = { block: "stat", measure: "value", filters: {} } as const;
     for (const [raw, rule] of [
@@ -317,7 +335,9 @@ function walk() {
       if (!visible.has(id) && !(from.present.has(id) && (!from.visible.has(id) || isOrigin(from.spec, id)))) problems.push(`hidden ${id}: ${where}`);
     // Never a silent drop: what left outside the chosen window has a note or waits in the parked row.
     const window = new Set(windowFilters(placed.slot));
-    const kept = new Set([...present.keys(), ...to.dropped, ...(to.parked?.items.map((item) => item.id) ?? [])]);
+    // A condition kept under another key (F4: a firm profile's county as its seat) is kept.
+    const kept = new Set([...present.keys(), ...to.dropped, ...(to.parked?.items.map((item) => item.id) ?? []),
+      ...Object.entries(to.renamed ?? {}).filter(([, now]) => present.has(now as FilterId)).map(([was]) => was as FilterId)]);
     for (const id of from.present.keys()) if (!kept.has(id) && !window.has(id)) problems.push(`dropped ${id} silently: ${where}`);
     if (to.notes.length < to.dropped.length) problems.push(`${to.dropped.length} dropped, ${to.notes.length} notes: ${where}`);
     // A new refused chip would be offered, then refused (a chip is refused only on a question the engine refuses).
@@ -378,6 +398,8 @@ describe("R1: what a question offers, the engine accepts (plan §2.1)", () => {
       "CPV 33600000 nu are coduri de lucrări. Alege alt tip sau „Orice”.", "CPV 33600000 nu are coduri de servicii. Alege alt tip sau „Orice”.",
       "CPV 45 nu are coduri de produse. Alege alt tip sau „Orice”.", "CPV 45 nu are coduri de servicii. Alege alt tip sau „Orice”.",
       "CPV 45233140 nu are coduri de produse. Alege alt tip sau „Orice”.", "CPV 45233140 nu are coduri de servicii. Alege alt tip sau „Orice”.",
+      // F4: abroad beside a size (a foreign firm has no MF filing).
+      "Firmele străine nu au bilanț și nici număr la Registrul Comerțului. Scoate angajații sau alege alt sediu.",
       "Scoate firma aleasă ca să clasezi firmele.", "Scoate instituția aleasă ca să clasezi instituțiile.",
       "Scoate județul ca să clasezi județele.", "Scoate localitatea ca să clasezi județele.",
     ]);

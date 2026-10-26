@@ -174,6 +174,13 @@ export default function MetodologiePage() {
             institutele de medicină legală și de cercetare nu intră. Școlile (cu liceele, colegiile și grădinițele, dar și școli de aviație, poliție sau pompieri) și consiliile județene
             sunt după nume, aproximativ. Un nume care se potrivește la două tipuri nu are tip, iar o instituție cu nume neobișnuit poate rămâne fără tip.</p>
         </details>
+        <details className="method-fold" id="sediul-firmei">
+          <summary>Sediul firmei</summary>
+          <p>Județul unei firme, oriunde apare (clasamentele, harta furnizorilor, condiția „cu sediul în …”), este sediul ei social:
+            județul ultimei înmatriculări la Registrul Comerțului, pentru un cod fiscal confirmat; când lipsește sau nu e clar, județul din SEAP.
+            Firmele străine apar separat. „În județul instituției” și „În alt județ” compară sediul cu județul instituției care cumpără, la fiecare înregistrare.
+            Sediul nu e locul lucrării: multe firme mari au sediul în București. O firmă fără sediu cunoscut nu intră în nicio condiție de sediu.</p>
+        </details>
         <details className="method-fold">
           <summary>TED</summary>
           <p>Pentru TED păstrăm moneda și sensul sumei: valoare de ofertă/rezultat, interval, plafon de acord-cadru sau necunoscut.

@@ -1,13 +1,14 @@
 import { countWords } from "../answer-text";
 import type { Grounding } from "../ground";
 import { countyIsFirmSeat, isHistoricalProfile, type PopulationCondition, type QueryPopulation } from "../population";
+import { firmSeatWords, seatCountyWords } from "../seat";
 import {
   KIND_OPTIONS, KIND_WORDS, countyWords, entityLabel, focalRole, periodLabel, subjectWords,
   type QuestionSpec,
 } from "../question-ui";
 import { countyDisplay } from "../resolved-spec";
 import {
-  DEFAULT_TREND_MIN_BASE, namedKind, type AskSpec, type AuthorityKind, type MonthWindow, type ParsedAuthorityKind,
+  DEFAULT_TREND_MIN_BASE, FIRM_SEATS, namedKind, type AskSpec, type AuthorityKind, type FirmSeat, type MonthWindow, type ParsedAuthorityKind,
 } from "../spec";
 import { formatExactDecimal, formatInt, formatRon } from "../../format";
 import { monthsLabel } from "../months-window";
@@ -296,6 +297,26 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
       chip: county, pills, scope: [{ label: "Județ", value: county }],
     };
   },
+  // F4, the firm's seat (kit §4 "Sediul firmei"): glued to the firms that are the subject; on a ranking the total
+  // line says whose total it is ("doar firmele cu sediul în alt județ", G8), on a firm profile the group's seat.
+  firmSeat: (spec) => {
+    const seat = spec.filters.firmSeat as FirmSeat | undefined;
+    if (!seat || !(FIRM_SEATS as readonly string[]).includes(seat)) return null;
+    const where = firmSeatWords(seat, spec.filters.county ? String(spec.filters.county) : null);
+    return {
+      words: `doar firmele cu sediul ${where}`, chip: `Cu sediul ${where}`, pills: [`cu sediul ${where}`],
+      scope: [{ label: "Sediul firmei", value: `${where.charAt(0).toLocaleUpperCase("ro-RO")}${where.slice(1)} (față de instituție)` }],
+    };
+  },
+  seatCounty: (spec, { grounding }) => {
+    const county = spec.filters.seatCounty ? String(spec.filters.seatCounty) : null;
+    if (!county) return null;
+    const where = seatCountyWords(grounding?.seatCounty?.canonical ?? county);
+    return {
+      words: isHistoricalProfile(spec) ? `cu sediul ${where}` : `doar firmele cu sediul ${where}`, chip: `Cu sediul ${where}`, pills: [`cu sediul ${where}`],
+      scope: [{ label: "Sediul firmei", value: county }],
+    };
+  },
   admin: (spec, { grounding }) => {
     const f = spec.filters;
     const pills = grounding?.admin?.personKey && grounding.admin.display ? [`conduse azi de ${grounding.admin.display}`] : [];
@@ -489,8 +510,8 @@ export const DESCRIBED_FILTERS = Object.keys(DESCRIBE) as FilterId[];
 /** The order of each place, today's. */
 const TREND_ORDER: readonly FilterId[] = ["trendChange", "trendFirstOnly", "trendMonths", "trendOrder", "trendMinBase"];
 const SERIES_ORDER: readonly FilterId[] = ["timeseriesGrain", "timeseriesSplit", "timeseriesMonths"];
-const PILL_ORDER: readonly FilterId[] = ["purchaseKind", "cpvTerm", "authorityKind", "authority", "supplier", "compareWith", "locality", "county", "admin", "period", ...TREND_ORDER, ...SERIES_ORDER, "singleBidder", "employees", "dataset", "procedure", "purchaseValue", "population", "minimumRecords"];
-const SCOPE_ORDER: readonly FilterId[] = ["authority", "supplier", "compareWith", "purchaseKind", "cpvTerm", "county", "locality", "authorityKind", "admin", "period", ...TREND_ORDER, ...SERIES_ORDER, "dataset", "procedure", "purchaseValue", "singleBidder", "employees", "minimumRecords", "population"];
+const PILL_ORDER: readonly FilterId[] = ["purchaseKind", "cpvTerm", "authorityKind", "authority", "supplier", "compareWith", "locality", "county", "firmSeat", "seatCounty", "admin", "period", ...TREND_ORDER, ...SERIES_ORDER, "singleBidder", "employees", "dataset", "procedure", "purchaseValue", "population", "minimumRecords"];
+const SCOPE_ORDER: readonly FilterId[] = ["authority", "supplier", "compareWith", "purchaseKind", "cpvTerm", "county", "firmSeat", "seatCounty", "locality", "authorityKind", "admin", "period", ...TREND_ORDER, ...SERIES_ORDER, "dataset", "procedure", "purchaseValue", "singleBidder", "employees", "minimumRecords", "population"];
 // A trend's group is its title's own word (sentence.ts); its months, when the title does not say them.
 const SUMMARY_ORDER: readonly FilterId[] = ["dataset", "procedure", "authority", "supplier", "purchaseKind", "cpvTerm", "purchaseValue", "trendMonths", "timeseriesSplit", "timeseriesMonths", "population", "minimumRecords"];
 const CAVEAT_ORDER: readonly FilterId[] = ["purchaseValue", "population", "minimumRecords"];

@@ -109,7 +109,7 @@ describe("the derived links of today go through retarget", () => {
       expect(to.block, id).toBe(target);
       const validated = validateSpec(to);
       expect("error" in validated ? validated.error : null, id).toBeNull();
-      const { cpvTerm: _a, supplierName: _b, supplierId: _c, authorityName: _d, authorityId: _e, county: _f, ...kept } = from.filters;
+      const { cpvTerm: _a, supplierName: _b, supplierId: _c, authorityName: _d, authorityId: _e, county: _f, seatCounty: _g, ...kept } = from.filters;
       expect(to.filters, id).toMatchObject(kept);
       if (target === "stat") expect(to.measure, id).toBe(from.measure === "count" ? "count" : "value");
     }

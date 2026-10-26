@@ -95,10 +95,10 @@ function rowsOf(data: BlockData, spec: AskSpec): string[] {
     case "fact_check":
       return ["cod,data,ce,valoare_lei", ...data.fact.samples.map((s) => `${csvQ(s.daCode)},${csvQ(s.date)},${csvQ(s.cpvName)},${s.value}`)];
     case "trend": {
-      // The list on screen with its columns: the name as shown, the place beside it (an institution's county, a foreign
-      // firm's country; no county beside a firm, owner-seat-switch; none on a county), its labels and partner line.
+      // The list on screen with its columns: the name as shown, the place beside it (an institution's county, a firm's
+      // seat or a foreign firm's country, F4 owner-seat-switch; none on a county), its labels and partner line.
       const { list, rows } = shownTrendList(data, spec);
-      const place = spec.dim === "county" ? null : spec.dim === "supplier" ? "tara" : "judet";
+      const place = spec.dim === "county" ? null : spec.dim === "supplier" ? "sediu" : "judet";
       return [
         `nume,${place ? `${place},` : ""}${data.yearA},${data.yearB},diferenta_lei,etichete,partener`,
         ...rows.map((r) => {
