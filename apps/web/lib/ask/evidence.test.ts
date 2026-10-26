@@ -102,6 +102,14 @@ describe("source selection validation", () => {
     for (const counties of [[], [""], ["x".repeat(101)], [7], "Cluj", Array.from({ length: 43 }, (_, i) => `J${i}`)])
       expect(validateEvidenceScope({ counties })).toEqual({ error: "Județe invalide în selecție." });
   });
+  it("accepts a verification's lines (fact_check-2): the contracts in association, the tenders with one offer, only as true", () => {
+    expect(validateEvidenceScope({ consortium: true, years: [2024] })).toEqual({ consortium: true, years: [2024] });
+    expect(validateEvidenceScope({ singleBid: true })).toEqual({ singleBid: true });
+    for (const value of [false, "true", 1, null]) {
+      expect(validateEvidenceScope({ consortium: value })).toEqual({ error: "Selecție de surse invalidă." });
+      expect(validateEvidenceScope({ singleBid: value })).toEqual({ error: "Selecție de surse invalidă." });
+    }
+  });
 });
 
 describe("source query regression", () => {

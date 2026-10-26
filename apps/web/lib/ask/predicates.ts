@@ -190,13 +190,16 @@ const cpvLike = (sql: DbSql, prefixes: readonly string[]) =>
  * (a trend adds its two years itself). The buyer's kind is on its ids
  * (authority_id, D1), so a trend's grouping, facts and sources read no names.
  * The comparison replaces the condition on its own role by both entities.
+ * `values: false` leaves out the bounds of the sums (a positive value, the DA
+ * plausibility bound): a verification lists the rows they leave out (fact-check.ts).
  */
-export function rowPredicates(ctx: PredicateCtx, opts: { years?: boolean } = {}): Fragment[] {
+export function rowPredicates(ctx: PredicateCtx, opts: { years?: boolean; values?: boolean } = {}): Fragment[] {
   const { sql } = ctx;
-  const parts: Fragment[] = [sql`d.closing_value > 0`];
+  const values = opts.values ?? true;
+  const parts: Fragment[] = values ? [sql`d.closing_value > 0`] : [sql`true`];
   if (ctx.population) parts.push(populationSql(sql, ctx.population));
-  if (ctx.plafond === "strict") parts.push(sql`d.closing_value <= ${DA_PLAFOND_RON}`);
-  if (ctx.plafond === "da-branch") parts.push(sql`(d.src = 'contracts' or d.closing_value <= ${DA_PLAFOND_RON})`);
+  if (values && ctx.plafond === "strict") parts.push(sql`d.closing_value <= ${DA_PLAFOND_RON}`);
+  if (values && ctx.plafond === "da-branch") parts.push(sql`(d.src = 'contracts' or d.closing_value <= ${DA_PLAFOND_RON})`);
   if (ctx.cpvPrefixes.length > 0) parts.push(sql`(${cpvLike(sql, ctx.cpvPrefixes)})`);
   if (ctx.cpvExclude.length > 0) parts.push(sql`not (${cpvLike(sql, ctx.cpvExclude)})`);
   if (ctx.county) parts.push(sql`d.county = ${ctx.county}`);

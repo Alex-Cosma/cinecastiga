@@ -229,6 +229,15 @@ export const GLOSSARY = {
     title: "Prima dată",
     text: "Dintre cele noi, cele a căror primă înregistrare în datele noastre e în al doilea an comparat. Nu e data înființării.",
   },
+  // Ask's verification (fact_check-2, final fact_check §4.1, §4.4): its third verdict and its line "Concurență".
+  "acord-cadru": {
+    title: "Acord-cadru",
+    text: "Acordul-cadru fixează condițiile și un plafon; cumpărarea se face prin contracte subsecvente. Lipsa lor din date poate fi o lipsă de acoperire, nu „nimic cumpărat”.",
+  },
+  "concurenta-oferte": {
+    title: "Concurență",
+    text: "Numărul ofertelor e cunoscut doar pentru contractele găsite și în TED. Socotim licitațiile deschise și restrânse. „Nu știm” nu înseamnă cu concurență; achizițiile directe nu au oferte.",
+  },
   "aceleasi-luni": {
     title: "Aceleași luni",
     text: "Când al doilea an nu e încheiat în date, ambii ani se compară pe aceleași luni: din ianuarie până la ultima lună completă. Altfel un an parțial ar părea o scădere.",
