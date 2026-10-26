@@ -1,4 +1,5 @@
 import { defaultQuestion, transitionQuestion, QUESTION_TYPES, type QuestionSpec } from "../question-ui";
+import { chooseQuestion } from "../filters/transition";
 import type { Block } from "../spec";
 import type { EvidenceScope } from "../evidence";
 import type { DrillSort, TableSort } from "../compile";
@@ -75,6 +76,18 @@ type Edit = (q: QuestionSpec) => void;
 /** A builder question: the catalogue choice, the reader's edits, then the builder's own normalization. */
 export function builderQuestion(block: Block, edit: Edit = () => {}): QuestionSpec {
   const draft = transitionQuestion(defaultQuestion(), block).spec;
+  edit(draft);
+  return transitionQuestion(draft).spec;
+}
+
+/**
+ * A trend as the builder makes it since F2: the catalogue's choice writes the
+ * trend's key (chooseQuestion → enterTrend: Creșteri, months "auto"), then the
+ * reader's edits and the builder's normalization. builderQuestion keeps the
+ * shape of the links made before it (no key).
+ */
+export function builderTrend(edit: Edit = () => {}): QuestionSpec {
+  const draft = chooseQuestion(defaultQuestion(), "trend").spec as QuestionSpec;
   edit(draft);
   return transitionQuestion(draft).spec;
 }
@@ -360,6 +373,20 @@ export function legacyCorpus(ids: CorpusIdentities): CorpusEntry[] {
   combo("top5-da", "trend", all(top({ topN: 5, dataset: "da" }), yearsOf(a, b)));
   combo("cpv-word", "trend", all(set({ cpvTerm: cpv.word }), yearsOf(b, c)));
   combo("county", "trend", all(set({ county: ids.county }), yearsOf(a, b)));
+  // trend, with the key the builder writes since F2 (builderTrend): each group, the order, the months
+  const keyed = (id: string, edit: Edit) =>
+    add(`combo:trend:keyed-${id}`, "combo", "builder: chooseQuestion(\"trend\") → enterTrend (the trend's key) → edits → transitionQuestion", builderTrend(edit));
+  const trendKey = (trend: NonNullable<QuestionSpec["trend"]>): Edit => (q) => { q.trend = { ...q.trend, ...trend }; };
+  keyed("up", yearsOf(a, b));
+  keyed("all-authorities", all(top({ dim: "authority" }), trendKey({ change: "all" }), yearsOf(a, b)));
+  keyed("new-first", all(trendKey({ change: "new", firstOnly: true }), yearsOf(a, b)));
+  keyed("gone-county", all(set({ county: ids.county }), trendKey({ change: "gone" }), yearsOf(a, b)));
+  keyed("down-counties", all(top({ dim: "county" }), trendKey({ change: "down" }), yearsOf(a, b)));
+  keyed("percent", all(trendKey({ order: "percent", minBase: 1_000 }), yearsOf(a, b)));
+  // The last year in part: months "auto" on a channel whose months are confirmed, chosen months, and both channels unconfirmed (refused).
+  keyed("contracts-same-months", all(top({ dataset: "contracts" }), yearsOf(b, c)));
+  keyed("chosen-months", all(trendKey({ change: "all", months: [1, 5] }), yearsOf(b, c)));
+  keyed("unconfirmed-months", yearsOf(b, c));
   // network
   combo("buyer", "network", focalBuyer());
   combo("firm", "network", focalFirm(), { rows: { scope: { role: "authority", entityIds: [String(pair.authority.id)] } } });
