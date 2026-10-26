@@ -112,6 +112,11 @@ function selectionWhere(s: DbSql, ctx: PredicateCtx, input: Pick<FactCheckInput,
   return andAll(s, [input.dataset === "all" ? s`true` : s`d.src = ${input.dataset}`, own, ...groupPredicates(ctx, input.agg, counted)]);
 }
 
+/**
+ * The rows outside the sums read for one pair: their counts come from them. The most of a pair on the local copy
+ * is a few dozen (nationally 508 direct acquisitions), so the bound only guards a malformed pair.
+ */
+const OUTSIDE_READ_LIMIT = 5000;
 const num = (v: string | number | null | undefined): number => v === null || v === undefined ? 0 : Number(v);
 /** Sums of amounts to the ban: adding floats leaves noise (93301.26000000001). */
 const cents = (n: number): number => Math.round(n * 100) / 100;
@@ -150,7 +155,7 @@ export async function factCheckData(s: DbSql, input: FactCheckInput): Promise<Fa
     where d.src = 'da' and ${andAll(s, rowPredicates(bare, { values: false }))}
       and not (coalesce(d.closing_value, 0) > 0 and d.closing_value <= ${DA_PLAFOND_RON})
     order by d.closing_value desc nulls last, d.ref_id desc
-    limit 500
+    limit ${OUTSIDE_READ_LIMIT}
   `) as unknown as OutsideRow[];
   const outsideContracts = (await s`
     select coalesce((${selectionWhere(s, ctx, input, false)}), false) sel, d.contract_id::text ref, d.nid::text nid, d.da_code code, d.finalization_date date,
@@ -158,7 +163,7 @@ export async function factCheckData(s: DbSql, input: FactCheckInput): Promise<Fa
     from ${coreContracts(s, A, S)} d
     where d.category is not null and ${andAll(s, rowPredicates(bare, { values: false }))}
     order by d.full_value desc nulls last, d.contract_id desc
-    limit 500
+    limit ${OUTSIDE_READ_LIMIT}
   `) as unknown as OutsideRow[];
 
   const mine = profile.filter((r) => r.sel);
