@@ -1,5 +1,5 @@
 import type { CoveragePeriods } from "../months-window";
-import { countyIsFirmSeat } from "../population";
+import { countyIsFirmSeat, isHistoricalProfile } from "../population";
 import { focalRole, leaderAxis, localityScopeError, transitionQuestion, type QuestionSpec } from "../question-ui";
 import { runnableError, type AskSpec } from "../spec";
 import { filterContext } from "./context";
@@ -9,6 +9,7 @@ import { selectionOrigin } from "./origin";
 import { parkedRow, pathValues, unpark, type Parked, type ParkedItem } from "./parked";
 import { windowFilters, writeChoice, type Choice } from "./pickers";
 import { FILTERS, visibleFilters } from "./registry";
+import { edited } from "./defs/shared";
 import { sentenceTokens } from "./sentence";
 import { enterTrend, leavingTrend, TREND_FILTERS, trendFollows } from "./trend-rules";
 import type { FilterId, FilterSpec, Slot } from "./types";
@@ -33,6 +34,11 @@ export interface Transition {
   parked: Parked | null;
   /** Another answer about what a note dropped ("Cât câștigă X ›", R8 "›"), by the note's text. */
   links?: Record<string, NoteLink>;
+  /**
+   * Conditions kept under another key (F4): a firm profile's county is the firm's seat, written as seatCounty
+   * (seatFromCounty), and a seat that becomes the institutions' place again; the old key → the new one.
+   */
+  renamed?: Partial<Record<FilterId, FilterId>>;
 }
 
 export type NoteLink = NonNullable<LegacyCondition["retarget"]>;
@@ -41,6 +47,24 @@ export type NoteLink = NonNullable<LegacyCondition["retarget"]>;
 function countyMeaning(spec: FilterSpec): "place" | "seat" | null {
   if (!spec.filters.county) return null;
   return countyIsFirmSeat(spec, focalRole(spec)) ? "seat" : "place";
+}
+
+/** The county moved to the firm's seat (F4): one seat key, written by the seat's window (defs/seat.ts). */
+const countyToSeat = (spec: FilterSpec): FilterSpec => edited(spec, (next) => {
+  next.filters.seatCounty = next.filters.county as string;
+  delete next.filters.county;
+});
+
+/**
+ * A link's county on a firm profile is the firm's seat (plan §2.6): the first
+ * edit writes it as seatCounty, the same condition (F4), so the draft carries
+ * the seat's own key from then on. A distribution's group keeps its county
+ * (its own window, F6a). A restored link is not rewritten (restore.ts): it
+ * opens as it was asked.
+ */
+export function seatFromCounty(spec: FilterSpec): FilterSpec {
+  if (spec.block === "distribution" || spec.filters.seatCounty || countyMeaning(spec) !== "seat") return spec;
+  return countyToSeat(spec);
 }
 
 /** A parked chip names the phrase as the reader saw it ("2025", "„medicamente”"); a person or a town hall by its words. */
@@ -59,7 +83,7 @@ function phraseLabels(spec: FilterSpec): Map<FilterId, string> {
  */
 function settle(
   before: FilterSpec, after: FilterSpec, opts: { lens: boolean; touched: readonly FilterId[]; why: string; whyApplied?: string },
-): { spec: FilterSpec; notes: string[]; dropped: FilterId[]; parked: ParkedItem[]; links: Record<string, NoteLink> } {
+): { spec: FilterSpec; notes: string[]; dropped: FilterId[]; parked: ParkedItem[]; links: Record<string, NoteLink>; renamed: Partial<Record<FilterId, FilterId>> } {
   const touched = new Set(opts.touched);
   const visibleBefore = visibleFilters(before), visibleAfter = visibleFilters(after);
   // The words of a note or a parked chip, read only when one is needed.
@@ -70,6 +94,7 @@ function settle(
   const notes: string[] = [], dropped: FilterId[] = [];
   const parked: ParkedItem[] = [];
   const links: Record<string, NoteLink> = {};
+  const renamed: Partial<Record<FilterId, FilterId>> = {};
   // What the window removed outside its own filters: a stream without the single bidder, another role without the second entity.
   for (const id of presentBefore.keys()) if (!touched.has(id) && !presentAfter.has(id)) {
     notes.push(`Am scos „${say(id)}”: nu se potrivește cu alegerea nouă.`);
@@ -95,7 +120,22 @@ function settle(
       if (was && now && was !== now) {
         // A county keeps its place where the sentence says the new meaning (a subject, a focal entity); a lens sets it aside.
         if (opts.lens || !visibleAfter.has("county")) remove(id, now === "seat" ? "aici județul e sediul firmei" : "aici județul e locul instituției");
-        else notes.push(now === "seat" ? "Județul ales e acum sediul firmelor, nu locul instituțiilor." : "Județul ales e acum locul instituțiilor, nu sediul firmelor.");
+        else {
+          notes.push(now === "seat" ? "Județul ales e acum sediul firmelor, nu locul instituțiilor." : "Județul ales e acum locul instituțiilor, nu sediul firmelor.");
+          // On a firm profile the seat has its own key since F4 (seatFromCounty).
+          if (now === "seat" && spec.block !== "distribution") { spec = seatFromCounty(spec); renamed.county = "seatCounty"; }
+        }
+        continue;
+      }
+    }
+    // The firms' seat on a profile becomes the institutions' place when the subject turns to institutions
+    // (the reverse of the county above, plan §4.12): same words, the other meaning, said in the note.
+    if (id === "seatCounty" && !opts.lens && after.dim !== "supplier" && isHistoricalProfile(after) && after.block !== "distribution" && !after.filters.county) {
+      const placed = edited(spec, (next) => { next.filters.county = next.filters.seatCounty as string; delete next.filters.seatCounty; });
+      if (visibleFilters(placed).has("county")) {
+        spec = placed;
+        notes.push("Județul ales e acum locul instituțiilor, nu sediul firmelor.");
+        renamed.seatCounty = "county";
         continue;
       }
     }
@@ -107,7 +147,7 @@ function settle(
   }
   // What the engine still refuses on the new question (a kind on firm profiles), but never the choice itself.
   if (errorOf(spec)) for (const id of refusedConditions(spec, (id) => touched.has(id)).keys()) remove(id, opts.why);
-  return { spec, notes, dropped, parked, links };
+  return { spec, notes, dropped, parked, links, renamed };
 }
 
 const unique = (notes: readonly string[]) => [...new Set(notes)];
@@ -125,7 +165,9 @@ export interface TransitionContext { coverage?: CoveragePeriods | null | undefin
  * the choice comes before (trend-rules.ts trendFollows: counties back to the
  * growths, an incomplete year's same months).
  */
-export function chooseValue(draft: QuestionSpec, slot: Slot, choice: Choice, parked: Parked | null = null, context: TransitionContext = {}): Transition {
+export function chooseValue(input: QuestionSpec, slot: Slot, choice: Choice, parked: Parked | null = null, context: TransitionContext = {}): Transition {
+  const draft = seatFromCounty(input as FilterSpec);
+  const first: Partial<Record<FilterId, FilterId>> = draft !== input ? { county: "seatCounty" } : {};
   const lens = choice.filter === "rankBy" && draft.block === "entity_card" && choice.value !== leaderAxis(draft);
   const start = lens && parked?.lens === choice.value ? unpark(draft as FilterSpec, parked) : draft as FilterSpec;
   const written = writeChoice(start, slot, choice);
@@ -136,10 +178,12 @@ export function chooseValue(draft: QuestionSpec, slot: Slot, choice: Choice, par
   const settled = settle(start, follows.spec, { lens, touched, why: "nu se potrivește cu alegerea nouă" });
   // A trend's options set aside wait for the trend, whatever the axis of "Cine conduce?" does (one row: the axis's wins).
   const waiting = parked?.lens === "trend" ? parked : null;
+  const renamed = { ...first, ...settled.renamed };
   return {
     spec: settled.spec, notes: unique([...normalized.changes, ...follows.notes, ...settled.notes]), dropped: settled.dropped,
     parked: !lens ? parked : settled.parked.length ? parkedRow(leaderAxis(start), settled.parked) : waiting,
     ...(Object.keys(settled.links).length ? { links: settled.links } : {}),
+    ...(Object.keys(renamed).length ? { renamed } : {}),
   };
 }
 
@@ -151,7 +195,9 @@ export function chooseValue(draft: QuestionSpec, slot: Slot, choice: Choice, par
  * Entering the trend writes a new trend's options and years (trend-rules.ts
  * enterTrend), under what comes back from the row.
  */
-export function chooseQuestion(draft: QuestionSpec, block: string, parked: Parked | null = null, context: TransitionContext = {}): Transition {
+export function chooseQuestion(input: QuestionSpec, block: string, parked: Parked | null = null, context: TransitionContext = {}): Transition {
+  const draft = seatFromCounty(input as FilterSpec);
+  const first: Partial<Record<FilterId, FilterId>> = draft !== input ? { county: "seatCounty" } : {};
   const waits = parked?.lens === "trend" && block !== "trend";
   const start = waits ? draft as FilterSpec : unpark(draft as FilterSpec, parked);
   const leaves = start.block === "trend" && block !== "trend";
@@ -162,10 +208,12 @@ export function chooseQuestion(draft: QuestionSpec, block: string, parked: Parke
   const entered = block === "trend" && base.block !== "trend" ? enterTrend(base, moved.spec as FilterSpec, context.coverage) : { spec: moved.spec as FilterSpec, notes: [] };
   // The reason by cause: a condition the engine applies here but the builder does not offer yet is not "inapplicable".
   const settled = settle(base, entered.spec, { lens: false, touched: [], why: "nu se aplică la această întrebare", whyApplied: "nu se poate alege aici încă" });
+  const renamed = { ...first, ...settled.renamed };
   return {
     spec: settled.spec, notes: unique([...moved.changes, ...entered.notes, ...settled.notes]), dropped: settled.dropped,
     parked: leaving.length ? parkedRow("trend", leaving) : waits ? parked : null,
     ...(Object.keys(settled.links).length ? { links: settled.links } : {}),
+    ...(Object.keys(renamed).length ? { renamed } : {}),
   };
 }
 

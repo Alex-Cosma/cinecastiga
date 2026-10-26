@@ -70,6 +70,13 @@ const employeesInvite = placed("employees", "employees");
 const adminInvite = placed("admin", "admin");
 /** "+ Mărimea achiziției" (plan §4.1–§4.2 P2, F3): set, the chip "Doar cele de peste 1 mil. lei" under the sentence says it. */
 const sizeInvite = placed("purchaseValue", "size");
+/**
+ * "+ Sediul firmei" (F4, kit §5.28): set, the phrase glued to the firms, "cu sediul [în alt județ]". Its window
+ * writes either key: against the buyer's county (firmSeat) or a county of its own (seatCounty); on the index only
+ * the county (a profile has no record to compare, and no foreign firm reaches 20 direct acquisitions).
+ */
+const seatInvite = placed("firmSeat", "seat", { writes: ["seatCounty"] });
+const seatCountyInvite = placed("seatCounty", "seat");
 
 /** Each question's fragments that can be added, in the order of its sentence (plan §4, kit §6). */
 function candidates(spec: FilterSpec, ctx: FilterCtx): Slot[] {
@@ -79,7 +86,7 @@ function candidates(spec: FilterSpec, ctx: FilterCtx): Slot[] {
   switch (ctx.block) {
     case "stat": return [cpvInvite, buyerInvite(ctx), fromInvite(["supplier", "admin", "employees"]), sizeInvite];
     // The ranked firms' size is the row CÂȘTIGĂTORII (F3), not an invitation.
-    case "table": return firms ? [adminInvite, cpvInvite, sizeInvite] : [cpvInvite, fromInvite(["supplier", "admin", "employees"]), sizeInvite];
+    case "table": return firms ? [seatInvite, adminInvite, cpvInvite, sizeInvite] : [cpvInvite, fromInvite(["supplier", "admin", "employees"]), sizeInvite];
     case "timeseries": return [cpvInvite, buyerInvite(ctx), fromInvite(["supplier", "admin"])];
     case "map": return [cpvInvite, buyerInvite(ctx, { authority: false, locality: false, county: false }), fromInvite(["supplier", "admin"])];
     case "breakdown": return [cpvInvite, fromInvite(["supplier"])];
@@ -93,8 +100,8 @@ function candidates(spec: FilterSpec, ctx: FilterCtx): Slot[] {
     case "network": case "sankey": return [cpvInvite];
     case "fact_check": return [cpvInvite, datasetInvite];
     case "entity_card":
-      if (ctx.form === "entity_card:risk") return firms ? [placed("county", "seat")] : [];
-      return firms ? [adminInvite, cpvInvite] : [cpvInvite, fromInvite(["supplier", "admin", "employees"])];
+      if (ctx.form === "entity_card:risk") return firms ? [seatCountyInvite] : [];
+      return firms ? [seatInvite, adminInvite, cpvInvite] : [cpvInvite, fromInvite(["supplier", "admin", "employees"])];
     default: return [];
   }
 }

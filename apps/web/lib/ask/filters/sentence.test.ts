@@ -585,6 +585,30 @@ describe("one vocabulary (kit §4, plan G3, G10)", () => {
       expect(before?.kind === "text" && before.text.endsWith(" cu sediul "), id).toBe(true);
     }
   });
+
+  it("glues the firm's seat to the firms that are the subject (F4, kit §5.28, R9)", () => {
+    const firms = (filters: QuestionSpec["filters"]) => q({ block: "table", dim: "supplier", topN: 10, filters });
+    expect(marked(firms({ firmSeat: "other" })))
+      .toBe("Ce [firme] cu sediul [în alt județ] câștigă [achizițiile] făcute de [instituțiile publice] din [toată țara], în [toți anii]?");
+    // With the buyers' county fixed, "the institution's county" is named; "din" stays the buyers' place.
+    expect(marked(firms({ firmSeat: "same", county: "Cluj" })))
+      .toBe("Ce [firme] cu sediul [în județul Cluj] câștigă [achizițiile] făcute de [instituțiile publice] din [județul Cluj], în [toți anii]?");
+    expect(marked(firms({ firmSeat: "same" }))).toContain("Ce [firme] cu sediul [în județul instituției] câștigă");
+    expect(marked(firms({ seatCounty: "Bucuresti", ...ADMIN })))
+      .toBe("Ce [firme] cu sediul [în București] conduse azi de [POPESCU ION (n. 1970)] câștigă [achizițiile] făcute de [instituțiile publice] din [toată țara], în [toți anii]?");
+    // „Cine conduce?”: on both axes, before the verb (kit §6 entity_card 1).
+    expect(marked(q({ block: "entity_card", dim: "supplier", rankBy: "value", filters: { seatCounty: "Cluj", county: "Iasi" } })))
+      .toBe("Care [firmă] cu sediul [în județul Cluj] [câștigă cel mai mult] din [achizițiile] făcute de [instituțiile publice] din [județul Iasi], în [toți anii]?");
+    expect(marked(q({ block: "entity_card", dim: "supplier", rankBy: "value", filters: { firmSeat: "abroad" } }))).toContain("Care [firmă] cu sediul [în străinătate] [câștigă cel mai mult]");
+    expect(marked(q({ block: "entity_card", dim: "supplier", rankBy: "risk", filters: { seatCounty: "Cluj" } }))).toBe("Care [firmă] cu sediul [în județul Cluj] [are cel mai ridicat indice de risc]?");
+    expect(marked(q({ block: "scatter", dim: "supplier", filters: { seatCounty: "Buzău" } }))).toMatch(/^Ce \[firme\] cu sediul \[în județul Buzău\] ies din tipar/);
+    // The phrase is glued (the total line repeats it, G8) and its window writes either key; on a profile, only the county.
+    expect(slotOf(firms({ firmSeat: "other" }), "firmSeat")).toMatchObject({ glued: true, window: "Unde au sediul firmele?", writes: ["seatCounty"] });
+    expect(slotOf(q({ block: "scatter", dim: "supplier", filters: {} }), "seatCounty")).toMatchObject({ value: "toată țara", says: [], window: "Unde au sediul firmele?" });
+    expect(slotOf(q({ block: "scatter", dim: "supplier", filters: { county: "Cluj" } }), "county")).toMatchObject({ writes: ["seatCounty"] });
+    // Without a seat, the ranking says nothing of it: the invitation "+ Sediul firmei" adds it.
+    expect(marked(firms({}))).not.toContain("sediul");
+  });
 });
 
 describe("the sentence as BLOCK_FILTERS places it", () => {

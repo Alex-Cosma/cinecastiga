@@ -109,11 +109,11 @@ const cpvGroundings: (Grounding["cpv"] | undefined)[] = [
 /** The specs whose population the plan words differently: another page's selection or exclusions. */
 const relabelled = (spec: AskSpec) => Boolean(selectionOrigin(spec.population) || splitExcluded(spec.population).excluded.length);
 /**
- * A trend with its key (F2, the corpus' builderTrend entries), F3's kind, procedure or size, or an evolution with its options (F3-rows): the six grammars
+ * A trend with its key (F2, the corpus' builderTrend entries), F3's kind, procedure or size, an evolution with its options (F3-rows) or F4's seat: the six grammars
  * came before them; their words are tested below.
  */
 const keyed = (spec: AskSpec) => spec.trend !== undefined || spec.timeseries !== undefined
-  || ["purchaseKind", "procedure", "purchaseValueMin", "purchaseValueMax"].some((key) => spec.filters[key as keyof AskSpec["filters"]] !== undefined);
+  || ["purchaseKind", "procedure", "purchaseValueMin", "purchaseValueMax", "firmSeat", "seatCounty"].some((key) => spec.filters[key as keyof AskSpec["filters"]] !== undefined);
 
 describe("describeConditions says what the six grammars said (plan §2.2)", () => {
   const all = [...corpus.map((c) => c.spec), ...edges];

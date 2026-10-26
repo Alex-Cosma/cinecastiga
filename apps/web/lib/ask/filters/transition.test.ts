@@ -49,12 +49,13 @@ describe("the axis of «Cine conduce?» is a lens (kit §5.43, plan §4.13)", ()
     }
   });
 
-  it("parks a firm's seat on the value axis, and the buyer's place on the index (the county changes meaning)", () => {
+  it("keeps a firm's seat on both axes, and parks the buyer's place on the index (the county changes meaning)", () => {
+    // F4 (kit §6 entity_card 1): the seat is glued to the subject, so the axis does not move it; a link's county on
+    // the index is that seat, written as seatCounty at the first edit (plan §2.6).
     const seat = q({ block: "entity_card", dim: "supplier", rankBy: "risk", filters: { county: "Cluj" } });
     const value = choose(seat, "rankBy", { filter: "rankBy", value: "value" });
-    expect(value.parked).toMatchObject({ label: "Nu se aplică valorii", lens: "risk", items: [{ id: "county", label: "în județul Cluj" }] });
-    expect(value.parked?.tip).toMatch(/^Pe valoare, județul e locul instituției/);
-    expect(value.spec.filters.county).toBeUndefined();
+    expect([value.parked, value.spec.filters.county, value.spec.filters.seatCounty, value.notes, value.renamed]).toEqual([null, undefined, "Cluj", [], { county: "seatCounty" }]);
+    expect(questionKey(choose(value.spec, "rankBy", { filter: "rankBy", value: "risk" }).spec)).toBe(questionKey(q({ block: "entity_card", dim: "supplier", rankBy: "risk", filters: { seatCounty: "Cluj" } })));
     const place = q({ block: "entity_card", dim: "supplier", rankBy: "value", filters: { county: "Cluj", authorityKind: "comuna", authorityName: "Comuna Exemplu", authorityId: 101 } });
     const risk = choose(place, "rankBy", { filter: "rankBy", value: "risk" });
     // The named institution wins the buyer's phrase: the kind and the county it carried were the link's chips, parked too.
@@ -109,8 +110,11 @@ describe("another question from the catalogue", () => {
 describe("a window's choice", () => {
   it("switches the risk cloud to firms: the kind leaves with a note, the county stays as their seat (plan §4.12)", () => {
     const to = choose(q({ block: "scatter", dim: "authority", filters: { authorityKind: "spital", county: "Buzău" } }), "dim", { filter: "dim", value: { dim: "supplier" } });
-    expect([to.spec.dim, to.spec.filters.county, to.spec.filters.authorityKind]).toEqual(["supplier", "Buzău", undefined]);
+    // F4: the seat's own key (seatCounty), the same county; and back, the institutions' place again.
+    expect([to.spec.dim, to.spec.filters.county, to.spec.filters.seatCounty, to.spec.filters.authorityKind]).toEqual(["supplier", undefined, "Buzău", undefined]);
     expect(to.notes).toEqual(["Am scos „doar spitale”: nu se potrivește cu alegerea nouă.", "Județul ales e acum sediul firmelor, nu locul instituțiilor."]);
+    const back = choose(to.spec, "dim", { filter: "dim", value: { dim: "authority" } });
+    expect([back.spec.filters.county, back.spec.filters.seatCounty, back.notes, back.renamed]).toEqual(["Buzău", undefined, ["Județul ales e acum locul instituțiilor, nu sediul firmelor."], { seatCounty: "county" }]);
     // County councils have one per county: the place becomes the whole country, with a note.
     const councils = choose(q({ block: "scatter", dim: "authority", filters: { county: "Buzău" } }), "dim", { filter: "dim", value: { dim: "authority", kind: "consiliu_judetean" } });
     expect([councils.spec.filters.county, councils.notes]).toEqual([undefined, ["Am scos „din județul Buzău”: nu se potrivește cu alegerea nouă."]]);

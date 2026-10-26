@@ -7,7 +7,9 @@ import { choicesOf, choiceState, type Choice, type SubjectChoice } from "../../.
 import type { FilterCtx, FilterSpec } from "../../../lib/ask/filters/types";
 import { TREND_ORDER_WORDS, adminPhrase, employeesOnBands, employeesPhrase, localityName, MONTH_SHORT } from "../../../lib/ask/filters/words";
 import { KIND_ONE, KIND_WORDS, entityLabel, leaderAxis, type QuestionSpec } from "../../../lib/ask/question-ui";
-import { DEFAULT_TREND_MIN_BASE, type AskSpec } from "../../../lib/ask/spec";
+import { DEFAULT_TREND_MIN_BASE, type AskSpec, type FirmSeat } from "../../../lib/ask/spec";
+import { countyIsFirmSeat } from "../../../lib/ask/population";
+import { firmSeatWords, seatCountyWords } from "../../../lib/ask/seat";
 import { MAX_SERIES_MONTHS } from "../../../lib/ask/series";
 import { MIN_TREND_YEAR, defaultTrendYears, type CoveragePeriods } from "../../../lib/ask/months-window";
 import { TREND_ALL_CHANGES, TREND_CHANGE_LABELS, TREND_CHANGE_PHRASE, TREND_NOUN_WORDS, trendGap, trendGroupLabel, trendNoun } from "../../../lib/ask/filters/defs/trend";
@@ -29,7 +31,7 @@ import type { BuilderWindowSpec } from "./view";
 
 export type WindowKind =
   | "subject" | "focal" | "buyer" | "from" | "peers" | "period" | "cpv" | "place" | "locality" | "employees" | "admin" | "compareWith"
-  | "months" | "list" | "advanced" | "exclusions" | "size";
+  | "months" | "list" | "advanced" | "exclusions" | "size" | "seat";
 
 /** The control a window holds, from its place: a composed picker first, then the filter's own. */
 export function windowKind(win: BuilderWindowSpec): WindowKind {
@@ -41,7 +43,9 @@ export function windowKind(win: BuilderWindowSpec): WindowKind {
     case "period": return "period";
     case "cpvTerm": case "purchaseKind": return "cpv";
     case "purchaseValue": return "size";
-    case "county": return "place";
+    // The firm's seat (F4): its two keys, and a link's county on a firm profile, which is that seat.
+    case "firmSeat": case "seatCounty": return "seat";
+    case "county": return win.title === SEAT_WINDOW ? "seat" : "place";
     case "locality": return "locality";
     case "employees": return "employees";
     case "admin": return "admin";
@@ -188,6 +192,8 @@ export function windowTip(win: BuilderWindowSpec, spec: QuestionSpec): KitTip | 
     return { title: "Mărimea achiziției", text: "Valoarea întregului contract sau a achiziției directe, nu cota fiecărui câștigător. Limita de jos intră în plajă, cea de sus nu. Plajele nu sunt praguri legale." };
   if (windowOf(win.slot).includes("purchaseKind")) return { title: "Tipul", text: "Tipul vine din codul CPV." };
   if (win.slot.id === "dataset" && windowOf(win.slot).includes("procedure")) return { title: PROCEDURE_GROUP, text: "Procedura declarată în SEAP, doar la contractele din proceduri." };
+  // F4: where the seat comes from (owner-seat-switch), one text with the column's (?) and /harta's.
+  if (windowKind(win) === "seat") return { id: "sediul-firmei" };
   return undefined;
 }
 
@@ -250,6 +256,59 @@ export function listOptions(win: BuilderWindowSpec, spec: QuestionSpec, only?: C
 export const OTHER_INSTITUTIONS = "Alte instituții";
 /** The firms whose seat is not known (kit §4 Sediul firmei, R5): a rest row of the seat windows, never a choice. */
 export const UNKNOWN_SEAT = "Sediu necunoscut";
+/** The seat's window (R10, kit §4 "Sediul firmei"). */
+export const SEAT_WINDOW = "Unde au sediul firmele?";
+
+/**
+ * The rows of "Unde au sediul firmele?" (F4; kit §4 Sediul firmei, §6 table 1
+ * and entity_card 1): "Oriunde" first, which clears the seat; on a ranking of
+ * firms the seat against the buyer's county of each record ("În județul
+ * instituției", or the county's own name when the question fixes it, "În alt
+ * județ"), and "În străinătate" wherever the question runs on the records; a
+ * county of the seat is searched under the list (seatCounty). Each row with
+ * its choices (pickers.ts) and its state (abroad beside a size: disabled, with
+ * the reason). `value` is the checked row, null when a county is chosen
+ * (seatCurrentRow says it).
+ */
+export function seatOptions(win: BuilderWindowSpec, spec: QuestionSpec, ctx: FilterCtx = filterContext(spec as FilterSpec)): { options: ChoiceOption[]; value: string | null } {
+  const f = spec.filters;
+  const offered = choicesOf(win.slot, spec as FilterSpec, ctx).filter((c) => c.filter === "firmSeat" && c.value !== undefined);
+  // On a firm profile a link's county is the seat too: "Oriunde" clears it as well.
+  const linkCounty = Boolean(f.county) && isFirmProfile(spec);
+  const anywhere: ChoiceOption = {
+    value: "none", label: "Oriunde",
+    choice: { filter: "firmSeat", value: undefined },
+  };
+  const rows: ChoiceOption[] = [anywhere];
+  for (const choice of offered) {
+    const seat = choice.value as FirmSeat;
+    const state = choiceState(win.slot, choice, spec as FilterSpec, ctx);
+    if (state.state === "hidden") continue;
+    const words = firmSeatWords(seat, seat === "same" && f.county ? String(f.county) : null);
+    rows.push({ value: seat, label: `${words.charAt(0).toLocaleUpperCase("ro-RO")}${words.slice(1)}`, ...(state.state === "disabled" ? { disabled: state.reason } : {}), choice });
+  }
+  const chosen = typeof f.firmSeat === "string" ? f.firmSeat : null;
+  const value = chosen ?? (f.seatCounty || linkCounty ? null : "none");
+  return { options: rows, value };
+}
+
+/** "Oriunde" removes every seat key, a link's county on a firm profile with them (seatOptions). */
+export function seatClearChoices(spec: QuestionSpec): Choice[] {
+  return [
+    { filter: "firmSeat", value: undefined }, { filter: "seatCounty", value: undefined },
+    ...(spec.filters.county && isFirmProfile(spec) ? [{ filter: "county" as const, value: undefined }] : []),
+  ];
+}
+
+/** The county of the seat as the checked row on top (currentRow): seatCounty, or a firm profile's county. */
+export function seatCurrentRow(spec: QuestionSpec): ChoiceOption | null {
+  const f = spec.filters;
+  const county = f.seatCounty ? String(f.seatCounty) : f.county && isFirmProfile(spec) ? String(f.county) : null;
+  if (!county) return null;
+  const words = seatCountyWords(county);
+  return { value: CURRENT_ROW, label: `${words.charAt(0).toLocaleUpperCase("ro-RO")}${words.slice(1)}`, choice: { filter: "seatCounty", value: county } };
+}
+const isFirmProfile = (spec: QuestionSpec) => countyIsFirmSeat(spec, spec.dim === "supplier" ? "supplier" : "authority");
 
 /** The value of the row that is the window's current choice: choosing it again changes nothing. */
 export const CURRENT_ROW = "current";

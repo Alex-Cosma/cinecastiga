@@ -53,6 +53,10 @@ export const GLOSSARY = {
     title: "Județul de pe hartă",
     text: "Harta include doar înregistrările cu județ cunoscut și pune fiecare achiziție în județul unde are sediul instituția care cumpără, nu unde se face lucrarea sau se livrează produsul. Un minister din București apare la București, chiar dacă lucrarea e în alt județ.",
   },
+  "sediul-firmei": {
+    title: "Sediul firmei",
+    text: "Județul ultimei înmatriculări a firmei la Registrul Comerțului; unde lipsește, județul din SEAP. Firmele străine apar separat. Nu e locul lucrării: multe firme mari au sediul în București.",
+  },
   "lista-titluri": {
     title: "Lista de titluri",
     text: "Fiecare contract apare o dată, chiar dacă are mai mulți furnizori. Unele importuri vechi nu au titlu, așa că lista nu e completă; achizițiile lor sunt pe paginile instituțiilor și firmelor.",

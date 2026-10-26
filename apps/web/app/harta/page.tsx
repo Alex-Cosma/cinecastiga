@@ -3,6 +3,8 @@ import { getSpendByCounty, type Role } from "@/lib/marts";
 import { countyMap, foldCounty } from "@/lib/map";
 import { formatRon } from "@/lib/format";
 import Term from "@/components/Term";
+import { GLOSSARY } from "@/lib/glossary";
+import { SEAT_ABROAD } from "@/lib/ask/seat";
 import "./harta.css";
 
 export const dynamic = "force-dynamic";
@@ -48,6 +50,8 @@ export default async function HartaPage({
   const totalAll = data.reduce((s, d) => s + d.totalRon, 0);
   const mapped = countyMap.shapes.reduce((s, sh) => s + (byKey.get(sh.key) ?? 0), 0);
   const coverage = totalAll > 0 ? (mapped / totalAll) * 100 : 0;
+  // A firm sits in its seat; a foreign one is apart (owner-seat-switch, marts.spend_by_county), said beside the coverage.
+  const abroad = role === "supplier" ? data.filter((d) => d.county === SEAT_ABROAD).reduce((s, d) => s + d.totalRon, 0) : 0;
 
   const shapeValues = countyMap.shapes.map((s) => byKey.get(s.key) ?? 0).filter((v) => v > 0);
   const thresholds = quantileThresholds(shapeValues);
@@ -117,8 +121,12 @@ export default async function HartaPage({
       </div>
 
       <p className="note map-note">
-        {coverage.toFixed(0)}% din valoare are județ cunoscut · județul sediului{" "}
-        <Term tip title="Județul de pe hartă" text={`Fiecare valoare apare în județul unde are sediul ${role === "authority" ? "autoritatea" : "furnizorul"}, nu neapărat unde se execută contractul. Restul valorii are județ necunoscut, nestandardizat sau străin și nu apare pe hartă.`} />
+        {coverage.toFixed(0)}% din valoare are județ cunoscut
+        {abroad > 0 && totalAll > 0 && <> · {((abroad / totalAll) * 100).toFixed(0)}% la firme străine</>}
+        {role === "authority" ? " · județul sediului " : " · sediul firmei "}
+        {role === "authority"
+          ? <Term tip title="Județul de pe hartă" text="Fiecare valoare apare în județul unde are sediul autoritatea, nu neapărat unde se execută contractul. Restul valorii are județ necunoscut sau nestandardizat și nu apare pe hartă." />
+          : <Term tip title="Sediul firmei" text={`${GLOSSARY["sediul-firmei"].text} Firmele fără sediu cunoscut nu apar pe hartă.`} />}
         {" "}· plafoane <Term id="plafoane-totaluri" tip /> ·{" "}
         <Link href="/metodologie#acoperire">Acoperire →</Link>
       </p>

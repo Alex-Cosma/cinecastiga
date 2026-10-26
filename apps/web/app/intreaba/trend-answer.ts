@@ -296,7 +296,7 @@ export interface TrendRowView {
   key: string;
   name: string;
   href: string | null;
-  /** An institution's county, a foreign firm's country; never a county beside a firm (owner-seat-switch, until F4). */
+  /** An institution's county, a firm's seat (F4, owner-seat-switch), a foreign firm's country. */
   place: string | null;
   /** Its group, for the swatch on „Toate”, and in words for a screen reader. */
   group: ReturnType<typeof trendGroupOfRow>;
@@ -368,7 +368,8 @@ export function trendRowView(row: TrendRow, list: TrendList, data: TrendData, sp
   const single = (list === "new" || list === "first") && group === "new" ? { value: bareRon(row.valueB), when: `în ${b}${starB}` }
     : list === "gone" && group === "gone" ? { value: bareRon(row.valueA), when: `în ${a}${starA}` } : null;
   const country = facts ? foreignCountry(facts) : null;
-  const place = spec.dim === "county" ? null : country ? countryWords(country) : spec.dim === "supplier" ? null : row.county;
+  // A firm's county is its seat since F4 (owner-seat-switch, decision TB-county-firm flipped): beside it as an institution's.
+  const place = spec.dim === "county" ? null : country ? countryWords(country) : row.county;
   const name = row.entityId ? cleanName(row.name) : row.name;
   return {
     key: row.entityId ?? row.name, name, href: row.entityId ? `/entitati/${row.entityId}` : null, place, group, groupWords,

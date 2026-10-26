@@ -154,8 +154,8 @@ describe("a row (trend final §3.4, §4.8)", () => {
     expect(trendRowView({ ...DOWN, valueA: 1_000, valueB: 6 }, "down", data, firms).pct?.text).toBe("−99%");
   });
 
-  it("puts no county beside a firm (owner-seat-switch, until F4), an institution's county, a foreign firm's country", () => {
-    expect(trendRowView(UP, "up", data, firms).place).toBeNull();
+  it("puts a firm's seat beside it (F4, owner-seat-switch), an institution's county, a foreign firm's country", () => {
+    expect(trendRowView(UP, "up", data, firms).place).toBe("București");
     expect(trendRowView(UP, "up", trendFixture({ noun: "instituții" }), trendSpec({}, { dim: "authority" })).place).toBe("București");
     const foreign = trendRowView(FOREIGN, "new", data, firms);
     expect(foreign.place).toBe("Germania");

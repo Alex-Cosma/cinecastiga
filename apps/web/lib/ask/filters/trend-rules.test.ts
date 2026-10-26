@@ -5,6 +5,7 @@ import { defaultQuestion, questionErrors, questionKey, transitionQuestion, type 
 import { encodeSpec } from "../permalink";
 import type { CoveragePeriods } from "../months-window";
 import { validateSpec } from "../spec";
+import { KEY_VERSION_NOTES } from "../answer-core";
 import { builderView } from "../../../app/intreaba/builder/view";
 import UnderChips from "../../../app/intreaba/builder/UnderChips";
 import { BLOCK_FILTERS } from "./blocks";
@@ -193,7 +194,8 @@ describe("old trend links open as they were (plan §2.6, trend final §4.6)", ()
     const raw = { block: "trend", dim: "supplier", measure: "value", topN: 10, filters: { yearFrom: 2024, yearTo: 2025 } };
     const link = restoreLink(raw);
     if (link.kind !== "draft") throw new Error(link.error);
-    expect([link.run, link.conditions, link.notes, questionKey(link.spec)]).toEqual([true, [], [], questionKey(link.link)]);
+    // F4: a trend of firms now shows each firm's seat; a restored link says it once (seat-2, „Ce se schimbă”).
+    expect([link.run, link.conditions, link.notes, questionKey(link.spec)]).toEqual([true, [], [KEY_VERSION_NOTES["seat-2"]], questionKey(link.link)]);
     expect(link.spec).not.toHaveProperty("trend");
   });
 

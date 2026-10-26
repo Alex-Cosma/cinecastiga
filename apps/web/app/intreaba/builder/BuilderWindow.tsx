@@ -11,6 +11,7 @@ import type { Choice } from "@/lib/ask/filters/pickers";
 import type { Excluded } from "@/lib/ask/filters/origin";
 import type { FilterSpec } from "@/lib/ask/filters/types";
 import { cloneQuestion, foldQuestion, type QuestionSpec } from "@/lib/ask/question-ui";
+import { countyIsFirmSeat } from "@/lib/ask/population";
 import type { EntityHit } from "@/lib/search";
 import { MIN_TREND_YEAR, type CoveragePeriods } from "@/lib/ask/months-window";
 import { choiceState } from "@/lib/ask/filters/pickers";
@@ -28,7 +29,7 @@ import Popover from "./pickers/Popover";
 import type { ChangeSource, KitRestRow } from "./kit-types";
 import type { BuilderWindowSpec } from "./view";
 import {
-  CURRENT_ROW, SERIES_FIRST_YEAR, UNKNOWN_SEAT, bandCount, bandValues, bandsChoice, choiceWords, countedOptions, countedRest, countySide, currentRow, emptyReason, fromTab, fromTabs,
+  CURRENT_ROW, SERIES_FIRST_YEAR, UNKNOWN_SEAT, bandCount, seatClearChoices, seatCurrentRow, seatOptions, bandValues, bandsChoice, choiceWords, countedOptions, countedRest, countySide, currentRow, emptyReason, fromTab, fromTabs,
   listOptions, optionValue, periodPresets, presetCounts, seriesMonthPresets, seriesMonthsError, shareText, windowKind, windowTip, type ChoiceOption, type CoverageSpan,
 } from "./window-model";
 import { useFacet } from "./use-facet";
@@ -236,25 +237,20 @@ function BuyerWindow({ win, draft, ctx, onPick }: { win: BuilderWindowSpec; draf
 }
 
 /**
- * "Unde?" (the institution's county) or "Unde au sediul firmele?" (a firm
- * profile's seat), with their kinds of institution: the first row counts the
- * whole draft, each county its records (or firms, or profiles) beside its
- * name, and the rest is "Sediu necunoscut" (R5).
+ * "Unde?" (the institution's county), with its kinds of institution: the
+ * first row counts the whole draft, each county its records beside its name
+ * (R5). A firm's seat has its own window (SeatWindow, F4).
  */
 function PlaceWindow({ win, draft, ctx, onPick }: { win: BuilderWindowSpec; draft: QuestionSpec; ctx: FilterContext; onPick: (choices: Choice[]) => void }) {
   const own = windowOf(win.slot);
-  const seat = win.title === "Unde au sediul firmele?";
   const kinds = own.includes("authorityKind") ? listOptions(win, draft, "authorityKind", ctx) : null;
-  const counts = useFacet(draft, seat ? "seat" : "county");
+  const counts = useFacet(draft, "county");
   const kindCounts = useFacet(draft, kinds ? "kind" : null);
-  const first: ChoiceOption = { value: "none", label: seat ? "Oriunde" : "Toată țara", choice: { filter: "county", value: undefined } };
+  const first: ChoiceOption = { value: "none", label: "Toată țara", choice: { filter: "county", value: undefined } };
   const set = Boolean(draft.filters.county || draft.filters.uatSiruta);
-  // The firms without a known seat are left out of a seat's answer (kit §4 Sediul firmei, R5).
-  const rest = seat ? countedRest([{ label: UNKNOWN_SEAT }], counts) : undefined;
   const kindRest = kinds ? countedRest(kinds.rest, kindCounts) : undefined;
   return <>
     <ChoiceList label={win.name} options={countedOptions([first], counts, () => undefined)} value={set ? null : "none"} current={set ? currentRow("place", draft) : null}
-      {...(rest ? { rest } : {})}
       onPick={(option) => onPick(option.value === CURRENT_ROW ? [] : [...(draft.filters.uatSiruta ? [{ filter: "locality" as const, value: undefined }] : []), first.choice])} />
     {kinds && <><p className="qb-opt-group">Ce fel de instituții</p><ChoiceList label="Tipul instituției" options={countedOptions(kinds.options, kindCounts, kindValue, { checked: kinds.value })} value={kinds.value}
       {...(kindRest ? { rest: kindRest } : {})} onPick={(option) => onPick([option.choice])} /></>}
@@ -262,10 +258,46 @@ function PlaceWindow({ win, draft, ctx, onPick }: { win: BuilderWindowSpec; draf
   </>;
 }
 
+/**
+ * "Unde au sediul firmele?" (F4; kit §4 Sediul firmei, §6 table 1, entity_card
+ * 1): "Oriunde"; on a ranking of firms the seat against the buyer's county of
+ * each record; "În străinătate" where the question runs on the records; then
+ * a county of the seat, searched (seatCounty), the buyers' county first. The
+ * counts (R5): on a ranking the firms of each class and their records' value,
+ * elsewhere each county's firms (or profiles); the rest is "Sediu necunoscut".
+ */
+function SeatWindow({ win, draft, ctx, onPick }: { win: BuilderWindowSpec; draft: QuestionSpec; ctx: FilterContext; onPick: (choices: Choice[]) => void }) {
+  const { options, value } = seatOptions(win, draft, ctx);
+  const relative = options.some((option) => option.value === "same" || option.value === "other");
+  const counts = useFacet(draft, "seat");
+  const rest = countedRest([{ label: UNKNOWN_SEAT }], counts);
+  const counted = countedOptions(options, counts, (option) => option.value === "none" ? undefined : option.value, { checked: value });
+  return <>
+    <ChoiceList label={win.name} options={counted} value={value} current={seatCurrentRow(draft)} {...(rest ? { rest } : {})}
+      onPick={(option) => onPick(option.value === CURRENT_ROW ? [] : option.value === "none" ? seatClearChoices(draft) : [option.choice])} />
+    <p className="qb-opt-group">În județul…</p>
+    <SeatSearch draft={draft} {...(relative ? {} : { counts })} onPick={onPick} />
+  </>;
+}
+
+/** The county of the seat (seatCounty), searched; the buyers' county leads (kit §6 entity_card 1). */
+function SeatSearch({ draft, counts, onPick }: { draft: QuestionSpec; counts?: FacetView; onPick: (choices: Choice[]) => void }) {
+  const s = useSuggestions(false, undefined, false);
+  const buyer = draft.filters.county && !isFirmProfileDraft(draft) ? foldQuestion(String(draft.filters.county)) : null;
+  const results = useMemo(() => {
+    const found = countyResults(s.query, undefined, counts).map((r): Found => ({ ...r, choices: [{ filter: "seatCounty", value: r.choices[0]!.value }] }));
+    const lead = buyer ? found.filter((r) => foldQuestion(String(r.choices[0]!.value)) === buyer) : [];
+    return [...lead, ...found.filter((r) => !lead.includes(r))];
+  }, [s.query, counts, buyer]);
+  return <EntitySearch label="Județul sediului" placeholder="Caută județul" results={results} minChars={1}
+    onSearch={(q) => s.search(q, false)} onPick={(r) => onPick((r as Found).choices)} emptyText="Niciun județ cu acest nume." />;
+}
+const isFirmProfileDraft = (draft: QuestionSpec) => countyIsFirmSeat(draft, draft.dim === "supplier" ? "supplier" : "authority");
+
 export default function BuilderWindow(props: BuilderWindowProps) {
   const { win, anchor, onClose, draft } = props;
   const kind = win ? windowKind(win) : null;
-  const wide = kind !== null && ["advanced", "buyer", "from", "peers", "focal", "compareWith", "cpv", "place", "locality", "admin"].includes(kind);
+  const wide = kind !== null && ["advanced", "buyer", "from", "peers", "focal", "compareWith", "cpv", "place", "seat", "locality", "admin"].includes(kind);
   const tip = win ? windowTip(win, draft) : undefined;
   return <Popover open={Boolean(win)} anchor={anchor} onClose={onClose} title={win?.title ?? ""} wide={wide} {...(tip ? { tip } : {})}>
     {win && <WindowBody key={win.key} {...props} win={win} />}
@@ -273,7 +305,7 @@ export default function BuilderWindow(props: BuilderWindowProps) {
 }
 
 /** Windows whose first choice is a list above a search: they open on the chosen row, not the field (on a phone its keyboard would cover the list). */
-const LIST_FIRST = new Set(["buyer", "place", "locality", "from", "peers"]);
+const LIST_FIRST = new Set(["buyer", "place", "locality", "from", "peers", "seat"]);
 
 function WindowBody({ win, draft, excluded = [], onChoose, onReplace, onRemoveExclusions, onCpvName, onClose, coverage }: BuilderWindowProps & { win: BuilderWindowSpec }) {
   const kind = windowKind(win);
@@ -295,6 +327,7 @@ function WindowBody({ win, draft, excluded = [], onChoose, onReplace, onRemoveEx
     case "peers": return <>{marker}<PeersWindow win={win} draft={draft} onPick={pick} /></>;
     case "buyer": return <>{marker}<BuyerWindow win={win} draft={draft} ctx={ctx} onPick={pick} /></>;
     case "place": return <>{marker}<PlaceWindow win={win} draft={draft} ctx={ctx} onPick={pick} /></>;
+    case "seat": return <>{marker}<SeatWindow win={win} draft={draft} ctx={ctx} onPick={pick} /></>;
     case "locality":
       return <>
         {marker}

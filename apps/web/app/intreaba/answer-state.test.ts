@@ -175,9 +175,9 @@ describe("«Rezultatul afișat · CSV» of a trend", () => {
   it("exports the list on screen with its columns, the group and the months beside it", () => {
     const { text, filename } = answerCsv(data, trendSpec({ change: "new", months: "auto" }), "Ce firme noi apar în 2025?", { group: "noi", months: "ian.–mai" });
     const lines = text.replace(/^﻿/, "").split("\r\n");
-    // No county beside a firm (owner-seat-switch), as on screen; a foreign firm's country, as on screen.
-    expect(lines[0]).toBe("nume,tara,2024,2025,diferenta_lei,etichete,partener,grupa,luni");
-    expect(lines[1]).toBe('"BETA SERV SRL","",0,900,900,"fără CUI valid; prima dată în 2025; 1 achiziție directă: 100%","100% de la PRIMARIA EXEMPLU","noi","ian.–mai"');
+    // A firm's seat beside it (F4, owner-seat-switch), as on screen; a foreign firm's country, as on screen.
+    expect(lines[0]).toBe("nume,sediu,2024,2025,diferenta_lei,etichete,partener,grupa,luni");
+    expect(lines[1]).toBe('"BETA SERV SRL","București",0,900,900,"fără CUI valid; prima dată în 2025; 1 achiziție directă: 100%","100% de la PRIMARIA EXEMPLU","noi","ian.–mai"');
     expect(lines[2]).toBe('"GAMMA GMBH","Germania",0,300,300,"activă din 2019","","noi","ian.–mai"');
     expect(lines).toHaveLength(4);
     expect(filename).toBe("ce-firme-noi-apar-in-2025-noi-ian-mai.csv");
@@ -191,7 +191,7 @@ describe("«Rezultatul afișat · CSV» of a trend", () => {
       trendSpec({ change: "up" }, { dim: "county" }), "T");
     expect(counties.text.split("\r\n").slice(0, 2)).toEqual(["﻿nume,2024,2025,diferenta_lei,etichete,partener", '"Cluj",10,20,10,"",""']);
     const old = answerCsv(trendFixture({ groups: undefined, composition: undefined, list: undefined, rowFacts: undefined }), trendSpec(), "T");
-    expect(old.text.split("\r\n").slice(0, 2)).toEqual(["﻿nume,tara,2024,2025,diferenta_lei,etichete,partener", '"ALFA CONSTRUCT SRL","",100,1500,1400,"",""']);
+    expect(old.text.split("\r\n").slice(0, 2)).toEqual(["﻿nume,sediu,2024,2025,diferenta_lei,etichete,partener", '"ALFA CONSTRUCT SRL","București",100,1500,1400,"",""']);
   });
 
   it("writes the names as shown and the difference to the ban, without a float's noise", () => {
