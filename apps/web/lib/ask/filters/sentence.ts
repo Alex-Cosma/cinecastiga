@@ -9,7 +9,7 @@ import { filterContext, formOf } from "./context";
 import { TREND_CHANGE_LABELS, TREND_CHANGE_PHRASE, TREND_NO_RECORDS, firstTimeTip, firstTimeWords, trendGap } from "./defs/trend";
 import type { FilterCtx, FilterId, FilterSpec, Picker, Slot } from "./types";
 import {
-  TREND_ORDER_WORDS, adminLead, adminPhrase, employeesOnBands, employeesPhrase, employeesWords, localityName, periodPhrase, periodWordsWith,
+  TREND_ORDER_WORDS, adminLead, adminPhrase, employeesOnBands, employeesPhrase, localityName, periodPhrase, periodWordsWith,
   streamWords, trendBaseWho,
 } from "./words";
 
@@ -26,12 +26,13 @@ import {
  *   [toată țara]") and "Cine conduce?" ("Care [firmă]"), whose axis is the verb.
  * - "din [loc]" is always the buyer's place (R9); on firm profiles the county
  *   is the firm's seat, "cu sediul [în județul Cluj]".
- * - The employees and the administrator are selection phrases (plan §9 F1):
- *   glued to the ranked firms ("Ce [firme] cu [1–9 angajați] câștigă…"), else
- *   "de la [firme cu 1–9 angajați]". No group row says a key the engine still
- *   applies on the records. A range off the kit's bands (0 · 1–9 · 10–49 ·
- *   50–249 · 250+) is an old link's: its window cannot show it, so it stays
- *   under the sentence (kit §5.5).
+ * - The administrator is a selection phrase (plan §9 F1), glued to the ranked
+ *   firms ("Ce [firme] conduse azi de [X] câștigă…"), else "de la [firmele
+ *   conduse azi de …]". The employees of the ranked firms are the group row
+ *   CÂȘTIGĂTORII since F3 (table:employees-2, blocks.ts winners), elsewhere
+ *   "de la [firme cu 1–9 angajați]". A range off the kit's bands (0 · 1–9 ·
+ *   10–49 · 50–249 · 250+) is an old link's: its window cannot show it, so it
+ *   stays under the sentence (kit §5.5).
  * - A condition the sentence does not say stays a condition under it ("Din
  *   link", legacyConditions): saidFilters tells which ones it says.
  *
@@ -239,9 +240,11 @@ function fromWhom(out: Tokens, spec: Spec, ctx: FilterCtx, offered: readonly Fro
   out.text(` ${verb} `).slot(id, "from", value, { writes: offered, picker: "from" });
 }
 
-/** The ranked firms' own selection phrases (plan §9 F1): "cu [1–9 angajați]", "conduse azi de [Ion Popescu]". */
+/**
+ * The ranked firms' own selection phrase (plan §9 F1): "conduse azi de [Ion Popescu]". Their size is the
+ * group row CÂȘTIGĂTORII (F3, plan §4.2 P3a): the list narrows, the total stays the sentence's.
+ */
 function firmsPhrases(out: Tokens, spec: Spec, ctx: FilterCtx, one: boolean): void {
-  if (hasEmployees(spec)) out.text(" ").slot("employees", "employees", employeesWords(spec.filters.minEmployees, spec.filters.maxEmployees)!, { glued: true });
   if (ctx.named.admin) out.text(` ${adminLead(one)} `).slot("admin", "admin", spec.filters.adminName ? String(spec.filters.adminName) : "persoana aleasă", { glued: true });
 }
 
@@ -329,7 +332,7 @@ const stat: Write = (out, spec, ctx, labels) => {
 };
 
 /**
- * §4.2 Firms: "Ce [firme] {cu [1–9 angajați]} {conduse azi de [X]} câștigă [achizițiile] {pentru […]}
+ * §4.2 Firms: "Ce [firme] {conduse azi de [X]} câștigă [achizițiile] {pentru […]}
  * făcute de [instituțiile publice] din [toată țara], în [toți anii]?". Institutions: "Ce [spitale] din
  * [județul Cluj] cumpără cel mai mult {pentru […]} {de la [firme …]}, prin [toate achizițiile], în […]?".
  * Counties: "În ce [județe] cumpără cel mai mult [primăriile de comună] {…}, prin […], în […]?".
@@ -380,7 +383,14 @@ const timeseries: Write = (out, spec, ctx, labels) => {
     buyer(out, spec, ctx, { place: namedSeller(ctx) ? "set" : "always" });
   }
   fromWhom(out, spec, ctx, ["supplier", "admin"], s.from);
-  out.text(", ").slot("period", "when", hasPeriod(spec) ? `an de an, ${periodPhrase(spec.filters).value}` : "an de an", { says: hasPeriod(spec) ? ["period"] : [] });
+  // The pace and the period, one phrase (final §1, R10 „Când?”): "an de an, 2021–2026", "lună de lună, în 2025",
+  // "lună de lună, 2025–2026" (F3: its window writes the grain with the period).
+  const month = spec.timeseries?.grain === "month";
+  const { value } = periodPhrase(spec.filters), oneYear = /^\d{4}$/.test(value);
+  const words = month ? `lună de lună, ${oneYear ? `în ${value}` : value}` : hasPeriod(spec) ? `an de an, ${value}` : "an de an";
+  out.text(", ").slot("period", "when", words, {
+    says: [...(hasPeriod(spec) ? ["period" as const] : []), ...(month ? ["timeseriesGrain" as const] : [])], writes: ["timeseriesGrain"],
+  });
   out.text("?");
 };
 
@@ -614,7 +624,7 @@ const scatter: Write = (out, spec, ctx) => {
 };
 
 /**
- * §4.13 "Care [firmă] {cu [1–9 angajați]} [câștigă cel mai mult] din [achizițiile] {pentru […]} făcute de
+ * §4.13 "Care [firmă] {condusă azi de [X]} [câștigă cel mai mult] din [achizițiile] {pentru […]} făcute de
  * [instituțiile publice] din [toată țara], în [toți anii]?"; institutions "Care [spital] din [județul
  * Cluj] [cumpără cel mai mult] {de la [X]}, prin [toate achizițiile], în […]?"; on the index "Care
  * [firmă] {cu sediul [în județul Cluj]} [are cel mai ridicat indice de risc]?". The axis is the verb.

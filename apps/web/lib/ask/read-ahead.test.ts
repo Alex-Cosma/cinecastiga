@@ -15,9 +15,6 @@ const stat = { block: "stat", measure: "value", filters: {} };
 const table = { block: "table", dim: "supplier", measure: "value", filters: {} };
 /** One well-formed sample per key read ahead, on a question that otherwise runs today. */
 const SAMPLES: Record<Exclude<keyof typeof READ_AHEAD_KEYS, "options.members=network-group">, Record<string, unknown>> = {
-  "timeseries.grain": { block: "timeseries", measure: "value", filters: { yearFrom: 2024, yearTo: 2025 }, timeseries: { grain: "month" } },
-  "timeseries.split": { block: "timeseries", measure: "value", filters: {}, timeseries: { split: "channel" } },
-  "timeseries.months": { block: "timeseries", measure: "value", filters: {}, timeseries: { months: "auto" } },
   "filters.firmSeat": { ...table, filters: { firmSeat: "other" } },
   "filters.seatCounty": { block: "entity_card", dim: "supplier", rankBy: "value", measure: "value", filters: { seatCounty: "Cluj" } },
   "filters.sharedPartners": { block: "compare", measure: "value", filters: { supplierId: 1, compareWithId: 2, sharedPartners: true } },
@@ -167,6 +164,8 @@ describe("today's questions", () => {
       "filters.monthFrom", "filters.monthTo", "population", "minimumRecords", "comparisonMode",
       // F2: the trend's lenses come from the builder and the rules interpreter (plan §2.7); the model path is off.
       "trend.change", "trend.months", "trend.order", "trend.minBase", "trend.firstOnly",
+      // F3: the evolution's pace, split and same months, likewise (the strip, the "Când?" window and links).
+      "timeseries.grain", "timeseries.split", "timeseries.months",
     ];
     const schema = new Set([...Object.keys(SPEC_JSON_SCHEMA.properties).filter(key => key !== "filters"),
       ...Object.keys(SPEC_JSON_SCHEMA.properties.filters.properties).map(key => `filters.${key}`)]);

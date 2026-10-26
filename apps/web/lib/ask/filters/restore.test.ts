@@ -25,7 +25,9 @@ describe("a link opened in the builder", () => {
       else expect(restored.kind, entry.id).toBe("draft");
     }
     expect(restoreLink({ block: "table", measure: "value", filters: {}, colour: "red" })).toEqual({ kind: "error", error: INVALID_LINK });
-    expect(restoreLink({ block: "timeseries", measure: "value", filters: {}, timeseries: { grain: "month" } })).toEqual({ kind: "error", error: NEWER_VERSION_LINK, newer: true });
+    expect(restoreLink({ block: "scatter", dim: "authority", measure: "value", filters: {}, scatter: { flag: "da_split" } })).toEqual({ kind: "error", error: NEWER_VERSION_LINK, newer: true });
+    // F3 runs the evolution's options: a link with them opens as a draft.
+    expect(restoreLink({ block: "timeseries", measure: "value", filters: { yearFrom: 2024, yearTo: 2025 }, timeseries: { grain: "month" } }).kind).toBe("draft");
     expect(restoreLink({ block: "trend", measure: "value", filters: {}, trend: { change: "up" } }).kind).toBe("draft");
   });
 

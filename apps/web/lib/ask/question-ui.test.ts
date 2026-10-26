@@ -237,7 +237,9 @@ describe("a restored or edited question keeps what it asked", () => {
   });
 
   it("a new question still starts from its type's defaults, with the note where the measure changes", () => {
-    const counted = transitionQuestion({ block: "stat", measure: "count", filters: {} }, "breakdown");
+    // F3: the breakdown orders by records too (COUNT_MEASURE_BLOCKS); the network still shows lei.
+    expect(transitionQuestion({ block: "stat", measure: "count", filters: {} }, "breakdown").spec.measure).toBe("count");
+    const counted = transitionQuestion({ block: "stat", measure: "count", filters: { authorityId: 1, authorityName: "X" } }, "network");
     expect(counted.spec.measure).toBe("value");
     expect(counted.changes).toEqual(["Această întrebare folosește valoarea în lei."]);
     expect(transitionQuestion({ block: "stat", measure: "value", filters: {} }, "entity_card").spec.rankBy).toBe("value");

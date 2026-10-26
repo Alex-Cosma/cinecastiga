@@ -1,5 +1,6 @@
 import { validatePopulation, unsupportedPopulationView, type MinimumRecords, type QueryPopulation } from "./population";
 import { codeKinds, PURCHASE_KIND_WORDS } from "./purchase";
+import { MAX_SERIES_MONTHS, seriesMonthsSpan } from "./series";
 
 /**
  * The closed query-spec vocabulary for the "Întreabă" engine. The LLM never
@@ -338,6 +339,8 @@ export const IMPLEMENTED_KEYS: ReadonlySet<string> = new Set([
   ...["change", "months", "order", "minBase", "firstOnly"].map(key => `trend.${key}`),
   // F3: the common selection (SELECTION_RULES below; lib/ask/predicates.ts rowPredicates).
   ...["purchaseKind", "procedure", "purchaseValueMin", "purchaseValueMax"].map(key => `filters.${key}`),
+  // F3: the evolution's months, split and same months (TIMESERIES_RULES below; compile.ts case "timeseries").
+  ...["grain", "split", "months"].map(key => `timeseries.${key}`),
 ]);
 /**
  * Paths parseSpec reads ahead of the engine (plan §3), with the stage that
@@ -348,7 +351,6 @@ export const IMPLEMENTED_KEYS: ReadonlySet<string> = new Set([
  */
 export const READ_AHEAD_KEYS = {
   "options.members=network-group": "F4",
-  "timeseries.grain": "F3", "timeseries.split": "F3", "timeseries.months": "F3",
   "filters.firmSeat": "F4", "filters.seatCounty": "F4", "filters.sharedPartners": "F4", "sankey.shown": "F4",
   "network.partners": "F4", "network.since": "F4", "network.order": "F4", "network.show": "F4", "network.signals": "F4",
   "filters.newSince": "F5", "filters.newScope": "F5", "filters.mainClient": "F5", "filters.dominantSupplier": "F5",
@@ -652,6 +654,31 @@ export const TREND_RULES: Readonly<Record<"order" | "minBase" | "firstOnly", (sp
     ? "„Prima dată” se aplică doar firmelor sau instituțiilor noi." : null,
 };
 
+/**
+ * The rules of the evolution's options (plan §3, final timeseries §3.7–§3.9):
+ * month by month needs its years, at most 36 months; the same months cut whole
+ * years (not months, nor a series with month bounds); the split by channel is
+ * of every purchase, by domain of more than one domain. FilterDef.validate of
+ * lib/ask/filters/defs/timeseries.ts; runnableError runs every one.
+ */
+export const TIMESERIES_RULES: Readonly<Record<"grain" | "months" | "split", (spec: AskSpec) => string | null>> = {
+  // The same months first: a refusal names the option to remove (transition.ts settle blames what changes the error),
+  // never the period that month by month also needs.
+  months: (spec) => spec.timeseries?.months !== undefined
+    && (spec.timeseries.grain === "month" || spec.filters.monthFrom !== undefined || spec.filters.monthTo !== undefined)
+    ? "„Aceleași luni” taie anii întregi, an de an. Scoate lunile din perioadă sau alege „An de an”." : null,
+  split: (spec) => spec.timeseries?.split === "channel" && (spec.dataset ?? "all") !== "all"
+    ? "„Directe / proceduri” împarte toate achizițiile. Alege „Toate achizițiile” sau „Total”."
+    : spec.timeseries?.split === "domain" && (spec.filters.cpvTerm || spec.filters.purchaseKind === "lucrari")
+      ? "„Domenii” nu împarte un singur domeniu. Scoate domeniul sau alege „Total”." : null,
+  grain: (spec) => {
+    if (spec.timeseries?.grain !== "month") return null;
+    const span = seriesMonthsSpan(spec.filters);
+    if (span === null) return `„Lună de lună” cere perioada: alege cel mult ${MAX_SERIES_MONTHS} de luni.`;
+    return span > MAX_SERIES_MONTHS ? `„Lună de lună” arată cel mult ${MAX_SERIES_MONTHS} de luni. Alege o perioadă mai scurtă sau „An de an”.` : null;
+  },
+};
+
 /** The DA analysis ceiling of the engine (lib/ask/predicates.ts DA_PLAFOND_RON; spec.test.ts checks they agree). */
 export const DA_CEILING_RON = 2_000_000;
 /**
@@ -712,7 +739,7 @@ export function runnableError(spec: AskSpec): string | null {
   }
   if (block === "trend" && (filters.monthFrom !== undefined || filters.monthTo !== undefined))
     return "Schimbarea compară doi ani întregi. Elimină explicit lunile sau alege evoluția în timp; filtrele nu au fost eliminate.";
-  for (const rule of [...Object.values(TREND_RULES), ...Object.values(SELECTION_RULES)]) {
+  for (const rule of [...Object.values(TREND_RULES), ...Object.values(SELECTION_RULES), ...Object.values(TIMESERIES_RULES)]) {
     const error = rule(spec);
     if (error) return error;
   }

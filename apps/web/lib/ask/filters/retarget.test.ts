@@ -115,9 +115,10 @@ describe("the derived links of today go through retarget", () => {
     }
   });
 
-  it("a slice one level down asks the same breakdown on the slice's code, in lei (the breakdown has no other measure yet)", () => {
+  it("a slice one level down asks the same breakdown on the slice's code, in its measure (F3: the breakdown orders by records too)", () => {
     const counted: AskSpec = { block: "breakdown", measure: "count", dataset: "contracts", filters: { county: "Cluj", cpvTerm: "45" } };
-    expect(breakdownDeeperSpec(counted, "4521")).toEqual({ block: "breakdown", measure: "value", dataset: "contracts", filters: { county: "Cluj", cpvTerm: "4521" } });
+    expect(breakdownDeeperSpec(counted, "4521")).toEqual({ block: "breakdown", measure: "count", dataset: "contracts", filters: { county: "Cluj", cpvTerm: "4521" } });
+    expect(breakdownDeeperSpec({ ...counted, measure: "value_per_capita" }, "4521").measure).toBe("value");
   });
 
   it("no other code builds another block's question by spreading a spec", () => {

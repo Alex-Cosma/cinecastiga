@@ -34,7 +34,8 @@ describe("answer pills", () => {
   });
 
   it("names the measure the answer shows: lei where the engine ignores a count or per-inhabitant link", () => {
-    expect(pills({ block: "breakdown", measure: "count", filters: {} })).toContain("valoarea înregistrată");
+    // F3: a breakdown ordered by records says so (its legend leads with them).
+    expect(pills({ block: "breakdown", measure: "count", filters: {} })).toContain("numărul de înregistrări");
     expect(pills({ block: "network", measure: "count", filters: { authorityId: 1 } })).toContain("valoarea înregistrată");
     expect(pills({ block: "stat", measure: "value_per_capita", filters: {} })).toContain("valoarea înregistrată");
     expect(pills({ block: "stat", measure: "count", filters: {} })).toContain("numărul de înregistrări");

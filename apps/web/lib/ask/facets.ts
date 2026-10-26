@@ -68,7 +68,7 @@ export const LOCATE_ID_LIMIT = 1_000_000;
 export type FacetFailure = { error: string } | { timeout: true } | { precompute: string };
 
 /** What a part needs of the question once grounded (runRows' checks, without its notes). */
-interface Prepared {
+export interface Prepared {
   spec: AskSpec;
   ctx: PredicateCtx;
   dataset: Dataset;
@@ -77,7 +77,7 @@ interface Prepared {
   trend: { yearA: number; yearB: number } | null;
 }
 
-async function prepare(sql: DbSql, input: AskSpec, grounding: Grounding): Promise<Prepared | { error: string }> {
+export async function prepare(sql: DbSql, input: AskSpec, grounding: Grounding): Promise<Prepared | { error: string }> {
   // Read first, write later (plan F0a): a key this release does not apply is refused here too.
   if (unimplementedSpecKeys(input).length) return { error: NEWER_VERSION_LINK };
   const canonical = await canonicalAskIdentities(sql, input, grounding);
@@ -116,15 +116,16 @@ async function prepare(sql: DbSql, input: AskSpec, grounding: Grounding): Promis
       yearTo = Math.min(to, maxY);
     }
   }
-  // A trend's months, by the answer's function at this checkpoint (sameMonthsWindow).
+  // A trend's months, and an evolution's same months (F3), by the answer's function at this checkpoint (sameMonthsWindow).
   let window: MonthsWindow = WHOLE_YEAR;
-  if (spec.block === "trend" && spec.trend?.months !== undefined) {
-    const resolved = sameMonthsWindow(await coveragePeriods(sql), dataset, yearTo ?? maxY, spec.trend.months);
+  const months = spec.block === "trend" ? spec.trend?.months : spec.block === "timeseries" ? spec.timeseries?.months : undefined;
+  if (months !== undefined) {
+    const resolved = sameMonthsWindow(await coveragePeriods(sql), dataset, yearTo ?? maxY, months);
     if ("error" in resolved) return { error: resolved.error };
     window = resolved;
   }
   const kindIds = await authorityKindIds(sql, namedKind(f.authorityKind));
-  const ctx = predicateContext(sql, spec, grounding, { dataset, yearFrom, yearTo, kindIds, trendMonths: partialMonths(window) });
+  const ctx = predicateContext(sql, spec, grounding, { dataset, yearFrom, yearTo, kindIds, trendMonths: partialMonths(window), seriesMonths: partialMonths(window) });
   return { spec, ctx, dataset, profile, trend: spec.block === "trend" && !profile ? { yearA: yearFrom ?? minY, yearB: yearTo ?? maxY } : null };
 }
 
@@ -135,7 +136,7 @@ function everyRecord(p: Prepared): boolean {
     !w.county && w.cpvPrefixes.length === 0 && w.cpvExclude.length === 0 && !w.kind && !w.authorityId && !w.supplierId &&
     w.uatSiruta === null && !w.singleBidder && w.adminSupplierIds === null && !w.comparison &&
     !w.purchaseKind && !w.procedure && w.purchaseValueMin === null && w.purchaseValueMax === null &&
-    w.yearFrom === null && w.yearTo === null && w.monthFrom === null && w.monthTo === null;
+    w.yearFrom === null && w.yearTo === null && w.monthFrom === null && w.monthTo === null && !w.seriesMonths;
 }
 
 /** The selection's records, from a rollup or live, with the columns a part groups by and the two aggregates. */
@@ -184,9 +185,9 @@ async function rowsOf(sql: DbSql, p: Prepared, need: RollupNeed | null, ready: R
 }
 
 /** The rollups the nightly build has made (probed with the pool, before the transaction: rollups.ts). */
-interface Ready { rollups: boolean; months: boolean }
+export interface Ready { rollups: boolean; months: boolean }
 const NO_ROLLUPS: Ready = { rollups: false, months: false };
-async function readyOf(sql: DbSql): Promise<Ready> {
+export async function readyOf(sql: DbSql): Promise<Ready> {
   const rollups = await rollupsReady(sql);
   return { rollups, months: rollups && await monthRollupReady(sql) };
 }
@@ -200,7 +201,7 @@ async function readyOf(sql: DbSql): Promise<Ready> {
  * division (PRECOMPUTE.md, ENTITY_LIVE); the contracts alone (1.1M records)
  * stay counted.
  */
-function nationalLive(p: Prepared): boolean {
+export function nationalLive(p: Prepared): boolean {
   const w = p.ctx;
   return p.dataset !== "contracts" && !w.authorityId && !w.supplierId && w.uatSiruta === null && w.adminSupplierIds === null
     && !w.comparison && !w.county && !w.kind;
@@ -212,7 +213,7 @@ export const ENTITY_LIVE = "Numerele ferestrelor pe instituții și firme, cu do
 interface Grouped { k: string | null; v: string; n: string; f?: boolean }
 
 /** The purchase kind of a code (purchase.ts divisionKind, predicates.ts purchaseKindCond), null without one. */
-const kindOfCode = (sql: DbSql, c: Fragment): Fragment =>
+export const kindOfCode = (sql: DbSql, c: Fragment): Fragment =>
   sql`(case when ${c} like '45%' then 'lucrari' when ${c} >= '50' then 'servicii' when ${c} < '45' or (${c} >= '48' and ${c} < '50') then 'produse' end)`;
 
 /** A firm's band of employees (kit §4), null without a filing ("Fără bilanț"). */
@@ -224,14 +225,14 @@ const bandOf = (sql: DbSql, employees: Fragment): Fragment => {
 };
 
 /** A procedure of the window from a SEAP type (purchase.ts PROCEDURE_TYPES; "altele" is the rest, an empty one too). */
-const procedureOf = (sql: DbSql, type: Fragment): Fragment => {
+export const procedureOf = (sql: DbSql, type: Fragment): Fragment => {
   const named = (["deschisa", "simplificata", "negociere_fara_publicare"] as const)
     .map((procedure) => sql`when ${type} = any(${sql.array([...PROCEDURE_TYPES[procedure]])}::text[]) then ${procedure}`).reduce((a, b) => sql`${a} ${b}`);
   return sql`(case ${named} else 'altele' end)`;
 };
 
 /** The size range of a purchase (purchase.ts VALUE_RANGES, [min, max)), its index as text. */
-const sizeOf = (sql: DbSql, value: Fragment): Fragment => {
+export const sizeOf = (sql: DbSql, value: Fragment): Fragment => {
   const cases = VALUE_RANGES.map((range, i): Fragment | null => range.purchaseValueMax === undefined ? null : sql`when ${value} < ${range.purchaseValueMax}::numeric then ${String(i)}`)
     .filter((c): c is Fragment => c !== null).reduce((a, b) => sql`${a} ${b}`);
   return sql`(case ${cases} else ${String(VALUE_RANGES.length - 1)} end)`;
@@ -393,8 +394,8 @@ export function assembleCounts(part: CountPart, unit: FacetUnit, rows: readonly 
 }
 
 /** A query run under the request's signal: a closed window cancels the statement it waits on. */
-type Runner = <T>(query: Fragment) => Promise<T[]>;
-function runner(signal: AbortSignal | undefined): Runner {
+export type Runner = <T>(query: Fragment) => Promise<T[]>;
+export function runner(signal: AbortSignal | undefined): Runner {
   return async <T,>(query: Fragment): Promise<T[]> => {
     signal?.throwIfAborted();
     const cancel = () => { (query as unknown as { cancel?: () => void }).cancel?.(); };
@@ -416,7 +417,7 @@ async function dataCheckpoint(sql: DbSql): Promise<string | null> {
 }
 
 /** What a kept answer is valid for: the marts build (null when a mart is missing: nothing is kept) and the checkpoint. */
-async function facetStamp(sql: DbSql): Promise<{ build: string | null; checkpoint: string | null }> {
+export async function facetStamp(sql: DbSql): Promise<{ build: string | null; checkpoint: string | null }> {
   const [build, checkpoint] = await Promise.all([trendCacheStamp(sql), dataCheckpoint(sql)]);
   return { build, checkpoint };
 }
@@ -448,7 +449,7 @@ export function forgetFacets(): void {
 export const facetStats = () => ({ ...stats, entries: counted.size, vectors: vectors.size, held });
 
 /** Inside the facet transaction: read-only, the plans of the values, the 8 s limit. */
-async function inFacetTransaction<T>(sql: DbSql, work: (tx: DbSql) => Promise<T>): Promise<T> {
+export async function inFacetTransaction<T>(sql: DbSql, work: (tx: DbSql) => Promise<T>): Promise<T> {
   return await sql.begin("read only", async (tx) => {
     await tx.unsafe(FORCE_CUSTOM_PLANS);
     await tx.unsafe(`set local statement_timeout = '${FACET_TIMEOUT}'`);
@@ -456,7 +457,7 @@ async function inFacetTransaction<T>(sql: DbSql, work: (tx: DbSql) => Promise<T>
   }) as T;
 }
 
-const timedOut = (e: unknown) => e instanceof Error && e.message.includes("statement timeout");
+export const timedOut = (e: unknown) => e instanceof Error && e.message.includes("statement timeout");
 /**
  * A request whose window closed: its signal's reason (AbortError, or Next's
  * ResponseAborted), or a query cancelled for it.

@@ -78,6 +78,8 @@ export interface PredicateCtx {
   monthTo: number | null;
   /** trend: the same months of both years (sameMonthsWindow, resolved by the caller); null for whole years. */
   trendMonths: MonthWindow | null;
+  /** timeseries: the same months of every year („Aceleași luni”, F3; resolved by the caller as the trend's); null for whole years. */
+  seriesMonths: MonthWindow | null;
   /** "Conduse de X": supplier ids of the person's firms (ONRC reps). */
   adminSupplierIds: string[] | null;
   /**
@@ -105,7 +107,7 @@ export function predicateContext(
   sql: DbSql,
   spec: AskSpec,
   grounding: Grounding,
-  window: { dataset: Dataset; yearFrom: number | null; yearTo: number | null; kindIds?: readonly string[] | null; trendMonths?: MonthWindow | null },
+  window: { dataset: Dataset; yearFrom: number | null; yearTo: number | null; kindIds?: readonly string[] | null; trendMonths?: MonthWindow | null; seriesMonths?: MonthWindow | null },
 ): PredicateCtx {
   const f = spec.filters;
   const kind = namedKind(f.authorityKind) ?? null;
@@ -135,6 +137,7 @@ export function predicateContext(
     monthFrom: f.monthFrom ?? null,
     monthTo: f.monthTo ?? null,
     trendMonths: spec.block === "trend" ? window.trendMonths ?? null : null,
+    seriesMonths: spec.block === "timeseries" ? window.seriesMonths ?? null : null,
     adminSupplierIds: grounding.admin ? grounding.admin.supplierIds : null,
     purchaseKind: f.purchaseKind && kindApplies(f.purchaseKind, grounding) ? f.purchaseKind : null,
     procedure: f.procedure ?? null,
@@ -283,8 +286,11 @@ export function rowPredicates(ctx: PredicateCtx, opts: { years?: boolean } = {})
         : sql`substr(d.finalization_date, 1, 4) <= ${String(ctx.yearTo)}`);
     if (idAnchored(ctx)) parts.push(...periodRange(sql, ctx));
   }
+  // The evolution's same months (F3): every year cut to the window, as a trend's two years are.
+  if (ctx.seriesMonths) parts.push(sql`substr(d.finalization_date, 6, 2) between ${mm(ctx.seriesMonths[0])} and ${mm(ctx.seriesMonths[1])}`);
   return parts;
 }
+const mm = (m: number) => String(m).padStart(2, "0");
 
 /** A selection read from an (id, finalization_date) index: a named or compared entity, a locality, a person's firms, the institutions of a kind (D1). */
 const idAnchored = (ctx: PredicateCtx) =>
@@ -485,10 +491,8 @@ export function displayPredicates(ctx: PredicateCtx, table: string): string[] {
       conds.push(`luna <= '${ctx.yearTo}-${String(ctx.monthTo).padStart(2, "0")}'`);
     else conds.push(`an <= ${ctx.yearTo}`);
   }
-  if (ctx.trendMonths) {
-    const mm = (m: number) => `'${String(m).padStart(2, "0")}'`;
-    conds.push(`luna between ${mm(ctx.trendMonths[0])} and ${mm(ctx.trendMonths[1])}  -- aceleași luni în ambii ani`);
-  }
+  if (ctx.trendMonths) conds.push(`luna between '${mm(ctx.trendMonths[0])}' and '${mm(ctx.trendMonths[1])}'  -- aceleași luni în ambii ani`);
+  if (ctx.seriesMonths) conds.push(`luna between '${mm(ctx.seriesMonths[0])}' and '${mm(ctx.seriesMonths[1])}'  -- aceleași luni în fiecare an`);
   if (ctx.minimumRecords) {
     const id = ctx.minimumRecords.role === "authority" ? "authority_id" : "supplier_id";
     conds.push(`${id} in (select ${id} from ${table}\n  where ${conds.join("\n  and ")}\n  group by ${id} having count(*) >= ${ctx.minimumRecords.count})`);

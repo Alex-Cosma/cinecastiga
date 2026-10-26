@@ -150,9 +150,11 @@ describe.runIf(Boolean(connection))("F3: the kind, the procedure and the size (d
         const live = table(await runSpec(q, { ...small, filters: { ...small.filters, yearFrom: 2024, yearTo: 2025 } }, {}));
         const fast = table(await runSpec(q, small, {}));
         expect(fast.rows).toEqual(live.rows);
-        expect(fast.totals).toEqual(live.totals);
+        expect([fast.totals, fast.group]).toEqual([live.totals, live.group]);
         expect(fast.rows.map((r) => [r.entityId, r.name, r.value, r.count])).toEqual([["11", "Eleven", 300.25, 2], ["10", "Ten", 150.5, 2]]);
-        expect(fast.totals).toEqual({ value: 450.75, count: 4, entities: 2 });
+        // F3-rows (table:employees-2): the total is every firm's, the band (CÂȘTIGĂTORII) its group.
+        expect(fast.totals).toEqual({ value: 1501.25, count: 6, entities: 4 });
+        expect(fast.group).toEqual({ value: 450.75, count: 4, entities: 2 });
         // In records, ties broken by id, and paged with its count.
         const byCount = table(await runSpec(q, { ...small, measure: "count" }, {}));
         expect(byCount.rows.map((r) => r.entityId)).toEqual(["10", "11"]);
@@ -162,7 +164,7 @@ describe.runIf(Boolean(connection))("F3: the kind, the procedure and the size (d
         // "0 angajați" holds no firm here, and a firm without a filing is in no band.
         expect(table(await runSpec(q, { ...small, filters: { minEmployees: 0, maxEmployees: 0 } }, {})).rows).toEqual([]);
         expect(table(await runSpec(q, { ...small, filters: { minEmployees: 0 } }, {})).rows.map((r) => r.entityId)).toEqual(["12", "11", "10"]);
-        // The sources are the records of the band's firms, as the answer's total says.
+        // The sources are the records of the band's firms, as the answer's group says.
         const smallSources = await rows(q, small);
         expect([smallSources.sourceTotal, Number(smallSources.sourceValue)]).toEqual([4, 450.75]);
         throw rollback;

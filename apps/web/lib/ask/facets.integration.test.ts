@@ -106,7 +106,8 @@ async function answer(q: DbSql, spec: AskSpec): Promise<{ n: number; value: numb
   const r = await runSpec(q, spec, await ground(q, spec.filters, spec.population));
   if ("error" in r) throw new Error(r.error);
   if (r.data.block === "stat") return { n: r.data.stat.count, value: cents(r.data.stat.value) };
-  if (r.data.block === "table") return { n: r.data.total ?? r.data.rows.length, value: cents(r.data.totals?.value ?? r.data.rows.reduce((a, x) => a + x.value, 0)) };
+  // F3-rows (table:employees-2): a band of firms is the ranking's group; its totals stay the selection's.
+  if (r.data.block === "table") return { n: r.data.total ?? r.data.rows.length, value: cents(r.data.group?.value ?? r.data.totals?.value ?? r.data.rows.reduce((a, x) => a + x.value, 0)) };
   throw new Error(r.data.block);
 }
 
@@ -117,7 +118,7 @@ const PARTS: { name: string; part: CountPart; draft: AskSpec; chosen: (value: st
   { name: "channels, every year", part: "channel", draft: stat({}), chosen: (v) => stat({}, { dataset: v as "da" | "contracts" }) },
   { name: "procedures", part: "procedure", draft: stat(), chosen: (v) => stat({ ...Y, procedure: v as "deschisa" }, { dataset: "contracts" }) },
   { name: "kinds of purchase", part: "domain", draft: stat(), chosen: (v) => stat({ ...Y, purchaseKind: v as "lucrari" }) },
-  { name: "sizes", part: "size", draft: stat(), chosen: (v) => { const { label: _l, ...range } = VALUE_RANGES[Number(v)]!; return stat({ ...Y, ...range }); } },
+  { name: "sizes", part: "size", draft: stat(), chosen: (v) => { const { purchaseValueMin: min, purchaseValueMax: max } = VALUE_RANGES[Number(v)]!; return stat({ ...Y, ...(min !== undefined ? { purchaseValueMin: min } : {}), ...(max !== undefined ? { purchaseValueMax: max } : {}) }); } },
   { name: "years", part: "years", draft: stat({}), chosen: (v) => stat({ yearFrom: Number(v), yearTo: Number(v) }) },
   { name: "buyer counties", part: "county", draft: stat(), chosen: (v) => stat({ ...Y, county: v }) },
   // Per institution and per firm, live only where an index anchors the selection (a county): nationally they wait on the rollups.

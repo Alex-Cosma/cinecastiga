@@ -35,18 +35,26 @@ export interface KeyVersion {
 /**
  * Keyed by id. D1: kind (town halls from the locality registry, hospitals with
  * the clinical institutes, lib/ask/authority-kind.ts); F3: "table:employees"
- * (the employees of a firm ranking become a group, plan §2.6).
+ * (the employees of a firm ranking become a group, plan §2.6), whose
+ * methodology note a watch on such a ranking gets once.
  */
 export const KEY_VERSIONS: Record<string, KeyVersion> = {
   // Only the kinds D1 corrected: schools and county councils keep their institutions and records
   // (0 in, 0 out locally), and a newer value (local_admin, F5) is refused before it runs.
   kind: { version: "kind-2", label: "Tipul instituției", paths: ["filters.authorityKind"], when: (spec) => KIND_2.has(namedKind(spec.filters.authorityKind) ?? "") },
+  // F3 (plan §4.2, §2.6): on a ranking of firms the employees narrow the list (CÂȘTIGĂTORII), the same rows and
+  // values; the totals and „% din total” are the whole selection's. "Cine conduce?" by value shows place 1 only: no change.
+  "table:employees": {
+    version: "table:employees-2", label: "Angajații firmelor", paths: ["filters.minEmployees", "filters.maxEmployees"], blocks: ["table"],
+    when: (spec) => spec.dim === "supplier",
+  },
 };
 const KIND_2: ReadonlySet<string> = new Set<AuthorityKind>(["comuna", "oras_municipiu", "spital"]);
 
 /** What changed in the methodology with each key version, for "Ce s-a schimbat" (plan §2.6). */
 export const KEY_VERSION_NOTES: Record<string, string> = {
   "kind-2": "Tipul instituției a fost corectat (primăriile din registrul localităților, spitalele cu institutele clinice).",
+  "table:employees-2": "Angajații restrâng acum doar lista firmelor; totalul și „% din total” sunt ale întregii selecții.",
 };
 
 /**
@@ -125,6 +133,10 @@ export function sameAnswerVersion(before: AnswerVersion, after: AnswerVersion): 
  * change a watch on "Creșteri". An answer stored before trend-2 is whole.
  */
 export function answerCore(block: string, data: unknown): unknown {
+  // F3: what an evolution or a breakdown adds for the screen alone (the marker of the year before, every CPV group,
+  // the channels' shares) is not compared: a watch on an older question sees the same core as before.
+  if (block === "timeseries" && object(data)) { const { ref: _ref, ...core } = data; return core; }
+  if (block === "breakdown" && object(data)) { const { base: _base, streams: _streams, ...core } = data; return core; }
   if (block !== "trend" || !object(data) || !object(data.groups)) return data;
   const { groups: _groups, composition, noun: _noun, rowFacts: _facts, withoutFiling: _unfiled, ...core } = data;
   const parts = object(composition) ? composition : {};

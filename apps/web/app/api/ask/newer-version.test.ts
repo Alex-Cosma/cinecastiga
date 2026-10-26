@@ -20,6 +20,7 @@ vi.mock("@/lib/devlog", () => import("../../../lib/devlog"));
 vi.mock("@/lib/ask/features", () => import("../../../lib/ask/features"));
 vi.mock("@/lib/ask/facets", () => import("../../../lib/ask/facets"));
 vi.mock("@/lib/ask/facet-parts", () => import("../../../lib/ask/facet-parts"));
+vi.mock("@/lib/ask/answer-facts", () => import("../../../lib/ask/answer-facts"));
 import { POST as ask } from "./route";
 import { POST as rows } from "./rows/route";
 import { POST as csv } from "./rows/csv/route";
@@ -28,7 +29,7 @@ import { NEWER_VERSION_LINK } from "../../../lib/ask/spec";
 
 beforeEach(() => { sql.mockClear(); sql.begin.mockClear(); });
 const post = (body: unknown) => new Request("http://localhost/api/ask", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-const newer = { block: "timeseries", measure: "value", filters: { yearFrom: 2024, yearTo: 2025 }, timeseries: { grain: "month" } };
+const newer = { block: "scatter", dim: "authority", measure: "value", filters: {}, scatter: { flag: "da_split" } };
 // The bound selections replace the spec they were sent with; the refusal comes first.
 const peer = { version: "peer-evidence-2", checkpointId: "00000000-0000-0000-0000-000000000000" };
 const connection = { version: "connection-evidence-1", checkpointId: "00000000-0000-0000-0000-000000000000", pairs: [] };

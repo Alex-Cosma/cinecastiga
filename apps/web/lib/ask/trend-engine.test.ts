@@ -294,7 +294,7 @@ describe("the trend's sources", () => {
     // Whole years: the window of a trend without months.
     expect(await runRows(database(PROD).sql, trend(), {}, 0, { months: [1, 5] })).toEqual({ error: DATA_CHANGED, conflict: true });
     expect(await runRows(database(PROD).sql, { block: "stat", measure: "value", filters: {} }, {}, 0, { months: [1, 5] }))
-      .toEqual({ error: "Lunile comparate se aplică doar schimbării între doi ani." });
+      .toEqual({ error: "Lunile comparate se aplică doar schimbării între doi ani și evoluției." });
   });
 
   it("list the executed months, or this checkpoint's when the caller sends none", async () => {

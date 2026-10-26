@@ -20,14 +20,11 @@ const smallFirmsBuyers: AskSpec = { ...smallFirms, dim: "authority" };
 const person = personClipSpec("popescu ion|1970-01-01|cluj");
 /** A run as stored by monitoring-engine.ts, with this question's answer version, or none (a run from before F0). */
 const run = (spec: AskSpec, withAnswer = true) => ({ version: "monitoring-1", refresh: { version: "fixture-v1" }, ...(withAnswer ? { answer: answerVersion(spec) } : {}) });
-/** The key versions this release declares (D1: kind-2). Each test starts from F0 (none) and bumps what it needs. */
+/** The key versions this release declares (D1: kind-2, F3: table:employees-2). Each test starts from F0 (none) and bumps what it needs. */
 const DECLARED = { ...KEY_VERSIONS };
-/** The version of the D1 release, as declared; F3's, as it will be. */
+/** The versions of the D1 and F3 releases, as declared. */
 const bumpKind = () => { KEY_VERSIONS.kind = DECLARED.kind!; };
-const bumpEmployees = () => {
-  KEY_VERSIONS["table:employees"] = { version: "table:employees-2", label: "Angajații pe clasamentul firmelor", paths: ["filters.minEmployees", "filters.maxEmployees"],
-    blocks: ["table", "entity_card"], when: (spec) => spec.dim === "supplier" };
-};
+const bumpEmployees = () => { KEY_VERSIONS["table:employees"] = DECLARED["table:employees"]!; };
 
 beforeEach(() => { for (const id of Object.keys(KEY_VERSIONS)) delete KEY_VERSIONS[id]; });
 /** The versions of this release (F2: trend-2), restored after every test. */
@@ -42,8 +39,11 @@ afterEach(() => {
 });
 
 describe("the key versions of this release", () => {
-  it("are D1's kind only: one alert on a question with a kind of institution, with its note", () => {
-    expect(Object.keys(DECLARED)).toEqual(["kind"]);
+  it("are D1's kind and F3's employees on a ranking of firms: one alert each, with its note", () => {
+    expect(Object.keys(DECLARED)).toEqual(["kind", "table:employees"]);
+    // F3 (plan §4.2, DECISIONS F1b-s-employees): the employees of a ranking of firms are a group (CÂȘTIGĂTORII); only „% din total” changes.
+    expect(DECLARED["table:employees"]).toMatchObject({ version: "table:employees-2", label: "Angajații firmelor", paths: ["filters.minEmployees", "filters.maxEmployees"], blocks: ["table"] });
+    expect(KEY_VERSION_NOTES["table:employees-2"]).toBe("Angajații restrâng acum doar lista firmelor; totalul și „% din total” sunt ale întregii selecții.");
     expect(DECLARED.kind).toMatchObject({ version: "kind-2", label: "Tipul instituției", paths: ["filters.authorityKind"] });
     Object.assign(KEY_VERSIONS, DECLARED);
     expect(answerVersion(hospitals)).toEqual({ question: "stat-1", conditions: { kind: "kind-2" } });
@@ -64,9 +64,14 @@ describe("the key versions of this release", () => {
     expect(keyVersionNotes({ block: "table", dim: "authority", measure: "value", topN: 10, filters: { authorityKind: "comuna", county: "Ilfov" } })).toEqual([KEY_VERSION_NOTES["kind-2"]]);
     expect(keyVersionNotes({ ...hospitals, filters: { authorityKind: "scoala" } })).toEqual([]);
     expect(keyVersionNotes(stat)).toEqual([]);
+    // F3's note on a ranking of firms only: not on institutions, nor on a total with the same employees.
+    expect(keyVersionNotes(smallFirms)).toEqual([KEY_VERSION_NOTES["table:employees-2"]]);
+    expect(keyVersionNotes(smallFirmsBuyers)).toEqual([]);
+    expect(keyVersionNotes({ ...smallFirms, block: "stat" })).toEqual([]);
     // A version without a note says nothing.
-    bumpEmployees();
-    expect(keyVersionNotes(smallFirms)).toEqual([]);
+    const note = KEY_VERSION_NOTES["table:employees-2"]!;
+    delete KEY_VERSION_NOTES["table:employees-2"];
+    try { expect(keyVersionNotes(smallFirms)).toEqual([]); } finally { KEY_VERSION_NOTES["table:employees-2"] = note; }
   });
 });
 
@@ -117,7 +122,9 @@ describe("the version of an answer", () => {
     for (const change of SCOPE_CHANGES) {
       const block = change.form.split(":")[0]!;
       const keys: readonly string[] = FILTERS[change.filter].keys;
-      const covered = ANSWER_VERSIONS[block as keyof typeof ANSWER_VERSIONS] === change.version
+      // "<block>-1": the scope moved but the answer did not ("Cine conduce?" by value shows the same first firm, F3r-leader-version).
+      const unchanged = change.version === `${block}-1` && ANSWER_VERSIONS[block as keyof typeof ANSWER_VERSIONS] === undefined;
+      const covered = unchanged || ANSWER_VERSIONS[block as keyof typeof ANSWER_VERSIONS] === change.version
         || Object.values(KEY_VERSIONS).some((key) => key.version === change.version && key.paths.some((path) => keys.includes(path))
           && (!key.blocks || key.blocks.includes(block as never)));
       expect(covered, `${change.filter} on ${change.form}: ${change.version}`).toBe(true);
@@ -165,6 +172,15 @@ describe("what a watch compares between two checks", () => {
     expect(a!.answer).toEqual({ question: "stat-1", conditions: { kind: "kind-1" } });
     expect(b.answer).toEqual({ question: "stat-1", conditions: { kind: "kind-2" } });
     expect(comparableMethodologies(null, run(stat), "stat")).toEqual([null, run(stat)]);
+  });
+
+  it("leaves out what F3 adds for the screen alone: an evolution's marker, a breakdown's every group and channels", () => {
+    const series = { block: "timeseries", series: [{ year: 2025, value: 10, count: 1 }] };
+    expect(sameAnswerCore("timeseries", series, { ...series, ref: { year: 2025, months: [1, 8], value: 4, count: 1, current: { value: 5, count: 1 } } })).toBe(true);
+    // Its options are the question's own: a split or month by month is another core.
+    expect(sameAnswerCore("timeseries", series, { ...series, grain: "month" })).toBe(false);
+    const slices = { block: "breakdown", slices: [{ code: "45", name: "A", value: 10, count: 1 }], other: { value: 0, count: 0 } };
+    expect(sameAnswerCore("breakdown", slices, { ...slices, base: slices.slices, streams: { da: { value: 1, count: 1 }, contracts: { value: 9, count: 1 } } })).toBe(true);
   });
 
   it("compares the core of the answer as jsonb does: key order does not count, array order does", () => {
