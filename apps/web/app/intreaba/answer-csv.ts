@@ -133,10 +133,12 @@ function bandColumns(band: BandState): [string, string][] {
  */
 export function answerCsv(data: BlockData, spec: AskSpec, title: string, band: BandState = {}): { text: string; filename: string } {
   const [header, ...rows] = rowsOf(data, spec);
-  const columns = bandColumns(band);
+  // A strip column the rows already carry (the network's „grupa”, with its year) names the file only: one column per name (S4 tests).
+  const own = new Set(header!.split(","));
+  const columns = bandColumns(band).filter(([name]) => !own.has(name));
   const lines = columns.length
     ? [`${header},${columns.map(([name]) => name).join(",")}`, ...rows.map((row) => `${row},${columns.map(([, value]) => csvQ(value)).join(",")}`)]
     : [header!, ...rows];
-  const suffix = columns.map(([name, value]) => name === "grupa" ? band.groupFile ?? fileSlug(value, "") : name === "fir" || name === "luni" ? fileSlug(value, "") : value).filter(Boolean).join("-");
+  const suffix = bandColumns(band).map(([name, value]) => name === "grupa" ? band.groupFile ?? fileSlug(value, "") : name === "fir" || name === "luni" ? fileSlug(value, "") : value).filter(Boolean).join("-");
   return { text: "﻿" + lines.join("\r\n") + "\r\n", filename: `${fileSlug(title)}${suffix ? `-${suffix}` : ""}.csv` };
 }
