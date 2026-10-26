@@ -1,4 +1,5 @@
 import type { AuthorityKind, Block } from "../ask/spec";
+import type { Procedure } from "../ask/purchase";
 import { retiredTerm } from "../ask/retired-terms";
 import { lev } from "../ask/intent";
 import { countWords } from "../ask/answer-text";
@@ -140,6 +141,16 @@ const ACRONYMS: Record<string, string> = {
  */
 const PROCEDURE_TYPE = /\b(?:(licitati(?:e|a|ei|i|ile|ilor))\s+(?:deschis(?:a|e)|restrans(?:a|e))|(procedur(?:a|i|ii|ile|ilor))\s+(?:simplificat(?:a|e)|(?:de\s+)?negociere(?:\s+(?:fara|cu)\s+(?:publicare|publicarea)(?:\s+prealabila)?(?:\s+a\s+unui\s+anunt(?:\s+de\s+participare)?)?)?|competitiv(?:a|e))|(negocier(?:e|ea|i|ile))\s+(?:fara|cu)\s+(?:publicare|publicarea)(?:\s+prealabila)?(?:\s+a\s+unui\s+anunt(?:\s+de\s+participare)?)?|(dialog(?:ul)?)\s+competitiv|(cerer(?:e|ea|i|ile))\s+de\s+ofert(?:e|a)|(concurs(?:ul)?)\s+de\s+solutii|(parteneriat(?:ul)?)\s+pentru\s+inovare)\b/;
 /**
+ * The procedures the engine names (lib/ask/purchase.ts PROCEDURE_TYPES): an
+ * open tender (accelerated too), the simplified procedure, negotiation without
+ * prior publication. Matched on the folded text of a PROCEDURE_TYPE hit.
+ */
+const NAMED_PROCEDURES: readonly (readonly [RegExp, Procedure])[] = [
+  [/^licitati\w*\s+deschis/, "deschisa"],
+  [/^procedur\w*\s+simplificat/, "simplificata"],
+  [/negocier\w*\s+fara\s+publicare/, "negociere_fara_publicare"],
+];
+/**
  * English words for frequent subjects (visitors who write in English): each
  * maps to a curated Romanian term, used only when that term exists, and the
  * reading says so. Longer phrases first.
@@ -276,7 +287,7 @@ function emptyInterpretation(text: string, id: string): Interpretation {
     text, interpreter: id, intent: null, intentSource: null, otherIntents: [], dimHint: null,
     subjects: [], place: null, placeAlternatives: [], placeAmbiguous: false, authorityKind: null,
     authority: null, supplier: null, entityAlternatives: [], choicesPartial: null, compareWith: null, person: null, personAlternatives: [],
-    period: null, dataset: null, singleBidder: false, measure: null, topN: null, superlative: false,
+    period: null, dataset: null, procedure: null, singleBidder: false, measure: null, topN: null, superlative: false,
     employees: null, lenses: [], leftover: [], confidence: 0, confidenceLabel: "none", notes: [], placeNote: null,
     compareChoices: [], askedTownHalls: false,
   };
@@ -376,12 +387,15 @@ export class RulesInterpreter implements QuestionInterpreter {
       for (const h of c.all(re)) { c.take(h.i, h.j, tag); apply(h.m); }
     };
     once(/\b(?:cu\s+)?(?:un\s+singur\s+ofertant|o\s+singura\s+oferta|un\s+singur\s+participant|ofertant\s+unic|unic\s+ofertant|singurul\s+ofertant|(?:o\s+)?ofert(?:a|e|ele)\s+unic(?:a|e)|fara\s+(?:concurenta|competitie|concurs))\b/, () => { out.singleBidder = true; });
-    // SEAP procedure types: always procedures (contracts), never a purchase subject ("deschisă" is not a letter opener)
+    // SEAP procedure types: always procedures (contracts), never a purchase subject ("deschisă" is not a letter opener).
+    // The three the engine names are the procedure itself (F3, plan §2.7); the others stay all contracts, with a note.
     for (const h of c.all(PROCEDURE_TYPE)) {
+      const named = NAMED_PROCEDURES.find(([re]) => re.test(h.m[0]))?.[1];
       c.take(h.i, h.i + 1, "modifier");
-      c.take(h.i + 1, h.j, "blocked");
+      c.take(h.i + 1, h.j, named ? "modifier" : "blocked");
       if (out.dataset !== "da") out.dataset = "contracts";
-      out.notes.push(`Nu putem filtra încă după tipul procedurii („${c.span(h.i, h.j).text}”); am folosit toate contractele atribuite prin proceduri.`);
+      if (named) out.procedure = out.procedure ?? named;
+      else out.notes.push(`Nu putem filtra încă după acest tip de procedură („${c.span(h.i, h.j).text}”); am folosit toate contractele atribuite prin proceduri.`);
     }
     once(/\b(?:achizitii(?:le|lor)?|cumparari(?:le|lor)?|cumparaturi(?:le|lor)?)\s+direct(?:e|a)\b|\bachizitie\s+directa\b|\bachizitia\s+directa\b|\bin\s+mod\s+direct\b/, () => { out.dataset = "da"; });
     // "cele mai multe licitații": the number of records, before "licitații" is read as the stream

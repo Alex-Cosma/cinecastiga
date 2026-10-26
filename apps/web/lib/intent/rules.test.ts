@@ -770,6 +770,8 @@ describe("every spec and alternative says its own scope (regression set)", () =>
     "câte achiziții directe a făcut primăria comunei Sălcioara din Ialomița în 2025", "cat a cheltuit primaria sectorului 3 pe curățenie",
     "care spital are cel mai ridicat indice de risc", "ce e suspect la asfaltarea din prahova in 2024", "laptopuri pentru scolile din municipiul buzau",
     "care sunt firmele abonate la primaria cluj", "ce cumpara primaria dolj", "ce cumpara primaria piatra",
+    // F3: a procedure the engine names is said by its contracts' noun.
+    "cine castiga licitatii deschise pentru drumuri in 2024", "cat valoreaza negocierile fara publicare din buzau in 2025",
   ];
   it.each([...own, ...REVIEW_PHRASINGS])("%s", async (q) => {
     const { r } = await ask(q);

@@ -1,5 +1,6 @@
 import { periodPhrase } from "../ask/filters/words";
 import { namedKind, type AskSpec, type AuthorityKind } from "../ask/spec";
+import { PROCEDURE_WORDS } from "../ask/purchase";
 import { saysSameMonths, type SentenceLabels } from "./to-spec";
 
 /**
@@ -41,7 +42,11 @@ export function sentenceScopeProblems(spec: AskSpec, sentence: string, labels: P
     // The noun of the stream in each form: "achizițiile directe", "achiziții directe", "achizițiilor directe".
     if (!/achiziți\w* directe/.test(sentence)) out.push("direct acquisitions not in sentence");
   } else if (spec.dataset === "contracts") {
-    if (!/contract\w* din proceduri/.test(sentence)) out.push("procedures not in sentence");
+    // F3: a procedure names its contracts ("contractele din licitații deschise", "prin [licitații deschise]").
+    const procedure = f.procedure ? PROCEDURE_WORDS[f.procedure] : null;
+    if (procedure) {
+      if (![procedure.the, procedure.bare, procedure.of, procedure.every, procedure.via].some((form) => sentence.includes(form))) out.push("procedure not in sentence");
+    } else if (!/contract\w* din proceduri/.test(sentence)) out.push("procedures not in sentence");
   } else if (/doar achiziții directe|doar contracte din proceduri/.test(sentence)) out.push("stream in sentence, not in spec");
   if (!profile) {
     const { yearFrom: a, yearTo: b } = f;
