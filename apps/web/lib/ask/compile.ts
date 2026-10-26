@@ -2840,6 +2840,13 @@ export async function runRows(
     const annualKeys = !annualScan ? null
       : dataset === "da" ? sql`(${keysOf(daTx)})` : dataset === "contracts" ? sql`(${keysOf(contractTx)})`
       : sql`(${keysOf(daTx)} union all ${keysOf(contractTx)})`;
+    // A purchase's size inside a county (F3): few of a county's direct acquisitions reach 1 mil. lei, so the
+    // key's backward walk reads the whole mart before its ten rows (Buzău, 2025, ≥ 1 mil.: 15.8 s, at the
+    // route's 20 s limit; a ranking of its firms 5.4 s). Hidden (`+ 0`), the county index bounds both
+    // channels first: 0.10–0.16 s (Cluj 4.3 s instead of 15.6 s; other sizes in a county 0.1–0.2 s). Without
+    // a county the key stays: nationally its matches come early (0.25–1.2 s; hidden 1.2–9.4 s). S4 tests.
+    const sizeInCounty = (spec.filters.purchaseValueMin != null || spec.filters.purchaseValueMax != null)
+      && Boolean(spec.filters.county || scope.county || scope.counties?.length);
     const branchOrder = sortKey !== "source" ? sql`${sortFrag} ${dirFrag}, d.ref_id, d.supplier_id nulls first`
       : idIndex ? sql`(d.ref_id + 0) ${dirFrag}, d.supplier_id nulls first` : sql`d.ref_id ${dirFrag}, d.supplier_id nulls first`;
     // With the keys in the covering index, the direct acquisitions' first keys in the drawer's order come
@@ -2862,10 +2869,10 @@ export async function runRows(
       ) selected_row
     )` : !profile && dataset === "all" && sortKey === "source" ? sql`(
       (select * from ${daTx} d where ${sourceWhere} and ${localWhere}
-       order by d.ref_id ${dirFrag}, d.supplier_id nulls first limit ${branchLimit})
+       order by ${sizeInCounty ? sql`(d.ref_id + 0)` : sql`d.ref_id`} ${dirFrag}, d.supplier_id nulls first limit ${branchLimit})
       union all
       (select * from ${contractTx} d where ${sourceWhere} and ${localWhere}
-       order by d.ref_id ${dirFrag}, d.supplier_id nulls first limit ${branchLimit})
+       order by ${sizeInCounty ? sql`(d.ref_id + 0)` : sql`d.ref_id`} ${dirFrag}, d.supplier_id nulls first limit ${branchLimit})
     )` : txt;
     if (opts.capture) await opts.capture.persist(s, s`
       select d.da_code, d.finalization_date, d.authority_id, d.authority_name,

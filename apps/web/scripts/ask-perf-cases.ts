@@ -533,6 +533,11 @@ function f3Cases(): PerfCase[] {
     perfCase("sources:stat-works-2025", "sources", "Sursele lucrărilor, 2025", "stat", all(works, years(2025)), { path: "rows", barMs: 2000 }),
     perfCase("sources:stat-negotiated-2025", "sources", "Sursele contractelor negociate fără publicare, 2025", "stat", all(negotiated, years(2025)), { path: "rows", barMs: 2000 }),
     perfCase("sources:stat-over-1m-2025", "sources", "Sursele achizițiilor de peste 1 mil. lei, 2025", "stat", all(overMillion, years(2025)), { path: "rows", barMs: 2000, precompute: SIZE_LIVE }),
+    // In a county few direct acquisitions reach 1 mil. lei: the page hides the key (compile.ts sizeInCounty, S4 tests;
+    // by the key 10–20 s, at the route's limit).
+    perfCase("sources:stat-buzau-over-1m-2025", "sources", "Sursele achizițiilor de peste 1 mil. lei din Buzău, 2025", "stat", all(overMillion, set({ county: "Buzau" }), years(2025)), { path: "rows", barMs: 2000 }),
+    perfCase("sources:stat-cluj-over-1m-2025", "sources", "Sursele achizițiilor de peste 1 mil. lei din Cluj, 2025", "stat", all(overMillion, set({ county: "Cluj" }), years(2025)), { path: "rows", barMs: 2000 }),
+    perfCase("sources:table-suppliers-buzau-over-1m-2025", "sources", "Sursele clasamentului firmelor, achiziții de peste 1 mil. lei din Buzău, 2025", "table", all(overMillion, set({ county: "Buzau" }), years(2025)), { path: "rows", barMs: 2000 }),
     perfCase("sources:table-suppliers-1-9-employees", "sources", "Sursele clasamentului firmelor cu 1–9 angajați", "table", set({ minEmployees: 1, maxEmployees: 9 }), { path: "rows", barMs: 2000, precompute: SIZE_SOURCES_FIRMS }),
     perfCase("csv:stat-negotiated-cluj", "csv", "CSV: contractele negociate fără publicare din Cluj", "stat", all(negotiated, set({ county: "Cluj" })), { path: "csv", barMs: 2000 }),
   ];

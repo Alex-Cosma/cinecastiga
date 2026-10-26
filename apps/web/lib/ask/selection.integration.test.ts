@@ -75,6 +75,9 @@ describe.runIf(Boolean(connection))("F3: the kind, the procedure and the size (d
           ["over 1 mil.", { ...all, filters: { purchaseValueMin: 1_000_000 } }, {}, 4000000, 4],
           ["under 10.000", { ...all, filters: { purchaseValueMax: 10_000 } }, {}, 17319.99, 4],
           ["direct, 10.000–1 mil.", { ...all, dataset: "da", filters: { purchaseValueMin: 10_000, purchaseValueMax: 1_000_000 } }, {}, 10000, 1],
+          // In a county the sources' page hides the key (sizeInCounty, S4 tests): the same rows.
+          ["over 1 mil. in a county", { ...all, filters: { county: "Cluj", purchaseValueMin: 1_000_000 } }, { county: { query: "Cluj", canonical: "Cluj" } }, 4000000, 4],
+          ["under 10.000 in a county", { ...all, filters: { county: "Cluj", purchaseValueMax: 10_000 } }, { county: { query: "Cluj", canonical: "Cluj" } }, 17319.99, 4],
         ];
         for (const [name, spec, grounding, value, count] of cases) {
           const answer = stat(await runSpec(q, spec, grounding));
