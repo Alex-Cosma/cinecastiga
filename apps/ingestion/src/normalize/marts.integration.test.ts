@@ -858,6 +858,14 @@ describe("registration year, seat and main CPV division of the firms", () => {
       ];
       expect(await seats()).toEqual(expected);
       expect(report.firmRegistry).toEqual({ registeredYear: 8, seat: { onrc: 6, seap: 3, foreign: 2, unknown: 1 } });
+      // /harta's firms sit in their seat (owner-seat-switch): 12 and 22 in Ilfov, not București; 11 and 18, without a
+      // SEAP county, in theirs; the foreign 16 and 17 apart; 15 unknown. The institutions keep their own county.
+      const spend = async (role: string) => Object.fromEntries((await q`select county, n, total_ron from marts.spend_by_county where role = ${role}`)
+        .map(r => [String(r["county"]), [Number(r["n"]), Number(r["total_ron"])]]));
+      expect(await spend("supplier")).toEqual({
+        Cluj: [4, 344], Bucuresti: [1, 50], Ilfov: [2, 156], Sibiu: [1, 100], Timis: [1, 10], "Străinătate": [2, 150], Necunoscut: [1, 5],
+      });
+      expect(await spend("authority")).toEqual({ Cluj: [1, 792], Bucuresti: [1, 30] });
       // The SQL reads each number as onrcRegistration does.
       expect(registry.map(([j]) => onrcRegistration(j)?.year)).toEqual([2004, 2024, 2010, 2023, 2015, 2015, 2016, 2014, 2001, 2025, 2019, 2015, 2015, 2024, 2024]);
       // Deterministic: the register loaded in reverse order gives the same seats.
