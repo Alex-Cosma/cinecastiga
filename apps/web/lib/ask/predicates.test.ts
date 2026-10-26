@@ -10,7 +10,7 @@ import { baseQuestions } from "./filters/probe";
 import { FILTER_DEFS } from "./filters/registry";
 import type { EngineLevel, FilterDef, FilterSpec } from "./filters/types";
 import {
-  andAll, DA_PLAFOND_RON, displayPredicates, groupPredicates, plafondFor, predicateContext, profileMinDas, profilePredicates,
+  andAll, DA_PLAFOND_RON, displayPredicates, fullValueUnion, groupPredicates, plafondFor, predicateContext, profileMinDas, profilePredicates,
   rowPredicates, trendGroupOf, trendGroupSql, trendYearsPredicate, type PredicateCtx,
 } from "./predicates";
 import { partialMonths, sameMonthsWindow, type CoveragePeriods } from "./months-window";
@@ -285,5 +285,49 @@ describe("the conditions of a question", () => {
     expect(displayPredicates(ctxFor(compare), "T").slice(2)).toEqual(["authority_id in (3, 2)", "supplier_id = 1"]);
     const firms: AskSpec = { block: "compare", measure: "value", filters: { supplierName: "A", supplierId: 1, compareWith: "B", compareWithId: 2 } };
     expect(texts(rowPredicates(ctxFor(firms))).slice(2)).toEqual(['d.supplier_id in ($1, $2) ["1","2"]']);
+  });
+});
+
+describe("the common selection (F3, plan §3, §4.1)", () => {
+  const stat = (filters: AskSpec["filters"], dataset: AskSpec["dataset"] = "all"): AskSpec => ({ block: "stat", measure: "value", dataset, filters });
+  const conds = (spec: AskSpec) => texts(rowPredicates(ctxFor(spec))).slice(2);
+
+  it("writes the kind on the code, with the domain's, the procedure on the contracts and the size on the whole purchase", () => {
+    expect(conds(stat({ purchaseKind: "lucrari" }))).toEqual(["d.cpv_code like '45%' []"]);
+    expect(conds(stat({ purchaseKind: "servicii" }))).toEqual(["d.cpv_code >= '50' []"]);
+    expect(conds(stat({ purchaseKind: "produse" }))).toEqual(["(d.cpv_code < '45' or (d.cpv_code >= '48' and d.cpv_code < '50')) []"]);
+    // The kind and the domain on the same code (the fake domain is 336…, goods; its exclusion stays).
+    expect(conds(stat({ cpvTerm: "medicamente", purchaseKind: "produse" }))).toEqual([
+      '(d.cpv_code like $1) ["336%"]', 'not (d.cpv_code like $1) ["33696%"]', "(d.cpv_code < '45' or (d.cpv_code >= '48' and d.cpv_code < '50')) []",
+    ]);
+    expect(texts(rowPredicates(ctxFor(stat({ procedure: "deschisa" }, "contracts"))))).toEqual([
+      "d.closing_value > 0 []", 'd.procedure_type = any($1::text[]) [["Licitatie deschisa","Licitatie deschisa accelerata"]]',
+    ]);
+    expect(texts(rowPredicates(ctxFor(stat({ procedure: "altele" }, "contracts"))))[1])
+      .toBe(`not (coalesce(d.procedure_type, '') = any($1::text[])) [["Licitatie deschisa","Licitatie deschisa accelerata","Procedura simplificata","Negociere fara publicare prealabila"]]`);
+    // A contract's whole value; a direct acquisition's own on the DA stream.
+    expect(conds(stat({ purchaseValueMin: 1_000_000 }))).toEqual(["coalesce(d.contract_value_full, d.closing_value) >= $1::numeric [1000000]"]);
+    expect(texts(rowPredicates(ctxFor(stat({ purchaseValueMin: 10_000, purchaseValueMax: 100_000 }, "da")))).slice(2))
+      .toEqual(["d.closing_value >= $1::numeric [10000]", "d.closing_value < $1::numeric [100000]"]);
+  });
+
+  it("leaves out a kind the domain has no codes of, as the answer's note says", () => {
+    expect(ctxFor(stat({ cpvTerm: "medicamente", purchaseKind: "lucrari" })).purchaseKind).toBeNull();
+    expect(ctxFor(stat({ purchaseKind: "lucrari" })).purchaseKind).toBe("lucrari");
+  });
+
+  it("asks a union of both streams for the whole value only when the size is asked", () => {
+    expect(fullValueUnion(ctxFor(stat({ purchaseValueMax: 10_000 })))).toBe(true);
+    expect(fullValueUnion(ctxFor(stat({ purchaseValueMax: 10_000 }, "da")))).toBe(false);
+    expect(fullValueUnion(ctxFor(stat({ purchaseValueMax: 10_000 }, "contracts")))).toBe(false);
+    expect(fullValueUnion(ctxFor(stat({ purchaseKind: "lucrari" })))).toBe(false);
+  });
+
+  it("shows each condition in the SQL text", () => {
+    const shown = displayPredicates(ctxFor(stat({ purchaseKind: "lucrari", purchaseValueMin: 1_000_000 })), "T");
+    expect(shown).toContain("cpv_code like '45%'  -- doar lucrări (tipul din codul CPV)");
+    expect(shown).toContain("coalesce(contract_value_full, closing_value) >= 1000000  -- de peste 1 mil. lei: valoarea întregii achiziții, nu cota câștigătorului");
+    expect(displayPredicates(ctxFor(stat({ procedure: "negociere_fara_publicare" }, "contracts")), "T"))
+      .toContain("procedure_type in ('Negociere fara publicare prealabila')  -- procedura declarată în SEAP");
   });
 });

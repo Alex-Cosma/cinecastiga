@@ -72,7 +72,9 @@ export function unsupportedPopulationView(spec: { block: string; dataset?: strin
   if (spec.block === "trend" && spec.minimumRecords) return "Filtrul «cel puțin N înregistrări» se aplică întregii selecții și nu este disponibil în diferența dintre doi ani. Alege evoluția în timp sau elimină explicit acest filtru.";
   if (!isHistoricalProfile(spec)) return null;
   const f = spec.filters as Record<string, unknown>;
-  const transaction = ["cpvTerm", "yearFrom", "yearTo", "monthFrom", "monthTo", "singleBidder", "minEmployees", "maxEmployees", "adminName", "adminPersonKey"];
+  // F3's common selection is on the records too: a kind, a procedure, the size of a purchase.
+  const transaction = ["cpvTerm", "yearFrom", "yearTo", "monthFrom", "monthTo", "singleBidder", "minEmployees", "maxEmployees", "adminName", "adminPersonKey",
+    "purchaseKind", "procedure", "purchaseValueMin", "purchaseValueMax"];
   if (spec.population || spec.minimumRecords || transaction.some(k => f[k] !== undefined) || spec.dataset === "contracts")
     return "Acest răspuns folosește profiluri istorice de achiziții directe și nu poate respecta selecția de tranzacții. Condițiile sunt păstrate. Alege un clasament, o evoluție sau un total; pentru profiluri, elimină explicit condițiile de perioadă, domeniu și selecție precisă.";
   if (["scatter", "entity_card"].includes(spec.block) && ["authorityId", "authorityName", "supplierId", "supplierName"].some(k => f[k] !== undefined))

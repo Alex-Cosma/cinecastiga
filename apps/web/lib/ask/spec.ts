@@ -1,4 +1,5 @@
 import { validatePopulation, unsupportedPopulationView, type MinimumRecords, type QueryPopulation } from "./population";
+import { codeKinds, PURCHASE_KIND_WORDS } from "./purchase";
 
 /**
  * The closed query-spec vocabulary for the "Întreabă" engine. The LLM never
@@ -295,6 +296,19 @@ export const SPEC_JSON_SCHEMA = {
         },
         yearFrom: { type: "integer", minimum: 2000, maximum: 2100 },
         yearTo: { type: "integer", minimum: 2000, maximum: 2100 },
+        // F3 (plan §3): the common selection.
+        purchaseKind: {
+          type: "string",
+          enum: [...PURCHASE_KINDS],
+          description: "Tipul achiziției, din codul CPV: lucrări (CPV 45), servicii (50–98), produse (03–44, 48). Doar când omul spune „lucrări”, „servicii” sau „produse” fără alt domeniu.",
+        },
+        procedure: {
+          type: "string",
+          enum: [...PROCEDURES],
+          description: "Procedura declarată în SEAP, doar pentru contracte: licitație deschisă, procedură simplificată, negociere fără publicare, altele.",
+        },
+        purchaseValueMin: { type: "integer", minimum: 0, description: "Lei: doar achizițiile a căror valoare întreagă e cel puțin atât (ex: „peste 1 milion” → 1000000)." },
+        purchaseValueMax: { type: "integer", minimum: 1, description: "Lei: doar achizițiile a căror valoare întreagă e sub atât." },
       },
     },
   },
@@ -322,6 +336,8 @@ export const IMPLEMENTED_KEYS: ReadonlySet<string> = new Set([
     "maxEmployees", "yearFrom", "yearTo"].map(key => `filters.${key}`),
   // F2: the trend's group, its months, its order (TREND_RULES below; compile.ts case "trend").
   ...["change", "months", "order", "minBase", "firstOnly"].map(key => `trend.${key}`),
+  // F3: the common selection (SELECTION_RULES below; lib/ask/predicates.ts rowPredicates).
+  ...["purchaseKind", "procedure", "purchaseValueMin", "purchaseValueMax"].map(key => `filters.${key}`),
 ]);
 /**
  * Paths parseSpec reads ahead of the engine (plan §3), with the stage that
@@ -333,7 +349,6 @@ export const IMPLEMENTED_KEYS: ReadonlySet<string> = new Set([
 export const READ_AHEAD_KEYS = {
   "options.members=network-group": "F4",
   "timeseries.grain": "F3", "timeseries.split": "F3", "timeseries.months": "F3",
-  "filters.purchaseKind": "F3", "filters.procedure": "F3", "filters.purchaseValueMin": "F3", "filters.purchaseValueMax": "F3",
   "filters.firmSeat": "F4", "filters.seatCounty": "F4", "filters.sharedPartners": "F4", "sankey.shown": "F4",
   "network.partners": "F4", "network.since": "F4", "network.order": "F4", "network.show": "F4", "network.signals": "F4",
   "filters.newSince": "F5", "filters.newScope": "F5", "filters.mainClient": "F5", "filters.dominantSupplier": "F5",
@@ -551,8 +566,12 @@ export function parseSpec(raw: unknown): AskSpec | SpecError {
   for (const k of ["purchaseValueMin", "purchaseValueMax", "newSince"] as const)
     if (fRaw[k] !== undefined && fRaw[k] !== null && fRaw[k] !== "") filters[k] = Number(fRaw[k]);
   for (const k of ["sharedPartners", "mainClient", "dominantSupplier"] as const) if (fRaw[k] === true) filters[k] = true;
-  if (filters.purchaseValueMin !== undefined && filters.purchaseValueMax !== undefined && filters.purchaseValueMin > filters.purchaseValueMax)
-    return { error:"Valoarea minimă depășește maximul; corectează limitele." };
+  // [min, max): the upper bound is not in the range (lib/ask/purchase.ts VALUE_RANGES), so it must be above the lower one.
+  if (filters.purchaseValueMin !== undefined && filters.purchaseValueMax !== undefined && filters.purchaseValueMin >= filters.purchaseValueMax)
+    return { error:"Limita de sus a mărimii trebuie să fie peste cea de jos; corectează limitele." };
+  // A procedure is one of the contracts' (stat final §3.1): it brings their stream, loudly as the single
+  // bidder does; on the direct acquisitions runnableError refuses it (SELECTION_RULES).
+  if (filters.procedure && dataset !== "da") dataset = "contracts";
   for (const k of ["yearFrom", "yearTo"] as const) {
     const v = fRaw[k];
     if (v === undefined || v === null) continue;
@@ -633,6 +652,30 @@ export const TREND_RULES: Readonly<Record<"order" | "minBase" | "firstOnly", (sp
     ? "„Prima dată” se aplică doar firmelor sau instituțiilor noi." : null,
 };
 
+/** The DA analysis ceiling of the engine (lib/ask/predicates.ts DA_PLAFOND_RON; spec.test.ts checks they agree). */
+export const DA_CEILING_RON = 2_000_000;
+/**
+ * The rules of the common selection (plan §3, F3): a procedure is a contract's
+ * (it brings the contracts' stream; the direct acquisitions have none), and a
+ * direct acquisition is counted up to the analysis ceiling, so a size above it
+ * cannot hold one. The kind and the domain combine (kit §5.3): a CPV code
+ * says its kinds here, so a kind it has no codes of is refused (the builder
+ * shows it disabled, and a new code drops it with a note); words are matched
+ * on the server, where an empty intersection leaves the kind out with a note
+ * (predicateContext, resolvedSpec). FilterDef.validate of lib/ask/filters/defs/selection.ts and ranking.ts.
+ */
+export const SELECTION_RULES: Readonly<Record<"purchaseKind" | "procedure" | "purchaseValue", (spec: AskSpec) => string | null>> = {
+  purchaseKind: (spec) => {
+    const kind = spec.filters.purchaseKind, reached = codeKinds(spec.filters.cpvTerm);
+    if (!kind || !reached || reached.has(kind)) return null;
+    return `CPV ${String(spec.filters.cpvTerm).trim()} nu are coduri de ${PURCHASE_KIND_WORDS[kind].noun}. Alege alt tip sau „Orice”.`;
+  },
+  procedure: (spec) => spec.filters.procedure && spec.dataset !== "contracts"
+    ? "Procedura se alege doar la contractele din proceduri. Alege „Contractele din proceduri” sau scoate procedura." : null,
+  purchaseValue: (spec) => spec.dataset === "da" && spec.filters.purchaseValueMin !== undefined && spec.filters.purchaseValueMin > DA_CEILING_RON
+    ? "Achizițiile directe se numără până la 2 mil. lei. Alege o limită mai mică sau și contractele." : null,
+};
+
 /** What this release can answer, on a parsed spec. Null when it can run. */
 export function runnableError(spec: AskSpec): string | null {
   const { block, dim, measure, filters } = spec;
@@ -669,7 +712,7 @@ export function runnableError(spec: AskSpec): string | null {
   }
   if (block === "trend" && (filters.monthFrom !== undefined || filters.monthTo !== undefined))
     return "Schimbarea compară doi ani întregi. Elimină explicit lunile sau alege evoluția în timp; filtrele nu au fost eliminate.";
-  for (const rule of Object.values(TREND_RULES)) {
+  for (const rule of [...Object.values(TREND_RULES), ...Object.values(SELECTION_RULES)]) {
     const error = rule(spec);
     if (error) return error;
   }

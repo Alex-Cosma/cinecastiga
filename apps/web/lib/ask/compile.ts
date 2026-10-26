@@ -7,7 +7,7 @@ import { namedKind, NEWER_VERSION_LINK, unimplementedSpecKeys, type AskSpec, typ
 import type { Grounding } from "./ground";
 import { EVIDENCE_CSV_LIMIT, PROFILE_BLOCKS, sumDecimalStrings, validateEvidenceScope, type EvidenceScope, type EvidenceStatus, type EvidenceProfile } from "./evidence";
 import {
-  andAll, DA_PLAFOND_RON, displayPredicates, employeesCond, ENTITY_CARD_MIN_DAS, fold, groupPredicates, isEveryChange, perCapitaPredicate, plafondFor, predicateContext,
+  andAll, DA_PLAFOND_RON, displayPredicates, employeesBounds, employeesCond, ENTITY_CARD_MIN_DAS, fold, fullValueUnion, groupPredicates, isEveryChange, perCapitaPredicate, plafondFor, predicateContext,
   profileMinDas, profilePredicates, RISK_MIN_DAS, rowPredicates, trendGroupOf, trendGroupSql, trendYearsPredicate, type PredicateCtx, type TrendGroup,
 } from "./predicates";
 import { authorityKindIds, KIND_LABEL } from "./authority-kind";
@@ -35,6 +35,7 @@ import {
   type SourceTotalsRow,
 } from "./group-ids";
 import { sectorUnit } from "../peer-population";
+import { kindApplies, kindLeftOutNote } from "./purchase";
 
 /**
  * Compile a validated AskSpec + grounding into parameterized SQL and execute it
@@ -491,6 +492,8 @@ export const PERIOD_UNKNOWN_CAVEAT =
  * `da_code` doubles as the generic reference code (contract_no on the
  * contracts branch), `ref_id` as the source row id. Postgres pushes WHERE
  * quals into both branches, so the union costs what its filtered branches cost.
+ * `contract_value_full` is the size of the whole purchase (F3,
+ * purchaseValueConds): null on a direct acquisition, whose own value it is.
  */
 function txFragment(sql: DbSql, dataset: "all" | "da" | "contracts") {
   if (dataset === "contracts") return sql`marts.contract_transactions`;
@@ -500,14 +503,14 @@ function txFragment(sql: DbSql, dataset: "all" | "da" | "contracts") {
            cpv_code, cpv_name, closing_value, finalization_date,
            da_code, sicap_da_id as ref_id, null::bigint as ca_notice_id,
            null::text as ted_pubnum, null::boolean as is_single_bidder,
-           'da'::text as src, estimated_value_ron, value_suspect
+           'da'::text as src, estimated_value_ron, value_suspect, null::numeric as contract_value_full
     from marts.da_transactions
     union all
     select authority_id, authority_name, supplier_id, supplier_name, county,
            cpv_code, cpv_name, closing_value, finalization_date,
            contract_no, contract_id, ca_notice_id,
            ted_pubnum, is_single_bidder,
-           'contracts'::text, null::numeric, false
+           'contracts'::text, null::numeric, false, contract_value_full
     from marts.contract_transactions
   )`;
 }
@@ -520,29 +523,33 @@ function txFragment(sql: DbSql, dataset: "all" | "da" | "contracts") {
  * (measured: 3.3s wide vs 0.22s slim on county aggregates). Aggregates never
  * display row-level fields, so they only get what filters and grouping can
  * touch; `withNames` adds the display-name columns needed when the block
- * groups by entity or a kind filter matches on authority_name.
+ * groups by entity or a kind filter matches on authority_name; `full` the
+ * size of the whole purchase, only when a question asks for it (F3,
+ * fullValueUnion: plan §4.1, "a third variant").
  */
-function txAggFragment(sql: DbSql, dataset: "all" | "da" | "contracts", withNames: boolean) {
+function txAggFragment(sql: DbSql, dataset: "all" | "da" | "contracts", withNames: boolean, full = false) {
   if (dataset === "contracts") return sql`marts.contract_transactions`;
   if (dataset === "da") return sql`marts.da_transactions`;
+  const fullDa = full ? sql`, null::numeric as contract_value_full` : sql``;
+  const fullContracts = full ? sql`, contract_value_full` : sql``;
   if (withNames)
     return sql`(
     select authority_id, authority_name, supplier_id, supplier_name, county,
            cpv_code, closing_value, finalization_date,
-           null::boolean as is_single_bidder, 'da'::text as src
+           null::boolean as is_single_bidder, 'da'::text as src${fullDa}
     from marts.da_transactions
     union all
     select authority_id, authority_name, supplier_id, supplier_name, county,
-           cpv_code, closing_value, finalization_date, is_single_bidder, 'contracts'::text
+           cpv_code, closing_value, finalization_date, is_single_bidder, 'contracts'::text${fullContracts}
     from marts.contract_transactions
   )`;
   return sql`(
     select authority_id, supplier_id, county, cpv_code, closing_value,
-           finalization_date, null::boolean as is_single_bidder, 'da'::text as src
+           finalization_date, null::boolean as is_single_bidder, 'da'::text as src${fullDa}
     from marts.da_transactions
     union all
     select authority_id, supplier_id, county, cpv_code, closing_value,
-           finalization_date, is_single_bidder, 'contracts'::text
+           finalization_date, is_single_bidder, 'contracts'::text${fullContracts}
     from marts.contract_transactions
   )`;
 }
@@ -635,7 +642,7 @@ function trendGroupedInput(s: DbSql, o: {
   const selection = andAll(s, [...rowPredicates(o.ctx, { years: false }), trendYearsPredicate(s, o.yearA, o.yearB, o.ctx.trendMonths), ...fixed]);
   return s`
     select ${key} id, ${va} va, ${vb} vb, ${liveTrendChannels(s, o.dataset)}
-    from ${txAggFragment(s, o.dataset, false)} d
+    from ${txAggFragment(s, o.dataset, false, fullValueUnion(o.ctx))} d
     where ${selection} and ${key} is not null
     group by ${key}
   `;
@@ -737,6 +744,9 @@ export async function runSpec(
   const cpvExclude = grounding.cpv?.excludePrefixes ?? [];
   if (cpvExclude.length)
     caveats.push(`Din „${grounding.cpv!.term}” nu sunt numărate: ${(grounding.cpv!.excludedNames?.length ? grounding.cpv!.excludedNames : cpvExclude).join("; ")}.`);
+  // F3: a kind the domain has no codes of is left out, said here and in the spec returned (resolvedSpec).
+  if (spec.filters.purchaseKind && !kindApplies(spec.filters.purchaseKind, grounding))
+    caveats.push(kindLeftOutNote(spec.filters.purchaseKind, grounding.cpv?.term ?? spec.filters.cpvTerm));
   if (grounding.cpv && grounding.cpv.method === "fuzzy") {
     caveats.push(
       `Am interpretat „${grounding.cpv.term}” prin potrivire aproximativă pe catalogul CPV: ${grounding.cpv.matchedNames.join("; ")}. Verifică dacă e ce ai vrut.`,
@@ -908,13 +918,13 @@ export async function runSpec(
   // the record conditions, then the record threshold counted over the same rows.
   const whereFrag = (opts?: { years?: boolean }): ReturnType<DbSql> => {
     const base = andAll(sql, rowPredicates(w, opts));
-    return andAll(sql, [base, ...groupPredicates(w, txAggFragment(sql, dataset, false) as unknown as ReturnType<DbSql>, base)]);
+    return andAll(sql, [base, ...groupPredicates(w, txAggFragment(sql, dataset, false, fullValueUnion(w)) as unknown as ReturnType<DbSql>, base)]);
   };
 
   // aggregate fragments (see txAggFragment): slim (the kind is a list of
   // authority ids, D1); the named variant serves entity-grouped blocks
-  const txtAggNames = txAggFragment(sql, dataset, true);
-  const txtAgg = txAggFragment(sql, dataset, false);
+  const txtAggNames = txAggFragment(sql, dataset, true, fullValueUnion(w));
+  const txtAgg = txAggFragment(sql, dataset, false, fullValueUnion(w));
   // The homepage states the DA bound explicitly in its population: reuse the
   // matching mart only for this exact predicate, never discard a more specific
   // selection.
@@ -928,16 +938,23 @@ export async function runSpec(
   // Bare national query, or the exact DA bound represented in the mart:
   // serve the precomputed agg_* marts — same union, same plafond semantics,
   // rebuilt with the other marts. Live scans over 20M rows cost 12-17s here.
-  const unfiltered =
+  // Every condition of the records; the firms' size is an attribute of the firm (entityAttr, plan §2.5), apart.
+  const noRecordCondition =
     !w.county && w.cpvPrefixes.length === 0 && !w.kind &&
     !w.authorityId && !w.supplierId && w.uatSiruta === null &&
     !w.singleBidder && w.adminSupplierIds === null &&
-    w.minEmployees === null && w.maxEmployees === null &&
+    !w.purchaseKind && !w.procedure && w.purchaseValueMin === null && w.purchaseValueMax === null &&
     w.yearFrom === null && w.yearTo === null &&
     w.monthFrom === null && w.monthTo === null && (!spec.population || nationalDaBound) && !spec.minimumRecords;
+  const unfiltered = noRecordCondition && w.minEmployees === null && w.maxEmployees === null;
   // The other rollups combine both streams; agg_national retains src and can
   // also serve filter-free DA-only and contract-only totals without a scan.
   const bare = dataset === "all" && unfiltered;
+  // The firms' size alone, over every year and both streams (plan §2.5, "calea rapidă pe atribute"):
+  // a ranking of firms reads their own profiles, whose total_ron_split and n_das + n_contracts are each
+  // firm's sum and count over the same records (0 differences on 163,158 firms, 26 Oct 2026; the
+  // nightly validation checks the totals, apps/ingestion monitoring/validate.ts).
+  const firmSizeOnly = dataset === "all" && noRecordCondition && !spec.population && !unfiltered;
   const aggV = w.plafond === "none" && !nationalDaBound ? sql`v_all` : sql`v_plaf`;
   const aggN = w.plafond === "none" && !nationalDaBound ? sql`n_all` : sql`n_plaf`;
 
@@ -1153,6 +1170,27 @@ export async function runSpec(
               })),
             };
           }
+          // Firms by their size alone (firmSizeOnly): their profiles, in the order and with the totals of the grouped records.
+          const sizeSort = tableOpts.sort ?? (spec.measure === "count" ? "count" : "value");
+          if (firmSizeOnly && dim === "supplier" && spec.measure !== "value_per_capita" && (sizeSort === "value" || sizeSort === "count")) {
+            const size = s`ep.role = 'supplier' and ep.total_ron_split > 0 and ${employeesBounds(s, w.minEmployees, w.maxEmployees)}`;
+            const r = (await s`
+              select ep.entity_id id, coalesce(ep.name_display, '(fără nume)') nm, ep.county co,
+                     ep.total_ron_split v, ep.n_das + ep.n_contracts n,
+                     sum(ep.total_ron_split) over () tv, sum(ep.n_das + ep.n_contracts) over () tn, count(*) over () te
+              from marts.entity_profile ep
+              where ${size}
+              order by ${sizeSort === "count" ? s`ep.n_das + ep.n_contracts` : s`ep.total_ron_split`} ${tableOpts.sort ? dir : s`desc`}, ep.entity_id
+              ${limitFrag}
+            `) as unknown as { id: string; nm: string; co: string | null; v: string; n: string; tv: string; tn: string; te: string }[];
+            const first = r[0];
+            return {
+              block: "table",
+              rows: r.map((p) => ({ entityId: String(p.id), name: p.nm, county: p.co, value: Number(p.v), count: Number(p.n), population: null })),
+              ...(await pagedMeta(r, () => s`select count(*) t from marts.entity_profile ep where ${size}` as unknown as Promise<{ t: string }[]>)),
+              ...(first ? { totals: { value: Number(first.tv), count: Number(first.tn), entities: Number(first.te) } } : {}),
+            };
+          }
           const rollupOpts = {
             measure: spec.measure === "count" ? "count" as const : "value" as const, paged, topN, page, pageSize: TABLE_PAGE_SIZE,
             ...(tableOpts.sort ? { sort: tableOpts.sort } : {}), ...(tableOpts.dir ? { dir: tableOpts.dir } : {}),
@@ -1352,7 +1390,8 @@ export async function runSpec(
           const singleBid = dataset === "da" ? s`0 single_bid, 0 single_known` : s`count(*) filter (where d.is_single_bidder) single_bid, count(*) filter (where d.is_single_bidder is not null) single_known`;
           const contractRows = dataset === "da" ? null
             : s`(select c.authority_id, c.authority_name, c.supplier_id, c.supplier_name, c.county, c.cpv_code,
-                        c.closing_value, c.finalization_date, c.is_single_bidder, 'contracts'::text src, c.contract_id
+                        c.closing_value, c.finalization_date, c.is_single_bidder, 'contracts'::text src, c.contract_id,
+                        c.procedure_type, c.contract_value_full
                  from marts.contract_transactions c)`;
           const [streams, parties, years, domains, top, shared, joint, profiles, risk] = await Promise.all([
             s`select ${party}::text id, ${src} src, sum(d.closing_value)::text value, count(*)::int n, ${singleBid},
@@ -2160,14 +2199,15 @@ export async function runRows(
            'da'::text as src, null::bigint as ca_notice_id, null::text as ted_pubnum,
            estimated_value_ron, value_suspect, 'Oferta acceptata'::text as state,
            null::integer as n_winners, null::numeric as contract_value_full,
-           null::boolean as is_single_bidder
+           null::boolean as is_single_bidder, null::text as procedure_type
     from marts.da_transactions
   )`;
+  // The procedure declared in SEAP (F3, procedureCond): the contracts' only.
   const contractTx = sql`(
     select contract_id as ref_id, contract_no as da_code, finalization_date, authority_id, authority_name,
            supplier_id, supplier_name, county, cpv_code, cpv_name, closing_value,
            'contracts'::text as src, ca_notice_id, ted_pubnum, null::numeric as estimated_value_ron,
-           false as value_suspect, null::text as state, n_winners, contract_value_full, is_single_bidder
+           false as value_suspect, null::text as state, n_winners, contract_value_full, is_single_bidder, procedure_type
     from marts.contract_transactions
   )`;
   const txt = profile ? sql`(
@@ -2177,7 +2217,7 @@ export async function runRows(
            a.county, da.cpv_code, cpv.name_ro as cpv_name, da.closing_value,
            'da'::text as src, null::bigint as ca_notice_id, null::text as ted_pubnum,
            da.estimated_value_ron, false as value_suspect, da.state,
-           null::integer as n_winners, null::numeric as contract_value_full, null::boolean as is_single_bidder
+           null::integer as n_winners, null::numeric as contract_value_full, null::boolean as is_single_bidder, null::text as procedure_type
     from core.direct_acquisitions da
     left join core.entities a on a.id = da.authority_entity_id
     left join core.entities su on su.id = da.supplier_entity_id
@@ -2196,6 +2236,9 @@ export async function runRows(
     // The precise selection and the record threshold, in the words of describeConditions.
     const conditions = describeConditions(spec, { grounding, origin: opts.origin, entities: opts.entities }).byId;
     if (conditions.population?.note) notes.push(conditions.population.note);
+    // F3: the size is the whole purchase's, a kind the domain lacks is left out (as in the answer).
+    if (conditions.purchaseValue?.note) notes.push(conditions.purchaseValue.note);
+    if (spec.filters.purchaseKind && !ctx.purchaseKind) notes.push(kindLeftOutNote(spec.filters.purchaseKind, grounding.cpv?.term ?? spec.filters.cpvTerm));
     const isRelationship = spec.block === "network" || spec.block === "sankey";
     if (isRelationship) {
       if (!focalId) return { error: "Lipsește entitatea centrală." };
@@ -2292,7 +2335,7 @@ export async function runRows(
       const where = andAll(sql, [...rowPredicates(ctx, { years: false }), trendYearsPredicate(sql, yearA, yearB, ctx.trendMonths),
         sql`lower(unaccent(d.county)) = any(${sql.array([...named])}::text[])`]);
       const rows = (await readEvidenceQuery(s`
-        select d.county::text m from ${txAggFragment(sql, dataset, false)} d
+        select d.county::text m from ${txAggFragment(sql, dataset, false, fullValueUnion(ctx))} d
         where ${where} group by d.county ${having ? sql`having ${having}` : sql``}
       `, opts.signal)) as unknown as { m: string }[];
       return { members: rows.map((r) => r.m), sources: null, selection: null };
@@ -2308,7 +2351,7 @@ export async function runRows(
       const where = andAll(sql, [...rowPredicates(ctx, { years: false }), trendYearsPredicate(sql, yearA, yearB, ctx.trendMonths),
         sql`${id} = any(${sql.array([...own])}::bigint[])`, memberRange]);
       const rows = (await readEvidenceQuery(s`
-        select ${id}::text m from ${txAggFragment(sql, dataset, false)} d
+        select ${id}::text m from ${txAggFragment(sql, dataset, false, fullValueUnion(ctx))} d
         where ${where} group by ${id} ${having ? sql`having ${having}` : sql``}
       `, opts.signal)) as unknown as { m: string }[];
       return { members: rows.map((r) => r.m), sources: null, selection: null };

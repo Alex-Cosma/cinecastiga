@@ -1,10 +1,11 @@
 import { countyIsFirmSeat } from "../population";
+import { PROCEDURE_WORDS, PURCHASE_KIND_WORDS, type Procedure, type PurchaseKind } from "../purchase";
 import {
   KIND_ONE, KIND_OPTIONS, KIND_WORDS, compareWithLabel, countyWords, entityLabel, leaderAxis, subjectWords, type QuestionSpec,
 } from "../question-ui";
 import { DEFAULT_TREND_MIN_BASE, type AskSpec, type AuthorityKind, type Block } from "../spec";
 import { formatRon } from "../../format";
-import { filterContext } from "./context";
+import { filterContext, formOf } from "./context";
 import { TREND_CHANGE_LABELS, TREND_CHANGE_PHRASE, TREND_NO_RECORDS, firstTimeTip, firstTimeWords, trendGap } from "./defs/trend";
 import type { FilterCtx, FilterId, FilterSpec, Picker, Slot } from "./types";
 import {
@@ -245,15 +246,39 @@ function firmsPhrases(out: Tokens, spec: Spec, ctx: FilterCtx, one: boolean): vo
 }
 
 /**
- * What was bought: "pentru [„asfaltare”]" (or "în domeniul […]"); a CPV code by its name when the
- * caller knows it, the reader's own words when the interpreter does.
+ * F3 (plan §3, kit §4): the questions whose sentence says the purchase kind ("de [lucrări]"): stat,
+ * table, timeseries, map, breakdown, trend, "Cine conduce?" on value, the verification and the
+ * comparison; elsewhere (a relation's centre, the profiles) a link's kind is a chip under the sentence.
  */
-function domain(out: Tokens, spec: Spec, labels: SentenceLabels, lead = " pentru "): void {
+const KIND_FORMS: ReadonlySet<string> = new Set(["stat", "table", "timeseries", "map", "breakdown", "trend", "entity_card:value", "fact_check", "compare"]);
+/** F3, kit item 8: the questions whose noun can be a procedure's ("[contractele din licitații deschise]"). */
+const PROCEDURE_FORMS: ReadonlySet<string> = new Set(["stat", "table", "timeseries", "map", "entity_card:value"]);
+export const offersKind = (spec: Spec): boolean => KIND_FORMS.has(formOf(spec));
+export const offersProcedure = (spec: Spec): boolean => PROCEDURE_FORMS.has(formOf(spec));
+/** The kind the sentence says, on a question that offers it. */
+const kindSaid = (spec: Spec): PurchaseKind | undefined => {
+  const kind = spec.filters.purchaseKind as PurchaseKind | undefined;
+  return kind && PURCHASE_KIND_WORDS[kind] && offersKind(spec) ? kind : undefined;
+};
+/** "[lucrări]": the kind's phrase; its window is "Ce s-a cumpărat?", which also searches the domain. */
+function kindPhrase(out: Tokens, kind: PurchaseKind): Tokens {
+  return out.slot("purchaseKind", "cpvTerm", PURCHASE_KIND_WORDS[kind].noun, { writes: ["cpvTerm"] });
+}
+
+/**
+ * What was bought: "de [lucrări] pentru [„asfaltare”]" (or "în domeniul […]"); a CPV code by its name
+ * when the caller knows it, the reader's own words when the interpreter does. The kind and the domain
+ * combine (kit §5.3): `kindLead` is the kind's lead ("de" after a noun, a space after "cumpără"), null
+ * where the question does not say it; after a bare kind the domain says "pentru".
+ */
+function domain(out: Tokens, spec: Spec, labels: SentenceLabels, lead = " pentru ", kindLead: string | null = " de "): void {
+  const kind = kindLead === null ? undefined : kindSaid(spec);
+  if (kind) kindPhrase(out.text(kindLead!), kind);
   const term = spec.filters.cpvTerm;
   if (!has(term)) return;
   const isCode = /^(?:\d{2,8}|\d{8}-\d)$/.test(String(term).replace(/\s+/g, ""));
   const words = labels.subject ? `„${labels.subject}”` : isCode && labels.cpvName ? lowerFirst(labels.cpvName) : subjectWords(spec);
-  if (words) out.text(lead).slot("cpvTerm", "cpvTerm", words);
+  if (words) out.text(kind && lead === " " ? " pentru " : lead).slot("cpvTerm", "cpvTerm", words, kindLead !== null && offersKind(spec) ? { writes: ["purchaseKind"] } : {});
 }
 
 /** "prin [achiziții directe]" where the sentence has no noun for the stream; nothing on all of them (kit §5.1). */
@@ -267,9 +292,18 @@ function period(out: Tokens, spec: Spec): void {
   out.text(lead ? `, ${lead} ` : ", ").slot("period", "period", value, { says: hasPeriod(spec) ? ["period"] : [] });
 }
 
-/** The noun of the stream after the verb, e.g. "câștigă [achizițiile]". */
-const noun = (out: Tokens, spec: Spec, form: "the" | "bare" | "of" | "every" | "via"): Tokens =>
-  out.slot("dataset", "dataset", streamWords(spec.dataset)[form], { says: spec.dataset ? ["dataset"] : [] });
+/**
+ * The noun of the stream after the verb, e.g. "câștigă [achizițiile]"; a procedure names its contracts
+ * ("[contractele din licitații deschise]", stat final §1) where the question offers it (kit item 8).
+ */
+const noun = (out: Tokens, spec: Spec, form: "the" | "bare" | "of" | "every" | "via"): Tokens => {
+  const offered = offersProcedure(spec);
+  const procedure = offered && spec.dataset === "contracts" ? PROCEDURE_WORDS[spec.filters.procedure as Procedure] : undefined;
+  return out.slot("dataset", "dataset", (procedure ?? streamWords(spec.dataset))[form], {
+    says: [...(spec.dataset ? ["dataset" as const] : []), ...(procedure ? ["procedure" as const] : [])],
+    ...(offered ? { writes: ["procedure"] } : {}),
+  });
+};
 
 /** The ranked kind after "Ce" (nearticulated, kit §5.41) or the default. */
 const kindBare = (spec: Spec) => { const kind = kindOf(spec); return kind ? KIND_WORDS[kind]!.bare : ALL_BUYERS_BARE; };
@@ -315,7 +349,7 @@ const table: Write = (out, spec, ctx, labels) => {
     out.text(" cumpără cel mai mult ");
     // One institution would be one county: the buyers of a county ranking are kinds (plan §4.2).
     buyer(out, spec, ctx, { place: "never", locality: false, authority: false });
-    domain(out, spec, labels);
+    domain(out, spec, labels, " pentru ", " ");
     fromWhom(out, spec, ctx, ["supplier", "admin", "employees"], "de la");
     noun(out.text(", prin "), spec, "via");
   } else {
@@ -323,7 +357,7 @@ const table: Write = (out, spec, ctx, labels) => {
     if (ctx.locality.ok && hasLocality(spec)) out.text(" ale primăriei ").slot("locality", "place", localityName(String(spec.filters.uatName ?? `SIRUTA ${spec.filters.uatSiruta}`)), { writes: ["county"] });
     else place(out, spec, ctx);
     out.text(" cumpără cel mai mult");
-    domain(out, spec, labels);
+    domain(out, spec, labels, " pentru ", " ");
     fromWhom(out, spec, ctx, ["supplier", "admin", "employees"], "de la");
     noun(out.text(", prin "), spec, "via");
   }
@@ -374,9 +408,13 @@ const map: Write = (out, spec, ctx, labels) => {
  * ("Ce cumpără [instituțiile publice] de la [X]?", kit §5.21).
  */
 const breakdown: Write = (out, spec, ctx, labels) => {
-  out.text("Ce cumpără ");
+  // The kind is what is bought, before the verb (final breakdown §1): "Ce [lucrări] cumpără …".
+  const kind = kindSaid(spec);
+  out.text("Ce ");
+  if (kind) kindPhrase(out, kind).text(" ");
+  out.text("cumpără ");
   buyer(out, spec, ctx, { place: ctx.named.supplier ? "set" : "always" });
-  domain(out, spec, labels, " în domeniul ");
+  domain(out, spec, labels, " în domeniul ", null);
   fromWhom(out, spec, ctx, ["supplier"], "de la");
   channel(out, spec);
   period(out, spec);
@@ -456,12 +494,13 @@ const trend: Write = (out, spec, ctx, labels) => {
     : dim === "county" && Boolean(kindOf(spec));
   const seller = dim !== "supplier" && ctx.named.supplier;
   // Institutions buy: with a domain or a firm, "cumpără …" / "nu mai cumpără …" (kit §4 Plecați).
-  const buys = dim === "authority" && (has(f.cpvTerm) || seller);
-  /** What the change is of: its noun ("a achizițiilor", "în achizițiile"; none after "cumpără"), the domain, the buyer, the firm. */
+  const bought = has(f.cpvTerm) || Boolean(kindSaid(spec));
+  const buys = dim === "authority" && (bought || seller);
+  /** What the change is of: its noun ("a achizițiilor", "în achizițiile"; none after "cumpără"), the kind and domain, the buyer, the firm. */
   const fragments = (noun: string | null) => {
-    if (!(has(f.cpvTerm) || buyerSet || seller)) return;
+    if (!(bought || buyerSet || seller)) return;
     if (noun) out.text(noun);
-    domain(out, spec, labels);
+    domain(out, spec, labels, " pentru ", noun ? " de " : " ");
     if (buyerSet) {
       out.text(" făcute de ");
       buyer(out, spec, ctx, dim === "supplier" ? { place: "set" } : { place: "never", locality: false, authority: false });
@@ -475,7 +514,7 @@ const trend: Write = (out, spec, ctx, labels) => {
     out.text(buys ? " cumpără" : " apar");
     fragments(buys ? null : " în achizițiile");
     channel(out, spec);
-    if (t.firstOnly) firstTime(out, has(f.cpvTerm) || buyerSet || seller);
+    if (t.firstOnly) firstTime(out, bought || buyerSet || seller);
     year(" în ", b);
     if (!gap) year(", față de ", a);
   } else if (change === "gone") {
@@ -498,7 +537,7 @@ const trend: Write = (out, spec, ctx, labels) => {
 /** §4.8 "Cu cine lucrează [X] {pentru […]} {prin [achiziții directe]}, în [toți anii]?" The partners' conditions are a row. */
 const network: Write = (out, spec, ctx, labels) => {
   focal(out.text("Cu cine lucrează "), spec, ctx);
-  domain(out, spec, labels);
+  domain(out, spec, labels, " pentru ", null);
   channel(out, spec);
   period(out, spec);
   out.text("?");
@@ -511,12 +550,12 @@ const network: Write = (out, spec, ctx, labels) => {
 const sankey: Write = (out, spec, ctx, labels) => {
   if (ctx.role === "authority") {
     focal(out.text("Ce cumpără "), spec, ctx);
-    domain(out, spec, labels, " în domeniul ");
+    domain(out, spec, labels, " în domeniul ", null);
     channel(out, spec);
     out.text(" și de la cine");
   } else {
     out.text("Cine cumpără ce");
-    domain(out, spec, labels, " în domeniul ");
+    domain(out, spec, labels, " în domeniul ", null);
     focal(out.text(" de la "), spec, ctx);
     channel(out, spec);
   }
@@ -531,7 +570,7 @@ const sankey: Write = (out, spec, ctx, labels) => {
  */
 const factCheck: Write = (out, spec, _ctx, labels) => {
   out.text("A cumpărat ").slot("authority", "buyer", entityLabel(spec, "authority"), { required: true });
-  domain(out, spec, labels, " ");
+  domain(out, spec, labels, " ", " ");
   out.text(" de la ").slot("supplier", "from", entityLabel(spec, "supplier"), { required: true });
   channel(out, spec);
   // The same words as the condition's ("în 2024", "din 2023 încoace"), "până acum" without one.
@@ -602,7 +641,7 @@ const entityCard: Write = (out, spec, ctx, labels) => {
     out.text(` ${streamWords(spec.dataset).made} `);
     buyer(out, spec, ctx, { place: "always" });
   } else {
-    domain(out, spec, labels);
+    domain(out, spec, labels, " pentru ", " ");
     fromWhom(out, spec, ctx, ["supplier", "admin", "employees"], "de la");
     noun(out.text(", prin "), spec, "via");
   }

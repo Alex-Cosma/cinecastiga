@@ -1,6 +1,7 @@
 import type { AskSpec } from "./spec";
 import type { Grounding } from "./ground";
 import { COUNTIES } from "../counties";
+import { kindApplies } from "./purchase";
 
 const fold = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z]+/g, " ").trim();
 /** The marts store "Buzau"; links, titles and the builder show "Buzău". Grounding folds either. */
@@ -30,5 +31,7 @@ export function resolvedSpec(spec: AskSpec, grounding: Grounding): AskSpec {
   if (grounding.county?.canonical) filters.county = countyDisplay(grounding.county.canonical);
   if (grounding.admin?.personKey)
     filters.adminPersonKey = grounding.admin.personKey;
+  // A kind the domain has no codes of was left out of the answer, with a note (plan §3): the question says so too.
+  if (filters.purchaseKind && !kindApplies(filters.purchaseKind, grounding)) delete filters.purchaseKind;
   return { ...spec, filters };
 }

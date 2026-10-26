@@ -4,7 +4,7 @@ import type { BlockData } from "../../lib/ask/compile";
 import type { AskSpec } from "../../lib/ask/spec";
 import { answerCsv, leiDifference } from "./answer-csv";
 import {
-  SINGLE_OFFER_STREAM, STRIP_QUERY_KEYS, answerHoldsList, appliedAfterStrip, appliedAfterTrendList, deeperThread, readThread, shownWords, streamOptions, threadCrumbs, threadHref, threadWords,
+  PROCEDURE_STREAM, SINGLE_OFFER_STREAM, STRIP_QUERY_KEYS, answerHoldsList, appliedAfterStrip, appliedAfterTrendList, deeperThread, readThread, shownWords, streamOptions, threadCrumbs, threadHref, threadWords,
   totalConditionWords,
 } from "./answer-state";
 import { patchDraft, trendListSwitch } from "./builder/view";
@@ -34,6 +34,11 @@ describe("the applied question and the strip", () => {
     expect(streamOptions(breakdown).map((o) => o.disabled ?? null)).toEqual([null, null, null]);
     const single = streamOptions({ filters: { ...breakdown.filters, singleBidder: true } });
     expect(single.map((o) => [o.value, o.disabled ?? null])).toEqual([["all", SINGLE_OFFER_STREAM], ["da", SINGLE_OFFER_STREAM], ["contracts", null]]);
+    // F3: a procedure is a contract's; a size above the DA ceiling holds no direct acquisition.
+    const open = streamOptions({ filters: { ...breakdown.filters, procedure: "deschisa" } });
+    expect(open.map((o) => [o.value, o.disabled ?? null])).toEqual([["all", PROCEDURE_STREAM], ["da", PROCEDURE_STREAM], ["contracts", null]]);
+    const huge = streamOptions({ filters: { ...breakdown.filters, purchaseValueMin: 5_000_000 } });
+    expect(huge.map((o) => o.disabled ?? null)).toEqual([null, "Achizițiile directe se numără până la 2 mil. lei. Alege o limită mai mică sau și contractele.", null]);
   });
 
   it("shows the server's pills and SQL of the lens on screen, without a new request (variants)", () => {

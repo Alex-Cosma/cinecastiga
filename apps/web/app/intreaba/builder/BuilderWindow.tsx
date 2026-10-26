@@ -16,7 +16,9 @@ import { MIN_TREND_YEAR, type CoveragePeriods } from "@/lib/ask/months-window";
 import { choiceState } from "@/lib/ask/filters/pickers";
 import { trendMonthsState } from "@/lib/ask/filters/trend-rules";
 import PopulationEditor from "../PopulationEditor";
+import { codeKinds, PURCHASE_KIND_ORDER, PURCHASE_KIND_WORDS, VALUE_RANGES, valueRangeIndex, type PurchaseKind, type ValueRange } from "@/lib/ask/purchase";
 import Bands, { EMPLOYEE_BANDS, bandRange, bandsWords } from "./Bands";
+import Pills, { RangeFields } from "./Pills";
 import { useCoverage } from "./coverage";
 import EntitySearch, { type SearchResult } from "./EntitySearch";
 import PeriodPicker, { EMPTY_RANGE, MONTHS, PeriodRange, periodRangeError, type PeriodRangeValue } from "./PeriodPicker";
@@ -190,8 +192,16 @@ function WindowBody({ win, draft, excluded = [], onChoose, onReplace, onRemoveEx
   switch (kind) {
     case "list": case "subject": {
       const { options, value, rest } = listOf();
+      // "Ce fel de achiziții?" with the group „O procedură anume” (F3, kit item 8): a stream row is any procedure of it.
+      if (win.slot.id === "dataset" && own.includes("procedure")) {
+        const procedures = listOf("procedure").options.filter((option) => option.choice.value !== undefined);
+        const chosen = procedures.find((option) => option.choice.value === draft.filters.procedure);
+        return <ChoiceList label={win.name} options={[...options, ...procedures]} value={chosen?.value ?? value}
+          onPick={(option) => pick(option.choice.filter === "dataset" && draft.filters.procedure ? [option.choice, { filter: "procedure", value: undefined }] : [option.choice])} />;
+      }
       return <ChoiceList label={win.name} options={options} value={value} {...(rest ? { rest } : {})} onPick={(option) => pick([option.choice])} />;
     }
+    case "size": return <SizeWindow draft={draft} onPick={pick} />;
     case "peers": return <>{marker}<PeersWindow win={win} draft={draft} onPick={pick} /></>;
     case "buyer": {
       const kinds = own.includes("authorityKind") ? listOf("authorityKind") : null;
@@ -237,7 +247,10 @@ function WindowBody({ win, draft, excluded = [], onChoose, onReplace, onRemoveEx
       <PersonSearch onPick={pick} />
       {(draft.filters.adminName || draft.filters.adminPersonKey) && <div className="qb-pop-foot"><button type="button" className="qb-link" onClick={() => pick([{ filter: "admin", value: undefined }])}>Scoate condiția</button></div>}
     </>;
-    case "cpv": return <CpvSearch draft={draft} onPick={pick} onCpvName={onCpvName} />;
+    case "cpv": return <>
+      {own.includes("purchaseKind") && <KindSegmented win={win} draft={draft} ctx={ctx} onPick={pick} />}
+      <CpvSearch draft={draft} onPick={pick} onCpvName={onCpvName} />
+    </>;
     case "period": return <PeriodWindow draft={draft} year={ctx.year} onPick={pick} />;
     case "months": return <MonthsWindow win={win} draft={draft} ctx={ctx} onPick={pick} />;
     case "advanced": return <AdvancedWindow win={win} draft={draft} onReplace={onReplace} onClose={onClose} />;
@@ -349,6 +362,77 @@ function CpvSearch({ draft, onPick, onCpvName }: { draft: QuestionSpec; onPick: 
       onPick={(option) => onPick(option.value === CURRENT_ROW ? [] : [option.choice])} />}
     <EntitySearch label="Domeniu, produs sau cod CPV" placeholder="medicamente, asfaltare, 45…" results={results} loading={s.loading}
       onSearch={(q) => s.search(q)} onPick={(r) => { const found = r as Found; if (found.cpvName) onCpvName(String(found.choices[0]!.value), found.cpvName); onPick(found.choices); }} />
+  </>;
+}
+
+/**
+ * "Orice · Produse · Servicii · Lucrări" above the domain's search (F3, kit §4 Domeniul): the kind from
+ * the CPV code, which combines with the domain. With a code, the one kind it implies is dotted while
+ * none is chosen and the kinds it has no codes of are disabled with the reason (choiceState).
+ */
+function KindSegmented({ win, draft, ctx, onPick }: { win: BuilderWindowSpec; draft: QuestionSpec; ctx: ReturnType<typeof filterContext>; onPick: (choices: Choice[]) => void }) {
+  const current = (draft.filters.purchaseKind as PurchaseKind | undefined) ?? "any";
+  const [value, setValue] = useState<string>(current);
+  const implied = codeKinds(draft.filters.cpvTerm);
+  const options = [
+    { value: "any", label: "Orice" },
+    ...PURCHASE_KIND_ORDER.map((kind) => {
+      const state = choiceState(win.slot, { filter: "purchaseKind", value: kind }, draft as FilterSpec, ctx);
+      return {
+        value: kind, label: PURCHASE_KIND_WORDS[kind].label,
+        ...(state.state === "disabled" ? { disabled: state.reason } : {}),
+        ...(current === "any" && implied?.size === 1 && implied.has(kind) ? { inferred: true } : {}),
+      };
+    }),
+  ];
+  return <Segmented label="Tipul, după codul CPV" full value={value} options={options} onChange={(next, source) => {
+    setValue(next);
+    if (source === "activate" && next !== current) onPick([{ filter: "purchaseKind", value: next === "any" ? undefined : next }]);
+  }} />;
+}
+
+/** Digits of a bound typed in ("1.000.000", "250 000"): a whole number of lei, or null. */
+const leiOf = (text: string): number | null => {
+  const digits = text.replace(/[\s.]/g, "");
+  return /^\d{1,15}$/.test(digits) ? Number(digits) : null;
+};
+
+/**
+ * "Cât de mare e fiecare achiziție?" (F3, kit §4 "Mărimea achiziției"): a range at once, or two bounds
+ * typed in ("Între … și … lei", the lower one in the range, the upper one not). The size is the whole
+ * purchase's: the (?) of the title says so.
+ */
+function SizeWindow({ draft, onPick }: { draft: QuestionSpec; onPick: (choices: Choice[]) => void }) {
+  const f = draft.filters;
+  const range: ValueRange = {
+    ...(f.purchaseValueMin !== undefined ? { purchaseValueMin: Number(f.purchaseValueMin) } : {}),
+    ...(f.purchaseValueMax !== undefined ? { purchaseValueMax: Number(f.purchaseValueMax) } : {}),
+  };
+  const set = Object.keys(range).length > 0, index = valueRangeIndex(range);
+  const [pill, setPill] = useState<string | null>(index >= 0 ? String(index) : null);
+  const [from, setFrom] = useState(set && index < 0 && range.purchaseValueMin !== undefined ? String(range.purchaseValueMin) : "");
+  const [to, setTo] = useState(set && index < 0 && range.purchaseValueMax !== undefined ? String(range.purchaseValueMax) : "");
+  const [error, setError] = useState<string | null>(null);
+  const use = () => {
+    const min = from.trim() ? leiOf(from) : undefined, max = to.trim() ? leiOf(to) : undefined;
+    if (min === null || max === null) { setError("Scrie sumele în lei, fără zecimale."); return; }
+    if (min === undefined && max === undefined) { setError("Scrie cel puțin o limită."); return; }
+    if (min !== undefined && max !== undefined && min >= max) { setError("Limita de sus trebuie să fie peste cea de jos."); return; }
+    onPick([{ filter: "purchaseValue", value: { ...(min !== undefined ? { purchaseValueMin: min } : {}), ...(max !== undefined ? { purchaseValueMax: max } : {}) } }]);
+  };
+  return <>
+    <Pills label="Mărimea achiziției" options={VALUE_RANGES.map((r, i) => ({ value: String(i), label: r.label }))} value={pill} onChange={(next, source) => {
+      setPill(next);
+      if (source !== "activate") return;
+      const { label: _label, ...chosen } = VALUE_RANGES[Number(next)]!;
+      onPick([{ filter: "purchaseValue", value: chosen }]);
+    }} />
+    <RangeFields from={from} to={to} onChange={(a, b) => { setFrom(a); setTo(b); setError(null); }} />
+    {error && <p className="qb-form-error" role="alert">{error}</p>}
+    <div className="qb-pop-foot">
+      {set ? <button type="button" className="qb-link" onClick={() => onPick([{ filter: "purchaseValue", value: undefined }])}>Scoate condiția</button> : <span />}
+      <button type="button" className="qb-primary" onClick={use}>Folosește</button>
+    </div>
   </>;
 }
 

@@ -282,13 +282,17 @@ export async function trendFactsRows(sql: DbSql, o: { source: Fragment; where: F
   `) as unknown as TrendFactsRow[];
 }
 
-/** The union the facts read: the slim union's columns, the channel and the number of winners (null on direct acquisitions). */
+/**
+ * The union the facts read: the slim union's columns, the channel and the number of winners (null on
+ * direct acquisitions), and what F3's conditions read (rowPredicates): the procedure and the whole value.
+ */
 export function factsSource(sql: DbSql, dataset: "all" | "da" | "contracts", withNames: boolean): Fragment {
   const names: Fragment = withNames ? sql`authority_name, supplier_name, ` : sql``;
   const da: Fragment = sql`select authority_id, supplier_id, ${names}county, cpv_code, closing_value, finalization_date,
-    null::boolean as is_single_bidder, 'da'::text as src, null::integer as n_winners from marts.da_transactions`;
+    null::boolean as is_single_bidder, 'da'::text as src, null::integer as n_winners,
+    null::text as procedure_type, null::numeric as contract_value_full from marts.da_transactions`;
   const contracts: Fragment = sql`select authority_id, supplier_id, ${names}county, cpv_code, closing_value, finalization_date,
-    is_single_bidder, 'contracts'::text as src, n_winners from marts.contract_transactions`;
+    is_single_bidder, 'contracts'::text as src, n_winners, procedure_type, contract_value_full from marts.contract_transactions`;
   return dataset === "da" ? sql`(${da})` : dataset === "contracts" ? sql`(${contracts})` : sql`(${da} union all ${contracts})`;
 }
 

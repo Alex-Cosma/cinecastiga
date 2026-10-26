@@ -1,11 +1,15 @@
+import { VALUE_RANGES, type ValueRange } from "../../purchase";
+import { SELECTION_RULES } from "../../spec";
+import { TRANSACTION_FORMS } from "../context";
 import type { FilterDef } from "../types";
-import { alwaysScope, edited, readAhead } from "./shared";
+import { alwaysScope, edited, levels, readAhead, setFilters } from "./shared";
 
 /*
  * What a row is, how the list is ordered and how long it is (plan §2.2
  * ranking.ts). None of them changes the total of the selection; per-capita
  * changes which institutions can be ranked (the RPL 2021 town halls and
- * county councils) and stays a display choice of the ranking.
+ * county councils) and stays a display choice of the ranking. The plan keeps
+ * the size of the purchase here too (F3), a selection: it changes the total.
  */
 
 type DimValue = "authority" | "supplier" | "county";
@@ -46,11 +50,28 @@ export const topN: FilterDef<number> = {
   choices: (spec) => [5, 10, 25, 50, ...(spec.block === "table" ? [undefined] : []), 1, 37],
 };
 
-export const purchaseValue = readAhead<{ purchaseValueMin?: number; purchaseValueMax?: number }>({
+/**
+ * F3, the size of the whole purchase (plan §4.1, kit §4 "Mărimea achiziției"):
+ * the ranges "Sub 10.000 lei · 10.000–100.000 · 100.000–1 mil. · Peste 1 mil.
+ * lei" or two bounds typed in, [min, max). A selection: the chip "Doar cele de
+ * peste 1 mil. lei" under the sentence and the total line say it. Every answer
+ * over the records applies it (purchaseValueConds); the sums stay on shares.
+ */
+export const purchaseValue: FilterDef<ValueRange> = {
   id: "purchaseValue", keys: ["filters.purchaseValueMin", "filters.purchaseValueMax"], placement: "under", control: "rangePills",
-  label: "Mărimea achiziției", windowTitle: "Cât de mare e fiecare achiziție?", scope: "selection",
-  sample: { block: "stat", value: { purchaseValueMin: 1_000_000 } },
-});
+  label: "Mărimea achiziției", windowTitle: "Cât de mare e fiecare achiziție?",
+  engine: levels(TRANSACTION_FORMS, "row"), scope: alwaysScope("selection"), since: "F3",
+  read: (spec) => {
+    const value: ValueRange = {};
+    if (spec.filters.purchaseValueMin !== undefined) value.purchaseValueMin = Number(spec.filters.purchaseValueMin);
+    if (spec.filters.purchaseValueMax !== undefined) value.purchaseValueMax = Number(spec.filters.purchaseValueMax);
+    return Object.keys(value).length ? value : undefined;
+  },
+  write: (spec, value) => setFilters(spec, { purchaseValueMin: value?.purchaseValueMin, purchaseValueMax: value?.purchaseValueMax }),
+  // The kit's ranges, and two bounds typed in ("Între … și … lei").
+  choices: () => [...VALUE_RANGES.map(({ label: _label, ...range }) => range), { purchaseValueMin: 50_000, purchaseValueMax: 250_000 }],
+  validate: SELECTION_RULES.purchaseValue,
+};
 
 export const mainClient = readAhead<true>({
   id: "mainClient", keys: ["filters.mainClient"], placement: "row", control: "toggle",

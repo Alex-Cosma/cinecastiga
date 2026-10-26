@@ -586,7 +586,7 @@ describe("the sentence as BLOCK_FILTERS places it", () => {
   it("lists each phrase's filter and what its window writes", () => {
     expect(sentenceSlots(sentenceTokens(q({ block: "table", dim: "supplier", topN: 10 })))).toEqual([
       { id: "dim", picker: "subject", writes: ["authorityKind"] },
-      { id: "dataset" },
+      { id: "dataset", writes: ["procedure"] },
       { id: "authorityKind", picker: "buyer", writes: ["authority", "locality"] },
       { id: "county", writes: ["locality"] },
       { id: "period" },
@@ -605,5 +605,56 @@ describe("the sentence as BLOCK_FILTERS places it", () => {
     const blocks: Block[] = ["stat", "table", "timeseries", "map", "breakdown", "compare", "trend", "network", "sankey", "fact_check", "distribution", "scatter", "entity_card"];
     for (const block of blocks) expect(sentenceTokens(q({ block })).length, block).toBeGreaterThan(1);
     expect(sentenceTokens(q({ block: "pie" }))).toEqual([]);
+  });
+});
+
+describe("F3's common selection in the sentence (plan §4.1–§4.13, kit §4)", () => {
+  const WORKS = { purchaseKind: "lucrari" };
+  it("says the kind before the domain: „de [lucrări]” after a noun, „[lucrări]” after „cumpără”", () => {
+    expect(marked(q({ block: "stat", filters: { ...WORKS, cpvTerm: "iluminat" } })))
+      .toBe("Cât valorează [achizițiile] de [lucrări] pentru [„iluminat”] făcute de [instituțiile publice] din [toată țara], în [toți anii]?");
+    expect(marked(q({ block: "stat", measure: "count", filters: WORKS }))).toBe("Câte [achiziții] de [lucrări] au fost făcute de [instituțiile publice] din [toată țara], în [toți anii]?");
+    expect(marked(q({ block: "table", dim: "supplier", topN: 10, filters: WORKS })))
+      .toBe("Ce [firme] câștigă [achizițiile] de [lucrări] făcute de [instituțiile publice] din [toată țara], în [toți anii]?");
+    expect(marked(q({ block: "table", dim: "authority", topN: 10, filters: { ...WORKS, authorityKind: "spital" } })))
+      .toBe("Ce [spitale] din [toată țara] cumpără cel mai mult [lucrări], prin [toate achizițiile], în [toți anii]?");
+    expect(marked(q({ block: "timeseries", filters: WORKS }))).toBe("Cum evoluează [valoarea] [tuturor achizițiilor] de [lucrări] făcute de [instituțiile publice] din [toată țara], [an de an]?");
+    expect(marked(q({ block: "breakdown", filters: { ...WORKS, ...BUZAU } }))).toBe("Ce [lucrări] cumpără [MUNICIPIUL BUZAU], în [toți anii]?");
+    expect(marked(q({ block: "fact_check", filters: { ...WORKS, ...BUZAU, ...PORR, cpvTerm: "pavaj" } })))
+      .toBe("A cumpărat [MUNICIPIUL BUZAU] [lucrări] pentru [„pavaj”] de la [PORR CONSTRUCT] [până acum]?");
+    expect(marked(q({ block: "entity_card", dim: "authority", rankBy: "value", filters: WORKS })))
+      .toBe("Care [instituție] din [toată țara] [cumpără cel mai mult] [lucrări], prin [toate achizițiile], în [toți anii]?");
+    // On a trend of institutions the kind is what they buy (kit §4 Plecați).
+    expect(marked(q({ block: "trend", dim: "authority", filters: { ...WORKS, yearFrom: 2024, yearTo: 2025 }, trend: { change: "new" } })))
+      .toBe("Ce [instituții publice] [noi] cumpără [lucrări] în [2025], față de [2024]?");
+    // Its phrase opens "Ce s-a cumpărat?", which searches the domain too; the domain's phrase writes the kind.
+    expect(slotOf(q({ block: "stat", filters: WORKS }), "purchaseKind")).toMatchObject({ window: "Ce s-a cumpărat?", writes: ["cpvTerm"], says: ["purchaseKind"] });
+    expect(slotOf(q({ block: "stat", filters: { cpvTerm: "x" } }), "cpvTerm")).toMatchObject({ writes: ["purchaseKind"] });
+    // A relation's centre does not say it: a link's kind stays a chip under the sentence.
+    expect(under(q({ block: "network", filters: { ...PORR, ...WORKS } }))).toEqual(["purchaseKind"]);
+  });
+
+  it("names the contracts of a procedure where the question offers it (kit item 8)", () => {
+    const open = { dataset: "contracts", filters: { procedure: "deschisa" } };
+    expect(marked(q({ block: "stat", ...open }))).toBe("Cât valorează [contractele din licitații deschise] încheiate de [instituțiile publice] din [toată țara], în [toți anii]?");
+    expect(marked(q({ block: "stat", measure: "count", dataset: "contracts", filters: { procedure: "negociere_fara_publicare" } })))
+      .toBe("Câte [contracte negociate fără publicare] au fost încheiate de [instituțiile publice] din [toată țara], în [toți anii]?");
+    expect(marked(q({ block: "timeseries", ...open }))).toBe("Cum evoluează [valoarea] [contractelor din licitații deschise] încheiate de [instituțiile publice] din [toată țara], [an de an]?");
+    expect(marked(q({ block: "table", dim: "authority", topN: 10, dataset: "contracts", filters: { procedure: "altele" } })))
+      .toBe("Ce [instituții publice] din [toată țara] cumpără cel mai mult, prin [alte proceduri], în [toți anii]?");
+    expect(slotOf(q({ block: "stat", ...open }), "dataset")).toMatchObject({ says: ["dataset", "procedure"], writes: ["procedure"] });
+    // On the direct acquisitions a procedure is refused: the noun says the stream, the procedure stays a chip.
+    expect(under(q({ block: "stat", dataset: "da", filters: { procedure: "deschisa" } }))).toEqual(["procedure"]);
+    // The breakdown's stream is the strip's: a procedure there is a link's chip.
+    expect(under(q({ block: "breakdown", ...open, filters: { ...open.filters, ...BUZAU } }))).toEqual(["procedure"]);
+  });
+
+  it("leaves the size of a purchase under the sentence, where its chip and the total line say it", () => {
+    const big = q({ block: "stat", filters: { purchaseValueMin: 1_000_000 } });
+    expect(under(big)).toEqual(["purchaseValue"]);
+    const described = describeConditions(big);
+    expect(described.byId.purchaseValue?.chip).toBe("Doar cele de peste 1 mil. lei");
+    expect(described.totalLine).toBe("doar cele de peste 1 mil. lei");
+    expect(described.tail).toBe("doar cele de peste 1 mil. lei");
   });
 });

@@ -3,7 +3,8 @@ import type { MinimumRecords, QueryPopulation } from "./population";
 import type { ScatterDensity, TableSort } from "./compile";
 import { AUTHORITY_KINDS, type AuthorityKind } from "./spec";
 import { authorityKindCond } from "./authority-kind";
-import { employeesCond } from "./predicates";
+import { employeesCond, purchaseKindCond } from "./predicates";
+import type { Procedure, PurchaseKind } from "./purchase";
 import { trendChannelColumns } from "./trend-partition";
 
 /**
@@ -76,6 +77,11 @@ export interface RollupCtx {
   trendMonths: readonly [number, number] | null;
   adminSupplierIds: readonly string[] | null;
   comparison: { role: Role; focalId: string | null; compareId: string | null } | null;
+  /** F3: the kind from the CPV code (a condition on the code, like the domain's); the procedure and the size are not in the rollups. */
+  purchaseKind: PurchaseKind | null;
+  procedure: Procedure | null;
+  purchaseValueMin: number | null;
+  purchaseValueMax: number | null;
 }
 
 /**
@@ -87,6 +93,7 @@ export const ROLLUP_CTX_KEYS = [
   "sql", "plafond", "population", "minimumRecords", "cpvPrefixes", "cpvExclude", "county", "kind", "kindIds",
   "authorityId", "supplierId", "uatSiruta", "uatAuthorityIds", "singleBidder", "minEmployees", "maxEmployees",
   "yearFrom", "yearTo", "monthFrom", "monthTo", "trendMonths", "adminSupplierIds", "comparison",
+  "purchaseKind", "procedure", "purchaseValueMin", "purchaseValueMax",
 ] as const satisfies readonly ("sql" | keyof RollupCtx)[];
 const KNOWN_KEYS = new Set<string>(ROLLUP_CTX_KEYS);
 
@@ -113,6 +120,8 @@ export interface RollupFilters {
   county: string | null;
   cpvPrefixes: readonly string[];
   cpvExclude: readonly string[];
+  /** The purchase kind on the code (purchaseKindCond on agg_cpv_year.cpv_code). */
+  purchaseKind: PurchaseKind | null;
   /** The buyer's kind and its institutions (authorityKindCond on the rollup's authority id). */
   kind: AuthorityKind | null;
   kindIds: readonly string[] | null;
@@ -163,6 +172,9 @@ export function planRollup(ctx: RollupCtx, need: RollupNeed, opts: { months?: bo
   if (ctx.monthFrom !== null || ctx.monthTo !== null) return { reason: "months: the rollups keep whole years" };
   if (ctx.trendMonths && !opts.months) return { reason: "months: agg_entity_month is not built" };
   if (ctx.singleBidder) return { reason: "single bidder: not in the rollups" };
+  // F3: the procedure and the whole value are columns of the contract rows the rollups do not keep.
+  if (ctx.procedure) return { reason: "procedure: not in the rollups" };
+  if (ctx.purchaseValueMin !== null || ctx.purchaseValueMax !== null) return { reason: "purchase value: the whole value is not in the rollups" };
   if (ctx.authorityId || ctx.supplierId || ctx.uatSiruta !== null || ctx.uatAuthorityIds.length > 0 || ctx.adminSupplierIds)
     return { reason: "named entity: its transaction index answers directly" };
   const dataset = DATASET[ctx.plafond];
@@ -174,7 +186,7 @@ export function planRollup(ctx: RollupCtx, need: RollupNeed, opts: { months?: bo
   const employees = ctx.minEmployees !== null || ctx.maxEmployees !== null ? { min: ctx.minEmployees, max: ctx.maxEmployees } : null;
   const filters: RollupFilters = {
     dataset, yearFrom: ctx.yearFrom, yearTo: ctx.yearTo, county: ctx.county,
-    cpvPrefixes: ctx.cpvPrefixes, cpvExclude: ctx.cpvExclude, kind: ctx.kind, kindIds: ctx.kind ? ctx.kindIds : null,
+    cpvPrefixes: ctx.cpvPrefixes, cpvExclude: ctx.cpvExclude, purchaseKind: ctx.purchaseKind, kind: ctx.kind, kindIds: ctx.kind ? ctx.kindIds : null,
     employees, excludeAuthorities: excluded.authority, excludeSuppliers: excluded.supplier,
     minimum: ctx.minimumRecords, months: ctx.trendMonths,
   };
@@ -182,7 +194,8 @@ export function planRollup(ctx: RollupCtx, need: RollupNeed, opts: { months?: bo
   if (filters.kind || filters.excludeAuthorities.length) sides.add("authority");
   if (filters.employees || filters.excludeSuppliers.length) sides.add("supplier");
   if (filters.minimum) sides.add(filters.minimum.role);
-  const cpv = filters.cpvPrefixes.length > 0 || filters.cpvExclude.length > 0;
+  // The purchase kind is a condition on the code, as the domain is: agg_cpv_year only.
+  const cpv = filters.cpvPrefixes.length > 0 || filters.cpvExclude.length > 0 || filters.purchaseKind !== null;
   if (filters.months) {
     // Counties without an entity condition: agg_county_month; one role with conditions on that role: agg_entity_month.
     if (need.by === "county" && !cpv && !filters.minimum && sides.size === 0) return { source: { table: "countyMonth" }, filters };
@@ -239,6 +252,7 @@ function rollupWhere(sql: DbSql, source: RollupSource, f: RollupFilters, alias: 
     parts.push(sql`(${f.cpvPrefixes.map((x) => sql`${p("cpv_code")} like ${x + "%"}`).reduce((a, b) => sql`${a} or ${b}`)})`);
   if (f.cpvExclude.length > 0)
     parts.push(sql`not (${f.cpvExclude.map((x) => sql`${p("cpv_code")} like ${x + "%"}`).reduce((a, b) => sql`${a} or ${b}`)})`);
+  if (f.purchaseKind) { const code: Fragment = sql`${sql(alias)}.cpv_code`; parts.push(purchaseKindCond(sql, f.purchaseKind, code)); }
   const authority = idColumn(sql, source, "authority", alias), supplier = idColumn(sql, source, "supplier", alias);
   // The live filter's list of institutions, on the rollup's authority id.
   if (f.kind) parts.push(authorityKindCond(sql, f.kindIds!, authority!));
@@ -259,7 +273,7 @@ function rollupWhere(sql: DbSql, source: RollupSource, f: RollupFilters, alias: 
 function minimumSemiJoin(sql: DbSql, f: RollupFilters, target: Fragment, innerAlias: string, opts: { years?: boolean } = {}): Fragment {
   const { role, count } = f.minimum!;
   const everything = f.dataset === "all" && (opts.years === false || (f.yearFrom === null && f.yearTo === null)) && !f.county
-    && !f.cpvPrefixes.length && !f.cpvExclude.length && !f.kind && !f.employees && !f.excludeAuthorities.length && !f.excludeSuppliers.length;
+    && !f.cpvPrefixes.length && !f.cpvExclude.length && !f.purchaseKind && !f.kind && !f.employees && !f.excludeAuthorities.length && !f.excludeSuppliers.length;
   if (everything && role === "supplier") {
     // Over every year and channel a firm's records are n_das + n_contracts of its profile
     // (equal for all 163,158 firms on 24 Oct 2026; not for institutions, whose profile

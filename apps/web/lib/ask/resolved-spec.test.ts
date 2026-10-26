@@ -2,6 +2,16 @@ import { describe, expect, it } from "vitest";
 import { resolvedSpec } from "./resolved-spec";
 import { validateSpec, type AskSpec } from "./spec";
 
+describe("the kind of a purchase the domain has no codes of (F3, plan §3)", () => {
+  it("leaves the question as the engine answered it: without the kind", () => {
+    const spec: AskSpec = { block: "stat", measure: "value", filters: { cpvTerm: "asfaltare", purchaseKind: "produse" } };
+    const cpv = { term: "asfaltare", prefixes: ["45233"], matchedNames: [], method: "synonym" as const };
+    expect(resolvedSpec(spec, { cpv }).filters).toEqual({ cpvTerm: "asfaltare" });
+    expect(resolvedSpec({ ...spec, filters: { ...spec.filters, purchaseKind: "lucrari" } }, { cpv }).filters.purchaseKind).toBe("lucrari");
+    expect(spec.filters.purchaseKind).toBe("produse");
+  });
+});
+
 describe("saved question identity", () => {
   it("accepts exact-ID source and comparison links without requiring ambiguous names", () => {
     for (const spec of [

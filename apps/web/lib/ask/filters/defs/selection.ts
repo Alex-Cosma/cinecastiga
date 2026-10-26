@@ -1,8 +1,9 @@
 import { COUNTIES } from "../../../counties";
-import { AUTHORITY_KINDS, type AuthorityKind } from "../../spec";
+import { PROCEDURE_ORDER, PURCHASE_KIND_ORDER, type Procedure, type PurchaseKind } from "../../purchase";
+import { AUTHORITY_KINDS, SELECTION_RULES, type AuthorityKind } from "../../spec";
 import { PROFILE_FORMS, TRANSACTION_FORMS } from "../context";
 import type { FilterDef, FilterSpec } from "../types";
-import { alwaysScope, edited, levels, readAhead, setFilters } from "./shared";
+import { alwaysScope, edited, levels, setFilters } from "./shared";
 
 /*
  * What is counted: the data stream, the domain, who bought, where and when
@@ -25,8 +26,8 @@ export const dataset: FilterDef<"all" | "da" | "contracts"> = {
   read: (spec) => spec.dataset as "all" | "da" | "contracts" | undefined,
   write: (spec, value) => edited(spec, (next) => {
     next.dataset = value ?? "all";
-    // chooseValue: "o singură ofertă" exists only on the contracts stream.
-    if (value !== "contracts") delete next.filters.singleBidder;
+    // chooseValue: "o singură ofertă" and a procedure exist only on the contracts stream.
+    if (value !== "contracts") { delete next.filters.singleBidder; delete next.filters.procedure; }
   }),
   choices: () => ["all", "contracts", "da"],
 };
@@ -129,16 +130,36 @@ export const period: FilterDef<PeriodChoice> = {
   },
 };
 
-export const purchaseKind = readAhead<string>({
+/**
+ * F3, the purchase kind (plan §3, kit §4 Domeniul): "de [lucrări]" before the
+ * domain, the segmented "Orice · Produse · Servicii · Lucrări" of "Ce s-a
+ * cumpărat?". From the CPV code (predicates.ts purchaseKindCond), so every
+ * answer over the records applies it; it combines with the domain (a code
+ * without codes of the kind is refused, words are matched on the server).
+ */
+export const purchaseKind: FilterDef<PurchaseKind> = {
   id: "purchaseKind", keys: ["filters.purchaseKind"], placement: "sentence", control: "segmented",
-  label: "Ce fel de achiziții", windowTitle: "Ce fel de achiziții?", scope: "selection",
-  sample: { block: "stat", value: "lucrari" },
-});
+  label: "Ce s-a cumpărat", windowTitle: "Ce s-a cumpărat?",
+  engine: levels(TRANSACTION_FORMS, "row"), scope: alwaysScope("selection"), since: "F3",
+  read: (spec) => spec.filters.purchaseKind as PurchaseKind | undefined,
+  write: (spec, value) => setFilters(spec, { purchaseKind: value }),
+  choices: () => [...PURCHASE_KIND_ORDER],
+  validate: SELECTION_RULES.purchaseKind,
+};
 
-export const procedure = readAhead<string>({
+/**
+ * F3, the procedure declared in SEAP (stat final §3.1, kit item 8): the group
+ * "O procedură anume" of "Ce fel de achiziții?" and the contracts' noun
+ * ("[contractele din licitații deschise]"). It brings the contracts' stream.
+ */
+export const procedure: FilterDef<Procedure> = {
   id: "procedure", keys: ["filters.procedure"], placement: "sentence", control: "list",
-  label: "Procedura", windowTitle: "Ce fel de achiziții?", scope: "selection",
-  sample: { block: "stat", value: "deschisa", base: { dataset: "contracts" } },
-});
+  label: "Procedura", windowTitle: "Ce fel de achiziții?",
+  engine: levels(TRANSACTION_FORMS, "row"), scope: alwaysScope("selection"), since: "F3",
+  read: (spec) => spec.filters.procedure as Procedure | undefined,
+  write: (spec, value) => edited(setFilters(spec, { procedure: value }), (next) => { if (value) next.dataset = "contracts"; }),
+  choices: () => [...PROCEDURE_ORDER],
+  validate: SELECTION_RULES.procedure,
+};
 
 export const SELECTION_DEFS = [dataset, cpvTerm, authority, authorityKind, county, locality, period, purchaseKind, procedure] as const;

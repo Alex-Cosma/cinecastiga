@@ -93,6 +93,8 @@ const ctxOf = (spec: AskSpec, g: Grounding): RollupCtx => {
     yearFrom: spec.filters.yearFrom ?? null, yearTo: spec.filters.yearTo ?? null,
     monthFrom: spec.filters.monthFrom ?? null, monthTo: spec.filters.monthTo ?? null, adminSupplierIds: null, comparison: null,
     trendMonths: spec.block === "trend" && Array.isArray(spec.trend?.months) ? spec.trend.months as readonly [number, number] : null,
+    purchaseKind: spec.filters.purchaseKind ?? null, procedure: spec.filters.procedure ?? null,
+    purchaseValueMin: spec.filters.purchaseValueMin ?? null, purchaseValueMax: spec.filters.purchaseValueMax ?? null,
   };
 };
 const needOf = (spec: AskSpec): RollupNeed => spec.block === "table" || spec.block === "trend"

@@ -1,7 +1,7 @@
 import { describeConditions } from "../../lib/ask/filters/describe";
 import { encodeSpec } from "../../lib/ask/permalink";
 import { breakdownDeeperSpec } from "../../lib/ask/source-spec";
-import type { AskSpec, MonthWindow } from "../../lib/ask/spec";
+import { SELECTION_RULES, type AskSpec, type MonthWindow } from "../../lib/ask/spec";
 import { specTrendList, trendListSpec, type TrendList } from "../../lib/ask/trend-shared";
 import type { SegmentOption } from "./builder/Segmented";
 import type { StripPatch } from "./builder/view";
@@ -43,15 +43,21 @@ const STREAM_OPTIONS: readonly SegmentOption[] = [
 ];
 /** Why an old link's "o singură ofertă" keeps the strip on procedures: the engine counts offers on contracts only (spec.ts). */
 export const SINGLE_OFFER_STREAM = "Linkul cere contractele cu o singură ofertă: doar din proceduri.";
+/** Why a procedure keeps the strip on procedures (F3): a procedure is a contract's (spec.ts SELECTION_RULES). */
+export const PROCEDURE_STREAM = "Întrebarea cere o procedură anume: doar contracte din proceduri.";
 
 /**
- * The strip's streams on the applied question. An old link's single offer
- * leaves only procedures choosable: validateSpec would put any other stream
- * back on contracts, so the radio, the builder and the answer would disagree.
+ * The strip's streams on the applied question. An old link's single offer,
+ * or a procedure, leaves only procedures choosable: validateSpec would put
+ * any other stream back on contracts (or refuse it), so the radio, the
+ * builder and the answer would disagree.
  */
 export function streamOptions(spec: Pick<AskSpec, "filters">): readonly SegmentOption[] {
-  if (!spec.filters.singleBidder) return STREAM_OPTIONS;
-  return STREAM_OPTIONS.map((option) => option.value === "contracts" ? option : { ...option, disabled: SINGLE_OFFER_STREAM });
+  const reason = spec.filters.singleBidder ? SINGLE_OFFER_STREAM : spec.filters.procedure ? PROCEDURE_STREAM : null;
+  if (reason) return STREAM_OPTIONS.map((option) => option.value === "contracts" ? option : { ...option, disabled: reason });
+  // A size above the analysis ceiling holds no direct acquisition (SELECTION_RULES.purchaseValue).
+  const above = SELECTION_RULES.purchaseValue({ block: "stat", measure: "value", dataset: "da", filters: spec.filters });
+  return above ? STREAM_OPTIONS.map((option) => option.value === "da" ? { ...option, disabled: above } : option) : STREAM_OPTIONS;
 }
 
 /** The applied question after a strip change: only that key (plan §2.3). */
