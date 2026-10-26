@@ -2029,7 +2029,7 @@
       "twins": []
      }
     },
-    "displaySql": "select count(*), sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000001\n  and supplier_id = 9100000101;\n-- în afara sumelor, aceeași pereche: achizițiile directe peste 2 mil. lei sau fără valoare pozitivă (da_transactions);\n-- din core.contracts ⨝ core.awards ⨝ core.contract_winners: acordurile-cadru (plafoane), identitățile nesigure,\n-- contractele peste 1 mld. lei și cele de tip neclar (contractKind, canonicalContract, @seap/db)"
+    "displaySql": "select count(*), sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000001\n  and supplier_id = 9100000101;\n-- în afara sumelor, aceeași pereche: achizițiile directe peste 2 mil. lei sau fără valoare pozitivă (da_transactions);\n-- din core.contracts ⨝ core.awards ⨝ core.contract_winners: acordurile-cadru (plafoane), identitățile nesigure,\n-- contractele peste 1 mld. lei, fără valoare în lei și cele de tip neclar (contractKind, canonicalContract, @seap/db)"
    },
    "sources": {
     "status": 200,
@@ -5523,7 +5523,7 @@
       "twins": []
      }
     },
-    "displaySql": "select count(*), sum(closing_value)\nfrom marts.contract_transactions\nwhere closing_value > 0\n  and authority_id = 9100000001\n  and supplier_id = 9100000101;\n-- în afara sumelor, aceeași pereche: achizițiile directe peste 2 mil. lei sau fără valoare pozitivă (da_transactions);\n-- din core.contracts ⨝ core.awards ⨝ core.contract_winners: acordurile-cadru (plafoane), identitățile nesigure,\n-- contractele peste 1 mld. lei și cele de tip neclar (contractKind, canonicalContract, @seap/db)"
+    "displaySql": "select count(*), sum(closing_value)\nfrom marts.contract_transactions\nwhere closing_value > 0\n  and authority_id = 9100000001\n  and supplier_id = 9100000101;\n-- în afara sumelor, aceeași pereche: achizițiile directe peste 2 mil. lei sau fără valoare pozitivă (da_transactions);\n-- din core.contracts ⨝ core.awards ⨝ core.contract_winners: acordurile-cadru (plafoane), identitățile nesigure,\n-- contractele peste 1 mld. lei, fără valoare în lei și cele de tip neclar (contractKind, canonicalContract, @seap/db)"
    },
    "sources": {
     "status": 200,
@@ -16952,7 +16952,7 @@
       "twins": []
      }
     },
-    "displaySql": "select count(*), sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000005\n  and supplier_id = 9100000103;\n-- în afara sumelor, aceeași pereche: achizițiile directe peste 2 mil. lei sau fără valoare pozitivă (da_transactions);\n-- din core.contracts ⨝ core.awards ⨝ core.contract_winners: acordurile-cadru (plafoane), identitățile nesigure,\n-- contractele peste 1 mld. lei și cele de tip neclar (contractKind, canonicalContract, @seap/db)"
+    "displaySql": "select count(*), sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000005\n  and supplier_id = 9100000103;\n-- în afara sumelor, aceeași pereche: achizițiile directe peste 2 mil. lei sau fără valoare pozitivă (da_transactions);\n-- din core.contracts ⨝ core.awards ⨝ core.contract_winners: acordurile-cadru (plafoane), identitățile nesigure,\n-- contractele peste 1 mld. lei, fără valoare în lei și cele de tip neclar (contractKind, canonicalContract, @seap/db)"
    },
    "sources": {
     "status": 200,
@@ -30959,7 +30959,7 @@
       "twins": []
      }
     },
-    "displaySql": "select count(*), sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000001\n  and supplier_id = 9100000101;\n-- în afara sumelor, aceeași pereche: achizițiile directe peste 2 mil. lei sau fără valoare pozitivă (da_transactions);\n-- din core.contracts ⨝ core.awards ⨝ core.contract_winners: acordurile-cadru (plafoane), identitățile nesigure,\n-- contractele peste 1 mld. lei și cele de tip neclar (contractKind, canonicalContract, @seap/db)"
+    "displaySql": "select count(*), sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000001\n  and supplier_id = 9100000101;\n-- în afara sumelor, aceeași pereche: achizițiile directe peste 2 mil. lei sau fără valoare pozitivă (da_transactions);\n-- din core.contracts ⨝ core.awards ⨝ core.contract_winners: acordurile-cadru (plafoane), identitățile nesigure,\n-- contractele peste 1 mld. lei, fără valoare în lei și cele de tip neclar (contractKind, canonicalContract, @seap/db)"
    },
    "sources": {
     "status": 200,
@@ -31211,7 +31211,7 @@
       "twins": []
      }
     },
-    "displaySql": "select count(*), sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000001\n  and supplier_id = 9100000101\n  and an >= 2025\n  and an <= 2025;\n-- în afara sumelor, aceeași pereche: achizițiile directe peste 2 mil. lei sau fără valoare pozitivă (da_transactions);\n-- din core.contracts ⨝ core.awards ⨝ core.contract_winners: acordurile-cadru (plafoane), identitățile nesigure,\n-- contractele peste 1 mld. lei și cele de tip neclar (contractKind, canonicalContract, @seap/db)"
+    "displaySql": "select count(*), sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000001\n  and supplier_id = 9100000101\n  and an >= 2025\n  and an <= 2025;\n-- în afara sumelor, aceeași pereche: achizițiile directe peste 2 mil. lei sau fără valoare pozitivă (da_transactions);\n-- din core.contracts ⨝ core.awards ⨝ core.contract_winners: acordurile-cadru (plafoane), identitățile nesigure,\n-- contractele peste 1 mld. lei, fără valoare în lei și cele de tip neclar (contractKind, canonicalContract, @seap/db)"
    },
    "sources": {
     "status": 200,
@@ -31431,7 +31431,7 @@
       "twins": []
      }
     },
-    "displaySql": "select count(*), sum(closing_value)\nfrom marts.contract_transactions\nwhere closing_value > 0\n  and authority_id = 9100000001\n  and supplier_id = 9100000101;\n-- în afara sumelor, aceeași pereche: achizițiile directe peste 2 mil. lei sau fără valoare pozitivă (da_transactions);\n-- din core.contracts ⨝ core.awards ⨝ core.contract_winners: acordurile-cadru (plafoane), identitățile nesigure,\n-- contractele peste 1 mld. lei și cele de tip neclar (contractKind, canonicalContract, @seap/db)"
+    "displaySql": "select count(*), sum(closing_value)\nfrom marts.contract_transactions\nwhere closing_value > 0\n  and authority_id = 9100000001\n  and supplier_id = 9100000101;\n-- în afara sumelor, aceeași pereche: achizițiile directe peste 2 mil. lei sau fără valoare pozitivă (da_transactions);\n-- din core.contracts ⨝ core.awards ⨝ core.contract_winners: acordurile-cadru (plafoane), identitățile nesigure,\n-- contractele peste 1 mld. lei, fără valoare în lei și cele de tip neclar (contractKind, canonicalContract, @seap/db)"
    },
    "sources": {
     "status": 200,
@@ -32343,39 +32343,67 @@
    "sources": {
     "status": 200,
     "ok": true,
-    "total": 0,
-    "value": "0.00",
-    "sourceTotal": 0,
-    "sourceValue": "0.00",
+    "total": 12,
+    "value": "40463.46",
+    "sourceTotal": 12,
+    "sourceValue": "40463.46",
     "page": 0,
     "pageSize": 10,
     "accepted": {
-     "count": 0,
-     "value": "0.00"
+     "count": 12,
+     "value": "40463.46"
     },
-    "dateFrom": null,
-    "dateTo": null,
+    "dateFrom": "2024-01-12",
+    "dateTo": "2026-05-18",
     "profile": true,
-    "profiles": [],
-    "profileCount": 0,
+    "profiles": [
+     {
+      "entityId": "9100000004",
+      "name": "Consiliul Judetean Alba",
+      "role": "authority",
+      "count": 12,
+      "value": "40463.46",
+      "cri": 0.274,
+      "flags": ["da_concentration"],
+      "applicable": 5
+     }
+    ],
+    "profileCount": 1,
     "profileReconciled": true,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
      "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă."
     ],
-    "statuses": [],
-    "rows": []
+    "statuses": [
+     {
+      "state": "Oferta acceptata",
+      "count": 12,
+      "value": "40463.46"
+     }
+    ],
+    "rows": [
+     ["da","9100100212","DA-FX-212","2024-01-12","9100000004","9100000102","Alba","33690000-3","4532.84","Oferta acceptata",null,null,false,null],
+     ["da","9100100211","DA-FX-211","2026-02-11","9100000004","9100000103","Alba","79000000-4","4321.77","Oferta acceptata",null,null,false,null],
+     ["da","9100100210","DA-FX-210","2025-03-10","9100000004","9100000102","Alba","33690000-3","4110.70","Oferta acceptata",null,null,false,null],
+     ["da","9100100209","DA-FX-209","2024-04-19","9100000004","9100000103","Alba","79000000-4","3899.63","Oferta acceptata",null,null,false,null],
+     ["da","9100100208","DA-FX-208","2026-05-18","9100000004","9100000102","Alba","33690000-3","3688.56","Oferta acceptata",null,null,false,null],
+     ["da","9100100207","DA-FX-207","2025-06-17","9100000004","9100000103","Alba","79000000-4","3477.49","Oferta acceptata",null,null,false,null],
+     ["da","9100100206","DA-FX-206","2024-01-16","9100000004","9100000102","Alba","33690000-3","3266.42","Oferta acceptata",null,null,false,null],
+     ["da","9100100205","DA-FX-205","2026-02-15","9100000004","9100000103","Alba","79000000-4","3055.35","Oferta acceptata",null,null,false,null],
+     ["da","9100100204","DA-FX-204","2025-03-14","9100000004","9100000102","Alba","33690000-3","2844.28","Oferta acceptata",null,null,false,null],
+     ["da","9100100203","DA-FX-203","2024-04-13","9100000004","9100000103","Alba","79000000-4","2633.21","Oferta acceptata",null,null,false,null]
+    ]
    },
    "csv": {
     "status": 200,
-    "file": "randuri-0.csv",
-    "x-total-rows": "0",
-    "x-exported-rows": "0",
-    "x-source-rows": "0",
-    "x-source-value": "0.00",
-    "x-filtered-value": "0.00",
-    "lines": 1,
-    "sha256": "6cfa432ea55acf009d6f6a29c760ed5eb8d2f4dc9be462798f728262accb7246"
+    "file": "randuri-12.csv",
+    "x-total-rows": "12",
+    "x-exported-rows": "12",
+    "x-source-rows": "12",
+    "x-source-value": "40463.46",
+    "x-filtered-value": "40463.46",
+    "lines": 13,
+    "sha256": "f3e59395fc433b4a7e488925a8de2d1cf984371125fe4d4cd18f089e78259642"
    }
   },
   {

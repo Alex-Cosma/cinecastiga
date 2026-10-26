@@ -1,5 +1,6 @@
 import { fileSlug } from "../../lib/ask/answer-text";
-import type { BlockData, DistributionDataV1 } from "../../lib/ask/compile";
+import type { BlockData, DistributionDataV1, DistributionMember } from "../../lib/ask/compile";
+import { CRITERION_LABEL } from "../../lib/ask/peer-groups-shared";
 import { OUTSIDE_WHY, type FactOutsideRow, type FactSample } from "../../lib/ask/fact-check-shared";
 import { isHistoricalProfile } from "../../lib/ask/population";
 import type { AskSpec } from "../../lib/ask/spec";
@@ -66,15 +67,21 @@ function rowsOf(data: BlockData, spec: AskSpec): string[] {
           e.partners ?? "", e.cri ?? "", e.hasProfile === false ? "" : e.nFlags, csvQ(e.flags.join("|"))].join(",")),
       ];
     case "distribution": {
-      // distribution-2: the list on screen (the entity, then its group up to 50), else the chart's bars.
-      const d = data.distribution, f = d.focal;
+      // distribution-2 (final §7.7 "criterii,entitati + criterii + membri"): one table, by `sectiune`: the group's others by
+      // number of criteria (the chart), each criterion among them and in the country, the entity, then the list on screen (≤ 50).
+      const d = data.distribution, f = d.focal, max = d.criteria.length;
       if (d.version !== 2) return ["cri_de,cri_pana,entitati", ...(d as unknown as DistributionDataV1).buckets.map((b) => `${b.from},${b.to},${b.n}`)];
-      if (d.members) return [
-        "rol,nume,judet,populatie,criterii,semnale,achizitii_directe",
-        `"entitatea",${csvQ(f.name)},${csvQ(f.county)},${f.population ?? ""},${f.nFlags},${csvQ(f.flags.join("|"))},${f.nDas}`,
-        ...d.members.map((m) => `"grup",${csvQ(m.name)},${csvQ(m.county)},${m.population ?? ""},${m.nFlags},${csvQ(m.flags.join("|"))},${m.nDas}`),
+      const row = (cells: (string | number)[]) => cells.join(",");
+      const member = (part: string, m: DistributionMember, own: string) =>
+        row([csvQ(part), m.nFlags, m.nFlags / max, "", csvQ(m.name), csvQ(m.county), m.population ?? "", csvQ(m.flags.join("|")), m.nDas, "", "", own]);
+      return [
+        "sectiune,criterii,indice_de_risc,criteriu,nume,judet,populatie,semnale,achizitii_directe,din_grup,din_tara,entitatea",
+        ...(d.hist ?? []).map((h) => row([csvQ("criterii"), h.k, h.k / max, "", "", "", "", "", "", h.n, "", h.k === Math.min(f.nFlags, max) ? "da" : ""])),
+        ...(d.perCriterion ?? []).map((c) => row([csvQ("criteriu"), "", "", csvQ(`${CRITERION_LABEL[c.code] ?? c.code} (${c.code})`), "", "", "", "", "", c.others, c.country,
+          f.flags.includes(c.code) ? "da" : "nu"])),
+        member("entitatea", f, "da"),
+        ...(d.members ?? []).map((m) => member("grup", m, "")),
       ];
-      return ["criterii,indice_de_risc,entitati_din_grup,aici", ...(d.hist ?? []).map((h) => `${h.k},${h.k / d.criteria.length},${h.n},${h.k === f.nFlags ? "da" : ""}`)];
     }
     case "breakdown":
       return ["categorie,cod,valoare_lei,achizitii", ...data.slices.map((s) => `${csvQ(s.name)},${s.code},${s.value},${s.count}`), `"alte domenii",,${data.other.value},${data.other.count}`];

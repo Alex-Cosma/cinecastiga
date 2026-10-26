@@ -3,10 +3,11 @@ import catalog from "../reference/population-rpl2021.json";
 import { readPopulationMappingRows, sectorTownHallPopulations, uniquePopulationMappings } from "../peer-population";
 import { readAuthorityKinds } from "./authority-kind";
 import {
-  PEER_MINIMUM, PEER_ROW_ORDER, PROFILE_MIN_DAS, countyDisplay, peerKey, peerRowLabel, peerRowTip, peerTicks, similarRuleName,
+  PEER_MEMBERS_PAGE, PEER_MINIMUM, PEER_ROW_ORDER, PROFILE_MIN_DAS, countyDisplay, peerKey, peerRowLabel, peerRowTip, peerTicks, similarRuleName,
   type PeerCoverage, type PeerDialogData, type PeerFacts, type PeerRow, type PeerRowId, type SimilarFacts,
 } from "./peer-groups-shared";
 import { fold } from "./predicates";
+import type { DistributionMember } from "./compile";
 import { namedKind, type ParsedAuthorityKind, type PeersOptions } from "./spec";
 
 /*
@@ -238,6 +239,47 @@ export async function peerDialog(
     };
   }
   return { facts, profile: focal.nDas >= PROFILE_MIN_DAS, rows, sizes, legacy, ...(resolution.coverage ? { coverage: resolution.coverage } : {}) };
+}
+
+/**
+ * GET /api/ask/peers/members (final distribution §3.6, §3.8): above 50 the
+ * chart replaces the list, and a bar opens the members of the group with
+ * exactly that many criteria, by direct acquisitions, a page at a time. The
+ * group is the answer's: the ticks, the county (the entity's own or an old
+ * link's other one) and an old link's kind, the role, the profile's threshold,
+ * never the entity itself (distribution.ts runs the same conditions).
+ */
+export async function peerMembers(
+  q: DbSql, role: "authority" | "supplier", entityId: string, spec: { peers?: PeersOptions | undefined; filters: Record<string, unknown> },
+  criteria: number, offset: number,
+): Promise<{ members: DistributionMember[]; total: number } | { error: string } | null> {
+  const focal = await readPeerFocal(q, role, entityId);
+  if (!focal || focal.nDas < PROFILE_MIN_DAS) return null;
+  const resolution = await resolvePeerFacts(q, role, focal);
+  const error = peerTickError(resolution, spec.peers);
+  if (error) return { error };
+  const county = typeof spec.filters.county === "string" && spec.filters.county ? spec.filters.county : null;
+  const kind = role === "authority" ? namedKind(spec.filters.authorityKind as ParsedAuthorityKind | undefined) ?? null : null;
+  const kindIds = kind ? (await readAuthorityKinds(q)).ids[kind] : null;
+  const where = [
+    q`ef.role = ${role}`, q`ef.n_das >= ${PROFILE_MIN_DAS}`, q`ef.entity_id <> ${entityId}`, q`ef.n_flags = ${criteria}`,
+    ...(county ? [q`lower(unaccent(ef.county)) = ${fold(county)}`] : []),
+    ...(kindIds ? [q`ef.entity_id = any(${q.array([...kindIds])}::bigint[])`] : []),
+    ...peerConditions(q, resolution, spec.peers),
+  ].reduce((a, b) => q`${a} and ${b}`);
+  const rows = await q`
+    select ef.entity_id::text id, ef.name_display, ef.county, ef.n_flags, ef.flags, ef.n_das, count(*) over ()::int total
+    from marts.entity_flags ef where ${where}
+    order by ef.n_das desc, ef.entity_id
+    limit ${PEER_MEMBERS_PAGE} offset ${offset}
+  ` as unknown as { id: string; name_display: string | null; county: string | null; n_flags: number; flags: string[] | null; n_das: number; total: number }[];
+  return {
+    total: rows[0]?.total ?? 0,
+    members: rows.map((m): DistributionMember => ({
+      entityId: m.id, name: m.name_display ?? "?", county: countyDisplay(m.county), population: resolution.populations?.get(m.id) ?? null,
+      nFlags: Number(m.n_flags ?? 0), flags: Array.isArray(m.flags) ? m.flags : [], nDas: Number(m.n_das),
+    })),
+  };
 }
 
 /** The ticks of a spec on this entity, for the answer and its sources (peerTicks with the entity's county). */

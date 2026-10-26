@@ -6,6 +6,7 @@ import {
   type QuestionSpec,
 } from "../question-ui";
 import { countyDisplay } from "../resolved-spec";
+import type { PeerFacts } from "../peer-groups-shared";
 import {
   DEFAULT_TREND_MIN_BASE, namedKind, type AskSpec, type AuthorityKind, type MonthWindow, type ParsedAuthorityKind,
 } from "../spec";
@@ -52,6 +53,8 @@ export interface ConditionLabels {
   sameMonthsRule?: boolean | undefined;
   /** The years a trend's answer compared (its data.yearA/yearB): what a spec without years resolved to. */
   trendYears?: { yearA: number; yearB: number } | null | undefined;
+  /** The facts of a distribution's group (its answer's, or the window's): which rule "același tip" used. */
+  peerGroup?: PeerFacts | null | undefined;
 }
 
 export interface ScopeRow { label: string; value: string }
@@ -293,13 +296,19 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
     };
   },
   // F6a: the distribution's group by its rules (the sentence says the bounds where it knows the entity: peer-groups-shared.ts).
-  peers: (spec) => {
+  // With the answer's facts the pill names the rule it used, and its source: "populație RPL 2021" (final §1.1).
+  peers: (spec, { peerGroup }) => {
     const p = spec.peers;
     if (!p || !Object.keys(p).length) return null;
-    const rules = [p.similar && "același tip sau populație apropiată", p.domain && "același domeniu principal", p.activity && "activitate apropiată"]
-      .filter((rule): rule is string => Boolean(rule));
+    const role = focalRole(spec);
+    const facts = peerGroup && peerGroup.role === role && peerGroup.entityId === String(spec.filters[role === "authority" ? "authorityId" : "supplierId"] ?? "") ? peerGroup : null;
+    const rule = facts?.similar ? facts.similar.rule : null;
+    const similar = rule === null ? "același tip sau populație apropiată" : rule === "population" ? "populație apropiată" : "același tip";
+    const rules = [p.similar && similar, p.domain && "același domeniu principal", p.activity && "activitate apropiată"]
+      .filter((r): r is string => Boolean(r));
     const words = `grupul de comparație: ${rules.join(", ")}`;
-    return { words, chip: capitalFirst(rules.join(" · ")), pills: [words], scope: [{ label: "Grupul de comparație", value: capitalFirst(rules.join(", ")) }] };
+    const census = p.similar && (rule === "population" || rule === "sectors") ? ["populație RPL 2021"] : [];
+    return { words, chip: capitalFirst(rules.join(" · ")), pills: [words, ...census], scope: [{ label: "Grupul de comparație", value: capitalFirst(rules.join(", ")) }] };
   },
   admin: (spec, { grounding }) => {
     const f = spec.filters;

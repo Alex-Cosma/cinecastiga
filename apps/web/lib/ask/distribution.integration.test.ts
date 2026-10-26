@@ -3,7 +3,7 @@ import { createDb, type DbSql } from "@seap/db";
 import { forgetAuthorityKinds } from "./authority-kind";
 import { runRows, runSpec, type DistributionData } from "./compile";
 import { ground } from "./ground";
-import { forgetPeerPopulations, peerDialog } from "./peer-groups";
+import { forgetPeerPopulations, peerDialog, peerMembers } from "./peer-groups";
 import { peerKey, peerTicks } from "./peer-groups-shared";
 import { validateSpec, type AskSpec } from "./spec";
 import { testDatabaseUrl, withAskFixture } from "./test-fixture";
@@ -78,9 +78,15 @@ describe.runIf(Boolean(connection))("the distribution's group (distribution-2, i
       const sources = await runRows(q, spec, grounding, 0);
       const bar = await runRows(q, spec, grounding, 0, { scope: { criteria: 1 } });
       const national = ok(await answer(q, { filters: lipova.filters }));
-      return { d, dialog, sources, bar, national };
+      // A bar's members (above 50 the chart's bars open them), ten at a time.
+      const members = await peerMembers(q, "authority", id(1), { filters: {}, peers: { similar: true } }, 1, 0);
+      const page2 = await peerMembers(q, "authority", id(1), { filters: {}, peers: { similar: true } }, 1, 10);
+      // An old link's bar (distribution-1, riskBucket, no ticks) keeps its population: the entity's own profile included.
+      const nationalSpec = validateSpec({ block: "distribution", measure: "value", filters: lipova.filters }) as AskSpec;
+      const legacyBar = await runRows(q, nationalSpec, await ground(q, nationalSpec.filters), 0, { scope: { riskBucket: { from: 0.3, to: 0.4 } } });
+      return { d, dialog, sources, bar, national, members, page2, legacyBar };
     });
-    const { d, dialog, sources, bar, national } = out;
+    const { d, dialog, sources, bar, national, members, page2, legacyBar } = out;
     expect(d.status).toBe("ok");
     expect(d.group.facts.similar).toEqual({ rule: "population", value: 10_040, min: 5_020, max: 20_080 });
     // Communes and a town together, by population; the lower bound inclusive; not the one under 10 records,
@@ -98,6 +104,13 @@ describe.runIf(Boolean(connection))("the distribution's group (distribution-2, i
     expect(dialog!.sizes[peerKey(peerTicks({ filters: {}, peers: { similar: true } }, dialog!.facts))]).toBe(7);
     expect("error" in sources ? sources.error : sources.profileCount).toBe(7);
     expect("error" in bar ? bar.error : bar.profileCount).toBe(d.hist!.find((h) => h.k === 1)!.n);
+    // The bar's list: the same members as the answer's list with one criterion, by direct acquisitions, with their population.
+    if (!members || "error" in members) throw new Error("no members");
+    expect(members.total).toBe(d.hist!.find((h) => h.k === 1)!.n);
+    expect(members.members.map((m) => m.name)).toEqual(d.members!.filter((m) => m.nFlags === 1).sort((a, b) => b.nDas - a.nDas).map((m) => m.name));
+    expect(members.members.every((m) => m.population !== null && m.entityId !== id(1))).toBe(true);
+    expect(page2 && !("error" in page2) ? page2.members : null).toEqual([]);
+    expect("error" in legacyBar ? legacyBar.error : legacyBar.profileCount).toBe(2); // Lipova and Vladimirescu, both 0,4
     // The whole country: every other profile of the role.
     expect(national.group.others).toBe(AUTHORITIES.filter(([o, , , nDas]) => o !== 1 && nDas >= 10).length);
   });
