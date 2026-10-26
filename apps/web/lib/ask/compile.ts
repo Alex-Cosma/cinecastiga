@@ -31,7 +31,7 @@ import {
 } from "./trend-partition";
 import { TREND_LISTS, trendListSpec, trendPartLabel } from "./trend-shared";
 import {
-  entryMembers, groupSourceTotals, hasMember, memberList, rememberTrendGroups, trendCacheStamp, trendGroupEntry, trendGroupKey, trendGroupsFor, trendMemberPart,
+  entryMembers, entrySelection, groupSourceTotals, hasMember, memberList, rememberTrendGroups, trendCacheStamp, trendGroupEntry, trendGroupKey, trendGroupsFor, trendMemberPart,
   type SourceTotalsRow,
 } from "./group-ids";
 import { sectorUnit } from "../peer-population";
@@ -2321,17 +2321,21 @@ export async function runRows(
       if (key) rememberTrendGroups(key, entry);
       kept = entryMembers(entry, listed) ?? [];
     }
-    return { members: kept, sources: entry.sources[trendMemberPart(listed)!] ?? null, selection: entry.sources.all ?? null };
+    return { members: kept, sources: entry.sources[trendMemberPart(listed)!] ?? null, selection: entrySelection(entry) };
   } : null;
-  // „Toate”: the selection's records per channel are those of the answer's partition (`sources.all`), kept with its
-  // groups, so its totals need no count over the union of the two years (4.9M records, ~1.9 s nationally). Not kept
-  // (another process, an entry dropped), the same grouping on the rollups gives them (~0.6 s) and is kept for the
-  // next drawer; a live grouping would cost what the count does, so then the count stays.
+  // „Toate”: the selection's records per channel are those of the answer's partition (`sources.all`: with the firms'
+  // employees, the band's, as the rows), kept with its groups, so its totals need no count over the union of the two
+  // years (4.9M records, ~1.9 s nationally). Not kept (another process, an entry dropped), a selection without a
+  // narrowing condition is grouped once on the rollups (~0.6 s) and kept for the next drawer; a narrower one counts as
+  // before, its grouping costing more than its count (Cluj 2024 → 2025: 1.0 s against 0.45 s; the communes of
+  // 2018 → 2019: 0.56–1.16 s against 0.42 s). A live grouping would cost what the count does, so then the count stays.
+  const narrowed = ctx.cpvPrefixes.length > 0 || ctx.county !== null || ctx.kind !== null || ctx.authorityId !== null || ctx.supplierId !== null
+    || ctx.uatSiruta !== null || ctx.minEmployees !== null || ctx.maxEmployees !== null || ctx.adminSupplierIds !== null || ctx.population !== null || ctx.singleBidder;
   const selectionSources = everyChange ? async (s: DbSql): Promise<TrendPartSources | null> => {
     const stamp = await trendCacheStamp(s);
     const key = stamp ? trendGroupKey(ctx, { stamp, dim: groupDim, yearA, yearB }) : null;
     let entry = key ? trendGroupsFor(key) : null;
-    if (!entry && rollup && trendDays) {
+    if (!entry && rollup && trendDays && !narrowed) {
       const { grouped, attribute } = trendGrouping(s, { rollup, days: trendDays, ctx, dataset, dim: groupDim, yearA, yearB });
       const partition = await trendPartition(s, grouped, { group: trendGroup!, topN: 0, first: groupDim === "county" ? null : { role: groupDim, yearB }, attribute });
       entry = trendGroupEntry(partition, { dim: groupDim, group: trendGroup! });

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DbSql } from "@seap/db";
 import {
-  entryMembers, forgetTrendGroups, groupSourceTotals, hasMember, memberList, rememberTrendGroups, TREND_GROUP_ID_LIMIT, TREND_GROUP_TTL_MS,
+  entryMembers, entrySelection, forgetTrendGroups, groupSourceTotals, hasMember, memberList, rememberTrendGroups, TREND_GROUP_ID_LIMIT, TREND_GROUP_TTL_MS,
   trendGroupEntry, trendGroupKey, trendGroupsFor, trendGroupStats, trendMemberPart, type TrendGroupEntry,
 } from "./group-ids";
 import { predicateContext, trendGroupOf, type TrendGroup } from "./predicates";
@@ -40,6 +40,20 @@ describe("the parts a drawer lists", () => {
     const counties = trendGroupEntry(partition({ down: ["Cluj", "Iași"] }), { dim: "county", group: group({ change: "down" }) });
     expect(counties.members.down).toEqual(["Cluj", "Iași"]);
     expect([hasMember(counties.members.down!, "Iași"), hasMember(counties.members.down!, "Iasi")]).toEqual([true, false]);
+  });
+
+  it("keep the band's records as „Toate”'s and every firm's as the selection a group names (S3 review: an employees band)", () => {
+    const plain = trendGroupEntry(partition({ gone: ["7"] }), { dim: "supplier", group: group({ change: "gone" }) });
+    expect([plain.selection, entrySelection(plain)]).toEqual([undefined, null]);
+    const all = { da: channel(9, "900", "2024-01-02", "2025-12-30"), contracts: channel(2, "50", "2024-05-01", "2025-06-01") };
+    const everyFirm = { da: channel(30, "3000", "2024-01-02", "2025-12-31"), contracts: channel(4, "70", "2024-02-01", "2025-06-01") };
+    const banded = trendGroupEntry({ ...partition({ gone: ["7"] }), sources: { all }, selection: { totals: { count: 12, valueA: 1, valueB: 2 }, sources: everyFirm } },
+      { dim: "supplier", group: group({ change: "all" }) });
+    // „Toate” lists the band's records (its rows apply the band to every record): its totals are the band's, never every firm's.
+    expect(banded.sources.all).toBe(all);
+    expect(entrySelection(banded)).toBe(everyFirm);
+    const { selection: _selection, ...unbanded } = banded;
+    expect(entrySelection(unbanded)).toBe(all);
   });
 
   it("find a member by binary search over the ascending ids", () => {

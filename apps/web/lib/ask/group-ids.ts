@@ -31,8 +31,13 @@ export interface TrendGroupEntry {
   dim: "authority" | "supplier" | "county";
   /** Each part's members: entity ids ascending, or county names. */
   members: Partial<Record<TrendMemberPart, Float64Array | readonly string[]>>;
-  /** Each part's records per channel (the selection with `all`). */
+  /** Each part's records per channel; `all` is every group with the equal ones (with an attribute, the firms of its band). */
   sources: Partial<Record<TrendPart, TrendPartSources>>;
+  /**
+   * The selection a group's drawer says it is part of („… din S”): with an attribute (the firms'
+   * employees, R-employees-group) every firm of the two years, not only those of the band; else `sources.all`.
+   */
+  selection?: TrendPartSources;
   /** The base the growths in percent were counted from (`eligible`), null without that order. */
   eligibleBase: number | null;
   /** Ids held, for the bound. */
@@ -57,11 +62,16 @@ export function trendGroupEntry(partition: TrendPartition, o: { dim: TrendGroupE
     members[part] = o.dim === "county" ? ids : Float64Array.from(ids, Number);
     size += ids.length;
   }
-  // `all` is the selection a group's drawer says it is part of: with an attribute (the firms' employees),
-  // every firm of the selection, not only those of the band the groups keep.
-  const sources = partition.selection ? { ...partition.sources, all: partition.selection.sources } : partition.sources;
-  return { dim: o.dim, members, sources, eligibleBase: o.group.order === "percent" ? o.group.minBase : null, size };
+  // `all` stays the partition's (the records „Toate” lists: with an attribute, those of the band, as its rows);
+  // the selection a group's drawer names beside its own figures is every firm of the two years.
+  return {
+    dim: o.dim, members, sources: partition.sources, ...(partition.selection ? { selection: partition.selection.sources } : {}),
+    eligibleBase: o.group.order === "percent" ? o.group.minBase : null, size,
+  };
 }
+
+/** The records of the selection a group is part of (the drawer header's „din S”), or null when the entry does not know them. */
+export const entrySelection = (entry: TrendGroupEntry): TrendPartSources | null => entry.selection ?? entry.sources.all ?? null;
 
 /** The entry's members of a group, or null when it does not hold them (the growths in percent from another base). */
 export function entryMembers(entry: TrendGroupEntry, group: TrendGroup): Float64Array | readonly string[] | null {
