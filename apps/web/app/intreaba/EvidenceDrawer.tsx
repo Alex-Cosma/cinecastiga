@@ -37,6 +37,8 @@ export interface EvidenceDrawerProps {
    * drawer lists nothing), false when the answer on screen is already that reload (the drawer says so).
    */
   onStale?: (() => boolean) | undefined;
+  /** The first order, where the part opened asks for it (a bar's largest record, F3): by value, largest first. */
+  initialSort?: "value" | undefined;
 }
 
 type Response = ({ ok: true } & DrillResult) | { ok: false; error: string };
@@ -44,7 +46,7 @@ const count = (n: number) => n.toLocaleString("ro-RO");
 const records = (n: number) => countWords(n, "înregistrare", "înregistrări");
 const date = (value: string | null) => value ? value.split("-").reverse().join(".") : "Dată neprecizată";
 
-export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel, scope, onClose, onSave, initialFilters, connection, peer, months, onStale }: EvidenceDrawerProps) {
+export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel, scope, onClose, onSave, initialFilters, connection, peer, months, onStale, initialSort }: EvidenceDrawerProps) {
   // Saved and followed selections keep both the question and the part opened.
   const title = scopeLabel ? `${questionTitle} · ${scopeLabel}` : questionTitle;
   const dialog = useRef<HTMLDialogElement>(null);
@@ -60,7 +62,7 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
   const [search, setSearch] = useState(initialFilters?.search ?? "");
   const [state, setState] = useState(initialFilters?.state ?? "");
   const [stream, setStream] = useState<string>(initialFilters?.stream ?? "");
-  const [sort, setSort] = useState<DrillSort>(() => !isHistoricalProfile(spec) && !spec.filters.authorityId && !spec.filters.authorityName && !spec.filters.supplierId && !spec.filters.supplierName ? "source" : "value");
+  const [sort, setSort] = useState<DrillSort>(() => initialSort ?? (!isHistoricalProfile(spec) && !spec.filters.authorityId && !spec.filters.authorityName && !spec.filters.supplierId && !spec.filters.supplierName ? "source" : "value"));
   const [dir, setDir] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(0);
   const [retry, setRetry] = useState(0);

@@ -12,7 +12,7 @@ import type { Choice } from "../../../lib/ask/filters/pickers";
 import { monthsLabel } from "../../../lib/ask/months-window";
 import { askLink } from "../../../lib/ask/source-spec";
 import type { QueryPopulation } from "../../../lib/ask/population";
-import type { TrendOptions } from "../../../lib/ask/spec";
+import type { TimeseriesOptions, TrendOptions } from "../../../lib/ask/spec";
 import { specTrendList, type TrendList } from "../../../lib/ask/trend-shared";
 import { KIND_WORDS, cloneQuestion, countyWords, questionKey, type QuestionSpec } from "../../../lib/ask/question-ui";
 import type { SentenceToken as KitToken } from "./kit-types";
@@ -76,18 +76,27 @@ export interface BuilderView {
  * `seq` is a new change; the builder is not remounted, so a draft survives.
  */
 export interface StripPatch {
-  seq: number; path: "dataset" | "measure" | "trend"; value: string;
+  seq: number; path: "dataset" | "measure" | "trend" | "timeseries" | "purchaseKind"; value: string;
   /** "trend": the list chosen in the answer (`value`) and the applied question's trend options after it (null: no key). */
   trend?: TrendOptions | null;
+  /** "timeseries" (F3): the evolution's options after the strip's split or same months (null: no key). */
+  timeseries?: TimeseriesOptions | null;
 }
 
 /** The draft after a strip change: only that key, as the applied question got it. */
-export function patchDraft(draft: QuestionSpec, patch: Pick<StripPatch, "path" | "value" | "trend">): QuestionSpec {
+export function patchDraft(draft: QuestionSpec, patch: Pick<StripPatch, "path" | "value" | "trend" | "timeseries">): QuestionSpec {
   const next = cloneQuestion(draft);
   if (patch.path === "dataset") next.dataset = patch.value;
   else if (patch.path === "trend") {
     if (patch.trend) next.trend = structuredClone(patch.trend) as TrendOptions;
     else delete next.trend;
+  } else if (patch.path === "timeseries") {
+    if (patch.timeseries) next.timeseries = structuredClone(patch.timeseries) as TimeseriesOptions;
+    else delete next.timeseries;
+  } else if (patch.path === "purchaseKind") {
+    // The breakdown's kinds row (F3): a kind, or every kind again (an empty value).
+    if (patch.value) next.filters.purchaseKind = patch.value;
+    else delete next.filters.purchaseKind;
   } else next.measure = patch.value;
   return next;
 }

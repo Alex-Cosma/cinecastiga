@@ -3,6 +3,7 @@ import type { BlockData } from "../../lib/ask/compile";
 import { isHistoricalProfile } from "../../lib/ask/population";
 import type { AskSpec } from "../../lib/ask/spec";
 import { shownTrendList, trendRowView } from "./trend-answer";
+import { breakdownShown } from "./breakdown-answer";
 
 /*
  * "Rezultatul afișat · CSV" (plan §2.3, §2.8): exactly the rows and columns
@@ -46,8 +47,14 @@ function rowsOf(data: BlockData, spec: AskSpec): string[] {
   switch (data.block) {
     case "table":
       return ["nume,judet,valoare_lei,achizitii,populatie", ...data.rows.map((r) => `${csvQ(r.name)},${csvQ(r.county)},${r.value},${r.count},${r.population ?? ""}`)];
-    case "timeseries":
-      return ["an,valoare_lei,achizitii", ...data.series.map((p) => `${p.year},${p.value},${p.count}`)];
+    case "timeseries": {
+      // F3: a month's column on a series month by month, a value per part of a split (its parts' labels as columns).
+      const month = data.grain === "month", parts = data.parts ?? [];
+      return [
+        `an,${month ? "luna," : ""}valoare_lei,achizitii${parts.map((p) => `,${csvQ(`valoare_${p.label}`)}`).join("")}`,
+        ...data.series.map((p) => `${p.year},${month ? `${p.month ?? ""},` : ""}${p.value},${p.count}${parts.map((part) => `,${p.parts?.[part.key]?.value ?? 0}`).join("")}`),
+      ];
+    }
     case "map":
       return [
         "judet,valoare_lei,achizitii",
@@ -66,8 +73,12 @@ function rowsOf(data: BlockData, spec: AskSpec): string[] {
       ];
     case "distribution":
       return ["cri_de,cri_pana,entitati", ...data.distribution.buckets.map((b) => `${b.from},${b.to},${b.n}`)];
-    case "breakdown":
-      return ["categorie,cod,valoare_lei,achizitii", ...data.slices.map((s) => `${csvQ(s.name)},${s.code},${s.value},${s.count}`), `"alte domenii",,${data.other.value},${data.other.count}`];
+    case "breakdown": {
+      // F3: the groups as the legend shows them (by records when it is ordered so), every group with `base`.
+      const shown = breakdownShown(data.slices, data.other, data.base, spec.measure === "count" && Boolean(data.base), true);
+      return ["categorie,cod,valoare_lei,achizitii", ...shown.groups.map((s) => `${csvQ(s.name)},${s.code},${s.value},${s.count}`),
+        ...(shown.rest.count > 0 || !data.base ? [`"alte domenii",,${shown.rest.value},${shown.rest.count}`] : [])];
+    }
     case "scatter":
       return ["nume,judet,valoare_lei,cri,semnale", ...data.points.map((p) => `${csvQ(p.name)},${csvQ(p.county)},${p.value},${p.cri},${p.nFlags}`)];
     case "sankey":

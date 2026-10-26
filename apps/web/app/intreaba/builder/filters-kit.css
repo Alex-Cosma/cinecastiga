@@ -22,6 +22,7 @@
   --fk-muted-strong:#5c655b; --fk-signal-ink:#b4441f; /* small text on green and on --sunk: ≥ 5:1 */
   --fk-shadow:0 1px 4px #2b3d2512; --fk-pop-shadow:0 18px 60px #29381e26; --fk-scrim:#1f2b2259;
   --fk-proc:var(--map-4); --fk-da:var(--map-2); /* the channels on every chart; never blue */
+  --fk-c1:#1e7f56; --fk-c2:#3d62b8; --fk-c3:#8e5aa0; --fk-c4:#b0456a; /* categories (CPV divisions, „Din care”): never orange, which is the signals' */
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) {
   --fk-green:var(--accent); --fk-green-hover:var(--ink); --fk-on-green:var(--surface);
@@ -34,6 +35,7 @@
   --fk-new:#7fa866; --fk-down:#6e7d68;
   --fk-muted-strong:#b8c5b1; --fk-signal-ink:var(--orange); /* between --muted and --ink2: ≥ 4.5:1 on the hover and chosen greens */
   --fk-shadow:0 1px 4px #0004; --fk-pop-shadow:0 18px 60px #0007; --fk-scrim:#00000073;
+  --fk-c1:#3f9a6d; --fk-c2:#6489d6; --fk-c3:#a673bb; --fk-c4:#d0718f;
 }}
 :root[data-theme="dark"] {
   --fk-green:var(--accent); --fk-green-hover:var(--ink); --fk-on-green:var(--surface);
@@ -46,6 +48,7 @@
   --fk-new:#7fa866; --fk-down:#6e7d68;
   --fk-muted-strong:#b8c5b1; --fk-signal-ink:var(--orange); /* between --muted and --ink2: ≥ 4.5:1 on the hover and chosen greens */
   --fk-shadow:0 1px 4px #0004; --fk-pop-shadow:0 18px 60px #0007; --fk-scrim:#00000073;
+  --fk-c1:#3f9a6d; --fk-c2:#6489d6; --fk-c3:#a673bb; --fk-c4:#d0718f;
 }
 
 /* ---------- Base ---------- */
@@ -219,6 +222,7 @@ dialog.qb-pop::backdrop{background:var(--fk-scrim)}
 .qb-close{display:grid;place-items:center;width:33px;height:33px;border:1px solid var(--line);border-radius:50%;background:var(--sunk);color:var(--fk-muted-strong);font-size:16px;line-height:1;flex:none}
 .qb-pop-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px}
 .qb-pop-foot b{color:var(--ink);font-weight:600}
+.qb-pop-note{margin:8px 2px 0;color:var(--muted);font-size:12.5px}
 .qb-link{color:var(--fk-green);text-decoration:underline;text-decoration-color:var(--fk-phrase-line);text-underline-offset:3px;font-size:13px}
 .qb-sheet-grip{display:none}
 
@@ -413,6 +417,37 @@ a.qb-menu-item{text-decoration:none}
 .qb-primary:disabled{opacity:.52;cursor:wait}
 .qb-secondary{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:11px 16px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font-size:14px;font-weight:500}
 
+/* ---------- F3 answers: „Din care” (stat), the kinds row and the legend's order (breakdown), the parts' colours ---------- */
+.qb-mix{max-width:640px;margin:0 auto 18px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.qb-mix-top{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin-bottom:10px}
+.qb-mix-head{margin:0;color:var(--muted);font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase}
+.qb-mix-bar{display:flex;height:8px;margin-bottom:8px;border-radius:4px;overflow:hidden;background:var(--line)}
+.qb-mix-seg{display:block;height:100%}
+.qb-mix-seg--0{background:var(--fk-c1)}
+.qb-mix-seg--1{background:var(--fk-c2)}
+.qb-mix-seg--2{background:var(--fk-c3)}
+.qb-mix-seg--3{background:var(--fk-c4)}
+.qb-mix-seg--unknown{background-color:var(--line);background-image:repeating-linear-gradient(135deg,var(--line2) 0 2px,transparent 2px 6px)}
+.qb-mix-rows{margin:0;padding:0;list-style:none}
+.qb-mix-row{display:flex;flex-wrap:wrap;align-items:center;gap:2px 10px;width:100%;min-height:40px;padding:6px 8px;border-radius:8px;text-align:left}
+button.qb-mix-row:hover,button.qb-mix-row:focus-visible{background:var(--fk-chip-hover)}
+.qb-mix-l{flex:1 1 auto;font-weight:600;color:var(--ink)}
+.qb-mix-row.is-unknown .qb-mix-l{color:var(--muted)}
+.qb-mix-n{color:var(--ink2);font-size:12.5px}
+.qb-mix-n b{font-weight:600;color:var(--ink)}
+.qb-mix-only{color:var(--fk-green);font-size:12.5px;font-weight:600;opacity:0}
+button.qb-mix-row:hover .qb-mix-only,button.qb-mix-row:focus-visible .qb-mix-only{opacity:1}
+.qb-mix-foot{margin:8px 0 0;color:var(--muted);font-size:12px}
+.qb-mix-skel{height:28px;margin:6px 0;border-radius:6px;background:var(--line)}
+.qb-kinds{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:4px 0 10px}
+.qb-kind{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:5px 11px;border:1px solid var(--fk-chip-line);border-radius:999px;background:var(--fk-chip-bg);color:var(--ink2);font-size:13px}
+.qb-kind:hover{background:var(--fk-chip-hover)}
+.qb-kind b{font-weight:600;color:var(--ink)}
+.qb-legend-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:6px 10px;margin:10px 0 2px;color:var(--muted);font-size:12px}
+.qb-legend-head>span:first-child{margin-right:auto}
+.qb-sort{display:inline-flex;align-items:center;gap:4px;min-height:30px;padding:4px 8px;border-radius:6px;color:var(--ink2);font-size:12.5px}
+.qb-sort[aria-pressed="true"]{background:var(--fk-sel);color:var(--ink);font-weight:600}
+
 /* ---------- Phone (≤ 600 px): 44 px targets, bottom sheets, nothing wider than the screen ---------- */
 @media (max-width:600px){
   .qb-editor{padding:20px 16px 18px;border-radius:12px}
@@ -442,6 +477,9 @@ a.qb-menu-item{text-decoration:none}
   .qb-strip-end{margin-left:0}
   .qb-strip .qb-row{flex-wrap:nowrap;width:100%}
   .qb-strip .qb-row>.qb-seg{flex:1 1 auto;width:auto}
+  /* A control whose options carry a number (the breakdown's shares) keeps the whole width; its (?) and unit go under it. */
+  .qb-strip .qb-row--wide{flex-wrap:wrap}
+  .qb-strip .qb-row--wide>.qb-seg{flex:1 1 100%}
   .qb-strip-row{flex-direction:column;align-items:stretch;gap:6px}
   .qb-strip-row>.qb-strip-label{min-width:0}
   .qb-strip-row .qb-pill{flex:1 1 auto}
@@ -466,5 +504,14 @@ a.qb-menu-item{text-decoration:none}
   .qb-find .qb-combo,.qb-find .qb-search{width:100%;min-height:44px}
   .qb-listfoot{flex-direction:column;align-items:stretch}
   .qb-listfoot>*{width:100%;justify-content:center}
+  /* „Din care”: a row is a 52 px button whose „›” says it leads to another answer (final stat §4). */
+  .qb-mix{margin-bottom:14px;padding:10px}
+  .qb-mix-row{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"l o" "n o";min-height:52px}
+  .qb-mix-l{grid-area:l}
+  .qb-mix-n{grid-area:n}
+  .qb-mix-only{grid-area:o}
+  .qb-mix-only{opacity:1;font-size:0}
+  .qb-mix-only .qb-glyph{font-size:18px}
+  .qb-kind,.qb-sort{min-height:44px}
 }
 @media (prefers-reduced-motion:reduce){.qb *{transition:none!important;animation:none!important}}
