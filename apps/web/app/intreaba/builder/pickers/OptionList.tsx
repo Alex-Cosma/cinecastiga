@@ -70,6 +70,10 @@ export default function OptionList({ label, options, multiple = false, value = n
               {option.disabled && <small>{option.disabled}</small>}
               {option.swap && <span className="qb-opt-swap">{option.swap}</span>}
               {option.share !== undefined && <span className="qb-opt-bar" aria-hidden="true" style={{ "--w": pct(option.share) } as CSSProperties} />}
+              {option.pair && <span className="qb-opt-pair">
+                <span className="qb-opt-pa"><i aria-hidden="true" style={{ "--w": pct(option.pair.a) } as CSSProperties} />{option.pair.aText}</span>
+                <span className="qb-opt-pb"><i aria-hidden="true" style={{ "--w": pct(option.pair.b) } as CSSProperties} />{option.pair.bText}</span>
+              </span>}
             </span>
             <span className="qb-opt-n">{option.count}</span>
           </button>

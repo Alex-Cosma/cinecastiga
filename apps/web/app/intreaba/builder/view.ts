@@ -77,7 +77,7 @@ export interface BuilderView {
  * `seq` is a new change; the builder is not remounted, so a draft survives.
  */
 export interface StripPatch {
-  seq: number; path: "dataset" | "measure" | "trend" | "timeseries" | "purchaseKind" | "network" | "sankey"; value: string;
+  seq: number; path: "dataset" | "measure" | "trend" | "timeseries" | "purchaseKind" | "network" | "sankey" | "sharedPartners"; value: string;
   /** "trend": the list chosen in the answer (`value`) and the applied question's trend options after it (null: no key). */
   trend?: TrendOptions | null;
   /** "timeseries" (F3): the evolution's options after the strip's split or same months (null: no key). */
@@ -110,6 +110,10 @@ export function patchDraft(draft: QuestionSpec, patch: Pick<StripPatch, "path" |
     // The breakdown's kinds row (F3): a kind, or every kind again (an empty value).
     if (patch.value) next.filters.purchaseKind = patch.value;
     else delete next.filters.purchaseKind;
+  } else if (patch.path === "sharedPartners") {
+    // A comparison's „Doar clienții comuni” (F4): on ("true") or off.
+    if (patch.value === "true") next.filters.sharedPartners = true;
+    else delete next.filters.sharedPartners;
   } else next.measure = patch.value;
   return next;
 }

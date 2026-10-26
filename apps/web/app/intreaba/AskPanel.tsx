@@ -608,6 +608,15 @@ export default function AskPanel({
     window.history.replaceState(null, "", url);
   };
   /**
+   * „Doar clienții comuni” beside a comparison of two firms (F4, plan §2.3 "restrângere"): a new query in a new
+   * history entry, so "Înapoi" brings the comparison of every client back; the builder hears of it as of any strip key.
+   */
+  const applySharedPartners = (on: boolean) => {
+    if (!applied) return;
+    window.history.pushState(null, "", window.location.href);
+    applyStripChange("sharedPartners", on ? "true" : "");
+  };
+  /**
    * A trend's group button (plan §4.7 P6, owner-R-facts-all-lists): the answer
    * holds every list, so only the applied question's `trend` changes, in the
    * URL and the builder (no "modificat"), with no request.
@@ -1069,6 +1078,16 @@ export default function AskPanel({
                   />;
                   return shares ? <StripLabelled after={shares.unit} wide>{control}<HelpTip tip={CHANNEL_SHARE_TIP} /></StripLabelled> : control;
                 })()}
+                {/* Two firms (F4, final compare §3.4): „Doar clienții comuni N”, N the shared clients of the answer on screen. */}
+                {data.block === "compare" && stripKeys.includes("sharedPartners") && data.entities[0]?.role === "supplier" && (() => {
+                  const on = applied.filters.sharedPartners === true, n = data.shared?.total ?? 0;
+                  return <span className="qb-pair qb-tipwrap-sm">
+                    <Toggle id="cmp-shared" label="Doar clienții comuni" pressed={on} count={formatInt(n)}
+                      {...(!on && n === 0 ? { availability: { state: "disabled" as const, reason: "Nicio instituție nu a cumpărat de la amândouă în selecția aleasă." } } : {})}
+                      onToggle={(_id, pressed) => applySharedPartners(pressed)} />
+                    <HelpTip tip={{ id: "clienti-comuni" }} />
+                  </span>;
+                })()}
                 {/* The evolution's split and same months (F3, final timeseries §3.8–§3.9): each a new grouping. */}
                 {data.block === "timeseries" && stripKeys.includes("timeseriesSplit") && (
                   <StripLabelled before="Împarte" smHide>
@@ -1215,7 +1234,8 @@ export default function AskPanel({
                   />
                 ))}
               {data.block === "compare" && (
-                <CompareBlock data={data} partial={resp.partialYears ?? []} dataset={applied.dataset ?? "all"} />
+                <CompareBlock data={data} partial={resp.partialYears ?? []} dataset={applied.dataset ?? "all"} shared={applied.filters.sharedPartners === true}
+                  relax={relaxations(applied).map((r) => ({ label: r.label, onClick: () => runWider(r.spec) }))} onAllClients={() => applySharedPartners(false)} />
               )}
               {data.block === "distribution" && (
                 <DistributionBlock

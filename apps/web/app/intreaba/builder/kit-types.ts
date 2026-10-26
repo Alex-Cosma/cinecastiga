@@ -44,6 +44,8 @@ export interface KitOption {
   count?: string;
   /** 0–1: the share bar under the label. */
   share?: number;
+  /** A comparison's two entities (F4, final compare §3.2, §3.5): each one's bar (0–1 of the longer) and its words, A then B. */
+  pair?: { a: number; b: number; aText: string; bText: string };
   /** "în locul populației apropiate": what choosing this replaces. */
   swap?: string;
   /** Shown but not choosable; the reason is read with the option. */

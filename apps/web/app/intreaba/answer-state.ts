@@ -40,10 +40,10 @@ export function totalConditionWords(applied: AskSpec, executedMonths?: MonthWind
 
 /**
  * The keys the strip writes that ask again: the data stream (F1b), and in F3 the evolution's split and same months
- * (another grouping) and the breakdown's kind (its rows). The map's lens and the breakdown's order switch on the data
- * already fetched.
+ * (another grouping) and the breakdown's kind (its rows), in F4 a comparison's shared clients (the pre-step P). The
+ * map's lens and the breakdown's order switch on the data already fetched.
  */
-export const STRIP_QUERY_KEYS = new Set<StripPatch["path"]>(["dataset", "timeseries", "purchaseKind"]);
+export const STRIP_QUERY_KEYS = new Set<StripPatch["path"]>(["dataset", "timeseries", "purchaseKind", "sharedPartners"]);
 
 /**
  * The network's strip (F4, final network §3.1–§3.5): a group or an order switches on the answer already
@@ -108,6 +108,13 @@ export function appliedAfterStrip(applied: AskSpec, path: StripPatch["path"], va
     const filters = { ...applied.filters };
     if (value) filters.purchaseKind = value as NonNullable<AskSpec["filters"]["purchaseKind"]>;
     else delete filters.purchaseKind;
+    return { ...applied, filters };
+  }
+  // A comparison of firms (F4, final compare §3.4): „Doar clienții comuni” on ("true") or off.
+  if (path === "sharedPartners") {
+    const filters = { ...applied.filters };
+    if (value === "true") filters.sharedPartners = true;
+    else delete filters.sharedPartners;
     return { ...applied, filters };
   }
   return { ...applied, measure: value as AskSpec["measure"] };
